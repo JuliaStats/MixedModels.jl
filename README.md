@@ -106,9 +106,9 @@ loop.  As you can see the expression generating `indm` produces a 5 by
 stores matrices in column-major order so the `vec` function applied to
 a matrix concatenates the columns.  Currently `LMMsimple` expects
 matrices with `n` rows for the indices and the fixed-effects model
-matrix so we construct the model as 
+matrix and we must construct the model as 
 
-``julia
+```julia
 julia> n = length(Yield);
 julia> fm = LMMsimple(reshape(m, (n,1)), ones(n,1), Yield); 
 julia> fm.ZXt
