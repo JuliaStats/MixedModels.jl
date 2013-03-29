@@ -120,7 +120,7 @@ Non-zero values: 2x30 Float64 Array:
 ```
 
 The `fit` method optimizes the parameter estimates.  Setting the optional
-optional `verbose` argument to `true` trace of the optimization
+optional `verbose` argument to `true` provides a trace of the optimization
 
 ```julia
 julia> fit(fm, true)  # verbose fit
@@ -148,7 +148,6 @@ Parameter estimates are provided by `fixef` and `VarCorr`
 ```julia
 julia> println(fixef(fm))
 [1527.5]
-
 julia> println(VarCorr(fm))
 1x2 Float64 Array:
  1388.34  2451.25
@@ -159,4 +158,27 @@ The conditional modes of the random effects are returned by `ranef`
 ```julia
 julia> println(ranef(fm))
 [-16.6283, 0.369517, 26.9747, -21.8015, 53.5799, -42.4944]
+```
+
+For a REML fit, set the REML field to `true`.  Whenever you change
+properties of the model directly you should also set the `fit` field
+to `false`
+
+```julia
+julia> fm.REML = true; fm.fit = false
+false
+
+julia> fit(fm, true)
+f_1: 319.72580924655597, [0.752584]
+f_2: 320.6230489677262, [1.31702]
+f_3: 324.62180212210484, [0.188146]
+f_4: 319.7164973657527, [0.947384]
+f_5: 319.65462477204755, [0.855379]
+f_6: 319.65880164730163, [0.874022]
+f_7: 319.6543502846913, [0.8451]
+f_8: 319.6542768539961, [0.848283]
+f_9: 319.6542787718305, [0.848847]
+f_10: 319.65427684226245, [0.848325]
+FTOL_REACHED
+true
 ```
