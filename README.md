@@ -6,8 +6,13 @@ This package requires Steve Johnson's
 [NLopt](https://github.com/stevengj/NLopt.jl.git) package.  If this
 package is not already installed, check it's installation
 instructions.  It requires you to have installed the `nlopt` library.
-Once the `NLopt` package is installed, you can use ```julia
-Pkg.add("MixedModels") ``` to install this package.
+Once the `NLopt` package is installed,
+
+```julia
+Pkg.add("MixedModels")
+```
+
+will install this package.
 
 ## Fitting simple mixed-effects models
 
@@ -29,7 +34,8 @@ fixed-effects model matrix, and the response.
 The simplest example of a mixed-effects model that we use in the
 [lme4 package for R](https://github.com/lme4/lme4) is a model fit to
 the `Dyestuff` data.
-```r
+
+```R
 > str(Dyestuff)
 'data.frame':	30 obs. of  2 variables:
  $ Batch: Factor w/ 6 levels "A","B","C","D",..: 1 1 1 1 1 2 2 2 2 2 ...
