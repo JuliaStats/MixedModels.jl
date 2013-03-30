@@ -237,7 +237,7 @@ CHOLMOD sparse:  :  1760188-by-1760188, nz 6318981, upper.
 
 and the sparse Cholesky factor is
 
-```
+```julia
 julia> mm.L
 
 CHOLMOD factor:  :  1760188-by-1760188
