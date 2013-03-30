@@ -3,9 +3,11 @@
 ## Installation
 
 This package requires Steve Johnson's
-[NLopt](https://github.com/stevengj/NLopt.jl.git) package.  If this
-package is not already installed, check it's installation
-instructions.  It requires you to have installed the `nlopt` library.
+[NLopt](https://github.com/stevengj/NLopt.jl.git) package for
+Julia. Before installing the `NLopt` package be sure to read the
+installation instructions as it requires you to have installed the
+`nlopt` library of C functions.
+
 Once the `NLopt` package is installed,
 
 ```julia
