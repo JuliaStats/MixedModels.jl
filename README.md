@@ -408,6 +408,5 @@ Julia.
 
 ## ToDo
 
-Lots. A formula interface, a cleaner `model_frame` and `model_matrix`
-implementation, extension to models with vector-valued random effects,
+Lots. Extension to models with vector-valued random effects,
 GLMMs, NLMMs, etc.  But this is a good start!
