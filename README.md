@@ -16,20 +16,13 @@ Pkg.add("MixedModels")
 
 will install this package.
 
-## Fitting simple mixed-effects models
+## Fitting linear mixed-effects models
 
-At present the `MixedModels` package supports only _simple linear
-mixed-effects models_, in which all the random-effects terms are
-simple, scalar terms.  That is, no vector valued random effects or
-interactions between random factors and fixed-effects terms are
-allowed.  In the formula notation used in the
-[lme4](https://github.com/lme4/lme4) package for
-[R](http://r-project.org) this means that all random-effects terms are
-of the form ```(1|g)```.
-
-Such a model is represented by a `LMMsimple` object that is
-created from the indices for the random effects grouping factors, the
-fixed-effects model matrix, and the response.
+The `lmer` function is similar to the function of the same name in the
+[lme4](http://cran.R-project.org/package=lme4) package for
+[R](http://www.R-project.org).  The first two arguments for in the `R`
+version are `formula` and `data`.  The principle method for the
+`Julia` version takes these arguments.
 
 ### A model fit to the `Dyestuff` data from the `lme4` package
 
@@ -61,352 +54,260 @@ Fixed effects:
 (Intercept)  1527.50      17.69   86.33
 ```
 
-To obtain such a fit using Julia we attach the `Distributions` and
-`MixedModels` packages
+These `Dyestuff` data are available in the `RDatasets` package for `julia`
+```julia
+julia> using MixedModels, RDatasets
+
+julia> ds = data("lme4","Dyestuff");
+
+julia> dump(ds)
+DataFrame  30 observations of 2 variables
+  Batch: PooledDataArray{ASCIIString,Uint8,1}(30) ["A", "A", "A", "A"]
+  Yield: DataArray{Float64,1}(30) [1545.0, 1440.0, 1440.0, 1520.0]
+```
+
+The main difference from `R` in a simple call to `lmer` is the need to
+pass the formula as an expression, which means enclosing it in `:()`.
+Also, this version of `lmer` defaults to maximum likelihood estimates.
 
 ```julia
-using Distributions, MixedModels
+julia> m = lmer(:(Yield ~ 1|Batch),ds)
+Linear mixed model fit by maximum likelihood
+ logLik: -163.6635299406109, deviance: 327.3270598812218
+
+  Variance components: [1x1 Float64 Array:
+ 1388.34, 1x1 Float64 Array:
+ 2451.25]
+  Number of obs: 30; levels of grouping factors: [6]
+  Fixed-effects parameters: [1527.5]
 ```
 
-and read in the data.  We could use the `RDatasets` package to obtain
-the data but it is small enough to create it inline
+(At present the formatting of the output is less than wonderful.)
+
+In general the model should be fit through an explicit call to the `fit`
+function, which may take a second argument indicating a verbose fit.
 
 ```julia
-julia> Yield = [1545., 1440, 1440, 1520, 1580, 1540, 1555, 1490, 1560,
-         1495, 1595, 1550, 1605, 1510, 1560, 1445, 1440, 1595,
-         1465, 1545, 1595, 1630, 1515, 1635, 1625, 1520, 1455,
-         1450, 1480, 1445];
-```
-
-To get the `Batch` factor we could use the `gl` function from Julia's
-`DataFrames` package (patterned after R's `gl` function)
-
-```
-julia> using DataFrames
-julia> println(gl(6,5))
-[1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6]
-```
-
-or, we could reshape the result of a comprehension.  Comprehensions
-are pretty neat and astonishingly fast so we will show that approach.
-
-```
-julia> indm = [j for i in 1:5, j in 1:6]
-5x6 Int64 Array:
- 1  2  3  4  5  6
- 1  2  3  4  5  6
- 1  2  3  4  5  6
- 1  2  3  4  5  6
- 1  2  3  4  5  6
-julia> println(vec(m))
-[1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6]
-```
-
-A comprehension generates arrays in a kind of inverted, nested `for`
-loop.  As you can see the expression generating `indm` produces a 5 by
-6 matrix with `indm[i,j] = j`.  Like `R` and `Matlab/Octave`, Julia
-stores matrices in column-major order so the `vec` function applied to
-a matrix concatenates the columns.  Currently `LMMsimple` expects
-matrices with `n` rows for the indices and the fixed-effects model
-matrix and we must construct the model as 
-
-```julia
-julia> n = length(Yield);
-julia> fm = LMMsimple(reshape(m, (n,1)), ones(n,1), Yield); 
-julia> fm.ZXt
-7 by 30 regular sparse column matrix Row indices:
-1x30 Int64 Array: 1 1 1 1 1 2 2 2 2 2 3 3 3 3 3 4 4 4 4 4 5 5 5 5 5 6 6 6 6 6
-Non-zero values: 2x30 Float64 Array:
- 1.0  1.0  1.0  1.0  1.0  1.0  1.0  1.0  1.0  1.0  …  1.0  1.0  1.0  1.0  1.0  1.0  1.0  1.0  1.0
- 1.0  1.0  1.0  1.0  1.0  1.0  1.0  1.0  1.0  1.0     1.0  1.0  1.0  1.0  1.0  1.0  1.0  1.0  1.0
-```
-
-The `fit` method optimizes the parameter estimates.  Setting the optional
-optional `verbose` argument to `true` provides a trace of the optimization
-
-```julia
-julia> fit(fm, true)  # verbose fit
+julia> m = fit(lmer(:(Yield ~ 1|Batch), ds),true);
 f_1: 327.7670216246145, [1.0]
 f_2: 331.0361932224437, [1.75]
 f_3: 330.6458314144857, [0.25]
 f_4: 327.69511270610866, [0.97619]
-f_5: 327.5663091453218, [0.928569]
+f_5: 327.56630914532184, [0.928569]
 f_6: 327.3825965130752, [0.833327]
 f_7: 327.3531545408492, [0.807188]
-f_8: 327.3466298241027, [0.799688]
+f_8: 327.34662982410276, [0.799688]
 f_9: 327.34100192001785, [0.792188]
 f_10: 327.33252535370985, [0.777188]
-f_11: 327.3273305611214, [0.747188]
-f_12: 327.32861909776966, [0.739688]
-f_13: 327.3270602360369, [0.752777]
-f_14: 327.32706815453946, [0.753527]
-f_15: 327.3270598812219, [0.752584]
+f_11: 327.32733056112147, [0.747188]
+f_12: 327.3286190977697, [0.739688]
+f_13: 327.32706023603697, [0.752777]
+f_14: 327.3270681545395, [0.753527]
+f_15: 327.3270598812218, [0.752584]
 FTOL_REACHED
-true
 ```
 
-Parameter estimates are provided by `fixef` and `VarCorr`
-
+The numeric representation of the model has type
 ```julia
-julia> println(fixef(fm))
-[1527.5]
-julia> println(VarCorr(fm))
-1x2 Float64 Array:
- 1388.34  2451.25
+julia> typeof(m)
+LMMGeneral{Int32}
 ```
 
-The conditional modes of the random effects are returned by `ranef`
+It happens that `show`ing an object of this type causes the model to
+be fit so it is okay to omit the call to `fit` in the REPL (the
+interactive Read-Eval-Print-Loop).
 
+Those familiar with the `lme4` package for `R` will see the usual
+suspects.
 ```julia
-julia> println(ranef(fm))
-[-16.6283, 0.369517, 26.9747, -21.8015, 53.5799, -42.4944]
+julia> VarCorr(m)
+2-element Array{Float64,2} Array:
+ 1x1 Float64 Array:
+ 1388.34
+ 1x1 Float64 Array:
+ 2451.25
+
+julia> fixef(m)
+1-element Float64 Array:
+ 1527.5
+
+julia> ranef(m)
+1-element Array{Float64,2} Array:
+ 1x6 Float64 Array:
+ -16.6283  0.369517  26.9747  -21.8015  53.5799  -42.4944
+
+julia> deviance(m)
+327.3270598812218
 ```
 
-For a REML fit, set the REML field to `true`.  Whenever you change
-properties of the model directly you should also set the `fit` field
-to `false`
+## A more substantial example
+
+Fitting a model to the `Dyestuff` data is trivial.  The `InstEval`
+data in the `lme4` package is more of a challenge in that there are
+nearly 75,000 evaluations by 2972 students on a total of 1128
+instructors.
 
 ```julia
-julia> fm.REML = true; fm.fit = false
-false
+julia> inst = data("lme4","InstEval");
 
-julia> fit(fm, true)
-f_1: 319.72580924655597, [0.752584]
-f_2: 320.6230489677262, [1.31702]
-f_3: 324.62180212210484, [0.188146]
-f_4: 319.7164973657527, [0.947384]
-f_5: 319.65462477204755, [0.855379]
-f_6: 319.65880164730163, [0.874022]
-f_7: 319.6543502846913, [0.8451]
-f_8: 319.6542768539961, [0.848283]
-f_9: 319.6542787718305, [0.848847]
-f_10: 319.65427684226245, [0.848325]
+julia> dump(inst)
+DataFrame  73421 observations of 7 variables
+  s: PooledDataArray{ASCIIString,Uint16,1}(73421) ["1", "1", "1", "1"]
+  d: PooledDataArray{ASCIIString,Uint16,1}(73421) ["1002", "1050", "1582", "2050"]
+  studage: PooledDataArray{ASCIIString,Uint8,1}(73421) ["2", "2", "2", "2"]
+  lectage: PooledDataArray{ASCIIString,Uint8,1}(73421) ["2", "1", "2", "2"]
+  service: PooledDataArray{ASCIIString,Uint8,1}(73421) ["0", "1", "0", "1"]
+  dept: PooledDataArray{ASCIIString,Uint8,1}(73421) ["2", "6", "2", "3"]
+  y: DataArray{Int32,1}(73421) [5, 2, 5, 3]
+
+julia> @time fm2 = fit(lmer(:(y ~ dept*service + (1|s) + (1|d)), inst),true)
+f_1: 241920.83782176487, [1.0, 1.0]
+f_2: 244850.35312911033, [1.75, 1.0]
+f_3: 242983.2665867725, [1.0, 1.75]
+f_4: 238454.23551272828, [0.25, 1.0]
+f_5: 241716.05373818372, [1.0, 0.25]
+f_6: 240026.0596421509, [0.0, 0.445919]
+f_7: 241378.58264793456, [0.0, 1.27951]
+f_8: 238463.85416880157, [0.346954, 0.95699]
+f_9: 238337.4351133204, [0.25115, 0.933415]
+f_10: 238450.00007949758, [0.195179, 0.871898]
+f_11: 238282.78310872425, [0.268777, 0.913682]
+f_12: 238250.876564112, [0.280725, 0.897062]
+f_13: 238207.46300521464, [0.303696, 0.863175]
+f_14: 238195.80295309465, [0.319029, 0.842641]
+f_15: 238196.40553488504, [0.324123, 0.837137]
+f_16: 238179.53710832534, [0.317249, 0.835355]
+f_17: 238160.8528644366, [0.312094, 0.829907]
+f_18: 238126.53331515726, [0.303016, 0.817967]
+f_19: 238066.44965865996, [0.289624, 0.791122]
+f_20: 237960.3709275751, [0.275292, 0.732859]
+f_21: 237771.6569062523, [0.259406, 0.613915]
+f_22: 237651.6783007646, [0.242704, 0.374497]
+f_23: 240177.2889688969, [0.0941482, 0.185999]
+f_24: 237591.38115376432, [0.283051, 0.410359]
+f_25: 237898.58451783203, [0.330503, 0.300139]
+f_26: 237625.00815015173, [0.312366, 0.409428]
+f_27: 237599.4577282987, [0.286273, 0.470272]
+f_28: 237599.86006760105, [0.287796, 0.399337]
+f_29: 237586.3576741112, [0.281267, 0.433017]
+f_30: 237586.23506658932, [0.280855, 0.432391]
+f_31: 237586.0458654961, [0.280107, 0.432456]
+f_32: 237585.75792242354, [0.278609, 0.432398]
+f_33: 237585.55708664245, [0.275788, 0.431376]
+f_34: 237585.58865949293, [0.275575, 0.430052]
+f_35: 237585.59987904236, [0.274638, 0.432066]
+f_36: 237585.55356829462, [0.275935, 0.432124]
+f_37: 237585.56010679065, [0.275855, 0.432869]
+f_38: 237585.55341702755, [0.275921, 0.432005]
+f_39: 237585.5535975567, [0.275995, 0.431996]
+f_40: 237585.55345063927, [0.275908, 0.431931]
+f_41: 237585.55355290952, [0.275846, 0.432008]
+f_42: 237585.55341517035, [0.275915, 0.431994]
+f_43: 237585.5534158103, [0.275916, 0.432003]
+f_44: 237585.5534151921, [0.275916, 0.431994]
+f_45: 237585.55341520358, [0.275914, 0.431994]
+f_46: 237585.5534151795, [0.275915, 0.431993]
+f_47: 237585.55341517017, [0.275915, 0.431994]
+XTOL_REACHED
+elapsed time: 12.078582378 seconds
+Linear mixed model fit by maximum likelihood
+ logLik: -118792.77670758509, deviance: 237585.55341517017
+
+  Variance components: [1x1 Float64 Array:
+ 0.105418, 1x1 Float64 Array:
+ 0.258416, 1x1 Float64 Array:
+ 1.38473]
+  Number of obs: 73421; levels of grouping factors: [2972, 1128]
+  Fixed-effects parameters: [3.22961, 0.129536, -0.176751, 0.0517102, 0.0347319  …  -0.24042, -0.223013, -0.516997, -0.384773]
+```
+
+Models with vector-valued random effects can be fit
+```julia
+julia> sleep = data("lme4","sleepstudy");
+
+julia> dump(sleep)
+DataFrame  180 observations of 3 variables
+  Reaction: DataArray{Float64,1}(180) [249.56, 258.705, 250.801, 321.44]
+  Days: DataArray{Float64,1}(180) [0.0, 1.0, 2.0, 3.0]
+  Subject: PooledDataArray{ASCIIString,Uint8,1}(180) ["308", "308", "308", "308"]
+
+julia> fm3 = fit(lmer(:(Reaction ~ Days + (Days|Subject)), sleep), true)
+f_1: 1784.6422961924472, [1.0, 0.0, 1.0]
+f_2: 1790.1256369894443, [1.75, 0.0, 1.0]
+f_3: 1798.9996244965714, [1.0, 1.0, 1.0]
+f_4: 1803.8532002843879, [1.0, 0.0, 1.75]
+f_5: 1800.6139807455356, [0.25, 0.0, 1.0]
+f_6: 1798.6046308389216, [1.0, -1.0, 1.0]
+f_7: 1752.2607369909074, [1.0, 0.0, 0.25]
+f_8: 1797.587692019767, [1.18326, -0.00866189, 0.0]
+f_9: 1754.9541095798577, [1.075, 0.0, 0.325]
+f_10: 1753.6956816567858, [0.816632, 0.0111673, 0.288238]
+f_11: 1754.8169985163663, [1.0, -0.0707107, 0.196967]
+f_12: 1753.1067335474627, [0.943683, 0.0638354, 0.262696]
+f_13: 1752.9393767190031, [0.980142, -0.0266568, 0.274743]
+f_14: 1752.2568790228843, [0.984343, -0.0132347, 0.247191]
+f_15: 1752.057448057069, [0.97314, 0.00253785, 0.23791]
+f_16: 1752.0223889106287, [0.954526, 0.00386421, 0.235892]
+f_17: 1752.0227280154613, [0.935929, 0.0013318, 0.234445]
+f_18: 1751.9716865442101, [0.954965, 0.00790664, 0.229046]
+f_19: 1751.9526031249716, [0.953313, 0.0166274, 0.225768]
+f_20: 1751.948524268375, [0.946929, 0.0130761, 0.222871]
+f_21: 1751.9871762805533, [0.933418, 0.00613767, 0.218951]
+f_22: 1751.9832131209412, [0.951544, 0.005789, 0.220618]
+f_23: 1751.951971276329, [0.952809, 0.0190332, 0.224178]
+f_24: 1751.9462759266778, [0.946322, 0.0153739, 0.225088]
+f_25: 1751.9466979622896, [0.947124, 0.0148894, 0.224892]
+f_26: 1751.9475678612077, [0.946497, 0.0154643, 0.225814]
+f_27: 1751.9453118381468, [0.946086, 0.0157934, 0.224449]
+f_28: 1751.944179614325, [0.945304, 0.0166902, 0.223361]
+f_29: 1751.943532886748, [0.944072, 0.0172106, 0.222716]
+f_30: 1751.942440721589, [0.941271, 0.0163099, 0.222523]
+f_31: 1751.9421698853885, [0.939, 0.015899, 0.222132]
+f_32: 1751.942370107883, [0.938979, 0.016548, 0.221562]
+f_33: 1751.942278038317, [0.938863, 0.0152466, 0.222683]
+f_34: 1751.942203968235, [0.938269, 0.015733, 0.222024]
+f_35: 1751.9413093339792, [0.938839, 0.0166373, 0.222611]
+f_36: 1751.9409310154442, [0.938397, 0.0173965, 0.222817]
+f_37: 1751.9405672034432, [0.937006, 0.0180445, 0.222534]
+f_38: 1751.9401790031193, [0.934109, 0.0187354, 0.22195]
+f_39: 1751.940081850155, [0.932642, 0.0189242, 0.221726]
+f_40: 1751.9402696242064, [0.931357, 0.0190082, 0.221309]
+f_41: 1751.9415006286824, [0.932821, 0.0206454, 0.221367]
+f_42: 1751.9394886779307, [0.931867, 0.0179574, 0.222564]
+f_43: 1751.9393923344423, [0.929167, 0.0177824, 0.222534]
+f_44: 1751.939397613947, [0.929659, 0.0177721, 0.222508]
+f_45: 1751.939425025923, [0.929193, 0.0187806, 0.22257]
+f_46: 1751.9393548581595, [0.928986, 0.0182366, 0.222484]
+f_47: 1751.9394897720788, [0.928697, 0.0182937, 0.223175]
+f_48: 1751.9393630911852, [0.928243, 0.0182695, 0.222584]
+f_49: 1751.939344829649, [0.929113, 0.0181791, 0.222624]
+f_50: 1751.9393444889902, [0.929191, 0.0181658, 0.222643]
 FTOL_REACHED
-true
+Linear mixed model fit by maximum likelihood
+ logLik: -875.9696722444951, deviance: 1751.9393444889902
+
+  Variance components: [2x2 Float64 Array:
+ 565.477   11.0551
+  11.0551  32.6818, 1x1 Float64 Array:
+ 654.946]
+  Number of obs: 180; levels of grouping factors: [18]
+  Fixed-effects parameters: [251.405, 10.4673]
 ```
-
-## A substantial example
-
-Natually the `Dyestuff` example does not show the power of the Julia
-version.  I fit a model to a data set with 2,552,112 observations and
-a total of 1,760,188 random effects for which the regular sparse
-compressed column model matrix has the form
-
-```julia
-julia> mm.ZXt
-1760188 by 2552112 regular sparse column matrix
-Row indices: 3x2552112 Int32 Array:
-  655840   680816   657696   657697   657698  …   125238   527019   125137   125496   862549
- 1535708  1560684  1537564  1537565  1537566     1005106  1406887  1005005  1005364  1742417
- 1759786  1759797  1759797  1759797  1759797     1760158  1760158  1760158  1760158  1760158
-Non-zero values: 4x2552112 Float64 Array:
- 1.0  1.0  1.0  1.0  1.0  1.0  1.0  1.0  1.0  1.0  …  1.0  1.0  1.0  1.0  1.0  1.0  1.0  1.0  1.0
- 1.0  1.0  1.0  1.0  1.0  1.0  1.0  1.0  1.0  1.0     1.0  1.0  1.0  1.0  1.0  1.0  1.0  1.0  1.0
- 1.0  1.0  1.0  1.0  1.0  1.0  1.0  1.0  1.0  1.0     1.0  1.0  1.0  1.0  1.0  1.0  1.0  1.0  1.0
- 1.0  1.0  1.0  1.0  1.0  1.0  1.0  1.0  1.0  1.0     1.0  1.0  1.0  1.0  1.0  1.0  1.0  1.0  1.0
-```
-
-It is not obvious here but those grouping factors are partially
-crossed.  The system matrix is 
-
-```julia
-julia> mm.A
-
-CHOLMOD sparse:  :  1760188-by-1760188, nz 6318981, upper.
-  nzmax 6318981, sorted, packed, 
-  scalar types: int, real, double
-  col 0: nz 1 start 0 end 1:
-         0: 6.5948
-  col 1: nz 1 start 1 end 2:
-         1: 5.4758
-  col 2: nz 1 start 2 end 3:
-         2: 6.5948
-  col 3: nz 1 start 3 end 4:
-         3: 6.5948
-    ...
-  col 1760187: nz 1760188 start 4558793 end 6318981:
-         0: 5.289
-         1: 4.2312
-         2: 5.289
-    ...
-   1760184: 27.324
-   1760185: 105.06
-   1760186: 44.258
-   1760187: 2.5521e+06
-  nnz on diagonal: 1760188
-  OK
-```
-
-and the sparse Cholesky factor is
-
-```julia
-julia> mm.L
-
-CHOLMOD factor:  :  1760188-by-1760188
-  scalar types: int, real, double
-  simplicial, LDL'.
-  ordering method used: AMD
-         0:3389
-         1:883257
-         2:5344
-         3:885212
-         4:5828
-         5:885696
-         6:8748
-         7:888616
-    ...
-   1760184:1760136
-   1760185:1760139
-   1760186:1760140
-   1760187:1760187
-  col: 0 colcount: 4
-  col: 1 colcount: 3
-  col: 2 colcount: 4
-  col: 3 colcount: 3
-  col: 4 colcount: 4
-  col: 5 colcount: 3
-  col: 6 colcount: 4
-  col: 7 colcount: 3
-    ...
-  col: 1760184 colcount: 4
-  col: 1760185 colcount: 3
-  col: 1760186 colcount: 2
-  col: 1760187 colcount: 1
-monotonic: 1
- nzmax 6372007.
-  col 0: nz 4 start 0 end 4 space 4 free 0:
-         0: 6.5948
-         1: 0.95058
-   1760186: 0.30865
-   1760187: 0.802
-  col 1: nz 3 start 4 end 7 space 3 free 0:
-         1: 2.0651
-   1760186: 0.16747
-   1760187: 0.43515
-  col 2: nz 4 start 7 end 11 space 4 free 0:
-         2: 3.2379
-    ...
-  col 1760185: nz 3 start 6372001 end 6372004 space 3 free 0:
-   1760185: 681.42
-   1760186: -0.0059217
-   1760187: 2.5736
-  col 1760186: nz 2 start 6372004 end 6372006 space 2 free 0:
-   1760186: 463.94
-   1760187: 2.5868
-  col 1760187: nz 1 start 6372006 end 6372007 space 1 free 0:
-   1760187: 2962
-  nz 6372007  OK
-```
-
-The fact that the number of nonzeros in `L`, 6,372,007, is larger than
-the number of nonzeros in `A`, 6,318,981, indicates that the grouping
-factors are not nested.
-
-I can't identify these data other than to say that they are derived
-from annual test scores of students in one of the United States.
-
-I have fit such a model in `R` using the `lme4` package.  In fact this
-model is my stress test when comparing methods in `lme4`.  Generally
-each evaluation of the deviance requires 20 seconds or more in various
-incarnations of `lme4`.  On the same computer the Julia code performs
-an evaluation in about 1.4 seconds.  We had difficulty with several of
-the optimizers in R and eventually resorted to using a Nelder-Mead
-simplex method that allows for box constraints.  In Julia I can use
-Steve Johnson's implementation of a derivative-free optimizer BOBYQA.
-The Nelder-Mead version took over 300 evaluations to converge on this
-3-dimensional optimization problem in R.  The total time to fit such a
-model was 7000 seconds, during which time R used up all the memory (8
-GB) on this computer resulting in swap thrashing.  Essentially
-response on all other processes died.  The Julia version converged in
-73 iterations while using less than 1 GB of memory. Here's the
-trace
-
-```julia
-julia> @elapsed fit(mm, true)
-f_1: 2.64313337640267e7, [1.0, 1.0, 1.0]
-f_2: 2.646530790370047e7, [1.75, 1.0, 1.0]
-f_3: 2.646530790370086e7, [1.0, 1.75, 1.0]
-f_4: 2.6431792205251433e7, [1.0, 1.0, 1.75]
-f_5: 2.6548597211884834e7, [0.25, 1.0, 1.0]
-f_6: 2.6548597211894397e7, [1.0, 0.25, 1.0]
-f_7: 2.6431054281238183e7, [1.0, 1.0, 0.25]
-f_8: 2.6518651372547925e7, [1.20652, 1.20652, 0.0]
-f_9: 2.6542694444043886e7, [0.736752, 0.736752, 0.204994]
-f_10: 2.642547553170733e7, [1.075, 1.0, 0.325]
-f_11: 2.6424596212055616e7, [0.972194, 1.11541, 0.431144]
-f_12: 2.6428614541411452e7, [0.974207, 1.05276, 0.472326]
-f_13: 2.6425128228043392e7, [0.911593, 1.15648, 0.447445]
-f_14: 2.6421780805168476e7, [1.01277, 1.15118, 0.483095]
-f_15: 2.6420943237139884e7, [0.998956, 1.21356, 0.522377]
-f_16: 2.6420981871568996e7, [0.974296, 1.27818, 0.551386]
-f_17: 2.6420893374648757e7, [0.999481, 1.2457, 0.541684]
-f_18: 2.642087219743117e7, [0.984028, 1.24682, 0.541771]
-f_19: 2.6420862702375993e7, [0.991782, 1.23884, 0.528627]
-f_20: 2.6420865891771503e7, [0.991001, 1.24125, 0.533825]
-f_21: 2.6420856469631426e7, [0.9946, 1.23842, 0.52169]
-f_22: 2.6420855632944528e7, [0.997869, 1.23282, 0.517915]
-f_23: 2.6420874723336898e7, [0.993077, 1.22858, 0.514001]
-f_24: 2.6420857780514594e7, [0.997125, 1.23694, 0.523435]
-f_25: 2.6420856570992395e7, [0.996609, 1.23445, 0.520053]
-f_26: 2.642085863926388e7, [0.997971, 1.231, 0.518337]
-f_27: 2.6420853220310677e7, [0.998583, 1.23342, 0.516285]
-f_28: 2.642085102338043e7, [0.999941, 1.23206, 0.513063]
-f_29: 2.642084869252778e7, [1.00273, 1.22817, 0.507289]
-f_30: 2.6420843818743285e7, [1.00541, 1.22602, 0.500623]
-f_31: 2.6420833254012857e7, [1.01086, 1.22246, 0.487108]
-f_32: 2.6420819186332628e7, [1.02165, 1.21192, 0.461179]
-f_33: 2.6420802290913634e7, [1.03131, 1.20618, 0.433363]
-f_34: 2.642079308871887e7, [1.05406, 1.18449, 0.382254]
-f_35: 2.642090466267342e7, [1.0543, 1.16553, 0.325329]
-f_36: 2.642083001091622e7, [1.05934, 1.19926, 0.378647]
-f_37: 2.6420796779363126e7, [1.06168, 1.18198, 0.353348]
-f_38: 2.6420793218270306e7, [1.06833, 1.18004, 0.383511]
-f_39: 2.6420791444902476e7, [1.06432, 1.18058, 0.372029]
-f_40: 2.6420800189956754e7, [1.0717, 1.18002, 0.370817]
-f_41: 2.6420793098414853e7, [1.06298, 1.18459, 0.378225]
-f_42: 2.642079133428025e7, [1.06481, 1.17872, 0.371367]
-f_43: 2.642079078809407e7, [1.06464, 1.17916, 0.375086]
-f_44: 2.6420790281789716e7, [1.06314, 1.18088, 0.382232]
-f_45: 2.6420790275522258e7, [1.05802, 1.18567, 0.384891]
-f_46: 2.6420790256668385e7, [1.059, 1.18417, 0.387537]
-f_47: 2.6420790222395737e7, [1.05904, 1.18421, 0.383787]
-f_48: 2.6420790322209913e7, [1.06045, 1.18287, 0.380583]
-f_49: 2.64207903720455e7, [1.05999, 1.18426, 0.384139]
-f_50: 2.6420790215797003e7, [1.05801, 1.18509, 0.385087]
-f_51: 2.6420790230582e7, [1.05822, 1.18485, 0.38324]
-f_52: 2.6420790237310737e7, [1.05757, 1.18514, 0.385694]
-f_53: 2.6420790219062142e7, [1.05763, 1.18542, 0.385645]
-f_54: 2.6420790216793273e7, [1.05806, 1.18509, 0.385205]
-f_55: 2.642079021680278e7, [1.05791, 1.18508, 0.385013]
-f_56: 2.6420790215588965e7, [1.05793, 1.18516, 0.385025]
-f_57: 2.6420790215490576e7, [1.05783, 1.18523, 0.384974]
-f_58: 2.642079021538983e7, [1.05776, 1.1853, 0.384892]
-f_59: 2.6420790215423398e7, [1.05771, 1.18535, 0.384784]
-f_60: 2.6420790215511013e7, [1.05769, 1.18533, 0.384914]
-f_61: 2.6420790215370934e7, [1.05781, 1.18526, 0.384861]
-f_62: 2.6420790215388946e7, [1.05793, 1.18516, 0.384843]
-f_63: 2.642079021541716e7, [1.05783, 1.18524, 0.384791]
-f_64: 2.6420790215375423e7, [1.05783, 1.18524, 0.384871]
-f_65: 2.6420790215476643e7, [1.05782, 1.18527, 0.384863]
-f_66: 2.6420790215396754e7, [1.0578, 1.18527, 0.384867]
-f_67: 2.64207902153635e7, [1.05781, 1.18526, 0.384853]
-f_68: 2.642079021538987e7, [1.05781, 1.18526, 0.384844]
-f_69: 2.6420790215382434e7, [1.05781, 1.18526, 0.384852]
-f_70: 2.6420790215373155e7, [1.05781, 1.18526, 0.384852]
-f_71: 2.6420790215365566e7, [1.05781, 1.18526, 0.384853]
-f_72: 2.6420790215393037e7, [1.05781, 1.18526, 0.384854]
-f_73: 2.6420790215388436e7, [1.05781, 1.18526, 0.384852]
-SUCCESS
-98.352053755
-```
-
-In Julia it took less than 100 seconds and did not freeze the computer
-due to swapping.
-
-Overall, a very satisfactory first cut at mixed-models fitting in
-Julia.
 
 ## ToDo
 
-Lots. Extension to models with vector-valued random effects,
-GLMMs, NLMMs, etc.  But this is a good start!
+Well, obviously I need to incorporate names for the fixed-effects
+coefficients and create a coefficient table.  Also there should be a
+type for the value of `VarCorr` with its own `show` method.
+
+Special cases can be tuned up.  Much more calculation is being done in
+the fit for models with a single grouping factor, models with scalar
+random-effects terms only, models with strictly nested grouping
+factors and models with crossed or nearly crossed grouping factors.
+
+Also, the results of at least `X'X` and `X'y` should be cached for
+cases where weights aren't changing.
+
+Incorporating offsets and weights will be important for GLMMs.
+
+Lots of work to be done.
