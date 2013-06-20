@@ -1,6 +1,9 @@
 MixedModels.jl --- Mixed-effects (statistical) models
 =====================================================
 
+.. toctree::
+   :maxdepth: 2
+
 .. highlight:: julia
 
 .. .. module:: MixedModels.jl
@@ -19,9 +22,9 @@ Example
 
 The :func:`lmer()` function creates a linear mixed model
 representation that inherits from :class:`LinearMixedModel`.  The
- :class:`LMMGeneral` type can represent any LMM expressed in the
+:class:`LMMGeneral` type can represent any LMM expressed in the
 formula language.  Other types are used for better performance in
-special cases.::
+special cases::
 
     julia> using MixedModels, RDatasets
 
@@ -67,29 +70,71 @@ Functions
    commonly ``f`` is an expression (:class:`Expr`) as in the example
    above.
 
+-------
+Setters
+-------
+
+These setters or mutating functions are defined for ``m`` of type
+:class:`LMMGeneral`.  By convention their names end in ``!``.  The
+:func:`fit` function is an exception, because the name was
+already established in the ``Distributions`` package.
+
+.. function:: fit(m[, verbose]) -> m
+
+   Fit the parameters of the model by maximum likelihood or by the REML
+   criterion.
+
+.. function:: reml!(m[, v]) -> m
+
+   Set or unset (if ``v`` is ``false``) fitting according to the REML
+   criterion.
+
+.. function:: solve!(m[, ubeta]) -> m
+
+   Update the random-effects values (and the fixed-effects, when
+   ``ubeta`` is ``true``) by solving the penalized least squares (PLS)
+   problem.
+
+.. function:: theta!(m, th) -> m
+
+   Set a new value of the variance-component parameter and update the
+   sparse Cholesky factor.
+
 ----------
-Extractors for types :class:`LMMGeneral`
+Extractors
 ----------
 
-.. function:: theta(m)
+These extractors are defined for ``m`` of type
+:class:`LMMGeneral`.
 
-   Vector of variance-component parameters
+.. function:: cor(m)
+
+   Vector of correlation matrices for the random effects
+
+.. function:: deviance(m)
+
+   Value of the deviance (returns ``NaN`` if :func:`isfit` is ``false`` or
+   :func:`reml` is ``true``).
+
+.. function:: grplevels(m)
+
+   Vector of number of levels in random-effect terms
+
+.. function:: fixef(m)
+
+   Fixed-effects parameter vector
 
 .. function:: linpred(m[, minusy])
 
    The linear predictor vector or the negative residual vector
 
-.. function:: pwrss(m)
-
-   The penalized, weighted residual sum of squares.
-
-.. function:: reml(m)
-
-   Is the model to be fit by REML?
-
 .. function:: lower(m)
 
    Vector of lower bounds on the variance-component parameters
+
+.. function:: pwrss(m)
+
+   The penalized, weighted residual sum of squares.
 
 .. function:: RX(m)
 
@@ -100,41 +145,50 @@ Extractors for types :class:`LMMGeneral`
    Vector of matrices of random effects on the original scale or the U
    scale
 
-.. function:: grplevels(m)
-
-   Vector of number of levels in random-effect terms
-
-.. function:: fixef(m)
-
-   Fixed-effects parameter vector
-
-.. function:: isfit(m)
-
-   Has the model been fit?
-
 .. function:: scale(m[, sqr])
 
    Estimate, ``s``, of the residual scale parameter or its square.
 
 .. function:: std(m)
 
-   :class:`Vector{Vector{Float64}}` estimated standard deviations of
-	  random effects
+   Estimated standard deviations of random effects, in the form of a
+   vector of vectors.
 
-.. function:: cor(m)
+.. function:: stderr(m)
 
-   Vector of correlation matrices for the random effects
+   Standard errors of the fixed-effects parameters
 
-.. function:: deviance(m)
+.. function:: theta(m)
 
-   Value of the deviance.
+   Vector of variance-component parameters
 
 .. function:: vcov(m)
 
    Estimated variance-covariance matrix of the fixed-effects
    parameters
 
-.. function:: stderr(m)
+----------
+Predicates
+----------
 
-   Standard errors of the fixed-effects parameters
+The following predicates (functions that return boolean values,
+:class:`Bool`) are defined for `m` of type :class:`LMMGeneral`
 
+.. function:: isfit(m)
+
+   Has the model been fit?
+
+.. function:: isscalar(m)
+
+   Are all the random-effects terms scalar?
+
+.. function:: reml(m)
+
+   Is the model to be fit by REML?
+
+Indices and tables
+==================
+
+* :ref:`genindex`
+* :ref:`modindex`
+* :ref:`search`
