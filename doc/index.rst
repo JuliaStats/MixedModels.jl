@@ -58,16 +58,29 @@ special cases::
     f_15: 327.3270598812218, [0.7525837539477753]
     FTOL_REACHED
 
----------
-Functions
----------
+    julia> m
+    Linear mixed model fit by maximum likelihood
+     logLik: -163.6635299406109, deviance: 327.3270598812218
+
+      Variance components:
+	Std. deviation scale: [37.26047449632836]
+	Variance scale: [1388.342959691536]
+      Number of obs: 30; levels of grouping factors: [6]
+
+      Fixed-effects parameters:
+	    Estimate Std.Error z value
+    [1,]      1527.5   17.6946 86.3258
+
+------------
+Constructors
+------------
 
 .. function:: lmer(f, fr)
 
    Create the representation for a linear mixed-effects model with
-   formula ``f`` evaluated in the :class:`DataFrame` ``fr``.  The
-   primary method is for ``f`` of type :class:`Formula` but more
-   commonly ``f`` is an expression (:class:`Expr`) as in the example
+   formula ``f`` evaluated in the :type:`DataFrame` ``fr``.  The
+   primary method is for ``f`` of type :type:`Formula` but more
+   commonly ``f`` is an expression (:type:`Expr`) as in the example
    above.
 
 -------
@@ -75,21 +88,19 @@ Setters
 -------
 
 These setters or mutating functions are defined for ``m`` of type
-:class:`LMMGeneral`.  By convention their names end in ``!``.  The
+:type:`LMMGeneral`.  By convention their names end in ``!``.  The
 :func:`fit` function is an exception, because the name was
 already established in the ``Distributions`` package.
 
-.. function:: fit(m[, verbose]) -> m
+.. function:: fit(m, verbose=false) -> m
 
-   Fit the parameters of the model by maximum likelihood or by the REML
-   criterion.
+   Fit the parameters of the model by maximum likelihood or by the REML criterion.
 
-.. function:: reml!(m[, v]) -> m
+.. function:: reml!(m, v=true]) -> m
 
-   Set or unset (if ``v`` is ``false``) fitting according to the REML
-   criterion.
+   Set the REML flag in ``m`` to ``v``.
 
-.. function:: solve!(m[, ubeta]) -> m
+.. function:: solve!(m, ubeta=false) -> m
 
    Update the random-effects values (and the fixed-effects, when
    ``ubeta`` is ``true``) by solving the penalized least squares (PLS)
@@ -105,86 +116,98 @@ Extractors
 ----------
 
 These extractors are defined for ``m`` of type
-:class:`LMMGeneral`.
+:type:`LMMGeneral`.
 
-.. function:: cor(m)
+.. function:: cholfact(m,RX=true) -> Cholesky{Float64} or CholmodFactor{Float64}
+
+   The Cholesky factor, ``RX``, of the downdated X'X or the sparse
+   Cholesky factor, ``L``, of the random-effects model matrix in the U
+   scale.  These are returned as references and should not be modified.
+
+.. function:: coef(m) -> Vector{Float64}
+
+   A synonym for :func:`fixef`
+
+.. function:: coeftable(m) -> DataFrame
+
+   A dataframe with the current fixed-effects parameter vector, the
+   standard errors and their ratio.
+
+.. function:: cor(m) -> Vector{Matrix{Float64}}
 
    Vector of correlation matrices for the random effects
 
-.. function:: deviance(m)
+.. function:: deviance(m) -> Float64
 
    Value of the deviance (returns ``NaN`` if :func:`isfit` is ``false`` or
-   :func:`reml` is ``true``).
+   :func:`isreml` is ``true``).
 
-.. function:: grplevels(m)
-
-   Vector of number of levels in random-effect terms
-
-.. function:: fixef(m)
+.. function:: fixef(m) -> Vector{Float64}
 
    Fixed-effects parameter vector
 
-.. function:: linpred(m[, minusy])
+.. function:: grplevels(m) -> Vector{Int}
+
+   Vector of number of levels in random-effect terms
+
+.. function:: linpred(m, minusy=true) -> Vector{Float64}
 
    The linear predictor vector or the negative residual vector
 
-.. function:: lower(m)
+.. function:: lower(m) -> Vector{Float64}
 
    Vector of lower bounds on the variance-component parameters
 
-.. function:: pwrss(m)
+.. function:: objective(m) -> Float64
+
+   Value of the profiled deviance or REML criterion at current parameter values
+
+.. function:: pwrss(m) -> Float64
 
    The penalized, weighted residual sum of squares.
 
-.. function:: RX(m)
+.. function:: ranef(m, uscale=false) -> Vector{Matrix{Float64}}
 
-   The Cholesky factor of the downdated X'X (can be a reference)
+   Vector of matrices of random effects on the original scale or on the U scale
 
-.. function:: ranef(m[, uscale])
-
-   Vector of matrices of random effects on the original scale or the U
-   scale
-
-.. function:: scale(m[, sqr])
+.. function:: scale(m, sqr=false) -> Float64
 
    Estimate, ``s``, of the residual scale parameter or its square.
 
-.. function:: std(m)
+.. function:: std(m) -> Vector{Float64}
 
-   Estimated standard deviations of random effects, in the form of a
-   vector of vectors.
+   Estimated standard deviations of random effects.
 
-.. function:: stderr(m)
+.. function:: stderr(m) -> Vector{Float64}
 
    Standard errors of the fixed-effects parameters
 
-.. function:: theta(m)
+.. function:: theta(m) -> Vector{Float64}
 
    Vector of variance-component parameters
 
-.. function:: vcov(m)
+.. function:: vcov(m) -> Matrix{Float64}
 
-   Estimated variance-covariance matrix of the fixed-effects
-   parameters
+   Estimated variance-covariance matrix of the fixed-effects parameters
 
 ----------
 Predicates
 ----------
 
 The following predicates (functions that return boolean values,
-:class:`Bool`) are defined for `m` of type :class:`LMMGeneral`
+:type:`Bool`) are defined for `m` of type :type:`LMMGeneral`
 
 .. function:: isfit(m)
 
    Has the model been fit?
 
+.. function:: isreml(m)
+
+   Is the model to be fit by REML?
+
 .. function:: isscalar(m)
 
    Are all the random-effects terms scalar?
-
-.. function:: reml(m)
-
-   Is the model to be fit by REML?
 
 Indices and tables
 ==================

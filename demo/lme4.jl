@@ -32,4 +32,8 @@ inst = data("lme4", "InstEval")
 @time fm7 = fit(lmer(:(y ~ dept*service + (1|s) + (1|d)), inst))
 println(fm7)
 
+sleep = data("lme4", "sleepstudy")
+fm8 = fit(lmer(:(Reaction ~ Days + (Days | Subject)), sleep))
+println(fm8)
+
 
