@@ -261,12 +261,6 @@ DataFrame  180 observations of 3 variables
   Days: DataArray{Float64,1}(180) [0.0, 1.0, 2.0, 3.0]
   Subject: PooledDataArray{ASCIIString,Uint8,1}(180) ["308", "308", "308", "308"]
 
-julia> dump(sleep)
-DataFrame  180 observations of 3 variables
-  Reaction: DataArray{Float64,1}(180) [249.56,258.7047,250.8006,321.4398]
-  Days: DataArray{Float64,1}(180) [0.0,1.0,2.0,3.0]
-  Subject: PooledDataArray{ASCIIString,Uint8,1}(180) ["308","308","308","308"]
-
 julia> fm3 = fit(lmer(:(Reaction ~ Days + (Days|Subject)), sleep))
 Linear mixed model fit by maximum likelihood
  logLik: -875.9696722444951, deviance: 1751.9393444889902
