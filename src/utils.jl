@@ -29,6 +29,8 @@ function ltri(M::Matrix)
     r
 end
 
+typealias BlasReal Union(Float32,Float64)
+
 solve!{T<:BlasReal}(C::Cholesky{T}, B::StridedVecOrMat{T}) = potrs!(C.uplo, C.UL, B)
 
 if false 

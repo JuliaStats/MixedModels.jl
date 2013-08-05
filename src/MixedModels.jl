@@ -16,6 +16,7 @@ module MixedModels
         LinearMixedModel,
         LMMGeneral,
         LMMScalar1,
+        LMMVector1,
                                         # functions
         fixef,          # extract the fixed-effects parameter estimates
         grplevels,      # number of levels per grouping factor in mixed-effects models
@@ -29,7 +30,7 @@ module MixedModels
         reml,           # is the objective the REML criterion?
         solve!,         # update the coefficients by solving the MME's
         theta!,         # set the value of the variance component parameters        
-        theta,          # extract the variance-component parameter vector
+        theta           # extract the variance-component parameter vector
 
     abstract MixedModel                # model with fixed and random effects
     abstract LinearMixedModel <: MixedModel # Gaussian mixed model with identity link

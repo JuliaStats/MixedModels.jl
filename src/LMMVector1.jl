@@ -46,17 +46,19 @@ function LMMVector1{Ti<:Integer}(Xt::Matrix{Float64}, Ztrv::Vector{Ti},
                zeros(n), zeros(k,nl), y, false, false)
 end
 
-cholfact(m::LMMVector1,RX=TRUE) = RX ? m.RX : error("not yet written")
+cholfact(m::LMMVector1,RX=true) = RX ? m.RX : error("not yet written")
 
 grplevels(m::LMMVector1) = [m.size(m.u,2)]
 
-isscalar(m::LMMVector1) = false
+isscalar(m::LMMVector1) = size(m.Ztnz, 1) <= 1
 
 ## linpred!(m) -> m   -- update mu
 function linpred!(m::LMMVector1)
     gemv!('T',1.,m.Xt,m.beta,0.,m.mu)   # initialize to X*beta
     bb = trmm('L','L','N','N',1.,m.lambda,m.u) # b = Lambda * u
-    for i in 1:length(m.mu) m.mu[i] += dot(bb[:,m.Ztrv[i]], m.Ztnz[:,i]) end
+    k = size(bb,1)
+    for i in 1:length(m.mu)
+        m.mu[i] += dot(sub(bb,1:k,int(m.Ztrv[i])), sub(m.Ztnz,1:k,i)) end
     m
 end
 
@@ -80,29 +82,29 @@ function solve!(m::LMMVector1, ubeta=false)
     n,p,q = size(m); k,nl = size(m.u); copy!(m.u,m.Zty)
     trmm!('L','L','T','N',1.,m.lambda,m.u)
     for l in 1:nl                       # cu := L^{-1} Lambda'Z'y
-        trsv!('L','N','N',m.L[:,:,l], m.u[:,l])
+        trsv!('L','N','N',sub(m.L,1:k,1:k,l), sub(m.u,1:k,l))
     end
     if ubeta
         copy!(m.beta,m.Xty); copy!(m.RX.UL, m.XtX)
         LXZ = Array(Float64,size(m.XtZ)); wL = similar(m.lambda)
         wLXZ = Array(Float64,(p,k)); wu = zeros(k)
         for l in 1:nl
-            copy!(wL, m.L[:,:,l]); copy!(wLXZ, m.XtZ[:,:,l])
+            copy!(wL, sub(m.L,1:k,1:k,l)); copy!(wLXZ, sub(m.XtZ,1:p,1:k,l))
             trmm!('R','L','N','N',1.,m.lambda,wLXZ) #(X'Z)_l*lambda
             trsm!('R','L','T','N',1.,wL,wLXZ)       # solve for LXZ_l
-            copy!(LXZ[:,:,l],wLXZ)
+            copy!(sub(LXZ,1:p,1:k,l),wLXZ)
             syrk!('U','N',-1.,wLXZ,1.,m.RX.UL) # downdate X'X
-            m.beta -= wLXZ*m.u[:,l]     # downdate X'y by LZX_l*c_l
+            m.beta -= wLXZ*sub(m.u,1:k,l)     # downdate X'y by LZX_l*c_l
         end
         _, info = potrf!('U',m.RX.UL)   # update RX
         bool(info) && error("Downdated X'X is not positive definite")
         solve!(m.RX,m.beta)             # beta = (LX*LX')\(downdated X'y)
         for l in 1:nl                   # downdate cu
-            gemv!('N',-1.,LXZ[:,:,l],m.beta,1.,m.u[:,l])
+            gemv!('N',-1.,sub(LXZ,1:k,1:p,l),m.beta,1.,sub(m.u,1:k,l))
         end
     end
     for l in 1:nl
-        trsv!('L','T','N',m.L[:,:,l], m.u[:,l])
+        trsv!('L','T','N',sub(m.L,1:k,1:k,l), sub(m.u,1:k,l))
     end
     linpred!(m)
 end        
