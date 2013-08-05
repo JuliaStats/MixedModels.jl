@@ -17,34 +17,32 @@ module MixedModels
         LMMGeneral,
         LMMScalar1,
                                         # functions
-        fixef,
-        grplevels,
-        isfit,
-        lmer,
-        lower,
-        objective,
-        pwrss,
-        ranef,
-        reml!,
-        reml,
-        solve!,
-        theta!,
-        theta
+        fixef,          # extract the fixed-effects parameter estimates
+        grplevels,      # number of levels per grouping factor in mixed-effects models
+        isfit,          # predictate to check if a model has been fit
+        lmm,            # fit a linear mixed-effects model (LMM)
+        lower,          # vector of lower bounds on parameters in mixed-effects models
+        objective,      # the objective function in fitting a model
+        pwrss,          # penalized, weighted residual sum-of-squares
+        ranef,          # extract the conditional modes of the random effects
+        reml!,          # set the objective to be the REML criterion
+        reml,           # is the objective the REML criterion?
+        solve!,         # update the coefficients by solving the MME's
+        theta!,         # set the value of the variance component parameters        
+        theta,          # extract the variance-component parameter vector
+
+    abstract MixedModel                # model with fixed and random effects
+    abstract LinearMixedModel <: MixedModel # Gaussian mixed model with identity link
 
     typealias VTypes Union(Float64,Complex128)
     typealias ITypes Union(Int32,Int64)
 
-    abstract MixedModel
-    abstract LinearMixedModel <: MixedModel
-
-#    include("rsc.jl")            # regular sparse column-oriented matrices
-    include("utils.jl")         # utilities to deal with the model formula
-    include("LinearMixedModels.jl")     # method definitions for the abstract class
-    include("LMMGeneral.jl")    # general form of linear mixed-effects models
-    include("LMMScalar1.jl")    # models with a single, scalar random-effects term
-    include("lmer.jl")          # fit and analyze linear mixed-effects models
-#    include("vectorlmm.jl")
-
+    include("utils.jl")     # utilities to deal with the model formula
+    include("LinearMixedModels.jl") # method definitions for the abstract class
+    include("LMMGeneral.jl") # general form of linear mixed-effects models
+    include("LMMScalar1.jl") # models with a single, scalar random-effects term
+    include("LMMVector1.jl") # models with a single, vector-valued random-effects term
+    include("lmm.jl")    # fit and analyze linear mixed-effects models
 
 end #module
 
