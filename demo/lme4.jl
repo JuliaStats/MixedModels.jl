@@ -39,8 +39,9 @@ inst = data("lme4", "InstEval");
 @time fm7 = lmm(:(y ~ dept*service + (1|s) + (1|d)), inst);
 println(fm7)
 
-sleep = data("lme4", "sleepstudy")
+sleep = data("lme4", "sleepstudy");
 @time fm8 = lmm(:(Reaction ~ Days + (Days | Subject)), sleep);
 println(fm8)
+typeof(fm8)
 
 

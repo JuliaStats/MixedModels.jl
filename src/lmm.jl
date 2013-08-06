@@ -14,7 +14,8 @@ function lmm(f::Formula, fr::AbstractDataFrame; dofit=true)
 
     ## create and fill vectors of matrices from the random-effects terms
     u = Array(Matrix{Float64},k); Xs = similar(u); lambda = similar(u)
-    rowval = Array(Matrix{Int},k); inds = Array(Any,k); offset = 0; scalar = true
+    rowval = Array(Matrix{Int},k); inds = Array(Any,k); scalar = true
+    offsets = zeros(Int, k + 1); offsets[1] = 0
     for i in 1:k                    # iterate over random-effects terms
         t = re[i]
         if t.args[2] == 1 Xs[i] = ones(n,1); p = 1; lambda[i] = ones(1,1)
@@ -24,10 +25,11 @@ function lmm(f::Formula, fr::AbstractDataFrame; dofit=true)
         end
         if p > 1; scalar = false; end
         l = length(gf[i].pool); u[i] = zeros(p,l); nu = p*l; ii = gf[i].refs
-        inds[i] = ii; rowval[i] = (reshape(1:nu,(p,l)) + offset)[:,ii]
-        offset += nu
+        inds[i] = ii; rowval[i] = (reshape(1:nu,(p,l)) + offsets[i])[:,ii]
+        offsets[i+1] = offsets[i] + nu
     end
-    Ti = Int; if offset < typemax(Int32) Ti = Int32 end ## use 32-bit ints if possible
+    q = offsets[end]; Ti = Int;
+    if q < typemax(Int32) Ti = Int32 end ## use 32-bit ints if possible
 
     X = ModelMatrix(mf); rv = convert(Matrix{Ti},vcat(rowval...))
     y = float64(vector(model_response(mf)))
@@ -36,7 +38,7 @@ function lmm(f::Formula, fr::AbstractDataFrame; dofit=true)
     if k == 1 && scalar
         m = LMMScalar1(X.m', vec(rv), vec(Xs[1]), y)
     else
-        q = offset; p = size(X.m,2); nz = hcat(Xs...)'
+        p = size(X.m,2); nz = hcat(Xs...)'
         LambdatZt = CholmodSparse!(convert(Vector{Ti}, [1:size(nz,1):length(nz)+1]),
                                    vec(copy(rv)), vec(nz), q, n, 0)
         L = cholfact(LambdatZt,1.,true); pp = invperm(L.Perm + one(Ti))
