@@ -21,6 +21,7 @@ module MixedModels
         fixef,          # extract the fixed-effects parameter estimates
         grplevels,      # number of levels per grouping factor in mixed-effects models
         isfit,          # predictate to check if a model has been fit
+        isscalar,       # predictate to check if all random-effects terms are scalar
         lmm,            # fit a linear mixed-effects model (LMM)
         lower,          # vector of lower bounds on parameters in mixed-effects models
         objective,      # the objective function in fitting a model

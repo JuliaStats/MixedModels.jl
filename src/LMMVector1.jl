@@ -4,12 +4,13 @@ type LMMVector1{Ti<:Integer} <: LinearMixedModel
     ldL2::Float64
     L::Array{Float64,3}
     RX::Cholesky{Float64}
+    RZX::Array{Float64,3}
     Xt::Matrix{Float64}
     XtX::Matrix{Float64}
-    XtZ::Array{Float64,3}
     Xty::Vector{Float64}
     Ztrv::Vector{Ti}
     Ztnz::Matrix{Float64}
+    ZtX::Array{Float64,3}
     ZtZ::Array{Float64,3}
     Zty::Matrix{Float64}
     beta::Vector{Float64}
@@ -25,30 +26,30 @@ end
 function LMMVector1{Ti<:Integer}(Xt::Matrix{Float64}, Ztrv::Vector{Ti},
                                  Ztnz::Matrix{Float64}, y::Vector{Float64})
     p,n = size(Xt)
-    n == length(Ztrv) == size(Ztnz,2) == length(y) ||
-        error(string("Dimension mismatch: n = $n, ",
-                     "lengths of Ztrv = $(length(Ztrv)), ",
-                     "size(Ztnz,2) = $(size(Ztnz,2)), y = $(length(y))"))
+    n == length(Ztrv) == size(Ztnz,2) == length(y) || error("Dimension mismatch")
     k = size(Ztnz,1) # number of random effects per grouping factor level
     k > 1 || error("Use ScalarLMM1 instead of VectorLMM1")
     urv = unique(Ztrv)
     isperm(urv) || error("unique(Ztrv) must be a permutation")
     nl = length(urv)
-    ZtZ = zeros(k,k,nl); XtZ = zeros(p,k,nl); Zty  = zeros(k,nl)
+    ZtZ = zeros(k,k,nl); ZtX = zeros(k,p,nl); Zty  = zeros(k,nl)
     for j in 1:n
-        i = Ztrv[j]; z = Ztnz[:,j]
-        ZtZ[:,:,i] += z*z'; Zty[:,i] += y[j] * z; XtZ[:,:,i] += Xt[:,j]*z'
+        i = Ztrv[j]; z = Ztnz[:,j]; ZtZ[:,:,i] += z*z';
+        Zty[:,i] += y[j]*z; ZtX[:,:,i] += z*Xt[:,j]'
     end
     lower = [x == 0. ? -Inf : 0. for x in ltri(eye(k))]
-    XtX = syrk('U','N',1.,Xt)
-    LMMVector1(0., zeros(k,k,nl), cholfact(XtX,:U), Xt, XtX,
-               XtZ, Xt*y, Ztrv, Ztnz, ZtZ, Zty, zeros(p), lower, eye(k),
+    XtX = zeros(p,p); syrk!('U','N',1.,Xt,0.,XtX)
+    LMMVector1(0., zeros(k,k,nl), cholfact(XtX,:U), similar(ZtX), Xt, XtX,
+               Xt*y, Ztrv, Ztnz, ZtX, ZtZ, Zty, zeros(p), lower, eye(k),
                zeros(n), zeros(k,nl), y, false, false)
 end
 
 cholfact(m::LMMVector1,RX=true) = RX ? m.RX : error("not yet written")
 
-grplevels(m::LMMVector1) = [m.size(m.u,2)]
+## cor(m) -> correlation matrices of variance components
+cor(m::LMMVector1) = [cc(m.lambda)]
+
+grplevels(m::LMMVector1) = [size(m.u,2)]
 
 isscalar(m::LMMVector1) = size(m.Ztnz, 1) <= 1
 
@@ -85,25 +86,22 @@ function solve!(m::LMMVector1, ubeta=false)
         trsv!('L','N','N',sub(m.L,1:k,1:k,l), sub(m.u,1:k,l))
     end
     if ubeta
-        copy!(m.beta,m.Xty); copy!(m.RX.UL, m.XtX)
-        LXZ = Array(Float64,size(m.XtZ)); wL = similar(m.lambda)
-        wLXZ = Array(Float64,(p,k)); wu = zeros(k)
+        copy!(m.beta,m.Xty); copy!(m.RZX,m.ZtX); copy!(m.RX.UL, m.XtX)
+        trmm!('L','L','T','N',1.,m.lambda,reshape(m.RZX,(k,p*nl))) # Lambda'Z'X
         for l in 1:nl
-            copy!(wL, sub(m.L,1:k,1:k,l)); copy!(wLXZ, sub(m.XtZ,1:p,1:k,l))
-            trmm!('R','L','N','N',1.,m.lambda,wLXZ) #(X'Z)_l*lambda
-            trsm!('R','L','T','N',1.,wL,wLXZ)       # solve for LXZ_l
-            copy!(sub(LXZ,1:p,1:k,l),wLXZ)
-            syrk!('U','N',-1.,wLXZ,1.,m.RX.UL) # downdate X'X
-            m.beta -= wLXZ*sub(m.u,1:k,l)     # downdate X'y by LZX_l*c_l
+            wL = sub(m.L,1:k,1:k,l); wRZX = sub(m.RZX,1:k,1:p,l)
+            trsm!('L','L','N','N',1.,wL,wRZX) # solve for l'th face of RZX
+            gemv!('T',-1.,wRZX,sub(m.u,1:k,l),1.,m.beta) # downdate m.beta
+            syrk!('U','T',-1.,wRZX,1.,m.RX.UL)           # downdate XtX
         end
-        _, info = potrf!('U',m.RX.UL)   # update RX
+        _, info = potrf!('U',m.RX.UL) # Cholesky factor RX
         bool(info) && error("Downdated X'X is not positive definite")
-        solve!(m.RX,m.beta)             # beta = (LX*LX')\(downdated X'y)
-        for l in 1:nl                   # downdate cu
-            gemv!('N',-1.,sub(LXZ,1:k,1:p,l),m.beta,1.,sub(m.u,1:k,l))
+        solve!(m.RX,m.beta)           # beta = (RX'RX)\(downdated X'y)
+        for l in 1:nl                 # downdate cu
+            gemv!('N',-1.,sub(m.RZX,1:k,1:p,l),m.beta,1.,sub(m.u,1:k,l))
         end
     end
-    for l in 1:nl
+    for l in 1:nl                     # solve for m.u
         trsv!('L','T','N',sub(m.L,1:k,1:k,l), sub(m.u,1:k,l))
     end
     linpred!(m)
@@ -111,6 +109,9 @@ end
 
 ## sqrlenu(m) -> total squared length of m.u (the penalty in the PLS problem)
 sqrlenu(m::LMMVector1) = sqsum(m.u)
+
+## std(m) -> Vector{Vector{Float64}} estimated standard deviations of variance components
+std(m::LMMVector1) = scale(m)*push!(copy(vec(vnorm(m.lambda,2,1))),1.)
 
 theta(m::LMMVector1) = ltri(m.lambda)
 
@@ -121,17 +122,17 @@ function theta!(m::LMMVector1, th::Vector{Float64})
     for j in 1:k, i in j:k
         m.lambda[i,j] = th[pos]; pos += 1
     end
-    ldL2 = 0.; copy!(m.L,m.ZtZ); wL = similar(m.lambda)
+    ldL = 0.; copy!(m.L,m.ZtZ)
     trmm!('L','L','T','N',1.,m.lambda,reshape(m.L,(k,q)))
-    for i in 1:nl
-        copy!(wL, m.L[:,:,i])                 # lambda'(Z'Z)_l
+    for l in 1:nl
+        wL = sub(m.L,1:k,1:k,l)
         trmm!('R','L','N','N',1.,m.lambda,wL) # lambda'(Z'Z)_l*lambda
         for j in 1:k; wL[j,j] += 1.; end      # Inflate the diagonal
         _, info = potrf!('L',wL)        # i'th diagonal block of L_Z
         bool(info) && error("Cholesky decomposition failed at i = $i")
-        m.L[:,:,i] = tril(wL)
-        for j in 1:k; ldL2 += 2.log(wL[j,j]); end
+        for j in 1:k ldL += log(wL[j,j]) end
     end
-    m.ldL2 = ldL2
+    m.ldL2 = 2.ldL
     m
 end
+    
