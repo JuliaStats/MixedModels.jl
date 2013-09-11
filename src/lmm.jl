@@ -2,37 +2,35 @@ const template = Formula(:(~ foo))      # for evaluating the lhs of r.e. terms
 
 function lmm(f::Formula, fr::AbstractDataFrame; dofit=true)
     mf = ModelFrame(f, fr); df = mf.df; n = size(df,1)
-    
-    ## extract random-effects terms and check there is at least one
+    X = ModelMatrix(mf); y = float64(vector(model_response(mf)))
+                                        # extract and check random-effects terms
     re = filter(x->Meta.isexpr(x,:call) && x.args[1] == :|, mf.terms.terms)
-    k = length(re); k > 0 || error("Formula $f has no random-effects terms")
-    
-    ## reorder terms by non-increasing number of levels
-    gf = PooledDataVector[df[t.args[3]] for t in re]  # grouping factors
-    p = sortperm(Int[length(f.pool) for f in gf]; rev=true)
-    re = re[p]; gf = gf[p]
-
-    ## create and fill vectors of matrices from the random-effects terms
-    u = Array(Matrix{Float64},k); Xs = similar(u); lambda = similar(u)
-    rowval = Array(Matrix{Int},k); inds = Array(Any,k); scalar = true
-    offsets = zeros(Int, k + 1); offsets[1] = 0
-    for i in 1:k                    # iterate over random-effects terms
-        t = re[i]
-        if t.args[2] == 1 Xs[i] = ones(n,1); p = 1; lambda[i] = ones(1,1)
+    (k = length(re)) > 0 || error("Formula $f has no random-effects terms")
+                                        # quantities derived from r.e. terms
+    scalar = true; u = Array(Matrix{Float64},k); Xs = similar(u)
+    lambda = similar(Xs); inds = Array(Any,k); rowval = Array(Matrix{Int},k)
+    offsets = zeros(Int, k + 1); nlev = zeros(Int,k); ncol = zeros(Int,k)
+    for i in 1:k
+        t = re[i]                           # i'th random-effects term
+        gf = PooledDataArray(df[t.args[3]]) # i'th grouping factor
+        nlev[i] = l = length(gf.pool); inds[i] = gf.refs; 
+        if t.args[2] == 1                   # simple, scalar term
+            Xs[i] = ones(n,1); ncol[i] = p = 1; lambda[i] = ones(1,1)
         else
             Xs[i] = (template.rhs=t.args[2]; ModelMatrix(ModelFrame(template, df))).m
-            p = size(Xs[i],2); lambda[i] = eye(p)
+            ncol[i] = p = size(Xs[i],2); lambda[i] = eye(p)
         end
-        if p > 1; scalar = false; end
-        l = length(gf[i].pool); u[i] = zeros(p,l); nu = p*l; ii = gf[i].refs
-        inds[i] = ii; rowval[i] = (reshape(1:nu,(p,l)) + offsets[i])[:,ii]
-        offsets[i+1] = offsets[i] + nu
+        p <= 1 || (scalar = false)
+        nu = p * l; offsets[i + 1] = offsets[i] + nu;
+        rowval[i] = (reshape(1:nu,(p,l)) + offsets[i])[:,inds[i]]
     end
-    q = offsets[end]; Ti = Int;
-    if q < typemax(Int32) Ti = Int32 end ## use 32-bit ints if possible
-
-    X = ModelMatrix(mf); rv = convert(Matrix{Ti},vcat(rowval...))
-    y = float64(vector(model_response(mf)))
+    q = offsets[end]; uvec = Array(Float64,q);
+    Ti = Int; if q < typemax(Int32); Ti = Int32; end # use 32-bit ints if possible
+    rv = convert(Matrix{Ti},vcat(rowval...))
+    for i in 1:k                                     # view uvec as a vector of matrices
+        u[i] = pointer_to_array(convert(Ptr{Float64},sub(uvec,(offsets[i]+1):offsets[i+1])),
+                                (ncol[i],nlev[i]))
+    end
     local m
                                      # create the appropriate type of LMM object
     if k == 1 && scalar

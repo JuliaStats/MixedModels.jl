@@ -1,20 +1,87 @@
-using Base.LinAlg.BLAS: trsv!
+using Base.LinAlg.BLAS: trsv!, gemv!
 using Base.LinAlg.LAPACK: gemqrt!,geqrt3!, potri!
-using DataFrames, RDatasets, NumericExtensions
-import Distributions.fit, Base.show
+using DataFrames, RDatasets, NumericExtensions, GLM
+import Distributions.fit, Base.show, GLM.deviance, GLM.nobs
 import NumericExtensions: evaluate, result_type
 
-#const conc = [2.84, 6.57, 10.5, 9.66, 8.58, 8.36, 7.47, 6.89, 5.94, 3.28]
+abstract NLregMod{T<:FloatingPoint}     # nonlinear regression model
 
-abstract NonlinearRegModel              # nonlinear regression model
+## abstract NLRegJac <: NonlinearRegModel  # nonlinear regression model with Jacobian
 
-abstract NLRegJac <: NonlinearRegModel  # nonlinear regression model with Jacobian
+## abstract NLRegFD <: NonlinearRegModel   # finite-difference nonlinear regression model
 
-abstract NLRegFD <: NonlinearRegModel   # finite-difference nonlinear regression model
-
-function elCol(x::Array,i::Integer)
-    isa(x,Vector) ? x[i] : (isa(x,Matrix) ? x[i,:] : error("x not Vector or Matrix"))
+type MicMen{T<:FloatingPoint} <: NLregMod{T}
+    conc::Vector{T}
 end
+MicMen{T<:FloatingPoint}(c::DataArray{T,1}) = MicMen(vector(c))
+
+type fMicMen <: BinaryFunctor end
+evaluate{T<:FloatingPoint}(::fMicMen,x::T,K::T) = x/(K+x)
+result_type{T<:FloatingPoint}(::fMicMen,::Type{T},::Type{T}) = T
+    
+nobs(m::MicMen) = length(m.conc)
+pnames(m::MicMen) = ["Vm", "K"]
+nlinpars(m::MicMen) = 1
+function modelmat!{T<:FloatingPoint}(mm::Matrix{T},m::MicMen{T},nlpars::StridedVector{T})
+    (size(mm) == (nobs(m),1) && length(nlpars) == 1) || error("Dimension mismatch")
+    map!(fMicMen(), mm, m.conc, nlpars[1])
+end
+function modelmat{T<:FloatingPoint}(m::NLregMod{T},nlpars::StridedVector{T})
+    modelmat!(Array(T,(nobs(m),nlinear(m))), m, nlpars)
+end
+function mmder!{T<:FloatingPoint}(mmd::Array{T,3},mm::Matrix{T},m::MicMen{T},nlpars::StridedVector{T})
+    n = nobs(m)
+    (size(mmd) == (n,1,1) && size(mm) == (n,1) && length(nlpars) == 1) || error("Dimension mismatch")
+    map!(fMicMen(), mm, m.conc, nlpars[1])
+    
+function expctd!{T<:FloatingPoint}(mu::Vector{T},m::NLregMod{T},pars::Vector{T})
+    nl = nlinear(m)
+    Base.LinAlg.BLAS.gemv!('N', one(T),
+                           modelmat(m,sub(pars,(nl+1):length(pars))),
+                           sub(pars,1:nl), 0., mu)
+end
+expctd{T<:FloatingPoint}(m::NLregMod{T},pars::Vector{T}) = expctd!(Array(T,(nobs(m),)),m,pars)
+npars{T<:FloatingPoint}(m::NLregMod{T}) = length(pnames(m))
+nnlpars{T<:FloatingPoint}(m::NLregMod{T}) = length(pnames(m)) - nlinpars(m)
+    
+type plinear{T<:FloatingPoint}
+    m::NLregMod{T}
+    y::Vector{T}
+    mu::Vector{T}
+    pars::Vector{T}
+    mm::Matrix{T}
+    tr::Matrix{T}
+end
+function plinear{T<:FloatingPoint}(m::NLregMod{T},y::Vector{T})
+    n = length(y); nobs(m) == n || error("Dimension mismatch")
+    nl = nlinpars(m); mm = Array(T, n, nl)
+    plinear(m, y, Array(T,n), Array(T,length(pnames(m))), mm, similar(mm), zeros(T,nl,nl))
+end
+plinear{T<:FloatingPoint}(m::NLregMod{T}, y::DataArray{T,1}) = plinear(m,vector(y))
+
+function deviance{T<:FloatingPoint}(pl::plinear{T},nlpars::Vector{T})
+    m = pl.m; nl = size(pl.mm,2); # number of conditionally linear parameters
+    lin = 1:nl; nonlin = nl + (1:(length(pnames(m)) - nl))
+    copy!(sub(pl.pars, nlin), nlpars)   # record the current values
+    _,pl.tr = qrfact!(modelmat!(pl.vs,m,nlpars)) # decompose model matrix for linear pars
+    gemqrt!('L','T',pl.vs,pl.tr,copy!(pl.mu,pl.y)) # create Q'y in pl.mu
+    trsv!('U','N','N',sub(pl.vs,lin,lin),copy!(sub(pl.pars,lin),sub(pl.mu,lin))) # solve
+    fill!(sub(pl.mu, (nl+1):nobs(m)), zero(T))
+    gemqrt!('L','N',pl.vs,pl.tr,pl.mu)
+    sqdiffsum(pl.y,pl.mu)
+end
+          
+## function expctd!{T<:FloatingPoint}(mu::Vector{T},m::MicMen{T},pars::Vector{T})
+##     Vm = pars[1]; K = pars[2]
+##     for i in 1:nobs(m)
+##         ci = m.conc[i]
+##         mu[i] = Vm * ci/(K + ci)
+##     end
+##     mu
+## end
+## function elCol(x::Array,i::Integer)
+##     isa(x,Vector) ? x[i] : (isa(x,Matrix) ? x[i,:] : error("x not Vector or Matrix"))
+## end
 
 abstract Ptransform
 
@@ -47,12 +114,11 @@ pnmsout(::Type{VClka2Vkka}) = ["V","k","ka"]
 
 # Oral, single dose, 1 compartment using k and ka as parameters.
 type OralSd1Vkka{T<:FloatingPoint} <: NLRegFD
-    time::Vector{Float64}
+    time::Vector{T}
     dose::Float64
 end
 nobs(m::OralSd1Vkka) = length(m.time)
 pnames(m::OralSd1Vkka) = ["V","k","ka"]
-npar(m::OralSd1Vkka) = 3
 
 # Evaluation functor.  Result should be multiplied by dose/V
 type fOralSd1kka <: TernaryFunctor end
@@ -63,7 +129,7 @@ result_type{T<:FloatingPoint}(::fOralSd1kka,::Type{T},::Type{T},::Type{T}) = T
 
 
 function expctd!{T<:FloatingPoint}(mu::Vector{T},m::OralSd1Vkka,x::Array{T})
-    map1!(Multiply(), map!(fOralSd1Vkka(), mu, m.time, elcol(x,2), elcol(x,3), m.dose ./ elcol(x,1)))
+    map1!(Multiply(), map!(fOralSd1kka(), mu, m.time, elcol(x,2), elcol(x,3), m.dose ./ elcol(x,1)))
 end
 # PK model for single oral dose, 1 compartment with parameters V, Cl and ka
 type OralSd1VClka <: NLRegFD
@@ -73,7 +139,7 @@ end
 OralSd1VClka(time::Vector{Float64}) = OralSd1VClka(time,1.) # default is unit dose
 nobs(m::OralSd1VClka) = length(m.time)
 pnames(m::OralSd1VClka) = ["V","Cl","ka"]
-npar(m::OralSd1VClka) = 3
+npar(m::NonlinearRegModel) = length(pnames(m))
 
 function expctd!{T<:Float64}(mu::Vector{T}, m::OralSd1VClka, x::Vector{T})
     length(x) == 3 || error("trailing dimension of x must be 3")

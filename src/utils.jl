@@ -33,6 +33,21 @@ typealias BlasReal Union(Float32,Float64)
 
 solve!{T<:BlasReal}(C::Cholesky{T}, B::StridedVecOrMat{T}) = potrs!(C.uplo, C.UL, B)
 
+## Is f nested within g?  That is, does each value of f correspond to only one value of g?
+function isnested{T<:Integer,S<:Integer}(f::Vector{T},g::Vector{S})
+    ## Assume, without checking, isperm(unique(f)) and isperm(unique(g))
+    zz = zeros(eltype(g), max(f))
+    for i in 1:length(g)
+        if (z = zz[(fi = f[i])]) == (gi = g[i]) continue end
+        if z == zero(eltype(g))
+            zz[fi] = gi
+        else
+            return false
+        end
+    end
+    true
+end
+    
 if false 
     ## Check if all random-effects terms are simple
     issimple(terms::Vector{Expr}) = all(map(issimple, terms))
@@ -62,3 +77,4 @@ if false
         reshape(tt, (k, k))
     end
 end
+
