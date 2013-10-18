@@ -1,7 +1,7 @@
 ## The ScalarLMM1 type represents a model with a single scalar random-effects term
 
 ## Fields are arranged by decreasing size, doubles then pointers then bools
-type LMMScalar1{Ti<:Integer} <: LinearMixedModel
+type LMMScalar1 <: LinearMixedModel
     theta::Float64
     L::Vector{Float64}
     RX::Cholesky{Float64}
@@ -9,11 +9,12 @@ type LMMScalar1{Ti<:Integer} <: LinearMixedModel
     XtX::Matrix{Float64}
     XtZ::Matrix{Float64}
     Xty::Vector{Float64}
-    Ztrv::Vector{Ti}           # indices into factor levels
-    Ztnz::Vector{Float64}      # left-hand side of r.e. term
+    Ztrv::Vector                        # indices into factor levels
+    Ztnz::Vector{Float64}               # left-hand side of r.e. term
     ZtZ::Vector{Float64}
     Zty::Vector{Float64}
     beta::Vector{Float64}
+    fname::String
     mu::Vector{Float64}
     u::Vector{Float64}
     y::Vector{Float64}
@@ -21,19 +22,19 @@ type LMMScalar1{Ti<:Integer} <: LinearMixedModel
     fit::Bool
 end
 
-function LMMScalar1{Ti<:Integer}(Xt::Matrix{Float64}, Ztrv::Vector{Ti},
-                                 Ztnz::Vector{Float64}, y::Vector{Float64})
+function LMMScalar1(Xt::Matrix{Float64}, Ztrv::Vector, Ztnz::Vector{Float64},
+                    y::Vector{Float64}, fname::String)
     p,n = size(Xt)
     length(Ztrv) == length(Ztnz) == length(y) == n || error("Dimension mismatch")
-    q = max(Ztrv); 0 < min(Ztrv) || error("elements of Ztrv must be positive")
+    q = maximum(Ztrv); 0 < minimum(Ztrv) || error("elements of Ztrv must be positive")
     XtX = Xt*Xt'; ZtZ = zeros(q); XtZ = zeros(p,q); Zty = zeros(q);
     for i in 1:n
         j = Ztrv[i]; z = Ztnz[i]
         ZtZ[j] += z*z; Zty[j] += z*y[i]; XtZ[:,j] += z*Xt[:,i]
     end
-    LMMScalar1{Ti}(1., ones(q), cholfact(XtX), Xt, XtX,
-                   XtZ, Xt*y, Ztrv, Ztnz , ZtZ, Zty, zeros(p), zeros(n),
-                   zeros(q), copy(y), false, false)
+    LMMScalar1(1., ones(q), cholfact(XtX), Xt, XtX,
+               XtZ, Xt*y, Ztrv, Ztnz , ZtZ, Zty,
+               zeros(p), fname, zeros(n), zeros(q), copy(y), false, false)
 end
 
 ##  cholfact(x, RX=true) -> the Cholesky factor of the downdated X'X or LambdatZt
@@ -53,7 +54,7 @@ function linpred!(m::LMMScalar1)
 end
 
 ## Logarithm of the determinant of the generator matrix for the Cholesky factor, RX or L
-logdet(m::LMMScalar1,RX=true) = RX ? logdet(m.RX) : 2.sum(Log(),m.L)
+logdet(m::LMMScalar1,RX=true) = RX ? logdet(m.RX) : 2.sum(LogFun(),m.L)
 
 ## lower(m) -> lower bounds on elements of theta
 lower(m::LMMScalar1) = zeros(1)
@@ -69,7 +70,7 @@ end
 size(m::LMMScalar1) = (length(m.y), length(m.beta), length(m.u), 1)
 
 ## sqrlenu(m) -> total squared length of m.u (the penalty in the PLS problem)
-sqrlenu(m::LMMScalar1) = sqsum(m.u)
+sqrlenu(m::LMMScalar1) = sumsq(m.u)
 
 theta(m::LMMScalar1) = [m.theta]
 

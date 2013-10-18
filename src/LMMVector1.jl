@@ -1,6 +1,6 @@
 ## A linear mixed model with a single vector-valued random-effects term
 
-type LMMVector1{Ti<:Integer} <: LinearMixedModel
+type LMMVector1 <: LinearMixedModel
     ldL2::Float64
     L::Array{Float64,3}
     RX::Cholesky{Float64}
@@ -8,40 +8,41 @@ type LMMVector1{Ti<:Integer} <: LinearMixedModel
     Xt::Matrix{Float64}
     XtX::Matrix{Float64}
     Xty::Vector{Float64}
-    Ztrv::Vector{Ti}
+    Ztrv::Vector
     Ztnz::Matrix{Float64}
     ZtX::Array{Float64,3}
     ZtZ::Array{Float64,3}
     Zty::Matrix{Float64}
     beta::Vector{Float64}
+    fname::String
     lower::Vector{Float64}
     lambda::Matrix{Float64}
     mu::Vector{Float64}
     u::Matrix{Float64}
-    y::Vector{Float64}
+    y::Vector
     REML::Bool
     fit::Bool
 end
 
-function LMMVector1{Ti<:Integer}(Xt::Matrix{Float64}, Ztrv::Vector{Ti},
-                                 Ztnz::Matrix{Float64}, y::Vector{Float64})
-    p,n = size(Xt)
-    n == length(Ztrv) == size(Ztnz,2) == length(y) || error("Dimension mismatch")
+function LMMVector1(X::ModelMatrix, Xs::Matrix, rv::Vector, y::Vector)
+    Xt = X.m'; p,n = size(Xt); Ztnz = Xs'
+    n == length(rv) == size(Ztnz,2) == length(y) || error("Dimension mismatch")
     k = size(Ztnz,1) # number of random effects per grouping factor level
-    k > 1 || error("Use ScalarLMM1 instead of VectorLMM1")
-    urv = unique(Ztrv)
-    isperm(urv) || error("unique(Ztrv) must be a permutation")
+    k > 1 || error("Use LMMScalar1, not LMMVector1")
+    urv = unique(rv)
+    isperm(urv) || error("unique(rv) must be a permutation")
     nl = length(urv)
     ZtZ = zeros(k,k,nl); ZtX = zeros(k,p,nl); Zty  = zeros(k,nl)
     for j in 1:n
-        i = Ztrv[j]; z = Ztnz[:,j]; ZtZ[:,:,i] += z*z';
+        i = rv[j]; z = Ztnz[:,j]; ZtZ[:,:,i] += z*z';
         Zty[:,i] += y[j]*z; ZtX[:,:,i] += z*Xt[:,j]'
     end
-    lower = [x == 0. ? -Inf : 0. for x in ltri(eye(k))]
-    XtX = zeros(p,p); syrk!('U','N',1.,Xt,0.,XtX)
+    pos = 0; lower_bound = zeros(k*(k+1)>>1)
+    for j in 1:k, i in j:k lower_bound[pos += 1] = i == j ? 0. : -Inf end
+    XtX = Xt * Xt'
     LMMVector1(0., zeros(k,k,nl), cholfact(XtX,:U), similar(ZtX), Xt, XtX,
-               Xt*y, Ztrv, Ztnz, ZtX, ZtZ, Zty, zeros(p), lower, eye(k),
-               zeros(n), zeros(k,nl), y, false, false)
+               Xt*y, rv, Ztnz, ZtX, ZtZ, Zty, zeros(p), fname, lower_bound,
+               eye(k), zeros(n), zeros(k,nl), y, false, false)
 end
 
 cholfact(m::LMMVector1,RX=true) = RX ? m.RX : error("not yet written")
@@ -108,7 +109,7 @@ function solve!(m::LMMVector1, ubeta=false)
 end        
 
 ## sqrlenu(m) -> total squared length of m.u (the penalty in the PLS problem)
-sqrlenu(m::LMMVector1) = sqsum(m.u)
+sqrlenu(m::LMMVector1) = sumsq(m.u)
 
 ## std(m) -> Vector{Vector{Float64}} estimated standard deviations of variance components
 std(m::LMMVector1) = scale(m)*push!(copy(vec(vnorm(m.lambda,2,1))),1.)

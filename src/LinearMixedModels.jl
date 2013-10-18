@@ -15,9 +15,9 @@ function fit(m::LinearMixedModel, verbose=false)
         if verbose
             count = 0
             function vobj(x::Vector{Float64}, g::Vector{Float64})
-                if length(g) > 0 error("gradient evaluations are not provided") end
+                length(g) == 0 || error("gradient evaluations are not provided")
                 count += 1
-                val = obj(x, g)
+                val = objective(solve!(theta!(m,x),true))
                 println("f_$count: $val, $x")
                 val
             end
@@ -60,7 +60,7 @@ end
 ## pwrss(m) -> penalized, weighted residual sum of squares
 pwrss(m::LinearMixedModel) = rss(m) + sqrlenu(m)
 
-rss(m::LinearMixedModel) = sqdiffsum(m.mu, m.y)
+rss(m::LinearMixedModel) = sumsqdiff(m.mu, m.y)
 
 ## scale(m) -> estimate, s, of the scale parameter
 ## scale(m,true) -> estimate, s^2, of the squared scale parameter
@@ -71,16 +71,25 @@ end
 
 function show(io::IO, m::LinearMixedModel)
     fit(m); n, p, q, k = size(m); REML = m.REML
-    println(io, string("Linear mixed model fit by ", REML ? "REML" : "maximum likelihood"))
+    @printf(io, "Linear mixed model fit by %s\n", REML ? "REML" : "maximum likelihood")
+
     oo = objective(m)
-    println(io, REML?" REML criterion: $oo":" logLik: $(round(-oo/2.,3)), deviance: $(round(oo,3))")
-    println("\n  Variance components:")
-    stddevs = vcat(std(m)...)
-    println(io,"    Std. deviation scale:", [signif(x,5) for x in stddevs])
-    println(io,"    Variance scale:", [signif(abs2(x),5) for x in stddevs])
-    isscalar(m) || println(io,"    Correlations:\n", cor(m))
-    println(io,"  Number of obs: $n; levels of grouping factors:", grplevels(m))
-    println(io,"\n  Fixed-effects parameters:")
+    if REML
+        @printf(io, " REML criterion: %f", objective(m))
+    else
+        @printf(io, " logLik: %f, deviance: %f", -oo/2., oo)
+    end
+    println(io); println(io)
+
+    @printf(io, " Variance components:\n")
+    for s in vcat(std(m)...)
+        @printf(io, "      %10f  %10f\n", s, abs2(s))
+    end
+    gl = grplevels(m)
+    @printf(io," Number of obs: %d; levels of grouping factors: %d", n, gl[1])
+    for l in gl[2:end] @printf(io, ", %d", l) end
+    println(io)
+    @printf(io,"\n  Fixed-effects parameters:\n")
     tstrings = split(string(coeftable(m)),'\n')
     for i in 2:p+2 print(io,tstrings[i]); print(io,"\n") end
 end
@@ -90,6 +99,3 @@ stderr(m::LinearMixedModel) = sqrt(diag(vcov(m)))
 
 ## vcov(m) -> estimated variance-covariance matrix of the fixed-effects parameters
 vcov(m::LinearMixedModel) = scale(m,true) * inv(cholfact(m))
-
-##  unsetfit!(m) -> m : unset the m.fit flag
-unsetfit!(m::LinearMixedModel) = (m.fit = false; m)

@@ -10,14 +10,16 @@ module MixedModels
     import Base: cor, cholfact, logdet, scale, show, size, solve, std
     import Distributions: fit
     import GLM: coef, coeftable, confint, deviance, df_residual, linpred, stderr, vcov
+    import NLopt: lower_bound
 
-    export                              # types
+    export
         MixedModel,
         LinearMixedModel,
         LMMGeneral,
         LMMScalar1,
+        LMMScalarn,
         LMMVector1,
-                                        # functions
+
         fixef,          # extract the fixed-effects parameter estimates
         grplevels,      # number of levels per grouping factor in mixed-effects models
         isfit,          # predictate to check if a model has been fit
@@ -43,6 +45,7 @@ module MixedModels
     include("LinearMixedModels.jl") # method definitions for the abstract class
     include("LMMGeneral.jl") # general form of linear mixed-effects models
     include("LMMScalar1.jl") # models with a single, scalar random-effects term
+    include("LMMScalarn.jl") # models with a single, scalar random-effects term
     include("LMMVector1.jl") # models with a single, vector-valued random-effects term
     include("lmm.jl")    # fit and analyze linear mixed-effects models
 

@@ -34,9 +34,11 @@ typealias BlasReal Union(Float32,Float64)
 solve!{T<:BlasReal}(C::Cholesky{T}, B::StridedVecOrMat{T}) = potrs!(C.uplo, C.UL, B)
 
 ## Is f nested within g?  That is, does each value of f correspond to only one value of g?
-function isnested{T<:Integer,S<:Integer}(f::Vector{T},g::Vector{S})
-    ## Assume, without checking, isperm(unique(f)) and isperm(unique(g))
-    zz = zeros(eltype(g), max(f))
+function isnested(f::Vector,g::Vector)
+    uf = unique(f); ug = unique(g)
+    isperm(uf) && isperm(ug) || error("unique(f) and unique(g) must be permutations")
+    (nlf = length(uf)) >= (nlg = length(ug)) || error("f must have more levels than g")
+    zz = zeros(eltype(g), nlf)
     for i in 1:length(g)
         if (z = zz[(fi = f[i])]) == (gi = g[i]) continue end
         if z == zero(eltype(g))
