@@ -21,16 +21,17 @@ function lmm(f::Formula, fr::AbstractDataFrame)
     end
     Xs = Matrix{Float64}[r[1] for r in reinfo]; inds = [r[2].refs for r in reinfo]
     fnms = String[r[3] for r in reinfo]; nlev = Int[length(r[2].pool) for r in reinfo]
-    pvec = Int[size(m,2) for m in Xs] # number of columns for each term
+    pvec = Int[size(m,2) for m in Xs]
     if all(pvec .== 1)          # multiple scalar random-effects terms
         offsets = [0, cumsum(nlev)]; Ztnz = hcat(Xs...)'
         rv = convert(Matrix{offsets[k] < typemax(Int32) ? Int32 : Int64},
                      broadcast(+, hcat(inds...)', offsets[1:k]))
         return LMMScalarn(X,Xs,rv,y,fnms)
     end
+    nu = nlev .* pvec; q = sum(nu);
     uvec = zeros(sum(pvec .* nlev))
     
-    lambda = similar(u); inds = Array(Any,k); rowval = Array(Matrix{Int},k)
+lambda = similar(u); inds = Array(Any,k); rowval = Array(Matrix{Int},k)
     offsets = zeros(Int, k + 1); nlev = zeros(Int,k); ncol = zeros(Int,k)
     for i in 1:k
         t = re[i]                           # i'th random-effects term

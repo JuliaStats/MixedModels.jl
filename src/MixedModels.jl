@@ -10,7 +10,6 @@ module MixedModels
     import Base: cor, cholfact, logdet, scale, show, size, solve, std
     import Distributions: fit
     import GLM: coef, coeftable, confint, deviance, df_residual, linpred, stderr, vcov
-    import NLopt: lower_bound
 
     export
         MixedModel,

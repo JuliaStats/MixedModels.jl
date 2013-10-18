@@ -24,7 +24,7 @@ type LMMVector1 <: LinearMixedModel
     fit::Bool
 end
 
-function LMMVector1(X::ModelMatrix, Xs::Matrix, rv::Vector, y::Vector)
+function LMMVector1(X::ModelMatrix, Xs::Matrix, rv::Vector, y::Vector, fname::String)
     Xt = X.m'; p,n = size(Xt); Ztnz = Xs'
     n == length(rv) == size(Ztnz,2) == length(y) || error("Dimension mismatch")
     k = size(Ztnz,1) # number of random effects per grouping factor level
