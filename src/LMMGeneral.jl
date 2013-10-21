@@ -8,24 +8,25 @@ type LMMGeneral{Ti<:Union(Int32,Int64)} <: LinearMixedModel
     inds::Vector{Any}
     lambda::Vector{Matrix{Float64}}     # k lower triangular mats
     mu::Vector{Float64}
-    rowvalperm::Vector{Ti}
+    perm::Vector{Ti}
     u::Vector{Matrix{Float64}}
     y::Vector{Float64}
     REML::Bool
     fit::Bool
 end
 
-function LMMGeneral{Ti<:Union(Int32,Int64)}(q::Integer, X::ModelMatrix, Xs::Vector{Matrix{Float64}},
-                                            inds::Array, u::Vector{Matrix{Float64}}, rv::Matrix{Ti},
-                                            y::Vector{Float64}, lambda::Vector{Matrix{Float64}})
-    n,p = size(X.m); nz = hcat(Xs...)'
+function LMMGeneral{Ti<:Union(Int32,Int64)}(X::ModelMatrix, Xs::Vector, facs::Vector,
+                                            y::Vector, fnms::Vector, pvec::Vector)
+    refs = [f.refs for f in facs]; levs = [f.pool for f in facs]; k = length(Xs)
+    n,p = size(X); nlev = [length(l) for l in levs]; nz = hcat(Xs...)'
+    nu = nlev .* pvec; offsets = [0,cumsum(nu)]; q = offsets[end]
+    Ti = q > typemax(Int32) ? Int64 : Int32
+    rv = convert(Matrix{Ti}, broadcast(+, hcat(refs...)', offsets[1:k]))
     LambdatZt = CholmodSparse!(convert(Vector{Ti}, [1:size(nz,1):length(nz)+1]),
                                vec(copy(rv)), vec(nz), q, n, 0)
-    L = cholfact(LambdatZt,1.,true); pp = invperm(L.Perm + one(Ti))
-    rowvalperm = Ti[pp[rv[i,j]] for i in 1:size(rv,1), j in 1:size(rv,2)]
-
-    LMMGeneral(L,LambdatZt,cholfact(eye(p)),X,Xs,zeros(p),inds,lambda,
-        zeros(n),vec(rowvalperm),u,y,false,false)
+    L = cholfact(LambdatZt,1.,true)
+    LMMGeneral{Ti}(L,LambdatZt,cholfact(eye(p)),X,Xs,zeros(p),inds,lambda,
+        zeros(n),L.Perm + one(Ti),u,y,false,false)
 end
 
 ##  cholfact(x, RX=true) -> the Cholesky factor of the downdated X'X or LambdatZt

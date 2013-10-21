@@ -21,9 +21,7 @@ function lmm(f::Formula, fr::AbstractDataFrame)
     Xs = Matrix{Float64}[r[1] for r in reinfo]; facs = [r[2] for r in reinfo]
     fnms = String[r[3] for r in reinfo]
     all((pvec = Int[size(m,2) for m in Xs]).==1) && return Scalarn(X,Xs,facs,y,fnms)
-    nlev = Int[length(p) for p in pool];
-    nu = nlev .* pvec; q = sum(nu);
-    uvec = zeros(sum(pvec .* nlev))
+    LMMGeneral(X,Xs,facs,y,fnms,pvec)
 end
         
 ## lambda = similar(u); inds = Array(Any,k); rowval = Array(Matrix{Int},k)

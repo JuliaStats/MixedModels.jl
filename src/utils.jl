@@ -1,5 +1,45 @@
 ## Utilities 
 
+function Ac_mul_B!(α::Number, A::SparseMatrixCSC, B::AbstractMatrix, β::Number, C::AbstractMatrix)
+    mB, nB = size(B); A.m == mB || throw(DimensionMismatch(""))
+    for i = 1:length(C); C[i] *= β; end
+    for multivec_col = 1:nB
+         for col = 1 : A.n, k = A.colptr[col] : (A.colptr[col+1]-1)
+             C[col, multivec_col] += α*conj(A.nzval[k])*B[A.rowval[col], multivec_col]
+         end
+    end
+    C
+end
+
+function At_mul_B!(α::Number, A::SparseMatrixCSC, B::AbstractMatrix, β::Number, C::AbstractMatrix)
+    mB, nB = size(B); A.m == mB || throw(DimensionMismatch(""))
+    for i = 1:length(C); C[i] *= β; end
+    for multivec_col = 1:nB
+         for col = 1 : A.n, k = A.colptr[col] : (A.colptr[col+1]-1)
+             C[col, multivec_col] += α*A.nzval[k]*B[A.rowval[k], multivec_col]
+         end
+    end
+    C
+end
+
+function Ac_mul_B!(α::Number, A::SparseMatrixCSC, B::AbstractVector, β::Number, C::AbstractVector)
+    (A.m != length(B) && A.n == length(C)) || throw(DimensionMismatch(""))
+    for i = 1:length(C); C[i] *= β; end
+    for col = 1 : A.n, k = A.colptr[col] : (A.colptr[col+1]-1)
+        C[col] += α*conj(A.nzval[k])*B[A.rowval[k]]
+    end
+    C
+end
+
+function At_mul_B!(α::Number, A::SparseMatrixCSC, B::AbstractVector, β::Number, C::AbstractVector)
+    (A.m == length(B) && A.n == length(C)) || throw(DimensionMismatch(""))
+    for i = 1:length(C); C[i] *= β; end
+    for col = 1 : A.n, k = A.colptr[col] : (A.colptr[col+1]-1)
+        C[col] += α*A.nzval[k]*B[A.rowval[k]]
+    end
+    C
+end
+
 ## convert a lower Cholesky factor to a correlation matrix
 function cc(c::Matrix{Float64})
     m,n = size(c); m == n || error("argument of size $(size(c)) should be square")

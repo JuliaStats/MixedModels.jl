@@ -18,7 +18,10 @@ function fit(m::LinearMixedModel, verbose=false)
                 length(g) == 0 || error("gradient evaluations are not provided")
                 count += 1
                 val = objective(solve!(theta!(m,x),true))
-                println("f_$count: $val, $x")
+                print("f_$count: $(round(val,5)), [")
+                showcompact(x[1])
+                for i in 2:length(x) print(","); showcompact(x[i]) end
+                println("]")
                 val
             end
             min_objective!(opt, vobj)
