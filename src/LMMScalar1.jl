@@ -17,23 +17,21 @@ type LMMScalar1 <: LinearMixedModel
     fname::String
     mu::Vector{Float64}
     u::Vector{Float64}
-    y::Vector{Float64}
+    y::Vector
     REML::Bool
     fit::Bool
 end
 
-function LMMScalar1(Xt::Matrix{Float64}, Ztrv::Vector, Ztnz::Vector{Float64},
-                    y::Vector{Float64}, fname::String)
-    p,n = size(Xt)
-    length(Ztrv) == length(Ztnz) == length(y) == n || error("Dimension mismatch")
-    q = maximum(Ztrv); 0 < minimum(Ztrv) || error("elements of Ztrv must be positive")
+function LMMScalar1(X::ModelMatrix, Xs::Matrix, fac::PooledDataArray,
+                    y::Vector, fname::String)
+    Xt = X.m'; p,n = size(Xt); Ztnz = vec(Xs); q = length(fac.pool); rv = fac.refs
+    n == length(rv) == length(Ztnz) == length(y) || error("Dimension mismatch")
     XtX = Xt*Xt'; ZtZ = zeros(q); XtZ = zeros(p,q); Zty = zeros(q);
     for i in 1:n
-        j = Ztrv[i]; z = Ztnz[i]
-        ZtZ[j] += z*z; Zty[j] += z*y[i]; XtZ[:,j] += z*Xt[:,i]
+        j = rv[i]; z = Ztnz[i]
+        ZtZ[j] += abs2(z); Zty[j] += z*y[i]; XtZ[:,j] += z*Xt[:,i]
     end
-    LMMScalar1(1., ones(q), cholfact(XtX), Xt, XtX,
-               XtZ, Xt*y, Ztrv, Ztnz , ZtZ, Zty,
+    LMMScalar1(1., ones(q), cholfact(XtX), Xt, XtX, XtZ, Xt*y, rv, Ztnz , ZtZ, Zty,
                zeros(p), fname, zeros(n), zeros(q), copy(y), false, false)
 end
 

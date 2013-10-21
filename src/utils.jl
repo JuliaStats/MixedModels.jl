@@ -20,6 +20,19 @@ function cmult!{Ti<:Union(Int32,Int64),Tv<:Float64}(nzmat::Matrix{Tv}, cc::Strid
     scrv
 end
 
+## return the vector of lower bounds for nonzeros in a lower
+## triangular matrix of size k 
+function lower_bd_ltri(k::Integer)
+    pos = 0; res = zeros(k*(k+1)>>1)
+    for j in 1:k
+        pos += 1
+        for i in (j+1):k
+            res[pos += 1] = -Inf
+        end
+    end
+    res
+end
+
 ## ltri(M) -> vector of elements from the lower triangle (column major order)    
 function ltri(M::Matrix)
     m,n = size(M); m == n || error("size(M) = ($m,$n), should be square")
@@ -33,8 +46,9 @@ typealias BlasReal Union(Float32,Float64)
 
 solve!{T<:BlasReal}(C::Cholesky{T}, B::StridedVecOrMat{T}) = potrs!(C.uplo, C.UL, B)
 
-## Is f nested within g?  That is, does each value of f correspond to only one value of g?
+## Is f nested within g, i.e does each value of f correspond to only one value of g?
 function isnested(f::Vector,g::Vector)
+    length(f) == length(g) || error("Dimension mismatch")
     uf = unique(f); ug = unique(g)
     isperm(uf) && isperm(ug) || error("unique(f) and unique(g) must be permutations")
     (nlf = length(uf)) >= (nlg = length(ug)) || error("f must have more levels than g")

@@ -1,10 +1,12 @@
 using DataFrames, Distributions, GLM  # should be externally available
 module MixedModels
 
-    using DataFrames, Distributions, NLopt, NumericExtensions
-    using Base.LinAlg.BLAS: gemm!, gemv!, syrk!, syrk, trmm!, trmm, trmv!, trsm!, trsv!
+    using DataFrames, NLopt, NumericExtensions
+    using Base.LinAlg.BLAS: gemm!, gemv!, syrk!, syrk, trmm!, trmm,
+          trmv!, trsm!, trsv!
     using Base.LinAlg.CHOLMOD: CholmodDense, CholmodDense!, CholmodFactor,
-          CholmodSparse, CholmodSparse!, chm_scale!, CHOLMOD_L, CHOLMOD_Lt, CHOLMOD_P, CHOLMOD_Pt
+          CholmodSparse, CholmodSparse!, chm_scale!, CHOLMOD_SYM,
+          CHOLMOD_L, CHOLMOD_Lt, CHOLMOD_P, CHOLMOD_Pt
     using Base.LinAlg.LAPACK:  potrf!, potrs!
 
     import Base: cor, cholfact, logdet, scale, show, size, solve, std
@@ -22,7 +24,7 @@ module MixedModels
         fixef,          # extract the fixed-effects parameter estimates
         grplevels,      # number of levels per grouping factor in mixed-effects models
         isfit,          # predictate to check if a model has been fit
-        isscalar,       # predictate to check if all random-effects terms are scalar
+        isnested,       # check if vector f is nested in vector g
         lmm,            # fit a linear mixed-effects model (LMM)
         lower,          # vector of lower bounds on parameters in mixed-effects models
         objective,      # the objective function in fitting a model
@@ -49,4 +51,3 @@ module MixedModels
     include("lmm.jl")    # fit and analyze linear mixed-effects models
 
 end #module
-

@@ -15,7 +15,6 @@ type LMMVector1 <: LinearMixedModel
     Zty::Matrix{Float64}
     beta::Vector{Float64}
     fname::String
-    lower::Vector{Float64}
     lambda::Matrix{Float64}
     mu::Vector{Float64}
     u::Matrix{Float64}
@@ -24,24 +23,18 @@ type LMMVector1 <: LinearMixedModel
     fit::Bool
 end
 
-function LMMVector1(X::ModelMatrix, Xs::Matrix, rv::Vector, y::Vector, fname::String)
-    Xt = X.m'; p,n = size(Xt); Ztnz = Xs'
+function LMMVector1(X::ModelMatrix, Xs::Matrix, grp::PooledDataVector, y::Vector,
+                    fname::String)
+    Xt = X.m'; p,n = size(Xt); Ztnz = Xs'; rv = grp.refs; nl = length(grp.pool)
     n == length(rv) == size(Ztnz,2) == length(y) || error("Dimension mismatch")
-    k = size(Ztnz,1) # number of random effects per grouping factor level
-    k > 1 || error("Use LMMScalar1, not LMMVector1")
-    urv = unique(rv)
-    isperm(urv) || error("unique(rv) must be a permutation")
-    nl = length(urv)
-    ZtZ = zeros(k,k,nl); ZtX = zeros(k,p,nl); Zty  = zeros(k,nl)
+    (k = size(Ztnz,1)) > 1 || error("Use LMMScalar1, not LMMVector1")
+    XtX = Xt*Xt'; ZtZ = zeros(k,k,nl); ZtX = zeros(k,p,nl); Zty  = zeros(k,nl)
     for j in 1:n
         i = rv[j]; z = Ztnz[:,j]; ZtZ[:,:,i] += z*z';
         Zty[:,i] += y[j]*z; ZtX[:,:,i] += z*Xt[:,j]'
     end
-    pos = 0; lower_bound = zeros(k*(k+1)>>1)
-    for j in 1:k, i in j:k lower_bound[pos += 1] = i == j ? 0. : -Inf end
-    XtX = Xt * Xt'
     LMMVector1(0., zeros(k,k,nl), cholfact(XtX,:U), similar(ZtX), Xt, XtX,
-               Xt*y, rv, Ztnz, ZtX, ZtZ, Zty, zeros(p), fname, lower_bound,
+               Xt*y, rv, Ztnz, ZtX, ZtZ, Zty, zeros(p), fname,
                eye(k), zeros(n), zeros(k,nl), y, false, false)
 end
 
@@ -67,7 +60,7 @@ end
 ## Logarithm of the determinant of the generator matrix for the Cholesky factor, RX or L
 logdet(m::LMMVector1,RX=true) = RX ? logdet(m.RX) : m.ldL2
     
-lower(m::LMMVector1) = m.lower
+lower(m::LMMVector1) = lower_bd_ltri(size(m.Ztnz,1))
 
 ##  ranef(m) -> vector of matrices of random effects on the original scale
 ##  ranef(m,true) -> vector of matrices of random effects on the U scale
@@ -118,7 +111,6 @@ theta(m::LMMVector1) = ltri(m.lambda)
 
 ##  theta!(m,th) -> m : install new value of theta, update L 
 function theta!(m::LMMVector1, th::Vector{Float64})
-    all(th .>= m.lower) || error("theta = $th violates lower bounds")
     n,p,q,t = size(m); k,nl = size(m.u); pos = 1
     for j in 1:k, i in j:k
         m.lambda[i,j] = th[pos]; pos += 1

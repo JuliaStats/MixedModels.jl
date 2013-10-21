@@ -6,38 +6,36 @@ type LMMScalarn{Ti<:Union(Int32,Int64)} <: LinearMixedModel
     ZtZ::CholmodSparse{Float64,Ti}
     RX::Cholesky{Float64}
     X::ModelMatrix{Float64}             # fixed-effects model matrix
-#    Xs::Vector{Matrix{Float64}}         # X_1,X_2,...,X_k
     beta::Vector{Float64}
-#    inds::Vector{Any}
-#    lambda::Vector{Matrix{Float64}}     # k lower triangular mats
+    fnms::Vector
+    lambda::Vector{Float64}
     mu::Vector{Float64}
-    rowvalperm::Vector{Ti}
-    u::Vector{Matrix{Float64}}
+    offsets::Vector
+    u::Vector{Vector{Float64}}
     y::Vector{Float64}
     REML::Bool
     fit::Bool
 end
 
-function LMMScalarn{Ti<:Union(Int32,Int64)}(X::ModelMatrix, Xs::Vector{Matrix{Float64}},
-                                            u::Vector{Matrix{Float64}}, rv::Matrix{Ti},
-                                            y::Vector{Float64})
-    n,p = size(X.m); nz = hcat(Xs...)'
+function Scalarn(X::ModelMatrix, Xs::Vector, facs::Vector,
+                 y::Vector, fnms::Vector)
+    refs = [f.refs for f in facs]; levs = [f.pool for f in facs]; k = length(Xs)
+#    all([isnested(refs[i-1],refs[i]) for i in 2:k]) &&
+#        return LMMNestedScalar(X,Xs,refs,levs,y,fnames)
+    n,p = size(X); nlev = [length(l) for l in levs]; nz = hcat(Xs...)'
+    offsets = [0, cumsum(nlev)]; q = offsets[end]
+    Ti = q < typemax(Int32) ? Int32 : Int64
+    rv = convert(Matrix{Ti}, broadcast(+, hcat(refs...)', offsets[1:k]))
     Zt = CholmodSparse!(convert(Vector{Ti}, [1:size(nz,1):length(nz)+1]),
-                        vec(copy(rv)), vec(nz), q, n, 0)
-    ZtZ = Zt*Zt'
-    L = cholfact(Zt,1.,true); pp = invperm(L.Perm + one(Ti))
-    Lambda = CholmodDense!(ones(q))
-    rowvalperm = Ti[pp[rv[i,j]] for i in 1:size(rv,1), j in 1:size(rv,2)]
-
-    LMMScalarn{Ti}(copy(ZtZ),L,Lambda,Zt,ZtZ,cholfact(eye(p)),X,zeros(p),#inds,lambda,
-        zeros(n),vec(rowvalperm),u,y,false,false)
+                        copy(vec(rv)), vec(hcat(Xs...)'), q, n, 0)
+    ZtZ = Zt*Zt'; L = cholfact(ZtZ,1.,true)
+    u = Vector{Float64}[zeros(j) for j in nlev]
+    LMMScalarn{Ti}(copy(ZtZ),L,CholmodDense!(ones(q)),Zt,ZtZ, cholfact(eye(p)),
+        X,zeros(p),ones(k),ones(k),zeros(n),offsets,u,y,false,false)
 end
 
 ##  cholfact(x, RX=true) -> the Cholesky factor of the downdated X'X or LambdatZt
 cholfact(m::LMMScalarn,RX=true) = RX ? m.RX : m.L
-
-## cor(m) -> correlation matrices of variance components
-#cor(m::LMMScalarn) = [cc(l) for l in m.lambda]
 
 ## deviance!(m) -> Float64 : fit the model by maximum likelihood and return the deviance
 deviance!(m::LMMScalarn) = objective(fit(reml!(m,false)))
@@ -46,12 +44,14 @@ deviance!(m::LMMScalarn) = objective(fit(reml!(m,false)))
 grplevels(m::LMMScalarn) = [size(u,2) for u in m.u]
 
 ## isscalar(m) -> Bool : Are all the random-effects terms scalar?
-isscalar(m::LMMScalarn) = all([size(l,1) == 1 for l in m.lambda])
+isscalar(m::LMMScalarn) = true
 
 ## linpred!(m) -> update mu
 function linpred!(m::LMMScalarn)
     gemv!('N',1.,m.X.m,m.beta,0.,m.mu)  # initialize mu to X*beta
+    
     Xs = m.Xs; u = m.u; lm = m.lambda; inds = m.inds; mu = m.mu
+    
     for i in 1:length(Xs)               # iterate over r.e. terms
         X = Xs[i]; ind = inds[i]
         if size(X,2) == 1 fma!(mu, (lm[i][1,1]*u[i])[:,ind], X[:,1])
@@ -90,7 +90,7 @@ function scale(m::LMMScalarn, sqr=false)
 end
 
 ##  size(m) -> n, p, q, t (lengths of y, beta, u and # of re terms)
-size(m::LMMScalarn) = (length(m.y), length(m.beta), sum([length(u) for u in m.u]), length(m.u))
+size(m::LMMScalarn) = (length(m.y), length(m.beta), m.offsets[end], length(m.u))
 
 ## solve!(m) -> m : solve PLS problem for u given beta
 ## solve!(m,true) -> m : solve PLS problem for u and beta
@@ -108,7 +108,7 @@ function solve!(m::LMMScalarn, ubeta=false)
         gemv!('N',-1.,ttt,m.beta,1.,cu)
         u = solve(m.L,solve(m.L,cu,CHOLMOD_Lt),CHOLMOD_Pt)
     else
-        u = vec(solve(m.L,m.LambdatZt * gemv!('N',-1.0,m.X.m,m.beta,1.0,copy(m.y))).mat)
+        u = vec(solve(m.L,m.Lambda.mat .* m.Zt .* gemv!('N',-1.0,m.X.m,m.beta,1.0,copy(m.y))).mat)
     end
     pos = 0
     for i in 1:length(m.u)
@@ -126,22 +126,19 @@ sqrlenu(m::LMMScalarn) = sum([mapreduce(Abs2Fun(),Add(),u) for u in m.u])
 std(m::LMMScalarn) = scale(m)*push!(Vector{Float64}[vec(vnorm(l,2,1)) for l in m.lambda],[1.])
 
 ## theta(m) -> vector of variance-component parameters
-theta(m::LMMScalarn) = vcat([ltri(M) for M in m.lambda]...)
+theta(m::LMMScalarn) = m.lambda
 
 ##  theta!(m,th) -> m : install new value of theta, update LambdatZt and L 
 function theta!(m::LMMScalarn, th::Vector{Float64})
-    n = length(m.y)
-    nzmat = reshape(m.LambdatZt.nzval, (div(length(m.LambdatZt.nzval),n),n))
-    lambda = m.lambda; Xs = m.Xs; tpos = 1; roff = 0 # position in th, row offset
-    for kk in 1:length(Xs)
-        T = lambda[kk]; p = size(T,1) # size of i'th template matrix
-        for j in 1:p, i in j:p        # fill lower triangle from th
-            T[i,j] = th[tpos]; tpos += 1
-            i == j && T[i,j] < 0. && error("Negative diagonal element in T")
+    off = m.offsets; k = length(off) - 1
+    length(th) == k || error("Dimension mismatch")
+    A = m.A; copy!(A.nzval, m.ZtZ.nzval); lam = m.Lambda.mat
+    for i in 1:k
+        thi = th[i]
+        for j in (off[i]+1):off[i+1]
+            lam[j,1] = thi
         end
-        gemm!('T','T',1.,T,Xs[kk],0.,sub(nzmat,roff+(1:p),1:n))
-        roff += p
     end
-    cholfact!(m.L,m.LambdatZt,1.)
+    cholfact!(m.L,chm_scale!(m.A,m.Lambda,CHOLMOD_SYM),1.)
     m
 end
