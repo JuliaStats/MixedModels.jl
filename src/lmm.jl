@@ -19,8 +19,25 @@ function lmm(f::Formula, fr::AbstractDataFrame)
         return LMMVector1(X,Xs,fac,y,nm)
     end
     Xs = Matrix{Float64}[r[1] for r in reinfo]; facs = [r[2] for r in reinfo]
-    fnms = String[r[3] for r in reinfo]
-    all((pvec = Int[size(m,2) for m in Xs]).==1) && return Scalarn(X,Xs,facs,y,fnms)
+    fnms = String[r[3] for r in reinfo]; pvec = Int[size(m,2) for m in Xs]
+    refs = [f.refs for f in facs]; levs = [f.pool for f in facs]; n,p = size(X)
+    nlev = [length(l) for l in levs]; offsets = [0, cumsum(nlev)]
+    all([isnested(refs[i-1],refs[i]) for i in 2:k]) &&
+        return LMMNested(X,Xs,refs,levs,y,fnms,pvec,nlev,offsets)
+    q = sum(nlev .* pvec); Ti = q < typemax(Int32) ? Int32 : Int64
+    Zt = SparseMatrixCSC(offsets[end],n,convert(Vector{Ti},[1:k:(k*n + 1)]),
+                         convert(Vector{Ti},vec(broadcast(+,hcat(refs...)',
+                                                          offsets[1:k]))),
+                         vec(hcat([x[:,1] for x in Xs]...)'))
+    Ztc = CholmodSparse(Zt)
+    ZtZ = Ztc * Ztc'; L = cholfact(ZtZ,1.,true); perm = L.Perm + one(Ti)
+    all(pvec .== 1) &&
+        return LMMScalarn{Ti}(copy(ZtZ),L,Diagonal(ones(q)),cholfact(eye(p)),
+                              X,X.m'*y,Zt,Zt*X.m,ZtZ,Zt*y,zeros(p),fnms,
+                              ones(k),zeros(n),offsets,perm,
+                              Vector{Float64}[ones(j) for j in nlev],
+                              y,false,false)
+    error("should not reach here")
     LMMGeneral(X,Xs,facs,y,fnms,pvec)
 end
         

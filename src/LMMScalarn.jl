@@ -16,27 +16,9 @@ type LMMScalarn{Ti<:Union(Int32,Int64)} <: LinearMixedModel
     offsets::Vector
     perm::Vector                        # fill-reducing permutation
     u::Vector{Vector{Float64}}
-    y::Vector{Float64}
+    y::Vector
     REML::Bool
     fit::Bool
-end
-
-function Scalarn(X::ModelMatrix, Xs::Vector, facs::Vector,
-                 y::Vector, fnms::Vector)
-    refs = [f.refs for f in facs]; levs = [f.pool for f in facs]; k = length(Xs)
-    all([isnested(refs[i-1],refs[i]) for i in 2:k]) &&
-        return LMMNestedScalar(X,Xs,refs,levs,y,fnames)
-    n,p = size(X); nlev = [length(l) for l in levs]; nz = hcat(Xs...)'
-    offsets = [0, cumsum(nlev)]; q = offsets[end]
-    Ti = q < typemax(Int32) ? Int32 : Int64
-    rv = convert(Matrix{Ti}, broadcast(+, hcat(refs...)', offsets[1:k]))
-    Zt = SparseMatrixCSC(q,n,convert(Vector{Ti},[1:size(nz,1):length(nz)+1]),vec(rv),vec(nz))
-    Ztc = CholmodSparse(Zt)
-    ZtZ = Ztc*Ztc'; L = cholfact(ZtZ,1.,true)
-    u = Vector{Float64}[zeros(j) for j in nlev]
-    LMMScalarn{Ti}(copy(ZtZ),L,Diagonal(ones(q)),cholfact(eye(p)),X,X.m'*y,
-                   Zt,Zt*X.m, ZtZ,Zt*y, zeros(p),ones(k),ones(k),zeros(n),
-                   offsets,L.Perm + one(Ti),u,y,false,false)
 end
 
 ##  cholfact(x, RX=true) -> the Cholesky factor of the downdated X'X or LambdatZt

@@ -15,8 +15,8 @@ type LMMGeneral{Ti<:Union(Int32,Int64)} <: LinearMixedModel
     fit::Bool
 end
 
-function LMMGeneral{Ti<:Union(Int32,Int64)}(X::ModelMatrix, Xs::Vector, facs::Vector,
-                                            y::Vector, fnms::Vector, pvec::Vector)
+function LMMGeneral(X::ModelMatrix, Xs::Vector, facs::Vector,
+                    y::Vector, fnms::Vector, pvec::Vector)
     refs = [f.refs for f in facs]; levs = [f.pool for f in facs]; k = length(Xs)
     n,p = size(X); nlev = [length(l) for l in levs]; nz = hcat(Xs...)'
     nu = nlev .* pvec; offsets = [0,cumsum(nu)]; q = offsets[end]
