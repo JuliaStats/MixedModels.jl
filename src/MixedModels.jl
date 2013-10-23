@@ -17,6 +17,7 @@ module MixedModels
         MixedModel,
         LinearMixedModel,
         LMMGeneral,
+        LMMNested,
         LMMScalar1,
         LMMScalarn,
         LMMVector1,
@@ -43,11 +44,12 @@ module MixedModels
     typealias ITypes Union(Int32,Int64)
 
     include("utils.jl")     # utilities to deal with the model formula
-    include("LinearMixedModels.jl") # method definitions for the abstract class
-    include("LMMGeneral.jl") # general form of linear mixed-effects models
-    include("LMMScalar1.jl") # models with a single, scalar random-effects term
-    include("LMMScalarn.jl") # models with a single, scalar random-effects term
-    include("LMMVector1.jl") # models with a single, vector-valued random-effects term
+    include("linearmixedmodels.jl") # method definitions for the abstract class
+    include("general.jl") # general form of linear mixed-effects models
+    include("scalar1.jl") # models with a single, scalar random-effects term
+    include("scalarn.jl") # models with a single, scalar random-effects term
+    include("vector1.jl") # models with a single, vector-valued random-effects term
+    include("nested.jl")
     include("lmm.jl")    # fit and analyze linear mixed-effects models
 
 end #module
