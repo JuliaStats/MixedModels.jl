@@ -60,60 +60,67 @@ julia> using MixedModels, RDatasets
 
 julia> ds = data("lme4","Dyestuff");
 
-julia> dump(ds)
-DataFrame  30 observations of 2 variables
-  Batch: PooledDataArray{ASCIIString,Uint8,1}(30) ["A", "A", "A", "A"]
-  Yield: DataArray{Float64,1}(30) [1545.0, 1440.0, 1440.0, 1520.0]
+julia> head(ds)
+6x2 DataFrame:
+        Batch  Yield
+[1,]      "A" 1545.0
+[2,]      "A" 1440.0
+[3,]      "A" 1440.0
+[4,]      "A" 1520.0
+[5,]      "A" 1580.0
+[6,]      "B" 1540.0
 ```
 
-The main difference from `R` in a simple call to `lmer` is the need to
+The main difference from `R` in a simple call to `lmm` is the need to
 pass the formula as an expression, which means enclosing it in `:()`.
-Also, this version of `lmer` defaults to maximum likelihood estimates.
+Also, `lmm` defaults to maximum likelihood estimation whereas `lmer` in `R`
+defaults to REML estimation.
 
 ```julia
-julia> fm1 = fit(lmer(:(Yield ~ 1|Batch), ds))
+julia> fm1 = lmer(:(Yield ~ 1|Batch), ds)
 Linear mixed model fit by maximum likelihood
- logLik: -163.6635299406109, deviance: 327.3270598812218
+ logLik: -163.663530, deviance: 327.327060
 
-  Variance components:
-    Std. deviation scale:[37.26047449632836,49.51007020929394]
-    Variance scale:[1388.342959691536,2451.2470521292157]
-  Number of obs: 30; levels of grouping factors:[6]
+ Variance components:
+       37.260474  1388.342960
+       49.510070  2451.247052
+ Number of obs: 30; levels of grouping factors: 6
 
   Fixed-effects parameters:
         Estimate Std.Error z value
 [1,]      1527.5   17.6946 86.3258
 ```
 
-(At present the formatting of the output is less than wonderful.)
+(The formatting of the output will be improved.)
 
 In general the model should be fit through an explicit call to the `fit`
 function, which may take a second argument indicating a verbose fit.
 
 ```julia
-julia> m = fit(lmer(:(Yield ~ 1|Batch), ds),true);
-f_1: 327.7670216246145, [1.0]
-f_2: 331.0361932224437, [1.75]
-f_3: 330.6458314144857, [0.25]
-f_4: 327.69511270610866, [0.97619]
-f_5: 327.56630914532184, [0.928569]
-f_6: 327.3825965130752, [0.833327]
-f_7: 327.3531545408492, [0.807188]
-f_8: 327.34662982410276, [0.799688]
-f_9: 327.34100192001785, [0.792188]
-f_10: 327.33252535370985, [0.777188]
-f_11: 327.32733056112147, [0.747188]
-f_12: 327.3286190977697, [0.739688]
-f_13: 327.32706023603697, [0.752777]
-f_14: 327.3270681545395, [0.753527]
-f_15: 327.3270598812218, [0.752584]
+julia> @time m = fit(lmm(:(Yield ~ 1 + (1|Batch)), ds),true);
+f_1: 327.76702, [1.0]
+f_2: 331.03619, [1.75]
+f_3: 330.64583, [0.25]
+f_4: 327.69511, [0.97619]
+f_5: 327.56631, [0.928569]
+f_6: 327.3826, [0.833327]
+f_7: 327.35315, [0.807188]
+f_8: 327.34663, [0.799688]
+f_9: 327.341, [0.792188]
+f_10: 327.33253, [0.777188]
+f_11: 327.32733, [0.747188]
+f_12: 327.32862, [0.739688]
+f_13: 327.32706, [0.752777]
+f_14: 327.32707, [0.753527]
+f_15: 327.32706, [0.752584]
 FTOL_REACHED
+elapsed time: 0.053209407 seconds (1015136 bytes allocated)
 ```
 
 The numeric representation of the model has type
 ```julia
 julia> typeof(m)
-LMMGeneral{Int32}
+LMMScalar1 (constructor with 2 methods)
 ```
 
 It happens that `show`ing an object of this type causes the model to
@@ -123,22 +130,23 @@ interactive Read-Eval-Print-Loop).
 Those familiar with the `lme4` package for `R` will see the usual
 suspects.
 ```julia
-julia> fixef(m)
-1-element Float64 Array:
+julia> fixef(m)  # estimates of the fixed-effects parameters
+1-element Array{Float64,1}:
  1527.5
 
+julia> show(coef(m))  # another name for fixef
+[1527.4999999999998]
+
 julia> ranef(m)
-1-element Array{Float64,2} Array:
- 1x6 Float64 Array:
+1x6 Array{Float64,2}:
  -16.6283  0.369517  26.9747  -21.8015  53.5799  -42.4944
 
-julia> ranef(m,true)  # on the U scale
-1-element Array{Float64,2} Array:
- 1x6 Float64 Array:
+julia> ranef(m,true) # on the U scale
+1x6 Array{Float64,2}:
  -22.0949  0.490998  35.8428  -28.9689  71.1947  -56.4647
 
 julia> deviance(m)
-327.3270598812218
+327.3270598812219
 ```
 
 ## A more substantial example
@@ -151,15 +159,15 @@ instructors.
 ```julia
 julia> inst = data("lme4","InstEval");
 
-julia> dump(inst)
-DataFrame  73421 observations of 7 variables
-  s: PooledDataArray{ASCIIString,Uint16,1}(73421) ["1", "1", "1", "1"]
-  d: PooledDataArray{ASCIIString,Uint16,1}(73421) ["1002", "1050", "1582", "2050"]
-  studage: PooledDataArray{ASCIIString,Uint8,1}(73421) ["2", "2", "2", "2"]
-  lectage: PooledDataArray{ASCIIString,Uint8,1}(73421) ["2", "1", "2", "2"]
-  service: PooledDataArray{ASCIIString,Uint8,1}(73421) ["0", "1", "0", "1"]
-  dept: PooledDataArray{ASCIIString,Uint8,1}(73421) ["2", "6", "2", "3"]
-  y: DataArray{Int32,1}(73421) [5, 2, 5, 3]
+julia> head(inst)
+6x7 DataFrame:
+          s      d studage lectage service dept y
+[1,]    "1" "1002"     "2"     "2"     "0"  "2" 5
+[2,]    "1" "1050"     "2"     "1"     "1"  "6" 2
+[3,]    "1" "1582"     "2"     "2"     "0"  "2" 5
+[4,]    "1" "2050"     "2"     "2"     "1"  "3" 3
+[5,]    "2"  "115"     "2"     "1"     "0"  "5" 2
+[6,]    "2"  "756"     "2"     "1"     "0"  "5" 4
 
 julia> @time fm2 = fit(lmer(:(y ~ dept*service + (1|s) + (1|d)), inst), true)
 f_1: 241920.83782176484, [1.0,1.0]

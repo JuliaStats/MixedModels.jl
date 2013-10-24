@@ -1,17 +1,20 @@
-const template = Formula(:(~ foo))      # for evaluating the lhs of r.e. terms
-
 ## Convert a random-effects term t to a model matrix, a factor and a name
 function retrm(t::Expr,df::DataFrame)
-    X = t.args[2] == 1 ? ones(nrow(df),1) :
-           (template.rhs=t.args[2]; ModelMatrix(ModelFrame(template, df)).m)
     grp = t.args[3]
-    X, PooledDataArray(df[grp]), string(grp)
+    X = ones(nrow(df),1)
+    if t.args[2] != 1
+        template = Formula(:(~ foo)); template.rhs=t.args[2]
+        X = ModelMatrix(ModelFrame(template, df)).m
+    end
+    X, pool(df[grp]), string(grp)
 end
 
 function lmm(f::Formula, fr::AbstractDataFrame)
     mf = ModelFrame(f, fr); X = ModelMatrix(mf); y = model_response(mf)
-    reinfo = [retrm(r,mf.df) for r in
-              filter(x->Meta.isexpr(x,:call) && x.args[1] == :|, mf.terms.terms)]
+    rtrms = filter(x->Meta.isexpr(x,:call) && x.args[1] == :|, mf.terms.terms)
+    reinfo = [retrm(r,mf.df) for r in rtrms]
+    ## reinfo = [retrm(r,mf.df) for r in
+    ##           filter(x->Meta.isexpr(x,:call) && x.args[1] == :|, mf.terms.terms)]
     (k = length(reinfo)) > 0 || error("Formula $f has no random-effects terms")
     if k == 1
         Xs, fac, nm = reinfo[1]
