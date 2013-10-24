@@ -6,15 +6,13 @@ function retrm(t::Expr,df::DataFrame)
         template = Formula(:(~ foo)); template.rhs=t.args[2]
         X = ModelMatrix(ModelFrame(template, df)).m
     end
-    X, pool(df[grp]), string(grp)
+    (X, pool(df[grp]), string(grp))
 end
 
 function lmm(f::Formula, fr::AbstractDataFrame)
     mf = ModelFrame(f, fr); X = ModelMatrix(mf); y = model_response(mf)
-    rtrms = filter(x->Meta.isexpr(x,:call) && x.args[1] == :|, mf.terms.terms)
-    reinfo = [retrm(r,mf.df) for r in rtrms]
-    ## reinfo = [retrm(r,mf.df) for r in
-    ##           filter(x->Meta.isexpr(x,:call) && x.args[1] == :|, mf.terms.terms)]
+    reinfo = {retrm(r,mf.df) for r in
+        filter(x->Meta.isexpr(x,:call) && x.args[1] == :|, mf.terms.terms)}
     (k = length(reinfo)) > 0 || error("Formula $f has no random-effects terms")
     if k == 1
         Xs, fac, nm = reinfo[1]
