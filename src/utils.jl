@@ -49,10 +49,7 @@ function cc(c::Matrix{Float64})
 end
 
 ## used in solve!(m::LMMGeneral, ubeta=false)
-function cmult!{Ti<:Union(Int32,Int64),Tv<:Float64}(nzmat::Matrix{Tv}, cc::StridedVecOrMat{Tv},
-                                                    scrm::Matrix{Tv}, scrv::StridedVecOrMat{Tv},
-                                                    rvperm::Vector{Ti})
-    fill!(scrv, 0.)
+function cmult!(nzmat::Matrix,cc::StridedVecOrMat,inds::Vector,perm::Vector)
     for j in 1:size(cc,2)
         @inbounds for jj in 1:size(nzmat,2), i in 1:size(nzmat,1) scrm[i,jj] = nzmat[i,jj]*cc[jj,j] end
         @inbounds for i in 1:length(scrm) scrv[rvperm[i],j] += scrm[i] end
