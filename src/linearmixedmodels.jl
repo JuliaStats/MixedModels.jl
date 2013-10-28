@@ -48,8 +48,11 @@ end
 ## deviance(m) -> Float64
 deviance(m::LinearMixedModel) = m.fit && !m.REML ? objective(m) : NaN
         
-##  fixef(m) -> current value of beta (can be a reference)
+## fixef(m) -> current value of beta (can be a reference)
 fixef(m::LinearMixedModel) = m.beta
+
+## fnames(m) -> names of grouping factors
+fnames(m::LinearMixedModel) = m.fnms
 
 ##  isfit(m) -> Bool - Has the model been fit?
 isfit(m::LinearMixedModel) = m.fit
@@ -92,9 +95,15 @@ function show(io::IO, m::LinearMixedModel)
     end
     println(io); println(io)
 
-    @printf(io, " Variance components:\n")
-    for s in vcat(std(m)...)
-        @printf(io, "      %10f  %10f\n", s, abs2(s))
+    @printf(io, " Variance components:\n                Variance    Std.Dev.\n")
+    stdm = std(m); fnms = vcat(fnames(m),"Residual")
+    for i in 1:length(fnms)
+        si = stdm[i]
+        print(io, " ", rpad(fnms[i],12))
+        @printf(io, " %10f  %10f\n", abs2(si[1]), si[1])
+        for j in 2:length(si)
+            @printf(io, "             %10f  %10f\n", abs2(si[j]), si[j])
+        end
     end
     gl = grplevels(m)
     @printf(io," Number of obs: %d; levels of grouping factors: %d", n, gl[1])
