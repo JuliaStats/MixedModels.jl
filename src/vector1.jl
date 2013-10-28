@@ -43,6 +43,8 @@ cholfact(m::LMMVector1,RX=true) = RX ? m.RX : error("not yet written")
 ## cor(m) -> correlation matrices of variance components
 cor(m::LMMVector1) = [cc(m.lambda)]
 
+fnames(m::LMMVector1) = String[m.fname]
+
 grplevels(m::LMMVector1) = [size(m.u,2)]
 
 isscalar(m::LMMVector1) = size(m.Ztnz, 1) <= 1
