@@ -12,25 +12,27 @@ end
 function lmm(f::Formula, fr::AbstractDataFrame, forcegeneral::Bool=false)
     mf = ModelFrame(f, fr); X = ModelMatrix(mf); y = model_response(mf)
     reinfo = {retrm(r,mf.df) for r in
-        filter(x->Meta.isexpr(x,:call) && x.args[1] == :|, mf.terms.terms)}
+        filter(x->Meta.isexpr(x,:call) && x.args[1] == :|, mf.terms.terms)};
     (k = length(reinfo)) > 0 || error("Formula $f has no random-effects terms")
     if k == 1 && !forcegeneral
         Xs, fac, nm = reinfo[1]
         size(Xs,2) == 1 && return LMMScalar1(X,Xs,fac,y,nm) 
         return LMMVector1(X,Xs,fac,y,nm)
     end
-    Xs = Matrix{Float64}[r[1] for r in reinfo]; facs = [r[2] for r in reinfo]
-    fnms = String[r[3] for r in reinfo]; pvec = Int[size(m,2) for m in Xs]
+    Xs = Matrix{Float64}[r[1] for r in reinfo]; facs = [r[2] for r in reinfo];
+    fnms = String[r[3] for r in reinfo]; pvec = Int[size(m,2) for m in Xs];
     refs = [f.refs for f in facs]; levs = [f.pool for f in facs]; n,p = size(X)
-    nlev = [length(l) for l in levs]; offsets = [0, cumsum(nlev)]
+    nlev = [length(l) for l in levs]; offsets = [0, cumsum(nlev .* pvec)]
     !forcegeneral && all([isnested(refs[i-1],refs[i]) for i in 2:k]) &&
         return LMMNested(X,Xs,refs,levs,y,fnms,pvec,nlev,offsets)
     ## Other cases use CHOLMOD code with index type in Union(Int32,Int64)
-    q = sum(nlev .* pvec); Ti = q < typemax(Int32) ? Int32 : Int64
+    q = offsets[end]; Ti = q < typemax(Int32) ? Int32 : Int64
+    ## rowval and colptr are incorrect for a non-scalar model
     Zt = SparseMatrixCSC(offsets[end],n,convert(Vector{Ti},[1:k:(k*n + 1)]),
                          convert(Vector{Ti},vec(broadcast(+,hcat(refs...)',
                                                           offsets[1:k]))),
                          vec(hcat(Xs...)'))
+
     Ztc = CholmodSparse(Zt)
     ZtZ = Ztc * Ztc'; L = cholfact(ZtZ,1.,true); perm = L.Perm + one(Ti)
     !forcegeneral && all(pvec .== 1) &&
@@ -39,12 +41,13 @@ function lmm(f::Formula, fr::AbstractDataFrame, forcegeneral::Bool=false)
                               ones(k),zeros(n),offsets,perm,
                               Vector{Float64}[ones(j) for j in nlev],
                               y,false,false)
-    LMMGeneral(L,Ztc,cholfact(eye(p)),X,Xs,
+    LMMGeneral(L, Zt, cholfact(eye(p)), X, Xs,
                Symmetric(syrk!('U','T',1.,X.m,0.,zeros(p,p)),:U),
-               X.m'*y,zeros(p),refs,Matrix{Float64}[eye(p) for p in pvec],
-               zeros(n),perm,pvec,
+               X.m'*y, zeros(p), fnms, refs,
+               Matrix{Float64}[eye(p) for p in pvec],
+               zeros(n), perm, pvec,
                Matrix{Float64}[zeros(pvec[i],nlev[i]) for i in 1:k],
-               y,false,false)
+               y, false, false)
 end
 
 lmm(ex::Expr, fr::AbstractDataFrame) = lmm(Formula(ex), fr)
