@@ -34,7 +34,7 @@ function LMMNested(X::ModelMatrix,Xs::Vector,refs::Vector,levs::Vector,y::Vector
     ZtZ = triu(Zt * Zt')
     tr,perm = etree(ZtZ,true)
     pinv = invperm(perm)
-    ZtZ = Base.SparseMatrix.csc_symperm(ZtZ,pinv) # post-order ZtZ
+    ZtZ = symperm(ZtZ,pinv) # post-order ZtZ
     roots = pinv[[1:q][tr .== 0]] # nodes that are roots of the elimination tree
     L = ZtZ'
 end

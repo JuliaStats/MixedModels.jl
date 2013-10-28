@@ -1,7 +1,8 @@
-using DataFrames, Distributions, GLM  # should be externally available
+using DataFrames, Distributions  # should be externally available
 module MixedModels
 
     using DataFrames, NLopt, NumericExtensions
+    using Base.SparseMatrix: symperm
     using Base.LinAlg.BLAS: gemm!, gemv!, syrk!, syrk, trmm!, trmm,
           trmv!, trsm!, trsv!
     using Base.LinAlg.CHOLMOD: CholmodDense, CholmodDense!, CholmodFactor,
@@ -11,7 +12,8 @@ module MixedModels
 
     import Base: Ac_mul_B!, At_mul_B!, cor, cholfact, logdet, scale, show, size, solve, std
     import Distributions: fit
-    import GLM: coef, coeftable, confint, deviance, df_residual, linpred, stderr, vcov
+    import Stats: coef, coeftable, confint, stderr, vcov
+    import GLM: deviance, df_residual, linpred
 
     export
         MixedModel,
