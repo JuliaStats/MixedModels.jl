@@ -38,7 +38,7 @@ end
 ##  cholfact(x, RX=true) -> the Cholesky factor of the downdated X'X or LambdatZt
 cholfact(m::LMMScalar1,RX=true) = RX ? m.RX : Diagonal(m.L)
 
-fnames(m::LMMScalar1) = String[fname]
+fnames(m::LMMScalar1) = String[m.fname]
 
 grplevels(m::LMMScalar1) = [length(m.u)]
 
