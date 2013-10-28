@@ -63,6 +63,14 @@ end
 ## pwrss(m) -> penalized, weighted residual sum of squares
 pwrss(m::LinearMixedModel) = rss(m) + sqrlenu(m)
 
+##  reml!(m,v=true) -> m : Set m.REML to v.  If m.REML is modified, unset m.fit
+function reml!(m::LinearMixedModel,v=true)
+    v == m.REML && return m
+    m.REML = v; m.fit = false
+    m
+end
+    
+## rss(m) -> residual sum of squares
 rss(m::LinearMixedModel) = sumsqdiff(m.mu, m.y)
 
 ## scale(m) -> estimate, s, of the scale parameter
@@ -96,6 +104,10 @@ function show(io::IO, m::LinearMixedModel)
     tstrings = split(string(coeftable(m)),'\n')
     for i in 2:p+2 print(io,tstrings[i]); print(io,"\n") end
 end
+
+##  size(m) -> n, p, q, t (lengths of y, beta, u and # of re terms)
+size(m::LinearMixedModel) = (length(m.y), length(m.beta),
+                             sum([length(u) for u in m.u]), length(m.u))
 
 ## stderr(m) -> standard errors of fixed-effects parameters
 stderr(m::LinearMixedModel) = sqrt(diag(vcov(m)))

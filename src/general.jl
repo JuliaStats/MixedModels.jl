@@ -4,30 +4,33 @@ type LMMGeneral{Ti<:Union(Int32,Int64)} <: LinearMixedModel
     RX::Cholesky{Float64}
     X::ModelMatrix{Float64}             # fixed-effects model matrix
     Xs::Vector{Matrix{Float64}}         # X_1,X_2,...,X_k
+    XtX::Symmetric{Float64}
+    Xty::Vector{Float64}
     beta::Vector{Float64}
-    inds::Vector{Any}
+    inds::Vector
     lambda::Vector{Matrix{Float64}}     # k lower triangular mats
     mu::Vector{Float64}
     perm::Vector{Ti}
+    pvec::Vector
     u::Vector{Matrix{Float64}}
     y::Vector{Float64}
     REML::Bool
     fit::Bool
 end
 
-function LMMGeneral(X::ModelMatrix, Xs::Vector, facs::Vector,
-                    y::Vector, fnms::Vector, pvec::Vector)
-    refs = [f.refs for f in facs]; levs = [f.pool for f in facs]; k = length(Xs)
-    n,p = size(X); nlev = [length(l) for l in levs]; nz = hcat(Xs...)'
-    nu = nlev .* pvec; offsets = [0,cumsum(nu)]; q = offsets[end]
-    Ti = q > typemax(Int32) ? Int64 : Int32
-    rv = convert(Matrix{Ti}, broadcast(+, hcat(refs...)', offsets[1:k]))
-    LambdatZt = CholmodSparse!(convert(Vector{Ti}, [1:size(nz,1):length(nz)+1]),
-                               vec(copy(rv)), vec(nz), q, n, 0)
-    L = cholfact(LambdatZt,1.,true)
-    LMMGeneral{Ti}(L,LambdatZt,cholfact(eye(p)),X,Xs,zeros(p),inds,lambda,
-        zeros(n),L.Perm + one(Ti),u,y,false,false)
-end
+## function LMMGeneral(X::ModelMatrix, Xs::Vector, facs::Vector,
+##                     y::Vector, fnms::Vector, pvec::Vector)
+##     refs = [f.refs for f in facs]; levs = [f.pool for f in facs]; k = length(Xs)
+##     n,p = size(X); nlev = [length(l) for l in levs]; nz = hcat(Xs...)'
+##     nu = nlev .* pvec; offsets = [0,cumsum(nu)]; q = offsets[end]
+##     Ti = q > typemax(Int32) ? Int64 : Int32
+##     rv = convert(Matrix{Ti}, broadcast(+, hcat(refs...)', offsets[1:k]))
+##     LambdatZt = CholmodSparse!(convert(Vector{Ti}, [1:size(nz,1):length(nz)+1]),
+##                                vec(copy(rv)), vec(nz), q, n, 0)
+##     L = cholfact(LambdatZt,1.,true)
+##     LMMGeneral{Ti}(L,LambdatZt,cholfact(eye(p)),X,Xs,zeros(p),inds,lambda,
+##         zeros(n),L.Perm + one(Ti),u,y,false,false)
+## end
 
 ##  cholfact(x, RX=true) -> the Cholesky factor of the downdated X'X or LambdatZt
 cholfact(m::LMMGeneral,RX=true) = RX ? m.RX : m.L
@@ -42,7 +45,7 @@ deviance!(m::LMMGeneral) = objective(fit(reml!(m,false)))
 grplevels(m::LMMGeneral) = [size(u,2) for u in m.u]
 
 ## isscalar(m) -> Bool : Are all the random-effects terms scalar?
-isscalar(m::LMMGeneral) = all([size(l,1) == 1 for l in m.lambda])
+isscalar(m::LMMGeneral) = all(pvec .== 1)
 
 ## linpred!(m) -> update mu
 function linpred!(m::LMMGeneral)
@@ -62,7 +65,7 @@ end
 logdet(m::LMMGeneral,RX=true) = logdet(cholfact(m,RX))
 
 ## lower(m) -> lower bounds on elements of theta
-lower(m::LMMGeneral) = [x==0.?-Inf:0. for x in vcat([ltri(eye(M)) for M in m.lambda]...)]
+lower(m::LMMGeneral) = vcat([lower_bd_ltri(p) for p in m.pvec]...)
 
 ##  ranef(m) -> vector of matrices of random effects on the original scale
 ##  ranef(m,true) -> vector of matrices of random effects on the U scale
@@ -71,38 +74,23 @@ function ranef(m::LMMGeneral, uscale=false)
     Matrix{Float64}[m.lambda[i] * m.u[i] for i in 1:length(m.u)]
 end
 
-##  reml!(m,v=true) -> m : Set m.REML to v.  If m.REML is modified, unset m.fit
-function reml!(m::LMMGeneral,v=true)
-    v == m.REML && return m
-    m.REML = v; m.fit = false
-    m
-end
-    
-## scale(m) -> estimate, s, of the scale parameter
-## scale(m,true) -> estimate, s^2, of the squared scale parameter
-function scale(m::LMMGeneral, sqr=false)
-    n,p = size(m.X.m); ssqr = pwrss(m)/float64(n - (m.REML ? p : 0)); 
-    sqr ? ssqr : sqrt(ssqr)
-end
-
-##  size(m) -> n, p, q, t (lengths of y, beta, u and # of re terms)
-size(m::LMMGeneral) = (length(m.y), length(m.beta), sum([length(u) for u in m.u]), length(m.u))
-
 ## solve!(m) -> m : solve PLS problem for u given beta
 ## solve!(m,true) -> m : solve PLS problem for u and beta
 function solve!(m::LMMGeneral, ubeta=false)
     local u                             # so u from both branches is accessible
     n,p,q,k = size(m)
     if ubeta
-        nzmat = reshape(m.LambdatZt.nzval, (div(length(m.LambdatZt.nzval),n),n))
-        scrm = similar(nzmat); RZX = Array(Float64, sum(length, m.u), p)
-        rvperm = m.rowvalperm
-        cu = solve(m.L, cmult!(nzmat, m.y, scrm, RZX[:,1], rvperm), CHOLMOD_L)
-        ttt = solve(m.L,cmult!(nzmat, m.X.m, scrm, RZX, rvperm),CHOLMOD_L)
-        potrf!('U',syrk!('U','T',-1.,ttt,1.,syrk!('U','T',1.,m.X.m,0.,m.RX.UL)))
-        potrs!('U',m.RX.UL,gemv!('T',-1.,ttt,cu,1.,gemv!('T',1.,m.X.m,m.y,0.,m.beta)))
-        gemv!('N',-1.,ttt,m.beta,1.,cu)
-        u = solve(m.L,solve(m.L,cu,CHOLMOD_Lt),CHOLMOD_Pt)
+        cu = solve(m.L,permute!(vec((m.LambdatZt * m.y).mat),m.perm),CHOLMOD_L)
+        RZX = (m.LambdatZt * m.X.m).mat
+        for j in 1:size(RZX,2)
+            permute!(sub(RZX,:,j),m.perm)
+        end
+        RZX = solve(m.L, RZX, CHOLMOD_L)
+        _,info = potrf!('U',syrk!('U','T',-1.,RZX,1.,copy!(m.RX.UL,m.XtX.S)))
+        info == 0 || error("downdated X'X is singular")
+        potrs!('U',m.RX.UL,gemv!('T',-1.,RZX,cu,1.,copy!(m.beta,m.Xty)))
+        gemv!('N',-1.,RZX,m.beta,1.,cu)
+        u = ipermute!(solve(m.L,gemv!('N',-1.,RZX,m.beta,1.,cu),CHOLMOD_Lt),m.perm)
     else
         u = vec(solve(m.L,m.LambdatZt * gemv!('N',-1.0,m.X.m,m.beta,1.0,copy(m.y))).mat)
     end
