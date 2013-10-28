@@ -1,19 +1,20 @@
 type LMMGeneral{Ti<:Union(Int32,Int64)} <: LinearMixedModel
     L::CholmodFactor{Float64,Ti}
-    LambdatZt::CholmodSparse{Float64,Ti}
+    LambdatZt::SparseMatrixCSC{Float64,Ti}
     RX::Cholesky{Float64}
     X::ModelMatrix{Float64}             # fixed-effects model matrix
     Xs::Vector{Matrix{Float64}}         # X_1,X_2,...,X_k
     XtX::Symmetric{Float64}
     Xty::Vector{Float64}
     beta::Vector{Float64}
+    fnms::Vector
     inds::Vector
     lambda::Vector{Matrix{Float64}}     # k lower triangular mats
     mu::Vector{Float64}
     perm::Vector{Ti}
     pvec::Vector
     u::Vector{Matrix{Float64}}
-    y::Vector{Float64}
+    y::Vector
     REML::Bool
     fit::Bool
 end
@@ -80,8 +81,8 @@ function solve!(m::LMMGeneral, ubeta=false)
     local u                             # so u from both branches is accessible
     n,p,q,k = size(m)
     if ubeta
-        cu = solve(m.L,permute!(vec((m.LambdatZt * m.y).mat),m.perm),CHOLMOD_L)
-        RZX = (m.LambdatZt * m.X.m).mat
+        cu = solve(m.L,permute!(m.LambdatZt * m.y,m.perm),CHOLMOD_L)
+        RZX = m.LambdatZt * m.X.m
         for j in 1:size(RZX,2)
             permute!(sub(RZX,:,j),m.perm)
         end
@@ -89,7 +90,6 @@ function solve!(m::LMMGeneral, ubeta=false)
         _,info = potrf!('U',syrk!('U','T',-1.,RZX,1.,copy!(m.RX.UL,m.XtX.S)))
         info == 0 || error("downdated X'X is singular")
         potrs!('U',m.RX.UL,gemv!('T',-1.,RZX,cu,1.,copy!(m.beta,m.Xty)))
-        gemv!('N',-1.,RZX,m.beta,1.,cu)
         u = ipermute!(solve(m.L,gemv!('N',-1.,RZX,m.beta,1.,cu),CHOLMOD_Lt),m.perm)
     else
         u = vec(solve(m.L,m.LambdatZt * gemv!('N',-1.0,m.X.m,m.beta,1.0,copy(m.y))).mat)
