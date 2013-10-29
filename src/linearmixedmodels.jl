@@ -57,6 +57,29 @@ fnames(m::LinearMixedModel) = m.fnms
 ##  isfit(m) -> Bool - Has the model been fit?
 isfit(m::LinearMixedModel) = m.fit
 
+function lrt(mods::LinearMixedModel...)
+    if (nm = length(mods)) <= 1
+        error("at least two models are required for an lrt")
+    end
+    m1 = mods[1]; n = nobs(m1)
+    for i in 2:nm
+        if nobs(mods[i]) != n
+            error("number of observations must be constant across models")
+        end
+    end
+    mods = mods[sortperm([npar(m)::Int for m in mods])]
+    df = [npar(m)::Int for m in mods]
+    dev = [deviance(m)::Float64 for m in mods]
+    csqr = [NaN, [(dev[i-1]-dev[i])::Float64 for i in 2:nm]]
+    pval = [NaN, [ccdf(Chisq(df[i]-df[i-1]),csqr[i])::Float64 for i in 2:nm]]
+    DataFrame(Df = df, Deviance = dev, Chisq=csqr,pval=pval)
+end
+
+
+nobs(m::LinearMixedModel) = size(m)[1]
+
+npar(m::LinearMixedModel) = length(theta(m)) + length(coef(m)) + 1
+
 ## objective(m) -> deviance or REML criterion according to m.REML
 function objective(m::LinearMixedModel)
      n,p,q,k = size(m); fn = float64(n - (m.REML ? p : 0))
