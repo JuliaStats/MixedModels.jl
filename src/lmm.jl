@@ -1,12 +1,9 @@
 ## Convert a random-effects term t to a model matrix, a factor and a name
 function retrm(t::Expr,df::DataFrame)
-    grp = t.args[3]
-    X = ones(nrow(df),1)
-    if t.args[2] != 1
-        template = Formula(:(~ foo)); template.rhs=t.args[2]
-        X = ModelMatrix(ModelFrame(template, df)).m
-    end
-    (X, pool(df[grp]), string(grp))
+    grp = t.args[3]; fac = pool(df[grp]); nm = string(grp); lhs = t.args[2]
+    lhs == 1 && return (ones(nrow(df),1), fac, nm)
+    ff = Formula(:(~foo)); ff.rhs = lhs
+    ModelMatrix(ModelFrame(ff,df)).m, fac, nm
 end
 
 function lmm(f::Formula, fr::AbstractDataFrame, forcegeneral::Bool=false)
@@ -23,16 +20,17 @@ function lmm(f::Formula, fr::AbstractDataFrame, forcegeneral::Bool=false)
     fnms = String[r[3] for r in reinfo]; pvec = Int[size(m,2) for m in Xs];
     refs = [f.refs for f in facs]; levs = [f.pool for f in facs]; n,p = size(X)
     nlev = [length(l) for l in levs]; offsets = [0, cumsum(nlev .* pvec)]
-    !forcegeneral && all([isnested(refs[i-1],refs[i]) for i in 2:k]) &&
-        return LMMNested(X,Xs,refs,levs,y,fnms,pvec,nlev,offsets)
+    ## LMMNested is not currently working.
+#    !forcegeneral && all([isnested(refs[i-1],refs[i]) for i in 2:k]) &&
+#        return LMMNested(X,Xs,refs,levs,y,fnms,pvec,nlev,offsets)
     ## Other cases use CHOLMOD code with index type in Union(Int32,Int64)
     q = offsets[end]; Ti = q < typemax(Int32) ? Int32 : Int64
-    ## rowval and colptr are incorrect for a non-scalar model
-    Zt = SparseMatrixCSC(offsets[end],n,convert(Vector{Ti},[1:k:(k*n + 1)]),
-                         convert(Vector{Ti},vec(broadcast(+,hcat(refs...)',
-                                                          offsets[1:k]))),
-                         vec(hcat(Xs...)'))
-
+    rv = vec(vcat([convert(Matrix{Ti},
+                           reshape([(offsets[i]+1):offsets[i+1]],
+                                   (pvec[i],nlev[i]))[:,refs[i]]) for i in 1:k]...))
+    np = sum(pvec)
+    colptr = convert(Vector{Ti},[1:np:(np*n + 1)])
+    Zt = SparseMatrixCSC(offsets[end],n,colptr,rv,vec(hcat(Xs...)'))
     Ztc = CholmodSparse(Zt)
     ZtZ = Ztc * Ztc'; L = cholfact(ZtZ,1.,true); perm = L.Perm + one(Ti)
     !forcegeneral && all(pvec .== 1) &&
