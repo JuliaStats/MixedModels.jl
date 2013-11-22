@@ -1,7 +1,7 @@
 using DataFrames, Distributions  # should be externally available
 module MixedModels
 
-    using DataFrames, NLopt, NumericExtensions
+    using DataArrays, DataFrames, NLopt, NumericExtensions
     using Base.SparseMatrix: symperm
     using Base.LinAlg.BLAS: gemm!, gemv!, syrk!, syrk, trmm!, trmm,
           trmv!, trsm!, trsv!

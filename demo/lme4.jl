@@ -8,7 +8,7 @@ println(fm1)
 typeof(fm1)
 
 ds2 = data("lme4", "Dyestuff2");
-@time fm1a = lmm(:(Yield ~ 1|Batch), ds2);
+@time fm1a = fit(lmm(:(Yield ~ 1|Batch), ds2));
 println(fm1a)
 typeof(fm1a)
 
@@ -18,29 +18,29 @@ println(fm2)
 typeof(fm2)
 
 pen = data("lme4", "Penicillin");
-@time fm3 = lmm(:(diameter ~ (1|plate) + (1|sample)), pen);
+@time fm3 = fit(lmm(:(diameter ~ (1|plate) + (1|sample)), pen));
 println(fm3)
 typeof(fm3)
 
 chem = data("mlmRev", "Chem97");
-@time fm4 = lmm(:(score ~ (1|school) + (1|lea)), chem);
+@time fm4 = fit(lmm(:(score ~ (1|school) + (1|lea)), chem));
 println(fm4)
 typeof(fm4)
 
-@time fm5 = lmm(:(score ~ gcsecnt + (1|school) + (1|lea)), chem);
+@time fm5 = fit(lmm(:(score ~ gcsecnt + (1|school) + (1|lea)), chem));
 println(fm5)
 typeof(fm5)
 
-@time fm6 = fit(reml!(lmm(Formula(:(score ~ gcsecnt + (1|school) + (1|lea))), chem; dofit=false)));
+@time fm6 = fit(reml!(lmm(Formula(:(score ~ gcsecnt + (1|school) + (1|lea))), chem)));
 println(fm6)
 typeof(fm6)
 
 inst = data("lme4", "InstEval");
-@time fm7 = lmm(:(y ~ dept*service + (1|s) + (1|d)), inst);
+@time fm7 = fit(lmm(:(y ~ dept*service + (1|s) + (1|d)), inst));
 println(fm7)
 
 sleep = data("lme4", "sleepstudy");
-@time fm8 = lmm(:(Reaction ~ Days + (Days | Subject)), sleep);
+@time fm8 = fit(lmm(:(Reaction ~ Days + (Days | Subject)), sleep));
 println(fm8)
 typeof(fm8)
 
