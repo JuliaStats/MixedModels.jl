@@ -1,6 +1,6 @@
 ## Base implementations of methods for the LinearMixedModel abstract type
 
-## fit(m) -> m Optimization the objective using BOBYQA from the NLopt package
+## fit(m) -> m Optimize the objective using BOBYQA from the NLopt package
 function fit(m::LinearMixedModel, verbose=false)
     if !isfit(m)
         th = theta(m); k = length(th)

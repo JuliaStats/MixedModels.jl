@@ -43,7 +43,53 @@ cholfact(m::LMMVector1,RX=true) = RX ? m.RX : error("not yet written")
 ## cor(m) -> correlation matrices of variance components
 cor(m::LMMVector1) = [cc(m.lambda)]
 
+## fit(m) -> m Optimize the objective using MMA from the NLopt package
+function fit(m::LinearMixedModel, verbose=false)
+    if !isfit(m)
+        th = theta(m); k = length(th)
+        opt = Opt(:LD_MMA, k)
+        ftol_abs!(opt, 1e-6)    # criterion on deviance changes
+        xtol_abs!(opt, 1e-6)    # criterion on all parameter value changes
+        lower_bounds!(opt, lower(m))
+        function obj(x::Vector{Float64}, g::Vector{Float64})
+            rr = objective(solve!(theta!(m,x),true))
+            if length(g) > 0
+                copy!(g, grad(m))
+            end
+            rr
+        end
+        if verbose
+            count = 0
+            function vobj(x::Vector{Float64}, g::Vector{Float64})
+                count += 1
+                val = objective(solve!(theta!(m,x),true))
+                print("f_$count: $(round(val,5)), "); showcompact(x); println()
+                if length(g) > 0
+                    copy!(g, grad(m))
+                end
+                val
+            end
+            min_objective!(opt, vobj)
+        else
+            min_objective!(opt, obj)
+        end
+        fmin, xmin, ret = optimize(opt, th)
+        if verbose println(ret) end
+        m.fit = true
+    end
+    m
+end
+
 fnames(m::LMMVector1) = String[m.fname]
+
+function grad(m::LMMVector1)        # called after solve!
+    n,p,q = size(m); k,nl = size(m.u); L = m.L; ZtZ = m.ZtZ; lambda = m.lambda
+    mu = m.mu; rv = m.Ztrv; nz = m.Ztnz; res = zeros(k,k)
+    for i in 1:nl; res += LAPACK.potrs!('L',sub(L,:,:,i), lambda'*sub(ZtZ,:,:,i)); end
+    Ztr = copy(m.Zty)          # create Z'(resid) starting with Zty
+    for i in 1:n Ztr[:,rv[i]] -= mu[i] * nz[:,i] end
+    ltri(BLAS.syr2k!('L','N',-1./scale(m,true),Ztr,m.u,1.,res+res'))
+end
 
 grplevels(m::LMMVector1) = [size(m.u,2)]
 

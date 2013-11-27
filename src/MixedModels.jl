@@ -25,6 +25,7 @@ module MixedModels
         LMMVector1,
 
         fixef,          # extract the fixed-effects parameter estimates
+        grad,           # gradient of objective
         grplevels,      # number of levels per grouping factor in mixed-effects models
         isfit,          # predictate to check if a model has been fit
         isnested,       # check if vector f is nested in vector g
