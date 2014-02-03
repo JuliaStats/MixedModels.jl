@@ -84,7 +84,7 @@ function solve!(m::LMMGeneral, ubeta=false)
         cu = solve(m.L,permute!(m.LambdatZt * m.y,m.perm),CHOLMOD_L)
         RZX = m.LambdatZt * m.X.m
         for j in 1:size(RZX,2)
-            permute!(sub(RZX,:,j),m.perm)
+            permute!(view(RZX,:,j),m.perm)
         end
         RZX = solve(m.L, RZX, CHOLMOD_L)
         _,info = potrf!('U',syrk!('U','T',-1.,RZX,1.,copy!(m.RX.UL,m.XtX.S)))
@@ -97,7 +97,7 @@ function solve!(m::LMMGeneral, ubeta=false)
     pos = 0
     for i in 1:length(m.u)
         ll = length(m.u[i])
-        m.u[i] = reshape(sub(u,pos+(1:ll)), size(m.u[i]))
+        m.u[i] = reshape(view(u,pos+(1:ll)), size(m.u[i]))
         pos += ll
     end
     linpred!(m)
@@ -123,7 +123,7 @@ function theta!(m::LMMGeneral, th::Vector{Float64})
             T[i,j] = th[tpos]; tpos += 1
             i == j && T[i,j] < 0. && error("Negative diagonal element in T")
         end
-        gemm!('T','T',1.,T,Xs[kk],0.,sub(nzmat,roff+(1:p),1:n))
+        gemm!('T','T',1.,T,Xs[kk],0.,view(nzmat,roff+(1:p),1:n))
         roff += p
     end
     cholfact!(m.L,m.LambdatZt,1.)

@@ -44,7 +44,7 @@ cholfact(m::LMMVector1,RX=true) = RX ? m.RX : error("not yet written")
 cor(m::LMMVector1) = [cc(m.lambda)]
 
 ## fit(m) -> m Optimize the objective using MMA from the NLopt package
-function fit(m::LinearMixedModel, verbose=false)
+function fit(m::LMMVector1, verbose=false)
     if !isfit(m)
         th = theta(m); k = length(th)
         opt = Opt(:LD_MMA, k)
@@ -85,7 +85,7 @@ fnames(m::LMMVector1) = String[m.fname]
 function grad(m::LMMVector1)        # called after solve!
     n,p,q = size(m); k,nl = size(m.u); L = m.L; ZtZ = m.ZtZ; lambda = m.lambda
     mu = m.mu; rv = m.Ztrv; nz = m.Ztnz; res = zeros(k,k)
-    for i in 1:nl; res += LAPACK.potrs!('L',sub(L,:,:,i), lambda'*sub(ZtZ,:,:,i)); end
+    for i in 1:nl; res += LAPACK.potrs!('L',view(L,:,:,i), lambda'*view(ZtZ,:,:,i)); end
     Ztr = copy(m.Zty)          # create Z'(resid) starting with Zty
     for i in 1:n Ztr[:,rv[i]] -= mu[i] * nz[:,i] end
     ltri(BLAS.syr2k!('L','N',-1./scale(m,true),Ztr,m.u,1.,res+res'))
@@ -101,7 +101,7 @@ function linpred!(m::LMMVector1)
     bb = trmm('L','L','N','N',1.,m.lambda,m.u) # b = Lambda * u
     k = size(bb,1)
     for i in 1:length(m.mu)
-        m.mu[i] += dot(sub(bb,1:k,int(m.Ztrv[i])), sub(m.Ztnz,1:k,i)) end
+        m.mu[i] += dot(view(bb,1:k,int(m.Ztrv[i])), view(m.Ztnz,1:k,i)) end
     m
 end
 
@@ -125,26 +125,26 @@ function solve!(m::LMMVector1, ubeta=false)
     n,p,q = size(m); k,nl = size(m.u); copy!(m.u,m.Zty)
     trmm!('L','L','T','N',1.,m.lambda,m.u)
     for l in 1:nl                       # cu := L^{-1} Lambda'Z'y
-        trsv!('L','N','N',sub(m.L,1:k,1:k,l), sub(m.u,1:k,l))
+        trsv!('L','N','N',view(m.L,1:k,1:k,l), view(m.u,1:k,l))
     end
     if ubeta
         copy!(m.beta,m.Xty); copy!(m.RZX,m.ZtX); copy!(m.RX.UL, m.XtX)
         trmm!('L','L','T','N',1.,m.lambda,reshape(m.RZX,(k,p*nl))) # Lambda'Z'X
         for l in 1:nl
-            wL = sub(m.L,1:k,1:k,l); wRZX = sub(m.RZX,1:k,1:p,l)
+            wL = view(m.L,1:k,1:k,l); wRZX = view(m.RZX,1:k,1:p,l)
             trsm!('L','L','N','N',1.,wL,wRZX) # solve for l'th face of RZX
-            gemv!('T',-1.,wRZX,sub(m.u,1:k,l),1.,m.beta) # downdate m.beta
+            gemv!('T',-1.,wRZX,view(m.u,1:k,l),1.,m.beta) # downdate m.beta
             syrk!('U','T',-1.,wRZX,1.,m.RX.UL)           # downdate XtX
         end
         _, info = potrf!('U',m.RX.UL) # Cholesky factor RX
         bool(info) && error("Downdated X'X is not positive definite")
         solve!(m.RX,m.beta)           # beta = (RX'RX)\(downdated X'y)
         for l in 1:nl                 # downdate cu
-            gemv!('N',-1.,sub(m.RZX,1:k,1:p,l),m.beta,1.,sub(m.u,1:k,l))
+            gemv!('N',-1.,view(m.RZX,1:k,1:p,l),m.beta,1.,view(m.u,1:k,l))
         end
     end
     for l in 1:nl                     # solve for m.u
-        trsv!('L','T','N',sub(m.L,1:k,1:k,l), sub(m.u,1:k,l))
+        trsv!('L','T','N',view(m.L,1:k,1:k,l), view(m.u,1:k,l))
     end
     linpred!(m)
 end        
@@ -166,7 +166,7 @@ function theta!(m::LMMVector1, th::Vector{Float64})
     ldL = 0.; copy!(m.L,m.ZtZ)
     trmm!('L','L','T','N',1.,m.lambda,reshape(m.L,(k,q)))
     for l in 1:nl
-        wL = sub(m.L,1:k,1:k,l)
+        wL = view(m.L,1:k,1:k,l)
         trmm!('R','L','N','N',1.,m.lambda,wL) # lambda'(Z'Z)_l*lambda
         for j in 1:k; wL[j,j] += 1.; end      # Inflate the diagonal
         _, info = potrf!('L',wL)        # i'th diagonal block of L_Z
