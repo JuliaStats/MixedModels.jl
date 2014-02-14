@@ -42,7 +42,7 @@ coef(m::LinearMixedModel) = m.beta
 ## FIXME Create a type with its own show method for this type of table
 function coeftable(m::LinearMixedModel)
     fe = fixef(m); se = stderr(m)
-    DataFrame({fe, se, fe./se}, ["Estimate","Std.Error","z value"])
+    CoefTable(hcat(fe,se,fe./se), ["Estimate","Std.Error","z value"], ASCIIString[])
 end
 
 ## deviance(m) -> Float64
@@ -133,8 +133,7 @@ function show(io::IO, m::LinearMixedModel)
     for l in gl[2:end] @printf(io, ", %d", l) end
     println(io)
     @printf(io,"\n  Fixed-effects parameters:\n")
-    tstrings = split(string(coeftable(m)),'\n')
-    for i in 2:p+2 print(io,tstrings[i]); print(io,"\n") end
+    show(io,coeftable(m))
 end
 
 ##  size(m) -> n, p, q, t (lengths of y, beta, u and # of re terms)

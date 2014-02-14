@@ -2,46 +2,38 @@
 
 using RDatasets, MixedModels
 
-ds = data("lme4", "Dyestuff");
-fm1 = lmm(:(Yield ~ 1|Batch), ds);
-println(fm1)
+ds = dataset("lme4", "Dyestuff");
+fm1 = lmm(Yield ~ 1|Batch, ds)
 typeof(fm1)
 
-ds2 = data("lme4", "Dyestuff2");
-@time fm1a = fit(lmm(:(Yield ~ 1|Batch), ds2));
-println(fm1a)
+ds2 = dataset("lme4", "Dyestuff2");
+@time fm1a = fit(lmm(Yield ~ 1|Batch, ds2))
 typeof(fm1a)
 
-psts = data("lme4", "Pastes");
-fm2 = lmm(:(strength ~ (1|sample) + (1|batch)), psts);
-println(fm2)
+psts = dataset("lme4", "Pastes");
+fm2 = lmm(Strength ~ (1|Sample) + (1|Batch), psts)
 typeof(fm2)
 
-pen = data("lme4", "Penicillin");
-@time fm3 = fit(lmm(:(diameter ~ (1|plate) + (1|sample)), pen));
-println(fm3)
+pen = dataset("lme4", "Penicillin");
+@time fm3 = fit(lmm(Diameter ~ (1|Plate) + (1|Sample), pen))
 typeof(fm3)
 
-chem = data("mlmRev", "Chem97");
-@time fm4 = fit(lmm(:(score ~ (1|school) + (1|lea)), chem));
-println(fm4)
+chem = dataset("mlmRev", "Chem97");
+@time fm4 = fit(lmm(Score ~ (1|School) + (1|Lea), chem))
 typeof(fm4)
 
-@time fm5 = fit(lmm(:(score ~ gcsecnt + (1|school) + (1|lea)), chem));
-println(fm5)
+@time fm5 = fit(lmm(Score ~ GCSECnt + (1|School) + (1|Lea), chem))
 typeof(fm5)
 
-@time fm6 = fit(reml!(lmm(Formula(:(score ~ gcsecnt + (1|school) + (1|lea))), chem)));
-println(fm6)
+@time fm6 = fit(reml!(lmm(Score ~ GCSECnt + (1|School) + (1|Lea), chem)))
 typeof(fm6)
 
-inst = data("lme4", "InstEval");
-@time fm7 = fit(lmm(:(y ~ dept*service + (1|s) + (1|d)), inst));
-println(fm7)
+inst = dataset("lme4", "InstEval");
+@time fm7 = fit(lmm(Y ~ Dept*Service + (1|S) + (1|D), inst))
+typeof(fm7)
 
-sleep = data("lme4", "sleepstudy");
-@time fm8 = fit(lmm(:(Reaction ~ Days + (Days | Subject)), sleep));
-println(fm8)
+sleep = dataset("lme4", "sleepstudy");
+@time fm8 = fit(lmm(Reaction ~ Days + (Days | Subject), sleep))
 typeof(fm8)
 
 

@@ -2,7 +2,7 @@
 function retrm(t::Expr,df::DataFrame)
     grp = t.args[3]; fac = pool(df[grp]); nm = string(grp); lhs = t.args[2]
     lhs == 1 && return (ones(nrow(df),1), fac, nm)
-    ff = Formula(:(~foo)); ff.rhs = lhs
+    ff = foo~bar; ff.rhs = lhs; ff.lhs = symbol(names(df)[1])
     ModelMatrix(ModelFrame(ff,df)).m, fac, nm
 end
 

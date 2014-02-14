@@ -2,6 +2,7 @@ using DataFrames, Distributions  # should be externally available
 module MixedModels
 
     using DataArrays, DataFrames, NLopt, NumericExtensions
+    using StatsBase: CoefTable
     using Base.SparseMatrix: symperm
     using Base.LinAlg.BLAS: gemm!, gemv!, syrk!, syrk, trmm!, trmm,
           trmv!, trsm!, trsv!
@@ -12,8 +13,8 @@ module MixedModels
 
     import Base: Ac_mul_B!, At_mul_B!, cor, cholfact, logdet, scale, show, size, solve, std
     import Distributions: fit
-    import Stats: coef, coeftable, confint, stderr, vcov
-    import GLM: deviance, df_residual, linpred
+    import StatsBase: coef, coeftable, confint, deviance, stderr, vcov
+    import GLM: df_residual, linpred
 
     export
         MixedModel,
