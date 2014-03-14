@@ -1,3 +1,3 @@
-julia 0.2-
-GLM 0.2.1-
-NLopt
+julia 0.3-
+GLM 0.3-
+NLopt 0.0.3-
