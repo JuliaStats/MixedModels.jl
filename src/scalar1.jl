@@ -86,7 +86,7 @@ end
 ## solve!(m) -> m : solve PLS problem for u given beta
 ## solve!(m,true) -> m : solve PLS problem for u and beta
 function solve!(m::LMMScalar1, ubeta=false)
-    thlinv = m.theta / m.L
+    thlinv = m.theta ./ m.L
     map!(Multiply(), m.u, m.Zty, thlinv) # initialize u to cu
     if ubeta
         LXZ = scale(m.XtZ, thlinv)

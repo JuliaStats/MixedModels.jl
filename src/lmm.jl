@@ -32,7 +32,7 @@ function lmm(f::Formula, fr::AbstractDataFrame, forcegeneral::Bool=false)
     colptr = convert(Vector{Ti},[1:np:(np*n + 1)])
     Zt = SparseMatrixCSC(offsets[end],n,colptr,rv,vec(hcat(Xs...)'))
     Ztc = CholmodSparse(Zt)
-    ZtZ = Ztc * Ztc'; L = cholfact(ZtZ,1.,true); perm = L.Perm + one(Ti)
+    ZtZ = Ztc * Ztc'; L = cholfact(ZtZ,1.,true); perm = L.Perm .+ one(Ti)
     !forcegeneral && all(pvec .== 1) &&
         return LMMScalarn{Ti}(copy(ZtZ),L,Diagonal(ones(q)),cholfact(eye(p)),
                               X,X.m'*y,Zt,Zt*X.m,ZtZ,Zt*y,zeros(p),fnms,
