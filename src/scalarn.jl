@@ -2,7 +2,7 @@ type LMMScalarn{Ti<:Union(Int32,Int64)} <: LinearMixedModel
     A::CholmodSparse{Float64,Ti}
     L::CholmodFactor{Float64,Ti}
     Lambda::Diagonal
-    RX::Cholesky{Float64}
+    RX::Base.LinAlg.Cholesky{Float64}
     X::ModelMatrix{Float64}             # fixed-effects model matrix
     Xty::Vector{Float64}
     Zt::SparseMatrixCSC{Float64,Ti}

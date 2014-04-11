@@ -4,7 +4,7 @@
 type LMMScalar1 <: LinearMixedModel
     theta::Float64
     L::Vector{Float64}
-    RX::Cholesky{Float64}
+    RX::Base.LinAlg.Cholesky{Float64}
     Xt::Matrix{Float64}
     XtX::Matrix{Float64}
     XtZ::Matrix{Float64}
@@ -93,7 +93,7 @@ function solve!(m::LMMScalar1, ubeta=false)
         potrf!('U', syrk!('U', 'N', -1., LXZ, 1., copy!(m.RX.UL, m.XtX)))
         copy!(m.beta, m.Xty)              # initialize beta to Xty
         gemv!('N',-1.,LXZ,m.u,1.,m.beta)  # cbeta = Xty - RZX'cu
-        solve!(m.RX, m.beta)              # solve for beta in place
+        A_ldiv_B!(m.RX, m.beta)           # solve for beta in place
         gemv!('T',-1.,LXZ,m.beta,1.,m.u)  # cu -= RZX'beta
     end
     map1!(Divide(), m.u, m.L)           # solve for u in place

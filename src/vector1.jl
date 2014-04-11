@@ -3,7 +3,7 @@
 type LMMVector1 <: LinearMixedModel
     ldL2::Float64
     L::Array{Float64,3}
-    RX::Cholesky{Float64}
+    RX::Base.LinAlg.Cholesky{Float64}
     RZX::Array{Float64,3}
     Xt::Matrix{Float64}
     XtX::Matrix{Float64}
@@ -138,7 +138,7 @@ function solve!(m::LMMVector1, ubeta=false)
         end
         _, info = potrf!('U',m.RX.UL) # Cholesky factor RX
         bool(info) && error("Downdated X'X is not positive definite")
-        solve!(m.RX,m.beta)           # beta = (RX'RX)\(downdated X'y)
+        A_ldiv_B!(m.RX,m.beta)           # beta = (RX'RX)\(downdated X'y)
         for l in 1:nl                 # downdate cu
             gemv!('N',-1.,view(m.RZX,1:k,1:p,l),m.beta,1.,view(m.u,1:k,l))
         end

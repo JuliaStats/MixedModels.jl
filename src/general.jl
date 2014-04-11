@@ -1,7 +1,7 @@
 type LMMGeneral{Ti<:Union(Int32,Int64)} <: LinearMixedModel
     L::CholmodFactor{Float64,Ti}
     LambdatZt::SparseMatrixCSC{Float64,Ti}
-    RX::Cholesky{Float64}
+    RX::Base.LinAlg.Cholesky{Float64}
     X::ModelMatrix{Float64}             # fixed-effects model matrix
     Xs::Vector{Matrix{Float64}}         # X_1,X_2,...,X_k
     XtX::Symmetric{Float64}

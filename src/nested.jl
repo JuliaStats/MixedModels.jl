@@ -1,7 +1,7 @@
 type LMMNested <: LinearMixedModel
     Zt::SparseMatrixCSC
     lambda::Vector
-    RX::Cholesky
+    RX::Base.LinAlg.Cholesky
     X::ModelMatrix                      # fixed-effects model matrix
     Xty::Vector
     ZtX::Matrix
