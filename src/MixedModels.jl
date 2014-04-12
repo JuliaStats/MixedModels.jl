@@ -1,4 +1,4 @@
-using DataFrames, Distributions  # should be externally available
+using DataFrames  # should be externally available
 module MixedModels
 
     using DataArrays, DataFrames, NLopt, NumericExtensions
@@ -8,13 +8,11 @@ module MixedModels
           trmv!, trsm!, trsv!
     using Base.LinAlg.CHOLMOD: CholmodDense, CholmodDense!, CholmodFactor,
           CholmodSparse, CholmodSparse!, chm_scale!, CHOLMOD_SYM,
-          CHOLMOD_L, CHOLMOD_Lt, CHOLMOD_P, CHOLMOD_Pt
+          CHOLMOD_L, CHOLMOD_Lt, CHOLMOD_P, CHOLMOD_Pt, solve
     using Base.LinAlg.LAPACK:  potrf!, potrs!
 
-    import Base: Ac_mul_B!, At_mul_B!, cor, cholfact, logdet, scale, show, size, solve, std
-    import Distributions: fit
-    import StatsBase: coef, coeftable, confint, deviance, stderr, vcov
-    import GLM: df_residual, linpred
+    import Base: Ac_mul_B!, At_mul_B!, cor, cholfact, logdet, scale, show, size, std
+    import StatsBase: coef, coeftable, confint, deviance, fit, stderr, vcov
 
     export
         MixedModel,
