@@ -28,48 +28,49 @@ special cases::
 
     julia> using MixedModels, RDatasets
 
-    julia> ds = data("lme4", "Dyestuff");
+    julia> ds = dataset("lme4","Dyestuff");
 
     julia> dump(ds)
     DataFrame  30 observations of 2 variables
-      Batch: PooledDataArray{ASCIIString,Uint8,1}(30) ["A","A","A","A"]
-      Yield: DataArray{Float64,1}(30) [1545.0,1440.0,1440.0,1520.0]
+      Batch: PooledDataArray{ASCIIString,Uint8,1}(30) ASCIIString["A","A","A","A"]
+      Yield: DataArray{Int32,1}(30) Int32[1545,1440,1440,1520]
 
-    julia> m = lmer(:(Yield ~ 1|Batch), ds);
+    julia> m = lmm(Yield ~ 1|Batch, ds);
 
     julia> typeof(m)
-    LMMGeneral{Int32}
+    LMMScalar1 (constructor with 2 methods)
 
     julia> fit(m, true);
-    f_1: 327.7670216246145, [1.0]
-    f_2: 331.0361932224437, [1.75]
-    f_3: 330.6458314144857, [0.25]
-    f_4: 327.69511270610866, [0.9761896354668361]
-    f_5: 327.56630914532184, [0.9285689064005083]
-    f_6: 327.3825965130752, [0.8333274482678525]
-    f_7: 327.3531545408492, [0.8071883308459398]
-    f_8: 327.34662982410276, [0.7996883308459398]
-    f_9: 327.34100192001785, [0.7921883308459399]
-    f_10: 327.33252535370985, [0.7771883308459397]
-    f_11: 327.32733056112147, [0.7471883308459397]
-    f_12: 327.3286190977697, [0.7396883308459398]
-    f_13: 327.32706023603697, [0.7527765100471926]
-    f_14: 327.3270681545395, [0.7535265100471926]
-    f_15: 327.3270598812218, [0.7525837539477753]
+    f_1: 327.76702, [1.0]
+    f_2: 331.03619, [1.75]
+    f_3: 330.64583, [0.25]
+    f_4: 327.69511, [0.97619]
+    f_5: 327.56631, [0.928569]
+    f_6: 327.3826, [0.833327]
+    f_7: 327.35315, [0.807188]
+    f_8: 327.34663, [0.799688]
+    f_9: 327.341, [0.792188]
+    f_10: 327.33253, [0.777188]
+    f_11: 327.32733, [0.747188]
+    f_12: 327.32862, [0.739688]
+    f_13: 327.32706, [0.752777]
+    f_14: 327.32707, [0.753527]
+    f_15: 327.32706, [0.752584]
     FTOL_REACHED
 
     julia> m
     Linear mixed model fit by maximum likelihood
-     logLik: -163.6635299406109, deviance: 327.3270598812218
+     logLik: -163.663530, deviance: 327.327060
 
-      Variance components:
-	Std. deviation scale: [37.26047449632836]
-	Variance scale: [1388.342959691536]
-      Number of obs: 30; levels of grouping factors: [6]
+     Variance components:
+		    Variance    Std.Dev.
+     Batch        1388.342960   37.260474
+     Residual     2451.247052   49.510070
+     Number of obs: 30; levels of grouping factors: 6
 
       Fixed-effects parameters:
-	    Estimate Std.Error z value
-    [1,]      1527.5   17.6946 86.3258
+	 Estimate Std.Error z value
+    [1]    1527.5   17.6946 86.3258
 
 ------------
 Constructors

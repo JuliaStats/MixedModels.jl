@@ -1,7 +1,7 @@
 using DataFrames  # should be externally available
 module MixedModels
 
-    using DataArrays, DataFrames, NLopt, NumericExtensions
+    using DataArrays, DataFrames, NLopt, NumericExtensions, NumericFuns
     using StatsBase: CoefTable
     using Base.SparseMatrix: symperm
     using Base.LinAlg.BLAS: gemm!, gemv!, syrk!, syrk, trmm!, trmm,

@@ -1,3 +1,5 @@
 julia 0.3-
 NLopt 0.0.3-
 DataFrames 0.5-
+NumericExtensions 0.6-
+NumericFuns 0.2-
