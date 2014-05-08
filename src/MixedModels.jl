@@ -15,13 +15,14 @@ module MixedModels
     import StatsBase: coef, coeftable, confint, deviance, fit, stderr, vcov
 
     export
-        MixedModel,
         LinearMixedModel,
         LMMGeneral,
         LMMNested,
         LMMScalar1,
         LMMScalarn,
         LMMVector1,
+        MixedModel,
+        PaStiX,
 
         fixef,          # extract the fixed-effects parameter estimates
         grad,           # gradient of objective
@@ -29,6 +30,7 @@ module MixedModels
         isfit,          # predictate to check if a model has been fit
         isnested,       # check if vector f is nested in vector g
         lmm,            # fit a linear mixed-effects model (LMM)
+        lmmp,
         lower,          # vector of lower bounds on parameters in mixed-effects models
         objective,      # the objective function in fitting a model
         pwrss,          # penalized, weighted residual sum-of-squares
@@ -52,6 +54,7 @@ module MixedModels
     include("scalarn.jl") # models with a single, scalar random-effects term
     include("vector1.jl") # models with a single, vector-valued random-effects term
     include("nested.jl")
+#    include("lmmMUMPS.jl")              # fit models using MUMPS solver
     include("lmm.jl")    # fit and analyze linear mixed-effects models
 
 end #module
