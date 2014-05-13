@@ -23,22 +23,19 @@ function LMMScalarn(lmb::LMMBase)
 end
 
 ##  cholfact(x, RX=true) -> the Cholesky factor of the downdated X'X or LambdatZt
-cholfact(m::LMMScalarn,RX=true) = RX ? m.RX : m.L
+Base.cholfact(m::LMMScalarn,RX=true) = RX ? m.RX : m.L
 
 ## deviance!(m) -> Float64 : fit the model by maximum likelihood and return the deviance
 deviance!(m::LMMScalarn) = objective(fit(reml!(m,false)))
 
-##  grplevels(m) -> vector of number of levels in random-effect terms
-grplevels(m::LMMScalarn) = [length(u) for u in m.u]
-
 ## linpred!(m) -> update mu
 function linpred!(m::LMMScalarn)
-    gemv!('N',1.,m.X.m,m.beta,1.,At_mul_B!(1.,m.Zt,m.Lambda*vcat(m.u...),0.,m.mu))
+    BLAS.gemv!('N',1.,m.X.m,m.beta,1.,At_mul_B!(1.,m.Zt,m.Lambda*vcat(m.u...),0.,m.mu))
     m
 end
 
 ## Logarithm of the determinant of the generator matrix for the Cholesky factor, L or RX
-logdet(m::LMMScalarn,RX=true) = logdet(cholfact(m,RX))
+Base.logdet(m::LMMScalarn,RX=true) = logdet(cholfact(m,RX))
 
 ## lower(m) -> lower bounds on elements of theta
 lower(m::LMMScalarn) = zeros(length(m.fnms))
@@ -52,7 +49,7 @@ end
     
 ## scale(m) -> estimate, s, of the scale parameter
 ## scale(m,true) -> estimate, s^2, of the squared scale parameter
-function scale(m::LMMScalarn, sqr=false)
+function Base.scale(m::LMMScalarn, sqr=false)
     n,p = size(m.X); ssqr = pwrss(m)/float64(n - (m.REML ? p : 0)); 
     sqr ? ssqr : sqrt(ssqr)
 end
@@ -68,11 +65,11 @@ function solve!(m::LMMScalarn, ubeta=false)
     if ubeta
         cu = solve(m.L, permute!(m.Lambda * m.Zty, m.perm), CHOLMOD_L)
         RZX = solve(m.L, (m.Lambda * m.ZtX)[m.perm,:], CHOLMOD_L)
-        cholfact!(syrk!('U','T',-1.,RZX,1.,syrk!('U','T',1.,m.X.m,0.,m.RX.UL)))
-        A_ldiv_B!(m.RX,gemv!('T',-1.,RZX,cu,1.,copy!(m.beta,m.Xty)))
-        u = ipermute!(solve(m.L,gemv!('N',-1.,RZX,m.beta,1.,cu),CHOLMOD_Lt),m.perm)
+        cholfact!(BLAS.syrk!('U','T',-1.,RZX,1.,syrk!('U','T',1.,m.X.m,0.,m.RX.UL)))
+        A_ldiv_B!(m.RX,BLAS.gemv!('T',-1.,RZX,cu,1.,copy!(m.beta,m.Xty)))
+        u = ipermute!(solve(m.L,BLAS.gemv!('N',-1.,RZX,m.beta,1.,cu),CHOLMOD_Lt),m.perm)
     else
-        u = m.L\ (m.Lambda * (m.Zt*gemv!('N',-1.0,m.X.m,m.beta,1.0,copy(m.y))))
+        u = m.L\ (m.Lambda * (m.Zt*BLAS.gemv!('N',-1.0,m.X.m,m.beta,1.0,copy(m.y))))
     end
     pos = 0
     for i in 1:length(m.u)
@@ -86,7 +83,7 @@ end
 sqrlenu(m::LMMScalarn) = sum([sumsq(u) for u in m.u])
 
 ## std(m) -> Vector{Vector{Float64}} estimated standard deviations of variance components
-std(m::LMMScalarn) = scale(m)*[m.lambda,1.]
+Base.std(m::LMMScalarn) = scale(m)*[m.lambda,1.]
 
 ## theta(m) -> vector of variance-component parameters
 theta(m::LMMScalarn) = m.lambda

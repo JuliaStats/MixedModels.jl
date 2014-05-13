@@ -34,13 +34,13 @@ function LMMVector1(lmb::LMMBase)
                eye(k), zeros(k,nl), false, false)
 end
 
-cholfact(m::LMMVector1,RX=true) = RX ? m.RX : error("not yet written")
+Base.cholfact(m::LMMVector1,RX=true) = RX ? m.RX : error("not yet written")
 
 ## cor(m) -> correlation matrices of variance components
-cor(m::LMMVector1) = [cc(m.lambda)]
+Base.cor(m::LMMVector1) = [cc(m.lambda)]
 
 ## fit(m) -> m Optimize the objective using MMA from the NLopt package
-function fit(m::LMMVector1, verbose=false)
+function StatsBase.fit(m::LMMVector1, verbose=false)
     if !isfit(m)
         th = theta(m); k = length(th)
         opt = Opt(:LD_MMA, k)
@@ -78,18 +78,14 @@ end
 
 function grad(m::LMMVector1)        # called after solve!
     n,p,q = size(m); k,nl = size(m.u); L = m.L; ZtZ = m.ZtZ; lambda = m.lambda
-    mu = m.mu; rv = m.Ztrv; nz = m.Ztnz; res = zeros(k,k)
+    mu = m.lmb.mu; rv = m.Ztrv; nz = m.Ztnz; res = zeros(k,k)
     for i in 1:nl
-        res += Base.LinAlg.LAPACK.potrs!('L',view(L,:,:,i), lambda'*view(ZtZ,:,:,i))
+        res += Base.LinAlg.LAPACK.potrs!('L',sub(L,:,:,i), lambda'*sub(ZtZ,:,:,i))
     end
     Ztr = copy(m.Zty)          # create Z'(resid) starting with Zty
     for i in 1:n Ztr[:,rv[i]] -= mu[i] * nz[:,i] end
     ltri(BLAS.syr2k!('L','N',-1./scale(m,true),Ztr,m.u,1.,res+res'))
 end
-
-grplevels(m::LMMVector1) = [size(m.u,2)]
-
-isscalar(m::LMMVector1) = size(m.Ztnz, 1) <= 1
 
 ## linpred!(m) -> m   -- update mu
 function linpred!(m::LMMVector1)
@@ -98,12 +94,12 @@ function linpred!(m::LMMVector1)
     bb = BLAS.trmm('L','L','N','N',1.,m.lambda,m.u) # b = Lambda * u
     k = size(bb,1)
     for i in 1:length(mu)
-        mu[i] += dot(view(bb,1:k,int(m.Ztrv[i])), sub(m.Ztnz,1:k,i)) end
+        mu[i] += dot(sub(bb,1:k,int(m.Ztrv[i])), sub(m.Ztnz,1:k,i)) end
     m
 end
 
 ## Logarithm of the determinant of the generator matrix for the Cholesky factor, RX or L
-logdet(m::LMMVector1,RX=true) = RX ? logdet(m.RX) : m.ldL2
+Base.logdet(m::LMMVector1,RX=true) = RX ? logdet(m.RX) : m.ldL2
     
 lower(m::LMMVector1) = lower_bd_ltri(size(m.Ztnz,1))
 
@@ -137,11 +133,11 @@ function solve!(m::LMMVector1, ubeta=false)
         bool(info) && error("Downdated X'X is not positive definite")
         A_ldiv_B!(m.RX,m.beta)           # beta = (RX'RX)\(downdated X'y)
         for l in 1:nl                 # downdate cu
-            gemv!('N',-1.,view(m.RZX,1:k,1:p,l),m.beta,1.,view(m.u,1:k,l))
+            BLAS.gemv!('N',-1.,sub(m.RZX,1:k,1:p,l),m.beta,1.,sub(m.u,1:k,l))
         end
     end
     for l in 1:nl                     # solve for m.u
-        trsv!('L','T','N',view(m.L,1:k,1:k,l), view(m.u,1:k,l))
+        BLAS.trsv!('L','T','N',sub(m.L,1:k,1:k,l), sub(m.u,1:k,l))
     end
     linpred!(m)
 end        
@@ -150,7 +146,7 @@ end
 sqrlenu(m::LMMVector1) = sumsq(m.u)
 
 ## std(m) -> Vector{Vector{Float64}} estimated standard deviations of variance components
-std(m::LMMVector1) = scale(m)*push!(copy(vec(vnorm(m.lambda,2,1))),1.)
+Base.std(m::LMMVector1) = scale(m)*push!(copy(vec(vnorm(m.lambda,2,1))),1.)
 
 theta(m::LMMVector1) = ltri(m.lambda)
 

@@ -1,17 +1,14 @@
 using DataFrames  # should be externally available
 module MixedModels
 
-    using DataArrays, DataFrames, NLopt, NumericExtensions, NumericFuns
+    using DataArrays, DataFrames, NLopt, NumericFuns
+    using NumericExtensions: map1!, sumsq, sumsqdiff, vnorm
     using StatsBase: CoefTable
     using Base.SparseMatrix: symperm
-    using Base.LinAlg.BLAS: gemm!, gemv!, syrk!, syrk, trmm!, trmm,
-          trmv!, trsm!, trsv!
     using Base.LinAlg.CHOLMOD: CholmodDense, CholmodDense!, CholmodFactor,
           CholmodSparse, CholmodSparse!, chm_scale!, CHOLMOD_SYM,
           CHOLMOD_L, CHOLMOD_Lt, CHOLMOD_P, CHOLMOD_Pt, solve
-
-    import Base: Ac_mul_B!, At_mul_B!, cor, cholfact, logdet, scale, show, size, std
-    import StatsBase: coef, coeftable, confint, deviance, fit, stderr, vcov
+    import Base: size
 
     export
         LinearMixedModel,
@@ -22,7 +19,6 @@ module MixedModels
         LMMScalarn,
         LMMVector1,
         MixedModel,
-#        PaStiX,
 
         fixef,          # extract the fixed-effects parameter estimates
         grad,           # gradient of objective

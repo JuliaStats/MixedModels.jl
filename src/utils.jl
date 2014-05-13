@@ -1,6 +1,6 @@
 ## Utilities 
 
-function Ac_mul_B!(α::Number, A::SparseMatrixCSC, B::AbstractMatrix, β::Number, C::AbstractMatrix)
+function Base.Ac_mul_B!(α::Number, A::SparseMatrixCSC, B::AbstractMatrix, β::Number, C::AbstractMatrix)
     mB, nB = size(B); A.m == mB || throw(DimensionMismatch(""))
     for i = 1:length(C); C[i] *= β; end
     for multivec_col = 1:nB
@@ -11,7 +11,7 @@ function Ac_mul_B!(α::Number, A::SparseMatrixCSC, B::AbstractMatrix, β::Number
     C
 end
 
-function At_mul_B!(α::Number, A::SparseMatrixCSC, B::AbstractMatrix, β::Number, C::AbstractMatrix)
+function Base.At_mul_B!(α::Number, A::SparseMatrixCSC, B::AbstractMatrix, β::Number, C::AbstractMatrix)
     mB, nB = size(B); A.m == mB || throw(DimensionMismatch(""))
     for i = 1:length(C); C[i] *= β; end
     for multivec_col = 1:nB

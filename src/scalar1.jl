@@ -33,11 +33,7 @@ function LMMScalar1(lmb::LMMBase)
 end
 
 ##  cholfact(x, RX=true) -> the Cholesky factor of the downdated X'X or LambdatZt
-cholfact(m::LMMScalar1,RX=true) = RX ? m.RX : Diagonal(m.L)
-
-grplevels(m::LMMScalar1) = [length(m.u)]
-
-isscalar(m::LMMScalar1) = true
+Base.cholfact(m::LMMScalar1,RX=true) = RX ? m.RX : Diagonal(m.L)
 
 ## linpred!(m) -> m   -- update mu
 function linpred!(m::LMMScalar1)
@@ -45,12 +41,12 @@ function linpred!(m::LMMScalar1)
     for i in 1:length(mu)               # mu = Z*Lambda*u
         mu[i] = m.theta * m.u[m.Ztrv[i]] * m.Ztnz[i]
     end
-    gemv!('T',1.,m.Xt,m.beta,1.,mu)     # mu += X'beta
+    BLAS.gemv!('T',1.,m.Xt,m.beta,1.,mu)     # mu += X'beta
     m
 end
 
 ## Logarithm of the determinant of the generator matrix for the Cholesky factor, RX or L
-logdet(m::LMMScalar1,RX=true) = RX ? logdet(m.RX) : 2.sum(LogFun(),m.L)
+Base.logdet(m::LMMScalar1,RX=true) = RX ? logdet(m.RX) : 2.sum(LogFun(),m.L)
 
 ## lower(m) -> lower bounds on elements of theta
 lower(m::LMMScalar1) = zeros(1)
@@ -86,15 +82,15 @@ function solve!(m::LMMScalar1, ubeta=false)
     map!(Multiply(), m.u, m.Zty, thlinv) # initialize u to cu
     if ubeta
         LXZ = scale(m.XtZ, thlinv)
-        Base.LinAlg.LAPACK.potrf!('U', syrk!('U', 'N', -1., LXZ, 1., copy!(m.RX.UL, m.XtX)))
-        copy!(m.beta, m.Xty)              # initialize beta to Xty
-        gemv!('N',-1.,LXZ,m.u,1.,m.beta)  # cbeta = Xty - RZX'cu
-        A_ldiv_B!(m.RX, m.beta)           # solve for beta in place
-        gemv!('T',-1.,LXZ,m.beta,1.,m.u)  # cu -= RZX'beta
+        LAPACK.potrf!('U', BLAS.syrk!('U', 'N', -1., LXZ, 1., copy!(m.RX.UL, m.XtX)))
+        copy!(m.beta, m.Xty)                  # initialize beta to Xty
+        BLAS.gemv!('N',-1.,LXZ,m.u,1.,m.beta) # cbeta = Xty - RZX'cu
+        A_ldiv_B!(m.RX, m.beta)               # solve for beta in place
+        BLAS.gemv!('T',-1.,LXZ,m.beta,1.,m.u) # cu -= RZX'beta
     end
-    map1!(Divide(), m.u, m.L)           # solve for u in place
+    map1!(NumericFuns.Divide(), m.u, m.L) # solve for u in place
     linpred!(m)                         # update mu
 end
 
 ## std(m) -> Vector{Vector{Float64}} estimated standard deviations of variance components
-std(m::LMMScalar1) = scale(m)*[m.theta, 1.]
+Base.std(m::LMMScalar1) = scale(m)*[m.theta, 1.]

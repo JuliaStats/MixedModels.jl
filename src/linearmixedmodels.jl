@@ -1,8 +1,9 @@
 ## Base implementations of methods for the LinearMixedModel abstract type
 
-## Convert a random-effects term t to a model matrix, a factor and a name
+## Convert the left-hand side of a random-effects term to a model matrix.
+## Special handling for a simple, scalar r.e. term, e.g. (1|g).
 lhs2mat(t::Expr,df::DataFrame) = t.args[2] == 1 ? ones(nrow(df),1) :
-        ModelMatrix(ModelFrame(Formula(symbol(names(df)[1]),t.args[2]),df)).m
+        ModelMatrix(ModelFrame(Formula(nothing,t.args[2]),df)).m
 
 ## Information common to all LinearMixedModel types
 type LMMBase
@@ -28,17 +29,21 @@ function LMMBase(f::Formula, fr::AbstractDataFrame)
             {lhs2mat(t,mf.df) for t in retrms})
 end
 
-levs(lmb::LMMBase) = [length(f.pool) for f in lmb.facs]
+grplevels(lmb::LMMBase) = [length(f.pool) for f in lmb.facs]
+grplevels(m::LinearMixedModel) = grplevels(m.lmb)
 
 pvec(lmb::LMMBase) = [size(x,2) for x in lmb.Xs]
 
-function Base.size(lmb::LMMBase)
+##  size(m) -> n, p, q, t (lengths of y, beta, u and # of re terms)
+function size(lmb::LMMBase)
     n,p = size(lmb.X.m)
-    n,p,sum(levs(lmb) .* pvec(lmb)),length(lmb.fnms)
+    n,p,sum(grplevels(lmb) .* pvec(lmb)),length(lmb.fnms)
 end
+size(m::LinearMixedModel) = size(m.lmb)
 
 ## isscalar(m) -> Bool : Are all the random-effects terms scalar?
 isscalar(lmb::LMMBase) = all(pvec(lmb) .== 1)
+isscalar(m::LinearMixedModel) = isscalar(m.lmb)
 
 ## Return a block in the Zt matrix from one term.
 function Ztblk(m::Matrix,v)
@@ -58,7 +63,7 @@ Zt(lmb::LMMBase) = vcat(map(Ztblk,lmb.Xs,lmb.facs)...)
 ZXt(lmb::LMMBase) = (zt = Zt(lmb); vcat(zt,convert(typeof(zt),lmb.X.m')))
 
 ## fit(m) -> m Optimize the objective using BOBYQA from the NLopt package
-function fit(m::LinearMixedModel, verbose=false)
+function StatsBase.fit(m::LinearMixedModel, verbose=false)
     if !isfit(m)
         th = theta(m); k = length(th)
         opt = NLopt.Opt(:LN_BOBYQA, k)
@@ -93,17 +98,17 @@ function fit(m::LinearMixedModel, verbose=false)
 end
 
 ##  coef(m) -> current value of beta (can be a reference)
-coef(m::LinearMixedModel) = m.beta
+StatsBase.coef(m::LinearMixedModel) = m.beta
 
 ## coeftable(m) -> DataFrame : the coefficients table
 ## FIXME Create a type with its own show method for this type of table
-function coeftable(m::LinearMixedModel)
+function StatsBase.coeftable(m::LinearMixedModel)
     fe = fixef(m); se = stderr(m)
     CoefTable(hcat(fe,se,fe./se), ["Estimate","Std.Error","z value"], ASCIIString[])
 end
 
 ## deviance(m) -> Float64
-deviance(m::LinearMixedModel) = m.fit && !m.REML ? objective(m) : NaN
+StatsBase.deviance(m::LinearMixedModel) = m.fit && !m.REML ? objective(m) : NaN
         
 ## fixef(m) -> current value of beta (can be a reference)
 fixef(m::LinearMixedModel) = m.beta
@@ -139,7 +144,7 @@ npar(m::LinearMixedModel) = length(theta(m)) + length(coef(m)) + 1
 
 ## objective(m) -> deviance or REML criterion according to m.REML
 function objective(m::LinearMixedModel)
-     n,p,q,k = size(m); fn = float64(n - (m.REML ? p : 0))
+    n,p,q,k = size(m); fn = float64(n - (m.REML ? p : 0))
     logdet(m,false) + fn*(1.+log(2.pi*pwrss(m)/fn)) + (m.REML ? logdet(m) : 0.)
 end
 
@@ -152,9 +157,10 @@ function reml!(m::LinearMixedModel,v=true)
     m.REML = v; m.fit = false
     m
 end
-    
+
 ## rss(m) -> residual sum of squares
-rss(m::LinearMixedModel) = sumsqdiff(m.lmb.mu, m.lmb.y)
+rss(lmb::LMMBase) = sumsqdiff(lmb.mu,lmb.y)
+rss(m::LinearMixedModel) = rss(m.lmb)
 
 ## scale(m) -> estimate, s, of the scale parameter
 ## scale(m,true) -> estimate, s^2, of the squared scale parameter
@@ -192,10 +198,6 @@ function Base.show(io::IO, m::LinearMixedModel)
     @printf(io,"\n  Fixed-effects parameters:\n")
     show(io,coeftable(m))
 end
-
-##  size(m) -> n, p, q, t (lengths of y, beta, u and # of re terms)
-Base.size(m::LinearMixedModel) = (length(m.lmb.y), length(m.beta),
-                             sum([length(u) for u in m.u]), length(m.u))
 
 ## stderr(m) -> standard errors of fixed-effects parameters
 StatsBase.stderr(m::LinearMixedModel) = sqrt(diag(vcov(m)))

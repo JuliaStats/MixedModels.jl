@@ -37,23 +37,17 @@ LMMGeneral(lmb::LMMBase) = LMMGeneral(lmb)
 ## end
 
 ##  cholfact(x, RX=true) -> the Cholesky factor of the downdated X'X or LambdatZt
-cholfact(m::LMMGeneral,RX=true) = RX ? m.RX : m.L
+Base.cholfact(m::LMMGeneral,RX=true) = RX ? m.RX : m.L
 
 ## cor(m) -> correlation matrices of variance components
-cor(m::LMMGeneral) = [cc(l) for l in m.lambda]
+Base.cor(m::LMMGeneral) = [cc(l) for l in m.lambda]
 
 ## deviance!(m) -> Float64 : fit the model by maximum likelihood and return the deviance
 deviance!(m::LMMGeneral) = objective(fit(reml!(m,false)))
 
-##  grplevels(m) -> vector of number of levels in random-effect terms
-grplevels(m::LMMGeneral) = [size(u,2) for u in m.u]
-
-## isscalar(m) -> Bool : Are all the random-effects terms scalar?
-isscalar(m::LMMGeneral) = all(pvec .== 1)
-
 ## linpred!(m) -> update mu
 function linpred!(m::LMMGeneral)
-    gemv!('N',1.,m.X.m,m.beta,0.,m.mu)  # initialize mu to X*beta
+    BLAS.gemv!('N',1.,m.X.m,m.beta,0.,m.mu)  # initialize mu to X*beta
     Xs = m.Xs; u = m.u; lm = m.lambda; inds = m.inds; mu = m.mu
     for i in 1:length(Xs)               # iterate over r.e. terms
         X = Xs[i]
@@ -61,14 +55,14 @@ function linpred!(m::LMMGeneral)
         if size(X,2) == 1
             fma!(mu, (lm[i][1,1]*u[i])[:,ind], X[:,1])
         else
-            add!(mu,sum(trmm('L','L','N','N',1.0,lm[i],u[i])[:,ind]' .* X, 2))
+            add!(mu,sum(BLAS.trmm('L','L','N','N',1.0,lm[i],u[i])[:,ind]' .* X, 2))
         end
     end
     m
 end
 
 ## Logarithm of the determinant of the generator matrix for the Cholesky factor, L or RX
-logdet(m::LMMGeneral,RX=true) = logdet(cholfact(m,RX))
+Base.logdet(m::LMMGeneral,RX=true) = logdet(cholfact(m,RX))
 
 ## lower(m) -> lower bounds on elements of theta
 lower(m::LMMGeneral) = vcat([lower_bd_ltri(p) for p in m.pvec]...)
@@ -89,20 +83,20 @@ function solve!(m::LMMGeneral, ubeta=false)
         cu = solve(m.L,permute!(m.LambdatZt * m.y,m.perm),CHOLMOD_L)
         RZX = m.LambdatZt * m.X.m
         for j in 1:size(RZX,2)
-            permute!(view(RZX,:,j),m.perm)
+            permute!(sub(RZX,:,j),m.perm) # needs view instead of sub?
         end
         RZX = solve(m.L, RZX, CHOLMOD_L)
-        _,info = Base.LinAlg.LAPACK.potrf!('U',syrk!('U','T',-1.,RZX,1.,copy!(m.RX.UL,m.XtX.S)))
+        _,info = LAPACK.potrf!('U',BLAS.syrk!('U','T',-1.,RZX,1.,copy!(m.RX.UL,m.XtX.S)))
         info == 0 || error("downdated X'X is singular")
-        Base.LinAlg.LAPACK.potrs!('U',m.RX.UL,gemv!('T',-1.,RZX,cu,1.,copy!(m.beta,m.Xty)))
-        u = ipermute!(solve(m.L,gemv!('N',-1.,RZX,m.beta,1.,cu),CHOLMOD_Lt),m.perm)
+        LAPACK.potrs!('U',m.RX.UL,BLAS.gemv!('T',-1.,RZX,cu,1.,copy!(m.beta,m.Xty)))
+        u = ipermute!(solve(m.L,BLAS.gemv!('N',-1.,RZX,m.beta,1.,cu),CHOLMOD_Lt),m.perm)
     else
-        u = vec(solve(m.L,m.LambdatZt * gemv!('N',-1.0,m.X.m,m.beta,1.0,copy(m.y))).mat)
+        u = vec(solve(m.L,m.LambdatZt * BLAS.gemv!('N',-1.0,m.X.m,m.beta,1.0,copy(m.y))).mat)
     end
     pos = 0
     for i in 1:length(m.u)
         ll = length(m.u[i])
-        m.u[i] = reshape(view(u,pos+(1:ll)), size(m.u[i]))
+        m.u[i] = reshape(sub(u,pos+(1:ll)), size(m.u[i]))
         pos += ll
     end
     linpred!(m)
@@ -112,7 +106,7 @@ end
 sqrlenu(m::LMMGeneral) = sum([mapreduce(Abs2Fun(),Add(),u) for u in m.u])
 
 ## std(m) -> Vector{Vector{Float64}} estimated standard deviations of variance components
-std(m::LMMGeneral) = scale(m)*push!(Vector{Float64}[vec(vnorm(l,2,1)) for l in m.lambda],[1.])
+Base.std(m::LMMGeneral) = scale(m)*push!(Vector{Float64}[vec(vnorm(l,2,1)) for l in m.lambda],[1.])
 
 ## theta(m) -> vector of variance-component parameters
 theta(m::LMMGeneral) = vcat([ltri(M) for M in m.lambda]...)
@@ -128,7 +122,7 @@ function theta!(m::LMMGeneral, th::Vector{Float64})
             T[i,j] = th[tpos]; tpos += 1
             i == j && T[i,j] < 0. && error("Negative diagonal element in T")
         end
-        gemm!('T','T',1.,T,Xs[kk],0.,view(nzmat,roff+(1:p),1:n))
+        BLAS.gemm!('T','T',1.,T,Xs[kk],0.,sub(nzmat,roff+(1:p),1:n))
         roff += p
     end
     cholfact!(m.L,m.LambdatZt,1.)
