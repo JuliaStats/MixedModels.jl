@@ -9,20 +9,20 @@ module MixedModels
     using Base.LinAlg.CHOLMOD: CholmodDense, CholmodDense!, CholmodFactor,
           CholmodSparse, CholmodSparse!, chm_scale!, CHOLMOD_SYM,
           CHOLMOD_L, CHOLMOD_Lt, CHOLMOD_P, CHOLMOD_Pt, solve
-    using Base.LinAlg.LAPACK:  potrf!, potrs!
 
     import Base: Ac_mul_B!, At_mul_B!, cor, cholfact, logdet, scale, show, size, std
     import StatsBase: coef, coeftable, confint, deviance, fit, stderr, vcov
 
     export
         LinearMixedModel,
+        LMMBase,
         LMMGeneral,
         LMMNested,
         LMMScalar1,
         LMMScalarn,
         LMMVector1,
         MixedModel,
-        PaStiX,
+#        PaStiX,
 
         fixef,          # extract the fixed-effects parameter estimates
         grad,           # gradient of objective

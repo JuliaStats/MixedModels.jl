@@ -1,24 +1,25 @@
+using MUMPS1
+
 type LMMScalarn{Ti<:Union(Int32,Int64)} <: LinearMixedModel
-    A::CholmodSparse{Float64,Ti}
-    L::CholmodFactor{Float64,Ti}
-    Lambda::Diagonal
-    RX::Base.LinAlg.Cholesky{Float64}
-    X::ModelMatrix{Float64}             # fixed-effects model matrix
-    Xty::Vector{Float64}
-    Zt::SparseMatrixCSC{Float64,Ti}
-    ZtX::Matrix{Float64}
-    ZtZ::CholmodSparse{Float64,Ti}
-    Zty::Vector{Float64}
-    beta::Vector{Float64}
-    fnms::Vector
-    lambda::Vector{Float64}
-    mu::Vector{Float64}
+    lmb::LMMBase
+    ZXtZX::SparseMatrixCSC{Float64,Ti}
+    theta::Vector{Float64}
+    Lambda::Vector{Float64}             # diagonal of full p+q scaling matrix
+    ZXty::Vector{Float64}
     offsets::Vector
-    perm::Vector                        # fill-reducing permutation
-    u::Vector{Vector{Float64}}
-    y::Vector
+    L::DMumps
+    ubeta::Vector{Float64}
     REML::Bool
     fit::Bool
+end
+
+function LMMScalarn(lmb::LMMBase)
+    n,p,q,k = size(lmb)
+    zxt = ZXt(lmb)
+    ZXtZX = zxt * zxt'
+    ZXty = zxt * lmb.y
+    LMMScalarn(lmb,ZXtZX,ones(k),ZXty,cumsum(vcat(0,levs(lmb))),
+               DMumps(ZXtZX+speye(p+q)),zeros(p+q),true,false)
 end
 
 ##  cholfact(x, RX=true) -> the Cholesky factor of the downdated X'X or LambdatZt
@@ -29,9 +30,6 @@ deviance!(m::LMMScalarn) = objective(fit(reml!(m,false)))
 
 ##  grplevels(m) -> vector of number of levels in random-effect terms
 grplevels(m::LMMScalarn) = [length(u) for u in m.u]
-
-## isscalar(m) -> Bool : Are all the random-effects terms scalar?
-isscalar(m::LMMScalarn) = true
 
 ## linpred!(m) -> update mu
 function linpred!(m::LMMScalarn)

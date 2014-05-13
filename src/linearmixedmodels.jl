@@ -1,13 +1,70 @@
 ## Base implementations of methods for the LinearMixedModel abstract type
 
+## Convert a random-effects term t to a model matrix, a factor and a name
+lhs2mat(t::Expr,df::DataFrame) = t.args[2] == 1 ? ones(nrow(df),1) :
+        ModelMatrix(ModelFrame(Formula(symbol(names(df)[1]),t.args[2]),df)).m
+
+## Information common to all LinearMixedModel types
+type LMMBase
+    f::Formula
+    mf::ModelFrame
+    X::ModelMatrix{Float64}
+    y::Vector{Float64}
+    res::Vector{Float64}
+    mu::Vector{Float64}
+    fnms::Vector                        # names of grouping factors
+    facs::Vector
+    Xs::Vector
+end
+
+function LMMBase(f::Formula, fr::AbstractDataFrame)
+    mf = ModelFrame(f,fr)
+    y = convert(Vector{Float64},model_response(mf))
+    retrms = filter(x->Meta.isexpr(x,:call)&& x.args[1] == :|, mf.terms.terms)
+    length(retrms) > 0 || error("Formula $f has no random-effects terms")
+    LMMBase(f, mf, ModelMatrix(mf), y, similar(y), similar(y),
+            {string(t.args[3]) for t in retrms},
+            {pool(getindex(mf.df,t.args[3])) for t in retrms},
+            {lhs2mat(t,mf.df) for t in retrms})
+end
+
+levs(lmb::LMMBase) = [length(f.pool) for f in lmb.facs]
+
+pvec(lmb::LMMBase) = [size(x,2) for x in lmb.Xs]
+
+function Base.size(lmb::LMMBase)
+    n,p = size(lmb.X.m)
+    n,p,sum(levs(lmb) .* pvec(lmb)),length(lmb.fnms)
+end
+
+## isscalar(m) -> Bool : Are all the random-effects terms scalar?
+isscalar(lmb::LMMBase) = all(pvec(lmb) .== 1)
+
+## Return a block in the Zt matrix from one term.
+function Ztblk(m::Matrix,v)
+    nr,nc = size(m)
+    nblk = maximum(v)
+    NR = nc*nblk                        # number of rows in result
+    cf = length(m) < typemax(Int32) ? int32 : int64 # conversion function
+    SparseMatrixCSC(NR,nr,
+                    cf(cumsum(vcat(1,fill(nc,(nr,))))), # colptr
+                    cf(vec(reshape([1:NR],(nc,int(nblk)))[:,v])), # rowval
+                    vec(m'))            # nzval
+end
+Ztblk(m::Matrix,v::PooledDataVector) = Ztblk(m,v.refs)
+
+Zt(lmb::LMMBase) = vcat(map(Ztblk,lmb.Xs,lmb.facs)...)
+
+ZXt(lmb::LMMBase) = (zt = Zt(lmb); vcat(zt,convert(typeof(zt),lmb.X.m')))
+
 ## fit(m) -> m Optimize the objective using BOBYQA from the NLopt package
 function fit(m::LinearMixedModel, verbose=false)
     if !isfit(m)
         th = theta(m); k = length(th)
-        opt = Opt(:LN_BOBYQA, k)
-        ftol_abs!(opt, 1e-6)    # criterion on deviance changes
-        xtol_abs!(opt, 1e-6)    # criterion on all parameter value changes
-        lower_bounds!(opt, lower(m))
+        opt = NLopt.Opt(:LN_BOBYQA, k)
+        NLopt.ftol_abs!(opt, 1e-6)    # criterion on deviance changes
+        NLopt.xtol_abs!(opt, 1e-6)    # criterion on all parameter value changes
+        NLopt.lower_bounds!(opt, lower(m))
         function obj(x::Vector{Float64}, g::Vector{Float64})
             length(g) == 0 || error("gradient evaluations are not provided")
             objective(solve!(theta!(m,x),true))
@@ -24,11 +81,11 @@ function fit(m::LinearMixedModel, verbose=false)
                 println("]")
                 val
             end
-            min_objective!(opt, vobj)
+            NLopt.min_objective!(opt, vobj)
         else
-            min_objective!(opt, obj)
+            NLopt.min_objective!(opt, obj)
         end
-        fmin, xmin, ret = optimize(opt, th)
+        fmin, xmin, ret = NLopt.optimize(opt, th)
         if verbose println(ret) end
         m.fit = true
     end
@@ -52,7 +109,7 @@ deviance(m::LinearMixedModel) = m.fit && !m.REML ? objective(m) : NaN
 fixef(m::LinearMixedModel) = m.beta
 
 ## fnames(m) -> names of grouping factors
-fnames(m::LinearMixedModel) = m.fnms
+fnames(m::LinearMixedModel) = m.lmb.fnms
 
 ##  isfit(m) -> Bool - Has the model been fit?
 isfit(m::LinearMixedModel) = m.fit
@@ -97,16 +154,16 @@ function reml!(m::LinearMixedModel,v=true)
 end
     
 ## rss(m) -> residual sum of squares
-rss(m::LinearMixedModel) = sumsqdiff(m.mu, m.y)
+rss(m::LinearMixedModel) = sumsqdiff(m.lmb.mu, m.lmb.y)
 
 ## scale(m) -> estimate, s, of the scale parameter
 ## scale(m,true) -> estimate, s^2, of the squared scale parameter
-function scale(m::LinearMixedModel, sqr=false)
+function Base.scale(m::LinearMixedModel, sqr=false)
     n,p = size(m); ssqr = pwrss(m)/float64(n - (m.REML ? p : 0))
     sqr ? ssqr : sqrt(ssqr)
 end
 
-function show(io::IO, m::LinearMixedModel)
+function Base.show(io::IO, m::LinearMixedModel)
     fit(m); n, p, q, k = size(m); REML = m.REML
     @printf(io, "Linear mixed model fit by %s\n", REML ? "REML" : "maximum likelihood")
 
@@ -119,7 +176,7 @@ function show(io::IO, m::LinearMixedModel)
     println(io); println(io)
 
     @printf(io, " Variance components:\n                Variance    Std.Dev.\n")
-    stdm = std(m); fnms = vcat(fnames(m),"Residual")
+    stdm = std(m); fnms = vcat(m.lmb.fnms,"Residual")
     for i in 1:length(fnms)
         si = stdm[i]
         print(io, " ", rpad(fnms[i],12))
@@ -137,11 +194,11 @@ function show(io::IO, m::LinearMixedModel)
 end
 
 ##  size(m) -> n, p, q, t (lengths of y, beta, u and # of re terms)
-size(m::LinearMixedModel) = (length(m.y), length(m.beta),
+Base.size(m::LinearMixedModel) = (length(m.lmb.y), length(m.beta),
                              sum([length(u) for u in m.u]), length(m.u))
 
 ## stderr(m) -> standard errors of fixed-effects parameters
-stderr(m::LinearMixedModel) = sqrt(diag(vcov(m)))
+StatsBase.stderr(m::LinearMixedModel) = sqrt(diag(vcov(m)))
 
 ## vcov(m) -> estimated variance-covariance matrix of the fixed-effects parameters
-vcov(m::LinearMixedModel) = scale(m,true) * inv(cholfact(m))
+StatsBase.vcov(m::LinearMixedModel) = scale(m,true) * inv(cholfact(m))

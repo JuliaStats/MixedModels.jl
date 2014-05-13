@@ -1,4 +1,5 @@
 type LMMGeneral{Ti<:Union(Int32,Int64)} <: LinearMixedModel
+    lmb::LMMBase
     L::CholmodFactor{Float64,Ti}
     LambdatZt::SparseMatrixCSC{Float64,Ti}
     RX::Base.LinAlg.Cholesky{Float64}
@@ -18,6 +19,8 @@ type LMMGeneral{Ti<:Union(Int32,Int64)} <: LinearMixedModel
     REML::Bool
     fit::Bool
 end
+
+LMMGeneral(lmb::LMMBase) = LMMGeneral(lmb)
 
 ## function LMMGeneral(X::ModelMatrix, Xs::Vector, facs::Vector,
 ##                     y::Vector, fnms::Vector, pvec::Vector)
@@ -53,8 +56,10 @@ function linpred!(m::LMMGeneral)
     gemv!('N',1.,m.X.m,m.beta,0.,m.mu)  # initialize mu to X*beta
     Xs = m.Xs; u = m.u; lm = m.lambda; inds = m.inds; mu = m.mu
     for i in 1:length(Xs)               # iterate over r.e. terms
-        X = Xs[i]; ind = inds[i]
-        if size(X,2) == 1 fma!(mu, (lm[i][1,1]*u[i])[:,ind], X[:,1])
+        X = Xs[i]
+        ind = inds[i]
+        if size(X,2) == 1
+            fma!(mu, (lm[i][1,1]*u[i])[:,ind], X[:,1])
         else
             add!(mu,sum(trmm('L','L','N','N',1.0,lm[i],u[i])[:,ind]' .* X, 2))
         end
@@ -87,9 +92,9 @@ function solve!(m::LMMGeneral, ubeta=false)
             permute!(view(RZX,:,j),m.perm)
         end
         RZX = solve(m.L, RZX, CHOLMOD_L)
-        _,info = potrf!('U',syrk!('U','T',-1.,RZX,1.,copy!(m.RX.UL,m.XtX.S)))
+        _,info = Base.LinAlg.LAPACK.potrf!('U',syrk!('U','T',-1.,RZX,1.,copy!(m.RX.UL,m.XtX.S)))
         info == 0 || error("downdated X'X is singular")
-        potrs!('U',m.RX.UL,gemv!('T',-1.,RZX,cu,1.,copy!(m.beta,m.Xty)))
+        Base.LinAlg.LAPACK.potrs!('U',m.RX.UL,gemv!('T',-1.,RZX,cu,1.,copy!(m.beta,m.Xty)))
         u = ipermute!(solve(m.L,gemv!('N',-1.,RZX,m.beta,1.,cu),CHOLMOD_Lt),m.perm)
     else
         u = vec(solve(m.L,m.LambdatZt * gemv!('N',-1.0,m.X.m,m.beta,1.0,copy(m.y))).mat)
