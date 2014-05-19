@@ -35,11 +35,14 @@ grplevels(m::LinearMixedModel) = grplevels(m.lmb)
 pvec(lmb::LMMBase) = [size(x,2) for x in lmb.Xs]
 
 ##  size(m) -> n, p, q, t (lengths of y, beta, u and # of re terms)
-function size(lmb::LMMBase)
+function Base.size(lmb::LMMBase)
     n,p = size(lmb.X.m)
     n,p,sum(grplevels(lmb) .* pvec(lmb)),length(lmb.fnms)
 end
-size(m::LinearMixedModel) = size(m.lmb)
+Base.size(m::LinearMixedModel) = size(m.lmb)
+
+## isnested(lmb) -> Bool : Are the grouping factors nested?
+isnested(lmb::LMMBase) = length(Set(zip(lmb.facs...))) == maximum(grplevels(lmb))
 
 ## isscalar(m) -> Bool : Are all the random-effects terms scalar?
 isscalar(lmb::LMMBase) = all(pvec(lmb) .== 1)
@@ -61,6 +64,21 @@ Ztblk(m::Matrix,v::PooledDataVector) = Ztblk(m,v.refs)
 Zt(lmb::LMMBase) = vcat(map(Ztblk,lmb.Xs,lmb.facs)...)
 
 ZXt(lmb::LMMBase) = (zt = Zt(lmb); vcat(zt,convert(typeof(zt),lmb.X.m')))
+
+StatsBase.model_response(lmb::LMMBase) = lmb.y
+
+##  coef(m) -> current value of beta (can be a reference)
+StatsBase.coef(m::LinearMixedModel) = m.beta
+
+## coeftable(m) -> DataFrame : the coefficients table
+## FIXME Create a type with its own show method for this type of table
+function StatsBase.coeftable(m::LinearMixedModel)
+    fe = fixef(m); se = stderr(m)
+    CoefTable(hcat(fe,se,fe./se), ["Estimate","Std.Error","z value"], ASCIIString[])
+end
+
+## deviance(m) -> Float64
+StatsBase.deviance(m::LinearMixedModel) = m.fit && !m.REML ? objective(m) : NaN
 
 ## fit(m) -> m Optimize the objective using BOBYQA from the NLopt package
 function StatsBase.fit(m::LinearMixedModel, verbose=false)
@@ -97,19 +115,6 @@ function StatsBase.fit(m::LinearMixedModel, verbose=false)
     m
 end
 
-##  coef(m) -> current value of beta (can be a reference)
-StatsBase.coef(m::LinearMixedModel) = m.beta
-
-## coeftable(m) -> DataFrame : the coefficients table
-## FIXME Create a type with its own show method for this type of table
-function StatsBase.coeftable(m::LinearMixedModel)
-    fe = fixef(m); se = stderr(m)
-    CoefTable(hcat(fe,se,fe./se), ["Estimate","Std.Error","z value"], ASCIIString[])
-end
-
-## deviance(m) -> Float64
-StatsBase.deviance(m::LinearMixedModel) = m.fit && !m.REML ? objective(m) : NaN
-        
 ## fixef(m) -> current value of beta (can be a reference)
 fixef(m::LinearMixedModel) = m.beta
 
@@ -138,7 +143,7 @@ function lrt(mods::LinearMixedModel...)
 end
 
 
-nobs(m::LinearMixedModel) = size(m)[1]
+StatsBase.nobs(m::LinearMixedModel) = size(m)[1]
 
 npar(m::LinearMixedModel) = length(theta(m)) + length(coef(m)) + 1
 

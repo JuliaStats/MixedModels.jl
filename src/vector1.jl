@@ -45,6 +45,7 @@ function StatsBase.fit(m::LMMVector1, verbose=false)
         th = theta(m); k = length(th)
         opt = Opt(:LD_MMA, k)
         ftol_abs!(opt, 1e-6)    # criterion on deviance changes
+        ftol_rel!(opt, 1e-9)
         xtol_abs!(opt, 1e-6)    # criterion on all parameter value changes
         lower_bounds!(opt, lower(m))
         function obj(x::Vector{Float64}, g::Vector{Float64})
@@ -110,7 +111,7 @@ function ranef(m::LMMVector1, uscale=false)
     [BLAS.trmm('L','L','N','N',1.,m.lambda,m.u)]
 end
     
-size(m::LMMVector1) = (length(m.lmb.y), length(m.beta), length(m.u), 1)
+Base.size(m::LMMVector1) = (length(m.lmb.y), length(m.beta), length(m.u), 1)
 
 ## solve!(m) -> m : solve PLS problem for u given beta
 ## solve!(m,true) -> m : solve PLS problem for u and beta

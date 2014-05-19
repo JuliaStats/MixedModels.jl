@@ -59,7 +59,7 @@ function ranef(m::LMMScalar1, uscale=false)
 end
 
 ##  size(m) -> n, p, q, t (lengths of y, beta, u and # of re terms)
-size(m::LMMScalar1) = (length(m.lmb.y), length(m.beta), length(m.u), 1)
+Base.size(m::LMMScalar1) = (length(m.lmb.y), length(m.beta), length(m.u), 1)
 
 ## sqrlenu(m) -> total squared length of m.u (the penalty in the PLS problem)
 sqrlenu(m::LMMScalar1) = sumsq(m.u)

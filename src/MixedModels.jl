@@ -8,7 +8,6 @@ module MixedModels
     using Base.LinAlg.CHOLMOD: CholmodDense, CholmodDense!, CholmodFactor,
           CholmodSparse, CholmodSparse!, chm_scale!, CHOLMOD_SYM,
           CHOLMOD_L, CHOLMOD_Lt, CHOLMOD_P, CHOLMOD_Pt, solve
-    import Base: size
 
     export
         LinearMixedModel,
@@ -16,6 +15,7 @@ module MixedModels
         LMMGeneral,
         LMMNested,
         LMMScalar1,
+        LMMScalarNested,
         LMMScalarn,
         LMMVector1,
         MixedModel,

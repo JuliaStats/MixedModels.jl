@@ -55,7 +55,7 @@ function Base.scale(m::LMMScalarn, sqr=false)
 end
 
 ##  size(m) -> n, p, q, t (lengths of y, beta, u and # of re terms)
-size(m::LMMScalarn) = (length(m.y), length(m.beta), m.offsets[end], length(m.u))
+Base.size(m::LMMScalarn) = (length(m.y), length(m.beta), m.offsets[end], length(m.u))
 
 ## solve!(m) -> m : solve PLS problem for u given beta
 ## solve!(m,true) -> m : solve PLS problem for u and beta
