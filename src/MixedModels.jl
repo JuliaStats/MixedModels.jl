@@ -1,8 +1,7 @@
 using DataFrames  # should be externally available
 module MixedModels
 
-    using DataArrays, DataFrames, NLopt, NumericFuns
-    using NumericExtensions: map1!, sumsq, sumsqdiff, vnorm
+    using DataArrays, DataFrames, NLopt, NumericExtensions, NumericFuns
     using StatsBase: CoefTable
     using Base.SparseMatrix: symperm
     using Base.LinAlg.CHOLMOD: CholmodDense, CholmodDense!, CholmodFactor,
@@ -44,6 +43,7 @@ module MixedModels
     typealias ITypes Union(Int32,Int64)
 
     include("utils.jl")     # utilities to deal with the model formula
+    include("LMMBase.jl")   # information common to each type of LinearMixedModel
     include("linearmixedmodels.jl") # method definitions for the abstract class
     include("general.jl") # general form of linear mixed-effects models
     include("scalar1.jl") # models with a single, scalar random-effects term

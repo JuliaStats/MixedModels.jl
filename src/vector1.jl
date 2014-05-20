@@ -144,7 +144,7 @@ function solve!(m::LMMVector1, ubeta=false)
 end        
 
 ## sqrlenu(m) -> total squared length of m.u (the penalty in the PLS problem)
-sqrlenu(m::LMMVector1) = sumsq(m.u)
+sqrlenu(m::LMMVector1) = NumericExtensions.sumsq(m.u)
 
 ## std(m) -> Vector{Vector{Float64}} estimated standard deviations of variance components
 Base.std(m::LMMVector1) = scale(m)*push!(copy(vec(vnorm(m.lambda,2,1))),1.)

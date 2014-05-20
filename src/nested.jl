@@ -1,3 +1,24 @@
+type LMMScalarNested <: LinearMixedModel
+    lmb::LMMBase
+    perm::Vector                        # post-ordering permutation
+    pinv::Vector                        # inverse of perm
+    roots::Vector                       # elimination tree roots
+    ZtZ::SparseMatrixCSC
+    L::SparseMatrixCSC
+    theta::Vector{Float64}
+end
+
+function LMMScalarNested(lmb::LMMBase)
+    n,p,q,k = size(lmb)
+    zt = Zt(lmb)
+    ZtZ = triu(zt * zt')
+    tr,perm = etree(ZtZ,true)
+    pinv = invperm(perm)
+    ZtZ = symperm(ZtZ,pinv) # post-order ZtZ
+    roots = pinv[[1:q][tr .== 0]] # nodes that are roots of the elimination tree
+    LMMScalarNested(lmb,perm,pinv,roots,ZtZ,ZtZ',ones(k))
+end
+
 type LMMNested <: LinearMixedModel
     Zt::SparseMatrixCSC
     lambda::Vector
@@ -39,22 +60,39 @@ function LMMNested(X::ModelMatrix,Xs::Vector,refs::Vector,levs::Vector,y::Vector
     L = ZtZ'
 end
 
-## Special-purpose Cholesky decomposition for the sparse crossproduct from nested factors
-function cholnested{Tv,Ti}(L::SparseMatrixCSC{Tv,Ti},C::SparseMatrixCSC{Tv,Ti},beta=zero(Tv))
-    (n = A.n) == A.m == L.n == L.m || error("Dimension mismatch")
-    istriu(A) && istril(L) ||
-        error("A must be symmetric stored in upper triangle and L lower triangular")
-    Ap = A.colptr; Ai = A.rowval; Ax = A.nzval; Lp = L.colptr; Li = L.rowval; Lx = L.nzval
-    x = Array(Tv,n)                     # workspace
-    for k in 1:n                        # copy A' to L, inflating the diagonal
-        Lx[Lp[k]] = Ax[Ap[k+1]-1] + beta
-        for p in (Lp[k]+1):(Lp[k+1]-1)
-            j = Li[p]                   # row of L == column of A
-            for q in Ap[j]:(Ap[j+1]-1)  # (should be able to short-circuit this by moving pointers)
-                Ai[q] == k && (Lx[p] = Ax[q])
-            end
-        end
-    end
-    L
-end
+## ## Special-purpose Cholesky decomposition for the sparse crossproduct from nested factors
+## function cholnested{Tv,Ti}(L::SparseMatrixCSC{Tv,Ti},A::SparseMatrixCSC{Tv,Ti},beta=zero(Tv))
+##     (n = A.n) == A.m == L.n == L.m || error("Dimension mismatch")
+##     istriu(A) && istril(L) ||
+##         error("A must be symmetric stored in upper triangle and L lower triangular")
+##     Ap = A.colptr; Ai = A.rowval; Ax = A.nzval; Lp = L.colptr; Li = L.rowval; Lx = L.nzval
+##     x = Array(Tv,n)                   # workspace
+##     for j in 1:n
+##         aj = Ap[j+1]-1                # A[j,j] position
+##         dd = Ax[aj] + beta            # inflated diagonal element of A
+##         fill!(x,zero(Tv))             # x = A[:j]
+##         for k in Ap[j]:Ap[j+1]-2
+##             x[Ai[k]] = Ax[k]
+##         end
+##         for k in Ap[j]:Ap[j+1]-2 # forward solve L[1:j-1,1:j-1]*x[1:j-1] = A[1:j-1,j]
+##             lpk = Lp[Ai[k]]
+##             lipk = Li[lpk]
+##             x[lipk] /= Lx[lipk]
+##             dd -= abs2(x[lipk])
+##             for kk in Lp[k]+1:Lp[k+1]-1
+##                 (likk = Li[kk]) > j-1 && break
+##                 x[likk] -= Lx[kk] * x[lipk]
+##             end
+##         end
+##         for k in Ap[j]:Ap[
+##         Lx[Lp[k]] = sqrt(dd)
+##         for p in (Lp[k]+1):(Lp[k+1]-1)
+##             j = Li[p]                   # row of L == column of A
+##             for q in Ap[j]:(Ap[j+1]-1)  # (should be able to short-circuit this by moving pointers)
+##                 Ai[q] == k && (Lx[p] = Ax[q])
+##             end
+##         end
+##     end
+##     L
+## end
 

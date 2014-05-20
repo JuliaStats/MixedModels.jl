@@ -80,7 +80,7 @@ function solve!(m::LMMScalarn, ubeta=false)
 end
 
 ## sqrlenu(m) -> total squared length of m.u (the penalty in the PLS problem)
-sqrlenu(m::LMMScalarn) = sum([sumsq(u) for u in m.u])
+sqrlenu(m::LMMScalarn) = sum([NumericExtensions.sumsq(u) for u in m.u])
 
 ## std(m) -> Vector{Vector{Float64}} estimated standard deviations of variance components
 Base.std(m::LMMScalarn) = scale(m)*[m.lambda,1.]
