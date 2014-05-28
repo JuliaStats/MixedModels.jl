@@ -7,8 +7,9 @@ StatsBase.coef(m::LinearMixedModel) = coef(m.lmb)
 StatsBase.model_response(m::LinearMixedModel) = model_response(m.lmb)
 StatsBase.nobs(m::LinearMixedModel) = nobs(m.lmb)
 
+## methods for generics local to this package
 ranef(m::LinearMixedModel) = ranef(m.lmb)
-ranef(m::LinearMixedModels,uscale::Bool) = ranef(m.lmb,uscale)
+ranef(m::LinearMixedModel,uscale::Bool) = ranef(m.lmb,uscale)
 for f in (:fixef, :fnames, :grplevels, :isfit, :isnested, :isscalar,
           :lower, :nθ, :pwrss, :rss, :Zt, :ZXt, :θ)
     @eval begin
@@ -35,14 +36,14 @@ function StatsBase.fit(m::LinearMixedModel, verbose=false)
         NLopt.lower_bounds!(opt, lower(m))
         function obj(x::Vector{Float64}, g::Vector{Float64})
             length(g) == 0 || error("gradient evaluations are not provided")
-            objective(solve!(theta!(m,x),true))
+            objective(solve!(θ!(m,x),true))
         end
         if verbose
             count = 0
             function vobj(x::Vector{Float64}, g::Vector{Float64})
                 length(g) == 0 || error("gradient evaluations are not provided")
                 count += 1
-                val = objective(solve!(theta!(m,x),true))
+                val = objective(solve!(θ!(m,x),true))
                 print("f_$count: $(round(val,5)), [")
                 showcompact(x[1])
                 for i in 2:length(x) print(","); showcompact(x[i]) end
