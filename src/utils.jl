@@ -61,21 +61,5 @@ function ltri(M::Matrix)
     r
 end
 
-
-## Is f nested within g, i.e does each value of f correspond to only one value of g?
-function isnested(f::Vector,g::Vector)
-    length(f) == length(g) || error("Dimension mismatch")
-    uf = unique(f); ug = unique(g)
-    isperm(uf) && isperm(ug) || error("unique(f) and unique(g) must be permutations")
-    (nlf = length(uf)) >= (nlg = length(ug)) || error("f must have more levels than g")
-    zz = zeros(eltype(g), nlf)
-    for i in 1:length(g)
-        if (z = zz[(fi = f[i])]) == (gi = g[i]) continue end
-        if z == zero(eltype(g))
-            zz[fi] = gi
-        else
-            return false
-        end
-    end
-    true
-end
+# pattern of lower bounds for lower triangle of size n
+lower(n::Integer) = vcat({vcat(0.,fill(-Inf,k)) for k in n-1:-1:0}...)

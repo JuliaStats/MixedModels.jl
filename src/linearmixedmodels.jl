@@ -1,7 +1,20 @@
 ## Base implementations of methods for the LinearMixedModel abstract type
 
-##  coef(m) -> current value of beta (can be a reference)
-StatsBase.coef(m::LinearMixedModel) = m.beta
+## Delegate methods to the lmb member
+Base.size(m::LinearMixedModel) = size(m.lmb)
+
+StatsBase.coef(m::LinearMixedModel) = coef(m.lmb)
+StatsBase.model_response(m::LinearMixedModel) = model_response(m.lmb)
+StatsBase.nobs(m::LinearMixedModel) = nobs(m.lmb)
+
+ranef(m::LinearMixedModel) = ranef(m.lmb)
+ranef(m::LinearMixedModels,uscale::Bool) = ranef(m.lmb,uscale)
+for f in (:fixef, :fnames, :grplevels, :isfit, :isnested, :isscalar,
+          :lower, :nθ, :pwrss, :rss, :Zt, :ZXt, :θ)
+    @eval begin
+        $f(m::LinearMixedModel) = $f(m.lmb)
+    end
+end
 
 ## coeftable(m) -> DataFrame : the coefficients table
 function StatsBase.coeftable(m::LinearMixedModel)
@@ -47,19 +60,6 @@ function StatsBase.fit(m::LinearMixedModel, verbose=false)
     m
 end
 
-## fixef(m) -> current value of beta (can be a reference)
-fixef(m::LinearMixedModel) = m.beta
-
-## fnames(m) -> names of grouping factors
-fnames(m::LinearMixedModel) = fnames(m.lmb)
-
-grplevels(m::LinearMixedModel) = grplevels(m.lmb)
-
-##  isfit(m) -> Bool - Has the model been fit?
-isfit(m::LinearMixedModel) = m.fit
-
-isscalar(m::LinearMixedModel) = isscalar(m.lmb)
-
 function lrt(mods::LinearMixedModel...)
     if (nm = length(mods)) <= 1
         error("at least two models are required for an lrt")
@@ -78,10 +78,6 @@ function lrt(mods::LinearMixedModel...)
     DataFrame(Df = df, Deviance = dev, Chisq=csqr,pval=pval)
 end
 
-StatsBase.nobs(m::LinearMixedModel) = nobs(m.lmb)
-
-npar(m::LinearMixedModel) = length(theta(m)) + length(coef(m)) + 1
-
 ## objective(m) -> deviance or REML criterion according to m.REML
 function objective(m::LinearMixedModel)
     n,p,q,k = size(m); fn = float64(n - (m.REML ? p : 0))
@@ -89,7 +85,7 @@ function objective(m::LinearMixedModel)
 end
 
 ## pwrss(m) -> penalized, weighted residual sum of squares
-pwrss(m::LinearMixedModel) = rss(m) + sqrlenu(m)
+#pwrss(m::LinearMixedModel) = rss(m) + sqrlenu(m)
 
 ##  reml!(m,v=true) -> m : Set m.REML to v.  If m.REML is modified, unset m.fit
 function reml!(m::LinearMixedModel,v=true)
@@ -137,7 +133,7 @@ function Base.show(io::IO, m::LinearMixedModel)
     show(io,coeftable(m))
 end
 
-Base.size(m::LinearMixedModel) = size(m.lmb)
+#Base.size(m::LinearMixedModel) = size(m.lmb)
 
 ## stderr(m) -> standard errors of fixed-effects parameters
 StatsBase.stderr(m::LinearMixedModel) = sqrt(diag(vcov(m)))
