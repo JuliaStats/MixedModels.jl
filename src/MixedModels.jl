@@ -44,12 +44,13 @@ module MixedModels
 
     include("utils.jl")     # utilities to deal with the model formula
     include("LMMBase.jl")   # information common to each type of LinearMixedModel
+    include("delta.jl")
     include("linearmixedmodels.jl") # method definitions for the abstract class
-    include("general.jl") # general form of linear mixed-effects models
-    include("scalar1.jl") # models with a single, scalar random-effects term
-    include("scalarn.jl") # models with a single, scalar random-effects term
-    include("vector1.jl") # models with a single, vector-valued random-effects term
-    include("nested.jl")
+#    include("general.jl") # general form of linear mixed-effects models
+#    include("scalar1.jl") # models with a single, scalar random-effects term
+#    include("scalarn.jl") # models with a single, scalar random-effects term
+#    include("vector1.jl") # models with a single, vector-valued random-effects term
+#    include("nested.jl")
 #    include("lmmMUMPS.jl")              # fit models using MUMPS solver
     include("lmm.jl")    # fit and analyze linear mixed-effects models
 

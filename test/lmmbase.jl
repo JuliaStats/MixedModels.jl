@@ -17,18 +17,19 @@ lmb1 = LMMBase(Yield ~ 1|Batch, ds)
 @test lower(lmb1) == [0.]
 @test nobs(lmb1) == 30
 
-lmb1.λ[1].UL[1,1] = 0.752583753954506
-MixedModels.λZty!(lmb1)                 # prior to solving the system
+MixedModels.θ!(lmb1,[0.752583753954506])
+MixedModels.λtZty!(lmb1)                 # prior to solving the system
 @test_approx_eq lmb1.u[1] [5663.192748507658 5749.739880212426 5885.204955924238 5636.85231711925 6020.670031636048 5531.490591565619]
 
 lmb1.β = [1527.5]
 lmb1.u[1][:] = [-22.094892217084453 0.49099760482428484 35.84282515215955 -28.968858684621885 71.19465269949505 -56.46472455477185]
-MixedModels.updateμ!(lmb1)
 
 @test coef(lmb1) == [1527.5]
 @test fixef(lmb1) == [1527.5]
-@test_approx_eq MixedModels.rss(lmb1) 62668.1396425237
+@test_approx_eq MixedModels.updateμ!(lmb1) 62668.1396425237
 @test_approx_eq pwrss(lmb1) 73537.41156368206
+@test_approx_eq std(lmb1)[1] [37.260474496612346]
+@test_approx_eq scale(lmb1) 49.5100702092285
 
 zt = MixedModels.Zt(lmb1)
 @test size(zt) == (6,30)
@@ -63,16 +64,15 @@ lmb2 = LMMBase(Yield ~ 1|Batch, ds2)
 @test lower(lmb2) == [0.]
 @test nobs(lmb2) == 30
 
-lmb2.λ[1].UL[1,1] = 0.0
-MixedModels.λZty!(lmb2)                 # prior to solving the system
+MixedModels.θ!(lmb2,[0.])
+MixedModels.λtZty!(lmb2)                 # prior to solving the system
 @test lmb2.u[1] == zeros(1,6)
 
 lmb2.β = [5.6656]
-MixedModels.updateμ!(lmb2)
+@test_approx_eq MixedModels.updateμ!(lmb2) 400.3829792
 
 @test coef(lmb2) == [5.6656]
 @test fixef(lmb2) == [5.6656]
-@test_approx_eq MixedModels.rss(lmb2) 400.3829792
 @test_approx_eq pwrss(lmb2) 400.3829792
 
 zt = MixedModels.Zt(lmb2)
@@ -103,6 +103,8 @@ lmb3 = LMMBase(Diameter ~ (1|Plate) + (1|Sample), pen)
 @test size(lmb3.λ) == (2,)
 @test all(map(istril,lmb3.λ))
 @test lmb3.λ[1].UL == ones((1,1))
+@test lmb3.λ[2].UL == ones((1,1))
+@test MixedModels.θ(lmb3) == ones(2)
 @test lmb3.Xty == [3308.]
 @test lmb3.fnms == {"Plate", "Sample"}
 @test !isnested(lmb3)
@@ -142,5 +144,125 @@ lmb3.u[1][:] = [0.523157593873041,   0.523157593873041,  0.11813235990679,  0.21
                -0.590661799534141,  -0.185636565567895, -0.388149182551019,-0.793174416517266]
 lmb3.u[2][:] = [0.678828300438623,  -0.313635860329661,    0.601493430768367,
                -0.0300746715387243, -0.00429638164863984, -0.932314817691712]
-@test_approx_eq MixedModels.updateμ!(lmb) 35.24418682920359
-@test_approx_eq pwrss(lmb) 43.549261374139476
+@test_approx_eq MixedModels.updateμ!(lmb3) 35.24418682920359
+@test_approx_eq pwrss(lmb3) 43.549261374139476
+
+lmb4 = LMMBase(Strength ~ (1|Sample) + (1|Batch), psts)
+
+@test size(lmb4) == (60,1,40,2)
+@test lmb4.Xs == {ones(1,60),ones(1,60)}
+@test lmb4.facs[1].refs == rep(uint8([1:30]),1,2)
+@test lmb4.facs[2].refs == rep(uint8([1:10]),1,6)
+@test lmb4.X.m == ones((60,1))
+@test size(lmb4.λ) == (2,)
+@test all(map(istril,lmb4.λ))
+@test lmb4.λ[1].UL == ones((1,1))
+@test lmb4.λ[2].UL == ones((1,1))
+@test MixedModels.θ(lmb4) == ones(2)
+@test lmb4.Xty == [3603.2]
+@test lmb4.fnms == {"Sample","Batch"}
+@test isnested(lmb4)
+@test MixedModels.isscalar(lmb4)
+@test !isfit(lmb4)
+@test grplevels(lmb4) == [30,10]
+@test lower(lmb4) == [0.,0.]
+@test nobs(lmb4) == 60
+
+zt = MixedModels.Zt(lmb4)
+@test size(zt) == (40,60)
+@test nnz(zt) == 120
+@test all(zt.nzval .== 1.)
+
+ztz = zt * zt'
+@test size(ztz) == (40,40)
+@test issym(ztz)
+@test ztz[1:30,1:30] == 2.*speye(30)
+@test ztz[31:40,31:40] == 6.*speye(10)
+
+zxt = MixedModels.ZXt(lmb4)
+@test size(zxt) == (41,60)
+@test nnz(zxt) == 180
+@test all(zxt.nzval .== 1.)
+
+MixedModels.θ!(lmb4,[3.52690173547125, 1.32991216014294])
+lmb4.β[:] = mean(psts[:Strength])
+lmb4.u[1][:] = [0.545971198951695, 0.137103593679235,   0.60048687965469,   0.235984796077345,
+               -0.718039616225064, 0.0451799136168632, -0.690714090621525,  0.781209288359335,
+                1.06741661205006, -0.872408266906441,  -0.599829863391465,  1.26733220068611,
+               -1.02093312625967, -1.1981090885444,    -0.189568995538997,  1.03897735543894,
+               -0.446574943717672,-0.0240784182694611,  0.692692288930594, -0.0432694005598349,
+               -0.738344329523022,-0.448175657335874,   1.26906828480846,   0.95560312076624,
+               -1.32334404896573,  1.18437726337204,   -0.655526960354038, -0.225103342630958,
+               -0.116071981224968,-0.51131066632168]
+lmb4.u[2][:] = [0.484001087724721, -0.164735309978546,  0.436621463173287, -0.0772652338837034,
+               -0.908230956784477,  0.214301686432351, -0.0335301958362921, 0.669874999426066,
+               -0.299585010624761, -0.321452529648366]
+@test_approx_eq MixedModels.updateμ!(lmb4) 21.049799756610106
+@test_approx_eq pwrss(lmb4) 40.68000037028114
+
+lmb5 = LMMBase(Reaction ~ Days + (Days|Subject), slp)
+
+@test size(lmb5) == (180,2,36,1)
+XX = hcat(ones(180),rep([0.:9.],18,1))
+@test lmb5.Xs == {XX'}
+@test lmb5.facs[1].refs == rep(uint8([1:18]),1,10)
+@test lmb5.X.m == XX
+@test size(lmb5.λ) == (1,)
+@test all(map(istril,lmb5.λ))
+@test full(lmb5.λ[1]) == eye(2)
+@test MixedModels.θ(lmb5) == [1.,0.,1.]
+@test_approx_eq lmb5.Xty [53731.4205,257335.3119]
+@test lmb5.fnms == {"Subject"}
+@test isnested(lmb5)
+@test !MixedModels.isscalar(lmb5)
+@test !isfit(lmb5)
+@test grplevels(lmb5) == [18]
+@test lower(lmb5) == [0.,-Inf,0.]
+@test nobs(lmb5) == 180
+
+zt = MixedModels.Zt(lmb5)
+@test size(zt) == (36,180)
+@test nnz(zt) == 360
+@test issubset(zt.nzval,[0.:9.])
+
+ztz = zt * zt'
+@test size(ztz) == (36,36)
+@test issym(ztz)
+evens = 2:2:36
+odds = 1:2:35
+speye18 = speye(18)
+@test ztz[evens,evens] == 285.*speye18
+@test ztz[odds,odds] == 10.*speye18
+@test ztz[evens,odds] == ztz[odds,evens] == 45.*speye18
+
+zxt = MixedModels.ZXt(lmb5)
+@test size(zxt) == (38,180)
+@test nnz(zxt) == 702
+@test issubset(zt.nzval,[0.:9.])
+
+zxtzx = zxt * zxt'
+@test size(zxtzx) == (38,38)
+@test nnz(zxtzx) == 220
+@test countmap(zxtzx.nzval) == [810.0=>2,10.0=>54,285.0=>54,180.0=>1,5130.0=>1,45.0=>108]
+
+MixedModels.θ!(lmb5,[0.929225333147176, 0.0181656125028504, 0.222645384404873])
+MixedModels.λtZty!(lmb5)
+@test_approx_eq lmb5.λ[1]*lmb5.Zty[1] lmb5.u[1]
+lmb5.β[:] = [251.405104848484, 10.4672859595955]
+lmb5.u[1][:] = [  3.03013868860485, 40.5150534730329, -43.0987880951274, -35.3079468872182, 
+                -41.3604221850982, -21.3884575308486,  24.5713233766107, -22.9293036060374, 
+                 23.1913501220949, -15.1173367345279,   9.48702774306751, -1.83047533808868, 
+                 17.6942952358729,  -2.15702440220209, -7.52962741290285,  5.25282192766975, 
+                 -1.11643153921311,-47.5157531063491,  37.306680636605,   35.7280188087715, 
+                -26.4286365026548,   6.93701074747048,-13.2741031123528,  30.1503485531617, 
+                  4.59960258007609,-13.6490513152672,  22.1929149786996,  14.1864886368628, 
+                  3.50672317759581,  3.62912755049426,-26.5924030770213,  23.0986282887491, 
+                  0.778370457527042,-4.42495365406214, 13.0419849276326,  4.82280458842396]
+@test_approx_eq MixedModels.updateμ!(lmb5) 99435.11862554778
+@test_approx_eq pwrss(lmb5) 117889.39251214844
+@test_approx_eq scale(lmb5) 25.591816455889482
+@test_approx_eq scale(lmb5,true) 654.9410695119358
+@test_approx_eq std(lmb5)[1] [23.780564172065286,5.7168335583606575]
+@test_approx_eq std(lmb5)[2] [scale(lmb5)]
+
+

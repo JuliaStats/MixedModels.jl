@@ -1,4 +1,6 @@
-abstract Delta         # An arrow shaped A/L block from nested factors
+abstract PLSSolver
+
+abstract Delta <: PLSSolver # An arrow shaped A/L block from nested factors
 
 type DeltaLeaf <: Delta   # A terminal Delta block
     Ad::Array{Float64,3}                # diagonal blocks
@@ -34,12 +36,15 @@ function DeltaLeaf(ff::PooledDataVector, Xst::Matrix, Xt::Matrix)
         BLAS.syr!('L',1.0,sub(Xst,:,j),sub(Ad,:,:,jj))
         BLAS.gemm!('N','T',1.0,sub(Xst,:,j:j),sub(Xt,:,j:j),1.0,sub(Ab,:,:,jj))
     end
+    for j in 1:nl        # symmetrize the faces created with BLAS.syr!
+        Base.LinAlg.copytri!(sub(Ad,:,:,j),'L')
+    end
     DeltaLeaf(Ad,Ab,Symmetric(Xt*Xt',:L))
 end
 
 function DeltaLeaf(lmb::LMMBase)
     length(lmb.facs) == 1 || error("DeltaLeaf requires a single r.e. term")
-    DeltaLeaf(lmb.facs[1],lmb.Xs[1]',lmb.X.m')
+    DeltaLeaf(lmb.facs[1],lmb.Xs[1],lmb.X.m')
 end
 
 ## Logarithm of the determinant of the generator matrix for the Cholesky factor, RX or L
@@ -56,6 +61,8 @@ end
 
 Base.size(dl::DeltaLeaf) = size(dl.Ab)
 
+Base.size(dl::DeltaLeaf,k::Integer) = size(dl.Ab,k)
+
 function Base.Triangular{T<:Number}(n::Integer,v::Vector{T})
     length(v) == n*(n+1)>>1 || error("Dimension mismatch")
     A = zeros(T,n,n)
@@ -66,60 +73,72 @@ function Base.Triangular{T<:Number}(n::Integer,v::Vector{T})
     Triangular(A,:L,false)
 end
 
-##  updateL!(dl,Lambda)
-function updateL!(dl::DeltaLeaf,lambda::Triangular{Float64})
+##  updateL!(dl,lambda)->dl : update Ld, Lb and Lt
+function updateL!(dl::DeltaLeaf,λ::Triangular)
     m,n,l = size(dl)
-    size(lambda,1) == n || error("Dimension mismatch")
-    if n == 1
-        dl.Ld[:] = sqrt(abs2(lambda[1,1])*vec(dl.Ad) .+ 1.)
+    n == size(λ,1) || error("Dimension mismatch")
+    Lt = copy!(dl.Lt.UL,dl.At.S)
+    if n == 1                          # shortcut for 1×1 λ 
+        lam = λ[1,1]
+        Ld = map!(x -> sqrt(x*lam*lam + 1.), dl.Ld, dl.Ad)
+        Lb = reshape(copy!(dl.Lb,dl.Ab),(m,m*l))
+        Lt[1,1] -= Base.sumabs2(scale!(scale!(lam,Lb),1.0 ./ vec(Ld)))
     else
-        Ld = dl.Ld
-        copy!(Ld,dl.Ad)
-        Ac_mul_B!(lambda,reshape(Ld,(n,n*l)))
+        BLAS.trmm!('L',λ.uplo,'T',λ.unitdiag,1.,λ.UL,reshape(copy!(dl.Ld,dl.Ad),(n,n*l)))
+        Lb = BLAS.trmm!('L',λ.uplo,'T',λ.unitdiag,1.,λ.UL,reshape(copy!(dl.Lb,dl.Ab),(m,n*l)))
         for k in 1:l
-            (wL = sub(Ld,:,:,k)) * lambda
+            wL = BLAS.trmm!('R',λ.uplo,'N',λ.unitdiag,1.,λ.UL,sub(dl.Ld,:,:,k))
             for j in 1:n                # Inflate the diagonal
                 wL[j,j] += 1.
             end
-            _, info = LAPACK.potrf!('L',wL) # i'th diagonal block of L_Z
-            bool(info) && error("Cholesky decomposition failed at k = $k")
+            _, info = LAPACK.potrf!('L',wL) # i'th diagonal block of L
+            info == 0 || error("Cholesky failure at L diagonal block $k")
+            wRZX = BLAS.trsm!('L','L','N','N',1.,wL,sub(dl.Lb,:,:,k))
+            BLAS.syrk!('L','T',-1.0,wRZX,1.,Lt)
         end
     end
+    _, info = LAPACK.potrf!('L',Lt)
+    info == 0 ||  error("downdated X'X is not positive definite")
+    dl
 end
 
-## solve!(dl,u) -> m : solve PLS problem for u given beta
-## solve!(dl,u,beta) -> m : solve PLS problem for u and beta
-function solve!(dl:DeltaLeaf, u::Matrix{Float64}, beta=Float64[])
-    m,n,l = size(dl)
-    (n,l) == size(u) || error("Dimension mismatch")
-    for l in 1:nl                       # cu := L^{-1} Lambda'Z'y
-        BLAS.trsv!('L','N','N',sub(m.L,1:k,1:k,l),sub(m.u,1:k,l))
-    end
-    if ubeta
-        copy!(m.beta,m.Xty); copy!(m.RZX,m.ZtX); copy!(m.RX.UL, m.XtX)
-        BLAS.trmm!('L','L','T','N',1.,m.lambda,reshape(m.RZX,(k,p*nl))) # Lambda'Z'X
-        for l in 1:nl
-            wL = sub(m.L,1:k,1:k,l); wRZX = sub(m.RZX,1:k,1:p,l)
-            BLAS.trsm!('L','L','N','N',1.,wL,wRZX) # solve for l'th face of RZX
-            BLAS.gemv!('T',-1.,wRZX,sub(m.u,1:k,l),1.,m.beta) # downdate m.beta
-            BLAS.syrk!('U','T',-1.,wRZX,1.,m.RX.UL)           # downdate XtX
+function updateL!(dl::DeltaLeaf,lmb::LMMBase)
+    λ = lmb.λ
+    length(λ) == 1 || error("updateL! on a DeltaLeaf with more than 1 r.e. term?")
+    updateL!(dl,λ[1])
+end
+
+function Base.A_ldiv_B!(dl::DeltaLeaf,lmb::LMMBase)
+    n,p,q,l = size(lmb)
+    l == 1 || error("DeltaLeaf should take an LMMBase with 1 r.e. term")
+    λ = lmb.λ[1]
+    cu = BLAS.trmm!('L',λ.uplo,'T',λ.unitdiag,1.,λ.UL,copy!(lmb.u[1],lmb.Zty[1]))
+    β = copy!(lmb.β,lmb.Xty)
+    if size(λ,1) == 1                   # short cut for scalar r.e.
+        Linv = 1. ./ vec(dl.Ld)
+        scale!(cu,Linv)
+        LXZ = reshape(dl.Lb,(p,q))
+        A_ldiv_B!(dl.Lt,BLAS.gemv!('N',-1.,LXZ,vec(cu),1.,β)) # solve for β
+        BLAS.gemv!('T',-1.,LXZ,β,1.0,vec(cu)) # cu -= LZX'β
+        scale!(cu,Linv)
+    else
+        for j in 1:size(cu,2)           # solve L cᵤ = λ'Z'y and downdate X'y
+            BLAS.gemv!('T',-1.0,sub(dl.Lb,:,:,j),
+                       BLAS.trsv!('L','N','N',sub(dl.Ld,:,:,j),sub(cu,:,j)),1.0,β)
         end
-        _, info = LAPACK.potrf!('U',m.RX.UL) # Cholesky factor RX
-        bool(info) && error("Downdated X'X is not positive definite")
-        A_ldiv_B!(m.RX,m.beta)           # beta = (RX'RX)\(downdated X'y)
-        for l in 1:nl                 # downdate cu
-            BLAS.gemv!('N',-1.,sub(m.RZX,1:k,1:p,l),m.beta,1.,sub(m.u,1:k,l))
+        A_ldiv_B!(dl.Lt,β)              # solve for β
+        for j in 1:size(cu,2)           # solve L'u = cᵤ - R_ZX β
+            BLAS.trsv!('L','T','N',sub(dl.Ld,:,:,j),
+                       BLAS.gemv!('N',-1.0,sub(dl.Lb,:,:,j),β,1.0,sub(cu,:,j)))
         end
     end
-    for l in 1:nl                     # solve for m.u
-        BLAS.trsv!('L','T','N',sub(m.L,1:k,1:k,l), sub(m.u,1:k,l))
-    end
-    linpred!(m)
-end        
+    lmb
+end
 
 type DeltaNode <: Delta
     Ad::Vector{Delta}
     Ab::Array{Float64,3}
     At::Symmetric{Float64}
+    Lb::Array{Float64,3}
     Lt::Base.LinAlg.Cholesky{Float64}
 end

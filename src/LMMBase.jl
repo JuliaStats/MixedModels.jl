@@ -92,8 +92,8 @@ function updateμ!(lmb::LMMBase)
                 μ[i] += xx[i] * bb[rr[i]]
             end
         else
-            for i in 1:length( μ)
-                μ[i] += dot(sub(x,:,i),sub(bb,:,rr[i]))
+            for i in 1:length(μ)
+                μ[i] += dot(sub(x,:,i),sub(bb,:,int(rr[i])))
             end
         end
     end
@@ -121,12 +121,8 @@ nθ(lmb::LMMBase) = sum([n*(n+1)>>1 for (m,n) in map(size,lmb.λ)])
 ## pwrss(lmb) : penalized, weighted residual sum of squares
 function pwrss(lmb::LMMBase)
     s = rss(lmb)
-    u = lmb.u
-    for k in 1:length(u)
-        uu = u[k]
-        for j in 1:length(uu)
-            s += abs2(uu[j])
-        end
+    for u in lmb.u, ui in u
+        s += abs2(ui)
     end
     s
 end
@@ -147,14 +143,47 @@ function ranef(lmb::LMMBase, uscale=false)
     [λ * u for (λ,u) in zip(lmb.λ,lmb.u)]
 end
 
+##  reml!(lmb,v=true) -> lmb : Set lmb.REML to v.  If lmb.REML is modified, unset m.fit
+function reml!(lmb::LMMBase,v::Bool=true)
+    if lmb.REML != v
+        lmb.REML = v
+        lmb.fit = false
+    end
+    lmb
+end
+
 ## rss(m) -> residual sum of squares
 rss(lmb::LMMBase) = ssqdiff(lmb.μ,lmb.y)
+
+## scale(m) -> estimate, s, of the scale parameter
+## scale(m,true) -> estimate, s^2, of the squared scale parameter
+function Base.scale(lmb::LMMBase, sqr=false)
+    n,p = size(lmb)
+    ssqr = pwrss(lmb)/float64(n - (lmb.REML ? p : 0))
+    sqr ? ssqr : sqrt(ssqr)
+end
 
 ##  size(m) -> n, p, q, t (lengths of y, beta, u and # of re terms)
 function Base.size(lmb::LMMBase)
     n,p = size(lmb.X.m)
     n,p,mapreduce(length,+,lmb.u),length(lmb.fnms)
 end
+
+## sqrlenu(lmb) -> squared length of lmb.u (the penalty in the PLS problem)
+function sqrlenu(lmb::LMMBase)
+    s = 0.
+    for u in lmb.u, ui in u
+        s+=abs2(ui)
+    end
+    s
+end
+
+## rowlengths(m) -> v : return a vector of the row lengths
+rowlengths(m::Matrix{Float64}) = [norm(sub(m,i,:))::Float64 for i in 1:size(m,1)]
+rowlengths(t::Triangular{Float64}) = rowlengths(full(t))
+
+## std(m) -> Vector{Vector{Float64}} estimated standard deviations of variance components
+Base.std(lmb::LMMBase) = scale(lmb)*push!([rowlengths(λ) for λ in lmb.λ],[1.])
 
 ## Return a block in the Zt matrix from one term.
 function Ztblk(m::Matrix,v)
@@ -173,12 +202,28 @@ Zt(lmb::LMMBase) = vcat(map(Ztblk,lmb.Xs,lmb.facs)...)
 
 ZXt(lmb::LMMBase) = (zt = Zt(lmb); vcat(zt,convert(typeof(zt),lmb.X.m')))
 
+## ltri(m) -> v : extract the lower triangle as a vector
+function ltri(m::Matrix)
+    n = size(m,1)
+    n == 1 && return copy(vec(m))
+    res = Array(eltype(m),n*(n+1)>>1)
+    pos = 0
+    for j in 1:n, i in j:n
+        res[pos += 1] = m[i,j]
+    end
+    res
+end
+function ltri(t::Triangular)
+    t.uplo == 'L' || error("Triangular matrix must be lower triangular")
+    ltri(t.UL)
+end
+
 ## θ(lmb) -> θ : extract the covariance parameters as a vector
-θ(lmb::LMMBase) = vcat([ltri(λ) for λ in  lmb.λ])
+θ(lmb::LMMBase) = vcat(map(ltri,lmb.λ)...)
 
 ## θ!(lmb,theta) -> lmb : install new values of the covariance parameters
 function θ!(lmb::LMMBase,th::Vector)
-    length(th) == nθ(sz) || error("Dimension mismatch")
+    length(th) == nθ(lmb) || error("Dimension mismatch")
     pos = 0
     for λ in lmb.λ
         s = size(λ,1)
@@ -189,12 +234,16 @@ function θ!(lmb::LMMBase,th::Vector)
     lmb
 end
 
+## Make a version of this and of Ztblk that overwrites storage
+
 ## λtZt(lmb) -> λtZt : extract λ'Z' as a sparse matrix
 λtZt(lmb::LMMBase) = vcat(map(Ztblk, [λ'*Xs for (λ,Xs) in zip(lmb.λ,lmb.Xs)], lmb.facs)...)
 
-## install λ*Zty in u
-function λZty!(lmb::LMMBase)
-    for (lam,zty,uu) in zip(lmb.λ,lmb.Zty,lmb.u)
-        A_mul_B!(lam,copy!(uu,zty))
+## install λ'Z'y in u and Xty in β
+function λtZty!(lmb::LMMBase)
+    for (λ,Zty,u) in zip(lmb.λ,lmb.Zty,lmb.u)
+        A_mul_B!(λ,copy!(u,Zty))
     end
+    copy!(lmb.β,lmb.Xty)
+    lmb
 end
