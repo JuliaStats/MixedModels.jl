@@ -9,7 +9,7 @@ type LMMBase
     fnms::Vector                        # names of grouping factors
     facs::Vector
     Xs::Vector
-    Xty::Vector
+    Xty::Vector{Float64}
     Zty::Vector
     β::Vector{Float64}
     λ::Vector

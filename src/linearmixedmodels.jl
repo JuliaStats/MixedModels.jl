@@ -1,5 +1,16 @@
 ## Base implementations of methods for the LinearMixedModel abstract type
 
+type LinearMixedModel <: MixedModel
+    lmb::LMMBase
+    pls::PLSSolver
+end
+
+function θ!(lmm::LinearMixedModel,v::Vector{Float64})
+    θ!(lmm.lmb,v)
+    A_ldiv_B!(updateL!(lmm.pls,lmm.lmb),lmm.lmb)
+    objective(lmm)
+end
+
 ## Delegate methods to the lmb member
 Base.size(m::LinearMixedModel) = size(m.lmb)
 
@@ -16,6 +27,12 @@ for f in (:fixef, :fnames, :grplevels, :isfit, :isnested, :isscalar,
         $f(m::LinearMixedModel) = $f(m.lmb)
     end
 end
+
+## FixME: Change the definition so that one choice is for the combined L and RX
+
+## Delegate methods to the pls member
+Base.logdet(m::LinearMixedModel) = logdet(m.pls)
+Base.logdet(m::LinearMixedModel,RX::Bool) = logdet(m.pls,RX)
 
 ## coeftable(m) -> DataFrame : the coefficients table
 function StatsBase.coeftable(m::LinearMixedModel)
@@ -81,12 +98,11 @@ end
 
 ## objective(m) -> deviance or REML criterion according to m.REML
 function objective(m::LinearMixedModel)
-    n,p,q,k = size(m); fn = float64(n - (m.REML ? p : 0))
-    logdet(m,false) + fn*(1.+log(2.pi*pwrss(m)/fn)) + (m.REML ? logdet(m) : 0.)
+    n,p,q,k = size(m)
+    REML = m.lmb.REML
+    fn = float64(n - (REML ? p : 0))
+    logdet(m,false) + fn*(1.+log(2.pi*pwrss(m)/fn)) + (REML ? logdet(m) : 0.)
 end
-
-## pwrss(m) -> penalized, weighted residual sum of squares
-#pwrss(m::LinearMixedModel) = rss(m) + sqrlenu(m)
 
 ##  reml!(m,v=true) -> m : Set m.REML to v.  If m.REML is modified, unset m.fit
 function reml!(m::LinearMixedModel,v=true)

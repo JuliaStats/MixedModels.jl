@@ -37,10 +37,6 @@ module MixedModels
         theta           # extract the variance-component parameter vector
 
     abstract MixedModel                # model with fixed and random effects
-    abstract LinearMixedModel <: MixedModel # Gaussian mixed model with identity link
-
-    typealias VTypes Union(Float64,Complex128)
-    typealias ITypes Union(Int32,Int64)
 
     include("utils.jl")     # utilities to deal with the model formula
     include("LMMBase.jl")   # information common to each type of LinearMixedModel
