@@ -80,8 +80,7 @@ end
 
 ## update lmb.μ
 function updateμ!(lmb::LMMBase)
-    μ = lmb.μ
-    A_mul_B!(μ, lmb.X.m, lmb.β)         # initialize μ to Xβ
+    μ = A_mul_B!(lmb.μ, lmb.X.m, lmb.β) # initialize μ to Xβ
     for (ff,λ,u,x) in zip(lmb.facs,lmb.λ,lmb.u,lmb.Xs)
         rr = ff.refs
         bb = λ * u
@@ -231,7 +230,7 @@ function θ!(lmb::LMMBase,th::Vector)
             λ.UL[i,j] = th[pos += 1]
         end
     end
-    lmb
+    lmb.λ
 end
 
 ## Make a version of this and of Ztblk that overwrites storage
