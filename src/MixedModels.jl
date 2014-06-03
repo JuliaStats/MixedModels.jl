@@ -5,19 +5,22 @@ module MixedModels
     using StatsBase: CoefTable
     using Base.SparseMatrix: symperm
     using Base.LinAlg.CHOLMOD: CholmodDense, CholmodDense!, CholmodFactor,
-          CholmodSparse, CholmodSparse!, chm_scale!, CHOLMOD_SYM,
+          CholmodSparse, CholmodSparse!, chm_scale, CHOLMOD_SYM,
           CHOLMOD_L, CHOLMOD_Lt, CHOLMOD_P, CHOLMOD_Pt, solve
 
     export
+        DeltaLeaf,                      # come up with a better name for this
+        DiagSolver,
         LinearMixedModel,
         LMMBase,
-        LMMGeneral,
-        LMMNested,
-        LMMScalar1,
-        LMMScalarNested,
-        LMMScalarn,
-        LMMVector1,
+#        LMMGeneral,
+#        LMMNested,
+#        LMMScalar1,
+#        LMMScalarNested,
+#        LMMScalarn,
+#        LMMVector1,
         MixedModel,
+        PLSSolver,
 
         fixef,          # extract the fixed-effects parameter estimates
         grad,           # gradient of objective
@@ -37,14 +40,11 @@ module MixedModels
         theta           # extract the variance-component parameter vector
 
     abstract MixedModel                # model with fixed and random effects
-    abstract LinearMixedModel <: MixedModel # Gaussian mixed model with identity link
-
-    typealias VTypes Union(Float64,Complex128)
-    typealias ITypes Union(Int32,Int64)
 
     include("utils.jl")     # utilities to deal with the model formula
     include("LMMBase.jl")   # information common to each type of LinearMixedModel
     include("delta.jl")
+    include("dsolver.jl")
     include("linearmixedmodels.jl") # method definitions for the abstract class
 #    include("general.jl") # general form of linear mixed-effects models
 #    include("scalar1.jl") # models with a single, scalar random-effects term
