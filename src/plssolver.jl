@@ -15,7 +15,7 @@ Base.cholfact(s::λtZtSolver,RX=true) = RX ? s.RX : s.L
 ## Logarithm of the determinant of the generator matrix for the Cholesky factor, L or RX
 Base.logdet(s::λtZtSolver,RX=true) = logdet(cholfact(s,RX))
 
-function solve!(lmb::LMMBase,s::λtZtSolver,ubeta::Bool=false)
+function Base.A_ldiv_B!(lmb::LMMBase,s::λtZtSolver,ubeta::Bool=false)
     n,p,q,k = size(lmb)
     LamtZt = λtZt(lmb)
     if ubeta
@@ -44,4 +44,3 @@ end
 function updateL!(s::λtZtSolver,lmb::LMMBase)
     ## Need the version of λtZt that updates
 end
-

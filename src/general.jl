@@ -1,26 +1,9 @@
 type LMMGeneral{Ti<:Union(Int32,Int64)} <: LinearMixedModel
     lmb::LMMBase
-    L::CholmodFactor{Float64,Ti}
-    LambdatZt::SparseMatrixCSC{Float64,Ti}
-    RX::Base.LinAlg.Cholesky{Float64}
-    X::ModelMatrix{Float64}             # fixed-effects model matrix
-    Xs::Vector{Matrix{Float64}}         # X_1,X_2,...,X_k
-    XtX::Symmetric{Float64}
-    Xty::Vector{Float64}
-    beta::Vector{Float64}
-    fnms::Vector
-    inds::Vector
-    lambda::Vector{Matrix{Float64}}     # k lower triangular mats
-    mu::Vector{Float64}
-    perm::Vector{Ti}
-    pvec::Vector
-    u::Vector{Matrix{Float64}}
-    y::Vector
-    REML::Bool
-    fit::Bool
+    L::PLSSolver
 end
 
-LMMGeneral(lmb::LMMBase) = LMMGeneral(lmb)
+LMMGeneral(lmb::LMMBase) = LMMGeneral(lmb,λtZtSolver)
 
 ## function LMMGeneral(X::ModelMatrix, Xs::Vector, facs::Vector,
 ##                     y::Vector, fnms::Vector, pvec::Vector)
@@ -35,7 +18,6 @@ LMMGeneral(lmb::LMMBase) = LMMGeneral(lmb)
 ##     LMMGeneral{Ti}(L,LambdatZt,cholfact(eye(p)),X,Xs,zeros(p),inds,lambda,
 ##         zeros(n),L.Perm + one(Ti),u,y,false,false)
 ## end
-
 ##  cholfact(x, RX=true) -> the Cholesky factor of the downdated X'X or LambdatZt
 Base.cholfact(m::LMMGeneral,RX=true) = RX ? m.RX : m.L
 
@@ -63,9 +45,6 @@ end
 
 ## Logarithm of the determinant of the generator matrix for the Cholesky factor, L or RX
 Base.logdet(m::LMMGeneral,RX=true) = logdet(cholfact(m,RX))
-
-## lower(m) -> lower bounds on elements of theta
-lower(m::LMMGeneral) = vcat([lower_bd_ltri(p) for p in m.pvec]...)
 
 ##  ranef(m) -> vector of matrices of random effects on the original scale
 ##  ranef(m,true) -> vector of matrices of random effects on the U scale
@@ -101,12 +80,6 @@ function solve!(m::LMMGeneral, ubeta=false)
     end
     linpred!(m)
 end
-
-## sqrlenu(m) -> total squared length of m.u (the penalty in the PLS problem)
-sqrlenu(m::LMMGeneral) = sum([mapreduce(Abs2Fun(),Add(),u) for u in m.u])
-
-## std(m) -> Vector{Vector{Float64}} estimated standard deviations of variance components
-Base.std(m::LMMGeneral) = scale(m)*push!(Vector{Float64}[vec(vnorm(l,2,1)) for l in m.lambda],[1.])
 
 ## theta(m) -> vector of variance-component parameters
 theta(m::LMMGeneral) = vcat([ltri(M) for M in m.lambda]...)

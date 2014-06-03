@@ -47,7 +47,7 @@ function DeltaLeaf(lmb::LMMBase)
     DeltaLeaf(lmb.facs[1],lmb.Xs[1],lmb.X.m')
 end
 
-## Logarithm of the determinant of the generator matrix for the Cholesky factor, RX or L
+## Logarithm of the determinant of the matrix represented by, RX or L
 function Base.logdet(dl::DeltaLeaf,RX=true)
     RX && return logdet(dl.Lt)
     Ld = dl.Ld

@@ -81,7 +81,7 @@ function grad(m::LMMVector1)        # called after solve!
     n,p,q = size(m); k,nl = size(m.u); L = m.L; ZtZ = m.ZtZ; lambda = m.lambda
     mu = m.lmb.mu; rv = m.Ztrv; nz = m.Ztnz; res = zeros(k,k)
     for i in 1:nl
-        res += Base.LinAlg.LAPACK.potrs!('L',sub(L,:,:,i), lambda'*sub(ZtZ,:,:,i))
+        res += LAPACK.potrs!('L',sub(L,:,:,i), lambda'*sub(ZtZ,:,:,i))
     end
     Ztr = copy(m.Zty)          # create Z'(resid) starting with Zty
     for i in 1:n Ztr[:,rv[i]] -= mu[i] * nz[:,i] end
@@ -155,7 +155,7 @@ theta(m::LMMVector1) = ltri(m.lambda)
 function theta!(m::LMMVector1, th::Vector{Float64})
     n,p,q,t = size(m); k,nl = size(m.u); pos = 1
     for j in 1:k, i in j:k
-        m.lambda[i,j] = th[pos]; pos += 1
+        m.lambda[i,j] = th[pos += 1]
     end
     ldL = 0.; copy!(m.L,m.ZtZ)
     BLAS.trmm!('L','L','T','N',1.,m.lambda,reshape(m.L,(k,q)))

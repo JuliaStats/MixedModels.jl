@@ -3,34 +3,10 @@
 ## Fields are arranged by decreasing size, doubles then pointers then bools
 type LMMScalar1 <: LinearMixedModel
     lmb::LMMBase
-    theta::Float64
-    L::Vector{Float64}
-    RX::Base.LinAlg.Cholesky{Float64}
-    Xt::Matrix{Float64}
-    XtX::Matrix{Float64}
-    XtZ::Matrix{Float64}
-    Xty::Vector{Float64}
-    Ztrv::Vector                        # indices into factor levels
-    Ztnz::Vector{Float64}               # left-hand side of r.e. term
-    ZtZ::Vector{Float64}
-    Zty::Vector{Float64}
-    beta::Vector{Float64}
-    u::Vector{Float64}
-    REML::Bool
-    fit::Bool
+    dl::DeltaLeaf
 end
 
-function LMMScalar1(lmb::LMMBase)
-    Xt = lmb.X.m'; p,n = size(Xt); Ztnz = vec(lmb.Xs[1]); fac = lmb.facs[1];
-    q = length(fac.pool); rv = fac.refs; y = lmb.y
-    XtX = Xt*Xt'; ZtZ = zeros(q); XtZ = zeros(p,q); Zty = zeros(q);
-    for i in 1:n
-        j = rv[i]; z = Ztnz[i]
-        ZtZ[j] += abs2(z); Zty[j] += z*y[i]; XtZ[:,j] += z*Xt[:,i]
-    end
-    LMMScalar1(lmb, 1., ones(q), cholfact(XtX), Xt, XtX, XtZ, Xt*y, rv, Ztnz , ZtZ, Zty,
-               zeros(p), zeros(q), false, false)
-end
+LMMScalar1(lmb::LMMBase) = LMMScalar1(lmb,DeltaLeaf(lmb))
 
 ##  cholfact(x, RX=true) -> the Cholesky factor of the downdated X'X or LambdatZt
 Base.cholfact(m::LMMScalar1,RX=true) = RX ? m.RX : Diagonal(m.L)

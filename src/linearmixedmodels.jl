@@ -3,6 +3,17 @@ type LinearMixedModel <: MixedModel
     s::PLSSolver
 end
 
+type LinearMixedModel <: MixedModel
+    lmb::LMMBase
+    pls::PLSSolver
+end
+
+function θ!(lmm::LinearMixedModel,v::Vector{Float64})
+    θ!(lmm.lmb,v)
+    A_ldiv_B!(updateL!(lmm.pls,lmm.lmb),lmm.lmb)
+    objective(lmm)
+end
+
 ## Delegate methods to the lmb member
 Base.size(m::LinearMixedModel) = size(m.lmb)
 Base.scale(m::LinearMixedModel) = scale(m.lmb)
@@ -20,6 +31,12 @@ for f in (:fixef, :fnames, :grplevels, :isfit, :isnested, :isscalar,
         $f(m::LinearMixedModel) = $f(m.lmb)
     end
 end
+
+## FixME: Change the definition so that one choice is for the combined L and RX
+
+## Delegate methods to the pls member
+Base.logdet(m::LinearMixedModel) = logdet(m.pls)
+Base.logdet(m::LinearMixedModel,RX::Bool) = logdet(m.pls,RX)
 
 ## coeftable(m) -> DataFrame : the coefficients table
 function StatsBase.coeftable(m::LinearMixedModel)
@@ -104,13 +121,6 @@ function objective!(m::LinearMixedModel,θ::Vector{Float64})
 end
 
 rss(m::LinearMixedModel) = rss(m.lmb)
-
-## scale(m) -> estimate, s, of the scale parameter
-## scale(m,true) -> estimate, s^2, of the squared scale parameter
-function Base.scale(m::LinearMixedModel, sqr=false)
-    n,p = size(m); ssqr = pwrss(m)/float64(n - (m.REML ? p : 0))
-    sqr ? ssqr : sqrt(ssqr)
-end
 
 function Base.show(io::IO, m::LinearMixedModel)
     fit(m)
