@@ -83,17 +83,10 @@ function updateμ!(lmb::LMMBase)
     μ = A_mul_B!(lmb.μ, lmb.X.m, lmb.β) # initialize μ to Xβ
     for (ff,λ,u,x) in zip(lmb.facs,lmb.λ,lmb.u,lmb.Xs)
         rr = ff.refs
-        bb = λ * u
-        if size(bb,1) == 1
-            bb = vec(bb)
-            xx = vec(x)
-            for i in 1:length(μ)
-                μ[i] += xx[i] * bb[rr[i]]
-            end
+        if size(λ,1) == 1
+            fma!(μ,vec(λ*u)[rr],vec(x))
         else
-            for i in 1:length(μ)
-                μ[i] += dot(sub(x,:,i),sub(bb,:,int(rr[i])))
-            end
+            add!(mu,sum(λ*u[:,rr] .* X,1))
         end
     end
     ssqdiff(μ,lmb.y)

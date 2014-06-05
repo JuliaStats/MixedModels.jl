@@ -1,6 +1,23 @@
-type LMMGeneral{Ti<:Union(Int32,Int64)} <: LinearMixedModel
-    lmb::LMMBase
-    L::PLSSolver
+type GenSolver <: PLSSolver
+    L::CholmodFactor{Float64,Ti}
+    RX::Base.LinAlg.Cholesky{Float64}
+    RZX::Matrix{Float64}
+    XtX::Symmetric{Float64}
+    ZtX::Matrix{Float64}
+    ZtZ::CholmodSparse{Float64,Ti}
+    perm::Vector{Ti}
+end
+
+function GenSolver(lmb::LMMBase)        # incomplete
+    zt = λtZt(lmb)
+    Ztc = CholmodSparse(zt)
+    ZtZ = Ztc * Ztc'
+    L = cholfact(ZtZ,1.,true)
+    perm = L.Perm
+    X = lmb.X.m
+    XtX = Symmetric(X'X,:L)
+    ZtX = zt*X
+    GenSolver(L,cholfact(XtX.S,:L),copy(ZtX),XtX,ZtX,XtX,perm+one(eltype(perm)))
 end
 
 LMMGeneral(lmb::LMMBase) = LMMGeneral(lmb,λtZtSolver)

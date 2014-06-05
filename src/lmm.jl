@@ -6,4 +6,5 @@ function lmm(f::Formula, fr::AbstractDataFrame)
     LinearMixedModel(lmb,GeneralSolver(lmb))
 end
     
+## Probably don't need this anymore.
 lmm(ex::Expr, fr::AbstractDataFrame) = lmm(Formula(ex), fr)

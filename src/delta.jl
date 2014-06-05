@@ -47,6 +47,8 @@ function DeltaLeaf(lmb::LMMBase)
     DeltaLeaf(lmb.facs[1],lmb.Xs[1],lmb.X.m')
 end
 
+Base.cholfact(dl::DeltaLeaf,RX::Bool=true) = RX ? dl.Lt : error("Code not yet written")
+
 ## Logarithm of the determinant of the matrix represented by, RX or L
 function Base.logdet(dl::DeltaLeaf,RX=true)
     RX && return logdet(dl.Lt)
@@ -60,7 +62,6 @@ function Base.logdet(dl::DeltaLeaf,RX=true)
 end
 
 Base.size(dl::DeltaLeaf) = size(dl.Ab)
-
 Base.size(dl::DeltaLeaf,k::Integer) = size(dl.Ab,k)
 
 function Base.Triangular{T<:Number}(n::Integer,v::Vector{T})
@@ -73,12 +74,12 @@ function Base.Triangular{T<:Number}(n::Integer,v::Vector{T})
     Triangular(A,:L,false)
 end
 
-##  updateL!(dl,lambda)->dl : update Ld, Lb and Lt
-function updateL!(dl::DeltaLeaf,λ::Triangular)
+##  update!(dl,lambda)->dl : update Ld, Lb and Lt
+function update!(dl::DeltaLeaf,λ::Triangular)
     m,n,l = size(dl)
     n == size(λ,1) || error("Dimension mismatch")
     Lt = copy!(dl.Lt.UL,dl.At.S)
-    if n == 1                          # shortcut for 1×1 λ 
+    if n == 1                           # shortcut for 1×1 λ
         lam = λ[1,1]
         Ld = map!(x -> sqrt(x*lam*lam + 1.), dl.Ld, dl.Ad)
         Lb = reshape(copy!(dl.Lb,dl.Ab),(m,m*l))
@@ -102,10 +103,9 @@ function updateL!(dl::DeltaLeaf,λ::Triangular)
     dl
 end
 
-function updateL!(dl::DeltaLeaf,lmb::LMMBase)
-    λ = lmb.λ
-    length(λ) == 1 || error("updateL! on a DeltaLeaf with more than 1 r.e. term?")
-    updateL!(dl,λ[1])
+function update!(dl::DeltaLeaf,λ::Vector)
+    length(λ) == 1 || error("update! on a DeltaLeaf requires length(λ) == 1")
+    update!(dl,λ[1])
 end
 
 function Base.A_ldiv_B!(dl::DeltaLeaf,lmb::LMMBase)

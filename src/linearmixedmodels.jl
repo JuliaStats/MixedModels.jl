@@ -1,17 +1,6 @@
 type LinearMixedModel <: MixedModel
     lmb::LMMBase
-    s::PLSSolver
-end
-
-type LinearMixedModel <: MixedModel
-    lmb::LMMBase
     pls::PLSSolver
-end
-
-function θ!(lmm::LinearMixedModel,v::Vector{Float64})
-    θ!(lmm.lmb,v)
-    A_ldiv_B!(updateL!(lmm.pls,lmm.lmb),lmm.lmb)
-    objective(lmm)
 end
 
 ## Delegate methods to the lmb member
@@ -107,20 +96,17 @@ end
 
 ## objective(m) -> deviance or REML criterion according to m.REML
 function objective(m::LinearMixedModel)
-    n,p,q,k = size(m)
-    lmb = m.lmb
-    s = m.s
-    fn = float64(n - (lmb.REML ? p : 0))
-    logdet(s,false) + fn*(1.+log(2π*pwrss(lmb)/fn)) + (lmb.REML ? logdet(s) : 0.)
+    n,p = size(m)
+    REML = m.lmb.REML
+    fn = float64(n - (REML ? p : 0))
+    logdet(m,false) + fn*(1.+log(2π*pwrss(m)/fn)) + (REML ? logdet(m) : 0.)
 end
 
 ## objective!(m,θ) -> install new θ parameters and evaluate the objective.
 function objective!(m::LinearMixedModel,θ::Vector{Float64})
-    updateμ!(A_ldiv_B!(update!(m.s,θ!(m.lmb,θ)),m.lmb))
+    updateμ!(A_ldiv_B!(update!(m.pls,θ!(m.lmb,θ)),m.lmb))
     objective(m)
 end
-
-rss(m::LinearMixedModel) = rss(m.lmb)
 
 function Base.show(io::IO, m::LinearMixedModel)
     fit(m)
@@ -160,4 +146,4 @@ end
 StatsBase.stderr(m::LinearMixedModel) = sqrt(diag(vcov(m)))
 
 ## vcov(m) -> estimated variance-covariance matrix of the fixed-effects parameters
-StatsBase.vcov(m::LinearMixedModel) = scale(m,true) * inv(cholfact(m.s))
+StatsBase.vcov(m::LinearMixedModel) = scale(m,true) * inv(cholfact(m.pls))
