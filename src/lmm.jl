@@ -3,7 +3,7 @@ function lmm(f::Formula, fr::AbstractDataFrame)
     n,p,q,k = size(lmb)
     k == 1 && return LinearMixedModel(lmb,DeltaLeaf(lmb))
     isscalar(lmb) && return LinearMixedModel(lmb,DiagSolver(lmb))
-    LinearMixedModel(lmb,GeneralSolver(lmb))
+    LinearMixedModel(lmb,GenSolver(lmb))
 end
     
 ## Probably don't need this anymore.

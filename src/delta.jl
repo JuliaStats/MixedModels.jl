@@ -1,5 +1,9 @@
 abstract PLSSolver
 
+Base.cholfact(s::PLSSolver,RX::Bool=true) = RX ? s.RX : s.L
+
+Base.logdet(s::PLSSolver,RX::Bool=true) = logdet(cholfact(s,RX))
+
 abstract Delta <: PLSSolver # An arrow shaped A/L block from nested factors
 
 type DeltaLeaf <: Delta   # A terminal Delta block

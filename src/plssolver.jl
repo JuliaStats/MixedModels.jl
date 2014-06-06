@@ -1,6 +1,4 @@
 ## A PLSSolver must implement methods for logdet, updateL! and A_ldiv_B! where B is LMMBase
-abstract PLSSolver   # for solving the penalized least squares problem
-
 type λtZtSolver{Ti<:Union(Int32,Int64)} <: PLSSolver # Full sparse Cholesky updating from λtZt
     L::CholmodFactor{Float64,Ti}
     λtZt::SparseMatrixCSC{Float64,Ti}

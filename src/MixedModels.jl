@@ -46,7 +46,7 @@ module MixedModels
     include("delta.jl")
     include("dsolver.jl")
     include("linearmixedmodels.jl") # method definitions for the abstract class
-#    include("general.jl") # general form of linear mixed-effects models
+    include("general.jl") # general form of linear mixed-effects models
 #    include("scalar1.jl") # models with a single, scalar random-effects term
 #    include("scalarn.jl") # models with a single, scalar random-effects term
 #    include("vector1.jl") # models with a single, vector-valued random-effects term
