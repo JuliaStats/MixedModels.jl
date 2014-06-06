@@ -86,7 +86,7 @@ function updateμ!(lmb::LMMBase)
         if size(λ,1) == 1
             fma!(μ,vec(λ*u)[rr],vec(x))
         else
-            add!(mu,sum(λ*u[:,rr] .* X,1))
+            add!(μ,vec(sum(λ*u[:,rr] .* x,1)))
         end
     end
     ssqdiff(μ,lmb.y)
@@ -178,7 +178,7 @@ rowlengths(t::Triangular{Float64}) = rowlengths(full(t))
 Base.std(lmb::LMMBase) = scale(lmb)*push!([rowlengths(λ) for λ in lmb.λ],[1.])
 
 ## Return a block in the Zt matrix from one term.
-function Ztblk(m::Matrix,v)
+function ztblk(m::Matrix,v)
     nr,nc = size(m)
     nblk = maximum(v)
     NR = nr*nblk                        # number of rows in result
@@ -188,11 +188,11 @@ function Ztblk(m::Matrix,v)
                     cf(vec(reshape([1:NR],(nr,int(nblk)))[:,v])), # rowval
                     vec(m))            # nzval
 end
-Ztblk(m::Matrix,v::PooledDataVector) = Ztblk(m,v.refs)
+ztblk(m::Matrix,v::PooledDataVector) = ztblk(m,v.refs)
 
-Zt(lmb::LMMBase) = vcat(map(Ztblk,lmb.Xs,lmb.facs)...)
+zt(lmb::LMMBase) = vcat(map(ztblk,lmb.Xs,lmb.facs)...)
 
-ZXt(lmb::LMMBase) = (zt = Zt(lmb); vcat(zt,convert(typeof(zt),lmb.X.m')))
+zxt(lmb::LMMBase) = (Zt = zt(lmb); vcat(Zt,convert(typeof(Zt),lmb.X.m')))
 
 ## ltri(m) -> v : extract the lower triangle as a vector
 function ltri(m::Matrix)
@@ -226,10 +226,10 @@ function θ!(lmb::LMMBase,th::Vector)
     lmb.λ
 end
 
-## Make a version of this and of Ztblk that overwrites storage
+## Make a version of this and of ztblk that overwrites storage
 
 ## λtZt(lmb) -> λtZt : extract λ'Z' as a sparse matrix
-λtZt(lmb::LMMBase) = vcat(map(Ztblk, [λ'*Xs for (λ,Xs) in zip(lmb.λ,lmb.Xs)], lmb.facs)...)
+λtZt(lmb::LMMBase) = vcat(map(ztblk, [λ'*Xs for (λ,Xs) in zip(lmb.λ,lmb.Xs)], lmb.facs)...)
 
 ## install λ'Z'y in u and Xty in β
 function λtZty!(lmb::LMMBase)

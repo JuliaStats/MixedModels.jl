@@ -10,14 +10,14 @@ type DiagSolver{Ti<:Union(Int32,Int64)} <: PLSSolver # Sparse Choleksy solver wi
 end
 
 function DiagSolver(lmb::LMMBase)
-    zt = Zt(lmb)
-    Ztc = CholmodSparse(zt)
+    Zt = zt(lmb)
+    Ztc = CholmodSparse(Zt)
     ZtZ = Ztc * Ztc'
     L = cholfact(ZtZ,1.,true)
     perm = L.Perm
     X = lmb.X.m
     XtX = Symmetric(X'X,:L)
-    ZtX = zt*X
+    ZtX = Zt*X
     DiagSolver(L,cholfact(XtX.S,:L),copy(ZtX),XtX,ZtX,ZtZ,perm .+ one(eltype(perm)),
                vcat([fill(j,length(ff.pool)) for (j,ff) in enumerate(lmb.facs)]...))
 end
@@ -33,10 +33,6 @@ function Base.A_ldiv_B!(s::DiagSolver,lmb::LMMBase)
     lmb
 end
 
-Base.cholfact(s::DiagSolver,RX::Bool=true) = RX ? s.RX : s.L
-
-Base.logdet(s::DiagSolver,RX::Bool=true) = logdet(cholfact(s,RX))
-
 function update!(s::DiagSolver,λ::Vector)
     all(map(size,λ) .== (1,1)) || error("λ must be a vector of 1×1 matrices")
     λvec = vcat([vec(ll.UL) for ll in λ]...)[s.λind]
@@ -46,5 +42,3 @@ function update!(s::DiagSolver,λ::Vector)
     info == 0 || error("Downdated X'X is not positive definite")
     s
 end
-
-
