@@ -52,6 +52,8 @@ end
 ##  coef(lmb) -> current value of beta (as a reference)
 StatsBase.coef(lmb::LMMBase) = lmb.β
 
+Base.cor(lmb::LMMBase) = map(cc,lmb.λ)
+
 ##  fixef(lmb) -> current value of beta (as a reference)
 fixef(lmb::LMMBase) = lmb.β
 
@@ -205,10 +207,7 @@ function ltri(m::Matrix)
     end
     res
 end
-function ltri(t::Triangular)
-    t.uplo == 'L' || error("Triangular matrix must be lower triangular")
-    ltri(t.UL)
-end
+ltri(t::Triangular{Float64,Array{Float64,2},:L,false}) = ltri(t.data)
 
 ## θ(lmb) -> θ : extract the covariance parameters as a vector
 θ(lmb::LMMBase) = vcat(map(ltri,lmb.λ)...)
@@ -220,7 +219,7 @@ function θ!(lmb::LMMBase,th::Vector)
     for λ in lmb.λ
         s = size(λ,1)
         for j in 1:s, i in j:s
-            λ.UL[i,j] = th[pos += 1]
+            λ.data[i,j] = th[pos += 1]
         end
     end
     lmb.λ

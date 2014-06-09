@@ -4,9 +4,11 @@ type LinearMixedModel <: MixedModel
 end
 
 ## Delegate methods to the lmb member
+Base.cor(m::LinearMixedModel) = cor(m.lmb)
 Base.size(m::LinearMixedModel) = size(m.lmb)
 Base.scale(m::LinearMixedModel) = scale(m.lmb)
 Base.scale(m::LinearMixedModel,sqr::Bool) = scale(m.lmb,sqr)
+Base.std(m::LinearMixedModel) = std(m.lmb)
 
 StatsBase.coef(m::LinearMixedModel) = coef(m.lmb)
 StatsBase.model_response(m::LinearMixedModel) = model_response(m.lmb)
@@ -14,6 +16,7 @@ StatsBase.nobs(m::LinearMixedModel) = nobs(m.lmb)
 
 ## methods for generics local to this package
 ranef(m::LinearMixedModel,uscale::Bool) = ranef(m.lmb,uscale)
+reml!(m::LinearMixedModel,v::Bool=true) = (reml!(m.lmb,v); return m)
 for f in (:fixef, :fnames, :grplevels, :isfit, :isnested, :isscalar,
           :lower, :nθ, :pwrss, :ranef, :rss, :Zt, :ZXt, :θ)
     @eval begin

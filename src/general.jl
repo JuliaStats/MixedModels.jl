@@ -3,24 +3,28 @@ type GenSolver{Ti<:Union(Int32,Int64)} <: PLSSolver
     RX::Base.LinAlg.Cholesky{Float64}
     RZX::Matrix{Float64}
     XtX::Symmetric{Float64}
-    Zt::SparseMatrixCSC{Float64,Ti}
+    Ztnz::Matrix{Float64}               # non-zeros in Zt as a dense matrix
     ZtX::Matrix{Float64}
-    ZtZ::CholmodSparse{Float64,Ti}
-    perm::Vector{Ti}
     nlev::Vector
+    perm::Vector{Ti}
+    λtZt::CholmodSparse{Float64,Ti}
 end
 
-function GenSolver(lmb::LMMBase)        # incomplete
-    Zt = zt(lmb)
-    Ztc = CholmodSparse(Zt)
-    ZtZ = Ztc * Ztc'
-    L = cholfact(ZtZ,1.,true)
-    perm = L.Perm .+ one(eltype(L.Perm))
+function GenSolver(lmb::LMMBase)
     X = lmb.X.m
     XtX = Symmetric(X'X,:L)
+    Zt = zt(lmb)
     ZtX = Zt*X
-    GenSolver(L,cholfact(XtX.S,:L),copy(ZtX),XtX,Zt,ZtX,ZtZ,
-              perm,[length(f.pool) for f in lmb.facs])
+    Ztc = CholmodSparse!(Zt,0)
+    cp = Ztc.colptr0
+    d2 = cp[2] - cp[1]
+    for j in 3:length(cp)
+        cp[j] - cp[j-1] == d2 || error("Zt must have constant column counts")
+    end
+    L = cholfact(Ztc,1.,true)
+    GenSolver(L,cholfact(XtX.S,:L),copy(ZtX),XtX,copy(Zt.nzval),ZtX,
+              [length(f.pool) for f in lmb.facs],L.Perm .+ one(eltype(L.Perm)),
+              Ztc)
 end
 
 function Base.A_ldiv_B!(s::GenSolver,lmb::LMMBase)
@@ -35,12 +39,25 @@ function Base.A_ldiv_B!(s::GenSolver,lmb::LMMBase)
 end
 
 function update!(s::GenSolver,λ::Vector)
-    Λ = convert(typeof(s.Zt),blkdiag({kron(full(l),speye(nl)) for (l,nl) in zip(λ,s.nlev)}...))
-    cholfact!(s.L,Λ*s.Zt,1.)
-    copy!(s.RZX,solve(s.L, (Λ * s.ZtX)[s.perm,:], CHOLMOD_L))
-    _,info = LAPACK.potrf!('L',BLAS.syrk!('L','T',-1.,s.RZX,1.,copy!(s.RX.UL,s.XtX.S)))
+    λtZtm = reshape(copy!(λtZt.nzval,Ztnz),size(Ztnz))
+    copy!(RZX,ZtX)
+    Ztrow = 0
+    ZtXrow = 0
+    for k in 1:length(λ)
+        ll = λ[k]
+        p = size(ll,1)
+        Ac_mul_B!(ll,sub(λtZtm,Ztrow + (1:p),:))
+        Ztrow += p
+        for i in 1:nlev[k]
+            Ac_mul_B!(ll,sub(s.RZX,ZtXrow + (1:p),:))
+            ZtXrow += p
+        end
+    end
+    cholfact!(s.L,λtZt,1.)
+    _,info = LAPACK.potrf!('L',
+                           BLAS.syrk!('L','T',-1.,
+                                      solve(s.L, s.RZX[s.perm,:], CHOLMOD_L),
+                                      1.,copy!(s.RX.UL,s.XtX.S)))
     info == 0 || error("Downdated X'X is not positive definite")
     s
 end
-
-## Try storing the Λ matrix and an Lind vector instead.  Less overhead of copying.

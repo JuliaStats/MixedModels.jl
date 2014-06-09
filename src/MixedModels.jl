@@ -34,10 +34,7 @@ module MixedModels
         pwrss,          # penalized, weighted residual sum-of-squares
         ranef,          # extract the conditional modes of the random effects
         reml!,          # set the objective to be the REML criterion
-        reml,           # is the objective the REML criterion?
-        solve!,         # update the coefficients by solving the MME's
-        theta!,         # set the value of the variance component parameters        
-        theta           # extract the variance-component parameter vector
+        reml            # is the objective the REML criterion?
 
     abstract MixedModel                # model with fixed and random effects
 

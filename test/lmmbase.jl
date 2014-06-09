@@ -7,7 +7,7 @@ lmb1 = LMMBase(Yield ~ 1|Batch, ds)
 @test lmb1.X.m == ones((30,1))
 @test size(lmb1.λ) == (1,)
 @test all(map(istril,lmb1.λ))
-@test lmb1.λ[1].UL == ones((1,1))
+@test lmb1.λ[1].data == ones((1,1))
 @test lmb1.Xty == [45825.0]
 @test lmb1.fnms == {"Batch"}
 @test isnested(lmb1)
@@ -54,7 +54,7 @@ lmb2 = LMMBase(Yield ~ 1|Batch, ds2)
 @test lmb2.X.m == ones((30,1))
 @test size(lmb2.λ) == (1,)
 @test all(map(istril,lmb2.λ))
-@test lmb2.λ[1].UL == ones((1,1))
+@test lmb2.λ[1].data == ones((1,1))
 @test_approx_eq lmb2.Xty [169.968]
 @test lmb2.fnms == {"Batch"}
 @test isnested(lmb2)
@@ -102,8 +102,8 @@ lmb3 = LMMBase(Diameter ~ (1|Plate) + (1|Sample), pen)
 @test lmb3.X.m == ones((144,1))
 @test size(lmb3.λ) == (2,)
 @test all(map(istril,lmb3.λ))
-@test lmb3.λ[1].UL == ones((1,1))
-@test lmb3.λ[2].UL == ones((1,1))
+@test lmb3.λ[1].data == ones((1,1))
+@test lmb3.λ[2].data == ones((1,1))
 @test MixedModels.θ(lmb3) == ones(2)
 @test lmb3.Xty == [3308.]
 @test lmb3.fnms == {"Plate", "Sample"}
@@ -156,8 +156,8 @@ lmb4 = LMMBase(Strength ~ (1|Sample) + (1|Batch), psts)
 @test lmb4.X.m == ones((60,1))
 @test size(lmb4.λ) == (2,)
 @test all(map(istril,lmb4.λ))
-@test lmb4.λ[1].UL == ones((1,1))
-@test lmb4.λ[2].UL == ones((1,1))
+@test lmb4.λ[1].data == ones((1,1))
+@test lmb4.λ[2].data == ones((1,1))
 @test MixedModels.θ(lmb4) == ones(2)
 @test lmb4.Xty == [3603.2]
 @test lmb4.fnms == {"Sample","Batch"}

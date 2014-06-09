@@ -89,16 +89,16 @@ function update!(dl::DeltaLeaf,λ::Triangular)
         Lb = reshape(copy!(dl.Lb,dl.Ab),(m,m*l))
         Lt[1,1] -= Base.sumabs2(scale!(scale!(lam,Lb),1.0 ./ vec(Ld)))
     else
-        BLAS.trmm!('L',λ.uplo,'T',λ.unitdiag,1.,λ.UL,reshape(copy!(dl.Ld,dl.Ad),(n,n*l)))
-        Lb = BLAS.trmm!('L',λ.uplo,'T',λ.unitdiag,1.,λ.UL,reshape(copy!(dl.Lb,dl.Ab),(m,n*l)))
+        Ac_mul_B!(λ,reshape(copy!(dl.Ld,dl.Ad),(n,n*l)))
+        Lb = Ac_mul_B!(λ,reshape(copy!(dl.Lb,dl.Ab),(m,n*l)))
         for k in 1:l
-            wL = BLAS.trmm!('R',λ.uplo,'N',λ.unitdiag,1.,λ.UL,sub(dl.Ld,:,:,k))
+            wL = A_mul_B!(sub(dl.Ld,:,:,k),λ)
             for j in 1:n                # Inflate the diagonal
                 wL[j,j] += 1.
             end
             _, info = LAPACK.potrf!('L',wL) # i'th diagonal block of L
             info == 0 || error("Cholesky failure at L diagonal block $k")
-            wRZX = BLAS.trsm!('L','L','N','N',1.,wL,sub(dl.Lb,:,:,k))
+            wRZX = A_ldiv_B!(Triangular(wL,:L,false),sub(dl.Lb,:,:,k))
             BLAS.syrk!('L','T',-1.0,wRZX,1.,Lt)
         end
     end
@@ -116,7 +116,7 @@ function Base.A_ldiv_B!(dl::DeltaLeaf,lmb::LMMBase)
     n,p,q,l = size(lmb)
     l == 1 || error("DeltaLeaf should take an LMMBase with 1 r.e. term")
     λ = lmb.λ[1]
-    cu = BLAS.trmm!('L',λ.uplo,'T',λ.unitdiag,1.,λ.UL,copy!(lmb.u[1],lmb.Zty[1]))
+    cu = Ac_mul_B!(λ,copy!(lmb.u[1],lmb.Zty[1]))
     β = copy!(lmb.β,lmb.Xty)
     if size(λ,1) == 1                   # short cut for scalar r.e.
         Linv = 1. ./ vec(dl.Ld)
