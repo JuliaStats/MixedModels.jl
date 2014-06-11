@@ -22,7 +22,7 @@ function GenSolver(lmb::LMMBase)
         cp[j] - cp[j-1] == d2 || error("Zt must have constant column counts")
     end
     L = cholfact(Ztc,1.,true)
-    GenSolver(L,cholfact(XtX.S,:L),copy(ZtX),XtX,copy(Zt.nzval),ZtX,
+    GenSolver(L,cholfact(XtX.S,:L),copy(ZtX),XtX,reshape(copy(Zt.nzval),(d2,Zt.n)),ZtX,
               [length(f.pool) for f in lmb.facs],L.Perm .+ one(eltype(L.Perm)),
               Ztc)
 end
@@ -39,8 +39,8 @@ function Base.A_ldiv_B!(s::GenSolver,lmb::LMMBase)
 end
 
 function update!(s::GenSolver,λ::Vector)
-    λtZtm = reshape(copy!(λtZt.nzval,Ztnz),size(Ztnz))
-    copy!(RZX,ZtX)
+    λtZtm = reshape(copy!(s.λtZt.nzval,s.Ztnz),size(s.Ztnz))
+    copy!(s.RZX,s.ZtX)
     Ztrow = 0
     ZtXrow = 0
     for k in 1:length(λ)
@@ -48,16 +48,16 @@ function update!(s::GenSolver,λ::Vector)
         p = size(ll,1)
         Ac_mul_B!(ll,sub(λtZtm,Ztrow + (1:p),:))
         Ztrow += p
-        for i in 1:nlev[k]
+        for i in 1:s.nlev[k]
             Ac_mul_B!(ll,sub(s.RZX,ZtXrow + (1:p),:))
             ZtXrow += p
         end
     end
-    cholfact!(s.L,λtZt,1.)
-    _,info = LAPACK.potrf!('L',
-                           BLAS.syrk!('L','T',-1.,
-                                      solve(s.L, s.RZX[s.perm,:], CHOLMOD_L),
-                                      1.,copy!(s.RX.UL,s.XtX.S)))
+    cholfact!(s.L,s.λtZt,1.)
+    ## CHOLMOD doesn't solve in place so need to solve then copy
+    copy!(s.RZX,solve(s.L, s.RZX[s.perm,:], CHOLMOD_L))
+    _,info = LAPACK.potrf!('L',BLAS.syrk!('L','T',-1.,s.RZX,
+                                          1.,copy!(s.RX.UL,s.XtX.S)))
     info == 0 || error("Downdated X'X is not positive definite")
     s
 end
