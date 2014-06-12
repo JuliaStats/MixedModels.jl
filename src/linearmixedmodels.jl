@@ -1,34 +1,71 @@
-type LinearMixedModel <: MixedModel
-    lmb::LMMBase
-    pls::PLSSolver
+type LinearMixedModel{S<:PLSSolver} <: MixedModel
+    REML::Bool
+    X::ModelMatrix{Float64}
+    Xs::Vector
+    Xty::Vector{Float64}
+    Zty::Vector
+    f::Formula
+    facs::Vector
+    fit::Bool
+    fnms::Vector                        # names of grouping factors
+    mf::ModelFrame
+    s::S
+    u::Vector
+    y::Vector{Float64}
+    β::Vector{Float64}
+    λ::Vector
+    μ::Vector{Float64}
 end
 
-## Delegate methods to the lmb member
-Base.cor(m::LinearMixedModel) = cor(m.lmb)
-Base.size(m::LinearMixedModel) = size(m.lmb)
-Base.scale(m::LinearMixedModel) = scale(m.lmb)
-Base.scale(m::LinearMixedModel,sqr::Bool) = scale(m.lmb,sqr)
-Base.std(m::LinearMixedModel) = std(m.lmb)
+## Convert the left-hand side of a random-effects term to a model matrix.
+## Special handling for a simple, scalar r.e. term, e.g. (1|g).
+## FIXME: Change this behavior in DataFrames/src/statsmodels/formula.jl
+lhs2mat(t::Expr,df::DataFrame) = t.args[2] == 1 ? ones(nrow(df),1) :
+        ModelMatrix(ModelFrame(Formula(nothing,t.args[2]),df)).m
 
-StatsBase.coef(m::LinearMixedModel) = coef(m.lmb)
-StatsBase.model_response(m::LinearMixedModel) = model_response(m.lmb)
-StatsBase.nobs(m::LinearMixedModel) = nobs(m.lmb)
-
-## methods for generics local to this package
-ranef(m::LinearMixedModel,uscale::Bool) = ranef(m.lmb,uscale)
-reml!(m::LinearMixedModel,v::Bool=true) = (reml!(m.lmb,v); return m)
-for f in (:fixef, :fnames, :grplevels, :isfit, :isnested, :isscalar,
-          :lower, :nθ, :pwrss, :ranef, :rss, :Zt, :ZXt, :θ)
-    @eval begin
-        $f(m::LinearMixedModel) = $f(m.lmb)
+function lmm(f::Formula, fr::AbstractDataFrame)
+    mf = ModelFrame(f,fr)
+    y = convert(Vector{Float64},DataFrames.model_response(mf))
+    retrms = filter(x->Meta.isexpr(x,:call) && x.args[1] == :|, mf.terms.terms)
+    length(retrms) > 0 || error("Formula $f has no random-effects terms")
+    X = ModelMatrix(mf)
+    Xty = X.m'y
+    facs = {pool(getindex(mf.df,t.args[3])) for t in retrms}
+    Xs = {lhs2mat(t,mf.df)' for t in retrms} # transposed model matrices
+    p = Int[size(x,1) for x in Xs]
+    l = Int[length(f.pool) for f in facs]
+    Zty = {zeros(pp,ll) for (pp,ll) in zip(p,l)}
+    for (x,ff,zty,pp) in zip(Xs,facs,Zty,p)
+        for (j,jj) in enumerate(ff.refs)
+            for i in 1:pp
+                zty[i,jj] += y[j] * x[i,j]
+            end
+        end
     end
+    local s
+    if length(Xs) == 1
+        s = PLSOne(facs[1],Xs[1],X.m')
+    else
+        Zt = vcat(map(ztblk,Xs,facs)...)
+        s = all(p .== 1) ? PLSDiag(Zt,X.m,facs) : PLSGeneral(Zt,X)
+    end
+    LinearMixedModel(false, X, Xs, Xty, Zty, f, facs, false, 
+                     {string(t.args[3]) for t in retrms}, mf, s,
+                     {similar(z) for z in Zty}, y, similar(Xty),
+                     {Triangular(eye(pp),:L,false) for pp in p},
+                     similar(y))
 end
 
 ## FixME: Change the definition so that one choice is for the combined L and RX
 
-## Delegate methods to the pls member
-Base.logdet(m::LinearMixedModel) = logdet(m.pls)
-Base.logdet(m::LinearMixedModel,RX::Bool) = logdet(m.pls,RX)
+## Delegate methods to the s member
+Base.logdet(m::LinearMixedModel) = logdet(m.s)
+Base.logdet(m::LinearMixedModel,RX::Bool) = logdet(m.s,RX)
+
+##  coef(m) -> current value of beta (as a reference)
+StatsBase.coef(m::LinearMixedModel) = m.β
+
+Base.cor(m::LinearMixedModel) = map(chol2cor,m.λ)
 
 ## coeftable(m) -> DataFrame : the coefficients table
 function StatsBase.coeftable(m::LinearMixedModel)
@@ -39,14 +76,13 @@ end
 
 ## deviance(m) -> Float64
 function StatsBase.deviance(m::LinearMixedModel)
-    lmb = m.lmb
-    lmb.fit || error("model m has not been fit")
-    !lmb.REML ? objective(m) : NaN
+    m.fit || error("model m has not been fit")
+    m.REML ? objective(m) : NaN
 end
 
 ## fit(m) -> m Optimize the objective using BOBYQA from the NLopt package
 function StatsBase.fit(m::LinearMixedModel, verbose=false)
-    if !isfit(m)
+    if !m.fit
         th = θ(m); k = length(th)
         opt = NLopt.Opt(:LN_BOBYQA, k)
         NLopt.ftol_abs!(opt, 1e-6)    # criterion on deviance changes
@@ -74,11 +110,55 @@ function StatsBase.fit(m::LinearMixedModel, verbose=false)
         end
         fmin, xmin, ret = NLopt.optimize(opt, th)
         if verbose println(ret) end
-        m.lmb.fit = true
+        m.fit = true
     end
     m
 end
 
+## for compatibility with lme4 and nlme
+fixef(m::LinearMixedModel) = m.β
+
+## fnames(m) -> vector of names of grouping factors
+fnames(m::LinearMixedModel) = m.fnms
+
+## grplevels(m) -> Vector{Int} : number of levels in each term's grouping factor
+grplevels(v::Vector) = [length(f.pool) for f in v]
+grplevels(m::LinearMixedModel) = grplevels(m.facs)
+
+hasgrad(m::LinearMixedModel) = false
+hasgrad(m::LinearMixedModel{PLSOne}) = true
+
+isnested(v::Vector) = length(v) == 1 || length(Set(zip(v...))) == maximum(grplevels(v))
+isnested(m::LinearMixedModel) = isnested(m.facs)
+
+## isscalar(m) -> Bool : Are all the random-effects terms scalar?
+function isscalar(m::LinearMixedModel)
+    for x in m.Xs
+        size(x,1) > 1 && return false
+    end
+    true
+end
+
+## lower(m) -> Vector{Float64} : vector of lower bounds for the theta parameters
+## This should be generalized to a λ term
+function lower(m::LinearMixedModel)
+    sz = [size(x,1)::Int for x in m.Xs]
+    nth = 0
+    for s in sz
+        nth += s*(s+1)>>1
+    end
+    res = Array(Float64,nth)
+    pos = 0
+    for s in sz
+        res[pos += 1] = 0.
+        for k in 1:s-1
+            res[pos += 1] = -Inf
+        end
+    end
+    res
+end
+
+## likelihood ratio tests
 function lrt(mods::LinearMixedModel...)
     if (nm = length(mods)) <= 1
         error("at least two models are required for an lrt")
@@ -97,25 +177,60 @@ function lrt(mods::LinearMixedModel...)
     DataFrame(Df = df, Deviance = dev, Chisq=csqr,pval=pval)
 end
 
+## nobs(m) -> n : Length of the response vector
+StatsBase.nobs(m::LinearMixedModel) = length(m.y)
+
+## npar(m) -> P : total number of parameters to be fit
+npar(m::LinearMixedModel) = nθ(m) + length(m.β) + 1
+
+## nθ(m) -> n : length of the theta vector
+nθ(m::LinearMixedModel) = sum([n*(n+1)>>1 for (m,n) in map(size,m.λ)])
+
+## pwrss(lmb) : penalized, weighted residual sum of squares
+function pwrss(m::LinearMixedModel)
+    s = rss(m)
+    for u in m.u, ui in u
+        s += abs2(ui)
+    end
+    s
+end
+
 ## objective(m) -> deviance or REML criterion according to m.REML
 function objective(m::LinearMixedModel)
     n,p = size(m)
-    REML = m.lmb.REML
+    REML = m.REML
     fn = float64(n - (REML ? p : 0))
     logdet(m,false) + fn*(1.+log(2π*pwrss(m)/fn)) + (REML ? logdet(m) : 0.)
 end
 
 ## objective!(m,θ) -> install new θ parameters and evaluate the objective.
 function objective!(m::LinearMixedModel,θ::Vector{Float64})
-    updateμ!(A_ldiv_B!(update!(m.pls,θ!(m.lmb,θ)),m.lmb))
+    update!(m.s,θ!(m,θ))
+    for (λ,u,Zty) in zip(m.λ,m.u,m.Zty)
+        A_mul_B!(λ,copy!(u,Zty))
+    end
+    A_ldiv_B!(m.s,m.u,copy!(m.β,m.Xty)) # plssolve?
+    updateμ!(m)
     objective(m)
+end
+
+## scale(m,true) -> estimate, s^2, of the squared scale parameter
+function Base.scale(m::LinearMixedModel, sqr=false)
+    n,p = size(m.X.m)
+    ssqr = pwrss(m)/float64(n - (m.REML ? p : 0))
+    sqr ? ssqr : sqrt(ssqr)
+end
+
+##  size(m) -> n, p, q, t (lengths of y, beta, u and # of re terms)
+function Base.size(m::LinearMixedModel)
+    n,p = size(m.X.m)
+    n,p,mapreduce(length,+,m.u),length(m.fnms)
 end
 
 function Base.show(io::IO, m::LinearMixedModel)
     fit(m)
     n,p,q,k = size(m)
-    lmb = m.lmb
-    REML = lmb.REML
+    REML = m.REML
     @printf(io, "Linear mixed model fit by %s\n", REML ? "REML" : "maximum likelihood")
 
     oo = objective(m)
@@ -127,8 +242,8 @@ function Base.show(io::IO, m::LinearMixedModel)
     println(io); println(io)
 
     @printf(io, " Variance components:\n                Variance    Std.Dev.\n")
-    stdm = std(m.lmb)
-    fnms = vcat(m.lmb.fnms,"Residual")
+    stdm = std(m)
+    fnms = vcat(m.fnms,"Residual")
     for i in 1:length(fnms)
         si = stdm[i]
         print(io, " ", rpad(fnms[i],12))
@@ -145,8 +260,83 @@ function Base.show(io::IO, m::LinearMixedModel)
     show(io,coeftable(m))
 end
 
+
+function ssqdiff{T<:Number}(a::Vector{T},b::Vector{T})
+    (n = length(a)) == length(b) || error("Dimension mismatch")
+    s = zero(T)
+    @simd for i in 1:n
+        s += abs2(a[i]-b[i])
+    end
+    s
+end
+
+##  ranef(m) -> vector of matrices of random effects on the original scale
+##  ranef(m,true) -> vector of matrices of random effects on the U scale
+function ranef(m::LinearMixedModel, uscale=false)
+    uscale && return m.u
+    [λ * u for (λ,u) in zip(m.λ,m.u)]
+end
+
+##  reml!(m,v=true) -> m : Set m.REML to v.  If m.REML is modified, unset m.fit
+function reml!(m::LinearMixedModel,v::Bool=true)
+    if m.REML != v
+        m.REML = v
+        m.fit = false
+    end
+    m
+end
+
+## rss(m) -> residual sum of squares
+rss(m::LinearMixedModel) = ssqdiff(m.μ,m.y)
+
+## scale(m) -> estimate, s, of the scale parameter
+## sqrlenu(m) -> squared length of m.u (the penalty in the PLS problem)
+function sqrlenu(m::LinearMixedModel)
+    s = 0.
+    for u in m.u, ui in u
+        s+=abs2(ui)
+    end
+    s
+end
+
+## std(m) -> Vector{Vector{Float64}} estimated standard deviations of variance components
+Base.std(m::LinearMixedModel) = scale(m)*push!([rowlengths(λ) for λ in m.λ],[1.])
+
 ## stderr(m) -> standard errors of fixed-effects parameters
 StatsBase.stderr(m::LinearMixedModel) = sqrt(diag(vcov(m)))
 
+## update m.μ and return the residual sum of squares
+function updateμ!(m::LinearMixedModel)
+    μ = A_mul_B!(m.μ, m.X.m, m.β) # initialize μ to Xβ
+    for (ff,λ,u,x) in zip(m.facs,m.λ,m.u,m.Xs)
+        rr = ff.refs
+        if size(λ,1) == 1
+            fma!(μ,vec(λ*u)[rr],vec(x))
+        else
+            add!(μ,vec(sum(λ*u[:,rr] .* x,1)))
+        end
+    end
+    ssqdiff(μ,m.y)
+end
+
 ## vcov(m) -> estimated variance-covariance matrix of the fixed-effects parameters
-StatsBase.vcov(m::LinearMixedModel) = scale(m,true) * inv(cholfact(m.pls))
+StatsBase.vcov(m::LinearMixedModel) = scale(m,true) * inv(cholfact(m.s))
+
+zt(m::LinearMixedModel) = vcat(map(ztblk,m.Xs,m.facs)...)
+zxt(m::LinearMixedModel) = (Zt = zt(m); vcat(Zt,convert(typeof(Zt),m.X.m')))
+
+## θ(m) -> θ : extract the covariance parameters as a vector
+θ(m::LinearMixedModel) = vcat(map(ltri,m.λ)...)
+
+## θ!(m,theta) -> m : install new values of the covariance parameters
+function θ!(m::LinearMixedModel,th::Vector)
+    length(th) == nθ(m) || error("Dimension mismatch")
+    pos = 0
+    for λ in m.λ
+        s = size(λ,1)
+        for j in 1:s, i in j:s
+            λ.data[i,j] = th[pos += 1]
+        end
+    end
+    m.λ
+end

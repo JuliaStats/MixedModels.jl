@@ -1,4 +1,4 @@
-type GenSolver{Ti<:Union(Int32,Int64)} <: PLSSolver
+type PLSGeneral{Ti<:Union(Int32,Int64)} <: PLSSolver
     L::CholmodFactor{Float64,Ti}
     RX::Base.LinAlg.Cholesky{Float64}
     RZX::Matrix{Float64}
@@ -10,10 +10,8 @@ type GenSolver{Ti<:Union(Int32,Int64)} <: PLSSolver
     λtZt::CholmodSparse{Float64,Ti}
 end
 
-function GenSolver(lmb::LMMBase)
-    X = lmb.X.m
+function PLSGeneral(Zt::SparseMatrixCSC,X::Matrix,facs::Vector)
     XtX = Symmetric(X'X,:L)
-    Zt = zt(lmb)
     ZtX = Zt*X
     Ztc = CholmodSparse!(Zt,0)
     cp = Ztc.colptr0
@@ -22,23 +20,23 @@ function GenSolver(lmb::LMMBase)
         cp[j] - cp[j-1] == d2 || error("Zt must have constant column counts")
     end
     L = cholfact(Ztc,1.,true)
-    GenSolver(L,cholfact(XtX.S,:L),copy(ZtX),XtX,reshape(copy(Zt.nzval),(d2,Zt.n)),ZtX,
-              [length(f.pool) for f in lmb.facs],L.Perm .+ one(eltype(L.Perm)),
-              Ztc)
+    PLSGeneral(L,cholfact(XtX.S,:L),copy(ZtX),XtX,reshape(copy(Zt.nzval),(d2,Zt.n)),ZtX,
+               [length(f.pool) for f in facs],L.Perm .+ one(eltype(L.Perm)),
+               Ztc)
 end
 
-function Base.A_ldiv_B!(s::GenSolver,lmb::LMMBase)
-    cu = solve(s.L,permute!(vcat(map((x,y)-> vec(x*y),lmb.λ,lmb.Zty)...),s.perm),CHOLMOD_L)
-    A_ldiv_B!(s.RX,BLAS.gemv!('T',-1.,s.RZX,cu,1.,copy!(lmb.β,lmb.Xty)))
-    u = ipermute!(solve(s.L,BLAS.gemv!('N',-1.,s.RZX,lmb.β,1.,cu),CHOLMOD_Lt),s.perm)
+function Base.A_ldiv_B!(s::PLSGeneral,λ::Vector,Zty::Vector,Xty,u::Vector,β)
+    cu = solve(s.L,permute!(vcat(map((x,y)-> vec(x*y),λ,Zty)...),s.perm),CHOLMOD_L)
+    A_ldiv_B!(s.RX,BLAS.gemv!('T',-1.,s.RZX,cu,1.,copy!(β,Xty)))
+    u = ipermute!(solve(s.L,BLAS.gemv!('N',-1.,s.RZX,β,1.,cu),CHOLMOD_Lt),s.perm)
     pos = 0
-    for ui in lmb.u, j in 1:length(ui)
+    for ui in u, j in 1:length(ui)
         ui[j] = u[pos += 1]
     end
-    lmb
+    β
 end
 
-function update!(s::GenSolver,λ::Vector)
+function update!(s::PLSGeneral,λ::Vector)
     λtZtm = reshape(copy!(s.λtZt.nzval,s.Ztnz),size(s.Ztnz))
     copy!(s.RZX,s.ZtX)
     Ztrow = 0

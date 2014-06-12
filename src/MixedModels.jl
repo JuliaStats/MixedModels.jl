@@ -1,25 +1,17 @@
 using DataFrames  # should be externally available
 module MixedModels
 
-    using DataArrays, DataFrames, NLopt, NumericExtensions, NumericFuns
+    using DataArrays, DataFrames, NLopt, NumericExtensions, NumericFuns, StatsBase
     using StatsBase: CoefTable
-    using Base.SparseMatrix: symperm
-    using Base.LinAlg.CHOLMOD: CholmodDense, CholmodDense!, CholmodFactor,
-          CholmodSparse, CholmodSparse!, chm_scale, CHOLMOD_SYM,
-          CHOLMOD_L, CHOLMOD_Lt, CHOLMOD_P, CHOLMOD_Pt, solve
+    using Base.LinAlg.CHOLMOD: CholmodFactor, CholmodSparse, CholmodSparse!,
+          chm_scale, CHOLMOD_SYM, CHOLMOD_L, CHOLMOD_Lt, solve
 
     export
-        DeltaLeaf,                      # come up with a better name for this
-        DiagSolver,
         LinearMixedModel,
-        LMMBase,
-#        LMMGeneral,
-#        LMMNested,
-#        LMMScalar1,
-#        LMMScalarNested,
-#        LMMScalarn,
-#        LMMVector1,
         MixedModel,
+        PLSDiag,               # multiple, scalar random-effects terms
+        PLSGeneral,            # general random-effects structure
+        PLSOne,                # solver for models with only one r.e. term
         PLSSolver,
 
         fixef,          # extract the fixed-effects parameter estimates
@@ -28,7 +20,6 @@ module MixedModels
         isfit,          # predictate to check if a model has been fit
         isnested,       # check if vector f is nested in vector g
         lmm,            # fit a linear mixed-effects model (LMM)
-        lmmp,
         lower,          # vector of lower bounds on parameters in mixed-effects models
         objective,      # the objective function in fitting a model
         pwrss,          # penalized, weighted residual sum-of-squares
@@ -36,19 +27,12 @@ module MixedModels
         reml!,          # set the objective to be the REML criterion
         reml            # is the objective the REML criterion?
 
-    abstract MixedModel                # model with fixed and random effects
+    abstract MixedModel          # model with fixed and random effects
+    abstract PLSSolver           # type for solving the penalized least squares problem
 
-    include("utils.jl")     # utilities to deal with the model formula
-    include("LMMBase.jl")   # information common to each type of LinearMixedModel
-    include("delta.jl")
-    include("dsolver.jl")
-    include("linearmixedmodels.jl") # method definitions for the abstract class
-    include("general.jl") # general form of linear mixed-effects models
-#    include("scalar1.jl") # models with a single, scalar random-effects term
-#    include("scalarn.jl") # models with a single, scalar random-effects term
-#    include("vector1.jl") # models with a single, vector-valued random-effects term
-#    include("nested.jl")
-#    include("lmmMUMPS.jl")              # fit models using MUMPS solver
-    include("lmm.jl")    # fit and analyze linear mixed-effects models
-
+    include("utils.jl")
+    include("plsgeneral.jl")
+    include("plsone.jl")
+    include("plsdiag.jl")
+    include("linearmixedmodels.jl")
 end #module
