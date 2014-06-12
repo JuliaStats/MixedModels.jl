@@ -72,9 +72,7 @@ pen = DataFrame(Diameter = [27,23,26,23,23,21,27,23,26,23,23,21,25,21,25,24,24,2
                 Plate = rep(letters[1:24],1,6),
                 Sample = rep(LETTERS[1:6],24,1))
 
-tests = [ "lmmbase.jl"
-#         ,"lmmfit.jl"
-         ]
+tests = ["lmmbase.jl","lmmfit.jl"]
 
 anyerrors = false
 

@@ -38,7 +38,7 @@ function DeltaLeaf(ff::PooledDataVector, Xst::Matrix, Xt::Matrix)
     for j in 1:L
         jj = int(refs[j])
         BLAS.syr!('L',1.0,sub(Xst,:,j),sub(Ad,:,:,jj))
-        BLAS.gemm!('N','T',1.0,sub(Xst,:,j:j),sub(Xt,:,j:j),1.0,sub(Ab,:,:,jj))
+        BLAS.ger!(1.0,sub(Xt,:,j),sub(Xst,:,j),sub(Ab,:,:,jj))
     end
     for j in 1:nl        # symmetrize the faces created with BLAS.syr!
         Base.LinAlg.copytri!(sub(Ad,:,:,j),'L')
@@ -83,14 +83,14 @@ function update!(dl::DeltaLeaf,λ::Triangular)
     m,n,l = size(dl)
     n == size(λ,1) || error("Dimension mismatch")
     Lt = copy!(dl.Lt.UL,dl.At.S)
+    Lb = copy!(dl.Lb,dl.Ab)
     if n == 1                           # shortcut for 1×1 λ
         lam = λ[1,1]
         Ld = map!(x -> sqrt(x*lam*lam + 1.), dl.Ld, dl.Ad)
-        Lb = reshape(copy!(dl.Lb,dl.Ab),(m,m*l))
-        Lt[1,1] -= Base.sumabs2(scale!(scale!(lam,Lb),1.0 ./ vec(Ld)))
+        Lb = scale!(reshape(Lb,(m,n*l)),lam ./ vec(Ld))
+        BLAS.syrk!('L','N',-1.0,Lb,1.0,Lt)
     else
         Ac_mul_B!(λ,reshape(copy!(dl.Ld,dl.Ad),(n,n*l)))
-        Lb = Ac_mul_B!(λ,reshape(copy!(dl.Lb,dl.Ab),(m,n*l)))
         for k in 1:l
             wL = A_mul_B!(sub(dl.Ld,:,:,k),λ)
             for j in 1:n                # Inflate the diagonal
@@ -98,45 +98,64 @@ function update!(dl::DeltaLeaf,λ::Triangular)
             end
             _, info = LAPACK.potrf!('L',wL) # i'th diagonal block of L
             info == 0 || error("Cholesky failure at L diagonal block $k")
-            wRZX = A_ldiv_B!(Triangular(wL,:L,false),sub(dl.Lb,:,:,k))
-            BLAS.syrk!('L','T',-1.0,wRZX,1.,Lt)
+            Base.LinAlg.A_rdiv_Bc!(A_mul_B!(sub(dl.Lb,:,:,k),λ),Triangular(wL,:L,false))
         end
+        BLAS.syrk!('L','N',-1.0,reshape(Lb,(m,n*l)),1.,Lt)
     end
     _, info = LAPACK.potrf!('L',Lt)
     info == 0 ||  error("downdated X'X is not positive definite")
     dl
 end
 
-function update!(dl::DeltaLeaf,λ::Vector)
+function update!(s::DeltaLeaf,λ::Vector)
     length(λ) == 1 || error("update! on a DeltaLeaf requires length(λ) == 1")
-    update!(dl,λ[1])
+    update!(s,λ[1])
 end
 
-function Base.A_ldiv_B!(dl::DeltaLeaf,lmb::LMMBase)
+function Base.A_ldiv_B!(s::DeltaLeaf,lmb::LMMBase)
     n,p,q,l = size(lmb)
     l == 1 || error("DeltaLeaf should take an LMMBase with 1 r.e. term")
     λ = lmb.λ[1]
     cu = Ac_mul_B!(λ,copy!(lmb.u[1],lmb.Zty[1]))
     β = copy!(lmb.β,lmb.Xty)
     if size(λ,1) == 1                   # short cut for scalar r.e.
-        Linv = 1. ./ vec(dl.Ld)
+        Linv = 1. ./ vec(s.Ld)
         scale!(cu,Linv)
-        LXZ = reshape(dl.Lb,(p,q))
-        A_ldiv_B!(dl.Lt,BLAS.gemv!('N',-1.,LXZ,vec(cu),1.,β)) # solve for β
+        LXZ = reshape(s.Lb,(p,q))
+        A_ldiv_B!(s.Lt,BLAS.gemv!('N',-1.,LXZ,vec(cu),1.,β)) # solve for β
         BLAS.gemv!('T',-1.,LXZ,β,1.0,vec(cu)) # cu -= LZX'β
         scale!(cu,Linv)
     else
         for j in 1:size(cu,2)           # solve L cᵤ = λ'Z'y and downdate X'y
-            BLAS.gemv!('T',-1.0,sub(dl.Lb,:,:,j),
-                       BLAS.trsv!('L','N','N',sub(dl.Ld,:,:,j),sub(cu,:,j)),1.0,β)
+            BLAS.gemv!('N',-1.0,sub(s.Lb,:,:,j),
+                       BLAS.trsv!('L','N','N',sub(s.Ld,:,:,j),sub(cu,:,j)),1.0,β)
         end
-        A_ldiv_B!(dl.Lt,β)              # solve for β
+        A_ldiv_B!(s.Lt,β)              # solve for β
         for j in 1:size(cu,2)           # solve L'u = cᵤ - R_ZX β
-            BLAS.trsv!('L','T','N',sub(dl.Ld,:,:,j),
-                       BLAS.gemv!('N',-1.0,sub(dl.Lb,:,:,j),β,1.0,sub(cu,:,j)))
+            BLAS.trsv!('L','T','N',sub(s.Ld,:,:,j),
+                       BLAS.gemv!('T',-1.0,sub(s.Lb,:,:,j),β,1.0,sub(cu,:,j)))
         end
     end
     lmb
+end
+
+function grad(s::DeltaLeaf,lmb::LMMBase)        # called after A_ldiv_B!(s,lmb)
+    n,p,q,l = size(lmb)
+    l == 1 || error("DeltaLeaf must correspond to a LMMBase with 1 r.e. term")
+    k,l = size(lmb.u[1])
+    λ = lmb.λ[1]
+    μ = lmb.μ
+    nz = lmb.Xs[1]
+    res = zeros(k,k)
+    rv = lmb.facs[1].refs
+    for i in 1:l
+        res += LAPACK.potrs!('L',sub(s.Ld,:,:,i), λ'*sub(s.Ad,:,:,i))
+    end
+    Ztr = copy(lmb.Zty[1])          # create Z'(resid) starting with Zty
+    for i in 1:n
+        Ztr[:,rv[i]] -= μ[i] * nz[:,i]
+    end
+    ltri(BLAS.syr2k!('L','N',-1./scale(lmb,true),Ztr,lmb.u[1],1.,res+res'))
 end
 
 type DeltaNode <: Delta
