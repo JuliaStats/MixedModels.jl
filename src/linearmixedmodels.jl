@@ -56,11 +56,8 @@ function lmm(f::Formula, fr::AbstractDataFrame)
                      similar(y))
 end
 
-## FixME: Change the definition so that one choice is for the combined L and RX
-
-## Delegate methods to the s member
-Base.logdet(m::LinearMixedModel) = logdet(m.s)
-Base.logdet(m::LinearMixedModel,RX::Bool) = logdet(m.s,RX)
+## Return the Cholesky factor RX or L
+Base.cholfact(m::LinearMixedModel,RX::Bool=true) = cholfact(m.s,RX)
 
 ##  coef(m) -> current value of beta (as a reference)
 StatsBase.coef(m::LinearMixedModel) = m.β
@@ -77,7 +74,7 @@ end
 ## deviance(m) -> Float64
 function StatsBase.deviance(m::LinearMixedModel)
     m.fit || error("model m has not been fit")
-    m.REML ? objective(m) : NaN
+    m.REML ? NaN : objective(m)
 end
 
 ## fit(m) -> m Optimize the objective using BOBYQA from the NLopt package
@@ -128,6 +125,8 @@ grplevels(m::LinearMixedModel) = grplevels(m.facs)
 hasgrad(m::LinearMixedModel) = false
 hasgrad(m::LinearMixedModel{PLSOne}) = true
 
+isfit(m::LinearMixedModel) = m.fit
+
 isnested(v::Vector) = length(v) == 1 || length(Set(zip(v...))) == maximum(grplevels(v))
 isnested(m::LinearMixedModel) = isnested(m.facs)
 
@@ -139,21 +138,18 @@ function isscalar(m::LinearMixedModel)
     true
 end
 
+## FixME: Change the definition so that one choice is for the combined L and RX
+Base.logdet(m::LinearMixedModel,RX::Bool=true) = logdet(m.s,RX)
+
 ## lower(m) -> Vector{Float64} : vector of lower bounds for the theta parameters
-## This should be generalized to a λ term
-function lower(m::LinearMixedModel)
-    sz = [size(x,1)::Int for x in m.Xs]
-    nth = 0
-    for s in sz
-        nth += s*(s+1)>>1
-    end
-    res = Array(Float64,nth)
-    pos = 0
-    for s in sz
-        res[pos += 1] = 0.
-        for k in 1:s-1
-            res[pos += 1] = -Inf
-        end
+lower(m::LinearMixedModel) = vcat(map(lower,m.λ)...)
+function lower(x::Triangular)
+    (s = size(x,1)) == 1 && return [0.]
+    res = fill(-Inf,s*(s+1)>>1)
+    k = 1                               # position in res
+    for j in s:-1:1
+        res[k] = 0.
+        k += j
     end
     res
 end
@@ -207,7 +203,7 @@ end
 function objective!(m::LinearMixedModel,θ::Vector{Float64})
     update!(m.s,θ!(m,θ))
     for (λ,u,Zty) in zip(m.λ,m.u,m.Zty)
-        A_mul_B!(λ,copy!(u,Zty))
+        Ac_mul_B!(λ,copy!(u,Zty))
     end
     A_ldiv_B!(m.s,m.u,copy!(m.β,m.Xty)) # plssolve?
     updateμ!(m)

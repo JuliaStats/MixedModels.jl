@@ -1,5 +1,6 @@
-Base.cholfact(s::PLSSolver,RX::Bool=true) = RX ? s.RX : s.L
+## Default methods, overridden for PLSOne
 
+Base.cholfact(s::PLSSolver,RX::Bool=true) = RX ? s.RX : s.L
 Base.logdet(s::PLSSolver,RX::Bool=true) = logdet(cholfact(s,RX))
 
 type PLSOne <: PLSSolver   # Solver for models with a single random-effects term
@@ -42,9 +43,9 @@ function PLSOne(ff::PooledDataVector, Xst::Matrix, Xt::Matrix)
     PLSOne(Ad,Ab,Symmetric(Xt*Xt',:L))
 end
 
-Base.cholfact(s::PLSOne,RX::Bool=true) = RX ? s.Lt : error("Code not yet written")
+Base.cholfact(s::PLSOne,RX::Bool=true) = RX ? s.Lt : blkdiag({sparse(tril(sub(s.Ld,:,:,j))) for j in 1:size(s.Ld,3)}...)
 
-## Logarithm of the determinant of the matrix represented by, RX or L
+## Logarithm of the determinant of the matrix represented by RX or L
 function Base.logdet(s::PLSOne,RX=true)
     RX && return logdet(s.Lt)
     Ld = s.Ld
@@ -59,15 +60,15 @@ end
 Base.size(s::PLSOne) = size(s.Ab)
 Base.size(s::PLSOne,k::Integer) = size(s.Ab,k)
 
-function Base.Triangular{T<:Number}(n::Integer,v::Vector{T})
-    length(v) == n*(n+1)>>1 || error("Dimension mismatch")
-    A = zeros(T,n,n)
-    pos = 0
-    for j in 1:n, i in j:n
-        A[i,j] = v[pos += 1]
-    end
-    Triangular(A,:L,false)
-end
+## function Base.Triangular{T<:Number}(n::Integer,v::Vector{T})
+##     length(v) == n*(n+1)>>1 || error("Dimension mismatch")
+##     A = zeros(T,n,n)
+##     pos = 0
+##     for j in 1:n, i in j:n
+##         A[i,j] = v[pos += 1]
+##     end
+##     Triangular(A,:L,false)
+## end
 
 ##  update!(s,lambda)->s : update Ld, Lb and Lt
 function update!(s::PLSOne,λ::Triangular)
@@ -105,11 +106,11 @@ end
 
 ## arguments passed contain λ'Z'y and X'y
 function Base.A_ldiv_B!(s::PLSOne,u::Vector,β)
-    length(u) == 1 || error("PLSOne should take an LMMBase with 1 r.e. term")
-    p,k,l = size(s.Ab)
-    q = k*l
+    length(u) == 1 || error("length(u) = $(length(u)), should be 1 for PLSOne")
+    p,k,l = size(s)
     cu = u[1]
-    if size(cu,1) == 1                  # short cut for scalar r.e.
+    (q = length(cu)) == k*l && k == size(cu,1) || error("Dimension mismatch")
+    if k == 1                           # short cut for scalar r.e.
         Linv = 1. ./ vec(s.Ld)
         scale!(cu,Linv)
         LXZ = reshape(s.Lb,(p,k*l))
@@ -117,14 +118,15 @@ function Base.A_ldiv_B!(s::PLSOne,u::Vector,β)
         BLAS.gemv!('T',-1.,LXZ,β,1.0,vec(cu)) # cu -= LZX'β
         scale!(cu,Linv)
     else
-        for j in 1:size(cu,2)           # solve L cᵤ = λ'Z'y and downdate X'y
-            BLAS.gemv!('N',-1.0,sub(s.Lb,:,:,j),
-                       BLAS.trsv!('L','N','N',sub(s.Ld,:,:,j),sub(cu,:,j)),1.0,β)
+        for j in 1:l                    # solve L cᵤ = λ'Z'y blockwise
+            BLAS.trsv!('L','N','N',sub(s.Ld,:,:,j),sub(cu,:,j))
         end
-        A_ldiv_B!(s.Lt,β)              # solve for β
-        for j in 1:size(cu,2)           # solve L'u = cᵤ - R_ZX β
-            BLAS.trsv!('L','T','N',sub(s.Ld,:,:,j),
-                       BLAS.gemv!('T',-1.0,sub(s.Lb,:,:,j),β,1.0,sub(cu,:,j)))
+                                        # solve (L_X L_X')̱β = X'y - L_XZ cᵤ
+        A_ldiv_B!(s.Lt,BLAS.gemv!('N',-1.0,reshape(s.Lb,(p,q)),vec(cu),1.0,β))
+                                        # cᵤ := cᵤ - L_XZ'β
+        BLAS.gemv!('T',-1.0,reshape(s.Lb,(p,q)),β,1.0,vec(cu))
+        for j in 1:l                    # solve L'u = cᵤ blockwise
+            BLAS.trsv!('L','T','N',sub(s.Ld,:,:,j),sub(cu,:,j))
         end
     end
 end
