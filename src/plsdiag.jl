@@ -21,14 +21,13 @@ function PLSDiag(Zt::SparseMatrixCSC,X::Matrix,facs::Vector)
 end
 
 function Base.A_ldiv_B!(s::PLSDiag,u::Vector,β)
-    cu = solve(s.L,permute!(vec(hcat(Zty)),s.perm),CHOLMOD_L)
+    cu = solve(s.L,permute!(vec(hcat(u...)),s.perm),CHOLMOD_L)
     A_ldiv_B!(s.RX,BLAS.gemv!('T',-1.,s.RZX,cu,1.,β))
-    u = ipermute!(solve(s.L,BLAS.gemv!('N',-1.,s.RZX,β,1.,cu),CHOLMOD_Lt),s.perm)
+    ipermute!(solve(s.L,BLAS.gemv!('N',-1.,s.RZX,β,1.,cu),CHOLMOD_Lt),s.perm)
     pos = 0
-    for ui in lmb.u, j in 1:length(ui)
-        ui[j] = u[pos += 1]
+    for ui in u, j in 1:length(ui)
+        ui[j] = cu[pos += 1]
     end
-    lmb
 end
 
 function update!(s::PLSDiag,λ::Vector)
