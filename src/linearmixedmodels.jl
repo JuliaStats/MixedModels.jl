@@ -118,6 +118,14 @@ fixef(m::LinearMixedModel) = m.β
 ## fnames(m) -> vector of names of grouping factors
 fnames(m::LinearMixedModel) = m.fnms
 
+## overwrite g with the gradient (assuming that objective! has already been called)
+function grad!(g,m::LinearMixedModel)
+    hasgrad(m) || error("gradient evaluation not enabled for $(typeof(m))")
+    gg = grad(m.s,m.facs,scale(m,true),m.u,m.Xs,m.Zty,m.λ,m.μ)
+    length(gg) == length(g) || error("Dimension mismatch")
+    copy!(g,gg)
+end
+
 ## grplevels(m) -> Vector{Int} : number of levels in each term's grouping factor
 grplevels(v::Vector) = [length(f.pool) for f in v]
 grplevels(m::LinearMixedModel) = grplevels(m.facs)
