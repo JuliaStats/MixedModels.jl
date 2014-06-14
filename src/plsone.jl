@@ -138,8 +138,9 @@ function grad(s::PLSOne,facs::Vector,sc,u::Vector,Xs::Vector,Zty::Vector,λ::Vec
     nz = Xs[1]
     res = zeros(size(λ))
     rv = facs[1].refs
+    tmp = similar(res)                  # scratch array
     for i in 1:size(s.Ad,3)
-        res += LAPACK.potrs!('L',sub(s.Ld,:,:,i), λ'*sub(s.Ad,:,:,i))
+        res += LAPACK.potrs!('L',sub(s.Ld,:,:,i),Ac_mul_B!(λ,copy!(tmp,sub(s.Ad,:,:,i))))
     end
     Ztr = copy(Zty[1])          # create Z'(resid) starting with Zty
     for i in 1:length(μ)

@@ -120,7 +120,7 @@ fnames(m::LinearMixedModel) = m.fnms
 
 ## overwrite g with the gradient (assuming that objective! has already been called)
 function grad!(g,m::LinearMixedModel)
-    hasgrad(m) || error("gradient evaluation not enabled for $(typeof(m))")
+    hasgrad(m) || error("gradient evaluation not provided for $(typeof(m))")
     gg = grad(m.s,m.facs,scale(m,true),m.u,m.Xs,m.Zty,m.λ,m.μ)
     length(gg) == length(g) || error("Dimension mismatch")
     copy!(g,gg)
