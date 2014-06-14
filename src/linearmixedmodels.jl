@@ -81,24 +81,26 @@ end
 function StatsBase.fit(m::LinearMixedModel, verbose=false)
     if !m.fit
         th = θ(m); k = length(th)
-        opt = NLopt.Opt(:LN_BOBYQA, k)
-        NLopt.ftol_abs!(opt, 1e-6)    # criterion on deviance changes
-        NLopt.xtol_abs!(opt, 1e-6)    # criterion on all parameter value changes
+        opt = NLopt.Opt(hasgrad(m) ? :LD_MMA : :LN_BOBYQA, k)
+        NLopt.ftol_rel!(opt, 1e-8)    # relative criterion on deviance
+        NLopt.ftol_abs!(opt, 1e-8)    # absolute criterion on deviance
+        NLopt.xtol_abs!(opt, 1e-8)    # criterion on all parameter value changes
         NLopt.lower_bounds!(opt, lower(m))
         function obj(x::Vector{Float64}, g::Vector{Float64})
-            length(g) == 0 || error("gradient evaluations are not provided")
-            objective!(m,x)
+            val = objective!(m,x)
+            length(g) == 0 || grad!(g,m)
+            val
         end
         if verbose
             count = 0
             function vobj(x::Vector{Float64}, g::Vector{Float64})
-                length(g) == 0 || error("gradient evaluations are not provided")
                 count += 1
                 val = objective!(m,x)
                 print("f_$count: $(round(val,5)), [")
                 showcompact(x[1])
                 for i in 2:length(x) print(","); showcompact(x[i]) end
                 println("]")
+                length(g) == 0 || grad!(g,m)
                 val
             end
             NLopt.min_objective!(opt, vobj)
