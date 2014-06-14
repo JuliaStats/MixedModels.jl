@@ -1,30 +1,21 @@
 using DataFrames  # should be externally available
 module MixedModels
 
-    using DataArrays, DataFrames, NLopt, NumericExtensions, NumericFuns
+    using DataArrays, DataFrames, NLopt, NumericExtensions, NumericFuns, StatsBase
     using StatsBase: CoefTable
-    using Base.SparseMatrix: symperm
-    using Base.LinAlg.BLAS: gemm!, gemv!, syrk!, syrk, trmm!, trmm,
-          trmv!, trsm!, trsv!
-    using Base.LinAlg.CHOLMOD: CholmodDense, CholmodDense!, CholmodFactor,
-          CholmodSparse, CholmodSparse!, chm_scale!, CHOLMOD_SYM,
-          CHOLMOD_L, CHOLMOD_Lt, CHOLMOD_P, CHOLMOD_Pt, solve
-    using Base.LinAlg.LAPACK:  potrf!, potrs!
-
-    import Base: Ac_mul_B!, At_mul_B!, cor, cholfact, logdet, scale, show, size, std
-    import StatsBase: coef, coeftable, confint, deviance, fit, stderr, vcov
+    using Base.LinAlg.CHOLMOD: CholmodFactor, CholmodSparse, CholmodSparse!,
+          chm_scale, CHOLMOD_SYM, CHOLMOD_L, CHOLMOD_Lt, solve
 
     export
-        MixedModel,
         LinearMixedModel,
-        LMMGeneral,
-        LMMNested,
-        LMMScalar1,
-        LMMScalarn,
-        LMMVector1,
+        MixedModel,
+        PLSDiag,               # multiple, scalar random-effects terms
+        PLSGeneral,            # general random-effects structure
+        PLSOne,                # solver for models with only one r.e. term
+        PLSSolver,
 
         fixef,          # extract the fixed-effects parameter estimates
-        grad,           # gradient of objective
+        grad!,          # install gradient of objective
         grplevels,      # number of levels per grouping factor in mixed-effects models
         isfit,          # predictate to check if a model has been fit
         isnested,       # check if vector f is nested in vector g
@@ -34,24 +25,14 @@ module MixedModels
         pwrss,          # penalized, weighted residual sum-of-squares
         ranef,          # extract the conditional modes of the random effects
         reml!,          # set the objective to be the REML criterion
-        reml,           # is the objective the REML criterion?
-        solve!,         # update the coefficients by solving the MME's
-        theta!,         # set the value of the variance component parameters        
-        theta           # extract the variance-component parameter vector
+        reml            # is the objective the REML criterion?
 
-    abstract MixedModel                # model with fixed and random effects
-    abstract LinearMixedModel <: MixedModel # Gaussian mixed model with identity link
+    abstract MixedModel          # model with fixed and random effects
+    abstract PLSSolver           # type for solving the penalized least squares problem
 
-    typealias VTypes Union(Float64,Complex128)
-    typealias ITypes Union(Int32,Int64)
-
-    include("utils.jl")     # utilities to deal with the model formula
-    include("linearmixedmodels.jl") # method definitions for the abstract class
-    include("general.jl") # general form of linear mixed-effects models
-    include("scalar1.jl") # models with a single, scalar random-effects term
-    include("scalarn.jl") # models with a single, scalar random-effects term
-    include("vector1.jl") # models with a single, vector-valued random-effects term
-    include("nested.jl")
-    include("lmm.jl")    # fit and analyze linear mixed-effects models
-
+    include("utils.jl")
+    include("plsgeneral.jl")
+    include("plsone.jl")
+    include("plsdiag.jl")
+    include("linearmixedmodels.jl")
 end #module
