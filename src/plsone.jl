@@ -105,7 +105,7 @@ function update!(s::PLSOne,λ::Vector)
 end
 
 ## arguments passed contain λ'Z'y and X'y
-function Base.A_ldiv_B!(s::PLSOne,u::Vector,β)
+function plssolve!(s::PLSOne,u::Vector,β)
     length(u) == 1 || error("length(u) = $(length(u)), should be 1 for PLSOne")
     p,k,l = size(s)
     cu = u[1]

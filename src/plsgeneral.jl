@@ -25,7 +25,7 @@ function PLSGeneral(Zt::SparseMatrixCSC,X::Matrix,facs::Vector)
                Ztc)
 end
 
-function Base.A_ldiv_B!(s::PLSGeneral,λ::Vector,Zty::Vector,Xty,u::Vector,β)
+function plssolve!(s::PLSGeneral,λ::Vector,Zty::Vector,Xty,u::Vector,β)
     cu = solve(s.L,permute!(vcat(map((x,y)-> vec(x*y),λ,Zty)...),s.perm),CHOLMOD_L)
     A_ldiv_B!(s.RX,BLAS.gemv!('T',-1.,s.RZX,cu,1.,copy!(β,Xty)))
     u = ipermute!(solve(s.L,BLAS.gemv!('N',-1.,s.RZX,β,1.,cu),CHOLMOD_Lt),s.perm)

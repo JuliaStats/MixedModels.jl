@@ -192,15 +192,6 @@ npar(m::LinearMixedModel) = nθ(m) + length(m.β) + 1
 ## nθ(m) -> n : length of the theta vector
 nθ(m::LinearMixedModel) = sum([n*(n+1)>>1 for (m,n) in map(size,m.λ)])
 
-## pwrss(lmb) : penalized, weighted residual sum of squares
-function pwrss(m::LinearMixedModel)
-    s = rss(m)
-    for u in m.u, ui in u
-        s += abs2(ui)
-    end
-    s
-end
-
 ## objective(m) -> deviance or REML criterion according to m.REML
 function objective(m::LinearMixedModel)
     n,p = size(m)
@@ -215,9 +206,18 @@ function objective!(m::LinearMixedModel,θ::Vector{Float64})
     for (λ,u,Zty) in zip(m.λ,m.u,m.Zty)
         Ac_mul_B!(λ,copy!(u,Zty))
     end
-    A_ldiv_B!(m.s,m.u,copy!(m.β,m.Xty)) # plssolve?
+    plssolve!(m.s,m.u,copy!(m.β,m.Xty))
     updateμ!(m)
     objective(m)
+end
+
+## pwrss(lmb) : penalized, weighted residual sum of squares
+function pwrss(m::LinearMixedModel)
+    s = rss(m)
+    for u in m.u, ui in u
+        s += abs2(ui)
+    end
+    s
 end
 
 ## scale(m,true) -> estimate, s^2, of the squared scale parameter

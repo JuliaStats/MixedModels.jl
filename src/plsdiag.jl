@@ -1,4 +1,4 @@
-type PLSDiag{Ti<:Union(Int32,Int64)} <: PLSSolver # Sparse Choleksy solver with diagonal Λ
+type PLSDiag{Ti<:Union(Int32,Int64)} <: PLSSolver # Sparse Choleksy solver for diagonal Λ
     L::CholmodFactor{Float64,Ti}
     RX::Base.LinAlg.Cholesky{Float64}
     RZX::Matrix{Float64}
@@ -20,10 +20,11 @@ function PLSDiag(Zt::SparseMatrixCSC,X::Matrix,facs::Vector)
                vcat([fill(j,length(ff.pool)) for (j,ff) in enumerate(facs)]...))
 end
 
-function Base.A_ldiv_B!(s::PLSDiag,u::Vector,β)
+function plssolve!(s::PLSDiag,u::Vector,β)
     cu = solve(s.L,permute!(vec(hcat(u...)),s.perm),CHOLMOD_L)
     A_ldiv_B!(s.RX,BLAS.gemv!('T',-1.,s.RZX,cu,1.,β))
-    ipermute!(solve(s.L,BLAS.gemv!('N',-1.,s.RZX,β,1.,cu),CHOLMOD_Lt),s.perm)
+    ## CHOLMOD does not solve in place so need to copy! result
+    ipermute!(copy!(cu, solve(s.L,BLAS.gemv!('N',-1.,s.RZX,β,1.,cu),CHOLMOD_Lt)),s.perm)
     pos = 0
     for ui in u, j in 1:length(ui)
         ui[j] = cu[pos += 1]

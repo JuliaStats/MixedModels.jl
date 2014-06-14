@@ -1,4 +1,4 @@
-## A PLSSolver must implement methods for logdet, updateL! and A_ldiv_B! where B is LMMBase
+## A PLSSolver must implement update! and plssolve!
 type λtZtSolver{Ti<:Union(Int32,Int64)} <: PLSSolver # Full sparse Cholesky updating from λtZt
     L::CholmodFactor{Float64,Ti}
     λtZt::SparseMatrixCSC{Float64,Ti}
@@ -13,7 +13,7 @@ Base.cholfact(s::λtZtSolver,RX=true) = RX ? s.RX : s.L
 ## Logarithm of the determinant of the generator matrix for the Cholesky factor, L or RX
 Base.logdet(s::λtZtSolver,RX=true) = logdet(cholfact(s,RX))
 
-function Base.A_ldiv_B!(lmb::LMMBase,s::λtZtSolver,ubeta::Bool=false)
+function plssolve!(lmb::LMMBase,s::λtZtSolver,ubeta::Bool=false)
     n,p,q,k = size(lmb)
     LamtZt = λtZt(lmb)
     if ubeta
