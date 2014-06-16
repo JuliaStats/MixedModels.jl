@@ -9,6 +9,7 @@ type LinearMixedModel{S<:PLSSolver} <: MixedModel
     fit::Bool
     fnms::Vector                        # names of grouping factors
     mf::ModelFrame
+    resid::Vector{Float64}
     s::S
     u::Vector
     y::Vector{Float64}
@@ -50,8 +51,8 @@ function lmm(f::Formula, fr::AbstractDataFrame)
         s = all(p .== 1) ? PLSDiag(Zt,X.m,facs) : PLSGeneral(Zt,X)
     end
     LinearMixedModel(false, X, Xs, Xty, Zty, f, facs, false, 
-                     {string(t.args[3]) for t in retrms}, mf, s,
-                     {similar(z) for z in Zty}, y, similar(Xty),
+                     {string(t.args[3]) for t in retrms}, mf, similar(y),
+                     s, {similar(z) for z in Zty}, y, similar(Xty),
                      {Triangular(eye(pp),:L,false) for pp in p},
                      similar(y))
 end
@@ -61,6 +62,9 @@ Base.cholfact(m::LinearMixedModel,RX::Bool=true) = cholfact(m.s,RX)
 
 ##  coef(m) -> current value of beta (as a reference)
 StatsBase.coef(m::LinearMixedModel) = m.β
+
+## Condition number
+Base.cond(m::LinearMixedModel) = [cond(λ)::Float64 for λ in m.λ]
 
 Base.cor(m::LinearMixedModel) = map(chol2cor,m.λ)
 
@@ -123,7 +127,7 @@ fnames(m::LinearMixedModel) = m.fnms
 ## overwrite g with the gradient (assuming that objective! has already been called)
 function grad!(g,m::LinearMixedModel)
     hasgrad(m) || error("gradient evaluation not provided for $(typeof(m))")
-    gg = grad(m.s,m.facs,scale(m,true),m.u,m.Xs,m.Zty,m.λ,m.μ)
+    gg = grad(m.s,scale(m,true),m.resid,m.u,m.λ)
     length(gg) == length(g) || error("Dimension mismatch")
     copy!(g,gg)
 end
@@ -238,7 +242,7 @@ function reml!(m::LinearMixedModel,v::Bool=true)
 end
 
 ## rss(m) -> residual sum of squares
-rss(m::LinearMixedModel) = ssqdiff(m.μ,m.y)
+rss(m::LinearMixedModel) = sum(Abs2Fun(),m.resid)
 
 ## scale(m,true) -> estimate, s^2, of the squared scale parameter
 function Base.scale(m::LinearMixedModel, sqr=false)
@@ -286,16 +290,6 @@ function Base.show(io::IO, m::LinearMixedModel)
     show(io,coeftable(m))
 end
 
-
-function ssqdiff{T<:Number}(a::Vector{T},b::Vector{T})
-    (n = length(a)) == length(b) || error("Dimension mismatch")
-    s = zero(T)
-    @simd for i in 1:n
-        s += abs2(a[i]-b[i])
-    end
-    s
-end
-
 ## sqrlenu(m) -> squared length of m.u (the penalty in the PLS problem)
 function sqrlenu(m::LinearMixedModel)
     s = 0.
@@ -322,7 +316,12 @@ function updateμ!(m::LinearMixedModel)
             add!(μ,vec(sum(λ*u[:,rr] .* x,1)))
         end
     end
-    ssqdiff(μ,m.y)
+    s = 0.
+    @inbounds for i in 1:length(μ)
+        rr = m.resid[i] = m.y[i] - μ[i]
+        s += abs2(rr)
+    end
+    s
 end
 
 ## vcov(m) -> estimated variance-covariance matrix of the fixed-effects parameters

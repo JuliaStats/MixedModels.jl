@@ -10,18 +10,19 @@ type PLSOne <: PLSSolver   # Solver for models with a single random-effects term
     Ld::Array{Float64,3}                # diagonal blocks
     Lb::Array{Float64,3}                # base blocks
     Lt::Base.LinAlg.Cholesky{Float64}   # lower right triangle
+    Zt::SparseMatrixCSC
 end
 
-function PLSOne(Ad::Array{Float64,3}, Ab::Array{Float64,3}, At::Symmetric{Float64})
+function PLSOne(Ad::Array{Float64,3}, Ab::Array{Float64,3}, At::Symmetric{Float64},Zt::SparseMatrixCSC)
     m,n,t = size(Ad)
     m == n || error("Faces of Ad must be square")
     p,q,r = size(Ab)
     p == size(At,1) && q == n && r == t || error("Size mismatch")
-    PLSOne(Ad,Ab,At,zeros(Ad),zeros(Ab),cholfact(At.S,symbol(At.uplo)))
+    PLSOne(Ad,Ab,At,zeros(Ad),zeros(Ab),cholfact(At.S,symbol(At.uplo)),Zt)
 end
 
-function PLSOne(Ad::Array{Float64,3}, Ab::Array{Float64,3}, At::Matrix{Float64})
-    PLSOne(Ad,Ab,Symmetric(At,:L))
+function PLSOne(Ad::Array{Float64,3}, Ab::Array{Float64,3}, At::Matrix{Float64}, Zt::SparseMatrixCSC)
+    PLSOne(Ad,Ab,Symmetric(At,:L),Zt)
 end
 
 function PLSOne(ff::PooledDataVector, Xst::Matrix, Xt::Matrix)
@@ -40,7 +41,7 @@ function PLSOne(ff::PooledDataVector, Xst::Matrix, Xt::Matrix)
     for j in 1:nl        # symmetrize the faces created with BLAS.syr!
         Base.LinAlg.copytri!(sub(Ad,:,:,j),'L')
     end
-    PLSOne(Ad,Ab,Symmetric(Xt*Xt',:L))
+    PLSOne(Ad,Ab,Symmetric(Xt*Xt',:L),ztblk(Xst,refs))
 end
 
 Base.cholfact(s::PLSOne,RX::Bool=true) = RX ? s.Lt : blkdiag({sparse(tril(sub(s.Ld,:,:,j))) for j in 1:size(s.Ld,3)}...)
@@ -131,20 +132,13 @@ function plssolve!(s::PLSOne,u::Vector,β)
     end
 end
 
-function grad(s::PLSOne,facs::Vector,sc,u::Vector,Xs::Vector,Zty::Vector,λ::Vector,μ)
-    length(u) == 1 || error("PLSOne must correspond to a LMMBase with 1 r.e. term")
-    u = u[1]
+function grad(s::PLSOne,sc,resid,u,λ::Vector)
     λ = λ[1]
-    nz = Xs[1]
+    u = u[1]
     res = zeros(size(λ))
-    rv = facs[1].refs
     tmp = similar(res)                  # scratch array
     for i in 1:size(s.Ad,3)
-        res += LAPACK.potrs!('L',sub(s.Ld,:,:,i),Ac_mul_B!(λ,copy!(tmp,sub(s.Ad,:,:,i))))
+        add!(res,LAPACK.potrs!('L',sub(s.Ld,:,:,i),Ac_mul_B!(λ,copy!(tmp,sub(s.Ad,:,:,i)))))
     end
-    Ztr = copy(Zty[1])          # create Z'(resid) starting with Zty
-    for i in 1:length(μ)
-        Ztr[:,rv[i]] -= μ[i] * nz[:,i]
-    end
-    ltri(BLAS.syr2k!('L','N',-1./sc,Ztr,u,1.,res+res'))
+    ltri(BLAS.syr2k!('L','N',-1./sc,reshape(s.Zt*resid,size(u)),u,1.,res+res'))
 end
