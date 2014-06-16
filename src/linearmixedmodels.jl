@@ -190,6 +190,7 @@ StatsBase.nobs(m::LinearMixedModel) = length(m.y)
 npar(m::LinearMixedModel) = nθ(m) + length(m.β) + 1
 
 ## nθ(m) -> n : length of the theta vector
+## FIXME: make this generic to apply to a general λ
 nθ(m::LinearMixedModel) = sum([n*(n+1)>>1 for (m,n) in map(size,m.λ)])
 
 ## objective(m) -> deviance or REML criterion according to m.REML
@@ -219,6 +220,25 @@ function pwrss(m::LinearMixedModel)
     end
     s
 end
+
+##  ranef(m) -> vector of matrices of random effects on the original scale
+##  ranef(m,true) -> vector of matrices of random effects on the U scale
+function ranef(m::LinearMixedModel, uscale=false)
+    uscale && return m.u
+    [λ * u for (λ,u) in zip(m.λ,m.u)]
+end
+
+##  reml!(m,v=true) -> m : Set m.REML to v.  If m.REML is modified, unset m.fit
+function reml!(m::LinearMixedModel,v::Bool=true)
+    if m.REML != v
+        m.REML = v
+        m.fit = false
+    end
+    m
+end
+
+## rss(m) -> residual sum of squares
+rss(m::LinearMixedModel) = ssqdiff(m.μ,m.y)
 
 ## scale(m,true) -> estimate, s^2, of the squared scale parameter
 function Base.scale(m::LinearMixedModel, sqr=false)
@@ -276,26 +296,6 @@ function ssqdiff{T<:Number}(a::Vector{T},b::Vector{T})
     s
 end
 
-##  ranef(m) -> vector of matrices of random effects on the original scale
-##  ranef(m,true) -> vector of matrices of random effects on the U scale
-function ranef(m::LinearMixedModel, uscale=false)
-    uscale && return m.u
-    [λ * u for (λ,u) in zip(m.λ,m.u)]
-end
-
-##  reml!(m,v=true) -> m : Set m.REML to v.  If m.REML is modified, unset m.fit
-function reml!(m::LinearMixedModel,v::Bool=true)
-    if m.REML != v
-        m.REML = v
-        m.fit = false
-    end
-    m
-end
-
-## rss(m) -> residual sum of squares
-rss(m::LinearMixedModel) = ssqdiff(m.μ,m.y)
-
-## scale(m) -> estimate, s, of the scale parameter
 ## sqrlenu(m) -> squared length of m.u (the penalty in the PLS problem)
 function sqrlenu(m::LinearMixedModel)
     s = 0.
