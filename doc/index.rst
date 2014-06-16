@@ -38,24 +38,19 @@ special cases::
     julia> m = lmm(Yield ~ 1|Batch, ds);
 
     julia> typeof(m)
-    LMMScalar1 (constructor with 2 methods)
+    LinearMixedModel{PLSOne} (constructor with 2 methods)
 
     julia> fit(m, true);
     f_1: 327.76702, [1.0]
-    f_2: 331.03619, [1.75]
-    f_3: 330.64583, [0.25]
-    f_4: 327.69511, [0.97619]
-    f_5: 327.56631, [0.928569]
-    f_6: 327.3826, [0.833327]
-    f_7: 327.35315, [0.807188]
-    f_8: 327.34663, [0.799688]
-    f_9: 327.341, [0.792188]
-    f_10: 327.33253, [0.777188]
-    f_11: 327.32733, [0.747188]
-    f_12: 327.32862, [0.739688]
-    f_13: 327.32706, [0.752777]
-    f_14: 327.32707, [0.753527]
-    f_15: 327.32706, [0.752584]
+    f_2: 328.63496, [0.428326]
+    f_3: 327.33773, [0.787132]
+    f_4: 328.27031, [0.472809]
+    f_5: 327.33282, [0.727955]
+    f_6: 327.32706, [0.752783]
+    f_7: 327.32706, [0.752599]
+    f_8: 327.32706, [0.752355]
+    f_9: 327.32706, [0.752575]
+    f_10: 327.32706, [0.75258]
     FTOL_REACHED
 
     julia> m
@@ -76,22 +71,20 @@ special cases::
 Constructors
 ------------
 
-.. function:: lmer(f, fr)
+.. function:: lmm(f, fr)
 
    Create the representation for a linear mixed-effects model with
-   formula ``f`` evaluated in the :type:`DataFrame` ``fr``.  The
-   primary method is for ``f`` of type :type:`Formula` but more
-   commonly ``f`` is an expression (:type:`Expr`) as in the example
-   above.
+   formula ``f`` (of :type:`Formula`) evaluated in the :type:`DataFrame`
+   ``fr``.
 
 -------
 Setters
 -------
 
 These setters or mutating functions are defined for ``m`` of type
-:type:`LMMGeneral`.  By convention their names end in ``!``.  The
+:type:`LinearMixedModel`.  By convention their names end in ``!``.  The
 :func:`fit` function is an exception, because the name was
-already established in the ``Distributions`` package.
+already established in the ``StatsBase`` package.
 
 .. function:: fit(m, verbose=false) -> m
 
@@ -101,13 +94,13 @@ already established in the ``Distributions`` package.
 
    Set the REML flag in ``m`` to ``v``.
 
-.. function:: solve!(m, ubeta=false) -> m
+.. function:: plssolve!(m.s, u, β) -> m
 
-   Update the random-effects values (and the fixed-effects, when
-   ``ubeta`` is ``true``) by solving the penalized least squares (PLS)
-   problem.
+   Update the spherical random-effects values and the fixed-effects by
+   solving the penalized least squares (PLS) problem.  On input the
+   arguments ``u`` should contain ``Z'y`` and ``β`` should contain ``X'y``
 
-.. function:: theta!(m, th) -> m
+.. function:: θ!(m, th) -> m
 
    Set a new value of the variance-component parameter and update the
    sparse Cholesky factor.
@@ -151,10 +144,6 @@ These extractors are defined for ``m`` of type
 
    Vector of number of levels in random-effect terms
 
-.. function:: linpred(m, minusy=true) -> Vector{Float64}
-
-   The linear predictor vector or the negative residual vector
-
 .. function:: lower(m) -> Vector{Float64}
 
    Vector of lower bounds on the variance-component parameters
@@ -182,10 +171,6 @@ These extractors are defined for ``m`` of type
 .. function:: stderr(m) -> Vector{Float64}
 
    Standard errors of the fixed-effects parameters
-
-.. function:: theta(m) -> Vector{Float64}
-
-   Vector of variance-component parameters
 
 .. function:: vcov(m) -> Matrix{Float64}
 
