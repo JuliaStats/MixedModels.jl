@@ -17,4 +17,4 @@ script:
   - julia -e 'versioninfo(); Pkg.init(); Pkg.add("NLopt"); Pkg.add("DataFrames"); Pkg.clone(pwd())'
   - julia --code-coverage ./test/runtests.jl
 after_success:
-  - if [ $JULIAVERSION = "julianightlies" ]; then julia -e 'cd(Pkg.dir("MixedModels")); Pkg.add("Coverage"); using Coverage; Coveralls.submit(Coveralls.process_folder())'; fi
+  - julia -e 'cd(Pkg.dir("MixedModels")); Pkg.add("Coverage"); using Coverage; Coveralls.submit(Coveralls.process_folder())'
