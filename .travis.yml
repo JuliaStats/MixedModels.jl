@@ -7,10 +7,11 @@ before_install:
   - sudo add-apt-repository ppa:staticfloat/julia-deps -y
   - sudo add-apt-repository ppa:staticfloat/julianightlies -y
   - sudo apt-get update -qq -y
-  - sudo apt-get install libpcre3-dev julia -y
+  - sudo apt-get install libpcre3-dev libnlopt0 julia -y
   - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
 script:
   - julia -e 'versioninfo(); Pkg.init(); Pkg.add("NLopt"); Pkg.add("DataFrames"); Pkg.clone(pwd())'
-  - julia --code-coverage ./test/runtests.jl
-after_success:
-  - julia -e 'cd(Pkg.dir("MixedModels")); Pkg.add("Coverage"); using Coverage; Coveralls.submit(Coveralls.process_folder())'
+  - julia ./test/runtests.jl
+#  - julia --code-coverage ./test/runtests.jl
+#after_success:
+#  - julia -e 'cd(Pkg.dir("MixedModels")); Pkg.add("Coverage"); using Coverage; Coveralls.submit(Coveralls.process_folder())'
