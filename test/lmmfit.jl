@@ -155,7 +155,7 @@ fit(reml!(lm5))
 @test_approx_eq_eps logdet(lm5) -0.7710675334644331 1.e-5
 @test_approx_eq_eps logdet(lm5,false) 96.83704281499782 1.e-4
 
-lm6 = lmm(Reaction ~ Days + (0+Days|Subject), slp);  # should be converted to PLSOne
+lm6 = lmm(Reaction ~ Days + (1|Subject) + (0+Days|Subject), slp);  # should be converted to PLSOne
 
 fit(lm6)
 
