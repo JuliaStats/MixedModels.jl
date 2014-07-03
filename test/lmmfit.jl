@@ -24,13 +24,13 @@ fit(lm1)
 
 ## REML fit to ds
 
-## fit(reml!(lm1))
+#fit(reml!(lm1))
 
-## @test_approx_eq_eps std(lm1)[1] [42.00063130711604] 1.e-9
-## @test_approx_eq_eps std(lm1)[2] [49.510093347813246] 1.e-9
-## @test_approx_eq fixef(lm1) [1527.5]     # unchanged because of balanced design
-## @test_approx_eq coef(lm1) [1527.5]
-## @test_approx_eq_eps stderr(lm1) [19.383424615110936] 1.e-10
+##@test_approx_eq_eps std(lm1)[1] [37.8972980078109] 1.e-9
+##@test_approx_eq_eps std(lm1)[2] [50.356492955140524] 1.e-9
+##@test_approx_eq fixef(lm1) [1527.5]     # unchanged because of balanced design
+##@test_approx_eq coef(lm1) [1527.5]
+##@test_approx_eq_eps stderr(lm1) [19.383424615110936] 1.e-10
 ## @test_approx_eq objective(lm1) 319.6542768422625
 
 ## ML fit to ds2
@@ -154,3 +154,12 @@ fit(reml!(lm5))
 @test_approx_eq_eps scale(lm5) 0.5499222659682077 1.e-6
 @test_approx_eq_eps logdet(lm5) -0.7710675334644331 1.e-5
 @test_approx_eq_eps logdet(lm5,false) 96.83704281499782 1.e-4
+
+lm6 = lmm(Reaction ~ Days + (0+Days|Subject), slp);  # should be converted to PLSOne
+
+fit(lm6)
+
+tt = MixedModels.lrt(lm6,lm3)
+
+@test_approx_eq_eps tt[:Deviance] [1752.0032552746247,1751.9393450762673] 1e-6
+@test all(tt[:Df] .== [5,6])

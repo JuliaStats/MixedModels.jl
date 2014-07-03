@@ -1,7 +1,7 @@
 using DataFrames  # should be externally available
 module MixedModels
 
-    using DataArrays, DataFrames, NLopt, NumericExtensions, NumericFuns, StatsBase
+    using DataArrays, DataFrames, Distributions, NLopt, NumericExtensions, NumericFuns, StatsBase
     using StatsBase: CoefTable
     using Base.LinAlg.CHOLMOD: CholmodFactor, CholmodSparse, CholmodSparse!,
           chm_scale, CHOLMOD_SYM, CHOLMOD_L, CHOLMOD_Lt, solve
