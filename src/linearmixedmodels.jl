@@ -48,7 +48,7 @@ function lmm(f::Formula, fr::AbstractDataFrame)
         s = PLSOne(facs[1],Xs[1],X.m')
     else
         Zt = vcat(map(ztblk,Xs,facs)...)
-        s = all(p .== 1) ? PLSDiag(Zt,X.m,facs) : PLSGeneral(Zt,X)
+        s = all(p .== 1) ? PLSDiag(Zt,X.m,facs) : PLSGeneral(Zt,X.m,facs)
     end
     LinearMixedModel(false, X, Xs, Xty, Zty, f, facs, false, 
                      {string(t.args[3]) for t in retrms}, mf, similar(y),
@@ -344,4 +344,26 @@ function θ!(m::LinearMixedModel,th::Vector)
         end
     end
     m.λ
+end
+
+function bootstrap!(res::AbstractArray{Float64,2}, m::LinearMixedModel, f::Function, uvals::Bool=true)
+    mm = deepcopy(m)
+    vv = f(mm)
+    isa(vv, Vector{Float64}) && length(vv) == size(res,1) ||
+        error("f must return a Vector{Float64} of length $(size(res,1))")
+    if uvals
+        error("code not yet written")
+    else
+        d = IsoNormal(mm.μ,scale(mm))
+        eyes = [eye(size(l,1)) for l in mm.λ]
+        for i in 1:size(res,2)
+            rand!(d,mm.y)               # simulate a response vector
+            mm.fit = false
+            for j in 1:length(λ)
+                copy!(mm.λ[j].data,eyes[j])
+            end
+            res[:,i] = f(fit(mm,true))
+        end
+    end
+    res
 end

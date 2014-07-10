@@ -23,7 +23,7 @@ end
 ltri(t::Triangular{Float64,Array{Float64,2},:L,false}) = ltri(t.data)
 
 ## rowlengths(m) -> v : return a vector of the row lengths
-rowlengths(m::Matrix{Float64}) = [norm(sub(m,i,:))::Float64 for i in 1:size(m,1)]
+rowlengths(m::Matrix{Float64}) = [norm(view(m,i,:))::Float64 for i in 1:size(m,1)]
 rowlengths(t::Triangular{Float64}) = rowlengths(full(t))
 
 ## Return a block in the Zt matrix from one term.
@@ -38,3 +38,15 @@ function ztblk(m::Matrix,v)
                     vec(m))            # nzval
 end
 ztblk(m::Matrix,v::PooledDataVector) = ztblk(m,v.refs)
+
+## copy contents of u, a vector of matrices, and cu a vector, or vice versa
+function copyucu!(cu::Vector{Float64},u::Vector,cu2u::Bool=true)
+    pos = 0
+    for ui in u
+        ll = length(ui)
+        cui = view(cu,pos+(1:ll))
+        cu2u ? copy!(ui,cui) : copy!(cui,ui)
+        pos += ll
+    end
+    cu2u ? u : cu
+end

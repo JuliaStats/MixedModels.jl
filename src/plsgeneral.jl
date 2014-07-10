@@ -5,6 +5,7 @@ type PLSGeneral{Ti<:Union(Int32,Int64)} <: PLSSolver
     XtX::Symmetric{Float64}
     Ztnz::Matrix{Float64}               # non-zeros in Zt as a dense matrix
     ZtX::Matrix{Float64}
+    cu::Vector{Float64}
     nlev::Vector
     perm::Vector{Ti}
     λtZt::CholmodSparse{Float64,Ti}
@@ -20,20 +21,10 @@ function PLSGeneral(Zt::SparseMatrixCSC,X::Matrix,facs::Vector)
         cp[j] - cp[j-1] == d2 || error("Zt must have constant column counts")
     end
     L = cholfact(Ztc,1.,true)
-    PLSGeneral(L,cholfact(XtX.S,:L),copy(ZtX),XtX,reshape(copy(Zt.nzval),(d2,Zt.n)),ZtX,
-               [length(f.pool) for f in facs],L.Perm .+ one(eltype(L.Perm)),
-               Ztc)
-end
-
-function plssolve!(s::PLSGeneral,λ::Vector,Zty::Vector,Xty,u::Vector,β)
-    cu = solve(s.L,permute!(vcat(map((x,y)-> vec(x*y),λ,Zty)...),s.perm),CHOLMOD_L)
-    A_ldiv_B!(s.RX,BLAS.gemv!('T',-1.,s.RZX,cu,1.,copy!(β,Xty)))
-    u = ipermute!(solve(s.L,BLAS.gemv!('N',-1.,s.RZX,β,1.,cu),CHOLMOD_Lt),s.perm)
-    pos = 0
-    for ui in u, j in 1:length(ui)
-        ui[j] = u[pos += 1]
-    end
-    β
+    PLSGeneral(L,cholfact(XtX.S,:L),copy(ZtX),XtX,
+               reshape(copy(Zt.nzval),(d2,Zt.n)), ZtX,zeros(size(L,1)),
+               [length(f.pool) for f in facs],
+               L.Perm .+ one(eltype(L.Perm)), Ztc)
 end
 
 function update!(s::PLSGeneral,λ::Vector)
@@ -44,10 +35,10 @@ function update!(s::PLSGeneral,λ::Vector)
     for k in 1:length(λ)
         ll = λ[k]
         p = size(ll,1)
-        Ac_mul_B!(ll,sub(λtZtm,Ztrow + (1:p),:))
+        Ac_mul_B!(ll,view(λtZtm,Ztrow + (1:p),:))
         Ztrow += p
         for i in 1:s.nlev[k]
-            Ac_mul_B!(ll,sub(s.RZX,ZtXrow + (1:p),:))
+            Ac_mul_B!(ll,view(s.RZX,ZtXrow + (1:p),:))
             ZtXrow += p
         end
     end
