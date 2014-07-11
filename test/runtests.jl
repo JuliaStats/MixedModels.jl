@@ -69,7 +69,12 @@ pen = DataFrame(Diameter = [27,23,26,23,23,21,27,23,26,23,23,21,25,21,25,24,24,2
                 Plate = pool(rep('a':'x',1,6)),
                 Sample = pool(rep('A':'F',24,1)))
 
-tests = ["lmmfit.jl"]
+tests = ["plsonescalar.jl",
+         "plsonevector.jl",
+         "plsdiagnested.jl",
+         "plsdiagcrossed.jl",
+         "plstwo.jl",
+         "lrt.jl"]
 
 anyerrors = false
 

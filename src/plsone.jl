@@ -34,7 +34,7 @@ function PLSOne(ff::PooledDataVector, Xst::Matrix, Xt::Matrix)
     Ad = zeros(n,n,nl)
     Ab = zeros(m,n,nl)
     for j in 1:L
-        jj = int(refs[j])
+        jj = refs[j]
         BLAS.syr!('L',1.0,view(Xst,:,j),view(Ad,:,:,jj))
         BLAS.ger!(1.0,view(Xt,:,j),view(Xst,:,j),view(Ab,:,:,jj))
     end
@@ -62,30 +62,12 @@ Base.size(s::PLSOne) = size(s.Ab)
 Base.size(s::PLSOne,k::Integer) = size(s.Ab,k)
 
 ##  update!(s,lambda)->s : update Ld, Lb and Lt
-function update!(s::PLSOne,λ::Triangular)
-    m,n,l = size(s)
-    n == size(λ,1) || throw(DimensionMismatch(""))
-    Lt = copy!(s.Lt.UL,s.At.S)
-    Lb = copy!(s.Lb,s.Ab)
-    if n == 1                           # shortcut for 1×1 λ
-        lam = λ[1,1]
-        Ld = map!(x -> sqrt(x*lam*lam + 1.), s.Ld, s.Ad)
-        Lb = scale!(reshape(Lb,(m,n*l)),lam ./ vec(Ld))
-        BLAS.syrk!('L','N',-1.0,Lb,1.0,Lt)
-    else
-        Ac_mul_B!(λ,reshape(copy!(s.Ld,s.Ad),(n,n*l)))
-        for k in 1:l
-            wL = A_mul_B!(view(s.Ld,:,:,k),λ)
-            for j in 1:n                # Inflate the diagonal
-                wL[j,j] += 1.
-            end
-            _, info = LAPACK.potrf!('L',wL) # i'th diagonal block of L
-            info == 0 || error("Cholesky failure at L diagonal block $k")
-            Base.LinAlg.A_rdiv_Bc!(A_mul_B!(view(s.Lb,:,:,k),λ),Triangular(wL,:L,false))
-        end
-        BLAS.syrk!('L','N',-1.0,reshape(Lb,(m,n*l)),1.,Lt)
-    end
-    _, info = LAPACK.potrf!('L',Lt)
+
+function update!(s::PLSOne,λ::AbstractMatrix)
+    updateLdb!(s,λ)         # updateLdb! is common to PLSOne and PLSTwo
+    m,n,l = size(s.Ab)
+    BLAS.syrk!('L','N',-1.0,reshape(s.Lb,(m,n*l)),1.0,s.Lt.UL)
+    _, info = LAPACK.potrf!('L',s.Lt.UL)
     info == 0 ||  error("downdated X'X is not positive definite")
     s
 end

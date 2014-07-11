@@ -13,7 +13,8 @@ module MixedModels
         PLSDiag,               # multiple, scalar random-effects terms
         PLSGeneral,            # general random-effects structure
         PLSOne,                # solver for models with only one r.e. term
-        PLSSolver,
+        PLSSolver,             # abstract type for a penalized least squares solver
+        PLSTwo,                # solver for models with two crossed or nearly crossed r.e. terms
 
         fixef,          # extract the fixed-effects parameter estimates
         grad!,          # install gradient of objective
@@ -36,6 +37,7 @@ module MixedModels
     include("utils.jl")
     include("plsgeneral.jl")
     include("plsone.jl")
+    include("plstwo.jl")
     include("plsdiag.jl")
     include("linearmixedmodels.jl")
 end #module
