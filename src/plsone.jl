@@ -27,7 +27,7 @@ end
 
 function PLSOne(ff::PooledDataVector, Xst::Matrix, Xt::Matrix)
     refs = ff.refs
-    (L = length(refs)) == size(Xst,2) == size(Xt,2) || error("Dimension mismatch")
+    (L = length(refs)) == size(Xst,2) == size(Xt,2) || throw(DimensionMismatch("PLSOne"))
     m = size(Xt,1)
     n = size(Xst,1)
     nl = length(ff.pool)         # number of levels of grouping factor
@@ -64,7 +64,7 @@ Base.size(s::PLSOne,k::Integer) = size(s.Ab,k)
 ##  update!(s,lambda)->s : update Ld, Lb and Lt
 function update!(s::PLSOne,λ::Triangular)
     m,n,l = size(s)
-    n == size(λ,1) || error("Dimension mismatch")
+    n == size(λ,1) || throw(DimensionMismatch(""))
     Lt = copy!(s.Lt.UL,s.At.S)
     Lb = copy!(s.Lb,s.Ab)
     if n == 1                           # shortcut for 1×1 λ
@@ -100,7 +100,7 @@ function plssolve!(s::PLSOne,u::Vector,β)
     length(u) == 1 || error("length(u) = $(length(u)), should be 1 for PLSOne")
     p,k,l = size(s)
     cu = u[1]
-    (q = length(cu)) == k*l && k == size(cu,1) || error("Dimension mismatch")
+    (q = length(cu)) == k*l && k == size(cu,1) || throw(DimensionMismatch(""))
     if k == 1                           # short cut for scalar r.e.
         Linv = 1. ./ vec(s.Ld)
         scale!(cu,Linv)

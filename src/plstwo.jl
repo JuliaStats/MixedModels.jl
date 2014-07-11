@@ -13,10 +13,12 @@ function PLSTwo(facs::Vector,Xst::Vector,Xt::Matrix)
     nl = [length(f.pool) for f in facs]
     n = [size(x,1) for x in Xst]
     dblksz = nl[2] * n[2]
+                                        # Do this in lmm instead of checking here
     nl[1] * n[1] >= dblksz || error("reverse the order of the random effects terms")
     dblksz += size(Xt,1)
     Ad = zeros(n[1],n[1],nl[1])
     Ab = zeros(dblksz,n[1],nl[1])
+
 end
 
     

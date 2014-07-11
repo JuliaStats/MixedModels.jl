@@ -128,7 +128,7 @@ fnames(m::LinearMixedModel) = m.fnms
 function grad!(g,m::LinearMixedModel)
     hasgrad(m) || error("gradient evaluation not provided for $(typeof(m))")
     gg = grad(m.s,scale(m,true),m.resid,m.u,m.λ)
-    length(gg) == length(g) || error("Dimension mismatch")
+    length(gg) == length(g) || throw(DimensionMismatch(""))
     copy!(g,gg)
 end
 
@@ -335,7 +335,7 @@ zxt(m::LinearMixedModel) = (Zt = zt(m); vcat(Zt,convert(typeof(Zt),m.X.m')))
 
 ## θ!(m,theta) -> m : install new values of the covariance parameters
 function θ!(m::LinearMixedModel,th::Vector)
-    length(th) == nθ(m) || error("Dimension mismatch")
+    length(th) == nθ(m) || throw(DimensionMismatch(""))
     pos = 0
     for λ in m.λ
         s = size(λ,1)
