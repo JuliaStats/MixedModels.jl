@@ -4,6 +4,7 @@ type LinearMixedModel{S<:PLSSolver} <: MixedModel
     Xs::Vector
     Xty::Vector{Float64}
     Zty::Vector
+    b::Vector
     f::Formula
     facs::Vector
     fit::Bool
@@ -50,11 +51,10 @@ function lmm(f::Formula, fr::AbstractDataFrame)
         Zt = vcat(map(ztblk,Xs,facs)...)
         s = all(p .== 1) ? PLSDiag(Zt,X.m,facs) : PLSGeneral(Zt,X.m,facs)
     end
-    LinearMixedModel(false, X, Xs, Xty, Zty, f, facs, false, 
-                     {string(t.args[3]) for t in retrms}, mf, similar(y),
-                     s, {similar(z) for z in Zty}, y, similar(Xty),
-                     {Triangular(eye(pp),:L,false) for pp in p},
-                     similar(y))
+    LinearMixedModel(false, X, Xs, Xty, Zty, {similar(z) for z in Zty},
+        f, facs, false, {string(t.args[3]) for t in retrms}, mf,
+        similar(y), s, {similar(z) for z in Zty}, y, similar(Xty),
+        {Triangular(eye(pp),:L,false) for pp in p}, similar(y))
 end
 
 ## Return the Cholesky factor RX or L
@@ -227,10 +227,7 @@ end
 
 ##  ranef(m) -> vector of matrices of random effects on the original scale
 ##  ranef(m,true) -> vector of matrices of random effects on the U scale
-function ranef(m::LinearMixedModel, uscale=false)
-    uscale && return m.u
-    [λ * u for (λ,u) in zip(m.λ,m.u)]
-end
+ranef(m::LinearMixedModel, uscale=false) = uscale ? m.u : m.b
 
 ##  reml!(m,v=true) -> m : Set m.REML to v.  If m.REML is modified, unset m.fit
 function reml!(m::LinearMixedModel,v::Bool=true)
@@ -308,12 +305,11 @@ StatsBase.stderr(m::LinearMixedModel) = sqrt(diag(vcov(m)))
 ## update m.μ and return the residual sum of squares
 function updateμ!(m::LinearMixedModel)
     μ = A_mul_B!(m.μ, m.X.m, m.β) # initialize μ to Xβ
-    for (ff,λ,u,x) in zip(m.facs,m.λ,m.u,m.Xs)
+    for (ff,λ,u,b,x) in zip(m.facs,m.λ,m.u,m.b,m.Xs)
         rr = ff.refs
-        if size(λ,1) == 1
-            fma!(μ,vec(λ*u)[rr],vec(x))
-        else
-            add!(μ,vec(sum(λ*u[:,rr] .* x,1)))
+        A_mul_B!(b,λ,u)         # overwrite b by λ*u
+        for i in 1:length(μ)    # @inbounds this loop if successful
+            μ[i] += dot(b[:,rr[i]],x[:,i])
         end
     end
     s = 0.
