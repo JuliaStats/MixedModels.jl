@@ -3,6 +3,7 @@ type LinearMixedModel{S<:PLSSolver} <: MixedModel
     X::ModelMatrix{Float64}
     Xs::Vector
     Xty::Vector{Float64}
+    Ztblks::Vector
     Zty::Vector
     b::Vector
     f::Formula
@@ -51,9 +52,10 @@ function lmm(f::Formula, fr::AbstractDataFrame)
         Zt = vcat(map(ztblk,Xs,facs)...)
         s = all(p .== 1) ? PLSDiag(Zt,X.m,facs) : PLSGeneral(Zt,X.m,facs)
     end
-    LinearMixedModel(false, X, Xs, Xty, Zty, {similar(z) for z in Zty},
-        f, facs, false, {string(t.args[3]) for t in retrms}, mf,
-        similar(y), s, {similar(z) for z in Zty}, y, similar(Xty),
+    LinearMixedModel(false, X, Xs, Xty, map(ztblk,Xs,facs),
+        Zty, {similar(z) for z in Zty}, f, facs, false,
+        {string(t.args[3]) for t in retrms}, mf, similar(y), s,
+        {similar(z) for z in Zty}, y, similar(Xty),
         {Triangular(eye(pp),:L,false) for pp in p}, similar(y))
 end
 
@@ -305,15 +307,12 @@ StatsBase.stderr(m::LinearMixedModel) = sqrt(diag(vcov(m)))
 ## update m.μ and return the residual sum of squares
 function updateμ!(m::LinearMixedModel)
     μ = A_mul_B!(m.μ, m.X.m, m.β) # initialize μ to Xβ
-    for (ff,λ,u,b,x) in zip(m.facs,m.λ,m.u,m.b,m.Xs)
-        rr = ff.refs
+    for (Zt,λ,b,u) in zip(m.Ztblks,m.λ,m.b,m.u)
         A_mul_B!(b,λ,u)         # overwrite b by λ*u
-        for i in 1:length(μ)    # @inbounds this loop if successful
-            μ[i] += dot(b[:,rr[i]],x[:,i])
-        end
+        Ac_mul_B!(1.0,Zt,vec(b),1.0,μ)
     end
     s = 0.
-    @inbounds for i in 1:length(μ)
+    @simd for i in 1:length(μ)
         rr = m.resid[i] = m.y[i] - μ[i]
         s += abs2(rr)
     end
