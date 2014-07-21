@@ -28,8 +28,7 @@ module MixedModels
         objective,      # the objective function in fitting a model
         pwrss,          # penalized, weighted residual sum-of-squares
         ranef,          # extract the conditional modes of the random effects
-        reml!,          # set the objective to be the REML criterion
-        isreml          # is the objective the REML criterion?
+        reml!           # set the objective to be the REML criterion
 
     abstract MixedModel          # model with fixed and random effects
     abstract PLSSolver           # type for solving the penalized least squares problem
