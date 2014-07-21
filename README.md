@@ -1,7 +1,7 @@
 # Linear mixed-effects models in [Julia](http://julialang.org)
 
 [![Build Status](https://travis-ci.org/dmbates/MixedModels.jl.svg?branch=master)](https://travis-ci.org/dmbates/MixedModels.jl)
-[![Coverage Status](https://coveralls.io/repos/dmbates/MixedModels.jl/badge.png?branch=master)](https://coveralls.io/r/dmbates/MixedModels.jl?branch=master)
+[![Coverage Status](https://coveralls.io/r/dmbates/MixedModels.jl?branch=master#)](https://coveralls.io/r/dmbates/MixedModels.jl?branch=master)
 [![Package Evaluator](http://iainnz.github.io/packages.julialang.org/badges/MixedModels_0.3.svg)](http://iainnz.github.io/packages.julialang.org/?pkg=MixedModels&ver=0.3)
 
 ## Fitting linear mixed-effects models
