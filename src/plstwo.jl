@@ -50,26 +50,26 @@ end
 
 using Base.LinAlg.chksquare
 
-function updateLdb!(s::Union(PLSOne,PLSTwo),λ::AbstractMatrix)
-    chksquare(λ) == size(s.Ad,1) || throw(DimensionMixmatch(""))
+function updateLdb!(s::Union(PLSOne,PLSTwo),λ::AbstractPDMat)
+    dim(λ) == size(s.Ad,1) || throw(DimensionMixmatch(""))
     m,n,l = size(s.Ab)
-    Lt = copy!(s.Lt.UL,s.At.S)
+    Lt = tril!(copy!(s.Lt.UL,s.At.S))
     Lb = copy!(s.Lb,s.Ab)
     if n == 1                           # shortcut for 1×1 λ
-        lam = λ[1,1]
+        lam = λ.chol.UL[1,1]
         lamsq = lam*lam
         Ld = map!(x -> sqrt(x*lamsq + 1.), s.Ld, s.Ad)
         scale!(reshape(Lb,(m,l)),lam ./ vec(Ld))
     else
-        Ac_mul_B!(λ,reshape(copy!(s.Ld,s.Ad),(n,n*l)))
+#        unwhiten_winv!(λ,reshape(copy!(s.Ld,s.Ad),(n,n*l)))
         for k in 1:l
-            wL = A_mul_B!(view(s.Ld,:,:,k),λ)
+            wL = unwhiten_sym!(λ,copy!(view(s.Ld,:,:,k),view(s.Ad,:,:,k)))
             for j in 1:n
                 wL[j,j] += 1.0
             end
             _,info = LAPACK.potrf!('L',wL)
             info == 0 || error("Cholesky failure at L diagonal block $k")
-            Base.LinAlg.A_rdiv_Bc!(A_mul_B!(view(s.Lb,:,:,k),λ),Triangular(wL,:L,false))
+            Base.LinAlg.A_rdiv_Bc!(A_mul_B!(view(s.Lb,:,:,k),lfactor(λ)),Triangular(wL,:L,false))
         end
     end
     s

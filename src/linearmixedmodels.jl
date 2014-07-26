@@ -56,7 +56,7 @@ function lmm(f::Formula, fr::AbstractDataFrame)
         Zty, {similar(z) for z in Zty}, f, facs, false,
         {string(t.args[3]) for t in retrms}, mf, similar(y), s,
         {similar(z) for z in Zty}, y, similar(Xty),
-        {Triangular(eye(pp),:L,false) for pp in p}, similar(y))
+        {PDMat(cholfact(eye(pp),:L)) for pp in p}, similar(y))
 end
 
 ## Return the Cholesky factor RX or L
@@ -159,16 +159,6 @@ Base.logdet(m::LinearMixedModel,RX::Bool=true) = logdet(m.s,RX)
 
 ## lower(m) -> Vector{Float64} : vector of lower bounds for the theta parameters
 lower(m::LinearMixedModel) = vcat(map(lower,m.λ)...)
-function lower(x::Triangular)
-    (s = size(x,1)) == 1 && return [0.]
-    res = fill(-Inf,s*(s+1)>>1)
-    k = 1                               # position in res
-    for j in s:-1:1
-        res[k] = 0.
-        k += j
-    end
-    res
-end
 
 ## likelihood ratio tests
 function lrt(mods::LinearMixedModel...)
@@ -211,7 +201,7 @@ end
 function objective!(m::LinearMixedModel,θ::Vector{Float64})
     update!(m.s,θ!(m,θ))
     for (λ,u,Zty) in zip(m.λ,m.u,m.Zty)
-        Ac_mul_B!(λ,copy!(u,Zty))
+        unwhiten_winv!(λ,copy!(u,Zty))
     end
     plssolve!(m.s,m.u,copy!(m.β,m.Xty))
     updateμ!(m)
@@ -308,7 +298,7 @@ StatsBase.stderr(m::LinearMixedModel) = sqrt(diag(vcov(m)))
 function updateμ!(m::LinearMixedModel)
     μ = A_mul_B!(m.μ, m.X.m, m.β) # initialize μ to Xβ
     for (Zt,λ,b,u) in zip(m.Ztblks,m.λ,m.b,m.u)
-        A_mul_B!(b,λ,u)         # overwrite b by λ*u
+        unwhiten!(λ,copy!(b,u))         # overwrite b by λ*u
         Ac_mul_B!(1.0,Zt,vec(b),1.0,μ)
     end
     s = 0.
@@ -326,17 +316,16 @@ zt(m::LinearMixedModel) = vcat(map(ztblk,m.Xs,m.facs)...)
 zxt(m::LinearMixedModel) = (Zt = zt(m); vcat(Zt,convert(typeof(Zt),m.X.m')))
 
 ## θ(m) -> θ : extract the covariance parameters as a vector
-θ(m::LinearMixedModel) = vcat(map(ltri,m.λ)...)
+θ(m::LinearMixedModel) = vcat(map(θ,m.λ)...)
 
 ## θ!(m,theta) -> m : install new values of the covariance parameters
 function θ!(m::LinearMixedModel,th::Vector)
-    length(th) == nθ(m) || throw(DimensionMismatch(""))
+    nth = [nθ(l) for l in m.λ]
+    length(th) == sum(nth) || throw(DimensionMismatch(""))
     pos = 0
-    for λ in m.λ
-        s = size(λ,1)
-        for j in 1:s, i in j:s
-            λ.data[i,j] = th[pos += 1]
-        end
+    for i in 1:length(nth)
+        θ!(m.λ[i], view(th,pos + (1:nth[i])))
+        pos += nth[i]
     end
     m.λ
 end
