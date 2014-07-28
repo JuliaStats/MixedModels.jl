@@ -61,9 +61,9 @@ function updateLdb!(s::Union(PLSOne,PLSTwo),λ::AbstractPDMat)
         Ld = map!(x -> sqrt(x*lamsq + 1.), s.Ld, s.Ad)
         scale!(reshape(Lb,(m,l)),lam ./ vec(Ld))
     else
-#        unwhiten_winv!(λ,reshape(copy!(s.Ld,s.Ad),(n,n*l)))
+        unwhiten_winv!(λ,reshape(copy!(s.Ld,s.Ad),(n,n*l)))
         for k in 1:l
-            wL = unwhiten_sym!(λ,copy!(view(s.Ld,:,:,k),view(s.Ad,:,:,k)))
+            wL = A_mul_B!(view(s.Ld,:,:,k),lfactor(λ))
             for j in 1:n
                 wL[j,j] += 1.0
             end
