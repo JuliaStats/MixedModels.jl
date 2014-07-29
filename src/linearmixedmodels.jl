@@ -65,6 +65,42 @@ Base.cholfact(m::LinearMixedModel,RX::Bool=true) = cholfact(m.s,RX)
 ##  coef(m) -> current value of beta (as a reference)
 StatsBase.coef(m::LinearMixedModel) = m.β
 
+termnames(term::Symbol, col) = [string(term)]
+function termnames(term::Symbol, col::PooledDataArray)
+    levs = levels(col)
+    [string(term, levs[i]) for i in 2:length(levs)]
+end
+
+## Temporary copy until change in DataFrames is merged and in a new release.
+## coefnames(m) -> return a vector of coefficient names
+function DataFrames.coefnames(m::LinearMixedModel)
+    fr = m.mf
+    if fr.terms.intercept
+        vnames = UTF8String["(Intercept)"]
+    else
+        vnames = UTF8String[]
+    end
+    # Need to only include active levels
+    for term in fr.terms.terms
+        if isa(term, Expr)
+            if term.head == :call && term.args[1] == :|
+                continue                # skip random-effects terms
+            elseif term.head == :call && term.args[1] == :&
+                a = term.args[2]
+                b = term.args[3]
+                for lev1 in termnames(a, fr.df[a]), lev2 in termnames(b, fr.df[b])
+                    push!(vnames, string(lev1, " & ", lev2))
+                end
+            else
+                error("unrecognized term $term")
+            end
+        else
+            append!(vnames, termnames(term, fr.df[term]))
+        end
+    end
+    return vnames
+end
+
 ## Condition number
 Base.cond(m::LinearMixedModel) = [cond(λ)::Float64 for λ in m.λ]
 
@@ -74,7 +110,7 @@ Base.cor(m::LinearMixedModel) = map(chol2cor,m.λ)
 function StatsBase.coeftable(m::LinearMixedModel)
     fe = fixef(m)
     se = stderr(m)
-    CoefTable(hcat(fe,se,fe./se), ["Estimate","Std.Error","z value"], ASCIIString[])
+    CoefTable(hcat(fe,se,fe./se), ["Estimate","Std.Error","z value"], coefnames(m.mf))
 end
 
 ## deviance(m) -> Float64
@@ -251,6 +287,8 @@ function Base.show(io::IO, m::LinearMixedModel)
     n,p,q,k = size(m)
     REML = m.REML
     @printf(io, "Linear mixed model fit by %s\n", REML ? "REML" : "maximum likelihood")
+    println(io, m.f)
+    println(io)
 
     oo = objective(m)
     if REML
@@ -268,7 +306,7 @@ function Base.show(io::IO, m::LinearMixedModel)
         print(io, " ", rpad(fnms[i],12))
         @printf(io, " %10f  %10f\n", abs2(si[1]), si[1])
         for j in 2:length(si)
-            @printf(io, "             %10f  %10f\n", abs2(si[j]), si[j])
+            @printf(io, "              %10f  %10f\n", abs2(si[j]), si[j])
         end
     end
     gl = grplevels(m)
