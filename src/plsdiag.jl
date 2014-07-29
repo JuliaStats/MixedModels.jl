@@ -30,7 +30,7 @@ end
 
 function update!(s::PLSDiag,λ::Vector)
     all(map(size,λ) .== (1,1)) || error("λ must be a vector of 1×1 matrices")
-    λvec = vcat([vec(ll.data) for ll in λ]...)[s.λind]
+    λvec = vcat([facdiag(ll) for ll in λ]...)[s.λind]
     cholfact!(s.L,chm_scale(s.ZtZ,λvec,CHOLMOD_SYM),1.)
     copy!(s.RZX,solve(s.L, scale(λvec, s.ZtX)[s.perm,:], CHOLMOD_L))
     _,info = LAPACK.potrf!('L',BLAS.syrk!('L','T',-1.,s.RZX,1.,copy!(s.RX.UL,s.XtX.S)))

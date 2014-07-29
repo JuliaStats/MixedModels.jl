@@ -2,10 +2,10 @@ using DataFrames  # should be externally available
 module MixedModels
 
     using ArrayViews, DataArrays, DataFrames, Distributions
-    using NLopt, NumericExtensions, NumericFuns, StatsBase
-    using StatsBase: CoefTable
+    using NLopt, NumericExtensions, NumericFuns, PDMats, StatsBase
     using Base.LinAlg.CHOLMOD: CholmodFactor, CholmodSparse, CholmodSparse!,
           chm_scale, CHOLMOD_SYM, CHOLMOD_L, CHOLMOD_Lt, solve
+    using Base.LinAlg.Cholesky
 
     export
         LinearMixedModel,
@@ -30,10 +30,11 @@ module MixedModels
         ranef,          # extract the conditional modes of the random effects
         reml!           # set the objective to be the REML criterion
 
-    abstract MixedModel          # model with fixed and random effects
+    abstract MixedModel <: RegressionModel # model with fixed and random effects
     abstract PLSSolver           # type for solving the penalized least squares problem
 
     include("utils.jl")
+    include("pdmats.jl")
     include("plsgeneral.jl")
     include("plsone.jl")
     include("plstwo.jl")

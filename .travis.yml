@@ -10,7 +10,7 @@ before_install:
   - sudo apt-get install libpcre3-dev julia -y
   - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
 script:
-  - julia -e 'versioninfo(); Pkg.init(); Pkg.add("NLopt"); Pkg.add("DataFrames"); Pkg.add("Distributions"); Pkg.clone(pwd())'
+  - julia -e 'versioninfo(); Pkg.init(); Pkg.add("NLopt"); Pkg.add("DataFrames"); Pkg.add("Distributions"); Pkg.add("PDMats"); Pkg.clone(pwd())'
   - julia --code-coverage ./test/runtests.jl
 after_success:
   - julia -e 'cd(Pkg.dir("MixedModels")); Pkg.add("Coverage"); using Coverage; Coveralls.submit(Coveralls.process_folder())'

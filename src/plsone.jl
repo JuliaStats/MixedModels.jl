@@ -63,7 +63,7 @@ Base.size(s::PLSOne,k::Integer) = size(s.Ab,k)
 
 ##  update!(s,lambda)->s : update Ld, Lb and Lt
 
-function update!(s::PLSOne,λ::AbstractMatrix)
+function update!(s::PLSOne,λ::AbstractPDMat)
     updateLdb!(s,λ)         # updateLdb! is common to PLSOne and PLSTwo
     m,n,l = size(s.Ab)
     BLAS.syrk!('L','N',-1.0,reshape(s.Lb,(m,n*l)),1.0,s.Lt.UL)
@@ -107,10 +107,10 @@ end
 function grad(s::PLSOne,sc,resid,u,λ::Vector)
     λ = λ[1]
     u = u[1]
-    res = zeros(size(λ))
+    res = zeros(size(full(λ)))
     tmp = similar(res)                  # scratch array
     for i in 1:size(s.Ad,3)
-        add!(res,LAPACK.potrs!('L',view(s.Ld,:,:,i),Ac_mul_B!(λ,copy!(tmp,view(s.Ad,:,:,i)))))
+        add!(res,LAPACK.potrs!('L',view(s.Ld,:,:,i),unwhiten_winv!(λ,copy!(tmp,view(s.Ad,:,:,i)))))
     end
     ltri(BLAS.syr2k!('L','N',-1./sc,reshape(s.Zt*resid,size(u)),u,1.,res+res'))
 end
