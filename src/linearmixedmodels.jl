@@ -89,7 +89,7 @@ function DataFrames.coefnames(m::LinearMixedModel)
                 a = term.args[2]
                 b = term.args[3]
                 for lev1 in termnames(a, fr.df[a]), lev2 in termnames(b, fr.df[b])
-                    push!(vnames, string(lev1, " & ", lev2))
+                    push!(vnames, string(lev1, "&", lev2))
                 end
             else
                 error("unrecognized term $term")
@@ -110,7 +110,7 @@ Base.cor(m::LinearMixedModel) = map(chol2cor,m.λ)
 function StatsBase.coeftable(m::LinearMixedModel)
     fe = fixef(m)
     se = stderr(m)
-    CoefTable(hcat(fe,se,fe./se), ["Estimate","Std.Error","z value"], coefnames(m.mf))
+    CoefTable(hcat(fe,se,fe./se), ["Estimate","Std.Error","z value"], coefnames(m))
 end
 
 ## deviance(m) -> Float64
@@ -298,17 +298,8 @@ function Base.show(io::IO, m::LinearMixedModel)
     end
     println(io); println(io)
 
-    @printf(io, " Variance components:\n                Variance    Std.Dev.\n")
-    stdm = std(m)
-    fnms = vcat(m.fnms,"Residual")
-    for i in 1:length(fnms)
-        si = stdm[i]
-        print(io, " ", rpad(fnms[i],12))
-        @printf(io, " %10f  %10f\n", abs2(si[1]), si[1])
-        for j in 2:length(si)
-            @printf(io, "              %10f  %10f\n", abs2(si[j]), si[j])
-        end
-    end
+    show(io,VarCorr(m))
+    
     gl = grplevels(m)
     @printf(io," Number of obs: %d; levels of grouping factors: %d", n, gl[1])
     for l in gl[2:end] @printf(io, ", %d", l) end
@@ -347,6 +338,42 @@ function updateμ!(m::LinearMixedModel)
     s
 end
 
+type VarCorr                            # a type to isolate the print logic
+    λ::Vector
+    fnms::Vector
+    s::Float64
+    function VarCorr(λ::Vector,fnms::Vector,s::Number)
+        (k = length(fnms)) == length(λ) || throw(DimensionMisMatch(""))
+        s >= 0. || error("s must be non-negative")
+        for i in 1:k
+            isa(λ[i],AbstractPDMat) || error("isa(λ[$i],AbstractPDMat is not true")
+            isa(fnms[i],String) || error("fnms must be a vector of strings")
+        end
+        new(λ,fnms,s)
+    end
+end
+VarCorr(m::LinearMixedModel) = VarCorr(m.λ,m.fnms,scale(m))
+
+function Base.show(io::IO,vc::VarCorr)
+    @printf(io, " Variance components:\n                Variance    Std.Dev.")
+    stdm = vc.s*push!([rowlengths(λ) for λ in vc.λ],[1.])
+    any([length(s) > 1 for s in stdm]) && @printf(io,"  Corr.")
+    println(io)
+    cor = [chol2cor(λ) for λ in vc.λ]
+    fnms = vcat(vc.fnms,"Residual")
+    for i in 1:length(fnms)
+        si = stdm[i]
+        print(io, " ", rpad(fnms[i],12))
+        @printf(io, " %10f  %10f\n", abs2(si[1]), si[1])
+        for j in 2:length(si)
+            @printf(io, "              %10f  %10f ", abs2(si[j]), si[j])
+            for k in 1:(j-1)
+                @printf(io, "%6.2f", cor[i][j,1])
+            end
+            println(io)
+        end
+    end
+end    
 ## vcov(m) -> estimated variance-covariance matrix of the fixed-effects parameters
 StatsBase.vcov(m::LinearMixedModel) = scale(m,true) * inv(cholfact(m.s))
 

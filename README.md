@@ -67,17 +67,19 @@ defaults to REML estimation.
 ```julia
 julia> m = lmm(Yield ~ 1|Batch, ds)
 Linear mixed model fit by maximum likelihood
+Formula: Yield ~ 1 | Batch
+
  logLik: -163.663530, deviance: 327.327060
 
  Variance components:
                 Variance    Std.Dev.
- Batch        1388.342960   37.260474
- Residual     2451.247052   49.510070
+ Batch        1388.331690   37.260323
+ Residual     2451.250503   49.510105
  Number of obs: 30; levels of grouping factors: 6
 
   Fixed-effects parameters:
-     Estimate Std.Error z value
-[1]    1527.5   17.6946 86.3258
+             Estimate Std.Error z value
+(Intercept)    1527.5   17.6945  86.326
 ```
 
 (The formatting of the output will be improved.)
@@ -98,7 +100,7 @@ f_8: 327.32706, [0.752355]
 f_9: 327.32706, [0.752575]
 f_10: 327.32706, [0.75258]
 FTOL_REACHED
-elapsed time: 0.003643068 seconds (488148 bytes allocated)
+elapsed time: 0.002485569 seconds (172340 bytes allocated)
 ```
 
 The numeric representation of the model has type
@@ -161,48 +163,10 @@ julia> head(inst)
 | 5     | 2 | 115  | 2       | 1       | 0       | 5    | 2 |
 | 6     | 2 | 756  | 2       | 1       | 0       | 5    | 4 |
 
-julia> @time fm2 = fit(lmm(Y ~ Dept*Service + (1|S) + (1|D), inst),true)
-f_1: 241920.83782, [1.0,1.0]
-f_2: 244850.35313, [1.75,1.0]
-f_3: 242983.26659, [1.0,1.75]
-f_4: 238454.23551, [0.25,1.0]
-f_5: 241716.05374, [1.0,0.25]
-f_6: 240026.05964, [0.0,0.445919]
-f_7: 241378.58265, [0.0,1.27951]
-f_8: 238463.85417, [0.346954,0.95699]
-f_9: 238337.43511, [0.25115,0.933415]
-f_10: 238450.00008, [0.195179,0.871898]
-f_11: 238282.78311, [0.268777,0.913682]
-f_12: 238250.87656, [0.280725,0.897062]
-f_13: 238207.46301, [0.303696,0.863175]
-f_14: 238195.80295, [0.319029,0.842641]
-f_15: 238196.40553, [0.324123,0.837137]
-f_16: 238179.53711, [0.317249,0.835355]
-f_17: 238160.85286, [0.312094,0.829907]
-f_18: 238126.53332, [0.303016,0.817967]
-f_19: 238066.44966, [0.289624,0.791122]
-f_20: 237960.37093, [0.275292,0.732859]
-f_21: 237771.65691, [0.259406,0.613915]
-f_22: 237651.6783, [0.242704,0.374497]
-f_23: 240177.28897, [0.0941482,0.185999]
-f_24: 237591.38115, [0.283051,0.410359]
-f_25: 237898.58452, [0.330503,0.300139]
-f_26: 237625.00815, [0.312366,0.409428]
-f_27: 237599.45773, [0.286273,0.470272]
-f_28: 237599.86007, [0.287796,0.399337]
-f_29: 237586.35767, [0.281267,0.433017]
-f_30: 237586.23507, [0.280855,0.432391]
-f_31: 237586.04587, [0.280107,0.432456]
-f_32: 237585.75792, [0.278609,0.432398]
-f_33: 237585.55709, [0.275788,0.431376]
-f_34: 237585.58866, [0.275575,0.430052]
-f_35: 237585.59988, [0.274638,0.432066]
-f_36: 237585.55357, [0.275935,0.432124]
-f_37: 237585.56011, [0.275855,0.432869]
-f_38: 237585.55342, [0.275921,0.432005]
-FTOL_REACHED
-elapsed time: 5.008541269 seconds (377739884 bytes allocated, 9.56% gc time)
+julia> fm2 = fit(lmm(Y ~ Dept*Service + (1|S) + (1|D), inst))
 Linear mixed model fit by maximum likelihood
+Formula: Y ~ Dept * Service + (1 | S) + (1 | D)
+
  logLik: -118792.776709, deviance: 237585.553417
 
  Variance components:
@@ -213,40 +177,43 @@ Linear mixed model fit by maximum likelihood
  Number of obs: 73421; levels of grouping factors: 2972, 1128
 
   Fixed-effects parameters:
-        Estimate Std.Error   z value
- [1]     3.22961 0.0640541     50.42
- [2]    0.129537  0.101295    1.2788
- [3]   -0.176752 0.0881368  -2.00543
- [4]   0.0517089 0.0817538  0.632495
- [5]   0.0347327 0.0856225  0.405649
- [6]    0.145941 0.0998001   1.46233
- [7]    0.151689 0.0816911   1.85686
- [8]    0.104206  0.118752  0.877503
- [9]   0.0440392 0.0963003  0.457312
-[10]   0.0517545 0.0986047  0.524868
-[11]   0.0466714  0.101944  0.457815
-[12]   0.0563455 0.0977943  0.576164
-[13]   0.0596525  0.100235  0.595129
-[14]  0.00556088  0.110869 0.0501574
-[15]    0.252024 0.0686508    3.6711
-[16]   -0.180759  0.123179  -1.46744
-[17]   0.0186497  0.110017  0.169517
-[18]   -0.282267 0.0792939  -3.55975
-[19]   -0.494464  0.079028  -6.25682
-[20]   -0.392054  0.110313  -3.55402
-[21]   -0.278546 0.0823729  -3.38152
-[22]   -0.189526   0.11145  -1.70055
-[23]   -0.499867 0.0885425   -5.6455
-[24]   -0.497161 0.0917165  -5.42063
-[25]   -0.240418 0.0982074  -2.44807
-[26]   -0.223013  0.089055  -2.50421
-[27]   -0.516996 0.0809079  -6.38994
-[28]   -0.384769 0.0918433  -4.18941
+                   Estimate Std.Error   z value
+(Intercept)         3.22961 0.0640541     50.42
+Dept5              0.129537  0.101295    1.2788
+Dept10            -0.176752 0.0881368  -2.00543
+Dept12            0.0517089 0.0817538  0.632495
+Dept6             0.0347327 0.0856225  0.405649
+Dept7              0.145941 0.0998001   1.46233
+Dept4              0.151689 0.0816911   1.85686
+Dept8              0.104206  0.118752  0.877503
+Dept9             0.0440392 0.0963003  0.457312
+Dept14            0.0517545 0.0986047  0.524868
+Dept1             0.0466714  0.101944  0.457815
+Dept3             0.0563455 0.0977943  0.576164
+Dept11            0.0596525  0.100235  0.595129
+Dept2            0.00556088  0.110869 0.0501574
+Service1           0.252024 0.0686508    3.6711
+Dept5&Service1    -0.180759  0.123179  -1.46744
+Dept10&Service1   0.0186497  0.110017  0.169517
+Dept12&Service1   -0.282267 0.0792939  -3.55975
+Dept6&Service1    -0.494464  0.079028  -6.25682
+Dept7&Service1    -0.392054  0.110313  -3.55402
+Dept4&Service1    -0.278546 0.0823729  -3.38152
+Dept8&Service1    -0.189526   0.11145  -1.70055
+Dept9&Service1    -0.499867 0.0885425   -5.6455
+Dept14&Service1   -0.497161 0.0917165  -5.42063
+Dept1&Service1    -0.240418 0.0982074  -2.44807
+Dept3&Service1    -0.223013  0.089055  -2.50421
+Dept11&Service1   -0.516996 0.0809079  -6.38994
+Dept2&Service1    -0.384769 0.0918433  -4.18941
+
+julia> @time fit(lmm(Y ~ Dept*Service + (1|S) + (1|D), inst));
+elapsed time: 4.454070061 seconds (282382860 bytes allocated, 5.25% gc time)
 ```
 
 Models with vector-valued random effects can be fit
 ```julia
-julia> sleep = dataset("lme4","sleepstudy")
+julia> slp = dataset("lme4","sleepstudy")
 180x3 DataFrame
 |-------|----------|------|---------|
 | Row # | Reaction | Days | Subject |
@@ -271,27 +238,31 @@ julia> sleep = dataset("lme4","sleepstudy")
 | 179   | 369.142  | 8    | 372     |
 | 180   | 364.124  | 9    | 372     |
 
-julia> lmm(Reaction ~ Days + (Days|Subject), sleep)
+julia> fm3 = fit(lmm(Reaction ~ Days + (Days|Subject), slp))
 Linear mixed model fit by maximum likelihood
- logLik: -875.969672, deviance: 1751.939345
+Formula: Reaction ~ Days + (Days | Subject)
+
+ logLik: -875.969673, deviance: 1751.939345
 
  Variance components:
-                Variance    Std.Dev.
- Subject      565.722158   23.784915
- Residual      32.463510    5.697676
+                Variance    Std.Dev.  Corr.
+ Subject      565.545224   23.781195
+               32.692286    5.717717   0.08
+ Residual     654.919662   25.591398
  Number of obs: 180; levels of grouping factors: 18
 
   Fixed-effects parameters:
-     Estimate Std.Error z value
-[1]   251.405   6.63225 37.9065
-[2]   10.4673   1.50219 6.96801
+             Estimate Std.Error z value
+(Intercept)   251.405   6.63237 37.9058
+Days          10.4673   1.50242 6.96696
 ```
 
-At present the estimated covariance of vector-valued random effects is
-not printed in the model summary, although it is estimated.
+For models with a single random-effects term a gradient-based
+optimization is used, allowing faster and more reliable convergence to
+the parameter estimates.
 
 ```julia
-julia> @time fm3 = fit(lmm(Reaction ~ Days + (Days|Subject), sleep),true);
+julia> @time fit(lmm(Reaction ~ Days + (Days|Subject), sleep),true);
 f_1: 1784.6423, [1.0,0.0,1.0]
 f_2: 1792.09158, [1.04647,-0.384052,0.159046]
 f_3: 1759.76629, [1.00506,-0.0847897,0.418298]
@@ -329,15 +300,6 @@ f_34: 1751.93935, [0.929364,0.018161,0.222695]
 f_35: 1751.93935, [0.929209,0.0181365,0.222689]
 f_36: 1751.93935, [0.929265,0.0181483,0.222685]
 FTOL_REACHED
-elapsed time: 0.056019547 seconds (9222048 bytes allocated)
-
-julia> cor(fm3)
-1-element Array{Any,1}:
- 2x2 Array{Float64,2}:
- 1.0        0.0812284
- 0.0812284  1.0
+elapsed time: 0.024221732 seconds (1768688 bytes allocated)
 ```
-
-The `cor` method for a `LinearMixedModel` returns the estimated
-correlation matrix of the random-effects terms.
 

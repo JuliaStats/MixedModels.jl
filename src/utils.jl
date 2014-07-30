@@ -15,8 +15,9 @@ function chol2cor(c::Cholesky)
   std = broadcast(/, t, rowlengths(t))
   std * std'
 end
-chol2cor(p::PDMat) = chol2cor(p.chol
-                              )
+chol2cor(p::PDMat) = chol2cor(p.chol)
+chol2cor(p::PDiagMat) = eye(dim(p))
+
 ## extract the lower triangle (with diagonal) of a matrix as a vector
 function ltri(m::Matrix)
     n = Base.LinAlg.chksquare(m)
