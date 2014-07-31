@@ -63,7 +63,7 @@ Base.size(s::PLSOne,k::Integer) = size(s.Ab,k)
 
 ##  update!(s,lambda)->s : update Ld, Lb and Lt
 
-function update!(s::PLSOne,λ::AbstractPDMat)
+function update!(s::PLSOne,λ::AbstractPDMatFactor)
     updateLdb!(s,λ)         # updateLdb! is common to PLSOne and PLSTwo
     m,n,l = size(s.Ab)
     BLAS.syrk!('L','N',-1.0,reshape(s.Lb,(m,n*l)),1.0,s.Lt.UL)
@@ -78,11 +78,10 @@ function update!(s::PLSOne,λ::Vector)
 end
 
 ## arguments passed contain λ'Z'y and X'y
-function plssolve!(s::PLSOne,u::Vector,β)
-    length(u) == 1 || error("length(u) = $(length(u)), should be 1 for PLSOne")
+function plssolve!(s::PLSOne,u,β)
     p,k,l = size(s)
-    cu = u[1]
-    (q = length(cu)) == k*l && k == size(cu,1) || throw(DimensionMismatch(""))
+    (q = length(u)) == k*l || throw(DimensionMismatch(""))
+    cu = reshape(u,(k,l))
     if k == 1                           # short cut for scalar r.e.
         Linv = 1. ./ vec(s.Ld)
         scale!(cu,Linv)
@@ -107,10 +106,12 @@ end
 function grad(s::PLSOne,sc,resid,u,λ::Vector)
     λ = λ[1]
     u = u[1]
-    res = zeros(size(full(λ)))
+    p,k,l = size(s)
+    res = zeros(k,k)
     tmp = similar(res)                  # scratch array
-    for i in 1:size(s.Ad,3)
-        add!(res,LAPACK.potrs!('L',view(s.Ld,:,:,i),unwhiten_winv!(λ,copy!(tmp,view(s.Ad,:,:,i)))))
+    for i in 1:l
+        add!(res,LAPACK.potrs!('L',view(s.Ld,:,:,i),Ac_mul_B!(λ,copy!(tmp,view(s.Ad,:,:,i)))))
     end
+    ## FIXME: instead of ltri, use the type of λ
     ltri(BLAS.syr2k!('L','N',-1./sc,reshape(s.Zt*resid,size(u)),u,1.,res+res'))
 end

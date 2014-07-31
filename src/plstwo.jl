@@ -48,28 +48,28 @@ function PLSTwo(facs::Vector,Xst::Vector,Xt::Matrix)
            vcat(ztblk(xst1,r1),ztblk(xst2,r2)),p,p2)
 end
 
-using Base.LinAlg.chksquare
-
-function updateLdb!(s::Union(PLSOne,PLSTwo),λ::AbstractPDMat)
-    dim(λ) == size(s.Ad,1) || throw(DimensionMixmatch(""))
+function updateLdb!(s::Union(PLSOne,PLSTwo),λ::AbstractPDMatFactor)
+    k = dim(λ)
+    k < 0 || k == size(s.Ad,1) || throw(DimensionMixmatch(""))
     m,n,l = size(s.Ab)
     Lt = tril!(copy!(s.Lt.UL,s.At.S))
     Lb = copy!(s.Lb,s.Ab)
     if n == 1                           # shortcut for 1×1 λ
-        lam = λ.chol.UL[1,1]
+        isa(λ,PDScalF) || error("1×1 λ section should be a PDScalF type")
+        lam = λ.s.λ
         lamsq = lam*lam
         Ld = map!(x -> sqrt(x*lamsq + 1.), s.Ld, s.Ad)
         scale!(reshape(Lb,(m,l)),lam ./ vec(Ld))
     else
-        unwhiten_winv!(λ,reshape(copy!(s.Ld,s.Ad),(n,n*l)))
+        Ac_mul_B!(λ,reshape(copy!(s.Ld,s.Ad),(n,n*l)))
         for k in 1:l
-            wL = A_mul_B!(view(s.Ld,:,:,k),lfactor(λ))
+            wL = A_mul_B!(view(s.Ld,:,:,k),λ)
             for j in 1:n
                 wL[j,j] += 1.0
             end
             _,info = LAPACK.potrf!('L',wL)
             info == 0 || error("Cholesky failure at L diagonal block $k")
-            Base.LinAlg.A_rdiv_Bc!(A_mul_B!(view(s.Lb,:,:,k),lfactor(λ)),Triangular(wL,:L,false))
+            Base.LinAlg.A_rdiv_Bc!(A_mul_B!(view(s.Lb,:,:,k),λ),Triangular(wL,:L,false))
         end
     end
     s
@@ -77,17 +77,17 @@ end
 
 function update!(s::PLSTwo,λ::Vector)
     p2 = s.p2
-    length(λ) == 2 && chksquare(λ[2]) == p2 || throw(DimensionMismatch(""))
-    updateLdb(s,λ[1])
+    length(λ) == 2 && Base.LinAlg.chksquare(λ[2]) == p2 || throw(DimensionMismatch(""))
+    updateLdb!(s,λ[1])
                                         # second level updates
     m,n,l = size(s.Lb)
     q2 = m - s.p
     rem(q2,p2) == 0 || throw(DimensionMismatch(""))
-    Lt = s.Lt
+    Lt = Base.LinAlg.full!(s.Lt[:L])
     if p2 == 1
-        lam = λ[2][1,1]
-        scale!(lam,reshape(view(s.Lb,1:q2,:,:),(m,l)))
-        scale!(lam*lam,view(Lt,1:q2,1:q2))
+        lam = lfactor(λ[2])[1,1]
+        scale!(lam,reshape(view(s.Lb,1:q2,:,:),(q2,l)))
+        scale!(lam*lam,view(Lt[:L],1:q2,1:q2))
     else
         lam = λ[2]
         for k in 1:div(q2,p2)
@@ -99,7 +99,7 @@ function update!(s::PLSTwo,λ::Vector)
     for j in 1:q2
         Lt[j,j] += 1.
     end
-    BLAS.syrk!('L','N',-1.0,reshape(s.Lb,(m,n*l)),1.0,Lt.UL)
+    BLAS.syrk!('L','N',-1.0,reshape(s.Lb,(m,n*l)),1.0,Lt)
     _, info = LAPACK.potrf!('L',Lt)
     info == 0 ||  error("downdated X'X is not positive definite")
     s

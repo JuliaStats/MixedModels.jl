@@ -1,83 +1,118 @@
-function θ(t::Triangular{Float64,Array{Float64,2},:L,false})
-    n = size(t,1)
-    n == 1 && return copy(vec(t.data))
-    res = Array(Float64,n*(n+1)>>1)
+abstract AbstractPDMatFactor
+
+immutable PDLCholF <: AbstractPDMatFactor
+    ch::Cholesky{Float64}
+    function PDLCholF(ch::Cholesky{Float64})
+        ch.uplo == 'L' || error("PDLCholF must be a lower Cholesky factor")
+        new(ch)
+    end
+end
+immutable PDDiagF <: AbstractPDMatFactor
+    d::Diagonal{Float64}
+    function PDDiagF(d::Vector{Float64})
+        for dd in d
+            dd < 0. && error("PDDiagF must have non-negative diagonal elements")
+        end
+        new(Diagonal(d))
+    end
+end
+type PDScalF <: AbstractPDMatFactor     #  can't be immutable because UniformScaling is
+    s::UniformScaling{Float64}
+    function PDScalF(s::Number)
+        s < 0. && error("PDScalF must have a non-negative scale, s")
+        new(UniformScaling(float(s)))
+    end
+end
+Base.show(io::IO,p::PDLCholF) = show(io,p.ch)
+Base.show(io::IO,p::PDDiagF) = show(io,p.d)
+Base.show(io::IO,p::PDScalF) = show(io,p.s)
+Base.full(p::PDLCholF) = full!(p.ch[:L])
+Base.size(p::PDLCholF) = size(p.ch)
+Base.size(p::PDLCholF,i) = size(p.ch,i)
+PDMats.dim(p::PDLCholF) = size(p.ch,1)
+PDMats.dim(p::PDDiagF) = length(p.d)
+PDMats.dim(p::PDScalF) = -1
+
+
+nltri(k::Integer) = k*(k+1) >> 1
+
+## number of free variables in the representation
+nθ(p::PDLCholF) = nltri(size(p,1))
+nθ(p::PDDiagF) = size(p,1)
+nθ(p::PDScalF) = 1
+
+## current values of the free variables in the representation
+function θ(p::PDLCholF)
+    n = size(p,1)
+    res = Array(Float64,nltri(n))
     pos = 0
+    ul = p.ch.UL
     for j in 1:n, i in j:n
-        res[pos += 1] = t.data[i,j]
+        res[pos += 1] = ul[i,j]
     end
     res
 end
-θ(c::Cholesky{Float64}) = θ(c[:L])
-θ(p::PDMat) = θ(p.chol)
-θ(p::PDiagMat) = sqrt(p.diag)
+θ(p::PDDiagF) = p.d
+θ(p::PDScalF) = [p.s.λ]
 
-nθ(k::Integer) = k*(k+1)>>1
-nθ(t::Triangular{Float64,Array{Float64,2},:L,false}) = nθ(size(t,1))
-nθ(c::Cholesky{Float64}) = nθ(size(c,1))
-nθ(p::PDMat) = nθ(dim(p))
-nθ(p::PDiagMat) = dim(p)
-
-function lower(k::Integer)
-    k == 1 && return [0.]
-    res = fill(-Inf,k*(k+1)>>1)
+## lower bounds on the free variables in the representation
+function lower(p::PDLCholF)
+    n = size(p,1)
+    res = fill(-Inf,nltri(n))
     i = 1                               # position in res
-    for j in k:-1:1
+    for j in n:-1:1
         res[i] = 0.
         i += j
     end
     res
 end
-lower(t::Triangular{Float64,Array{Float64,2},:L,false}) = lower(size(t,1))
-lower(c::Cholesky{Float64}) = lower(size(c,1))
-lower(p::PDMat) = lower(dim(p))
-lower(p::PDiagMat) = zeros(dim(p))
+lower(p::PDDiagF) = zeros(p.d)
+lower(p::PDScalF) = [0.]
 
 ## θ!(m,theta) -> m : install new values of the covariance parameters
-function θ!(t::Triangular{Float64,Array{Float64,2},:L,false},th::StridedVector{Float64})
-    k = size(t,1)
-    length(th) == nθ(k) || throw(DimensionMismatch(""))
+function θ!(p::PDLCholF,th::StridedVector{Float64})
+    n = size(p,1)
+    length(th) == nθ(p) || throw(DimensionMismatch(""))
     pos = 0
-    for j in 1:k, i in j:k
-        t.data[i,j] = th[pos += 1]
+    ul = p.ch.UL
+    for j in 1:n, i in j:n
+        ul[i,j] = th[pos += 1]
     end
 end
-function θ!(c::Cholesky{Float64},th::StridedVector{Float64})
-    c.uplo == 'L' || error("θ! defined for lower Cholesky factor only")
-    θ!(c[:L],th)
+function θ!(p::PDDiagF,th::StridedVector{Float64})
+    length(th) == length(p.d) || throw(DimensionMisMatch(""))
+    copy!(p.d,th)
 end
-function θ!(p::PDMat,th::StridedVector{Float64})
-    θ!(p.chol,th)
-    tl = p.chol[:L]
-    A_mul_B!(tl,Base.LinAlg.transpose!(p.mat,tril!(tl.data)))
-end
-function θ!(p::PDiagMat,th::StridedVector{Float64})
-    length(th) == p.dim || throw(DimensionMismatch(""))
-    map!(abs2,p.diag,th)
-    map!(inv,p.inv_diag,p.diag)
+function θ!(p::PDScalF,th::StridedVector{Float64})
+    length(th) == 1 || throw(DimensionMisMatch(""))
+    p.s = UniformScaling(th[1])
 end
 
-lfactor(p::PDMat) = p.chol[:L]
-lfactor(p::PDiagMat) = Diagonal(sqrt(p.diag))
+Base.A_mul_B!(A::PDLCholF,B::StridedVecOrMat{Float64}) = A_mul_B!(A.ch[:L],B)
+Base.A_mul_B!(A::PDDiagF,B::StridedVecOrMat{Float64}) = scale!(A.d,B)
+Base.A_mul_B!(A::PDScalF,B::StridedVecOrMat{Float64}) = scale!(A.s.λ,B)
+Base.A_mul_B!(A::StridedVecOrMat{Float64},B::PDLCholF) = A_mul_B!(A,B.ch[:L])
+Base.A_mul_B!(A::StridedVecOrMat{Float64},B::PDDiagF) = scale!(A,B.d)
+Base.A_mul_B!(A::StridedVecOrMat{Float64},B::PDScalF) = scale!(A,B.s.λ)
 
-facdiag(p::PDMat) = diag(p.chol.UL)
-facdiag(p::PDiagMat) = sqrt(p.diag)
+Base.Ac_mul_B!(A::PDLCholF,B::StridedVecOrMat{Float64}) = Ac_mul_B!(A.ch[:L],B)
+Base.Ac_mul_B!(A::PDDiagF,B::StridedVecOrMat{Float64}) = scale!(A.d,B)
+Base.Ac_mul_B!(A::PDScalF,B::StridedVecOrMat{Float64}) = scale!(A.s.λ,B)
 
-Base.A_mul_B!{T<:Union(Float32,Float64)}(x::StridedMatrix{T},d::Diagonal{T}) = scale!(x,d.diag)
-
-function unwhiten_sym!(p::PDMat,x::StridedMatrix)
-    if p.chol.uplo == 'U'
-        tu = p.chol[:U]
-        Ac_mul_B!(tu,A_mul_B!(x,tu))
-    else
-        tl = p.chol[:L]
-        A_mul_B!(tl,Ac_mul_B!(x,tl))
-    end
+function rowlengths(p::PDLCholF)
+    k = dim(p)
+    ul = p.ch[:L]
+    [norm(view(ul,i,1:i)) for i in 1:k]
 end
-function unwhiten_sym!(p::PDiagMat,x::StridedMatrix)
-    (m = Base.LinAlg.chksquare(x)) == length(p.diag) || throw(DimensionMismatch(""))
-    dfac = sqrt(p.diag)
-    for j in 1:m, i in 1:m
-        m[i,j] *= dfac[i]*dfac[j]
-    end
+rowlengths(p::PDScalF) = [p.s.λ]
+rowlengths(p::PDDiagF) = p.d
+
+chol2cor(p::PDDiagF) = eye(length(p.d))
+chol2cor(p::PDScalF) = eye(1)
+function chol2cor(p::PDLCholF)
+    (m = dim(p)) == 1 && return eye(1)
+    res = full(p.ch)
+    d = 1.0 ./ diag(res)
+    scale!(d,scale!(res,d))
 end
+    

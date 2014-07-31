@@ -13,7 +13,8 @@ type LinearMixedModel{S<:PLSSolver} <: MixedModel
     mf::ModelFrame
     resid::Vector{Float64}
     s::S
-    u::Vector
+    u::Vector  # use ArrayViews.contiguous_view to identify these with sections of a vector
+    uv::Vector{Float64}                 # vector of spherical random effects
     y::Vector{Float64}
     β::Vector{Float64}
     λ::Vector
@@ -37,10 +38,15 @@ function lmm(f::Formula, fr::AbstractDataFrame)
     Xs = {lhs2mat(t,mf.df)' for t in retrms} # transposed model matrices
     p = Int[size(x,1) for x in Xs]
     l = Int[length(f.pool) for f in facs]
+    uv = zeros(sum(p .* l))
     Zty = {zeros(pp,ll) for (pp,ll) in zip(p,l)}
-    for (x,ff,zty,pp) in zip(Xs,facs,Zty,p)
+    u = {}
+    offset = 0
+    for (x,ff,zty) in zip(Xs,facs,Zty)
+        push!(u,contiguous_view(uv, offset, size(zty)))
+        offset += length(zty)
         for (j,jj) in enumerate(ff.refs)
-            for i in 1:pp
+            for i in 1:size(zty,1)
                 zty[i,jj] += y[j] * x[i,j]
             end
         end
@@ -53,10 +59,11 @@ function lmm(f::Formula, fr::AbstractDataFrame)
         s = all(p .== 1) ? PLSDiag(Zt,X.m,facs) : PLSGeneral(Zt,X.m,facs)
     end
     LinearMixedModel(false, X, Xs, Xty, map(ztblk,Xs,facs),
-        Zty, {similar(z) for z in Zty}, f, facs, false,
-        {string(t.args[3]) for t in retrms}, mf, similar(y), s,
-        {similar(z) for z in Zty}, y, similar(Xty),
-        {PDMat(cholfact(eye(pp),:L)) for pp in p}, similar(y))
+                     Zty, {zeros(uu) for uu in u}, f, facs, false,
+                     {string(t.args[3]) for t in retrms}, mf,
+                     similar(y), s, u, uv, y, similar(Xty),
+                     {pp == 1 ? PDScalF(1.) : PDLCholF(cholfact(eye(pp),:L)) for pp in p},
+                     similar(y))
 end
 
 ## Return the Cholesky factor RX or L
@@ -237,9 +244,9 @@ end
 function objective!(m::LinearMixedModel,θ::Vector{Float64})
     update!(m.s,θ!(m,θ))
     for (λ,u,Zty) in zip(m.λ,m.u,m.Zty)
-        unwhiten_winv!(λ,copy!(u,Zty))
+        A_mul_B!(λ,copy!(u,Zty))
     end
-    plssolve!(m.s,m.u,copy!(m.β,m.Xty))
+    plssolve!(m.s,m.uv,copy!(m.β,m.Xty))
     updateμ!(m)
     objective(m)
 end
@@ -279,7 +286,7 @@ end
 ##  size(m) -> n, p, q, t (lengths of y, beta, u and # of re terms)
 function Base.size(m::LinearMixedModel)
     n,p = size(m.X.m)
-    n,p,mapreduce(length,+,m.u),length(m.fnms)
+    n,p,length(m.uv),length(m.fnms)
 end
 
 function Base.show(io::IO, m::LinearMixedModel)
@@ -327,7 +334,7 @@ StatsBase.stderr(m::LinearMixedModel) = sqrt(diag(vcov(m)))
 function updateμ!(m::LinearMixedModel)
     μ = A_mul_B!(m.μ, m.X.m, m.β) # initialize μ to Xβ
     for (Zt,λ,b,u) in zip(m.Ztblks,m.λ,m.b,m.u)
-        unwhiten!(λ,copy!(b,u))         # overwrite b by λ*u
+        A_mul_B!(λ,copy!(b,u))         # overwrite b by λ*u
         Ac_mul_B!(1.0,Zt,vec(b),1.0,μ)
     end
     s = 0.
@@ -346,7 +353,7 @@ type VarCorr                            # a type to isolate the print logic
         (k = length(fnms)) == length(λ) || throw(DimensionMisMatch(""))
         s >= 0. || error("s must be non-negative")
         for i in 1:k
-            isa(λ[i],AbstractPDMat) || error("isa(λ[$i],AbstractPDMat is not true")
+            isa(λ[i],AbstractPDMatFactor) || error("isa(λ[$i],AbstractPDMatFactor is not true")
             isa(fnms[i],String) || error("fnms must be a vector of strings")
         end
         new(λ,fnms,s)

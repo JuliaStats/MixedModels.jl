@@ -34,7 +34,7 @@ function update!(s::PLSGeneral,λ::Vector)
     ZtXrow = 0
     for k in 1:length(λ)
         ll = λ[k]
-        isa(ll, AbstractPDMat) || error("isa(λ[$k],AbstractPDMat) fails")
+        isa(ll, AbstractPDMatFactor) || error("isa(λ[$k],AbstractPDMatFactor) fails")
         p = size(ll,1)
         unwhiten_winv!(ll,view(λtZtm,Ztrow + (1:p),:))
         Ztrow += p
