@@ -244,7 +244,7 @@ end
 function objective!(m::LinearMixedModel,θ::Vector{Float64})
     update!(m.s,θ!(m,θ))
     for (λ,u,Zty) in zip(m.λ,m.u,m.Zty)
-        A_mul_B!(λ,copy!(u,Zty))
+        Ac_mul_B!(λ,copy!(u,Zty))
     end
     plssolve!(m.s,m.uv,copy!(m.β,m.Xty))
     updateμ!(m)

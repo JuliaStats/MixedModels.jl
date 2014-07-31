@@ -101,7 +101,7 @@ Base.Ac_mul_B!(A::PDScalF,B::StridedVecOrMat{Float64}) = scale!(A.s.λ,B)
 
 function rowlengths(p::PDLCholF)
     k = dim(p)
-    ul = p.ch[:L]
+    ul = p.ch[:L].data
     [norm(view(ul,i,1:i)) for i in 1:k]
 end
 rowlengths(p::PDScalF) = [p.s.λ]
@@ -112,7 +112,7 @@ chol2cor(p::PDScalF) = eye(1)
 function chol2cor(p::PDLCholF)
     (m = dim(p)) == 1 && return eye(1)
     res = full(p.ch)
-    d = 1.0 ./ diag(res)
+    d = [inv(sqrt(dd)) for dd in diag(res)]
     scale!(d,scale!(res,d))
 end
     
