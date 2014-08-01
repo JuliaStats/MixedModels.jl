@@ -14,7 +14,7 @@ end
 function PLSGeneral(Zt::SparseMatrixCSC,X::Matrix,facs::Vector)
     XtX = Symmetric(X'X,:L)
     ZtX = Zt*X
-    Ztc = CholmodSparse!(Zt,0)
+    Ztc = CholmodSparse(Zt,0)
     cp = Ztc.colptr0
     d2 = cp[2] - cp[1]
     for j in 3:length(cp)
@@ -35,11 +35,11 @@ function update!(s::PLSGeneral,λ::Vector)
     for k in 1:length(λ)
         ll = λ[k]
         isa(ll, AbstractPDMatFactor) || error("isa(λ[$k],AbstractPDMatFactor) fails")
-        p = size(ll,1)
-        unwhiten_winv!(ll,view(λtZtm,Ztrow + (1:p),:))
+        p = abs(dim(ll))
+        Ac_mul_B!(ll,view(λtZtm,Ztrow + (1:p),:))
         Ztrow += p
         for i in 1:s.nlev[k]
-            unwhiten_winv!(ll,view(s.RZX,ZtXrow + (1:p),:))
+            Ac_mul_B!(ll,view(s.RZX,ZtXrow + (1:p),:))
             ZtXrow += p
         end
     end

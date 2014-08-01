@@ -17,7 +17,7 @@ function PLSOne(Ad::Array{Float64,3}, Ab::Array{Float64,3}, At::Symmetric{Float6
     m,n,t = size(Ad)
     m == n || error("Faces of Ad must be square")
     p,q,r = size(Ab)
-    p == size(At,1) && q == n && r == t || error("Size mismatch")
+    p == size(At,1) && q == n && r == t || throw(DimensionMisMatch(""))
     PLSOne(Ad,Ab,At,zeros(Ad),zeros(Ab),cholfact(At.S,symbol(At.uplo)),Zt)
 end
 

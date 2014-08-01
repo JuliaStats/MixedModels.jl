@@ -229,8 +229,14 @@ StatsBase.nobs(m::LinearMixedModel) = length(m.y)
 npar(m::LinearMixedModel) = nθ(m) + length(m.β) + 1
 
 ## nθ(m) -> n : length of the theta vector
-## FIXME: make this generic to apply to a general λ
-nθ(m::LinearMixedModel) = sum([n*(n+1)>>1 for (m,n) in map(size,m.λ)])
+function nθ(m::LinearMixedModel)
+    s = 0
+    for ll in m.λ
+        s += nθ(ll)
+    end
+    s
+end
+
 
 ## objective(m) -> deviance or REML criterion according to m.REML
 function objective(m::LinearMixedModel)
