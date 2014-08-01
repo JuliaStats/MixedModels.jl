@@ -1,5 +1,7 @@
 abstract AbstractPDMatFactor
 
+using Base.LinAlg.Cholesky
+
 immutable PDLCholF <: AbstractPDMatFactor
     ch::Cholesky{Float64}
     function PDLCholF(ch::Cholesky{Float64})
@@ -47,8 +49,8 @@ Base.cond(p::PDScalF) = 1.
 nltri(k::Integer) = k*(k+1) >> 1
 
 ## number of free variables in the representation
-nθ(p::PDLCholF) = nltri(size(p,1))
-nθ(p::PDDiagF) = size(p,1)
+nθ(p::PDLCholF) = nltri(dim(p))
+nθ(p::PDDiagF) = dim(p)
 nθ(p::PDScalF) = 1
 
 ## current values of the free variables in the representation
@@ -101,12 +103,36 @@ end
 Base.A_mul_B!(A::PDLCholF,B::StridedVecOrMat{Float64}) = A_mul_B!(A.ch[:L],B)
 Base.A_mul_B!(A::PDDiagF,B::StridedVecOrMat{Float64}) = A_mul_B!(A.d,B)
 Base.A_mul_B!(A::PDScalF,B::StridedVecOrMat{Float64}) = scale!(A.s.λ,B)
-Base.A_mul_B!(A::StridedVecOrMat{Float64},B::PDLCholF) = A_mul_B!(A,B.ch[:L])
-Base.A_mul_B!(A::StridedVecOrMat{Float64},B::PDDiagF) = A_mul_B!(A,B.d)
-Base.A_mul_B!(A::StridedVecOrMat{Float64},B::PDScalF) = scale!(A,B.s.λ)
+Base.A_mul_B!(A::StridedMatrix{Float64},B::PDLCholF) = A_mul_B!(A,B.ch[:L])
+## Base.A_mul_B!(A::StridedMatrix{Float64},B::PDDiagF) = scale!(A,B.d.diag)
+function Base.A_mul_B!(A::StridedMatrix{Float64},B::PDDiagF)
+    m,n = size(A)
+    d = B.d.diag
+    length(d) == n || throw(DimensionMismatch(""))
+    @inbounds for j in 1:n
+        dj = d[j]
+        for i in 1:m
+            A[i,j] *= dj
+        end
+    end
+    A
+end
+
+Base.A_mul_B!(A::StridedMatrix{Float64},B::PDScalF) = scale!(A,B.s.λ)
 
 Base.Ac_mul_B!(A::PDLCholF,B::StridedVecOrMat{Float64}) = Ac_mul_B!(A.ch[:L],B)
-Base.Ac_mul_B!(A::PDDiagF,B::StridedVecOrMat{Float64}) = A_mul_B!(A.d,B)
+function Base.Ac_mul_B!(A::PDDiagF,B::StridedMatrix{Float64})
+    m,n = size(B)
+    d = A.d.diag
+    length(d) == m || throw(DimensionMismatch(""))
+    @inbounds for j in 1:n
+        for i in 1:m
+            B[i,j] *= d[i]
+        end
+    end
+    B
+end
+
 Base.Ac_mul_B!(A::PDScalF,B::StridedVecOrMat{Float64}) = scale!(A.s.λ,B)
 
 function rowlengths(p::PDLCholF)
@@ -131,3 +157,23 @@ Base.svdvals(p::PDDiagF) = sort(p.d.diag)
 Base.svdvals(p::PDScalF) = [p.s.λ]
 
 Base.svdfact(p::PDLCholF) = svdfact(p.ch[:L])
+
+function grdcmp(p::PDLCholF,m::AbstractMatrix{Float64})
+    (n = Base.LinAlg.chksquare(m)) == dim(p) || throw(DimensionMismatch(""))
+    res = Array(eltype(m), nltri(n))
+    pos = 0
+    for j in 1:n, i in j:n
+        res[pos += 1] = m[i,j]
+    end
+    res
+end
+
+function grdcmp(p::PDDiagF,m::AbstractMatrix{Float64})
+    (n = Base.LinAlg.chksquare(m)) == dim(p) || throw(DimensionMismatch(""))
+    diag(m)
+end
+
+function grdcmp(p::PDScalF,m::AbstractMatrix{Float64})
+    (1,1) == size(m) || throw(DimensionMismatch(""))
+    diag(m)
+end

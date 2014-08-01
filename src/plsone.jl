@@ -77,7 +77,7 @@ function update!(s::PLSOne,λ::Vector)
     update!(s,λ[1])
 end
 
-## arguments passed contain λ'Z'y and X'y
+## arguments u and β contain λ'Z'y and X'y on entry
 function plssolve!(s::PLSOne,u,β)
     p,k,l = size(s)
     (q = length(u)) == k*l || throw(DimensionMismatch(""))
@@ -112,6 +112,5 @@ function grad(s::PLSOne,sc,resid,u,λ::Vector)
     for i in 1:l
         add!(res,LAPACK.potrs!('L',view(s.Ld,:,:,i),Ac_mul_B!(λ,copy!(tmp,view(s.Ad,:,:,i)))))
     end
-    ## FIXME: instead of ltri, use the type of λ
-    ltri(BLAS.syr2k!('L','N',-1./sc,reshape(s.Zt*resid,size(u)),u,1.,res+res'))
+    grdcmp(λ,BLAS.syr2k!('L','N',-1./sc,reshape(s.Zt*resid,size(u)),u,1.,res+res'))
 end

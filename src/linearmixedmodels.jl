@@ -27,16 +27,41 @@ end
 lhs2mat(t::Expr,df::DataFrame) = t.args[2] == 1 ? ones(nrow(df),1) :
         ModelMatrix(ModelFrame(Formula(nothing,t.args[2]),df)).m
 
+## amalgamate random-effects terms with identical grouping factors
+function amalgamate(grps,Xs,p,λ)
+    ugrp = unique(grps)
+    if length(ugrp) == 1
+        grps = ugrp
+        Xs = {vcat(Xs...)}
+        if all([isa(ll,PDScalF) for ll in λ])
+            λ = {PDDiagF(ones(length(λ)))}
+        else
+            error("Code not yet written")
+        end
+        p = [sum(p)]
+    else
+        error("Code not yet written")
+    end
+    grps,Xs,p,λ
+end
+
 function lmm(f::Formula, fr::AbstractDataFrame)
     mf = ModelFrame(f,fr)
+    X = ModelMatrix(mf)
     y = convert(Vector{Float64},DataFrames.model_response(mf))
+    Xty = X.m'y
+
     retrms = filter(x->Meta.isexpr(x,:call) && x.args[1] == :|, mf.terms.terms)
     length(retrms) > 0 || error("Formula $f has no random-effects terms")
-    X = ModelMatrix(mf)
-    Xty = X.m'y
-    facs = {pool(getindex(mf.df,t.args[3])) for t in retrms}
+
+    grps = {t.args[3] for t in retrms}       # expressions for grouping factors
     Xs = {lhs2mat(t,mf.df)' for t in retrms} # transposed model matrices
     p = Int[size(x,1) for x in Xs]
+    λ = {pp == 1 ? PDScalF(1.) : PDLCholF(cholfact(eye(pp),:L)) for pp in p}
+    if length(unique(grps)) < length(grps)
+        grps,Xs,p,λ = amalgamate(grps,Xs,p,λ)
+    end
+    facs = {pool(getindex(mf.df,grp)) for grp in grps}
     l = Int[length(f.pool) for f in facs]
     uv = zeros(sum(p .* l))
     Zty = {zeros(pp,ll) for (pp,ll) in zip(p,l)}
@@ -58,12 +83,9 @@ function lmm(f::Formula, fr::AbstractDataFrame)
         Zt = vcat(map(ztblk,Xs,facs)...)
         s = all(p .== 1) ? PLSDiag(Zt,X.m,facs) : PLSGeneral(Zt,X.m,facs)
     end
-    LinearMixedModel(false, X, Xs, Xty, map(ztblk,Xs,facs),
-                     Zty, {zeros(uu) for uu in u}, f, facs, false,
-                     {string(t.args[3]) for t in retrms}, mf,
-                     similar(y), s, u, uv, y, similar(Xty),
-                     {pp == 1 ? PDScalF(1.) : PDLCholF(cholfact(eye(pp),:L)) for pp in p},
-                     similar(y))
+    LinearMixedModel(false, X, Xs, Xty, map(ztblk,Xs,facs), Zty,
+                     map(zeros, u), f, facs, false, map(string,grps),
+                     mf, similar(y), s, u, uv, y, similar(Xty), λ, similar(y))
 end
 
 ## Return the Cholesky factor RX or L
@@ -356,7 +378,7 @@ type VarCorr                            # a type to isolate the print logic
     fnms::Vector
     s::Float64
     function VarCorr(λ::Vector,fnms::Vector,s::Number)
-        (k = length(fnms)) == length(λ) || throw(DimensionMisMatch(""))
+        (k = length(fnms)) == length(λ) || throw(DimensionMismatch(""))
         s >= 0. || error("s must be non-negative")
         for i in 1:k
             isa(λ[i],AbstractPDMatFactor) || error("isa(λ[$i],AbstractPDMatFactor is not true")
