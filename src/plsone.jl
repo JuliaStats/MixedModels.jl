@@ -3,6 +3,7 @@
 Base.cholfact(s::PLSSolver,RX::Bool=true) = RX ? s.RX : s.L
 Base.logdet(s::PLSSolver,RX::Bool=true) = logdet(cholfact(s,RX))
 
+## Consider making the 3D arrays 2D then using view to get the square blocks
 type PLSOne <: PLSSolver   # Solver for models with a single random-effects term
     Ad::Array{Float64,3}                # diagonal blocks
     Ab::Array{Float64,3}                # base blocks
@@ -83,20 +84,20 @@ function plssolve!(s::PLSOne,u,β)
     (q = length(u)) == k*l || throw(DimensionMismatch(""))
     cu = reshape(u,(k,l))
     if k == 1                           # short cut for scalar r.e.
-        Linv = 1. ./ vec(s.Ld)
+        Linv = [inv(l)::Float64 for l in s.Ld]
         scale!(cu,Linv)
         LXZ = reshape(s.Lb,(p,k*l))
-        A_ldiv_B!(s.Lt,BLAS.gemv!('N',-1.,LXZ,vec(cu),1.,β)) # solve for β
-        BLAS.gemv!('T',-1.,LXZ,β,1.0,vec(cu)) # cu -= LZX'β
+        A_ldiv_B!(s.Lt,BLAS.gemv!('N',-1.,LXZ,u,1.,β)) # solve for β
+        BLAS.gemv!('T',-1.,LXZ,β,1.0,u)                # cᵤ -= LZX'β
         scale!(cu,Linv)
     else
         for j in 1:l                    # solve L cᵤ = λ'Z'y blockwise
             BLAS.trsv!('L','N','N',view(s.Ld,:,:,j),view(cu,:,j))
         end
                                         # solve (L_X L_X')̱β = X'y - L_XZ cᵤ
-        A_ldiv_B!(s.Lt,BLAS.gemv!('N',-1.0,reshape(s.Lb,(p,q)),vec(cu),1.0,β))
+        A_ldiv_B!(s.Lt,BLAS.gemv!('N',-1.0,reshape(s.Lb,(p,q)),u,1.0,β))
                                         # cᵤ := cᵤ - L_XZ'β
-        BLAS.gemv!('T',-1.0,reshape(s.Lb,(p,q)),β,1.0,vec(cu))
+        BLAS.gemv!('T',-1.0,reshape(s.Lb,(p,q)),β,1.0,u)
         for j in 1:l                    # solve L'u = cᵤ blockwise
             BLAS.trsv!('L','T','N',view(s.Ld,:,:,j),view(cu,:,j))
         end
