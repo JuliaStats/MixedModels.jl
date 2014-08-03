@@ -27,22 +27,27 @@ end
 lhs2mat(t::Expr,df::DataFrame) = t.args[2] == 1 ? ones(nrow(df),1) :
         ModelMatrix(ModelFrame(Formula(nothing,t.args[2]),df)).m
 
+function amalgamate1(Xs,p,λ)
+    (k = length(λ)) == length(Xs) == length(p) || throw(DimensionMismatch(""))
+    k == 1 && return (Xs,p,λ)
+    if all([isa(ll,PDScalF) for ll in λ])
+        return({vcat(Xs...)},[sum(p)],{PDDiagF(ones(length(λ)))})
+    end
+    error("Composite code not yet written")
+end
+
 ## amalgamate random-effects terms with identical grouping factors
 function amalgamate(grps,Xs,p,λ)
+    np = Int[]; nXs = {}; nλ = {}
     ugrp = unique(grps)
-    if length(ugrp) == 1
-        grps = ugrp
-        Xs = {vcat(Xs...)}
-        if all([isa(ll,PDScalF) for ll in λ])
-            λ = {PDDiagF(ones(length(λ)))}
-        else
-            error("Code not yet written")
-        end
-        p = [sum(p)]
-    else
-        error("Code not yet written")
+    for u in ugrp
+        inds = grps .== u
+        (xv,pv,lv) = amalgamate1(Xs[inds],p[inds],λ[inds])
+        append!(np, pv)
+        append!(nXs,xv)
+        append!(nλ,lv)
     end
-    grps,Xs,p,λ
+    ugrp,nXs,np,nλ
 end
 
 function lmm(f::Formula, fr::AbstractDataFrame)
