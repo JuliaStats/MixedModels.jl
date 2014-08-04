@@ -153,7 +153,7 @@ chol2cor(p::PDDiagF) = eye(p.d)
 chol2cor(p::PDScalF) = eye(1)
 
 Base.svdvals(p::PDLCholF) = svdvals(p.ch[:L])
-Base.svdvals(p::PDDiagF) = sort(p.d.diag)
+Base.svdvals(p::PDDiagF) = convert(Vector{Float64},sort(p.d.diag; rev=true))
 Base.svdvals(p::PDScalF) = [p.s.λ]
 
 Base.svdfact(p::PDLCholF) = svdfact(p.ch[:L])
