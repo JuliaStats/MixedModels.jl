@@ -10,19 +10,18 @@ type PLSOne <: PLSSolver   # Solver for models with a single random-effects term
     Ld::Array{Float64,3}                # diagonal blocks
     Lb::Array{Float64,3}                # base blocks
     Lt::Base.LinAlg.Cholesky{Float64}   # lower right triangle
-    Zt::SparseMatrixCSC
 end
 
-function PLSOne(Ad::Array{Float64,3}, Ab::Array{Float64,3}, At::Symmetric{Float64},Zt::SparseMatrixCSC)
+function PLSOne(Ad::Array{Float64,3}, Ab::Array{Float64,3}, At::Symmetric{Float64})
     m,n,t = size(Ad)
     m == n || error("Faces of Ad must be square")
     p,q,r = size(Ab)
     p == size(At,1) && q == n && r == t || throw(DimensionMisMatch(""))
-    PLSOne(Ad,Ab,At,zeros(Ad),zeros(Ab),cholfact(At.S,symbol(At.uplo)),Zt)
+    PLSOne(Ad,Ab,At,zeros(Ad),zeros(Ab),cholfact(At.S,symbol(At.uplo)))
 end
 
-function PLSOne(Ad::Array{Float64,3}, Ab::Array{Float64,3}, At::Matrix{Float64}, Zt::SparseMatrixCSC)
-    PLSOne(Ad,Ab,Symmetric(At,:L),Zt)
+function PLSOne(Ad::Array{Float64,3}, Ab::Array{Float64,3}, At::Matrix{Float64})
+    PLSOne(Ad,Ab,Symmetric(At,:L))
 end
 
 function PLSOne(ff::PooledDataVector, Xst::Matrix, Xt::Matrix)
@@ -35,13 +34,11 @@ function PLSOne(ff::PooledDataVector, Xst::Matrix, Xt::Matrix)
     Ab = zeros(m,n,nl)
     for j in 1:L
         jj = refs[j]
-        BLAS.syr!('L',1.0,view(Xst,:,j),view(Ad,:,:,jj))
-        BLAS.ger!(1.0,view(Xt,:,j),view(Xst,:,j),view(Ab,:,:,jj))
+        xj = view(Xst,:,j)
+        BLAS.ger!(1.0,xj,xj,view(Ad,:,:,jj))
+        BLAS.ger!(1.0,view(Xt,:,j),xj,view(Ab,:,:,jj))
     end
-    for j in 1:nl        # symmetrize the faces created with BLAS.syr!
-        Base.LinAlg.copytri!(view(Ad,:,:,j),'L')
-    end
-    PLSOne(Ad,Ab,Symmetric(Xt*Xt',:L),ztblk(Xst,refs))
+    PLSOne(Ad,Ab,Symmetric(Xt*Xt',:L))
 end
 
 Base.cholfact(s::PLSOne,RX::Bool=true) = RX ? s.Lt : blkdiag({sparse(tril(view(s.Ld,:,:,j))) for j in 1:size(s.Ld,3)}...)
@@ -103,14 +100,15 @@ function plssolve!(s::PLSOne,u,β)
     end
 end
 
-function grad(s::PLSOne,sc,resid,u,λ::Vector)
-    λ = λ[1]
-    u = u[1]
+function grad(s::PLSOne,b::Vector,u::Vector,λ::Vector)
+    length(b) == length(u) == length(λ) == 1 || throw(DimensionMisMatch)
     p,k,l = size(s)
     res = zeros(k,k)
     tmp = similar(res)                  # scratch array
+    ll = λ[1]
     for i in 1:l
-        add!(res,LAPACK.potrs!('L',view(s.Ld,:,:,i),Ac_mul_B!(λ,copy!(tmp,view(s.Ad,:,:,i)))))
+        add!(res,LAPACK.potrs!('L',view(s.Ld,:,:,i),Ac_mul_B!(ll,copy!(tmp,view(s.Ad,:,:,i)))))
     end
-    grdcmp(λ,BLAS.syr2k!('L','N',-1./sc,reshape(s.Zt*resid,size(u)),u,1.,res+res'))
+    BLAS.gemm!('N','T',1.,u[1],b[1],2.,res) # add in the residual part
+    grdcmp(ll,Base.LinAlg.transpose!(tmp,res))
 end

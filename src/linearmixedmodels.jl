@@ -194,7 +194,12 @@ fnames(m::LinearMixedModel) = m.fnms
 ## overwrite g with the gradient (assuming that objective! has already been called)
 function grad!(g,m::LinearMixedModel)
     hasgrad(m) || error("gradient evaluation not provided for $(typeof(m))")
-    gg = grad(m.s,scale(m,true),m.resid,m.u,m.λ)
+    ## fill in b with -2.Zt*resid/scale(m,true)
+    mult = -2./scale(m,true)
+    for i in 1:length(m.b)
+        A_mul_B!(mult,m.Ztblks[i],m.resid,0.,vec(m.b[i]))
+    end
+    gg = grad(m.s,m.b,m.u,m.λ)
     length(gg) == length(g) || throw(DimensionMismatch(""))
     copy!(g,gg)
 end
@@ -290,7 +295,13 @@ end
 
 ##  ranef(m) -> vector of matrices of random effects on the original scale
 ##  ranef(m,true) -> vector of matrices of random effects on the U scale
-ranef(m::LinearMixedModel, uscale=false) = uscale ? m.u : m.b
+function ranef(m::LinearMixedModel, uscale=false)
+    uscale && return m.u
+    for (λ,b,u) in zip(m.λ,m.b,m.u)
+        A_mul_B!(λ,copy!(b,u))         # overwrite b by λ*u
+    end
+    m.b
+end
 
 ##  reml!(m,v=true) -> m : Set m.REML to v.  If m.REML is modified, unset m.fit
 function reml!(m::LinearMixedModel,v::Bool=true)
