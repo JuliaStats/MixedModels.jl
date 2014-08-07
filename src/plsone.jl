@@ -56,25 +56,6 @@ function Base.logdet(s::PLSOne,RX=true)
     2.s
 end
 
-Base.size(s::PLSOne) = size(s.Ab)
-Base.size(s::PLSOne,k::Integer) = size(s.Ab,k)
-
-##  update!(s,lambda)->s : update Ld, Lb and Lt
-
-function update!(s::PLSOne,λ::AbstractPDMatFactor)
-    updateLdb!(s,λ)         # updateLdb! is common to PLSOne and PLSTwo
-    m,n,l = size(s.Ab)
-    BLAS.syrk!('L','N',-1.0,reshape(s.Lb,(m,n*l)),1.0,s.Lt.UL)
-    _, info = LAPACK.potrf!('L',s.Lt.UL)
-    info == 0 ||  error("downdated X'X is not positive definite")
-    s
-end
-
-function update!(s::PLSOne,λ::Vector)
-    length(λ) == 1 || error("update! on a PLSOne requires length(λ) == 1")
-    update!(s,λ[1])
-end
-
 ## arguments u and β contain λ'Z'y and X'y on entry
 function plssolve!(s::PLSOne,u,β)
     p,k,l = size(s)
@@ -99,6 +80,25 @@ function plssolve!(s::PLSOne,u,β)
             BLAS.trsv!('L','T','N',view(s.Ld,:,:,j),view(cu,:,j))
         end
     end
+end
+
+Base.size(s::PLSOne) = size(s.Ab)
+Base.size(s::PLSOne,k::Integer) = size(s.Ab,k)
+
+##  update!(s,lambda)->s : update Ld, Lb and Lt
+
+function update!(s::PLSOne,λ::AbstractPDMatFactor)
+    updateLdb!(s,λ)         # updateLdb! is common to PLSOne and PLSTwo
+    m,n,l = size(s.Ab)
+    BLAS.syrk!('L','N',-1.0,reshape(s.Lb,(m,n*l)),1.0,s.Lt.UL)
+    _, info = LAPACK.potrf!('L',s.Lt.UL)
+    info == 0 ||  error("downdated X'X is not positive definite")
+    s
+end
+
+function update!(s::PLSOne,λ::Vector)
+    length(λ) == 1 || error("update! on a PLSOne requires length(λ) == 1")
+    update!(s,λ[1])
 end
 
 function grad(s::PLSOne,b::Vector,u::Vector,λ::Vector)

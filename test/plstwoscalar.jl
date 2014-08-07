@@ -1,6 +1,6 @@
 lm5 = lmm(Diameter ~ (1|Plate) + (1|Sample), pen);
 
-@test typeof(lm5) == LinearMixedModel{PLSDiag{Int32}}
+@test typeof(lm5) == LinearMixedModel{PLSTwo}
 @test size(lm5) == (144,1,30,2)
 @test MixedModels.θ(lm5) == ones(2)
 @test lower(lm5) == zeros(2)

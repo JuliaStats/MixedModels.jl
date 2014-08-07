@@ -104,7 +104,7 @@ Base.A_mul_B!(A::PDLCholF,B::StridedVecOrMat{Float64}) = A_mul_B!(A.ch[:L],B)
 Base.A_mul_B!(A::PDDiagF,B::StridedVecOrMat{Float64}) = A_mul_B!(A.d,B)
 Base.A_mul_B!(A::PDScalF,B::StridedVecOrMat{Float64}) = scale!(A.s.λ,B)
 Base.A_mul_B!(A::StridedMatrix{Float64},B::PDLCholF) = A_mul_B!(A,B.ch[:L])
-## Base.A_mul_B!(A::StridedMatrix{Float64},B::PDDiagF) = scale!(A,B.d.diag)
+Base.A_mul_Bc!(A::StridedMatrix{Float64},B::PDLCholF) = A_mul_Bc!(A,B.ch[:L])
 function Base.A_mul_B!(A::StridedMatrix{Float64},B::PDDiagF)
     m,n = size(A)
     d = B.d.diag
@@ -117,6 +117,7 @@ function Base.A_mul_B!(A::StridedMatrix{Float64},B::PDDiagF)
     end
     A
 end
+Base.A_mul_Bc!(A::StridedMatrix{Float64},B::PDDiagF) = A_mul_Bc!(A,B)
 
 Base.A_mul_B!(A::StridedMatrix{Float64},B::PDScalF) = scale!(A,B.s.λ)
 

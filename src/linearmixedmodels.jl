@@ -50,6 +50,9 @@ function amalgamate(grps,Xs,p,λ)
     ugrp,nXs,np,nλ
 end
 
+crosstab(a::PooledDataVector,b::PooledDataVector) =
+    counts(a.refs,b.refs,(length(a.pool),length(b.pool)))
+
 function lmm(f::Formula, fr::AbstractDataFrame)
     mf = ModelFrame(f,fr)
     X = ModelMatrix(mf)
@@ -82,8 +85,11 @@ function lmm(f::Formula, fr::AbstractDataFrame)
         end
     end
     local s
-    if length(Xs) == 1
+    if length(facs) == 1
         s = PLSOne(facs[1],Xs[1],X.m')
+#    elseif length(facs) == 2 && 2countnz(crosstab(facs[1],facs[2])) > l[1]*l[2]
+        ## use PLSTwo for two grouping factors and the crosstab density > 0.5
+#        s = PLSTwo(facs,Xs,X.m')
     else
         Zt = vcat(map(ztblk,Xs,facs)...)
         s = all(p .== 1) ? PLSDiag(Zt,X.m,facs) : PLSGeneral(Zt,X.m,facs)
@@ -334,7 +340,7 @@ function Base.size(m::LinearMixedModel)
 end
 
 function Base.show(io::IO, m::LinearMixedModel)
-    fit(m)
+    m.fit || error("Model has not been fit")
     n,p,q,k = size(m)
     REML = m.REML
     @printf(io, "Linear mixed model fit by %s\n", REML ? "REML" : "maximum likelihood")

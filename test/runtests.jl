@@ -1,4 +1,4 @@
-using MixedModels
+using DataFrames,MixedModels
 using Base.Test
 
 ## Dyestuff data from lme4
@@ -71,8 +71,8 @@ pen = DataFrame(Diameter = [27,23,26,23,23,21,27,23,26,23,23,21,25,21,25,24,24,2
 
 tests = ["plsonescalar.jl",
          "plsonevector.jl",
+         "plstwoscalar.jl",
          "plsdiagnested.jl",
-         "plsdiagcrossed.jl",
          "plstwo.jl",
          "lrt.jl"]
 

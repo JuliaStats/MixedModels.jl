@@ -1,4 +1,4 @@
-lm6 = lmm(Reaction ~ Days + (1|Subject) + (0+Days|Subject), slp);  # should be converted to PLSOne
+lm6 = lmm(Reaction ~ Days + (1|Subject) + (0+Days|Subject), slp);
 
 fit(lm6)
 

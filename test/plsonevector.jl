@@ -9,16 +9,16 @@ lm3 = lmm(Reaction ~ Days + (Days|Subject), slp);
 
 fit(lm3)
 
-@test_approx_eq_eps deviance(lm3) 1751.9393445070384 1.e-6
-@test_approx_eq_eps objective(lm3) 1751.9393445070384 1.e-6
+@test_approx_eq_eps deviance(lm3) 1751.9393445 1.e-6
+@test_approx_eq_eps objective(lm3) 1751.9393445 1.e-6
 @test_approx_eq coef(lm3) [251.40510484848477,10.4672859595959]
 @test_approx_eq fixef(lm3) [251.40510484848477,10.4672859595959]
 @test_approx_eq_eps stderr(lm3) [6.632246393963571,1.502190605041084] 1.e-3
 @test_approx_eq_eps MixedModels.θ(lm3) [0.9292135718820399,0.01816527134999509,0.2226356241138231] 1.e-4
-@test_approx_eq_eps std(lm3)[1] [23.78119476415131,5.717716838126193] 1.e-4
-@test_approx_eq_eps scale(lm3) 25.59139819461323 1.e-6
-@test_approx_eq_eps logdet(lm3) 8.390059690857333 1.e-5
-@test_approx_eq_eps logdet(lm3,false) 73.90920980285422 1.e-4
+@test_approx_eq_eps std(lm3)[1] [23.78150149924779,5.7170865573642775] 1.e-4
+@test_approx_eq_eps scale(lm3) 25.5916261 1.e-6
+@test_approx_eq_eps logdet(lm3) 8.390238 1.e-5
+@test_approx_eq_eps logdet(lm3,false) 73.9060 1.e-4
 @test_approx_eq diag(cor(lm3)[1]) ones(2)
 
 #fit(reml!(lm3))                    # reml grad not yet written

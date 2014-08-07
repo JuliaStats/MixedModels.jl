@@ -5,9 +5,8 @@ type PLSTwo <: PLSSolver   # Solver for models with two crossed or nearly crosse
     Ld::Array{Float64,3}                # diagonal blocks
     Lb::Array{Float64,3}                # base blocks
     Lt::Base.LinAlg.Cholesky{Float64}   # lower right triangle
-    Zt::SparseMatrixCSC
-    p::Int
-    p2::Int
+    p::Int                              # number of columns in f.e. model matrix
+    p2::Int                             # number random effects per level of facs[2]
 end
 
 function PLSTwo(facs::Vector,Xst::Vector,Xt::Matrix)
@@ -44,15 +43,119 @@ function PLSTwo(facs::Vector,Xst::Vector,Xt::Matrix)
     for j in 1:q[2]          # inflate diagonal before taking Cholesky
         Lt[j,j] += 1.
     end
-    PLSTwo(Ad,Ab,Symmetric(At,:L),similar(Ad),similar(Ab),cholfact!(Lt,:L),
-           vcat(ztblk(xst1,r1),ztblk(xst2,r2)),p,p2)
+    PLSTwo(Ad,Ab,Symmetric(At,:L),similar(Ad),similar(Ab),cholfact!(Lt,:L),p,p2)
+end
+
+function Base.cholfact(s::PLSTwo,RX::Bool=true)
+    p,p1,p2,l1 = size(s)
+    m,n,l = size(s.Lb)
+    q2 = m - p
+    rem(q2,p2) == 0 || throw(DimensionMisMatch(""))
+    Lt = tril!(s.Lt[:L].data)
+    RX && (pinds = (q2+1):m; return(Cholesky(Lt[pinds,pinds],'L')))
+    L11 = blkdiag({sparse(tril(view(s.Ld,:,:,j))) for j in 1:size(s.Ld,3)}...)
+    hcat(vcat(L11,sparse(reshape(s.Lb[1:q2,:,:],(q2,size(L11,2))))),
+         vcat(spzeros(size(L11,1),q2),sparse(Lt[1:q2,1:q2])))
+end
+
+function Base.logdet(s::PLSTwo,RX=true)
+    RX && return(logdet(cholfact(s)))
+    p,p1,p2,l1 = size(s)
+    m,n,l = size(s.Lb)
+    q2 = m - p
+    rem(q2,p2) == 0 || throw(DimensionMisMatch(""))
+    Lt = s.Lt[:L].data
+    sm = 0.
+    Ld = s.Ld
+    for j in 1:l1, i in 1:p1
+        sm += log(Ld[i,i,j])
+    end
+    for i in 1:q2
+        sm += log(Lt[i,i])
+    end
+    2.sm
+end
+
+
+## arguments u and β contain λ'Z'y and X'y on entry
+function plssolve!(s::PLSTwo,u,β)
+    p,p1,p2,l = size(s)
+    m,n,l = size(s.Ab)
+    q2 = m - p
+    q1 = p1 * l
+    (q = length(u)) == p1*l + q2 || throw(DimensionMismatch(""))
+
+    cu1 = reshape(u[1:q1],(p1,l))
+    cu2 = contiguous_view(u,q1,(q2,))
+    bb = vcat(cu2,β)
+    if n == 1                           # short cut for scalar r.e.
+        Linv = [inv(l)::Float64 for l in s.Ld]
+        scale!(cu1,Linv)
+        LXZ = reshape(s.Lb,(m,l))
+        A_ldiv_B!(s.Lt,BLAS.gemv!('N',-1.,LXZ,vec(cu1),1.,bb)) # solve for β
+        BLAS.gemv!('T',-1.,LXZ,bb,1.0,vec(cu1))                # cᵤ -= LZX'β
+        scale!(cu1,Linv)
+    else
+        for j in 1:l                    # solve L cᵤ = λ'Z'y blockwise
+            BLAS.trsv!('L','N','N',view(s.Ld,:,:,j),view(cu1,:,j))
+        end
+        LZX = reshape(s.Lb,(m,n*l))
+                                        # solve (L_X L_X')̱β = X'y - L_XZ cᵤ
+        A_ldiv_B!(s.Lt,BLAS.gemv!('N',-1.0,LZX,vec(cu1),1.0,bb))
+                                        # cᵤ := cᵤ - L_XZ'β
+        BLAS.gemv!('T',-1.0,LZX,bb,1.0,vec(cu1))
+        for j in 1:l                    # solve L'u = cᵤ blockwise
+            BLAS.trsv!('L','T','N',view(s.Ld,:,:,j),view(cu1,:,j))
+        end
+    end
+    copy!(view(u,1:q1),cu1)
+    copy!(cu2,view(bb,1:q2))
+    copy!(β,view(bb,q2+(1:p)))
+end
+
+Base.size(s::PLSTwo) = ((m,n,l) = size(s.Ab); (s.p,n,s.p2,l))
+
+function update!(s::PLSTwo,λ::Vector)
+    p2 = s.p2
+    length(λ) == 2 && abs(dim(λ[2])) == p2 || throw(DimensionMismatch(""))
+    updateLdb!(s,λ[1])
+                                        # second level updates
+    m,n,l = size(s.Lb)
+    p,p1,p2,l = size(s)
+    q2 = m - s.p
+    rem(q2,p2) == 0 || throw(DimensionMismatch(""))
+    Lt = s.Lt[:L].data
+    if p2 == 1
+        isa(λ[2],PDScalF) || error("1×1 λ section should be a PDScalF type")
+        lam = λ[2].s.λ
+        for k in 1:l, j in 1:p, i in 1:q2
+            s.Lb[i,j,k] *= lam
+        end
+        scale!(lam,view(Lt,:,1:q2))
+        scale!(lam,view(Lt,1:q2,:))
+    else
+        lam = λ[2]
+        for k in 1:div(q2,p2)
+            ii = (k - 1)*p2 + (1:p2)
+            A_mul_B!(lam,reshape(view(s.Lb,ii,:,:),(p2,n*l)))
+            A_mul_Bc!(view(Lt,:,ii),lam)
+            A_mul_B!(lam,view(Lt,ii,:))
+        end
+    end
+    for j in 1:q2
+        Lt[j,j] += 1.
+    end
+    BLAS.syrk!('L','N',-1.0,reshape(s.Lb,(m,n*l)),1.0,Lt)
+    _, info = LAPACK.potrf!('L',Lt)
+    info == 0 ||  error("downdated X'X is not positive definite")
+    s
 end
 
 function updateLdb!(s::Union(PLSOne,PLSTwo),λ::AbstractPDMatFactor)
     k = dim(λ)
     k < 0 || k == size(s.Ad,1) || throw(DimensionMixmatch(""))
     m,n,l = size(s.Ab)
-    Lt = tril!(copy!(s.Lt.UL,s.At.S))
+    Lt = copy!(s.Lt.UL,s.At.S)
     Lb = copy!(s.Lb,s.Ab)
     if n == 1                           # shortcut for 1×1 λ
         isa(λ,PDScalF) || error("1×1 λ section should be a PDScalF type")
@@ -72,35 +175,5 @@ function updateLdb!(s::Union(PLSOne,PLSTwo),λ::AbstractPDMatFactor)
             Base.LinAlg.A_rdiv_Bc!(A_mul_B!(view(s.Lb,:,:,k),λ),Triangular(wL,:L,false))
         end
     end
-    s
-end
-
-function update!(s::PLSTwo,λ::Vector)
-    p2 = s.p2
-    length(λ) == 2 && Base.LinAlg.chksquare(λ[2]) == p2 || throw(DimensionMismatch(""))
-    updateLdb!(s,λ[1])
-                                        # second level updates
-    m,n,l = size(s.Lb)
-    q2 = m - s.p
-    rem(q2,p2) == 0 || throw(DimensionMismatch(""))
-    Lt = Base.LinAlg.full!(s.Lt[:L])
-    if p2 == 1
-        lam = lfactor(λ[2])[1,1]
-        scale!(lam,reshape(view(s.Lb,1:q2,:,:),(q2,l)))
-        scale!(lam*lam,view(Lt[:L],1:q2,1:q2))
-    else
-        lam = λ[2]
-        for k in 1:div(q2,p2)
-            ii = (k - 1)*p2 + (1:p2)
-            A_mul_B!(lam,reshape(view(s.Lb,ii,:,:),(p2,n*l)))
-            A_mul_B!(lam,A_mul_Bc!(view(Lt,1:q2,1:q2),lam))
-        end
-    end
-    for j in 1:q2
-        Lt[j,j] += 1.
-    end
-    BLAS.syrk!('L','N',-1.0,reshape(s.Lb,(m,n*l)),1.0,Lt)
-    _, info = LAPACK.potrf!('L',Lt)
-    info == 0 ||  error("downdated X'X is not positive definite")
     s
 end
