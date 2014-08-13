@@ -92,7 +92,7 @@ function lmm(f::Formula, fr::AbstractDataFrame)
 #        s = PLSTwo(facs,Xs,X.m')
     else
         Zt = vcat(map(ztblk,Xs,facs)...)
-        s = all(p .== 1) ? PLSDiag(Zt,X.m,facs) : PLSGeneral(Zt,X.m,facs)
+        s = all(p .== 1) ? PLSDiagWSMP(Zt,X.m,facs) : PLSGeneral(Zt,X.m,facs)
     end
     LinearMixedModel(false, X, Xs, Xty, map(ztblk,Xs,facs), Zty,
                      map(zeros, u), f, facs, false, map(string,grps),

@@ -2,7 +2,7 @@ using DataFrames  # should be externally available
 module MixedModels
 
     using ArrayViews, DataArrays, DataFrames, Distributions
-    using NLopt, NumericExtensions, NumericFuns, PDMats, StatsBase
+    using NLopt, NumericExtensions, NumericFuns, PDMats, StatsBase, WSMP
     using Base.LinAlg.CHOLMOD: CholmodFactor, CholmodSparse, CholmodSparse!,
           chm_scale, CHOLMOD_SYM, CHOLMOD_L, CHOLMOD_Lt, solve
     using Base.LinAlg.Cholesky
@@ -39,5 +39,6 @@ module MixedModels
     include("plsone.jl")
     include("plstwo.jl")
     include("plsdiag.jl")
+    include("plsdiagWSMP.jl")
     include("linearmixedmodels.jl")
 end #module
