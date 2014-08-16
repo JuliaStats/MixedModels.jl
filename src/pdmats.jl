@@ -3,11 +3,7 @@ abstract AbstractPDMatFactor
 using Base.LinAlg.Cholesky
 
 immutable PDLCholF <: AbstractPDMatFactor
-    ch::Cholesky{Float64}
-    function PDLCholF(ch::Cholesky{Float64})
-        ch.uplo == 'L' || error("PDLCholF must be a lower Cholesky factor")
-        new(ch)
-    end
+    ch::Cholesky{Float64,Matrix{Float64},:L}
 end
 immutable PDDiagF <: AbstractPDMatFactor
     d::Diagonal{Float64}

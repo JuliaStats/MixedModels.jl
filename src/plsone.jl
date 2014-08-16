@@ -18,7 +18,7 @@ function PLSOne(Ad::Array{Float64,3}, Ab::Array{Float64,3}, At::Symmetric{Float6
     m == n || error("Faces of Ad must be square")
     p,q,r = size(Ab)
     p == size(At,1) && q == n && r == t || throw(DimensionMisMatch(""))
-    PLSOne(Ad,Ab,At,zeros(Ad),zeros(Ab),cholfact(At.S,symbol(At.uplo)))
+    PLSOne(Ad,Ab,At,zeros(Ad),zeros(Ab),cholfact(At.data,symbol(At.uplo)))
 end
 
 function PLSOne(Ad::Array{Float64,3}, Ab::Array{Float64,3}, At::Matrix{Float64})
@@ -57,17 +57,20 @@ function Base.logdet(s::PLSOne,RX=true)
 end
 
 ## arguments u and β contain λ'Z'y and X'y on entry
-function plssolve!(s::PLSOne,u,β)
+function Base.A_ldiv_B!(s::PLSOne,uβ)
     p,k,l = size(s)
-    (q = length(u)) == k*l || throw(DimensionMismatch(""))
-    cu = reshape(u,(k,l))
+    q = k*l
+    length(uβ) == (p + q) || throw(DimensionMismatch(""))
+    β = contiguous_view(uβ,q,(p,))
+    cu = contiguous_view(uβ,(k,l))
+    u = contiguous_view(uβ,(k*l,))
     if k == 1                           # short cut for scalar r.e.
         Linv = [inv(l)::Float64 for l in s.Ld]
-        scale!(cu,Linv)
+        multiply!(u,Linv)
         LXZ = reshape(s.Lb,(p,k*l))
         A_ldiv_B!(s.Lt,BLAS.gemv!('N',-1.,LXZ,u,1.,β)) # solve for β
         BLAS.gemv!('T',-1.,LXZ,β,1.0,u)                # cᵤ -= LZX'β
-        scale!(cu,Linv)
+        multiply!(u,Linv)
     else
         for j in 1:l                    # solve L cᵤ = λ'Z'y blockwise
             BLAS.trsv!('L','N','N',view(s.Ld,:,:,j),view(cu,:,j))

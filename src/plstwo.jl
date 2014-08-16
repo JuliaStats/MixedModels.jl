@@ -78,16 +78,19 @@ end
 
 
 ## arguments u and β contain λ'Z'y and X'y on entry
-function plssolve!(s::PLSTwo,u,β)
+function Base.A_ldiv_B!(s::PLSTwo,uβ)
     p,p1,p2,l = size(s)
     m,n,l = size(s.Ab)
     q2 = m - p
     q1 = p1 * l
-    (q = length(u)) == p1*l + q2 || throw(DimensionMismatch(""))
+    q = q1 + q2
+    length(uβ) == q || throw(DimensionMismatch(""))
+    u = view(uβ,1:q)
+    β = view(uβ,(q+1):q+p)
 
-    cu1 = reshape(u[1:q1],(p1,l))
-    cu2 = contiguous_view(u,q1,(q2,))
-    bb = vcat(cu2,β)
+    cu1 = contiguous_view(uβ,(p1,l))
+    cu2 = contiguous_view(uβ,q1,(q2,))
+    bb = contiguous_view(uβ,q1,(m,))
     if n == 1                           # short cut for scalar r.e.
         Linv = [inv(l)::Float64 for l in s.Ld]
         scale!(cu1,Linv)
@@ -108,9 +111,6 @@ function plssolve!(s::PLSTwo,u,β)
             BLAS.trsv!('L','T','N',view(s.Ld,:,:,j),view(cu1,:,j))
         end
     end
-    copy!(view(u,1:q1),cu1)
-    copy!(cu2,view(bb,1:q2))
-    copy!(β,view(bb,q2+(1:p)))
 end
 
 Base.size(s::PLSTwo) = ((m,n,l) = size(s.Ab); (s.p,n,s.p2,l))
@@ -155,7 +155,7 @@ function updateLdb!(s::Union(PLSOne,PLSTwo),λ::AbstractPDMatFactor)
     k = dim(λ)
     k < 0 || k == size(s.Ad,1) || throw(DimensionMixmatch(""))
     m,n,l = size(s.Ab)
-    Lt = copy!(s.Lt.UL,s.At.S)
+    Lt = copy!(s.Lt.UL,s.At.data)
     Lb = copy!(s.Lb,s.Ab)
     if n == 1                           # shortcut for 1×1 λ
         isa(λ,PDScalF) || error("1×1 λ section should be a PDScalF type")

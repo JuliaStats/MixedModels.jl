@@ -11,6 +11,7 @@ module MixedModels
         LinearMixedModel,
         MixedModel,
         PLSDiag,               # multiple, scalar random-effects terms
+        PLSDiagWA,             # multiple, scalar random-effects terms using WSMP
         PLSGeneral,            # general random-effects structure
         PLSOne,                # solver for models with only one r.e. term
         PLSSolver,             # abstract type for a penalized least squares solver
