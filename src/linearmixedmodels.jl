@@ -87,9 +87,9 @@ function lmm(f::Formula, fr::AbstractDataFrame)
     local s
     if length(facs) == 1
         s = PLSOne(facs[1],Xs[1],X.m')
-#    elseif length(facs) == 2 && 2countnz(crosstab(facs[1],facs[2])) > l[1]*l[2]
+    elseif length(facs) == 2 && 2countnz(crosstab(facs[1],facs[2])) > l[1]*l[2]
         ## use PLSTwo for two grouping factors and the crosstab density > 0.5
-#        s = PLSTwo(facs,Xs,X.m')
+        s = PLSTwo(facs,Xs,X.m')
     else
         Zt = vcat(map(ztblk,Xs,facs)...)
         s = all(p .== 1) ? PLSDiagWA(Zt,X.m,facs) : PLSGeneral(Zt,X.m,facs)
@@ -304,13 +304,7 @@ function objective!(m::LinearMixedModel,θ::Vector{Float64})
 end
 
 ## pwrss(lmb) : penalized, weighted residual sum of squares
-function pwrss(m::LinearMixedModel)
-    s = rss(m)
-    for u in m.u, ui in u
-        s += abs2(ui)
-    end
-    s
-end
+pwrss(m::LinearMixedModel) = rss(m) + sqrlenu(m)
 
 ##  ranef(m) -> vector of matrices of random effects on the original scale
 ##  ranef(m,true) -> vector of matrices of random effects on the U scale
@@ -332,7 +326,7 @@ function reml!(m::LinearMixedModel,v::Bool=true)
 end
 
 ## rss(m) -> residual sum of squares
-rss(m::LinearMixedModel) = sum(Abs2Fun(),m.resid)
+rss(m::LinearMixedModel) = sumabs2(m.resid)
 
 ## scale(m,true) -> estimate, s^2, of the squared scale parameter
 function Base.scale(m::LinearMixedModel, sqr=false)

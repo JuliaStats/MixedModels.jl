@@ -12,3 +12,12 @@ function ztblk(m::Matrix,v)
                     vec(m))            # nzval
 end
 ztblk(m::Matrix,v::PooledDataVector) = ztblk(m,v.refs)
+
+function Base.cholfact(ch::Base.LinAlg.Cholesky,inds::UnitRange{Int})
+    if VERSION.minor < 4
+        return Base.LinAlg.Cholesky(ch[symbol(ch.uplo)].data[inds,inds],ch.uplo)
+    end
+    tr = ch[:UL]
+    dd = tr.data[inds,inds]
+    Base.LinAlg.Cholesky{eltype(dd),typeof(dd),istril(tr)?(:L):(:U)}(dd)
+end

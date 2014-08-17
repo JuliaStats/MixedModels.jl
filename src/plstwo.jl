@@ -51,8 +51,7 @@ function Base.cholfact(s::PLSTwo,RX::Bool=true)
     m,n,l = size(s.Lb)
     q2 = m - p
     rem(q2,p2) == 0 || throw(DimensionMisMatch(""))
-    Lt = tril!(s.Lt[:L].data)
-    RX && (pinds = (q2+1):m; return(Cholesky(Lt[pinds,pinds],'L')))
+    RX && return cholfact(s.Lt,(q2+1):m)
     L11 = blkdiag({sparse(tril(view(s.Ld,:,:,j))) for j in 1:size(s.Ld,3)}...)
     hcat(vcat(L11,sparse(reshape(s.Lb[1:q2,:,:],(q2,size(L11,2))))),
          vcat(spzeros(size(L11,1),q2),sparse(Lt[1:q2,1:q2])))
@@ -76,29 +75,34 @@ function Base.logdet(s::PLSTwo,RX=true)
     2.sm
 end
 
+function scaleinv!(b::StridedVector,sc::StridedVector)
+    (n = length(b)) == length(sc) || throw(DimensionMismatch(""))
+    @inbounds for i in 1:n
+        b[i] /= sc[i]
+    end
+    b
+end
 
-## arguments u and β contain λ'Z'y and X'y on entry
 function Base.A_ldiv_B!(s::PLSTwo,uβ)
     p,p1,p2,l = size(s)
     m,n,l = size(s.Ab)
     q2 = m - p
     q1 = p1 * l
     q = q1 + q2
-    length(uβ) == q || throw(DimensionMismatch(""))
-    u = view(uβ,1:q)
-    β = view(uβ,(q+1):q+p)
+    length(uβ) == p+q || throw(DimensionMismatch(""))
+    u = contiguous_view(uβ,(q,))
+    β = contiguous_view(uβ,q,(p,))
 
-    cu1 = contiguous_view(uβ,(p1,l))
-    cu2 = contiguous_view(uβ,q1,(q2,))
     bb = contiguous_view(uβ,q1,(m,))
     if n == 1                           # short cut for scalar r.e.
-        Linv = [inv(l)::Float64 for l in s.Ld]
-        scale!(cu1,Linv)
+        cu1 = contiguous_view(uβ,(q1,))
+        scaleinv!(cu1,vec(s.Ld))
         LXZ = reshape(s.Lb,(m,l))
-        A_ldiv_B!(s.Lt,BLAS.gemv!('N',-1.,LXZ,vec(cu1),1.,bb)) # solve for β
-        BLAS.gemv!('T',-1.,LXZ,bb,1.0,vec(cu1))                # cᵤ -= LZX'β
-        scale!(cu1,Linv)
+        A_ldiv_B!(s.Lt,BLAS.gemv!('N',-1.,LXZ,cu1,1.,bb)) # solve for β
+        BLAS.gemv!('T',-1.,LXZ,bb,1.0,cu1)                # cᵤ -= LZX'β
+        scaleinv!(cu1,vec(s.Ld))
     else
+        cu1 = contiguous_view(uβ,(p1,l))
         for j in 1:l                    # solve L cᵤ = λ'Z'y blockwise
             BLAS.trsv!('L','N','N',view(s.Ld,:,:,j),view(cu1,:,j))
         end
