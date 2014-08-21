@@ -39,7 +39,8 @@ function update!(s::PLSDiag,λ::Vector)
     λvec = [ll.s.λ::Float64 for ll in λ][s.λind]
     cholfact!(s.L,chm_scale(s.ZtZ,λvec,CHOLMOD_SYM),1.)
     copy!(s.RZX,solve(s.L, scale(λvec, s.ZtX)[s.perm,:], CHOLMOD_L))
-    _,info = LAPACK.potrf!('L',BLAS.syrk!('L','T',-1.,s.RZX,1.,copy!(s.RX.UL,s.XtX.data)))
+    XtXdat = VERSION < v"0.4-" ? s.XtX.S : s.XtX.data
+    _,info = LAPACK.potrf!('L',BLAS.syrk!('L','T',-1.,s.RZX,1.,copy!(s.RX.UL,XtXdat)))
     info == 0 || error("Downdated X'X is not positive definite")
     s
 end
