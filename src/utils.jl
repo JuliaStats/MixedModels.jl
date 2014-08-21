@@ -12,3 +12,15 @@ function ztblk(m::Matrix,v)
                     vec(m))            # nzval
 end
 ztblk(m::Matrix,v::PooledDataVector) = ztblk(m,v.refs)
+
+Base.cholfact(s::Symmetric{Float64}) = cholfact(symcontents(s), symbol(s.uplo))
+
+function scaleinv!(b::StridedVector,sc::StridedVector)
+    (n = length(b)) == length(sc) || throw(DimensionMismatch(""))
+    @inbounds for i in 1:n
+        b[i] /= sc[i]
+    end
+    b
+end
+
+symcontents(s::Symmetric) = VERSION ≥ v"0.4-" ? s.data : s.S

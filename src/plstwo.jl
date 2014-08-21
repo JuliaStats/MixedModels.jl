@@ -1,179 +1,212 @@
-type PLSTwo <: PLSSolver   # Solver for models with two crossed or nearly crossed terms
-    Ad::Array{Float64,3}                # diagonal blocks
-    Ab::Array{Float64,3}                # base blocks
-    At::Symmetric{Float64}              # lower right block
-    Ld::Array{Float64,3}                # diagonal blocks
-    Lb::Array{Float64,3}                # base blocks
-    Lt::Base.LinAlg.Cholesky{Float64}   # lower right triangle
-    p::Int                              # number of columns in f.e. model matrix
-    p2::Int                             # number random effects per level of facs[2]
+## Solver for models with two crossed or nearly-crossed grouping factors for the random effects
+
+## There are l₁ and l₂ levels in the grouping factors.  The dimension
+## of the random effects for each level of the grouping factors is p₁
+## and p₂, respectively. The total number of random effects is q₁+q₂
+## where qᵢ=pᵢlᵢ, i=1,2.  The dimension of the fixed-effects parameter
+## is p.  When solving for the conditional modes of U only the
+## transposed model matrix Xt passed to the constructor has 0 rows.
+
+## Within the type:
+## Z₁'Z₁ is block diagonal with l₁ blocks of size p₁×p₁, stored as A₁₁, a p₁×q₁ matrix
+## Z₂'Z₁ is stored as A₂₁, a q₂×q₁ matrix.  The fraction of zeros in A₂₁ should be small.
+## X'Z₁ is stored as A₃₁, a p×q₁ matrix.
+## Z₂'Z₂ is block diagonal with l₂ blocks of size p₂×p₂, stored as A₂₂, a p₁×q₁ matrix
+## X'Z₂ is stored as A₃₂, a p×q₂ matrix.
+## X'X is stored as A₃₃, a p×p matrix - symmetric but not explicitly a Symmetric type
+## L₁₁ is block diagonal with l₁ lower triangular blocks of size p₁×p₁, stored as a p₂×q₂ matrix
+## L₂₁ is stored as a q₂×q₁ matrix
+## L₃₁ is stored as a p×q₁ matrix
+## L₂₂ is stored as a lower Triangular q₂×q₂ matrix, due to fill-in
+## L₃₂ is stored as a p×q₂ matrix
+## L₃₃ is stored as a p×p lower Cholesky factor
+
+type PLSTwo <: PLSSolver # Solver for models with two crossed or nearly crossed terms
+    A₁₁::Matrix{Float64} # diagonal blocks of Z₁'Z₁
+    A₂₁::Matrix{Float64} # Z₂'*Z₁
+    A₃₁::Matrix{Float64} # X'Z₁
+    A₂₂::Matrix{Float64} # diagonal blocks of Z₂'Z₂
+    A₃₂::Matrix{Float64} # X'Z₂
+    A₃₃::Matrix{Float64} # X'X
+    L₁₁::Matrix{Float64} 
+    L₂₁::Matrix{Float64}
+    L₃₁::Matrix{Float64}
+    L₂₂::Triangular{Float64,Matrix{Float64},:L,false} 
+    L₃₂::Matrix{Float64}
+    L₃₃::Base.LinAlg.Cholesky{Float64}
 end
 
 function PLSTwo(facs::Vector,Xst::Vector,Xt::Matrix)
     length(facs) == length(Xst) == 2 || throw(DimensionMismatch("PLSTwo"))
-    L = size(Xt,2)
-    all(L .== [size(x,2) for x in Xst]) && all(L .== map(length,facs)) || throw(DimensionMismatch(""))
-    nl = [length(f.pool) for f in facs]
-    pv = [size(x,1) for x in Xst]
-    q = nl .* pv
-                                        # Do this in lmm instead of checking here
-    q[1] >= q[2] || error("reverse the order of the random effects terms")
+                                        # check for consistency in number of observations
+    (n = size(Xt,2)) == size(Xst[1],2) == size(Xst[2],2) ==
+        length(facs[1]) == length(facs[2]) || throw(DimensionMismatch(""))
+    l₁ = length(facs[1].pool)
+    l₂ = length(facs[2].pool)
+    p₁ = size(Xst[1],1)
+    p₂ = size(Xst[2],1)
+    q₁ = p₁ * l₁
+    q₂ = p₂ * l₂
     p = size(Xt,1)
-    p2 = pv[2]
-    Ad = zeros(pv[1],pv[1],nl[1])
-    Ab = zeros(q[2]+p,pv[1],nl[1])
-    finds = q[2] + (1:p)         # indices for the fixed-effects parts
-    Abb = view(Ab,finds,:,:)
-    At = zeros(q[2]+p,q[2]+p)
-    BLAS.syrk!('L','N',1.0,Xt,0.0,view(At,finds,finds))
-    r1 = facs[1].refs
-    r2 = facs[2].refs
-    xst1 = Xst[1]
-    xst2 = Xst[2]
-    for j in 1:L
-        j1 = r1[j]
-        inds2 = (r2[j]-1)*p2 + (1:p2)
-        BLAS.syr!('L',1.0,view(xst1,:,j),view(Ad,:,:,j1))
-        BLAS.syr!('L',1.0,view(xst2,:,j),view(At,inds2,inds2))
-        BLAS.ger!(1.0,view(xst2,:,j),view(xst1,:,j),view(Ab,inds2,:,j1))
-        BLAS.ger!(1.0,view(Xt,:,j),view(xst1,:,j),view(Abb,:,:,j1))
-        BLAS.ger!(1.0,view(Xt,:,j),view(xst2,:,j),view(At,finds,inds2))
+                                        # Do this in lmm instead of checking here
+    q₁ ≥ q₂ || error("reverse the order of the random effects terms")
+    A₁₁ = zeros(p₁,q₁)
+    A₂₁ = zeros(q₂,q₁)
+    A₃₁ = zeros(p,q₁)
+    A₂₂ = zeros(p₂,q₂)
+    A₃₂ = zeros(p,q₂)
+    r₁ = facs[1].refs
+    r₂ = facs[2].refs
+    for j in 1:n
+        i₁ = r₁[j] - 1
+        i₂ = r₂[j] - 1
+        c₁ = contiguous_view(Xst[1],p₁*(j-1),(p₁,))
+        c₂ = contiguous_view(Xst[2],p₂*(j-1),(p₂,))
+        c₃ = contiguous_view(Xt,p*(j-1),(p,))
+        BLAS.syr!('L',1.,c₁,contiguous_view(A₁₁,i₁*p₁*p₁,(p₁,p₁)))
+        BLAS.ger!(1.,c₂,c₁,view(A₂₁,i₂*p₂+(1:p₂),i₁*p₁+(1:p₁)))
+        BLAS.ger!(1.,c₃,c₁,contiguous_view(A₃₁,i₁*p*p₁,(p,p₁)))
+        BLAS.syr!('L',1.,c₂,contiguous_view(A₂₂,i₂*p₂*p₂,(p₂,p₂)))
+        BLAS.ger!(1.,c₃,c₂,contiguous_view(A₃₂,i₂*p*p₂,(p,p₂)))
     end
-    Lt = copy(At)
-    for j in 1:q[2]          # inflate diagonal before taking Cholesky
-        Lt[j,j] += 1.
-    end
-    PLSTwo(Ad,Ab,Symmetric(At,:L),similar(Ad),similar(Ab),cholfact!(Lt,:L),p,p2)
+    PLSTwo(A₁₁,A₂₁,A₃₁,A₂₂,A₃₂,Xt*Xt',similar(A₁₁),similar(A₂₁),similar(A₃₁),
+           Triangular(zeros(q₂,q₂),:L,false),similar(A₃₂),cholfact!(eye(p),:L))
 end
 
 function Base.cholfact(s::PLSTwo,RX::Bool=true)
-    p,p1,p2,l1 = size(s)
-    m,n,l = size(s.Lb)
-    q2 = m - p
-    rem(q2,p2) == 0 || throw(DimensionMisMatch(""))
-    Lt = tril!(s.Lt[:L].data)
-    RX && (pinds = (q2+1):m; return(Cholesky(Lt[pinds,pinds],'L')))
-    L11 = blkdiag({sparse(tril(view(s.Ld,:,:,j))) for j in 1:size(s.Ld,3)}...)
-    hcat(vcat(L11,sparse(reshape(s.Lb[1:q2,:,:],(q2,size(L11,2))))),
-         vcat(spzeros(size(L11,1),q2),sparse(Lt[1:q2,1:q2])))
+    RX && return s.L₃₃
+    p,p₁,p₂,l₁,l₂ = size(s)
+    L₁₁ = blkdiag({sparse(tril(contiguous_view(s.L₁₁,j*p₁*p₁,(p₁,p₁)))) for j in 0:(l₁-1)}...)
+    vcat(hcat(L₁₁,spzeros(p₁*l₁,p₂*l₂)),sparse(hcat(s.L₂₁,s.L₂₂)))
 end
 
 function Base.logdet(s::PLSTwo,RX=true)
-    RX && return(logdet(cholfact(s)))
-    p,p1,p2,l1 = size(s)
-    m,n,l = size(s.Lb)
-    q2 = m - p
-    rem(q2,p2) == 0 || throw(DimensionMisMatch(""))
-    Lt = s.Lt[:L].data
+    RX && return logdet(s.L₃₃)
+    p,p₁,p₂,l₁,l₂ = size(s)
     sm = 0.
-    Ld = s.Ld
-    for j in 1:l1, i in 1:p1
-        sm += log(Ld[i,i,j])
+    for j in 0:(l₁-1), i in 1:p₁
+        sm += log(s.L₁₁[i,j*p₁+i])
     end
-    for i in 1:q2
-        sm += log(Lt[i,i])
+    for i in 1:size(s.L₂₂,1)
+        sm += log(s.L₂₂[i,i])
     end
     2.sm
 end
 
-
-## arguments u and β contain λ'Z'y and X'y on entry
-function plssolve!(s::PLSTwo,u,β)
-    p,p1,p2,l = size(s)
-    m,n,l = size(s.Ab)
-    q2 = m - p
-    q1 = p1 * l
-    (q = length(u)) == p1*l + q2 || throw(DimensionMismatch(""))
-
-    cu1 = reshape(u[1:q1],(p1,l))
-    cu2 = contiguous_view(u,q1,(q2,))
-    bb = vcat(cu2,β)
-    if n == 1                           # short cut for scalar r.e.
-        Linv = [inv(l)::Float64 for l in s.Ld]
-        scale!(cu1,Linv)
-        LXZ = reshape(s.Lb,(m,l))
-        A_ldiv_B!(s.Lt,BLAS.gemv!('N',-1.,LXZ,vec(cu1),1.,bb)) # solve for β
-        BLAS.gemv!('T',-1.,LXZ,bb,1.0,vec(cu1))                # cᵤ -= LZX'β
-        scale!(cu1,Linv)
+function Base.A_ldiv_B!(s::PLSTwo,uβ)
+    p,p₁,p₂,l₁,l₂,q₁,q₂ = size(s)
+    length(uβ) == p+q₁+q₂ || throw(DimensionMismatch(""))
+    u₁ = contiguous_view(uβ,(q₁,))
+    u₂ = contiguous_view(uβ,q₁,(q₂,))    
+    β = contiguous_view(uβ,q₁+q₂,(p,))
+    if p₁ == 1                          # scalar r.e. for factor 1
+        scaleinv!(u₁,vec(s.L₁₁))
     else
-        for j in 1:l                    # solve L cᵤ = λ'Z'y blockwise
-            BLAS.trsv!('L','N','N',view(s.Ld,:,:,j),view(cu1,:,j))
-        end
-        LZX = reshape(s.Lb,(m,n*l))
-                                        # solve (L_X L_X')̱β = X'y - L_XZ cᵤ
-        A_ldiv_B!(s.Lt,BLAS.gemv!('N',-1.0,LZX,vec(cu1),1.0,bb))
-                                        # cᵤ := cᵤ - L_XZ'β
-        BLAS.gemv!('T',-1.0,LZX,bb,1.0,vec(cu1))
-        for j in 1:l                    # solve L'u = cᵤ blockwise
-            BLAS.trsv!('L','T','N',view(s.Ld,:,:,j),view(cu1,:,j))
+        for j in 0:(l₁-1)               # solve L₁ cᵤ₁ = λ₁'Z₁'y blockwise
+            A_ldiv_B!(Triangular(contiguous_view(s.L₁₁,j*p₁*p₁,(p₁,p₁)),:L,false),
+                      contiguous_view(uβ,j*p₁,(p₁,)))
         end
     end
-    copy!(view(u,1:q1),cu1)
-    copy!(cu2,view(bb,1:q2))
-    copy!(β,view(bb,q2+(1:p)))
+    A_ldiv_B!(s.L₂₂,BLAS.gemv!('N',-1.,s.L₂₁,u₁,1.,u₂))
+    A_ldiv_B!(s.L₃₃,BLAS.gemv!('N',-1.,s.L₃₂,u₂,1.,BLAS.gemv!('N',-1.,s.L₃₁,u₁,1.,β)))
+    Ac_ldiv_B!(s.L₂₂,BLAS.gemv!('T',-1.,s.L₃₂,β,1.,u₂))
+    BLAS.gemv!('T',-1.,s.L₃₁,β,1.,BLAS.gemv!('T',-1.,s.L₂₁,u₂,1.,u₁))
+    if p₁ == 1
+        scaleinv!(u₁,vec(s.L₁₁))
+    else
+        for j in 0:(l₁-1)                    # solve L₁₁'u₁ = cᵤ₁ blockwise
+            Ac_ldiv_B!(Triangular(contiguous_view(s.L₁₁,j*p₁*p₁,(p₁,p₁)),:L,false),
+                       contiguous_view(uβ,j*p₁,(p₁,)))
+        end
+    end
+    uβ
 end
 
-Base.size(s::PLSTwo) = ((m,n,l) = size(s.Ab); (s.p,n,s.p2,l))
+function Base.size(s::PLSTwo)
+    p₁,q₁ = size(s.A₁₁)
+    q₁ % p₁ == 0 || throw(DimensionMismatch(""))
+    p₂,q₂ = size(s.A₂₂)
+    q₂ % p₂ == 0 || throw(DimensionMismatch(""))
+    size(s.A₃₃,1),p₁,p₂,div(q₁,p₁),div(q₂,p₂),q₁,q₂
+end
 
 function update!(s::PLSTwo,λ::Vector)
-    p2 = s.p2
-    length(λ) == 2 && abs(dim(λ[2])) == p2 || throw(DimensionMismatch(""))
-    updateLdb!(s,λ[1])
-                                        # second level updates
-    m,n,l = size(s.Lb)
-    p,p1,p2,l = size(s)
-    q2 = m - s.p
-    rem(q2,p2) == 0 || throw(DimensionMismatch(""))
-    Lt = s.Lt[:L].data
-    if p2 == 1
-        isa(λ[2],PDScalF) || error("1×1 λ section should be a PDScalF type")
-        lam = λ[2].s.λ
-        for k in 1:l, j in 1:p, i in 1:q2
-            s.Lb[i,j,k] *= lam
+    length(λ) == 2 || throw(DimensionMismatch(""))
+    for ll in λ
+        isa(ll,AbstractPDMatFactor) || error("λ must be a vector of PDMatFactors")
+    end
+    λ₁ = λ[1]
+    λ₂ = λ[2]    
+    p,p₁,p₂,l₁,l₂,q₁,q₂ = size(s)
+    dim(λ₁) in [-1,p₁] || throw(DimensionMismatch(""))
+    dim(λ₂) in [-1,p₂] || throw(DimensionMismatch(""))
+    L₂₁ = copy!(s.L₂₁,s.A₂₁)
+    L₃₁ = copy!(s.L₃₁,s.A₃₁)
+    if p₁ == 1                          # shortcut for 1×1 λ
+        isa(λ[1],PDScalF) || error("1×1 λ section should be a PDScalF type")
+        lam = λ[1].s.λ
+        lamsq = lam*lam
+        for j in 1:l₁
+            sc = lam/(s.L₁₁[1,j] = sqrt(s.A₁₁[1,j]*lamsq + 1.))
+            scale!(contiguous_view(L₂₁,(j-1)*q₂,(q₂,)),sc)
+            scale!(contiguous_view(L₃₁,(j-1)*p,(p,)),sc)
         end
-        scale!(lam,view(Lt,:,1:q2))
-        scale!(lam,view(Lt,1:q2,:))
     else
-        lam = λ[2]
-        for k in 1:div(q2,p2)
-            ii = (k - 1)*p2 + (1:p2)
-            A_mul_B!(lam,reshape(view(s.Lb,ii,:,:),(p2,n*l)))
-            A_mul_Bc!(view(Lt,:,ii),lam)
-            A_mul_B!(lam,view(Lt,ii,:))
+        Ac_mul_B!(λ₁,copy!(s.L₁₁,s.A₁₁)) # multiply on left by λ₁'
+        for k in 0:(l₁-1)                # using offsets, not indices
+            wL = A_mul_B!(contiguous_view(s.L₁₁,k*p₁*p₁,(p₁,p₁)),λ₁)
+            for j in 1:p₁               # inflate diagonal
+                wL[j,j] += 1.0
+                for i in 1:(j-1)
+                    wL[i,j] = 0.
+                end
+            end
+            _,info = LAPACK.potrf!('L',wL) # lower Cholesky factor
+            info == 0 || error("Cholesky failure at L₁₁ block $(k+1)")
+            tr = Triangular(wL,:L,false)
+            A_rdiv_Bc!(A_mul_B!(contiguous_view(L₂₁,k*q₂*p₁,(q₂,p₁)),λ₁),tr)
+            A_rdiv_Bc!(A_mul_B!(contiguous_view(L₃₁,k*p*p₁,(p,p₁)),λ₁),tr)
         end
     end
-    for j in 1:q2
-        Lt[j,j] += 1.
+                                        # second level updates
+    L₂₂d = fill!(s.L₂₂.data,0.)
+    L₃₂ = copy!(s.L₃₂,s.A₃₂)
+    if p₂ == 1
+        isa(λ₂,PDScalF) || error("1×1 λ section should be a PDScalF type")
+        lam = λ₂.s.λ
+        for i in 1:l₂
+            L₂₂d[i,i] = s.A₂₂[1,i]*lam*lam + 1.
+        end
+        scale!(L₂₁,lam)
+        scale!(L₃₂,lam)
+    else
+        Ac_mul_B!(λ₂,reshape(L₂₁,(p₂,l₂*q₁)))
+        for k in 0:(l₂-1)
+            kk = k*p₂+(1:p₂)
+            ## copy the (k+1)'st square block of s.A₂₂ to a diagonal block of s.L₂₂,
+            wL = copy!(view(L₂₂d,kk,kk),contiguous_view(s.A₂₂,k*p₂*p₂,(p₂,p₂)))
+            Ac_mul_B!(λ₂,A_mul_B!(wL,λ₂)) # convert the block to λ₂A₂₂λ₂'
+            for j in 1:p₂ # inflate diagonal and zero the strict upper triangle
+                wL[j,j] += 1.
+                for i in 1:(j-1)
+                    wL[i,j] = 0.
+                end
+            end
+            A_mul_B!(view(L₃₂,:,kk),λ₂)
+        end
     end
-    BLAS.syrk!('L','N',-1.0,reshape(s.Lb,(m,n*l)),1.0,Lt)
-    _, info = LAPACK.potrf!('L',Lt)
+    BLAS.syrk!('L','N',-1.,L₂₁,1.,L₂₂d)
+    _, info = LAPACK.potrf!('L',L₂₂d)
+    info == 0 ||  error("downdated Z₂'Z₂ is not positive definite")
+    A_rdiv_Bc!(BLAS.gemm!('N','T',-1.,L₃₁,L₂₁,1.,L₃₂),s.L₂₂)
+    L₃₃d = copy!(s.L₃₃.UL,s.A₃₃)
+    BLAS.syrk!('L','N',-1.,L₃₁,1.,BLAS.syrk!('L','N',-1.,L₃₂,1.,L₃₃d))
+    _, info = LAPACK.potrf!('L',L₃₃d)
     info == 0 ||  error("downdated X'X is not positive definite")
     s
 end
 
-function updateLdb!(s::Union(PLSOne,PLSTwo),λ::AbstractPDMatFactor)
-    k = dim(λ)
-    k < 0 || k == size(s.Ad,1) || throw(DimensionMixmatch(""))
-    m,n,l = size(s.Ab)
-    Lt = copy!(s.Lt.UL,s.At.S)
-    Lb = copy!(s.Lb,s.Ab)
-    if n == 1                           # shortcut for 1×1 λ
-        isa(λ,PDScalF) || error("1×1 λ section should be a PDScalF type")
-        lam = λ.s.λ
-        lamsq = lam*lam
-        Ld = map!(x -> sqrt(x*lamsq + 1.), s.Ld, s.Ad)
-        scale!(reshape(Lb,(m,l)),lam ./ vec(Ld))
-    else
-        Ac_mul_B!(λ,reshape(copy!(s.Ld,s.Ad),(n,n*l)))
-        for k in 1:l
-            wL = A_mul_B!(view(s.Ld,:,:,k),λ)
-            for j in 1:n
-                wL[j,j] += 1.0
-            end
-            _,info = LAPACK.potrf!('L',wL)
-            info == 0 || error("Cholesky failure at L diagonal block $k")
-            Base.LinAlg.A_rdiv_Bc!(A_mul_B!(view(s.Lb,:,:,k),λ),Triangular(wL,:L,false))
-        end
-    end
-    s
-end
+## grad calculation
+## need tr((LL')⁻¹*λ*Z'Z*(∂λ/∂θᵢ)) + tr((LL')⁻¹*(∂λ'/∂θᵢ)*Z'Z*λ)
+## It may be worthwhile calculating and storing L⁻¹ for this.
+## For parameters in λ₂ only the trailing rows of L⁻¹ are used.

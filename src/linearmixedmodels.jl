@@ -13,10 +13,9 @@ type LinearMixedModel{S<:PLSSolver} <: MixedModel
     mf::ModelFrame
     resid::Vector{Float64}
     s::S
-    u::Vector  # use ArrayViews.contiguous_view to identify these with sections of a vector
-    uv::Vector{Float64}                 # vector of spherical random effects
+    u::Vector
+    uβ::Vector{Float64} # concatenation of spherical random effects and fixed-effects
     y::Vector{Float64}
-    β::Vector{Float64}
     λ::Vector
     μ::Vector{Float64}
 end
@@ -71,12 +70,13 @@ function lmm(f::Formula, fr::AbstractDataFrame)
     end
     facs = {pool(getindex(mf.df,grp)) for grp in grps}
     l = Int[length(f.pool) for f in facs]
-    uv = zeros(sum(p .* l))
+    q = sum(p .* l)
+    uβ = zeros(q + size(X,2))
     Zty = {zeros(pp,ll) for (pp,ll) in zip(p,l)}
     u = {}
     offset = 0
     for (x,ff,zty) in zip(Xs,facs,Zty)
-        push!(u,contiguous_view(uv, offset, size(zty)))
+        push!(u,contiguous_view(uβ, offset, size(zty)))
         offset += length(zty)
         for (j,jj) in enumerate(ff.refs)
             for i in 1:size(zty,1)
@@ -87,23 +87,23 @@ function lmm(f::Formula, fr::AbstractDataFrame)
     local s
     if length(facs) == 1
         s = PLSOne(facs[1],Xs[1],X.m')
-#    elseif length(facs) == 2 && 2countnz(crosstab(facs[1],facs[2])) > l[1]*l[2]
+    elseif length(facs) == 2 && 2countnz(crosstab(facs[1],facs[2])) > l[1]*l[2]
         ## use PLSTwo for two grouping factors and the crosstab density > 0.5
-#        s = PLSTwo(facs,Xs,X.m')
+        s = PLSTwo(facs,Xs,X.m')
     else
         Zt = vcat(map(ztblk,Xs,facs)...)
         s = all(p .== 1) ? PLSDiag(Zt,X.m,facs) : PLSGeneral(Zt,X.m,facs)
     end
     LinearMixedModel(false, X, Xs, Xty, map(ztblk,Xs,facs), Zty,
                      map(zeros, u), f, facs, false, map(string,grps),
-                     mf, similar(y), s, u, uv, y, similar(Xty), λ, similar(y))
+                     mf, similar(y), s, u, uβ, y, λ, similar(y))
 end
 
 ## Return the Cholesky factor RX or L
 Base.cholfact(m::LinearMixedModel,RX::Bool=true) = cholfact(m.s,RX)
 
 ##  coef(m) -> current value of beta (as a reference)
-StatsBase.coef(m::LinearMixedModel) = m.β
+StatsBase.coef(m::LinearMixedModel) = fixef(m)
 
 termnames(term::Symbol, col) = [string(term)]
 function termnames(term::Symbol, col::PooledDataArray)
@@ -164,9 +164,9 @@ function StatsBase.fit(m::LinearMixedModel, verbose=false)
     if !m.fit
         th = θ(m); k = length(th)
         opt = NLopt.Opt(hasgrad(m) ? :LD_MMA : :LN_BOBYQA, k)
-        NLopt.ftol_rel!(opt, 1e-8)    # relative criterion on deviance
+        NLopt.ftol_rel!(opt, 1e-12)    # relative criterion on deviance
         NLopt.ftol_abs!(opt, 1e-8)    # absolute criterion on deviance
-        NLopt.xtol_abs!(opt, 1e-8)    # criterion on all parameter value changes
+        NLopt.xtol_abs!(opt, 1e-10)    # criterion on all parameter value changes
         NLopt.lower_bounds!(opt, lower(m))
         function obj(x::Vector{Float64}, g::Vector{Float64})
             val = objective!(m,x)
@@ -197,7 +197,11 @@ function StatsBase.fit(m::LinearMixedModel, verbose=false)
 end
 
 ## for compatibility with lme4 and nlme
-fixef(m::LinearMixedModel) = m.β
+function fixef(m::LinearMixedModel)
+    ppq = length(m.uβ)
+    p = length(m.Xty)
+    m.uβ[(ppq - p + 1):ppq]
+end
 
 ## fnames(m) -> vector of names of grouping factors
 fnames(m::LinearMixedModel) = m.fnms
@@ -220,7 +224,7 @@ grplevels(v::Vector) = [length(f.pool) for f in v]
 grplevels(m::LinearMixedModel) = grplevels(m.facs)
 
 hasgrad(m::LinearMixedModel) = false
-hasgrad(m::LinearMixedModel{PLSOne}) = true
+hasgrad(m::LinearMixedModel{PLSOne}) = true                       
 
 isfit(m::LinearMixedModel) = m.fit
 
@@ -264,7 +268,7 @@ end
 StatsBase.nobs(m::LinearMixedModel) = length(m.y)
 
 ## npar(m) -> P : total number of parameters to be fit
-npar(m::LinearMixedModel) = nθ(m) + length(m.β) + 1
+npar(m::LinearMixedModel) = nθ(m) + length(m.Xty) + 1
 
 ## nθ(m) -> n : length of the theta vector
 function nθ(m::LinearMixedModel)
@@ -290,19 +294,16 @@ function objective!(m::LinearMixedModel,θ::Vector{Float64})
     for (λ,u,Zty) in zip(m.λ,m.u,m.Zty)
         Ac_mul_B!(λ,copy!(u,Zty))
     end
-    plssolve!(m.s,m.uv,copy!(m.β,m.Xty))
+    p = length(m.Xty)
+    copy!(contiguous_view(m.uβ,length(m.uβ)-p,(p,)), m.Xty)
+    A_ldiv_B!(m.s,m.uβ)
     updateμ!(m)
     objective(m)
 end
+objective!(m::LinearMixedModel) = objective!(m,θ(m))
 
 ## pwrss(lmb) : penalized, weighted residual sum of squares
-function pwrss(m::LinearMixedModel)
-    s = rss(m)
-    for u in m.u, ui in u
-        s += abs2(ui)
-    end
-    s
-end
+pwrss(m::LinearMixedModel) = rss(m) + sqrlenu(m)
 
 ##  ranef(m) -> vector of matrices of random effects on the original scale
 ##  ranef(m,true) -> vector of matrices of random effects on the U scale
@@ -324,7 +325,7 @@ function reml!(m::LinearMixedModel,v::Bool=true)
 end
 
 ## rss(m) -> residual sum of squares
-rss(m::LinearMixedModel) = sum(Abs2Fun(),m.resid)
+rss(m::LinearMixedModel) = sumabs2(m.resid)
 
 ## scale(m,true) -> estimate, s^2, of the squared scale parameter
 function Base.scale(m::LinearMixedModel, sqr=false)
@@ -336,7 +337,7 @@ end
 ##  size(m) -> n, p, q, t (lengths of y, beta, u and # of re terms)
 function Base.size(m::LinearMixedModel)
     n,p = size(m.X.m)
-    n,p,length(m.uv),length(m.fnms)
+    n,p,length(m.uβ)-p,length(m.fnms)
 end
 
 function Base.show(io::IO, m::LinearMixedModel)
@@ -366,13 +367,7 @@ function Base.show(io::IO, m::LinearMixedModel)
 end
 
 ## sqrlenu(m) -> squared length of m.u (the penalty in the PLS problem)
-function sqrlenu(m::LinearMixedModel)
-    s = 0.
-    for u in m.u, ui in u
-        s+=abs2(ui)
-    end
-    s
-end
+sqrlenu(m::LinearMixedModel) = sumabs2(view(m.uβ,1:mapreduce(length,+,m.u)))
 
 ## std(m) -> Vector{Vector{Float64}} estimated standard deviations of variance components
 Base.std(m::LinearMixedModel) = scale(m)*push!([rowlengths(λ) for λ in m.λ],[1.])
@@ -382,7 +377,8 @@ StatsBase.stderr(m::LinearMixedModel) = sqrt(diag(vcov(m)))
 
 ## update m.μ and return the residual sum of squares
 function updateμ!(m::LinearMixedModel)
-    μ = A_mul_B!(m.μ, m.X.m, m.β) # initialize μ to Xβ
+    p = length(m.Xty)
+    μ = A_mul_B!(m.μ, m.X.m, contiguous_view(m.uβ,length(m.uβ)-p,(p,))) # initialize μ to Xβ
     for (Zt,λ,b,u) in zip(m.Ztblks,m.λ,m.b,m.u)
         A_mul_B!(λ,copy!(b,u))         # overwrite b by λ*u
         Ac_mul_B!(1.0,Zt,vec(b),1.0,μ)

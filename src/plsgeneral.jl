@@ -21,7 +21,7 @@ function PLSGeneral(Zt::SparseMatrixCSC,X::Matrix,facs::Vector)
         cp[j] - cp[j-1] == d2 || error("Zt must have constant column counts")
     end
     L = cholfact(Ztc,1.,true)
-    PLSGeneral(L,cholfact(XtX.S,:L),copy(ZtX),XtX,
+    PLSGeneral(L,cholfact(XtX.data,:L),copy(ZtX),XtX,
                reshape(copy(Zt.nzval),(d2,Zt.n)), ZtX,zeros(size(L,1)),
                [length(f.pool) for f in facs],
                L.Perm .+ one(eltype(L.Perm)), Ztc)
@@ -47,7 +47,7 @@ function update!(s::PLSGeneral,λ::Vector)
     ## CHOLMOD doesn't solve in place so need to solve then copy
     copy!(s.RZX,solve(s.L, s.RZX[s.perm,:], CHOLMOD_L))
     _,info = LAPACK.potrf!('L',BLAS.syrk!('L','T',-1.,s.RZX,
-                                          1.,copy!(s.RX.UL,s.XtX.S)))
+                                          1.,copy!(s.RX.UL,s.XtX.data)))
     info == 0 || error("Downdated X'X is not positive definite")
     s
 end
