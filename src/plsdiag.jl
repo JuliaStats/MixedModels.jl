@@ -14,8 +14,9 @@ function PLSDiag(Zt::SparseMatrixCSC,X::Matrix,facs::Vector)
     ZtZ = Ztc * Ztc'
     L = cholfact(ZtZ,1.,true)
     XtX = Symmetric(X'X,:L)
+    XtXdat = VERSION < v"0.4-" ? XtX.S : XtX.data
     ZtX = Zt*X
-    PLSDiag(L,cholfact(XtX.data,:L),copy(ZtX),XtX,ZtX,ZtZ,L.Perm .+ one(eltype(L.Perm)),
+    PLSDiag(L,cholfact(XtXdat,:L),copy(ZtX),XtX,ZtX,ZtZ,L.Perm .+ one(eltype(L.Perm)),
             vcat([fill(j,length(ff.pool)) for (j,ff) in enumerate(facs)]...))
 end
 

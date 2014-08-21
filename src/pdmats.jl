@@ -2,9 +2,16 @@ abstract AbstractPDMatFactor
 
 using Base.LinAlg.Cholesky
 
-immutable PDLCholF <: AbstractPDMatFactor
-    ch::Cholesky{Float64,Matrix{Float64},:L}
+if VERSION < v"0.4-"
+    immutable PDLCholF <: AbstractPDMatFactor
+        ch::Cholesky{Float64}
+    end
+else
+    immutable PDLCholF <: AbstractPDMatFactor
+        ch::Cholesky{Float64,Matrix{Float64},:L}
+    end
 end
+
 immutable PDDiagF <: AbstractPDMatFactor
     d::Diagonal{Float64}
     function PDDiagF(d::Vector{Float64})
