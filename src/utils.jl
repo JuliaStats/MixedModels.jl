@@ -13,11 +13,14 @@ function ztblk(m::Matrix,v)
 end
 ztblk(m::Matrix,v::PooledDataVector) = ztblk(m,v.refs)
 
-function Base.cholfact(ch::Base.LinAlg.Cholesky,inds::UnitRange{Int})
-    if VERSION.minor < 4
-        return Base.LinAlg.Cholesky(ch[symbol(ch.uplo)].data[inds,inds],ch.uplo)
+Base.cholfact(s::Symmetric{Float64}) = cholfact(symcontents(s), symbol(s.uplo))
+
+function scaleinv!(b::StridedVector,sc::StridedVector)
+    (n = length(b)) == length(sc) || throw(DimensionMismatch(""))
+    @inbounds for i in 1:n
+        b[i] /= sc[i]
     end
-    tr = ch[:UL]
-    dd = tr.data[inds,inds]
-    Base.LinAlg.Cholesky{eltype(dd),typeof(dd),istril(tr)?(:L):(:U)}(dd)
+    b
 end
+
+symcontents(s::Symmetric) = VERSION ≥ v"0.4-" ? s.data : s.S

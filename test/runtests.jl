@@ -72,9 +72,9 @@ pen = DataFrame(Diameter = [27,23,26,23,23,21,27,23,26,23,23,21,25,21,25,24,24,2
 tests = ["plsonescalar.jl",
          "plsonevector.jl",
          "plstwoscalar.jl",
-         "plsdiagnested.jl",
-         "plstwo.jl",
-         "lrt.jl"]
+         "plstwovector.jl",
+         "plsdiagnested.jl"]
+
 
 anyerrors = false
 

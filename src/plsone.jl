@@ -1,118 +1,145 @@
-## Default methods, overridden for PLSOne
+## Solver for models with a single grouping factor for the random effects
 
-Base.cholfact(s::PLSSolver,RX::Bool=true) = RX ? s.RX : s.L
-Base.logdet(s::PLSSolver,RX::Bool=true) = logdet(cholfact(s,RX))
+## There are l₁ levels in the grouping factor.  The dimension of the
+## random effects for each level of the grouping factor is l₁,
+## producing a total of q = p₁l₁ random effects.  The dimension of the
+## fixed-effects parameter is p.  When solving for the conditional
+## modes of U only the transposed model matrix Xt is passed as a 0×n
+## matrix.
 
-## Consider making the 3D arrays 2D then using view to get the square blocks
-type PLSOne <: PLSSolver   # Solver for models with a single random-effects term
-    Ad::Array{Float64,3}                # diagonal blocks
-    Ab::Array{Float64,3}                # base blocks
-    At::Symmetric{Float64}              # lower right block
-    Ld::Array{Float64,3}                # diagonal blocks
-    Lb::Array{Float64,3}                # base blocks
-    Lt::Base.LinAlg.Cholesky{Float64}   # lower right triangle
-end
+## Within the type:
+## Z'Z is block diagonal with l₁ blocks of size p₁×p₁, stored as A₁₁, a p₁×(p₁l₁) matrix
+## X'Z is stored as A₂₁, a p×(p₁l₁) matrix
+## X'X is stored as A₂₂, a p×p matrix - it is symmetric but not explicitly stored as Symmetric
+## L₁₁ is block diagonal with l₁ lower triangular blocks of size p₁×p₁
+## L₂₁ is stored as a matrix similar to A₂₁
+## L₂₂ is stored as a p×p lower Cholesky factor
 
-function PLSOne(Ad::Array{Float64,3}, Ab::Array{Float64,3}, At::Symmetric{Float64})
-    m,n,t = size(Ad)
-    m == n || error("Faces of Ad must be square")
-    p,q,r = size(Ab)
-    p == size(At,1) && q == n && r == t || throw(DimensionMisMatch(""))
-    PLSOne(Ad,Ab,At,zeros(Ad),zeros(Ab),cholfact(At.data,symbol(At.uplo)))
-end
-
-function PLSOne(Ad::Array{Float64,3}, Ab::Array{Float64,3}, At::Matrix{Float64})
-    PLSOne(Ad,Ab,Symmetric(At,:L))
+type PLSOne <: PLSSolver
+    A₁₁::Matrix{Float64}
+    A₂₁::Matrix{Float64}
+    A₂₂::Matrix{Float64}
+    L₁₁::Matrix{Float64}
+    L₂₁::Matrix{Float64}
+    L₂₂::Base.LinAlg.Cholesky{Float64}
 end
 
 function PLSOne(ff::PooledDataVector, Xst::Matrix, Xt::Matrix)
     refs = ff.refs
-    (L = length(refs)) == size(Xst,2) == size(Xt,2) || throw(DimensionMismatch("PLSOne"))
-    m = size(Xt,1)
-    n = size(Xst,1)
-    nl = length(ff.pool)         # number of levels of grouping factor
-    Ad = zeros(n,n,nl)
-    Ab = zeros(m,n,nl)
-    for j in 1:L
-        jj = refs[j]
-        xj = view(Xst,:,j)
-        BLAS.ger!(1.0,xj,xj,view(Ad,:,:,jj))
-        BLAS.ger!(1.0,view(Xt,:,j),xj,view(Ab,:,:,jj))
+    (n = length(refs)) == size(Xst,2) == size(Xt,2) || throw(DimensionMismatch("PLSOne"))
+    p = size(Xt,1)               # number of fixed-effects parameters
+    p₁ = size(Xst,1)             # number of random effects per level
+    l₁ = length(ff.pool)         # number of levels of grouping factor
+    q₁ = p₁*l₁                   # total number of random effects
+    A₁₁ = zeros(p₁,q₁)
+    A₂₁ = zeros(p,q₁)
+    for j in 1:n
+        i1 = refs[j]-1
+        c₁ = contiguous_view(Xst,p₁*(j-1),(p₁,))
+        BLAS.ger!(1.0,c₁,c₁,contiguous_view(A₁₁,i1*p₁*p₁,(p₁,p₁)))
+        BLAS.ger!(1.0,contiguous_view(Xt,p*(j-1),(p,)),c₁,contiguous_view(A₂₁,i1*p*p₁,(p,p₁)))
     end
-    PLSOne(Ad,Ab,Symmetric(Xt*Xt',:L))
+    PLSOne(A₁₁,A₂₁,tril!(Xt*Xt'),similar(A₁₁),similar(A₂₁),cholfact(eye(p),:L))
 end
 
-Base.cholfact(s::PLSOne,RX::Bool=true) = RX ? s.Lt : blkdiag({sparse(tril(view(s.Ld,:,:,j))) for j in 1:size(s.Ld,3)}...)
-
-## Logarithm of the determinant of the matrix represented by RX or L
-function Base.logdet(s::PLSOne,RX=true)
-    RX && return logdet(s.Lt)
-    Ld = s.Ld
-    m,n,t = size(Ld)
-    s = 0.
-    @inbounds for j in 1:t, i in 1:m
-        s += log(Ld[i,i,j])
-    end
-    2.s
-end
-
-## arguments u and β contain λ'Z'y and X'y on entry
+## argument uβ contains vcat(λ'Z'y,X'y) on entry
 function Base.A_ldiv_B!(s::PLSOne,uβ)
-    p,k,l = size(s)
-    q = k*l
-    length(uβ) == (p + q) || throw(DimensionMismatch(""))
-    β = contiguous_view(uβ,q,(p,))
-    cu = contiguous_view(uβ,(k,l))
-    u = contiguous_view(uβ,(k*l,))
-    if k == 1                           # short cut for scalar r.e.
-        Linv = [inv(l)::Float64 for l in s.Ld]
-        multiply!(u,Linv)
-        LXZ = reshape(s.Lb,(p,k*l))
-        A_ldiv_B!(s.Lt,BLAS.gemv!('N',-1.,LXZ,u,1.,β)) # solve for β
-        BLAS.gemv!('T',-1.,LXZ,β,1.0,u)                # cᵤ -= LZX'β
-        multiply!(u,Linv)
+    p,p₁,l₁ = size(s)
+    q₁ = p₁*l₁
+    length(uβ) == (p + q₁) || throw(DimensionMismatch(""))
+    u = contiguous_view(uβ,(q₁,))
+    β = contiguous_view(uβ,q₁,(p,))
+    if p₁ == 1                          # short cut for scalar r.e.
+        scaleinv!(u,vec(s.L₁₁))
+        A_ldiv_B!(s.L₂₂,BLAS.gemv!('N',-1.,s.L₂₁,u,1.,β)) # solve for β
+        BLAS.gemv!('T',-1.,s.L₂₁,β,1.0,u) # cᵤ -= L₂₁'β
+        scaleinv!(u,vec(s.L₁₁))
     else
-        for j in 1:l                    # solve L cᵤ = λ'Z'y blockwise
-            BLAS.trsv!('L','N','N',view(s.Ld,:,:,j),view(cu,:,j))
+        for j in 0:(l₁-1) # solve L cᵤ = λ'Z'y blockwise using offsets
+            BLAS.trsv!('L','N','N',contiguous_view(s.L₁₁,j*p₁*p₁,(p₁,p₁)),
+                       contiguous_view(u,j*p₁,(p₁,)))
         end
                                         # solve (L_X L_X')̱β = X'y - L_XZ cᵤ
-        A_ldiv_B!(s.Lt,BLAS.gemv!('N',-1.0,reshape(s.Lb,(p,q)),u,1.0,β))
+        A_ldiv_B!(s.L₂₂,BLAS.gemv!('N',-1.0,s.L₂₁,u,1.0,β))
                                         # cᵤ := cᵤ - L_XZ'β
-        BLAS.gemv!('T',-1.0,reshape(s.Lb,(p,q)),β,1.0,u)
-        for j in 1:l                    # solve L'u = cᵤ blockwise
-            BLAS.trsv!('L','T','N',view(s.Ld,:,:,j),view(cu,:,j))
+        BLAS.gemv!('T',-1.0,reshape(s.L₂₁,(p,q₁)),β,1.0,u)
+        for j in 0:(l₁-1) # # solve L'u = cᵤ blockwise using offsets
+            BLAS.trsv!('L','T','N',contiguous_view(s.L₁₁,j*p₁*p₁,(p₁,p₁)),
+                       contiguous_view(u,j*p₁,(p₁,)))
         end
     end
 end
 
-Base.size(s::PLSOne) = size(s.Ab)
-Base.size(s::PLSOne,k::Integer) = size(s.Ab,k)
-
-##  update!(s,lambda)->s : update Ld, Lb and Lt
-
-function update!(s::PLSOne,λ::AbstractPDMatFactor)
-    updateLdb!(s,λ)         # updateLdb! is common to PLSOne and PLSTwo
-    m,n,l = size(s.Ab)
-    BLAS.syrk!('L','N',-1.0,reshape(s.Lb,(m,n*l)),1.0,s.Lt.UL)
-    _, info = LAPACK.potrf!('L',s.Lt.UL)
-    info == 0 ||  error("downdated X'X is not positive definite")
-    s
-end
-
-function update!(s::PLSOne,λ::Vector)
-    length(λ) == 1 || error("update! on a PLSOne requires length(λ) == 1")
-    update!(s,λ[1])
+function Base.cholfact(s::PLSOne,RX::Bool=true)
+    RX && return s.L₂₂
+    p,p₁,l₁ = size(s)
+    blkdiag({sparse(tril(contiguous_view(s.L₁₁,(j-1)*p₁*p₁,(p₁,p₁)))) for j in 1:l₁}...)
 end
 
 function grad(s::PLSOne,b::Vector,u::Vector,λ::Vector)
     length(b) == length(u) == length(λ) == 1 || throw(DimensionMisMatch)
-    p,k,l = size(s)
-    res = zeros(k,k)
+    λ = λ[1]
+    p,p₁,l₁ = size(s)
+    dd = (p₁,p₁)
+    res = zeros(p₁,p₁)
     tmp = similar(res)                  # scratch array
-    ll = λ[1]
-    for i in 1:l
-        add!(res,LAPACK.potrs!('L',view(s.Ld,:,:,i),Ac_mul_B!(ll,copy!(tmp,view(s.Ad,:,:,i)))))
+    for j in 0:abs2(p₁):(l₁-1)*abs2(p₁)
+        add!(res, LAPACK.potrs!('L',contiguous_view(s.L₁₁,j,dd),
+                                Ac_mul_B!(λ,copy!(tmp,contiguous_view(s.A₁₁,j,dd)))))
     end
     BLAS.gemm!('N','T',1.,u[1],b[1],2.,res) # add in the residual part
-    grdcmp(ll,Base.LinAlg.transpose!(tmp,res))
+    grdcmp(λ,Base.LinAlg.transpose!(tmp,res))
+end
+
+## Logarithm of the determinant of the matrix represented by RX or L
+function Base.logdet(s::PLSOne,RX=true)
+    RX && return logdet(s.L₂₂)
+    p,p₁,l₁ = size(s)
+    sm = 0.
+    for j in 0:(l₁-1), i in 1:p₁
+        sm += log(s.L₁₁[i,j*p₁+i])
+    end
+    2.sm
+end
+
+function Base.size(s::PLSOne)
+    p₁,q₁ = size(s.A₁₁)
+    q₁ % p₁ == 0 || throw(DimensionMismatch(""))
+    size(s.A₂₁,1), p₁, div(q₁,p₁)
+end
+
+##  update!(s,λ)->s : update L₁₁, L₂₁ and L₂₂
+function update!(s::PLSOne,λ::Vector)
+    length(λ) == 1 || error("update! on a PLSOne requires length(λ) == 1")
+    λ = λ[1]
+    isa(λ,AbstractPDMatFactor) || error("λ must be a vector of PDMatFactors")
+    k = dim(λ)
+    k < 0 || k == size(s.A₁₁,1) || throw(DimensionMixmatch(""))
+    p,p₁,l₁ = size(s)
+    L₂₁ = copy!(s.L₂₁,s.A₂₁)
+    if p == 1                           # shortcut for 1×1 λ
+        isa(λ,PDScalF) || error("1×1 λ section should be a PDScalF type")
+        lam = λ.s.λ
+        lamsq = lam*lam
+        for j in 1:l₁
+            s.L₁₁[1,j] = sqrt(s.A₁₁[1,j]*lamsq + 1.)
+            scale!(contiguous_view(L₂₁,(j-1)*p,(p,)),lam/s.L₁₁[1,j])
+        end
+    else
+        Ac_mul_B!(λ,copy!(s.L₁₁,s.A₁₁))   # multiply on left by λ'
+        for k in 0:(l₁-1)               # using offsets, not indices
+            wL = A_mul_B!(contiguous_view(s.L₁₁,k*p₁*p₁,(p₁,p₁)),λ)
+            for j in 1:p₁               # inflate the diagonal
+                wL[j,j] += 1.0
+            end
+            _,info = LAPACK.potrf!('L',wL) # lower Cholesky factor
+            info == 0 || error("Cholesky failure at L diagonal block $(k+1)")
+            Base.LinAlg.A_rdiv_Bc!(A_mul_B!(contiguous_view(L₂₁,k*p*p₁,(p,p₁)),λ),
+                                   Triangular(wL,:L,false))
+        end
+    end
+    BLAS.syrk!('L','N',-1.,L₂₁,1.,copy!(s.L₂₂.UL,s.A₂₂))
+    _, info = LAPACK.potrf!('L',s.L₂₂.UL)
+    info == 0 ||  error("downdated X'X is not positive definite")
+    s
 end

@@ -92,7 +92,7 @@ function lmm(f::Formula, fr::AbstractDataFrame)
         s = PLSTwo(facs,Xs,X.m')
     else
         Zt = vcat(map(ztblk,Xs,facs)...)
-        s = all(p .== 1) ? PLSDiagWA(Zt,X.m,facs) : PLSGeneral(Zt,X.m,facs)
+        s = all(p .== 1) ? PLSDiag(Zt,X.m,facs) : PLSGeneral(Zt,X.m,facs)
     end
     LinearMixedModel(false, X, Xs, Xty, map(ztblk,Xs,facs), Zty,
                      map(zeros, u), f, facs, false, map(string,grps),
@@ -164,9 +164,9 @@ function StatsBase.fit(m::LinearMixedModel, verbose=false)
     if !m.fit
         th = θ(m); k = length(th)
         opt = NLopt.Opt(hasgrad(m) ? :LD_MMA : :LN_BOBYQA, k)
-        NLopt.ftol_rel!(opt, 1e-8)    # relative criterion on deviance
+        NLopt.ftol_rel!(opt, 1e-12)    # relative criterion on deviance
         NLopt.ftol_abs!(opt, 1e-8)    # absolute criterion on deviance
-        NLopt.xtol_abs!(opt, 1e-8)    # criterion on all parameter value changes
+        NLopt.xtol_abs!(opt, 1e-10)    # criterion on all parameter value changes
         NLopt.lower_bounds!(opt, lower(m))
         function obj(x::Vector{Float64}, g::Vector{Float64})
             val = objective!(m,x)
@@ -224,7 +224,7 @@ grplevels(v::Vector) = [length(f.pool) for f in v]
 grplevels(m::LinearMixedModel) = grplevels(m.facs)
 
 hasgrad(m::LinearMixedModel) = false
-hasgrad(m::LinearMixedModel{PLSOne}) = true
+hasgrad(m::LinearMixedModel{PLSOne}) = true                       
 
 isfit(m::LinearMixedModel) = m.fit
 
@@ -296,12 +296,11 @@ function objective!(m::LinearMixedModel,θ::Vector{Float64})
     end
     p = length(m.Xty)
     copy!(contiguous_view(m.uβ,length(m.uβ)-p,(p,)), m.Xty)
-#@show m.uβ
     A_ldiv_B!(m.s,m.uβ)
-# @show m.uβ
     updateμ!(m)
     objective(m)
 end
+objective!(m::LinearMixedModel) = objective!(m,θ(m))
 
 ## pwrss(lmb) : penalized, weighted residual sum of squares
 pwrss(m::LinearMixedModel) = rss(m) + sqrlenu(m)
