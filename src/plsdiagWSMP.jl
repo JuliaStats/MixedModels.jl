@@ -1,5 +1,5 @@
 type PLSDiagWSMP <: PLSSolver # Sparse Choleksy solver for diagonal Λ
-    LX::Base.LinAlg.Cholesky{Float64}
+    LX::Cholesky{Float64}
     RZX::Matrix{Float64}
     W::Wssmp
     XtX::Symmetric{Float64}

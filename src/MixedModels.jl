@@ -1,17 +1,16 @@
 using DataFrames  # should be externally available
 module MixedModels
 
-    using ArrayViews, DataArrays, DataFrames, Distributions
-    using NLopt, NumericExtensions, NumericFuns, PDMats, StatsBase #, WSMP
+    using ArrayViews, DataArrays, DataFrames, Distributions, NLopt, PDMats, StatsBase #, WSMP
     using Base.LinAlg.CHOLMOD: CholmodFactor, CholmodSparse, CholmodSparse!,
           chm_scale, CHOLMOD_SYM, CHOLMOD_L, CHOLMOD_Lt, solve
-    using Base.LinAlg: Cholesky, Ac_ldiv_B!, A_rdiv_Bc!
+    using Base.LinAlg: Cholesky, Ac_ldiv_B!, A_rdiv_Bc!, chksquare, transpose!
 
     export
         LinearMixedModel,
         MixedModel,
         PLSDiag,    # multiple, scalar random-effects terms
-        PLSDiagWA,  # multiple, scalar random-effects terms using WSMP
+#        PLSDiagWA,  # multiple, scalar random-effects terms using WSMP
         PLSGeneral, # general random-effects structure
         PLSOne,     # solver for models with only one r.e. term
         PLSSolver,  # abstract type for a penalized least squares solver
@@ -40,6 +39,5 @@ module MixedModels
     include("plsone.jl")
     include("plstwo.jl")
     include("plsdiag.jl")
-#    include("plsdiagWSMP.jl")
     include("linearmixedmodels.jl")
 end #module

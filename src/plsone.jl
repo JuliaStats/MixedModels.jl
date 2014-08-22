@@ -21,7 +21,7 @@ type PLSOne <: PLSSolver
     A₂₂::Matrix{Float64}
     L₁₁::Matrix{Float64}
     L₂₁::Matrix{Float64}
-    L₂₂::Base.LinAlg.Cholesky{Float64}
+    L₂₂::Cholesky{Float64}
 end
 
 function PLSOne(ff::PooledDataVector, Xst::Matrix, Xt::Matrix)
@@ -83,12 +83,16 @@ function grad(s::PLSOne,b::Vector,u::Vector,λ::Vector)
     dd = (p₁,p₁)
     res = zeros(p₁,p₁)
     tmp = similar(res)                  # scratch array
-    for j in 0:abs2(p₁):(l₁-1)*abs2(p₁)
-        add!(res, LAPACK.potrs!('L',contiguous_view(s.L₁₁,j,dd),
-                                Ac_mul_B!(λ,copy!(tmp,contiguous_view(s.A₁₁,j,dd)))))
+    p₁² = abs2(p₁)
+    for k in 0:p₁²:(l₁-1)*p₁²
+        LAPACK.potrs!('L',contiguous_view(s.L₁₁,k,dd),
+                      Ac_mul_B!(λ,copy!(tmp,contiguous_view(s.A₁₁,k,dd))))
+        @inbounds @simd for i in 1:p₁²
+            res[i] += tmp[i]
+        end
     end
     BLAS.gemm!('N','T',1.,u[1],b[1],2.,res) # add in the residual part
-    grdcmp(λ,Base.LinAlg.transpose!(tmp,res))
+    grdcmp(λ,transpose!(tmp,res))
 end
 
 ## Logarithm of the determinant of the matrix represented by RX or L
@@ -134,7 +138,7 @@ function update!(s::PLSOne,λ::Vector)
             end
             _,info = LAPACK.potrf!('L',wL) # lower Cholesky factor
             info == 0 || error("Cholesky failure at L diagonal block $(k+1)")
-            Base.LinAlg.A_rdiv_Bc!(A_mul_B!(contiguous_view(L₂₁,k*p*p₁,(p,p₁)),λ),
+            A_rdiv_Bc!(A_mul_B!(contiguous_view(L₂₁,k*p*p₁,(p,p₁)),λ),
                                    Triangular(wL,:L,false))
         end
     end

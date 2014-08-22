@@ -1,7 +1,5 @@
 abstract AbstractPDMatFactor
 
-using Base.LinAlg.Cholesky
-
 if VERSION < v"0.4-"
     immutable PDLCholF <: AbstractPDMatFactor
         ch::Cholesky{Float64}
@@ -163,7 +161,7 @@ Base.svdvals(p::PDScalF) = [p.s.λ]
 Base.svdfact(p::PDLCholF) = svdfact(p.ch[:L])
 
 function grdcmp(p::PDLCholF,m::AbstractMatrix{Float64})
-    (n = Base.LinAlg.chksquare(m)) == dim(p) || throw(DimensionMismatch(""))
+    (n = chksquare(m)) == dim(p) || throw(DimensionMismatch(""))
     res = Array(eltype(m), nltri(n))
     pos = 0
     for j in 1:n, i in j:n
@@ -173,7 +171,7 @@ function grdcmp(p::PDLCholF,m::AbstractMatrix{Float64})
 end
 
 function grdcmp(p::PDDiagF,m::AbstractMatrix{Float64})
-    (n = Base.LinAlg.chksquare(m)) == dim(p) || throw(DimensionMismatch(""))
+    (n = chksquare(m)) == dim(p) || throw(DimensionMismatch(""))
     diag(m)
 end
 

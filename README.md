@@ -113,10 +113,6 @@ PLS problem when there is a single grouping factor is exploited in the
 `PLSOne` class which provides for evaluation of the objective function
 and of its gradient.
 
-It happens that `show`ing an object of this type causes the model to
-be fit so it is okay to omit the call to `fit` in the REPL (the
-interactive Read-Eval-Print-Loop).
-
 Those familiar with the `lme4` package for `R` will see the usual
 suspects.
 ```julia

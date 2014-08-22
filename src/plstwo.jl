@@ -33,7 +33,7 @@ type PLSTwo <: PLSSolver # Solver for models with two crossed or nearly crossed 
     L₃₁::Matrix{Float64}
     L₂₂::Triangular{Float64,Matrix{Float64},:L,false} 
     L₃₂::Matrix{Float64}
-    L₃₃::Base.LinAlg.Cholesky{Float64}
+    L₃₃::Cholesky{Float64}
 end
 
 function PLSTwo(facs::Vector,Xst::Vector,Xt::Matrix)
