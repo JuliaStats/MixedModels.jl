@@ -12,6 +12,7 @@ module MixedModels
         PLSDiag,    # multiple, scalar random-effects terms
 #        PLSDiagWA,  # multiple, scalar random-effects terms using WSMP
         PLSGeneral, # general random-effects structure
+        PLSNested,  # solver for models whose grouping factors form a nested sequence
         PLSOne,     # solver for models with only one r.e. term
         PLSSolver,  # abstract type for a penalized least squares solver
         PLSTwo,     # solver for models with two crossed or nearly crossed r.e. terms
@@ -36,6 +37,7 @@ module MixedModels
     include("pdmats.jl")
     include("plssolver.jl")
     include("plsgeneral.jl")
+    include("plsnested.jl")
     include("plsone.jl")
     include("plstwo.jl")
     include("plsdiag.jl")

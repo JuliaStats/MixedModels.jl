@@ -1,5 +1,36 @@
 ## Utilities
 
+## Version of cholfact of a symmetric matrix that works in both 0.3 and 0.4 series
+Base.cholfact(s::Symmetric{Float64}) = cholfact(symcontents(s), symbol(s.uplo))
+
+crosstab(a::PooledDataVector,b::PooledDataVector) =
+    counts(a.refs,b.refs,(length(a.pool),length(b.pool)))
+
+## Check if the levels in factors or arrays are nested
+isnested(v::Vector) = length(v) == 1 || length(Set(zip(v...))) == maximum(grplevels(v))
+isnested(dd::DataFrame,nms::Vector) = isnested({getindex(dd,nm) for nm in nms})
+
+## grplevels(m) -> Vector{Int} : number of levels in each term's grouping factor
+grplevels(v::Vector) = [length(isa(f,PooledDataVector) ? f.pool : unique(f)) for f in v]
+grplevels(dd::DataFrame,nms::Vector) = grplevels({getindex(dd,nm) for nm in nms})
+
+## Scale b by the componentwise inverse of sc
+function scaleinv!(b::StridedVector,sc::StridedVector)
+    (n = length(b)) == length(sc) || throw(DimensionMismatch(""))
+    @inbounds for i in 1:n
+        b[i] /= sc[i]
+    end
+    b
+end
+
+## Determine the contents of the symmetric matrix s for versions 0.3 and 0.4
+symcontents(s::Symmetric) = VERSION ≥ v"0.4-" ? s.data : s.S
+
+## Read a sample data set from the data directory.
+function rdata(nm::Union(String,Symbol))
+    DataFrame(read_rda(Pkg.dir("MixedModels","data",string(nm,".rda")))[string(nm)])
+end
+
 ## Return a block in the Zt matrix from one term.
 function ztblk(m::Matrix,v)
     nr,nc = size(m)
@@ -13,14 +44,3 @@ function ztblk(m::Matrix,v)
 end
 ztblk(m::Matrix,v::PooledDataVector) = ztblk(m,v.refs)
 
-Base.cholfact(s::Symmetric{Float64}) = cholfact(symcontents(s), symbol(s.uplo))
-
-function scaleinv!(b::StridedVector,sc::StridedVector)
-    (n = length(b)) == length(sc) || throw(DimensionMismatch(""))
-    @inbounds for i in 1:n
-        b[i] /= sc[i]
-    end
-    b
-end
-
-symcontents(s::Symmetric) = VERSION ≥ v"0.4-" ? s.data : s.S

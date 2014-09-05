@@ -49,9 +49,6 @@ function amalgamate(grps,Xs,p,λ)
     ugrp,nXs,np,nλ
 end
 
-crosstab(a::PooledDataVector,b::PooledDataVector) =
-    counts(a.refs,b.refs,(length(a.pool),length(b.pool)))
-
 function lmm(f::Formula, fr::AbstractDataFrame)
     mf = ModelFrame(f,fr)
     X = ModelMatrix(mf)
@@ -62,14 +59,20 @@ function lmm(f::Formula, fr::AbstractDataFrame)
     length(retrms) > 0 || error("Formula $f has no random-effects terms")
 
     grps = {t.args[3] for t in retrms}       # expressions for grouping factors
+    facs = {pool(getindex(mf.df,grp)) for grp in grps}
+    l = Int[length(f.pool) for f in facs]
+    if (perm = sortperm(l;rev=true)) != [1:length(grps)]
+        permute!(retrms,perm)
+        permute!(grps,perm)
+        permute!(facs,perm)
+        permute!(l,perm)
+    end
     Xs = {lhs2mat(t,mf.df)' for t in retrms} # transposed model matrices
     p = Int[size(x,1) for x in Xs]
     λ = {pp == 1 ? PDScalF(1.) : PDLCholF(cholfact(eye(pp),:L)) for pp in p}
     if length(unique(grps)) < length(grps)
         grps,Xs,p,λ = amalgamate(grps,Xs,p,λ)
     end
-    facs = {pool(getindex(mf.df,grp)) for grp in grps}
-    l = Int[length(f.pool) for f in facs]
     q = sum(p .* l)
     uβ = zeros(q + size(X,2))
     Zty = {zeros(pp,ll) for (pp,ll) in zip(p,l)}
@@ -87,6 +90,8 @@ function lmm(f::Formula, fr::AbstractDataFrame)
     local s
     if length(facs) == 1
         s = PLSOne(facs[1],Xs[1],X.m')
+    elseif isnested(facs)
+        s = PLSNested(facs,Xs,X.m')
     elseif length(facs) == 2 && 2countnz(crosstab(facs[1],facs[2])) > l[1]*l[2]
         ## use PLSTwo for two grouping factors and the crosstab density > 0.5
         s = PLSTwo(facs,Xs,X.m')
@@ -228,7 +233,6 @@ hasgrad(m::LinearMixedModel{PLSOne}) = true
 
 isfit(m::LinearMixedModel) = m.fit
 
-isnested(v::Vector) = length(v) == 1 || length(Set(zip(v...))) == maximum(grplevels(v))
 isnested(m::LinearMixedModel) = isnested(m.facs)
 
 ## isscalar(m) -> Bool : Are all the random-effects terms scalar?
@@ -278,7 +282,6 @@ function nθ(m::LinearMixedModel)
     end
     s
 end
-
 
 ## objective(m) -> deviance or REML criterion according to m.REML
 function objective(m::LinearMixedModel)
@@ -341,7 +344,10 @@ function Base.size(m::LinearMixedModel)
 end
 
 function Base.show(io::IO, m::LinearMixedModel)
-    m.fit || error("Model has not been fit")
+    if !m.fit
+        warn("Model has not been fit")
+        return nothing
+    end
     n,p,q,k = size(m)
     REML = m.REML
     @printf(io, "Linear mixed model fit by %s\n", REML ? "REML" : "maximum likelihood")
