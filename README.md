@@ -64,7 +64,7 @@ julia> head(ds)
 defaults to REML estimation.
 
 ```julia
-julia> m = lmm(Yield ~ 1|Batch, ds)
+julia> m = fit(lmm(Yield ~ 1|Batch, ds))
 Linear mixed model fit by maximum likelihood
 Formula: Yield ~ 1 | Batch
 
@@ -257,7 +257,7 @@ optimization is used, allowing faster and more reliable convergence to
 the parameter estimates.
 
 ```julia
-julia> @time fit(lmm(Reaction ~ Days + (Days|Subject), sleep),true);
+julia> @time fit(lmm(Reaction ~ Days + (Days|Subject), slp),true);
 f_1: 1784.6423, [1.0,0.0,1.0]
 f_2: 1792.09158, [1.04647,-0.384052,0.159046]
 f_3: 1759.76629, [1.00506,-0.0847897,0.418298]
