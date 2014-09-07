@@ -18,7 +18,7 @@
 ## for each level of facs[i].
 
 type PLSNested <: PLSSolver
-    Amats::Vector   # arrays of cross-products (lower triangle only)
+    Amats::Vector   # arrays of cross-products
     Lmats::Vector   # storage for factors
     lastij::Vector  # last level of factor i nested in a level of factor j, i < j
     ## The vectors stored below could be calculated from the dimensions in Lmats
@@ -175,7 +175,7 @@ function update!(s::PLSNested,λ::Vector)
     offsets = s.offsets
     nl = s.nl
     pv = s.pv
-    for i in 1:nfp1                 # copy Amats into Lmats, store dimensions
+    for i in 1:nfp1                     # copy Amats into Lmats
         copy!(s.Lmats[i],s.Amats[i])
     end
     for i in 1:nf                       # form Λ'Z'ZΛ + I in Lmats
@@ -188,9 +188,9 @@ function update!(s::PLSNested,λ::Vector)
                 A_mul_B!(view(s.Lmats[j],:,colrng),λi) # multiply by λⱼ on the right
             end
             dbk = view(Lmi,:,colrng)    # k'th diagonal block of Lⱼⱼ
-            for j in 1:pv[i]               # inflate the diagonal of dbk
+            for j in 1:pv[i]            # inflate the diagonal of dbk
                 dbk[j,j] += 1.
-                for ii in 1:(j-1) # zero strict upper triangle (cosmetic)
+                for ii in 1:(j-1)       # zero strict upper triangle (cosmetic)
                     dbk[ii,j] = 0.
                 end
             end
@@ -219,9 +219,5 @@ function update!(s::PLSNested,λ::Vector)
             colrng += pv[i]
         end
     end
-#    LX = view(s.Lmats[nfp1],:,(offsets[nfp1]+1):size(s.Lmats[nfp1],2))
-#    BLAS.syrk!('L','N',-1.0,view(s.Lmats[nfp1],:,1:offsets[nfp1]),1.0,LX)
-#    _,info = LAPACK.potrf!('L',LX)
-#    info==0 || error("Downdated X'X is not positive definite")
     s
 end
