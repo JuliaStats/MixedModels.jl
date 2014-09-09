@@ -48,6 +48,7 @@ function lmm(f::Formula, fr::AbstractDataFrame)
     uβ = zeros(q + size(X,2))
     Zty = {zeros(pp,ll) for (pp,ll) in zip(p,l)}
     u = {}
+    offset = 0
     for (x,ff,zty) in zip(Xs,facs,Zty)
         push!(u,contiguous_view(uβ, offset, size(zty)))
         offset += length(zty)
