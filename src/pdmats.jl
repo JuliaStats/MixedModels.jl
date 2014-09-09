@@ -157,6 +157,31 @@ Base.A_mul_B!(A::PDDiagF,B::StridedVecOrMat{Float64}) = A_mul_B!(A.d,B)
 Base.A_mul_B!(A::PDLCholF,B::StridedVecOrMat{Float64}) = A_mul_B!(A.ch[:L],B)
 Base.A_mul_B!(A::PDScalF,B::StridedVecOrMat{Float64}) = scale!(A.s,B)
 
+function Base.A_mul_B!{T<:Number}(A::StridedMatrix{T},B::Diagonal{T})
+    m,n = size(A)
+    dd = B.diag
+    length(dd) == n || throw(DimensionMismatch(""))
+    @inbounds for j in 1:n
+        dj = dd[j]
+        for i in 1:m
+            A[i,j] *= dj
+        end
+    end
+    A
+end
+
+function Base.Ac_mul_B!{T<:Number}(A::Diagonal{T},B::StridedMatrix{T})
+    m,n = size(B)
+    dd = A.diag
+    length(dd) == m || throw(DimensionMismatch(""))
+    @inbounds for j in 1:n
+        for i in 1:m
+            B[i,j] *= conj(dd[i])
+        end
+    end
+    B
+end
+
 Base.A_mul_B!(A::StridedMatrix{Float64},B::PDCompF) = A_mul_B!(A,B.t)
 Base.A_mul_B!(A::StridedMatrix{Float64},B::PDDiagF) = A_mul_B!(A,B.d)
 Base.A_mul_B!(A::StridedMatrix{Float64},B::PDLCholF) = A_mul_B!(A,B.ch[:L])

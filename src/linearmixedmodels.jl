@@ -42,7 +42,7 @@ function lmm(f::Formula, fr::AbstractDataFrame)
     p = Int[size(x,1) for x in Xs]
     λ = {pp == 1 ? PDScalF(1.,1) : PDLCholF(cholfact(eye(pp),:L)) for pp in p}
     if length(unique(grps)) < length(grps)
-        grps,Xs,p,λ,facs = amalgamate(grps,Xs,p,λ,facs)
+        grps,Xs,p,λ,facs,l = amalgamate(grps,Xs,p,λ,facs,l)
     end
     q = sum(p .* l)
     uβ = zeros(q + size(X,2))

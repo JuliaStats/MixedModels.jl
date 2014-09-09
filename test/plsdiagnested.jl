@@ -1,6 +1,6 @@
 lmm₇ = lmm(Strength ~ (1|Sample) + (1|Batch), psts);
 
-@test typeof(lmm₇) == LinearMixedModel{PLSDiag{Int32}}
+@test typeof(lmm₇) == LinearMixedModel{PLSNested}
 @test size(lmm₇) == (60,1,40,2)
 @test MixedModels.θ(lmm₇) == ones(2)
 @test lower(lmm₇) == zeros(2)

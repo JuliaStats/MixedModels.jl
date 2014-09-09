@@ -88,11 +88,12 @@ function grad(s::PLSOne,Ztr::Vector,u::Vector,λ::Vector)
     dd = (p₁,p₁)
     res = zeros(p₁,p₁)
     tmp = similar(res)                  # scratch array
-    p₁² = abs2(p₁)
-    for k in 0:p₁²:(l₁-1)*p₁²
-        LAPACK.potrs!('L',contiguous_view(s.L₁₁,k,dd),
-                      Ac_mul_B!(λ,copy!(tmp,contiguous_view(s.A₁₁,k,dd))))
-        @inbounds @simd for i in 1:p₁²
+    cols = 1:p₁
+    for k in 1:l₁
+        LAPACK.potrs!('L',view(s.L₁₁,:,cols),
+                      Ac_mul_B!(λ,copy!(tmp,view(s.A₁₁,:,cols))))
+        cols += p₁
+        @inbounds @simd for i in 1:abs2(p₁)
             res[i] += tmp[i]
         end
     end
@@ -122,8 +123,7 @@ function update!(s::PLSOne,λ::Vector)
     length(λ) == 1 || error("update! on a PLSOne requires length(λ) == 1")
     λ = λ[1]
     isa(λ,AbstractPDMatFactor) || error("λ must be a vector of PDMatFactors")
-    k = dim(λ)
-    k < 0 || k == size(s.A₁₁,1) || throw(DimensionMixmatch(""))
+    dim(λ) == size(s.A₁₁,1) || throw(DimensionMixmatch(""))
     p,p₁,l₁ = size(s)
     L₂₁ = copy!(s.L₂₁,s.A₂₁)
     if p == 1                           # shortcut for 1×1 λ
@@ -132,19 +132,20 @@ function update!(s::PLSOne,λ::Vector)
         lamsq = lam*lam
         for j in 1:l₁
             s.L₁₁[1,j] = sqrt(s.A₁₁[1,j]*lamsq + 1.)
-            scale!(contiguous_view(L₂₁,(j-1)*p,(p,)),lam/s.L₁₁[1,j])
+            scale!(view(L₂₁,:,j),lam/s.L₁₁[1,j])
         end
     else
         Ac_mul_B!(λ,copy!(s.L₁₁,s.A₁₁))   # multiply on left by λ'
-        for k in 0:(l₁-1)               # using offsets, not indices
-            wL = A_mul_B!(contiguous_view(s.L₁₁,k*p₁*p₁,(p₁,p₁)),λ)
+        cols = 1:p₁
+        for k in 1:l₁
+            wL = A_mul_B!(view(s.L₁₁,:,cols),λ)
             for j in 1:p₁               # inflate the diagonal
                 wL[j,j] += 1.0
             end
             _,info = LAPACK.potrf!('L',wL) # lower Cholesky factor
             info == 0 || error("Cholesky failure at L diagonal block $(k+1)")
-            A_rdiv_Bc!(A_mul_B!(contiguous_view(L₂₁,k*p*p₁,(p,p₁)),λ),
-                                   Triangular(wL,:L,false))
+            A_rdiv_Bc!(A_mul_B!(view(L₂₁,:,cols),λ),Triangular(wL,:L,false))
+            cols += p₁
         end
     end
     BLAS.syrk!('L','N',-1.,L₂₁,1.,copy!(s.L₂₂.UL,s.A₂₂))

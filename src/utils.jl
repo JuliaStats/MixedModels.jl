@@ -10,18 +10,19 @@ function amalgamate1(Xs,p,λ)
 end
 
 ## amalgamate random-effects terms with identical grouping factors
-function amalgamate(grps,Xs,p,λ,facs)
-    np = Int[]; nXs = {}; nλ = {}; nfacs = {}
+function amalgamate(grps,Xs,p,λ,facs,l)
+    np = Int[]; nXs = {}; nλ = {}; nfacs = {}; nl = Int[]
     ugrp = unique(grps)
     for u in ugrp
         inds = grps .== u
         (xv,pv,lv) = amalgamate1(Xs[inds],p[inds],λ[inds])
-        append!(np, pv)
+        append!(np,pv)
         append!(nXs,xv)
         append!(nλ,lv)
         append!(nfacs,{facs[inds[1]]})
+        push!(nl,l[inds[1]])
     end
-    ugrp,nXs,np,nλ,nfacs
+    ugrp,nXs,np,nλ,nfacs,nl
 end
 
 ## Version of cholfact of a symmetric matrix that works in both 0.3 and 0.4 series
