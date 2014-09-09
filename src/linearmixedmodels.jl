@@ -20,35 +20,6 @@ type LinearMixedModel{S<:PLSSolver} <: MixedModel
     μ::Vector{Float64}
 end
 
-## Convert the left-hand side of a random-effects term to a model matrix.
-## Special handling for a simple, scalar r.e. term, e.g. (1|g).
-## FIXME: Change this behavior in DataFrames/src/statsmodels/formula.jl
-lhs2mat(t::Expr,df::DataFrame) = t.args[2] == 1 ? ones(nrow(df),1) :
-        ModelMatrix(ModelFrame(Formula(nothing,t.args[2]),df)).m
-
-function amalgamate1(Xs,p,λ)
-    (k = length(λ)) == length(Xs) == length(p) || throw(DimensionMismatch(""))
-    k == 1 && return (Xs,p,λ)
-    if all([isa(ll,PDScalF) for ll in λ])
-        return({vcat(Xs...)},[sum(p)],{PDDiagF(ones(length(λ)))})
-    end
-    error("Composite code not yet written")
-end
-
-## amalgamate random-effects terms with identical grouping factors
-function amalgamate(grps,Xs,p,λ)
-    np = Int[]; nXs = {}; nλ = {}
-    ugrp = unique(grps)
-    for u in ugrp
-        inds = grps .== u
-        (xv,pv,lv) = amalgamate1(Xs[inds],p[inds],λ[inds])
-        append!(np, pv)
-        append!(nXs,xv)
-        append!(nλ,lv)
-    end
-    ugrp,nXs,np,nλ
-end
-
 function lmm(f::Formula, fr::AbstractDataFrame)
     mf = ModelFrame(f,fr)
     X = ModelMatrix(mf)
@@ -69,15 +40,14 @@ function lmm(f::Formula, fr::AbstractDataFrame)
     end
     Xs = {lhs2mat(t,mf.df)' for t in retrms} # transposed model matrices
     p = Int[size(x,1) for x in Xs]
-    λ = {pp == 1 ? PDScalF(1.) : PDLCholF(cholfact(eye(pp),:L)) for pp in p}
+    λ = {pp == 1 ? PDScalF(1.,1) : PDLCholF(cholfact(eye(pp),:L)) for pp in p}
     if length(unique(grps)) < length(grps)
-        grps,Xs,p,λ = amalgamate(grps,Xs,p,λ)
+        grps,Xs,p,λ,facs = amalgamate(grps,Xs,p,λ,facs)
     end
     q = sum(p .* l)
     uβ = zeros(q + size(X,2))
     Zty = {zeros(pp,ll) for (pp,ll) in zip(p,l)}
     u = {}
-    offset = 0
     for (x,ff,zty) in zip(Xs,facs,Zty)
         push!(u,contiguous_view(uβ, offset, size(zty)))
         offset += length(zty)
@@ -169,9 +139,9 @@ function StatsBase.fit(m::LinearMixedModel, verbose=false)
     if !m.fit
         th = θ(m); k = length(th)
         opt = NLopt.Opt(hasgrad(m) ? :LD_MMA : :LN_BOBYQA, k)
-        NLopt.ftol_rel!(opt, 1e-12)    # relative criterion on deviance
+        NLopt.ftol_rel!(opt, 1e-12)   # relative criterion on deviance
         NLopt.ftol_abs!(opt, 1e-8)    # absolute criterion on deviance
-        NLopt.xtol_abs!(opt, 1e-10)    # criterion on all parameter value changes
+        NLopt.xtol_abs!(opt, 1e-10)   # criterion on parameter value changes
         NLopt.lower_bounds!(opt, lower(m))
         function obj(x::Vector{Float64}, g::Vector{Float64})
             val = objective!(m,x)

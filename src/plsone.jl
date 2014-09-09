@@ -76,8 +76,13 @@ function Base.cholfact(s::PLSOne,RX::Bool=true)
     blkdiag({sparse(tril(contiguous_view(s.L₁₁,(j-1)*p₁*p₁,(p₁,p₁)))) for j in 1:l₁}...)
 end
 
-function grad(s::PLSOne,b::Vector,u::Vector,λ::Vector)
-    length(b) == length(u) == length(λ) == 1 || throw(DimensionMisMatch)
+## Arguments are:
+## s - plssolver
+## Ztr - -2.Zt*resid/scale(m,true)
+## u - current spherical random effects
+## λ - current λ
+function grad(s::PLSOne,Ztr::Vector,u::Vector,λ::Vector)
+    length(Ztr) == length(u) == length(λ) == 1 || throw(DimensionMisMatch)
     λ = λ[1]
     p,p₁,l₁ = size(s)
     dd = (p₁,p₁)
@@ -91,7 +96,7 @@ function grad(s::PLSOne,b::Vector,u::Vector,λ::Vector)
             res[i] += tmp[i]
         end
     end
-    BLAS.gemm!('N','T',1.,u[1],b[1],2.,res) # add in the residual part
+    BLAS.gemm!('N','T',1.,u[1],Ztr[1],2.,res) # add in the residual part
     grdcmp(λ,transpose!(tmp,res))
 end
 
@@ -123,7 +128,7 @@ function update!(s::PLSOne,λ::Vector)
     L₂₁ = copy!(s.L₂₁,s.A₂₁)
     if p == 1                           # shortcut for 1×1 λ
         isa(λ,PDScalF) || error("1×1 λ section should be a PDScalF type")
-        lam = λ.s.λ
+        lam = λ.s
         lamsq = lam*lam
         for j in 1:l₁
             s.L₁₁[1,j] = sqrt(s.A₁₁[1,j]*lamsq + 1.)

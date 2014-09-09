@@ -33,9 +33,9 @@ function update!(s::PLSDiagWSMP,λ::Vector)
         isa(ll,PDScalF) || error("λ must be a vector PDScalF objects")
     end
     ind = 1
-    lam = λ[1].s.λ
+    lam = λ[1].s
     for j in 1:length(s.λvec)
-        j > s.trmsz[ind] && (lam = λ[ind += 1].s.λ)
+        j > s.trmsz[ind] && (lam = λ[ind += 1].s)
         s.λvec[j] = lam
     end
     for (j,lam) in enumerate(s.λvec)

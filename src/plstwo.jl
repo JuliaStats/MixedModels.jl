@@ -144,7 +144,7 @@ function update!(s::PLSTwo,λ::Vector)
     L₃₁ = copy!(s.L₃₁,s.A₃₁)
     if p₁ == 1                          # shortcut for 1×1 λ
         isa(λ[1],PDScalF) || error("1×1 λ section should be a PDScalF type")
-        lam = λ[1].s.λ
+        lam = λ[1].s
         lamsq = lam*lam
         for j in 1:l₁
             sc = lam/(s.L₁₁[1,j] = sqrt(s.A₁₁[1,j]*lamsq + 1.))
@@ -173,7 +173,7 @@ function update!(s::PLSTwo,λ::Vector)
     L₃₂ = copy!(s.L₃₂,s.A₃₂)
     if p₂ == 1
         isa(λ₂,PDScalF) || error("1×1 λ section should be a PDScalF type")
-        lam = λ₂.s.λ
+        lam = λ₂.s
         for i in 1:l₂
             L₂₂d[i,i] = s.A₂₂[1,i]*lam*lam + 1.
         end
@@ -207,6 +207,9 @@ function update!(s::PLSTwo,λ::Vector)
 end
 
 ## grad calculation
-## need tr((LL')⁻¹*λ*Z'Z*(∂λ/∂θᵢ)) + tr((LL')⁻¹*(∂λ'/∂θᵢ)*Z'Z*λ)
+##  tr((∂λ/∂θᵢ)*(LL')⁻¹*λ'*Z'Z) + tr((∂λ'/∂θᵢ)'*Z'Z*λ*(LL')⁻¹)
+## Because (∂λ/∂θᵢ) is block diagonal, only the diagonal blocks of
+## (L'L)⁻¹λ'Z'Z must be evaluated.
 ## It may be worthwhile calculating and storing L⁻¹ for this.
 ## For parameters in λ₂ only the trailing rows of L⁻¹ are used.
+
