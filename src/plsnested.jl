@@ -138,8 +138,11 @@ end
 
 function Base.cholfact(s::PLSNested,RX::Bool=true)
     Lmats = s.Lmats
-    nm = length(Lmats)
-    RX && return Cholesky(Lmats[nm][:,(s.offsets[nm]+1:size(s.Lmats[nm],2))],'L')
+    if RX
+        nm = length(Lmats)
+        Lm = Lmats[nm]
+        return Cholesky(Lm[:,(s.offsets[nm]+1:size(Lm,2))],'L')
+    end
     error("code not yet written")
 end
 

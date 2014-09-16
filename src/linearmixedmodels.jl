@@ -438,7 +438,7 @@ function bootstrap!(res::AbstractArray{Float64,2}, m::LinearMixedModel, f::Funct
         for i in 1:size(res,2)
             rand!(d,mm.y)               # simulate a response vector
             mm.fit = false
-            for j in 1:length(λ)
+            for j in 1:length(mm.λ)
                 copy!(mm.λ[j].data,eyes[j])
             end
             res[:,i] = f(fit(mm,true))

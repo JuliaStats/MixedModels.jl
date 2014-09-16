@@ -25,6 +25,33 @@ function amalgamate(grps,Xs,p,λ,facs,l)
     ugrp,nXs,np,nλ,nfacs,nl
 end
 
+## Create a Base.LinAlg.Cholesky object from a StridedMatrix
+if VERSION < v"0.4-"
+    function cholesky(A::StridedMatrix{Float64},uplo::Symbol)
+        Base.LinAlg.chksquare(A)
+        Base.LinAlg.Cholesky(A,string(uplo)[1])
+    end
+else
+    function cholesky(A::StridedMatrix{Float64},uplo::Symbol)
+        Base.LinAlg.chksquare(A)
+        Base.LinAlg.Cholesky{Float64,typeof(A),uplo}(A)
+    end
+end
+
+
+## In-place conversion of a Triangular matrix to a Cholesky factor
+if VERSION < v"0.4-"
+    function cholesky{T,S,UpLo,IsUnit}(A::Triangular{T,S,UpLo,IsUnit})
+        IsUnit && error("In place cholesky conversion not allowed from unit triangular")
+        Base.LinAlg.Cholesky(A.data,string(UpLo)[1])
+    end
+else
+    function cholesky{T,S,UpLo,IsUnit}(A::Triangular{T,S,UpLo,IsUnit})
+        IsUnit && error("In place cholesky conversion not allowed from unit triangular")
+        Base.LinAlg.Cholesky{T,S,UpLo}(A.data)
+    end
+end
+
 ## Version of cholfact of a symmetric matrix that works in both 0.3 and 0.4 series
 Base.cholfact(s::Symmetric{Float64}) = cholfact(symcontents(s), symbol(s.uplo))
 
@@ -38,6 +65,10 @@ grplevels(dd::DataFrame,nms::Vector) = grplevels({getindex(dd,nm) for nm in nms}
 ## Check if the levels in factors or arrays are nested
 isnested(v::Vector) = length(v) == 1 || length(Set(zip(v...))) == maximum(grplevels(v))
 isnested(dd::DataFrame,nms::Vector) = isnested({getindex(dd,nm) for nm in nms})
+
+## Determine if a triangular matrix is unit triangular
+isunit{T,S<:AbstractMatrix,UpLo}(m::Triangular{T,S,UpLo,false}) = false
+isunit{T,S<:AbstractMatrix,UpLo}(m::Triangular{T,S,UpLo,true}) = true
 
 ## Convert the left-hand side of a random-effects term to a model matrix.
 ## Special handling for a simple, scalar r.e. term, e.g. (1|g).
@@ -74,5 +105,3 @@ function ztblk(m::Matrix,v)
                     vec(m))            # nzval
 end
 ztblk(m::Matrix,v::PooledDataVector) = ztblk(m,v.refs)
-
-

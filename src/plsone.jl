@@ -82,7 +82,7 @@ end
 ## u - current spherical random effects
 ## λ - current λ
 function grad(s::PLSOne,Ztr::Vector,u::Vector,λ::Vector)
-    length(Ztr) == length(u) == length(λ) == 1 || throw(DimensionMisMatch)
+    length(Ztr) == length(u) == length(λ) == 1 || throw(DimensionMismatch(""))
     λ = λ[1]
     p,p₁,l₁ = size(s)
     dd = (p₁,p₁)
@@ -93,8 +93,8 @@ function grad(s::PLSOne,Ztr::Vector,u::Vector,λ::Vector)
         LAPACK.potrs!('L',view(s.L₁₁,:,cols),
                       Ac_mul_B!(λ,copy!(tmp,view(s.A₁₁,:,cols))))
         cols += p₁
-        @inbounds @simd for i in 1:abs2(p₁)
-            res[i] += tmp[i]
+        @simd for i in 1:abs2(p₁)
+            @inbounds res[i] += tmp[i]
         end
     end
     BLAS.gemm!('N','T',1.,u[1],Ztr[1],2.,res) # add in the residual part

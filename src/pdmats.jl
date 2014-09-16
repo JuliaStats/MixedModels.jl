@@ -251,3 +251,7 @@ end
 function grdcmp(p::PDScalF,m::AbstractMatrix{Float64})
     sum(diag(m))
 end
+
+Base.tril(p::PDLCholF) = tril(p.ch.UL)
+Base.tril(p::PDDiagF) = diagm(p.d)
+Base.tril(p::PDScalF) = diagm(fill(p.s,(p.n,)))
