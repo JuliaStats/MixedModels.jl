@@ -105,3 +105,17 @@ function ztblk(m::Matrix,v)
                     vec(m))            # nzval
 end
 ztblk(m::Matrix,v::PooledDataVector) = ztblk(m,v.refs)
+
+immutable inds
+    p::Int
+    l::Int
+    function inds(p,l)
+        ((p = int(p)) > 0 && (l = int(l))) > 0 || error("p = $p and l = $l must both be positive")
+        new(p,l)
+    end
+end
+
+Base.length(i::inds) = i.l
+Base.start(i::inds) = 0
+Base.next(i::inds,j::Int) = (j*i.p + (1:i.p), j+1)
+Base.done(i::inds,j::Int) = j ≥ i.l

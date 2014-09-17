@@ -1,6 +1,6 @@
-bs10 = DataFrame(read_rda(Pkg.dir("MixedModels","data","bs10.rda"))["bs10"])
+bs10 = MixedModels.rdata("bs10")
 
-lmm₆ = lmm(dif ~ S+F+SF + (S+F+SF|SubjID) + (S+F+SF|ItemID),bs10);
+lmm₆ = lmm(dif ~ 1+S+F+SF + (1+S+F+SF|SubjID) + (1+S+F+SF|ItemID),bs10);
 
 @test typeof(lmm₆) == LinearMixedModel{PLSTwo}
 @test size(lmm₆) == (1104,4,416,2)
