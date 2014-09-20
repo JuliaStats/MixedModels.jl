@@ -34,6 +34,7 @@ type PLSTwo <: PLSSolver # Solver for models with two crossed or nearly crossed 
     L₂₂::Triangular{Float64,Matrix{Float64},:L,false} 
     L₃₂::Matrix{Float64}
     L₃₃::Cholesky{Float64}
+    gtmp::Vector{Matrix{Float64}}       # scratch arrays for grad! method
 end
 
 function PLSTwo(facs::Vector,Xst::Vector,Xt::Matrix)
@@ -73,7 +74,9 @@ function PLSTwo(facs::Vector,Xst::Vector,Xt::Matrix)
         BLAS.ger!(1.,c₃,c₂,view(A₃₂,:,i₂))
     end
     PLSTwo(A₁₁,A₂₁,A₃₁,A₂₂,A₃₂,Xt*Xt',similar(A₁₁),similar(A₂₁),similar(A₃₁),
-           Triangular(zeros(q₂,q₂),:L,false),similar(A₃₂),cholfact!(eye(p),:L))
+           Triangular(zeros(q₂,q₂),:L,false),similar(A₃₂),cholfact!(eye(p),:L),
+           Matrix{Float64}[Array(Float64,(p₁,p₁)),Array(Float64,(q₂,p₁)),
+                           Array(Float64,(q₂,p₂)),Array(Float64,(p₁,p₂))])
 end
 
 function Base.cholfact(s::PLSTwo,RX::Bool=true)
@@ -81,6 +84,58 @@ function Base.cholfact(s::PLSTwo,RX::Bool=true)
     p,p₁,p₂,ℓ₁,ℓ₂,q₁,q₂ = size(s)
     L₁₁ = blkdiag({sparse(tril(view(s.L₁₁,:,i₁))) for i₁ in inds(p₁,ℓ₁)}...)
     vcat(hcat(L₁₁,spzeros(q₁,q₂)),sparse(hcat(s.L₂₁,s.L₂₂)))
+end
+
+## grad calculation - evaluates the sums of the diagonal blocks of (LL')⁻¹*Λ'*Z'Z
+## where the sums are over the "outer" diagonal blocks of Λ
+## From these sums, tr((∂Λ/∂θᵢ)*(LL')⁻¹*Λ'*Z'Z + (LL')⁻¹*(∂Λ/∂θᵢ)'*Z'ZΛ) is evaluated.
+## The function is mutating on its first argument which, on entry contains the gradient
+## blocks from the penalized residual sum of squares term.
+
+function grad!(res::Vector{Matrix{Float64}},s::PLSTwo,λ::Vector)
+    length(λ) == length(res) == 2 || throw(DimensionMismatch(""))
+    _,p₁,p₂,ℓ₁,ℓ₂,q₁,q₂ = size(s)
+    λ₁ = λ[1]
+    r₁ = res[1]
+    size(λ₁) == size(r₁) == (p₁,p₁) || throw(DimensionMismatch(""))
+    λ₂ = λ[2]
+    r₂ = res[2]
+    size(λ₂) == size(r₂) == (p₂,p₂) || throw(DimensionMismatch(""))
+    tmp₁ = s.gtmp[1]
+    tmp₂ = s.gtmp[2]
+    tmp₃ = s.gtmp[3]
+    tmp₄ = s.gtmp[4]
+    for i₁ in inds(p₁,ℓ₁)
+        copy!(tmp₁,view(s.A₁₁,:,i₁))
+        L₁ = Triangular(view(s.L₁₁,:,i₁),:L,false)
+        A_ldiv_B!(L₁,A_mul_B!(λ₁,tmp₁))
+        copy!(tmp₂,view(s.A₂₁,:,i₁))
+        for i₂ in inds(p₂,ℓ₂)
+            BLAS.gemm!('N','N',-1.0,view(s.L₂₁,i₂,i₁),tmp₁,1.0,A_mul_B!(λ₂,view(tmp₂,i₂,:)))
+        end
+        A_ldiv_B!(cholesky(s.L₂₂),tmp₂)
+        Ac_ldiv_B!(L₁,BLAS.gemm!('T','N',-1.0,view(s.L₂₁,:,i₁),tmp₂,1.0,tmp₁))
+        for j in 1:p₁, i in j:p₁
+            r₁[i,j] += tmp₁[i,j]
+        end
+    end
+    for i₂ in inds(p₂,ℓ₂)
+        fill!(tmp₃,0.)
+        dd = view(tmp₃,i₂,:)            # diagonal block
+        A_mul_B!(λ₂,copy!(view(tmp₃,i₂,:),view(s.A₂₂,:,i₂)))
+        for i₁ in inds(p₁,ℓ₁)
+            A_ldiv_B!(Triangular(view(s.L₁₁,:,i₁),:L,false),
+                      A_mul_B!(λ₁,Base.LinAlg.transpose!(tmp₄,view(s.A₂₁,i₂,i₁))))
+            for i₃ in inds(p₂,ℓ₂)
+                BLAS.gemm!('N','N',-1.0,view(s.L₂₁,i₃,i₁),tmp₄,1.0,view(tmp₃,i₃,:))
+            end
+        end
+        A_ldiv_B!(cholesky(s.L₂₂),tmp₃)
+        for j in 1:p₂, i in j:p₂
+            r₂[i,j] += dd[i,j]
+        end
+    end
+    res
 end
 
 function Base.logdet(s::PLSTwo,RX=true)
@@ -207,67 +262,6 @@ function update!(s::PLSTwo,λ::Vector)
     s
 end
 
-## grad calculation
-##  tr((∂λ/∂θᵢ)*(LL')⁻¹*λ'*Z'Z) + tr((∂λ'/∂θᵢ)'*Z'Z*λ*(LL')⁻¹)
-## Because (∂λ/∂θᵢ) is block diagonal, only the diagonal blocks of
-## (L'L)⁻¹λ'Z'Z must be evaluated and summed.
-
-function grad!(res::Vector{Matrix{Float64}},s::PLSTwo,λ::Vector)
-    length(λ) == length(res) == 2 || throw(DimensionMismatch(""))
-    _,p₁,p₂,ℓ₁,ℓ₂,q₁,q₂ = size(s)
-    λ₁ = λ[1]
-    r₁ = res[1]
-    size(λ₁) == size(r₁) == (p₁,p₁) || throw(DimensionMismatch(""))
-    λ₂ = λ[2]
-    r₂ = res[2]
-    size(λ₂) == size(r₂) == (p₂,p₂) || throw(DimensionMismatch(""))
-    tmp₁ = similar(r₁)
-    tmp₃ = Array(Float64,q₂,p₁)
-    tmp₄ = Array(Float64,q₂,p₂)
-    tmp₅ = Array(Float64,p₁,p₂)
-    inds₁ = 1:p₁
-    for k₁ in 1:ℓ₁  ## create an iterator for this idiom
-        copy!(tmp₁,view(s.A₁₁,:,inds₁))
-        L₁ = Triangular(view(s.L₁₁,:,inds₁),:L,false)
-        A_ldiv_B!(L₁,A_mul_B!(λ₁,tmp₁))
-        copy!(tmp₃,view(s.A₂₁,:,inds₁))
-        inds₂ = 1:p₂
-        for k₂ in 1:ℓ₂
-            t2kk = A_mul_B!(λ₂,view(tmp₃,inds₂,:))
-            BLAS.gemm!('N','N',-1.0,view(s.L₂₁,inds₂,inds₁),tmp₁,1.0,t2kk)
-            inds₂ += p₂
-        end
-        A_ldiv_B!(cholesky(s.L₂₂),tmp₃)
-        Ac_ldiv_B!(L₁,BLAS.gemm!('T','N',-1.0,view(s.L₂₁,:,inds₁),tmp₃,1.0,tmp₁))
-        for j in 1:p₁, i in j:p₁
-            r₁[i,j] += tmp₁[i,j]
-        end
-        inds₁ += p₁
-    end
-    inds₂ = 1:p₂
-    for k₂ in 1:ℓ₂
-        fill!(tmp₄,0.)
-        dd = view(tmp₄,inds₂,:)         # diagonal block for k₂
-        A_mul_B!(λ₂,copy!(view(tmp₄,inds₂,:),view(s.A₂₂,:,inds₂)))
-        inds₁ = 1:p₁
-        for k₁ in 1:ℓ₁
-            A_ldiv_B!(Triangular(view(s.L₁₁,:,inds₁),:L,false),
-                      A_mul_B!(λ₁,Base.LinAlg.transpose!(tmp₅,view(s.A₂₁,inds₂,inds₁))))
-            inds₃ = 1:p₂
-            for k₃ in 1:ℓ₂
-                BLAS.gemm!('N','N',-1.0,view(s.L₂₁,inds₃,inds₁),tmp₅,1.0,view(tmp₄,inds₃,:))
-                inds₃ += p₂
-            end
-            inds₁ += p₁
-        end
-        A_ldiv_B!(cholesky(s.L₂₂),tmp₄)
-        for j in 1:p₂, i in j:p₂
-            r₂[i,j] += dd[i,j]
-        end
-        inds₂ += p₂
-    end
-    res
-end
 
 function Base.full(s::PLSTwo)
     _,p₁,p₂,ℓ₁,ℓ₂,q₁,q₂ = size(s)

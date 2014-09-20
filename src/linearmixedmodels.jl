@@ -10,6 +10,7 @@ type LinearMixedModel{S<:PLSSolver} <: MixedModel
     facs::Vector
     fit::Bool
     fnms::Vector                        # names of grouping factors
+    gradblk::Vector
     mf::ModelFrame
     resid::Vector{Float64}
     s::S
@@ -72,7 +73,8 @@ function lmm(f::Formula, fr::AbstractDataFrame)
     end
     LinearMixedModel(false, X, Xs, Xty, map(ztblk,Xs,facs), Zty,
                      map(zeros, u), f, facs, false, map(string,grps),
-                     mf, similar(y), s, u, uβ, y, λ, similar(y))
+                     [zeros(k,k) for k in p], mf, similar(y),
+                     s, u, uβ, y, λ, similar(y))
 end
 
 ## Return the Cholesky factor RX or L
@@ -185,14 +187,21 @@ fnames(m::LinearMixedModel) = m.fnms
 ## overwrite g with the gradient (assuming that objective! has already been called)
 function grad!(g,m::LinearMixedModel)
     hasgrad(m) || error("gradient evaluation not provided for $(typeof(m))")
-    ## fill in b with -2.Zt*resid/scale(m,true)
-    mult = -2./scale(m,true)
+    ## overwrite b with -Zt*resid/scale(m,true)
+    mult = -1./scale(m,true)
     for i in 1:length(m.b)
         A_mul_B!(mult,m.Ztblks[i],m.resid,0.,vec(m.b[i]))
+        BLAS.gemm!('N','T',1.,m.u[i],m.b[i],0.,m.gradblk[i])
     end
-    gg = grad(m.s,m.b,m.u,m.λ)
-    length(gg) == length(g) || throw(DimensionMismatch(""))
-    copy!(g,gg)
+    grad!(m.gradblk,m.s,m.λ)
+    offset = 0
+    for i in 1:length(m.gradblk)
+        ll = m.λ[i]
+        nth = nθ(ll)
+        grdcmp!(view(g,offset+(1:nth)),ll,m.gradblk[i])
+        offset += nth
+    end
+    g
 end
 
 ## grplevels(m) -> Vector{Int} : number of levels in each term's grouping factor
@@ -200,7 +209,9 @@ grplevels(v::Vector) = [length(f.pool) for f in v]
 grplevels(m::LinearMixedModel) = grplevels(m.facs)
 
 hasgrad(m::LinearMixedModel) = false
-hasgrad(m::LinearMixedModel{PLSOne}) = true                       
+## No, these can't be moved to plsone.jl and plstwo.jl because of the order of file inclusion.
+hasgrad(m::LinearMixedModel{PLSOne}) = true
+hasgrad(m::LinearMixedModel{PLSTwo}) = true                       
 
 isfit(m::LinearMixedModel) = m.fit
 

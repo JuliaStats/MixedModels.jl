@@ -16,9 +16,9 @@ fit(lmm₃)
 @test_approx_eq_eps stderr(lmm₃) [6.632246393963571,1.502190605041084] 1.e-3
 @test_approx_eq_eps MixedModels.θ(lmm₃) [0.9292135718820399,0.01816527134999509,0.2226356241138231] 1.e-4
 @test_approx_eq_eps std(lmm₃)[1] [23.78058820861926,5.716840462986926] 1.e-4
-@test_approx_eq_eps scale(lmm₃) 25.59181315643851 1.e-6
-@test_approx_eq_eps logdet(lmm₃) 8.390384020157015 1.e-5
-@test_approx_eq_eps logdet(lmm₃,false) 73.90337187545992 1.e-4
+@test_approx_eq_eps scale(lmm₃) 25.59181315643851 1.e-4
+@test_approx_eq_eps logdet(lmm₃) 8.390384020157015 1.e-4
+@test_approx_eq_eps logdet(lmm₃,false) 73.90337187545992 1.e-3
 @test_approx_eq diag(cor(lmm₃)[1]) ones(2)
 
 #fit(reml!(lmm₃))                    # reml grad not yet written
