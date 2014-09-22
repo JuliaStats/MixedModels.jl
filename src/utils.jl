@@ -1,30 +1,5 @@
 ## Utilities
 
-function amalgamate1(Xs,p,λ)
-    (k = length(λ)) == length(Xs) == length(p) || throw(DimensionMismatch(""))
-    k == 1 && return (Xs,p,λ)
-    if all([isa(ll,PDScalF) for ll in λ])
-        return({vcat(Xs...)},[sum(p)],{PDDiagF(ones(length(λ)))},)
-    end
-    error("Composite code not yet written")
-end
-
-## amalgamate random-effects terms with identical grouping factors
-function amalgamate(grps,Xs,p,λ,facs,l)
-    np = Int[]; nXs = {}; nλ = {}; nfacs = {}; nl = Int[]
-    ugrp = unique(grps)
-    for u in ugrp
-        inds = grps .== u
-        (xv,pv,lv) = amalgamate1(Xs[inds],p[inds],λ[inds])
-        append!(np,pv)
-        append!(nXs,xv)
-        append!(nλ,lv)
-        append!(nfacs,{facs[inds[1]]})
-        push!(nl,l[inds[1]])
-    end
-    ugrp,nXs,np,nλ,nfacs,nl
-end
-
 ## Create a Base.LinAlg.Cholesky object from a StridedMatrix
 if VERSION < v"0.4-"
     function cholesky(A::StridedMatrix{Float64},uplo::Symbol)

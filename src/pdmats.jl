@@ -68,6 +68,7 @@ function Base.size(p::PDScalF,i)
 end
 Base.size(p::PDCompF) = size(p.t)
 Base.size(p::PDCompF,i) = size(p.t,i)
+Base.size(p::PDDiagF) = (n=length(p.d);(n,n))
 
 PDMats.dim(p::PDLCholF) = size(p.ch,1)
 PDMats.dim(p::PDDiagF) = length(p.d.diag)
@@ -221,37 +222,68 @@ Base.svdvals(p::PDScalF) = fill(p.s,(p.n,))
 
 Base.svdfact(p::PDLCholF) = svdfact(p.ch[:L])
 
-function grdcmp(p::PDCompF,m::AbstractMatrix{Float64})
+## FIXME make this work
+function grdcmp!(v::DenseVector{Float64},p::PDCompF,m::Matrix{Float64})
     pv = map(dim,p.v)
     (n = chksquare(m)) == sum(pv) || throw(DimensionMismatch(""))
-    ans = Float64[]
     coloffset = 0
     for i in 1:length(pv)
         inds = coloffset + (1:pv[i])
         coloffset += pv[i]
-        push!(ans,grdcmp(view(m,inds,inds),p.v[i]))
+        push!(v,grdcmp(view(m,inds,inds),p.v[i]))
     end
+    v
 end
     
-function grdcmp(p::PDLCholF,m::AbstractMatrix{Float64})
+function grdcmp!(v::DenseVector{Float64},p::PDLCholF,m::Matrix{Float64})
     (n = chksquare(m)) == dim(p) || throw(DimensionMismatch(""))
-    res = Array(eltype(m), nltri(n))
+    length(v) == nltri(n) || throw(DimensionMismatch(""))
     pos = 0
-    for j in 1:n, i in j:n
-        res[pos += 1] = m[i,j]
+    for i in 1:n, j in i:n
+        v[pos += 1] = 2.m[i,j]
     end
-    res
+    v
 end
 
-function grdcmp(p::PDDiagF,m::AbstractMatrix{Float64})
+function grdcmp!(v::DenseVector{Float64},p::PDDiagF,m::Matrix{Float64})
+    (n = dim(p)) == chksquare(m) == length(v) || throw(DimensionMismatch(""))
+    for i in 1:n
+        v[i] = 2.m[i,i]
+    end
+    v
+end
+
+function grdcmp!(v::DenseVector{Float64},p::PDScalF,m::Matrix{Float64})
     (n = chksquare(m)) == dim(p) || throw(DimensionMismatch(""))
-    diag(m)
-end
-
-function grdcmp(p::PDScalF,m::AbstractMatrix{Float64})
-    sum(diag(m))
+    length(v) == 1 || throw(DimensionMismatch(""))
+    v[1] = 2.(n == 1 ? m[1,1] : sum(diag(m)))
 end
 
 Base.tril(p::PDLCholF) = tril(p.ch.UL)
 Base.tril(p::PDDiagF) = diagm(p.d)
 Base.tril(p::PDScalF) = diagm(fill(p.s,(p.n,)))
+
+function amalgamate1(Xs,p,λ)
+    (k = length(λ)) == length(Xs) == length(p) || throw(DimensionMismatch(""))
+    k == 1 && return (Xs,p,λ)
+    if all([isa(ll,PDScalF) for ll in λ])
+        return({vcat(Xs...)},[sum(p)],{PDDiagF(ones(length(λ)))},)
+    end
+    error("Composite code not yet written")
+end
+
+## amalgamate random-effects terms with identical grouping factors
+function amalgamate(grps,Xs,p,λ,facs,l)
+    np = Int[]; nXs = {}; nλ = {}; nfacs = {}; nl = Int[]
+    ugrp = unique(grps)
+    for u in ugrp
+        inds = grps .== u
+        (xv,pv,lv) = amalgamate1(Xs[inds],p[inds],λ[inds])
+        append!(np,pv)
+        append!(nXs,xv)
+        append!(nλ,lv)
+        append!(nfacs,{facs[inds[1]]})
+        push!(nl,l[inds[1]])
+    end
+    ugrp,nXs,np,nλ,nfacs,nl
+end

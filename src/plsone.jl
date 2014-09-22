@@ -22,6 +22,7 @@ type PLSOne <: PLSSolver
     L₁₁::Matrix{Float64}
     L₂₁::Matrix{Float64}
     L₂₂::Cholesky{Float64}
+    gtmp::Vector{Matrix{Float64}}
 end
 
 function PLSOne(ff::PooledDataVector, Xst::Matrix, Xt::Matrix)
@@ -39,7 +40,8 @@ function PLSOne(ff::PooledDataVector, Xst::Matrix, Xt::Matrix)
         BLAS.ger!(1.0,c₁,c₁,contiguous_view(A₁₁,i1*p₁*p₁,(p₁,p₁)))
         BLAS.ger!(1.0,contiguous_view(Xt,p*(j-1),(p,)),c₁,contiguous_view(A₂₁,i1*p*p₁,(p,p₁)))
     end
-    PLSOne(A₁₁,A₂₁,tril!(Xt*Xt'),similar(A₁₁),similar(A₂₁),cholfact(eye(p),:L))
+    PLSOne(A₁₁,A₂₁,tril!(Xt*Xt'),similar(A₁₁),similar(A₂₁),cholfact(eye(p),:L),
+           Matrix{Float64}[zeros(p₁,p₁)])
 end
 
 ## argument uβ contains vcat(λ'Z'y,X'y) on entry
@@ -76,29 +78,23 @@ function Base.cholfact(s::PLSOne,RX::Bool=true)
     blkdiag({sparse(tril(contiguous_view(s.L₁₁,(j-1)*p₁*p₁,(p₁,p₁)))) for j in 1:l₁}...)
 end
 
-## Arguments are:
-## s - plssolver
-## Ztr - -2.Zt*resid/scale(m,true)
-## u - current spherical random effects
-## λ - current λ
-function grad(s::PLSOne,Ztr::Vector,u::Vector,λ::Vector)
-    length(Ztr) == length(u) == length(λ) == 1 || throw(DimensionMismatch(""))
+## grad calculation - evaluates the sum of the diagonal blocks of (LL')⁻¹*Λ'*Z'Z
+## The function is mutating on its first argument which, on entry, contains the gradient
+## blocks from the penalized residual sum of squares term.
+
+function grad!(res::Vector{Matrix{Float64}},s::PLSOne,λ::Vector)
+    length(λ) == 1 || throw(DimensionMismatch(""))
     λ = λ[1]
-    p,p₁,l₁ = size(s)
-    dd = (p₁,p₁)
-    res = zeros(p₁,p₁)
-    tmp = similar(res)                  # scratch array
-    cols = 1:p₁
-    for k in 1:l₁
-        LAPACK.potrs!('L',view(s.L₁₁,:,cols),
-                      Ac_mul_B!(λ,copy!(tmp,view(s.A₁₁,:,cols))))
-        cols += p₁
-        @simd for i in 1:abs2(p₁)
-            @inbounds res[i] += tmp[i]
+    _,p₁,ℓ₁ = size(s)
+    r₁ = res[1]
+    t₁ = s.gtmp[1]
+    for i in inds(p₁,ℓ₁)
+        LAPACK.potrs!('L',view(s.L₁₁,:,i),Ac_mul_B!(λ,copy!(t₁,view(s.A₁₁,:,i))))
+        for j in 1:abs2(p₁)
+            r₁[j] += t₁[j]
         end
     end
-    BLAS.gemm!('N','T',1.,u[1],Ztr[1],2.,res) # add in the residual part
-    grdcmp(λ,transpose!(tmp,res))
+    r₁
 end
 
 ## Logarithm of the determinant of the matrix represented by RX or L
