@@ -1,3 +1,4 @@
+using Base.LinAlg.Cholesky              # so the file can be included by itself
 abstract AbstractPDMatFactor
 abstract SimplePDMatFactor <: AbstractPDMatFactor
 
@@ -68,7 +69,7 @@ function Base.size(p::PDScalF,i)
 end
 Base.size(p::PDCompF) = size(p.t)
 Base.size(p::PDCompF,i) = size(p.t,i)
-Base.size(p::PDDiagF) = (n=length(p.d);(n,n))
+Base.size(p::PDDiagF) = size(p.d)
 
 PDMats.dim(p::PDLCholF) = size(p.ch,1)
 PDMats.dim(p::PDDiagF) = length(p.d.diag)
@@ -282,8 +283,8 @@ function amalgamate(grps,Xs,p,λ,facs,l)
         append!(np,pv)
         append!(nXs,xv)
         append!(nλ,lv)
-        append!(nfacs,{facs[inds[1]]})
-        push!(nl,l[inds[1]])
+        append!(nfacs,{facs[inds][1]})
+        push!(nl,l[inds][1])
     end
     ugrp,nXs,np,nλ,nfacs,nl
 end
