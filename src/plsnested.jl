@@ -146,6 +146,30 @@ function Base.cholfact(s::PLSNested,RX::Bool=true)
     error("code not yet written")
 end
 
+function Base.full(s::PLSNested)
+    offsets = s.offsets
+    ntot = offsets[end]
+    A = zeros(ntot,ntot)
+    L = zeros(ntot,ntot)
+    for i in 1:(length(offsets) - 1)
+        Ai = s.Amats[i]
+        Li = s.Lmats[i]
+        oo = offsets[i]
+        pvi = s.pv[i]
+        lij = s.lastij[i]
+        for j in 1:s.nl[i]
+            rb = oo + (j-1)*pvi         # row base
+            for ℓ in rb +(1:pvi)        # fill in the diagonal
+                for k in 1:pvi
+                    A[rb+k,ℓ] = Ai[k,ℓ]
+                    k ≤ ℓ && (L[rb+k,ℓ] = Li[k,ℓ])
+                end
+            end
+        end
+    end
+    (A,L)
+end
+
 ## Logarithm of the determinant of the matrix represented by RX or L
 function Base.logdet(s::PLSNested,RX=true)
     nm = length(s.Lmats)
