@@ -18,15 +18,16 @@
 ## for each level of facs[i].
 
 type PLSNested <: PLSSolver
-    Amats::Vector   # arrays of cross-products
-    Lmats::Vector   # storage for factors
+    Amats::Vector                       # arrays of cross-products
+    Lmats::Vector                       # storage for factors
     lastij::Vector  # last level of factor i nested in a level of factor j, i < j
     ## The vectors stored below could be calculated from the dimensions in Lmats
     ## They are used sufficiently frequently to warrant storing them instead of
     ## recalculating in each method
     nl::Vector{Int} # number of levels of factor i (fixed effects have 1 level)
-    offsets::Vector{Int} # offsets of column range for factor i
-    pv::Vector{Int} # number of rows in each element of Lmats
+    offsets::Vector{Int}     # offsets of column range for factor i
+    pv::Vector{Int}          # number of rows in each element of Lmats
+    gtmp::Vector{Matrix{Float64}}       # scratch arrays for grad calculation
 end
 
 ## On entry facs is sorted by decreasing levels and nesting of facs has been checked.
@@ -92,7 +93,9 @@ function PLSNested(facs::Vector,Xst::Vector,Xt::Matrix)
             end
         end
     end
-    PLSNested(Amats,[zeros(a) for a in Amats],lastij,nl,offsets,pv)
+    pf = view(pv,1:nf)
+    pmax = maximum(pf)
+    PLSNested(Amats,[zeros(a) for a in Amats],lastij,nl,offsets,pv,[zeros(p,pmax) for p in pf])
 end
 
 ## argument uβ contains vcat(λ'Z'y,X'y) on entry
@@ -151,7 +154,7 @@ function Base.full(s::PLSNested)
     ntot = offsets[end]
     A = zeros(ntot,ntot)
     L = zeros(ntot,ntot)
-    for i in 1:(length(offsets) - 1)
+    for i in 1:(length(offsets) - 1)    # random-effects terms only
         Ai = s.Amats[i]
         Li = s.Lmats[i]
         oo = offsets[i]
@@ -159,17 +162,61 @@ function Base.full(s::PLSNested)
         lij = s.lastij[i]
         for j in 1:s.nl[i]
             rb = oo + (j-1)*pvi         # row base
-            for ℓ in rb +(1:pvi)        # fill in the diagonal
+            for ℓ in 1:pvi              # fill in the diagonal
                 for k in 1:pvi
-                    A[rb+k,ℓ] = Ai[k,ℓ]
-                    k ≤ ℓ && (L[rb+k,ℓ] = Li[k,ℓ])
+                    A[rb+k,rb+ℓ] = Ai[k,rb+ℓ]
+                    k ≤ ℓ && (L[rb+k,rb+ℓ] = Li[k,rb+ℓ])
+                end
+                for ll in lij
+                    for jj in (ll[j]+1):ll[j+1]
+                        for k in 1:pvi
+                            A[rb+k,jj] = Ai[k,jj]
+                            L[rb+k,jj] = Li[k,jj]
+                        end
+                    end
                 end
             end
         end
     end
-    (A,L)
+    (Symmetric(A,'L'),cholesky(L,:L))
 end
 
+## return a view of the diagonal block of L at level j for index k of level i
+function dblk(i,j,k,s)
+    j ≥ i || error("j = $j must be ≥ i = $i")
+    if j == i
+        pvi = s.pv[i]
+        return view(s.Lmats[i],:,s.offsets[i] + (k-1)*pvi + (1:pvi))
+    end
+    pvj = s.pv[j]
+    view(s.Lmats[j],:,s.offsets[j]+(searchsortedfirst(s.lastij[j][i],k)-2)*pvj+(1:pvj))
+end
+
+## Evaluate the contribution to the gradient from the logdet term
+function grad!(res::Vector{Matrix{Float64}},s::PLSNested,λ::Vector)
+    nf = length(s.Amats)-1
+    for i in 1:nf                       # factor i
+        p = s.pv[i]
+        indsi = s.offsets[i] + (1:p)
+        for k in 1:s.nl[i]              # level k of factor i
+            ## need to downdate these blocks from j in 1:(i-1)
+            for j in i:nf               # store blocks of Λ'Z'Z
+                Ac_mul_B!(λ[j],copy!(view(s.gtmp[j],:,1:p),view(s.Amats[j],:,indsi)))
+            end
+            for j in i:nf               # forward solve
+                vv = view(s.gtmp[j],:,1:p)
+                A_ldiv_B!(Triangular(dblk(i,j,k,s),:L,false),vv)
+                for jj in (j+1):nf
+                    BLAS.gemm!('T','N',-1.0,view(s.Lmats[jj],:,indsi),vv,1.0,view(s.gtmp[jj],:,1:p))
+                end
+            end
+            @show i,k
+            @show s.gtmp
+            indsi += p
+        end
+    end
+end
+               
 ## Logarithm of the determinant of the matrix represented by RX or L
 function Base.logdet(s::PLSNested,RX=true)
     nm = length(s.Lmats)
@@ -195,6 +242,42 @@ function Base.logdet(s::PLSNested,RX=true)
     end
     2.sm
 end
+
+function Base.sparse(s::PLSNested)
+    offsets = s.offsets
+    ntot = offsets[end]
+    nf = length(offsets) - 1
+    nnzL = mapreduce(length, +, s.Lmats[1:nf])
+    LI = Int32[]; LJ = Int32[]; LV = Float64[]
+    sizehint(LI,nnzL); sizehint(LJ,nnzL); sizehint(LV,nnzL)
+    for i in 1:nf    # random-effects terms only
+        Li = s.Lmats[i]
+        oo = offsets[i]
+        pvi = s.pv[i]
+        lij = s.lastij[i]
+        for j in 1:s.nl[i]
+            rb = oo + (j-1)*pvi         # row base
+            for ℓ in 1:pvi              # fill in the diagonal
+                for k in 1:ℓ
+                    push!(LI,rb+k)
+                    push!(LJ,rb+ℓ)
+                    push!(LV,Li[k,rb+ℓ])
+                end
+                for ll in lij
+                    for jj in (ll[j]+1):ll[j+1]
+                        for k in 1:pvi
+                            push!(LI,rb+k)
+                            push!(LJ,jj)
+                            push!(LV,Li[k,jj])
+                        end
+                    end
+                end
+            end
+        end
+    end
+    Triangular(sparse(LI,LJ,LV,ntot,ntot),:L,false)
+end
+    
 
 ##  update!(s,λ)->s : update Lmats, the Cholesky factor
 function update!(s::PLSNested,λ::Vector)

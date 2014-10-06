@@ -275,7 +275,7 @@ end
 
 ## amalgamate random-effects terms with identical grouping factors
 function amalgamate(grps,Xs,p,λ,facs,l)
-    np = Int[]; nXs = {}; nλ = {}; nfacs = {}; nl = Int[]
+    np = Int[]; nXs = Matrix{Float64}[]; nλ = Any[]; nfacs = Any[]; nl = Int[]
     ugrp = unique(grps)
     for u in ugrp
         inds = grps .== u

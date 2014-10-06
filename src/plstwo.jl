@@ -114,11 +114,33 @@ function PLSTwo(facs::Vector,Xst::Vector,Xt::Matrix)
                            Array(Float64,(q₂,p₂)),Array(Float64,(p₁,p₂))])
 end
 
+## return the Cholesky factor LX or LZ
 function Base.cholfact(s::PLSTwo,RX::Bool=true)
     RX && return s.L₃₃
     p,p₁,p₂,ℓ₁,ℓ₂,q₁,q₂ = size(s)
     L₁₁ = blkdiag({sparse(tril(s.L₁₁d[k])) for k in 1:ℓ₁}...)
     vcat(hcat(L₁₁,spzeros(q₁,q₂)),sparse(hcat(s.L₂₁,s.L₂₂)))
+end
+
+## return Z'Z as a full matrix and L as a dense Cholesky factor
+function Base.full(s::PLSTwo)
+    _,p₁,p₂,ℓ₁,ℓ₂,q₁,q₂ = size(s)
+    ntot = q₁ + q₂
+    A = zeros(ntot,ntot)
+    L = zeros(ntot,ntot)
+    for i₁ in inds(p₁,ℓ₁)
+        copy!(view(A,i₁,i₁),view(s.A₁₁,:,i₁))
+        copy!(view(L,i₁,i₁),view(s.L₁₁,:,i₁))
+    end
+    i₂₁ = q₁+(1:q₂)
+    copy!(view(A,i₂₁,:),s.A₂₁)
+    copy!(view(L,i₂₁,:),s.L₂₁)
+    A₂₂ = view(A,i₂₁,i₂₁)
+    for i₂ in inds(p₂,ℓ₂)
+        copy!(view(A₂₂,i₂,i₂),view(s.A₂₂,:,i₂))
+    end
+    copy!(view(L,i₂₁,i₂₁),s.L₂₂)
+    Base.LinAlg.copytri!(A,'L'), cholesky(L,:L)
 end
 
 ## grad calculation - evaluates the sums of the diagonal blocks of (LL')⁻¹*Λ'*Z'Z
@@ -299,40 +321,4 @@ function update!(s::PLSTwo,λ::Vector)
     _, info = LAPACK.potrf!('L',L₃₃d)
     info == 0 ||  error("downdated X'X is not positive definite")
     s
-end
-
-function Base.full(s::PLSTwo)
-    _,p₁,p₂,ℓ₁,ℓ₂,q₁,q₂ = size(s)
-    ntot = q₁ + q₂
-    A = zeros(ntot,ntot)
-    L = zeros(ntot,ntot)
-    for i₁ in inds(p₁,ℓ₁)
-        copy!(view(A,i₁,i₁),view(s.A₁₁,:,i₁))
-        copy!(view(L,i₁,i₁),view(s.L₁₁,:,i₁))
-    end
-    i₂₁ = q₁+(1:q₂)
-    copy!(view(A,i₂₁,:),s.A₂₁)
-    copy!(view(L,i₂₁,:),s.L₂₁)
-    A₂₂ = view(A,i₂₁,i₂₁)
-    for i₂ in inds(p₂,ℓ₂)
-        copy!(view(A₂₂,i₂,i₂),view(s.A₂₂,:,i₂))
-    end
-    copy!(view(L,i₂₁,i₂₁),s.L₂₂)
-    Base.LinAlg.copytri!(A,'L'), cholesky(L,:L)
-end
-
-function Base.full(s::PLSTwo,λ::Vector)
-    length(λ) == 2 || throw(DimensionMismatch(""))
-    _,p₁,p₂,ℓ₁,ℓ₂,q₁,q₂ = size(s)
-    ntot = q₁ + q₂
-    res = zeros(ntot,ntot)
-    λ₁ = tril(λ[1])
-    λ₂ = tril(λ[2])
-    for i₁ in inds(p₁,ℓ₁)
-        copy!(view(res,i₁,i₁),λ₁)
-    end
-    for i₂ in inds(p₂,ℓ₂)
-        copy!(view(res,q₁+i₂,q₁+i₂),λ₂)
-    end
-    Triangular(res,:L,false)
 end

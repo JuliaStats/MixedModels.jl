@@ -48,7 +48,7 @@ function lmm(f::Formula, fr::AbstractDataFrame)
     q = sum(p .* l)
     uβ = zeros(q + size(X,2))
     Zty = {zeros(pp,ll) for (pp,ll) in zip(p,l)}
-    u = {}
+    u = Any[]
     offset = 0
     for (x,ff,zty) in zip(Xs,facs,Zty)
         push!(u,contiguous_view(uβ, offset, size(zty)))
@@ -183,6 +183,23 @@ end
 
 ## fnames(m) -> vector of names of grouping factors
 fnames(m::LinearMixedModel) = m.fnms
+
+## Return Λ as a sparse triangular matrix
+function Λ(m::LinearMixedModel)
+    vv = SparseMatrixCSC{Float64,Int}[]
+    for i in 1:length(m.λ)
+        nl = length(m.facs[i].pool)
+        ll = m.λ[i]
+        p = size(ll,1)
+        if p == 1
+            isa(ll,PDScalF) || error("1×1 λ section should be a PDScalF type")
+            push!(vv,ll.s .* speye(nl))
+        else
+            push!(vv,blkdiag([sparse(full(ll)) for i in 1:nl]...))
+        end
+    end
+    Triangular(blkdiag(vv...),:L,false)
+end
 
 ## overwrite g with the gradient (assuming that objective! has already been called)
 function grad!(g,m::LinearMixedModel)
