@@ -65,7 +65,7 @@ function PLSNested(facs::Vector,Xst::Vector,Xt::Matrix)
 
     lastij = Array(Array{Array{Int,1},1},nfp1)
     for j in 1:nfp1
-        indsj = [[0] for k in 1:(j-1)]
+        indsj = [[0] for _ in 1:(j-1)]
         for cp in chgpts[j]
             for k in 1:(j-1)
                 rng = searchsorted(chgpts[k],cp)

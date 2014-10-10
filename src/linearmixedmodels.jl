@@ -195,7 +195,8 @@ function Λ(m::LinearMixedModel)
             isa(ll,PDScalF) || error("1×1 λ section should be a PDScalF type")
             push!(vv,ll.s .* speye(nl))
         else
-            push!(vv,blkdiag([sparse(full(ll)) for i in 1:nl]...))
+            sfll = sparse(full(ll))
+            push!(vv,blkdiag([sfll for _ in 1:nl]...))
         end
     end
     Triangular(blkdiag(vv...),:L,false)
