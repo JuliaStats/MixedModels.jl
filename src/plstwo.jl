@@ -118,7 +118,7 @@ end
 function Base.cholfact(s::PLSTwo,RX::Bool=true)
     RX && return s.L₃₃
     p,p₁,p₂,ℓ₁,ℓ₂,q₁,q₂ = size(s)
-    L₁₁ = blkdiag({sparse(tril(s.L₁₁d[k])) for k in 1:ℓ₁}...)
+    L₁₁ = blkdiag([sparse(tril(s.L₁₁d[k])) for k in 1:ℓ₁]...)
     vcat(hcat(L₁₁,spzeros(q₁,q₂)),sparse(hcat(s.L₂₁,s.L₂₂)))
 end
 

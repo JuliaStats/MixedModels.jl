@@ -35,11 +35,11 @@ crosstab(a::PooledDataVector,b::PooledDataVector) =
 
 ## grplevels(m) -> Vector{Int} : number of levels in each term's grouping factor
 grplevels(v::Vector) = [length(isa(f,PooledDataVector) ? f.pool : unique(f)) for f in v]
-grplevels(dd::DataFrame,nms::Vector) = grplevels({getindex(dd,nm) for nm in nms})
+grplevels(dd::DataFrame,nms::Vector) = grplevels([getindex(dd,nm) for nm in nms])
 
 ## Check if the levels in factors or arrays are nested
 isnested(v::Vector) = length(v) == 1 || length(Set(zip(v...))) == maximum(grplevels(v))
-isnested(dd::DataFrame,nms::Vector) = isnested({getindex(dd,nm) for nm in nms})
+isnested(dd::DataFrame,nms::Vector) = isnested([getindex(dd,nm) for nm in nms])
 
 ## Determine if a triangular matrix is unit triangular
 isunit{T,S<:AbstractMatrix,UpLo}(m::Triangular{T,S,UpLo,false}) = false

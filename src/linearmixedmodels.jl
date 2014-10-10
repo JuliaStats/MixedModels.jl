@@ -30,8 +30,8 @@ function lmm(f::Formula, fr::AbstractDataFrame)
     retrms = filter(x->Meta.isexpr(x,:call) && x.args[1] == :|, mf.terms.terms)
     length(retrms) > 0 || error("Formula $f has no random-effects terms")
 
-    grps = {t.args[3] for t in retrms}       # expressions for grouping factors
-    facs = {pool(getindex(mf.df,grp)) for grp in grps}
+    grps = [t.args[3] for t in retrms]       # expressions for grouping factors
+    facs = [pool(getindex(mf.df,grp)) for grp in grps]
     l = Int[length(f.pool) for f in facs]
     if (perm = sortperm(l;rev=true)) != [1:length(grps)]
         permute!(retrms,perm)
@@ -39,15 +39,15 @@ function lmm(f::Formula, fr::AbstractDataFrame)
         permute!(facs,perm)
         permute!(l,perm)
     end
-    Xs = {lhs2mat(t,mf.df)' for t in retrms} # transposed model matrices
+    Xs = [lhs2mat(t,mf.df)' for t in retrms] # transposed model matrices
     p = Int[size(x,1) for x in Xs]
-    λ = {pp == 1 ? PDScalF(1.,1) : PDLCholF(cholfact(eye(pp),:L)) for pp in p}
+    λ = [pp == 1 ? PDScalF(1.,1) : PDLCholF(cholfact(eye(pp),:L)) for pp in p]
     if length(unique(grps)) < length(grps)
         grps,Xs,p,λ,facs,l = amalgamate(grps,Xs,p,λ,facs,l)
     end
     q = sum(p .* l)
     uβ = zeros(q + size(X,2))
-    Zty = {zeros(pp,ll) for (pp,ll) in zip(p,l)}
+    Zty = [zeros(pp,ll) for (pp,ll) in zip(p,l)]
     u = Any[]
     offset = 0
     for (x,ff,zty) in zip(Xs,facs,Zty)

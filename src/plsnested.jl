@@ -21,9 +21,6 @@ type PLSNested <: PLSSolver
     Amats::Vector                       # arrays of cross-products
     Lmats::Vector                       # storage for factors
     lastij::Vector  # last level of factor i nested in a level of factor j, i < j
-    ## The vectors stored below could be calculated from the dimensions in Lmats
-    ## They are used sufficiently frequently to warrant storing them instead of
-    ## recalculating in each method
     nl::Vector{Int} # number of levels of factor i (fixed effects have 1 level)
     offsets::Vector{Int}     # offsets of column range for factor i
     pv::Vector{Int}          # number of rows in each element of Lmats
@@ -53,6 +50,11 @@ function PLSNested(facs::Vector,Xst::Vector,Xt::Matrix)
         ncols += nl[j] * pv[j]
         Amats[j] = zeros(pv[j],ncols)
     end
+    ## may need to generalize this approach.  See mlmRev's egsingle for an example
+    ## where this approach fails.
+    ## Determine a permutation from the observed refs to the desired refs as in
+    ## unique(egs[:ChildId].refs)
+    ## replace the refs for ChildId by invperm(unique(egs[:ChildId].refs))[egs[:ChildId].refs]
                                         # determine the change points for each grouping factor
     chgpts = [Array(Int,(nl[j],)) for j in 1:nfp1] 
     for i in 1:n
@@ -199,11 +201,11 @@ function grad!(res::Vector{Matrix{Float64}},s::PLSNested,λ::Vector)
         p = s.pv[i]
         indsi = s.offsets[i] + (1:p)
         for k in 1:s.nl[i]              # level k of factor i
-            ## need to downdate these blocks from j in 1:(i-1)
             for j in i:nf               # store blocks of Λ'Z'Z
                 Ac_mul_B!(λ[j],copy!(view(s.gtmp[j],:,1:p),view(s.Amats[j],:,indsi)))
             end
             for j in i:nf               # forward solve
+            ## need to downdate these blocks from j in 1:(i-1)
                 vv = view(s.gtmp[j],:,1:p)
                 A_ldiv_B!(Triangular(dblk(i,j,k,s),:L,false),vv)
                 for jj in (j+1):nf

@@ -268,7 +268,7 @@ function amalgamate1(Xs,p,λ)
     (k = length(λ)) == length(Xs) == length(p) || throw(DimensionMismatch(""))
     k == 1 && return (Xs,p,λ)
     if all([isa(ll,PDScalF) for ll in λ])
-        return({vcat(Xs...)},[sum(p)],{PDDiagF(ones(length(λ)))},)
+        return([vcat(Xs...)],[sum(p)],[PDDiagF(ones(length(λ)))],)
     end
     error("Composite code not yet written")
 end
@@ -283,7 +283,7 @@ function amalgamate(grps,Xs,p,λ,facs,l)
         append!(np,pv)
         append!(nXs,xv)
         append!(nλ,lv)
-        append!(nfacs,{facs[inds][1]})
+        append!(nfacs,[facs[inds][1]])
         push!(nl,l[inds][1])
     end
     ugrp,nXs,np,nλ,nfacs,nl
