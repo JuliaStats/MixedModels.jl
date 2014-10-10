@@ -36,7 +36,7 @@ function PLSNested(facs::Vector,Xst::Vector,Xt::Matrix)
     issorted(nl;rev=true) || error("facs must be sorted by decreasing numbers of levels")
     pv = [[size(xst,1)::Int for xst in Xst],p]
                                         # check that the facs refs are increasing
-    refs = {f.refs for f in facs}
+    refs = [f.refs for f in facs]
     push!(refs,ones(Uint8,n))
     issorted(collect(zip(refs[nf:-1:1]...))) ||
         error("facs refs must be in increasing lexicographic order")

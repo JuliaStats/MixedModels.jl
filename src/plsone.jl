@@ -75,7 +75,7 @@ end
 function Base.cholfact(s::PLSOne,RX::Bool=true)
     RX && return s.L₂₂
     p,p₁,l₁ = size(s)
-    blkdiag({sparse(tril(contiguous_view(s.L₁₁,(j-1)*p₁*p₁,(p₁,p₁)))) for j in 1:l₁}...)
+    blkdiag([sparse(tril(contiguous_view(s.L₁₁,(j-1)*p₁*p₁,(p₁,p₁)))) for j in 1:l₁]...)
 end
 
 ## grad calculation - evaluates the sum of the diagonal blocks of (LL')⁻¹*Λ'*Z'Z

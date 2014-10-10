@@ -264,27 +264,8 @@ Base.tril(p::PDLCholF) = tril(p.ch.UL)
 Base.tril(p::PDDiagF) = diagm(p.d)
 Base.tril(p::PDScalF) = diagm(fill(p.s,(p.n,)))
 
-function amalgamate1(Xs,p,λ)
-    (k = length(λ)) == length(Xs) == length(p) || throw(DimensionMismatch(""))
-    k == 1 && return (Xs,p,λ)
-    if all([isa(ll,PDScalF) for ll in λ])
-        return([vcat(Xs...)],[sum(p)],[PDDiagF(ones(length(λ)))],)
-    end
-    error("Composite code not yet written")
-end
-
 ## amalgamate random-effects terms with identical grouping factors
-function amalgamate(grps,Xs,p,λ,facs,l)
-    np = Int[]; nXs = Matrix{Float64}[]; nλ = Any[]; nfacs = Any[]; nl = Int[]
-    ugrp = unique(grps)
-    for u in ugrp
-        inds = grps .== u
-        (xv,pv,lv) = amalgamate1(Xs[inds],p[inds],λ[inds])
-        append!(np,pv)
-        append!(nXs,xv)
-        append!(nλ,lv)
-        append!(nfacs,[facs[inds][1]])
-        push!(nl,l[inds][1])
-    end
-    ugrp,nXs,np,nλ,nfacs,nl
+function amalgamate(λ::Vector)
+    all([isa(ll,PDScalF) for ll in λ]) && return PDDiagF(ones(length(λ)))
+    error("Composite code not yet written")
 end
