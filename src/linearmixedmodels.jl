@@ -48,7 +48,8 @@ function lmm(f::Formula, fr::AbstractDataFrame)
             deleteat!(λ,ii)
         end
     end
-    facs = [pool(getindex(mf.df,g)) for g in ugrps]
+    facs = [getindex(mf.df,g) for g in ugrps]
+    map!(x->isa(x,PooledDataArray) ? x : pool(x), facs)
     l = Int[length(f.pool) for f in facs]
 
     q = sum(p .* l)
