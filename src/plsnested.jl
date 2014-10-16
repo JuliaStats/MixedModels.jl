@@ -201,15 +201,26 @@ function grad!(res::Vector{Matrix{Float64}},s::PLSNested,λ::Vector)
         p = s.pv[i]
         indsi = s.offsets[i] + (1:p)
         for k in 1:s.nl[i]              # level k of factor i
-            for j in i:nf               # store blocks of Λ'Z'Z
-                Ac_mul_B!(λ[j],copy!(view(s.gtmp[j],:,1:p),view(s.Amats[j],:,indsi)))
+            for j in i:nf               # store and downdate blocks of Λ'Z'Z
+                gt = view(s.gtmp[j],:,1:p)
+                Ac_mul_B!(λ[j],copy!(gt,view(s.Amats[j],:,indsi)))
+                for ii in 1:(i-1)
+                    ll = s.lastij[j][ii]
+                    pii = s.pv[ii]
+                    gtt = view(s.gtmp[ii],:,1:p)
+                    for kk in (ll[k]):pii:(ll[k+1]-1)
+                        BLAS.gemm!('N','N',-1.,view(s.Lmats[j],:,kk+(1:pii)),
+                                   A_ldiv_B!(Triangular(view(s.Lmats[ii],:,kk+(1:pii)),:L,false),
+                                             transpose!(gtt,view(s.Amats[j],:,kk+(1:pii)))),
+                                   1.,gt)
+                    end
+                end
             end
             for j in i:nf               # forward solve
-            ## need to downdate these blocks from j in 1:(i-1)
                 vv = view(s.gtmp[j],:,1:p)
                 A_ldiv_B!(Triangular(dblk(i,j,k,s),:L,false),vv)
                 for jj in (j+1):nf
-                    BLAS.gemm!('T','N',-1.0,view(s.Lmats[jj],:,indsi),vv,1.0,view(s.gtmp[jj],:,1:p))
+                    BLAS.gemm!('N','N',-1.0,view(s.Lmats[jj],:,indsi),vv,1.0,view(s.gtmp[jj],:,1:p))
                 end
             end
             @show i,k

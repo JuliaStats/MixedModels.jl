@@ -46,6 +46,7 @@ function lmm(f::Formula, fr::AbstractDataFrame)
             deleteat!(Xs,ii)
             λ[i1] = amalgamate(λ[iii])
             deleteat!(λ,ii)
+            deleteat!(grps,ii)
         end
     end
     facs = [getindex(mf.df,g) for g in ugrps]
