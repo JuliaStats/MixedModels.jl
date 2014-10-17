@@ -7,7 +7,8 @@ tests = ["plsonescalar.jl",
          "plsonevector.jl",
          "plstwoscalar.jl",
          "plstwovector.jl",
-         "plsdiagnested.jl"]
+         "plsdiagnested.jl",
+         "plsdiag.jl"]
 
 
 anyerrors = false

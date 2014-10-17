@@ -234,10 +234,10 @@ end
 grplevels(v::Vector) = [length(f.pool) for f in v]
 grplevels(m::LinearMixedModel) = grplevels(m.facs)
 
-hasgrad(m::LinearMixedModel) = false
+hasgrad(::LinearMixedModel) = false
 ## No, these can't be moved to plsone.jl and plstwo.jl because of the order of file inclusion.
-hasgrad(m::LinearMixedModel{PLSOne}) = true
-hasgrad(m::LinearMixedModel{PLSTwo}) = true                       
+hasgrad(::LinearMixedModel{PLSOne}) = true
+hasgrad(::LinearMixedModel{PLSTwo}) = true
 
 isfit(m::LinearMixedModel) = m.fit
 

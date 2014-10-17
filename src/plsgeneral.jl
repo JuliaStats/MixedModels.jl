@@ -21,8 +21,8 @@ function PLSGeneral(Zt::SparseMatrixCSC,X::Matrix,facs::Vector)
         cp[j] - cp[j-1] == d2 || error("Zt must have constant column counts")
     end
     L = cholfact(Ztc,1.,true)
-    PLSGeneral(L,cholfact(XtX.data,:L),copy(ZtX),XtX,
-               reshape(copy(Zt.nzval),(d2,Zt.n)), ZtX,zeros(size(L,1)),
+    PLSGeneral(L,cholfact(symcontents(XtX),:L),copy(ZtX),XtX,
+               reshape(copy(Zt.nzval),(int(d2),Zt.n)), ZtX,zeros(size(L,1)),
                [length(f.pool) for f in facs],
                L.Perm .+ one(eltype(L.Perm)), Ztc)
 end
