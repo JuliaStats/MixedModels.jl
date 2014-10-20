@@ -47,7 +47,7 @@ function update!(s::PLSGeneral,λ::Vector)
     ## CHOLMOD doesn't solve in place so need to solve then copy
     copy!(s.RZX,solve(s.L, s.RZX[s.perm,:], CHOLMOD_L))
     _,info = LAPACK.potrf!('L',BLAS.syrk!('L','T',-1.,s.RZX,
-                                          1.,copy!(s.RX.UL,s.XtX.data)))
+                                          1.,copy!(s.RX.UL,symcontents(s.XtX))))
     info == 0 || error("Downdated X'X is not positive definite")
     s
 end
