@@ -180,7 +180,7 @@ function Base.full(s::PLSNested)
             end
         end
     end
-    (Symmetric(A,'L'),cholesky(L,:L))
+    (Symmetric(A,:L),cholesky(L,:L))
 end
 
 ## return a view of the diagonal block of L at level j for index k of level i
@@ -225,10 +225,19 @@ function grad!(res::Vector{Matrix{Float64}},s::PLSNested,λ::Vector)
             end
             @show i,k
             @show s.gtmp
+            for j in nf:-1:i            # backsolve
+                vv = view(s.gtmp[j],:,1:p)
+                Ac_ldiv_B!(Triangular(dblk(i,j,k,s),:L,false),vv)
+                for jj in i:(j-1)
+                    BLAS.gemm!('T','N',-1.0,view(s.Lmats[j],:,indsi),vv,1.0,view(s.gtmp[jj],:,1:p))
+                end
+            end
+            @show s.gtmp
             indsi += p
         end
     end
 end
+
                
 ## Logarithm of the determinant of the matrix represented by RX or L
 function Base.logdet(s::PLSNested,RX=true)
