@@ -1,4 +1,4 @@
-using Distributions, ArrayViews
+using Distributions,ArrayViews
 abstract Link
 
 type CauchitLink <: Link end
@@ -167,30 +167,44 @@ mustart{T<:FloatingPoint}(::Type{Poisson},y::T,::T) = y + inv(convert(typeof(y),
 type GLMmodel{T<:FloatingPoint,D<:Distribution,L<:Link}
     Xt::DenseMatrix{T}       # transposed model matrix
     wTt::DenseMatrix{T}      # weighted transposed model matrix
-    L::Cholesky{T,Matrix{T},:L} # Cholesky factor of X'WX
-    vv::DenseMatrix{T}       # rows are y,o,wt,μ,η,μη,dr,wrsd,wrsp,v,wwt
+    L::Base.LinAlg.Cholesky{T,Matrix{T},:L} # Cholesky factor of X'WX
+    vv::DenseMatrix{T}       # rows are y,o,wt,η,μ,μη,dr,wrsd,wrsp,v,wwt
     β::DenseVector{T}        # coefficient vector
     δβ::DenseVector{T}       # increment
 end
 
 const NROW = 11
 
-function initvv(vv::SharedMatrix,D,L)
+function updateμ!(vv::SharedMatrix,D,L)
+    m,n = size(vv)
     i1d = localindexes(vv)
-    for j in (1+div(first(i1d),NROW)):div(last(i1d,NROW))
-        y = vv[1,j]
-        o = vv[2,j] = zero(eltype(vv))     # offset
-        wt = vv[3,j] = one(eltype(vv))     # prior weight
-        μ = vv[4,j] = mustart(D,yy, wt)    # initial value for μ
-        η = vv[5,j] = link(L,μ)            # initial η
+    for j in (1+div(first(i1d),m)):div(last(i1d),m)
+        y  = vv[1,j]                       # observed response
+        o  = vv[2,j]                       # offset
+        wt = vv[3,j]                       # prior weight
+        η  = vv[5,j]                       # linear predictor
+        μ  = vv[4,j] = linkinv(L,η)        # mean response
         μη = vv[6,j] = dμdη(L,η)           # derivative
         dr = vv[7,j] = devresid2(D,y,μ,wt) # squared deviance residual
-        wrsd = vv[8,j] = (y-μ)/μη          # working residual
-        wrsp = vv[9,j] = wrsd + η - o      # working response
+        wr = vv[8,j] = (y-μ)/μη            # working residual
+        wR = vv[9,j] = wr + η - o          # working response
         v = vv[10,j] = var(D,μ)            # variance
-        vv[11,j] = wt*abs2(μη/v)           # working weight
+        w = vv[11,j] = wt*abs2(μη/v)       # working weight
     end
     vv
+end
+
+disttype{T,D}(m::GLMmodel{T,D}) = D
+linktype{T,D,L}(m::GLMmodel{T,D,L}) = L
+Base.size(m::GLMmodel) = size(m.Xt)
+
+function StatsBase.deviance{T}(m::GLMmodel{T})
+    p,n = size(m)
+    sm = zero(T)
+    for j in 1:n
+        sm += m.vv[7,j]
+    end
+    sm
 end
 
 function GLMmodel{T<:FloatingPoint}(X::DenseMatrix{T},y::DenseVector{T},D,L;shared=true)
@@ -198,10 +212,16 @@ function GLMmodel{T<:FloatingPoint}(X::DenseMatrix{T},y::DenseVector{T},D,L;shar
     n,p = size(X)
     length(y) == n || throw(DimensionMismatch(""))
     vv = SharedArray(T,(NROW,n))
-    copy!(view(vv,1,:),y)
+    for j in 1:n
+        yy = vv[1,j] = y[j]
+        vv[2,j] = zero(T)
+        wt = vv[3,j] = one(T)
+        μ = vv[4,j] = mustart(D,yy,wt)
+        vv[5,j] = link(L,μ)
+    end
     @sync for p in procs(vv)
-        @async remotecall_wait(p,initvv,vv,D,L)
+        @async remotecall_wait(p,updateμ!,vv,D,L)
     end
     Xt = X'
-    GLMModel{T,D,L}(Xt,similar(Xt),cholfact(Xt*Xt',:L),vv,zeros(T,p),zeros(T,p))
+    GLMmodel{T,D,L}(Xt,similar(Xt),cholfact(Xt*Xt',:L),vv,zeros(T,p),zeros(T,p))
 end
