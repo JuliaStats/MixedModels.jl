@@ -10,7 +10,7 @@ type LinearMixedModel{S<:PLSSolver} <: MixedModel
     facs::Vector
     fit::Bool
     fnms::Vector                        # names of grouping factors
-    gradblk::Vector
+    gradblk::Vector{Matrix{Float64}}
     mf::ModelFrame
     resid::Vector{Float64}
     s::S
@@ -81,7 +81,7 @@ function lmm(f::Formula, fr::AbstractDataFrame)
     end
     LinearMixedModel(false, X, Xs, Xty, map(ztblk,Xs,facs), Zty,
                      map(zeros, u), f, facs, false, map(string,ugrps),
-                     [zeros(k,k) for k in p], mf, similar(y),
+                     Matrix{Float64}[zeros(k,k) for k in p], mf, similar(y),
                      s, u, uβ, y, λ, similar(y))
 end
 
@@ -350,12 +350,6 @@ function Base.scale(m::LinearMixedModel, sqr=false)
     sqr ? ssqr : sqrt(ssqr)
 end
 
-##  size(m) -> n, p, q, t (lengths of y, beta, u and # of re terms)
-function Base.size(m::LinearMixedModel)
-    n,p = size(m.X.m)
-    n,p,length(m.uβ)-p,length(m.fnms)
-end
-
 function Base.show(io::IO, m::LinearMixedModel)
     if !m.fit
         warn("Model has not been fit")
@@ -383,6 +377,12 @@ function Base.show(io::IO, m::LinearMixedModel)
     println(io)
     @printf(io,"\n  Fixed-effects parameters:\n")
     show(io,coeftable(m))
+end
+
+##  size(m) -> n, p, q, t (lengths of y, beta, u and # of re terms)
+function Base.size(m::LinearMixedModel)
+    n,p = size(m.X.m)
+    n,p,length(m.uβ)-p,length(m.fnms)
 end
 
 ## sqrlenu(m) -> squared length of m.u (the penalty in the PLS problem)

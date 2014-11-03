@@ -203,7 +203,7 @@ rowlengths(p::PDCompF) = vcat(map(rowlengths,p.v)...)
 function rowlengths(p::PDLCholF)
     k = dim(p)
     ul = p.ch[:L].data
-    [norm(view(ul,i,1:i)) for i in 1:k]
+    convert(Vector{eltype(ul)},[norm(view(ul,i,1:i)) for i in 1:k])
 end
 rowlengths(p::PDScalF) = fill(p.s,(p.n,))
 rowlengths(p::PDDiagF) = p.d.diag
