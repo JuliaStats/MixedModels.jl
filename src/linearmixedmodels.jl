@@ -146,10 +146,11 @@ function StatsBase.deviance(m::LinearMixedModel)
 end
 
 ## fit(m) -> m Optimize the objective using BOBYQA from the NLopt package
-function StatsBase.fit(m::LinearMixedModel, verbose=false)
+function StatsBase.fit(m::LinearMixedModel, verbose::Bool, usegrad::Bool)
     if !m.fit
         th = θ(m); k = length(th)
-        opt = NLopt.Opt(hasgrad(m) ? :LD_MMA : :LN_BOBYQA, k)
+        usegrad &= hasgrad(m)
+        opt = NLopt.Opt(usegrad ? :LD_MMA : :LN_BOBYQA, k)
         NLopt.ftol_rel!(opt, 1e-12)   # relative criterion on deviance
         NLopt.ftol_abs!(opt, 1e-8)    # absolute criterion on deviance
         NLopt.xtol_abs!(opt, 1e-10)   # criterion on parameter value changes
@@ -181,6 +182,10 @@ function StatsBase.fit(m::LinearMixedModel, verbose=false)
     end
     m
 end
+
+StatsBase.fit(m::LinearMixedModel,verbose::Bool) = fit(m,verbose,true)
+StatsBase.fit(m::LinearMixedModel) = fit(m,false,true)
+
 
 ## for compatibility with lme4 and nlme
 function fixef(m::LinearMixedModel)
