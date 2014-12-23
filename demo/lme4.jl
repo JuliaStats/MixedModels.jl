@@ -3,7 +3,7 @@
 using RDatasets, MixedModels
 
 ds = dataset("lme4", "Dyestuff");
-fm1 = lmm(Yield ~ 1|Batch, ds)
+fm1 = fit(lmm(Yield ~ 1+(1|Batch), ds))
 typeof(fm1)
 
 ds2 = dataset("lme4", "Dyestuff2");
@@ -11,7 +11,7 @@ ds2 = dataset("lme4", "Dyestuff2");
 typeof(fm1a)
 
 psts = dataset("lme4", "Pastes");
-fm2 = lmm(Strength ~ (1|Sample) + (1|Batch), psts)
+fm2 = fit(lmm(Strength ~ 1 + (1|Sample) + (1|Batch), psts))
 typeof(fm2)
 
 pen = dataset("lme4", "Penicillin");
