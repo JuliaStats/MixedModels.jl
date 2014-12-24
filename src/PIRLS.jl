@@ -21,7 +21,7 @@ function glmm(f::Formula, fr::AbstractDataFrame, d::Distribution, wt::Vector, l:
     end
     eltype(y) == eltype(wt) || error("wt Vector must be same type as y")
     η = [link(l,μ) for μ in mustart!(LMM.μ,d,y,wt)]
-    GeneralizedLinearMixedModel(LMM,d,l,wt,η,[μη(eta) for eta in η])
+    GeneralizedLinearMixedModel(LMM,d,l,wt,η,[μη(l,eta) for eta in η])
 end
 
 glmm(f::Formula, fr::AbstractDataFrame, d::Distribution, wt::Vector) = glmm(f,fr,d,wt,canonical(d))
