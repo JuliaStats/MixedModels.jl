@@ -2,13 +2,15 @@ using DataFrames  # should be externally available
 module MixedModels
 
     using ArrayViews, DataArrays, DataFrames, Distributions, NLopt, PDMats, StatsBase #, WSMP
-    using Base.LinAlg.CHOLMOD: CholmodFactor, CholmodSparse, CholmodSparse!,
-          chm_scale, CHOLMOD_SYM, CHOLMOD_L, CHOLMOD_Lt, solve
-    using Base.LinAlg: Cholesky, Ac_ldiv_B!, A_rdiv_Bc!, chksquare, transpose!
-
 if VERSION < v"0.4-"
     using Docile
+    using Base.LinAlg.CHOLMOD: CholmodFactor, CholmodSparse,
+          chm_scale, CHOLMOD_SYM, CHOLMOD_L, CHOLMOD_Lt, solve
+else
+    using Base.SparseMatrix.CHOLMOD: CholmodFactor, CholmodSparse,
+          chm_scale, CHOLMOD_SYM, CHOLMOD_L, CHOLMOD_Lt, solve
 end
+    using Base.LinAlg: Cholesky, Ac_ldiv_B!, A_rdiv_Bc!, chksquare
 
     export
         GeneralizedLinearMixedModel,

@@ -14,8 +14,8 @@ end
 
 type PDCompF <: AbstractPDMatFactor
     v::Vector{SimplePDMatFactor}
-    t::Triangular
-    PDCompF(v::Vector{SimplePDMatFactor}) = new(v,Triangular(eye(sum(dim,v)),:L,false))
+    t::TRI
+    PDCompF(v::Vector{SimplePDMatFactor}) = new(v,ltri(eye(sum(dim,v))))
 end
 
 immutable PDDiagF <: SimplePDMatFactor

@@ -140,7 +140,7 @@ function update!(s::PLSOne,λ::Vector)
             end
             _,info = LAPACK.potrf!('L',wL) # lower Cholesky factor
             info == 0 || error("Cholesky failure at L diagonal block $(k+1)")
-            A_rdiv_Bc!(A_mul_B!(view(L₂₁,:,cols),λ),Triangular(wL,:L,false))
+            A_rdiv_Bc!(A_mul_B!(view(L₂₁,:,cols),λ),ltri(wL))
             cols += p₁
         end
     end
