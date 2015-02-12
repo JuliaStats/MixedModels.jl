@@ -17,7 +17,7 @@
 ## L₁₁ is block diagonal with ℓ₁ lower triangular blocks of size p₁×p₁, stored as a p₂×q₂ matrix
 ## L₂₁ is stored as a q₂×q₁ matrix
 ## L₃₁ is stored as a p×q₁ matrix
-## L₂₂ is stored as a lower Triangular q₂×q₂ matrix, due to fill-in
+## L₂₂ is stored as a lower triangular q₂×q₂ matrix, due to fill-in
 ## L₃₂ is stored as a p×q₂ matrix
 ## L₃₃ is stored as a p×p lower Cholesky factor
 
@@ -32,12 +32,12 @@ type PLSTwo <: PLSSolver # Solver for models with two crossed or nearly crossed 
     A₃₂::Matrix{Float64} # X'Z₂
     A₃₃::Matrix{Float64} # X'X
     L₁₁::Matrix{Float64} 
-    L₁₁b::Vector{Triangular{Float64,ContiguousView{Float64,2,Array{Float64,2}},:L,false}}
+    L₁₁b::Vector{TRI{Float64,ContiguousView{Float64,2,Array{Float64,2}}}}
     L₂₁::Matrix{Float64}
     L₂₁v::Vector{ContiguousView{Float64,2,Array{Float64,2}}} # vertical blocks
     L₃₁::Matrix{Float64}
     L₃₁v::Vector{ContiguousView{Float64,2,Array{Float64,2}}} # vertical blocks
-    L₂₂::Triangular{Float64,Matrix{Float64},:L,false} 
+    L₂₂::TRI{Float64,Matrix{Float64}}
     L₃₂::Matrix{Float64}
     L₃₂v::Vector{ContiguousView{Float64,2,Array{Float64,2}}}
     L₃₃::Cholesky{Float64}
@@ -61,7 +61,7 @@ function PLSTwo(facs::Vector,Xst::Vector,Xt::Matrix)
     A₁₁ = zeros(p₁,q₁)
     A₁₁b = Array(ContiguousView{Float64,2,Array{Float64,2}},ℓ₁)
     L₁₁ = similar(A₁₁)
-    L₁₁b = Array(Triangular{Float64,ContiguousView{Float64,2,Array{Float64,2}},:L,false},ℓ₁)
+    L₁₁b = Array(TRI{Float64,ContiguousView{Float64,2,Array{Float64,2}}},ℓ₁)
     A₂₁ = zeros(q₂,q₁)
     A₂₁v = Array(ContiguousView{Float64,2,Array{Float64,2}},ℓ₁)
     L₂₁ = similar(A₂₁)
@@ -71,7 +71,7 @@ function PLSTwo(facs::Vector,Xst::Vector,Xt::Matrix)
     L₃₁v = Array(ContiguousView{Float64,2,Array{Float64,2}},ℓ₁)
     A₂₂ = zeros(p₂,q₂)
     A₂₂b = Array(ContiguousView{Float64,2,Array{Float64,2}},ℓ₂)
-    L₂₂ = Triangular(zeros(q₂,q₂),:L,false)
+    L₂₂ = ltri(zeros(q₂,q₂))
     A₃₂ = zeros(p,q₂)
     L₃₂ = similar(A₃₂)
     L₃₂v = Array(ContiguousView{Float64,2,Array{Float64,2}},ℓ₂)
@@ -79,7 +79,7 @@ function PLSTwo(facs::Vector,Xst::Vector,Xt::Matrix)
     for k in 1:ℓ₁
         A₁₁b[k] = view(A₁₁,:,i₁)
         A₂₁v[k] = view(A₂₁,:,i₁)
-        L₁₁b[k] = Triangular(view(L₁₁,:,i₁),:L,false)
+        L₁₁b[k] = ltri(view(L₁₁,:,i₁))
         L₂₁v[k] = view(L₂₁,:,i₁)
         L₃₁v[k] = view(L₃₁,:,i₁)
         i₁ += p₁

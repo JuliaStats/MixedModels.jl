@@ -212,7 +212,7 @@ function Λ(m::LinearMixedModel)
             push!(vv,blkdiag([sfll for _ in 1:nl]...))
         end
     end
-    Triangular(blkdiag(vv...),:L,false)
+    ltri(blkdiag(vv...))
 end
 
 ## overwrite g with the gradient (assuming that objective! has already been called)

@@ -210,7 +210,7 @@ function grad!(res::Vector{Matrix{Float64}},s::PLSNested,λ::Vector)
                     gtt = view(s.gtmp[ii],:,1:p)
                     for kk in (ll[k]):pii:(ll[k+1]-1)
                         BLAS.gemm!('N','N',-1.,view(s.Lmats[j],:,kk+(1:pii)),
-                                   A_ldiv_B!(Triangular(view(s.Lmats[ii],:,kk+(1:pii)),:L,false),
+                                   A_ldiv_B!(lrti(view(s.LMats[ii],:,kk+(1:pii))),
                                              transpose!(gtt,view(s.Amats[j],:,kk+(1:pii)))),
                                    1.,gt)
                     end
@@ -218,7 +218,7 @@ function grad!(res::Vector{Matrix{Float64}},s::PLSNested,λ::Vector)
             end
             for j in i:nf               # forward solve
                 vv = view(s.gtmp[j],:,1:p)
-                A_ldiv_B!(Triangular(dblk(i,j,k,s),:L,false),vv)
+                A_ldiv_B!(ltri(dblk),vv)
                 for jj in (j+1):nf
                     BLAS.gemm!('N','N',-1.0,view(s.Lmats[jj],:,indsi),vv,1.0,view(s.gtmp[jj],:,1:p))
                 end
@@ -227,7 +227,7 @@ function grad!(res::Vector{Matrix{Float64}},s::PLSNested,λ::Vector)
             @show s.gtmp
             for j in nf:-1:i            # backsolve
                 vv = view(s.gtmp[j],:,1:p)
-                Ac_ldiv_B!(Triangular(dblk(i,j,k,s),:L,false),vv)
+                Ac_ldiv_B!(ltri(dblk(i,j,k,s)),vv)
                 for jj in i:(j-1)
                     BLAS.gemm!('T','N',-1.0,view(s.Lmats[j],:,indsi),vv,1.0,view(s.gtmp[jj],:,1:p))
                 end
@@ -297,7 +297,7 @@ function Base.sparse(s::PLSNested)
             end
         end
     end
-    Triangular(sparse(LI,LJ,LV,ntot,ntot),:L,false)
+    ltri(sparse(LI,LJ,LV,ntot,ntot))
 end
     
 
@@ -346,7 +346,7 @@ function update!(s::PLSNested,λ::Vector)
             _,info = LAPACK.potrf!('L',dbk)
             info==0 || error("Downdated diagonal block $k for term $i is not positive definite")
             for j in (i+1):nfp1         # evaluate the remaining blocks in colrng
-                A_rdiv_Bc!(view(s.Lmats[j],:,colrng),Triangular(dbk,:L,false))
+                A_rdiv_Bc!(view(s.Lmats[j],:,colrng),ltri(dbk))
             end
             colrng += pv[i]
         end
