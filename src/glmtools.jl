@@ -88,7 +88,7 @@ mustart{T<:FloatingPoint}(::Poisson,y::T,wt::T) = convert(T,1.1)*y
 
 @doc """
 In-place modification of μ to starting values from d, y and wt
-"""
+"""->
 function mustart!{T}(μ::Vector{T},d::Distribution,y::Vector{T},wt::Vector{T})
     (n = length(μ)) == length(y) == length(wt) || throw(DimensionMismatch(""))
     @inbounds for i in 1:n
