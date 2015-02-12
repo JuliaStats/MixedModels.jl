@@ -8,6 +8,7 @@ tests = ["plsonescalar.jl",
          "plstwoscalar.jl",
          "plstwovector.jl",
          "plsdiagnested.jl",
+         "plsgeneral.jl",
          "plsdiag.jl"]
 
 
