@@ -18,6 +18,8 @@ if VERSION < v"0.4-"
     typealias CHMsp CholmodSparse
     colpt(A::CHMsp) = A.colptr0
 
+    cholf!(L,A,b) = cholfact!(L,A,b)
+    perm(L::CHMfac) = L.Perm .+ one(eltype(L.Perm))
     const Sym = CHOLMOD_SYM
     @doc "Create a lower triangular matrix in-place"->
     ltri(m::StridedMatrix) = Triangular(m,:L,false)
@@ -32,8 +34,13 @@ else
     typealias CHMsp CHOLMOD.Sparse
     colpt(A::CHMsp) = A.colptr
 
+    LinAlg.cholfact(A,beta,ll::Bool) = cholfact(A,beta)
+    
     const Sym = CHOLMOD.SYM
-    chm_scale!(A,S,typ) = scale!(A,S,typ)
+    chm_scale!(A,S,typ) = CHOLMOD.scale!(Dense(S),typ,A)
+
+    cholf!(L,A,b) = CHOLMOD.update!(L,A,b)
+    perm{Tv,Ti}(L::CHMfac{Tv,Ti}) = (l = unsafe_load(L.p); pointer_to_array(l.Perm,l.n)+one(Ti))
     cholesky{T,S}(A::UpperTriangular{T,S}) = Base.LinAlg.Cholesky(A.data,:U)
     cholesky{T,S}(A::LowerTriangular{T,S}) = Base.LinAlg.Cholesky(A.data,:L)
     ltri(m::StridedMatrix) = LowerTriangular(m)

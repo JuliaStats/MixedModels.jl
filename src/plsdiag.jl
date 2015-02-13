@@ -14,9 +14,9 @@ function PLSDiag(Zt::SparseMatrixCSC,X::Matrix,facs::Vector)
     ZtZ = Ztc * Ztc'
     L = cholfact(ZtZ,1.,true)
     XtX = Symmetric(X'X,:L)
-    XtXdat = VERSION < v"0.4-" ? XtX.S : XtX.data
+    XtXdat = symcontents(XtX)
     ZtX = Zt*X
-    PLSDiag(L,cholfact(XtXdat,:L),copy(ZtX),XtX,ZtX,ZtZ,L.Perm .+ one(eltype(L.Perm)),
+    PLSDiag(L,cholfact(XtXdat,:L),copy(ZtX),XtX,ZtX,ZtZ,perm(L),
             vcat([fill(j,length(ff.pool)) for (j,ff) in enumerate(facs)]...))
 end
 
@@ -28,7 +28,7 @@ function Base.A_ldiv_B!(s::Union(PLSDiag,PLSGeneral),uβ::Vector)
     if VERSION < v"0.4-"
         copy!(u,solve(s.L,permute!(u,s.perm),CHOLMOD_L))
     else
-        copy!(u,CHOLMOD.solve(s.L,permute!(u,s.perm),CHOLMOD.CHOLMOD_L))
+        copy!(u,CHOLMOD.solve(CHOLMOD.CHOLMOD_L,s.L,Dense(permute!(u,s.perm))))
     end
     A_ldiv_B!(s.RX,BLAS.gemv!('T',-1.,s.RZX,u,1.,β))
     if VERSION < v"0.4-"
@@ -37,8 +37,9 @@ function Base.A_ldiv_B!(s::Union(PLSDiag,PLSGeneral),uβ::Vector)
                               CHOLMOD_Lt),s.perm))
     else
         copy!(contiguous_view(uβ,(q,)),
-              ipermute!(CHOLMOD.solve(s.L,BLAS.gemv!('N',-1.,s.RZX,β,1.,u),
-                                      CHOLMOD.CHOLMOD_Lt),s.perm))
+              ipermute!(convert(Matrix,CHOLMOD.solve(CHOLMOD.CHOLMOD_Lt,s.L,
+                                                     Dense(BLAS.gemv!('N',-1.,s.RZX,β,1.,u)))),
+                        s.perm))
     end
     uβ
 end
@@ -48,11 +49,11 @@ function update!(s::PLSDiag,λ::Vector)
         isa(ll,PDScalF) || error("λ must be a vector PDScalF objects")
     end
     λvec = [ll.s::Float64 for ll in λ][s.λind]
-    cholfact!(s.L,chm_scale!(copy(s.ZtZ),λvec,Sym),1.)
+    cholf!(s.L,chm_scale!(copy(s.ZtZ),λvec,Sym),1.)
     if VERSION < v"0.4-"
         copy!(s.RZX,solve(s.L, scale(λvec, s.ZtX)[s.perm,:], CHOLMOD_L))
     else
-        copy!(s.RZX,CHOLMOD.solve(s.L, scale(λvec, s.ZtX)[s.perm,:], CHOLMOD.CHOLMOD_L))
+        copy!(s.RZX,CHOLMOD.solve(CHOLMOD.CHOLMOD_L, s.L, Dense(scale(λvec, s.ZtX)[s.perm,:])))
     end
     XtXdat = symcontents(s.XtX)
     _,info = LAPACK.potrf!('L',BLAS.syrk!('L','T',-1.,s.RZX,1.,copy!(s.RX.UL,XtXdat)))
