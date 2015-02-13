@@ -48,7 +48,7 @@ function update!(s::PLSDiag,λ::Vector)
         isa(ll,PDScalF) || error("λ must be a vector PDScalF objects")
     end
     λvec = [ll.s::Float64 for ll in λ][s.λind]
-    cholfact!(s.L,scale!(copy(s.ZtZ),λvec,Sym),1.)
+    cholfact!(s.L,chm_scale!(copy(s.ZtZ),λvec,Sym),1.)
     if VERSION < v"0.4-"
         copy!(s.RZX,solve(s.L, scale(λvec, s.ZtX)[s.perm,:], CHOLMOD_L))
     else

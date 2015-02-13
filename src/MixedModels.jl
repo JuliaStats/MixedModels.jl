@@ -5,7 +5,7 @@ module MixedModels
 if VERSION < v"0.4-"
     using Docile
     using Base.LinAlg.CHOLMOD: CholmodFactor, CholmodSparse,
-          chm_scale, CHOLMOD_SYM, CHOLMOD_L, CHOLMOD_Lt, solve
+          chm_scale!, CHOLMOD_SYM, CHOLMOD_L, CHOLMOD_Lt, solve
 else
     using Base.SparseMatrix.CHOLMOD
 end
