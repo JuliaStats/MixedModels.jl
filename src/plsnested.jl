@@ -32,9 +32,9 @@ function PLSNested(facs::Vector,Xst::Vector,Xt::Matrix)
                                         # check dimensions
     (nf = length(facs)) == length(Xst) || throw(DimensionMismatch(""))
     p,n = size(Xt)
-    nl = [[length(f.pool) for f in facs],1]
+    nl = push!([length(f.pool) for f in facs],1)
     issorted(nl;rev=true) || error("facs must be sorted by decreasing numbers of levels")
-    pv = [[size(xst,1)::Int for xst in Xst],p]
+    pv = push!([size(xst,1)::Int for xst in Xst],p)
                                         # check that the facs refs are increasing
     refs = [f.refs for f in facs]
     push!(refs,ones(Uint8,n))

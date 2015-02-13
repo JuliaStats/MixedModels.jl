@@ -7,8 +7,7 @@ if VERSION < v"0.4-"
     using Base.LinAlg.CHOLMOD: CholmodFactor, CholmodSparse,
           chm_scale, CHOLMOD_SYM, CHOLMOD_L, CHOLMOD_Lt, solve
 else
-    using Base.SparseMatrix.CHOLMOD: CholmodFactor, CholmodSparse,
-          chm_scale, CHOLMOD_SYM, CHOLMOD_L, CHOLMOD_Lt, solve
+    using Base.SparseMatrix.CHOLMOD
 end
     using Base.LinAlg: Cholesky, Ac_ldiv_B!, A_rdiv_Bc!, chksquare
 

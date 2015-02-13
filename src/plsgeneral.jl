@@ -1,5 +1,5 @@
 type PLSGeneral{Ti<:Union(Int32,Int64)} <: PLSSolver
-    L::CholmodFactor{Float64,Ti}
+    L::CHMfac{Float64,Ti}
     RX::Cholesky{Float64}
     RZX::Matrix{Float64}
     XtX::Symmetric{Float64}
@@ -8,14 +8,14 @@ type PLSGeneral{Ti<:Union(Int32,Int64)} <: PLSSolver
     cu::Vector{Float64}
     nlev::Vector
     perm::Vector{Ti}
-    λtZt::CholmodSparse{Float64,Ti}
+    λtZt::CHMsp{Float64,Ti}
 end
 
 function PLSGeneral(Zt::SparseMatrixCSC,X::Matrix,facs::Vector)
     XtX = Symmetric(X'X,:L)
     ZtX = Zt*X
-    Ztc = CholmodSparse(Zt,0)
-    cp = Ztc.colptr0
+    Ztc = CHMsp(Zt,0)
+    cp = colpt(Ztc)
     d2 = cp[2] - cp[1]
     for j in 3:length(cp)
         cp[j] - cp[j-1] == d2 || error("Zt must have constant column counts")

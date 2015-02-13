@@ -36,7 +36,7 @@ function lmm(f::Formula, fr::AbstractDataFrame)
     ugrps = unique(grps)
     if length(ugrps) < length(grps)     # amalgamate terms with the same grouping factor
         for g in ugrps
-            ii = [1:length(grps)][grps .== g]
+            ii = find(grps .== g)
             length(ii) == 1 && continue
             iii = copy(ii)
             i1 = shift!(ii)
@@ -276,8 +276,8 @@ function lrt(mods::LinearMixedModel...)
     mods = mods[sortperm([npar(m)::Int for m in mods])]
     df = [npar(m)::Int for m in mods]
     dev = [deviance(m)::Float64 for m in mods]
-    csqr = [NaN, [(dev[i-1]-dev[i])::Float64 for i in 2:nm]]
-    pval = [NaN, [ccdf(Chisq(df[i]-df[i-1]),csqr[i])::Float64 for i in 2:nm]]
+    csqr = unshift!([(dev[i-1]-dev[i])::Float64 for i in 2:nm],NaN)
+    pval = unshift!([ccdf(Chisq(df[i]-df[i-1]),csqr[i])::Float64 for i in 2:nm],NaN)
     DataFrame(Df = df, Deviance = dev, Chisq=csqr,pval=pval)
 end
 
