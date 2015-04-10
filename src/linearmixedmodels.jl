@@ -427,18 +427,34 @@ end
 VarCorr(m::LinearMixedModel) = VarCorr(m.λ,m.fnms,scale(m))
 
 function Base.show(io::IO,vc::VarCorr)
-    @printf(io, " Variance components:\n                Variance    Std.Dev.")
+    fnms = vcat(vc.fnms,"Residual")
+    nmwd = maximum(map(strwidth, fnms))
+    write(io, "Variance components:\n")
     stdm = vc.s*push!([rowlengths(λ) for λ in vc.λ],[1.])
-    any([length(s) > 1 for s in stdm]) && @printf(io,"  Corr.")
+    tt = vcat(stdm...)
+    vi = showoff(abs2(tt), :plain)
+    si = showoff(tt, :plain)
+    varwd = 1 + max(length("Variance"), maximum(map(strwidth, vi)))
+    stdwd = 1 + max(length("Std.Dev."), maximum(map(strwidth, si)))
+    write(io, " "^(2+nmwd))
+    write(io, Base.cpad("Variance", varwd))
+    write(io, Base.cpad("Std.Dev.", stdwd))
+    any([length(s) > 1 for s in stdm]) && write(io,"  Corr.")
     println(io)
     cor = [chol2cor(λ) for λ in vc.λ]
-    fnms = vcat(vc.fnms,"Residual")
+    ind = 1
     for i in 1:length(fnms)
-        si = stdm[i]
-        print(io, " ", rpad(fnms[i],12))
-        @printf(io, " %10f  %10f\n", abs2(si[1]), si[1])
-        for j in 2:length(si)
-            @printf(io, "              %10f  %10f ", abs2(si[j]), si[j])
+        stdmi = stdm[i]
+        write(io, ' ')
+        write(io, rpad(fnms[i], nmwd))
+        write(io, lpad(vi[ind], varwd))
+        write(io, lpad(si[ind], stdwd))
+        ind += 1
+        println(io)
+        for j in 2:length(stdmi)
+            write(io, lpad(vi[ind], varwd + nmwd))
+            write(io, lpad(si[ind], stdwd))
+            ind += 1
             for k in 1:(j-1)
                 @printf(io, "%6.2f", cor[i][j,1])
             end

@@ -1,6 +1,7 @@
 julia 0.3-
-DataFrames 0.5-
-Distributions
-Docile
-NLopt 0.1-
-PDMats 0.2.3-
+DataFrames 0.6-
+Distributions 0.6-
+Docile 0.4-
+NLopt 0.2-
+PDMats 0.3-
+Showoff
