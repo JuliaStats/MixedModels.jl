@@ -1,4 +1,4 @@
-lmm₈ = lmm(Y ~ 1 + (1|S) + (1|D) + (1+Service|Dept), inst)
+lmm₈ = lmm(Y ~ 1 + (1|S) + (1|D) + (1+Service|Dept), inst);
 
 @test typeof(lmm₈) == LinearMixedModel{PLSGeneral{Int32}}
 @test size(lmm₈) == (73421,1,4128,3)
