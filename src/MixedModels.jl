@@ -1,7 +1,7 @@
 using DataFrames  # should be externally available
 module MixedModels
 
-    using ArrayViews, Compat, DataArrays, DataFrames, Distributions, NLopt, PDMats, ShowOff, StatsBase
+    using ArrayViews, Compat, DataArrays, DataFrames, Distributions, NLopt, PDMats, Showoff, StatsBase
 
 if VERSION < v"0.4-"
     using Docile
