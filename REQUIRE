@@ -1,4 +1,5 @@
 julia 0.3-
+Compat
 DataFrames 0.6-
 Distributions 0.6-
 Docile 0.4-

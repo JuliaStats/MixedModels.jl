@@ -87,13 +87,15 @@ end
 @doc "Return a block in the Zt matrix from the transposed model matrix and grouping factor"->
 function ztblk(m::Matrix,v)
     nr,nc = size(m)
-    nblk = maximum(v)
+    nblk = @compat(Int(maximum(v)))
     NR = nr*nblk                        # number of rows in result
-    cf = length(m) < typemax(Int32) ? int32 : int64 # conversion function
-    SparseMatrixCSC(NR,nc,
-                    cf(cumsum(vcat(1,fill(nr,(nc,))))), # colptr
-                    cf(vec(reshape([1:NR;],(nr,int(nblk)))[:,v])), # rowval
-                    vec(m))            # nzval
+    colptr = cumsum(vcat(1,fill(nr,nc)))
+    rowval = vec(reshape([1:NR;],(nr,nblk))[:,v])
+    if length(m) < typemax(Int32)
+        colptr = convert(Vector{Int32},colptr)
+        rowval = convert(Vector{Int32},rowval)
+    end
+    SparseMatrixCSC(NR,nc,colptr,rowval,vec(m))
 end
 ztblk(m::Matrix,v::PooledDataVector) = ztblk(m,v.refs)
 
@@ -102,7 +104,9 @@ immutable inds
     p::Int
     l::Int
     function inds(p,l)
-        ((p = int(p)) > 0 && (l = int(l))) > 0 || error("p = $p and l = $l must both be positive")
+        p = @compat(Int(p))
+        l = @compat(Int(l))
+        p > 0 && l > 0 || error("p = $p and l = $l must both be positive")
         new(p,l)
     end
 end

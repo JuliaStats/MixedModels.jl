@@ -1,7 +1,8 @@
 using DataFrames  # should be externally available
 module MixedModels
 
-    using ArrayViews, DataArrays, DataFrames, Distributions, NLopt, PDMats, Showoff, StatsBase
+    using ArrayViews, Compat, DataArrays, DataFrames, Distributions, NLopt, PDMats, ShowOff, StatsBase
+
 if VERSION < v"0.4-"
     using Docile
     using Base.LinAlg.CHOLMOD: CholmodFactor, CholmodSparse,

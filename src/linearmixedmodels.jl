@@ -300,7 +300,7 @@ end
 function objective(m::LinearMixedModel)
     n,p = size(m)
     REML = m.REML
-    fn = float64(n - (REML ? p : 0))
+    fn = @compat(Float64(n - (REML ? p : 0)))
     logdet(m,false) + fn*(1.+log(2π*pwrss(m)/fn)) + (REML ? logdet(m) : 0.)
 end
 
@@ -346,7 +346,7 @@ rss(m::LinearMixedModel) = sumabs2(m.resid)
 ## scale(m,true) -> estimate, s^2, of the squared scale parameter
 function Base.scale(m::LinearMixedModel, sqr=false)
     n,p = size(m.X.m)
-    ssqr = pwrss(m)/float64(n - (m.REML ? p : 0))
+    ssqr = pwrss(m)/@compat(Float64(n - (m.REML ? p : 0)))
     sqr ? ssqr : sqrt(ssqr)
 end
 
