@@ -59,7 +59,7 @@ function Base.A_ldiv_B!(s::PLSOne,uβ)
     else
         for j in 0:(l₁-1) # solve L cᵤ = λ'Z'y blockwise using offsets
             BLAS.trsv!('L','N','N',ContiguousView(s.L₁₁,j*p₁*p₁,(p₁,p₁)),
-                       ContiguousView(u,j*p₁,(p₁,)))
+                       ContiguousView(uβ,j*p₁,(p₁,)))
         end
                                         # solve (L_X L_X')̱β = X'y - L_XZ cᵤ
         A_ldiv_B!(s.L₂₂,BLAS.gemv!('N',-1.0,s.L₂₁,u,1.0,β))
@@ -67,7 +67,7 @@ function Base.A_ldiv_B!(s::PLSOne,uβ)
         BLAS.gemv!('T',-1.0,reshape(s.L₂₁,(p,q₁)),β,1.0,u)
         for j in 0:(l₁-1) # # solve L'u = cᵤ blockwise using offsets
             BLAS.trsv!('L','T','N',ContiguousView(s.L₁₁,j*p₁*p₁,(p₁,p₁)),
-                       ContiguousView(u,j*p₁,(p₁,)))
+                       ContiguousView(uβ,j*p₁,(p₁,)))
         end
     end
 end
