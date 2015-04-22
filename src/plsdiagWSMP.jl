@@ -106,7 +106,7 @@ function update!(s::PLSDiagWA,λ::Vector)
     λvec = s.λvec
     offset = 0
     for (ll,sz) in zip(λ,s.trmsz)
-        fill!(contiguous_view(λvec,offset,(sz,)),ll.s.λ)
+        fill!(ContiguousView(λvec,offset,(sz,)),ll.s.λ)
         offset += sz
     end
     q = sum(s.trmsz)

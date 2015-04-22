@@ -216,7 +216,7 @@ function Base.A_ldiv_B!(s::PLSTwo,uβ)
     p,p₁,p₂,ℓ₁,ℓ₂,q₁,q₂ = size(s)
     length(uβ) == p+q₁+q₂ || throw(DimensionMismatch(""))
     u₁ = view(uβ,1:q₁)
-    um₁ = contiguous_view(uβ,(p₁,ℓ₁))
+    um₁ = ContiguousView(uβ,(p₁,ℓ₁))
     u₂ = view(uβ,q₁+(1:q₂))
     β = view(uβ,q₁+q₂+(1:p))
     if p₁ == 1                          # scalar r.e. for factor 1

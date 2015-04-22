@@ -59,7 +59,7 @@ function lmm(f::Formula, fr::AbstractDataFrame)
     u = Any[]
     offset = 0
     for (x,ff,zty) in zip(Xs,facs,Zty)
-        push!(u,contiguous_view(uβ, offset, size(zty)))
+        push!(u,ContiguousView(uβ, offset, size(zty)))
         offset += length(zty)
         for (j,jj) in enumerate(ff.refs)
             for i in 1:size(zty,1)
@@ -311,7 +311,7 @@ function objective!(m::LinearMixedModel,θ::Vector{Float64})
         Ac_mul_B!(λ,copy!(u,Zty))
     end
     p = length(m.Xty)
-    copy!(contiguous_view(m.uβ,length(m.uβ)-p,(p,)), m.Xty)
+    copy!(ContiguousView(m.uβ,length(m.uβ)-p,(p,)), m.Xty)
     A_ldiv_B!(m.s,m.uβ)
     updateμ!(m)
     objective(m)
@@ -397,7 +397,7 @@ StatsBase.stderr(m::LinearMixedModel) = sqrt(diag(vcov(m)))
 ## update m.μ and return the residual sum of squares
 function updateμ!(m::LinearMixedModel)
     p = length(m.Xty)
-    μ = A_mul_B!(m.μ, m.X.m, contiguous_view(m.uβ,length(m.uβ)-p,(p,))) # initialize μ to Xβ
+    μ = A_mul_B!(m.μ, m.X.m, ContiguousView(m.uβ,length(m.uβ)-p,(p,))) # initialize μ to Xβ
     for (Zt,λ,b,u) in zip(m.Ztblks,m.λ,m.b,m.u)
         A_mul_B!(λ,copy!(b,u))         # overwrite b by λ*u
         Ac_mul_B!(1.0,Zt,vec(b),1.0,μ)

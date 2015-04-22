@@ -36,9 +36,9 @@ function PLSOne(ff::PooledDataVector, Xst::Matrix, Xt::Matrix)
     A₂₁ = zeros(p,q₁)
     for j in 1:n
         i1 = refs[j]-1
-        c₁ = contiguous_view(Xst,p₁*(j-1),(p₁,))
-        BLAS.ger!(1.0,c₁,c₁,contiguous_view(A₁₁,i1*p₁*p₁,(p₁,p₁)))
-        BLAS.ger!(1.0,contiguous_view(Xt,p*(j-1),(p,)),c₁,contiguous_view(A₂₁,i1*p*p₁,(p,p₁)))
+        c₁ = ContiguousView(Xst,p₁*(j-1),(p₁,))
+        BLAS.ger!(1.0,c₁,c₁,ContiguousView(A₁₁,i1*p₁*p₁,(p₁,p₁)))
+        BLAS.ger!(1.0,ContiguousView(Xt,p*(j-1),(p,)),c₁,ContiguousView(A₂₁,i1*p*p₁,(p,p₁)))
     end
     PLSOne(A₁₁,A₂₁,tril!(Xt*Xt'),similar(A₁₁),similar(A₂₁),cholfact(eye(p),:L),
            Matrix{Float64}[zeros(p₁,p₁)])
@@ -49,8 +49,8 @@ function Base.A_ldiv_B!(s::PLSOne,uβ)
     p,p₁,l₁ = size(s)
     q₁ = p₁*l₁
     length(uβ) == (p + q₁) || throw(DimensionMismatch(""))
-    u = contiguous_view(uβ,(q₁,))
-    β = contiguous_view(uβ,q₁,(p,))
+    u = ContiguousView(uβ,(q₁,))
+    β = ContiguousView(uβ,q₁,(p,))
     if p₁ == 1                          # short cut for scalar r.e.
         scaleinv!(u,vec(s.L₁₁))
         A_ldiv_B!(s.L₂₂,BLAS.gemv!('N',-1.,s.L₂₁,u,1.,β)) # solve for β
@@ -58,16 +58,16 @@ function Base.A_ldiv_B!(s::PLSOne,uβ)
         scaleinv!(u,vec(s.L₁₁))
     else
         for j in 0:(l₁-1) # solve L cᵤ = λ'Z'y blockwise using offsets
-            BLAS.trsv!('L','N','N',contiguous_view(s.L₁₁,j*p₁*p₁,(p₁,p₁)),
-                       contiguous_view(u,j*p₁,(p₁,)))
+            BLAS.trsv!('L','N','N',ContiguousView(s.L₁₁,j*p₁*p₁,(p₁,p₁)),
+                       ContiguousView(u,j*p₁,(p₁,)))
         end
                                         # solve (L_X L_X')̱β = X'y - L_XZ cᵤ
         A_ldiv_B!(s.L₂₂,BLAS.gemv!('N',-1.0,s.L₂₁,u,1.0,β))
                                         # cᵤ := cᵤ - L_XZ'β
         BLAS.gemv!('T',-1.0,reshape(s.L₂₁,(p,q₁)),β,1.0,u)
         for j in 0:(l₁-1) # # solve L'u = cᵤ blockwise using offsets
-            BLAS.trsv!('L','T','N',contiguous_view(s.L₁₁,j*p₁*p₁,(p₁,p₁)),
-                       contiguous_view(u,j*p₁,(p₁,)))
+            BLAS.trsv!('L','T','N',ContiguousView(s.L₁₁,j*p₁*p₁,(p₁,p₁)),
+                       ContiguousView(u,j*p₁,(p₁,)))
         end
     end
 end
@@ -75,7 +75,7 @@ end
 function Base.cholfact(s::PLSOne,RX::Bool=true)
     RX && return s.L₂₂
     p,p₁,l₁ = size(s)
-    blkdiag([sparse(tril(contiguous_view(s.L₁₁,(j-1)*p₁*p₁,(p₁,p₁)))) for j in 1:l₁]...)
+    blkdiag([sparse(tril(ContiguousView(s.L₁₁,(j-1)*p₁*p₁,(p₁,p₁)))) for j in 1:l₁]...)
 end
 
 ## grad calculation - evaluates the sum of the diagonal blocks of (LL')⁻¹*Λ'*Z'Z
