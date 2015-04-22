@@ -144,8 +144,8 @@ function update!(s::PLSOne,λ::Vector)
             cols += p₁
         end
     end
-    BLAS.syrk!('L','N',-1.,L₂₁,1.,copy!(s.L₂₂.UL,s.A₂₂))
-    _, info = LAPACK.potrf!('L',s.L₂₂.UL)
+    BLAS.syrk!('L','N',-1.,L₂₁,1.,copy!(chfac(s.L₂₂),s.A₂₂))
+    _, info = LAPACK.potrf!('L',chfac(s.L₂₂))
     info == 0 ||  error("downdated X'X is not positive definite")
     s
 end

@@ -16,8 +16,8 @@ if VERSION < v"0.4-"
 
     typealias CHMfac CholmodFactor
     typealias CHMsp CholmodSparse
-    colpt(A::CHMsp) = A.colptr0
 
+    chfac(ch::Base.Cholesky) = ch.UL
     cholf!(L,A,b) = cholfact!(L,A,b)
     perm(L::CHMfac) = L.Perm .+ one(eltype(L.Perm))
     const Sym = CHOLMOD_SYM
@@ -26,19 +26,19 @@ if VERSION < v"0.4-"
 else
     function cholesky(A::StridedMatrix{Float64},uplo::Symbol)
         Base.LinAlg.chksquare(A)
-        Base.Cholesky{Float64,typeof(A),uplo}(A)
+        Base.Cholesky{Float64,typeof(A)}(A,string(uplo)[1])
     end
     typealias TRI Base.LinAlg.AbstractTriangular
 
     typealias CHMfac CHOLMOD.Factor
     typealias CHMsp CHOLMOD.Sparse
-    colpt(A::CHMsp) = A.colptr
 
     LinAlg.cholfact(A,beta,ll::Bool) = cholfact(A,beta)
     
     const Sym = CHOLMOD.SYM
     chm_scale!(A,S,typ) = CHOLMOD.scale!(Dense(S),typ,A)
 
+    chfac(ch::Base.Cholesky) = ch.factors
     cholf!(L,A,b) = CHOLMOD.update!(L,A,b)
     perm{Tv,Ti}(L::CHMfac{Tv,Ti}) = (l = unsafe_load(L.p); pointer_to_array(l.Perm,l.n)+one(Ti))
     cholesky{T,S}(A::UpperTriangular{T,S}) = Base.Cholesky(A.data,:U)

@@ -30,7 +30,7 @@ type PDScalF <: SimplePDMatFactor
     end
 end
 
-Base.copy!(m::StridedMatrix{Float64},p::PDLCholF) = tril!(copy!(m,p.ch.UL))
+Base.copy!(m::StridedMatrix{Float64},p::PDLCholF) = tril!(copy!(m,chfac(p.ch)))
 
 function Base.copy!(m::StridedMatrix{Float64},p::PDDiagF)
     n = dim(p)
@@ -86,7 +86,7 @@ function θ(p::PDLCholF)
     n = size(p,1)
     res = Array(Float64,nltri(n))
     pos = 0
-    ul = p.ch.UL
+    ul = chfac(p.ch)
     for j in 1:n, i in j:n
         res[pos += 1] = ul[i,j]
     end
@@ -116,7 +116,7 @@ function θ!(p::PDLCholF,th::StridedVector{Float64})
     n = size(p,1)
     length(th) == nθ(p) || throw(DimensionMismatch(""))
     pos = 0
-    ul = p.ch.UL
+    ul = chfac(p.ch)
     for j in 1:n, i in j:n
         ul[i,j] = th[pos += 1]
     end
@@ -253,7 +253,7 @@ function grdcmp!(v::DenseVector{Float64},p::PDScalF,m::Matrix{Float64})
     v[1] = 2.(n == 1 ? m[1,1] : sum(diag(m)))
 end
 
-Base.tril(p::PDLCholF) = tril(p.ch.UL)
+Base.tril(p::PDLCholF) = tril(chfac(p.ch))
 Base.tril(p::PDDiagF) = diagm(p.d)
 Base.tril(p::PDScalF) = diagm(fill(p.s,(p.n,)))
 

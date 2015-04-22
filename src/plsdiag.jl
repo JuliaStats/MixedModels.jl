@@ -56,7 +56,7 @@ function update!(s::PLSDiag,λ::Vector)
         copy!(s.RZX,CHOLMOD.solve(CHOLMOD.CHOLMOD_L, s.L, Dense(scale(λvec, s.ZtX)[s.perm,:])))
     end
     XtXdat = symcontents(s.XtX)
-    _,info = LAPACK.potrf!('L',BLAS.syrk!('L','T',-1.,s.RZX,1.,copy!(s.RX.UL,XtXdat)))
+    _,info = LAPACK.potrf!('L',BLAS.syrk!('L','T',-1.,s.RZX,1.,copy!(chfac(s.RX),XtXdat)))
     info == 0 || error("Downdated X'X is not positive definite")
     s
 end

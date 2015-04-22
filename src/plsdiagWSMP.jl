@@ -48,7 +48,7 @@ function update!(s::PLSDiagWSMP,λ::Vector)
     s.W.iparm[2] = 3
     s.W.iparm[30] = 1
     wssmp(s.W,s.RZX,4)
-    _,info = LAPACK.potrf!('L',BLAS.syrk!('L','T',-1.,s.RZX,1.,copy!(s.LX.UL,s.XtX.data)))
+    _,info = LAPACK.potrf!('L',BLAS.syrk!('L','T',-1.,s.RZX,1.,copy!(chfac(s.LX),s.XtX.data)))
     info == 0 || error("Downdated X'X is not positive definite")
     s
 end

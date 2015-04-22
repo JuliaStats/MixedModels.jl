@@ -14,13 +14,13 @@ end
 function PLSGeneral(Zt::SparseMatrixCSC,X::Matrix,facs::Vector)
     XtX = Symmetric(X'X,:L)
     ZtX = Zt*X
-    Ztc = CHMsp(Zt,0)
-    cp = colpt(Ztc)
+    cp = Zt.colptr
     d2 = cp[2] - cp[1]
     for j in 3:length(cp)
         cp[j] - cp[j-1] == d2 || error("Zt must have constant column counts")
     end
-    L = cholfact(Ztc,1.,true)
+    Ztc = CHMsp(Zt,0)
+    L = VERSION < v"0.4-" ? cholfact(Ztc,1.,true) : cholfact(Ztc; shift = 1.)
     PLSGeneral(L,cholfact(symcontents(XtX),:L),copy(ZtX),XtX,
                reshape(copy(Zt.nzval),(@compat(Int(d2)),Zt.n)), ZtX,zeros(size(L,1)),
                [length(f.pool) for f in facs],
@@ -43,11 +43,11 @@ function update!(s::PLSGeneral,λ::Vector)
             ZtXrow += p
         end
     end
-    cholfact!(s.L,s.λtZt,1.)
+    VERSION < v"0.4-" ? cholfact!(s.L,s.λtZt,1.) : Base.SparseMatrix.CHOLMOD.update!(s.L, s.λtZt; shift = 1.0)
     ## CHOLMOD doesn't solve in place so need to solve then copy
     copy!(s.RZX,solve(s.L, s.RZX[s.perm,:], CHOLMOD_L))
     _,info = LAPACK.potrf!('L',BLAS.syrk!('L','T',-1.,s.RZX,
-                                          1.,copy!(s.RX.UL,symcontents(s.XtX))))
+                                          1.,copy!(chfac(s.RX),symcontents(s.XtX))))
     info == 0 || error("Downdated X'X is not positive definite")
     s
 end
