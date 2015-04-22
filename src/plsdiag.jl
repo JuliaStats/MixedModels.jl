@@ -24,7 +24,7 @@ function Base.A_ldiv_B!(s::Union(PLSDiag,PLSGeneral),uβ::Vector)
     q,p = size(s.RZX)
     length(uβ) == (p+q) || throw(DimensionMismatch(""))
     u = uβ[1:q]  # FIXME: change cholmod code to allow StridedVecOrMat and avoid creating the copy
-    β = contiguous_view(uβ,q,(p,))
+    β = ContiguousView(uβ,q,(p,))
     if VERSION < v"0.4-"
         copy!(u,solve(s.L,permute!(u,s.perm),CHOLMOD_L))
     else
@@ -32,11 +32,11 @@ function Base.A_ldiv_B!(s::Union(PLSDiag,PLSGeneral),uβ::Vector)
     end
     A_ldiv_B!(s.RX,BLAS.gemv!('T',-1.,s.RZX,u,1.,β))
     if VERSION < v"0.4-"
-        copy!(contiguous_view(uβ,(q,)),
+        copy!(ContiguousView(uβ,(q,)),
               ipermute!(solve(s.L,BLAS.gemv!('N',-1.,s.RZX,β,1.,u),
                               CHOLMOD_Lt),s.perm))
     else
-        copy!(contiguous_view(uβ,(q,)),
+        copy!(ContiguousView(uβ,(q,)),
               ipermute!(convert(Matrix,CHOLMOD.solve(CHOLMOD.CHOLMOD_Lt,s.L,
                                                      Dense(BLAS.gemv!('N',-1.,s.RZX,β,1.,u)))),
                         s.perm))
