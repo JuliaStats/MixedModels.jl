@@ -40,7 +40,7 @@ type PLSTwo <: PLSSolver # Solver for models with two crossed or nearly crossed 
     L₂₂::TRI{Float64,Matrix{Float64}}
     L₃₂::Matrix{Float64}
     L₃₂v::Vector{ContiguousView{Float64,2,Array{Float64,2}}}
-    L₃₃::Cholesky{Float64}
+    L₃₃::Base.Cholesky{Float64}
     gtmp::Vector{Matrix{Float64}}       # scratch arrays for grad! method
 end
 

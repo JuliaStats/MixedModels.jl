@@ -21,7 +21,7 @@ type PLSOne <: PLSSolver
     A₂₂::Matrix{Float64}
     L₁₁::Matrix{Float64}
     L₂₁::Matrix{Float64}
-    L₂₂::Cholesky{Float64}
+    L₂₂::Base.Cholesky{Float64}
     gtmp::Vector{Matrix{Float64}}
 end
 

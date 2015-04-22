@@ -1,17 +1,17 @@
 ## Utilities
 
-## Create a Base.LinAlg.Cholesky object from a StridedMatrix
+## Create a Base.Cholesky object from a StridedMatrix
 if VERSION < v"0.4-"
     function cholesky(A::StridedMatrix{Float64},uplo::Symbol)
         Base.LinAlg.chksquare(A)
-        Base.LinAlg.Cholesky(A,string(uplo)[1])
+        Base.Cholesky(A,string(uplo)[1])
     end
     typealias TRI Triangular
 
     @doc "In-place conversion of a Triangular matrix to a Cholesky factor"->
     function cholesky{T,S,UpLo,IsUnit}(A::TRI{T,S,UpLo,IsUnit})
         IsUnit && error("In place cholesky conversion not allowed from unit triangular")
-        Base.LinAlg.Cholesky(A.data,string(UpLo)[1])
+        Base.Cholesky(A.data,string(UpLo)[1])
     end
 
     typealias CHMfac CholmodFactor
@@ -26,7 +26,7 @@ if VERSION < v"0.4-"
 else
     function cholesky(A::StridedMatrix{Float64},uplo::Symbol)
         Base.LinAlg.chksquare(A)
-        Base.LinAlg.Cholesky{Float64,typeof(A),uplo}(A)
+        Base.Cholesky{Float64,typeof(A),uplo}(A)
     end
     typealias TRI Base.LinAlg.AbstractTriangular
 
@@ -41,8 +41,8 @@ else
 
     cholf!(L,A,b) = CHOLMOD.update!(L,A,b)
     perm{Tv,Ti}(L::CHMfac{Tv,Ti}) = (l = unsafe_load(L.p); pointer_to_array(l.Perm,l.n)+one(Ti))
-    cholesky{T,S}(A::UpperTriangular{T,S}) = Base.LinAlg.Cholesky(A.data,:U)
-    cholesky{T,S}(A::LowerTriangular{T,S}) = Base.LinAlg.Cholesky(A.data,:L)
+    cholesky{T,S}(A::UpperTriangular{T,S}) = Base.Cholesky(A.data,:U)
+    cholesky{T,S}(A::LowerTriangular{T,S}) = Base.Cholesky(A.data,:L)
     ltri(m::StridedMatrix) = LowerTriangular(m)
 end
 

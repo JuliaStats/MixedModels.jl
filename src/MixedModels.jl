@@ -10,7 +10,7 @@ if VERSION < v"0.4-"
 else
     using Base.SparseMatrix.CHOLMOD
 end
-    using Base.LinAlg: Cholesky, Ac_ldiv_B!, A_rdiv_Bc!, chksquare
+    using Base.LinAlg: Ac_ldiv_B!, A_rdiv_Bc!, chksquare
 
     export
         GeneralizedLinearMixedModel,

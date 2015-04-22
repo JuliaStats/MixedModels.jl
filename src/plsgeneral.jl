@@ -1,6 +1,6 @@
 type PLSGeneral{Ti<:Union(Int32,Int64)} <: PLSSolver
     L::CHMfac{Float64,Ti}
-    RX::Cholesky{Float64}
+    RX::Base.Cholesky{Float64}
     RZX::Matrix{Float64}
     XtX::Symmetric{Float64}
     Ztnz::Matrix{Float64}               # non-zeros in Zt as a dense matrix

@@ -1,15 +1,8 @@
-using Base.LinAlg.Cholesky              # so the file can be included by itself
 abstract AbstractPDMatFactor
 abstract SimplePDMatFactor <: AbstractPDMatFactor
 
-if VERSION < v"0.4-"
-    immutable PDLCholF <: SimplePDMatFactor
-        ch::Cholesky{Float64}
-    end
-else
-    immutable PDLCholF <: SimplePDMatFactor
-        ch::Cholesky{Float64,Matrix{Float64},:L}
-    end
+immutable PDLCholF <: SimplePDMatFactor
+    ch::Base.Cholesky{Float64}
 end
 
 type PDCompF <: AbstractPDMatFactor

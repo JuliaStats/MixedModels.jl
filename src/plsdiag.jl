@@ -1,6 +1,6 @@
 type PLSDiag{Ti<:Union(Int32,Int64)} <: PLSSolver # Sparse Choleksy solver for diagonal Λ
     L::CHMfac{Float64,Ti}
-    RX::Cholesky{Float64}
+    RX::Base.Cholesky{Float64}
     RZX::Matrix{Float64}
     XtX::Symmetric{Float64}
     ZtX::Matrix{Float64}
