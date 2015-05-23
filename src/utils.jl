@@ -36,7 +36,7 @@ else
     LinAlg.cholfact(A,beta,ll::Bool) = cholfact(A,beta)
     
     const Sym = CHOLMOD.SYM
-    chm_scale!(A,S,typ) = CHOLMOD.scale!(Dense(S),typ,A)
+    CHOLMOD.chm_scale!(A,S,typ) = CHOLMOD.scale!(Dense(S),typ,A)
 
     chfac(ch::Base.Cholesky) = ch.factors
     cholf!(L,A,b) = CHOLMOD.update!(L,A,b)

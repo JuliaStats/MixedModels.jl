@@ -243,6 +243,7 @@ hasgrad(::LinearMixedModel) = false
 ## No, these can't be moved to plsone.jl and plstwo.jl because of the order of file inclusion.
 hasgrad(::LinearMixedModel{PLSOne}) = true
 hasgrad(::LinearMixedModel{PLSTwo}) = true
+#hasgrad(::LinearMixedModel{PLSNested}) = true # bugs to fix here
 
 isfit(m::LinearMixedModel) = m.fit
 
