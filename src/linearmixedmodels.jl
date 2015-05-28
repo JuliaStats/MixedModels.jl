@@ -1,3 +1,14 @@
+type OptSummary
+    initial::Vector{Float64}
+    final::Vector{Float64}
+    fmin::Float64
+    feval::Int
+    geval::Int
+    optimizer::Symbol
+end
+
+OptSummary() = OptSummary(Float64[],Float64[],NaN,-1,-1,:default)
+
 type LinearMixedModel{S<:PLSSolver} <: MixedModel
     REML::Bool
     X::ModelMatrix{Float64}
@@ -8,8 +19,8 @@ type LinearMixedModel{S<:PLSSolver} <: MixedModel
     b::Vector
     f::Formula
     facs::Vector
-    fit::Bool
-    fnms::Vector                        # names of grouping factors
+    fit::Bool      # can probably remove and use fields of opt instead
+    fnms::Vector   # names of grouping factors
     gradblk::Vector{Matrix{Float64}}
     mf::ModelFrame
     resid::Vector{Float64}
@@ -19,6 +30,7 @@ type LinearMixedModel{S<:PLSSolver} <: MixedModel
     y::Vector{Float64}
     λ::Vector
     μ::Vector{Float64}
+    opt::OptSummary
 end
 
 function lmm(f::Formula, fr::AbstractDataFrame)
@@ -82,7 +94,7 @@ function lmm(f::Formula, fr::AbstractDataFrame)
     LinearMixedModel(false, X, Xs, Xty, map(ztblk,Xs,facs), Zty,
                      map(zeros, u), f, facs, false, map(string,ugrps),
                      Matrix{Float64}[zeros(k,k) for k in p], mf, similar(y),
-                     s, u, uβ, y, λ, similar(y))
+                     s, u, uβ, y, λ, similar(y),OptSummary())
 end
 
 ## Return the Cholesky factor RX or L
@@ -146,30 +158,42 @@ function StatsBase.deviance(m::LinearMixedModel)
 end
 
 ## fit(m) -> m Optimize the objective using BOBYQA from the NLopt package
-function StatsBase.fit(m::LinearMixedModel, verbose::Bool, usegrad::Bool)
+function StatsBase.fit(m::LinearMixedModel, verbose::Bool=false, optimizer::Symbol=:default)
     if !m.fit
         th = θ(m); k = length(th)
-        usegrad &= hasgrad(m)
-        opt = NLopt.Opt(usegrad ? :LD_MMA : :LN_BOBYQA, k)
+        if optimizer == :default
+            optimizer = hasgrad(m) ? :LD_MMA : :LN_BOBYQA
+        end
+        m.opt.initial = th
+        m.opt.optimizer = optimizer
+        opt = NLopt.Opt(optimizer, k)
         NLopt.ftol_rel!(opt, 1e-12)   # relative criterion on deviance
         NLopt.ftol_abs!(opt, 1e-8)    # absolute criterion on deviance
         NLopt.xtol_abs!(opt, 1e-10)   # criterion on parameter value changes
         NLopt.lower_bounds!(opt, lower(m))
+        feval = 0
+        geval = 0
         function obj(x::Vector{Float64}, g::Vector{Float64})
+            feval += 1
             val = objective!(m,x)
-            length(g) == 0 || grad!(g,m)
+            if length(g) == length(x)
+                geval += 1
+                grad!(g,m)
+            end
             val
         end
         if verbose
-            count = 0
             function vobj(x::Vector{Float64}, g::Vector{Float64})
-                count += 1
+                feval += 1
                 val = objective!(m,x)
-                print("f_$count: $(round(val,5)), [")
+                print("f_$feval: $(round(val,5)), [")
                 showcompact(x[1])
                 for i in 2:length(x) print(","); showcompact(x[i]) end
                 println("]")
-                length(g) == 0 || grad!(g,m)
+                if length(g) == length(x)
+                    geval += 1
+                    grad!(g,m)
+                end
                 val
             end
             NLopt.min_objective!(opt, vobj)
@@ -177,15 +201,15 @@ function StatsBase.fit(m::LinearMixedModel, verbose::Bool, usegrad::Bool)
             NLopt.min_objective!(opt, obj)
         end
         fmin, xmin, ret = NLopt.optimize(opt, th)
+        m.opt.feval = feval
+        m.opt.geval = geval
+        m.opt.final = xmin
+        m.opt.fmin = fmin
         if verbose println(ret) end
         m.fit = true
     end
     m
 end
-
-StatsBase.fit(m::LinearMixedModel,verbose::Bool) = fit(m,verbose,true)
-StatsBase.fit(m::LinearMixedModel) = fit(m,false,true)
-
 
 ## for compatibility with lme4 and nlme
 function fixef(m::LinearMixedModel)
