@@ -11,7 +11,7 @@ end
 
 function PLSDiag(Zt::SparseMatrixCSC,X::Matrix,facs::Vector)
     Ztc = CHMsp(Zt)
-    ZtZ = Ztc * Ztc'
+    ZtZ = CHMsp(Zt * Zt')
     L = cholfact(ZtZ,1.,true)
     XtX = Symmetric(X'X,:L)
     XtXdat = symcontents(XtX)
