@@ -1,3 +1,4 @@
+@doc "Summary of optimization using the NLopt package"->
 type OptSummary
     initial::Vector{Float64}
     final::Vector{Float64}
@@ -9,6 +10,7 @@ end
 
 OptSummary() = OptSummary(Float64[],Float64[],NaN,-1,-1,:default)
 
+@doc "Representation of a linear mixed-effects model"->
 type LinearMixedModel{S<:PLSSolver} <: MixedModel
     REML::Bool
     X::ModelMatrix{Float64}
@@ -33,6 +35,7 @@ type LinearMixedModel{S<:PLSSolver} <: MixedModel
     opt::OptSummary
 end
 
+@doc "Create a linear mixed-effects model from a formula and data frame"->
 function lmm(f::Formula, fr::AbstractDataFrame)
     mf = ModelFrame(f,fr)
     X = ModelMatrix(mf)
@@ -97,10 +100,10 @@ function lmm(f::Formula, fr::AbstractDataFrame)
                      s, u, uβ, y, λ, similar(y),OptSummary())
 end
 
-## Return the Cholesky factor RX or L
+@doc "Return the Cholesky factor RX or L from a LinearMixedModel"->
 Base.cholfact(m::LinearMixedModel,RX::Bool=true) = cholfact(m.s,RX)
 
-##  coef(m) -> current value of beta (as a reference)
+@doc "coef(m) -> current value of beta (as a reference)"->
 StatsBase.coef(m::LinearMixedModel) = fixef(m)
 
 termnames(term::Symbol, col) = [string(term)]
@@ -139,33 +142,28 @@ function DataFrames.coefnames(m::LinearMixedModel)
     return vnames
 end
 
-## Condition number
 Base.cond(m::LinearMixedModel) = [cond(λ)::Float64 for λ in m.λ]
 
 Base.cor(m::LinearMixedModel) = map(chol2cor,m.λ)
 
-## coeftable(m) -> DataFrame : the coefficients table
 function StatsBase.coeftable(m::LinearMixedModel)
     fe = fixef(m)
     se = stderr(m)
     CoefTable(hcat(fe,se,fe./se), ["Estimate","Std.Error","z value"], coefnames(m))
 end
 
-## deviance(m) -> Float64
 function StatsBase.deviance(m::LinearMixedModel)
     m.fit || error("model m has not been fit")
     m.REML ? NaN : objective(m)
 end
 
-## fit(m) -> m Optimize the objective using BOBYQA from the NLopt package
+@doc "`fit(m)` -> m Optimize the objective using an NLopt optimizer"->
 function StatsBase.fit(m::LinearMixedModel, verbose::Bool=false, optimizer::Symbol=:default)
     if !m.fit
         th = θ(m); k = length(th)
         if optimizer == :default
             optimizer = hasgrad(m) ? :LD_MMA : :LN_BOBYQA
         end
-        m.opt.initial = th
-        m.opt.optimizer = optimizer
         opt = NLopt.Opt(optimizer, k)
         NLopt.ftol_rel!(opt, 1e-12)   # relative criterion on deviance
         NLopt.ftol_abs!(opt, 1e-8)    # absolute criterion on deviance
@@ -201,27 +199,37 @@ function StatsBase.fit(m::LinearMixedModel, verbose::Bool=false, optimizer::Symb
             NLopt.min_objective!(opt, obj)
         end
         fmin, xmin, ret = NLopt.optimize(opt, th)
-        m.opt.feval = feval
-        m.opt.geval = geval
-        m.opt.final = xmin
-        m.opt.fmin = fmin
+        # very small parameter values often should be set to zero
+        xmin1 = copy(xmin)
+        modified = false
+        for i in eachindex(xmin1)
+            if 0. < abs(xmin1[i]) < 1.e-5
+                modified = true
+                xmin1[i] = 0.
+            end
+        end
+        if modified && (ff = objective!(m,xmin1)) < fmin
+            fmin = ff
+            copy!(xmin,xmin1)
+        end
+        m.opt = OptSummary(th,xmin,fmin,feval,geval,optimizer)
         if verbose println(ret) end
         m.fit = true
     end
     m
 end
 
-## for compatibility with lme4 and nlme
+@doc "Return the vector of fixed-effects coefficients"->
 function fixef(m::LinearMixedModel)
     ppq = length(m.uβ)
     p = length(m.Xty)
     m.uβ[(ppq - p + 1):ppq]
 end
 
-## fnames(m) -> vector of names of grouping factors
+@doc "`fnames(m)` -> vector of names of grouping factors"->
 fnames(m::LinearMixedModel) = m.fnms
 
-## Return Λ as a sparse triangular matrix
+@doc "Return Λ as a sparse triangular matrix"->
 function Λ(m::LinearMixedModel)
     vv = SparseMatrixCSC{Float64,Int}[]
     for i in 1:length(m.λ)
@@ -239,7 +247,7 @@ function Λ(m::LinearMixedModel)
     ltri(blkdiag(vv...))
 end
 
-## overwrite g with the gradient (assuming that objective! has already been called)
+@doc "overwrite g with the gradient (assuming that objective! has already been called)"->
 function grad!(g,m::LinearMixedModel)
     hasgrad(m) || error("gradient evaluation not provided for $(typeof(m))")
     ## overwrite b with -Zt*resid/scale(m,true)
