@@ -40,7 +40,7 @@ else
 
     chfac(ch::Base.Cholesky) = ch.factors
     cholf!(L,A,b) = CHOLMOD.update!(L,A,b)
-    perm{Tv,Ti}(L::CHMfac{Tv,Ti}) = (l = unsafe_load(L.p); pointer_to_array(l.Perm,l.n)+one(Ti))
+    perm(L::CHMfac) = Base.SparseMatrix.CHOLMOD.get_perm(L)
     cholesky{T,S}(A::UpperTriangular{T,S}) = Base.Cholesky(A.data,:U)
     cholesky{T,S}(A::LowerTriangular{T,S}) = Base.Cholesky(A.data,:L)
     ltri(m::StridedMatrix) = LowerTriangular(m)
