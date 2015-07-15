@@ -1,10 +1,10 @@
 type PLSDiag{Ti<:Union(Int32,Int64)} <: PLSSolver # Sparse Choleksy solver for diagonal Λ
-    L::CHMfac{Float64,Ti}
+    L::CHMfac{Float64}
     RX::Base.Cholesky{Float64}
     RZX::Matrix{Float64}
     XtX::Symmetric{Float64}
     ZtX::Matrix{Float64}
-    ZtZ::CHMsp{Float64,Ti}
+    ZtZ::CHMsp{Float64}
     perm::Vector{Ti}
     λind::Vector
 end

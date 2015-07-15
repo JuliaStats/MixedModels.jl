@@ -1,5 +1,5 @@
 type PLSGeneral{Ti<:Union(Int32,Int64)} <: PLSSolver
-    L::CHMfac{Float64,Ti}
+    L::CHMfac{Float64}
     RX::Base.Cholesky{Float64}
     RZX::Matrix{Float64}
     XtX::Symmetric{Float64}
@@ -8,7 +8,7 @@ type PLSGeneral{Ti<:Union(Int32,Int64)} <: PLSSolver
     cu::Vector{Float64}
     nlev::Vector
     perm::Vector{Ti}
-    λtZt::CHMsp{Float64,Ti}
+    λtZt::CHMsp{Float64}
 end
 
 function PLSGeneral(Zt::SparseMatrixCSC,X::Matrix,facs::Vector)
