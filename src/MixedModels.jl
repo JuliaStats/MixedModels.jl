@@ -1,4 +1,7 @@
 using DataFrames  # should be externally available
+
+VERSION >= v"0.4.0-dev+6521" && __precompile__()
+
 module MixedModels
 
     using ArrayViews, Compat, DataArrays, DataFrames, Distributions, NLopt, PDMats, Showoff, StatsBase
