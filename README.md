@@ -2,7 +2,7 @@
 
 [![Build Status](https://travis-ci.org/dmbates/MixedModels.jl.svg?branch=master)](https://travis-ci.org/dmbates/MixedModels.jl)
 [![Coverage Status](https://img.shields.io/coveralls/dmbates/MixedModels.jl.svg)](https://coveralls.io/r/dmbates/MixedModels.jl?branch=master)
-[![MixedModels](http://pkg.julialang.org/badges/MixedModels_release.svg)](http://pkg.julialang.org/?pkg=MixedModels&ver=release)
+[![MixedModels](http://pkg.julialang.org/badges/MixedModels_0.3.svg)](http://pkg.julialang.org/?pkg=MixedModels&ver=0.3)
 [![MixedModels](http://pkg.julialang.org/badges/MixedModels_nightly.svg)](http://pkg.julialang.org/?pkg=MixedModels&ver=nightly)
 
 ## Fitting linear mixed-effects models
@@ -26,11 +26,11 @@ the `Dyestuff` data.
  $ Yield: num  1545 1440 1440 1520 1580 ...
 > (fm1 <- lmer(Yield ~ 1|Batch, Dyestuff, REML=FALSE))
 Linear mixed model fit by maximum likelihood ['lmerMod']
-Formula: Yield ~ 1 | Batch 
-   Data: Dyestuff 
+Formula: Yield ~ 1 | Batch
+   Data: Dyestuff
 
-      AIC       BIC    logLik  deviance 
- 333.3271  337.5307 -163.6635  327.3271 
+      AIC       BIC    logLik  deviance
+ 333.3271  337.5307 -163.6635  327.3271
 
 Random effects:
  Groups   Name        Variance Std.Dev.
@@ -305,4 +305,3 @@ f_45: 1751.93934, [0.929226,0.0181643,0.222646]
 FTOL_REACHED
 elapsed time: 0.022856979 seconds (1140940 bytes allocated)
 ```
-
