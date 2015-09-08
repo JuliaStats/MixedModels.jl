@@ -4,7 +4,7 @@ using Base.Test
 include("data.jl")
 
 tests = ["plsdiag.jl",
-         "plsgeneral.jl",
+         #"plsgeneral.jl",
          "plsonescalar.jl",
          "plsonevector.jl",
          "plstwoscalar.jl",
