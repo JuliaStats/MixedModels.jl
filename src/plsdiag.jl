@@ -20,6 +20,8 @@ function PLSDiag(Zt::SparseMatrixCSC,X::Matrix,facs::Vector)
             vcat([fill(j,length(ff.pool)) for (j,ff) in enumerate(facs)]...))
 end
 
+if false
+
 function Base.A_ldiv_B!(s::Union(PLSDiag,PLSGeneral),uβ::Vector)
     q,p = size(s.RZX)
     length(uβ) == (p+q) || throw(DimensionMismatch(""))
@@ -42,6 +44,8 @@ function Base.A_ldiv_B!(s::Union(PLSDiag,PLSGeneral),uβ::Vector)
                         s.perm))
     end
     uβ
+end
+
 end
 
 function update!(s::PLSDiag,λ::Vector)

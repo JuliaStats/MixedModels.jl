@@ -64,10 +64,10 @@ Base.size(p::PDCompF) = size(p.t)
 Base.size(p::PDCompF,i) = size(p.t,i)
 Base.size(p::PDDiagF) = size(p.d)
 
-PDMats.dim(p::PDLCholF) = size(p.ch,1)
-PDMats.dim(p::PDDiagF) = length(p.d.diag)
-PDMats.dim(p::PDScalF) = p.n
-PDMats.dim(p::PDCompF) = size(p.t,1)
+dim(p::PDLCholF) = size(p.ch,1)
+dim(p::PDDiagF) = length(p.d.diag)
+dim(p::PDScalF) = p.n
+dim(p::PDCompF) = size(p.t,1)
 
 Base.cond(p::PDLCholF) = cond(p.ch[:L])
 Base.cond(p::PDDiagF) = ((m,M) = extrema(p.d.diag); M/m)
@@ -228,7 +228,7 @@ function grdcmp!(v::DenseVector{Float64},p::PDCompF,m::Matrix{Float64})
     end
     v
 end
-    
+
 function grdcmp!(v::DenseVector{Float64},p::PDLCholF,m::Matrix{Float64})
     (n = chksquare(m)) == dim(p) || throw(DimensionMismatch(""))
     length(v) == nltri(n) || throw(DimensionMismatch(""))

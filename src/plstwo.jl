@@ -31,7 +31,7 @@ type PLSTwo <: PLSSolver # Solver for models with two crossed or nearly crossed 
     A₂₂b::Vector{ContiguousView{Float64,2,Array{Float64,2}}} # diagonal blocks
     A₃₂::Matrix{Float64} # X'Z₂
     A₃₃::Matrix{Float64} # X'X
-    L₁₁::Matrix{Float64} 
+    L₁₁::Matrix{Float64}
     L₁₁b::Vector{TRI{Float64,ContiguousView{Float64,2,Array{Float64,2}}}}
     L₂₁::Matrix{Float64}
     L₂₁v::Vector{ContiguousView{Float64,2,Array{Float64,2}}} # vertical blocks
@@ -254,7 +254,7 @@ function update!(s::PLSTwo,λ::Vector)
         isa(ll,AbstractPDMatFactor) || error("λ must be a vector of PDMatFactors")
     end
     λ₁ = λ[1]
-    λ₂ = λ[2]    
+    λ₂ = λ[2]
     p,p₁,p₂,ℓ₁,ℓ₂,q₁,q₂ = size(s)
     (dim(λ₁) == p₁ && dim(λ₂) == p₂) || throw(DimensionMismatch(""))
     L₂₁ = copy!(s.L₂₁,s.A₂₁)

@@ -1,18 +1,12 @@
 using DataFrames  # should be externally available
 
-VERSION >= v"0.4.0-dev+6521" && __precompile__()
+# VERSION >= v"0.4.0-dev+6521" && __precompile__()
 
 module MixedModels
 
-    using ArrayViews, Compat, DataArrays, DataFrames, Distributions, NLopt, PDMats, Showoff, StatsBase
+    using ArrayViews, DataArrays, DataFrames, Distributions, NLopt, Showoff, StatsBase
 
-if VERSION < v"0.4-"
-    using Docile
-    using Base.LinAlg.CHOLMOD: CholmodFactor, CholmodSparse, CHOLMOD_SYM, CHOLMOD_L, CHOLMOD_Lt, solve
-    import Base.LinAlg.CHOLMOD.chm_scale!
-else
     using Base.SparseMatrix.CHOLMOD
-end
     using Base.LinAlg: Ac_ldiv_B!, A_rdiv_Bc!, chksquare
 
     export
@@ -21,7 +15,7 @@ end
         MixedModel,
         PLSDiag,    # multiple, scalar random-effects terms
 #        PLSDiagWA,  # multiple, scalar random-effects terms using WSMP
-        PLSGeneral, # general random-effects structure
+#        PLSGeneral, # general random-effects structure
         PLSNested,  # solver for models whose grouping factors form a nested sequence
         PLSOne,     # solver for models with only one r.e. term
         PLSSolver,  # abstract type for a penalized least squares solver
@@ -47,12 +41,11 @@ end
     include("utils.jl")
     include("pdmats.jl")
     include("plssolver.jl")
-    include("plsgeneral.jl")
-    include("plsnested.jl")
+#    include("plsnested.jl")
     include("plsone.jl")
     include("plstwo.jl")
     include("plsdiag.jl")
     include("linearmixedmodels.jl")
-    include("glmtools.jl")
-    include("PIRLS.jl")
+#    include("glmtools.jl")
+#    include("PIRLS.jl")
 end #module
