@@ -1,8 +1,5 @@
-julia 0.3+
-Compat
+julia 0.4-
 DataFrames 0.6+
 Distributions 0.6+
-Docile
 NLopt 0.2+
-PDMats 0.3+
 Showoff
