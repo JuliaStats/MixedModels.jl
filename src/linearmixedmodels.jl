@@ -1,4 +1,4 @@
-@doc "Summary of optimization using the NLopt package"->
+"Summary of optimization using the NLopt package"
 type OptSummary
     initial::Vector{Float64}
     final::Vector{Float64}
@@ -10,7 +10,7 @@ end
 
 OptSummary() = OptSummary(Float64[],Float64[],NaN,-1,-1,:default)
 
-@doc "Representation of a linear mixed-effects model"->
+"Representation of a linear mixed-effects model"
 type LinearMixedModel{S<:PLSSolver} <: MixedModel
     REML::Bool
     X::ModelMatrix{Float64}
@@ -35,7 +35,7 @@ type LinearMixedModel{S<:PLSSolver} <: MixedModel
     opt::OptSummary
 end
 
-@doc "Create a linear mixed-effects model from a formula and data frame"->
+"Create a linear mixed-effects model from a formula and data frame"
 function lmm(f::Formula, fr::AbstractDataFrame)
     mf = ModelFrame(f,fr)
     X = ModelMatrix(mf)
@@ -100,10 +100,10 @@ function lmm(f::Formula, fr::AbstractDataFrame)
                      s, u, uβ, y, λ, similar(y),OptSummary())
 end
 
-@doc "Return the Cholesky factor RX or L from a LinearMixedModel"->
+"Return the Cholesky factor RX or L from a LinearMixedModel"
 Base.cholfact(m::LinearMixedModel,RX::Bool=true) = cholfact(m.s,RX)
 
-@doc "coef(m) -> current value of beta (as a reference)"->
+"coef(m) -> current value of beta (as a reference)"
 StatsBase.coef(m::LinearMixedModel) = fixef(m)
 
 termnames(term::Symbol, col) = [string(term)]
@@ -157,7 +157,7 @@ function StatsBase.deviance(m::LinearMixedModel)
     m.REML ? NaN : objective(m)
 end
 
-@doc "`fit(m)` -> m Optimize the objective using an NLopt optimizer"->
+"`fit(m)` -> m Optimize the objective using an NLopt optimizer"
 function StatsBase.fit(m::LinearMixedModel, verbose::Bool=false, optimizer::Symbol=:default)
     if !m.fit
         th = θ(m); k = length(th)
@@ -219,17 +219,17 @@ function StatsBase.fit(m::LinearMixedModel, verbose::Bool=false, optimizer::Symb
     m
 end
 
-@doc "Return the vector of fixed-effects coefficients"->
+"Return the vector of fixed-effects coefficients"
 function fixef(m::LinearMixedModel)
     ppq = length(m.uβ)
     p = length(m.Xty)
     m.uβ[(ppq - p + 1):ppq]
 end
 
-@doc "`fnames(m)` -> vector of names of grouping factors"->
+"`fnames(m)` -> vector of names of grouping factors"
 fnames(m::LinearMixedModel) = m.fnms
 
-@doc "Return Λ as a sparse triangular matrix"->
+"Return Λ as a sparse triangular matrix"
 function Λ(m::LinearMixedModel)
     vv = SparseMatrixCSC{Float64,Int}[]
     for i in 1:length(m.λ)
@@ -247,7 +247,7 @@ function Λ(m::LinearMixedModel)
     ltri(blkdiag(vv...))
 end
 
-@doc "overwrite g with the gradient (assuming that objective! has already been called)"->
+"overwrite g with the gradient (assuming that objective! has already been called)"
 function grad!(g,m::LinearMixedModel)
     hasgrad(m) || error("gradient evaluation not provided for $(typeof(m))")
     ## overwrite b with -Zt*resid/scale(m,true)
@@ -333,7 +333,7 @@ end
 function objective(m::LinearMixedModel)
     n,p = size(m)
     REML = m.REML
-    fn = @compat(Float64(n - (REML ? p : 0)))
+    fn = Float64(n - (REML ? p : 0))
     logdet(m,false) + fn*(1.+log(2π*pwrss(m)/fn)) + (REML ? logdet(m) : 0.)
 end
 
@@ -379,7 +379,7 @@ rss(m::LinearMixedModel) = sumabs2(m.resid)
 ## scale(m,true) -> estimate, s^2, of the squared scale parameter
 function Base.scale(m::LinearMixedModel, sqr=false)
     n,p = size(m.X.m)
-    ssqr = pwrss(m)/@compat(Float64(n - (m.REML ? p : 0)))
+    ssqr = pwrss(m)/Float64(n - (m.REML ? p : 0))
     sqr ? ssqr : sqrt(ssqr)
 end
 
@@ -403,7 +403,7 @@ function Base.show(io::IO, m::LinearMixedModel)
     println(io); println(io)
 
     show(io,VarCorr(m))
-    
+
     gl = grplevels(m)
     @printf(io," Number of obs: %d; levels of grouping factors: %d", n, gl[1])
     for l in gl[2:end] @printf(io, ", %d", l) end
@@ -494,7 +494,7 @@ function Base.show(io::IO,vc::VarCorr)
             println(io)
         end
     end
-end    
+end
 ## vcov(m) -> estimated variance-covariance matrix of the fixed-effects parameters
 StatsBase.vcov(m::LinearMixedModel) = scale(m,true) * inv(cholfact(m.s))
 

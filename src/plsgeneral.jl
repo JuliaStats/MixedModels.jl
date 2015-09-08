@@ -22,7 +22,7 @@ function PLSGeneral(Zt::SparseMatrixCSC,X::Matrix,facs::Vector)
     Ztc = CHMsp(Zt,0)
     L = VERSION < v"0.4-" ? cholfact(Ztc,1.,true) : cholfact(Ztc; shift = 1.)
     PLSGeneral(L,cholfact(symcontents(XtX),:L),copy(ZtX),XtX,
-               reshape(copy(Zt.nzval),(@compat(Int(d2)),Zt.n)), ZtX,zeros(size(L,1)),
+               reshape(copy(Zt.nzval),(Int(d2),Zt.n)), ZtX,zeros(size(L,1)),
                [length(f.pool) for f in facs],
                L.Perm .+ one(eltype(L.Perm)), Ztc)
 end
