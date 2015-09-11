@@ -472,7 +472,7 @@ function Base.show(io::IO,vc::VarCorr)
     write(io, " "^(2+nmwd))
     write(io, Base.cpad("Variance", varwd))
     write(io, Base.cpad("Std.Dev.", stdwd))
-    any([length(s) > 1 for s in stdm]) && write(io,"  Corr.")
+    any(s -> length(s) > 1,stdm) && write(io,"  Corr.")
     println(io)
     cor = [chol2cor(λ) for λ in vc.λ]
     ind = 1
