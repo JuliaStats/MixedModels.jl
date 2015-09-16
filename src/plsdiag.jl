@@ -1,28 +1,30 @@
 type PLSDiag{Ti<:Union(Int32,Int64)} <: PLSSolver # Sparse Choleksy solver for diagonal Λ
-    L::CHMfac{Float64}
+    L::Factor{Float64}
     RX::Base.Cholesky{Float64}
     RZX::Matrix{Float64}
     XtX::Symmetric{Float64}
     ZtX::Matrix{Float64}
-    ZtZ::CHMsp{Float64}
+    ZtZ::Sparse{Float64}
     perm::Vector{Ti}
     λind::Vector
 end
 
-function PLSDiag(Zt::SparseMatrixCSC,X::Matrix,facs::Vector)
-    Ztc = CHMsp(Zt)
-    ZtZ = CHMsp(Zt * Zt')
-    L = cholfact(ZtZ,1.,true)
+function PLSDiag{Tv,Ti<:Union(Int32,Int64)}(Zt::SparseMatrixCSC{Tv,Ti},X::Matrix,facs::Vector)
+    if Ti ≠ SuiteSparse_long
+        Zt = convert(SparseMatrixCSC{Tv,SuiteSparse_long},Zt)
+    end
+    ztz = Zt*Zt'
     XtX = Symmetric(X'X,:L)
     XtXdat = symcontents(XtX)
     ZtX = Zt*X
-    PLSDiag(L,cholfact(XtXdat,:L),copy(ZtX),XtX,ZtX,ZtZ,perm(L),
+    L = cholfact(Symmetric(ztz+I,:U))
+    PLSDiag(L,cholfact(XtXdat,:L),copy(ZtX),XtX,ZtX,Sparse(ztz),
+            Base.SparseMatrix.CHOLMOD.get_perm(L),
             vcat([fill(j,length(ff.pool)) for (j,ff) in enumerate(facs)]...))
 end
 
-if false
-
-function Base.A_ldiv_B!(s::Union(PLSDiag,PLSGeneral),uβ::Vector)
+#function Base.A_ldiv_B!(s::Union(PLSDiag,PLSGeneral),uβ::Vector)
+function Base.A_ldiv_B!(s::PLSDiag,uβ::Vector)
     q,p = size(s.RZX)
     length(uβ) == (p+q) || throw(DimensionMismatch(""))
     u = uβ[1:q]  # FIXME: change cholmod code to allow StridedVecOrMat and avoid creating the copy
@@ -46,14 +48,12 @@ function Base.A_ldiv_B!(s::Union(PLSDiag,PLSGeneral),uβ::Vector)
     uβ
 end
 
-end
-
 function update!(s::PLSDiag,λ::Vector)
     for ll in λ
         isa(ll,PDScalF) || error("λ must be a vector PDScalF objects")
     end
     λvec = [ll.s::Float64 for ll in λ][s.λind]
-    cholf!(s.L,chm_scale!(copy(s.ZtZ),λvec,Sym),1.)
+    Base.SparseMatrix.CHOLMOD.update!(s.L,chm_scale!(copy(s.ZtZ),λvec,Sym);shift=1.)
     if VERSION < v"0.4-"
         copy!(s.RZX,solve(s.L, scale(λvec, s.ZtX)[s.perm,:], CHOLMOD_L))
     else
