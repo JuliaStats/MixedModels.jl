@@ -231,7 +231,7 @@ fnames(m::LinearMixedModel) = m.fnms
 
 "Return Λ as a sparse triangular matrix"
 function Λ(m::LinearMixedModel)
-    vv = SparseMatrixCSC{Float64,Int}[]
+    vv = SparseMatrixCSC{Float64,SuiteSparse_long}[]
     for i in 1:length(m.λ)
         nl = length(m.facs[i].pool)
         ll = m.λ[i]
