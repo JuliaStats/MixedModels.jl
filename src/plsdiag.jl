@@ -9,7 +9,7 @@ type PLSDiag{Ti<:Union{Int32,Int64}} <: PLSSolver # Sparse Choleksy solver for d
     λind::Vector
 end
 
-function PLSDiag{Tv,Ti<:Union(Int32,Int64)}(Zt::SparseMatrixCSC{Tv,Ti},X::Matrix,facs::Vector)
+function PLSDiag{Tv,Ti<:Union{Int32,Int64}}(Zt::SparseMatrixCSC{Tv,Ti},X::Matrix,facs::Vector)
     if Ti ≠ SuiteSparse_long
         Zt = convert(SparseMatrixCSC{Tv,SuiteSparse_long},Zt)
     end
