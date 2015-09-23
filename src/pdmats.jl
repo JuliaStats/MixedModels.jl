@@ -201,7 +201,7 @@ end
 rowlengths(p::PDScalF) = fill(p.s,(p.n,))
 rowlengths(p::PDDiagF) = p.d.diag
 
-function chol2cor(p::Union(PDCompF,PDLCholF))
+function chol2cor(p::Union{PDCompF,PDLCholF})
     (m = dim(p)) == 1 && return ones(1,1)
     res = full(p.ch)
     d = [inv(sqrt(dd)) for dd in diag(res)]

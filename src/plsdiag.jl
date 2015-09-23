@@ -1,4 +1,4 @@
-type PLSDiag{Ti<:Union(Int32,Int64)} <: PLSSolver # Sparse Choleksy solver for diagonal Λ
+type PLSDiag{Ti<:Union{Int32,Int64}} <: PLSSolver # Sparse Choleksy solver for diagonal Λ
     L::CHMfac{Float64}
     RX::Base.Cholesky{Float64}
     RZX::Matrix{Float64}
@@ -22,7 +22,7 @@ end
 
 if false
 
-function Base.A_ldiv_B!(s::Union(PLSDiag,PLSGeneral),uβ::Vector)
+function Base.A_ldiv_B!(s::Union{PLSDiag,PLSGeneral},uβ::Vector)
     q,p = size(s.RZX)
     length(uβ) == (p+q) || throw(DimensionMismatch(""))
     u = uβ[1:q]  # FIXME: change cholmod code to allow StridedVecOrMat and avoid creating the copy

@@ -57,7 +57,7 @@ end
 symcontents(s::Symmetric) = VERSION ≥ v"0.4-" ? s.data : s.S
 
 "Read a sample data set from the data directory"
-function rdata(nm::Union(String,Symbol))
+function rdata(nm::Union{AbstractString,Symbol})
     DataFrame(read_rda(Pkg.dir("MixedModels","data",string(nm,".rda")))[string(nm)])
 end
 
