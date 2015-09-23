@@ -7,6 +7,9 @@ module MixedModels
     using ArrayViews, DataArrays, DataFrames, Distributions, NLopt, Showoff, StatsBase
 
     using Base.SparseMatrix.CHOLMOD
+
+    using Base.SparseMatrix.CHOLMOD.SuiteSparse_long
+
     using Base.LinAlg: Ac_ldiv_B!, A_rdiv_Bc!, chksquare
 
     export
@@ -41,7 +44,7 @@ module MixedModels
     include("utils.jl")
     include("pdmats.jl")
     include("plssolver.jl")
-#    include("plsnested.jl")
+    include("plsnested.jl")
     include("plsone.jl")
     include("plstwo.jl")
     include("plsdiag.jl")
