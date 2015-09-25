@@ -1,4 +1,6 @@
-"Summary of optimization using the NLopt package"
+"""
+Summary of optimization results using the NLopt package
+"""
 type OptSummary
     initial::Vector{Float64}
     final::Vector{Float64}
@@ -11,7 +13,15 @@ function OptSummary(initial::Vector{Float64},optimizer::Symbol)
     OptSummary(initial,initial,Inf,-1,-1,optimizer)
 end
 
-type LMM <: StatsBase.RegressionModel
+"""
+Linear mixed-effects model representation
+
+`trms` is a length `nt` vector of model matrices whose last element is `hcat(X,y)`
+`Λ` is a length `nt - 1` vector of parameterized lower triangular matrices
+`A` is an `nt × nt` symmetric matrix of matrices representing `hcat(Z,X,y)'hcat(Z,X,y)`
+`R`, also a `nt × nt` matrix of matrices, is the upper Cholesky factor of `Λ'AΛ`
+"""
+type LinearMixedModel <: MixedModel
     trms::Vector
     Λ::Vector
     A::Matrix        # symmetric cross-product blocks (upper triangle)
@@ -19,9 +29,9 @@ type LMM <: StatsBase.RegressionModel
     opt::OptSummary
 end
 
-function LMM(Rem::Vector, Λ::Vector, X::AbstractMatrix, y::Vector)
-    all(x->isa(x,AbstractReMat),Rem) ||
-        throw(ArgumentError("Elements of Rem should be AbstractReMat's"))
+function LinearMixedModel(Rem::Vector, Λ::Vector, X::AbstractMatrix, y::Vector)
+    all(x->isa(x,ReMat),Rem) ||
+        throw(ArgumentError("Elements of Rem should be ReMat's"))
     all(x->isa(x,ParamLowerTriangular),Λ) ||
         throw(ArgumentError("Elements of Λ should be ParamLowerTriangular"))
     n,p = size(X)
@@ -52,29 +62,41 @@ function LMM(Rem::Vector, Λ::Vector, X::AbstractMatrix, y::Vector)
             end
         end
     end
-    LMM(trms,Λ,A,R,OptSummary(mapreduce(x->x[:θ],vcat,Λ),:None))
+    LinearMixedModel(trms,Λ,A,R,OptSummary(mapreduce(x->x[:θ],vcat,Λ),:None))
 end
 
-LMM(re::Vector,Λ::Vector,X::AbstractMatrix,y::DataVector) = LMM(re,Λ,X,convert(Array,y))
+LinearMixedModel(re::Vector,Λ::Vector,X::AbstractMatrix,y::DataVector) = LinearMixedModel(re,Λ,X,convert(Array,y))
 
-LMM(re::Vector,X::DenseMatrix,y::DataVector) = LMM(re,map(LT,re),X,convert(Array,y))
+LinearMixedModel(re::Vector,X::DenseMatrix,y::DataVector) = LinearMixedModel(re,map(LT,re),X,convert(Array,y))
 
-LMM(re::Vector,X::DenseMatrix,y::Vector) = LMM(re,map(LT,re),X,y)
+LinearMixedModel(re::Vector,X::DenseMatrix,y::Vector) = LinearMixedModel(re,map(LT,re),X,y)
 
-LMM(g::PooledDataVector,y::DataVector) = LMM([ReMat(g)],y)
+LinearMixedModel(g::PooledDataVector,y::DataVector) = LinearMixedModel([ReMat(g)],y)
 
-LMM(re::Vector,y::DataVector) = LMM(re,ones(length(y),1),y)
+LinearMixedModel(re::Vector,y::DataVector) = LinearMixedModel(re,ones(length(y),1),y)
 
-LMM(re::Vector,y::Vector) = LMM(re,map(LT,re),ones(length(y),1),y)
+LinearMixedModel(re::Vector,y::Vector) = LinearMixedModel(re,map(LT,re),ones(length(y),1),y)
+
+function LinearMixedModel(f::Formula, fr::AbstractDataFrame)
+    mf = ModelFrame(f,fr)
+    X = ModelMatrix(mf)
+    y = convert(Vector{Float64},DataFrames.model_response(mf))
+                                        # process the random-effects terms
+    retrms = filter(x->Meta.isexpr(x,:call) && x.args[1] == :|, mf.terms.terms)
+    length(retrms) > 0 || error("Formula $f has no random-effects terms")
+    re = [remat(e,mf.df) for e in retrms]
+    LinearMixedModel(re,X.m,y)
+end
+
 
 chksz(A::ReMat,λ::ParamLowerTriangular) = size(λ,1) == 1
 chksz(A::VectorReMat,λ::ParamLowerTriangular) = size(λ,1) == size(A.z,1)
 
-lowerbd(A::LMM) = mapreduce(lowerbd,vcat,A.Λ)
+lowerbd(A::LinearMixedModel) = mapreduce(lowerbd,vcat,A.Λ)
 
-Base.getindex(m::LMM,s::Symbol) = mapreduce(x->x[s],vcat,m.Λ)
+Base.getindex(m::LinearMixedModel,s::Symbol) = mapreduce(x->x[s],vcat,m.Λ)
 
-function Base.setindex!(m::LMM,v::Vector,s::Symbol)
+function Base.setindex!(m::LinearMixedModel,v::Vector,s::Symbol)
     s == :θ || throw(ArgumentError("only ':θ' is meaningful for assignment"))
     lam = m.Λ
     length(v) == sum(nθ,lam) || throw(DimensionMismatch("length(v) should be $(sum(nθ,lam))"))
@@ -106,7 +128,7 @@ end
 
 Optimize the objective using an NLopt optimizer.
 """
-function StatsBase.fit(m::LMM, verbose::Bool=false, optimizer::Symbol=:default)
+function StatsBase.fit(m::LinearMixedModel, verbose::Bool=false, optimizer::Symbol=:default)
     th = m[:θ]
     k = length(th)
     if optimizer == :default
@@ -172,16 +194,16 @@ function StatsBase.fit(m::LMM, verbose::Bool=false, optimizer::Symbol=:default)
     m
 end
 
-grad!(v,lmm::LMM) = v
+grad!(v,lmm::LinearMixedModel) = v
 
-hasgrad(lmm::LMM) = false
+hasgrad(lmm::LinearMixedModel) = false
 
 """
 Regenerate the last column of `m.A` from `m.trms`
 
 This should be called after updating parts of `m.trms[end]`, typically the response.
 """
-function regenerateAend!(m::LMM)
+function regenerateAend!(m::LinearMixedModel)
     n = Base.LinAlg.chksquare(m.A)
     trmn = m.trms[n]
     for i in 1:n
@@ -193,7 +215,7 @@ end
 """
 Reset the value of `m.θ` to the initial values
 """
-function resetθ!(m::LMM)
+function resetθ!(m::LinearMixedModel)
     m[:θ] = m.opt.initial
     m.opt.feval = m.opt.geval = -1
     m
@@ -241,7 +263,7 @@ function LD{T}(d::DenseMatrix{T})
     r
 end
 
-function LD(m::LMM)
+function LD(m::LinearMixedModel)
     R = m.R
     s = 0.
     for i in eachindex(m.Λ)
@@ -251,7 +273,7 @@ function LD(m::LMM)
 end
 
 "Negative twice the log-likelihood"
-objective(m::LMM) = LD(m) + nobs(m)*(1.+log(2π*varest(m)))
+objective(m::LinearMixedModel) = LD(m) + nobs(m)*(1.+log(2π*varest(m)))
 
 function Base.LinAlg.Ac_ldiv_B!{T}(D::UpperTriangular{T,Diagonal{T}},B::DenseMatrix{T})
     m,n = size(B)
@@ -351,21 +373,22 @@ function Base.LinAlg.A_rdiv_B!(A::StridedVecOrMat,D::Diagonal)
     A
 end
 
-AIC(m::LMM) = objective(m) + 2npar(m)
+AIC(m::LinearMixedModel) = objective(m) + 2npar(m)
 
-BIC(m::LMM) = objective(m) + npar(m)*log(nobs(m))
+BIC(m::LinearMixedModel) = objective(m) + npar(m)*log(nobs(m))
 
 Base.LinAlg.A_rdiv_Bc!(A::StridedVecOrMat,D::Diagonal) = A_rdiv_B!(A,D)
 
-Base.cholfact(m::LMM) = UpperTriangular(m.R[end,end][1:end-1,1:end-1])
+## Rename this
+Base.cholfact(m::LinearMixedModel) = UpperTriangular(m.R[end,end][1:end-1,1:end-1])
 
-fixef(m::LMM) = cholfact(m)\m.R[end,end][1:end-1,end]
+fixef(m::LinearMixedModel) = cholfact(m)\m.R[end,end][1:end-1,end]
 
-StatsBase.coef(m::LMM) = fixef(m)
+StatsBase.coef(m::LinearMixedModel) = fixef(m)
 
-StatsBase.nobs(m::LMM) = size(m.trms[end],1)
+StatsBase.nobs(m::LinearMixedModel) = size(m.trms[end],1)
 
-function StatsBase.vcov(m::LMM)
+function StatsBase.vcov(m::LinearMixedModel)
     Rinv = Base.LinAlg.inv!(cholfact(m))
     varest(m)*Rinv*Rinv'
 end
@@ -376,24 +399,24 @@ Number of parameters in the model.
 Note that `size(m.trms[end],2)` is `length(coef(m)) + 1`, thereby accounting
 for the scale parameter, σ, that is profiled out.
 """
-npar(m::LMM) = size(m.trms[end],2) + length(m[:θ])
+npar(m::LinearMixedModel) = size(m.trms[end],2) + length(m[:θ])
 
 """
 returns the square root of the penalized residual sum-of-squares
 
 This is the bottom right element of the bottom right block of m.R
 """
-sqrtpwrss(m::LMM) = m.R[end,end][end,end]
+sqrtpwrss(m::LinearMixedModel) = m.R[end,end][end,end]
 
 """
 returns s², the estimate of σ², the variance of the conditional distribution of Y given B
 """
-varest(m::LMM) = pwrss(m)/nobs(m)
+varest(m::LinearMixedModel) = pwrss(m)/nobs(m)
 
 """
 returns the penalized residual sum-of-squares
 """
-pwrss(m::LMM) = abs2(sqrtpwrss(m))
+pwrss(m::LinearMixedModel) = abs2(sqrtpwrss(m))
 
 """
 Simulate `N` response vectors from `m`, refitting the model.  The function saveresults
@@ -402,7 +425,7 @@ is called after each refit.
 To save space the last column of `m.trms[end]`, which is the response vector, is overwritten
 by each simulation.  The original response is restored before returning.
 """
-function bootstrap(m::LMM,N::Integer,saveresults::Function,σ::Real=-1,mods::Vector{LMM}=LMM[])
+function bootstrap(m::LinearMixedModel,N::Integer,saveresults::Function,σ::Real=-1,mods::Vector{LinearMixedModel}=LinearMixedModel[])
     if σ < 0.
         σ = √varest(m)
     end
