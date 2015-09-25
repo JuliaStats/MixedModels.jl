@@ -94,7 +94,7 @@ function Base.scale!{T}(A::ColMajorLowerTriangular{T},B::Diagonal{T})
     B
 end
 
-LT(A::ReMat) = ColMajorLowerTriangular(eltype(A.z),1)
+LT(A::ScalarReMat) = ColMajorLowerTriangular(eltype(A.z),1)
 
 LT(A::VectorReMat) = (Az = A.z; ColMajorLowerTriangular(eltype(Az),size(Az,1)))
 
