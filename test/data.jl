@@ -68,4 +68,3 @@ const pen = DataFrame(Diameter = [27,23,26,23,23,21,27,23,26,23,23,21,25,21,25,2
 
 ## InstEval data from the lme4 package
 
-const inst = MixedModels.rdata("inst")

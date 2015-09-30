@@ -1,10 +1,9 @@
 abstract ReMat
 
 """
-`ScalarReMat` - a scalar random effects matrix
+`ScalarReMat` - a model matrix for scalar random effects
 
-The matrix consists of the grouping factor, `f`, and the transposed dense model
-matrix `z`.  The length of `f` must be equal to the number of columns of `z`
+The matrix is represented by the grouping factor, `f`, and a vector `z`.
 """
 immutable ScalarReMat <: ReMat
     f::PooledDataVector
@@ -15,6 +14,12 @@ immutable ScalarReMat <: ReMat
     end
 end
 
+"""
+`VectorReMat` - a representation of a model matrix for vector-valued random effects
+
+The matrix is represented by the grouping factor, `f`, and the transposed raw
+model matrix, `z`.
+"""
 immutable VectorReMat <: ReMat
     f::PooledDataVector                 # grouping factor
     z::Matrix
@@ -29,14 +34,12 @@ function remat(e::Expr,df::DataFrame)
     e.args[1] == :| || throw(ArgumentError("$e is not a call to '|'"))
     gr = getindex(df,e.args[3])
     gr = isa(gr,PooledDataArray) ? gr : pool(gr)
-    e.args[2] == 1 && return ScalarReMat(gr)
+    e.args[2] == 1 && return ScalarReMat(gr,ones(length(gr)))
     z = ModelMatrix(ModelFrame(Formula(nothing,e.args[2]),df)).m
     size(z,2) == 1 ? ScalarReMat(gr,vec(z)) : VectorReMat(gr,z')
 end
 
-ScalarReMat(p::PooledDataVector) = ScalarReMat(p,ones(length(p)))
-
-ScalarReMat{T<:Integer}(v::Vector{T}) = ScalarReMat(compact(pool(v)))
+remat(f::PooledDataVector) = ScalarReMat(f,ones(length(f)))
 
 Base.eltype(R::ReMat) = eltype(R.z)
 
@@ -82,7 +85,9 @@ function Base.Ac_mul_B!{T}(α::Real,A::ReMat,B::StridedVecOrMat{T},β::Real,R::S
     n,q = size(A)
     k = size(B,2)
     size(R,1) == q && size(B,1) == n && size(R,2) == k || throw(DimensionMismatch())
-    scale!(β,R)
+    if β ≠ 1
+        scale!(β,R)
+    end
     rr = A.f.refs
     zz = A.z
     if isa(A,ScalarReMat)
@@ -100,6 +105,7 @@ function Base.Ac_mul_B!{T}(α::Real,A::ReMat,B::StridedVecOrMat{T},β::Real,R::S
 end
 
 Base.Ac_mul_B!{T}(R::StridedVecOrMat{T},A::ReMat,B::StridedVecOrMat{T}) = Ac_mul_B!(one(T),A,B,zero(T),R)
+
 function Base.Ac_mul_B(A::ReMat,B::DenseVecOrMat)
     k = size(A,2)
     Ac_mul_B!(Array(eltype(B), isa(B,Vector) ? (k,) : (k, size(B,2))), A, B)

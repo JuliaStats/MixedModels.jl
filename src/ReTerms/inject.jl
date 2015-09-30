@@ -11,7 +11,7 @@ end
 
 function inject!{T<:Real}(d::AbstractMatrix{T}, s::Diagonal{T})
     sd = s.diag
-    length(sd) == size(d,2) || throw(DimensionMismatch(""))
+    length(sd) == size(d,2) || throw(DimensionMismatch())
     fill!(d,0.)
     @inbounds for i in eachindex(sd)
         d[i,i] = sd[i]

@@ -84,15 +84,3 @@ function Base.full(A::HBlkDiag)
     end
     res
 end
-
-"""
-Equivalent to `A = A + I` without making a copy of A
-"""
-function inflate!(A::HBlkDiag)
-    Aa = A.arr
-    r,s,k = size(Aa)
-    for j in 1:k, i in 1:min(r,s)
-        Aa[i,i,j] += 1
-    end
-    A
-end

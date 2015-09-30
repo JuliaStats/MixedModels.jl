@@ -16,7 +16,7 @@ end
 """
 Linear mixed-effects model representation
 
-`trms` is a length `nt` vector of model matrices whose last element is `hcat(X,y)`
+`trms` is a length `nt` vector of model matrices. Its last element is `hcat(X,y)`
 `Λ` is a length `nt - 1` vector of parameterized lower triangular matrices
 `A` is an `nt × nt` symmetric matrix of matrices representing `hcat(Z,X,y)'hcat(Z,X,y)`
 `R`, also a `nt × nt` matrix of matrices, is the upper Cholesky factor of `Λ'AΛ`
@@ -77,7 +77,7 @@ LinearMixedModel(re::Vector,y::DataVector) = LinearMixedModel(re,ones(length(y),
 
 LinearMixedModel(re::Vector,y::Vector) = LinearMixedModel(re,map(LT,re),ones(length(y),1),y)
 
-function LinearMixedModel(f::Formula, fr::AbstractDataFrame)
+function lmm(f::Formula, fr::AbstractDataFrame)
     mf = ModelFrame(f,fr)
     X = ModelMatrix(mf)
     y = convert(Vector{Float64},DataFrames.model_response(mf))
@@ -221,157 +221,8 @@ function resetθ!(m::LinearMixedModel)
     m
 end
 
-"Add an identity matrix to the argument, in place"
-inflate!(D::Diagonal{Float64}) = (d = D.diag; for i in eachindex(d) d[i] += 1 end; D)
-
-function inflate!{T<:AbstractFloat}(A::StridedMatrix{T})
-    n = Base.LinAlg.chksquare(A)
-    for i in 1:n
-        @inbounds A[i,i] += 1
-    end
-    A
-end
-
-"""
-LD(A) -> log(det(A)) for A diagonal, HBlkDiag, or UpperTriangular
-"""
-function LD{T}(d::Diagonal{T})
-    r = log(one(T))
-    dd = d.diag
-    for i in eachindex(dd)
-        r += log(dd[i])
-    end
-    r
-end
-
-function LD{T}(d::HBlkDiag{T})
-    r = log(one(T))
-    aa = d.arr
-    p,q,k = size(aa)
-    for j in 1:k, i in 1:p
-        r += log(aa[i,i,j])
-    end
-    r
-end
-
-function LD{T}(d::DenseMatrix{T})
-    r = log(one(T))
-    n = Base.LinAlg.chksquare(d)
-    for j in 1:n
-        r += log(d[j,j])
-    end
-    r
-end
-
-function LD(m::LinearMixedModel)
-    R = m.R
-    s = 0.
-    for i in eachindex(m.Λ)
-        s += LD(R[i,i])
-    end
-    2.*s
-end
-
 "Negative twice the log-likelihood"
 objective(m::LinearMixedModel) = LD(m) + nobs(m)*(1.+log(2π*varest(m)))
-
-function Base.LinAlg.Ac_ldiv_B!{T}(D::UpperTriangular{T,Diagonal{T}},B::DenseMatrix{T})
-    m,n = size(B)
-    dd = D.data.diag
-    length(dd) == m || throw(DimensionMismatch(""))
-    for j in 1:n, i in 1:m
-        B[i,j] /= dd[i]
-    end
-    B
-end
-
-function Base.LinAlg.Ac_ldiv_B!{T}(A::UpperTriangular{T,HBlkDiag{T}},B::DenseMatrix{T})
-    m,n = size(B)
-    aa = A.data.arr
-    r,s,k = size(aa)
-    m == Base.LinAlg.chksquare(A) || throw(DimensionMismatch())
-    scr = Array(T,(r,n))
-    for i in 1:k
-        bb = sub(B,(i-1)*r+(1:r),:)
-        copy!(bb,Base.LinAlg.Ac_ldiv_B!(UpperTriangular(sub(aa,:,:,i)),copy!(scr,bb)))
-    end
-    B
-end
-
-function Base.LinAlg.Ac_ldiv_B!{T}(D::UpperTriangular{T,Diagonal{T}},B::SparseMatrixCSC{T})
-    m,n = size(B)
-    dd = D.data.diag
-    length(dd) == m || throw(DimensionMismatch(""))
-    nzv = nonzeros(B)
-    rv = rowvals(B)
-    for j in 1:n, k in nzrange(B,j)
-        nzv[k] /= dd[rv[k]]
-    end
-    B
-end
-
-Base.LinAlg.A_ldiv_B!{T<:AbstractFloat}(D::Diagonal{T},B::DenseMatrix{T}) =
-    Base.LinAlg.Ac_ldiv_B!(D,B)
-
-function Base.logdet(t::UpperTriangular)
-    n = Base.LinAlg.chksquare(t)
-    mapreduce(log,(+),diag(t))
-end
-
-function Base.logdet(t::LowerTriangular)
-    n = Base.LinAlg.chksquare(t)
-    mapreduce(log,(+),diag(t))
-end
-
-function Base.logdet{T<:AbstractFloat}(R::HBlkDiag{T})
-    ra = R.arr
-    ret = zero(T)
-    r,s,k = size(ra)
-    for i in 1:k
-        ret += logdet(UpperTriangular(sub(ra,:,:,i)))
-    end
-    ret
-end
-
-function Base.LinAlg.A_rdiv_Bc!{T<:AbstractFloat}(A::SparseMatrixCSC{T},B::Diagonal{T})
-    m,n = size(A)
-    dd = B.diag
-    n == length(dd) || throw(DimensionMismatch(""))
-    nz = nonzeros(A)
-    for j in eachindex(dd)
-        @inbounds scale!(sub(nz,nzrange(A,j)),inv(dd[j]))
-    end
-    A
-end
-
-function Base.LinAlg.A_rdiv_Bc!{T<:AbstractFloat}(A::Matrix{T},B::Diagonal{T})
-    m,n = size(A)
-    dd = B.diag
-    n == length(dd) || throw(DimensionMismatch(""))
-    for j in eachindex(dd)
-        @inbounds scale!(sub(A,:,j),inv(dd[j]))
-    end
-    A
-end
-
-function Base.LinAlg.A_rdiv_B!(A::StridedVecOrMat,D::Diagonal)
-    m, n = size(A, 1), size(A, 2)
-    if n != length(D.diag)
-        throw(DimensionMismatch("diagonal matrix is $(length(D.diag)) by $(length(D.diag)) but left hand side has $n columns"))
-    end
-    (m == 0 || n == 0) && return A
-    dd = D.diag
-    for j = 1:n
-        dj = dd[j]
-        if dj == 0
-            throw(SingularException(j))
-        end
-        for i = 1:m
-            A[i,j] /= dj
-        end
-    end
-    A
-end
 
 AIC(m::LinearMixedModel) = objective(m) + 2npar(m)
 

@@ -19,20 +19,22 @@ export LinearMixedModel,
        objective,  # the objective function in fitting a model
        pwrss,      # penalized, weighted residual sum-of-squares
        ranef,      # extract the conditional modes of the random effects
+       remat,      # factory for construction of ReMat objects
        reml!       # set the objective to be the REML criterion
 
 abstract MixedModel <: RegressionModel # model with fixed and random effects
-
-using Base.LinAlg.BlasInt
 
 import Base: ==
 
 include("ReTerms/densify.jl")
 include("ReTerms/blockmats.jl")
+include("ReTerms/linalg.jl")
+include("ReTerms/inflate.jl")
 include("ReTerms/remat.jl")
 include("ReTerms/paramlowertriangular.jl")
 include("ReTerms/cfactor.jl")
 include("ReTerms/inject.jl")
 include("ReTerms/pls.jl")
+include("ReTerms/logdet.jl")
 
 end # module
