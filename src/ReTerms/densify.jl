@@ -4,7 +4,7 @@ A no-op for other matrix types.
 """
 function densify(S,threshold=0.3)
     issparse(S) || return S
-    isdiag(S) && return Diagonal(S)
+    isdiag(S) && return Diagonal(diag(S))
     nnz(S)/(*(size(S)...)) > threshold || return S
     isbits(eltype(S)) && return full(S)
     nzs = nonzeros(S)
