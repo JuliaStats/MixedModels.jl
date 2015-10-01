@@ -108,7 +108,7 @@ Base.Ac_mul_B!{T}(R::StridedVecOrMat{T},A::ReMat,B::StridedVecOrMat{T}) = Ac_mul
 
 function Base.Ac_mul_B(A::ReMat,B::DenseVecOrMat)
     k = size(A,2)
-    Ac_mul_B!(Array(eltype(B), isa(B,Vector) ? (k,) : (k, size(B,2))), A, B)
+    Ac_mul_B!(zeros(eltype(B), isa(B,Vector) ? (k,) : (k, size(B,2))), A, B)
 end
 
 function Base.Ac_mul_B(A::ScalarReMat, B::ScalarReMat)
