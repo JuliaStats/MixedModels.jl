@@ -40,11 +40,15 @@ function cfactor!(R::HBlkDiag)
     UpperTriangular(R)
 end
 
-"Subtract, in place, A'A or A'B from C"
-downdate!(C::DenseMatrix{Float64},A::DenseMatrix{Float64}) =
-    BLAS.syrk!('U','T',-1.0,A,1.0,C)
-downdate!(C::DenseMatrix{Float64},A::DenseMatrix{Float64},B::DenseMatrix{Float64}) =
-    BLAS.gemm!('T','N',-1.0,A,B,1.0,C)
+"""
+Subtract, in place, A'A or A'B from C
+"""
+downdate!{T<:Base.LinAlg.BlasFloat}(C::DenseMatrix{T},A::DenseMatrix{T}) =
+    BLAS.syrk!('U','T',-one(T),A,one(T),C)
+
+downdate!{T<:Base.LinAlg.BlasFloat}(C::DenseMatrix{T},A::DenseMatrix{T},B::DenseMatrix{T}) =
+    BLAS.gemm!('T','N',-one(T),A,B,one(T),C)
+
 function downdate!{T}(C::Diagonal{T},A::SparseMatrixCSC{T})
     m,n = size(A)
     dd = C.diag
@@ -54,6 +58,25 @@ function downdate!{T}(C::Diagonal{T},A::SparseMatrixCSC{T})
         for k in nzrange(A,j)
             @inbounds dd[j] -= abs2(nz[k])
         end
+    end
+    C
+end
+
+function downdate!{T}(C::Diagonal{T},A::Diagonal{T})
+    size(C) == size(A) || throw(DimensionMismatch())
+    c = C.diag
+    a = A.diag
+    for i in eachindex(c)
+        c[i] -= abs2(a[i])
+    end
+    C
+end
+
+function downdate!{T}(C::Diagonal{T},A::Diagonal{T},B::Diagonal{T})
+    size(C) == size(A) == size(B) || throw(DimensionMismatch())
+    c,a,b = C.diag,A.diag,B.diag
+    for i in eachindex(c)
+        c[i] -= a[i]*b[i]
     end
     C
 end
