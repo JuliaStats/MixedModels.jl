@@ -33,6 +33,16 @@ function Base.LinAlg.Ac_ldiv_B!{T}(D::UpperTriangular{T,Diagonal{T}},B::SparseMa
     B
 end
 
+function Base.LinAlg.Ac_ldiv_B!{T}(A::UpperTriangular{T,Diagonal{T}},B::Diagonal{T})
+    a = A.data.diag
+    b = B.diag
+    length(a) == length(b) || throw(DimensionMismatch())
+    for i in eachindex(a)
+        b[i] /= a[i]
+    end
+    B
+end
+
 Base.LinAlg.A_ldiv_B!{T<:AbstractFloat}(D::Diagonal{T},B::DenseMatrix{T}) =
     Base.LinAlg.Ac_ldiv_B!(D,B)
 

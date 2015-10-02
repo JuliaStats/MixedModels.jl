@@ -81,6 +81,16 @@ function downdate!{T}(C::Diagonal{T},A::Diagonal{T},B::Diagonal{T})
     C
 end
 
+function downdate!{T}(C::DenseMatrix{T},A::Diagonal{T},B::DenseMatrix{T})
+    a = A.diag
+    ((m,n) = size(B)) == size(C) || throw(DimensionMismatch())
+    length(a) == m || throw(DimensionMismatch())
+    for j in 1:n, i in 1:m
+        C[i,j] -= a[i] * B[i,j]
+    end
+    C
+end
+
 function downdate!{T}(C::DenseMatrix{T},A::SparseMatrixCSC{T},B::DenseMatrix{T})
     m,n = size(A)
     r,s = size(C)
