@@ -15,7 +15,7 @@ function cfactor!(A::AbstractMatrix)
             Akk = cfactor!(Akk)   # right Cholesky factor of A[k,k]
             for j in (k + 1):n
                 for i in 1:(k - 1)
-                    downdate!(A[k,j],A[i,k],A[i,j]) # A[k,j] -= A[i,k]*A[i,j]
+                    downdate!(A[k,j],A[i,k],A[i,j]) # A[k,j] -= A[i,k]'A[i,j]
                 end
                 Base.LinAlg.Ac_ldiv_B!(Akk,A[k,j])
             end
@@ -104,23 +104,13 @@ function downdate!{T}(C::DenseMatrix{T},A::SparseMatrixCSC{T},B::DenseMatrix{T})
 end
 
 function downdate!{T}(C::DenseMatrix{T},A::SparseMatrixCSC{T},B::SparseMatrixCSC{T})
-    ma,na = size(A)
-    mb,nb = size(B)
-    ma == size(C,1) && mb == size(C,2) && na == nb || throw(DimensionMismatch(""))
-    rva = rowvals(A); nza = nonzeros(A); rvb = rowvals(B); nzb = nonzeros(B)
-    for j in 1:nb
-        ia = nzrange(A,j)
-        ib = nzrange(B,j)
-        rvaj = sub(rva,ia)
-        rvbj = sub(rvb,ib)
-        nzaj = sub(nza,ia)
-        nzbj = sub(nzb,ib)
-        for k in eachindex(ib)
-            krv = rvbj[k]
-            knz = nzbj[k]
-            for i in eachindex(ia)
-                @inbounds C[rvaj[i],krv] -= nzaj[i]*knz
-            end
+    AtB = A'B
+    size(C) == size(AtB) || throw(DimensionMismatch())
+    atbrv = rowvals(AtB)
+    atbnz = nonzeros(AtB)
+    for j in 1:size(AtB,2)
+        for k in nzrange(AtB,j)
+            C[atbrv[k],j] -= atbnz[k]
         end
     end
     C
