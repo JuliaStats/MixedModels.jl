@@ -6,11 +6,10 @@ type OptSummary
     final::Vector{Float64}
     fmin::Float64
     feval::Int
-    geval::Int
     optimizer::Symbol
 end
 function OptSummary(initial::Vector{Float64},optimizer::Symbol)
-    OptSummary(initial,initial,Inf,-1,-1,optimizer)
+    OptSummary(initial,initial,Inf,-1,optimizer)
 end
 
 """
@@ -88,10 +87,6 @@ function lmm(f::Formula, fr::AbstractDataFrame)
     LinearMixedModel(re,X.m,y)
 end
 
-
-chksz(A::ReMat,λ::ParamLowerTriangular) = size(λ,1) == 1
-chksz(A::VectorReMat,λ::ParamLowerTriangular) = size(λ,1) == size(A.z,1)
-
 lowerbd(A::LinearMixedModel) = mapreduce(lowerbd,vcat,A.Λ)
 
 Base.getindex(m::LinearMixedModel,s::Symbol) = mapreduce(x->x[s],vcat,m.Λ)
@@ -124,35 +119,28 @@ function Base.setindex!(m::LinearMixedModel,v::Vector,s::Symbol)
 end
 
 """
-`fit(m)` -> `m`
+`fit!(m)` -> `m`
 
 Optimize the objective using an NLopt optimizer.
 """
-function StatsBase.fit(m::LinearMixedModel, verbose::Bool=false, optimizer::Symbol=:default)
+function StatsBase.fit!(m::LinearMixedModel, verbose::Bool=false, optimizer::Symbol=:LN_BOBYQA)
     th = m[:θ]
     k = length(th)
-    if optimizer == :default
-        optimizer = hasgrad(m) ? :LD_MMA : :LN_BOBYQA
-    end
     opt = NLopt.Opt(optimizer, k)
     NLopt.ftol_rel!(opt, 1e-12)   # relative criterion on deviance
     NLopt.ftol_abs!(opt, 1e-8)    # absolute criterion on deviance
     NLopt.xtol_abs!(opt, 1e-10)   # criterion on parameter value changes
     NLopt.lower_bounds!(opt, lowerbd(m))
     feval = 0
-    geval = 0
     function obj(x::Vector{Float64}, g::Vector{Float64})
+        length(g) == 0 || error("gradient not defined")
         feval += 1
         m[:θ] = x
-        val = objective(m)
-        if length(g) == length(x)
-            geval += 1
-            grad!(g,m)
-        end
-        val
+        objective(m)
     end
     if verbose
         function vobj(x::Vector{Float64}, g::Vector{Float64})
+            length(g) == 0 || error("gradient not defined")
             feval += 1
             m[:θ] = x
             val = objective(m)
@@ -160,10 +148,6 @@ function StatsBase.fit(m::LinearMixedModel, verbose::Bool=false, optimizer::Symb
             showcompact(x[1])
             for i in 2:length(x) print(","); showcompact(x[i]) end
             println("]")
-            if length(g) == length(x)
-                geval += 1
-                grad!(g,m)
-            end
             val
         end
         NLopt.min_objective!(opt, vobj)
@@ -189,39 +173,14 @@ function StatsBase.fit(m::LinearMixedModel, verbose::Bool=false, optimizer::Symb
             m[:θ] = xmin
         end
     end
-    m.opt = OptSummary(th,xmin,fmin,feval,geval,optimizer)
+    m.opt = OptSummary(th,xmin,fmin,feval,optimizer)
     if verbose println(ret) end
     m
 end
 
-grad!(v,lmm::LinearMixedModel) = v
-
-hasgrad(lmm::LinearMixedModel) = false
-
 """
-Regenerate the last column of `m.A` from `m.trms`
-
-This should be called after updating parts of `m.trms[end]`, typically the response.
+`objective(m)` -> Negative twice the log-likelihood
 """
-function regenerateAend!(m::LinearMixedModel)
-    n = Base.LinAlg.chksquare(m.A)
-    trmn = m.trms[n]
-    for i in 1:n
-        Ac_mul_B!(m.A[i,n],m.trms[i],trmn)
-    end
-    m
-end
-
-"""
-Reset the value of `m.θ` to the initial values
-"""
-function resetθ!(m::LinearMixedModel)
-    m[:θ] = m.opt.initial
-    m.opt.feval = m.opt.geval = -1
-    m
-end
-
-"Negative twice the log-likelihood"
 objective(m::LinearMixedModel) = LD(m) + nobs(m)*(1.+log(2π*varest(m)))
 
 AIC(m::LinearMixedModel) = objective(m) + 2npar(m)
@@ -269,47 +228,229 @@ returns the penalized residual sum-of-squares
 """
 pwrss(m::LinearMixedModel) = abs2(sqrtpwrss(m))
 
-"""
-Simulate `N` response vectors from `m`, refitting the model.  The function saveresults
-is called after each refit.
+termnames(term::Symbol, col) = [string(term)]
+function termnames(term::Symbol, col::PooledDataArray)
+    levs = levels(col)
+    [string(term, levs[i]) for i in 2:length(levs)]
+end
 
-To save space the last column of `m.trms[end]`, which is the response vector, is overwritten
-by each simulation.  The original response is restored before returning.
+## Temporary copy until change in DataFrames is merged and in a new release.
+## coefnames(m) -> return a vector of coefficient names
+function DataFrames.coefnames(m::LinearMixedModel)
+    fr = m.mf
+    if fr.terms.intercept
+        vnames = UTF8String["(Intercept)"]
+    else
+        vnames = UTF8String[]
+    end
+    # Need to only include active levels
+    for term in fr.terms.terms
+        if isa(term, Expr)
+            if term.head == :call && term.args[1] == :|
+                continue                # skip random-effects terms
+            elseif term.head == :call && term.args[1] == :&
+                a = term.args[2]
+                b = term.args[3]
+                for lev1 in termnames(a, fr.df[a]), lev2 in termnames(b, fr.df[b])
+                    push!(vnames, string(lev1, "&", lev2))
+                end
+            else
+                error("unrecognized term $term")
+            end
+        else
+            append!(vnames, termnames(term, fr.df[term]))
+        end
+    end
+    vnames
+end
+
+Base.cond(m::LinearMixedModel) = [cond(λ)::Float64 for λ in m.λ]
+
+function chol2cor(l::ColMajorLowerTriangular)
+    size(l,1) == 1 && return ones(1,1)
+    res = full(l)*full(l)'
+    d = [inv(sqrt(dd)) for dd in diag(res)]
+    scale!(d,scale!(res,d))
+end
+
+Base.cor(m::LinearMixedModel) = map(chol2cor,m.λ)
+
+function StatsBase.coeftable(m::LinearMixedModel)
+    fe = fixef(m)
+    se = stderr(m)
+    CoefTable(hcat(fe,se,fe./se), ["Estimate","Std.Error","z value"], coefnames(m))
+end
+
+function StatsBase.deviance(m::LinearMixedModel)
+    m.opt.feval > 0 || error("Model has not been fit")
+    objective(m)
+end
+
 """
-function bootstrap(m::LinearMixedModel,N::Integer,saveresults::Function,σ::Real=-1,mods::Vector{LinearMixedModel}=LinearMixedModel[])
-    if σ < 0.
-        σ = √varest(m)
-    end
-    trms = m.trms
-    nt = length(trms)
-    Xy = trms[nt]
-    n,pp1 = size(Xy)
-    X = sub(Xy,:,1:pp1-1)
-    y = sub(Xy,:,pp1)
-    y0 = copy(y)
-    fev = X*coef(m)
-    vfac = [σ*convert(LowerTriangular,λ) for λ in m.Λ]  # lower Cholesky factors of relative covariances
-    remats = Matrix{Float64}[]
-    for i in eachindex(vfac)
-        vsz = size(trms[i],2)
-        nr = size(vfac[i],1)
-        push!(remats,reshape(zeros(vsz),(nr,div(vsz,nr))))
-    end
-    for kk in 1:N
-        for i in 1:n
-            y[i] = fev[i] + σ*randn()
+`fnames(m)` -> vector of names of grouping factors
+"""
+fnames(m::LinearMixedModel) = m.fnms
+
+"""
+Return Λ as a sparse triangular matrix
+"""
+function Λ(m::LinearMixedModel)
+    vv = SparseMatrixCSC{Float64,SuiteSparse_long}[]
+    for i in 1:length(m.λ)
+        nl = length(m.facs[i].pool)
+        ll = m.λ[i]
+        p = size(ll,1)
+        if p == 1
+            isa(ll,PDScalF) || error("1×1 λ section should be a PDScalF type")
+            push!(vv,ll.s .* speye(nl))
+        else
+            sfll = sparse(full(ll))
+            push!(vv,blkdiag([sfll for _ in 1:nl]...))
         end
-        for j in eachindex(remats)
-            mat = vec(A_mul_B!(vfac[j],randn!(remats[j])))
-            A_mul_B!(1.,trms[j],vec(mat),1.,y)
-        end
-        regenerateAend!(m)
-        resetθ!(m)
-        fit(m)
-        saveresults(kk,m)
     end
-    copy!(y,y0)
-    regenerateAend!(m)
-    resetθ!(m)
-    fit(m)
+    ltri(blkdiag(vv...))
+end
+
+"""
+`grplevels(m)` -> Vector{Int} : number of levels in each term's grouping factor
+"""
+grplevels(v::Vector) = [length(f.pool) for f in v]
+grplevels(m::LinearMixedModel) = grplevels(m.facs)
+
+isfit(m::LinearMixedModel) = m.opt.fmin < Inf
+
+## FixME: Change the definition so that one choice is for the combined L and RX
+Base.logdet(m::LinearMixedModel,RX::Bool=true) = logdet(m.s,RX)
+
+## likelihood ratio tests
+function lrt(mods::LinearMixedModel...)
+    if (nm = length(mods)) <= 1
+        error("at least two models are required for an lrt")
+    end
+    m1 = mods[1]; n = nobs(m1)
+    for i in 2:nm
+        if nobs(mods[i]) != n
+            error("number of observations must be constant across models")
+        end
+    end
+    mods = mods[sortperm([npar(m)::Int for m in mods])]
+    df = [npar(m)::Int for m in mods]
+    dev = [deviance(m)::Float64 for m in mods]
+    csqr = unshift!([(dev[i-1]-dev[i])::Float64 for i in 2:nm],NaN)
+    pval = unshift!([ccdf(Chisq(df[i]-df[i-1]),csqr[i])::Float64 for i in 2:nm],NaN)
+    DataFrame(Df = df, Deviance = dev, Chisq=csqr,pval=pval)
+end
+
+##  ranef(m) -> vector of matrices of random effects on the original scale
+##  ranef(m,true) -> vector of matrices of random effects on the U scale
+function ranef(m::LinearMixedModel, uscale=false)
+    uscale && return m.u
+    for (λ,b,u) in zip(m.λ,m.b,m.u)
+        A_mul_B!(λ,copy!(b,u))         # overwrite b by λ*u
+    end
+    m.b
+end
+
+##  reml!(m,v=true) -> m : Set m.REML to v.  If m.REML is modified, unset m.fit
+function reml!(m::LinearMixedModel,v::Bool=true)
+    if m.REML != v
+        m.REML = v
+        m.opt.fmin = Inf
+    end
+    m
+end
+
+## rss(m) -> residual sum of squares
+rss(m::LinearMixedModel) = sumabs2(m.resid)
+
+## scale(m,true) -> estimate, s^2, of the squared scale parameter
+function Base.scale(m::LinearMixedModel, sqr=false)
+    n,p = size(m.X.m)
+    ssqr = pwrss(m)/Float64(n - (m.REML ? p : 0))
+    sqr ? ssqr : sqrt(ssqr)
+end
+
+function Base.show(io::IO, m::LinearMixedModel)
+    if !isfit(m)
+        warn("Model has not been fit")
+        return nothing
+    end
+    n,p,q,k = size(m)
+    REML = m.REML
+    @printf(io, "Linear mixed model fit by %s\n", REML ? "REML" : "maximum likelihood")
+    println(io, m.f)
+    println(io)
+
+    oo = objective(m)
+    if REML
+        @printf(io, " REML criterion: %f", oo)
+    else
+        @printf(io, " logLik: %f, deviance: %f", -oo/2., oo)
+    end
+    println(io); println(io)
+
+    show(io,VarCorr(m))
+
+    gl = grplevels(m)
+    @printf(io," Number of obs: %d; levels of grouping factors: %d", n, gl[1])
+    for l in gl[2:end] @printf(io, ", %d", l) end
+    println(io)
+    @printf(io,"\n  Fixed-effects parameters:\n")
+    show(io,coeftable(m))
+end
+
+## std(m) -> Vector{Vector{Float64}} estimated standard deviations of variance components
+Base.std(m::LinearMixedModel) = scale(m)*push!([rowlengths(λ) for λ in m.λ],[1.])
+
+type VarCorr                            # a type to isolate the print logic
+    λ::Vector
+    fnms::Vector
+    s::Float64
+    function VarCorr(λ::Vector,fnms::Vector,s::Number)
+        (k = length(fnms)) == length(λ) || throw(DimensionMismatch(""))
+        s >= 0. || error("s must be non-negative")
+        for i in 1:k
+            isa(λ[i],AbstractPDMatFactor) || error("isa(λ[$i],AbstractPDMatFactor is not true")
+            isa(fnms[i],String) || error("fnms must be a vector of strings")
+        end
+        new(λ,fnms,s)
+    end
+end
+VarCorr(m::LinearMixedModel) = VarCorr(m.λ,m.fnms,scale(m))
+
+function Base.show(io::IO,vc::VarCorr)
+    fnms = vcat(vc.fnms,"Residual")
+    nmwd = maximum(map(strwidth, fnms))
+    write(io, "Variance components:\n")
+    stdm = vc.s*push!([rowlengths(λ) for λ in vc.λ],[1.])
+    tt = vcat(stdm...)
+    vi = showoff(abs2(tt), :plain)
+    si = showoff(tt, :plain)
+    varwd = 1 + max(length("Variance"), maximum(map(strwidth, vi)))
+    stdwd = 1 + max(length("Std.Dev."), maximum(map(strwidth, si)))
+    write(io, " "^(2+nmwd))
+    write(io, Base.cpad("Variance", varwd))
+    write(io, Base.cpad("Std.Dev.", stdwd))
+    any(s -> length(s) > 1,stdm) && write(io,"  Corr.")
+    println(io)
+    cor = [chol2cor(λ) for λ in vc.λ]
+    ind = 1
+    for i in 1:length(fnms)
+        stdmi = stdm[i]
+        write(io, ' ')
+        write(io, rpad(fnms[i], nmwd))
+        write(io, lpad(vi[ind], varwd))
+        write(io, lpad(si[ind], stdwd))
+        ind += 1
+        println(io)
+        for j in 2:length(stdmi)
+            write(io, lpad(vi[ind], varwd + nmwd + 1))
+            write(io, lpad(si[ind], stdwd))
+            ind += 1
+            for k in 1:(j-1)
+                @printf(io, "%6.2f", cor[i][j,1])
+            end
+            println(io)
+        end
+    end
 end

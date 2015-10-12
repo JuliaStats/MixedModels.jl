@@ -6,21 +6,19 @@ Uses `inject!` (as opposed to `copy!`), `downdate!` (as opposed to `syrk!`
 """
 function cfactor!(A::AbstractMatrix)
     n = Base.LinAlg.chksquare(A)
-#    @inbounds begin
-        for k = 1:n
-            Akk = A[k,k]
-            for i in 1:(k - 1)
-                downdate!(Akk,A[i,k])  # A[k,k] -= A[i,k]'A[i,k]
-            end
-            Akk = cfactor!(Akk)   # right Cholesky factor of A[k,k]
-            for j in (k + 1):n
-                for i in 1:(k - 1)
-                    downdate!(A[k,j],A[i,k],A[i,j]) # A[k,j] -= A[i,k]'A[i,j]
-                end
-                Base.LinAlg.Ac_ldiv_B!(Akk,A[k,j])
-            end
+    for k = 1:n
+        Akk = A[k,k]
+        for i in 1:(k - 1)
+            downdate!(Akk,A[i,k])    # A[k,k] -= A[i,k]'A[i,k]
         end
-#    end
+        Akk = cfactor!(Akk)          # right Cholesky factor of A[k,k]
+        for j in (k + 1):n
+            for i in 1:(k - 1)
+                downdate!(A[k,j],A[i,k],A[i,j]) # A[k,j] -= A[i,k]'A[i,j]
+            end
+            Base.LinAlg.Ac_ldiv_B!(Akk,A[k,j])
+        end
+    end
     UpperTriangular(A)
 end
 

@@ -74,6 +74,9 @@ length of the parameter vector for the term
 """
 nθ(A::ColMajorLowerTriangular) = nlower(size(A.Lambda.data,1))
 
+chksz(A::ReMat,λ::ParamLowerTriangular) = size(λ,1) == 1
+chksz(A::VectorReMat,λ::ParamLowerTriangular) = size(λ,1) == size(A.z,1)
+
 function Base.scale!(A::ColMajorLowerTriangular,B::HBlkDiag)
     Ba = B.arr
     r,s,k = size(Ba)

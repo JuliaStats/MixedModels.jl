@@ -12,15 +12,14 @@ export LinearMixedModel,
        AIC,        # Akaike's Information Criterion
        BIC,        # Schwatz's Bayesian Information Criterion
        fixef,      # extract the fixed-effects parameter estimates
-       grad!,      # install gradient of objective
-       hasgrad,    # can the analytic gradient of the objective function be evaluated
        lmm,        # create a LinearMixedModel from a formula/data specification
        lowerbd,    # lower bounds on the covariance parameters
        objective,  # the objective function in fitting a model
        pwrss,      # penalized, weighted residual sum-of-squares
        ranef,      # extract the conditional modes of the random effects
        remat,      # factory for construction of ReMat objects
-       reml!       # set the objective to be the REML criterion
+       reml!,      # set the objective to be the REML criterion
+       varest      # estimate of the residual variance
 
 abstract MixedModel <: RegressionModel # model with fixed and random effects
 

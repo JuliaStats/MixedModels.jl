@@ -1,4 +1,6 @@
-"like `copy!` but allowing for heterogeneous matrix types"
+"""
+like `copy!` but allowing for heterogeneous matrix types
+"""
 inject!(d,s) = copy!(d,s)               # fallback method
 
 function inject!(d::UpperTriangular,s::UpperTriangular)

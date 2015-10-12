@@ -18,9 +18,8 @@ function densify(S,threshold=0.3)
     res = Array(eltype(nz1),M*m,N*n)
     rv = rowvals(S)
     for j in 1:size(S,2)
-        jm1 = j - 1
         for k in nzrange(S,j)
-            copy!(sub(res,(rv[k]-1)*m+(1:m),jm1*n+(1:n)),nzs[k])
+            copy!(sub(res,(rv[k]-1)*m+(1:m),(j-1)*n+(1:n)),nzs[k])
         end
     end
     res
