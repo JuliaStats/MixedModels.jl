@@ -10,10 +10,13 @@ fm1 = lmm(Yield ~ 1 + (1|Batch),ds)
 fm1[:θ] = [0.713]
 @test objective(fm1) ≈ 327.34216280955366
 
-fit!(fm1)
+fit!(fm1);
 @test objective(fm1) ≈ 327.3270598811428
+@test_approx_eq_eps fm1[:θ] [0.752580] 1.e-5
+@test_approx_eq_eps deviance(fm1) 327.32705988 1.e-6
+@test_approx_eq fixef(fm1) [1527.5]
+@test_approx_eq coef(fm1) [1527.5]
 
-fm2 = lmm(Yield ~ 1 + (1|Batch), ds2)
 @test lowerbd(fm2) == zeros(1)
 fit!(fm2)
 @test fm2[:θ] == zeros(1)

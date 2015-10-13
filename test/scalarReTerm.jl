@@ -27,7 +27,7 @@ const rhs = sf'Yield
 const L = MixedModels.LT(sf)
 L[:θ] = [0.5]
 
-@test isa(scale!(L,crp),Diagonal)
+@test isa(MixedModels.tscale!(L,crp),Diagonal)
 @test crp.diag == fill(2.5,6)
 @test copy!(crp1,crp) == crp
 
