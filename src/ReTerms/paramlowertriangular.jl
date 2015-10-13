@@ -1,66 +1,44 @@
-"""
-Parameterized lower triangular matrices.
-"""
-abstract ParamLowerTriangular{T,S<:AbstractMatrix} <: Base.LinAlg.AbstractTriangular{T,S}
-
-"""
-Parameterized lower triangular matrix in which each element of the lower triangle is a parameter
-"""
-immutable ColMajorLowerTriangular{T,S<:AbstractMatrix} <: ParamLowerTriangular{T,S}
-    Lambda::LowerTriangular{T,S}
-end
-
-ColMajorLowerTriangular(typ,n::Integer) = ColMajorLowerTriangular(LowerTriangular(eye(typ,n)))
-
-ColMajorLowerTriangular(n::Integer) = ColMajorLowerTriangular(LowerTriangular(eye(n)))
-
-Base.convert(::Type{LowerTriangular},A::ColMajorLowerTriangular) = A.Lambda
-
-Base.size(A::ColMajorLowerTriangular, args...) = size(A.Lambda, args...)
-
-Base.size(A::ColMajorLowerTriangular) = size(A.Lambda)
-
-Base.copy(A::ColMajorLowerTriangular) = ColMajorLowerTriangular(copy(A.Lambda))
-
-Base.copy!(A::ColMajorLowerTriangular,B::ColMajorLowerTriangular) = (copy!(A.Lambda.data,B.Lambda.data);A)
-
-Base.full(A::ColMajorLowerTriangular) = full(A.Lambda)
-
 @inline nlower(n::Integer) = (n*(n+1))>>1
 
-function Base.getindex{T}(A::ColMajorLowerTriangular{T},s::Symbol)
+"""
+return the lower triangle as a vector (column-major ordering)
+"""
+function Base.getindex{T}(A::LowerTriangular{T,Matrix{T}},s::Symbol)
     s == :θ || throw(KeyError(s))
-    Ad = A.Lambda.data
-    n = size(Ad,1)
+    n = size(A,1)
     res = Array(T,nlower(n))
     k = 0
     for j = 1:n, i in j:n
-        @inbounds res[k += 1] = Ad[i,j]
+        @inbounds res[k += 1] = A[i,j]
     end
     res
 end
 
-Base.getindex(A::ColMajorLowerTriangular,i::Integer,j::Integer) = A.Lambda[i,j]
-
-function Base.setindex!{T}(A::ColMajorLowerTriangular{T},v::StridedVector{T},s::Symbol)
+"""
+set the lower triangle of A to v using column-major ordering
+"""
+function Base.setindex!{T}(
+    A::LowerTriangular{T,Matrix{T}},
+    v::StridedVector{T},
+    s::Symbol
+    )
     s == :θ || throw(KeyError(s))
-    Ad = A.Lambda.data
-    n = Base.LinAlg.chksquare(Ad)
+    n = size(A,1)
     if length(v) ≠ nlower(n)
         throw(DimensionMismatch("length(v) = $(length(v)), should be $(nlower(n))"))
     end
     k = 0
     for j in 1:n, i in j:n
-        Ad[i,j] = v[k += 1]
+        A[i,j] = v[k += 1]
     end
     A
 end
 
 """
-lower bounds on the parameters
+lower bounds on the parameters (elements in the lower triangle)
 """
-function lowerbd{T}(A::ColMajorLowerTriangular{T})
-    n = size(A.Lambda.data,1)
+function lowerbd{T}(A::LowerTriangular{T,Matrix{T}})
+    n = size(A,1)
     res = fill(convert(T,-Inf),nlower(n))
     k = -n
     for j in n+1:-1:2
@@ -70,166 +48,101 @@ function lowerbd{T}(A::ColMajorLowerTriangular{T})
 end
 
 """
-length of the parameter vector for the term
+length of the parameter vector
 """
-nθ(A::ColMajorLowerTriangular) = nlower(size(A.Lambda.data,1))
+nθ{T}(A::LowerTriangular{T}) = nlower(size(A,1))
 
-chksz(A::ReMat,λ::ParamLowerTriangular) = size(λ,1) == 1
-chksz(A::VectorReMat,λ::ParamLowerTriangular) = size(λ,1) == size(A.z,1)
+chksz(A::ReMat,λ::LowerTriangular) = size(λ,1) == 1
+chksz(A::VectorReMat,λ::LowerTriangular) = size(λ,1) == size(A.z,1)
 
-function Base.scale!(A::ColMajorLowerTriangular,B::HBlkDiag)
+"""
+returns a vector of row lengths of the matrix
+
+used in `chol2cor`
+"""
+function rowlengths(L::LowerTriangular)
+    Ld = L.data
+    [norm(sub(Ld,i,1:i)) for i in 1:size(Ld,1)]
+end
+
+"""
+scale B using the implicit expansion of A to a homogeneous block diagonal
+"""
+function tscale!(A::LowerTriangular,B::HBlkDiag)
     Ba = B.arr
     r,s,k = size(Ba)
-    Al = A.Lambda
-    n = Base.LinAlg.chksquare(Al)
+    n = Base.LinAlg.chksquare(A)
     n == r || throw(DimensionMismatch())
     if r == 1
-        scale!(Ba,Al[1,1])
+        scale!(Ba,A.data[1])
     else
-        Ac_mul_B!(Al,reshape(Ba,(r,s*k)))
+        Ac_mul_B!(A,reshape(Ba,(r,s*k)))
     end
     B
 end
 
-function Base.scale!{T}(A::ColMajorLowerTriangular{T},B::Diagonal{T})
+function tscale!{T}(A::LowerTriangular{T},B::Diagonal{T})
     size(A,1) == 1 || throw(DimensionMismatch())
-    scale!(A.Lambda.data[1,1],B.diag)
+    scale!(A.data[1],B.diag)
     B
 end
 
-LT(A::ScalarReMat) = ColMajorLowerTriangular(eltype(A.z),1)
+LT(A::ScalarReMat) = LowerTriangular(ones(eltype(A.z),(1,1)))
 
-LT(A::VectorReMat) = (Az = A.z; ColMajorLowerTriangular(eltype(Az),size(Az,1)))
+function LT(A::VectorReMat)
+    Az = A.z
+    LowerTriangular(full(eye(eltype(Az),size(Az,1))))
+end
 
-function Base.scale!{T}(A::ColMajorLowerTriangular{T},B::DenseVecOrMat{T})
-    al = A.Lambda
-    if (l = Base.LinAlg.chksquare(al)) == 1
-        return scale!(al.data[1],B)
+function tscale!{T}(A::LowerTriangular{T},B::DenseVecOrMat{T})
+    if (l = Base.LinAlg.chksquare(A)) == 1
+        return scale!(A.data[1],B)
     end
     m,n = size(B,1),size(B,2)
-    Ac_mul_B!(al,reshape(B,(l,div(m,l)*n)))
+    Ac_mul_B!(A,reshape(B,(l,div(m,l)*n)))
     B
 end
 
-function Base.scale!{T}(A::ColMajorLowerTriangular{T},B::SparseMatrixCSC{T})
-    al = A.Lambda
-    (l = Base.LinAlg.chksquare(al)) == 1 || error("Code not yet written")
-    scale!(al[1],B.nzval)
+function tscale!{T}(A::LowerTriangular{T},B::SparseMatrixCSC{T})
+    (l = Base.LinAlg.chksquare(A)) == 1 || error("Code not yet written")
+    scale!(A.data[1],B.nzval)
     B
 end
 
-function Base.scale!{T}(A::SparseMatrixCSC{T},B::ColMajorLowerTriangular)
-    bl = B.Lambda
-    (l = Base.LinAlg.chksquare(bl)) == 1 || error("Code not yet written")
-    scale!(A.nzval,bl[1])
+function tscale!{T}(A::SparseMatrixCSC{T},B::LowerTriangular)
+    (l = Base.LinAlg.chksquare(B)) == 1 || error("Code not yet written")
+    scale!(A.nzval,B.data[1])
     A
 end
 
-function Base.scale!{T}(A::Diagonal{T},B::ColMajorLowerTriangular{T})
-    bl = B.Lambda
-    if (l = Base.LinAlg.chksquare(bl)) ≠ 1
+function tscale!{T}(A::Diagonal{T},B::LowerTriangular{T})
+    if (l = Base.LinAlg.chksquare(B)) ≠ 1
         throw(DimensionMismatch(
-        "for scale!(A::Diagonal,B::ColMajorLowerTriangular) B must be 1×1"))
+        "in tscale!(A::Diagonal,B::LowerTriangular) B must be 1×1"))
     end
-    scale!(bl[1],A.diag)
+    scale!(B.data[1],A.diag)
     A
 end
 
-function Base.scale!{T}(A::HBlkDiag{T},B::ColMajorLowerTriangular{T})
-    aa = A.arr
-    r,s,k = size(aa)
-    bl = B.Lambda
-    for i in 1:k
-        A_mul_B!(sub(aa,:,:,i),bl)
-    end
-    A
-end
-
-function Base.scale!{T}(A::StridedMatrix{T},B::ColMajorLowerTriangular{T})
-    bl = B.Lambda
-    l = Base.LinAlg.chksquare(bl)
-    l == 1 && return scale!(A,bl.data[1])
-    m,n = size(A)
-    q,r = divrem(n,l)
-    r == 0 || throw(DimensionMismatch("size(A,2) = $n must be a multiple of size(B,1) = $l"))
-    for k in 0:(q-1)
-        A_mul_B!(sub(A,:,k*l + (1:l)),bl)
-    end
-    A
-end
-
-immutable DiagonalLowerTriangular{T} <: ParamLowerTriangular{T}
-    diag::Vector{T}
-end
-
-DiagonalLowerTriangular(typ,n::Integer) = DiagonalLowerTriangular(ones(typ,n))
-
-DiagonalLowerTriangular(n::Integer) = DiagonalLowerTriangular(ones(n))
-
-Base.full(A::DiagonalLowerTriangular) = Diagonal(A.diag)
-
-Base.convert(::Type{LowerTriangular},A::DiagonalLowerTriangular) = LowerTriangular(full(A))
-
-Base.size(A::DiagonalLowerTriangular) = (n=length(A.diag);(n,n))
-
-function Base.getindex(A::DiagonalLowerTriangular,s::Symbol)
-    s == :θ || throw(KeyError(s))
-    copy(A.diag)
-end
-
-nθ(A::DiagonalLowerTriangular) = length(A.diag)
-
-Base.getindex(A::DiagonalLowerTriangular,i::Integer,j::Integer) = full(A)[i,j]
-
-function Base.setindex!{T}(A::DiagonalLowerTriangular{T},v::StridedVector{T},s::Symbol)
-    s == :θ || throw(KeyError(s))
-    copy!(A.diag,v)
-    A
-end
-
-function lowerbd{T}(A::DiagonalLowerTriangular{T})
-    zeros(A.diag)
-end
-
-function Base.scale!(A::DiagonalLowerTriangular,B::HBlkDiag)
-    bb = B.arr
-    r,s,k = size(bb)
-    dd = A.diag
-    r == length(dd) || throw(DimensionMismatch())
-    if r == 1
-        scale!(bb,dd[1])
-    else
-        scale!(dd,reshape(bb,(r,s*k)))
-    end
-    bb
-end
-
-function Base.scale!{T}(A::DiagonalLowerTriangular{T},B::DenseVecOrMat{T})
-    m,n = size(B)
-    dd = A.diag
-    l = length(dd)
-    scale!(dd,reshape(B,(l,div(m,l)*n)))
-    B
-end
-
-function Base.scale!{T}(A::HBlkDiag,B::DiagonalLowerTriangular{T})
+function tscale!{T}(A::HBlkDiag{T},B::LowerTriangular{T})
     aa = A.arr
     r,s,k = size(aa)
     for i in 1:k
-        scale!(sub(aa,:,:,i),B.diag)
+        A_mul_B!(sub(aa,:,:,i),B)
     end
     A
 end
 
-function Base.scale!{T}(A::StridedMatrix{T},B::DiagonalLowerTriangular{T})
-    dd = B.diag
-    l = length(dd)
-    l == 1 && return scale!(A,dd[1])
+function tscale!{T}(A::StridedMatrix{T},B::LowerTriangular{T})
+    l = Base.LinAlg.chksquare(B)
+    l == 1 && return scale!(A,B.data[1])
     m,n = size(A)
     q,r = divrem(n,l)
-    r == 0 || throw(DimensionMismatch("size(A,2) = $n must be a multiple of size(B,1) = $l"))
+    if r ≠ 0
+        throw(DimensionMismatch("size(A,2) = $n must be a multiple of size(B,1) = $l"))
+    end
     for k in 0:(q-1)
-        scale!(sub(A,:,k*l + (1:l)),dd)
+        A_mul_B!(sub(A,:,k*l + (1:l)),B)
     end
     A
 end

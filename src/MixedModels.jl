@@ -4,7 +4,7 @@ module MixedModels
 
 using DataArrays, DataFrames, NLopt, StatsBase
 
-export ScalarReMat,VectorReMat,ColMajorLowerTriangular,DiagonalLowerTriangular
+export ScalarReMat,VectorReMat
 
 export LinearMixedModel,
        MixedModel,

@@ -1,4 +1,5 @@
-const m1 = MixedModels.ColMajorLowerTriangular(3)
+using MixedModels,Base.Test
+const m1 = LowerTriangular(eye(3))
 
 @test size(m1) == (3,3)
 @test size(m1,1) == 3
