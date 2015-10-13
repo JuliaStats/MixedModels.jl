@@ -1,5 +1,5 @@
 """
-Summary of optimization results using the NLopt package
+Summary of an NLopt optimization
 """
 type OptSummary
     initial::Vector{Float64}
@@ -16,28 +16,34 @@ end
 Linear mixed-effects model representation
 
 `trms` is a length `nt` vector of model matrices. Its last element is `hcat(X,y)`
-`Λ` is a length `nt - 1` vector of parameterized lower triangular matrices
+`Λ` is a length `nt - 1` vector of lower triangular matrices
 `A` is an `nt × nt` symmetric matrix of matrices representing `hcat(Z,X,y)'hcat(Z,X,y)`
-`R`, also a `nt × nt` matrix of matrices, is the upper Cholesky factor of `Λ'AΛ`
+`R`, also a `nt × nt` matrix of matrices, is the upper Cholesky factor of `Λ'AΛ+I`
 """
-type LinearMixedModel <: MixedModel
+type LinearMixedModel{T} <: MixedModel
     trms::Vector
-    Λ::Vector
+    Λ::Vector{LowerTriangular{T,Matrix{T}}}
     A::Matrix        # symmetric cross-product blocks (upper triangle)
     R::Matrix        # right Cholesky factor in blocks.
     opt::OptSummary
 end
 
-function LinearMixedModel(Rem::Vector, Λ::Vector, X::AbstractMatrix, y::Vector)
+function LinearMixedModel{T}(
+    Rem::Vector,
+    Λ::Vector{LowerTriangular{T,Matrix{T}}},
+    X::AbstractMatrix{T},
+    y::Vector
+    )
     all(x->isa(x,ReMat),Rem) ||
         throw(ArgumentError("Elements of Rem should be ReMat's"))
-    all(x->isa(x,ParamLowerTriangular),Λ) ||
-        throw(ArgumentError("Elements of Λ should be ParamLowerTriangular"))
     n,p = size(X)
-    all(t -> size(t,1) == n,Rem) && length(y) == n || throw(DimensionMismatch("n not consistent"))
+    if any(t -> size(t,1) ≠ n,Rem) || length(y) ≠ n
+        throw(DimensionMismatch("n not consistent"))
+    end
     nreterms = length(Rem)
-    length(Λ) == nreterms && all(i->chksz(Rem[i],Λ[i]),1:nreterms) ||
+    if length(Λ) ≠ nreterms || !all(i->chksz(Rem[i],Λ[i]),1:nreterms)
         throw(DimensionMismatch("Rem and Λ"))
+    end
     nt = nreterms + 1
     trms = Array(Any,nt)
     for i in eachindex(Rem) trms[i] = Rem[i] end
@@ -108,10 +114,10 @@ function Base.setindex!(m::LinearMixedModel,v::Vector,s::Symbol)
         li[:θ] = sub(v,offset + (1:nti))
         offset += nti
         for j in i:size(R,2)
-            scale!(li,R[i,j])
+            tscale!(li,R[i,j])
         end
         for ii in 1:i
-            scale!(R[ii,i],li)
+            tscale!(R[ii,i],li)
         end
         inflate!(R[i,i])
     end
@@ -266,9 +272,9 @@ end
 
 Base.cond(m::LinearMixedModel) = [cond(λ)::Float64 for λ in m.λ]
 
-function chol2cor(l::ColMajorLowerTriangular)
+function chol2cor(l::LowerTriangular)
     size(l,1) == 1 && return ones(1,1)
-    res = full(l)*full(l)'
+    res = l*l'
     d = [inv(sqrt(dd)) for dd in diag(res)]
     scale!(d,scale!(res,d))
 end
@@ -363,13 +369,6 @@ end
 ## rss(m) -> residual sum of squares
 rss(m::LinearMixedModel) = sumabs2(m.resid)
 
-## scale(m,true) -> estimate, s^2, of the squared scale parameter
-function Base.scale(m::LinearMixedModel, sqr=false)
-    n,p = size(m.X.m)
-    ssqr = pwrss(m)/Float64(n - (m.REML ? p : 0))
-    sqr ? ssqr : sqrt(ssqr)
-end
-
 function Base.show(io::IO, m::LinearMixedModel)
     if !isfit(m)
         warn("Model has not been fit")
@@ -400,7 +399,7 @@ function Base.show(io::IO, m::LinearMixedModel)
 end
 
 ## std(m) -> Vector{Vector{Float64}} estimated standard deviations of variance components
-Base.std(m::LinearMixedModel) = scale(m)*push!([rowlengths(λ) for λ in m.λ],[1.])
+Base.std(m::LinearMixedModel) = √varest(m)*push!([rowlengths(λ) for λ in m.Λ],[1.])
 
 type VarCorr                            # a type to isolate the print logic
     λ::Vector
