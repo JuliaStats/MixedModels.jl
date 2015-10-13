@@ -8,6 +8,16 @@ function Base.LinAlg.Ac_ldiv_B!{T}(D::UpperTriangular{T,Diagonal{T}},B::DenseMat
     B
 end
 
+function Base.LinAlg.Ac_ldiv_B!{T}(D::UpperTriangular{T,Diagonal{T}},B::Diagonal{T})
+    dd = D.data.diag
+    bd = B.diag
+    length(dd) == length(bd) || throw(DimensionMismatch(""))
+    for j in eachindex(bd)
+        bd[j] /= dd[j]
+    end
+    B
+end
+
 function Base.LinAlg.Ac_ldiv_B!{T}(A::UpperTriangular{T,HBlkDiag{T}},B::DenseMatrix{T})
     m,n = size(B)
     aa = A.data.arr
@@ -33,23 +43,16 @@ function Base.LinAlg.Ac_ldiv_B!{T}(D::UpperTriangular{T,Diagonal{T}},B::SparseMa
     B
 end
 
-function Base.LinAlg.Ac_ldiv_B!{T}(A::UpperTriangular{T,Diagonal{T}},B::Diagonal{T})
-    a = A.data.diag
-    b = B.diag
-    length(a) == length(b) || throw(DimensionMismatch())
-    for i in eachindex(a)
-        b[i] /= a[i]
-    end
-    B
-end
-
 Base.LinAlg.A_ldiv_B!{T<:AbstractFloat}(D::Diagonal{T},B::DenseMatrix{T}) =
     Base.LinAlg.Ac_ldiv_B!(D,B)
 
-function Base.LinAlg.A_rdiv_Bc!{T<:AbstractFloat}(A::SparseMatrixCSC{T},B::Diagonal{T})
+function Base.LinAlg.A_rdiv_Bc!{T<:AbstractFloat}(
+    A::SparseMatrixCSC{T},
+    B::Diagonal{T}
+    )
     m,n = size(A)
     dd = B.diag
-    n == length(dd) || throw(DimensionMismatch(""))
+    n == length(dd) || throw(DimensionMismatch())
     nz = nonzeros(A)
     for j in eachindex(dd)
         @inbounds scale!(sub(nz,nzrange(A,j)),inv(dd[j]))
@@ -67,7 +70,7 @@ function Base.LinAlg.A_rdiv_Bc!{T<:AbstractFloat}(A::Matrix{T},B::Diagonal{T})
     A
 end
 
-function Base.LinAlg.A_rdiv_B!(A::StridedVecOrMat,D::Diagonal)
+function Base.LinAlg.A_rdiv_B!{T}(A::StridedVecOrMat{T},D::Diagonal{T})
     m, n = size(A, 1), size(A, 2)
     if n != length(D.diag)
         throw(DimensionMismatch("diagonal matrix is $(length(D.diag)) by $(length(D.diag)) but left hand side has $n columns"))
