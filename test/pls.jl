@@ -17,6 +17,7 @@ fit!(fm1);
 @test_approx_eq fixef(fm1) [1527.5]
 @test_approx_eq coef(fm1) [1527.5]
 
+fm2 = lmm(Yield ~ 1 + (1|Batch),ds2)
 @test lowerbd(fm2) == zeros(1)
 fit!(fm2)
 @test fm2[:θ] == zeros(1)
