@@ -1,3 +1,5 @@
+## FIXME: See if  UpperTriangular{T,Diagonal{T}} can be replaced by Diagonal{T} 
+
 function Base.LinAlg.Ac_ldiv_B!{T}(D::UpperTriangular{T,Diagonal{T}},B::DenseMatrix{T})
     m,n = size(B)
     dd = D.data.diag

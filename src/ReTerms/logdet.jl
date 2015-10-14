@@ -1,5 +1,5 @@
 """
-LD(A) -> log(det(A)) for A diagonal, HBlkDiag, or UpperTriangular
+`LD(A) -> log(det(triu(A)))` for `A` diagonal, HBlkDiag, or UpperTriangular
 """
 function LD{T}(d::Diagonal{T})
     r = log(one(T))
@@ -29,7 +29,10 @@ function LD{T}(d::DenseMatrix{T})
     r
 end
 
-function LD(m::LinearMixedModel)
+"""
+returns `log(det(Λ'Z'ZΛ + I))`
+"""
+function Base.logdet(m::LinearMixedModel)
     R = m.R
     s = 0.
     for i in eachindex(m.Λ)

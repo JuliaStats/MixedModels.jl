@@ -21,6 +21,7 @@ Linear mixed-effects model representation
 `R`, also a `nt × nt` matrix of matrices, is the upper Cholesky factor of `Λ'AΛ+I`
 """
 type LinearMixedModel{T} <: MixedModel
+    mf::ModelFrame
     trms::Vector
     Λ::Vector{LowerTriangular{T,Matrix{T}}}
     A::Matrix        # symmetric cross-product blocks (upper triangle)
@@ -29,6 +30,7 @@ type LinearMixedModel{T} <: MixedModel
 end
 
 function LinearMixedModel{T}(
+    mf::ModelFrame,
     Rem::Vector,
     Λ::Vector{LowerTriangular{T,Matrix{T}}},
     X::AbstractMatrix{T},
@@ -67,20 +69,8 @@ function LinearMixedModel{T}(
             end
         end
     end
-    LinearMixedModel(trms,Λ,A,R,OptSummary(mapreduce(x->x[:θ],vcat,Λ),:None))
+    LinearMixedModel(mf,trms,Λ,A,R,OptSummary(mapreduce(x->x[:θ],vcat,Λ),:None))
 end
-
-LinearMixedModel(re::Vector,Λ::Vector,X::AbstractMatrix,y::DataVector) = LinearMixedModel(re,Λ,X,convert(Array,y))
-
-LinearMixedModel(re::Vector,X::DenseMatrix,y::DataVector) = LinearMixedModel(re,map(LT,re),X,convert(Array,y))
-
-LinearMixedModel(re::Vector,X::DenseMatrix,y::Vector) = LinearMixedModel(re,map(LT,re),X,y)
-
-LinearMixedModel(g::PooledDataVector,y::DataVector) = LinearMixedModel([ReMat(g)],y)
-
-LinearMixedModel(re::Vector,y::DataVector) = LinearMixedModel(re,ones(length(y),1),y)
-
-LinearMixedModel(re::Vector,y::Vector) = LinearMixedModel(re,map(LT,re),ones(length(y),1),y)
 
 function lmm(f::Formula, fr::AbstractDataFrame)
     mf = ModelFrame(f,fr)
@@ -90,7 +80,7 @@ function lmm(f::Formula, fr::AbstractDataFrame)
     retrms = filter(x->Meta.isexpr(x,:call) && x.args[1] == :|, mf.terms.terms)
     length(retrms) > 0 || error("Formula $f has no random-effects terms")
     re = [remat(e,mf.df) for e in retrms]
-    LinearMixedModel(re,X.m,y)
+    LinearMixedModel(mf,re,map(LT,re),X.m,y)
 end
 
 lowerbd(A::LinearMixedModel) = mapreduce(lowerbd,vcat,A.Λ)
@@ -100,7 +90,9 @@ Base.getindex(m::LinearMixedModel,s::Symbol) = mapreduce(x->x[s],vcat,m.Λ)
 function Base.setindex!(m::LinearMixedModel,v::Vector,s::Symbol)
     s == :θ || throw(ArgumentError("only ':θ' is meaningful for assignment"))
     lam = m.Λ
-    length(v) == sum(nθ,lam) || throw(DimensionMismatch("length(v) should be $(sum(nθ,lam))"))
+    if length(v) != sum(nθ,lam)
+        throw(DimensionMismatch("length(v) = $(length(v)), should be $(sum(nθ,lam))"))
+    end
     A = m.A
     R = m.R
     n = size(A,1)                       # inject upper triangle of A into L
@@ -187,11 +179,17 @@ end
 """
 `objective(m)` -> Negative twice the log-likelihood
 """
-objective(m::LinearMixedModel) = LD(m) + nobs(m)*(1.+log(2π*varest(m)))
+objective(m::LinearMixedModel) = logdet(m) + nobs(m)*(1.+log(2π*varest(m)))
 
-AIC(m::LinearMixedModel) = objective(m) + 2npar(m)
+"""
+Akaike's Information Criterion
+"""
+AIC(m::LinearMixedModel) = deviance(m) + 2npar(m)
 
-BIC(m::LinearMixedModel) = objective(m) + npar(m)*log(nobs(m))
+"""
+Schwartz's Bayesian Information Criterion
+"""
+BIC(m::LinearMixedModel) = deviance(m) + npar(m)*log(nobs(m))
 
 Base.LinAlg.A_rdiv_Bc!(A::StridedVecOrMat,D::Diagonal) = A_rdiv_B!(A,D)
 
@@ -204,11 +202,6 @@ StatsBase.coef(m::LinearMixedModel) = fixef(m)
 
 StatsBase.nobs(m::LinearMixedModel) = size(m.trms[end],1)
 
-function StatsBase.vcov(m::LinearMixedModel)
-    Rinv = Base.LinAlg.inv!(cholfact(m))
-    varest(m)*Rinv*Rinv'
-end
-
 """
 Number of parameters in the model.
 
@@ -216,6 +209,12 @@ Note that `size(m.trms[end],2)` is `length(coef(m)) + 1`, thereby accounting
 for the scale parameter, σ, that is profiled out.
 """
 npar(m::LinearMixedModel) = size(m.trms[end],2) + length(m[:θ])
+
+function Base.size(m::LinearMixedModel)
+    szs = map(size,m.trms)
+    n,pp1 = pop!(szs)
+    n,pp1-1,sum(x->x[2],szs),length(szs)
+end
 
 """
 returns the square root of the penalized residual sum-of-squares
@@ -234,57 +233,21 @@ returns the penalized residual sum-of-squares
 """
 pwrss(m::LinearMixedModel) = abs2(sqrtpwrss(m))
 
-termnames(term::Symbol, col) = [string(term)]
-function termnames(term::Symbol, col::PooledDataArray)
-    levs = levels(col)
-    [string(term, levs[i]) for i in 2:length(levs)]
-end
-
-## Temporary copy until change in DataFrames is merged and in a new release.
-## coefnames(m) -> return a vector of coefficient names
-function DataFrames.coefnames(m::LinearMixedModel)
-    fr = m.mf
-    if fr.terms.intercept
-        vnames = UTF8String["(Intercept)"]
-    else
-        vnames = UTF8String[]
-    end
-    # Need to only include active levels
-    for term in fr.terms.terms
-        if isa(term, Expr)
-            if term.head == :call && term.args[1] == :|
-                continue                # skip random-effects terms
-            elseif term.head == :call && term.args[1] == :&
-                a = term.args[2]
-                b = term.args[3]
-                for lev1 in termnames(a, fr.df[a]), lev2 in termnames(b, fr.df[b])
-                    push!(vnames, string(lev1, "&", lev2))
-                end
-            else
-                error("unrecognized term $term")
-            end
-        else
-            append!(vnames, termnames(term, fr.df[term]))
-        end
-    end
-    vnames
-end
-
 Base.cond(m::LinearMixedModel) = [cond(λ)::Float64 for λ in m.λ]
 
-function chol2cor(l::LowerTriangular)
-    size(l,1) == 1 && return ones(1,1)
-    res = l*l'
-    d = [inv(sqrt(dd)) for dd in diag(res)]
+function chol2cor(L::LowerTriangular)
+    size(L,1) == 1 && return ones(1,1)
+    res = L*L'
+    d = [inv(sqrt(res[i,i])) for i in 1:size(res,1)]
     scale!(d,scale!(res,d))
 end
 
-Base.cor(m::LinearMixedModel) = map(chol2cor,m.λ)
+Base.cor(m::LinearMixedModel) = map(chol2cor,m.Λ)
 
 function StatsBase.coeftable(m::LinearMixedModel)
     fe = fixef(m)
     se = stderr(m)
-    CoefTable(hcat(fe,se,fe./se), ["Estimate","Std.Error","z value"], coefnames(m))
+    CoefTable(hcat(fe,se,fe./se), ["Estimate","Std.Error","z value"], coefnames(m.mf))
 end
 
 function StatsBase.deviance(m::LinearMixedModel)
@@ -298,49 +261,29 @@ end
 fnames(m::LinearMixedModel) = m.fnms
 
 """
-Return Λ as a sparse triangular matrix
-"""
-function Λ(m::LinearMixedModel)
-    vv = SparseMatrixCSC{Float64,SuiteSparse_long}[]
-    for i in 1:length(m.λ)
-        nl = length(m.facs[i].pool)
-        ll = m.λ[i]
-        p = size(ll,1)
-        if p == 1
-            isa(ll,PDScalF) || error("1×1 λ section should be a PDScalF type")
-            push!(vv,ll.s .* speye(nl))
-        else
-            sfll = sparse(full(ll))
-            push!(vv,blkdiag([sfll for _ in 1:nl]...))
-        end
-    end
-    ltri(blkdiag(vv...))
-end
-
-"""
 `grplevels(m)` -> Vector{Int} : number of levels in each term's grouping factor
 """
-grplevels(v::Vector) = [length(f.pool) for f in v]
-grplevels(m::LinearMixedModel) = grplevels(m.facs)
+grplevels(v::Vector) = [length(t.f.pool) for t in v]
+grplevels(m::LinearMixedModel) = grplevels(m.trms[1:end-1])
 
 isfit(m::LinearMixedModel) = m.opt.fmin < Inf
 
-## FixME: Change the definition so that one choice is for the combined L and RX
-Base.logdet(m::LinearMixedModel,RX::Bool=true) = logdet(m.s,RX)
-
-## likelihood ratio tests
+"""
+Likelihood ratio test of one or more models
+"""
 function lrt(mods::LinearMixedModel...)
     if (nm = length(mods)) <= 1
-        error("at least two models are required for an lrt")
+        error("at least two models are required for a likelihood ratio test")
     end
-    m1 = mods[1]; n = nobs(m1)
+    m1 = mods[1]
+    n = nobs(m1)
     for i in 2:nm
         if nobs(mods[i]) != n
             error("number of observations must be constant across models")
         end
     end
     mods = mods[sortperm([npar(m)::Int for m in mods])]
-    df = [npar(m)::Int for m in mods]
+    df = Int[npar(m) for m in mods]
     dev = [deviance(m)::Float64 for m in mods]
     csqr = unshift!([(dev[i-1]-dev[i])::Float64 for i in 2:nm],NaN)
     pval = unshift!([ccdf(Chisq(df[i]-df[i-1]),csqr[i])::Float64 for i in 2:nm],NaN)
@@ -366,26 +309,21 @@ function reml!(m::LinearMixedModel,v::Bool=true)
     m
 end
 
-## rss(m) -> residual sum of squares
-rss(m::LinearMixedModel) = sumabs2(m.resid)
-
 function Base.show(io::IO, m::LinearMixedModel)
     if !isfit(m)
         warn("Model has not been fit")
         return nothing
     end
     n,p,q,k = size(m)
-    REML = m.REML
-    @printf(io, "Linear mixed model fit by %s\n", REML ? "REML" : "maximum likelihood")
-    println(io, m.f)
+    @printf(io, "Linear mixed model fit by maximum likelihood")
     println(io)
 
     oo = objective(m)
-    if REML
-        @printf(io, " REML criterion: %f", oo)
-    else
-        @printf(io, " logLik: %f, deviance: %f", -oo/2., oo)
-    end
+#    if REML
+#        @printf(io, " REML criterion: %f", oo)
+#    else
+        @printf(io, " logLik: %f, deviance: %f, AIC: %f, BIC: %f",-oo/2.,oo, AIC(m),BIC(m))
+#    end
     println(io); println(io)
 
     show(io,VarCorr(m))
@@ -398,7 +336,9 @@ function Base.show(io::IO, m::LinearMixedModel)
     show(io,coeftable(m))
 end
 
-## std(m) -> Vector{Vector{Float64}} estimated standard deviations of variance components
+"""
+`std(m) -> Vector{Vector{Float64}}` estimated standard deviations of variance components
+"""
 Base.std(m::LinearMixedModel) = √varest(m)*push!([rowlengths(λ) for λ in m.Λ],[1.])
 
 type VarCorr                            # a type to isolate the print logic
@@ -408,14 +348,12 @@ type VarCorr                            # a type to isolate the print logic
     function VarCorr(λ::Vector,fnms::Vector,s::Number)
         (k = length(fnms)) == length(λ) || throw(DimensionMismatch(""))
         s >= 0. || error("s must be non-negative")
-        for i in 1:k
-            isa(λ[i],AbstractPDMatFactor) || error("isa(λ[$i],AbstractPDMatFactor is not true")
-            isa(fnms[i],String) || error("fnms must be a vector of strings")
-        end
         new(λ,fnms,s)
     end
 end
-VarCorr(m::LinearMixedModel) = VarCorr(m.λ,m.fnms,scale(m))
+function VarCorr(m::LinearMixedModel)
+    VarCorr(m.Λ,[string("f",i) for i in 1:length(m.Λ)],√varest(m))
+end
 
 function Base.show(io::IO,vc::VarCorr)
     fnms = vcat(vc.fnms,"Residual")
@@ -452,4 +390,12 @@ function Base.show(io::IO,vc::VarCorr)
             println(io)
         end
     end
+end
+
+"""
+returns the estimated variance-covariance matrix of the fixed-effects estimator
+"""
+function StatsBase.vcov(m::LinearMixedModel)
+    Rinv = Base.LinAlg.inv!(cholfact(m))
+    varest(m)*Rinv*Rinv'
 end

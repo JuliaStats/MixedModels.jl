@@ -1,4 +1,4 @@
-using DataFrames,DataArrays,Distributions,StatsBase,ReTerms
+using DataFrames,DataArrays,Distributions,StatsBase,MixedModels
 
 """
 Create a DataFrame with crossed grouping factors, `S` and `I`
@@ -45,16 +45,5 @@ srand(1234321);
 
 
 sim1!(dat,[2000.,0.]);
-ms1 = fit(LMM([VectorReMat(dat[s],Xst) for s in [:S,:I]],Xs,dat[:y]));
-ms1.opt
-gc(); @time fit(LMM([VectorReMat(dat[s],Xst) for s in [:S,:I]],Xs,dat[:y]));
-ms2 = fit(LMM([VectorReMat(dat[s],Xst) for s in [:S,:I]],[DiagonalLowerTriangular(2) for _ in 1:2],Xs,dat[:y]));
-ms2.opt
-gc(); @time fit(LMM([VectorReMat(dat[s],Xst) for s in [:S,:I]],[DiagonalLowerTriangular(2) for _ in 1:2],Xs,dat[:y]));
-lowtri = []
-push!(lowtri,DiagonalLowerTriangular(2))
-push!(lowtri,ColMajorLowerTriangular(1))
-#ms3 = LMM([VectorReMat(dat[:S],Xst);ReMat(dat[:I])],lowtri,Xs,dat[:y])
-ms4 = fit(LMM([ReMat(dat[s]) for s in [:S,:I]],Xs,dat[:y]));
-gc(); @time fit(LMM([ReMat(dat[s]) for s in [:S,:I]],Xs,dat[:y]));
-ms4.opt
+ms1 = fit!(lmm(y ~ 1+C + (1+C|S) + (1+C|I),dat));
+#ms2 = fit!(lmm(y ~ 1+C + (1+C|S) + (1|I),dat))
