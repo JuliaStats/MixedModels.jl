@@ -27,7 +27,7 @@ function cfactor!(D::Diagonal)
     UpperTriangular(D)
 end
 
-cfactor!(R::Matrix{Float64}) = Base.LinAlg.chol!(R,Val{:U})
+cfactor!(R::Matrix{Float64}) = UpperTriangular(Base.LinAlg.LAPACK.potrf!('U',R)[1])
 
 function cfactor!(R::HBlkDiag)
     Ra = R.arr
