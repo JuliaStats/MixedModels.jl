@@ -1,3 +1,6 @@
+"""
+`ReMat` - model matrix for a random-effects term
+"""
 abstract ReMat
 
 """
@@ -25,6 +28,12 @@ immutable VectorReMat{T} <: ReMat
     cnms::Vector
 end
 
+"""
+`remat(e,df)` -> `ReMat`
+
+A factory for `ReMat` objects constructed from a random-effects term and a
+`DataFrame`
+"""
 function remat(e::Expr,df::DataFrame)
     e.args[1] == :| || throw(ArgumentError("$e is not a call to '|'"))
     fnm = e.args[3]
@@ -165,5 +174,4 @@ function Base.Ac_mul_B!{T}(R::DenseVecOrMat{T},A::DenseVecOrMat{T},B::ReMat)
     R
 end
 
-Base.Ac_mul_B(A::DenseVecOrMat,B::ReMat) =
-    Ac_mul_B!(Array(eltype(A),(size(A,2),size(B,2))),A,B)
+Base.Ac_mul_B(A::DenseVecOrMat,B::ReMat) = Ac_mul_B!(Array(eltype(A),(size(A,2),size(B,2))),A,B)

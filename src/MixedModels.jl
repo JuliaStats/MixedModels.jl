@@ -8,6 +8,7 @@ export ScalarReMat,VectorReMat
 
 export LinearMixedModel,
        MixedModel,
+       VarCorr,
 
        AIC,        # Akaike's Information Criterion
        BIC,        # Schwatz's Bayesian Information Criterion

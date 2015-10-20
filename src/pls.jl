@@ -348,15 +348,21 @@ end
 """
 Base.std(m::LinearMixedModel) = sdest(m)*push!([rowlengths(λ) for λ in m.Λ],[1.])
 
-type VarCorr                            # a type to isolate the print logic
-    λ::Vector
+"""
+`VarCorr` a type to encapsulate the information on the fitted random-effects
+variance-covariance matrices.
+
+The main purpose is to isolate the logic in the show method.
+"""
+type VarCorr
+    Λ::Vector
     fnms::Vector
     cnms::Vector
     s::Float64
-    function VarCorr(λ::Vector,fnms::Vector,cnms::Vector,s::Number)
-        length(fnms) == length(cnms) == length(λ) || throw(DimensionMismatch(""))
+    function VarCorr(Λ::Vector,fnms::Vector,cnms::Vector,s::Number)
+        length(fnms) == length(cnms) == length(Λ) || throw(DimensionMismatch(""))
         s >= 0. || error("s must be non-negative")
-        new(λ,fnms,cnms,s)
+        new(Λ,fnms,cnms,s)
     end
 end
 function VarCorr(m::LinearMixedModel)

@@ -27,6 +27,10 @@ function cfactor!(D::Diagonal)
     UpperTriangular(D)
 end
 
+"""
+`cfactor!` method for dense matrices calls `LAPACK.potrf!` directly to avoid
+errors being thrown with `R` is computationally singular
+"""
 cfactor!(R::Matrix{Float64}) = UpperTriangular(Base.LinAlg.LAPACK.potrf!('U',R)[1])
 
 function cfactor!(R::HBlkDiag)

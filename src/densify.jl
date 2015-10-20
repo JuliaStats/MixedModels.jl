@@ -1,5 +1,8 @@
 """
-Convert sparse to dense if the proportion of nonzeros exceeds a threshold.
+`densify(S[,threshold])`
+
+Convert sparse `S` to `Diagonal` if S is diagonal
+Convert sparse `S` to dense dense if the proportion of nonzeros exceeds `threshold`.
 A no-op for other matrix types.
 """
 function densify(S,threshold=0.3)

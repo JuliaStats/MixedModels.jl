@@ -1,5 +1,8 @@
 """
-Equivalent to `A += I` without making a copy of A
+`inflate!(A)` is equivalent to `A += I`, without making a copy of A
+
+Even if `A += I` did not make a copy, this function is needed for the special
+behavior on the `HBlkDiag` type.
 """
 function inflate!(A::HBlkDiag)
     Aa = A.arr

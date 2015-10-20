@@ -52,11 +52,11 @@ length of the parameter vector
 """
 nθ{T}(A::LowerTriangular{T}) = nlower(size(A,1))
 
-chksz(A::ReMat,λ::LowerTriangular) = size(λ,1) == 1
+chksz(A::ScalarReMat,λ::LowerTriangular) = size(λ,1) == 1
 chksz(A::VectorReMat,λ::LowerTriangular) = size(λ,1) == size(A.z,1)
 
 """
-returns a vector of row lengths of the matrix
+`rowlengths(L)` -> a vector of the row lengths of `L`
 
 used in `chol2cor`
 """
