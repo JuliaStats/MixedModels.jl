@@ -19,7 +19,7 @@ fit!(fm1);
 
 @test_approx_eq_eps logdet(fm1) 8.06014522999825 1.e-4
 @test_approx_eq_eps varest(fm1) 2451.2501089607676 1.e-3
-@test_approx_eq_eps pwrss(fm1) 73537.50326882303 1.e-2
+@test_approx_eq_eps pwrss(fm1) 73537.50326882303 1.e-1
 @test_approx_eq_eps stderr(fm1) [17.69455188898009] 1.e-7
 
 fm2 = lmm(Yield ~ 1 + (1|Batch),ds2)
