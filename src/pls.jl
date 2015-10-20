@@ -364,7 +364,7 @@ function VarCorr(m::LinearMixedModel)
     VarCorr(Λ,
             [string(m.trms[i].fnm) for i in eachindex(Λ)],
             [m.trms[i].cnms for i in eachindex(Λ)],
-            (m))
+            sdest(m))
 end
 
 function Base.show(io::IO,vc::VarCorr)
