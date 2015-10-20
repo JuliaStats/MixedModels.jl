@@ -5,13 +5,11 @@ abstract ReMat
 
 The matrix is represented by the grouping factor, `f`, and a vector `z`.
 """
-immutable ScalarReMat <: ReMat
+immutable ScalarReMat{T} <: ReMat
     f::PooledDataVector
-    z::Vector
-    function ScalarReMat(p::PooledDataVector,z::Vector)
-        length(p) == length(z) || throw(DimensionMismatch())
-        new(p,z)
-    end
+    z::Vector{T}
+    fnm::Symbol
+    cnms::Vector
 end
 
 """
@@ -20,26 +18,26 @@ end
 The matrix is represented by the grouping factor, `f`, and the transposed raw
 model matrix, `z`.
 """
-immutable VectorReMat <: ReMat
+immutable VectorReMat{T} <: ReMat
     f::PooledDataVector                 # grouping factor
-    z::Matrix
-    function VectorReMat(p::PooledDataVector,z::Matrix)
-        length(p) == size(z,2) || throw(DimensionMismatch())
-        size(z,1) > 1 || error("use ScalarReMat instead")
-        new(p,z)
-    end
+    z::Matrix{T}
+    fnm::Symbol
+    cnms::Vector
 end
 
 function remat(e::Expr,df::DataFrame)
     e.args[1] == :| || throw(ArgumentError("$e is not a call to '|'"))
-    gr = getindex(df,e.args[3])
+    fnm = e.args[3]
+    gr = getindex(df,fnm)
     gr = isa(gr,PooledDataArray) ? gr : pool(gr)
-    e.args[2] == 1 && return ScalarReMat(gr,ones(length(gr)))
-    z = ModelMatrix(ModelFrame(Formula(nothing,e.args[2]),df)).m
-    size(z,2) == 1 ? ScalarReMat(gr,vec(z)) : VectorReMat(gr,z')
+    if e.args[2] == 1
+        return ScalarReMat(gr,ones(length(gr)),fnm,["(Intercept)"])
+    end
+    mf = ModelFrame(Formula(nothing,e.args[2]),df)
+    z = ModelMatrix(mf).m
+    cnms = coefnames(mf)
+    size(z,2) == 1 ?ScalarReMat(gr,vec(z),fnm,cnms) : VectorReMat(gr,z',fnm,cnms)
 end
-
-remat(f::PooledDataVector) = ScalarReMat(f,ones(length(f)))
 
 Base.eltype(R::ReMat) = eltype(R.z)
 

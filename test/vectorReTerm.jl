@@ -1,5 +1,5 @@
 const Days = convert(Vector{Float64},slp[:Days])
-const vf = VectorReMat(slp[:Subject],hcat(ones(length(Days)),Days)')
+const vf = VectorReMat(slp[:Subject],hcat(ones(length(Days)),Days)',:Subject,["(Intercept)","Days"])
 const Reaction = convert(Array,slp[:Reaction])
 
 @test size(vf) == (180,36)
