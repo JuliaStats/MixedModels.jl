@@ -217,6 +217,13 @@ function Base.size(m::LinearMixedModel)
 end
 
 """
+`sdest(m) -> s`
+
+returns `s`, the estimate of σ, the standard deviation of the per-observation noise
+"""
+sdest(m::LinearMixedModel) = sqrtpwrss(m)/√nobs(m)
+
+"""
 returns the square root of the penalized residual sum-of-squares
 
 This is the bottom right element of the bottom right block of m.R
@@ -339,20 +346,25 @@ end
 """
 `std(m) -> Vector{Vector{Float64}}` estimated standard deviations of variance components
 """
-Base.std(m::LinearMixedModel) = √varest(m)*push!([rowlengths(λ) for λ in m.Λ],[1.])
+Base.std(m::LinearMixedModel) = sdest(m)*push!([rowlengths(λ) for λ in m.Λ],[1.])
 
 type VarCorr                            # a type to isolate the print logic
     λ::Vector
     fnms::Vector
+    cnms::Vector
     s::Float64
-    function VarCorr(λ::Vector,fnms::Vector,s::Number)
-        (k = length(fnms)) == length(λ) || throw(DimensionMismatch(""))
+    function VarCorr(λ::Vector,fnms::Vector,cnms::Vector,s::Number)
+        length(fnms) == length(cnms) == length(λ) || throw(DimensionMismatch(""))
         s >= 0. || error("s must be non-negative")
-        new(λ,fnms,s)
+        new(λ,fnms,cnms,s)
     end
 end
 function VarCorr(m::LinearMixedModel)
-    VarCorr(m.Λ,[string("f",i) for i in 1:length(m.Λ)],√varest(m))
+    Λ = m.Λ
+    VarCorr(Λ,
+            [string(m.trms[i].fnm) for i in eachindex(Λ)],
+            [m.trms[i].cnms for i in eachindex(Λ)],
+            (m))
 end
 
 function Base.show(io::IO,vc::VarCorr)
