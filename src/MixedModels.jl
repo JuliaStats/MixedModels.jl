@@ -25,15 +25,15 @@ abstract MixedModel <: RegressionModel # model with fixed and random effects
 
 import Base: ==
 
-include("ReTerms/densify.jl")
-include("ReTerms/blockmats.jl")
-include("ReTerms/linalg.jl")
-include("ReTerms/inflate.jl")
-include("ReTerms/remat.jl")
-include("ReTerms/paramlowertriangular.jl")
-include("ReTerms/cfactor.jl")
-include("ReTerms/inject.jl")
-include("ReTerms/pls.jl")
-include("ReTerms/logdet.jl")
+include("densify.jl")
+include("blockmats.jl")
+include("linalg.jl")
+include("inflate.jl")
+include("remat.jl")
+include("paramlowertriangular.jl")
+include("cfactor.jl")
+include("inject.jl")
+include("pls.jl")
+include("logdet.jl")
 
 end # module
