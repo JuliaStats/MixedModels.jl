@@ -65,7 +65,7 @@ julia> head(ds)
 defaults to REML estimation.
 
 ```julia
-julia> m = fit(lmm(Yield ~ 1 + (1|Batch), ds))
+julia> m = fit!(lmm(Yield ~ 1 + (1|Batch), ds))
 Linear mixed model fit by maximum likelihood
 Formula: Yield ~ 1 + (1 | Batch)
 
@@ -82,11 +82,11 @@ Formula: Yield ~ 1 + (1 | Batch)
 (Intercept)    1527.5   17.6945  86.326
 ```
 
-In general the model should be fit through an explicit call to the `fit`
+In general the model should be fit through an explicit call to the `fit!`
 function, which may take a second argument indicating a verbose fit.
 
 ```julia
-julia> gc(); @time fit(lmm(Yield ~ 1 + (1|Batch),ds),true);
+julia> gc(); @time fit!(lmm(Yield ~ 1 + (1|Batch),ds),true);
 f_1: 327.76702, [1.0]
 f_2: 328.63496, [0.428326]
 f_3: 327.33773, [0.787132]
@@ -157,7 +157,7 @@ julia> head(inst)
 | 5     | 2 | 115  | 2       | 1       | 0       | 5    | 2 |
 | 6     | 2 | 756  | 2       | 1       | 0       | 5    | 4 |
 
-julia> fm2 = fit(lmm(Y ~ 1 + Dept*Service + (1|S) + (1|D), inst))
+julia> fm2 = fit!(lmm(Y ~ 1 + Dept*Service + (1|S) + (1|D), inst))
 Linear mixed model fit by maximum likelihood
 Formula: Y ~ Dept * Service + (1 | S) + (1 | D)
 
@@ -201,7 +201,7 @@ Dept3&Service1    -0.223013  0.089055  -2.50421
 Dept11&Service1   -0.516996 0.0809079  -6.38994
 Dept2&Service1    -0.384769 0.0918433  -4.18941
 
-julia> gc();@time fit(lmm(Y ~ 1 + Dept*Service + (1|S) + (1|D), inst));
+julia> gc();@time fit!(lmm(Y ~ 1 + Dept*Service + (1|S) + (1|D), inst));
 elapsed time: 5.193356844 seconds (327515804 bytes allocated, 4.95% gc time)
 ```
 
@@ -232,7 +232,7 @@ julia> slp = dataset("lme4","sleepstudy")
 | 179   | 369.142  | 8    | 372     |
 | 180   | 364.124  | 9    | 372     |
 
-julia> fm3 = fit(lmm(Reaction ~ 1 + Days + (1+Days|Subject), slp))
+julia> fm3 = fit!(lmm(Reaction ~ 1 + Days + (1+Days|Subject), slp))
 Linear mixed model fit by maximum likelihood
 Formula: Reaction ~ 1 + Days + ((1 + Days) | Subject)
 
@@ -256,7 +256,7 @@ optimization is used, allowing faster and more reliable convergence to
 the parameter estimates.
 
 ```julia
-julia> gc(); @time fit(lmm(Reaction ~ 1 + Days + (1+Days|Subject),slp),true);
+julia> gc(); @time fit!(lmm(Reaction ~ 1 + Days + (1+Days|Subject),slp),true);
 f_1: 1784.6423, [1.0,0.0,1.0]
 f_2: 1792.09158, [1.04647,-0.384052,0.159046]
 f_3: 1759.76629, [1.00506,-0.0847897,0.418298]

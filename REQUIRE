@@ -1,5 +1,5 @@
-julia 0.4-
-DataFrames 0.6+
-Distributions 0.6+
-NLopt 0.2+
+julia 0.4
+DataFrames 0.6
+Distributions 0.8
+NLopt 0.2
 Showoff
