@@ -1,25 +1,3 @@
-"""
-Regenerate the last column of `m.A` from `m.trms`
-
-This should be called after updating parts of `m.trms[end]`, typically the response.
-"""
-function regenerateAend!(m::LinearMixedModel)
-    n = Base.LinAlg.chksquare(m.A)
-    trmn = m.trms[n]
-    for i in 1:n
-        Ac_mul_B!(m.A[i,n],m.trms[i],trmn)
-    end
-    m
-end
-
-"""
-Reset the value of `m.θ` to the initial values
-"""
-function resetθ!(m::LinearMixedModel)
-    m[:θ] = m.opt.initial
-    m.opt.feval = m.opt.geval = -1
-    m
-end
 
 """
 Simulate `N` response vectors from `m`, refitting the model.  The function saveresults

@@ -20,6 +20,8 @@ export LinearMixedModel,
        ranef,      # extract the conditional modes of the random effects
        remat,      # factory for construction of ReMat objects
        reml!,      # set the objective to be the REML criterion
+       sdest,      # the estimate of the standard deviation of the per-observation noise
+       simulate!,  # simulate a new response and refit the model
        varest      # estimate of the residual variance
 
 abstract MixedModel <: RegressionModel # model with fixed and random effects
