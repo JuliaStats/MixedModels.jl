@@ -1,8 +1,8 @@
-## FIXME: See if  UpperTriangular{T,Diagonal{T}} can be replaced by Diagonal{T} 
+## FIXME: See if  UpperTriangular{T,Diagonal{T}} can be replaced by Diagonal{T}
 
-function Base.LinAlg.Ac_ldiv_B!{T}(D::UpperTriangular{T,Diagonal{T}},B::DenseMatrix{T})
+function Base.LinAlg.Ac_ldiv_B!{T}(D::Diagonal{T},B::DenseMatrix{T})
     m,n = size(B)
-    dd = D.data.diag
+    dd = D.diag
     length(dd) == m || throw(DimensionMismatch(""))
     for j in 1:n, i in 1:m
         B[i,j] /= dd[i]
@@ -10,10 +10,12 @@ function Base.LinAlg.Ac_ldiv_B!{T}(D::UpperTriangular{T,Diagonal{T}},B::DenseMat
     B
 end
 
-function Base.LinAlg.Ac_ldiv_B!{T}(D::UpperTriangular{T,Diagonal{T}},B::Diagonal{T})
-    dd = D.data.diag
+function Base.LinAlg.Ac_ldiv_B!{T}(D::Diagonal{T},B::Diagonal{T})
+    dd = D.diag
     bd = B.diag
-    length(dd) == length(bd) || throw(DimensionMismatch(""))
+    if length(dd) ≠ length(bd)
+        throw(DimensionMismatch("$(length(dd)) = length(dd) ≠ length(bd) = $(length(bd))"))
+    end
     for j in eachindex(bd)
         bd[j] /= dd[j]
     end
@@ -33,9 +35,9 @@ function Base.LinAlg.Ac_ldiv_B!{T}(A::UpperTriangular{T,HBlkDiag{T}},B::DenseMat
     B
 end
 
-function Base.LinAlg.Ac_ldiv_B!{T}(D::UpperTriangular{T,Diagonal{T}},B::SparseMatrixCSC{T})
+function Base.LinAlg.Ac_ldiv_B!{T}(D::Diagonal{T},B::SparseMatrixCSC{T})
     m,n = size(B)
-    dd = D.data.diag
+    dd = D.diag
     length(dd) == m || throw(DimensionMismatch(""))
     nzv = nonzeros(B)
     rv = rowvals(B)
