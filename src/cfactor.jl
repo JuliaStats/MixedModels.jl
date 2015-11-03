@@ -24,7 +24,7 @@ end
 
 function cfactor!(D::Diagonal)
     map!(sqrt,D.diag)
-    UpperTriangular(D)
+    D
 end
 
 """
@@ -79,6 +79,18 @@ function downdate!{T}(C::Diagonal{T},A::Diagonal{T},B::Diagonal{T})
     c,a,b = C.diag,A.diag,B.diag
     for i in eachindex(c)
         c[i] -= a[i]*b[i]
+    end
+    C
+end
+
+function downdate!{T}(C::Diagonal{T},A::DenseMatrix{T})
+    c = C.diag
+    m,n = size(A)
+    if n ≠ length(c)
+        throw(DimensionMismatch("$(length(c)) = size(C,1) ≠ size(A,2) = $(size(A,2))"))
+    end
+    for j in eachindex(c)
+        c[j] -= sumabs2(sub(A,:,j))
     end
     C
 end
