@@ -52,11 +52,9 @@ function LinearMixedModel{T}(
     trms[end] = hcat(X,y)
     A = fill!(Array(Any,(nt,nt)),nothing)
     R = fill!(Array(Any,(nt,nt)),nothing)
-    for j in 1:nt
-        for i in 1:j
-            A[i,j] = densify(trms[i]'trms[j])
-            R[i,j] = copy(A[i,j])
-        end
+    for j in 1:nt, i in 1:j
+        A[i,j] = densify(trms[i]'trms[j])
+        R[i,j] = copy(A[i,j])
     end
     for j in 2:nreterms
         if isa(R[j,j],Diagonal) || isa(R[j,j],HBlkDiag)
@@ -472,7 +470,7 @@ function unscaledre!(y::AbstractVector,M::VectorReMat,L::LowerTriangular)
     re = A_mul_B!(L,randn(size(Z,1),length(M.f.pool)))
     inds = M.f.refs
     for i in eachindex(y)
-        y[i] += dot(sub(Z,:,i),sub(re,:,inds[i]))
+        y[i] += dot(sub(Z,:,i),sub(re,:,Int(inds[i])))
     end
     y
 end
@@ -496,7 +494,35 @@ function simulate!(m::LinearMixedModel;β=coef(m),σ=sdest(m),θ=m[:0])
         unscaledre!(y,trms[j],Λ[j])
     end
     Base.LinAlg.BLAS.gemv!('N',1.0,sub(Xy,:,1:pp1-1),β,σ,y)
-    regenerateAend!(m)
-    resetθ!(m)
-    fit!(m)
+    m |> regenerateAend! |> resetθ! |> fit!
+end
+
+"""
+refit the model `m` with response `y`
+"""
+function refit!(m::LinearMixedModel,y)
+    copy!(model_response(m),y)
+    m |> regenerateAend! |> resetθ! |> fit!
+end
+
+"""
+extract the response (as a reference)
+
+In Julia 0.5 this can be a one-liner `m.trms[end][:,end]`
+"""
+function StatsBase.model_response(m::LinearMixedModel)
+    Xy = m.trms[end]
+    sub(Xy,:,size(Xy,2))
+end
+
+"""
+describe the blocks of the A and R matrices
+"""
+function describeblocks(m::LinearMixedModel)
+    A = m.A
+    R = m.R
+    for j in 1:size(A,2), i in 1:j
+        println(i,",",j,": ",typeof(A[i,j])," ",size(A[i,j])," ",typeof(R[i,j]))
+    end
+    nothing
 end

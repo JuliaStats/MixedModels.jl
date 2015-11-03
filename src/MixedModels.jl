@@ -4,7 +4,7 @@ module MixedModels
 
 using DataArrays, DataFrames, Distributions, NLopt, Showoff, StatsBase
 
-export ScalarReMat,VectorReMat
+export ReMat, ScalarReMat,VectorReMat
 
 export LinearMixedModel,
        MixedModel,
@@ -12,12 +12,15 @@ export LinearMixedModel,
 
        AIC,        # Akaike's Information Criterion
        BIC,        # Schwatz's Bayesian Information Criterion
+       bootstrap,  # Create bootstrap replications of a model
        fixef,      # extract the fixed-effects parameter estimates
        lmm,        # create a LinearMixedModel from a formula/data specification
        lowerbd,    # lower bounds on the covariance parameters
+       npar,       # total number of parameters in the model
        objective,  # the objective function in fitting a model
        pwrss,      # penalized, weighted residual sum-of-squares
        ranef,      # extract the conditional modes of the random effects
+       refit!,     # install a response and refit the model
        remat,      # factory for construction of ReMat objects
        reml!,      # set the objective to be the REML criterion
        sdest,      # the estimate of the standard deviation of the per-observation noise
@@ -38,5 +41,6 @@ include("cfactor.jl")
 include("inject.jl")
 include("pls.jl")
 include("logdet.jl")
+include("bootstrap.jl")
 
 end # module
