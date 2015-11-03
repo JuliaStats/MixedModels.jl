@@ -2,12 +2,13 @@
 `densify(S[,threshold])`
 
 Convert sparse `S` to `Diagonal` if S is diagonal
-Convert sparse `S` to dense dense if the proportion of nonzeros exceeds `threshold`.
+Convert sparse `S` to dense if the proportion of nonzeros exceeds `threshold`.
 A no-op for other matrix types.
 """
 function densify(S,threshold=0.3)
     issparse(S) || return S
-    isdiag(S) && return Diagonal(diag(S))
+    m,n = size(S)
+    m == n && isdiag(S) && return Diagonal(diag(S))
     nnz(S)/(*(size(S)...)) > threshold || return S
     isbits(eltype(S)) && return full(S)
     nzs = nonzeros(S)
