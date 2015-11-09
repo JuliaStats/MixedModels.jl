@@ -23,6 +23,7 @@ Linear mixed-effects model representation
 type LinearMixedModel{T} <: MixedModel
     mf::ModelFrame
     trms::Vector
+    weights::Vector{T}
     Λ::Vector{LowerTriangular{T,Matrix{T}}}
     A::Matrix        # symmetric cross-product blocks (upper triangle)
     R::Matrix        # right Cholesky factor in blocks.
@@ -34,7 +35,8 @@ function LinearMixedModel{T}(
     Rem::Vector,
     Λ::Vector{LowerTriangular{T,Matrix{T}}},
     X::AbstractMatrix{T},
-    y::Vector
+    y::Vector{T},
+    wts::Vector{T}
     )
     all(x->isa(x,ReMat),Rem) ||
         throw(ArgumentError("Elements of Rem should be ReMat's"))
@@ -50,10 +52,18 @@ function LinearMixedModel{T}(
     trms = Array(Any,nt)
     for i in eachindex(Rem) trms[i] = Rem[i] end
     trms[end] = hcat(X,y)
+    mtrms = trms   # to allow for weights
+    if length(wts) > 0
+        all(x->x ≥ 0,wts) || error("Weights must be ≥ 0")
+        sqrtwts = sqrt(wts)
+        for i in eachindex(trms)
+            mtrms[i] = scale(sqrtwts,trms[i])
+        end
+    end
     A = fill!(Array(Any,(nt,nt)),nothing)
     R = fill!(Array(Any,(nt,nt)),nothing)
     for j in 1:nt, i in 1:j
-        A[i,j] = densify(trms[i]'trms[j])
+        A[i,j] = densify(mtrms[i]'mtrms[j])
         R[i,j] = copy(A[i,j])
     end
     for j in 2:nreterms
@@ -67,10 +77,10 @@ function LinearMixedModel{T}(
             end
         end
     end
-    LinearMixedModel(mf,trms,Λ,A,R,OptSummary(mapreduce(x->x[:θ],vcat,Λ),:None))
+    LinearMixedModel(mf,trms,wts,Λ,A,R,OptSummary(mapreduce(x->x[:θ],vcat,Λ),:None))
 end
 
-function lmm(f::Formula, fr::AbstractDataFrame)
+function lmm(f::Formula, fr::AbstractDataFrame; weights::Vector{Float64}=Float64[])
     mf = ModelFrame(f,fr)
     X = ModelMatrix(mf)
     y = convert(Vector{Float64},DataFrames.model_response(mf))
@@ -78,7 +88,7 @@ function lmm(f::Formula, fr::AbstractDataFrame)
     retrms = filter(x->Meta.isexpr(x,:call) && x.args[1] == :|, mf.terms.terms)
     length(retrms) > 0 || error("Formula $f has no random-effects terms")
     re = [remat(e,mf.df) for e in retrms]
-    LinearMixedModel(mf,re,map(LT,re),X.m,y)
+    LinearMixedModel(mf,re,map(LT,re),X.m,y,weights)
 end
 
 lowerbd(A::LinearMixedModel) = mapreduce(lowerbd,vcat,A.Λ)
@@ -249,8 +259,14 @@ returns the penalized residual sum-of-squares
 """
 pwrss(m::LinearMixedModel) = abs2(sqrtpwrss(m))
 
-Base.cond(m::LinearMixedModel) = [cond(λ)::Float64 for λ in m.λ]
+"""
+Condition numbers for blocks of Λ
+"""
+Base.cond(m::LinearMixedModel) = [cond(λ)::Float64 for λ in m.Λ]
 
+"""
+Convert a lower Cholesky factor to a correlation matrix
+"""
 function chol2cor(L::LowerTriangular)
     size(L,1) == 1 && return ones(1,1)
     res = L*L'
@@ -267,14 +283,14 @@ function StatsBase.coeftable(m::LinearMixedModel)
 end
 
 function StatsBase.deviance(m::LinearMixedModel)
-    m.opt.feval > 0 || error("Model has not been fit")
+    isfit(m) || error("Model has not been fit")
     objective(m)
 end
 
 """
 `fnames(m)` -> vector of names of grouping factors
 """
-fnames(m::LinearMixedModel) = m.fnms
+#fnames(m::LinearMixedModel) = m.fnms
 
 """
 `grplevels(m)` -> Vector{Int} : number of levels in each term's grouping factor
@@ -282,6 +298,9 @@ fnames(m::LinearMixedModel) = m.fnms
 grplevels(v::Vector) = [length(t.f.pool) for t in v]
 grplevels(m::LinearMixedModel) = grplevels(m.trms[1:end-1])
 
+"""
+Predicate - whether or not the model has been fit.
+"""
 isfit(m::LinearMixedModel) = m.opt.fmin < Inf
 
 """
@@ -306,23 +325,29 @@ function lrt(mods::LinearMixedModel...)
     DataFrame(Df = df, Deviance = dev, Chisq=csqr,pval=pval)
 end
 
-##  ranef(m) -> vector of matrices of random effects on the original scale
-##  ranef(m,true) -> vector of matrices of random effects on the U scale
-function ranef(m::LinearMixedModel, uscale=false)
-    uscale && return m.u
-    for (λ,b,u) in zip(m.λ,m.b,m.u)
-        A_mul_B!(λ,copy!(b,u))         # overwrite b by λ*u
-    end
-    m.b
-end
+if false
+  """
+  `ranef(m)` -> vector of matrices of random effects on the original scale
+  `ranef(m,true)`` -> vector of matrices of random effects on the U scale
+  """
+  function ranef(m::LinearMixedModel, uscale=false)
+      uscale && return m.u
+      for (λ,b,u) in zip(m.λ,m.b,m.u)
+          A_mul_B!(λ,copy!(b,u))         # overwrite b by λ*u
+      end
+      m.b
+  end
 
-##  reml!(m,v=true) -> m : Set m.REML to v.  If m.REML is modified, unset m.fit
-function reml!(m::LinearMixedModel,v::Bool=true)
-    if m.REML != v
-        m.REML = v
-        m.opt.fmin = Inf
-    end
-    m
+  """
+  `reml!(m,v=true)` -> m : Set m.REML to v.  If m.REML is modified, unset m.fit
+  """
+  function reml!(m::LinearMixedModel,v::Bool=true)
+      if m.REML != v
+          m.REML = v
+          m.opt.fmin = Inf
+      end
+      m
+  end
 end
 
 function Base.show(io::IO, m::LinearMixedModel)

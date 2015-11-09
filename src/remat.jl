@@ -175,3 +175,11 @@ function Base.Ac_mul_B!{T}(R::DenseVecOrMat{T},A::DenseVecOrMat{T},B::ReMat)
 end
 
 Base.Ac_mul_B(A::DenseVecOrMat,B::ReMat) = Ac_mul_B!(Array(eltype(A),(size(A,2),size(B,2))),A,B)
+
+function Base.LinAlg.scale{T}(d::Vector{T},A::ScalarReMat{T})
+    ScalarReMat(A.f, d .* copy(A.z),A.fnm,A.cnms)
+end
+
+function Base.LinAlg.scale{T}(d::Vector{T},A::VectorReMat{T})
+    VectorReMat(A.f,scale(A.z,d),A.fnm,A.cnms)
+end
