@@ -287,9 +287,9 @@ function StatsBase.deviance(m::LinearMixedModel)
     objective(m)
 end
 
-"""
-`fnames(m)` -> vector of names of grouping factors
-"""
+#"""
+#`fnames(m)` -> vector of names of grouping factors
+#"""
 #fnames(m::LinearMixedModel) = m.fnms
 
 """
