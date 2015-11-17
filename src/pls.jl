@@ -86,7 +86,9 @@ function lmm(f::Formula, fr::AbstractDataFrame; weights::Vector{Float64}=Float64
     y = convert(Vector{Float64},DataFrames.model_response(mf))
                                         # process the random-effects terms
     retrms = filter(x->Meta.isexpr(x,:call) && x.args[1] == :|, mf.terms.terms)
-    length(retrms) > 0 || error("Formula $f has no random-effects terms")
+    if length(retrms) ≤ 0
+        error("Formula $f has no random-effects terms")
+    end
     re = [remat(e,mf.df) for e in retrms]
     LinearMixedModel(mf,re,map(LT,re),X.m,y,weights)
 end
@@ -96,10 +98,12 @@ lowerbd(A::LinearMixedModel) = mapreduce(lowerbd,vcat,A.Λ)
 Base.getindex(m::LinearMixedModel,s::Symbol) = mapreduce(x->x[s],vcat,m.Λ)
 
 function Base.setindex!(m::LinearMixedModel,v::Vector,s::Symbol)
-    s == :θ || throw(ArgumentError("only ':θ' is meaningful for assignment"))
+    if s ≠ :θ
+        throw(ArgumentError("only ':θ' is meaningful for assignment"))
+    end
     lam = m.Λ
-    if length(v) != sum(nθ,lam)
-        throw(DimensionMismatch("length(v) = $(length(v)), should be $(sum(nθ,lam))"))
+    if length(v) != sum(nlower,lam)
+        throw(DimensionMismatch("length(v) = $(length(v)), should be $(sum(nlower,lam))"))
     end
     A = m.A
     R = m.R
@@ -110,7 +114,7 @@ function Base.setindex!(m::LinearMixedModel,v::Vector,s::Symbol)
     offset = 0
     for i in eachindex(lam)
         li = lam[i]
-        nti = nθ(li)
+        nti = nlower(li)
         li[:θ] = sub(v,offset + (1:nti))
         offset += nti
         for j in i:size(R,2)
@@ -170,7 +174,7 @@ function StatsBase.fit!(m::LinearMixedModel, verbose::Bool=false, optimizer::Sym
             xmin1[i] = 0.
         end
     end
-    if modified
+    if modified  # branch not tested
         m[:θ] = xmin1
         if (ff = objective(m)) < fmin
             fmin = ff
@@ -180,7 +184,9 @@ function StatsBase.fit!(m::LinearMixedModel, verbose::Bool=false, optimizer::Sym
         end
     end
     m.opt = OptSummary(th,xmin,fmin,feval,optimizer)
-    if verbose println(ret) end
+    if verbose
+        println(ret)
+    end
     m
 end
 
@@ -192,14 +198,14 @@ objective(m::LinearMixedModel) = logdet(m) + nobs(m)*(1.+log(2π*varest(m)))
 """
 Akaike's Information Criterion
 """
-AIC(m::LinearMixedModel) = deviance(m) + 2npar(m)
+AIC(m::LinearMixedModel) = deviance(m) + 2npar(m)  # not tested
 
 """
 Schwartz's Bayesian Information Criterion
 """
-BIC(m::LinearMixedModel) = deviance(m) + npar(m)*log(nobs(m))
+BIC(m::LinearMixedModel) = deviance(m) + npar(m)*log(nobs(m)) # not tested
 
-Base.LinAlg.A_rdiv_Bc!(A::StridedVecOrMat,D::Diagonal) = A_rdiv_B!(A,D)
+# Base.LinAlg.A_rdiv_Bc!(A::StridedVecOrMat,D::Diagonal) = A_rdiv_B!(A,D) # not tested
 
 ## Rename this
 Base.cholfact(m::LinearMixedModel) = UpperTriangular(m.R[end,end][1:end-1,1:end-1])
@@ -207,7 +213,7 @@ Base.cholfact(m::LinearMixedModel) = UpperTriangular(m.R[end,end][1:end-1,1:end-
 """
 Overwrite `v` with the fixed-effects coefficients of model `m`
 """
-function fixef!(v,m::LinearMixedModel)
+function fixef!(v,m::LinearMixedModel) # not tested
     isfit(m) || error("Model has not been fit")
     Base.LinAlg.A_ldiv_B!(cholfact(m),copy!(v,m.R[end,end][1:end-1,end]))
 end
@@ -262,7 +268,7 @@ pwrss(m::LinearMixedModel) = abs2(sqrtpwrss(m))
 """
 Condition numbers for blocks of Λ
 """
-Base.cond(m::LinearMixedModel) = [cond(λ)::Float64 for λ in m.Λ]
+Base.cond(m::LinearMixedModel) = [cond(λ)::Float64 for λ in m.Λ] # not tested
 
 """
 Convert a lower Cholesky factor to a correlation matrix
@@ -276,7 +282,7 @@ end
 
 Base.cor(m::LinearMixedModel) = map(chol2cor,m.Λ)
 
-function StatsBase.coeftable(m::LinearMixedModel)
+function StatsBase.coeftable(m::LinearMixedModel) # not tested
     fe = fixef(m)
     se = stderr(m)
     CoefTable(hcat(fe,se,fe./se), ["Estimate","Std.Error","z value"], coefnames(m.mf))
@@ -295,7 +301,7 @@ end
 """
 `grplevels(m)` -> Vector{Int} : number of levels in each term's grouping factor
 """
-grplevels(v::Vector) = [length(t.f.pool) for t in v]
+grplevels(v::Vector) = [length(t.f.pool) for t in v] # not tested
 grplevels(m::LinearMixedModel) = grplevels(m.trms[1:end-1])
 
 """
@@ -306,7 +312,7 @@ isfit(m::LinearMixedModel) = m.opt.fmin < Inf
 """
 Likelihood ratio test of one or more models
 """
-function lrt(mods::LinearMixedModel...)
+function lrt(mods::LinearMixedModel...) # not tested
     if (nm = length(mods)) <= 1
         error("at least two models are required for a likelihood ratio test")
     end
@@ -350,7 +356,7 @@ if false
   end
 end
 
-function Base.show(io::IO, m::LinearMixedModel)
+function Base.show(io::IO, m::LinearMixedModel) # not tested
     if !isfit(m)
         warn("Model has not been fit")
         return nothing
@@ -407,7 +413,7 @@ function VarCorr(m::LinearMixedModel)
             sdest(m))
 end
 
-function Base.show(io::IO,vc::VarCorr)
+function Base.show(io::IO,vc::VarCorr) # not tested
     fnms = vcat(vc.fnms,"Residual")
     nmwd = maximum(map(strwidth, fnms))
     write(io, "Variance components:\n")

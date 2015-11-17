@@ -12,7 +12,7 @@ function Base.cholfact!(A::HBlkDiag,uplo::Symbol=:U)
     r,s,k = size(Aa)
     r == s || throw(ArgumentError("A must be square"))
     if r == 1
-        for j in 1:k
+        for j in 1:k  # loop never tested and probably redundant
             Aa[1,1,j] = sqrt(Aa[1,1,j])
         end
     else
@@ -49,7 +49,9 @@ function Base.getindex{T}(A::HBlkDiag{T},i::Integer,j::Integer)
     r,s,k = size(Aa)
     bi,ri = divrem(i-1,r)
     bj,rj = divrem(j-1,s)
-    bi == bj || return zero(T)
+    if bi ≠ bj  # i and j are not in a diagonal block
+        return zero(T)
+    end
     Aa[ri+1,rj+1,bi+1]
 end
 
@@ -69,7 +71,7 @@ function Base.LinAlg.A_ldiv_B!(R::DenseVecOrMat,A::HBlkDiag,B::DenseVecOrMat)
     (m = size(B,1)) == size(R,1) || throw(DimensionMismatch())
     (n = size(B,2)) == size(R,2) || throw(DimensionMismatch())
     r*k == m || throw(DimensionMismatch())
-    if r == 1
+    if r == 1   # branch not taken and probably redundant
         for j in 1:n, i in 1:m
             R[i,j] = B[i,j]/Aa[i]
         end

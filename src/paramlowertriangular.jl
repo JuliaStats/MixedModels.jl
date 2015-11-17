@@ -1,11 +1,14 @@
-@inline nlower(n::Integer) = (n*(n+1))>>1
+nlower(n::Integer) = (n*(n+1))>>1
+nlower{T}(A::LowerTriangular{T,Matrix{T}}) = nlower(Base.LinAlg.chksquare(A))
 
 """
 return the lower triangle as a vector (column-major ordering)
 """
 function Base.getindex{T}(A::LowerTriangular{T,Matrix{T}},s::Symbol)
-    s == :θ || throw(KeyError(s))
-    n = size(A,1)
+    if s ≠ :θ
+        throw(KeyError(s))
+    end
+    n = Base.LinAlg.chksquare(A)
     res = Array(T,nlower(n))
     k = 0
     for j = 1:n, i in j:n
@@ -19,13 +22,15 @@ set the lower triangle of A to v using column-major ordering
 """
 function Base.setindex!{T}(
     A::LowerTriangular{T,Matrix{T}},
-    v::StridedVector{T},
+    v::AbstractVector{T},
     s::Symbol
     )
-    s == :θ || throw(KeyError(s))
-    n = size(A,1)
+    if s ≠ :θ
+        throw(KeyError(s))
+    end
+    n = Base.LinAlg.chksquare(A)
     if length(v) ≠ nlower(n)
-        throw(DimensionMismatch("length(v) = $(length(v)), should be $(nlower(n))"))
+        throw(DimensionMismatch("length(v) ≠ nlower(A)"))
     end
     k = 0
     for j in 1:n, i in j:n
@@ -38,7 +43,7 @@ end
 lower bounds on the parameters (elements in the lower triangle)
 """
 function lowerbd{T}(A::LowerTriangular{T,Matrix{T}})
-    n = size(A,1)
+    n = Base.LinAlg.chksquare(A)
     res = fill(convert(T,-Inf),nlower(n))
     k = -n
     for j in n+1:-1:2
@@ -46,11 +51,6 @@ function lowerbd{T}(A::LowerTriangular{T,Matrix{T}})
     end
     res
 end
-
-"""
-length of the parameter vector
-"""
-nθ{T}(A::LowerTriangular{T}) = nlower(size(A,1))
 
 chksz(A::ScalarReMat,λ::LowerTriangular) = size(λ,1) == 1
 chksz(A::VectorReMat,λ::LowerTriangular) = size(λ,1) == size(A.z,1)
@@ -72,8 +72,10 @@ function tscale!(A::LowerTriangular,B::HBlkDiag)
     Ba = B.arr
     r,s,k = size(Ba)
     n = Base.LinAlg.chksquare(A)
-    n == r || throw(DimensionMismatch())
-    if r == 1
+    if n ≠ r
+        throw(DimensionMismatch("size(A,2) ≠ blocksize of B"))
+    end
+    if r == 1 # branch not taken
         scale!(Ba,A.data[1])
     else
         Ac_mul_B!(A,reshape(Ba,(r,s*k)))
@@ -82,11 +84,19 @@ function tscale!(A::LowerTriangular,B::HBlkDiag)
 end
 
 function tscale!{T}(A::LowerTriangular{T},B::Diagonal{T})
-    size(A,1) == 1 || throw(DimensionMismatch())
+    if Base.LinAlg.chksquare(A) ≠ 1
+        throw(DimensionMismatch("A must be a 1×1 LowerTriangular"))
+    end
     scale!(A.data[1],B.diag)
     B
 end
 
+"""
+`LT(A) -> LowerTriangular`
+
+Create as a lower triangular matrix compatible with the blocks of `A`
+and initialized to the identity.
+"""
 LT(A::ScalarReMat) = LowerTriangular(ones(eltype(A.z),(1,1)))
 
 function LT(A::VectorReMat)
@@ -98,13 +108,19 @@ function tscale!{T}(A::LowerTriangular{T},B::DenseVecOrMat{T})
     if (l = Base.LinAlg.chksquare(A)) == 1
         return scale!(A.data[1],B)
     end
-    m,n = size(B,1),size(B,2)
-    Ac_mul_B!(A,reshape(B,(l,div(m,l)*n)))
+    m,n = size(B,1),size(B,2)  # this sets n = 1 when B is a vector
+    q,r = divrem(m,l)
+    if r ≠ 0
+        throw(DimensionMismatch("size(B,1) is not a multiple of size(A,1)"))
+    end
+    Ac_mul_B!(A,reshape(B,(l,q*n)))
     B
 end
 
 function tscale!{T}(A::LowerTriangular{T},B::SparseMatrixCSC{T})
-    (l = Base.LinAlg.chksquare(A)) == 1 || error("Code not yet written")
+    if (l = Base.LinAlg.chksquare(A)) ≠ 1
+        error("Code not yet written")
+    end
     scale!(A.data[1],B.nzval)
     B
 end

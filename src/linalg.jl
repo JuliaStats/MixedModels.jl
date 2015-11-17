@@ -1,9 +1,9 @@
-## FIXME: See if  UpperTriangular{T,Diagonal{T}} can be replaced by Diagonal{T}
-
 function Base.LinAlg.Ac_ldiv_B!{T}(D::Diagonal{T},B::DenseMatrix{T})
     m,n = size(B)
     dd = D.diag
-    length(dd) == m || throw(DimensionMismatch(""))
+    if length(dd) ≠ m
+        throw(DimensionMismatch("size(D,2) ≠ size(B,1)"))
+    end
     for j in 1:n, i in 1:m
         B[i,j] /= dd[i]
     end
@@ -14,7 +14,7 @@ function Base.LinAlg.Ac_ldiv_B!{T}(D::Diagonal{T},B::Diagonal{T})
     dd = D.diag
     bd = B.diag
     if length(dd) ≠ length(bd)
-        throw(DimensionMismatch("$(length(dd)) = length(dd) ≠ length(bd) = $(length(bd))"))
+        throw(DimensionMismatch("size(D,2) ≠ size(B,1)"))
     end
     for j in eachindex(bd)
         bd[j] /= dd[j]
@@ -26,7 +26,9 @@ function Base.LinAlg.Ac_ldiv_B!{T}(A::UpperTriangular{T,HBlkDiag{T}},B::DenseMat
     m,n = size(B)
     aa = A.data.arr
     r,s,k = size(aa)
-    m == Base.LinAlg.chksquare(A) || throw(DimensionMismatch())
+    if m ≠ Base.LinAlg.chksquare(A)
+        throw(DimensionMismatch("size(A,2) ≠ size(B,1)"))
+    end
     scr = Array(T,(r,n))
     for i in 1:k
         bb = sub(B,(i-1)*r+(1:r),:)
@@ -38,7 +40,9 @@ end
 function Base.LinAlg.Ac_ldiv_B!{T}(D::Diagonal{T},B::SparseMatrixCSC{T})
     m,n = size(B)
     dd = D.diag
-    length(dd) == m || throw(DimensionMismatch(""))
+    if length(dd) ≠ m
+        throw(DimensionMismatch("size(D,2) ≠ size(B,1)"))
+    end
     nzv = nonzeros(B)
     rv = rowvals(B)
     for j in 1:n, k in nzrange(B,j)
@@ -47,9 +51,12 @@ function Base.LinAlg.Ac_ldiv_B!{T}(D::Diagonal{T},B::SparseMatrixCSC{T})
     B
 end
 
+## method not called in tests
 Base.LinAlg.A_ldiv_B!{T<:AbstractFloat}(D::Diagonal{T},B::DenseMatrix{T}) =
     Base.LinAlg.Ac_ldiv_B!(D,B)
 
+if false
+## method not called in tests
 function Base.LinAlg.A_rdiv_Bc!{T<:AbstractFloat}(
     A::SparseMatrixCSC{T},
     B::Diagonal{T}
@@ -64,6 +71,7 @@ function Base.LinAlg.A_rdiv_Bc!{T<:AbstractFloat}(
     A
 end
 
+## method not called in tests
 function Base.LinAlg.A_rdiv_Bc!{T<:AbstractFloat}(A::Matrix{T},B::Diagonal{T})
     m,n = size(A)
     dd = B.diag
@@ -74,12 +82,15 @@ function Base.LinAlg.A_rdiv_Bc!{T<:AbstractFloat}(A::Matrix{T},B::Diagonal{T})
     A
 end
 
+## method not called in tests
 function Base.LinAlg.A_rdiv_B!{T}(A::StridedVecOrMat{T},D::Diagonal{T})
     m, n = size(A, 1), size(A, 2)
-    if n != length(D.diag)
+    if n ≠ length(D.diag)
         throw(DimensionMismatch("diagonal matrix is $(length(D.diag)) by $(length(D.diag)) but left hand side has $n columns"))
     end
-    (m == 0 || n == 0) && return A
+    if m == 0 || n == 0
+        return A
+    end
     dd = D.diag
     for j = 1:n
         dj = dd[j]
@@ -91,4 +102,6 @@ function Base.LinAlg.A_rdiv_B!{T}(A::StridedVecOrMat{T},D::Diagonal{T})
         end
     end
     A
+end
+
 end

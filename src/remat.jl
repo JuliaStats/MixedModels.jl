@@ -48,7 +48,7 @@ function remat(e::Expr,df::DataFrame)
     size(z,2) == 1 ?ScalarReMat(gr,vec(z),fnm,cnms) : VectorReMat(gr,z',fnm,cnms)
 end
 
-Base.eltype(R::ReMat) = eltype(R.z)
+Base.eltype(R::ReMat) = eltype(R.z)  # not tested
 
 vsize(A::ReMat) = isa(A,ScalarReMat) ? 1 : size(A.z,1)
 
@@ -63,7 +63,7 @@ Base.size(A::ReMat,i::Integer) =
 ==(A::ReMat,B::ReMat) = (A.f == B.f) && (A.z == B.z)
 
 # FIXME add a tA boolean argument to combine the code for A_mul_B! and Ac_mul_B!
-function Base.A_mul_B!{T}(α::Real,A::ReMat,B::StridedVecOrMat{T},β::Real,R::StridedVecOrMat{T})
+function Base.A_mul_B!{T}(α::Real,A::ReMat,B::StridedVecOrMat{T},β::Real,R::StridedVecOrMat{T}) # not tested
     n,q = size(A)
     k = size(B,2)
     size(R,1) == n && size(B,1) == q && size(R,2) == k || throw(DimensionMismatch())
@@ -86,6 +86,7 @@ function Base.A_mul_B!{T}(α::Real,A::ReMat,B::StridedVecOrMat{T},β::Real,R::St
     R
 end
 
+# not tested
 Base.A_mul_B!{T}(A::ReMat,B::StridedVecOrMat{T},R::StridedVecOrMat{T}) = A_mul_B!(one(T),A,B,zero(T),R)
 
 function Base.Ac_mul_B!{T}(α::Real,A::ReMat,B::StridedVecOrMat{T},β::Real,R::StridedVecOrMat{T})
@@ -165,7 +166,7 @@ function Base.Ac_mul_B!{T}(R::DenseVecOrMat{T},A::DenseVecOrMat{T},B::ReMat)
         for j in 1:n, i in 1:m
             R[j,rr[i]] += A[i,j] * zz[i]
         end
-    else
+    else # branch not tested
         l = size(zz,1)
         for j in 1:n, i in 1:m
             Base.LinAlg.axpy!(A[i,j],sub(zz,:,i),sub(R,j,(rr[i]-1)*l + (1:l)))
@@ -174,12 +175,15 @@ function Base.Ac_mul_B!{T}(R::DenseVecOrMat{T},A::DenseVecOrMat{T},B::ReMat)
     R
 end
 
+# not tested
 Base.Ac_mul_B(A::DenseVecOrMat,B::ReMat) = Ac_mul_B!(Array(eltype(A),(size(A,2),size(B,2))),A,B)
 
+# not tested
 function Base.LinAlg.scale{T}(d::Vector{T},A::ScalarReMat{T})
     ScalarReMat(A.f, d .* copy(A.z),A.fnm,A.cnms)
 end
 
+#not tested
 function Base.LinAlg.scale{T}(d::Vector{T},A::VectorReMat{T})
     VectorReMat(A.f,scale(A.z,d),A.fnm,A.cnms)
 end

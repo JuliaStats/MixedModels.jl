@@ -3,8 +3,11 @@ like `copy!` but allowing for heterogeneous matrix types
 """
 inject!(d,s) = copy!(d,s)               # fallback method
 
+## method not called in tests
 function inject!(d::UpperTriangular,s::UpperTriangular)
-    (n = size(s,2)) == size(d,2) || throw(DimensionMismatch(""))
+    if (n = size(s,2)) ≠ size(d,2)
+        throw(DimensionMismatch("size(s,2) ≠ size(d,2)"))
+    end
     for j in 1:n
         inject!(sub(d,1:j,j),sub(s,1:j,j))
     end
@@ -13,8 +16,10 @@ end
 
 function inject!{T<:Real}(d::AbstractMatrix{T}, s::Diagonal{T})
     sd = s.diag
-    length(sd) == size(d,2) || throw(DimensionMismatch())
-    fill!(d,0.)
+    if length(sd) ≠ size(d,2)
+        throw(DimensionMismatch("size(d,2) ≠ size(s,2)"))
+    end
+    fill!(d,zero(T))
     @inbounds for i in eachindex(sd)
         d[i,i] = sd[i]
     end
@@ -25,11 +30,14 @@ inject!(d::Diagonal{Float64},s::Diagonal{Float64}) = (copy!(d.diag,s.diag);d)
 
 function inject!(d::SparseMatrixCSC{Float64},s::SparseMatrixCSC{Float64})
     m,n = size(d)
-    size(d) == size(s) || throw(DimensionMismatch(""))
+    if size(d) ≠ size(s)
+        throw(DimensionMismatch("size(d) ≠ size(s)"))
+    end
     if nnz(d) == nnz(s)
         copy!(nonzeros(d),nonzeros(s))
         return d
     end
+    ## this branch is not tested
     drv = rowvals(d); srv = rowvals(s); dnz = nonzeros(d); snz = nonzeros(s)
     fill!(dnz,0.)
     for j in 1:n
