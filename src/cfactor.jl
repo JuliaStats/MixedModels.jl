@@ -29,7 +29,7 @@ end
 
 """
 `cfactor!` method for dense matrices calls `LAPACK.potrf!` directly to avoid
-errors being thrown with `R` is computationally singular
+errors being thrown when `R` is computationally singular
 """
 cfactor!(R::Matrix{Float64}) = UpperTriangular(Base.LinAlg.LAPACK.potrf!('U',R)[1])
 
@@ -54,7 +54,9 @@ downdate!{T<:Base.LinAlg.BlasFloat}(C::DenseMatrix{T},A::DenseMatrix{T},B::Dense
 function downdate!{T}(C::Diagonal{T},A::SparseMatrixCSC{T})
     m,n = size(A)
     dd = C.diag
-    length(dd) == n || throw(DimensionMismatch(""))
+    if length(dd) ≠ n
+        throw(DimensionMismatch("size(C,2) ≠ size(A,2)"))
+    end
     nz = nonzeros(A)
     for j in eachindex(dd)
         for k in nzrange(A,j)
@@ -65,17 +67,21 @@ function downdate!{T}(C::Diagonal{T},A::SparseMatrixCSC{T})
 end
 
 function downdate!{T}(C::Diagonal{T},A::Diagonal{T})
-    size(C) == size(A) || throw(DimensionMismatch())
-    c = C.diag
-    a = A.diag
+    if size(C) ≠ size(A)
+        throw(DimensionMismatch("size(C) ≠ size(A)"))
+    end
+    c,a = C.diag,A.diag
     for i in eachindex(c)
         c[i] -= abs2(a[i])
     end
     C
 end
 
+## method not called in tests.  Add a test?
 function downdate!{T}(C::Diagonal{T},A::Diagonal{T},B::Diagonal{T})
-    size(C) == size(A) == size(B) || throw(DimensionMismatch())
+    if !(size(C) == size(A) == size(B))
+        throw(DimensionMismatch("need size(C) == size(A) == size(B)"))
+    end
     c,a,b = C.diag,A.diag,B.diag
     for i in eachindex(c)
         c[i] -= a[i]*b[i]
@@ -83,6 +89,7 @@ function downdate!{T}(C::Diagonal{T},A::Diagonal{T},B::Diagonal{T})
     C
 end
 
+## method not called in tests
 function downdate!{T}(C::Diagonal{T},A::DenseMatrix{T})
     c = C.diag
     m,n = size(A)
@@ -97,8 +104,12 @@ end
 
 function downdate!{T}(C::DenseMatrix{T},A::Diagonal{T},B::DenseMatrix{T})
     a = A.diag
-    ((m,n) = size(B)) == size(C) || throw(DimensionMismatch())
-    length(a) == m || throw(DimensionMismatch())
+    if ((m,n) = size(B)) ≠ size(C)
+        throw(DimensionMismatch("size(B) ≠ size(C)"))
+    end
+    if length(a) ≠ m
+        throw(DimensionMismatch("size(A,2) ≠ size(B,1)"))
+    end
     for j in 1:n, i in 1:m
         C[i,j] -= a[i] * B[i,j]
     end
@@ -108,7 +119,11 @@ end
 function downdate!{T}(C::DenseMatrix{T},A::SparseMatrixCSC{T},B::DenseMatrix{T})
     m,n = size(A)
     r,s = size(C)
-    r == n && s == size(B,2) && m == size(B,1) || throw(DimensionMismatch(""))
+    if r ≠ n || s ≠ size(B,2) || m ≠ size(B,1)
+        throw(DimensionMismatch(
+            "size(C,1) ≠ size(A,2) or size(C,2) ≠ size(B,2) or size(A,1) ≠ size(B,1)")
+        )
+    end
     nz = nonzeros(A)
     rv = rowvals(A)
     for jj in 1:s, j in 1:n, k in nzrange(A,j)
@@ -117,9 +132,12 @@ function downdate!{T}(C::DenseMatrix{T},A::SparseMatrixCSC{T},B::DenseMatrix{T})
     C
 end
 
+## method not called in tests
 function downdate!{T}(C::DenseMatrix{T},A::SparseMatrixCSC{T},B::SparseMatrixCSC{T})
     AtB = A'B
-    size(C) == size(AtB) || throw(DimensionMismatch())
+    if size(C) ≠ size(AtB)
+        throw(DimensionMismatch("size(C) ≠ size(A'B)"))
+    end
     atbrv = rowvals(AtB)
     atbnz = nonzeros(AtB)
     for j in 1:size(AtB,2)
@@ -130,22 +148,50 @@ function downdate!{T}(C::DenseMatrix{T},A::SparseMatrixCSC{T},B::SparseMatrixCSC
     C
 end
 
+## Based on function in  v0.5.0-dev file base/sparse/sparsevector.jl
+function spcoldot(xj,xjlp1,xnzind,xnzval,yj,yjlp1,ynzind,ynzval)
+    s = zero(eltype(xnzval)) * zero(eltype(ynzval))
+#    @inbounds
+    while xj < xjlp1 && yj < yjlp1
+        ix = xnzind[xj]
+        iy = ynzind[yj]
+        if ix == iy
+            s += xnzval[xj] * ynzval[yj]
+            xj += 1
+            yj += 1
+        elseif ix < iy
+            xj += 1
+        else
+            yj += 1
+        end
+    end
+    s
+end
+## method not called in tests
 function downdate!{T}(C::DenseMatrix{T},A::SparseMatrixCSC{T})
     m,n = size(A)
-    n == Base.LinAlg.chksquare(C) || throw(DimensionMismatch(""))
-    tt = A'A
-    nzv = nonzeros(tt)
-    rv = rowvals(tt)
-    for j in 1:n
-        for k in nzrange(tt,j)
-            if (i = rv[k]) ≤ j
-                C[i,j] -= nzv[k]
+    if n ≠ Base.LinAlg.chksquare(C)
+        throw(DimensionMismatch("C is not square or size(C,2) ≠ size(A,2)"))
+    end
+    At = A'
+    rv = rowvals(A)
+    nz = nonzeros(A)
+    rvt = rowvals(At)
+    nzt = nonzeros(At)
+    cp = A.colptr
+    @inbounds for j in 1:n
+        for jp in nzrange(A,j)
+            nzB = nz[jp]
+            k = rv[jp]
+            for kp in nzrange(At,k)
+                C[rvt[kp],j] -= nzt[kp]*nzB
             end
         end
     end
     C
 end
 
+## method not called in tests
 function downdate!{T}(C::DenseMatrix{T},A::DenseMatrix{T},B::SparseMatrixCSC{T})
     ma,na = size(A)
     mb,nb = size(B)
