@@ -90,7 +90,7 @@ julia> ds = rcopy(lme4.Dyestuff)
 defaults to REML estimation.
 
 ```julia
-julia> m = fit!(lmm(Yield ~ 1 + (1|Batch),rcopy(lme4.Dyestuff)))
+julia> m = fit!(lmm(Yield ~ 1 + (1|Batch),ds))
 Linear mixed model fit by maximum likelihood
  logLik: -163.663530, deviance: 327.327060, AIC: 333.327060, BIC: 337.530652
 

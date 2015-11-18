@@ -13,59 +13,67 @@ MixedEffects.jl provides functions and methods to fit `mixed-effects
 models <http://en.wikipedia.org/wiki/Mixed_model>`__ using a
 specification similar to that of the `lme4
 <https://github.com/lme4/lme4>`__ package for `R
-<http://www.R-project.org>`__.  Currently the linear mixed models
+<http://www.R-project.org>`__.  Currently only linear mixed models
 (LMMs) are implemented.
 
 -------
 Example
 -------
 
-The :func:`lmer()` function creates a linear mixed model
-representation that inherits from :class:`LinearMixedModel`.  The
-:class:`LMMGeneral` type can represent any LMM expressed in the
-formula language.  Other types are used for better performance in
-special cases::
+The :func:`lmm()` function creates a linear mixed model
+representation that inherits from :class:`LinearMixedModel`.
 
-    julia> using MixedModels, RDatasets
+    julia> using DataFrames, MixedModels, RCall
 
-    julia> ds = dataset("lme4","Dyestuff");
+    julia> @rimport lme4
+    WARNING: RCall.jl Loading required package: Matrix
+
+    julia> ds = rcopy(lme4.Dyestuff);
 
     julia> dump(ds)
-    DataFrame  30 observations of 2 variables
-      Batch: PooledDataArray{ASCIIString,Uint8,1}(30) ASCIIString["A","A","A","A"]
-      Yield: DataArray{Int32,1}(30) Int32[1545,1440,1440,1520]
+    DataFrames.DataFrame  30 observations of 2 variables
+      Batch: DataArrays.PooledDataArray{ASCIIString,UInt8,1}(30) ASCIIString["A","A","A","A"]
+      Yield: DataArrays.DataArray{Float64,1}(30) [1545.0,1440.0,1440.0,1520.0]
 
     julia> m = lmm(Yield ~ 1|Batch, ds);
 
     julia> typeof(m)
-    LinearMixedModel{PLSOne} (constructor with 2 methods)
+    MixedModels.LinearMixedModel{Float64}
 
-    julia> fit(m, true);
+    julia> fit!(m,true);
     f_1: 327.76702, [1.0]
-    f_2: 328.63496, [0.428326]
-    f_3: 327.33773, [0.787132]
-    f_4: 328.27031, [0.472809]
-    f_5: 327.33282, [0.727955]
-    f_6: 327.32706, [0.752783]
-    f_7: 327.32706, [0.752599]
-    f_8: 327.32706, [0.752355]
-    f_9: 327.32706, [0.752575]
-    f_10: 327.32706, [0.75258]
+    f_2: 331.03619, [1.75]
+    f_3: 330.64583, [0.25]
+    f_4: 327.69511, [0.97619]
+    f_5: 327.56631, [0.928569]
+    f_6: 327.3826, [0.833327]
+    f_7: 327.35315, [0.807188]
+    f_8: 327.34663, [0.799688]
+    f_9: 327.341, [0.792188]
+    f_10: 327.33253, [0.777188]
+    f_11: 327.32733, [0.747188]
+    f_12: 327.32862, [0.739688]
+    f_13: 327.32706, [0.752777]
+    f_14: 327.32707, [0.753527]
+    f_15: 327.32706, [0.752584]
+    f_16: 327.32706, [0.752509]
+    f_17: 327.32706, [0.752591]
+    f_18: 327.32706, [0.752581]
     FTOL_REACHED
 
     julia> m
     Linear mixed model fit by maximum likelihood
-     logLik: -163.663530, deviance: 327.327060
+     logLik: -163.663530, deviance: 327.327060, AIC: 333.327060, BIC: 337.530652
 
-     Variance components:
-		    Variance    Std.Dev.
-     Batch        1388.342960   37.260474
-     Residual     2451.247052   49.510070
+    Variance components:
+               Variance  Std.Dev.
+     Batch    1388.3332 37.260344
+     Residual 2451.2500 49.510100
      Number of obs: 30; levels of grouping factors: 6
 
       Fixed-effects parameters:
-	 Estimate Std.Error z value
-    [1]    1527.5   17.6946 86.3258
+                 Estimate Std.Error z value
+    (Intercept)    1527.5   17.6946  86.326
 
 ------------
 Constructors
@@ -86,24 +94,14 @@ These setters or mutating functions are defined for ``m`` of type
 :func:`fit` function is an exception, because the name was
 already established in the ``StatsBase`` package.
 
-.. function:: fit(m, verbose=false) -> m
+.. function:: fit!(m, verbose=false) -> m
 
-   Fit the parameters of the model by maximum likelihood or by the REML criterion.
+   Fit the parameters of the model by maximum likelihood.
 
-.. function:: reml!(m, v=true]) -> m
-
-   Set the REML flag in ``m`` to ``v``.
-
-.. function:: plssolve!(m.s, u, β) -> m
-
-   Update the spherical random-effects values and the fixed-effects by
-   solving the penalized least squares (PLS) problem.  On input the
-   arguments ``u`` should contain ``Z'y`` and ``β`` should contain ``X'y``
-
-.. function:: θ!(m, th) -> m
+.. function:: m[:θ] = th -> th
 
    Set a new value of the variance-component parameter and update the
-   sparse Cholesky factor.
+   blocked Cholesky factor.
 
 ----------
 Extractors
@@ -112,19 +110,17 @@ Extractors
 These extractors are defined for ``m`` of type
 :type:`LMMGeneral`.
 
-.. function:: cholfact(m,RX=true) -> Cholesky{Float64} or CholmodFactor{Float64}
+.. function:: cholfact(m) -> UpperTriangular{Float64,Array{Float64,2}}
 
-   The Cholesky factor, ``RX``, of the downdated X'X or the sparse
-   Cholesky factor, ``L``, of the random-effects model matrix in the U
-   scale.  These are returned as references and should not be modified.
+   The Cholesky factor, ``RX``, of the downdated X'X.
 
 .. function:: coef(m) -> Vector{Float64}
 
    A synonym for :func:`fixef`
 
-.. function:: coeftable(m) -> DataFrame
+.. function:: coeftable(m) -> StatsBase.CoefTable
 
-   A dataframe with the current fixed-effects parameter vector, the
+   A CoefTable with the current fixed-effects parameter vector, the
    standard errors and their ratio.
 
 .. function:: cor(m) -> Vector{Matrix{Float64}}
@@ -133,24 +129,19 @@ These extractors are defined for ``m`` of type
 
 .. function:: deviance(m) -> Float64
 
-   Value of the deviance (returns ``NaN`` if :func:`isfit` is ``false`` or
-   :func:`isreml` is ``true``).
+   Value of the deviance (throws an error if :func:`isfit` is ``false``).
 
 .. function:: fixef(m) -> Vector{Float64}
 
    Fixed-effects parameter vector
 
-.. function:: grplevels(m) -> Vector{Int}
-
-   Vector of number of levels in random-effect terms
-
-.. function:: lower(m) -> Vector{Float64}
+.. function:: lowerbd(m) -> Vector{Float64}
 
    Vector of lower bounds on the variance-component parameters
 
 .. function:: objective(m) -> Float64
 
-   Value of the profiled deviance or REML criterion at current parameter values
+   Value of the profiled deviance at current parameter values
 
 .. function:: pwrss(m) -> Float64
 
@@ -160,7 +151,7 @@ These extractors are defined for ``m`` of type
 
    Vector of matrices of random effects on the original scale or on the U scale
 
-.. function:: scale(m, sqr=false) -> Float64
+.. function:: sdest(m, sqr=false) -> Float64
 
    Estimate, ``s``, of the residual scale parameter or its square.
 
@@ -181,19 +172,11 @@ Predicates
 ----------
 
 The following predicates (functions that return boolean values,
-:type:`Bool`) are defined for `m` of type :type:`LMMGeneral`
+:type:`Bool`) are defined for `m` of type :type:`LinearMixedModel`
 
 .. function:: isfit(m)
 
    Has the model been fit?
-
-.. function:: isreml(m)
-
-   Is the model to be fit by REML?
-
-.. function:: isscalar(m)
-
-   Are all the random-effects terms scalar?
 
 Indices and tables
 ==================
