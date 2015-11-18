@@ -309,6 +309,8 @@ Predicate - whether or not the model has been fit.
 """
 isfit(m::LinearMixedModel) = m.opt.fmin < Inf
 
+StatsBase.loglikelihood(m::LinearMixedModel) = -deviance(m)/2
+
 """
 Likelihood ratio test of one or more models
 """
