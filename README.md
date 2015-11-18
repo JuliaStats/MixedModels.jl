@@ -45,73 +45,98 @@ Fixed effects:
 
 These `Dyestuff` data are available in the `RDatasets` package for `julia`
 ```julia
-julia> using MixedModels, RDatasets
+julia> using DataFrames,MixedModels, RCall
 
-julia> ds = dataset("lme4","Dyestuff");
+julia> @rimport lme4
+WARNING: RCall.jl Loading required package: Matrix
 
-julia> head(ds)
-6x2 DataFrame
-|-------|-------|-------|
-| Row # | Batch | Yield |
-| 1     | A     | 1545  |
-| 2     | A     | 1440  |
-| 3     | A     | 1440  |
-| 4     | A     | 1520  |
-| 5     | A     | 1580  |
-| 6     | B     | 1540  |
+julia> ds = rcopy(lme4.Dyestuff)
+30x2 DataFrames.DataFrame
+| Row | Batch | Yield  |
+|-----|-------|--------|
+| 1   | "A"   | 1545.0 |
+| 2   | "A"   | 1440.0 |
+| 3   | "A"   | 1440.0 |
+| 4   | "A"   | 1520.0 |
+| 5   | "A"   | 1580.0 |
+| 6   | "B"   | 1540.0 |
+| 7   | "B"   | 1555.0 |
+| 8   | "B"   | 1490.0 |
+| 9   | "B"   | 1560.0 |
+| 10  | "B"   | 1495.0 |
+| 11  | "C"   | 1595.0 |
+| 12  | "C"   | 1550.0 |
+| 13  | "C"   | 1605.0 |
+| 14  | "C"   | 1510.0 |
+| 15  | "C"   | 1560.0 |
+| 16  | "D"   | 1445.0 |
+| 17  | "D"   | 1440.0 |
+| 18  | "D"   | 1595.0 |
+| 19  | "D"   | 1465.0 |
+| 20  | "D"   | 1545.0 |
+| 21  | "E"   | 1595.0 |
+| 22  | "E"   | 1630.0 |
+| 23  | "E"   | 1515.0 |
+| 24  | "E"   | 1635.0 |
+| 25  | "E"   | 1625.0 |
+| 26  | "F"   | 1520.0 |
+| 27  | "F"   | 1455.0 |
+| 28  | "F"   | 1450.0 |
+| 29  | "F"   | 1480.0 |
+| 30  | "F"   | 1445.0 |
 ```
 
 `lmm` defaults to maximum likelihood estimation whereas `lmer` in `R`
 defaults to REML estimation.
 
 ```julia
-julia> m = fit!(lmm(Yield ~ 1 + (1|Batch), ds))
+julia> m = fit!(lmm(Yield ~ 1 + (1|Batch),rcopy(lme4.Dyestuff)))
 Linear mixed model fit by maximum likelihood
-Formula: Yield ~ 1 + (1 | Batch)
+ logLik: -163.663530, deviance: 327.327060, AIC: 333.327060, BIC: 337.530652
 
- logLik: -163.663530, deviance: 327.327060
-
- Variance components:
-                Variance    Std.Dev.
- Batch        1388.331690   37.260323
- Residual     2451.250503   49.510105
+Variance components:
+           Variance  Std.Dev.
+ Batch    1388.3332 37.260344
+ Residual 2451.2500 49.510100
  Number of obs: 30; levels of grouping factors: 6
 
   Fixed-effects parameters:
              Estimate Std.Error z value
-(Intercept)    1527.5   17.6945  86.326
+(Intercept)    1527.5   17.6946  86.326
 ```
 
 In general the model should be fit through an explicit call to the `fit!`
 function, which may take a second argument indicating a verbose fit.
 
 ```julia
-julia> gc(); @time fit!(lmm(Yield ~ 1 + (1|Batch),ds),true);
+julia> gc(); @time fit!(lmm(Yield ~ 1 + (1|Batch), ds),true);
 f_1: 327.76702, [1.0]
-f_2: 328.63496, [0.428326]
-f_3: 327.33773, [0.787132]
-f_4: 328.27031, [0.472809]
-f_5: 327.33282, [0.727955]
-f_6: 327.32706, [0.752783]
-f_7: 327.32706, [0.752599]
-f_8: 327.32706, [0.752355]
-f_9: 327.32706, [0.752575]
-f_10: 327.32706, [0.75258]
+f_2: 331.03619, [1.75]
+f_3: 330.64583, [0.25]
+f_4: 327.69511, [0.97619]
+f_5: 327.56631, [0.928569]
+f_6: 327.3826, [0.833327]
+f_7: 327.35315, [0.807188]
+f_8: 327.34663, [0.799688]
+f_9: 327.341, [0.792188]
+f_10: 327.33253, [0.777188]
+f_11: 327.32733, [0.747188]
+f_12: 327.32862, [0.739688]
+f_13: 327.32706, [0.752777]
+f_14: 327.32707, [0.753527]
+f_15: 327.32706, [0.752584]
+f_16: 327.32706, [0.752509]
+f_17: 327.32706, [0.752591]
+f_18: 327.32706, [0.752581]
 FTOL_REACHED
-elapsed time: 0.165568641 seconds (2007424 bytes allocated)
+  0.001722 seconds (2.00 k allocations: 82.828 KB)
 ```
 
 The numeric representation of the model has type
 ```julia
 julia> typeof(m)
-LinearMixedModel{PLSOne} (constructor with 2 methods)
+MixedModels.LinearMixedModel{Float64}
 ```
-A `LinearMixedModel` is parameterized by the type of the solver
-for the penalized least-squares (PLS) problem.  The simplicity of the
-PLS problem when there is a single grouping factor is exploited in the
-`PLSOne` class which provides for evaluation of the objective function
-and of its gradient.
-
 Those familiar with the `lme4` package for `R` will see the usual
 suspects.
 ```julia
@@ -133,7 +158,16 @@ julia> ranef(m,true)  # on the u scale
  -22.0949  0.490999  35.8429  -28.9689  71.1948  -56.4649
 
 julia> deviance(m)
-327.3270598811376
+327.3270598811394
+```
+
+It may be more accurate to refer to this as the `objective`, which is
+`-2loglikelihood(m)`, without the correction for the null deviance.
+(It is not clear how the null deviance should be defined for these models.)
+
+```julia
+julia> objective(m)
+327.3270598811394
 ```
 
 ## A more substantial example
@@ -144,164 +178,110 @@ nearly 75,000 evaluations by 2972 students on a total of 1128
 instructors.
 
 ```julia
-julia> inst = dataset("lme4","InstEval");
+julia> inst = rcopy(lme4.InstEval);
 
 julia> head(inst)
-6x7 DataFrame
-|-------|---|------|---------|---------|---------|------|---|
-| Row # | S | D    | Studage | Lectage | Service | Dept | Y |
-| 1     | 1 | 1002 | 2       | 2       | 0       | 2    | 5 |
-| 2     | 1 | 1050 | 2       | 1       | 1       | 6    | 2 |
-| 3     | 1 | 1582 | 2       | 2       | 0       | 2    | 5 |
-| 4     | 1 | 2050 | 2       | 2       | 1       | 3    | 3 |
-| 5     | 2 | 115  | 2       | 1       | 0       | 5    | 2 |
-| 6     | 2 | 756  | 2       | 1       | 0       | 5    | 4 |
+6x7 DataFrames.DataFrame
+| Row | s   | d      | studage | lectage | service | dept | y |
+|-----|-----|--------|---------|---------|---------|------|---|
+| 1   | "1" | "1002" | "2"     | "2"     | "0"     | "2"  | 5 |
+| 2   | "1" | "1050" | "2"     | "1"     | "1"     | "6"  | 2 |
+| 3   | "1" | "1582" | "2"     | "2"     | "0"     | "2"  | 5 |
+| 4   | "1" | "2050" | "2"     | "2"     | "1"     | "3"  | 3 |
+| 5   | "2" | "115"  | "2"     | "1"     | "0"     | "5"  | 2 |
+| 6   | "2" | "756"  | "2"     | "1"     | "0"     | "5"  | 4 |
 
-julia> fm2 = fit!(lmm(Y ~ 1 + Dept*Service + (1|S) + (1|D), inst))
+julia> m2 = fit!(lmm(y ~ 1 + dept*service + (1|s) + (1|d), inst))
 Linear mixed model fit by maximum likelihood
-Formula: Y ~ Dept * Service + (1 | S) + (1 | D)
+ logLik: -118792.776708, deviance: 237585.553415, AIC: 237647.553415, BIC: 237932.876339
 
- logLik: -118792.776709, deviance: 237585.553417
-
- Variance components:
-                Variance    Std.Dev.
- S              0.105422    0.324688
- D              0.258429    0.508359
- Residual       1.384725    1.176744
+Variance components:
+            Variance   Std.Dev.  
+ s        0.105417973 0.32468134
+ d        0.258416365 0.50834670
+ Residual 1.384727773 1.17674457
  Number of obs: 73421; levels of grouping factors: 2972, 1128
 
   Fixed-effects parameters:
-                   Estimate Std.Error   z value
-(Intercept)         3.22961 0.0640541     50.42
-Dept5              0.129537  0.101295    1.2788
-Dept10            -0.176752 0.0881368  -2.00543
-Dept12            0.0517089 0.0817538  0.632495
-Dept6             0.0347327 0.0856225  0.405649
-Dept7              0.145941 0.0998001   1.46233
-Dept4              0.151689 0.0816911   1.85686
-Dept8              0.104206  0.118752  0.877503
-Dept9             0.0440392 0.0963003  0.457312
-Dept14            0.0517545 0.0986047  0.524868
-Dept1             0.0466714  0.101944  0.457815
-Dept3             0.0563455 0.0977943  0.576164
-Dept11            0.0596525  0.100235  0.595129
-Dept2            0.00556088  0.110869 0.0501574
-Service1           0.252024 0.0686508    3.6711
-Dept5&Service1    -0.180759  0.123179  -1.46744
-Dept10&Service1   0.0186497  0.110017  0.169517
-Dept12&Service1   -0.282267 0.0792939  -3.55975
-Dept6&Service1    -0.494464  0.079028  -6.25682
-Dept7&Service1    -0.392054  0.110313  -3.55402
-Dept4&Service1    -0.278546 0.0823729  -3.38152
-Dept8&Service1    -0.189526   0.11145  -1.70055
-Dept9&Service1    -0.499867 0.0885425   -5.6455
-Dept14&Service1   -0.497161 0.0917165  -5.42063
-Dept1&Service1    -0.240418 0.0982074  -2.44807
-Dept3&Service1    -0.223013  0.089055  -2.50421
-Dept11&Service1   -0.516996 0.0809079  -6.38994
-Dept2&Service1    -0.384769 0.0918433  -4.18941
+                           Estimate Std.Error   z value
+(Intercept)                 3.22961  0.064053   50.4209
+dept - 5                   0.129536  0.101294   1.27882
+dept - 10                 -0.176751 0.0881352  -2.00545
+dept - 12                 0.0517102 0.0817523  0.632522
+dept - 6                  0.0347319  0.085621  0.405647
+dept - 7                    0.14594 0.0997984   1.46235
+dept - 4                   0.151689 0.0816897   1.85689
+dept - 8                   0.104206  0.118751  0.877517
+dept - 9                  0.0440401 0.0962985  0.457329
+dept - 14                 0.0517546 0.0986029  0.524879
+dept - 1                  0.0466719  0.101942  0.457828
+dept - 3                  0.0563461 0.0977925   0.57618
+dept - 11                 0.0596536  0.100233  0.595151
+dept - 2                 0.00556281  0.110867 0.0501757
+service - 1                0.252025 0.0686507   3.67112
+dept - 5 & service - 1    -0.180757  0.123179  -1.46744
+dept - 10 & service - 1   0.0186492  0.110017  0.169512
+dept - 12 & service - 1   -0.282269 0.0792937  -3.55979
+dept - 6 & service - 1    -0.494464 0.0790278  -6.25683
+dept - 7 & service - 1    -0.392054  0.110313  -3.55403
+dept - 4 & service - 1    -0.278547 0.0823727  -3.38154
+dept - 8 & service - 1    -0.189526  0.111449  -1.70056
+dept - 9 & service - 1    -0.499868 0.0885423  -5.64553
+dept - 14 & service - 1   -0.497162 0.0917162  -5.42065
+dept - 1 & service - 1     -0.24042 0.0982071   -2.4481
+dept - 3 & service - 1    -0.223013 0.0890548  -2.50422
+dept - 11 & service - 1   -0.516997 0.0809077  -6.38997
+dept - 2 & service - 1    -0.384773  0.091843  -4.18946
 
-julia> gc();@time fit!(lmm(Y ~ 1 + Dept*Service + (1|S) + (1|D), inst));
-elapsed time: 5.193356844 seconds (327515804 bytes allocated, 4.95% gc time)
+
+julia> gc(); @time fit!(lmm(y ~ 1 + dept*service + (1|s) + (1|d), inst));
+  2.203323 seconds (20.09 M allocations: 450.600 MB, 1.34% gc time)
 ```
 
 Models with vector-valued random effects can be fit
 ```julia
-julia> slp = dataset("lme4","sleepstudy")
-180x3 DataFrame
-|-------|----------|------|---------|
-| Row # | Reaction | Days | Subject |
-| 1     | 249.56   | 0    | 308     |
-| 2     | 258.705  | 1    | 308     |
-| 3     | 250.801  | 2    | 308     |
-| 4     | 321.44   | 3    | 308     |
-| 5     | 356.852  | 4    | 308     |
-| 6     | 414.69   | 5    | 308     |
-| 7     | 382.204  | 6    | 308     |
-| 8     | 290.149  | 7    | 308     |
-| 9     | 430.585  | 8    | 308     |
+julia> slp = rcopy(lme4.sleepstudy)
+180x3 DataFrames.DataFrame
+| Row | Reaction | Days | Subject |
+|-----|----------|------|---------|
+| 1   | 249.56   | 0.0  | "308"   |
+| 2   | 258.705  | 1.0  | "308"   |
+| 3   | 250.801  | 2.0  | "308"   |
+| 4   | 321.44   | 3.0  | "308"   |
+| 5   | 356.852  | 4.0  | "308"   |
+| 6   | 414.69   | 5.0  | "308"   |
+| 7   | 382.204  | 6.0  | "308"   |
+| 8   | 290.149  | 7.0  | "308"   |
+| 9   | 430.585  | 8.0  | "308"   |
+| 10  | 466.353  | 9.0  | "308"   |
+| 11  | 222.734  | 0.0  | "309"   |
 ⋮
-| 171   | 269.412  | 0    | 372     |
-| 172   | 273.474  | 1    | 372     |
-| 173   | 297.597  | 2    | 372     |
-| 174   | 310.632  | 3    | 372     |
-| 175   | 287.173  | 4    | 372     |
-| 176   | 329.608  | 5    | 372     |
-| 177   | 334.482  | 6    | 372     |
-| 178   | 343.22   | 7    | 372     |
-| 179   | 369.142  | 8    | 372     |
-| 180   | 364.124  | 9    | 372     |
+| 169 | 350.781  | 8.0  | "371"   |
+| 170 | 369.469  | 9.0  | "371"   |
+| 171 | 269.412  | 0.0  | "372"   |
+| 172 | 273.474  | 1.0  | "372"   |
+| 173 | 297.597  | 2.0  | "372"   |
+| 174 | 310.632  | 3.0  | "372"   |
+| 175 | 287.173  | 4.0  | "372"   |
+| 176 | 329.608  | 5.0  | "372"   |
+| 177 | 334.482  | 6.0  | "372"   |
+| 178 | 343.22   | 7.0  | "372"   |
+| 179 | 369.142  | 8.0  | "372"   |
+| 180 | 364.124  | 9.0  | "372"   |
 
 julia> fm3 = fit!(lmm(Reaction ~ 1 + Days + (1+Days|Subject), slp))
 Linear mixed model fit by maximum likelihood
-Formula: Reaction ~ 1 + Days + ((1 + Days) | Subject)
+ logLik: -875.969672, deviance: 1751.939344, AIC: 1763.939344, BIC: 1783.097086
 
- logLik: -875.969672, deviance: 1751.939344
-
- Variance components:
-                Variance    Std.Dev.  Corr.
- Subject      565.516376   23.780588
-               32.682265    5.716840   0.08
- Residual     654.940901   25.591813
+Variance components:
+           Variance  Std.Dev.   Corr.
+ Subject  565.51066 23.780468
+           32.68212  5.716828  0.08
+ Residual 654.94145 25.591824
  Number of obs: 180; levels of grouping factors: 18
 
   Fixed-effects parameters:
              Estimate Std.Error z value
-(Intercept)   251.405   6.63228 37.9063
-Days          10.4673   1.50224 6.96779
-```
-
-For models with a single random-effects term a gradient-based
-optimization is used, allowing faster and more reliable convergence to
-the parameter estimates.
-
-```julia
-julia> gc(); @time fit!(lmm(Reaction ~ 1 + Days + (1+Days|Subject),slp),true);
-f_1: 1784.6423, [1.0,0.0,1.0]
-f_2: 1792.09158, [1.04647,-0.384052,0.159046]
-f_3: 1759.76629, [1.00506,-0.0847897,0.418298]
-f_4: 1787.91236, [1.26209,0.662287,0.0]
-f_5: 1770.2265, [1.04773,0.323752,0.0]
-f_6: 1755.6188, [1.00967,0.0107469,0.150327]
-f_7: 1762.85008, [0.991808,0.14307,0.446863]
-f_8: 1753.29754, [1.0048,0.0534958,0.272807]
-f_9: 1752.5881, [1.00312,0.0418443,0.252944]
-f_10: 1767.54407, [0.99451,0.00122224,0.0940196]
-f_11: 1752.21061, [1.00224,0.0373251,0.232541]
-f_12: 1758.83812, [0.988744,0.0206109,0.123804]
-f_13: 1752.13481, [1.00085,0.0355465,0.220038]
-f_14: 1752.02982, [0.980566,0.015964,0.234045]
-f_15: 1759.88963, [0.971299,0.0118275,0.120811]
-f_16: 1751.98896, [0.979624,0.0155451,0.221269]
-f_17: 1751.98436, [0.97888,0.015535,0.224081]
-f_18: 1751.96796, [0.968696,0.0144745,0.223608]
-f_19: 1752.08826, [0.867754,0.0226905,0.23397]
-f_20: 1751.9463, [0.943112,0.0163709,0.226009]
-f_21: 1754.13022, [0.834535,0.0100178,0.166328]
-f_22: 1751.94908, [0.930934,0.0157232,0.218808]
-f_23: 1751.94123, [0.938201,0.0161115,0.223087]
-f_24: 1751.96529, [0.894427,0.0196256,0.223832]
-f_25: 1751.93978, [0.930555,0.0167127,0.223213]
-f_26: 1751.93974, [0.930506,0.019329,0.222173]
-f_27: 1751.94419, [0.913941,0.018183,0.222681]
-f_28: 1751.93955, [0.927971,0.0191544,0.22225]
-f_29: 1751.93979, [0.933502,0.0174017,0.2225]
-f_30: 1751.93942, [0.92986,0.0185533,0.222336]
-f_31: 1751.9544, [0.903287,0.0173483,0.222935]
-f_32: 1751.93944, [0.927141,0.0184317,0.222396]
-f_33: 1751.93939, [0.928786,0.0185053,0.222359]
-f_34: 1751.93935, [0.929171,0.0180663,0.222656]
-f_35: 1751.93935, [0.929702,0.0182395,0.222667]
-f_36: 1751.93934, [0.929337,0.0181204,0.222659]
-f_37: 1751.93935, [0.928905,0.0183732,0.222647]
-f_38: 1751.93934, [0.929269,0.0181603,0.222657]
-f_39: 1751.93935, [0.929106,0.0181461,0.222618]
-f_40: 1751.93934, [0.929236,0.0181575,0.22265]
-f_41: 1751.93934, [0.929197,0.0181927,0.222625]
-f_42: 1751.93934, [0.929229,0.018164,0.222645]
-f_43: 1751.93934, [0.929146,0.0181729,0.22267]
-f_44: 1751.93934, [0.929221,0.0181649,0.222647]
-f_45: 1751.93934, [0.929226,0.0181643,0.222646]
-FTOL_REACHED
-elapsed time: 0.022856979 seconds (1140940 bytes allocated)
+(Intercept)   251.405   6.63226 37.9064
+Days          10.4673   1.50224 6.96781
 ```
