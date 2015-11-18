@@ -37,7 +37,7 @@ function cfactor!(R::HBlkDiag)
     Ra = R.arr
     r,s,k = size(Ra)
     for i in 1:k
-        Base.LinAlg.chol!(sub(Ra,:,:,i),Val{:U})
+        Base.LinAlg.chol!(sub(Ra,:,:,i))
     end
     UpperTriangular(R)
 end
