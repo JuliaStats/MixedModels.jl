@@ -14,20 +14,35 @@ fit!(fm1);
 @test objective(fm1) ≈ 327.3270598811428
 @test_approx_eq_eps fm1[:θ] [0.752580] 1.e-5
 @test_approx_eq_eps deviance(fm1) 327.32705988 1.e-6
+@test_approx_eq_eps AIC(fm1) 333.3270598811394 1.e-6
+@test_approx_eq_eps BIC(fm1) 337.5306520261259 1.e-6
 @test fixef(fm1) ≈ [1527.5]
+@test MixedModels.fixef!(zeros(1),fm1) ≈ [1527.5]
 @test coef(fm1) ≈ [1527.5]
+@test cond(fm1) == ones(1)
+cm = coeftable(fm1)
+@test size(cm.mat) == (1,3)
+@test MixedModels.fnames(fm1) == [:Batch]
 
 @test_approx_eq_eps logdet(fm1) 8.06014522999825 1.e-4
 @test_approx_eq_eps varest(fm1) 2451.2501089607676 1.e-3
 @test_approx_eq_eps pwrss(fm1) 73537.50326882303 1.e-1
 @test_approx_eq_eps stderr(fm1) [17.69455188898009] 1.e-4
 
+vc = VarCorr(fm1)
+show(vc)
+@test vc.s == sdest(fm1)
+srand(1234321)
+simulate!(fm1)   # changes the fit
+@test_approx_eq_eps deviance(fm1) 339.0218639362958 1.e-6
+
 fm2 = lmm(Yield ~ 1 + (1|Batch),ds2)
 @test lowerbd(fm2) == zeros(1)
-fit!(fm2)
-@test fm2[:θ] == zeros(1)
+fit!(fm2,true)
+show(fm2)
+@test abs(fm2[:θ][1]) < 1.0e-9
 @test objective(fm2) ≈ 162.87303665382575
-@test std(fm2)[1] ≈ [0.]
+@test abs(std(fm2)[1][1]) < 1.0e-9
 @test std(fm2)[2] ≈ [3.653231351374652]
 @test stderr(fm2) ≈ [0.6669857396443261]
 @test coef(fm2) ≈ [5.6656]
