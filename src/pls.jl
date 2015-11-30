@@ -15,10 +15,13 @@ end
 """
 Linear mixed-effects model representation
 
-`trms` is a length `nt` vector of model matrices. Its last element is `hcat(X,y)`
-`Λ` is a length `nt - 1` vector of lower triangular matrices
-`A` is an `nt × nt` symmetric matrix of matrices representing `hcat(Z,X,y)'hcat(Z,X,y)`
-`R`, also a `nt × nt` matrix of matrices, is the upper Cholesky factor of `Λ'AΛ+I`
+- `mf` the model frame, mostly used to get the `terms` component for labelling fixed effects
+- `trms` is a length `nt` vector of model matrices. Its last element is `hcat(X,y)`
+- `Λ` is a length `nt - 1` vector of lower triangular matrices
+- `weights` a vector of weights
+- `A` is an `nt × nt` symmetric matrix of matrices representing `hcat(Z,X,y)'hcat(Z,X,y)`
+- `R`, also a `nt × nt` matrix of matrices, is the upper Cholesky factor of `Λ'AΛ+I`
+- `opt`, an OptSummary object
 """
 type LinearMixedModel{T} <: MixedModel
     mf::ModelFrame
@@ -53,8 +56,13 @@ function LinearMixedModel{T}(
     for i in eachindex(Rem) trms[i] = Rem[i] end
     trms[end] = hcat(X,y)
     mtrms = trms   # to allow for weights
-    if length(wts) > 0
-        all(x->x ≥ 0,wts) || error("Weights must be ≥ 0")
+    if (nwt = length(wts)) > 0
+        if nwt ≠ n
+            throw(DimensionMismatch("length(wts) must be 0 or length(y)"))
+        end
+        if any(x -> x < 0, wts)
+            throw(ArgumentError("Weights must be ≥ 0"))
+        end
         sqrtwts = sqrt(wts)
         for i in eachindex(trms)
             mtrms[i] = scale(sqrtwts,trms[i])
@@ -80,6 +88,9 @@ function LinearMixedModel{T}(
     LinearMixedModel(mf,trms,wts,Λ,A,R,OptSummary(mapreduce(x->x[:θ],vcat,Λ),:None))
 end
 
+"""
+Create a `LinearMixedModel` object from a formula and data frame
+"""
 function lmm(f::Formula, fr::AbstractDataFrame; weights::Vector{Float64}=Float64[])
     mf = ModelFrame(f,fr)
     X = ModelMatrix(mf)
@@ -87,7 +98,7 @@ function lmm(f::Formula, fr::AbstractDataFrame; weights::Vector{Float64}=Float64
                                         # process the random-effects terms
     retrms = filter(x->Meta.isexpr(x,:call) && x.args[1] == :|, mf.terms.terms)
     if length(retrms) ≤ 0
-        error("Formula $f has no random-effects terms")
+        throw(ArgumentError("$f has no random-effects terms"))
     end
     re = [remat(e,mf.df) for e in retrms]
     LinearMixedModel(mf,re,map(LT,re),X.m,y,weights)
@@ -293,10 +304,10 @@ function StatsBase.deviance(m::LinearMixedModel)
     objective(m)
 end
 
-#"""
-#`fnames(m)` -> vector of names of grouping factors
-#"""
-#fnames(m::LinearMixedModel) = m.fnms
+"""
+`fnames(m)` -> vector of names of grouping factors
+"""
+fnames(m::LinearMixedModel) = [t.fnm for t in m.trms[1:end-1]]
 
 """
 `grplevels(m)` -> Vector{Int} : number of levels in each term's grouping factor
@@ -371,6 +382,7 @@ function Base.show(io::IO, m::LinearMixedModel) # not tested
 #    if REML
 #        @printf(io, " REML criterion: %f", oo)
 #    else
+# FIXME: Use `showoff` here to align better
         @printf(io, " logLik: %f, deviance: %f, AIC: %f, BIC: %f",-oo/2.,oo, AIC(m),BIC(m))
 #    end
     println(io); println(io)
@@ -458,94 +470,6 @@ returns the estimated variance-covariance matrix of the fixed-effects estimator
 function StatsBase.vcov(m::LinearMixedModel)
     Rinv = Base.LinAlg.inv!(cholfact(m))
     varest(m)*Rinv*Rinv'
-end
-
-"""
-Regenerate the last column of `m.A` from `m.trms`
-
-This should be called after updating parts of `m.trms[end]`, typically the response.
-"""
-function regenerateAend!(m::LinearMixedModel)
-    n = Base.LinAlg.chksquare(m.A)
-    trmn = m.trms[n]
-    for i in 1:n
-        Ac_mul_B!(m.A[i,n],m.trms[i],trmn)
-    end
-    m
-end
-
-"""
-Reset the value of `m.θ` to the initial values
-"""
-function resetθ!(m::LinearMixedModel)
-    m[:θ] = m.opt.initial
-    m.opt.feval = -1
-    m.opt.fmin = Inf
-    m
-end
-
-"""
-Add unscaled random effects to y
-"""
-function unscaledre!(y::AbstractVector,M::ScalarReMat,L::LowerTriangular)
-    z = M.z
-    length(y) == length(z) && size(L) == (1,1) || throw(DimensionMismatch())
-    re = L[1,1]*randn(length(M.f.pool))
-    inds = M.f.refs
-    for i in eachindex(y)
-        y[i] += re[inds[i]]*z[i]
-    end
-    y
-end
-function unscaledre!(y::AbstractVector,M::VectorReMat,L::LowerTriangular)
-    Z = M.z
-    length(y) == size(Z,2) || throw(DimensionMismatch())
-    re = A_mul_B!(L,randn(size(Z,1),length(M.f.pool)))
-    inds = M.f.refs
-    for i in eachindex(y)
-        y[i] += dot(sub(Z,:,i),sub(re,:,Int(inds[i])))
-    end
-    y
-end
-
-"""
-Simulate a response vector from model `m`, and refit `m`.
-
-- m, LinearMixedModel.
-- β, fixed effects parameter vector
-- σ, standard deviation of the per-observation random noise term
-- σv, vector of standard deviations for the scalar random effects.
-"""
-function simulate!(m::LinearMixedModel;β=coef(m),σ=sdest(m),θ=m[:0])
-    m[:θ] = θ        # side-effect of checking for correct length(θ)
-    trms = m.trms
-    Xy = trms[end] # hcat of fixed-effects model matrix X and response y
-    pp1 = size(Xy,2)
-    Λ = m.Λ
-    y = randn!(sub(Xy,:,pp1)) # initialize to standard normal noise
-    for j in eachindex(Λ)     # add the unscaled random effects
-        unscaledre!(y,trms[j],Λ[j])
-    end
-    Base.LinAlg.BLAS.gemv!('N',1.0,sub(Xy,:,1:pp1-1),β,σ,y)
-    m |> regenerateAend! |> resetθ! |> fit!
-end
-
-"""
-refit the model `m` with response `y`
-"""
-function refit!(m::LinearMixedModel,y)
-    copy!(model_response(m),y)
-    m |> regenerateAend! |> resetθ! |> fit!
-end
-
-"""
-extract the response (as a reference)
-
-In Julia 0.5 this can be a one-liner `m.trms[end][:,end]`
-"""
-function StatsBase.model_response(m::LinearMixedModel)
-    Xy = m.trms[end]
-    sub(Xy,:,size(Xy,2))
 end
 
 """
