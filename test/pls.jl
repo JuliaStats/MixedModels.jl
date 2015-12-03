@@ -65,6 +65,9 @@ fit!(fm3)
 @test_approx_eq_eps std(fm3)[1] [23.780468100188497,5.716827903196682] 1.e-2
 @test_approx_eq_eps logdet(fm3) 73.90337187545992 1.e-3
 @test_approx_eq diag(cor(fm3)[1]) ones(2)
+@test cond(fm3) ≈ [4.1752507630514915]
+@test loglikelihood(fm3) ≈ -875.9696722323523
+@test eltype(fm3.trms[1]) === Float64
 
 fm4 = lmm(Reaction ~ Days + (1|Subject) + (0+Days|Subject), slp);
 @test size(fm4) == (180,2,36,2)
