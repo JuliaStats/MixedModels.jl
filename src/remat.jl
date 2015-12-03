@@ -48,7 +48,7 @@ function remat(e::Expr,df::DataFrame)
     size(z,2) == 1 ?ScalarReMat(gr,vec(z),fnm,cnms) : VectorReMat(gr,z',fnm,cnms)
 end
 
-Base.eltype(R::ReMat) = eltype(R.z)  # not tested
+Base.eltype(R::ReMat) = eltype(R.z)
 
 vsize(A::ReMat) = isa(A,ScalarReMat) ? 1 : size(A.z,1)
 
@@ -175,7 +175,6 @@ function Base.Ac_mul_B!{T}(R::DenseVecOrMat{T},A::DenseVecOrMat{T},B::ReMat)
     R
 end
 
-# not tested
 Base.Ac_mul_B(A::DenseVecOrMat,B::ReMat) = Ac_mul_B!(Array(eltype(A),(size(A,2),size(B,2))),A,B)
 
 # not tested

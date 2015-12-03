@@ -22,11 +22,11 @@ function densify(S,threshold=0.3)
     nzs = nonzeros(S)
     nz1 = nzs[1]
     T = typeof(nz1)
-    if !isa(nz1,Array) || !isbits(eltype(nz1))
+    if !isa(nz1,Array) || !isbits(eltype(nz1)) # branch not tested
         error("Nonzeros must be a bitstype or an array of same")
     end
     sz1 = size(nz1)
-    if any(x->typeof(x) ≠ T || size(x) ≠ sz1, nzs)
+    if any(x->typeof(x) ≠ T || size(x) ≠ sz1, nzs) # branch not tested
         error("Inconsistent dimensions or types in array nonzeros")
     end
     M,N = size(S)

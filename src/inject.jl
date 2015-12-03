@@ -16,7 +16,7 @@ end
 
 function inject!{T<:Real}(d::AbstractMatrix{T}, s::Diagonal{T})
     sd = s.diag
-    if length(sd) ≠ size(d,2)
+    if length(sd) ≠ size(d,2) # branch not tested
         throw(DimensionMismatch("size(d,2) ≠ size(s,2)"))
     end
     fill!(d,zero(T))
@@ -30,7 +30,7 @@ inject!(d::Diagonal{Float64},s::Diagonal{Float64}) = (copy!(d.diag,s.diag);d)
 
 function inject!(d::SparseMatrixCSC{Float64},s::SparseMatrixCSC{Float64})
     m,n = size(d)
-    if size(d) ≠ size(s)
+    if size(d) ≠ size(s) # branch not tested
         throw(DimensionMismatch("size(d) ≠ size(s)"))
     end
     if nnz(d) == nnz(s)

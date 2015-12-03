@@ -41,8 +41,9 @@ function LinearMixedModel{T}(
     y::Vector{T},
     wts::Vector{T}
     )
-    all(x->isa(x,ReMat),Rem) ||
+    if !all(x->isa(x,ReMat),Rem)
         throw(ArgumentError("Elements of Rem should be ReMat's"))
+    end
     n,p = size(X)
     if any(t -> size(t,1) ≠ n,Rem) || length(y) ≠ n
         throw(DimensionMismatch("n not consistent"))
@@ -209,14 +210,14 @@ objective(m::LinearMixedModel) = logdet(m) + nobs(m)*(1.+log(2π*varest(m)))
 """
 Akaike's Information Criterion
 """
-AIC(m::LinearMixedModel) = deviance(m) + 2npar(m)  # not tested
+AIC(m::LinearMixedModel) = deviance(m) + 2npar(m)
 
 """
 Schwartz's Bayesian Information Criterion
 """
-BIC(m::LinearMixedModel) = deviance(m) + npar(m)*log(nobs(m)) # not tested
+BIC(m::LinearMixedModel) = deviance(m) + npar(m)*log(nobs(m))
 
-# Base.LinAlg.A_rdiv_Bc!(A::StridedVecOrMat,D::Diagonal) = A_rdiv_B!(A,D) # not tested
+# Base.LinAlg.A_rdiv_Bc!(A::StridedVecOrMat,D::Diagonal) = A_rdiv_B!(A,D)
 
 ## Rename this
 Base.cholfact(m::LinearMixedModel) = UpperTriangular(m.R[end,end][1:end-1,1:end-1])
@@ -224,7 +225,7 @@ Base.cholfact(m::LinearMixedModel) = UpperTriangular(m.R[end,end][1:end-1,1:end-
 """
 Overwrite `v` with the fixed-effects coefficients of model `m`
 """
-function fixef!(v,m::LinearMixedModel) # not tested
+function fixef!(v,m::LinearMixedModel)
     isfit(m) || error("Model has not been fit")
     Base.LinAlg.A_ldiv_B!(cholfact(m),copy!(v,m.R[end,end][1:end-1,end]))
 end
@@ -279,7 +280,7 @@ pwrss(m::LinearMixedModel) = abs2(sqrtpwrss(m))
 """
 Condition numbers for blocks of Λ
 """
-Base.cond(m::LinearMixedModel) = [cond(λ)::Float64 for λ in m.Λ] # not tested
+Base.cond(m::LinearMixedModel) = [cond(λ)::Float64 for λ in m.Λ]
 
 """
 Convert a lower Cholesky factor to a correlation matrix
