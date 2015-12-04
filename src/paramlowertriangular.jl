@@ -56,7 +56,7 @@ chksz(A::ScalarReMat,λ::LowerTriangular) = size(λ,1) == 1
 chksz(A::VectorReMat,λ::LowerTriangular) = size(λ,1) == size(A.z,1)
 
 """
-`rowlengths(L)` -> a vector of the row lengths of `L`
+`rowlengths(L)` -> a vector of the Euclidean lengths of the rows of `L`
 
 used in `chol2cor`
 """
@@ -75,11 +75,7 @@ function tscale!(A::LowerTriangular,B::HBlkDiag)
     if n ≠ r
         throw(DimensionMismatch("size(A,2) ≠ blocksize of B"))
     end
-    if r == 1 # branch not taken
-        scale!(Ba,A.data[1])
-    else
-        Ac_mul_B!(A,reshape(Ba,(r,s*k)))
-    end
+    Ac_mul_B!(A,reshape(Ba,(r,s*k)))
     B
 end
 
@@ -126,7 +122,9 @@ function tscale!{T}(A::LowerTriangular{T},B::SparseMatrixCSC{T})
 end
 
 function tscale!{T}(A::SparseMatrixCSC{T},B::LowerTriangular)
-    (l = Base.LinAlg.chksquare(B)) == 1 || error("Code not yet written")
+    if (l = Base.LinAlg.chksquare(B)) != 1
+        error("Code not yet written")
+    end
     scale!(A.nzval,B.data[1])
     A
 end

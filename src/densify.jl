@@ -19,6 +19,7 @@ function densify(S,threshold=0.3)
     if isbits(eltype(S))
         return full(S)
     end
+    # densify a sparse matrix whose elements are arrays of bitstypes
     nzs = nonzeros(S)
     nz1 = nzs[1]
     T = typeof(nz1)

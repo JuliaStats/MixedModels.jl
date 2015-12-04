@@ -54,7 +54,7 @@ downdate!{T<:Base.LinAlg.BlasFloat}(C::DenseMatrix{T},A::DenseMatrix{T},B::Dense
 function downdate!{T}(C::Diagonal{T},A::SparseMatrixCSC{T})
     m,n = size(A)
     dd = C.diag
-    if length(dd) ≠ n # branch not tested
+    if length(dd) ≠ n
         throw(DimensionMismatch("size(C,2) ≠ size(A,2)"))
     end
     nz = nonzeros(A)
@@ -67,7 +67,7 @@ function downdate!{T}(C::Diagonal{T},A::SparseMatrixCSC{T})
 end
 
 function downdate!{T}(C::Diagonal{T},A::Diagonal{T})
-    if size(C) ≠ size(A) # branch not tested
+    if size(C) ≠ size(A)
         throw(DimensionMismatch("size(C) ≠ size(A)"))
     end
     c,a = C.diag,A.diag
@@ -104,10 +104,10 @@ end
 
 function downdate!{T}(C::DenseMatrix{T},A::Diagonal{T},B::DenseMatrix{T})
     a = A.diag
-    if ((m,n) = size(B)) ≠ size(C) # branch not tested
+    if ((m,n) = size(B)) ≠ size(C)
         throw(DimensionMismatch("size(B) ≠ size(C)"))
     end
-    if length(a) ≠ m # branch not tested
+    if length(a) ≠ m
         throw(DimensionMismatch("size(A,2) ≠ size(B,1)"))
     end
     for j in 1:n, i in 1:m
@@ -147,27 +147,7 @@ function downdate!{T}(C::DenseMatrix{T},A::SparseMatrixCSC{T},B::SparseMatrixCSC
     end
     C
 end
-if false
-## Based on function in  v0.5.0-dev file base/sparse/sparsevector.jl
-function spcoldot(xj,xjlp1,xnzind,xnzval,yj,yjlp1,ynzind,ynzval)
-    s = zero(eltype(xnzval)) * zero(eltype(ynzval))
-#    @inbounds
-    while xj < xjlp1 && yj < yjlp1
-        ix = xnzind[xj]
-        iy = ynzind[yj]
-        if ix == iy
-            s += xnzval[xj] * ynzval[yj]
-            xj += 1
-            yj += 1
-        elseif ix < iy
-            xj += 1
-        else
-            yj += 1
-        end
-    end
-    s
-end
-end
+
 ## method not called in tests
 function downdate!{T}(C::DenseMatrix{T},A::SparseMatrixCSC{T})
     m,n = size(A)

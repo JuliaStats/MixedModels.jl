@@ -16,7 +16,7 @@ end
 
 function inject!{T<:Real}(d::AbstractMatrix{T}, s::Diagonal{T})
     sd = s.diag
-    if length(sd) ≠ size(d,2) # branch not tested
+    if length(sd) ≠ Base.LinAlg.chksquare(d)
         throw(DimensionMismatch("size(d,2) ≠ size(s,2)"))
     end
     fill!(d,zero(T))

@@ -328,13 +328,13 @@ Likelihood ratio test of one or more models
 """
 function lrt(mods::LinearMixedModel...) # not tested
     if (nm = length(mods)) <= 1
-        error("at least two models are required for a likelihood ratio test")
+        throw(ArgumentError("at least two models are required for a likelihood ratio test"))
     end
     m1 = mods[1]
     n = nobs(m1)
     for i in 2:nm
         if nobs(mods[i]) != n
-            error("number of observations must be constant across models")
+            throw(ArgumentError("number of observations must be constant across models"))
         end
     end
     mods = mods[sortperm([npar(m)::Int for m in mods])]
