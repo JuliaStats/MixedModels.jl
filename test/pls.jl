@@ -23,6 +23,7 @@ fit!(fm1);
 cm = coeftable(fm1)
 @test size(cm.mat) == (1,3)
 @test MixedModels.fnames(fm1) == [:Batch]
+@test model_response(fm1) == convert(Vector,ds[:Yield])
 
 @test_approx_eq_eps logdet(fm1) 8.06014522999825 1.e-4
 @test_approx_eq_eps varest(fm1) 2451.2501089607676 1.e-3
@@ -47,6 +48,7 @@ show(fm2)
 @test stderr(fm2) ≈ [0.6669857396443261]
 @test coef(fm2) ≈ [5.6656]
 @test logdet(fm2) ≈ 0.0
+refit!(fm2,convert(Vector,ds[:Yield]))
 
 fm3 = lmm(Reaction ~ 1+Days + (1+Days|Subject),slp)
 @test lowerbd(fm3) == [0.,-Inf,0.]
@@ -91,6 +93,8 @@ tbl = MixedModels.lrt(fm4,fm3)
 
 @test_approx_eq_eps tbl[:Deviance] [1752.0032551398835,1751.9393444636157] 1e-3
 @test tbl[:Df] == [5,6]
+
+simulate!(fm3)  # to test one of the unscaledre methods
 
 fm5 = lmm(Diameter ~ (1|Plate) + (1|Sample), pen);
 @test size(fm5) == (144,1,30,2)

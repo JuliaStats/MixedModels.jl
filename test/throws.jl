@@ -19,3 +19,21 @@ modl = lmm(Yield ~ 1 + (1|Batch), ds);
 
 @test_throws ArgumentError modl[:ϕ] = [1.]
 @test_throws DimensionMismatch modl[:θ] = [0.,1.]
+
+const tri = LowerTriangular(eye(3))
+const hblk = MixedModels.HBlkDiag(ones(2,3,2))
+const dd3 = Diagonal(ones(3))
+@test_throws KeyError tri[:foo]
+@test_throws KeyError tri[:foo] = ones(3)
+@test_throws DimensionMismatch tri[:θ] = ones(2)
+@test_throws DimensionMismatch MixedModels.tscale!(tri,ones(2))
+@test_throws DimensionMismatch MixedModels.tscale!(ones(2,2),tri)
+@test_throws DimensionMismatch MixedModels.tscale!(tri,hblk)
+@test_throws ArgumentError Base.cholfact!(hblk)
+@test_throws DimensionMismatch MixedModels.downdate!(dd3,Diagonal(ones(2)))
+@test_throws DimensionMismatch MixedModels.downdate!(dd3,sparse(ones(4)))
+@test_throws DimensionMismatch MixedModels.downdate!(ones(2,2),dd3,ones(3,3))
+@test_throws DimensionMismatch MixedModels.downdate!(ones(2,2),dd3,ones(2,2))
+@test_throws DimensionMismatch MixedModels.inject!(ones(2,2),dd3)
+@test_throws DimensionMismatch MixedModels.inject!(ones(3,2),dd3)
+@test_throws DimensionMismatch Base.LinAlg.A_ldiv_B!(dd3,Diagonal(ones(2)))
