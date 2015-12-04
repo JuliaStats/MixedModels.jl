@@ -64,7 +64,7 @@ varfunc(::Poisson,μ) = μ
 """
 Evaluate `y*log(y/μ)` with the correct limit as `y` approaches zero from above
 """
-ylogydμ{T<:FloatingPoint}(y::T,μ::T) = y > zero(T) ? y*log(y/μ) : zero(T)
+ylogydμ{T<:AbstractFloat}(y::T,μ::T) = y > zero(T) ? y*log(y/μ) : zero(T)
 
 two(y) = one(y) + one(y)                # equivalent to convert(typeof(y),2)
 
@@ -80,11 +80,11 @@ devresid2(::Poisson,y,μ) = two(y)*(ylogydμ(y,μ)-(y-μ))
 """
 Initial μ value from the response and the weight
 """
-mustart{T<:FloatingPoint}(::Bernoulli,y::T,wt::T) = (wt*y + convert(T,0.5))/(wt + one(T))
-mustart{T<:FloatingPoint}(::Binomial,y::T,wt::T) = (wt*y + convert(T,0.5))/(wt + one(T))
+mustart{T<:AbstractFloat}(::Bernoulli,y::T,wt::T) = (wt*y + convert(T,0.5))/(wt + one(T))
+mustart{T<:AbstractFloat}(::Binomial,y::T,wt::T) = (wt*y + convert(T,0.5))/(wt + one(T))
 mustart(::Gamma,y,wt) = y
 mustart(::Normal,y,wt) = y
-mustart{T<:FloatingPoint}(::Poisson,y::T,wt::T) = convert(T,1.1)*y
+mustart{T<:AbstractFloat}(::Poisson,y::T,wt::T) = convert(T,1.1)*y
 
 """
 In-place modification of μ to starting values from d, y and wt

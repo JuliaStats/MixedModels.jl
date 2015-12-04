@@ -42,5 +42,7 @@ include("inject.jl")
 include("pls.jl")
 include("logdet.jl")
 include("bootstrap.jl")
+include("GLMM/glmtools.jl")
+include("GLMM/PIRLS.jl")
 
 end # module

@@ -1,29 +1,41 @@
 ## Penalized iteratively reweighted least squares algorithm for determining the
 ## conditional modes of the random effects in a GLMM
 
-type GeneralizedLinearMixedModel{S<:PLSSolver} <: MixedModel
-    LMM::LinearMixedModel{S}
+type GeneralizedLinearMixedModel{T} <: MixedModel
+    LMM::LinearMixedModel{T}
     d::Distribution
     l::Link
-    wt::Vector{Float64}
-    η::Vector{Float64}
-    dμdη::Vector{Float64}
+    wt::Vector{T}
+    η::Vector{T}
+    dμdη::Vector{T}
 end
 
 function glmm(f::Formula, fr::AbstractDataFrame, d::Distribution, wt::Vector, l::Link)
     LMM = lmm(f,fr)
-    y = LMM.y
+    y = model_response(LMM)
     n = length(y)
+    T = eltype(y)
     if length(wt) == 0
-        wt = ones(n)
+        wt = ones(y)
     elseif length(wt) != n
-        throw(DimensionMismatch(""))
+        throw(DimensionMismatch("length(wt) should be 0 or length(y)"))
     end
-    eltype(y) == eltype(wt) || error("wt Vector must be same type as y")
-    η = [link(l,μ) for μ in mustart!(LMM.μ,d,y,wt)]
-    GeneralizedLinearMixedModel(LMM,d,l,wt,η,[μη(l,eta) for eta in η])
+    if eltype(wt) ≠ T
+        throw(ArgumentError("eltype(wt) must be eltype(y)"))
+    end
+    μ = similar(y)
+    η = similar(y)
+    for i in eachindex(y)
+        μ[i] = mu = mustart(d,y[i],wt[i])
+        η[i] = link(l,mu)
+    end
+    GeneralizedLinearMixedModel(LMM,d,l,wt,η,T[μη(l,eta) for eta in η])
+end
+
+function glmm(f::Formula, fr::AbstractDataFrame, d::Distribution, wt::DataVector, l::Link)
+    glmm(f,fr,d,convert(Vector,wt),l)
 end
 
 glmm(f::Formula, fr::AbstractDataFrame, d::Distribution, wt::Vector) = glmm(f,fr,d,wt,canonical(d))
 
-glmm(f::Formula, fr::AbstractDataFrame, d::Distribution) = glmm(f,fr,d,Array(Float64,(0,)))
+glmm(f::Formula, fr::AbstractDataFrame, d::Distribution) = glmm(f,fr,d,Float64[])
