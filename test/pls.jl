@@ -35,7 +35,7 @@ show(vc)
 @test vc.s == sdest(fm1)
 srand(1234321)
 simulate!(fm1)   # changes the fit
-@test_approx_eq_eps deviance(fm1) 339.0218639362958 1.e-6
+@test_approx_eq_eps deviance(fm1) 339.0218639362958 1.e-5
 
 fm2 = lmm(Yield ~ 1 + (1|Batch),ds2)
 @test lowerbd(fm2) == zeros(1)
