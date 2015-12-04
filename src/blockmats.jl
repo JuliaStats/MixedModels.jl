@@ -10,15 +10,11 @@ end
 function Base.cholfact!(A::HBlkDiag,uplo::Symbol=:U)
     Aa = A.arr
     r,s,k = size(Aa)
-    r == s || throw(ArgumentError("A must be square"))
-    if r == 1
-        for j in 1:k  # loop never tested and probably redundant
-            Aa[1,1,j] = sqrt(Aa[1,1,j])
-        end
-    else
-        for j in 1:k
-            cholfact!(sub(Aa,:,:,j),uplo)
-        end
+    if r != s
+        throw(ArgumentError("A must be square"))
+    end
+    for j in 1:k
+        cholfact!(sub(Aa,:,:,j),uplo)
     end
     A
 end
@@ -71,18 +67,12 @@ function Base.LinAlg.A_ldiv_B!(R::DenseVecOrMat,A::HBlkDiag,B::DenseVecOrMat)
     (m = size(B,1)) == size(R,1) || throw(DimensionMismatch())
     (n = size(B,2)) == size(R,2) || throw(DimensionMismatch())
     r*k == m || throw(DimensionMismatch())
-    if r == 1   # branch not taken and probably redundant
-        for j in 1:n, i in 1:m
-            R[i,j] = B[i,j]/Aa[i]
-        end
-    else
-        db = similar(A.arr,(r,r))       # will hold the diagonal blocks
-        for b in 1:k
-            copy!(db,sub(A.arr,:,:,b))
-            rows = (1:r)+(b-1)*r
-            rr = copy!(sub(R,rows,:),sub(B,rows,:))
-            Base.LinAlg.A_ldiv_B!(ishermitian(db) ? cholfact!(db) : lufact!(db), rr)
-        end
+    db = similar(A.arr,(r,r))       # will hold the diagonal blocks
+    for b in 1:k
+        copy!(db,sub(A.arr,:,:,b))
+        rows = (1:r)+(b-1)*r
+        rr = copy!(sub(R,rows,:),sub(B,rows,:))
+        Base.LinAlg.A_ldiv_B!(ishermitian(db) ? cholfact!(db) : lufact!(db), rr)
     end
     R
 end
