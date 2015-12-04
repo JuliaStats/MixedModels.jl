@@ -67,7 +67,7 @@ fit!(fm3)
 @test_approx_eq_eps std(fm3)[1] [23.780468100188497,5.716827903196682] 1.e-2
 @test_approx_eq_eps logdet(fm3) 73.90337187545992 1.e-3
 @test_approx_eq diag(cor(fm3)[1]) ones(2)
-@test cond(fm3) ≈ [4.1752507630514915]
+@test_approx_eq_eps cond(fm3) [4.1752507630514915] 1..e-4
 @test loglikelihood(fm3) ≈ -875.9696722323523
 @test eltype(fm3.trms[1]) === Float64
 
