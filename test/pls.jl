@@ -11,11 +11,11 @@ fm1[:θ] = [0.713]
 @test objective(fm1) ≈ 327.34216280955366
 
 fit!(fm1);
-@test objective(fm1) ≈ 327.3270598811428
+@test_approx_eq_eps objective(fm1) 327.3270598811428 1e-3
 @test_approx_eq_eps fm1[:θ] [0.752580] 1.e-5
-@test_approx_eq_eps deviance(fm1) 327.32705988 1.e-5
-@test_approx_eq_eps AIC(fm1) 333.3270598811394 1.e-5
-@test_approx_eq_eps BIC(fm1) 337.5306520261259 1.e-5
+@test_approx_eq_eps deviance(fm1) 327.32705988 1.e-3
+@test_approx_eq_eps AIC(fm1) 333.3270598811394 1.e-3
+@test_approx_eq_eps BIC(fm1) 337.5306520261259 1.e-3
 @test fixef(fm1) ≈ [1527.5]
 @test MixedModels.fixef!(zeros(1),fm1) ≈ [1527.5]
 @test coef(fm1) ≈ [1527.5]
@@ -25,7 +25,7 @@ cm = coeftable(fm1)
 @test MixedModels.fnames(fm1) == [:Batch]
 @test model_response(fm1) == convert(Vector,ds[:Yield])
 
-@test_approx_eq_eps logdet(fm1) 8.06014522999825 1.e-4
+@test_approx_eq_eps logdet(fm1) 8.06014522999825 1.e-3
 @test_approx_eq_eps varest(fm1) 2451.2501089607676 1.e-3
 @test_approx_eq_eps pwrss(fm1) 73537.50326882303 1.e-1
 @test_approx_eq_eps stderr(fm1) [17.69455188898009] 1.e-4
@@ -35,7 +35,7 @@ show(vc)
 @test vc.s == sdest(fm1)
 srand(1234321)
 simulate!(fm1)   # changes the fit
-@test_approx_eq_eps deviance(fm1) 339.0218639362958 1.e-5
+@test_approx_eq_eps deviance(fm1) 339.0218639362958 1.e-3
 
 fm2 = lmm(Yield ~ 1 + (1|Batch),ds2)
 @test lowerbd(fm2) == zeros(1)
@@ -59,7 +59,7 @@ fit!(fm3)
 @test objective(fm3) ≈ 1751.9393444647046
 @test_approx_eq_eps fm3[:θ] [0.9292213074888169,0.01816838485113137,0.22264487095998978] 1.e-6
 @test pwrss(fm3) ≈ 117889.46144025437
-@test logdet(fm3) ≈ 73.90322021999222
+@test_approx_eq_eps logdet(fm3) ≈ 73.90322021999222 1e-3
 @test_approx_eq_eps stderr(fm3) [6.632257721914501,1.5022354739749826] 1.e-4
 @test coef(fm3) ≈ [251.40510484848477,10.4672859595959]
 @test fixef(fm3) ≈ [251.40510484848477,10.4672859595959]
