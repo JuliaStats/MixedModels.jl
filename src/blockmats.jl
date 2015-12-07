@@ -60,19 +60,18 @@ function Base.size(A::HBlkDiag,i::Integer)
     (i == 1 ? r : s)*k
 end
 
-function Base.LinAlg.A_ldiv_B!(R::DenseVecOrMat,A::HBlkDiag,B::DenseVecOrMat)
-    Aa = A.arr
+function Base.LinAlg.A_ldiv_B!{T}(A::UpperTriangular{T,HBlkDiag{T}},B::DenseVecOrMat{T})
+    Aa = A.data.arr
     r,s,k = size(Aa)
-    r == s || throw(ArgumentError("A must be square"))
-    (m = size(B,1)) == size(R,1) || throw(DimensionMismatch())
-    (n = size(B,2)) == size(R,2) || throw(DimensionMismatch())
-    r*k == m || throw(DimensionMismatch())
-    db = similar(A.arr,(r,r))       # will hold the diagonal blocks
-    for b in 1:k
-        copy!(db,sub(A.arr,:,:,b))
-        rows = (1:r)+(b-1)*r
-        rr = copy!(sub(R,rows,:),sub(B,rows,:))
-        Base.LinAlg.A_ldiv_B!(ishermitian(db) ? cholfact!(db) : lufact!(db), rr)
+    if r ≠ s
+        throw(ArgumentError("A must be square"))
     end
-    R
+    m,n = size(B,1),size(B,2)  # need to call size twice in case B is a vector
+    if r*k ≠ m
+        throw(DimensionMismatch("size(A,2) ≠ size(B,1)"))
+    end
+    for b in 1:k
+        Base.LinAlg.A_ldiv_B!(UpperTriangular(sub(Aa,:,:,b)), sub(B,(1:r)+(b-1)*r,:))
+    end
+    A
 end
