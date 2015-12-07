@@ -13,5 +13,4 @@ const x = similar(rhs1)
 const b1 = copy(vrp.arr[:,:,1]) + I
 @test sub(MixedModels.inflate!(vrp).arr,:,:,1) == b1
 const cf = cholfact(b1)
-@test A_ldiv_B!(x,vrp,rhs1)[1:2,1:2] == cf\ones(2,2)
 @test triu!(sub(cholfact!(vrp).arr,:,:,1)) == cf[:U]
