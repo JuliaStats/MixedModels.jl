@@ -94,7 +94,7 @@ function downdate!{T}(C::Diagonal{T},A::DenseMatrix{T})
     c = C.diag
     m,n = size(A)
     if n ≠ length(c)
-        throw(DimensionMismatch("$(length(c)) = size(C,1) ≠ size(A,2) = $(size(A,2))"))
+        throw(DimensionMismatch("size(C,1) ≠ size(A,2)"))
     end
     for j in eachindex(c)
         c[j] -= sumabs2(sub(A,:,j))

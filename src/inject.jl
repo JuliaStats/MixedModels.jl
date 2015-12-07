@@ -14,9 +14,9 @@ function inject!(d::UpperTriangular,s::UpperTriangular)
     d
 end
 
-function inject!{T<:Real}(d::AbstractMatrix{T}, s::Diagonal{T})
+function inject!{T<:Real}(d::StridedMatrix{T}, s::Diagonal{T})
     sd = s.diag
-    if length(sd) ≠ Base.LinAlg.chksquare(d)
+    if length(sd) ≠ Base.LinAlg.chksquare(d)  # why does d have to be square?
         throw(DimensionMismatch("size(d,2) ≠ size(s,2)"))
     end
     fill!(d,zero(T))
@@ -33,7 +33,7 @@ function inject!(d::SparseMatrixCSC{Float64},s::SparseMatrixCSC{Float64})
     if size(d) ≠ size(s) # branch not tested
         throw(DimensionMismatch("size(d) ≠ size(s)"))
     end
-    if nnz(d) == nnz(s)
+    if nnz(d) == nnz(s)  # should also check that colptr
         copy!(nonzeros(d),nonzeros(s))
         return d
     end
@@ -50,7 +50,9 @@ function inject!(d::SparseMatrixCSC{Float64},s::SparseMatrixCSC{Float64})
             for k in snzr
                 ssr = srv[k]
                 kk = searchsortedfirst(dnzrv,ssr)
-                kk > length(dnzrv) || dnzrv[kk] != ssr || error("cannot inject sparse s into sparse d")
+                if kk > length(dnzrv) || dnzrv[kk] != ssr
+                    error("cannot inject sparse s into sparse d")
+                end
                 dnz[dnzr[kk]] = snz[k]
             end
         end
