@@ -182,12 +182,14 @@ function StatsBase.fit!(m::LinearMixedModel, verbose::Bool=false, optimizer::Sym
     modified = false
     for i in eachindex(xmin1)
         if 0. < abs(xmin1[i]) < 1.e-5
+            @show i
             modified = true
             xmin1[i] = 0.
         end
     end
     if modified  # branch not tested
         m[:θ] = xmin1
+        @show xmin1
         if (ff = objective(m)) < fmin
             fmin = ff
             copy!(xmin,xmin1)
