@@ -179,6 +179,9 @@ function StatsBase.fit!(m::LinearMixedModel, verbose::Bool=false, optimizer::Sym
     fmin, xmin, ret = NLopt.optimize(opt, th)
     ## very small parameter values often should be set to zero
     xmin1 = copy(xmin)
+    if any(x->abs(x) < 1.e-5,xmin)
+        @show xmin
+    end
     modified = false
     for i in eachindex(xmin1)
         if 0. < abs(xmin1[i]) < 1.e-5
@@ -347,29 +350,57 @@ function lrt(mods::LinearMixedModel...) # not tested
     DataFrame(Df = df, Deviance = dev, Chisq=csqr,pval=pval)
 end
 
-if false
-  """
-  `ranef(m)` -> vector of matrices of random effects on the original scale
-  `ranef(m,true)`` -> vector of matrices of random effects on the U scale
-  """
-  function ranef(m::LinearMixedModel, uscale=false)
-      uscale && return m.u
-      for (λ,b,u) in zip(m.λ,m.b,m.u)
-          A_mul_B!(λ,copy!(b,u))         # overwrite b by λ*u
-      end
-      m.b
-  end
 
-  """
-  `reml!(m,v=true)` -> m : Set m.REML to v.  If m.REML is modified, unset m.fit
-  """
-  function reml!(m::LinearMixedModel,v::Bool=true)
-      if m.REML != v
-          m.REML = v
-          m.opt.fmin = Inf
-      end
-      m
-  end
+"""
+`ranef(m)` -> vector of matrices of random effects on the original scale
+`ranef(m,true)` -> vector of matrices of random effects on the U scale
+"""
+function ranef{T}(m::LinearMixedModel{T}, uscale=false)
+    R,Λ = m.R,m.Λ
+    k = length(Λ)  # number of random-effects terms
+    β = fixef(m)
+    p = length(β)
+    u = sizehint!([],k)
+    for j in 1:k
+        m = R[j,k+1]
+        push!(u,copy(sub(m,:,p+1)))
+        # subtract the fixed-effects contribution
+        Base.LinAlg.BLAS.gemv!('N',-one(T),m[:,1:p],β,one(T),vec(u[j]))
+    end
+    for j in k:-1:1
+        Rjj = R[j,j]
+        Base.LinAlg.A_ldiv_B!(isa(Rjj,Diagonal) ? Rjj : UpperTriangular(Rjj),u[j])
+        for i in 1:j-1
+            u[i] -= R[i,j]*u[j]
+        end
+    end
+    for j in 1:k
+        Λj = Λ[j]
+        uj = u[j]
+        if (pj = size(Λj,1)) > 1
+            u[j] = reshape(uj,(pj,div(length(uj),pj)))
+            if !uscale
+                A_mul_B!(Λj,u[j])
+            end
+        else
+            u[j] = reshape(u[j],(1,length(u[j])))
+            if !uscale
+                scale!(Λ[j][1,1],u[j])
+            end
+        end
+    end
+    u
+end
+
+"""
+`reml!(m,v=true)` -> m : Set m.REML to v.  If m.REML is modified, unset m.fit
+"""
+function reml!(m::LinearMixedModel,v::Bool=true)
+    if m.REML != v
+        m.REML = v
+        m.opt.fmin = Inf
+    end
+    m
 end
 
 function Base.show(io::IO, m::LinearMixedModel) # not tested
