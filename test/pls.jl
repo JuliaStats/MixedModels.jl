@@ -24,6 +24,7 @@ cm = coeftable(fm1)
 @test size(cm.mat) == (1,3)
 @test MixedModels.fnames(fm1) == [:Batch]
 @test model_response(fm1) == convert(Vector,ds[:Yield])
+@test abs(sum(ranef(fm1,true)[1])) < 1.e-5
 
 @test_approx_eq_eps logdet(fm1) 8.06014522999825 1.e-3
 @test_approx_eq_eps varest(fm1) 2451.2501089607676 1.e-3
@@ -35,6 +36,8 @@ show(vc)
 @test vc.s == sdest(fm1)
 srand(1234321)
 simulate!(fm1)   # changes the fit
+@test_approx_eq_eps deviance(fm1) 339.0218639362958 1.e-3
+bootstrap(fm1,1,(i,x) -> fixef(x)) # bootstrap restores the fit
 @test_approx_eq_eps deviance(fm1) 339.0218639362958 1.e-3
 
 fm2 = lmm(Yield ~ 1 + (1|Batch),ds2)
@@ -70,6 +73,14 @@ fit!(fm3)
 @test_approx_eq_eps cond(fm3) [4.1752507630514915] 1.e-4
 @test loglikelihood(fm3) ≈ -875.9696722323523
 @test eltype(fm3.trms[1]) === Float64
+const u3 = ranef(fm3,true)
+@test length(u3) == 1
+@test size(u3[1]) == (2,18)
+@test_approx_eq_eps u3[1][1,1] 3.030300122575336 1.e-3
+const b3 = ranef(fm3)
+@test length(b3) == 1
+@test size(b3[1]) == (2,18)
+@test_approx_eq_eps b3[1][1,1] 2.815819441982976 1.e-3
 
 fm4 = lmm(Reaction ~ Days + (1|Subject) + (0+Days|Subject), slp);
 @test size(fm4) == (180,2,36,2)
