@@ -179,26 +179,23 @@ function StatsBase.fit!(m::LinearMixedModel, verbose::Bool=false, optimizer::Sym
     fmin, xmin, ret = NLopt.optimize(opt, th)
     ## very small parameter values often should be set to zero
     xmin1 = copy(xmin)
-    if any(x->abs(x) < 1.e-5,xmin)
-        @show xmin
-    end
     modified = false
     for i in eachindex(xmin1)
         if 0. < abs(xmin1[i]) < 1.e-5
-            @show i
             modified = true
             xmin1[i] = 0.
         end
     end
     if modified  # branch not tested
         m[:θ] = xmin1
-        @show xmin1
-        if (ff = objective(m)) < fmin
+        ff = objective(m)
+        if ff ≤ (fmin + 1.e-5)  # zero components if increase in objective is negligible
             fmin = ff
             copy!(xmin,xmin1)
         else
             m[:θ] = xmin
         end
+        @show xmin, fmin, m[:θ]
     end
     m.opt = OptSummary(th,xmin,fmin,feval,optimizer)
     if verbose
