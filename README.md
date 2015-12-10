@@ -43,7 +43,7 @@ Fixed effects:
 (Intercept)  1527.50      17.69   86.33
 ```
 
-These `Dyestuff` data are available in the `RDatasets` package for `julia`
+These `Dyestuff` data are available through `RCall`
 ```julia
 julia> using DataFrames,MixedModels, RCall
 
