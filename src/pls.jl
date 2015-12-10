@@ -219,8 +219,6 @@ Schwartz's Bayesian Information Criterion
 """
 BIC(m::LinearMixedModel) = deviance(m) + npar(m)*log(nobs(m))
 
-# Base.LinAlg.A_rdiv_Bc!(A::StridedVecOrMat,D::Diagonal) = A_rdiv_B!(A,D)
-
 ## Rename this
 Base.cholfact(m::LinearMixedModel) = UpperTriangular(m.R[end,end][1:end-1,1:end-1])
 

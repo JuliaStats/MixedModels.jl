@@ -77,7 +77,6 @@ function downdate!{T}(C::Diagonal{T},A::Diagonal{T})
     C
 end
 
-## method not called in tests.  Add a test?
 function downdate!{T}(C::Diagonal{T},A::Diagonal{T},B::Diagonal{T})
     if !(size(C) == size(A) == size(B))
         throw(DimensionMismatch("need size(C) == size(A) == size(B)"))
@@ -85,19 +84,6 @@ function downdate!{T}(C::Diagonal{T},A::Diagonal{T},B::Diagonal{T})
     c,a,b = C.diag,A.diag,B.diag
     for i in eachindex(c)
         c[i] -= a[i]*b[i]
-    end
-    C
-end
-
-## method not called in tests
-function downdate!{T}(C::Diagonal{T},A::DenseMatrix{T})
-    c = C.diag
-    m,n = size(A)
-    if n ≠ length(c)
-        throw(DimensionMismatch("size(C,1) ≠ size(A,2)"))
-    end
-    for j in eachindex(c)
-        c[j] -= sumabs2(sub(A,:,j))
     end
     C
 end
@@ -132,7 +118,6 @@ function downdate!{T}(C::DenseMatrix{T},A::SparseMatrixCSC{T},B::DenseMatrix{T})
     C
 end
 
-## method not called in tests
 function downdate!{T}(C::DenseMatrix{T},A::SparseMatrixCSC{T},B::SparseMatrixCSC{T})
     AtB = A'B
     if size(C) ≠ size(AtB)
@@ -148,7 +133,6 @@ function downdate!{T}(C::DenseMatrix{T},A::SparseMatrixCSC{T},B::SparseMatrixCSC
     C
 end
 
-## method not called in tests
 function downdate!{T}(C::DenseMatrix{T},A::SparseMatrixCSC{T})
     m,n = size(A)
     if n ≠ Base.LinAlg.chksquare(C)
@@ -174,7 +158,7 @@ function downdate!{T}(C::DenseMatrix{T},A::SparseMatrixCSC{T})
     C
 end
 
-## method not called in tests
+if false## method not called in tests
 function downdate!{T}(C::DenseMatrix{T},A::DenseMatrix{T},B::SparseMatrixCSC{T})
     ma,na = size(A)
     mb,nb = size(B)
@@ -191,4 +175,5 @@ function downdate!{T}(C::DenseMatrix{T},A::DenseMatrix{T},B::SparseMatrixCSC{T})
         ptA += ma
     end
     C
+end
 end
