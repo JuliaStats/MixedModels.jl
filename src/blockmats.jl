@@ -31,10 +31,8 @@ function Base.full(A::HBlkDiag)
     p,q,l = size(aa)
     for b in 1:l
         bm1 = b - 1
-        for j in 1:q
-            for i in 1:p
-                res[bm1*p+i,bm1*q+j] = aa[i,j,b]
-            end
+        for j in 1:q, i in 1:p
+            res[bm1*p+i,bm1*q+j] = aa[i,j,b]
         end
     end
     res
