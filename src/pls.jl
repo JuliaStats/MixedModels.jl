@@ -195,7 +195,6 @@ function StatsBase.fit!(m::LinearMixedModel, verbose::Bool=false, optimizer::Sym
         else
             m[:θ] = xmin
         end
-        @show xmin, fmin, m[:θ]
     end
     m.opt = OptSummary(th,xmin,fmin,feval,optimizer)
     if verbose
