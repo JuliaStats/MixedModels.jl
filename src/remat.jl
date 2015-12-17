@@ -52,12 +52,14 @@ Base.eltype(R::ReMat) = eltype(R.z)
 
 vsize(A::ReMat) = isa(A,ScalarReMat) ? 1 : size(A.z,1)
 
-Base.size(A::ReMat) = (length(A.f),vsize(A)*length(A.f.pool))
+nlevs(A::ReMat) = length(A.f.pool)
+
+Base.size(A::ReMat) = (length(A.f),vsize(A)*nlevs(A))
 
 Base.size(A::ReMat,i::Integer) =
     i < 1 ? throw(BoundsError()) :
     i == 1 ? length(A.f) :
-    i == 2 ? vsize(A)*length(A.f.pool) : 1
+    i == 2 ? vsize(A)*nlevs(A) : 1
 
 
 ==(A::ReMat,B::ReMat) = (A.f == B.f) && (A.z == B.z)
@@ -123,7 +125,7 @@ function Base.Ac_mul_B(A::ScalarReMat, B::ScalarReMat)
     Az = A.z
     Ar = A.f.refs
     if is(A,B)
-        v = zeros(eltype(Az),length(A.f.pool))
+        v = zeros(eltype(Az),nlevs(A))
         for i in eachindex(Ar)
             v[Ar[i]] += abs2(Az[i])
         end
@@ -138,7 +140,7 @@ function Base.Ac_mul_B(A::VectorReMat,B::VectorReMat)
     if is(A,B)
         l,n = size(Az)
         T = eltype(Az)
-        np = length(A.f.pool)
+        np = nlevs(A)
         a = zeros(T,(l,l,np))
         for i in eachindex(Ar)
             Base.LinAlg.BLAS.syr!('L',one(T),sub(Az,:,i),sub(a,:,:,Ar[i]))

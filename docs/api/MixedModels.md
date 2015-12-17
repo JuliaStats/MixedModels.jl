@@ -11,7 +11,7 @@ Akaike's Information Criterion
 
 
 *source:*
-[MixedModels/src/pls.jl:215](https://github.com/dmbates/MixedModels.jl/tree/f42452aa03213ace2d9d898088abbfeb5b9ee850/src/pls.jl#L215)
+[MixedModels/src/pls.jl:214](https://github.com/dmbates/MixedModels.jl/tree/365b1dda928de52d832a72a44f3cb21b45ffcf4e/src/pls.jl#L214)
 
 ---
 
@@ -21,7 +21,7 @@ Schwartz's Bayesian Information Criterion
 
 
 *source:*
-[MixedModels/src/pls.jl:220](https://github.com/dmbates/MixedModels.jl/tree/f42452aa03213ace2d9d898088abbfeb5b9ee850/src/pls.jl#L220)
+[MixedModels/src/pls.jl:219](https://github.com/dmbates/MixedModels.jl/tree/365b1dda928de52d832a72a44f3cb21b45ffcf4e/src/pls.jl#L219)
 
 ---
 
@@ -35,7 +35,7 @@ by each simulation.  The original response is restored before returning.
 
 
 *source:*
-[MixedModels/src/bootstrap.jl:8](https://github.com/dmbates/MixedModels.jl/tree/f42452aa03213ace2d9d898088abbfeb5b9ee850/src/bootstrap.jl#L8)
+[MixedModels/src/bootstrap.jl:8](https://github.com/dmbates/MixedModels.jl/tree/365b1dda928de52d832a72a44f3cb21b45ffcf4e/src/bootstrap.jl#L8)
 
 ---
 
@@ -45,7 +45,7 @@ The fixed-effects parameter estimates
 
 
 *source:*
-[MixedModels/src/pls.jl:238](https://github.com/dmbates/MixedModels.jl/tree/f42452aa03213ace2d9d898088abbfeb5b9ee850/src/pls.jl#L238)
+[MixedModels/src/pls.jl:235](https://github.com/dmbates/MixedModels.jl/tree/365b1dda928de52d832a72a44f3cb21b45ffcf4e/src/pls.jl#L235)
 
 ---
 
@@ -55,7 +55,7 @@ Create a `LinearMixedModel` object from a formula and data frame
 
 
 *source:*
-[MixedModels/src/pls.jl:95](https://github.com/dmbates/MixedModels.jl/tree/f42452aa03213ace2d9d898088abbfeb5b9ee850/src/pls.jl#L95)
+[MixedModels/src/pls.jl:95](https://github.com/dmbates/MixedModels.jl/tree/365b1dda928de52d832a72a44f3cb21b45ffcf4e/src/pls.jl#L95)
 
 ---
 
@@ -65,7 +65,7 @@ lower bounds on the parameters (elements in the lower triangle)
 
 
 *source:*
-[MixedModels/src/paramlowertriangular.jl:45](https://github.com/dmbates/MixedModels.jl/tree/f42452aa03213ace2d9d898088abbfeb5b9ee850/src/paramlowertriangular.jl#L45)
+[MixedModels/src/paramlowertriangular.jl:45](https://github.com/dmbates/MixedModels.jl/tree/365b1dda928de52d832a72a44f3cb21b45ffcf4e/src/paramlowertriangular.jl#L45)
 
 ---
 
@@ -78,7 +78,7 @@ for the scale parameter, σ, that is profiled out.
 
 
 *source:*
-[MixedModels/src/pls.jl:250](https://github.com/dmbates/MixedModels.jl/tree/f42452aa03213ace2d9d898088abbfeb5b9ee850/src/pls.jl#L250)
+[MixedModels/src/pls.jl:247](https://github.com/dmbates/MixedModels.jl/tree/365b1dda928de52d832a72a44f3cb21b45ffcf4e/src/pls.jl#L247)
 
 ---
 
@@ -88,7 +88,7 @@ for the scale parameter, σ, that is profiled out.
 
 
 *source:*
-[MixedModels/src/pls.jl:210](https://github.com/dmbates/MixedModels.jl/tree/f42452aa03213ace2d9d898088abbfeb5b9ee850/src/pls.jl#L210)
+[MixedModels/src/pls.jl:209](https://github.com/dmbates/MixedModels.jl/tree/365b1dda928de52d832a72a44f3cb21b45ffcf4e/src/pls.jl#L209)
 
 ---
 
@@ -98,7 +98,7 @@ returns the penalized residual sum-of-squares
 
 
 *source:*
-[MixedModels/src/pls.jl:280](https://github.com/dmbates/MixedModels.jl/tree/f42452aa03213ace2d9d898088abbfeb5b9ee850/src/pls.jl#L280)
+[MixedModels/src/pls.jl:277](https://github.com/dmbates/MixedModels.jl/tree/365b1dda928de52d832a72a44f3cb21b45ffcf4e/src/pls.jl#L277)
 
 ---
 
@@ -109,7 +109,7 @@ returns the penalized residual sum-of-squares
 
 
 *source:*
-[MixedModels/src/pls.jl:355](https://github.com/dmbates/MixedModels.jl/tree/f42452aa03213ace2d9d898088abbfeb5b9ee850/src/pls.jl#L355)
+[MixedModels/src/pls.jl:352](https://github.com/dmbates/MixedModels.jl/tree/365b1dda928de52d832a72a44f3cb21b45ffcf4e/src/pls.jl#L352)
 
 ---
 
@@ -120,7 +120,7 @@ returns the penalized residual sum-of-squares
 
 
 *source:*
-[MixedModels/src/pls.jl:355](https://github.com/dmbates/MixedModels.jl/tree/f42452aa03213ace2d9d898088abbfeb5b9ee850/src/pls.jl#L355)
+[MixedModels/src/pls.jl:352](https://github.com/dmbates/MixedModels.jl/tree/365b1dda928de52d832a72a44f3cb21b45ffcf4e/src/pls.jl#L352)
 
 ---
 
@@ -130,7 +130,7 @@ refit the model `m` with response `y`
 
 
 *source:*
-[MixedModels/src/bootstrap.jl:93](https://github.com/dmbates/MixedModels.jl/tree/f42452aa03213ace2d9d898088abbfeb5b9ee850/src/bootstrap.jl#L93)
+[MixedModels/src/bootstrap.jl:93](https://github.com/dmbates/MixedModels.jl/tree/365b1dda928de52d832a72a44f3cb21b45ffcf4e/src/bootstrap.jl#L93)
 
 ---
 
@@ -143,7 +143,7 @@ A factory for `ReMat` objects constructed from a random-effects term and a
 
 
 *source:*
-[MixedModels/src/remat.jl:37](https://github.com/dmbates/MixedModels.jl/tree/f42452aa03213ace2d9d898088abbfeb5b9ee850/src/remat.jl#L37)
+[MixedModels/src/remat.jl:37](https://github.com/dmbates/MixedModels.jl/tree/365b1dda928de52d832a72a44f3cb21b45ffcf4e/src/remat.jl#L37)
 
 ---
 
@@ -153,7 +153,7 @@ A factory for `ReMat` objects constructed from a random-effects term and a
 
 
 *source:*
-[MixedModels/src/pls.jl:395](https://github.com/dmbates/MixedModels.jl/tree/f42452aa03213ace2d9d898088abbfeb5b9ee850/src/pls.jl#L395)
+[MixedModels/src/pls.jl:392](https://github.com/dmbates/MixedModels.jl/tree/365b1dda928de52d832a72a44f3cb21b45ffcf4e/src/pls.jl#L392)
 
 ---
 
@@ -163,7 +163,7 @@ A factory for `ReMat` objects constructed from a random-effects term and a
 
 
 *source:*
-[MixedModels/src/pls.jl:395](https://github.com/dmbates/MixedModels.jl/tree/f42452aa03213ace2d9d898088abbfeb5b9ee850/src/pls.jl#L395)
+[MixedModels/src/pls.jl:392](https://github.com/dmbates/MixedModels.jl/tree/365b1dda928de52d832a72a44f3cb21b45ffcf4e/src/pls.jl#L392)
 
 ---
 
@@ -175,7 +175,7 @@ returns `s`, the estimate of σ, the standard deviation of the per-observation n
 
 
 *source:*
-[MixedModels/src/pls.jl:263](https://github.com/dmbates/MixedModels.jl/tree/f42452aa03213ace2d9d898088abbfeb5b9ee850/src/pls.jl#L263)
+[MixedModels/src/pls.jl:260](https://github.com/dmbates/MixedModels.jl/tree/365b1dda928de52d832a72a44f3cb21b45ffcf4e/src/pls.jl#L260)
 
 ---
 
@@ -190,7 +190,7 @@ Simulate a response vector from model `m`, and refit `m`.
 
 
 *source:*
-[MixedModels/src/bootstrap.jl:76](https://github.com/dmbates/MixedModels.jl/tree/f42452aa03213ace2d9d898088abbfeb5b9ee850/src/bootstrap.jl#L76)
+[MixedModels/src/bootstrap.jl:76](https://github.com/dmbates/MixedModels.jl/tree/365b1dda928de52d832a72a44f3cb21b45ffcf4e/src/bootstrap.jl#L76)
 
 ---
 
@@ -200,7 +200,7 @@ returns s², the estimate of σ², the variance of the conditional distribution 
 
 
 *source:*
-[MixedModels/src/pls.jl:275](https://github.com/dmbates/MixedModels.jl/tree/f42452aa03213ace2d9d898088abbfeb5b9ee850/src/pls.jl#L275)
+[MixedModels/src/pls.jl:272](https://github.com/dmbates/MixedModels.jl/tree/365b1dda928de52d832a72a44f3cb21b45ffcf4e/src/pls.jl#L272)
 
 ## Types [Exported]
 
@@ -220,7 +220,7 @@ Linear mixed-effects model representation
 
 
 *source:*
-[MixedModels/src/pls.jl:26](https://github.com/dmbates/MixedModels.jl/tree/f42452aa03213ace2d9d898088abbfeb5b9ee850/src/pls.jl#L26)
+[MixedModels/src/pls.jl:26](https://github.com/dmbates/MixedModels.jl/tree/365b1dda928de52d832a72a44f3cb21b45ffcf4e/src/pls.jl#L26)
 
 ---
 
@@ -230,7 +230,7 @@ Linear mixed-effects model representation
 
 
 *source:*
-[MixedModels/src/remat.jl:4](https://github.com/dmbates/MixedModels.jl/tree/f42452aa03213ace2d9d898088abbfeb5b9ee850/src/remat.jl#L4)
+[MixedModels/src/remat.jl:4](https://github.com/dmbates/MixedModels.jl/tree/365b1dda928de52d832a72a44f3cb21b45ffcf4e/src/remat.jl#L4)
 
 ---
 
@@ -242,7 +242,7 @@ The matrix is represented by the grouping factor, `f`, and a vector `z`.
 
 
 *source:*
-[MixedModels/src/remat.jl:11](https://github.com/dmbates/MixedModels.jl/tree/f42452aa03213ace2d9d898088abbfeb5b9ee850/src/remat.jl#L11)
+[MixedModels/src/remat.jl:11](https://github.com/dmbates/MixedModels.jl/tree/365b1dda928de52d832a72a44f3cb21b45ffcf4e/src/remat.jl#L11)
 
 ---
 
@@ -255,7 +255,7 @@ The main purpose is to isolate the logic in the show method.
 
 
 *source:*
-[MixedModels/src/pls.jl:442](https://github.com/dmbates/MixedModels.jl/tree/f42452aa03213ace2d9d898088abbfeb5b9ee850/src/pls.jl#L442)
+[MixedModels/src/pls.jl:439](https://github.com/dmbates/MixedModels.jl/tree/365b1dda928de52d832a72a44f3cb21b45ffcf4e/src/pls.jl#L439)
 
 ---
 
@@ -268,7 +268,7 @@ model matrix, `z`.
 
 
 *source:*
-[MixedModels/src/remat.jl:24](https://github.com/dmbates/MixedModels.jl/tree/f42452aa03213ace2d9d898088abbfeb5b9ee850/src/remat.jl#L24)
+[MixedModels/src/remat.jl:24](https://github.com/dmbates/MixedModels.jl/tree/365b1dda928de52d832a72a44f3cb21b45ffcf4e/src/remat.jl#L24)
 
 
 ## Methods [Internal]
@@ -281,7 +281,7 @@ model matrix, `z`.
 
 
 *source:*
-[MixedModels/src/logdet.jl:4](https://github.com/dmbates/MixedModels.jl/tree/f42452aa03213ace2d9d898088abbfeb5b9ee850/src/logdet.jl#L4)
+[MixedModels/src/logdet.jl:4](https://github.com/dmbates/MixedModels.jl/tree/365b1dda928de52d832a72a44f3cb21b45ffcf4e/src/logdet.jl#L4)
 
 ---
 
@@ -294,7 +294,7 @@ and initialized to the identity.
 
 
 *source:*
-[MixedModels/src/paramlowertriangular.jl:96](https://github.com/dmbates/MixedModels.jl/tree/f42452aa03213ace2d9d898088abbfeb5b9ee850/src/paramlowertriangular.jl#L96)
+[MixedModels/src/paramlowertriangular.jl:96](https://github.com/dmbates/MixedModels.jl/tree/365b1dda928de52d832a72a44f3cb21b45ffcf4e/src/paramlowertriangular.jl#L96)
 
 ---
 
@@ -304,7 +304,7 @@ An instance of the canonical Link type for a distribution in the exponential fam
 
 
 *source:*
-[MixedModels/src/GLMM/glmtools.jl:52](https://github.com/dmbates/MixedModels.jl/tree/f42452aa03213ace2d9d898088abbfeb5b9ee850/src/GLMM/glmtools.jl#L52)
+[MixedModels/src/GLMM/glmtools.jl:52](https://github.com/dmbates/MixedModels.jl/tree/365b1dda928de52d832a72a44f3cb21b45ffcf4e/src/GLMM/glmtools.jl#L52)
 
 ---
 
@@ -317,7 +317,7 @@ Uses `inject!` (as opposed to `copy!`), `downdate!` (as opposed to `syrk!`
 
 
 *source:*
-[MixedModels/src/cfactor.jl:7](https://github.com/dmbates/MixedModels.jl/tree/f42452aa03213ace2d9d898088abbfeb5b9ee850/src/cfactor.jl#L7)
+[MixedModels/src/cfactor.jl:7](https://github.com/dmbates/MixedModels.jl/tree/365b1dda928de52d832a72a44f3cb21b45ffcf4e/src/cfactor.jl#L7)
 
 ---
 
@@ -328,7 +328,7 @@ errors being thrown when `R` is computationally singular
 
 
 *source:*
-[MixedModels/src/cfactor.jl:34](https://github.com/dmbates/MixedModels.jl/tree/f42452aa03213ace2d9d898088abbfeb5b9ee850/src/cfactor.jl#L34)
+[MixedModels/src/cfactor.jl:34](https://github.com/dmbates/MixedModels.jl/tree/365b1dda928de52d832a72a44f3cb21b45ffcf4e/src/cfactor.jl#L34)
 
 ---
 
@@ -338,7 +338,7 @@ Convert a lower Cholesky factor to a correlation matrix
 
 
 *source:*
-[MixedModels/src/pls.jl:290](https://github.com/dmbates/MixedModels.jl/tree/f42452aa03213ace2d9d898088abbfeb5b9ee850/src/pls.jl#L290)
+[MixedModels/src/pls.jl:287](https://github.com/dmbates/MixedModels.jl/tree/365b1dda928de52d832a72a44f3cb21b45ffcf4e/src/pls.jl#L287)
 
 ---
 
@@ -348,7 +348,7 @@ Condition numbers for blocks of Λ
 
 
 *source:*
-[MixedModels/src/pls.jl:285](https://github.com/dmbates/MixedModels.jl/tree/f42452aa03213ace2d9d898088abbfeb5b9ee850/src/pls.jl#L285)
+[MixedModels/src/pls.jl:282](https://github.com/dmbates/MixedModels.jl/tree/365b1dda928de52d832a72a44f3cb21b45ffcf4e/src/pls.jl#L282)
 
 ---
 
@@ -362,7 +362,7 @@ A no-op for other matrix types.
 
 
 *source:*
-[MixedModels/src/densify.jl:8](https://github.com/dmbates/MixedModels.jl/tree/f42452aa03213ace2d9d898088abbfeb5b9ee850/src/densify.jl#L8)
+[MixedModels/src/densify.jl:8](https://github.com/dmbates/MixedModels.jl/tree/365b1dda928de52d832a72a44f3cb21b45ffcf4e/src/densify.jl#L8)
 
 ---
 
@@ -376,7 +376,7 @@ A no-op for other matrix types.
 
 
 *source:*
-[MixedModels/src/densify.jl:8](https://github.com/dmbates/MixedModels.jl/tree/f42452aa03213ace2d9d898088abbfeb5b9ee850/src/densify.jl#L8)
+[MixedModels/src/densify.jl:8](https://github.com/dmbates/MixedModels.jl/tree/365b1dda928de52d832a72a44f3cb21b45ffcf4e/src/densify.jl#L8)
 
 ---
 
@@ -386,7 +386,7 @@ describe the blocks of the A and R matrices
 
 
 *source:*
-[MixedModels/src/pls.jl:509](https://github.com/dmbates/MixedModels.jl/tree/f42452aa03213ace2d9d898088abbfeb5b9ee850/src/pls.jl#L509)
+[MixedModels/src/pls.jl:506](https://github.com/dmbates/MixedModels.jl/tree/365b1dda928de52d832a72a44f3cb21b45ffcf4e/src/pls.jl#L506)
 
 ---
 
@@ -396,7 +396,7 @@ Evaluate the squared deviance residual for a distribution instance and values of
 
 
 *source:*
-[MixedModels/src/GLMM/glmtools.jl:74](https://github.com/dmbates/MixedModels.jl/tree/f42452aa03213ace2d9d898088abbfeb5b9ee850/src/GLMM/glmtools.jl#L74)
+[MixedModels/src/GLMM/glmtools.jl:74](https://github.com/dmbates/MixedModels.jl/tree/365b1dda928de52d832a72a44f3cb21b45ffcf4e/src/GLMM/glmtools.jl#L74)
 
 ---
 
@@ -406,7 +406,7 @@ Subtract, in place, A'A or A'B from C
 
 
 *source:*
-[MixedModels/src/cfactor.jl:48](https://github.com/dmbates/MixedModels.jl/tree/f42452aa03213ace2d9d898088abbfeb5b9ee850/src/cfactor.jl#L48)
+[MixedModels/src/cfactor.jl:48](https://github.com/dmbates/MixedModels.jl/tree/365b1dda928de52d832a72a44f3cb21b45ffcf4e/src/cfactor.jl#L48)
 
 ---
 
@@ -418,7 +418,7 @@ Optimize the objective using an NLopt optimizer.
 
 
 *source:*
-[MixedModels/src/pls.jl:148](https://github.com/dmbates/MixedModels.jl/tree/f42452aa03213ace2d9d898088abbfeb5b9ee850/src/pls.jl#L148)
+[MixedModels/src/pls.jl:148](https://github.com/dmbates/MixedModels.jl/tree/365b1dda928de52d832a72a44f3cb21b45ffcf4e/src/pls.jl#L148)
 
 ---
 
@@ -430,7 +430,7 @@ Optimize the objective using an NLopt optimizer.
 
 
 *source:*
-[MixedModels/src/pls.jl:148](https://github.com/dmbates/MixedModels.jl/tree/f42452aa03213ace2d9d898088abbfeb5b9ee850/src/pls.jl#L148)
+[MixedModels/src/pls.jl:148](https://github.com/dmbates/MixedModels.jl/tree/365b1dda928de52d832a72a44f3cb21b45ffcf4e/src/pls.jl#L148)
 
 ---
 
@@ -442,7 +442,7 @@ Optimize the objective using an NLopt optimizer.
 
 
 *source:*
-[MixedModels/src/pls.jl:148](https://github.com/dmbates/MixedModels.jl/tree/f42452aa03213ace2d9d898088abbfeb5b9ee850/src/pls.jl#L148)
+[MixedModels/src/pls.jl:148](https://github.com/dmbates/MixedModels.jl/tree/365b1dda928de52d832a72a44f3cb21b45ffcf4e/src/pls.jl#L148)
 
 ---
 
@@ -452,7 +452,7 @@ Overwrite `v` with the fixed-effects coefficients of model `m`
 
 
 *source:*
-[MixedModels/src/pls.jl:230](https://github.com/dmbates/MixedModels.jl/tree/f42452aa03213ace2d9d898088abbfeb5b9ee850/src/pls.jl#L230)
+[MixedModels/src/pls.jl:227](https://github.com/dmbates/MixedModels.jl/tree/365b1dda928de52d832a72a44f3cb21b45ffcf4e/src/pls.jl#L227)
 
 ---
 
@@ -462,7 +462,7 @@ Overwrite `v` with the fixed-effects coefficients of model `m`
 
 
 *source:*
-[MixedModels/src/pls.jl:313](https://github.com/dmbates/MixedModels.jl/tree/f42452aa03213ace2d9d898088abbfeb5b9ee850/src/pls.jl#L313)
+[MixedModels/src/pls.jl:310](https://github.com/dmbates/MixedModels.jl/tree/365b1dda928de52d832a72a44f3cb21b45ffcf4e/src/pls.jl#L310)
 
 ---
 
@@ -472,7 +472,7 @@ return the lower triangle as a vector (column-major ordering)
 
 
 *source:*
-[MixedModels/src/paramlowertriangular.jl:7](https://github.com/dmbates/MixedModels.jl/tree/f42452aa03213ace2d9d898088abbfeb5b9ee850/src/paramlowertriangular.jl#L7)
+[MixedModels/src/paramlowertriangular.jl:7](https://github.com/dmbates/MixedModels.jl/tree/365b1dda928de52d832a72a44f3cb21b45ffcf4e/src/paramlowertriangular.jl#L7)
 
 ---
 
@@ -482,7 +482,7 @@ return the lower triangle as a vector (column-major ordering)
 
 
 *source:*
-[MixedModels/src/pls.jl:318](https://github.com/dmbates/MixedModels.jl/tree/f42452aa03213ace2d9d898088abbfeb5b9ee850/src/pls.jl#L318)
+[MixedModels/src/pls.jl:315](https://github.com/dmbates/MixedModels.jl/tree/365b1dda928de52d832a72a44f3cb21b45ffcf4e/src/pls.jl#L315)
 
 ---
 
@@ -495,7 +495,7 @@ behavior on the `HBlkDiag` type.
 
 
 *source:*
-[MixedModels/src/inflate.jl:7](https://github.com/dmbates/MixedModels.jl/tree/f42452aa03213ace2d9d898088abbfeb5b9ee850/src/inflate.jl#L7)
+[MixedModels/src/inflate.jl:7](https://github.com/dmbates/MixedModels.jl/tree/365b1dda928de52d832a72a44f3cb21b45ffcf4e/src/inflate.jl#L7)
 
 ---
 
@@ -505,7 +505,7 @@ like `copy!` but allowing for heterogeneous matrix types
 
 
 *source:*
-[MixedModels/src/inject.jl:4](https://github.com/dmbates/MixedModels.jl/tree/f42452aa03213ace2d9d898088abbfeb5b9ee850/src/inject.jl#L4)
+[MixedModels/src/inject.jl:4](https://github.com/dmbates/MixedModels.jl/tree/365b1dda928de52d832a72a44f3cb21b45ffcf4e/src/inject.jl#L4)
 
 ---
 
@@ -515,7 +515,7 @@ Predicate - whether or not the model has been fit.
 
 
 *source:*
-[MixedModels/src/pls.jl:324](https://github.com/dmbates/MixedModels.jl/tree/f42452aa03213ace2d9d898088abbfeb5b9ee850/src/pls.jl#L324)
+[MixedModels/src/pls.jl:321](https://github.com/dmbates/MixedModels.jl/tree/365b1dda928de52d832a72a44f3cb21b45ffcf4e/src/pls.jl#L321)
 
 ---
 
@@ -525,7 +525,7 @@ returns `log(det(Λ'Z'ZΛ + I))`
 
 
 *source:*
-[MixedModels/src/logdet.jl:35](https://github.com/dmbates/MixedModels.jl/tree/f42452aa03213ace2d9d898088abbfeb5b9ee850/src/logdet.jl#L35)
+[MixedModels/src/logdet.jl:35](https://github.com/dmbates/MixedModels.jl/tree/365b1dda928de52d832a72a44f3cb21b45ffcf4e/src/logdet.jl#L35)
 
 ---
 
@@ -535,7 +535,7 @@ Likelihood ratio test of one or more models
 
 
 *source:*
-[MixedModels/src/pls.jl:331](https://github.com/dmbates/MixedModels.jl/tree/f42452aa03213ace2d9d898088abbfeb5b9ee850/src/pls.jl#L331)
+[MixedModels/src/pls.jl:328](https://github.com/dmbates/MixedModels.jl/tree/365b1dda928de52d832a72a44f3cb21b45ffcf4e/src/pls.jl#L328)
 
 ---
 
@@ -547,7 +547,7 @@ In Julia 0.5 this can be a one-liner `m.trms[end][:,end]`
 
 
 *source:*
-[MixedModels/src/bootstrap.jl:103](https://github.com/dmbates/MixedModels.jl/tree/f42452aa03213ace2d9d898088abbfeb5b9ee850/src/bootstrap.jl#L103)
+[MixedModels/src/bootstrap.jl:103](https://github.com/dmbates/MixedModels.jl/tree/365b1dda928de52d832a72a44f3cb21b45ffcf4e/src/bootstrap.jl#L103)
 
 ---
 
@@ -557,7 +557,7 @@ In-place modification of μ to starting values from d, y and wt
 
 
 *source:*
-[MixedModels/src/GLMM/glmtools.jl:92](https://github.com/dmbates/MixedModels.jl/tree/f42452aa03213ace2d9d898088abbfeb5b9ee850/src/GLMM/glmtools.jl#L92)
+[MixedModels/src/GLMM/glmtools.jl:92](https://github.com/dmbates/MixedModels.jl/tree/365b1dda928de52d832a72a44f3cb21b45ffcf4e/src/GLMM/glmtools.jl#L92)
 
 ---
 
@@ -567,7 +567,7 @@ Initial μ value from the response and the weight
 
 
 *source:*
-[MixedModels/src/GLMM/glmtools.jl:83](https://github.com/dmbates/MixedModels.jl/tree/f42452aa03213ace2d9d898088abbfeb5b9ee850/src/GLMM/glmtools.jl#L83)
+[MixedModels/src/GLMM/glmtools.jl:83](https://github.com/dmbates/MixedModels.jl/tree/365b1dda928de52d832a72a44f3cb21b45ffcf4e/src/GLMM/glmtools.jl#L83)
 
 ---
 
@@ -579,7 +579,7 @@ This should be called after updating parts of `m.trms[end]`, typically the respo
 
 
 *source:*
-[MixedModels/src/bootstrap.jl:25](https://github.com/dmbates/MixedModels.jl/tree/f42452aa03213ace2d9d898088abbfeb5b9ee850/src/bootstrap.jl#L25)
+[MixedModels/src/bootstrap.jl:25](https://github.com/dmbates/MixedModels.jl/tree/365b1dda928de52d832a72a44f3cb21b45ffcf4e/src/bootstrap.jl#L25)
 
 ---
 
@@ -589,7 +589,7 @@ Reset the value of `m.θ` to the initial values
 
 
 *source:*
-[MixedModels/src/bootstrap.jl:37](https://github.com/dmbates/MixedModels.jl/tree/f42452aa03213ace2d9d898088abbfeb5b9ee850/src/bootstrap.jl#L37)
+[MixedModels/src/bootstrap.jl:37](https://github.com/dmbates/MixedModels.jl/tree/365b1dda928de52d832a72a44f3cb21b45ffcf4e/src/bootstrap.jl#L37)
 
 ---
 
@@ -601,7 +601,7 @@ used in `chol2cor`
 
 
 *source:*
-[MixedModels/src/paramlowertriangular.jl:63](https://github.com/dmbates/MixedModels.jl/tree/f42452aa03213ace2d9d898088abbfeb5b9ee850/src/paramlowertriangular.jl#L63)
+[MixedModels/src/paramlowertriangular.jl:63](https://github.com/dmbates/MixedModels.jl/tree/365b1dda928de52d832a72a44f3cb21b45ffcf4e/src/paramlowertriangular.jl#L63)
 
 ---
 
@@ -611,7 +611,7 @@ set the lower triangle of A to v using column-major ordering
 
 
 *source:*
-[MixedModels/src/paramlowertriangular.jl:23](https://github.com/dmbates/MixedModels.jl/tree/f42452aa03213ace2d9d898088abbfeb5b9ee850/src/paramlowertriangular.jl#L23)
+[MixedModels/src/paramlowertriangular.jl:23](https://github.com/dmbates/MixedModels.jl/tree/365b1dda928de52d832a72a44f3cb21b45ffcf4e/src/paramlowertriangular.jl#L23)
 
 ---
 
@@ -623,7 +623,7 @@ This is the bottom right element of the bottom right block of m.R
 
 
 *source:*
-[MixedModels/src/pls.jl:270](https://github.com/dmbates/MixedModels.jl/tree/f42452aa03213ace2d9d898088abbfeb5b9ee850/src/pls.jl#L270)
+[MixedModels/src/pls.jl:267](https://github.com/dmbates/MixedModels.jl/tree/365b1dda928de52d832a72a44f3cb21b45ffcf4e/src/pls.jl#L267)
 
 ---
 
@@ -633,7 +633,7 @@ This is the bottom right element of the bottom right block of m.R
 
 
 *source:*
-[MixedModels/src/pls.jl:434](https://github.com/dmbates/MixedModels.jl/tree/f42452aa03213ace2d9d898088abbfeb5b9ee850/src/pls.jl#L434)
+[MixedModels/src/pls.jl:431](https://github.com/dmbates/MixedModels.jl/tree/365b1dda928de52d832a72a44f3cb21b45ffcf4e/src/pls.jl#L431)
 
 ---
 
@@ -643,7 +643,7 @@ scale B using the implicit expansion of A to a homogeneous block diagonal
 
 
 *source:*
-[MixedModels/src/paramlowertriangular.jl:71](https://github.com/dmbates/MixedModels.jl/tree/f42452aa03213ace2d9d898088abbfeb5b9ee850/src/paramlowertriangular.jl#L71)
+[MixedModels/src/paramlowertriangular.jl:71](https://github.com/dmbates/MixedModels.jl/tree/365b1dda928de52d832a72a44f3cb21b45ffcf4e/src/paramlowertriangular.jl#L71)
 
 ---
 
@@ -653,7 +653,7 @@ Add unscaled random effects to y
 
 
 *source:*
-[MixedModels/src/bootstrap.jl:47](https://github.com/dmbates/MixedModels.jl/tree/f42452aa03213ace2d9d898088abbfeb5b9ee850/src/bootstrap.jl#L47)
+[MixedModels/src/bootstrap.jl:47](https://github.com/dmbates/MixedModels.jl/tree/365b1dda928de52d832a72a44f3cb21b45ffcf4e/src/bootstrap.jl#L47)
 
 ---
 
@@ -663,7 +663,7 @@ returns the estimated variance-covariance matrix of the fixed-effects estimator
 
 
 *source:*
-[MixedModels/src/pls.jl:501](https://github.com/dmbates/MixedModels.jl/tree/f42452aa03213ace2d9d898088abbfeb5b9ee850/src/pls.jl#L501)
+[MixedModels/src/pls.jl:498](https://github.com/dmbates/MixedModels.jl/tree/365b1dda928de52d832a72a44f3cb21b45ffcf4e/src/pls.jl#L498)
 
 ---
 
@@ -673,7 +673,7 @@ Evaluate `y*log(y/μ)` with the correct limit as `y` approaches zero from above
 
 
 *source:*
-[MixedModels/src/GLMM/glmtools.jl:67](https://github.com/dmbates/MixedModels.jl/tree/f42452aa03213ace2d9d898088abbfeb5b9ee850/src/GLMM/glmtools.jl#L67)
+[MixedModels/src/GLMM/glmtools.jl:67](https://github.com/dmbates/MixedModels.jl/tree/365b1dda928de52d832a72a44f3cb21b45ffcf4e/src/GLMM/glmtools.jl#L67)
 
 ## Types [Internal]
 
@@ -685,5 +685,5 @@ Summary of an NLopt optimization
 
 
 *source:*
-[MixedModels/src/pls.jl:4](https://github.com/dmbates/MixedModels.jl/tree/f42452aa03213ace2d9d898088abbfeb5b9ee850/src/pls.jl#L4)
+[MixedModels/src/pls.jl:4](https://github.com/dmbates/MixedModels.jl/tree/365b1dda928de52d832a72a44f3cb21b45ffcf4e/src/pls.jl#L4)
 

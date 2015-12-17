@@ -57,6 +57,8 @@ fm3 = lmm(Reaction ~ 1+Days + (1+Days|Subject),slp)
 @test lowerbd(fm3) == [0.,-Inf,0.]
 @test isa(fm3.A[1,1],MixedModels.HBlkDiag{Float64})
 @test size(fm3.A[1,1]) == (36,36)
+@test fm3.A[1,1][1,1] == 10.
+@test fm3.A[1,1][6,1] == 0.
 @test_throws BoundsError size(fm3.A[1,1],0)
 @test size(fm3.A[1,1],1) == 36
 @test full(fm3.A[1,1])[1:2,1:2] == reshape([10.,45,45,285],(2,2))

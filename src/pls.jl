@@ -101,7 +101,7 @@ function lmm(f::Formula, fr::AbstractDataFrame; weights::Vector{Float64}=Float64
     if length(retrms) ≤ 0
         throw(ArgumentError("$f has no random-effects terms"))
     end
-    re = [remat(e,mf.df) for e in retrms]
+    re = sort!([remat(e,mf.df) for e in retrms]; by = nlevs, rev = true)
     LinearMixedModel(mf,re,map(LT,re),X.m,y,weights)
 end
 
