@@ -3,8 +3,8 @@
 
 type GeneralizedLinearMixedModel{T <: AbstractFloat, D <: UnivariateDistribution, L <: Link} <: MixedModel
     LMM::LinearMixedModel{T}
-    r::GLM.GlmResp{DenseArray{T,1},D,L}
-    β₀::Vector{T}
+    r::GLM.GlmResp{Vector{T},D,L}
+    β₀::DenseVector{T}
 end
 
 function glmm(f::Formula, fr::AbstractDataFrame, d::Distribution, wt::Vector, l::Link)
