@@ -16,7 +16,7 @@ end
 inflate!(D::Diagonal{Float64}) = (d = D.diag; for i in eachindex(d) d[i] += 1 end; D)
 
 function inflate!{T<:AbstractFloat}(A::StridedMatrix{T})
-    n = Base.LinAlg.chksquare(A)
+    n = Compat.LinAlg.checksquare(A)
     for i in 1:n
         @inbounds A[i,i] += 1
     end

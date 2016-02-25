@@ -23,7 +23,7 @@ Regenerate the last column of `m.A` from `m.trms`
 This should be called after updating parts of `m.trms[end]`, typically the response.
 """
 function regenerateAend!(m::LinearMixedModel)
-    n = Base.LinAlg.chksquare(m.A)
+    n = Compat.LinAlg.checksquare(m.A)
     trmn = m.trms[n]
     for i in 1:n
         Ac_mul_B!(m.A[i,n],m.trms[i],trmn)

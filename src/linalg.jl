@@ -30,7 +30,7 @@ function Base.LinAlg.Ac_ldiv_B!{T}(A::UpperTriangular{T,HBlkDiag{T}},B::DenseMat
     m,n = size(B)
     aa = A.data.arr
     r,s,k = size(aa)
-    if m ≠ Base.LinAlg.chksquare(A)
+    if m ≠ Compat.LinAlg.checksquare(A)
         throw(DimensionMismatch("size(A,2) ≠ size(B,1)"))
     end
     scr = Array(T,(r,n))
