@@ -208,16 +208,6 @@ end
 """
 objective(m::LinearMixedModel) = logdet(m) + nobs(m)*(1.+log(2π*varest(m)))
 
-"""
-Akaike's Information Criterion
-"""
-AIC(m::LinearMixedModel) = deviance(m) + 2npar(m)
-
-"""
-Schwartz's Bayesian Information Criterion
-"""
-BIC(m::LinearMixedModel) = deviance(m) + npar(m)*log(nobs(m))
-
 ## Rename this
 Base.cholfact(m::LinearMixedModel) = UpperTriangular(m.R[end,end][1:end-1,1:end-1])
 
@@ -245,6 +235,7 @@ Note that `size(m.trms[end],2)` is `length(coef(m)) + 1`, thereby accounting
 for the scale parameter, σ, that is profiled out.
 """
 npar(m::LinearMixedModel) = size(m.trms[end],2) + length(m[:θ])
+StatsBase.df(m::LinearMixedModel) = npar(m)
 
 function Base.size(m::LinearMixedModel)
     szs = map(size,m.trms)

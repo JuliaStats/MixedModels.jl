@@ -10,8 +10,6 @@ export LinearMixedModel,
        MixedModel,
        VarCorr,
 
-       AIC,        # Akaike's Information Criterion
-       BIC,        # Schwatz's Bayesian Information Criterion
        bootstrap,  # Create bootstrap replications of a model
        fixef,      # extract the fixed-effects parameter estimates
        lmm,        # create a LinearMixedModel from a formula/data specification
