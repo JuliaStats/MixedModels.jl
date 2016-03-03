@@ -28,3 +28,32 @@ end
 glmm(f::Formula, fr::AbstractDataFrame, d::Distribution, wt::Vector) = glmm(f, fr, d, wt, GLM.canonicallink(d))
 
 glmm(f::Formula, fr::AbstractDataFrame, d::Distribution) = glmm(f,fr,d,Float64[])
+
+function reweightZ{T <: AbstractFloat}(x::LinearMixedModel{T}, wts)
+    trms = x.trms
+    A = x.A
+    if length(wts) ≠ size(trms[1], 1)
+        throw(DimensionMismatch("$(length(wts)) = length(wts) ≠ size(x.trms[1], 1)"))
+    end
+    for j in 1:length(x.Λ), i in 1:j
+        wtprod!(A[i,j],trms[i],trms[j],wts)
+    end
+    x
+end
+
+function wtprod!{T<:Real}(A::Diagonal{T}, ti::ScalarReMat{T}, tj::ScalarReMat{T}, wt::Vector{T})
+    n, q = size(ti)
+    if ti === tj
+        ad = fill!(A.diag,0)
+        z = ti.z
+        if length(ad) ≠ q || length(wt) ≠ n || length(z) != n
+            throw(DimensionMismatch("size(A) should be $q and length(wt) should be $n"))
+        end
+        tir = ti.f.refs
+        for i in eachindex(tir,wt, )
+            ad[tir[i]] += abs2(z[i]) * wt[i]
+        end
+        return A
+    end
+    error("Shouldn't happen?")
+end
