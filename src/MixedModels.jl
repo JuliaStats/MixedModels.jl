@@ -2,7 +2,7 @@
 
 module MixedModels
 
-using DataArrays, DataFrames, Distributions, NLopt, Showoff, StatsBase
+using Compat, DataArrays, DataFrames, Distributions, NLopt, Showoff, StatsBase
 
 export ReMat, ScalarReMat,VectorReMat
 

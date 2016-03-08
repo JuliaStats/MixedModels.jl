@@ -5,7 +5,7 @@ Uses `inject!` (as opposed to `copy!`), `downdate!` (as opposed to `syrk!`
     or `gemm!`) and recursive calls to `cfactor!`,
 """
 function cfactor!(A::AbstractMatrix)
-    n = Base.LinAlg.chksquare(A)
+    n = Compat.LinAlg.checksquare(A)
     for k = 1:n
         Akk = A[k,k]
         for i in 1:(k - 1)
@@ -135,7 +135,7 @@ end
 
 function downdate!{T}(C::DenseMatrix{T},A::SparseMatrixCSC{T})
     m,n = size(A)
-    if n ≠ Base.LinAlg.chksquare(C)
+    if n ≠ Compat.LinAlg.checksquare(C)
         throw(DimensionMismatch("C is not square or size(C,2) ≠ size(A,2)"))
     end
     # FIXME: avoid allocation by caching a transposed matrix and just fill in the new values

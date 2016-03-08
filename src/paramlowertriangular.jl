@@ -1,5 +1,5 @@
 nlower(n::Integer) = (n*(n+1))>>1
-nlower{T}(A::LowerTriangular{T,Matrix{T}}) = nlower(Base.LinAlg.chksquare(A))
+nlower{T}(A::LowerTriangular{T,Matrix{T}}) = nlower(Compat.LinAlg.checksquare(A))
 
 """
 return the lower triangle as a vector (column-major ordering)
@@ -8,7 +8,7 @@ function Base.getindex{T}(A::LowerTriangular{T,Matrix{T}},s::Symbol)
     if s ≠ :θ
         throw(KeyError(s))
     end
-    n = Base.LinAlg.chksquare(A)
+    n = Compat.LinAlg.checksquare(A)
     res = Array(T,nlower(n))
     k = 0
     for j = 1:n, i in j:n
@@ -28,7 +28,7 @@ function Base.setindex!{T}(
     if s ≠ :θ
         throw(KeyError(s))
     end
-    n = Base.LinAlg.chksquare(A)
+    n = Compat.LinAlg.checksquare(A)
     if length(v) ≠ nlower(n)
         throw(DimensionMismatch("length(v) ≠ nlower(A)"))
     end
@@ -43,7 +43,7 @@ end
 lower bounds on the parameters (elements in the lower triangle)
 """
 function lowerbd{T}(A::LowerTriangular{T,Matrix{T}})
-    n = Base.LinAlg.chksquare(A)
+    n = Compat.LinAlg.checksquare(A)
     res = fill(convert(T,-Inf),nlower(n))
     k = -n
     for j in n+1:-1:2
@@ -71,7 +71,7 @@ scale B using the implicit expansion of A to a homogeneous block diagonal
 function tscale!(A::LowerTriangular,B::HBlkDiag)
     Ba = B.arr
     r,s,k = size(Ba)
-    n = Base.LinAlg.chksquare(A)
+    n = Compat.LinAlg.checksquare(A)
     if n ≠ r
         throw(DimensionMismatch("size(A,2) ≠ blocksize of B"))
     end
@@ -80,7 +80,7 @@ function tscale!(A::LowerTriangular,B::HBlkDiag)
 end
 
 function tscale!{T}(A::LowerTriangular{T},B::Diagonal{T})
-    if Base.LinAlg.chksquare(A) ≠ 1
+    if Compat.LinAlg.checksquare(A) ≠ 1
         throw(DimensionMismatch("A must be a 1×1 LowerTriangular"))
     end
     scale!(A.data[1],B.diag)
@@ -101,7 +101,7 @@ function LT(A::VectorReMat)
 end
 
 function tscale!{T}(A::LowerTriangular{T},B::DenseVecOrMat{T})
-    if (l = Base.LinAlg.chksquare(A)) == 1
+    if (l = Compat.LinAlg.checksquare(A)) == 1
         return scale!(A.data[1],B)
     end
     m,n = size(B,1),size(B,2)  # this sets n = 1 when B is a vector
@@ -114,7 +114,7 @@ function tscale!{T}(A::LowerTriangular{T},B::DenseVecOrMat{T})
 end
 
 function tscale!{T}(A::LowerTriangular{T},B::SparseMatrixCSC{T})
-    if (l = Base.LinAlg.chksquare(A)) ≠ 1
+    if (l = Compat.LinAlg.checksquare(A)) ≠ 1
         error("Code not yet written")
     end
     scale!(A.data[1],B.nzval)
@@ -122,7 +122,7 @@ function tscale!{T}(A::LowerTriangular{T},B::SparseMatrixCSC{T})
 end
 
 function tscale!{T}(A::SparseMatrixCSC{T},B::LowerTriangular)
-    if (l = Base.LinAlg.chksquare(B)) != 1
+    if (l = Compat.LinAlg.checksquare(B)) != 1
         error("Code not yet written")
     end
     scale!(A.nzval,B.data[1])
@@ -130,7 +130,7 @@ function tscale!{T}(A::SparseMatrixCSC{T},B::LowerTriangular)
 end
 
 function tscale!{T}(A::Diagonal{T},B::LowerTriangular{T})
-    if (l = Base.LinAlg.chksquare(B)) ≠ 1
+    if (l = Compat.LinAlg.checksquare(B)) ≠ 1
         throw(DimensionMismatch(
         "in tscale!(A::Diagonal,B::LowerTriangular) B must be 1×1"))
     end
@@ -148,7 +148,7 @@ function tscale!{T}(A::HBlkDiag{T},B::LowerTriangular{T})
 end
 
 function tscale!{T}(A::StridedMatrix{T},B::LowerTriangular{T})
-    l = Base.LinAlg.chksquare(B)
+    l = Compat.LinAlg.checksquare(B)
     l == 1 && return scale!(A,B.data[1])
     m,n = size(A)
     q,r = divrem(n,l)

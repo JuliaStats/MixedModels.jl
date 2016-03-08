@@ -22,7 +22,7 @@ end
 
 function LD{T}(d::DenseMatrix{T})
     r = log(one(T))
-    n = Base.LinAlg.chksquare(d)
+    n = Compat.LinAlg.checksquare(d)
     for j in 1:n
         r += log(d[j,j])
     end
