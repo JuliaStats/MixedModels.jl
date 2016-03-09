@@ -5,9 +5,9 @@ type GeneralizedLinearMixedModel{T <: AbstractFloat, D <: UnivariateDistribution
     LMM::LinearMixedModel{T}
     r::GLM.GlmResp{Vector{T},D,L}
     β₀::DenseVector{T}
+    u₀::Vector
+    δ::Vector
     fe::DenseMatrix{T}
-    App::DenseMatrix{T}
-    Rpp::DenseMatrix{T}
 end
 
 function glmm(f::Formula, fr::AbstractDataFrame, d::Distribution, wt::Vector, l::Link)
@@ -16,19 +16,15 @@ function glmm(f::Formula, fr::AbstractDataFrame, d::Distribution, wt::Vector, l:
     if isempty(wt)
         wt = ones(y)
     end
-    X = LMM.trms[end][:,1:end-1]
-    # fit a glm pm the fixed-effects only
+    A, R, trms = LMM.A, LMM.R, LMM.trms
+    fe = copy(trms[end])
+    X = fe[:,1:end-1]
+                    # fit a glm pm the fixed-effects only
     gl = glm(X, y, d, l; wts=wt, offset=zeros(y))
     β₀ = coef(gl)
     r = gl.rr
     Base.A_mul_B!(r.offset, X, β₀)
-    A = LMM.A
-    R = LMM.R
-    trms = LMM.trms
     updatemu!(r, zeros(y))
-    fe = copy(trms[end])
-    App = copy(A[end,end])
-    Rpp = copy(R[end,end])
     T = eltype(y)
     trms[end] = reshape(copy(r.wrkresid), (length(y), 1))
     sz = convert(Vector{Int}, map(x -> size(x,2), LMM.trms))
@@ -38,7 +34,9 @@ function glmm(f::Formula, fr::AbstractDataFrame, d::Distribution, wt::Vector, l:
         R[i, pp1] = Array(T, (sz[i], 1))
     end
     reweight!(LMM, r.wrkwts)
-    GeneralizedLinearMixedModel(LMM, r, β₀, fe, App, Rpp)
+    LMM[:θ] = LMM[:θ]        # forces an update of R
+    δ = ranef(LMM, true)
+    GeneralizedLinearMixedModel(LMM, r, β₀, map(zeros, δ), δ, fe)
 end
 
 function glmm(f::Formula, fr::AbstractDataFrame, d::Distribution, wt::DataVector, l::Link)
@@ -48,6 +46,8 @@ end
 glmm(f::Formula, fr::AbstractDataFrame, d::Distribution, wt::Vector) = glmm(f, fr, d, wt, GLM.canonicallink(d))
 
 glmm(f::Formula, fr::AbstractDataFrame, d::Distribution) = glmm(f,fr,d,Float64[])
+
+lmm(m::GeneralizedLinearMixedModel) = m.LMM
 
 function reweight!{T <: AbstractFloat}(x::LinearMixedModel{T}, wts)
     trms = x.trms
@@ -97,4 +97,8 @@ end
 
 function wtprod!{T <: AbstractFloat}(A::Matrix{T}, ti::Matrix{T}, tj::Matrix{T}, wt::Vector{T})
     Ac_mul_B!(A, ti, scale(wt, tj))
+end
+
+function usolve!(m::GeneralizedLinearMixedModel)
+    m
 end
