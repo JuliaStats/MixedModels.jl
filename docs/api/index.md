@@ -7,27 +7,25 @@
 
 ## Methods [Exported]
 
-[AIC(m::MixedModels.LinearMixedModel{T})](MixedModels.md#method__aic.1)  Akaike's Information Criterion
-
-[BIC(m::MixedModels.LinearMixedModel{T})](MixedModels.md#method__bic.1)  Schwartz's Bayesian Information Criterion
-
 [bootstrap(m::MixedModels.LinearMixedModel{T},  N::Integer,  saveresults::Function)](MixedModels.md#method__bootstrap.1)  Simulate `N` response vectors from `m`, refitting the model.  The function saveresults
 
-[fixef(m::MixedModels.LinearMixedModel{T})](MixedModels.md#method__fixef.2)  The fixed-effects parameter estimates
+[fixef(m::MixedModels.LinearMixedModel{T})](MixedModels.md#method__fixef.2)      fixef(m)
 
-[lmm(f::DataFrames.Formula,  fr::DataFrames.AbstractDataFrame)](MixedModels.md#method__lmm.1)  Create a `LinearMixedModel` object from a formula and data frame
+[lmm(f::DataFrames.Formula,  fr::DataFrames.AbstractDataFrame)](MixedModels.md#method__lmm.1)      lmm(form, frm)
 
-[lowerbd{T}(A::LowerTriangular{T, Array{T, 2}})](MixedModels.md#method__lowerbd.1)  lower bounds on the parameters (elements in the lower triangle)
+[lmm(m::MixedModels.LinearMixedModel{T})](MixedModels.md#method__lmm.2)      lmm(m::MixedModel)
 
-[npar(m::MixedModels.LinearMixedModel{T})](MixedModels.md#method__npar.1)  Number of parameters in the model.
+[lowerbd(m::MixedModels.LinearMixedModel{T})](MixedModels.md#method__lowerbd.1)      lowerbd(m::MixedModel)
 
-[objective(m::MixedModels.LinearMixedModel{T})](MixedModels.md#method__objective.1)  `objective(m)` -> Negative twice the log-likelihood
+[lowerbd{T}(A::LowerTriangular{T, Array{T, 2}})](MixedModels.md#method__lowerbd.2)  lower bounds on the parameters (elements in the lower triangle)
 
-[pwrss(m::MixedModels.LinearMixedModel{T})](MixedModels.md#method__pwrss.1)  returns the penalized residual sum-of-squares
+[objective(m::MixedModels.LinearMixedModel{T})](MixedModels.md#method__objective.1)      objective(m)
 
-[ranef{T}(m::MixedModels.LinearMixedModel{T})](MixedModels.md#method__ranef.1)  `ranef(m)` -> vector of matrices of random effects on the original scale
+[pwrss(m::MixedModels.LinearMixedModel{T})](MixedModels.md#method__pwrss.1)      pwrss(m::LinearMixedModel)
 
-[ranef{T}(m::MixedModels.LinearMixedModel{T},  uscale)](MixedModels.md#method__ranef.2)  `ranef(m)` -> vector of matrices of random effects on the original scale
+[ranef(m::MixedModels.MixedModel)](MixedModels.md#method__ranef.2)      ranef(m)
+
+[ranef(m::MixedModels.MixedModel,  uscale)](MixedModels.md#method__ranef.3)      ranef(m)
 
 [refit!(m::MixedModels.LinearMixedModel{T},  y)](MixedModels.md#method__refit.1)  refit the model `m` with response `y`
 
@@ -37,11 +35,11 @@
 
 [reml!(m::MixedModels.LinearMixedModel{T},  v::Bool)](MixedModels.md#method__reml.2)  `reml!(m,v=true)` -> m : Set m.REML to v.  If m.REML is modified, unset m.fit
 
-[sdest(m::MixedModels.LinearMixedModel{T})](MixedModels.md#method__sdest.1)  `sdest(m) -> s`
+[sdest(m::MixedModels.LinearMixedModel{T})](MixedModels.md#method__sdest.1)      sdest(m)
 
 [simulate!(m::MixedModels.LinearMixedModel{T})](MixedModels.md#method__simulate.1)  Simulate a response vector from model `m`, and refit `m`.
 
-[varest(m::MixedModels.LinearMixedModel{T})](MixedModels.md#method__varest.1)  returns s², the estimate of σ², the variance of the conditional distribution of Y given B
+[varest(m::MixedModels.LinearMixedModel{T})](MixedModels.md#method__varest.1)      varest(m::LinearMixedModel)
 
 ---
 
@@ -65,15 +63,13 @@
 
 [LT(A::MixedModels.ScalarReMat{T})](MixedModels.md#method__lt.1)  `LT(A) -> LowerTriangular`
 
-[canonical(::Distributions.Bernoulli)](MixedModels.md#method__canonical.1)  An instance of the canonical Link type for a distribution in the exponential family
-
 [cfactor!(A::AbstractArray{T, 2})](MixedModels.md#method__cfactor.1)  Slightly modified version of `chol!` from `julia/base/linalg/cholesky.jl`
 
 [cfactor!(R::Array{Float64, 2})](MixedModels.md#method__cfactor.2)  `cfactor!` method for dense matrices calls `LAPACK.potrf!` directly to avoid
 
 [chol2cor(L::LowerTriangular{T, S<:AbstractArray{T, 2}})](MixedModels.md#method__chol2cor.1)  Convert a lower Cholesky factor to a correlation matrix
 
-[cond(m::MixedModels.LinearMixedModel{T})](MixedModels.md#method__cond.1)  Condition numbers for blocks of Λ
+[cond(m::MixedModels.MixedModel)](MixedModels.md#method__cond.1)      cond(m::MixedModel)
 
 [densify(S)](MixedModels.md#method__densify.1)  `densify(S[,threshold])`
 
@@ -81,7 +77,7 @@
 
 [describeblocks(m::MixedModels.LinearMixedModel{T})](MixedModels.md#method__describeblocks.1)  describe the blocks of the A and R matrices
 
-[devresid2(::Distributions.Bernoulli,  y,  μ)](MixedModels.md#method__devresid2.1)  Evaluate the squared deviance residual for a distribution instance and values of `y` and `μ`
+[df(m::MixedModels.LinearMixedModel{T})](MixedModels.md#method__df.1)  Number of parameters in the model.
 
 [downdate!{T<:Union{Complex{Float32}, Complex{Float64}, Float32, Float64}}(C::DenseArray{T<:Union{Complex{Float32}, Complex{Float64}, Float32, Float64}, 2},  A::DenseArray{T<:Union{Complex{Float32}, Complex{Float64}, Float32, Float64}, 2})](MixedModels.md#method__downdate.1)  Subtract, in place, A'A or A'B from C
 
@@ -91,9 +87,9 @@
 
 [fit!(m::MixedModels.LinearMixedModel{T},  verbose::Bool,  optimizer::Symbol)](MixedModels.md#method__fit.3)  `fit!(m)` -> `m`
 
-[fixef!(v,  m::MixedModels.LinearMixedModel{T})](MixedModels.md#method__fixef.1)  Overwrite `v` with the fixed-effects coefficients of model `m`
+[fixef!(v,  m::MixedModels.LinearMixedModel{T})](MixedModels.md#method__fixef.1)      fixef!(v, m)
 
-[fnames(m::MixedModels.LinearMixedModel{T})](MixedModels.md#method__fnames.1)  `fnames(m)` -> vector of names of grouping factors
+[fnames(m::MixedModels.LinearMixedModel{T})](MixedModels.md#method__fnames.1)      fnames(m::MixedModel)
 
 [getindex{T}(A::LowerTriangular{T, Array{T, 2}},  s::Symbol)](MixedModels.md#method__getindex.1)  return the lower triangle as a vector (column-major ordering)
 
@@ -103,7 +99,7 @@
 
 [inject!(d,  s)](MixedModels.md#method__inject.1)  like `copy!` but allowing for heterogeneous matrix types
 
-[isfit(m::MixedModels.LinearMixedModel{T})](MixedModels.md#method__isfit.1)  Predicate - whether or not the model has been fit.
+[isfit(m::MixedModels.LinearMixedModel{T})](MixedModels.md#method__isfit.1)      isfit(m)
 
 [logdet(m::MixedModels.LinearMixedModel{T})](MixedModels.md#method__logdet.1)  returns `log(det(Λ'Z'ZΛ + I))`
 
@@ -111,9 +107,7 @@
 
 [model_response(m::MixedModels.LinearMixedModel{T})](MixedModels.md#method__model_response.1)  extract the response (as a reference)
 
-[mustart!{T}(μ::Array{T, 1},  d::Distributions.Distribution{F<:Distributions.VariateForm, S<:Distributions.ValueSupport},  y::Array{T, 1},  wt::Array{T, 1})](MixedModels.md#method__mustart.1)  In-place modification of μ to starting values from d, y and wt
-
-[mustart{T<:AbstractFloat}(::Distributions.Bernoulli,  y::T<:AbstractFloat,  wt::T<:AbstractFloat)](MixedModels.md#method__mustart.2)  Initial μ value from the response and the weight
+[ranef!{T}(v::Array{T, 1},  m::MixedModels.LinearMixedModel{T},  uscale)](MixedModels.md#method__ranef.1)      ranef!(v, m, uscale)
 
 [regenerateAend!(m::MixedModels.LinearMixedModel{T})](MixedModels.md#method__regenerateaend.1)  Regenerate the last column of `m.A` from `m.trms`
 
@@ -132,8 +126,6 @@
 [unscaledre!(y::AbstractArray{T, 1},  M::MixedModels.ScalarReMat{T},  L::LowerTriangular{T, S<:AbstractArray{T, 2}})](MixedModels.md#method__unscaledre.1)  Add unscaled random effects to y
 
 [vcov(m::MixedModels.LinearMixedModel{T})](MixedModels.md#method__vcov.1)  returns the estimated variance-covariance matrix of the fixed-effects estimator
-
-[ylogydμ{T<:AbstractFloat}(y::T<:AbstractFloat,  μ::T<:AbstractFloat)](MixedModels.md#method__ylogyd956.1)  Evaluate `y*log(y/μ)` with the correct limit as `y` approaches zero from above
 
 ---
 

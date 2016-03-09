@@ -1,8 +1,8 @@
-#VERSION >= v"0.4.0-dev+6521" && __precompile__()
+__precompile__()
 
 module MixedModels
 
-using Compat, DataArrays, DataFrames, Distributions, NLopt, Showoff, StatsBase
+using Compat, DataArrays, GLM, DataFrames, Distributions, NLopt, Showoff, StatsBase
 
 export ReMat, ScalarReMat,VectorReMat
 
@@ -12,9 +12,9 @@ export LinearMixedModel,
 
        bootstrap,  # Create bootstrap replications of a model
        fixef,      # extract the fixed-effects parameter estimates
+       glmm,       # define a GeneralizedLinearMixedModel
        lmm,        # create a LinearMixedModel from a formula/data specification
        lowerbd,    # lower bounds on the covariance parameters
-       npar,       # total number of parameters in the model
        objective,  # the objective function in fitting a model
        pwrss,      # penalized, weighted residual sum-of-squares
        ranef,      # extract the conditional modes of the random effects
@@ -40,7 +40,7 @@ include("inject.jl")
 include("pls.jl")
 include("logdet.jl")
 include("bootstrap.jl")
-include("GLMM/glmtools.jl")
 include("GLMM/PIRLS.jl")
+include("mixedmodel.jl")
 
 end # module
