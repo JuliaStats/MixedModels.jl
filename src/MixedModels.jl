@@ -4,11 +4,13 @@ module MixedModels
 
 using Compat, DataArrays, GLM, DataFrames, Distributions, NLopt, Showoff, StatsBase
 
-export ReMat, ScalarReMat,VectorReMat
-
-export LinearMixedModel,
+export GeneralizedLinearMixedModel,
+       LinearMixedModel,
        MixedModel,
+       ReMat,
+       ScalarReMat,
        VarCorr,
+       VectorReMat,
 
        bootstrap,  # Create bootstrap replications of a model
        fixef,      # extract the fixed-effects parameter estimates
