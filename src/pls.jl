@@ -453,15 +453,3 @@ function StatsBase.vcov(m::LinearMixedModel)
     Rinv = Base.LinAlg.inv!(cholfact(m))
     varest(m) * Rinv * Rinv'
 end
-
-"""
-describe the blocks of the A and R matrices
-"""
-function describeblocks(m::LinearMixedModel)
-    A = m.A
-    R = m.R
-    for j in 1:size(A,2), i in 1:j
-        println(i,",",j,": ",typeof(A[i,j])," ",size(A[i,j])," ",typeof(R[i,j]))
-    end
-    nothing
-end

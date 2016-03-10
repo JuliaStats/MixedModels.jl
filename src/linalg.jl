@@ -1,6 +1,6 @@
-Base.LinAlg.Ac_ldiv_B!{T}(D::Diagonal{T},B) = Base.LinAlg.A_ldiv_B!(D,B)
+Base.LinAlg.Ac_ldiv_B!{T}(D::Diagonal{T}, B) = Base.LinAlg.A_ldiv_B!(D, B)
 
-function Base.LinAlg.A_ldiv_B!{T}(D::Diagonal{T},B::Diagonal{T})
+function Base.LinAlg.A_ldiv_B!{T}(D::Diagonal{T}, B::Diagonal{T})
     dd = D.diag
     bd = B.diag
     if length(dd) ≠ length(bd)
@@ -12,8 +12,8 @@ function Base.LinAlg.A_ldiv_B!{T}(D::Diagonal{T},B::Diagonal{T})
     B
 end
 
-function Base.LinAlg.A_ldiv_B!{T}(D::Diagonal{T},B::SparseMatrixCSC{T})
-    m,n = size(B)
+function Base.LinAlg.A_ldiv_B!{T}(D::Diagonal{T}, B::SparseMatrixCSC{T})
+    m, n = size(B)
     dd = D.diag
     if length(dd) ≠ m
         throw(DimensionMismatch("size(D,2) ≠ size(B,1)"))
@@ -26,17 +26,17 @@ function Base.LinAlg.A_ldiv_B!{T}(D::Diagonal{T},B::SparseMatrixCSC{T})
     B
 end
 
-function Base.LinAlg.Ac_ldiv_B!{T}(A::UpperTriangular{T,HBlkDiag{T}},B::DenseMatrix{T})
-    m,n = size(B)
+function Base.LinAlg.Ac_ldiv_B!{T}(A::UpperTriangular{T,HBlkDiag{T}}, B::DenseMatrix{T})
+    m, n = size(B)
     aa = A.data.arr
-    r,s,k = size(aa)
+    r, s, k = size(aa)
     if m ≠ Compat.LinAlg.checksquare(A)
         throw(DimensionMismatch("size(A,2) ≠ size(B,1)"))
     end
     scr = Array(T,(r,n))
     for i in 1:k
-        bb = sub(B,(i-1)*r+(1:r),:)
-        copy!(bb,Base.LinAlg.Ac_ldiv_B!(UpperTriangular(sub(aa,:,:,i)),copy!(scr,bb)))
+        bb = sub(B, (i - 1) * r + (1:r), :)
+        copy!(bb, Base.LinAlg.Ac_ldiv_B!(UpperTriangular(sub(aa, :, :, i)), copy!(scr, bb)))
     end
     B
 end

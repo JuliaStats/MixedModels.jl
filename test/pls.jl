@@ -9,6 +9,7 @@ fm1 = lmm(Yield ~ 1 + (1|Batch),ds)
 
 fm1[:θ] = [0.713]
 @test objective(fm1) ≈ 327.34216280955366
+MixedModels.describeblocks(fm1)
 
 fit!(fm1);
 @test_approx_eq_eps objective(fm1) 327.3270598811428 1e-3

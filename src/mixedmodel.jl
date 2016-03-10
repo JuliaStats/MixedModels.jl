@@ -87,6 +87,19 @@ StatsBase.nobs(m::LinearMixedModel) = size(lmm(m).trms[end], 1)
 
 ## methods for functions exported from this module
 
+
+"""
+describe the blocks of the A and R matrices
+"""
+function describeblocks(m::MixedModel)
+    lm = lmm(m)
+    A, R = lm.A, lm.R
+    for j in 1:size(A,2), i in 1:j
+        println(i,",",j,": ",typeof(A[i,j])," ",size(A[i,j])," ",typeof(R[i,j]))
+    end
+    nothing
+end
+
 """
     fnames(m)
 
