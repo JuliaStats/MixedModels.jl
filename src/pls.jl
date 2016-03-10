@@ -45,16 +45,18 @@ function LinearMixedModel{T}(
         throw(ArgumentError("Elements of Rem should be ReMat's"))
     end
     n,p = size(X)
-    if any(t -> size(t,1) ≠ n,Rem) || length(y) ≠ n
+    if any(t -> size(t,1) ≠ n, Rem) || length(y) ≠ n
         throw(DimensionMismatch("n not consistent"))
     end
     nreterms = length(Rem)
-    if length(Λ) ≠ nreterms || !all(i->chksz(Rem[i],Λ[i]),1:nreterms)
+    if length(Λ) ≠ nreterms || !all(i->chksz(Rem[i], Λ[i]), 1:nreterms)
         throw(DimensionMismatch("Rem and Λ"))
     end
     nt = nreterms + 1
     trms = Array(Any,nt)
-    for i in eachindex(Rem) trms[i] = Rem[i] end
+    for i in eachindex(Rem)
+        trms[i] = Rem[i]
+    end
     trms[end] = hcat(X,y)
     mtrms = trms   # to allow for weights
     if (nwt = length(wts)) > 0
@@ -226,10 +228,6 @@ Returns:
 """
 fixef(m::LinearMixedModel) = cholfact(m)\m.R[end,end][1:end-1,end]
 
-StatsBase.coef(m::LinearMixedModel) = fixef(m)
-
-StatsBase.nobs(m::LinearMixedModel) = size(m.trms[end],1)
-
 """
 Number of parameters in the model.
 
@@ -311,24 +309,6 @@ function StatsBase.deviance(m::LinearMixedModel)
 end
 
 """
-    fnames(m::MixedModel)
-
-Args:
-
-- `m`: a `MixedModel`
-
-Returns:
-  A `Vector{AbstractString}` of names of the grouping factors for the random-effects terms.
-"""
-fnames(m::LinearMixedModel) = [t.fnm for t in m.trms[1:end-1]]
-
-"""
-`grplevels(m)` -> Vector{Int} : number of levels in each term's grouping factor
-"""
-grplevels(v::Vector) = [length(t.f.pool) for t in v] # not tested
-grplevels(m::LinearMixedModel) = grplevels(m.trms[1:end-1])
-
-"""
     isfit(m)
 
 check if a model has been fit.
@@ -341,8 +321,6 @@ Returns:
   A logical value indicating if the model has been fit.
 """
 isfit(m::LinearMixedModel) = m.opt.fmin < Inf
-
-StatsBase.loglikelihood(m::LinearMixedModel) = -deviance(m)/2
 
 """
 Likelihood ratio test of one or more models
@@ -365,6 +343,7 @@ function lrt(mods::LinearMixedModel...) # not tested
     pval = unshift!([ccdf(Chisq(degf[i]-degf[i-1]),csqr[i])::Float64 for i in 2:nm],NaN)
     DataFrame(Df = degf, Deviance = dev, Chisq=csqr,pval=pval)
 end
+
 
 """
 `reml!(m,v=true)` -> m : Set m.REML to v.  If m.REML is modified, unset m.fit
@@ -404,11 +383,6 @@ function Base.show(io::IO, m::LinearMixedModel) # not tested
     @printf(io,"\n  Fixed-effects parameters:\n")
     show(io,coeftable(m))
 end
-
-"""
-`std(m) -> Vector{Vector{Float64}}` estimated standard deviations of variance components
-"""
-Base.std(m::LinearMixedModel) = sdest(m)*push!([rowlengths(λ) for λ in m.Λ],[1.])
 
 """
 `VarCorr` a type to encapsulate the information on the fitted random-effects
@@ -477,7 +451,7 @@ returns the estimated variance-covariance matrix of the fixed-effects estimator
 """
 function StatsBase.vcov(m::LinearMixedModel)
     Rinv = Base.LinAlg.inv!(cholfact(m))
-    varest(m)*Rinv*Rinv'
+    varest(m) * Rinv * Rinv'
 end
 
 """

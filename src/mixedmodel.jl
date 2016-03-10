@@ -63,7 +63,46 @@ function Base.setindex!(m::MixedModel,v::Vector,s::Symbol)
     cfactor!(R)
 end
 
+"""
+    std(m)
+
+Estimated standard deviations of the variance components
+
+Args:
+
+- `m`: a `MixedModel`
+
+Returns:
+  `Vector{Vector{Float64}}`
+"""
+Base.std(m::MixedModel) = sdest(m)*push!([rowlengths(λ) for λ in lmm(m).Λ],[1.])
+
+## methods for generics defined in StatsBase
+
+StatsBase.coef(m::LinearMixedModel) = fixef(m)
+
+StatsBase.loglikelihood(m::MixedModel) = -deviance(m)/2
+
+StatsBase.nobs(m::LinearMixedModel) = size(lmm(m).trms[end], 1)
+
 ## methods for functions exported from this module
+
+"""
+    fnames(m::MixedModel)
+
+Args:
+
+- `m`: a `MixedModel`
+
+Returns:
+  A `Vector{AbstractString}` of names of the grouping factors for the random-effects terms.
+"""
+fnames(m::MixedModel) = [t.fnm for t in lmm(m).trms[1:end - 1]]
+
+"""
+`grplevels(m)` -> Vector{Int} : number of levels in each term's grouping factor
+"""
+grplevels(m::MixedModel) = [length(t.f.pool) for t in reterms(m)]
 
 """
     lowerbd(m::MixedModel)
@@ -75,7 +114,7 @@ Args:
 Returns:
   A `Vector` of lower bounds on the covariance parameter vector `m[:θ]`
 """
-lowerbd(m::LinearMixedModel) = mapreduce(lowerbd,vcat,lmm(m).Λ)
+lowerbd(m::MixedModel) = mapreduce(lowerbd,vcat,lmm(m).Λ)
 
 """
     ranef!(v, m, uscale)
@@ -85,19 +124,20 @@ Overwrite v with the conditional modes of the random effects for `m`
 Args:
 
 - `v`: a `Vector` of matrices
-- `m`: a `LinearMixedModel`
+- `m`: a `MixedModel`
 - `uscale`: a `Bool` indicating if the random effects on the spherical (i.e. `u`) scale are desired
 
 Returns:
   `v`, overwritten with the conditional modes
 """
-function ranef!{T}(v::Vector, m::LinearMixedModel{T}, uscale)
+function ranef!(v::Vector, m::MixedModel, uscale)
     R, Λ = m.R, m.Λ
     k = length(Λ)  # number of random-effects terms
     kp1 = k + 1
     pp1 = size(R[1, k + 1], 2)
     p = pp1 - 1
     β = coef(m)
+    T = eltype(β)
     for j in 1:k
         mm = R[j, kp1]
         uj = v[j]
@@ -151,3 +191,15 @@ function ranef(m::MixedModel, uscale=false)
     end
     ranef!(v, lm, uscale)
 end
+
+"""
+    reterms(m)
+
+Args:
+
+- `m`: a `MixedModel`
+
+Returns:
+   A `Vector` of random-effects terms.
+"""
+reterms(m::MixedModel) = lmm(m).trms[1:end - 1]
