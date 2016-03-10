@@ -88,7 +88,7 @@ StatsBase.nobs(m::LinearMixedModel) = size(lmm(m).trms[end], 1)
 ## methods for functions exported from this module
 
 """
-    fnames(m::MixedModel)
+    fnames(m)
 
 Args:
 
@@ -105,7 +105,7 @@ fnames(m::MixedModel) = [t.fnm for t in lmm(m).trms[1:end - 1]]
 grplevels(m::MixedModel) = [length(t.f.pool) for t in reterms(m)]
 
 """
-    lowerbd(m::MixedModel)
+    lowerbd(m)
 
 Args:
 
