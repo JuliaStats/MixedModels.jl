@@ -15,7 +15,7 @@
 
 [lmm(m::MixedModels.LinearMixedModel{T})](MixedModels.md#method__lmm.2)      lmm(m::MixedModel)
 
-[lowerbd(m::MixedModels.LinearMixedModel{T})](MixedModels.md#method__lowerbd.1)      lowerbd(m::MixedModel)
+[lowerbd(m::MixedModels.MixedModel)](MixedModels.md#method__lowerbd.1)      lowerbd(m::MixedModel)
 
 [lowerbd{T}(A::LowerTriangular{T, Array{T, 2}})](MixedModels.md#method__lowerbd.2)  lower bounds on the parameters (elements in the lower triangle)
 
@@ -89,11 +89,11 @@
 
 [fixef!(v,  m::MixedModels.LinearMixedModel{T})](MixedModels.md#method__fixef.1)      fixef!(v, m)
 
-[fnames(m::MixedModels.LinearMixedModel{T})](MixedModels.md#method__fnames.1)      fnames(m::MixedModel)
+[fnames(m::MixedModels.MixedModel)](MixedModels.md#method__fnames.1)      fnames(m::MixedModel)
 
 [getindex{T}(A::LowerTriangular{T, Array{T, 2}},  s::Symbol)](MixedModels.md#method__getindex.1)  return the lower triangle as a vector (column-major ordering)
 
-[grplevels(v::Array{T, 1})](MixedModels.md#method__grplevels.1)  `grplevels(m)` -> Vector{Int} : number of levels in each term's grouping factor
+[grplevels(m::MixedModels.MixedModel)](MixedModels.md#method__grplevels.1)  `grplevels(m)` -> Vector{Int} : number of levels in each term's grouping factor
 
 [inflate!(A::MixedModels.HBlkDiag{T})](MixedModels.md#method__inflate.1)  `inflate!(A)` is equivalent to `A += I`, without making a copy of A
 
@@ -107,11 +107,13 @@
 
 [model_response(m::MixedModels.LinearMixedModel{T})](MixedModels.md#method__model_response.1)  extract the response (as a reference)
 
-[ranef!{T}(v::Array{T, 1},  m::MixedModels.LinearMixedModel{T},  uscale)](MixedModels.md#method__ranef.1)      ranef!(v, m, uscale)
+[ranef!(v::Array{T, 1},  m::MixedModels.MixedModel,  uscale)](MixedModels.md#method__ranef.1)      ranef!(v, m, uscale)
 
-[regenerateAend!(m::MixedModels.LinearMixedModel{T})](MixedModels.md#method__regenerateaend.1)  Regenerate the last column of `m.A` from `m.trms`
+[reevaluateAend!(m::MixedModels.LinearMixedModel{T})](MixedModels.md#method__reevaluateaend.1)      reevaluateAend!(m)
 
-[resetθ!(m::MixedModels.LinearMixedModel{T})](MixedModels.md#method__reset952.1)  Reset the value of `m.θ` to the initial values
+[resetθ!(m::MixedModels.LinearMixedModel{T})](MixedModels.md#method__reset952.1)      resetθ!(m)
+
+[reterms(m::MixedModels.MixedModel)](MixedModels.md#method__reterms.1)      reterms(m)
 
 [rowlengths(L::LowerTriangular{T, S<:AbstractArray{T, 2}})](MixedModels.md#method__rowlengths.1)  `rowlengths(L)` -> a vector of the Euclidean lengths of the rows of `L`
 
@@ -119,11 +121,11 @@
 
 [sqrtpwrss(m::MixedModels.LinearMixedModel{T})](MixedModels.md#method__sqrtpwrss.1)  returns the square root of the penalized residual sum-of-squares
 
-[std(m::MixedModels.LinearMixedModel{T})](MixedModels.md#method__std.1)  `std(m) -> Vector{Vector{Float64}}` estimated standard deviations of variance components
+[std(m::MixedModels.MixedModel)](MixedModels.md#method__std.1)      std(m)
 
 [tscale!(A::LowerTriangular{T, S<:AbstractArray{T, 2}},  B::MixedModels.HBlkDiag{T})](MixedModels.md#method__tscale.1)  scale B using the implicit expansion of A to a homogeneous block diagonal
 
-[unscaledre!(y::AbstractArray{T, 1},  M::MixedModels.ScalarReMat{T},  L::LowerTriangular{T, S<:AbstractArray{T, 2}})](MixedModels.md#method__unscaledre.1)  Add unscaled random effects to y
+[unscaledre!(y::AbstractArray{T, 1},  M::MixedModels.ScalarReMat{T},  L::LowerTriangular{T, S<:AbstractArray{T, 2}},  u::DenseArray{T, 2})](MixedModels.md#method__unscaledre.1)      unscaledre!(y, M, L, u)
 
 [vcov(m::MixedModels.LinearMixedModel{T})](MixedModels.md#method__vcov.1)  returns the estimated variance-covariance matrix of the fixed-effects estimator
 
