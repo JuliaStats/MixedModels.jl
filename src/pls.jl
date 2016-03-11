@@ -58,7 +58,7 @@ function LinearMixedModel{T}(
         trms[i] = Rem[i]
     end
     trms[end] = hcat(X,y)
-    mtrms = trms   # to allow for weights
+    usewt = false
     if (nwt = length(wts)) > 0
         if nwt ≠ n
             throw(DimensionMismatch("length(wts) must be 0 or length(y)"))
@@ -66,16 +66,16 @@ function LinearMixedModel{T}(
         if any(x -> x < 0, wts)
             throw(ArgumentError("Weights must be ≥ 0"))
         end
-        sqrtwts = sqrt(wts)
-        for i in eachindex(trms)
-            mtrms[i] = scale(sqrtwts,trms[i])
-        end
+        usewt = true
     end
-    A = fill!(Array(Any,(nt,nt)),nothing)
-    R = fill!(Array(Any,(nt,nt)),nothing)
+    A = fill!(Array(Any, (nt, nt)), nothing)
+    R = fill!(Array(Any, (nt, nt)), nothing)
     for j in 1:nt, i in 1:j
-        A[i,j] = densify(mtrms[i]'mtrms[j])
-        R[i,j] = copy(A[i,j])
+        A[i, j] = densify(trms[i]'trms[j])
+        if usewt
+            wtprod!(A[i, j], trms[i], trms[j], wts)
+        end
+        R[i, j] = copy(A[i, j])
     end
     for j in 2:nreterms
         if isa(R[j,j],Diagonal) || isa(R[j,j],HBlkDiag)
@@ -93,7 +93,7 @@ end
 
 """
     lmm(form, frm)
-    lmm(form, frm, weights)
+    lmm(form, frm; weights = wts)
 
 Args:
 
