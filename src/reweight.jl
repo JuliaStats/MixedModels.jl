@@ -1,8 +1,20 @@
+"""
+    reweight!(m)
+
+Incorporate `m.weights` in the products of terms in `m.A`
+
+Args:
+
+- `m`: a `MixedModel`
+
+Returns:
+  `m` with the products in `m.A` reweighted 
+"""
 function reweight!(m::MixedModel)
     lm = lmm(m)
     A, trms, wts = lm.A, lm.trms, lm.weights
     if length(wts) ≠ size(trms[1], 1)
-        throw(DimensionMismatch("$(length(wts)) = length(wts) ≠ size(x.trms[1], 1)"))
+        throw(DimensionMismatch("$(length(wts)) = length(m.weights) ≠ size(m.trms[1], 1)"))
     end
     for j in 1:size(A, 2), i in 1:j
         wtprod!(A[i, j], trms[i], trms[j], wts)
