@@ -43,7 +43,9 @@ const speye4 = speye(4)
 @test_throws DimensionMismatch Base.LinAlg.Ac_ldiv_B!(UpperTriangular(hblk), ones(1,1))
 @test_throws DimensionMismatch MixedModels.unscaledre!(ones(1), modl.trms[1], modl.Λ[1], ones(1, 6))
 
-@test_throws DimensionMismatch MixedModels.downdate!(ones(1,1), speye(4), ones(4,1))
+@test_throws DimensionMismatch MixedModels.downdate!(ones(1,1), speye4, ones(4,1))
 
-@test_throws DimensionMismatch MixedModels.downdate!(ones(1,1), speye(3), speye(4))
-@test_throws DimensionMismatch MixedModels.downdate!(ones(1,1), speye(4))
+@test_throws DimensionMismatch MixedModels.downdate!(ones(1,1), speye(3), speye4)
+@test_throws DimensionMismatch MixedModels.downdate!(ones(1,1), speye4)
+
+@test_throws DimensionMismatch MixedModels.inject!(speye4, speye(3))
