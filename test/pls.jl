@@ -132,6 +132,7 @@ fit!(fm5)
 @test_approx_eq_eps std(fm5)[2] [1.770647779277388] 1.e-4
 @test_approx_eq_eps varest(fm5) 0.3024263987592062 1.e-4
 @test_approx_eq_eps logdet(fm5) 95.74614821367786 1.e-3
+@test length(ranef(fm5)) == 2
 
 fm6 = lmm(Strength ~ (1|Sample) + (1|Batch), psts);
 @test size(fm6) == (60,1,40,2)

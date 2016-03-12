@@ -152,5 +152,5 @@ In Julia 0.5 this can be a one-liner `m.trms[end][:,end]`
 """
 function StatsBase.model_response(m::LinearMixedModel)
     Xy = m.trms[end]
-    sub(Xy, :, size(Xy,2))
+    slice(Xy, :, size(Xy,2))
 end

@@ -1,4 +1,4 @@
-#  Functions and methods common to all MixedModel type__scalarremat
+#  Functions and methods common to all MixedModel types
 
 """
     lmm(m::MixedModel)
@@ -14,7 +14,6 @@ Returns:
   A `LinearMixedModel`, either `m` itself or the `LMM` member of `m`
 """
 lmm(m::LinearMixedModel) = m
-lmm(m::GeneralizedLinearMixedModel) = m.LMM
 
 ## Methods for generics defined in Base.
 
@@ -165,7 +164,8 @@ function ranef!(v::Vector, m::MixedModel, uscale)
         uj = vec(v[j])
         Base.LinAlg.A_ldiv_B!(isa(Rjj, Diagonal) ? Rjj : UpperTriangular(Rjj), uj)
         for i in 1:j - 1
-            u[i] -= R[i, j] * u[j]
+            ui = vec(v[i])
+            ui -= R[i, j] * uj
         end
     end
     if !uscale

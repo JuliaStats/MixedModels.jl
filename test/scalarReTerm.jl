@@ -27,14 +27,14 @@ const rhs = sf'Yield
 const L = MixedModels.LT(sf)
 L[:θ] = [0.5]
 
-@test isa(MixedModels.tscale!(L,crp),Diagonal)
-@test crp.diag == fill(2.5,6)
-@test copy!(crp1,crp) == crp
+@test isa(MixedModels.tscale!(L, crp), Diagonal)
+@test crp.diag == fill(2.5, 6)
+@test copy!(crp1, crp) == crp
 
-const sf1 = ScalarReMat(psts[:Sample],ones(size(psts,1)),:Sample,ASCIIString["(Intercept)"])
-const sf2 = ScalarReMat(psts[:Batch],ones(size(psts,1)),:Batch,ASCIIString["(Intercept)"])
-@test size(sf1) == (60,30)
-@test size(sf2) == (60,10)
+const sf1 = ScalarReMat(psts[:Sample], ones(size(psts,1)), :Sample, ASCIIString["(Intercept)"])
+const sf2 = ScalarReMat(psts[:Batch], ones(size(psts, 1)), :Batch, ASCIIString["(Intercept)"])
+@test size(sf1) == (60, 30)
+@test size(sf2) == (60, 10)
 
 const crp11 = sf1'sf1
 const pr21 = sf2'sf1
