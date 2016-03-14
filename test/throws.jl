@@ -41,7 +41,7 @@ const dd3 = Diagonal(ones(3))
 @test_throws DimensionMismatch Base.LinAlg.A_ldiv_B!(dd3, Diagonal(ones(2)))
 
 const speye4 = speye(4)
-@test_throws BoundsError MixedModels.inject!(speye(4), sparse(ones(4,4)))
+@test_throws ArgumentError MixedModels.inject!(speye(4), sparse(ones(4,4)))
 @test_throws DimensionMismatch Base.LinAlg.A_ldiv_B!(dd3, speye4)
 @test_throws DimensionMismatch Base.LinAlg.Ac_ldiv_B!(UpperTriangular(hblk), ones(1,1))
 @test_throws DimensionMismatch MixedModels.unscaledre!(ones(1), modl.trms[1], modl.Λ[1], ones(1, 6))
