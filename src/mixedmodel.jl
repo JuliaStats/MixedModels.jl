@@ -109,7 +109,10 @@ Args:
 Returns:
   A `Vector{AbstractString}` of names of the grouping factors for the random-effects terms.
 """
-fnames(m::MixedModel) = [t.fnm for t in lmm(m).trms[1:end - 1]]
+function fnames(m::MixedModel)
+    lm = lmm(m)
+    [t.fnm for t in lm.trms[1:length(lm.Λ)]]
+end
 
 """
 `grplevels(m)` -> Vector{Int} : number of levels in each term's grouping factor
@@ -146,17 +149,14 @@ function ranef!(v::Vector, m::MixedModel, uscale)
     R, Λ = m.R, m.Λ
     k = length(Λ)  # number of random-effects terms
     kp1 = k + 1
-    pp1 = size(R[1, k + 1], 2)
-    p = pp1 - 1
+    p = size(R, 2) > kp1 ? size(R[1, kp1], 2) : 0
     β = coef(m)
     T = eltype(β)
     for j in 1:k
-        mm = R[j, kp1]
-        uj = v[j]
-        copy!(uj, sub(mm, :, pp1))
+        uj = copy!(v[j], R[j, end])
         # subtract the fixed-effects contribution
         if p > 0
-            Base.LinAlg.BLAS.gemv!('N', -one(T), sub(mm, :, 1:p), β, one(T), vec(uj))
+            Base.LinAlg.BLAS.gemv!('N', -one(T), R[j, kp1], β, one(T), vec(uj))
         end
     end
     for j in k:-1:1
@@ -215,4 +215,7 @@ Args:
 Returns:
    A `Vector` of random-effects terms.
 """
-reterms(m::MixedModel) = lmm(m).trms[1:end - 1]
+function reterms(m::MixedModel)
+    lm = lmm(m)
+    lm.trms[1:length(lm.Λ)]
+end

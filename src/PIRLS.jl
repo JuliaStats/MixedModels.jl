@@ -13,25 +13,19 @@ end
 function glmm(f::Formula, fr::AbstractDataFrame, d::Distribution, wt::Vector, l::Link)
     LMM = lmm(f, fr)
     y = copy(model_response(LMM))
-    if isempty(wt)
-        wt = ones(y)
-    end
-    A, R, trms = LMM.A, LMM.R, LMM.trms
-    X = trms[end][:,1:end-1]
+    trms = LMM.trms
+    kp1 = length(trms) - 1
+    X = copy(trms[kp1])
+    trms[kp1] = trms[end]
+    resize!(trms, kp1)
+    LMM.A, LMM.R = generateAR(trms, kp1 - 1)
                     # fit a glm pm the fixed-effects only
-    gl = glm(X, y, d, l; wts=wt, offset=zeros(y))
+    gl = glm(X, y, d, l; wts = isempty(wt) ? ones(y) : wt, offset = zeros(y))
     β₀ = coef(gl)
     r = gl.rr
     Base.A_mul_B!(r.offset, X, β₀)
     updatemu!(r, zeros(y))
-    trms[end] = reshape(copy(r.wrkresid), (length(y), 1))
-    sz = convert(Vector{Int}, map(x -> size(x,2), trms))
-    pp1 = length(sz)
-    T = eltype(y)
-    for i in eachindex(sz)
-        A[i, pp1] = Array(T, (sz[i], 1))
-        R[i, pp1] = Array(T, (sz[i], 1))
-    end
+    copy!(trms[end], r.wrkresid)
     ## FIXME  When using prior weights this will need to be modified.
     LMM.weights = copy(r.wrkwts)
     reweight!(LMM)
@@ -41,7 +35,7 @@ function glmm(f::Formula, fr::AbstractDataFrame, d::Distribution, wt::Vector, l:
 end
 
 function glmm(f::Formula, fr::AbstractDataFrame, d::Distribution, wt::DataVector, l::Link)
-    glmm(f,fr,d,convert(Vector,wt),l)
+    glmm(f, fr, d, convert(Vector, wt), l)
 end
 
 glmm(f::Formula, fr::AbstractDataFrame, d::Distribution, wt::Vector) = glmm(f, fr, d, wt, GLM.canonicallink(d))
