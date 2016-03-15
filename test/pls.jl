@@ -1,9 +1,9 @@
 fm1 = lmm(Yield ~ 1 + (1|Batch), ds)
 fm1w = lmm(Yield ~ 1 + (1|Batch), ds; weights = ones(size(ds, 1)))
 
-@test size(fm1.A) == (2, 2)
-@test size(fm1.trms) == (2,)
-@test size(fm1.R) == (2,2)
+@test size(fm1.A) == (3, 3)
+@test size(fm1.trms) == (3,)
+@test size(fm1.R) == (3, 3)
 @test size(fm1.Λ) == (1,)
 @test lowerbd(fm1) == zeros(1)
 @test fm1[:θ] == ones(1)
