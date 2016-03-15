@@ -41,24 +41,20 @@ function LinearMixedModel{T}(
     y::Vector{T},
     wts::Vector{T}
     )
-    if !all(x->isa(x,ReMat),Rem)
+    if !all(x -> isa(x, ReMat), Rem)
         throw(ArgumentError("Elements of Rem should be ReMat's"))
     end
-    n,p = size(X)
-    if any(t -> size(t,1) ≠ n, Rem) || length(y) ≠ n
+    n, p = size(X)
+    if any(t -> size(t, 1) ≠ n, Rem) || length(y) ≠ n
         throw(DimensionMismatch("n not consistent"))
     end
-    nreterms = length(Rem)
-    if length(Λ) ≠ nreterms || !all(i->chksz(Rem[i], Λ[i]), 1:nreterms)
+    k = length(Rem)
+    if length(Λ) ≠ k || !all(i -> chksz(Rem[i], Λ[i]), 1:k)
         throw(DimensionMismatch("Rem and Λ"))
     end
-    nt = nreterms + 1
-    trms = Array(Any,nt)
-    for i in eachindex(Rem)
-        trms[i] = Rem[i]
-    end
-    trms[end] = hcat(X,y)
-    usewt = false
+    trms = push!(convert(Vector{Any}, Rem), X)
+    push!(trms, reshape(y, (length(y), 1)))
+    A, R = generateAR(trms, k)
     if (nwt = length(wts)) > 0
         if nwt ≠ n
             throw(DimensionMismatch("length(wts) must be 0 or length(y)"))
@@ -66,29 +62,34 @@ function LinearMixedModel{T}(
         if any(x -> x < 0, wts)
             throw(ArgumentError("Weights must be ≥ 0"))
         end
-        usewt = true
+        nt = length(trms)
+        for j in 1:nt, i in 1:j
+            wtprod!(A[i,j], trms[i], trms[j], wts)
+        end
     end
-    A = fill!(Array(Any, (nt, nt)), nothing)
-    R = fill!(Array(Any, (nt, nt)), nothing)
+    LinearMixedModel(mf, trms, wts, Λ, A, R, OptSummary(mapreduce(x -> x[:θ], vcat, Λ), :None))
+end
+
+function generateAR(trms, k)
+    nt = length(trms)
+    A = cell(nt, nt)
+    R = cell(nt, nt)
     for j in 1:nt, i in 1:j
         A[i, j] = densify(trms[i]'trms[j])
-        if usewt
-            wtprod!(A[i, j], trms[i], trms[j], wts)
-        end
         R[i, j] = copy(A[i, j])
     end
-    for j in 2:nreterms
-        if isa(R[j,j],Diagonal) || isa(R[j,j],HBlkDiag)
-            for i in 1:(j-1)     # check for fill-in
-                if !isdiag(A[i,j]'A[i,j])
+    for j in 2:k
+        if isa(R[j, j], Diagonal) || isa(R[j, j], HBlkDiag)
+            for i in 1:(j - 1)     # check for fill-in
+                if !isdiag(A[i, j]'A[i, j])
                     for k in j:nt
-                        R[j,k] = full(R[j,k])
+                        R[j, k] = full(R[j, k])
                     end
                 end
             end
         end
     end
-    LinearMixedModel(mf,trms,wts,Λ,A,R,OptSummary(mapreduce(x->x[:θ],vcat,Λ),:None))
+    A, R
 end
 
 """
@@ -193,10 +194,24 @@ Args:
 Returns:
   Negative twice the log-likelihood of model `m`
 """
-objective(m::LinearMixedModel) = logdet(m) + nobs(m)*(1.+log(2π*varest(m)))
+objective(m::LinearMixedModel) = logdet(m) + nobs(m) * (1. + log(2π * varest(m)))
 
-## Rename this
-Base.cholfact(m::LinearMixedModel) = UpperTriangular(m.R[end,end][1:end-1,1:end-1])
+"""
+    feR(m)
+
+Upper Cholesky factor for the fixed-effects parameters
+
+Args:
+
+- `m`: a `LinearMixedModel`
+
+Returns:
+  an `UpperTriangular` p × p matrix which is the upper Cholesky factor
+"""
+function feR(m::LinearMixedModel)
+    kp1 = length(m.Λ) + 1
+    UpperTriangular(m.R[kp1, kp1])
+end
 
 """
     fixef!(v, m)
@@ -211,9 +226,17 @@ Args:
 Returns:
   `v` with its contents overwritten by the fixed-effects parameters
 """
-function fixef!(v,m::LinearMixedModel)
-    isfit(m) || error("Model has not been fit")
-    Base.LinAlg.A_ldiv_B!(cholfact(m),copy!(v,m.R[end,end][1:end-1,end]))
+function fixef!(v, m::LinearMixedModel)
+    if !isfit(m)
+        throw(ArgumentError("Model m has not been fit"))
+    end
+    if length(m.trms) == length(m.Λ) + 1
+        if !isempty(v)
+            throw(DimensionMismatch("v should have length 0"))
+        end
+        return v
+    end
+    Base.LinAlg.A_ldiv_B!(feR(m), copy!(v, m.R[end - 1, end]))
 end
 
 """
@@ -226,20 +249,22 @@ Args:
 Returns:
   A `Vector` of estimates of the fixed-effects parameters of `m`
 """
-fixef(m::LinearMixedModel) = cholfact(m)\m.R[end,end][1:end-1,end]
+function fixef(m::LinearMixedModel)
+    length(m.trms) == length(m.Λ) + 1 && return zeros(0)
+    vec(feR(m) \ m.R[end - 1, end])
+end
 
 """
 Number of parameters in the model.
-
-Note that `size(m.trms[end],2)` is `length(coef(m)) + 1`, thereby accounting
-for the scale parameter, σ, that is profiled out.
 """
-StatsBase.df(m::LinearMixedModel) = size(m.trms[end],2) + length(m[:θ])
+StatsBase.df(m::LinearMixedModel) = size(m.trms[end - 1], 2) + length(m[:θ]) + 1
 
 function Base.size(m::LinearMixedModel)
-    szs = map(size,m.trms)
-    n,pp1 = pop!(szs)
-    n,pp1-1,sum(x->x[2],szs),length(szs)
+    k = length(m.Λ)
+    trms = m.trms
+    q = sum([size(trms[j], 2) for j in 1:k])
+    n, p = size(trms[k + 1])
+    n, p, q, k
 end
 
 """
@@ -257,9 +282,9 @@ sdest(m::LinearMixedModel) = sqrtpwrss(m)/√nobs(m)
 """
 returns the square root of the penalized residual sum-of-squares
 
-This is the bottom right element of the bottom right block of m.R
+This is the bottom right block of m.R
 """
-sqrtpwrss(m::LinearMixedModel) = m.R[end,end][end,end]
+sqrtpwrss(m::LinearMixedModel) = m.R[end,end][1]
 
 """
     varest(m::LinearMixedModel)
@@ -289,18 +314,18 @@ pwrss(m::LinearMixedModel) = abs2(sqrtpwrss(m))
 Convert a lower Cholesky factor to a correlation matrix
 """
 function chol2cor(L::LowerTriangular)
-    size(L,1) == 1 && return ones(1,1)
-    res = L*L'
-    d = [inv(sqrt(res[i,i])) for i in 1:size(res,1)]
-    scale!(d,scale!(res,d))
+    size(L, 1) == 1 && return ones(1, 1)
+    res = L * L'
+    d = [inv(sqrt(res[i, i])) for i in 1:size(res, 1)]
+    scale!(d, scale!(res, d))
 end
 
-Base.cor(m::LinearMixedModel) = map(chol2cor,m.Λ)
+Base.cor(m::LinearMixedModel) = map(chol2cor, m.Λ)
 
-function StatsBase.coeftable(m::LinearMixedModel) # not tested
+function StatsBase.coeftable(m::LinearMixedModel)
     fe = fixef(m)
     se = stderr(m)
-    CoefTable(hcat(fe,se,fe./se), ["Estimate","Std.Error","z value"], coefnames(m.mf))
+    CoefTable(hcat(fe, se, fe ./ se), ["Estimate", "Std.Error", "z value"], coefnames(m.mf))
 end
 
 function StatsBase.deviance(m::LinearMixedModel)
@@ -447,9 +472,18 @@ function Base.show(io::IO,vc::VarCorr) # not tested
 end
 
 """
-returns the estimated variance-covariance matrix of the fixed-effects estimator
+     vcov(m)
+
+Estimated covariance matrix of the fixed-effects estimator
+
+Args:
+
+- `m`: a `LinearMixedModel`
+
+Returns
+  a `p × p` `Matrix`
 """
 function StatsBase.vcov(m::LinearMixedModel)
-    Rinv = Base.LinAlg.inv!(cholfact(m))
+    Rinv = Base.LinAlg.inv(feR(m))
     varest(m) * Rinv * Rinv'
 end

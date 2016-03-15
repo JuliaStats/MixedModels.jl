@@ -125,15 +125,13 @@ Simulate a response vector from model `m`, and refit `m`.
 - σv, vector of standard deviations for the scalar random effects.
 """
 function simulate!(m::LinearMixedModel; β = coef(m), σ = sdest(m), θ = m[:θ])
-    m[:θ] = θ        # side-effect of checking for correct length(θ)
+    m[:θ] = θ        # side-effect of checking for correct length of θ
     trms, Λ = m.trms, m.Λ
-    Xy = trms[end] # hcat of fixed-effects model matrix X and response y
-    pp1 = size(Xy, 2)
-    y = randn!(sub(Xy, :, pp1)) # initialize to standard normal noise
-    for j in eachindex(Λ)     # add the unscaled random effects
+    y = vec(randn!(trms[end])) # initialize to standard normal noise
+    for j in eachindex(Λ)      # add the unscaled random effects
         unscaledre!(y, trms[j], Λ[j])
     end
-    Base.LinAlg.BLAS.gemv!('N', 1.0, sub(Xy, :, 1:pp1 - 1), β, σ, y)
+    Base.LinAlg.BLAS.gemv!('N', 1.0, trms[end - 1], β, σ, y)
     m |> reevaluateAend! |> resetθ! |> fit!
 end
 
@@ -147,10 +145,5 @@ end
 
 """
 extract the response (as a reference)
-
-In Julia 0.5 this can be a one-liner `m.trms[end][:,end]`
 """
-function StatsBase.model_response(m::LinearMixedModel)
-    Xy = m.trms[end]
-    slice(Xy, :, size(Xy,2))
-end
+StatsBase.model_response(m::LinearMixedModel) = vec(m.trms[end])
