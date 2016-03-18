@@ -29,13 +29,15 @@ Args:
 Returns:
   `m` with the last column of `m.A` reevaluated
 
-Note: This function should be called after updating parts of `m.trms[end]`, typically the response.
+Note: This function should be called after updating the response, `m.trms[end]`.
 """
 function reevaluateAend!(m::LinearMixedModel)
     n = Compat.LinAlg.checksquare(m.A)
     trmn = m.trms[n]
+    wts = m.weights
+    haswts = !isempty(wts)
     for i in 1:n
-        Ac_mul_B!(m.A[i,n],m.trms[i],trmn)
+        haswts ? wtprod!(m.A[i, n], m.trms[i], trmn, wts) : Ac_mul_B!(m.A[i, n], m.trms[i], trmn)
     end
     m
 end
