@@ -3,35 +3,53 @@
 
 type GeneralizedLinearMixedModel{T <: AbstractFloat, D <: UnivariateDistribution, L <: Link} <: MixedModel
     LMM::LinearMixedModel{T}
-    r::GLM.GlmResp{Vector{T}, D, L}
+    dist::D
+    link::L
     β₀::DenseVector{T}
+    u::Vector
     u₀::Vector
-    δ::Vector
     X::DenseMatrix{T}
+    y::DenseVector{T}
+    μ::DenseVector{T}
+    η::DenseVector{T}
+    dμdη::DenseVector{T}
+    devresid::DenseVector{T}
+    offset::DenseVector{T}
+    var::DenseVector{T}
+    wrkresid::DenseVector{T}
+    wrkwt::DenseVector{T}
+    wt::DenseVector{T}
 end
 
 function glmm(f::Formula, fr::AbstractDataFrame, d::Distribution, wt::Vector, l::Link)
     LMM = lmm(f, fr)
-    y = copy(model_response(LMM))
-    trms = LMM.trms
-    kp1 = length(trms) - 1
-    X = copy(trms[kp1])
-    trms[kp1] = trms[end]
-    resize!(trms, kp1)
-    LMM.A, LMM.R = generateAR(trms, kp1 - 1)
-                    # fit a glm pm the fixed-effects only
-    gl = glm(X, y, d, l; wts = isempty(wt) ? ones(y) : wt, offset = zeros(y))
-    β₀ = coef(gl)
+    A, R, trms, u, y = LMM.A, LMM.R, LMM.trms, ranef(LMM, true), copy(model_response(LMM))
+    kp1 = length(LMM.Λ) + 1
+    X = copy(trms[kp1])         # the copy may be unnecessary
+            # zero the dimension of the fixed-effects in trms, A and R
+    trms[kp1] = zeros((length(y), 0))
+    for i in 1:kp1
+        qi = size(trms[i], 2)
+        A[i, kp1] = zeros((qi, 0))
+        R[i, kp1] = zeros((qi, 0))
+    end
+    qend = size(trms[end], 2)  # should always be 1 but no harm in extracting it
+    A[kp1, end] = zeros((0, qend))
+    R[kp1, end] = zeros((0, qend))
+            # fit a glm pm the fixed-effects only
+    gl = glm(X, y, d, l; wts = isempty(wt) ? ones(y) : wt)
     r = gl.rr
-    Base.A_mul_B!(r.offset, X, β₀)
-    updatemu!(r, zeros(y))
-    copy!(trms[end], r.wrkresid)
-    ## FIXME  When using prior weights this will need to be modified.
-    LMM.weights = copy(r.wrkwts)
+    β₀ = coef(gl)
+    res = GeneralizedLinearMixedModel(LMM, d, l, β₀, u, map(copy, u), X, y, r.mu,
+        r.eta, r.mueta, r.devresid, X * β₀, r.var, r.wrkresid, r.wrkwts, r.wts)
+    updateμ!(res)
+    wrkresp!(trms[end], res)
+    LMM.weights = copy(res.wrkwt)
     reweight!(LMM)
     fit!(LMM)
-    δ = ranef(LMM, true)
-    GeneralizedLinearMixedModel(LMM, r, β₀, map(zeros, δ), δ, X)
+    map!(copy, res.u, ranef!(res.u₀, LMM, true))
+    pwrss!(res)
+    res
 end
 
 function glmm(f::Formula, fr::AbstractDataFrame, d::Distribution, wt::DataVector, l::Link)
@@ -44,19 +62,61 @@ glmm(f::Formula, fr::AbstractDataFrame, d::Distribution) = glmm(f, fr, d, Float6
 
 lmm(m::GeneralizedLinearMixedModel) = m.LMM
 
-function ustep(m::GeneralizedLinearMixedModel, fac)
-    ## FIXME change the action of GLM.updatemu! so that the copying of linpr to r.eta happens externally
+pwrss(m::GeneralizedLinearMixedModel) = pwrss(lmm(m))
+
+Base.logdet(m::GeneralizedLinearMixedModel) = logdet(lmm(m))
+
+function LaplaceDeviance(m::GeneralizedLinearMixedModel)
+    sum(m.devresid) + mapreduce(sumabs2, +, m.u) + logdet(m)
+end
+
+function updateη!{T <: AbstractFloat}(m::GeneralizedLinearMixedModel{T})
     lm = lmm(m)
-    u₀, δ, Λ, trms = m.u₀, m.δ, lm.Λ, lm.trms
-    trialeta = zeros(size(m.X, 1))
-    for i in eachindex(δ)
-        ui = u₀[i]
-        ti = copy(δ[i])
-        for j in eachindex(ti)
-            ti[j] *= fac
-            ti[j] += ui[j]
-        end
-        unscaledre!(trialeta, trms[i], Λ[i], ti)
+    η, u, Λ, trms = m.η, m.u, lm.Λ, lm.trms
+    fill!(η, zero(T))
+    for i in eachindex(u)
+        unscaledre!(η, trms[i], Λ[i], u[i])
     end
-    updatemu!(m.r, trialeta)
+    updateμ!(m)
+end
+
+function pwrss!(m::GeneralizedLinearMixedModel)
+    lm = m.LMM
+    updateη!(m)
+    wrkresp!(lm.trms[end], m)
+    reevaluateAend!(lm)
+    lm[:θ] = lm[:θ]
+    pwrss(lm)
+end
+
+function pirls!{T <: AbstractFloat}(m::GeneralizedLinearMixedModel{T})
+    u₀, u, iter, maxiter = m.u₀, m.u, 0, 100
+    obj₀ = pwrss(m)
+    while iter < maxiter
+        iter += 1
+        nhalf = 0
+        obj = pwrss!(m)
+        @show iter, obj
+        while obj >= obj₀
+            nhalf += 1
+            if nhalf > 10
+                throw(ErrorException("number of averaging steps > 10"))
+            end
+            for i in eachindex(u)
+                ui = u[i]
+                ui₀ = u₀[i]
+                for j in eachindex(ui)
+                    ui[j] += ui₀[j]
+                    ui[j] *= 0.5
+                end
+            end
+            obj = pwrss!(m)
+            @show nhalf, obj
+        end
+        if isapprox(obj, obj₀; rtol = 0.001)
+            break
+        end
+        obj₀ = obj
+    end
+    m
 end
