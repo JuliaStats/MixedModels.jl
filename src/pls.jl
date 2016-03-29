@@ -122,9 +122,17 @@ function lmm(f::Formula, fr::AbstractDataFrame; weights::Vector{Float64}=Float64
 end
 
 """
-`fit!(m)` -> `m`
+    fit!(m[, verbose = false])
 
-Optimize the objective using an NLopt optimizer.
+Optimize the objective of a `LinearMixedModel` using an NLopt optimizer.
+
+Args:
+- `m`: a `LinearMixedModel`
+- `verbose`: `Bool` indicating if information on iterations should be printed, Defaults to `false`
+
+Named Args:
+- `optimizer`: `Symbol` form of the name of a derivative-free optimizer in `NLopt` that allows for
+  box constraints.  Defaults to `:LN_BOBYQA`
 """
 function StatsBase.fit!(m::LinearMixedModel, verbose::Bool=false, optimizer::Symbol=:LN_BOBYQA)
     th = m[:θ]

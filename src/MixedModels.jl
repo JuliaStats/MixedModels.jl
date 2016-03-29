@@ -15,10 +15,12 @@ export GeneralizedLinearMixedModel,
        bootstrap,  # Create bootstrap replications of a model
        fixef,      # extract the fixed-effects parameter estimates
        glmm,       # define a GeneralizedLinearMixedModel
+       LaplaceDeviance, # Laplace approximation to GLMM deviance
        lmm,        # create a LinearMixedModel from a formula/data specification
        lowerbd,    # lower bounds on the covariance parameters
        objective,  # the objective function in fitting a model
        pwrss,      # penalized, weighted residual sum-of-squares
+       pirls!,     # use Penalized Iteratively Reweighted Least Squares to obtain conditional modes of random effects
        ranef,      # extract the conditional modes of the random effects
        refit!,     # install a response and refit the model
        remat,      # factory for construction of ReMat objects
