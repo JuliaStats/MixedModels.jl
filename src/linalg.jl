@@ -40,3 +40,8 @@ function Base.LinAlg.Ac_ldiv_B!{T}(A::UpperTriangular{T,HBlkDiag{T}}, B::DenseMa
     end
     B
 end
+
+function rowlengths(L::LowerTriangular)
+    ld = L.data
+    [(sl = slice(ld, i, 1:i); sqrt(dot(sl, sl))) for i in 1:size(L, 1)]
+end

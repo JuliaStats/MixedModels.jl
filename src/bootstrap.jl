@@ -1,9 +1,18 @@
 """
+    bootstrap(m, N, saveresults)
+
 Simulate `N` response vectors from `m`, refitting the model.  The function saveresults
 is called after each refit.
 
-To save space the last column of `m.trms[end]`, which is the response vector, is overwritten
+To save space `m.trms[end]`, which is the response vector, is overwritten
 by each simulation.  The original response is restored before returning.
+
+Args:
+
+- `m`: a `LinearMixedModel` that has been fit.
+- `N`: the number of bootstrap samples to simulate
+- `savresults`: a function with arguments `i` and `m` called after each bootstrap simulation.
+   As the name indicates, this function should save the results of interest.
 """
 function bootstrap(m::LinearMixedModel, N::Integer, saveresults::Function)
     y0 = copy(model_response(m))
@@ -119,12 +128,19 @@ function unscaledre!(y::AbstractVector, M::VectorReMat, L::LowerTriangular)
 end
 
 """
+    simulate!(m; β, σ, θ)
+
 Simulate a response vector from model `m`, and refit `m`.
 
-- m, LinearMixedModel.
-- β, fixed effects parameter vector
-- σ, standard deviation of the per-observation random noise term
-- σv, vector of standard deviations for the scalar random effects.
+Args:
+
+- `m`: a `LinearMixedModel`.
+- `β`: the fixed-effects parameter vector to use; defaults to `coef(m)`
+- `σ`: the standard deviation of the per-observation random noise term to use; defaults to `sdest(m)`
+- `θ`: the covariance parameter vector to use; defaults to `m[:θ]`
+
+Returns:
+  `m` after having refit it to the simulated response vector
 """
 function simulate!(m::LinearMixedModel; β = coef(m), σ = sdest(m), θ = m[:θ])
     m[:θ] = θ        # side-effect of checking for correct length of θ

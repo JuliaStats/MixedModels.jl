@@ -2,22 +2,43 @@
 
     {contents}
 
+## Types
+
+    {docs}
+
+    LinearMixedModel
+    MixedModels.OptSummary
+    ScalarReMat
+    VarCorr
+    VectorReMat
+
 ## Public Functions
 
     {docs}
     bootstrap
-    df(m::LinearMixedModel)
+    coef(::MixedModel)
+    coeftable(::MixedModel)
+    cond(::MixedModel)
+    df(::LinearMixedModel)
+    deviance(::LinearMixedModel)
+    fit!(::LinearMixedModel)
+    fitted(::LinearMixedModel)
     fixef
     LaplaceDeviance
     lmm
     lowerbd
+    model_response(::LinearMixedModel)
+    nobs(::LinearMixedModel)
     objective
     pwrss
+    pirls!
     ranef
     refit!
+    remat
     sdest
     simulate!
     varest
+    vcov
 
 ## Internal Functions
 
@@ -39,11 +60,9 @@
     MixedModels.pirls!
     MixedModels.ranef!
     MixedModels.reevaluateAend!
-    MixedModels.remat
     MixedModels.resetθ!
     MixedModels.reterms
     MixedModels.reweight!
-    MixedModels.rowlengths
     MixedModels.sqrtpwrss
     MixedModels.tscale!
     MixedModels.unscaledre!

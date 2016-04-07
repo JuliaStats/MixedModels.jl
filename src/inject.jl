@@ -1,14 +1,21 @@
 """
-like `copy!` but allowing for heterogeneous matrix types
+    inject!(d, s)
+
+Args:
+
+- `d`: destination matrix
+- `s`: source matrix
+
+Behaves like `copy!(d, s)` but allowing for heterogeneous matrix types
 """
 inject!(d,s) = copy!(d,s)               # fallback method
 
-function inject!(d::UpperTriangular,s::UpperTriangular)
-    if (n = size(s,2)) ≠ size(d,2)
-        throw(DimensionMismatch("size(s,2) ≠ size(d,2)"))
+function inject!(d::UpperTriangular, s::UpperTriangular)
+    if (n = size(s, 2)) ≠ size(d, 2)
+        throw(DimensionMismatch("size(s, 2) ≠ size(d, 2)"))
     end
     for j in 1:n
-        inject!(sub(d,1:j,j),sub(s,1:j,j))
+        inject!(sub(d, 1 : j, j), sub(s, 1 : j, j))
     end
     d
 end
@@ -16,28 +23,31 @@ end
 function inject!{T<:Real}(d::StridedMatrix{T}, s::Diagonal{T})
     sd = s.diag
     if length(sd) ≠ Compat.LinAlg.checksquare(d)  # why does d have to be square?
-        throw(DimensionMismatch("size(d,2) ≠ size(s,2)"))
+        throw(DimensionMismatch("size(d ,2) ≠ size(s, 2)"))
     end
-    fill!(d, zero(T))
+    fill!(d, 0)
     @inbounds for i in eachindex(sd)
-        d[i,i] = sd[i]
+        d[i, i] = sd[i]
     end
     d
 end
 
-inject!(d::Diagonal{Float64},s::Diagonal{Float64}) = (copy!(d.diag,s.diag);d)
+function inject!(d::Diagonal{Float64}, s::Diagonal{Float64})
+    copy!(d.diag, s.diag)
+    d
+end
 
-function inject!(d::SparseMatrixCSC{Float64},s::SparseMatrixCSC{Float64})
-    m,n = size(d)
-    if size(d) ≠ size(s)
+function inject!(d::SparseMatrixCSC{Float64}, s::SparseMatrixCSC{Float64})
+    m, n = size(d)
+    if size(s) ≠ (m, n)
         throw(DimensionMismatch("size(d) ≠ size(s)"))
     end
-    if nnz(d) == nnz(s)  # should also check that colptr
-        copy!(nonzeros(d),nonzeros(s))
+    if nnz(d) == nnz(s)  # FIXME: should also check that colptr members match
+        copy!(nonzeros(d), nonzeros(s))
         return d
     end
-    drv = rowvals(d); srv = rowvals(s); dnz = nonzeros(d); snz = nonzeros(s)
-    fill!(dnz,0.)
+    drv, srv, dnz, snz = rowvals(d), rowvals(s), nonzeros(d), nonzeros(s)
+    fill!(dnz, 0)
     for j in 1:n
         dnzr = nzrange(d, j)
         dnzrv = sub(drv, dnzr)

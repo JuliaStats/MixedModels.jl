@@ -4,7 +4,10 @@ module MixedModels
 
 using Compat, DataArrays, GLM, DataFrames, Distributions, NLopt, Showoff, StatsBase
 
-import StatsBase: df
+import StatsBase: coef, coeftable, df, deviance, fit!, fitted, loglikelihood,
+    model_response, nobs, vcov
+
+import Base: cond, std
 
 export GeneralizedLinearMixedModel,
        LinearMixedModel,
@@ -15,22 +18,32 @@ export GeneralizedLinearMixedModel,
        VectorReMat,
 
        bootstrap,  # Create bootstrap replications of a model
+       coef,
+       coeftable,
+       cond,
        df,
+       deviance,
+       fit!,
+       fitted,
        fixef,      # extract the fixed-effects parameter estimates
        glmm,       # define a GeneralizedLinearMixedModel
        LaplaceDeviance, # Laplace approximation to GLMM deviance
        lmm,        # create a LinearMixedModel from a formula/data specification
+       loglikelihood,
        lowerbd,    # lower bounds on the covariance parameters
+       model_response,
+       nobs,
        objective,  # the objective function in fitting a model
        pwrss,      # penalized, weighted residual sum-of-squares
        pirls!,     # use Penalized Iteratively Reweighted Least Squares to obtain conditional modes of random effects
        ranef,      # extract the conditional modes of the random effects
        refit!,     # install a response and refit the model
        remat,      # factory for construction of ReMat objects
-       reml!,      # set the objective to be the REML criterion
        sdest,      # the estimate of the standard deviation of the per-observation noise
        simulate!,  # simulate a new response and refit the model
-       varest      # estimate of the residual variance
+       std,
+       varest,     # estimate of the residual variance
+       vcov
 
 abstract MixedModel <: RegressionModel # model with fixed and random effects
 

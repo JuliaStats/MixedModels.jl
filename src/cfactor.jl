@@ -1,8 +1,17 @@
 """
-Slightly modified version of `chol!` from `julia/base/linalg/cholesky.jl`
+    cfactor!(A)
 
-Uses `inject!` (as opposed to `copy!`), `downdate!` (as opposed to `syrk!`
-    or `gemm!`) and recursive calls to `cfactor!`,
+A slightly modified version of `chol!` from `julia/base/linalg/cholesky.jl`
+
+Uses `inject!` (as opposed to `copy!`), `downdate!` (as opposed to `syrk!` or `gemm!`)
+and recursive calls to `cfactor!`
+
+Args:
+
+-`A`: A `Matrix`
+
+Note: The `cfactor!` method for dense matrices calls `LAPACK.potrf!` directly to avoid
+errors being thrown when `A` is computationally singular
 """
 function cfactor!(A::AbstractMatrix)
     n = Compat.LinAlg.checksquare(A)
@@ -27,23 +36,22 @@ function cfactor!(D::Diagonal)
     D
 end
 
-"""
-`cfactor!` method for dense matrices calls `LAPACK.potrf!` directly to avoid
-errors being thrown when `R` is computationally singular
-"""
-cfactor!(R::Matrix{Float64}) = UpperTriangular(Base.LinAlg.LAPACK.potrf!('U', R)[1])
+cfactor!(A::Matrix{Float64}) = UpperTriangular(Base.LinAlg.LAPACK.potrf!('U', A)[1])
 
-function cfactor!(R::HBlkDiag)
-    Ra = R.arr
-    r, s, k = size(Ra)
+function cfactor!(A::HBlkDiag)
+    Aa = A.arr
+    r, s, k = size(Aa)
     for i in 1:k
-        Base.LinAlg.chol!(sub(Ra, :, :, i))
+        Base.LinAlg.chol!(sub(Aa, :, :, i))
     end
-    UpperTriangular(R)
+    UpperTriangular(A)
 end
 
 """
-Subtract, in place, A'A or A'B from C
+    downdate!(C, A)
+    downdate!(C, A, B)
+
+Subtract, in place, `A'A` or `A'B` from `C`
 """
 downdate!{T<:Base.LinAlg.BlasFloat}(C::DenseMatrix{T},A::DenseMatrix{T}) =
     BLAS.syrk!('U', 'T', -one(T), A, one(T), C)

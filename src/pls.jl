@@ -1,5 +1,15 @@
 """
-Summary of an NLopt optimization
+    OptSummary
+
+Summary of an `NLopt` optimization
+
+Members:
+
+- `initial`: a copy of the initial parameter values in the optimization
+- `final`: a copy of the final parameter values from the optimization
+- `fmin`: the final value of the objective
+- `feval`: the number of function evaluations
+- `optimizer`: the name of the optimizer used, as a `Symbol`
 """
 type OptSummary
     initial::Vector{Float64}
@@ -13,8 +23,11 @@ function OptSummary(initial::Vector{Float64},optimizer::Symbol)
 end
 
 """
+    LinearMixedModel
+
 Linear mixed-effects model representation
 
+Members:
 - `mf`: the model frame, mostly used to get the `terms` component for labelling fixed effects
 - `trms`: a length `nt` vector of model matrices. Its last element is `hcat(X,y)`
 - `Λ`: a length `nt - 1` vector of lower triangular matrices
@@ -122,15 +135,17 @@ function lmm(f::Formula, fr::AbstractDataFrame; weights::Vector{Float64}=Float64
 end
 
 """
-    fit!(m[, verbose = false])
+    fit!(m[, verbose = false]; optimizer = :LN_BOBYQA)
 
-Optimize the objective of a `LinearMixedModel` using an NLopt optimizer.
+Optimize the objective of a `LinearMixedModel` using an `NLopt` optimizer.
 
 Args:
+
 - `m`: a `LinearMixedModel`
 - `verbose`: `Bool` indicating if information on iterations should be printed, Defaults to `false`
 
 Named Args:
+
 - `optimizer`: `Symbol` form of the name of a derivative-free optimizer in `NLopt` that allows for
   box constraints.  Defaults to `:LN_BOBYQA`
 """
@@ -288,9 +303,13 @@ Returns:
 sdest(m::LinearMixedModel) = sqrtpwrss(m)/√nobs(m)
 
 """
-returns the square root of the penalized residual sum-of-squares
+    sqrtpwrss(m)
 
-This is the bottom right block of m.R
+Returns the square root of the penalized residual sum-of-squares, which is the bottom right block of `m.R`, as a scalar
+
+Args:
+
+- `m`: a `LinearMixedModel`
 """
 sqrtpwrss(m::LinearMixedModel) = m.R[end,end][1]
 
@@ -302,7 +321,7 @@ Args:
 - `m`: a `LinearMixedModel`
 
 Returns:
-The scalar, s², the estimate of σ², the variance of the conditional distribution of Y given B
+ The scalar, s², the estimate of σ², the variance of the conditional distribution of Y given B
 """
 varest(m::LinearMixedModel) = pwrss(m)/nobs(m)
 
@@ -319,7 +338,14 @@ Returns:
 pwrss(m::LinearMixedModel) = abs2(sqrtpwrss(m))
 
 """
-Convert a lower Cholesky factor to a correlation matrix
+    chol2cor(L)
+
+Args:
+
+- `L`: a `LowerTriangular` matrix
+
+Returns:
+ The correlation matrix (symmetric, positive definite with unit diagonal) corresponding to `L * L'`
 """
 function chol2cor(L::LowerTriangular)
     size(L, 1) == 1 && return ones(1, 1)
@@ -356,7 +382,17 @@ Returns:
 isfit(m::LinearMixedModel) = m.opt.fmin < Inf
 
 """
-Likelihood ratio test of one or more models
+    lrt(mods...)
+
+Perform sequential likelihood ratio tests on a sequence of models.
+
+Args:
+
+- `mods`: Two or more `LinearMixedModel` that have been fit.  They should be fits of
+  the same response
+
+Results:
+  A `DataFrame` containing information on the likelihood ratio tests.
 """
 function lrt(mods::LinearMixedModel...) # not tested
     if (nm = length(mods)) <= 1
@@ -375,18 +411,6 @@ function lrt(mods::LinearMixedModel...) # not tested
     csqr = unshift!([(dev[i-1]-dev[i])::Float64 for i in 2:nm],NaN)
     pval = unshift!([ccdf(Chisq(degf[i]-degf[i-1]),csqr[i])::Float64 for i in 2:nm],NaN)
     DataFrame(Df = degf, Deviance = dev, Chisq=csqr,pval=pval)
-end
-
-
-"""
-`reml!(m,v=true)` -> m : Set m.REML to v.  If m.REML is modified, unset m.fit
-"""
-function reml!(m::LinearMixedModel,v::Bool=true)
-    if m.REML != v
-        m.REML = v
-        m.opt.fmin = Inf
-    end
-    m
 end
 
 function Base.show(io::IO, m::LinearMixedModel) # not tested
@@ -418,8 +442,17 @@ function Base.show(io::IO, m::LinearMixedModel) # not tested
 end
 
 """
-`VarCorr` a type to encapsulate the information on the fitted random-effects
+    VarCorr
+
+An encapsulation of information on the fitted random-effects
 variance-covariance matrices.
+
+Members:
+
+- `Λ`: the vector of lower triangular matrices from the `MixedModel`
+- `fnms`: a `Vector{ASCIIString}` of grouping factor names
+- `cnms`: a `Vector{Vector{ASCIIString}}` of column names
+- `s`: the estimate of σ, the standard deviation of the per-observation noise
 
 The main purpose is to isolate the logic in the show method.
 """

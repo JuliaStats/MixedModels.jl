@@ -1,8 +1,15 @@
 """
-`densify(S[,threshold])`
+    densify(S[,threshold])
 
-Convert sparse `S` to `Diagonal` if S is diagonal
+ Args:
+
+ - `S`: an `AbstractMatrix`, usually a `SparseMatrixCSC`
+ - `threshold`: an optional threshold for the proportion of nonzeros.  Defaults to `0.3`
+
+Convert sparse `S` to `Diagonal` if `S` is diagonal.
+
 Convert sparse `S` to dense if the proportion of nonzeros exceeds `threshold`.
+
 A no-op for other matrix types.
 """
 function densify(S,threshold=0.3)
@@ -24,6 +31,7 @@ function densify(S,threshold=0.3)
     nz1 = nzs[1]
     T = typeof(nz1)
     if !isa(nz1,Array) || !isbits(eltype(nz1)) # branch not tested
+
         error("Nonzeros must be a bitstype or an array of same")
     end
     sz1 = size(nz1)

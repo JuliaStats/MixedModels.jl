@@ -88,7 +88,16 @@ StatsBase.nobs(m::LinearMixedModel) = size(lmm(m).trms[end], 1)
 
 
 """
-describe the blocks of the A and R matrices
+    describeblocks(m)
+
+Describe the blocks of the A and R matrices
+
+Args:
+
+- `m`: a `MixedModel`
+
+Prints a description of the types and sizes of the blocks in `A`, the matrix of
+products of terms, and in `R`, the upper Cholesky factor.
 """
 function describeblocks(m::MixedModel)
     lm = lmm(m)
@@ -115,7 +124,14 @@ function fnames(m::MixedModel)
 end
 
 """
-`grplevels(m)` -> Vector{Int} : number of levels in each term's grouping factor
+    grplevels(m)
+
+Args:
+
+- `m`: a `MixedModel`
+
+Returns:
+ A `Vector{Int}` containing the number of levels in each term's grouping factor
 """
 grplevels(m::MixedModel) = [length(t.f.pool) for t in reterms(m)]
 

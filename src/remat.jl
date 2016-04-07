@@ -1,12 +1,21 @@
 """
-`ReMat` - model matrix for a random-effects term
+    ReMat
+
+A representation of the model matrix for a random-effects term
 """
 abstract ReMat
 
 """
-`ScalarReMat` - a model matrix for scalar random effects
+    ScalarReMat
 
-The matrix is represented by the grouping factor, `f`, and a vector `z`.
+The representation of the model matrix for a scalar random-effects term
+
+Members:
+
+- `f`: the grouping factor as a `PooledDataVector`
+- `z`: the raw random-effects model matrix as a `Vector`
+- `fnm`: the name of the grouping factor as a `Symbol`
+- `cnms`: a `Vector` of column names
 """
 immutable ScalarReMat{T} <: ReMat
     f::PooledDataVector
@@ -16,10 +25,16 @@ immutable ScalarReMat{T} <: ReMat
 end
 
 """
-`VectorReMat` - a representation of a model matrix for vector-valued random effects
+    VectorReMat
 
-The matrix is represented by the grouping factor, `f`, and the transposed raw
-model matrix, `z`.
+The representation of the model matrix for a vector-valued random-effects term
+
+Members:
+
+- `f`: the grouping factor as a `PooledDataVector`
+- `z`: the transposed raw random-effects model matrix
+- `fnm`: the name of the grouping factor as a `Symbol`
+- `cnms`: a `Vector` of column names (row names after transposition) of `z`
 """
 immutable VectorReMat{T} <: ReMat
     f::PooledDataVector                 # grouping factor

@@ -1,7 +1,13 @@
 """
-`inflate!(A)` is equivalent to `A += I`, without making a copy of A
+    inflate(A)
 
-Even if `A += I` did not make a copy, this function is needed for the special
+Equivalent to `A += I`, without making a copy of `A`
+
+Args:
+
+- `A`: a `HBlkDiag` matrix or a `DenseMatrix`
+
+Note: Even if `A += I` did not make a copy, this function is needed for the special
 behavior on the `HBlkDiag` type.
 """
 function inflate!(A::HBlkDiag)

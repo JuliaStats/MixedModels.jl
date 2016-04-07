@@ -56,17 +56,14 @@ chksz(A::ScalarReMat,λ::LowerTriangular) = size(λ,1) == 1
 chksz(A::VectorReMat,λ::LowerTriangular) = size(λ,1) == size(A.z,1)
 
 """
-`rowlengths(L)` -> a vector of the Euclidean lengths of the rows of `L`
+    tscale!(A, B)
 
-used in `chol2cor`
-"""
-function rowlengths(L::LowerTriangular)
-    Ld = L.data
-    [norm(sub(Ld,i,1:i)) for i in 1:size(Ld,1)]
-end
+Scale `B` using the implicit expansion of `A` to a homogeneous block diagonal
 
-"""
-scale B using the implicit expansion of A to a homogeneous block diagonal
+Args:
+
+- `A`: a `LowerTriangular` matrix of the size of the diagonal blocks of `B`
+- `B`: a `HBlkDiag` matrix
 """
 function tscale!(A::LowerTriangular,B::HBlkDiag)
     Ba = B.arr
@@ -88,10 +85,14 @@ function tscale!{T}(A::LowerTriangular{T}, B::Diagonal{T})
 end
 
 """
-`LT(A) -> LowerTriangular`
+    LT(A)
 
-Create as a lower triangular matrix compatible with the blocks of `A`
+Create a lower triangular matrix compatible with the blocks of `A`
 and initialized to the identity.
+
+Args:
+
+- `A`: an `ReMat`
 """
 LT(A::ScalarReMat) = LowerTriangular(ones(eltype(A.z),(1,1)))
 

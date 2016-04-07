@@ -7,6 +7,8 @@ julia:
 #  - nightly
 notifications:
   email: false
+before_script:
+  - export PATH=$HOME/.local/bin:$PATH
 script:
   - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
   - julia -e 'Pkg.clone(pwd()); Pkg.build("MixedModels"); Pkg.test("MixedModels"; coverage=true)'

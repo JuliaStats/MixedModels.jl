@@ -109,6 +109,7 @@ end
 Use Penalized Iteratively Reweighted Least Squares (PIRLS) to determine the conditional modes of the random effects
 
 Args:
+
 - `m`: a `GeneralizedLinearMixedModel`
 
 Returns:

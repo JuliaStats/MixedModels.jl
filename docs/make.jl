@@ -1,6 +1,6 @@
 using Documenter, MixedModels
 
-makedocs(modules = [MixedModels], )
+makedocs()
 
 deploydocs(
     repo = "github.com/dmbates/MixedModels.jl.git",
