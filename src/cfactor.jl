@@ -155,3 +155,5 @@ function downdate!{T}(C::DenseMatrix{T}, A::SparseMatrixCSC{T})
     end
     C
 end
+
+## FIXME: Need a downdate! method for SparseMatrixCSC, SparseMatrixCSC, SparseMatrixCSC (3 or more nested)

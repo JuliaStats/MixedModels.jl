@@ -11,4 +11,6 @@ script:
   - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
   - julia -e 'Pkg.clone(pwd()); Pkg.build("MixedModels"); Pkg.test("MixedModels"; coverage=true)'
 after_success:
+  - julia -e 'Pkg.clone("https://github.com/MichaelHatherly/Documenter.jl")'
+  - julia -e 'cd(Pkg.dir("MixedModels")); include(joinpath("docs", "make.jl"))'
   - julia -e 'cd(Pkg.dir("MixedModels")); Pkg.add("Coverage"); using Coverage; Coveralls.submit(Coveralls.process_folder())'

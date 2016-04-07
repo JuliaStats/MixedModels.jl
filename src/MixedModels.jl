@@ -4,6 +4,8 @@ module MixedModels
 
 using Compat, DataArrays, GLM, DataFrames, Distributions, NLopt, Showoff, StatsBase
 
+import StatsBase: df
+
 export GeneralizedLinearMixedModel,
        LinearMixedModel,
        MixedModel,
@@ -13,6 +15,7 @@ export GeneralizedLinearMixedModel,
        VectorReMat,
 
        bootstrap,  # Create bootstrap replications of a model
+       df,
        fixef,      # extract the fixed-effects parameter estimates
        glmm,       # define a GeneralizedLinearMixedModel
        LaplaceDeviance, # Laplace approximation to GLMM deviance
