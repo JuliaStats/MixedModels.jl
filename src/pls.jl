@@ -28,6 +28,7 @@ end
 Linear mixed-effects model representation
 
 Members:
+
 - `mf`: the model frame, mostly used to get the `terms` component for labelling fixed effects
 - `trms`: a length `nt` vector of model matrices. Its last element is `hcat(X,y)`
 - `Λ`: a length `nt - 1` vector of lower triangular matrices
@@ -116,7 +117,7 @@ Args:
 - `weights`: an optional vector of prior weights in the model.  Defaults to unit weights.
 
 Returns:
-  A `LinearMixedModel`.
+  A [`LinearMixedModel`]({ref}).
 
 Notes:
   The return value is ready to be `fit!` but has not yet been fit.
@@ -141,7 +142,7 @@ Optimize the objective of a `LinearMixedModel` using an `NLopt` optimizer.
 
 Args:
 
-- `m`: a `LinearMixedModel`
+- `m`: a [`LinearMixedModel`]({ref})
 - `verbose`: `Bool` indicating if information on iterations should be printed, Defaults to `false`
 
 Named Args:

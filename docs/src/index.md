@@ -5,7 +5,6 @@
 ## Types
 
     {docs}
-
     LinearMixedModel
     MixedModels.OptSummary
     ScalarReMat

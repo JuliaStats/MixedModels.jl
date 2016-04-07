@@ -3,12 +3,7 @@ repo_url:         https://github.com/dmbates/MixedModels.jl
 site_description: Fit and examine linear mixed-effects models
 site_author:      Douglas M. Bates
 
-theme: material
-
-extra:
-  palette:
-    primary: 'indigo'
-    accent:  'blue'
+theme: readthedocs
 
 extra_css:
   - assets/Documenter.css
@@ -18,7 +13,6 @@ extra_javascript:
   - assets/mathjaxhelper.js
 
 markdown_extensions:
-  - codehighlight
   - extra
   - tables
   - fenced_code
