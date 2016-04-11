@@ -171,10 +171,10 @@ end
 """
     fit!(m[, verbose = false])
 
-Optimize the objective of a `LinearMixedModel` using an NLopt optimizer.
+Optimize the objective of a `GeneralizedLinearMixedModel` using an NLopt optimizer.
 
 Args:
-- `m`: a `GeneralizedLinearMixedModel`
+- `m`: a [`GeneralizedLinearMixedModel`]({ref})
 - `verbose`: `Bool` indicating if information on iterations should be printed, Defaults to `false`
 
 Named Args:
