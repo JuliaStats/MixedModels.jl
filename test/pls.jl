@@ -2,7 +2,7 @@ fm1 = lmm(Yield ~ 1 + (1|Batch), ds)
 fm1w = lmm(Yield ~ 1 + (1|Batch), ds; weights = ones(size(ds, 1)))
 
 @test size(fm1.A) == (3, 3)
-@test size(fm1.trms) == (3,)
+@test size(fm1.wttrms) == (3,)
 @test size(fm1.R) == (3, 3)
 @test size(fm1.Λ) == (1,)
 @test lowerbd(fm1) == zeros(1)
@@ -80,7 +80,7 @@ fit!(fm3)
 @test_approx_eq diag(cor(fm3)[1]) ones(2)
 @test_approx_eq_eps cond(fm3) [4.1752507630514915] 1.e-4
 @test loglikelihood(fm3) ≈ -875.9696722323523
-@test eltype(fm3.trms[1]) === Float64
+@test eltype(fm3.wttrms[1]) === Float64
 const u3 = ranef(fm3,true)
 @test length(u3) == 1
 @test size(u3[1]) == (2,18)

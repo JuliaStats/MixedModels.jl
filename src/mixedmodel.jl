@@ -82,7 +82,7 @@ StatsBase.coef(m::LinearMixedModel) = fixef(m)
 
 StatsBase.loglikelihood(m::MixedModel) = -deviance(m)/2
 
-StatsBase.nobs(m::LinearMixedModel) = size(lmm(m).trms[end], 1)
+StatsBase.nobs(m::LinearMixedModel) = length(model_response(m))
 
 ## methods for functions exported from this module
 
@@ -120,7 +120,7 @@ Returns:
 """
 function fnames(m::MixedModel)
     lm = lmm(m)
-    [t.fnm for t in lm.trms[1:length(lm.Λ)]]
+    [t.fnm for t in lm.wttrms[1:length(lm.Λ)]]
 end
 
 """
@@ -210,9 +210,9 @@ Returns:
 """
 function ranef(m::MixedModel, uscale=false)
     lm = lmm(m)
-    Λ, trms = lm.Λ, lm.trms
+    Λ, trms = lm.Λ, unwttrms(lm)
     T = eltype(trms[end])
-    v = []
+    v = Matrix{T}[]
     for i in eachindex(Λ)
         l = size(Λ[i], 1)
         k = size(trms[i], 2)
@@ -233,5 +233,5 @@ Returns:
 """
 function reterms(m::MixedModel)
     lm = lmm(m)
-    lm.trms[1:length(lm.Λ)]
+    unwttrms(m)[1:length(lm.Λ)]
 end

@@ -2,10 +2,8 @@ using Documenter, MixedModels
 
 makedocs()
 
-custom.deps() = run(`pip install --user pygments mkdocs mkdocs-material`)
-
 deploydocs(
-    deps = custom.deps,
+    deps = Deps.pip("pygments", "mkdocs", "mkdocs-material"),
     repo = "github.com/dmbates/MixedModels.jl.git",
     julia = "release",
     osname = "linux"

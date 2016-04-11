@@ -44,7 +44,7 @@ Fixed effects:
 
 These `Dyestuff` data are available through `RCall`
 ```julia
-julia> using DataFrames,MixedModels, RCall
+julia> using DataFrames, MixedModels, RCall
 
 julia> ds = rcopy("lme4::Dyestuff")
 30x2 DataFrames.DataFrame
@@ -134,12 +134,12 @@ julia> coef(m)  # another name for fixef
  1527.5
 
 julia> ranef(m)
-1-element Array{Any,1}:
+1-element Array{Array{Float64,2},1}:
  1x6 Array{Float64,2}:
  -16.6282  0.369516  26.9747  -21.8014  53.5798  -42.4943
 
 julia> ranef(m, true)  # on the u scale
-1-element Array{Any,1}:
+1-element Array{Array{Float64,2},1}:
  1x6 Array{Float64,2}:
  -22.0949  0.490999  35.8429  -28.9689  71.1948  -56.4648
 

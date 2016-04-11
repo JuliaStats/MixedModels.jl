@@ -41,12 +41,13 @@ Returns:
 Note: This function should be called after updating the response, `m.trms[end]`.
 """
 function reevaluateAend!(m::LinearMixedModel)
-    n = Compat.LinAlg.checksquare(m.A)
-    trmn = m.trms[n]
-    wts = m.weights
-    haswts = !isempty(wts)
-    for i in 1:n
-        haswts ? wtprod!(m.A[i, n], m.trms[i], trmn, wts) : Ac_mul_B!(m.A[i, n], m.trms[i], trmn)
+    A, trms, sqrtwts, wttrms = m.A, m.trms, m.sqrtwts, m.wttrms
+    wttrmn = wttrms[end]
+    if !isempty(sqrtwts)
+        scale!(wttrmn, sqrtwts, trms[end])
+    end
+    for i in eachindex(wttrms)
+        Ac_mul_B!(A[i, end], wttrms[i], wttrmn)
     end
     m
 end
@@ -105,10 +106,9 @@ function unscaledre!(y::AbstractVector, M::ScalarReMat, L::LowerTriangular)
     unscaledre!(y, M, L, randn(1, length(M.f.pool)))
 end
 
-function unscaledre!(y::AbstractVector,
-      M::VectorReMat,
-      L::LowerTriangular,
-      u::DenseMatrix)
+function unscaledre!(y::AbstractVector, M::VectorReMat, L::LowerTriangular,
+    u::DenseMatrix)
+
     Z = M.z
     k, n = size(Z)
     l = length(M.f.pool)
@@ -123,9 +123,8 @@ function unscaledre!(y::AbstractVector,
     y
 end
 
-function unscaledre!(y::AbstractVector, M::VectorReMat, L::LowerTriangular)
+unscaledre!(y::AbstractVector, M::VectorReMat, L::LowerTriangular) =
     unscaledre!(y, M, L, randn(size(M.z, 1), length(M.f.pool)))
-end
 
 """
     simulate!(m; β, σ, θ)
@@ -143,10 +142,10 @@ Returns:
   `m` after having refit it to the simulated response vector
 """
 function simulate!(m::LinearMixedModel; β = coef(m), σ = sdest(m), θ = m[:θ])
-    m[:θ] = θ        # side-effect of checking for correct length of θ
-    trms, Λ = m.trms, m.Λ
-    y = vec(randn!(trms[end])) # initialize to standard normal noise
-    for j in eachindex(Λ)      # add the unscaled random effects
+    m[:θ] = θ
+    trms, Λ = unwttrms(m), m.Λ
+    y = randn!(model_response(m)) # initialize to standard normal noise
+    for j in eachindex(Λ)         # add the unscaled random effects
         unscaledre!(y, trms[j], Λ[j])
     end
     Base.LinAlg.BLAS.gemv!('N', 1.0, trms[end - 1], β, σ, y)
@@ -154,7 +153,16 @@ function simulate!(m::LinearMixedModel; β = coef(m), σ = sdest(m), θ = m[:θ]
 end
 
 """
-refit the model `m` with response `y`
+    refit!(m, y)
+Refit the model `m` with response `y`
+
+Args:
+
+- `m`: a `MixedModel{T}`
+- `y`: a `Vector{T}` of length `n`, the number of observations in `m`
+
+Returns:
+  `m` after refitting
 """
 function refit!(m::LinearMixedModel,y)
     copy!(model_response(m),y)
@@ -164,4 +172,4 @@ end
 """
 extract the response (as a reference)
 """
-StatsBase.model_response(m::LinearMixedModel) = vec(m.trms[end])
+StatsBase.model_response(m::LinearMixedModel) = vec(unwttrms(m)[end])

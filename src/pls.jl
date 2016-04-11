@@ -30,17 +30,19 @@ Linear mixed-effects model representation
 Members:
 
 - `mf`: the model frame, mostly used to get the `terms` component for labelling fixed effects
-- `trms`: a length `nt` vector of model matrices. Its last element is `hcat(X,y)`
-- `Λ`: a length `nt - 1` vector of lower triangular matrices
-- `weights`: a length `n` vector of weights
+- `wttrms`: a length `nt` vector of weighted model matrices. The last two elements are `X` and `y`.
+- `trms`: an empty vector if `isempty(sqrtwts)`, otherwise the unweighted model matrices
+- `Λ`: a length `nt - 2` vector of lower triangular matrices
+- `sqrtwts`: a length `n` vector of weights
 - `A`: an `nt × nt` symmetric matrix of matrices representing `hcat(Z,X,y)'hcat(Z,X,y)`
 - `R`: a `nt × nt` matrix of matrices - the upper Cholesky factor of `Λ'AΛ+I`
-- `opt`: an `OptSummary` object
+- `opt`: an [`OptSummary`]({ref}) object
 """
 type LinearMixedModel{T} <: MixedModel
     mf::ModelFrame
+    wttrms:: Vector
     trms::Vector
-    weights::Vector{T}
+    sqrtwts::Vector{T}
     Λ::Vector{LowerTriangular{T,Matrix{T}}}
     A::Matrix        # symmetric cross-product blocks (upper triangle)
     R::Matrix        # right Cholesky factor in blocks.
@@ -68,23 +70,21 @@ function LinearMixedModel{T}(
     end
     trms = push!(convert(Vector{Any}, Rem), X)
     push!(trms, reshape(y, (length(y), 1)))
-    A, R = generateAR(trms, k)
-    if (nwt = length(wts)) > 0
-        if nwt ≠ n
-            throw(DimensionMismatch("length(wts) must be 0 or length(y)"))
-        end
-        if any(x -> x < 0, wts)
-            throw(ArgumentError("Weights must be ≥ 0"))
-        end
-        nt = length(trms)
-        for j in 1:nt, i in 1:j
-            wtprod!(A[i,j], trms[i], trms[j], wts)
-        end
+    optsum = OptSummary(mapreduce(x -> x[:θ], vcat, Λ), :None)
+    if isempty(wts)
+        A, R = generateAR(trms)
+        return LinearMixedModel(mf, trms, [], T[], Λ, A, R, optsum)
     end
-    LinearMixedModel(mf, trms, wts, Λ, A, R, OptSummary(mapreduce(x -> x[:θ], vcat, Λ), :None))
+    if length(wts) ≠ n
+        throw(DimensionMismatch("length(wts) must be 0 or length(y)"))
+    end
+    sqrtwts = map(sqrt, wts)
+    wttrms = [scale(sqrtwts, t) for t in trms]
+    A, R = generateAR(wttrms)
+    LinearMixedModel(mf, wttrms, trms, wts, Λ, A, R, optsum)
 end
 
-function generateAR(trms, k)
+function generateAR(trms)
     nt = length(trms)
     A = cell(nt, nt)
     R = cell(nt, nt)
@@ -92,7 +92,7 @@ function generateAR(trms, k)
         A[i, j] = densify(trms[i]'trms[j])
         R[i, j] = copy(A[i, j])
     end
-    for j in 2:k
+    for j in 2:nt
         if isa(R[j, j], Diagonal) || isa(R[j, j], HBlkDiag)
             for i in 1:(j - 1)     # check for fill-in
                 if !isdiag(A[i, j]'A[i, j])
@@ -134,6 +134,8 @@ function lmm(f::Formula, fr::AbstractDataFrame; weights::Vector{Float64}=Float64
     re = sort!([remat(e,mf.df) for e in retrms]; by = nlevs, rev = true)
     LinearMixedModel(mf,re,map(LT,re),X.m,y,weights)
 end
+
+unwttrms(m::LinearMixedModel) = isempty(m.sqrtwts) ? m.wttrms : m.trms
 
 """
     fit!(m[, verbose = false]; optimizer = :LN_BOBYQA)
@@ -245,7 +247,7 @@ Overwrite `v` with the fixed-effects coefficients of model `m`
 Args:
 
 - `v`: a `Vector` of length `p`, the number of fixed-effects parameters
-- `m`: a `MixedModel`
+- `m`: a `LinearMixedModel`
 
 Returns:
   `v` with its contents overwritten by the fixed-effects parameters
@@ -253,12 +255,6 @@ Returns:
 function fixef!(v, m::LinearMixedModel)
     if !isfit(m)
         throw(ArgumentError("Model m has not been fit"))
-    end
-    if length(m.trms) == length(m.Λ) + 1
-        if !isempty(v)
-            throw(DimensionMismatch("v should have length 0"))
-        end
-        return v
     end
     Base.LinAlg.A_ldiv_B!(feR(m), copy!(v, m.R[end - 1, end]))
 end
@@ -268,7 +264,7 @@ end
 
 Args:
 
-- `m`: a `MixedModel`
+- `m`: a `LinearMixedModel`
 
 Returns:
   A `Vector` of estimates of the fixed-effects parameters of `m`
@@ -279,13 +275,19 @@ function fixef(m::LinearMixedModel)
 end
 
 """
-Number of parameters in the model.
+    df(m)
+Args:
+
+- `m`: a `LinearMixedModel`
+
+Returns:
+ Number of parameters in the model.
 """
-StatsBase.df(m::LinearMixedModel) = size(m.trms[end - 1], 2) + length(m[:θ]) + 1
+StatsBase.df(m::LinearMixedModel) = size(m.wttrms[end - 1], 2) + length(m[:θ]) + 1
 
 function Base.size(m::LinearMixedModel)
     k = length(m.Λ)
-    trms = m.trms
+    trms = m.wttrms
     q = sum([size(trms[j], 2) for j in 1:k])
     n, p = size(trms[k + 1])
     n, p, q, k
@@ -296,7 +298,7 @@ end
 
 Args:
 
-- `m`: a `MixedModel` object
+- `m`: a `LinearMixedModel` object
 
 Returns:
   The scalar, `s`, the estimate of σ, the standard deviation of the per-observation noise
@@ -469,10 +471,10 @@ type VarCorr
     end
 end
 function VarCorr(m::LinearMixedModel)
-    Λ = m.Λ
+    Λ, trms = m.Λ, unwttrms(m)
     VarCorr(Λ,
-            [string(m.trms[i].fnm) for i in eachindex(Λ)],
-            [m.trms[i].cnms for i in eachindex(Λ)],
+            [string(trms[i].fnm) for i in eachindex(Λ)],
+            [trms[i].cnms for i in eachindex(Λ)],
             sdest(m))
 end
 

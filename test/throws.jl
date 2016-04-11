@@ -11,7 +11,7 @@ X = ones(30,1)
 @test_throws DimensionMismatch LinearMixedModel(mf, append!(copy(Rem), Rem), Λ, X, y, Float64[])
 @test_throws DimensionMismatch LinearMixedModel(mf, Rem, append!(copy(Λ), Λ), X, y, Float64[])
 @test_throws DimensionMismatch LinearMixedModel(mf,Rem, [LowerTriangular(eye(2)) for i in 1], X, y, Float64[])
-@test_throws ArgumentError LinearMixedModel(mf, Rem, Λ, X, y, fill(-1., 30))
+@test_throws DomainError LinearMixedModel(mf, Rem, Λ, X, y, fill(-1., 30))
 
 @test_throws ArgumentError lmm(Yield ~ 1, ds)
 
@@ -44,7 +44,7 @@ const speye4 = speye(4)
 @test_throws ArgumentError MixedModels.inject!(speye(4), sparse(ones(4,4)))
 @test_throws DimensionMismatch Base.LinAlg.A_ldiv_B!(dd3, speye4)
 @test_throws DimensionMismatch Base.LinAlg.Ac_ldiv_B!(UpperTriangular(hblk), ones(1,1))
-@test_throws DimensionMismatch MixedModels.unscaledre!(ones(1), modl.trms[1], modl.Λ[1], ones(1, 6))
+@test_throws DimensionMismatch MixedModels.unscaledre!(ones(1), modl.wttrms[1], modl.Λ[1], ones(1, 6))
 
 @test_throws DimensionMismatch MixedModels.downdate!(ones(1,1), speye4, ones(4,1))
 @test_throws DimensionMismatch MixedModels.downdate!(ones(1,1), speye4, speye4)
