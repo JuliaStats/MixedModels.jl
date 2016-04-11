@@ -1,4 +1,4 @@
-## Fitting linear mixed-effects models
+# Fitting linear mixed-effects models
 
 The `lmm` function is similar to the `lmer` function in the
 [lme4](http://cran.R-project.org/package=lme4) package for
@@ -6,7 +6,7 @@ The `lmm` function is similar to the `lmer` function in the
 version are `formula` and `data`.  The principle method for the
 `Julia` version takes these arguments.
 
-### A model fit to the `Dyestuff` data from the `lme4` package
+## A simple example
 
 The simplest example of a mixed-effects model that we use in the
 [lme4 package for R](https://github.com/lme4/lme4) is a model fit to
@@ -38,36 +38,36 @@ Fixed effects:
 
     {meta}
     DocTestSetup = quote
-        using DataFrames, MixedModels, RCall
-        ds = rcopy("lme4::Dyestuff")
+        using DataFrames, MixedModels
+        include(Pkg.dir("MixedModels", "test", "data.jl"))
     end
 
-These `Dyestuff` data are available through `RCall`
+These `Dyestuff` data are available through `RCall` but to run the doctests we use a stored copy of the dataframe.
 ```julia
-julia> using DataFrames, MixedModels, RCall
+julia> using DataFrames, MixedModels
 
-julia> ds = rcopy("lme4::Dyestuff")
+julia> ds
 30x2 DataFrames.DataFrame
-│ Row │ Batch │ Yield  │
-┝━━━━━┿━━━━━━━┿━━━━━━━━┥
-│ 1   │ "A"   │ 1545.0 │
-│ 2   │ "A"   │ 1440.0 │
-│ 3   │ "A"   │ 1440.0 │
-│ 4   │ "A"   │ 1520.0 │
-│ 5   │ "A"   │ 1580.0 │
-│ 6   │ "B"   │ 1540.0 │
-│ 7   │ "B"   │ 1555.0 │
-│ 8   │ "B"   │ 1490.0 │
+│ Row │ Yield  │ Batch │
+┝━━━━━┿━━━━━━━━┿━━━━━━━┥
+│ 1   │ 1545.0 │ 'A'   │
+│ 2   │ 1440.0 │ 'A'   │
+│ 3   │ 1440.0 │ 'A'   │
+│ 4   │ 1520.0 │ 'A'   │
+│ 5   │ 1580.0 │ 'A'   │
+│ 6   │ 1540.0 │ 'B'   │
+│ 7   │ 1555.0 │ 'B'   │
+│ 8   │ 1490.0 │ 'B'   │
 ⋮
-│ 22  │ "E"   │ 1630.0 │
-│ 23  │ "E"   │ 1515.0 │
-│ 24  │ "E"   │ 1635.0 │
-│ 25  │ "E"   │ 1625.0 │
-│ 26  │ "F"   │ 1520.0 │
-│ 27  │ "F"   │ 1455.0 │
-│ 28  │ "F"   │ 1450.0 │
-│ 29  │ "F"   │ 1480.0 │
-│ 30  │ "F"   │ 1445.0 │
+│ 22  │ 1630.0 │ 'E'   │
+│ 23  │ 1515.0 │ 'E'   │
+│ 24  │ 1635.0 │ 'E'   │
+│ 25  │ 1625.0 │ 'E'   │
+│ 26  │ 1520.0 │ 'F'   │
+│ 27  │ 1455.0 │ 'F'   │
+│ 28  │ 1450.0 │ 'F'   │
+│ 29  │ 1480.0 │ 'F'   │
+│ 30  │ 1445.0 │ 'F'   │
 ```
 
 `lmm` defaults to maximum likelihood estimation whereas `lmer` in `R`
@@ -150,20 +150,18 @@ julia> objective(m)
 327.3270598811394
 ```
 
-We prefer `objective` to `deviance` because this is
+We prefer `objective` to `deviance` because the value returned is
 `-2loglikelihood(m)`, without the correction for the null deviance.
-(It is not clear how the null deviance should be defined for these models.)
+It is not clear how the null deviance should be defined for these models.
 
-## A more substantial example
+## More substantial examples
 
 Fitting a model to the `Dyestuff` data is trivial.  The `InstEval`
 data in the `lme4` package is more of a challenge in that there are
 nearly 75,000 evaluations by 2972 students on a total of 1128
 instructors.
 
-```julia
-julia> inst = rcopy("lme4::InstEval");
-
+```
 julia> head(inst)
 6x7 DataFrames.DataFrame
 │ Row │ s   │ d      │ studage │ lectage │ service │ dept │ y │
@@ -220,28 +218,28 @@ dept - 2 & service - 1    -0.384773  0.091843  -4.18946
 
 Models with vector-valued random effects can be fit
 ```julia
-julia> slp = rcopy("lme4::sleepstudy")
+julia> slp
 180x3 DataFrames.DataFrame
 │ Row │ Reaction │ Days │ Subject │
 ┝━━━━━┿━━━━━━━━━━┿━━━━━━┿━━━━━━━━━┥
-│ 1   │ 249.56   │ 0.0  │ "308"   │
-│ 2   │ 258.705  │ 1.0  │ "308"   │
-│ 3   │ 250.801  │ 2.0  │ "308"   │
-│ 4   │ 321.44   │ 3.0  │ "308"   │
-│ 5   │ 356.852  │ 4.0  │ "308"   │
-│ 6   │ 414.69   │ 5.0  │ "308"   │
-│ 7   │ 382.204  │ 6.0  │ "308"   │
-│ 8   │ 290.149  │ 7.0  │ "308"   │
+│ 1   │ 249.56   │ 0    │ 1       │
+│ 2   │ 258.705  │ 1    │ 1       │
+│ 3   │ 250.801  │ 2    │ 1       │
+│ 4   │ 321.44   │ 3    │ 1       │
+│ 5   │ 356.852  │ 4    │ 1       │
+│ 6   │ 414.69   │ 5    │ 1       │
+│ 7   │ 382.204  │ 6    │ 1       │
+│ 8   │ 290.149  │ 7    │ 1       │
 ⋮
-│ 172 │ 273.474  │ 1.0  │ "372"   │
-│ 173 │ 297.597  │ 2.0  │ "372"   │
-│ 174 │ 310.632  │ 3.0  │ "372"   │
-│ 175 │ 287.173  │ 4.0  │ "372"   │
-│ 176 │ 329.608  │ 5.0  │ "372"   │
-│ 177 │ 334.482  │ 6.0  │ "372"   │
-│ 178 │ 343.22   │ 7.0  │ "372"   │
-│ 179 │ 369.142  │ 8.0  │ "372"   │
-│ 180 │ 364.124  │ 9.0  │ "372"   │
+│ 172 │ 273.474  │ 1    │ 18      │
+│ 173 │ 297.597  │ 2    │ 18      │
+│ 174 │ 310.632  │ 3    │ 18      │
+│ 175 │ 287.173  │ 4    │ 18      │
+│ 176 │ 329.608  │ 5    │ 18      │
+│ 177 │ 334.482  │ 6    │ 18      │
+│ 178 │ 343.22   │ 7    │ 18      │
+│ 179 │ 369.142  │ 8    │ 18      │
+│ 180 │ 364.124  │ 9    │ 18      │
 
 julia> fm3 = fit!(lmm(Reaction ~ 1 + Days + (1+Days|Subject), slp))
 Linear mixed model fit by maximum likelihood
