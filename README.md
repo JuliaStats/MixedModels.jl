@@ -6,4 +6,5 @@
 [![MixedModels](http://pkg.julialang.org/badges/MixedModels_0.4.svg)](http://pkg.julialang.org/?pkg=MixedModels&ver=0.4)
 
 #### Lastest Documentation
-[![Documentation Status](https://readthedocs.org/projects/mixedmodelsjl/badge/?version=latest)](http://mixedmodelsjl.readthedocs.org/en/latest/?badge=latest)
+
+[Latest Documentation](http://dmbates.github.io/MixedModels.jl/latest).
