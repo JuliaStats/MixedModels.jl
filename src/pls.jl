@@ -31,7 +31,7 @@ Members:
 
 - `mf`: the model frame, mostly used to get the `terms` component for labelling fixed effects
 - `wttrms`: a length `nt` vector of weighted model matrices. The last two elements are `X` and `y`.
-- `trms`: an empty vector if `isempty(sqrtwts)`, otherwise the unweighted model matrices
+- `trms`: a vector of unweighted model matrices.  If `isempty(sqrtwts)` the same object as `wttrms`
 - `Λ`: a length `nt - 2` vector of lower triangular matrices
 - `sqrtwts`: a length `n` vector of weights
 - `A`: an `nt × nt` symmetric matrix of matrices representing `hcat(Z,X,y)'hcat(Z,X,y)`
@@ -71,23 +71,17 @@ function LinearMixedModel{T}(
     trms = push!(convert(Vector{Any}, Rem), X)
     push!(trms, reshape(y, (length(y), 1)))
     optsum = OptSummary(mapreduce(x -> x[:θ], vcat, Λ), :None)
-    if isempty(wts)
-        A, R = generateAR(trms)
-        return LinearMixedModel(mf, trms, [], T[], Λ, A, R, optsum)
-    end
-    if length(wts) ≠ n
-        throw(DimensionMismatch("length(wts) must be 0 or length(y)"))
-    end
     sqrtwts = map(sqrt, wts)
-    wttrms = [scale(sqrtwts, t) for t in trms]
+    wttrms =  isempty(wts) ? trms :
+        length(wts) == n ? [scale(sqrtwts, t) for t in trms] :
+        throw(DimensionMismatch("length(wts) must be 0 or length(y)"))
     A, R = generateAR(wttrms)
     LinearMixedModel(mf, wttrms, trms, wts, Λ, A, R, optsum)
 end
 
 function generateAR(trms)
     nt = length(trms)
-    A = cell(nt, nt)
-    R = cell(nt, nt)
+    A, R = cell(nt, nt), cell(nt, nt)
     for j in 1:nt, i in 1:j
         A[i, j] = densify(trms[i]'trms[j])
         R[i, j] = copy(A[i, j])
@@ -414,6 +408,34 @@ function lrt(mods::LinearMixedModel...) # not tested
     csqr = unshift!([(dev[i-1]-dev[i])::Float64 for i in 2:nm],NaN)
     pval = unshift!([ccdf(Chisq(degf[i]-degf[i-1]),csqr[i])::Float64 for i in 2:nm],NaN)
     DataFrame(Df = degf, Deviance = dev, Chisq=csqr,pval=pval)
+end
+
+
+"""
+    reweight!(m, wts)
+
+Update `m.sqrtwts` from `wts` and `m.wttrms` from `m.trms`.  Recompute `m.A`
+
+Args:
+
+- `m`: a `MixedModel`
+- `wts`: a non-negative vector of weights
+
+Returns:
+`m` with the products in `m.A` reweighted
+"""
+function reweight!{T}(m::LinearMixedModel{T}, wts::Vector{T})
+    A, wttrms, trms, sqrtwts = m.A, m.wttrms, m.trms, m.sqrtwts
+    if length(wts) ≠ size(trms[1], 1)
+        throw(DimensionMismatch("$(length(wts)) = length(m.weights) ≠ size(m.trms[1], 1)"))
+    end
+    for j in eachindex(trms)
+        scale!(wttrsm[j], sqrtwts, trms[i])
+    end
+    for j in 1:size(A, 2), i in 1:j
+        A_mul_Bc!(A[i, j], trms[i], trms[j])
+    end
+    m
 end
 
 function Base.show(io::IO, m::LinearMixedModel) # not tested
