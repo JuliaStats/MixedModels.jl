@@ -177,6 +177,33 @@ function Base.Ac_mul_B(A::ScalarReMat, B::ScalarReMat)
     densify(sparse(convert(Vector{Int32}, Ar),convert(Vector{Int32}, B.f.refs), Az .* B.z))
 end
 
+function Base.Ac_mul_B!{T}(C::Diagonal{T}, A::ScalarReMat{T}, B::ScalarReMat{T})
+    c, a, r, b = C.diag, A.z, A.f.refs, B.z
+    if r ≠ B.f.refs
+        throw(ArgumentError("A'B is not diagonal"))
+    end
+    fill!(c, 0)
+    for i in eachindex(a)
+        c[r[i]] += a[i] * b[i]
+    end
+    C
+end
+
+function Base.Ac_mul_B!{T}(C::Matrix{T}, A::ScalarReMat{T}, B::ScalarReMat{T})
+    m, n = size(C)
+    ma, na = size(A)
+    mb, nb = size(B)
+    if m ≠ na || n ≠ nb || ma ≠ mb
+        throw(DimensionMismatch())
+    end
+    a, b, ra, rb = A.z, B.z, A.f.refs, B.f.refs
+    fill!(C, 0)
+    for j in eachindex(b), i in eachindex(a)
+        C[ra[i], rb[j]] += a[i] * b[j]
+    end
+    C
+end
+
 function Base.Ac_mul_B(A::VectorReMat, B::VectorReMat)
     Az = A.z
     Ar = convert(Vector{Int}, A.f.refs)
@@ -230,6 +257,16 @@ function Base.LinAlg.scale{T}(d::Vector{T}, A::ScalarReMat{T})
     ScalarReMat(A.f, d .* copy(A.z), A.fnm, A.cnms)
 end
 
+function Base.LinAlg.scale!{T}(C::ScalarReMat{T}, a::Vector{T}, B::ScalarReMat{T})
+    broadcast!(*, C.z, a, B.z)
+    C
+end
+
 function Base.LinAlg.scale{T}(d::Vector{T}, A::VectorReMat{T})
     VectorReMat(A.f, scale(A.z, d), A.fnm, A.cnms)
+end
+
+function Base.LinAlg.scale!{T}(C::VectorReMat{T}, a::Vector{T}, B::VectorReMat{T})
+    scale!(C.z, B.z, a)
+    C
 end

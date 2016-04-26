@@ -7,7 +7,7 @@ function updateμ!{T <: AbstractFloat}(m::GeneralizedLinearMixedModel{T})
     end
     priorwts = !isempty(wt)
 
-    @inbounds for i = eachindex(η)
+    @inbounds @simd for i = eachindex(η)
         yi, ηi = y[i], η[i]
         μi = μ[i] = linkinv(link, ηi)
         dμdηi = dμdη[i] = mueta(link, ηi)

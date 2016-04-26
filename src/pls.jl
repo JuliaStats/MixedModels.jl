@@ -429,11 +429,12 @@ function reweight!{T}(m::LinearMixedModel{T}, wts::Vector{T})
     if length(wts) ≠ size(trms[1], 1)
         throw(DimensionMismatch("$(length(wts)) = length(m.weights) ≠ size(m.trms[1], 1)"))
     end
+    map!(√, sqrtwts, wts)
     for j in eachindex(trms)
-        scale!(wttrsm[j], sqrtwts, trms[i])
+        scale!(wttrms[j], sqrtwts, trms[j])
     end
     for j in 1:size(A, 2), i in 1:j
-        A_mul_Bc!(A[i, j], trms[i], trms[j])
+        Ac_mul_B!(A[i, j], wttrms[i], wttrms[j])
     end
     m
 end

@@ -58,7 +58,6 @@ function inject!(d::SparseMatrixCSC{Float64}, s::SparseMatrixCSC{Float64})
             for k in snzr
                 ssr = srv[k]
                 kk = searchsortedfirst(dnzrv, ssr)
-#                @show k, ssr, dnzrv, kk, length(dnzrv), kk > length(dnzrv)
                 if kk > length(dnzrv) || dnzrv[kk] != ssr
                     throw(ArgumentError("cannot inject sparse s into sparse d"))
                 end

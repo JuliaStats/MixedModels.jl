@@ -23,7 +23,11 @@ type GeneralizedLinearMixedModel{T <: AbstractFloat, D <: UnivariateDistribution
 end
 
 function glmm(f::Formula, fr::AbstractDataFrame, d::Distribution, wt::Vector, l::Link)
-    LMM = lmm(f, fr)
+    if d == Binomial() && isempty(wt)
+        d = Bernoulli()
+    end
+    wts = isempty(wt) ? ones(nrow(fr)) : wt
+    LMM = lmm(f, fr; weights = wts)
     A, R, trms, u, y = LMM.A, LMM.R, LMM.trms, ranef(LMM, true), copy(model_response(LMM))
     kp1 = length(LMM.Λ) + 1
     X = copy(trms[kp1])         # the copy may be unnecessary
@@ -38,15 +42,19 @@ function glmm(f::Formula, fr::AbstractDataFrame, d::Distribution, wt::Vector, l:
     A[kp1, end] = zeros((0, qend))
     R[kp1, end] = zeros((0, qend))
             # fit a glm pm the fixed-effects only
-    gl = glm(X, y, d, l; wts = isempty(wt) ? ones(y) : wt)
+    gl = glm(X, y, d, l; wts = wts)
     r = gl.rr
     β₀ = coef(gl)
     res = GeneralizedLinearMixedModel(LMM, d, l, β₀, u, map(zeros, u), X, y, r.mu,
         r.eta, r.mueta, r.devresid, X * β₀, r.var, r.wrkresid, r.wrkwts, r.wts, zero(eltype(X)))
     updateμ!(res)
     wrkresp!(trms[end], res)
-    LMM.weights = copy(res.wrkwt)
-    reweight!(LMM)
+    sqrtwts = LMM.sqrtwts = map(sqrt, res.wrkwt)
+    trms, wttrms = LMM.trms, LMM.wttrms
+    for i in eachindex(trms)
+        wttrms[i] = scale(sqrtwts, trms[i])
+    end
+    reweight!(LMM, res.wrkwt)
     fit!(LMM)
     res.devold = deviance(gl) + logdet(LMM)
     ranef!(res.u, LMM, true)
@@ -76,16 +84,29 @@ Args:
 - `m`: a `GeneralizedLinearMixedModel`
 
 Returns:
-  the Laplace approximation to the deviance of `m`
+  the Laplace approximation to negative twice the log-likelihood of `m`
 """
-LaplaceDeviance(m::GeneralizedLinearMixedModel) = sum(m.devresid) + mapreduce(sumabs2, +, m.u) + logdet(m)
+function LaplaceDeviance(m::GeneralizedLinearMixedModel)
+    dd, μ, y = typeof(m.dist), m.μ, m.y
+    s = mapreduce(sumabs2, +, m.u) + logdet(m)
+    if dd ≠ Binomial
+        for i in eachindex(y)
+            s -= 2 * logpdf(dd(μ[i]), y[i])
+        end
+        return s
+    end
+    n = m.wt
+    for i in eachindex(n)
+        s -= 2 * logpdf(dd(n[i], μ[i]), round(Int, y[i] * n[i]))
+    end
+    s
+end
 
 function LaplaceDeviance!(m::GeneralizedLinearMixedModel)
     updateη!(m)
     lm = lmm(m)
     wrkresp!(lm.trms[end], m)
-    copy!(lm.weights, m.wrkwt)
-    reweight!(lm)
+    reweight!(lm, m.wrkwt)
     lm[:θ] = lm[:θ]  # FIXME: this is for side-effect of updating lm.R.  Make it explicit
     LaplaceDeviance(m)
 end

@@ -6,10 +6,21 @@ using Compat, DataArrays, GLM, DataFrames, Distributions, NLopt, Showoff, StatsB
 
 import StatsBase: coef, coeftable, df, deviance, fit!, fitted, loglikelihood,
     model_response, nobs, vcov
-
 import Base: cond, std
+import Distributions: Bernoulli, Binomial, Poisson, Gamma
+import GLM: LogitLink, LogLink, InverseLink
+import DataFrames: @~
 
-export GeneralizedLinearMixedModel,
+export
+       @~,
+       Bernoulli,
+       Binomial,
+       Poisson,
+       Gamma,
+       LogitLink,
+       LogLink,
+       InverseLink,
+       GeneralizedLinearMixedModel,
        LinearMixedModel,
        MixedModel,
        ReMat,
