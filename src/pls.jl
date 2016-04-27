@@ -116,17 +116,17 @@ Returns:
 Notes:
   The return value is ready to be `fit!` but has not yet been fit.
 """
-function lmm(f::Formula, fr::AbstractDataFrame; weights::Vector{Float64}=Float64[])
-    mf = ModelFrame(f,fr)
+function lmm(f::Formula, fr::AbstractDataFrame; weights::Vector = [])
+    mf = ModelFrame(f, fr)
     X = ModelMatrix(mf)
-    y = convert(Vector{Float64},DataFrames.model_response(mf))
+    y = convert(Vector{eltype(X.m)}, DataFrames.model_response(mf))
                                         # process the random-effects terms
-    retrms = filter(x->Meta.isexpr(x,:call) && x.args[1] == :|, mf.terms.terms)
-    if length(retrms) ≤ 0
+    retrms = filter(x->Meta.isexpr(x, :call) && x.args[1] == :|, mf.terms.terms)
+    if isempty(retrms)
         throw(ArgumentError("$f has no random-effects terms"))
     end
-    re = sort!([remat(e,mf.df) for e in retrms]; by = nlevs, rev = true)
-    LinearMixedModel(mf,re,map(LT,re),X.m,y,weights)
+    re = sort!([remat(e, mf.df) for e in retrms]; by = nlevs, rev = true)
+    LinearMixedModel(mf, re, map(LT,re), X.m, y, convert(typeof(y), weights))
 end
 
 unwttrms(m::LinearMixedModel) = isempty(m.sqrtwts) ? m.wttrms : m.trms

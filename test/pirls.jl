@@ -1,4 +1,4 @@
-using RCall, MixedModels, Base.Test
+using RCall, MixedModels, Base.Test, DataFrames
 
 cbpp = rcopy("lme4::cbpp")
 contra = rcopy(rcall(:readRDS, "/home/bates/IRI/contra.rds"));
@@ -35,7 +35,7 @@ copy!(m1.u₀[1], m1.u[1])
 
 cbpp[:prop] = cbpp[:incidence] ./ cbpp[:size]
 m2 = glmm(prop ~ 1 + period + (1 | herd), cbpp, Binomial(), cbpp[:size], GLM.LogitLink());
-
+MixedModels.pirls!(m2)
 μ = 1 - eps()
 1 - μ
 exp(log1p(-μ))
@@ -51,3 +51,15 @@ copy!(m2.u[1], m2.u₀[1])
 mapreduce(sumabs2, +, m2.u)
 @test isapprox(mapreduce(sumabs2, +, m2.u), 9.72521112; atol = 0.0001)
 @test isapprox(logdet(m2), 16.89637; atol = 0.0001)
+
+using DataFrames
+cbpp[:herd] = pool([parse(Int8, x) for x in cbpp[:herd]])
+cbpp[:incidence] = convert(Vector{Int8}, cbpp[:incidence])
+cbpp[:size] = convert(Vector{Int8}, cbpp[:size])
+cbpp[:period] = pool([parse(Int8, x) for x in cbpp[:period]])
+cbpp[:prop] = cbpp[:incidence] ./ cbpp[:size]
+names(cbpp)
+f = prop ~ 1 + period + (1 | herd)
+m2 = glmm(f, cbpp, Binomial(), cbpp[:size], GLM.LogitLink());
+m2.y
+fit!(m2, true);
