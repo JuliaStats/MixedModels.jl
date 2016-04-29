@@ -1,4 +1,4 @@
-using RCall, MixedModels, Base.Test, DataFrames
+using RCall, MixedModels, Base.Test, DataFramesu
 
 cbpp = rcopy("lme4::cbpp")
 contra = rcopy(rcall(:readRDS, "/home/bates/IRI/contra.rds"));
@@ -63,3 +63,8 @@ f = prop ~ 1 + period + (1 | herd)
 m2 = glmm(f, cbpp, Binomial(), cbpp[:size], GLM.LogitLink());
 m2.y
 fit!(m2, true);
+
+VerbAgg = rcopy("lme4::VerbAgg")
+VerbAgg[:r201] = [Int8(x == "N" ? 0 : 1) for x in VerbAgg[:r2]]
+m3 = glmm(r201 ~ 1 + Anger + Gender + btype + situ + (1 | id) + (1 | item), VerbAgg, Bernoulli());
+f = r201 ~ 1 + Anger + Gender + btype + situ + (1 | id)
