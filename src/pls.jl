@@ -429,7 +429,10 @@ function reweight!{T}(m::LinearMixedModel{T}, wts::Vector{T})
     if length(wts) ≠ size(trms[1], 1)
         throw(DimensionMismatch("$(length(wts)) = length(m.weights) ≠ size(m.trms[1], 1)"))
     end
-    map!(√, sqrtwts, wts)
+    for i in eachindex(wts)
+        sqrtwts[i] = sqrt(wts[i])
+    end
+#    map!(√, sqrtwts, wts)
     for j in eachindex(trms)
         scale!(wttrms[j], sqrtwts, trms[j])
     end
@@ -487,10 +490,10 @@ type VarCorr
     fnms::Vector
     cnms::Vector
     s::Float64
-    function VarCorr(Λ::Vector,fnms::Vector,cnms::Vector,s::Number)
+    function VarCorr(Λ::Vector, fnms::Vector, cnms::Vector, s::Number)
         length(fnms) == length(cnms) == length(Λ) || throw(DimensionMismatch(""))
-        s >= 0. || error("s must be non-negative")
-        new(Λ,fnms,cnms,s)
+        s >= 0 || error("s must be non-negative")
+        new(Λ, fnms, cnms, s)
     end
 end
 function VarCorr(m::LinearMixedModel)
@@ -501,7 +504,7 @@ function VarCorr(m::LinearMixedModel)
             sdest(m))
 end
 
-function Base.show(io::IO,vc::VarCorr) # not tested
+function Base.show(io::IO,vc::VarCorr)
     fnms = vcat(vc.fnms,"Residual")
     nmwd = maximum(map(strwidth, fnms))
     write(io, "Variance components:\n")

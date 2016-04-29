@@ -31,8 +31,11 @@ function cfactor!(A::AbstractMatrix)
     UpperTriangular(A)
 end
 
-function cfactor!(D::Diagonal)
-    map!(sqrt, D.diag)
+function cfactor!{T <: AbstractFloat}(D::Diagonal{T})
+    dd = D.diag
+    for i in eachindex(dd)
+        dd[i] = sqrt(dd[i])
+    end
     D
 end
 

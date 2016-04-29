@@ -86,18 +86,15 @@ Args:
 Returns:
   the updated `y`
 """
-function unscaledre!(y::AbstractVector,
-      M::ScalarReMat,
-      L::LowerTriangular,
-      u::DenseMatrix)
+function unscaledre!{T<:AbstractFloat,S,R<:Integer}(y::Vector{T}, M::ScalarReMat{T,S,R}, L::LowerTriangular{T}, u::Matrix{T})
     z = M.z
     if length(y) ≠ length(z) || size(L) ≠ (1, 1) || size(u, 1) ≠ 1
         throw(DimensionMismatch())
     end
-    re = L[1, 1] * vec(u)
+    m = L.data[1, 1]
     inds = M.f.refs
-    for i in eachindex(y)
-        y[i] += re[inds[i]] * z[i]
+    @inbounds @simd for i in eachindex(y)
+        y[i] += m * u[inds[i]] * z[i]
     end
     y
 end

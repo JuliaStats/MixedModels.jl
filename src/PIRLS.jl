@@ -29,20 +29,20 @@ type GeneralizedLinearMixedModel{T <: AbstractFloat, D <: UnivariateDistribution
     LMM::LinearMixedModel{T}
     dist::D
     link::L
-    β::DenseVector{T}
-    u::Vector
-    u₀::Vector
-    X::DenseMatrix{T}
-    y::DenseVector{T}
-    μ::DenseVector{T}
-    η::DenseVector{T}
-    dμdη::DenseVector{T}
-    devresid::DenseVector{T}
-    offset::DenseVector{T}
-    var::DenseVector{T}
-    wrkresid::DenseVector{T}
-    wrkwt::DenseVector{T}
-    wt::DenseVector{T}
+    β::Vector{T}
+    u::Vector{Matrix{T}}
+    u₀::Vector{Matrix{T}}
+    X::Matrix{T}
+    y::Vector{T}
+    μ::Vector{T}
+    η::Vector{T}
+    dμdη::Vector{T}
+    devresid::Vector{T}
+    offset::Vector{T}
+    var::Vector{T}
+    wrkresid::Vector{T}
+    wrkwt::Vector{T}
+    wt::Vector{T}
     devold::T
 end
 
@@ -73,7 +73,7 @@ function glmm(f::Formula, fr::AbstractDataFrame, d::Distribution, wt::Vector, l:
     A, R, trms, u, y = LMM.A, LMM.R, LMM.trms, ranef(LMM, true), copy(model_response(LMM))
     wts = convert(typeof(y), wts)
     kp1 = length(LMM.Λ) + 1
-    X = copy(trms[kp1])         # the copy may be unnecessary
+    X = trms[kp1]
             # zero the dimension of the fixed-effects in trms, A and R
     trms[kp1] = zeros((length(y), 0))
     for i in 1:kp1
@@ -89,7 +89,7 @@ function glmm(f::Formula, fr::AbstractDataFrame, d::Distribution, wt::Vector, l:
     r = gl.rr
     β = coef(gl)
     res = GeneralizedLinearMixedModel(LMM, d, l, β, u, map(zeros, u), X, y, r.mu,
-        r.eta, r.mueta, r.devresid, X * β, r.var, r.wrkresid, r.wrkwts, r.wts, zero(eltype(X)))
+        r.eta, r.mueta, r.devresid, X * β, r.var, r.wrkresid, r.wrkwts, wt, zero(eltype(X)))
     updateμ!(res)
     wrkresp!(trms[end], res)
     sqrtwts = LMM.sqrtwts = map(sqrt, res.wrkwt)
@@ -132,7 +132,9 @@ Args:
 Returns:
   the Laplace approximation to the deviance of `m`
 """
-LaplaceDeviance(m::GeneralizedLinearMixedModel) = mapreduce(sumabs2, +, m.u) + logdet(m) + sum(m.devresid)
+function LaplaceDeviance{T <: AbstractFloat}(m::GeneralizedLinearMixedModel{T})
+    logdet(m) + sum(m.devresid) + mapreduce(sumabs2, +, m.u)
+end
 
 #    dd, μ, y = typeof(m.dist), m.μ, m.y
 #    s =
@@ -260,7 +262,7 @@ function Base.setindex!{T <: AbstractFloat}(m::GeneralizedLinearMixedModel, v::V
     end
     β, lm, u, u₀ = m.β, lmm(m), m.u, m.u₀
     lb = length(β)
-    copy!(β, v[1:lb])
+    copy!(β, sub(v, 1:lb))
     lm[:θ] = v[(lb + 1):length(v)]
     A_mul_B!(m.offset, m.X, β)
     for i in eachindex(u₀)
@@ -341,9 +343,36 @@ function StatsBase.fit!(m::GeneralizedLinearMixedModel, verbose::Bool=false, opt
 #            m[:θ] = xmin
 #        end
 #    end
-#    m.opt = OptSummary(th,xmin,fmin,feval,optimizer)
+    m.LMM.opt = OptSummary(βΘ,xmin,fmin,feval,optimizer)
     if verbose
         println(ret)
     end
     m
+end
+
+function VarCorr(m::GeneralizedLinearMixedModel)
+    Λ, trms = m.LMM.Λ, unwttrms(m.LMM)
+    VarCorr(Λ, [string(trms[i].fnm) for i in eachindex(Λ)],
+        [trms[i].cnms for i in eachindex(Λ)], 1.)
+end
+
+function StatsBase.coeftable(m::GeneralizedLinearMixedModel)
+    CoefTable(hcat(m.β), ["Estimate"], coefnames(m.LMM.mf))
+end
+
+function Base.show{T,D,L}(io::IO, m::GeneralizedLinearMixedModel{T,D,L}) # not tested
+    println(io, "Generalized Linear Mixed Model fit by minimizing the Laplace approximation to the deviance")
+    println(io, string("  Distribution: ", D))
+    println(io, string("  Link: ", L))
+    println(io, string("  deviance: ", LaplaceDeviance(m)))
+    println(io); println(io)
+
+    show(io,VarCorr(m))
+
+    gl = grplevels(lmm(m))
+    @printf(io," Number of obs: %d; levels of grouping factors: %d", length(m.offset), gl[1])
+    for l in gl[2:end] @printf(io, ", %d", l) end
+    println(io)
+    println(io, "\n  Fixed-effects parameters:\n")
+    show(io, coeftable(m))
 end

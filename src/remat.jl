@@ -17,8 +17,8 @@ Members:
 - `fnm`: the name of the grouping factor as a `Symbol`
 - `cnms`: a `Vector` of column names
 """
-immutable ScalarReMat{T} <: ReMat
-    f::PooledDataVector
+immutable ScalarReMat{T <: AbstractFloat, S, R <: Integer} <: ReMat
+    f::PooledDataVector{S,R}
     z::Vector{T}
     fnm::Symbol
     cnms::Vector
