@@ -189,6 +189,21 @@ function Base.Ac_mul_B!{T}(C::Diagonal{T}, A::ScalarReMat{T}, B::ScalarReMat{T})
     C
 end
 
+function Base.Ac_mul_B!{T}(C::HBlkDiag{T}, A::VectorReMat{T}, B::VectorReMat{T})
+    c, a, r = C.arr, A.z, A.f.refs
+    fill!(c, 0)
+    if !is(A, B)
+        throw(ArgumentError("Currently defined only for A === B"))
+    end
+    for i in eachindex(r)
+        Base.BLAS.syr!('U', 1.0, slice(a, :, i), sub(c, :, :, Int(r[i])))
+    end
+    for k in 1:size(c, 3)
+        Base.LinAlg.copytri!(sub(c, :, :, k), 'U')
+    end
+    C
+end
+
 function Base.Ac_mul_B!{T}(C::Matrix{T}, A::ScalarReMat{T}, B::ScalarReMat{T})
     m, n = size(C)
     ma, na = size(A)
