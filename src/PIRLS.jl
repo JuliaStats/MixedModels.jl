@@ -71,7 +71,11 @@ function glmm(f::Formula, fr::AbstractDataFrame, d::Distribution, wt::Vector, l:
     wts = isempty(wt) ? ones(nrow(fr)) : copy(wt)
         # the weights argument is forced to be non-empty in the lmm as it will be used later
     LMM = lmm(f, fr; weights = wts)
-    A, R, trms, u, y = LMM.A, LMM.R, LMM.trms, ranef(LMM, true), copy(model_response(LMM))
+    A, R, trms, y = LMM.A, LMM.R, LMM.trms, copy(model_response(LMM))
+    for j in 1:length(LMM.Λ)
+        inflate!(R[j, j])
+    end
+    u = ranef(LMM)
     wts = convert(typeof(y), wts)
     if false
         kp1 = length(LMM.Λ) + 1
