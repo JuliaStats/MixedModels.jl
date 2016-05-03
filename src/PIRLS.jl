@@ -5,7 +5,7 @@ Generalized linear mixed-effects model representation
 
 Members:
 
-- `LMM`: a [`LinearMixedModel`]({ref}) with the random effects only.  The fixed-effects positions are of 0 extent.
+- `LMM`: a [`LinearMixedModel`]({ref}) - used for the random effects only.
 - `dist`: a `UnivariateDistribution` - typically `Bernoulli()`, `Binomial()`, `Gamma()` or `Poisson()`.
 - `link`: a suitable `GLM.Link` object
 - `β`: the fixed-effects vector
@@ -68,22 +68,26 @@ function glmm(f::Formula, fr::AbstractDataFrame, d::Distribution, wt::Vector, l:
     if d == Binomial() && isempty(wt)
         d = Bernoulli()
     end
-    wts = isempty(wt) ? ones(nrow(fr)) : wt
+    wts = isempty(wt) ? ones(nrow(fr)) : copy(wt)
+        # the weights argument is forced to be non-empty in the lmm as it will be used later
     LMM = lmm(f, fr; weights = wts)
     A, R, trms, u, y = LMM.A, LMM.R, LMM.trms, ranef(LMM, true), copy(model_response(LMM))
     wts = convert(typeof(y), wts)
-    kp1 = length(LMM.Λ) + 1
-    X = trms[kp1]
+    if false
+        kp1 = length(LMM.Λ) + 1
+        X = trms[kp1]
             # zero the dimension of the fixed-effects in trms, A and R
-    trms[kp1] = zeros((length(y), 0))
-    for i in 1:kp1
-        qi = size(trms[i], 2)
-        A[i, kp1] = zeros((qi, 0))
-        R[i, kp1] = zeros((qi, 0))
+        trms[kp1] = zeros((length(y), 0))
+        for i in 1:kp1
+            qi = size(trms[i], 2)
+            A[i, kp1] = zeros((qi, 0))
+            R[i, kp1] = zeros((qi, 0))
+        end
+        qend = size(trms[end], 2)  # should always be 1 but no harm in extracting it
+        A[kp1, end] = zeros((0, qend))
+        R[kp1, end] = zeros((0, qend))
     end
-    qend = size(trms[end], 2)  # should always be 1 but no harm in extracting it
-    A[kp1, end] = zeros((0, qend))
-    R[kp1, end] = zeros((0, qend))
+    X = trms[length(LMM.Λ) + 1]
             # fit a glm pm the fixed-effects only
     gl = glm(X, y, d, l; wts = wts)
     r = gl.rr
@@ -92,15 +96,9 @@ function glmm(f::Formula, fr::AbstractDataFrame, d::Distribution, wt::Vector, l:
         r.eta, r.mueta, r.devresid, X * β, r.var, r.wrkresid, r.wrkwts, wt, zero(eltype(X)))
     updateμ!(res)
     wrkresp!(trms[end], res)
-    sqrtwts = LMM.sqrtwts = map(sqrt, res.wrkwt)
-    trms, wttrms = LMM.trms, LMM.wttrms
-    for i in eachindex(trms)
-        wttrms[i] = scale(sqrtwts, trms[i])
-    end
     reweight!(LMM, res.wrkwt)
-    fit!(LMM)
     res.devold = deviance(gl) + logdet(LMM)
-    ranef!(res.u, LMM, true)
+    ranef!(res.u, LMM, true, false)
     LaplaceDeviance!(res)
     res
 end
@@ -116,6 +114,8 @@ glmm(f::Formula, fr::AbstractDataFrame, d::Distribution) = glmm(f, fr, d, Float6
 lmm(m::GeneralizedLinearMixedModel) = m.LMM
 
 Base.logdet(m::GeneralizedLinearMixedModel) = logdet(lmm(m))
+
+fixef(m::GeneralizedLinearMixedModel) = m.β
 
 """
     LaplaceDeviance(m)
@@ -175,12 +175,9 @@ Returns:
    the updated `m`.
 """
 function updateη!(m::GeneralizedLinearMixedModel)
-    lm = lmm(m)
-    η, u, Λ, trms = m.η, m.u, lm.Λ, lm.trms
-    if size(trms[end - 1], 2) != 0
-        throw(ArgumentError("fixed-effects model matrix in lmm(m) should have 0 columns"))
-    end
-    fill!(η, 0)
+    η, lm, u, offset = m.η, m.LMM, m.u, m.offset
+    Λ, trms = lm.Λ, lm.trms
+    isempty(offset) ? fill!(η, 0) : copy!(η, offset)
     for i in eachindex(u)
         unscaledre!(η, trms[i], Λ[i], u[i])
     end
@@ -227,7 +224,7 @@ function pirls!(m::GeneralizedLinearMixedModel)
         for i in eachindex(u)
             copy!(u₀[i], u[i])
         end
-        ranef!(u, lm, true)
+        ranef!(u, lm, true, false)
         if isapprox(obj, obj₀; rtol = 0.00001, atol = 0.0001)
             break
         end
@@ -269,9 +266,11 @@ function Base.setindex!{T <: AbstractFloat}(m::GeneralizedLinearMixedModel, v::V
         copy!(u[i], fill!(u₀[i], zero(T)))
     end
     m.devold = LaplaceDeviance!(m)
-    ranef!(m.u, lm, true)
+    ranef!(m.u, lm, true, false)
     m
 end
+
+sdest{T <: AbstractFloat}(m::GeneralizedLinearMixedModel{T}) = one(T)
 
 """
     fit!(m[, verbose = false])
@@ -356,10 +355,6 @@ function VarCorr(m::GeneralizedLinearMixedModel)
         [trms[i].cnms for i in eachindex(Λ)], 1.)
 end
 
-function StatsBase.coeftable(m::GeneralizedLinearMixedModel)
-    CoefTable(hcat(m.β), ["Estimate"], coefnames(m.LMM.mf))
-end
-
 function Base.show{T,D,L}(io::IO, m::GeneralizedLinearMixedModel{T,D,L}) # not tested
     println(io, "Generalized Linear Mixed Model fit by minimizing the Laplace approximation to the deviance")
     println(io, string("  Distribution: ", D))
@@ -376,3 +371,5 @@ function Base.show{T,D,L}(io::IO, m::GeneralizedLinearMixedModel{T,D,L}) # not t
     println(io, "\n  Fixed-effects parameters:\n")
     show(io, coeftable(m))
 end
+
+varest{T <: AbstractFloat}(m::GeneralizedLinearMixedModel{T}) = one(T)

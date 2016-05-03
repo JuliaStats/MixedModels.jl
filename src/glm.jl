@@ -2,9 +2,6 @@ function updateμ!{T <: AbstractFloat}(m::GeneralizedLinearMixedModel{T})
     y, dist, link, η, μ, dμdη, var = m.y, m.dist, m.link, m.η, m.μ, m.dμdη, m.var
     wt, wrkresid, wrkwt, dres = m.wt, m.wrkresid, m.wrkwt, m.devresid
 
-    if !isempty(m.offset)
-        broadcast!(+, η, η, m.offset)
-    end
     priorwts = !isempty(wt)
 
     @inbounds for i = eachindex(η)
@@ -20,26 +17,41 @@ function updateμ!{T <: AbstractFloat}(m::GeneralizedLinearMixedModel{T})
     m
 end
 
-function updateμ!{T<:AbstractFloat, D<:Bernoulli, L<:LogitLink}(m::GeneralizedLinearMixedModel{T,D,L})
+function updateμ!{T<:AbstractFloat, D<:Union{Bernoulli, Binomial}, L<:LogitLink}(m::GeneralizedLinearMixedModel{T,D,L})
     y, η, μ, wrkres, wrkwt, dres = m.y, m.η, m.μ, m.wrkresid, m.wrkwt, m.devresid
 
-    if !isempty(m.offset)
-        off = m.offset
-        @inbounds @simd for i in eachindex(off)
-            η[i] += off[i]
-        end
-    end
-
-    @inbounds @simd for i in eachindex(η)
+    @inbounds for i in eachindex(η)
         ηi = η[i]
         ei = exp(-ηi)
         opei = 1 + ei
         μi = μ[i] = inv(opei)
         dμdη = wrkwt[i] = ei / abs2(opei)
         yi = y[i]
-        μi = μ[i]
         wrkres[i] = (yi - μi) / dμdη
-        dres[i] = -2 * (yi == 1 ? log(μi) : log1p(-μi))
+        dres[i] = -2 * (yi == 1 ? log(μi) : yi == 0 ? log1p(-μi) :
+            (yi * (log(μi) - log(yi)) + (1 - yi) * (log1p(-μi) - log1p(-yi))))
+    end
+
+    if !isempty(m.wt)
+        wt = m.wt
+        @inbounds @simd for i in eachindex(wt)
+            wti = wt[i]
+            dres[i] *= wti
+            wrkwt[i] *= wti
+        end
+    end
+end
+
+function updateμ!{T<:AbstractFloat, D<:Poisson, L<:LogLink}(m::GeneralizedLinearMixedModel{T,D,L})
+    y, η, μ, wrkres, wrkwt, dres = m.y, m.η, m.μ, m.wrkresid, m.wrkwt, m.devresid
+
+    @inbounds for i in eachindex(η)
+        ηi = η[i]
+        μi = μ[i] = exp(ηi)
+        dμdη = wrkwt[i] = μi
+        yi = y[i]
+        wrkres[i] = (yi - μi) / dμdη
+        dres[i] = 2 * (StatsFuns.xlogy(yi, yi / μi) - (yi - μi))
     end
 
     if !isempty(m.wt)

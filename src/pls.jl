@@ -217,23 +217,6 @@ Returns:
 objective(m::LinearMixedModel) = logdet(m) + nobs(m) * (1. + log(2π * varest(m)))
 
 """
-    feR(m)
-
-Upper Cholesky factor for the fixed-effects parameters
-
-Args:
-
-- `m`: a `LinearMixedModel`
-
-Returns:
-  an `UpperTriangular` p × p matrix which is the upper Cholesky factor
-"""
-function feR(m::LinearMixedModel)
-    kp1 = length(m.Λ) + 1
-    UpperTriangular(m.R[kp1, kp1])
-end
-
-"""
     fixef!(v, m)
 
 Overwrite `v` with the fixed-effects coefficients of model `m`
@@ -353,12 +336,6 @@ end
 
 Base.cor(m::LinearMixedModel) = map(chol2cor, m.Λ)
 
-function StatsBase.coeftable(m::LinearMixedModel)
-    fe = fixef(m)
-    se = stderr(m)
-    CoefTable(hcat(fe, se, fe ./ se), ["Estimate", "Std.Error", "z value"], coefnames(m.mf))
-end
-
 function StatsBase.deviance(m::LinearMixedModel)
     isfit(m) || error("Model has not been fit")
     objective(m)
@@ -432,7 +409,6 @@ function reweight!{T}(m::LinearMixedModel{T}, wts::Vector{T})
     for i in eachindex(wts)
         sqrtwts[i] = sqrt(wts[i])
     end
-#    map!(√, sqrtwts, wts)
     for j in eachindex(trms)
         scale!(wttrms[j], sqrtwts, trms[j])
     end
@@ -539,21 +515,4 @@ function Base.show(io::IO,vc::VarCorr)
             println(io)
         end
     end
-end
-
-"""
-     vcov(m)
-
-Estimated covariance matrix of the fixed-effects estimator
-
-Args:
-
-- `m`: a `LinearMixedModel`
-
-Returns
-  a `p × p` `Matrix`
-"""
-function StatsBase.vcov(m::LinearMixedModel)
-    Rinv = Base.LinAlg.inv(feR(m))
-    varest(m) * Rinv * Rinv'
 end
