@@ -105,7 +105,7 @@ Args:
 Prints a description of the types and sizes of the blocks in `A`, the matrix of
 products of terms, and in `R`, the upper Cholesky factor.
 """
-function describeblocks(io, IO, m::MixedModel)
+function describeblocks(io::IO, m::MixedModel)
     lm = lmm(m)
     A, R = lm.A, lm.R
     for j in 1:size(A,2), i in 1:j
