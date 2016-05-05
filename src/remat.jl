@@ -213,8 +213,8 @@ function Base.Ac_mul_B!{T}(C::Matrix{T}, A::ScalarReMat{T}, B::ScalarReMat{T})
     end
     a, b, ra, rb = A.z, B.z, A.f.refs, B.f.refs
     fill!(C, 0)
-    for j in eachindex(b), i in eachindex(a)
-        C[ra[i], rb[j]] += a[i] * b[j]
+    for i in eachindex(a)
+        C[ra[i], rb[i]] += a[i] * b[i]
     end
     C
 end
@@ -268,20 +268,16 @@ end
 
 Base.Ac_mul_B(A::DenseVecOrMat, B::ReMat) = Ac_mul_B!(Array(eltype(A), (size(A, 2), size(B, 2))), A, B)
 
-function Base.LinAlg.scale{T}(d::Vector{T}, A::ScalarReMat{T})
-    ScalarReMat(A.f, d .* copy(A.z), A.fnm, A.cnms)
-end
+(*){T}(D::Diagonal{T}, A::ScalarReMat{T}) = ScalarReMat(A.f, D * A.z, A.fnm, A.cnms)
 
-function Base.LinAlg.scale!{T}(C::ScalarReMat{T}, a::Vector{T}, B::ScalarReMat{T})
-    broadcast!(*, C.z, a, B.z)
+function Base.A_mul_B!{T}(C::ScalarReMat{T}, A::Diagonal{T}, B::ScalarReMat{T})
+    map!(*, C.z, A.diag, B.z)
     C
 end
 
-function Base.LinAlg.scale{T}(d::Vector{T}, A::VectorReMat{T})
-    VectorReMat(A.f, scale(A.z, d), A.fnm, A.cnms)
-end
+(*){T}(D::Diagonal{T}, A::VectorReMat{T}) = VectorReMat(A.f, A.z * D, A.fnm, A.cnms)
 
-function Base.LinAlg.scale!{T}(C::VectorReMat{T}, a::Vector{T}, B::VectorReMat{T})
-    scale!(C.z, B.z, a)
+function Base.LinAlg.A_mul_B!{T}(C::VectorReMat{T}, A::Diagonal{T}, B::VectorReMat{T})
+    A_mul_B!(C.z, B.z, A)
     C
 end

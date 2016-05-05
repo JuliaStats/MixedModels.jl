@@ -44,7 +44,7 @@ function reevaluateAend!(m::LinearMixedModel)
     A, trms, sqrtwts, wttrms = m.A, m.trms, m.sqrtwts, m.wttrms
     wttrmn = wttrms[end]
     if !isempty(sqrtwts)
-        scale!(wttrmn, sqrtwts, trms[end])
+        A_mul_B!(wttrmn, sqrtwts, trms[end])
     end
     for i in eachindex(wttrms)
         Ac_mul_B!(A[i, end], wttrms[i], wttrmn)

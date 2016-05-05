@@ -33,7 +33,7 @@ Members:
 - `wttrms`: a length `nt` vector of weighted model matrices. The last two elements are `X` and `y`.
 - `trms`: a vector of unweighted model matrices.  If `isempty(sqrtwts)` the same object as `wttrms`
 - `Λ`: a length `nt - 2` vector of lower triangular matrices
-- `sqrtwts`: a length `n` vector of weights
+- `sqrtwts`: the [`Diagonal`]({ref}) matrix of the square roots of the case weights.  Allowed to be size 0
 - `A`: an `nt × nt` symmetric matrix of matrices representing `hcat(Z,X,y)'hcat(Z,X,y)`
 - `R`: a `nt × nt` matrix of matrices - the upper Cholesky factor of `Λ'AΛ+I`
 - `opt`: an [`OptSummary`]({ref}) object
@@ -42,7 +42,7 @@ type LinearMixedModel{T} <: MixedModel
     mf::ModelFrame
     wttrms:: Vector
     trms::Vector
-    sqrtwts::Vector{T}
+    sqrtwts::Diagonal{T}
     Λ::Vector{LowerTriangular{T,Matrix{T}}}
     A::Matrix        # symmetric cross-product blocks (upper triangle)
     R::Matrix        # right Cholesky factor in blocks.
@@ -71,12 +71,12 @@ function LinearMixedModel{T}(
     trms = push!(convert(Vector{Any}, Rem), X)
     push!(trms, reshape(y, (length(y), 1)))
     optsum = OptSummary(mapreduce(x -> x[:θ], vcat, Λ), :None)
-    sqrtwts = map(sqrt, wts)
-    wttrms =  isempty(wts) ? trms :
-        length(wts) == n ? [scale(sqrtwts, t) for t in trms] :
+    sqrtwts = Diagonal(map(sqrt, wts))
+    wttrms =  isempty(sqrtwts) ? trms :
+        size(sqrtwts, 2) == n ? [sqrtwts * t for t in trms] :
         throw(DimensionMismatch("length(wts) must be 0 or length(y)"))
     A, R = generateAR(wttrms)
-    LinearMixedModel(mf, wttrms, trms, wts, Λ, A, R, optsum)
+    LinearMixedModel(mf, wttrms, trms, sqrtwts, Λ, A, R, optsum)
 end
 
 function generateAR(trms)
@@ -403,14 +403,9 @@ Returns:
 """
 function reweight!{T}(m::LinearMixedModel{T}, wts::Vector{T})
     A, wttrms, trms, sqrtwts = m.A, m.wttrms, m.trms, m.sqrtwts
-    if length(wts) ≠ size(trms[1], 1)
-        throw(DimensionMismatch("$(length(wts)) = length(m.weights) ≠ size(m.trms[1], 1)"))
-    end
-    for i in eachindex(wts)
-        sqrtwts[i] = sqrt(wts[i])
-    end
+    map!(sqrt, sqrtwts.diag, wts)
     for j in eachindex(trms)
-        scale!(wttrms[j], sqrtwts, trms[j])
+        A_mul_B!(wttrms[j], sqrtwts, trms[j])
     end
     for j in 1:size(A, 2), i in 1:j
         Ac_mul_B!(A[i, j], wttrms[i], wttrms[j])

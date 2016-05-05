@@ -58,7 +58,7 @@ export
 
 abstract MixedModel <: RegressionModel # model with fixed and random effects
 
-import Base: ==
+import Base: ==, *
 
 include("densify.jl")
 include("blockmats.jl")

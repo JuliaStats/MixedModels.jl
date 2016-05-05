@@ -10,7 +10,7 @@ fm1w = lmm(Yield ~ 1 + (1|Batch), ds; weights = ones(size(ds, 1)))
 
 fm1[:θ] = [0.713]
 @test objective(fm1) ≈ 327.34216280955366
-MixedModels.describeblocks(fm1)
+MixedModels.describeblocks(IOBuffer(), fm1)
 
 fit!(fm1);
 @test_approx_eq_eps objective(fm1) 327.3270598811428 1e-3
@@ -34,7 +34,7 @@ cm = coeftable(fm1)
 @test_approx_eq_eps stderr(fm1) [17.69455188898009] 1.e-4
 
 vc = VarCorr(fm1)
-show(vc)
+show(IOBuffer(), vc)
 @test vc.s == sdest(fm1)
 srand(1234321)
 simulate!(fm1)   # changes the fit
@@ -44,8 +44,10 @@ bootstrap(fm1,1,(i,x) -> fixef(x)) # bootstrap restores the fit
 
 fm2 = lmm(Yield ~ 1 + (1|Batch),ds2)
 @test lowerbd(fm2) == zeros(1)
+#redirect_stdout(IOBuffer())
 fit!(fm2,true)
-show(fm2)
+#redirect_stdout()
+show(IOBuffer(), fm2)
 @test abs(fm2[:θ][1]) < 1.0e-9
 @test objective(fm2) ≈ 162.87303665382575
 @test abs(std(fm2)[1][1]) < 1.0e-9
