@@ -72,6 +72,17 @@ end
 
 Base.eltype(R::ReMat) = eltype(R.z)
 
+function Base.copy!{T,S,R}(d::ScalarReMat{T,S,R}, s::ScalarReMat{T,S,R})
+    df, dz, sf, sz = d.f, d.z, s.f, s.z
+    dfp, dfr, sfp, sfr = df.pool, df.refs, sf.pool, sf.refs
+    if length(dfp) != length(sfp)
+        throw(DimensionMismatch("pool sizes of dest, $(length(dfp)), and source, $(length(sfp))"))
+    end
+    copy!(dfr, sfr)
+    copy!(dz, sz)
+    d
+end
+
 """
     vsize(A)
 
@@ -273,6 +284,17 @@ Base.Ac_mul_B(A::DenseVecOrMat, B::ReMat) = Ac_mul_B!(Array(eltype(A), (size(A, 
 function Base.A_mul_B!{T}(C::ScalarReMat{T}, A::Diagonal{T}, B::ScalarReMat{T})
     map!(*, C.z, A.diag, B.z)
     C
+end
+
+function Base.A_mul_B!{T}(A::Diagonal{T}, B::ScalarReMat{T})
+    a, b = A.diag, B.z
+    if length(a) ≠ length(b)
+        throw(DimensionMismatch("A_mul_B!, A: diagonal $(size(A, 1)), B: ScalarReMat $(size(B))"))
+    end
+    for i in eachindex(a)
+        b[i] *= a[i]
+    end
+    B
 end
 
 (*){T}(D::Diagonal{T}, A::VectorReMat{T}) = VectorReMat(A.f, A.z * D, A.fnm, A.cnms)

@@ -173,7 +173,7 @@ Returns:
 lowerbd(m::MixedModel) = mapreduce(lowerbd,vcat,lmm(m).Λ)
 
 """
-    ranef!(v, m, uscale, usefe)
+    ranef!(v, m, uscale)
 
 Overwrite v with the conditional modes of the random effects for `m`
 
@@ -182,21 +182,22 @@ Args:
 - `v`: a `Vector` of matrices
 - `m`: a `MixedModel`
 - `uscale`: `Bool`, return the random-effects on the spherical (i.e. `u`) scale?
-- `usefe`: `Bool`, should the fixed-effects parameters be incorporated?
 
 Returns:
   `v`, overwritten with the conditional modes
 """
-function ranef!(v::Vector, m::MixedModel, uscale, usefe)
+function ranef!(v::Vector, m::MixedModel, uscale)
     R, Λ = m.R, m.Λ
-    k = length(Λ)  # number of random-effects terms
-    kp1 = k + 1
-    β = coef(m)
+    k = length(Λ)        # number of random-effects terms
     for j in 1:k
-        uj = copy!(v[j], R[j, end])
-            # subtract the fixed-effects contribution
-        if usefe
-            Base.LinAlg.BLAS.gemv!('N', -1.0, R[j, kp1], β, 1.0, vec(uj))
+        copy!(v[j], R[j, end])
+    end
+    rβ = R[k + 1, end]
+    if !isempty(rβ)      #  in the pirls! function for GLMMs want to skip this
+        β = vec(feR(m) \ rβ)
+        kp1 = k + 1
+        for j in 1:k     # subtract the fixed-effects contribution
+            Base.LinAlg.BLAS.gemv!('N', -1.0, R[j, kp1], β, 1.0, vec(v[j]))
         end
     end
     for j in k:-1:1
@@ -232,7 +233,7 @@ Returns:
   For a scalar random-effects term the matrix is `1 × k` where `k` is the number of levels of the grouping factor.
   For a vector-valued random-effects term the matrix is `l × k` where `l` is the dimension of each random effect.
 """
-function ranef(m::MixedModel, uscale=false, usefe = true)
+function ranef(m::MixedModel, uscale=false)
     lm = lmm(m)
     Λ, trms = lm.Λ, unwttrms(lm)
     T = eltype(trms[end])
@@ -242,7 +243,7 @@ function ranef(m::MixedModel, uscale=false, usefe = true)
         k = size(trms[i], 2)
         push!(v, Array(T, (l, div(k, l))))
     end
-    ranef!(v, lm, uscale, usefe)
+    ranef!(v, lm, uscale)
 end
 
 """

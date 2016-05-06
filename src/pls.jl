@@ -403,9 +403,15 @@ Returns:
 """
 function reweight!{T}(m::LinearMixedModel{T}, wts::Vector{T})
     A, wttrms, trms, sqrtwts = m.A, m.wttrms, m.trms, m.sqrtwts
-    map!(sqrt, sqrtwts.diag, wts)
+    d = sqrtwts.diag
+    if length(wts) ≠ length(d)
+        throw(DimensionMismatch("length(wts) = $(length(wts)), should be $(length(d))"))
+    end
+    for i in eachindex(wts)
+        d[i] = sqrt(wts[i])
+    end
     for j in eachindex(trms)
-        A_mul_B!(wttrms[j], sqrtwts, trms[j])
+        A_mul_B!(sqrtwts, copy!(wttrms[j], trms[j]))
     end
     for j in 1:size(A, 2), i in 1:j
         Ac_mul_B!(A[i, j], wttrms[i], wttrms[j])
