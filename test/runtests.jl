@@ -1,5 +1,5 @@
 using DataArrays, DataFrames, MixedModels, Base.Test
-Pkg.checkout("GLM")
+
 include(joinpath(dirname(@__FILE__),"data.jl"))
 
 include("paramlowertriangular.jl")

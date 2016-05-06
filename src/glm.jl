@@ -1,3 +1,5 @@
+GLM.canonicallink(::Bernoulli) = LogitLink()
+
 function updateμ!{T <: AbstractFloat}(m::GeneralizedLinearMixedModel{T})
     y, dist, link, η, μ, dμdη, var = m.y, m.dist, m.link, m.η, m.μ, m.dμdη, m.var
     wt, wrkresid, wrkwt, dres = m.wt, m.wrkresid, m.wrkwt, m.devresid
