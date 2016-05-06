@@ -29,6 +29,8 @@ const csf = D * sf
 @test sf == csf
 @test sf == LinAlg.A_mul_B!(csf, D, sf)
 
+@test sf == copy!(csf, sf)
+
 const L = MixedModels.LT(sf)
 L[:θ] = [0.5]
 
