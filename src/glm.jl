@@ -1,7 +1,5 @@
-GLM.canonicallink(::Bernoulli) = LogitLink()
-
 function updateμ!{T <: AbstractFloat}(m::GeneralizedLinearMixedModel{T})
-    y, dist, link, η, μ, dμdη, var = m.y, m.dist, m.link, m.η, m.μ, m.dμdη, m.var
+    y, dist, link, η, μ = m.y, m.dist, m.link, m.η, m.μ
     wt, wrkresid, wrkwt, dres = m.wt, m.wrkresid, m.wrkwt, m.devresid
 
     priorwts = !isempty(wt)
@@ -9,8 +7,8 @@ function updateμ!{T <: AbstractFloat}(m::GeneralizedLinearMixedModel{T})
     @inbounds for i = eachindex(η)
         yi, ηi = y[i], η[i]
         μi = μ[i] = linkinv(link, ηi)
-        dμdηi = dμdη[i] = mueta(link, ηi)
-        vari = var[i] = GLM.glmvar(dist, link, μi, ηi)
+        dμdηi = mueta(link, ηi)
+        vari = GLM.glmvar(dist, link, μi, ηi)
         wrkresid[i] = (yi - μi)/dμdηi
         wti = priorwts ? wt[i] : one(T)
         dres[i] = devresid(dist, yi, μi, wti)
