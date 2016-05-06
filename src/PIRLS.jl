@@ -71,6 +71,7 @@ function glmm(f::Formula, fr::AbstractDataFrame, d::Distribution, wt::Vector, l:
         # the weights argument is forced to be non-empty in the lmm as it will be used later
     LMM = lmm(f, fr; weights = wts)
     LMM[:θ] = LMM[:θ]   # force inflation and decomposition of LMM.A to produce LMM.R
+#    @show LMM[:θ]
     A, R, trms, u, y = LMM.A, LMM.R, LMM.trms, ranef(LMM), copy(model_response(LMM))
     wts = oftype(y, wts)
     kp1 = length(LMM.Λ) + 1
@@ -90,9 +91,11 @@ function glmm(f::Formula, fr::AbstractDataFrame, d::Distribution, wt::Vector, l:
     r = gl.rr
     res = GeneralizedLinearMixedModel(LMM, d, l, coef(gl), LMM[:θ], u, map(zeros, u), X, y, r.mu,
         r.eta, r.devresid, copy(r.eta), oftype(y, []), r.wrkresid, r.wrkwts, oftype(y, wt))
+#    @show res.θ
     wrkresp!(trms[end], res)
     reweight!(LMM, res.wrkwt)
-    fit!(LMM)
+#    fit!(LMM, true)
+#    res.θ = LMM[:θ]
     res
 end
 
@@ -126,6 +129,7 @@ Returns:
   the Laplace approximation to the deviance of `m`
 """
 function LaplaceDeviance{T <: AbstractFloat}(m::GeneralizedLinearMixedModel{T})
+#    @show logdet(m), sum(m.devresid), sumabs2(m.u[1])
     logdet(m) + sum(m.devresid) + mapreduce(sumabs2, +, m.u)
 end
 
@@ -152,6 +156,8 @@ function LaplaceDeviance!(m::GeneralizedLinearMixedModel)
     lm[:θ] = m.θ
     LaplaceDeviance(m)
 end
+
+lowerbd(m::GeneralizedLinearMixedModel) = vcat(fill(-Inf, size(m.β)), lowerbd(m.LMM))
 
 """
     updateη!(m)
@@ -347,7 +353,6 @@ function StatsBase.fit!(m::GeneralizedLinearMixedModel, verbose::Bool=false, opt
     m.LMM.opt = OptSummary(βΘ,xmin,fmin,feval,optimizer)
     if verbose
         println(ret)
-        @show fmin, LaplaceDeviance(m)
     end
     m
 end
