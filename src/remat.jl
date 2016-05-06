@@ -36,15 +36,15 @@ Members:
 - `fnm`: the name of the grouping factor as a `Symbol`
 - `cnms`: a `Vector` of column names (row names after transposition) of `z`
 """
-immutable VectorReMat{T} <: ReMat
-    f::PooledDataVector                 # grouping factor
+immutable VectorReMat{T <: AbstractFloat, S, R <: Integer} <: ReMat
+    f::PooledDataVector{S,R}
     z::Matrix{T}
     fnm::Symbol
     cnms::Vector
 end
 
 """
-     remat(e,df)
+     remat(e, df)
 
 A factory for `ReMat` objects
 
@@ -72,14 +72,24 @@ end
 
 Base.eltype(R::ReMat) = eltype(R.z)
 
-function Base.copy!{T,S,R}(d::ScalarReMat{T,S,R}, s::ScalarReMat{T,S,R})
-    df, dz, sf, sz = d.f, d.z, s.f, s.z
-    dfp, dfr, sfp, sfr = df.pool, df.refs, sf.pool, sf.refs
-    if length(dfp) != length(sfp)
+function Base.copy!{S,R}(d::PooledDataVector{S,R}, s::PooledDataVector{S,R})
+    dp, dr, sp, sr = d.pool, d.refs, s.pool, s.refs
+    if length(dp) != length(sp)
         throw(DimensionMismatch("pool sizes of dest, $(length(dfp)), and source, $(length(sfp))"))
     end
-    copy!(dfr, sfr)
-    copy!(dz, sz)
+    copy!(dr, sr)
+    d
+end
+
+function Base.copy!{T,S,R}(d::ScalarReMat{T,S,R}, s::ScalarReMat{T,S,R})
+    copy!(d.f, s.f)
+    copy!(d.z, s.z)
+    d
+end
+
+function Base.copy!{T,S,R}(d::VectorReMat{T,S,R}, s::VectorReMat{T,S,R})
+    copy!(d.f, s.f)
+    copy!(d.z, s.z)
     d
 end
 
@@ -293,6 +303,21 @@ function Base.A_mul_B!{T}(A::Diagonal{T}, B::ScalarReMat{T})
     end
     for i in eachindex(a)
         b[i] *= a[i]
+    end
+    B
+end
+
+function Base.A_mul_B!{T}(A::Diagonal{T}, B::VectorReMat{T})
+    a, b = A.diag, B.z
+    if length(a) ≠ size(b, 2)
+        throw(DimensionMismatch("A_mul_B!, A: diagonal $(size(A, 1)), B: ScalarReMat $(size(B))"))
+    end
+    k = size(b, 1)
+    for j in eachindex(a)
+        aj = a[j]
+        for i in 1:k
+            b[i,j] *= aj
+        end
     end
     B
 end
