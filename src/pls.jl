@@ -511,7 +511,7 @@ function Base.show(io::IO,vc::VarCorr)
             write(io, lpad(si[ind], stdwd))
             ind += 1
             for k in 1:(j-1)
-                @printf(io, "%6.2f", cor[i][j,1])
+                @printf(io, "%6.2f", cor[i][j, k])
             end
             println(io)
         end
