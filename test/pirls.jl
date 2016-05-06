@@ -1,4 +1,4 @@
-using MixedModels, Base.Test, DataFrames
+using Base.Test, DataFrames, MixedModels
 
 contra = readtable(joinpath(dirname(@__FILE__), "data", "Contraception.csv.gz"))
 for c in [:district, :use, :urban, :livch, :urbdist]
@@ -7,11 +7,10 @@ end
 contra[:age2] = abs2(contra[:age])
 gm1 = fit!(glmm(use01 ~ 1 + age + age2 + urban + livch + (1 | urbdist), contra, Bernoulli()));
 
-@test isapprox(LaplaceDeviance(gm1), 2361.545754286571; atol = 0.0001)
-@show logdet(gm1)
-@test isapprox(logdet(gm1), 75.72160810997067; atol = 0.0001)
-@test isapprox(sumabs2(gm1.u[1]), 48.4747253940772; atol = 0.0001)
-@test isapprox(sum(gm1.devresid), 2237.3494207825233; atol = 0.0001)
+@test isapprox(LaplaceDeviance(gm1), 2361.5457541; atol = 0.0001)
+@test isapprox(logdet(gm1), 75.7204822; atol = 0.0001)
+@test isapprox(sumabs2(gm1.u[1]), 48.47486965; atol = 0.0001)
+@test isapprox(sum(gm1.devresid), 2237.3504024; atol = 0.0001)
 
 cbpp = readtable(joinpath(dirname(@__FILE__), "data", "cbpp.csv.gz"))
 for c in [:herd, :period]
