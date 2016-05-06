@@ -20,16 +20,23 @@ end
 function updateμ!{T<:AbstractFloat, D<:Union{Bernoulli, Binomial}, L<:LogitLink}(m::GeneralizedLinearMixedModel{T,D,L})
     y, η, μ, wrkres, wrkwt, dres = m.y, m.η, m.μ, m.wrkresid, m.wrkwt, m.devresid
 
+    clamp!(η, -20.0, 20.0)
     @inbounds for i in eachindex(η)
         ηi = η[i]
         ei = exp(-ηi)
         opei = 1 + ei
         μi = μ[i] = inv(opei)
         dμdη = wrkwt[i] = ei / abs2(opei)
+        if abs(dμdη) < eps()
+            @show ηi, ei, opei, μi, dμdη
+        end
         yi = y[i]
         wrkres[i] = (yi - μi) / dμdη
         dres[i] = -2 * (yi == 1 ? log(μi) : yi == 0 ? log1p(-μi) :
             (yi * (log(μi) - log(yi)) + (1 - yi) * (log1p(-μi) - log1p(-yi))))
+        if !isfinite(dres[i])
+            @show i, yi, ηi, ei, opei, μi, dμdη, wrkres[i], dres[i]
+        end
     end
 
     if !isempty(m.wt)
