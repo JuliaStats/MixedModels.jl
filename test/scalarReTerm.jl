@@ -1,6 +1,6 @@
-const sf = ScalarReMat(ds[:Batch],ones(size(ds,1)),:Batch,ASCIIString["(Intercept)"])
+const sf = ScalarReMat(ds[:Batch], ones(size(ds,1)), :Batch, ASCIIString["(Intercept)"])
 
-const Yield = convert(Array,ds[:Yield])
+const Yield = Array(ds[:Yield])
 
 # check size methods
 @test size(sf) == (30, 6)
@@ -23,6 +23,13 @@ const crp1 = copy(crp)
 const rhs = sf'Yield
 @test rhs == [7525.0,7640.0,7820.0,7490.0,8000.0,7350.0]
 @test A_ldiv_B!(crp,copy(rhs)) == [1505.,1528.,1564.,1498.,1600.,1470.]
+
+const D = Diagonal(ones(30))
+const csf = D * sf
+@test sf == csf
+@test sf == LinAlg.A_mul_B!(csf, D, sf)
+
+@test sf == copy!(csf, sf)
 
 const L = MixedModels.LT(sf)
 L[:θ] = [0.5]

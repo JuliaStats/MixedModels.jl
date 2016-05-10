@@ -1,5 +1,5 @@
 """
-    
+
 `HBlkDiag` - a homogeneous block diagonal matrix, i.e. all the diagonal blocks are the same size
 
 A matrix consisting of k diagonal blocks of size `r×s` is stored as an `r×s×k` array.
@@ -61,13 +61,30 @@ end
 
 function Base.LinAlg.A_ldiv_B!{T}(A::UpperTriangular{T,HBlkDiag{T}}, B::DenseVecOrMat{T})
     Aa = A.data.arr
-    r, s, k = size(Aa)
+    r, s, t = size(Aa)
+    if r ≠ s
+        throw(ArgumentError("A must be square"))
+    end
     m, n = size(B, 1), size(B, 2)  # need to call size twice in case B is a vector
-    if r * k ≠ m
+    if m ≠ r * t
         throw(DimensionMismatch("size(A, 2) ≠ size(B, 1)"))
     end
-    for b in 1:k
-        Base.LinAlg.A_ldiv_B!(UpperTriangular(sub(Aa, :, :, b)), sub(B, (1:r) + (b - 1) * r, :))
+    scm = Array(T, (r, r))
+    scv = Array(T, (r, ))
+    for k in 1 : t
+        offset = (k - 1) * r
+        for j in 1 : r, i in 1 : j
+            scm[i, j] = Aa[i, j, k]
+        end
+        for j in 1 : n
+            for i in 1 : r
+                scv[i] = B[offset + i, j]
+            end
+            BLAS.trsv!('U', 'N', 'N', scm, scv)
+            for i in 1 : r
+                B[offset + i, j] = scv[i]
+            end
+        end
     end
     A
 end

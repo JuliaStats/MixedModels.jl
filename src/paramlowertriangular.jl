@@ -141,9 +141,16 @@ end
 
 function tscale!{T}(A::HBlkDiag{T}, B::LowerTriangular{T})
     aa = A.arr
-    r, s, k = size(aa)
-    for i in 1:k
-        A_mul_B!(sub(aa, :, :, i), B)
+    r, s, l = size(aa)
+    scr = Array(T, r, s)
+    for k in 1 : l
+        for j in 1 : s, i in 1 : r
+            scr[i, j] = aa[i, j, k]
+        end
+        A_mul_B!(scr, B)
+        for j in 1 : s, i in 1 : r
+            aa[i, j, k] = scr[i, j]
+        end
     end
     A
 end

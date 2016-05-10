@@ -8,8 +8,8 @@ const m1 = LowerTriangular(eye(3))
 const m1c = copy(m1)
 @test MixedModels.nlower(m1) == 6
 @test m1c == m1
-@test m1[:θ] == [1.,0,0,1,0,1]
-@test lowerbd(m1) == [0.,-Inf,-Inf,0.,-Inf,0.]
+@test m1[:θ] == [1., 0, 0, 1, 0, 1]
+@test lowerbd(m1) == [0., -Inf, -Inf, 0., -Inf, 0.]
 
 m1[:θ] = collect(1.:6)                  # assignment of parameters
 @test m1[:θ] == collect(1.:6)           # check assignment and extraction

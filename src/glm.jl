@@ -1,14 +1,15 @@
 function updateμ!{T <: AbstractFloat}(m::GeneralizedLinearMixedModel{T})
-    y, dist, link, η, μ, dμdη, var = m.y, m.dist, m.link, m.η, m.μ, m.dμdη, m.var
+    y, dist, link, η, μ = m.y, m.dist, m.link, m.η, m.μ
     wt, wrkresid, wrkwt, dres = m.wt, m.wrkresid, m.wrkwt, m.devresid
 
     priorwts = !isempty(wt)
 
+#    @inbounds Threads.@threads for i = eachindex(η)
     @inbounds for i = eachindex(η)
         yi, ηi = y[i], η[i]
         μi = μ[i] = linkinv(link, ηi)
-        dμdηi = dμdη[i] = mueta(link, ηi)
-        vari = var[i] = GLM.glmvar(dist, link, μi, ηi)
+        dμdηi = mueta(link, ηi)
+        vari = GLM.glmvar(dist, link, μi, ηi)
         wrkresid[i] = (yi - μi)/dμdηi
         wti = priorwts ? wt[i] : one(T)
         dres[i] = devresid(dist, yi, μi, wti)
@@ -20,8 +21,9 @@ end
 function updateμ!{T<:AbstractFloat, D<:Union{Bernoulli, Binomial}, L<:LogitLink}(m::GeneralizedLinearMixedModel{T,D,L})
     y, η, μ, wrkres, wrkwt, dres = m.y, m.η, m.μ, m.wrkresid, m.wrkwt, m.devresid
 
+#    @inbounds Threads.@threads for i in eachindex(η)
     @inbounds for i in eachindex(η)
-        ηi = η[i]
+        ηi = clamp(η[i], -20.0, 20.0)
         ei = exp(-ηi)
         opei = 1 + ei
         μi = μ[i] = inv(opei)
@@ -45,6 +47,7 @@ end
 function updateμ!{T<:AbstractFloat, D<:Poisson, L<:LogLink}(m::GeneralizedLinearMixedModel{T,D,L})
     y, η, μ, wrkres, wrkwt, dres = m.y, m.η, m.μ, m.wrkresid, m.wrkwt, m.devresid
 
+#    @inbounds Threads.@threads for i in eachindex(η)
     @inbounds for i in eachindex(η)
         ηi = η[i]
         μi = μ[i] = exp(ηi)
@@ -64,7 +67,7 @@ function updateμ!{T<:AbstractFloat, D<:Poisson, L<:LogLink}(m::GeneralizedLinea
     end
 end
 
-function wrkresp!{T <: AbstractFloat}(v::DenseVecOrMat{T}, m::GeneralizedLinearMixedModel)
+function wrkresp!{T <: AbstractFloat}(v::DenseVecOrMat{T}, m::GeneralizedLinearMixedModel{T})
     if isempty(m.offset)
         return broadcast!(+, v, m.η, m.wrkresid)
     end
