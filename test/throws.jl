@@ -44,7 +44,7 @@ const speye4 = speye(4)
 @test_throws ArgumentError MixedModels.inject!(speye(4), sparse(ones(4,4)))
 @test_throws DimensionMismatch Base.LinAlg.A_ldiv_B!(dd3, speye4)
 @test_throws DimensionMismatch Base.LinAlg.Ac_ldiv_B!(UpperTriangular(hblk), ones(1,1))
-@test_throws DimensionMismatch MixedModels.unscaledre!(ones(1), modl.wttrms[1], modl.Λ[1], ones(1, 6))
+@test_throws DimensionMismatch MixedModels.unscaledre!(ones(1), modl.wttrms[1], ones(1, 6))
 
 @test_throws DimensionMismatch MixedModels.downdate!(ones(1,1), speye4, ones(4,1))
 @test_throws DimensionMismatch MixedModels.downdate!(ones(1,1), speye4, speye4)
@@ -54,7 +54,7 @@ const speye4 = speye(4)
 @test_throws DimensionMismatch MixedModels.inject!(speye4, speye(3))
 
 @test_throws DimensionMismatch MixedModels.unscaledre!(zeros(size(slp, 1)),
-  remat(:(1 + Days | Subject), slp), LowerTriangular(eye(2)), ones(1,30))
+  remat(:(1 + Days | Subject), slp), ones(1,30))
 
 @test_throws DimensionMismatch MixedModels.tscale!(LowerTriangular(eye(2)), Diagonal(ones(30)))
 @test_throws DimensionMismatch MixedModels.tscale!(Diagonal(ones(30)), LowerTriangular(eye(2)))

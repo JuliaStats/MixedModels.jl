@@ -72,7 +72,7 @@ function resetθ!(m::LinearMixedModel)
 end
 
 """
-    unscaledre!(y, M, L, u)
+    unscaledre!(y, M, b)
 
 Add unscaled random effects to `y`.
 
@@ -80,48 +80,46 @@ Args:
 
 - `y`: response vector to which the random effects are to be added
 - `M`: an `ReMat`
-- `L`: the `LowerTriangular` matrix defining `Λ` for this term
-- `u`: a `Matrix` of random effects on the `u` scale. Defaults to a standard multivariate normal of the appropriate size.
+- `b`: a `Matrix` of random effects on the `B` scale. Defaults to a standard multivariate normal of the appropriate size.
 
 Returns:
   the updated `y`
 """
-function unscaledre!{T<:AbstractFloat,S,R<:Integer}(y::Vector{T}, M::ScalarReMat{T,S,R}, L::LowerTriangular{T}, u::Matrix{T})
+function unscaledre!{T<:AbstractFloat,S,R<:Integer}(y::Vector{T}, M::ScalarReMat{T,S,R}, b::Matrix{T})
     z = M.z
-    if length(y) ≠ length(z) || size(L) ≠ (1, 1) || size(u, 1) ≠ 1
+    if length(y) ≠ length(z) || size(b, 1) ≠ 1
         throw(DimensionMismatch())
     end
-    m = L.data[1, 1]
     inds = M.f.refs
-    @inbounds @simd for i in eachindex(y)
-        y[i] += m * u[inds[i]] * z[i]
+    @inbounds for i in eachindex(y)
+        y[i] += b[inds[i]] * z[i]
     end
     y
 end
 
-function unscaledre!(y::AbstractVector, M::ScalarReMat, L::LowerTriangular)
-    unscaledre!(y, M, L, randn(1, length(M.f.pool)))
+function unscaledre!{T}(y::AbstractVector{T}, M::ScalarReMat{T}, L::LowerTriangular{T})
+    unscaledre!(y, M, A_mul_B!(L, randn(1, length(M.f.pool))))
 end
 
-function unscaledre!(y::AbstractVector, M::VectorReMat, L::LowerTriangular,
-    u::DenseMatrix)
-
+function unscaledre!{T,S,R}(y::AbstractVector{T}, M::VectorReMat{T,S,R}, b::DenseMatrix{T})
     Z = M.z
     k, n = size(Z)
     l = length(M.f.pool)
-    if length(y) ≠ n || size(u) != (k, l) || size(L) ≠ (k, k)
+    if length(y) ≠ n || size(b) != (k, l)
         throw(DimensionMismatch())
     end
-    re = L * u
     inds = M.f.refs
     for i in eachindex(y)
-        y[i] += dot(sub(Z, :, i), sub(re, :, Int(inds[i])))
+        ii = inds[i]
+        for j in 1:k
+            y[i] += Z[j,i] * b[j, ii]
+        end
     end
     y
 end
 
 unscaledre!(y::AbstractVector, M::VectorReMat, L::LowerTriangular) =
-    unscaledre!(y, M, L, randn(size(M.z, 1), length(M.f.pool)))
+    unscaledre!(y, M, A_mul_B!(L, randn(size(M.z, 1), length(M.f.pool))))
 
 """
     simulate!(m; β, σ, θ)

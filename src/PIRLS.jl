@@ -10,7 +10,8 @@ Members:
 - `link`: a suitable `GLM.Link` object
 - `β`: the fixed-effects vector
 - `θ`: covariance parameter vector
-- `u`: a vector of vectors of random effects
+- `b`: similar to `u`, equivalent to `broadcast!(*, b, LMM.Λ, u)`
+- `u`: a vector of matrices of random effects
 - `u₀`: similar to `u`.  Used in the PIRLS algorithm if step-halving is necessary.
 - `X`:
 - `y`: the response vector
@@ -31,6 +32,7 @@ type GeneralizedLinearMixedModel{T <: AbstractFloat, D <: UnivariateDistribution
     link::L
     β::Vector{T}
     θ::Vector{T}
+    b::Vector{Matrix{T}}
     u::Vector{Matrix{T}}
     u₀::Vector{Matrix{T}}
     X::Matrix{T}
@@ -63,15 +65,14 @@ Returns:
 Notes:
   The return value is ready to be `fit!` but has not yet been fit.
 """
-function glmm(f::Formula, fr::AbstractDataFrame, d::Distribution, wt::Vector, l::Link)
+function glmm(f::Formula, fr::AbstractDataFrame, d::Distribution, l::Link; wt=[], offset=[])
 #    if d == Binomial() && isempty(wt)
 #        d = Bernoulli()
 #    end
-    wts = isempty(wt) ? ones(nrow(fr)) : copy(wt)
+    wts = isempty(wt) ? ones(nrow(fr)) : Array(wt)
         # the weights argument is forced to be non-empty in the lmm as it will be used later
     LMM = lmm(f, fr; weights = wts)
     LMM[:θ] = LMM[:θ]   # force inflation and decomposition of LMM.A to produce LMM.R
-#    @show LMM[:θ]
     A, R, trms, u, y = LMM.A, LMM.R, LMM.trms, ranef(LMM), copy(model_response(LMM))
     wts = oftype(y, wts)
     kp1 = length(LMM.Λ) + 1
@@ -86,26 +87,18 @@ function glmm(f::Formula, fr::AbstractDataFrame, d::Distribution, wt::Vector, l:
     qend = size(trms[end], 2)  # should always be 1 but no harm in extracting it
     A[kp1, end] = zeros((0, qend))
     R[kp1, end] = zeros((0, qend))
-            # fit a glm pm the fixed-effects only
+            # fit a glm to the fixed-effects only
     gl = glm(X, y, d, l; wts = wts)
     r = gl.rr
-    res = GeneralizedLinearMixedModel(LMM, d, l, coef(gl), LMM[:θ], u, map(zeros, u), X, y, r.mu,
-        r.eta, r.devresid, copy(r.eta), oftype(y, []), r.wrkresid, r.wrkwts, oftype(y, wt))
-#    @show res.θ
+    res = GeneralizedLinearMixedModel(LMM, d, l, coef(gl), LMM[:θ], deepcopy(u), u, map(zeros, u),
+        X, y, r.mu, r.eta, r.devresid, copy(r.eta), oftype(y, offset), r.wrkresid, r.wrkwts,
+        oftype(y, wt))
     wrkresp!(trms[end], res)
     reweight!(LMM, res.wrkwt)
-#    fit!(LMM, true)
-#    res.θ = LMM[:θ]
     res
 end
 
-function glmm(f::Formula, fr::AbstractDataFrame, d::Distribution, wt::DataVector, l::Link)
-    glmm(f, fr, d, convert(Vector, wt), l)
-end
-
-glmm(f::Formula, fr::AbstractDataFrame, d::Distribution, wt::Vector) = glmm(f, fr, d, wt, GLM.canonicallink(d))
-
-glmm(f::Formula, fr::AbstractDataFrame, d::Distribution) = glmm(f, fr, d, Float64[])
+glmm(f::Formula, fr::AbstractDataFrame, d::Distribution) = glmm(f, fr, d, GLM.canonicallink(d))
 
 lmm(m::GeneralizedLinearMixedModel) = m.LMM
 
@@ -174,11 +167,11 @@ Returns:
    the updated `m`.
 """
 function updateη!(m::GeneralizedLinearMixedModel)
-    η, lm, u, offset = m.η, m.LMM, m.u, m.offset
+    η, lm, b, offset, u = m.η, m.LMM, m.b, m.offset, m.u
     Λ, trms = lm.Λ, lm.trms
     isempty(offset) ? fill!(η, 0) : copy!(η, offset)
-    for i in eachindex(u)
-        unscaledre!(η, trms[i], Λ[i], u[i])
+    for i in eachindex(b)
+        unscaledre!(η, trms[i], A_mul_B!(Λ[i], copy!(b[i], u[i])))
     end
     updateμ!(m)
 end
