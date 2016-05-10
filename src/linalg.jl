@@ -26,17 +26,29 @@ function Base.LinAlg.A_ldiv_B!{T}(D::Diagonal{T}, B::SparseMatrixCSC{T})
     B
 end
 
-function Base.LinAlg.Ac_ldiv_B!{T}(A::UpperTriangular{T,HBlkDiag{T}}, B::DenseMatrix{T})
+function LinAlg.Ac_ldiv_B!{T}(A::UpperTriangular{T,HBlkDiag{T}}, B::DenseMatrix{T})
     m, n = size(B)
     aa = A.data.arr
-    r, s, k = size(aa)
+    r, s, t = size(aa)
     if m ≠ Compat.LinAlg.checksquare(A)
         throw(DimensionMismatch("size(A,2) ≠ size(B,1)"))
     end
-    scr = Array(T,(r,n))
-    for i in 1:k
-        bb = sub(B, (i - 1) * r + (1:r), :)
-        copy!(bb, Base.LinAlg.Ac_ldiv_B!(UpperTriangular(sub(aa, :, :, i)), copy!(scr, bb)))
+    scv = Array(T, (r,))
+    scm = Array(T, (r, r))
+    for k in 1:t
+        for j in 1 : r, i in 1 : j
+            scm[i, j] = aa[i, j, k]
+        end
+        rowoff = (k - 1) * r
+        for j in 1:n
+            for i in 1 : r
+                scv[i] = B[rowoff + i, j]
+            end
+            BLAS.trsv!('U', 'T', 'N', scm, scv)
+            for i in 1 : r
+                B[rowoff + i, j] = scv[i]
+            end
+        end
     end
     B
 end

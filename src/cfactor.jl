@@ -41,11 +41,21 @@ end
 
 cfactor!(A::Matrix{Float64}) = UpperTriangular(Base.LinAlg.LAPACK.potrf!('U', A)[1])
 
-function cfactor!(A::HBlkDiag)
+function cfactor!{T}(A::HBlkDiag{T})
     Aa = A.arr
-    r, s, k = size(Aa)
-    for i in 1:k
-        Base.LinAlg.chol!(sub(Aa, :, :, i))
+    r, s, t = size(Aa)
+    if r ≠ s
+        throw(ArgumentError("HBlkDiag matrix A must be square"))
+    end
+    scm = Array(T, (r, r))
+    for k in 1 : t  # FIXME: Lots of allocations in this loop
+        for j in 1 : r, i in 1 : j
+            scm[i, j] = Aa[i, j, k]
+        end
+        Base.LinAlg.LAPACK.potrf!('U', scm)
+        for j in 1 : r, i in 1 : j
+            Aa[i, j, k] = scm[i, j]
+        end
     end
     UpperTriangular(A)
 end

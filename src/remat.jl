@@ -154,13 +154,13 @@ end
 Base.A_mul_B!{T}(A::ReMat, B::StridedVecOrMat{T}, R::StridedVecOrMat{T}) = A_mul_B!(one(T), A, B, zero(T), R)
 
 function Base.Ac_mul_B!{T}(α::Real, A::ReMat, B::StridedVecOrMat{T}, β::Real, R::StridedVecOrMat{T})
-    n,q = size(A)
+    n, q = size(A)
     k = size(B, 2)
     if size(R, 1) ≠ q || size(B, 1) ≠ n || size(R, 2) ≠ k
         throw(DimensionMismatch())
     end
     if β ≠ 1
-        scale!(β,R)
+        β == 0 ? fill!(R, 0) : scale!(β, R)
     end
     rr = A.f.refs
     zz = A.z
@@ -170,9 +170,12 @@ function Base.Ac_mul_B!{T}(α::Real, A::ReMat, B::StridedVecOrMat{T}, β::Real, 
         end
     else
         l = size(zz, 1)
-        rt = reshape(R, (l, div(q,l), k))
         for j in 1:k, i in 1:n
-            Base.axpy!(α * B[i,j], sub(zz, :, i), sub(rt, :, Int(rr[i]),j))
+            roffset = (rr[i] - 1) * l
+            mul = α * B[i, j]
+            for ii in 1:l
+                R[roffset + ii, j] += mul * zz[ii, i]
+            end
         end
     end
     R
@@ -212,15 +215,22 @@ end
 
 function Base.Ac_mul_B!{T}(C::HBlkDiag{T}, A::VectorReMat{T}, B::VectorReMat{T})
     c, a, r = C.arr, A.z, A.f.refs
+    _, m, n = size(c)
     fill!(c, 0)
     if !is(A, B)
         throw(ArgumentError("Currently defined only for A === B"))
     end
-    for i in eachindex(r)
-        Base.BLAS.syr!('U', 1.0, slice(a, :, i), sub(c, :, :, Int(r[i])))
-    end
-    for k in 1:size(c, 3)
-        Base.LinAlg.copytri!(sub(c, :, :, k), 'U')
+    for k in eachindex(r)
+        ri = Int(r[k])
+        for j in 1 : m
+            aj = a[j, k]
+            c[j, j, ri] += abs2(aj)
+            for i in 1 : j - 1
+                aij = a[i, k] * aj
+                c[i, j, ri] += aij
+                c[j, i, ri] += aij
+            end
+        end
     end
     C
 end
@@ -240,22 +250,13 @@ function Base.Ac_mul_B!{T}(C::Matrix{T}, A::ScalarReMat{T}, B::ScalarReMat{T})
     C
 end
 
-function Base.Ac_mul_B(A::VectorReMat, B::VectorReMat)
+function Base.Ac_mul_B{T}(A::VectorReMat{T}, B::VectorReMat{T})
+    if is(A, B)
+        l = size(A.z, 1)
+        return Ac_mul_B!(HBlkDiag(Array(T, (l, l, length(A.f.pool)))), A, B)
+    end
     Az = A.z
     Ar = convert(Vector{Int}, A.f.refs)
-    if is(A, B)
-        l, n = size(Az)
-        T = eltype(Az)
-        np = nlevs(A)
-        a = zeros(T, (l, l, np))
-        for i in eachindex(Ar)
-            Base.LinAlg.BLAS.syr!('L', one(T), sub(Az, :, i), sub(a, :, :, Ar[i]))
-        end
-        for k in 1:np
-            Base.LinAlg.copytri!(sub(a, :, :, k), 'L')
-        end
-        return HBlkDiag(a)
-    end
     Bz = B.z
     Br = convert(Vector{Int}, B.f.refs)
     if (m = length(Ar)) ≠ length(Br)
@@ -272,16 +273,20 @@ function Base.Ac_mul_B!{T}(R::DenseVecOrMat{T}, A::DenseVecOrMat{T}, B::ReMat)
         throw(DimensionMismatch(""))
     end
     fill!(R, zero(T))
-    rr = B.f.refs
-    zz = B.z
+    r = B.f.refs
+    z = B.z
     if isa(B, ScalarReMat)
         for j in 1:n, i in 1:m
-            R[j, rr[i]] += A[i, j] * zz[i]
+            R[j, r[i]] += A[i, j] * z[i]
         end
     else
         l = size(zz, 1)
         for j in 1:n, i in 1:m
-            Base.LinAlg.axpy!(A[i, j], sub(zz, :, i), sub(R, j, (rr[i] - 1) * l + (1:l)))
+            roffset = (r[i] - 1) * l
+            aij = A[i, j]
+            for k in 1:l
+                R[j, roffset + k] += aij * z[k, i]
+            end
         end
     end
     R
