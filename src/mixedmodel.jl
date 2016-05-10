@@ -197,7 +197,7 @@ function ranef!(v::Vector, m::MixedModel, uscale)
         β = vec(feR(m) \ rβ)
         kp1 = k + 1
         for j in 1:k     # subtract the fixed-effects contribution
-            Base.LinAlg.BLAS.gemv!('N', -1.0, R[j, kp1], β, 1.0, vec(v[j]))
+            BLAS.gemv!('N', -1.0, R[j, kp1], β, 1.0, vec(v[j]))
         end
     end
     for j in k:-1:1

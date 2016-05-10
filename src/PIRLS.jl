@@ -269,7 +269,7 @@ function Base.setindex!{T <: AbstractFloat}(m::GeneralizedLinearMixedModel, v::V
     if isempty(offset₀)
         A_mul_B!(offset, m.X, β)
     else
-        BLAS.gemv!('N', m.X, β, 1., copy!(offset, offset₀))
+        BLAS.gemv!('N', one(T), m.X, β, one(T), copy!(offset, offset₀))
     end
     m
 end

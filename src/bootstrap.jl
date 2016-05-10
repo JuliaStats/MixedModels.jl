@@ -143,7 +143,7 @@ function simulate!(m::LinearMixedModel; β = coef(m), σ = sdest(m), θ = m[:θ]
     for j in eachindex(Λ)         # add the unscaled random effects
         unscaledre!(y, trms[j], Λ[j])
     end
-    Base.LinAlg.BLAS.gemv!('N', 1.0, trms[end - 1], β, σ, y)
+    BLAS.gemv!('N', 1.0, trms[end - 1], β, σ, y)
     m |> reevaluateAend! |> resetθ! |> fit!
 end
 
