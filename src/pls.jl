@@ -116,7 +116,7 @@ Returns:
 Notes:
   The return value is ready to be `fit!` but has not yet been fit.
 """
-function lmm(f::Formula, fr::AbstractDataFrame; weights::Vector = [])
+function lmm(f::Formula, fr::AbstractDataFrame; wt::Vector = [])
     mf = ModelFrame(f, fr)
     X = ModelMatrix(mf)
     y = convert(Vector{eltype(X.m)}, DataFrames.model_response(mf))
@@ -126,7 +126,7 @@ function lmm(f::Formula, fr::AbstractDataFrame; weights::Vector = [])
         throw(ArgumentError("$f has no random-effects terms"))
     end
     re = sort!([remat(e, mf.df) for e in retrms]; by = nlevs, rev = true)
-    LinearMixedModel(mf, re, map(LT,re), X.m, y, convert(typeof(y), weights))
+    LinearMixedModel(mf, re, map(LT,re), X.m, y, oftype(y, wt))
 end
 
 unwttrms(m::LinearMixedModel) = isempty(m.sqrtwts) ? m.wttrms : m.trms

@@ -4,7 +4,7 @@ function updateμ!{T <: AbstractFloat}(m::GeneralizedLinearMixedModel{T})
 
     priorwts = !isempty(wt)
 
-    @inbounds for i = eachindex(η)
+    @inbounds Threads.@threads for i = eachindex(η)
         yi, ηi = y[i], η[i]
         μi = μ[i] = linkinv(link, ηi)
         dμdηi = mueta(link, ηi)
@@ -20,23 +20,16 @@ end
 function updateμ!{T<:AbstractFloat, D<:Union{Bernoulli, Binomial}, L<:LogitLink}(m::GeneralizedLinearMixedModel{T,D,L})
     y, η, μ, wrkres, wrkwt, dres = m.y, m.η, m.μ, m.wrkresid, m.wrkwt, m.devresid
 
-    clamp!(η, -20.0, 20.0)
-    @inbounds for i in eachindex(η)
-        ηi = η[i]
+    @inbounds Threads.@threads for i in eachindex(η)
+        ηi = clamp(η[i], -20.0, 20.0)
         ei = exp(-ηi)
         opei = 1 + ei
         μi = μ[i] = inv(opei)
         dμdη = wrkwt[i] = ei / abs2(opei)
-        if abs(dμdη) < eps()
-            @show ηi, ei, opei, μi, dμdη
-        end
         yi = y[i]
         wrkres[i] = (yi - μi) / dμdη
         dres[i] = -2 * (yi == 1 ? log(μi) : yi == 0 ? log1p(-μi) :
             (yi * (log(μi) - log(yi)) + (1 - yi) * (log1p(-μi) - log1p(-yi))))
-        if !isfinite(dres[i])
-            @show i, yi, ηi, ei, opei, μi, dμdη, wrkres[i], dres[i]
-        end
     end
 
     if !isempty(m.wt)
@@ -52,7 +45,7 @@ end
 function updateμ!{T<:AbstractFloat, D<:Poisson, L<:LogLink}(m::GeneralizedLinearMixedModel{T,D,L})
     y, η, μ, wrkres, wrkwt, dres = m.y, m.η, m.μ, m.wrkresid, m.wrkwt, m.devresid
 
-    @inbounds for i in eachindex(η)
+    @inbounds Threads.@threads for i in eachindex(η)
         ηi = η[i]
         μi = μ[i] = exp(ηi)
         dμdη = wrkwt[i] = μi
@@ -71,7 +64,7 @@ function updateμ!{T<:AbstractFloat, D<:Poisson, L<:LogLink}(m::GeneralizedLinea
     end
 end
 
-function wrkresp!{T <: AbstractFloat}(v::DenseVecOrMat{T}, m::GeneralizedLinearMixedModel)
+function wrkresp!{T <: AbstractFloat}(v::DenseVecOrMat{T}, m::GeneralizedLinearMixedModel{T})
     if isempty(m.offset)
         return broadcast!(+, v, m.η, m.wrkresid)
     end

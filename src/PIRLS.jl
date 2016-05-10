@@ -71,7 +71,7 @@ function glmm(f::Formula, fr::AbstractDataFrame, d::Distribution, l::Link; wt=[]
 #    end
     wts = isempty(wt) ? ones(nrow(fr)) : Array(wt)
         # the weights argument is forced to be non-empty in the lmm as it will be used later
-    LMM = lmm(f, fr; weights = wts)
+    LMM = lmm(f, fr; wt = wts)
     LMM[:θ] = LMM[:θ]   # force inflation and decomposition of LMM.A to produce LMM.R
     A, R, trms, u, y = LMM.A, LMM.R, LMM.trms, ranef(LMM), copy(model_response(LMM))
     wts = oftype(y, wts)
@@ -102,7 +102,7 @@ glmm(f::Formula, fr::AbstractDataFrame, d::Distribution) = glmm(f, fr, d, GLM.ca
 
 lmm(m::GeneralizedLinearMixedModel) = m.LMM
 
-Base.logdet(m::GeneralizedLinearMixedModel) = logdet(lmm(m))
+Base.logdet{T}(m::GeneralizedLinearMixedModel{T}) = logdet(lmm(m))
 
 fixef(m::GeneralizedLinearMixedModel) = m.β
 
@@ -121,9 +121,12 @@ Args:
 Returns:
   the Laplace approximation to the deviance of `m`
 """
-function LaplaceDeviance{T <: AbstractFloat}(m::GeneralizedLinearMixedModel{T})
-#    @show logdet(m), sum(m.devresid), sumabs2(m.u[1])
-    logdet(m) + sum(m.devresid) + mapreduce(sumabs2, +, m.u)
+function LaplaceDeviance{T}(m::GeneralizedLinearMixedModel{T})
+    s = sum(m.devresid) + T(logdet(m))
+    for um in m.u, umi in um
+        s += abs2(umi)
+    end
+    s
 end
 
 #    dd, μ, y = typeof(m.dist), m.μ, m.y
@@ -266,7 +269,7 @@ function Base.setindex!{T <: AbstractFloat}(m::GeneralizedLinearMixedModel, v::V
     if isempty(offset₀)
         A_mul_B!(offset, m.X, β)
     else
-        BLAS.gemv!('N', m.X, β, 1, copy!(offset, offset₀))
+        BLAS.gemv!('N', m.X, β, 1., copy!(offset, offset₀))
     end
     m
 end
