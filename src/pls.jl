@@ -107,7 +107,7 @@ end
 Args:
 
 - `form`: a `DataFrames:Formula` containing fixed-effects and random-effects terms
-- `frm`: a `DataFrame` in which to evaluate `form`
+- `fr`: a `DataFrame` in which to evaluate `form`
 - `weights`: an optional vector of prior weights in the model.  Defaults to unit weights.
 
 Returns:
