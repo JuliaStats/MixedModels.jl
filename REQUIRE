@@ -5,3 +5,5 @@ GLM 0.5
 NLopt 0.2
 Showoff
 StatsBase 0.8.0
+Compat
+DataArrays
