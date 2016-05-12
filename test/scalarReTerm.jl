@@ -1,4 +1,4 @@
-const sf = ScalarReMat(ds[:Batch], ones(size(ds,1)), :Batch, ASCIIString["(Intercept)"])
+const sf = ScalarReMat(ds[:Batch], ones(size(ds,1)), :Batch, Compat.ASCIIString["(Intercept)"])
 
 const Yield = Array(ds[:Yield])
 
@@ -38,8 +38,8 @@ L[:θ] = [0.5]
 @test crp.diag == fill(2.5, 6)
 @test copy!(crp1, crp) == crp
 
-const sf1 = ScalarReMat(psts[:Sample], ones(size(psts,1)), :Sample, ASCIIString["(Intercept)"])
-const sf2 = ScalarReMat(psts[:Batch], ones(size(psts, 1)), :Batch, ASCIIString["(Intercept)"])
+const sf1 = ScalarReMat(psts[:Sample], ones(size(psts,1)), :Sample, Compat.ASCIIString["(Intercept)"])
+const sf2 = ScalarReMat(psts[:Batch], ones(size(psts, 1)), :Batch, Compat.ASCIIString["(Intercept)"])
 @test size(sf1) == (60, 30)
 @test size(sf2) == (60, 10)
 
