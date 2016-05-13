@@ -29,6 +29,7 @@ Linear mixed-effects model representation
 
 Members:
 
+- `formula`: the formula for the model
 - `mf`: the model frame, mostly used to get the `terms` component for labelling fixed effects
 - `wttrms`: a length `nt` vector of weighted model matrices. The last two elements are `X` and `y`.
 - `trms`: a vector of unweighted model matrices.  If `isempty(sqrtwts)` the same object as `wttrms`
@@ -39,6 +40,7 @@ Members:
 - `opt`: an [`OptSummary`]({ref}) object
 """
 type LinearMixedModel{T} <: MixedModel
+    formula::Formula
     mf::ModelFrame
     wttrms:: Vector
     trms::Vector
@@ -50,6 +52,7 @@ type LinearMixedModel{T} <: MixedModel
 end
 
 function LinearMixedModel{T}(
+    f::Formula,
     mf::ModelFrame,
     Rem::Vector,
     Λ::Vector{LowerTriangular{T,Matrix{T}}},
@@ -76,7 +79,7 @@ function LinearMixedModel{T}(
         size(sqrtwts, 2) == n ? [sqrtwts * t for t in trms] :
         throw(DimensionMismatch("length(wts) must be 0 or length(y)"))
     A, R = generateAR(wttrms)
-    LinearMixedModel(mf, wttrms, trms, sqrtwts, Λ, A, R, optsum)
+    LinearMixedModel(f, mf, wttrms, trms, sqrtwts, Λ, A, R, optsum)
 end
 
 function generateAR(trms)
@@ -101,14 +104,14 @@ function generateAR(trms)
 end
 
 """
-    lmm(form, frm)
-    lmm(form, frm; weights = wts)
+    lmm(f, fr)
+    lmm(f, fr; weights = [])
 
 Args:
 
-- `form`: a `DataFrames:Formula` containing fixed-effects and random-effects terms
+- `f`: a `DataFrames:Formula` containing fixed-effects and random-effects terms
 - `fr`: a `DataFrame` in which to evaluate `form`
-- `weights`: an optional vector of prior weights in the model.  Defaults to unit weights.
+- `weights`: an optional vector of case weights for the model.  Defaults to unit weights.
 
 Returns:
   A [`LinearMixedModel`]({ref}).
@@ -116,7 +119,7 @@ Returns:
 Notes:
   The return value is ready to be `fit!` but has not yet been fit.
 """
-function lmm(f::Formula, fr::AbstractDataFrame; wt::Vector = [])
+function lmm(f::Formula, fr::AbstractDataFrame; weights::Vector = [])
     mf = ModelFrame(f, fr)
     X = ModelMatrix(mf)
     y = convert(Vector{eltype(X.m)}, DataFrames.model_response(mf))
@@ -126,7 +129,7 @@ function lmm(f::Formula, fr::AbstractDataFrame; wt::Vector = [])
         throw(ArgumentError("$f has no random-effects terms"))
     end
     re = sort!([remat(e, mf.df) for e in retrms]; by = nlevs, rev = true)
-    LinearMixedModel(mf, re, map(LT,re), X.m, y, oftype(y, wt))
+    LinearMixedModel(f, mf, re, map(LT,re), X.m, y, oftype(y, weights))
 end
 
 unwttrms(m::LinearMixedModel) = isempty(m.sqrtwts) ? m.wttrms : m.trms
@@ -425,16 +428,20 @@ function Base.show(io::IO, m::LinearMixedModel) # not tested
         return nothing
     end
     n,p,q,k = size(m)
-    @printf(io, "Linear mixed model fit by maximum likelihood")
-    println(io)
-
+    println(io, "Linear mixed model fit by maximum likelihood")
+    println(io, " ", m.formula)
     oo = objective(m)
-#    if REML
-#        @printf(io, " REML criterion: %f", oo)
-#    else
-# FIXME: Use `showoff` here to align better
-        @printf(io, " logLik: %f, deviance: %f, AIC: %f, BIC: %f",-oo/2.,oo, AIC(m),BIC(m))
-#    end
+    nums = showoff([-oo/ 2, oo, AIC(m), BIC(m)])
+    fieldwd = max(maximum(length(nums)) + 2, 11)
+    print(' ')
+    for label in ["logLik", "-2 logLik", "AIC", "BIC"]
+        print(io, Base.cpad(label, fieldwd))
+    end
+    println(io)
+    print(' ')
+    for num in nums
+        print(io, lpad(num, fieldwd))
+    end
     println(io); println(io)
 
     show(io,VarCorr(m))
@@ -469,7 +476,9 @@ type VarCorr
     s::Float64
     function VarCorr(Λ::Vector, fnms::Vector, cnms::Vector, s::Number)
         length(fnms) == length(cnms) == length(Λ) || throw(DimensionMismatch(""))
-        s >= 0 || error("s must be non-negative")
+        if isfinite(s) && s < 0
+            error("s must be non-negative")
+        end
         new(Λ, fnms, cnms, s)
     end
 end
@@ -481,20 +490,28 @@ function VarCorr(m::LinearMixedModel)
             sdest(m))
 end
 
-function Base.show(io::IO,vc::VarCorr)
-    fnms = vcat(vc.fnms,"Residual")
-    nmwd = maximum(map(strwidth, fnms))
+function Base.show(io::IO, vc::VarCorr)
+    fnms = isfinite(vc.s) ? vcat(vc.fnms,"Residual") : vc.fnms
+    nmwd = maximum(map(strwidth, fnms)) + 1
     write(io, "Variance components:\n")
-    stdm = vc.s*push!([rowlengths(λ) for λ in vc.Λ],[1.])
+    stdm = [rowlengths(λ) for λ in vc.Λ]
+    cnms = vcat(vc.cnms...)
+    if isfinite(vc.s)
+        push!(stdm, [1.])
+        stdm *= vc.s
+        push!(cnms, "")
+    end
+    cnmwd = max(6, maximum(map(strwidth, cnms))) + 1
     tt = vcat(stdm...)
-    vi = showoff(abs2(tt), :plain)
-    si = showoff(tt, :plain)
-    varwd = 1 + max(length("Variance"), maximum(map(strwidth, vi)))
-    stdwd = 1 + max(length("Std.Dev."), maximum(map(strwidth, si)))
+    vars = showoff(abs2(tt), :plain)
+    stds = showoff(tt, :plain)
+    varwd = 1 + max(length("Variance"), maximum(map(strwidth, vars)))
+    stdwd = 1 + max(length("Std.Dev."), maximum(map(strwidth, stds)))
     write(io, " "^(2+nmwd))
+    write(io, Base.cpad("Column", cnmwd))
     write(io, Base.cpad("Variance", varwd))
     write(io, Base.cpad("Std.Dev.", stdwd))
-    any(s -> length(s) > 1,stdm) && write(io,"  Corr.")
+    any(s -> length(s) > 1, stdm) && write(io,"  Corr.")
     println(io)
     cor = [chol2cor(λ) for λ in vc.Λ]
     ind = 1
@@ -502,13 +519,15 @@ function Base.show(io::IO,vc::VarCorr)
         stdmi = stdm[i]
         write(io, ' ')
         write(io, rpad(fnms[i], nmwd))
-        write(io, lpad(vi[ind], varwd))
-        write(io, lpad(si[ind], stdwd))
+        write(io, rpad(cnms[i], cnmwd))
+        write(io, lpad(vars[ind], varwd))
+        write(io, lpad(stds[ind], stdwd))
         ind += 1
         println(io)
         for j in 2:length(stdmi)
-            write(io, lpad(vi[ind], varwd + nmwd + 1))
-            write(io, lpad(si[ind], stdwd))
+            write(io, rpad(cnms[ind], cnmwd + nmwd + 1))
+            write(io, lpad(vars[ind], varwd + nmwd + 1))
+            write(io, lpad(stds[ind], stdwd))
             ind += 1
             for k in 1:(j-1)
                 @printf(io, "%6.2f", cor[i][j, k])
