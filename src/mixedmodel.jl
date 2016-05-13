@@ -1,6 +1,20 @@
 #  Functions and methods common to all MixedModel types
 
 """
+    feR(m)
+
+Upper Cholesky factor for the fixed-effects parameters
+
+Args:
+
+- `m`: a [`LinearMixedModel`]({ref})
+
+Returns:
+  an `UpperTriangular` p × p matrix which is the upper Cholesky factor of the downdated X'X
+"""
+feR(m::MixedModel) = UpperTriangular(lmm(m).R[end - 1, end - 1])
+
+"""
     lmm(m::MixedModel)
 
 Extract the `LinearMixedModel` from a `MixedModel`.  If `m` is itself a `LinearMixedModel` this simply returns `m`.
@@ -72,7 +86,7 @@ Args:
 - `m`: a `MixedModel`
 
 Returns:
-  `Vector{Vector{Float64}}`
+  `Vector{Vector{T}}`
 """
 Base.std(m::MixedModel) = sdest(m) * push!([rowlengths(λ) for λ in lmm(m).Λ], [1.])
 
@@ -114,24 +128,6 @@ function describeblocks(io::IO, m::MixedModel)
     nothing
 end
 describeblocks(m::MixedModel) = describeblocks(Base.STDOUT, m)
-
-"""
-    feR(m)
-
-Upper Cholesky factor for the fixed-effects parameters
-
-Args:
-
-- `m`: a `MixedModel`
-
-Returns:
-  an `UpperTriangular` p × p matrix which is the upper Cholesky factor
-"""
-function feR(m::MixedModel)
-    lm = lmm(m)
-    kp1 = length(lm.Λ) + 1
-    UpperTriangular(lm.R[kp1, kp1])
-end
 
 """
     fnames(m)
