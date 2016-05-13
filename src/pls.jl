@@ -525,8 +525,9 @@ function Base.show(io::IO, vc::VarCorr)
         ind += 1
         println(io)
         for j in 2:length(stdmi)
-            write(io, rpad(cnms[ind], cnmwd + nmwd + 1))
-            write(io, lpad(vars[ind], varwd + nmwd + 1))
+            write(io, " "^(1 + nmwd))
+            write(io, rpad(cnms[ind], cnmwd))
+            write(io, lpad(vars[ind], varwd))
             write(io, lpad(stds[ind], stdwd))
             ind += 1
             for k in 1:(j-1)

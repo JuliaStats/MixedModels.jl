@@ -380,19 +380,16 @@ end
 function Base.show{T,D,L}(io::IO, m::GeneralizedLinearMixedModel{T,D,L}) # not tested
     println(io, "Generalized Linear Mixed Model fit by minimizing the Laplace approximation to the deviance")
     println(io, "  ", m.LMM.formula)
-    println(io, string("  Distribution: ", D))
-    println(io, string("  Link: ", L))
-    println(io)
-    println(io, string("  deviance: ", @sprintf("%.4f", LaplaceDeviance(m))))
-    println(io)
+    println(io, "  Distribution: ", D)
+    println(io, "  Link: ", L, "\n")
+    println(io, string("  Deviance (Laplace approximation): ", @sprintf("%.4f", LaplaceDeviance(m))), "\n")
 
     show(io,VarCorr(m))
-    println(io)
     gl = grplevels(lmm(m))
-    @printf(io," Number of obs: %d; levels of grouping factors: %d", length(m.offset), gl[1])
+    println(io, "\n Number of obs: ", length(m.y), "; levels of grouping factors: ", gl[1])
     for l in gl[2:end] @printf(io, ", %d", l) end
     println(io)
-    println(io, "\n  Fixed-effects parameters:")
+    println(io, "\nFixed-effects parameters:")
     show(io, coeftable(m))
 end
 

@@ -103,7 +103,10 @@ StatsBase.nobs(m::LinearMixedModel) = length(model_response(m))
 function StatsBase.coeftable(m::MixedModel)
     fe = fixef(m)
     se = stderr(m)
-    CoefTable(hcat(fe, se, fe ./ se), ["Estimate", "Std.Error", "z value"], coefnames(lmm(m).mf))
+    z = fe ./ se
+    pvalue = ccdf(Chisq(1), abs2(z))
+    CoefTable(hcat(fe, se, z, pvalue), ["Estimate", "Std.Error", "z value", "P(>|z|)"],
+        coefnames(lmm(m).mf), 4)
 end
 
 """
@@ -123,7 +126,7 @@ function describeblocks(io::IO, m::MixedModel)
     lm = lmm(m)
     A, R = lm.A, lm.R
     for j in 1:size(A,2), i in 1:j
-        println(io, i,",",j,": ",typeof(A[i,j])," ",size(A[i,j])," ",typeof(R[i,j]))
+        println(io, i, ",", j, ": ", typeof(A[i,j]), " ", size(A[i,j]), " ", typeof(R[i,j]))
     end
     nothing
 end
