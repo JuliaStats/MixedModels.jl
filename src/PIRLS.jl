@@ -47,16 +47,17 @@ type GeneralizedLinearMixedModel{T <: AbstractFloat, D <: UnivariateDistribution
     wt::Vector{T}
 end
 
+fixef(m::GeneralizedLinearMixedModel) = m.β
+
 """
     glmm(f, fr, d)
-    glmm(f, fr, d, wt, l)
+    glmm(f, fr, d, l)
 
 Args:
 
 - `f`: a `DataFrames.Formula` describing the response, the fixed-effects and the random-effects terms
 - `fr`: a `DataFrames.DataFrame` in which to evaluate `f`
 - `d`: the conditional distribution family for the response
-- `wt`: a vector of prior weights, use `[]` for no prior weights
 - `l`: a `GLM.Link` suitable for use with `d`
 
 Returns:
@@ -71,7 +72,7 @@ function glmm(f::Formula, fr::AbstractDataFrame, d::Distribution, l::Link; wt=[]
 #    end
     wts = isempty(wt) ? ones(nrow(fr)) : Array(wt)
         # the weights argument is forced to be non-empty in the lmm as it will be used later
-    LMM = lmm(f, fr; wt = wts)
+    LMM = lmm(f, fr; weights = wts)
     LMM[:θ] = LMM[:θ]   # force inflation and decomposition of LMM.A to produce LMM.R
     A, R, trms, u, y = LMM.A, LMM.R, LMM.trms, ranef(LMM), copy(model_response(LMM))
     wts = oftype(y, wts)
@@ -103,8 +104,6 @@ glmm(f::Formula, fr::AbstractDataFrame, d::Distribution) = glmm(f, fr, d, GLM.ca
 lmm(m::GeneralizedLinearMixedModel) = m.LMM
 
 Base.logdet{T}(m::GeneralizedLinearMixedModel{T}) = logdet(lmm(m))
-
-fixef(m::GeneralizedLinearMixedModel) = m.β
 
 """
     LaplaceDeviance(m)
@@ -154,6 +153,25 @@ function LaplaceDeviance!(m::GeneralizedLinearMixedModel)
 end
 
 lowerbd(m::GeneralizedLinearMixedModel) = vcat(fill(-Inf, size(m.β)), lowerbd(m.LMM))
+
+function restoreX!(m::GeneralizedLinearMixedModel)
+    if !isempty(m.LMM.R[end - 1, end - 1])
+        return m
+    end
+    lm, X = lmm(m), m.X
+    A, R, trms, k = lm.A, lm.R, lm.trms, length(lm.Λ)
+    kp1 = k + 1
+    trms[kp1] = X
+    lm.wttrms[kp1] = copy(X)
+    for i in 1 : kp1
+        A[i, kp1] = trms[i]'X
+        R[i, kp1] = copy(A[i, kp1])
+    end
+    A[kp1, end] = X'trms[end]
+    R[kp1, end] = copy(A[kp1, end])
+    reweight!(lm, m.wrkwt)
+    lm[:θ] = m.θ
+end
 
 """
     updateη!(m)
@@ -225,7 +243,6 @@ function pirls!{T}(m::GeneralizedLinearMixedModel{T})
                 end
             end
             obj = LaplaceDeviance!(m)
-#            @show obj, nhalf
         end
         if isapprox(obj, obj₀; atol = 0.0001)
             break
@@ -347,6 +364,7 @@ function StatsBase.fit!(m::GeneralizedLinearMixedModel, verbose::Bool=false, opt
 #        end
 #    end
     m.LMM.opt = OptSummary(βΘ,xmin,fmin,feval,optimizer)
+    restoreX!(m)
     if verbose
         println(ret)
     end
@@ -356,23 +374,25 @@ end
 function VarCorr(m::GeneralizedLinearMixedModel)
     Λ, trms = m.LMM.Λ, unwttrms(m.LMM)
     VarCorr(Λ, [string(trms[i].fnm) for i in eachindex(Λ)],
-        [trms[i].cnms for i in eachindex(Λ)], 1.)
+        [trms[i].cnms for i in eachindex(Λ)], NaN)
 end
 
 function Base.show{T,D,L}(io::IO, m::GeneralizedLinearMixedModel{T,D,L}) # not tested
     println(io, "Generalized Linear Mixed Model fit by minimizing the Laplace approximation to the deviance")
+    println(io, "  ", m.LMM.formula)
     println(io, string("  Distribution: ", D))
     println(io, string("  Link: ", L))
-    println(io, string("  deviance: ", LaplaceDeviance(m)))
-    println(io); println(io)
+    println(io)
+    println(io, string("  deviance: ", @sprintf("%.4f", LaplaceDeviance(m))))
+    println(io)
 
     show(io,VarCorr(m))
-
+    println(io)
     gl = grplevels(lmm(m))
     @printf(io," Number of obs: %d; levels of grouping factors: %d", length(m.offset), gl[1])
     for l in gl[2:end] @printf(io, ", %d", l) end
     println(io)
-    println(io, "\n  Fixed-effects parameters:\n")
+    println(io, "\n  Fixed-effects parameters:")
     show(io, coeftable(m))
 end
 
