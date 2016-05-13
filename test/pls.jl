@@ -23,7 +23,7 @@ fit!(fm1);
 @test coef(fm1) ≈ [1527.5]
 @test cond(fm1) == ones(1)
 cm = coeftable(fm1)
-@test size(cm.mat) == (1, 3)
+@test size(cm.mat) == (1, 4)
 @test MixedModels.fnames(fm1) == [:Batch]
 @test model_response(fm1) == convert(Vector, ds[:Yield])
 @test abs(sum(ranef(fm1, true)[1])) < 1.e-5
