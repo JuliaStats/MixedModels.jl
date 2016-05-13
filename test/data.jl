@@ -2,13 +2,13 @@
 const ds = DataFrame(Yield = [1545.,1440.,1440.,1520.,1580.,1540.,1555.,1490.,1560.,1495.,
                               1595.,1550.,1605.,1510.,1560.,1445.,1440.,1595.,1465.,1545.,
                               1595.,1630.,1515.,1635.,1625.,1520.,1455.,1450.,1480.,1445.],
-                     Batch = pool(rep('A':'F',1,5)))
+                     Batch = pool(rep('A' : 'F', 1, 5)))
 
 ## Dyestuff2 data from lme4
 const ds2 = DataFrame(Yield = [7.298,3.846,2.434,9.566,7.99,5.22,6.556,0.608,11.788,-0.892,
                                0.11, 10.386,13.434,5.51,8.166,2.212,4.852,7.092,9.288,4.98,
                                0.282,9.014,4.458,9.446,7.198,1.722,4.782,8.106,0.758,3.758],
-                      Batch = pool(rep('A':'F',1,5)))
+                      Batch = pool(rep('A' : 'F', 1, 5)))
 
 ## sleepstudy data from lme4
 
@@ -42,8 +42,8 @@ const slp = DataFrame(Reaction =
                       Days = rep(0:9,18),
                       Subject = pool(rep(1:18,1,10)))
 
-const bb = rep('A':'J',1,6)
-const cc = rep('a':'c',10,2)
+const bb = rep('A':'J', 1, 6)
+const cc = rep('a':'c', 10, 2)
 
 ## Pastes data from the lme4 package
 const psts = DataFrame(Strength = [62.8,62.6,60.1,62.3,62.7,63.1,60.0,61.4,57.5,56.9,61.1,58.9,
@@ -53,7 +53,7 @@ const psts = DataFrame(Strength = [62.8,62.6,60.1,62.3,62.7,63.1,60.0,61.4,57.5,
                                    54.8,54.8,64.0,64.0,57.7,56.8,58.3,59.3,59.2,59.2,58.9,56.6],
                        Batch = pool(bb),
                        Cask = pool(cc),
-                       Sample = pool(Compat.ASCIIString[string(b)*string(c) for (b,c) in zip(bb,cc)]))
+                       Sample = pool(Compat.ASCIIString[string(b, c) for (b,c) in zip(bb,cc)]))
 
 ## Penicillin data from the lme4 package
 const pen = DataFrame(Diameter = [27,23,26,23,23,21,27,23,26,23,23,21,25,21,25,24,24,20,26,23,25,

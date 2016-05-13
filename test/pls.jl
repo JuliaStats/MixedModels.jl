@@ -1,5 +1,5 @@
 fm1 = lmm(Yield ~ 1 + (1|Batch), ds)
-fm1w = lmm(Yield ~ 1 + (1|Batch), ds; wt = ones(size(ds, 1)))
+fm1w = lmm(Yield ~ 1 + (1|Batch), ds; weights = ones(size(ds, 1)))
 
 @test size(fm1.A) == (3, 3)
 @test size(fm1.wttrms) == (3,)
@@ -23,10 +23,10 @@ fit!(fm1);
 @test coef(fm1) ≈ [1527.5]
 @test cond(fm1) == ones(1)
 cm = coeftable(fm1)
-@test size(cm.mat) == (1,3)
+@test size(cm.mat) == (1, 3)
 @test MixedModels.fnames(fm1) == [:Batch]
-@test model_response(fm1) == convert(Vector,ds[:Yield])
-@test abs(sum(ranef(fm1,true)[1])) < 1.e-5
+@test model_response(fm1) == convert(Vector, ds[:Yield])
+@test abs(sum(ranef(fm1, true)[1])) < 1.e-5
 
 @test_approx_eq_eps logdet(fm1) 8.06014522999825 1.e-3
 @test_approx_eq_eps varest(fm1) 2451.2501089607676 1.e-3
@@ -42,10 +42,10 @@ simulate!(fm1)   # changes the fit
 bootstrap(fm1,1,(i,x) -> fixef(x)) # bootstrap restores the fit
 @test_approx_eq_eps deviance(fm1) 339.0218639362958 1.e-3
 
-fm2 = lmm(Yield ~ 1 + (1|Batch),ds2)
+fm2 = lmm(Yield ~ 1 + (1|Batch), ds2)
 @test lowerbd(fm2) == zeros(1)
 #redirect_stdout(IOBuffer())
-fit!(fm2,true)
+fit!(fm2, true)
 #redirect_stdout()
 show(IOBuffer(), fm2)
 @test abs(fm2[:θ][1]) < 1.0e-9
