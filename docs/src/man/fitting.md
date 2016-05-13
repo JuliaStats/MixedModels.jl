@@ -74,14 +74,15 @@ julia> ds
 defaults to REML estimation.
 
 ```julia
-julia> m = fit!(lmm(Yield ~ 1 + (1 | Batch), ds))
 Linear mixed model fit by maximum likelihood
- logLik: -163.663530, deviance: 327.327060, AIC: 333.327060, BIC: 337.530652
+ Formula: Yield ~ 1 + (1 | Batch)
+   logLik    -2 logLik     AIC        BIC    
+  -163.66353  327.32706  333.32706  337.53065
 
 Variance components:
-           Variance  Std.Dev.
- Batch    1388.3332 37.260344
- Residual 2451.2500 49.510100
+              Column    Variance  Std.Dev.
+ Batch    (Intercept)  1388.3332 37.260344
+ Residual              2451.2500 49.510100
  Number of obs: 30; levels of grouping factors: 6
 
   Fixed-effects parameters:
@@ -243,13 +244,15 @@ julia> slp
 
 julia> fm3 = fit!(lmm(Reaction ~ 1 + Days + (1+Days|Subject), slp))
 Linear mixed model fit by maximum likelihood
- logLik: -875.969672, deviance: 1751.939344, AIC: 1763.939344, BIC: 1783.097086
+ Formula: Reaction ~ 1 + Days + ((1 + Days) | Subject)
+   logLik    -2 logLik     AIC        BIC    
+  -875.96967 1751.93934 1763.93934 1783.09709
 
 Variance components:
-           Variance  Std.Dev.   Corr.
- Subject  565.51066 23.780468
-           32.68212  5.716828  0.08
- Residual 654.94145 25.591824
+              Column    Variance  Std.Dev.   Corr.
+ Subject  (Intercept)  565.51066 23.780468
+Days                              32.68212  5.716828  0.08
+ Residual Days         654.94145 25.591824
  Number of obs: 180; levels of grouping factors: 18
 
   Fixed-effects parameters:
