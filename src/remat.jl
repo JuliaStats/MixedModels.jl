@@ -56,28 +56,25 @@ Args:
 Returns:
   a `ScalarReMat` or a `VectorReMat`, as appropriate.
 """
-function remat(e::Expr,df::DataFrame)
+function remat(e::Expr, df::DataFrame)
     e.args[1] == :| || throw(ArgumentError("$e is not a call to '|'"))
     fnm = e.args[3]
     gr = getindex(df,fnm)
     gr = isa(gr,PooledDataArray) ? gr : pool(gr)
     if e.args[2] == 1
-        return ScalarReMat(gr,ones(length(gr)),fnm,["(Intercept)"])
+        return ScalarReMat(gr, ones(length(gr)), fnm,["(Intercept)"])
     end
-    mf = ModelFrame(Formula(nothing,e.args[2]),df)
+    mf = ModelFrame(Formula(nothing, e.args[2]), df)
     z = ModelMatrix(mf).m
     cnms = coefnames(mf)
-    size(z,2) == 1 ?ScalarReMat(gr,vec(z),fnm,cnms) : VectorReMat(gr,z',fnm,cnms)
+    size(z,2) == 1 ? ScalarReMat(gr, vec(z), fnm, cnms) : VectorReMat(gr, z', fnm, cnms)
 end
 
 Base.eltype(R::ReMat) = eltype(R.z)
 
 function Base.copy!{S,R}(d::PooledDataVector{S,R}, s::PooledDataVector{S,R})
-    dp, dr, sp, sr = d.pool, d.refs, s.pool, s.refs
-    if length(dp) != length(sp)
-        throw(DimensionMismatch("pool sizes of dest, $(length(dfp)), and source, $(length(sfp))"))
-    end
-    copy!(dr, sr)
+    copy!(d.pool, s.pool)
+    copy!(d.refs, s.refs)
     d
 end
 
@@ -118,11 +115,8 @@ nlevs(A::ReMat) = length(A.f.pool)
 
 Base.size(A::ReMat) = (length(A.f), vsize(A) * nlevs(A))
 
-Base.size(A::ReMat,i::Integer) =
-    i < 1 ? throw(BoundsError()) :
-    i == 1 ? length(A.f) :
-    i == 2 ? vsize(A)*nlevs(A) : 1
-
+Base.size(A::ReMat, i::Integer) =
+    i < 1 ? throw(BoundsError()) : i == 1 ? length(A.f) :  i == 2 ? vsize(A)*nlevs(A) : 1
 
 ==(A::ReMat,B::ReMat) = (A.f == B.f) && (A.z == B.z)
 
@@ -133,19 +127,18 @@ function Base.A_mul_B!{T}(α::Real, A::ReMat, B::StridedVecOrMat{T}, β::Real, R
         throw(DimensionMismatch())
     end
     if β ≠ 1
-        scale!(β, R)
+        β == 0 ? fill!(R, 0) : scale!(β, R)
     end
-    rr = A.f.refs
-    zz = A.z
+    rr, zz = A.f.refs, A.z
     if isa(A, ScalarReMat)
-        for j in 1:k, i in 1:n
+        for j in 1 : k, i in 1 : n
             R[i, j] += α * zz[i] * B[rr[i],j]
         end
     else
         l = size(zz,1)
         Bt = reshape(B, (l, div(q,l), k))
         for j in 1:k, i in 1:n
-            R[i, j] += α * dot(sub(Bt, :, Int(rr[i]), j),sub(zz, :, i))
+            R[i, j] += α * dot(sub(Bt, :, Int(rr[i]), j), sub(zz, :, i))
         end
     end
     R
@@ -162,18 +155,17 @@ function Base.Ac_mul_B!{T}(α::Real, A::ReMat, B::StridedVecOrMat{T}, β::Real, 
     if β ≠ 1
         β == 0 ? fill!(R, 0) : scale!(β, R)
     end
-    rr = A.f.refs
-    zz = A.z
+    rr, zz = A.f.refs, A.z
     if isa(A, ScalarReMat)
-        for j in 1:k, i in 1:n
-            R[rr[i], j] += α * zz[i] * B[i,j]
+        for j in 1 : k, i in 1 : n
+            R[rr[i], j] += α * zz[i] * B[i, j]
         end
     else
         l = size(zz, 1)
-        for j in 1:k, i in 1:n
+        for j in 1 : k, i in 1 : n
             roffset = (rr[i] - 1) * l
             mul = α * B[i, j]
-            for ii in 1:l
+            for ii in 1 : l
                 R[roffset + ii, j] += mul * zz[ii, i]
             end
         end
@@ -184,21 +176,21 @@ end
 Base.Ac_mul_B!{T}(R::StridedVecOrMat{T}, A::ReMat, B::StridedVecOrMat{T}) = Ac_mul_B!(one(T), A, B, zero(T), R)
 
 function Base.Ac_mul_B(A::ReMat, B::DenseVecOrMat)
-    k = size(A,2)
+    k = size(A, 2)
     Ac_mul_B!(zeros(eltype(B), isa(B, Vector) ? (k,) : (k, size(B, 2))), A, B)
 end
 
 function Base.Ac_mul_B(A::ScalarReMat, B::ScalarReMat)
     Az = A.z
     Ar = A.f.refs
-    if is(A,B)
+    if is(A, B)
         v = zeros(eltype(Az), nlevs(A))
         for i in eachindex(Ar)
             v[Ar[i]] += abs2(Az[i])
         end
         return Diagonal(v)
     end
-    densify(sparse(convert(Vector{Int32}, Ar),convert(Vector{Int32}, B.f.refs), Az .* B.z))
+    densify(sparse(convert(Vector{Int32}, Ar), convert(Vector{Int32}, B.f.refs), Az .* B.z))
 end
 
 function Base.Ac_mul_B!{T}(C::Diagonal{T}, A::ScalarReMat{T}, B::ScalarReMat{T})
@@ -262,26 +254,25 @@ function Base.Ac_mul_B{T}(A::VectorReMat{T}, B::VectorReMat{T})
     if (m = length(Ar)) ≠ length(Br)
         throw(DimensionMismatch())
     end
-    sparse(Ar, Br, [sub(Az, :, i) * sub(Bz, :, i)' for i in 1:m])
+    sparse(Ar, Br, [sub(Az, :, i) * sub(Bz, :, i)' for i in 1 : m])
 end
 
 function Base.Ac_mul_B!{T}(R::DenseVecOrMat{T}, A::DenseVecOrMat{T}, B::ReMat)
     m = size(A, 1)
     n = size(A, 2)
     p, q = size(B)
-    if m ≠ p || size(R, 1) ≠ n || size(R,2) ≠ q
+    if m ≠ p || size(R, 1) ≠ n || size(R, 2) ≠ q
         throw(DimensionMismatch(""))
     end
-    fill!(R, zero(T))
-    r = B.f.refs
-    z = B.z
+    fill!(R, 0)
+    r, z = B.f.refs, B.z
     if isa(B, ScalarReMat)
-        for j in 1:n, i in 1:m
+        for j in 1 : n, i in 1 : m
             R[j, r[i]] += A[i, j] * z[i]
         end
     else
         l = size(zz, 1)
-        for j in 1:n, i in 1:m
+        for j in 1 : n, i in 1 : m
             roffset = (r[i] - 1) * l
             aij = A[i, j]
             for k in 1:l
@@ -320,8 +311,8 @@ function Base.A_mul_B!{T}(A::Diagonal{T}, B::VectorReMat{T})
     k = size(b, 1)
     for j in eachindex(a)
         aj = a[j]
-        for i in 1:k
-            b[i,j] *= aj
+        for i in 1 : k
+            b[i, j] *= aj
         end
     end
     B
@@ -329,7 +320,7 @@ end
 
 (*){T}(D::Diagonal{T}, A::VectorReMat{T}) = VectorReMat(A.f, A.z * D, A.fnm, A.cnms)
 
-function Base.LinAlg.A_mul_B!{T}(C::VectorReMat{T}, A::Diagonal{T}, B::VectorReMat{T})
+function Base.A_mul_B!{T}(C::VectorReMat{T}, A::Diagonal{T}, B::VectorReMat{T})
     A_mul_B!(C.z, B.z, A)
     C
 end
