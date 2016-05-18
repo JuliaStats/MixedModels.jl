@@ -34,10 +34,10 @@ Members:
 - `wttrms`: a length `nt` vector of weighted model matrices. The last two elements are `X` and `y`.
 - `trms`: a vector of unweighted model matrices.  If `isempty(sqrtwts)` the same object as `wttrms`
 - `Λ`: a length `nt - 2` vector of lower triangular matrices
-- `sqrtwts`: the [`Diagonal`]({ref}) matrix of the square roots of the case weights.  Allowed to be size 0
+- `sqrtwts`: the [`Diagonal`](@ref) matrix of the square roots of the case weights.  Allowed to be size 0
 - `A`: an `nt × nt` symmetric matrix of matrices representing `hcat(Z,X,y)'hcat(Z,X,y)`
 - `R`: a `nt × nt` matrix of matrices - the upper Cholesky factor of `Λ'AΛ+I`
-- `opt`: an [`OptSummary`]({ref}) object
+- `opt`: an [`OptSummary`](@ref) object
 """
 type LinearMixedModel{T} <: MixedModel
     formula::Formula
@@ -114,7 +114,7 @@ Args:
 - `weights`: an optional vector of case weights for the model.  Defaults to unit weights.
 
 Returns:
-  A [`LinearMixedModel`]({ref}).
+  A [`LinearMixedModel`](@ref).
 
 Notes:
   The return value is ready to be `fit!` but has not yet been fit.
@@ -141,7 +141,7 @@ Optimize the objective of a `LinearMixedModel` using an `NLopt` optimizer.
 
 Args:
 
-- `m`: a [`LinearMixedModel`]({ref})
+- `m`: a [`LinearMixedModel`](@ref)
 - `verbose`: `Bool` indicating if information on iterations should be printed, Defaults to `false`
 
 Named Args:

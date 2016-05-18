@@ -7,7 +7,7 @@ Upper Cholesky factor for the fixed-effects parameters
 
 Args:
 
-- `m`: a [`LinearMixedModel`]({ref})
+- `m`: a [`LinearMixedModel`](@ref)
 
 Returns:
   an `UpperTriangular` p × p matrix which is the upper Cholesky factor of the downdated X'X

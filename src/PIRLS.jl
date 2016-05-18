@@ -5,7 +5,7 @@ Generalized linear mixed-effects model representation
 
 Members:
 
-- `LMM`: a [`LinearMixedModel`]({ref}) - used for the random effects only.
+- `LMM`: a [`LinearMixedModel`](@ref) - used for the random effects only.
 - `dist`: a `UnivariateDistribution` - typically `Bernoulli()`, `Binomial()`, `Gamma()` or `Poisson()`.
 - `link`: a suitable `GLM.Link` object
 - `β`: the fixed-effects vector
@@ -23,7 +23,7 @@ Members:
 - `wrkresid`: vector of working residuals
 - `wrkwt`: vector of working weights
 - `wt`: vector of prior case weights, a value of `T[]` indicates equal weights.
-- `devold`: scalar - the [`LaplaceDeviance`]({ref}) at `u₀`
+- `devold`: scalar - the [`LaplaceDeviance`](@ref) at `u₀`
 """
 
 type GeneralizedLinearMixedModel{T <: AbstractFloat, D <: UnivariateDistribution, L <: Link} <: MixedModel
@@ -61,7 +61,7 @@ Args:
 - `l`: a `GLM.Link` suitable for use with `d`
 
 Returns:
-  A [`GemeralizedLinearMixedModel`]({ref}).
+  A [`GemeralizedLinearMixedModel`](@ref).
 
 Notes:
   The return value is ready to be `fit!` but has not yet been fit.
@@ -273,7 +273,7 @@ Args:
 - `k`: a `Symbol` - the only accepted value is `:βθ`
 
 Returns:
-  `m` in a form suitable for passing to [`pirls!`]({ref})
+  `m` in a form suitable for passing to [`pirls!`](@ref)
 """
 function Base.setindex!{T <: AbstractFloat}(m::GeneralizedLinearMixedModel, v::Vector{T}, k::Symbol)
     if k ≠ :βθ
@@ -300,7 +300,7 @@ Optimize the objective of a `GeneralizedLinearMixedModel` using an NLopt optimiz
 
 Args:
 
-- `m`: a [`GeneralizedLinearMixedModel`]({ref})
+- `m`: a [`GeneralizedLinearMixedModel`](@ref)
 - `verbose`: `Bool` indicating if information on iterations should be printed, Defaults to `false`
 
 Named Args:
