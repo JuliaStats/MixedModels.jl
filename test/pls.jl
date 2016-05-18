@@ -1,5 +1,5 @@
 fm1 = lmm(Yield ~ 1 + (1|Batch), ds)
-fm1w = lmm(Yield ~ 1 + (1|Batch), ds; weights = ones(size(ds, 1)))
+#fm1w = lmm(Yield ~ 1 + (1|Batch), ds; weights = ones(size(ds, 1)))
 
 @test size(fm1.A) == (3, 3)
 @test size(fm1.wttrms) == (3,)

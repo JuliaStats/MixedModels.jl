@@ -1,16 +1,7 @@
 """
-    densify(S[,threshold])
-
- Args:
-
- - `S`: an `AbstractMatrix`, usually a `SparseMatrixCSC`
- - `threshold`: an optional threshold for the proportion of nonzeros.  Defaults to `0.3`
-
-Convert sparse `S` to `Diagonal` if `S` is diagonal.
-
-Convert sparse `S` to dense if the proportion of nonzeros exceeds `threshold`.
-
-A no-op for other matrix types.
+    densify(S::AbstractMatrix, threshold=0.3)
+Convert sparse `S` to `Diagonal` if `S` is diagonal or to `full(S)` if
+the proportion of nonzeros exceeds `threshold`. A no-op for other matrix types.
 """
 function densify(S,threshold=0.3)
     if !issparse(S)  # non-sparse matrices are not modified
@@ -30,8 +21,7 @@ function densify(S,threshold=0.3)
     nzs = nonzeros(S)
     nz1 = nzs[1]
     T = typeof(nz1)
-    if !isa(nz1,Array) || !isbits(eltype(nz1)) # branch not tested
-
+    if !isa(nz1, Array) || !isbits(eltype(nz1)) # branch not tested
         error("Nonzeros must be a bitstype or an array of same")
     end
     sz1 = size(nz1)
@@ -39,12 +29,12 @@ function densify(S,threshold=0.3)
         error("Inconsistent dimensions or types in array nonzeros")
     end
     M,N = size(S)
-    m,n = size(nz1,1),size(nz1,2) # this construction allows for nz1 to be a vector
-    res = Array(eltype(nz1),M*m,N*n)
+    m,n = size(nz1, 1), size(nz1, 2) # this construction allows for nz1 to be a vector
+    res = Array(eltype(nz1), M * m, N * n)
     rv = rowvals(S)
     for j in 1:size(S,2)
-        for k in nzrange(S,j)
-            copy!(sub(res,(rv[k]-1)*m+(1:m),(j-1)*n+(1:n)),nzs[k])
+        for k in nzrange(S, j)
+            copy!(sub(res, (rv[k] - 1) * m + (1 : m), (j - 1) * n + (1 : n)), nzs[k])
         end
     end
     res

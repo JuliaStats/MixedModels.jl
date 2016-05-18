@@ -44,17 +44,11 @@ immutable VectorReMat{T <: AbstractFloat, S, R <: Integer} <: ReMat
 end
 
 """
-     remat(e, df)
+     remat(e::Expr, df::DataFrames.DataFrame)
 
-A factory for `ReMat` objects
-
-Args:
-
-- `e`: an `Expr` which should be of the form `:(e1 | e2)` where `e1` is a valid rhs of a `Formula` and `pool(e2)` can be evaluated.
-- `df`: a `DataFrame` in which to evaluate `e1` and `e2`
-
-Returns:
-  a `ScalarReMat` or a `VectorReMat`, as appropriate.
+A factory for `ReMat` objects.  `e` should be of the form `:(e1 | e2)` where `e1` is a
+valid rhs of a `Formula` and `pool(e2)` can be evaluated within `df`.  The result is a
+[`ScalarReMat`]({ref}) or a [`VectorReMat`]({ref}), as appropriate.
 """
 function remat(e::Expr, df::DataFrame)
     e.args[1] == :| || throw(ArgumentError("$e is not a call to '|'"))
@@ -91,25 +85,16 @@ function Base.copy!{T,S,R}(d::VectorReMat{T,S,R}, s::VectorReMat{T,S,R})
 end
 
 """
-    vsize(A)
+    vsize(A::ReMat)
 
-Args:
-
-- `A`: a `ReMat`
-
-Size of vector-valued random effects.  Defined as 1 for `ScalarReMat`.
+Size of vector-valued random effects (i.e. 1 for a [`ScalarReMat`]({ref})).
 """
 vsize(A::ReMat) = isa(A,ScalarReMat) ? 1 : size(A.z, 1)
 
 """
-    nlevs(A)
+    nlevs(A::ReMat)
 
-Args:
-
-- `A`: a `ReMat`
-
-Returns:
-  Number of levels in the grouping factor for A
+Number of levels in the grouping factor of A
 """
 nlevs(A::ReMat) = length(A.f.pool)
 

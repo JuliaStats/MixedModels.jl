@@ -1,14 +1,9 @@
 """
-    cfactor!(A)
-
+    cfactor!(A::AbstractMatrix)
 A slightly modified version of `chol!` from `julia/base/linalg/cholesky.jl`
 
 Uses `inject!` (as opposed to `copy!`), `downdate!` (as opposed to `syrk!` or `gemm!`)
-and recursive calls to `cfactor!`
-
-Args:
-
--`A`: A `Matrix`
+and recursive calls to `cfactor!`.
 
 Note: The `cfactor!` method for dense matrices calls `LAPACK.potrf!` directly to avoid
 errors being thrown when `A` is computationally singular
@@ -61,15 +56,15 @@ function cfactor!{T}(A::HBlkDiag{T})
 end
 
 """
-    downdate!(C, A)
-    downdate!(C, A, B)
+    downdate!(C::AbstractMatrix, A::AbstractMatrix)
+    downdate!(C::AbstractMatrix, A::AbstractMatrix, B::AbstractMatrix)
 
 Subtract, in place, `A'A` or `A'B` from `C`
 """
-downdate!{T<:Base.LinAlg.BlasFloat}(C::DenseMatrix{T},A::DenseMatrix{T}) =
+downdate!{T <: Base.LinAlg.BlasFloat}(C::DenseMatrix{T}, A::DenseMatrix{T}) =
     BLAS.syrk!('U', 'T', -one(T), A, one(T), C)
 
-downdate!{T<:Base.LinAlg.BlasFloat}(C::DenseMatrix{T}, A::DenseMatrix{T}, B::DenseMatrix{T}) =
+downdate!{T <: Base.LinAlg.BlasFloat}(C::DenseMatrix{T}, A::DenseMatrix{T}, B::DenseMatrix{T}) =
     BLAS.gemm!('T', 'N', -one(T), A, B, one(T), C)
 
 function downdate!{T}(C::Diagonal{T}, A::SparseMatrixCSC{T})

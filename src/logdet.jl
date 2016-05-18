@@ -1,12 +1,8 @@
 """
-    LD(A)
-
-Args:
-
-- `A`: a `Diagonal`, `HBlkDiag` or `Triangular` `Matrix`
-
-Returns:
- the value of `log(det(triu(A)))` but calculated in place
+    LD{T}(A::Diagonal{T})
+    LD{T}(A::HBlikDiag{T})
+    LD{T}(A::DenseMatrix{T})
+The value of `log(det(triu(A)))` calculated in place.
 """
 function LD{T}(d::Diagonal{T})
     r = log(one(T))
@@ -37,14 +33,8 @@ function LD{T}(d::DenseMatrix{T})
 end
 
 """
-    logdet(m)
-
-Args:
-
-- `m`: a `LinearMixedModel`
-
-Returns:
- the value of `log(det(Λ'Z'ZΛ + I))` but calculated in place
+    logdet(m::LinearMixedModel)
+The value of `log(det(Λ'Z'ZΛ + I))` calculated in place.
 """
 function Base.logdet(m::LinearMixedModel)
     R = m.R

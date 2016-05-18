@@ -372,7 +372,7 @@ function StatsBase.fit!(m::GeneralizedLinearMixedModel, verbose::Bool=false, opt
 end
 
 function VarCorr(m::GeneralizedLinearMixedModel)
-    Λ, trms = m.LMM.Λ, unwttrms(m.LMM)
+    Λ, trms = m.LMM.Λ, m.LMM.trms
     VarCorr(Λ, [string(trms[i].fnm) for i in eachindex(Λ)],
         [trms[i].cnms for i in eachindex(Λ)], NaN)
 end

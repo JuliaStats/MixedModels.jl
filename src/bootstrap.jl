@@ -1,18 +1,12 @@
 """
-    bootstrap(m, N, saveresults)
+    bootstrap(m::LinearMixedModels, N::Integer, saveresults::Function)
 
-Simulate `N` response vectors from `m`, refitting the model.  The function saveresults
-is called after each refit.
+Simulate `N` response vectors from `m`, refitting the model.  `saveresults`
+is called after each refit with arguments `i::Int`, the index, and `m`.
 
 To save space `m.trms[end]`, which is the response vector, is overwritten
-by each simulation.  The original response is restored before returning.
-
-Args:
-
-- `m`: a `LinearMixedModel` that has been fit.
-- `N`: the number of bootstrap samples to simulate
-- `savresults`: a function with arguments `i` and `m` called after each bootstrap simulation.
-   As the name indicates, this function should save the results of interest.
+by each simulation.  The original response is restored and the model refit
+before returning.
 """
 function bootstrap(m::LinearMixedModel, N::Integer, saveresults::Function)
     y0 = copy(model_response(m))
@@ -27,18 +21,9 @@ end
 
 
 """
-    reevaluateAend!(m)
-
-Reevaluate the last column of `m.A` from `m.trms`
-
-Args:
-
-- `m`: a `LinearMixedModel`
-
-Returns:
-  `m` with the last column of `m.A` reevaluated
-
-Note: This function should be called after updating the response, `m.trms[end]`.
+    reevaluateAend!(m::LinearMixedModel)
+Reevaluate the last column of `m.A` from `m.trms`.  This function should be called
+after updating the response, `m.trms[end]`.
 """
 function reevaluateAend!(m::LinearMixedModel)
     A, trms, sqrtwts, wttrms = m.A, m.trms, m.sqrtwts, m.wttrms
@@ -53,16 +38,8 @@ function reevaluateAend!(m::LinearMixedModel)
 end
 
 """
-    resetθ!(m)
-
+    resetθ!(m::LinearMixedModel)
 Reset the value of `m.θ` to the initial values and mark the model as not having been fit
-
-Args:
-
-- `m`: a `LinearMixedModel`
-
-Returns:
-  `m`
 """
 function resetθ!(m::LinearMixedModel)
     m[:θ] = m.opt.initial
@@ -72,18 +49,8 @@ function resetθ!(m::LinearMixedModel)
 end
 
 """
-    unscaledre!(y, M, b)
-
-Add unscaled random effects to `y`.
-
-Args:
-
-- `y`: response vector to which the random effects are to be added
-- `M`: an `ReMat`
-- `b`: a `Matrix` of random effects on the `B` scale. Defaults to a standard multivariate normal of the appropriate size.
-
-Returns:
-  the updated `y`
+    unscaledre!{T}(y::Vector{T}, M::ReMat{T}, b::Matrix{T})
+Add unscaled random effects defined by `M` and `b` to `y`.
 """
 function unscaledre!{T<:AbstractFloat,S,R<:Integer}(y::Vector{T}, M::ScalarReMat{T,S,R}, b::Matrix{T})
     z = M.z
@@ -97,6 +64,10 @@ function unscaledre!{T<:AbstractFloat,S,R<:Integer}(y::Vector{T}, M::ScalarReMat
     y
 end
 
+"""
+    unscaledre!{T}(y::AbstractVector{T}, M::ReMat{T}, L::LowerTriangular{T})
+Add unscaled random effects defined by `M` and `L * randn(1, length(M.f.pool))` to `y`.
+"""
 function unscaledre!{T}(y::AbstractVector{T}, M::ScalarReMat{T}, L::LowerTriangular{T})
     unscaledre!(y, M, A_mul_B!(L, randn(1, length(M.f.pool))))
 end
@@ -122,23 +93,12 @@ unscaledre!(y::AbstractVector, M::VectorReMat, L::LowerTriangular) =
     unscaledre!(y, M, A_mul_B!(L, randn(size(M.z, 1), length(M.f.pool))))
 
 """
-    simulate!(m; β, σ, θ)
-
-Simulate a response vector from model `m`, and refit `m`.
-
-Args:
-
-- `m`: a `LinearMixedModel`.
-- `β`: the fixed-effects parameter vector to use; defaults to `coef(m)`
-- `σ`: the standard deviation of the per-observation random noise term to use; defaults to `sdest(m)`
-- `θ`: the covariance parameter vector to use; defaults to `m[:θ]`
-
-Returns:
-  `m` after having refit it to the simulated response vector
+    simulate!(m::LinearMixedModel; β=fixef(m), σ=sdest(m), θ=m[:θ])
+Install a simulated response vector in model `m` and refit it.
 """
 function simulate!(m::LinearMixedModel; β = coef(m), σ = sdest(m), θ = m[:θ])
     m[:θ] = θ
-    trms, Λ = unwttrms(m), m.Λ
+    trms, Λ = m.trms, m.Λ
     y = randn!(model_response(m)) # initialize to standard normal noise
     for j in eachindex(Λ)         # add the unscaled random effects
         unscaledre!(y, trms[j], Λ[j])
@@ -148,16 +108,8 @@ function simulate!(m::LinearMixedModel; β = coef(m), σ = sdest(m), θ = m[:θ]
 end
 
 """
-    refit!(m, y)
-Refit the model `m` with response `y`
-
-Args:
-
-- `m`: a `MixedModel{T}`
-- `y`: a `Vector{T}` of length `n`, the number of observations in `m`
-
-Returns:
-  `m` after refitting
+    refit!{T}(m::LinearMixedModel, y::Vector{T})
+Refit the model `m` with response `y`.
 """
 function refit!(m::LinearMixedModel,y)
     copy!(model_response(m),y)
@@ -167,4 +119,4 @@ end
 """
 extract the response (as a reference)
 """
-StatsBase.model_response(m::LinearMixedModel) = vec(unwttrms(m)[end])
+StatsBase.model_response(m::LinearMixedModel) = vec(m.trms[end])

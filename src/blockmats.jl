@@ -1,8 +1,9 @@
 """
+    HBlkDiag
 
-`HBlkDiag` - a homogeneous block diagonal matrix, i.e. all the diagonal blocks are the same size
+A homogeneous block diagonal matrix, i.e. all the diagonal blocks are the same size
 
-A matrix consisting of k diagonal blocks of size `r×s` is stored as an `r×s×k` array.
+The `k` diagonal blocks of size `r × s` are stored as an `r × s × k` array.
 """
 immutable HBlkDiag{T} <: AbstractMatrix{T}
     arr::Array{T,3}

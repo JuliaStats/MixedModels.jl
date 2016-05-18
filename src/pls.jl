@@ -39,7 +39,7 @@ Members:
 - `R`: a `nt × nt` matrix of matrices - the upper Cholesky factor of `Λ'AΛ+I`
 - `opt`: an [`OptSummary`]({ref}) object
 """
-type LinearMixedModel{T} <: MixedModel
+type LinearMixedModel{T <: AbstractFloat} <: MixedModel
     formula::Formula
     mf::ModelFrame
     wttrms:: Vector
@@ -51,15 +51,8 @@ type LinearMixedModel{T} <: MixedModel
     opt::OptSummary
 end
 
-function LinearMixedModel{T}(
-    f::Formula,
-    mf::ModelFrame,
-    Rem::Vector,
-    Λ::Vector{LowerTriangular{T,Matrix{T}}},
-    X::AbstractMatrix{T},
-    y::Vector{T},
-    wts::Vector{T}
-    )
+function LinearMixedModel(f::Formula, mf::ModelFrame, Rem::Vector, Λ::Vector,
+    X::Matrix, y::Vector, wts::Vector)
     if !all(x -> isa(x, ReMat), Rem)
         throw(ArgumentError("Elements of Rem should be ReMat's"))
     end
@@ -74,7 +67,7 @@ function LinearMixedModel{T}(
     trms = push!(convert(Vector{Any}, Rem), X)
     push!(trms, reshape(y, (length(y), 1)))
     optsum = OptSummary(mapreduce(x -> x[:θ], vcat, Λ), :None)
-    sqrtwts = Diagonal(map(sqrt, wts))
+    sqrtwts = Diagonal([sqrt(x) for x in wts])
     wttrms =  isempty(sqrtwts) ? trms :
         size(sqrtwts, 2) == n ? [sqrtwts * t for t in trms] :
         throw(DimensionMismatch("length(wts) must be 0 or length(y)"))
@@ -85,15 +78,15 @@ end
 function generateAR(trms)
     nt = length(trms)
     A, R = cell(nt, nt), cell(nt, nt)
-    for j in 1:nt, i in 1:j
+    for j in 1 : nt, i in 1 : j
         A[i, j] = densify(trms[i]'trms[j])
         R[i, j] = copy(A[i, j])
     end
-    for j in 2:nt
+    for j in 2 : nt
         if isa(R[j, j], Diagonal) || isa(R[j, j], HBlkDiag)
-            for i in 1:(j - 1)     # check for fill-in
+            for i in 1 : (j - 1)     # check for fill-in
                 if !isdiag(A[i, j]'A[i, j])
-                    for k in j:nt
+                    for k in j : nt
                         R[j, k] = full(R[j, k])
                     end
                 end
@@ -104,20 +97,11 @@ function generateAR(trms)
 end
 
 """
-    lmm(f, fr)
-    lmm(f, fr; weights = [])
+    lmm(f::DataFrames.Formula, fr::DataFrames.DataFrame)
+    lmm(f::DataFrames.Formula, fr::DataFrames.DataFrame; weights = [])
 
-Args:
-
-- `f`: a `DataFrames:Formula` containing fixed-effects and random-effects terms
-- `fr`: a `DataFrame` in which to evaluate `form`
-- `weights`: an optional vector of case weights for the model.  Defaults to unit weights.
-
-Returns:
-  A [`LinearMixedModel`]({ref}).
-
-Notes:
-  The return value is ready to be `fit!` but has not yet been fit.
+Create a [`LinearMixedModel`]({ref}) from `f`, which contains both fixed-effects terms
+and random effects, and `fr`. The return value is ready to be `fit!` but has not yet been fit.
 """
 function lmm(f::Formula, fr::AbstractDataFrame; weights::Vector = [])
     mf = ModelFrame(f, fr)
@@ -128,26 +112,25 @@ function lmm(f::Formula, fr::AbstractDataFrame; weights::Vector = [])
     if isempty(retrms)
         throw(ArgumentError("$f has no random-effects terms"))
     end
-    re = sort!([remat(e, mf.df) for e in retrms]; by = nlevs, rev = true)
+    ## For some reason this form throws and error in v0.5.0-dev+4164
+#    re = sort!([remat(e, mf.df) for e in retrms]; by = nlevs, rev = true)
+    re = [remat(e, mf.df) for e in retrms]
+    if length(re) > 1
+        nl = [nlevs(t) for t in re]
+        re = re[sortperm(nl; rev = true)]
+    end
     LinearMixedModel(f, mf, re, map(LT,re), X.m, y, oftype(y, weights))
 end
 
-unwttrms(m::LinearMixedModel) = isempty(m.sqrtwts) ? m.wttrms : m.trms
-
 """
-    fit!(m[, verbose = false]; optimizer = :LN_BOBYQA)
+    fit!(m::LinearMixedModel, verbose=false; optimizer=:LN_BOBYQA)
 
 Optimize the objective of a `LinearMixedModel` using an `NLopt` optimizer.
 
-Args:
+Named Arguments:
 
-- `m`: a [`LinearMixedModel`]({ref})
-- `verbose`: `Bool` indicating if information on iterations should be printed, Defaults to `false`
-
-Named Args:
-
-- `optimizer`: `Symbol` form of the name of a derivative-free optimizer in `NLopt` that allows for
-  box constraints.  Defaults to `:LN_BOBYQA`
+- `optimizer::Symbol` the name of a derivative-free optimizer from `NLopt` that allows for
+  box constraints.
 """
 function StatsBase.fit!(m::LinearMixedModel, verbose::Bool=false, optimizer::Symbol=:LN_BOBYQA)
     th = m[:θ]
@@ -208,29 +191,16 @@ function StatsBase.fit!(m::LinearMixedModel, verbose::Bool=false, optimizer::Sym
 end
 
 """
-    objective(m)
+    objective(m::LinearMixedModel)
 
-Args:
-
-- `m`: a `LinearMixedModel` object
-
-Returns:
-  Negative twice the log-likelihood of model `m`
+Negative twice the log-likelihood of model `m`
 """
 objective(m::LinearMixedModel) = logdet(m) + nobs(m) * (1. + log(2π * varest(m)))
 
 """
-    fixef!(v, m)
+    fixef!{T}(v::Vector{T}, m::LinearMixedModel{T})
 
 Overwrite `v` with the fixed-effects coefficients of model `m`
-
-Args:
-
-- `v`: a `Vector` of length `p`, the number of fixed-effects parameters
-- `m`: a `LinearMixedModel`
-
-Returns:
-  `v` with its contents overwritten by the fixed-effects parameters
 """
 function fixef!(v, m::LinearMixedModel)
     if !isfit(m)
@@ -240,29 +210,15 @@ function fixef!(v, m::LinearMixedModel)
 end
 
 """
-    fixef(m)
+    fixef(m::MixedModel)
 
-Args:
-
-- `m`: a `LinearMixedModel`
-
-Returns:
-  A `Vector` of estimates of the fixed-effects parameters of `m`
+Returns the estimate of the fixed-effects parameter vector.
 """
 function fixef(m::LinearMixedModel)
     length(m.trms) == length(m.Λ) + 1 && return zeros(0)
     vec(feR(m) \ m.R[end - 1, end])
 end
 
-"""
-    df(m)
-Args:
-
-- `m`: a `LinearMixedModel`
-
-Returns:
- Number of parameters in the model.
-"""
 StatsBase.df(m::LinearMixedModel) = size(m.wttrms[end - 1], 2) + length(m[:θ]) + 1
 
 function Base.size(m::LinearMixedModel)
@@ -274,61 +230,37 @@ function Base.size(m::LinearMixedModel)
 end
 
 """
-    sdest(m)
+    sdest(m::LinearMixedModel)
 
-Args:
-
-- `m`: a `LinearMixedModel` object
-
-Returns:
-  The scalar, `s`, the estimate of σ, the standard deviation of the per-observation noise
+The estimate of σ, the standard deviation of the per-observation noise.
 """
 sdest(m::LinearMixedModel) = sqrtpwrss(m)/√nobs(m)
 
 """
-    sqrtpwrss(m)
+    sqrtpwrss(m::LinearMixedModel)
 
-Returns the square root of the penalized residual sum-of-squares, which is the bottom right block of `m.R`, as a scalar
-
-Args:
-
-- `m`: a `LinearMixedModel`
+The square root of the penalized residual sum-of-squares, which is the bottom right block of `m.R`
 """
 sqrtpwrss(m::LinearMixedModel) = m.R[end,end][1]
 
 """
     varest(m::LinearMixedModel)
 
-Args:
-
-- `m`: a `LinearMixedModel`
-
-Returns:
- The scalar, s², the estimate of σ², the variance of the conditional distribution of Y given B
+The estimate of σ², the variance of the conditional distribution of Y given B.
 """
 varest(m::LinearMixedModel) = pwrss(m)/nobs(m)
 
 """
     pwrss(m::LinearMixedModel)
 
-Args:
-
-- `m`: a `LinearMixedModel`
-
-Returns:
-  The penalized residual sum-of-squares, a scalar.
+The penalized residual sum-of-squares.
 """
 pwrss(m::LinearMixedModel) = abs2(sqrtpwrss(m))
 
 """
-    chol2cor(L)
+    chol2cor(L::LowerTriangular)
 
-Args:
-
-- `L`: a `LowerTriangular` matrix
-
-Returns:
- The correlation matrix (symmetric, positive definite with unit diagonal) corresponding to `L * L'`
+The correlation matrix (symmetric, positive definite with unit diagonal) corresponding to `L * L'`
 """
 function chol2cor(L::LowerTriangular)
     size(L, 1) == 1 && return ones(1, 1)
@@ -345,31 +277,17 @@ function StatsBase.deviance(m::LinearMixedModel)
 end
 
 """
-    isfit(m)
+    isfit(m::LinearMixedModel)
 
-check if a model has been fit.
-
-Args:
-
-- `m`; a `LinearMixedModel`
-
-Returns:
-  A logical value indicating if the model has been fit.
+A `Bool` indicating if the model has been fit.
 """
 isfit(m::LinearMixedModel) = m.opt.fmin < Inf
 
 """
-    lrt(mods...)
+    lrt(mods::LinearMixedModel...)
 
-Perform sequential likelihood ratio tests on a sequence of models.
-
-Args:
-
-- `mods`: Two or more `LinearMixedModel` that have been fit.  They should be fits of
-  the same response
-
-Results:
-  A `DataFrame` containing information on the likelihood ratio tests.
+Perform sequential likelihood ratio tests on a sequence of models.  The returned value is
+a `DataFrame` containing information on the likelihood ratio tests.
 """
 function lrt(mods::LinearMixedModel...) # not tested
     if (nm = length(mods)) <= 1
@@ -392,17 +310,9 @@ end
 
 
 """
-    reweight!(m, wts)
+    reweight!{T}(m::LinearMixedModel{T}, wts::Vector{T})
 
-Update `m.sqrtwts` from `wts` and `m.wttrms` from `m.trms`.  Recompute `m.A`
-
-Args:
-
-- `m`: a `MixedModel`
-- `wts`: a non-negative vector of weights
-
-Returns:
-`m` with the products in `m.A` reweighted
+Update `m.sqrtwts` from `wts` and `m.wttrms` from `m.trms`.  Recompute `m.A`.
 """
 function reweight!{T}(m::LinearMixedModel{T}, wts::Vector{T})
     A, wttrms, trms, sqrtwts = m.A, m.wttrms, m.trms, m.sqrtwts
@@ -422,7 +332,7 @@ function reweight!{T}(m::LinearMixedModel{T}, wts::Vector{T})
     m
 end
 
-function Base.show(io::IO, m::LinearMixedModel) # not tested
+function Base.show(io::IO, m::LinearMixedModel)
     if !isfit(m)
         warn("Model has not been fit")
         return nothing
@@ -467,7 +377,7 @@ Members:
 - `cnms`: a `Vector{Vector{ASCIIString}}` of column names
 - `s`: the estimate of σ, the standard deviation of the per-observation noise
 
-The main purpose is to isolate the logic in the show method.
+The main purpose of defining this type is to isolate the logic in the show method.
 """
 type VarCorr
     Λ::Vector
@@ -483,11 +393,9 @@ type VarCorr
     end
 end
 function VarCorr(m::LinearMixedModel)
-    Λ, trms = m.Λ, unwttrms(m)
-    VarCorr(Λ,
-            [string(trms[i].fnm) for i in eachindex(Λ)],
-            [trms[i].cnms for i in eachindex(Λ)],
-            sdest(m))
+    Λ, trms = m.Λ, m.trms
+    VarCorr(Λ, [string(trms[i].fnm) for i in eachindex(Λ)],
+        [trms[i].cnms for i in eachindex(Λ)], sdest(m))
 end
 
 function Base.show(io::IO, vc::VarCorr)

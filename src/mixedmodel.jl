@@ -1,45 +1,23 @@
 #  Functions and methods common to all MixedModel types
 
 """
-    feR(m)
-
-Upper Cholesky factor for the fixed-effects parameters
-
-Args:
-
-- `m`: a [`LinearMixedModel`]({ref})
-
-Returns:
-  an `UpperTriangular` p × p matrix which is the upper Cholesky factor of the downdated X'X
+    feR(m::MixedModel)
+Upper Cholesky factor for the fixed-effects parameters, as an `UpperTriangular`
+`p × p` matrix.
 """
 feR(m::MixedModel) = UpperTriangular(lmm(m).R[end - 1, end - 1])
 
 """
     lmm(m::MixedModel)
-
-Extract the `LinearMixedModel` from a `MixedModel`.  If `m` is itself a `LinearMixedModel` this simply returns `m`.
-If `m` is a `GeneralizedLinearMixedModel` this returns its `LMM` member.
-
-Args:
-
-- `m`: a `MixedModel`
-
-Returns:
-  A `LinearMixedModel`, either `m` itself or the `LMM` member of `m`
+Extract the `LinearMixedModel` from a `MixedModel`.  If `m` is a
+`LinearMixedModel` return `m`. If `m` is a `GeneralizedLinearMixedModel`
+return `m.LMM`.
 """
 lmm(m::LinearMixedModel) = m
 
-## Methods for generics defined in Base.
-
 """
     cond(m::MixedModel)
-
-Args:
-
-- `m`: a `MixedModel`
-
-Returns:
-  A `Vector` of the condition numbers of the blocks of `m.Λ`
+ Returns a vector of the condition numbers of the blocks of `m.Λ`
 """
 Base.cond(m::MixedModel) = [cond(λ)::Float64 for λ in lmm(m).Λ]
 
@@ -77,16 +55,8 @@ function Base.setindex!(m::MixedModel, v::Vector, s::Symbol)
 end
 
 """
-    std(m)
-
-Estimated standard deviations of the variance components
-
-Args:
-
-- `m`: a `MixedModel`
-
-Returns:
-  `Vector{Vector{T}}`
+    std{T}(m::MixedModel{T})
+The estimated standard deviations of the variance components as a `Vector{Vector{T}}`.
 """
 Base.std(m::MixedModel) = sdest(m) * push!([rowlengths(λ) for λ in lmm(m).Λ], [1.])
 
@@ -110,17 +80,9 @@ function StatsBase.coeftable(m::MixedModel)
 end
 
 """
-    describeblocks(io, m)
-    describeblocks(m)
-
-Describe the blocks of the A and R matrices
-
-Args:
-
-- `m`: a `MixedModel`
-
-Prints a description of the types and sizes of the blocks in `A`, the matrix of
-products of terms, and in `R`, the upper Cholesky factor.
+    describeblocks(io::IO, m::MixedModel)
+    describeblocks(m::MixedModel)
+Describe the types and sizes of the blocks in the upper triangle of `m.A` and `m.R`
 """
 function describeblocks(io::IO, m::MixedModel)
     lm = lmm(m)
@@ -133,14 +95,8 @@ end
 describeblocks(m::MixedModel) = describeblocks(Base.STDOUT, m)
 
 """
-    fnames(m)
-
-Args:
-
-- `m`: a `MixedModel`
-
-Returns:
-  A `Vector{AbstractString}` of names of the grouping factors for the random-effects terms.
+    fnames(m::MixedModel)
+The names of the grouping factors for the random-effects terms.
 """
 function fnames(m::MixedModel)
     lm = lmm(m)
@@ -234,7 +190,7 @@ Returns:
 """
 function ranef(m::MixedModel, uscale=false)
     lm = lmm(m)
-    Λ, trms = lm.Λ, unwttrms(lm)
+    Λ, trms = lm.Λ, lm.trms
     T = eltype(trms[end])
     v = Matrix{T}[]
     for i in eachindex(Λ)
@@ -246,18 +202,12 @@ function ranef(m::MixedModel, uscale=false)
 end
 
 """
-    reterms(m)
-
-Args:
-
-- `m`: a `MixedModel`
-
-Returns:
-   A `Vector` of random-effects terms.
+    reterms(m::MixedModel)
+The random-effects terms in the model.
 """
 function reterms(m::MixedModel)
     lm = lmm(m)
-    unwttrms(m)[1:length(lm.Λ)]
+    lm.trms[1 : length(lm.Λ)]
 end
 
 """
