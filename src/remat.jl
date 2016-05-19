@@ -48,7 +48,7 @@ end
 
 A factory for `ReMat` objects.  `e` should be of the form `:(e1 | e2)` where `e1` is a
 valid rhs of a `Formula` and `pool(e2)` can be evaluated within `df`.  The result is a
-[`ScalarReMat`]({ref}) or a [`VectorReMat`]({ref}), as appropriate.
+[`ScalarReMat`](@ref) or a [`VectorReMat`](@ref), as appropriate.
 """
 function remat(e::Expr, df::DataFrame)
     e.args[1] == :| || throw(ArgumentError("$e is not a call to '|'"))
@@ -87,7 +87,7 @@ end
 """
     vsize(A::ReMat)
 
-Size of vector-valued random effects (i.e. 1 for a [`ScalarReMat`]({ref})).
+Size of vector-valued random effects (i.e. 1 for a [`ScalarReMat`](@ref)).
 """
 vsize(A::ReMat) = isa(A,ScalarReMat) ? 1 : size(A.z, 1)
 

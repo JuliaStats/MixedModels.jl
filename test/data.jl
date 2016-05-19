@@ -1,3 +1,4 @@
+using Compat, DataFrames
 ## Dyestuff data from lme4
 const ds = DataFrame(Yield = [1545.,1440.,1440.,1520.,1580.,1540.,1555.,1490.,1560.,1495.,
                               1595.,1550.,1605.,1510.,1560.,1445.,1440.,1595.,1465.,1545.,
@@ -53,7 +54,7 @@ const psts = DataFrame(Strength = [62.8,62.6,60.1,62.3,62.7,63.1,60.0,61.4,57.5,
                                    54.8,54.8,64.0,64.0,57.7,56.8,58.3,59.3,59.2,59.2,58.9,56.6],
                        Batch = pool(bb),
                        Cask = pool(cc),
-                       Sample = pool(Compat.ASCIIString[string(b, c) for (b,c) in zip(bb,cc)]))
+                       Sample = pool([string(b, c)::Compat.ASCIIString for (b,c) in zip(bb,cc)]))
 
 ## Penicillin data from the lme4 package
 const pen = DataFrame(Diameter = [27,23,26,23,23,21,27,23,26,23,23,21,25,21,25,24,24,20,26,23,25,

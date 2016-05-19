@@ -1,4 +1,4 @@
-using DataArrays, DataFrames, MixedModels, Base.Test
+using Compat, DataArrays, DataFrames, MixedModels, Base.Test
 
 include(joinpath(dirname(@__FILE__),"data.jl"))
 

@@ -48,9 +48,9 @@ These `Dyestuff` data are available through `RCall` but to run the doctests we u
 julia> using DataFrames, MixedModels
 
 julia> ds
-30x2 DataFrames.DataFrame
+30×2 DataFrames.DataFrame
 │ Row │ Yield  │ Batch │
-┝━━━━━┿━━━━━━━━┿━━━━━━━┥
+├─────┼────────┼───────┤
 │ 1   │ 1545.0 │ 'A'   │
 │ 2   │ 1440.0 │ 'A'   │
 │ 3   │ 1440.0 │ 'A'   │
@@ -137,12 +137,12 @@ julia> coef(m)  # another name for fixef
 
 julia> ranef(m)
 1-element Array{Array{Float64,2},1}:
- 1x6 Array{Float64,2}:
+ 1×6 Array{Float64,2}:
  -16.6282  0.369516  26.9747  -21.8014  53.5798  -42.4943
 
 julia> ranef(m, true)  # on the u scale
 1-element Array{Array{Float64,2},1}:
- 1x6 Array{Float64,2}:
+ 1×6 Array{Float64,2}:
  -22.0949  0.490999  35.8429  -28.9689  71.1948  -56.4648
 
 julia> deviance(m)
@@ -221,9 +221,9 @@ dept - 2 & service - 1    -0.384773  0.091843  -4.18946
 Models with vector-valued random effects can be fit
 ```julia
 julia> slp
-180x3 DataFrames.DataFrame
+180×3 DataFrames.DataFrame
 │ Row │ Reaction │ Days │ Subject │
-┝━━━━━┿━━━━━━━━━━┿━━━━━━┿━━━━━━━━━┥
+├─────┼──────────┼──────┼─────────┤
 │ 1   │ 249.56   │ 0    │ 1       │
 │ 2   │ 258.705  │ 1    │ 1       │
 │ 3   │ 250.801  │ 2    │ 1       │
@@ -246,18 +246,18 @@ julia> slp
 julia> fm3 = fit!(lmm(Reaction ~ 1 + Days + (1+Days|Subject), slp))
 Linear mixed model fit by maximum likelihood
  Formula: Reaction ~ 1 + Days + ((1 + Days) | Subject)
-   logLik    -2 logLik     AIC        BIC    
-  -875.96967 1751.93934 1763.93934 1783.09709
+  logLik    -2 logLik     AIC        BIC
+ -875.96967 1751.93934 1763.93934 1783.09709
 
 Variance components:
               Column    Variance  Std.Dev.   Corr.
  Subject  (Intercept)  565.51066 23.780468
-Days                              32.68212  5.716828  0.08
+          Days          32.68212  5.716828  0.08
  Residual Days         654.94145 25.591824
  Number of obs: 180; levels of grouping factors: 18
 
   Fixed-effects parameters:
-             Estimate Std.Error z value
-(Intercept)   251.405   6.63226 37.9064
-Days          10.4673   1.50224 6.96781
+             Estimate Std.Error z value P(>|z|)
+(Intercept)   251.405   6.63226 37.9064  <1e-99
+Days          10.4673   1.50224 6.96781  <1e-11
 ```

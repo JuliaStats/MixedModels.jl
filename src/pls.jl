@@ -34,7 +34,7 @@ Members:
 - `wttrms`: a length `nt` vector of weighted model matrices. The last two elements are `X` and `y`.
 - `trms`: a vector of unweighted model matrices.  If `isempty(sqrtwts)` the same object as `wttrms`
 - `Λ`: a length `nt - 2` vector of lower triangular matrices
-- `sqrtwts`: the [`Diagonal`](@ref) matrix of the square roots of the case weights.  Allowed to be size 0
+- `sqrtwts`: the `Diagonal` matrix of the square roots of the case weights.  Allowed to be size 0
 - `A`: an `nt × nt` symmetric matrix of matrices representing `hcat(Z,X,y)'hcat(Z,X,y)`
 - `R`: a `nt × nt` matrix of matrices - the upper Cholesky factor of `Λ'AΛ+I`
 - `opt`: an [`OptSummary`](@ref) object

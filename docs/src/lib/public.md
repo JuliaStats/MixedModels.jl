@@ -24,13 +24,13 @@ ScalarReMat
 VarCorr
 VectorReMat
 bootstrap
-coef(::MixedModel)
-coeftable(::MixedModel)
+#coef(::MixedModel)
+#coeftable(::MixedModel)
 cond(::MixedModel)
 df(::LinearMixedModel)
 deviance(::LinearMixedModel)
 fit!(::LinearMixedModel)
-fitted(::LinearMixedModel)
+#fitted(::LinearMixedModel)
 fixef
 LaplaceDeviance
 lmm
