@@ -1,25 +1,30 @@
 
-    {meta}
-    CurrentModule = MixedModels
+```@meta
+CurrentModule = MixedModels
+```
 
 # Internal Documentation
 
 ## Contents
 
-    {contents}
-    Pages = ["internals.md"]
+```@contents
+Pages = ["internals.md"]
+```
 
 ## Index
 
-    {index}
-    Pages = ["internals.md"]
+```@index
+Pages = ["internals.md"]
+```
 
 ## Types
 
-    {docs}
-    OptSummary
+```@docs
+OptSummary
+```
 
 ## Functions and methods
 
-    {docs}
-    ranef!
+```@docs
+ranef!
+```
