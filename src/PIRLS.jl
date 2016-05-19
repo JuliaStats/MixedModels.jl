@@ -79,7 +79,8 @@ function glmm(f::Formula, fr::AbstractDataFrame, d::Distribution, l::Link; wt=[]
     kp1 = length(LMM.Λ) + 1
     X = trms[kp1]
             # zero the dimension of the fixed-effects in trms, A and R
-    LMM.wttrms[kp1] = trms[kp1] = zeros((length(y), 0))
+    trms[kp1] = zeros(length(y), 0)
+    LMM.wttrms[kp1] = trms[kp1]
     for i in 1:kp1
         qi = size(trms[i], 2)
         A[i, kp1] = zeros((qi, 0))

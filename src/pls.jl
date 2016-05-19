@@ -42,44 +42,27 @@ Members:
 type LinearMixedModel{T <: AbstractFloat} <: MixedModel
     formula::Formula
     mf::ModelFrame
-    wttrms:: Vector
+    wttrms::Vector
     trms::Vector
     sqrtwts::Diagonal{T}
-    Λ::Vector{LowerTriangular{T,Matrix{T}}}
+    Λ::Vector{LowerTriangular{T, Matrix{T}}}
     A::Matrix        # symmetric cross-product blocks (upper triangle)
     R::Matrix        # right Cholesky factor in blocks.
     opt::OptSummary
 end
 
-function LinearMixedModel(f::Formula, mf::ModelFrame, Rem::Vector, Λ::Vector,
-    X::Matrix, y::Vector, wts::Vector)
-    if !all(x -> isa(x, ReMat), Rem)
-        throw(ArgumentError("Elements of Rem should be ReMat's"))
-    end
-    n, p = size(X)
-    if any(t -> size(t, 1) ≠ n, Rem) || length(y) ≠ n
-        throw(DimensionMismatch("n not consistent"))
-    end
-    k = length(Rem)
-    if length(Λ) ≠ k || !all(i -> chksz(Rem[i], Λ[i]), 1:k)
-        throw(DimensionMismatch("Rem and Λ"))
-    end
-    trms = push!(convert(Vector{Any}, Rem), X)
-    push!(trms, reshape(y, (length(y), 1)))
+function LinearMixedModel(f, mf, trms, Λ, wts)
+    n = size(trms[1], 1)
+    T = eltype(trms[end])
     optsum = OptSummary(mapreduce(x -> x[:θ], vcat, Λ), :None)
     sqrtwts = Diagonal([sqrt(x) for x in wts])
     wttrms =  isempty(sqrtwts) ? trms :
         size(sqrtwts, 2) == n ? [sqrtwts * t for t in trms] :
         throw(DimensionMismatch("length(wts) must be 0 or length(y)"))
-    A, R = generateAR(wttrms)
-    LinearMixedModel(f, mf, wttrms, trms, sqrtwts, Λ, A, R, optsum)
-end
-
-function generateAR(trms)
     nt = length(trms)
     A, R = cell(nt, nt), cell(nt, nt)
     for j in 1 : nt, i in 1 : j
-        A[i, j] = densify(trms[i]'trms[j])
+        A[i, j] = densify(wttrms[i]'wttrms[j])
         R[i, j] = copy(A[i, j])
     end
     for j in 2 : nt
@@ -93,7 +76,7 @@ function generateAR(trms)
             end
         end
     end
-    A, R
+    LinearMixedModel(f, mf, wttrms, trms, sqrtwts, Λ, A, R, optsum)
 end
 
 """
@@ -106,20 +89,20 @@ and random effects, and `fr`. The return value is ready to be `fit!` but has not
 function lmm(f::Formula, fr::AbstractDataFrame; weights::Vector = [])
     mf = ModelFrame(f, fr)
     X = ModelMatrix(mf)
-    y = convert(Vector{eltype(X.m)}, DataFrames.model_response(mf))
-                                        # process the random-effects terms
-    retrms = filter(x->Meta.isexpr(x, :call) && x.args[1] == :|, mf.terms.terms)
+    T = eltype(X.m)                                       # process the random-effects terms
+    retrms = filter(x -> Meta.isexpr(x, :call) && x.args[1] == :|, mf.terms.terms)
     if isempty(retrms)
         throw(ArgumentError("$f has no random-effects terms"))
     end
-    ## For some reason this form throws and error in v0.5.0-dev+4164
-#    re = sort!([remat(e, mf.df) for e in retrms]; by = nlevs, rev = true)
-    re = [remat(e, mf.df) for e in retrms]
-    if length(re) > 1
-        nl = [nlevs(t) for t in re]
-        re = re[sortperm(nl; rev = true)]
+    trms = Any[remat(e, mf.df) for e in retrms]
+    if length(trms) > 1
+        nl = [nlevs(t) for t in trms]
+        trms = trms[sortperm(nl; rev = true)]
     end
-    LinearMixedModel(f, mf, re, map(LT,re), X.m, y, oftype(y, weights))
+    Λ = LowerTriangular{T, Matrix{T}}[LT(t) for t in trms]
+    push!(trms, X.m)
+    push!(trms, reshape(convert(Vector{T}, DataFrames.model_response(mf)), (size(X, 1), 1)))
+    LinearMixedModel(f, mf, trms, Λ, convert(Vector{T}, weights))
 end
 
 """

@@ -2,17 +2,10 @@
 f = Yield ~ 1 + (1 | Batch)
 mf = ModelFrame(f, ds)
 Λ = [LowerTriangular(eye(1)) for i = 1]
-y = convert(Vector, ds[:Yield])
-Rem = push!([], remat(:(1|Batch), ds))
-X = ones(30,1)
+y = convert(Vector{Float64}, ds[:Yield])
+trms = push!(Any[], remat(:(1|Batch), ds), ones(30, 1), reshape(y, (length(y), 1)))
 
-@test_throws ArgumentError LinearMixedModel(f, mf, ones(1), Λ, X, y, Float64[])
-@test_throws DimensionMismatch LinearMixedModel(f, mf, Rem, Λ, X, y[1:20], Float64[])
-@test_throws DimensionMismatch LinearMixedModel(f, mf, Rem, Λ, X[1:20, :], y, Float64[])
-@test_throws DimensionMismatch LinearMixedModel(f, mf, append!(copy(Rem), Rem), Λ, X, y, Float64[])
-@test_throws DimensionMismatch LinearMixedModel(f, mf, Rem, append!(copy(Λ), Λ), X, y, Float64[])
-@test_throws DimensionMismatch LinearMixedModel(f, mf,Rem, [LowerTriangular(eye(2)) for i in 1], X, y, Float64[])
-@test_throws DomainError LinearMixedModel(f, mf, Rem, Λ, X, y, fill(-1., 30))
+@test_throws DomainError LinearMixedModel(f, mf, trms, Λ, fill(-1., 30))
 
 @test_throws ArgumentError lmm(Yield ~ 1, ds)
 

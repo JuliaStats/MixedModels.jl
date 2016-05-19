@@ -105,15 +105,12 @@ end
 
 """
     grplevels(m)
-
-Args:
-
-- `m`: a `MixedModel`
-
-Returns:
- A `Vector{Int}` containing the number of levels in each term's grouping factor
+The number of levels in each random-effects term's grouping factor
 """
-grplevels(m::MixedModel) = [length(t.f.pool) for t in reterms(m)]
+function grplevels(m::MixedModel)
+    lm = lmm(m)
+    [length(lm.trms[i].f.pool) for i in eachindex(lm.Λ)]
+end
 
 """
     lowerbd(m)
@@ -199,15 +196,6 @@ function ranef(m::MixedModel, uscale=false)
         push!(v, Array(T, (l, div(k, l))))
     end
     ranef!(v, lm, uscale)
-end
-
-"""
-    reterms(m::MixedModel)
-The random-effects terms in the model.
-"""
-function reterms(m::MixedModel)
-    lm = lmm(m)
-    lm.trms[1 : length(lm.Λ)]
 end
 
 """
