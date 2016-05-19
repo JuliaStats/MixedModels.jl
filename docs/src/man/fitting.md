@@ -36,11 +36,12 @@ Fixed effects:
 (Intercept)  1527.50      17.69   86.33
 ```
 
-    {meta}
-    DocTestSetup = quote
-        using DataFrames, MixedModels
-        include(Pkg.dir("MixedModels", "test", "data.jl"))
-    end
+```@meta
+DocTestSetup = quote
+    using DataFrames, MixedModels
+    include(Pkg.dir("MixedModels", "test", "data.jl"))
+end
+```
 
 These `Dyestuff` data are available through `RCall` but to run the doctests we use a stored copy of the dataframe.
 ```julia
