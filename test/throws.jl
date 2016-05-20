@@ -11,8 +11,7 @@ trms = push!(Any[], remat(:(1|Batch), ds), ones(30, 1), reshape(y, (length(y), 1
 
 modl = lmm(Yield ~ 1 + (1|Batch), ds);
 
-@test_throws ArgumentError modl[:ϕ] = [1.]
-@test_throws DimensionMismatch modl[:θ] = [0., 1.]
+@test_throws DimensionMismatch setθ!(modl, [0., 1.])
 
 @test_throws DimensionMismatch Base.LinAlg.Ac_ldiv_B!(UpperTriangular(fm3.R[1, 1]), ones(30, 1))
 

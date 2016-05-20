@@ -8,8 +8,7 @@ fm1 = lmm(Yield ~ 1 + (1|Batch), ds)
 @test lowerbd(fm1) == zeros(1)
 @test fm1[:θ] == ones(1)
 
-fm1[:θ] = [0.713]
-@test objective(fm1) ≈ 327.34216280955366
+@test setθ!(fm1, [0.713]) |> cfactor! |> objective ≈ 327.34216280955366
 MixedModels.describeblocks(IOBuffer(), fm1)
 
 fit!(fm1);

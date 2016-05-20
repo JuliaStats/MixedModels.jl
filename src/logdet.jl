@@ -1,7 +1,7 @@
 """
-    LD{T}(A::Diagonal{T})
-    LD{T}(A::HBlikDiag{T})
-    LD{T}(A::DenseMatrix{T})
+    LD(A::Diagonal)
+    LD(A::HBlikDiag)
+    LD(A::DenseMatrix)
 The value of `log(det(triu(A)))` calculated in place.
 """
 function LD{T}(d::Diagonal{T})
@@ -36,11 +36,11 @@ end
     logdet(m::LinearMixedModel)
 The value of `log(det(Λ'Z'ZΛ + I))` calculated in place.
 """
-function Base.logdet(m::LinearMixedModel)
+function Base.logdet{T}(m::LinearMixedModel{T})
     R = m.R
-    s = 0.
+    s = zero(T)
     for i in eachindex(m.Λ)
-        s += LD(R[i,i])
+        s += LD(R[i, i])
     end
-    2.*s
+    2. * s
 end

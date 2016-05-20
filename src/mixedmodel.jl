@@ -14,6 +14,7 @@ Extract the `LinearMixedModel` from a `MixedModel`.  If `m` is a
 return `m.LMM`.
 """
 lmm(m::LinearMixedModel) = m
+lmm(m::GeneralizedLinearMixedModel) = m.LMM
 
 """
     cond(m::MixedModel)
@@ -22,37 +23,6 @@ lmm(m::LinearMixedModel) = m
 Base.cond(m::MixedModel) = [cond(λ)::Float64 for λ in lmm(m).Λ]
 
 Base.getindex(m::MixedModel, s::Symbol) = mapreduce(x->x[s], vcat, lmm(m).Λ)
-
-function Base.setindex!(m::MixedModel, v::Vector, s::Symbol)
-    if s ≠ :θ
-        throw(ArgumentError("only ':θ' is meaningful for assignment"))
-    end
-    lm = lmm(m)
-    lam = lm.Λ
-    if length(v) != sum(nlower, lam)
-        throw(DimensionMismatch("length(v) = $(length(v)), should be $(sum(nlower, lam))"))
-    end
-    A, R = lm.A, lm.R
-    n = size(A, 1)                      # inject upper triangle of A into L
-    for j in 1:n, i in 1:j
-        inject!(R[i,j],A[i,j])
-    end
-    offset = 0
-    for i in eachindex(lam)
-        li = lam[i]
-        nti = nlower(li)
-        li[:θ] = sub(v, offset + (1:nti))
-        offset += nti
-        for j in i:size(R,2)
-            tscale!(li, R[i,j])
-        end
-        for ii in 1:i
-            tscale!(R[ii,i], li)
-        end
-        inflate!(R[i,i])
-    end
-    cfactor!(R)
-end
 
 """
     std{T}(m::MixedModel{T})
@@ -64,7 +34,7 @@ Base.std(m::MixedModel) = sdest(m) * push!([rowlengths(λ) for λ in lmm(m).Λ],
 
 StatsBase.coef(m::LinearMixedModel) = fixef(m)
 
-StatsBase.loglikelihood(m::MixedModel) = -deviance(m)/2
+StatsBase.loglikelihood(m::LinearMixedModel) = -deviance(m)/2
 
 StatsBase.nobs(m::LinearMixedModel) = length(model_response(m))
 

@@ -1,6 +1,6 @@
-Base.LinAlg.Ac_ldiv_B!{T}(D::Diagonal{T}, B) = Base.LinAlg.A_ldiv_B!(D, B)
+LinAlg.Ac_ldiv_B!{T}(D::Diagonal{T}, B) = A_ldiv_B!(D, B)
 
-function Base.LinAlg.A_ldiv_B!{T}(D::Diagonal{T}, B::Diagonal{T})
+function LinAlg.A_ldiv_B!{T}(D::Diagonal{T}, B::Diagonal{T})
     dd = D.diag
     bd = B.diag
     if length(dd) ≠ length(bd)
@@ -12,7 +12,7 @@ function Base.LinAlg.A_ldiv_B!{T}(D::Diagonal{T}, B::Diagonal{T})
     B
 end
 
-function Base.LinAlg.A_ldiv_B!{T}(D::Diagonal{T}, B::SparseMatrixCSC{T})
+function LinAlg.A_ldiv_B!{T}(D::Diagonal{T}, B::SparseMatrixCSC{T})
     m, n = size(B)
     dd = D.diag
     if length(dd) ≠ m

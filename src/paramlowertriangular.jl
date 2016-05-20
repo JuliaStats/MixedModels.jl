@@ -1,4 +1,4 @@
-nlower(n::Integer) = (n*(n+1))>>1
+nlower(n::Integer) = (n * (n + 1)) >> 1
 nlower{T}(A::LowerTriangular{T,Matrix{T}}) = nlower(Compat.LinAlg.checksquare(A))
 
 """
@@ -20,11 +20,8 @@ end
 """
 set the lower triangle of A to v using column-major ordering
 """
-function Base.setindex!{T}(
-    A::LowerTriangular{T,Matrix{T}},
-    v::AbstractVector{T},
-    s::Symbol
-    )
+function Base.setindex!{T}(A::LowerTriangular{T,Matrix{T}},
+    v::AbstractVector{T}, s::Symbol)
     if s ≠ :θ
         throw(KeyError(s))
     end
@@ -33,13 +30,14 @@ function Base.setindex!{T}(
         throw(DimensionMismatch("length(v) ≠ nlower(A)"))
     end
     k = 0
-    for j in 1:n, i in j:n
-        A[i,j] = v[k += 1]
+    for j in 1 : n, i in j : n
+        A[i, j] = v[k += 1]
     end
     A
 end
 
 """
+    lowerbd{T}(A::LowerTriangular{T,Matrix{T}})
 lower bounds on the parameters (elements in the lower triangle)
 """
 function lowerbd{T}(A::LowerTriangular{T,Matrix{T}})
@@ -52,27 +50,35 @@ function lowerbd{T}(A::LowerTriangular{T,Matrix{T}})
     res
 end
 
-chksz(A::ScalarReMat,λ::LowerTriangular) = size(λ,1) == 1
-chksz(A::VectorReMat,λ::LowerTriangular) = size(λ,1) == size(A.z,1)
+"""
+    LT(A)
+Create a lower triangular matrix compatible with the blocks of `A`
+and initialized to the identity.
+"""
+LT{T}(A::ScalarReMat{T}) = LowerTriangular(ones(T, (1, 1)))
+LT{T}(A::VectorReMat{T}) = LowerTriangular(full(eye(T, size(A.z, 1))))
 
 """
-    tscale!(A, B)
-
-Scale `B` using the implicit expansion of `A` to a homogeneous block diagonal
-
-Args:
-
-- `A`: a `LowerTriangular` matrix of the size of the diagonal blocks of `B`
-- `B`: a `HBlkDiag` matrix
+    tscale!(A::LowerTriangular, B::HBlkDiag)
+    tscale!(A::LowerTriangular, B::Diagonal)
+    tscale!(A::LowerTriangular, B::DenseVecOrMat)
+    tscale!(A::LowerTriangular, B::SparseMatrixCSC)
+    tscale!(A::HBlkDiag, B::LowerTriangular)
+    tscale!(A::Diagonal, B::LowerTriangular)
+    tscale!(A::DenseVecOrMat, B::LowerTriangular)
+    tscale!(A::SparseMatrixCSC, B::LowerTriangular)
+Scale a matrix using the implicit expansion of the lower triangular matrix
+to a diagonal or homogeneous block diagonal matrix.  Used in evaluating
+`Λ'Z'ZΛ` from `Z'Z` without explicitly evaluating the matrix `Λ`.
 """
 function tscale!(A::LowerTriangular,B::HBlkDiag)
     Ba = B.arr
-    r,s,k = size(Ba)
+    r, s, k = size(Ba)
     n = Compat.LinAlg.checksquare(A)
     if n ≠ r
         throw(DimensionMismatch("size(A,2) ≠ blocksize of B"))
     end
-    Ac_mul_B!(A,reshape(Ba,(r,s*k)))
+    Ac_mul_B!(A, reshape(Ba,(r,s * k)))
     B
 end
 
@@ -82,23 +88,6 @@ function tscale!{T}(A::LowerTriangular{T}, B::Diagonal{T})
     end
     scale!(A.data[1], B.diag)
     B
-end
-
-"""
-    LT(A)
-
-Create a lower triangular matrix compatible with the blocks of `A`
-and initialized to the identity.
-
-Args:
-
-- `A`: an `ReMat`
-"""
-LT(A::ScalarReMat) = LowerTriangular(ones(eltype(A.z),(1,1)))
-
-function LT(A::VectorReMat)
-    Az = A.z
-    LowerTriangular(full(eye(eltype(Az),size(Az,1))))
 end
 
 function tscale!{T}(A::LowerTriangular{T}, B::DenseVecOrMat{T})

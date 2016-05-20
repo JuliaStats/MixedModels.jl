@@ -1,10 +1,8 @@
 """
     GeneralizedLinearMixedModel
-
 Generalized linear mixed-effects model representation
 
 Members:
-
 - `LMM`: a [`LinearMixedModel`](@ref) - used for the random effects only.
 - `dist`: a `UnivariateDistribution` - typically `Bernoulli()`, `Binomial()`, `Gamma()` or `Poisson()`.
 - `link`: a suitable `GLM.Link` object
@@ -23,7 +21,6 @@ Members:
 - `wrkresid`: vector of working residuals
 - `wrkwt`: vector of working weights
 - `wt`: vector of prior case weights, a value of `T[]` indicates equal weights.
-- `devold`: scalar - the [`LaplaceDeviance`](@ref) at `u₀`
 """
 
 type GeneralizedLinearMixedModel{T <: AbstractFloat, D <: UnivariateDistribution, L <: Link} <: MixedModel
@@ -50,21 +47,10 @@ end
 fixef(m::GeneralizedLinearMixedModel) = m.β
 
 """
-    glmm(f, fr, d)
-    glmm(f, fr, d, l)
-
-Args:
-
-- `f`: a `DataFrames.Formula` describing the response, the fixed-effects and the random-effects terms
-- `fr`: a `DataFrames.DataFrame` in which to evaluate `f`
-- `d`: the conditional distribution family for the response
-- `l`: a `GLM.Link` suitable for use with `d`
-
-Returns:
-  A [`GemeralizedLinearMixedModel`](@ref).
-
-Notes:
-  The return value is ready to be `fit!` but has not yet been fit.
+    glmm(f::Formula, fr::ModelFrame, d::Distribution)
+    glmm(f::Formula, fr::ModelFrame, d::Distribution, l::GLM.Link)
+Create a `GeneralizedLinearMixedModel` object which is ready to be `fit!`
+but has not yet been fit.
 """
 function glmm(f::Formula, fr::AbstractDataFrame, d::Distribution, l::Link; wt=[], offset=[])
 #    if d == Binomial() && isempty(wt)
@@ -73,7 +59,6 @@ function glmm(f::Formula, fr::AbstractDataFrame, d::Distribution, l::Link; wt=[]
     wts = isempty(wt) ? ones(nrow(fr)) : Array(wt)
         # the weights argument is forced to be non-empty in the lmm as it will be used later
     LMM = lmm(f, fr; weights = wts)
-    LMM[:θ] = LMM[:θ]   # force inflation and decomposition of LMM.A to produce LMM.R
     A, R, trms, u, y = LMM.A, LMM.R, LMM.trms, ranef(LMM), copy(model_response(LMM))
     wts = oftype(y, wts)
     kp1 = length(LMM.Λ) + 1
@@ -102,24 +87,14 @@ end
 
 glmm(f::Formula, fr::AbstractDataFrame, d::Distribution) = glmm(f, fr, d, GLM.canonicallink(d))
 
-lmm(m::GeneralizedLinearMixedModel) = m.LMM
-
-Base.logdet{T}(m::GeneralizedLinearMixedModel{T}) = logdet(lmm(m))
+Base.logdet{T}(m::GeneralizedLinearMixedModel{T}) = logdet(m.LMM)
 
 """
-    LaplaceDeviance(m)
-
+    LaplaceDeviance(m::GeneralizedLinearMixedModel)
 Laplace approximation to the deviance of a GLMM.  For a distribution
 that does not have a scale factor this is defined as the squared length
 of the conditional modes, `u`, plus the determinant of `Λ'Z'ZΛ + 1`, plus
 the sum of the squared deviance residuals.
-
-Args:
-
-- `m`: a `GeneralizedLinearMixedModel`
-
-Returns:
-  the Laplace approximation to the deviance of `m`
 """
 function LaplaceDeviance{T}(m::GeneralizedLinearMixedModel{T})
     s = sum(m.devresid) + T(logdet(m))
@@ -129,28 +104,32 @@ function LaplaceDeviance{T}(m::GeneralizedLinearMixedModel{T})
     s
 end
 
-#    dd, μ, y = typeof(m.dist), m.μ, m.y
-#    s =
-#    if dd ≠ Binomial
-#        for i in eachindex(y)
-#            s -= 2 * logpdf(dd(μ[i]), y[i])
-#        end
-#        return s
-#    end
-#    n = m.wt
-#    for i in eachindex(n)
-#        s -= 2 * logpdf(dd(n[i], μ[i]), round(Int, y[i] * n[i]))
-#    end
-#    s
-#end
-
+"""
+    LaplaceDeviance!(m::GeneralizedLinearMixedModel)
+Update `m.η`, `m.μ`, etc., install the working response and working weights in
+`m.LMM`, update `m.LMM.A` and `m.LMM.R`, then evaluate `LaplaceDeviance`.
+"""
 function LaplaceDeviance!(m::GeneralizedLinearMixedModel)
-    updateη!(m)
-    lm = lmm(m)
-    wrkresp!(lm.trms[end], m)
-    reweight!(lm, m.wrkwt)
-    lm[:θ] = m.θ
+    updateη!(m) |> updateμ!
+    wrkresp!(m.LMM.trms[end], m)
+    reweight!(m.LMM, m.wrkwt)
     LaplaceDeviance(m)
+end
+
+function StatsBase.loglikelihood{T,D}(m::GeneralizedLinearMixedModel{T,D})
+    μ, y = m.μ, m.y
+    s = zero(T)
+    if D ≠ Binomial
+        for i in eachindex(y)
+            s += logpdf(D(μ[i]), y[i])
+        end
+        return s
+    end
+    n = m.wt
+    for i in eachindex(n)
+        s += logpdf(Binomial(n[i], μ[i]), round(Int, y[i] * n[i]))
+    end
+    s
 end
 
 lowerbd(m::GeneralizedLinearMixedModel) = vcat(fill(-Inf, size(m.β)), lowerbd(m.LMM))
@@ -159,7 +138,7 @@ function restoreX!(m::GeneralizedLinearMixedModel)
     if !isempty(m.LMM.R[end - 1, end - 1])
         return m
     end
-    lm, X = lmm(m), m.X
+    lm, X = m.LMM, m.X
     A, R, trms, k = lm.A, lm.R, lm.trms, length(lm.Λ)
     kp1 = k + 1
     trms[kp1] = X
@@ -171,22 +150,11 @@ function restoreX!(m::GeneralizedLinearMixedModel)
     A[kp1, end] = X'trms[end]
     R[kp1, end] = copy(A[kp1, end])
     reweight!(lm, m.wrkwt)
-    lm[:θ] = m.θ
 end
 
 """
-    updateη!(m)
-
-Update the linear predictor, `m.η`, the mean vector, `m.μ`, and associated
-derivatives, variances, working residuals, working weights, etc. from the current
-values of the random effects, `m.u` and `m.Λ`
-
-Args:
-
-- `m`: a `GeneralizedLinearMixedModel`
-
-Returns:
-   the updated `m`.
+    updateη!(m::GeneralizedLinearMixedModel)
+Update the linear predictor, `m.η`, from the offset and the `B`-scale random effects.
 """
 function updateη!(m::GeneralizedLinearMixedModel)
     η, lm, b, offset, u = m.η, m.LMM, m.b, m.offset, m.u
@@ -195,24 +163,13 @@ function updateη!(m::GeneralizedLinearMixedModel)
     for i in eachindex(b)
         unscaledre!(η, trms[i], A_mul_B!(Λ[i], copy!(b[i], u[i])))
     end
-    updateμ!(m)
+    m
 end
 
 """
-    pirls!(m)
-
-Use Penalized Iteratively Reweighted Least Squares (PIRLS) to determine the conditional modes of the random effects
-
-Args:
-
-- `m`: a `GeneralizedLinearMixedModel`
-
-Returns:
-  the updated model `m`
-
-Note:
-  On entry the values of `m.u₀` and `m.devold` should correspond.
-  One safe approach is to zero out `m.u₀` and evaluate devold from fixed-effects only.
+    pirls!(m::GeneralizedLinearMixedModel)
+Use Penalized Iteratively Reweighted Least Squares (PIRLS) to determine the conditional
+modes of the random effects.
 """
 function pirls!{T}(m::GeneralizedLinearMixedModel{T})
     iter, maxiter, obj = 0, 100, T(-Inf)
@@ -225,7 +182,6 @@ function pirls!{T}(m::GeneralizedLinearMixedModel{T})
         iter += 1
         ranef!(u, m.LMM, true)    # solve for new values of u
         obj = LaplaceDeviance!(m) # update GLM vecs and evaluate Laplace approx
-#        @show obj, obj₀
         nhalf = 0
         while obj > obj₀
             nhalf += 1
@@ -257,74 +213,40 @@ function pirls!{T}(m::GeneralizedLinearMixedModel{T})
 end
 
 """
-    m[:βθ] = v
-
-Set the parameter vector - the concatenation of the fixed-effects, `β`,
-and the covariance parameter, `θ` - and reset the random effects to zero.
-
-The reason for setting the random effects to zero is so that the evaluation
-of the deviance is reproducible.  If the starting points for `u` are more-or-less
-random then the final value of the objective in PIRLS will not be reproducible and
-this can cause problems with the nonlinear optimizers.
-
-Args:
-
-- `m`: a `GeneralizedLinearMixedModel`
-- `v`: the parameter vector to install
-- `k`: a `Symbol` - the only accepted value is `:βθ`
-
-Returns:
-  `m` in a form suitable for passing to [`pirls!`](@ref)
+    setβθ!{T}(m::GeneralizedLinearMixedModel{T}, v::Vector{T})
+Set the parameter vector, `:βθ`, of `m`, a `GeneralizedLinearMixedModel`, to `v`. `βθ` is
+the concatenation of the fixed-effects, `β`, and the covariance parameter, `θ`.
 """
-function Base.setindex!{T <: AbstractFloat}(m::GeneralizedLinearMixedModel, v::Vector{T}, k::Symbol)
-    if k ≠ :βθ
-        throw(ArgumentError(":βθ is the only key allowed for a GeneralizedLinearMixedModel"))
-    end
-    β, lm, u, u₀, offset, offset₀ = m.β, m.LMM, m.u, m.u₀, m.offset, m.offset₀
+function setβθ!{T}(m::GeneralizedLinearMixedModel{T}, v::Vector{T})
+    β, lm, offset, offset₀, X = m.β, m.LMM, m.offset, m.offset₀, m.X
     lb = length(β)
-    copy!(m.θ, sub(v, (lb + 1):length(v)))
-    copy!(β, sub(v, 1:lb))
-    if isempty(offset₀)
-        A_mul_B!(offset, m.X, β)
-    else
-        BLAS.gemv!('N', one(T), m.X, β, one(T), copy!(offset, offset₀))
-    end
+    copy!(β, sub(v, 1 : lb))
+    setθ!(m.LMM, copy!(m.θ, sub(v, (lb + 1) : length(v))))
+    BLAS.gemv!('N', one(T), X, β, one(T), isempty(offset₀) ? fill!(offset, 0) : copy!(offset, offset₀))
     m
 end
 
 sdest{T <: AbstractFloat}(m::GeneralizedLinearMixedModel{T}) = one(T)
 
 """
-    fit!(m[, verbose = false])
-
-Optimize the objective of a `GeneralizedLinearMixedModel` using an NLopt optimizer.
-
-Args:
-
-- `m`: a [`GeneralizedLinearMixedModel`](@ref)
-- `verbose`: `Bool` indicating if information on iterations should be printed, Defaults to `false`
-
-Named Args:
-
-- `optimizer`: `Symbol` form of the name of a derivative-free optimizer in `NLopt` that allows for
-  box constraints.  Defaults to `:LN_BOBYQA`
+    fit!(m::GeneralizedLinearMixedModel[, verbose = false])
+Optimize the objective of a `GeneralizedLinearMixedModel` using the `NLopt.LN_BOBYQA` optimizer.
 """
 function StatsBase.fit!(m::GeneralizedLinearMixedModel, verbose::Bool=false, optimizer::Symbol=:LN_BOBYQA)
-    β, lm = m.β, lmm(m)
-    βΘ = vcat(β, lm[:θ])
-    opt = NLopt.Opt(optimizer, length(βΘ))
+    β, lm = m.β, m.LMM
+    βθ = vcat(β, lm[:θ])
+    opt = NLopt.Opt(optimizer, length(βθ))
     NLopt.ftol_rel!(opt, 1e-12)   # relative criterion on deviance
     NLopt.ftol_abs!(opt, 1e-8)    # absolute criterion on deviance
     NLopt.xtol_abs!(opt, 1e-10)   # criterion on parameter value changes
-    NLopt.lower_bounds!(opt, vcat(-Inf * ones(β), lowerbd(lm)))
+    NLopt.lower_bounds!(opt, vcat(fill!(similar(β), -Inf), lowerbd(lm)))
     feval = 0
     function obj(x::Vector{Float64}, g::Vector{Float64})
         if length(g) ≠ 0
             error("gradient not defined for this model")
         end
         feval += 1
-        m[:βθ] = x
-        pirls!(m)
+        setβθ!(m, x) |> pirls!
     end
     if verbose
         function vobj(x::Vector{Float64}, g::Vector{Float64})
@@ -332,8 +254,7 @@ function StatsBase.fit!(m::GeneralizedLinearMixedModel, verbose::Bool=false, opt
                 error("gradient not defined for this model")
             end
             feval += 1
-            m[:βθ] = x
-            val = pirls!(m)
+            val = setβθ!(m, x) |> pirls!
             print("f_$feval: $(round(val,5)), [")
             showcompact(x[1])
             for i in 2:length(x) print(","); showcompact(x[i]) end
@@ -344,7 +265,7 @@ function StatsBase.fit!(m::GeneralizedLinearMixedModel, verbose::Bool=false, opt
     else
         NLopt.min_objective!(opt, obj)
     end
-    fmin, xmin, ret = NLopt.optimize(opt, βΘ)
+    fmin, xmin, ret = NLopt.optimize(opt, βθ)
     ## very small parameter values often should be set to zero
 #    xmin1 = copy(xmin)
 #    modified = false
@@ -364,7 +285,7 @@ function StatsBase.fit!(m::GeneralizedLinearMixedModel, verbose::Bool=false, opt
 #            m[:θ] = xmin
 #        end
 #    end
-    m.LMM.opt = OptSummary(βΘ,xmin,fmin,feval,optimizer)
+    m.LMM.opt = OptSummary(βθ,xmin,fmin,feval,optimizer)
     restoreX!(m)
     if verbose
         println(ret)
@@ -386,7 +307,7 @@ function Base.show{T,D,L}(io::IO, m::GeneralizedLinearMixedModel{T,D,L}) # not t
     println(io, string("  Deviance (Laplace approximation): ", @sprintf("%.4f", LaplaceDeviance(m))), "\n")
 
     show(io,VarCorr(m))
-    gl = grplevels(lmm(m))
+    gl = grplevels(m.LMM)
     println(io, "\n Number of obs: ", length(m.y), "; levels of grouping factors: ", gl[1])
     for l in gl[2:end] @printf(io, ", %d", l) end
     println(io)

@@ -29,6 +29,7 @@ export
        VectorReMat,
 
        bootstrap,  # Create bootstrap replications of a model
+       cfactor!,
        coef,
        coeftable,
        cond,
@@ -51,6 +52,7 @@ export
        refit!,     # install a response and refit the model
        remat,      # factory for construction of ReMat objects
        sdest,      # the estimate of the standard deviation of the per-observation noise
+       setθ!,
        simulate!,  # simulate a new response and refit the model
        std,
        varest,     # estimate of the residual variance
@@ -60,15 +62,14 @@ abstract MixedModel <: RegressionModel # model with fixed and random effects
 
 import Base: ==, *
 
-include("densify.jl")
 include("blockmats.jl")
 include("linalg.jl")
-include("inflate.jl")
+include("cfactor.jl")
 include("remat.jl")
 include("paramlowertriangular.jl")
-include("cfactor.jl")
 include("inject.jl")
 include("pls.jl")
+include("cfactor.jl")
 include("logdet.jl")
 include("bootstrap.jl")
 include("PIRLS.jl")

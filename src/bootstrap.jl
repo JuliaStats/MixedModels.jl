@@ -1,6 +1,5 @@
 """
     bootstrap(m::LinearMixedModels, N::Integer, saveresults::Function)
-
 Simulate `N` response vectors from `m`, refitting the model.  `saveresults`
 is called after each refit with arguments `i::Int`, the index, and `m`.
 
@@ -16,9 +15,8 @@ function bootstrap(m::LinearMixedModel, N::Integer, saveresults::Function)
     for i in 1:N
         saveresults(i, simulate!(m; β = β, σ = σ, θ = θ))
     end
-    refit!(m,y0)
+    refit!(m, y0)
 end
-
 
 """
     reevaluateAend!(m::LinearMixedModel)
@@ -42,10 +40,10 @@ end
 Reset the value of `m.θ` to the initial values and mark the model as not having been fit
 """
 function resetθ!(m::LinearMixedModel)
-    m[:θ] = m.opt.initial
-    m.opt.feval = -1
-    m.opt.fmin = Inf
-    m
+    opt = m.opt
+    opt.feval = -1
+    opt.fmin = Inf
+    setθ!(m, opt.initial) |> cfactor!
 end
 
 """
@@ -72,12 +70,12 @@ function unscaledre!{T}(y::AbstractVector{T}, M::ScalarReMat{T}, L::LowerTriangu
     unscaledre!(y, M, A_mul_B!(L, randn(1, length(M.f.pool))))
 end
 
-function unscaledre!{T,S,R}(y::AbstractVector{T}, M::VectorReMat{T,S,R}, b::DenseMatrix{T})
+function unscaledre!{T}(y::AbstractVector{T}, M::VectorReMat{T}, b::DenseMatrix{T})
     Z = M.z
     k, n = size(Z)
     l = length(M.f.pool)
-    if length(y) ≠ n || size(b) != (k, l)
-        throw(DimensionMismatch())
+    if length(y) ≠ n || size(b) ≠ (k, l)
+        throw(DimensionMismatch("length(y) = $(length(y)), size(M) = $(size(M)), size(b) = $(size(b))"))
     end
     inds = M.f.refs
     for i in eachindex(y)
@@ -96,15 +94,18 @@ unscaledre!(y::AbstractVector, M::VectorReMat, L::LowerTriangular) =
     simulate!(m::LinearMixedModel; β=fixef(m), σ=sdest(m), θ=m[:θ])
 Install a simulated response vector in model `m` and refit it.
 """
-function simulate!(m::LinearMixedModel; β = coef(m), σ = sdest(m), θ = m[:θ])
-    m[:θ] = θ
+function simulate!{T}(m::LinearMixedModel{T}; β = coef(m), σ = sdest(m), θ = T[])
+    if !isempty(θ)
+        setθ!(m, θ)
+    end
     trms, Λ = m.trms, m.Λ
     y = randn!(model_response(m)) # initialize to standard normal noise
     for j in eachindex(Λ)         # add the unscaled random effects
         unscaledre!(y, trms[j], Λ[j])
     end
+                                  # scale by σ and add fixed-effects contribution
     BLAS.gemv!('N', 1.0, trms[end - 1], β, σ, y)
-    m |> reevaluateAend! |> resetθ! |> fit!
+    m |> reevaluateAend! |> resetθ! |> cfactor! |>  fit!
 end
 
 """
@@ -112,11 +113,8 @@ end
 Refit the model `m` with response `y`.
 """
 function refit!(m::LinearMixedModel,y)
-    copy!(model_response(m),y)
-    m |> reevaluateAend! |> resetθ! |> fit!
+    copy!(model_response(m), y)
+    m |> reevaluateAend! |> resetθ! |> cfactor! |> fit!
 end
 
-"""
-extract the response (as a reference)
-"""
 StatsBase.model_response(m::LinearMixedModel) = vec(m.trms[end])

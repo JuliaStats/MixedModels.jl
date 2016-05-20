@@ -82,7 +82,6 @@ end
 """
     lmm(f::DataFrames.Formula, fr::DataFrames.DataFrame)
     lmm(f::DataFrames.Formula, fr::DataFrames.DataFrame; weights = [])
-
 Create a [`LinearMixedModel`](@ref) from `f`, which contains both fixed-effects terms
 and random effects, and `fr`. The return value is ready to be `fit!` but has not yet been fit.
 """
@@ -104,6 +103,27 @@ function lmm(f::Formula, fr::AbstractDataFrame; weights::Vector = [])
     push!(trms, reshape(convert(Vector{T}, DataFrames.model_response(mf)), (size(X, 1), 1)))
     LinearMixedModel(f, mf, trms, Λ, convert(Vector{T}, weights))
 end
+
+function cfactor!(m::LinearMixedModel)
+    A, Λ, R = m.A, m.Λ, m.R
+    n = size(A, 1)
+    for j in 1 : n, i in 1 : j
+        inject!(R[i, j], A[i, j])
+    end
+    for i in eachindex(m.Λ)
+        for j in i : n
+            tscale!(Λ[i], R[i, j])
+        end
+        for ii in 1:i
+            tscale!(R[ii,i], Λ[i])
+        end
+        inflate!(R[i, i])
+    end
+    cfactor!(R)
+    m
+end
+
+StatsBase.coef(m::LinearMixedModel) = fixef(m)
 
 """
     fit!(m::LinearMixedModel, verbose=false; optimizer=:LN_BOBYQA)
@@ -127,16 +147,14 @@ function StatsBase.fit!(m::LinearMixedModel, verbose::Bool=false, optimizer::Sym
     function obj(x::Vector{Float64}, g::Vector{Float64})
         length(g) == 0 || error("gradient not defined")
         feval += 1
-        m[:θ] = x
-        objective(m)
+        setθ!(m, x) |> cfactor! |> objective
     end
     if verbose
         function vobj(x::Vector{Float64}, g::Vector{Float64})
             length(g) == 0 || error("gradient not defined")
             feval += 1
-            m[:θ] = x
-            val = objective(m)
-            print("f_$feval: $(round(val,5)), [")
+            val = setθ!(m, x) |> cfactor! |> objective
+            print("f_$feval: $(round(val, 5)), [")
             showcompact(x[1])
             for i in 2:length(x) print(","); showcompact(x[i]) end
             println("]")
@@ -157,16 +175,15 @@ function StatsBase.fit!(m::LinearMixedModel, verbose::Bool=false, optimizer::Sym
         end
     end
     if modified  # branch not tested
-        m[:θ] = xmin1
-        ff = objective(m)
+        ff = setθ!(m, xmin1) |> cfactor! |> objective
         if ff ≤ (fmin + 1.e-5)  # zero components if increase in objective is negligible
             fmin = ff
             copy!(xmin,xmin1)
         else
-            m[:θ] = xmin
+            setθ!(m, xmin) |> cfactor!
         end
     end
-    m.opt = OptSummary(th,xmin,fmin,feval,optimizer)
+    m.opt = OptSummary(th, xmin, fmin, feval, optimizer)
     if verbose
         println(ret)
     end
@@ -175,14 +192,12 @@ end
 
 """
     objective(m::LinearMixedModel)
-
 Negative twice the log-likelihood of model `m`
 """
 objective(m::LinearMixedModel) = logdet(m) + nobs(m) * (1. + log(2π * varest(m)))
 
 """
     fixef!{T}(v::Vector{T}, m::LinearMixedModel{T})
-
 Overwrite `v` with the fixed-effects coefficients of model `m`
 """
 function fixef!(v, m::LinearMixedModel)
@@ -194,7 +209,6 @@ end
 
 """
     fixef(m::MixedModel)
-
 Returns the estimate of the fixed-effects parameter vector.
 """
 function fixef(m::LinearMixedModel)
@@ -203,6 +217,8 @@ function fixef(m::LinearMixedModel)
 end
 
 StatsBase.df(m::LinearMixedModel) = size(m.wttrms[end - 1], 2) + length(m[:θ]) + 1
+
+StatsBase.loglikelihood(m::LinearMixedModel) = -deviance(m)/2
 
 function Base.size(m::LinearMixedModel)
     k = length(m.Λ)
@@ -214,35 +230,49 @@ end
 
 """
     sdest(m::LinearMixedModel)
-
 The estimate of σ, the standard deviation of the per-observation noise.
 """
 sdest(m::LinearMixedModel) = sqrtpwrss(m)/√nobs(m)
 
 """
-    sqrtpwrss(m::LinearMixedModel)
+    set!θ{T}(m::LinearMixedModel{T}, v::Vector{T})
+Install `v` as the θ parameters in `m`.  Only affects `m.Λ`.
+"""
+function setθ!{T}(m::LinearMixedModel{T}, v::Vector{T})
+    Λ = m.Λ
+    offset = 0
+    for i in eachindex(Λ)
+        λ = Λ[i]
+        nti = nlower(λ)
+        λ[:θ] = sub(v, offset + (1 : nti))
+        offset += nti
+    end
+    if length(v) ≠ offset
+        throw(DimensionMismatch("length(v) = $(length(v)), should be $offset"))
+    end
+    m
+end
 
+"""
+    sqrtpwrss(m::LinearMixedModel)
 The square root of the penalized residual sum-of-squares, which is the bottom right block of `m.R`
 """
 sqrtpwrss(m::LinearMixedModel) = m.R[end,end][1]
 
 """
     varest(m::LinearMixedModel)
-
 The estimate of σ², the variance of the conditional distribution of Y given B.
 """
 varest(m::LinearMixedModel) = pwrss(m)/nobs(m)
 
 """
     pwrss(m::LinearMixedModel)
-
 The penalized residual sum-of-squares.
 """
 pwrss(m::LinearMixedModel) = abs2(sqrtpwrss(m))
 
 """
     chol2cor(L::LowerTriangular)
-
 The correlation matrix (symmetric, positive definite with unit diagonal) corresponding to `L * L'`
 """
 function chol2cor(L::LowerTriangular)
@@ -261,14 +291,12 @@ end
 
 """
     isfit(m::LinearMixedModel)
-
 A `Bool` indicating if the model has been fit.
 """
 isfit(m::LinearMixedModel) = m.opt.fmin < Inf
 
 """
     lrt(mods::LinearMixedModel...)
-
 Perform sequential likelihood ratio tests on a sequence of models.  The returned value is
 a `DataFrame` containing information on the likelihood ratio tests.
 """
@@ -291,28 +319,27 @@ function lrt(mods::LinearMixedModel...) # not tested
     DataFrame(Df = degf, Deviance = dev, Chisq=csqr,pval=pval)
 end
 
-
 """
     reweight!{T}(m::LinearMixedModel{T}, wts::Vector{T})
-
-Update `m.sqrtwts` from `wts` and `m.wttrms` from `m.trms`.  Recompute `m.A`.
+Update `m.sqrtwts` from `wts` and `m.wttrms` from `m.trms`.  Recompute `m.A` and `m.R`
 """
-function reweight!{T}(m::LinearMixedModel{T}, wts::Vector{T})
+function reweight!{T}(m::LinearMixedModel{T}, weights::Vector{T})
     A, wttrms, trms, sqrtwts = m.A, m.wttrms, m.trms, m.sqrtwts
+       # should be able to use map!(sqrt, sqrtwts.diag, weights) but that allocates storage in v0.4
     d = sqrtwts.diag
-    if length(wts) ≠ length(d)
-        throw(DimensionMismatch("length(wts) = $(length(wts)), should be $(length(d))"))
+    if length(weights) ≠ length(d)
+        throw(DimensionMismatch("length(weights) = $(length(weights)), should be $(length(d))"))
     end
-    for i in eachindex(wts)
-        d[i] = sqrt(wts[i])
+    for i in eachindex(d)
+        d[i] = sqrt(weights[i])
     end
     for j in eachindex(trms)
         A_mul_B!(sqrtwts, copy!(wttrms[j], trms[j]))
     end
-    for j in 1:size(A, 2), i in 1:j
+    for j in 1 : size(A, 2), i in 1 : j
         Ac_mul_B!(A[i, j], wttrms[i], wttrms[j])
     end
-    m
+    cfactor!(m)
 end
 
 function Base.show(io::IO, m::LinearMixedModel)
