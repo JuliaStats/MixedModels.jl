@@ -13,7 +13,7 @@ modl = lmm(Yield ~ 1 + (1|Batch), ds);
 
 @test_throws DimensionMismatch setθ!(modl, [0., 1.])
 
-@test_throws DimensionMismatch Base.LinAlg.Ac_ldiv_B!(UpperTriangular(fm3.R[1, 1]), ones(30, 1))
+@test_throws DimensionMismatch LinAlg.Ac_ldiv_B!(UpperTriangular(fm3.R[1, 1]), ones(30, 1))
 
 const tri = LowerTriangular(eye(3))
 const hblk = MixedModels.HBlkDiag(ones(2,3,2))
@@ -31,12 +31,12 @@ const dd3 = Diagonal(ones(3))
 @test_throws DimensionMismatch MixedModels.downdate!(ones(2,2), dd3, ones(2,2))
 @test_throws DimensionMismatch MixedModels.inject!(ones(2,2), dd3)
 @test_throws DimensionMismatch MixedModels.inject!(ones(3,2), dd3)
-@test_throws DimensionMismatch Base.LinAlg.A_ldiv_B!(dd3, Diagonal(ones(2)))
+@test_throws DimensionMismatch LinAlg.A_ldiv_B!(dd3, Diagonal(ones(2)))
 
 const speye4 = speye(4)
 @test_throws ArgumentError MixedModels.inject!(speye(4), sparse(ones(4,4)))
-@test_throws DimensionMismatch Base.LinAlg.A_ldiv_B!(dd3, speye4)
-@test_throws DimensionMismatch Base.LinAlg.Ac_ldiv_B!(UpperTriangular(hblk), ones(1,1))
+@test_throws DimensionMismatch LinAlg.A_ldiv_B!(dd3, speye4)
+@test_throws DimensionMismatch LinAlg.Ac_ldiv_B!(UpperTriangular(hblk), ones(1,1))
 @test_throws DimensionMismatch MixedModels.unscaledre!(ones(1), modl.wttrms[1], ones(1, 6))
 
 @test_throws DimensionMismatch MixedModels.downdate!(ones(1,1), speye4, ones(4,1))

@@ -125,7 +125,7 @@ function ranef!(v::Vector, m::MixedModel, uscale)
     for j in k:-1:1
         Rjj = R[j, j]
         uj = vec(v[j])
-        Base.LinAlg.A_ldiv_B!(isa(Rjj, Diagonal) ? Rjj : UpperTriangular(Rjj), uj)
+        LinAlg.A_ldiv_B!(isa(Rjj, Diagonal) ? Rjj : UpperTriangular(Rjj), uj)
         for i in 1:j - 1
             ui = vec(v[i])
             ui -= R[i, j] * uj
@@ -181,6 +181,6 @@ Returns
   a `p × p` `Matrix`
 """
 function StatsBase.vcov(m::MixedModel)
-    Rinv = Base.LinAlg.inv(feR(m))
-    varest(m) * Rinv * Rinv'
+    Rinv = inv(feR(m))
+    varest(m) * (Rinv * Rinv')
 end

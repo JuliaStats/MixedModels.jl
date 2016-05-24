@@ -20,7 +20,7 @@ function cfactor!(A::AbstractMatrix)
             for i in 1:(k - 1)
                 downdate!(A[k, j], A[i, k], A[i, j]) # A[k,j] -= A[i,k]'A[i,j]
             end
-            Base.LinAlg.Ac_ldiv_B!(Akk, A[k, j])
+            LinAlg.Ac_ldiv_B!(Akk, A[k, j])
         end
     end
     UpperTriangular(A)
@@ -34,8 +34,7 @@ function cfactor!{T <: AbstractFloat}(D::Diagonal{T})
     D
 end
 
-cfactor!{T <: Base.LinAlg.BlasFloat}(A::Matrix{T}) =
-    UpperTriangular(Base.LinAlg.LAPACK.potrf!('U', A)[1])
+cfactor!{T <: LinAlg.BlasFloat}(A::Matrix{T}) = UpperTriangular(LAPACK.potrf!('U', A)[1])
 
 function cfactor!{T}(A::HBlkDiag{T})
     Aa = A.arr
@@ -48,7 +47,7 @@ function cfactor!{T}(A::HBlkDiag{T})
         for j in 1 : r, i in 1 : j
             scm[i, j] = Aa[i, j, k]
         end
-        Base.LinAlg.LAPACK.potrf!('U', scm)
+        LAPACK.potrf!('U', scm)
         for j in 1 : r, i in 1 : j
             Aa[i, j, k] = scm[i, j]
         end
@@ -101,10 +100,10 @@ densify(A::AbstractMatrix, threshold = 0.3) = A
     downdate!(C::AbstractMatrix, A::AbstractMatrix, B::AbstractMatrix)
 Subtract, in place, `A'A` or `A'B` from `C`
 """
-downdate!{T <: Base.LinAlg.BlasFloat}(C::DenseMatrix{T}, A::DenseMatrix{T}) =
+downdate!{T <: LinAlg.BlasFloat}(C::DenseMatrix{T}, A::DenseMatrix{T}) =
     BLAS.syrk!('U', 'T', -one(T), A, one(T), C)
 
-downdate!{T <: Base.LinAlg.BlasFloat}(C::DenseMatrix{T}, A::DenseMatrix{T}, B::DenseMatrix{T}) =
+downdate!{T <: LinAlg.BlasFloat}(C::DenseMatrix{T}, A::DenseMatrix{T}, B::DenseMatrix{T}) =
     BLAS.gemm!('T', 'N', -one(T), A, B, one(T), C)
 
 function downdate!{T}(C::Diagonal{T}, A::SparseMatrixCSC{T})
@@ -224,7 +223,7 @@ make a copy, this function is needed for the special behavior on the `HBlkDiag` 
 function inflate!(A::HBlkDiag)
     Aa = A.arr
     r, s, k = size(Aa)
-    for j in 1 : k, i in 1 : min(r,s)
+    for j in 1 : k, i in 1 : min(r, s)
         Aa[i, i, j] += 1
     end
     A
