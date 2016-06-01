@@ -308,8 +308,10 @@ function Base.show{T,D,L}(io::IO, m::GeneralizedLinearMixedModel{T,D,L}) # not t
 
     show(io,VarCorr(m))
     gl = grplevels(m.LMM)
-    println(io, "\n Number of obs: ", length(m.y), "; levels of grouping factors: ", gl[1])
-    for l in gl[2:end] @printf(io, ", %d", l) end
+    print(io, "\n Number of obs: ", length(m.y), "; levels of grouping factors: ", gl[1])
+    for l in gl[2:end]
+        printf(io, ", ", l)
+    end
     println(io)
     println(io, "\nFixed-effects parameters:")
     show(io, coeftable(m))
