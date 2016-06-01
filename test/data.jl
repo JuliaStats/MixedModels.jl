@@ -3,13 +3,13 @@ using Compat, DataFrames
 const ds = DataFrame(Yield = [1545.,1440.,1440.,1520.,1580.,1540.,1555.,1490.,1560.,1495.,
                               1595.,1550.,1605.,1510.,1560.,1445.,1440.,1595.,1465.,1545.,
                               1595.,1630.,1515.,1635.,1625.,1520.,1455.,1450.,1480.,1445.],
-                     Batch = pool(rep('A' : 'F', 1, 5)))
+                     Batch = pool(Compat.repeat('A' : 'F', inner = 5)))
 
 ## Dyestuff2 data from lme4
 const ds2 = DataFrame(Yield = [7.298,3.846,2.434,9.566,7.99,5.22,6.556,0.608,11.788,-0.892,
                                0.11, 10.386,13.434,5.51,8.166,2.212,4.852,7.092,9.288,4.98,
                                0.282,9.014,4.458,9.446,7.198,1.722,4.782,8.106,0.758,3.758],
-                      Batch = pool(rep('A' : 'F', 1, 5)))
+                      Batch = pool(Compat.repeat('A' : 'F', inner = 5)))
 
 ## sleepstudy data from lme4
 
@@ -40,11 +40,11 @@ const slp = DataFrame(Reaction =
                        272.4428,277.8989,281.7895,279.1705,284.512,259.2658,304.6306,
                        350.7807,369.4692,269.4117,273.474,297.5968,310.6316,287.1726,
                        329.6076,334.4818,343.2199,369.1417,364.1236],
-                      Days = rep(0:9,18),
-                      Subject = pool(rep(1:18,1,10)))
+                      Days = Compat.repeat(0 : 9, outer = 18),
+                      Subject = pool(Compat.repeat(1 : 18, inner = 10)))
 
-const bb = rep('A':'J', 1, 6)
-const cc = rep('a':'c', 10, 2)
+const bb = Compat.repeat('A' : 'J', inner = 6)
+const cc = Compat.repeat('a' : 'c', inner = 2, outer = 10)
 
 ## Pastes data from the lme4 package
 const psts = DataFrame(Strength = [62.8,62.6,60.1,62.3,62.7,63.1,60.0,61.4,57.5,56.9,61.1,58.9,
@@ -64,7 +64,7 @@ const pen = DataFrame(Diameter = [27,23,26,23,23,21,27,23,26,23,23,21,25,21,25,2
                                   26,23,25,24,24,22,25,22,25,23,23,20,25,21,24,23,23,20,25,22,24,
                                   23,23,19,24,21,23,21,21,19,26,23,26,24,24,21,25,21,24,22,22,18,
                                   25,22,25,22,22,20,24,21,24,22,24,19,24,21,24,22,21,18],
-                      Plate = pool(rep('a':'x',1,6)),
-                      Sample = pool(rep('A':'F',24,1)))
+                      Plate = pool(Compat.repeat('a' : 'x', inner = 6)),
+                      Sample = pool(Compat.repeat(collect('A' : 'F'), outer = 24)))
 
 ## InstEval data from the lme4 package
