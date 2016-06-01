@@ -53,9 +53,9 @@ Create a `GeneralizedLinearMixedModel` object which is ready to be `fit!`
 but has not yet been fit.
 """
 function glmm(f::Formula, fr::AbstractDataFrame, d::Distribution, l::Link; wt=[], offset=[])
-#    if d == Binomial() && isempty(wt)
-#        d = Bernoulli()
-#    end
+    if d == Binomial() && isempty(wt)
+        d = Bernoulli()
+    end
     wts = isempty(wt) ? ones(nrow(fr)) : Array(wt)
         # the weights argument is forced to be non-empty in the lmm as it will be used later
     LMM = lmm(f, fr; weights = wts)
