@@ -60,7 +60,7 @@ function LinearMixedModel(f, mf, trms, Λ, wts)
         size(sqrtwts, 2) == n ? [sqrtwts * t for t in trms] :
         throw(DimensionMismatch("length(wts) must be 0 or length(y)"))
     nt = length(trms)
-    A, R = cell(nt, nt), cell(nt, nt)
+    A, R = Array{Any}(nt, nt), Array{Any}(nt, nt)
     for j in 1 : nt, i in 1 : j
         A[i, j] = densify(wttrms[i]'wttrms[j])
         R[i, j] = copy(A[i, j])
