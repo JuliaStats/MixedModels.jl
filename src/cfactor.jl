@@ -60,7 +60,7 @@ end
 Convert sparse `S` to `Diagonal` if `S` is diagonal or to `full(S)` if
 the proportion of nonzeros exceeds `threshold`.
 """
-function densify(S::SparseMatrixCSC, threshold=0.3)
+function densify(S::SparseMatrixCSC, threshold::Real = 0.3)
     m,n = size(S)
     if m == n && isdiag(S)  # convert diagonal sparse to Diagonal
         return Diagonal(diag(S))
@@ -93,13 +93,15 @@ function densify(S::SparseMatrixCSC, threshold=0.3)
     end
     res
 end
-densify(A::AbstractMatrix, threshold = 0.3) = A
+densify(A::AbstractMatrix, threshold::Real = 0.3) = A
 
 """
     downdate!(C::AbstractMatrix, A::AbstractMatrix)
     downdate!(C::AbstractMatrix, A::AbstractMatrix, B::AbstractMatrix)
 Subtract, in place, `A'A` or `A'B` from `C`
 """
+function downdate! end
+
 downdate!{T <: LinAlg.BlasFloat}(C::DenseMatrix{T}, A::DenseMatrix{T}) =
     BLAS.syrk!('U', 'T', -one(T), A, one(T), C)
 
@@ -220,11 +222,20 @@ end
 Equivalent to `A += I`, without making a copy of `A`.  Even if `A += I` did not
 make a copy, this function is needed for the special behavior on the `HBlkDiag` type.
 """
+function inflate! end
+
 function inflate!(A::HBlkDiag)
     Aa = A.arr
     r, s, k = size(Aa)
     for j in 1 : k, i in 1 : min(r, s)
         Aa[i, i, j] += 1
+    end
+    A
+end
+function inflate!{T<:AbstractFloat}(A::StridedMatrix{T})
+    n = Compat.LinAlg.checksquare(A)
+    for i in 1 : n
+        @inbounds A[i, i] += one(T)
     end
     A
 end
@@ -234,11 +245,4 @@ function inflate!{T <: AbstractFloat}(D::Diagonal{T})
         d[i] += one(T)
     end
     D
-end
-function inflate!{T<:AbstractFloat}(A::StridedMatrix{T})
-    n = Compat.LinAlg.checksquare(A)
-    for i in 1 : n
-        @inbounds A[i, i] += one(T)
-    end
-    A
 end
