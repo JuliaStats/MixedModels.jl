@@ -22,7 +22,7 @@ for c in [:herd, :period]
     cbpp[c] = pool(oftype(Int8[], cbpp[c]))
 end
 for c in [:incidence, :size]
-  cbpp[c] = oftype(Int8[], cbpp[c])
+    cbpp[c] = oftype(Int8[], cbpp[c])
 end
 cbpp[:prop] = cbpp[:incidence] ./ cbpp[:size]
 gm2 = fit!(glmm(prop ~ 1 + period + (1 | herd), cbpp, Binomial(), LogitLink(); wt = cbpp[:size]));
