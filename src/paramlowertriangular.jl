@@ -1,4 +1,4 @@
-nlower(n::Integer) = (n * (n + 1)) >> 1
+nlower(n::Integer) = (n * (n + 1)) >>> 1
 nlower{T}(A::LowerTriangular{T,Matrix{T}}) = nlower(Compat.LinAlg.checksquare(A))
 
 """
@@ -42,7 +42,7 @@ lower bounds on the parameters (elements in the lower triangle)
 """
 function lowerbd{T}(A::LowerTriangular{T,Matrix{T}})
     n = Compat.LinAlg.checksquare(A)
-    res = fill(convert(T,-Inf),nlower(n))
+    res = fill(convert(T, -Inf), nlower(n))
     k = -n
     for j in n+1:-1:2
         res[k += j] = zero(T)

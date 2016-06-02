@@ -32,14 +32,6 @@ Base.std(m::MixedModel) = sdest(m) * push!([rowlengths(λ) for λ in lmm(m).Λ],
 
 ## methods for generics defined in StatsBase
 
-StatsBase.coef(m::LinearMixedModel) = fixef(m)
-
-StatsBase.loglikelihood(m::LinearMixedModel) = -deviance(m)/2
-
-StatsBase.nobs(m::LinearMixedModel) = length(model_response(m))
-
-## methods for functions exported from this module
-
 function StatsBase.coeftable(m::MixedModel)
     fe = fixef(m)
     se = stderr(m)
@@ -74,7 +66,7 @@ function fnames(m::MixedModel)
 end
 
 """
-    grplevels(m)
+    grplevels(m::MixedModel)
 The number of levels in each random-effects term's grouping factor
 """
 function grplevels(m::MixedModel)
@@ -83,30 +75,10 @@ function grplevels(m::MixedModel)
 end
 
 """
-    lowerbd(m)
-
-Args:
-
-- `m`: a `MixedModel`
-
-Returns:
-  A `Vector` of lower bounds on the covariance parameter vector `m[:θ]`
-"""
-lowerbd(m::MixedModel) = mapreduce(lowerbd,vcat,lmm(m).Λ)
-
-"""
-    ranef!(v, m, uscale)
-
-Overwrite v with the conditional modes of the random effects for `m`
-
-Args:
-
-- `v`: a `Vector` of matrices
-- `m`: a `MixedModel`
-- `uscale`: `Bool`, return the random-effects on the spherical (i.e. `u`) scale?
-
-Returns:
-  `v`, overwritten with the conditional modes
+    ranef!{T}(v::Vector{Matrix{T}}, m::MixedModel{T}, uscale::Bool = false)
+Overwrite `v` with the conditional modes of the random effects for `m`.  If `uscale`
+is `true` the random effects are on the spherical (i.e. `u`) scale, otherwise on the
+original scale
 """
 function ranef!(v::Vector, m::MixedModel, uscale)
     R, Λ = m.R, m.Λ
