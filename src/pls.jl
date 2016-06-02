@@ -46,8 +46,8 @@ type LinearMixedModel{T <: AbstractFloat} <: MixedModel
     trms::Vector
     sqrtwts::Diagonal{T}
     Λ::Vector{LowerTriangular{T, Matrix{T}}}
-    A::Matrix        # symmetric cross-product blocks (upper triangle)
-    R::Matrix        # right Cholesky factor in blocks.
+    A::Matrix{Any}        # symmetric cross-product blocks (upper triangle)
+    R::Matrix{Any}        # right Cholesky factor in blocks.
     opt::OptSummary
 end
 
@@ -191,10 +191,16 @@ function StatsBase.fit!(m::LinearMixedModel, verbose::Bool=false, optimizer::Sym
 end
 
 """
+    lowerbd(m::LinearMixedModel)
+The `Vector` of lower bounds on the covariance parameter vector `m[:θ]`
+"""
+lowerbd(m::LinearMixedModel) = mapreduce(lowerbd, vcat, m.Λ)
+
+"""
     objective(m::LinearMixedModel)
 Negative twice the log-likelihood of model `m`
 """
-objective(m::LinearMixedModel) = logdet(m) + nobs(m) * (1. + log(2π * varest(m)))
+objective(m::LinearMixedModel) = logdet(m) + nobs(m) * (1 + log2π + log(varest(m)))
 
 """
     fixef!{T}(v::Vector{T}, m::LinearMixedModel{T})
@@ -220,6 +226,8 @@ StatsBase.df(m::LinearMixedModel) = size(m.wttrms[end - 1], 2) + length(m[:θ]) 
 
 StatsBase.loglikelihood(m::LinearMixedModel) = -deviance(m)/2
 
+StatsBase.nobs(m::LinearMixedModel) = Int(length(m.trms[end]))
+
 function Base.size(m::LinearMixedModel)
     k = length(m.Λ)
     trms = m.wttrms
@@ -232,11 +240,11 @@ end
     sdest(m::LinearMixedModel)
 The estimate of σ, the standard deviation of the per-observation noise.
 """
-sdest(m::LinearMixedModel) = sqrtpwrss(m)/√nobs(m)
+sdest{T}(m::LinearMixedModel{T}) = T(sqrtpwrss(m)/√nobs(m))
 
 """
-    set!θ{T}(m::LinearMixedModel{T}, v::Vector{T})
-Install `v` as the θ parameters in `m`.  Only affects `m.Λ`.
+    setθ!{T}(m::LinearMixedModel{T}, v::Vector{T})
+Install `v` as the θ parameters in `m`.  Changes `m.Λ` only.
 """
 function setθ!{T}(m::LinearMixedModel{T}, v::Vector{T})
     Λ = m.Λ
@@ -257,13 +265,13 @@ end
     sqrtpwrss(m::LinearMixedModel)
 The square root of the penalized residual sum-of-squares, which is the bottom right block of `m.R`
 """
-sqrtpwrss(m::LinearMixedModel) = m.R[end,end][1]
+sqrtpwrss{T}(m::LinearMixedModel{T}) = T(m.R[end,end][1])
 
 """
     varest(m::LinearMixedModel)
 The estimate of σ², the variance of the conditional distribution of Y given B.
 """
-varest(m::LinearMixedModel) = pwrss(m)/nobs(m)
+varest{T}(m::LinearMixedModel{T}) = T(pwrss(m)/nobs(m))
 
 """
     pwrss(m::LinearMixedModel)
