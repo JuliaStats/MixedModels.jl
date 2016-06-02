@@ -96,13 +96,8 @@ that does not have a scale factor this is defined as the squared length
 of the conditional modes, `u`, plus the determinant of `Λ'Z'ZΛ + 1`, plus
 the sum of the squared deviance residuals.
 """
-function LaplaceDeviance{T}(m::GeneralizedLinearMixedModel{T})
-    s = sum(m.devresid) + T(logdet(m))
-    for um in m.u, umi in um
-        s += abs2(umi)
-    end
-    s
-end
+LaplaceDeviance{T}(m::GeneralizedLinearMixedModel{T}) =
+    sum(m.devresid) + logdet(m) + mapreduce(sumabs2, +, m.u)
 
 """
     LaplaceDeviance!(m::GeneralizedLinearMixedModel)
@@ -117,19 +112,10 @@ function LaplaceDeviance!(m::GeneralizedLinearMixedModel)
 end
 
 function StatsBase.loglikelihood{T,D}(m::GeneralizedLinearMixedModel{T,D})
-    μ, y = m.μ, m.y
-    s = zero(T)
-    if D ≠ Binomial
-        for i in eachindex(y)
-            s += logpdf(D(μ[i]), y[i])
-        end
-        return s
-    end
-    n = m.wt
-    for i in eachindex(n)
-        s += logpdf(Binomial(n[i], μ[i]), round(Int, y[i] * n[i]))
-    end
-    s
+    μ, y, n = m.μ, m.y, m.wt
+    (D ≠ Binomial ? sum(i -> logpdf(D(μ[i]), y[i]), eachindex(y)) :
+        sum(i -> logpdf(D(n[i], μ[i]), round(Int, y[i] * n[i])), eachindex(y))) -
+        (mapreduce(sumabs2, +, m.u) + logdet(m)) / 2
 end
 
 lowerbd(m::GeneralizedLinearMixedModel) = vcat(fill(-Inf, size(m.β)), lowerbd(m.LMM))
@@ -310,7 +296,7 @@ function Base.show{T,D,L}(io::IO, m::GeneralizedLinearMixedModel{T,D,L}) # not t
     gl = grplevels(m.LMM)
     print(io, "\n Number of obs: ", length(m.y), "; levels of grouping factors: ", gl[1])
     for l in gl[2:end]
-        printf(io, ", ", l)
+        print(io, ", ", l)
     end
     println(io)
     println(io, "\nFixed-effects parameters:")
