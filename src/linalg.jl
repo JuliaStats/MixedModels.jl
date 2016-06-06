@@ -1,27 +1,22 @@
 LinAlg.Ac_ldiv_B!{T}(D::Diagonal{T}, B) = A_ldiv_B!(D, B)
 
 function LinAlg.A_ldiv_B!{T}(D::Diagonal{T}, B::Diagonal{T})
-    dd = D.diag
-    bd = B.diag
-    if length(dd) ≠ length(bd)
-        throw(DimensionMismatch("size(D,2) ≠ size(B,1)"))
+    if size(D) ≠ size(B)
+        throw(DimensionMismatch("size(D) ≠ size(B)"))
     end
-    for j in eachindex(bd)
-        bd[j] /= dd[j]
-    end
+    map!(/, B.diag, B.diag, D.diag)
     B
 end
 
 function LinAlg.A_ldiv_B!{T}(D::Diagonal{T}, B::SparseMatrixCSC{T})
-    m, n = size(B)
     dd = D.diag
-    if length(dd) ≠ m
+    if length(dd) ≠ size(B, 1)
         throw(DimensionMismatch("size(D,2) ≠ size(B,1)"))
     end
-    nzv = nonzeros(B)
-    rv = rowvals(B)
-    for j in 1:n, k in nzrange(B,j)
-        nzv[k] /= dd[rv[k]]
+    vals = nonzeros(B)
+    rows = rowvals(B)
+    @inbounds for k in eachindex(vals)
+        vals[k] /= dd[rows[k]]
     end
     B
 end

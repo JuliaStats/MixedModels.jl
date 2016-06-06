@@ -6,6 +6,7 @@ for c in [:district, :use, :urban, :livch, :urbdist]
 end
 contra[:age2] = abs2(contra[:age])
 gm1 = fit!(glmm(use01 ~ 1 + age + age2 + urban + livch + (1 | urbdist), contra, Bernoulli()));
+@test lowerbd(gm1) == push!(fill(-Inf, 7), 0.) 
 @test isapprox(LaplaceDeviance(gm1), 2361.5457555; atol = 0.0001)
 @test isapprox(loglikelihood(gm1), -1180.7729; atol = 0.001)
 # There may be multiple optima here.

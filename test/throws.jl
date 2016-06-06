@@ -51,3 +51,4 @@ const speye4 = speye(4)
 
 @test_throws DimensionMismatch MixedModels.tscale!(LowerTriangular(eye(2)), Diagonal(ones(30)))
 @test_throws DimensionMismatch MixedModels.tscale!(Diagonal(ones(30)), LowerTriangular(eye(2)))
+@test_throws ArgumentError MixedModels.lrt(modl)
