@@ -1,24 +1,25 @@
 nlower(n::Integer) = (n * (n + 1)) >>> 1
-nlower{T}(A::LowerTriangular{T,Matrix{T}}) = nlower(Compat.LinAlg.checksquare(A))
+nlower{T}(A::LowerTriangular{T, Matrix{T}}) = nlower(Compat.LinAlg.checksquare(A))
 
 """
-return the lower triangle as a vector (column-major ordering)
+    getindex{T}(A::LowerTriangular{T, Matrix{T}}, θ::Symbol)
+Return the contents of the lower triangle of `A` as a vector (column-major ordering)
 """
-function Base.getindex{T}(A::LowerTriangular{T,Matrix{T}},s::Symbol)
+function Base.getindex{T}(A::LowerTriangular{T,Matrix{T}}, s::Symbol)
     if s ≠ :θ
         throw(KeyError(s))
     end
     n = Compat.LinAlg.checksquare(A)
-    res = Array(T,nlower(n))
-    k = 0
-    for j = 1:n, i in j:n
-        @inbounds res[k += 1] = A[i,j]
+    res = sizehint!(T[], nlower(n))
+    for j = 1 : n
+        append!(res, sub(A, j : n, j))
     end
     res
 end
 
 """
-set the lower triangle of A to v using column-major ordering
+    setindex!{T}(A::LowerTriangular{T,Matrix{T}}, v::Vector{T}, θ::Symbol)
+Copy `v` into the lower triangle of `A` using column-major ordering
 """
 function Base.setindex!{T}(A::LowerTriangular{T,Matrix{T}},
     v::AbstractVector{T}, s::Symbol)
@@ -38,7 +39,9 @@ end
 
 """
     lowerbd{T}(A::LowerTriangular{T,Matrix{T}})
-lower bounds on the parameters (elements in the lower triangle)
+Lower bounds on the parameters, `θ`.  These are the elements in the lower triangle
+in column-major ordering.  Diagonals have a lower bound of `0`.  Off-diagonals have
+a lower-bound of `-Inf`.
 """
 function lowerbd{T}(A::LowerTriangular{T,Matrix{T}})
     n = Compat.LinAlg.checksquare(A)
@@ -104,18 +107,53 @@ function tscale!{T}(A::LowerTriangular{T}, B::DenseVecOrMat{T})
 end
 
 function tscale!{T}(A::LowerTriangular{T}, B::SparseMatrixCSC{T})
-    if size(A, 1) ≠ 1
-        error("Code not yet written")
+    if (l = size(A, 1)) == 1
+        scale!(A.data[1], B.nzval)
+    else
+        m, n = size(B)
+        q, r = divrem(m, l)
+        if r ≠ 0
+            throw(DimensionMismatch("size(B, 1) is not a multiple of size(A, 1)"))
+        end
+        q, r = divrem(nnz(B), l)
+        if r ≠ 0
+            throw(DimensionMismatch("nnz(B) is not a multiple of size(A, 1)"))
+        end
+        Ac_mul_B!(A, reshape(B.nzval, (l, q)))
     end
-    scale!(A.data[1], B.nzval)
     B
 end
 
 function tscale!{T}(A::SparseMatrixCSC{T}, B::LowerTriangular{T})
-    if size(B, 1) != 1
-        error("Code not yet written")
+    if (l = size(B, 1)) == 1
+        scale!(A.nzval, B.data[1])
+    else
+        m, n = size(A)
+        q, r = divrem(nnz(A), l)
+        if r ≠ 0
+            throw(DimensionMismatch("nnz(A) is not a multiple of size(B, 1)"))
+        end
+        q, r = divrem(n, l)
+        if r ≠ 0
+            throw(DimensionMismatch("size(A, 2) is not a multiple of size(B, 1)"))
+        end
+        Ar = rowvals(A)
+        Acp = A.colptr
+        Anz = nonzeros(A)
+        offset = 0
+        for k in 1 : q
+            nzr1 = nzrange(A, offset + 1)
+            Ar1 = sub(Ar, nzr1)
+            for j in 2 : l
+                if sub(Ar, nzrange(A, offset + j)) ≠ Ar1
+                    throw(ArgumentError("A does not have block structure for tscale!"))
+                end
+            end
+            lnzr = length(Ar1)
+            A_mul_B!(reshape(sub(Anz, nzr1[1] + (0 : (lnzr * l - 1))), (lnzr, l)), B)
+            offset += l
+        end
     end
-    scale!(A.nzval, B.data[1])
     A
 end
 

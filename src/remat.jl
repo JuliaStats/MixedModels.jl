@@ -233,13 +233,23 @@ function Base.Ac_mul_B{T}(A::VectorReMat{T}, B::VectorReMat{T})
         return Ac_mul_B!(HBlkDiag(Array(T, (l, l, length(A.f.pool)))), A, B)
     end
     Az = A.z
-    Ar = convert(Vector{Int}, A.f.refs)
     Bz = B.z
-    Br = convert(Vector{Int}, B.f.refs)
-    if (m = length(Ar)) ≠ length(Br)
-        throw(DimensionMismatch())
+    if (m = size(Az, 2)) ≠ size(Bz, 2)
+        throw(DimensionMismatch("$m = size(Az,2) ≠ size(Bz,2) = $(size(Bz, 2))"))
     end
-    sparse(Ar, Br, [sub(Az, :, i) * sub(Bz, :, i)' for i in 1 : m])
+    a, b = size(Az,1), size(Bz, 1)
+    ab = a * b
+    nz = ab * m
+    I, J, V = sizehint!(Int[], nz), sizehint!(Int[], nz), sizehint!(T[], nz)
+    Ar, Br = A.f.refs, B.f.refs
+    Ipat = Compat.repeat(1 : a, outer = b)
+    Jpat = Compat.repeat(1 : b, inner = a)
+    for i in 1 : m
+        append!(I, Ipat + (Ar[i] - 1) * a)
+        append!(J, Jpat + (Br[i] - 1) * b)
+        append!(V, vec(slice(Az, :, i) * slice(Bz, :, i)'))
+    end
+    sparse(I, J, V)
 end
 
 function Base.Ac_mul_B!{T}(R::DenseVecOrMat{T}, A::DenseVecOrMat{T}, B::ReMat)
