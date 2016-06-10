@@ -4,7 +4,7 @@ Distributions 0.8
 GLM 0.5.2
 NLopt 0.3
 Showoff
-StatsBase 0.8.0
+StatsBase 0.8.2
 StatsFuns 0.2.0
 Compat 0.7.20
 DataArrays
