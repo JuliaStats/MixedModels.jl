@@ -3,6 +3,7 @@
 Generalized linear mixed-effects model representation
 
 Members:
+
 - `LMM`: a [`LinearMixedModel`](@ref) - used for the random effects only.
 - `dist`: a `UnivariateDistribution` - typically `Bernoulli()`, `Binomial()`, `Gamma()` or `Poisson()`.
 - `link`: a suitable `GLM.Link` object
