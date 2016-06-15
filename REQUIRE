@@ -1,4 +1,4 @@
-julia 0.4
+julia 0.5-
 DataFrames 0.7
 Distributions 0.8
 GLM 0.5.2
