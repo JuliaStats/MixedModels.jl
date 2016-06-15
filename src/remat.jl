@@ -190,6 +190,17 @@ function Base.Ac_mul_B!{T}(C::Diagonal{T}, A::ScalarReMat{T}, B::ScalarReMat{T})
     C
 end
 
+function Base.Ac_mul_B!{Tv, Ti}(C::SparseMatrixCSC{Tv, Ti}, A::ScalarReMat{Tv}, B::ScalarReMat{Tv})
+    m, n = size(A)
+    p, q = size(B)
+    if m ≠ p || size(C, 1) ≠ n || size(C, 2) ≠ q
+        throw(DimensionMismatch("size(A) = $(size(A)), size(B) = $(size(B)), size(C) = $(size(C))"))
+    end
+    SparseArrays.sparse!(convert(Vector{Ti}, A.f.refs), convert(Vector{Ti}, B.f.refs), A.z .* B.z,
+        n, q, +, Array(Ti, q), Array(Ti, n + 1), Array(Ti, m), Array(Tv, m), C.colptr, C.rowval, C.nzval)
+    C
+end
+
 function Base.Ac_mul_B!{T}(C::HBlkDiag{T}, A::VectorReMat{T}, B::VectorReMat{T})
     c, a, r = C.arr, A.z, A.f.refs
     _, m, n = size(c)
