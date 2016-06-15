@@ -56,7 +56,7 @@ function remat(e::Expr, df::DataFrame)
     gr = getindex(df,fnm)
     gr = isa(gr,PooledDataArray) ? gr : pool(gr)
     if e.args[2] == 1
-        return ScalarReMat(gr, ones(length(gr)), fnm,["(Intercept)"])
+        return ScalarReMat(gr, ones(length(gr)), fnm, ["(Intercept)"])
     end
     mf = ModelFrame(Formula(nothing, e.args[2]), df)
     z = ModelMatrix(mf).m
