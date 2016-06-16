@@ -29,7 +29,6 @@ export
        VarCorr,
        VectorReMat,
 
-       bootstrap,  # Create bootstrap replications of a model
        cfactor!,
        coef,
        coeftable,
