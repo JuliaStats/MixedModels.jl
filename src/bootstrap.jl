@@ -1,24 +1,4 @@
 """
-    bootstrap(m::LinearMixedModels, N::Integer, saveresults::Function)
-Simulate `N` response vectors from `m`, refitting the model.  `saveresults`
-is called after each refit with arguments `i::Int`, the index, and `m`.
-
-To save space `m.trms[end]`, which is the response vector, is overwritten
-by each simulation.  The original response is restored and the model refit
-before returning.
-"""
-function bootstrap(m::LinearMixedModel, N::Integer, saveresults::Function)
-    y0 = copy(model_response(m))
-    β = coef(m)
-    σ = sdest(m)
-    θ = m[:θ]
-    for i in 1:N
-        saveresults(i, simulate!(m; β = β, σ = σ, θ = θ))
-    end
-    refit!(m, y0)
-end
-
-"""
     reevaluateAend!(m::LinearMixedModel)
 Reevaluate the last column of `m.A` from `m.trms`.  This function should be called
 after updating the response, `m.trms[end]`.
@@ -92,7 +72,7 @@ unscaledre!(y::AbstractVector, M::VectorReMat, L::LowerTriangular) =
 
 """
     simulate!(m::LinearMixedModel; β=fixef(m), σ=sdest(m), θ=m[:θ])
-Install a simulated response vector in model `m` and refit it.
+Create a simulated response vector from model `m`.
 """
 function simulate!{T}(m::LinearMixedModel{T}; β = coef(m), σ = sdest(m), θ = T[])
     if !isempty(θ)
@@ -105,16 +85,25 @@ function simulate!{T}(m::LinearMixedModel{T}; β = coef(m), σ = sdest(m), θ = 
     end
                                   # scale by σ and add fixed-effects contribution
     BLAS.gemv!('N', 1.0, trms[end - 1], β, σ, y)
-    m |> reevaluateAend! |> resetθ! |> cfactor! |>  fit!
+end
+function simulate!{T}(f::Function, m::LinearMixedModel{T}; β = coef(m), σ = sdest(m), θ = T[])
+    y = simulate!(m, β = β, σ = σ, θ = θ)
+    f(y)
 end
 
 """
-    refit!{T}(m::LinearMixedModel, y::Vector{T})
+    refit!(m::LinearMixedModel)
+    refit!{T}(m::LinearMixedModel{T}, y::Vector{T})
 Refit the model `m` with response `y`.
 """
-function refit!(m::LinearMixedModel,y)
+refit!(m::LinearMixedModel) = fit!(cfactor!(resetθ!(reevaluateAend!(m))))
+function refit!{T}(m::LinearMixedModel{T}, y)
+    n = size(m.trms[end], 1)
+    if length(y) ≠ n
+        throw(DimensionMismatch("length(y) = $(length(y)), should be $n"))
+    end
     copy!(model_response(m), y)
-    m |> reevaluateAend! |> resetθ! |> cfactor! |> fit!
+    refit!(m)
 end
 
 StatsBase.model_response(m::LinearMixedModel) = vec(m.trms[end])
