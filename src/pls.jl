@@ -399,7 +399,7 @@ function Base.show(io::IO, m::LinearMixedModel)
     println(io, "Linear mixed model fit by maximum likelihood")
     println(io, " ", m.formula)
     oo = objective(m)
-    nums = showoff([-oo/ 2, oo, AIC(m), BIC(m)])
+    nums = showoff([-oo/ 2, oo, aic(m), bic(m)])
     fieldwd = max(maximum(length(nums)) + 2, 11)
     print(' ')
     for label in ["logLik", "-2 logLik", "AIC", "BIC"]

@@ -15,8 +15,8 @@ fit!(fm1);
 @test_approx_eq_eps objective(fm1) 327.3270598811428 1e-3
 @test_approx_eq_eps fm1[:θ] [0.752580] 1.e-5
 @test_approx_eq_eps deviance(fm1) 327.32705988 1.e-3
-@test_approx_eq_eps AIC(fm1) 333.3270598811394 1.e-3
-@test_approx_eq_eps BIC(fm1) 337.5306520261259 1.e-3
+@test_approx_eq_eps aic(fm1) 333.3270598811394 1.e-3
+@test_approx_eq_eps bic(fm1) 337.5306520261259 1.e-3
 @test fixef(fm1) ≈ [1527.5]
 @test MixedModels.fixef!(zeros(1),fm1) ≈ [1527.5]
 @test coef(fm1) ≈ [1527.5]
