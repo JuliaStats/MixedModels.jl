@@ -84,7 +84,7 @@ function densify(S::SparseMatrixCSC, threshold::Real = 0.3)
     rv = rowvals(S)
     for j in 1:size(S,2)
         for k in nzrange(S, j)
-            copy!(sub(res, (rv[k] - 1) * m + (1 : m), (j - 1) * n + (1 : n)), nzs[k])
+            copy!(Compat.view(res, (rv[k] - 1) * m + (1 : m), (j - 1) * n + (1 : n)), nzs[k])
         end
     end
     res
@@ -292,7 +292,7 @@ function setθ!{T}(m::LinearMixedModel{T}, v::Vector{T})
     for i in eachindex(Λ)
         λ = Λ[i]
         nti = nlower(λ)
-        λ[:θ] = sub(v, offset + (1 : nti))
+        λ[:θ] = Compat.view(v, offset + (1 : nti))
         offset += nti
     end
     if length(v) ≠ offset

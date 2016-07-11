@@ -12,7 +12,7 @@ function Base.getindex{T}(A::LowerTriangular{T,Matrix{T}}, s::Symbol)
     n = Compat.LinAlg.checksquare(A)
     res = sizehint!(T[], nlower(n))
     for j = 1 : n
-        append!(res, sub(A, j : n, j))
+        append!(res, Compat.view(A, j : n, j))
     end
     res
 end
@@ -143,14 +143,14 @@ function tscale!{T}(A::SparseMatrixCSC{T}, B::LowerTriangular{T})
         offset = 0
         for k in 1 : q
             nzr1 = nzrange(A, offset + 1)
-            Ar1 = sub(Ar, nzr1)
+            Ar1 = Compat.view(Ar, nzr1)
             for j in 2 : l
-                if sub(Ar, nzrange(A, offset + j)) ≠ Ar1
+                if Compat.view(Ar, nzrange(A, offset + j)) ≠ Ar1
                     throw(ArgumentError("A does not have block structure for tscale!"))
                 end
             end
             lnzr = length(Ar1)
-            A_mul_B!(reshape(sub(Anz, nzr1[1] + (0 : (lnzr * l - 1))), (lnzr, l)), B)
+            A_mul_B!(reshape(Compat.view(Anz, nzr1[1] + (0 : (lnzr * l - 1))), (lnzr, l)), B)
             offset += l
         end
     end
@@ -192,7 +192,7 @@ function tscale!{T}(A::StridedMatrix{T}, B::LowerTriangular{T})
         throw(DimensionMismatch("size(A,2) = $n must be a multiple of size(B,1) = $l"))
     end
     for k in 0:(q - 1)
-        A_mul_B!(sub(A, : , k * l + (1:l)), B)
+        A_mul_B!(Compat.view(A, : , k * l + (1:l)), B)
     end
     A
 end

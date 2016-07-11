@@ -123,7 +123,7 @@ function Base.A_mul_B!{T}(α::Real, A::ReMat, B::StridedVecOrMat{T}, β::Real, R
         l = size(zz,1)
         Bt = reshape(B, (l, div(q,l), k))
         for j in 1:k, i in 1:n
-            R[i, j] += α * dot(sub(Bt, :, Int(rr[i]), j), sub(zz, :, i))
+            R[i, j] += α * dot(Compat.view(Bt, :, Int(rr[i]), j), Compat.view(zz, :, i))
         end
     end
     R
@@ -258,7 +258,7 @@ function Base.Ac_mul_B{T}(A::VectorReMat{T}, B::VectorReMat{T})
     for i in 1 : m
         append!(I, Ipat + (Ar[i] - 1) * a)
         append!(J, Jpat + (Br[i] - 1) * b)
-        append!(V, vec(slice(Az, :, i) * slice(Bz, :, i)'))
+        append!(V, vec(Compat.view(Az, :, i) * Compat.view(Bz, :, i)'))
     end
     sparse(I, J, V)
 end

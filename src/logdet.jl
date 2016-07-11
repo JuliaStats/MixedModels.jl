@@ -25,6 +25,6 @@ LD(d::DenseMatrix) = sum(i -> log(d[i]), diagind(d))
 The value of `log(det(Λ'Z'ZΛ + I))` calculated in place.
 """
 function Base.logdet{T}(m::LinearMixedModel{T})
-    R = sub(m.R, :, 1 : length(m.Λ))
+    R = Compat.view(m.R, :, 1 : length(m.Λ))
     2. * T(sum(i -> LD(R[i]), diagind(R)))
 end

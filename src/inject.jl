@@ -9,7 +9,7 @@ function inject!(d::UpperTriangular, s::UpperTriangular)
         throw(DimensionMismatch("size(s, 2) ≠ size(d, 2)"))
     end
     for j in 1:n
-        inject!(sub(d, 1 : j, j), sub(s, 1 : j, j))
+        inject!(Compat.view(d, 1 : j, j), Compat.view(s, 1 : j, j))
     end
     d
 end
@@ -44,10 +44,10 @@ function inject!(d::SparseMatrixCSC{Float64}, s::SparseMatrixCSC{Float64})
     fill!(dnz, 0)
     for j in 1:n
         dnzr = nzrange(d, j)
-        dnzrv = sub(drv, dnzr)
+        dnzrv = Compat.view(drv, dnzr)
         snzr = nzrange(s, j)
-        if length(snzr) == length(dnzr) && all(dnzrv .== sub(srv, snzr))
-            copy!(sub(dnz, dnzr),sub(snz, snzr))
+        if length(snzr) == length(dnzr) && all(dnzrv .== Compat.view(srv, snzr))
+            copy!(Compat.view(dnz, dnzr),Compat.view(snz, snzr))
         else
             for k in snzr
                 ssr = srv[k]

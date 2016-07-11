@@ -207,8 +207,8 @@ the concatenation of the fixed-effects, `β`, and the covariance parameter, `θ`
 function setβθ!{T}(m::GeneralizedLinearMixedModel{T}, v::Vector{T})
     β, lm, offset, offset₀, X = m.β, m.LMM, m.offset, m.offset₀, m.X
     lb = length(β)
-    copy!(β, sub(v, 1 : lb))
-    setθ!(m.LMM, copy!(m.θ, sub(v, (lb + 1) : length(v))))
+    copy!(β, Compat.view(v, 1 : lb))
+    setθ!(m.LMM, copy!(m.θ, Compat.view(v, (lb + 1) : length(v))))
     BLAS.gemv!('N', one(T), X, β, one(T), isempty(offset₀) ? fill!(offset, 0) : copy!(offset, offset₀))
     m
 end
