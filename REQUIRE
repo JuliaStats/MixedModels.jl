@@ -6,5 +6,5 @@ NLopt 0.3
 Showoff
 StatsBase 0.8.2
 StatsFuns 0.2.0
-Compat 0.7.20
+Compat 0.8.4
 DataArrays
