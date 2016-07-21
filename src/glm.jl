@@ -17,6 +17,14 @@ function updateμ!{T <: AbstractFloat}(m::GeneralizedLinearMixedModel{T})
     m
 end
 
+function updateweights{T <: AbstractFloat}(dres::Vector{T}, wrkwt::Vector{T}, wt::Vector{T})
+    @inbounds @simd for i in eachindex(wt)
+        wti = wt[i]
+        dres[i] *= wti
+        wrkwt[i] *= wti
+    end
+end
+
 function updateμ!{T<:AbstractFloat, D<:Union{Bernoulli, Binomial}, L<:LogitLink}(m::GeneralizedLinearMixedModel{T,D,L})
     y, η, μ, wrkres, wrkwt, dres = m.y, m.η, m.μ, m.wrkresid, m.wrkwt, m.devresid
 
@@ -33,12 +41,7 @@ function updateμ!{T<:AbstractFloat, D<:Union{Bernoulli, Binomial}, L<:LogitLink
     end
 
     if !isempty(m.wt)
-        wt = m.wt
-        @inbounds @simd for i in eachindex(wt)
-            wti = wt[i]
-            dres[i] *= wti
-            wrkwt[i] *= wti
-        end
+        updateweights(dres, wrkwt, m.wt)
     end
 end
 
@@ -55,12 +58,7 @@ function updateμ!{T<:AbstractFloat, D<:Poisson, L<:LogLink}(m::GeneralizedLinea
     end
 
     if !isempty(m.wt)
-        wt = m.wt
-        @inbounds @simd for i in eachindex(wt)
-            wti = wt[i]
-            dres[i] *= wti
-            wrkwt[i] *= wti
-        end
+        updateweights(dres, wrkwt, m.wt)
     end
 end
 
