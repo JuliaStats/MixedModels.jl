@@ -113,10 +113,17 @@ function LaplaceDeviance!(m::GeneralizedLinearMixedModel)
 end
 
 function StatsBase.loglikelihood{T,D}(m::GeneralizedLinearMixedModel{T,D})
-    μ, y, n = m.μ, m.y, m.wt
-    (D ≠ Binomial ? sum(i -> logpdf(D(μ[i]), y[i]), eachindex(y)) :
-        sum(i -> logpdf(D(n[i], μ[i]), round(Int, y[i] * n[i])), eachindex(y))) -
-        (mapreduce(sumabs2, +, m.u) + logdet(m)) / 2
+    accum = zero(T)
+    if D <: Binomial
+        for (μ, y, n) in zip(m.μ, m.y, m.wt)
+            accum += logpdf(D(round(Int, n), μ), round(Int, y * n))
+        end
+    else
+        for (μ, y) in zip(m.μ, m.y)
+            accum += logpdf(D(μ), y)
+        end
+    end
+    accum - (mapreduce(sumabs2, + , m.u) + logdet(m)) / 2
 end
 
 lowerbd(m::GeneralizedLinearMixedModel) = vcat(fill(-Inf, size(m.β)), lowerbd(m.LMM))
