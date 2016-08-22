@@ -18,8 +18,8 @@ type OptSummary
     feval::Int
     optimizer::Symbol
 end
-function OptSummary(initial::Vector{Float64},optimizer::Symbol)
-    OptSummary(initial,initial,Inf,-1,optimizer)
+function OptSummary(initial::Vector{Float64}, optimizer::Symbol)
+    OptSummary(initial, initial, Inf, -1, optimizer)
 end
 
 """
@@ -53,6 +53,7 @@ end
 
 """
     densify(S::SparseMatrix, threshold=0.3)
+
 Convert sparse `S` to `Diagonal` if `S` is diagonal or to `full(S)` if
 the proportion of nonzeros exceeds `threshold`.
 """
@@ -122,6 +123,7 @@ end
 """
     lmm(f::DataFrames.Formula, fr::DataFrames.DataFrame)
     lmm(f::DataFrames.Formula, fr::DataFrames.DataFrame; weights = [])
+
 Create a [`LinearMixedModel`](@ref) from `f`, which contains both fixed-effects terms
 and random effects, and `fr`. The return value is ready to be `fit!` but has not yet been fit.
 """
@@ -255,6 +257,7 @@ end
 
 """
     fixef(m::MixedModel)
+
 Returns the estimate of the fixed-effects parameter vector.
 """
 function fixef(m::LinearMixedModel)
@@ -278,6 +281,7 @@ end
 
 """
     sdest(m::LinearMixedModel)
+
 The estimate of σ, the standard deviation of the per-observation noise.
 """
 sdest{T}(m::LinearMixedModel{T}) = T(sqrtpwrss(m)/√nobs(m))
@@ -309,18 +313,21 @@ sqrtpwrss{T}(m::LinearMixedModel{T}) = T(m.R[end,end][1])
 
 """
     varest(m::LinearMixedModel)
+
 The estimate of σ², the variance of the conditional distribution of Y given B.
 """
 varest{T}(m::LinearMixedModel{T}) = T(pwrss(m)/nobs(m))
 
 """
     pwrss(m::LinearMixedModel)
+
 The penalized residual sum-of-squares.
 """
 pwrss(m::LinearMixedModel) = abs2(sqrtpwrss(m))
 
 """
     chol2cor(L::LowerTriangular)
+
 The correlation matrix (symmetric, positive definite with unit diagonal) corresponding to `L * L'`
 """
 function chol2cor(L::LowerTriangular)
@@ -339,12 +346,14 @@ end
 
 """
     isfit(m::LinearMixedModel)
+
 A `Bool` indicating if the model has been fit.
 """
 isfit(m::LinearMixedModel) = m.opt.fmin < Inf
 
 """
     lrt(mods::LinearMixedModel...)
+
 Perform sequential likelihood ratio tests on a sequence of models.  The returned value is
 a `DataFrame` containing information on the likelihood ratio tests.
 """
@@ -369,6 +378,7 @@ end
 
 """
     reweight!{T}(m::LinearMixedModel{T}, wts::Vector{T})
+
 Update `m.sqrtwts` from `wts` and `m.wttrms` from `m.trms`.  Recompute `m.A` and `m.R`
 """
 function reweight!{T}(m::LinearMixedModel{T}, weights::Vector{T})

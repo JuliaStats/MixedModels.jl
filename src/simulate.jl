@@ -1,5 +1,6 @@
 """
     reevaluateAend!(m::LinearMixedModel)
+
 Reevaluate the last column of `m.A` from `m.trms`.  This function should be called
 after updating the response, `m.trms[end]`.
 """
@@ -17,6 +18,7 @@ end
 
 """
     resetθ!(m::LinearMixedModel)
+
 Reset the value of `m.θ` to the initial values and mark the model as not having been fit
 """
 function resetθ!(m::LinearMixedModel)
@@ -28,6 +30,7 @@ end
 
 """
     unscaledre!{T}(y::Vector{T}, M::ReMat{T}, b::Matrix{T})
+
 Add unscaled random effects defined by `M` and `b` to `y`.
 """
 function unscaledre!{T<:AbstractFloat,S,R<:Integer}(y::Vector{T}, M::ScalarReMat{T,S,R}, b::Matrix{T})
@@ -44,6 +47,7 @@ end
 
 """
     unscaledre!{T}(y::AbstractVector{T}, M::ReMat{T}, L::LowerTriangular{T})
+
 Add unscaled random effects defined by `M` and `L * randn(1, length(M.f.pool))` to `y`.
 """
 function unscaledre!{T}(y::AbstractVector{T}, M::ScalarReMat{T}, L::LowerTriangular{T})
@@ -72,6 +76,7 @@ unscaledre!(y::AbstractVector, M::VectorReMat, L::LowerTriangular) =
 
 """
     simulate!(m::LinearMixedModel; β=fixef(m), σ=sdest(m), θ=m[:θ])
+
 Create a simulated response vector from model `m`.
 """
 function simulate!{T}(m::LinearMixedModel{T}; β = coef(m), σ = sdest(m), θ = T[])
@@ -94,6 +99,7 @@ end
 """
     refit!(m::LinearMixedModel)
     refit!{T}(m::LinearMixedModel{T}, y::Vector{T})
+
 Refit the model `m` with response `y`.
 """
 refit!(m::LinearMixedModel) = fit!(cfactor!(resetθ!(reevaluateAend!(m))))
