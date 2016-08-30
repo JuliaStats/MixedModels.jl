@@ -53,7 +53,7 @@ valid rhs of a `Formula` and `pool(e2)` can be evaluated within `df`.  The resul
 function remat(e::Expr, df::DataFrame)
     e.args[1] == :| || throw(ArgumentError("$e is not a call to '|'"))
     fnm = e.args[3]
-    gr = getindex(df,fnm)
+    gr = getindex(df, fnm)
     gr = isa(gr,PooledDataArray) ? gr : pool(gr)
     if e.args[2] == 1
         return ScalarReMat(gr, ones(length(gr)), fnm, ["(Intercept)"])
