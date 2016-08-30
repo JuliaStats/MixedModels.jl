@@ -90,6 +90,7 @@ function simulate!{T}(m::LinearMixedModel{T}; β = coef(m), σ = sdest(m), θ = 
     end
                                   # scale by σ and add fixed-effects contribution
     BLAS.gemv!('N', 1.0, trms[end - 1], β, σ, y)
+    m
 end
 #function simulate!{T}(f::Function, m::LinearMixedModel{T}; β = coef(m), σ = sdest(m), θ = T[])
 #    y = simulate!(m, β = β, σ = σ, θ = θ)
