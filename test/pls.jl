@@ -37,9 +37,10 @@ vc = VarCorr(fm1)
 show(IOBuffer(), vc)
 @test vc.s == sdest(fm1)
 srand(1234321)
-simulate!(fm1)
-refit!(fm1)   # changes the fit
+refit!(simulate!(fm1))
 @test_approx_eq_eps deviance(fm1) 339.0218639362958 1.e-3
+simulate!(fm1, θ = getθ(fm1))
+@test_throws DimensionMismatch refit!(fm1, zeros(29))
 
 fm2 = lmm(Yield ~ 1 + (1|Batch), ds2)
 @test lowerbd(fm2) == zeros(1)
