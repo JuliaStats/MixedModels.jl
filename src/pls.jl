@@ -95,7 +95,7 @@ densify(A::AbstractMatrix, threshold::Real = 0.3) = A
 function LinearMixedModel(f, mf, trms, Λ, wts)
     n = size(trms[1], 1)
     T = eltype(trms[end])
-    optsum = OptSummary(mapreduce(x -> x[:θ], vcat, Λ), :None)
+    optsum = OptSummary(mapreduce(x -> getθ(x), vcat, Λ), :None)
     sqrtwts = Diagonal([sqrt(x) for x in wts])
     wttrms =  isempty(sqrtwts) ? trms :
         size(sqrtwts, 2) == n ? [sqrtwts * t for t in trms] :
@@ -174,11 +174,10 @@ Optimize the objective of a `LinearMixedModel` using an `NLopt` optimizer.
 
 Named Arguments:
 
-- `optimizer::Symbol` the name of a derivative-free optimizer from `NLopt` that allows for
-  box constraints.
+- `optimizer::Symbol` the name of an `NLopt` derivative-free optimizer with box constraints.
 """
 function StatsBase.fit!(m::LinearMixedModel, verbose::Bool=false, optimizer::Symbol=:LN_BOBYQA)
-    th = m[:θ]
+    th = getθ(m)
     k = length(th)
     opt = NLopt.Opt(optimizer, k)
     NLopt.ftol_rel!(opt, 1e-12)   # relative criterion on deviance
@@ -234,18 +233,21 @@ end
 
 """
     lowerbd(m::LinearMixedModel)
-The `Vector` of lower bounds on the covariance parameter vector `m[:θ]`
+
+Returns the lower bounds on the covariance parameter vector `θ`
 """
 lowerbd(m::LinearMixedModel) = mapreduce(lowerbd, vcat, m.Λ)
 
 """
     objective(m::LinearMixedModel)
+
 Negative twice the log-likelihood of model `m`
 """
 objective(m::LinearMixedModel) = logdet(m) + nobs(m) * (1 + log2π + log(varest(m)))
 
 """
     fixef!{T}(v::Vector{T}, m::LinearMixedModel{T})
+
 Overwrite `v` with the fixed-effects coefficients of model `m`
 """
 function fixef!(v, m::LinearMixedModel)
@@ -265,7 +267,7 @@ function fixef(m::LinearMixedModel)
     vec(feR(m) \ m.R[end - 1, end])
 end
 
-StatsBase.df(m::LinearMixedModel) = size(m.wttrms[end - 1], 2) + length(m[:θ]) + 1
+StatsBase.df(m::LinearMixedModel) = size(m.wttrms[end - 1], 2) + sum(A -> nlower(A), m.Λ) + 1
 
 StatsBase.loglikelihood(m::LinearMixedModel) = -deviance(m)/2
 
@@ -288,6 +290,7 @@ sdest{T}(m::LinearMixedModel{T}) = T(sqrtpwrss(m)/√nobs(m))
 
 """
     setθ!{T}(m::LinearMixedModel{T}, v::Vector{T})
+
 Install `v` as the θ parameters in `m`.  Changes `m.Λ` only.
 """
 function setθ!{T}(m::LinearMixedModel{T}, v::Vector{T})
@@ -296,7 +299,7 @@ function setθ!{T}(m::LinearMixedModel{T}, v::Vector{T})
     for i in eachindex(Λ)
         λ = Λ[i]
         nti = nlower(λ)
-        λ[:θ] = Compat.view(v, offset + (1 : nti))
+        setθ!(λ, Compat.view(v, offset + (1 : nti)))
         offset += nti
     end
     if length(v) ≠ offset

@@ -32,7 +32,7 @@ const csf = D * sf
 @test sf == copy!(csf, sf)
 
 const L = MixedModels.LT(sf)
-L[:θ] = [0.5]
+setθ!(L, [0.5])
 
 @test isa(MixedModels.tscale!(L, crp), Diagonal)
 @test crp.diag == fill(2.5, 6)

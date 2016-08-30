@@ -22,8 +22,6 @@ lmm(m::GeneralizedLinearMixedModel) = m.LMM
 """
 Base.cond(m::MixedModel) = [cond(λ)::Float64 for λ in lmm(m).Λ]
 
-Base.getindex(m::MixedModel, s::Symbol) = mapreduce(x->x[s], vcat, lmm(m).Λ)
-
 """
     std{T}(m::MixedModel{T})
 The estimated standard deviations of the variance components as a `Vector{Vector{T}}`.
@@ -63,6 +61,26 @@ The names of the grouping factors for the random-effects terms.
 function fnames(m::MixedModel)
     lm = lmm(m)
     [t.fnm for t in lm.wttrms[1:length(lm.Λ)]]
+end
+
+function getθ!(v::AbstractVector, m::MixedModel)
+    Λ = lmm(m).Λ
+    nl = map(nlower, Λ)
+    if length(v) ≠ sum(nl)
+        throw(DimensionMismatch("length(v) = $(length(v)) should be $(sum(nl))"))
+    end
+    offset = 0
+    for i in eachindex(nl)
+        nli = nl[i]
+        getθ!(Compat.view(v, offset + (1 : nli)), Λ[i])
+        offset += nli
+    end
+    v
+end
+
+function getθ(m::MixedModel)
+    Λ = lmm(m).Λ
+    getθ!(Array(eltype(Λ[1]), sum(A -> nlower(A), Λ)), m)
 end
 
 """
