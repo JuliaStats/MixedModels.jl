@@ -5,7 +5,11 @@
 Upper Cholesky factor for the fixed-effects parameters, as an `UpperTriangular`
 `p × p` matrix.
 """
-feR(m::MixedModel) = UpperTriangular(lmm(m).R[end - 1, end - 1])
+function feR(m::MixedModel)
+    R = lmm(m).R
+    kp1 = size(R, 1) - 1
+    UpperTriangular(R[kp1, kp1])
+end
 
 """
     lmm(m::MixedModel)
