@@ -151,7 +151,8 @@ function tscale!{T}(A::SparseMatrixCSC{T}, B::LowerTriangular{T})
                 end
             end
             lnzr = length(Ar1)
-            A_mul_B!(reshape(Compat.view(Anz, nzr1[1] + (0 : (lnzr * l - 1))), (lnzr, l)), B)
+            Aa = reshape(Compat.view(Anz, nzr1[1] + (0 : (lnzr * l - 1))), (lnzr, l))
+            A_mul_B!(Aa, Aa, B)
             offset += l
         end
     end
