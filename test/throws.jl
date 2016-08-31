@@ -11,6 +11,7 @@ trms = push!(Any[], remat(:(1|Batch), ds), ones(30, 1), reshape(y, (length(y), 1
 
 modl = lmm(Yield ~ 1 + (1|Batch), ds);
 
+@test_throws DimensionMismatch MixedModels.getθ!(Array(Float64, (2,)), modl)
 @test_throws DimensionMismatch setθ!(modl, [0., 1.])
 
 @test_throws DimensionMismatch LinAlg.Ac_ldiv_B!(UpperTriangular(fm3.R[1, 1]), ones(30, 1))
@@ -18,9 +19,8 @@ modl = lmm(Yield ~ 1 + (1|Batch), ds);
 const tri = LowerTriangular(eye(3))
 const hblk = MixedModels.HBlkDiag(ones(2,3,2))
 const dd3 = Diagonal(ones(3))
-@test_throws KeyError tri[:foo]
-@test_throws KeyError tri[:foo] = ones(3)
-@test_throws DimensionMismatch tri[:θ] = ones(2)
+
+@test_throws DimensionMismatch setθ!(tri, ones(2))
 @test_throws DimensionMismatch MixedModels.tscale!(tri, ones(2))
 @test_throws DimensionMismatch MixedModels.tscale!(ones(2,2), tri)
 @test_throws DimensionMismatch MixedModels.tscale!(tri, hblk)

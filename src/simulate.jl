@@ -75,9 +75,9 @@ unscaledre!(y::AbstractVector, M::VectorReMat, L::LowerTriangular) =
     unscaledre!(y, M, A_mul_B!(L, randn(size(M.z, 1), length(M.f.pool))))
 
 """
-    simulate!(m::LinearMixedModel; β=fixef(m), σ=sdest(m), θ=m[:θ])
+    simulate!(m::LinearMixedModel; β=fixef(m), σ=sdest(m), θ=getΘ(m))
 
-Create a simulated response vector from model `m`.
+Overwrite the response (i.e. `m.trms[end]`) with a simulated response vector from model `m`.
 """
 function simulate!{T}(m::LinearMixedModel{T}; β = coef(m), σ = sdest(m), θ = T[])
     if !isempty(θ)
@@ -90,11 +90,12 @@ function simulate!{T}(m::LinearMixedModel{T}; β = coef(m), σ = sdest(m), θ = 
     end
                                   # scale by σ and add fixed-effects contribution
     BLAS.gemv!('N', 1.0, trms[end - 1], β, σ, y)
+    m
 end
-function simulate!{T}(f::Function, m::LinearMixedModel{T}; β = coef(m), σ = sdest(m), θ = T[])
-    y = simulate!(m, β = β, σ = σ, θ = θ)
-    f(y)
-end
+#function simulate!{T}(f::Function, m::LinearMixedModel{T}; β = coef(m), σ = sdest(m), θ = T[])
+#    y = simulate!(m, β = β, σ = σ, θ = θ)
+#    f(y)
+#end
 
 """
     refit!(m::LinearMixedModel)
@@ -104,11 +105,11 @@ Refit the model `m` with response `y`.
 """
 refit!(m::LinearMixedModel) = fit!(cfactor!(resetθ!(reevaluateAend!(m))))
 function refit!{T}(m::LinearMixedModel{T}, y)
-    n = size(m.trms[end], 1)
-    if length(y) ≠ n
-        throw(DimensionMismatch("length(y) = $(length(y)), should be $n"))
+    resp = m.trms[end]
+    if length(y) ≠ size(resp, 1)
+        throw(DimensionMismatch("length(y) = $(length(y)), should be $(size(resp, 1))"))
     end
-    copy!(model_response(m), y)
+    copy!(resp, y)
     refit!(m)
 end
 

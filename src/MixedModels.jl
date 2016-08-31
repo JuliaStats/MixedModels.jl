@@ -38,6 +38,7 @@ export
        fit!,
        fitted,
        fixef,      # extract the fixed-effects parameter estimates
+       getθ,
        glmm,       # define a GeneralizedLinearMixedModel
        LaplaceDeviance, # Laplace approximation to GLMM deviance
        lmm,        # create a LinearMixedModel from a formula/data specification
@@ -53,7 +54,7 @@ export
        remat,      # factory for construction of ReMat objects
        sdest,      # the estimate of the standard deviation of the per-observation noise
        setθ!,
-       simulate!,  # simulate a new response and refit the model
+       simulate!,  # simulate a new response in place
        std,
        varest,     # estimate of the residual variance
        vcov

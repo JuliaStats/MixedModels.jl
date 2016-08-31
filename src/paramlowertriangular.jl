@@ -2,40 +2,28 @@ nlower(n::Integer) = (n * (n + 1)) >>> 1
 nlower{T}(A::LowerTriangular{T, Matrix{T}}) = nlower(Compat.LinAlg.checksquare(A))
 
 """
-    getindex{T}(A::LowerTriangular{T, Matrix{T}}, θ::Symbol)
-Return the contents of the lower triangle of `A` as a vector (column-major ordering)
+    getθ!{T}(v::AbstractVector{T}, A::LowerTriangular{T, Matrix{T}})
+
+Overwrite `v` with the elements of the lower triangle of `A` (column-major ordering)
 """
-function Base.getindex{T}(A::LowerTriangular{T,Matrix{T}}, s::Symbol)
-    if s ≠ :θ
-        throw(KeyError(s))
+function getθ!{T}(v::AbstractVector{T}, A::LowerTriangular{T,Matrix{T}})
+    n, Ad = Compat.LinAlg.checksquare(A), A.data
+    if length(v) ≠ nlower(n)
+        throw(DimensionMismatch("length(v) = $(length(v)) should be $(nlower(n))"))
     end
-    n = Compat.LinAlg.checksquare(A)
-    res = sizehint!(T[], nlower(n))
-    for j = 1 : n
-        append!(res, Compat.view(A, j : n, j))
+    k = 0
+    for j = 1 : n, i in j : n
+        v[k += 1] = Ad[i, j]
     end
-    res
+    v
 end
 
 """
-    setindex!{T}(A::LowerTriangular{T,Matrix{T}}, v::Vector{T}, θ::Symbol)
-Copy `v` into the lower triangle of `A` using column-major ordering
+    getθ(A::LowerTriangular{T, Matrix{T}})
+
+Return a vector of the elements of the lower triangle of `A` (column-major ordering)
 """
-function Base.setindex!{T}(A::LowerTriangular{T,Matrix{T}},
-    v::AbstractVector{T}, s::Symbol)
-    if s ≠ :θ
-        throw(KeyError(s))
-    end
-    n = Compat.LinAlg.checksquare(A)
-    if length(v) ≠ nlower(n)
-        throw(DimensionMismatch("length(v) ≠ nlower(A)"))
-    end
-    k = 0
-    for j in 1 : n, i in j : n
-        A[i, j] = v[k += 1]
-    end
-    A
-end
+getθ{T}(A::LowerTriangular{T, Matrix{T}}) = getθ!(Array(T, nlower(A)), A)
 
 """
     lowerbd{T}(A::LowerTriangular{T,Matrix{T}})
@@ -60,6 +48,19 @@ and initialized to the identity.
 """
 LT{T}(A::ScalarReMat{T}) = LowerTriangular(ones(T, (1, 1)))
 LT{T}(A::VectorReMat{T}) = LowerTriangular(full(eye(T, size(A.z, 1))))
+
+function setθ!{T}(A::LowerTriangular{T, Matrix{T}}, v::AbstractVector{T})
+    Ad = A.data
+    n = Compat.LinAlg.checksquare(Ad)
+    if length(v) ≠ nlower(n)
+        throw(DimensionMismatch("length(v) = $(length(v)) should be $(nlower(n))"))
+    end
+    offset = 0
+    for j in 1 : n, i in j : n
+        Ad[i, j] = v[offset += 1]
+    end
+    A
+end
 
 """
     tscale!(A::LowerTriangular, B::HBlkDiag)
@@ -150,7 +151,8 @@ function tscale!{T}(A::SparseMatrixCSC{T}, B::LowerTriangular{T})
                 end
             end
             lnzr = length(Ar1)
-            A_mul_B!(reshape(Compat.view(Anz, nzr1[1] + (0 : (lnzr * l - 1))), (lnzr, l)), B)
+            Aa = reshape(Compat.view(Anz, nzr1[1] + (0 : (lnzr * l - 1))), (lnzr, l))
+            A_mul_B!(Aa, Aa, B)
             offset += l
         end
     end

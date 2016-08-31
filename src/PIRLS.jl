@@ -50,6 +50,7 @@ fixef(m::GeneralizedLinearMixedModel) = m.β
 """
     glmm(f::Formula, fr::ModelFrame, d::Distribution)
     glmm(f::Formula, fr::ModelFrame, d::Distribution, l::GLM.Link)
+
 Create a `GeneralizedLinearMixedModel` object which is ready to be `fit!`
 but has not yet been fit.
 """
@@ -78,7 +79,7 @@ function glmm(f::Formula, fr::AbstractDataFrame, d::Distribution, l::Link; wt=[]
             # fit a glm to the fixed-effects only
     gl = glm(X, y, d, l; wts = wts)
     r = gl.rr
-    res = GeneralizedLinearMixedModel(LMM, d, l, coef(gl), LMM[:θ], deepcopy(u), u, map(zeros, u),
+    res = GeneralizedLinearMixedModel(LMM, d, l, coef(gl), getθ(LMM), deepcopy(u), u, map(zeros, u),
         X, y, r.mu, r.eta, r.devresid, copy(r.eta), oftype(y, offset), r.wrkresid, r.wrkwts,
         oftype(y, wt))
     wrkresp!(trms[end], res)
@@ -113,10 +114,17 @@ function LaplaceDeviance!(m::GeneralizedLinearMixedModel)
 end
 
 function StatsBase.loglikelihood{T,D}(m::GeneralizedLinearMixedModel{T,D})
-    μ, y, n = m.μ, m.y, m.wt
-    (D ≠ Binomial ? sum(i -> logpdf(D(μ[i]), y[i]), eachindex(y)) :
-        sum(i -> logpdf(D(n[i], μ[i]), round(Int, y[i] * n[i])), eachindex(y))) -
-        (mapreduce(sumabs2, +, m.u) + logdet(m)) / 2
+    accum = zero(T)
+    if D <: Binomial
+        for (μ, y, n) in zip(m.μ, m.y, m.wt)
+            accum += logpdf(D(round(Int, n), μ), round(Int, y * n))
+        end
+    else
+        for (μ, y) in zip(m.μ, m.y)
+            accum += logpdf(D(μ), y)
+        end
+    end
+    accum - (mapreduce(sumabs2, + , m.u) + logdet(m)) / 2
 end
 
 lowerbd(m::GeneralizedLinearMixedModel) = vcat(fill(-Inf, size(m.β)), lowerbd(m.LMM))
@@ -221,7 +229,7 @@ Optimize the objective of a `GeneralizedLinearMixedModel` using the `NLopt.LN_BO
 """
 function StatsBase.fit!(m::GeneralizedLinearMixedModel, verbose::Bool=false, optimizer::Symbol=:LN_BOBYQA)
     β, lm = m.β, m.LMM
-    βθ = vcat(β, lm[:θ])
+    βθ = vcat(β, getθ(lm))
     opt = NLopt.Opt(optimizer, length(βθ))
     NLopt.ftol_rel!(opt, 1e-12)   # relative criterion on deviance
     NLopt.ftol_abs!(opt, 1e-8)    # absolute criterion on deviance
