@@ -250,11 +250,14 @@ objective(m::LinearMixedModel) = logdet(m) + nobs(m) * (1 + log2π + log(varest(
 
 Overwrite `v` with the fixed-effects coefficients of model `m`
 """
-function fixef!(v, m::LinearMixedModel)
+function fixef!{T}(v::AbstractVector{T}, m::LinearMixedModel{T})
     if !isfit(m)
         throw(ArgumentError("Model m has not been fit"))
     end
-    Base.LinAlg.A_ldiv_B!(feR(m), copy!(v, m.R[end - 1, end]))
+    R = m.R
+    kp2 = size(R, 1)
+    kp1 = kp2 - 1
+    Base.LinAlg.A_ldiv_B!(UpperTriangular(R[kp1, kp1]), copy!(v, R[kp1, kp2]))
 end
 
 """
