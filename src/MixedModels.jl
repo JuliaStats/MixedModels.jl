@@ -29,6 +29,7 @@ export
        VarCorr,
        VectorReMat,
 
+       bootstrap,
        cfactor!,
        coef,
        coeftable,

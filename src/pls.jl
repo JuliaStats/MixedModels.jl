@@ -210,7 +210,7 @@ function StatsBase.fit!(m::LinearMixedModel, verbose::Bool=false, optimizer::Sym
     xmin1 = copy(xmin)
     modified = false
     for i in eachindex(xmin1)
-        if 0. < abs(xmin1[i]) < 1.e-5
+        if 0. < abs(xmin1[i]) < 0.001
             modified = true
             xmin1[i] = 0.
         end
@@ -219,7 +219,7 @@ function StatsBase.fit!(m::LinearMixedModel, verbose::Bool=false, optimizer::Sym
         ff = setθ!(m, xmin1) |> cfactor! |> objective
         if ff ≤ (fmin + 1.e-5)  # zero components if increase in objective is negligible
             fmin = ff
-            copy!(xmin,xmin1)
+            copy!(xmin, xmin1)
         else
             setθ!(m, xmin) |> cfactor!
         end
@@ -254,21 +254,15 @@ function fixef!{T}(v::AbstractVector{T}, m::LinearMixedModel{T})
     if !isfit(m)
         throw(ArgumentError("Model m has not been fit"))
     end
-    R = m.R
-    kp2 = size(R, 1)
-    kp1 = kp2 - 1
-    Base.LinAlg.A_ldiv_B!(UpperTriangular(R[kp1, kp1]), copy!(v, R[kp1, kp2]))
+    A_ldiv_B!(feR(m), copy!(v, m.R[end - 1, end]))
 end
 
 """
     fixef(m::MixedModel)
 
-Returns the estimate of the fixed-effects parameter vector.
+Returns the fixed-effects parameter vector estimate.
 """
-function fixef(m::LinearMixedModel)
-    length(m.trms) == length(m.Λ) + 1 && return zeros(0)
-    vec(feR(m) \ m.R[end - 1, end])
-end
+fixef{T}(m::LinearMixedModel{T}) = fixef!(Array(T, (size(m)[2],)), m)
 
 StatsBase.df(m::LinearMixedModel) = size(m.wttrms[end - 1], 2) + sum(A -> nlower(A), m.Λ) + 1
 

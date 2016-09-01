@@ -1,4 +1,23 @@
 """
+    bootstrap!{T}(m::LinearMixedModel{T}, n, k, f!::Function)
+
+Returns `n × k` matrix of `n` parametric bootstrap replications of model `m` applying
+the mutating extractor function `f!`, whose signature should be
+
+    f!(v::AbstractVector{T}, m::LinearMixedModel{T})
+"""
+function bootstrap{T}(m::LinearMixedModel{T}, n, k, f!::Function;
+    β=fixef(m), σ=sdest(m), θ=getθ(m))
+    y₀ = copy(model_response(m)) # to restore original state of m
+    M = Array(T, (k, n))
+    for i in 1 : n
+        f!(view(M, :, i), refit!(simulate!(m, β = β, σ = σ, θ = θ)))
+    end
+    refit!(m, y₀)               # restore original state of m
+    M'
+end
+
+"""
     reevaluateAend!(m::LinearMixedModel)
 
 Reevaluate the last column of `m.A` from `m.trms`.  This function should be called
@@ -14,6 +33,22 @@ function reevaluateAend!(m::LinearMixedModel)
         Ac_mul_B!(A[i, end], wttrms[i], wttrmn)
     end
     m
+end
+
+"""
+    refit!(m::LinearMixedModel)
+    refit!{T}(m::LinearMixedModel{T}, y::Vector{T})
+
+Refit the model `m` with response `y`.
+"""
+refit!(m::LinearMixedModel) = fit!(cfactor!(resetθ!(reevaluateAend!(m))))
+function refit!{T}(m::LinearMixedModel{T}, y)
+    resp = m.trms[end]
+    if length(y) ≠ size(resp, 1)
+        throw(DimensionMismatch("length(y) = $(length(y)), should be $(size(resp, 1))"))
+    end
+    copy!(resp, y)
+    refit!(m)
 end
 
 """
@@ -91,26 +126,6 @@ function simulate!{T}(m::LinearMixedModel{T}; β = coef(m), σ = sdest(m), θ = 
                                   # scale by σ and add fixed-effects contribution
     BLAS.gemv!('N', 1.0, trms[end - 1], β, σ, y)
     m
-end
-#function simulate!{T}(f::Function, m::LinearMixedModel{T}; β = coef(m), σ = sdest(m), θ = T[])
-#    y = simulate!(m, β = β, σ = σ, θ = θ)
-#    f(y)
-#end
-
-"""
-    refit!(m::LinearMixedModel)
-    refit!{T}(m::LinearMixedModel{T}, y::Vector{T})
-
-Refit the model `m` with response `y`.
-"""
-refit!(m::LinearMixedModel) = fit!(cfactor!(resetθ!(reevaluateAend!(m))))
-function refit!{T}(m::LinearMixedModel{T}, y)
-    resp = m.trms[end]
-    if length(y) ≠ size(resp, 1)
-        throw(DimensionMismatch("length(y) = $(length(y)), should be $(size(resp, 1))"))
-    end
-    copy!(resp, y)
-    refit!(m)
 end
 
 StatsBase.model_response(m::LinearMixedModel) = vec(m.trms[end])
