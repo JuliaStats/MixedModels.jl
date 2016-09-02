@@ -22,6 +22,7 @@ markdown_extensions:
   - extra
   - tables
   - fenced_code
+  - mdx_math
 
 docs_dir: 'build'
 
@@ -31,4 +32,3 @@ pages:
   - Fitting: man/fitting.md
 - Library:
   - Public: lib/public.md
-  - Internals: lib/internals.md
