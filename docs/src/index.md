@@ -5,7 +5,7 @@
 ## Manual Outline
 
 ```@contents
-Pages = ["man/fitting.md"]
+Pages = ["man/fitting.md", "man/bootstrap.md"]
 Depth = 2
 ```
 
