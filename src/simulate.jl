@@ -1,20 +1,25 @@
 """
-    bootstrap!{T}(m::LinearMixedModel{T}, n, k, f!::Function)
+    bootstrap!{T}(r::Matrix{T}, m::LinearMixedModel{T}, f!::Function;
+        β=fixef(m), σ=sdest(m), θ=getθ(m))
 
-Returns `n × k` matrix of `n` parametric bootstrap replications of model `m` applying
-the mutating extractor function `f!`, whose signature should be
+Overwrite columns of `r` with the results of applying the mutating extractor `f!`
+to parametric bootstrap replications of model `m`. The signature of `f!` should be
 
-    f!(v::AbstractVector{T}, m::LinearMixedModel{T})
+    f!{T}(v::AbstractVector{T}, m::LinearMixedModel{T})
+
+# Named Arguments
+
+`β::Vector{T}`, `σ::T`, and `θ::Vector{T}` are the values of the parameters in `m`
+for simulation of the responses.
 """
-function bootstrap{T}(m::LinearMixedModel{T}, n, k, f!::Function;
+function bootstrap!{T}(r::Matrix{T}, m::LinearMixedModel{T}, f!::Function;
     β=fixef(m), σ=sdest(m), θ=getθ(m))
     y₀ = copy(model_response(m)) # to restore original state of m
-    M = Array(T, (k, n))
-    for i in 1 : n
-        f!(view(M, :, i), refit!(simulate!(m, β = β, σ = σ, θ = θ)))
+    for i in 1 : size(r, 2)
+        f!(Compat.view(r, :, i), refit!(simulate!(m, β = β, σ = σ, θ = θ)))
     end
     refit!(m, y₀)               # restore original state of m
-    M'
+    r
 end
 
 """
