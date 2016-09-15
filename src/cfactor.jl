@@ -1,6 +1,7 @@
 """
     cfactor!(A::AbstractMatrix)
-A slightly modified version of `chol!` from `julia/base/linalg/cholesky.jl`
+
+A slightly modified version of `chol!` from `Base`
 
 Uses `inject!` (as opposed to `copy!`), `downdate!` (as opposed to `syrk!` or `gemm!`)
 and recursive calls to `cfactor!`.
@@ -58,7 +59,8 @@ end
 """
     downdate!(C::AbstractMatrix, A::AbstractMatrix)
     downdate!(C::AbstractMatrix, A::AbstractMatrix, B::AbstractMatrix)
-Subtract, in place, `A'A` or `A'B` from `C`
+
+Subtracts, in place, `A'A` or `A'B` from `C`
 """
 function downdate! end
 
@@ -179,8 +181,8 @@ end
     inflate!(A::HblkDiag)
     inflate!(A::Diagonal)
     inflate!(A::StridedMatrix)
-Equivalent to `A += I`, without making a copy of `A`.  Even if `A += I` did not
-make a copy, this function is needed for the special behavior on the `HBlkDiag` type.
+
+Adds an identity to `A` in place.
 """
 function inflate! end
 

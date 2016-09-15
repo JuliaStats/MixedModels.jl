@@ -27,9 +27,11 @@ getθ{T}(A::LowerTriangular{T, Matrix{T}}) = getθ!(Array(T, nlower(A)), A)
 
 """
     lowerbd{T}(A::LowerTriangular{T,Matrix{T}})
-Lower bounds on the parameters, `θ`.  These are the elements in the lower triangle
-in column-major ordering.  Diagonals have a lower bound of `0`.  Off-diagonals have
-a lower-bound of `-Inf`.
+
+Return the vector of lower bounds on the parameters, `θ`.
+
+These are the elements in the lower triangle in column-major ordering.
+Diagonals have a lower bound of `0`.  Off-diagonals have a lower-bound of `-Inf`.
 """
 function lowerbd{T}(A::LowerTriangular{T,Matrix{T}})
     n = Compat.LinAlg.checksquare(A)
@@ -43,6 +45,7 @@ end
 
 """
     LT(A)
+
 Create a lower triangular matrix compatible with the blocks of `A`
 and initialized to the identity.
 """
@@ -71,9 +74,11 @@ end
     tscale!(A::Diagonal, B::LowerTriangular)
     tscale!(A::DenseVecOrMat, B::LowerTriangular)
     tscale!(A::SparseMatrixCSC, B::LowerTriangular)
+
 Scale a matrix using the implicit expansion of the lower triangular matrix
-to a diagonal or homogeneous block diagonal matrix.  Used in evaluating
-`Λ'Z'ZΛ` from `Z'Z` without explicitly evaluating the matrix `Λ`.
+to a diagonal or homogeneous block diagonal matrix.
+
+Used in evaluating `Λ'Z'ZΛ` from `Z'Z` without explicitly evaluating the matrix `Λ`.
 """
 function tscale!(A::LowerTriangular,B::HBlkDiag)
     Ba = B.arr

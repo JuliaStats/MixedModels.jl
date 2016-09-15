@@ -1,5 +1,6 @@
 """
     inject!{T <: AbstractMatrix, S <: AbstractMatrix}(d::T, s::S)
+
 Behaves like `copy!(d, s)` allowing for heterogeneous matrix types.
 """
 inject!(d,s) = copy!(d,s)               # fallback method

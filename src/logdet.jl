@@ -3,7 +3,7 @@
     LD(A::HBlikDiag)
     LD(A::DenseMatrix)
 
-The value of `log(det(triu(A)))` calculated in place.
+Return the value of `log(det(triu(A)))` calculated in place.
 """
 LD(d::Diagonal) = sum(log, d.diag)
 
@@ -24,7 +24,7 @@ LD(d::DenseMatrix) = sum(i -> log(d[i]), diagind(d))
 """
     logdet(m::LinearMixedModel)
 
-The value of `log(det(Λ'Z'ZΛ + I))` calculated in place.
+Return the value of `log(det(Λ'Z'ZΛ + I))` calculated in place.
 """
 function Base.logdet{T}(m::LinearMixedModel{T})
     k, R = length(m.Λ), m.R

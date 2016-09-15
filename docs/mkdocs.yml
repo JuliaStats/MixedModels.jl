@@ -30,5 +30,6 @@ pages:
 - Home: index.md
 - Manual:
   - Fitting: man/fitting.md
+  - Bootstrap: man/bootstrap.md
 - Library:
   - Public: lib/public.md

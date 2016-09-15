@@ -3,8 +3,9 @@
         β=fixef(m), σ=sdest(m), θ=getθ(m))
 
 Overwrite columns of `r` with the results of applying the mutating extractor `f!`
-to parametric bootstrap replications of model `m`. The signature of `f!` should be
+to parametric bootstrap replications of model `m`.
 
+The signature of `f!` should be
     f!{T}(v::AbstractVector{T}, m::LinearMixedModel{T})
 
 # Named Arguments
@@ -41,10 +42,11 @@ function reevaluateAend!(m::LinearMixedModel)
 end
 
 """
-    refit!(m::LinearMixedModel)
-    refit!{T}(m::LinearMixedModel{T}, y::Vector{T})
+    refit!{T}(m::LinearMixedModel{T}[, y::Vector{T}])
 
-Refit the model `m` with response `y`.
+Refit the model `m` after installing response `y`.
+
+If `y` is omitted the current response vector is used.
 """
 refit!(m::LinearMixedModel) = fit!(cfactor!(resetθ!(reevaluateAend!(m))))
 function refit!{T}(m::LinearMixedModel{T}, y)
