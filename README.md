@@ -11,6 +11,7 @@ The package is registered in `METADATA.jl` and so can be installed with `Pkg.add
 
 ```julia
 julia> Pkg.add("MixedModels")
+```
 
 The package provides the functions `lmm`, to create a linear mixed-effects model
 from a formula/data specification, and `glmm` to create a generalized linear
