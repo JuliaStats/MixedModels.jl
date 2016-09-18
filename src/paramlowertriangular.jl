@@ -1,5 +1,5 @@
 nlower(n::Integer) = (n * (n + 1)) >>> 1
-nlower{T}(A::LowerTriangular{T, Matrix{T}}) = nlower(Compat.LinAlg.checksquare(A))
+nlower{T}(A::LowerTriangular{T, Matrix{T}}) = nlower(LinAlg.checksquare(A))
 
 """
     getθ!{T}(v::AbstractVector{T}, A::LowerTriangular{T, Matrix{T}})
@@ -7,7 +7,7 @@ nlower{T}(A::LowerTriangular{T, Matrix{T}}) = nlower(Compat.LinAlg.checksquare(A
 Overwrite `v` with the elements of the lower triangle of `A` (column-major ordering)
 """
 function getθ!{T}(v::AbstractVector{T}, A::LowerTriangular{T,Matrix{T}})
-    n, Ad = Compat.LinAlg.checksquare(A), A.data
+    n, Ad = LinAlg.checksquare(A), A.data
     if length(v) ≠ nlower(n)
         throw(DimensionMismatch("length(v) = $(length(v)) should be $(nlower(n))"))
     end
@@ -34,7 +34,7 @@ These are the elements in the lower triangle in column-major ordering.
 Diagonals have a lower bound of `0`.  Off-diagonals have a lower-bound of `-Inf`.
 """
 function lowerbd{T}(A::LowerTriangular{T,Matrix{T}})
-    n = Compat.LinAlg.checksquare(A)
+    n = LinAlg.checksquare(A)
     res = fill(convert(T, -Inf), nlower(n))
     k = -n
     for j in n+1:-1:2
@@ -54,7 +54,7 @@ LT{T}(A::VectorReMat{T}) = LowerTriangular(full(eye(T, size(A.z, 1))))
 
 function setθ!{T}(A::LowerTriangular{T, Matrix{T}}, v::AbstractVector{T})
     Ad = A.data
-    n = Compat.LinAlg.checksquare(Ad)
+    n = LinAlg.checksquare(Ad)
     if length(v) ≠ nlower(n)
         throw(DimensionMismatch("length(v) = $(length(v)) should be $(nlower(n))"))
     end
@@ -83,7 +83,7 @@ Used in evaluating `Λ'Z'ZΛ` from `Z'Z` without explicitly evaluating the matri
 function tscale!(A::LowerTriangular,B::HBlkDiag)
     Ba = B.arr
     r, s, k = size(Ba)
-    n = Compat.LinAlg.checksquare(A)
+    n = LinAlg.checksquare(A)
     if n ≠ r
         throw(DimensionMismatch("size(A,2) ≠ blocksize of B"))
     end
@@ -149,14 +149,14 @@ function tscale!{T}(A::SparseMatrixCSC{T}, B::LowerTriangular{T})
         offset = 0
         for k in 1 : q
             nzr1 = nzrange(A, offset + 1)
-            Ar1 = Compat.view(Ar, nzr1)
+            Ar1 = view(Ar, nzr1)
             for j in 2 : l
-                if Compat.view(Ar, nzrange(A, offset + j)) ≠ Ar1
+                if view(Ar, nzrange(A, offset + j)) ≠ Ar1
                     throw(ArgumentError("A does not have block structure for tscale!"))
                 end
             end
             lnzr = length(Ar1)
-            Aa = reshape(Compat.view(Anz, nzr1[1] + (0 : (lnzr * l - 1))), (lnzr, l))
+            Aa = reshape(view(Anz, nzr1[1] + (0 : (lnzr * l - 1))), (lnzr, l))
             A_mul_B!(Aa, Aa, B)
             offset += l
         end
@@ -165,7 +165,7 @@ function tscale!{T}(A::SparseMatrixCSC{T}, B::LowerTriangular{T})
 end
 
 function tscale!{T}(A::Diagonal{T}, B::LowerTriangular{T})
-    if (l = Compat.LinAlg.checksquare(B)) ≠ 1
+    if (l = LinAlg.checksquare(B)) ≠ 1
         throw(DimensionMismatch(
         "in tscale!(A::Diagonal,B::LowerTriangular) B must be 1×1"))
     end
@@ -199,7 +199,7 @@ function tscale!{T}(A::StridedMatrix{T}, B::LowerTriangular{T})
         throw(DimensionMismatch("size(A,2) = $n must be a multiple of size(B,1) = $l"))
     end
     for k in 0:(q - 1)
-        A_mul_B!(Compat.view(A, : , k * l + (1:l)), B)
+        A_mul_B!(view(A, : , k * l + (1:l)), B)
     end
     A
 end

@@ -11,13 +11,13 @@ abstract ReMat
 The representation of the model matrix for a scalar random-effects term
 
 # Members
-* `f`: the grouping factor as a `PooledDataVector`
+* `f`: the grouping factor as a `CategoricalVector`
 * `z`: the raw random-effects model matrix as a `Vector`
 * `fnm`: the name of the grouping factor as a `Symbol`
 * `cnms`: a `Vector` of column names
 """
-immutable ScalarReMat{T <: AbstractFloat, S, R <: Integer} <: ReMat
-    f::PooledDataVector{S,R}
+immutable ScalarReMat{T <: AbstractFloat} <: ReMat
+    f::CategoricalVector
     z::Vector{T}
     fnm::Symbol
     cnms::Vector
@@ -29,13 +29,13 @@ end
 The representation of the model matrix for a vector-valued random-effects term
 
 # Members
-* `f`: the grouping factor as a `PooledDataVector`
+* `f`: the grouping factor as a `CategoricalVector`
 * `z`: the transposed raw random-effects model matrix
 * `fnm`: the name of the grouping factor as a `Symbol`
 * `cnms`: a `Vector` of column names (row names after transposition) of `z`
 """
-immutable VectorReMat{T <: AbstractFloat, S, R <: Integer} <: ReMat
-    f::PooledDataVector{S,R}
+immutable VectorReMat{T <: AbstractFloat} <: ReMat
+    f::CategoricalVector
     z::Matrix{T}
     fnm::Symbol
     cnms::Vector
@@ -54,7 +54,7 @@ function remat(e::Expr, df::DataFrame)
     e.args[1] == :| || throw(ArgumentError("$e is not a call to '|'"))
     fnm = e.args[3]
     gr = getindex(df, fnm)
-    gr = isa(gr,PooledDataArray) ? gr : pool(gr)
+    gr = isa(gr, CategoricalVector) ? gr : NominalArray(gr)
     if e.args[2] == 1
         return ScalarReMat(gr, ones(length(gr)), fnm, ["(Intercept)"])
     end
@@ -66,19 +66,19 @@ end
 
 Base.eltype(R::ReMat) = eltype(R.z)
 
-function Base.copy!{S,R}(d::PooledDataVector{S,R}, s::PooledDataVector{S,R})
-    copy!(d.pool, s.pool)
+function Base.copy!(d::CategoricalVector, s::CategoricalVector)
+    levels!(d, levels(s))
     copy!(d.refs, s.refs)
     d
 end
 
-function Base.copy!{T,S,R}(d::ScalarReMat{T,S,R}, s::ScalarReMat{T,S,R})
+function Base.copy!{T}(d::ScalarReMat{T}, s::ScalarReMat{T})
     copy!(d.f, s.f)
     copy!(d.z, s.z)
     d
 end
 
-function Base.copy!{T,S,R}(d::VectorReMat{T,S,R}, s::VectorReMat{T,S,R})
+function Base.copy!{T}(d::VectorReMat{T}, s::VectorReMat{T})
     copy!(d.f, s.f)
     copy!(d.z, s.z)
     d
@@ -96,7 +96,7 @@ vsize(A::ReMat) = isa(A,ScalarReMat) ? 1 : size(A.z, 1)
 
 Return the number of levels in the grouping factor of `A`.
 """
-nlevs(A::ReMat) = length(A.f.pool)
+nlevs(A::ReMat) = length(levels(A.f))
 
 Base.size(A::ReMat) = (length(A.f), vsize(A) * nlevs(A))
 
@@ -123,7 +123,7 @@ function Base.A_mul_B!{T}(α::Real, A::ReMat, B::StridedVecOrMat{T}, β::Real, R
         l = size(zz,1)
         Bt = reshape(B, (l, div(q,l), k))
         for j in 1:k, i in 1:n
-            R[i, j] += α * dot(Compat.view(Bt, :, Int(rr[i]), j), Compat.view(zz, :, i))
+            R[i, j] += α * dot(view(Bt, :, Int(rr[i]), j), view(zz, :, i))
         end
     end
     R
@@ -253,12 +253,12 @@ function Base.Ac_mul_B{T}(A::VectorReMat{T}, B::VectorReMat{T})
     nz = ab * m
     I, J, V = sizehint!(Int[], nz), sizehint!(Int[], nz), sizehint!(T[], nz)
     Ar, Br = A.f.refs, B.f.refs
-    Ipat = Compat.repeat(1 : a, outer = b)
-    Jpat = Compat.repeat(1 : b, inner = a)
+    Ipat = repeat(1 : a, outer = b)
+    Jpat = repeat(1 : b, inner = a)
     for i in 1 : m
         append!(I, Ipat + (Ar[i] - 1) * a)
         append!(J, Jpat + (Br[i] - 1) * b)
-        append!(V, vec(Compat.view(Az, :, i) * Compat.view(Bz, :, i)'))
+        append!(V, vec(view(Az, :, i) * view(Bz, :, i)'))
     end
     sparse(I, J, V)
 end

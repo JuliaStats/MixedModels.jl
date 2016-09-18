@@ -11,6 +11,6 @@ const vrp = vf'vf
 const rhs1 = ones(36,2)
 const x = similar(rhs1)
 const b1 = copy(vrp.arr[:,:,1]) + I
-@test Compat.view(MixedModels.inflate!(vrp).arr,:,:,1) == b1
+@test view(MixedModels.inflate!(vrp).arr,:,:,1) == b1
 const cf = cholfact(b1)
-@test triu!(Compat.view(cholfact!(vrp).arr,:,:,1)) == cf[:U]
+@test triu!(view(cholfact!(vrp).arr,:,:,1)) == cf[:U]

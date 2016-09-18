@@ -17,7 +17,7 @@ function bootstrap!{T}(r::Matrix{T}, m::LinearMixedModel{T}, f!::Function;
     β=fixef(m), σ=sdest(m), θ=getθ(m))
     y₀ = copy(model_response(m)) # to restore original state of m
     for i in 1 : size(r, 2)
-        f!(Compat.view(r, :, i), refit!(simulate!(m, β = β, σ = σ, θ = θ)))
+        f!(view(r, :, i), refit!(simulate!(m, β = β, σ = σ, θ = θ)))
     end
     refit!(m, y₀)               # restore original state of m
     r
@@ -75,7 +75,7 @@ end
 
 Add unscaled random effects defined by `M` and `b` to `y`.
 """
-function unscaledre!{T<:AbstractFloat,S,R<:Integer}(y::Vector{T}, M::ScalarReMat{T,S,R}, b::Matrix{T})
+function unscaledre!{T<:AbstractFloat}(y::Vector{T}, M::ScalarReMat{T}, b::Matrix{T})
     z = M.z
     if length(y) ≠ length(z) || size(b, 1) ≠ 1
         throw(DimensionMismatch())

@@ -83,7 +83,7 @@ function getθ!(v::AbstractVector, m::MixedModel)
     offset = 0
     for i in eachindex(nl)
         nli = nl[i]
-        getθ!(Compat.view(v, offset + (1 : nli)), Λ[i])
+        getθ!(view(v, offset + (1 : nli)), Λ[i])
         offset += nli
     end
     v
