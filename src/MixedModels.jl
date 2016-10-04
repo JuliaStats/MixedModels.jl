@@ -4,6 +4,7 @@ module MixedModels
 
 using CategoricalArrays, DataFrames, Distributions, GLM, NLopt, Showoff, StatsBase
 using StatsFuns: log2π
+using NamedArrays: NamedArray, setnames!
 
 import StatsBase: coef, coeftable, df, deviance, fit!, fitted, loglikelihood,
     model_response, nobs, vcov

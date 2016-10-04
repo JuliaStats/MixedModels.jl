@@ -151,7 +151,7 @@ Returns, as a `Vector{Matrix{T}}`, the conditional modes of the random effects i
 If `uscale` is `true` the random effects are on the spherical (i.e. `u`) scale, otherwise on the
 original scale.
 """
-function ranef(m::MixedModel, uscale=false)
+function ranef(m::MixedModel; uscale=false, named=false)
     lm = lmm(m)
     Λ, trms = lm.Λ, lm.trms
     T = eltype(trms[end])
@@ -162,6 +162,16 @@ function ranef(m::MixedModel, uscale=false)
         push!(v, Array(T, (l, div(k, l))))
     end
     ranef!(v, lm, uscale)
+    if named
+        trms = m.trms
+        for i in eachindex(v)
+            trmi = trms[i]
+            v[i] = NamedArray(v[i])
+            setnames!(v[i], trmi.cnms, 1)
+            setnames!(v[i], levels(trmi.f))
+        end
+    end
+    v
 end
 
 """
