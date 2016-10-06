@@ -1,5 +1,6 @@
 """
     GeneralizedLinearMixedModel
+
 Generalized linear mixed-effects model representation
 
 Members:
@@ -80,10 +81,9 @@ function glmm(f::Formula, fr::AbstractDataFrame, d::Distribution, l::Link; wt=[]
     gl = glm(X, y, d, l; wts = wts)
     r = gl.rr
     res = GeneralizedLinearMixedModel(LMM, d, l, coef(gl), getθ(LMM), deepcopy(u), u, map(zeros, u),
-        X, y, r.mu, r.eta, r.devresid, copy(r.eta), oftype(y, offset), r.wrkresid, r.wrkwt,
-        oftype(y, wt))
-    wrkresp!(trms[end], res)
-    reweight!(LMM, res.wrkwt)
+        X, y, r.mu, r.eta, r.devresid, copy(r.eta), oftype(y, offset), r.wrkresid, r.wrkwt, wts)
+    setβθ!(res, vcat(coef(gl), getθ(LMM)))
+    LaplaceDeviance!(res)
     res
 end
 
@@ -177,7 +177,7 @@ function pirls!{T}(m::GeneralizedLinearMixedModel{T})
     for j in eachindex(u)         # start from u all zeros
         copy!(u₀[j], fill!(u[j], 0))
     end
-    obj₀ = LaplaceDeviance!(m)
+    obj₀ = LaplaceDeviance!(m) * 1.0001
     while iter < maxiter
         iter += 1
         ranef!(u, m.LMM, true)    # solve for new values of u
@@ -238,6 +238,7 @@ Optimize the objective function for `m`
 function StatsBase.fit!(m::GeneralizedLinearMixedModel, verbose::Bool=false, optimizer::Symbol=:LN_BOBYQA)
     β, lm = m.β, m.LMM
     βθ = vcat(β, getθ(lm))
+#    @show(βθ)
     opt = NLopt.Opt(optimizer, length(βθ))
     NLopt.ftol_rel!(opt, 1e-12)   # relative criterion on deviance
     NLopt.ftol_abs!(opt, 1e-8)    # absolute criterion on deviance

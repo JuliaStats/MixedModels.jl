@@ -162,16 +162,13 @@ function ranef(m::MixedModel; uscale=false, named=false)
         push!(v, Array(T, (l, div(k, l))))
     end
     ranef!(v, lm, uscale)
-    if named
-        trms = m.trms
-        for i in eachindex(v)
-            trmi = trms[i]
-            v[i] = NamedArray(v[i])
-            setnames!(v[i], trmi.cnms, 1)
-            setnames!(v[i], levels(trmi.f))
-        end
+    named || return v
+    vnmd = NamedArray.(v)
+    for (trm, vnm) in zip(trms, vnmd)
+        setnames!(vnm, trm.cnms, 1)
+        setnames!(vnm, levels(trm.f), 2)
     end
-    v
+    vnmd
 end
 
 """
