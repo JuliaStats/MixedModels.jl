@@ -5,7 +5,7 @@ module MixedModels
 using Compat, DataArrays, GLM, DataFrames, Distributions, NLopt, Showoff, StatsBase
 using StatsFuns: log2π
 
-import StatsBase: coef, coeftable, df, deviance, fit!, fitted, loglikelihood,
+import StatsBase: coef, coeftable, dof, deviance, fit!, fitted, loglikelihood,
     model_response, nobs, vcov
 import Base: cond, std
 import Distributions: Bernoulli, Binomial, Poisson, Gamma
@@ -35,7 +35,7 @@ export
        coef,
        coeftable,
        cond,
-       df,
+       dof,
        deviance,
        fit!,
        fitted,

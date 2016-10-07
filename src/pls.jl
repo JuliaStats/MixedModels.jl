@@ -264,7 +264,7 @@ Returns the fixed-effects parameter vector estimate.
 """
 fixef{T}(m::LinearMixedModel{T}) = fixef!(Array(T, (size(m)[2],)), m)
 
-StatsBase.df(m::LinearMixedModel) = size(m.wttrms[end - 1], 2) + sum(A -> nlower(A), m.Λ) + 1
+StatsBase.dof(m::LinearMixedModel) = size(m.wttrms[end - 1], 2) + sum(A -> nlower(A), m.Λ) + 1
 
 StatsBase.loglikelihood(m::LinearMixedModel) = -deviance(m)/2
 
@@ -368,8 +368,8 @@ function lrt(mods::LinearMixedModel...) # not tested
             throw(ArgumentError("number of observations must be constant across models"))
         end
     end
-    mods = mods[sortperm([df(m)::Int for m in mods])]
-    degf = Int[df(m) for m in mods]
+    mods = mods[sortperm([dof(m)::Int for m in mods])]
+    degf = Int[dof(m) for m in mods]
     dev = [deviance(m)::Float64 for m in mods]
     csqr = unshift!([(dev[i-1]-dev[i])::Float64 for i in 2:nm],NaN)
     pval = unshift!([ccdf(Chisq(degf[i]-degf[i-1]),csqr[i])::Float64 for i in 2:nm],NaN)
