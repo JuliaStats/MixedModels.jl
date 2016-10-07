@@ -2,7 +2,8 @@
 
 """
     feR(m::MixedModel)
-Upper Cholesky factor for the fixed-effects parameters, as an `UpperTriangular`
+
+Return th upper Cholesky factor for the fixed-effects parameters, as an `UpperTriangular`
 `p × p` matrix.
 """
 function feR(m::MixedModel)
@@ -13,21 +14,25 @@ end
 
 """
     lmm(m::MixedModel)
-Extract the `LinearMixedModel` from a `MixedModel`.  If `m` is a
-`LinearMixedModel` return `m`. If `m` is a `GeneralizedLinearMixedModel`
-return `m.LMM`.
+
+Extract the `LinearMixedModel` from a `MixedModel`.
+
+If `m` is a `LinearMixedModel` return `m`. If `m` is a
+`GeneralizedLinearMixedModel` return `m.LMM`.
 """
 lmm(m::LinearMixedModel) = m
 lmm(m::GeneralizedLinearMixedModel) = m.LMM
 
 """
     cond(m::MixedModel)
- Returns a vector of the condition numbers of the blocks of `m.Λ`
+
+Returns the vector of the condition numbers of the blocks of `m.Λ`
 """
 Base.cond(m::MixedModel) = [cond(λ)::Float64 for λ in lmm(m).Λ]
 
 """
     std{T}(m::MixedModel{T})
+
 The estimated standard deviations of the variance components as a `Vector{Vector{T}}`.
 """
 Base.std(m::MixedModel) = sdest(m) * push!([rowlengths(λ) for λ in lmm(m).Λ], [1.])
@@ -46,7 +51,8 @@ end
 """
     describeblocks(io::IO, m::MixedModel)
     describeblocks(m::MixedModel)
-Describe the types and sizes of the blocks in the upper triangle of `m.A` and `m.R`
+
+Describe the types and sizes of the blocks in the upper triangle of `m.A` and `m.R`.
 """
 function describeblocks(io::IO, m::MixedModel)
     lm = lmm(m)
@@ -60,7 +66,8 @@ describeblocks(m::MixedModel) = describeblocks(Base.STDOUT, m)
 
 """
     fnames(m::MixedModel)
-The names of the grouping factors for the random-effects terms.
+
+Returns the names of the grouping factors for the random-effects terms.
 """
 function fnames(m::MixedModel)
     lm = lmm(m)
@@ -89,7 +96,8 @@ end
 
 """
     grplevels(m::MixedModel)
-The number of levels in each random-effects term's grouping factor
+
+Returns the number of levels in the random-effects terms' grouping factors.
 """
 function grplevels(m::MixedModel)
     lm = lmm(m)
@@ -98,8 +106,10 @@ end
 
 """
     ranef!{T}(v::Vector{Matrix{T}}, m::MixedModel{T}, uscale::Bool = false)
-Overwrite `v` with the conditional modes of the random effects for `m`.  If `uscale`
-is `true` the random effects are on the spherical (i.e. `u`) scale, otherwise on the
+
+Overwrites `v` with the conditional modes of the random effects for `m`.
+
+If `uscale` is `true` the random effects are on the spherical (i.e. `u`) scale, otherwise on the
 original scale
 """
 function ranef!(v::Vector, m::MixedModel, uscale)
@@ -134,20 +144,12 @@ function ranef!(v::Vector, m::MixedModel, uscale)
 end
 
 """
-    ranef(m)
-    ranef(m, uscale)
+    ranef{T}(m::MixedModel{T}, uscale=false)
 
-Conditional modes of the random effects in model `m`
+Returns, as a `Vector{Matrix{T}}`, the conditional modes of the random effects in model `m`.
 
-Args:
-
-- `m`: a fitted `MixedModel` object
-- `uscale`: a `Bool` indicating conditional modes are on the `u` scale or the `b` scale.  Defaults to `false`
-
-Returns:
-  A `Vector` of matrices of the conditional modes of the random effects on the indicated scale.
-  For a scalar random-effects term the matrix is `1 × k` where `k` is the number of levels of the grouping factor.
-  For a vector-valued random-effects term the matrix is `l × k` where `l` is the dimension of each random effect.
+If `uscale` is `true` the random effects are on the spherical (i.e. `u`) scale, otherwise on the
+original scale.
 """
 function ranef(m::MixedModel, uscale=false)
     lm = lmm(m)
@@ -163,16 +165,9 @@ function ranef(m::MixedModel, uscale=false)
 end
 
 """
-     vcov(m)
+     vcov(m::MixedModel)
 
-Estimated covariance matrix of the fixed-effects estimator
-
-Args:
-
-- `m`: a `LinearMixedModel`
-
-Returns
-  a `p × p` `Matrix`
+Returns the estimated covariance matrix of the fixed-effects estimator.
 """
 function StatsBase.vcov(m::MixedModel)
     Rinv = inv(feR(m))

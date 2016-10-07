@@ -1,4 +1,4 @@
-using Compat, Documenter, MixedModels
+using Documenter, MixedModels
 
 makedocs()
 

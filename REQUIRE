@@ -1,6 +1,6 @@
 julia 0.4
-DataFrames 0.7
-Distributions 0.8
+DataFrames 0.8
+Distributions 0.10
 GLM 0.5.2
 NLopt 0.3
 Showoff

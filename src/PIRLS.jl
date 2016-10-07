@@ -48,11 +48,11 @@ end
 fixef(m::GeneralizedLinearMixedModel) = m.β
 
 """
-    glmm(f::Formula, fr::ModelFrame, d::Distribution)
-    glmm(f::Formula, fr::ModelFrame, d::Distribution, l::GLM.Link)
+    glmm(f::Formula, fr::ModelFrame, d::Distribution[, l::GLM.Link])
 
-Create a `GeneralizedLinearMixedModel` object which is ready to be `fit!`
-but has not yet been fit.
+Return a `GeneralizedLinearMixedModel` object.
+
+The value is ready to be `fit!` but has not yet been fit.
 """
 function glmm(f::Formula, fr::AbstractDataFrame, d::Distribution, l::Link; wt=[], offset=[])
     if d == Binomial() && isempty(wt)
@@ -92,17 +92,20 @@ glmm(f::Formula, fr::AbstractDataFrame, d::Distribution) = glmm(f, fr, d, GLM.ca
 Base.logdet{T}(m::GeneralizedLinearMixedModel{T}) = logdet(m.LMM)
 
 """
-    LaplaceDeviance(m::GeneralizedLinearMixedModel)
-Laplace approximation to the deviance of a GLMM.  For a distribution
-that does not have a scale factor this is defined as the squared length
-of the conditional modes, `u`, plus the determinant of `Λ'Z'ZΛ + 1`, plus
-the sum of the squared deviance residuals.
+    LaplaceDeviance{T,D}(m::GeneralizedLinearMixedModel{T,D})
+
+Return the Laplace approximation to the deviance of `m`.
+
+If the distribution `D` does not have a scale parameter the Laplace approximation
+is defined as the squared length of the conditional modes, `u`, plus the determinant
+of `Λ'Z'ZΛ + 1`, plus the sum of the squared deviance residuals.
 """
 LaplaceDeviance{T}(m::GeneralizedLinearMixedModel{T}) =
     sum(m.devresid) + logdet(m) + mapreduce(sumabs2, +, m.u)
 
 """
     LaplaceDeviance!(m::GeneralizedLinearMixedModel)
+
 Update `m.η`, `m.μ`, etc., install the working response and working weights in
 `m.LMM`, update `m.LMM.A` and `m.LMM.R`, then evaluate `LaplaceDeviance`.
 """
@@ -149,6 +152,7 @@ end
 
 """
     updateη!(m::GeneralizedLinearMixedModel)
+
 Update the linear predictor, `m.η`, from the offset and the `B`-scale random effects.
 """
 function updateη!(m::GeneralizedLinearMixedModel)
@@ -163,6 +167,7 @@ end
 
 """
     pirls!(m::GeneralizedLinearMixedModel)
+
 Use Penalized Iteratively Reweighted Least Squares (PIRLS) to determine the conditional
 modes of the random effects.
 """
@@ -209,8 +214,10 @@ end
 
 """
     setβθ!{T}(m::GeneralizedLinearMixedModel{T}, v::Vector{T})
-Set the parameter vector, `:βθ`, of `m`, a `GeneralizedLinearMixedModel`, to `v`. `βθ` is
-the concatenation of the fixed-effects, `β`, and the covariance parameter, `θ`.
+
+Set the parameter vector, `:βθ`, of `m` to `v`.
+
+`βθ` is the concatenation of the fixed-effects, `β`, and the covariance parameter, `θ`.
 """
 function setβθ!{T}(m::GeneralizedLinearMixedModel{T}, v::Vector{T})
     β, lm, offset, offset₀, X = m.β, m.LMM, m.offset, m.offset₀, m.X
@@ -224,8 +231,9 @@ end
 sdest{T <: AbstractFloat}(m::GeneralizedLinearMixedModel{T}) = one(T)
 
 """
-    fit!(m::GeneralizedLinearMixedModel[, verbose = false])
-Optimize the objective of a `GeneralizedLinearMixedModel` using the `NLopt.LN_BOBYQA` optimizer.
+    fit!(m::GeneralizedLinearMixedModel[, verbose = false, optimizer=:LN_BOBYQA]])
+
+Optimize the objective function for `m`
 """
 function StatsBase.fit!(m::GeneralizedLinearMixedModel, verbose::Bool=false, optimizer::Symbol=:LN_BOBYQA)
     β, lm = m.β, m.LMM

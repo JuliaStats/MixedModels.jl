@@ -3,13 +3,12 @@
 
 Summary of an `NLopt` optimization
 
-Members:
-
-- `initial`: a copy of the initial parameter values in the optimization
-- `final`: a copy of the final parameter values from the optimization
-- `fmin`: the final value of the objective
-- `feval`: the number of function evaluations
-- `optimizer`: the name of the optimizer used, as a `Symbol`
+# Members
+* `initial`: a copy of the initial parameter values in the optimization
+* `final`: a copy of the final parameter values from the optimization
+* `fmin`: the final value of the objective
+* `feval`: the number of function evaluations
+* `optimizer`: the name of the optimizer used, as a `Symbol`
 """
 type OptSummary
     initial::Vector{Float64}
@@ -27,17 +26,16 @@ end
 
 Linear mixed-effects model representation
 
-Members:
-
-- `formula`: the formula for the model
-- `mf`: the model frame, mostly used to get the `terms` component for labelling fixed effects
-- `wttrms`: a length `nt` vector of weighted model matrices. The last two elements are `X` and `y`.
-- `trms`: a vector of unweighted model matrices.  If `isempty(sqrtwts)` the same object as `wttrms`
-- `Λ`: a length `nt - 2` vector of lower triangular matrices
-- `sqrtwts`: the `Diagonal` matrix of the square roots of the case weights.  Allowed to be size 0
-- `A`: an `nt × nt` symmetric matrix of matrices representing `hcat(Z,X,y)'hcat(Z,X,y)`
-- `R`: a `nt × nt` matrix of matrices - the upper Cholesky factor of `Λ'AΛ+I`
-- `opt`: an [`OptSummary`](@ref) object
+# Members
+* `formula`: the formula for the model
+* `mf`: the model frame, mostly used to get the `terms` component for labelling fixed effects
+* `wttrms`: a length `nt` vector of weighted model matrices. The last two elements are `X` and `y`.
+* `trms`: a vector of unweighted model matrices.  If `isempty(sqrtwts)` the same object as `wttrms`
+* `Λ`: a length `nt - 2` vector of lower triangular matrices
+* `sqrtwts`: the `Diagonal` matrix of the square roots of the case weights.  Allowed to be size 0
+* `A`: an `nt × nt` symmetric matrix of matrices representing `hcat(Z,X,y)'hcat(Z,X,y)`
+* `R`: a `nt × nt` matrix of matrices - the upper Cholesky factor of `Λ'AΛ+I`
+* `opt`: an [`OptSummary`](@ref) object
 """
 type LinearMixedModel{T <: AbstractFloat} <: MixedModel
     formula::Formula
@@ -121,11 +119,12 @@ function LinearMixedModel(f, mf, trms, Λ, wts)
 end
 
 """
-    lmm(f::DataFrames.Formula, fr::DataFrames.DataFrame)
     lmm(f::DataFrames.Formula, fr::DataFrames.DataFrame; weights = [])
 
 Create a [`LinearMixedModel`](@ref) from `f`, which contains both fixed-effects terms
-and random effects, and `fr`. The return value is ready to be `fit!` but has not yet been fit.
+and random effects, and `fr`.
+
+The return value is ready to be `fit!` but has not yet been fit.
 """
 function lmm(f::Formula, fr::AbstractDataFrame; weights::Vector = [])
     mf = ModelFrame(f, fr)
@@ -168,13 +167,12 @@ end
 StatsBase.coef(m::LinearMixedModel) = fixef(m)
 
 """
-    fit!(m::LinearMixedModel, verbose=false; optimizer=:LN_BOBYQA)
+    fit!(m::LinearMixedModel[, verbose::Bool=false[, optimizer::Symbol=:LN_BOBYQA]])
 
-Optimize the objective of a `LinearMixedModel` using an `NLopt` optimizer.
+Optimize the objective of a `LinearMixedModel`.
 
-Named Arguments:
-
-- `optimizer::Symbol` the name of an `NLopt` derivative-free optimizer with box constraints.
+A value for `optimizer` should be the name of an `NLopt` derivative-free optimizer
+allowing for box constraints.
 """
 function StatsBase.fit!(m::LinearMixedModel, verbose::Bool=false, optimizer::Symbol=:LN_BOBYQA)
     th = getθ(m)
@@ -234,14 +232,14 @@ end
 """
     lowerbd(m::LinearMixedModel)
 
-Returns the lower bounds on the covariance parameter vector `θ`
+Return the vector of lower bounds on the covariance parameter vector `θ`
 """
 lowerbd(m::LinearMixedModel) = mapreduce(lowerbd, vcat, m.Λ)
 
 """
     objective(m::LinearMixedModel)
 
-Negative twice the log-likelihood of model `m`
+Return negative twice the log-likelihood of model `m`
 """
 objective(m::LinearMixedModel) = logdet(m) + nobs(m) * (1 + log2π + log(varest(m)))
 
@@ -281,7 +279,7 @@ end
 """
     sdest(m::LinearMixedModel)
 
-The estimate of σ, the standard deviation of the per-observation noise.
+Return the estimate of σ, the standard deviation of the per-observation noise.
 """
 sdest{T}(m::LinearMixedModel{T}) = T(sqrtpwrss(m)/√nobs(m))
 
@@ -307,14 +305,17 @@ end
 
 """
     sqrtpwrss(m::LinearMixedModel)
-The square root of the penalized residual sum-of-squares, which is the bottom right block of `m.R`
+
+Return the square root of the penalized, weighted residual sum-of-squares (pwrss).
+
+This value is the contents of the `1 × 1` bottom right block of `m.R`
 """
 sqrtpwrss{T}(m::LinearMixedModel{T}) = T(m.R[end,end][1])
 
 """
     varest(m::LinearMixedModel)
 
-The estimate of σ², the variance of the conditional distribution of Y given B.
+Returns the estimate of σ², the variance of the conditional distribution of Y given B.
 """
 varest{T}(m::LinearMixedModel{T}) = T(pwrss(m)/nobs(m))
 
@@ -328,7 +329,8 @@ pwrss(m::LinearMixedModel) = abs2(sqrtpwrss(m))
 """
     chol2cor(L::LowerTriangular)
 
-The correlation matrix (symmetric, positive definite with unit diagonal) corresponding to `L * L'`
+Return the correlation matrix (symmetric, positive definite with unit diagonal)
+corresponding to `L * L'`.
 """
 function chol2cor(L::LowerTriangular)
     size(L, 1) == 1 && return ones(1, 1)
@@ -347,15 +349,16 @@ end
 """
     isfit(m::LinearMixedModel)
 
-A `Bool` indicating if the model has been fit.
+Return a `Bool` indicating if the model has been fit.
 """
 isfit(m::LinearMixedModel) = m.opt.fmin < Inf
 
 """
     lrt(mods::LinearMixedModel...)
 
-Perform sequential likelihood ratio tests on a sequence of models.  The returned value is
-a `DataFrame` containing information on the likelihood ratio tests.
+Perform sequential likelihood ratio tests on a sequence of models.
+
+The returned value is a `DataFrame` containing information on the likelihood ratio tests.
 """
 function lrt(mods::LinearMixedModel...) # not tested
     if (nm = length(mods)) <= 1
@@ -379,7 +382,7 @@ end
 """
     reweight!{T}(m::LinearMixedModel{T}, wts::Vector{T})
 
-Update `m.sqrtwts` from `wts` and `m.wttrms` from `m.trms`.  Recompute `m.A` and `m.R`
+Update `m.sqrtwts` from `wts` and `m.wttrms` from `m.trms`.  Recompute `m.A` and `m.R`.
 """
 function reweight!{T}(m::LinearMixedModel{T}, weights::Vector{T})
     A, wttrms, trms, sqrtwts = m.A, m.wttrms, m.trms, m.sqrtwts
@@ -438,12 +441,11 @@ end
 An encapsulation of information on the fitted random-effects
 variance-covariance matrices.
 
-Members:
-
-- `Λ`: the vector of lower triangular matrices from the `MixedModel`
-- `fnms`: a `Vector{ASCIIString}` of grouping factor names
-- `cnms`: a `Vector{Vector{ASCIIString}}` of column names
-- `s`: the estimate of σ, the standard deviation of the per-observation noise
+# Members
+* `Λ`: the vector of lower triangular matrices from the `MixedModel`
+* `fnms`: a `Vector{ASCIIString}` of grouping factor names
+* `cnms`: a `Vector{Vector{ASCIIString}}` of column names
+* `s`: the estimate of σ, the standard deviation of the per-observation noise
 
 The main purpose of defining this type is to isolate the logic in the show method.
 """

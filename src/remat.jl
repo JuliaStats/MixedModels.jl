@@ -10,12 +10,11 @@ abstract ReMat
 
 The representation of the model matrix for a scalar random-effects term
 
-Members:
-
-- `f`: the grouping factor as a `PooledDataVector`
-- `z`: the raw random-effects model matrix as a `Vector`
-- `fnm`: the name of the grouping factor as a `Symbol`
-- `cnms`: a `Vector` of column names
+# Members
+* `f`: the grouping factor as a `PooledDataVector`
+* `z`: the raw random-effects model matrix as a `Vector`
+* `fnm`: the name of the grouping factor as a `Symbol`
+* `cnms`: a `Vector` of column names
 """
 immutable ScalarReMat{T <: AbstractFloat, S, R <: Integer} <: ReMat
     f::PooledDataVector{S,R}
@@ -29,12 +28,11 @@ end
 
 The representation of the model matrix for a vector-valued random-effects term
 
-Members:
-
-- `f`: the grouping factor as a `PooledDataVector`
-- `z`: the transposed raw random-effects model matrix
-- `fnm`: the name of the grouping factor as a `Symbol`
-- `cnms`: a `Vector` of column names (row names after transposition) of `z`
+# Members
+* `f`: the grouping factor as a `PooledDataVector`
+* `z`: the transposed raw random-effects model matrix
+* `fnm`: the name of the grouping factor as a `Symbol`
+* `cnms`: a `Vector` of column names (row names after transposition) of `z`
 """
 immutable VectorReMat{T <: AbstractFloat, S, R <: Integer} <: ReMat
     f::PooledDataVector{S,R}
@@ -46,8 +44,10 @@ end
 """
      remat(e::Expr, df::DataFrames.DataFrame)
 
-A factory for `ReMat` objects.  `e` should be of the form `:(e1 | e2)` where `e1` is a
-valid rhs of a `Formula` and `pool(e2)` can be evaluated within `df`.  The result is a
+A factory for `ReMat` objects.
+
+`e` should be of the form `:(e1 | e2)` where `e1` is a valid rhs of a `Formula` and
+`pool(e2)` can be evaluated within `df`.  The result is a
 [`ScalarReMat`](@ref) or a [`VectorReMat`](@ref), as appropriate.
 """
 function remat(e::Expr, df::DataFrame)
@@ -87,14 +87,14 @@ end
 """
     vsize(A::ReMat)
 
-Size of vector-valued random effects (i.e. 1 for a [`ScalarReMat`](@ref)).
+Return the size of vector-valued random effects (i.e. 1 for a [`ScalarReMat`](@ref)).
 """
 vsize(A::ReMat) = isa(A,ScalarReMat) ? 1 : size(A.z, 1)
 
 """
     nlevs(A::ReMat)
 
-Number of levels in the grouping factor of A
+Return the number of levels in the grouping factor of `A`.
 """
 nlevs(A::ReMat) = length(A.f.pool)
 
