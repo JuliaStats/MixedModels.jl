@@ -10,14 +10,14 @@ function inject!(d::UpperTriangular, s::UpperTriangular)
         throw(DimensionMismatch("size(s, 2) ≠ size(d, 2)"))
     end
     for j in 1:n
-        inject!(Compat.view(d, 1 : j, j), Compat.view(s, 1 : j, j))
+        inject!(view(d, 1 : j, j), view(s, 1 : j, j))
     end
     d
 end
 
 function inject!{T<:Real}(d::StridedMatrix{T}, s::Diagonal{T})
     sd = s.diag
-    if length(sd) ≠ Compat.LinAlg.checksquare(d)  # why does d have to be square?
+    if length(sd) ≠ LinAlg.checksquare(d)  # why does d have to be square?
         throw(DimensionMismatch("size(d ,2) ≠ size(s, 2)"))
     end
     fill!(d, 0)
@@ -45,10 +45,10 @@ function inject!(d::SparseMatrixCSC{Float64}, s::SparseMatrixCSC{Float64})
     fill!(dnz, 0)
     for j in 1:n
         dnzr = nzrange(d, j)
-        dnzrv = Compat.view(drv, dnzr)
+        dnzrv = view(drv, dnzr)
         snzr = nzrange(s, j)
-        if length(snzr) == length(dnzr) && all(dnzrv .== Compat.view(srv, snzr))
-            copy!(Compat.view(dnz, dnzr),Compat.view(snz, snzr))
+        if length(snzr) == length(dnzr) && all(dnzrv .== view(srv, snzr))
+            copy!(view(dnz, dnzr),view(snz, snzr))
         else
             for k in snzr
                 ssr = srv[k]

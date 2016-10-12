@@ -83,7 +83,7 @@ function getθ!(v::AbstractVector, m::MixedModel)
     offset = 0
     for i in eachindex(nl)
         nli = nl[i]
-        getθ!(Compat.view(v, offset + (1 : nli)), Λ[i])
+        getθ!(view(v, offset + (1 : nli)), Λ[i])
         offset += nli
     end
     v
@@ -151,7 +151,7 @@ Returns, as a `Vector{Matrix{T}}`, the conditional modes of the random effects i
 If `uscale` is `true` the random effects are on the spherical (i.e. `u`) scale, otherwise on the
 original scale.
 """
-function ranef(m::MixedModel, uscale=false)
+function ranef(m::MixedModel; uscale=false, named=false)
     lm = lmm(m)
     Λ, trms = lm.Λ, lm.trms
     T = eltype(trms[end])
@@ -162,6 +162,13 @@ function ranef(m::MixedModel, uscale=false)
         push!(v, Array(T, (l, div(k, l))))
     end
     ranef!(v, lm, uscale)
+    named || return v
+    vnmd = NamedArray.(v)
+    for (trm, vnm) in zip(trms, vnmd)
+        setnames!(vnm, trm.cnms, 1)
+        setnames!(vnm, levels(trm.f), 2)
+    end
+    vnmd
 end
 
 """

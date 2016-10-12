@@ -26,7 +26,7 @@ cm = coeftable(fm1)
 @test length(cm.colnms) == 4
 @test MixedModels.fnames(fm1) == [:Batch]
 @test model_response(fm1) == convert(Vector, ds[:Yield])
-@test abs(sum(ranef(fm1, true)[1])) < 1.e-5
+@test abs(sum(ranef(fm1, uscale=true)[1])) < 1.e-5
 
 @test_approx_eq_eps logdet(fm1) 8.06014522999825 1.e-3
 @test_approx_eq_eps varest(fm1) 2451.2501089607676 1.e-3
@@ -83,7 +83,7 @@ fit!(fm3)
 @test_approx_eq_eps cond(fm3) [4.1752507630514915] 1.e-4
 @test loglikelihood(fm3) ≈ -875.9696722323523
 @test eltype(fm3.wttrms[1]) === Float64
-const u3 = ranef(fm3,true)
+const u3 = ranef(fm3, uscale=true)
 @test length(u3) == 1
 @test size(u3[1]) == (2,18)
 @test_approx_eq_eps u3[1][1,1] 3.030300122575336 1.e-3
@@ -110,14 +110,14 @@ fit!(fm4);
 @test std(fm4)[3] ≈ [25.556130034081047]
 @test_approx_eq_eps logdet(fm4) 74.46952585564611 1.e-3
 
-tbl = MixedModels.lrt(fm4,fm3)
+#tbl = MixedModels.lrt(fm4,fm3)
 
-@test_approx_eq_eps tbl[:Deviance] [1752.0032551398835,1751.9393444636157] 1e-3
-@test tbl[:Df] == [5,6]
+#@test_approx_eq_eps tbl[:Deviance] [1752.0032551398835,1751.9393444636157] 1e-3
+#@test tbl[:Df] == [5,6]
 
 simulate!(fm3)  # to test one of the unscaledre methods
 
-fm5 = lmm(Diameter ~ (1|Plate) + (1|Sample), pen);
+fm5 = lmm(Diameter ~ (1 | Plate) + (1 | Sample), pen);
 @test size(fm5) == (144,1,30,2)
 @test getθ(fm5) == ones(2)
 @test lowerbd(fm5) == zeros(2)
@@ -136,7 +136,7 @@ fit!(fm5)
 @test_approx_eq_eps logdet(fm5) 95.74614821367786 1.e-3
 @test length(ranef(fm5)) == 2
 
-fm6 = lmm(Strength ~ (1|Sample) + (1|Batch), psts);
+fm6 = lmm(Strength ~ (1 | Sample) + (1 | Batch), psts);
 @test size(fm6) == (60,1,40,2)
 @test getθ(fm6) == ones(2)
 @test lowerbd(fm6) == zeros(2)

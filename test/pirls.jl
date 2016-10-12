@@ -1,12 +1,9 @@
 using Base.Test, DataFrames, MixedModels
 
-contra = readtable(joinpath(dirname(@__FILE__), "data", "Contraception.csv.gz"))
-for c in [:district, :use, :urban, :livch, :urbdist]
-    contra[c] = pool(contra[c])
-end
-contra[:age2] = abs2(contra[:age])
+contra = readtable(joinpath(dirname(@__FILE__), "data", "Contraception.csv.gz"), makefactors=true)
+contra[:age2] = map(abs2, contra[:age])
 gm1 = fit!(glmm(use01 ~ 1 + age + age2 + urban + livch + (1 | urbdist), contra, Bernoulli()));
-@test lowerbd(gm1) == push!(fill(-Inf, 7), 0.) 
+@test lowerbd(gm1) == push!(fill(-Inf, 7), 0.)
 @test isapprox(LaplaceDeviance(gm1), 2361.5457555; atol = 0.0001)
 @test isapprox(loglikelihood(gm1), -1180.7729; atol = 0.001)
 # There may be multiple optima here.
@@ -18,7 +15,7 @@ gm1 = fit!(glmm(use01 ~ 1 + age + age2 + urban + livch + (1 | urbdist), contra, 
 #    atol = 0.001)
 show(IOBuffer(), gm1)
 
-cbpp = readtable(joinpath(dirname(@__FILE__), "data", "cbpp.csv.gz"))
+cbpp = readtable(joinpath(dirname(@__FILE__), "data", "cbpp.csv.gz"), makefactors=true)
 for c in [:herd, :period]
     cbpp[c] = pool(oftype(Int8[], cbpp[c]))
 end

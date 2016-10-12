@@ -18,7 +18,7 @@ function Base.cholfact!(A::HBlkDiag, uplo::Symbol=:U)
         throw(ArgumentError("A must be square"))
     end
     for j in 1:k
-        cholfact!(Compat.view(Aa, :, :, j), uplo)
+        cholfact!(view(Aa, :, :, j), uplo)
     end
     A
 end
@@ -96,7 +96,7 @@ function LinAlg.Ac_ldiv_B!{T}(A::UpperTriangular{T,HBlkDiag{T}}, B::DenseMatrix{
     m, n = size(B)
     aa = A.data.arr
     r, s, t = size(aa)
-    if m ≠ Compat.LinAlg.checksquare(A)
+    if m ≠ LinAlg.checksquare(A)
         throw(DimensionMismatch("size(A,2) ≠ size(B,1)"))
     end
     scv = Array(T, (r,))
@@ -136,7 +136,7 @@ function LinAlg.Ac_ldiv_B!{T}(A::UpperTriangular{T,HBlkDiag{T}}, B::SparseMatrix
         end
         for b in 1 : q
             subrng = nzrj[(b - 1) * s + (1 : s)]
-            rr = Compat.view(rows, subrng)
+            rr = view(rows, subrng)
             if any(d -> d ≠ 1, diff(rr))
                 error("rows of block $b in column $j are not contiguous")
             end
@@ -144,7 +144,7 @@ function LinAlg.Ac_ldiv_B!{T}(A::UpperTriangular{T,HBlkDiag{T}}, B::SparseMatrix
             if r1 ≠ 0
                 error("rows of block $b in column $j do not end in a multiple of $s")
             end
-            BLAS.trsv!('U', 'T', 'N', Compat.view(aa, :, :, q1), Compat.view(vals, subrng))
+            BLAS.trsv!('U', 'T', 'N', view(aa, :, :, q1), view(vals, subrng))
         end
     end
     B

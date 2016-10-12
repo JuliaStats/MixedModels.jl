@@ -10,7 +10,7 @@ Note: The `cfactor!` method for dense matrices calls `LAPACK.potrf!` directly to
 errors being thrown when `A` is computationally singular
 """
 function cfactor!(A::AbstractMatrix)
-    n = Compat.LinAlg.checksquare(A)
+    n = LinAlg.checksquare(A)
     for k = 1:n
         Akk = A[k, k]
         for i in 1:(k - 1)
@@ -152,7 +152,7 @@ end
 
 function downdate!{T}(C::DenseMatrix{T}, A::SparseMatrixCSC{T})
     m, n = size(A)
-    if n ≠ Compat.LinAlg.checksquare(C)
+    if n ≠ LinAlg.checksquare(C)
         throw(DimensionMismatch("C is not square or size(C,2) ≠ size(A,2)"))
     end
     # FIXME: avoid allocation by caching a transposed matrix and just fill in the new values
@@ -195,7 +195,7 @@ function inflate!(A::HBlkDiag)
     A
 end
 function inflate!{T<:AbstractFloat}(A::StridedMatrix{T})
-    n = Compat.LinAlg.checksquare(A)
+    n = LinAlg.checksquare(A)
     for i in 1 : n
         @inbounds A[i, i] += one(T)
     end
