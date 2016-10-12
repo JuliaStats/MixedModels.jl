@@ -1,7 +1,7 @@
 using Base.Test, DataFrames, MixedModels
 
 contra = readtable(joinpath(dirname(@__FILE__), "data", "Contraception.csv.gz"), makefactors=true)
-contra[:age2] = abs2.(contra[:age])
+contra[:age2] = map(abs2, contra[:age])
 gm1 = fit!(glmm(use01 ~ 1 + age + age2 + urban + livch + (1 | urbdist), contra, Bernoulli()));
 @test lowerbd(gm1) == push!(fill(-Inf, 7), 0.)
 @test isapprox(LaplaceDeviance(gm1), 2361.5457555; atol = 0.0001)
