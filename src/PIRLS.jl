@@ -17,7 +17,7 @@ Members:
 - `y`: the response vector
 - `μ`: the mean vector
 - `η`: the linear predictor
-- `devresid`: vector of squared deviance residuals
+- `devresid`: vector of squared  residuals
 - `offset`: offset₀ + `X * β`
 - `offset₀`: prior offset; `T[]` is allowed
 - `wrkresid`: vector of working residuals

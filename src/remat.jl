@@ -35,7 +35,7 @@ The representation of the model matrix for a vector-valued random-effects term
 * `cnms`: a `Vector` of column names (row names after transposition) of `z`
 """
 immutable VectorReMat{T <: AbstractFloat} <: ReMat
-    f::CategoricalVector
+    f::Union{CategoricalVector,PooledDataVector}
     z::Matrix{T}
     fnm::Symbol
     cnms::Vector
@@ -54,7 +54,7 @@ function remat(e::Expr, df::DataFrame)
     e.args[1] == :| || throw(ArgumentError("$e is not a call to '|'"))
     fnm = e.args[3]
     gr = getindex(df, fnm)
-    gr = isa(gr, CategoricalVector) ? gr : NominalArray(gr)
+    gr = isa(gr, Union{CategoricalVector,PooledDataVector}) ? gr : pool(gr)
     if e.args[2] == 1
         return ScalarReMat(gr, ones(length(gr)), fnm, ["(Intercept)"])
     end

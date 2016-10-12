@@ -38,8 +38,8 @@ setθ!(L, [0.5])
 @test crp.diag == fill(2.5, 6)
 @test copy!(crp1, crp) == crp
 
-const sf1 = ScalarReMat(psts[:sample], ones(size(psts,1)), :sample, String["(Intercept)"])
-const sf2 = ScalarReMat(psts[:batch], ones(size(psts, 1)), :batch, String["(Intercept)"])
+const sf1 = ScalarReMat(psts[:Sample], ones(size(psts,1)), :sample, String["(Intercept)"])
+const sf2 = ScalarReMat(psts[:Batch], ones(size(psts, 1)), :batch, String["(Intercept)"])
 @test size(sf1) == (60, 30)
 @test size(sf2) == (60, 10)
 

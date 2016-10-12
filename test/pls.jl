@@ -117,7 +117,7 @@ fit!(fm4);
 
 simulate!(fm3)  # to test one of the unscaledre methods
 
-fm5 = lmm(diameter ~ (1 | plate) + (1 | sample), pen);
+fm5 = lmm(Diameter ~ (1 | Plate) + (1 | Sample), pen);
 @test size(fm5) == (144,1,30,2)
 @test getθ(fm5) == ones(2)
 @test lowerbd(fm5) == zeros(2)
@@ -127,7 +127,7 @@ fit!(fm5)
 @test_approx_eq_eps objective(fm5) 332.18834867227616 1.e-3
 @test_approx_eq_eps coef(fm5) [22.97222222222222] 1.e-3
 @test_approx_eq_eps fixef(fm5) [22.97222222222222] 1.e-3
-@test coef(fm5)[1] ≈ mean(pen[:diameter])
+@test coef(fm5)[1] ≈ mean(pen[:Diameter])
 @test_approx_eq_eps stderr(fm5) [0.7445960346851368] 1.e-4
 @test_approx_eq_eps getθ(fm5) [1.5375772376554968,3.219751321180035] 1.e-3
 @test_approx_eq_eps std(fm5)[1] [0.8455645948223015] 1.e-4
@@ -136,7 +136,7 @@ fit!(fm5)
 @test_approx_eq_eps logdet(fm5) 95.74614821367786 1.e-3
 @test length(ranef(fm5)) == 2
 
-fm6 = lmm(strength ~ (1 | sample) + (1 | batch), psts);
+fm6 = lmm(Strength ~ (1 | Sample) + (1 | Batch), psts);
 @test size(fm6) == (60,1,40,2)
 @test getθ(fm6) == ones(2)
 @test lowerbd(fm6) == zeros(2)
