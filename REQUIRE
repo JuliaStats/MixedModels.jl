@@ -3,6 +3,7 @@ DataArrays
 DataFrames 0.8.4
 Distributions 0.11
 GLM 0.6
+NamedArrays
 NLopt 0.3
 Showoff
 StatsBase 0.11
