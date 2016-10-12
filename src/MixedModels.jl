@@ -6,7 +6,7 @@ using CategoricalArrays, DataFrames, Distributions, GLM, NLopt, Showoff, StatsBa
 using StatsFuns: log2π
 using NamedArrays: NamedArray, setnames!
 
-import StatsBase: coef, coeftable, df, deviance, fit!, fitted, loglikelihood,
+import StatsBase: coef, coeftable, dof, deviance, fit!, fitted, loglikelihood,
     model_response, nobs, vcov
 import Base: cond, std
 import Distributions: Bernoulli, Binomial, Poisson, Gamma

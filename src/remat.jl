@@ -17,7 +17,7 @@ The representation of the model matrix for a scalar random-effects term
 * `cnms`: a `Vector` of column names
 """
 immutable ScalarReMat{T <: AbstractFloat} <: ReMat
-    f::CategoricalVector
+    f::Union{CategoricalVector,PooledDataVector}
     z::Vector{T}
     fnm::Symbol
     cnms::Vector
@@ -67,7 +67,13 @@ end
 Base.eltype(R::ReMat) = eltype(R.z)
 
 function Base.copy!(d::CategoricalVector, s::CategoricalVector)
-    levels!(d, levels(s))
+    levels!(d, CategoricalArrays.levels(s))
+    copy!(d.refs, s.refs)
+    d
+end
+
+function Base.copy!(d::PooledDataVector, s::PooledDataVector)
+    setlevels!(d, DataArrays.levels(s))
     copy!(d.refs, s.refs)
     d
 end
@@ -96,7 +102,12 @@ vsize(A::ReMat) = isa(A,ScalarReMat) ? 1 : size(A.z, 1)
 
 Return the number of levels in the grouping factor of `A`.
 """
-nlevs(A::ReMat) = length(levels(A.f))
+function nlevs(A::ReMat)
+    f = A.f
+    levs = isa(f, PooledDataArray) ? DataArrays.levels(f) :
+        CategoricalArrays.levels(f)
+    length(levs)
+end
 
 Base.size(A::ReMat) = (length(A.f), vsize(A) * nlevs(A))
 
