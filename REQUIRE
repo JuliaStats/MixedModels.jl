@@ -1,10 +1,11 @@
-julia 0.5-
-DataFrames 0.8
-Distributions 0.10
-GLM 0.5.2
+julia 0.5
+DataArrays
+DataFrames 0.8.4
+Distributions 0.11
+GLM 0.6
 NLopt 0.3
 Showoff
-StatsBase 0.8.2
-StatsFuns 0.2.0
+StatsBase 0.11
+StatsFuns 0.3
 CategoricalArrays
 NullableArrays
