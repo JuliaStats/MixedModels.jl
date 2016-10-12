@@ -36,7 +36,7 @@ export
        coef,
        coeftable,
        cond,
-       df,
+       dof,
        deviance,
        fit!,
        fitted,
