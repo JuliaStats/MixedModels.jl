@@ -28,7 +28,7 @@ gm2 = fit!(glmm(prop ~ 1 + period + (1 | herd), cbpp, Binomial(), LogitLink(); w
 @test isapprox(LaplaceDeviance(gm2), 100.095856; atol = 0.0001)
 @test isapprox(sumabs2(gm2.u[1]), 9.72305; atol = 0.0001)
 @test isapprox(logdet(gm2), 16.901054; atol = 0.0001)
-@test isapprox(sum(gm2.devresid), 73.47143; atol = 0.001)
+@test isapprox(sum(gm2.resp.devresid), 73.47143; atol = 0.001)
 @test isapprox(loglikelihood(gm2), -92.02628; atol = 0.001)
 @test sdest(gm2) == 1
 @test varest(gm2) == 1

@@ -76,7 +76,7 @@ include("pls.jl")
 include("logdet.jl")
 include("simulate.jl")
 include("PIRLS.jl")
-include("glm.jl")
+#include("glm.jl")
 include("mixedmodel.jl")
 
 end # module
