@@ -98,16 +98,24 @@ Return the size of vector-valued random effects (i.e. 1 for a [`ScalarReMat`](@r
 vsize(A::ReMat) = isa(A,ScalarReMat) ? 1 : size(A.z, 1)
 
 """
+    levs(A::ReMat)
+
+Return the levels of the grouping factor.
+
+This is to disambiguate a call to `levels` as both `DataArrays`
+and `CategoricalArrays` export it.
+"""
+function levs(A::ReMat)
+    f = A.f
+    isa(f, PooledDataArray) ? DataArrays.levels(f) : CategoricalArrays.levels(f)
+end
+
+"""
     nlevs(A::ReMat)
 
 Return the number of levels in the grouping factor of `A`.
 """
-function nlevs(A::ReMat)
-    f = A.f
-    levs = isa(f, PooledDataArray) ? DataArrays.levels(f) :
-        CategoricalArrays.levels(f)
-    length(levs)
-end
+nlevs(A::ReMat) = length(levs(A))
 
 Base.size(A::ReMat) = (length(A.f), vsize(A) * nlevs(A))
 

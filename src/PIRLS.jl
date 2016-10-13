@@ -6,43 +6,29 @@ Generalized linear mixed-effects model representation
 Members:
 
 - `LMM`: a [`LinearMixedModel`](@ref) - used for the random effects only.
-- `dist`: a `UnivariateDistribution` - typically `Bernoulli()`, `Binomial()`, `Gamma()` or `Poisson()`.
-- `link`: a suitable `GLM.Link` object
 - `β`: the fixed-effects vector
 - `θ`: covariance parameter vector
 - `b`: similar to `u`, equivalent to `broadcast!(*, b, LMM.Λ, u)`
 - `u`: a vector of matrices of random effects
 - `u₀`: similar to `u`.  Used in the PIRLS algorithm if step-halving is necessary.
 - `X`:
-- `y`: the response vector
-- `μ`: the mean vector
+- `resp`: a `GlmResp` object
 - `η`: the linear predictor
-- `devresid`: vector of squared  residuals
-- `offset`: offset₀ + `X * β`
 - `offset₀`: prior offset; `T[]` is allowed
-- `wrkresid`: vector of working residuals
-- `wrkwt`: vector of working weights
 - `wt`: vector of prior case weights, a value of `T[]` indicates equal weights.
 """
 
-type GeneralizedLinearMixedModel{T <: AbstractFloat, D <: UnivariateDistribution, L <: Link} <: MixedModel
+immutable GeneralizedLinearMixedModel{T <: AbstractFloat} <: MixedModel
     LMM::LinearMixedModel{T}
-    dist::D
-    link::L
     β::Vector{T}
     θ::Vector{T}
     b::Vector{Matrix{T}}
     u::Vector{Matrix{T}}
     u₀::Vector{Matrix{T}}
     X::Matrix{T}
-    y::Vector{T}
-    μ::Vector{T}
+    resp::GlmResp
     η::Vector{T}
-    devresid::Vector{T}
-    offset::Vector{T}
     offset₀::Vector{T}
-    wrkresid::Vector{T}
-    wrkwt::Vector{T}
     wt::Vector{T}
 end
 
@@ -78,10 +64,10 @@ function glmm(f::Formula, fr::AbstractDataFrame, d::Distribution, l::Link; wt=[]
     A[kp1, end] = zeros((0, qend))
     R[kp1, end] = zeros((0, qend))
             # fit a glm to the fixed-effects only
-    gl = glm(X, y, d, l; wts = wts)
+    gl = glm(X, y, d, l; wts = wts, offset = zeros(y))
     r = gl.rr
-    res = GeneralizedLinearMixedModel(LMM, d, l, coef(gl), getθ(LMM), deepcopy(u), u, map(zeros, u),
-        X, y, r.mu, r.eta, r.devresid, copy(r.eta), oftype(y, offset), r.wrkresid, r.wrkwt, wts)
+    res = GeneralizedLinearMixedModel(LMM, coef(gl), getθ(LMM), copy.(u), u,
+        zeros.(u), X, gl.rr, similar(y), oftype(y, offset), wts)
     setβθ!(res, vcat(coef(gl), getθ(LMM)))
     LaplaceDeviance!(res)
     res
@@ -92,7 +78,7 @@ glmm(f::Formula, fr::AbstractDataFrame, d::Distribution) = glmm(f, fr, d, GLM.ca
 Base.logdet{T}(m::GeneralizedLinearMixedModel{T}) = logdet(m.LMM)
 
 """
-    LaplaceDeviance{T,D}(m::GeneralizedLinearMixedModel{T,D})
+    LaplaceDeviance{T}(m::GeneralizedLinearMixedModel{T})::T
 
 Return the Laplace approximation to the deviance of `m`.
 
@@ -100,8 +86,8 @@ If the distribution `D` does not have a scale parameter the Laplace approximatio
 is defined as the squared length of the conditional modes, `u`, plus the determinant
 of `Λ'Z'ZΛ + 1`, plus the sum of the squared deviance residuals.
 """
-LaplaceDeviance{T}(m::GeneralizedLinearMixedModel{T}) =
-    sum(m.devresid) + logdet(m) + mapreduce(sumabs2, +, m.u)
+LaplaceDeviance{T}(m::GeneralizedLinearMixedModel{T})::T =
+    sum(m.resp.devresid) + logdet(m) + mapreduce(sumabs2, +, m.u)
 
 """
     LaplaceDeviance!(m::GeneralizedLinearMixedModel)
@@ -110,20 +96,21 @@ Update `m.η`, `m.μ`, etc., install the working response and working weights in
 `m.LMM`, update `m.LMM.A` and `m.LMM.R`, then evaluate `LaplaceDeviance`.
 """
 function LaplaceDeviance!(m::GeneralizedLinearMixedModel)
-    updateη!(m) |> updateμ!
-    wrkresp!(m.LMM.trms[end], m)
-    reweight!(m.LMM, m.wrkwt)
+    updateη!(m)
+    wrkresp(vec(m.LMM.trms[end]), m.resp)
+    reweight!(m.LMM, m.resp.wrkwt)
     LaplaceDeviance(m)
 end
 
-function StatsBase.loglikelihood{T,D}(m::GeneralizedLinearMixedModel{T,D})
+function StatsBase.loglikelihood{T}(m::GeneralizedLinearMixedModel{T})
     accum = zero(T)
+    D = Distribution(m.resp)
     if D <: Binomial
-        for (μ, y, n) in zip(m.μ, m.y, m.wt)
+        for (μ, y, n) in zip(m.resp.mu, m.resp.y, m.wt)
             accum += logpdf(D(round(Int, n), μ), round(Int, y * n))
         end
     else
-        for (μ, y) in zip(m.μ, m.y)
+        for (μ, y) in zip(m.resp.mu, m.resp.y)
             accum += logpdf(D(μ), y)
         end
     end
@@ -147,7 +134,7 @@ function restoreX!(m::GeneralizedLinearMixedModel)
     end
     A[kp1, end] = X'trms[end]
     R[kp1, end] = copy(A[kp1, end])
-    reweight!(lm, m.wrkwt)
+    reweight!(lm, m.resp.wrkwt)
 end
 
 """
@@ -156,12 +143,13 @@ end
 Update the linear predictor, `m.η`, from the offset and the `B`-scale random effects.
 """
 function updateη!(m::GeneralizedLinearMixedModel)
-    η, lm, b, offset, u = m.η, m.LMM, m.b, m.offset, m.u
+    η, lm, b, u = m.η, m.LMM, m.b,  m.u
     Λ, trms = lm.Λ, lm.trms
-    isempty(offset) ? fill!(η, 0) : copy!(η, offset)
+    isempty(m.offset₀) ? fill!(η, 0) : copy!(η, m.offset₀)
     for i in eachindex(b)
         unscaledre!(η, trms[i], A_mul_B!(Λ[i], copy!(b[i], u[i])))
     end
+    updateμ!(m.resp, η)
     m
 end
 
@@ -220,11 +208,11 @@ Set the parameter vector, `:βθ`, of `m` to `v`.
 `βθ` is the concatenation of the fixed-effects, `β`, and the covariance parameter, `θ`.
 """
 function setβθ!{T}(m::GeneralizedLinearMixedModel{T}, v::Vector{T})
-    β, lm, offset, offset₀, X = m.β, m.LMM, m.offset, m.offset₀, m.X
+    β, lm, offset₀, X, rr = m.β, m.LMM, m.offset₀, m.X, m.resp
     lb = length(β)
     copy!(β, view(v, 1 : lb))
     setθ!(m.LMM, copy!(m.θ, view(v, (lb + 1) : length(v))))
-    BLAS.gemv!('N', one(T), X, β, one(T), isempty(offset₀) ? fill!(offset, 0) : copy!(offset, offset₀))
+    BLAS.gemv!('N', one(T), X, β, one(T), isempty(offset₀) ? fill!(rr.offset, 0) : copy!(rr.offset, offset₀))
     m
 end
 
@@ -303,16 +291,16 @@ function VarCorr(m::GeneralizedLinearMixedModel)
         [trms[i].cnms for i in eachindex(Λ)], NaN)
 end
 
-function Base.show{T,D,L}(io::IO, m::GeneralizedLinearMixedModel{T,D,L}) # not tested
+function Base.show(io::IO, m::GeneralizedLinearMixedModel) # not tested
     println(io, "Generalized Linear Mixed Model fit by minimizing the Laplace approximation to the deviance")
     println(io, "  ", m.LMM.formula)
-    println(io, "  Distribution: ", D)
-    println(io, "  Link: ", L, "\n")
+    println(io, "  Distribution: ", Distribution(m.resp))
+    println(io, "  Link: ", Link(m.resp), "\n")
     println(io, string("  Deviance (Laplace approximation): ", @sprintf("%.4f", LaplaceDeviance(m))), "\n")
 
     show(io,VarCorr(m))
     gl = grplevels(m.LMM)
-    print(io, "\n Number of obs: ", length(m.y), "; levels of grouping factors: ", gl[1])
+    print(io, "\n Number of obs: ", length(m.η), "; levels of grouping factors: ", gl[1])
     for l in gl[2:end]
         print(io, ", ", l)
     end
