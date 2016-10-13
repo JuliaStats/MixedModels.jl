@@ -22,7 +22,7 @@ end
 for c in [:incidence, :size]
     cbpp[c] = oftype(Int8[], cbpp[c])
 end
-cbpp[:prop] = cbpp[:incidence] ./ cbpp[:size]
+cbpp[:prop] = Array(cbpp[:incidence]) ./ Array(cbpp[:size])
 gm2 = fit!(glmm(prop ~ 1 + period + (1 | herd), cbpp, Binomial(), LogitLink(); wt = cbpp[:size]));
 
 @test isapprox(LaplaceDeviance(gm2), 100.095856; atol = 0.0001)
