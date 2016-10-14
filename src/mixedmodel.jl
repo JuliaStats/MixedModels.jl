@@ -180,3 +180,54 @@ function StatsBase.vcov(m::MixedModel)
     Rinv = inv(feR(m))
     varest(m) * (Rinv * Rinv')
 end
+
+function convert(::Type{LinAlg.Cholesky}, m::MixedModel)
+    R = lmm(m).R
+    nblk = size(R, 2) - 1
+    sizes = [size(R[1, j], 2) for j in 1 : nblk]
+    offsets = unshift!(cumsum(sizes), 0)
+    res = zeros(eltype(R[1, end]), (offsets[end], offsets[end]))
+    for j in 1 : nblk
+        jinds = (1 : sizes[j]) + offsets[j]
+        for i in 1 : j
+            copy!(view(res, (1 : sizes[i]) + offsets[i], jinds), R[i, j])
+        end
+    end
+    LinAlg.Cholesky(res, 'U')
+end
+
+"""
+    condVar(m::MixedModel)
+
+Return the conditional variances matrices of the random effects.
+
+The random effects are returned by `ranef` as a vector of length `k`,
+where `k` is the number of random effects terms.  The `i`th element
+is a matrix of size `vᵢ × ℓᵢ`  where `vᵢ` is the size of the
+vector-valued random effects for each of the `ℓᵢ` levels of the grouping
+factor.  Technically those values are the modes of the conditional
+distribution of the random effects given the observed data.
+
+This function returns an array of `k` three dimensional arrays,
+where the `i`th array is of size `vᵢ × vᵢ × ℓᵢ`.  These are the
+diagonal blocks from the conditional variance-covariance matrix,
+
+    s² Λ(Λ'Z'ZΛ + I)Λ'
+"""
+function condVar(m::MixedModel)
+    lm = lmm(m)
+    Λ = lm.Λ
+    if length(Λ) > 1
+        throw(ArgumentError(
+            "code for more than one term not yet written"))
+    end
+    A = lm.A[1,1]
+    res = Array{eltype(A),3}[]
+    if isa(A, Diagonal)
+        push!(res, reshape(inv.(A.diag) .* abs2(Λ[1][1]), (1,1,size(A,1))))
+    else
+        throw(ArgumentError(
+            "code for vector-value random-effects not yet written"))
+    end
+    res
+end

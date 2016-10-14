@@ -27,6 +27,9 @@ cm = coeftable(fm1)
 @test MixedModels.fnames(fm1) == [:Batch]
 @test model_response(fm1) == convert(Vector, ds[:Yield])
 @test abs(sum(ranef(fm1, uscale=true)[1])) < 1.e-5
+const cv = condVar(fm1)
+@test length(cv) == 1
+@test size(condVar(fm1)[1]) == (1, 1, 6)
 
 @test_approx_eq_eps logdet(fm1) 8.06014522999825 1.e-3
 @test_approx_eq_eps varest(fm1) 2451.2501089607676 1.e-3
@@ -57,7 +60,7 @@ show(IOBuffer(), fm2)
 @test logdet(fm2) ≈ 0.0
 refit!(fm2,convert(Vector,ds[:Yield]))
 
-fm3 = lmm(Reaction ~ 1+Days + (1+Days|Subject),slp)
+fm3 = lmm(Reaction ~ 1 + Days + (1+Days|Subject),slp)
 @test lowerbd(fm3) == [0.,-Inf,0.]
 @test isa(fm3.A[1,1],MixedModels.HBlkDiag{Float64})
 @test size(fm3.A[1,1]) == (36,36)
@@ -91,6 +94,7 @@ const b3 = ranef(fm3)
 @test length(b3) == 1
 @test size(b3[1]) == (2,18)
 @test_approx_eq_eps b3[1][1,1] 2.815819441982976 1.e-3
+
 
 fm4 = lmm(Reaction ~ Days + (1|Subject) + (0+Days|Subject), slp);
 @test size(fm4) == (180,2,36,2)
