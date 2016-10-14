@@ -8,7 +8,7 @@ using NamedArrays: NamedArray, setnames!
 
 import StatsBase: coef, coeftable, dof, deviance, fit!, fitted, loglikelihood,
     model_response, nobs, vcov
-import Base: cond, convert, std
+import Base: cor, cond, convert, std
 import Distributions: Bernoulli, Binomial, Poisson, Gamma
 import GLM: LogitLink, LogLink, InverseLink
 import DataFrames: @~

@@ -113,7 +113,7 @@ fit!(fm4);
 @test std(fm4)[2] ≈ [5.799379721123582]
 @test std(fm4)[3] ≈ [25.556130034081047]
 @test_approx_eq_eps logdet(fm4) 74.46952585564611 1.e-3
-
+cor(fm4)
 #tbl = MixedModels.lrt(fm4,fm3)
 
 #@test_approx_eq_eps tbl[:Deviance] [1752.0032551398835,1751.9393444636157] 1e-3

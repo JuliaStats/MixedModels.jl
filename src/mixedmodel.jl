@@ -181,6 +181,17 @@ function StatsBase.vcov(m::MixedModel)
     varest(m) * (Rinv * Rinv')
 end
 
+"""
+    cor(m::MixedModel)
+
+Returns the estimated correlation matrix of the fixed-effects estimator.
+"""
+function StatsBase.cor(m::MixedModel)
+    vc = vcov(m)
+    scl = [√(inv(vc[i])) for i in diagind(vc)]
+    scale!(scl, scale!(vc, scl))
+end
+
 function convert(::Type{LinAlg.Cholesky}, m::MixedModel)
     R = lmm(m).R
     nblk = size(R, 2) - 1
