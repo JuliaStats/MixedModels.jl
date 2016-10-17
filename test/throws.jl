@@ -14,7 +14,8 @@ modl = lmm(Yield ~ 1 + (1|Batch), ds);
 @test_throws DimensionMismatch MixedModels.getθ!(Array(Float64, (2,)), modl)
 @test_throws DimensionMismatch setθ!(modl, [0., 1.])
 
-@test_throws DimensionMismatch LinAlg.Ac_ldiv_B!(UpperTriangular(fm3.R[1, 1]), ones(30, 1))
+modl = lmm(Reaction ~ 1 + Days + (1 + Days | Subject), slp)
+@test_throws DimensionMismatch LinAlg.Ac_ldiv_B!(UpperTriangular(modl.R[1, 1]), ones(30, 1))
 
 const tri = LowerTriangular(eye(3))
 const hblk = MixedModels.HBlkDiag(ones(2,3,2))
