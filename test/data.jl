@@ -1,4 +1,4 @@
-using CategoricalArrays, DataArrays, DataFrames
+using DataArrays, DataFrames
 ## Dyestuff data from lme4
 const ds = DataFrame(Yield = [1545.,1440.,1440.,1520.,1580.,1540.,1555.,1490.,1560.,1495.,
                               1595.,1550.,1605.,1510.,1560.,1445.,1440.,1595.,1465.,1545.,
