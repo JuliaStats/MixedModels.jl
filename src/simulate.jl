@@ -24,6 +24,40 @@ function bootstrap!{T}(r::Matrix{T}, m::LinearMixedModel{T}, f!::Function;
 end
 
 """
+    bootstrap{T}(N::Integer, m::LinearMixedModel{T},
+        β::Vector{T}=fixef(m), σ::T=sdest(m), θ::Vector{T}=getθ(m))
+
+Perform `N` parametric bootstrap replication fits of `m`, returning the
+deviances, variance estimates, fixed-effects estimates and covariance parameters.
+
+# Named Arguments
+
+`β::Vector{T}`, `σ::T`, and `θ::Vector{T}` are the values of the parameters in `m`
+for simulation of the responses.
+"""
+function bootstrap{T}(N::Integer, m::LinearMixedModel{T},
+    β::Vector{T}=fixef(m), σ::T=sdest(m), θ::Vector{T}=getθ(m))
+    y₀ = copy(model_response(m)) # to restore original state of m
+    p = length(fixef(m))
+    length(β) == p || throw(DimensionMismatch("length(β) should be $p"))
+    k = length(getθ(m))
+    length(θ) == k || throw(DimensionMismatch("length(θ) should be $k"))
+    devs = Array(T, (N,))
+    vars = Array(T, (N,))
+    βs = Array(T, (p, N))
+    θs = Array(T, (k, N))
+    for i in 1 : N
+        refit!(simulate!(m, β = β, σ = σ, θ = θ))
+        devs[i] = deviance(m)
+        vars[i] = varest(m)
+        fixef!(view(βs, :, i), m)
+        getθ!(view(θs, :, i), m)
+    end
+    refit!(m, y₀)               # restore original state of m
+    devs, vars, βs, θs
+end
+
+"""
     reevaluateAend!(m::LinearMixedModel)
 
 Reevaluate the last column of `m.A` from `m.trms`.  This function should be called
