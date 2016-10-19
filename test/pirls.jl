@@ -20,7 +20,7 @@ end
 @testset "cbpp" begin
     cbpp = readtable(joinpath(dirname(@__FILE__), "data", "cbpp.csv.gz"), makefactors=true)
     for c in [:herd, :period]
-        cbpp[c] = categorical(oftype(Int8[], cbpp[c]))
+        cbpp[c] = pool(oftype(Int8[], cbpp[c]))
     end
     for c in [:incidence, :size]
         cbpp[c] = oftype(Int8[], cbpp[c])

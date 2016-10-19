@@ -1,15 +1,15 @@
-using Compat, DataFrames
+using CategoricalArrays, DataArrays, DataFrames
 ## Dyestuff data from lme4
 const ds = DataFrame(Yield = [1545.,1440.,1440.,1520.,1580.,1540.,1555.,1490.,1560.,1495.,
                               1595.,1550.,1605.,1510.,1560.,1445.,1440.,1595.,1465.,1545.,
                               1595.,1630.,1515.,1635.,1625.,1520.,1455.,1450.,1480.,1445.],
-                     Batch = categorical(Compat.repeat('A' : 'F', inner = 5)))
+                     Batch = pool(repeat('A' : 'F', inner = 5)))
 
 ## Dyestuff2 data from lme4
 const ds2 = DataFrame(Yield = [7.298,3.846,2.434,9.566,7.99,5.22,6.556,0.608,11.788,-0.892,
                                0.11, 10.386,13.434,5.51,8.166,2.212,4.852,7.092,9.288,4.98,
                                0.282,9.014,4.458,9.446,7.198,1.722,4.782,8.106,0.758,3.758],
-                      Batch = categorical(Compat.repeat('A' : 'F', inner = 5)))
+                      Batch = pool(string.(repeat('A' : 'F', inner = 5))))
 
 ## sleepstudy data from lme4
 
@@ -40,11 +40,11 @@ const slp = DataFrame(Reaction =
                        272.4428,277.8989,281.7895,279.1705,284.512,259.2658,304.6306,
                        350.7807,369.4692,269.4117,273.474,297.5968,310.6316,287.1726,
                        329.6076,334.4818,343.2199,369.1417,364.1236],
-                      Days = Compat.repeat(0 : 9, outer = 18),
-                      Subject = categorical(Compat.repeat(1 : 18, inner = 10)))
+                      Days = repeat(0 : 9, outer = 18),
+                      Subject = pool(repeat(1 : 18, inner = 10)))
 
-const bb = Compat.repeat('A' : 'J', inner = 6)
-const cc = Compat.repeat('a' : 'c', inner = 2, outer = 10)
+const bb = repeat('A' : 'J', inner = 6)
+const cc = repeat('a' : 'c', inner = 2, outer = 10)
 
 ## Pastes data from the lme4 package
 const psts = DataFrame(Strength = [62.8,62.6,60.1,62.3,62.7,63.1,60.0,61.4,57.5,56.9,61.1,58.9,
@@ -52,9 +52,9 @@ const psts = DataFrame(Strength = [62.8,62.6,60.1,62.3,62.7,63.1,60.0,61.4,57.5,
                                    55.1,55.1,54.7,54.2,58.8,57.5,63.4,64.9,59.3,58.1,60.5,60.0,
                                    62.5,62.6,61.0,58.7,56.9,57.7,59.2,59.4,65.2,66.0,64.8,64.1,
                                    54.8,54.8,64.0,64.0,57.7,56.8,58.3,59.3,59.2,59.2,58.9,56.6],
-                       Batch = categorical(bb),
-                       Cask = categorical(cc),
-                       Sample = categorical(Compat.ASCIIString[string(b, c) for (b,c) in zip(bb,cc)]))
+                       Batch = pool(bb),
+                       Cask = pool(cc),
+                       Sample = pool(String[string(b, c) for (b,c) in zip(bb,cc)]))
 
 ## Penicillin data from the lme4 package
 const pen = DataFrame(Diameter = [27,23,26,23,23,21,27,23,26,23,23,21,25,21,25,24,24,20,26,23,25,
@@ -64,7 +64,7 @@ const pen = DataFrame(Diameter = [27,23,26,23,23,21,27,23,26,23,23,21,25,21,25,2
                                   26,23,25,24,24,22,25,22,25,23,23,20,25,21,24,23,23,20,25,22,24,
                                   23,23,19,24,21,23,21,21,19,26,23,26,24,24,21,25,21,24,22,22,18,
                                   25,22,25,22,22,20,24,21,24,22,24,19,24,21,24,22,21,18],
-                      Plate = categorical(Compat.repeat('a' : 'x', inner = 6)),
-                      Sample = categorical(Compat.repeat(collect('A' : 'F'), outer = 24)))
+                      Plate = pool(repeat('a' : 'x', inner = 6)),
+                      Sample = pool(repeat(collect('A' : 'F'), outer = 24)))
 
 ## InstEval data from the lme4 package

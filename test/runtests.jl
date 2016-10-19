@@ -1,4 +1,4 @@
-using DataFrames, Feather, MixedModels, Base.Test
+using CategoricalArrays, DataArrays, DataFrames, Feather, MixedModels, Base.Test
 
 include(joinpath(dirname(@__FILE__), "data.jl"))
 #ds = Feather.read(joinpath(dirname(@__FILE__), "data", "Dyestuff.feather"))
