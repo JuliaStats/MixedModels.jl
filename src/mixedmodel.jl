@@ -166,7 +166,7 @@ function ranef(m::MixedModel; uscale=false, named=false)
     vnmd = NamedArray.(v)
     for (trm, vnm) in zip(trms, vnmd)
         setnames!(vnm, trm.cnms, 1)
-        setnames!(vnm, levs(trm.f), 2)
+        setnames!(vnm, string.(levs(trm)), 2)
     end
     vnmd
 end

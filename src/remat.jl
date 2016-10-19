@@ -66,29 +66,23 @@ end
 
 Base.eltype(R::ReMat) = eltype(R.z)
 
-function Base.copy!(d::CategoricalVector, s::CategoricalVector)
-    levels!(d, CategoricalArrays.levels(s))
-    copy!(d.refs, s.refs)
-    d
-end
+#function Base.copy!(d::PooledDataVector, s::PooledDataVector)
+#    setlevels!(d, DataArrays.levels(s))
+#    copy!(d.refs, s.refs)
+#    d
+#end
 
-function Base.copy!(d::PooledDataVector, s::PooledDataVector)
-    setlevels!(d, DataArrays.levels(s))
-    copy!(d.refs, s.refs)
-    d
-end
+#function Base.copy!{T}(d::ScalarReMat{T}, s::ScalarReMat{T})
+#    copy!(d.f, s.f)
+#    copy!(d.z, s.z)
+#    d
+#end
 
-function Base.copy!{T}(d::ScalarReMat{T}, s::ScalarReMat{T})
-    copy!(d.f, s.f)
-    copy!(d.z, s.z)
-    d
-end
-
-function Base.copy!{T}(d::VectorReMat{T}, s::VectorReMat{T})
-    copy!(d.f, s.f)
-    copy!(d.z, s.z)
-    d
-end
+#function Base.copy!{T}(d::VectorReMat{T}, s::VectorReMat{T})
+#    copy!(d.f, s.f)
+#    copy!(d.z, s.z)
+#    d
+#end
 
 """
     vsize(A::ReMat)

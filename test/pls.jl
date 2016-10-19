@@ -98,6 +98,7 @@ end
     @test length(u3) == 1
     @test size(u3[1]) == (2,18)
     @test_approx_eq_eps u3[1][1,1] 3.030300122575336 1.e-3
+    u3n = ranef(fm, uscale=true, named=true)
 
     b3 = ranef(fm)
     @test length(b3) == 1

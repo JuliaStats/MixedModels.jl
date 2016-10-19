@@ -395,7 +395,9 @@ function reweight!{T}(m::LinearMixedModel{T}, weights::Vector{T})
         d[i] = sqrt(weights[i])
     end
     for j in eachindex(trms)
-        A_mul_B!(sqrtwts, copy!(wttrms[j], trms[j]))
+        wtj = wttrms[j]
+        isa(wtj, ReMat) ? copy!(wtj.z, trms[j].z) : copy!(wtj, trms[j])
+        A_mul_B!(sqrtwts, wtj)
     end
     for j in 1 : size(A, 2), i in 1 : j
         Ac_mul_B!(A[i, j], wttrms[i], wttrms[j])
