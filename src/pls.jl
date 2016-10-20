@@ -229,6 +229,21 @@ function StatsBase.fit!(m::LinearMixedModel, verbose::Bool=false, optimizer::Sym
     m
 end
 
+function fitted!{T}(v::AbstractArray{T}, m::LinearMixedModel{T})
+    ## FIXME: Create and use `effects(m) -> β, b` w/o calculating β twice
+    trms = m.trms
+    A_mul_B!(vec(v), trms[end - 1], fixef(m))
+    b = ranef(m)
+    for j in eachindex(b)
+        unscaledre!(vec(v), trms[j], b[j])
+    end
+    v
+end
+
+StatsBase.fitted{T}(m::LinearMixedModel{T}) = fitted!(Array(T, (size(m.trms[end], 1),)), m)
+
+StatsBase.residuals(m::LinearMixedModel) = model_response(m) .- fitted(m)
+
 """
     lowerbd(m::LinearMixedModel)
 
