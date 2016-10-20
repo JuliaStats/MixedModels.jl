@@ -186,10 +186,10 @@ end
     @test isapprox(objective(fm1), 237585.5534151694, atol = 1e-3)
     ftd1 = fitted(fm1);
     @test size(ftd1) == (73421,)
-    @test isapprox(ftd1[1], 3.1783062136367723, atol = 1e-5)
+    @test isapprox(ftd1[1], 3.19745, atol = 1e-4)
     resid1 = residuals(fm1);
     @test size(resid1) == (73421,)
-    @test isapprox(resid1[1], 1.8216937863632277, atol = 1e-5)
+    @test isapprox(resid1[1], 1.8025537831086234, atol = 1e-5)
 
     fm2 = fit!(lmm(y ~ 1 + service + (1 | s) + (1 | d) + (1 | dept), InstEval));
     @test size(fm2) == (73421,2,4114,3)

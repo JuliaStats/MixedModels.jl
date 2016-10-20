@@ -105,23 +105,21 @@ function grplevels(m::MixedModel)
 end
 
 """
-    ranef!{T}(v::Vector{Matrix{T}}, m::MixedModel{T}, uscale::Bool = false)
+    ranef!{T}(v::Vector{Matrix{T}}, m::MixedModel{T}, β, uscale::Bool)
 
 Overwrites `v` with the conditional modes of the random effects for `m`.
 
 If `uscale` is `true` the random effects are on the spherical (i.e. `u`) scale, otherwise on the
 original scale
 """
-function ranef!(v::Vector, m::MixedModel, uscale)
+function ranef!{T}(v::Vector, m::LinearMixedModel{T}, β::AbstractArray{T}, uscale::Bool)
     R, Λ = m.R, m.Λ
     k = length(Λ)        # number of random-effects terms
     for j in 1:k
         copy!(v[j], R[j, end])
     end
-    rβ = R[k + 1, end]
-    if !isempty(rβ)      #  in the pirls! function for GLMMs want to skip this
-        β = vec(feR(m) \ rβ)
-        kp1 = k + 1
+    kp1 = k + 1
+    if !isempty(β)       #  in the pirls! function for GLMMs want to skip this
         for j in 1:k     # subtract the fixed-effects contribution
             BLAS.gemv!('N', -1.0, R[j, kp1], β, 1.0, vec(v[j]))
         end
@@ -130,9 +128,13 @@ function ranef!(v::Vector, m::MixedModel, uscale)
         Rjj = R[j, j]
         uj = vec(v[j])
         LinAlg.A_ldiv_B!(isa(Rjj, Diagonal) ? Rjj : UpperTriangular(Rjj), uj)
-        for i in 1:j - 1
-            ui = vec(v[i])
-            ui -= R[i, j] * uj
+        for i in 1:(j - 1)
+            Rij = R[i, j]
+            if isa(Rij, StridedMatrix{T})
+                BLAS.gemv!('N', -one(T), R[i, j], uj, one(T), vec(v[i]))
+            else
+                A_mul_B!(-one(T), R[i, j], uj, one(T), vec(v[i]))
+            end
         end
     end
     if !uscale
@@ -141,6 +143,10 @@ function ranef!(v::Vector, m::MixedModel, uscale)
         end
     end
     v
+end
+
+function ranef!(v::Vector, m::LinearMixedModel, uscale::Bool)
+    ranef!(v, m, feR(m) \ vec(m.R[end-1, end]), uscale)
 end
 
 """
