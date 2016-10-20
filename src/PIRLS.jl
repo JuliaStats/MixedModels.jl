@@ -211,8 +211,9 @@ function setβθ!{T}(m::GeneralizedLinearMixedModel{T}, v::Vector{T})
     β, lm, offset₀, X, rr = m.β, m.LMM, m.offset₀, m.X, m.resp
     lb = length(β)
     copy!(β, view(v, 1 : lb))
+    isempty(offset₀) ? BLAS.gemv!('N', one(T), X, β, zero(T), rr.offset) :
+        BLAS.gemv!('N', one(T), X, β, one(T), copy!(rr.offset, offset₀))
     setθ!(m.LMM, copy!(m.θ, view(v, (lb + 1) : length(v))))
-    BLAS.gemv!('N', one(T), X, β, one(T), isempty(offset₀) ? fill!(rr.offset, 0) : copy!(rr.offset, offset₀))
     m
 end
 
