@@ -7,8 +7,9 @@ nlower{T}(A::LowerTriangular{T, Matrix{T}}) = nlower(LinAlg.checksquare(A))
 Overwrite `v` with the elements of the lower triangle of `A` (column-major ordering)
 """
 function getθ!{T}(v::AbstractVector{T}, A::LowerTriangular{T,Matrix{T}})
-    n, Ad = LinAlg.checksquare(A), A.data
-    if length(v) ≠ nlower(n)
+    Ad = A.data
+    n, m = size(Ad)
+    if n ≠ m || length(v) ≠ nlower(n)
         throw(DimensionMismatch("length(v) = $(length(v)) should be $(nlower(n))"))
     end
     k = 0

@@ -16,8 +16,8 @@ The representation of the model matrix for a scalar random-effects term
 * `fnm`: the name of the grouping factor as a `Symbol`
 * `cnms`: a `Vector` of column names
 """
-immutable ScalarReMat{T <: AbstractFloat} <: ReMat
-    f::Union{NullableCategoricalVector,CategoricalVector,PooledDataVector}
+immutable ScalarReMat{T<:AbstractFloat,V,R} <: ReMat
+    f::Union{NullableCategoricalVector{V,R},CategoricalVector{V,R},PooledDataVector{V,R}}
     z::Vector{T}
     fnm::Symbol
     cnms::Vector
@@ -34,8 +34,8 @@ The representation of the model matrix for a vector-valued random-effects term
 * `fnm`: the name of the grouping factor as a `Symbol`
 * `cnms`: a `Vector` of column names (row names after transposition) of `z`
 """
-immutable VectorReMat{T <: AbstractFloat} <: ReMat
-    f::Union{NullableCategoricalVector,CategoricalVector,PooledDataVector}
+immutable VectorReMat{T<:AbstractFloat,V,R} <: ReMat
+    f::Union{NullableCategoricalVector{V,R},CategoricalVector{V,R},PooledDataVector{V,R}}
     z::Matrix{T}
     fnm::Symbol
     cnms::Vector
@@ -65,24 +65,6 @@ function remat(e::Expr, df::DataFrame)
 end
 
 Base.eltype(R::ReMat) = eltype(R.z)
-
-#function Base.copy!(d::PooledDataVector, s::PooledDataVector)
-#    setlevels!(d, DataArrays.levels(s))
-#    copy!(d.refs, s.refs)
-#    d
-#end
-
-#function Base.copy!{T}(d::ScalarReMat{T}, s::ScalarReMat{T})
-#    copy!(d.f, s.f)
-#    copy!(d.z, s.z)
-#    d
-#end
-
-#function Base.copy!{T}(d::VectorReMat{T}, s::VectorReMat{T})
-#    copy!(d.f, s.f)
-#    copy!(d.z, s.z)
-#    d
-#end
 
 """
     vsize(A::ReMat)
@@ -156,7 +138,8 @@ function Base.Ac_mul_B!{T}(α::Real, A::ReMat, B::StridedVecOrMat{T}, β::Real, 
     rr, zz = A.f.refs, A.z
     if isa(A, ScalarReMat)
         for j in 1 : k, i in 1 : n
-            R[rr[i], j] += α * zz[i] * B[i, j]
+            rri = rr[i]
+            R[rri, j] += α * zz[i] * B[i, j]
         end
     else
         l = size(zz, 1)
@@ -178,13 +161,14 @@ function Base.Ac_mul_B(A::ReMat, B::DenseVecOrMat)
     Ac_mul_B!(zeros(eltype(B), isa(B, Vector) ? (k,) : (k, size(B, 2))), A, B)
 end
 
-function Base.Ac_mul_B(A::ScalarReMat, B::ScalarReMat)
+function Base.Ac_mul_B{T}(A::ScalarReMat{T}, B::ScalarReMat{T})
     Az = A.z
     Ar = A.f.refs
     if is(A, B)
-        v = zeros(eltype(Az), nlevs(A))
+        v = zeros(T, nlevs(A))
         for i in eachindex(Ar)
-            v[Ar[i]] += abs2(Az[i])
+            Ari = Ar[i]
+            v[Ari] += abs2(Az[i])
         end
         return Diagonal(v)
     end

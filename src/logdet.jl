@@ -12,9 +12,10 @@ function LD(d::HBlkDiag)
     p, q, k = size(aa)
     pq = p * q
     dd = diagind(p, q)
-    r = sum(i -> log(aa[i]), dd)
-    for j in 1:(k - 1)
-        r += sum(i -> log(aa[i]), dd + j * pq)
+    r = sum(log(aa[i]) for i in dd)
+    for j in 2:k
+        dd += pq
+        r += sum(log(aa[i]) for i in dd)
     end
     r
 end
