@@ -172,3 +172,26 @@ end
     @test_approx_eq_eps varest(fm) 0.6780020742644107 1.e-4
     @test_approx_eq_eps logdet(fm) 101.0381339953986 1.e-3
 end
+
+@testset "InstEval" begin
+    InstEval = readtable(joinpath(dirname(@__FILE__), "data", "InstEval.csv.gz"))
+    InstEval[:dept] = pool(InstEval[:dept])
+    fm1 = lmm(y ~ 1 + service*dept + (1 | s) + (1 | d), InstEval)
+    @test size(fm1) == (73421, 28, 4100, 2)
+    @test getθ(fm1) == ones(2)
+    @test lowerbd(fm1) == zeros(2)
+
+    fit!(fm1);
+
+    @test isapprox(objective(fm1), 237585.5534151694, atol = 1e-3)
+    ftd1 = fitted(fm1);
+    @test size(ftd1) == (73421,)
+    @test isapprox(ftd1[1], 3.1783062136367723, atol = 1e-5)
+    resid1 = residuals(fm1);
+    @test size(resid1) == (73421,)
+    @test isapprox(resid1[1], 1.8216937863632277, atol = 1e-5)
+
+    fm2 = fit!(lmm(y ~ 1 + service + (1 | s) + (1 | d) + (1 | dept), InstEval));
+    @test size(fm2) == (73421,2,4114,3)
+    @test isapprox(objective(fm2), 237721.7687745563, atol = 1e-3)
+end
