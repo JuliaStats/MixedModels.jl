@@ -97,7 +97,7 @@ Update `m.η`, `m.μ`, etc., install the working response and working weights in
 """
 function LaplaceDeviance!(m::GeneralizedLinearMixedModel)
     updateη!(m)
-    wrkresp(vec(m.LMM.trms[end]), m.resp)
+    GLM.wrkresp!(vec(m.LMM.trms[end]), m.resp)
     reweight!(m.LMM, m.resp.wrkwt)
     LaplaceDeviance(m)
 end
