@@ -19,6 +19,7 @@ Members:
 immutable GeneralizedLinearMixedModel{T <: AbstractFloat} <: MixedModel
     LMM::LinearMixedModel{T}
     β::Vector{T}
+    β₀::Vector{T}
     θ::Vector{T}
     b::Vector{Matrix{T}}
     u::Vector{Matrix{T}}
@@ -49,7 +50,8 @@ function glmm(f::Formula, fr::AbstractDataFrame, d::Distribution, l::Link; wt=[]
             # fit a glm to the fixed-effects only
     gl = glm(LMM.trms[end - 1], y, d, l; wts = wts, offset = zeros(y))
     r = gl.rr
-    res = GeneralizedLinearMixedModel(LMM, coef(gl), getθ(LMM), copy.(u), u,
+    β = coef(gl)
+    res = GeneralizedLinearMixedModel(LMM, β, copy(β), getθ(LMM), copy.(u), u,
         zeros.(u), gl.rr, similar(y), wts)
     setβθ!(res, vcat(coef(gl), getθ(LMM)))
     LaplaceDeviance!(res)
@@ -102,24 +104,6 @@ end
 
 lowerbd(m::GeneralizedLinearMixedModel) = vcat(fill(-Inf, size(m.β)), lowerbd(m.LMM))
 
-function restoreX!(m::GeneralizedLinearMixedModel)
-    if !isempty(m.LMM.R[end - 1, end - 1])
-        return m
-    end
-    lm, X = m.LMM, m.X
-    A, R, trms, k = lm.A, lm.R, lm.trms, length(lm.Λ)
-    kp1 = k + 1
-    trms[kp1] = X
-    lm.wttrms[kp1] = copy(X)
-    for i in 1 : kp1
-        A[i, kp1] = trms[i]'X
-        R[i, kp1] = copy(A[i, kp1])
-    end
-    A[kp1, end] = X'trms[end]
-    R[kp1, end] = copy(A[kp1, end])
-    reweight!(lm, m.resp.wrkwt)
-end
-
 """
     updateη!(m::GeneralizedLinearMixedModel)
 
@@ -141,13 +125,19 @@ end
 
 Use Penalized Iteratively Reweighted Least Squares (PIRLS) to determine the conditional
 modes of the random effects.
+
+When `varyβ` is true both `u` and `β` are optimized with PIRLS.  Otherwise only `u` is
+optimized and `β` is held fixed.
+
+Passing `verbose = true` provides verbose output of the iterations.
 """
 function pirls!{T}(m::GeneralizedLinearMixedModel{T}, varyβ::Bool=false, verbose::Bool=false)
     iter, maxiter, obj = 0, 100, T(-Inf)
-    u₀, u, β, lm = m.u₀, m.u, m.β, m.LMM
+    u₀, u, β, β₀, lm = m.u₀, m.u, m.β, m.β₀, m.LMM
     for j in eachindex(u)         # start from u all zeros
         copy!(u₀[j], fill!(u[j], 0))
     end
+    varyβ && copy!(β₀, β)
     obj₀ = LaplaceDeviance!(m) * 1.0001
     verbose && @show(varyβ, obj₀, β)
 
@@ -168,11 +158,12 @@ function pirls!{T}(m::GeneralizedLinearMixedModel{T}, varyβ::Bool=false, verbos
             end
             for i in eachindex(u)
                 ui = u[i]
-                ui₀ = u₀[i]
-                for j in eachindex(ui)
-                    ui[j] += ui₀[j]
-                    ui[j] *= 0.5
-                end
+                ui .+= u₀[i]
+                ui ./= 2
+            end
+            if varyβ
+                β .+= β₀
+                β ./= 2
             end
             obj = LaplaceDeviance!(m)
             verbose && @show(nhalf, obj)
@@ -180,9 +171,8 @@ function pirls!{T}(m::GeneralizedLinearMixedModel{T}, varyβ::Bool=false, verbos
         if isapprox(obj, obj₀; atol = 0.0001)
             break
         end
-        for i in eachindex(u)
-            copy!(u₀[i], u[i])
-        end
+        copy!.(u₀, u)
+        copy!(β₀, β)
         obj₀ = obj
     end
     obj
@@ -197,13 +187,17 @@ Set the parameter vector, `:βθ`, of `m` to `v`.
 """
 function setβθ!{T}(m::GeneralizedLinearMixedModel{T}, v::Vector{T})
     setβ!(m, v)
-    setθ!(m.LMM, copy!(m.θ, view(v, (length(m.β) + 1) : length(v))))
-    m
+    setθ!(m, view(v, (length(m.β) + 1) : length(v)))
 end
 
 function setβ!{T}(m::GeneralizedLinearMixedModel{T}, v::Vector{T})
     β = m.β
     copy!(β, view(v, 1 : length(β)))
+    m
+end
+
+function setθ!{T}(m::GeneralizedLinearMixedModel, v::AbstractVector{T})
+    setθ!(m.LMM, copy!(m.θ, v))
     m
 end
 
@@ -269,27 +263,27 @@ function StatsBase.fit!(m::GeneralizedLinearMixedModel, verbose::Bool=false, opt
 #        end
 #    end
     m.LMM.opt = OptSummary(βθ,xmin,fmin,feval,optimizer)
-    restoreX!(m)
     if verbose
         println(ret)
     end
     m
 end
 
-function fitβ!(m::GeneralizedLinearMixedModel, verbose::Bool=false, optimizer::Symbol=:LN_BOBYQA)
-    β, lm = m.β, m.LMM
-    opt = NLopt.Opt(optimizer, length(β))
+function fitθ!(m::GeneralizedLinearMixedModel, verbose::Bool=false)
+    lm = m.LMM
+    θ = getθ(lm)
+    opt = NLopt.Opt(:LN_BOBYQA, length(θ))
     NLopt.ftol_rel!(opt, 1e-12)   # relative criterion on deviance
     NLopt.ftol_abs!(opt, 1e-8)    # absolute criterion on deviance
     NLopt.xtol_abs!(opt, 1e-10)   # criterion on parameter value changes
-#    NLopt.lower_bounds!(opt, vcat(fill!(similar(β), -Inf))
+    NLopt.lower_bounds!(opt, lowerbd(lm))
     feval = 0
     function obj(x::Vector{Float64}, g::Vector{Float64})
         if length(g) ≠ 0
             error("gradient not defined for this model")
         end
         feval += 1
-        setβ!(m, x) |> pirls!
+        pirls!(setθ!(m, x), true)
     end
     if verbose
         function vobj(x::Vector{Float64}, g::Vector{Float64})
@@ -297,7 +291,7 @@ function fitβ!(m::GeneralizedLinearMixedModel, verbose::Bool=false, optimizer::
                 error("gradient not defined for this model")
             end
             feval += 1
-            val = setβ!(m, x) |> pirls!
+            val = pirls!(setθ!(m, x), true, true)
             print("f_$feval: $(round(val,5)), [")
             showcompact(x[1])
             for i in 2:length(x) print(","); showcompact(x[i]) end
@@ -308,33 +302,33 @@ function fitβ!(m::GeneralizedLinearMixedModel, verbose::Bool=false, optimizer::
     else
         NLopt.min_objective!(opt, obj)
     end
-    fmin, xmin, ret = NLopt.optimize(opt, β)
+    fmin, xmin, ret = NLopt.optimize(opt, θ)
     ## very small parameter values often should be set to zero
-#    xmin1 = copy(xmin)
-#    modified = false
-#    for i in eachindex(xmin1)
-#        if 0. < abs(xmin1[i]) < 1.e-5
-#            modified = true
-#            xmin1[i] = 0.
-#        end
-#    end
-#    if modified  # branch not tested
-#        m[:θ] = xmin1
-#        ff = objective(m)
-#        if ff ≤ (fmin + 1.e-5)  # zero components if increase in objective is negligible
-#            fmin = ff
-#            copy!(xmin,xmin1)
-#        else
-#            m[:θ] = xmin
-#        end
-#    end
-    m.LMM.opt = OptSummary(β,xmin,fmin,feval,optimizer)
-#    restoreX!(m)
+    xmin1 = copy(xmin)
+    modified = false
+    for i in eachindex(xmin1)
+        if 0. < abs(xmin1[i]) < 1.e-5
+            modified = true
+            xmin1[i] = 0.
+        end
+    end
+    if modified  # branch not tested
+        setΘ!(m, xmin1)
+        ff = objective(m)
+        if ff ≤ (fmin + 1.e-5)  # zero components if increase in objective is negligible
+            fmin = ff
+            copy!(xmin,xmin1)
+        else
+            m[:θ] = xmin
+        end
+    end
+    m.LMM.opt = OptSummary(θ, xmin, fmin, feval, :LN_BOBYQA)
     if verbose
         println(ret)
     end
     m
 end
+
 
 function VarCorr(m::GeneralizedLinearMixedModel)
     Λ, trms = m.LMM.Λ, m.LMM.trms
