@@ -164,7 +164,7 @@ end
 function Base.Ac_mul_B{T}(A::ScalarReMat{T}, B::ScalarReMat{T})
     Az = A.z
     Ar = A.f.refs
-    if is(A, B)
+    if A === B
         v = zeros(T, nlevs(A))
         for i in eachindex(Ar)
             Ari = Ar[i]
@@ -202,7 +202,7 @@ function Base.Ac_mul_B!{T}(C::HBlkDiag{T}, A::VectorReMat{T}, B::VectorReMat{T})
     c, a, r = C.arr, A.z, A.f.refs
     _, m, n = size(c)
     fill!(c, 0)
-    if !is(A, B)
+    if A !== B
         throw(ArgumentError("Currently defined only for A === B"))
     end
     for k in eachindex(r)
@@ -236,7 +236,7 @@ function Base.Ac_mul_B!{T}(C::Matrix{T}, A::ScalarReMat{T}, B::ScalarReMat{T})
 end
 
 function Base.Ac_mul_B{T}(A::VectorReMat{T}, B::VectorReMat{T})
-    if is(A, B)
+    if A === B
         l = size(A.z, 1)
         return Ac_mul_B!(HBlkDiag(Array(T, (l, l, length(A.f.pool)))), A, B)
     end
