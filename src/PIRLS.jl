@@ -120,6 +120,8 @@ function updateη!(m::GeneralizedLinearMixedModel)
     m
 end
 
+average{T<:AbstractFloat}(a::T, b::T) = (a + b) / 2
+
 """
     pirls!(m::GeneralizedLinearMixedModel)
 
@@ -157,14 +159,9 @@ function pirls!{T}(m::GeneralizedLinearMixedModel{T}, varyβ::Bool=false, verbos
                 break
             end
             for i in eachindex(u)
-                ui = u[i]
-                ui .+= u₀[i]
-                ui ./= 2
+                map!(average, u[i], u[i], u₀[i])
             end
-            if varyβ
-                β .+= β₀
-                β ./= 2
-            end
+            varyβ && map!(average, β, β, β₀)
             obj = LaplaceDeviance!(m)
             verbose && @show(nhalf, obj)
         end
@@ -208,30 +205,27 @@ sdest{T <: AbstractFloat}(m::GeneralizedLinearMixedModel{T}) = one(T)
 
 Optimize the objective function for `m`
 """
-function StatsBase.fit!(m::GeneralizedLinearMixedModel, verbose::Bool=false, optimizer::Symbol=:LN_BOBYQA)
+function StatsBase.fit!{T}(m::GeneralizedLinearMixedModel{T}, verbose::Bool=false,
+    nAGQ::Integer=1, optimizer::Symbol=:LN_BOBYQA)
     β, lm = m.β, m.LMM
-    βθ = vcat(β, getθ(lm))
-#    @show(βθ)
-    opt = NLopt.Opt(optimizer, length(βθ))
+    pars = nAGQ == 0 ? getθ(lm) : vcat(β, getθ(lm))
+    lb = lowerbd(nAGQ == 0 ? lm : m)
+    opt = NLopt.Opt(optimizer, length(pars))
     NLopt.ftol_rel!(opt, 1e-12)   # relative criterion on deviance
     NLopt.ftol_abs!(opt, 1e-8)    # absolute criterion on deviance
     NLopt.xtol_abs!(opt, 1e-10)   # criterion on parameter value changes
-    NLopt.lower_bounds!(opt, vcat(fill!(similar(β), -Inf), lowerbd(lm)))
+    NLopt.lower_bounds!(opt, lb)
     feval = 0
-    function obj(x::Vector{Float64}, g::Vector{Float64})
-        if length(g) ≠ 0
-            error("gradient not defined for this model")
-        end
+    function obj(x::Vector{T}, g::Vector{T})
+        length(g) == 0 || error("gradient not defined for this model")
         feval += 1
-        setβθ!(m, x) |> pirls!
+        nAGQ == 0 ? pirls!(setθ!(m, x), true) : pirls!(setβθ!(m, x))
     end
     if verbose
-        function vobj(x::Vector{Float64}, g::Vector{Float64})
-            if length(g) ≠ 0
-                error("gradient not defined for this model")
-            end
+        function vobj(x::Vector{T}, g::Vector{T})
+            length(g) == 0 || error("gradient not defined for this model")
             feval += 1
-            val = setβθ!(m, x) |> pirls!
+            val = nAGQ == 0 ? pirls!(setθ!(m, x), true, true) : pirls!(setβθ!(m, x))
             print("f_$feval: $(round(val,5)), [")
             showcompact(x[1])
             for i in 2:length(x) print(","); showcompact(x[i]) end
@@ -242,93 +236,29 @@ function StatsBase.fit!(m::GeneralizedLinearMixedModel, verbose::Bool=false, opt
     else
         NLopt.min_objective!(opt, obj)
     end
-    fmin, xmin, ret = NLopt.optimize(opt, βθ)
-    ## very small parameter values often should be set to zero
-#    xmin1 = copy(xmin)
-#    modified = false
-#    for i in eachindex(xmin1)
-#        if 0. < abs(xmin1[i]) < 1.e-5
-#            modified = true
-#            xmin1[i] = 0.
-#        end
-#    end
-#    if modified  # branch not tested
-#        m[:θ] = xmin1
-#        ff = objective(m)
-#        if ff ≤ (fmin + 1.e-5)  # zero components if increase in objective is negligible
-#            fmin = ff
-#            copy!(xmin,xmin1)
-#        else
-#            m[:θ] = xmin
-#        end
-#    end
-    m.LMM.opt = OptSummary(βθ,xmin,fmin,feval,optimizer)
-    if verbose
-        println(ret)
-    end
-    m
-end
-
-function fitθ!(m::GeneralizedLinearMixedModel, verbose::Bool=false)
-    lm = m.LMM
-    θ = getθ(lm)
-    opt = NLopt.Opt(:LN_BOBYQA, length(θ))
-    NLopt.ftol_rel!(opt, 1e-12)   # relative criterion on deviance
-    NLopt.ftol_abs!(opt, 1e-8)    # absolute criterion on deviance
-    NLopt.xtol_abs!(opt, 1e-10)   # criterion on parameter value changes
-    NLopt.lower_bounds!(opt, lowerbd(lm))
-    feval = 0
-    function obj(x::Vector{Float64}, g::Vector{Float64})
-        if length(g) ≠ 0
-            error("gradient not defined for this model")
-        end
-        feval += 1
-        pirls!(setθ!(m, x), true)
-    end
-    if verbose
-        function vobj(x::Vector{Float64}, g::Vector{Float64})
-            if length(g) ≠ 0
-                error("gradient not defined for this model")
-            end
-            feval += 1
-            val = pirls!(setθ!(m, x), true, true)
-            print("f_$feval: $(round(val,5)), [")
-            showcompact(x[1])
-            for i in 2:length(x) print(","); showcompact(x[i]) end
-            println("]")
-            val
-        end
-        NLopt.min_objective!(opt, vobj)
-    else
-        NLopt.min_objective!(opt, obj)
-    end
-    fmin, xmin, ret = NLopt.optimize(opt, θ)
-    ## very small parameter values often should be set to zero
-    xmin1 = copy(xmin)
-    modified = false
+    fmin, xmin, ret = NLopt.optimize(opt, pars)
+    ## check if very small parameter values bounded below by zero can be set to zero
+    xmin1, fev, modified = copy(xmin), feval, false
     for i in eachindex(xmin1)
-        if 0. < abs(xmin1[i]) < 1.e-5
+        if lb[i] == 0 && 0 < xmin1[i] < 1.e-4
             modified = true
             xmin1[i] = 0.
         end
     end
-    if modified  # branch not tested
-        setΘ!(m, xmin1)
-        ff = objective(m)
-        if ff ≤ (fmin + 1.e-5)  # zero components if increase in objective is negligible
-            fmin = ff
-            copy!(xmin,xmin1)
+    if modified
+        if (zeroobj = obj(xmin1, T[])) ≤ (fmin + 1.e-5)
+            fmin = zeroobj
+            copy!(xmin, xmin1)
         else
-            m[:θ] = xmin
+            obj(xmin, T[])
         end
     end
-    m.LMM.opt = OptSummary(θ, xmin, fmin, feval, :LN_BOBYQA)
+    m.LMM.opt = OptSummary(pars, xmin, fmin, fev, optimizer)
     if verbose
         println(ret)
     end
     m
 end
-
 
 function VarCorr(m::GeneralizedLinearMixedModel)
     Λ, trms = m.LMM.Λ, m.LMM.trms
