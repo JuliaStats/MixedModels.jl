@@ -496,7 +496,7 @@ function Base.show(io::IO, vc::VarCorr)
     end
     cnmwd = max(6, maximum(map(strwidth, cnms))) + 1
     tt = vcat(stdm...)
-    vars = showoff(abs2(tt), :plain)
+    vars = showoff(abs2.(tt), :plain)
     stds = showoff(tt, :plain)
     varwd = 1 + max(length("Variance"), maximum(map(strwidth, vars)))
     stdwd = 1 + max(length("Std.Dev."), maximum(map(strwidth, stds)))
