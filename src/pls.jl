@@ -264,9 +264,7 @@ objective(m::LinearMixedModel) = logdet(m) + nobs(m) * (1 + log2π + log(varest(
 Overwrite `v` with the fixed-effects coefficients of model `m`
 """
 function fixef!{T}(v::AbstractVector{T}, m::LinearMixedModel{T})
-    if !isfit(m)
-        throw(ArgumentError("Model m has not been fit"))
-    end
+    !isfit(m) && throw(ArgumentError("Model m has not been fit"))
     A_ldiv_B!(feR(m), copy!(v, m.R[end - 1, end]))
 end
 
@@ -498,7 +496,7 @@ function Base.show(io::IO, vc::VarCorr)
     end
     cnmwd = max(6, maximum(map(strwidth, cnms))) + 1
     tt = vcat(stdm...)
-    vars = showoff(abs2(tt), :plain)
+    vars = showoff(abs2.(tt), :plain)
     stds = showoff(tt, :plain)
     varwd = 1 + max(length("Variance"), maximum(map(strwidth, vars)))
     stdwd = 1 + max(length("Std.Dev."), maximum(map(strwidth, stds)))

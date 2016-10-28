@@ -49,6 +49,9 @@ end
     @test_approx_eq_eps deviance(fm) 339.0218639362958 1.e-3
     simulate!(fm, θ = getθ(fm))
     @test_throws DimensionMismatch refit!(fm, zeros(29))
+    srand(1234321)
+    devs, vars, βs, θs = bootstrap(1000, fm)
+    @test length(devs) == 1000
 end
 
 @testset "Dyestuff2" begin

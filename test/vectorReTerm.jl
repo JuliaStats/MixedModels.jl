@@ -5,8 +5,9 @@
     Reaction = Array(slp[:Reaction])
 
     @test size(vf) == (180,36)
-    vrp = vf'vf
     @test (vf'ones(size(vf,1)))[1:4] == [10.,45,10,45]
+    vrp = vf'vf
+
     @test isa(vrp, MixedModels.HBlkDiag{Float64})
     @test eltype(vrp) == Float64
     @test size(vrp) == (36,36)
@@ -16,4 +17,9 @@
     @test view(MixedModels.inflate!(vrp).arr,:,:,1) == b1
     cf = cholfact(b1)
     @test triu!(view(cholfact!(vrp).arr,:,:,1)) == cf[:U]
+
+    D = Diagonal(Array(1.:180))
+    scaled = D * vf
+    @test scaled == A_mul_B!(D, vf)
+
 end
