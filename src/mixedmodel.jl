@@ -131,9 +131,9 @@ function ranef!{T}(v::Vector, m::LinearMixedModel{T}, β::AbstractArray{T}, usca
         for i in 1:(j - 1)
             Rij = R[i, j]
             if isa(Rij, StridedMatrix{T})
-                BLAS.gemv!('N', -one(T), R[i, j], uj, one(T), vec(v[i]))
+                BLAS.gemv!('N', -one(T), Rij, uj, one(T), vec(v[i]))
             else
-                A_mul_B!(-one(T), R[i, j], uj, one(T), vec(v[i]))
+                A_mul_B!(-one(T), Rij, uj, one(T), vec(v[i]))
             end
         end
     end
