@@ -210,7 +210,7 @@ Optimize the objective function for `m`
 function StatsBase.fit!{T}(m::GeneralizedLinearMixedModel{T}; verbose::Bool=false,
     nAGQ::Integer=1, optimizer::Symbol=:LN_BOBYQA)
     if nAGQ > 0
-        fit!(m; verbose=verbose, nAGQ=0, optimizer=optimizer)
+        fit!(m, verbose=verbose, nAGQ=0, optimizer=optimizer)
     end
     β, lm = m.β, m.LMM
     pars = nAGQ == 0 ? getθ(lm) : vcat(β, getθ(lm))
@@ -230,7 +230,7 @@ function StatsBase.fit!{T}(m::GeneralizedLinearMixedModel{T}; verbose::Bool=fals
         function vobj(x::Vector{T}, g::Vector{T})
             length(g) == 0 || error("gradient not defined for this model")
             feval += 1
-            val = nAGQ == 0 ? pirls!(setθ!(m, x), true, true) : pirls!(setβθ!(m, x))
+            val = nAGQ == 0 ? pirls!(setθ!(m, x), true) : pirls!(setβθ!(m, x))
             print("f_$feval: $(round(val,5)), [")
             showcompact(x[1])
             for i in 2:length(x) print(","); showcompact(x[i]) end

@@ -3,7 +3,8 @@ using Base.Test, DataFrames, MixedModels
 @testset "contra" begin
     contra = readtable(joinpath(dirname(@__FILE__), "data", "Contraception.csv.gz"), makefactors=true)
     contra[:age2] = map(abs2, contra[:age])
-    gm0 = fit!(glmm(use01 ~ 1 + age + age2 + urban + livch + (1 | urbdist), contra, Bernoulli()), false, 0)
+    gm0 = fit!(glmm(use01 ~ 1 + age + age2 + urban + livch + (1 | urbdist), contra, Bernoulli()),
+        nAGQ=0)
     @test isapprox(LaplaceDeviance(gm0), 2361.6572; atol = 0.001)
     gm1 = fit!(glmm(use01 ~ 1 + age + age2 + urban + livch + (1 | urbdist), contra, Bernoulli()));
     @test lowerbd(gm1) == push!(fill(-Inf, 7), 0.)
@@ -31,9 +32,9 @@ end
     gm2 = fit!(glmm(prop ~ 1 + period + (1 | herd), cbpp, Binomial(), LogitLink(); wt = cbpp[:size]));
 
     @test isapprox(LaplaceDeviance(gm2), 100.095856; atol = 0.0001)
-    @test isapprox(sumabs2(gm2.u[1]), 9.72305; atol = 0.0001)
-    @test isapprox(logdet(gm2), 16.901054; atol = 0.0001)
-    @test isapprox(sum(gm2.resp.devresid), 73.47143; atol = 0.001)
+    @test isapprox(sumabs2(gm2.u[1]), 9.72272; atol = 0.0001)
+    @test isapprox(logdet(gm2), 16.90231; atol = 0.0001)
+    @test isapprox(sum(gm2.resp.devresid), 73.47083; atol = 0.001)
     @test isapprox(loglikelihood(gm2), -92.02628; atol = 0.001)
     @test sdest(gm2) == 1
     @test varest(gm2) == 1
