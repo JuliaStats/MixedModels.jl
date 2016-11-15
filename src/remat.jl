@@ -154,7 +154,8 @@ function Base.Ac_mul_B!{T}(α::Real, A::ReMat, B::StridedVecOrMat{T}, β::Real, 
     R
 end
 
-Base.Ac_mul_B!{T}(R::StridedVecOrMat{T}, A::ReMat, B::StridedVecOrMat{T}) = Ac_mul_B!(one(T), A, B, zero(T), R)
+Base.Ac_mul_B!{T}(R::StridedVecOrMat{T}, A::ReMat, B::StridedVecOrMat{T}) =
+    Ac_mul_B!(one(T), A, B, zero(T), R)
 
 function Base.Ac_mul_B(A::ReMat, B::DenseVecOrMat)
     k = size(A, 2)
@@ -258,6 +259,30 @@ function Base.Ac_mul_B{T}(A::VectorReMat{T}, B::VectorReMat{T})
         append!(V, vec(view(Az, :, i) * view(Bz, :, i)'))
     end
     sparse(I, J, V)
+end
+
+function Base.Ac_mul_B!{T}(C::Matrix{T}, A::VectorReMat{T}, B::VectorReMat{T})
+    Az = A.z
+    Bz = B.z
+    if (m = size(Az, 2)) ≠ size(Bz, 2) || size(C, 1) ≠ size(A, 2) || size(C, 2) ≠ size(B, 2)
+        throw(DimensionMismatch("$m = size(Az,2) ≠ size(Bz,2) = $(size(Bz, 2))"))
+    end
+    fill!(C, zero(T))
+    a, b = size(Az,1), size(Bz, 1)
+    scr = Array(T, (a, b))
+    Ar, Br = A.f.refs, B.f.refs
+    for k in 1 : m
+        A_mul_Bc!(scr, view(Az, :, k), view(Bz, :, k))
+        ioffset = (Ar[k] - 1) * a
+        joffset = (Br[k] - 1) * b
+        for j in 1 : b
+            jj = joffset + j
+            for i in 1 : a
+                C[ioffset + i, jj] += scr[i, j]
+            end
+        end
+    end
+    C
 end
 
 function Base.Ac_mul_B!{T}(R::DenseVecOrMat{T}, A::DenseVecOrMat{T}, B::ReMat)

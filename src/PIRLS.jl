@@ -167,7 +167,7 @@ function pirls!{T}(m::GeneralizedLinearMixedModel{T}, varyβ::Bool=false, verbos
             obj = LaplaceDeviance!(m)
             verbose && @show(nhalf, obj)
         end
-        if isapprox(obj, obj₀; atol = 0.0001)
+        if isapprox(obj, obj₀; atol = 0.00001)
             break
         end
         copy!.(u₀, u)
@@ -203,9 +203,13 @@ end
 sdest{T <: AbstractFloat}(m::GeneralizedLinearMixedModel{T}) = one(T)
 
 """
-    fit!(m::GeneralizedLinearMixedModel[, verbose = false, optimizer=:LN_BOBYQA]])
+    fit!(m::GeneralizedLinearMixedModel[, verbose = false, nAGQ = 1, optimizer=:LN_BOBYQA]])
 
-Optimize the objective function for `m`
+Optimize the objective function for `m`.
+
+The `nAGQ` argument will eventually refer to the number of adaptive Gauss-Hermite
+quadrature points to use.  At present it is used as a flag, when nAGQ=0 a potentially
+much faster but slightly less accurate algorithm is used.
 """
 function StatsBase.fit!{T}(m::GeneralizedLinearMixedModel{T}; verbose::Bool=false,
     nAGQ::Integer=1, optimizer::Symbol=:LN_BOBYQA)
