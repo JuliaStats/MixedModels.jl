@@ -5,12 +5,13 @@ Generalized linear mixed-effects model representation
 
 Members:
 
-- `LMM`: a [`LinearMixedModel`](@ref) - used for the random effects only.
+- `LMM`: a [`LinearMixedModel`](@ref) - the local approximation to the GLMM.
 - `β`: the fixed-effects vector
+- `β₀`: similar to `β`. User in the PIRLS algorithm if step-halving is needed.
 - `θ`: covariance parameter vector
 - `b`: similar to `u`, equivalent to `broadcast!(*, b, LMM.Λ, u)`
 - `u`: a vector of matrices of random effects
-- `u₀`: similar to `u`.  Used in the PIRLS algorithm if step-halving is necessary.
+- `u₀`: similar to `u`.  Used in the PIRLS algorithm if step-halving is needed.
 - `resp`: a `GlmResp` object
 - `η`: the linear predictor
 - `wt`: vector of prior case weights, a value of `T[]` indicates equal weights.
@@ -45,7 +46,7 @@ function glmm(f::Formula, fr::AbstractDataFrame, d::Distribution, l::Link; wt=[]
     wts = isempty(wt) ? ones(nrow(fr)) : Array(wt)
         # the weights argument is forced to be non-empty in the lmm as it will be used later
     LMM = lmm(f, fr; weights = wts)
-    setθ!(LMM, getθ(LMM)) |> cfactor! 
+    setθ!(LMM, getθ(LMM)) |> cfactor!
     A, R, trms, u, y = LMM.A, LMM.R, LMM.trms, ranef(LMM), copy(model_response(LMM))
     wts = oftype(y, wts)
             # fit a glm to the fixed-effects only
@@ -206,8 +207,11 @@ sdest{T <: AbstractFloat}(m::GeneralizedLinearMixedModel{T}) = one(T)
 
 Optimize the objective function for `m`
 """
-function StatsBase.fit!{T}(m::GeneralizedLinearMixedModel{T}, verbose::Bool=false,
+function StatsBase.fit!{T}(m::GeneralizedLinearMixedModel{T}; verbose::Bool=false,
     nAGQ::Integer=1, optimizer::Symbol=:LN_BOBYQA)
+    if nAGQ > 0
+        fit!(m; verbose=verbose, nAGQ=0, optimizer=optimizer)
+    end
     β, lm = m.β, m.LMM
     pars = nAGQ == 0 ? getθ(lm) : vcat(β, getθ(lm))
     lb = lowerbd(nAGQ == 0 ? lm : m)
