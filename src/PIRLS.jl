@@ -5,12 +5,13 @@ Generalized linear mixed-effects model representation
 
 Members:
 
-- `LMM`: a [`LinearMixedModel`](@ref) - used for the random effects only.
+- `LMM`: a [`LinearMixedModel`](@ref) - the local approximation to the GLMM.
 - `β`: the fixed-effects vector
+- `β₀`: similar to `β`. User in the PIRLS algorithm if step-halving is needed.
 - `θ`: covariance parameter vector
 - `b`: similar to `u`, equivalent to `broadcast!(*, b, LMM.Λ, u)`
 - `u`: a vector of matrices of random effects
-- `u₀`: similar to `u`.  Used in the PIRLS algorithm if step-halving is necessary.
+- `u₀`: similar to `u`.  Used in the PIRLS algorithm if step-halving is needed.
 - `resp`: a `GlmResp` object
 - `η`: the linear predictor
 - `wt`: vector of prior case weights, a value of `T[]` indicates equal weights.
@@ -45,7 +46,7 @@ function glmm(f::Formula, fr::AbstractDataFrame, d::Distribution, l::Link; wt=[]
     wts = isempty(wt) ? ones(nrow(fr)) : Array(wt)
         # the weights argument is forced to be non-empty in the lmm as it will be used later
     LMM = lmm(f, fr; weights = wts)
-    setθ!(LMM, getθ(LMM)) |> cfactor! 
+    setθ!(LMM, getθ(LMM)) |> cfactor!
     A, R, trms, u, y = LMM.A, LMM.R, LMM.trms, ranef(LMM), copy(model_response(LMM))
     wts = oftype(y, wts)
             # fit a glm to the fixed-effects only
@@ -166,7 +167,7 @@ function pirls!{T}(m::GeneralizedLinearMixedModel{T}, varyβ::Bool=false, verbos
             obj = LaplaceDeviance!(m)
             verbose && @show(nhalf, obj)
         end
-        if isapprox(obj, obj₀; atol = 0.0001)
+        if isapprox(obj, obj₀; atol = 0.00001)
             break
         end
         copy!.(u₀, u)
@@ -202,12 +203,19 @@ end
 sdest{T <: AbstractFloat}(m::GeneralizedLinearMixedModel{T}) = one(T)
 
 """
-    fit!(m::GeneralizedLinearMixedModel[, verbose = false, optimizer=:LN_BOBYQA]])
+    fit!(m::GeneralizedLinearMixedModel[, verbose = false, nAGQ = 1, optimizer=:LN_BOBYQA]])
 
-Optimize the objective function for `m`
+Optimize the objective function for `m`.
+
+The `nAGQ` argument will eventually refer to the number of adaptive Gauss-Hermite
+quadrature points to use.  At present it is used as a flag, when nAGQ=0 a potentially
+much faster but slightly less accurate algorithm is used.
 """
-function StatsBase.fit!{T}(m::GeneralizedLinearMixedModel{T}, verbose::Bool=false,
+function StatsBase.fit!{T}(m::GeneralizedLinearMixedModel{T}; verbose::Bool=false,
     nAGQ::Integer=1, optimizer::Symbol=:LN_BOBYQA)
+    if nAGQ > 0
+        fit!(m, verbose=verbose, nAGQ=0, optimizer=optimizer)
+    end
     β, lm = m.β, m.LMM
     pars = nAGQ == 0 ? getθ(lm) : vcat(β, getθ(lm))
     lb = lowerbd(nAGQ == 0 ? lm : m)
@@ -226,7 +234,7 @@ function StatsBase.fit!{T}(m::GeneralizedLinearMixedModel{T}, verbose::Bool=fals
         function vobj(x::Vector{T}, g::Vector{T})
             length(g) == 0 || error("gradient not defined for this model")
             feval += 1
-            val = nAGQ == 0 ? pirls!(setθ!(m, x), true, true) : pirls!(setβθ!(m, x))
+            val = nAGQ == 0 ? pirls!(setθ!(m, x), true) : pirls!(setβθ!(m, x))
             print("f_$feval: $(round(val,5)), [")
             showcompact(x[1])
             for i in 2:length(x) print(","); showcompact(x[i]) end

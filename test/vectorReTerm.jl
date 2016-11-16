@@ -11,6 +11,7 @@
     @test isa(vrp, MixedModels.HBlkDiag{Float64})
     @test eltype(vrp) == Float64
     @test size(vrp) == (36,36)
+    @test Ac_mul_B!(Array(Float64, (36, 36)), vf, vf) == full(vrp)
     rhs1 = ones(36,2)
     x = similar(rhs1)
     b1 = copy(vrp.arr[:,:,1]) + I
