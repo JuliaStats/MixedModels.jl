@@ -218,9 +218,9 @@ function StatsBase.fit!(m::LinearMixedModel, verbose::Bool=false, optimizer::Sym
         if ff ≤ (fmin + 1.e-5)  # zero components if increase in objective is negligible
             fmin = ff
             copy!(xmin, xmin1)
-        else
-            setθ!(m, xmin) |> cfactor!
         end
+    else
+        setθ!(m, xmin) |> cfactor!
     end
     m.opt = OptSummary(th, xmin, fmin, feval, optimizer)
     if verbose

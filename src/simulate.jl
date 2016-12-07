@@ -38,7 +38,7 @@ for simulation of the responses.
 function bootstrap{T}(N::Integer, m::LinearMixedModel{T},
     β::Vector{T}=fixef(m), σ::T=sdest(m), θ::Vector{T}=getθ(m))
     y₀ = copy(model_response(m)) # to restore original state of m
-    p = length(fixef(m))
+    p = size(m.trms[end - 1], 2)
     length(β) == p || throw(DimensionMismatch("length(β) should be $p"))
     k = length(getθ(m))
     length(θ) == k || throw(DimensionMismatch("length(θ) should be $k"))
