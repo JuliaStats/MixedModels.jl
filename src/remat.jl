@@ -66,6 +66,8 @@ end
 
 Base.eltype(R::ReMat) = eltype(R.z)
 
+Base.full(R::ScalarReMat) = full(sparse(R))
+
 """
     vsize(A::ReMat)
 
@@ -97,6 +99,9 @@ Base.size(A::ReMat) = (length(A.f), vsize(A) * nlevs(A))
 
 Base.size(A::ReMat, i::Integer) =
     i < 1 ? throw(BoundsError()) : i == 1 ? length(A.f) :  i == 2 ? vsize(A)*nlevs(A) : 1
+
+Base.sparse(R::ScalarReMat) =
+    sparse(convert(Vector{Int32}, 1:length(R.z)), convert(Vector{Int32}, R.f.refs), R.z)
 
 ==(A::ReMat,B::ReMat) = (A.f == B.f) && (A.z == B.z)
 
