@@ -21,6 +21,14 @@ function OptSummary(initial::Vector{Float64}, optimizer::Symbol)
     OptSummary(initial, initial, Inf, -1, optimizer)
 end
 
+function Base.show(io::IO, s::OptSummary)
+    println(io, "Optimizer (from NLopt):   ", s.optimizer)
+    println(io, "Function evaluations:     ", s.feval)
+    println(io, "Initial parameter vector: ", s.initial)
+    println(io, "Final parameter vector:   ", s.final)
+    println(io, "Final objective value:    ", s.fmin)
+end
+
 """
     LinearMixedModel
 
