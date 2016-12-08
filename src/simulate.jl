@@ -151,7 +151,7 @@ unscaledre!(y::AbstractVector, M::VectorReMat, L::LowerTriangular) =
     unscaledre!(y, M, A_mul_B!(L, randn(size(M.z, 1), length(M.f.pool))))
 
 """
-    simulate!(m::LinearMixedModel; β=fixef(m), σ=sdest(m), θ=getΘ(m))
+    simulate!(m::LinearMixedModel; β=fixef(m), σ=sdest(m), θ=getθ(m))
 
 Overwrite the response (i.e. `m.trms[end]`) with a simulated response vector from model `m`.
 """
