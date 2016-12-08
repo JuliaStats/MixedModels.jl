@@ -5,28 +5,52 @@ Summary of an `NLopt` optimization
 
 # Members
 * `initial`: a copy of the initial parameter values in the optimization
+* `lowerbd`: lower bounds on the parameter values
+* `ftol_rel`: as in NLopt
+* `ftol_abs`: as in NLopt
+* `xtol_rel`: as in NLopt
+* `xtol_abs`: as in NLopt
 * `final`: a copy of the final parameter values from the optimization
 * `fmin`: the final value of the objective
 * `feval`: the number of function evaluations
 * `optimizer`: the name of the optimizer used, as a `Symbol`
+* `returnvalue`: the return value, as a `Symbol`
 """
-type OptSummary
-    initial::Vector{Float64}
-    final::Vector{Float64}
-    fmin::Float64
+type OptSummary{T <: AbstractFloat}
+    initial::Vector{T}
+    lowerbd::Vector{T}
+    finitial::T
+    ftol_rel::T
+    ftol_abs::T
+    xtol_rel::T
+    xtol_abs::Vector{T}
+    final::Vector{T}
+    fmin::T
     feval::Int
     optimizer::Symbol
+    returnvalue::Symbol
 end
-function OptSummary(initial::Vector{Float64}, optimizer::Symbol)
-    OptSummary(initial, initial, Inf, -1, optimizer)
+function OptSummary{T<:AbstractFloat}(initial::Vector{Float64}, lowerbd::Vector{T},
+    optimizer::Symbol; ftol_rel::T=zero(T), ftol_abs::T=zero(T), xtol_rel::T=zero(T))
+    OptSummary(initial, lowerbd, T(Inf), ftol_rel, ftol_abs, xtol_rel, zeros(initial),
+        copy(initial), T(Inf), -1, optimizer, :FAILURE)
 end
 
 function Base.show(io::IO, s::OptSummary)
-    println(io, "Optimizer (from NLopt):   ", s.optimizer)
-    println(io, "Function evaluations:     ", s.feval)
     println(io, "Initial parameter vector: ", s.initial)
+    println(io, "Initial objective value:  ", s.finitial)
+    println(io)
+    println(io, "Optimizer (from NLopt):   ", s.optimizer)
+    println(io, "Lower bounds:             ", s.lowerbd)
+    println(io, "ftol_rel:                 ", s.ftol_rel)
+    println(io, "ftol_abs:                 ", s.ftol_abs)
+    println(io, "xtol_rel:                 ", s.xtol_rel)
+    println(io, "xtol_abs:                 ", s.xtol_abs)
+    println(io)
+    println(io, "Function evaluations:     ", s.feval)
     println(io, "Final parameter vector:   ", s.final)
     println(io, "Final objective value:    ", s.fmin)
+    println(io, "Return code:              ", s.returnvalue)
 end
 
 """
@@ -54,7 +78,7 @@ type LinearMixedModel{T <: AbstractFloat} <: MixedModel
     Λ::Vector{LowerTriangular{T, Matrix{T}}}
     A::Matrix{Any}        # symmetric cross-product blocks (upper triangle)
     R::Matrix{Any}        # right Cholesky factor in blocks.
-    opt::OptSummary
+    optsum::OptSummary
 end
 
 """
@@ -64,7 +88,7 @@ Convert sparse `S` to `Diagonal` if `S` is diagonal or to `full(S)` if
 the proportion of nonzeros exceeds `threshold`.
 """
 function densify(S::SparseMatrixCSC, threshold::Real = 0.3)
-    m,n = size(S)
+    m, n = size(S)
     if m == n && isdiag(S)  # convert diagonal sparse to Diagonal
         return Diagonal(diag(S))
     end
@@ -101,7 +125,6 @@ densify(A::AbstractMatrix, threshold::Real = 0.3) = A
 function LinearMixedModel(f, mf, trms, Λ, wts)
     n = size(trms[1], 1)
     T = eltype(trms[end])
-    optsum = OptSummary(mapreduce(x -> getθ(x), vcat, Λ), :None)
     sqrtwts = Diagonal([sqrt(x) for x in wts])
     wttrms =  isempty(sqrtwts) ? trms :
         size(sqrtwts, 2) == n ? [sqrtwts * t for t in trms] :
@@ -123,6 +146,9 @@ function LinearMixedModel(f, mf, trms, Λ, wts)
             end
         end
     end
+    optsum = OptSummary(mapreduce(getθ, vcat, Λ), mapreduce(lowerbd, vcat, Λ), :LN_BOBYQA;
+        ftol_rel = 1.0e-12, ftol_abs = 1.0e-8)
+    fill!(optsum.xtol_abs, 1.0e-10)
     LinearMixedModel(f, mf, wttrms, trms, sqrtwts, Λ, A, R, optsum)
 end
 
@@ -163,7 +189,7 @@ function cfactor!(m::LinearMixedModel)
         for j in i : n
             tscale!(Λ[i], R[i, j])
         end
-        for ii in 1:i
+        for ii in 1 : i
             tscale!(R[ii,i], Λ[i])
         end
         inflate!(R[i, i])
@@ -182,57 +208,48 @@ Optimize the objective of a `LinearMixedModel`.
 A value for `optimizer` should be the name of an `NLopt` derivative-free optimizer
 allowing for box constraints.
 """
-function StatsBase.fit!(m::LinearMixedModel, verbose::Bool=false, optimizer::Symbol=:LN_BOBYQA)
-    th = getθ(m)
-    k = length(th)
-    opt = NLopt.Opt(optimizer, k)
-    NLopt.ftol_rel!(opt, 1e-12)   # relative criterion on deviance
-    NLopt.ftol_abs!(opt, 1e-8)    # absolute criterion on deviance
-    NLopt.xtol_abs!(opt, 1e-10)   # criterion on parameter value changes
-    NLopt.lower_bounds!(opt, lowerbd(m))
+function StatsBase.fit!{T}(m::LinearMixedModel{T}, verbose::Bool=false)
+    optsum = m.optsum
+    opt = NLopt.Opt(optsum.optimizer, length(optsum.final))
+    NLopt.ftol_rel!(opt, optsum.ftol_rel) # relative criterion on objective
+    NLopt.ftol_abs!(opt, optsum.ftol_abs) # absolute criterion on objective
+    NLopt.xtol_rel!(opt, optsum.ftol_rel) # relative criterion on parameter values
+    NLopt.xtol_abs!(opt, optsum.xtol_abs) # absolute criterion on parameter values
+    NLopt.lower_bounds!(opt, optsum.lowerbd)
     feval = 0
-    function obj(x::Vector{Float64}, g::Vector{Float64})
+    function obj(x, g)
         length(g) == 0 || error("gradient not defined")
         feval += 1
-        setθ!(m, x) |> cfactor! |> objective
+        val = setθ!(m, x) |> cfactor! |> objective
+        feval == 1 && (optsum.finitial = val)
+        verbose && println("f_", feval, ": ", round(val, 5), " ", x)
+        val
     end
-    if verbose
-        function vobj(x::Vector{Float64}, g::Vector{Float64})
-            length(g) == 0 || error("gradient not defined")
-            feval += 1
-            val = setθ!(m, x) |> cfactor! |> objective
-            print("f_$feval: $(round(val, 5)), [")
-            showcompact(x[1])
-            for i in 2:length(x) print(","); showcompact(x[i]) end
-            println("]")
-            val
-        end
-        NLopt.min_objective!(opt, vobj)
-    else
-        NLopt.min_objective!(opt, obj)
-    end
-    fmin, xmin, ret = NLopt.optimize(opt, th)
+    NLopt.min_objective!(opt, obj)
+    fmin, xmin, ret = NLopt.optimize!(opt, optsum.final)
     ## very small parameter values often should be set to zero
     xmin1 = copy(xmin)
     modified = false
     for i in eachindex(xmin1)
-        if 0. < abs(xmin1[i]) < 0.001
+        if zero(T) < abs(xmin1[i]) < T(0.001)
             modified = true
-            xmin1[i] = 0.
+            xmin1[i] = zero(T)
         end
     end
     if modified  # branch not tested
-        ff = setθ!(m, xmin1) |> cfactor! |> objective
-        if ff ≤ (fmin + 1.e-5)  # zero components if increase in objective is negligible
+        ff = obj(xmin1, T[])
+        if ff ≤ (fmin + T(1.e-5))  # zero components if increase in objective is negligible
             fmin = ff
             copy!(xmin, xmin1)
         end
-    else
-        setθ!(m, xmin) |> cfactor!
     end
-    m.opt = OptSummary(th, xmin, fmin, feval, optimizer)
-    if verbose
-        println(ret)
+    setθ!(m, xmin) |> cfactor!
+    optsum.feval = feval
+    optsum.final = xmin
+    optsum.fmin = fmin
+    optsum.returnvalue = ret
+    if ret ∈ [:FAILURE, :INVALID_ARGS, :OUT_OF_MEMORY, :ROUNDOFF_LIMITED, :FORCED_STOP]
+        warn("NLopt optimization failue: $ret")
     end
     m
 end
