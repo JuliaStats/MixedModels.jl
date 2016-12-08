@@ -389,7 +389,7 @@ end
 
 Return a `Bool` indicating if the model has been fit.
 """
-isfit(m::LinearMixedModel) = m.opt.fmin < Inf
+isfit(m::LinearMixedModel) = m.optsum.fmin < Inf
 
 """
     lrt(mods::LinearMixedModel...)
