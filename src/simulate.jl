@@ -38,7 +38,7 @@ for simulation of the responses.
 function bootstrap{T}(N::Integer, m::LinearMixedModel{T},
     β::Vector{T}=fixef(m), σ::T=sdest(m), θ::Vector{T}=getθ(m))
     y₀ = copy(model_response(m)) # to restore original state of m
-    p = length(fixef(m))
+    p = size(m.trms[end - 1], 2)
     length(β) == p || throw(DimensionMismatch("length(β) should be $p"))
     k = length(getθ(m))
     length(θ) == k || throw(DimensionMismatch("length(θ) should be $k"))
@@ -98,7 +98,7 @@ end
 Reset the value of `m.θ` to the initial values and mark the model as not having been fit
 """
 function resetθ!(m::LinearMixedModel)
-    opt = m.opt
+    opt = m.optsum
     opt.feval = -1
     opt.fmin = Inf
     setθ!(m, opt.initial) |> cfactor!
@@ -151,7 +151,7 @@ unscaledre!(y::AbstractVector, M::VectorReMat, L::LowerTriangular) =
     unscaledre!(y, M, A_mul_B!(L, randn(size(M.z, 1), length(M.f.pool))))
 
 """
-    simulate!(m::LinearMixedModel; β=fixef(m), σ=sdest(m), θ=getΘ(m))
+    simulate!(m::LinearMixedModel; β=fixef(m), σ=sdest(m), θ=getθ(m))
 
 Overwrite the response (i.e. `m.trms[end]`) with a simulated response vector from model `m`.
 """

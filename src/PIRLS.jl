@@ -212,59 +212,55 @@ quadrature points to use.  At present it is used as a flag, when nAGQ=0 a potent
 much faster but slightly less accurate algorithm is used.
 """
 function StatsBase.fit!{T}(m::GeneralizedLinearMixedModel{T}; verbose::Bool=false,
-    nAGQ::Integer=1, optimizer::Symbol=:LN_BOBYQA)
-    if nAGQ > 0
-        fit!(m, verbose=verbose, nAGQ=0, optimizer=optimizer)
-    end
+    nAGQ::Integer=1)
+
+    nAGQ > 0 && fit!(m, verbose=verbose, nAGQ=0) # always fit with nAGQ = 0 first
+
     β, lm = m.β, m.LMM
-    pars = nAGQ == 0 ? getθ(lm) : vcat(β, getθ(lm))
-    lb = lowerbd(nAGQ == 0 ? lm : m)
-    opt = NLopt.Opt(optimizer, length(pars))
-    NLopt.ftol_rel!(opt, 1e-12)   # relative criterion on deviance
-    NLopt.ftol_abs!(opt, 1e-8)    # absolute criterion on deviance
-    NLopt.xtol_abs!(opt, 1e-10)   # criterion on parameter value changes
+    optsum = lm.optsum
+    pars = nAGQ == 0 ? optsum.final : vcat(β, optsum.final)
+    opt = NLopt.Opt(optsum.optimizer, length(pars))
+
+    lb = nAGQ == 0 ? optsum.lowerbd : vcat(fill!(similar(β), -Inf), optsum.lowerbd)
     NLopt.lower_bounds!(opt, lb)
+
+    NLopt.ftol_rel!(opt, optsum.ftol_rel) # relative criterion on objective
+    NLopt.ftol_abs!(opt, optsum.ftol_abs) # absolute criterion on objective
+    NLopt.xtol_rel!(opt, optsum.ftol_rel) # relative criterion on parameter values
+#    NLopt.xtol_abs!(opt, optsum.xtol_abs) # absolute criterion on parameter values
+
     feval = 0
     function obj(x::Vector{T}, g::Vector{T})
         length(g) == 0 || error("gradient not defined for this model")
         feval += 1
-        nAGQ == 0 ? pirls!(setθ!(m, x), true) : pirls!(setβθ!(m, x))
+        val = nAGQ == 0 ? pirls!(setθ!(m, x), true) : pirls!(setβθ!(m, x))
+        feval == 1 && (optsum.finitial = val)
+        verbose && println("f_", feval, ": ", round(val, 5), " ", x)
+        val
     end
-    if verbose
-        function vobj(x::Vector{T}, g::Vector{T})
-            length(g) == 0 || error("gradient not defined for this model")
-            feval += 1
-            val = nAGQ == 0 ? pirls!(setθ!(m, x), true) : pirls!(setβθ!(m, x))
-            print("f_$feval: $(round(val,5)), [")
-            showcompact(x[1])
-            for i in 2:length(x) print(","); showcompact(x[i]) end
-            println("]")
-            val
-        end
-        NLopt.min_objective!(opt, vobj)
-    else
-        NLopt.min_objective!(opt, obj)
-    end
+    NLopt.min_objective!(opt, obj)
     fmin, xmin, ret = NLopt.optimize(opt, pars)
     ## check if very small parameter values bounded below by zero can be set to zero
-    xmin1, fev, modified = copy(xmin), feval, false
-    for i in eachindex(xmin1)
-        if lb[i] == 0 && 0 < xmin1[i] < 1.e-4
-            modified = true
-            xmin1[i] = 0.
+    xmin_ = copy(xmin)
+    for i in eachindex(xmin_)
+        if lb[i] == zero(T) && zero(T) < xmin_[i] < T(0.001)
+            xmin_[i] = zero(T)
         end
     end
-    if modified
-        if (zeroobj = obj(xmin1, T[])) ≤ (fmin + 1.e-5)
+    if xmin ≠ xmin_
+        if (zeroobj = obj(xmin_, T[])) ≤ (fmin + 1.e-5)
             fmin = zeroobj
-            copy!(xmin, xmin1)
-        else
-            obj(xmin, T[])
+            copy!(xmin, xmin_)
         end
     end
-    m.LMM.opt = OptSummary(pars, xmin, fmin, fev, optimizer)
-    if verbose
-        println(ret)
+    ## ensure that the parameter values saved in m are xmin
+    nAGQ == 0 ? pirls!(setθ!(m, xmin), true) : pirls!(setβθ!(m, xmin))
+    optsum.feval = feval
+    optsum.final = xmin
+    optsum.fmin = fmin
+    optsum.returnvalue = ret
+    if ret ∈ [:FAILURE, :INVALID_ARGS, :OUT_OF_MEMORY, :ROUNDOFF_LIMITED, :FORCED_STOP]
+        warn("NLopt optimization failue: $ret")
     end
     m
 end
