@@ -4,10 +4,12 @@
         ["(Intercept)","Days"])
     Reaction = Array(slp[:Reaction])
 
+    sf = ScalarReMat(slp[:Subject], ones(size(slp, 1)), :Subject, ["Intercept"])
+
     @test size(vf) == (180,36)
     @test (vf'ones(size(vf,1)))[1:4] == [10.,45,10,45]
-    vrp = vf'vf
 
+    vrp = vf'vf
     @test isa(vrp, MixedModels.HBlkDiag{Float64})
     @test eltype(vrp) == Float64
     @test size(vrp) == (36,36)
@@ -22,5 +24,10 @@
     D = Diagonal(Array(1.:180))
     scaled = D * vf
     @test scaled == A_mul_B!(D, vf)
+
+    pr = vf'sf
+    @test size(pr) == (36, 18)
+    @test isa(pr, SparseMatrixCSC)
+    @test size(sf'vf) == (18, 36)
 
 end

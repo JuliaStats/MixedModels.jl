@@ -168,8 +168,7 @@ function Base.Ac_mul_B(A::ReMat, B::DenseVecOrMat)
 end
 
 function Base.Ac_mul_B{T}(A::ScalarReMat{T}, B::ScalarReMat{T})
-    Az = A.z
-    Ar = A.f.refs
+    Az, Ar = A.z, A.f.refs
     if A === B
         v = zeros(T, nlevs(A))
         for i in eachindex(Ar)
@@ -180,6 +179,22 @@ function Base.Ac_mul_B{T}(A::ScalarReMat{T}, B::ScalarReMat{T})
     end
     densify(sparse(convert(Vector{Int32}, Ar), convert(Vector{Int32}, B.f.refs), Az .* B.z))
 end
+
+function Base.Ac_mul_B{T}(A::VectorReMat{T}, B::ScalarReMat{T})
+    if size(A, 1) ≠ size(B, 1)
+        throw(DimensionMismatch("size(A) = $(size(A)) not compatible with size(B) = $(size(B))"))
+    end
+    k = Int32(vsize(A))
+    seq = one(Int32) : k
+    rowvals = sizehint!(Int32[], size(A, 2))
+    for j in A.f.refs
+        append!(rowvals, seq + k * (j - one(Int32)))
+    end
+    densify(sparse(rowvals, convert(Vector{Int32}, repeat(B.f.refs, inner = k)),
+        vec(A.z * Diagonal(B.z))))
+end
+
+Base.Ac_mul_B{T}(A::ScalarReMat{T}, B::VectorReMat{T}) = ctranspose(B'A)
 
 function Base.Ac_mul_B!{T}(C::Diagonal{T}, A::ScalarReMat{T}, B::ScalarReMat{T})
     c, a, r, b = C.diag, A.z, A.f.refs, B.z
