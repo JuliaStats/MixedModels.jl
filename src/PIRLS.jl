@@ -260,7 +260,7 @@ function StatsBase.fit!{T}(m::GeneralizedLinearMixedModel{T}; verbose::Bool=fals
     optsum.fmin = fmin
     optsum.returnvalue = ret
     if ret ∈ [:FAILURE, :INVALID_ARGS, :OUT_OF_MEMORY, :ROUNDOFF_LIMITED, :FORCED_STOP]
-        warn("NLopt optimization failue: $ret")
+        warn("NLopt optimization failure: $ret")
     end
     m
 end
