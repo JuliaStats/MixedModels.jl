@@ -98,7 +98,7 @@ end
 Reset the value of `m.θ` to the initial values and mark the model as not having been fit
 """
 function resetθ!(m::LinearMixedModel)
-    opt = m.opt
+    opt = m.optsum
     opt.feval = -1
     opt.fmin = Inf
     setθ!(m, opt.initial) |> cfactor!

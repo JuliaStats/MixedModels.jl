@@ -210,12 +210,13 @@ allowing for box constraints.
 """
 function StatsBase.fit!{T}(m::LinearMixedModel{T}, verbose::Bool=false)
     optsum = m.optsum
+    lb = optsum.lowerbd
     opt = NLopt.Opt(optsum.optimizer, length(optsum.final))
     NLopt.ftol_rel!(opt, optsum.ftol_rel) # relative criterion on objective
     NLopt.ftol_abs!(opt, optsum.ftol_abs) # absolute criterion on objective
     NLopt.xtol_rel!(opt, optsum.ftol_rel) # relative criterion on parameter values
     NLopt.xtol_abs!(opt, optsum.xtol_abs) # absolute criterion on parameter values
-    NLopt.lower_bounds!(opt, optsum.lowerbd)
+    NLopt.lower_bounds!(opt, lb)
     feval = 0
     function obj(x, g)
         length(g) == 0 || error("gradient not defined")
@@ -227,23 +228,22 @@ function StatsBase.fit!{T}(m::LinearMixedModel{T}, verbose::Bool=false)
     end
     NLopt.min_objective!(opt, obj)
     fmin, xmin, ret = NLopt.optimize!(opt, optsum.final)
-    ## very small parameter values often should be set to zero
-    xmin1 = copy(xmin)
-    modified = false
-    for i in eachindex(xmin1)
-        if zero(T) < abs(xmin1[i]) < T(0.001)
-            modified = true
-            xmin1[i] = zero(T)
+    ## check if very small parameter values that must be non-negative can be set to zero
+    xmin_ = copy(xmin)
+    for i in eachindex(xmin_)
+        if lb[i] == zero(T) && zero(T) < xmin_[i] < T(0.001)
+            xmin_[i] = zero(T)
         end
     end
-    if modified  # branch not tested
-        ff = obj(xmin1, T[])
-        if ff ≤ (fmin + T(1.e-5))  # zero components if increase in objective is negligible
-            fmin = ff
-            copy!(xmin, xmin1)
+    if xmin_ ≠ xmin
+        if (zeroobj = obj(xmin_, T[])) ≤ (fmin + 1.e-5)
+            fmin = zeroobj
+            copy!(xmin, xmin_)
         end
     end
+    ## ensure that the parameter values saved in m are xmin
     setθ!(m, xmin) |> cfactor!
+
     optsum.feval = feval
     optsum.final = xmin
     optsum.fmin = fmin
