@@ -24,37 +24,37 @@ function bootstrap!{T}(r::Matrix{T}, m::LinearMixedModel{T}, f!::Function;
 end
 
 """
-    bootstrap{T}(N::Integer, m::LinearMixedModel{T},
+    bootstrap{T}(N, m::LinearMixedModel{T},
         β::Vector{T}=fixef(m), σ::T=sdest(m), θ::Vector{T}=getθ(m))
 
-Perform `N` parametric bootstrap replication fits of `m`, returning the
-deviances, variance estimates, fixed-effects estimates and covariance parameters.
+Perform `N` parametric bootstrap replication fits of `m`, returning a tuple of
+the objective values at convergence, variance estimates, fixed-effects estimates
+and covariance parameters.
 
 # Named Arguments
 
 `β::Vector{T}`, `σ::T`, and `θ::Vector{T}` are the values of the parameters in `m`
 for simulation of the responses.
 """
-function bootstrap{T}(N::Integer, m::LinearMixedModel{T},
-    β::Vector{T}=fixef(m), σ::T=sdest(m), θ::Vector{T}=getθ(m))
+function bootstrap{T}(N, m::LinearMixedModel{T};
+    β=fixef(m), σ=sdest(m), θ=getθ(m))
     y₀ = copy(model_response(m)) # to restore original state of m
     p = size(m.trms[end - 1], 2)
     length(β) == p || throw(DimensionMismatch("length(β) should be $p"))
     k = length(getθ(m))
     length(θ) == k || throw(DimensionMismatch("length(θ) should be $k"))
-    devs = Array(T, (N,))
+    objs = Array(T, (N,))
     vars = Array(T, (N,))
     βs = Array(T, (p, N))
     θs = Array(T, (k, N))
     for i in 1 : N
         refit!(simulate!(m, β = β, σ = σ, θ = θ))
-        devs[i] = deviance(m)
+        objs[i] = objective(m)
         vars[i] = varest(m)
         fixef!(view(βs, :, i), m)
         getθ!(view(θs, :, i), m)
     end
-    refit!(m, y₀)               # restore original state of m
-    devs, vars, βs, θs
+    objs, vars, βs, θs
 end
 
 """
