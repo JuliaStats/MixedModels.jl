@@ -203,25 +203,28 @@ end
 sdest{T <: AbstractFloat}(m::GeneralizedLinearMixedModel{T}) = one(T)
 
 """
-    fit!(m::GeneralizedLinearMixedModel[, verbose = false, nAGQ = 1, optimizer=:LN_BOBYQA]])
+    fit!(m::GeneralizedLinearMixedModel[, verbose = false, fast = false])
 
 Optimize the objective function for `m`.
 
-The `nAGQ` argument will eventually refer to the number of adaptive Gauss-Hermite
-quadrature points to use.  At present it is used as a flag, when nAGQ=0 a potentially
-much faster but slightly less accurate algorithm is used.
+When `fast` is `true` a potentially much faster but slightly less accurate algorithm, in
+which `pirls!` optimizes both the random effects and the fixed-effects parameters,
+is used.
 """
 function StatsBase.fit!{T}(m::GeneralizedLinearMixedModel{T}; verbose::Bool=false,
-    nAGQ::Integer=1)
+    fast::Bool=false)
 
-    nAGQ > 0 && fit!(m, verbose=verbose, nAGQ=0) # always fit with nAGQ = 0 first
+## FIXME: fast should not be passed as an argument.  Whether or not β is optimized by PIRLS
+## should be determined by the length of optsum.initial, lowerbd and final.
+
+    fast || fit!(m, verbose=verbose, fast=true) # use the fast fit first then slow fit to refine
 
     β, lm = m.β, m.LMM
     optsum = lm.optsum
-    pars = nAGQ == 0 ? optsum.final : vcat(β, optsum.final)
+    pars = fast ? copy(optsum.initial) : vcat(β, optsum.initial)
     opt = NLopt.Opt(optsum.optimizer, length(pars))
 
-    lb = nAGQ == 0 ? optsum.lowerbd : vcat(fill!(similar(β), -Inf), optsum.lowerbd)
+    lb = fast ? optsum.lowerbd : vcat(fill!(similar(β), -Inf), optsum.lowerbd)
     NLopt.lower_bounds!(opt, lb)
 
     NLopt.ftol_rel!(opt, optsum.ftol_rel) # relative criterion on objective
@@ -229,11 +232,12 @@ function StatsBase.fit!{T}(m::GeneralizedLinearMixedModel{T}; verbose::Bool=fals
     NLopt.xtol_rel!(opt, optsum.ftol_rel) # relative criterion on parameter values
 #    NLopt.xtol_abs!(opt, optsum.xtol_abs) # absolute criterion on parameter values
 
+    setpar! = fast ? setθ! : setβθ!
     feval = 0
     function obj(x::Vector{T}, g::Vector{T})
         length(g) == 0 || error("gradient not defined for this model")
         feval += 1
-        val = nAGQ == 0 ? pirls!(setθ!(m, x), true) : pirls!(setβθ!(m, x))
+        val = pirls!(setpar!(m, x), fast)
         feval == 1 && (optsum.finitial = val)
         verbose && println("f_", feval, ": ", round(val, 5), " ", x)
         val
@@ -254,7 +258,7 @@ function StatsBase.fit!{T}(m::GeneralizedLinearMixedModel{T}; verbose::Bool=fals
         end
     end
     ## ensure that the parameter values saved in m are xmin
-    nAGQ == 0 ? pirls!(setθ!(m, xmin), true) : pirls!(setβθ!(m, xmin))
+    pirls!(setpar!(m, xmin), fast)
     optsum.feval = feval
     optsum.final = xmin
     optsum.fmin = fmin
