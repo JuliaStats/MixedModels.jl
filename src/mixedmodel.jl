@@ -241,10 +241,10 @@ function condVar(m::MixedModel)
     R = lm.R[1,1]
     res = Array{eltype(R),3}[]
     if isa(R, Diagonal)
-        push!(res, reshape(inv.(R.diag) .* abs2(Λ[1][1]), (1,1,size(R,1))))
+        push!(res, reshape(abs2.(inv.(R.diag) .* (Λ[1][1])), (1,1,size(R,1))))
     else
         throw(ArgumentError(
             "code for vector-value random-effects not yet written"))
     end
-    res
+    varest(m) * res
 end
