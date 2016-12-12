@@ -211,7 +211,9 @@ allowing for box constraints.
 function StatsBase.fit!{T}(m::LinearMixedModel{T}, verbose::Bool=false)
     optsum = m.optsum
     lb = optsum.lowerbd
-    opt = NLopt.Opt(optsum.optimizer, length(optsum.final))
+    x = optsum.final
+    copy!(x, optsum.initial)
+    opt = NLopt.Opt(optsum.optimizer, length(x))
     NLopt.ftol_rel!(opt, optsum.ftol_rel) # relative criterion on objective
     NLopt.ftol_abs!(opt, optsum.ftol_abs) # absolute criterion on objective
     NLopt.xtol_rel!(opt, optsum.ftol_rel) # relative criterion on parameter values
@@ -221,13 +223,13 @@ function StatsBase.fit!{T}(m::LinearMixedModel{T}, verbose::Bool=false)
     function obj(x, g)
         length(g) == 0 || error("gradient not defined")
         feval += 1
-        val = setθ!(m, x) |> cfactor! |> objective
+        val = objective(cfactor!(setθ!(m, x)))
         feval == 1 && (optsum.finitial = val)
         verbose && println("f_", feval, ": ", round(val, 5), " ", x)
         val
     end
     NLopt.min_objective!(opt, obj)
-    fmin, xmin, ret = NLopt.optimize!(opt, optsum.final)
+    fmin, xmin, ret = NLopt.optimize!(opt, x)
     ## check if very small parameter values that must be non-negative can be set to zero
     xmin_ = copy(xmin)
     for i in eachindex(xmin_)
