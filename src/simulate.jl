@@ -54,6 +54,7 @@ function bootstrap{T}(N, m::LinearMixedModel{T};
         fixef!(view(βs, :, i), m)
         getθ!(view(θs, :, i), m)
     end
+    refit!(m, y₀)
     objs, vars, βs, θs
 end
 
