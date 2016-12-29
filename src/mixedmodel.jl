@@ -229,7 +229,7 @@ This function returns an array of `k` three dimensional arrays,
 where the `i`th array is of size `vᵢ × vᵢ × ℓᵢ`.  These are the
 diagonal blocks from the conditional variance-covariance matrix,
 
-    s² Λ(Λ'Z'ZΛ + I)Λ'
+    s² Λ(Λ'Z'ZΛ + I)⁻¹Λ'
 """
 function condVar(m::MixedModel)
     lm = lmm(m)
@@ -238,13 +238,13 @@ function condVar(m::MixedModel)
         throw(ArgumentError(
             "code for more than one term not yet written"))
     end
-    A = lm.A[1,1]
-    res = Array{eltype(A),3}[]
-    if isa(A, Diagonal)
-        push!(res, reshape(inv.(A.diag) .* abs2(Λ[1][1]), (1,1,size(A,1))))
+    R = lm.R[1,1]
+    res = Array{eltype(R),3}[]
+    if isa(R, Diagonal)
+        push!(res, reshape(abs2.(inv.(R.diag) .* (Λ[1][1])), (1,1,size(R,1))))
     else
         throw(ArgumentError(
             "code for vector-value random-effects not yet written"))
     end
-    res
+    varest(m) * res
 end
