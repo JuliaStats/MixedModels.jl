@@ -375,8 +375,8 @@ corresponding to `L * L'`.
 function chol2cor(L::LowerTriangular)
     size(L, 1) == 1 && return ones(1, 1)
     res = L * L'
-    d = [inv(sqrt(res[i, i])) for i in 1:size(res, 1)]
-    scale!(d, scale!(res, d))
+    d = Diagonal([inv(sqrt(res[i, i])) for i in 1:size(res, 1)])
+    return d * res * d
 end
 
 Base.cor(m::LinearMixedModel) = map(chol2cor, m.Λ)
