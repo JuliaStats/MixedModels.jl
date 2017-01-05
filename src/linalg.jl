@@ -1,4 +1,35 @@
 LinAlg.Ac_ldiv_B!{T}(D::Diagonal{T}, B) = A_ldiv_B!(D, B)
+function LinAlg.A_rdiv_Bc!{T}(A::StridedMatrix{T}, D::Diagonal{T})
+    m,n = size(A)
+    dd = D.diag
+    if length(dd) ≠ n
+        throw(DimensionMismatch("size(A, 2) = $n ≠ size(D, 2) = $(length(dd))"))
+    end
+    @inbounds for j in 1 : n
+        ddj = dd[j]
+        for i in 1 : m
+            A[i, j] /= ddj
+        end
+    end
+    A
+
+end
+
+function LinAlg.A_rdiv_Bc!{T}(A::SparseMatrixCSC{T}, D::Diagonal{T})
+    m,n = size(A)
+    dd = D.diag
+    if length(dd) ≠ n
+        throw(DimensionMismatch("size(A, 2) = $n ≠ size(D, 2) = $(length(dd))"))
+    end
+    nonz = nonzeros(A)
+    for j in 1 : n
+        ddj = dd[j]
+        for k in nzrange(A, j)
+            nonz[k] /= ddj
+        end
+    end
+    A
+end
 
 function LinAlg.A_ldiv_B!{T}(D::Diagonal{T}, B::Diagonal{T})
     if size(D) ≠ size(B)
@@ -23,5 +54,7 @@ end
 
 function rowlengths(L::LowerTriangular)
     ld = L.data
-    [(sl = view(ld, i, 1:i); sqrt(dot(sl, sl))) for i in 1:size(L, 1)]
+    [norm(view(ld, i, 1:i)) for i in 1 : size(ld, 1)]
 end
+
+rowlengths(L::UniformScaling) = [abs(L.λ)]

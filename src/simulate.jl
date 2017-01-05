@@ -123,6 +123,14 @@ function stddevcor!{T}(σ::Vector{T}, ρ::Matrix{T}, scr::Matrix{T}, L::LinAlg.C
     σ, ρ
 end
 
+function stddevcor{T}(L::LinAlg.Cholesky{T})
+    k = size(L, 1)
+    stddevcor!(Array(T, (k,)), Array(T, (k, k)), Array(T, (k, k)), L)
+end
+
+stddevcor(L::LowerTriangular) = stddevcor(LinAlg.Cholesky(L, :L))
+stddevcor{T}(L::UniformScaling{T}) = [abs(L.λ)], eye(T, 1)
+
 """
     reevaluateAend!(m::LinearMixedModel)
 

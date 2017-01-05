@@ -11,17 +11,17 @@ errors being thrown when `A` is computationally singular
 """
 function cfactor!(A::AbstractMatrix)
     n = LinAlg.checksquare(A)
-    for k = 1:n
+    for k = 1 : n
         Akk = A[k, k]
-        for i in 1:(k - 1)
-            downdate!(Akk, A[i, k])  # A[k,k] -= A[i,k]'A[i,k]
+        for j in 1 : (k - 1)
+            downdate!(Akk, A[k, j])  # A[k,k] -= A[k,j]*A[k,j]'
         end
-        Akk = cfactor!(Akk)          # right Cholesky factor of A[k,k]
-        for j in (k + 1):n
-            for i in 1:(k - 1)
-                downdate!(A[k, j], A[i, k], A[i, j]) # A[k,j] -= A[i,k]'A[i,j]
+        Akk = cfactor!(Akk)          # left Cholesky factor of A[k,k]
+        for i in (k + 1) : n
+            for j in 1 : (k - 1)
+                downdate!(A[i, k], A[i, j], A[k, j]) # A[i, k] -= A[k, j] * A[i, j]'
             end
-            LinAlg.Ac_ldiv_B!(Akk, A[k, j])
+            LinAlg.A_rdiv_Bc!(A[i, k], Akk)
         end
     end
     UpperTriangular(A)
@@ -29,13 +29,11 @@ end
 
 function cfactor!{T <: AbstractFloat}(D::Diagonal{T})
     dd = D.diag
-    for i in eachindex(dd)
-        dd[i] = sqrt(dd[i])
-    end
+    map!(sqrt, dd, dd)
     D
 end
 
-cfactor!{T <: LinAlg.BlasFloat}(A::Matrix{T}) = UpperTriangular(LAPACK.potrf!('U', A)[1])
+cfactor!{T <: LinAlg.BlasFloat}(A::Matrix{T}) = LowerTriangular(LAPACK.potrf!('L', A)[1])
 
 function cfactor!{T}(A::HBlkDiag{T})
     Aa = A.arr
@@ -60,26 +58,27 @@ end
     downdate!(C::AbstractMatrix, A::AbstractMatrix)
     downdate!(C::AbstractMatrix, A::AbstractMatrix, B::AbstractMatrix)
 
-Subtracts, in place, `A'A` or `A'B` from `C`
+Subtracts, in place, `A * A'` or `A * B'` from `C`
 """
 function downdate! end
 
 downdate!{T <: LinAlg.BlasFloat}(C::DenseMatrix{T}, A::DenseMatrix{T}) =
-    BLAS.syrk!('U', 'T', -one(T), A, one(T), C)
+    BLAS.syrk!('L', 'N', -one(T), A, one(T), C)
 
 downdate!{T <: LinAlg.BlasFloat}(C::DenseMatrix{T}, A::DenseMatrix{T}, B::DenseMatrix{T}) =
-    BLAS.gemm!('T', 'N', -one(T), A, B, one(T), C)
+    BLAS.gemm!('N', 'T', -one(T), A, B, one(T), C)
 
 function downdate!{T}(C::Diagonal{T}, A::SparseMatrixCSC{T})
     m, n = size(A)
     dd = C.diag
-    if length(dd) ≠ n
-        throw(DimensionMismatch("size(C,2) ≠ size(A,2)"))
+    if length(dd) ≠ m
+        throw(DimensionMismatch("size(C,2) = $(length(dd)) ≠ $m = size(A,1)"))
     end
     nz = nonzeros(A)
-    for j in eachindex(dd)
+    rv = rowvals(A)
+    for j in 1 : n
         for k in nzrange(A, j)
-            @inbounds dd[j] -= abs2(nz[k])
+            @inbounds dd[rv[k]] -= abs2(nz[k])
         end
     end
     C
@@ -89,10 +88,7 @@ function downdate!{T}(C::Diagonal{T},A::Diagonal{T})
     if size(C) ≠ size(A)
         throw(DimensionMismatch("size(C) ≠ size(A)"))
     end
-    c, a = C.diag, A.diag
-    for i in eachindex(c)
-        c[i] -= abs2(a[i])
-    end
+    map!((c, a) -> c - abs2(a), C.diag, C.diag, A.diag)
     C
 end
 
@@ -100,10 +96,7 @@ function downdate!{T}(C::Diagonal{T}, A::Diagonal{T}, B::Diagonal{T})
     if !(size(C) == size(A) == size(B))
         throw(DimensionMismatch("need size(C) == size(A) == size(B)"))
     end
-    c, a, b = C.diag, A.diag, B.diag
-    for i in eachindex(c)
-        c[i] -= a[i] * b[i]
-    end
+    map!((c, a, b) -> c - a * b, C.diag, C.diag, A.diag, B.diag)
     C
 end
 
@@ -123,18 +116,40 @@ end
 
 function downdate!{T}(C::DenseMatrix{T}, A::SparseMatrixCSC{T}, B::DenseMatrix{T})
     m, n = size(A)
+    p, q = size(B)
     r, s = size(C)
-    if r ≠ n || s ≠ size(B,2) || m ≠ size(B,1)
-        throw(DimensionMismatch("size(C,1) ≠ size(A,2) or size(C,2) ≠ size(B,2) or size(A,1) ≠ size(B,1)"))
+    @show m,n,p,q,r,s
+    if r ≠ m || s ≠ p || n ≠ q
+        throw(DimensionMismatch("size(C,1) ≠ size(A,1) or size(C,2) ≠ size(B,1) or size(A,2) ≠ size(B,2)"))
     end
     nz = nonzeros(A)
     rv = rowvals(A)
-    for jj in 1:s, j in 1:n, k in nzrange(A,j)
-        C[j,jj] -= nz[k] * B[rv[k], jj]
+    for j in 1 : n, k in nzrange(A,j)
+        rvk = rv[k]
+        for jj in 1 : s
+            C[rvk, jj] -= nz[k] * B[rvk, jj]
+        end
     end
     C
 end
-
+function downdate!{T}(C::DenseMatrix{T}, A::DenseMatrix{T}, B::SparseMatrixCSC{T})
+    m, n = size(A)
+    p, q = size(B)
+    r, s = size(C)
+    if r ≠ m || s ≠ p || n ≠ q
+        throw(DimensionMismatch("size(C,1) ≠ size(A,1) or size(C,2) ≠ size(B,1) or size(A,2) ≠ size(B,2)"))
+    end
+    nz = nonzeros(B)
+    rv = rowvals(B)
+    for j in 1 : s, k in nzrange(B,j)
+        rvk = rv[k]
+        nzk = nz[k]
+        for jj in 1 : r  # use .= fusing in v0.6.0 and later
+            C[jj, rvk] -= A[jj, rvk] * nzk
+        end
+    end
+    C
+end
 function downdate!{T}(C::DenseMatrix{T}, A::SparseMatrixCSC{T}, B::SparseMatrixCSC{T})
     AtB = A'B
     if size(C) ≠ size(AtB)
@@ -186,7 +201,7 @@ Adds an identity to `A` in place.
 """
 function inflate! end
 
-function inflate!(A::HBlkDiag)
+function inflate!(A::HBlkDiag)  # change to Diagonal{Mmatrix}
     Aa = A.arr
     r, s, k = size(Aa)
     for j in 1 : k, i in 1 : min(r, s)
@@ -194,17 +209,5 @@ function inflate!(A::HBlkDiag)
     end
     A
 end
-function inflate!{T<:AbstractFloat}(A::StridedMatrix{T})
-    n = LinAlg.checksquare(A)
-    for i in 1 : n
-        @inbounds A[i, i] += one(T)
-    end
-    A
-end
-function inflate!{T <: AbstractFloat}(D::Diagonal{T})
-    d = D.diag
-    for i in eachindex(d)
-        d[i] += one(T)
-    end
-    D
-end
+inflate!{T <: AbstractFloat}(A::StridedMatrix{T}) = (A += I)
+inflate!{T <: AbstractFloat}(D::Diagonal{T}) = (D += I)

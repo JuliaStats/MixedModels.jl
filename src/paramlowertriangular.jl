@@ -1,12 +1,13 @@
 nlower(n::Integer) = (n * (n + 1)) >>> 1
-nlower{T}(A::LowerTriangular{T, Matrix{T}}) = nlower(LinAlg.checksquare(A))
+nlower(A::LowerTriangular) = nlower(LinAlg.checksquare(A))
+nlower(A::UniformScaling) = 1
 
 """
     getθ!{T}(v::AbstractVector{T}, A::LowerTriangular{T, Matrix{T}})
 
 Overwrite `v` with the elements of the lower triangle of `A` (column-major ordering)
 """
-function getθ!{T}(v::AbstractVector{T}, A::LowerTriangular{T,Matrix{T}})
+function getθ!{T}(v::AbstractVector{T}, A::LowerTriangular{T,MMatrix})
     Ad = A.data
     n, m = size(Ad)
     if n ≠ m || length(v) ≠ nlower(n)
@@ -18,13 +19,21 @@ function getθ!{T}(v::AbstractVector{T}, A::LowerTriangular{T,Matrix{T}})
     end
     v
 end
+function getθ!{T}(v::AbstractVector{T}, A::UniformScaling{T})
+    if length(v) != 1
+        throw(DimensionMismatch("v must be of length 1"))
+    end
+    v[1] = A.λ
+    v
+end
 
 """
     getθ(A::LowerTriangular{T, Matrix{T}})
 
 Return a vector of the elements of the lower triangle of `A` (column-major ordering)
 """
-getθ{T}(A::LowerTriangular{T, Matrix{T}}) = getθ!(Array(T, nlower(A)), A)
+getθ{T}(A::LowerTriangular{T, MMatrix}) = getθ!(Array(T, nlower(A)), A)
+getθ(A::UniformScaling) = [A.λ]
 
 """
     lowerbd{T}(A::LowerTriangular{T,Matrix{T}})
@@ -34,7 +43,7 @@ Return the vector of lower bounds on the parameters, `θ`.
 These are the elements in the lower triangle in column-major ordering.
 Diagonals have a lower bound of `0`.  Off-diagonals have a lower-bound of `-Inf`.
 """
-function lowerbd{T}(A::LowerTriangular{T,Matrix{T}})
+function lowerbd{T}(A::LowerTriangular{T,MMatrix})
     n = LinAlg.checksquare(A)
     res = fill(convert(T, -Inf), nlower(n))
     k = -n
@@ -43,6 +52,7 @@ function lowerbd{T}(A::LowerTriangular{T,Matrix{T}})
     end
     res
 end
+lowerbd{T}(A::UniformScaling{T}) = zeros(T, (1,))
 
 """
     LT(A)
@@ -50,10 +60,13 @@ end
 Create a lower triangular matrix compatible with the blocks of `A`
 and initialized to the identity.
 """
-LT{T}(A::ScalarReMat{T}) = LowerTriangular(ones(T, (1, 1)))
-LT{T}(A::VectorReMat{T}) = LowerTriangular(full(eye(T, size(A.z, 1))))
+LT{T}(A::ScalarReMat{T}) = UniformScaling(one(T))
+function LT{T}(A::VectorReMat{T})
+    k = size(A.z, 1)
+    LowerTriangular(MMatrix{k,k,T,abs2(k)}(eye(T, k)))
+end
 
-function setθ!{T}(A::LowerTriangular{T, Matrix{T}}, v::AbstractVector{T})
+function setθ!{T}(A::LowerTriangular{T, MMatrix}, v::AbstractVector{T})
     Ad = A.data
     n = LinAlg.checksquare(Ad)
     if length(v) ≠ nlower(n)
@@ -63,6 +76,14 @@ function setθ!{T}(A::LowerTriangular{T, Matrix{T}}, v::AbstractVector{T})
     for j in 1 : n, i in j : n
         Ad[i, j] = v[offset += 1]
     end
+    A
+end
+
+function setθ!{T}(A::UniformScaling{T}, v::AbstractVector{T})
+    if length(v) != 1
+        throw(DimensionMismatch("length(v) = $(length(v)) should be 1"))
+    end
+    A.λ = v[1]
     A
 end
 

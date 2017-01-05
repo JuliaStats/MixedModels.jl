@@ -147,7 +147,7 @@ function pirls!{T}(m::GeneralizedLinearMixedModel{T}, varyβ::Bool=false, verbos
 
     while iter < maxiter
         iter += 1
-        varyβ && A_ldiv_B!(feR(m), copy!(β, lm.R[end - 1, end]))
+        varyβ && Ac_ldiv_B!(feL(m), copy!(β, lm.L[end, end - 1]))
         ranef!(u, m.LMM, β, true) # solve for new values of u
         obj = LaplaceDeviance!(m) # update GLM vecs and evaluate Laplace approx
         verbose && @show(iter, obj)

@@ -75,9 +75,9 @@ type LinearMixedModel{T <: AbstractFloat} <: MixedModel
     wttrms::Vector
     trms::Vector
     sqrtwts::Diagonal{T}
-    Λ::Vector{LowerTriangular{T, Matrix{T}}}
-    A::Matrix{Any}        # symmetric cross-product blocks (upper triangle)
-    R::Matrix{Any}        # right Cholesky factor in blocks.
+    Λ::Vector{Any}
+    A::Matrix{Any}        # symmetric cross-product blocks (lower triangle only)
+    L::Matrix{Any}        # left (lower-triangular) Cholesky factor in blocks.
     optsum::OptSummary
 end
 
@@ -130,17 +130,17 @@ function LinearMixedModel(f, mf, trms, Λ, wts)
         size(sqrtwts, 2) == n ? [sqrtwts * t for t in trms] :
         throw(DimensionMismatch("length(wts) must be 0 or length(y)"))
     nt = length(trms)
-    A, R = Array{Any}(nt, nt), Array{Any}(nt, nt)
-    for j in 1 : nt, i in 1 : j
+    A, L = Array{Any}(nt, nt), Array{Any}(nt, nt)
+    for i in 1 : nt, j in 1 : i
         A[i, j] = densify(wttrms[i]'wttrms[j])
-        R[i, j] = copy(A[i, j])
+        L[i, j] = copy(A[i, j])
     end
-    for j in 2 : nt
-        if isa(R[j, j], Diagonal) || isa(R[j, j], HBlkDiag)
-            for i in 1 : (j - 1)     # check for fill-in
-                if !isdiag(A[i, j]'A[i, j])
-                    for k in j : nt
-                        R[j, k] = full(R[j, k])
+    for i in 2 : nt
+        if isa(L[i, i], Diagonal) || isa(L[i, i], HBlkDiag)
+            for j in 1 : (i - 1)     # check for fill-in
+                if !isdiag(A[i, j] * A[i, j]')
+                    for k in i : nt
+                        L[k, i] = full(L[k, i])
                     end
                 end
             end
@@ -149,7 +149,7 @@ function LinearMixedModel(f, mf, trms, Λ, wts)
     optsum = OptSummary(mapreduce(getθ, vcat, Λ), mapreduce(lowerbd, vcat, Λ), :LN_BOBYQA;
         ftol_rel = 1.0e-12, ftol_abs = 1.0e-8)
     fill!(optsum.xtol_abs, 1.0e-10)
-    LinearMixedModel(f, mf, wttrms, trms, sqrtwts, Λ, A, R, optsum)
+    LinearMixedModel(f, mf, wttrms, trms, sqrtwts, convert(Vector{Any}, Λ), A, L, optsum)
 end
 
 """
@@ -173,28 +173,28 @@ function lmm(f::Formula, fr::AbstractDataFrame; weights::Vector = [])
         nl = [nlevs(t) for t in trms]
         trms = trms[sortperm(nl; rev = true)]
     end
-    Λ = LowerTriangular{T, Matrix{T}}[LT(t) for t in trms]
+    Λ = [LT(t) for t in trms]
     push!(trms, X.m)
     push!(trms, reshape(convert(Vector{T}, DataFrames.model_response(mf)), (size(X, 1), 1)))
     LinearMixedModel(f, mf, trms, Λ, convert(Vector{T}, weights))
 end
 
 function cfactor!(m::LinearMixedModel)
-    A, Λ, R = m.A, m.Λ, m.R
+    A, Λ, L = m.A, m.Λ, m.L
     n = size(A, 1)
-    for j in 1 : n, i in 1 : j
-        inject!(R[i, j], A[i, j])
+    for j in 1 : n, i in j : n
+        inject!(L[i, j], A[i, j])
     end
-    for i in eachindex(m.Λ)
-        for j in i : n
-            tscale!(Λ[i], R[i, j])
+    for j in eachindex(m.Λ)
+        for i in j : n
+            L[i, j] *= Λ[j]
         end
-        for ii in 1 : i
-            tscale!(R[ii,i], Λ[i])
+        for jj in 1 : j
+            L[j,jj] *= Λ[j]
         end
-        inflate!(R[i, i])
+        L[j, j] += I
     end
-    cfactor!(R)
+    cfactor!(L)
     m
 end
 
@@ -292,7 +292,7 @@ Overwrite `v` with the fixed-effects coefficients of model `m`
 """
 function fixef!{T}(v::AbstractVector{T}, m::LinearMixedModel{T})
     !isfit(m) && throw(ArgumentError("Model m has not been fit"))
-    A_ldiv_B!(feR(m), copy!(v, m.R[end - 1, end]))
+    Ac_ldiv_B!(feL(m), copy!(v, m.L[end, end - 1]))
 end
 
 """
@@ -330,15 +330,19 @@ Install `v` as the θ parameters in `m`.  Changes `m.Λ` only.
 """
 function setθ!{T}(m::LinearMixedModel{T}, v::Vector{T})
     Λ = m.Λ
+    if length(v) != (ntot = sum(nlower, Λ))
+        throw(DimensionMismatch("length(v) = $(length(v)), should be $ntot"))
+    end
     offset = 0
     for i in eachindex(Λ)
         λ = Λ[i]
-        nti = nlower(λ)
-        setθ!(λ, view(v, offset + (1 : nti)))
-        offset += nti
-    end
-    if length(v) ≠ offset
-        throw(DimensionMismatch("length(v) = $(length(v)), should be $offset"))
+        if isa(λ, UniformScaling)
+            Λ[i] = UniformScaling(v[offset += 1])
+        else
+            nti = nlower(λ)
+            setθ!(λ, view(v, offset + (1 : nti)))
+            offset += nti
+        end
     end
     m
 end
@@ -348,9 +352,9 @@ end
 
 Return the square root of the penalized, weighted residual sum-of-squares (pwrss).
 
-This value is the contents of the `1 × 1` bottom right block of `m.R`
+This value is the contents of the `1 × 1` bottom right block of `m.L`
 """
-sqrtpwrss{T}(m::LinearMixedModel{T}) = T(m.R[end,end][1])
+sqrtpwrss(m::LinearMixedModel) = m.L[end,end][1]
 
 """
     varest(m::LinearMixedModel)
@@ -366,20 +370,7 @@ The penalized residual sum-of-squares.
 """
 pwrss(m::LinearMixedModel) = abs2(sqrtpwrss(m))
 
-"""
-    chol2cor(L::LowerTriangular)
-
-Return the correlation matrix (symmetric, positive definite with unit diagonal)
-corresponding to `L * L'`.
-"""
-function chol2cor(L::LowerTriangular)
-    size(L, 1) == 1 && return ones(1, 1)
-    res = L * L'
-    d = Diagonal([inv(sqrt(res[i, i])) for i in 1:size(res, 1)])
-    return d * res * d
-end
-
-Base.cor(m::LinearMixedModel) = map(chol2cor, m.Λ)
+Base.cor(m::LinearMixedModel) = map(λ -> stddevcor(λ)[2], m.Λ)
 
 function StatsBase.deviance(m::LinearMixedModel)
     isfit(m) || error("Model has not been fit")
@@ -422,7 +413,7 @@ end
 """
     reweight!{T}(m::LinearMixedModel{T}, wts::Vector{T})
 
-Update `m.sqrtwts` from `wts` and `m.wttrms` from `m.trms`.  Recompute `m.A` and `m.R`.
+Update `m.sqrtwts` from `wts` and `m.wttrms` from `m.trms`.  Recompute `m.A` and `m.L`.
 """
 function reweight!{T}(m::LinearMixedModel{T}, weights::Vector{T})
     A, wttrms, trms, sqrtwts = m.A, m.wttrms, m.trms, m.sqrtwts
@@ -498,7 +489,7 @@ type VarCorr
     s::Float64
     function VarCorr(Λ::Vector, fnms::Vector, cnms::Vector, s::Number)
         length(fnms) == length(cnms) == length(Λ) || throw(DimensionMismatch(""))
-        if isfinite(s) && s < 0
+        if isfinite(s) && s < 0  # FIXME the isfinite stuff is probably for an old GLMM implementation
             error("s must be non-negative")
         end
         new(Λ, fnms, cnms, s)
@@ -514,8 +505,9 @@ function Base.show(io::IO, vc::VarCorr)
     fnms = isfinite(vc.s) ? vcat(vc.fnms,"Residual") : vc.fnms
     nmwd = maximum(map(strwidth, fnms)) + 1
     write(io, "Variance components:\n")
-    stdm = [rowlengths(λ) for λ in vc.Λ]
-    cnms = vcat(vc.cnms...)
+    stddevv = [stddevcor(λ) for λ in vc.Λ]
+    stdm = [p[1] for p in stddevv]
+    cnms = reduce(vcat, vc.cnms)
     if isfinite(vc.s)
         push!(stdm, [1.])
         stdm *= vc.s
@@ -533,7 +525,7 @@ function Base.show(io::IO, vc::VarCorr)
     write(io, Base.cpad("Std.Dev.", stdwd))
     any(s -> length(s) > 1, stdm) && write(io,"  Corr.")
     println(io)
-    cor = [chol2cor(λ) for λ in vc.Λ]
+    cor = [p[2] for p in stddevv]
     ind = 1
     for i in 1:length(fnms)
         stdmi = stdm[i]

@@ -1,15 +1,15 @@
 #  Functions and methods common to all MixedModel types
 
 """
-    feR(m::MixedModel)
+    feL(m::MixedModel)
 
-Return th upper Cholesky factor for the fixed-effects parameters, as an `UpperTriangular`
+Return the lower Cholesky factor for the fixed-effects parameters, as an `LowerTriangular`
 `p × p` matrix.
 """
-function feR(m::MixedModel)
-    R = lmm(m).R
-    kp1 = size(R, 1) - 1
-    UpperTriangular(R[kp1, kp1])
+function feL(m::MixedModel)
+    L = lmm(m).L
+    kp1 = size(L, 1) - 1
+    LowerTriangular(L[kp1, kp1])
 end
 
 """
@@ -52,15 +52,14 @@ end
     describeblocks(io::IO, m::MixedModel)
     describeblocks(m::MixedModel)
 
-Describe the types and sizes of the blocks in the upper triangle of `m.A` and `m.R`.
+Describe the types and sizes of the blocks in the lower triangle of `m.A` and `m.L`.
 """
 function describeblocks(io::IO, m::MixedModel)
     lm = lmm(m)
-    A, R = lm.A, lm.R
-    for j in 1:size(A,2), i in 1:j
-        println(io, i, ",", j, ": ", typeof(A[i,j]), " ", size(A[i,j]), " ", typeof(R[i,j]))
+    A, L = lm.A, lm.L
+    for i in 1 : size(A, 2), j in 1 : i
+        println(io, i, ",", j, ": ", typeof(A[i,j]), " ", size(A[i,j]), " ", typeof(L[i,j]))
     end
-    nothing
 end
 describeblocks(m::MixedModel) = describeblocks(Base.STDOUT, m)
 
@@ -113,7 +112,7 @@ If `uscale` is `true` the random effects are on the spherical (i.e. `u`) scale, 
 original scale
 """
 function ranef!{T}(v::Vector, m::LinearMixedModel{T}, β::AbstractArray{T}, uscale::Bool)
-    R, Λ = m.R, m.Λ
+    L, Λ = m.L, m.Λ
     k = length(Λ)        # number of random-effects terms
     for j in 1:k
         copy!(v[j], R[j, end])
@@ -124,16 +123,16 @@ function ranef!{T}(v::Vector, m::LinearMixedModel{T}, β::AbstractArray{T}, usca
             BLAS.gemv!('N', -1.0, R[j, kp1], β, 1.0, vec(v[j]))
         end
     end
-    for j in k:-1:1
-        Rjj = R[j, j]
-        uj = vec(v[j])
-        LinAlg.A_ldiv_B!(isa(Rjj, Diagonal) ? Rjj : UpperTriangular(Rjj), uj)
-        for i in 1:(j - 1)
-            Rij = R[i, j]
-            if isa(Rij, StridedMatrix{T})
-                BLAS.gemv!('N', -one(T), Rij, uj, one(T), vec(v[i]))
+    for i in k : -1 : 1
+        Lii = L[i, i]
+        ui = vec(v[i])
+        LinAlg.A_ldiv_Bc!(isa(Lii, Diagonal) ? Ljj : LowerTriangular(Rjj), ui)
+        for j in 1:(i - 1)
+            Lij = L[i, j]
+            if isa(Lij, StridedMatrix{T})
+                BLAS.gemv!('N', -one(T), Lij, uj, one(T), vec(v[i]))
             else
-                A_mul_B!(-one(T), Rij, uj, one(T), vec(v[i]))
+                A_mul_B!(-one(T), Lij, uj, one(T), vec(v[i]))
             end
         end
     end
@@ -146,7 +145,7 @@ function ranef!{T}(v::Vector, m::LinearMixedModel{T}, β::AbstractArray{T}, usca
 end
 
 function ranef!(v::Vector, m::LinearMixedModel, uscale::Bool)
-    ranef!(v, m, feR(m) \ vec(m.R[end-1, end]), uscale)
+    ranef!(v, m, feL(m) \ vec(m.L[end, end-1]), uscale)
 end
 
 """
@@ -183,8 +182,8 @@ end
 Returns the estimated covariance matrix of the fixed-effects estimator.
 """
 function StatsBase.vcov(m::MixedModel)
-    Rinv = inv(feR(m))
-    varest(m) * (Rinv * Rinv')
+    Linv = inv(feL(m))
+    varest(m) * (Linv'Linv)
 end
 
 """
@@ -238,10 +237,10 @@ function condVar(m::MixedModel)
         throw(ArgumentError(
             "code for more than one term not yet written"))
     end
-    R = lm.R[1,1]
-    res = Array{eltype(R),3}[]
-    if isa(R, Diagonal)
-        push!(res, reshape(abs2.(inv.(R.diag) .* (Λ[1][1])), (1,1,size(R,1))))
+    L = lm.L[1,1]
+    res = Array{eltype(L),3}[]
+    if isa(L, Diagonal)
+        push!(res, reshape(abs2.(inv.(L.diag) .* (Λ[1][1])), (1, 1, size(L, 1))))
     else
         throw(ArgumentError(
             "code for vector-value random-effects not yet written"))
