@@ -10,3 +10,4 @@ StatsBase 0.11
 StatsFuns 0.3
 CategoricalArrays
 NullableArrays
+StaticArrays
