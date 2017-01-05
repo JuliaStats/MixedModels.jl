@@ -27,9 +27,10 @@ end
     bootstrap{T}(N, m::LinearMixedModel{T},
         β::Vector{T}=fixef(m), σ::T=sdest(m), θ::Vector{T}=getθ(m))
 
-Perform `N` parametric bootstrap replication fits of `m`, returning a tuple of
-the objective values at convergence, variance estimates, fixed-effects estimates
-and covariance parameters.
+Perform `N` parametric bootstrap replication fits of `m`, returning a data frame
+with column names `:obj`, the objective function at convergence, `:σ`, the estimated
+standard deviation of the residuals, `βᵢ, i = 1,...,p`, the fixed-effects coefficients,
+and `θᵢ, i = 1,...,k` the covariance parameters.
 
 # Named Arguments
 
@@ -43,19 +44,83 @@ function bootstrap{T}(N, m::LinearMixedModel{T};
     length(β) == p || throw(DimensionMismatch("length(β) should be $p"))
     k = length(getθ(m))
     length(θ) == k || throw(DimensionMismatch("length(θ) should be $k"))
-    objs = Array(T, (N,))
-    vars = Array(T, (N,))
-    βs = Array(T, (p, N))
-    θs = Array(T, (k, N))
+    Λ = m.Λ
+    Λsize = [size(λ, 2) for λ in Λ]
+    cnms = vcat([:obj, :σ], Symbol.(subscriptednames('β', p)),
+        Symbol.(subscriptednames('θ', k)), Symbol.(subscriptednames('σ', sum(Λsize))))
+    nρ = [(l * (l - 1)) >> 1 for l in Λsize]
+    if (nρtot = sum(nρ)) > 0
+        append(cnms, Symbol.(subscriptednames('ρ', nρtot)))
+    end
+    dfr = DataFrame(Any[Array(T, (N,)) for _ in eachindex(cnms)], cnms)
+    scrβ, scrθ = Array(T, (p, )), Array(T, (k, ))
+    scrσ = [Array(T, (l, )) for l in Λsize]
+    scrρ = [Array(T, (l, l)) for l in Λsize]
+    scr = [similar(sρ) for sρ in scrρ]
     for i in 1 : N
+        j = 0
         refit!(simulate!(m, β = β, σ = σ, θ = θ))
-        objs[i] = objective(m)
-        vars[i] = varest(m)
-        fixef!(view(βs, :, i), m)
-        getθ!(view(θs, :, i), m)
+        dfr[j += 1][i] = objective(m)
+        dfr[j += 1][i] = σest = sdest(m)
+        for x in fixef!(scrβ, m)
+            dfr[j += 1][i] = x
+        end
+        for x in getθ!(scrθ, m)
+            dfr[j += 1][i] = x
+        end
+        for l in eachindex(Λ)
+            stddevcor!(scrσ[l], scrρ[l], scr[l], LinAlg.Cholesky(Λ[l], :L))
+            for x in scrσ[l]
+                dfr[j += 1][i] = σest * x
+            end
+        end
     end
     refit!(m, y₀)
-    objs, vars, βs, θs
+    dfr
+end
+
+"""
+    subscriptednames(nm, len)
+
+Return a `Vector{String}` of `nm` with subscripts from `₁` to `len`
+"""
+function subscriptednames(nm, len)
+    nd = ndigits(len)
+    nd == 1 ?
+        [string(nm, '₀' + j) for j in 1:len] :
+        [string(nm, lpad(string(j), nd, '0')) for j in 1:len]
+end
+
+function stddevcor!{T}(σ::Vector{T}, ρ::Matrix{T}, scr::Matrix{T}, L::LinAlg.Cholesky{T})
+    if length(σ) != (k = size(L, 2)) || size(ρ) ≠ (k, k) || size(scr) ≠ (k, k)
+        throw(DimensionMismatch(string("size(ρ) = $(size(ρ)) and size(scr) = $(size(scr)) ",
+            "should be ($k, $k) and length(σ) = $(length(σ)) should be $k")))
+    end
+    if k == 1
+        copy!(σ, L.factors)
+        ρ[1, 1] = one(T)
+    elseif L.uplo == 'L'
+        copy!(scr, L.factors)
+        for i in 1 : k
+            σ[i] = σi = norm(view(scr, i, 1 : i))
+            for j in 1 : i
+                scr[i, j] /= σi
+            end
+        end
+        A_mul_Bc!(ρ, LowerTriangular(scr), LowerTriangular(scr))
+    elseif L.uplo == 'U'
+        copy!(scr, L.factors)
+        for j in 1 : k
+            σ[j] = σj = norm(view(scr, 1 : j, j))
+            for i in 1 : j
+                scr[i, j] /= σj
+            end
+        end
+        Ac_mul_B!(ρ, UpperTriangular(scr), UpperTriangular(scr))
+    else
+        throw(ArgumentError("L.uplo should be 'L' or 'U'"))
+    end
+    σ, ρ
 end
 
 """

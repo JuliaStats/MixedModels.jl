@@ -50,8 +50,9 @@ end
     simulate!(fm, θ = getθ(fm))
     @test_throws DimensionMismatch refit!(fm, zeros(29))
     srand(1234321)
-    devs, vars, βs, θs = bootstrap(1000, fm)
-    @test length(devs) == 1000
+    dfr = bootstrap(1000, fm)
+    @test size(dfr) == (1000, 5)
+    @test names(dfr) == Symbol[:obj, :σ, :β₁, :θ₁, :σ₁]
 end
 
 @testset "Dyestuff2" begin
