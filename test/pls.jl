@@ -1,15 +1,15 @@
 @testset "Dyestuff" begin
-    fm1 = lmm(Yield ~ 1 + (1|Batch), ds)
-#fm1w = lmm(Yield ~ 1 + (1|Batch), ds; weights = ones(size(ds, 1)))
+    fm1 = lmm(Yield ~ 1 + (1|Batch), dyestuff)
+#fm1w = lmm(Yield ~ 1 + (1|Batch), dyestuff; weights = ones(size(dyestuff, 1)))
 
     @test size(fm1.A) == (3, 3)
     @test size(fm1.wttrms) == (3,)
-    @test size(fm1.R) == (3, 3)
+    @test size(fm1.L) == (3, 3)
     @test size(fm1.Λ) == (1,)
     @test lowerbd(fm1) == zeros(1)
     @test getθ(fm1) == ones(1)
 
-    @test setθ!(fm1, [0.713]) |> cfactor! |> objective ≈ 327.34216280955366
+    @test objective(cfactor!(setθ!(fm1, [0.713]))) ≈ 327.34216280955366
     MixedModels.describeblocks(IOBuffer(), fm1)
 
     fit!(fm1);
@@ -26,7 +26,7 @@
     @test length(cm.rownms) == 1
     @test length(cm.colnms) == 4
     @test MixedModels.fnames(fm1) == [:Batch]
-    @test model_response(fm1) == convert(Vector, ds[:Yield])
+    @test model_response(fm1) == convert(Vector, dyestuff[:Yield])
     @test abs(sum(ranef(fm1, uscale=true)[1])) < 1.e-5
     cv = condVar(fm1)
     @test length(cv) == 1
@@ -43,7 +43,7 @@
 end
 
 @testset "simulate!" begin
-    fm = fit!(lmm(Yield ~ 1 + (1 | Batch), ds))
+    fm = fit!(lmm(Yield ~ 1 + (1 | Batch), dyestuff))
     srand(1234321)
     refit!(simulate!(fm))
     @test_approx_eq_eps deviance(fm) 339.0218639362958 1.e-3
@@ -56,7 +56,7 @@ end
 end
 
 @testset "Dyestuff2" begin
-    fm = lmm(Yield ~ 1 + (1|Batch), ds2)
+    fm = lmm(Yield ~ 1 + (1|Batch), dyestuff2)
     @test lowerbd(fm) == zeros(1)
     fit!(fm, true)
     show(IOBuffer(), fm)
@@ -67,17 +67,17 @@ end
     @test stderr(fm) ≈ [0.6669857396443261]
     @test coef(fm) ≈ [5.6656]
     @test logdet(fm) ≈ 0.0
-    refit!(fm,convert(Vector,ds[:Yield]))
+    refit!(fm,convert(Vector,dyestuff[:Yield]))
 end
 
 @testset "sleep" begin
-    fm = lmm(Reaction ~ 1 + Days + (1+Days|Subject),slp)
+    fm = lmm(Reaction ~ 1 + Days + (1+Days|Subject),sleepstudy)
     @test lowerbd(fm) == [0.,-Inf,0.]
     @test isa(fm.A[1,1],MixedModels.HBlkDiag{Float64})
     @test size(fm.A[1,1]) == (36,36)
     @test fm.A[1,1][1,1] == 10.
     @test fm.A[1,1][6,1] == 0.
-    @test_throws BoundsError size(fm.A[1,1],0)
+    @test_throws BoundyestuffError size(fm.A[1,1],0)
     @test size(fm.A[1,1],1) == 36
     @test full(fm.A[1,1])[1:2,1:2] == reshape([10.,45,45,285],(2,2))
 
@@ -109,11 +109,11 @@ end
     @test size(b3[1]) == (2,18)
     @test_approx_eq_eps b3[1][1,1] 2.815819441982976 1.e-3
 
-    simulate!(fm)  # to test one of the unscaledre methods
+    simulate!(fm)  # to test one of the unscaledre methodyestuff
 end
 
 @testset "sleepnocorr" begin
-    fm = lmm(Reaction ~ Days + (1|Subject) + (0+Days|Subject), slp);
+    fm = lmm(Reaction ~ Days + (1|Subject) + (0+Days|Subject), sleepstudy);
     @test size(fm) == (180,2,36,2)
     @test getθ(fm) == ones(2)
     @test lowerbd(fm) == zeros(2)
@@ -137,7 +137,7 @@ end
 #@test_approx_eq_eps tbl[:Deviance] [1752.0032551398835,1751.9393444636157] 1e-3
 #@test tbl[:Df] == [5,6]
 @testset "penicillin" begin
-    fm = lmm(Diameter ~ (1 | Plate) + (1 | Sample), pen);
+    fm = lmm(diameter ~ 1 + (1 | plate) + (1 | sample), penicillin);
     @test size(fm) == (144,1,30,2)
     @test getθ(fm) == ones(2)
     @test lowerbd(fm) == zeros(2)
@@ -147,7 +147,7 @@ end
     @test_approx_eq_eps objective(fm) 332.18834867227616 1.e-3
     @test_approx_eq_eps coef(fm) [22.97222222222222] 1.e-3
     @test_approx_eq_eps fixef(fm) [22.97222222222222] 1.e-3
-    @test coef(fm)[1] ≈ mean(Array(pen[:Diameter]))
+    @test coef(fm)[1] ≈ mean(Array(penicillin[:diameter]))
     @test_approx_eq_eps stderr(fm) [0.7445960346851368] 1.e-4
     @test_approx_eq_eps getθ(fm) [1.5375772376554968,3.219751321180035] 1.e-3
     @test_approx_eq_eps std(fm)[1] [0.8455645948223015] 1.e-4

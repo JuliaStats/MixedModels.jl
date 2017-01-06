@@ -46,7 +46,7 @@ function cfactor!{T}(A::HBlkDiag{T})
         for j in 1 : r, i in 1 : j
             scm[i, j] = Aa[i, j, k]
         end
-        LAPACK.potrf!('U', scm)
+        LAPACK.potrf!('L', scm)
         for j in 1 : r, i in 1 : j
             Aa[i, j, k] = scm[i, j]
         end
@@ -133,23 +133,21 @@ function downdate!{T}(C::DenseMatrix{T}, A::SparseMatrixCSC{T}, B::DenseMatrix{T
     C
 end
 function downdate!{T}(C::DenseMatrix{T}, A::DenseMatrix{T}, B::SparseMatrixCSC{T})
-    m, n = size(A)
-    p, q = size(B)
-    r, s = size(C)
+    (m, n), (p, q), (r, s) = size(A), size(B), size(C)
     if r ≠ m || s ≠ p || n ≠ q
         throw(DimensionMismatch("size(C,1) ≠ size(A,1) or size(C,2) ≠ size(B,1) or size(A,2) ≠ size(B,2)"))
     end
-    nz = nonzeros(B)
-    rv = rowvals(B)
-    for j in 1 : s, k in nzrange(B,j)
+    nz, rv = nonzeros(B), rowvals(B)
+    for j in 1 : q, k in nzrange(B, j)
         rvk = rv[k]
         nzk = nz[k]
         for jj in 1 : r  # use .= fusing in v0.6.0 and later
-            C[jj, rvk] -= A[jj, rvk] * nzk
+            C[jj, rvk] -= A[jj, j] * nzk
         end
     end
     C
 end
+
 function downdate!{T}(C::DenseMatrix{T}, A::SparseMatrixCSC{T}, B::SparseMatrixCSC{T})
     AtB = A'B
     if size(C) ≠ size(AtB)
@@ -167,23 +165,16 @@ end
 
 function downdate!{T}(C::DenseMatrix{T}, A::SparseMatrixCSC{T})
     m, n = size(A)
-    if n ≠ LinAlg.checksquare(C)
-        throw(DimensionMismatch("C is not square or size(C,2) ≠ size(A,2)"))
+    if m ≠ LinAlg.checksquare(C)
+        throw(DimensionMismatch("C is not square or size(C, 2) ≠ size(A, 1)"))
     end
-    # FIXME: avoid allocation by caching a transposed matrix and just fill in the new values
-    # alternatively, work with the lower Cholesky factor L instead of R
-    At = A'
-    rv = rowvals(A)
-    nz = nonzeros(A)
-    rvt = rowvals(At)
-    nzt = nonzeros(At)
-    cp = A.colptr
-    @inbounds for j in 1:n
-        for jp in nzrange(A, j)
-            nzB = nz[jp]
-            k = rv[jp]
-            for kp in nzrange(At, k)
-                C[rvt[kp], j] -= nzt[kp] * nzB
+    rv, nz = rowvals(A), nonzeros(A)
+    for jj in 1 : n
+        rangejj = nzrange(A, jj)
+        for j in rangejj
+            nzj, rvj = nz[j], rv[j]
+            for i in rangejj
+                C[rv[i], rvj] -= nz[i] * nzj
             end
         end
     end

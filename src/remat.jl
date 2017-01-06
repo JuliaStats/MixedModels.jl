@@ -20,7 +20,7 @@ immutable ScalarReMat{T<:AbstractFloat,V,R} <: ReMat
     f::Union{NullableCategoricalVector{V,R},CategoricalVector{V,R},PooledDataVector{V,R}}
     z::Vector{T}
     fnm::Symbol
-    cnms::Vector
+    cnms::Vector{String}
 end
 
 """
@@ -51,7 +51,7 @@ A factory for `ReMat` objects.
 [`ScalarReMat`](@ref) or a [`VectorReMat`](@ref), as appropriate.
 """
 function remat(e::Expr, df::DataFrame)
-    e.args[1] == :| || throw(ArgumentError("$e is not a call to '|'"))
+    isa(e, Expr) && e.args[1] == :| || throw(ArgumentError("$e is not a call to '|'"))
     fnm = e.args[3]
     gr = getindex(df, fnm)
     gr = isa(gr, Union{NullableCategoricalVector,CategoricalVector,PooledDataVector}) ? gr : pool(gr)

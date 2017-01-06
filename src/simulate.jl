@@ -45,12 +45,12 @@ function bootstrap{T}(N, m::LinearMixedModel{T};
     k = length(getθ(m))
     length(θ) == k || throw(DimensionMismatch("length(θ) should be $k"))
     Λ = m.Λ
-    Λsize = [size(λ, 2) for λ in Λ]
+    Λsize = [isa(λ, UniformScaling) ? 1 : size(λ, 2) for λ in Λ]
     cnms = vcat([:obj, :σ], Symbol.(subscriptednames('β', p)),
         Symbol.(subscriptednames('θ', k)), Symbol.(subscriptednames('σ', sum(Λsize))))
     nρ = [(l * (l - 1)) >> 1 for l in Λsize]
     if (nρtot = sum(nρ)) > 0
-        append(cnms, Symbol.(subscriptednames('ρ', nρtot)))
+        append!(cnms, Symbol.(subscriptednames('ρ', nρtot)))
     end
     dfr = DataFrame(Any[Array(T, (N,)) for _ in eachindex(cnms)], cnms)
     scrβ, scrθ = Array(T, (p, )), Array(T, (k, ))
@@ -69,7 +69,9 @@ function bootstrap{T}(N, m::LinearMixedModel{T};
             dfr[j += 1][i] = x
         end
         for l in eachindex(Λ)
-            stddevcor!(scrσ[l], scrρ[l], scr[l], LinAlg.Cholesky(Λ[l], :L))
+            λ = Λ[l]
+            stddevcor!(scrσ[l], scrρ[l], scr[l],
+                LinAlg.Cholesky(isa(λ, UniformScaling) ? λ * ones(1,1) : λ, :L))
             for x in scrσ[l]
                 dfr[j += 1][i] = σest * x
             end
@@ -144,7 +146,7 @@ function reevaluateAend!(m::LinearMixedModel)
         A_mul_B!(wttrmn, sqrtwts, trms[end])
     end
     for i in eachindex(wttrms)
-        Ac_mul_B!(A[i, end], wttrms[i], wttrmn)
+        Ac_mul_B!(A[end, i], wttrmn, wttrms[i])
     end
     m
 end
@@ -200,8 +202,9 @@ end
 
 Add unscaled random effects defined by `M` and `L * randn(1, length(M.f.pool))` to `y`.
 """
-function unscaledre!{T}(y::AbstractVector{T}, M::ScalarReMat{T}, L::LowerTriangular{T})
-    unscaledre!(y, M, A_mul_B!(L, randn(1, length(M.f.pool))))
+function unscaledre!{T}(y::AbstractVector{T}, M::ScalarReMat{T}, L::UniformScaling{T})
+    re = randn(1, length(M.f.pool))
+    unscaledre!(y, M, (re *= L))
 end
 
 function unscaledre!{T}(y::AbstractVector{T}, M::VectorReMat{T}, b::DenseMatrix{T})

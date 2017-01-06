@@ -1,13 +1,14 @@
-using DataArrays, DataFrames, MixedModels, Base.Test
+using DataArrays, DataFrames, Feather, MixedModels, Base.Test
 
-include(joinpath(dirname(@__FILE__), "data.jl"))
-#ds = Feather.read(joinpath(dirname(@__FILE__), "data", "Dyestuff.feather"))
-#ds2 = Feather.read(joinpath(dirname(@__FILE__), "data", "Dyestuff2.feather"))
-#slp = Feather.read(joinpath(dirname(@__FILE__), "data", "sleepstudy.feather"))
-#psts = Feather.read(joinpath(dirname(@__FILE__), "data", "Pastes.feather"))
-#pen = Feather.read(joinpath(dirname(@__FILE__), "data", "Penicillin.feather"))
-#cbpp = Feather.read(joinpath(dirname(@__FILE__), "data", "CBPP.feather"))
-#contra = Feather.read(joinpath(dirname(@__FILE__), "data", "Contraception.feather"))
+const datadir = joinpath(dirname(@__FILE__), "test", "data")
+cbpp = Feather.read(joinpath(datadir, "CBPP.feather"), nullable = false)
+contraception = Feather.read(joinpath(datadir, "Contraception.feather"), nullable = false)
+dyestuff = Feather.read(joinpath(datadir, "Dyestuff.feather"), nullable = false)
+dyestuff2 = Feather.read(joinpath(datadir, "Dyestuff2.feather"), nullable = false)
+insteval = Feather.read(joinpath(datadir, "InstEval.feather"), nullable = false)
+pastes = Feather.read(joinpath(datadir, "Pastes.feather"), nullable = false)
+penicillin = Feather.read(joinpath(datadir, "Penicillin.feather"), nullable = false)
+sleepstudy = Feather.read(joinpath(datadir, "sleepstudy.feather"), nullable = false)
 
 include("paramlowertriangular.jl")
 include("scalarReTerm.jl")

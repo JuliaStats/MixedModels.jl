@@ -7,7 +7,7 @@ nlower(A::UniformScaling) = 1
 
 Overwrite `v` with the elements of the lower triangle of `A` (column-major ordering)
 """
-function getθ!{T}(v::AbstractVector{T}, A::LowerTriangular{T,MMatrix})
+function getθ!{T}(v::AbstractVector{T}, A::LowerTriangular{T})
     Ad = A.data
     n, m = size(Ad)
     if n ≠ m || length(v) ≠ nlower(n)
@@ -32,18 +32,19 @@ end
 
 Return a vector of the elements of the lower triangle of `A` (column-major ordering)
 """
-getθ{T}(A::LowerTriangular{T, MMatrix}) = getθ!(Array(T, nlower(A)), A)
+getθ{T}(A::LowerTriangular{T}) = getθ!(Array(T, nlower(A)), A)
 getθ(A::UniformScaling) = [A.λ]
 
 """
-    lowerbd{T}(A::LowerTriangular{T,Matrix{T}})
+    lowerbd{T}(A::LowerTriangular{T})
 
 Return the vector of lower bounds on the parameters, `θ`.
 
 These are the elements in the lower triangle in column-major ordering.
 Diagonals have a lower bound of `0`.  Off-diagonals have a lower-bound of `-Inf`.
 """
-function lowerbd{T}(A::LowerTriangular{T,MMatrix})
+function lowerbd{T}(A::LowerTriangular{T})
+#function lowerbd{T}(A::LowerTriangular{T,Matrix{T}})
     n = LinAlg.checksquare(A)
     res = fill(convert(T, -Inf), nlower(n))
     k = -n
@@ -53,6 +54,7 @@ function lowerbd{T}(A::LowerTriangular{T,MMatrix})
     res
 end
 lowerbd{T}(A::UniformScaling{T}) = zeros(T, (1,))
+Base.cond{T}(A::UniformScaling{T}) = A.λ ≠ zero(T) ? one(T) : convert(T, Inf)
 
 """
     LT(A)
@@ -66,7 +68,7 @@ function LT{T}(A::VectorReMat{T})
     LowerTriangular(MMatrix{k,k,T,abs2(k)}(eye(T, k)))
 end
 
-function setθ!{T}(A::LowerTriangular{T, MMatrix}, v::AbstractVector{T})
+function setθ!{T}(A::LowerTriangular{T}, v::AbstractVector{T})
     Ad = A.data
     n = LinAlg.checksquare(Ad)
     if length(v) ≠ nlower(n)
@@ -110,14 +112,6 @@ function tscale!(A::LowerTriangular,B::HBlkDiag)
         throw(DimensionMismatch("size(A,2) ≠ blocksize of B"))
     end
     Ac_mul_B!(A, reshape(Ba,(r,s * k)))
-    B
-end
-
-function tscale!{T}(A::LowerTriangular{T}, B::Diagonal{T})
-    if size(A, 1) ≠ 1
-        throw(DimensionMismatch("A must be a 1×1 LowerTriangular"))
-    end
-    scale!(A.data[1], B.diag)
     B
 end
 

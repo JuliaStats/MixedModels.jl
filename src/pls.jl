@@ -244,7 +244,7 @@ function StatsBase.fit!{T}(m::LinearMixedModel{T}, verbose::Bool=false)
         end
     end
     ## ensure that the parameter values saved in m are xmin
-    setθ!(m, xmin) |> cfactor!
+    cfactor!(setθ!(m, xmin))
 
     optsum.feval = feval
     optsum.final = xmin
@@ -311,7 +311,7 @@ StatsBase.nobs(m::LinearMixedModel) = Int(length(m.trms[end]))
 function Base.size(m::LinearMixedModel)
     k = length(m.Λ)
     trms = m.wttrms
-    q = sum([size(trms[j], 2) for j in 1:k])
+    q = sum(size(trms[j], 2) for j in 1:k)
     n, p = size(trms[k + 1])
     n, p, q, k
 end
@@ -321,7 +321,7 @@ end
 
 Return the estimate of σ, the standard deviation of the per-observation noise.
 """
-sdest{T}(m::LinearMixedModel{T}) = T(sqrtpwrss(m)/√nobs(m))
+sdest(m::LinearMixedModel) = sqrtpwrss(m) / √nobs(m)
 
 """
     setθ!{T}(m::LinearMixedModel{T}, v::Vector{T})
@@ -354,14 +354,14 @@ Return the square root of the penalized, weighted residual sum-of-squares (pwrss
 
 This value is the contents of the `1 × 1` bottom right block of `m.L`
 """
-sqrtpwrss(m::LinearMixedModel) = m.L[end,end][1]
+sqrtpwrss(m::LinearMixedModel) = m.L[end, end][1]
 
 """
     varest(m::LinearMixedModel)
 
 Returns the estimate of σ², the variance of the conditional distribution of Y given B.
 """
-varest{T}(m::LinearMixedModel{T}) = T(pwrss(m)/nobs(m))
+varest(m::LinearMixedModel) = pwrss(m) / nobs(m)
 
 """
     pwrss(m::LinearMixedModel)
@@ -441,12 +441,12 @@ function Base.show(io::IO, m::LinearMixedModel)
         warn("Model has not been fit")
         return nothing
     end
-    n,p,q,k = size(m)
+    n, p, q, k = size(m)
     println(io, "Linear mixed model fit by maximum likelihood")
     println(io, " ", m.formula)
     oo = objective(m)
     nums = showoff([-oo/ 2, oo, aic(m), bic(m)])
-    fieldwd = max(maximum(length(nums)) + 2, 11)
+    fieldwd = max(maximum(strwidth.(nums)) + 2, 11) ## FIXME: Is there a number of characters function?
     print(' ')
     for label in ["logLik", "-2 logLik", "AIC", "BIC"]
         print(io, Base.cpad(label, fieldwd))
@@ -475,38 +475,40 @@ An encapsulation of information on the fitted random-effects
 variance-covariance matrices.
 
 # Members
-* `Λ`: the vector of lower triangular matrices from the `MixedModel`
-* `fnms`: a `Vector{ASCIIString}` of grouping factor names
-* `cnms`: a `Vector{Vector{ASCIIString}}` of column names
+* \sigma: the vector of lower triangular matrices from the `MixedModel`
+* `fnms`: a `Vector{String}` of grouping factor names
+* `cnms`: a `Vector{Vector{String}}` of column names
 * `s`: the estimate of σ, the standard deviation of the per-observation noise
 
 The main purpose of defining this type is to isolate the logic in the show method.
 """
-type VarCorr
-    Λ::Vector
-    fnms::Vector
-    cnms::Vector
-    s::Float64
-    function VarCorr(Λ::Vector, fnms::Vector, cnms::Vector, s::Number)
-        length(fnms) == length(cnms) == length(Λ) || throw(DimensionMismatch(""))
-        if isfinite(s) && s < 0  # FIXME the isfinite stuff is probably for an old GLMM implementation
-            error("s must be non-negative")
-        end
-        new(Λ, fnms, cnms, s)
-    end
+type VarCorr{T}
+    σ::Vector{Vector{T}}
+    ρ::Vector{Matrix{T}}
+    fnms::Vector{Symbol}
+    cnms::Vector{Vector{String}}
+    s::T
 end
-function VarCorr(m::LinearMixedModel)
-    Λ, trms = m.Λ, m.trms
-    VarCorr(Λ, [string(trms[i].fnm) for i in eachindex(Λ)],
-        [trms[i].cnms for i in eachindex(Λ)], sdest(m))
+function VarCorr{T}(m::LinearMixedModel{T})
+    Λ, trms, σ, ρ, fnms, cnms = m.Λ, m.trms, Vector{T}[], Matrix{T}[], Symbol[], Vector{String}[]
+    for i in eachindex(Λ)
+        σi, ρi = stddevcor(Λ[i])
+        push!(σ, σi)
+        push!(ρ, ρi)
+        trmi = trms[i]
+        push!(fnms, trmi.fnm)
+        push!(cnms, trmi.cnms)
+    end
+    VarCorr(σ, ρ, fnms, cnms, sdest(m))
 end
 
 function Base.show(io::IO, vc::VarCorr)
+    # FIXME: Do this one term at a time
     fnms = isfinite(vc.s) ? vcat(vc.fnms,"Residual") : vc.fnms
-    nmwd = maximum(map(strwidth, fnms)) + 1
+    nmwd = maximum(map(strwidth, string.(fnms))) + 1
     write(io, "Variance components:\n")
-    stddevv = [stddevcor(λ) for λ in vc.Λ]
-    stdm = [p[1] for p in stddevv]
+    stdm = vc.σ
+    cor = vc.ρ
     cnms = reduce(vcat, vc.cnms)
     if isfinite(vc.s)
         push!(stdm, [1.])
@@ -525,7 +527,6 @@ function Base.show(io::IO, vc::VarCorr)
     write(io, Base.cpad("Std.Dev.", stdwd))
     any(s -> length(s) > 1, stdm) && write(io,"  Corr.")
     println(io)
-    cor = [p[2] for p in stddevv]
     ind = 1
     for i in 1:length(fnms)
         stdmi = stdm[i]

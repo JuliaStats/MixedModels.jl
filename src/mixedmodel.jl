@@ -114,31 +114,31 @@ original scale
 function ranef!{T}(v::Vector, m::LinearMixedModel{T}, β::AbstractArray{T}, uscale::Bool)
     L, Λ = m.L, m.Λ
     k = length(Λ)        # number of random-effects terms
-    for j in 1:k
-        copy!(v[j], R[j, end])
+    for j in 1 : k
+        copy!(v[j], L[end, j])
     end
     kp1 = k + 1
     if !isempty(β)       #  in the pirls! function for GLMMs want to skip this
-        for j in 1:k     # subtract the fixed-effects contribution
-            BLAS.gemv!('N', -1.0, R[j, kp1], β, 1.0, vec(v[j]))
+        for j in 1 : k     # subtract the fixed-effects contribution
+            BLAS.gemv!('T', -one(T), L[kp1, j], β, one(T), vec(v[j]))
         end
     end
     for i in k : -1 : 1
         Lii = L[i, i]
         ui = vec(v[i])
-        LinAlg.A_ldiv_Bc!(isa(Lii, Diagonal) ? Ljj : LowerTriangular(Rjj), ui)
+        LinAlg.A_ldiv_B!(isa(Lii, Diagonal) ? Lii : LowerTriangular(Lii), ui)
         for j in 1:(i - 1)
             Lij = L[i, j]
             if isa(Lij, StridedMatrix{T})
-                BLAS.gemv!('N', -one(T), Lij, uj, one(T), vec(v[i]))
+                BLAS.gemv!('N', -one(T), Lij, ui, one(T), vec(v[i]))
             else
-                A_mul_B!(-one(T), Lij, uj, one(T), vec(v[i]))
+                A_mul_B!(-one(T), Lij, ui, one(T), vec(v[i]))
             end
         end
     end
     if !uscale
-        for j in 1:k
-            A_mul_B!(Λ[j], v[j])
+        for j in 1 : k
+            isa(Λ[j], UniformScaling) ? v[j] *= Λ[j] : LinAlg.A_mul_B!(v[j], Λ[j], v[j])
         end
     end
     v
@@ -151,7 +151,7 @@ end
 """
     ranef{T}(m::MixedModel{T}, uscale=false)
 
-Returns, as a `Vector{Matrix{T}}`, the conditional modes of the random effects in model `m`.
+Returns, as a `OrderedDict{}`, the conditional modes of the random effects in model `m`.
 
 If `uscale` is `true` the random effects are on the spherical (i.e. `u`) scale, otherwise on the
 original scale.
@@ -162,7 +162,8 @@ function ranef(m::MixedModel; uscale=false, named=false)
     T = eltype(trms[end])
     v = Matrix{T}[]
     for i in eachindex(Λ)
-        l = size(Λ[i], 1)
+        Λi = Λ[i]
+        l = isa(Λi, UniformScaling) ? 1 : size(Λi, 1)
         k = size(trms[i], 2)
         push!(v, Array(T, (l, div(k, l))))
     end
@@ -239,11 +240,11 @@ function condVar(m::MixedModel)
     end
     L = lm.L[1,1]
     res = Array{eltype(L),3}[]
-    if isa(L, Diagonal)
-        push!(res, reshape(abs2.(inv.(L.diag) .* (Λ[1][1])), (1, 1, size(L, 1))))
+    if isa(Λ[1], UniformScaling)
+        push!(res, reshape(abs2.(inv.(L.diag) .* (Λ[1].λ)), (1, 1, size(L, 1))))
     else
         throw(ArgumentError(
             "code for vector-value random-effects not yet written"))
     end
-    varest(m) * res
+    res *= varest(m)
 end
