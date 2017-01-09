@@ -27,8 +27,10 @@
     @test length(cm.colnms) == 4
     @test MixedModels.fnames(fm1) == [:Batch]
     @test model_response(fm1) == convert(Vector, dyestuff[:Yield])
-    @test abs(sum(ranef(fm1, uscale=true)[1])) < 1.e-5
+    rfu = ranef(fm1, uscale = true)
+    rfb = ranef(fm1)
     cv = condVar(fm1)
+    @test abs(sum(rfu[1])) < 1.e-5
     @test length(cv) == 1
     @test size(condVar(fm1)[1]) == (1, 1, 6)
 
@@ -154,7 +156,9 @@ end
     @test_approx_eq_eps std(fm)[2] [1.770647779277388] 1.e-4
     @test_approx_eq_eps varest(fm) 0.3024263987592062 1.e-4
     @test_approx_eq_eps logdet(fm) 95.74614821367786 1.e-3
-    @test length(ranef(fm)) == 2
+    rfu = ranef(fm, uscale=true)
+    rfb = ranef(fm)
+    @test length(rfb) == 2
 end
 
 @testset "pastes" begin

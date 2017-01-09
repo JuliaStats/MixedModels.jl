@@ -446,13 +446,11 @@ function Base.show(io::IO, m::LinearMixedModel)
     println(io, " ", m.formula)
     oo = objective(m)
     nums = showoff([-oo/ 2, oo, aic(m), bic(m)])
-    fieldwd = max(maximum(strwidth.(nums)) + 2, 11) ## FIXME: Is there a number of characters function?
-    print(' ')
-    for label in ["logLik", "-2 logLik", "AIC", "BIC"]
+    fieldwd = max(maximum(strwidth.(nums)) + 1, 11)
+    for label in [" logLik", "-2 logLik", "AIC", "BIC"]
         print(io, Base.cpad(label, fieldwd))
     end
     println(io)
-    print(' ')
     for num in nums
         print(io, lpad(num, fieldwd))
     end

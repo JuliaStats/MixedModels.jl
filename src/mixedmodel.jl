@@ -113,39 +113,33 @@ original scale
 """
 function ranef!{T}(v::Vector, m::LinearMixedModel{T}, β::AbstractArray{T}, uscale::Bool)
     L, Λ = m.L, m.Λ
-    k = length(Λ)        # number of random-effects terms
-    for j in 1 : k
-        copy!(v[j], L[end, j])
+    if (k = length(v)) ≠ length(Λ)
+        throw(DimensionMismatch("length(v) = $(length(v)), should be $(length(Λ))"))
     end
-    kp1 = k + 1
-    if !isempty(β)       #  in the pirls! function for GLMMs want to skip this
-        for j in 1 : k     # subtract the fixed-effects contribution
-            BLAS.gemv!('T', -one(T), L[kp1, j], β, one(T), vec(v[j]))
-        end
+    for j in 1 : k
+        BLAS.gemm!('T', 'N', -one(T), β, L[k + 1, j], one(T), copy!(v[j], L[k + 2, j]))
     end
     for i in k : -1 : 1
-        Lii = L[i, i]
-        ui = vec(v[i])
-        LinAlg.A_ldiv_B!(isa(Lii, Diagonal) ? Lii : LowerTriangular(Lii), ui)
-        for j in 1:(i - 1)
+        Lii, vi = L[i, i], vec(v[i])
+        Ac_ldiv_B!(isa(Lii, Diagonal) ? Lii : LowerTriangular(Lii), vi)
+        for j in 1 : (i - 1)
             Lij = L[i, j]
-            if isa(Lij, StridedMatrix{T})
-                BLAS.gemv!('T', -one(T), Lij, ui, one(T), vec(v[j]))
+            if isa(Lij, StridedMatrix)
+                BLAS.gemv!('T', -one(T), Lij, vi, one(T), vec(v[j]))
             else
-                A_mul_B!(-one(T), Lij, ui, one(T), vec(v[j]))
+                vj = vec(v[j])
+                vj -= Ac_mul_B(Lij, vi)
             end
         end
     end
     if !uscale
-        for j in 1 : k
-            isa(Λ[j], UniformScaling) ? v[j] *= Λ[j] : LinAlg.A_mul_B!(v[j], Λ[j], v[j])
-        end
+        map!(A_mul_B!, v, Λ, v)
     end
     v
 end
 
 function ranef!(v::Vector, m::LinearMixedModel, uscale::Bool)
-    ranef!(v, m, feL(m) \ vec(m.L[end, end-1]), uscale)
+    ranef!(v, m, fixef(m), uscale)
 end
 
 """
