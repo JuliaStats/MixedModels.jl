@@ -67,7 +67,7 @@ end
     @test stderr(fm) ≈ [0.6669857396443261]
     @test coef(fm) ≈ [5.6656]
     @test logdet(fm) ≈ 0.0
-    refit!(fm,convert(Vector,dyestuff[:Yield]))
+    refit!(fm, [dyestuff[:Yield];])
 end
 
 @testset "sleep" begin
@@ -158,7 +158,7 @@ end
 end
 
 @testset "pastes" begin
-    fm = lmm(Strength ~ (1 | Sample) + (1 | Batch), psts)
+    fm = lmm(strength ~ (1 | sample) + (1 | batch), pastes)
     @test size(fm) == (60,1,40,2)
     @test getθ(fm) == ones(2)
     @test lowerbd(fm) == zeros(2)
@@ -178,16 +178,14 @@ end
 end
 
 @testset "InstEval" begin
-    InstEval = readtable(joinpath(dirname(@__FILE__), "data", "InstEval.csv.gz"))
-    InstEval[:dept] = pool(InstEval[:dept])
-    fm1 = lmm(y ~ 1 + service*dept + (1 | s) + (1 | d), InstEval)
-    @test size(fm1) == (73421, 28, 4100, 2)
-    @test getθ(fm1) == ones(2)
-    @test lowerbd(fm1) == zeros(2)
+    fm1 = lmm(y ~ 1 + service + (1 | s) + (1 | d) + (1 | dept), insteval)
+    @test size(fm1) == (73421, 2, 4114, 3)
+    @test getθ(fm1) == ones(3)
+    @test lowerbd(fm1) == zeros(3)
 
     fit!(fm1);
 
-    @test isapprox(objective(fm1), 237585.5534151694, atol = 1e-3)
+    @test isapprox(objective(fm1), 237721.7687745563, atol = 1e-3)
     ftd1 = fitted(fm1);
     @test size(ftd1) == (73421,)
     @test isapprox(ftd1[1], 3.19745, atol = 1e-4)
@@ -195,7 +193,7 @@ end
     @test size(resid1) == (73421,)
     @test isapprox(resid1[1], 1.8025537831086234, atol = 1e-5)
 
-    fm2 = fit!(lmm(y ~ 1 + service + (1 | s) + (1 | d) + (1 | dept), InstEval));
-    @test size(fm2) == (73421,2,4114,3)
-    @test isapprox(objective(fm2), 237721.7687745563, atol = 1e-3)
+    fm2 = fit!(lmm(y ~ 1 + service*dept + (1 | s) + (1 | d), insteval));
+    @test isapprox(objective(fm2), 237585.5534151694, atol = 1e-3)
+    @test size(fm2) == (73421, 28, 4100, 2)
 end

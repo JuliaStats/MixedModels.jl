@@ -1,6 +1,7 @@
 using DataArrays, DataFrames, Feather, MixedModels, Base.Test
 
 const datadir = joinpath(dirname(@__FILE__), "test", "data")
+#const datadir = Pkg.dir("MixedModels", "test", "data")
 cbpp = Feather.read(joinpath(datadir, "CBPP.feather"), nullable = false)
 contraception = Feather.read(joinpath(datadir, "Contraception.feather"), nullable = false)
 dyestuff = Feather.read(joinpath(datadir, "Dyestuff.feather"), nullable = false)
