@@ -2,8 +2,8 @@ __precompile__()
 
 module MixedModels
 
-using CategoricalArrays, DataArrays, DataFrames, Distributions, GLM, NLopt, Showoff
-using StaticArrays, StatsBase
+using CategoricalArrays, DataArrays, DataFrames, Distributions, GLM, LinearAlgebra
+using NLopt, Showoff, StaticArrays, StatsBase
 using StatsFuns: log2π
 using NamedArrays: NamedArray, setnames!
 
@@ -79,7 +79,7 @@ include("pls.jl")
 include("logdet.jl")
 include("simulate.jl")
 include("PIRLS.jl")
-#include("glm.jl")
+include("VarCorr.jl")
 include("mixedmodel.jl")
 
 end # module

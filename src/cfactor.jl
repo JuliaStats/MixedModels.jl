@@ -148,20 +148,7 @@ function downdate!{T}(C::DenseMatrix{T}, A::DenseMatrix{T}, B::SparseMatrixCSC{T
     C
 end
 
-function downdate!{T}(C::DenseMatrix{T}, A::SparseMatrixCSC{T}, B::SparseMatrixCSC{T})
-    AtB = A'B
-    if size(C) ≠ size(AtB)
-        throw(DimensionMismatch("size(C) ≠ size(A'B)"))
-    end
-    atbrv = rowvals(AtB)
-    atbnz = nonzeros(AtB)
-    for j in 1:size(AtB, 2)
-        for k in nzrange(AtB, j)
-            C[atbrv[k], j] -= atbnz[k]
-        end
-    end
-    C
-end
+downdate!{T}(C::DenseMatrix{T}, A::SparseMatrixCSC{T}, B::SparseMatrixCSC{T}) = C -= A*B'
 
 function downdate!{T}(C::DenseMatrix{T}, A::SparseMatrixCSC{T})
     m, n = size(A)

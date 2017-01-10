@@ -47,10 +47,10 @@ function glmm(f::Formula, fr::AbstractDataFrame, d::Distribution, l::Link; wt=[]
         # the weights argument is forced to be non-empty in the lmm as it will be used later
     LMM = lmm(f, fr; weights = wts)
     setθ!(LMM, getθ(LMM)) |> cfactor!
-    A, R, trms, u, y = LMM.A, LMM.R, LMM.trms, ranef(LMM), copy(model_response(LMM))
+    trms, u, y = LMM.trms, ranef(LMM), copy(model_response(LMM))
     wts = oftype(y, wts)
             # fit a glm to the fixed-effects only
-    gl = glm(LMM.trms[end - 1], y, d, l; wts = wts, offset = zeros(y))
+    gl = glm(trms[end - 1], y, d, l; wts = wts, offset = zeros(y))
     r = gl.rr
     β = coef(gl)
     res = GeneralizedLinearMixedModel(LMM, β, copy(β), getθ(LMM), copy.(u), u,
@@ -200,7 +200,7 @@ function setθ!{T}(m::GeneralizedLinearMixedModel, v::AbstractVector{T})
     m
 end
 
-sdest{T <: AbstractFloat}(m::GeneralizedLinearMixedModel{T}) = one(T)
+sdest{T <: AbstractFloat}(m::GeneralizedLinearMixedModel{T}) = convert(T, NaN)
 
 """
     fit!(m::GeneralizedLinearMixedModel[, verbose = false, fast = false])
@@ -267,12 +267,6 @@ function StatsBase.fit!{T}(m::GeneralizedLinearMixedModel{T}; verbose::Bool=fals
         warn("NLopt optimization failure: $ret")
     end
     m
-end
-
-function VarCorr(m::GeneralizedLinearMixedModel)
-    Λ, trms = m.LMM.Λ, m.LMM.trms
-    VarCorr(Λ, [string(trms[i].fnm) for i in eachindex(Λ)],
-        [trms[i].cnms for i in eachindex(Λ)], NaN)
 end
 
 function Base.show(io::IO, m::GeneralizedLinearMixedModel) # not tested

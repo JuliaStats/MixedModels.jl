@@ -117,19 +117,13 @@ function ranef!{T}(v::Vector, m::LinearMixedModel{T}, β::AbstractArray{T}, usca
         throw(DimensionMismatch("length(v) = $(length(v)), should be $(length(Λ))"))
     end
     for j in 1 : k
-        BLAS.gemm!('T', 'N', -one(T), β, L[k + 1, j], one(T), copy!(v[j], L[k + 2, j]))
+        Ac_mul_B!(-one(T), L[k + 1, j], β, one(T), vec(copy!(v[j], L[k + 2, j])))
     end
     for i in k : -1 : 1
         Lii, vi = L[i, i], vec(v[i])
         Ac_ldiv_B!(isa(Lii, Diagonal) ? Lii : LowerTriangular(Lii), vi)
         for j in 1 : (i - 1)
-            Lij = L[i, j]
-            if isa(Lij, StridedMatrix)
-                BLAS.gemv!('T', -one(T), Lij, vi, one(T), vec(v[j]))
-            else
-                vj = vec(v[j])
-                vj -= Ac_mul_B(Lij, vi)
-            end
+            Ac_mul_B!(-one(T), L[i, j], vi, one(T), vec(v[j]))
         end
     end
     if !uscale
@@ -139,7 +133,7 @@ function ranef!{T}(v::Vector, m::LinearMixedModel{T}, β::AbstractArray{T}, usca
 end
 
 function ranef!(v::Vector, m::LinearMixedModel, uscale::Bool)
-    ranef!(v, m, fixef(m), uscale)
+    ranef!(v, m, Ac_ldiv_B(feL(m), vec(copy(m.L[end, end - 1]))), uscale)
 end
 
 """
@@ -151,8 +145,8 @@ If `uscale` is `true` the random effects are on the spherical (i.e. `u`) scale, 
 original scale.
 """
 function ranef(m::MixedModel; uscale=false, named=false)
-    lm = lmm(m)
-    Λ, trms = lm.Λ, lm.trms
+    LMM = lmm(m)
+    Λ, trms = LMM.Λ, LMM.trms
     T = eltype(trms[end])
     v = Matrix{T}[]
     for i in eachindex(Λ)
@@ -161,7 +155,7 @@ function ranef(m::MixedModel; uscale=false, named=false)
         k = size(trms[i], 2)
         push!(v, Array(T, (l, div(k, l))))
     end
-    ranef!(v, lm, uscale)
+    ranef!(v, LMM, uscale)
     named || return v
     vnmd = NamedArray.(v)
     for (trm, vnm) in zip(trms, vnmd)

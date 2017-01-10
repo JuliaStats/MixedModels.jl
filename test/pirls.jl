@@ -1,12 +1,13 @@
 using Base.Test, DataFrames, MixedModels
 
 @testset "contra" begin
-    contra = readtable(joinpath(dirname(@__FILE__), "data", "Contraception.csv.gz"), makefactors=true)
-    contra[:age2] = abs2.(contra[:age])
-    gm0 = fit!(glmm(use01 ~ 1 + age + age2 + urban + livch + (1 | urbdist), contra, Bernoulli()),
-        fast=true)
+    contraception[:urban] = DataFrames.pool(convert(Vector{String}, contraception[:urban]))
+    contraception[:livch] = DataFrames.pool(convert(Vector{String}, contraception[:livch]))
+    gm0 = fit!(glmm(use01 ~ 1 + age + age2 + urban + livch + (1 | urbdist), contraception,
+        Bernoulli()), fast=true)
     @test isapprox(LaplaceDeviance(gm0), 2361.6572; atol = 0.001)
-    gm1 = fit!(glmm(use01 ~ 1 + age + age2 + urban + livch + (1 | urbdist), contra, Bernoulli()));
+    gm1 = fit!(glmm(use01 ~ 1 + age + age2 + urban + livch + (1 | urbdist), contraception,
+        Bernoulli()));
     @test lowerbd(gm1) == push!(fill(-Inf, 7), 0.)
     @test isapprox(LaplaceDeviance(gm1), 2361.5457555; atol = 0.0001)
     @test isapprox(loglikelihood(gm1), -1180.7729; atol = 0.001)
@@ -21,12 +22,8 @@ using Base.Test, DataFrames, MixedModels
 end
 
 @testset "cbpp" begin
-    cbpp = readtable(joinpath(dirname(@__FILE__), "data", "cbpp.csv.gz"), makefactors=true)
     for c in [:herd, :period]
-        cbpp[c] = pool(oftype(Int8[], cbpp[c]))
-    end
-    for c in [:incidence, :size]
-        cbpp[c] = oftype(Int8[], cbpp[c])
+        cbpp[c] = pool(convert(Vector{String}, cbpp[c]))
     end
     cbpp[:prop] = Array(cbpp[:incidence]) ./ Array(cbpp[:size])
     gm2 = fit!(glmm(prop ~ 1 + period + (1 | herd), cbpp, Binomial(), LogitLink(); wt = cbpp[:size]));
@@ -36,7 +33,7 @@ end
     @test isapprox(logdet(gm2), 16.901079633923366; atol = 0.0001)
     @test isapprox(sum(gm2.resp.devresid), 73.47171054657996; atol = 0.001)
     @test isapprox(loglikelihood(gm2), -92.02628; atol = 0.001)
-    @test sdest(gm2) == 1
+    @test isnan(sdest(gm2))
     @test varest(gm2) == 1
 end
 #VerbAgg = rcopy("lme4::VerbAgg")

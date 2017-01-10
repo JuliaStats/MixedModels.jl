@@ -1,6 +1,6 @@
 using DataArrays, DataFrames, Feather, MixedModels, Base.Test
 
-const datadir = joinpath(dirname(@__FILE__), "test", "data")
+const datadir = joinpath(dirname(@__FILE__), "data")
 #const datadir = Pkg.dir("MixedModels", "test", "data")
 cbpp = Feather.read(joinpath(datadir, "CBPP.feather"), nullable = false)
 contraception = Feather.read(joinpath(datadir, "Contraception.feather"), nullable = false)
@@ -13,7 +13,7 @@ sleepstudy = Feather.read(joinpath(datadir, "sleepstudy.feather"), nullable = fa
 
 include("paramlowertriangular.jl")
 include("scalarReTerm.jl")
-include("vectorReTerm.jl")
+#include("vectorReTerm.jl")
 include("pls.jl")
 include("pirls.jl")
 include("throws.jl")
