@@ -1,41 +1,34 @@
-"""
-    cfactor!(A::AbstractMatrix)
-
-A slightly modified version of `chol!` from `Base`
-
-Uses `inject!` (as opposed to `copy!`), `downdate!` (as opposed to `syrk!` or `gemm!`)
-and recursive calls to `cfactor!`.
-
-Note: The `cfactor!` method for dense matrices calls `LAPACK.potrf!` directly to avoid
-errors being thrown when `A` is computationally singular
-"""
-function cfactor!(A::AbstractMatrix)
-    n = LinAlg.checksquare(A)
-    for k = 1 : n
-        Akk = A[k, k]
-        for j in 1 : (k - 1)
-            downdate!(Akk, A[k, j])  # A[k,k] -= A[k,j]*A[k,j]'
-        end
-        Akk = cfactor!(Akk)          # left Cholesky factor of A[k,k]
-        for i in (k + 1) : n
-            for j in 1 : (k - 1)
-                downdate!(A[i, k], A[i, j], A[k, j]) # A[i, k] -= A[k, j] * A[i, j]'
+function cholBlocked!(A::AbstractMatrix, ::Type{Val{:L}})
+    n, A11 = LinAlg.checksquare(A), A[1, 1]
+    Aone = real(one(eltype(A11)))
+    mone = -Aone
+    cholUnblocked!(A11, Val{:L})
+    if n > 1
+        A11 = isa(A11, Diagonal) ? A11 : LowerTriangular(A11)
+        for i in 2 : n
+            Ai1 = A[i, 1]
+            LinAlg.A_rdiv_Bc!(Ai1, A11)
+            rankUpdate!(mone, Ai1, Hermitian(A[i, i], :L))
+            for j in 2 : (i - 1)
+                A_mul_Bc!(mone, Ai1, A[j, 1], Aone, A[i, j])
             end
-            LinAlg.A_rdiv_Bc!(A[i, k], Akk)
         end
+        cholBlocked!(view(A, 2 : n, 2 : n), Val{:L})
     end
-    UpperTriangular(A)
+    return A
 end
 
-function cfactor!{T <: AbstractFloat}(D::Diagonal{T})
+function cholUnblocked!{T <: AbstractFloat}(D::Diagonal{T}, ::Type{Val{:L}})
     dd = D.diag
     map!(sqrt, dd, dd)
     D
 end
 
-cfactor!{T <: LinAlg.BlasFloat}(A::Matrix{T}) = LowerTriangular(LAPACK.potrf!('L', A)[1])
+A_mul_Bc!{T<:BlasFloat}(α::T, A::StridedMatrix{T}, B::StridedMatrix{T}, β::T, C::StridedMatrix{T}) = Base.BLAS.gemm!('N', 'C', α, A, B, β, C)
 
-function cfactor!{T}(A::HBlkDiag{T})
+cholUnblocked!{T <: AbstractFloat}(D::Diagonal{T}, ::Type{Val{:U}}) = cholUnblocked!(A, Val{:L})
+
+function cholBlocked!{T}(A::HBlkDiag{T}, ::Type{Val{:L}})
     Aa = A.arr
     r, s, t = size(Aa)
     if r ≠ s
@@ -52,6 +45,63 @@ function cfactor!{T}(A::HBlkDiag{T})
         end
     end
     UpperTriangular(A)
+end
+
+function rankUpdate!{T <: Number}(α::T, A::SparseMatrixCSC{T}, C::Hermitian{T, Diagonal{T}})
+    m, n = size(A)
+    dd = C.data.diag
+    if length(dd) ≠ m
+        throw(DimensionMismatch("size(C,2) = $(length(dd)) ≠ $m = size(A,1)"))
+    end
+    nz = nonzeros(A)
+    rv = rowvals(A)
+    for j in 1 : n
+        nzr = nzrange(A, j)
+        length(nzr) == 1 || throw(ArgumentError("A*A' has off-diagonal elements"))
+        k = nzr[1]
+        @inbounds dd[rv[k]] += α * abs2(nz[k])
+    end
+    return C
+end
+
+## Probably don't need this method.  Created because I misread an error message.
+function Base.LinAlg.A_mul_Bc!{T<:Number}(α::T, A::SparseMatrixCSC{T}, B::StridedVecOrMat{T},
+    β::T, C::StridedVecOrMat{T})
+    size(B, 1) == size(C, 2) || throw(DimensionMismatch())
+    nzv = A.nzval
+    rv = A.rowval
+    if β != 1
+        β != 0 ? scale!(C, β) : fill!(C, zero(eltype(C)))
+    end
+    for col = 1:A.n
+        for k = 1:size(C, 2)
+            αxj = α*B[k, col]
+            @inbounds for j = nzrange(A, col)
+                C[rv[j], k] += nzv[j]*αxj
+            end
+        end
+    end
+    C
+end
+
+function Base.LinAlg.A_mul_Bc!{T<:Number}(α::T, A::StridedVecOrMat{T}, B::SparseMatrixCSC{T},
+    β::T, C::StridedVecOrMat{T})
+    (m, n), (p, q), (r, s) = size(A), size(B), size(C)
+    if r ≠ m || s ≠ p || n ≠ q
+        throw(DimensionMismatch("size(C,1) ≠ size(A,1) or size(C,2) ≠ size(B,1) or size(A,2) ≠ size(B,2)"))
+    end
+    if β != 1
+        β != 0 ? scale!(C, β) : fill!(C, zero(eltype(C)))
+    end
+    nz, rv = nonzeros(B), rowvals(B)
+    for j in 1 : q, k in nzrange(B, j)
+        rvk = rv[k]
+        anzk = α * nz[k]
+        for jj in 1 : r  # use .= fusing in v0.6.0 and later
+            C[jj, rvk] += A[jj, j] * anzk
+        end
+    end
+    return C
 end
 
 """
