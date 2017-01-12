@@ -158,7 +158,7 @@ Refit the model `m` after installing response `y`.
 
 If `y` is omitted the current response vector is used.
 """
-refit!(m::LinearMixedModel) = fit!(cfactor!(resetθ!(reevaluateAend!(m))))
+refit!(m::LinearMixedModel) = fit!(cholBlocked!(resetθ!(reevaluateAend!(m))))
 function refit!{T}(m::LinearMixedModel{T}, y)
     resp = m.trms[end]
     if length(y) ≠ size(resp, 1)
@@ -177,7 +177,7 @@ function resetθ!(m::LinearMixedModel)
     opt = m.optsum
     opt.feval = -1
     opt.fmin = Inf
-    setθ!(m, opt.initial) |> cfactor!
+    cholBlocked!(setθ!(m, opt.initial))
 end
 
 """

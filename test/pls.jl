@@ -9,7 +9,7 @@
     @test lowerbd(fm1) == zeros(1)
     @test getθ(fm1) == ones(1)
 
-    @test objective(cfactor!(setθ!(fm1, [0.713]))) ≈ 327.34216280955366
+    @test objective(cholBlocked!(setθ!(fm1, [0.713]))) ≈ 327.34216280955366
     MixedModels.describeblocks(IOBuffer(), fm1)
 
     fit!(fm1);

@@ -8,6 +8,7 @@ end
 Base.A_mul_B!{T}(A::UniformScaling{T}, B::StridedVecOrMat{T}) = A_mul_B!(B, A, B)
 
 LinAlg.Ac_ldiv_B!{T}(D::Diagonal{T}, B) = A_ldiv_B!(D, B)
+
 function LinAlg.A_rdiv_Bc!{T}(A::StridedMatrix{T}, D::Diagonal{T})
     m,n = size(A)
     dd = D.diag
@@ -21,7 +22,6 @@ function LinAlg.A_rdiv_Bc!{T}(A::StridedMatrix{T}, D::Diagonal{T})
         end
     end
     A
-
 end
 
 function LinAlg.A_rdiv_Bc!{T}(A::SparseMatrixCSC{T}, D::Diagonal{T})

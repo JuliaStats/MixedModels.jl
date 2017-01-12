@@ -179,7 +179,7 @@ function lmm(f::Formula, fr::AbstractDataFrame; weights::Vector = [])
     LinearMixedModel(f, mf, trms, Λ, convert(Vector{T}, weights))
 end
 
-function cfactor!(m::LinearMixedModel)
+function cholBlocked!(m::LinearMixedModel)
     A, Λ, L = m.A, m.Λ, m.L
     n = size(A, 1)
     for j in 1 : n, i in j : n
@@ -194,7 +194,7 @@ function cfactor!(m::LinearMixedModel)
         end
         L[j, j] += I
     end
-    cfactor!(L)
+    cholBlocked!(L, Val{:L})
     m
 end
 
@@ -223,7 +223,7 @@ function StatsBase.fit!{T}(m::LinearMixedModel{T}, verbose::Bool=false)
     function obj(x, g)
         length(g) == 0 || error("gradient not defined")
         feval += 1
-        val = objective(cfactor!(setθ!(m, x)))
+        val = objective(cholBlocked!(setθ!(m, x)))
         feval == 1 && (optsum.finitial = val)
         verbose && println("f_", feval, ": ", round(val, 5), " ", x)
         val
@@ -244,7 +244,7 @@ function StatsBase.fit!{T}(m::LinearMixedModel{T}, verbose::Bool=false)
         end
     end
     ## ensure that the parameter values saved in m are xmin
-    cfactor!(setθ!(m, xmin))
+    cholBlocked!(setθ!(m, xmin))
 
     optsum.feval = feval
     optsum.final = xmin
@@ -434,7 +434,7 @@ function reweight!{T}(m::LinearMixedModel{T}, weights::Vector{T})
     for j in 1 : kp2, i in j : kp2
         Ac_mul_B!(A[i, j], wttrms[i], wttrms[j])
     end
-    cfactor!(m)
+    cholBlocked!(m)
 end
 
 function Base.show(io::IO, m::LinearMixedModel)
