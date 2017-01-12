@@ -50,7 +50,7 @@ function bootstrap{T}(N, m::LinearMixedModel{T};
         Symbol.(subscriptednames('θ', k)), Symbol.(subscriptednames('σ', sum(Λsize))))
     nρ = [(l * (l - 1)) >> 1 for l in Λsize]
     if (nρtot = sum(nρ)) > 0
-        append(cnms, Symbol.(subscriptednames('ρ', nρtot)))
+        append!(cnms, Symbol.(subscriptednames('ρ', nρtot)))
     end
     dfr = DataFrame(Any[Array(T, (N,)) for _ in eachindex(cnms)], cnms)
     scrβ, scrθ = Array(T, (p, )), Array(T, (k, ))
@@ -72,6 +72,11 @@ function bootstrap{T}(N, m::LinearMixedModel{T};
             stddevcor!(scrσ[l], scrρ[l], scr[l], LinAlg.Cholesky(Λ[l], :L))
             for x in scrσ[l]
                 dfr[j += 1][i] = σest * x
+            end
+            ρl = scrρ[l]
+            sz = size(ρl, 1)
+            for jj in 1 : (sz - 1), ii in (jj + 1) : sz
+                dfr[j += 1][i] = ρl[ii, jj]
             end
         end
     end
