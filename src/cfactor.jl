@@ -122,9 +122,8 @@ function downdate!{T}(C::DenseMatrix{T}, A::Diagonal{T}, B::DenseMatrix{T})
 end
 
 function downdate!{T}(C::DenseMatrix{T}, A::SparseMatrixCSC{T}, B::DenseMatrix{T})
-    m, n = size(A)
-    r, s = size(C)
-    if r ≠ n || s ≠ size(B,2) || m ≠ size(B,1)
+    (m, n), (p, q), (r, s) = size(A), size(B), size(C)
+    if r ≠ n || s ≠ q || m ≠ p
         throw(DimensionMismatch("size(C,1) ≠ size(A,2) or size(C,2) ≠ size(B,2) or size(A,1) ≠ size(B,1)"))
     end
     nz = nonzeros(A)
@@ -145,6 +144,27 @@ function downdate!{T}(C::DenseMatrix{T}, A::SparseMatrixCSC{T}, B::SparseMatrixC
     for j in 1:size(AtB, 2)
         for k in nzrange(AtB, j)
             C[atbrv[k], j] -= atbnz[k]
+        end
+    end
+    C
+end
+
+function downdate!{T}(C::SparseMatrixCSC{T}, A::SparseMatrixCSC{T}, B::SparseMatrixCSC{T})
+    AtB = A'B
+    ((m, n) = size(C)) == size(AtB) || throw(DimensionMismatch("size(C) ≠ size(A'B)"))
+    atbrv, atbnz, crv, cnz = rowvals(AtB), nonzeros(AtB), rowvals(C), nonzeros(C)
+    for j in 1 : n
+        nzrCj = nzrange(C, j)
+        rowsCj = crv[nzrCj]
+        lenrowsCj = length(rowsCj)
+        for k in nzrange(AtB, j)
+            i = atbrv[k]
+            ck = searchsortedfirst(rowsCj, i)
+            if ck > lenrowsCj || rowsCj[ck] ≠ i
+                throw(ArgumentError(string("nonzero rows in $j'th column of A'B are not",
+                    " a subset of those in C")))
+            end
+            cnz[nzrCj[ck]] -= atbnz[k]
         end
     end
     C
