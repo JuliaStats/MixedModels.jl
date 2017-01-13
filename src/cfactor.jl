@@ -4,16 +4,9 @@ function cholBlocked!(A::AbstractMatrix, ::Type{Val{:L}})
     mone = -Aone
     cholUnblocked!(A11, Val{:L})
     if n > 1
-        A11 = isa(A11, Diagonal) ? A11 : LowerTriangular(A11)
-        for i in 2 : n
-            Ai1 = A[i, 1]
-            LinAlg.A_rdiv_Bc!(Ai1, A11)
-            rankUpdate!(mone, Ai1, Hermitian(A[i, i], :L))
-            for j in 2 : (i - 1)
-                A_mul_Bc!(mone, Ai1, A[j, 1], Aone, A[i, j])
-            end
-        end
-        cholBlocked!(view(A, 2 : n, 2 : n), Val{:L})
+        A12 = view(A, 2 : n, 1)
+        LinAlg.A_rdiv_Bc!(A12, isa(A11, Diagonal) ? A11 : LowerTriangular(A11))
+        cholBlocked!(rankUpdate!(mone, A12, Hermitian(view(A, 2 : n, 2 : n), :L)))
     end
     return A
 end

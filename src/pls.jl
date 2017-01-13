@@ -54,6 +54,20 @@ function Base.show(io::IO, s::OptSummary)
 end
 
 """
+    HeteroBlkdMatrix
+
+A matrix composed of heterogenous blocks.  Blocks can be sparse, dense or
+diagonal.
+"""
+immutable HeteroBlkdMatrix{T} <: AbstractMatrix{T}
+    blocks::Matrix
+end
+
+Base.size(A::HeteroBlkdMatrix) = size(A.blocks)
+Base.getindex(A::HeteroBlkdMatrix, i::Int) = A.blocks[i]
+Base.linearindexing(A::HeteroBlkdMatrix) = Base.LinearFast()
+
+"""
     LinearMixedModel
 
 Linear mixed-effects model representation
@@ -75,10 +89,10 @@ type LinearMixedModel{T <: AbstractFloat} <: MixedModel
     wttrms::Vector
     trms::Vector
     sqrtwts::Diagonal{T}
-    Λ::Vector{Any}
-    A::Matrix{Any}        # symmetric cross-product blocks (lower triangle only)
-    L::Matrix{Any}        # left (lower-triangular) Cholesky factor in blocks.
-    optsum::OptSummary
+    Λ::Vector
+    A::Hermitian{T, HeteroBlkdMatrix{T}}       # cross-product blocks
+    L::LowerTriangular{T, HeteroBlkdMatrix{T}} # lower Cholesky factor blocks.
+    optsum::OptSummary{T}
 end
 
 """
@@ -147,9 +161,11 @@ function LinearMixedModel(f, mf, trms, Λ, wts)
         end
     end
     optsum = OptSummary(mapreduce(getθ, vcat, Λ), mapreduce(lowerbd, vcat, Λ), :LN_BOBYQA;
-        ftol_rel = 1.0e-12, ftol_abs = 1.0e-8)
+        ftol_rel = convert(T, 1.0e-12), ftol_abs = convert(T, 1.0e-8))
     fill!(optsum.xtol_abs, 1.0e-10)
-    LinearMixedModel(f, mf, wttrms, trms, sqrtwts, convert(Vector{Any}, Λ), A, L, optsum)
+    LinearMixedModel(f, mf, wttrms, trms, sqrtwts, Λ,
+        Hermitian(HeteroBlkdMatrix{T}(A), :L), LowerTriangular(HeteroBlkdMatrix{T}(L)),
+        optsum)
 end
 
 """
@@ -180,7 +196,7 @@ function lmm(f::Formula, fr::AbstractDataFrame; weights::Vector = [])
 end
 
 function cholBlocked!(m::LinearMixedModel)
-    A, Λ, L = m.A, m.Λ, m.L
+    A, Λ, L = m.A.data.blocks, m.Λ, m.L.data.blocks
     n = size(A, 1)
     for j in 1 : n, i in j : n
         inject!(L[i, j], A[i, j])
