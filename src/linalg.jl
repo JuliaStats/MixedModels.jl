@@ -40,6 +40,11 @@ function LinAlg.A_rdiv_Bc!{T}(A::SparseMatrixCSC{T}, D::Diagonal{T})
     A
 end
 
+function LinAlg.A_rdiv_Bc!{T}(A::SubArray{T, 1, LowerTriangular{T, HeteroBlkdMatrix{T}}}, B)
+    map!(x -> LinAlg.A_rdiv_Bc!(x, B), A)
+end
+
+
 function LinAlg.A_ldiv_B!{T}(D::Diagonal{T}, B::Diagonal{T})
     if size(D) ≠ size(B)
         throw(DimensionMismatch("size(D) ≠ size(B)"))

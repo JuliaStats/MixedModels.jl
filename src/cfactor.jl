@@ -1,4 +1,4 @@
-function cholBlocked!(A::AbstractMatrix, ::Type{Val{:L}})
+function cholBlocked!{T}(A::Hermitian{T, AbstractMatrix{T}}, ::Type{Val{:L}})
     n, A11 = LinAlg.checksquare(A), A[1, 1]
     Aone = real(one(eltype(A11)))
     mone = -Aone
@@ -12,14 +12,13 @@ function cholBlocked!(A::AbstractMatrix, ::Type{Val{:L}})
 end
 
 function cholUnblocked!{T <: AbstractFloat}(D::Diagonal{T}, ::Type{Val{:L}})
-    dd = D.diag
-    map!(sqrt, dd, dd)
+    map!(sqrt, D.diag)
     D
 end
 
 A_mul_Bc!{T<:BlasFloat}(α::T, A::StridedMatrix{T}, B::StridedMatrix{T}, β::T, C::StridedMatrix{T}) = Base.BLAS.gemm!('N', 'C', α, A, B, β, C)
 
-cholUnblocked!{T <: AbstractFloat}(D::Diagonal{T}, ::Type{Val{:U}}) = cholUnblocked!(A, Val{:L})
+cholUnblocked!{T <: AbstractFloat}(D::Diagonal{T}, ::Type{Val{:U}}) = cholUnblocked!(D, Val{:L})
 
 function cholBlocked!{T}(A::HBlkDiag{T}, ::Type{Val{:L}})
     Aa = A.arr

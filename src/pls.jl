@@ -54,20 +54,6 @@ function Base.show(io::IO, s::OptSummary)
 end
 
 """
-    HeteroBlkdMatrix
-
-A matrix composed of heterogenous blocks.  Blocks can be sparse, dense or
-diagonal.
-"""
-immutable HeteroBlkdMatrix{T} <: AbstractMatrix{T}
-    blocks::Matrix
-end
-
-Base.size(A::HeteroBlkdMatrix) = size(A.blocks)
-Base.getindex(A::HeteroBlkdMatrix, i::Int) = A.blocks[i]
-Base.linearindexing(A::HeteroBlkdMatrix) = Base.LinearFast()
-
-"""
     LinearMixedModel
 
 Linear mixed-effects model representation
@@ -210,7 +196,7 @@ function cholBlocked!(m::LinearMixedModel)
         end
         L[j, j] += I
     end
-    cholBlocked!(L, Val{:L})
+    cholBlocked!(Hermitian(m.L, :L), Val{:L})
     m
 end
 

@@ -1,4 +1,19 @@
 """
+    HeteroBlkdMatrix
+
+A matrix composed of heterogenous blocks.  Blocks can be sparse, dense or
+diagonal.
+"""
+immutable HeteroBlkdMatrix{T} <: AbstractMatrix{T}
+    blocks::Matrix
+end
+
+Base.size(A::HeteroBlkdMatrix) = size(A.blocks)
+Base.getindex(A::HeteroBlkdMatrix, i::Int) = A.blocks[i]
+Base.setindex!(A::HeteroBlkdMatrix, X, i::Int) = setindex!(A.blocks, X, i)
+Base.linearindexing(A::HeteroBlkdMatrix) = Base.LinearFast()
+
+"""
     HBlkDiag
 
 A homogeneous block diagonal matrix
