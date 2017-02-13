@@ -75,6 +75,11 @@ function bootstrap{T}(N, m::LinearMixedModel{T};
             for x in scrσ[l]
                 dfr[j += 1][i] = σest * x
             end
+            ρl = scrρ[l]
+            sz = size(ρl, 1)
+            for jj in 1 : (sz - 1), ii in (jj + 1) : sz
+                dfr[j += 1][i] = ρl[ii, jj]
+            end
         end
     end
     refit!(m, y₀)
