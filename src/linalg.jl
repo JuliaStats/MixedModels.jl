@@ -40,7 +40,7 @@ function LinAlg.A_rdiv_Bc!{T}(A::SparseMatrixCSC{T}, D::Diagonal{T})
     A
 end
 
-function LinAlg.A_rdiv_Bc!{T}(A::SubArray{T, 1, LowerTriangular{T, HeteroBlkdMatrix{T}}}, B)
+function LinAlg.A_rdiv_Bc!{T}(A::SubArray{Block{T}, 1, Matrix{Block{T}}}, B::AbstractMatrix{T})
     map!(x -> LinAlg.A_rdiv_Bc!(x, B), A)
 end
 

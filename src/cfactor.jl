@@ -1,12 +1,19 @@
-function cholBlocked!{T}(A::Hermitian{T, AbstractMatrix{T}}, ::Type{Val{:L}})
+function cholBlocked!{T}(A::Matrix{AbstractMatrix{T}}, ::Type{Val{:L}})
     n, A11 = LinAlg.checksquare(A), A[1, 1]
-    Aone = real(one(eltype(A11)))
-    mone = -Aone
     cholUnblocked!(A11, Val{:L})
+    A11lt = isa(A11, Diagonal) ? A11 : LowerTriangular(A11)
+    for i in 2:n
+        LinAlg.A_rdiv_Bc!(A[i, 1], A11lt)
+    end
+    for i in 2:n
+        Ai1 = A[i, 1]
+        rankUpdate!(-one(T), Ai1, A[i, i])
+        for j in (i + 1):n
+            rankUpdate!(-one(T), Ai1, A[j, 1], A[i, j])
+        end
+    end
     if n > 1
-        A12 = view(A, 2 : n, 1)
-        LinAlg.A_rdiv_Bc!(A12, isa(A11, Diagonal) ? A11 : LowerTriangular(A11))
-        cholBlocked!(rankUpdate!(mone, A12, Hermitian(view(A, 2 : n, 2 : n), :L)))
+        cholBlocked!(view(A, 2:n, 2:n))
     end
     return A
 end

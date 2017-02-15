@@ -60,7 +60,7 @@ Linear mixed-effects model representation
 
 # Members
 * `formula`: the formula for the model
-* `mf`: the model frame, mostly used to get the `terms` component for labelling fixed effects
+* `mf`: the model frame, its `terms` component is used for labelling fixed effects
 * `wttrms`: a length `nt` vector of weighted model matrices. The last two elements are `X` and `y`.
 * `trms`: a vector of unweighted model matrices.  If `isempty(sqrtwts)` the same object as `wttrms`
 * `Λ`: a length `nt - 2` vector of lower triangular matrices
@@ -76,8 +76,8 @@ type LinearMixedModel{T <: AbstractFloat} <: MixedModel
     trms::Vector
     sqrtwts::Diagonal{T}
     Λ::Vector
-    A::Hermitian{T, HeteroBlkdMatrix{T}}       # cross-product blocks
-    L::LowerTriangular{T, HeteroBlkdMatrix{T}} # lower Cholesky factor blocks.
+    A::Hermitian # cross-product blocks
+    L::LowerTriangular
     optsum::OptSummary{T}
 end
 
@@ -130,7 +130,7 @@ function LinearMixedModel(f, mf, trms, Λ, wts)
         size(sqrtwts, 2) == n ? [sqrtwts * t for t in trms] :
         throw(DimensionMismatch("length(wts) must be 0 or length(y)"))
     nt = length(trms)
-    A, L = Array{Any}(nt, nt), Array{Any}(nt, nt)
+    A, L = Array{Block{T}}(nt, nt), Array{Block{T}}(nt, nt)
     for i in 1 : nt, j in 1 : i
         A[i, j] = densify(wttrms[i]'wttrms[j])
         L[i, j] = copy(A[i, j])
@@ -187,7 +187,7 @@ function cholBlocked!(m::LinearMixedModel)
     for j in 1 : n, i in j : n
         inject!(L[i, j], A[i, j])
     end
-    for j in eachindex(m.Λ)
+    for j in eachindex(Λ)
         for i in j : n
             L[i, j] *= Λ[j]
         end
@@ -196,7 +196,8 @@ function cholBlocked!(m::LinearMixedModel)
         end
         L[j, j] += I
     end
-    cholBlocked!(Hermitian(m.L, :L), Val{:L})
+    @show typeof(L)
+    cholBlocked!(L, Val{:L})
     m
 end
 
