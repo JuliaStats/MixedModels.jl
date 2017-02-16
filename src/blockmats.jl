@@ -5,9 +5,8 @@ A matrix composed of heterogenous blocks.  Blocks can be sparse, dense or
 diagonal.
 """
 typealias Block{T} Union{Diagonal{T}, Diagonal{StaticArrays.MMatrix},
-    Hermitian{T, Matrix{T}}, LowerTriangular{T, Matrix{T}}, Matrix{T}}
-
-abstract BlockedMatrix{T} <: AbstractMatrix{T}
+    Hermitian{T, Matrix{T}}, LowerTriangular{T, Matrix{T}}, Matrix{T},
+    SparseMatrixCSC{T}}
 
 immutable HeteroBlkdMatrix{T} <: AbstractMatrix{Block{T}}
     blocks::Matrix{Block{T}}
