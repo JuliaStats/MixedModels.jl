@@ -181,23 +181,37 @@ function lmm(f::Formula, fr::AbstractDataFrame; weights::Vector = [])
     LinearMixedModel(f, mf, trms, Λ, convert(Vector{T}, weights))
 end
 
-function cholBlocked!(m::LinearMixedModel)
+function cholBlocked!{T}(m::LinearMixedModel{T})
     A, Λ, L = m.A.data.blocks, m.Λ, m.L.data.blocks
-    n = size(A, 1)
-    for j in 1 : n, i in j : n
-        inject!(L[i, j], A[i, j])
+    n = LinAlg.checksquare(A)
+    for j in 1:n, i in j:n
+        inject!(L[i, j], A[i, j])  # like copy! but allows for L to be more general than A
     end
-    for j in eachindex(Λ)
-        for i in j : n
-            L[i, j] *= Λ[j]
+    for (j, λ) in enumerate(Λ)
+        for i in j:n
+            A_mul_B!(L[i, j], λ)
         end
-        for jj in 1 : j
-            L[j,jj] *= Λ[j]
+        for jj in 1:j
+            Ac_mul_B!(λ, L[j, jj])
         end
         L[j, j] += I
     end
-    @show typeof(L)
-    cholBlocked!(L, Val{:L})
+    for j in 1:n
+        Ljj = L[j, j]
+        cholUnblocked!(Ljj, Val{:L})
+        Ljjlt = isa(Ljj, Diagonal) ? Ljj : LowerTriangular(Ljj)
+        for i in (j + 1):n
+            LinAlg.A_rdiv_Bc!(L[i, j], Ljjlt)
+        end
+        for i in (j + 1):n
+            Lij = L[i, j]
+            Lii = L[i, i]
+            rankUpdate!(-one(T), Lij, isa(Lii, Diagonal) ? Lii : Hermitian(Lii, :L))
+            for jj in (i + 1):n
+                A_mul_Bc!(-one(T), L[jj, j], Lij, one(T), L[jj, i])
+            end
+        end
+    end
     m
 end
 
