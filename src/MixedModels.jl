@@ -15,7 +15,7 @@ import Distributions: Bernoulli, Binomial, Poisson, Gamma
 import GLM: LogitLink, LogLink, InverseLink
 import DataFrames: @~
 import LinearAlgebra.JuliaBLAS: rankUpdate!
-import LinearAlgebra.CholeskyModule: cholUnblocked!, cholBlocked!
+import LinearAlgebra.CholeskyModule: cholBlocked!, cholUnblocked!
 import Base.LinAlg: A_mul_Bc!
 
 export
@@ -75,7 +75,7 @@ import Base: ==, *
 
 include("blockmats.jl")
 include("linalg.jl")
-include("cfactor.jl")
+#include("cfactor.jl")
 include("remat.jl")
 include("paramlowertriangular.jl")
 include("inject.jl")

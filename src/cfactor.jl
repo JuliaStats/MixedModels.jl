@@ -147,8 +147,6 @@ function downdate!{T}(C::Diagonal{T}, A::Diagonal{T}, B::Diagonal{T})
     end
     map!((c, a, b) -> c - a * b, C.diag, C.diag, A.diag, B.diag)
     C
-end
-
 function downdate!{T}(C::DenseMatrix{T}, A::Diagonal{T}, B::DenseMatrix{T})
     a = A.diag
     if ((m, n) = size(B)) ≠ size(C)
