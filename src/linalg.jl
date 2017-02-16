@@ -17,6 +17,16 @@ A_mul_Bc!{T<:BlasFloat}(α::T, A::StridedMatrix{T}, B::StridedMatrix{T}, β::T, 
 
 Base.A_mul_B!{T}(A::UniformScaling{T}, B::StridedVecOrMat{T}) = A_mul_B!(B, A, B)
 
+function Base.A_mul_B!{T}(A::Diagonal{T}, B::UniformScaling{T})
+    scale!(A.diag, B.λ)
+    A
+end
+
+function Base.Ac_mul_B!{T}(A::UniformScaling{T}, B::Diagonal{T})
+    scale!(B.diag, A.λ)
+    B
+end
+
 LinAlg.Ac_ldiv_B!{T}(D::Diagonal{T}, B) = A_ldiv_B!(D, B)
 
 function LinAlg.A_rdiv_Bc!{T}(A::StridedMatrix{T}, D::Diagonal{T})
