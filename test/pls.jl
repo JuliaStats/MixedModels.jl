@@ -140,34 +140,35 @@ end
     #@test size(fm2) == (73421, 28, 4100, 2)
 end
 
+if false
 @testset "sleep" begin
-fm = lmm(Reaction ~ 1 + Days + (1 + Days | Subject), sleepstudy)
-@test lowerbd(fm) == [0.0, -Inf, 0.0]
-@test isa(fm.A[1, 1],MixedModels.HBlkDiag{Float64})
-@test size(fm.A[1, 1]) == (36, 36)
-@test fm.A[1, 1][1, 1] == 10.
-@test fm.A[1, 1][6, 1] == 0.
-@test_throws BoundsError size(fm.A[1, 1], 0)
-@test size(fm.A[1, 1], 1) == 36
-@test full(fm.A[1, 1])[1 : 2, 1 : 2] == reshape([10., 45, 45, 285], (2, 2))
+    fm = lmm(Reaction ~ 1 + Days + (1 + Days | Subject), sleepstudy)
+    @test lowerbd(fm) == [0.0, -Inf, 0.0]
+    @test isa(fm.A[1, 1],MixedModels.HBlkDiag{Float64})
+    @test size(fm.A[1, 1]) == (36, 36)
+    @test fm.A[1, 1][1, 1] == 10.
+    @test fm.A[1, 1][6, 1] == 0.
+    @test_throws BoundsError size(fm.A[1, 1], 0)
+    @test size(fm.A[1, 1], 1) == 36
+    @test full(fm.A[1, 1])[1 : 2, 1 : 2] == reshape([10., 45, 45, 285], (2, 2))
 
-fit!(fm)
+    fit!(fm)
 
-@test objective(fm) ≈ 1751.9393444647046
-@test isapprox(getθ(fm), [0.9292213074888169, 0.01816838485113137, 0.22264487095998978],
-atol = 1.0e-6)
-@test pwrss(fm) ≈ 117889.46144025437
-@test isapprox(logdet(fm), 73.90322021999222, atol = 0.001)
-@test isapprox(stderr(fm), [6.632257721914501, 1.5022354739749826], atol = 0.0001)
-@test coef(fm) ≈ [251.40510484848477,10.4672859595959]
-@test fixef(fm) ≈ [251.40510484848477,10.4672859595959]
-@test isapprox(stderr(fm), [6.632246393963571, 1.502190605041084], atol = 0.01)
-@test isapprox(std(fm)[1], [23.780468100188497, 5.716827903196682], atol = 0.01)
-@test isapprox(logdet(fm), 73.90337187545992, atol = 0.001)
-@test_approx_eq diag(cor(fm)[1]) ones(2)
-@test isapprox(cond(fm), [4.1752507630514915], atol = 0.0001)
-@test loglikelihood(fm) ≈ -875.9696722323523
-@test eltype(fm.wttrms[1]) === Float64
+    @test objective(fm) ≈ 1751.9393444647046
+    @test isapprox(getθ(fm), [0.9292213074888169, 0.01816838485113137, 0.22264487095998978],
+        atol = 1.0e-6)
+    @test pwrss(fm) ≈ 117889.46144025437
+    @test isapprox(logdet(fm), 73.90322021999222, atol = 0.001)
+    @test isapprox(stderr(fm), [6.632257721914501, 1.5022354739749826], atol = 0.0001)
+    @test coef(fm) ≈ [251.40510484848477,10.4672859595959]
+    @test fixef(fm) ≈ [251.40510484848477,10.4672859595959]
+    @test isapprox(stderr(fm), [6.632246393963571, 1.502190605041084], atol = 0.01)
+    @test isapprox(std(fm)[1], [23.780468100188497, 5.716827903196682], atol = 0.01)
+    @test isapprox(logdet(fm), 73.90337187545992, atol = 0.001)
+    @test_approx_eq diag(cor(fm)[1]) ones(2)
+    @test isapprox(cond(fm), [4.1752507630514915], atol = 0.0001)
+    @test loglikelihood(fm) ≈ -875.9696722323523
+    @test eltype(fm.wttrms[1]) === Float64
 
     u3 = ranef(fm, uscale=true)
     @test length(u3) == 1
@@ -184,22 +185,23 @@ atol = 1.0e-6)
 end
 
 @testset "sleepnocorr" begin
-fm = lmm(Reaction ~ Days + (1|Subject) + (0+Days|Subject), sleepstudy);
-@test size(fm) == (180,2,36,2)
-@test getθ(fm) == ones(2)
-@test lowerbd(fm) == zeros(2)
+    fm = lmm(Reaction ~ Days + (1|Subject) + (0+Days|Subject), sleepstudy);
+    @test size(fm) == (180,2,36,2)
+    @test getθ(fm) == ones(2)
+    @test lowerbd(fm) == zeros(2)
 
-fit!(fm);
+    fit!(fm);
 
-@test isapprox(deviance(fm), 1752.0032551398835, atol = 0.001)
-@test isapprox(objective(fm), 1752.0032551398835, atol = 0.001)
-@test coef(fm) ≈ [251.40510484848585, 10.467285959595715]
-@test fixef(fm) ≈ [251.40510484848585, 10.467285959595715]
-@test isapprox(stderr(fm) [6.707710260366577, 1.5193083237479683], atol = 0.001)
-@test isapprox(getθ(fm), [0.9458106880922268, 0.22692826607677266], atol = 0.0001)
-@test std(fm)[1] ≈ [24.171449463289047]
-@test std(fm)[2] ≈ [5.799379721123582]
-@test std(fm)[3] ≈ [25.556130034081047]
-@test isapprox(logdet(fm), 74.46952585564611, atol = 0.001)
-cor(fm)
+    @test isapprox(deviance(fm), 1752.0032551398835, atol = 0.001)
+    @test isapprox(objective(fm), 1752.0032551398835, atol = 0.001)
+    @test coef(fm) ≈ [251.40510484848585, 10.467285959595715]
+    @test fixef(fm) ≈ [251.40510484848585, 10.467285959595715]
+    @test isapprox(stderr(fm), [6.707710260366577, 1.5193083237479683], atol = 0.001)
+    @test isapprox(getθ(fm), [0.9458106880922268, 0.22692826607677266], atol = 0.0001)
+    @test std(fm)[1] ≈ [24.171449463289047]
+    @test std(fm)[2] ≈ [5.799379721123582]
+    @test std(fm)[3] ≈ [25.556130034081047]
+    @test isapprox(logdet(fm), 74.46952585564611, atol = 0.001)
+    cor(fm)
+end
 end
