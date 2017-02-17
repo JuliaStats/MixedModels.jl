@@ -181,6 +181,16 @@ function lmm(f::Formula, fr::AbstractDataFrame; weights::Vector = [])
     LinearMixedModel(f, mf, trms, Λ, convert(Vector{T}, weights))
 end
 
+function inflate!{T}(A::StridedMatrix{T})
+    for i in diagind(A)
+        A[i] += one(T)
+    end
+    A
+end
+function inflate!{T}(D::Diagonal{T})
+    broadcast!(+, D.diag, D.diag, one(T))
+    D
+end
 function cholBlocked!{T}(m::LinearMixedModel{T})
     A, Λ, L = m.A.data.blocks, m.Λ, m.L.data.blocks
     n = LinAlg.checksquare(A)
@@ -194,7 +204,7 @@ function cholBlocked!{T}(m::LinearMixedModel{T})
         for jj in 1:j
             Ac_mul_B!(λ, L[j, jj])
         end
-        L[j, j] += I
+        inflate!(L[j, j])
     end
     for j in 1:n
         Ljj = L[j, j]

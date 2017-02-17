@@ -56,7 +56,8 @@ Describe the types and sizes of the blocks in the lower triangle of `m.A` and `m
 """
 function describeblocks(io::IO, m::MixedModel)
     lm = lmm(m)
-    A, L = lm.A, lm.L
+    A = lm.A
+    L = lm.L
     for i in 1 : size(A, 2), j in 1 : i
         println(io, i, ",", j, ": ", typeof(A[i,j]), " ", size(A[i,j]), " ", typeof(L[i,j]))
     end

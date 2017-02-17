@@ -137,7 +137,11 @@ Passing `verbose = true` provides verbose output of the iterations.
 """
 function pirls!{T}(m::GeneralizedLinearMixedModel{T}, varyβ::Bool=false, verbose::Bool=false)
     iter, maxiter, obj = 0, 100, T(-Inf)
-    u₀, u, β, β₀, lm = m.u₀, m.u, m.β, m.β₀, m.LMM
+    u₀ = m.u₀
+    u = m.u
+    β = m.β
+    β₀ = m.β₀
+    lm = m.LMM
     for j in eachindex(u)         # start from u all zeros
         copy!(u₀[j], fill!(u[j], 0))
     end
@@ -219,7 +223,8 @@ function StatsBase.fit!{T}(m::GeneralizedLinearMixedModel{T}; verbose::Bool=fals
 
     fast || fit!(m, verbose=verbose, fast=true) # use the fast fit first then slow fit to refine
 
-    β, lm = m.β, m.LMM
+    β = m.β
+    lm = m.LMM
     optsum = lm.optsum
     pars = fast ? copy(optsum.initial) : vcat(β, optsum.initial)
     opt = NLopt.Opt(optsum.optimizer, length(pars))

@@ -141,7 +141,9 @@ end
 
 function Base.LinAlg.A_mul_Bc!{T<:Number}(α::T, A::StridedVecOrMat{T}, B::SparseMatrixCSC{T},
     β::T, C::StridedVecOrMat{T})
-    (m, n), (p, q), (r, s) = size(A), size(B), size(C)
+    m, n = size(A)
+    p, q = size(B)
+    r, s = size(C)
     if r ≠ m || s ≠ p || n ≠ q
         throw(DimensionMismatch("size(C,1) ≠ size(A,1) or size(C,2) ≠ size(B,1) or size(A,2) ≠ size(B,2)"))
     end
