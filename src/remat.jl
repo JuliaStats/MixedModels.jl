@@ -137,8 +137,8 @@ function Base.Ac_mul_B!{T}(α::Real, A::ReMat, B::StridedVecOrMat{T}, β::Real, 
     if size(R, 1) ≠ q || size(B, 1) ≠ n || size(R, 2) ≠ k
         throw(DimensionMismatch())
     end
-    if β ≠ 1
-        β == 0 ? fill!(R, 0) : scale!(β, R)
+    if β ≠ one(T)
+        β == zero(T) ? fill!(R, β) : scale!(β, R)
     end
     rr, zz = A.f.refs, A.z
     if isa(A, ScalarReMat)
@@ -172,8 +172,7 @@ function Base.Ac_mul_B{T}(A::ScalarReMat{T}, B::ScalarReMat{T})
     if A === B
         v = zeros(T, nlevs(A))
         for i in eachindex(Ar)
-            Ari = Ar[i]
-            v[Ari] += abs2(Az[i])
+            v[Ar[i]] += abs2(Az[i])
         end
         return Diagonal(v)
     end
@@ -307,7 +306,7 @@ end
 
 function Base.Ac_mul_B!{T}(R::DenseVecOrMat{T}, A::DenseVecOrMat{T}, B::ReMat)
     m = size(A, 1)
-    n = size(A, 2)
+    n = size(A, 2)  # needs to be done this way in case A is a vector
     p, q = size(B)
     if m ≠ p || size(R, 1) ≠ n || size(R, 2) ≠ q
         throw(DimensionMismatch(""))
@@ -315,12 +314,12 @@ function Base.Ac_mul_B!{T}(R::DenseVecOrMat{T}, A::DenseVecOrMat{T}, B::ReMat)
     fill!(R, 0)
     r, z = B.f.refs, B.z
     if isa(B, ScalarReMat)
-        for j in 1 : n, i in 1 : m
+        for j in 1:n, i in 1:m
             R[j, r[i]] += A[i, j] * z[i]
         end
     else
         l = size(zz, 1)
-        for j in 1 : n, i in 1 : m
+        for j in 1:n, i in 1:m
             roffset = (r[i] - 1) * l
             aij = A[i, j]
             for k in 1:l
