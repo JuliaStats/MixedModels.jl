@@ -2,7 +2,7 @@ function Base.A_mul_B!{T}(C::StridedVecOrMat{T}, A::UniformScaling{T}, B::Stride
     if size(C) ≠ size(B)
         throw(DimensionMismatch("size(C) = $(size(C)) ≠ $(size(B)) = size(B)"))
     end
-    C .= A.λ .* B
+    broadcast!(*, C, A.λ, B)
 end
 
 function cholUnblocked!{T <: AbstractFloat}(D::Diagonal{T}, ::Type{Val{:L}})
@@ -29,20 +29,11 @@ end
 
 LinAlg.Ac_ldiv_B!{T}(D::Diagonal{T}, B) = A_ldiv_B!(D, B)
 
-function LinAlg.A_rdiv_Bc!{T}(A::StridedMatrix{T}, D::Diagonal{T})
-    m,n = size(A)
-    dd = D.diag
-    if length(dd) ≠ n
-        throw(DimensionMismatch("size(A, 2) = $n ≠ size(D, 2) = $(length(dd))"))
-    end
-    @inbounds for j in 1 : n
-        ddj = dd[j]
-        for i in 1 : m
-            A[i, j] /= ddj
-        end
-    end
+function LinAlg.A_rdiv_B!{T}(A::StridedMatrix{T}, D::Diagonal{T})
+    scale!(A, inv.(D.diag))
     A
 end
+LinAlg.A_rdiv_Bc!{T}(A::StridedMatrix{T}, D::Diagonal{T}) = LinAlg.A_rdiv_B!(A, D)
 
 function LinAlg.A_rdiv_Bc!{T}(A::SparseMatrixCSC{T}, D::Diagonal{T})
     m,n = size(A)
@@ -70,14 +61,14 @@ function rankUpdate!{T<:AbstractFloat,S<:StridedMatrix}(α::T, A::SparseMatrixCS
         scale!(LowerTriangular(Cd), β)
     end
     rv, nz = rowvals(A), nonzeros(A)
-    for jj in 1:n
+    @inbounds for jj in 1:n
         rangejj = nzrange(A, jj)
         lenrngjj = length(rangejj)
         for (k, j) in enumerate(rangejj)
-            nzj, rvj = nz[j], rv[j]
+            anzj, rvj = α * nz[j], rv[j]
             for i in k:lenrngjj
                 kk = rangejj[i]
-                Cd[rv[kk], rvj] += α * nz[kk] * nzj
+                Cd[rv[kk], rvj] += nz[kk] * anzj
             end
         end
     end
@@ -158,7 +149,7 @@ function Base.LinAlg.A_mul_Bc!{T<:Number}(α::T, A::StridedVecOrMat{T}, B::Spars
         β ≠ zero(T) ? scale!(C, β) : fill!(C, β)
     end
     nz, rv = nonzeros(B), rowvals(B)
-    for j in 1:q, k in nzrange(B, j)
+    @inbounds for j in 1:q, k in nzrange(B, j)
         rvk = rv[k]
         anzk = α * nz[k]
         for jj in 1:r  # use .= fusing in v0.6.0 and later
