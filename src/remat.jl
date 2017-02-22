@@ -105,6 +105,24 @@ Base.sparse(R::ScalarReMat) =
 
 ==(A::ReMat,B::ReMat) = (A.f == B.f) && (A.z == B.z)
 
+function rankUpdate!{T <: AbstractFloat}(α::T, A::VectorReMat{T}, β::T, C::Array{T, 3})
+    Az = A.z
+    p, q = size(Az)
+    l, m, n = size(C)
+    if !(n == nlevs(A) && l == m == p)
+        throw(DimensionMismatch(
+            "size(A.z) == $(size(A.z)) and size(C) == $(size(C)) not compatible"))
+    end
+    if β != one(T)
+        β == zero(T) ? fill!(C, β) : scale!(C, β)
+    end
+    refs = A.f.refs
+    for i in eachindex(refs)
+        rankUpdate!(α, view(Az, :, i), Hermitian(view(C, :, :, refs[i]), :L))
+    end
+    C
+end
+
 function Base.A_mul_B!{T}(α::Real, A::ReMat, B::StridedVecOrMat{T}, β::Real, R::StridedVecOrMat{T})
     n,q = size(A)
     k = size(B, 2)
@@ -257,8 +275,10 @@ end
 
 function Base.Ac_mul_B{T}(A::VectorReMat{T}, B::VectorReMat{T})
     if A === B
-        l = size(A.z, 1)
-        return Ac_mul_B!(HBlkDiag(Array(T, (l, l, length(A.f.pool)))), A, B)
+        l, n = size(A.z)
+        nl = nlevs(A)
+        C = rankUpdate!(one(T), A, zero(T), Array(T, (l, l, nl)))
+        return Diagonal([MMatrix{l,l}(view(C, :, :, i)) for i in 1:nl])
     end
     Az = A.z
     Bz = B.z
