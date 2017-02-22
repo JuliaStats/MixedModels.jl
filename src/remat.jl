@@ -319,7 +319,7 @@ function Base.Ac_mul_B!{T}(R::DenseVecOrMat{T}, A::DenseVecOrMat{T}, B::ReMat)
             R[j, r[i]] += A[i, j] * z[i]
         end
     else
-        l = size(zz, 1)
+        l = size(z, 1)
         for j in 1 : n, i in 1 : m
             roffset = (r[i] - 1) * l
             aij = A[i, j]
