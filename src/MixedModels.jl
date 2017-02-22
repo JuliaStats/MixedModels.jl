@@ -6,7 +6,7 @@ using CategoricalArrays, DataArrays, DataFrames, Distributions, GLM, LinearAlgeb
 using NLopt, Showoff, StaticArrays, StatsBase
 using StatsFuns: log2π
 using NamedArrays: NamedArray, setnames!
-using Base.LinAlg: BlasFloat
+using Base.LinAlg: BlasFloat, copytri!
 
 import StatsBase: coef, coeftable, dof, deviance, fit!, fitted, loglikelihood,
     model_response, nobs, vcov

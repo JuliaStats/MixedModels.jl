@@ -4,12 +4,12 @@
 A matrix composed of heterogenous blocks.  Blocks can be sparse, dense or
 diagonal.
 """
-typealias Block{T} Union{Diagonal{T}, Diagonal{StaticArrays.MMatrix},
-    Hermitian{T, Matrix{T}}, LowerTriangular{T, Matrix{T}}, Matrix{T},
-    SparseMatrixCSC{T}}
+#typealias Block{T} Union{Diagonal{T}, Diagonal{StaticArrays.MMatrix},
+#    Hermitian{T, Matrix{T}}, LowerTriangular{T, Matrix{T}}, Matrix{T},
+#    SparseMatrixCSC{T}}
 
-immutable HeteroBlkdMatrix{T} <: AbstractMatrix{Block{T}}
-    blocks::Matrix{Block{T}}
+immutable HeteroBlkdMatrix <: AbstractMatrix{AbstractMatrix}
+    blocks::Matrix{AbstractMatrix}
 end
 Base.size(A::HeteroBlkdMatrix) = size(A.blocks)
 Base.getindex(A::HeteroBlkdMatrix, i::Int) = A.blocks[i]

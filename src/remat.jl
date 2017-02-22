@@ -118,7 +118,7 @@ function rankUpdate!{T <: AbstractFloat}(α::T, A::VectorReMat{T}, β::T, C::Arr
     end
     refs = A.f.refs
     for i in eachindex(refs)
-        rankUpdate!(α, view(Az, :, i), Hermitian(view(C, :, :, refs[i]), :L))
+        copytri!(rankUpdate!(α, view(Az, :, i), Hermitian(view(C, :, :, refs[i]), :L)), 'L')
     end
     C
 end

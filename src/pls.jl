@@ -130,7 +130,8 @@ function LinearMixedModel(f, mf, trms, Λ, wts)
         size(sqrtwts, 2) == n ? [sqrtwts * t for t in trms] :
         throw(DimensionMismatch("length(wts) must be 0 or length(y)"))
     nt = length(trms)
-    A, L = Array{Block{T}}(nt, nt), Array{Block{T}}(nt, nt)
+    A = Array{AbstractMatrix}(nt, nt)
+    L = Array{AbstractMatrix}(nt, nt)
     for i in 1 : nt, j in 1 : i
         A[i, j] = densify(wttrms[i]'wttrms[j])
         L[i, j] = copy(A[i, j])
@@ -150,7 +151,7 @@ function LinearMixedModel(f, mf, trms, Λ, wts)
         ftol_rel = convert(T, 1.0e-12), ftol_abs = convert(T, 1.0e-8))
     fill!(optsum.xtol_abs, 1.0e-10)
     LinearMixedModel(f, mf, wttrms, trms, sqrtwts, Λ,
-        Hermitian(HeteroBlkdMatrix{T}(A), :L), LowerTriangular(HeteroBlkdMatrix{T}(L)),
+        Hermitian(HeteroBlkdMatrix(A), :L), LowerTriangular(HeteroBlkdMatrix(L)),
         optsum)
 end
 
@@ -191,6 +192,13 @@ function inflate!{T}(D::Diagonal{T})
     broadcast!(+, D.diag, D.diag, one(T))
     D
 end
+function inflate!{T,K}(D::Diagonal{MMatrix{K,K,T}})
+    for mm in D.diag, k in 1:K
+        mm[k, k] += one(T)
+    end
+    D
+end
+
 function cholBlocked!{T}(m::LinearMixedModel{T})
     A, Λ, L = m.A.data.blocks, m.Λ, m.L.data.blocks
     n = LinAlg.checksquare(A)
