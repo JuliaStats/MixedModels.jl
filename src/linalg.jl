@@ -1,10 +1,3 @@
-function Base.A_mul_B!{T}(C::StridedVecOrMat{T}, A::UniformScaling{T}, B::StridedVecOrMat{T})
-    if size(C) ≠ size(B)
-        throw(DimensionMismatch("size(C) = $(size(C)) ≠ $(size(B)) = size(B)"))
-    end
-    broadcast!(*, C, A.λ, B)
-end
-
 function cholUnblocked!{T <: AbstractFloat}(D::Diagonal{T}, ::Type{Val{:L}})
     map!(sqrt, D.diag)
     D
@@ -12,43 +5,17 @@ end
 
 cholUnblocked!{T <: AbstractFloat}(D::Diagonal{T}, ::Type{Val{:U}}) = cholUnblocked!(D, Val{:L})
 
-A_mul_Bc!{T<:BlasFloat}(α::T, A::StridedMatrix{T}, B::StridedMatrix{T}, β::T, C::StridedMatrix{T}) =
-    Base.BLAS.gemm!('N', 'C', α, A, B, β, C)
-
-Base.A_mul_B!{T}(A::UniformScaling{T}, B::StridedVecOrMat{T}) = A_mul_B!(B, A, B)
-
-function Base.A_mul_B!{T}(A::Diagonal{T}, B::UniformScaling{T})
-    scale!(A.diag, B.λ)
-    A
-end
-
-function Base.Ac_mul_B!{T}(A::UniformScaling{T}, B::Diagonal{T})
-    scale!(B.diag, A.λ)
-    B
-end
-
-LinAlg.Ac_ldiv_B!{T}(D::Diagonal{T}, B) = A_ldiv_B!(D, B)
-
-function LinAlg.A_rdiv_B!{T}(A::StridedMatrix{T}, D::Diagonal{T})
-    scale!(A, inv.(D.diag))
-    A
-end
-LinAlg.A_rdiv_Bc!{T}(A::StridedMatrix{T}, D::Diagonal{T}) = LinAlg.A_rdiv_B!(A, D)
-
-function LinAlg.A_rdiv_Bc!{T}(A::SparseMatrixCSC{T}, D::Diagonal{T})
-    m,n = size(A)
-    dd = D.diag
-    if length(dd) ≠ n
-        throw(DimensionMismatch("size(A, 2) = $n ≠ size(D, 2) = $(length(dd))"))
-    end
-    nonz = nonzeros(A)
-    for j in 1 : n
-        ddj = dd[j]
-        for k in nzrange(A, j)
-            nonz[k] /= ddj
-        end
+function cholUnblocked!{T<:BlasFloat}(A::Matrix{T}, ::Type{Val{:L}})
+    _, info = LAPACK.potrf!('L', A)
+    if info ≠ 0
+        throw(PosDefException(info))
     end
     A
+end
+
+function cholUnblocked!{T<:AbstractMatrix}(D::Diagonal{T}, ::Type{Val{:L}})
+    map!(b -> cholUnblocked!(b, Val{:L}), D.diag)
+    D
 end
 
 function rankUpdate!{T<:AbstractFloat,S<:StridedMatrix}(α::T, A::SparseMatrixCSC{T}, β::T, C::Hermitian{T,S})
@@ -94,31 +61,57 @@ function rankUpdate!{T <: Number}(α::T, A::SparseMatrixCSC{T}, C::Diagonal{T})
     return C
 end
 
-LinAlg.A_mul_B!{T}(A::AbstractArray{T}, B::UniformScaling{T}) = scale!(A, B.λ)
-LinAlg.Ac_mul_B!{T}(A::UniformScaling{T}, B::AbstractArray{T}) = scale!(B, A.λ)
-
-function LinAlg.A_ldiv_B!{T}(D::Diagonal{T}, B::Diagonal{T})
-    if size(D) ≠ size(B)
-        throw(DimensionMismatch("size(D) ≠ size(B)"))
-    end
-    map!(/, B.diag, B.diag, D.diag)
-    B
+function cond{T}(J::UniformScaling{T})
+    onereal = inv(one(real(J.λ)))
+    return J.λ ≠ zero(T) ? onereal : oftype(onereal, Inf)
 end
 
-function LinAlg.A_ldiv_B!{T}(D::Diagonal{T}, B::SparseMatrixCSC{T})
-    dd = D.diag
-    if length(dd) ≠ size(B, 1)
-        throw(DimensionMismatch("size(D,2) ≠ size(B,1)"))
-    end
-    vals = nonzeros(B)
-    rows = rowvals(B)
-    @inbounds for k in eachindex(vals)
-        vals[k] /= dd[rows[k]]
-    end
-    B
+A_mul_B!{T}(A::UniformScaling{T}, B::AbstractArray{T}) = scale!(B, A.λ)
+
+A_mul_B!{T}(A::AbstractArray{T}, B::UniformScaling{T}) = scale!(A, B.λ)
+
+function A_mul_B!{T}(A::Diagonal{T}, B::UniformScaling{T})
+    scale!(A.diag, B.λ)
+    A
 end
 
-function Base.LinAlg.A_mul_Bc!{T<:Number}(α::T, A::SparseMatrixCSC{T}, B::StridedVecOrMat{T},
+function A_mul_B!(A::Diagonal, B::UniformSc)
+    for a in A.diag
+        A_mul_B!(a, B.λ)
+    end
+    A
+end
+
+function A_mul_B!{T<:AbstractMatrix}(A::Matrix, B::UniformSc{T})
+    λ = B.λ
+    k = size(λ, 1)
+    m, n = size(A)
+    q, r = divrem(n, k)
+    if r ≠ 0
+        throw(DimensionMismatch("size(A, 2) = $n is not a multiple of size(B.λ, 1) = $k"))
+    end
+    offset = 0
+    onetok = 1:k
+    for blk in 1:q
+        A_mul_B!(view(A, :, onetok + offset), λ)
+        offset += k
+    end
+    A
+end
+
+function A_mul_B!{T}(C::StridedVecOrMat{T}, A::UniformScaling{T}, B::StridedVecOrMat{T})
+    if size(C) ≠ size(B)
+        throw(DimensionMismatch("size(C) = $(size(C)) ≠ $(size(B)) = size(B)"))
+    end
+    broadcast!(*, C, A.λ, B)
+end
+
+function A_mul_Bc!{T<:BlasFloat}(α::T, A::StridedMatrix{T}, B::StridedMatrix{T},
+    β::T, C::StridedMatrix{T})
+    BLAS.gemm!('N', 'C', α, A, B, β, C)
+end
+
+function A_mul_Bc!{T<:Number}(α::T, A::SparseMatrixCSC{T}, B::StridedVecOrMat{T},
     β::T, C::StridedVecOrMat{T})
     if size(B, 1) ≠ (n = size(C, 2))
         throw(DimensionMismatch("size(B, 1) = $(size(B, 1)) ≠ $n = size(C, 2)"))
@@ -139,7 +132,7 @@ function Base.LinAlg.A_mul_Bc!{T<:Number}(α::T, A::SparseMatrixCSC{T}, B::Strid
     C
 end
 
-function Base.LinAlg.A_mul_Bc!{T<:Number}(α::T, A::StridedVecOrMat{T}, B::SparseMatrixCSC{T},
+function A_mul_Bc!{T<:Number}(α::T, A::StridedVecOrMat{T}, B::SparseMatrixCSC{T},
     β::T, C::StridedVecOrMat{T})
     m, n = size(A)
     p, q = size(B)
@@ -158,13 +151,96 @@ function Base.LinAlg.A_mul_Bc!{T<:Number}(α::T, A::StridedVecOrMat{T}, B::Spars
             C[jj, rvk] += A[jj, j] * anzk
         end
     end
-    return C
+    C
 end
 
-function cholUnblocked!{T<:Union{Float32,Float64}}(A::Matrix{T}, ::Type{Val{:L}})
-    _, info = LAPACK.potrf!('L', A)
-    if info ≠ 0
-        throw(LinAlg.PosDefException(info))
+function Ac_mul_B!{T}(A::UniformScaling{T}, B::Diagonal{T})
+    scale!(B.diag, A.λ)
+    B
+end
+
+Ac_mul_B!{T}(A::UniformScaling{T}, B::AbstractArray{T}) = scale!(B, A.λ)
+
+function Ac_mul_B!(A::UniformSc, B::Diagonal)
+    for b in B.diag
+        Ac_mul_B!(A.λ, b)
+    end
+    B
+end
+
+function Ac_mul_B!{T<:AbstractMatrix}(A::UniformSc{T}, B::Matrix)
+    λ = A.λ
+    k = size(λ, 1)
+    m, n = size(B)
+    q, r = divrem(m, k)
+    if r ≠ 0
+        throw(DimensionMismatch("size(B, 1) = $m is not a multiple of size(A.λ, 1) = $k"))
+    end
+    offset = 0
+    onetok = 1:k
+    for blk in 1:q
+        blkrows = onetok + offset
+        for j in 1:n
+            Ac_mul_B!(λ, view(A, blkrows, j))
+        end
+        offset += k
+    end
+    B
+end
+
+Ac_ldiv_B!{T}(D::Diagonal{T}, B) = A_ldiv_B!(D, B)
+
+function A_ldiv_B!{T}(D::Diagonal{T}, B::Diagonal{T})
+    if size(D) ≠ size(B)
+        throw(DimensionMismatch("size(D) ≠ size(B)"))
+    end
+    map!(/, B.diag, B.diag, D.diag)
+    B
+end
+
+function A_ldiv_B!{T}(D::Diagonal{T}, B::SparseMatrixCSC{T})
+    dd = D.diag
+    if length(dd) ≠ size(B, 1)
+        throw(DimensionMismatch("size(D,2) ≠ size(B,1)"))
+    end
+    vals = nonzeros(B)
+    rows = rowvals(B)
+    @inbounds for k in eachindex(vals)
+        vals[k] /= dd[rows[k]]
+    end
+    B
+end
+
+function A_rdiv_B!{T}(A::StridedMatrix{T}, D::Diagonal{T})
+    scale!(A, inv.(D.diag))
+    A
+end
+
+A_rdiv_Bc!{T}(A::StridedMatrix{T}, D::Diagonal{T}) = LinAlg.A_rdiv_B!(A, D)
+
+function A_rdiv_Bc!{T}(A::SparseMatrixCSC{T}, D::Diagonal{T})
+    m,n = size(A)
+    dd = D.diag
+    if length(dd) ≠ n
+        throw(DimensionMismatch("size(A, 2) = $n ≠ size(D, 2) = $(length(dd))"))
+    end
+    nonz = nonzeros(A)
+    for j in 1 : n
+        ddj = dd[j]
+        for k in nzrange(A, j)
+            nonz[k] /= ddj
+        end
+    end
+    A
+end
+
+# FIXME: This function should not call LowerTriangular
+function A_rdiv_Bc!{T<:AbstractMatrix}(A::Matrix, B::Diagonal{T})
+    offset = 0
+    for d in B.diag
+        k = size(d, 1)
+        A_rdiv_B!(view(A, :, (1:k) + offset), LowerTriangular(d))
+        offset += k
     end
     A
 end

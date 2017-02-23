@@ -136,8 +136,8 @@ function LinearMixedModel(f, mf, trms, Λ, wts)
         A[i, j] = densify(wttrms[i]'wttrms[j])
         L[i, j] = copy(A[i, j])
     end
-    for i in 2 : nt
-        if isa(L[i, i], Diagonal) || isa(L[i, i], HBlkDiag)
+    for i in 2:nt
+        if isa(L[i, i], Diagonal)
             for j in 1 : (i - 1)     # check for fill-in
                 if !isdiag(A[i, j] * A[i, j]')
                     for k in i : nt
@@ -147,12 +147,11 @@ function LinearMixedModel(f, mf, trms, Λ, wts)
             end
         end
     end
-    optsum = OptSummary(mapreduce(getθ, vcat, Λ), mapreduce(lowerbd, vcat, Λ), :LN_BOBYQA;
+    optsum = OptSummary(getθ(Λ), lowerbd(Λ), :LN_BOBYQA;
         ftol_rel = convert(T, 1.0e-12), ftol_abs = convert(T, 1.0e-8))
     fill!(optsum.xtol_abs, 1.0e-10)
-    LinearMixedModel(f, mf, wttrms, trms, sqrtwts, Λ,
-        Hermitian(HeteroBlkdMatrix(A), :L), LowerTriangular(HeteroBlkdMatrix(L)),
-        optsum)
+    LinearMixedModel(f, mf, wttrms, trms, sqrtwts, Λ, Hermitian(HeteroBlkdMatrix(A), :L),
+        LowerTriangular(HeteroBlkdMatrix(L)), optsum)
 end
 
 """
@@ -192,9 +191,9 @@ function inflate!{T}(D::Diagonal{T})
     broadcast!(+, D.diag, D.diag, one(T))
     D
 end
-function inflate!{T,K}(D::Diagonal{MMatrix{K,K,T}})
-    for mm in D.diag, k in 1:K
-        mm[k, k] += one(T)
+function inflate!{T}(D::Diagonal{Matrix{T}})
+    for mm in D.diag, k in diagind(mm)
+        mm[k] += one(T)
     end
     D
 end

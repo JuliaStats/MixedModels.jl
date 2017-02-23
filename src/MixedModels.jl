@@ -3,20 +3,20 @@ __precompile__()
 module MixedModels
 
 using CategoricalArrays, DataArrays, DataFrames, Distributions, GLM, LinearAlgebra
-using NLopt, Showoff, StaticArrays, StatsBase
+using NLopt, Showoff, StatsBase
 using StatsFuns: log2π
 using NamedArrays: NamedArray, setnames!
-using Base.LinAlg: BlasFloat, copytri!
+using Base.LinAlg: BlasFloat, PosDefException, checksquare, copytri!
 
-import StatsBase: coef, coeftable, dof, deviance, fit!, fitted, loglikelihood,
-    model_response, nobs, vcov
-import Base: cor, cond, convert, std
+import Base: cor, cond, convert, logdet, std, A_mul_B!, Ac_mul_B!, A_mul_Bc!
+import DataFrames: @~
 import Distributions: Bernoulli, Binomial, Poisson, Gamma
 import GLM: LogitLink, LogLink, InverseLink
-import DataFrames: @~
 import LinearAlgebra.JuliaBLAS: rankUpdate!
 import LinearAlgebra.CholeskyModule: cholBlocked!, cholUnblocked!
-import Base.LinAlg: A_mul_Bc!
+import Base.LinAlg: A_ldiv_B!, Ac_ldiv_B!, A_rdiv_B!, A_rdiv_Bc!
+import StatsBase: coef, coeftable, dof, deviance, fit!, fitted, loglikelihood,
+    model_response, nobs, vcov
 
 export
        @~,

@@ -144,7 +144,7 @@ if false
 @testset "sleep" begin
     fm = lmm(Reaction ~ 1 + Days + (1 + Days | Subject), sleepstudy)
     @test lowerbd(fm) == [0.0, -Inf, 0.0]
-    @test isa(fm.A[1, 1],MixedModels.HBlkDiag{Float64})
+    @test isa(fm.A[1, 1], Diagonal{Matrix{Float64}})
     @test size(fm.A[1, 1]) == (36, 36)
     @test fm.A[1, 1][1, 1] == 10.
     @test fm.A[1, 1][6, 1] == 0.

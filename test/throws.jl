@@ -18,7 +18,6 @@ modl = lmm(Reaction ~ 1 + Days + (1 + Days | Subject), slp)
 @test_throws DimensionMismatch LinAlg.Ac_ldiv_B!(UpperTriangular(modl.R[1, 1]), ones(30, 1))
 
 const tri = LowerTriangular(eye(3))
-const hblk = MixedModels.HBlkDiag(ones(2,3,2))
 const dd3 = Diagonal(ones(3))
 
 @test_throws DimensionMismatch setθ!(tri, ones(2))

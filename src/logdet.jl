@@ -5,19 +5,14 @@
 
 Return the value of `log(det(triu(A)))` calculated in place.
 """
-LD(d::Diagonal) = sum(log, d.diag)
+LD{T<:Number}(d::Diagonal{T}) = sum(log, d.diag)
 
-function LD(d::HBlkDiag)
-    aa = d.arr
-    p, q, k = size(aa)
-    pq = p * q
-    dd = diagind(p, q)
-    r = sum(log(aa[i]) for i in dd)
-    for j in 2:k
-        dd += pq
-        r += sum(log(aa[i]) for i in dd)
+function LD{T}(d::Diagonal{LowerTriangular{T, Matrix{T}}})
+    s = log(one(T))
+    for dd in d.diag, i in diagind(dd)
+        s += log(dd[i, i])
     end
-    r
+    s
 end
 
 LD(d::DenseMatrix) = sum(i -> log(d[i]), diagind(d))
@@ -27,4 +22,4 @@ LD(d::DenseMatrix) = sum(i -> log(d[i]), diagind(d))
 
 Return the value of `log(det(Λ'Z'ZΛ + I))` calculated in place.
 """
-Base.logdet(m::LinearMixedModel) = 2 * sum(LD, view(diag(m.L.data.blocks), 1:length(m.Λ)))
+logdet(m::LinearMixedModel) = 2 * sum(LD, view(diag(m.L.data.blocks), 1:length(m.Λ)))

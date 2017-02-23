@@ -236,28 +236,6 @@ function Base.Ac_mul_B!{Tv, Ti}(C::SparseMatrixCSC{Tv, Ti}, A::ScalarReMat{Tv}, 
     C
 end
 
-function Base.Ac_mul_B!{T}(C::HBlkDiag{T}, A::VectorReMat{T}, B::VectorReMat{T})
-    c, a, r = C.arr, A.z, A.f.refs
-    _, m, n = size(c)
-    fill!(c, 0)
-    if A !== B
-        throw(ArgumentError("Currently defined only for A === B"))
-    end
-    for k in eachindex(r)
-        ri = Int(r[k])
-        for j in 1 : m
-            aj = a[j, k]
-            c[j, j, ri] += abs2(aj)
-            for i in 1 : j - 1
-                aij = a[i, k] * aj
-                c[i, j, ri] += aij
-                c[j, i, ri] += aij
-            end
-        end
-    end
-    C
-end
-
 function Base.Ac_mul_B!{T}(C::Matrix{T}, A::ScalarReMat{T}, B::ScalarReMat{T})
     m, n = size(C)
     ma, na = size(A)
@@ -275,10 +253,16 @@ end
 
 function Base.Ac_mul_B{T}(A::VectorReMat{T}, B::VectorReMat{T})
     if A === B
-        l, n = size(A.z)
-        nl = nlevs(A)
-        C = rankUpdate!(one(T), A, zero(T), Array(T, (l, l, nl)))
-        return Diagonal([MMatrix{l,l}(view(C, :, :, i)) for i in 1:nl])
+        Az = A.z
+        refs = A.f.refs
+        l, n = size(Az)
+        D = Diagonal([zeros(T, (l,l)) for _ in 1:nlevs(A)])
+        d = D.diag
+        for i in eachindex(refs)
+            rankUpdate!(view(Az, :, i), Hermitian(d[refs[i]], :L))
+        end
+        map!(m -> copytri!(m, 'L'), d)
+        return D
     end
     Az = A.z
     Bz = B.z
