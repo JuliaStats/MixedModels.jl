@@ -168,13 +168,13 @@ function A_mul_Bc!{T<:Number}(α::T, A::SparseMatrixCSC{T}, B::StridedVecOrMat{T
     nzv = A.nzval
     rv = A.rowval
     if β ≠ one(T)
-        β ≠ zero(0) ? scale!(C, β) : fill!(C, β)
+        β ≠ zero(T) ? scale!(C, β) : fill!(C, β)
     end
     for col = 1:A.n
         for k = 1:n
-            αxj = α*B[k, col]
+            αxk = α * B[k, col]
             @inbounds for j = nzrange(A, col)
-                C[rv[j], k] += nzv[j]*αxj
+                C[rv[j], k] += nzv[j] * αxk
             end
         end
     end
