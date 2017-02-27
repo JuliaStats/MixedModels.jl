@@ -124,8 +124,10 @@ function lmm(f::Formula, fr::AbstractDataFrame; weights::Vector = [])
     end
     trms = Any[remat(e, mf.df) for e in retrms]
     if length(trms) > 1
-        nl = [nlevs(t) for t in trms]
-        trms = trms[sortperm(nl; rev = true)]
+        nre = [nrandomeff(t) for t in trms]
+        if !issorted(nre, rev = true)
+            trms = trms[sortperm(nre, rev = true)]
+        end
     end
     Λ = [LT(t) for t in trms]
     push!(trms, X.m)

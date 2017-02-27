@@ -95,6 +95,14 @@ Return the number of levels in the grouping factor of `A`.
 """
 nlevs(A::ReMat) = length(levs(A))
 
+"""
+    nrandomeff(A::ReMat)
+
+Return the total number of random effects in A.
+"""
+nrandomeff(A::ScalarReMat) = nlevs(A)
+nrandomeff(A::VectorReMat) = nlevs(A) * size(A.z, 1)
+
 Base.size(A::ReMat) = (length(A.f), vsize(A) * nlevs(A))
 
 Base.size(A::ReMat, i::Integer) =
