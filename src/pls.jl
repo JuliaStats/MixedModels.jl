@@ -79,7 +79,7 @@ function LinearMixedModel(f, mf, trms, Λ, wts)
     L = Array{AbstractMatrix}(nt, nt)
     for i in 1:nt, j in 1:i
         A[i, j] = densify(wttrms[i]'wttrms[j])
-        L[i, j] = copy(A[i, j])
+        L[i, j] = deepcopy(A[i, j])
     end
     for i in 1:length(Λ)
         Lii = L[i, i]
