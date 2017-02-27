@@ -75,10 +75,9 @@ import Base: ==, *
 
 include("blockmats.jl")
 include("linalg.jl")
-#include("cfactor.jl")
+include("optsummary.jl")
 include("remat.jl")
 include("paramlowertriangular.jl")
-include("inject.jl")
 include("pls.jl")
 include("logdet.jl")
 include("simulate.jl")
