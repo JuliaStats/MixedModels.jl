@@ -5,22 +5,69 @@ end
 
 cholUnblocked!{T <: AbstractFloat}(D::Diagonal{T}, ::Type{Val{:U}}) = cholUnblocked!(D, Val{:L})
 
+function scaleinflate!{T<:AbstractFloat}(Ljj::Diagonal{T}, Ajj::Diagonal{T}, Λj::UniformScaling{T})
+    lambsq = abs2(Λj.λ)
+    broadcast!(x -> lambsq * x + one(T), Ljj.diag, Ajj.diag)
+    Ljj
+end
+
+function scaleinflate!{T<:AbstractFloat}(Ljj::Matrix{T}, Ajj::Diagonal{T}, Λj::UniformScaling{T})
+    Ad = Ajj.diag
+    @assert length(Ad) == checksquare(Ljj)
+    lambsq = abs2(Λj.λ)
+    fill!(Ljj, zero(T))
+    for (j, jj) in zip(eachindex(Ad), diagind(Ljj))
+        Ljj[jj] = lambsq * Ad[j] + one(T)
+    end
+    Ljj
+end
+
+function scaleinflate!{T<:AbstractFloat}(Ljj::Diagonal{LowerTriangular{T,Matrix{T}}},
+    Ajj::Diagonal{Matrix{T}}, Λj::UniformSc{LowerTriangular{T,Matrix{T}}})
+    λ = Λj.λ
+    Ldiag = Ljj.diag
+    Adiag = Ajj.diag
+    nblk = length(Ldiag)
+    @assert length(Adiag) = nblk
+    for i in 1:nblk
+        Ldi = Ac_mul_B!(λ, A_mul_B!(Ldiag[i].data, Adiag[i], λ))
+        for k in diagind(Ldi)
+            Ldi[k] += one(T)
+        end
+    end
+    Ljj
+end
+
+A_mul_B!{T}(C::Matrix{T}, A::Matrix{T}, B::UniformScaling{T}) = scale!(copy!(C, A), B.λ)
+
 function cholUnblocked!{T<:BlasFloat}(A::Matrix{T}, ::Type{Val{:L}})
-    _, info = LAPACK.potrf!('L', A)
-    if info ≠ 0
-        throw(PosDefException(info))
+    n = checksquare(A)
+    if n == 1
+        A[1] < zero(T) && throw(PosDefException(1))
+        A[1] = sqrt(A[1])
+    elseif n == 2
+        A[1] < zero(T) && throw(PosDefException(1))
+        A[1] = sqrt(A[1])
+        A[2] /= A[1]
+        A[4] = sqrt(A[4] - abs2(A[2]))
+    else
+        _, info = LAPACK.potrf!('L', A)
+        info ≠ 0 && throw(PosDefException(info))
     end
     A
 end
 
-function cholUnblocked!{T<:AbstractMatrix}(D::Diagonal{T}, ::Type{Val{:L}})
-    map!(b -> cholUnblocked!(b, Val{:L}), D.diag)
+function cholUnblocked!{T<:AbstractFloat}(D::Diagonal{LowerTriangular{T, Matrix{T}}},
+    ::Type{Val{:L}})
+    for b in D.diag
+        cholUnblocked!(b.data, Val{:L})
+    end
     D
 end
 
 function rankUpdate!{T<:AbstractFloat,S<:StridedMatrix}(α::T, A::SparseMatrixCSC{T}, β::T, C::Hermitian{T,S})
     m, n = size(A)
-    if m ≠ LinAlg.checksquare(C) || C.uplo != 'L'
+    if m ≠ size(C, 2) || C.uplo != 'L'
         throw(DimensionMismatch("C is not Hermitian lower or size(C, 2) ≠ size(A, 1)"))
     end
     Cd = C.data
@@ -75,9 +122,11 @@ function A_mul_B!{T}(A::Diagonal{T}, B::UniformScaling{T})
     A
 end
 
-function A_mul_B!(A::Diagonal, B::UniformSc)
+function A_mul_B!{T<:AbstractFloat}(A::Diagonal{LowerTriangular{T, Matrix{T}}},
+    B::UniformSc{LowerTriangular{T,Matrix{T}}})
+    λ = B.λ
     for a in A.diag
-        A_mul_B!(a, B.λ)
+        A_mul_B!(a.data, λ)
     end
     A
 end
@@ -161,30 +210,19 @@ end
 
 Ac_mul_B!{T}(A::UniformScaling{T}, B::AbstractArray{T}) = scale!(B, A.λ)
 
-function Ac_mul_B!(A::UniformSc, B::Diagonal)
+function Ac_mul_B!{T}(A::UniformSc{LowerTriangular{T,Matrix{T}}},
+    B::Diagonal{LowerTriangular{T,Matrix{T}}})
     for b in B.diag
-        Ac_mul_B!(A.λ, b)
+        Ac_mul_B!(A.λ, b.data)
     end
     B
 end
 
-function Ac_mul_B!{T<:AbstractMatrix}(A::UniformSc{T}, B::Matrix)
+function Ac_mul_B!{T}(A::UniformSc{LowerTriangular{T}}, B::StridedVecOrMat{T})
     λ = A.λ
     k = size(λ, 1)
-    m, n = size(B)
-    q, r = divrem(m, k)
-    if r ≠ 0
-        throw(DimensionMismatch("size(B, 1) = $m is not a multiple of size(A.λ, 1) = $k"))
-    end
-    offset = 0
-    onetok = 1:k
-    for blk in 1:q
-        blkrows = onetok + offset
-        for j in 1:n
-            Ac_mul_B!(λ, view(A, blkrows, j))
-        end
-        offset += k
-    end
+    m, n = size(B, 1), size(B, 2)
+    Ac_mul_B!(λ, reshape(B, (k, div(m, k) * n)))
     B
 end
 
@@ -213,6 +251,16 @@ end
 
 function A_rdiv_B!{T}(A::StridedMatrix{T}, D::Diagonal{T})
     scale!(A, inv.(D.diag))
+    A
+end
+
+function A_rdiv_B!{T}(A::StridedMatrix{T}, D::Diagonal{LowerTriangular{T, Matrix{T}}})
+    offset = 0
+    for L in D.diag
+        k = size(L, 1)
+        A_rdiv_B!(view(A, :, (1:k) + offset), L)
+        offset += k
+    end
     A
 end
 

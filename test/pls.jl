@@ -36,7 +36,7 @@
 
     @test isapprox(logdet(fm1), 8.06014522999825, atol = 0.001)
     @test isapprox(varest(fm1), 2451.2501089607676, atol = 0.001)
-    @test isapprox(pwrss(fm1), 73537.49947885796, atol = 0.0001)
+    @test isapprox(pwrss(fm1), 73537.49947885796, atol = 0.001)
     @test isapprox(stderr(fm1), [17.69455188898009], atol = 0.0001)
 
     vc = VarCorr(fm1)

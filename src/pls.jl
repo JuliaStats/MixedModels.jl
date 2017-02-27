@@ -1,59 +1,4 @@
 """
-    OptSummary
-
-Summary of an `NLopt` optimization
-
-# Members
-* `initial`: a copy of the initial parameter values in the optimization
-* `lowerbd`: lower bounds on the parameter values
-* `ftol_rel`: as in NLopt
-* `ftol_abs`: as in NLopt
-* `xtol_rel`: as in NLopt
-* `xtol_abs`: as in NLopt
-* `final`: a copy of the final parameter values from the optimization
-* `fmin`: the final value of the objective
-* `feval`: the number of function evaluations
-* `optimizer`: the name of the optimizer used, as a `Symbol`
-* `returnvalue`: the return value, as a `Symbol`
-"""
-type OptSummary{T <: AbstractFloat}
-    initial::Vector{T}
-    lowerbd::Vector{T}
-    finitial::T
-    ftol_rel::T
-    ftol_abs::T
-    xtol_rel::T
-    xtol_abs::Vector{T}
-    final::Vector{T}
-    fmin::T
-    feval::Int
-    optimizer::Symbol
-    returnvalue::Symbol
-end
-function OptSummary{T<:AbstractFloat}(initial::Vector{Float64}, lowerbd::Vector{T},
-    optimizer::Symbol; ftol_rel::T=zero(T), ftol_abs::T=zero(T), xtol_rel::T=zero(T))
-    OptSummary(initial, lowerbd, T(Inf), ftol_rel, ftol_abs, xtol_rel, zeros(initial),
-        copy(initial), T(Inf), -1, optimizer, :FAILURE)
-end
-
-function Base.show(io::IO, s::OptSummary)
-    println(io, "Initial parameter vector: ", s.initial)
-    println(io, "Initial objective value:  ", s.finitial)
-    println(io)
-    println(io, "Optimizer (from NLopt):   ", s.optimizer)
-    println(io, "Lower bounds:             ", s.lowerbd)
-    println(io, "ftol_rel:                 ", s.ftol_rel)
-    println(io, "ftol_abs:                 ", s.ftol_abs)
-    println(io, "xtol_rel:                 ", s.xtol_rel)
-    println(io, "xtol_abs:                 ", s.xtol_abs)
-    println(io)
-    println(io, "Function evaluations:     ", s.feval)
-    println(io, "Final parameter vector:   ", s.final)
-    println(io, "Final objective value:    ", s.fmin)
-    println(io, "Return code:              ", s.returnvalue)
-end
-
-"""
     LinearMixedModel
 
 Linear mixed-effects model representation
@@ -132,15 +77,22 @@ function LinearMixedModel(f, mf, trms, Λ, wts)
     nt = length(trms)
     A = Array{AbstractMatrix}(nt, nt)
     L = Array{AbstractMatrix}(nt, nt)
-    for i in 1 : nt, j in 1 : i
+    for i in 1:nt, j in 1:i
         A[i, j] = densify(wttrms[i]'wttrms[j])
         L[i, j] = copy(A[i, j])
     end
+    for i in 1:length(Λ)
+        Lii = L[i, i]
+        if isa(Lii, Diagonal) && eltype(Lii) == Matrix{T}
+            L[i, i] = Diagonal(map(LowerTriangular, Lii.diag))
+        end
+    end
     for i in 2:nt
-        if isa(L[i, i], Diagonal)
-            for j in 1 : (i - 1)     # check for fill-in
+        Lii = L[i, i]
+        if isa(Lii, Diagonal)
+            for j in 1:(i - 1)     # check for fill-in
                 if !isdiag(A[i, j] * A[i, j]')
-                    for k in i : nt
+                    for k in i:nt
                         L[k, i] = full(L[k, i])
                     end
                 end
@@ -181,52 +133,35 @@ function lmm(f::Formula, fr::AbstractDataFrame; weights::Vector = [])
     LinearMixedModel(f, mf, trms, Λ, convert(Vector{T}, weights))
 end
 
-function inflate!{T}(A::StridedMatrix{T})
-    for i in diagind(A)
-        A[i] += one(T)
-    end
-    A
-end
-function inflate!{T}(D::Diagonal{T})
-    broadcast!(+, D.diag, D.diag, one(T))
-    D
-end
-function inflate!{T}(D::Diagonal{Matrix{T}})
-    for mm in D.diag, k in diagind(mm)
-        mm[k] += one(T)
-    end
-    D
-end
-
 function cholBlocked!{T}(m::LinearMixedModel{T})
-    A, Λ, L = m.A.data.blocks, m.Λ, m.L.data.blocks
-    n = LinAlg.checksquare(A)
-    for j in 1:n, i in j:n
-        inject!(L[i, j], A[i, j])  # like copy! but allows for L to be more general than A
-    end
-    for (j, λ) in enumerate(Λ)
-        for i in j:n
-            A_mul_B!(L[i, j], λ)
-        end
-        for jj in 1:j
-            Ac_mul_B!(λ, L[j, jj])
-        end
-        inflate!(L[j, j])
-    end
-    for j in 1:n
+    A = m.A.data.blocks
+    Λ = m.Λ
+    L = m.L.data.blocks
+    nblk = size(A, 2)
+    nzblk = length(Λ)
+    for j in 1:nblk
         Ljj = L[j, j]
-        cholUnblocked!(Ljj, Val{:L})
-        Ljjlt = isa(Ljj, Diagonal) ? Ljj : LowerTriangular(Ljj)
-        for i in (j + 1):n
-            LinAlg.A_rdiv_Bc!(L[i, j], Ljjlt)
+        LjjH = isa(Ljj, Diagonal) ? Ljj : Hermitian(Ljj, :L)
+        LjjLT = isa(Ljj, Diagonal) ? Ljj : LowerTriangular(Ljj)
+        if (Zblkj = j ≤ nzblk)
+            scaleinflate!(Ljj, A[j, j], Λ[j])
+        else
+            copy!(Ljj, A[j, j])
         end
-        for i in (j + 1):n
-            Lij = L[i, j]
-            Lii = L[i, i]
-            rankUpdate!(-one(T), Lij, isa(Lii, Diagonal) ? Lii : Hermitian(Lii, :L))
-            for jj in (i + 1):n
-                A_mul_Bc!(-one(T), L[jj, j], Lij, one(T), L[jj, i])
+        for jj in 1:(j - 1)
+            rankUpdate!(-one(T), L[j, jj], LjjH)
+        end
+        cholUnblocked!(Ljj, Val{:L})
+        for i in (j + 1):nblk
+            Lij = copy!(L[i, j], A[i, j])
+            if Zblkj
+                A_mul_B!(Lij, Λ[j])
+                i ≤ nzblk && Ac_mul_B!(Λ[i], Lij)
             end
+            for jj in 1:(j - 1)
+                A_mul_Bc!(-one(T), L[i, jj], L[j, jj], one(T), Lij)
+            end
+            A_rdiv_Bc!(Lij, LjjLT)
         end
     end
     m
