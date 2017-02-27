@@ -1,9 +1,31 @@
-function cholUnblocked!{T <: AbstractFloat}(D::Diagonal{T}, ::Type{Val{:L}})
+function cholUnblocked!{T<:AbstractFloat}(D::Diagonal{T}, ::Type{Val{:L}})
     map!(sqrt, D.diag)
     D
 end
 
-cholUnblocked!{T <: AbstractFloat}(D::Diagonal{T}, ::Type{Val{:U}}) = cholUnblocked!(D, Val{:L})
+cholUnblocked!{T<:AbstractFloat}(D::Diagonal{T}, ::Type{Val{:U}}) = cholUnblocked!(D, Val{:L})
+
+function cholUnblocked!{T<:AbstractFloat}(A::Diagonal{Matrix{T}}, ::Type{Val{:L}})
+    map!(m -> cholUnblocked!(m, Val{:L}), A.diag)
+    A
+end
+
+function cholUnblocked!{T<:BlasFloat}(A::Matrix{T}, ::Type{Val{:L}})
+    n = checksquare(A)
+    if n == 1
+        A[1] < zero(T) && throw(PosDefException(1))
+        A[1] = sqrt(A[1])
+    elseif n == 2
+        A[1] < zero(T) && throw(PosDefException(1))
+        A[1] = sqrt(A[1])
+        A[2] /= A[1]
+        A[4] = sqrt(A[4] - abs2(A[2]))
+    else
+        _, info = LAPACK.potrf!('L', A)
+        info ≠ 0 && throw(PosDefException(info))
+    end
+    A
+end
 
 function scaleinflate!{T<:AbstractFloat}(Ljj::Diagonal{T}, Ajj::Diagonal{T}, Λj::UniformScaling{T})
     lambsq = abs2(Λj.λ)
@@ -23,14 +45,14 @@ function scaleinflate!{T<:AbstractFloat}(Ljj::Matrix{T}, Ajj::Diagonal{T}, Λj::
 end
 
 function scaleinflate!{T<:AbstractFloat}(Ljj::Diagonal{LowerTriangular{T,Matrix{T}}},
-    Ajj::Diagonal{Matrix{T}}, Λj::UniformSc{LowerTriangular{T,Matrix{T}}})
+    Ajj::Diagonal{Matrix{T}}, Λj::UniformScLT{T})
     λ = Λj.λ
     Ldiag = Ljj.diag
     Adiag = Ajj.diag
     nblk = length(Ldiag)
-    @assert length(Adiag) = nblk
+    @assert length(Adiag) == nblk
     for i in 1:nblk
-        Ldi = Ac_mul_B!(λ, A_mul_B!(Ldiag[i].data, Adiag[i], λ))
+        Ldi = Ac_mul_B!(λ, A_mul_B!(copy!(Ldiag[i].data, Adiag[i]), λ))
         for k in diagind(Ldi)
             Ldi[k] += one(T)
         end
@@ -39,23 +61,6 @@ function scaleinflate!{T<:AbstractFloat}(Ljj::Diagonal{LowerTriangular{T,Matrix{
 end
 
 A_mul_B!{T}(C::Matrix{T}, A::Matrix{T}, B::UniformScaling{T}) = scale!(copy!(C, A), B.λ)
-
-function cholUnblocked!{T<:BlasFloat}(A::Matrix{T}, ::Type{Val{:L}})
-    n = checksquare(A)
-    if n == 1
-        A[1] < zero(T) && throw(PosDefException(1))
-        A[1] = sqrt(A[1])
-    elseif n == 2
-        A[1] < zero(T) && throw(PosDefException(1))
-        A[1] = sqrt(A[1])
-        A[2] /= A[1]
-        A[4] = sqrt(A[4] - abs2(A[2]))
-    else
-        _, info = LAPACK.potrf!('L', A)
-        info ≠ 0 && throw(PosDefException(info))
-    end
-    A
-end
 
 function cholUnblocked!{T<:AbstractFloat}(D::Diagonal{LowerTriangular{T, Matrix{T}}},
     ::Type{Val{:L}})
