@@ -5,20 +5,22 @@ Behaves like `copy!(d, s)` allowing for heterogeneous matrix types.
 """
 inject!(d,s) = copy!(d,s)               # fallback method
 
-function inject!(d::UpperTriangular, s::UpperTriangular)
-    if (n = size(s, 2)) ≠ size(d, 2)
-        throw(DimensionMismatch("size(s, 2) ≠ size(d, 2)"))
+if false
+    function inject!(d::UpperTriangular, s::UpperTriangular)
+        if (n = size(s, 2)) ≠ size(d, 2)
+            throw(DimensionMismatch("size(s, 2) ≠ size(d, 2)"))
+        end
+        for j in 1:n
+            inject!(view(d, 1 : j, j), view(s, 1 : j, j))
+        end
+        d
     end
-    for j in 1:n
-        inject!(view(d, 1 : j, j), view(s, 1 : j, j))
-    end
-    d
 end
 
 function inject!{T<:Real}(d::StridedMatrix{T}, s::Diagonal{T})
     sd = s.diag
-    if length(sd) ≠ LinAlg.checksquare(d)  # why does d have to be square?
-        throw(DimensionMismatch("size(d ,2) ≠ size(s, 2)"))
+    if length(sd) ≠ min(size(d)...)
+        throw(DimensionMismatch("min(size(d)...) ≠ size(s, 2)"))
     end
     fill!(d, 0)
     @inbounds for i in eachindex(sd)
@@ -27,16 +29,25 @@ function inject!{T<:Real}(d::StridedMatrix{T}, s::Diagonal{T})
     d
 end
 
-function inject!(d::Diagonal{Float64}, s::Diagonal{Float64})
+function inject!{T<:AbstractFloat}(d::Diagonal{T}, s::Diagonal{T})
     copy!(d.diag, s.diag)
+    d
+end
+
+function inject!{T<:AbstractFloat}(d::Diagonal{LowerTriangular{T,Matrix{T}}},
+    s::Diagonal{Matrix{T}})
+    @assert length(d) == length(s)
+    sd = s.diag
+    dd = d.diag
+    for k in eachindex(dd)
+        copy!(dd[k].data, sd[k])
+    end
     d
 end
 
 function inject!(d::SparseMatrixCSC{Float64}, s::SparseMatrixCSC{Float64})
     m, n = size(d)
-    if size(s) ≠ (m, n)
-        throw(DimensionMismatch("size(d) ≠ size(s)"))
-    end
+    @assert size(s) == (m, n)
     if nnz(d) == nnz(s)  # FIXME: should also check that colptr members match
         copy!(nonzeros(d), nonzeros(s))
         return d
