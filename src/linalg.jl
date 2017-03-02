@@ -1,3 +1,20 @@
+if VERSION < v"0.6.0-"
+    function cond{T}(J::UniformScaling{T})
+        onereal = inv(one(real(J.λ)))
+        return J.λ ≠ zero(T) ? onereal : oftype(onereal, Inf)
+    end
+end
+
+"""
+    cholUnblocked!(A, Val{:L})
+
+Overwrite the lower triangle of `A` with its lower Cholesky factor.
+
+The name is borrowed from [https://github.com/andreasnoack/LinearAlgebra.jl]
+because these are part of the inner calculations in a blocked Cholesky factorization.
+"""
+function cholUnblocked! end
+
 function cholUnblocked!{T<:AbstractFloat}(D::Diagonal{T}, ::Type{Val{:L}})
     map!(sqrt, D.diag)
     D
@@ -27,41 +44,6 @@ function cholUnblocked!{T<:BlasFloat}(A::Matrix{T}, ::Type{Val{:L}})
     A
 end
 
-function scaleinflate!{T<:AbstractFloat}(Ljj::Diagonal{T}, Ajj::Diagonal{T}, Λj::UniformScaling{T})
-    lambsq = abs2(Λj.λ)
-    broadcast!(x -> lambsq * x + one(T), Ljj.diag, Ajj.diag)
-    Ljj
-end
-
-function scaleinflate!{T<:AbstractFloat}(Ljj::Matrix{T}, Ajj::Diagonal{T}, Λj::UniformScaling{T})
-    Ad = Ajj.diag
-    @assert length(Ad) == checksquare(Ljj)
-    lambsq = abs2(Λj.λ)
-    fill!(Ljj, zero(T))
-    for (j, jj) in zip(eachindex(Ad), diagind(Ljj))
-        Ljj[jj] = lambsq * Ad[j] + one(T)
-    end
-    Ljj
-end
-
-function scaleinflate!{T<:AbstractFloat}(Ljj::Diagonal{LowerTriangular{T,Matrix{T}}},
-    Ajj::Diagonal{Matrix{T}}, Λj::UniformScLT{T})
-    λ = Λj.λ
-    Ldiag = Ljj.diag
-    Adiag = Ajj.diag
-    nblk = length(Ldiag)
-    @assert length(Adiag) == nblk
-    for i in 1:nblk
-        Ldi = Ac_mul_B!(λ, A_mul_B!(copy!(Ldiag[i].data, Adiag[i]), λ))
-        for k in diagind(Ldi)
-            Ldi[k] += one(T)
-        end
-    end
-    Ljj
-end
-
-A_mul_B!{T}(C::Matrix{T}, A::Matrix{T}, B::UniformScaling{T}) = scale!(copy!(C, A), B.λ)
-
 function cholUnblocked!{T<:AbstractFloat}(D::Diagonal{LowerTriangular{T, Matrix{T}}},
     ::Type{Val{:L}})
     for b in D.diag
@@ -70,7 +52,23 @@ function cholUnblocked!{T<:AbstractFloat}(D::Diagonal{LowerTriangular{T, Matrix{
     D
 end
 
-function rankUpdate!{T<:AbstractFloat,S<:StridedMatrix}(α::T, A::SparseMatrixCSC{T}, β::T, C::Hermitian{T,S})
+"""
+    rankUpdate!(A, C)
+    rankUpdate!(α, A, C)
+    rankUpdate!(α, A, β, C)
+
+A rank-k update of a Hermitian (Symmetric) matrix.
+
+`α` and `β` both default to 1.0.  When `α` is -1.0 this is a downdate operation.
+The name `rankUpdate!` is borrowed from [https://github.com/andreasnoack/LinearAlgebra.jl]
+"""
+function rankUpdate! end
+
+rankUpdate!{T<:BlasReal,S<:StridedMatrix}(α::T, A::StridedMatrix{T}, β::T, C::HermOrSym{T,S}) = BLAS.syrk!(C.uplo, 'N', α, A, β, C.data)
+rankUpdate!{T<:Real,S<:StridedMatrix}(α::T, A::StridedMatrix{T}, C::HermOrSym{T,S}) = rankUpdate!(α, A, one(T), C)
+rankUpdate!{T<:Real,S<:StridedMatrix}(A::StridedMatrix{T}, C::HermOrSym{T,S}) = rankUpdate!(one(T), A, one(T), C)
+
+function rankUpdate!{T<:AbstractFloat,S<:StridedMatrix}(α::T, A::SparseMatrixCSC{T}, β::T, C::HermOrSym{T,S})
     m, n = size(A)
     if m ≠ size(C, 2) || C.uplo != 'L'
         throw(DimensionMismatch("C is not Hermitian lower or size(C, 2) ≠ size(A, 1)"))
@@ -94,7 +92,7 @@ function rankUpdate!{T<:AbstractFloat,S<:StridedMatrix}(α::T, A::SparseMatrixCS
     C
 end
 
-rankUpdate!{T<:AbstractFloat,S<:StridedMatrix}(α::T, A::SparseMatrixCSC{T}, C::Hermitian{T,S}) = rankUpdate!(α, A, one(T), C)
+rankUpdate!{T<:AbstractFloat,S<:StridedMatrix}(α::T, A::SparseMatrixCSC{T}, C::HermOrSym{T,S}) = rankUpdate!(α, A, one(T), C)
 
 function rankUpdate!{T <: Number}(α::T, A::SparseMatrixCSC{T}, C::Diagonal{T})
     m, n = size(A)
@@ -104,7 +102,7 @@ function rankUpdate!{T <: Number}(α::T, A::SparseMatrixCSC{T}, C::Diagonal{T})
     end
     nz = nonzeros(A)
     rv = rowvals(A)
-    for j in 1 : n
+    for j in 1:n
         nzr = nzrange(A, j)
         length(nzr) == 1 || throw(ArgumentError("A*A' has off-diagonal elements"))
         k = nzr[1]
@@ -113,10 +111,46 @@ function rankUpdate!{T <: Number}(α::T, A::SparseMatrixCSC{T}, C::Diagonal{T})
     return C
 end
 
-function cond{T}(J::UniformScaling{T})
-    onereal = inv(one(real(J.λ)))
-    return J.λ ≠ zero(T) ? onereal : oftype(onereal, Inf)
+"""
+    scaleInflate!(L, A, Λ)
+
+Overwrite `L` with `Λ'AΛ + I`
+"""
+function scaleInflate! end
+
+function scaleInflate!{T<:AbstractFloat}(Ljj::Diagonal{T}, Ajj::Diagonal{T}, Λj::UniformScaling{T})
+    broadcast!((x,k) -> k * x + one(T), Ljj.diag, Ajj.diag, abs2(Λj.λ))
+    Ljj
 end
+
+function scaleInflate!{T<:AbstractFloat}(Ljj::Matrix{T}, Ajj::Diagonal{T}, Λj::UniformScaling{T})
+    Ad = Ajj.diag
+    @assert length(Ad) == checksquare(Ljj)
+    lambsq = abs2(Λj.λ)
+    fill!(Ljj, zero(T))
+    for (j, jj) in zip(eachindex(Ad), diagind(Ljj))
+        Ljj[jj] = lambsq * Ad[j] + one(T)
+    end
+    Ljj
+end
+
+function scaleInflate!{T<:AbstractFloat}(Ljj::Diagonal{LowerTriangular{T,Matrix{T}}},
+    Ajj::Diagonal{Matrix{T}}, Λj::UniformScLT{T})
+    λ = Λj.λ
+    Ldiag = Ljj.diag
+    Adiag = Ajj.diag
+    nblk = length(Ldiag)
+    @assert length(Adiag) == nblk
+    for i in 1:nblk
+        Ldi = Ac_mul_B!(λ, A_mul_B!(copy!(Ldiag[i].data, Adiag[i]), λ))
+        for k in diagind(Ldi)
+            Ldi[k] += one(T)
+        end
+    end
+    Ljj
+end
+
+A_mul_B!{T}(C::Matrix{T}, A::Matrix{T}, B::UniformScaling{T}) = scale!(copy!(C, A), B.λ)
 
 A_mul_B!{T}(A::UniformScaling{T}, B::AbstractArray{T}) = scale!(B, A.λ)
 
@@ -230,6 +264,10 @@ function Ac_mul_B!{T}(A::UniformSc{LowerTriangular{T}}, B::StridedVecOrMat{T})
     Ac_mul_B!(λ, reshape(B, (k, div(m, k) * n)))
     B
 end
+
+Ac_mul_B!{T<:BlasFloat}(α::T, A::StridedMatrix{T}, B::StridedMatrix{T}, β::T, C::StridedMatrix{T}) = BLAS.gemm!('C', 'N', α, A, B, β, C)
+
+Ac_mul_B!{T<:BlasFloat}(α::T, A::StridedMatrix{T}, B::StridedVector{T}, β::T, C::StridedVector{T}) = BLAS.gemv!('C', α, A, B, β, C)
 
 Ac_ldiv_B!{T}(D::Diagonal{T}, B) = A_ldiv_B!(D, B)
 

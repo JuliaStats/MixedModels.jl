@@ -46,7 +46,7 @@ function glmm(f::Formula, fr::AbstractDataFrame, d::Distribution, l::Link; wt=[]
     wts = isempty(wt) ? ones(nrow(fr)) : Array(wt)
         # the weights argument is forced to be non-empty in the lmm as it will be used later
     LMM = lmm(f, fr; weights = wts)
-    cholBlocked!(setθ!(LMM, getθ(LMM)))
+    updateL!(setθ!(LMM, getθ(LMM)))
     trms, u, y = LMM.trms, ranef(LMM), copy(model_response(LMM))
     wts = oftype(y, wts)
             # fit a glm to the fixed-effects only

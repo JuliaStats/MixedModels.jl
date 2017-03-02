@@ -135,7 +135,7 @@ function lmm(f::Formula, fr::AbstractDataFrame; weights::Vector = [])
     LinearMixedModel(f, mf, trms, Λ, convert(Vector{T}, weights))
 end
 
-function cholBlocked!{T}(m::LinearMixedModel{T})
+function updateL!{T}(m::LinearMixedModel{T})
     A = m.A.data.blocks
     Λ = m.Λ
     L = m.L.data.blocks
@@ -146,7 +146,7 @@ function cholBlocked!{T}(m::LinearMixedModel{T})
         LjjH = isa(Ljj, Diagonal) ? Ljj : Hermitian(Ljj, :L)
         LjjLT = isa(Ljj, Diagonal) ? Ljj : LowerTriangular(Ljj)
         if (Zblkj = j ≤ nzblk)
-            scaleinflate!(Ljj, A[j, j], Λ[j])
+            scaleInflate!(Ljj, A[j, j], Λ[j])
         else
             copy!(Ljj, A[j, j])
         end
@@ -194,7 +194,7 @@ function StatsBase.fit!{T}(m::LinearMixedModel{T}, verbose::Bool=false)
     function obj(x, g)
         length(g) == 0 || error("gradient not defined")
         feval += 1
-        val = objective(cholBlocked!(setθ!(m, x)))
+        val = objective(updateL!(setθ!(m, x)))
         feval == 1 && (optsum.finitial = val)
         verbose && println("f_", feval, ": ", round(val, 5), " ", x)
         val
@@ -215,7 +215,7 @@ function StatsBase.fit!{T}(m::LinearMixedModel{T}, verbose::Bool=false)
         end
     end
     ## ensure that the parameter values saved in m are xmin
-    cholBlocked!(setθ!(m, xmin))
+    updateL!(setθ!(m, xmin))
 
     optsum.feval = feval
     optsum.final = xmin
@@ -401,7 +401,7 @@ function reweight!{T}(m::LinearMixedModel{T}, weights::Vector{T})
     for j in 1 : kp2, i in j : kp2
         Ac_mul_B!(A[i, j], wttrms[i], wttrms[j])
     end
-    cholBlocked!(m)
+    updateL!(m)
 end
 
 function Base.show(io::IO, m::LinearMixedModel)

@@ -2,19 +2,17 @@ __precompile__()
 
 module MixedModels
 
-using CategoricalArrays, DataArrays, DataFrames, Distributions, GLM, LinearAlgebra
+using CategoricalArrays, DataArrays, DataFrames, Distributions, GLM
 using NLopt, Showoff, StatsBase
 using StatsFuns: log2π
 using NamedArrays: NamedArray, setnames!
-using Base.LinAlg: BlasFloat, PosDefException, checksquare, copytri!
+using Base.LinAlg: BlasFloat, BlasReal, HermOrSym, PosDefException, checksquare, copytri!
 
 import Base: cor, cond, convert, logdet, std, A_mul_B!, Ac_mul_B!, A_mul_Bc!
 import DataFrames: @~
 import Distributions: Bernoulli, Binomial, Poisson, Gamma
 import GLM: LogitLink, LogLink, InverseLink
-import LinearAlgebra.JuliaBLAS: rankUpdate!
-import LinearAlgebra.CholeskyModule: cholBlocked!, cholUnblocked!
-import Base.LinAlg: A_ldiv_B!, Ac_ldiv_B!, A_rdiv_B!, A_rdiv_Bc!
+import Base.LinAlg: A_mul_B!, A_mul_Bc!, Ac_mul_B!, A_ldiv_B!, Ac_ldiv_B!, A_rdiv_B!, A_rdiv_Bc!
 import StatsBase: coef, coeftable, dof, deviance, fit!, fitted, loglikelihood,
     model_response, nobs, vcov
 
@@ -38,7 +36,6 @@ export
 
        bootstrap,
        bootstrap!,
-       cholBlocked!,
        coef,
        coeftable,
        cond,
@@ -66,6 +63,7 @@ export
        setθ!,
        simulate!,  # simulate a new response in place
        std,
+       updateL!,   # update the lower-triangular, blocked matrix L to a new θ
        varest,     # estimate of the residual variance
        vcov
 
