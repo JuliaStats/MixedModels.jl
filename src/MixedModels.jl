@@ -2,7 +2,7 @@ __precompile__()
 
 module MixedModels
 
-using CategoricalArrays, DataArrays, DataFrames, Distributions, GLM
+using ArgCheck, CategoricalArrays, DataArrays, DataFrames, Distributions, GLM
 using NLopt, Showoff, StatsBase
 using StatsFuns: log2π
 using NamedArrays: NamedArray, setnames!

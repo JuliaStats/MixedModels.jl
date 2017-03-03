@@ -5,6 +5,8 @@ if VERSION < v"0.6.0-"
     end
 end
 
+cond{T}(L::UniformScLT{T}) = cond(L.λ)
+
 """
     cholUnblocked!(A, Val{:L})
 
@@ -63,6 +65,9 @@ A rank-k update of a Hermitian (Symmetric) matrix.
 The name `rankUpdate!` is borrowed from [https://github.com/andreasnoack/LinearAlgebra.jl]
 """
 function rankUpdate! end
+
+rankUpdate!{T<:BlasReal,S<:StridedMatrix}(α::T, a::StridedVector{T}, A::HermOrSym{T,S}) = BLAS.syr!(A.uplo, α, a, A.data)
+rankUpdate!{T<:BlasReal,S<:StridedMatrix}(a::StridedVector{T}, A::HermOrSym{T,S}) = rankUpdate!(one(T), a, A)
 
 rankUpdate!{T<:BlasReal,S<:StridedMatrix}(α::T, A::StridedMatrix{T}, β::T, C::HermOrSym{T,S}) = BLAS.syrk!(C.uplo, 'N', α, A, β, C.data)
 rankUpdate!{T<:Real,S<:StridedMatrix}(α::T, A::StridedMatrix{T}, C::HermOrSym{T,S}) = rankUpdate!(α, A, one(T), C)
@@ -269,7 +274,17 @@ Ac_mul_B!{T<:BlasFloat}(α::T, A::StridedMatrix{T}, B::StridedMatrix{T}, β::T, 
 
 Ac_mul_B!{T<:BlasFloat}(α::T, A::StridedMatrix{T}, B::StridedVector{T}, β::T, C::StridedVector{T}) = BLAS.gemv!('C', α, A, B, β, C)
 
-Ac_ldiv_B!{T}(D::Diagonal{T}, B) = A_ldiv_B!(D, B)
+function Ac_ldiv_B!{T<:AbstractFloat}(A::Diagonal{LowerTriangular{T,Matrix{T}}}, B::StridedVector{T})
+    offset = 0
+    for a in A.diag
+        k = size(a, 1)
+        Ac_ldiv_B(a, view(B, (1:k) + offset))
+        offset += k
+    end
+    B
+end
+
+Ac_ldiv_B!{T}(D::Diagonal{T}, B::StridedVecOrMat{T}) = A_ldiv_B!(D, B)
 
 function A_ldiv_B!{T}(D::Diagonal{T}, B::Diagonal{T})
     if size(D) ≠ size(B)
@@ -325,19 +340,18 @@ function A_rdiv_Bc!{T}(A::SparseMatrixCSC{T}, D::Diagonal{T})
     A
 end
 
-# FIXME: This function should not call LowerTriangular
-function A_rdiv_Bc!{T<:AbstractMatrix}(A::Matrix, B::Diagonal{T})
+function A_rdiv_Bc!{T<:AbstractFloat}(A::Matrix, B::Diagonal{LowerTriangular{T,Matrix{T}}})
     offset = 0
     for d in B.diag
         k = size(d, 1)
-        A_rdiv_B!(view(A, :, (1:k) + offset), LowerTriangular(d))
+        A_rdiv_Bc!(view(A, :, (1:k) + offset), d)
         offset += k
     end
     A
 end
 
-function rowlengths(L::LowerTriangular)
-    ld = L.data
+function rowlengths{T}(Λ::UniformScLT{T})
+    ld = Λ.λ.data
     [norm(view(ld, i, 1:i)) for i in 1 : size(ld, 1)]
 end
 

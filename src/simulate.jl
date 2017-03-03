@@ -98,6 +98,7 @@ function subscriptednames(nm, len)
         [string(nm, lpad(string(j), nd, '0')) for j in 1:len]
 end
 
+
 function stddevcor!{T}(σ::Vector{T}, ρ::Matrix{T}, scr::Matrix{T}, L::LinAlg.Cholesky{T})
     if length(σ) != (k = size(L, 2)) || size(ρ) ≠ (k, k) || size(scr) ≠ (k, k)
         throw(DimensionMismatch(string("size(ρ) = $(size(ρ)) and size(scr) = $(size(scr)) ",
@@ -135,8 +136,9 @@ function stddevcor{T}(L::LinAlg.Cholesky{T})
     stddevcor!(Array(T, (k,)), Array(T, (k, k)), Array(T, (k, k)), L)
 end
 
-stddevcor(L::LowerTriangular) = stddevcor(LinAlg.Cholesky(L, :L))
-stddevcor{T}(L::UniformScaling{T}) = [abs(L.λ)], eye(T, 1)
+stddevcor{T<:AbstractFloat}(L::LowerTriangular{T}) = stddevcor(LinAlg.Cholesky(L, :L))
+stddevcor{T<:AbstractFloat}(L::UniformScaling{T}) = [abs(L.λ)], eye(T, 1)
+stddevcor{T<:AbstractFloat}(L::UniformSc{LowerTriangular{T,Matrix{T}}}) = stddevcor(L.λ)
 
 """
     reevaluateAend!(m::LinearMixedModel)

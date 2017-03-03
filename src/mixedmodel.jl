@@ -74,12 +74,10 @@ function fnames(m::MixedModel)
     [t.fnm for t in lm.wttrms[1:length(lm.Λ)]]
 end
 
-function getθ!(v::AbstractVector, m::MixedModel)
+function getθ!{T}(v::AbstractVector{T}, m::LinearMixedModel{T})
     Λ = lmm(m).Λ
     nl = map(nlower, Λ)
-    if length(v) ≠ sum(nl)
-        throw(DimensionMismatch("length(v) = $(length(v)) should be $(sum(nl))"))
-    end
+    @argcheck length(v) == sum(nl) DimensionMismatch
     offset = 0
     for i in eachindex(nl)
         nli = nl[i]
@@ -89,10 +87,8 @@ function getθ!(v::AbstractVector, m::MixedModel)
     v
 end
 
-function getθ(m::MixedModel)
-    Λ = lmm(m).Λ
-    getθ!(Array(eltype(Λ[1]), sum(A -> nlower(A), Λ)), m)
-end
+getΘ{T}(m::GeneralizedLinearMixedModel{T}) = getΘ(m.LMM)
+getθ{T}(m::LinearMixedModel{T}) = getθ!(Array(T, sum(A -> nlower(A), m.Λ)), m)
 
 """
     grplevels(m::MixedModel)
@@ -121,7 +117,8 @@ function ranef!{T}(v::Vector, m::LinearMixedModel{T}, β::AbstractArray{T}, usca
         Ac_mul_B!(-one(T), L[k + 1, j], β, one(T), vec(copy!(v[j], L[k + 2, j])))
     end
     for i in k : -1 : 1
-        Lii, vi = L[i, i], vec(v[i])
+        Lii = L[i, i]
+        vi = vec(v[i])
         Ac_ldiv_B!(isa(Lii, Diagonal) ? Lii : LowerTriangular(Lii), vi)
         for j in 1 : (i - 1)
             Ac_mul_B!(-one(T), L[i, j], vi, one(T), vec(v[j]))
@@ -152,7 +149,7 @@ function ranef(m::MixedModel; uscale=false, named=false)
     v = Matrix{T}[]
     for i in eachindex(Λ)
         Λi = Λ[i]
-        l = isa(Λi, UniformScaling) ? 1 : size(Λi, 1)
+        l = isa(Λi, UniformScaling) ? 1 : size(Λi.λ, 1)
         k = size(trms[i], 2)
         push!(v, Array(T, (l, div(k, l))))
     end

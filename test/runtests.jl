@@ -13,7 +13,7 @@ sleepstudy = Feather.read(joinpath(datadir, "sleepstudy.feather"), nullable = fa
 
 include("paramlowertriangular.jl")
 include("scalarReTerm.jl")
-#include("vectorReTerm.jl")
+include("vectorReTerm.jl")
 include("pls.jl")
 include("pirls.jl")
 #include("throws.jl")

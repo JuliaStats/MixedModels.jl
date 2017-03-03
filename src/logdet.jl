@@ -10,7 +10,7 @@ LD{T<:Number}(d::Diagonal{T}) = sum(log, d.diag)
 function LD{T}(d::Diagonal{LowerTriangular{T, Matrix{T}}})
     s = log(one(T))
     for dd in d.diag, i in diagind(dd)
-        s += log(dd[i, i])
+        s += log(dd[i])
     end
     s
 end

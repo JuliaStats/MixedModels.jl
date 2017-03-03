@@ -8,7 +8,7 @@ nlower(A::LowerTriangular) = nlower(checksquare(A))
 
 Overwrite `v` with the elements of the lower triangle of `A` (column-major ordering)
 """
-function getθ!{T}(v::AbstractVector{T}, A::LowerTriangular{T})
+function getθ!{T<:AbstractFloat}(v::StridedVector{T}, A::LowerTriangular{T,Matrix{T}})
     Ad = A.data
     n = checksquare(Ad)
     if length(v) ≠ nlower(n)
@@ -20,7 +20,7 @@ function getθ!{T}(v::AbstractVector{T}, A::LowerTriangular{T})
     end
     v
 end
-getθ!(v::AbstractVector, A::UniformSc) = getθ!(v, A)
+getθ!{T<:AbstractFloat}(v::StridedVector{T}, A::UniformScLT{T}) = getθ!(v, A.λ)
 
 function getθ!{T}(v::AbstractVector{T}, A::UniformScaling{T})
     if length(v) != 1
@@ -36,8 +36,8 @@ end
 Return a vector of the elements of the lower triangle of `A` (column-major ordering)
 """
 getθ(A::UniformScaling) = [A.λ]
-getθ(A::UniformSc) = getθ(A.λ)
-getθ{T}(A::LowerTriangular{T}) = getθ!(Array(T, nlower(A)), A)
+getθ{T<:AbstractFloat}(A::UniformScLT{T}) = getθ(A.λ)
+getθ{T<:AbstractFloat}(A::LowerTriangular{T,Matrix{T}}) = getθ!(Array(T, nlower(A)), A)
 getθ(A::AbstractVector) = mapreduce(getθ, vcat, A)
 
 """

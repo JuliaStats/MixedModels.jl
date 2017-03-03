@@ -140,17 +140,16 @@ end
     #@test size(fm2) == (73421, 28, 4100, 2)
 end
 
-if false
 @testset "sleep" begin
-    fm = lmm(Reaction ~ 1 + Days + (1 + Days | Subject), sleepstudy)
+    fm = lmm(Reaction ~ 1 + Days + (1 + Days | Subject), sleepstudy);
     @test lowerbd(fm) == [0.0, -Inf, 0.0]
     @test isa(fm.A[1, 1], Diagonal{Matrix{Float64}})
-    @test size(fm.A[1, 1]) == (36, 36)
-    @test fm.A[1, 1][1, 1] == 10.
-    @test fm.A[1, 1][6, 1] == 0.
-    @test_throws BoundsError size(fm.A[1, 1], 0)
-    @test size(fm.A[1, 1], 1) == 36
-    @test full(fm.A[1, 1])[1 : 2, 1 : 2] == reshape([10., 45, 45, 285], (2, 2))
+    @test size(fm.A[1, 1]) == (18, 18)
+    @test fm.A[1, 1][1, 1] == [10. 45.; 45. 285.]
+#    @test fm.A[1, 1][6, 1] == 0.
+#    @test_throws BoundsError size(fm.A[1, 1], 0)
+    @test size(fm.A[1, 1], 1) == 18
+#    @test full(fm.A[1, 1])[1 : 2, 1 : 2] == reshape([10., 45, 45, 285], (2, 2))
 
     fit!(fm)
 
@@ -184,6 +183,7 @@ if false
     simulate!(fm)  # to test one of the unscaledre methods
 end
 
+if false
 @testset "sleepnocorr" begin
     fm = lmm(Reaction ~ Days + (1|Subject) + (0+Days|Subject), sleepstudy);
     @test size(fm) == (180,2,36,2)

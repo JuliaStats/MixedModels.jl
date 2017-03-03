@@ -113,6 +113,7 @@ Base.sparse(R::ScalarReMat) =
 
 ==(A::ReMat,B::ReMat) = (A.f == B.f) && (A.z == B.z)
 
+if false
 function rankUpdate!{T <: AbstractFloat}(α::T, A::VectorReMat{T}, β::T, C::Array{T, 3})
     Az = A.z
     p, q = size(Az)
@@ -129,6 +130,7 @@ function rankUpdate!{T <: AbstractFloat}(α::T, A::VectorReMat{T}, β::T, C::Arr
         copytri!(rankUpdate!(α, view(Az, :, i), Hermitian(view(C, :, :, refs[i]), :L)), 'L')
     end
     C
+end
 end
 
 function Base.A_mul_B!{T}(α::Real, A::ReMat, B::StridedVecOrMat{T}, β::Real, R::StridedVecOrMat{T})
