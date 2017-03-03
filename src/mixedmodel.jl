@@ -100,6 +100,10 @@ function grplevels(m::MixedModel)
     [length(lm.trms[i].f.pool) for i in eachindex(lm.Λ)]
 end
 
+nreterms(m::MixedModel) = length(m.Λ)
+
+reterms(m::MixedModel) = filter(t -> isa(t, ReMat), m.trms)
+
 """
     ranef!{T}(v::Vector{Matrix{T}}, m::MixedModel{T}, β, uscale::Bool)
 
@@ -109,23 +113,26 @@ If `uscale` is `true` the random effects are on the spherical (i.e. `u`) scale, 
 original scale
 """
 function ranef!{T}(v::Vector, m::LinearMixedModel{T}, β::AbstractArray{T}, uscale::Bool)
-    L, Λ = m.L, m.Λ
+    L = m.L
+    Λ = m.Λ
     if (k = length(v)) ≠ length(Λ)
         throw(DimensionMismatch("length(v) = $(length(v)), should be $(length(Λ))"))
     end
-    for j in 1 : k
-        Ac_mul_B!(-one(T), L[k + 1, j], β, one(T), vec(copy!(v[j], L[k + 2, j])))
+    for j in 1:k
+        Ac_mul_B!(-one(T), L[k + 1, j], β, one(T), vec(copy!(v[j], L[end, j])))
     end
-    for i in k : -1 : 1
+    for i in k: -1 :1
         Lii = L[i, i]
         vi = vec(v[i])
         Ac_ldiv_B!(isa(Lii, Diagonal) ? Lii : LowerTriangular(Lii), vi)
-        for j in 1 : (i - 1)
+        for j in 1:(i - 1)
             Ac_mul_B!(-one(T), L[i, j], vi, one(T), vec(v[j]))
         end
     end
     if !uscale
-        map!(A_mul_B!, v, Λ, v)
+        for j in 1:k
+            A_mul_B!(Λ[j], vec(v[j]))
+        end
     end
     v
 end
@@ -144,14 +151,11 @@ original scale.
 """
 function ranef(m::MixedModel; uscale=false, named=false)
     LMM = lmm(m)
-    Λ, trms = LMM.Λ, LMM.trms
+    trms = LMM.trms
     T = eltype(trms[end])
     v = Matrix{T}[]
-    for i in eachindex(Λ)
-        Λi = Λ[i]
-        l = isa(Λi, UniformScaling) ? 1 : size(Λi.λ, 1)
-        k = size(trms[i], 2)
-        push!(v, Array(T, (l, div(k, l))))
+    for trm in filter(t -> isa(t, ReMat), trms)
+        push!(v, Array(T, (vsize(trm), nlevs(trm))))
     end
     ranef!(v, LMM, uscale)
     named || return v

@@ -175,6 +175,14 @@ function A_mul_B!{T<:AbstractFloat}(A::Diagonal{LowerTriangular{T, Matrix{T}}},
     A
 end
 
+function A_mul_B!{T<:AbstractFloat}(A::UniformSc{LowerTriangular{T, Matrix{T}}},
+    B::StridedVector{T})
+    λ = A.λ
+    k = size(λ, 1)
+    A_mul_B!(λ, reshape(B, (k, div(length(B), k))))
+    B
+end
+
 function A_mul_B!{T<:AbstractMatrix}(A::Matrix, B::UniformSc{T})
     λ = B.λ
     k = size(λ, 1)
@@ -278,7 +286,7 @@ function Ac_ldiv_B!{T<:AbstractFloat}(A::Diagonal{LowerTriangular{T,Matrix{T}}},
     offset = 0
     for a in A.diag
         k = size(a, 1)
-        Ac_ldiv_B(a, view(B, (1:k) + offset))
+        Ac_ldiv_B!(a, view(B, (1:k) + offset))
         offset += k
     end
     B

@@ -37,15 +37,13 @@ and `θᵢ, i = 1,...,k` the covariance parameters.
 `β::Vector{T}`, `σ::T`, and `θ::Vector{T}` are the values of the parameters in `m`
 for simulation of the responses.
 """
-function bootstrap{T}(N, m::LinearMixedModel{T};
-    β=fixef(m), σ=sdest(m), θ=getθ(m))
+function bootstrap{T}(N, m::LinearMixedModel{T}; β = fixef(m), σ = sdest(m), θ = getθ(m))
     y₀ = copy(model_response(m)) # to restore original state of m
     p = size(m.trms[end - 1], 2)
     length(β) == p || throw(DimensionMismatch("length(β) should be $p"))
     k = length(getθ(m))
     length(θ) == k || throw(DimensionMismatch("length(θ) should be $k"))
-    Λ = m.Λ
-    Λsize = [isa(λ, UniformScaling) ? 1 : size(λ, 2) for λ in Λ]
+    Λsize = [vsize(t) for t in reterms(m)]
     cnms = vcat([:obj, :σ], Symbol.(subscriptednames('β', p)),
         Symbol.(subscriptednames('θ', k)), Symbol.(subscriptednames('σ', sum(Λsize))))
     nρ = [(l * (l - 1)) >> 1 for l in Λsize]
@@ -68,10 +66,9 @@ function bootstrap{T}(N, m::LinearMixedModel{T};
         for x in getθ!(scrθ, m)
             dfr[j += 1][i] = x
         end
-        for l in eachindex(Λ)
-            λ = Λ[l]
+        for (l, λ) in enumerate(m.Λ)
             stddevcor!(scrσ[l], scrρ[l], scr[l],
-                LinAlg.Cholesky(isa(λ, UniformScaling) ? λ * ones(1,1) : λ, :L))
+                LinAlg.Cholesky(isa(λ, UniformScaling) ? λ * ones(1,1) : λ.λ, :L))
             for x in scrσ[l]
                 dfr[j += 1][i] = σest * x
             end
@@ -217,7 +214,7 @@ end
 function unscaledre!{T}(y::AbstractVector{T}, M::VectorReMat{T}, b::DenseMatrix{T})
     Z = M.z
     k, n = size(Z)
-    l = length(M.f.pool)
+    l = nlevs(M)
     if length(y) ≠ n || size(b) ≠ (k, l)
         throw(DimensionMismatch("length(y) = $(length(y)), size(M) = $(size(M)), size(b) = $(size(b))"))
     end
@@ -231,8 +228,11 @@ function unscaledre!{T}(y::AbstractVector{T}, M::VectorReMat{T}, b::DenseMatrix{
     y
 end
 
-unscaledre!(y::AbstractVector, M::VectorReMat, L::LowerTriangular) =
-    unscaledre!(y, M, A_mul_B!(L, randn(size(M.z, 1), length(M.f.pool))))
+function unscaledre!{T}(y::AbstractVector{T}, M::VectorReMat{T}, L::UniformSc{LowerTriangular{T,Matrix{T}}})
+    re = randn(vsize(M), nlevs(M))
+    A_mul_B!(L, vec(re))
+    unscaledre!(y, M, re)
+end
 
 """
     simulate!(m::LinearMixedModel; β=fixef(m), σ=sdest(m), θ=getθ(m))
