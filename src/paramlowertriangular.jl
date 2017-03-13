@@ -37,7 +37,7 @@ Return a vector of the elements of the lower triangle of `A` (column-major order
 """
 getθ(A::UniformScaling) = [A.λ]
 getθ{T<:AbstractFloat}(A::UniformScLT{T}) = getθ(A.λ)
-getθ{T<:AbstractFloat}(A::LowerTriangular{T,Matrix{T}}) = getθ!(Array(T, nlower(A)), A)
+getθ{T<:AbstractFloat}(A::LowerTriangular{T,Matrix{T}}) = getθ!(Array{T}(nlower(A)), A)
 getθ(A::AbstractVector) = mapreduce(getθ, vcat, A)
 
 """

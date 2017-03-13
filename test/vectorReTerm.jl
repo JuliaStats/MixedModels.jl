@@ -1,8 +1,8 @@
 @testset "vectorRe" begin
-    vf = remat(:(1 + Days | Subject), sleepstudy)
-    Reaction = Array(sleepstudy[:Reaction])
+    vf = remat(:(1 + U | G), sleepstudy)
+    Reaction = Array(sleepstudy[:Y])
 
-    sf = remat(:(1 | Subject), sleepstudy)
+    sf = remat(:(1 | G), sleepstudy)
 
     @test size(vf) == (180,36)
     @test (vf'ones(size(vf,1)))[1:4] == [10.,45,10,45]

@@ -1,5 +1,5 @@
 @testset "Dyestuff" begin
-    fm1 = lmm(Yield ~ 1 + (1|Batch), dyestuff)
+    fm1 = lmm(@formula(Y ~ 1 + (1|G)), dyestuff)
 #fm1w = lmm(Yield ~ 1 + (1|Batch), dyestuff; weights = ones(size(dyestuff, 1)))
 
     @test size(fm1.A) == (3, 3)
@@ -13,7 +13,7 @@
     MixedModels.describeblocks(IOBuffer(), fm1)
 
     fit!(fm1);
-    @test isapprox(objective(fm1), 327.3270598811428, atol = 0.001)
+    @test objective(fm1) ≈ 327.3270598811428 atol = 0.001
     @test isapprox(getθ(fm1), [0.752580], atol = 1.e-5)
     @test isapprox(deviance(fm1), 327.32705988, atol = 0.001)
     @test isapprox(aic(fm1), 333.3270598811394, atol = 0.001)
@@ -25,8 +25,8 @@
     cm = coeftable(fm1)
     @test length(cm.rownms) == 1
     @test length(cm.colnms) == 4
-    @test MixedModels.fnames(fm1) == [:Batch]
-    @test model_response(fm1) == convert(Vector, dyestuff[:Yield])
+    @test MixedModels.fnames(fm1) == [:G]
+    @test model_response(fm1) == convert(Vector, dyestuff[:Y])
     rfu = ranef(fm1, uscale = true)
     rfb = ranef(fm1)
     cv = condVar(fm1)
@@ -45,7 +45,7 @@
 end
 
 @testset "simulate!" begin
-    fm = fit!(lmm(Yield ~ 1 + (1 | Batch), dyestuff))
+    fm = fit!(lmm(@formula(Y ~ 1 + (1 | G)), dyestuff))
     srand(1234321)
     refit!(simulate!(fm))
     @test isapprox(deviance(fm), 339.0218639362958, atol = 0.001)
@@ -58,7 +58,7 @@ end
 end
 
 @testset "Dyestuff2" begin
-    fm = lmm(Yield ~ 1 + (1|Batch), dyestuff2)
+    fm = lmm(@formula(Y ~ 1 + (1 | G)), dyestuff2)
     @test lowerbd(fm) == zeros(1)
     fit!(fm, true)
     show(IOBuffer(), fm)
@@ -69,7 +69,7 @@ end
     @test stderr(fm) ≈ [0.6669857396443261]
     @test coef(fm) ≈ [5.6656]
     @test logdet(fm) ≈ 0.0
-    refit!(fm, [dyestuff[:Yield];])
+    refit!(fm, [dyestuff[:Y];])
 end
 
 #tbl = MixedModels.lrt(fm4,fm3)
@@ -77,7 +77,7 @@ end
 #@test isapprox(tbl[:Deviance], [1752.0032551398835,1751.9393444636157], atol = 0.001)
 #@test tbl[:Df] == [5,6]
 @testset "penicillin" begin
-    fm = lmm(diameter ~ 1 + (1 | plate) + (1 | sample), penicillin);
+    fm = lmm(@formula(Y ~ 1 + (1 | G) + (1 | H)), penicillin);
     @test size(fm) == (144, 1, 30, 2)
     @test getθ(fm) == ones(2)
     @test lowerbd(fm) == zeros(2)
@@ -87,7 +87,7 @@ end
     @test isapprox(objective(fm), 332.18834867227616, atol = 0.001)
     @test isapprox(coef(fm), [22.97222222222222], atol = 0.001)
     @test isapprox(fixef(fm), [22.97222222222222], atol = 0.001)
-    @test coef(fm)[1] ≈ mean(Array(penicillin[:diameter]))
+    @test coef(fm)[1] ≈ mean(Array(penicillin[:Y]))
     @test isapprox(stderr(fm), [0.7445960346851368], atol = 0.0001)
     @test isapprox(getθ(fm), [1.5375772376554968, 3.219751321180035], atol = 0.001)
     @test isapprox(std(fm)[1], [0.8455645948223015], atol = 0.0001)
@@ -100,7 +100,7 @@ end
 end
 
 @testset "pastes" begin
-    fm = lmm(strength ~ (1 | sample) + (1 | batch), pastes)
+    fm = lmm(@formula(Y ~ (1 | G) + (1 | H)), pastes)
     @test size(fm) == (60, 1, 40, 2)
     @test getθ(fm) == ones(2)
     @test lowerbd(fm) == zeros(2)
@@ -120,7 +120,7 @@ end
 end
 
 @testset "InstEval" begin
-    fm1 = lmm(y ~ 1 + service + (1 | s) + (1 | d) + (1 | dept), insteval)
+    fm1 = lmm(@formula(Y ~ 1 + A + (1 | G) + (1 | H) + (1 | I)), insteval)
     @test size(fm1) == (73421, 2, 4114, 3)
     @test getθ(fm1) == ones(3)
     @test lowerbd(fm1) == zeros(3)
@@ -141,7 +141,7 @@ end
 end
 
 @testset "sleep" begin
-    fm = lmm(Reaction ~ 1 + Days + (1 + Days | Subject), sleepstudy);
+    fm = lmm(@formula(Y ~ 1 + U + (1 + U | G)), sleepstudy);
     @test lowerbd(fm) == [0.0, -Inf, 0.0]
     @test isa(fm.A[1, 1], Diagonal{Matrix{Float64}})
     @test size(fm.A[1, 1]) == (18, 18)
@@ -164,7 +164,7 @@ end
     @test isapprox(stderr(fm), [6.632246393963571, 1.502190605041084], atol = 0.01)
     @test isapprox(std(fm)[1], [23.780468100188497, 5.716827903196682], atol = 0.01)
     @test isapprox(logdet(fm), 73.90337187545992, atol = 0.001)
-    @test_approx_eq diag(cor(fm)[1]) ones(2)
+    @test diag(cor(fm)[1]) ≈ ones(2)
     @test isapprox(cond(fm), [4.1752507630514915], atol = 0.0001)
     @test loglikelihood(fm) ≈ -875.9696722323523
     @test eltype(fm.wttrms[1]) === Float64

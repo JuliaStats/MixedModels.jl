@@ -9,7 +9,7 @@ using NamedArrays: NamedArray, setnames!
 using Base.LinAlg: BlasFloat, BlasReal, HermOrSym, PosDefException, checksquare, copytri!
 
 import Base: cor, cond, convert, logdet, std, A_mul_B!, Ac_mul_B!, A_mul_Bc!
-import DataFrames: @~
+import DataFrames: @formula
 import Distributions: Bernoulli, Binomial, Poisson, Gamma
 import GLM: LogitLink, LogLink, InverseLink
 import Base.LinAlg: A_mul_B!, A_mul_Bc!, Ac_mul_B!, A_ldiv_B!, Ac_ldiv_B!, A_rdiv_B!, A_rdiv_Bc!
@@ -17,7 +17,7 @@ import StatsBase: coef, coeftable, dof, deviance, fit!, fitted, loglikelihood,
     model_response, nobs, vcov
 
 export
-       @~,
+       @formula,
        Bernoulli,
        Binomial,
        Poisson,
@@ -67,7 +67,7 @@ export
        varest,     # estimate of the residual variance
        vcov
 
-abstract MixedModel <: RegressionModel # model with fixed and random effects
+abstract type MixedModel <: RegressionModel end # model with fixed and random effects
 
 import Base: ==, *
 

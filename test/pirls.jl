@@ -1,12 +1,13 @@
 using Base.Test, DataFrames, MixedModels
 
 @testset "contra" begin
-    contraception[:urban] = DataFrames.pool(convert(Vector{String}, contraception[:urban]))
-    contraception[:livch] = DataFrames.pool(convert(Vector{String}, contraception[:livch]))
-    gm0 = fit!(glmm(use01 ~ 1 + age + age2 + urban + livch + (1 | urbdist), contraception,
+    contraception[:use01] = [x == "N" ? 0 : 1 for x in contraception[:use]]
+    contraception[:a2] = abs2.(contraception[:a])
+    contraception[:urbdist] = pool(string.(Array(contraception[:urb]), Array(contraception[:d])))
+    gm0 = fit!(glmm(@formula(use01 ~ 1 + a + a2 + urb + l + (1 | urbdist)), contraception,
         Bernoulli()), fast=true)
     @test isapprox(LaplaceDeviance(gm0), 2361.6572; atol = 0.001)
-    gm1 = fit!(glmm(use01 ~ 1 + age + age2 + urban + livch + (1 | urbdist), contraception,
+    gm1 = fit!(glmm(@formula(use01 ~ 1 + a + a2 + urb + l + (1 | urbdist)), contraception,
         Bernoulli()));
     @test lowerbd(gm1) == push!(fill(-Inf, 7), 0.)
     @test isapprox(LaplaceDeviance(gm1), 2361.5457555; atol = 0.0001)
@@ -22,11 +23,8 @@ using Base.Test, DataFrames, MixedModels
 end
 
 @testset "cbpp" begin
-    for c in [:herd, :period]
-        cbpp[c] = pool(convert(Vector{String}, cbpp[c]))
-    end
-    cbpp[:prop] = Array(cbpp[:incidence]) ./ Array(cbpp[:size])
-    gm2 = fit!(glmm(prop ~ 1 + period + (1 | herd), cbpp, Binomial(), LogitLink(); wt = cbpp[:size]));
+    cbpp[:prop] = cbpp[:i] ./ cbpp[:s]
+    gm2 = fit!(glmm(@formula(prop ~ 1 + p + (1 | h)), cbpp, Binomial(), LogitLink(); wt = cbpp[:s]));
 
     @test isapprox(LaplaceDeviance(gm2), 100.095856; atol = 0.0001)
     @test isapprox(sumabs2(gm2.u[1]), 9.72306601332534; atol = 0.0001)

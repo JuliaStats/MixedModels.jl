@@ -3,7 +3,7 @@
 
 A representation of the model matrix for a random-effects term
 """
-abstract ReMat
+abstract type ReMat end
 
 """
     ScalarReMat
@@ -242,7 +242,7 @@ function Base.Ac_mul_B!{Tv, Ti}(C::SparseMatrixCSC{Tv, Ti}, A::ScalarReMat{Tv}, 
         throw(DimensionMismatch("size(A) = $(size(A)), size(B) = $(size(B)), size(C) = $(size(C))"))
     end
     SparseArrays.sparse!(convert(Vector{Ti}, A.f.refs), convert(Vector{Ti}, B.f.refs), A.z .* B.z,
-        n, q, +, Array(Ti, q), Array(Ti, n + 1), Array(Ti, m), Array(Tv, m), C.colptr, C.rowval, C.nzval)
+        n, q, +, Array{Ti}(q), Array{Ti}(n + 1), Array{Ti}(m), Array{Tv}(m), C.colptr, C.rowval, C.nzval)
     C
 end
 
@@ -271,7 +271,7 @@ function Base.Ac_mul_B{T}(A::VectorReMat{T}, B::VectorReMat{T})
         for i in eachindex(refs)
             rankUpdate!(view(Az, :, i), Hermitian(d[refs[i]], :L))
         end
-        map!(m -> copytri!(m, 'L'), d)
+        map!(m -> copytri!(m, 'L'), d, d)
         return D
     end
     Az = A.z
@@ -302,7 +302,7 @@ function Base.Ac_mul_B!{T}(C::Matrix{T}, A::VectorReMat{T}, B::VectorReMat{T})
     end
     fill!(C, zero(T))
     a, b = size(Az,1), size(Bz, 1)
-    scr = Array(T, (a, b))
+    scr = Array{T}((a, b))
     Ar, Br = A.f.refs, B.f.refs
     for k in 1 : m
         A_mul_Bc!(scr, view(Az, :, k), view(Bz, :, k))
@@ -344,7 +344,7 @@ function Base.Ac_mul_B!{T}(R::DenseVecOrMat{T}, A::DenseVecOrMat{T}, B::ReMat)
     R
 end
 
-Base.Ac_mul_B(A::DenseVecOrMat, B::ReMat) = Ac_mul_B!(Array(eltype(A), (size(A, 2), size(B, 2))), A, B)
+Base.Ac_mul_B(A::DenseVecOrMat, B::ReMat) = Ac_mul_B!(Array{eltype(A)}((size(A, 2), size(B, 2))), A, B)
 
 (*){T}(D::Diagonal{T}, A::ScalarReMat{T}) = ScalarReMat(A.f, D * A.z, A.fnm, A.cnms)
 

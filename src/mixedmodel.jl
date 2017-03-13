@@ -88,7 +88,7 @@ function getθ!{T}(v::AbstractVector{T}, m::LinearMixedModel{T})
 end
 
 getΘ{T}(m::GeneralizedLinearMixedModel{T}) = getΘ(m.LMM)
-getθ{T}(m::LinearMixedModel{T}) = getθ!(Array(T, sum(A -> nlower(A), m.Λ)), m)
+getθ{T}(m::LinearMixedModel{T}) = getθ!(Array{T}(sum(A -> nlower(A), m.Λ)), m)
 
 """
     grplevels(m::MixedModel)
@@ -155,7 +155,7 @@ function ranef(m::MixedModel; uscale=false, named=false)
     T = eltype(trms[end])
     v = Matrix{T}[]
     for trm in filter(t -> isa(t, ReMat), trms)
-        push!(v, Array(T, (vsize(trm), nlevs(trm))))
+        push!(v, Array{T}((vsize(trm), nlevs(trm))))
     end
     ranef!(v, LMM, uscale)
     named || return v

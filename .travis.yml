@@ -3,11 +3,7 @@ os:
   - linux
   - osx
 julia:
-  - 0.5
-  - nightly
-matrix:
-  allow_failures:
-  - julia: nightly
+  - 0.6-
 notifications:
   email: false
 before_script:

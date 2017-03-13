@@ -56,7 +56,7 @@ function densify(S::SparseMatrixCSC, threshold::Real = 0.3)
     end
     M,N = size(S)
     m,n = size(nz1, 1), size(nz1, 2) # this construction allows for nz1 to be a vector
-    res = Array(eltype(nz1), M * m, N * n)
+    res = Array{eltype(nz1)}(M * m, N * n)
     rv = rowvals(S)
     for j in 1:size(S,2)
         for k in nzrange(S, j)
@@ -271,7 +271,7 @@ end
 
 Returns the fixed-effects parameter vector estimate.
 """
-fixef{T}(m::LinearMixedModel{T}) = fixef!(Array(T, (size(m)[2],)), m)
+fixef{T}(m::LinearMixedModel{T}) = fixef!(Array{T}(size(m)[2]), m)
 
 StatsBase.dof(m::LinearMixedModel) = size(m.wttrms[end - 1], 2) + sum(A -> nlower(A), m.Λ) + 1
 

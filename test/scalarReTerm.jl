@@ -1,8 +1,8 @@
 @testset "scalarRe" begin
-    sf = ScalarReMat(dyestuff[:Batch], ones(size(dyestuff,1)), :Batch, ["(Intercept)"])
-    sf1 = ScalarReMat(pastes[:sample], ones(size(pastes,1)), :sample, ["(Intercept)"])
-    sf2 = ScalarReMat(pastes[:batch], ones(size(pastes, 1)), :batch, ["(Intercept)"])
-    Yield = Array(dyestuff[:Yield])
+    sf = ScalarReMat(dyestuff[:G], ones(size(dyestuff,1)), :Batch, ["(Intercept)"])
+    sf1 = ScalarReMat(pastes[:G], ones(size(pastes,1)), :sample, ["(Intercept)"])
+    sf2 = ScalarReMat(pastes[:H], ones(size(pastes, 1)), :batch, ["(Intercept)"])
+    Yield = Array(dyestuff[:Y])
 
     @testset "size" begin
         @test size(sf) == (30, 6)
@@ -17,7 +17,7 @@
         @test ones(30)'sf == dd'
         tt = A_mul_B!(1., sf, dd, 0., zeros(30))
         @test tt == A_mul_B!(sf, dd, zeros(30))
-        @test Ac_mul_B!(Array(Float64, (size(sf1, 2), size(sf2, 2))), sf1, sf2) == Array(sf1'sf2)
+        @test Ac_mul_B!(Array{Float64}((size(sf1, 2), size(sf2, 2))), sf1, sf2) == Array(sf1'sf2)
 
         crp = sf'sf
         @test isa(crp, Diagonal{Float64})

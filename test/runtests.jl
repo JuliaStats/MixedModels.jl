@@ -1,15 +1,15 @@
-using DataArrays, DataFrames, Feather, MixedModels, Base.Test
+using DataArrays, DataFrames, MixedModels, RData, Base.Test
 
-const datadir = joinpath(dirname(@__FILE__), "data")
-#const datadir = Pkg.dir("MixedModels", "test", "data")
-cbpp = Feather.read(joinpath(datadir, "CBPP.feather"), nullable = false)
-contraception = Feather.read(joinpath(datadir, "Contraception.feather"), nullable = false)
-dyestuff = Feather.read(joinpath(datadir, "Dyestuff.feather"), nullable = false)
-dyestuff2 = Feather.read(joinpath(datadir, "Dyestuff2.feather"), nullable = false)
-insteval = Feather.read(joinpath(datadir, "InstEval.feather"), nullable = false)
-pastes = Feather.read(joinpath(datadir, "Pastes.feather"), nullable = false)
-penicillin = Feather.read(joinpath(datadir, "Penicillin.feather"), nullable = false)
-sleepstudy = Feather.read(joinpath(datadir, "sleepstudy.feather"), nullable = false)
+const dat = load(joinpath(dirname(@__FILE__), "dat.rda"))
+
+const cbpp = dat["cbpp"]
+const contraception = dat["Contraception"]
+const dyestuff = dat["Dyestuff"]
+const dyestuff2 = dat["Dyestuff2"]
+const insteval = dat["InstEval"]
+const pastes = dat["Pastes"]
+const penicillin = dat["Penicillin"]
+const sleepstudy = dat["sleepstudy"]
 
 include("paramlowertriangular.jl")
 include("scalarReTerm.jl")

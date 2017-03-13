@@ -18,7 +18,7 @@ because these are part of the inner calculations in a blocked Cholesky factoriza
 function cholUnblocked! end
 
 function cholUnblocked!{T<:AbstractFloat}(D::Diagonal{T}, ::Type{Val{:L}})
-    map!(sqrt, D.diag)
+    map!(sqrt, D.diag, D.diag)
     D
 end
 
