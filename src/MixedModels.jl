@@ -8,7 +8,7 @@ using StatsFuns: log2π
 using NamedArrays: NamedArray, setnames!
 using Base.LinAlg: BlasFloat, BlasReal, HermOrSym, PosDefException, checksquare, copytri!
 
-import Base: cor, cond, convert, logdet, std, A_mul_B!, Ac_mul_B!, A_mul_Bc!
+import Base: cor, cond, convert, full, logdet, std, A_mul_B!, Ac_mul_B!, A_mul_Bc!
 import DataFrames: @formula
 import Distributions: Bernoulli, Binomial, Poisson, Gamma
 import GLM: LogitLink, LogLink, InverseLink

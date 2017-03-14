@@ -155,6 +155,25 @@ function scaleInflate!{T<:AbstractFloat}(Ljj::Diagonal{LowerTriangular{T,Matrix{
     Ljj
 end
 
+function scaleInflate!{T<:AbstractFloat}(Ljj::Matrix{T}, Ajj::Diagonal{Matrix{T}},
+    Λj::UniformScLT{T})
+    Adiag = Ajj.diag
+    @argcheck size(Ljj, 2) == sum(size.(Adiag, 2))
+    λ = Λj.λ
+    offset = 0
+    fill!(Ljj, zero(T))
+    for a in Adiag
+        n = checksquare(a)
+        inds = offset + (1:n)
+        lv = Ac_mul_B!(λ, A_mul_B!(copy!(view(Ljj, inds, inds), a), λ))
+        for i in 1:n
+            lv[i,i] += one(T)
+        end
+        offset += n
+    end
+    Ljj
+end
+
 A_mul_B!{T}(C::Matrix{T}, A::Matrix{T}, B::UniformScaling{T}) = scale!(copy!(C, A), B.λ)
 
 A_mul_B!{T}(A::UniformScaling{T}, B::AbstractArray{T}) = scale!(B, A.λ)
@@ -270,7 +289,7 @@ function Ac_mul_B!{T}(A::UniformSc{LowerTriangular{T,Matrix{T}}},
     B
 end
 
-function Ac_mul_B!{T}(A::UniformSc{LowerTriangular{T}}, B::StridedVecOrMat{T})
+function Ac_mul_B!{T}(A::UniformScLT{T}q, B::StridedVecOrMat{T})
     λ = A.λ
     k = size(λ, 1)
     m, n = size(B, 1), size(B, 2)
@@ -356,6 +375,21 @@ function A_rdiv_Bc!{T<:AbstractFloat}(A::Matrix, B::Diagonal{LowerTriangular{T,M
         offset += k
     end
     A
+end
+
+function full{T}(A::Diagonal{LowerTriangular{T,Matrix{T}}})
+    D = diag(A)
+    sz = size.(D, 2)
+    n = sum(sz)
+    B = Array{T}((n,n))
+    offset = 0
+    for (d,s) in zip(D, sz)
+        for j in 1:s, i in j:s
+            B[offset + i, offset + j] = d[i,j]
+        end
+        offset += s
+    end
+    B
 end
 
 function rowlengths{T}(Λ::UniformScLT{T})
