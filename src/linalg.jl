@@ -289,7 +289,7 @@ function Ac_mul_B!{T}(A::UniformSc{LowerTriangular{T,Matrix{T}}},
     B
 end
 
-function Ac_mul_B!{T}(A::UniformScLT{T}q, B::StridedVecOrMat{T})
+function Ac_mul_B!{T}(A::UniformScLT{T}, B::StridedVecOrMat{T})
     λ = A.λ
     k = size(λ, 1)
     m, n = size(B, 1), size(B, 2)
