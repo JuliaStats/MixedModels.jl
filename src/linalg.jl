@@ -185,8 +185,7 @@ function A_mul_B!{T}(A::Diagonal{T}, B::UniformScaling{T})
     A
 end
 
-function A_mul_B!{T<:AbstractFloat}(A::Diagonal{LowerTriangular{T, Matrix{T}}},
-    B::UniformSc{LowerTriangular{T,Matrix{T}}})
+function A_mul_B!{T<:AbstractFloat}(A::Diagonal{LowerTriangular{T, Matrix{T}}}, B::UniformScLT{T})
     λ = B.λ
     for a in A.diag
         A_mul_B!(a.data, λ)
@@ -194,8 +193,27 @@ function A_mul_B!{T<:AbstractFloat}(A::Diagonal{LowerTriangular{T, Matrix{T}}},
     A
 end
 
-function A_mul_B!{T<:AbstractFloat}(A::UniformSc{LowerTriangular{T, Matrix{T}}},
-    B::StridedVector{T})
+function A_mul_B!{T<:AbstractFloat,S}(A::SparseMatrixCSC{T,S}, B::UniformScLT{T})
+    λ = B.λ
+    k = size(λ, 2)
+    n = size(A, 2)
+    rv = rowvals(A)
+    nz = nonzeros(A)
+    offset = 0
+    while offset < n
+        i1 = nzrange(A, offset + 1)
+        rv1 = view(rv, i1)
+        for j in 2:k
+            all(rv1 .== view(rv, nzrange(A, offset + j))) || error("A is not compatible with B")
+        end
+        a = reshape(view(nz, i1.start:nzrange(A, offset + k).stop), (length(i1), k))
+        A_mul_B!(a, a, λ)
+        offset += k
+    end
+    A
+end
+
+function A_mul_B!{T<:AbstractFloat}(A::UniformScLT{T}, B::StridedVector{T})
     λ = A.λ
     k = size(λ, 1)
     A_mul_B!(λ, reshape(B, (k, div(length(B), k))))
@@ -281,10 +299,10 @@ end
 
 Ac_mul_B!{T}(A::UniformScaling{T}, B::AbstractArray{T}) = scale!(B, A.λ)
 
-function Ac_mul_B!{T}(A::UniformSc{LowerTriangular{T,Matrix{T}}},
-    B::Diagonal{LowerTriangular{T,Matrix{T}}})
+function Ac_mul_B!{T}(A::UniformScLT{T}, B::Diagonal{LowerTriangular{T,Matrix{T}}})
+    λ = A.λ
     for b in B.diag
-        Ac_mul_B!(A.λ, b.data)
+        Ac_mul_B!(λ, b.data)
     end
     B
 end
@@ -294,6 +312,18 @@ function Ac_mul_B!{T}(A::UniformScLT{T}, B::StridedVecOrMat{T})
     k = size(λ, 1)
     m, n = size(B, 1), size(B, 2)
     Ac_mul_B!(λ, reshape(B, (k, div(m, k) * n)))
+    B
+end
+
+function Ac_mul_B!{T<:AbstractFloat,S}(A::UniformScLT{T}, B::SparseMatrixCSC{T,S})
+    λ = A.λ
+    k = size(λ, 2)
+    nz = nonzeros(B)
+    for j in 1:B.n
+        bnz = view(nz, nzrange(B, j))
+        mbj = reshape(bnz, (k, div(length(bnz), k)))
+        Ac_mul_B!(mbj, λ, mbj)
+    end
     B
 end
 

@@ -33,6 +33,7 @@
     @test abs(sum(rfu[1])) < 1.e-5
     @test length(cv) == 1
     @test size(condVar(fm1)[1]) == (1, 1, 6)
+    show(IOBuffer(), fm1.optsum)
 
     @test isapprox(logdet(fm1), 8.06014522999825, atol = 0.001)
     @test isapprox(varest(fm1), 2451.2501089607676, atol = 0.001)
