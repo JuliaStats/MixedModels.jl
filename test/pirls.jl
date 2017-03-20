@@ -13,9 +13,10 @@ using Base.Test, DataFrames, MixedModels
     @test lowerbd(gm1) == push!(fill(-Inf, 7), 0.)
     @test LaplaceDeviance(gm1) ≈ 2361.5457555 atol=0.0001
     @test loglikelihood(gm1) ≈ -1180.7729 atol=0.001
-    @test logdet(gm1) ≈ 75.7275 atol=0.001
-    @test sum(abs2, gm1.u[1]) ≈ 48.4747 atol=0.001
-    @test sum(gm1.resp.devresid) ≈ 2237.344 atol=0.001
+    # the next three values are not well defined in the optimization
+    @test logdet(gm1) ≈ 75.7275 atol=0.1
+    @test sum(abs2, gm1.u[1]) ≈ 48.4747 atol=0.1
+    @test sum(gm1.resp.devresid) ≈ 2237.344 atol=0.1
     show(IOBuffer(), gm1)
 end
 
@@ -38,7 +39,8 @@ end
 
     @test LaplaceDeviance(gm3) ≈ 8151.399720195352 atol=0.001
     @test lowerbd(gm3) == vcat(fill(-Inf, 6), zeros(2))
-    @test sum(x -> sum(abs2, x), gm3.u) ≈ 273.2915019321093 atol=0.0001
-    @test sum(gm3.resp.devresid) ≈ 7156.546153979343 atol=0.0001
+    # these two values are not well defined at the optimum
+    @test sum(x -> sum(abs2, x), gm3.u) ≈ 273.2915019321093 atol=0.1
+    @test sum(gm3.resp.devresid) ≈ 7156.546153979343 atol=0.1
 end
 #f = r201 ~ 1 + Anger + Gender + btype + situ + (1 | id)
