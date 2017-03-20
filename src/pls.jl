@@ -31,6 +31,9 @@ end
 
 Convert sparse `S` to `Diagonal` if `S` is diagonal or to `full(S)` if
 the proportion of nonzeros exceeds `threshold`.
+
+FIXME:: Probably don't need the convoluted logic as the eltype of
+all sparse matrices are bitstypes.
 """
 function densify(S::SparseMatrixCSC, threshold::Real = 0.3)
     m, n = size(S)
@@ -221,7 +224,8 @@ function StatsBase.fit!{T}(m::LinearMixedModel{T}, verbose::Bool=false)
     optsum.final = xmin
     optsum.fmin = fmin
     optsum.returnvalue = ret
-    if ret ∈ [:FAILURE, :INVALID_ARGS, :OUT_OF_MEMORY, :ROUNDOFF_LIMITED, :FORCED_STOP]
+    ret == :ROUNDOFF_LIMITED && warn("NLopt was roundoff limited")
+    if ret ∈ [:FAILURE, :INVALID_ARGS, :OUT_OF_MEMORY, :FORCED_STOP]
         warn("NLopt optimization failure: $ret")
     end
     m
@@ -238,7 +242,7 @@ function fitted!{T}(v::AbstractArray{T}, m::LinearMixedModel{T})
     v
 end
 
-StatsBase.fitted{T}(m::LinearMixedModel{T}) = fitted!(Array(T, (size(m.trms[end], 1),)), m)
+StatsBase.fitted{T}(m::LinearMixedModel{T}) = fitted!(Array{T}(nobs(m)), m)
 
 StatsBase.residuals(m::LinearMixedModel) = model_response(m) .- fitted(m)
 

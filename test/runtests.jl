@@ -10,6 +10,7 @@ const insteval = dat["InstEval"]
 const pastes = dat["Pastes"]
 const penicillin = dat["Penicillin"]
 const sleepstudy = dat["sleepstudy"]
+const verbagg = dat["VerbAgg"]
 
 include("paramlowertriangular.jl")
 include("scalarReTerm.jl")

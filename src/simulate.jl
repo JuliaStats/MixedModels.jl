@@ -50,10 +50,10 @@ function bootstrap{T}(N, m::LinearMixedModel{T}; β = fixef(m), σ = sdest(m), �
     if (nρtot = sum(nρ)) > 0
         append!(cnms, Symbol.(subscriptednames('ρ', nρtot)))
     end
-    dfr = DataFrame(Any[Array(T, (N,)) for _ in eachindex(cnms)], cnms)
+    dfr = DataFrame(Any[Array{T}(N) for _ in eachindex(cnms)], cnms)
     scrβ, scrθ = Array{T}(p), Array{T}(k)
-    scrσ = [Array(T, (l, )) for l in Λsize]
-    scrρ = [Array(T, (l, l)) for l in Λsize]
+    scrσ = [Array{T}(l) for l in Λsize]
+    scrρ = [Array{T}(l, l) for l in Λsize]
     scr = [similar(sρ) for sρ in scrρ]
     for i in 1 : N
         j = 0
@@ -130,7 +130,7 @@ end
 
 function stddevcor{T}(L::LinAlg.Cholesky{T})
     k = size(L, 1)
-    stddevcor!(Array(T, (k,)), Array{T}((k, k)), Array{T}((k, k)), L)
+    stddevcor!(Array{T}(k), Array{T}((k, k)), Array{T}((k, k)), L)
 end
 
 stddevcor{T<:AbstractFloat}(L::LowerTriangular{T}) = stddevcor(LinAlg.Cholesky(L, :L))

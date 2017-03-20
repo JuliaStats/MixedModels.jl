@@ -74,7 +74,7 @@ is defined as the squared length of the conditional modes, `u`, plus the determi
 of `Λ'Z'ZΛ + 1`, plus the sum of the squared deviance residuals.
 """
 LaplaceDeviance{T}(m::GeneralizedLinearMixedModel{T})::T =
-    sum(m.resp.devresid) + logdet(m) + mapreduce(sumabs2, +, m.u)
+    sum(m.resp.devresid) + logdet(m) + mapreduce(u -> sum(abs2, u), +, m.u)
 
 """
     LaplaceDeviance!(m::GeneralizedLinearMixedModel)
@@ -101,7 +101,7 @@ function StatsBase.loglikelihood{T}(m::GeneralizedLinearMixedModel{T})
             accum += logpdf(D(μ), y)
         end
     end
-    accum - (mapreduce(sumabs2, + , m.u) + logdet(m)) / 2
+    accum - (mapreduce(u -> sum(abs2, u), + , m.u) + logdet(m)) / 2
 end
 
 lowerbd(m::GeneralizedLinearMixedModel) = vcat(fill(-Inf, size(m.β)), lowerbd(m.LMM))
