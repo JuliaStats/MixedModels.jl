@@ -16,8 +16,7 @@ Members:
 - `η`: the linear predictor
 - `wt`: vector of prior case weights, a value of `T[]` indicates equal weights.
 """
-
-immutable GeneralizedLinearMixedModel{T <: AbstractFloat} <: MixedModel
+struct GeneralizedLinearMixedModel{T <: AbstractFloat} <: MixedModel
     LMM::LinearMixedModel{T}
     β::Vector{T}
     β₀::Vector{T}

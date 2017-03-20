@@ -16,7 +16,7 @@ The representation of the model matrix for a scalar random-effects term
 * `fnm`: the name of the grouping factor as a `Symbol`
 * `cnms`: a `Vector` of column names
 """
-immutable ScalarReMat{T<:AbstractFloat,V,R} <: ReMat
+struct ScalarReMat{T<:AbstractFloat,V,R} <: ReMat
     f::Union{NullableCategoricalVector{V,R},CategoricalVector{V,R},PooledDataVector{V,R}}
     z::Vector{T}
     fnm::Symbol
@@ -34,7 +34,7 @@ The representation of the model matrix for a vector-valued random-effects term
 * `fnm`: the name of the grouping factor as a `Symbol`
 * `cnms`: a `Vector` of column names (row names after transposition) of `z`
 """
-immutable VectorReMat{T<:AbstractFloat,V,R} <: ReMat
+struct VectorReMat{T<:AbstractFloat,V,R} <: ReMat
     f::Union{NullableCategoricalVector{V,R},CategoricalVector{V,R},PooledDataVector{V,R}}
     z::Matrix{T}
     fnm::Symbol
@@ -113,43 +113,22 @@ Base.sparse(R::ScalarReMat) =
 
 ==(A::ReMat,B::ReMat) = (A.f == B.f) && (A.z == B.z)
 
-if false
-function rankUpdate!{T <: AbstractFloat}(α::T, A::VectorReMat{T}, β::T, C::Array{T, 3})
-    Az = A.z
-    p, q = size(Az)
-    l, m, n = size(C)
-    if !(n == nlevs(A) && l == m == p)
-        throw(DimensionMismatch(
-            "size(A.z) == $(size(A.z)) and size(C) == $(size(C)) not compatible"))
-    end
-    if β != one(T)
-        β == zero(T) ? fill!(C, β) : scale!(C, β)
-    end
-    refs = A.f.refs
-    for i in eachindex(refs)
-        copytri!(rankUpdate!(α, view(Az, :, i), Hermitian(view(C, :, :, refs[i]), :L)), 'L')
-    end
-    C
-end
-end
-
 function Base.A_mul_B!{T}(α::Real, A::ReMat, B::StridedVecOrMat{T}, β::Real, R::StridedVecOrMat{T})
     n,q = size(A)
     k = size(B, 2)
-    if size(R, 1) ≠ n || size(B, 1) ≠ q || size(R, 2) ≠ k
-        throw(DimensionMismatch())
+    @argcheck size(R, 1) == n && size(B, 1) == q && size(R, 2) == k DimensionMismatch
+    if β ≠ one(T)
+        iszero(β) ? fill!(R, β) : scale!(β, R)
     end
-    if β ≠ 1
-        β == 0 ? fill!(R, 0) : scale!(β, R)
-    end
-    rr, zz = A.f.refs, A.z
+    rr = A.f.refs
+    zz = A.z
     if isa(A, ScalarReMat)
-        for j in 1 : k, i in 1 : n
+        for j in 1:k, i in 1:n
             R[i, j] += α * zz[i] * B[rr[i],j]
         end
     else
-        l = size(zz,1)
-        Bt = reshape(B, (l, div(q,l), k))
+        l = size(zz, 1)
+        Bt = reshape(B, (l, div(q, l), k))
         for j in 1:k, i in 1:n
             R[i, j] += α * dot(view(Bt, :, Int(rr[i]), j), view(zz, :, i))
         end
@@ -162,17 +141,15 @@ Base.A_mul_B!{T}(A::ReMat, B::StridedVecOrMat{T}, R::StridedVecOrMat{T}) = A_mul
 function Base.Ac_mul_B!{T}(α::Real, A::ReMat, B::StridedVecOrMat{T}, β::Real, R::StridedVecOrMat{T})
     n, q = size(A)
     k = size(B, 2)
-    if size(R, 1) ≠ q || size(B, 1) ≠ n || size(R, 2) ≠ k
-        throw(DimensionMismatch())
-    end
+    @argcheck size(R, 1) == q && size(B, 1) == n && size(R, 2) == k DimensionMismatch
     if β ≠ one(T)
-        β == zero(T) ? fill!(R, β) : scale!(β, R)
+        iszero(β) ? fill!(R, β) : scale!(β, R)
     end
-    rr, zz = A.f.refs, A.z
+    rr = A.f.refs
+    zz = A.z
     if isa(A, ScalarReMat)
-        for j in 1 : k, i in 1 : n
-            rri = rr[i]
-            R[rri, j] += α * zz[i] * B[i, j]
+        for j in 1:k, i in 1:n
+            R[rr[i], j] += α * zz[i] * B[i, j]
         end
     else
         l = size(zz, 1)

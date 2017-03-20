@@ -5,7 +5,7 @@ A matrix composed of heterogenous blocks.  Blocks can be sparse, dense or
 diagonal.
 """
 
-immutable HeteroBlkdMatrix <: AbstractMatrix{AbstractMatrix}
+struct HeteroBlkdMatrix <: AbstractMatrix{AbstractMatrix}
     blocks::Matrix{AbstractMatrix}
 end
 Base.size(A::HeteroBlkdMatrix) = size(A.blocks)
@@ -18,7 +18,7 @@ Base.IndexStyle(A::HeteroBlkdMatrix) = Base.IndexLinear()
 
 Like UniformScaling but allowing for a more general type T
 """
-type UniformSc{T}
+struct UniformSc{T}
     λ::T
 end
 
