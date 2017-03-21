@@ -23,12 +23,11 @@ end
 @testset "cbpp" begin
     cbpp[:prop] = cbpp[:i] ./ cbpp[:s]
     gm2 = fit!(glmm(@formula(prop ~ 1 + p + (1 | h)), cbpp, Binomial(), LogitLink(), wt = cbpp[:s]));
-
     @test LaplaceDeviance(gm2) ≈ 100.095856 atol=0.0001
-    @test sum(abs2, gm2.u[1]) ≈ 9.72306601332534 atol=0.0001
-    @test logdet(gm2) ≈ 16.901079633923366 atol=0.0001
-    @test sum(gm2.resp.devresid) ≈ 73.47171054657996 atol=0.001
-    @test loglikelihood(gm2) ≈ -92.02628 atol=0.001
+    @test sum(abs2, gm2.u[1]) ≈ 9.722723538340022 atol=0.0001
+    @test logdet(gm2) ≈ 16.902308856912597 atol=0.0001
+    @test sum(gm2.resp.devresid) ≈ 73.47082400402127 atol=0.001
+    @test loglikelihood(gm2) ≈ -92.0262819685725 atol=0.001
     @test isnan(sdest(gm2))
     @test varest(gm2) == 1
 end
@@ -36,11 +35,9 @@ end
 @testset "verbagg" begin
     verbagg[:r201] = Array(float.(verbagg[:r2] .== "Y"))
     gm3 = fit!(glmm(@formula(r201 ~ 1 + a + g + b + s + (1 | id) + (1 | item)), verbagg, Bernoulli()));
-
     @test LaplaceDeviance(gm3) ≈ 8151.399720195352 atol=0.001
     @test lowerbd(gm3) == vcat(fill(-Inf, 6), zeros(2))
     # these two values are not well defined at the optimum
     @test sum(x -> sum(abs2, x), gm3.u) ≈ 273.2915019321093 atol=0.1
     @test sum(gm3.resp.devresid) ≈ 7156.546153979343 atol=0.1
 end
-#f = r201 ~ 1 + Anger + Gender + btype + situ + (1 | id)

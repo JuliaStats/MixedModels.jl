@@ -287,6 +287,35 @@ function A_mul_Bc!{T<:Number}(α::T, A::SparseMatrixCSC{T}, B::SparseMatrixCSC{T
     C
 end
 
+function A_mul_Bc!{T<:Number}(α::T, A::SparseMatrixCSC{T}, B::SparseMatrixCSC{T},
+    β::T, C::SparseMatrixCSC{T})
+    @argcheck B.m == C.n && A.m == C.m && A.n == B.n  DimensionMismatch
+    anz = nonzeros(A)
+    arv = rowvals(A)
+    bnz = nonzeros(B)
+    brv = rowvals(B)
+    cnz = nonzeros(C)
+    crv = rowvals(C)
+    if β ≠ one(T)
+        iszero(β) ? fill!(cnz, β) : scale!(cnz, β)
+    end
+    for j = 1:A.n
+        for ib in nzrange(B, j)
+            αbnz = α * bnz[ib]
+            jj = brv[ib]
+            for ia in nzrange(A, j)
+                crng = nzrange(C, jj)
+                ind = findfirst(crv[crng], arv[ia])
+                if iszero(ind)
+                    throw(ArgumentError("A*B' has nonzero positions not in C"))
+                end
+                cnz[crng[ind]] += anz[ia] * αbnz
+            end
+        end
+    end
+    C
+end
+
 function A_mul_Bc!{T<:Number}(α::T, A::StridedVecOrMat{T}, B::SparseMatrixCSC{T},
     β::T, C::StridedVecOrMat{T})
     m, n = size(A)

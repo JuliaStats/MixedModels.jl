@@ -15,6 +15,8 @@ Summary of an `NLopt` optimization
 * `feval`: the number of function evaluations
 * `optimizer`: the name of the optimizer used, as a `Symbol`
 * `returnvalue`: the return value, as a `Symbol`
+
+FIXME: add an initial_step element here and set it appropriately for fit! of glmm
 """
 mutable struct OptSummary{T <: AbstractFloat}
     initial::Vector{T}

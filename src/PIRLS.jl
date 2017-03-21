@@ -46,7 +46,9 @@ function glmm(f::Formula, fr::AbstractDataFrame, d::Distribution, l::Link; wt=[]
         # the weights argument is forced to be non-empty in the lmm as it will be used later
     LMM = lmm(f, fr; weights = wts)
     updateL!(setθ!(LMM, getθ(LMM)))
-    trms, u, y = LMM.trms, ranef(LMM), copy(model_response(LMM))
+    trms = LMM.trms
+    u = fill!.(ranef(LMM), 0)
+    y = copy(model_response(LMM))
     wts = oftype(y, wts)
             # fit a glm to the fixed-effects only
     gl = glm(trms[end - 1], y, d, l; wts = wts, offset = zeros(y))
@@ -219,18 +221,18 @@ function StatsBase.fit!{T}(m::GeneralizedLinearMixedModel{T}; verbose::Bool=fals
 
 ## FIXME: fast should not be passed as an argument.  Whether or not β is optimized by PIRLS
 ## should be determined by the length of optsum.initial, lowerbd and final.
-
-    fast || fit!(m, verbose=verbose, fast=true) # use the fast fit first then slow fit to refine
-
     β = m.β
     lm = m.LMM
     optsum = lm.optsum
-    pars = fast ? copy(optsum.initial) : vcat(β, optsum.initial)
+    if !fast
+        fit!(m, verbose=verbose, fast=true)
+        optsum.lowerbd = vcat(fill!(similar(β), -Inf), optsum.lowerbd)
+        optsum.initial = vcat(β, m.θ)
+    end
+    pars = copy(optsum.initial)
     opt = NLopt.Opt(optsum.optimizer, length(pars))
 
-    lb = fast ? optsum.lowerbd : vcat(fill!(similar(β), -Inf), optsum.lowerbd)
-    NLopt.lower_bounds!(opt, lb)
-
+    NLopt.lower_bounds!(opt, optsum.lowerbd)
     NLopt.ftol_rel!(opt, optsum.ftol_rel) # relative criterion on objective
     NLopt.ftol_abs!(opt, optsum.ftol_abs) # absolute criterion on objective
     NLopt.xtol_rel!(opt, optsum.ftol_rel) # relative criterion on parameter values
@@ -251,7 +253,7 @@ function StatsBase.fit!{T}(m::GeneralizedLinearMixedModel{T}; verbose::Bool=fals
     ## check if very small parameter values bounded below by zero can be set to zero
     xmin_ = copy(xmin)
     for i in eachindex(xmin_)
-        if lb[i] == zero(T) && zero(T) < xmin_[i] < T(0.001)
+        if iszero(optsum.lowerbd[i]) && zero(T) < xmin_[i] < T(0.001)
             xmin_[i] = zero(T)
         end
     end
