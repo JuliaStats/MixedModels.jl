@@ -9,10 +9,10 @@ using Base.Test, DataFrames, MixedModels
     @test LaplaceDeviance(gm0) ≈ 2361.6572 atol = 0.001
     gm1 = fit!(glmm(@formula(use01 ~ 1 + a + a2 + urb + l + (1 | urbdist)), contraception,
         Bernoulli()));
-    @test gm1.θ[1] ≈ 0.573054 atol=0.0001
+    @test gm1.θ[1] ≈ 0.573054 atol=0.005
     @test lowerbd(gm1) == push!(fill(-Inf, 7), 0.)
-    @test LaplaceDeviance(gm1) ≈ 2361.5457555 atol=0.0001
-    @test loglikelihood(gm1) ≈ -1180.7729 atol=0.001
+    @test LaplaceDeviance(gm1) ≈ 2361.5457555 rtol=0.00001
+    @test loglikelihood(gm1) ≈ -1180.7729 rtol=0.00001
     # the next three values are not well defined in the optimization
     @test logdet(gm1) ≈ 75.7275 atol=0.1
     @test sum(abs2, gm1.u[1]) ≈ 48.4747 atol=0.1
