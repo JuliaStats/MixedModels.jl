@@ -184,6 +184,13 @@ end
     simulate!(fm)  # to test one of the unscaledre methods
 end
 
+@testset "d3" begin
+    fm = (lmm(@formula(Y ~ 1 + U + ((1 + U) | G) + ((1 + U) | H) + ((1 + U) | I)), dat["d3"]))
+    @test pwrss(fm) ≈ 1.102179244837225e15 rtol = 1e-6
+    @test logdet(fm) ≈ 121800.70795501214 rtol = 1e-6
+    @test objective(fm) ≈ 3472948.9745031004 rtol = 1e-6
+end
+
 if false
 @testset "sleepnocorr" begin
     fm = lmm(Reaction ~ Days + (1|Subject) + (0+Days|Subject), sleepstudy);
