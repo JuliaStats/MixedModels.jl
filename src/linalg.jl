@@ -117,7 +117,7 @@ end
 """
     scaleInflate!(L, A, Λ)
 
-Overwrite `L` with `Λ'AΛ + I`
+Overwrite a diagonal block of `L` with the corresponding block of `Λ'AΛ + I`
 """
 function scaleInflate! end
 

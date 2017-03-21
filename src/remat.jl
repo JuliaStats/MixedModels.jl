@@ -215,9 +215,7 @@ end
 function Base.Ac_mul_B!{Tv, Ti}(C::SparseMatrixCSC{Tv, Ti}, A::ScalarReMat{Tv}, B::ScalarReMat{Tv})
     m, n = size(A)
     p, q = size(B)
-    if m ≠ p || size(C, 1) ≠ n || size(C, 2) ≠ q
-        throw(DimensionMismatch("size(A) = $(size(A)), size(B) = $(size(B)), size(C) = $(size(C))"))
-    end
+    @argcheck size(A, 1) == size(B, 1) && size(C, 1) == size(A, 2) && size(C, 2) == size(B, 2) DimensionMismatch
     SparseArrays.sparse!(convert(Vector{Ti}, A.f.refs), convert(Vector{Ti}, B.f.refs), A.z .* B.z,
         n, q, +, Array{Ti}(q), Array{Ti}(n + 1), Array{Ti}(m), Array{Tv}(m), C.colptr, C.rowval, C.nzval)
     C
@@ -253,14 +251,17 @@ function Base.Ac_mul_B{T}(A::VectorReMat{T}, B::VectorReMat{T})
     end
     Az = A.z
     Bz = B.z
-    if (m = size(Az, 2)) ≠ size(Bz, 2)
-        throw(DimensionMismatch("$m = size(Az,2) ≠ size(Bz,2) = $(size(Bz, 2))"))
-    end
-    a, b = size(Az,1), size(Bz, 1)
+    @argcheck size(Az, 2) == size(Bz, 2) DimensionMismatch
+    m = size(Az, 2)
+    a = size(Az, 1)
+    b = size(Bz, 1)
     ab = a * b
     nz = ab * m
-    I, J, V = sizehint!(Int[], nz), sizehint!(Int[], nz), sizehint!(T[], nz)
-    Ar, Br = A.f.refs, B.f.refs
+    I = sizehint!(Int[], nz)
+    J = sizehint!(Int[], nz)
+    V = sizehint!(T[], nz)
+    Ar = A.f.refs
+    Br = B.f.refs
     Ipat = repeat(1 : a, outer = b)
     Jpat = repeat(1 : b, inner = a)
     for i in 1 : m
@@ -331,28 +332,12 @@ function Base.A_mul_B!{T}(C::ScalarReMat{T}, A::Diagonal{T}, B::ScalarReMat{T})
 end
 
 function Base.A_mul_B!{T}(A::Diagonal{T}, B::ScalarReMat{T})
-    a, b = A.diag, B.z
-    if length(a) ≠ length(b)
-        throw(DimensionMismatch("A_mul_B!, A: diagonal $(size(A, 1)), B: ScalarReMat $(size(B))"))
-    end
-    for i in eachindex(a)
-        b[i] *= a[i]
-    end
+    B.z .*= A.diag
     B
 end
 
 function Base.A_mul_B!{T}(A::Diagonal{T}, B::VectorReMat{T})
-    a, b = A.diag, B.z
-    if length(a) ≠ size(b, 2)
-        throw(DimensionMismatch("A_mul_B!, A: diagonal $(size(A, 1)), B: ScalarReMat $(size(B))"))
-    end
-    k = size(b, 1)
-    for j in eachindex(a)
-        aj = a[j]
-        for i in 1 : k
-            b[i, j] *= aj
-        end
-    end
+    scale!(B.z, A.diag)
     B
 end
 
