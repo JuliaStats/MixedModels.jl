@@ -188,21 +188,6 @@ function StatsBase.cor(m::MixedModel)
     scale!(scl, scale!(vc, scl))
 end
 
-function convert(::Type{LinAlg.Cholesky}, m::MixedModel)
-    R = lmm(m).R
-    nblk = size(R, 2) - 1
-    sizes = [size(R[1, j], 2) for j in 1 : nblk]
-    offsets = unshift!(cumsum(sizes), 0)
-    res = zeros(eltype(R[1, end]), (offsets[end], offsets[end]))
-    for j in 1 : nblk
-        jinds = (1 : sizes[j]) + offsets[j]
-        for i in 1 : j
-            copy!(view(res, (1 : sizes[i]) + offsets[i], jinds), R[i, j])
-        end
-    end
-    LinAlg.Cholesky(res, 'U')
-end
-
 """
     condVar(m::MixedModel)
 

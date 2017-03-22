@@ -1,10 +1,3 @@
-if VERSION < v"0.6.0-"
-    function cond{T}(J::UniformScaling{T})
-        onereal = inv(one(real(J.λ)))
-        return J.λ ≠ zero(T) ? onereal : oftype(onereal, Inf)
-    end
-end
-
 cond{T}(L::UniformScLT{T}) = cond(L.λ)
 
 """

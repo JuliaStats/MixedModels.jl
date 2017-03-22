@@ -40,9 +40,8 @@ for simulation of the responses.
 function bootstrap{T}(N, m::LinearMixedModel{T}; β = fixef(m), σ = sdest(m), θ = getθ(m))
     y₀ = copy(model_response(m)) # to restore original state of m
     p = size(m.trms[end - 1], 2)
-    length(β) == p || throw(DimensionMismatch("length(β) should be $p"))
-    k = length(getθ(m))
-    length(θ) == k || throw(DimensionMismatch("length(θ) should be $k"))
+    @argcheck length(β) == p DimensionMismatch
+    @argcheck length(θ) == (k = length(getθ(m))) DimensionMismatch
     Λsize = [vsize(t) for t in reterms(m)]
     cnms = vcat([:obj, :σ], Symbol.(subscriptednames('β', p)),
         Symbol.(subscriptednames('θ', k)), Symbol.(subscriptednames('σ', sum(Λsize))))
@@ -97,10 +96,7 @@ end
 
 
 function stddevcor!{T}(σ::Vector{T}, ρ::Matrix{T}, scr::Matrix{T}, L::LinAlg.Cholesky{T})
-    if length(σ) != (k = size(L, 2)) || size(ρ) ≠ (k, k) || size(scr) ≠ (k, k)
-        throw(DimensionMismatch(string("size(ρ) = $(size(ρ)) and size(scr) = $(size(scr)) ",
-            "should be ($k, $k) and length(σ) = $(length(σ)) should be $k")))
-    end
+    @argcheck length(σ) == (k = size(L, 2)) && size(ρ) == (k, k) && size(scr) == (k, k) DimensionMismatch
     if k == 1
         copy!(σ, L.factors)
         ρ[1, 1] = one(T)
@@ -165,9 +161,7 @@ If `y` is omitted the current response vector is used.
 refit!(m::LinearMixedModel) = fit!(updateL!(resetθ!(reevaluateAend!(m))))
 function refit!{T}(m::LinearMixedModel{T}, y)
     resp = m.trms[end]
-    if length(y) ≠ size(resp, 1)
-        throw(DimensionMismatch("length(y) = $(length(y)), should be $(size(resp, 1))"))
-    end
+    @argcheck length(y) == size(resp, 1) DimensionMismatch
     copy!(resp, y)
     refit!(m)
 end
@@ -191,9 +185,7 @@ Add unscaled random effects defined by `M` and `b` to `y`.
 """
 function unscaledre!{T<:AbstractFloat}(y::Vector{T}, M::ScalarReMat{T}, b::Matrix{T})
     z = M.z
-    if length(y) ≠ length(z) || size(b, 1) ≠ 1
-        throw(DimensionMismatch())
-    end
+    @argcheck length(y) == length(z) && size(b, 1) == 1 DimensionMismatch
     inds = M.f.refs
     @inbounds for i in eachindex(y)
         y[i] += b[inds[i]] * z[i]
@@ -215,9 +207,7 @@ function unscaledre!{T}(y::AbstractVector{T}, M::VectorReMat{T}, b::DenseMatrix{
     Z = M.z
     k, n = size(Z)
     l = nlevs(M)
-    if length(y) ≠ n || size(b) ≠ (k, l)
-        throw(DimensionMismatch("length(y) = $(length(y)), size(M) = $(size(M)), size(b) = $(size(b))"))
-    end
+    @argcheck length(y) == n && size(b) == (k, l) DimensionMismatch
     inds = M.f.refs
     for i in eachindex(y)
         ii = inds[i]

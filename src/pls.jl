@@ -31,42 +31,16 @@ end
 
 Convert sparse `S` to `Diagonal` if `S` is diagonal or to `full(S)` if
 the proportion of nonzeros exceeds `threshold`.
-
-FIXME:: Probably don't need the convoluted logic as the eltype of
-all sparse matrices are bitstypes.
 """
 function densify(S::SparseMatrixCSC, threshold::Real = 0.3)
     m, n = size(S)
     if m == n && isdiag(S)  # convert diagonal sparse to Diagonal
-        return Diagonal(diag(S))
+        Diagonal(diag(S))
+    elseif nnz(S)/(*(size(S)...)) ≤ threshold # very sparse matrices left as is
+        S
+    else
+        full(S)
     end
-    if nnz(S)/(*(size(S)...)) ≤ threshold # very sparse matrices left as is
-        return S
-    end
-    if isbits(eltype(S))
-        return full(S)
-    end
-    # densify a sparse matrix whose elements are arrays of bitstypes
-    nzs = nonzeros(S)
-    nz1 = nzs[1]
-    T = typeof(nz1)
-    if !isa(nz1, Array) || !isbits(eltype(nz1)) # branch not tested
-        error("Nonzeros must be a bitstype or an array of same")
-    end
-    sz1 = size(nz1)
-    if any(x->typeof(x) ≠ T || size(x) ≠ sz1, nzs) # branch not tested
-        error("Inconsistent dimensions or types in array nonzeros")
-    end
-    M,N = size(S)
-    m,n = size(nz1, 1), size(nz1, 2) # this construction allows for nz1 to be a vector
-    res = Array{eltype(nz1)}(M * m, N * n)
-    rv = rowvals(S)
-    for j in 1:size(S,2)
-        for k in nzrange(S, j)
-            copy!(view(res, (rv[k] - 1) * m + (1 : m), (j - 1) * n + (1 : n)), nzs[k])
-        end
-    end
-    res
 end
 densify(A::AbstractMatrix, threshold::Real = 0.3) = A
 
@@ -312,9 +286,7 @@ Install `v` as the θ parameters in `m`.  Changes `m.Λ` only.
 """
 function setθ!{T}(m::LinearMixedModel{T}, v::Vector{T})
     Λ = m.Λ
-    if length(v) != (ntot = sum(nlower, Λ))
-        throw(DimensionMismatch("length(v) = $(length(v)), should be $ntot"))
-    end
+    @argcheck length(v) == (ntot = sum(nlower, Λ)) DimensionMismatch
     offset = 0
     for i in eachindex(Λ)
         λ = Λ[i]

@@ -281,7 +281,7 @@ function StatsBase.fit!{T}(m::GeneralizedLinearMixedModel{T}; verbose::Bool=fals
     m
 end
 
-function Base.show(io::IO, m::GeneralizedLinearMixedModel) # not tested
+function Base.show(io::IO, m::GeneralizedLinearMixedModel)
     println(io, "Generalized Linear Mixed Model fit by minimizing the Laplace approximation to the deviance")
     println(io, "  ", m.LMM.formula)
     println(io, "  Distribution: ", Distribution(m.resp))
