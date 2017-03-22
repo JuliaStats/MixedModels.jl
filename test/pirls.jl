@@ -23,7 +23,6 @@ end
 @testset "cbpp" begin
     cbpp[:prop] = cbpp[:i] ./ cbpp[:s]
     gm2 = fit!(glmm(@formula(prop ~ 1 + p + (1 | h)), cbpp, Binomial(), LogitLink(), wt = cbpp[:s]));
-@show LaplaceDeviance(gm2), sum(abs2, gm2.u[1]), logdet(gm2), sum(gm2.resp.devresid), loglikelihood(gm2)
     @test LaplaceDeviance(gm2) ≈ 100.09585619324639 atol=0.0001
     @test sum(abs2, gm2.u[1]) ≈ 9.723175126731014 atol=0.0001
     @test logdet(gm2) ≈ 16.900889129328004 atol=0.0001
@@ -36,7 +35,6 @@ end
 @testset "verbagg" begin
     verbagg[:r201] = Array(float.(verbagg[:r2] .== "Y"))
     gm3 = fit!(glmm(@formula(r201 ~ 1 + a + g + b + s + (1 | id) + (1 | item)), verbagg, Bernoulli()));
-@show LaplaceDeviance(gm3), sum(x->sum(abs2,x),gm3.u), sum(gm3.resp.devresid)
     @test LaplaceDeviance(gm3) ≈ 8151.39972809092 atol=0.001
     @test lowerbd(gm3) == vcat(fill(-Inf, 6), zeros(2))
     # these two values are not well defined at the optimum
