@@ -183,16 +183,23 @@ A value for `optimizer` should be the name of an `NLopt` derivative-free optimiz
 allowing for box constraints.
 """
 function StatsBase.fit!{T}(m::LinearMixedModel{T}, verbose::Bool=false)
+
     optsum = m.optsum
     lb = optsum.lowerbd
     x = optsum.final
     copy!(x, optsum.initial)
+
     opt = NLopt.Opt(optsum.optimizer, length(x))
     NLopt.ftol_rel!(opt, optsum.ftol_rel) # relative criterion on objective
     NLopt.ftol_abs!(opt, optsum.ftol_abs) # absolute criterion on objective
     NLopt.xtol_rel!(opt, optsum.ftol_rel) # relative criterion on parameter values
     NLopt.xtol_abs!(opt, optsum.xtol_abs) # absolute criterion on parameter values
     NLopt.lower_bounds!(opt, lb)
+    if isempty(optsum.initial_step)
+        optsum.initial_step = NLopt.initial_step(opt, optsum.initial, similar(lb))
+    else
+        NLopt.initial_step!(opt, optsum.initial_step)
+    end
     feval = 0
     function obj(x, g)
         length(g) == 0 || error("gradient not defined")
@@ -207,7 +214,7 @@ function StatsBase.fit!{T}(m::LinearMixedModel{T}, verbose::Bool=false)
     ## check if very small parameter values that must be non-negative can be set to zero
     xmin_ = copy(xmin)
     for i in eachindex(xmin_)
-        if lb[i] == zero(T) && zero(T) < xmin_[i] < T(0.001)
+        if iszero(lb[i]) && zero(T) < xmin_[i] < T(0.001)
             xmin_[i] = zero(T)
         end
     end

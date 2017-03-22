@@ -228,16 +228,22 @@ function StatsBase.fit!{T}(m::GeneralizedLinearMixedModel{T}; verbose::Bool=fals
         fit!(m, verbose=verbose, fast=true)
         optsum.lowerbd = vcat(fill!(similar(β), -Inf), optsum.lowerbd)
         optsum.initial = vcat(β, m.θ)
+        optsum.final = copy(optsum.initial)
+        optsum.initial_step = vcat(stderr(m), fill(T(0.05), length(m.θ)))
     end
-    pars = copy(optsum.initial)
-    opt = NLopt.Opt(optsum.optimizer, length(pars))
+    x = optsum.final
+    copy!(x, optsum.initial)
+    opt = NLopt.Opt(optsum.optimizer, length(x))
 
     NLopt.lower_bounds!(opt, optsum.lowerbd)
     NLopt.ftol_rel!(opt, optsum.ftol_rel) # relative criterion on objective
     NLopt.ftol_abs!(opt, optsum.ftol_abs) # absolute criterion on objective
     NLopt.xtol_rel!(opt, optsum.ftol_rel) # relative criterion on parameter values
-#    NLopt.xtol_abs!(opt, optsum.xtol_abs) # absolute criterion on parameter values
-
+    if isempty(optsum.initial_step)
+        optsum.initial_step = NLopt.initial_step(opt, optsum.initial, similar(x))
+    else
+        NLopt.initial_step!(opt, optsum.initial_step)
+    end
     setpar! = fast ? setθ! : setβθ!
     feval = 0
     function obj(x::Vector{T}, g::Vector{T})
@@ -249,7 +255,7 @@ function StatsBase.fit!{T}(m::GeneralizedLinearMixedModel{T}; verbose::Bool=fals
         val
     end
     NLopt.min_objective!(opt, obj)
-    fmin, xmin, ret = NLopt.optimize(opt, pars)
+    fmin, xmin, ret = NLopt.optimize(opt, x)
     ## check if very small parameter values bounded below by zero can be set to zero
     xmin_ = copy(xmin)
     for i in eachindex(xmin_)
