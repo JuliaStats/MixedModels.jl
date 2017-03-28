@@ -216,9 +216,10 @@ function StatsBase.fit!{T}(m::LinearMixedModel{T}, verbose::Bool=false)
     opt = NLopt.Opt(optsum.optimizer, length(x))
     NLopt.ftol_rel!(opt, optsum.ftol_rel) # relative criterion on objective
     NLopt.ftol_abs!(opt, optsum.ftol_abs) # absolute criterion on objective
-    NLopt.xtol_rel!(opt, optsum.ftol_rel) # relative criterion on parameter values
+    NLopt.xtol_rel!(opt, optsum.xtol_rel) # relative criterion on parameter values
     NLopt.xtol_abs!(opt, optsum.xtol_abs) # absolute criterion on parameter values
     NLopt.lower_bounds!(opt, lb)
+    NLopt.maxeval!(opt, optsum.feval)
     feval = 0
     function obj(x, g)
         length(g) == 0 || error("gradient not defined")
