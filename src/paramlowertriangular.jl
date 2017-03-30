@@ -1,39 +1,34 @@
-nlower{T<:Integer}(n::T) = (n * (n + 1)) >>> 1
-nlower(A::UniformScaling) = 1
-nlower(A::UniformSc) = nlower(A.λ)
-nlower(A::LowerTriangular) = nlower(checksquare(A))
+nθ(A::UniformScaling) = 1
+nθ(A::MaskedMatrix) = length(A.mask)
 
 """
-    getθ!{T}(v::AbstractVector{T}, A::LowerTriangular{T, Matrix{T}})
+    getθ!{T}(v::AbstractVector{T}, A::MaskedMatrix{T})
 
-Overwrite `v` with the elements of the lower triangle of `A` (column-major ordering)
+Overwrite `v` with the elements of the blocks in the lower triangle of `A` (column-major ordering)
 """
-function getθ!{T<:AbstractFloat}(v::StridedVector{T}, A::LowerTriangular{T,Matrix{T}})
-    Ad = A.data
-    n = checksquare(Ad)
-    @argcheck length(v) == nlower(n) DimensionMismatch
-    k = 0
-    for j = 1:n, i in j:n
-        v[k += 1] = Ad[i, j]
+function getθ!{T<:AbstractFloat}(v::StridedVector{T}, A::MaskedMatrix{T})
+    @argcheck length(v) == length(A.mask) DimensionMismatch
+    mask = A.mask
+    m = A.m
+    for i in eachindex(mask)
+        v[i] = m[mask[i]]
     end
     v
 end
-getθ!{T<:AbstractFloat}(v::StridedVector{T}, A::UniformScLT{T}) = getθ!(v, A.λ)
 
-function getθ!{T}(v::AbstractVector{T}, A::UniformScaling{T})
+function getθ!{T}(v::StridedVector{T}, A::UniformScaling{T})
     @argcheck length(v) == 1 DimensionMismatch
     v[1] = A.λ
     v
 end
 
 """
-    getθ(A::LowerTriangular{T, Matrix{T}})
+    getθ(A::MaskedMatrix{T})
 
-Return a vector of the elements of the lower triangle of `A` (column-major ordering)
+Return a vector of the elements of the lower triangle blocks in `A` (column-major ordering)
 """
 getθ(A::UniformScaling) = [A.λ]
-getθ{T<:AbstractFloat}(A::UniformScLT{T}) = getθ(A.λ)
-getθ{T<:AbstractFloat}(A::LowerTriangular{T,Matrix{T}}) = getθ!(Array{T}(nlower(A)), A)
+getθ(A::MaskedMatrix) = A.m[A.mask]
 getθ(A::AbstractVector) = mapreduce(getθ, vcat, A)
 
 """
@@ -45,38 +40,40 @@ These are the elements in the lower triangle in column-major ordering.
 Diagonals have a lower bound of `0`.  Off-diagonals have a lower-bound of `-Inf`.
 """
 lowerbd(v::AbstractVector) = mapreduce(lowerbd, vcat, v)
-lowerbd(A::UniformSc) = lowerbd(A.λ)
-function lowerbd{T}(A::LowerTriangular{T})
-    n = size(A, 2)
-    res = fill(convert(T, -Inf), nlower(A))
-    k = -n
-    for j in (n + 1):-1:2
-        res[k += j] = zero(T)
-    end
-    res
-end
 lowerbd{T}(A::UniformScaling{T}) = zeros(T, (1,))
+lowerbd{T}(A::MaskedMatrix{T}) = T[x ∈ diagind(A.m) ? zero(T) : convert(T, -Inf) for x in A.mask]
 
 """
     LT(A)
 
-Create a uniform scaling, lower triangular, matrix compatible with the blocks of `A`
+Create a uniform scaling, lower triangular, matrix compatible with the term `A`
 and initialized to the identity.
 """
-LT{T}(A::ScalarReMat{T}) = UniformScaling(one(T))
-function LT{T}(A::VectorReMat{T})
-    k = size(A.z, 1)
-    UniformSc(LowerTriangular((eye(T, k))))
+LT{T}(A::ScalarReMat{T}, indep) = UniformScaling(one(T))
+function LT{T}(A::VectorReMat{T}, indep)
+    n = size(A.z, 1)
+    blkend = get(indep, A.fnm, [n])
+    if  any(diff(blkend) .< 1) || blkend[1] < 1 || blkend[end] ≠ n
+        throw(ArgumentError("indep[$(A.fnm)] = $(indep[A.fnm]) is malformed"))
+    end
+    inds = reshape(1:abs2(n), (n, n))
+    mask = Int[]
+    offset = 0
+    for b in blkend
+        k = b - offset
+        for j in 1:k, i in j:k
+            push!(mask, inds[offset + i, offset + j])
+        end
+        offset = b
+    end
+    MaskedMatrix(eye(T, n), mask)
 end
 
-function setθ!{T}(A::UniformScLT{T}, v::AbstractVector{T})
-    Ad = A.λ.data
-    n = checksquare(Ad)
-    @argcheck length(v) == nlower(n) DimensionMismatch
+function Λvec(trms, indep)
+    Union{UniformScaling, MaskedMatrix}[LT(x, indep) for x in trms]
+end
 
-    offset = 0
-    for j in 1:n, i in j:n
-        Ad[i, j] = v[offset += 1]
-    end
+function setθ!{T}(A::MaskedMatrix{T}, v::AbstractVector{T})
+    copy!(view(A.m, A.mask), v)
     A
 end

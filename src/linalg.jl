@@ -1,5 +1,3 @@
-cond{T}(L::UniformScLT{T}) = cond(L.λ)
-
 """
     cholUnblocked!(A, Val{:L})
 
@@ -131,8 +129,8 @@ function scaleInflate!{T<:AbstractFloat}(Ljj::Matrix{T}, Ajj::Diagonal{T}, Λj::
 end
 
 function scaleInflate!{T<:AbstractFloat}(Ljj::Diagonal{LowerTriangular{T,Matrix{T}}},
-    Ajj::Diagonal{Matrix{T}}, Λj::UniformScLT{T})
-    λ = Λj.λ
+    Ajj::Diagonal{Matrix{T}}, Λj::MaskedMatrix{T})
+    λ = LowerTriangular(Λj.m)
     Ldiag = Ljj.diag
     Adiag = Ajj.diag
     nblk = length(Ldiag)
@@ -147,10 +145,10 @@ function scaleInflate!{T<:AbstractFloat}(Ljj::Diagonal{LowerTriangular{T,Matrix{
 end
 
 function scaleInflate!{T<:AbstractFloat}(Ljj::Matrix{T}, Ajj::Diagonal{Matrix{T}},
-    Λj::UniformScLT{T})
+    Λj::MaskedMatrix{T})
     Adiag = Ajj.diag
     @argcheck size(Ljj, 2) == sum(size.(Adiag, 2))
-    λ = Λj.λ
+    λ = LowerTriangular(Λj.m)
     offset = 0
     fill!(Ljj, zero(T))
     for a in Adiag
@@ -176,16 +174,17 @@ function A_mul_B!{T}(A::Diagonal{T}, B::UniformScaling{T})
     A
 end
 
-function A_mul_B!{T<:AbstractFloat}(A::Diagonal{LowerTriangular{T, Matrix{T}}}, B::UniformScLT{T})
-    λ = B.λ
+function A_mul_B!{T<:AbstractFloat}(A::Diagonal{LowerTriangular{T, Matrix{T}}},
+    B::MaskedMatrix{T})
+    λ = LowerTriangular(B.m)
     for a in A.diag
         A_mul_B!(a.data, λ)
     end
     A
 end
 
-function A_mul_B!{T<:AbstractFloat,S}(A::SparseMatrixCSC{T,S}, B::UniformScLT{T})
-    λ = B.λ
+function A_mul_B!{T<:AbstractFloat,S}(A::SparseMatrixCSC{T,S}, B::MaskedMatrix{T})
+    λ = LowerTriangular(B.m)
     k = size(λ, 2)
     n = size(A, 2)
     rv = rowvals(A)
@@ -204,15 +203,15 @@ function A_mul_B!{T<:AbstractFloat,S}(A::SparseMatrixCSC{T,S}, B::UniformScLT{T}
     A
 end
 
-function A_mul_B!{T<:AbstractFloat}(A::UniformScLT{T}, B::StridedVector{T})
-    λ = A.λ
+function A_mul_B!{T<:AbstractFloat}(A::MaskedMatrix{T}, B::StridedVector{T})
+    λ = LowerTriangular(A.m)
     k = size(λ, 1)
     A_mul_B!(λ, reshape(B, (k, div(length(B), k))))
     B
 end
 
-function A_mul_B!{T<:AbstractMatrix}(A::Matrix, B::UniformSc{T})
-    λ = B.λ
+function A_mul_B!{T<:AbstractFloat}(A::Matrix{T}, B::MaskedMatrix{T})
+    λ = LowerTriangular(B.m)
     k = size(λ, 1)
     m, n = size(A)
     q, r = divrem(n, k)
@@ -339,24 +338,24 @@ end
 
 Ac_mul_B!{T}(A::UniformScaling{T}, B::AbstractArray{T}) = scale!(B, A.λ)
 
-function Ac_mul_B!{T}(A::UniformScLT{T}, B::Diagonal{LowerTriangular{T,Matrix{T}}})
-    λ = A.λ
+function Ac_mul_B!{T}(A::MaskedMatrix{T}, B::Diagonal{LowerTriangular{T,Matrix{T}}})
+    λ = LowerTriangular(A.m)
     for b in B.diag
         Ac_mul_B!(λ, b.data)
     end
     B
 end
 
-function Ac_mul_B!{T}(A::UniformScLT{T}, B::StridedVecOrMat{T})
-    λ = A.λ
+function Ac_mul_B!{T}(A::MaskedMatrix{T}, B::StridedVecOrMat{T})
+    λ = LowerTriangular(A.m)
     k = size(λ, 1)
     m, n = size(B, 1), size(B, 2)
     Ac_mul_B!(λ, reshape(B, (k, div(m, k) * n)))
     B
 end
 
-function Ac_mul_B!{T<:AbstractFloat,S}(A::UniformScLT{T}, B::SparseMatrixCSC{T,S})
-    λ = A.λ
+function Ac_mul_B!{T<:AbstractFloat,S}(A::MaskedMatrix{T}, B::SparseMatrixCSC{T,S})
+    λ = LowerTriangular(A.m)
     k = size(λ, 2)
     nz = nonzeros(B)
     for j in 1:B.n
@@ -455,9 +454,9 @@ function full{T}(A::Diagonal{LowerTriangular{T,Matrix{T}}})
     B
 end
 
-function rowlengths{T}(Λ::UniformScLT{T})
-    ld = Λ.λ.data
-    [norm(view(ld, i, 1:i)) for i in 1 : size(ld, 1)]
+function rowlengths{T}(Λ::MaskedMatrix{T})
+    ld = Λ.m
+    [norm(view(ld, i, 1:i)) for i in 1:size(ld, 1)]
 end
 
 rowlengths(L::UniformScaling) = [abs(L.λ)]

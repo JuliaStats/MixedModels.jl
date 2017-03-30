@@ -191,25 +191,22 @@ end
     @test objective(fm) ≈ 3472948.9745031004 rtol = 1e-6
 end
 
-if false
 @testset "sleepnocorr" begin
-    fm = lmm(Reaction ~ Days + (1|Subject) + (0+Days|Subject), sleepstudy);
-    @test size(fm) == (180,2,36,2)
+    fm = lmm(@formula(Y ~ 1 + U + (1+U|G)), sleepstudy, independent = Dict(:G=>[1,2]));
+    @test size(fm) == (180,2,36,1)
     @test getθ(fm) == ones(2)
     @test lowerbd(fm) == zeros(2)
 
     fit!(fm);
 
-    @test isapprox(deviance(fm), 1752.0032551398835, atol = 0.001)
-    @test isapprox(objective(fm), 1752.0032551398835, atol = 0.001)
+    @test deviance(fm) ≈ 1752.0032551398835 atol = 0.001
+    @test objective(fm) ≈ 1752.0032551398835 atol = 0.001
     @test coef(fm) ≈ [251.40510484848585, 10.467285959595715]
     @test fixef(fm) ≈ [251.40510484848585, 10.467285959595715]
-    @test isapprox(stderr(fm), [6.707710260366577, 1.5193083237479683], atol = 0.001)
-    @test isapprox(getθ(fm), [0.9458106880922268, 0.22692826607677266], atol = 0.0001)
-    @test std(fm)[1] ≈ [24.171449463289047]
-    @test std(fm)[2] ≈ [5.799379721123582]
-    @test std(fm)[3] ≈ [25.556130034081047]
-    @test isapprox(logdet(fm), 74.46952585564611, atol = 0.001)
+    @test stderr(fm) ≈ [6.707710260366577, 1.5193083237479683] atol = 0.001
+    @test getθ(fm) ≈ [0.9458106880922268, 0.22692826607677266] atol = 0.0001
+    @test std(fm)[1] ≈ [24.171449463289047, 5.799379721123582]
+    @test std(fm)[2] ≈ [25.556130034081047]
+    @test logdet(fm) ≈ 74.46952585564611 atol = 0.001
     cor(fm)
-end
 end

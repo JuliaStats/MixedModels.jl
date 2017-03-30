@@ -14,12 +14,21 @@ Base.setindex!(A::HeteroBlkdMatrix, X, i::Integer) = setindex!(A.blocks, X, i)
 Base.IndexStyle(A::HeteroBlkdMatrix) = Base.IndexLinear()
 
 """
-    UniformSc
+    MaskedMatrix
 
-Like UniformScaling but allowing for a more general type T
+A matrix, `m`, and an integer vector, `mask`, of the potential non-zero elements.
+
+Within this package all the `MaskedMatrix` objects will be LowerTriangular, but
+that is not a requirement.
+
+In linear algebra operations an object `A` of this type acts like `I ⊗ A`,
+for a suitably sized `I`.  These are the pattern matrices for blocks of `Λ` corresponding
+to a [`VectorReMat`](@ref).
 """
-struct UniformSc{T}
-    λ::T
+struct MaskedMatrix{T<:AbstractFloat}
+    m::AbstractMatrix{T}
+    mask::Vector{Int}
 end
-
-UniformScLT{T} = UniformSc{LowerTriangular{T, Matrix{T}}}
+## FIXME: This section is too slapdash.  There is no guarantee that a MaskedMatrix is
+## LowerTriangular
+cond(A::MaskedMatrix) = cond(LowerTriangular(A.m))

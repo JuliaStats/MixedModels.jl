@@ -76,7 +76,7 @@ end
 
 function getθ!{T}(v::AbstractVector{T}, m::LinearMixedModel{T})
     Λ = lmm(m).Λ
-    nl = map(nlower, Λ)
+    nl = map(nθ, Λ)
     @argcheck length(v) == sum(nl) DimensionMismatch
     offset = 0
     for i in eachindex(nl)
@@ -88,7 +88,7 @@ function getθ!{T}(v::AbstractVector{T}, m::LinearMixedModel{T})
 end
 
 getΘ{T}(m::GeneralizedLinearMixedModel{T}) = getΘ(m.LMM)
-getθ{T}(m::LinearMixedModel{T}) = getθ!(Array{T}(sum(A -> nlower(A), m.Λ)), m)
+getθ{T}(m::LinearMixedModel{T}) = getθ!(Array{T}(sum(A -> nθ(A), m.Λ)), m)
 
 """
     grplevels(m::MixedModel)

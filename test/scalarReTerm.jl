@@ -38,7 +38,7 @@
 
 #    @test sf == copy!(csf, sf)
 
-        L = MixedModels.LT(sf)
+        L = MixedModels.LT(sf, Dict{Symbol,Any}())
 #    @test copy!(crp1, crp) == crp
 
         @test size(sf1) == (60, 30)

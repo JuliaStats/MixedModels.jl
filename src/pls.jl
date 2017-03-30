@@ -91,7 +91,7 @@ and random effects, and `fr`.
 
 The return value is ready to be `fit!` but has not yet been fit.
 """
-function lmm(f::Formula, fr::AbstractDataFrame; weights::Vector = [])
+function lmm(f::Formula, fr::AbstractDataFrame; weights::Vector = [], independent=Dict{Symbol,Any}())
     mf = ModelFrame(f, fr)
     X = ModelMatrix(mf)
     T = eltype(X.m)                                       # process the random-effects terms
@@ -106,7 +106,7 @@ function lmm(f::Formula, fr::AbstractDataFrame; weights::Vector = [])
             trms = trms[sortperm(nre, rev = true)]
         end
     end
-    Λ = [LT(t) for t in trms]
+    Λ = Λvec(trms, independent)  # Note: this must be done here as trms gets modified
     push!(trms, X.m)
     push!(trms, reshape(convert(Vector{T}, DataFrames.model_response(mf)), (size(X, 1), 1)))
     LinearMixedModel(f, mf, trms, Λ, convert(Vector{T}, weights))
@@ -169,6 +169,7 @@ function StatsBase.fit!{T}(m::LinearMixedModel{T}, verbose::Bool=false)
     NLopt.xtol_rel!(opt, optsum.ftol_rel) # relative criterion on parameter values
     NLopt.xtol_abs!(opt, optsum.xtol_abs) # absolute criterion on parameter values
     NLopt.lower_bounds!(opt, lb)
+    NLopt.maxeval!(opt, optsum.feval)
     if isempty(optsum.initial_step)
         optsum.initial_step = NLopt.initial_step(opt, optsum.initial, similar(lb))
     else
@@ -258,7 +259,7 @@ Returns the fixed-effects parameter vector estimate.
 """
 fixef{T}(m::LinearMixedModel{T}) = fixef!(Array{T}(size(m)[2]), m)
 
-StatsBase.dof(m::LinearMixedModel) = size(m.wttrms[end - 1], 2) + sum(A -> nlower(A), m.Λ) + 1
+StatsBase.dof(m::LinearMixedModel) = size(m.wttrms[end - 1], 2) + sum(A -> nθ(A), m.Λ) + 1
 
 StatsBase.loglikelihood(m::LinearMixedModel) = -deviance(m)/2
 
@@ -286,14 +287,14 @@ Install `v` as the θ parameters in `m`.  Changes `m.Λ` only.
 """
 function setθ!{T}(m::LinearMixedModel{T}, v::Vector{T})
     Λ = m.Λ
-    @argcheck length(v) == (ntot = sum(nlower, Λ)) DimensionMismatch
+    @argcheck length(v) == (ntot = sum(nθ, Λ)) DimensionMismatch
     offset = 0
     for i in eachindex(Λ)
         λ = Λ[i]
         if isa(λ, UniformScaling)
             Λ[i] = UniformScaling(v[offset += 1])
         else
-            nti = nlower(λ)
+            nti = nθ(λ)
             setθ!(λ, view(v, offset + (1 : nti)))
             offset += nti
         end

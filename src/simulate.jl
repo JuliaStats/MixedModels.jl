@@ -128,10 +128,9 @@ function stddevcor{T}(L::LinAlg.Cholesky{T})
     k = size(L, 1)
     stddevcor!(Array{T}(k), Array{T}((k, k)), Array{T}((k, k)), L)
 end
-
 stddevcor{T<:AbstractFloat}(L::LowerTriangular{T}) = stddevcor(LinAlg.Cholesky(L, :L))
 stddevcor{T<:AbstractFloat}(L::UniformScaling{T}) = [abs(L.λ)], eye(T, 1)
-stddevcor{T<:AbstractFloat}(L::UniformSc{LowerTriangular{T,Matrix{T}}}) = stddevcor(L.λ)
+stddevcor{T<:AbstractFloat}(L::MaskedMatrix{T}) = stddevcor(LowerTriangular(L.m))
 
 """
     reevaluateAend!(m::LinearMixedModel)
@@ -194,10 +193,12 @@ function unscaledre!{T<:AbstractFloat}(y::Vector{T}, M::ScalarReMat{T}, b::Matri
 end
 
 """
-    unscaledre!{T}(y::AbstractVector{T}, M::ReMat{T}, L::LowerTriangular{T})
+    unscaledre!{T}(y::AbstractVector{T}, M::ReMat{T}, L)
 
 Add unscaled random effects defined by `M` and `L * randn(1, length(M.f.pool))` to `y`.
 """
+function unscaledre! end
+
 function unscaledre!{T}(y::AbstractVector{T}, M::ScalarReMat{T}, L::UniformScaling{T})
     re = randn(1, length(M.f.pool))
     unscaledre!(y, M, (re *= L))
@@ -218,7 +219,7 @@ function unscaledre!{T}(y::AbstractVector{T}, M::VectorReMat{T}, b::DenseMatrix{
     y
 end
 
-function unscaledre!{T}(y::AbstractVector{T}, M::VectorReMat{T}, L::UniformSc{LowerTriangular{T,Matrix{T}}})
+function unscaledre!{T}(y::AbstractVector{T}, M::VectorReMat{T}, L::MaskedMatrix{T})
     re = randn(vsize(M), nlevs(M))
     A_mul_B!(L, vec(re))
     unscaledre!(y, M, re)
