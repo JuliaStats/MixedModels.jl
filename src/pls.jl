@@ -5,7 +5,7 @@ Linear mixed-effects model representation
 
 # Members
 * `formula`: the formula for the model
-* `mf`: the model frame, its `terms` component is used for labelling fixed effects
+* `fixefnames`: names of the fixed effects (for displaying coefficients)
 * `wttrms`: a length `nt` vector of weighted model matrices. The last two elements are `X` and `y`.
 * `trms`: a vector of unweighted model matrices.  If `isempty(sqrtwts)` the same object as `wttrms`
 * `Λ`: a length `nt - 2` vector of lower triangular matrices
@@ -16,7 +16,7 @@ Linear mixed-effects model representation
 """
 struct LinearMixedModel{T <: AbstractFloat} <: MixedModel
     formula::Formula
-    mf::ModelFrame
+    fixefnames::Vector{String}
     wttrms::Vector
     trms::Vector
     sqrtwts::Diagonal{T}
@@ -44,7 +44,7 @@ function densify(S::SparseMatrixCSC, threshold::Real = 0.3)
 end
 densify(A::AbstractMatrix, threshold::Real = 0.3) = A
 
-function LinearMixedModel(f, mf, trms, Λ, wts)
+function LinearMixedModel(f, fixefnames, trms, Λ, wts)
     n = size(trms[1], 1)
     T = eltype(trms[end])
     sqrtwts = Diagonal([sqrt(x) for x in wts])
@@ -79,8 +79,8 @@ function LinearMixedModel(f, mf, trms, Λ, wts)
     optsum = OptSummary(getθ(Λ), lowerbd(Λ), :LN_BOBYQA;
         ftol_rel = convert(T, 1.0e-12), ftol_abs = convert(T, 1.0e-8))
     fill!(optsum.xtol_abs, 1.0e-10)
-    LinearMixedModel(f, mf, wttrms, trms, sqrtwts, Λ, Hermitian(HeteroBlkdMatrix(A), :L),
-        LowerTriangular(HeteroBlkdMatrix(L)), optsum)
+    LinearMixedModel(f, fixefnames, wttrms, trms, sqrtwts, Λ,
+        Hermitian(HeteroBlkdMatrix(A), :L), LowerTriangular(HeteroBlkdMatrix(L)), optsum)
 end
 
 """
@@ -109,7 +109,7 @@ function lmm(f::Formula, fr::AbstractDataFrame; weights::Vector = [], independen
     Λ = Λvec(trms, independent)  # Note: this must be done here as trms gets modified
     push!(trms, X.m)
     push!(trms, reshape(convert(Vector{T}, DataFrames.model_response(mf)), (size(X, 1), 1)))
-    LinearMixedModel(f, mf, trms, Λ, convert(Vector{T}, weights))
+    LinearMixedModel(f, coefnames(mf), trms, Λ, convert(Vector{T}, weights))
 end
 
 function updateL!{T}(m::LinearMixedModel{T})
