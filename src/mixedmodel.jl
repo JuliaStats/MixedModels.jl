@@ -45,7 +45,7 @@ function StatsBase.coeftable(m::MixedModel)
     z = fe ./ se
     pvalue = ccdf(Chisq(1), abs2.(z))
     CoefTable(hcat(fe, se, z, pvalue), ["Estimate", "Std.Error", "z value", "P(>|z|)"],
-        coefnames(lmm(m).mf), 4)
+        lmm(m).fixefnames, 4)
 end
 
 """
