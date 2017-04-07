@@ -1,6 +1,6 @@
 using MixedModels, Base.Test
 
-@testset "maskedltri" begin
+@testset "paramtri" begin
     m1 = MixedModels.MaskedLowerTri(LowerTriangular(eye(1)), [1])
     @test getθ(m1) == [1.]
     @test lowerbd(m1) == [0.]
