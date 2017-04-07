@@ -30,9 +30,9 @@ export
        MixedModel,
        OptSummary,
        ReMat,
-       ScalarReMat,
+#       ScalarReMat,
        VarCorr,
-       VectorReMat,
+#       VectorReMat,
 
        bootstrap,
        bootstrap!,
@@ -75,7 +75,7 @@ include("blockmats.jl")
 include("linalg.jl")
 include("optsummary.jl")
 include("remat.jl")
-include("paramlowertriangular.jl")
+#include("paramlowertriangular.jl")
 include("pls.jl")
 include("logdet.jl")
 include("simulate.jl")

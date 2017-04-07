@@ -1,4 +1,4 @@
-@testset "vectorRe" begin
+@testset "ReMat" begin
     vf = remat(:(1 + U | G), sleepstudy)
     Reaction = Array(sleepstudy[:Y])
 

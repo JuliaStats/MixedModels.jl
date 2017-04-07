@@ -91,25 +91,44 @@ and random effects, and `fr`.
 
 The return value is ready to be `fit!` but has not yet been fit.
 """
-function lmm(f::Formula, fr::AbstractDataFrame; weights::Vector = [], independent=Dict{Symbol,Any}())
+function lmm(f::Formula, fr::AbstractDataFrame; weights::Vector = [])
     mf = ModelFrame(f, fr)
-    X = ModelMatrix(mf)
-    T = eltype(X.m)                                       # process the random-effects terms
-    retrms = filter(x -> Meta.isexpr(x, :call) && x.args[1] == :|, mf.terms.terms)
-    if isempty(retrms)
-        throw(ArgumentError("$f has no random-effects terms"))
+    X = ModelMatrix(mf).m
+    n = size(X, 1)
+    T = eltype(X)
+    y = reshape(convert(Vector{T}, model_response(mf)), (n, 1))
+    tdict = Dict{Symbol, Vector{Any}}()
+    for t in filter(x -> Meta.isexpr(x, :call) && x.args[1] == :|, mf.terms.terms)
+        fnm = t.args[3]
+        isa(fnm, Symbol) || throw(ArgumentError("rhs of $t must be a symbol"))
+        tdict[fnm] = haskey(tdict, fnm) ? push!(tdict[fnm], t.args[2]) : [t.args[2]]
     end
-    trms = Any[remat(e, mf.df) for e in retrms]
-    if length(trms) > 1
-        nre = [nrandomeff(t) for t in trms]
-        if !issorted(nre, rev = true)
-            trms = trms[sortperm(nre, rev = true)]
+    isempty(tdict) && throw(ArgumentError("No random-effects terms found in $f"))
+    trms = []
+    Λ = MaskedLowerTri{T}[]
+    for (grp, lhs) in tdict
+        gr = asfactor(getindex(mf.df, grp))
+        m = Any[]
+        coefnms = String[]
+        trsize = Int[]
+        for l in lhs
+            if l == 1
+                push!(m, ones(T, (n, 1)))
+                push!(coefnms, "(Intercept)")
+                push!(trsize, 1)
+            else
+                fr = ModelFrame(Formula(nothing, l), mf.df)
+                push!(m, ModelMatrix(fr).m)
+                cnms = coefnames(fr)
+                append!(coefnms, cnms)
+                push!(trsize, length(cnms))
+            end
         end
+        push!(trms, ReMat(gr, reduce(hcat, Array{T}(n, 0), m)', grp, coefnms))
+        push!(Λ, MaskedLowerTri(trsize, T))
     end
-    Λ = Λvec(trms, independent)  # Note: this must be done here as trms gets modified
-    push!(trms, X.m)
-    push!(trms, reshape(convert(Vector{T}, DataFrames.model_response(mf)), (size(X, 1), 1)))
-    LinearMixedModel(f, coefnames(mf), trms, Λ, convert(Vector{T}, weights))
+    sort!(trms, by = nrandomeff, rev = true)
+    LinearMixedModel(f, coefnames(mf), push!(push!(trms, X), y), Λ, oftype(vec(y), weights))
 end
 
 function updateL!{T}(m::LinearMixedModel{T})

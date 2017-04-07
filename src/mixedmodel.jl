@@ -210,16 +210,17 @@ function condVar(m::MixedModel)
     lm = lmm(m)
     Λ = lm.Λ
     if length(Λ) > 1
-        throw(ArgumentError(
-            "code for more than one term not yet written"))
+        throw(ArgumentError("code for more than one term not yet written"))
     end
+    λ = Λ[1].m.data
     L = lm.L[1,1]
-    res = Array{eltype(L),3}[]
-    if isa(Λ[1], UniformScaling)
-        push!(res, reshape(abs2.(inv.(L.diag) .* (Λ[1].λ)), (1, 1, size(L, 1))))
+    res = Array{eltype(λ),3}[]
+    if isa(L, Diagonal) && all(d -> size(d) == (1,1), L.diag) && length(λ) == 1
+        l1 = λ[1]
+        Ld = L.diag
+        push!(res, reshape([abs2(l1 / d[1]) for d in Ld], (1, 1, length(Ld))))
     else
-        throw(ArgumentError(
-            "code for vector-value random-effects not yet written"))
+        throw(ArgumentError("code for vector-value random-effects not yet written"))
     end
     res *= varest(m)
 end

@@ -1,6 +1,7 @@
 using Base.Test, DataFrames, MixedModels
 
 @testset "contra" begin
+    contraception = dat["Contraception"]
     contraception[:use01] = Array(float.(contraception[:use] .== "Y"))
     contraception[:a2] = abs2.(contraception[:a])
     contraception[:urbdist] = string.(contraception[:urb], contraception[:d])
@@ -21,6 +22,7 @@ using Base.Test, DataFrames, MixedModels
 end
 
 @testset "cbpp" begin
+    cbpp = dat["cbpp"]
     cbpp[:prop] = cbpp[:i] ./ cbpp[:s]
     gm2 = fit!(glmm(@formula(prop ~ 1 + p + (1 | h)), cbpp, Binomial(), LogitLink(), wt = cbpp[:s]));
     @test LaplaceDeviance(gm2) ≈ 100.09585619324639 atol=0.0001
@@ -33,6 +35,7 @@ end
 end
 
 @testset "verbagg" begin
+    verbagg = dat["VerbAgg"]
     verbagg[:r201] = Array(float.(verbagg[:r2] .== "Y"))
     gm3 = fit!(glmm(@formula(r201 ~ 1 + a + g + b + s + (1 | id) + (1 | item)), verbagg, Bernoulli()));
     @test LaplaceDeviance(gm3) ≈ 8151.39972809092 atol=0.001

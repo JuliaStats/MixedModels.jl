@@ -19,7 +19,6 @@ function cholUnblocked!{T<:AbstractFloat}(A::Diagonal{Matrix{T}}, ::Type{Val{:L}
     map!(m -> cholUnblocked!(m, Val{:L}), A.diag)
     A
 end
-
 function cholUnblocked!{T<:BlasFloat}(A::Matrix{T}, ::Type{Val{:L}})
     n = checksquare(A)
     if n == 1
@@ -105,6 +104,42 @@ function rankUpdate!{T <: Number}(α::T, A::SparseMatrixCSC{T}, C::Diagonal{T})
     C
 end
 
+function rankUpdate!{T<:Number}(α::T, A::SparseMatrixCSC{T}, C::Diagonal{LowerTriangular{T,Matrix{T}}})
+    m, n = size(A)
+    cdiag = C.diag
+    dsize = size.(cdiag, 2)
+    @argcheck sum(dsize) == m DimensionMismatch
+    if all(dsize .== 1)
+        nz = nonzeros(A)
+        rv = rowvals(A)
+        for j in 1:n
+            nzr = nzrange(A, j)
+            length(nzr) == 1 || throw(ArgumentError("A*A' has off-diagonal elements"))
+            k = nzr[1]
+            @inbounds cdiag[rv[k]].data[1] += α * abs2(nz[k])
+        end
+    else  # not efficient but only used for nested vector-valued r.e.'s, which are rare
+        aat = α * (A * A')
+        nz = nonzeros(aat)
+        rv = rowvals(aat)
+        offset = 0
+        for d in cdiag
+            k = size(d, 2)
+            for j in 1:k
+                for i in nzrange(aat, offset + j)
+                    ii = rv[i] - offset
+                    0 < ii ≤ k || throw(ArgumentError("A*A' does not conform to B"))
+                    if ii ≥ j  # update lower triangle only
+                        d.data[ii, j] += nz[i]
+                    end
+                end
+            end
+            offset += k
+        end
+    end
+    C
+end
+
 """
     scaleInflate!(L, A, Λ)
 
@@ -129,7 +164,7 @@ function scaleInflate!{T<:AbstractFloat}(Ljj::Matrix{T}, Ajj::Diagonal{T}, Λj::
 end
 
 function scaleInflate!{T<:AbstractFloat}(Ljj::Diagonal{LowerTriangular{T,Matrix{T}}},
-    Ajj::Diagonal{Matrix{T}}, Λj::MaskedMatrix{T})
+    Ajj::Diagonal{Matrix{T}}, Λj::MaskedLowerTri{T})
     λ = LowerTriangular(Λj.m)
     Ldiag = Ljj.diag
     Adiag = Ajj.diag
@@ -145,7 +180,7 @@ function scaleInflate!{T<:AbstractFloat}(Ljj::Diagonal{LowerTriangular{T,Matrix{
 end
 
 function scaleInflate!{T<:AbstractFloat}(Ljj::Matrix{T}, Ajj::Diagonal{Matrix{T}},
-    Λj::MaskedMatrix{T})
+    Λj::MaskedLowerTri{T})
     Adiag = Ajj.diag
     @argcheck size(Ljj, 2) == sum(size.(Adiag, 2))
     λ = LowerTriangular(Λj.m)
@@ -175,7 +210,7 @@ function A_mul_B!{T}(A::Diagonal{T}, B::UniformScaling{T})
 end
 
 function A_mul_B!{T<:AbstractFloat}(A::Diagonal{LowerTriangular{T, Matrix{T}}},
-    B::MaskedMatrix{T})
+    B::MaskedLowerTri{T})
     λ = LowerTriangular(B.m)
     for a in A.diag
         A_mul_B!(a.data, λ)
@@ -183,8 +218,8 @@ function A_mul_B!{T<:AbstractFloat}(A::Diagonal{LowerTriangular{T, Matrix{T}}},
     A
 end
 
-function A_mul_B!{T<:AbstractFloat,S}(A::SparseMatrixCSC{T,S}, B::MaskedMatrix{T})
-    λ = LowerTriangular(B.m)
+function A_mul_B!{T<:AbstractFloat,S}(A::SparseMatrixCSC{T,S}, B::MaskedLowerTri{T})
+    λ = B.m
     k = size(λ, 2)
     n = size(A, 2)
     rv = rowvals(A)
@@ -203,15 +238,15 @@ function A_mul_B!{T<:AbstractFloat,S}(A::SparseMatrixCSC{T,S}, B::MaskedMatrix{T
     A
 end
 
-function A_mul_B!{T<:AbstractFloat}(A::MaskedMatrix{T}, B::StridedVector{T})
-    λ = LowerTriangular(A.m)
+function A_mul_B!{T<:AbstractFloat}(A::MaskedLowerTri{T}, B::StridedVector{T})
+    λ = A.m
     k = size(λ, 1)
     A_mul_B!(λ, reshape(B, (k, div(length(B), k))))
     B
 end
 
-function A_mul_B!{T<:AbstractFloat}(A::Matrix{T}, B::MaskedMatrix{T})
-    λ = LowerTriangular(B.m)
+function A_mul_B!{T<:AbstractFloat}(A::Matrix{T}, B::MaskedLowerTri{T})
+    λ = B.m
     k = size(λ, 1)
     m, n = size(A)
     q, r = divrem(n, k)
@@ -230,6 +265,15 @@ end
 function A_mul_B!{T}(C::StridedVecOrMat{T}, A::UniformScaling{T}, B::StridedVecOrMat{T})
     @argcheck size(C) == size(B) DimensionMismatch
     broadcast!(*, C, A.λ, B)
+end
+
+function A_mul_B!{T}(C::StridedVecOrMat{T}, A::MaskedLowerTri{T}, B::StridedVecOrMat{T})
+    @argcheck size(C) == size(B) DimensionMismatch
+    m = size(C, 1)
+    λ = A.m
+    k = size(λ, 1)
+    A_mul_B!(λ, reshape(copy!(C, B), (k, size(C, 2) * div(m, k))))
+    C
 end
 
 function A_mul_Bc!{T<:BlasFloat}(α::T, A::StridedMatrix{T}, B::StridedMatrix{T},
@@ -338,24 +382,24 @@ end
 
 Ac_mul_B!{T}(A::UniformScaling{T}, B::AbstractArray{T}) = scale!(B, A.λ)
 
-function Ac_mul_B!{T}(A::MaskedMatrix{T}, B::Diagonal{LowerTriangular{T,Matrix{T}}})
-    λ = LowerTriangular(A.m)
+function Ac_mul_B!{T}(A::MaskedLowerTri{T}, B::Diagonal{LowerTriangular{T,Matrix{T}}})
+    λ = A.m
     for b in B.diag
         Ac_mul_B!(λ, b.data)
     end
     B
 end
 
-function Ac_mul_B!{T}(A::MaskedMatrix{T}, B::StridedVecOrMat{T})
-    λ = LowerTriangular(A.m)
+function Ac_mul_B!{T}(A::MaskedLowerTri{T}, B::StridedVecOrMat{T})
+    λ = A.m
     k = size(λ, 1)
     m, n = size(B, 1), size(B, 2)
     Ac_mul_B!(λ, reshape(B, (k, div(m, k) * n)))
     B
 end
 
-function Ac_mul_B!{T<:AbstractFloat,S}(A::MaskedMatrix{T}, B::SparseMatrixCSC{T,S})
-    λ = LowerTriangular(A.m)
+function Ac_mul_B!{T<:AbstractFloat,S}(A::MaskedLowerTri{T}, B::SparseMatrixCSC{T,S})
+    λ = A.m
     k = size(λ, 2)
     nz = nonzeros(B)
     for j in 1:B.n
@@ -439,6 +483,26 @@ function A_rdiv_Bc!{T<:AbstractFloat}(A::Matrix, B::Diagonal{LowerTriangular{T,M
     A
 end
 
+function A_rdiv_Bc!{T}(A::SparseMatrixCSC{T}, B::Diagonal{LowerTriangular{T,Matrix{T}}})
+    nz = nonzeros(A)
+    offset = 0
+    for d in B.diag
+        if (k = size(d, 1)) == 1
+            d1 = d[1]
+            offset += 1
+            for k in nzrange(A, offset)
+                nz[k] /= d1
+            end
+        else
+            nzr = nzrange(offset + 1).start : nzrange(offset + k).stop
+            q = div(length(nzr), k)
+            A_rdiv_Bc!(reshape(view(nz, nzr), (q, k)), d)
+            offset += k
+        end
+    end
+    A
+end
+
 function full{T}(A::Diagonal{LowerTriangular{T,Matrix{T}}})
     D = diag(A)
     sz = size.(D, 2)
@@ -454,8 +518,8 @@ function full{T}(A::Diagonal{LowerTriangular{T,Matrix{T}}})
     B
 end
 
-function rowlengths{T}(Λ::MaskedMatrix{T})
-    ld = Λ.m
+function rowlengths{T}(Λ::MaskedLowerTri{T})
+    ld = Λ.m.data
     [norm(view(ld, i, 1:i)) for i in 1:size(ld, 1)]
 end
 

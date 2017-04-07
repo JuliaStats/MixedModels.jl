@@ -66,8 +66,7 @@ function bootstrap{T}(N, m::LinearMixedModel{T}; β = fixef(m), σ = sdest(m), �
             dfr[j += 1][i] = x
         end
         for (l, λ) in enumerate(m.Λ)
-            stddevcor!(scrσ[l], scrρ[l], scr[l],
-                LinAlg.Cholesky(isa(λ, UniformScaling) ? λ * ones(1,1) : λ.λ, :L))
+            stddevcor!(scrσ[l], scrρ[l], scr[l], LinAlg.Cholesky(λ.m.data, :L))
             for x in scrσ[l]
                 dfr[j += 1][i] = σest * x
             end
@@ -130,7 +129,7 @@ function stddevcor{T}(L::LinAlg.Cholesky{T})
 end
 stddevcor{T<:AbstractFloat}(L::LowerTriangular{T}) = stddevcor(LinAlg.Cholesky(L, :L))
 stddevcor{T<:AbstractFloat}(L::UniformScaling{T}) = [abs(L.λ)], eye(T, 1)
-stddevcor{T<:AbstractFloat}(L::MaskedMatrix{T}) = stddevcor(LowerTriangular(L.m))
+stddevcor{T<:AbstractFloat}(L::MaskedLowerTri{T}) = stddevcor(L.m)
 
 """
     reevaluateAend!(m::LinearMixedModel)
@@ -178,33 +177,13 @@ function resetθ!(m::LinearMixedModel)
 end
 
 """
-    unscaledre!{T}(y::Vector{T}, M::ReMat{T}, b::Matrix{T})
-
-Add unscaled random effects defined by `M` and `b` to `y`.
-"""
-function unscaledre!{T<:AbstractFloat}(y::Vector{T}, M::ScalarReMat{T}, b::Matrix{T})
-    z = M.z
-    @argcheck length(y) == length(z) && size(b, 1) == 1 DimensionMismatch
-    inds = M.f.refs
-    @inbounds for i in eachindex(y)
-        y[i] += b[inds[i]] * z[i]
-    end
-    y
-end
-
-"""
     unscaledre!{T}(y::AbstractVector{T}, M::ReMat{T}, L)
 
 Add unscaled random effects defined by `M` and `L * randn(1, length(M.f.pool))` to `y`.
 """
 function unscaledre! end
 
-function unscaledre!{T}(y::AbstractVector{T}, M::ScalarReMat{T}, L::UniformScaling{T})
-    re = randn(1, length(M.f.pool))
-    unscaledre!(y, M, (re *= L))
-end
-
-function unscaledre!{T}(y::AbstractVector{T}, M::VectorReMat{T}, b::DenseMatrix{T})
+function unscaledre!{T}(y::AbstractVector{T}, M::ReMat{T}, b::DenseMatrix{T})
     Z = M.z
     k, n = size(Z)
     l = nlevs(M)
@@ -219,7 +198,7 @@ function unscaledre!{T}(y::AbstractVector{T}, M::VectorReMat{T}, b::DenseMatrix{
     y
 end
 
-function unscaledre!{T}(y::AbstractVector{T}, M::VectorReMat{T}, L::MaskedMatrix{T})
+function unscaledre!{T}(y::AbstractVector{T}, M::ReMat{T}, L::MaskedLowerTri{T})
     re = randn(vsize(M), nlevs(M))
     A_mul_B!(L, vec(re))
     unscaledre!(y, M, re)
