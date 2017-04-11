@@ -494,7 +494,7 @@ function A_rdiv_Bc!{T}(A::SparseMatrixCSC{T}, B::Diagonal{LowerTriangular{T,Matr
                 nz[k] /= d1
             end
         else
-            nzr = nzrange(offset + 1).start : nzrange(offset + k).stop
+            nzr = nzrange(A, offset + 1).start : nzrange(A, offset + k).stop
             q = div(length(nzr), k)
             A_rdiv_Bc!(reshape(view(nz, nzr), (q, k)), d)
             offset += k
