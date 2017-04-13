@@ -1,6 +1,6 @@
 using DataArrays, DataFrames, MixedModels, RData, Base.Test
 
-const dat = load(joinpath(@__DIR__, "dat.rda"))
+const dat = load(joinpath(dirname(@__FILE__), "dat.rda"))
 
 include("maskedltri.jl")
 #include("scalarReTerm.jl")

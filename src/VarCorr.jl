@@ -14,7 +14,7 @@ is no scaling factor this value is `NaN`
 
 The main purpose of defining this type is to isolate the logic in the show method.
 """
-struct VarCorr
+immutable VarCorr
     σ::Vector{Vector}
     ρ::Vector{Matrix}
     fnms::Vector{Symbol}

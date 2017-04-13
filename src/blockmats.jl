@@ -5,13 +5,13 @@ A matrix composed of heterogenous blocks.  Blocks can be sparse, dense or
 diagonal.
 """
 
-struct HeteroBlkdMatrix <: AbstractMatrix{AbstractMatrix}
+immutable HeteroBlkdMatrix <: AbstractMatrix{AbstractMatrix}
     blocks::Matrix{AbstractMatrix}
 end
 Base.size(A::HeteroBlkdMatrix) = size(A.blocks)
 Base.getindex(A::HeteroBlkdMatrix, i::Int) = A.blocks[i]
 Base.setindex!(A::HeteroBlkdMatrix, X, i::Integer) = setindex!(A.blocks, X, i)
-Base.IndexStyle(A::HeteroBlkdMatrix) = Base.IndexLinear()
+@compat Base.IndexStyle(A::HeteroBlkdMatrix) = IndexLinear()
 
 """
     MaskedLowerTri{T<:AbstractFloat}
@@ -21,7 +21,7 @@ A `LowerTriangular{T, Matrix{T}}` and an integer vector, `mask`, of the potentia
 In linear algebra operations an object `A` of this type acts like `I ⊗ A`,
 for a suitably sized `I`.  These are the pattern matrices for blocks of `Λ`.
 """
-struct MaskedLowerTri{T<:AbstractFloat}
+immutable MaskedLowerTri{T<:AbstractFloat}
     m::LowerTriangular{T,Matrix{T}}
     mask::Vector{Int}
 end

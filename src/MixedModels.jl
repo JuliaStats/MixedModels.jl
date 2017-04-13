@@ -2,7 +2,7 @@ __precompile__()
 
 module MixedModels
 
-using ArgCheck, CategoricalArrays, DataArrays, DataFrames, Distributions, GLM
+using ArgCheck, CategoricalArrays, Compat, DataArrays, DataFrames, Distributions, GLM
 using NLopt, Showoff, StatsBase
 using StatsFuns: log2π
 using NamedArrays: NamedArray, setnames!
@@ -67,7 +67,7 @@ export
        varest,     # estimate of the residual variance
        vcov
 
-abstract type MixedModel <: RegressionModel end # model with fixed and random effects
+@compat abstract type MixedModel <: RegressionModel end # model with fixed and random effects
 
 import Base: ==, *
 
@@ -75,7 +75,6 @@ include("blockmats.jl")
 include("linalg.jl")
 include("optsummary.jl")
 include("remat.jl")
-#include("paramlowertriangular.jl")
 include("pls.jl")
 include("logdet.jl")
 include("simulate.jl")

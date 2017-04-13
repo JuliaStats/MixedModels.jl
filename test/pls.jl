@@ -1,7 +1,7 @@
 using Base.Test, RData, StatsBase, MixedModels
 
 if !isdefined(:dat) || !isa(dat, Dict{String, Any})
-    dat = load(joinpath(@__DIR__, "dat.rda"))
+    dat = load(joinpath(dirname(@__FILE__), "dat.rda"))
 end
 
 @testset "Dyestuff" begin
@@ -18,7 +18,7 @@ end
     MixedModels.describeblocks(IOBuffer(), fm1)
 
     fit!(fm1);
-    @test objective(fm1) ≈ 327.3270598811428 atol=0.001
+    @test isapprox(objective(fm1), 327.3270598811428, atol=0.001)
     @test isapprox(getθ(fm1), [0.752580], atol=1.e-5)
     @test isapprox(deviance(fm1), 327.32705988, atol=0.001)
     @test isapprox(aic(fm1), 333.3270598811394, atol=0.001)
@@ -37,7 +37,7 @@ end
     cv = condVar(fm1)
     @test abs(sum(rfu[1])) < 1.e-5
     @test length(cv) == 1
-    @test size(condVar(fm1)[1]) == (1, 1, 6)
+    @test size(cv[1]) == (1, 1, 6)
     show(IOBuffer(), fm1.optsum)
 
     @test isapprox(logdet(fm1), 8.06014522999825, atol=0.001)
@@ -133,7 +133,7 @@ end
 
     fit!(fm1);
 
-    @test objective(fm1) ≈ 237721.7687745563 atol=0.001
+    @test isapprox(objective(fm1), 237721.7687745563, atol=0.001)
     ftd1 = fitted(fm1);
     @test size(ftd1) == (73421, )
     @test isapprox(ftd1[1], 3.17876, atol=0.0001)
@@ -160,10 +160,10 @@ end
     fit!(fm)
 
     @test objective(fm) ≈ 1751.9393444647046
-    @test getθ(fm) ≈ [0.9292213074888169, 0.01816838485113137, 0.22264487095998978] atol=1.e-6
-    @test pwrss(fm) ≈ 117889.46144025437
-    @test logdet(fm) ≈ 73.90322021999222 atol=0.001
-    @test stderr(fm) ≈ [6.632257721914501, 1.5022354739749826] atol=0.0001
+    @test isapprox(getθ(fm), [0.929221307, 0.01816838, 0.22264487096], atol=1.e-6)
+    @test isapprox(pwrss(fm), 117889.46144025437)
+    @test isapprox(logdet(fm), 73.90322021999222, atol=0.001)
+    @test isapprox(stderr(fm), [6.632257721914501, 1.5022354739749826], atol=0.0001)
     @test coef(fm) ≈ [251.40510484848477,10.4672859595959]
     @test fixef(fm) ≈ [251.40510484848477,10.4672859595959]
     @test isapprox(stderr(fm), [6.632246393963571, 1.502190605041084], atol=0.01)
@@ -190,9 +190,9 @@ end
 
 @testset "d3" begin
     fm = (lmm(@formula(Y ~ 1 + U + ((1 + U) | G) + ((1 + U) | H) + ((1 + U) | I)), dat["d3"]))
-    @test pwrss(fm) ≈ 1.102179244837225e15 rtol = 1e-6
-    @test logdet(fm) ≈ 121800.70795501214 rtol = 1e-6
-    @test objective(fm) ≈ 3472948.9745031004 rtol = 1e-6
+    @test isapprox(pwrss(fm), 1.102179244837225e15, rtol = 1e-6)
+    @test isapprox(logdet(fm), 121800.70795501214, rtol = 1e-6)
+    @test isapprox(objective(fm), 3472948.9745031004, rtol = 1e-6)
 end
 
 @testset "sleepnocorr" begin
@@ -203,14 +203,14 @@ end
 
     fit!(fm);
 
-    @test deviance(fm) ≈ 1752.0032551398835 atol=0.001
-    @test objective(fm) ≈ 1752.0032551398835 atol=0.001
+    @test isapprox(deviance(fm), 1752.0032551398835, atol=0.001)
+    @test isapprox(objective(fm), 1752.0032551398835, atol=0.001)
     @test coef(fm) ≈ [251.40510484848585, 10.467285959595715]
     @test fixef(fm) ≈ [251.40510484848585, 10.467285959595715]
-    @test stderr(fm) ≈ [6.707710260366577, 1.5193083237479683] atol=0.001
-    @test getθ(fm) ≈ [0.9458106880922268, 0.22692826607677266] atol=0.0001
+    @test isapprox(stderr(fm), [6.707710260366577, 1.5193083237479683], atol=0.001)
+    @test isapprox(getθ(fm), [0.9458106880922268, 0.22692826607677266], atol=0.0001)
     @test std(fm)[1] ≈ [24.171449463289047, 5.799379721123582]
     @test std(fm)[2] ≈ [25.556130034081047]
-    @test logdet(fm) ≈ 74.46952585564611 atol=0.001
+    @test isapprox(logdet(fm), 74.46952585564611, atol=0.001)
     cor(fm)
 end

@@ -14,7 +14,7 @@ Linear mixed-effects model representation
 * `R`: a `nt × nt` matrix of matrices - the upper Cholesky factor of `Λ'AΛ+I`
 * `opt`: an [`OptSummary`](@ref) object
 """
-struct LinearMixedModel{T <: AbstractFloat} <: MixedModel
+immutable LinearMixedModel{T <: AbstractFloat} <: MixedModel
     formula::Formula
     fixefnames::Vector{String}
     wttrms::Vector

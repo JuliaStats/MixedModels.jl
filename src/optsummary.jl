@@ -17,7 +17,7 @@ Summary of an `NLopt` optimization
 * `optimizer`: the name of the optimizer used, as a `Symbol`
 * `returnvalue`: the return value, as a `Symbol`
 """
-mutable struct OptSummary{T <: AbstractFloat}
+type OptSummary{T <: AbstractFloat}
     initial::Vector{T}
     lowerbd::Vector{T}
     finitial::T

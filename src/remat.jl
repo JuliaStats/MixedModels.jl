@@ -1,5 +1,5 @@
 
-const AbstractFactor{V,R} = Union{NullableCategoricalVector{V,R},CategoricalVector{V,R},PooledDataVector{V,R}}
+@compat const AbstractFactor{V,R} = Union{NullableCategoricalVector{V,R},CategoricalVector{V,R},PooledDataVector{V,R}}
 
 """
     asfactor(f)
@@ -23,7 +23,7 @@ Representation of the model matrix for random-effects terms
 * `fnm`: the name of the grouping factor as a `Symbol`
 * `cnms`: a `Vector` of column names (row names after transposition) of `z`
 """
-struct ReMat{T<:AbstractFloat,V,R}
+immutable ReMat{T<:AbstractFloat,V,R}
     f::AbstractFactor{V,R}
     z::Matrix{T}
     fnm::Symbol
