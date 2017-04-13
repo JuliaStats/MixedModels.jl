@@ -16,7 +16,6 @@ Members:
 - `η`: the linear predictor
 - `wt`: vector of prior case weights, a value of `T[]` indicates equal weights.
 """
-
 immutable GeneralizedLinearMixedModel{T <: AbstractFloat} <: MixedModel
     LMM::LinearMixedModel{T}
     β::Vector{T}
@@ -46,11 +45,13 @@ function glmm(f::Formula, fr::AbstractDataFrame, d::Distribution, l::Link; wt=[]
     wts = isempty(wt) ? ones(nrow(fr)) : Array(wt)
         # the weights argument is forced to be non-empty in the lmm as it will be used later
     LMM = lmm(f, fr; weights = wts)
-    setθ!(LMM, getθ(LMM)) |> cfactor!
-    A, R, trms, u, y = LMM.A, LMM.R, LMM.trms, ranef(LMM), copy(model_response(LMM))
+    updateL!(setθ!(LMM, getθ(LMM)))
+    trms = LMM.trms
+    u = fill!.(ranef(LMM), 0)
+    y = copy(model_response(LMM))
     wts = oftype(y, wts)
             # fit a glm to the fixed-effects only
-    gl = glm(LMM.trms[end - 1], y, d, l; wts = wts, offset = zeros(y))
+    gl = glm(trms[end - 1], y, d, l; wts = wts, offset = zeros(y))
     r = gl.rr
     β = coef(gl)
     res = GeneralizedLinearMixedModel(LMM, β, copy(β), getθ(LMM), copy.(u), u,
@@ -74,7 +75,7 @@ is defined as the squared length of the conditional modes, `u`, plus the determi
 of `Λ'Z'ZΛ + 1`, plus the sum of the squared deviance residuals.
 """
 LaplaceDeviance{T}(m::GeneralizedLinearMixedModel{T})::T =
-    sum(m.resp.devresid) + logdet(m) + mapreduce(sumabs2, +, m.u)
+    sum(m.resp.devresid) + logdet(m) + mapreduce(u -> sum(abs2, u), +, m.u)
 
 """
     LaplaceDeviance!(m::GeneralizedLinearMixedModel)
@@ -101,7 +102,7 @@ function StatsBase.loglikelihood{T}(m::GeneralizedLinearMixedModel{T})
             accum += logpdf(D(μ), y)
         end
     end
-    accum - (mapreduce(sumabs2, + , m.u) + logdet(m)) / 2
+    accum - (mapreduce(u -> sum(abs2, u), + , m.u) + logdet(m)) / 2
 end
 
 lowerbd(m::GeneralizedLinearMixedModel) = vcat(fill(-Inf, size(m.β)), lowerbd(m.LMM))
@@ -137,7 +138,11 @@ Passing `verbose = true` provides verbose output of the iterations.
 """
 function pirls!{T}(m::GeneralizedLinearMixedModel{T}, varyβ::Bool=false, verbose::Bool=false)
     iter, maxiter, obj = 0, 100, T(-Inf)
-    u₀, u, β, β₀, lm = m.u₀, m.u, m.β, m.β₀, m.LMM
+    u₀ = m.u₀
+    u = m.u
+    β = m.β
+    β₀ = m.β₀
+    lm = m.LMM
     for j in eachindex(u)         # start from u all zeros
         copy!(u₀[j], fill!(u[j], 0))
     end
@@ -147,7 +152,7 @@ function pirls!{T}(m::GeneralizedLinearMixedModel{T}, varyβ::Bool=false, verbos
 
     while iter < maxiter
         iter += 1
-        varyβ && A_ldiv_B!(feR(m), copy!(β, lm.R[end - 1, end]))
+        varyβ && Ac_ldiv_B!(feL(m), copy!(β, lm.L[end, end - 1]))
         ranef!(u, m.LMM, β, true) # solve for new values of u
         obj = LaplaceDeviance!(m) # update GLM vecs and evaluate Laplace approx
         verbose && @show(iter, obj)
@@ -200,7 +205,7 @@ function setθ!{T}(m::GeneralizedLinearMixedModel, v::AbstractVector{T})
     m
 end
 
-sdest{T <: AbstractFloat}(m::GeneralizedLinearMixedModel{T}) = one(T)
+sdest{T <: AbstractFloat}(m::GeneralizedLinearMixedModel{T}) = convert(T, NaN)
 
 """
     fit!(m::GeneralizedLinearMixedModel[, verbose = false, fast = false])
@@ -216,22 +221,29 @@ function StatsBase.fit!{T}(m::GeneralizedLinearMixedModel{T}; verbose::Bool=fals
 
 ## FIXME: fast should not be passed as an argument.  Whether or not β is optimized by PIRLS
 ## should be determined by the length of optsum.initial, lowerbd and final.
-
-    fast || fit!(m, verbose=verbose, fast=true) # use the fast fit first then slow fit to refine
-
-    β, lm = m.β, m.LMM
+    β = m.β
+    lm = m.LMM
     optsum = lm.optsum
-    pars = fast ? copy(optsum.initial) : vcat(β, optsum.initial)
-    opt = NLopt.Opt(optsum.optimizer, length(pars))
+    if !fast
+        fit!(m, verbose=verbose, fast=true)
+        optsum.lowerbd = vcat(fill!(similar(β), -Inf), optsum.lowerbd)
+        optsum.initial = vcat(β, m.θ)
+        optsum.final = copy(optsum.initial)
+        optsum.initial_step = vcat(stderr(m), fill(T(0.05), length(m.θ)))
+    end
+    x = optsum.final
+    copy!(x, optsum.initial)
+    opt = NLopt.Opt(optsum.optimizer, length(x))
 
-    lb = fast ? optsum.lowerbd : vcat(fill!(similar(β), -Inf), optsum.lowerbd)
-    NLopt.lower_bounds!(opt, lb)
-
+    NLopt.lower_bounds!(opt, optsum.lowerbd)
     NLopt.ftol_rel!(opt, optsum.ftol_rel) # relative criterion on objective
     NLopt.ftol_abs!(opt, optsum.ftol_abs) # absolute criterion on objective
     NLopt.xtol_rel!(opt, optsum.ftol_rel) # relative criterion on parameter values
-#    NLopt.xtol_abs!(opt, optsum.xtol_abs) # absolute criterion on parameter values
-
+    if isempty(optsum.initial_step)
+        optsum.initial_step = NLopt.initial_step(opt, optsum.initial, similar(x))
+    else
+        NLopt.initial_step!(opt, optsum.initial_step)
+    end
     setpar! = fast ? setθ! : setβθ!
     feval = 0
     function obj(x::Vector{T}, g::Vector{T})
@@ -243,11 +255,11 @@ function StatsBase.fit!{T}(m::GeneralizedLinearMixedModel{T}; verbose::Bool=fals
         val
     end
     NLopt.min_objective!(opt, obj)
-    fmin, xmin, ret = NLopt.optimize(opt, pars)
+    fmin, xmin, ret = NLopt.optimize(opt, x)
     ## check if very small parameter values bounded below by zero can be set to zero
     xmin_ = copy(xmin)
     for i in eachindex(xmin_)
-        if lb[i] == zero(T) && zero(T) < xmin_[i] < T(0.001)
+        if iszero(optsum.lowerbd[i]) && zero(T) < xmin_[i] < T(0.001)
             xmin_[i] = zero(T)
         end
     end
@@ -269,13 +281,7 @@ function StatsBase.fit!{T}(m::GeneralizedLinearMixedModel{T}; verbose::Bool=fals
     m
 end
 
-function VarCorr(m::GeneralizedLinearMixedModel)
-    Λ, trms = m.LMM.Λ, m.LMM.trms
-    VarCorr(Λ, [string(trms[i].fnm) for i in eachindex(Λ)],
-        [trms[i].cnms for i in eachindex(Λ)], NaN)
-end
-
-function Base.show(io::IO, m::GeneralizedLinearMixedModel) # not tested
+function Base.show(io::IO, m::GeneralizedLinearMixedModel)
     println(io, "Generalized Linear Mixed Model fit by minimizing the Laplace approximation to the deviance")
     println(io, "  ", m.LMM.formula)
     println(io, "  Distribution: ", Distribution(m.resp))

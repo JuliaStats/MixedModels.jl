@@ -3,21 +3,16 @@
     LD(A::HBlikDiag)
     LD(A::DenseMatrix)
 
-Return the value of `log(det(triu(A)))` calculated in place.
+Return `log(det(tril(A)))` evaluated in place.
 """
-LD(d::Diagonal) = sum(log, d.diag)
+LD{T<:Number}(d::Diagonal{T}) = sum(log, d.diag)
 
-function LD(d::HBlkDiag)
-    aa = d.arr
-    p, q, k = size(aa)
-    pq = p * q
-    dd = diagind(p, q)
-    r = sum(log(aa[i]) for i in dd)
-    for j in 2:k
-        dd += pq
-        r += sum(log(aa[i]) for i in dd)
+function LD{T}(d::Diagonal{LowerTriangular{T, Matrix{T}}})
+    s = log(one(T))
+    for dd in d.diag, i in diagind(dd)
+        s += log(dd[i])
     end
-    r
+    s
 end
 
 LD(d::DenseMatrix) = sum(i -> log(d[i]), diagind(d))
@@ -27,11 +22,4 @@ LD(d::DenseMatrix) = sum(i -> log(d[i]), diagind(d))
 
 Return the value of `log(det(Λ'Z'ZΛ + I))` calculated in place.
 """
-function Base.logdet{T}(m::LinearMixedModel{T})
-    k, R = length(m.Λ), m.R
-    res = zero(T)
-    for i in 1 : length(m.Λ)
-        res += T(LD(R[i, i]))
-    end
-    2 * res
-end
+logdet(m::LinearMixedModel) = 2sum(LD, m.L.data.blocks[k,k] for k in eachindex(m.Λ))

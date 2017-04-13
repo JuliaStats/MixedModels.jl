@@ -2,19 +2,22 @@ __precompile__()
 
 module MixedModels
 
-using CategoricalArrays, DataArrays, DataFrames, Distributions, GLM, NLopt, Showoff, StatsBase
+using ArgCheck, CategoricalArrays, Compat, DataArrays, DataFrames, Distributions, GLM
+using NLopt, Showoff, StatsBase
 using StatsFuns: log2π
 using NamedArrays: NamedArray, setnames!
+using Base.LinAlg: BlasFloat, BlasReal, HermOrSym, PosDefException, checksquare, copytri!
 
-import StatsBase: coef, coeftable, dof, deviance, fit!, fitted, loglikelihood,
-    model_response, nobs, vcov
-import Base: cor, cond, convert, std
+import Base: cor, cond, convert, full, logdet, std, A_mul_B!, Ac_mul_B!, A_mul_Bc!
+import DataFrames: @formula
 import Distributions: Bernoulli, Binomial, Poisson, Gamma
 import GLM: LogitLink, LogLink, InverseLink
-import DataFrames: @~
+import Base.LinAlg: A_mul_B!, A_mul_Bc!, Ac_mul_B!, A_ldiv_B!, Ac_ldiv_B!, A_rdiv_B!, A_rdiv_Bc!
+import StatsBase: coef, coeftable, dof, deviance, fit!, fitted, loglikelihood,
+    model_response, nobs, vcov
 
 export
-       @~,
+       @formula,
        Bernoulli,
        Binomial,
        Poisson,
@@ -27,13 +30,12 @@ export
        MixedModel,
        OptSummary,
        ReMat,
-       ScalarReMat,
+#       ScalarReMat,
        VarCorr,
-       VectorReMat,
+#       VectorReMat,
 
        bootstrap,
        bootstrap!,
-       cfactor!,
        coef,
        coeftable,
        cond,
@@ -61,24 +63,23 @@ export
        setθ!,
        simulate!,  # simulate a new response in place
        std,
+       updateL!,   # update the lower-triangular, blocked matrix L to a new θ
        varest,     # estimate of the residual variance
        vcov
 
-abstract MixedModel <: RegressionModel # model with fixed and random effects
+@compat abstract type MixedModel <: RegressionModel end # model with fixed and random effects
 
 import Base: ==, *
 
 include("blockmats.jl")
 include("linalg.jl")
-include("cfactor.jl")
+include("optsummary.jl")
 include("remat.jl")
-include("paramlowertriangular.jl")
-include("inject.jl")
 include("pls.jl")
 include("logdet.jl")
 include("simulate.jl")
 include("PIRLS.jl")
-#include("glm.jl")
+include("VarCorr.jl")
 include("mixedmodel.jl")
 
 end # module

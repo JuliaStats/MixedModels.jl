@@ -1,151 +1,88 @@
 """
-    HBlkDiag
+    HeteroBlkdMatrix
 
-A homogeneous block diagonal matrix
-
-These are "homogeneous" in the sense that all the diagonal blocks are of
-the same size.  The `k` diagonal blocks of size `r × s` are stored as an
-`r × s × k` array.
+A matrix composed of heterogenous blocks.  Blocks can be sparse, dense or
+diagonal.
 """
-immutable HBlkDiag{T} <: AbstractMatrix{T}
-    arr::Array{T,3}
+
+immutable HeteroBlkdMatrix <: AbstractMatrix{AbstractMatrix}
+    blocks::Matrix{AbstractMatrix}
+end
+Base.size(A::HeteroBlkdMatrix) = size(A.blocks)
+Base.getindex(A::HeteroBlkdMatrix, i::Int) = A.blocks[i]
+Base.setindex!(A::HeteroBlkdMatrix, X, i::Integer) = setindex!(A.blocks, X, i)
+@compat Base.IndexStyle(A::HeteroBlkdMatrix) = IndexLinear()
+
+"""
+    MaskedLowerTri{T<:AbstractFloat}
+
+A `LowerTriangular{T, Matrix{T}}` and an integer vector, `mask`, of the potential non-zero elements.
+
+In linear algebra operations an object `A` of this type acts like `I ⊗ A`,
+for a suitably sized `I`.  These are the pattern matrices for blocks of `Λ`.
+"""
+immutable MaskedLowerTri{T<:AbstractFloat}
+    m::LowerTriangular{T,Matrix{T}}
+    mask::Vector{Int}
+end
+function MaskedLowerTri(v::Vector, T::DataType)
+    n = sum(v)
+    inds = reshape(1:abs2(n), (n, n))
+    offset = 0
+    mask = sizehint!(Int[], (n * (n + 1)) >> 1)
+    for k in v
+        for j in 1:k, i in j:k
+            push!(mask, inds[offset + i, offset + j])
+        end
+        offset += k
+    end
+    MaskedLowerTri(LowerTriangular(eye(T, n)), mask)
 end
 
-function Base.cholfact!(A::HBlkDiag, uplo::Symbol=:U)
-    Aa = A.arr
-    r, s, k = size(Aa)
-    if r != s
-        throw(ArgumentError("A must be square"))
+cond(A::MaskedLowerTri) = cond(A.m)
+
+nθ(A::MaskedLowerTri) = length(A.mask)
+
+"""
+    getθ!{T}(v::AbstractVector{T}, A::MaskedLowerTri{T})
+
+Overwrite `v` with the elements of the blocks in the lower triangle of `A` (column-major ordering)
+"""
+function getθ!{T<:AbstractFloat}(v::StridedVector{T}, A::MaskedLowerTri{T})
+    @argcheck length(v) == length(A.mask) DimensionMismatch
+    mask = A.mask
+    m = A.m.data
+    @inbounds for i in eachindex(mask)
+        v[i] = m[mask[i]]
     end
-    for j in 1:k
-        cholfact!(view(Aa, :, :, j), uplo)
+    v
+end
+
+"""
+    getθ(A::MaskedLowerTri{T})
+
+Return a vector of the elements of the lower triangle blocks in `A` (column-major ordering)
+"""
+getθ(A::MaskedLowerTri) = A.m.data[A.mask]
+getθ(A::AbstractVector) = mapreduce(getθ, vcat, A)
+
+"""
+    lowerbd{T}(A::MaskedLowerTri{T})
+
+Return the vector of lower bounds on the parameters, `θ`.
+
+These are the elements in the lower triangle in column-major ordering.
+Diagonals have a lower bound of `0`.  Off-diagonals have a lower-bound of `-Inf`.
+"""
+lowerbd{T}(v::Vector{MaskedLowerTri{T}}) = mapreduce(lowerbd, vcat, v)
+lowerbd{T}(A::MaskedLowerTri{T}) = T[x ∈ diagind(A.m.data) ? zero(T) : convert(T, -Inf) for x in A.mask]
+
+function setθ!{T}(A::MaskedLowerTri{T}, v::AbstractVector{T})
+    @argcheck length(v) == length(A.mask) DimensionMismatch
+    m = A.m.data
+    mask = A.mask
+    @inbounds for i in eachindex(mask)
+        m[mask[i]] = v[i]
     end
     A
-end
-
-Base.copy!{T}(d::HBlkDiag{T}, s::HBlkDiag{T}) = (copy!(d.arr, s.arr); d)
-
-Base.copy{T}(s::HBlkDiag{T}) = HBlkDiag(copy(s.arr))
-
-Base.eltype{T}(A::HBlkDiag{T}) = T
-
-function Base.full(A::HBlkDiag)
-    aa = A.arr
-    res = zeros(eltype(aa), size(A))
-    p, q, l = size(aa)
-    for b in 1:l
-        bm1 = b - 1
-        for j in 1:q, i in 1:p
-            res[bm1 * p + i, bm1 * q + j] = aa[i, j, b]
-        end
-    end
-    res
-end
-
-function Base.getindex{T}(A::HBlkDiag{T}, i::Integer, j::Integer)
-    Aa = A.arr
-    r, s, k = size(Aa)
-    bi, ri = divrem(i - 1, r)
-    bj, rj = divrem(j - 1, s)
-    if bi ≠ bj  # i and j are not in a diagonal block
-        return zero(T)
-    end
-    Aa[ri + 1, rj + 1, bi + 1]
-end
-
-Base.size(A::HBlkDiag) = ((r, s, k) = size(A.arr); (r * k, s * k))
-
-function Base.size(A::HBlkDiag,i::Integer)
-    i < 1 && throw(BoundsError())
-    i > 2 && return 1
-    r, s, k = size(A.arr)
-    (i == 1 ? r : s) * k
-end
-
-function Base.LinAlg.A_ldiv_B!{T}(A::UpperTriangular{T,HBlkDiag{T}}, B::DenseVecOrMat{T})
-    Aa = A.data.arr
-    r, s, t = size(Aa)
-    if r ≠ s
-        throw(ArgumentError("A must be square"))
-    end
-    m, n = size(B, 1), size(B, 2)  # need to call size twice in case B is a vector
-    if m ≠ r * t
-        throw(DimensionMismatch("size(A, 2) ≠ size(B, 1)"))
-    end
-    scm = Array(T, (r, r))
-    scv = Array(T, (r, ))
-    for k in 1 : t
-        offset = (k - 1) * r
-        for j in 1 : r, i in 1 : j
-            scm[i, j] = Aa[i, j, k]
-        end
-        for j in 1 : n
-            for i in 1 : r
-                scv[i] = B[offset + i, j]
-            end
-            BLAS.trsv!('U', 'N', 'N', scm, scv)
-            for i in 1 : r
-                B[offset + i, j] = scv[i]
-            end
-        end
-    end
-    A
-end
-
-function LinAlg.Ac_ldiv_B!{T}(A::UpperTriangular{T,HBlkDiag{T}}, B::DenseMatrix{T})
-    m, n = size(B)
-    aa = A.data.arr
-    r, s, t = size(aa)
-    if m ≠ LinAlg.checksquare(A)
-        throw(DimensionMismatch("size(A,2) ≠ size(B,1)"))
-    end
-    scv = Array(T, (r,))
-    scm = Array(T, (r, r))
-    for k in 1:t
-        for j in 1 : r, i in 1 : j
-            scm[i, j] = aa[i, j, k]
-        end
-        rowoff = (k - 1) * r
-        for j in 1:n
-            for i in 1 : r
-                scv[i] = B[rowoff + i, j]
-            end
-            BLAS.trsv!('U', 'T', 'N', scm, scv)
-            for i in 1 : r
-                B[rowoff + i, j] = scv[i]
-            end
-        end
-    end
-    B
-end
-
-function LinAlg.Ac_ldiv_B!{T}(A::UpperTriangular{T,HBlkDiag{T}}, B::SparseMatrixCSC{T})
-    m, n = size(B)
-    aa = A.data.arr
-    r, s, t = size(aa)
-    if r ≠ s || r * t ≠ m
-        throw(DimensionMismatch("size(A,2) ≠ size(B,1)"))
-    end
-    rows = rowvals(B)
-    vals = nonzeros(B)
-    for j in 1 : n
-        nzrj = nzrange(B, j)
-        q, r = divrem(length(nzrj), s)
-        if r ≠ 0
-            error("length(nzrange(B, $j)) is not divisible by $s")
-        end
-        for b in 1 : q
-            subrng = nzrj[(b - 1) * s + (1 : s)]
-            rr = view(rows, subrng)
-            if any(d -> d ≠ 1, diff(rr))
-                error("rows of block $b in column $j are not contiguous")
-            end
-            q1, r1 = divrem(rr[end], s)
-            if r1 ≠ 0
-                error("rows of block $b in column $j do not end in a multiple of $s")
-            end
-            BLAS.trsv!('U', 'T', 'N', view(aa, :, :, q1), view(vals, subrng))
-        end
-    end
-    B
 end

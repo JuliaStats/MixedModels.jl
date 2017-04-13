@@ -37,25 +37,22 @@ and `θᵢ, i = 1,...,k` the covariance parameters.
 `β::Vector{T}`, `σ::T`, and `θ::Vector{T}` are the values of the parameters in `m`
 for simulation of the responses.
 """
-function bootstrap{T}(N, m::LinearMixedModel{T};
-    β=fixef(m), σ=sdest(m), θ=getθ(m))
+function bootstrap{T}(N, m::LinearMixedModel{T}; β = fixef(m), σ = sdest(m), θ = getθ(m))
     y₀ = copy(model_response(m)) # to restore original state of m
     p = size(m.trms[end - 1], 2)
-    length(β) == p || throw(DimensionMismatch("length(β) should be $p"))
-    k = length(getθ(m))
-    length(θ) == k || throw(DimensionMismatch("length(θ) should be $k"))
-    Λ = m.Λ
-    Λsize = [size(λ, 2) for λ in Λ]
+    @argcheck length(β) == p DimensionMismatch
+    @argcheck length(θ) == (k = length(getθ(m))) DimensionMismatch
+    Λsize = [vsize(t) for t in reterms(m)]
     cnms = vcat([:obj, :σ], Symbol.(subscriptednames('β', p)),
         Symbol.(subscriptednames('θ', k)), Symbol.(subscriptednames('σ', sum(Λsize))))
     nρ = [(l * (l - 1)) >> 1 for l in Λsize]
     if (nρtot = sum(nρ)) > 0
         append!(cnms, Symbol.(subscriptednames('ρ', nρtot)))
     end
-    dfr = DataFrame(Any[Array(T, (N,)) for _ in eachindex(cnms)], cnms)
-    scrβ, scrθ = Array(T, (p, )), Array(T, (k, ))
-    scrσ = [Array(T, (l, )) for l in Λsize]
-    scrρ = [Array(T, (l, l)) for l in Λsize]
+    dfr = DataFrame(Any[Array{T}(N) for _ in eachindex(cnms)], cnms)
+    scrβ, scrθ = Array{T}(p), Array{T}(k)
+    scrσ = [Array{T}(l) for l in Λsize]
+    scrρ = [Array{T}(l, l) for l in Λsize]
     scr = [similar(sρ) for sρ in scrρ]
     for i in 1 : N
         j = 0
@@ -68,8 +65,8 @@ function bootstrap{T}(N, m::LinearMixedModel{T};
         for x in getθ!(scrθ, m)
             dfr[j += 1][i] = x
         end
-        for l in eachindex(Λ)
-            stddevcor!(scrσ[l], scrρ[l], scr[l], LinAlg.Cholesky(Λ[l], :L))
+        for (l, λ) in enumerate(m.Λ)
+            stddevcor!(scrσ[l], scrρ[l], scr[l], LinAlg.Cholesky(λ.m.data, :L))
             for x in scrσ[l]
                 dfr[j += 1][i] = σest * x
             end
@@ -96,11 +93,9 @@ function subscriptednames(nm, len)
         [string(nm, lpad(string(j), nd, '0')) for j in 1:len]
 end
 
+
 function stddevcor!{T}(σ::Vector{T}, ρ::Matrix{T}, scr::Matrix{T}, L::LinAlg.Cholesky{T})
-    if length(σ) != (k = size(L, 2)) || size(ρ) ≠ (k, k) || size(scr) ≠ (k, k)
-        throw(DimensionMismatch(string("size(ρ) = $(size(ρ)) and size(scr) = $(size(scr)) ",
-            "should be ($k, $k) and length(σ) = $(length(σ)) should be $k")))
-    end
+    @argcheck length(σ) == (k = size(L, 2)) && size(ρ) == (k, k) && size(scr) == (k, k) DimensionMismatch
     if k == 1
         copy!(σ, L.factors)
         ρ[1, 1] = one(T)
@@ -128,6 +123,14 @@ function stddevcor!{T}(σ::Vector{T}, ρ::Matrix{T}, scr::Matrix{T}, L::LinAlg.C
     σ, ρ
 end
 
+function stddevcor{T}(L::LinAlg.Cholesky{T})
+    k = size(L, 1)
+    stddevcor!(Array{T}(k), Array{T}((k, k)), Array{T}((k, k)), L)
+end
+stddevcor{T<:AbstractFloat}(L::LowerTriangular{T}) = stddevcor(LinAlg.Cholesky(L, :L))
+stddevcor{T<:AbstractFloat}(L::UniformScaling{T}) = [abs(L.λ)], eye(T, 1)
+stddevcor{T<:AbstractFloat}(L::MaskedLowerTri{T}) = stddevcor(L.m)
+
 """
     reevaluateAend!(m::LinearMixedModel)
 
@@ -141,7 +144,7 @@ function reevaluateAend!(m::LinearMixedModel)
         A_mul_B!(wttrmn, sqrtwts, trms[end])
     end
     for i in eachindex(wttrms)
-        Ac_mul_B!(A[i, end], wttrms[i], wttrmn)
+        Ac_mul_B!(A[end, i], wttrmn, wttrms[i])
     end
     m
 end
@@ -153,12 +156,10 @@ Refit the model `m` after installing response `y`.
 
 If `y` is omitted the current response vector is used.
 """
-refit!(m::LinearMixedModel) = fit!(cfactor!(resetθ!(reevaluateAend!(m))))
+refit!(m::LinearMixedModel) = fit!(updateL!(resetθ!(reevaluateAend!(m))))
 function refit!{T}(m::LinearMixedModel{T}, y)
     resp = m.trms[end]
-    if length(y) ≠ size(resp, 1)
-        throw(DimensionMismatch("length(y) = $(length(y)), should be $(size(resp, 1))"))
-    end
+    @argcheck length(y) == size(resp, 1) DimensionMismatch
     copy!(resp, y)
     refit!(m)
 end
@@ -172,42 +173,21 @@ function resetθ!(m::LinearMixedModel)
     opt = m.optsum
     opt.feval = -1
     opt.fmin = Inf
-    setθ!(m, opt.initial) |> cfactor!
+    updateL!(setθ!(m, opt.initial))
 end
 
 """
-    unscaledre!{T}(y::Vector{T}, M::ReMat{T}, b::Matrix{T})
-
-Add unscaled random effects defined by `M` and `b` to `y`.
-"""
-function unscaledre!{T<:AbstractFloat}(y::Vector{T}, M::ScalarReMat{T}, b::Matrix{T})
-    z = M.z
-    if length(y) ≠ length(z) || size(b, 1) ≠ 1
-        throw(DimensionMismatch())
-    end
-    inds = M.f.refs
-    @inbounds for i in eachindex(y)
-        y[i] += b[inds[i]] * z[i]
-    end
-    y
-end
-
-"""
-    unscaledre!{T}(y::AbstractVector{T}, M::ReMat{T}, L::LowerTriangular{T})
+    unscaledre!{T}(y::AbstractVector{T}, M::ReMat{T}, L)
 
 Add unscaled random effects defined by `M` and `L * randn(1, length(M.f.pool))` to `y`.
 """
-function unscaledre!{T}(y::AbstractVector{T}, M::ScalarReMat{T}, L::LowerTriangular{T})
-    unscaledre!(y, M, A_mul_B!(L, randn(1, length(M.f.pool))))
-end
+function unscaledre! end
 
-function unscaledre!{T}(y::AbstractVector{T}, M::VectorReMat{T}, b::DenseMatrix{T})
+function unscaledre!{T}(y::AbstractVector{T}, M::ReMat{T}, b::DenseMatrix{T})
     Z = M.z
     k, n = size(Z)
-    l = length(M.f.pool)
-    if length(y) ≠ n || size(b) ≠ (k, l)
-        throw(DimensionMismatch("length(y) = $(length(y)), size(M) = $(size(M)), size(b) = $(size(b))"))
-    end
+    l = nlevs(M)
+    @argcheck length(y) == n && size(b) == (k, l) DimensionMismatch
     inds = M.f.refs
     for i in eachindex(y)
         ii = inds[i]
@@ -218,8 +198,11 @@ function unscaledre!{T}(y::AbstractVector{T}, M::VectorReMat{T}, b::DenseMatrix{
     y
 end
 
-unscaledre!(y::AbstractVector, M::VectorReMat, L::LowerTriangular) =
-    unscaledre!(y, M, A_mul_B!(L, randn(size(M.z, 1), length(M.f.pool))))
+function unscaledre!{T}(y::AbstractVector{T}, M::ReMat{T}, L::MaskedLowerTri{T})
+    re = randn(vsize(M), nlevs(M))
+    A_mul_B!(L, vec(re))
+    unscaledre!(y, M, re)
+end
 
 """
     simulate!(m::LinearMixedModel; β=fixef(m), σ=sdest(m), θ=getθ(m))

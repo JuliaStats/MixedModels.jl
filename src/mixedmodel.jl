@@ -1,15 +1,15 @@
 #  Functions and methods common to all MixedModel types
 
 """
-    feR(m::MixedModel)
+    feL(m::MixedModel)
 
-Return th upper Cholesky factor for the fixed-effects parameters, as an `UpperTriangular`
+Return the lower Cholesky factor for the fixed-effects parameters, as an `LowerTriangular`
 `p × p` matrix.
 """
-function feR(m::MixedModel)
-    R = lmm(m).R
-    kp1 = size(R, 1) - 1
-    UpperTriangular(R[kp1, kp1])
+function feL(m::MixedModel)
+    L = lmm(m).L
+    kp1 = size(L, 1) - 1
+    LowerTriangular(L[kp1, kp1])
 end
 
 """
@@ -52,15 +52,15 @@ end
     describeblocks(io::IO, m::MixedModel)
     describeblocks(m::MixedModel)
 
-Describe the types and sizes of the blocks in the upper triangle of `m.A` and `m.R`.
+Describe the types and sizes of the blocks in the lower triangle of `m.A` and `m.L`.
 """
 function describeblocks(io::IO, m::MixedModel)
     lm = lmm(m)
-    A, R = lm.A, lm.R
-    for j in 1:size(A,2), i in 1:j
-        println(io, i, ",", j, ": ", typeof(A[i,j]), " ", size(A[i,j]), " ", typeof(R[i,j]))
+    A = lm.A
+    L = lm.L
+    for i in 1 : size(A, 2), j in 1 : i
+        println(io, i, ",", j, ": ", typeof(A[i,j]), " ", size(A[i,j]), " ", typeof(L[i,j]))
     end
-    nothing
 end
 describeblocks(m::MixedModel) = describeblocks(Base.STDOUT, m)
 
@@ -74,12 +74,10 @@ function fnames(m::MixedModel)
     [t.fnm for t in lm.wttrms[1:length(lm.Λ)]]
 end
 
-function getθ!(v::AbstractVector, m::MixedModel)
+function getθ!{T}(v::AbstractVector{T}, m::LinearMixedModel{T})
     Λ = lmm(m).Λ
-    nl = map(nlower, Λ)
-    if length(v) ≠ sum(nl)
-        throw(DimensionMismatch("length(v) = $(length(v)) should be $(sum(nl))"))
-    end
+    nl = map(nθ, Λ)
+    @argcheck length(v) == sum(nl) DimensionMismatch
     offset = 0
     for i in eachindex(nl)
         nli = nl[i]
@@ -89,10 +87,8 @@ function getθ!(v::AbstractVector, m::MixedModel)
     v
 end
 
-function getθ(m::MixedModel)
-    Λ = lmm(m).Λ
-    getθ!(Array(eltype(Λ[1]), sum(A -> nlower(A), Λ)), m)
-end
+getΘ{T}(m::GeneralizedLinearMixedModel{T}) = getΘ(m.LMM)
+getθ{T}(m::LinearMixedModel{T}) = getθ!(Array{T}(sum(A -> nθ(A), m.Λ)), m)
 
 """
     grplevels(m::MixedModel)
@@ -104,6 +100,10 @@ function grplevels(m::MixedModel)
     [length(lm.trms[i].f.pool) for i in eachindex(lm.Λ)]
 end
 
+nreterms(m::MixedModel) = length(m.Λ)
+
+reterms(m::MixedModel) = filter(t -> isa(t, ReMat), m.trms)
+
 """
     ranef!{T}(v::Vector{Matrix{T}}, m::MixedModel{T}, β, uscale::Bool)
 
@@ -113,61 +113,51 @@ If `uscale` is `true` the random effects are on the spherical (i.e. `u`) scale, 
 original scale
 """
 function ranef!{T}(v::Vector, m::LinearMixedModel{T}, β::AbstractArray{T}, uscale::Bool)
-    R, Λ = m.R, m.Λ
-    k = length(Λ)        # number of random-effects terms
+    L = m.L
+    Λ = m.Λ
+    if (k = length(v)) ≠ length(Λ)
+        throw(DimensionMismatch("length(v) = $(length(v)), should be $(length(Λ))"))
+    end
     for j in 1:k
-        copy!(v[j], R[j, end])
+        Ac_mul_B!(-one(T), L[k + 1, j], β, one(T), vec(copy!(v[j], L[end, j])))
     end
-    kp1 = k + 1
-    if !isempty(β)       #  in the pirls! function for GLMMs want to skip this
-        for j in 1:k     # subtract the fixed-effects contribution
-            BLAS.gemv!('N', -1.0, R[j, kp1], β, 1.0, vec(v[j]))
-        end
-    end
-    for j in k:-1:1
-        Rjj = R[j, j]
-        uj = vec(v[j])
-        LinAlg.A_ldiv_B!(isa(Rjj, Diagonal) ? Rjj : UpperTriangular(Rjj), uj)
-        for i in 1:(j - 1)
-            Rij = R[i, j]
-            if isa(Rij, StridedMatrix{T})
-                BLAS.gemv!('N', -one(T), Rij, uj, one(T), vec(v[i]))
-            else
-                A_mul_B!(-one(T), Rij, uj, one(T), vec(v[i]))
-            end
+    for i in k: -1 :1
+        Lii = L[i, i]
+        vi = vec(v[i])
+        Ac_ldiv_B!(isa(Lii, Diagonal) ? Lii : LowerTriangular(Lii), vi)
+        for j in 1:(i - 1)
+            Ac_mul_B!(-one(T), L[i, j], vi, one(T), vec(v[j]))
         end
     end
     if !uscale
         for j in 1:k
-            A_mul_B!(Λ[j], v[j])
+            A_mul_B!(Λ[j], vec(v[j]))
         end
     end
     v
 end
 
 function ranef!(v::Vector, m::LinearMixedModel, uscale::Bool)
-    ranef!(v, m, feR(m) \ vec(m.R[end-1, end]), uscale)
+    ranef!(v, m, Ac_ldiv_B(feL(m), vec(copy(m.L[end, end - 1]))), uscale)
 end
 
 """
     ranef{T}(m::MixedModel{T}, uscale=false)
 
-Returns, as a `Vector{Matrix{T}}`, the conditional modes of the random effects in model `m`.
+Returns, as a `OrderedDict{}`, the conditional modes of the random effects in model `m`.
 
 If `uscale` is `true` the random effects are on the spherical (i.e. `u`) scale, otherwise on the
 original scale.
 """
 function ranef(m::MixedModel; uscale=false, named=false)
-    lm = lmm(m)
-    Λ, trms = lm.Λ, lm.trms
+    LMM = lmm(m)
+    trms = LMM.trms
     T = eltype(trms[end])
     v = Matrix{T}[]
-    for i in eachindex(Λ)
-        l = size(Λ[i], 1)
-        k = size(trms[i], 2)
-        push!(v, Array(T, (l, div(k, l))))
+    for trm in filter(t -> isa(t, ReMat), trms)
+        push!(v, Array{T}((vsize(trm), nlevs(trm))))
     end
-    ranef!(v, lm, uscale)
+    ranef!(v, LMM, uscale)
     named || return v
     vnmd = NamedArray.(v)
     for (trm, vnm) in zip(trms, vnmd)
@@ -183,8 +173,8 @@ end
 Returns the estimated covariance matrix of the fixed-effects estimator.
 """
 function StatsBase.vcov(m::MixedModel)
-    Rinv = inv(feR(m))
-    varest(m) * (Rinv * Rinv')
+    Linv = inv(feL(m))
+    varest(m) * (Linv'Linv)
 end
 
 """
@@ -196,21 +186,6 @@ function StatsBase.cor(m::MixedModel)
     vc = vcov(m)
     scl = [√(inv(vc[i])) for i in diagind(vc)]
     scale!(scl, scale!(vc, scl))
-end
-
-function convert(::Type{LinAlg.Cholesky}, m::MixedModel)
-    R = lmm(m).R
-    nblk = size(R, 2) - 1
-    sizes = [size(R[1, j], 2) for j in 1 : nblk]
-    offsets = unshift!(cumsum(sizes), 0)
-    res = zeros(eltype(R[1, end]), (offsets[end], offsets[end]))
-    for j in 1 : nblk
-        jinds = (1 : sizes[j]) + offsets[j]
-        for i in 1 : j
-            copy!(view(res, (1 : sizes[i]) + offsets[i], jinds), R[i, j])
-        end
-    end
-    LinAlg.Cholesky(res, 'U')
 end
 
 """
@@ -235,16 +210,17 @@ function condVar(m::MixedModel)
     lm = lmm(m)
     Λ = lm.Λ
     if length(Λ) > 1
-        throw(ArgumentError(
-            "code for more than one term not yet written"))
+        throw(ArgumentError("code for more than one term not yet written"))
     end
-    R = lm.R[1,1]
-    res = Array{eltype(R),3}[]
-    if isa(R, Diagonal)
-        push!(res, reshape(abs2.(inv.(R.diag) .* (Λ[1][1])), (1,1,size(R,1))))
+    λ = Λ[1].m.data
+    L = lm.L[1,1]
+    res = Array{eltype(λ),3}[]
+    if isa(L, Diagonal) && all(d -> size(d) == (1,1), L.diag) && length(λ) == 1
+        l1 = λ[1]
+        Ld = L.diag
+        push!(res, reshape([abs2(l1 / d[1]) for d in Ld], (1, 1, length(Ld))))
     else
-        throw(ArgumentError(
-            "code for vector-value random-effects not yet written"))
+        throw(ArgumentError("code for vector-value random-effects not yet written"))
     end
-    varest(m) * res
+    res *= varest(m)
 end
