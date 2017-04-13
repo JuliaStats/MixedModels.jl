@@ -1,7 +1,7 @@
 julia 0.5
 ArgCheck
 CategoricalArrays
-Compat 0.20
+Compat 0.19.0
 DataArrays
 DataStructures
 DataFrames
