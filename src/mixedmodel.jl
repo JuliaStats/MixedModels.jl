@@ -69,10 +69,7 @@ describeblocks(m::MixedModel) = describeblocks(Base.STDOUT, m)
 
 Returns the names of the grouping factors for the random-effects terms.
 """
-function fnames(m::MixedModel)
-    lm = lmm(m)
-    [t.fnm for t in lm.wttrms[1:length(lm.Λ)]]
-end
+fnames(m::MixedModel) = map(x -> x.fnm, reterms(m))
 
 function getθ!{T}(v::AbstractVector{T}, m::LinearMixedModel{T})
     Λ = lmm(m).Λ
@@ -95,14 +92,11 @@ getθ{T}(m::LinearMixedModel{T}) = getθ!(Array{T}(sum(A -> nθ(A), m.Λ)), m)
 
 Returns the number of levels in the random-effects terms' grouping factors.
 """
-function grplevels(m::MixedModel)
-    lm = lmm(m)
-    [length(lm.trms[i].f.pool) for i in eachindex(lm.Λ)]
-end
+grplevels(m::MixedModel) = nlevs.(reterms(m))
 
-nreterms(m::MixedModel) = length(m.Λ)
+nreterms(m::MixedModel) = sum(t -> isa(t, ReMat), lmm(m).trms)
 
-reterms(m::MixedModel) = filter(t -> isa(t, ReMat), m.trms)
+reterms(m::MixedModel) = convert(Vector{ReMat}, filter(t -> isa(t, ReMat), lmm(m).trms))
 
 """
     ranef!{T}(v::Vector{Matrix{T}}, m::MixedModel{T}, β, uscale::Bool)

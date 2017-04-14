@@ -1,4 +1,3 @@
-
 @compat const AbstractFactor{V,R} = Union{NullableCategoricalVector{V,R},CategoricalVector{V,R},PooledDataVector{V,R}}
 
 """
@@ -137,13 +136,24 @@ function Base.Ac_mul_B(A::ReMat, B::DenseVecOrMat)
     Ac_mul_B!(zeros(eltype(B), isa(B, Vector) ? (k,) : (k, size(B, 2))), A, B)
 end
 
+function Ac_mul_B!{T}(C::Diagonal{T}, A::ReMat{T}, B::ReMat{T})
+    @argcheck A === B && vsize(A) == 1
+    Az = A.z
+    d = C.diag
+    fill!(d, zero(T))
+    refs = A.f.refs
+    for i in eachindex(refs)
+        d[refs[i]] += abs2(Az[i])
+    end
+    C
+end
+
 function Ac_mul_B!{T}(C::Diagonal{Matrix{T}}, A::ReMat{T}, B::ReMat{T})
-    A === B || throw(ArgumentError("method only makes sense for A === B"))
+    @argcheck A === B && all(size.(C.diag, 2) .== vsize(A))
     Az = A.z
     l, n = size(Az)
     d = C.diag
     fill!.(d, zero(T))
-    all(size.(d, 2) .== l) || throw(ArgumentError("A and C do not conform"))
     refs = A.f.refs
     for i in eachindex(refs)
         rankUpdate!(view(Az, :, i), Hermitian(d[refs[i]], :L))
@@ -155,7 +165,11 @@ end
 function Base.Ac_mul_B{T}(A::ReMat{T}, B::ReMat{T})
     if A === B
         l = vsize(A)
-        return Ac_mul_B!(Diagonal([zeros(T, (l,l)) for _ in 1:nlevs(A)]), A, A)
+        if l == 1
+            return Ac_mul_B!(Diagonal(Vector{T}(nlevs(A))), A, A)
+        else
+            return Ac_mul_B!(Diagonal([zeros(T, (l,l)) for _ in 1:nlevs(A)]), A, A)
+        end
     end
     Az = A.z
     Bz = B.z

@@ -23,33 +23,41 @@ immutable VarCorr
 end
 function VarCorr(m::MixedModel)
     LMM = lmm(m)
-    Λ, trms, fnms, cnms = LMM.Λ, LMM.trms, Symbol[], Vector{String}[]
+    Λ = LMM.Λ
+    trms = LMM.trms
+    fnms = Symbol[]
+    cnms = Vector{String}[]
     T = eltype(Λ[1])
     σ, ρ = Vector{T}[], Matrix{T}[]
+    ## FIXME Clean this up by mapping extractor functions
     for i in eachindex(Λ)
-        σi, ρi = stddevcor(Λ[i])
-        push!(σ, σi)
-        push!(ρ, ρi)
-        trmi = trms[i]
-        push!(fnms, trmi.fnm)
-        push!(cnms, trmi.cnms)
+        λ = Λ[i]
+        if !isa(λ, Identity)
+            σi, ρi = stddevcor(λ)
+            push!(σ, σi)
+            push!(ρ, ρi)
+            trmi = trms[i]
+            push!(fnms, trmi.fnm)
+            push!(cnms, trmi.cnms)
+        end
     end
     VarCorr(σ, ρ, fnms, cnms, sdest(m))
 end
 
 function Base.show(io::IO, vc::VarCorr)
     # FIXME: Do this one term at a time
-    fnms = isfinite(vc.s) ? vcat(vc.fnms,"Residual") : vc.fnms
-    nmwd = maximum(map(strwidth, string.(fnms))) + 1
-    write(io, "Variance components:\n")
+    fnms = vc.fnms
     stdm = vc.σ
     cor = vc.ρ
     cnms = reduce(vcat, vc.cnms)
     if isfinite(vc.s)
+        push!(fnms,"Residual")
         push!(stdm, [1.])
-        stdm *= vc.s
+        scale!(stdm, vc.s)
         push!(cnms, "")
     end
+    nmwd = maximum(map(strwidth, string.(fnms))) + 1
+    write(io, "Variance components:\n")
     cnmwd = max(6, maximum(map(strwidth, cnms))) + 1
     tt = vcat(stdm...)
     vars = showoff(abs2.(tt), :plain)
@@ -67,7 +75,7 @@ function Base.show(io::IO, vc::VarCorr)
         stdmi = stdm[i]
         write(io, ' ')
         write(io, rpad(fnms[i], nmwd))
-        write(io, rpad(cnms[i], cnmwd))
+        write(io, rpad(cnms[ind], cnmwd))
         write(io, lpad(vars[ind], varwd))
         write(io, lpad(stds[ind], stdwd))
         ind += 1

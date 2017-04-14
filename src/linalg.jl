@@ -25,7 +25,6 @@ function cholUnblocked!{T<:BlasFloat}(A::Matrix{T}, ::Type{Val{:L}})
         A[1] < zero(T) && throw(PosDefException(1))
         A[1] = sqrt(A[1])
     elseif n == 2
-        A[1] < zero(T) && throw(PosDefException(1))
         A[1] = sqrt(A[1])
         A[2] /= A[1]
         A[4] = sqrt(A[4] - abs2(A[2]))
@@ -154,7 +153,7 @@ end
 
 function scaleInflate!{T<:AbstractFloat}(Ljj::Matrix{T}, Ajj::Diagonal{T}, Λj::UniformScaling{T})
     Ad = Ajj.diag
-    @assert length(Ad) == checksquare(Ljj)
+    @argcheck length(Ad) == checksquare(Ljj) DimensionMismatch
     lambsq = abs2(Λj.λ)
     fill!(Ljj, zero(T))
     for (j, jj) in zip(eachindex(Ad), diagind(Ljj))
@@ -163,14 +162,19 @@ function scaleInflate!{T<:AbstractFloat}(Ljj::Matrix{T}, Ajj::Diagonal{T}, Λj::
     Ljj
 end
 
+function scaleInflate!{T}(Ljj::Matrix{T}, Ajj::Matrix{T}, Λj::Identity{T})
+    @argcheck size(Ljj) == size(Ajj) DimensionMismatch
+    copy!(Ljj, Ajj)
+end
+
 function scaleInflate!{T<:AbstractFloat}(Ljj::Diagonal{LowerTriangular{T,Matrix{T}}},
     Ajj::Diagonal{Matrix{T}}, Λj::MaskedLowerTri{T})
-    λ = LowerTriangular(Λj.m)
+    λ = Λj.m
     Ldiag = Ljj.diag
     Adiag = Ajj.diag
     nblk = length(Ldiag)
-    @assert length(Adiag) == nblk
-    for i in 1:nblk
+    @argcheck length(Adiag) == length(Ldiag)
+    for i in eachindex(Ldiag)
         Ldi = Ac_mul_B!(λ, A_mul_B!(copy!(Ldiag[i].data, Adiag[i]), λ))
         for k in diagind(Ldi)
             Ldi[k] += one(T)
@@ -182,98 +186,20 @@ end
 function scaleInflate!{T<:AbstractFloat}(Ljj::Matrix{T}, Ajj::Diagonal{Matrix{T}},
     Λj::MaskedLowerTri{T})
     Adiag = Ajj.diag
-    @argcheck size(Ljj, 2) == sum(size.(Adiag, 2))
-    λ = LowerTriangular(Λj.m)
-    offset = 0
+    λ = Λj.m
+    n = size(λ, 2)
+    @argcheck all(a -> size(a) == (n, n), Adiag) && size(Ljj, 2) == sum(size.(Adiag, 2))
     fill!(Ljj, zero(T))
+    scrm = Matrix{T}(n, n)
+    offset = 0
     for a in Adiag
-        n = checksquare(a)
-        inds = offset + (1:n)
-        lv = Ac_mul_B!(λ, A_mul_B!(copy!(view(Ljj, inds, inds), a), λ))
-        for i in 1:n
-            lv[i,i] += one(T)
+        Ac_mul_B!(λ, A_mul_B!(copy!(scrm, a), λ))
+        for j in 1:n, i in 1:n
+            Ljj[offset + i, offset + j] = scrm[i, j] + T(i == j)
         end
         offset += n
     end
     Ljj
-end
-
-A_mul_B!{T}(C::Matrix{T}, A::Matrix{T}, B::UniformScaling{T}) = scale!(copy!(C, A), B.λ)
-
-A_mul_B!{T}(A::UniformScaling{T}, B::AbstractArray{T}) = scale!(B, A.λ)
-
-A_mul_B!{T}(A::AbstractArray{T}, B::UniformScaling{T}) = scale!(A, B.λ)
-
-function A_mul_B!{T}(A::Diagonal{T}, B::UniformScaling{T})
-    scale!(A.diag, B.λ)
-    A
-end
-
-function A_mul_B!{T<:AbstractFloat}(A::Diagonal{LowerTriangular{T, Matrix{T}}},
-    B::MaskedLowerTri{T})
-    λ = LowerTriangular(B.m)
-    for a in A.diag
-        A_mul_B!(a.data, λ)
-    end
-    A
-end
-
-function A_mul_B!{T<:AbstractFloat,S}(A::SparseMatrixCSC{T,S}, B::MaskedLowerTri{T})
-    λ = B.m
-    k = size(λ, 2)
-    n = size(A, 2)
-    rv = rowvals(A)
-    nz = nonzeros(A)
-    offset = 0
-    while offset < n
-        i1 = nzrange(A, offset + 1)
-        rv1 = view(rv, i1)
-        for j in 2:k
-            all(rv1 .== view(rv, nzrange(A, offset + j))) || error("A is not compatible with B")
-        end
-        a = reshape(view(nz, i1.start:nzrange(A, offset + k).stop), (length(i1), k))
-        A_mul_B!(a, a, λ)
-        offset += k
-    end
-    A
-end
-
-function A_mul_B!{T<:AbstractFloat}(A::MaskedLowerTri{T}, B::StridedVector{T})
-    λ = A.m
-    k = size(λ, 1)
-    A_mul_B!(λ, reshape(B, (k, div(length(B), k))))
-    B
-end
-
-function A_mul_B!{T<:AbstractFloat}(A::Matrix{T}, B::MaskedLowerTri{T})
-    λ = B.m
-    k = size(λ, 1)
-    m, n = size(A)
-    q, r = divrem(n, k)
-    if r ≠ 0
-        throw(DimensionMismatch("size(A, 2) = $n is not a multiple of size(B.λ, 1) = $k"))
-    end
-    offset = 0
-    onetok = 1:k
-    for blk in 1:q
-        A_mul_B!(view(A, :, onetok + offset), λ)
-        offset += k
-    end
-    A
-end
-
-function A_mul_B!{T}(C::StridedVecOrMat{T}, A::UniformScaling{T}, B::StridedVecOrMat{T})
-    @argcheck size(C) == size(B) DimensionMismatch
-    broadcast!(*, C, A.λ, B)
-end
-
-function A_mul_B!{T}(C::StridedVecOrMat{T}, A::MaskedLowerTri{T}, B::StridedVecOrMat{T})
-    @argcheck size(C) == size(B) DimensionMismatch
-    m = size(C, 1)
-    λ = A.m
-    k = size(λ, 1)
-    A_mul_B!(λ, reshape(copy!(C, B), (k, size(C, 2) * div(m, k))))
-    C
 end
 
 function A_mul_Bc!{T<:BlasFloat}(α::T, A::StridedMatrix{T}, B::StridedMatrix{T},
@@ -373,41 +299,6 @@ function A_mul_Bc!{T<:Number}(α::T, A::StridedVecOrMat{T}, B::SparseMatrixCSC{T
         end
     end
     C
-end
-
-function Ac_mul_B!{T}(A::UniformScaling{T}, B::Diagonal{T})
-    scale!(B.diag, A.λ)
-    B
-end
-
-Ac_mul_B!{T}(A::UniformScaling{T}, B::AbstractArray{T}) = scale!(B, A.λ)
-
-function Ac_mul_B!{T}(A::MaskedLowerTri{T}, B::Diagonal{LowerTriangular{T,Matrix{T}}})
-    λ = A.m
-    for b in B.diag
-        Ac_mul_B!(λ, b.data)
-    end
-    B
-end
-
-function Ac_mul_B!{T}(A::MaskedLowerTri{T}, B::StridedVecOrMat{T})
-    λ = A.m
-    k = size(λ, 1)
-    m, n = size(B, 1), size(B, 2)
-    Ac_mul_B!(λ, reshape(B, (k, div(m, k) * n)))
-    B
-end
-
-function Ac_mul_B!{T<:AbstractFloat,S}(A::MaskedLowerTri{T}, B::SparseMatrixCSC{T,S})
-    λ = A.m
-    k = size(λ, 2)
-    nz = nonzeros(B)
-    for j in 1:B.n
-        bnz = view(nz, nzrange(B, j))
-        mbj = reshape(bnz, (k, div(length(bnz), k)))
-        Ac_mul_B!(mbj, λ, mbj)
-    end
-    B
 end
 
 Ac_mul_B!{T<:BlasFloat}(α::T, A::StridedMatrix{T}, B::StridedMatrix{T}, β::T, C::StridedMatrix{T}) = BLAS.gemm!('C', 'N', α, A, B, β, C)

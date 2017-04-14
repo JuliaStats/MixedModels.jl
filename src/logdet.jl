@@ -22,4 +22,13 @@ LD(d::DenseMatrix) = sum(i -> log(d[i]), diagind(d))
 
 Return the value of `log(det(Λ'Z'ZΛ + I))` calculated in place.
 """
-logdet(m::LinearMixedModel) = 2sum(LD, m.L.data.blocks[k,k] for k in eachindex(m.Λ))
+function logdet{T}(m::LinearMixedModel{T})
+    blks = m.L.data.blocks
+    s = zero(T)
+    for (k, λ) in zip(diagind(blks), m.Λ)
+        if !isa(λ, Identity)
+            s += LD(blks[k])
+        end
+    end
+    2.*s
+end

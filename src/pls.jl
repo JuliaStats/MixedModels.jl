@@ -11,7 +11,7 @@ Linear mixed-effects model representation
 * `Λ`: a length `nt - 2` vector of lower triangular matrices
 * `sqrtwts`: the `Diagonal` matrix of the square roots of the case weights.  Allowed to be size 0
 * `A`: an `nt × nt` symmetric matrix of matrices representing `hcat(Z,X,y)'hcat(Z,X,y)`
-* `R`: a `nt × nt` matrix of matrices - the upper Cholesky factor of `Λ'AΛ+I`
+* `L`: a `nt × nt` matrix of matrices - the lower Cholesky factor of `Λ'AΛ+I`
 * `opt`: an [`OptSummary`](@ref) object
 """
 immutable LinearMixedModel{T <: AbstractFloat} <: MixedModel
@@ -61,7 +61,12 @@ function LinearMixedModel(f, fixefnames, trms, Λ, wts)
     for i in 1:length(Λ)
         Lii = L[i, i]
         if isa(Lii, Diagonal) && eltype(Lii) == Matrix{T}
-            L[i, i] = Diagonal(map(LowerTriangular, Lii.diag))
+            Liid = Lii.diag
+            if all(d -> size(d) == (1,1), Liid)
+                L[i, i] = Diagonal(map(d -> d[1,1], Liid))
+            else
+                L[i, i] = Diagonal(map(LowerTriangular, Liid))
+            end
         end
     end
     for i in 2:nt
@@ -105,7 +110,7 @@ function lmm(f::Formula, fr::AbstractDataFrame; weights::Vector = [])
     end
     isempty(tdict) && throw(ArgumentError("No random-effects terms found in $f"))
     trms = []
-    Λ = MaskedLowerTri{T}[]
+    Λ = LambdaTypes{T}[]
     for (grp, lhs) in tdict
         gr = asfactor(getindex(mf.df, grp))
         m = Any[]
@@ -125,10 +130,11 @@ function lmm(f::Formula, fr::AbstractDataFrame; weights::Vector = [])
             end
         end
         push!(trms, ReMat(gr, reduce(hcat, Array{T}(n, 0), m)', grp, coefnms))
-        push!(Λ, MaskedLowerTri(trsize, T))
+        push!(Λ, sum(trsize) == 1 ? UniformScaling(one(T)) : MaskedLowerTri(trsize, T))
     end
     sort!(trms, by = nrandomeff, rev = true)
-    LinearMixedModel(f, coefnames(mf), push!(push!(trms, X), y), Λ, oftype(vec(y), weights))
+    LinearMixedModel(f, coefnames(mf), push!(push!(trms, X), y),
+        push!(push!(Λ, Identity{T}()), Identity{T}()), oftype(vec(y), weights))
 end
 
 function updateL!{T}(m::LinearMixedModel{T})
@@ -141,21 +147,22 @@ function updateL!{T}(m::LinearMixedModel{T})
         Ljj = L[j, j]
         LjjH = isa(Ljj, Diagonal) ? Ljj : Hermitian(Ljj, :L)
         LjjLT = isa(Ljj, Diagonal) ? Ljj : LowerTriangular(Ljj)
-        if (Zblkj = j ≤ nzblk)
+#        if (Zblkj = j ≤ nzblk)
             scaleInflate!(Ljj, A[j, j], Λ[j])
-        else
-            copy!(Ljj, A[j, j])
-        end
+#        else
+#            copy!(Ljj, A[j, j])
+#        end
         for jj in 1:(j - 1)
             rankUpdate!(-one(T), L[j, jj], LjjH)
         end
         cholUnblocked!(Ljj, Val{:L})
         for i in (j + 1):nblk
             Lij = copy!(L[i, j], A[i, j])
-            if Zblkj
+#            if Zblkj
                 A_mul_B!(Lij, Λ[j])
-                i ≤ nzblk && Ac_mul_B!(Λ[i], Lij)
-            end
+#                i ≤ nzblk &&
+                Ac_mul_B!(Λ[i], Lij)
+#            end
             for jj in 1:(j - 1)
                 A_mul_Bc!(-one(T), L[i, jj], L[j, jj], one(T), Lij)
             end
@@ -285,10 +292,10 @@ StatsBase.loglikelihood(m::LinearMixedModel) = -deviance(m)/2
 StatsBase.nobs(m::LinearMixedModel) = Int(length(m.trms[end]))
 
 function Base.size(m::LinearMixedModel)
-    k = length(m.Λ)
     trms = m.wttrms
+    n, p = size(trms[end - 1])
+    k = length(trms) - 2
     q = sum(size(trms[j], 2) for j in 1:k)
-    n, p = size(trms[k + 1])
     n, p, q, k
 end
 
@@ -310,7 +317,9 @@ function setθ!{T}(m::LinearMixedModel{T}, v::Vector{T})
     offset = 0
     for i in eachindex(Λ)
         λ = Λ[i]
-        if isa(λ, UniformScaling)
+        if isa(λ, Identity)
+            continue
+        elseif isa(λ, UniformScaling)  # create a new instance, UniformScaling is immutable
             Λ[i] = UniformScaling(v[offset += 1])
         else
             nti = nθ(λ)

@@ -1,7 +1,7 @@
 using Base.Test, DataFrames, MixedModels
 
 @testset "contra" begin
-    contraception = dat["Contraception"]
+    contraception = dat[:Contraception]
     contraception[:use01] = Array(float.(contraception[:use] .== "Y"))
     contraception[:a2] = abs2.(contraception[:a])
     contraception[:urbdist] = string.(contraception[:urb], contraception[:d])
