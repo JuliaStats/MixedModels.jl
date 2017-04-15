@@ -15,11 +15,12 @@ end
 """
     lmm(m::MixedModel)
 
-Extract the `LinearMixedModel` from a `MixedModel`.
+Return the `LinearMixedModel` from a `MixedModel`.
 
 If `m` is a `LinearMixedModel` return `m`. If `m` is a
 `GeneralizedLinearMixedModel` return `m.LMM`.
 """
+function lmm end
 lmm(m::LinearMixedModel) = m
 lmm(m::GeneralizedLinearMixedModel) = m.LMM
 
@@ -35,7 +36,13 @@ Base.cond(m::MixedModel) = [cond(λ)::Float64 for λ in lmm(m).Λ]
 
 The estimated standard deviations of the variance components as a `Vector{Vector{T}}`.
 """
-Base.std(m::MixedModel) = sdest(m) * push!([rowlengths(λ) for λ in lmm(m).Λ], [1.])
+function Base.std(m::MixedModel)
+    lm = lmm(m)
+    Λ = lm.Λ
+    rl = [rowlengths(Λ[i]) for i in 1:nreterms(lm)]
+    s = sdest(m)
+    isfinite(s) ? s .* push!(rl, [1.]) : rl
+end
 
 ## methods for generics defined in StatsBase
 
@@ -73,12 +80,11 @@ fnames(m::MixedModel) = map(x -> x.fnm, reterms(m))
 
 function getθ!{T}(v::AbstractVector{T}, m::LinearMixedModel{T})
     Λ = lmm(m).Λ
-    nl = map(nθ, Λ)
-    @argcheck length(v) == sum(nl) DimensionMismatch
+    @argcheck length(v) == sum(nθ, Λ) DimensionMismatch
     offset = 0
-    for i in eachindex(nl)
-        nli = nl[i]
-        getθ!(view(v, offset + (1 : nli)), Λ[i])
+    for λ in Λ
+        nli = nθ(λ)
+        getθ!(view(v, offset + (1 : nli)), λ)
         offset += nli
     end
     v
@@ -109,9 +115,7 @@ original scale
 function ranef!{T}(v::Vector, m::LinearMixedModel{T}, β::AbstractArray{T}, uscale::Bool)
     L = m.L
     Λ = m.Λ
-    if (k = length(v)) ≠ length(Λ)
-        throw(DimensionMismatch("length(v) = $(length(v)), should be $(length(Λ))"))
-    end
+    @argcheck (k = length(v)) == nreterms(m) DimensionMismatch
     for j in 1:k
         Ac_mul_B!(-one(T), L[k + 1, j], β, one(T), vec(copy!(v[j], L[end, j])))
     end
@@ -145,18 +149,15 @@ original scale.
 """
 function ranef(m::MixedModel; uscale=false, named=false)
     LMM = lmm(m)
-    trms = LMM.trms
-    T = eltype(trms[end])
-    v = Matrix{T}[]
-    for trm in filter(t -> isa(t, ReMat), trms)
-        push!(v, Array{T}((vsize(trm), nlevs(trm))))
-    end
+    T = eltype(LMM.sqrtwts)
+    v = Matrix{T}[Matrix{T}(vsize(t), nlevs(t)) for t in reterms(LMM)]
     ranef!(v, LMM, uscale)
     named || return v
     vnmd = NamedArray.(v)
-    for (trm, vnm) in zip(trms, vnmd)
-        setnames!(vnm, trm.cnms, 1)
-        setnames!(vnm, string.(levs(trm)), 2)
+    trms = reterms(LMM)
+    for (i, vnm) in enumerate(vnmd)
+        setnames!(vnm, trms[i].cnms, 1)
+        setnames!(vnm, string.(levs(trm[i])), 2)
     end
     vnmd
 end
@@ -202,19 +203,12 @@ diagonal blocks from the conditional variance-covariance matrix,
 """
 function condVar(m::MixedModel)
     lm = lmm(m)
-    Λ = lm.Λ
-    if length(Λ) > 1
-        throw(ArgumentError("code for more than one term not yet written"))
+    λ = lm.Λ[1]
+    L11 = lm.L[1, 1]
+    if nreterms(lm) ≠ 1 || !isa(λ, UniformScaling) || !isa(L11, Diagonal{eltype(λ)})
+        throw(ArgumentError("code for vector-valued r.e. or more than one term not yet written"))
     end
-    λ = Λ[1].m.data
-    L = lm.L[1,1]
-    res = Array{eltype(λ),3}[]
-    if isa(L, Diagonal) && all(d -> size(d) == (1,1), L.diag) && length(λ) == 1
-        l1 = λ[1]
-        Ld = L.diag
-        push!(res, reshape([abs2(l1 / d[1]) for d in Ld], (1, 1, length(Ld))))
-    else
-        throw(ArgumentError("code for vector-value random-effects not yet written"))
-    end
-    res *= varest(m)
+    ll = λ.λ
+    Ld = L11.diag
+    Array{eltype(Ld), 3}[reshape(abs2.(λ.λ ./ Ld) .* varest(m), (1, 1, length(Ld)))]
 end

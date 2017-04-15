@@ -1,16 +1,16 @@
 using Base.Test, RData, StatsBase, MixedModels
 
 if !isdefined(:dat) || !isa(dat, Dict{String, Any})
-    dat = load(joinpath(dirname(@__FILE__), "dat.rda"))
+    dat = convert(Dict{Symbol,Any}, load(joinpath(dirname(@__FILE__), "dat.rda")))
 end
 
 @testset "Dyestuff" begin
-    fm1 = lmm(@formula(Y ~ 1 + (1|G)), dat["Dyestuff"])
+    fm1 = lmm(@formula(Y ~ 1 + (1|G)), dat[:Dyestuff])
 
     @test size(fm1.A) == (3, 3)
     @test size(fm1.wttrms) == (3, )
     @test size(fm1.L) == (3, 3)
-    @test size(fm1.Λ) == (1, )
+    @test size(fm1.Λ) == (3, )
     @test lowerbd(fm1) == zeros(1)
     @test getθ(fm1) == ones(1)
 
@@ -26,12 +26,12 @@ end
     @test fixef(fm1) ≈ [1527.5]
     @test MixedModels.fixef!(zeros(1),fm1) ≈ [1527.5]
     @test coef(fm1) ≈ [1527.5]
-    @test cond(fm1) == ones(1)
+    @test cond(fm1) == ones(3)
     cm = coeftable(fm1)
     @test length(cm.rownms) == 1
     @test length(cm.colnms) == 4
     @test MixedModels.fnames(fm1) == [:G]
-    @test model_response(fm1) == Vector(dat["Dyestuff"][:Y])
+    @test model_response(fm1) == Vector(dat[:Dyestuff][:Y])
     rfu = ranef(fm1, uscale = true)
     rfb = ranef(fm1)
     cv = condVar(fm1)
@@ -51,7 +51,7 @@ end
 end
 
 @testset "simulate!" begin
-    fm = fit!(lmm(@formula(Y ~ 1 + (1 | G)), dat["Dyestuff"]))
+    fm = fit!(lmm(@formula(Y ~ 1 + (1 | G)), dat[:Dyestuff]))
     srand(1234321)
     refit!(simulate!(fm))
     @test isapprox(deviance(fm), 339.0218639362958, atol=0.001)
@@ -64,7 +64,7 @@ end
 end
 
 @testset "Dyestuff2" begin
-    fm = lmm(@formula(Y ~ 1 + (1 | G)), dat["Dyestuff2"])
+    fm = lmm(@formula(Y ~ 1 + (1 | G)), dat[:Dyestuff2])
     @test lowerbd(fm) == zeros(1)
     fit!(fm, true)
     show(IOBuffer(), fm)
@@ -75,7 +75,7 @@ end
     @test stderr(fm) ≈ [0.6669857396443261]
     @test coef(fm) ≈ [5.6656]
     @test logdet(fm) ≈ 0.0
-    refit!(fm, dat["Dyestuff"][:Y])
+    refit!(fm, dat[:Dyestuff][:Y])
 end
 
 #tbl = MixedModels.lrt(fm4,fm3)
@@ -83,7 +83,7 @@ end
 #@test isapprox(tbl[:Deviance], [1752.0032551398835,1751.9393444636157], atol=0.001)
 #@test tbl[:Df] == [5,6]
 @testset "penicillin" begin
-    fm = lmm(@formula(Y ~ 1 + (1 | G) + (1 | H)), dat["Penicillin"]);
+    fm = lmm(@formula(Y ~ 1 + (1 | G) + (1 | H)), dat[:Penicillin]);
     @test size(fm) == (144, 1, 30, 2)
     @test getθ(fm) == ones(2)
     @test lowerbd(fm) == zeros(2)
@@ -93,7 +93,7 @@ end
     @test isapprox(objective(fm), 332.18834867227616, atol=0.001)
     @test isapprox(coef(fm), [22.97222222222222], atol=0.001)
     @test isapprox(fixef(fm), [22.97222222222222], atol=0.001)
-    @test coef(fm)[1] ≈ mean(dat["Penicillin"][:Y])
+    @test coef(fm)[1] ≈ mean(dat[:Penicillin][:Y])
     @test isapprox(stderr(fm), [0.7445960346851368], atol=0.0001)
     @test isapprox(getθ(fm), [1.5375772376554968, 3.219751321180035], atol=0.001)
     @test isapprox(std(fm)[1], [0.8455645948223015], atol=0.0001)
@@ -106,7 +106,7 @@ end
 end
 
 @testset "pastes" begin
-    fm = lmm(@formula(Y ~ (1 | G) + (1 | H)), dat["Pastes"])
+    fm = lmm(@formula(Y ~ (1 | G) + (1 | H)), dat[:Pastes])
     @test size(fm) == (60, 1, 40, 2)
     @test getθ(fm) == ones(2)
     @test lowerbd(fm) == zeros(2)
@@ -126,7 +126,7 @@ end
 end
 
 @testset "InstEval" begin
-    fm1 = lmm(@formula(Y ~ 1 + A + (1 | G) + (1 | H) + (1 | I)), dat["InstEval"])
+    fm1 = lmm(@formula(Y ~ 1 + A + (1 | G) + (1 | H) + (1 | I)), dat[:InstEval])
     @test size(fm1) == (73421, 2, 4114, 3)
     @test getθ(fm1) == ones(3)
     @test lowerbd(fm1) == zeros(3)
@@ -141,21 +141,18 @@ end
     @test size(resid1) == (73421, )
     @test isapprox(resid1[1], 1.82124, atol=0.00001)
 
-#    fm2 = fit!(lmm(Y ~ 1 + A*I + (1 | G) + (1 | H), dat["InstEval"]));
-#    @test objective(fm2) ≈ 237585.5534151694 atol=0.001
-#    @test size(fm2) == (73421, 28, 4100, 2)
+    fm2 = fit!(lmm(@formula(Y ~ 1 + A*I + (1 | G) + (1 | H)), dat["InstEval"]))
+    @test isapprox(objective(fm2), 237585.5534151694, atol=0.001)
+    @test size(fm2) == (73421, 28, 4100, 2)
 end
 
 @testset "sleep" begin
-    fm = lmm(@formula(Y ~ 1 + U + (1 + U | G)), dat["sleepstudy"]);
+    fm = lmm(@formula(Y ~ 1 + U + (1 + U | G)), dat[:sleepstudy]);
     @test lowerbd(fm) == [0.0, -Inf, 0.0]
     @test isa(fm.A[1, 1], Diagonal{Matrix{Float64}})
     @test size(fm.A[1, 1]) == (18, 18)
     @test fm.A[1, 1][1, 1] == [10. 45.; 45. 285.]
-#    @test fm.A[1, 1][6, 1] == 0.
-#    @test_throws BoundsError size(fm.A[1, 1], 0)
     @test size(fm.A[1, 1], 1) == 18
-#    @test full(fm.A[1, 1])[1 : 2, 1 : 2] == reshape([10., 45, 45, 285], (2, 2))
 
     fit!(fm)
 
@@ -189,14 +186,14 @@ end
 end
 
 @testset "d3" begin
-    fm = (lmm(@formula(Y ~ 1 + U + ((1 + U) | G) + ((1 + U) | H) + ((1 + U) | I)), dat["d3"]))
+    fm = (lmm(@formula(Y ~ 1 + U + ((1 + U) | G) + ((1 + U) | H) + ((1 + U) | I)), dat[:d3]))
     @test isapprox(pwrss(fm), 1.102179244837225e15, rtol = 1e-6)
     @test isapprox(logdet(fm), 121800.70795501214, rtol = 1e-6)
     @test isapprox(objective(fm), 3472948.9745031004, rtol = 1e-6)
 end
 
 @testset "sleepnocorr" begin
-    fm = lmm(@formula(Y ~ 1 + U + (1|G) + (0+U|G)), dat["sleepstudy"]);
+    fm = lmm(@formula(Y ~ 1 + U + (1|G) + (0+U|G)), dat[;sleepstudy]);
     @test size(fm) == (180,2,36,1)
     @test getθ(fm) == ones(2)
     @test lowerbd(fm) == zeros(2)

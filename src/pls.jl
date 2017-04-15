@@ -147,22 +147,15 @@ function updateL!{T}(m::LinearMixedModel{T})
         Ljj = L[j, j]
         LjjH = isa(Ljj, Diagonal) ? Ljj : Hermitian(Ljj, :L)
         LjjLT = isa(Ljj, Diagonal) ? Ljj : LowerTriangular(Ljj)
-#        if (Zblkj = j ≤ nzblk)
-            scaleInflate!(Ljj, A[j, j], Λ[j])
-#        else
-#            copy!(Ljj, A[j, j])
-#        end
+        scaleInflate!(Ljj, A[j, j], Λ[j])
         for jj in 1:(j - 1)
             rankUpdate!(-one(T), L[j, jj], LjjH)
         end
         cholUnblocked!(Ljj, Val{:L})
         for i in (j + 1):nblk
             Lij = copy!(L[i, j], A[i, j])
-#            if Zblkj
                 A_mul_B!(Lij, Λ[j])
-#                i ≤ nzblk &&
                 Ac_mul_B!(Λ[i], Lij)
-#            end
             for jj in 1:(j - 1)
                 A_mul_Bc!(-one(T), L[i, jj], L[j, jj], one(T), Lij)
             end

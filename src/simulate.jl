@@ -42,18 +42,19 @@ function bootstrap{T}(N, m::LinearMixedModel{T}; β = fixef(m), σ = sdest(m), �
     p = size(m.trms[end - 1], 2)
     @argcheck length(β) == p DimensionMismatch
     @argcheck length(θ) == (k = length(getθ(m))) DimensionMismatch
-    Λsize = [vsize(t) for t in reterms(m)]
+    Λsize = vsize.(reterms(m))
     cnms = vcat([:obj, :σ], Symbol.(subscriptednames('β', p)),
         Symbol.(subscriptednames('θ', k)), Symbol.(subscriptednames('σ', sum(Λsize))))
     nρ = [(l * (l - 1)) >> 1 for l in Λsize]
     if (nρtot = sum(nρ)) > 0
         append!(cnms, Symbol.(subscriptednames('ρ', nρtot)))
     end
-    dfr = DataFrame(Any[Array{T}(N) for _ in eachindex(cnms)], cnms)
-    scrβ, scrθ = Array{T}(p), Array{T}(k)
-    scrσ = [Array{T}(l) for l in Λsize]
-    scrρ = [Array{T}(l, l) for l in Λsize]
-    scr = [similar(sρ) for sρ in scrρ]
+    dfr = DataFrame(Any[Vector{T}(N) for _ in eachindex(cnms)], cnms)
+    scrβ, scrθ = Vector{T}(p), Vector{T}(k)
+    scrσ = [Vector{T}(l) for l in Λsize]
+    scrρ = [Matrix{T}(l, l) for l in Λsize]
+    scr = similar.(scrρ)
+    Λ = m.Λ
     for i in 1 : N
         j = 0
         refit!(simulate!(m, β = β, σ = σ, θ = θ))
@@ -65,8 +66,8 @@ function bootstrap{T}(N, m::LinearMixedModel{T}; β = fixef(m), σ = sdest(m), �
         for x in getθ!(scrθ, m)
             dfr[j += 1][i] = x
         end
-        for (l, λ) in enumerate(m.Λ)
-            stddevcor!(scrσ[l], scrρ[l], scr[l], LinAlg.Cholesky(λ.m.data, :L))
+        for l in eachindex(Λsize)
+            stddevcor!(scrσ[l], scrρ[l], scr[l], Λ[l])
             for x in scrσ[l]
                 dfr[j += 1][i] = σest * x
             end
@@ -119,6 +120,15 @@ function stddevcor!{T}(σ::Vector{T}, ρ::Matrix{T}, scr::Matrix{T}, L::LinAlg.C
     else
         throw(ArgumentError("L.uplo should be 'L' or 'U'"))
     end
+    σ, ρ
+end
+function stddevcor!{T}(σ::Vector{T}, ρ::Matrix{T}, scr::Matrix{T}, L::MaskedLowerTri{T})
+    stddevcor!(σ, ρ, scr, LinAlg.Cholesky(L.m.data, :L))
+end
+function stddevcor!{T}(σ::Vector{T}, ρ::Matrix{T}, scr::Matrix{T}, L::UniformScaling{T})
+    @argcheck length(σ) == 1 && size(ρ) == (1, 1) DimensionMismatch
+    σ[1] = L.λ
+    ρ[1] = one(T)
     σ, ρ
 end
 
@@ -198,12 +208,13 @@ function unscaledre!{T}(y::AbstractVector{T}, M::ReMat{T}, b::DenseMatrix{T})
     y
 end
 
-function unscaledre!{T}(y::AbstractVector{T}, M::ReMat{T}, L::MaskedLowerTri{T})
-    re = randn(vsize(M), nlevs(M))
-    A_mul_B!(L, vec(re))
-    unscaledre!(y, M, re)
+function unscaledre!{T}(y::AbstractVector{T}, M::ReMat{T}, λ::MaskedLowerTri{T})
+    unscaledre!(y, M, A_mul_B!(λ.m, randn(vsize(M), nlevs(M))))
 end
 
+function unscaledre!{T}(y::AbstractVector{T}, M::ReMat{T}, λ::UniformScaling{T})
+    unscaledre!(y, M, A_mul_B!(λ, randn(vsize(M), nlevs(M))))
+end
 """
     simulate!(m::LinearMixedModel; β=fixef(m), σ=sdest(m), θ=getθ(m))
 
@@ -213,13 +224,13 @@ function simulate!{T}(m::LinearMixedModel{T}; β = coef(m), σ = sdest(m), θ = 
     if !isempty(θ)
         setθ!(m, θ)
     end
-    trms, Λ = m.trms, m.Λ
+    Λ = m.Λ
     y = randn!(model_response(m)) # initialize to standard normal noise
-    for j in eachindex(Λ)         # add the unscaled random effects
-        unscaledre!(y, trms[j], Λ[j])
+    for (j, trm) in enumerate(reterms(m))         # add the unscaled random effects
+        unscaledre!(y, trm, Λ[j])
     end
                                   # scale by σ and add fixed-effects contribution
-    BLAS.gemv!('N', 1.0, trms[end - 1], β, σ, y)
+    BLAS.gemv!('N', 1.0, m.trms[end - 1], β, σ, y)
     m
 end
 

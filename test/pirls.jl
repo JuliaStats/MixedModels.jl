@@ -22,7 +22,7 @@ using Base.Test, DataFrames, MixedModels
 end
 
 @testset "cbpp" begin
-    cbpp = dat["cbpp"]
+    cbpp = dat[:cbpp]
     cbpp[:prop] = cbpp[:i] ./ cbpp[:s]
     gm2 = fit!(glmm(@formula(prop ~ 1 + p + (1 | h)), cbpp, Binomial(), LogitLink(), wt = cbpp[:s]));
     @test isapprox(LaplaceDeviance(gm2), 100.09585619324639, atol=0.0001)
@@ -35,7 +35,7 @@ end
 end
 
 @testset "verbagg" begin
-    verbagg = dat["VerbAgg"]
+    verbagg = dat[:VerbAgg]
     verbagg[:r201] = Array(float.(verbagg[:r2] .== "Y"))
     gm3 = fit!(glmm(@formula(r201 ~ 1 + a + g + b + s + (1 | id) + (1 | item)), verbagg, Bernoulli()));
     @test isapprox(LaplaceDeviance(gm3), 8151.39972809092, atol=0.001)
@@ -46,7 +46,7 @@ end
 end
 
 @testset "grouseticks" begin
-    gm4 = fit!(glmm(@formula(t ~ 1 + y + ch + (1|i) + (1|b) + (1|l)), dat["grouseticks"], Poisson()))
+    gm4 = fit!(glmm(@formula(t ~ 1 + y + ch + (1|i) + (1|b) + (1|l)), dat[:grouseticks], Poisson()))
     @test isapprox(LaplaceDeviance(gm4), 849.5439802900257, atol=0.001)
     @test lowerbd(gm4) == vcat(fill(-Inf, 4), zeros(3))
     # these two values are not well defined at the optimum
