@@ -1,6 +1,6 @@
 using MixedModels, Base.Test
 
-@testset "uniformscaling" begin
+@testset "uniformscl" begin
     rng = MersenneTwister(1234321)
     const v = rand(rng, 8)
     const vc = copy(v)

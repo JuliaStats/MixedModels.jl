@@ -387,7 +387,8 @@ function A_rdiv_Bc!{T}(A::SparseMatrixCSC{T}, B::Diagonal{LowerTriangular{T,Matr
         else
             nzr = nzrange(A, offset + 1).start : nzrange(A, offset + k).stop
             q = div(length(nzr), k)
-            A_rdiv_Bc!(reshape(view(nz, nzr), (q, k)), d)
+            A_rdiv_Bc!(unsafe_wrap(Array, pointer(nz, nzr[1]), (q, k)), d)
+#            BLAS.trsm!('R', 'L', 'T', 'N', one(T), d.data, reshape(view(nz, nzr), (q, k)))
             offset += k
         end
     end

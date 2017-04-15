@@ -157,7 +157,7 @@ function ranef(m::MixedModel; uscale=false, named=false)
     trms = reterms(LMM)
     for (i, vnm) in enumerate(vnmd)
         setnames!(vnm, trms[i].cnms, 1)
-        setnames!(vnm, string.(levs(trm[i])), 2)
+        setnames!(vnm, string.(levs(trms[i])), 2)
     end
     vnmd
 end

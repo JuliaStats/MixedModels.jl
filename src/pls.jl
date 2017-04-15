@@ -154,8 +154,8 @@ function updateL!{T}(m::LinearMixedModel{T})
         cholUnblocked!(Ljj, Val{:L})
         for i in (j + 1):nblk
             Lij = copy!(L[i, j], A[i, j])
-                A_mul_B!(Lij, Λ[j])
-                Ac_mul_B!(Λ[i], Lij)
+            A_mul_B!(Lij, Λ[j])
+            Ac_mul_B!(Λ[i], Lij)
             for jj in 1:(j - 1)
                 A_mul_Bc!(-one(T), L[i, jj], L[j, jj], one(T), Lij)
             end
