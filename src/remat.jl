@@ -72,8 +72,10 @@ Base.size(A::ReMat) = (length(A.f), vsize(A) * nlevs(A))
 Base.size(A::ReMat, i::Integer) =
     i < 1 ? throw(BoundsError()) : i == 1 ? length(A.f) :  i == 2 ? vsize(A)*nlevs(A) : 1
 
-Base.sparse(R::ReMat) =
-    sparse(Int32[1:length(R.z);], Int32[repeat(R.f.refs, inner=size(R.z, 1))], vec(R.z))
+function Base.sparse(R::ReMat)
+    sparse(Int32[1:length(R.z);],
+    convert(Vector{Int32}, repeat(R.f.refs, inner=size(R.z, 1))), vec(R.z))
+end
 
 ==(A::ReMat,B::ReMat) = (A.f == B.f) && (A.z == B.z)
 
