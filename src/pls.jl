@@ -142,7 +142,6 @@ function updateL!{T}(m::LinearMixedModel{T})
     Λ = m.Λ
     L = m.L.data.blocks
     nblk = size(A, 2)
-    nzblk = length(Λ)
     for j in 1:nblk
         Ljj = L[j, j]
         LjjH = isa(Ljj, Diagonal) ? Ljj : Hermitian(Ljj, :L)
@@ -176,7 +175,7 @@ A value for `optimizer` should be the name of an `NLopt` derivative-free optimiz
 allowing for box constraints.
 """
 function StatsBase.fit!{T}(m::LinearMixedModel{T}, verbose::Bool=false)
-
+    # FIXME: move the initialization of opt to an NLopy.Opt(sm::OptSummary) constructor
     optsum = m.optsum
     lb = optsum.lowerbd
     x = optsum.final
@@ -205,7 +204,7 @@ function StatsBase.fit!{T}(m::LinearMixedModel{T}, verbose::Bool=false)
     end
     NLopt.min_objective!(opt, obj)
     fmin, xmin, ret = NLopt.optimize!(opt, x)
-    ## check if very small parameter values that must be non-negative can be set to zero
+    ## check if small non-negative parameter values can be set to zero
     xmin_ = copy(xmin)
     for i in eachindex(xmin_)
         if iszero(lb[i]) && zero(T) < xmin_[i] < T(0.001)
@@ -252,7 +251,7 @@ StatsBase.residuals(m::LinearMixedModel) = model_response(m) .- fitted(m)
 
 Return the vector of lower bounds on the covariance parameter vector `θ`
 """
-lowerbd(m::LinearMixedModel) = mapreduce(lowerbd, vcat, m.Λ)
+lowerbd{T}(m::LinearMixedModel{T}) = mapreduce(lowerbd, append!, T[], m.Λ)
 
 """
     objective(m::LinearMixedModel)
