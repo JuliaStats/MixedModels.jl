@@ -1,5 +1,3 @@
-@compat const AbstractFactor{V,R} = Union{NullableCategoricalVector{V,R},CategoricalVector{V,R},PooledDataVector{V,R}}
-
 """
     asfactor(f)
 
@@ -10,24 +8,6 @@ This function and the `AbstractFactor` union can be removed once `CategoricalArr
 """
 asfactor(f::AbstractFactor) = f
 asfactor(f) = pool(f)
-
-"""
-    ReMat
-
-Representation of the model matrix for random-effects terms
-
-# Members
-* `f`: the grouping factor as an `AbstractFactor`
-* `z`: the transposed raw random-effects model matrix
-* `fnm`: the name of the grouping factor as a `Symbol`
-* `cnms`: a `Vector` of column names (row names after transposition) of `z`
-"""
-immutable ReMat{T<:AbstractFloat,V,R}
-    f::AbstractFactor{V,R}
-    z::Matrix{T}
-    fnm::Symbol
-    cnms::Vector
-end
 
 """
     levs(A::ReMat)

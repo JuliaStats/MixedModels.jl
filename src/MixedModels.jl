@@ -12,6 +12,7 @@ import Base: cor, cond, convert, full, logdet, std, A_mul_B!, Ac_mul_B!, A_mul_B
 import DataFrames: @formula
 import Distributions: Bernoulli, Binomial, Poisson, Gamma
 import GLM: LogitLink, LogLink, InverseLink
+import NLopt: Opt
 import Base.LinAlg: A_mul_B!, A_mul_Bc!, Ac_mul_B!, A_ldiv_B!, Ac_ldiv_B!, A_rdiv_B!, A_rdiv_Bc!
 import StatsBase: coef, coeftable, dof, deviance, fit!, fitted, loglikelihood,
     model_response, nobs, vcov
@@ -67,19 +68,20 @@ export
        varest,     # estimate of the residual variance
        vcov
 
-@compat abstract type MixedModel <: RegressionModel end # model with fixed and random effects
-
 import Base: ==, *
 
-include("blockmats.jl")
+include("types.jl")
+include("linalg/cholUnblocked.jl")
+include("linalg/rankUpdate.jl")
+include("linalg/scaleInflate.jl")
 include("linalg.jl")
-include("optsummary.jl")
+include("blockmats.jl")
 include("remat.jl")
 include("pls.jl")
 include("logdet.jl")
 include("simulate.jl")
 include("PIRLS.jl")
-include("VarCorr.jl")
+#include("VarCorr.jl")
 include("mixedmodel.jl")
 
 end # module

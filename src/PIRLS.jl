@@ -1,34 +1,3 @@
-"""
-    GeneralizedLinearMixedModel
-
-Generalized linear mixed-effects model representation
-
-Members:
-
-- `LMM`: a [`LinearMixedModel`](@ref) - the local approximation to the GLMM.
-- `β`: the fixed-effects vector
-- `β₀`: similar to `β`. User in the PIRLS algorithm if step-halving is needed.
-- `θ`: covariance parameter vector
-- `b`: similar to `u`, equivalent to `broadcast!(*, b, LMM.Λ, u)`
-- `u`: a vector of matrices of random effects
-- `u₀`: similar to `u`.  Used in the PIRLS algorithm if step-halving is needed.
-- `resp`: a `GlmResp` object
-- `η`: the linear predictor
-- `wt`: vector of prior case weights, a value of `T[]` indicates equal weights.
-"""
-immutable GeneralizedLinearMixedModel{T <: AbstractFloat} <: MixedModel
-    LMM::LinearMixedModel{T}
-    β::Vector{T}
-    β₀::Vector{T}
-    θ::Vector{T}
-    b::Vector{Matrix{T}}
-    u::Vector{Matrix{T}}
-    u₀::Vector{Matrix{T}}
-    resp::GlmResp
-    η::Vector{T}
-    wt::Vector{T}
-end
-
 fixef(m::GeneralizedLinearMixedModel) = m.β
 
 """

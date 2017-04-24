@@ -1,32 +1,4 @@
 """
-    LinearMixedModel
-
-Linear mixed-effects model representation
-
-# Members
-* `formula`: the formula for the model
-* `fixefnames`: names of the fixed effects (for displaying coefficients)
-* `wttrms`: a length `nt` vector of weighted model matrices. The last two elements are `X` and `y`.
-* `trms`: a vector of unweighted model matrices.  If `isempty(sqrtwts)` the same object as `wttrms`
-* `Λ`: a length `nt - 2` vector of lower triangular matrices
-* `sqrtwts`: the `Diagonal` matrix of the square roots of the case weights.  Allowed to be size 0
-* `A`: an `nt × nt` symmetric matrix of matrices representing `hcat(Z,X,y)'hcat(Z,X,y)`
-* `L`: a `nt × nt` matrix of matrices - the lower Cholesky factor of `Λ'AΛ+I`
-* `opt`: an [`OptSummary`](@ref) object
-"""
-immutable LinearMixedModel{T <: AbstractFloat} <: MixedModel
-    formula::Formula
-    fixefnames::Vector{String}
-    wttrms::Vector
-    trms::Vector
-    sqrtwts::Diagonal{T}
-    Λ::Vector
-    A::Hermitian # cross-product blocks
-    L::LowerTriangular
-    optsum::OptSummary{T}
-end
-
-"""
     densify(S::SparseMatrix, threshold=0.3)
 
 Convert sparse `S` to `Diagonal` if `S` is diagonal or to `full(S)` if
@@ -175,24 +147,8 @@ A value for `optimizer` should be the name of an `NLopt` derivative-free optimiz
 allowing for box constraints.
 """
 function StatsBase.fit!{T}(m::LinearMixedModel{T}, verbose::Bool=false)
-    # FIXME: move the initialization of opt to an NLopy.Opt(sm::OptSummary) constructor
     optsum = m.optsum
-    lb = optsum.lowerbd
-    x = optsum.final
-    copy!(x, optsum.initial)
-
-    opt = NLopt.Opt(optsum.optimizer, length(x))
-    NLopt.ftol_rel!(opt, optsum.ftol_rel) # relative criterion on objective
-    NLopt.ftol_abs!(opt, optsum.ftol_abs) # absolute criterion on objective
-    NLopt.xtol_rel!(opt, optsum.xtol_rel) # relative criterion on parameter values
-    NLopt.xtol_abs!(opt, optsum.xtol_abs) # absolute criterion on parameter values
-    NLopt.lower_bounds!(opt, lb)
-    NLopt.maxeval!(opt, optsum.feval)
-    if isempty(optsum.initial_step)
-        optsum.initial_step = NLopt.initial_step(opt, optsum.initial, similar(lb))
-    else
-        NLopt.initial_step!(opt, optsum.initial_step)
-    end
+    opt = Opt(optsum)
     feval = 0
     function obj(x, g)
         length(g) == 0 || error("gradient not defined")
@@ -203,9 +159,10 @@ function StatsBase.fit!{T}(m::LinearMixedModel{T}, verbose::Bool=false)
         val
     end
     NLopt.min_objective!(opt, obj)
-    fmin, xmin, ret = NLopt.optimize!(opt, x)
+    fmin, xmin, ret = NLopt.optimize!(opt, copy!(optsum.final, optsum.initial))
     ## check if small non-negative parameter values can be set to zero
     xmin_ = copy(xmin)
+    lb = optsum.lowerbd
     for i in eachindex(xmin_)
         if iszero(lb[i]) && zero(T) < xmin_[i] < T(0.001)
             xmin_[i] = zero(T)
