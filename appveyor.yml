@@ -7,7 +7,7 @@ environment:
 
 branches:
   only:
-    - LowerCholesky
+    - master
 
 notifications:
   - provider: Email
