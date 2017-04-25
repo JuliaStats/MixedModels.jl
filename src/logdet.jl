@@ -25,8 +25,8 @@ Return the value of `log(det(Λ'Z'ZΛ + I))` calculated in place.
 function logdet{T}(m::LinearMixedModel{T})
     blks = m.L.data.blocks
     s = zero(T)
-    for (k, λ) in zip(diagind(blks), m.Λ)
-        if !isa(λ, Identity)
+    for (k, t) in zip(diagind(blks), m.trms)
+        if !isa(t, MatrixTerm)
             s += LD(blks[k])
         end
     end

@@ -21,19 +21,18 @@ export
        @formula,
        Bernoulli,
        Binomial,
-       Poisson,
+       FactorReTerm,
        Gamma,
        LogitLink,
        LogLink,
        InverseLink,
        GeneralizedLinearMixedModel,
        LinearMixedModel,
+       MatrixTerm,
        MixedModel,
        OptSummary,
-       ReMat,
-#       ScalarReMat,
+       Poisson,
        VarCorr,
-#       VectorReMat,
 
        bootstrap,
        bootstrap!,
@@ -71,17 +70,16 @@ export
 import Base: ==, *
 
 include("types.jl")
+include("remat.jl")
 include("linalg/cholUnblocked.jl")
 include("linalg/rankUpdate.jl")
 include("linalg/scaleInflate.jl")
 include("linalg.jl")
 include("blockmats.jl")
-include("remat.jl")
 include("pls.jl")
 include("logdet.jl")
 include("simulate.jl")
 include("PIRLS.jl")
-#include("VarCorr.jl")
 include("mixedmodel.jl")
 
 end # module

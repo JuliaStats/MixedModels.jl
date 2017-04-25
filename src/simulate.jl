@@ -122,24 +122,15 @@ function stddevcor!{T}(σ::Vector{T}, ρ::Matrix{T}, scr::Matrix{T}, L::LinAlg.C
     end
     σ, ρ
 end
-function stddevcor!{T}(σ::Vector{T}, ρ::Matrix{T}, scr::Matrix{T}, L::MaskedLowerTri{T})
-    stddevcor!(σ, ρ, scr, LinAlg.Cholesky(L.m.data, :L))
+function stddevcor!{T}(σ::Vector{T}, ρ::Matrix{T}, scr::Matrix{T}, L::FactorReTerm{T})
+    stddevcor!(σ, ρ, scr, LinAlg.Cholesky(L.Λ, :L))
 end
-function stddevcor!{T}(σ::Vector{T}, ρ::Matrix{T}, scr::Matrix{T}, L::UniformScaling{T})
-    @argcheck length(σ) == 1 && size(ρ) == (1, 1) DimensionMismatch
-    σ[1] = L.λ
-    ρ[1] = one(T)
-    σ, ρ
-end
-
 function stddevcor{T}(L::LinAlg.Cholesky{T})
     k = size(L, 1)
     stddevcor!(Array{T}(k), Array{T}((k, k)), Array{T}((k, k)), L)
 end
 stddevcor{T<:AbstractFloat}(L::LowerTriangular{T}) = stddevcor(LinAlg.Cholesky(L, :L))
-stddevcor{T<:AbstractFloat}(L::UniformScaling{T}) = [abs(L.λ)], eye(T, 1)
-stddevcor{T<:AbstractFloat}(L::MaskedLowerTri{T}) = stddevcor(L.m)
-stddevcor{T}(J::Identity{T}) = T[], eye(T, 0)
+stddevcor{T<:AbstractFloat}(L::FactorReTerm{T}) = stddevcor(LinAlg.Cholesky(L.Λ, :L))
 
 """
     reevaluateAend!(m::LinearMixedModel)
@@ -193,12 +184,12 @@ Add unscaled random effects defined by `M` and `L * randn(1, length(M.f.pool))` 
 """
 function unscaledre! end
 
-function unscaledre!{T}(y::AbstractVector{T}, M::ReMat{T}, b::DenseMatrix{T})
-    Z = M.z
+function unscaledre!{T}(y::AbstractVector{T}, A::FactorReTerm{T}, b::DenseMatrix{T})
+    Z = A.z
     k, n = size(Z)
-    l = nlevs(M)
+    l = nlevs(A)
     @argcheck length(y) == n && size(b) == (k, l) DimensionMismatch
-    inds = M.f.refs
+    inds = A.f.refs
     for i in eachindex(y)
         ii = inds[i]
         for j in 1:k
@@ -208,13 +199,10 @@ function unscaledre!{T}(y::AbstractVector{T}, M::ReMat{T}, b::DenseMatrix{T})
     y
 end
 
-function unscaledre!{T}(y::AbstractVector{T}, M::ReMat{T}, λ::MaskedLowerTri{T})
-    unscaledre!(y, M, A_mul_B!(λ.m, randn(vsize(M), nlevs(M))))
+function unscaledre!{T}(y::AbstractVector{T}, A::FactorReTerm{T})
+    unscaledre!(y, A, A_mul_B!(LowerTriangular(A.Λ), randn(vsize(A), nlevs(A))))
 end
 
-function unscaledre!{T}(y::AbstractVector{T}, M::ReMat{T}, λ::UniformScaling{T})
-    unscaledre!(y, M, A_mul_B!(λ, randn(vsize(M), nlevs(M))))
-end
 """
     simulate!(m::LinearMixedModel; β=fixef(m), σ=sdest(m), θ=getθ(m))
 
@@ -234,4 +222,4 @@ function simulate!{T}(m::LinearMixedModel{T}; β = coef(m), σ = sdest(m), θ = 
     m
 end
 
-StatsBase.model_response(m::LinearMixedModel) = vec(m.trms[end])
+StatsBase.model_response(m::LinearMixedModel) = vec(m.trms[end].x)

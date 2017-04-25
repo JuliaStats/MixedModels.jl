@@ -8,9 +8,8 @@ end
     fm1 = lmm(@formula(Y ~ 1 + (1|G)), dat[:Dyestuff])
 
     @test size(fm1.A) == (3, 3)
-    @test size(fm1.wttrms) == (3, )
+    @test size(fm1.trms) == (3, )
     @test size(fm1.L) == (3, 3)
-    @test size(fm1.Λ) == (3, )
     @test lowerbd(fm1) == zeros(1)
     @test getθ(fm1) == ones(1)
 
@@ -26,7 +25,7 @@ end
     @test fixef(fm1) ≈ [1527.5]
     @test MixedModels.fixef!(zeros(1),fm1) ≈ [1527.5]
     @test coef(fm1) ≈ [1527.5]
-    @test cond(fm1) == ones(3)
+    @test cond(fm1) == ones(1)
     cm = coeftable(fm1)
     @test length(cm.rownms) == 1
     @test length(cm.colnms) == 4

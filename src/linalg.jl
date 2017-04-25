@@ -206,9 +206,9 @@ function full{T}(A::Diagonal{LowerTriangular{T,Matrix{T}}})
     B
 end
 
-function rowlengths{T}(Λ::MaskedLowerTri{T})
-    ld = Λ.m.data
+function rowlengths{T}(A::FactorReTerm{T})
+    ld = A.Λ
     [norm(view(ld, i, 1:i)) for i in 1:size(ld, 1)]
 end
 
-rowlengths(L::UniformScaling) = [abs(L.λ)]
+rowlengths{T}(A::MatrixTerm{T}) = T[]

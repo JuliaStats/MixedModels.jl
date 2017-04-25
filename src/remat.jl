@@ -1,4 +1,37 @@
 """
+    MatrixTerm
+
+Term with an explicit, constant matrix representation
+
+#Members
+* `x`: matrix
+* `wtx`: weighted matrix
+* `cnames`: vector of column names
+"""
+type MatrixTerm{T,S<:AbstractMatrix} <: AbstractTerm{T}
+    x::S
+    wtx::S
+    cnames::Vector{String}
+end
+MatrixTerm(X, cnms) = MatrixTerm{eltype(X),typeof(X)}(X, X, cnms)
+function MatrixTerm(y::Vector)
+    T = eltype(y)
+    m = reshape(y, (length(y), 1))
+    MatrixTerm{T,Matrix{T}}(m, m, [""])
+end
+function reweight!{T}(A::MatrixTerm{T}, sqrtwts::Vector{T})
+    if (A.x === A.wtx)
+        A.wtx = similar(A.x)
+    end
+    scale!(A.wtx, sqrtwts, A.x)
+    A
+end
+Base.size(A::MatrixTerm) = size(A.wtx)
+Base.size(A::MatrixTerm, i) = size(A.wtx, i)
+
+@compat const AbstractFactor{V,R} = Union{NullableCategoricalVector{V,R},CategoricalVector{V,R},PooledDataVector{V,R}}
+
+"""
     asfactor(f)
 
 Return `f` as a AbstractFactor.
@@ -10,56 +43,175 @@ asfactor(f::AbstractFactor) = f
 asfactor(f) = pool(f)
 
 """
-    levs(A::ReMat)
+    FactorReTerm
+
+Random-effects term from a grouping factor, model matrix and block pattern
+
+# Members
+* `f`: the grouping factor as an `AbstractFactor`
+* `z`: the transposed raw random-effects model matrix
+* `wtz`: a weighted copy of `z`
+* `fnm`: the name of the grouping factor as a `Symbol`
+* `cnms`: a `Vector` of column names (row names after transposition) of `z`
+* `Λ`: the relative covariance factor
+* `inds`: linear indices of θ elements in the relative covariance factor
+"""
+type FactorReTerm{T<:AbstractFloat,V,R} <: AbstractTerm{T}
+    f::AbstractFactor{V,R}
+    z::Matrix{T}
+    wtz::Matrix{T}
+    fnm::Symbol
+    cnms::Vector{String}
+    Λ::Matrix{T}
+    inds::Vector{Int}
+end
+function FactorReTerm(f::AbstractFactor, z::Matrix, fnm, cnms, blks)
+    @argcheck (n = sum(blks)) == size(z, 1) DimensionMisMatch
+    m = reshape(1:abs2(n), (n, n))
+    offset = 0
+    inds = sizehint!(Int[], (n * (n + 1)) >> 1)
+    for k in blks
+        for j in 1:k, i in j:k
+            push!(inds, m[offset + i, offset + j])
+        end
+        offset += k
+    end
+    FactorReTerm(f, z, z, fnm, cnms, eye(eltype(z), n), inds)
+end
+function reweight!(A::FactorReTerm, sqrtwts::Vector)
+    if A.z === A.wtz
+        A.wtz = similar(A.z)
+    end
+    scale!(A.wtz, A.z, sqrtwts)
+    A
+end
+
+"""
+    levs(A::FactorReTerm)
 
 Return the levels of the grouping factor.
 
 This is to disambiguate a call to `levels` as both `DataArrays`
 and `CategoricalArrays` export it.
 """
-function levs(A::ReMat)
+function levs(A::FactorReTerm)
     f = A.f
     isa(f, PooledDataArray) ? DataArrays.levels(f) : CategoricalArrays.levels(f)
 end
 
 """
-    nlevs(A::ReMat)
+    nlevs(A::FactorReTerm)
 
 Return the number of levels in the grouping factor of `A`.
 """
-nlevs(A::ReMat) = length(levs(A))
+nlevs(A::FactorReTerm) = length(levs(A))
 
 """
-    nrandomeff(A::ReMat)
+    nrandomeff(A::FactorReTerm)
 
 Return the total number of random effects in A.
 """
-nrandomeff(A::ReMat) = nlevs(A) * size(A.z, 1)
-
-Base.eltype(R::ReMat) = eltype(R.z)
-
-Base.full(R::ReMat) = full(sparse(R))
+nrandomeff(A::FactorReTerm) = nlevs(A) * vsize(A)
 
 """
-    vsize(A::ReMat)
+    vsize(A::FactorReTerm)
 
 Return the size of vector-valued random effects.
 """
-vsize(A::ReMat) = size(A.z, 1)
+vsize(A::FactorReTerm) = size(A.z, 1)
 
-Base.size(A::ReMat) = (length(A.f), vsize(A) * nlevs(A))
+Base.eltype{T}(R::FactorReTerm{T}) = T
 
-Base.size(A::ReMat, i::Integer) =
-    i < 1 ? throw(BoundsError()) : i == 1 ? length(A.f) :  i == 2 ? vsize(A)*nlevs(A) : 1
+Base.full(R::FactorReTerm) = full(sparse(R))
 
-function Base.sparse(R::ReMat)
+Base.size(A::FactorReTerm) = (length(A.f), nrandomeff(A))
+
+Base.size(A::FactorReTerm, i::Integer) =
+    i < 1 ? throw(BoundsError()) : i == 1 ? length(A.f) :  i == 2 ? nrandomeff(A) : 1
+
+function Base.sparse(R::FactorReTerm)
     sparse(Int32[1:length(R.z);],
-    convert(Vector{Int32}, repeat(R.f.refs, inner=size(R.z, 1))), vec(R.z))
+        convert(Vector{Int32}, repeat(R.f.refs, inner=size(R.z, 1))), vec(R.z))
 end
 
-==(A::ReMat,B::ReMat) = (A.f == B.f) && (A.z == B.z)
+==(A::FactorReTerm,B::FactorReTerm) = (A.f == B.f) && (A.z == B.z)
 
-function A_mul_B!{T}(α::Real, A::ReMat, B::StridedVecOrMat{T}, β::Real, R::StridedVecOrMat{T})
+cond(A::FactorReTerm) = cond(LowerTriangular(A.Λ))
+
+"""
+    nθ(A::FactorReTerm)
+
+Return the number of free parameters in the relative covariance matrix Λ
+"""
+nθ(A::FactorReTerm) = length(A.inds)
+nθ(A::MatrixTerm) = 0
+nθ{T}(v::Vector{AbstractTerm{T}}) = sum(nθ, v)
+
+"""
+    getθ!{T}(v::AbstractVector{T}, A::FactorReTerm{T})
+
+Overwrite `v` with the elements of the blocks in the lower triangle of `A.Λ` (column-major ordering)
+"""
+function getθ!{T<:AbstractFloat}(v::StridedVector{T}, A::FactorReTerm{T})
+    @argcheck(length(v) == length(A.inds), DimensionMismatch)
+    inds = A.inds
+    m = A.Λ
+    @inbounds for i in eachindex(inds)
+        v[i] = m[inds[i]]
+    end
+    v
+end
+function getθ!{T}(v::StridedVector{T}, A::MatrixTerm{T})
+    @argcheck(length(v) == 0, DimensionMisMatch)
+    v
+end
+
+"""
+    getθ(A::FactorReTerm)
+
+Return a vector of the elements of the lower triangle blocks in `A.Λ` (column-major ordering)
+"""
+getθ{T}(A::FactorReTerm{T}) = A.Λ[A.inds]
+getθ{T}(A::MatrixTerm{T}) = T[]
+getθ{T}(v::Vector{AbstractTerm{T}}) = reduce(append!, T[], getθ(t) for t in v)
+
+"""
+    lowerbd{T}(A::FactorReTerm{T})
+    lowerbd{T}(A::MatrixTerm{T})
+    lowerbd{T}(v::Vector{AbstractTerm{T}})
+
+Return the vector of lower bounds on the parameters, `θ`.
+
+These are the elements in the lower triangle in column-major ordering.
+Diagonals have a lower bound of `0`.  Off-diagonals have a lower-bound of `-Inf`.
+"""
+function lowerbd end
+
+lowerbd{T}(v::Vector{AbstractTerm{T}}) = reduce(append!, T[], lowerbd(t) for t in v)
+lowerbd{T}(A::FactorReTerm{T}) = T[x ∈ diagind(A.Λ) ? zero(T) : convert(T, -Inf) for x in A.inds]
+lowerbd{T}(A::MatrixTerm{T}) = T[]
+
+function setθ!{T}(A::FactorReTerm{T}, v::AbstractVector{T})
+    @argcheck(length(v) == length(A.inds), DimensionMismatch)
+    m = A.Λ
+    inds = A.inds
+    @inbounds for i in eachindex(inds)
+        m[inds[i]] = v[i]
+    end
+    A
+end
+function setθ!{T}(trms::Vector{AbstractTerm{T}}, v::Vector{T})
+    offset = 0
+    for trm in trms
+        if (k = nθ(trm)) > 0
+            setθ!(trm, view(v, (1:k) + offset))
+            offset += k
+        end
+    end
+    trms
+end
+
+function A_mul_B!{T}(α::Real, A::FactorReTerm, B::StridedVecOrMat{T}, β::Real, R::StridedVecOrMat{T})
     n,q = size(A)
     k = size(B, 2)
     @argcheck size(R, 1) == n && size(B, 1) == q && size(R, 2) == k DimensionMismatch
@@ -82,26 +234,27 @@ function A_mul_B!{T}(α::Real, A::ReMat, B::StridedVecOrMat{T}, β::Real, R::Str
     R
 end
 
-A_mul_B!{T}(A::ReMat, B::StridedVecOrMat{T}, R::StridedVecOrMat{T}) = A_mul_B!(one(T), A, B, zero(T), R)
+A_mul_B!{T}(A::FactorReTerm, B::StridedVecOrMat{T}, R::StridedVecOrMat{T}) = A_mul_B!(one(T), A, B, zero(T), R)
 
-function Ac_mul_B!{T}(α::Real, A::ReMat, B::StridedVecOrMat{T}, β::Real, R::StridedVecOrMat{T})
+function Ac_mul_B!{T}(α::Real, A::FactorReTerm{T}, B::MatrixTerm{T}, β::Real, R::Matrix{T})
     n, q = size(A)
-    k = size(B, 2)
-    @argcheck size(R, 1) == q && size(B, 1) == n && size(R, 2) == k DimensionMismatch
+    Bwt = B.wtx
+    k = size(Bwt, 2)
+    @argcheck(size(R, 1) == q && size(Bwt, 1) == n && size(R, 2) == k, DimensionMismatch)
     if β ≠ one(T)
         iszero(β) ? fill!(R, β) : scale!(β, R)
     end
     rr = A.f.refs
-    zz = A.z
+    zz = A.wtz
     if vsize(A) == 1
         for j in 1:k, i in 1:n
-            R[rr[i], j] += α * zz[i] * B[i, j]
+            R[rr[i], j] += α * zz[i] * Bwt[i, j]
         end
     else
         l = size(zz, 1)
         for j in 1 : k, i in 1 : n
             roffset = (rr[i] - 1) * l
-            mul = α * B[i, j]
+            mul = α * Bwt[i, j]
             for ii in 1 : l
                 R[roffset + ii, j] += mul * zz[ii, i]
             end
@@ -110,15 +263,52 @@ function Ac_mul_B!{T}(α::Real, A::ReMat, B::StridedVecOrMat{T}, β::Real, R::St
     R
 end
 
-Ac_mul_B!{T}(R::StridedVecOrMat{T}, A::ReMat, B::StridedVecOrMat{T}) =
+Ac_mul_B!{T}(R::Matrix{T}, A::FactorReTerm{T}, B::MatrixTerm{T}) =
     Ac_mul_B!(one(T), A, B, zero(T), R)
 
-function Base.Ac_mul_B(A::ReMat, B::DenseVecOrMat)
+function Base.Ac_mul_B{T}(A::FactorReTerm{T}, B::MatrixTerm{T})
     k = size(A, 2)
-    Ac_mul_B!(zeros(eltype(B), isa(B, Vector) ? (k,) : (k, size(B, 2))), A, B)
+    Ac_mul_B!(zeros(eltype(B), (k, size(B, 2))), A, B)
 end
 
-function Ac_mul_B!{T}(C::Diagonal{T}, A::ReMat{T}, B::ReMat{T})
+function Ac_mul_B!{T}(α::Real, A::MatrixTerm{T}, B::FactorReTerm{T}, β::Real, R::Matrix{T})
+    Awt = A.wtx
+    n, p = size(Awt)
+    q = size(B, 2)
+    @argcheck(size(R, 1) == p && size(B, 1) == n && size(R, 2) == q, DimensionMismatch)
+    if β ≠ one(T)
+        iszero(β) ? fill!(R, β) : scale!(β, R)
+    end
+    rr = B.f.refs
+    zz = B.wtz
+    if vsize(B) == 1
+        for i in 1:p, j in 1:n
+            R[i, rr[j]] += α * zz[i] * Awt[j, i]
+        end
+    else
+        l = size(zz, 1)
+        for j in 1 : k, i in 1 : n
+            roffset = (rr[i] - 1) * l
+            mul = α * Bwt[i, j]
+            for ii in 1 : l
+                R[roffset + ii, j] += mul * zz[ii, i]
+            end
+        end
+    end
+    R
+end
+
+Ac_mul_B!{T}(R::Matrix{T}, A::MatrixTerm{T}, B::FactorReTerm{T}) =
+    Ac_mul_B!(one(T), A, B, zero(T), R)
+
+function Base.Ac_mul_B{T}(A::MatrixTerm{T}, B::FactorReTerm{T})
+    k = size(A, 2)
+    Ac_mul_B!(zeros(eltype(B), (k, size(B, 2))), A, B)
+end
+
+Base.Ac_mul_B{T}(A::MatrixTerm{T}, B::MatrixTerm{T}) = A.wtx'B.wtx
+
+function Ac_mul_B!{T}(C::Diagonal{T}, A::FactorReTerm{T}, B::FactorReTerm{T})
     @argcheck A === B && vsize(A) == 1
     Az = A.z
     d = C.diag
@@ -130,7 +320,7 @@ function Ac_mul_B!{T}(C::Diagonal{T}, A::ReMat{T}, B::ReMat{T})
     C
 end
 
-function Ac_mul_B!{T}(C::Diagonal{Matrix{T}}, A::ReMat{T}, B::ReMat{T})
+function Ac_mul_B!{T}(C::Diagonal{Matrix{T}}, A::FactorReTerm{T}, B::FactorReTerm{T})
     @argcheck A === B && all(size.(C.diag, 2) .== vsize(A))
     Az = A.z
     l, n = size(Az)
@@ -144,7 +334,7 @@ function Ac_mul_B!{T}(C::Diagonal{Matrix{T}}, A::ReMat{T}, B::ReMat{T})
     C
 end
 
-function Base.Ac_mul_B{T}(A::ReMat{T}, B::ReMat{T})
+function Base.Ac_mul_B{T}(A::FactorReTerm{T}, B::FactorReTerm{T})
     if A === B
         l = vsize(A)
         if l == 1
@@ -155,7 +345,7 @@ function Base.Ac_mul_B{T}(A::ReMat{T}, B::ReMat{T})
     end
     Az = A.z
     Bz = B.z
-    @argcheck size(Az, 2) == size(Bz, 2) DimensionMismatch
+    @argcheck(size(Az, 2) == size(Bz, 2), DimensionMismatch)
     m = size(Az, 2)
     a = size(Az, 1)
     b = size(Bz, 1)
@@ -176,7 +366,7 @@ function Base.Ac_mul_B{T}(A::ReMat{T}, B::ReMat{T})
     sparse(I, J, V)
 end
 
-function Ac_mul_B!{T}(R::DenseVecOrMat{T}, A::DenseVecOrMat{T}, B::ReMat)
+function Ac_mul_B!{T}(R::DenseVecOrMat{T}, A::DenseVecOrMat{T}, B::FactorReTerm)
     m = size(A, 1)
     n = size(A, 2)  # needs to be done this way in case A is a vector
     p, q = size(B)
@@ -200,7 +390,7 @@ function Ac_mul_B!{T}(R::DenseVecOrMat{T}, A::DenseVecOrMat{T}, B::ReMat)
     R
 end
 
-function Ac_mul_B!{T}(C::Matrix{T}, A::ReMat{T}, B::ReMat{T})
+function Ac_mul_B!{T}(C::Matrix{T}, A::FactorReTerm{T}, B::FactorReTerm{T})
     m, n = size(B)
     @argcheck size(C, 1) == size(A, 2) && n == size(C, 2) && size(A, 1) == m DimensionMismatch
     Ar = A.f.refs
@@ -219,7 +409,7 @@ function Ac_mul_B!{T}(C::Matrix{T}, A::ReMat{T}, B::ReMat{T})
     C
 end
 
-function Ac_mul_B!{T}(C::SparseMatrixCSC{T}, A::ReMat{T}, B::ReMat{T})
+function Ac_mul_B!{T}(C::SparseMatrixCSC{T}, A::FactorReTerm{T}, B::FactorReTerm{T})
     m, n = size(B)
     @argcheck size(C, 1) == size(A, 2) && n == size(C, 2) && size(A, 1) == m DimensionMismatch
     Ar = A.f.refs
@@ -248,16 +438,20 @@ function Ac_mul_B!{T}(C::SparseMatrixCSC{T}, A::ReMat{T}, B::ReMat{T})
     C
 end
 
-Base.Ac_mul_B(A::DenseVecOrMat, B::ReMat) = Ac_mul_B!(Array{eltype(A)}((size(A, 2), size(B, 2))), A, B)
+# In products with Arrays, a MatrixTerm acts as an identity
+Ac_mul_B!{T}(A::MatrixTerm{T}, B::AbstractArray{T}) = B
+A_mul_B!{T}(A::AbstractArray{T}, B::MatrixTerm{T}) = A
 
-function A_mul_B!{T}(A::Diagonal{T}, B::ReMat{T})
+Base.Ac_mul_B(A::DenseVecOrMat, B::FactorReTerm) = Ac_mul_B!(Array{eltype(A)}((size(A, 2), size(B, 2))), A, B)
+
+function A_mul_B!{T}(A::Diagonal{T}, B::FactorReTerm{T})
     scale!(B.z, A.diag)
     B
 end
 
-(*){T}(D::Diagonal{T}, A::ReMat{T}) = ReMat(A.f, A.z * D, A.fnm, A.cnms)
+(*){T}(D::Diagonal{T}, A::FactorReTerm{T}) = FactorReTerm(A.f, A.z * D, A.fnm, A.cnms)
 
-function A_mul_B!{T}(C::ReMat{T}, A::Diagonal{T}, B::ReMat{T})
+function A_mul_B!{T}(C::FactorReTerm{T}, A::Diagonal{T}, B::FactorReTerm{T})
     A_mul_B!(C.z, B.z, A)
     C
 end
