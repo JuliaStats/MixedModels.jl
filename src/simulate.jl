@@ -139,13 +139,11 @@ Reevaluate the last column of `m.A` from `m.trms`.  This function should be call
 after updating the response, `m.trms[end]`.
 """
 function reevaluateAend!(m::LinearMixedModel)
-    A, trms, sqrtwts, wttrms = m.A, m.trms, m.sqrtwts, m.wttrms
-    wttrmn = wttrms[end]
-    if !isempty(sqrtwts)
-        A_mul_B!(wttrmn, sqrtwts, trms[end])
-    end
-    for i in eachindex(wttrms)
-        Ac_mul_B!(A[end, i], wttrmn, wttrms[i])
+    A = m.A
+    trms = m.trms
+    trmn = reweight!(trms[end], m.sqrtwts)
+    for i in eachindex(trms)
+        Ac_mul_B!(A[end, i], trmn, trms[i])
     end
     m
 end

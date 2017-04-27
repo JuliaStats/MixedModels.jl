@@ -20,14 +20,19 @@ function MatrixTerm(y::Vector)
     MatrixTerm{T,Matrix{T}}(m, m, [""])
 end
 function reweight!{T}(A::MatrixTerm{T}, sqrtwts::Vector{T})
-    if (A.x === A.wtx)
-        A.wtx = similar(A.x)
+    if !isempty(sqrtwts)
+        if (A.x === A.wtx)
+            A.wtx = similar(A.x)
+        end
+        scale!(A.wtx, sqrtwts, A.x)
     end
-    scale!(A.wtx, sqrtwts, A.x)
     A
 end
 Base.size(A::MatrixTerm) = size(A.wtx)
 Base.size(A::MatrixTerm, i) = size(A.wtx, i)
+Base.copy!{T}(A::MatrixTerm{T}, src::AbstractVecOrMat{T}) = copy!(A.x, src)
+Ac_mul_B!{T}(R::AbstractMatrix{T}, A::MatrixTerm{T}, B::MatrixTerm{T}) = Ac_mul_B!(R, A.wtx, B.wtx)
+A_mul_B!{T}(R::StridedVecOrMat{T}, A::MatrixTerm{T}, B::StridedVecOrMat{T}) = A_mul_B!(R, A.wtx, B)
 
 @compat const AbstractFactor{V,R} = Union{NullableCategoricalVector{V,R},CategoricalVector{V,R},PooledDataVector{V,R}}
 
@@ -79,10 +84,12 @@ function FactorReTerm(f::AbstractFactor, z::Matrix, fnm, cnms, blks)
     FactorReTerm(f, z, z, fnm, cnms, eye(eltype(z), n), inds)
 end
 function reweight!(A::FactorReTerm, sqrtwts::Vector)
-    if A.z === A.wtz
-        A.wtz = similar(A.z)
+    if !isempty(sqrtwts)
+        if A.z === A.wtz
+            A.wtz = similar(A.z)
+        end
+        scale!(A.wtz, A.z, sqrtwts)
     end
-    scale!(A.wtz, A.z, sqrtwts)
     A
 end
 
@@ -235,7 +242,6 @@ function A_mul_B!{T}(α::Real, A::FactorReTerm, B::StridedVecOrMat{T}, β::Real,
 end
 
 A_mul_B!{T}(A::FactorReTerm, B::StridedVecOrMat{T}, R::StridedVecOrMat{T}) = A_mul_B!(one(T), A, B, zero(T), R)
-
 function Ac_mul_B!{T}(α::Real, A::FactorReTerm{T}, B::MatrixTerm{T}, β::Real, R::Matrix{T})
     n, q = size(A)
     Bwt = B.wtx
@@ -287,11 +293,11 @@ function Ac_mul_B!{T}(α::Real, A::MatrixTerm{T}, B::FactorReTerm{T}, β::Real, 
         end
     else
         l = size(zz, 1)
-        for j in 1 : k, i in 1 : n
+        for j in 1:p, i in 1:n
             roffset = (rr[i] - 1) * l
-            mul = α * Bwt[i, j]
-            for ii in 1 : l
-                R[roffset + ii, j] += mul * zz[ii, i]
+            mul = α * Awt[i, j]
+            for ii in 1:l
+                R[j, roffset + ii] += mul * zz[ii, i]
             end
         end
     end

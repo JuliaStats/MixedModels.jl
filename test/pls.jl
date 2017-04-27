@@ -49,19 +49,6 @@ end
     @test vc.s == sdest(fm1)
 end
 
-@testset "simulate!" begin
-    fm = fit!(lmm(@formula(Y ~ 1 + (1 | G)), dat[:Dyestuff]))
-    srand(1234321)
-    refit!(simulate!(fm))
-    @test isapprox(deviance(fm), 339.0218639362958, atol=0.001)
-    simulate!(fm, θ = getθ(fm))
-    @test_throws DimensionMismatch refit!(fm, zeros(29))
-    srand(1234321)
-    dfr = bootstrap(10, fm)
-    @test size(dfr) == (10, 5)
-    @test names(dfr) == Symbol[:obj, :σ, :β₁, :θ₁, :σ₁]
-end
-
 @testset "Dyestuff2" begin
     fm = lmm(@formula(Y ~ 1 + (1 | G)), dat[:Dyestuff2])
     @test lowerbd(fm) == zeros(1)
@@ -75,6 +62,7 @@ end
     @test coef(fm) ≈ [5.6656]
     @test logdet(fm) ≈ 0.0
     refit!(fm, dat[:Dyestuff][:Y])
+    @test isapprox(objective(fm), 327.3270598811428, atol=0.001)
 end
 
 #tbl = MixedModels.lrt(fm4,fm3)
@@ -216,4 +204,17 @@ end
     @test std(fm)[2] ≈ [25.556130034081047]
     @test isapprox(logdet(fm), 74.46952585564611, atol=0.001)
     cor(fm)
+end
+
+@testset "simulate!" begin
+    fm = fit!(lmm(@formula(Y ~ 1 + (1 | G)), dat[:Dyestuff]))
+    srand(1234321)
+    refit!(simulate!(fm))
+    @test isapprox(deviance(fm), 339.0218639362958, atol=0.001)
+    simulate!(fm, θ = getθ(fm))
+    @test_throws DimensionMismatch refit!(fm, zeros(29))
+    srand(1234321)
+    dfr = bootstrap(10, fm)
+    @test size(dfr) == (10, 5)
+    @test names(dfr) == Symbol[:obj, :σ, :β₁, :θ₁, :σ₁]
 end
