@@ -31,6 +31,8 @@ Returns the vector of the condition numbers of the blocks of `m.Λ`
 """
 Base.cond(m::MixedModel) = cond.(reterms(m))
 
+Base.cor{T}(m::MixedModel{T}) = Matrix{T}[stddevcor(t)[2] for t in reterms(m)]
+
 """
     std{T}(m::MixedModel{T})
 
@@ -153,7 +155,7 @@ function ranef(m::MixedModel; uscale=false, named=false)
     v = Matrix{T}[Matrix{T}(vsize(t), nlevs(t)) for t in reterms(LMM)]
     ranef!(v, LMM, uscale)
     named || return v
-    vnmd = NamedArray.(v)
+    vnmd = map(NamedArray, v)
     trms = reterms(LMM)
     for (i, vnm) in enumerate(vnmd)
         setnames!(vnm, trms[i].cnms, 1)

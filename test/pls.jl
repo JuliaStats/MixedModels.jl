@@ -158,7 +158,6 @@ end
     @test diag(cor(fm)[1]) ≈ ones(2)
 #    @test isapprox(cond(fm), [4.175251, 4.461845, 1.0], atol=0.0001)
     @test loglikelihood(fm) ≈ -875.9696722323523
-    @test eltype(fm.wttrms[1]) === Float64
 
     u3 = ranef(fm, uscale=true)
     @test length(u3) == 1

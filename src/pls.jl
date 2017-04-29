@@ -32,12 +32,14 @@ function LinearMixedModel(f, trms, wts)
     end
     for i in 1:nt
         Lii = L[i, i]
-        if isa(Lii, Diagonal) && eltype(Lii) == Matrix{T}
+        if isa(Lii, Diagonal)
             Liid = Lii.diag
-            if all(d -> size(d) == (1,1), Liid)
-                L[i, i] = Diagonal(map(d -> d[1,1], Liid))
-            else
-                L[i, i] = Diagonal(map(LowerTriangular, Liid))
+            if !isempty(Liid) && isa(Liid[1], Array)
+                if all(d -> size(d) == (1,1), Liid)
+                    L[i, i] = Diagonal(map(d -> d[1,1], Liid))
+                else
+                    L[i, i] = Diagonal(map(LowerTriangular, Liid))
+                end
             end
         end
     end
@@ -100,7 +102,8 @@ function lmm(f::Formula, fr::AbstractDataFrame; weights::Vector = [])
                 push!(trsize, length(cnms))
             end
         end
-        push!(trms, FactorReTerm(gr, reshape(m, (sum(trsize), n)), grp, coefnms, trsize))
+        push!(trms,
+            FactorReTerm(gr, transpose(reshape(m, (n, sum(trsize)))), grp, coefnms, trsize))
     end
     sort!(trms, by = nrandomeff, rev = true)
     push!(trms, MatrixTerm(X, coefnames(mf)))
@@ -286,8 +289,6 @@ varest(m::LinearMixedModel) = pwrss(m) / nobs(m)
 The penalized residual sum-of-squares.
 """
 pwrss(m::LinearMixedModel) = abs2(sqrtpwrss(m))
-
-Base.cor(m::LinearMixedModel) = map(λ -> stddevcor(λ)[2], m.Λ)
 
 function StatsBase.deviance(m::LinearMixedModel)
     isfit(m) || error("Model has not been fit")

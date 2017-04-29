@@ -327,9 +327,9 @@ function Ac_mul_B!{T}(C::Diagonal{T}, A::FactorReTerm{T}, B::FactorReTerm{T})
 end
 
 function Ac_mul_B!{T}(C::Diagonal{Matrix{T}}, A::FactorReTerm{T}, B::FactorReTerm{T})
-    @argcheck A === B && all(size.(C.diag, 2) .== vsize(A))
     Az = A.z
     l, n = size(Az)
+    @argcheck A === B && all(d -> size(d) == (l, l), C.diag)
     d = C.diag
     fill!.(d, zero(T))
     refs = A.f.refs
