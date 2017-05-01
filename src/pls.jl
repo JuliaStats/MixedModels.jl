@@ -334,19 +334,15 @@ end
 Update `m.sqrtwts` from `wts` and `m.wttrms` from `m.trms`.  Recompute `m.A` and `m.L`.
 """
 function reweight!{T}(m::LinearMixedModel{T}, weights::Vector{T})
-    A = m.A
     trms = m.trms
     sqrtwts = m.sqrtwts
-    @argcheck(length(weights) == size(sqrtwts, 2), DimensionMismatch)
-    map!(sqrt, sqrtwts.diag, weights)
-    for j in eachindex(trms)
-        trmj = trms[j]
-        isa(wtj, ReMat) ? copy!(wtj.z, trms[j].z) : copy!(wtj, trms[j])
-        A_mul_B!(sqrtwts, wtj)
-    end
-    ntrm = length(wttrms)
+    @argcheck(length(weights) == length(sqrtwts), DimensionMismatch)
+    map!(sqrt, sqrtwts, weights)
+    reweight!.(trms, Vector{T}[sqrtwts])
+    ntrm = length(trms)
+    A = m.A
     for j in 1:ntrm, i in j:ntrm
-        Ac_mul_B!(A[i, j], wttrms[i], wttrms[j])
+        Ac_mul_B!(A[i, j], trms[i], trms[j])
     end
     updateL!(m)
 end

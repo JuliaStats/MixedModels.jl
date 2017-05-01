@@ -112,7 +112,7 @@ end
     @test isapprox(logdet(fm), 101.0381339953986, atol=0.001)
 end
 
-if false # takes too long on Travis for julia 0.6
+#if false # takes too long on Travis for julia 0.6
 @testset "InstEval" begin
     fm1 = lmm(@formula(Y ~ 1 + A + (1 | G) + (1 | H) + (1 | I)), dat[:InstEval])
     @test size(fm1) == (73421, 2, 4114, 3)
@@ -133,7 +133,7 @@ if false # takes too long on Travis for julia 0.6
     @test isapprox(objective(fm2), 237585.5534151694, atol=0.001)
     @test size(fm2) == (73421, 28, 4100, 2)
 end
-end
+#end
 
 @testset "sleep" begin
     fm = lmm(@formula(Y ~ 1 + U + (1 + U | G)), dat[:sleepstudy]);
@@ -173,7 +173,7 @@ end
     simulate!(fm)  # to test one of the unscaledre methods
 end
 
-if false  # takes too long for Travis
+#if false  # takes too long for Travis
 @testset "d3" begin
     fm = updateL!(lmm(@formula(Y ~ 1 + U + (1+U|G) + (1+U|H) + (1+U|I)), dat[:d3]));
     @test isapprox(pwrss(fm), 5.1261847180180885e6, rtol = 1e-6)
@@ -183,7 +183,7 @@ if false  # takes too long for Travis
     @test isapprox(objective(fm), 884957.5540213, rtol = 1e-6)
     @test isapprox(fixef(fm), [0.499130440264, 0.31130685058], atol = 1.e-5)
 end
-end
+#end
 
 @testset "sleepnocorr" begin
     fm = lmm(@formula(Y ~ 1 + U + (1|G) + (0+U|G)), dat[:sleepstudy])

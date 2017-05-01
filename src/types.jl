@@ -105,7 +105,7 @@ Linear mixed-effects model representation
 * `wttrms`: a length `nt` vector of weighted model matrices. The last two elements are `X` and `y`.
 * `trms`: a vector of unweighted model matrices.  If `isempty(sqrtwts)` the same object as `wttrms`
 * `Λ`: a length `nt - 2` vector of lower triangular matrices
-* `sqrtwts`: the `Diagonal` matrix of the square roots of the case weights.  Allowed to be size 0
+* `sqrtwts`: vector of square roots of the case weights.  Allowed to be size 0
 * `A`: an `nt × nt` symmetric matrix of matrices representing `hcat(Z,X,y)'hcat(Z,X,y)`
 * `L`: a `nt × nt` matrix of matrices - the lower Cholesky factor of `Λ'AΛ+I`
 * `opt`: an [`OptSummary`](@ref) object
@@ -193,7 +193,7 @@ function Base.show(io::IO, vc::VarCorr)
     fnms = vc.fnms
     stdm = vc.σ
     cor = vc.ρ
-    cnms = reduce(vcat, vc.cnms)
+    cnms = reduce(append!, String[], vc.cnms)
     if isfinite(vc.s)
         push!(fnms,"Residual")
         push!(stdm, [1.])

@@ -11,20 +11,20 @@ function glmm(f::Formula, fr::AbstractDataFrame, d::Distribution, l::Link; wt=[]
     if d == Binomial() && isempty(wt)
         d = Bernoulli()
     end
-    wts = isempty(wt) ? ones(nrow(fr)) : Array(wt)
-        # the weights argument is forced to be non-empty in the lmm as it will be used later
-    LMM = lmm(f, fr; weights = wts)
-    updateL!(setθ!(LMM, getθ(LMM)))
-    trms = LMM.trms
-    u = fill!.(ranef(LMM), 0)
+    LMM = lmm(f, fr; weights = wt)
+    X = LMM.trms[end - 1].x
     y = copy(model_response(LMM))
-    wts = oftype(y, wts)
+    if isempty(wt)
+        LMM = LinearMixedModel(LMM.formula, LMM.trms, ones(y), LMM.A, LMM.L, LMM.optsum)
+    end
+    updateL!(setθ!(LMM, getθ(LMM)))
             # fit a glm to the fixed-effects only
-    gl = glm(trms[end - 1], y, d, l; wts = wts, offset = zeros(y))
+    gl = length(wt) == length(y) ? glm(X, y, d, l; wts = wt) : glm(X, y, d, l)
     r = gl.rr
     β = coef(gl)
+    u = fill!.(ranef(LMM), 0)
     res = GeneralizedLinearMixedModel(LMM, β, copy(β), getθ(LMM), copy.(u), u,
-        zeros.(u), gl.rr, similar(y), wts)
+        zeros.(u), gl.rr, similar(y), oftype(y, wt))
     setβθ!(res, vcat(coef(gl), getθ(LMM)))
     LaplaceDeviance!(res)
     res
@@ -54,7 +54,7 @@ Update `m.η`, `m.μ`, etc., install the working response and working weights in
 """
 function LaplaceDeviance!(m::GeneralizedLinearMixedModel)
     updateη!(m)
-    GLM.wrkresp!(vec(m.LMM.trms[end]), m.resp)
+    GLM.wrkresp!(vec(m.LMM.trms[end].x), m.resp)
     reweight!(m.LMM, m.resp.wrkwt)
     LaplaceDeviance(m)
 end
@@ -82,11 +82,13 @@ lowerbd(m::GeneralizedLinearMixedModel) = vcat(fill(-Inf, size(m.β)), lowerbd(m
 Update the linear predictor, `m.η`, from the offset and the `B`-scale random effects.
 """
 function updateη!(m::GeneralizedLinearMixedModel)
-    η, lm, b, u = m.η, m.LMM, m.b,  m.u
-    Λ, trms = lm.Λ, lm.trms
-    A_mul_B!(η, trms[end - 1], m.β)
+    η = m.η
+    b = m.b
+    u = m.u
+    trms = m.LMM.trms
+    A_mul_B!(η, trms[end - 1].x, m.β)
     for i in eachindex(b)
-        unscaledre!(η, trms[i], A_mul_B!(b[i], Λ[i], u[i]))
+        unscaledre!(η, trms[i], A_mul_B!(b[i], trms[i], u[i]))
     end
     updateμ!(m.resp, η)
     m
@@ -188,8 +190,6 @@ is used.
 function StatsBase.fit!{T}(m::GeneralizedLinearMixedModel{T}; verbose::Bool=false,
     fast::Bool=false)
 
-## FIXME: fast should not be passed as an argument.  Whether or not β is optimized by PIRLS
-## should be determined by the length of optsum.initial, lowerbd and final.
     β = m.β
     lm = m.LMM
     optsum = lm.optsum
