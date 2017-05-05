@@ -4,6 +4,7 @@
 A matrix composed of heterogenous blocks.  Blocks can be sparse, dense or
 diagonal.
 """
+# FIXME: Change this to use the AbstractBlockArray interface
 
 immutable HeteroBlkdMatrix <: AbstractMatrix{AbstractMatrix}
     blocks::Matrix{AbstractMatrix}

@@ -32,7 +32,9 @@ Base.size(A::MatrixTerm) = size(A.wtx)
 Base.size(A::MatrixTerm, i) = size(A.wtx, i)
 Base.copy!{T}(A::MatrixTerm{T}, src::AbstractVecOrMat{T}) = copy!(A.x, src)
 Ac_mul_B!{T}(R::AbstractMatrix{T}, A::MatrixTerm{T}, B::MatrixTerm{T}) = Ac_mul_B!(R, A.wtx, B.wtx)
-A_mul_B!{T}(R::StridedVecOrMat{T}, A::MatrixTerm{T}, B::StridedVecOrMat{T}) = A_mul_B!(R, A.wtx, B)
+Base.Ac_mul_B{T}(A::MatrixTerm{T}, B::MatrixTerm{T}) = A.wtx'B.wtx
+A_mul_B!{T}(R::StridedVecOrMat{T}, A::MatrixTerm{T}, B::StridedVecOrMat{T}) = A_mul_B!(R, A.x, B)
+*{T}(A::MatrixTerm{T}, B::StridedVecOrMat{T}) = A.x * B
 
 @compat const AbstractFactor{V,R} = Union{NullableCategoricalVector{V,R},CategoricalVector{V,R},PooledDataVector{V,R}}
 
@@ -311,8 +313,6 @@ function Base.Ac_mul_B{T}(A::MatrixTerm{T}, B::FactorReTerm{T})
     k = size(A, 2)
     Ac_mul_B!(zeros(eltype(B), (k, size(B, 2))), A, B)
 end
-
-Base.Ac_mul_B{T}(A::MatrixTerm{T}, B::MatrixTerm{T}) = A.wtx'B.wtx
 
 function Ac_mul_B!{T}(C::Diagonal{T}, A::FactorReTerm{T}, B::FactorReTerm{T})
     @argcheck A === B && vsize(A) == 1
