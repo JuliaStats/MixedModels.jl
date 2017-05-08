@@ -188,7 +188,7 @@ Members:
 
 - `LMM`: a [`LinearMixedModel`](@ref) - the local approximation to the GLMM.
 - `β`: the fixed-effects vector
-- `β₀`: similar to `β`. User in the PIRLS algorithm if step-halving is needed.
+- `β₀`: similar to `β`. Used in the PIRLS algorithm if step-halving is needed.
 - `θ`: covariance parameter vector
 - `b`: similar to `u`, equivalent to `broadcast!(*, b, LMM.Λ, u)`
 - `u`: a vector of matrices of random effects
