@@ -31,8 +31,6 @@ Returns the vector of the condition numbers of the blocks of `m.Λ`
 """
 Base.cond(m::MixedModel) = cond.(reterms(m))
 
-Base.cor{T}(m::MixedModel{T}) = Matrix{T}[stddevcor(t)[2] for t in reterms(m)]
-
 """
     std{T}(m::MixedModel{T})
 
@@ -179,11 +177,7 @@ end
 
 Returns the estimated correlation matrix of the fixed-effects estimator.
 """
-function StatsBase.cor(m::MixedModel)
-    vc = vcov(m)
-    scl = [√(inv(vc[i])) for i in diagind(vc)]
-    scale!(scl, scale!(vc, scl))
-end
+Base.cor{T}(m::MixedModel{T}) = Matrix{T}[stddevcor(t)[2] for t in reterms(m)]
 
 """
     condVar(m::MixedModel)

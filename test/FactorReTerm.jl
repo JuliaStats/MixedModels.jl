@@ -1,7 +1,15 @@
+using Base.Test, RData, MixedModels
+
+if !isdefined(:dat) || !isa(dat, Dict{Symbol, Any})
+    dat = convert(Dict{Symbol,Any}, load(joinpath(dirname(@__FILE__), "dat.rda")))
+end
+
 @testset "scalarRe" begin
-    sf = ScalarReMat(dyestuff[:G], ones(size(dyestuff,1)), :Batch, ["(Intercept)"])
-    sf1 = ScalarReMat(pastes[:G], ones(size(pastes,1)), :sample, ["(Intercept)"])
-    sf2 = ScalarReMat(pastes[:H], ones(size(pastes, 1)), :batch, ["(Intercept)"])
+    dyestuff = dat[:Dyestuff]
+    pastes = dat[:Pastes]
+    sf = FactorReTerm(dyestuff[:G], ones(1, size(dyestuff,1)), :Batch, ["(Intercept)"], [1])
+    sf1 = FactorReTerm(pastes[:G], ones(1, size(pastes,1)), :sample, ["(Intercept)"], [1])
+    sf2 = FactorReTerm(pastes[:H], ones(1, size(pastes, 1)), :batch, ["(Intercept)"], [1])
     Yield = Array(dyestuff[:Y])
 
     @testset "size" begin
@@ -12,9 +20,9 @@
     end
 
     @testset "products" begin
-        dd = fill(5., 6)
-        @test sf'ones(30) == dd
-        @test ones(30)'sf == dd'
+        dd = fill(5.0, (6, 1))
+        @test sf'MatrixTerm(ones(30)) == dd
+        @test MatrixTerm(ones(30))'sf == dd'
         tt = A_mul_B!(1., sf, dd, 0., zeros(30))
         @test tt == A_mul_B!(sf, dd, zeros(30))
         @test Ac_mul_B!(Array{Float64}((size(sf1, 2), size(sf2, 2))), sf1, sf2) == Array(sf1'sf2)
@@ -27,9 +35,9 @@
         @test crp[6,6] == 5
         @test size(crp) == (6,6)
         @test crp.diag == fill(5.,6)
-        rhs = sf'Yield
-        @test rhs == [7525.0,7640.0,7820.0,7490.0,8000.0,7350.0]
-        @test A_ldiv_B!(crp,copy(rhs)) == [1505.,1528.,1564.,1498.,1600.,1470.]
+        rhs = sf'MatrixTerm(Yield)
+        @test rhs == reshape([7525.0,7640.0,7820.0,7490.0,8000.0,7350.0], (6, 1))
+        @test A_ldiv_B!(crp, copy(rhs)) == reshape([1505.,1528.,1564.,1498.,1600.,1470.], (6, 1))
 
         D = Diagonal(ones(30))
         csf = D * sf

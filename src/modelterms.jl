@@ -28,6 +28,7 @@ function reweight!{T}(A::MatrixTerm{T}, sqrtwts::Vector{T})
     end
     A
 end
+eltype(A::MatrixTerm) = eltype(A.wtx)
 Base.size(A::MatrixTerm) = size(A.wtx)
 Base.size(A::MatrixTerm, i) = size(A.wtx, i)
 Base.copy!{T}(A::MatrixTerm{T}, src::AbstractVecOrMat{T}) = copy!(A.x, src)

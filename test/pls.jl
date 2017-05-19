@@ -156,7 +156,7 @@ end
     @test isapprox(std(fm)[1], [23.780468100188497, 5.716827903196682], atol=0.01)
     @test isapprox(logdet(fm), 73.90337187545992, atol=0.001)
     @test diag(cor(fm)[1]) ≈ ones(2)
-#    @test isapprox(cond(fm), [4.175251, 4.461845, 1.0], atol=0.0001)
+    @test isapprox(cond(fm), [4.175251], atol=0.0001)
     @test loglikelihood(fm) ≈ -875.9696722323523
 
     u3 = ranef(fm, uscale=true)
