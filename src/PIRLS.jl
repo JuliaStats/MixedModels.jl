@@ -32,8 +32,6 @@ end
 
 glmm(f::Formula, fr::AbstractDataFrame, d::Distribution) = glmm(f, fr, d, GLM.canonicallink(d))
 
-Base.logdet{T}(m::GeneralizedLinearMixedModel{T}) = logdet(m.LMM)
-
 """
     LaplaceDeviance{T}(m::GeneralizedLinearMixedModel{T})::T
 
@@ -44,7 +42,7 @@ is defined as the squared length of the conditional modes, `u`, plus the determi
 of `Λ'Z'ZΛ + 1`, plus the sum of the squared deviance residuals.
 """
 LaplaceDeviance{T}(m::GeneralizedLinearMixedModel{T})::T =
-    sum(m.resp.devresid) + logdet(m) + mapreduce(u -> sum(abs2, u), +, m.u)
+    sum(m.resp.devresid) + logdet(m) + sum(u -> sum(abs2, u), m.u)
 
 """
     LaplaceDeviance!(m::GeneralizedLinearMixedModel)

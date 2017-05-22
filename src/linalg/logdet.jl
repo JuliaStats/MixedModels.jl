@@ -32,3 +32,5 @@ function logdet{T}(m::LinearMixedModel{T})
     end
     2.*s
 end
+
+logdet{T}(m::GeneralizedLinearMixedModel{T}) = logdet(m.LMM)
