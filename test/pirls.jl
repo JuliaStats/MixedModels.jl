@@ -1,12 +1,17 @@
-using Base.Test, DataFrames, MixedModels
+using Base.Test, RData, MixedModels
+
+if !isdefined(:dat) || !isa(dat, Dict{Symbol, Any})
+    dat = convert(Dict{Symbol,Any}, load(joinpath(dirname(@__FILE__), "dat.rda")))
+end
 
 @testset "contra" begin
     contraception = dat[:Contraception]
     contraception[:use01] = Array(float.(contraception[:use] .== "Y"))
     contraception[:a2] = abs2.(contraception[:a])
     contraception[:urbdist] = string.(contraception[:urb], contraception[:d])
-    gm0 = fit!(glmm(@formula(use01 ~ 1 + a + a2 + urb + l + (1 | urbdist)), contraception,
-        Bernoulli()), fast=true)
+    gm0 = glmm(@formula(use01 ~ 1 + a + a2 + urb + l + (1 | urbdist)), contraception,
+        Bernoulli())
+    fit!(gm0, fast = true)
     @test isapprox(LaplaceDeviance(gm0), 2361.657188518064, atol=0.001)
     gm1 = fit!(glmm(@formula(use01 ~ 1 + a + a2 + urb + l + (1 | urbdist)), contraception,
         Bernoulli()));
