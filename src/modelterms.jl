@@ -19,6 +19,7 @@ function MatrixTerm(y::Vector)
     m = reshape(y, (length(y), 1))
     MatrixTerm{T,Matrix{T}}(m, m, [""])
 end
+
 function reweight!{T}(A::MatrixTerm{T}, sqrtwts::Vector{T})
     if !isempty(sqrtwts)
         if (A.x === A.wtx)
@@ -28,13 +29,21 @@ function reweight!{T}(A::MatrixTerm{T}, sqrtwts::Vector{T})
     end
     A
 end
+
 eltype(A::MatrixTerm) = eltype(A.wtx)
+
 Base.size(A::MatrixTerm) = size(A.wtx)
+
 Base.size(A::MatrixTerm, i) = size(A.wtx, i)
+
 Base.copy!{T}(A::MatrixTerm{T}, src::AbstractVecOrMat{T}) = copy!(A.x, src)
+
 Ac_mul_B!{T}(R::AbstractMatrix{T}, A::MatrixTerm{T}, B::MatrixTerm{T}) = Ac_mul_B!(R, A.wtx, B.wtx)
+
 Base.Ac_mul_B{T}(A::MatrixTerm{T}, B::MatrixTerm{T}) = A.wtx'B.wtx
+
 A_mul_B!{T}(R::StridedVecOrMat{T}, A::MatrixTerm{T}, B::StridedVecOrMat{T}) = A_mul_B!(R, A.x, B)
+
 *{T}(A::MatrixTerm{T}, B::StridedVecOrMat{T}) = A.x * B
 
 @compat const AbstractFactor{V,R} = Union{NullableCategoricalVector{V,R},CategoricalVector{V,R},PooledDataVector{V,R}}
@@ -70,6 +79,7 @@ type FactorReTerm{T<:AbstractFloat,V,R} <: AbstractTerm{T}
     wtz::Matrix{T}
     fnm::Symbol
     cnms::Vector{String}
+    blks::Vector{Int}
     Λ::Matrix{T}
     inds::Vector{Int}
 end
@@ -84,8 +94,11 @@ function FactorReTerm(f::AbstractFactor, z::Matrix, fnm, cnms, blks)
         end
         offset += k
     end
-    FactorReTerm(f, z, z, fnm, cnms, eye(eltype(z), n), inds)
+    FactorReTerm(f, z, z, fnm, cnms, blks, eye(eltype(z), n), inds)
 end
+# convenience constructor for testing
+FactorReTerm(f::AbstractFactor) = FactorReTerm(f, ones(1, length(f)), :G, ["(Intercept)"], [1])
+
 function reweight!(A::FactorReTerm, sqrtwts::Vector)
     if !isempty(sqrtwts)
         if A.z === A.wtz
@@ -141,10 +154,10 @@ Base.size(A::FactorReTerm, i::Integer) =
 
 function Base.sparse(R::FactorReTerm)
     sparse(Int32[1:length(R.z);],
-        convert(Vector{Int32}, repeat(R.f.refs, inner=size(R.z, 1))), vec(R.z))
+        convert(Vector{Int32}, repeat(R.f.refs, inner=vsize(R))), vec(R.z))
 end
 
-==(A::FactorReTerm,B::FactorReTerm) = (A.f == B.f) && (A.z == B.z)
+==(A::FactorReTerm, B::FactorReTerm) = (A.f == B.f) && (A.z == B.z)
 
 cond(A::FactorReTerm) = cond(LowerTriangular(A.Λ))
 
@@ -181,6 +194,8 @@ end
 
 Return a vector of the elements of the lower triangle blocks in `A.Λ` (column-major ordering)
 """
+function getθ end
+
 getθ{T}(A::FactorReTerm{T}) = A.Λ[A.inds]
 getθ{T}(A::MatrixTerm{T}) = T[]
 getθ{T}(v::Vector{AbstractTerm{T}}) = reduce(append!, T[], getθ(t) for t in v)
@@ -442,23 +457,5 @@ function Ac_mul_B!{T}(C::SparseMatrixCSC{T}, A::FactorReTerm{T}, B::FactorReTerm
             nz[inds[k]] += Az[k, i] * Bz[j, i]
         end
     end
-    C
-end
-
-# In products with Arrays, a MatrixTerm acts as an identity
-Ac_mul_B!{T}(A::MatrixTerm{T}, B::AbstractArray{T}) = B
-A_mul_B!{T}(A::AbstractArray{T}, B::MatrixTerm{T}) = A
-
-Base.Ac_mul_B(A::DenseVecOrMat, B::FactorReTerm) = Ac_mul_B!(Array{eltype(A)}((size(A, 2), size(B, 2))), A, B)
-
-function A_mul_B!{T}(A::Diagonal{T}, B::FactorReTerm{T})
-    scale!(B.z, A.diag)
-    B
-end
-
-(*){T}(D::Diagonal{T}, A::FactorReTerm{T}) = FactorReTerm(A.f, A.z * D, A.fnm, A.cnms)
-
-function A_mul_B!{T}(C::FactorReTerm{T}, A::Diagonal{T}, B::FactorReTerm{T})
-    A_mul_B!(C.z, B.z, A)
     C
 end

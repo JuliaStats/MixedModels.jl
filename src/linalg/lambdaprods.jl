@@ -1,3 +1,8 @@
+# Products with respect to Λ blocks for various terms.
+
+# The Λ block for a MatrixTerm is the identity
+Ac_mul_B!{T}(A::MatrixTerm{T}, B::AbstractArray{T}) = B
+A_mul_B!{T}(A::AbstractArray{T}, B::MatrixTerm{T}) = A
 
 function A_mul_B!{T<:AbstractFloat}(A::Diagonal{LowerTriangular{T, Matrix{T}}},
     B::FactorReTerm{T})
