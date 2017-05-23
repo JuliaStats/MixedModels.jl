@@ -80,7 +80,9 @@ function NLopt.Opt(optsum::OptSummary)
     NLopt.ftol_rel!(opt, optsum.ftol_rel) # relative criterion on objective
     NLopt.ftol_abs!(opt, optsum.ftol_abs) # absolute criterion on objective
     NLopt.xtol_rel!(opt, optsum.xtol_rel) # relative criterion on parameter values
-    NLopt.xtol_abs!(opt, optsum.xtol_abs) # absolute criterion on parameter values
+    if length(optsum.xtol_abs) == length(lb)  # not true for the second optimization in GLMM
+        NLopt.xtol_abs!(opt, optsum.xtol_abs) # absolute criterion on parameter values
+    end
     NLopt.lower_bounds!(opt, lb)
     NLopt.maxeval!(opt, optsum.feval)
     if isempty(optsum.initial_step)
