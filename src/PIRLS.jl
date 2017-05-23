@@ -198,19 +198,6 @@ function StatsBase.fit!{T}(m::GeneralizedLinearMixedModel{T}; verbose::Bool=fals
         optsum.final = copy(optsum.initial)
         optsum.initial_step = vcat(stderr(m), fill(T(0.05), length(m.θ)))
     end
-    x = optsum.final
-    copy!(x, optsum.initial)
-    opt = NLopt.Opt(optsum.optimizer, length(x))
-
-    NLopt.lower_bounds!(opt, optsum.lowerbd)
-    NLopt.ftol_rel!(opt, optsum.ftol_rel) # relative criterion on objective
-    NLopt.ftol_abs!(opt, optsum.ftol_abs) # absolute criterion on objective
-    NLopt.xtol_rel!(opt, optsum.ftol_rel) # relative criterion on parameter values
-    if isempty(optsum.initial_step)
-        optsum.initial_step = NLopt.initial_step(opt, optsum.initial, similar(x))
-    else
-        NLopt.initial_step!(opt, optsum.initial_step)
-    end
     setpar! = fast ? setθ! : setβθ!
     feval = 0
     function obj(x::Vector{T}, g::Vector{T})
@@ -221,8 +208,9 @@ function StatsBase.fit!{T}(m::GeneralizedLinearMixedModel{T}; verbose::Bool=fals
         verbose && println("f_", feval, ": ", round(val, 5), " ", x)
         val
     end
+    opt = Opt(optsum)
     NLopt.min_objective!(opt, obj)
-    fmin, xmin, ret = NLopt.optimize(opt, x)
+    fmin, xmin, ret = NLopt.optimize(opt, copy!(optsum.final, optsum.initial))
     ## check if very small parameter values bounded below by zero can be set to zero
     xmin_ = copy(xmin)
     for i in eachindex(xmin_)
@@ -242,7 +230,8 @@ function StatsBase.fit!{T}(m::GeneralizedLinearMixedModel{T}; verbose::Bool=fals
     optsum.final = xmin
     optsum.fmin = fmin
     optsum.returnvalue = ret
-    if ret ∈ [:FAILURE, :INVALID_ARGS, :OUT_OF_MEMORY, :ROUNDOFF_LIMITED, :FORCED_STOP]
+    ret == :ROUNDOFF_LIMITED && warn("NLopt was roundoff limited")
+    if ret ∈ [:FAILURE, :INVALID_ARGS, :OUT_OF_MEMORY, :FORCED_STOP]
         warn("NLopt optimization failure: $ret")
     end
     m

@@ -42,6 +42,7 @@ type OptSummary{T <: AbstractFloat}
     xtol_rel::T
     xtol_abs::Vector{T}
     initial_step::Vector{T}
+    maxfeval::Int
     final::Vector{T}
     fmin::T
     feval::Int
@@ -52,7 +53,7 @@ function OptSummary{T<:AbstractFloat}(initial::Vector{Float64}, lowerbd::Vector{
     optimizer::Symbol; ftol_rel::T=zero(T), ftol_abs::T=zero(T), xtol_rel::T=zero(T),
     initial_step::Vector{T}=T[])
     OptSummary(initial, lowerbd, T(Inf), ftol_rel, ftol_abs, xtol_rel, zeros(initial),
-        initial_step, copy(initial), T(Inf), -1, optimizer, :FAILURE)
+        initial_step, -1, copy(initial), T(Inf), -1, optimizer, :FAILURE)
 end
 
 function Base.show(io::IO, s::OptSummary)
@@ -66,6 +67,7 @@ function Base.show(io::IO, s::OptSummary)
     println(io, "xtol_rel:                 ", s.xtol_rel)
     println(io, "xtol_abs:                 ", s.xtol_abs)
     println(io, "initial_step:             ", s.initial_step)
+    println(io, "maxfeval:                 ", s.maxfeval)
     println(io)
     println(io, "Function evaluations:     ", s.feval)
     println(io, "Final parameter vector:   ", s.final)
@@ -84,7 +86,7 @@ function NLopt.Opt(optsum::OptSummary)
         NLopt.xtol_abs!(opt, optsum.xtol_abs) # absolute criterion on parameter values
     end
     NLopt.lower_bounds!(opt, lb)
-    NLopt.maxeval!(opt, optsum.feval)
+    NLopt.maxeval!(opt, optsum.maxfeval)
     if isempty(optsum.initial_step)
         optsum.initial_step = NLopt.initial_step(opt, optsum.initial, similar(lb))
     else
