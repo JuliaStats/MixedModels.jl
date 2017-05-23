@@ -10,8 +10,8 @@ end
     contraception[:a2] = abs2.(contraception[:a])
     contraception[:urbdist] = string.(contraception[:urb], contraception[:d])
     gm0 = glmm(@formula(use01 ~ 1 + a + a2 + urb + l + (1 | urbdist)), contraception,
-        Bernoulli())
-    fit!(gm0, fast = true)
+        Bernoulli());
+    fit!(gm0, verbose = true, fast = true)
     @test isapprox(LaplaceDeviance(gm0), 2361.657188518064, atol=0.001)
     gm1 = fit!(glmm(@formula(use01 ~ 1 + a + a2 + urb + l + (1 | urbdist)), contraception,
         Bernoulli()));

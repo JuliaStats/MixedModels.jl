@@ -86,7 +86,7 @@ function updateη!(m::GeneralizedLinearMixedModel)
     trms = m.LMM.trms
     A_mul_B!(η, trms[end - 1].x, m.β)
     for i in eachindex(b)
-        unscaledre!(η, trms[i], A_mul_B!(b[i], trms[i], u[i]))
+        unscaledre!(η, trms[i], Λ_mul_B!(b[i], trms[i], u[i]))
     end
     updateμ!(m.resp, η)
     m

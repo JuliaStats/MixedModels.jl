@@ -47,8 +47,6 @@ end
         dd = fill(5.0, (6, 1))
         @test sf'MatrixTerm(ones(30)) == dd
         @test MatrixTerm(ones(30))'sf == dd'
-        tt = A_mul_B!(1., sf, dd, 0., zeros(30))
-        @test tt == A_mul_B!(sf, dd, zeros(30))
         @test Ac_mul_B!(Array{Float64}((size(sf1, 2), size(sf2, 2))), sf1, sf2) == Array(sf1'sf2)
 
         crp = sf'sf
@@ -66,6 +64,10 @@ end
         @test isa(sf1'sf1, Diagonal{Float64})
         @test isa(sf2'sf2, Diagonal{Float64})
         @test isa(sf2'sf1,SparseMatrixCSC{Float64})
+
+        @test MixedModels.Λc_mul_B!(sf, ones(6)) == fill(0.5, 6)
+        @test MixedModels.Λ_mul_B!(Vector{Float64}(6), sf, ones(6)) == fill(0.5, 6)
+        @test MixedModels.A_mul_Λ!(ones(6, 6), sf) == fill(0.5, (6, 6))
     end
 
     @testset "reweight!" begin

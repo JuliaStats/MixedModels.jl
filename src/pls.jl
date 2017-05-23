@@ -127,8 +127,8 @@ function updateL!{T}(m::LinearMixedModel{T})
         cholUnblocked!(Ljj, Val{:L})
         for i in (j + 1):nblk
             Lij = copy!(L[i, j], A[i, j])
-            A_mul_B!(Lij, trms[j])
-            Ac_mul_B!(trms[i], Lij)
+            A_mul_Λ!(Lij, trms[j])
+            Λc_mul_B!(trms[i], Lij)
             for jj in 1:(j - 1)
                 A_mul_Bc!(-one(T), L[i, jj], L[j, jj], one(T), Lij)
             end
@@ -331,7 +331,7 @@ end
 """
     reweight!{T}(m::LinearMixedModel{T}, wts::Vector{T})
 
-Update `m.sqrtwts` from `wts` and `m.wttrms` from `m.trms`.  Recompute `m.A` and `m.L`.
+Update `m.sqrtwts` from `wts` and reweight each term.  Recompute `m.A` and `m.L`.
 """
 function reweight!{T}(m::LinearMixedModel{T}, weights::Vector{T})
     trms = m.trms

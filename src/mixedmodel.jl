@@ -129,7 +129,7 @@ function ranef!{T}(v::Vector, m::LinearMixedModel{T}, β::AbstractArray{T}, usca
     if !uscale
         trms = m.trms
         for j in 1:k
-            A_mul_B!(trms[j], vec(v[j]))
+            Λ_mul_B!(trms[j], vec(v[j]))
         end
     end
     v

@@ -1,9 +1,15 @@
 """
-    scaleInflate!(L, A, Λ)
+    scaleInflate!(L::AbstractMatrix, A::AbstractMatrix, Λ::AbstractTerm)
 
-Overwrite a diagonal block of `L` with the corresponding block of `Λ'AΛ + I`
+Overwrite a diagonal block of `L` with the corresponding block of `Λ'AΛ + I` except when Λ
+is a [`MatrixTerm`]{@ref}, in which case this becomes `copy!(L, A)`.
 """
 function scaleInflate! end
+
+function scaleInflate!{T}(Ljj::Matrix{T}, Ajj::Matrix{T}, Λj::MatrixTerm{T})
+    @argcheck(size(Ljj) == size(Ajj), DimensionMismatch)
+    copy!(Ljj, Ajj)
+end
 
 function scaleInflate!{T<:AbstractFloat}(Ljj::Diagonal{T}, Ajj::Diagonal{T}, Λj::FactorReTerm{T})
     @argcheck(length(Λj.Λ) == 1, DimensionMismatch)
@@ -20,11 +26,6 @@ function scaleInflate!{T<:AbstractFloat}(Ljj::Matrix{T}, Ajj::Diagonal{T}, Λj::
         Ljj[jj] = lambsq * Ad[j] + one(T)
     end
     Ljj
-end
-
-function scaleInflate!{T}(Ljj::Matrix{T}, Ajj::Matrix{T}, Λj::MatrixTerm{T})
-    @argcheck(size(Ljj) == size(Ajj), DimensionMismatch)
-    copy!(Ljj, Ajj)
 end
 
 function scaleInflate!{T<:AbstractFloat}(Ljj::Diagonal{LowerTriangular{T,Matrix{T}}},

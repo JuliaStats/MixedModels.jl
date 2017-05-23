@@ -20,7 +20,7 @@ LD(d::DenseMatrix) = sum(i -> log(d[i]), diagind(d))
 """
     logdet(m::LinearMixedModel)
 
-Return the value of `log(det(Λ'Z'ZΛ + I))` calculated in place.
+Return the value of `log(det(Λ'Z'ZΛ + I))` evaluated in place.
 """
 function logdet{T}(m::LinearMixedModel{T})
     blks = m.L.data.blocks
