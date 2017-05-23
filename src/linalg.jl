@@ -160,7 +160,6 @@ function A_rdiv_Bc!{T<:AbstractFloat}(A::Matrix, B::Diagonal{LowerTriangular{T,M
     A
 end
 
-if false
 function A_rdiv_Bc!{T}(A::SparseMatrixCSC{T}, B::Diagonal{LowerTriangular{T,Matrix{T}}})
     nz = nonzeros(A)
     offset = 0
@@ -179,7 +178,6 @@ function A_rdiv_Bc!{T}(A::SparseMatrixCSC{T}, B::Diagonal{LowerTriangular{T,Matr
         end
     end
     A
-end
 end
 
 function full{T}(A::Diagonal{LowerTriangular{T,Matrix{T}}})
