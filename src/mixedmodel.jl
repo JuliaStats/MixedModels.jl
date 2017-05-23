@@ -89,8 +89,8 @@ function getθ!{T}(v::AbstractVector{T}, m::LinearMixedModel{T})
     v
 end
 
-getΘ{T}(m::GeneralizedLinearMixedModel{T}) = getΘ(m.LMM)
-getθ{T}(m::LinearMixedModel{T}) = getθ!(Array{T}(sum(nθ, m.trms)), m)
+getθ{T}(m::GeneralizedLinearMixedModel{T}) = getθ(m.LMM)
+getθ{T}(m::LinearMixedModel{T}) = getθ(m.trms)
 
 """
     grplevels(m::MixedModel)
