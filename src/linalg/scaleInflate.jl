@@ -11,13 +11,15 @@ function scaleInflate!{T}(Ljj::Matrix{T}, Ajj::Matrix{T}, Λj::MatrixTerm{T})
     copy!(Ljj, Ajj)
 end
 
-function scaleInflate!{T<:AbstractFloat}(Ljj::Diagonal{T}, Ajj::Diagonal{T}, Λj::FactorReTerm{T})
+function scaleInflate!{T<:AbstractFloat}(Ljj::Diagonal{T}, Ajj::Diagonal{T},
+    Λj::FactorReTerm{T})
     @argcheck(length(Λj.Λ) == 1, DimensionMismatch)
     broadcast!((x,k) -> k * x + one(T), Ljj.diag, Ajj.diag, abs2(Λj.Λ[1]))
     Ljj
 end
 
-function scaleInflate!{T<:AbstractFloat}(Ljj::Matrix{T}, Ajj::Diagonal{T}, Λj::FactorReTerm{T})
+function scaleInflate!{T<:AbstractFloat}(Ljj::Matrix{T}, Ajj::Diagonal{T},
+    Λj::FactorReTerm{T})
     Ad = Ajj.diag
     @argcheck(length(Ad) == checksquare(Ljj) && length(Λj.Λ) == 1, DimensionMismatch)
     lambsq = abs2(Λj.Λ[1])
@@ -44,6 +46,7 @@ function scaleInflate!{T<:AbstractFloat}(Ljj::Diagonal{LowerTriangular{T,Matrix{
     Ljj
 end
 
+if false
 function scaleInflate!{T<:AbstractFloat}(Ljj::Matrix{T}, Ajj::Diagonal{Matrix{T}},
     Λj::FactorReTerm{T})
     Adiag = Ajj.diag
@@ -61,4 +64,5 @@ function scaleInflate!{T<:AbstractFloat}(Ljj::Matrix{T}, Ajj::Diagonal{Matrix{T}
         offset += n
     end
     Ljj
+end
 end
