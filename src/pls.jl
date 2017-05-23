@@ -206,7 +206,7 @@ function fitted!{T}(v::AbstractArray{T}, m::LinearMixedModel{T})
     v
 end
 
-StatsBase.fitted{T}(m::LinearMixedModel{T}) = fitted!(Array{T}(nobs(m)), m)
+StatsBase.fitted{T}(m::LinearMixedModel{T}) = fitted!(Vector{T}(nobs(m)), m)
 
 StatsBase.residuals(m::LinearMixedModel) = model_response(m) .- fitted(m)
 

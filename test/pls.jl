@@ -175,6 +175,26 @@ end
     @test isapprox(b3[1][1, 1], 2.815819441982976, atol=0.001)
 
     simulate!(fm)  # to test one of the unscaledre methods
+
+    fmnc = lmm(@formula(Y ~ 1 + U + (1|G) + (0+U|G)), dat[:sleepstudy])
+    @test size(fmnc) == (180,2,36,1)
+    @test getθ(fmnc) == ones(2)
+    @test lowerbd(fmnc) == zeros(2)
+
+    fit!(fmnc)
+
+    @test isapprox(deviance(fmnc), 1752.0032551398835, atol=0.001)
+    @test isapprox(objective(fmnc), 1752.0032551398835, atol=0.001)
+    @test coef(fmnc) ≈ [251.40510484848585, 10.467285959595715]
+    @test fixef(fmnc) ≈ [251.40510484848585, 10.467285959595715]
+    @test isapprox(stderr(fmnc), [6.707710260366577, 1.5193083237479683], atol=0.001)
+    @test isapprox(getθ(fmnc), [0.9458106880922268, 0.22692826607677266], atol=0.0001)
+    @test std(fmnc)[1] ≈ [24.171449463289047, 5.799379721123582]
+    @test std(fmnc)[2] ≈ [25.556130034081047]
+    @test isapprox(logdet(fmnc), 74.46952585564611, atol=0.001)
+    cor(fmnc)
+
+    MixedModels.lrt(fm, fmnc)
 end
 
 if false  # takes too long for Travis
@@ -189,25 +209,6 @@ if false  # takes too long for Travis
 end
 end
 
-@testset "sleepnocorr" begin
-    fm = lmm(@formula(Y ~ 1 + U + (1|G) + (0+U|G)), dat[:sleepstudy])
-    @test size(fm) == (180,2,36,1)
-    @test getθ(fm) == ones(2)
-    @test lowerbd(fm) == zeros(2)
-
-    fit!(fm)
-
-    @test isapprox(deviance(fm), 1752.0032551398835, atol=0.001)
-    @test isapprox(objective(fm), 1752.0032551398835, atol=0.001)
-    @test coef(fm) ≈ [251.40510484848585, 10.467285959595715]
-    @test fixef(fm) ≈ [251.40510484848585, 10.467285959595715]
-    @test isapprox(stderr(fm), [6.707710260366577, 1.5193083237479683], atol=0.001)
-    @test isapprox(getθ(fm), [0.9458106880922268, 0.22692826607677266], atol=0.0001)
-    @test std(fm)[1] ≈ [24.171449463289047, 5.799379721123582]
-    @test std(fm)[2] ≈ [25.556130034081047]
-    @test isapprox(logdet(fm), 74.46952585564611, atol=0.001)
-    cor(fm)
-end
 
 @testset "simulate!" begin
     fm = fit!(lmm(@formula(Y ~ 1 + (1 | G)), dat[:Dyestuff]))
