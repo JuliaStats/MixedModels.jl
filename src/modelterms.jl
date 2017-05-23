@@ -99,7 +99,8 @@ function FactorReTerm(f::AbstractFactor, z::Matrix, fnm, cnms, blks)
     FactorReTerm(f, z, z, fnm, cnms, blks, eye(eltype(z), n), inds)
 end
 # convenience constructor for testing
-FactorReTerm(f::AbstractFactor) = FactorReTerm(f, ones(1, length(f)), :G, ["(Intercept)"], [1])
+FactorReTerm(f::AbstractFactor) =
+    FactorReTerm(f, ones(1, length(f)), :G, ["(Intercept)"], [1])
 
 function reweight!(A::FactorReTerm, sqrtwts::Vector)
     if !isempty(sqrtwts)
@@ -175,7 +176,7 @@ nθ(A::MatrixTerm) = 0
 
 Overwrite `v` with the elements of the blocks in the lower triangle of `A.Λ` (column-major ordering)
 """
-function getΘ! end
+function getθ! end
 
 function getθ!{T<:AbstractFloat}(v::StridedVector{T}, A::FactorReTerm{T})
     @argcheck(length(v) == length(A.inds), DimensionMismatch)
@@ -238,6 +239,7 @@ function setθ!{T}(trms::Vector{AbstractTerm{T}}, v::Vector{T})
     trms
 end
 
+if false
 function A_mul_B!{T}(α::Real, A::FactorReTerm, B::StridedVecOrMat{T}, β::Real, R::StridedVecOrMat{T})
     n,q = size(A)
     k = size(B, 2)
@@ -260,9 +262,7 @@ function A_mul_B!{T}(α::Real, A::FactorReTerm, B::StridedVecOrMat{T}, β::Real,
     end
     R
 end
-
-#A_mul_B!{T}(A::FactorReTerm, B::StridedVecOrMat{T}, R::StridedVecOrMat{T}) =
-#    A_mul_B!(one(T), A, B, zero(T), R)
+end
 
 function Ac_mul_B!{T}(α::Real, A::FactorReTerm{T}, B::MatrixTerm{T}, β::Real, R::Matrix{T})
     n, q = size(A)
@@ -298,7 +298,6 @@ function Base.Ac_mul_B{T}(A::FactorReTerm{T}, B::MatrixTerm{T})
     Ac_mul_B!(zeros(eltype(B), (size(A, 2), size(B, 2))), A, B)
 end
 
-# shouldn't occur
 function Ac_mul_B!{T}(α::Real, A::MatrixTerm{T}, B::FactorReTerm{T}, β::Real, R::Matrix{T})
     Awt = A.wtx
     n, p = size(Awt)
@@ -311,7 +310,7 @@ function Ac_mul_B!{T}(α::Real, A::MatrixTerm{T}, B::FactorReTerm{T}, β::Real, 
     zz = B.wtz
     if vsize(B) == 1
         for i in 1:p, j in 1:n
-            R[i, rr[j]] += α * zz[i] * Awt[j, i]
+            R[i, rr[j]] += α * zz[j] * Awt[j, i]
         end
     else
         l = size(zz, 1)
@@ -391,6 +390,7 @@ function Base.Ac_mul_B{T}(A::FactorReTerm{T}, B::FactorReTerm{T})
     sparse(I, J, V)
 end
 
+if false
 function Ac_mul_B!{T}(R::DenseVecOrMat{T}, A::DenseVecOrMat{T}, B::FactorReTerm)
     m = size(A, 1)
     n = size(A, 2)  # needs to be done this way in case A is a vector
@@ -414,6 +414,7 @@ function Ac_mul_B!{T}(R::DenseVecOrMat{T}, A::DenseVecOrMat{T}, B::FactorReTerm)
         end
     end
     R
+end
 end
 
 function Ac_mul_B!{T}(C::Matrix{T}, A::FactorReTerm{T}, B::FactorReTerm{T})

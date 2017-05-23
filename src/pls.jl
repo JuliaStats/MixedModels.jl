@@ -111,6 +111,13 @@ function lmm(f::Formula, fr::AbstractDataFrame; weights::Vector = [])
     LinearMixedModel(f, trms, oftype(y, weights))
 end
 
+"""
+    updateL!(m::LinearMixedModel)
+
+Update the blocked lower Cholesky factor, `m.L`, from `m.A` and `m.trms` (used for Λ only)
+
+This is the crucial step in evaluating the objective, given a new parameter value.
+"""
 function updateL!{T}(m::LinearMixedModel{T})
     trms = m.trms
     A = m.A.data.blocks
@@ -141,12 +148,10 @@ end
 StatsBase.coef(m::LinearMixedModel) = fixef(m)
 
 """
-    fit!(m::LinearMixedModel[, verbose::Bool=false[, optimizer::Symbol=:LN_BOBYQA]])
+    fit!(m::LinearMixedModel[, verbose::Bool=false])
 
-Optimize the objective of a `LinearMixedModel`.
-
-A value for `optimizer` should be the name of an `NLopt` derivative-free optimizer
-allowing for box constraints.
+Optimize the objective of a `LinearMixedModel`.  When `verbose` is `true` the values of the
+objective and the parameters are printed on STDOUT at each function evaluation.
 """
 function StatsBase.fit!{T}(m::LinearMixedModel{T}, verbose::Bool=false)
     optsum = m.optsum
