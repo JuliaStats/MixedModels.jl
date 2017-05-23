@@ -46,7 +46,6 @@ function scaleInflate!{T<:AbstractFloat}(Ljj::Diagonal{LowerTriangular{T,Matrix{
     Ljj
 end
 
-if false
 function scaleInflate!{T<:AbstractFloat}(Ljj::Matrix{T}, Ajj::Diagonal{Matrix{T}},
     Λj::FactorReTerm{T})
     Adiag = Ajj.diag
@@ -64,5 +63,4 @@ function scaleInflate!{T<:AbstractFloat}(Ljj::Matrix{T}, Ajj::Diagonal{Matrix{T}
         offset += n
     end
     Ljj
-end
 end
