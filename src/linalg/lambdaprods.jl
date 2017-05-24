@@ -28,21 +28,26 @@ function A_mul_Λ!{T<:AbstractFloat}(A::Diagonal{LowerTriangular{T, Matrix{T}}},
 end
 
 function A_mul_Λ!{T<:AbstractFloat,S}(A::SparseMatrixCSC{T,S}, B::FactorReTerm{T})
-    λ = LowerTriangular(B.Λ)
-    k = size(λ, 2)
-    n = size(A, 2)
-    rv = rowvals(A)
+    k = vsize(B)
     nz = nonzeros(A)
-    offset = 0
-    while offset < n
-        i1 = nzrange(A, offset + 1)
-        rv1 = view(rv, i1)
-        for j in 2:k
-            all(rv1 .== view(rv, nzrange(A, offset + j))) || error("A is not compatible with B")
+    if k == 1
+        scale!(nz, B.Λ[1])
+    else
+        λ = LowerTriangular(B.Λ)
+        m, n = size(A)
+        cp = A.colptr
+        rv = rowvals(A)
+        blkstart = 1
+        while blkstart ≤ n
+            i1 = nzrange(A, blkstart)
+            r = length(i1)
+            if (cp[blkstart + k] - cp[blkstart]) ≠ length(i1) * k
+                throw(ArgumentError("A is not compatible with B"))
+            end
+            a = reshape(view(nz, cp[blkstart]:(cp[blkstart + k] - 1)), (r, k))
+            A_mul_B!(a, a, λ)
+            blkstart += k
         end
-        a = reshape(view(nz, i1.start:nzrange(A, offset + k).stop), (length(i1), k))
-        A_mul_B!(a, a, λ)
-        offset += k
     end
     A
 end
