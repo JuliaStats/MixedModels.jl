@@ -3,7 +3,6 @@ function A_mul_Bc!{T<:BlasFloat}(α::T, A::StridedMatrix{T}, B::StridedMatrix{T}
     BLAS.gemm!('N', 'C', α, A, B, β, C)
 end
 
-if false
 function A_mul_Bc!{T<:Number}(α::T, A::SparseMatrixCSC{T}, B::SparseMatrixCSC{T},
     β::T, C::Matrix{T})
     @argcheck B.m == size(C, 2) && A.m == size(C, 1) && A.n == B.n  DimensionMismatch
@@ -24,7 +23,6 @@ function A_mul_Bc!{T<:Number}(α::T, A::SparseMatrixCSC{T}, B::SparseMatrixCSC{T
         end
     end
     C
-end
 end
 
 function A_mul_Bc!{T<:Number}(α::T, A::SparseMatrixCSC{T}, B::SparseMatrixCSC{T},

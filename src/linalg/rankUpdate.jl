@@ -20,7 +20,6 @@ rankUpdate!{T<:Real,S<:StridedMatrix}(α::T, A::StridedMatrix{T}, C::HermOrSym{T
 rankUpdate!{T<:Real,S<:StridedMatrix}(A::StridedMatrix{T}, C::HermOrSym{T,S}) =
     rankUpdate!(one(T), A, one(T), C)
 
-if false
 function rankUpdate!{T<:AbstractFloat,S<:StridedMatrix}(α::T, A::SparseMatrixCSC{T}, β::T, C::HermOrSym{T,S})
     m, n = size(A)
     @argcheck m == size(C, 2) && C.uplo == 'L' DimensionMismatch
@@ -47,7 +46,6 @@ end
 
 rankUpdate!{T<:AbstractFloat,S<:StridedMatrix}(α::T, A::SparseMatrixCSC{T},
     C::HermOrSym{T,S}) = rankUpdate!(α, A, one(T), C)
-end
 
 function rankUpdate!{T <: Number}(α::T, A::SparseMatrixCSC{T}, C::Diagonal{T})
     m, n = size(A)
@@ -64,7 +62,6 @@ function rankUpdate!{T <: Number}(α::T, A::SparseMatrixCSC{T}, C::Diagonal{T})
     C
 end
 
-if false
 function rankUpdate!{T<:Number}(α::T, A::SparseMatrixCSC{T}, C::Diagonal{LowerTriangular{T,Matrix{T}}})
     m, n = size(A)
     cdiag = C.diag
@@ -99,5 +96,4 @@ function rankUpdate!{T<:Number}(α::T, A::SparseMatrixCSC{T}, C::Diagonal{LowerT
         end
     end
     C
-end
 end
