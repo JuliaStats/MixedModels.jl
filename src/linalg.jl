@@ -77,11 +77,6 @@ function A_mul_Bc!{T<:Number}(α::T, A::StridedVecOrMat{T}, B::SparseMatrixCSC{T
     C
 end
 
-if false
-Ac_mul_B!{T<:BlasFloat}(α::T, A::StridedMatrix{T}, B::StridedMatrix{T}, β::T,
-    C::StridedMatrix{T}) = BLAS.gemm!('C', 'N', α, A, B, β, C)
-end
-
 Ac_mul_B!{T<:BlasFloat}(α::T, A::StridedMatrix{T}, B::StridedVector{T}, β::T,
     C::StridedVector{T}) = BLAS.gemv!('C', α, A, B, β, C)
 
@@ -152,6 +147,7 @@ function A_rdiv_Bc!{T<:AbstractFloat}(A::Matrix, B::Diagonal{LowerTriangular{T,M
     offset = 0
     for d in B.diag
         k = size(d, 1)
+        ## FIXME all BLAS.trsm directly
         A_rdiv_Bc!(view(A, :, (1:k) + offset), d)
         offset += k
     end
@@ -171,6 +167,7 @@ function A_rdiv_Bc!{T}(A::SparseMatrixCSC{T}, B::Diagonal{LowerTriangular{T,Matr
         else
             nzr = nzrange(A, offset + 1).start : nzrange(A, offset + k).stop
             q = div(length(nzr), k)
+            ## FIXME Still allocating 1.4 GB.  Call BLAS.trsm directly
             A_rdiv_Bc!(unsafe_wrap(Array, pointer(nz, nzr[1]), (q, k)), d)
             offset += k
         end

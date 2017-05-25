@@ -60,6 +60,10 @@ This function and the `AbstractFactor` union can be removed once `CategoricalArr
 asfactor(f::AbstractFactor) = f
 asfactor(f) = pool(f)
 
+## FIXME: Create AbstractFactorReTerm, ScalarFactorReTerm and VectorFactorReTerm tyoes
+## Advantage is to use dispatch for methods in linalg/lambdaproducts.jl that currently
+## use short cuts based on vsize(arg) == 1
+
 """
     FactorReTerm
 
@@ -239,31 +243,6 @@ function setθ!{T}(trms::Vector{AbstractTerm{T}}, v::Vector{T})
     trms
 end
 
-if false
-function A_mul_B!{T}(α::Real, A::FactorReTerm, B::StridedVecOrMat{T}, β::Real, R::StridedVecOrMat{T})
-    n,q = size(A)
-    k = size(B, 2)
-    @argcheck size(R, 1) == n && size(B, 1) == q && size(R, 2) == k DimensionMismatch
-    if β ≠ one(T)
-        iszero(β) ? fill!(R, β) : scale!(β, R)
-    end
-    rr = A.f.refs
-    zz = A.z
-    if vsize(A) == 1
-        for j in 1:k, i in 1:n
-            R[i, j] += α * zz[i] * B[rr[i],j]
-        end
-    else
-        l = size(zz, 1)
-        Bt = reshape(B, (l, div(q, l), k))
-        for j in 1:k, i in 1:n
-            R[i, j] += α * dot(view(Bt, :, Int(rr[i]), j), view(zz, :, i))
-        end
-    end
-    R
-end
-end
-
 function Ac_mul_B!{T}(α::Real, A::FactorReTerm{T}, B::MatrixTerm{T}, β::Real, R::Matrix{T})
     n, q = size(A)
     Bwt = B.wtx
@@ -352,6 +331,7 @@ function Ac_mul_B!{T}(C::Diagonal{Matrix{T}}, A::FactorReTerm{T}, B::FactorReTer
     fill!.(d, zero(T))
     refs = A.f.refs
     for i in eachindex(refs)
+        ## A lot of allocation going on here
         rankUpdate!(view(Az, :, i), Hermitian(d[refs[i]], :L))
     end
     map!(m -> copytri!(m, 'L'), d, d)
@@ -382,39 +362,13 @@ function Base.Ac_mul_B{T}(A::FactorReTerm{T}, B::FactorReTerm{T})
     Br = B.f.refs
     Ipat = repeat(1 : a, outer = b)
     Jpat = repeat(1 : b, inner = a)
+    ## A lot of allocation in this block
     for i in 1 : m
         append!(I, Ipat + (Ar[i] - 1) * a)
         append!(J, Jpat + (Br[i] - 1) * b)
         append!(V, vec(view(Az, :, i) * view(Bz, :, i)'))
     end
     sparse(I, J, V)
-end
-
-if false
-function Ac_mul_B!{T}(R::DenseVecOrMat{T}, A::DenseVecOrMat{T}, B::FactorReTerm)
-    m = size(A, 1)
-    n = size(A, 2)  # needs to be done this way in case A is a vector
-    p, q = size(B)
-    @argcheck m == p && size(R, 1) == n && size(R, 2) == q DimensionMismatch
-    fill!(R, 0)
-    r = B.f.refs
-    z = B.z
-    if vsize(B) == 1
-        for j in 1:n, i in 1:m
-            R[j, r[i]] += A[i, j] * z[i]
-        end
-    else
-        l = size(z, 1)
-        for j in 1:n, i in 1:m
-            roffset = (r[i] - 1) * l
-            aij = A[i, j]
-            for k in 1:l
-                R[j, roffset + k] += aij * z[k, i]
-            end
-        end
-    end
-    R
-end
 end
 
 function Ac_mul_B!{T}(C::Matrix{T}, A::FactorReTerm{T}, B::FactorReTerm{T})
