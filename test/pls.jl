@@ -65,10 +65,6 @@ end
     @test isapprox(objective(fm), 327.3270598811428, atol=0.001)
 end
 
-#tbl = MixedModels.lrt(fm4,fm3)
-
-#@test isapprox(tbl[:Deviance], [1752.0032551398835,1751.9393444636157], atol=0.001)
-#@test tbl[:Df] == [5,6]
 @testset "penicillin" begin
     fm = lmm(@formula(Y ~ 1 + (1 | G) + (1 | H)), dat[:Penicillin]);
     @test size(fm) == (144, 1, 30, 2)
