@@ -4,6 +4,7 @@
 A matrix composed of heterogenous blocks.  Blocks can be sparse, dense or
 diagonal.
 """
+# FIXME: Change this to use the AbstractBlockArray interface
 
 immutable HeteroBlkdMatrix <: AbstractMatrix{AbstractMatrix}
     blocks::Matrix{AbstractMatrix}
@@ -12,45 +13,6 @@ Base.size(A::HeteroBlkdMatrix) = size(A.blocks)
 Base.getindex(A::HeteroBlkdMatrix, i::Int) = A.blocks[i]
 Base.setindex!(A::HeteroBlkdMatrix, X, i::Integer) = setindex!(A.blocks, X, i)
 @compat Base.IndexStyle(A::HeteroBlkdMatrix) = IndexLinear()
-
-immutable Identity{T<:AbstractFloat} end
-
-"""
-    T<:AbstractFloat}
-
-A `LowerTriangular{T, Matrix{T}}` and an integer vector, `mask`, of the potential non-zero elements.
-
-In linear algebra operations an object `A` of this type acts like `I ⊗ A`,
-for a suitably sized `I`.  These are the pattern matrices for blocks of `Λ`.
-"""
-immutable MaskedLowerTri{T<:AbstractFloat}
-    m::LowerTriangular{T,Matrix{T}}
-    mask::Vector{Int}
-end
-function MaskedLowerTri(v::Vector, T::DataType)
-    n = sum(v)
-    inds = reshape(1:abs2(n), (n, n))
-    offset = 0
-    mask = sizehint!(Int[], (n * (n + 1)) >> 1)
-    for k in v
-        for j in 1:k, i in j:k
-            push!(mask, inds[offset + i, offset + j])
-        end
-        offset += k
-    end
-    MaskedLowerTri(LowerTriangular(eye(T, n)), mask)
-end
-
-=={T}(A::MaskedLowerTri{T}, B::MaskedLowerTri{T}) = A.m == B.m && A.mask == B.mask
-
-"""
-    LambdaTypes{T<:AbstractFloat}
-
-Union of possible types in the `Λ` member of `[LinearMixedModel](@ref)`
-
-These types are `Identity{T}`, `MaskedLowerTri{T}`, and `UniformScaling{T}`
-"""
-@compat const LambdaTypes{T} = Union{Identity{T}, MaskedLowerTri{T}, UniformScaling{T}}
 
 """
     OptSummary
@@ -65,6 +27,7 @@ Summary of an `NLopt` optimization
 * `xtol_rel`: as in NLopt
 * `xtol_abs`: as in NLopt
 * `initial_step`: as in NLopt
+* `maxfeval`: as in NLopt
 * `final`: a copy of the final parameter values from the optimization
 * `fmin`: the final value of the objective
 * `feval`: the number of function evaluations
@@ -80,6 +43,7 @@ type OptSummary{T <: AbstractFloat}
     xtol_rel::T
     xtol_abs::Vector{T}
     initial_step::Vector{T}
+    maxfeval::Int
     final::Vector{T}
     fmin::T
     feval::Int
@@ -90,7 +54,7 @@ function OptSummary{T<:AbstractFloat}(initial::Vector{Float64}, lowerbd::Vector{
     optimizer::Symbol; ftol_rel::T=zero(T), ftol_abs::T=zero(T), xtol_rel::T=zero(T),
     initial_step::Vector{T}=T[])
     OptSummary(initial, lowerbd, T(Inf), ftol_rel, ftol_abs, xtol_rel, zeros(initial),
-        initial_step, copy(initial), T(Inf), -1, optimizer, :FAILURE)
+        initial_step, -1, copy(initial), T(Inf), -1, optimizer, :FAILURE)
 end
 
 function Base.show(io::IO, s::OptSummary)
@@ -104,6 +68,7 @@ function Base.show(io::IO, s::OptSummary)
     println(io, "xtol_rel:                 ", s.xtol_rel)
     println(io, "xtol_abs:                 ", s.xtol_abs)
     println(io, "initial_step:             ", s.initial_step)
+    println(io, "maxfeval:                 ", s.maxfeval)
     println(io)
     println(io, "Function evaluations:     ", s.feval)
     println(io, "Final parameter vector:   ", s.final)
@@ -118,9 +83,11 @@ function NLopt.Opt(optsum::OptSummary)
     NLopt.ftol_rel!(opt, optsum.ftol_rel) # relative criterion on objective
     NLopt.ftol_abs!(opt, optsum.ftol_abs) # absolute criterion on objective
     NLopt.xtol_rel!(opt, optsum.xtol_rel) # relative criterion on parameter values
-    NLopt.xtol_abs!(opt, optsum.xtol_abs) # absolute criterion on parameter values
+    if length(optsum.xtol_abs) == length(lb)  # not true for the second optimization in GLMM
+        NLopt.xtol_abs!(opt, optsum.xtol_abs) # absolute criterion on parameter values
+    end
     NLopt.lower_bounds!(opt, lb)
-    NLopt.maxeval!(opt, optsum.feval)
+    NLopt.maxeval!(opt, optsum.maxfeval)
     if isempty(optsum.initial_step)
         optsum.initial_step = NLopt.initial_step(opt, optsum.initial, similar(lb))
     else
@@ -129,27 +96,9 @@ function NLopt.Opt(optsum::OptSummary)
     opt
 end
 
-@compat const AbstractFactor{V,R} = Union{NullableCategoricalVector{V,R},CategoricalVector{V,R},PooledDataVector{V,R}}
+@compat abstract type AbstractTerm{T} end
 
-"""
-    ReMat
-
-Representation of the model matrix for random-effects terms
-
-# Members
-* `f`: the grouping factor as an `AbstractFactor`
-* `z`: the transposed raw random-effects model matrix
-* `fnm`: the name of the grouping factor as a `Symbol`
-* `cnms`: a `Vector` of column names (row names after transposition) of `z`
-"""
-immutable ReMat{T<:AbstractFloat,V,R}
-    f::AbstractFactor{V,R}
-    z::Matrix{T}
-    fnm::Symbol
-    cnms::Vector
-end
-
-@compat abstract type MixedModel <: RegressionModel end # model with fixed and random effects
+@compat abstract type MixedModel{T} <: RegressionModel end # model with fixed and random effects
 
 """
     LinearMixedModel
@@ -158,23 +107,17 @@ Linear mixed-effects model representation
 
 # Members
 * `formula`: the formula for the model
-* `fixefnames`: names of the fixed effects (for displaying coefficients)
-* `wttrms`: a length `nt` vector of weighted model matrices. The last two elements are `X` and `y`.
-* `trms`: a vector of unweighted model matrices.  If `isempty(sqrtwts)` the same object as `wttrms`
-* `Λ`: a length `nt - 2` vector of lower triangular matrices
-* `sqrtwts`: the `Diagonal` matrix of the square roots of the case weights.  Allowed to be size 0
+* `trms`: a `Vector{AbstractTerm}` representing the model.  The last element is the response.
+* `sqrtwts`: vector of square roots of the case weights.  Allowed to be size 0
 * `A`: an `nt × nt` symmetric matrix of matrices representing `hcat(Z,X,y)'hcat(Z,X,y)`
 * `L`: a `nt × nt` matrix of matrices - the lower Cholesky factor of `Λ'AΛ+I`
-* `opt`: an [`OptSummary`](@ref) object
+* `optsum`: an [`OptSummary`](@ref) object
 """
-immutable LinearMixedModel{T <: AbstractFloat} <: MixedModel
+immutable LinearMixedModel{T <: AbstractFloat} <: MixedModel{T}
     formula::Formula
-    fixefnames::Vector{String}
-    wttrms::Vector
-    trms::Vector
-    sqrtwts::Diagonal{T}
-    Λ::Vector
-    A::Hermitian # cross-product blocks
+    trms::Vector{AbstractTerm{T}}
+    sqrtwts::Vector{T}
+    A::Hermitian             # cross-product blocks
     L::LowerTriangular
     optsum::OptSummary{T}
 end
@@ -197,7 +140,7 @@ Members:
 - `η`: the linear predictor
 - `wt`: vector of prior case weights, a value of `T[]` indicates equal weights.
 """
-immutable GeneralizedLinearMixedModel{T <: AbstractFloat} <: MixedModel
+immutable GeneralizedLinearMixedModel{T <: AbstractFloat} <: MixedModel{T}
     LMM::LinearMixedModel{T}
     β::Vector{T}
     β₀::Vector{T}
@@ -226,32 +169,24 @@ is no scaling factor this value is `NaN`
 
 The main purpose of defining this type is to isolate the logic in the show method.
 """
-immutable VarCorr
-    σ::Vector{Vector}
-    ρ::Vector{Matrix}
+immutable VarCorr{T}
+    σ::Vector{Vector{T}}
+    ρ::Vector{Matrix{T}}
     fnms::Vector{Symbol}
     cnms::Vector{Vector{String}}
-    s
+    s::T
 end
-function VarCorr(m::MixedModel)
-    LMM = lmm(m)
-    Λ = LMM.Λ
-    trms = LMM.trms
+function VarCorr{T}(m::MixedModel{T})
     fnms = Symbol[]
     cnms = Vector{String}[]
-    T = eltype(Λ[1])
-    σ, ρ = Vector{T}[], Matrix{T}[]
-    ## FIXME Clean this up by mapping extractor functions
-    for i in eachindex(Λ)
-        λ = Λ[i]
-        if !isa(λ, Identity)
-            σi, ρi = stddevcor(λ)
-            push!(σ, σi)
-            push!(ρ, ρi)
-            trmi = trms[i]
-            push!(fnms, trmi.fnm)
-            push!(cnms, trmi.cnms)
-        end
+    σ = Vector{T}[]
+    ρ = Matrix{T}[]
+    for trm in reterms(m)
+        σi, ρi = stddevcor(trm)
+        push!(σ, σi)
+        push!(ρ, ρi)
+        push!(fnms, trm.fnm)
+        push!(cnms, trm.cnms)
     end
     VarCorr(σ, ρ, fnms, cnms, sdest(m))
 end
@@ -261,7 +196,7 @@ function Base.show(io::IO, vc::VarCorr)
     fnms = vc.fnms
     stdm = vc.σ
     cor = vc.ρ
-    cnms = reduce(vcat, vc.cnms)
+    cnms = reduce(append!, String[], vc.cnms)
     if isfinite(vc.s)
         push!(fnms,"Residual")
         push!(stdm, [1.])

@@ -1,5 +1,6 @@
 julia 0.5
 ArgCheck
+BlockArrays
 CategoricalArrays
 Compat 0.19.0
 DataArrays

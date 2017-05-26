@@ -1,4 +1,8 @@
-using Base.Test, DataFrames, MixedModels
+using Base.Test, RData, MixedModels
+
+if !isdefined(:dat) || !isa(dat, Dict{Symbol, Any})
+    dat = convert(Dict{Symbol,Any}, load(joinpath(dirname(@__FILE__), "dat.rda")))
+end
 
 @testset "contra" begin
     contraception = dat[:Contraception]
@@ -6,7 +10,8 @@ using Base.Test, DataFrames, MixedModels
     contraception[:a2] = abs2.(contraception[:a])
     contraception[:urbdist] = string.(contraception[:urb], contraception[:d])
     gm0 = fit!(glmm(@formula(use01 ~ 1 + a + a2 + urb + l + (1 | urbdist)), contraception,
-        Bernoulli()), fast=true)
+        Bernoulli()), fast = true);
+    @test isapprox(getθ(gm0)[1], 0.5720734451352923, atol=0.001)
     @test isapprox(LaplaceDeviance(gm0), 2361.657188518064, atol=0.001)
     gm1 = fit!(glmm(@formula(use01 ~ 1 + a + a2 + urb + l + (1 | urbdist)), contraception,
         Bernoulli()));
@@ -24,7 +29,8 @@ end
 @testset "cbpp" begin
     cbpp = dat[:cbpp]
     cbpp[:prop] = cbpp[:i] ./ cbpp[:s]
-    gm2 = fit!(glmm(@formula(prop ~ 1 + p + (1 | h)), cbpp, Binomial(), LogitLink(), wt = cbpp[:s]));
+    gm2 = fit!(glmm(@formula(prop ~ 1 + p + (1 | h)), cbpp, Binomial(), LogitLink(),
+        wt = Array(cbpp[:s])));
     @test isapprox(LaplaceDeviance(gm2), 100.09585619324639, atol=0.0001)
     @test isapprox(sum(abs2, gm2.u[1]), 9.723175126731014, atol=0.0001)
     @test isapprox(logdet(gm2), 16.900889129328004, atol=0.0001)

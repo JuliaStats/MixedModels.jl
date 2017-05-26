@@ -2,18 +2,18 @@ __precompile__()
 
 module MixedModels
 
-using ArgCheck, CategoricalArrays, Compat, DataArrays, DataFrames, Distributions, GLM
-using NLopt, Showoff, StatsBase
+using ArgCheck, BlockArrays, CategoricalArrays, Compat, DataArrays, DataFrames
+using Distributions, GLM, NLopt, Showoff, StatsBase
 using StatsFuns: log2π
 using NamedArrays: NamedArray, setnames!
 using Base.LinAlg: BlasFloat, BlasReal, HermOrSym, PosDefException, checksquare, copytri!
 
-import Base: cor, cond, convert, full, logdet, std, A_mul_B!, Ac_mul_B!, A_mul_Bc!
+import Base: cor, cond, convert, eltype, full, logdet, std
+import Base.LinAlg: A_mul_B!, A_mul_Bc!, Ac_mul_B!, A_ldiv_B!, Ac_ldiv_B!, A_rdiv_B!, A_rdiv_Bc!
 import DataFrames: @formula
 import Distributions: Bernoulli, Binomial, Poisson, Gamma
 import GLM: LogitLink, LogLink, InverseLink
 import NLopt: Opt
-import Base.LinAlg: A_mul_B!, A_mul_Bc!, Ac_mul_B!, A_ldiv_B!, Ac_ldiv_B!, A_rdiv_B!, A_rdiv_Bc!
 import StatsBase: coef, coeftable, dof, deviance, fit!, fitted, loglikelihood,
     model_response, nobs, vcov
 
@@ -21,19 +21,18 @@ export
        @formula,
        Bernoulli,
        Binomial,
-       Poisson,
+       FactorReTerm,
        Gamma,
        LogitLink,
        LogLink,
        InverseLink,
        GeneralizedLinearMixedModel,
        LinearMixedModel,
+       MatrixTerm,
        MixedModel,
        OptSummary,
-       ReMat,
-#       ScalarReMat,
+       Poisson,
        VarCorr,
-#       VectorReMat,
 
        bootstrap,
        bootstrap!,
@@ -71,17 +70,16 @@ export
 import Base: ==, *
 
 include("types.jl")
+include("modelterms.jl")
 include("linalg/cholUnblocked.jl")
 include("linalg/rankUpdate.jl")
 include("linalg/scaleInflate.jl")
+include("linalg/lambdaprods.jl")
+include("linalg/logdet.jl")
 include("linalg.jl")
-include("blockmats.jl")
-include("remat.jl")
 include("pls.jl")
-include("logdet.jl")
 include("simulate.jl")
 include("PIRLS.jl")
-#include("VarCorr.jl")
 include("mixedmodel.jl")
 
 end # module

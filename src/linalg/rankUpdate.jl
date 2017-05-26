@@ -13,9 +13,12 @@ function rankUpdate! end
 rankUpdate!{T<:BlasReal,S<:StridedMatrix}(α::T, a::StridedVector{T}, A::HermOrSym{T,S}) = BLAS.syr!(A.uplo, α, a, A.data)
 rankUpdate!{T<:BlasReal,S<:StridedMatrix}(a::StridedVector{T}, A::HermOrSym{T,S}) = rankUpdate!(one(T), a, A)
 
-rankUpdate!{T<:BlasReal,S<:StridedMatrix}(α::T, A::StridedMatrix{T}, β::T, C::HermOrSym{T,S}) = BLAS.syrk!(C.uplo, 'N', α, A, β, C.data)
-rankUpdate!{T<:Real,S<:StridedMatrix}(α::T, A::StridedMatrix{T}, C::HermOrSym{T,S}) = rankUpdate!(α, A, one(T), C)
-rankUpdate!{T<:Real,S<:StridedMatrix}(A::StridedMatrix{T}, C::HermOrSym{T,S}) = rankUpdate!(one(T), A, one(T), C)
+rankUpdate!{T<:BlasReal,S<:StridedMatrix}(α::T, A::StridedMatrix{T}, β::T,
+    C::HermOrSym{T,S}) = BLAS.syrk!(C.uplo, 'N', α, A, β, C.data)
+rankUpdate!{T<:Real,S<:StridedMatrix}(α::T, A::StridedMatrix{T}, C::HermOrSym{T,S}) =
+    rankUpdate!(α, A, one(T), C)
+rankUpdate!{T<:Real,S<:StridedMatrix}(A::StridedMatrix{T}, C::HermOrSym{T,S}) =
+    rankUpdate!(one(T), A, one(T), C)
 
 function rankUpdate!{T<:AbstractFloat,S<:StridedMatrix}(α::T, A::SparseMatrixCSC{T}, β::T, C::HermOrSym{T,S})
     m, n = size(A)
@@ -41,7 +44,8 @@ function rankUpdate!{T<:AbstractFloat,S<:StridedMatrix}(α::T, A::SparseMatrixCS
     C
 end
 
-rankUpdate!{T<:AbstractFloat,S<:StridedMatrix}(α::T, A::SparseMatrixCSC{T}, C::HermOrSym{T,S}) = rankUpdate!(α, A, one(T), C)
+rankUpdate!{T<:AbstractFloat,S<:StridedMatrix}(α::T, A::SparseMatrixCSC{T},
+    C::HermOrSym{T,S}) = rankUpdate!(α, A, one(T), C)
 
 function rankUpdate!{T <: Number}(α::T, A::SparseMatrixCSC{T}, C::Diagonal{T})
     m, n = size(A)

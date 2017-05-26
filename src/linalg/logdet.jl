@@ -20,15 +20,17 @@ LD(d::DenseMatrix) = sum(i -> log(d[i]), diagind(d))
 """
     logdet(m::LinearMixedModel)
 
-Return the value of `log(det(Λ'Z'ZΛ + I))` calculated in place.
+Return the value of `log(det(Λ'Z'ZΛ + I))` evaluated in place.
 """
 function logdet{T}(m::LinearMixedModel{T})
     blks = m.L.data.blocks
     s = zero(T)
-    for (k, λ) in zip(diagind(blks), m.Λ)
-        if !isa(λ, Identity)
+    for (k, t) in zip(diagind(blks), m.trms)
+        if !isa(t, MatrixTerm)
             s += LD(blks[k])
         end
     end
     2.*s
 end
+
+logdet{T}(m::GeneralizedLinearMixedModel{T}) = logdet(m.LMM)

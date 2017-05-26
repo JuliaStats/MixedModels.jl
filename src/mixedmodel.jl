@@ -29,21 +29,20 @@ lmm(m::GeneralizedLinearMixedModel) = m.LMM
 
 Returns the vector of the condition numbers of the blocks of `m.Λ`
 """
-Base.cond(m::MixedModel) = [cond(λ)::Float64 for λ in lmm(m).Λ]
+Base.cond(m::MixedModel) = cond.(reterms(m))
 
 """
     std{T}(m::MixedModel{T})
 
 The estimated standard deviations of the variance components as a `Vector{Vector{T}}`.
 """
-function Base.std(m::MixedModel)
-    lm = lmm(m)
-    Λ = lm.Λ
-    rl = [rowlengths(Λ[i]) for i in 1:nreterms(lm)]
+function Base.std{T}(m::MixedModel{T})
+    rl =  filter(!isempty, rowlengths.(lmm(m).trms))
     s = sdest(m)
     isfinite(s) ? s .* push!(rl, [1.]) : rl
 end
 
+fixefnames(m::MixedModel) = lmm(m).trms[end - 1].cnames
 ## methods for generics defined in StatsBase
 
 function StatsBase.coeftable(m::MixedModel)
@@ -52,7 +51,7 @@ function StatsBase.coeftable(m::MixedModel)
     z = fe ./ se
     pvalue = ccdf(Chisq(1), abs2.(z))
     CoefTable(hcat(fe, se, z, pvalue), ["Estimate", "Std.Error", "z value", "P(>|z|)"],
-        lmm(m).fixefnames, 4)
+        fixefnames(m), 4)
 end
 
 """
@@ -79,10 +78,10 @@ Returns the names of the grouping factors for the random-effects terms.
 fnames(m::MixedModel) = map(x -> x.fnm, reterms(m))
 
 function getθ!{T}(v::AbstractVector{T}, m::LinearMixedModel{T})
-    Λ = lmm(m).Λ
-    @argcheck length(v) == sum(nθ, Λ) DimensionMismatch
+    trms = m.trms
+    @argcheck(length(v) == sum(nθ, trms), DimensionMismatch)
     offset = 0
-    for λ in Λ
+    for λ in trms
         nli = nθ(λ)
         getθ!(view(v, offset + (1 : nli)), λ)
         offset += nli
@@ -90,8 +89,8 @@ function getθ!{T}(v::AbstractVector{T}, m::LinearMixedModel{T})
     v
 end
 
-getΘ{T}(m::GeneralizedLinearMixedModel{T}) = getΘ(m.LMM)
-getθ{T}(m::LinearMixedModel{T}) = getθ!(Array{T}(sum(A -> nθ(A), m.Λ)), m)
+getθ{T}(m::GeneralizedLinearMixedModel{T}) = getθ(m.LMM)
+getθ{T}(m::LinearMixedModel{T}) = getθ(m.trms)
 
 """
     grplevels(m::MixedModel)
@@ -100,9 +99,10 @@ Returns the number of levels in the random-effects terms' grouping factors.
 """
 grplevels(m::MixedModel) = nlevs.(reterms(m))
 
-nreterms(m::MixedModel) = sum(t -> isa(t, ReMat), lmm(m).trms)
+nreterms(m::MixedModel) = sum(t -> isa(t, FactorReTerm), lmm(m).trms)
 
-reterms(m::MixedModel) = convert(Vector{ReMat}, filter(t -> isa(t, ReMat), lmm(m).trms))
+reterms(m::MixedModel) =
+    convert(Vector{FactorReTerm}, filter(t -> isa(t, FactorReTerm), lmm(m).trms))
 
 """
     ranef!{T}(v::Vector{Matrix{T}}, m::MixedModel{T}, β, uscale::Bool)
@@ -114,22 +114,22 @@ original scale
 """
 function ranef!{T}(v::Vector, m::LinearMixedModel{T}, β::AbstractArray{T}, uscale::Bool)
     L = m.L
-    Λ = m.Λ
-    @argcheck (k = length(v)) == nreterms(m) DimensionMismatch
+    @argcheck((k = length(v)) == nreterms(m), DimensionMismatch)
     for j in 1:k
-        Ac_mul_B!(-one(T), L[k + 1, j], β, one(T), vec(copy!(v[j], L[end, j])))
+        αβAc_mul_B!(-one(T), L[k + 1, j], β, one(T), vec(copy!(v[j], L[end, j])))
     end
     for i in k: -1 :1
         Lii = L[i, i]
         vi = vec(v[i])
         Ac_ldiv_B!(isa(Lii, Diagonal) ? Lii : LowerTriangular(Lii), vi)
         for j in 1:(i - 1)
-            Ac_mul_B!(-one(T), L[i, j], vi, one(T), vec(v[j]))
+            αβAc_mul_B!(-one(T), L[i, j], vi, one(T), vec(v[j]))
         end
     end
     if !uscale
+        trms = m.trms
         for j in 1:k
-            A_mul_B!(Λ[j], vec(v[j]))
+            Λ_mul_B!(trms[j], vec(v[j]))
         end
     end
     v
@@ -153,7 +153,7 @@ function ranef(m::MixedModel; uscale=false, named=false)
     v = Matrix{T}[Matrix{T}(vsize(t), nlevs(t)) for t in reterms(LMM)]
     ranef!(v, LMM, uscale)
     named || return v
-    vnmd = NamedArray.(v)
+    vnmd = map(NamedArray, v)
     trms = reterms(LMM)
     for (i, vnm) in enumerate(vnmd)
         setnames!(vnm, trms[i].cnms, 1)
@@ -177,11 +177,7 @@ end
 
 Returns the estimated correlation matrix of the fixed-effects estimator.
 """
-function StatsBase.cor(m::MixedModel)
-    vc = vcov(m)
-    scl = [√(inv(vc[i])) for i in diagind(vc)]
-    scale!(scl, scale!(vc, scl))
-end
+Base.cor{T}(m::MixedModel{T}) = Matrix{T}[stddevcor(t)[2] for t in reterms(m)]
 
 """
     condVar(m::MixedModel)
@@ -203,12 +199,12 @@ diagonal blocks from the conditional variance-covariance matrix,
 """
 function condVar(m::MixedModel)
     lm = lmm(m)
-    λ = lm.Λ[1]
+    λ = lm.trms[1]
     L11 = lm.L[1, 1]
-    if nreterms(lm) ≠ 1 || !isa(λ, UniformScaling) || !isa(L11, Diagonal{eltype(λ)})
+    if nreterms(lm) ≠ 1 || !isa(L11, Diagonal{eltype(λ)})
         throw(ArgumentError("code for vector-valued r.e. or more than one term not yet written"))
     end
-    ll = λ.λ
+    ll = λ.Λ[1]
     Ld = L11.diag
-    Array{eltype(Ld), 3}[reshape(abs2.(λ.λ ./ Ld) .* varest(m), (1, 1, length(Ld)))]
+    Array{eltype(Ld), 3}[reshape(abs2.(ll ./ Ld) .* varest(m), (1, 1, length(Ld)))]
 end

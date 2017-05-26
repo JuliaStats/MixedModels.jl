@@ -1,0 +1,26 @@
+using Base.Test, MixedModels
+
+@testset "vectorterm" begin
+    trm = MatrixTerm(ones(10))
+    @test size(trm) == (10, 1)
+    @test trm'trm == 10.0 * ones(1, 1)
+    @test trm.cnames == [""]
+    @test trm.x === trm.wtx
+    wts = rand(MersenneTwister(1234321), 10)
+    MixedModels.reweight!(trm, wts)
+    @test !(trm.x === trm.wtx)
+    @test trm'trm ≈ sum(abs2, wts) * ones(1, 1)
+    @test A_mul_B!(Vector{Float64}(10), trm, ones(1)) == ones(10)
+end
+
+@testset "matrixterm" begin
+    trm = MatrixTerm(hcat(ones(30), repeat(0:9, outer = 3)), ["(Intercept)", "U"])
+    @test size(trm) == (30, 2)
+    @test trm.x === trm.wtx
+    prd = trm'trm
+    @test typeof(prd) == Matrix{Float64}
+    @test prd == [30.0 135.0; 135.0 855.0]
+    wts = rand(MersenneTwister(123454321), 30)
+    MixedModels.reweight!(trm, wts)
+    @test Ac_mul_B!(prd, trm, trm)[1, 1] ≈ sum(abs2, wts)
+end

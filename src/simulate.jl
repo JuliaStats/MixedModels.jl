@@ -40,21 +40,23 @@ for simulation of the responses.
 function bootstrap{T}(N, m::LinearMixedModel{T}; β = fixef(m), σ = sdest(m), θ = getθ(m))
     y₀ = copy(model_response(m)) # to restore original state of m
     p = size(m.trms[end - 1], 2)
-    @argcheck length(β) == p DimensionMismatch
-    @argcheck length(θ) == (k = length(getθ(m))) DimensionMismatch
-    Λsize = vsize.(reterms(m))
+    @argcheck(length(β) == p, DimensionMismatch)
+    @argcheck(length(θ) == (k = length(getθ(m))), DimensionMismatch)
+    trms = reterms(m)
+    Λsize = vsize.(trms)
     cnms = vcat([:obj, :σ], Symbol.(subscriptednames('β', p)),
         Symbol.(subscriptednames('θ', k)), Symbol.(subscriptednames('σ', sum(Λsize))))
     nρ = [(l * (l - 1)) >> 1 for l in Λsize]
     if (nρtot = sum(nρ)) > 0
         append!(cnms, Symbol.(subscriptednames('ρ', nρtot)))
     end
+
     dfr = DataFrame(Any[Vector{T}(N) for _ in eachindex(cnms)], cnms)
-    scrβ, scrθ = Vector{T}(p), Vector{T}(k)
+    scrβ = Vector{T}(p)
+    scrθ = Vector{T}(k)
     scrσ = [Vector{T}(l) for l in Λsize]
     scrρ = [Matrix{T}(l, l) for l in Λsize]
     scr = similar.(scrρ)
-    Λ = m.Λ
     for i in 1 : N
         j = 0
         refit!(simulate!(m, β = β, σ = σ, θ = θ))
@@ -66,8 +68,8 @@ function bootstrap{T}(N, m::LinearMixedModel{T}; β = fixef(m), σ = sdest(m), �
         for x in getθ!(scrθ, m)
             dfr[j += 1][i] = x
         end
-        for l in eachindex(Λsize)
-            stddevcor!(scrσ[l], scrρ[l], scr[l], Λ[l])
+        for l in eachindex(trms)
+            stddevcor!(scrσ[l], scrρ[l], scr[l], trms[l])
             for x in scrσ[l]
                 dfr[j += 1][i] = σest * x
             end
@@ -122,24 +124,15 @@ function stddevcor!{T}(σ::Vector{T}, ρ::Matrix{T}, scr::Matrix{T}, L::LinAlg.C
     end
     σ, ρ
 end
-function stddevcor!{T}(σ::Vector{T}, ρ::Matrix{T}, scr::Matrix{T}, L::MaskedLowerTri{T})
-    stddevcor!(σ, ρ, scr, LinAlg.Cholesky(L.m.data, :L))
+function stddevcor!{T}(σ::Vector{T}, ρ::Matrix{T}, scr::Matrix{T}, L::FactorReTerm{T})
+    stddevcor!(σ, ρ, scr, LinAlg.Cholesky(L.Λ, :L))
 end
-function stddevcor!{T}(σ::Vector{T}, ρ::Matrix{T}, scr::Matrix{T}, L::UniformScaling{T})
-    @argcheck length(σ) == 1 && size(ρ) == (1, 1) DimensionMismatch
-    σ[1] = L.λ
-    ρ[1] = one(T)
-    σ, ρ
-end
-
 function stddevcor{T}(L::LinAlg.Cholesky{T})
     k = size(L, 1)
     stddevcor!(Array{T}(k), Array{T}((k, k)), Array{T}((k, k)), L)
 end
 stddevcor{T<:AbstractFloat}(L::LowerTriangular{T}) = stddevcor(LinAlg.Cholesky(L, :L))
-stddevcor{T<:AbstractFloat}(L::UniformScaling{T}) = [abs(L.λ)], eye(T, 1)
-stddevcor{T<:AbstractFloat}(L::MaskedLowerTri{T}) = stddevcor(L.m)
-stddevcor{T}(J::Identity{T}) = T[], eye(T, 0)
+stddevcor{T<:AbstractFloat}(L::FactorReTerm{T}) = stddevcor(LinAlg.Cholesky(L.Λ, :L))
 
 """
     reevaluateAend!(m::LinearMixedModel)
@@ -148,13 +141,11 @@ Reevaluate the last column of `m.A` from `m.trms`.  This function should be call
 after updating the response, `m.trms[end]`.
 """
 function reevaluateAend!(m::LinearMixedModel)
-    A, trms, sqrtwts, wttrms = m.A, m.trms, m.sqrtwts, m.wttrms
-    wttrmn = wttrms[end]
-    if !isempty(sqrtwts)
-        A_mul_B!(wttrmn, sqrtwts, trms[end])
-    end
-    for i in eachindex(wttrms)
-        Ac_mul_B!(A[end, i], wttrmn, wttrms[i])
+    A = m.A
+    trms = m.trms
+    trmn = reweight!(trms[end], m.sqrtwts)
+    for i in eachindex(trms)
+        Ac_mul_B!(A[end, i], trmn, trms[i])
     end
     m
 end
@@ -193,12 +184,12 @@ Add unscaled random effects defined by `M` and `L * randn(1, length(M.f.pool))` 
 """
 function unscaledre! end
 
-function unscaledre!{T}(y::AbstractVector{T}, M::ReMat{T}, b::DenseMatrix{T})
-    Z = M.z
+function unscaledre!{T}(y::AbstractVector{T}, A::FactorReTerm{T}, b::DenseMatrix{T})
+    Z = A.z
     k, n = size(Z)
-    l = nlevs(M)
+    l = nlevs(A)
     @argcheck length(y) == n && size(b) == (k, l) DimensionMismatch
-    inds = M.f.refs
+    inds = A.f.refs
     for i in eachindex(y)
         ii = inds[i]
         for j in 1:k
@@ -208,13 +199,10 @@ function unscaledre!{T}(y::AbstractVector{T}, M::ReMat{T}, b::DenseMatrix{T})
     y
 end
 
-function unscaledre!{T}(y::AbstractVector{T}, M::ReMat{T}, λ::MaskedLowerTri{T})
-    unscaledre!(y, M, A_mul_B!(λ.m, randn(vsize(M), nlevs(M))))
+function unscaledre!{T}(y::AbstractVector{T}, A::FactorReTerm{T})
+    unscaledre!(y, A, A_mul_B!(LowerTriangular(A.Λ), randn(vsize(A), nlevs(A))))
 end
 
-function unscaledre!{T}(y::AbstractVector{T}, M::ReMat{T}, λ::UniformScaling{T})
-    unscaledre!(y, M, A_mul_B!(λ, randn(vsize(M), nlevs(M))))
-end
 """
     simulate!(m::LinearMixedModel; β=fixef(m), σ=sdest(m), θ=getθ(m))
 
@@ -224,14 +212,13 @@ function simulate!{T}(m::LinearMixedModel{T}; β = coef(m), σ = sdest(m), θ = 
     if !isempty(θ)
         setθ!(m, θ)
     end
-    Λ = m.Λ
     y = randn!(model_response(m)) # initialize to standard normal noise
-    for (j, trm) in enumerate(reterms(m))         # add the unscaled random effects
-        unscaledre!(y, trm, Λ[j])
+    for trm in reterms(m)         # add the unscaled random effects
+        unscaledre!(y, trm)
     end
                                   # scale by σ and add fixed-effects contribution
-    BLAS.gemv!('N', 1.0, m.trms[end - 1], β, σ, y)
+    BLAS.gemv!('N', 1.0, m.trms[end - 1].x, β, σ, y)
     m
 end
 
-StatsBase.model_response(m::LinearMixedModel) = vec(m.trms[end])
+StatsBase.model_response(m::LinearMixedModel) = vec(m.trms[end].x)

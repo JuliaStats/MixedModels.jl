@@ -8,9 +8,8 @@ end
     fm1 = lmm(@formula(Y ~ 1 + (1|G)), dat[:Dyestuff])
 
     @test size(fm1.A) == (3, 3)
-    @test size(fm1.wttrms) == (3, )
+    @test size(fm1.trms) == (3, )
     @test size(fm1.L) == (3, 3)
-    @test size(fm1.Λ) == (3, )
     @test lowerbd(fm1) == zeros(1)
     @test getθ(fm1) == ones(1)
 
@@ -26,7 +25,7 @@ end
     @test fixef(fm1) ≈ [1527.5]
     @test MixedModels.fixef!(zeros(1),fm1) ≈ [1527.5]
     @test coef(fm1) ≈ [1527.5]
-    @test cond(fm1) == ones(3)
+    @test cond(fm1) == ones(1)
     cm = coeftable(fm1)
     @test length(cm.rownms) == 1
     @test length(cm.colnms) == 4
@@ -50,19 +49,6 @@ end
     @test vc.s == sdest(fm1)
 end
 
-@testset "simulate!" begin
-    fm = fit!(lmm(@formula(Y ~ 1 + (1 | G)), dat[:Dyestuff]))
-    srand(1234321)
-    refit!(simulate!(fm))
-    @test isapprox(deviance(fm), 339.0218639362958, atol=0.001)
-    simulate!(fm, θ = getθ(fm))
-    @test_throws DimensionMismatch refit!(fm, zeros(29))
-    srand(1234321)
-    dfr = bootstrap(10, fm)
-    @test size(dfr) == (10, 5)
-    @test names(dfr) == Symbol[:obj, :σ, :β₁, :θ₁, :σ₁]
-end
-
 @testset "Dyestuff2" begin
     fm = lmm(@formula(Y ~ 1 + (1 | G)), dat[:Dyestuff2])
     @test lowerbd(fm) == zeros(1)
@@ -76,12 +62,9 @@ end
     @test coef(fm) ≈ [5.6656]
     @test logdet(fm) ≈ 0.0
     refit!(fm, dat[:Dyestuff][:Y])
+    @test isapprox(objective(fm), 327.3270598811428, atol=0.001)
 end
 
-#tbl = MixedModels.lrt(fm4,fm3)
-
-#@test isapprox(tbl[:Deviance], [1752.0032551398835,1751.9393444636157], atol=0.001)
-#@test tbl[:Df] == [5,6]
 @testset "penicillin" begin
     fm = lmm(@formula(Y ~ 1 + (1 | G) + (1 | H)), dat[:Penicillin]);
     @test size(fm) == (144, 1, 30, 2)
@@ -152,9 +135,13 @@ end
     fm = lmm(@formula(Y ~ 1 + U + (1 + U | G)), dat[:sleepstudy]);
     @test lowerbd(fm) == [0.0, -Inf, 0.0]
     @test isa(fm.A[1, 1], Diagonal{Matrix{Float64}})
+    @test isa(fm.L[1, 1], Diagonal{LowerTriangular{Float64, Matrix{Float64}}})
     @test size(fm.A[1, 1]) == (18, 18)
     @test fm.A[1, 1][1, 1] == [10. 45.; 45. 285.]
     @test size(fm.A[1, 1], 1) == 18
+    updateL!(fm);
+    @test fm.L[1, 1][1, 1] * fm.L[1, 1][1, 1]' == fm.A[1, 1][1, 1] + I
+    @test countnz(full(fm.L[1, 1])) == 18 * 3
 
     fit!(fm)
 
@@ -169,9 +156,8 @@ end
     @test isapprox(std(fm)[1], [23.780468100188497, 5.716827903196682], atol=0.01)
     @test isapprox(logdet(fm), 73.90337187545992, atol=0.001)
     @test diag(cor(fm)[1]) ≈ ones(2)
-#    @test isapprox(cond(fm), [4.175251, 4.461845, 1.0], atol=0.0001)
+    @test isapprox(cond(fm), [4.175251], atol=0.0001)
     @test loglikelihood(fm) ≈ -875.9696722323523
-    @test eltype(fm.wttrms[1]) === Float64
 
     u3 = ranef(fm, uscale=true)
     @test length(u3) == 1
@@ -185,6 +171,26 @@ end
     @test isapprox(b3[1][1, 1], 2.815819441982976, atol=0.001)
 
     simulate!(fm)  # to test one of the unscaledre methods
+
+    fmnc = lmm(@formula(Y ~ 1 + U + (1|G) + (0+U|G)), dat[:sleepstudy])
+    @test size(fmnc) == (180,2,36,1)
+    @test getθ(fmnc) == ones(2)
+    @test lowerbd(fmnc) == zeros(2)
+
+    fit!(fmnc)
+
+    @test isapprox(deviance(fmnc), 1752.0032551398835, atol=0.001)
+    @test isapprox(objective(fmnc), 1752.0032551398835, atol=0.001)
+    @test coef(fmnc) ≈ [251.40510484848585, 10.467285959595715]
+    @test fixef(fmnc) ≈ [251.40510484848585, 10.467285959595715]
+    @test isapprox(stderr(fmnc), [6.707710260366577, 1.5193083237479683], atol=0.001)
+    @test isapprox(getθ(fmnc), [0.9458106880922268, 0.22692826607677266], atol=0.0001)
+    @test std(fmnc)[1] ≈ [24.171449463289047, 5.799379721123582]
+    @test std(fmnc)[2] ≈ [25.556130034081047]
+    @test isapprox(logdet(fmnc), 74.46952585564611, atol=0.001)
+    cor(fmnc)
+
+    MixedModels.lrt(fm, fmnc)
 end
 
 if false  # takes too long for Travis
@@ -199,22 +205,16 @@ if false  # takes too long for Travis
 end
 end
 
-@testset "sleepnocorr" begin
-    fm = lmm(@formula(Y ~ 1 + U + (1|G) + (0+U|G)), dat[:sleepstudy])
-    @test size(fm) == (180,2,36,1)
-    @test getθ(fm) == ones(2)
-    @test lowerbd(fm) == zeros(2)
 
-    fit!(fm)
-
-    @test isapprox(deviance(fm), 1752.0032551398835, atol=0.001)
-    @test isapprox(objective(fm), 1752.0032551398835, atol=0.001)
-    @test coef(fm) ≈ [251.40510484848585, 10.467285959595715]
-    @test fixef(fm) ≈ [251.40510484848585, 10.467285959595715]
-    @test isapprox(stderr(fm), [6.707710260366577, 1.5193083237479683], atol=0.001)
-    @test isapprox(getθ(fm), [0.9458106880922268, 0.22692826607677266], atol=0.0001)
-    @test std(fm)[1] ≈ [24.171449463289047, 5.799379721123582]
-    @test std(fm)[2] ≈ [25.556130034081047]
-    @test isapprox(logdet(fm), 74.46952585564611, atol=0.001)
-    cor(fm)
+@testset "simulate!" begin
+    fm = fit!(lmm(@formula(Y ~ 1 + (1 | G)), dat[:Dyestuff]))
+    srand(1234321)
+    refit!(simulate!(fm))
+    @test isapprox(deviance(fm), 339.0218639362958, atol=0.001)
+    simulate!(fm, θ = getθ(fm))
+    @test_throws DimensionMismatch refit!(fm, zeros(29))
+    srand(1234321)
+    dfr = bootstrap(10, fm)
+    @test size(dfr) == (10, 5)
+    @test names(dfr) == Symbol[:obj, :σ, :β₁, :θ₁, :σ₁]
 end

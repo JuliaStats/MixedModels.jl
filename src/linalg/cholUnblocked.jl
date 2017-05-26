@@ -13,11 +13,6 @@ function cholUnblocked!{T<:AbstractFloat}(D::Diagonal{T}, ::Type{Val{:L}})
     D
 end
 
-function cholUnblocked!{T<:AbstractFloat}(A::Diagonal{Matrix{T}}, ::Type{Val{:L}})
-    map!(m -> cholUnblocked!(m, Val{:L}), A.diag)
-    A
-end
-
 function cholUnblocked!{T<:BlasFloat}(A::Matrix{T}, ::Type{Val{:L}})
     n = checksquare(A)
     if n == 1
