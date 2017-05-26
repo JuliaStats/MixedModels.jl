@@ -27,6 +27,7 @@ Summary of an `NLopt` optimization
 * `xtol_rel`: as in NLopt
 * `xtol_abs`: as in NLopt
 * `initial_step`: as in NLopt
+* `maxfeval`: as in NLopt
 * `final`: a copy of the final parameter values from the optimization
 * `fmin`: the final value of the objective
 * `feval`: the number of function evaluations
@@ -106,14 +107,11 @@ Linear mixed-effects model representation
 
 # Members
 * `formula`: the formula for the model
-* `fixefnames`: names of the fixed effects (for displaying coefficients)
-* `wttrms`: a length `nt` vector of weighted model matrices. The last two elements are `X` and `y`.
-* `trms`: a vector of unweighted model matrices.  If `isempty(sqrtwts)` the same object as `wttrms`
-* `Λ`: a length `nt - 2` vector of lower triangular matrices
+* `trms`: a `Vector{AbstractTerm}` representing the model.  The last element is the response.
 * `sqrtwts`: vector of square roots of the case weights.  Allowed to be size 0
 * `A`: an `nt × nt` symmetric matrix of matrices representing `hcat(Z,X,y)'hcat(Z,X,y)`
 * `L`: a `nt × nt` matrix of matrices - the lower Cholesky factor of `Λ'AΛ+I`
-* `opt`: an [`OptSummary`](@ref) object
+* `optsum`: an [`OptSummary`](@ref) object
 """
 immutable LinearMixedModel{T <: AbstractFloat} <: MixedModel{T}
     formula::Formula
