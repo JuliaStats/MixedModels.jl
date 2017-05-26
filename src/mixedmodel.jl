@@ -116,14 +116,14 @@ function ranef!{T}(v::Vector, m::LinearMixedModel{T}, β::AbstractArray{T}, usca
     L = m.L
     @argcheck((k = length(v)) == nreterms(m), DimensionMismatch)
     for j in 1:k
-        Ac_mul_B!(-one(T), L[k + 1, j], β, one(T), vec(copy!(v[j], L[end, j])))
+        αβAc_mul_B!(-one(T), L[k + 1, j], β, one(T), vec(copy!(v[j], L[end, j])))
     end
     for i in k: -1 :1
         Lii = L[i, i]
         vi = vec(v[i])
         Ac_ldiv_B!(isa(Lii, Diagonal) ? Lii : LowerTriangular(Lii), vi)
         for j in 1:(i - 1)
-            Ac_mul_B!(-one(T), L[i, j], vi, one(T), vec(v[j]))
+            αβAc_mul_B!(-one(T), L[i, j], vi, one(T), vec(v[j]))
         end
     end
     if !uscale

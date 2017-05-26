@@ -137,7 +137,7 @@ function updateL!{T}(m::LinearMixedModel{T})
             A_mul_Λ!(Lij, trms[j])
             Λc_mul_B!(trms[i], Lij)
             for jj in 1:(j - 1)
-                A_mul_Bc!(-one(T), L[i, jj], L[j, jj], one(T), Lij)
+                αβA_mul_Bc!(-one(T), L[i, jj], L[j, jj], one(T), Lij)
             end
             A_rdiv_Bc!(Lij, LjjLT)
         end

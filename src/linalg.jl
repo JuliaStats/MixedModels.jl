@@ -1,9 +1,9 @@
-function A_mul_Bc!{T<:BlasFloat}(α::T, A::StridedMatrix{T}, B::StridedMatrix{T},
+function αβA_mul_Bc!{T<:BlasFloat}(α::T, A::StridedMatrix{T}, B::StridedMatrix{T},
     β::T, C::StridedMatrix{T})
     BLAS.gemm!('N', 'C', α, A, B, β, C)
 end
 
-function A_mul_Bc!{T<:Number}(α::T, A::SparseMatrixCSC{T}, B::SparseMatrixCSC{T},
+function αβA_mul_Bc!{T<:Number}(α::T, A::SparseMatrixCSC{T}, B::SparseMatrixCSC{T},
     β::T, C::Matrix{T})
     @argcheck B.m == size(C, 2) && A.m == size(C, 1) && A.n == B.n  DimensionMismatch
     anz = nonzeros(A)
@@ -25,7 +25,7 @@ function A_mul_Bc!{T<:Number}(α::T, A::SparseMatrixCSC{T}, B::SparseMatrixCSC{T
     C
 end
 
-function A_mul_Bc!{T<:Number}(α::T, A::SparseMatrixCSC{T}, B::SparseMatrixCSC{T},
+function αβA_mul_Bc!{T<:Number}(α::T, A::SparseMatrixCSC{T}, B::SparseMatrixCSC{T},
     β::T, C::SparseMatrixCSC{T})
     @argcheck B.m == C.n && A.m == C.m && A.n == B.n  DimensionMismatch
     anz = nonzeros(A)
@@ -54,7 +54,7 @@ function A_mul_Bc!{T<:Number}(α::T, A::SparseMatrixCSC{T}, B::SparseMatrixCSC{T
     C
 end
 
-function A_mul_Bc!{T<:Number}(α::T, A::StridedVecOrMat{T}, B::SparseMatrixCSC{T},
+function αβA_mul_Bc!{T<:Number}(α::T, A::StridedVecOrMat{T}, B::SparseMatrixCSC{T},
     β::T, C::StridedVecOrMat{T})
     m, n = size(A)
     p, q = size(B)
@@ -77,10 +77,14 @@ function A_mul_Bc!{T<:Number}(α::T, A::StridedVecOrMat{T}, B::SparseMatrixCSC{T
     C
 end
 
-Ac_mul_B!{T<:BlasFloat}(α::T, A::StridedMatrix{T}, B::StridedVector{T}, β::T,
+αβAc_mul_B!{T<:BlasFloat}(α::T, A::StridedMatrix{T}, B::StridedVector{T}, β::T,
     C::StridedVector{T}) = BLAS.gemv!('C', α, A, B, β, C)
 
-function Ac_ldiv_B!{T<:AbstractFloat}(A::Diagonal{LowerTriangular{T,Matrix{T}}}, B::StridedVector{T})
+αβAc_mul_B!{T<:AbstractFloat}(α::T, A::SparseMatrixCSC{T}, B::StridedVector{T}, β::T,
+        C::StridedVector{T}) = Ac_mul_B!(α, A, B, β, C)
+
+function Ac_ldiv_B!{T<:AbstractFloat}(A::Diagonal{LowerTriangular{T,Matrix{T}}},
+    B::StridedVector{T})
     offset = 0
     for a in A.diag
         k = size(a, 1)
@@ -92,46 +96,17 @@ end
 
 Ac_ldiv_B!{T}(D::Diagonal{T}, B::StridedVecOrMat{T}) = A_ldiv_B!(D, B)
 
-if false
-function A_ldiv_B!{T}(D::Diagonal{T}, B::Diagonal{T})
-    @argcheck size(D) == size(B) DimensionMismatch
-    map!(/, B.diag, B.diag, D.diag)
-    B
-end
-
-function A_ldiv_B!{T}(D::Diagonal{T}, B::SparseMatrixCSC{T})
-    @argcheck size(D, 2) == size(B, 1) DimensionMismatch
-    dd = D.diag
-    vals = nonzeros(B)
-    rows = rowvals(B)
-    @inbounds for k in eachindex(vals)
-        vals[k] /= dd[rows[k]]
-    end
-    B
-end
-end
-
 function A_rdiv_B!{T}(A::StridedMatrix{T}, D::Diagonal{T})
     scale!(A, inv.(D.diag))
     A
 end
 
-if false
-function A_rdiv_B!{T}(A::StridedMatrix{T}, D::Diagonal{LowerTriangular{T, Matrix{T}}})
-    offset = 0
-    for L in D.diag
-        k = size(L, 1)
-        A_rdiv_B!(view(A, :, (1:k) + offset), L)
-        offset += k
-    end
-    A
-end
-end
-
-A_rdiv_Bc!{T}(A::StridedMatrix{T}, D::Diagonal{T}) = LinAlg.A_rdiv_B!(A, D)
+A_rdiv_Bc!{T}(A::StridedMatrix{T}, D::Diagonal{T}) = A_rdiv_B!(A, D)
 
 function A_rdiv_Bc!{T}(A::SparseMatrixCSC{T}, D::Diagonal{T})
-    @argcheck size(D, 2) == size(A, 2) DimensionMismatch
+    if size(D, 2) ≠ size(A, 2)
+        throw(DimensionMismatch("size(A,2)=$(size(A,2)) should be size(D, 1)=$(size(D,1))"))
+    end
     dd = D.diag
     nonz = nonzeros(A)
     for j in 1:A.n
@@ -147,7 +122,7 @@ function A_rdiv_Bc!{T<:AbstractFloat}(A::Matrix, B::Diagonal{LowerTriangular{T,M
     offset = 0
     for d in B.diag
         k = size(d, 1)
-        ## FIXME all BLAS.trsm directly
+        ## FIXME call BLAS.trsm directly
         A_rdiv_Bc!(view(A, :, (1:k) + offset), d)
         offset += k
     end
