@@ -18,15 +18,6 @@ function A_mul_Λ! end
 Λc_mul_B!{T}(A::MatrixTerm{T}, B::AbstractArray{T}) = B
 A_mul_Λ!{T}(A::AbstractArray{T}, B::MatrixTerm{T}) = A
 
-function A_mul_Λ!{T<:AbstractFloat}(A::Diagonal{LowerTriangular{T, Matrix{T}}},
-    B::FactorReTerm{T})
-    λ = LowerTriangular(B.Λ)
-    for a in A.diag
-        A_mul_B!(a.data, λ)
-    end
-    A
-end
-
 function A_mul_Λ!{T<:AbstractFloat,S}(A::SparseMatrixCSC{T,S}, B::FactorReTerm{T})
     k = vsize(B)
     nz = nonzeros(A)
@@ -87,14 +78,6 @@ function Λ_mul_B!{T}(C::StridedVecOrMat{T}, A::FactorReTerm{T}, B::StridedVecOr
     k = size(λ, 1)
     A_mul_B!(λ, reshape(copy!(C, B), (k, size(C, 2) * div(m, k))))
     C
-end
-
-function Λc_mul_B!{T}(A::FactorReTerm{T}, B::Diagonal{LowerTriangular{T,Matrix{T}}})
-    λ = LowerTriangular(A.Λ)
-    for b in B.diag
-        Ac_mul_B!(λ, b.data)
-    end
-    B
 end
 
 function Λc_mul_B!{T}(A::FactorReTerm{T}, B::StridedVecOrMat{T})
