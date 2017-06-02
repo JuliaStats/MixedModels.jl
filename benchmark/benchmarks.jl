@@ -1,4 +1,4 @@
-using BenchmarkTools, MixedModels, RData
+using MixedModels, RData
 
 const dat = convert(Dict{Symbol,Any}, load(Pkg.dir("MixedModels", "test", "dat.rda")));
 
@@ -37,24 +37,31 @@ const mods1 = Dict{Symbol,Vector{String}}(  # models that can be benchmarked in 
     :WWheat => ["1+U+(1+U|G)"]
     );
 
-function fitlmm(dsname, form, opt)
-    m = lmm(DataFrames.Formula(:Y, parse(form)), dat[Symbol(dsname)])
-    m.optsum.optimizer = Symbol(opt)
-    fit!(m)
-end
+fitbobyqa(dsname::Symbol) =
+    fit!(lmm(DataFrames.Formula(:Y, parse(mods1[dsname][1])), dat[dsname]))
 
-const suite = BenchmarkGroup()
-for (k,v) in mods1
-    suite[k] = BenchmarkGroup()
-    for vi in v, opt in [:LN_BOBYQA, :LN_COBYLA, :LN_SBPLX]
-        suite[k][vi,opt] = @benchmarkable fitlmm($(QuoteNode(k)), $vi, $(QuoteNode(opt))) seconds=1
+@benchgroup "simplescalar" ["single", "simple", "scalar"] begin
+    for ds in [:Alfalfa, :AvgDailyGain, :BIB, :Bond, :Cultivation, :Dyestuff,
+        :Dyestuff2, :ergoStool, :Exam, :Gasoline, :Hsb82, :IncBlk, :Mississippi,
+        :PBIB, :Semiconductor, :TeachingII]
+        @bench string(ds) fitbobyqa($(QuoteNode(ds)))
     end
 end
-if isfile("params.jld")
-    loadparams!(suite, BenchmarkTools.load("params.jld", "suite"), :evals, :samples)
-else
-    tune!(suite);
-    BenchmarkTools.save("params.jld", "suite", params(suite));
+
+@benchgroup "singlevector" ["single", "vector"] begin
+    for ds in [:HR, :Oxboys, :SIMS, :sleepstudy, :Weights, :WWheat]
+        @bench string(ds) fitbobyqa($(QuoteNode(ds)))
+    end
 end
-res = run(suite, verbose=true)
-showall(res)
+
+@benchgroup "nested" ["multiple", "nested", "scalar"] begin
+    for ds in [:Animal, :Genetics, :Pastes, :Semi2]
+        @bench string(ds) fitbobyqa($(QuoteNode(ds)))
+    end
+end
+
+@benchgroup "crossed" ["multiple", "crossed", "scalar"] begin
+    for ds in [:Assay, :Demand, :Multilocation, :Penicillin, :ScotsSec]
+        @bench string(ds) fitbobyqa($(QuoteNode(ds)))
+    end
+end
