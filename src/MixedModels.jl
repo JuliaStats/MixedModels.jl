@@ -45,6 +45,7 @@ export
        fit!,
        fitted,
        fixef,      # extract the fixed-effects parameter estimates
+       getΛ,
        getθ,
        glmm,       # define a GeneralizedLinearMixedModel
        LaplaceDeviance, # Laplace approximation to GLMM deviance

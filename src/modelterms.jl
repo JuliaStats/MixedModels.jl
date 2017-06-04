@@ -46,6 +46,8 @@ Base.Ac_mul_B{T}(A::MatrixTerm{T}, B::MatrixTerm{T}) = Ac_mul_B(A.wtx, B.wtx)
 A_mul_B!{T}(R::StridedVecOrMat{T}, A::MatrixTerm{T}, B::StridedVecOrMat{T}) =
     A_mul_B!(R, A.x, B)
 
+getΛ{T}(A::MatrixTerm{T}) = Matrix{T}(0,0)
+
 @compat const AbstractFactor{V,R} =
     Union{NullableCategoricalVector{V,R},CategoricalVector{V,R},PooledDataVector{V,R}}
 
@@ -174,6 +176,8 @@ Return the number of free parameters in the relative covariance matrix Λ
 function nθ end
 nθ(A::FactorReTerm) = length(A.inds)
 nθ(A::MatrixTerm) = 0
+
+getΛ(A::FactorReTerm) = A.Λ
 
 """
     getθ!{T}(v::AbstractVector{T}, A::FactorReTerm{T})
