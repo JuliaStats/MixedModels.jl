@@ -159,9 +159,20 @@ Base.size(A::FactorReTerm) = (length(A.f), nrandomeff(A))
 Base.size(A::FactorReTerm, i::Integer) =
     i < 1 ? throw(BoundsError()) : i == 1 ? length(A.f) :  i == 2 ? nrandomeff(A) : 1
 
+"""
+    sparse(R::FactorReTerm)
+
+Convert the random effects model matrix `R.z` from the internal, compressed form
+to the expanded form.  The (transposed) "compressed" form has one row per data
+observation, and one column per random effect.  The "expanded" form has the same
+row structure but one column for each random effect × grouping level
+combination.
+"""
 function Base.sparse(R::FactorReTerm)
-    sparse(Int32[1:length(R.z);],
-        convert(Vector{Int32}, repeat(R.f.refs, inner=vsize(R))), vec(R.z))
+    zrows, zcols = size(R.z)
+    I = convert(Vector{Int32}, repeat(1:zcols, inner=vsize(R)))
+    J = vec(Int32[(R.f.refs[j] - 1) * vsize(R) + i for i in 1:zrows, j in 1:zcols])
+    sparse(I, J, vec(R.z))
 end
 
 cond(A::FactorReTerm) = cond(LowerTriangular(A.Λ))
