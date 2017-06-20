@@ -12,6 +12,7 @@ end
     @test size(fm1.L) == (3, 3)
     @test lowerbd(fm1) == zeros(1)
     @test getθ(fm1) == ones(1)
+    @test getΛ(fm1) == Matrix[ones(1,1)]
 
     @test objective(updateL!(setθ!(fm1, [0.713]))) ≈ 327.34216280955366
     MixedModels.describeblocks(IOBuffer(), fm1)

@@ -186,6 +186,8 @@ function nθ end
 nθ(A::FactorReTerm) = length(A.inds)
 nθ(A::MatrixTerm) = 0
 
+getΛ(A::FactorReTerm) = A.Λ
+
 """
     getθ!{T}(v::AbstractVector{T}, A::FactorReTerm{T})
 

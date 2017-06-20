@@ -89,6 +89,8 @@ function getθ!{T}(v::AbstractVector{T}, m::LinearMixedModel{T})
     v
 end
 
+getΛ(m::MixedModel) = getΛ.(reterms(m))
+
 getθ{T}(m::GeneralizedLinearMixedModel{T}) = getθ(m.LMM)
 getθ{T}(m::LinearMixedModel{T}) = getθ(m.trms)
 
