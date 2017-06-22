@@ -6,14 +6,13 @@ end
 
 @testset "contra" begin
     contraception = dat[:Contraception]
-    contraception[:use01] = Array(float.(contraception[:use] .== "Y"))
     contraception[:a2] = abs2.(contraception[:a])
     contraception[:urbdist] = string.(contraception[:urb], contraception[:d])
-    gm0 = fit!(glmm(@formula(use01 ~ 1 + a + a2 + urb + l + (1 | urbdist)), contraception,
+    gm0 = fit!(glmm(@formula(use ~ 1 + a + a2 + urb + l + (1 | urbdist)), contraception,
         Bernoulli()), fast = true);
     @test isapprox(getθ(gm0)[1], 0.5720734451352923, atol=0.001)
     @test isapprox(LaplaceDeviance(gm0), 2361.657188518064, atol=0.001)
-    gm1 = fit!(glmm(@formula(use01 ~ 1 + a + a2 + urb + l + (1 | urbdist)), contraception,
+    gm1 = fit!(glmm(@formula(use ~ 1 + a + a2 + urb + l + (1 | urbdist)), contraception,
         Bernoulli()));
     @test isapprox(gm1.θ[1], 0.573054, atol=0.005)
     @test lowerbd(gm1) == push!(fill(-Inf, 7), 0.)
@@ -29,7 +28,7 @@ end
 @testset "cbpp" begin
     cbpp = dat[:cbpp]
     cbpp[:prop] = cbpp[:i] ./ cbpp[:s]
-    gm2 = fit!(glmm(@formula(prop ~ 1 + p + (1 | h)), cbpp, Binomial(), LogitLink(),
+    gm2 = fit!(glmm(@formula(prop ~ 1 + p + (1 | h)), cbpp, Binomial(),
         wt = Array(cbpp[:s])));
     @test isapprox(LaplaceDeviance(gm2), 100.09585619324639, atol=0.0001)
     @test isapprox(sum(abs2, gm2.u[1]), 9.723175126731014, atol=0.0001)
@@ -42,8 +41,7 @@ end
 
 @testset "verbagg" begin
     verbagg = dat[:VerbAgg]
-    verbagg[:r201] = Array(float.(verbagg[:r2] .== "Y"))
-    gm3 = fit!(glmm(@formula(r201 ~ 1 + a + g + b + s + (1 | id) + (1 | item)), verbagg, Bernoulli()));
+    gm3 = fit!(glmm(@formula(r2 ~ 1 + a + g + b + s + (1 | id) + (1 | item)), verbagg, Bernoulli()));
     @test isapprox(LaplaceDeviance(gm3), 8151.39972809092, atol=0.001)
     @test lowerbd(gm3) == vcat(fill(-Inf, 6), zeros(2))
     # these two values are not well defined at the optimum

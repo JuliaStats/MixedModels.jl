@@ -7,11 +7,12 @@ Return a `GeneralizedLinearMixedModel` object.
 
 The value is ready to be `fit!` but has not yet been fit.
 """
-function glmm(f::Formula, fr::AbstractDataFrame, d::Distribution, l::Link; wt=[], offset=[])
+function glmm(f::Formula, fr::AbstractDataFrame, d::Distribution, l::Link; wt=[], offset=[],
+    contrasts = Dict())
     if d == Binomial() && isempty(wt)
         d = Bernoulli()
     end
-    LMM = lmm(f, fr; weights = wt)
+    LMM = lmm(f, fr; weights = wt, contrasts=contrasts)
     X = LMM.trms[end - 1].x
     y = copy(model_response(LMM))
     if isempty(wt)
@@ -30,7 +31,8 @@ function glmm(f::Formula, fr::AbstractDataFrame, d::Distribution, l::Link; wt=[]
     res
 end
 
-glmm(f::Formula, fr::AbstractDataFrame, d::Distribution) = glmm(f, fr, d, GLM.canonicallink(d))
+glmm(f::Formula, fr::AbstractDataFrame, d::Distribution; wt=[], offset=[], contrasts=Dict()) =
+    glmm(f, fr, d, GLM.canonicallink(d), wt=wt, offset=offset, contrasts=contrasts)
 
 """
     LaplaceDeviance{T}(m::GeneralizedLinearMixedModel{T})::T
@@ -57,7 +59,7 @@ function LaplaceDeviance!(m::GeneralizedLinearMixedModel)
     LaplaceDeviance(m)
 end
 
-function StatsBase.loglikelihood{T}(m::GeneralizedLinearMixedModel{T})
+function loglikelihood{T}(m::GeneralizedLinearMixedModel{T})
     accum = zero(T)
     D = Distribution(m.resp)
     if D <: Binomial

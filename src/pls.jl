@@ -62,20 +62,33 @@ function LinearMixedModel(f, trms, wts)
         LowerTriangular(HeteroBlkdMatrix(L)), optsum)
 end
 
+response(typ::DataType, y) = convert(typ, y)
+function response(typ::DataType, y::Vector{String})
+    if typ <: Vector{<:Number}
+        levs = unique(y)
+        if length(levs) ≠ 2
+            throw(ArgumentError("PooledDataVector y must be binary"))
+        end
+        return convert(typ, y .== levs[2])
+    end
+    convert(typ, y)
+end
+
 """
-    lmm(f::DataFrames.Formula, fr::DataFrames.DataFrame; weights = [])
+    lmm(f::DataFrames.Formula, fr::DataFrames.DataFrame; weights = [], contrasts = Dict())
 
 Create a [`LinearMixedModel`](@ref) from `f`, which contains both fixed-effects terms
 and random effects, and `fr`.
 
 The return value is ready to be `fit!` but has not yet been fit.
 """
-function lmm(f::Formula, fr::AbstractDataFrame; weights::Vector = [])
-    mf = ModelFrame(f, fr)
+function lmm(f::Formula, fr::AbstractDataFrame; weights::Vector = [],
+    contrasts= Dict())
+    mf = ModelFrame(f, fr, contrasts=contrasts)
     X = ModelMatrix(mf).m
     n = size(X, 1)
     T = eltype(X)
-    y = convert(Vector{T}, model_response(mf))
+    y = response(Vector{T}, model_response(mf))
     tdict = Dict{Symbol, Vector{Any}}()
     for t in filter(x -> Meta.isexpr(x, :call) && x.args[1] == :|, mf.terms.terms)
         fnm = t.args[3]
