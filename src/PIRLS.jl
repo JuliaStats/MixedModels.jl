@@ -12,7 +12,7 @@ function glmm(f::Formula, fr::AbstractDataFrame, d::Distribution, l::Link; wt=[]
     if d == Binomial() && isempty(wt)
         d = Bernoulli()
     end
-    LMM = lmm(f, fr; weights = wt, contrasts=contrasts)
+    LMM = lmm(f, fr; weights = wt, contrasts=contrasts, rdist=d)
     X = LMM.trms[end - 1].x
     y = copy(model_response(LMM))
     if isempty(wt)

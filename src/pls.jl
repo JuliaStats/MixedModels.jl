@@ -62,16 +62,19 @@ function LinearMixedModel(f, trms, wts)
         LowerTriangular(HeteroBlkdMatrix(L)), optsum)
 end
 
-response(typ::DataType, y) = convert(typ, y)
-function response(typ::DataType, y::Vector{String})
-    if typ <: Vector{<:Number}
-        levs = unique(y)
-        if length(levs) ≠ 2
-            throw(ArgumentError("PooledDataVector y must be binary"))
-        end
-        return convert(typ, y .== levs[2])
+model_response(mf::ModelFrame, d::Distribution=Normal()) =
+    model_response(mf.df[mf.terms.eterms[1]], d)
+model_response(v::AbstractVector, d::Distribution) = convert(Vector{partype(d)}, v)
+function model_response(v::PooledDataVector, d::Bernoulli)
+    levs = DataArrays.levels(v)
+    nlevs = length(levs)
+    if nlevs < 2
+        zeros(v, partype(d))
+    elseif nlevs == 2
+        partype(d)[cv == levs[2] for cv in v]
+    else
+        throw(ArgumentError("length(levels(v)) = $nlevs, should be ≤ 2 for Bernoulli"))
     end
-    convert(typ, y)
 end
 
 """
@@ -83,12 +86,12 @@ and random effects, and `fr`.
 The return value is ready to be `fit!` but has not yet been fit.
 """
 function lmm(f::Formula, fr::AbstractDataFrame; weights::Vector = [],
-    contrasts= Dict())
+    contrasts= Dict(), rdist::Distribution=Normal())
     mf = ModelFrame(f, fr, contrasts=contrasts)
     X = ModelMatrix(mf).m
     n = size(X, 1)
     T = eltype(X)
-    y = response(Vector{T}, model_response(mf))
+    y = model_response(mf, rdist)
     tdict = Dict{Symbol, Vector{Any}}()
     for t in filter(x -> Meta.isexpr(x, :call) && x.args[1] == :|, mf.terms.terms)
         fnm = t.args[3]
@@ -235,7 +238,10 @@ lowerbd{T}(m::LinearMixedModel{T}) = mapreduce(lowerbd, append!, T[], m.trms)
 
 Return negative twice the log-likelihood of model `m`
 """
-objective(m::LinearMixedModel) = logdet(m) + nobs(m) * (1 + log2π + log(varest(m)))
+function objective{T}(m::LinearMixedModel{T})
+    wttrm = isempty(m.sqrtwts) ? zero(T) : 2sum(log, m.sqrtwts)
+    logdet(m) + nobs(m) * (1 + log2π + log(varest(m))) - wttrm
+end
 
 """
     fixef!{T}(v::Vector{T}, m::LinearMixedModel{T})
