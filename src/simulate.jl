@@ -199,26 +199,31 @@ function unscaledre!{T}(y::AbstractVector{T}, A::FactorReTerm{T}, b::DenseMatrix
     y
 end
 
-function unscaledre!{T}(y::AbstractVector{T}, A::FactorReTerm{T})
-    unscaledre!(y, A, A_mul_B!(LowerTriangular(A.Λ), randn(vsize(A), nlevs(A))))
+function unscaledre!{T}(rng::AbstractRNG, y::AbstractVector{T}, A::FactorReTerm{T})
+    unscaledre!(y, A, A_mul_B!(LowerTriangular(A.Λ), randn(rng, vsize(A), nlevs(A))))
 end
+
+unscaledre!{T}(y::AbstractVector{T}, A::FactorReTerm{T}) = unscaledre!(Base.GLOBAL_RNG, y, A)
 
 """
     simulate!(m::LinearMixedModel; β=fixef(m), σ=sdest(m), θ=getθ(m))
 
 Overwrite the response (i.e. `m.trms[end]`) with a simulated response vector from model `m`.
 """
-function simulate!{T}(m::LinearMixedModel{T}; β = coef(m), σ = sdest(m), θ = T[])
+function simulate!{T}(rng::AbstractRNG, m::LinearMixedModel{T}; β=coef(m), σ=sdest(m), θ=T[])
     if !isempty(θ)
         setθ!(m, θ)
     end
-    y = randn!(model_response(m)) # initialize to standard normal noise
-    for trm in reterms(m)         # add the unscaled random effects
-        unscaledre!(y, trm)
+    y = randn!(rng, model_response(m)) # initialize to standard normal noise
+    for trm in reterms(m)              # add the unscaled random effects
+        unscaledre!(rng, y, trm)
     end
                                   # scale by σ and add fixed-effects contribution
     BLAS.gemv!('N', one(T), m.trms[end - 1].x, β, σ, y)
     m
 end
+
+simulate!{T}(m::LinearMixedModel{T}; β=coef(m), σ=sdest(m), θ=T[]) =
+    simulate!(Base.GLOBAL_RNG, m, β=β, σ=σ, θ=θ)
 
 StatsBase.model_response(m::LinearMixedModel) = vec(m.trms[end].x)

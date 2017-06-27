@@ -209,6 +209,9 @@ end
 
 @testset "simulate!" begin
     fm = fit!(lmm(@formula(Y ~ 1 + (1 | G)), dat[:Dyestuff]))
+    refit!(simulate!(MersenneTwister(1234321), fm))
+    @test isapprox(deviance(fm), 339.0218639362958, atol=0.001)
+    refit!(fm, dat[:Dyestuff][:Y])
     srand(1234321)
     refit!(simulate!(fm))
     @test isapprox(deviance(fm), 339.0218639362958, atol=0.001)
