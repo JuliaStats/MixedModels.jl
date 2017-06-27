@@ -9,6 +9,7 @@ const mods1 = Dict{Symbol,Vector{String}}(  # models that can be benchmarked in 
     :AvgDailyGain => ["1+A*U+(1|G)", "1+A+U+(1|G)"],
     :BIB => ["1+A*U+(1|G)", "1+A+U+(1|G)"],
     :Bond => ["1+A+(1|G)"],
+    :bs10 => ["1+U+V+W+((1+U+V+W)|G)+((1+U+V+W)|H)"],
     :cake => ["1+A*B+(1|G)"],
     :Cultivation => ["1+A*B+(1|G)"],
     :Demand => ["1+U+V+W+X+(1|G)+(1|H)"],
@@ -17,6 +18,7 @@ const mods1 = Dict{Symbol,Vector{String}}(  # models that can be benchmarked in 
     :ergoStool => ["1+A+(1|G)"],
     :Exam => ["1+A*U+B+(1|G)", "1+A+B+U+(1|G)"],
     :Gasoline => ["1+U+(1|G)"],
+    :gb12 => ["1+S+T+U+V+W+X+Z+((1+S+U+W)|G)+((1+S+T+V)|H)"],
     :Genetics => ["1+A+(1|G)+(1|H)"],
     :HR => ["1+A*U+V+(1+U|G)"],
     :Hsb82 => ["1+A+B+C+U+(1|G)"],
@@ -36,6 +38,10 @@ const mods1 = Dict{Symbol,Vector{String}}(  # models that can be benchmarked in 
     :Weights => ["1+A*U+(1+U|G)"],
     :WWheat => ["1+U+(1+U|G)"]
     );
+
+const mods5 = Dict{Symbol, Vector{String}}(
+    :InstEval => ["1+A+(1|G)+(1|H)+(1|I)"]
+);
 
 fitbobyqa(dsname::Symbol) =
     fit!(lmm(DataFrames.Formula(:Y, parse(mods1[dsname][1])), dat[dsname]))
@@ -62,6 +68,12 @@ end
 
 @benchgroup "crossed" ["multiple", "crossed", "scalar"] begin
     for ds in [:Assay, :Demand, :Multilocation, :Penicillin, :ScotsSec]
+        @bench string(ds) fitbobyqa($(QuoteNode(ds)))
+    end
+end
+
+@benchgroup "crossedvector" ["multiple", "crossed", "vector"] begin
+    for ds in [:bs10, :gb12]
         @bench string(ds) fitbobyqa($(QuoteNode(ds)))
     end
 end
