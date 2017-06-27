@@ -94,28 +94,30 @@ function Ac_ldiv_B!{T<:AbstractFloat}(A::Diagonal{LowerTriangular{T,Matrix{T}}},
     B
 end
 
-Ac_ldiv_B!{T}(D::Diagonal{T}, B::StridedVecOrMat{T}) = A_ldiv_B!(D, B)
+if VERSION < v"0.7.0-DEV.750"
+    Ac_ldiv_B!{T}(D::Diagonal{T}, B::StridedVecOrMat{T}) = A_ldiv_B!(D, B)
 
-function A_rdiv_B!{T}(A::StridedMatrix{T}, D::Diagonal{T})
-    scale!(A, inv.(D.diag))
-    A
-end
-
-A_rdiv_Bc!{T}(A::StridedMatrix{T}, D::Diagonal{T}) = A_rdiv_B!(A, D)
-
-function A_rdiv_Bc!{T}(A::SparseMatrixCSC{T}, D::Diagonal{T})
-    if size(D, 2) ≠ size(A, 2)
-        throw(DimensionMismatch("size(A,2)=$(size(A,2)) should be size(D, 1)=$(size(D,1))"))
+    function A_rdiv_B!{T}(A::StridedMatrix{T}, D::Diagonal{T})
+        scale!(A, inv.(D.diag))
+        A
     end
-    dd = D.diag
-    nonz = nonzeros(A)
-    for j in 1:A.n
-        ddj = dd[j]
-        for k in nzrange(A, j)
-            nonz[k] /= ddj
+
+    A_rdiv_Bc!{T}(A::StridedMatrix{T}, D::Diagonal{T}) = A_rdiv_B!(A, D)
+
+    function A_rdiv_Bc!{T}(A::SparseMatrixCSC{T}, D::Diagonal{T})
+        if size(D, 2) ≠ size(A, 2)
+            throw(DimensionMismatch("size(A,2)=$(size(A,2)) should be size(D, 1)=$(size(D,1))"))
         end
+        dd = D.diag
+        nonz = nonzeros(A)
+        for j in 1:A.n
+            ddj = dd[j]
+            for k in nzrange(A, j)
+                nonz[k] /= ddj
+            end
+        end
+        A
     end
-    A
 end
 
 function A_rdiv_Bc!{T<:AbstractFloat}(A::Matrix, B::Diagonal{LowerTriangular{T,Matrix{T}}})
