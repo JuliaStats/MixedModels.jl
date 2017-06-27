@@ -292,7 +292,7 @@ Return the square root of the penalized, weighted residual sum-of-squares (pwrss
 
 This value is the contents of the `1 × 1` bottom right block of `m.L`
 """
-sqrtpwrss(m::LinearMixedModel) = m.L[end, end][1]
+sqrtpwrss(m::LinearMixedModel) = @views m.L[end, end][1]
 
 """
     varest(m::LinearMixedModel)
