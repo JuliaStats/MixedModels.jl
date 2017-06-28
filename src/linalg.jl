@@ -94,7 +94,7 @@ function Ac_ldiv_B!{T<:AbstractFloat}(A::Diagonal{LowerTriangular{T,Matrix{T}}},
     B
 end
 
-if VERSION < v"0.7.0-DEV.750"
+if VERSION < v"0.7.0-DEV.586"
     Ac_ldiv_B!{T}(D::Diagonal{T}, B::StridedVecOrMat{T}) = A_ldiv_B!(D, B)
 
     function A_rdiv_B!{T}(A::StridedMatrix{T}, D::Diagonal{T})
