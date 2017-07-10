@@ -95,7 +95,7 @@ In general the model should be fit through an explicit call to the `fit!`
 function, which may take a second argument indicating a verbose fit.
 
 ```julia
-julia> fit!(lmm(Yield ~ 1 + (1 | Batch), ds), true);
+julia> fit!(lmm(@formula(Yield ~ 1 + (1 | Batch)), ds), true);
 f_1: 327.76702, [1.0]
 f_2: 331.03619, [1.75]
 f_3: 330.64583, [0.25]
@@ -114,18 +114,17 @@ f_15: 327.32706, [0.752584]
 f_16: 327.32706, [0.752509]
 f_17: 327.32706, [0.752591]
 f_18: 327.32706, [0.752581]
-FTOL_REACHED
 ```
 
 The numeric representation of the model has type
 ```julia
-julia> typeof(fit!(lmm(Yield ~ 1 + (1 | Batch), ds)))
+julia> typeof(fit!(lmm(@formula(Yield ~ 1 + (1 | Batch)), ds)))
 MixedModels.LinearMixedModel{Float64}
 ```
 Those familiar with the `lme4` package for `R` will see the usual
 suspects.
 ```julia
-julia> m = fit!(lmm(Yield ~ 1 + (1 | Batch), ds));
+julia> m = fit!(lmm(@formula(Yield ~ 1 + (1 | Batch)), ds));
 
 julia> fixef(m)  # estimates of the fixed-effects parameters
 1-element Array{Float64,1}:
@@ -137,13 +136,11 @@ julia> coef(m)  # another name for fixef
 
 julia> ranef(m)
 1-element Array{Array{Float64,2},1}:
- 1×6 Array{Float64,2}:
- -16.6282  0.369516  26.9747  -21.8014  53.5798  -42.4943
+ [-16.6282 0.369516 … 53.5798 -42.4943]
 
-julia> ranef(m, true)  # on the u scale
+julia> ranef(m, uscale = true)  # on the u scale
 1-element Array{Array{Float64,2},1}:
- 1×6 Array{Float64,2}:
- -22.0949  0.490999  35.8429  -28.9689  71.1948  -56.4648
+ [-22.0949 0.490999 … 71.1948 -56.4648]
 
 julia> deviance(m)
 327.3270598811394
@@ -163,7 +160,7 @@ data in the `lme4` package is more of a challenge in that there are
 nearly 75,000 evaluations by 2972 students on a total of 1128
 instructors.
 
-```
+```julia
 julia> head(inst)
 6x7 DataFrames.DataFrame
 │ Row │ s   │ d      │ studage │ lectage │ service │ dept │ y │
@@ -175,47 +172,49 @@ julia> head(inst)
 │ 5   │ "2" │ "115"  │ "2"     │ "1"     │ "0"     │ "5"  │ 2 │
 │ 6   │ "2" │ "756"  │ "2"     │ "1"     │ "0"     │ "5"  │ 4 │
 
-julia> m2 = fit!(lmm(y ~ 1 + dept*service + (1|s) + (1|d), inst))
+julia> m2 = fit!(lmm(@formula(y ~ 1 + dept*service + (1|s) + (1|d)), inst))
 Linear mixed model fit by maximum likelihood
- logLik: -118792.776708, deviance: 237585.553415, AIC: 237647.553415, BIC: 237932.876339
+ Formula: y ~ 1 + dept * service + (1 | s) + (1 | d)
+     logLik        -2 logLik          AIC             BIC
+ -1.18792777×10⁵  2.37585553×10⁵  2.37647553×10⁵  2.37932876×10⁵
 
 Variance components:
-            Variance   Std.Dev.
- s        0.105417971 0.32468134
- d        0.258416394 0.50834673
- Residual 1.384727771 1.17674456
+              Column    Variance   Std.Dev.
+ s        (Intercept)  0.10541792 0.32468126
+ d        (Intercept)  0.25841626 0.50834659
+ Residual              1.38472780 1.17674458
  Number of obs: 73421; levels of grouping factors: 2972, 1128
 
   Fixed-effects parameters:
-                           Estimate Std.Error   z value
-(Intercept)                 3.22961  0.064053   50.4209
-dept - 5                   0.129536  0.101294   1.27882
-dept - 10                 -0.176751 0.0881352  -2.00545
-dept - 12                 0.0517102 0.0817524  0.632522
-dept - 6                  0.0347319  0.085621  0.405647
-dept - 7                    0.14594 0.0997984   1.46235
-dept - 4                   0.151689 0.0816897   1.85689
-dept - 8                   0.104206  0.118751  0.877517
-dept - 9                  0.0440401 0.0962985  0.457329
-dept - 14                 0.0517546 0.0986029  0.524879
-dept - 1                  0.0466719  0.101942  0.457828
-dept - 3                  0.0563461 0.0977925   0.57618
-dept - 11                 0.0596536  0.100233   0.59515
-dept - 2                 0.00556281  0.110867 0.0501757
-service - 1                0.252025 0.0686507   3.67112
-dept - 5 & service - 1    -0.180757  0.123179  -1.46744
-dept - 10 & service - 1   0.0186492  0.110017  0.169512
-dept - 12 & service - 1   -0.282269 0.0792937  -3.55979
-dept - 6 & service - 1    -0.494464 0.0790278  -6.25683
-dept - 7 & service - 1    -0.392054  0.110313  -3.55403
-dept - 4 & service - 1    -0.278547 0.0823727  -3.38154
-dept - 8 & service - 1    -0.189526  0.111449  -1.70056
-dept - 9 & service - 1    -0.499868 0.0885423  -5.64553
-dept - 14 & service - 1   -0.497162 0.0917162  -5.42065
-dept - 1 & service - 1     -0.24042 0.0982071   -2.4481
-dept - 3 & service - 1    -0.223013 0.0890548  -2.50422
-dept - 11 & service - 1   -0.516997 0.0809077  -6.38997
-dept - 2 & service - 1    -0.384773  0.091843  -4.18946
+                         Estimate Std.Error   z value P(>|z|)
+(Intercept)               3.22961  0.064053   50.4209  <1e-99
+dept: 5                  0.129536  0.101294   1.27882  0.2010
+dept: 10                -0.176751 0.0881352  -2.00545  0.0449
+dept: 12                0.0517102 0.0817523  0.632523  0.5270
+dept: 6                 0.0347319 0.0856209  0.405647  0.6850
+dept: 7                   0.14594 0.0997984   1.46235  0.1436
+dept: 4                  0.151689 0.0816897   1.85689  0.0633
+dept: 8                  0.104206  0.118751  0.877517  0.3802
+dept: 9                 0.0440401 0.0962984   0.45733  0.6474
+dept: 14                0.0517546 0.0986029  0.524879  0.5997
+dept: 1                 0.0466719  0.101942  0.457828  0.6471
+dept: 3                 0.0563461 0.0977925   0.57618  0.5645
+dept: 11                0.0596536  0.100233  0.595151  0.5517
+dept: 2                0.00556283  0.110867 0.0501759  0.9600
+service: 1               0.252025 0.0686507   3.67112  0.0002
+dept: 5 & service: 1    -0.180757  0.123179  -1.46744  0.1423
+dept: 10 & service: 1   0.0186492  0.110017  0.169512  0.8654
+dept: 12 & service: 1   -0.282269 0.0792937   -3.5598  0.0004
+dept: 6 & service: 1    -0.494464 0.0790278  -6.25684   <1e-9
+dept: 7 & service: 1    -0.392054  0.110313  -3.55403  0.0004
+dept: 4 & service: 1    -0.278547 0.0823727  -3.38154  0.0007
+dept: 8 & service: 1    -0.189526  0.111449  -1.70056  0.0890
+dept: 9 & service: 1    -0.499868 0.0885423  -5.64553   <1e-7
+dept: 14 & service: 1   -0.497162 0.0917162  -5.42065   <1e-7
+dept: 1 & service: 1     -0.24042 0.0982071   -2.4481  0.0144
+dept: 3 & service: 1    -0.223013 0.0890548  -2.50422  0.0123
+dept: 11 & service: 1   -0.516997 0.0809077  -6.38997   <1e-9
+dept: 2 & service: 1    -0.384773  0.091843  -4.18946   <1e-4
 ```
 
 Models with vector-valued random effects can be fit
@@ -243,17 +242,17 @@ julia> slp
 │ 179 │ 369.142  │ 8    │ 18      │
 │ 180 │ 364.124  │ 9    │ 18      │
 
-julia> fm3 = fit!(lmm(Reaction ~ 1 + Days + (1+Days|Subject), slp))
+julia> fm3 = fit!(lmm(@formula(Reaction ~ 1 + Days + (1+Days|Subject)), slp))
 Linear mixed model fit by maximum likelihood
  Formula: Reaction ~ 1 + Days + ((1 + Days) | Subject)
-  logLik    -2 logLik     AIC        BIC
+   logLik   -2 logLik     AIC        BIC
  -875.96967 1751.93934 1763.93934 1783.09709
 
 Variance components:
               Column    Variance  Std.Dev.   Corr.
- Subject  (Intercept)  565.51066 23.780468
+ Subject  (Intercept)  565.51067 23.780468
           Days          32.68212  5.716828  0.08
- Residual Days         654.94145 25.591824
+ Residual              654.94145 25.591824
  Number of obs: 180; levels of grouping factors: 18
 
   Fixed-effects parameters:

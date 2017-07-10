@@ -22,69 +22,80 @@ parameter, `θ`, that defines the variance-covariance matrices of the random eff
 For example, a simple linear mixed-effects model for the `Dyestuff` data in the [`lme4`](http://github.com/lme4/lme4)
 package for [`R`](https://www.r-project.org) is fit by
 ````julia
-julia> using DataFrames, Gadfly, MixedModels
-````
+julia> using DataFrames, Gadfly, MixedModels, RData
 
-
-
-
-
-
-````julia
-julia> show(ds)   # Dyestuff data set30×2 DataFrames.DataFrame
-│ Row │ Yield  │ Batch │
-├─────┼────────┼───────┤
-│ 1   │ 1545.0 │ 'A'   │
-│ 2   │ 1440.0 │ 'A'   │
-│ 3   │ 1440.0 │ 'A'   │
-│ 4   │ 1520.0 │ 'A'   │
-│ 5   │ 1580.0 │ 'A'   │
-│ 6   │ 1540.0 │ 'B'   │
-│ 7   │ 1555.0 │ 'B'   │
-│ 8   │ 1490.0 │ 'B'   │
-│ 9   │ 1560.0 │ 'B'   │
-│ 10  │ 1495.0 │ 'B'   │
-│ 11  │ 1595.0 │ 'C'   │
-│ 12  │ 1550.0 │ 'C'   │
-│ 13  │ 1605.0 │ 'C'   │
-│ 14  │ 1510.0 │ 'C'   │
-│ 15  │ 1560.0 │ 'C'   │
-│ 16  │ 1445.0 │ 'D'   │
-│ 17  │ 1440.0 │ 'D'   │
-│ 18  │ 1595.0 │ 'D'   │
-│ 19  │ 1465.0 │ 'D'   │
-│ 20  │ 1545.0 │ 'D'   │
-│ 21  │ 1595.0 │ 'E'   │
-│ 22  │ 1630.0 │ 'E'   │
-│ 23  │ 1515.0 │ 'E'   │
-│ 24  │ 1635.0 │ 'E'   │
-│ 25  │ 1625.0 │ 'E'   │
-│ 26  │ 1520.0 │ 'F'   │
-│ 27  │ 1455.0 │ 'F'   │
-│ 28  │ 1450.0 │ 'F'   │
-│ 29  │ 1480.0 │ 'F'   │
-│ 30  │ 1445.0 │ 'F'   │
 ````
 
 
 
 
 ````julia
-julia> m1 = fit!(lmm(Yield ~ 1 + (1 | Batch), ds))  
+julia> show(dat[:Dyestuff])   # Dyestuff data set
+30×2 DataFrames.DataFrame
+│ Row │ G   │ Y      │
+├─────┼─────┼────────┤
+│ 1   │ "A" │ 1545.0 │
+│ 2   │ "A" │ 1440.0 │
+│ 3   │ "A" │ 1440.0 │
+│ 4   │ "A" │ 1520.0 │
+│ 5   │ "A" │ 1580.0 │
+│ 6   │ "B" │ 1540.0 │
+│ 7   │ "B" │ 1555.0 │
+│ 8   │ "B" │ 1490.0 │
+⋮
+│ 22  │ "E" │ 1630.0 │
+│ 23  │ "E" │ 1515.0 │
+│ 24  │ "E" │ 1635.0 │
+│ 25  │ "E" │ 1625.0 │
+│ 26  │ "F" │ 1520.0 │
+│ 27  │ "F" │ 1455.0 │
+│ 28  │ "F" │ 1450.0 │
+│ 29  │ "F" │ 1480.0 │
+│ 30  │ "F" │ 1445.0 │
+````
+
+
+
+````julia
+julia> ds = names!(dat[:Dyestuff], [:Batch, :Yield])
+30×2 DataFrames.DataFrame
+│ Row │ Batch │ Yield  │
+├─────┼───────┼────────┤
+│ 1   │ "A"   │ 1545.0 │
+│ 2   │ "A"   │ 1440.0 │
+│ 3   │ "A"   │ 1440.0 │
+│ 4   │ "A"   │ 1520.0 │
+│ 5   │ "A"   │ 1580.0 │
+│ 6   │ "B"   │ 1540.0 │
+│ 7   │ "B"   │ 1555.0 │
+│ 8   │ "B"   │ 1490.0 │
+⋮
+│ 22  │ "E"   │ 1630.0 │
+│ 23  │ "E"   │ 1515.0 │
+│ 24  │ "E"   │ 1635.0 │
+│ 25  │ "E"   │ 1625.0 │
+│ 26  │ "F"   │ 1520.0 │
+│ 27  │ "F"   │ 1455.0 │
+│ 28  │ "F"   │ 1450.0 │
+│ 29  │ "F"   │ 1480.0 │
+│ 30  │ "F"   │ 1445.0 │
+
+julia> m1 = fit!(lmm(@formula(Yield ~ 1 + (1 | Batch)), ds))
 Linear mixed model fit by maximum likelihood
  Formula: Yield ~ 1 + (1 | Batch)
-  logLik    -2 logLik     AIC        BIC    
+   logLik   -2 logLik     AIC        BIC    
  -163.66353  327.32706  333.32706  337.53065
 
 Variance components:
               Column    Variance  Std.Dev. 
- Batch    (Intercept)  1388.3334 37.260346
+ Batch    (Intercept)  1388.3333 37.260345
  Residual              2451.2500 49.510100
  Number of obs: 30; levels of grouping factors: 6
 
   Fixed-effects parameters:
              Estimate Std.Error z value P(>|z|)
 (Intercept)    1527.5   17.6946  86.326  <1e-99
+
 
 ````
 
@@ -113,6 +124,7 @@ julia> function saveresults!(v, m)
     v[2] = abs2(getθ(m)[1]) * v[1]
 end
 saveresults! (generic function with 1 method)
+
 ````
 
 
@@ -127,17 +139,14 @@ As with any simulation-based method, it is advisable to set the random number se
 `bootstrap!` for reproducibility.
 ````julia
 julia> srand(1234321);
-MersenneTwister(Base.dSFMT.DSFMT_state(Int32[-1066020669,1073631810,397127531,1072701603,-312796895,1073626997,1020815149,1073320576,650048908,1073512247  …  -352178910,1073735534,1816227101,1072823316,-1468787611,-2121692099,358864500,-310934288,382,0]),[2.11393e-315,2.11394e-315,2.11394e-315,0.0,NaN,2.11399e-315,2.11332e-315,4.24399e-314,2.11278e-315,6.36599e-314  …  3.95253e-323,5.06417e-321,0.0,0.0,2.11329e-315,0.0,7.90505e-323,5.06911e-321,0.0,0.0],382,UInt32[0x0012d591])
-````
 
+````
 
 
 
 ````julia
 julia> results = bootstrap!(zeros(2, 100000), m1, saveresults!);
-2x100000 Array{Float64,2}:
- 4547.01   2302.38   2513.48   2832.77  2051.86   …  2721.9    3735.86  1617.55  2624.33   1473.15
-  204.834   653.688   473.595  1685.59   367.881      564.686     0.0   1324.83   287.775  1826.86
+
 ````
 
 
@@ -147,13 +156,12 @@ The results for each bootstrap replication are stored in the columns of the matr
 argument.  A density plot of the first row using the [`Gadfly`](https://github.com/dcjones/Gadfly.jl) package
 is created as
 ````julia
-plot(x = sub(results, 1, :), Geom.density(), Guide.xlabel("Parametric bootstrap estimates of σ²"))
+
+plot(x = view(results, 1, :), Geom.density(), Guide.xlabel("Parametric bootstrap estimates of σ²"))
 ````
 
 
-
 ![Density of parametric bootstrap estimates of σ² from model m1](figures/bootstrap_9_1.png)
-
 
 ![Density of parametric bootstrap estimates of σ₁² from model m1](figures/bootstrap_10_1.png)
 

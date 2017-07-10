@@ -22,16 +22,14 @@ parameter, `θ`, that defines the variance-covariance matrices of the random eff
 For example, a simple linear mixed-effects model for the `Dyestuff` data in the [`lme4`](http://github.com/lme4/lme4)
 package for [`R`](https://www.r-project.org) is fit by
 ```{julia;term=true}
-using DataFrames, Gadfly, MixedModels
+using DataFrames, Gadfly, MixedModels, RData
 ```
 ```{julia;echo=false;results="hidden"}
-include(Pkg.dir("MixedModels", "test", "data.jl"))
+const dat = convert(Dict{Symbol,DataFrame}, load(Pkg.dir("MixedModels", "test", "dat.rda")));
 ```
 ```{julia;term=true}
-show(ds)   # Dyestuff data set
-```
-```{julia;term=true}
-m1 = fit!(lmm(Yield ~ 1 + (1 | Batch), ds))
+ds = names!(dat[:Dyestuff], [:Batch, :Yield])
+m1 = fit!(lmm(@formula(Yield ~ 1 + (1 | Batch)), ds))
 ```
 
 
@@ -72,13 +70,13 @@ The results for each bootstrap replication are stored in the columns of the matr
 argument.  A density plot of the first row using the [`Gadfly`](https://github.com/dcjones/Gadfly.jl) package
 is created as
 ```{julia;eval=false;term=true}
-plot(x = sub(results, 1, :), Geom.density(), Guide.xlabel("Parametric bootstrap estimates of σ²"))
+plot(x = view(results, 1, :), Geom.density(), Guide.xlabel("Parametric bootstrap estimates of σ²"))
 ```
 ```{julia;echo=false;fig_cap="Density of parametric bootstrap estimates of σ² from model m1"; fig_width=8;}
-plot(x = sub(results, 1, :), Geom.density(), Guide.xlabel("Parametric bootstrap estimates of σ²"))
+plot(x = view(results, 1, :), Geom.density(), Guide.xlabel("Parametric bootstrap estimates of σ²"))
 ```
 ```{julia;echo=false;fig_cap="Density of parametric bootstrap estimates of σ₁² from model m1"; fig_width=8;}
-plot(x = sub(results, 2, :), Geom.density(), Guide.xlabel("Parametric bootstrap estimates of σ₁²"))
+plot(x = view(results, 2, :), Geom.density(), Guide.xlabel("Parametric bootstrap estimates of σ₁²"))
 ```
 
 The distribution of the bootstrap samples of `σ²` is a bit skewed but not terribly so.  However, the
