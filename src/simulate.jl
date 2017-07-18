@@ -131,8 +131,18 @@ function stddevcor{T}(L::LinAlg.Cholesky{T})
     k = size(L, 1)
     stddevcor!(Array{T}(k), Array{T}((k, k)), Array{T}((k, k)), L)
 end
-stddevcor{T<:AbstractFloat}(L::LowerTriangular{T}) = stddevcor(LinAlg.Cholesky(L, :L))
-stddevcor{T<:AbstractFloat}(L::FactorReTerm{T}) = stddevcor(LinAlg.Cholesky(L.Λ, :L))
+stddevcor(L::LowerTriangular{T}) where {T<:AbstractFloat} = stddevcor(LinAlg.Cholesky(L))
+stddevcor(L::FactorReTerm{T}) where {T<:AbstractFloat} = stddevcor(LowerTriangular(L.Λ))
+function Base.LinAlg.Cholesky(L::LowerTriangular{T}) where {T}
+    info = 0
+    for k in 1:size(A,2)
+        if iszero(L[k, k])
+            info = k
+            break
+        end
+    end
+    Base.LinAlg.Cholesky(L, uplo, info)
+end
 
 """
     reevaluateAend!(m::LinearMixedModel)
