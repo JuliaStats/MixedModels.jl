@@ -198,7 +198,7 @@ function StatsBase.fit!{T}(m::GeneralizedLinearMixedModel{T}; verbose::Bool=fals
         optsum.lowerbd = vcat(fill!(similar(β), -Inf), optsum.lowerbd)
         optsum.initial = vcat(β, m.θ)
         optsum.final = copy(optsum.initial)
-        optsum.initial_step = vcat(stderr(m), fill(T(0.05), length(m.θ)))
+        optsum.initial_step = vcat(stderr(m) ./ 3, min.(T(0.05), m.θ ./ 4))
     end
     setpar! = fast ? setθ! : setβθ!
     feval = 0
@@ -233,7 +233,7 @@ function StatsBase.fit!{T}(m::GeneralizedLinearMixedModel{T}; verbose::Bool=fals
     optsum.fmin = fmin
     optsum.returnvalue = ret
     ret == :ROUNDOFF_LIMITED && warn("NLopt was roundoff limited")
-    if ret ∈ [:FAILURE, :INVALID_ARGS, :OUT_OF_MEMORY, :FORCED_STOP]
+    if ret ∈ [:FAILURE, :INVALID_ARGS, :OUT_OF_MEMORY, :FORCED_STOP, :MAXEVAL_REACHED]
         warn("NLopt optimization failure: $ret")
     end
     m
