@@ -133,15 +133,20 @@ function stddevcor{T}(L::LinAlg.Cholesky{T})
 end
 stddevcor(L::LowerTriangular{T}) where {T<:AbstractFloat} = stddevcor(LinAlg.Cholesky(L))
 stddevcor(L::FactorReTerm{T}) where {T<:AbstractFloat} = stddevcor(LowerTriangular(L.Λ))
-function Base.LinAlg.Cholesky(L::LowerTriangular{T}) where {T}
-    info = 0
-    for k in 1:size(L,2)
-        if iszero(L[k, k])
-            info = k
-            break
+
+if VERSION < v"0.7.0-DEV.393"
+    Base.LinAlg.Cholesky(L::LowerTriangular) = LinAlg.Cholesky(L, 'L')
+else
+    function Base.LinAlg.Cholesky(L::LowerTriangular)
+        info = 0
+        for k in 1:size(L,2)
+            if iszero(L[k, k])
+                info = k
+                break
+            end
         end
+        LinAlg.Cholesky(L, 'L', info)
     end
-    Base.LinAlg.Cholesky(L, 'L', info)
 end
 
 """
