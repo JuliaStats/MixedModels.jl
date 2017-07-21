@@ -125,7 +125,7 @@ function stddevcor!{T}(σ::Vector{T}, ρ::Matrix{T}, scr::Matrix{T}, L::LinAlg.C
     σ, ρ
 end
 function stddevcor!{T}(σ::Vector{T}, ρ::Matrix{T}, scr::Matrix{T}, L::FactorReTerm{T})
-    stddevcor!(σ, ρ, scr, LinAlg.Cholesky(L.Λ, :L))
+    stddevcor!(σ, ρ, scr, LinAlg.Cholesky(LowerTriangular(L.Λ)))
 end
 function stddevcor{T}(L::LinAlg.Cholesky{T})
     k = size(L, 1)
@@ -135,13 +135,13 @@ stddevcor(L::LowerTriangular{T}) where {T<:AbstractFloat} = stddevcor(LinAlg.Cho
 stddevcor(L::FactorReTerm{T}) where {T<:AbstractFloat} = stddevcor(LowerTriangular(L.Λ))
 function Base.LinAlg.Cholesky(L::LowerTriangular{T}) where {T}
     info = 0
-    for k in 1:size(A,2)
+    for k in 1:size(L,2)
         if iszero(L[k, k])
             info = k
             break
         end
     end
-    Base.LinAlg.Cholesky(L, uplo, info)
+    Base.LinAlg.Cholesky(L, 'L', info)
 end
 
 """
