@@ -343,11 +343,15 @@ function Ac_mul_B!{T}(C::Diagonal{Matrix{T}}, A::FactorReTerm{T}, B::FactorReTer
     d = C.diag
     fill!.(d, zero(T))
     refs = A.f.refs
-    for i in eachindex(refs)
-        ## A lot of allocation going on here
-        rankUpdate!(view(Az, :, i), Hermitian(d[refs[i]], :L))
+    @inbounds for i in eachindex(refs)
+        dri = d[refs[i]]
+        for j in 1:l
+            Aji = Az[j, i]
+            for k in 1:l
+                dri[k, j] += Aji * Az[k, i]
+            end
+        end
     end
-    map!(m -> copytri!(m, 'L'), d, d)
     C
 end
 
