@@ -30,7 +30,7 @@ function logdet{T}(m::LinearMixedModel{T})
             s += LD(blks[k])
         end
     end
-    2.*s
+    2s
 end
 
 logdet{T}(m::GeneralizedLinearMixedModel{T}) = logdet(m.LMM)
