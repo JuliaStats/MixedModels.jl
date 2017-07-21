@@ -32,7 +32,7 @@ end
         wt = Array(cbpp[:s])));
     @test isapprox(LaplaceDeviance(gm2), 100.09585619324639, atol=0.0001)
     @test isapprox(sum(abs2, gm2.u[1]), 9.723175126731014, atol=0.0001)
-    @test isapprox(logdet(gm2), 16.900889129328004, atol=0.0001)
+    @test isapprox(logdet(gm2), 16.90113, atol=0.0001)
     @test isapprox(sum(gm2.resp.devresid), 73.47179193718736, atol=0.001)
     @test isapprox(loglikelihood(gm2), -92.02628186555876, atol=0.001)
     @test isnan(sdest(gm2))
