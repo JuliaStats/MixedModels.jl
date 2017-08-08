@@ -1,20 +1,20 @@
 """
-    bootstrap!{T}(r::Matrix{T}, m::LinearMixedModel{T}, f!::Function;
-        β=fixef(m), σ=sdest(m), θ=getθ(m))
+    bootstrap!(r::Matrix{T}, m::LinearMixedModel{T}, f!::Function;
+               β=fixef(m), σ=sdest(m), θ=getθ(m)) where T
 
 Overwrite columns of `r` with the results of applying the mutating extractor `f!`
 to parametric bootstrap replications of model `m`.
 
 The signature of `f!` should be
-    f!{T}(v::AbstractVector{T}, m::LinearMixedModel{T})
+    f!(v::AbstractVector{T}, m::LinearMixedModel{T}) where T
 
 # Named Arguments
 
 `β::Vector{T}`, `σ::T`, and `θ::Vector{T}` are the values of the parameters in `m`
 for simulation of the responses.
 """
-function bootstrap!{T}(r::Matrix{T}, m::LinearMixedModel{T}, f!::Function;
-    β=fixef(m), σ=sdest(m), θ=getθ(m))
+function bootstrap!(r::Matrix{T}, m::LinearMixedModel{T}, f!::Function;
+    β=fixef(m), σ=sdest(m), θ=getθ(m)) where T
     y₀ = copy(model_response(m)) # to restore original state of m
     for i in 1 : size(r, 2)
         f!(view(r, :, i), refit!(simulate!(m, β = β, σ = σ, θ = θ)))
@@ -24,8 +24,7 @@ function bootstrap!{T}(r::Matrix{T}, m::LinearMixedModel{T}, f!::Function;
 end
 
 """
-    bootstrap{T}(N, m::LinearMixedModel{T},
-        β::Vector{T}=fixef(m), σ::T=sdest(m), θ::Vector{T}=getθ(m))
+    bootstrap(N, m::LinearMixedModel; β::Vector=fixef(m), σ=sdest(m), θ::Vector=getθ(m))
 
 Perform `N` parametric bootstrap replication fits of `m`, returning a data frame
 with column names `:obj`, the objective function at convergence, `:σ`, the estimated
@@ -34,10 +33,10 @@ and `θᵢ, i = 1,...,k` the covariance parameters.
 
 # Named Arguments
 
-`β::Vector{T}`, `σ::T`, and `θ::Vector{T}` are the values of the parameters in `m`
-for simulation of the responses.
+`β`, `σ`, and `θ` are the values of the parameters in `m` for simulation of the responses.
 """
-function bootstrap{T}(N, m::LinearMixedModel{T}; β = fixef(m), σ = sdest(m), θ = getθ(m))
+function bootstrap(N, m::LinearMixedModel{T};
+                   β = fixef(m), σ = sdest(m), θ = getθ(m)) where T
     y₀ = copy(model_response(m)) # to restore original state of m
     p = size(m.trms[end - 1], 2)
     @argcheck(length(β) == p, DimensionMismatch)
@@ -96,7 +95,7 @@ function subscriptednames(nm, len)
         [string(nm, lpad(string(j), nd, '0')) for j in 1:len]
 end
 
-function stddevcor!{T}(σ::Vector{T}, ρ::Matrix{T}, scr::Matrix{T}, L::LinAlg.Cholesky{T})
+function stddevcor!(σ::Vector{T}, ρ::Matrix{T}, scr::Matrix{T}, L::LinAlg.Cholesky{T}) where T
     @argcheck length(σ) == (k = size(L, 2)) && size(ρ) == (k, k) && size(scr) == (k, k) DimensionMismatch
     if k == 1
         copy!(σ, L.factors)
@@ -124,15 +123,15 @@ function stddevcor!{T}(σ::Vector{T}, ρ::Matrix{T}, scr::Matrix{T}, L::LinAlg.C
     end
     σ, ρ
 end
-function stddevcor!{T}(σ::Vector{T}, ρ::Matrix{T}, scr::Matrix{T}, L::FactorReTerm{T})
+function stddevcor!(σ::Vector{T}, ρ::Matrix{T}, scr::Matrix{T}, L::FactorReTerm{T}) where T
     stddevcor!(σ, ρ, scr, LinAlg.Cholesky(LowerTriangular(L.Λ)))
 end
-function stddevcor{T}(L::LinAlg.Cholesky{T})
+function stddevcor(L::LinAlg.Cholesky{T}) where T
     k = size(L, 1)
-    stddevcor!(Array{T}(k), Array{T}((k, k)), Array{T}((k, k)), L)
+    stddevcor!(Vector{T}(k), Matrix{T}((k, k)), Matrix{T}((k, k)), L)
 end
-stddevcor{T<:AbstractFloat}(L::LowerTriangular{T}) = stddevcor(LinAlg.Cholesky(L))
-stddevcor{T<:AbstractFloat}(L::FactorReTerm{T}) = stddevcor(LowerTriangular(L.Λ))
+stddevcor(L::LowerTriangular) = stddevcor(LinAlg.Cholesky(L))
+stddevcor(L::FactorReTerm) = stddevcor(LowerTriangular(L.Λ))
 
 if VERSION < v"0.7.0-DEV.393"
     Base.LinAlg.Cholesky(L::LowerTriangular) = LinAlg.Cholesky(L, 'L')
@@ -166,14 +165,14 @@ function reevaluateAend!(m::LinearMixedModel)
 end
 
 """
-    refit!{T}(m::LinearMixedModel{T}[, y::Vector{T}])
+    refit!(m::LinearMixedModel[, y::Vector])
 
 Refit the model `m` after installing response `y`.
 
 If `y` is omitted the current response vector is used.
 """
 refit!(m::LinearMixedModel) = fit!(updateL!(resetθ!(reevaluateAend!(m))))
-function refit!{T}(m::LinearMixedModel{T}, y)
+function refit!(m::LinearMixedModel, y)
     resp = m.trms[end]
     @argcheck length(y) == size(resp, 1) DimensionMismatch
     copy!(resp, y)
@@ -193,13 +192,13 @@ function resetθ!(m::LinearMixedModel)
 end
 
 """
-    unscaledre!{T}(y::AbstractVector{T}, M::ReMat{T}, L)
+    unscaledre!(y::AbstractVector{T}, M::ReMat{T}, L) where T
 
 Add unscaled random effects defined by `M` and `L * randn(1, length(M.f.pool))` to `y`.
 """
 function unscaledre! end
 
-function unscaledre!{T}(y::AbstractVector{T}, A::FactorReTerm{T}, b::DenseMatrix{T})
+function unscaledre!(y::AbstractVector{T}, A::FactorReTerm{T}, b::DenseMatrix{T}) where T
     Z = A.z
     k, n = size(Z)
     l = nlevs(A)
@@ -214,18 +213,19 @@ function unscaledre!{T}(y::AbstractVector{T}, A::FactorReTerm{T}, b::DenseMatrix
     y
 end
 
-function unscaledre!{T}(rng::AbstractRNG, y::AbstractVector{T}, A::FactorReTerm{T})
+function unscaledre!(rng::AbstractRNG, y::AbstractVector{T}, A::FactorReTerm{T}) where T
     unscaledre!(y, A, A_mul_B!(LowerTriangular(A.Λ), randn(rng, vsize(A), nlevs(A))))
 end
 
-unscaledre!{T}(y::AbstractVector{T}, A::FactorReTerm{T}) = unscaledre!(Base.GLOBAL_RNG, y, A)
+unscaledre!(y::AbstractVector, A::FactorReTerm) = unscaledre!(Base.GLOBAL_RNG, y, A)
 
 """
     simulate!(m::LinearMixedModel; β=fixef(m), σ=sdest(m), θ=getθ(m))
 
 Overwrite the response (i.e. `m.trms[end]`) with a simulated response vector from model `m`.
 """
-function simulate!{T}(rng::AbstractRNG, m::LinearMixedModel{T}; β=coef(m), σ=sdest(m), θ=T[])
+function simulate!(rng::AbstractRNG, m::LinearMixedModel{T};
+                   β=coef(m), σ=sdest(m), θ=T[]) where T
     if !isempty(θ)
         setθ!(m, θ)
     end
@@ -238,7 +238,7 @@ function simulate!{T}(rng::AbstractRNG, m::LinearMixedModel{T}; β=coef(m), σ=s
     m
 end
 
-simulate!{T}(m::LinearMixedModel{T}; β=coef(m), σ=sdest(m), θ=T[]) =
+simulate!(m::LinearMixedModel{T}; β=coef(m), σ=sdest(m), θ=T[]) where {T} =
     simulate!(Base.GLOBAL_RNG, m, β=β, σ=σ, θ=θ)
 
 StatsBase.model_response(m::LinearMixedModel) = vec(m.trms[end].x)

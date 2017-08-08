@@ -35,7 +35,7 @@ glmm(f::Formula, fr::AbstractDataFrame, d::Distribution; wt=[], offset=[], contr
     glmm(f, fr, d, GLM.canonicallink(d), wt=wt, offset=offset, contrasts=contrasts)
 
 """
-    LaplaceDeviance{T}(m::GeneralizedLinearMixedModel{T})::T
+    LaplaceDeviance(m::GeneralizedLinearMixedModel{T})::T where T
 
 Return the Laplace approximation to the deviance of `m`.
 
@@ -43,8 +43,8 @@ If the distribution `D` does not have a scale parameter the Laplace approximatio
 is defined as the squared length of the conditional modes, `u`, plus the determinant
 of `Λ'Z'ZΛ + 1`, plus the sum of the squared deviance residuals.
 """
-LaplaceDeviance{T}(m::GeneralizedLinearMixedModel{T})::T =
-    sum(m.resp.devresid) + logdet(m) + sum(u -> sum(abs2, u), m.u)
+LaplaceDeviance(m::GeneralizedLinearMixedModel{T}) where T =
+    T(sum(m.resp.devresid) + logdet(m) + sum(u -> sum(abs2, u), m.u))
 
 """
     LaplaceDeviance!(m::GeneralizedLinearMixedModel)
@@ -59,7 +59,7 @@ function LaplaceDeviance!(m::GeneralizedLinearMixedModel)
     LaplaceDeviance(m)
 end
 
-function loglikelihood{T}(m::GeneralizedLinearMixedModel{T})
+function loglikelihood(m::GeneralizedLinearMixedModel{T}) where T
     accum = zero(T)
     D = Distribution(m.resp)
     if D <: Binomial
@@ -74,7 +74,10 @@ function loglikelihood{T}(m::GeneralizedLinearMixedModel{T})
     accum - (mapreduce(u -> sum(abs2, u), + , m.u) + logdet(m)) / 2
 end
 
-lowerbd(m::GeneralizedLinearMixedModel) = vcat(fill(-Inf, size(m.β)), lowerbd(m.LMM))
+function lowerbd(m::GeneralizedLinearMixedModel)
+    lb = lowerbd(m.LMM)
+    vcat(fill(convert(eltype(lb), -Inf), size(m.β)), lb)
+end
 
 """
     updateη!(m::GeneralizedLinearMixedModel)
@@ -94,7 +97,7 @@ function updateη!(m::GeneralizedLinearMixedModel)
     m
 end
 
-average{T<:AbstractFloat}(a::T, b::T) = (a + b) / 2
+average(a::T, b::T) where {T <: AbstractFloat} = (a + b) / 2
 
 """
     pirls!(m::GeneralizedLinearMixedModel)
@@ -107,7 +110,7 @@ optimized and `β` is held fixed.
 
 Passing `verbose = true` provides verbose output of the iterations.
 """
-function pirls!{T}(m::GeneralizedLinearMixedModel{T}, varyβ::Bool=false, verbose::Bool=false)
+function pirls!(m::GeneralizedLinearMixedModel{T}, varyβ::Bool=false, verbose::Bool=false) where T
     iter, maxiter, obj = 0, 100, T(-Inf)
     u₀ = m.u₀
     u = m.u
@@ -154,29 +157,29 @@ function pirls!{T}(m::GeneralizedLinearMixedModel{T}, varyβ::Bool=false, verbos
 end
 
 """
-    setβθ!{T}(m::GeneralizedLinearMixedModel{T}, v::Vector{T})
+    setβθ!(m::GeneralizedLinearMixedModel, v)
 
 Set the parameter vector, `:βθ`, of `m` to `v`.
 
 `βθ` is the concatenation of the fixed-effects, `β`, and the covariance parameter, `θ`.
 """
-function setβθ!{T}(m::GeneralizedLinearMixedModel{T}, v::Vector{T})
+function setβθ!(m::GeneralizedLinearMixedModel, v)
     setβ!(m, v)
     setθ!(m, view(v, (length(m.β) + 1) : length(v)))
 end
 
-function setβ!{T}(m::GeneralizedLinearMixedModel{T}, v::Vector{T})
+function setβ!(m::GeneralizedLinearMixedModel, v)
     β = m.β
     copy!(β, view(v, 1 : length(β)))
     m
 end
 
-function setθ!{T}(m::GeneralizedLinearMixedModel, v::AbstractVector{T})
+function setθ!(m::GeneralizedLinearMixedModel, v)
     setθ!(m.LMM, copy!(m.θ, v))
     m
 end
 
-sdest{T <: AbstractFloat}(m::GeneralizedLinearMixedModel{T}) = convert(T, NaN)
+sdest(m::GeneralizedLinearMixedModel{T}) where T = convert(T, NaN)
 
 """
     fit!(m::GeneralizedLinearMixedModel[, verbose = false, fast = false])
@@ -187,23 +190,22 @@ When `fast` is `true` a potentially much faster but slightly less accurate algor
 which `pirls!` optimizes both the random effects and the fixed-effects parameters,
 is used.
 """
-function StatsBase.fit!{T}(m::GeneralizedLinearMixedModel{T}; verbose::Bool=false,
-    fast::Bool=false)
-
+function StatsBase.fit!(m::GeneralizedLinearMixedModel{T};
+                        verbose::Bool=false, fast::Bool=false) where T
     β = m.β
     lm = m.LMM
     optsum = lm.optsum
     if !fast
         fit!(m, verbose=verbose, fast=true)
-        optsum.lowerbd = vcat(fill!(similar(β), -Inf), optsum.lowerbd)
+        optsum.lowerbd = vcat(fill!(similar(β), T(-Inf)), optsum.lowerbd)
         optsum.initial = vcat(β, m.θ)
         optsum.final = copy(optsum.initial)
         optsum.initial_step = vcat(stderr(m) ./ 3, min.(T(0.05), m.θ ./ 4))
     end
     setpar! = fast ? setθ! : setβθ!
     feval = 0
-    function obj(x::Vector{T}, g::Vector{T})
-        length(g) == 0 || error("gradient not defined for this model")
+    function obj(x, g)
+        isempty(g) || error("gradient not defined for this model")
         feval += 1
         val = pirls!(setpar!(m, x), fast)
         feval == 1 && (optsum.finitial = val)
@@ -257,4 +259,4 @@ function Base.show(io::IO, m::GeneralizedLinearMixedModel)
     show(io, coeftable(m))
 end
 
-varest{T <: AbstractFloat}(m::GeneralizedLinearMixedModel{T}) = one(T)
+varest(m::GeneralizedLinearMixedModel{T}) where T = one(T)

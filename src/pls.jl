@@ -85,8 +85,8 @@ and random effects, and `fr`.
 
 The return value is ready to be `fit!` but has not yet been fit.
 """
-function lmm(f::Formula, fr::AbstractDataFrame; weights::Vector = [],
-    contrasts= Dict(), rdist::Distribution=Normal())
+function lmm(f::Formula, fr::AbstractDataFrame;
+             weights::Vector = [], contrasts=Dict(), rdist::Distribution=Normal())
     mf = ModelFrame(f, fr, contrasts=contrasts)
     X = ModelMatrix(mf).m
     n = size(X, 1)
@@ -134,7 +134,7 @@ Update the blocked lower Cholesky factor, `m.L`, from `m.A` and `m.trms` (used f
 
 This is the crucial step in evaluating the objective, given a new parameter value.
 """
-function updateL!{T}(m::LinearMixedModel{T})
+function updateL!(m::LinearMixedModel{T}) where T
     trms = m.trms
     A = m.A.data.blocks
     L = m.L.data.blocks
@@ -169,12 +169,12 @@ StatsBase.coef(m::LinearMixedModel) = fixef(m)
 Optimize the objective of a `LinearMixedModel`.  When `verbose` is `true` the values of the
 objective and the parameters are printed on STDOUT at each function evaluation.
 """
-function StatsBase.fit!{T}(m::LinearMixedModel{T}, verbose::Bool=false)
+function StatsBase.fit!(m::LinearMixedModel{T}, verbose::Bool=false) where T
     optsum = m.optsum
     opt = Opt(optsum)
     feval = 0
     function obj(x, g)
-        length(g) == 0 || error("gradient not defined")
+        isempty(g) || error("gradient not defined")
         feval += 1
         val = objective(updateL!(setθ!(m, x)))
         feval == 1 && (optsum.finitial = val)
@@ -211,7 +211,7 @@ function StatsBase.fit!{T}(m::LinearMixedModel{T}, verbose::Bool=false)
     m
 end
 
-function fitted!{T}(v::AbstractArray{T}, m::LinearMixedModel{T})
+function fitted!(v::AbstractArray{T}, m::LinearMixedModel{T}) where T
     ## FIXME: Create and use `effects(m) -> β, b` w/o calculating β twice
     trms = m.trms
     A_mul_B!(vec(v), trms[end - 1], fixef(m))
@@ -222,7 +222,7 @@ function fitted!{T}(v::AbstractArray{T}, m::LinearMixedModel{T})
     v
 end
 
-StatsBase.fitted{T}(m::LinearMixedModel{T}) = fitted!(Vector{T}(nobs(m)), m)
+StatsBase.fitted(m::LinearMixedModel{T}) where {T} = fitted!(Vector{T}(nobs(m)), m)
 
 StatsBase.residuals(m::LinearMixedModel) = model_response(m) .- fitted(m)
 
@@ -231,24 +231,24 @@ StatsBase.residuals(m::LinearMixedModel) = model_response(m) .- fitted(m)
 
 Return the vector of lower bounds on the covariance parameter vector `θ`
 """
-lowerbd{T}(m::LinearMixedModel{T}) = mapreduce(lowerbd, append!, T[], m.trms)
+lowerbd(m::LinearMixedModel) = lowerbd(m.trms)
 
 """
     objective(m::LinearMixedModel)
 
 Return negative twice the log-likelihood of model `m`
 """
-function objective{T}(m::LinearMixedModel{T})
-    wttrm = isempty(m.sqrtwts) ? zero(T) : 2sum(log, m.sqrtwts)
-    logdet(m) + nobs(m) * (1 + log2π + log(varest(m))) - wttrm
+function objective(m::LinearMixedModel)
+    wts = m.sqrtwts
+    logdet(m) + nobs(m) * (1 + log2π + log(varest(m))) - (isempty(wts) ? 0 : 2sum(log, wts))
 end
 
 """
-    fixef!{T}(v::Vector{T}, m::LinearMixedModel{T})
+    fixef!(v::Vector{T}, m::LinearMixedModel{T}) where T
 
 Overwrite `v` with the fixed-effects coefficients of model `m`
 """
-function fixef!{T}(v::AbstractVector{T}, m::LinearMixedModel{T})
+function fixef!(v::AbstractVector{T}, m::LinearMixedModel{T}) where T
     !isfit(m) && throw(ArgumentError("Model m has not been fit"))
     Ac_ldiv_B!(feL(m), copy!(v, m.L[end, end - 1]))
 end
@@ -258,7 +258,7 @@ end
 
 Returns the fixed-effects parameter vector estimate.
 """
-fixef{T}(m::LinearMixedModel{T}) = fixef!(Array{T}(size(m)[2]), m)
+fixef(m::LinearMixedModel{T}) where {T} = fixef!(Vector{T}(size(m)[2]), m)
 
 StatsBase.dof(m::LinearMixedModel) = size(m.trms[end - 1].wtx, 2) + sum(nθ, m.trms) + 1
 
@@ -286,7 +286,7 @@ sdest(m::LinearMixedModel) = sqrtpwrss(m) / √nobs(m)
 
 Install `v` as the θ parameters in `m`.
 """
-function setθ!{T}(m::LinearMixedModel{T}, v::Vector{T})
+function setθ!(m::LinearMixedModel, v)
     setθ!(m.trms, v)
     m
 end
@@ -357,12 +357,10 @@ end
 
 Update `m.sqrtwts` from `wts` and reweight each term.  Recompute `m.A` and `m.L`.
 """
-function reweight!{T}(m::LinearMixedModel{T}, weights::Vector{T})
+function reweight!(m::LinearMixedModel, weights)
     trms = m.trms
-    sqrtwts = m.sqrtwts
-    @argcheck(length(weights) == length(sqrtwts), DimensionMismatch)
-    map!(sqrt, sqrtwts, weights)
-    reweight!.(trms, Vector{T}[sqrtwts])
+    m.sqrtwts .= sqrt.(weights)
+    reweight!.(trms, Vector[m.sqrtwts])
     ntrm = length(trms)
     A = m.A
     for j in 1:ntrm, i in j:ntrm

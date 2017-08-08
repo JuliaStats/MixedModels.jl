@@ -1,10 +1,10 @@
-function αβA_mul_Bc!{T<:BlasFloat}(α::T, A::StridedMatrix{T}, B::StridedMatrix{T},
-    β::T, C::StridedMatrix{T})
+function αβA_mul_Bc!(α::T, A::StridedMatrix{T}, B::StridedMatrix{T},
+                     β::T, C::StridedMatrix{T}) where T <: BlasFloat
     BLAS.gemm!('N', 'C', α, A, B, β, C)
 end
 
-function αβA_mul_Bc!{T<:Number}(α::T, A::SparseMatrixCSC{T}, B::SparseMatrixCSC{T},
-    β::T, C::Matrix{T})
+function αβA_mul_Bc!(α::T, A::SparseMatrixCSC{T}, B::SparseMatrixCSC{T},
+                     β::T, C::Matrix{T}) where T <: Number
     @argcheck B.m == size(C, 2) && A.m == size(C, 1) && A.n == B.n  DimensionMismatch
     anz = nonzeros(A)
     arv = rowvals(A)
@@ -25,8 +25,8 @@ function αβA_mul_Bc!{T<:Number}(α::T, A::SparseMatrixCSC{T}, B::SparseMatrixC
     C
 end
 
-function αβA_mul_Bc!{T<:Number}(α::T, A::SparseMatrixCSC{T}, B::SparseMatrixCSC{T},
-    β::T, C::SparseMatrixCSC{T})
+function αβA_mul_Bc!(α::T, A::SparseMatrixCSC{T}, B::SparseMatrixCSC{T},
+                     β::T, C::SparseMatrixCSC{T}) where T <: Number
     @argcheck B.m == C.n && A.m == C.m && A.n == B.n  DimensionMismatch
     anz = nonzeros(A)
     arv = rowvals(A)
@@ -54,8 +54,8 @@ function αβA_mul_Bc!{T<:Number}(α::T, A::SparseMatrixCSC{T}, B::SparseMatrixC
     C
 end
 
-function αβA_mul_Bc!{T<:Number}(α::T, A::StridedVecOrMat{T}, B::SparseMatrixCSC{T},
-    β::T, C::StridedVecOrMat{T})
+function αβA_mul_Bc!(α::T, A::StridedVecOrMat{T}, B::SparseMatrixCSC{T}, β::T,
+                     C::StridedVecOrMat{T}) where T <: Number
     m, n = size(A)
     p, q = size(B)
     r, s = size(C)
@@ -77,14 +77,13 @@ function αβA_mul_Bc!{T<:Number}(α::T, A::StridedVecOrMat{T}, B::SparseMatrixC
     C
 end
 
-αβAc_mul_B!{T<:BlasFloat}(α::T, A::StridedMatrix{T}, B::StridedVector{T}, β::T,
-    C::StridedVector{T}) = BLAS.gemv!('C', α, A, B, β, C)
+αβAc_mul_B!(α::T, A::StridedMatrix{T}, B::StridedVector{T}, β::T,
+            C::StridedVector{T}) where {T<:BlasFloat} = BLAS.gemv!('C', α, A, B, β, C)
 
-αβAc_mul_B!{T<:AbstractFloat}(α::T, A::SparseMatrixCSC{T}, B::StridedVector{T}, β::T,
-        C::StridedVector{T}) = Ac_mul_B!(α, A, B, β, C)
+αβAc_mul_B!(α::T, A::SparseMatrixCSC{T}, B::StridedVector{T}, β::T,
+            C::StridedVector{T}) where T = Ac_mul_B!(α, A, B, β, C)
 
-function Ac_ldiv_B!{T<:AbstractFloat}(A::Diagonal{LowerTriangular{T,Matrix{T}}},
-    B::StridedVector{T})
+function Ac_ldiv_B!(A::Diagonal{LowerTriangular{T,Matrix{T}}}, B::StridedVector{T}) where T <: AbstractFloat
     offset = 0
     for a in A.diag
         k = size(a, 1)
@@ -95,16 +94,16 @@ function Ac_ldiv_B!{T<:AbstractFloat}(A::Diagonal{LowerTriangular{T,Matrix{T}}},
 end
 
 if VERSION < v"0.7.0-DEV.586"
-    Ac_ldiv_B!{T}(D::Diagonal{T}, B::StridedVecOrMat{T}) = A_ldiv_B!(D, B)
+    Ac_ldiv_B!(D::Diagonal{T}, B::StridedVecOrMat{T}) where {T} = A_ldiv_B!(D, B)
 
-    function A_rdiv_B!{T}(A::StridedMatrix{T}, D::Diagonal{T})
+    function A_rdiv_B!(A::StridedMatrix{T}, D::Diagonal{T}) where T
         scale!(A, inv.(D.diag))
         A
     end
 
-    A_rdiv_Bc!{T}(A::StridedMatrix{T}, D::Diagonal{T}) = A_rdiv_B!(A, D)
+    A_rdiv_Bc!(A::StridedMatrix{T}, D::Diagonal{T}) where {T} = A_rdiv_B!(A, D)
 
-    function A_rdiv_Bc!{T}(A::SparseMatrixCSC{T}, D::Diagonal{T})
+    function A_rdiv_Bc!(A::SparseMatrixCSC{T}, D::Diagonal{T}) where T
         if size(D, 2) ≠ size(A, 2)
             throw(DimensionMismatch("size(A,2)=$(size(A,2)) should be size(D, 1)=$(size(D,1))"))
         end
@@ -120,7 +119,7 @@ if VERSION < v"0.7.0-DEV.586"
     end
 end
 
-function A_rdiv_Bc!{T<:AbstractFloat}(A::Matrix, B::Diagonal{LowerTriangular{T,Matrix{T}}})
+function A_rdiv_Bc!(A::Matrix, B::Diagonal{LowerTriangular{T,Matrix{T}}}) where T <: AbstractFloat
     offset = 0
     for d in B.diag
         k = size(d, 1)
@@ -131,7 +130,7 @@ function A_rdiv_Bc!{T<:AbstractFloat}(A::Matrix, B::Diagonal{LowerTriangular{T,M
     A
 end
 
-function A_rdiv_Bc!{T}(A::SparseMatrixCSC{T}, B::Diagonal{LowerTriangular{T,Matrix{T}}})
+function A_rdiv_Bc!(A::SparseMatrixCSC{T}, B::Diagonal{LowerTriangular{T,Matrix{T}}}) where T
     nz = nonzeros(A)
     offset = 0
     for d in B.diag
@@ -152,7 +151,7 @@ function A_rdiv_Bc!{T}(A::SparseMatrixCSC{T}, B::Diagonal{LowerTriangular{T,Matr
     A
 end
 
-function full{T}(A::Diagonal{LowerTriangular{T,Matrix{T}}})
+function full(A::Diagonal{LowerTriangular{T,Matrix{T}}}) where T
     D = diag(A)
     sz = size.(D, 2)
     n = sum(sz)
@@ -167,9 +166,9 @@ function full{T}(A::Diagonal{LowerTriangular{T,Matrix{T}}})
     B
 end
 
-function rowlengths{T}(A::FactorReTerm{T})
+function rowlengths(A::FactorReTerm)
     ld = A.Λ
     [norm(view(ld, i, 1:i)) for i in 1:size(ld, 1)]
 end
 
-rowlengths{T}(A::MatrixTerm{T}) = T[]
+rowlengths(A::MatrixTerm{T}) where {T} = T[]

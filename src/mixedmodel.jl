@@ -36,7 +36,7 @@ Base.cond(m::MixedModel) = cond.(reterms(m))
 
 The estimated standard deviations of the variance components as a `Vector{Vector{T}}`.
 """
-function Base.std{T}(m::MixedModel{T})
+function Base.std(m::MixedModel{T}) where T
     rl =  filter(!isempty, rowlengths.(lmm(m).trms))
     s = sdest(m)
     isfinite(s) ? s .* push!(rl, [1.]) : rl
@@ -77,7 +77,7 @@ Returns the names of the grouping factors for the random-effects terms.
 """
 fnames(m::MixedModel) = map(x -> x.fnm, reterms(m))
 
-function getθ!{T}(v::AbstractVector{T}, m::LinearMixedModel{T})
+function getθ!(v::AbstractVector{T}, m::LinearMixedModel{T}) where T
     trms = m.trms
     @argcheck(length(v) == sum(nθ, trms), DimensionMismatch)
     offset = 0
@@ -91,8 +91,8 @@ end
 
 getΛ(m::MixedModel) = getΛ.(reterms(m))
 
-getθ{T}(m::GeneralizedLinearMixedModel{T}) = getθ(m.LMM)
-getθ{T}(m::LinearMixedModel{T}) = getθ(m.trms)
+getθ(m::GeneralizedLinearMixedModel) = getθ(m.LMM)
+getθ(m::LinearMixedModel) = getθ(m.trms)
 
 """
     grplevels(m::MixedModel)
@@ -111,10 +111,10 @@ reterms(m::MixedModel) =
 
 Overwrites `v` with the conditional modes of the random effects for `m`.
 
-If `uscale` is `true` the random effects are on the spherical (i.e. `u`) scale, otherwise on the
-original scale
+If `uscale` is `true` the random effects are on the spherical (i.e. `u`) scale, otherwise
+on the original scale
 """
-function ranef!{T}(v::Vector, m::LinearMixedModel{T}, β::AbstractArray{T}, uscale::Bool)
+function ranef!(v::Vector, m::LinearMixedModel{T}, β::AbstractArray{T}, uscale::Bool) where T
     L = m.L
     @argcheck((k = length(v)) == nreterms(m), DimensionMismatch)
     for j in 1:k
@@ -179,7 +179,7 @@ end
 
 Returns the estimated correlation matrix of the fixed-effects estimator.
 """
-Base.cor{T}(m::MixedModel{T}) = Matrix{T}[stddevcor(t)[2] for t in reterms(m)]
+Base.cor(m::MixedModel{T}) where {T} = Matrix{T}[stddevcor(t)[2] for t in reterms(m)]
 
 """
     condVar(m::MixedModel)

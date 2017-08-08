@@ -12,7 +12,7 @@ end
 Base.size(A::HeteroBlkdMatrix) = size(A.blocks)
 Base.getindex(A::HeteroBlkdMatrix, i::Int) = A.blocks[i]
 Base.setindex!(A::HeteroBlkdMatrix, X, i::Integer) = setindex!(A.blocks, X, i)
-@compat Base.IndexStyle(A::HeteroBlkdMatrix) = IndexLinear()
+Base.IndexStyle(A::HeteroBlkdMatrix) = IndexLinear()
 
 """
     OptSummary
@@ -34,7 +34,7 @@ Summary of an `NLopt` optimization
 * `optimizer`: the name of the optimizer used, as a `Symbol`
 * `returnvalue`: the return value, as a `Symbol`
 """
-type OptSummary{T <: AbstractFloat}
+mutable struct OptSummary{T <: AbstractFloat}
     initial::Vector{T}
     lowerbd::Vector{T}
     finitial::T
@@ -50,9 +50,9 @@ type OptSummary{T <: AbstractFloat}
     optimizer::Symbol
     returnvalue::Symbol
 end
-function OptSummary{T<:AbstractFloat}(initial::Vector{Float64}, lowerbd::Vector{T},
+function OptSummary(initial::Vector{T}, lowerbd::Vector{T},
     optimizer::Symbol; ftol_rel::T=zero(T), ftol_abs::T=zero(T), xtol_rel::T=zero(T),
-    initial_step::Vector{T}=T[])
+    initial_step::Vector{T}=T[]) where T <: AbstractFloat
     OptSummary(initial, lowerbd, T(Inf), ftol_rel, ftol_abs, xtol_rel, zeros(initial),
         initial_step, -1, copy(initial), T(Inf), -1, optimizer, :FAILURE)
 end
@@ -96,9 +96,9 @@ function NLopt.Opt(optsum::OptSummary)
     opt
 end
 
-@compat abstract type AbstractTerm{T} end
+abstract type AbstractTerm{T} end
 
-@compat abstract type MixedModel{T} <: RegressionModel end # model with fixed and random effects
+abstract type MixedModel{T} <: RegressionModel end # model with fixed and random effects
 
 """
     LinearMixedModel
@@ -113,7 +113,7 @@ Linear mixed-effects model representation
 * `L`: a `nt × nt` matrix of matrices - the lower Cholesky factor of `Λ'AΛ+I`
 * `optsum`: an [`OptSummary`](@ref) object
 """
-immutable LinearMixedModel{T <: AbstractFloat} <: MixedModel{T}
+struct LinearMixedModel{T <: AbstractFloat} <: MixedModel{T}
     formula::Formula
     trms::Vector{AbstractTerm{T}}
     sqrtwts::Vector{T}
@@ -127,8 +127,7 @@ end
 
 Generalized linear mixed-effects model representation
 
-Members:
-
+# Members
 - `LMM`: a [`LinearMixedModel`](@ref) - the local approximation to the GLMM.
 - `β`: the fixed-effects vector
 - `β₀`: similar to `β`. Used in the PIRLS algorithm if step-halving is needed.
@@ -140,7 +139,7 @@ Members:
 - `η`: the linear predictor
 - `wt`: vector of prior case weights, a value of `T[]` indicates equal weights.
 """
-immutable GeneralizedLinearMixedModel{T <: AbstractFloat} <: MixedModel{T}
+struct GeneralizedLinearMixedModel{T <: AbstractFloat} <: MixedModel{T}
     LMM::LinearMixedModel{T}
     β::Vector{T}
     β₀::Vector{T}
@@ -176,7 +175,7 @@ immutable VarCorr{T}
     cnms::Vector{Vector{String}}
     s::T
 end
-function VarCorr{T}(m::MixedModel{T})
+function VarCorr(m::MixedModel{T}) where T
     fnms = Symbol[]
     cnms = Vector{String}[]
     σ = Vector{T}[]
