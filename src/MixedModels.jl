@@ -11,7 +11,7 @@ using Base.LinAlg: BlasFloat, BlasReal, HermOrSym, PosDefException, checksquare,
 import Base: cor, cond, convert, eltype, full, logdet, std
 import Base.LinAlg: A_mul_B!, A_mul_Bc!, Ac_mul_B!, A_ldiv_B!, Ac_ldiv_B!, A_rdiv_B!, A_rdiv_Bc!
 import DataFrames: @formula
-import Distributions: Bernoulli, Binomial, Poisson, Gamma
+import Distributions: Bernoulli, Binomial, InverseGaussian, Poisson, Gamma
 import GLM: LogitLink, LogLink, InverseLink
 import NLopt: Opt
 import StatsBase: coef, coeftable, dof, deviance, fit!, fitted, loglikelihood,
@@ -25,6 +25,7 @@ export
        Gamma,
        LogitLink,
        LogLink,
+       InverseGaussian,
        InverseLink,
        GeneralizedLinearMixedModel,
        LinearMixedModel,
