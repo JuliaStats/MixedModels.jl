@@ -159,7 +159,7 @@ Return the size of vector-valued random effects.
 """
 vsize(A::FactorReTerm) = size(A.z, 1)
 
-Base.eltype{T}(R::FactorReTerm{T}) = T
+Base.eltype(R::FactorReTerm{T}) where {T} = T
 
 Base.full(R::FactorReTerm) = full(sparse(R))
 
