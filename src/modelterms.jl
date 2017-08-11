@@ -123,6 +123,15 @@ Return the levels of the grouping factor.
 
 This is to disambiguate a call to `levels` as both `DataArrays`
 and `CategoricalArrays` export it.
+
+# Examples
+```jldoctest
+julia> trm = FactorReTerm(pool(repeat('A':'F', inner = 5)));
+
+julia> show(MixedModels.levs(trm))
+['A', 'B', 'C', 'D', 'E', 'F']
+julia>
+```
 """
 function levs(A::FactorReTerm)
     f = A.f
