@@ -27,14 +27,14 @@ lmm(m::GeneralizedLinearMixedModel) = m.LMM
 """
     cond(m::MixedModel)
 
-Returns the vector of the condition numbers of the blocks of `m.Λ`
+Return the vector of the condition numbers of the blocks of `m.Λ`
 """
 Base.cond(m::MixedModel) = cond.(reterms(m))
 
 """
     std{T}(m::MixedModel{T})
 
-The estimated standard deviations of the variance components as a `Vector{Vector{T}}`.
+Return the estimated standard deviations of the variance components as a `Vector{Vector{T}}`.
 """
 function Base.std(m::MixedModel{T}) where T
     rl =  filter(!isempty, rowlengths.(lmm(m).trms))
@@ -73,7 +73,7 @@ describeblocks(m::MixedModel) = describeblocks(Base.STDOUT, m)
 """
     fnames(m::MixedModel)
 
-Returns the names of the grouping factors for the random-effects terms.
+Return the names of the grouping factors for the random-effects terms.
 """
 fnames(m::MixedModel) = map(x -> x.fnm, reterms(m))
 
@@ -97,7 +97,7 @@ getθ(m::LinearMixedModel) = getθ(m.trms)
 """
     grplevels(m::MixedModel)
 
-Returns the number of levels in the random-effects terms' grouping factors.
+Return the number of levels in the random-effects terms' grouping factors.
 """
 grplevels(m::MixedModel) = nlevs.(reterms(m))
 
@@ -109,7 +109,7 @@ reterms(m::MixedModel) =
 """
     ranef!{T}(v::Vector{Matrix{T}}, m::MixedModel{T}, β, uscale::Bool)
 
-Overwrites `v` with the conditional modes of the random effects for `m`.
+Overwrite `v` with the conditional modes of the random effects for `m`.
 
 If `uscale` is `true` the random effects are on the spherical (i.e. `u`) scale, otherwise
 on the original scale
@@ -144,7 +144,7 @@ end
 """
     ranef{T}(m::MixedModel{T}, uscale=false)
 
-Returns, as a `OrderedDict{}`, the conditional modes of the random effects in model `m`.
+Return, as a `Vector` of `NamedArray`, the conditional modes of the random effects in model `m`.
 
 If `uscale` is `true` the random effects are on the spherical (i.e. `u`) scale, otherwise on the
 original scale.
@@ -164,21 +164,11 @@ function ranef(m::MixedModel; uscale=false, named=false)
     vnmd
 end
 
-"""
-     vcov(m::MixedModel)
-
-Returns the estimated covariance matrix of the fixed-effects estimator.
-"""
 function StatsBase.vcov(m::MixedModel)
     Linv = inv(feL(m))
     varest(m) * (Linv'Linv)
 end
 
-"""
-    cor(m::MixedModel)
-
-Returns the estimated correlation matrix of the fixed-effects estimator.
-"""
 Base.cor(m::MixedModel{T}) where {T} = Matrix{T}[stddevcor(t)[2] for t in reterms(m)]
 
 """
