@@ -36,7 +36,7 @@ for details.
 
 [issues-url]: https://github.com/dmbates/MixedModels.jl/issues
 
-[pkg-0.4-img]: http://pkg.julialang.org/badges/MixedModels_0.4.svg
-[pkg-0.4-url]: http://pkg.julialang.org/?pkg=MixedModels
 [pkg-0.5-img]: http://pkg.julialang.org/badges/MixedModels_0.5.svg
 [pkg-0.5-url]: http://pkg.julialang.org/?pkg=MixedModels
+[pkg-0.6-img]: http://pkg.julialang.org/badges/MixedModels_0.6.svg
+[pkg-0.6-url]: http://pkg.julialang.org/?pkg=MixedModels
