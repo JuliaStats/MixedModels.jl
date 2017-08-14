@@ -1,20 +1,4 @@
 """
-    HeteroBlkdMatrix
-
-A matrix composed of heterogenous blocks.  Blocks can be sparse, dense or
-diagonal.
-"""
-# FIXME: Change this to use the AbstractBlockArray interface
-
-struct HeteroBlkdMatrix <: AbstractMatrix{AbstractMatrix}
-    blocks::Matrix{AbstractMatrix}
-end
-Base.size(A::HeteroBlkdMatrix) = size(A.blocks)
-Base.getindex(A::HeteroBlkdMatrix, i::Int) = A.blocks[i]
-Base.setindex!(A::HeteroBlkdMatrix, X, i::Integer) = setindex!(A.blocks, X, i)
-Base.IndexStyle(A::HeteroBlkdMatrix) = IndexLinear()
-
-"""
     OptSummary
 
 Summary of an `NLopt` optimization
@@ -117,8 +101,8 @@ struct LinearMixedModel{T <: AbstractFloat} <: MixedModel{T}
     formula::Formula
     trms::Vector{AbstractTerm{T}}
     sqrtwts::Vector{T}
-    A::Hermitian             # cross-product blocks
-    L::LowerTriangular
+    A::BlockMatrix{T}            # cross-product blocks
+    L::BlockMatrix{T}
     optsum::OptSummary{T}
 end
 

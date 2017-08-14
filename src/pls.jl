@@ -20,36 +20,39 @@ function LinearMixedModel(f, trms, wts)
     n = size(trms[1], 1)
     T = eltype(trms[end])
     sqrtwts = sqrt.(wts)
+    sz = size.(trms, 2)
     if !isempty(wts)
         reweight!.(trms, Vector[sqrtwts])
     end
     nt = length(trms)
-    A = Array{AbstractMatrix}(nt, nt)
-    L = Array{AbstractMatrix}(nt, nt)
+    A = BlockArray(AbstractMatrix{T}, sz, sz)
+    L = similar(A)
     for j in 1:nt, i in j:nt
-        A[i, j] = densify(trms[i]'trms[j])
-        L[i, j] = deepcopy(A[i, j])
+        Aij = densify(trms[i]'trms[j])
+        setblock!(A, Aij, i, j)
+        setblock!(L, deepcopy(Aij), i, j)
     end
     for i in 1:nt
-        Lii = L[i, i]
+        Lii = getblock(A, i, i)
         if isa(Lii, Diagonal)
             Liid = Lii.diag
             if !isempty(Liid) && isa(Liid[1], Array)
                 if all(d -> size(d) == (1,1), Liid)
-                    L[i, i] = Diagonal(map(d -> d[1,1], Liid))
+                    setblock!(L, Diagonal(map(d -> d[1,1], Liid)), i, i)
                 else
-                    L[i, i] = Diagonal(map(LowerTriangular, Liid))
+                    setblock!(L, Diagonal(map(LowerTriangular, Liid)), i, i)
                 end
             end
         end
     end
     for i in 2:nt
-        Lii = L[i, i]
+        Lii = getblock(L, i, i)
         if isa(Lii, Diagonal)
             for j in 1:(i - 1)     # check for fill-in
-                if !isdiag(A[i, j] * A[i, j]')
+                Aij = getblock(A, i, j)
+                if !isdiag(Aij * Aij')
                     for k in i:nt
-                        L[k, i] = full(L[k, i])
+                        setblock(L, full(getblock(L, k, i)), k, i)
                     end
                 end
             end
@@ -58,8 +61,7 @@ function LinearMixedModel(f, trms, wts)
     optsum = OptSummary(getθ(trms), lowerbd(trms), :LN_BOBYQA;
         ftol_rel = convert(T, 1.0e-12), ftol_abs = convert(T, 1.0e-8))
     fill!(optsum.xtol_abs, 1.0e-10)
-    LinearMixedModel(f, trms, sqrtwts, Hermitian(HeteroBlkdMatrix(A), :L),
-        LowerTriangular(HeteroBlkdMatrix(L)), optsum)
+    LinearMixedModel(f, trms, sqrtwts, A, L, optsum)
 end
 
 model_response(mf::ModelFrame, d::Distribution=Normal()) =
