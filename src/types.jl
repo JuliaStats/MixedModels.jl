@@ -6,7 +6,7 @@ diagonal.
 """
 # FIXME: Change this to use the AbstractBlockArray interface
 
-immutable HeteroBlkdMatrix <: AbstractMatrix{AbstractMatrix}
+struct HeteroBlkdMatrix <: AbstractMatrix{AbstractMatrix}
     blocks::Matrix{AbstractMatrix}
 end
 Base.size(A::HeteroBlkdMatrix) = size(A.blocks)
@@ -168,7 +168,7 @@ is no scaling factor this value is `NaN`
 
 The main purpose of defining this type is to isolate the logic in the show method.
 """
-immutable VarCorr{T}
+struct VarCorr{T}
     σ::Vector{Vector{T}}
     ρ::Vector{Matrix{T}}
     fnms::Vector{Symbol}

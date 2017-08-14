@@ -6,20 +6,20 @@ is a [`MatrixTerm`]{@ref}, in which case this becomes `copy!(L, A)`.
 """
 function scaleInflate! end
 
-function scaleInflate!{T}(Ljj::Matrix{T}, Ajj::Matrix{T}, Λj::MatrixTerm{T})
+function scaleInflate!(Ljj::Matrix{T}, Ajj::Matrix{T}, Λj::MatrixTerm{T}) where T
     @argcheck(size(Ljj) == size(Ajj), DimensionMismatch)
     copy!(Ljj, Ajj)
 end
 
-function scaleInflate!{T<:AbstractFloat}(Ljj::Diagonal{T}, Ajj::Diagonal{T},
-    Λj::FactorReTerm{T})
+function scaleInflate!(Ljj::Diagonal{T}, Ajj::Diagonal{T},
+Λj::FactorReTerm{T}) where T<:AbstractFloat
     @argcheck(length(Λj.Λ) == 1, DimensionMismatch)
     broadcast!((x,k) -> k * x + one(T), Ljj.diag, Ajj.diag, abs2(Λj.Λ[1]))
     Ljj
 end
 
-function scaleInflate!{T<:AbstractFloat}(Ljj::Matrix{T}, Ajj::Diagonal{T},
-    Λj::FactorReTerm{T})
+function scaleInflate!(Ljj::Matrix{T}, Ajj::Diagonal{T},
+Λj::FactorReTerm{T}) where T<:AbstractFloat
     Ad = Ajj.diag
     @argcheck(length(Ad) == checksquare(Ljj) && length(Λj.Λ) == 1, DimensionMismatch)
     lambsq = abs2(Λj.Λ[1])
@@ -30,8 +30,8 @@ function scaleInflate!{T<:AbstractFloat}(Ljj::Matrix{T}, Ajj::Diagonal{T},
     Ljj
 end
 
-function scaleInflate!{T<:AbstractFloat}(Ljj::Diagonal{LowerTriangular{T,Matrix{T}}},
-    Ajj::Diagonal{Matrix{T}}, Λj::FactorReTerm{T})
+function scaleInflate!(Ljj::Diagonal{LowerTriangular{T,Matrix{T}}},
+Ajj::Diagonal{Matrix{T}}, Λj::FactorReTerm{T}) where T<:AbstractFloat
     λ = LowerTriangular(Λj.Λ)
     Ldiag = Ljj.diag
     Adiag = Ajj.diag
@@ -46,8 +46,8 @@ function scaleInflate!{T<:AbstractFloat}(Ljj::Diagonal{LowerTriangular{T,Matrix{
     Ljj
 end
 
-function scaleInflate!{T<:AbstractFloat}(Ljj::Matrix{T}, Ajj::Diagonal{Matrix{T}},
-    Λj::FactorReTerm{T})
+function scaleInflate!(Ljj::Matrix{T}, Ajj::Diagonal{Matrix{T}},
+Λj::FactorReTerm{T}) where T<:AbstractFloat
     Adiag = Ajj.diag
     λ = LowerTriangular(Λj.Λ)
     n = size(λ, 2)

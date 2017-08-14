@@ -15,10 +15,10 @@ the diagonal plus a copy! operation in one step.
 function Λc_mul_B! end
 function A_mul_Λ! end
 
-Λc_mul_B!{T}(A::MatrixTerm{T}, B::AbstractArray{T}) = B
-A_mul_Λ!{T}(A::AbstractArray{T}, B::MatrixTerm{T}) = A
+Λc_mul_B!(A::MatrixTerm{T}, B::AbstractArray{T}) where {T} = B
+A_mul_Λ!(A::AbstractArray{T}, B::MatrixTerm{T}) where {T} = A
 
-function A_mul_Λ!{T<:AbstractFloat,S}(A::SparseMatrixCSC{T,S}, B::FactorReTerm{T})
+function A_mul_Λ!(A::SparseMatrixCSC{T,S}, B::FactorReTerm{T}) where {T<:AbstractFloat,S}
     k = vsize(B)
     nz = nonzeros(A)
     if k == 1
@@ -44,7 +44,7 @@ function A_mul_Λ!{T<:AbstractFloat,S}(A::SparseMatrixCSC{T,S}, B::FactorReTerm{
     A
 end
 
-function Λ_mul_B!{T<:AbstractFloat}(A::FactorReTerm{T}, B::StridedVector{T})
+function Λ_mul_B!(A::FactorReTerm{T}, B::StridedVector{T}) where T<:AbstractFloat
     k = vsize(A)
     k == 1 && return scale!(B, A.Λ[1])
     λ = LowerTriangular(A.Λ)
@@ -52,7 +52,7 @@ function Λ_mul_B!{T<:AbstractFloat}(A::FactorReTerm{T}, B::StridedVector{T})
     B
 end
 
-function A_mul_Λ!{T<:AbstractFloat}(A::Matrix{T}, B::FactorReTerm{T})
+function A_mul_Λ!(A::Matrix{T}, B::FactorReTerm{T}) where T<:AbstractFloat
     k = vsize(B)
     k == 1 && return scale!(A, B.Λ[1])
     λ = LowerTriangular(B.Λ)
@@ -71,7 +71,7 @@ function A_mul_Λ!{T<:AbstractFloat}(A::Matrix{T}, B::FactorReTerm{T})
     A
 end
 
-function Λ_mul_B!{T}(C::StridedVecOrMat{T}, A::FactorReTerm{T}, B::StridedVecOrMat{T})
+function Λ_mul_B!(C::StridedVecOrMat{T}, A::FactorReTerm{T}, B::StridedVecOrMat{T}) where T
     @argcheck(size(C) == size(B), DimensionMismatch)
     m = size(C, 1)
     λ = LowerTriangular(A.Λ)
@@ -80,7 +80,7 @@ function Λ_mul_B!{T}(C::StridedVecOrMat{T}, A::FactorReTerm{T}, B::StridedVecOr
     C
 end
 
-function Λc_mul_B!{T}(A::FactorReTerm{T}, B::StridedVecOrMat{T})
+function Λc_mul_B!(A::FactorReTerm{T}, B::StridedVecOrMat{T}) where T
     k = vsize(A)
     k == 1 && return scale!(B, A.Λ[1])
     λ = LowerTriangular(A.Λ)
@@ -89,7 +89,7 @@ function Λc_mul_B!{T}(A::FactorReTerm{T}, B::StridedVecOrMat{T})
     B
 end
 
-function Λc_mul_B!{T<:AbstractFloat,S}(A::FactorReTerm{T}, B::SparseMatrixCSC{T,S})
+function Λc_mul_B!(A::FactorReTerm{T}, B::SparseMatrixCSC{T,S}) where {T<:AbstractFloat,S}
     k = vsize(A)
     nz = nonzeros(B)
     if k == 1
