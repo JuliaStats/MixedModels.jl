@@ -1,4 +1,42 @@
 """
+    HomoBlockDiagonal{T,B}
+
+Homogeneous block diagonal matrices.  `k` diagonal blocks each of size `m×m`
+"""
+struct HomoBlockDiagonal{T,B,L} <: AbstractMatrix{T}
+    data::Vector{MArray{Tuple{B,B},T,B,L}}
+end
+
+function Base.size(A::HomoBlockDiagonal{T,B}) where {T, B}
+    m = length(A.data) * B
+    m, m
+end
+
+function Base.size(A::HomoBlockDiagonal{T,B}, i::Int) where {T, B}
+    if i ≤ 0
+        throw(ArgumentError("i = $i should be positive"))
+    elseif 0 < i ≤ 2
+        length(A.data) * B
+    else
+        1
+    end
+end
+
+function Base.getindex(A::HomoBlockDiagonal{T,B}, i::Int, j::Int) where {T, B}
+    m = length(A.data) * B
+    (0 < i ≤ m && 0 < j ≤ m) ||
+        throw(IndexError("attempt to access $m \times $m array at index [$i, $j]"))
+    iblk, ioffset = divrem(i - 1, B)
+    jblk, joffset = divrem(j - 1, B)
+    if iblk == jblk
+        A.data[iblk+1][ioffset+1, joffset+1]
+    else
+        zero(T)
+    end
+end
+
+
+"""
     OptSummary
 
 Summary of an `NLopt` optimization
@@ -92,9 +130,9 @@ Linear mixed-effects model representation
 # Members
 * `formula`: the formula for the model
 * `trms`: a `Vector{AbstractTerm}` representing the model.  The last element is the response.
-* `sqrtwts`: vector of square roots of the case weights.  Allowed to be size 0
-* `A`: an `nt × nt` symmetric matrix of matrices representing `hcat(Z,X,y)'hcat(Z,X,y)`
-* `L`: a `nt × nt` matrix of matrices - the lower Cholesky factor of `Λ'AΛ+I`
+* `sqrtwts`: vector of square roots of the case weights.  Can be empty.
+* `A`: an `nt × nt` symmetric `BlockMatrix` of matrices representing `hcat(Z,X,y)'hcat(Z,X,y)`
+* `L`: a `nt × nt` `BlockMatrix` - the lower Cholesky factor of `Λ'AΛ+I`
 * `optsum`: an [`OptSummary`](@ref) object
 """
 struct LinearMixedModel{T <: AbstractFloat} <: MixedModel{T}

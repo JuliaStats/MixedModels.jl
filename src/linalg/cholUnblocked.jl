@@ -29,10 +29,8 @@ function cholUnblocked!(A::Matrix{T}, ::Type{Val{:L}}) where T<:BlasFloat
     A
 end
 
-function cholUnblocked!(D::Diagonal{LowerTriangular{T, Matrix{T}}},
-::Type{Val{:L}}) where T<:AbstractFloat
-    for b in D.diag
-        cholUnblocked!(b.data, Val{:L})
-    end
+function cholUnblocked!(D::LowerTriangular{T, HomoBlockDiagonal{T,K,L}},
+                        ::Type{Val{:L}}) where {T, K, L}
+    cholUnblocked!.(D.data.data, Val{:L})
     D
 end

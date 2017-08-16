@@ -12,14 +12,14 @@ function scaleInflate!(Ljj::Matrix{T}, Ajj::Matrix{T}, Λj::MatrixTerm{T}) where
 end
 
 function scaleInflate!(Ljj::Diagonal{T}, Ajj::Diagonal{T},
-Λj::FactorReTerm{T}) where T<:AbstractFloat
+                     Λj::FactorReTerm{T}) where T<:AbstractFloat
     @argcheck(length(Λj.Λ) == 1, DimensionMismatch)
     broadcast!((x,k) -> k * x + one(T), Ljj.diag, Ajj.diag, abs2(Λj.Λ[1]))
     Ljj
 end
 
 function scaleInflate!(Ljj::Matrix{T}, Ajj::Diagonal{T},
-Λj::FactorReTerm{T}) where T<:AbstractFloat
+                       Λj::FactorReTerm{T}) where T<:AbstractFloat
     Ad = Ajj.diag
     @argcheck(length(Ad) == checksquare(Ljj) && length(Λj.Λ) == 1, DimensionMismatch)
     lambsq = abs2(Λj.Λ[1])
@@ -30,13 +30,12 @@ function scaleInflate!(Ljj::Matrix{T}, Ajj::Diagonal{T},
     Ljj
 end
 
-function scaleInflate!(Ljj::Diagonal{LowerTriangular{T,Matrix{T}}},
-Ajj::Diagonal{Matrix{T}}, Λj::FactorReTerm{T}) where T<:AbstractFloat
+function scaleInflate!(Ljj::LowerTriangular{T,HomoBlockDiagonal{T,K,L}},
+                       Ajj::HomoBlockDiagonal{T,K,L}, Λj::FactorReTerm{T}) where {T,K,L}
+    @argcheck size(Ljj) == size(Ajj) DimensionMismatch
     λ = LowerTriangular(Λj.Λ)
-    Ldiag = Ljj.diag
-    Adiag = Ajj.diag
-    nblk = length(Ldiag)
-    @argcheck(length(Adiag) == length(Ldiag))
+    Ldiag = Ljj.data.data
+    Adiag = Ajj.data
     for i in eachindex(Ldiag)
         Ldi = Ac_mul_B!(λ, A_mul_B!(copy!(Ldiag[i].data, Adiag[i]), λ))
         for k in diagind(Ldi)
@@ -46,12 +45,12 @@ Ajj::Diagonal{Matrix{T}}, Λj::FactorReTerm{T}) where T<:AbstractFloat
     Ljj
 end
 
-function scaleInflate!(Ljj::Matrix{T}, Ajj::Diagonal{Matrix{T}},
-Λj::FactorReTerm{T}) where T<:AbstractFloat
-    Adiag = Ajj.diag
+function scaleInflate!(Ljj::Matrix{T}, Ajj::HomoBlockDiagonal{T},
+                       Λj::FactorReTerm{T}) where T<:AbstractFloat
+    @argcheck size(Ljj) == size(Ajj) DimensionMismatch
+    Adiag = Ajj.data
     λ = LowerTriangular(Λj.Λ)
     n = size(λ, 2)
-    @argcheck(all(a -> size(a) == (n, n), Adiag) && size(Ljj, 2) == sum(size.(Adiag, 2)))
     fill!(Ljj, zero(T))
     scrm = Matrix{T}(n, n)
     offset = 0

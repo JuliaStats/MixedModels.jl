@@ -62,38 +62,26 @@ function rankUpdate!(α::T, A::SparseMatrixCSC{T}, C::Diagonal{T}) where T <: Nu
     C
 end
 
-function rankUpdate!(α::T, A::SparseMatrixCSC{T}, C::Diagonal{LowerTriangular{T,Matrix{T}}}) where T<:Number
+function rankUpdate!(α::T, A::SparseMatrixCSC{T},
+                     C::LowerTriangular{T,HomoBlockDiagonal{T,K,L}}) where {T<:Number,K,L}
     m, n = size(A)
-    cdiag = C.diag
-    dsize = size.(cdiag, 2)
-    @argcheck sum(dsize) == m DimensionMismatch
-    if all(dsize .== 1)
-        nz = nonzeros(A)
-        rv = rowvals(A)
-        for j in 1:n
-            nzr = nzrange(A, j)
-            length(nzr) == 1 || throw(ArgumentError("A*A' has off-diagonal elements"))
-            k = nzr[1]
-            @inbounds cdiag[rv[k]].data[1] += α * abs2(nz[k])
-        end
-    else  # not efficient but only used for nested vector-valued r.e.'s, which are rare
-        aat = α * (A * A')
-        nz = nonzeros(aat)
-        rv = rowvals(aat)
-        offset = 0
-        for d in cdiag
-            k = size(d, 2)
-            for j in 1:k
-                for i in nzrange(aat, offset + j)
-                    ii = rv[i] - offset
-                    0 < ii ≤ k || throw(ArgumentError("A*A' does not conform to B"))
-                    if ii ≥ j  # update lower triangle only
-                        d.data[ii, j] += nz[i]
-                    end
+    @argcheck size(C, 1) == m DimensionMismatch
+    @assert K > 1
+    aat = α * (A * A')
+    nz = nonzeros(aat)
+    rv = rowvals(aat)
+    offset = 0
+    for d in C.data.data
+        for j in 1:K
+            for i in nzrange(aat, offset + j)
+                ii = rv[i] - offset
+                0 < ii ≤ k || throw(ArgumentError("A*A' does not conform to B"))
+                if ii ≥ j  # update lower triangle only
+                    d[ii, j] += nz[i]
                 end
             end
-            offset += k
         end
+        offset += K
     end
     C
 end

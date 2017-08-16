@@ -8,8 +8,8 @@ Return the lower Cholesky factor for the fixed-effects parameters, as an `LowerT
 """
 function feL(m::MixedModel)
     L = lmm(m).L
-    kp1 = size(L, 1) - 1
-    LowerTriangular(L[kp1, kp1])
+    kp1 = nblocks(L, 1) - 1
+    LowerTriangular(L[Block(kp1, kp1)])
 end
 
 """
@@ -64,8 +64,9 @@ function describeblocks(io::IO, m::MixedModel)
     lm = lmm(m)
     A = lm.A
     L = lm.L
-    for i in 1 : size(A, 2), j in 1 : i
-        println(io, i, ",", j, ": ", typeof(A[i,j]), " ", size(A[i,j]), " ", typeof(L[i,j]))
+    for i in 1 : nblocks(A, 2), j in 1 : i
+        println(io, i, ",", j, ": ", typeof(A[Block(i, j)]), " ",
+                blocksize(A, i, j), " ", typeof(L[Block(i, j)]))
     end
 end
 describeblocks(m::MixedModel) = describeblocks(Base.STDOUT, m)
@@ -118,14 +119,15 @@ function ranef!(v::Vector, m::LinearMixedModel{T}, β::AbstractArray{T}, uscale:
     L = m.L
     @argcheck((k = length(v)) == nreterms(m), DimensionMismatch)
     for j in 1:k
-        αβAc_mul_B!(-one(T), L[k + 1, j], β, one(T), vec(copy!(v[j], L[end, j])))
+        αβAc_mul_B!(-one(T), L[Block(k + 1, j)], β, one(T), vec(copy!(v[j],
+                    L[Block(nblocks(L, 2), j)])))
     end
     for i in k: -1 :1
-        Lii = L[i, i]
+        Lii = L[Block(i, i)]
         vi = vec(v[i])
         Ac_ldiv_B!(isa(Lii, Diagonal) ? Lii : LowerTriangular(Lii), vi)
         for j in 1:(i - 1)
-            αβAc_mul_B!(-one(T), L[i, j], vi, one(T), vec(v[j]))
+            αβAc_mul_B!(-one(T), L[Block(i, j)], vi, one(T), vec(v[j]))
         end
     end
     if !uscale
@@ -138,7 +140,9 @@ function ranef!(v::Vector, m::LinearMixedModel{T}, β::AbstractArray{T}, uscale:
 end
 
 function ranef!(v::Vector, m::LinearMixedModel, uscale::Bool)
-    ranef!(v, m, Ac_ldiv_B(feL(m), vec(copy(m.L[end, end - 1]))), uscale)
+    L = m.L
+    nblk = nblocks(L, 2)
+    ranef!(v, m, Ac_ldiv_B(feL(m), vec(copy(L[Block(nblk, nblk - 1)]))), uscale)
 end
 
 """
@@ -192,7 +196,7 @@ diagonal blocks from the conditional variance-covariance matrix,
 function condVar(m::MixedModel)
     lm = lmm(m)
     λ = lm.trms[1]
-    L11 = lm.L[1, 1]
+    L11 = lm.L[Block(1, 1)]
     if nreterms(lm) ≠ 1 || !isa(L11, Diagonal{eltype(λ)})
         throw(ArgumentError("code for vector-valued r.e. or more than one term not yet written"))
     end

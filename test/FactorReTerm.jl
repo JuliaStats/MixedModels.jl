@@ -112,9 +112,8 @@ end
     @test vec(corr'MatrixTerm(ones(size(corr, 1)))) == repeat([10.0, 45.0], outer = 18)
 
     vrp = corr'corr
-    @test isa(vrp, MixedModels.Diagonal{Matrix{Float64}})
-    @test eltype(vrp) == Matrix{Float64}
-    @test size(vrp) == (18, 18)
+    @test isa(vrp, HomoBlockDiagonal{Float64,2,4})
+    @test size(vrp) == (36, 36)
 
     @testset "reweight!" begin
         wts = rand(MersenneTwister(1234321), size(corr, 1))

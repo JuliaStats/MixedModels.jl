@@ -7,9 +7,10 @@ Return `log(det(tril(A)))` evaluated in place.
 """
 LD(d::Diagonal{T}) where {T<:Number} = sum(log, d.diag)
 
-function LD(d::Diagonal{LowerTriangular{T, Matrix{T}}}) where T
+function LD(d::LowerTriangular{T, HomoBlockDiagonal{T,K,L}}) where {T,K,L}
     s = log(one(T))
-    for dd in d.diag, i in diagind(dd)
+    dind = diagind(K, K)
+    for dd in d.data.data, i in dind
         s += log(dd[i])
     end
     s
@@ -22,15 +23,6 @@ LD(d::DenseMatrix) = sum(i -> log(d[i]), diagind(d))
 
 Return the value of `log(det(Λ'Z'ZΛ + I))` evaluated in place.
 """
-function logdet(m::LinearMixedModel{T}) where T
-    blks = m.L.data.blocks
-    s = zero(T)
-    for (k, t) in zip(diagind(blks), m.trms)
-        if !isa(t, MatrixTerm)
-            s += LD(blks[k])
-        end
-    end
-    2s
-end
+logdet(m::LinearMixedModel) = 2sum(i -> LD(m.L[Block(i, i)]), 1:nreterms(m))
 
-logdet(m::GeneralizedLinearMixedModel{T}) where {T} = logdet(m.LMM)
+logdet(m::GeneralizedLinearMixedModel) = logdet(m.LMM)

@@ -26,33 +26,33 @@ function LinearMixedModel(f, trms, wts)
     end
     nt = length(trms)
     A = BlockArray(AbstractMatrix{T}, sz, sz)
-    L = similar(A)
+    L = BlockArray(AbstractMatrix{T}, sz, sz)
     for j in 1:nt, i in j:nt
         Aij = densify(trms[i]'trms[j])
-        setblock!(A, Aij, i, j)
-        setblock!(L, deepcopy(Aij), i, j)
+        A[Block(i, j)] = Aij
+        L[Block(i, j)] = deepcopy(Aij)
     end
     for i in 1:nt
-        Lii = getblock(A, i, i)
+        Lii = L[Block(i, i)]
         if isa(Lii, Diagonal)
             Liid = Lii.diag
             if !isempty(Liid) && isa(Liid[1], Array)
-                if all(d -> size(d) == (1,1), Liid)
-                    setblock!(L, Diagonal(map(d -> d[1,1], Liid)), i, i)
+                L[Block(i, i)] = if all(d -> size(d) == (1, 1), Liid)
+                    Diagonal(getindex.(Liid, 1, 1))
                 else
-                    setblock!(L, Diagonal(map(LowerTriangular, Liid)), i, i)
+                    Diagonal(LowerTriangular.(Liid))
                 end
             end
         end
     end
     for i in 2:nt
-        Lii = getblock(L, i, i)
+        Lii = L[Block(i, i)]
         if isa(Lii, Diagonal)
             for j in 1:(i - 1)     # check for fill-in
-                Aij = getblock(A, i, j)
+                Aij = A[Block(i, j)]
                 if !isdiag(Aij * Aij')
                     for k in i:nt
-                        setblock(L, full(getblock(L, k, i)), k, i)
+                        L[Block(k, i)] = full(L[Block(k, i)])
                     end
                 end
             end
@@ -138,24 +138,24 @@ This is the crucial step in evaluating the objective, given a new parameter valu
 """
 function updateL!(m::LinearMixedModel{T}) where T
     trms = m.trms
-    A = m.A.data.blocks
-    L = m.L.data.blocks
-    nblk = size(A, 2)
+    A = m.A
+    L = m.L
+    nblk = nblocks(A, 2)
     for j in 1:nblk
-        Ljj = L[j, j]
+        Ljj = L[Block(j, j)]
         LjjH = isa(Ljj, Diagonal) ? Ljj : Hermitian(Ljj, :L)
         LjjLT = isa(Ljj, Diagonal) ? Ljj : LowerTriangular(Ljj)
-        scaleInflate!(Ljj, A[j, j], trms[j])
+        scaleInflate!(Ljj, A[Block(j, j)], trms[j])
         for jj in 1:(j - 1)
-            rankUpdate!(-one(T), L[j, jj], LjjH)
+            rankUpdate!(-one(T), L[Block(j, jj)], LjjH)
         end
         cholUnblocked!(Ljj, Val{:L})
         for i in (j + 1):nblk
-            Lij = copy!(L[i, j], A[i, j])
+            Lij = copy!(L[Block(i, j)], A[Block(i, j)])
             A_mul_Λ!(Lij, trms[j])
             Λc_mul_B!(trms[i], Lij)
             for jj in 1:(j - 1)
-                αβA_mul_Bc!(-one(T), L[i, jj], L[j, jj], one(T), Lij)
+                αβA_mul_Bc!(-one(T), L[Block(i, jj)], L[Block(j, jj)], one(T), Lij)
             end
             A_rdiv_Bc!(Lij, LjjLT)
         end
@@ -252,7 +252,7 @@ Overwrite `v` with the fixed-effects coefficients of model `m`
 """
 function fixef!(v::AbstractVector{T}, m::LinearMixedModel{T}) where T
     !isfit(m) && throw(ArgumentError("Model m has not been fit"))
-    Ac_ldiv_B!(feL(m), copy!(v, m.L[end, end - 1]))
+    Ac_ldiv_B!(feL(m), copy!(v, m.L.blocks[end, end - 1]))
 end
 
 """
@@ -264,7 +264,7 @@ fixef(m::LinearMixedModel{T}) where {T} = fixef!(Vector{T}(size(m)[2]), m)
 
 StatsBase.dof(m::LinearMixedModel) = size(m.trms[end - 1].wtx, 2) + sum(nθ, m.trms) + 1
 
-StatsBase.loglikelihood(m::LinearMixedModel) = -deviance(m)/2
+StatsBase.loglikelihood(m::LinearMixedModel) = -objective(m)/2
 
 StatsBase.nobs(m::LinearMixedModel) = length(m.trms[end].wtx)
 
@@ -300,7 +300,7 @@ Return the square root of the penalized, weighted residual sum-of-squares (pwrss
 
 This value is the contents of the `1 × 1` bottom right block of `m.L`
 """
-sqrtpwrss(m::LinearMixedModel) = @views m.L[end, end][1]
+sqrtpwrss(m::LinearMixedModel) = @views m.L.blocks[end, end][1]
 
 """
     varest(m::LinearMixedModel)
@@ -366,7 +366,7 @@ function reweight!(m::LinearMixedModel, weights)
     ntrm = length(trms)
     A = m.A
     for j in 1:ntrm, i in j:ntrm
-        Ac_mul_B!(A[i, j], trms[i], trms[j])
+        Ac_mul_B!(A[Block(i, j)], trms[i], trms[j])
     end
     updateL!(m)
 end

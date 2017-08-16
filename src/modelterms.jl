@@ -3,7 +3,7 @@
 
 Term with an explicit, constant matrix representation
 
-#Members
+# Members
 * `x`: matrix
 * `wtx`: weighted matrix
 * `cnames`: vector of column names
@@ -348,11 +348,11 @@ function Ac_mul_B!(C::Diagonal{T}, A::FactorReTerm{T}, B::FactorReTerm{T}) where
     C
 end
 
-function Ac_mul_B!(C::Diagonal{Matrix{T}}, A::FactorReTerm{T}, B::FactorReTerm{T}) where T
+function Ac_mul_B!(C::HomoBlockDiagonal{T,K,L}, A::FactorReTerm{T}, B::FactorReTerm{T}) where {T,K,L}
     Az = A.wtz
     l, n = size(Az)
-    @argcheck A === B && all(d -> size(d) == (l, l), C.diag)
-    d = C.diag
+    @argcheck A === B && l == K
+    d = C.data
     fill!.(d, zero(T))
     refs = A.f.refs
     @inbounds for i in eachindex(refs)
@@ -373,7 +373,8 @@ function Base.Ac_mul_B(A::FactorReTerm{T}, B::FactorReTerm{T}) where T
         if l == 1
             return Ac_mul_B!(Diagonal(Vector{T}(nlevs(A))), A, A)
         else
-            return Ac_mul_B!(Diagonal([zeros(T, (l,l)) for _ in 1:nlevs(A)]), A, A)
+            return Ac_mul_B!(HomoBlockDiagonal([MMatrix{l,l}(zeros(T,abs2(l)))
+                                               for _ in 1:nlevs(A)]), A, A)
         end
     end
     Az = A.wtz

@@ -7,9 +7,9 @@ end
 @testset "Dyestuff" begin
     fm1 = lmm(@formula(Y ~ 1 + (1|G)), dat[:Dyestuff])
 
-    @test size(fm1.A) == (3, 3)
+    @test nblocks(fm1.A) == (3, 3)
     @test size(fm1.trms) == (3, )
-    @test size(fm1.L) == (3, 3)
+    @test nblocks(fm1.L) == (3, 3)
     @test lowerbd(fm1) == zeros(1)
     @test getθ(fm1) == ones(1)
     @test getΛ(fm1) == Matrix[ones(1,1)]
@@ -135,13 +135,14 @@ end
 @testset "sleep" begin
     fm = lmm(@formula(Y ~ 1 + U + (1 + U | G)), dat[:sleepstudy]);
     @test lowerbd(fm) == [0.0, -Inf, 0.0]
-    @test isa(fm.A[1, 1], Diagonal{Matrix{Float64}})
-    @test isa(fm.L[1, 1], Diagonal{LowerTriangular{Float64, Matrix{Float64}}})
-    @test size(fm.A[1, 1]) == (18, 18)
-    @test fm.A[1, 1][1, 1] == [10. 45.; 45. 285.]
-    @test size(fm.A[1, 1], 1) == 18
+    A11 = fm.A[Block(1,1)]
+    @test isa(A11, HomoBlockDiagonal{Float64, 2, 4})
+    @test isa(fm.L[Block(1, 1)], LowerTriangular{Float64, HomoBlockDiagonal{Float64, 2, 4}})
+    @test size(A11) = (36, 36)
+    @test A11.data[1] == [10. 45.; 45. 285.]
+    @test length(A11.data) == 18
     updateL!(fm);
-    @test fm.L[1, 1][1, 1] * fm.L[1, 1][1, 1]' == fm.A[1, 1][1, 1] + I
+    @test fm.L[1, 1][1, 1] * fm.L[1, 1][1, 1]' == fm.A[Block(1, 1)][1, 1] + I
     @test countnz(full(fm.L[1, 1])) == 18 * 3
 
     fit!(fm)

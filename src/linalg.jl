@@ -55,7 +55,7 @@ function αβA_mul_Bc!(α::T, A::SparseMatrixCSC{T}, B::SparseMatrixCSC{T},
 end
 
 function αβA_mul_Bc!(α::T, A::StridedVecOrMat{T}, B::SparseMatrixCSC{T}, β::T,
-                     C::StridedVecOrMat{T}) where T <: Number
+                     C::StridedVecOrMat{T}) where T
     m, n = size(A)
     p, q = size(B)
     r, s = size(C)
@@ -83,12 +83,13 @@ end
 αβAc_mul_B!(α::T, A::SparseMatrixCSC{T}, B::StridedVector{T}, β::T,
             C::StridedVector{T}) where T = Ac_mul_B!(α, A, B, β, C)
 
-function Ac_ldiv_B!(A::Diagonal{LowerTriangular{T,Matrix{T}}}, B::StridedVector{T}) where T <: AbstractFloat
-    offset = 0
-    for a in A.diag
-        k = size(a, 1)
-        Ac_ldiv_B!(a, view(B, (1:k) + offset))
-        offset += k
+function Ac_ldiv_B!(A::LowerTriangular{T,HomoBlockDiagonal{T,K,L}}, B::StridedVector{T}) where {T, K, L}
+    @argcheck length(B) == size(A, 2) DimensionMismatch
+    Ad = A.data.data
+    k = length(Ad)
+    bb = reshape(B, (K, k))
+    for j in 1:k
+        Ac_ldiv_B!(LowerTriangular(Ad[j]), view(bb, :, j))
     end
     B
 end
@@ -119,51 +120,28 @@ if VERSION < v"0.7.0-DEV.586"
     end
 end
 
-function A_rdiv_Bc!(A::Matrix, B::Diagonal{LowerTriangular{T,Matrix{T}}}) where T <: AbstractFloat
+function A_rdiv_Bc!(A::Matrix{T}, B::LowerTriangular{T,HomoBlockDiagonal{T,K,L}}) where {T, K, L}
+    @argcheck size(A, 2) == size(B, 1) DimensionMismatch
     offset = 0
-    for d in B.diag
-        k = size(d, 1)
+    for d in B.data.data
         ## FIXME call BLAS.trsm directly
-        A_rdiv_Bc!(view(A, :, (1:k) + offset), d)
-        offset += k
+        A_rdiv_Bc!(view(A, :, (1:K) + offset), LowerTriangular(d))
+        offset += K
     end
     A
 end
 
-function A_rdiv_Bc!(A::SparseMatrixCSC{T}, B::Diagonal{LowerTriangular{T,Matrix{T}}}) where T
+function A_rdiv_Bc!(A::SparseMatrixCSC{T}, B::LowerTriangular{T,HomoBlockDiagonal{T,K,L}}) where {T,K,L}
     nz = nonzeros(A)
     offset = 0
-    for d in B.diag
-        if (k = size(d, 1)) == 1
-            d1 = d[1]
-            offset += 1
-            for k in nzrange(A, offset)
-                nz[k] /= d1
-            end
-        else
-            nzr = nzrange(A, offset + 1).start : nzrange(A, offset + k).stop
-            q = div(length(nzr), k)
+    for d in B.data.data
+        nzr = nzrange(A, offset + 1).start : nzrange(A, offset + K).stop
+        q = div(length(nzr), k)
             ## FIXME Still allocating 1.4 GB.  Call BLAS.trsm directly
-            A_rdiv_Bc!(unsafe_wrap(Array, pointer(nz, nzr[1]), (q, k)), d)
-            offset += k
-        end
+        A_rdiv_Bc!(unsafe_wrap(Array, pointer(nz, nzr[1]), (q, K)), LowerTriangular(d))
+        offset += K
     end
     A
-end
-
-function full(A::Diagonal{LowerTriangular{T,Matrix{T}}}) where T
-    D = diag(A)
-    sz = size.(D, 2)
-    n = sum(sz)
-    B = zeros(n, n)
-    offset = 0
-    for (d,s) in zip(D, sz)
-        for j in 1:s, i in j:s
-            B[offset + i, offset + j] = d[i,j]
-        end
-        offset += s
-    end
-    B
 end
 
 function rowlengths(A::FactorReTerm)

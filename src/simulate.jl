@@ -158,8 +158,9 @@ function reevaluateAend!(m::LinearMixedModel)
     A = m.A
     trms = m.trms
     trmn = reweight!(trms[end], m.sqrtwts)
+    nblk = nblocks(A, 2)
     for i in eachindex(trms)
-        Ac_mul_B!(A[end, i], trmn, trms[i])
+        Ac_mul_B!(A[Block(nblk, i)], trmn, trms[i])
     end
     m
 end
