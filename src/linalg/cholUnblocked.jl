@@ -29,7 +29,7 @@ function cholUnblocked!(A::Matrix{T}, ::Type{Val{:L}}) where T<:BlasFloat
     A
 end
 
-function cholUnblocked!(D::LowerTriangular{T, HomoBlockDiagonal{T,K,L}},
+function cholUnblocked!(D::LowerTriangular{T, UniformBlockDiagonal{T,K,L}},
                         ::Type{Val{:L}}) where {T, K, L}
     cholUnblocked!.(D.data.data, Val{:L})
     D

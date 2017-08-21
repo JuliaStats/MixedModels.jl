@@ -4,7 +4,7 @@ module MixedModels
 
 using ArgCheck, BlockArrays, CategoricalArrays, DataArrays, DataFrames
 using Distributions, GLM, NLopt, Showoff, StatsBase
-using StaticArrays: MArray, MMatrix
+using StaticArrays: @MMatrix, MArray, MMatrix
 using StatsFuns: log2π
 using NamedArrays: NamedArray, setnames!
 using Base.LinAlg: BlasFloat, BlasReal, HermOrSym, PosDefException, checksquare, copytri!
@@ -17,14 +17,14 @@ import StatsBase: coef, coeftable, dof, deviance, fit!, fitted, loglikelihood,
 
 export
        @formula,
+       AbstractFactorReTerm,
+       AbstractReTerm,
        Bernoulli,
        Binomial,
        Block,
-       FactorReTerm,
        Gamma,
        LogitLink,
        LogLink,
-       HomoBlockDiagonal,
        InverseGaussian,
        InverseLink,
        GeneralizedLinearMixedModel,
@@ -33,7 +33,10 @@ export
        MixedModel,
        OptSummary,
        Poisson,
+       ScalarFactorReTerm,
+       UniformBlockDiagonal,
        VarCorr,
+       VectorFactorReTerm,
 
        bootstrap,
        bootstrap!,

@@ -44,8 +44,8 @@ function rankUpdate!(α::T, A::SparseMatrixCSC{T}, β::T, C::HermOrSym{T,S}) whe
     C
 end
 
-rankUpdate!(α::T, A::SparseMatrixCSC{T},
-C::HermOrSym{T,S}) where {T<:AbstractFloat,S<:StridedMatrix} = rankUpdate!(α, A, one(T), C)
+rankUpdate!(α::T, A::SparseMatrixCSC{T}, C::HermOrSym{T}) where {T} =
+    rankUpdate!(α, A, one(T), C)
 
 function rankUpdate!(α::T, A::SparseMatrixCSC{T}, C::Diagonal{T}) where T <: Number
     m, n = size(A)
@@ -63,7 +63,7 @@ function rankUpdate!(α::T, A::SparseMatrixCSC{T}, C::Diagonal{T}) where T <: Nu
 end
 
 function rankUpdate!(α::T, A::SparseMatrixCSC{T},
-                     C::LowerTriangular{T,HomoBlockDiagonal{T,K,L}}) where {T<:Number,K,L}
+                     C::LowerTriangular{T,UniformBlockDiagonal{T,K,L}}) where {T<:Number,K,L}
     m, n = size(A)
     @argcheck size(C, 1) == m DimensionMismatch
     @assert K > 1

@@ -7,9 +7,9 @@ end
 @testset "scalarRe" begin
     dyestuff = dat[:Dyestuff]
     pastes = dat[:Pastes]
-    sf = FactorReTerm(dyestuff[:G])
-    sf1 = FactorReTerm(pastes[:G])
-    sf2 = FactorReTerm(pastes[:H])
+    sf = ScalarFactorReTerm(dyestuff[:G])
+    sf1 = ScalarFactorReTerm(pastes[:G])
+    sf2 = ScalarFactorReTerm(pastes[:H])
     Yield = Array(dyestuff[:Y])
 
     @testset "size" begin
@@ -112,7 +112,7 @@ end
     @test vec(corr'MatrixTerm(ones(size(corr, 1)))) == repeat([10.0, 45.0], outer = 18)
 
     vrp = corr'corr
-    @test isa(vrp, HomoBlockDiagonal{Float64,2,4})
+    @test isa(vrp, UniformBlockDiagonal{Float64,2,4})
     @test size(vrp) == (36, 36)
 
     @testset "reweight!" begin

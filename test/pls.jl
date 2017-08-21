@@ -9,10 +9,10 @@ end
 
     @test nblocks(fm1.A) == (3, 3)
     @test size(fm1.trms) == (3, )
-    @test nblocks(fm1.L) == (3, 3)
+    @test nblocks(fm1.L.data) == (3, 3)
     @test lowerbd(fm1) == zeros(1)
     @test getθ(fm1) == ones(1)
-    @test getΛ(fm1) == Matrix[ones(1,1)]
+    @test getΛ(fm1) == 1.0
 
     @test objective(updateL!(setθ!(fm1, [0.713]))) ≈ 327.34216280955366
     MixedModels.describeblocks(IOBuffer(), fm1)
@@ -136,9 +136,9 @@ end
     fm = lmm(@formula(Y ~ 1 + U + (1 + U | G)), dat[:sleepstudy]);
     @test lowerbd(fm) == [0.0, -Inf, 0.0]
     A11 = fm.A[Block(1,1)]
-    @test isa(A11, HomoBlockDiagonal{Float64, 2, 4})
-    @test isa(fm.L[Block(1, 1)], LowerTriangular{Float64, HomoBlockDiagonal{Float64, 2, 4}})
-    @test size(A11) = (36, 36)
+    @test isa(A11, UniformBlockDiagonal{Float64, 2, 4})
+    @test isa(fm.L.data[Block(1, 1)], UniformBlockDiagonal{Float64, 2, 4})
+    @test size(A11) == (36, 36)
     @test A11.data[1] == [10. 45.; 45. 285.]
     @test length(A11.data) == 18
     updateL!(fm);

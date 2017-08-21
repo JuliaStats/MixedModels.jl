@@ -123,7 +123,12 @@ function stddevcor!(σ::Vector{T}, ρ::Matrix{T}, scr::Matrix{T}, L::LinAlg.Chol
     end
     σ, ρ
 end
-function stddevcor!(σ::Vector{T}, ρ::Matrix{T}, scr::Matrix{T}, L::FactorReTerm{T}) where T
+function stddevcor!(σ::Vector, ρ::Matrix, scr::Matrix, L::ScalarFactorReTerm)
+    σ[1] = L.Λ
+    ρ[1] = 1
+end
+function stddevcor!(σ::Vector{T}, ρ::Matrix{T}, scr::Matrix{T},
+    L::VectorFactorReTerm{T}) where T
     stddevcor!(σ, ρ, scr, LinAlg.Cholesky(LowerTriangular(L.Λ)))
 end
 function stddevcor(L::LinAlg.Cholesky{T}) where T
@@ -131,7 +136,8 @@ function stddevcor(L::LinAlg.Cholesky{T}) where T
     stddevcor!(Vector{T}(k), Matrix{T}((k, k)), Matrix{T}((k, k)), L)
 end
 stddevcor(L::LowerTriangular) = stddevcor(LinAlg.Cholesky(L))
-stddevcor(L::FactorReTerm) = stddevcor(LowerTriangular(L.Λ))
+stddevcor(L::VectorFactorReTerm) = stddevcor(LowerTriangular(L.Λ))
+stddevcor(L::ScalarFactorReTerm{T}) where T = [L.Λ], ones(T, 1, 1)
 
 if VERSION < v"0.7.0-DEV.393"
     Base.LinAlg.Cholesky(L::LowerTriangular) = LinAlg.Cholesky(L, 'L')
@@ -193,13 +199,26 @@ function resetθ!(m::LinearMixedModel)
 end
 
 """
-    unscaledre!(y::AbstractVector{T}, M::ReMat{T}, L) where T
+    unscaledre!(y::AbstractVector{T}, M::AbstractFactorReTerm{T}, b) where T
+    unscaledre!(rng::AbstractRNG, y::AbstractVector{T}, M::AbstractFactorReTerm{T}) where T
 
-Add unscaled random effects defined by `M` and `L * randn(1, length(M.f.pool))` to `y`.
+Add unscaled random effects defined by `M` and `b` to `y`.  When `rng` is present the `b`
+vector is generated as `randn(rng, size(M, 2))`
 """
 function unscaledre! end
 
-function unscaledre!(y::AbstractVector{T}, A::FactorReTerm{T}, b::DenseMatrix{T}) where T
+function unscaledre!(y::AbstractVector, A::ScalarFactorReTerm, b::AbstractVecOrMat)
+    m, n = size(A)
+    @argcheck(length(y) == m && length(b) == n, DimensionMismatch)
+    z = A.z
+    r = A.f.refs
+    for i in eachindex(r)
+        y[i] += b[r[i]] * z[i]
+    end
+    y
+end
+
+function unscaledre!(y::AbstractVector, A::VectorFactorReTerm, b::DenseMatrix)
     Z = A.z
     k, n = size(Z)
     l = nlevs(A)
@@ -214,11 +233,11 @@ function unscaledre!(y::AbstractVector{T}, A::FactorReTerm{T}, b::DenseMatrix{T}
     y
 end
 
-function unscaledre!(rng::AbstractRNG, y::AbstractVector{T}, A::FactorReTerm{T}) where T
+function unscaledre!(rng::AbstractRNG, y::AbstractVector, A::AbstractFactorReTerm)
     unscaledre!(y, A, A_mul_B!(LowerTriangular(A.Λ), randn(rng, vsize(A), nlevs(A))))
 end
 
-unscaledre!(y::AbstractVector, A::FactorReTerm) = unscaledre!(Base.GLOBAL_RNG, y, A)
+unscaledre!(y::AbstractVector, A::AbstractFactorReTerm) = unscaledre!(Base.GLOBAL_RNG, y, A)
 
 """
     simulate!(m::LinearMixedModel; β=fixef(m), σ=sdest(m), θ=getθ(m))
@@ -241,5 +260,3 @@ end
 
 simulate!(m::LinearMixedModel{T}; β=coef(m), σ=sdest(m), θ=T[]) where {T} =
     simulate!(Base.GLOBAL_RNG, m, β=β, σ=σ, θ=θ)
-
-StatsBase.model_response(m::LinearMixedModel) = vec(m.trms[end].x)

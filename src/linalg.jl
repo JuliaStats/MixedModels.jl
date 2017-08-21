@@ -83,7 +83,7 @@ end
 αβAc_mul_B!(α::T, A::SparseMatrixCSC{T}, B::StridedVector{T}, β::T,
             C::StridedVector{T}) where T = Ac_mul_B!(α, A, B, β, C)
 
-function Ac_ldiv_B!(A::LowerTriangular{T,HomoBlockDiagonal{T,K,L}}, B::StridedVector{T}) where {T, K, L}
+function Ac_ldiv_B!(A::LowerTriangular{T,UniformBlockDiagonal{T,K,L}}, B::StridedVector{T}) where {T, K, L}
     @argcheck length(B) == size(A, 2) DimensionMismatch
     Ad = A.data.data
     k = length(Ad)
@@ -120,7 +120,7 @@ if VERSION < v"0.7.0-DEV.586"
     end
 end
 
-function A_rdiv_Bc!(A::Matrix{T}, B::LowerTriangular{T,HomoBlockDiagonal{T,K,L}}) where {T, K, L}
+function A_rdiv_Bc!(A::Matrix{T}, B::LowerTriangular{T,UniformBlockDiagonal{T,K,L}}) where {T, K, L}
     @argcheck size(A, 2) == size(B, 1) DimensionMismatch
     offset = 0
     for d in B.data.data
@@ -131,7 +131,7 @@ function A_rdiv_Bc!(A::Matrix{T}, B::LowerTriangular{T,HomoBlockDiagonal{T,K,L}}
     A
 end
 
-function A_rdiv_Bc!(A::SparseMatrixCSC{T}, B::LowerTriangular{T,HomoBlockDiagonal{T,K,L}}) where {T,K,L}
+function A_rdiv_Bc!(A::SparseMatrixCSC{T}, B::LowerTriangular{T,UniformBlockDiagonal{T,K,L}}) where {T,K,L}
     nz = nonzeros(A)
     offset = 0
     for d in B.data.data
@@ -143,10 +143,3 @@ function A_rdiv_Bc!(A::SparseMatrixCSC{T}, B::LowerTriangular{T,HomoBlockDiagona
     end
     A
 end
-
-function rowlengths(A::FactorReTerm)
-    ld = A.Λ
-    [norm(view(ld, i, 1:i)) for i in 1:size(ld, 1)]
-end
-
-rowlengths(A::MatrixTerm{T}) where {T} = T[]

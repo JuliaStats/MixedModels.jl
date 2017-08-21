@@ -61,7 +61,7 @@ function LinearMixedModel(f, trms, wts)
     optsum = OptSummary(getθ(trms), lowerbd(trms), :LN_BOBYQA;
         ftol_rel = convert(T, 1.0e-12), ftol_abs = convert(T, 1.0e-8))
     fill!(optsum.xtol_abs, 1.0e-10)
-    LinearMixedModel(f, trms, sqrtwts, A, L, optsum)
+    LinearMixedModel(f, trms, sqrtwts, A, LowerTriangular(L), optsum)
 end
 
 model_response(mf::ModelFrame, d::Distribution=Normal()) =
@@ -104,24 +104,29 @@ function lmm(f::Formula, fr::AbstractDataFrame;
     trms = AbstractTerm{T}[]
     for (grp, lhs) in tdict
         gr = asfactor(getindex(mf.df, grp))
-        m = T[]
-        coefnms = String[]
-        trsize = Int[]
-        for l in lhs
-            if l == 1
-                append!(m, ones(T, n))
-                push!(coefnms, "(Intercept)")
-                push!(trsize, 1)
-            else
-                fr = ModelFrame(Formula(nothing, l), mf.df)
-                append!(m, ModelMatrix(fr).m)
-                cnms = coefnames(fr)
-                append!(coefnms, cnms)
-                push!(trsize, length(cnms))
+        if (length(lhs) == 1 && lhs[1] == 1)
+            push!(trms, ScalarFactorReTerm(gr, grp))
+        else
+            m = T[]
+            coefnms = String[]
+            trsize = Int[]
+            for l in lhs
+                if l == 1
+                    append!(m, ones(T, n))
+                    push!(coefnms, "(Intercept)")
+                    push!(trsize, 1)
+                else
+                    fr = ModelFrame(Formula(nothing, l), mf.df)
+                    append!(m, ModelMatrix(fr).m)
+                    cnms = coefnames(fr)
+                    append!(coefnms, cnms)
+                    push!(trsize, length(cnms))
+                end
             end
+            push!(trms,
+                  VectorFactorReTerm(gr, transpose(reshape(m, (n, sum(trsize)))), grp,
+                  coefnms,  trsize))
         end
-        push!(trms,
-            FactorReTerm(gr, transpose(reshape(m, (n, sum(trsize)))), grp, coefnms, trsize))
     end
     sort!(trms, by = nrandomeff, rev = true)
     push!(trms, MatrixTerm(X, coefnames(mf)))
@@ -139,23 +144,23 @@ This is the crucial step in evaluating the objective, given a new parameter valu
 function updateL!(m::LinearMixedModel{T}) where T
     trms = m.trms
     A = m.A
-    L = m.L
+    Ldat = m.L.data
     nblk = nblocks(A, 2)
     for j in 1:nblk
-        Ljj = L[Block(j, j)]
+        Ljj = Ldat[Block(j, j)]
         LjjH = isa(Ljj, Diagonal) ? Ljj : Hermitian(Ljj, :L)
         LjjLT = isa(Ljj, Diagonal) ? Ljj : LowerTriangular(Ljj)
-        scaleInflate!(Ljj, A[Block(j, j)], trms[j])
+        scaleInflate!(LjjLT, A[Block(j, j)], trms[j])
         for jj in 1:(j - 1)
-            rankUpdate!(-one(T), L[Block(j, jj)], LjjH)
+            rankUpdate!(-one(T), Ldat[Block(j, jj)], LjjH)
         end
         cholUnblocked!(Ljj, Val{:L})
         for i in (j + 1):nblk
-            Lij = copy!(L[Block(i, j)], A[Block(i, j)])
+            Lij = copy!(Ldat[Block(i, j)], A[Block(i, j)])
             A_mul_Λ!(Lij, trms[j])
             Λc_mul_B!(trms[i], Lij)
             for jj in 1:(j - 1)
-                αβA_mul_Bc!(-one(T), L[Block(i, jj)], L[Block(j, jj)], one(T), Lij)
+                αβA_mul_Bc!(-one(T), Ldat[Block(i, jj)], Ldat[Block(j, jj)], one(T), Lij)
             end
             A_rdiv_Bc!(Lij, LjjLT)
         end
@@ -235,6 +240,8 @@ Return the vector of lower bounds on the covariance parameter vector `θ`
 """
 lowerbd(m::LinearMixedModel) = lowerbd(m.trms)
 
+StatsBase.model_response(m::LinearMixedModel) = vec(m.trms[end].x)
+
 """
     objective(m::LinearMixedModel)
 
@@ -252,7 +259,7 @@ Overwrite `v` with the fixed-effects coefficients of model `m`
 """
 function fixef!(v::AbstractVector{T}, m::LinearMixedModel{T}) where T
     !isfit(m) && throw(ArgumentError("Model m has not been fit"))
-    Ac_ldiv_B!(feL(m), copy!(v, m.L.blocks[end, end - 1]))
+    Ac_ldiv_B!(feL(m), copy!(v, m.L.data.blocks[end, end - 1]))
 end
 
 """
@@ -300,7 +307,7 @@ Return the square root of the penalized, weighted residual sum-of-squares (pwrss
 
 This value is the contents of the `1 × 1` bottom right block of `m.L`
 """
-sqrtpwrss(m::LinearMixedModel) = @views m.L.blocks[end, end][1]
+sqrtpwrss(m::LinearMixedModel) = @views m.L.data.blocks[end, end][1]
 
 """
     varest(m::LinearMixedModel)

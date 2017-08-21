@@ -1,18 +1,18 @@
 """
-    HomoBlockDiagonal{T,B}
+    UniformBlockDiagonal{T,B}
 
 Homogeneous block diagonal matrices.  `k` diagonal blocks each of size `m×m`
 """
-struct HomoBlockDiagonal{T,B,L} <: AbstractMatrix{T}
+struct UniformBlockDiagonal{T,B,L} <: AbstractMatrix{T}
     data::Vector{MArray{Tuple{B,B},T,B,L}}
 end
 
-function Base.size(A::HomoBlockDiagonal{T,B}) where {T, B}
+function Base.size(A::UniformBlockDiagonal{T,B}) where {T, B}
     m = length(A.data) * B
     m, m
 end
 
-function Base.size(A::HomoBlockDiagonal{T,B}, i::Int) where {T, B}
+function Base.size(A::UniformBlockDiagonal{T,B}, i::Int) where {T, B}
     if i ≤ 0
         throw(ArgumentError("i = $i should be positive"))
     elseif 0 < i ≤ 2
@@ -22,7 +22,7 @@ function Base.size(A::HomoBlockDiagonal{T,B}, i::Int) where {T, B}
     end
 end
 
-function Base.getindex(A::HomoBlockDiagonal{T,B}, i::Int, j::Int) where {T, B}
+function Base.getindex(A::UniformBlockDiagonal{T,B}, i::Int, j::Int) where {T, B}
     m = length(A.data) * B
     (0 < i ≤ m && 0 < j ≤ m) ||
         throw(IndexError("attempt to access $m \times $m array at index [$i, $j]"))
@@ -35,6 +35,27 @@ function Base.getindex(A::HomoBlockDiagonal{T,B}, i::Int, j::Int) where {T, B}
     end
 end
 
+"""
+    Ones{T}
+
+Implicit length n vector of ones of type `T`
+
+# Members
+- `n`: length
+"""
+struct Ones{T} <: AbstractVector{T}
+    n::Int
+end
+
+Base.size(v::Ones) = (v.n,)
+function Base.getindex(v::Ones{T}, i) where T
+    0 < i ≤ v.n || throw(BoundsError("attempt to access $(v.n)-element Ones at index [$i]"))
+    one(T)
+end
+
+Base.length(v::Ones) = v.n
+
+Base.scale!(v::AbstractVector, z::Ones, a::AbstractVector) = copy!(v, a)
 
 """
     OptSummary
@@ -140,7 +161,7 @@ struct LinearMixedModel{T <: AbstractFloat} <: MixedModel{T}
     trms::Vector{AbstractTerm{T}}
     sqrtwts::Vector{T}
     A::BlockMatrix{T}            # cross-product blocks
-    L::BlockMatrix{T}
+    L::LowerTriangular{T,BlockArray{T,2,AbstractMatrix{T}}}
     optsum::OptSummary{T}
 end
 
