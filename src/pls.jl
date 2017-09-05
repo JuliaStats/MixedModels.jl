@@ -296,7 +296,17 @@ sdest(m::LinearMixedModel) = sqrtpwrss(m) / √nobs(m)
 Install `v` as the θ parameters in `m`.
 """
 function setθ!(m::LinearMixedModel, v)
-    setθ!(m.trms, v)
+    offset = 0
+    for trm in m.trms
+        if isa(trm, ScalarFactorReTerm)
+            offset += 1
+            setθ!(trm, v[offset])
+        else
+            k = nθ(trm)
+            iszero(k) || setθ!(trm, view(v, (1:k) + offset))
+            offset += k
+        end
+    end
     m
 end
 

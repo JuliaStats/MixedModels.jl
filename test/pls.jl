@@ -1,4 +1,4 @@
-using Base.Test, RData, StatsBase, MixedModels
+using Base.Test, StatsBase, DataFrames, RData, MixedModels
 
 if !isdefined(:dat) || !isa(dat, Dict{Symbol, Any})
     dat = convert(Dict{Symbol,Any}, load(joinpath(dirname(@__FILE__), "dat.rda")))
@@ -12,7 +12,7 @@ end
     @test nblocks(fm1.L.data) == (3, 3)
     @test lowerbd(fm1) == zeros(1)
     @test getθ(fm1) == ones(1)
-    @test getΛ(fm1) == 1.0
+    @test getΛ(fm1) == [1.0]
 
     @test objective(updateL!(setθ!(fm1, [0.713]))) ≈ 327.34216280955366
     MixedModels.describeblocks(IOBuffer(), fm1)

@@ -1,4 +1,4 @@
-using Base.Test, RData, MixedModels
+using Base.Test, DataFrames, RData, MixedModels
 
 if !isdefined(:dat) || !isa(dat, Dict{Symbol, Any})
     dat = convert(Dict{Symbol,Any}, load(joinpath(dirname(@__FILE__), "dat.rda")))

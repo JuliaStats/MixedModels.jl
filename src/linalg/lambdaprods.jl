@@ -50,6 +50,8 @@ function Λ_mul_B!(A::VectorFactorReTerm{T}, B::StridedVector{T}) where T
     B
 end
 
+Λ_mul_B!(A::ScalarFactorReTerm{T}, B::StridedVecOrMat{T}) where T = scale!(B, A.Λ)
+
 function A_mul_Λ!(A::Matrix{T}, B::VectorFactorReTerm{T}) where T<:AbstractFloat
     @argcheck (k = vsize(A)) > 1
     λ = LowerTriangular(B.Λ)
@@ -67,6 +69,8 @@ function A_mul_Λ!(A::Matrix{T}, B::VectorFactorReTerm{T}) where T<:AbstractFloa
     end
     A
 end
+
+Λ_mul_B!(C::AbstractArray{T}, A::ScalarFactorReTerm{T}, B::AbstractArray{T}) where T = scale!(C, A.Λ, B)
 
 function Λ_mul_B!(C::StridedVecOrMat{T}, A::VectorFactorReTerm{T},
                   B::StridedVecOrMat{T}) where T

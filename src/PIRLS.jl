@@ -14,16 +14,17 @@ function glmm(f::Formula, fr::AbstractDataFrame, d::Distribution, l::Link; wt=[]
     end
     LMM = lmm(f, fr; weights = wt, contrasts=contrasts, rdist=d)
     X = LMM.trms[end - 1].x
+    T = eltype(X)
     y = copy(model_response(LMM))
     if isempty(wt)
         LMM = LinearMixedModel(LMM.formula, LMM.trms, ones(y), LMM.A, LMM.L, LMM.optsum)
     end
     updateL!(setθ!(LMM, getθ(LMM)))
             # fit a glm to the fixed-effects only
-    gl = length(wt) == length(y) ? glm(X, y, d, l; wts = wt) : glm(X, y, d, l)
+    gl = glm(X, y, d, l; wts = length(wt) == length(y) ? wt : T[])
     r = gl.rr
     β = coef(gl)
-    u = fill!.(ranef(LMM), 0)
+    u = [zeros(T, vsize(t), nlevs(t)) for t in reterms(LMM)]
     res = GeneralizedLinearMixedModel(LMM, β, copy(β), getθ(LMM), copy.(u), u,
         zeros.(u), gl.rr, similar(y), oftype(y, wt))
     setβθ!(res, vcat(coef(gl), getθ(LMM)))

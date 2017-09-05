@@ -1,4 +1,4 @@
-using Base.Test, RData, MixedModels
+using Base.Test, DataFrames, RData, MixedModels
 
 if !isdefined(:dat) || !isa(dat, Dict{Symbol, Any})
     dat = convert(Dict{Symbol,Any}, load(joinpath(dirname(@__FILE__), "dat.rda")))
@@ -7,9 +7,9 @@ end
 @testset "scalarRe" begin
     dyestuff = dat[:Dyestuff]
     pastes = dat[:Pastes]
-    sf = ScalarFactorReTerm(dyestuff[:G])
-    sf1 = ScalarFactorReTerm(pastes[:G])
-    sf2 = ScalarFactorReTerm(pastes[:H])
+    sf = ScalarFactorReTerm(dyestuff[:G], :G)
+    sf1 = ScalarFactorReTerm(pastes[:G], :G)
+    sf2 = ScalarFactorReTerm(pastes[:H], :H)
     Yield = Array(dyestuff[:Y])
 
     @testset "size" begin
@@ -38,9 +38,9 @@ end
         @test MixedModels.getθ!(Vector{Float64}(1), sf) == ones(1)
         @test lowerbd(sf) == zeros(1)
         @test eltype(sf) == Float64
-        @test getθ(setθ!(sf, [0.5])) == [0.5]
+        @test getθ(setθ!(sf, 0.5)) == [0.5]
         @test_throws DimensionMismatch MixedModels.getθ!(Float64[], sf)
-        @test_throws DimensionMismatch setθ!(sf, ones(2))
+        @test_throws MethodError setθ!(sf, ones(2))
     end
 
     @testset "products" begin
@@ -78,9 +78,9 @@ end
 
 @testset "vectorRe" begin
     slp = dat[:sleepstudy]
-    corr = FactorReTerm(slp[:G], hcat(ones(size(slp, 1)), Array(slp[:U]))',
+    corr = VectorFactorReTerm(slp[:G], hcat(ones(size(slp, 1)), Array(slp[:U]))',
         :G, ["(Intercept)", "U"], [2])
-    nocorr = FactorReTerm(slp[:G], hcat(ones(size(slp, 1)), Array(slp[:U]))',
+    nocorr = VectorFactorReTerm(slp[:G], hcat(ones(size(slp, 1)), Array(slp[:U]))',
             :G, ["(Intercept)", "U"], [1, 1])
     Reaction = Array(slp[:Y])
 
@@ -112,6 +112,7 @@ end
     @test vec(corr'MatrixTerm(ones(size(corr, 1)))) == repeat([10.0, 45.0], outer = 18)
 
     vrp = corr'corr
+    
     @test isa(vrp, UniformBlockDiagonal{Float64,2,4})
     @test size(vrp) == (36, 36)
 

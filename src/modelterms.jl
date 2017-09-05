@@ -103,11 +103,11 @@ getΛ(A::ScalarFactorReTerm) = A.Λ
 function reweight!(A::ScalarFactorReTerm, sqrtwts::Vector)
     n = length(sqrtwts)
     if n > 0
-        @argcheck(length(A.z) == n, DimensionMismatch)
         if A.z == A.wtz
-            A.wtz = isa(A.wtz, Ones) ? similar(sqrtwts, eltype(A.wtz)) : similar(A.z)
+            A.wtz = A.z .* sqrtwts
+        else
+            A.wtz .= A.z .* sqrtwts
         end
-        scale!(A.wtz, A.z, sqrtwts)
     end
     A
 end
@@ -164,7 +164,7 @@ function VectorFactorReTerm(f::AbstractFactor, z::Matrix, fnm, cnms, blks)
         end
         offset += k
     end
-    FactorReTerm(f, z, z, fnm, cnms, blks, @MMatrix(eye(eltype(z), n)), inds)
+    VectorFactorReTerm(f, z, z, fnm, cnms, blks, @MMatrix(eye(eltype(z), n)), inds)
 end
 
 function reweight!(A::VectorFactorReTerm, sqrtwts::Vector)
@@ -320,8 +320,7 @@ lowerbd(A::VectorFactorReTerm{T}) where {T} =
 lowerbd(v::Vector{AbstractTerm{T}}) where {T} = reduce(append!, T[], lowerbd(t) for t in v)
 
 function setθ!(A::ScalarFactorReTerm, v)
-    @argcheck(length(v) == 1, DimensionMismatch)
-    A.Λ = v[1]
+    A.Λ = v
     A
 end
 
@@ -333,16 +332,6 @@ function setθ!(A::VectorFactorReTerm{T}, v::AbstractVector{T}) where T
         m[inds[i]] = v[i]
     end
     A
-end
-function setθ!(trms::Vector{AbstractTerm{T}}, v::Vector{T}) where T
-    offset = 0
-    for trm in trms
-        if (k = nθ(trm)) > 0
-            setθ!(trm, view(v, (1:k) + offset))
-            offset += k
-        end
-    end
-    trms
 end
 
 function Ac_mul_B!(α::Real, A::VectorFactorReTerm{T}, B::MatrixTerm{T}, β::Real,
@@ -357,18 +346,29 @@ function Ac_mul_B!(α::Real, A::VectorFactorReTerm{T}, B::MatrixTerm{T}, β::Rea
     rr = A.f.refs
     Awtz = A.wtz
     l = vsize(A)
-    if l == 1
-        for j in 1:k, i in 1:n
-            R[rr[i], j] += α * Awtz[i] * Bwt[i, j]
+    for j in 1:k, i in 1:n
+        roffset = (rr[i] - 1) * l
+        mul = α * Bwt[i, j]
+        for ii in 1 : l
+            R[roffset + ii, j] += mul * Awtz[ii, i]
         end
-    else
-        for j in 1:k, i in 1:n
-            roffset = (rr[i] - 1) * l
-            mul = α * Bwt[i, j]
-            for ii in 1 : l
-                R[roffset + ii, j] += mul * Awtz[ii, i]
-            end
-        end
+    end
+    R
+end
+
+function Ac_mul_B!(α::Real, A::ScalarFactorReTerm{T}, B::MatrixTerm{T}, β::Real,
+    R::Matrix{T}) where T
+    n, q = size(A)
+    Bwt = B.wtx
+    k = size(Bwt, 2)
+    @argcheck(size(R, 1) == q && size(Bwt, 1) == n && size(R, 2) == k, DimensionMismatch)
+    if β ≠ one(T)
+        iszero(β) ? fill!(R, β) : scale!(β, R)
+    end
+    rr = A.f.refs
+    Awtz = A.wtz
+    for j in 1:k, i in 1:n
+        R[rr[i], j] += α * Awtz[i] * Bwt[i, j]
     end
     R
 end
@@ -514,6 +514,20 @@ function Base.Ac_mul_B(A::VectorFactorReTerm{T}, B::VectorFactorReTerm{T}) where
         append!(V, vec(view(Az, :, i) * view(Bz, :, i)'))
     end
     sparse(I, J, V)
+end
+
+function Ac_mul_B!(C::Matrix{T}, A::ScalarFactorReTerm{T}, B::ScalarFactorReTerm{T}) where T
+    m, n = size(B)
+    @argcheck size(C, 1) == size(A, 2) && n == size(C, 2) && size(A, 1) == m DimensionMismatch
+    Ar = A.f.refs
+    Br = B.f.refs
+    Az = A.wtz
+    Bz = B.wtz
+    fill!(C, zero(T))
+    for i in 1:m
+        C[Ar[i], Br[i]] += Az[i] * Bz[i]
+    end
+    C
 end
 
 function Ac_mul_B!(C::Matrix{T}, A::VectorFactorReTerm{T}, B::VectorFactorReTerm{T}) where T
