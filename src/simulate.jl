@@ -218,7 +218,8 @@ function unscaledre!(y::AbstractVector, A::ScalarFactorReTerm, b::AbstractVecOrM
     y
 end
 
-function unscaledre!(y::AbstractVector, A::VectorFactorReTerm, b::DenseMatrix)
+function unscaledre!(y::AbstractVector{T}, A::VectorFactorReTerm{T,V,R},
+                     b::DenseMatrix) where {T,V,R}
     Z = A.z
     k, n = size(Z)
     l = nlevs(A)
@@ -233,8 +234,14 @@ function unscaledre!(y::AbstractVector, A::VectorFactorReTerm, b::DenseMatrix)
     y
 end
 
-function unscaledre!(rng::AbstractRNG, y::AbstractVector, A::AbstractFactorReTerm)
+function unscaledre!(rng::AbstractRNG, y::AbstractVector{T},
+                     A::VectorFactorReTerm{T}) where T
     unscaledre!(y, A, A_mul_B!(LowerTriangular(A.Λ), randn(rng, vsize(A), nlevs(A))))
+end
+
+function unscaledre!(rng::AbstractRNG, y::AbstractVector{T},
+                     A::ScalarFactorReTerm{T}) where T
+    unscaledre!(y, A, scale!(A.Λ, randn(rng, vsize(A), nlevs(A))))
 end
 
 unscaledre!(y::AbstractVector, A::AbstractFactorReTerm) = unscaledre!(Base.GLOBAL_RNG, y, A)
