@@ -109,7 +109,6 @@ end
     @test isapprox(logdet(fm), 101.0381339953986, atol=0.001)
 end
 
-if false # takes too long on Travis for julia 0.6
 @testset "InstEval" begin
     fm1 = lmm(@formula(Y ~ 1 + A + (1 | G) + (1 | H) + (1 | I)), dat[:InstEval])
     @test size(fm1) == (73421, 2, 4114, 3)
@@ -130,9 +129,9 @@ if false # takes too long on Travis for julia 0.6
     @test isapprox(objective(fm2), 237585.5534151694, atol=0.001)
     @test size(fm2) == (73421, 28, 4100, 2)
 end
-end
 
-@testset "sleep" begin
+if false # takes too long on Travis for julia 0.6
+    @testset "sleep" begin
     fm = lmm(@formula(Y ~ 1 + U + (1 + U | G)), dat[:sleepstudy]);
     @test lowerbd(fm) == [0.0, -Inf, 0.0]
     A11 = fm.A[Block(1,1)]
@@ -193,6 +192,7 @@ end
     cor(fmnc)
 
     MixedModels.lrt(fm, fmnc)
+end
 end
 
 if false  # takes too long for Travis
