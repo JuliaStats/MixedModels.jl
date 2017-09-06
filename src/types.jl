@@ -36,28 +36,6 @@ function Base.getindex(A::UniformBlockDiagonal{T,B}, i::Int, j::Int) where {T, B
 end
 
 """
-    Ones{T}
-
-Implicit length n vector of ones of type `T`
-
-# Members
-- `n`: length
-"""
-struct Ones{T} <: AbstractVector{T}
-    n::Int
-end
-
-Base.size(v::Ones) = (v.n,)
-function Base.getindex(v::Ones{T}, i) where T
-    0 < i ≤ v.n || throw(BoundsError("attempt to access $(v.n)-element Ones at index [$i]"))
-    one(T)
-end
-
-Base.length(v::Ones) = v.n
-
-Base.scale!(v::AbstractVector, z::Ones, a::AbstractVector) = copy!(v, a)
-
-"""
     OptSummary
 
 Summary of an `NLopt` optimization

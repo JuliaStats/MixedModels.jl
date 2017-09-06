@@ -465,24 +465,10 @@ function Ac_mul_B!(C::UniformBlockDiagonal{T,K,L}, A::VectorFactorReTerm{T},
     C
 end
 
-function vprod(a::Ones,b::Ones)
-    @argcheck((n = length(a)) == length(b), DimensionMismatch)
-    ones(promote_type(eltype(a), eltype(b)), n)
-end
-
-function vprod(a::Ones, b::AbstractVector)
-    @argcheck((n = length(a)) == length(b), DimensionMismatch)
-    copy!(Vector(promote_type(eltype(a), eltype(b)), n), b)
-end
-
-vprod(a::AbstractVector, b::Ones) = vprod(b, a)
-
-vprod(a::AbstractVector, b::AbstractVector) = a .* b
-
 function Base.Ac_mul_B(A::ScalarFactorReTerm{T}, B::ScalarFactorReTerm{T}) where T
     A == B && return Ac_mul_B!(Diagonal(Vector{T}(nlevs(A))), A, B)
     sparse(convert(Vector{Int32}, A.f.refs), convert(Vector{Int32}, B.f.refs),
-           vprod(A.wtz, B.wtz))
+           A.wtz .* B.wtz)
 end
 
 function Base.Ac_mul_B(A::VectorFactorReTerm{T}, B::VectorFactorReTerm{T}) where T
