@@ -23,6 +23,6 @@ LD(d::DenseMatrix) = sum(i -> log(d[i]), diagind(d))
 
 Return the value of `log(det(Λ'Z'ZΛ + I))` evaluated in place.
 """
-logdet(m::LinearMixedModel) = 2sum(i -> LD(m.L.data[Block(i, i)]), 1:nreterms(m))
+logdet(m::LinearMixedModel{T}) where {T} = 2sum(i -> T(LD(m.L.data[Block(i, i)])), 1:nreterms(m))
 
 logdet(m::GeneralizedLinearMixedModel) = logdet(m.LMM)
