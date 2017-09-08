@@ -29,8 +29,12 @@ function cholUnblocked!(A::Matrix{T}, ::Type{Val{:L}}) where T<:BlasFloat
     A
 end
 
-function cholUnblocked!(D::LowerTriangular{T, UniformBlockDiagonal{T,K,L}},
-                        ::Type{Val{:L}}) where {T, K, L}
-    cholUnblocked!.(D.data.data, Val{:L})
+function cholUnblocked!(D::LowerTriangular{T, UniformBlockDiagonal{T}},
+                        ::Type{Val{:L}}) where {T}
+    data = D.data.data
+    l, m, n = size(data)
+    for k in 1:l
+        cholUnblocked!(view(data, k, :, :), Val{:L})
+    end
     D
 end

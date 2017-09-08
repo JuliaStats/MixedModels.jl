@@ -3,33 +3,49 @@
 
 Homogeneous block diagonal matrices.  `k` diagonal blocks each of size `m×m`
 """
-struct UniformBlockDiagonal{T,B,L} <: AbstractMatrix{T}
-    data::Vector{MArray{Tuple{B,B},T,B,L}}
+struct UniformBlockDiagonal{T} <: AbstractMatrix{T}
+    data::Array{T, 3}
 end
 
-function Base.size(A::UniformBlockDiagonal{T,B}) where {T, B}
-    m = length(A.data) * B
-    m, m
+function UniformBlockDiagonal(V::Vector{Matrix{T}}) where {T}
+    (lv = length(V)) > 0 || throw(ArgumentError("V must have a nonzero length"))
+    m, n = size(V[1])
+    data = Array{T}(lv, m, n)
+    for (k, f) in enumerate(V)
+        for j in 1:n, i in 1:m
+            data[k, i, j] = f[i, j]
+        end
+    end
+    UniformBlockDiagonal(data)
 end
 
-function Base.size(A::UniformBlockDiagonal{T,B}, i::Int) where {T, B}
+function Base.size(A::UniformBlockDiagonal{T}) where {T}
+    l, m, n = size(A.data)
+    (l * m, l * n)
+end
+
+function Base.size(A::UniformBlockDiagonal{T}, i::Int) where {T}
+    l, m, n = size(A.data)
     if i ≤ 0
         throw(ArgumentError("i = $i should be positive"))
-    elseif 0 < i ≤ 2
-        length(A.data) * B
+    elseif i == 1
+        l * m
+    elseif i == 2
+        l * n
     else
         1
     end
 end
 
-function Base.getindex(A::UniformBlockDiagonal{T,B}, i::Int, j::Int) where {T, B}
-    m = length(A.data) * B
-    (0 < i ≤ m && 0 < j ≤ m) ||
-        throw(IndexError("attempt to access $m \times $m array at index [$i, $j]"))
-    iblk, ioffset = divrem(i - 1, B)
-    jblk, joffset = divrem(j - 1, B)
+function Base.getindex(A::UniformBlockDiagonal{T}, i::Int, j::Int) where {T}
+    l, m, n = size(A.data)
+    M, N = l*m, l*n
+    (0 < i ≤ M && 0 < j ≤ N) ||
+        throw(IndexError("attempt to access $M × $N array at index [$i, $j]"))
+    iblk, ioffset = divrem(i - 1, m)
+    jblk, joffset = divrem(j - 1, n)
     if iblk == jblk
-        A.data[iblk+1][ioffset+1, joffset+1]
+        A.data[iblk+1, ioffset+1, joffset+1]
     else
         zero(T)
     end

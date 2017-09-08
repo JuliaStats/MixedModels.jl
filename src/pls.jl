@@ -103,7 +103,7 @@ function lmm(f::Formula, fr::AbstractDataFrame;
     isempty(tdict) && throw(ArgumentError("No random-effects terms found in $f"))
     trms = AbstractTerm{T}[]
     for (grp, lhs) in tdict
-        gr = asfactor(getindex(mf.df, grp))
+        gr = compact(pool(getindex(mf.df, grp)))
         if (length(lhs) == 1 && lhs[1] == 1)
             push!(trms, ScalarFactorReTerm(gr, grp))
         else

@@ -32,19 +32,21 @@ function scaleInflate!(Ljj::LowerTriangular{T,Matrix{T}}, Ajj::Diagonal{T},
     Ljj
 end
 
-function scaleInflate!(Ljj::LowerTriangular{T,UniformBlockDiagonal{T,K,L}},
-                       Ajj::UniformBlockDiagonal{T,K,L},
-                       Λj::VectorFactorReTerm{T}) where {T,K,L}
+function scaleInflate!(Ljj::LowerTriangular{T,UniformBlockDiagonal{T}},
+                       Ajj::UniformBlockDiagonal{T},
+                       Λj::VectorFactorReTerm{T}) where {T}
     @argcheck size(Ljj) == size(Ajj) DimensionMismatch
     λ = LowerTriangular(Λj.Λ)
     Ldiag = Ljj.data.data
     Adiag = Ajj.data
+#= FIXME: This is broken
     for i in eachindex(Ldiag)
         Ldi = Ac_mul_B!(λ, A_mul_B!(copy!(Ldiag[i], Adiag[i]), λ))
         for k in diagind(Ldi)
             Ldi[k] += one(T)
         end
     end
+=#
     Ljj
 end
 

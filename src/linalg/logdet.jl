@@ -7,12 +7,14 @@ Return `log(det(tril(A)))` evaluated in place.
 """
 LD(d::Diagonal{T}) where {T<:Number} = sum(log, d.diag)
 
-function LD(d::LowerTriangular{T, UniformBlockDiagonal{T,K,L}}) where {T,K,L}
+function LD(d::LowerTriangular{T, UniformBlockDiagonal{T}}) where {T}
     s = log(one(T))
+#= FIXME This is broken
     dind = diagind(K, K)
     for dd in d.data.data, i in dind
         s += log(dd[i])
     end
+=#
     s
 end
 

@@ -63,14 +63,14 @@ function rankUpdate!(α::T, A::SparseMatrixCSC{T}, C::Diagonal{T}) where T <: Nu
 end
 
 function rankUpdate!(α::T, A::SparseMatrixCSC{T},
-                     C::LowerTriangular{T,UniformBlockDiagonal{T,K,L}}) where {T<:Number,K,L}
+                     C::LowerTriangular{T,UniformBlockDiagonal{T}}) where {T<:Number}
     m, n = size(A)
     @argcheck size(C, 1) == m DimensionMismatch
-    @assert K > 1
     aat = α * (A * A')
     nz = nonzeros(aat)
     rv = rowvals(aat)
     offset = 0
+#=   FIXME: This is broken
     for d in C.data.data
         for j in 1:K
             for i in nzrange(aat, offset + j)
@@ -83,5 +83,6 @@ function rankUpdate!(α::T, A::SparseMatrixCSC{T},
         end
         offset += K
     end
+=#
     C
 end

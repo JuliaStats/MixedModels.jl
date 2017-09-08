@@ -46,24 +46,6 @@ Base.Ac_mul_B(A::MatrixTerm{T}, B::MatrixTerm{T}) where {T} = Ac_mul_B(A.wtx, B.
 A_mul_B!(R::StridedVecOrMat{T}, A::MatrixTerm{T}, B::StridedVecOrMat{T}) where {T} =
     A_mul_B!(R, A.x, B)
 
-const AbstractFactor{V,R} =
-    Union{NullableCategoricalVector{V,R},CategoricalVector{V,R},PooledDataVector{V,R}}
-
-"""
-    asfactor(f)
-
-Return `f` as a AbstractFactor.
-
-This function and the `AbstractFactor` union can be removed once `CategoricalArrays` replace
-`PooledDataArray`
-"""
-asfactor(f::AbstractFactor) = f
-asfactor(f) = pool(f)
-
-## FIXME: Create AbstractFactorReTerm, ScalarFactorReTerm and VectorFactorReTerm tyoes
-## Advantage is to use dispatch for methods in linalg/lambdaproducts.jl that currently
-## use short cuts based on vsize(arg) == 1
-
 abstract type AbstractFactorReTerm{T} <: AbstractTerm{T} end
 
 """
@@ -72,26 +54,26 @@ abstract type AbstractFactorReTerm{T} <: AbstractTerm{T} end
 Scalar random-effects term from a grouping factor
 
 # Members
-* `f`: the grouping factor as an `AbstractFactor`
-* `z`: the raw random-effects model matrix as a vector.  May have length 0.
+* `f`: the grouping factor as a `PooledDataArray` (soon to switch to CategoricalArray)
+* `z`: the raw random-effects model matrix as a vector.
 * `wtz`: a weighted copy of `z`
 * `fnm`: the name of the grouping factor as a `Symbol`
 * `cnm`: the column name as a string
 * `Λ`: the relative covariance multiplier
 """
 mutable struct ScalarFactorReTerm{T,V,R} <: AbstractFactorReTerm{T}
-    f::AbstractFactor{V,R}
+    f::PooledDataVector{V,R}
     z::Vector{T}
     wtz::Vector{T}
     fnm::Symbol
     cnms::Vector{String}
     Λ::T
 end
-# convenience constructor for testing
-function ScalarFactorReTerm(f::AbstractFactor, fnm::Symbol)
+function ScalarFactorReTerm(f::PooledDataVector, fnm::Symbol)
     v = ones(Float64, length(f))
     ScalarFactorReTerm(f, v, v, fnm, ["(Intercept)"], 1.0)
 end
+ScalarFactorReTerm(f::AbstractVector, fnm::Symbol) = ScalarFactorReTerm(pool(f), fnm)
 
 function cond(A::ScalarFactorReTerm)
     Λ = A.Λ
@@ -135,7 +117,7 @@ vsize(A::ScalarFactorReTerm) = 1
 Random-effects term from a grouping factor, model matrix and block pattern
 
 # Members
-* `f`: the grouping factor as an `AbstractFactor`
+* `f`: the grouping factor as an `PooledDataVector`
 * `z`: the transposed raw random-effects model matrix
 * `wtz`: a weighted copy of `z`
 * `fnm`: the name of the grouping factor as a `Symbol`
@@ -144,17 +126,17 @@ Random-effects term from a grouping factor, model matrix and block pattern
 * `Λ`: the relative covariance factor
 * `inds`: linear indices of θ elements in the relative covariance factor
 """
-mutable struct VectorFactorReTerm{T,V,R,K,L} <: AbstractFactorReTerm{T}
-    f::AbstractFactor{V,R}
+mutable struct VectorFactorReTerm{T,V,R} <: AbstractFactorReTerm{T}
+    f::PooledDataVector{V,R}
     z::Matrix{T}
     wtz::Matrix{T}
     fnm::Symbol
     cnms::Vector{String}
     blks::Vector{Int}
-    Λ::MArray{Tuple{K,K},T,2,L}
+    Λ::Matrix{T}
     inds::Vector{Int}
 end
-function VectorFactorReTerm(f::AbstractFactor, z::Matrix, fnm, cnms, blks)
+function VectorFactorReTerm(f::PooledDataVector, z::Matrix, fnm, cnms, blks)
     @argcheck (n = sum(blks)) == size(z, 1) DimensionMisMatch
     m = reshape(1:abs2(n), (n, n))
     offset = 0
@@ -165,7 +147,7 @@ function VectorFactorReTerm(f::AbstractFactor, z::Matrix, fnm, cnms, blks)
         end
         offset += k
     end
-    VectorFactorReTerm(f, z, z, fnm, cnms, blks, @MMatrix(eye(eltype(z), n)), inds)
+    VectorFactorReTerm(f, z, z, fnm, cnms, blks, eye(eltype(z), n), inds)
 end
 
 function reweight!(A::VectorFactorReTerm, sqrtwts::Vector)
@@ -191,9 +173,6 @@ end
 
 Return the levels of the grouping factor.
 
-This is to disambiguate a call to `levels` as both `DataArrays`
-and `CategoricalArrays` export it.
-
 # Examples
 ```jldoctest
 julia> trm = FactorReTerm(pool(repeat('A':'F', inner = 5)));
@@ -203,10 +182,7 @@ julia> show(MixedModels.levs(trm))
 julia>
 ```
 """
-function levs(A::AbstractFactorReTerm)
-    f = A.f
-    isa(f, PooledDataArray) ? DataArrays.levels(f) : CategoricalArrays.levels(f)
-end
+levs(A::AbstractFactorReTerm) = levels(A.f)
 
 """
     nlevs(A::FactorReTerm)
@@ -443,8 +419,8 @@ function Ac_mul_B!(C::Diagonal{T}, A::ScalarFactorReTerm{T,V,R},
     C
 end
 
-function Ac_mul_B!(C::UniformBlockDiagonal{T,K,L}, A::VectorFactorReTerm{T},
-                   B::VectorFactorReTerm{T}) where {T,K,L}
+function Ac_mul_B!(C::UniformBlockDiagonal{T}, A::VectorFactorReTerm{T},
+                   B::VectorFactorReTerm{T}) where {T}
     Az = A.wtz
     l, n = size(Az)
     @argcheck A === B && l == K
@@ -452,11 +428,11 @@ function Ac_mul_B!(C::UniformBlockDiagonal{T,K,L}, A::VectorFactorReTerm{T},
     fill!.(d, zero(T))
     refs = A.f.refs
     @inbounds for i in eachindex(refs)
-        dri = d[refs[i]]
+        ri = Int(refs[i])
         for j in 1:l
             Aji = Az[j, i]
             for k in 1:l
-                dri[k, j] += Aji * Az[k, i]
+                d[ri, k, j] += Aji * Az[k, i]
             end
         end
     end
@@ -477,8 +453,7 @@ function Base.Ac_mul_B(A::VectorFactorReTerm{T}, B::VectorFactorReTerm{T}) where
     if A === B
         l = vsize(A)
         nl = nlevs(A)
-        return Ac_mul_B!(UniformBlockDiagonal([MMatrix{l,l}(zeros(T,(l,l))) for _ in 1:nl]),
-                         A, A)
+        return Ac_mul_B!(UniformBlockDiagonal([Matrix{T}(l, l) for _ in 1:nl]), A, A)
     end
     Az = A.wtz
     Bz = B.wtz

@@ -110,12 +110,12 @@ end
     end
 
     @test vec(corr'MatrixTerm(ones(size(corr, 1)))) == repeat([10.0, 45.0], outer = 18)
-
+#=
     vrp = corr'corr
     
     @test isa(vrp, UniformBlockDiagonal{Float64,2,4})
     @test size(vrp) == (36, 36)
-
+=#
     @testset "reweight!" begin
         wts = rand(MersenneTwister(1234321), size(corr, 1))
         @test MixedModels.reweight!(corr, wts).wtz[1, :] == wts
