@@ -20,7 +20,7 @@ rankUpdate!(α::T, A::StridedMatrix{T}, C::HermOrSym{T,S}) where {T<:Real,S<:Str
 rankUpdate!(A::StridedMatrix{T}, C::HermOrSym{T,S}) where {T<:Real,S<:StridedMatrix} =
     rankUpdate!(one(T), A, one(T), C)
 
-function rankUpdate!(α::T, A::SparseMatrixCSC{T}, β::T, C::HermOrSym{T,S}) where {T<:AbstractFloat,S<:StridedMatrix}
+function rankUpdate!(α::T, A::SparseMatrixCSC{T,I}, β::T, C::HermOrSym{T,S}) where {T,I,S}
     m, n = size(A)
     @argcheck m == size(C, 2) && C.uplo == 'L' DimensionMismatch
     Cd = C.data

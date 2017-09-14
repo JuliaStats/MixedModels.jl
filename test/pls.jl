@@ -130,19 +130,21 @@ end
     @test size(fm2) == (73421, 28, 4100, 2)
 end
 
-if false # takes too long on Travis for julia 0.6
-    @testset "sleep" begin
+@testset "sleep" begin
     fm = lmm(@formula(Y ~ 1 + U + (1 + U | G)), dat[:sleepstudy]);
     @test lowerbd(fm) == [0.0, -Inf, 0.0]
     A11 = fm.A[Block(1,1)]
-    @test isa(A11, UniformBlockDiagonal{Float64, 2, 4})
-    @test isa(fm.L.data[Block(1, 1)], UniformBlockDiagonal{Float64, 2, 4})
+    @test isa(A11, UniformBlockDiagonal{Float64})
+    @test isa(fm.L.data[Block(1, 1)], UniformBlockDiagonal{Float64})
     @test size(A11) == (36, 36)
-    @test A11.data[1] == [10. 45.; 45. 285.]
-    @test length(A11.data) == 18
+    @test A11.facevec[1] == [10. 45.; 45. 285.]
+    @test length(A11.facevec) == 18
     updateL!(fm);
-    @test fm.L[1, 1][1, 1] * fm.L[1, 1][1, 1]' == fm.A[Block(1, 1)][1, 1] + I
+    b11 = LowerTriangular(fm.L.data[Block(1, 1)].facevec[1])
+    @test b11 * b11' == fm.A[Block(1, 1)].facevec[1] + I
+#=   Not sure this test is meaningful anymore
     @test countnz(full(fm.L[1, 1])) == 18 * 3
+=#
 
     fit!(fm)
 
@@ -192,7 +194,6 @@ if false # takes too long on Travis for julia 0.6
     cor(fmnc)
 
     MixedModels.lrt(fm, fmnc)
-end
 end
 
 if false  # takes too long for Travis

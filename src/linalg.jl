@@ -85,14 +85,12 @@ end
 
 function Ac_ldiv_B!(A::LowerTriangular{T,UniformBlockDiagonal{T}}, B::StridedVector{T}) where {T}
     @argcheck length(B) == size(A, 2) DimensionMismatch
-    Ad = A.data.data
-    k, m, n = size(Ad)
-#= FIXME: This is broken
-    bb = reshape(B, (m, k))
+    m, n, k = size(A.data.data)
+    fv = A.data.facevec
+    bb = reshape(B, (n, k))
     for j in 1:k
-        Ac_ldiv_B!(LowerTriangular(Ad[j]), view(bb, :, j))
+        Ac_ldiv_B!(LowerTriangular(fv[j]), view(bb, :, j))
     end
-=#
     B
 end
 
@@ -123,14 +121,13 @@ if VERSION < v"0.7.0-DEV.586"
 end
 
 function A_rdiv_Bc!(A::Matrix{T}, B::LowerTriangular{T,UniformBlockDiagonal{T}}) where {T}
-    @argcheck size(A, 2) == size(B, 1) DimensionMismatch
-    Bdata = B.data.data
-    k, m, n = size(Bdata)
+    m, n, k = size(B.data.data)
+    @argcheck size(A, 2) == size(B, 1) && m == n DimensionMismatch
     offset = 0
-    for d in Bdata
+    for f in B.data.facevec
         ## FIXME call BLAS.trsm directly
-        A_rdiv_Bc!(view(A, :, (1:k) + offset), LowerTriangular(d))
-        offset += K
+        A_rdiv_Bc!(view(A, :, (1:m) + offset), LowerTriangular(f))
+        offset += m
     end
     A
 end

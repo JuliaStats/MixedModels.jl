@@ -419,23 +419,18 @@ function Ac_mul_B!(C::Diagonal{T}, A::ScalarFactorReTerm{T,V,R},
     C
 end
 
-function Ac_mul_B!(C::UniformBlockDiagonal{T}, A::VectorFactorReTerm{T},
-                   B::VectorFactorReTerm{T}) where {T}
+function Ac_mul_B!(C::UniformBlockDiagonal{T}, A::VectorFactorReTerm{T,V,R},
+                   B::VectorFactorReTerm{T,V,R}) where {T,V,R}
     Az = A.wtz
     l, n = size(Az)
-    @argcheck A === B && l == K
-    d = C.data
-    fill!.(d, zero(T))
+    fv = C.facevec
+    @argcheck A === B && size(fv[1]) == (l, l)
+    fill!(C.data, zero(T))
     refs = A.f.refs
-    @inbounds for i in eachindex(refs)
-        ri = Int(refs[i])
-        for j in 1:l
-            Aji = Az[j, i]
-            for k in 1:l
-                d[ri, k, j] += Aji * Az[k, i]
-            end
-        end
+    @inbounds for i in 1:n
+        BLAS.syr!('L', one(T), view(Az, :, i), fv[refs[i]])
     end
+    copytri!.(fv, 'L')
     C
 end
 

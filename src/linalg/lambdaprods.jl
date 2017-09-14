@@ -53,7 +53,7 @@ end
 Λ_mul_B!(A::ScalarFactorReTerm{T}, B::StridedVecOrMat{T}) where T = scale!(B, A.Λ)
 
 function A_mul_Λ!(A::Matrix{T}, B::VectorFactorReTerm{T}) where T<:AbstractFloat
-    @argcheck (k = vsize(A)) > 1
+    @argcheck (k = vsize(B)) > 1
     λ = LowerTriangular(B.Λ)
     m, n = size(A)
     q, r = divrem(n, k)

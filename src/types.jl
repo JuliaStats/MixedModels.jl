@@ -5,27 +5,27 @@ Homogeneous block diagonal matrices.  `k` diagonal blocks each of size `m×m`
 """
 struct UniformBlockDiagonal{T} <: AbstractMatrix{T}
     data::Array{T, 3}
+    facevec::Vector{SubArray{T, 2, Array{T, 3}}}
 end
 
-function UniformBlockDiagonal(V::Vector{Matrix{T}}) where {T}
+function UniformBlockDiagonal(V::Vector{Matrix{T}}) where T
     (lv = length(V)) > 0 || throw(ArgumentError("V must have a nonzero length"))
     m, n = size(V[1])
-    data = Array{T}(lv, m, n)
+    data = Array{T}(m, n, lv)
+    facevec = sizehint!(SubArray{T,2,Array{T,3}}[], lv)
     for (k, f) in enumerate(V)
-        for j in 1:n, i in 1:m
-            data[k, i, j] = f[i, j]
-        end
+        push!(facevec, copy!(view(data, :, :, k), f))
     end
-    UniformBlockDiagonal(data)
+    UniformBlockDiagonal(data, facevec)
 end
 
 function Base.size(A::UniformBlockDiagonal{T}) where {T}
-    l, m, n = size(A.data)
+    m, n, l = size(A.data)
     (l * m, l * n)
 end
 
 function Base.size(A::UniformBlockDiagonal{T}, i::Int) where {T}
-    l, m, n = size(A.data)
+    m, n, l = size(A.data)
     if i ≤ 0
         throw(ArgumentError("i = $i should be positive"))
     elseif i == 1
@@ -38,14 +38,13 @@ function Base.size(A::UniformBlockDiagonal{T}, i::Int) where {T}
 end
 
 function Base.getindex(A::UniformBlockDiagonal{T}, i::Int, j::Int) where {T}
-    l, m, n = size(A.data)
-    M, N = l*m, l*n
-    (0 < i ≤ M && 0 < j ≤ N) ||
+    m, n, l = size(A.data)
+    (0 < i ≤ l * m && 0 < j ≤ l * n) ||
         throw(IndexError("attempt to access $M × $N array at index [$i, $j]"))
     iblk, ioffset = divrem(i - 1, m)
     jblk, joffset = divrem(j - 1, n)
     if iblk == jblk
-        A.data[iblk+1, ioffset+1, joffset+1]
+        A.data[ioffset+1, joffset+1, iblk+1]
     else
         zero(T)
     end

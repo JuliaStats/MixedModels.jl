@@ -37,16 +37,14 @@ function scaleInflate!(Ljj::LowerTriangular{T,UniformBlockDiagonal{T}},
                        Λj::VectorFactorReTerm{T}) where {T}
     @argcheck size(Ljj) == size(Ajj) DimensionMismatch
     λ = LowerTriangular(Λj.Λ)
-    Ldiag = Ljj.data.data
-    Adiag = Ajj.data
-#= FIXME: This is broken
-    for i in eachindex(Ldiag)
-        Ldi = Ac_mul_B!(λ, A_mul_B!(copy!(Ldiag[i], Adiag[i]), λ))
+    Lfv = Ljj.data.facevec
+    Afv = Ajj.facevec
+    for i in eachindex(Lfv)
+        Ldi = Ac_mul_B!(λ, A_mul_B!(copy!(Lfv[i], Afv[i]), λ))
         for k in diagind(Ldi)
             Ldi[k] += one(T)
         end
     end
-=#
     Ljj
 end
 
