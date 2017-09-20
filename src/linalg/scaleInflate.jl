@@ -13,7 +13,7 @@ function scaleInflate!(Ljj::LowerTriangular{T,Matrix{T}}, Ajj::Matrix{T},
 end
 
 function scaleInflate!(Ljj::Diagonal{T}, Ajj::Diagonal{T},
-                     Λj::ScalarFactorReTerm{T}) where T<:AbstractFloat
+                       Λj::ScalarFactorReTerm{T}) where T<:AbstractFloat
     @argcheck(length(Λj.Λ) == 1, DimensionMismatch)
     broadcast!((x,k) -> k * x + one(T), Ljj.diag, Ajj.diag, abs2(Λj.Λ[1]))
     Ljj
@@ -48,21 +48,23 @@ function scaleInflate!(Ljj::LowerTriangular{T,UniformBlockDiagonal{T}},
     Ljj
 end
 
-function scaleInflate!(Ljj::Matrix{T}, Ajj::UniformBlockDiagonal{T},
-                       Λj::VectorFactorReTerm{T}) where T<:AbstractFloat
+function scaleInflate!(Ljj::LowerTriangular{T,Matrix{T}}, Ajj::UniformBlockDiagonal{T},
+                       Λj::VectorFactorReTerm{T}) where {T}
     @argcheck size(Ljj) == size(Ajj) DimensionMismatch
-    Adiag = Ajj.data
     λ = LowerTriangular(Λj.Λ)
-    n = size(λ, 2)
-    fill!(Ljj, zero(T))
-    scrm = Matrix{T}(n, n)
+    Afv = Ajj.facevec
+    m, n, l = size(Ajj.data)
+    m == n || throw(ArgumentError("Diagonal blocks of Ajj must be square"))
+    Ld = Ljj.data
+    fill!(Ld, zero(T))
+    tmp = Array{T}(m, m)
     offset = 0
-    for a in Adiag
-        Ac_mul_B!(λ, A_mul_B!(copy!(scrm, a), λ))
+    for k in eachindex(Afv)
+        Ac_mul_B!(λ, A_mul_B!(copy!(tmp, Afv[k]), λ))
         for j in 1:n, i in 1:n
-            Ljj[offset + i, offset + j] = scrm[i, j] + T(i == j)
+            Ld[offset + i, offset + j] = tmp[i, j] + T(i == j)
         end
-        offset += n
+        offset += m
     end
     Ljj
 end

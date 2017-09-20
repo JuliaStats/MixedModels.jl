@@ -32,28 +32,17 @@ function LinearMixedModel(f, trms, wts)
         A[Block(i, j)] = Aij
         L[Block(i, j)] = deepcopy(Aij)
     end
-    for i in 1:nt
-        Lii = L[Block(i, i)]
-        if isa(Lii, Diagonal)
-            Liid = Lii.diag
-            if !isempty(Liid) && isa(Liid[1], Array)
-                L[Block(i, i)] = if all(d -> size(d) == (1, 1), Liid)
-                    Diagonal(getindex.(Liid, 1, 1))
-                else
-                    Diagonal(LowerTriangular.(Liid))
-                end
-            end
-        end
-    end
+                  # check for fill-in due to non-nested grouping factors
     for i in 2:nt
-        Lii = L[Block(i, i)]
-        if isa(Lii, Diagonal)
-            for j in 1:(i - 1)     # check for fill-in
-                Aij = A[Block(i, j)]
-                if !isdiag(Aij * Aij')
+        ti = trms[i]
+        if isa(ti, AbstractFactorReTerm)
+            for j in 1:(i - 1)
+                tj = trms[j]
+                if isa(tj, AbstractFactorReTerm) && !isnested(tj.f, ti.f)
                     for k in i:nt
                         L[Block(k, i)] = full(L[Block(k, i)])
                     end
+                    break
                 end
             end
         end

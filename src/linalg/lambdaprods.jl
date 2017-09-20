@@ -15,8 +15,8 @@ the diagonal plus a copy! operation in one step.
 function Λc_mul_B! end
 function A_mul_Λ! end
 
-Λc_mul_B!(A::MatrixTerm{T}, B::AbstractArray{T}) where {T} = B
-A_mul_Λ!(A::AbstractArray{T}, B::MatrixTerm{T}) where {T} = A
+Λc_mul_B!(A::MatrixTerm, B) = B
+A_mul_Λ!(A, B::MatrixTerm) = A
 
 A_mul_Λ!(A, B::ScalarFactorReTerm) = scale!(A, B.Λ)
 Λc_mul_B!(A::ScalarFactorReTerm, B) = scale!(A.Λ, B)
@@ -75,10 +75,10 @@ end
 function Λ_mul_B!(C::StridedVecOrMat{T}, A::VectorFactorReTerm{T},
                   B::StridedVecOrMat{T}) where T
     @argcheck(size(C) == size(B), DimensionMismatch)
-    m = size(C, 1)
-    λ = LowerTriangular(A.Λ)
-    k = size(λ, 1)
-    A_mul_B!(λ, reshape(copy!(C, B), (k, size(C, 2) * div(m, k))))
+    k = vsize(A)
+    q, r = divrem(size(C, 1), k)
+    iszero(r) || throw(ArgumentError("size(C, 1) = $(size(C,1)) is not a multiple of $k = vsize(A)"))
+    A_mul_B!(LowerTriangular(A.Λ), reshape(copy!(C, B), (k, size(C, 2) * q)))
     C
 end
 

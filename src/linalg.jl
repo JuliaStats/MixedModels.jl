@@ -25,6 +25,7 @@ function αβA_mul_Bc!(α::T, A::SparseMatrixCSC{T}, B::SparseMatrixCSC{T},
     C
 end
 
+#= This is not tested.  See if it is really needed.
 function αβA_mul_Bc!(α::T, A::SparseMatrixCSC{T}, B::SparseMatrixCSC{T},
                      β::T, C::SparseMatrixCSC{T}) where T <: Number
     @argcheck B.m == C.n && A.m == C.m && A.n == B.n  DimensionMismatch
@@ -53,6 +54,7 @@ function αβA_mul_Bc!(α::T, A::SparseMatrixCSC{T}, B::SparseMatrixCSC{T},
     end
     C
 end
+=#
 
 function αβA_mul_Bc!(α::T, A::StridedVecOrMat{T}, B::SparseMatrixCSC{T}, β::T,
                      C::StridedVecOrMat{T}) where T
@@ -135,14 +137,13 @@ end
 function A_rdiv_Bc!(A::SparseMatrixCSC{T}, B::LowerTriangular{T,UniformBlockDiagonal{T}}) where {T}
     nz = nonzeros(A)
     offset = 0
-    Bdata = B.data.data
-    k, m, n = size(Bdata)
-    for d in Bdata
-        nzr = nzrange(A, offset + 1).start : nzrange(A, offset + m).stop
+    m, n, k = size(B.data.data)
+    for f in B.data.facevec
+        nzr = nzrange(A, offset + 1).start : nzrange(A, offset + n).stop
         q = div(length(nzr), m)
             ## FIXME Still allocating 1.4 GB.  Call BLAS.trsm directly
-        A_rdiv_Bc!(unsafe_wrap(Array, pointer(nz, nzr[1]), (q, m)), LowerTriangular(d))
-        offset += m
+        A_rdiv_Bc!(unsafe_wrap(Array, pointer(nz, nzr[1]), (q, m)), LowerTriangular(f))
+        offset += n
     end
     A
 end
