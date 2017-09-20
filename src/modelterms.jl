@@ -49,6 +49,26 @@ A_mul_B!(R::StridedVecOrMat{T}, A::MatrixTerm{T}, B::StridedVecOrMat{T}) where {
 abstract type AbstractFactorReTerm{T} <: AbstractTerm{T} end
 
 """
+    isnested(A, B)
+
+Is factor `A` nested in factor `B`?  That is, does each value of `A` occur with just
+one value of B?
+"""
+function isnested(A::PooledDataVector{V,R}, B::PooledDataVector{W,S}) where {V,R,W,S}
+    @argcheck length(A) == length(B) DimensionMismatch
+    bins = zeros(S, length(A.pool))
+    @inbounds for (a, b) in zip(A.refs, B.refs)
+        bba = bins[a]
+        if iszero(bba)
+            bins[a] = b
+        elseif bba ≠ b
+            return false
+        end
+    end
+    true
+end
+
+"""
     ScalarFactorReTerm
 
 Scalar random-effects term from a grouping factor
@@ -488,6 +508,7 @@ function Ac_mul_B!(C::Matrix{T}, A::ScalarFactorReTerm{T}, B::ScalarFactorReTerm
     C
 end
 
+#=  Methods not tested.  Comment out to see if they are really needed.
 function Ac_mul_B!(C::Matrix{T}, A::VectorFactorReTerm{T}, B::VectorFactorReTerm{T}) where T
     m, n = size(B)
     @argcheck size(C, 1) == size(A, 2) && n == size(C, 2) && size(A, 1) == m DimensionMismatch
@@ -554,3 +575,4 @@ function Ac_mul_B!(C::SparseMatrixCSC{T}, A::VectorFactorReTerm{T}, B::VectorFac
     end
     C
 end
+=#

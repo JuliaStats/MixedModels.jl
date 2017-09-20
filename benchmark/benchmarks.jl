@@ -81,13 +81,13 @@ fitbobyqa(rhs::Expr, dsname::Symbol) = fit!(lmm(DataFrames.Formula(:Y, rhs), dat
     end
 end
 
-#=
 @benchgroup "singlevector" ["single", "vector"] begin
     for ds in [:HR, :Oxboys, :SIMS, :sleepstudy, :Weights, :WWheat]
-        @bench string(ds) fitbobyqa($(QuoteNode(ds)))
+        for rhs in mods[ds]
+            @bench string(ds, ':', rhs) fitbobyqa($(QuoteNode(rhs)), $(QuoteNode(ds)))
+        end
     end
 end
-=#
 
 @benchgroup "nested" ["multiple", "nested", "scalar"] begin
     for ds in [:Animal, :Genetics, :Pastes, :Semi2]
@@ -106,10 +106,10 @@ end
     end
 end
 
-#=
 @benchgroup "crossedvector" ["multiple", "crossed", "vector"] begin
     for ds in [:bs10, :gb12]
-        @bench string(ds) fitbobyqa($(QuoteNode(ds)))
+        for rhs in mods[ds]
+            @bench string(ds, ':', rhs) fitbobyqa($(QuoteNode(rhs)), $(QuoteNode(ds)))
+        end
     end
 end
-=#

@@ -13,7 +13,7 @@ function LD(d::UniformBlockDiagonal{T}) where T
     sum(log, f[i] for f in d.facevec, i in dind)
 end
 
-LD(d::DenseMatrix{T}) where {T} = sum(i -> log(d[i]), diagind(d))
+LD(d::DenseMatrix{T}) where {T} = sum(log, d[i] for i in diagind(d))
 
 """
     logdet(m::LinearMixedModel)
