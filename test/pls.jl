@@ -142,9 +142,8 @@ end
     updateL!(fm);
     b11 = LowerTriangular(fm.L.data[Block(1, 1)].facevec[1])
     @test b11 * b11' == fm.A[Block(1, 1)].facevec[1] + I
-#=   Not sure this test is meaningful anymore
-    @test countnz(full(fm.L[1, 1])) == 18 * 3
-=#
+    @test countnz(full(fm.L.data[Block(1, 1)])) == 18 * 4
+
 
     fit!(fm)
 
@@ -196,7 +195,6 @@ end
     MixedModels.lrt(fm, fmnc)
 end
 
-# takes too long for Travis
 @testset "d3" begin
     fm = updateL!(lmm(@formula(Y ~ 1 + U + (1+U|G) + (1+U|H) + (1+U|I)), dat[:d3]));
     @test isapprox(pwrss(fm), 5.1261847180180885e6, rtol = 1e-6)

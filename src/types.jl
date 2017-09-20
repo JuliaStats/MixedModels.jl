@@ -60,6 +60,8 @@ function Base.full(A::UniformBlockDiagonal{T}) where T
         for j = 1:n, i = 1:m
             res[offseti + i, offsetj + j] = Ad[i, j, k]
         end
+        offseti += m
+        offsetj += n
     end
     res
 end
