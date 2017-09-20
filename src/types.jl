@@ -50,6 +50,20 @@ function Base.getindex(A::UniformBlockDiagonal{T}, i::Int, j::Int) where {T}
     end
 end
 
+function Base.full(A::UniformBlockDiagonal{T}) where T
+    res = zeros(T, size(A))
+    Ad = A.data
+    m, n, l = size(Ad)
+    offseti = 0
+    offsetj = 0
+    for k = 1:l
+        for j = 1:n, i = 1:m
+            res[offseti + i, offsetj + j] = Ad[i, j, k]
+        end
+    end
+    res
+end
+
 """
     OptSummary
 
@@ -228,8 +242,8 @@ end
 
 function Base.show(io::IO, vc::VarCorr)
     # FIXME: Do this one term at a time
-    fnms = vc.fnms
-    stdm = vc.σ
+    fnms = copy(vc.fnms)
+    stdm = copy(vc.σ)
     cor = vc.ρ
     cnms = reduce(append!, String[], vc.cnms)
     if isfinite(vc.s)
