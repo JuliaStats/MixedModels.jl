@@ -196,7 +196,7 @@ end
     MixedModels.lrt(fm, fmnc)
 end
 
-if false  # takes too long for Travis
+# takes too long for Travis
 @testset "d3" begin
     fm = updateL!(lmm(@formula(Y ~ 1 + U + (1+U|G) + (1+U|H) + (1+U|I)), dat[:d3]));
     @test isapprox(pwrss(fm), 5.1261847180180885e6, rtol = 1e-6)
@@ -205,7 +205,6 @@ if false  # takes too long for Travis
     fit!(fm)
     @test isapprox(objective(fm), 884957.5540213, rtol = 1e-6)
     @test isapprox(fixef(fm), [0.499130440264, 0.31130685058], atol = 1.e-5)
-end
 end
 
 
