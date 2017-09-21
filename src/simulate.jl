@@ -97,10 +97,7 @@ end
 
 function stddevcor!(σ::Vector{T}, ρ::Matrix{T}, scr::Matrix{T}, L::LinAlg.Cholesky{T}) where T
     @argcheck length(σ) == (k = size(L, 2)) && size(ρ) == (k, k) && size(scr) == (k, k) DimensionMismatch
-    if k == 1
-        copy!(σ, L.factors)
-        ρ[1, 1] = one(T)
-    elseif L.uplo == 'L'
+    if L.uplo == 'L'
         copy!(scr, L.factors)
         for i in 1 : k
             σ[i] = σi = norm(view(scr, i, 1 : i))
