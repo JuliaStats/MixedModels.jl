@@ -6,11 +6,7 @@
 Return the lower Cholesky factor for the fixed-effects parameters, as an `LowerTriangular`
 `p × p` matrix.
 """
-function feL(m::MixedModel)
-    L = lmm(m).L
-    kp1 = size(L, 1) - 1
-    LowerTriangular(L[kp1, kp1])
-end
+feL(m::MixedModel) = LowerTriangular(lmm(m).L.data.blocks[end - 1, end - 1])
 
 """
     lmm(m::MixedModel)
@@ -64,8 +60,9 @@ function describeblocks(io::IO, m::MixedModel)
     lm = lmm(m)
     A = lm.A
     L = lm.L
-    for i in 1 : size(A, 2), j in 1 : i
-        println(io, i, ",", j, ": ", typeof(A[i,j]), " ", size(A[i,j]), " ", typeof(L[i,j]))
+    for i in 1 : nblocks(A, 2), j in 1 : i
+        println(io, i, ",", j, ": ", typeof(A[Block(i, j)]), " ",
+                blocksize(A, i, j), " ", typeof(L.data[Block(i, j)]))
     end
 end
 describeblocks(m::MixedModel) = describeblocks(Base.STDOUT, m)
@@ -101,10 +98,10 @@ Return the number of levels in the random-effects terms' grouping factors.
 """
 grplevels(m::MixedModel) = nlevs.(reterms(m))
 
-nreterms(m::MixedModel) = sum(t -> isa(t, FactorReTerm), lmm(m).trms)
+nreterms(m::MixedModel) = sum(t -> isa(t, AbstractFactorReTerm), lmm(m).trms)
 
-reterms(m::MixedModel) =
-    convert(Vector{FactorReTerm}, filter(t -> isa(t, FactorReTerm), lmm(m).trms))
+reterms(m::MixedModel) = convert(Vector{AbstractFactorReTerm},
+                                 filter(t -> isa(t, AbstractFactorReTerm), lmm(m).trms))
 
 """
     ranef!{T}(v::Vector{Matrix{T}}, m::MixedModel{T}, β, uscale::Bool)
@@ -115,17 +112,18 @@ If `uscale` is `true` the random effects are on the spherical (i.e. `u`) scale, 
 on the original scale
 """
 function ranef!(v::Vector, m::LinearMixedModel{T}, β::AbstractArray{T}, uscale::Bool) where T
-    L = m.L
+    Ldat = m.L.data
     @argcheck((k = length(v)) == nreterms(m), DimensionMismatch)
     for j in 1:k
-        αβAc_mul_B!(-one(T), L[k + 1, j], β, one(T), vec(copy!(v[j], L[end, j])))
+        αβAc_mul_B!(-one(T), Ldat[Block(k + 1, j)], β, one(T), vec(copy!(v[j],
+                    Ldat[Block(nblocks(Ldat, 2), j)])))
     end
     for i in k: -1 :1
-        Lii = L[i, i]
+        Lii = Ldat[Block(i, i)]
         vi = vec(v[i])
         Ac_ldiv_B!(isa(Lii, Diagonal) ? Lii : LowerTriangular(Lii), vi)
         for j in 1:(i - 1)
-            αβAc_mul_B!(-one(T), L[i, j], vi, one(T), vec(v[j]))
+            αβAc_mul_B!(-one(T), Ldat[Block(i, j)], vi, one(T), vec(v[j]))
         end
     end
     if !uscale
@@ -137,9 +135,7 @@ function ranef!(v::Vector, m::LinearMixedModel{T}, β::AbstractArray{T}, uscale:
     v
 end
 
-function ranef!(v::Vector, m::LinearMixedModel, uscale::Bool)
-    ranef!(v, m, Ac_ldiv_B(feL(m), vec(copy(m.L[end, end - 1]))), uscale)
-end
+ranef!(v::Vector, m::LinearMixedModel, uscale::Bool) = ranef!(v, m, fixef(m), uscale)
 
 """
     ranef{T}(m::MixedModel{T}, uscale=false)
@@ -192,7 +188,7 @@ diagonal blocks from the conditional variance-covariance matrix,
 function condVar(m::MixedModel)
     lm = lmm(m)
     λ = lm.trms[1]
-    L11 = lm.L[1, 1]
+    L11 = lm.L.data[Block(1, 1)]
     if nreterms(lm) ≠ 1 || !isa(L11, Diagonal{eltype(λ)})
         throw(ArgumentError("code for vector-valued r.e. or more than one term not yet written"))
     end

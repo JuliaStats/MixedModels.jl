@@ -20,37 +20,29 @@ function LinearMixedModel(f, trms, wts)
     n = size(trms[1], 1)
     T = eltype(trms[end])
     sqrtwts = sqrt.(wts)
+    sz = size.(trms, 2)
     if !isempty(wts)
         reweight!.(trms, Vector[sqrtwts])
     end
     nt = length(trms)
-    A = Array{AbstractMatrix}(nt, nt)
-    L = Array{AbstractMatrix}(nt, nt)
+    A = BlockArray(AbstractMatrix{T}, sz, sz)
+    L = BlockArray(AbstractMatrix{T}, sz, sz)
     for j in 1:nt, i in j:nt
-        A[i, j] = densify(trms[i]'trms[j])
-        L[i, j] = deepcopy(A[i, j])
+        Aij = densify(trms[i]'trms[j])
+        A[Block(i, j)] = Aij
+        L[Block(i, j)] = deepcopy(Aij)
     end
-    for i in 1:nt
-        Lii = L[i, i]
-        if isa(Lii, Diagonal)
-            Liid = Lii.diag
-            if !isempty(Liid) && isa(Liid[1], Array)
-                if all(d -> size(d) == (1,1), Liid)
-                    L[i, i] = Diagonal(map(d -> d[1,1], Liid))
-                else
-                    L[i, i] = Diagonal(map(LowerTriangular, Liid))
-                end
-            end
-        end
-    end
+                  # check for fill-in due to non-nested grouping factors
     for i in 2:nt
-        Lii = L[i, i]
-        if isa(Lii, Diagonal)
-            for j in 1:(i - 1)     # check for fill-in
-                if !isdiag(A[i, j] * A[i, j]')
+        ti = trms[i]
+        if isa(ti, AbstractFactorReTerm)
+            for j in 1:(i - 1)
+                tj = trms[j]
+                if isa(tj, AbstractFactorReTerm) && !isnested(tj.f, ti.f)
                     for k in i:nt
-                        L[k, i] = full(L[k, i])
+                        L[Block(k, i)] = full(L[Block(k, i)])
                     end
+                    break
                 end
             end
         end
@@ -58,8 +50,7 @@ function LinearMixedModel(f, trms, wts)
     optsum = OptSummary(getθ(trms), lowerbd(trms), :LN_BOBYQA;
         ftol_rel = convert(T, 1.0e-12), ftol_abs = convert(T, 1.0e-8))
     fill!(optsum.xtol_abs, 1.0e-10)
-    LinearMixedModel(f, trms, sqrtwts, Hermitian(HeteroBlkdMatrix(A), :L),
-        LowerTriangular(HeteroBlkdMatrix(L)), optsum)
+    LinearMixedModel(f, trms, sqrtwts, A, LowerTriangular(L), optsum)
 end
 
 model_response(mf::ModelFrame, d::Distribution=Normal()) =
@@ -101,25 +92,30 @@ function lmm(f::Formula, fr::AbstractDataFrame;
     isempty(tdict) && throw(ArgumentError("No random-effects terms found in $f"))
     trms = AbstractTerm{T}[]
     for (grp, lhs) in tdict
-        gr = asfactor(getindex(mf.df, grp))
-        m = T[]
-        coefnms = String[]
-        trsize = Int[]
-        for l in lhs
-            if l == 1
-                append!(m, ones(T, n))
-                push!(coefnms, "(Intercept)")
-                push!(trsize, 1)
-            else
-                fr = ModelFrame(Formula(nothing, l), mf.df)
-                append!(m, ModelMatrix(fr).m)
-                cnms = coefnames(fr)
-                append!(coefnms, cnms)
-                push!(trsize, length(cnms))
+        gr = compact(pool(getindex(mf.df, grp)))
+        if (length(lhs) == 1 && lhs[1] == 1)
+            push!(trms, ScalarFactorReTerm(gr, grp))
+        else
+            m = T[]
+            coefnms = String[]
+            trsize = Int[]
+            for l in lhs
+                if l == 1
+                    append!(m, ones(T, n))
+                    push!(coefnms, "(Intercept)")
+                    push!(trsize, 1)
+                else
+                    fr = ModelFrame(Formula(nothing, l), mf.df)
+                    append!(m, ModelMatrix(fr).m)
+                    cnms = coefnames(fr)
+                    append!(coefnms, cnms)
+                    push!(trsize, length(cnms))
+                end
             end
+            push!(trms,
+                  VectorFactorReTerm(gr, transpose(reshape(m, (n, sum(trsize)))), grp,
+                  coefnms,  trsize))
         end
-        push!(trms,
-            FactorReTerm(gr, transpose(reshape(m, (n, sum(trsize)))), grp, coefnms, trsize))
     end
     sort!(trms, by = nrandomeff, rev = true)
     push!(trms, MatrixTerm(X, coefnames(mf)))
@@ -136,24 +132,24 @@ This is the crucial step in evaluating the objective, given a new parameter valu
 """
 function updateL!(m::LinearMixedModel{T}) where T
     trms = m.trms
-    A = m.A.data.blocks
-    L = m.L.data.blocks
-    nblk = size(A, 2)
+    A = m.A
+    Ldat = m.L.data
+    nblk = nblocks(A, 2)
     for j in 1:nblk
-        Ljj = L[j, j]
+        Ljj = Ldat[Block(j, j)]
         LjjH = isa(Ljj, Diagonal) ? Ljj : Hermitian(Ljj, :L)
         LjjLT = isa(Ljj, Diagonal) ? Ljj : LowerTriangular(Ljj)
-        scaleInflate!(Ljj, A[j, j], trms[j])
+        scaleInflate!(LjjLT, A[Block(j, j)], trms[j])
         for jj in 1:(j - 1)
-            rankUpdate!(-one(T), L[j, jj], LjjH)
+            rankUpdate!(-one(T), Ldat[Block(j, jj)], LjjH)
         end
         cholUnblocked!(Ljj, Val{:L})
         for i in (j + 1):nblk
-            Lij = copy!(L[i, j], A[i, j])
+            Lij = copy!(Ldat[Block(i, j)], A[Block(i, j)])
             A_mul_Λ!(Lij, trms[j])
             Λc_mul_B!(trms[i], Lij)
             for jj in 1:(j - 1)
-                αβA_mul_Bc!(-one(T), L[i, jj], L[j, jj], one(T), Lij)
+                αβA_mul_Bc!(-one(T), Ldat[Block(i, jj)], Ldat[Block(j, jj)], one(T), Lij)
             end
             A_rdiv_Bc!(Lij, LjjLT)
         end
@@ -233,6 +229,8 @@ Return the vector of lower bounds on the covariance parameter vector `θ`
 """
 lowerbd(m::LinearMixedModel) = lowerbd(m.trms)
 
+StatsBase.model_response(m::LinearMixedModel) = vec(m.trms[end].x)
+
 """
     objective(m::LinearMixedModel)
 
@@ -250,7 +248,7 @@ Overwrite `v` with the fixed-effects coefficients of model `m`
 """
 function fixef!(v::AbstractVector{T}, m::LinearMixedModel{T}) where T
     !isfit(m) && throw(ArgumentError("Model m has not been fit"))
-    Ac_ldiv_B!(feL(m), copy!(v, m.L[end, end - 1]))
+    Ac_ldiv_B!(feL(m), copy!(v, m.L.data.blocks[end, end - 1]))
 end
 
 """
@@ -262,7 +260,7 @@ fixef(m::LinearMixedModel{T}) where {T} = fixef!(Vector{T}(size(m)[2]), m)
 
 StatsBase.dof(m::LinearMixedModel) = size(m.trms[end - 1].wtx, 2) + sum(nθ, m.trms) + 1
 
-StatsBase.loglikelihood(m::LinearMixedModel) = -deviance(m)/2
+StatsBase.loglikelihood(m::LinearMixedModel) = -objective(m)/2
 
 StatsBase.nobs(m::LinearMixedModel) = length(m.trms[end].wtx)
 
@@ -287,7 +285,17 @@ sdest(m::LinearMixedModel) = sqrtpwrss(m) / √nobs(m)
 Install `v` as the θ parameters in `m`.
 """
 function setθ!(m::LinearMixedModel, v)
-    setθ!(m.trms, v)
+    offset = 0
+    for trm in m.trms
+        if isa(trm, ScalarFactorReTerm)
+            offset += 1
+            setθ!(trm, v[offset])
+        else
+            k = nθ(trm)
+            iszero(k) || setθ!(trm, view(v, (1:k) + offset))
+            offset += k
+        end
+    end
     m
 end
 
@@ -298,7 +306,7 @@ Return the square root of the penalized, weighted residual sum-of-squares (pwrss
 
 This value is the contents of the `1 × 1` bottom right block of `m.L`
 """
-sqrtpwrss(m::LinearMixedModel) = @views m.L[end, end][1]
+sqrtpwrss(m::LinearMixedModel) = @views m.L.data.blocks[end, end][1]
 
 """
     varest(m::LinearMixedModel)
@@ -364,7 +372,7 @@ function reweight!(m::LinearMixedModel, weights)
     ntrm = length(trms)
     A = m.A
     for j in 1:ntrm, i in j:ntrm
-        Ac_mul_B!(A[i, j], trms[i], trms[j])
+        Ac_mul_B!(A[Block(i, j)], trms[i], trms[j])
     end
     updateL!(m)
 end

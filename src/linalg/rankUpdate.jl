@@ -10,7 +10,11 @@ The name `rankUpdate!` is borrowed from [https://github.com/andreasnoack/LinearA
 """
 function rankUpdate! end
 
-rankUpdate!(α::T, a::StridedVector{T}, A::HermOrSym{T,S}) where {T<:BlasReal,S<:StridedMatrix} = BLAS.syr!(A.uplo, α, a, A.data)
+function rankUpdate!(α::T, a::StridedVector{T},
+                     A::HermOrSym{T,S}) where {T<:BlasReal,S<:StridedMatrix}
+    BLAS.syr!(A.uplo, α, a, A.data)
+    A
+end
 rankUpdate!(a::StridedVector{T}, A::HermOrSym{T,S}) where {T<:BlasReal,S<:StridedMatrix} = rankUpdate!(one(T), a, A)
 
 rankUpdate!(α::T, A::StridedMatrix{T}, β::T,
@@ -20,7 +24,8 @@ rankUpdate!(α::T, A::StridedMatrix{T}, C::HermOrSym{T,S}) where {T<:Real,S<:Str
 rankUpdate!(A::StridedMatrix{T}, C::HermOrSym{T,S}) where {T<:Real,S<:StridedMatrix} =
     rankUpdate!(one(T), A, one(T), C)
 
-function rankUpdate!(α::T, A::SparseMatrixCSC{T}, β::T, C::HermOrSym{T,S}) where {T<:AbstractFloat,S<:StridedMatrix}
+function rankUpdate!(α::T, A::SparseMatrixCSC{T,I},
+                     β::T, C::HermOrSym{T,S}) where {T,I,S<:StridedMatrix{T}}
     m, n = size(A)
     @argcheck m == size(C, 2) && C.uplo == 'L' DimensionMismatch
     Cd = C.data
@@ -44,8 +49,8 @@ function rankUpdate!(α::T, A::SparseMatrixCSC{T}, β::T, C::HermOrSym{T,S}) whe
     C
 end
 
-rankUpdate!(α::T, A::SparseMatrixCSC{T},
-C::HermOrSym{T,S}) where {T<:AbstractFloat,S<:StridedMatrix} = rankUpdate!(α, A, one(T), C)
+rankUpdate!(α::T, A::SparseMatrixCSC{T}, C::HermOrSym{T}) where {T} =
+    rankUpdate!(α, A, one(T), C)
 
 function rankUpdate!(α::T, A::SparseMatrixCSC{T}, C::Diagonal{T}) where T <: Number
     m, n = size(A)
@@ -62,38 +67,25 @@ function rankUpdate!(α::T, A::SparseMatrixCSC{T}, C::Diagonal{T}) where T <: Nu
     C
 end
 
-function rankUpdate!(α::T, A::SparseMatrixCSC{T}, C::Diagonal{LowerTriangular{T,Matrix{T}}}) where T<:Number
-    m, n = size(A)
-    cdiag = C.diag
-    dsize = size.(cdiag, 2)
-    @argcheck sum(dsize) == m DimensionMismatch
-    if all(dsize .== 1)
-        nz = nonzeros(A)
-        rv = rowvals(A)
-        for j in 1:n
-            nzr = nzrange(A, j)
-            length(nzr) == 1 || throw(ArgumentError("A*A' has off-diagonal elements"))
-            k = nzr[1]
-            @inbounds cdiag[rv[k]].data[1] += α * abs2(nz[k])
-        end
-    else  # not efficient but only used for nested vector-valued r.e.'s, which are rare
-        aat = α * (A * A')
-        nz = nonzeros(aat)
-        rv = rowvals(aat)
-        offset = 0
-        for d in cdiag
-            k = size(d, 2)
-            for j in 1:k
-                for i in nzrange(aat, offset + j)
-                    ii = rv[i] - offset
-                    0 < ii ≤ k || throw(ArgumentError("A*A' does not conform to B"))
-                    if ii ≥ j  # update lower triangle only
-                        d.data[ii, j] += nz[i]
-                    end
+function rankUpdate!(α::T, A::SparseMatrixCSC{T},
+                     C::HermOrSym{T,UniformBlockDiagonal{T}}) where T<:Number
+    m, n, k = size(C.data.data)
+    @argcheck m == n && size(A, 1) == m * k DimensionMismatch
+    aat = α * (A * A')
+    nz = nonzeros(aat)
+    rv = rowvals(aat)
+    offset = 0
+    for f in C.data.facevec
+        for j in 1:m
+            for i in nzrange(aat, offset + j)
+                ii = rv[i] - offset
+                0 < ii ≤ k || throw(ArgumentError("A*A' does not conform to B"))
+                if ii ≥ j  # update lower triangle only
+                    f[ii, j] += nz[i]
                 end
             end
-            offset += k
         end
+        offset += m
     end
     C
 end

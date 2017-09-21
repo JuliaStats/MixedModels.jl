@@ -1,4 +1,4 @@
-using Base.Test, RData, MixedModels
+using Base.Test, DataFrames, RData, MixedModels
 
 if !isdefined(:dat) || !isa(dat, Dict{Symbol, Any})
     dat = convert(Dict{Symbol,Any}, load(joinpath(dirname(@__FILE__), "dat.rda")))
@@ -7,9 +7,9 @@ end
 @testset "scalarRe" begin
     dyestuff = dat[:Dyestuff]
     pastes = dat[:Pastes]
-    sf = FactorReTerm(dyestuff[:G])
-    sf1 = FactorReTerm(pastes[:G])
-    sf2 = FactorReTerm(pastes[:H])
+    sf = ScalarFactorReTerm(dyestuff[:G], :G)
+    sf1 = ScalarFactorReTerm(pastes[:G], :G)
+    sf2 = ScalarFactorReTerm(pastes[:H], :H)
     Yield = Array(dyestuff[:Y])
 
     @testset "size" begin
@@ -38,9 +38,9 @@ end
         @test MixedModels.getθ!(Vector{Float64}(1), sf) == ones(1)
         @test lowerbd(sf) == zeros(1)
         @test eltype(sf) == Float64
-        @test getθ(setθ!(sf, [0.5])) == [0.5]
+        @test getθ(setθ!(sf, 0.5)) == [0.5]
         @test_throws DimensionMismatch MixedModels.getθ!(Float64[], sf)
-        @test_throws DimensionMismatch setθ!(sf, ones(2))
+        @test_throws MethodError setθ!(sf, ones(2))
     end
 
     @testset "products" begin
@@ -78,9 +78,9 @@ end
 
 @testset "vectorRe" begin
     slp = dat[:sleepstudy]
-    corr = FactorReTerm(slp[:G], hcat(ones(size(slp, 1)), Array(slp[:U]))',
+    corr = VectorFactorReTerm(slp[:G], hcat(ones(size(slp, 1)), Array(slp[:U]))',
         :G, ["(Intercept)", "U"], [2])
-    nocorr = FactorReTerm(slp[:G], hcat(ones(size(slp, 1)), Array(slp[:U]))',
+    nocorr = VectorFactorReTerm(slp[:G], hcat(ones(size(slp, 1)), Array(slp[:U]))',
             :G, ["(Intercept)", "U"], [1, 1])
     Reaction = Array(slp[:Y])
 
@@ -112,10 +112,12 @@ end
     @test vec(corr'MatrixTerm(ones(size(corr, 1)))) == repeat([10.0, 45.0], outer = 18)
 
     vrp = corr'corr
-    @test isa(vrp, MixedModels.Diagonal{Matrix{Float64}})
-    @test eltype(vrp) == Matrix{Float64}
-    @test size(vrp) == (18, 18)
+    
+    @test isa(vrp, UniformBlockDiagonal{Float64})
+    @test size(vrp) == (36, 36)
 
+    @test MixedModels.Λ_mul_B!(Vector{Float64}(36), corr, ones(36)) == repeat([0.5, 1.0], outer=18)
+    
     @testset "reweight!" begin
         wts = rand(MersenneTwister(1234321), size(corr, 1))
         @test MixedModels.reweight!(corr, wts).wtz[1, :] == wts

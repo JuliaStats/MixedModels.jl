@@ -1,4 +1,4 @@
-using Base.Test, RData, StatsBase, MixedModels
+using Base.Test, StatsBase, DataFrames, RData, MixedModels
 
 if !isdefined(:dat) || !isa(dat, Dict{Symbol, Any})
     dat = convert(Dict{Symbol,Any}, load(joinpath(dirname(@__FILE__), "dat.rda")))
@@ -7,12 +7,12 @@ end
 @testset "Dyestuff" begin
     fm1 = lmm(@formula(Y ~ 1 + (1|G)), dat[:Dyestuff])
 
-    @test size(fm1.A) == (3, 3)
+    @test nblocks(fm1.A) == (3, 3)
     @test size(fm1.trms) == (3, )
-    @test size(fm1.L) == (3, 3)
+    @test nblocks(fm1.L.data) == (3, 3)
     @test lowerbd(fm1) == zeros(1)
     @test getθ(fm1) == ones(1)
-    @test getΛ(fm1) == Matrix[ones(1,1)]
+    @test getΛ(fm1) == [1.0]
 
     @test objective(updateL!(setθ!(fm1, [0.713]))) ≈ 327.34216280955366
     MixedModels.describeblocks(IOBuffer(), fm1)
@@ -109,7 +109,6 @@ end
     @test isapprox(logdet(fm), 101.0381339953986, atol=0.001)
 end
 
-if false # takes too long on Travis for julia 0.6
 @testset "InstEval" begin
     fm1 = lmm(@formula(Y ~ 1 + A + (1 | G) + (1 | H) + (1 | I)), dat[:InstEval])
     @test size(fm1) == (73421, 2, 4114, 3)
@@ -130,19 +129,21 @@ if false # takes too long on Travis for julia 0.6
     @test isapprox(objective(fm2), 237585.5534151694, atol=0.001)
     @test size(fm2) == (73421, 28, 4100, 2)
 end
-end
 
 @testset "sleep" begin
     fm = lmm(@formula(Y ~ 1 + U + (1 + U | G)), dat[:sleepstudy]);
     @test lowerbd(fm) == [0.0, -Inf, 0.0]
-    @test isa(fm.A[1, 1], Diagonal{Matrix{Float64}})
-    @test isa(fm.L[1, 1], Diagonal{LowerTriangular{Float64, Matrix{Float64}}})
-    @test size(fm.A[1, 1]) == (18, 18)
-    @test fm.A[1, 1][1, 1] == [10. 45.; 45. 285.]
-    @test size(fm.A[1, 1], 1) == 18
+    A11 = fm.A[Block(1,1)]
+    @test isa(A11, UniformBlockDiagonal{Float64})
+    @test isa(fm.L.data[Block(1, 1)], UniformBlockDiagonal{Float64})
+    @test size(A11) == (36, 36)
+    @test A11.facevec[1] == [10. 45.; 45. 285.]
+    @test length(A11.facevec) == 18
     updateL!(fm);
-    @test fm.L[1, 1][1, 1] * fm.L[1, 1][1, 1]' == fm.A[1, 1][1, 1] + I
-    @test countnz(full(fm.L[1, 1])) == 18 * 3
+    b11 = LowerTriangular(fm.L.data[Block(1, 1)].facevec[1])
+    @test b11 * b11' == fm.A[Block(1, 1)].facevec[1] + I
+    @test countnz(full(fm.L.data[Block(1, 1)])) == 18 * 4
+
 
     fit!(fm)
 
@@ -194,7 +195,6 @@ end
     MixedModels.lrt(fm, fmnc)
 end
 
-if false  # takes too long for Travis
 @testset "d3" begin
     fm = updateL!(lmm(@formula(Y ~ 1 + U + (1+U|G) + (1+U|H) + (1+U|I)), dat[:d3]));
     @test isapprox(pwrss(fm), 5.1261847180180885e6, rtol = 1e-6)
@@ -203,7 +203,6 @@ if false  # takes too long for Travis
     fit!(fm)
     @test isapprox(objective(fm), 884957.5540213, rtol = 1e-6)
     @test isapprox(fixef(fm), [0.499130440264, 0.31130685058], atol = 1.e-5)
-end
 end
 
 

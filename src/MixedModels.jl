@@ -2,7 +2,7 @@ __precompile__()
 
 module MixedModels
 
-using ArgCheck, BlockArrays, CategoricalArrays, Compat, DataArrays, DataFrames
+using ArgCheck, BlockArrays, DataArrays, DataFrames
 using Distributions, GLM, NLopt, Showoff, StatsBase
 using StatsFuns: log2π
 using NamedArrays: NamedArray, setnames!
@@ -10,18 +10,17 @@ using Base.LinAlg: BlasFloat, BlasReal, HermOrSym, PosDefException, checksquare,
 
 import Base: cor, cond, convert, eltype, full, logdet, std
 import Base.LinAlg: A_mul_B!, A_mul_Bc!, Ac_mul_B!, A_ldiv_B!, Ac_ldiv_B!, A_rdiv_B!, A_rdiv_Bc!
-import DataFrames: @formula
-import Distributions: Bernoulli, Binomial, InverseGaussian, Poisson, Gamma
-import GLM: LogitLink, LogLink, InverseLink
 import NLopt: Opt
 import StatsBase: coef, coeftable, dof, deviance, fit!, fitted, loglikelihood,
     model_response, nobs, vcov
 
 export
        @formula,
+       AbstractFactorReTerm,
+       AbstractReTerm,
        Bernoulli,
        Binomial,
-       FactorReTerm,
+       Block,
        Gamma,
        LogitLink,
        LogLink,
@@ -33,7 +32,10 @@ export
        MixedModel,
        OptSummary,
        Poisson,
+       ScalarFactorReTerm,
+       UniformBlockDiagonal,
        VarCorr,
+       VectorFactorReTerm,
 
        bootstrap,
        bootstrap!,
@@ -54,6 +56,7 @@ export
        loglikelihood,
        lowerbd,    # lower bounds on the covariance parameters
        model_response,
+       nblocks,
        nobs,
        objective,  # the objective function in fitting a model
        pwrss,      # penalized, weighted residual sum-of-squares

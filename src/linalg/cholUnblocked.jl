@@ -13,7 +13,7 @@ function cholUnblocked!(D::Diagonal{T}, ::Type{Val{:L}}) where T<:AbstractFloat
     D
 end
 
-function cholUnblocked!(A::Matrix{T}, ::Type{Val{:L}}) where T<:BlasFloat
+function cholUnblocked!(A::StridedMatrix{T}, ::Type{Val{:L}}) where T<:BlasFloat
     n = checksquare(A)
     if n == 1
         A[1] < zero(T) && throw(PosDefException(1))
@@ -29,10 +29,4 @@ function cholUnblocked!(A::Matrix{T}, ::Type{Val{:L}}) where T<:BlasFloat
     A
 end
 
-function cholUnblocked!(D::Diagonal{LowerTriangular{T, Matrix{T}}},
-::Type{Val{:L}}) where T<:AbstractFloat
-    for b in D.diag
-        cholUnblocked!(b.data, Val{:L})
-    end
-    D
-end
+cholUnblocked!(D::UniformBlockDiagonal, ::Type{Val{:L}}) = cholUnblocked!.(D.facevec, Val{:L})

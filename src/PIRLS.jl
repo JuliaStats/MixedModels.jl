@@ -8,22 +8,22 @@ Return a `GeneralizedLinearMixedModel` object.
 The value is ready to be `fit!` but has not yet been fit.
 """
 function glmm(f::Formula, fr::AbstractDataFrame, d::Distribution, l::Link; wt=[], offset=[],
-    contrasts = Dict())
+              contrasts = Dict())
     if d == Binomial() && isempty(wt)
         d = Bernoulli()
     end
     LMM = lmm(f, fr; weights = wt, contrasts=contrasts, rdist=d)
     X = LMM.trms[end - 1].x
+    T = eltype(X)
     y = copy(model_response(LMM))
     if isempty(wt)
         LMM = LinearMixedModel(LMM.formula, LMM.trms, ones(y), LMM.A, LMM.L, LMM.optsum)
     end
     updateL!(setθ!(LMM, getθ(LMM)))
-            # fit a glm to the fixed-effects only
-    gl = length(wt) == length(y) ? glm(X, y, d, l; wts = wt) : glm(X, y, d, l)
-    r = gl.rr
+            # fit a glm to the fixed-effects only - awkward syntax is to by-pass a test
+    gl = isempty(wt) ? glm(X, y, d, l) : glm(X, y, d, l, wts=wt)
     β = coef(gl)
-    u = fill!.(ranef(LMM), 0)
+    u = [zeros(T, vsize(t), nlevs(t)) for t in reterms(LMM)]
     res = GeneralizedLinearMixedModel(LMM, β, copy(β), getθ(LMM), copy.(u), u,
         zeros.(u), gl.rr, similar(y), oftype(y, wt))
     setβθ!(res, vcat(coef(gl), getθ(LMM)))
@@ -126,7 +126,7 @@ function pirls!(m::GeneralizedLinearMixedModel{T}, varyβ::Bool=false, verbose::
 
     while iter < maxiter
         iter += 1
-        varyβ && Ac_ldiv_B!(feL(m), copy!(β, lm.L[end, end - 1]))
+        varyβ && Ac_ldiv_B!(feL(m), copy!(β, lm.L.data.blocks[end, end - 1]))
         ranef!(u, m.LMM, β, true) # solve for new values of u
         obj = LaplaceDeviance!(m) # update GLM vecs and evaluate Laplace approx
         verbose && @show(iter, obj)

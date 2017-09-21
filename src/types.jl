@@ -1,18 +1,70 @@
 """
-    HeteroBlkdMatrix
+    UniformBlockDiagonal{T,B}
 
-A matrix composed of heterogenous blocks.  Blocks can be sparse, dense or
-diagonal.
+Homogeneous block diagonal matrices.  `k` diagonal blocks each of size `m×m`
 """
-# FIXME: Change this to use the AbstractBlockArray interface
-
-struct HeteroBlkdMatrix <: AbstractMatrix{AbstractMatrix}
-    blocks::Matrix{AbstractMatrix}
+struct UniformBlockDiagonal{T} <: AbstractMatrix{T}
+    data::Array{T, 3}
+    facevec::Vector{SubArray{T, 2, Array{T, 3}}}
 end
-Base.size(A::HeteroBlkdMatrix) = size(A.blocks)
-Base.getindex(A::HeteroBlkdMatrix, i::Int) = A.blocks[i]
-Base.setindex!(A::HeteroBlkdMatrix, X, i::Integer) = setindex!(A.blocks, X, i)
-Base.IndexStyle(A::HeteroBlkdMatrix) = IndexLinear()
+
+function UniformBlockDiagonal(V::Vector{Matrix{T}}) where T
+    (lv = length(V)) > 0 || throw(ArgumentError("V must have a nonzero length"))
+    m, n = size(V[1])
+    data = Array{T}(m, n, lv)
+    facevec = sizehint!(SubArray{T,2,Array{T,3}}[], lv)
+    for (k, f) in enumerate(V)
+        push!(facevec, copy!(view(data, :, :, k), f))
+    end
+    UniformBlockDiagonal(data, facevec)
+end
+
+function Base.size(A::UniformBlockDiagonal{T}) where {T}
+    m, n, l = size(A.data)
+    (l * m, l * n)
+end
+
+function Base.size(A::UniformBlockDiagonal{T}, i::Int) where {T}
+    m, n, l = size(A.data)
+    if i ≤ 0
+        throw(ArgumentError("i = $i should be positive"))
+    elseif i == 1
+        l * m
+    elseif i == 2
+        l * n
+    else
+        1
+    end
+end
+
+function Base.getindex(A::UniformBlockDiagonal{T}, i::Int, j::Int) where {T}
+    m, n, l = size(A.data)
+    (0 < i ≤ l * m && 0 < j ≤ l * n) ||
+        throw(IndexError("attempt to access $M × $N array at index [$i, $j]"))
+    iblk, ioffset = divrem(i - 1, m)
+    jblk, joffset = divrem(j - 1, n)
+    if iblk == jblk
+        A.data[ioffset+1, joffset+1, iblk+1]
+    else
+        zero(T)
+    end
+end
+
+function Base.full(A::UniformBlockDiagonal{T}) where T
+    res = zeros(T, size(A))
+    Ad = A.data
+    m, n, l = size(Ad)
+    offseti = 0
+    offsetj = 0
+    for k = 1:l
+        for j = 1:n, i = 1:m
+            res[offseti + i, offsetj + j] = Ad[i, j, k]
+        end
+        offseti += m
+        offsetj += n
+    end
+    res
+end
 
 """
     OptSummary
@@ -108,17 +160,17 @@ Linear mixed-effects model representation
 # Members
 * `formula`: the formula for the model
 * `trms`: a `Vector{AbstractTerm}` representing the model.  The last element is the response.
-* `sqrtwts`: vector of square roots of the case weights.  Allowed to be size 0
-* `A`: an `nt × nt` symmetric matrix of matrices representing `hcat(Z,X,y)'hcat(Z,X,y)`
-* `L`: a `nt × nt` matrix of matrices - the lower Cholesky factor of `Λ'AΛ+I`
+* `sqrtwts`: vector of square roots of the case weights.  Can be empty.
+* `A`: an `nt × nt` symmetric `BlockMatrix` of matrices representing `hcat(Z,X,y)'hcat(Z,X,y)`
+* `L`: a `nt × nt` `BlockMatrix` - the lower Cholesky factor of `Λ'AΛ+I`
 * `optsum`: an [`OptSummary`](@ref) object
 """
 struct LinearMixedModel{T <: AbstractFloat} <: MixedModel{T}
     formula::Formula
     trms::Vector{AbstractTerm{T}}
     sqrtwts::Vector{T}
-    A::Hermitian             # cross-product blocks
-    L::LowerTriangular
+    A::BlockMatrix{T}            # cross-product blocks
+    L::LowerTriangular{T,BlockArray{T,2,AbstractMatrix{T}}}
     optsum::OptSummary{T}
 end
 
@@ -192,8 +244,8 @@ end
 
 function Base.show(io::IO, vc::VarCorr)
     # FIXME: Do this one term at a time
-    fnms = vc.fnms
-    stdm = vc.σ
+    fnms = copy(vc.fnms)
+    stdm = copy(vc.σ)
     cor = vc.ρ
     cnms = reduce(append!, String[], vc.cnms)
     if isfinite(vc.s)
