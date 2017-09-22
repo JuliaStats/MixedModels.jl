@@ -23,7 +23,7 @@ lmm(m::GeneralizedLinearMixedModel) = m.LMM
 """
     cond(m::MixedModel)
 
-Return the vector of the condition numbers of the blocks of `m.Λ`
+Return the vector of the condition numbers of the blocks of `m.trms`
 """
 Base.cond(m::MixedModel) = cond.(reterms(m))
 
