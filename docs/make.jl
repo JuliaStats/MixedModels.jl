@@ -1,6 +1,13 @@
 using Documenter, MixedModels
 
-makedocs()
+makedocs(
+    format = :html,
+    sitename = "MixedModels.jl",
+    modules = [MixedModels],
+    pages = ["index.md"] #=,
+              "fitting.md",
+              "bootstraps.md"] =#
+)
 
 deploydocs(
     deps   = Deps.pip("pygments", "mkdocs", "mkdocs-material", "python-markdown-math"),

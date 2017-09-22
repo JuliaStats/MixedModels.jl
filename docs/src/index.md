@@ -1,23 +1,15 @@
 # MixedModels.jl Documentation
 
-*Fitting and examining mixed-effects models*
-
-## Manual Outline
-
-```@contents
-Pages = ["man/fitting.md", "man/bootstrap.md"]
-Depth = 2
+```@meta
+CurrentModule = MixedModels
 ```
 
-## Library Outline
+*MixedModels.jl* is a Julia package providing capabilities for fitting and examining linear and generalized linear mixed-effect models.
+It is similar in scope to the [*lme4*](https://github.com/lme4/lme4) package for `R`.
 
 ```@contents
-Pages = ["lib/public.md"]
+Pages = ["constructors.md",
+         "extractors.md",
+         "fitting.md"]
 Depth = 2
-```
-
-## [Index](@id main-index)
-
-```@index
-Pages = ["lib/public.md"]
 ```

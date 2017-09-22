@@ -1,0 +1,24 @@
+# Extractor functions
+
+There are several extractors to be applied to a `LinearMixedModel` or `GeneralizedLinearMixedModel`.
+
+```@docs
+fixef
+ranef
+varest
+sdest
+```
+
+Applied to one of the models previously fit these yield
+```{julia;term=true}
+using DataFrames, RData, MixedModels
+const dat = convert(Dict{Symbol,DataFrame}, load(Pkg.dir("MixedModels", "test", "dat.rda")));
+fm1 = fit!(lmm(@formula(Y ~ 1 + (1|G)), dat[:Dyestuff]))
+fixef(fm1)
+coef(fm1)
+showall(ranef(fm1))
+showall(ranef(fm1, uscale=true))
+varest(fm1)
+sdest(fm1)
+stderr(fm1)
+```
