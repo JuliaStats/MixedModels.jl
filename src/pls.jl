@@ -113,6 +113,7 @@ function lmm(f::Formula, fr::AbstractDataFrame;
                 end
             end
             push!(trms,
+                  length(coefnms) == 1 ? ScalarFactorReTerm(gr, m, m, grp, coefnms, one(T)) :
                   VectorFactorReTerm(gr, transpose(reshape(m, (n, sum(trsize)))), grp,
                   coefnms,  trsize))
         end

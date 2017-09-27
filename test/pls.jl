@@ -193,6 +193,10 @@ end
     cor(fmnc)
 
     MixedModels.lrt(fm, fmnc)
+
+    fmrs = fit!(lmm(@formula(Y ~ 1 + U + (0 + U|G)), dat[:sleepstudy]))
+    @test isapprox(objective(fmrs), 1774.080315280528, rtol=0.00001)
+    @test isapprox(getθ(fmrs), [0.24353985679033105], rtol=0.00001)   
 end
 
 @testset "d3" begin
