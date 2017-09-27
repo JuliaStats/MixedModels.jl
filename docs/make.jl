@@ -4,9 +4,10 @@ makedocs(
     format = :html,
     sitename = "MixedModels.jl",
     modules = [MixedModels],
-    pages = ["index.md"] #=,
-              "fitting.md",
-              "bootstraps.md"] =#
+    pages = ["index.md",
+             "constructors.md",
+             "extractors.md",
+             "fitting.md"]
 )
 
 deploydocs(
