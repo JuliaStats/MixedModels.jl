@@ -8,15 +8,6 @@ Return the lower Cholesky factor for the fixed-effects parameters, as an `LowerT
 """
 feL(m::MixedModel) = LowerTriangular(lmm(m).L.data.blocks[end - 1, end - 1])
 
-"""
-    lmm(m::MixedModel)
-
-Return the `LinearMixedModel` from a `MixedModel`.
-
-If `m` is a `LinearMixedModel` return `m`. If `m` is a
-`GeneralizedLinearMixedModel` return `m.LMM`.
-"""
-function lmm end
 lmm(m::LinearMixedModel) = m
 lmm(m::GeneralizedLinearMixedModel) = m.LMM
 

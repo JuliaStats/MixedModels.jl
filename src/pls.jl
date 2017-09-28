@@ -71,7 +71,7 @@ end
 """
     lmm(f::DataFrames.Formula, fr::DataFrames.DataFrame; weights = [], contrasts = Dict())
 
-Create a [`LinearMixedModel`](@ref) from `f`, which contains both fixed-effects terms
+Create a `LinearMixedModel` from `f`, a formula that contains both fixed-effects terms
 and random effects, and `fr`.
 
 The return value is ready to be `fit!` but has not yet been fit.

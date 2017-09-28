@@ -1,12 +1,27 @@
 # Extractor functions
 
-There are several extractors to be applied to a `LinearMixedModel` or `GeneralizedLinearMixedModel`.
+`LinearMixedModel` and `GeneralizedLinearMixedModel` are subtypes of `StatsBase.RegressionModel`
+Many of the generic extractors defined in the `StatsBase` package have methods for these models.
+```@docs
+StatsBase.coef
+StatsBase.coeftable
+StatsBase.dof
+StatsBase.deviance
+StatsBase.fitted
+StatsBase.loglikelihood
+StatsBase.stderr
+StatsBase.vcov
+```
 
+Other extractors are defined in the `MixedModels` package itself.
 ```@docs
 fixef
+lowerbd
+objective
+pwrss
 ranef
-varest
 sdest
+varest
 ```
 
 Applied to one of the models previously fit these yield
@@ -16,9 +31,16 @@ const dat = convert(Dict{Symbol,DataFrame}, load(Pkg.dir("MixedModels", "test", 
 fm1 = fit!(lmm(@formula(Y ~ 1 + (1|G)), dat[:Dyestuff]))
 fixef(fm1)
 coef(fm1)
+coeftable(fm1)
+getΛ(fm1)
+getθ(fm1)
+loglikelihood(fm1)
+pwrss(fm1)
 showall(ranef(fm1))
 showall(ranef(fm1, uscale=true))
-varest(fm1)
 sdest(fm1)
+std(fm1)
 stderr(fm1)
+varest(fm1)
+vcov(fm1)
 ```
