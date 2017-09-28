@@ -4,13 +4,13 @@
 Many of the generic extractors defined in the `StatsBase` package have methods for these models.
 ```@docs
 StatsBase.coef
-StatsBase.coeftable
-StatsBase.dof
-StatsBase.deviance
-StatsBase.fitted
-StatsBase.loglikelihood
-StatsBase.stderr
-StatsBase.vcov
+coeftable
+dof
+deviance
+fitted
+loglikelihood
+stderr
+vcov
 ```
 
 Other extractors are defined in the `MixedModels` package itself.
