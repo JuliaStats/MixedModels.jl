@@ -1,4 +1,4 @@
-using Documenter, MixedModels
+using Documenter, MixedModels, StatsBase
 
 makedocs(
     format = :html,
@@ -11,8 +11,10 @@ makedocs(
 )
 
 deploydocs(
-    deps   = Deps.pip("pygments", "mkdocs", "mkdocs-material", "python-markdown-math"),
-    repo = "github.com/dmbates/MixedModels.jl.git",
-    julia = "0.6",
-    osname = "linux"
+    repo    = "github.com/dmbates/MixedModels.jl.git",
+    julia   = "0.6",
+    osname  = "linux",
+    target  = "build",
+    deps    = nothing,
+    make    = nothing
 )
