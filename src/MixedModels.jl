@@ -48,6 +48,7 @@ export
        fit!,
        fitted,
        fixef,      # extract the fixed-effects parameter estimates
+       fnames,
        getΛ,
        getθ,
        glmm,       # define a GeneralizedLinearMixedModel

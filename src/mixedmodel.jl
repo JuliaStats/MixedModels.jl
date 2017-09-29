@@ -77,10 +77,19 @@ function getθ!(v::AbstractVector{T}, m::LinearMixedModel{T}) where T
     v
 end
 
+"""
+    getΛ(m::MixedModel)
+
+Return a vector of covariance template matrices for the random effects of `m`
+"""
 getΛ(m::MixedModel) = getΛ.(reterms(m))
 
-getθ(m::GeneralizedLinearMixedModel) = getθ(m.LMM)
-getθ(m::LinearMixedModel) = getθ(m.trms)
+"""
+    getθ(m::MixedModel)
+
+Return the current covariance parameter vector.
+"""
+getθ(m::MixedModel) = getθ(lmm(m).trms)
 
 """
     grplevels(m::MixedModel)
@@ -129,9 +138,9 @@ end
 ranef!(v::Vector, m::LinearMixedModel, uscale::Bool) = ranef!(v, m, fixef(m), uscale)
 
 """
-    ranef{T}(m::MixedModel{T}, uscale=false)
+    ranef(m::MixedModel; uscale=false, named=true)
 
-Return, as a `Vector` of `NamedArray`, the conditional modes of the random effects in model `m`.
+Return, as a `Vector{Vector{T}}` (`Vector{NamedVector{T}}` if `named=true`) the conditional modes of the random effects in model `m`.
 
 If `uscale` is `true` the random effects are on the spherical (i.e. `u`) scale, otherwise on the
 original scale.

@@ -41,7 +41,7 @@ Return the Laplace approximation to the deviance of `m`.
 
 If the distribution `D` does not have a scale parameter the Laplace approximation
 is defined as the squared length of the conditional modes, `u`, plus the determinant
-of `Λ'Z'ZΛ + 1`, plus the sum of the squared deviance residuals.
+of `Λ'Z'WZΛ + I`, plus the sum of the squared deviance residuals.
 """
 LaplaceDeviance(m::GeneralizedLinearMixedModel{T}) where T =
     T(sum(m.resp.devresid) + logdet(m) + sum(u -> sum(abs2, u), m.u))

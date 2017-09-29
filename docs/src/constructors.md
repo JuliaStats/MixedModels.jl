@@ -59,7 +59,7 @@ Linear mixed model fit by maximum likelihood
 
 Variance components:
               Column    Variance  Std.Dev. 
- G        (Intercept)  1388.3332 37.260344
+ G        (Intercept)  1388.3333 37.260345
  Residual              2451.2500 49.510100
  Number of obs: 30; levels of grouping factors: 6
 
@@ -79,7 +79,7 @@ The second and subsequent calls to such functions are much faster.)
 
 ````julia
 julia> @time fit!(lmm(@formula(Y ~ 1 + (1|G)), dat[:Dyestuff2]))
-  0.000999 seconds (1.32 k allocations: 76.686 KiB)
+  0.000995 seconds (1.50 k allocations: 81.748 KiB)
 Linear mixed model fit by maximum likelihood
  Formula: Y ~ 1 + (1 | G)
    logLik   -2 logLik     AIC        BIC    
@@ -142,7 +142,7 @@ Linear mixed model fit by maximum likelihood
 
 Variance components:
               Column    Variance  Std.Dev.   Corr.
- G        (Intercept)  584.258974 24.17145
+ G        (Intercept)  584.258968 24.17145
           U             33.632805  5.79938  0.00
  Residual              653.115782 25.55613
  Number of obs: 180; levels of grouping factors: 18
@@ -176,7 +176,7 @@ Linear mixed model fit by maximum likelihood
 Variance components:
               Column    Variance  Std.Dev. 
  G        (Intercept)  0.7149795 0.8455646
- H        (Intercept)  3.1351924 1.7706474
+ H        (Intercept)  3.1351920 1.7706474
  Residual              0.3024264 0.5499331
  Number of obs: 144; levels of grouping factors: 24, 6
 
@@ -202,8 +202,8 @@ Linear mixed model fit by maximum likelihood
 
 Variance components:
               Column    Variance  Std.Dev.  
- G        (Intercept)  8.4336167 2.90406898
- H        (Intercept)  1.1991793 1.09507045
+ G        (Intercept)  8.4336166 2.90406897
+ H        (Intercept)  1.1991794 1.09507048
  Residual              0.6780021 0.82340884
  Number of obs: 60; levels of grouping factors: 30, 10
 
@@ -229,10 +229,10 @@ Linear mixed model fit by maximum likelihood
  -1.18792777×10⁵  2.37585553×10⁵  2.37647553×10⁵  2.37932876×10⁵
 
 Variance components:
-              Column    Variance   Std.Dev.  
- G        (Intercept)  0.10541784 0.32468114
- H        (Intercept)  0.25841635 0.50834668
- Residual              1.38472782 1.17674458
+              Column     Variance   Std.Dev.  
+ G        (Intercept)  0.105417976 0.32468135
+ H        (Intercept)  0.258416368 0.50834670
+ Residual              1.384727771 1.17674457
  Number of obs: 73421; levels of grouping factors: 2972, 1128
 
   Fixed-effects parameters:
@@ -241,21 +241,21 @@ Variance components:
 A: 1            0.252025 0.0686507   3.67112  0.0002
 I: 5            0.129536  0.101294   1.27882  0.2010
 I: 10          -0.176751 0.0881352  -2.00545  0.0449
-I: 12          0.0517102 0.0817523  0.632523  0.5270
+I: 12          0.0517102 0.0817524  0.632522  0.5270
 I: 6           0.0347319  0.085621  0.405647  0.6850
 I: 7             0.14594 0.0997984   1.46235  0.1436
 I: 4            0.151689 0.0816897   1.85689  0.0633
 I: 8            0.104206  0.118751  0.877517  0.3802
-I: 9           0.0440402 0.0962985   0.45733  0.6474
-I: 14          0.0517547 0.0986029   0.52488  0.5997
+I: 9           0.0440401 0.0962985  0.457329  0.6474
+I: 14          0.0517546 0.0986029  0.524879  0.5997
 I: 1           0.0466719  0.101942  0.457828  0.6471
 I: 3           0.0563461 0.0977925   0.57618  0.5645
-I: 11          0.0596536  0.100233  0.595151  0.5517
-I: 2          0.00556288  0.110867 0.0501763  0.9600
+I: 11          0.0596536  0.100233   0.59515  0.5517
+I: 2          0.00556281  0.110867 0.0501756  0.9600
 A: 1 & I: 5    -0.180757  0.123179  -1.46744  0.1423
-A: 1 & I: 10   0.0186491  0.110017  0.169512  0.8654
-A: 1 & I: 12   -0.282269 0.0792937   -3.5598  0.0004
-A: 1 & I: 6    -0.494464 0.0790278  -6.25684   <1e-9
+A: 1 & I: 10   0.0186492  0.110017  0.169513  0.8654
+A: 1 & I: 12   -0.282269 0.0792937  -3.55979  0.0004
+A: 1 & I: 6    -0.494464 0.0790278  -6.25683   <1e-9
 A: 1 & I: 7    -0.392054  0.110313  -3.55403  0.0004
 A: 1 & I: 4    -0.278547 0.0823727  -3.38154  0.0007
 A: 1 & I: 8    -0.189526  0.111449  -1.70056  0.0890
@@ -263,10 +263,56 @@ A: 1 & I: 9    -0.499868 0.0885423  -5.64553   <1e-7
 A: 1 & I: 14   -0.497162 0.0917162  -5.42065   <1e-7
 A: 1 & I: 1     -0.24042 0.0982071   -2.4481  0.0144
 A: 1 & I: 3    -0.223013 0.0890548  -2.50422  0.0123
-A: 1 & I: 11   -0.516998 0.0809077  -6.38997   <1e-9
+A: 1 & I: 11   -0.516997 0.0809077  -6.38997   <1e-9
 A: 1 & I: 2    -0.384773  0.091843  -4.18946   <1e-4
 
 
 ````
 
 
+
+
+
+## Fitting generalized linear mixed models
+
+To create a GLMM using
+```@docs
+glmm
+```
+the distribution family for the response, given the random effects, must be specified.
+
+````julia
+julia> gm1 = fit!(glmm(@formula(r2 ~ 1 + a + g + b + s + m + (1|id) + (1|item)), dat[:VerbAgg],
+    Bernoulli()))
+Generalized Linear Mixed Model fit by minimizing the Laplace approximation to the deviance
+  Formula: r2 ~ 1 + a + g + b + s + m + (1 | id) + (1 | item)
+  Distribution: Distributions.Bernoulli{Float64}
+  Link: GLM.LogitLink()
+
+  Deviance (Laplace approximation): 8135.8329
+
+Variance components:
+          Column     Variance   Std.Dev. 
+ id   (Intercept)  1.793470989 1.3392054
+ item (Intercept)  0.117151977 0.3422747
+
+ Number of obs: 7584; levels of grouping factors: 316, 24
+
+Fixed-effects parameters:
+              Estimate Std.Error  z value P(>|z|)
+(Intercept)   0.553345  0.385363  1.43591  0.1510
+a            0.0574211 0.0167527  3.42757  0.0006
+g: M          0.320792  0.191206  1.67773  0.0934
+b: scold      -1.05975   0.18416 -5.75448   <1e-8
+b: shout       -2.1038  0.186519 -11.2793  <1e-28
+s: self       -1.05429  0.151196   -6.973  <1e-11
+m: do         -0.70698  0.151009 -4.68172   <1e-5
+
+
+````
+
+
+
+
+
+The canonical link is used if no link is specified.

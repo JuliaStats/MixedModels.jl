@@ -16,6 +16,9 @@ StatsBase.vcov
 Other extractors are defined in the `MixedModels` package itself.
 ```@docs
 fixef
+fnames
+getΛ
+getθ
 lowerbd
 objective
 pwrss

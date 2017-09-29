@@ -9,7 +9,6 @@ It is similar in scope to the [*lme4*](https://github.com/lme4/lme4) package for
 
 ```@contents
 Pages = ["constructors.md",
-         "extractors.md",
-         "fitting.md"]
+         "extractors.md"]
 Depth = 2
 ```
