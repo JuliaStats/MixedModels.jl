@@ -1,48 +1,28 @@
 # Model constructors
 
-The `lmm` function creates a linear mixed-effects model representation from a formula/data representation.
+The `lmm` function creates a linear mixed-effects model representation from a `Formula` and an appropriate `data` type.
+At present a `DataFrame` is required but that is expected to change.
 ```@docs
 lmm
 ```
 
 ## Examples of linear mixed-effects model fits
 
-For illustration, data sets from the *lme4* package for *R* are made available in `.rda` format in this package.
+For illustration, several data sets from the *lme4* package for *R* are made available in `.rda` format in this package.
+These include the `Dyestuff` and `Dyestuff2` data sets.
 ````julia
 julia> using DataFrames, RData, MixedModels
 
 julia> const dat = convert(Dict{Symbol,DataFrame}, load(Pkg.dir("MixedModels", "test", "dat.rda")));
 
-julia> dat[:Dyestuff]
-30×2 DataFrames.DataFrame
-│ Row │ G   │ Y      │
-├─────┼─────┼────────┤
-│ 1   │ "A" │ 1545.0 │
-│ 2   │ "A" │ 1440.0 │
-│ 3   │ "A" │ 1440.0 │
-│ 4   │ "A" │ 1520.0 │
-│ 5   │ "A" │ 1580.0 │
-│ 6   │ "B" │ 1540.0 │
-│ 7   │ "B" │ 1555.0 │
-│ 8   │ "B" │ 1490.0 │
-⋮
-│ 22  │ "E" │ 1630.0 │
-│ 23  │ "E" │ 1515.0 │
-│ 24  │ "E" │ 1635.0 │
-│ 25  │ "E" │ 1625.0 │
-│ 26  │ "F" │ 1520.0 │
-│ 27  │ "F" │ 1455.0 │
-│ 28  │ "F" │ 1450.0 │
-│ 29  │ "F" │ 1480.0 │
-│ 30  │ "F" │ 1445.0 │
+julia> # dat[:Dyestuff]
 
 ````
 
 
 
 
-These are the `Dyestuff` data from the *lme4* package.
-The columns have been renamed for convenience in comparing models between examples.
+The columns in these data sets have been renamed for convenience in comparing models between examples.
 The response is always named `Y`.
 Potential grouping factors for random-effects terms are named `G`, `H`, etc.
 
@@ -79,7 +59,7 @@ The second and subsequent calls to such functions are much faster.)
 
 ````julia
 julia> @time fit!(lmm(@formula(Y ~ 1 + (1|G)), dat[:Dyestuff2]))
-  0.000995 seconds (1.50 k allocations: 81.748 KiB)
+  0.001088 seconds (1.59 k allocations: 86.670 KiB)
 Linear mixed model fit by maximum likelihood
  Formula: Y ~ 1 + (1 | G)
    logLik   -2 logLik     AIC        BIC    
@@ -102,10 +82,21 @@ Variance components:
 
 
 
+### Simple, scalar random effects
+
+A simple, scalar random effects term in a mixed-effects model formula is of the form `(1|G)`.
+All random effects terms end with `|G` where `G` is the *grouping factor* for the random effect.
+The name or, more generally, the expression `G` should evaluate to a categorical array that has a distinct set of *levels*.
+The random effects are associated with the levels of the grouping factor.
+
+A *scalar* random effect is, as the name implies, one scalar value for each level of the grouping factor.
+A *simple, scalar* random effects term is of the form, `(1|G)`.
+It corresponds to a shift in the intercept for each level of the grouping factor.
+
 ### Models with vector-valued random effects
 
-The *sleepstudy* data are observations of reaction time, `Y`, on several subjects, `G`, after 0 to 9 days of sleep deprivation.
-A model with random intercepts and, possibly correlated, random slopes for each subject is fit as
+The *sleepstudy* data are observations of reaction time, `Y`, on several subjects, `G`, after 0 to 9 days of sleep deprivation, `U`.
+A model with random intercepts and random slopes for each subject, allowing for within-subject correlation of the slope and intercept, is fit as
 ````julia
 julia> fm2 = fit!(lmm(@formula(Y ~ 1 + U + (1+U|G)), dat[:sleepstudy]))
 Linear mixed model fit by maximum likelihood
@@ -315,4 +306,7 @@ m: do         -0.70698  0.151009 -4.68172   <1e-5
 
 
 
-The canonical link is used if no link is specified.
+The canonical link, which is the `GLM.LogitLink` for the `Bernoulli` distribution, is used if no explicit link is specified.
+
+In the [`GLM` package](https://github.com/JuliaStats/GLM.jl) the appropriate distribution for a 0/1 response is the `Bernoulli` distribution.
+The `Binomial` distribution is only used when the response is the fraction of trials returning a positive, in which case the number of trials must be specified as the case weights.

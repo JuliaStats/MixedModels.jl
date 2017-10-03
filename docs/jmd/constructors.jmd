@@ -1,20 +1,21 @@
 # Model constructors
 
-The `lmm` function creates a linear mixed-effects model representation from a formula/data representation.
+The `lmm` function creates a linear mixed-effects model representation from a `Formula` and an appropriate `data` type.
+At present a `DataFrame` is required but that is expected to change.
 ```@docs
 lmm
 ```
 
 ## Examples of linear mixed-effects model fits
 
-For illustration, data sets from the *lme4* package for *R* are made available in `.rda` format in this package.
+For illustration, several data sets from the *lme4* package for *R* are made available in `.rda` format in this package.
+These include the `Dyestuff` and `Dyestuff2` data sets.
 ```{julia;term=true}
 using DataFrames, RData, MixedModels
 const dat = convert(Dict{Symbol,DataFrame}, load(Pkg.dir("MixedModels", "test", "dat.rda")));
-dat[:Dyestuff]
+# dat[:Dyestuff]
 ```
-These are the `Dyestuff` data from the *lme4* package.
-The columns have been renamed for convenience in comparing models between examples.
+The columns in these data sets have been renamed for convenience in comparing models between examples.
 The response is always named `Y`.
 Potential grouping factors for random-effects terms are named `G`, `H`, etc.
 
@@ -33,10 +34,21 @@ The second and subsequent calls to such functions are much faster.)
 @time fit!(lmm(@formula(Y ~ 1 + (1|G)), dat[:Dyestuff2]))
 ```
 
+### Simple, scalar random effects
+
+A simple, scalar random effects term in a mixed-effects model formula is of the form `(1|G)`.
+All random effects terms end with `|G` where `G` is the *grouping factor* for the random effect.
+The name or, more generally, the expression `G` should evaluate to a categorical array that has a distinct set of *levels*.
+The random effects are associated with the levels of the grouping factor.
+
+A *scalar* random effect is, as the name implies, one scalar value for each level of the grouping factor.
+A *simple, scalar* random effects term is of the form, `(1|G)`.
+It corresponds to a shift in the intercept for each level of the grouping factor.
+
 ### Models with vector-valued random effects
 
-The *sleepstudy* data are observations of reaction time, `Y`, on several subjects, `G`, after 0 to 9 days of sleep deprivation.
-A model with random intercepts and, possibly correlated, random slopes for each subject is fit as
+The *sleepstudy* data are observations of reaction time, `Y`, on several subjects, `G`, after 0 to 9 days of sleep deprivation, `U`.
+A model with random intercepts and random slopes for each subject, allowing for within-subject correlation of the slope and intercept, is fit as
 ```{julia;term=true}
 fm2 = fit!(lmm(@formula(Y ~ 1 + U + (1+U|G)), dat[:sleepstudy]))
 ```
@@ -83,4 +95,7 @@ gm1 = fit!(glmm(@formula(r2 ~ 1 + a + g + b + s + m + (1|id) + (1|item)), dat[:V
     Bernoulli()))
 ```
 
-The canonical link is used if no link is specified.
+The canonical link, which is the `GLM.LogitLink` for the `Bernoulli` distribution, is used if no explicit link is specified.
+
+In the [`GLM` package](https://github.com/JuliaStats/GLM.jl) the appropriate distribution for a 0/1 response is the `Bernoulli` distribution.
+The `Binomial` distribution is only used when the response is the fraction of trials returning a positive, in which case the number of trials must be specified as the case weights.

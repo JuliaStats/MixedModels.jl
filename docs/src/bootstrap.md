@@ -61,7 +61,7 @@ Linear mixed model fit by maximum likelihood
 
 Variance components:
               Column    Variance  Std.Dev. 
- Batch    (Intercept)  1388.3332 37.260344
+ Batch    (Intercept)  1388.3333 37.260345
  Residual              2451.2500 49.510100
  Number of obs: 30; levels of grouping factors: 6
 
@@ -134,9 +134,9 @@ plot(x = view(results, 1, :), Geom.density(), Guide.xlabel("Parametric bootstrap
 ````
 
 
-![Density of parametric bootstrap estimates of σ² from model m1](figures/bootstrap_8_1.svg)
+![Density of parametric bootstrap estimates of σ² from model m1](./assets//bootstrap_8_1.svg)
 
-![Density of parametric bootstrap estimates of σ₁² from model m1](figures/bootstrap_9_1.svg)
+![Density of parametric bootstrap estimates of σ₁² from model m1](./assets//bootstrap_9_1.svg)
 
 
 
