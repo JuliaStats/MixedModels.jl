@@ -8,7 +8,8 @@ CurrentModule = MixedModels
 It is similar in scope to the [*lme4*](https://github.com/lme4/lme4) package for `R`.
 
 ```@contents
-Pages = ["constructors.md",
+Pages = ["SimpleLMM.md",
+         "constructors.md",
          "extractors.md",
          "bootstrap.md"]
 Depth = 2

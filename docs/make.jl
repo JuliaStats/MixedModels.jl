@@ -4,6 +4,7 @@ makedocs(
     format = :html,
     sitename = "MixedModels",
     pages = ["index.md",
+             "SimpleLMM.md",
              "constructors.md",
              "extractors.md",
              "bootstrap.md"]

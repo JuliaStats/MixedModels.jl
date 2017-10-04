@@ -1,0 +1,92 @@
+
+```julia
+using DataFrames, Feather, MixedModels, RCall
+```
+
+```julia
+R"""
+load("kb07.rda")
+"""
+@rget kb07;
+```
+
+```julia
+@time mm1 = fit!(lmm(RTtrunc ~ 1+P+S+C+SP+SC+PC+SPC+
+        (1+S+P+C+SP+SC+PC+SPC|subj)+
+        (1+S+P+C+SP+SC+PC+SPC|item), kb07))
+```
+
+```julia
+mm1.optsum
+```
+
+```julia
+mm1.Λ[1]
+```
+
+```julia
+mm1.Λ[2]
+```
+
+```julia
+R"""
+baboon <- within(readRDS("finaldat.tbt.rds"), {
+    stimulus <- factor(stimulus)
+    lex <- factor(lex)
+    Outcomes <- factor(Outcomes)
+    id <- factor(id)
+    dec.FINAL <- factor(dec.FINAL)
+    dec.GAM2 <- factor(dec.GAM2)
+})
+str(baboon)
+"""
+```
+
+```julia
+@rget(baboon);
+```
+
+```julia
+for (n,v) in eachcol(baboon)
+    println(rpad(n, 20), typeof(v))
+end
+```
+
+In Julia column names with embedded `.` characters must be quoted in an awkward way.  It is better to replace the `.` characters with `_`.
+
+```julia
+nms_ = [Symbol(replace(string(nm), '.', '_')) for nm in names(baboon)]
+names!(baboon, nms_)
+baboon[:dec_HOG_0] = convert(Vector{Int}, baboon[:dec_HOG_0])
+for (n,v) in eachcol(baboon)
+    println(rpad(n, 20), typeof(v))
+end
+```
+
+```julia
+mm1 = fit!(glmm(acc ~ 1 + dec_HOG_0 + (1 | stimulus) + (1 | subject), baboon, Bernoulli()))
+```
+
+```julia
+@time mm1a = fit!(glmm(
+acc ~ 1 + dec_HOG_0 + (1 | stimulus) + (1 | subject), baboon, Bernoulli()), fast = true)
+```
+
+```julia
+mm1a.LMM.optsum
+```
+
+```julia
+@time mm1 = fit!(glmm(
+    acc ~ 1 + dec_HOG_0 + (1 | stimulus) + (1 | subject), baboon, Bernoulli()))
+```
+
+```julia
+mm1.LMM.optsum
+```
+
+```julia
+@time mm2 = fit!(glmm(
+    acc ~ 1 + dec_HOG_0 + (1 | stimulus) + (1 | first_tri) + (1 | last_tri) + (1 | subject),
+    baboon, Bernoulli()))
+```
