@@ -5,14 +5,20 @@ The mixed models considered in the previous chapter had only one random-effects 
 
 In this chapter we consider models with multiple simple, scalar random-effects terms, showing examples where the grouping factors for these terms are in completely crossed or nested or partially crossed configurations. For ease of description we will refer to the random effects as being crossed or nested although, strictly speaking, the distinction between nested and non-nested refers to the grouping factors, not the random effects.
 
-```{julia;term=true}
-using DataFrames, Distributions, FreqTables, Gadfly, MixedModels, RData
-using Gadfly.Geom: density, histogram, point
-using Gadfly.Guide: xlabel, ylabel
-const dat = convert(Dict{Symbol,DataFrame}, load(Pkg.dir("MixedModels", "test", "dat.rda")));
-const ppt250 = inv(500) : inv(250) : 1.;
-const zquantiles = quantile(Normal(), ppt250);
-function hpdinterval(v, level=0.95)
+````julia
+julia> using DataFrames, Distributions, FreqTables, Gadfly, MixedModels, RData
+
+julia> using Gadfly.Geom: density, histogram, point
+
+julia> using Gadfly.Guide: xlabel, ylabel
+
+julia> const dat = convert(Dict{Symbol,DataFrame}, load(Pkg.dir("MixedModels", "test", "dat.rda")));
+
+julia> const ppt250 = inv(500) : inv(250) : 1.;
+
+julia> const zquantiles = quantile(Normal(), ppt250);
+
+julia> function hpdinterval(v, level=0.95)
     n = length(v)
     if !(0 < level < 1)
         throw(ArgumentError("level = $level must be in (0, 1)"))
@@ -27,7 +33,13 @@ function hpdinterval(v, level=0.95)
     (w, ind) = findmin(rtendpts - leftendpts)
     return [leftendpts[ind], rtendpts[ind]]
 end
-```
+hpdinterval (generic function with 2 methods)
+
+````
+
+
+
+
 
 ## A Model With Crossed Random Effects
 
@@ -45,9 +57,18 @@ The data are derived from Table 6.6, p. 144 of Davies (), where they are descr
 
 > assess the variability between samples of penicillin by the *B. subtilis* method. In this test method a bulk-innoculated nutrient agar medium is poured into a Petri dish of approximately 90 mm. diameter, known as a plate. When the medium has set, six small hollow cylinders or pots (about 4 mm. in diameter) are cemented onto the surface at equally spaced intervals. A few drops of the penicillin solutions to be compared are placed in the respective cylinders, and the whole plate is placed in an incubator for a given time. Penicillin diffuses from the pots into the agar, and this produces a clear circular zone of inhibition of growth of the organisms, which can be readily measured. The diameter of the zone is related in a known way to the concentration of penicillin in the solution.
 
-```{julia;term=true}
-names(dat[:Penicillin])
-```
+````julia
+julia> names(dat[:Penicillin])
+3-element Array{Symbol,1}:
+ :Y
+ :G
+ :H
+
+````
+
+
+
+
 
 of the data, then plot it
 
@@ -61,9 +82,23 @@ We say that the and factors are *crossed*, as opposed to *nested* factors, which
 By itself, the designation “crossed” just means that the factors are not nested.
 If we wish to be more specific, we could describe these factors as being *completely crossed*, which means that we have at least one observation for each combination of a level of `G` and a level of `H`.
 We can see this in Fig. [fig:Penicillindot] and, because there are moderate numbers of levels in these factors, we can check it in a cross-tabulation
-```{julia;term=true}
-freqtable(dat[:Penicillin][:H], dat[:Penicillin][:G])
-```
+````julia
+julia> freqtable(dat[:Penicillin][:H], dat[:Penicillin][:G])
+6×24 Named Array{Int64,2}
+Dim1 ╲ Dim2 │ a  b  c  d  e  f  g  h  i  j  …  o  p  q  r  s  t  u  v  w  x
+────────────┼──────────────────────────────────────────────────────────────
+A           │ 1  1  1  1  1  1  1  1  1  1  …  1  1  1  1  1  1  1  1  1  1
+B           │ 1  1  1  1  1  1  1  1  1  1     1  1  1  1  1  1  1  1  1  1
+C           │ 1  1  1  1  1  1  1  1  1  1     1  1  1  1  1  1  1  1  1  1
+D           │ 1  1  1  1  1  1  1  1  1  1     1  1  1  1  1  1  1  1  1  1
+E           │ 1  1  1  1  1  1  1  1  1  1     1  1  1  1  1  1  1  1  1  1
+F           │ 1  1  1  1  1  1  1  1  1  1  …  1  1  1  1  1  1  1  1  1  1
+
+````
+
+
+
+
 
 Like the `Dyestuff` data, the factors in the `Penicillin` data are balanced.
 That is, there are exactly the same number of observations on each plate and for each sample and, furthermore, there is the same number of observations on each combination of levels.
@@ -80,9 +115,30 @@ Even when we apply each of the six samples to each of the 24 plates, something c
 
 A model incorporating random effects for both the plate and the sample is straightforward to specify — we include simple, scalar random effects terms for both these factors.
 
-```{julia;term=true}
-penm = fit!(lmm(@formula(Y ~ 1 + (1|G) + (1|H)), dat[:Penicillin]))
-```
+````julia
+julia> penm = fit!(lmm(@formula(Y ~ 1 + (1|G) + (1|H)), dat[:Penicillin]))
+Linear mixed model fit by maximum likelihood
+ Formula: Y ~ 1 + (1 | G) + (1 | H)
+   logLik   -2 logLik     AIC        BIC    
+ -166.09417  332.18835  340.18835  352.06760
+
+Variance components:
+              Column    Variance  Std.Dev. 
+ G        (Intercept)  0.7149795 0.8455646
+ H        (Intercept)  3.1351920 1.7706474
+ Residual              0.3024264 0.5499331
+ Number of obs: 144; levels of grouping factors: 24, 6
+
+  Fixed-effects parameters:
+             Estimate Std.Error z value P(>|z|)
+(Intercept)   22.9722  0.744596 30.8519  <1e-99
+
+
+````
+
+
+
+
 
 This model display indicates that the sample-to-sample variability has the greatest contribution, then plate-to-plate variability and finally the “residual” variability that cannot be attributed to either the sample or the plate. These conclusions are consistent with what we see in the data plot (Fig. [fig:Penicillindot]).
 
@@ -94,15 +150,42 @@ In chapter [chap:ExamLMM] we saw that a model with a single, simple, scalar ran
 
 The relative covariance factor, $\Lambda_\theta$, (Fig. [fig:fm03LambdaLimage], left panel) is no longer a multiple of the identity. It is now block diagonal, with two blocks, one of size 24 and one of size 6, each of which is a multiple of the identity. The diagonal elements of the two blocks are $\theta_1$ and $\theta_2$, respectively. The numeric values of these parameters can be obtained as
 
-```{julia;term=true}
-show(getθ(penm))
-```
+````julia
+julia> show(getθ(penm))
+[1.53758, 3.21975]
+````
+
+
+
+
 
 or as the `Final parameter vector` in the `opsum` field of `penm`
 
-```{julia;term=true}
-penm.optsum
-```
+````julia
+julia> penm.optsum
+Initial parameter vector: [1.0, 1.0]
+Initial objective value:  364.6267798165791
+
+Optimizer (from NLopt):   LN_BOBYQA
+Lower bounds:             [0.0, 0.0]
+ftol_rel:                 1.0e-12
+ftol_abs:                 1.0e-8
+xtol_rel:                 0.0
+xtol_abs:                 [1.0e-10, 1.0e-10]
+initial_step:             [0.75, 0.75]
+maxfeval:                 -1
+
+Function evaluations:     44
+Final parameter vector:   [1.53758, 3.21975]
+Final objective value:    332.1883486722809
+Return code:              FTOL_REACHED
+
+
+````
+
+
+
+
 
 The first parameter is the relative standard deviation of the random effects for `plate`, which has the value `0.8455646/0.5499331 = 1.53758` at convergence, and the second is the relative standard deviation of the random effects for `sample` (`1.7706475/0.5499331 = 3.21975`).
 
@@ -110,27 +193,34 @@ Because $\Lambda_\theta$ is diagonal, the pattern of non-zeros in $\Lambda_\thet
 
 A bootstrap simulation of the model
 
-```{julia;term=true}
-@time penmbstp = bootstrap(10000, penm);
-```
+````julia
+julia> @time penmbstp = bootstrap(10000, penm);
+  9.570488 seconds (19.42 M allocations: 867.233 MiB, 4.03% gc time)
+
+````
+
+
+
+
 
 provides the density plots
 
-```{julia;echo=false;fig_width=8}
-plot(penmbstp, x = :β₁, density, xlabel("β₁"))
-```
+![](./assets//MultipleTerms_8_1.svg)
 
-```{julia;echo=false;fig_width=8}
-plot(penmbstp, x = :σ, density, xlabel("σ"))
-```
+![](./assets//MultipleTerms_9_1.svg)
 
-```{julia;echo=false;fig_width=8}
-plot(penmbstp, x = :σ₁, density, xlabel("σ₁"))
-```
+![](./assets//MultipleTerms_10_1.svg)
 
-```{julia;term=true}
-plot(penmbstp, x = :σ₂, density, xlabel("σ₂"))
-```
+````julia
+julia> plot(penmbstp, x = :σ₂, density, xlabel("σ₂"))
+Plot(...)
+
+````
+
+
+![](./assets//MultipleTerms_11_1.svg)
+
+
 
 A profile zeta plot (Fig. [fig:fm03prplot]) for the parameters in model
 
@@ -184,15 +274,43 @@ The third example from Davies (1972) is described as coming from
 
 The structure and summary of the data object are
 
-```{julia;term=true}
-names(dat[:Pastes])
-```
+````julia
+julia> names(dat[:Pastes])
+4-element Array{Symbol,1}:
+ :Y
+ :H
+ :c
+ :G
+
+````
+
+
+
+
 
 As stated in the description in Davies (1972), there are 30 samples, three from each of the 10 delivery batches. We have labelled the levels of the `sample` factor with the label of the `batch` factor followed by `a`, `b` or `c` to distinguish the three samples taken from that batch.
 
-```{julia;term=true}
-freqtable(dat[:Pastes][:H], dat[:Pastes][:G])
-```
+````julia
+julia> freqtable(dat[:Pastes][:H], dat[:Pastes][:G])
+10×30 Named Array{Int64,2}
+Dim1 ╲ Dim2 │ A:a  A:b  A:c  B:a  B:b  B:c  …  I:a  I:b  I:c  J:a  J:b  J:c
+────────────┼──────────────────────────────────────────────────────────────
+A           │   2    2    2    0    0    0  …    0    0    0    0    0    0
+B           │   0    0    0    2    2    2       0    0    0    0    0    0
+C           │   0    0    0    0    0    0       0    0    0    0    0    0
+D           │   0    0    0    0    0    0       0    0    0    0    0    0
+E           │   0    0    0    0    0    0       0    0    0    0    0    0
+F           │   0    0    0    0    0    0       0    0    0    0    0    0
+G           │   0    0    0    0    0    0       0    0    0    0    0    0
+H           │   0    0    0    0    0    0       0    0    0    0    0    0
+I           │   0    0    0    0    0    0       2    2    2    0    0    0
+J           │   0    0    0    0    0    0  …    0    0    0    2    2    2
+
+````
+
+
+
+
 
 When plotting the `strength` versus `sample` and in the data we should remember that we have two strength measurements on each of the 30 samples. It is tempting to use the cask designation (‘a’, ‘b’ and ‘c’) to determine, say, the plotting symbol within a `sample`. It would be fine to do this within a batch but the plot would be misleading if we used the same symbol for cask ‘a’ in different batches. There is no relationship between cask ‘a’ in batch ‘A’ and cask ‘a’ in batch ‘B’. The labels ‘a’, ‘b’ and ‘c’ are used only to distinguish the three samples within a batch; they do not have a meaning across batches.
 
@@ -230,9 +348,30 @@ In a small data set like we can quickly detect a factor being implicitly nested 
 
 Fitting a model with simple, scalar random effects for nested factors is done in exactly the same way as fitting a model with random effects for crossed grouping factors. We include random-effects terms for each factor, as in
 
-```{julia;term=true}
-pstsm = fit!(lmm(@formula(Y ~ 1 + (1|G) + (1|H)), dat[:Pastes]))
-```
+````julia
+julia> pstsm = fit!(lmm(@formula(Y ~ 1 + (1|G) + (1|H)), dat[:Pastes]))
+Linear mixed model fit by maximum likelihood
+ Formula: Y ~ 1 + (1 | G) + (1 | H)
+   logLik   -2 logLik     AIC        BIC    
+ -123.99723  247.99447  255.99447  264.37184
+
+Variance components:
+              Column    Variance  Std.Dev.  
+ G        (Intercept)  8.4336166 2.90406897
+ H        (Intercept)  1.1991794 1.09507048
+ Residual              0.6780021 0.82340884
+ Number of obs: 60; levels of grouping factors: 30, 10
+
+  Fixed-effects parameters:
+             Estimate Std.Error z value P(>|z|)
+(Intercept)   60.0533  0.642136 93.5212  <1e-99
+
+
+````
+
+
+
+
 
 Not only is the model specification similar for nested and crossed factors, the internal calculations are performed according to the methods described in Sect. [sec:definitions] for each model type. Comparing the patterns in the matrices $\Lambda$, $\mathbf Z'\mathbf Z$ and $\mathbf L$ for this model (Fig. [fig:fm04LambdaLimage]) to those in Fig. [fig:fm03LambdaLimage] shows that models with nested factors produce simple repeated structures along the diagonal of the sparse Cholesky factor, $\mathbf L$. This type of structure has the desirable property that there is no “fill-in” during calculation of the Cholesky factor. In other words, the number of non-zeros in $\mathbf L$ is the same as the number of non-zeros in the lower triangle of the matrix being factored, $\Lambda'\mathbf Z'\mathbf Z\Lambda+\mathbf I$ (which, because $\Lambda$ is diagonal, has the same structure as $\mathbf Z'\mathbf
 Z$).
@@ -252,43 +391,82 @@ Plots of the prediction intervals of the random effects (Fig. [fig:fm04ranef])
 
 confirm this impression in that all the prediction intervals for the random effects for contain zero. Furthermore, a bootstrap sample
 
-```{julia;term=true}
-srand(4321234);
-@time pstsbstp = bootstrap(10000, pstsm);
-```
+````julia
+julia> srand(4321234);
 
-```{julia;echo=false;fig_width=8}
-plot(pstsbstp, x = :β₁, density, xlabel("β₁"))
-```
+julia> @time pstsbstp = bootstrap(10000, pstsm);
+  7.264603 seconds (14.38 M allocations: 680.942 MiB, 2.51% gc time)
 
-```{julia;term=true}
-plot(pstsbstp, x = :σ, density, xlabel("σ"))
-```
+````
 
-```{julia;term=true}
-plot(x = pstsbstp[:σ₁], Geom.density(), Guide.xlabel("σ₁"))
-```
 
-```{julia;term=true}
-plot(x = pstsbstp[:σ₂], Geom.density(), Guide.xlabel("σ₂"))
-```
+
+![](./assets//MultipleTerms_16_1.svg)
+
+````julia
+julia> plot(pstsbstp, x = :σ, density, xlabel("σ"))
+Plot(...)
+
+````
+
+
+![](./assets//MultipleTerms_17_1.svg)
+
+````julia
+julia> plot(x = pstsbstp[:σ₁], Geom.density(), Guide.xlabel("σ₁"))
+Plot(...)
+
+````
+
+
+![](./assets//MultipleTerms_18_1.svg)
+
+````julia
+julia> plot(x = pstsbstp[:σ₂], Geom.density(), Guide.xlabel("σ₂"))
+Plot(...)
+
+````
+
+
+![](./assets//MultipleTerms_19_1.svg)
+
+
 
 and a normal probability plot of
 
-```{julia;term=true}
-plot(x = zquantiles, y = quantile(pstsbstp[:σ₂], ppt250), Geom.line,
+````julia
+julia> plot(x = zquantiles, y = quantile(pstsbstp[:σ₂], ppt250), Geom.line,
     Guide.xlabel("Standard Normal Quantiles"), Guide.ylabel("σ₂"))
-```
+Plot(...)
 
-```{julia;term=true}
-count(x -> x < 1.0e-5, pstsbstp[:σ₂])
-```
+````
+
+
+![](./assets//MultipleTerms_20_1.svg)
+
+````julia
+julia> count(x -> x < 1.0e-5, pstsbstp[:σ₂])
+3665
+
+````
+
+
+
+
 
 Over 1/3 of the bootstrap samples of $\sigma_2$ are zero.  Even a 50% confidence interval on this parameter will extend to zero.  One way to calculate confidence intervals based on a bootstrap sample is sort the sample and consider all the contiguous intervals that contain, say, 95% of the samples then choose the smallest of these.  For example,
 
-```{julia;term=true}
-hpdinterval(pstsbstp[:σ₂])
-```
+````julia
+julia> hpdinterval(pstsbstp[:σ₂])
+2-element Array{Float64,1}:
+ 0.0    
+ 2.07348
+
+````
+
+
+
+
 
 provides the confidence interval
 
@@ -312,15 +490,45 @@ In Sect. [sec:variability] we referred to likelihood ratio tests (LRTs) for whi
 
 The restricted model fit
 
-```{julia;term=true}
-pstsm1 = fit!(lmm(@formula(Y ~ 1 + (1|G)), dat[:Pastes]))
-```
+````julia
+julia> pstsm1 = fit!(lmm(@formula(Y ~ 1 + (1|G)), dat[:Pastes]))
+Linear mixed model fit by maximum likelihood
+ Formula: Y ~ 1 + (1 | G)
+   logLik   -2 logLik     AIC        BIC    
+ -124.20085  248.40170  254.40170  260.68473
+
+Variance components:
+              Column    Variance  Std.Dev. 
+ G        (Intercept)  9.6328208 3.1036786
+ Residual              0.6780001 0.8234076
+ Number of obs: 60; levels of grouping factors: 30
+
+  Fixed-effects parameters:
+             Estimate Std.Error z value P(>|z|)
+(Intercept)   60.0533  0.576536 104.162  <1e-99
+
+
+````
+
+
+
+
 
 is compared to model `pstsm` with
 
-```{julia;term=true}
-MixedModels.lrt(pstsm1, pstsm)
-```
+````julia
+julia> MixedModels.lrt(pstsm1, pstsm)
+2×4 DataFrames.DataFrame
+│ Row │ Df │ Deviance │ Chisq    │ pval     │
+├─────┼────┼──────────┼──────────┼──────────┤
+│ 1   │ 3  │ 248.402  │ NaN      │ NaN      │
+│ 2   │ 4  │ 247.994  │ 0.407234 │ 0.523377 │
+
+````
+
+
+
+
 
 which provides a p-value of $0.5234$. Because typical standards for “small” p-values are 5% or 1%, a p-value over 50% would not be considered significant at any reasonable level.
 
@@ -330,21 +538,27 @@ We do need to be cautious in quoting this p-value, however, because the paramete
 
 A bootstrap sample
 
-```{julia;term=true}
-@time psts1bstp = bootstrap(10000, pstsm1);
-```
+````julia
+julia> @time psts1bstp = bootstrap(10000, pstsm1);
+  2.801394 seconds (6.08 M allocations: 285.117 MiB, 3.21% gc time)
+
+````
+
+
+
+
 
 provides empirical density plots
 
-```{julia;echo=false;fig_width=8}
-plot(psts1bstp, x = :σ, density, xlabel("σ"))
-```
+![](./assets//MultipleTerms_26_1.svg)
+
+
 
 and
 
-```{julia;echo=false;fig_width=8}
-plot(psts1bstp, x = :σ₁, density, xlabel("σ₁"))
-```
+![](./assets//MultipleTerms_27_1.svg)
+
+
 
 The profile zeta plots for the remaining parameters in model (Fig. [fig:fm04aprplot])
 
@@ -389,25 +603,63 @@ The data are from a special evaluation of lecturers by students at the Swiss Fed
 
 The variables
 
-```{julia;term=true}
-show(names(dat[:InstEval]))
-```
+````julia
+julia> show(names(dat[:InstEval]))
+Symbol[:G, :H, :studage, :lectage, :A, :I, :Y]
+````
+
+
+
+
 
 have somewhat cryptic names. Factor `s` designates the student and `d` the instructor. The factor `dept` is the department for the course and `service` indicates whether the course was a service course taught to students from other departments.
 
 Although the response, `Y`, is on a scale of 1 to 5,
 
-```{julia;term=true}
-freqtable(dat[:InstEval][:Y])'
-```
+````julia
+julia> freqtable(dat[:InstEval][:Y])'
+1×5 Named RowVector{Int64,Array{Int64,1}}
+' ╲ Dim1 │     1      2      3      4      5
+─────────┼──────────────────────────────────
+1        │ 10186  12951  17609  16921  15754
+
+````
+
+
+
+
 
 it is sufficiently diffuse to warrant treating it as if it were a continuous response.
 
 At this point we will fit models that have random effects for student, instructor, and department (or the combination) to these data. In the next chapter we will fit models incorporating fixed-effects for instructor and department to these data.
 
-```{julia;term=true}
-@time instm = fit!(lmm(@formula(Y ~ 1 + A + (1|G) + (1|H) + (1|I)), dat[:InstEval]))
-```
+````julia
+julia> @time instm = fit!(lmm(@formula(Y ~ 1 + A + (1|G) + (1|H) + (1|I)), dat[:InstEval]))
+  2.583006 seconds (28.59 k allocations: 188.857 MiB, 1.51% gc time)
+Linear mixed model fit by maximum likelihood
+ Formula: Y ~ 1 + A + (1 | G) + (1 | H) + (1 | I)
+     logLik        -2 logLik          AIC             BIC       
+ -1.18860884×10⁵  2.37721769×10⁵  2.37733769×10⁵  2.37788993×10⁵
+
+Variance components:
+              Column     Variance    Std.Dev.  
+ G        (Intercept)  0.1059726808 0.32553445
+ H        (Intercept)  0.2652041233 0.51497973
+ I        (Intercept)  0.0061677025 0.07853472
+ Residual              1.3864886097 1.17749251
+ Number of obs: 73421; levels of grouping factors: 2972, 1128, 14
+
+  Fixed-effects parameters:
+               Estimate Std.Error  z value P(>|z|)
+(Intercept)     3.28258 0.0284114  115.537  <1e-99
+A: 1         -0.0925886 0.0133832 -6.91828  <1e-11
+
+
+````
+
+
+
+
 
 (Fitting this complex model to a moderately large data set takes a few seconds on a modest desktop computer. Although this is more time than required for earlier model fits, it is a remarkably short time for fitting a model of this size and complexity. In some ways it is remarkable that such a model can be fit at all on such a computer.)
 

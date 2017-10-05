@@ -59,7 +59,7 @@ The second and subsequent calls to such functions are much faster.)
 
 ````julia
 julia> @time fit!(lmm(@formula(Y ~ 1 + (1|G)), dat[:Dyestuff2]))
-  0.001088 seconds (1.59 k allocations: 86.670 KiB)
+  0.001095 seconds (1.59 k allocations: 86.670 KiB)
 Linear mixed model fit by maximum likelihood
  Formula: Y ~ 1 + (1 | G)
    logLik   -2 logLik     AIC        BIC    
