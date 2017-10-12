@@ -5,7 +5,6 @@ makedocs(
     sitename = "MixedModels",
     pages = ["index.md",
              "constructors.md",
-             "extractors.md",
              "bootstrap.md",
              "SimpleLMM.md",
              "MultipleTerms.md",

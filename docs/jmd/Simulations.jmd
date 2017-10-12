@@ -3,31 +3,45 @@
 
 The most noticeable advantages of fitting mixed-effects models using the [`MixedModels`](https://github.com/dmbates/MixedModels.jl) package for [Julia](https://julialang.org) relative to, say, [`lme4`](https://github.com/lme4/lme4) in [R](https://www.r-project.org) are speed and reliability.
 
-For simple models fit to data sets of modest size, speed is not that much of an issue.  If the model can be fit in less time than it takes to organize and plot the data to determine an appropriate model form then it is not too important if one implementation is faster than another.
+For simple models fit to data sets of modest size, speed is not that much of an issue.
+If the model can be fit in less time than it takes to organize and plot the data to determine an appropriate model form then it is not too important if one implementation is faster than another.
 
-However, in a simulation study that may involve tens or hundreds of thousands of model fits speed of fitting even simple models can be important.  The purpose of this notebook is to show how to perform simulation studies in Julia quickly and efficiently. The emphasis will be on simulation of linear mixed-effects models but many of the techniques and software practices apply more generally.
+However, in a simulation study that may involve tens or hundreds of thousands of model fits speed of fitting even simple models can be important.
+The purpose of this notebook is to show how to perform simulation studies in Julia quickly and efficiently. The emphasis will be on simulation of linear mixed-effects models but many of the techniques and software practices apply more generally.
 
 ## Overall strategy
 
-It is almost trivial to state that the purpose of a simulation study is to generate a set of simulated values that we can use to assess whether a claim is reasonable.  By the way, it is important to realize that a simulation study can only refute a claim by showing that the observed results are inconsistent with that claim.  You cannot establish a result through a simulation study.  You can only show that your results in a particular case are non inconsistent with the claim.
+It is almost trivial to state that the purpose of a simulation study is to generate a set of simulated values that we can use to assess whether a claim is reasonable.
+By the way, it is important to realize that a simulation study can only refute a claim by showing that the observed results are inconsistent with that claim.
+You cannot establish a result through a simulation study.
+You can only show that your results in a particular case are non inconsistent with the claim.
 
-As with any other experiment it helps to determine up front what the scope of the study should be and what information from the study should be retained.  The design space for the study can be very large, even for a simple case such as assessing the characteristics (Type I error and power) of a particular test, as described below.  Also the amount of information generated can be very large and the expense of retaining a huge amount of information must be balanced with information loss by summarizing.  There is a great temptation to perform too much data reduction, such as recording only the proportion of p-values falling below a threshold in a test.  Retaining the simulated p-values themselves provides a richer source of information.
+As with any other experiment it helps to determine up front what the scope of the study should be and what information from the study should be retained.
+The design space for the study can be very large, even for a simple case such as assessing the characteristics (Type I error and power) of a particular test, as described below.
+Also the amount of information generated can be very large and the expense of retaining a huge amount of information must be balanced with information loss by summarizing.
+There is a great temptation to perform too much data reduction, such as recording only the proportion of p-values falling below a threshold in a test.
+Retaining the simulated p-values themselves provides a richer source of information.
 
-A basic rule in Julia is that, because of the way just-in-time (JIT) compilation works, any substantial computation should take place within a function. Thus the early phases of the simulation study are exercises in designing functions. In the later phases these functions should be wrapped in a package.
+A basic rule in Julia is that, because of the way just-in-time (JIT) compilation works, any substantial computation should take place within a function.
+Thus the early phases of the simulation study are exercises in designing functions.
+In the later phases these functions should be wrapped in a package.
 
 ## A simple example
 
-In Matuschek, Kliegl, Vasishth, Baayen and Bates (2017) we used a simulation study to explore "Balancing Type I Error and Power in Linear Mixed Models".  The experimental design consisted of a single binary experimental factor, `C`, which varied within subjects (`S`) and within items (`I`).  There are `m` items and `n` subjects.
+In Matuschek, Kliegl, Vasishth, Baayen and Bates (2017) we used a simulation study to explore "Balancing Type I Error and Power in Linear Mixed Models".
+The experimental design consisted of a single binary experimental factor, `C`, which varied within subjects (`S`) and within items (`I`).  There are `m` items and `n` subjects.
 
-Begin by loading the packages to be used.  The `MixedModels` package is obviously needed to define and fit the models as is the `DataFrames` package for the data representation.  The `Distributions` package provides the complementary cumulative distribution function (`ccdf`) to evaluate p-values from test statistics assuming a given reference distribution, and the `Gadfly` package is used for plotting.
+Begin by loading the packages to be used.
+The `MixedModels` package is obviously needed to define and fit the models as is the `DataFrames` package for the data representation.
+The `Distributions` package provides the complementary cumulative distribution function (`ccdf`) to evaluate p-values from test statistics assuming a given reference distribution, and the `Gadfly` package is used for plotting.
 
-```julia
+```{julia;term=true}
 using Distributions, DataFrames, Gadfly, Iterators, MixedModels
 ```
 
 Define a `mkdata` function to generate a data frame according to the number of subjects, the number of items, and the coding of the levels of the covariates. (My coauthors in that paper overruled me and used a `[-0.5, 0.5]` encoding. Here I use the `[-1, 1]` encoding preferred by statisticians.)
 
-```julia
+```{julia;term=true}
 function mkdata(m=10, n=30)
     chars = vcat('A':'Z', 'a':'z')
     tuples = collect(product(['N','Y'], ('a':'z')[1:m], chars[1:n]))
@@ -37,29 +51,32 @@ function mkdata(m=10, n=30)
 end
 ```
 
-```julia
+```{julia;term=true}
 const dat = mkdata()
 ```
 
-```julia
+```{julia;term=true}
 typeof.(dat.columns)  # check the column types
 ```
 
-The response, `Y`, is initialized to zeros so that it is available to construct `LinearMixedModel` objects. The `const` modifier in the assignment indicates that the type of `dat` will not change, although the actual data values may change (but in this case they won't).  Using `const`, if appropriate, when assigning global variables is a good practice.
+The response, `Y`, is initialized to zeros so that it is available to construct `LinearMixedModel` objects.
+The `const` modifier in the assignment indicates that the type of `dat` will not change, although the actual data values may change (but in this case they won't).
+Using `const`, if appropriate, when assigning global variables is a good practice.
 
-The `lmm` function creates, but does not fit, a `LinearMixedModel`.  It is useful to have a model that has not yet been fit because it is the structure that can then be used to `simulate!` a response and `refit!` the model.
+The `lmm` function creates, but does not fit, a `LinearMixedModel`.
+It is useful to have a model that has not yet been fit because it is the structure that can then be used to `simulate!` a response and `refit!` the model.
 
-The formula for the linear mixed-effects model can be constructed with the `@formula` macro or using an explicit call to the `Formula` constructor.  For example
-
-```julia
+The formula for the linear mixed-effects model can be constructed with the `@formula` macro or using an explicit call to the `Formula` constructor.
+For example
+```{julia;term=true}
 srand(1234321)
-refit!(simulate!(lmm(@formula(Y ~ 1 + (1|S) +(1|I)), dat), 
+refit!(simulate!(lmm(@formula(Y ~ 1 + (1|S) +(1|I)), dat),
         β=[2000.], σ=300., θ=fill(1/3, 2)))
 ```
 
 or
 
-```julia
+```{julia;term=true}
 srand(1234321)
 const m0 = refit!(simulate!(lmm(Formula(:Y,:(1+(1|S)+(1|I))), dat),
         β=[2000.], σ=300., θ=fill(1/3, 2)))
@@ -67,20 +84,20 @@ const m0 = refit!(simulate!(lmm(Formula(:Y,:(1+(1|S)+(1|I))), dat),
 
 We obtain the simulated response and fit the alternative model as
 
-```julia
+```{julia;term=true}
 const y0 = model_response(m0)
 const m1 = refit!(lmm(Formula(:Y, :(1+C+(1|S)+(1|I))), dat), y0)
 ```
 
 The likelihood ratio test statistic for `H₀: β₂ = 0` versus `Hₐ: β₂ ≠ 0` is the difference in the objective (negative twice the log-likelihood) values for the fitted models.
 
-```julia
+```{julia;term=true}
 lrtval = objective(m0) - objective(m1)
 ```
 
 The p-value, assuming a `Chisq(1)` reference distribution, is
 
-```julia
+```{julia;term=true}
 ccdf(Chisq(1), lrtval)
 ```
 
@@ -91,28 +108,29 @@ Notice that the conclusions from the likelihoood ratio test are essentially the 
 (Intercept)   1955.61   34.7294    56.31  <1e-99
 C             5.81124    12.988 0.447432  0.6546
 ```
-for the alternative model `m1`.  This is because the square of the `z` value, which is the ratio of the estimate of `β₂` to its standard error, is essentially the same as `lrtval`
-
-```julia
+for the alternative model `m1`.
+This is because the square of the `z` value, which is the ratio of the estimate of `β₂` to its standard error, is essentially the same as `lrtval`
+```{julia;term=true}
 abs2(0.447432)
 ```
-
 and a `Chisq(1)` distribution is the square of a standard normal distribution.
 
-Generally a hypothesis test based on fitting both the null model and the alternative model to the data (i.e. the likelihood ratio test) is more reliable than one based on fitting only the alternative model and inferring what the change to the null model fit will be (the Z-statistic).  In this case they give essentially the same results.
+Generally a hypothesis test based on fitting both the null model and the alternative model to the data (i.e. the likelihood ratio test) is more reliable than one based on fitting only the alternative model and inferring what the change to the null model fit will be (the Z-statistic).
+In this case they give essentially the same results.
 
 ## Plotting the data
 
-Although it is tempting to continue with writing simulation functions, this is a good time to examine the responses that have been simulated. What do we expect them to look like?
+Although it is tempting to continue with writing simulation functions, this is a good time to examine the responses that have been simulated.
+What do we expect them to look like?
 
 To make it more convenient to plot the data we copy the contents of `y0` vector to the `:Y` column of the data frame then look for a systematic shift
 
-```julia
+```{julia;term=true}
 copy!(dat[:Y], y0)
 plot(dat, x = :Y, Geom.density, Guide.xlabel("Simulated responses"))
 ```
 
-```julia
+```{julia;term=true}
 plot(dat, x = :Y, Geom.density, Guide.xlabel("Simulated responses"),
     color = :C)
 ```
@@ -121,17 +139,17 @@ There is no evidence of a systematic shift according to the level of the conditi
 
 Next consider the effect of the subjects and items
 
-```julia
+```{julia;term=true}
 plot(dat, x = :S, y = :Y, Geom.boxplot, Guide.xlabel("Subject"),
     Guide.ylabel("Simulated response"))
 ```
 
-```julia
+```{julia;term=true}
 plot(dat, x = :I, y = :Y, Geom.boxplot, Guide.xlabel("Item"),
     Guide.ylabel("Simulated response"))
 ```
 
-```julia
+```{julia;term=true}
 plot(dat, x = :C, y = :Y, xgroup=:I, Geom.subplot_grid(Geom.boxplot),
     Guide.ylabel("Simulated response"))
 ```
@@ -140,7 +158,7 @@ None of these plots show much structure in the data but that is not surprising b
 
 ## Simulating p values from a single test
 
-```julia
+```{julia;term=true}
 function onetest(mods::Vector{LinearMixedModel{T}},
         N, β::Vector{T}, σ::T, θ::Vector{T}) where {T}
     if length(mods) ≠ 2
@@ -167,15 +185,15 @@ const mods = [lmm(Formula(:Y,:(1+(1|S)+(1|I))), dat),
 onetest(mods, 10, [2000.], 300., fill(1/3, 2))
 ```
 
-```julia
+```{julia;term=true}
 @time const rr =  onetest(mods, 10000, [2000.], 300., fill(1/3, 2));
 ```
 
-```julia
+```{julia;term=true}
 const ppts250 = inv(500):inv(250):1
 ```
 
-```julia
+```{julia;term=true}
 plot(x = ppts250, y = quantile(rr[:p], ppts250), Geom.line,
     Guide.xlabel("Theoretical quantiles"), 
     Guide.ylabel("Observed quantiles"))
@@ -183,13 +201,13 @@ plot(x = ppts250, y = quantile(rr[:p], ppts250), Geom.line,
 
 The so-called "maximal" model for such an experimental design is
 
-```julia
+```{julia;term=true}
 const maxmod = lmm(@formula(Y ~ 1+C+(1+C|S)+(1+C|I)), dat);
 ```
 
 To simulate a response we specify the fixed-effects parameters, `β`, the standard deviation of the per-observation noise, `σ`, and the relative covariance parameters, `θ`.  `β` and `θ` are vectors whereas `σ` is a scalar.  For this model `β` is of length 2 and `θ` is of length 6.  In this simulation the null hypothesis is that the second element of `β` is zero.
 
-```julia
+```{julia;term=true}
 srand(1234321)   # set the random number seed
 refit!(simulate!(maxmod, β=[2000.,0.], σ=300., θ=[1/3,0.,0.,1/3,0.,0.]))
 ```
@@ -198,7 +216,7 @@ The value of `θ` corresponds to random intercepts only with a standard deviatio
 
 The null model for a likelihood ratio test is
 
-```julia
+```{julia;term=true}
 const nullmod = lmm(@formula(Y ~ 1 + (1+C|S) + (1+C|I)), dat);
 refit!(nullmod, model_response(maxmod))
 ```
@@ -209,13 +227,13 @@ refit!(nullmod, model_response(maxmod))
 
 The likelihood ratio test statistic for these two model fits is
 
-```julia
+```{julia;term=true}
 const lrtstat = objective(nullmod) - objective(maxmod)
 ```
 
 The p-value for the likelihood ratio test, assuming a χ² reference distribution with 1 degree of freedom, is
 
-```julia
+```{julia;term=true}
 ccdf(Chisq(1), lrtstat)  # ccdf -> complementary cumulative dist fcn
 ```
 
@@ -228,7 +246,7 @@ C             5.81124   16.4813 0.352595  0.7244
 ```
 This is because the `z-value`, which is the ratio of the coefficient estimate and its approximate standard error, is very close to the square root of `lrtstat`
 
-```julia
+```{julia;term=true}
 sqrt(lrtstat)
 ```
 
@@ -238,7 +256,7 @@ The whole purpose of a simulation study is to repeat the process of simulating a
 
 To assess the Type I error rate we will simulate data from the null model `1+(1|S)+(1|I)` and evaluate the likelihood ratio test statistic for the fit of `1+(1|S)+(1|I)` versus `1+C+(1|S)+(1|I)`
 
-```julia
+```{julia;term=true}
 function typeIsim(seed, N, null::LinearMixedModel{T},
     alt::LinearMixedModel{T}, β::Vector{T}, σ::T, θ::Vector{T}) where T
     srand(seed)
@@ -258,30 +276,30 @@ We fill out the matrix `r`, which will be the returned value, one column at a ti
 
 First, run a small test to make sure things are working as expected
 
-```julia
+```{julia;term=true}
 typeIsim(1234321, 10, lmm(@formula(Y~1+(1|S)+(1|I)), dat),
    lmm(@formula(Y~1+C+(1|S)+(1|I)), dat), [2000.], 300., [1/3,1/3])
 ```
 
-```julia
+```{julia;term=true}
 using Gadfly
 ```
 
-```julia
+```{julia;term=true}
 @time const r = typeIsim(1234321, 10000, lmm(@formula(Y~1+(1|S)+(1|I)), dat),
    lmm(@formula(Y~1+C+(1|S)+(1|I)), dat), [2000.], 300., [1/3,1/3])
 ```
 
-```julia
+```{julia;term=true}
 plot(x=view(r, 4, :), Geom.histogram, Guide.xlabel("p-values"))
 ```
 
-```julia
+```{julia;term=true}
 const ppt250 = inv(500) : inv(250) : 1
 plot(x=quantile(view(r,4,:), ppt250), y = ppt250, Geom.line)
 ```
 
-```julia
+```{julia;term=true}
 const nullrhs = [
     :(1+(1+C|S)+(1+C|I)),     # "maximal" model
     :(1+(1|S)+(0+C|S)+(1|I)+(0+C|I)), # uncorrelated intercept/slope
@@ -292,7 +310,7 @@ const nullrhs = [
 
 (Statisticians may find all but the last of these models to be peculiar because they are used to test the significance of a main effect in the presence of apparently non-ignorable interactions with grouping factors for the random effects.  They are indeed peculiar; some would say nonsensical.  Unfortunately this nonsensical approach is now enshrined in the subject matter literature.)
 
-```julia
+```{julia;term=true}
 const altrhs = deepcopy(nullrhs);  # modify a copy of the null models
 for expr in altrhs
     insert!(expr.args, 3, :C)  # add the main effect for C
@@ -302,21 +320,21 @@ altrhs
 
 Just to check that we haven't accidently changed the null right-hand sides
 
-```julia
+```{julia;term=true}
 nullrhs
 ```
 
 Now generate `LinearMixedModel` objects for each of these formulas.
 
-```julia
+```{julia;term=true}
 const nullmods = [lmm(Formula(:Y,rhs), dat) for rhs in nullrhs];
 ```
 
-```julia
+```{julia;term=true}
 const altmods = [lmm(Formula(:Y,rhs), dat) for rhs in altrhs];
 ```
 
-```julia
+```{julia;term=true}
 getfield.(altmods, :formula)
 ```
 
@@ -326,22 +344,22 @@ The `simulate!` function takes a `LinearMixedModel` and optional parameter value
 
 For convenience we will always simulate from the "maximal" alternative because all the other models can be represented as special cases of that model with restricted parameter values.
 
-```julia
+```{julia;term=true}
 refit!(simulate!(altmods[1], 
     β=[2000.,0.], σ = 300., θ = [1/3,0.,0.,1/3,0.,0.]))
 ```
 
-```julia
+```{julia;term=true}
 newy = model_response(altmods[1]);
 ```
 
-```julia
+```{julia;term=true}
 refit!(nullmods[1], newy)
 ```
 
-```julia
+```{julia;term=true}
 objective(altmods[1]) - objective(nullmods[1])
 ```
 
-```julia
+```{julia;term=true}
 ```

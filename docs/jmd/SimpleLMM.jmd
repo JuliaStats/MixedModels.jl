@@ -1,34 +1,65 @@
 
 # A Simple, Linear, Mixed-effects Model
 
-In this book we describe the theory behind a type of statistical model called *mixed-effects* models and the practice of fitting and analyzing such models using the [`MixedModels`](https://github.com/dmbates/MixedModels.jl) package for [`Julia`](https://julialang.org). These models are used in many different disciplines. Because the descriptions of the models can vary markedly between disciplines, we begin by describing what mixed-effects models are and by exploring a very simple example of one type of mixed model, the *linear mixed model*.
+In this book we describe the theory behind a type of statistical model called *mixed-effects* models and the practice of fitting and analyzing such models using the [`MixedModels`](https://github.com/dmbates/MixedModels.jl) package for [`Julia`](https://julialang.org).
+These models are used in many different disciplines.
+Because the descriptions of the models can vary markedly between disciplines, we begin by describing what mixed-effects models are and by exploring a very simple example of one type of mixed model, the *linear mixed model*.
 
 This simple example allows us to illustrate the use of the `lmm` function in the `MixedModels` package for fitting such models and other functions 
-for analyzing the fitted model. We also describe methods of assessing the precision of the parameter estimates and of visualizing the conditional distribution of the random effects, given the observed data.
+for analyzing the fitted model.
+We also describe methods of assessing the precision of the parameter estimates and of visualizing the conditional distribution of the random effects, given the observed data.
 
 ## Mixed-effects Models
 
-Mixed-effects models, like many other types of statistical models, describe a relationship between a *response* variable and some of the *covariates* that have been measured or observed along with the response. In mixed-effects models at least one of the covariates is a *categorical* covariate representing experimental or observational “units” in the data set. In the example from the chemical industry discussed in this chapter, the observational unit is the batch of an intermediate product used in production of a dye. In medical and social sciences the observational units are often the human or animal subjects in the study. In agriculture the experimental units may be the plots of land or the specific plants being studied.
+Mixed-effects models, like many other types of statistical models, describe a relationship between a *response* variable and some of the *covariates* that have been measured or observed along with the response.
+In mixed-effects models at least one of the covariates is a *categorical* covariate representing experimental or observational “units” in the data set.
+In the example from the chemical industry discussed in this chapter, the observational unit is the batch of an intermediate product used in production of a dye.
+In medical and social sciences the observational units are often the human or animal subjects in the study.
+In agriculture the experimental units may be the plots of land or the specific plants being studied.
 
-In all of these cases the categorical covariate or covariates are observed at a set of discrete *levels*. We may use numbers, such as subject identifiers, to designate the particular levels that we observed but these numbers are simply labels. The important characteristic of a categorical covariate is that, at each observed value of the response, the covariate takes on the value of one of a set of distinct levels.
+In all of these cases the categorical covariate or covariates are observed at a set of discrete *levels*.
+We may use numbers, such as subject identifiers, to designate the particular levels that we observed but these numbers are simply labels.
+The important characteristic of a categorical covariate is that, at each observed value of the response, the covariate takes on the value of one of a set of distinct levels.
 
-Parameters associated with the particular levels of a covariate are sometimes called the “effects” of the levels. If the set of possible levels of the covariate is fixed and reproducible we model the covariate using *fixed-effects* parameters. If the levels that were observed represent a random sample from the set of all possible levels we incorporate *random effects* in the model.
+Parameters associated with the particular levels of a covariate are sometimes called the “effects” of the levels.
+If the set of possible levels of the covariate is fixed and reproducible we model the covariate using *fixed-effects* parameters.
+If the levels that were observed represent a random sample from the set of all possible levels we incorporate *random effects* in the model.
 
-There are two things to notice about this distinction between fixed-effects parameters and random effects. First, the names are misleading because the distinction between fixed and random is more a property of the levels of the categorical covariate than a property of the effects associated with them. Secondly, we distinguish between “fixed-effects parameters”, which are indeed parameters in the statistical model, and “random effects”, which, strictly speaking, are not parameters. As we will see shortly, random effects are unobserved random variables.
+There are two things to notice about this distinction between fixed-effects parameters and random effects.
+First, the names are misleading because the distinction between fixed and random is more a property of the levels of the categorical covariate than a property of the effects associated with them.
+Secondly, we distinguish between “fixed-effects parameters”, which are indeed parameters in the statistical model, and “random effects”, which, strictly speaking, are not parameters.
+As we will see shortly, random effects are unobserved random variables.
 
-To make the distinction more concrete, suppose the objective is to model the annual reading test scores for students in a school district and that the covariates recorded with the score include a student identifier and the student’s gender. Both of these are categorical covariates. The levels of the gender covariate, *male* and *female*, are fixed. If we consider data from another school district or we incorporate scores from earlier tests, we will not change those levels. On the other hand, the students whose scores we observed would generally be regarded as a sample from the set of all possible students whom we could have observed. Adding more data, either from more school districts or from results on previous or subsequent tests, will increase the number of distinct levels of the student identifier.
+To make the distinction more concrete, suppose the objective is to model the annual reading test scores for students in a school district and that the covariates recorded with the score include a student identifier and the student’s gender.
+Both of these are categorical covariates.
+The levels of the gender covariate, *male* and *female*, are fixed.
+If we consider data from another school district or we incorporate scores from earlier tests, we will not change those levels.
+On the other hand, the students whose scores we observed would generally be regarded as a sample from the set of all possible students whom we could have observed.
+Adding more data, either from more school districts or from results on previous or subsequent tests, will increase the number of distinct levels of the student identifier.
 
-*Mixed-effects models* or, more simply, *mixed models* are statistical models that incorporate both fixed-effects parameters and random effects. Because of the way that we will define random effects, a model with random effects always includes at least one fixed-effects parameter. Thus, any model with random effects is a mixed model.
+*Mixed-effects models* or, more simply, *mixed models* are statistical models that incorporate both fixed-effects parameters and random effects.
+Because of the way that we will define random effects, a model with random effects always includes at least one fixed-effects parameter.
+Thus, any model with random effects is a mixed model.
 
-We characterize the statistical model in terms of two random variables: a $q$-dimensional vector of random effects represented by the random variable $\mathcal{B}$ and an $n$-dimensional response vector represented by the random variable $\mathcal{Y}$. (We use upper-case “script” characters to denote random variables. The corresponding lower-case upright letter denotes a particular value of the random variable.) We observe the value, $\bf{y}$, of $\mathcal{Y}$. We do not observe the value, $\bf{b}$, of $\mathcal{B}$.
+We characterize the statistical model in terms of two random variables: a $q$-dimensional vector of random effects represented by the random variable $\mathcal{B}$ and an $n$-dimensional response vector represented by the random variable $\mathcal{Y}$.
+(We use upper-case “script” characters to denote random variables.
+The corresponding lower-case upright letter denotes a particular value of the random variable.)
+We observe the value, $\bf{y}$, of $\mathcal{Y}$. We do not observe the value, $\bf{b}$, of $\mathcal{B}$.
 
-When formulating the model we describe the unconditional distribution of $\mathcal{B}$ and the conditional distribution, $(\mathcal{Y}|\mathcal{B}=\bf{b})$. The descriptions of the distributions involve the form of the distribution and the values of certain parameters. We use the observed values of the response and the covariates to estimate these parameters and to make inferences about them.
+When formulating the model we describe the unconditional distribution of $\mathcal{B}$ and the conditional distribution, $(\mathcal{Y}|\mathcal{B}=\bf{b})$.
+The descriptions of the distributions involve the form of the distribution and the values of certain parameters.
+We use the observed values of the response and the covariates to estimate these parameters and to make inferences about them.
 
-That’s the big picture. Now let’s make this more concrete by describing a particular, versatile class of mixed models called *linear mixed models* and by studying a simple example of such a model. First we describe the data in the example.
+That’s the big picture.
+Now let’s make this more concrete by describing a particular, versatile class of mixed models called *linear mixed models* and by studying a simple example of such a model.
+First we describe the data in the example.
 
 ## The `Dyestuff` and `Dyestuff2` Data
 
-Models with random effects have been in use for a long time. The first edition of the classic book, *Statistical Methods in Research and Production*, edited by O.L. Davies, was published in 1947 and contained examples of the use of random effects to characterize batch-to-batch variability in chemical processes. The data from one of these examples are available as `Dyestuff` in the `MixedModels` package. In this section we describe and plot these data and introduce a second example, the `Dyestuff2` data, described in Box and Tiao (1973).
+Models with random effects have been in use for a long time.
+The first edition of the classic book, *Statistical Methods in Research and Production*, edited by O.L. Davies, was published in 1947 and contained examples of the use of random effects to characterize batch-to-batch variability in chemical processes.
+The data from one of these examples are available as `Dyestuff` in the `MixedModels` package.
+In this section we describe and plot these data and introduce a second example, the `Dyestuff2` data, described in Box and Tiao (1973).
 
 ### The `Dyestuff` Data
 
@@ -37,9 +68,11 @@ The data are described in Davies (), the fourth edition of the book mentioned ab
 > an investigation to find out how much the variation from batch to batch in the quality of an intermediate product (H-acid) contributes to the variation in the yield of the dyestuff (Naphthalene Black 12B) made from it. In the experiment six samples of the intermediate, representing different batches of works manufacture, were obtained, and five preparations of the dyestuff were made in the laboratory from each sample. The equivalent yield of each preparation as grams of standard colour was determined by dye-trial.
 
 First attach the packages to be used
-
 ```{julia;term=true}
 using DataFrames, Distributions, Gadfly, GLM, MixedModels, RData
+```
+and allow for unqualified names for some graphics functions.
+```{julia;term=true}
 using Gadfly.Geom: point, line, histogram, density, vline
 using Gadfly.Guide: xlabel, ylabel, yticks
 ```
@@ -48,20 +81,23 @@ The `Dyestuff` data are available in the [`lme4`](https://github.com/lme4/lme4) 
 This data frame and others have been stored in saved RData format in the `test` directory within the `MixedModels` package.
 
 Access the `Dyestuff` data
-
 ```{julia;term=true}
 const dat = convert(Dict{Symbol,DataFrame}, load(Pkg.dir("MixedModels", "test", "dat.rda")));
 dyestuff = dat[:Dyestuff];
+dump(dyestuff)
 ```
-
 and plot it
-```{julia;echo=true;fig_cap="Yield versus Batch for the Dyestuff data"; fig_width=8;}
+```{julia;echo=false;fig_cap="Yield versus Batch for the Dyestuff data"; fig_width=8;}
 plot(dyestuff, x = "Y", y = "G", point, xlabel("Yield of dyestuff (g)"), ylabel("Batch"))
 ```
 
-In the dotplot we can see that there is considerable variability in yield, even for preparations from the same batch, but there is also noticeable batch-to-batch variability. For example, four of the five preparations from batch F provided lower yields than did any of the preparations from batches C and E.
+In the dotplot we can see that there is considerable variability in yield, even for preparations from the same batch, but there is also noticeable batch-to-batch variability.
+For example, four of the five preparations from batch F provided lower yields than did any of the preparations from batches B, C, and E.
 
-Recall that the labels for the batches are just labels and that their ordering is arbitrary.  In a plot, however, the order of the levels influences the perception of the pattern.  Rather than providing an arbitrary pattern it is best to order the levels according to some criterion for the plot.  In this case a good choice is to order the batches by increasing mean yield, which can be easily done in R.
+Recall that the labels for the batches are just labels and that their ordering is arbitrary.
+In a plot, however, the order of the levels influences the perception of the pattern.
+Rather than providing an arbitrary pattern it is best to order the levels according to some criterion for the plot.
+In this case a good choice is to order the batches by increasing mean yield, which can be easily done in R.
 
 (Note: at present this plot fails because of the ongoing DataFrames conversion.)
 
@@ -70,7 +106,12 @@ Recall that the labels for the batches are just labels and that their ordering i
 #plot(dyestuff, x="Y", y="G", point, xlabel("Yield of dyestuff (g)"))
 ```
 
-In Sect. [sec:DyestuffLMM] we will use mixed models to quantify the variability in yield between batches. For the time being let us just note that the particular batches used in this experiment are a selection or sample from the set of all batches that we wish to consider. Furthermore, the extent to which one particular batch tends to increase or decrease the mean yield of the process — in other words, the “effect” of that particular batch on the yield — is not as interesting to us as is the extent of the variability between batches. For the purposes of designing, monitoring and controlling a process we want to predict the yield from future batches, taking into account the batch-to-batch variability and the within-batch variability. Being able to estimate the extent to which a particular batch in the past increased or decreased the yield is not usually an important goal for us. We will model the effects of the batches as random effects rather than as fixed-effects parameters.
+In Sect. [sec:DyestuffLMM] we will use mixed models to quantify the variability in yield between batches.
+For the time being let us just note that the particular batches used in this experiment are a selection or sample from the set of all batches that we wish to consider.
+Furthermore, the extent to which one particular batch tends to increase or decrease the mean yield of the process — in other words, the “effect” of that particular batch on the yield — is not as interesting to us as is the extent of the variability between batches.
+For the purposes of designing, monitoring and controlling a process we want to predict the yield from future batches, taking into account the batch-to-batch variability and the within-batch variability.
+Being able to estimate the extent to which a particular batch in the past increased or decreased the yield is not usually an important goal for us.
+We will model the effects of the batches as random effects rather than as fixed-effects parameters.
 
 ### The `Dyestuff2` Data
 
@@ -78,17 +119,18 @@ The data are simulated data presented in Box and Tiao (1973), where the authors 
 
 > These data had to be constructed for although examples of this sort undoubtedly occur in practice they seem to be rarely published.
 
-The structure and summary are intentionally similar to those of the `Dyestuff` data. As can be seen in Fig. [fig:Dyestuff2dot]
-
+The structure and summary are intentionally similar to those of the `Dyestuff` data.
 ```{julia;term=true}
 dyestuff2 = dat[:Dyestuff2];
+dump(dyestuff2)
 ```
-
+As can be seen in a data plot
 ```{julia;echo=false;fig_width=8}
 plot(dyestuff2, x = "Y", y = "G", point, xlabel("Simulated response"), ylabel(""))
 ```
-
-the batch-to-batch variability in these data is small compared to the within-batch variability. In some approaches to mixed models it can be difficult to fit models to such data. Paradoxically, small “variance components” can be more difficult to estimate than large variance components.
+the batch-to-batch variability in these data is small compared to the within-batch variability.
+In some approaches to mixed models it can be difficult to fit models to such data.
+Paradoxically, small “variance components” can be more difficult to estimate than large variance components.
 
 The methods we will present are not compromised when estimating small variance components.
 
@@ -101,24 +143,44 @@ The structure of the formula will be explained after showing the example.
 ### A Model For the `Dyestuff` Data
 
 A model allowing for an overall level of the `Yield` and for an additive random effect for each level of `Batch` can be fit as
-
 ```{julia;term=true}
 mm1 = fit!(lmm(@formula(Y ~ 1 + (1 | G)), dyestuff))
 ```
 
-As shown in the summary of the model fit, the default estimation criterion is maximum likelihood.  The summary provides several other model-fit statistics such as Akaike’s Information Criterion (`AIC`), Schwarz’s Bayesian Information Criterion (`BIC`), the log-likelihood at the parameter estimates, and the objective function (negative twice the log-likelihood) at the parameter estimates. These are all statistics related to the model fit and are used to compare different models fit to the same data.
+As shown in the summary of the model fit, the default estimation criterion is maximum likelihood.
+The summary provides several other model-fit statistics such as Akaike’s Information Criterion (`AIC`), Schwarz’s Bayesian Information Criterion (`BIC`), the log-likelihood at the parameter estimates, and the objective function (negative twice the log-likelihood) at the parameter estimates.
+These are all statistics related to the model fit and are used to compare different models fit to the same data.
 
-The third section is the table of estimates of parameters associated with the random effects. There are two sources of variability in this model, a batch-to-batch variability in the level of the response and the residual or per-observation variability — also called the within-batch variability. The name “residual” is used in statistical modeling to denote the part of the variability that cannot be explained or modeled with the other terms. It is the variation in the observed data that is “left over” after determining the estimates of the parameters in the other parts of the model.
+The third section is the table of estimates of parameters associated with the random effects.
+There are two sources of variability in this model, a batch-to-batch variability in the level of the response and the residual or per-observation variability — also called the within-batch variability.
+The name “residual” is used in statistical modeling to denote the part of the variability that cannot be explained or modeled with the other terms.
+It is the variation in the observed data that is “left over” after determining the estimates of the parameters in the other parts of the model.
 
-Some of the variability in the response is associated with the fixed-effects terms. In this model there is only one such term, labeled the `(Intercept)`. The name “intercept”, which is better suited to models based on straight lines written in a slope/intercept form, should be understood to represent an overall “typical” or mean level of the response in this case. (For those wondering about the parentheses around the name, they are included so that a user cannot accidentally name a variable in conflict with this name.) The line labeled `Batch` in the random effects table shows that the random effects added to the intercept term, one for each level of the factor, are modeled as random variables whose unconditional variance is estimated as 1388.33 g$^2$. The corresponding standard deviations is 37.26 g for the ML fit.
+Some of the variability in the response is associated with the fixed-effects terms.
+In this model there is only one such term, labeled the `(Intercept)`.
+The name “intercept”, which is better suited to models based on straight lines written in a slope/intercept form, should be understood to represent an overall “typical” or mean level of the response in this case.
+(For those wondering about the parentheses around the name, they are included so that a user cannot accidentally name a variable in conflict with this name.)
+The line labeled `Batch` in the random effects table shows that the random effects added to the intercept term, one for each level of the factor, are modeled as random variables whose unconditional variance is estimated as 1388.33 g$^2$.
+The corresponding standard deviations is 37.26 g for the ML fit.
 
-Note that the last column in the random effects summary table is the estimate of the variability expressed as a standard deviation rather than as a variance. These are provided because it is usually easier to visualize the variability in standard deviations, which are on the scale of the response, than it is to visualize the magnitude of a variance. The values in this column are a simple re-expression (the square root) of the estimated variances. Do not confuse them with the standard errors of the variance estimators, which are not given here. As described in later sections, standard errors of variance estimates are generally not useful because the distribution of the estimator of a variance is skewed - often badly skewed.
+Note that the last column in the random effects summary table is the estimate of the variability expressed as a standard deviation rather than as a variance.
+These are provided because it is usually easier to visualize the variability in standard deviations, which are on the scale of the response, than it is to visualize the magnitude of a variance.
+The values in this column are a simple re-expression (the square root) of the estimated variances.
+Do not confuse them with the standard errors of the variance estimators, which are not given here.
+As described in later sections, standard errors of variance estimates are generally not useful because the distribution of the estimator of a variance is skewed - often badly skewed.
 
-The line labeled `Residual` in this table gives the estimate, 2451.25 g$^2$, of the variance of the residuals and the corresponding standard deviation, 49.51 g. In written descriptions of the model the residual variance parameter is written $\sigma^2$ and the variance of the random effects is $\sigma_1^2$.  Their estimates are $\widehat{\sigma^2}$ and $\widehat{\sigma_1^2}$
+The line labeled `Residual` in this table gives the estimate, 2451.25 g$^2$, of the variance of the residuals and the corresponding standard deviation, 49.51 g.
+In written descriptions of the model the residual variance parameter is written $\sigma^2$ and the variance of the random effects is $\sigma_1^2$.
+Their estimates are $\widehat{\sigma^2}$ and $\widehat{\sigma_1^2}$
 
-The last line in the random effects table states the number of observations to which the model was fit and the number of levels of any “grouping factors” for the random effects. In this case we have a single random effects term, `(1 | Batch)`, in the model formula and the grouping factor for that term is `Batch`. There will be a total of six random effects, one for each level of `Batch`.
+The last line in the random effects table states the number of observations to which the model was fit and the number of levels of any “grouping factors” for the random effects.
+In this case we have a single random effects term, `(1 | Batch)`, in the model formula and the grouping factor for that term is `Batch`.
+There will be a total of six random effects, one for each level of `Batch`.
 
-The final part of the printed display gives the estimates and standard errors of any fixed-effects parameters in the model. The only fixed-effects term in the model formula is the `(Intercept)`. The estimate of this parameter is 1527.5 g. The standard error of the intercept estimate is 17.69 g.
+The final part of the printed display gives the estimates and standard errors of any fixed-effects parameters in the model.
+The only fixed-effects term in the model formula is the `(Intercept)`.
+The estimate of this parameter is 1527.5 g.
+The standard error of the intercept estimate is 17.69 g.
 
 ### A Model For the `Dyestuff2` Data
 
@@ -128,14 +190,21 @@ Fitting a similar model to the `dyestuff2` data produces an estimate $\widehat{\
 mm2 = fit!(lmm(@formula(Y ~ 1 + (1 | G)), dyestuff2))
 ```
 
-An estimate of `0` for $\sigma_1$ does not mean that there is no variation between the groups. Indeed Fig. [fig:Dyestuff2dot] shows that there is some small amount of variability between the groups. The estimate, $\widehat{\sigma_1}$, is a measure of the “between-group” variability that is **in excess of** the variability induced by the "within-group" or residual variability in the responses.  
+An estimate of `0` for $\sigma_1$ does not mean that there is no variation between the groups.
+Indeed Fig. [fig:Dyestuff2dot] shows that there is some small amount of variability between the groups.
+The estimate, $\widehat{\sigma_1}$, is a measure of the “between-group” variability that is **in excess of** the variability induced by the "within-group" or residual variability in the responses.  
 
-If 30 observations were simulated from a "normal" (also called "Gaussian") distribution and divided arbitrarily into 6 groups of 5, a plot of the data would look very much like Fig. [fig:Dyestuff2dot].  (In fact, it is likely that this is how that data set was generated.) It is only where there is excess variability between the groups that $\widehat{\sigma_1}>0$.  Obtaining $\widehat{\sigma_1}=0$ is not a mistake; it is simply a statement about the data and the model.
+If 30 observations were simulated from a "normal" (also called "Gaussian") distribution and divided arbitrarily into 6 groups of 5, a plot of the data would look very much like Fig. [fig:Dyestuff2dot]. 
+(In fact, it is likely that this is how that data set was generated.)
+It is only where there is excess variability between the groups that $\widehat{\sigma_1}>0$.
+Obtaining $\widehat{\sigma_1}=0$ is not a mistake; it is simply a statement about the data and the model.
 
-The important point to take away from this example is the need to allow for the estimates of variance components that are zero. Such a model is said to be *singular*, in the sense that it corresponds to a linear model in which we have removed the random effects associated with `Batch`. Singular models can and do occur in practice. Even when the final fitted model is not singular, we must allow for such models to be expressed when determining the parameter estimates through numerical optimization.
+The important point to take away from this example is the need to allow for the estimates of variance components that are zero.
+Such a model is said to be *singular*, in the sense that it corresponds to a linear model in which we have removed the random effects associated with `Batch`.
+Singular models can and do occur in practice.
+Even when the final fitted model is not singular, we must allow for such models to be expressed when determining the parameter estimates through numerical optimization.
 
 It happens that this model corresponds to the linear model (i.e. a model with fixed-effects only)
-
 ```{julia;term=true}
 lm1 = lm(@formula(Y ~ 1), dyestuff2)
 ```
@@ -167,7 +236,7 @@ In Chap. [chap:computational] we revisit these definitions providing derivation
 As mentioned in Sect. [sec:memod], a mixed model incorporates two random variables: $\mathcal{B}$, the $q$-dimensional vector of random effects, and $\mathcal{Y}$, the $n$-dimensional response vector. In a linear mixed model the unconditional distribution of $\mathcal{B}$ and the conditional distribution, $(\mathcal{Y} | \mathcal{B}=\bf{b})$, are both multivariate Gaussian distributions,
 
 \begin{aligned}
-  (\mathcal{Y} | \mathcal{B}=\bf{b}) &\sim\mathcal{N}(\bf{ X\beta + Z b},\sigma^2\bf{I})\\
+  (\mathcal{Y} | \mathcal{B}=\bf{b}) &\sim\mathcal{N}(\bf{ X\beta + Z b},\sigma^2\bf{I})\\\\
   \mathcal{B}&\sim\mathcal{N}(\bf{0},\Sigma_\theta) .
 \end{aligned}
 
@@ -182,39 +251,39 @@ The *relative covariance factor*, $\Lambda_\theta$, is a $q\times q$ lower-trian
 The *spherical random effects*, $\mathcal{U}\sim\mathcal{N}({\bf 0},\sigma^2{\bf I}_q)$, determine $\mathcal B$ according to
 
 \begin{equation}
-  \mathcal{B}=\Lambda_\theta\mathcal{U}$.
+  \mathcal{B}=\Lambda_\theta\mathcal{U}.
 \end{equation}
 
 The *penalized residual sum of squares* (PRSS),
 
 \begin{equation}
-  r^2(\bf\theta,\bf\beta,\bf u)=\|\bf y -\bf X\bf\beta -\bf Z\Lambda_\theta\bf u\|^2+\|\bf u\|^2,
+  r^2(\theta,\beta,{\bf u})=\|{\bf y} -{\bf X}\beta -{\bf Z}\Lambda_\theta{\bf u}\|^2+\|{\bf u}\|^2,
 \end{equation}
 
-is the sum of the residual sum of squares, measuring fidelity of the model to the data, and a penalty on the size of $\bf u$, measuring the complexity of the model. Minimizing $r^2$ with respect to $\bf u$,
-
+is the sum of the residual sum of squares, measuring fidelity of the model to the data, and a penalty on the size of $\bf u$, measuring the complexity of the model.
+Minimizing $r^2$ with respect to $\bf u$,
 \begin{equation}
-  r^2_{\beta,\theta} =\min_{\bf u}\left\{\|{\bf y} -{\bf X}{\bf\beta} -{\bf Z}\Lambda_\theta{\bf u}\|^2+\|{\bf u}\|^2\right\}
+  r^2_{\beta,\theta} =\min_{\bf u}\left\{\|{\bf y} -{\bf X}{\beta} -{\bf Z}\Lambda_\theta{\bf u}\|^2+\|{\bf u}\|^2\right\}
 \end{equation}
-
-is a direct (i.e. non-iterative) computation.  The particular method used to solve this generates a *blocked Choleksy factor*, $\bf{R}_\theta$, which is an upper triangular $q\times q$ matrix satisfying
-
+is a direct (i.e. non-iterative) computation.
+The particular method used to solve this generates a *blocked Choleksy factor*, ${\bf L}_\theta$, which is an lower triangular $q\times q$ matrix satisfying
 \begin{equation}
-  \bf R_\theta'\bf R_\theta=\Lambda_\theta'\bf Z'\bf Z\Lambda_\theta+\bf I_q .
+  {\bf L}_\theta{\bf L}_\theta'=\Lambda_\theta'{\bf Z}'{\bf Z}\Lambda_\theta+{\bf I}_q .
 \end{equation}
-
-where $\bf I_q$ is the $q\times q$ *identity matrix*.
+where ${\bf I}_q$ is the $q\times q$ *identity matrix*.
 
 Negative twice the log-likelihood of the parameters, given the data, $\bf y$, is
 
 \begin{equation}
 d({\bf\theta},{\bf\beta},\sigma|{\bf y})
-=n\log(2\pi\sigma^2)+\log(|{\bf R}_\theta|^2)+\frac{r^2_{\beta,\theta}}{\sigma^2}.
+=n\log(2\pi\sigma^2)+\log(|{\bf L}_\theta|^2)+\frac{r^2_{\beta,\theta}}{\sigma^2}.
 \end{equation}
 
-where $|{\bf R}_\theta|$ denotes the *determinant* of ${\bf R}_\theta$. Because ${\bf R}_\theta$ is triangular, its determinant is the product of its diagonal elements.
+where $|{\bf L}_\theta|$ denotes the *determinant* of ${\bf L}_\theta$.
+Because ${\bf L}_\theta$ is triangular, its determinant is the product of its diagonal elements.
 
-Negative twice the log-likelihood will be called the *objective* in what follows.  It is the value to be minimized by the parameter estimates.  It is, up to an additive factor, the *deviance* of the parameters.  Unfortunately, it is not clear what the additive factor should be in the case of linear mixed models.  In many applications, however, it is not the deviance of the model that is of interest as much the change in the deviance between two fitted models.  When calculating the change in the deviance the additive factor will cancel out so the change in the deviance when comparing models is the same as the change in this objective.
+Negative twice the log-likelihood will be called the *objective* in what follows.
+It is the value to be minimized by the parameter estimates.  It is, up to an additive factor, the *deviance* of the parameters.  Unfortunately, it is not clear what the additive factor should be in the case of linear mixed models.  In many applications, however, it is not the deviance of the model that is of interest as much the change in the deviance between two fitted models.  When calculating the change in the deviance the additive factor will cancel out so the change in the deviance when comparing models is the same as the change in this objective.
 
 Because the conditional mean, $\bf\mu_{\mathcal Y|\mathcal B=\bf b}=\bf
 X\bf\beta+\bf Z\Lambda_\theta\bf u$, is a linear function of both $\bf\beta$ and $\bf u$, minimization of the PRSS with respect to both $\bf\beta$ and $\bf u$ to produce
@@ -223,7 +292,9 @@ X\bf\beta+\bf Z\Lambda_\theta\bf u$, is a linear function of both $\bf\beta$ and
 r^2_\theta =\min_{{\bf\beta},{\bf u}}\left\{\|{\bf y} -{\bf X}{\bf\beta} -{\bf Z}\Lambda_\theta{\bf u}\|^2+\|{\bf u}\|^2\right\}
 \end{equation}
 
-is also a direct calculation. The values of $\bf u$ and $\bf\beta$ that provide this minimum are called, respectively, the *conditional mode*, $\tilde{\bf u}_\theta$, of the spherical random effects and the conditional estimate, $\widehat{\bf\beta}_\theta$, of the fixed effects. At the conditional estimate of the fixed effects the objective is
+is also a direct calculation.
+The values of $\bf u$ and $\bf\beta$ that provide this minimum are called, respectively, the *conditional mode*, $\tilde{\bf u}_\theta$, of the spherical random effects and the conditional estimate, $\widehat{\bf\beta}_\theta$, of the fixed effects.
+At the conditional estimate of the fixed effects the objective is
 
 \begin{equation}
 d({\bf\theta},\widehat{\beta}_\theta,\sigma|{\bf y})
@@ -239,13 +310,14 @@ Minimizing this expression with respect to $\sigma^2$ produces the conditional e
 which provides the *profiled log-likelihood* on the deviance scale as
 
 \begin{equation}
-\tilde{d}(\bf\theta|\bf y)=d(\bf\theta,\widehat{\beta}_\theta,\widehat{\sigma}_\theta|\bf y)
-=\log(|\bf R_\theta|^2)+n\left[1+\log\left(\frac{2\pi r^2_\theta}{n}\right)\right],
+\tilde{d}(\theta|{\bf y})=d(\theta,\widehat{\beta}_\theta,\widehat{\sigma}_\theta|{\bf y})
+=\log(|{\bf L}_\theta|^2)+n\left[1+\log\left(\frac{2\pi r^2_\theta}{n}\right)\right],
 \end{equation}
-
 a function of $\bf\theta$ alone.
 
-The MLE of $\bf\theta$, written $\widehat{\bf\theta}$, is the value that minimizes this profiled objective. We determine this value by numerical optimization. In the process of evaluating $\tilde{d}(\widehat{\bf\theta}|{\bf y})$ we determine $\widehat{\bf\beta}=\widehat{\bf\beta}_{\widehat\theta}$, $\tilde{\bf u}_{\widehat{\theta}}$ and $r^2_{\widehat{\theta}}$, from which we can evaluate $\widehat{\sigma}=\sqrt{r^2_{\widehat{\theta}}/n}$.
+The MLE of $\bf\theta$, written $\widehat{\bf\theta}$, is the value that minimizes this profiled objective.
+We determine this value by numerical optimization.
+In the process of evaluating $\tilde{d}(\widehat{\theta}|{\bf y})$ we determine $\widehat{\beta}=\widehat{\beta}_{\widehat\theta}$, $\tilde{\bf u}_{\widehat{\theta}}$ and $r^2_{\widehat{\theta}}$, from which we can evaluate $\widehat{\sigma}=\sqrt{r^2_{\widehat{\theta}}/n}$.
 
 The elements of the conditional mode of $\mathcal B$, evaluated at the parameter estimates,
 
@@ -254,7 +326,9 @@ The elements of the conditional mode of $\mathcal B$, evaluated at the parameter
 \Lambda_{\widehat{\theta}}\tilde{\bf u}_{\widehat{\theta}}
 \end{equation}
 
-are sometimes called the *best linear unbiased predictors* or BLUPs of the random effects. Although BLUPs an appealing acronym, I don’t find the term particularly instructive (what is a “linear unbiased predictor” and in what sense are these the “best”?) and prefer the term “conditional modes”, because these are the values of $\bf b$ that maximize the density of the conditional distribution $(\mathcal{B} | \mathcal{Y} = {\bf y}$.  For a linear mixed model, where all the conditional and unconditional distributions are Gaussian, these values are also the *conditional means*.
+are sometimes called the *best linear unbiased predictors* or BLUPs of the random effects.
+Although BLUPs an appealing acronym, I don’t find the term particularly instructive (what is a “linear unbiased predictor” and in what sense are these the “best”?) and prefer the term “conditional modes”, because these are the values of $\bf b$ that maximize the density of the conditional distribution $\mathcal{B} | \mathcal{Y} = {\bf y}$.
+For a linear mixed model, where all the conditional and unconditional distributions are Gaussian, these values are also the *conditional means*.
 
 ### Fields of a `LinearMixedModel` object
 

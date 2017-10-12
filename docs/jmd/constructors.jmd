@@ -13,7 +13,7 @@ These include the `Dyestuff` and `Dyestuff2` data sets.
 ```{julia;term=true}
 using DataFrames, RData, MixedModels
 const dat = convert(Dict{Symbol,DataFrame}, load(Pkg.dir("MixedModels", "test", "dat.rda")));
-# dat[:Dyestuff]
+dump(dat[:Dyestuff])
 ```
 The columns in these data sets have been renamed for convenience in comparing models between examples.
 The response is always named `Y`.
@@ -99,3 +99,95 @@ The canonical link, which is the `GLM.LogitLink` for the `Bernoulli` distributio
 
 In the [`GLM` package](https://github.com/JuliaStats/GLM.jl) the appropriate distribution for a 0/1 response is the `Bernoulli` distribution.
 The `Binomial` distribution is only used when the response is the fraction of trials returning a positive, in which case the number of trials must be specified as the case weights.
+
+# Extractor functions
+
+`LinearMixedModel` and `GeneralizedLinearMixedModel` are subtypes of `StatsBase.RegressionModel`.
+Many of the generic extractors defined in the `StatsBase` package have methods for these models.
+
+### Model-fit statistics
+
+The statistics describing the quality of the model fit include
+```@docs
+loglikelihood(::StatisticalModel)
+aic
+bic
+```
+```{julia;term=true}
+loglikelihood(fm1)
+aic(fm1)
+bic(fm1)
+loglikelihood(gm1)
+```
+
+The `deviance` generic is documented as returning negative twice the log-likelihood adjusting for the saturated model.
+```@docs
+deviance(::StatisticalModel)
+```
+
+It is not clear what the corresponding saturated model is for a `LinearMixedModel` so negative twice the log-likelihood is called the `objective`.
+```@docs
+objective
+```
+This value is also accessible as the `deviance` but the user should bear in mind that this doesn't have all the properties of a deviance which is corrected for the saturated model.  For example, it is not necessarily non-negative.
+```{julia;term=true}
+objective(fm1)
+deviance(fm1)
+```
+
+The value optimized when fitting a `GeneralizedLinearMixedModel` is the Laplace approximation to the deviance.
+```@docs
+LaplaceDeviance
+```
+```{julia;term=true}
+LaplaceDeviance(gm1)
+```
+
+### Parameter estimates
+
+The `coef` and `fixef` extractors both return the estimates of the fixed-effects coefficients.
+```@docs
+coef
+fixef
+```
+```{julia;term=true}
+show(coef(fm1))
+show(fixef(fm1))
+show(fixef(gm1))
+```
+
+The covariance parameters estimates as shown in the model summary are obtained as a `VarCorr` object
+```@docs
+VarCorr
+```
+```{julia;term=true}
+VarCorr(fm1)
+VarCorr(gm1)
+```
+
+
+Other extractors are defined in the `MixedModels` package itself.
+```@docs
+fnames
+getΛ
+getθ
+lowerbd
+```
+
+Applied to one of the models previously fit these yield
+```{julia;term=true}
+fixef(fm1)
+coef(fm1)
+coeftable(fm1)
+getΛ(fm1)
+getθ(fm1)
+loglikelihood(fm1)
+pwrss(fm1)
+showall(ranef(fm1))
+showall(ranef(fm1, uscale=true))
+sdest(fm1)
+std(fm1)
+stderr(fm1)
+varest(fm1)
+vcov(fm1)
+```

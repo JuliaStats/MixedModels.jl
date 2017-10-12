@@ -15,7 +15,11 @@ julia> using DataFrames, RData, MixedModels
 
 julia> const dat = convert(Dict{Symbol,DataFrame}, load(Pkg.dir("MixedModels", "test", "dat.rda")));
 
-julia> # dat[:Dyestuff]
+julia> dump(dat[:Dyestuff])
+DataFrames.DataFrame  30 observations of 2 variables
+  G: DataArrays.PooledDataArray{String,UInt8,1}(30) String["A", "A", "A", "A"]
+  Y: DataArrays.DataArray{Float64,1}(30) [1545.0, 1440.0, 1440.0, 1520.0]
+
 
 ````
 
@@ -59,7 +63,7 @@ The second and subsequent calls to such functions are much faster.)
 
 ````julia
 julia> @time fit!(lmm(@formula(Y ~ 1 + (1|G)), dat[:Dyestuff2]))
-  0.001095 seconds (1.59 k allocations: 86.670 KiB)
+  0.000998 seconds (1.51 k allocations: 82.061 KiB)
 Linear mixed model fit by maximum likelihood
  Formula: Y ~ 1 + (1 | G)
    logLik   -2 logLik     AIC        BIC    
@@ -310,3 +314,182 @@ The canonical link, which is the `GLM.LogitLink` for the `Bernoulli` distributio
 
 In the [`GLM` package](https://github.com/JuliaStats/GLM.jl) the appropriate distribution for a 0/1 response is the `Bernoulli` distribution.
 The `Binomial` distribution is only used when the response is the fraction of trials returning a positive, in which case the number of trials must be specified as the case weights.
+
+# Extractor functions
+
+`LinearMixedModel` and `GeneralizedLinearMixedModel` are subtypes of `StatsBase.RegressionModel`.
+Many of the generic extractors defined in the `StatsBase` package have methods for these models.
+
+### Model-fit statistics
+
+The statistics describing the quality of the model fit include
+```@docs
+loglikelihood(::StatisticalModel)
+aic
+bic
+```
+````julia
+julia> loglikelihood(fm1)
+-163.6635299405672
+
+julia> aic(fm1)
+333.3270598811344
+
+julia> bic(fm1)
+337.5306520261209
+
+julia> loglikelihood(gm1)
+-4067.9164280544696
+
+````
+
+
+
+
+
+The `deviance` generic is documented as returning negative twice the log-likelihood adjusting for the saturated model.
+```@docs
+deviance(::StatisticalModel)
+```
+
+It is not clear what the corresponding saturated model is for a `LinearMixedModel` so negative twice the log-likelihood is called the `objective`.
+```@docs
+objective
+```
+This value is also accessible as the `deviance` but the user should bear in mind that this doesn't have all the properties of a deviance which is corrected for the saturated model.  For example, it is not necessarily non-negative.
+````julia
+julia> objective(fm1)
+327.3270598811344
+
+julia> deviance(fm1)
+327.3270598811344
+
+````
+
+
+
+
+
+The value optimized when fitting a `GeneralizedLinearMixedModel` is the Laplace approximation to the deviance.
+```@docs
+LaplaceDeviance
+```
+````julia
+julia> LaplaceDeviance(gm1)
+8135.832856108941
+
+````
+
+
+
+
+
+### Parameter estimates
+
+The `coef` and `fixef` extractors both return the estimates of the fixed-effects coefficients.
+```@docs
+coef
+fixef
+```
+````julia
+julia> show(coef(fm1))
+[1527.5]
+julia> show(fixef(fm1))
+[1527.5]
+julia> show(fixef(gm1))
+[0.553345, 0.0574211, 0.320792, -1.05975, -2.1038, -1.05429, -0.70698]
+````
+
+
+
+
+
+The covariance parameters estimates as shown in the model summary are obtained as a `VarCorr` object
+```@docs
+VarCorr
+```
+````julia
+julia> VarCorr(fm1)
+Variance components:
+              Column    Variance  Std.Dev. 
+ G        (Intercept)  1388.3333 37.260345
+ Residual              2451.2500 49.510100
+
+
+julia> VarCorr(gm1)
+Variance components:
+          Column     Variance   Std.Dev. 
+ id   (Intercept)  1.793470989 1.3392054
+ item (Intercept)  0.117151977 0.3422747
+
+
+````
+
+
+
+
+
+
+Other extractors are defined in the `MixedModels` package itself.
+```@docs
+fnames
+getΛ
+getθ
+lowerbd
+```
+
+Applied to one of the models previously fit these yield
+````julia
+julia> fixef(fm1)
+1-element Array{Float64,1}:
+ 1527.5
+
+julia> coef(fm1)
+1-element Array{Float64,1}:
+ 1527.5
+
+julia> coeftable(fm1)
+             Estimate Std.Error z value P(>|z|)
+(Intercept)    1527.5   17.6946  86.326  <1e-99
+
+
+julia> getΛ(fm1)
+1-element Array{Float64,1}:
+ 0.752581
+
+julia> getθ(fm1)
+1-element Array{Float64,1}:
+ 0.752581
+
+julia> loglikelihood(fm1)
+-163.6635299405672
+
+julia> pwrss(fm1)
+73537.50049200655
+
+julia> showall(ranef(fm1))
+Array{Float64,2}[[-16.6282 0.369516 26.9747 -21.8014 53.5798 -42.4943]]
+julia> showall(ranef(fm1, uscale=true))
+Array{Float64,2}[[-22.0949 0.490999 35.8429 -28.9689 71.1948 -56.4648]]
+julia> sdest(fm1)
+49.51010014532609
+
+julia> std(fm1)
+2-element Array{Array{Float64,1},1}:
+ [37.2603]
+ [49.5101]
+
+julia> stderr(fm1)
+1-element Array{Float64,1}:
+ 17.6946
+
+julia> varest(fm1)
+2451.2500164002186
+
+julia> vcov(fm1)
+1×1 Array{Float64,2}:
+ 313.097
+
+````
+
+

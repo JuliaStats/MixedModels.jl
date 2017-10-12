@@ -30,16 +30,16 @@ If there are no case weights then the size of `sqrtwts` is $0\times 0$ and `wttr
 
 ## A model with a single, scalar random-effects term
 
-```julia
+```{julia;term=true}
 using Feather, LinearAlgebra, MixedModels
 ```
 
-```julia
+```{julia;term=true}
 dsfilename = Pkg.dir("MixedModels", "test", "data", "Dyestuff.feather")
 dyestuff = Feather.read(dsfilename, nullable = false);
 ```
 
-```julia
+```{julia;term=true}
 m1 = lmm(Yield ~ 1 + (1 | Batch), dyestuff);
 ```
 
@@ -47,39 +47,39 @@ In the model formula there are three terms: the _response term_, `Yield`, the _I
 
 The `trms` member contains these three terms in the order `random-effects`, `fixed-effects`, `response`.
 
-```julia
+```{julia;term=true}
 m1.trms
 ```
 
 The `ScalarReMat` is a compact representation of the _indicator matrix_ for the grouping factor.  Its columns are indicators of the 6 levels of the grouping factor, `Batch`.
 
-```julia
+```{julia;term=true}
 full(m1.trms[1])
 ```
 
 The `A` member is a blocked matrix with $3$ blocks in each dimension, corresponding to the 3 terms.  The $(i, j)$ block is `m1.trms[i]'m1.trms[j]`  Because of symmetry only the blocks in the lower triangle are stored explicitly.  (Generally the term _Hermitian_ is used in Julia rather than _symmetric_ even for real-valued matrices, where they are synonyms.)
 
-```julia
+```{julia;term=true}
 m1.A[1, 1]
 ```
 
-```julia
+```{julia;term=true}
 m1.A[2, 1]
 ```
 
-```julia
+```{julia;term=true}
 m1.A[2, 2]
 ```
 
-```julia
+```{julia;term=true}
 m1.A[3, 1]
 ```
 
-```julia
+```{julia;term=true}
 m1.A[3, 2]
 ```
 
-```julia
+```{julia;term=true}
 m1.A[3, 3]
 ```
 
@@ -87,11 +87,11 @@ Blocks on the diagonal of `A` will be positive-semi-definite Hermitian matrices.
 
 The `Λ` member is a vector of lower-triangular matrices whose values are modified during the iterations.  They correspond to the random-effects terms.  In the case of a scalar random-effects term, the corresponding element of `Λ` is a multiple of the identity.  The multiple is the parameter $\theta$ over which the log-likelihood is optimized.
 
-```julia
+```{julia;term=true}
 m1.Λ
 ```
 
-```julia
+```{julia;term=true}
 setθ!(m1, [0.75258]);
 m1.Λ
 ```
