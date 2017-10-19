@@ -1,0 +1,194 @@
+# Details of the parameter estimation
+
+## The probability model
+
+Maximum likelihood estimates are based on the probability model for the observed responses.
+In the probability model the distribution of the responses is expressed as a function of one or more *parameters*.
+
+For a continuous distribution the probability density is a function of the responses, given the parameters.
+The *likelihood* function is the same expression as the probability density but regarding the observed values as fixed and the parameters as varying.
+
+In general a mixed-effects model incorporates two random variables: $\mathcal{B}$, the $q$-dimensional vector of random effects, and $\mathcal{Y}$, the $n$-dimensional response vector.
+The value, $\bf y$, of $\mathcal{Y}$ is observed; the value, $\bf b$, of $\mathcal{B}$ is not.
+
+## Linear Mixed-Effects Models
+
+In a linear mixed model the unconditional distribution of $\mathcal{B}$ and the conditional distribution, $(\mathcal{Y} | \mathcal{B}=\bf{b})$, are both multivariate Gaussian distributions,
+\begin{equation}
+\begin{aligned}
+  (\mathcal{Y} | \mathcal{B}=\bf{b}) &\sim\mathcal{N}(\bf{ X\beta + Z b},\sigma^2\bf{I})\\\\
+  \mathcal{B}&\sim\mathcal{N}(\bf{0},\Sigma_\theta) .
+\end{aligned}
+\end{equation}
+
+The *conditional mean* of $\mathcal Y$, given $\mathcal B=\bf b$, is the *linear predictor*, $\bf X\bf\beta+\bf Z\bf b$, which depends on the $p$-dimensional *fixed-effects parameter*, $\bf \beta$, and on $\bf b$.
+The *model matrices*, $\bf X$ and $\bf Z$, of dimension $n\times p$ and $n\times q$, respectively, are determined from the formula for the model and the values of covariates. 
+Although the matrix $\bf Z$ can be large (i.e. both $n$ and $q$ can be large), it is sparse (i.e. most of the elements in the matrix are zero).
+
+The *relative covariance factor*, $\Lambda_\theta$, is a $q\times q$ lower-triangular matrix, depending on the *variance-component parameter*, $\bf\theta$, and generating the symmetric $q\times q$ variance-covariance matrix, $\Sigma_\theta$, as
+\begin{equation}
+  \Sigma_\theta=\sigma^2\Lambda_\theta\Lambda_\theta'
+\end{equation}
+
+The *spherical random effects*, $\mathcal{U}\sim\mathcal{N}({\bf 0},\sigma^2{\bf I}_q)$, determine $\mathcal B$ according to
+\begin{equation}
+  \mathcal{B}=\Lambda_\theta\mathcal{U}.
+\end{equation}
+
+The *penalized residual sum of squares* (PRSS),
+\begin{equation}
+  r^2(\theta,\beta,{\bf u})=\|{\bf y} -{\bf X}\beta -{\bf Z}\Lambda_\theta{\bf u}\|^2+\|{\bf u}\|^2,
+\end{equation}
+is the sum of the residual sum of squares, measuring fidelity of the model to the data, and a penalty on the size of $\bf u$, measuring the complexity of the model.
+Minimizing $r^2$ with respect to $\bf u$,
+\begin{equation}
+  r^2_{\beta,\theta} =\min_{\bf u}\left(\|{\bf y} -{\bf X}{\beta} -{\bf Z}\Lambda_\theta{\bf u}\|^2+\|{\bf u}\|^2\right)
+\end{equation}
+is a direct (i.e. non-iterative) computation.
+The particular method used to solve this generates a *blocked Choleksy factor*, ${\bf L}_\theta$, which is an lower triangular $q\times q$ matrix satisfying
+\begin{equation}
+  {\bf L}_\theta{\bf L}_\theta'=\Lambda_\theta'{\bf Z}'{\bf Z}\Lambda_\theta+{\bf I}_q .
+\end{equation}
+where ${\bf I}_q$ is the $q\times q$ *identity matrix*.
+
+Negative twice the log-likelihood of the parameters, given the data, $\bf y$, is
+\begin{equation}
+d({\bf\theta},{\bf\beta},\sigma|{\bf y})
+=n\log(2\pi\sigma^2)+\log(|{\bf L}_\theta|^2)+\frac{r^2_{\beta,\theta}}{\sigma^2}.
+\end{equation}
+where $|{\bf L}_\theta|$ denotes the *determinant* of ${\bf L}_\theta$.
+Because ${\bf L}_\theta$ is triangular, its determinant is the product of its diagonal elements.
+
+Negative twice the log-likelihood is called the *objective*.
+It is the value to be minimized by the parameter estimates.
+It is, up to an additive factor, the *deviance* of the parameters.
+Unfortunately, it is not clear what the additive factor should be in the case of linear mixed models.
+In many applications, however, it is not the deviance of the model that is of interest as much the change in the deviance between two fitted models.
+When calculating the change in the deviance the additive factor will cancel out so the change in the deviance when comparing models is the same as the change in this objective.
+
+Because the conditional mean, $\bf\mu_{\mathcal Y|\mathcal B=\bf b}=\bf
+X\bf\beta+\bf Z\Lambda_\theta\bf u$, is a linear function of both $\bf\beta$ and $\bf u$, minimization of the PRSS with respect to both $\bf\beta$ and $\bf u$ to produce
+\begin{equation}
+r^2_\theta =\min_{{\bf\beta},{\bf u}}\left(\|{\bf y} -{\bf X}{\bf\beta} -{\bf Z}\Lambda_\theta{\bf u}\|^2+\|{\bf u}\|^2\right)
+\end{equation}
+is also a direct calculation.
+The values of $\bf u$ and $\bf\beta$ that provide this minimum are called, respectively, the *conditional mode*, $\tilde{\bf u}_\theta$, of the spherical random effects and the conditional estimate, $\widehat{\bf\beta}_\theta$, of the fixed effects.
+At the conditional estimate of the fixed effects the objective is
+\begin{equation}
+d({\bf\theta},\widehat{\beta}_\theta,\sigma|{\bf y})
+=n\log(2\pi\sigma^2)+\log(|{\bf L}_\theta|^2)+\frac{r^2_\theta}{\sigma^2}.
+\end{equation}
+
+Minimizing this expression with respect to $\sigma^2$ produces the conditional estimate
+\begin{equation}
+\widehat{\sigma^2}_\theta=\frac{r^2_\theta}{n}
+\end{equation}
+which provides the *profiled log-likelihood* on the deviance scale as
+\begin{equation}
+\tilde{d}(\theta|{\bf y})=d(\theta,\widehat{\beta}_\theta,\widehat{\sigma}_\theta|{\bf y})
+=\log(|{\bf L}_\theta|^2)+n\left[1+\log\left(\frac{2\pi r^2_\theta}{n}\right)\right],
+\end{equation}
+a function of $\bf\theta$ alone.
+
+The MLE of $\bf\theta$, written $\widehat{\bf\theta}$, is the value that minimizes this profiled objective.
+We determine this value by numerical optimization.
+In the process of evaluating $\tilde{d}(\widehat{\theta}|{\bf y})$ we determine $\widehat{\beta}=\widehat{\beta}_{\widehat\theta}$, $\tilde{\bf u}_{\widehat{\theta}}$ and $r^2_{\widehat{\theta}}$, from which we can evaluate $\widehat{\sigma}=\sqrt{r^2_{\widehat{\theta}}/n}$.
+
+The elements of the conditional mode of $\mathcal B$, evaluated at the parameter estimates,
+\begin{equation}
+\tilde{\bf b}_{\widehat{\theta}}=
+\Lambda_{\widehat{\theta}}\tilde{\bf u}_{\widehat{\theta}}
+\end{equation}
+are sometimes called the *best linear unbiased predictors* or BLUPs of the random effects.
+Although BLUPs an appealing acronym, I don’t find the term particularly instructive (what is a “linear unbiased predictor” and in what sense are these the “best”?) and prefer the term “conditional modes”, because these are the values of $\bf b$ that maximize the density of the conditional distribution $\mathcal{B} | \mathcal{Y} = {\bf y}$.
+For a linear mixed model, where all the conditional and unconditional distributions are Gaussian, these values are also the *conditional means*.
+
+## Internal structure of $\Lambda_\theta$ and $\bf Z$
+
+In the types of `LinearMixedModel` available through the `MixedModels` package, groups of random effects and the corresponding columns of the model matrix, $\bf Z$, are associated with *random-effects terms* in the model formula.
+
+For the simple example
+```{julia;echo=false}
+using DataFrames, RData, MixedModels
+const dat=convert(Dict{Symbol,DataFrame},load(Pkg.dir("MixedModels", "test", "dat.rda")))
+```
+```{julia;term=true}
+fm1 = fit!(lmm(@formula(Y ~ 1 + (1|G)), dat[:Dyestuff]))
+```
+the only random effects term in the formula is `(1|G)`, a simple, scalar random-effects term.
+```{julia;term=true}
+t1 = fm1.trms[1]
+```
+```@docs
+ScalarFactorReTerm
+```
+
+This `ScalarFactorReTerm` contributes a block of columns to the model matrix $\bf Z$ and a diagonal block to $\Lambda_\theta$.
+```{julia;term=true}
+getθ(t1)
+getΛ(t1)
+full(t1)
+```
+
+Because there is only one random-effects term in the model, the matrix $\bf Z$ is the indicators matrix shown as the result of `full(t1)`, but stored in a special sparse format.
+Furthermore, there is only one block in $\Lambda_\theta$.
+For a `ScalarFactorReTerm` this block is a multiple of the identity, in this case $0.75258\cdot{\bf I}_6$.
+
+
+For a vector-valued random-effects term, as in
+```{julia;term=true}
+fm2 = fit!(lmm(@formula(Y ~ 1 + U + (1+U|G)), dat[:sleepstudy]))
+t21 = fm2.trms[1]
+```
+the random-effects term `(1+U|G)` generates a
+```@docs
+VectorFactorReTerm
+```
+The model matrix $\bf Z$ for this model is
+```{julia;term=true}
+full(t21)
+```
+and $\Lambda_\theta$ is a $36\times36$ block diagonal matrix with $18$ diagonal blocks, all of the form
+```{julia;term=true}
+getΛ(t21)
+```
+The $\theta$ vector is
+```{julia;term=true}
+getθ(t21)
+```
+
+Random-effects terms in the model formula that have the same grouping factor are amagamated into a single `VectorFactorReTerm` object.
+```{julia;term=true}
+fm3 = fit!(lmm(@formula(Y ~ 1 + U + (1|G) + (0+U|G)), dat[:sleepstudy]))
+t31 = fm3.trms[1]
+```
+For this model the matrix $\bf Z$ is the same as that of model `fm2` but the diagonal blocks of $\Lambda_\theta$ are themselves diagonal.
+```{julia;term=true}
+getΛ(t31)
+getθ(t31)
+```
+Random-effects terms with distinct grouping factors generate distinct elements of the `trms` member of the `LinearMixedModel` object.
+Multiple `AbstractFactorReTerm` (i.e. either a `ScalarFactorReTerm` or a `VectorFactorReTerm`) objects are sorted by decreasing numbers of random effects.
+```{julia;term=true}
+fm4 = fit!(lmm(@formula(Y ~ 1 + (1|H) + (1|G)), dat[:Penicillin]))
+t41 = fm4.trms[1]
+t42 = fm4.trms[2]
+```
+Note that the first `ScalarFactorReTerm` in `fm4.trms` corresponds to grouping factor `G` even though the term `(1|G)` occurs in the formula after `(1|H)`.
+
+### Progress of the optimization
+
+An optional `Bool` argument of `true` in the call to `fit!` of a `LinearMixedModel` causes printing of the objective and the $\theta$ parameter at each evaluation during the optimization.
+```{julia;term=true}
+fit!(lmm(@formula(Y ~ 1 + (1|G)), dat[:Dyestuff]), true);
+fit!(lmm(@formula(Y ~ 1 + U + (1+U|G)), dat[:sleepstudy]), true);
+``` 
+
+A shorter summary of the optimization process is always available as an
+```@docs
+OptSummary
+```
+object, which is the `optsum` member of the `LinearMixedModel`.
+```{julia;term=true}
+fm2.optsum
+```

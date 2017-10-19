@@ -248,7 +248,7 @@ Base.size(A::AbstractFactorReTerm, i::Integer) =
 cond(A::VectorFactorReTerm) = cond(LowerTriangular(A.Λ))
 
 """
-    nθ(A::FactorReTerm)
+    nθ(A::AbstractTerm)
 
 Return the number of free parameters in the relative covariance matrix Λ
 """
@@ -288,11 +288,11 @@ function getθ!(v::StridedVector{T}, A::MatrixTerm{T}) where T
 end
 
 """
-    getθ(A::FactorReTerm)
+    getθ(A::AbstractFactorReTerm)
 
 Return a vector of the elements of the lower triangle blocks in `A.Λ` (column-major ordering)
 """
-function getθ end
+function getθ(A::AbstractFactorReTerm) end
 
 getθ(::MatrixTerm{T}) where {T} = T[]
 getθ(A::ScalarFactorReTerm) = [A.Λ]
