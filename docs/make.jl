@@ -9,7 +9,6 @@ makedocs(
              "bootstrap.md",
              "SimpleLMM.md",
              "MultipleTerms.md",
-             "nAGQ.md",
              "SingularCovariance.md",
              "SubjectItem.md"]
 )

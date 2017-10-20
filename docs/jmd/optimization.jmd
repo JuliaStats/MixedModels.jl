@@ -59,13 +59,6 @@ d({\bf\theta},{\bf\beta},\sigma|{\bf y})
 where $|{\bf L}_\theta|$ denotes the *determinant* of ${\bf L}_\theta$.
 Because ${\bf L}_\theta$ is triangular, its determinant is the product of its diagonal elements.
 
-Negative twice the log-likelihood is called the *objective*.
-It is the value to be minimized by the parameter estimates.
-It is, up to an additive factor, the *deviance* of the parameters.
-Unfortunately, it is not clear what the additive factor should be in the case of linear mixed models.
-In many applications, however, it is not the deviance of the model that is of interest as much the change in the deviance between two fitted models.
-When calculating the change in the deviance the additive factor will cancel out so the change in the deviance when comparing models is the same as the change in this objective.
-
 Because the conditional mean, $\bf\mu_{\mathcal Y|\mathcal B=\bf b}=\bf
 X\bf\beta+\bf Z\Lambda_\theta\bf u$, is a linear function of both $\bf\beta$ and $\bf u$, minimization of the PRSS with respect to both $\bf\beta$ and $\bf u$ to produce
 \begin{equation}
@@ -191,4 +184,146 @@ OptSummary
 object, which is the `optsum` member of the `LinearMixedModel`.
 ```{julia;term=true}
 fm2.optsum
+```
+
+### Modifying the optimization process
+
+The `OptSummary` object contains both input and output fields for the optimizer.
+To modify the optimization process the input fields can be changed after constructing the model but before fitting it.
+
+Suppose, for example, that the user wishes to try a [Nelder-Mead](https://en.wikipedia.org/wiki/Nelder%E2%80%93Mead_method) optimization method instead of the default [`BOBYQA`](https://en.wikipedia.org/wiki/BOBYQA) (Bounded Optimization BY Quadratic Approximation) method.
+```{julia;term=true}
+fm2 = lmm(@formula(Y ~ 1 + U + (1+U|G)), dat[:sleepstudy]);
+fm2.optsum.optimizer = :LN_NELDERMEAD;
+fit!(fm2)
+fm2.optsum
+```
+
+The parameter estimates are quite similar to those using `:LN_BOBYQA` but at the expense of 140 functions evaluations for `:LN_NELDERMEAD` versus 57 for `:LN_BOBYQA`.
+
+See the documentation for the [`NLopt`](https://github.com/JuliaOpt/NLopt.jl) package for details about the various settings.
+
+### Convergence to singular covariance matrices
+
+To ensure identifiability of $\Sigma_\theta=\sigma^2\Lambda_\theta \Lambda_\theta$, the elements of $\theta$ corresponding to diagonal elements of $\Lambda_\theta$ are constrained to be non-negative.
+For example, in a trivial case of a single, simple, scalar, random-effects term as in `fm1`, the one-dimensional $\theta$ vector is the ratio of the standard deviation of the random effects to the standard deviation of the response.
+It happens that $-\theta$ produces the same log-likelihood but, by convention, we define the standard deviation to be the positive square root of the variance.
+Requiring the diagonal elements of $\Lambda_\theta$ to be non-negative is a generalization of using this positive square root.
+
+If the optimization converges on the boundary of the feasible region, that is if one or more of the diagonal elements of $\Lambda_\theta$ is zero at convergence, the covariance matrix $\Sigma_\theta$ will be *singular*.
+This means that there will be linear combinations of random effects that are constant.
+Usually convergence to a singular covariance matrix is a sign of an over-specified model.
+
+## Generalized Linear Mixed-Effects Models
+
+In a [*generalized linear model*](https://en.wikipedia.org/wiki/Generalized_linear_model) the responses are modelled as coming from a particular distribution, such as `Bernoulli` for binary responses or `Poisson` for responses that represent counts.
+The scalar distributions of individual responses differ only in their means, which are determined by a *linear predictor* expression $\eta=\bf X\beta$, where, as before, $\bf X$ is a model matrix derived from the values of covariates and $\beta$ is a vector of coefficients.
+
+The unconstrained components of $\eta$ are mapped to the, possiby constrained, components of the mean response, $\mu$, via a scalar function, $g^{-1}$, applied to each component of $\eta$.
+For historical reasons, the inverse of this function, taking components of $\mu$ to the corresponding component of $\eta$ is called the *link function* and more frequently used map from $\eta$ to $\mu$ is the *inverse link*.
+
+A *generalized linear mixed-effects model* (GLMM) is defined, for the purposes of this package, by
+\begin{equation}
+\begin{aligned}
+  (\mathcal{Y} | \mathcal{B}=\bf{b}) &\sim\mathcal{D}(\bf{g^{-1}(X\beta + Z b)},\phi)\\\\
+  \mathcal{B}&\sim\mathcal{N}(\bf{0},\Sigma_\theta) .
+\end{aligned}
+\end{equation}
+where $\mathcal{D}$ indicates the distribution family parameterized by the mean and, when needed, a common scale parameter, $\phi$.
+(There is no scale parameter for `Bernoulli` or for `Poisson`.
+Specifying the mean completely determines the distribution.)
+```@docs
+Bernoulli
+Poisson
+```
+
+
+The `glmm` function generates, but does not fit, a `GeneralizedLinearMixedModel` object.
+
+```{julia;term=true}
+mdl = glmm(@formula(r2 ~ 1 + a + g + b + s + (1|id) + (1|item)),
+           dat[:VerbAgg], Bernoulli());
+typeof(mdl)
+```
+
+A separate call to `fit!` is required to fit the model.
+This involves optimizing an objective function, the Laplace approximation to the deviance, with respect to the parameters, which are $\beta$, the fixed-effects coefficients, and $\theta$, the covariance parameters.
+The starting estimate for $\beta$ is determined by fitting a GLM to the fixed-effects part of the formula
+
+```{julia;term=true}
+mdl.β
+```
+
+and the starting estimate for $\theta$, which is a vector of the two standard deviations of the random effects, is chosen to be
+
+```{julia;term=true}
+mdl.θ
+```
+
+The Laplace approximation to the deviance requires determining the conditional modes of the random effects.
+These are the values that maximize the conditional density of the random effects, given the model parameters and the data.
+This is done using Penalized Iteratively Reweighted Least Squares (PIRLS).
+In most cases PIRLS is fast and stable.
+It is simply a penalized version of the IRLS algorithm used in fitting GLMs.
+
+The distinction between the "fast" and "slow" algorithms in the `MixedModels` package (`nAGQ=0` or `nAGQ=1` in `lme4`) is whether the fixed-effects parameters, $\beta$, are optimized in PIRLS or in the nonlinear optimizer.
+In a call to the `pirls!` function the first argument is a `GeneralizedLinearMixedModel`, which is modified during the function call.
+(By convention, the names of such *mutating functions* end in `!` as a warning to the user that they can modify an argument, usually the first argument.)
+The second and third arguments are optional logical values indicating if $\beta$ is to be varied and if verbose output is to be printed.
+
+```{julia;term=true}
+pirls!(mdl, true, true)
+```
+
+```{julia;term=true}
+LaplaceDeviance(mdl)
+```
+
+```{julia;term=true}
+mdl.β
+```
+
+```{julia;term=true}
+mdl.θ # current values of the standard deviations of the random effects
+```
+
+If the optimization with respect to $\beta$ is performed within PIRLS then the nonlinear optimization of the Laplace approximation to the deviance requires optimization with respect to $\theta$ only.
+This is the "fast" algorithm.
+Given a value of $\theta$, PIRLS is used to determine the conditional estimate of $\beta$ and the conditional mode of the random effects, **b**.
+
+```{julia;term=true}
+mdl.b # conditional modes of b
+```
+
+```{julia;term=true}
+fit!(mdl, fast=true, verbose=true);
+```
+
+The optimization process is summarized by
+
+```{julia;term=true}
+mdl.LMM.optsum
+```
+
+As one would hope, given the name of the option, this fit is comparatively fast.
+```{julia;term=true}
+@time(fit!(glmm(@formula(r2 ~ 1 + a + g + b + s + (1 | id) + (1 | item)), 
+        dat[:VerbAgg], Bernoulli()), fast=true))
+```
+
+The alternative algorithm is to use PIRLS to find the conditional mode of the random effects, given $\beta$ and $\theta$ and then use the general nonlinear optimizer to fit with respect to both $\beta$ and $\theta$.
+Because it is slower to incorporate the $\beta$ parameters in the general nonlinear optimization, the fast fit is performed first and used to determine starting estimates for the more general optimization.
+
+```{julia;term=true}
+@time mdl1 = fit!(glmm(@formula(r2 ~ 1+a+g+b+s+(1|id)+(1|item)), 
+        dat[:VerbAgg], Bernoulli()), verbose = true)
+```
+
+This fit provided slightly better results (Laplace approximation to the deviance of 8151.400 versus 8151.583) but took 6 times as long.
+That is not terribly important when the times involved are a few seconds but can be important when the fit requires many hours or days of computing time.
+
+The comparison of the slow and fast fit is available in the optimization summary after the slow fit.
+
+```{julia;term=true}
+mdl1.LMM.optsum
 ```

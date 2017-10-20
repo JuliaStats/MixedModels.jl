@@ -1,7 +1,7 @@
 # Model constructors
 
 The `lmm` function creates a linear mixed-effects model representation from a `Formula` and an appropriate `data` type.
-At present a `DataFrame` is required but that is expected to change.
+At present the data type must be a `DataFrame` but this is expected to change.
 ```@docs
 lmm
 ```
@@ -12,12 +12,16 @@ For illustration, several data sets from the *lme4* package for *R* are made ava
 These include the `Dyestuff` and `Dyestuff2` data sets.
 ```{julia;term=true}
 using DataFrames, RData, MixedModels
-const dat = convert(Dict{Symbol,DataFrame}, load(Pkg.dir("MixedModels", "test", "dat.rda")));
+const dat = convert(Dict{Symbol,DataFrame},
+    load(Pkg.dir("MixedModels", "test", "dat.rda")));
 dump(dat[:Dyestuff])
 ```
 The columns in these data sets have been renamed for convenience.
 The response is always named `Y`.
 Potential grouping factors for random-effects terms are named `G`, `H`, etc.
+Numeric covariates are named starting with `U`.
+Categorical covariates not suitable as grouping factors are named starting with `A`.
+
 
 ### Models with simple, scalar random effects
 
@@ -97,7 +101,7 @@ gm1 = fit!(glmm(@formula(r2 ~ 1 + a + g + b + s + m + (1|id) + (1|item)), dat[:V
 
 The canonical link, which is `GLM.LogitLink` for the `Bernoulli` distribution, is used if no explicit link is specified.
 
-In the [`GLM` package](https://github.com/JuliaStats/GLM.jl) the appropriate distribution for a 0/1 response is the `Bernoulli` distribution.
+Note that, in keeping with convention in the [`GLM` package](https://github.com/JuliaStats/GLM.jl), the distribution family for a binary (i.e. 0/1) response is the `Bernoulli` distribution.
 The `Binomial` distribution is only used when the response is the fraction of trials returning a positive, in which case the number of trials must be specified as the case weights.
 
 # Extractor functions
@@ -119,10 +123,12 @@ nobs(::StatisticalModel)
 loglikelihood(fm1)
 aic(fm1)
 bic(fm1)
+dof(fm1)   # 1 fixed effect, 2 variances
+nobs(fm1)  # 30 observations
 loglikelihood(gm1)
 ```
 
-The `deviance` generic is documented as returning negative twice the log-likelihood adjusting for the saturated model.
+In general the [`deviance`](https://en.wikipedia.org/wiki/Deviance_(statistics)) of a statistical model fit is negative twice the log-likelihood adjusting for the saturated model.
 ```@docs
 deviance(::StatisticalModel)
 ```
@@ -168,13 +174,13 @@ vcov(fm2)
 vcov(gm1)
 ```
 
-The standard errors are the square roots of the diagonal elements of the estimated variance-covariance matrix of the coefficients.
+The standard errors are the square roots of the diagonal elements of the estimated variance-covariance matrix of the fixed-effects coefficient estimators.
 ```@docs
 stderr
 ```
 ```{julia;term=true}
-stderr(fm2)
-stderr(gm1)
+show(stderr(fm2))
+show(stderr(gm1))
 ```
 
 Finally, the `coeftable` generic produces a table of coefficient estimates, their standard errors, and their ratio.
@@ -231,50 +237,4 @@ condVar
 ```
 ```{julia;term=true}
 condVar(fm1)
-```
-
-# Optimization of the objective
-
-To determine the maximum likelihood estimates (mle's) of the parameters in a `LinearMixedModel` the `objective`, negative twice the log-likelihood, is minimized.  
-This objective is on the scale of the [*deviance*](https://en.wikipedia.org/wiki/Deviance_(statistics)).
-
- would involve a nonlinear optimization over all the parameters but the optimization can be simplified by evaluating the profiled log-likelihood.  
-
-In practice it is more common to minimize negative twice the log-likelihood which is the `objective` for a `LinearMixedModel`.
-
-By definition the objective is a function of all the parameters in the model.
-However, it is possible to evaluate a *profiled log-likelihood*, which is a function of only the parameters θ that determine the *relative covariance factor*.
-That is, given a value of θ, it is possible through a direct (i.e. non-iterative) calculation to determine the estimates of β, the fixed-effects coefficients, and σ, the standard deviation of the per-observation noise term.
-
-# Internal representation
-
-A `LinearMixedModel` is composed of a vector of terms and some blocked arrays associated with them.
-```@docs
-LinearMixedModel
-```
-
-Other extractors are defined in the `MixedModels` package itself.
-```@docs
-fnames
-getΛ
-getθ
-lowerbd
-```
-
-Applied to one of the models previously fit these yield
-```{julia;term=true}
-fixef(fm1)
-coef(fm1)
-coeftable(fm1)
-getΛ(fm1)
-getθ(fm1)
-loglikelihood(fm1)
-pwrss(fm1)
-showall(ranef(fm1))
-showall(ranef(fm1, uscale=true))
-sdest(fm1)
-std(fm1)
-stderr(fm1)
-varest(fm1)
-vcov(fm1)
 ```

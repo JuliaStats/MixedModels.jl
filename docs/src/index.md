@@ -15,7 +15,6 @@ Pages = [
         "bootstrap.md",
         "SimpleLMM.md",
         "MultipleTerms.md",
-        "nAGQ.md",
         "SingularCovariance.md",
         "SubjectItem.md"]
 Depth = 2

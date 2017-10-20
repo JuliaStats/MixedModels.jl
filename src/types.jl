@@ -215,8 +215,7 @@ variance-covariance matrices.
 * `ρ`: a `Vector{Matrix{T}}` of correlation matrices
 * `fnms`: a `Vector{Symbol}` of grouping factor names
 * `cnms`: a `Vector{Vector{String}}` of column names
-* `s`: the estimate of σ, the standard deviation of the per-observation noise.  When there
-is no scaling factor this value is `NaN`
+* `s`: the estimate of σ, the standard deviation of the per-observation noise.  When there is no scaling factor this value is `NaN`
 
 The main purpose of defining this type is to isolate the logic in the show method.
 """
