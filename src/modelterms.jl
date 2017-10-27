@@ -464,6 +464,24 @@ function Base.Ac_mul_B(A::ScalarFactorReTerm{T,V,R},
     end
 end
 
+function Base.Ac_mul_B(A::VectorFactorReTerm, B::ScalarFactorReTerm)
+    nzeros = copy(A.wtz)
+    k, n = size(nzeros)
+    rowind = Matrix{Int32}(k, n)
+    refs = A.f.refs
+    bwtz = B.wtz
+    for j in 1:n
+        bwtzj = bwtz[j]
+        offset = refs[j] - one(eltype(refs))
+        for i in 1:k
+            rowind[i, j] = i + offset
+            nzeros[i, j] += bwtzj
+        end
+    end
+    sparse(vec(rowind), Vector{Int32}(repeat(B.f.refs, inner=k)), vec(nzeros),
+           k * nlevs(A), nlevs(B))
+end
+
 function Base.Ac_mul_B(A::VectorFactorReTerm{T}, B::VectorFactorReTerm{T}) where T
     if A === B
         l = vsize(A)
