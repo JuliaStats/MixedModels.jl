@@ -5,10 +5,12 @@ Convert sparse `S` to `Diagonal` if `S` is diagonal or to `full(S)` if
 the proportion of nonzeros exceeds `threshold`.
 """
 function densify(S::SparseMatrixCSC, threshold::Real = 0.3)
+    dropzeros!(S)
     m, n = size(S)
     if m == n && isdiag(S)  # convert diagonal sparse to Diagonal
         Diagonal(diag(S))
-    elseif nnz(S)/(*(size(S)...)) ≤ threshold # very sparse matrices left as is
+    elseif nnz(S)/(*(size(S)...)) ≤ threshold ||   # very sparse matrices left as is
+        all(d -> iszero(d) || d == 1, diff(S.colptr))
         S
     else
         full(S)

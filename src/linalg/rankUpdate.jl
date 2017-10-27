@@ -60,9 +60,11 @@ function rankUpdate!(α::T, A::SparseMatrixCSC{T}, C::Diagonal{T}) where T <: Nu
     rv = rowvals(A)
     for j in 1:n
         nzr = nzrange(A, j)
-        length(nzr) == 1 || throw(ArgumentError("A*A' has off-diagonal elements"))
-        k = nzr[1]
-        @inbounds dd[rv[k]] += α * abs2(nz[k])
+        if !isempty(nzr)
+            length(nzr) == 1 || throw(ArgumentError("A*A' has off-diagonal elements"))
+            k = nzr[1]
+            @inbounds dd[rv[k]] += α * abs2(nz[k])
+        end
     end
     C
 end
