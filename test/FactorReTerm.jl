@@ -116,6 +116,10 @@ end
     @test isa(vrp, UniformBlockDiagonal{Float64})
     @test size(vrp) == (36, 36)
 
+    scl = ScalarFactorReTerm(slp[:G], Array(slp[:U]), Array(slp[:U]), :G, ["U"], 1.0)
+
+    @test sparse(corr)'sparse(scl) == corr'scl
+
     @test MixedModels.Λ_mul_B!(Vector{Float64}(36), corr, ones(36)) == repeat([0.5, 1.0], outer=18)
     
     @testset "reweight!" begin

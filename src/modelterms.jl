@@ -472,10 +472,10 @@ function Base.Ac_mul_B(A::VectorFactorReTerm, B::ScalarFactorReTerm)
     bwtz = B.wtz
     for j in 1:n
         bwtzj = bwtz[j]
-        offset = refs[j] - one(eltype(refs))
+        offset = k * (refs[j] - 1)
         for i in 1:k
             rowind[i, j] = i + offset
-            nzeros[i, j] += bwtzj
+            nzeros[i, j] *= bwtzj
         end
     end
     sparse(vec(rowind), Vector{Int32}(repeat(B.f.refs, inner=k)), vec(nzeros),
