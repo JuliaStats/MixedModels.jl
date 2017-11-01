@@ -482,6 +482,8 @@ function Base.Ac_mul_B(A::VectorFactorReTerm, B::ScalarFactorReTerm)
            k * nlevs(A), nlevs(B))
 end
 
+Base.Ac_mul_B(A::ScalarFactorReTerm, B::VectorFactorReTerm) = Ac_mul_B(B, A)'
+
 function Base.Ac_mul_B(A::VectorFactorReTerm{T}, B::VectorFactorReTerm{T}) where T
     if A === B
         l = vsize(A)
