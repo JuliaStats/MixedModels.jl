@@ -8,12 +8,23 @@ Return `log(det(tril(A)))` evaluated in place.
 LD(d::Diagonal{T}) where {T<:Number} = sum(log, d.diag)
 
 function LD(d::UniformBlockDiagonal{T}) where T
-    m, n, k = size(d.data)
-    dind = diagind(m, n)
-    sum(log, f[i] for f in d.facevec, i in dind)
+    dat = d.data
+    m, n, k = size(dat)
+    m == n || throw(ArgumentError("Blocks of d must be square"))
+    s = log(one(T))
+    @inbounds for j in 1:k, i in 1:m
+        s += log(dat[i,i,j])
+    end
+    s
 end
 
-LD(d::DenseMatrix{T}) where {T} = sum(log, d[i] for i in diagind(d))
+function LD(d::DenseMatrix{T}) where T
+    s = log(one(T))
+    for i in 1:Base.LinAlg.checksquare(d)
+        s += log(d[i, i])
+    end
+    s
+end
 
 """
     logdet(m::LinearMixedModel)
