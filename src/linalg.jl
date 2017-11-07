@@ -126,9 +126,9 @@ function A_rdiv_Bc!(A::Matrix{T}, B::LowerTriangular{T,UniformBlockDiagonal{T}})
     m, n, k = size(B.data.data)
     @argcheck size(A, 2) == size(B, 1) && m == n DimensionMismatch
     offset = 0
+    one2m = 1:m
     for f in B.data.facevec
-        ## FIXME call BLAS.trsm directly
-        A_rdiv_Bc!(view(A, :, (1:m) + offset), LowerTriangular(f))
+        BLAS.trsm!('R', 'L', 'T', 'N', one(T), f, view(A, :, one2m + offset))
         offset += m
     end
     A
