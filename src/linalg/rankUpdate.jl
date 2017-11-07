@@ -15,17 +15,22 @@ function rankUpdate!(α::T, a::StridedVector{T},
     BLAS.syr!(A.uplo, α, a, A.data)
     A
 end
-rankUpdate!(a::StridedVector{T}, A::HermOrSym{T,S}) where {T<:BlasReal,S<:StridedMatrix} = rankUpdate!(one(T), a, A)
+
+rankUpdate!(a::StridedVector{T}, A::HermOrSym{T,S}) where {T<:BlasReal,S<:StridedMatrix} =
+    rankUpdate!(one(T), a, A)
 
 rankUpdate!(α::T, A::StridedMatrix{T}, β::T,
-C::HermOrSym{T,S}) where {T<:BlasReal,S<:StridedMatrix} = BLAS.syrk!(C.uplo, 'N', α, A, β, C.data)
+            C::HermOrSym{T,S}) where {T<:BlasReal,S<:StridedMatrix} =
+    BLAS.syrk!(C.uplo, 'N', α, A, β, C.data)
+
 rankUpdate!(α::T, A::StridedMatrix{T}, C::HermOrSym{T,S}) where {T<:Real,S<:StridedMatrix} =
     rankUpdate!(α, A, one(T), C)
+
 rankUpdate!(A::StridedMatrix{T}, C::HermOrSym{T,S}) where {T<:Real,S<:StridedMatrix} =
     rankUpdate!(one(T), A, one(T), C)
 
-function rankUpdate!(α::T, A::SparseMatrixCSC{T,I},
-                     β::T, C::HermOrSym{T,S}) where {T,I,S<:StridedMatrix{T}}
+function rankUpdate!(α::T, A::SparseMatrixCSC{T},
+                     β::T, C::HermOrSym{T,S}) where {T,S<:StridedMatrix{T}}
     m, n = size(A)
     @argcheck m == size(C, 2) && C.uplo == 'L' DimensionMismatch
     Cd = C.data
@@ -73,6 +78,7 @@ function rankUpdate!(α::T, A::SparseMatrixCSC{T},
                      C::HermOrSym{T,UniformBlockDiagonal{T}}) where T<:Number
     m, n, k = size(C.data.data)
     @argcheck m == n && size(A, 1) == m * k DimensionMismatch
+    # Another expensive evaluation in terms of storage allocation
     aat = α * (A * A')
     nz = nonzeros(aat)
     rv = rowvals(aat)

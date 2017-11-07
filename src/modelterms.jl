@@ -335,51 +335,6 @@ function setθ!(A::VectorFactorReTerm{T}, v::AbstractVector{T}) where T
     A
 end
 
-function Ac_mul_B!(α::Real, A::VectorFactorReTerm{T,V,R}, B::MatrixTerm{T}, β::Real,
-                   C::Matrix{T}) where {T,V,R}
-    n, q = size(A)
-    Bwt = B.wtx
-    k = size(Bwt, 2)
-    @argcheck(size(C, 1) == q && size(Bwt, 1) == n && size(C, 2) == k, DimensionMismatch)
-    if β ≠ one(T)
-        iszero(β) ? fill!(C, β) : scale!(β, C)
-    end
-    rr = A.f.refs
-    Awtz = A.wtz
-    l = vsize(A)
-    @inbounds for j in 1:k, i in 1:n
-        roffset = (rr[i] - 1) * l
-        mul = α * Bwt[i, j]
-        for ii in 1 : l
-            C[roffset + ii, j] += mul * Awtz[ii, i]
-        end
-    end
-    C
-end
-
-function Ac_mul_B!(α::Real, A::ScalarFactorReTerm{T,V,R}, B::MatrixTerm{T}, β::Real,
-    C::Matrix{T}) where {T,V,R}
-    n, q = size(A)
-    Bwt = B.wtx
-    k = size(Bwt, 2)
-    @argcheck(size(C, 1) == q && size(Bwt, 1) == n && size(C, 2) == k, DimensionMismatch)
-    if β ≠ one(T)
-        iszero(β) ? fill!(C, β) : scale!(β, C)
-    end
-    rr = A.f.refs
-    Awtz = A.wtz
-    for j in 1:k, i in 1:n
-        C[rr[i], j] += α * Awtz[i] * Bwt[i, j]
-    end
-    C
-end
-
-Ac_mul_B!(R::Matrix{T}, A::AbstractFactorReTerm{T}, B::MatrixTerm{T}) where {T} =
-    Ac_mul_B!(one(T), A, B, zero(T), R)
-
-Base.Ac_mul_B(A::AbstractFactorReTerm{T}, B::MatrixTerm{T}) where {T} =
-    Ac_mul_B!(Array{T}(size(A, 2), size(B, 2)), A, B)
-
 function Ac_mul_B!(α::Real, A::MatrixTerm{T}, B::ScalarFactorReTerm{T,V,R}, β::Real,
                    C::Matrix{T}) where {T,V,R}
     Awt = A.wtx
@@ -400,6 +355,12 @@ function Ac_mul_B!(α::Real, A::MatrixTerm{T}, B::ScalarFactorReTerm{T,V,R}, β:
     end
     C
 end
+
+Ac_mul_B!(R::Matrix{T}, A::MatrixTerm{T}, B::AbstractFactorReTerm{T}) where {T} =
+    Ac_mul_B!(one(T), A, B, zero(T), R)
+
+Base.Ac_mul_B(A::MatrixTerm{T}, B::AbstractFactorReTerm{T}) where {T} =
+    Ac_mul_B!(Array{T}(size(A, 2), size(B, 2)), A, B)
 
 function Ac_mul_B!(α::Real, A::MatrixTerm{T}, B::VectorFactorReTerm{T,V,R,S}, β::Real,
                    C::Matrix{T}) where {T,V,R,S}
@@ -428,9 +389,6 @@ end
 Ac_mul_B!(C::Matrix{T}, A::MatrixTerm{T}, B::VectorFactorReTerm{T}) where {T} =
     Ac_mul_B!(one(T), A, B, zero(T), C)
 
-Base.Ac_mul_B(A::MatrixTerm{T}, B::VectorFactorReTerm{T}) where {T} = 
-    Ac_mul_B!(Array{T}(size(A, 2), size(B, 2)), A, B)
-
 function Ac_mul_B!(C::Diagonal{T}, A::ScalarFactorReTerm{T,V,R}, 
                    B::ScalarFactorReTerm{T,V,R}) where {T,V,R}
     @argcheck A === B
@@ -439,31 +397,6 @@ function Ac_mul_B!(C::Diagonal{T}, A::ScalarFactorReTerm{T,V,R},
     @inbounds for (ri, Azi) in zip(A.f.refs, A.wtz)
         d[ri] += abs2(Azi)
     end
-    C
-end
-
-function Ac_mul_B!(C::Diagonal{MArray{Tuple{S,P},T,2,L}}, A::VectorFactorReTerm{T,V,R,S},
-                   B::VectorFactorReTerm{T,V,R,P}) where {T,V,R,S,P,L}
-    k, m = size(C)
-    @argcheck(nlevs(A) == k && nlevs(B) == m, DimensionMismatch)
-    cd = C.diag
-    fill!.(cd, zero(T))
-    Az = A.wtz
-    if A == B
-        for (i, r) in enumerate(A.f.refs)
-            cd[r] += Az[i] * Az[i]'
-        end
-        return C
-    end
-    l, n = size(Az)
-    fv = C.facevec
-    @argcheck A === B && size(fv[1]) == (l, l)
-    fill!(C.data, zero(T))
-    refs = A.f.refs
-    @inbounds for i in 1:n
-        BLAS.syr!('L', one(T), view(Az, :, i), fv[refs[i]])
-    end
-    copytri!.(fv, 'L')
     C
 end
 
@@ -497,30 +430,48 @@ end
 
 Base.Ac_mul_B(A::ScalarFactorReTerm, B::VectorFactorReTerm) = Ac_mul_B(B, A)'
 
+function Ac_mul_B!(C::UniformBlockDiagonal{T}, A::VectorFactorReTerm{T,V,R,S},
+                   B::VectorFactorReTerm{T,W,U,P}) where {T,V,R,S,W,U,P}
+    if A === B
+        Cd = C.data
+        @argcheck(size(Cd) == (S, S, nlevs(A)), DimensionMismatch)
+        fill!(Cd, zero(T))
+        for (r, v) in zip(A.f.refs, A.wtzv)
+            for j in 1:S
+                vj = v[j]
+                for i in 1:S
+                    Cd[i, j, r] += vj * v[i]
+                end
+            end
+        end
+    else
+        throw(ArgumentError("A and B should be identical"))
+    end
+    C
+end
+
 function Base.Ac_mul_B(A::VectorFactorReTerm{T,V,R,S}, B::VectorFactorReTerm{T,W,U,P}) where {T,V,R,S,W,U,P}
     if A === B
-        return Ac_mul_B!(Diagonal([@MMatrix(zeros(T,S,S)) for _ in 1:nlevs(A)]), A, A)
+        return Ac_mul_B!(UniformBlockDiagonal(Array{T}(S, S, nlevs(A))), A, A)
     end
-    Az = A.wtz
-    Bz = B.wtz
-    @argcheck(size(Az, 2) == size(Bz, 2), DimensionMismatch)
-    m = size(Az, 2)
-    a = size(Az, 1)
-    b = size(Bz, 1)
-    ab = a * b
+    Az = A.wtzv
+    Bz = B.wtzv
+    @argcheck((m = size(A, 1)) == size(B, 1), DimensionMismatch)
+    ab = S * P
     nz = ab * m
-    I = sizehint!(Int[], nz)
-    J = sizehint!(Int[], nz)
+    I = sizehint!(Int32[], nz)
+    J = sizehint!(Int32[], nz)
     vals = sizehint!(T[], nz)
     Ar = A.f.refs
     Br = B.f.refs
-    Ipat = repeat(1 : a, outer = b)
-    Jpat = repeat(1 : b, inner = a)
-    ## A lot of allocation in this block
-    for i in 1 : m
-        append!(I, Ipat + (Ar[i] - 1) * a)
-        append!(J, Jpat + (Br[i] - 1) * b)
-        append!(vals, vec(view(Az, :, i) * view(Bz, :, i)'))
+    for i in 1:m
+        ioffset = (Ar[i] - 1) * S
+        joffset = (Br[i] - 1) * P
+        for jj in 1:P, ii in 1:S
+            push!(I, ii + ioffset)
+            push!(J, jj + joffset)
+        end 
+        append!(vals, vec(Az[i] * Bz[i]'))
     end
     sparse(I, J, vals)
 end
@@ -538,72 +489,3 @@ function Ac_mul_B!(C::Matrix{T}, A::ScalarFactorReTerm{T}, B::ScalarFactorReTerm
     end
     C
 end
-
-#=  Methods not tested.  Comment out to see if they are really needed.
-function Ac_mul_B!(C::Matrix{T}, A::VectorFactorReTerm{T}, B::VectorFactorReTerm{T}) where T
-    m, n = size(B)
-    @argcheck size(C, 1) == size(A, 2) && n == size(C, 2) && size(A, 1) == m DimensionMismatch
-    Ar = A.f.refs
-    Br = B.f.refs
-    Az = A.wtz
-    Bz = B.wtz
-    Avs = vsize(A)
-    Bvs = vsize(B)
-    fill!(C, zero(T))
-    for i in 1:m, j in 1:Bvs
-        jj = (Br[i] - 1) * Bvs + j
-        for k in 1:Avs
-            C[(Ar[i] - 1)*Avs + k, jj] += Az[k, i] * Bz[j, i]
-        end
-    end
-    C
-end
-
-function Ac_mul_B!(C::SparseMatrixCSC{T}, A::ScalarFactorReTerm{T},
-                   B::ScalarFactorReTerm{T}) where T
-    m, n = size(B)
-    @argcheck(size(C,1) == size(A,2) && n == size(C,2) && size(A,1) == m, DimensionMismatch)
-    nz = nonzeros(C)
-    fill!(nz, 0)
-    rv = rowvals(C)
-    Ar = A.f.refs
-    Br = B.f.refs
-    Az = A.wtz
-    Bz = B.wtz
-    for i in 1:m
-        nzBr = nzrange(C, Br[i])
-        error("Code not yet written")
-    end
-    C
-end
-
-
-function Ac_mul_B!(C::SparseMatrixCSC{T}, A::VectorFactorReTerm{T}, B::VectorFactorReTerm{T}) where T
-    m, n = size(B)
-    @argcheck size(C, 1) == size(A, 2) && n == size(C, 2) && size(A, 1) == m DimensionMismatch
-    Ar = A.f.refs
-    Br = B.f.refs
-    Az = A.wtz
-    Bz = B.wtz
-    Avs = vsize(A)
-    Bvs = vsize(B)
-    nz = nonzeros(C)
-    rv = rowvals(C)
-    fill!(nz, zero(T))
-    msg1 = "incompatible non-zero pattern in C at row "
-    msg2 = " of A and B"
-    for i in 1:m, j in 1:Bvs
-        nzr = nzrange(C, (Br[i] - 1) * Bvs + j)
-        rvalsj = view(rv, nzr)
-        irow1 = (Ar[i] - 1) * Avs + 1  # first nonzero row in outer product of row i of A and B
-        nzind = searchsortedlast(rvalsj, irow1)
-        iszero(nzind) && throw(ArgumentError(string(msg1, i, msg2)))
-        inds = view(nzr, nzind - 1 + 1:Avs)
-        for k in eachindex(inds)
-            rv[inds[k]] == (k + irow1 - 1) || throw(ArgumentError(string(msg1, i, msg2)))
-            nz[inds[k]] += Az[k, i] * Bz[j, i]
-        end
-    end
-    C
-end
-=#
