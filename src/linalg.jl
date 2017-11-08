@@ -25,45 +25,12 @@ function αβA_mul_Bc!(α::T, A::SparseMatrixCSC{T}, B::SparseMatrixCSC{T},
     C
 end
 
-#= This is not tested.  See if it is really needed.
-function αβA_mul_Bc!(α::T, A::SparseMatrixCSC{T}, B::SparseMatrixCSC{T},
-                     β::T, C::SparseMatrixCSC{T}) where T <: Number
-    @argcheck B.m == C.n && A.m == C.m && A.n == B.n  DimensionMismatch
-    anz = nonzeros(A)
-    arv = rowvals(A)
-    bnz = nonzeros(B)
-    brv = rowvals(B)
-    cnz = nonzeros(C)
-    crv = rowvals(C)
-    if β ≠ one(T)
-        iszero(β) ? fill!(cnz, β) : scale!(cnz, β)
-    end
-    for j = 1:A.n
-        for ib in nzrange(B, j)
-            αbnz = α * bnz[ib]
-            jj = brv[ib]
-            for ia in nzrange(A, j)
-                crng = nzrange(C, jj)
-                ind = findfirst(crv[crng], arv[ia])
-                if iszero(ind)
-                    throw(ArgumentError("A*B' has nonzero positions not in C"))
-                end
-                cnz[crng[ind]] += anz[ia] * αbnz
-            end
-        end
-    end
-    C
-end
-=#
-
 function αβA_mul_Bc!(α::T, A::StridedVecOrMat{T}, B::SparseMatrixCSC{T}, β::T,
                      C::StridedVecOrMat{T}) where T
     m, n = size(A)
     p, q = size(B)
     r, s = size(C)
-    if r ≠ m || s ≠ p || n ≠ q
-        throw(DimensionMismatch("size(C,1) ≠ size(A,1) or size(C,2) ≠ size(B,1) or size(A,2) ≠ size(B,2)"))
-    end
+    @argcheck(r == m && s == p && n == q, DimensionMismatch)
     if β ≠ one(T)
         iszero(β) ? fill!(C, β) : scale!(C, β)
     end

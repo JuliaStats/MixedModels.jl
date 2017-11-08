@@ -3,7 +3,7 @@ __precompile__()
 module MixedModels
 
 using ArgCheck, BlockArrays, DataArrays, DataFrames
-using Distributions, GLM, NLopt, Showoff, StatsBase
+using Distributions, GLM, NLopt, Showoff, StaticArrays, StatsBase
 using StatsFuns: log2π
 using NamedArrays: NamedArray, setnames!
 using Base.LinAlg: BlasFloat, BlasReal, HermOrSym, PosDefException, checksquare, copytri!

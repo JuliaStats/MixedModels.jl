@@ -1,40 +1,21 @@
 """
-    UniformBlockDiagonal{T,B}
+    UniformBlockDiagonal{T}
 
 Homogeneous block diagonal matrices.  `k` diagonal blocks each of size `m×m`
 """
 struct UniformBlockDiagonal{T} <: AbstractMatrix{T}
     data::Array{T, 3}
-    facevec::Vector{SubArray{T, 2, Array{T, 3}}}
+    facevec::Vector{SubArray{T,2,Array{T,3}}}
 end
 
-function UniformBlockDiagonal(V::Vector{Matrix{T}}) where T
-    (lv = length(V)) > 0 || throw(ArgumentError("V must have a nonzero length"))
-    m, n = size(V[1])
-    data = Array{T}(m, n, lv)
-    facevec = sizehint!(SubArray{T,2,Array{T,3}}[], lv)
-    for (k, f) in enumerate(V)
-        push!(facevec, copy!(view(data, :, :, k), f))
-    end
-    UniformBlockDiagonal(data, facevec)
+function UniformBlockDiagonal(dat::Array{T,3}) where T
+    UniformBlockDiagonal(dat, 
+        SubArray{T,2,Array{T,3}}[view(dat,:,:,i) for i in 1:size(dat, 3)])
 end
 
 function Base.size(A::UniformBlockDiagonal{T}) where {T}
     m, n, l = size(A.data)
     (l * m, l * n)
-end
-
-function Base.size(A::UniformBlockDiagonal{T}, i::Int) where {T}
-    m, n, l = size(A.data)
-    if i ≤ 0
-        throw(ArgumentError("i = $i should be positive"))
-    elseif i == 1
-        l * m
-    elseif i == 2
-        l * n
-    else
-        1
-    end
 end
 
 function Base.getindex(A::UniformBlockDiagonal{T}, i::Int, j::Int) where {T}

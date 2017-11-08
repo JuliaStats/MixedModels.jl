@@ -206,7 +206,7 @@ end
     @test isapprox(objective(fm), 901641.2930413672, rtol = 1e-6)
     fit!(fm)
     @test isapprox(objective(fm), 884957.5540213, rtol = 1e-6)
-    @test isapprox(fixef(fm), [0.499130440264, 0.31130685058], atol = 1.e-5)
+    @test isapprox(fixef(fm), [0.4991229873, 0.31130780953], atol = 1.e-4)
 end
 
 

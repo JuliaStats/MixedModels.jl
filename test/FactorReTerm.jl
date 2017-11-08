@@ -44,9 +44,7 @@ end
     end
 
     @testset "products" begin
-        dd = fill(5.0, (6, 1))
-        @test sf'MatrixTerm(ones(30)) == dd
-        @test MatrixTerm(ones(30))'sf == dd'
+        @test MatrixTerm(ones(30))'sf == fill(5.0, (1, 6))
         @test Ac_mul_B!(Array{Float64}((size(sf1, 2), size(sf2, 2))), sf1, sf2) == Array(sf1'sf2)
 
         crp = sf'sf
@@ -57,9 +55,9 @@ end
         @test crp[6,6] == 5
         @test size(crp) == (6,6)
         @test crp.diag == fill(5.,6)
-        rhs = sf'MatrixTerm(Yield)
-        @test rhs == reshape([7525.0,7640.0,7820.0,7490.0,8000.0,7350.0], (6, 1))
-        @test A_ldiv_B!(crp, copy(rhs)) == reshape([1505.,1528.,1564.,1498.,1600.,1470.], (6, 1))
+        rhs = MatrixTerm(Yield)'sf
+        @test rhs == reshape([7525.0,7640.0,7820.0,7490.0,8000.0,7350.0], (1, 6))
+        @test A_ldiv_B!(crp, copy(rhs)') == reshape([1505.,1528.,1564.,1498.,1600.,1470.], (6, 1))
 
         @test isa(sf1'sf1, Diagonal{Float64})
         @test isa(sf2'sf2, Diagonal{Float64})
@@ -108,8 +106,6 @@ end
         @test_throws DimensionMismatch MixedModels.getθ!(Vector{Float64}(2), corr)
         @test_throws DimensionMismatch setθ!(corr, ones(2))
     end
-
-    @test vec(corr'MatrixTerm(ones(size(corr, 1)))) == repeat([10.0, 45.0], outer = 18)
 
     vrp = corr'corr
     

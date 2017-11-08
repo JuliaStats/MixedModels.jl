@@ -8,5 +8,6 @@ GLM 0.7
 NamedArrays
 NLopt 0.3
 Showoff
+StaticArrays 0.6
 StatsBase 0.11
 StatsFuns 0.3

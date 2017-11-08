@@ -1,6 +1,6 @@
 using Base.Test, MixedModels
 
-const ex22 = UniformBlockDiagonal([reshape(collect(1:4) + k, (2, 2)) for k in 0:4:8])
+const ex22 = UniformBlockDiagonal(reshape(Vector(1:12), (2, 2, 3)))
 
 @testset "size" begin
     @test size(ex22) == (6, 6)
