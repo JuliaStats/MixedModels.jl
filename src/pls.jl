@@ -4,16 +4,16 @@
 Convert sparse `S` to `Diagonal` if `S` is diagonal or to `full(S)` if
 the proportion of nonzeros exceeds `threshold`.
 """
-function densify(S::SparseMatrixCSC, threshold::Real = 0.3)
-    dropzeros!(S)
+function densify(A::BlockedSparse, threshold::Real = 0.3)
+    S = sparse(A)
     m, n = size(S)
     if m == n && isdiag(S)  # convert diagonal sparse to Diagonal
         Diagonal(diag(S))
     elseif nnz(S)/(*(size(S)...)) ≤ threshold ||   # very sparse matrices left as is
         all(d -> iszero(d) || d == 1, diff(S.colptr))
-        S
+        A
     else
-        full(S)
+        Array(S)
     end
 end
 densify(A::AbstractMatrix, threshold::Real = 0.3) = A
@@ -139,22 +139,18 @@ function updateL!(m::LinearMixedModel{T}) where T
     Ldat = m.L.data
     nblk = nblocks(A, 2)
     for j in 1:nblk
-        Ljj = Ldat[Block(j, j)]
+        Ljj = scaleInflate!(Ldat[Block(j, j)], A[Block(j, j)], trms[j])
         LjjH = isa(Ljj, Diagonal) ? Ljj : Hermitian(Ljj, :L)
-        LjjLT = isa(Ljj, Diagonal) ? Ljj : LowerTriangular(Ljj)
-        scaleInflate!(LjjLT, A[Block(j, j)], trms[j])
         for jj in 1:(j - 1)
             rankUpdate!(-one(T), Ldat[Block(j, jj)], LjjH)
         end
         cholUnblocked!(Ljj, Val{:L})
         for i in (j + 1):nblk
-            Lij = copy!(Ldat[Block(i, j)], A[Block(i, j)])
-            A_mul_Λ!(Lij, trms[j])
-            Λc_mul_B!(trms[i], Lij)
+            Lij = Λc_mul_B!(trms[i], A_mul_Λ!(copy!(Ldat[Block(i, j)], A[Block(i, j)]), trms[j]))
             for jj in 1:(j - 1)
                 αβA_mul_Bc!(-one(T), Ldat[Block(i, jj)], Ldat[Block(j, jj)], one(T), Lij)
             end
-            A_rdiv_Bc!(Lij, LjjLT)
+            A_rdiv_Bc!(Lij, isa(Ljj, Diagonal) ? Ljj : LowerTriangular(Ljj))
         end
     end
     m
