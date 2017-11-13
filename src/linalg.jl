@@ -25,6 +25,9 @@ function αβA_mul_Bc!(α::T, A::SparseMatrixCSC{T}, B::SparseMatrixCSC{T},
     C
 end
 
+αβA_mul_Bc!(α::T, A::BlockedSparse{T}, B::BlockedSparse{T}, β::T, C::Matrix{T}) where T =
+    αβA_mul_Bc!(α, A.cscmat, B.cscmat, β, C)
+
 function αβA_mul_Bc!(α::T, A::StridedVecOrMat{T}, B::SparseMatrixCSC{T}, β::T,
                      C::StridedVecOrMat{T}) where T
     m, n = size(A)
@@ -45,6 +48,9 @@ function αβA_mul_Bc!(α::T, A::StridedVecOrMat{T}, B::SparseMatrixCSC{T}, β::
     end
     C
 end
+
+αβA_mul_Bc!(α::T, A::StridedVecOrMat{T}, B::BlockedSparse{T}, β::T, 
+            C::StridedVecOrMat{T}) where T = αβA_mul_Bc!(α, A, B.cscmat, β, C)
 
 αβAc_mul_B!(α::T, A::StridedMatrix{T}, B::StridedVector{T}, β::T,
             C::StridedVector{T}) where {T<:BlasFloat} = BLAS.gemv!('C', α, A, B, β, C)
@@ -89,28 +95,22 @@ if VERSION < v"0.7.0-DEV.586"
     end
 end
 
-function A_rdiv_Bc!(A::Matrix{T}, B::LowerTriangular{T,UniformBlockDiagonal{T}}) where {T}
-    m, n, k = size(B.data.data)
-    @argcheck size(A, 2) == size(B, 1) && m == n DimensionMismatch
-    offset = 0
-    one2m = 1:m
-    for f in B.data.facevec
-        BLAS.trsm!('R', 'L', 'T', 'N', one(T), f, view(A, :, one2m + offset))
-        offset += m
+function A_rdiv_Bc!(A::Matrix{T}, B::LowerTriangular{T,UniformBlockDiagonal{T}}) where T
+    Bd = B.data
+    m, n, k = size(Bd.data)
+    @argcheck(size(A, 2) == size(Bd, 1) && m == n, DimensionMismatch)
+    inds = 1:m
+    for f in Bd.facevec
+        BLAS.trsm!('R', 'L', 'T', 'N', one(T), f, view(A, :, inds))
+        inds += m
     end
     A
 end
 
-function A_rdiv_Bc!(A::SparseMatrixCSC{T}, B::LowerTriangular{T,UniformBlockDiagonal{T}}) where {T}
-    nz = nonzeros(A)
-    offset = 0
-    m, n, k = size(B.data.data)
-    for f in B.data.facevec
-        nzr = nzrange(A, offset + 1).start : nzrange(A, offset + n).stop
-        q = div(length(nzr), m)
-            ## FIXME Still allocating 1.4 GB.  Call BLAS.trsm directly
-        A_rdiv_Bc!(unsafe_wrap(Array, pointer(nz, nzr[1]), (q, m)), LowerTriangular(f))
-        offset += n
+function A_rdiv_Bc!(A::BlockedSparse{T}, B::LowerTriangular{T,UniformBlockDiagonal{T}}) where T
+    @argcheck(length(A.colblocks) == length(B.data.facevec), DimensionMismatch)
+    for (b,f) in zip(A.colblocks, B.data.facevec)
+        A_rdiv_Bc!(b, LowerTriangular(f))
     end
     A
 end

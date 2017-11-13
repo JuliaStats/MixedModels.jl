@@ -147,7 +147,7 @@ mutable struct VectorFactorReTerm{T,V,R,S} <: AbstractFactorReTerm{T}
     fnm::Symbol
     cnms::Vector{String}
     blks::Vector{Int}
-    Λ::Matrix{T}
+    Λ::LowerTriangular{T,Matrix{T}}
     inds::Vector{Int}
 end
 function VectorFactorReTerm(f::PooledDataVector, z::Matrix{T}, fnm, cnms, blks) where T
@@ -162,7 +162,8 @@ function VectorFactorReTerm(f::PooledDataVector, z::Matrix{T}, fnm, cnms, blks) 
         end
         offset += kk
     end
-    VectorFactorReTerm(f, z, z, reinterpret(SVector{k,T}, z, (n,)), fnm, cnms, blks, eye(T, k), inds)
+    VectorFactorReTerm(f, z, z, reinterpret(SVector{k,T}, z, (n,)), fnm, cnms, blks, 
+                       LowerTriangular(eye(T, k)), inds)
 end
 
 function reweight!(A::VectorFactorReTerm{T,V,R,S}, sqrtwts::Vector) where {T,V,R,S} 
@@ -236,7 +237,7 @@ function rowlengths end
 rowlengths(A::ScalarFactorReTerm) = [abs(A.Λ)]
 
 function rowlengths(A::VectorFactorReTerm)
-    ld = A.Λ
+    ld = A.Λ.data
     [norm(view(ld, i, 1:i)) for i in 1:size(ld, 1)]
 end
 
@@ -253,7 +254,7 @@ Base.size(A::AbstractFactorReTerm) = (length(A.f), nrandomeff(A))
 Base.size(A::AbstractFactorReTerm, i::Integer) =
     i < 1 ? throw(BoundsError()) : i == 1 ? length(A.f) :  i == 2 ? nrandomeff(A) : 1
 
-cond(A::VectorFactorReTerm) = cond(LowerTriangular(A.Λ))
+cond(A::VectorFactorReTerm) = cond(A.Λ)
 
 """
     nθ(A::AbstractTerm)
@@ -284,7 +285,7 @@ end
 function getθ!(v::StridedVector{T}, A::VectorFactorReTerm{T}) where T
     @argcheck(length(v) == length(A.inds), DimensionMismatch)
     inds = A.inds
-    m = A.Λ
+    m = A.Λ.data
     @inbounds for i in eachindex(inds)
         v[i] = m[inds[i]]
     end
@@ -304,7 +305,7 @@ function getθ(A::AbstractFactorReTerm) end
 
 getθ(::MatrixTerm{T}) where {T} = T[]
 getθ(A::ScalarFactorReTerm) = [A.Λ]
-getθ(A::VectorFactorReTerm) = A.Λ[A.inds]
+getθ(A::VectorFactorReTerm) = A.Λ.data[A.inds]
 getθ(v::Vector{AbstractTerm{T}}) where {T} = reduce(append!, T[], getθ(t) for t in v)
 
 """
@@ -322,7 +323,7 @@ function lowerbd end
 lowerbd(::MatrixTerm{T}) where {T} = T[]
 lowerbd(A::ScalarFactorReTerm{T}) where {T} = zeros(T, 1)
 lowerbd(A::VectorFactorReTerm{T}) where {T} =
-    T[x ∈ diagind(A.Λ) ? zero(T) : convert(T, -Inf) for x in A.inds]
+    T[x ∈ diagind(A.Λ.data) ? zero(T) : convert(T, -Inf) for x in A.inds]
 lowerbd(v::Vector{AbstractTerm{T}}) where {T} = reduce(append!, T[], lowerbd(t) for t in v)
 
 function setθ!(A::ScalarFactorReTerm{T}, v::T) where {T}
@@ -331,7 +332,7 @@ function setθ!(A::ScalarFactorReTerm{T}, v::T) where {T}
 end
 
 function setθ!(A::VectorFactorReTerm{T}, v::AbstractVector{T}) where T
-    A.Λ[A.inds] = v
+    A.Λ.data[A.inds] = v
     A
 end
 
@@ -465,15 +466,57 @@ function Base.Ac_mul_B(A::VectorFactorReTerm{T,V,R,S}, B::VectorFactorReTerm{T,W
     Ar = A.f.refs
     Br = B.f.refs
     for i in 1:m
-        ioffset = (Ar[i] - 1) * S
-        joffset = (Br[i] - 1) * P
-        for jj in 1:P, ii in 1:S
-            push!(I, ii + ioffset)
-            push!(J, jj + joffset)
-        end 
-        append!(vals, vec(Az[i] * Bz[i]'))
+        Azi = Az[i]
+        Bzi = Bz[i]
+        if iszero(Azi) || iszero(Bzi)
+            continue
+        end
+        Ari = Ar[i]
+        Bri = Br[i]
+        ioffset = (Ari - 1) * S
+        joffset = (Bri - 1) * P
+        for jj in 1:P
+            jjo = jj + joffset
+            Bzijj = Bzi[jj]
+            for ii in 1:S
+                push!(I, ii + ioffset)
+                push!(J, jjo)
+                push!(vals, Azi[ii] * Bzijj)
+            end
+        end
     end
-    sparse(I, J, vals)
+    cscmat = sparse(I, J, vals)
+    nzs = nonzeros(cscmat)
+    q, r = divrem(length(nzs), S)
+    iszero(r) || throw(DimensionMismatch("nnz(cscmat) = $(nnz(cscmat)) should be a multiple of $S"))
+    nzasmat = reshape(nzs, (S, q))
+    rowblocks = [SubArray{T,1,Vector{T}}[] for i in 1:nlevs(A)]
+    rv = rowvals(cscmat)
+    inds = 1:S
+    pattern = Vector(inds)
+    pattern[S] = 0
+    for b in 1:q
+        rows = view(rv, inds)
+        rows .% S == pattern || 
+            throw(ArgumentError("Rows for block $b are not contiguous starting at a multiple of $S"))
+        push!(rowblocks[div(rows[1], S) + 1], view(nzs, inds))
+        inds += S
+    end
+    nlB = nlevs(B)
+    colblocks = sizehint!(StridedMatrix{T}[], nlB)
+    colrange = 1:P
+    for j in 1:nlB
+        inds = nzrange(cscmat, colrange[1])
+        rows = rv[inds]
+        i1 = inds[1]
+        for k in 2:P
+            inds = nzrange(cscmat, colrange[k])
+            rv[inds] == rows || throw(DimensionMismatch("Rows differ ($rows ≠ $(rv[inds])) at column block $j"))
+        end
+        push!(colblocks, reshape(view(nzs, i1:inds[end]), (length(rows), P)))
+        colrange += P
+    end
+    BlockedSparse(cscmat, nzasmat, rowblocks, colblocks)
 end
 
 function Ac_mul_B!(C::Matrix{T}, A::ScalarFactorReTerm{T}, B::ScalarFactorReTerm{T}) where T
