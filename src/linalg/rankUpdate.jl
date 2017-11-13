@@ -57,10 +57,13 @@ end
 rankUpdate!(α::T, A::SparseMatrixCSC{T}, C::HermOrSym{T}) where {T} =
     rankUpdate!(α, A, one(T), C)
 
+rankUpdate!(α::T, A::BlockedSparse{T}, C::HermOrSym{T}) where {T} =
+    rankUpdate!(α, A.cscmat, one(T), C)
+
 function rankUpdate!(α::T, A::SparseMatrixCSC{T}, C::Diagonal{T}) where T <: Number
     m, n = size(A)
     dd = C.diag
-    @argcheck length(dd) == m DimensionMismatch
+    @argcheck(length(dd) == m, DimensionMismatch)
     nz = nonzeros(A)
     rv = rowvals(A)
     for j in 1:n
@@ -74,26 +77,15 @@ function rankUpdate!(α::T, A::SparseMatrixCSC{T}, C::Diagonal{T}) where T <: Nu
     C
 end
 
-function rankUpdate!(α::T, A::SparseMatrixCSC{T},
-                     C::HermOrSym{T,UniformBlockDiagonal{T}}) where T<:Number
-    m, n, k = size(C.data.data)
-    @argcheck m == n && size(A, 1) == m * k DimensionMismatch
-    # Another expensive evaluation in terms of storage allocation
-    aat = α * (A * A')
-    nz = nonzeros(aat)
-    rv = rowvals(aat)
-    offset = 0
-    for f in C.data.facevec
-        for j in 1:m
-            for i in nzrange(aat, offset + j)
-                ii = rv[i] - offset
-                0 < ii ≤ k || throw(ArgumentError("A*A' does not conform to B"))
-                if ii ≥ j  # update lower triangle only
-                    f[ii, j] += nz[i]
-                end
-            end
+function rankUpdate!(α::T, A::BlockedSparse{T}, C::HermOrSym{T,UniformBlockDiagonal{T}}) where T
+    Arb = A.rowblocks
+    Cdf = C.data.facevec
+    (m = length(Arb)) == length(Cdf) || 
+        throw(DimensionMismatch("length(A.rowblocks) = $m ≠ $(length(Cdf)) = length(C.data.facevec)"))
+    for (b, d) in zip(Arb, Cdf)
+        for v in b
+            BLAS.syr!('L', α, v, d)
         end
-        offset += m
     end
     C
 end
