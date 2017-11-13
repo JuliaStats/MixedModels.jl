@@ -71,7 +71,7 @@ function subscriptednames(nm, len)
 end
 
 function stddevcor!(σ::Vector{T}, ρ::Matrix{T}, scr::Matrix{T}, L::LinAlg.Cholesky{T}) where T
-    @argcheck length(σ) == (k = size(L, 2)) && size(ρ) == (k, k) && size(scr) == (k, k) DimensionMismatch
+    @argcheck(length(σ) == (k = size(L, 2)) && size(ρ) == (k, k) && size(scr) == (k, k), DimensionMismatch)
     if L.uplo == 'L'
         copy!(scr, L.factors)
         for i in 1 : k
@@ -101,14 +101,14 @@ function stddevcor!(σ::Vector, ρ::Matrix, scr::Matrix, L::ScalarFactorReTerm)
 end
 function stddevcor!(σ::Vector{T}, ρ::Matrix{T}, scr::Matrix{T},
     L::VectorFactorReTerm{T}) where T
-    stddevcor!(σ, ρ, scr, LinAlg.Cholesky(LowerTriangular(L.Λ)))
+    stddevcor!(σ, ρ, scr, LinAlg.Cholesky(L.Λ))
 end
 function stddevcor(L::LinAlg.Cholesky{T}) where T
     k = size(L, 1)
     stddevcor!(Vector{T}(k), Matrix{T}((k, k)), Matrix{T}((k, k)), L)
 end
 stddevcor(L::LowerTriangular) = stddevcor(LinAlg.Cholesky(L))
-stddevcor(L::VectorFactorReTerm) = stddevcor(LowerTriangular(L.Λ))
+stddevcor(L::VectorFactorReTerm) = stddevcor(L.Λ)
 stddevcor(L::ScalarFactorReTerm{T}) where T = [L.Λ], ones(T, 1, 1)
 
 if VERSION < v"0.7.0-DEV.393"
