@@ -36,7 +36,7 @@ function logdet(m::LinearMixedModel{T}) where {T}
     Ldat = m.L.data
     for (i, trm) in enumerate(m.trms)
         if isa(trm, AbstractFactorReTerm)
-            s += LD(m.L.data[Block(i, i)])
+            s += LD(Ldat[Block(i, i)])
         end
     end
     2s
