@@ -532,3 +532,24 @@ function Ac_mul_B!(C::Matrix{T}, A::ScalarFactorReTerm{T}, B::ScalarFactorReTerm
     end
     C
 end
+
+function Ac_mul_B!(C::SparseMatrixCSC{T}, A::ScalarFactorReTerm{T}, B::ScalarFactorReTerm{T}) where T
+    m, n = size(B)
+    @argcheck size(C, 1) == size(A, 2) && n == size(C, 2) && size(A, 1) == m DimensionMismatch
+    Ar = A.f.refs
+    Br = B.f.refs
+    Az = A.wtz
+    Bz = B.wtz
+    nz = nonzeros(C)
+    rv = rowvals(C)
+    fill!(nz, zero(T))
+    for i in 1:m
+        rng = nzrange(C, Br[i])
+        k = findfirst(view(rv, rng), Ar[i])
+        if iszero(k)
+            throw(ArgumentError("C is not compatible with A and B at index $i"))
+        end
+        nz[rng[k]] += Az[i] * Bz[i]
+    end
+    C
+end
