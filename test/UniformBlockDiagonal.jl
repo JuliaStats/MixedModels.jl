@@ -54,6 +54,7 @@ end
         d3 = dat[:d3]
         Vf1 = VectorFactorReTerm(d3[:G], hcat(ones(130418), d3[:U])', :G, ["(Intercept)", "U"], [2])
         Vf2 = VectorFactorReTerm(d3[:H], hcat(ones(130418), d3[:U])', :H, ["(Intercept)", "U"], [2])
+        @test getΛ(Vf1) == LowerTriangular(eye(2))
         setθ!(Vf2, [1.75, 0.0, 1.0])
         A11 = Vf1'Vf1
         L11 = MixedModels.cholUnblocked!(MixedModels.scaleInflate!(UniformBlockDiagonal(fill(0., size(A11.data))), A11, Vf1), Val{:L})

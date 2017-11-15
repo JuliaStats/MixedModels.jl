@@ -160,6 +160,7 @@ end
     @test diag(cor(fm)[1]) ≈ ones(2)
     @test isapprox(cond(fm), [4.175251], atol=0.0001)
     @test loglikelihood(fm) ≈ -875.9696722323523
+    show(IOBuffer(), fm)
 
     u3 = ranef(fm, uscale=true)
     @test length(u3) == 1

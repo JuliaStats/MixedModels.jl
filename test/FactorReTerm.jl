@@ -11,6 +11,7 @@ end
     sf1 = ScalarFactorReTerm(pastes[:G], :G)
     sf2 = ScalarFactorReTerm(pastes[:H], :H)
     Yield = Array(dyestuff[:Y])
+    ScalarFactorReTerm(repeat(1:3, inner=2), :G) # just to test a constructor
 
     @testset "size" begin
         @test size(sf) == (30, 6)

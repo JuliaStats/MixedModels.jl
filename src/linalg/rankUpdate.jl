@@ -34,9 +34,7 @@ function rankUpdate!(α::T, A::SparseMatrixCSC{T},
     m, n = size(A)
     @argcheck m == size(C, 2) && C.uplo == 'L' DimensionMismatch
     Cd = C.data
-    if β ≠ one(T)
-        scale!(LowerTriangular(Cd), β)
-    end
+    β == 1 || scale!(LowerTriangular(Cd), β)
     rv = rowvals(A)
     nz = nonzeros(A)
     @inbounds for jj in 1:n
