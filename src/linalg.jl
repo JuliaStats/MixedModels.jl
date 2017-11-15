@@ -10,9 +10,7 @@ function αβA_mul_Bc!(α::T, A::SparseMatrixCSC{T}, B::SparseMatrixCSC{T},
     arv = rowvals(A)
     bnz = nonzeros(B)
     brv = rowvals(B)
-    if β ≠ one(T)
-        β ≠ zero(T) ? scale!(C, β) : fill!(C, β)
-    end
+    β == 1 || scale!(C, β)
     for j = 1:A.n
         for ib in nzrange(B, j)
             αbnz = α * bnz[ib]
@@ -34,9 +32,7 @@ function αβA_mul_Bc!(α::T, A::StridedVecOrMat{T}, B::SparseMatrixCSC{T}, β::
     p, q = size(B)
     r, s = size(C)
     @argcheck(r == m && s == p && n == q, DimensionMismatch)
-    if β ≠ one(T)
-        iszero(β) ? fill!(C, β) : scale!(C, β)
-    end
+    β == 1 || scale!(C, β)
     nz = nonzeros(B)
     rv = rowvals(B)
     @inbounds for j in 1:q, k in nzrange(B, j)
@@ -80,9 +76,7 @@ if VERSION < v"0.7.0-DEV.586"
     A_rdiv_Bc!(A::StridedMatrix{T}, D::Diagonal{T}) where {T} = A_rdiv_B!(A, D)
 
     function A_rdiv_Bc!(A::SparseMatrixCSC{T}, D::Diagonal{T}) where T
-        if size(D, 2) ≠ size(A, 2)
-            throw(DimensionMismatch("size(A,2)=$(size(A,2)) should be size(D, 1)=$(size(D,1))"))
-        end
+        @argcheck(size(D, 2) == size(A, 2), DimensionMismatch)
         dd = D.diag
         nonz = nonzeros(A)
         for j in 1:A.n

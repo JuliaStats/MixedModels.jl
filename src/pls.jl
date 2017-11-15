@@ -341,15 +341,11 @@ Perform sequential likelihood ratio tests on a sequence of models.
 The returned value is a `DataFrame` containing information on the likelihood ratio tests.
 """
 function lrt(mods::LinearMixedModel...) # not tested
-    if (nm = length(mods)) <= 1
-        throw(ArgumentError("at least two models are required for a likelihood ratio test"))
-    end
+    (nm = length(mods)) > 1 || throw(ArgumentError("at least two models are required for a likelihood ratio test"))
     m1 = mods[1]
     n = nobs(m1)
     for i in 2:nm
-        if nobs(mods[i]) != n
-            throw(ArgumentError("number of observations must be constant across models"))
-        end
+        nobs(mods[i]) == n || throw(ArgumentError("number of observations must be constant across models"))
     end
     mods = mods[sortperm([dof(m)::Int for m in mods])]
     degf = Int[dof(m) for m in mods]
