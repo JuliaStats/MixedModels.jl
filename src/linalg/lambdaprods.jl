@@ -26,11 +26,9 @@ function A_mul_Λ!(A::Matrix{T}, B::VectorFactorReTerm{T,V,R,S}) where {T,V,R,S}
     m, n = size(A)
     q, r = divrem(n, S)
     iszero(r) || throw(DimensionMismatch("size(A, 2) = $n is not a multiple of S = $S"))
-    inds = 1:S
-    for blk in 1:q
-        ## another place where ~ 1GB is allocated in d3 fit
-        A_mul_B!(view(A, :, inds), λ)
-        inds += S
+    A3 = reshape(A, (m, S, q))
+    for k in 1:q
+        A_mul_B!(view(A3, :, :, k), λ)
     end
     A
 end
