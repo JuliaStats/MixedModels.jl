@@ -301,7 +301,7 @@ end
 
 Return a vector of the elements of the lower triangle blocks in `A.Λ` (column-major ordering)
 """
-function getθ(A::AbstractFactorReTerm) end
+function getθ end
 
 getθ(::MatrixTerm{T}) where {T} = T[]
 getθ(A::ScalarFactorReTerm) = [A.Λ]
@@ -546,9 +546,7 @@ function Ac_mul_B!(C::SparseMatrixCSC{T}, A::ScalarFactorReTerm{T}, B::ScalarFac
     for i in 1:m
         rng = nzrange(C, Br[i])
         k = findfirst(view(rv, rng), Ar[i])
-        if iszero(k)
-            throw(ArgumentError("C is not compatible with A and B at index $i"))
-        end
+        iszero(k) && throw(ArgumentError("C is not compatible with A and B at index $i"))
         nz[rng[k]] += Az[i] * Bz[i]
     end
     C
