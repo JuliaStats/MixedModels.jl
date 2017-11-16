@@ -70,14 +70,10 @@ Base.size(A::BlockedSparse, d) = size(A.cscmat, d)
 Base.getindex(A::BlockedSparse{T}, i::Integer, j::Integer) where {T} = getindex(A.cscmat, i, j)
 Base.full(A::BlockedSparse{T}) where {T} = full(A.cscmat)
 Base.sparse(A::BlockedSparse) = A.cscmat
-function Base.copy!(dest::BlockedSparse, src::BlockedSparse)
-    copy!(nonzeros(dest.cscmat), nonzeros(src.cscmat))
-    dest
-end
 Base.nnz(A::BlockedSparse) = nnz(A.cscmat)
 function Base.copy!(L::BlockedSparse{T,I}, A::SparseMatrixCSC{T,I}) where {T,I}
     @argcheck(nnz(L) == nnz(A), DimensionMismatch)
-    copy!(L.cscmat.nzval, A.nzval)
+    copy!(nonzeros(L.cscmat), nonzeros(A))
     L
 end
 """

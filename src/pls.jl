@@ -60,17 +60,14 @@ end
 
 model_response(mf::ModelFrame, d::Distribution=Normal()) =
     model_response(mf.df[mf.terms.eterms[1]], d)
-model_response(v::AbstractVector, d::Distribution) = convert(Vector{partype(d)}, v)
+
+model_response(v::AbstractVector, d::Distribution) = Vector{partype(d)}(v)
+
 function model_response(v::PooledDataVector, d::Bernoulli)
     levs = DataArrays.levels(v)
     nlevs = length(levs)
-    if nlevs < 2
-        zeros(v, partype(d))
-    elseif nlevs == 2
-        partype(d)[cv == levs[2] for cv in v]
-    else
-        throw(ArgumentError("length(levels(v)) = $nlevs, should be ≤ 2 for Bernoulli"))
-    end
+    @argcheck(nlevs ≤ 2)
+    nlevs < 2 ? zeros(v, partype(d)) : partype(d)[cv == levs[2] for cv in v]
 end
 
 """

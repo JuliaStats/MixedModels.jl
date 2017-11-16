@@ -403,12 +403,8 @@ end
 
 function Base.Ac_mul_B(A::ScalarFactorReTerm{T,V,R}, 
                        B::ScalarFactorReTerm{T,W,S}) where {T,V,R,W,S}
-    if A == B 
-        Ac_mul_B!(Diagonal(Vector{T}(nlevs(A))), A, B)
-    else
-        sparse(Vector{Int32}(A.f.refs), Vector{Int32}(B.f.refs), A.wtz .* B.wtz,
-               nlevs(A), nlevs(B))
-    end
+    A === B ? Ac_mul_B!(Diagonal(Vector{T}(nlevs(A))), A, B) :
+        sparse(Vector{Int32}(A.f.refs), Vector{Int32}(B.f.refs), A.wtz .* B.wtz)
 end
 
 function Base.Ac_mul_B(A::VectorFactorReTerm, B::ScalarFactorReTerm)
@@ -433,20 +429,17 @@ Base.Ac_mul_B(A::ScalarFactorReTerm, B::VectorFactorReTerm) = Ac_mul_B(B, A)'
 
 function Ac_mul_B!(C::UniformBlockDiagonal{T}, A::VectorFactorReTerm{T,V,R,S},
                    B::VectorFactorReTerm{T,W,U,P}) where {T,V,R,S,W,U,P}
-    if A === B
-        Cd = C.data
-        @argcheck(size(Cd) == (S, S, nlevs(A)), DimensionMismatch)
-        fill!(Cd, zero(T))
-        for (r, v) in zip(A.f.refs, A.wtzv)
-            for j in 1:S
-                vj = v[j]
-                for i in 1:S
-                    Cd[i, j, r] += vj * v[i]
-                end
+    @argcheck(A === B)
+    Cd = C.data
+    @argcheck(size(Cd) == (S, S, nlevs(A)), DimensionMismatch)
+    fill!(Cd, zero(T))
+    for (r, v) in zip(A.f.refs, A.wtzv)
+        @inbounds for j in 1:S
+            vj = v[j]
+            for i in 1:S
+                Cd[i, j, r] += vj * v[i]
             end
         end
-    else
-        throw(ArgumentError("A and B should be identical"))
     end
     C
 end
