@@ -4,19 +4,23 @@
 Convert sparse `S` to `Diagonal` if `S` is diagonal or to `full(S)` if
 the proportion of nonzeros exceeds `threshold`.
 """
-function densify(A::BlockedSparse, threshold::Real = 0.3)
+function densify(A::SparseMatrixCSC, threshold::Real = 0.3)
     S = sparse(A)
     m, n = size(S)
     if m == n && isdiag(S)  # convert diagonal sparse to Diagonal
         Diagonal(diag(S))
-    elseif nnz(S)/(*(size(S)...)) ≤ threshold ||   # very sparse matrices left as is
-        all(d -> iszero(d) || d == 1, diff(S.colptr))
+    elseif nnz(S)/(S.m * S.n) ≤ threshold
         A
     else
         Array(S)
     end
 end
 densify(A::AbstractMatrix, threshold::Real = 0.3) = A
+function densify(A::BlockedSparse, threshold::Real=0.3)
+    Asp = A.cscmat
+    Ad = densify(Asp)
+    Ad === Asp ? A : Ad
+end
 
 function LinearMixedModel(f, trms, wts)
     n = size(trms[1], 1)
@@ -30,9 +34,8 @@ function LinearMixedModel(f, trms, wts)
     A = BlockArray(AbstractMatrix{T}, sz, sz)
     L = BlockArray(AbstractMatrix{T}, sz, sz)
     for j in 1:nt, i in j:nt
-        Aij = densify(trms[i]'trms[j])
-        A[Block(i, j)] = Aij
-        L[Block(i, j)] = deepcopy(Aij)
+        Lij = L[Block(i,j)] = densify(trms[i]'trms[j])
+        A[Block(i,j)] = deepcopy(isa(Lij, BlockedSparse) ? Lij.cscmat : Lij)
     end
                   # check for fill-in due to non-nested grouping factors
     for i in 2:nt
@@ -42,7 +45,7 @@ function LinearMixedModel(f, trms, wts)
                 tj = trms[j]
                 if isa(tj, AbstractFactorReTerm) && !isnested(tj.f, ti.f)
                     for k in i:nt
-                        L[Block(k, i)] = full(L[Block(k, i)])
+                        L[Block(k, i)] = Matrix(L[Block(k, i)])
                     end
                     break
                 end

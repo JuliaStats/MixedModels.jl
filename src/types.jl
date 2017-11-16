@@ -75,7 +75,11 @@ function Base.copy!(dest::BlockedSparse, src::BlockedSparse)
     dest
 end
 Base.nnz(A::BlockedSparse) = nnz(A.cscmat)
-
+function Base.copy!(L::BlockedSparse{T,I}, A::SparseMatrixCSC{T,I}) where {T,I}
+    @argcheck(nnz(L) == nnz(A), DimensionMismatch)
+    copy!(L.cscmat.nzval, A.nzval)
+    L
+end
 """
     OptSummary
 
