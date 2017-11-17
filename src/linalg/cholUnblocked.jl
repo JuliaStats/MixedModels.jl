@@ -19,12 +19,14 @@ function cholUnblocked!(A::StridedMatrix{T}, ::Type{Val{:L}}) where T<:BlasFloat
         A[1] < zero(T) && throw(PosDefException(1))
         A[1] = sqrt(A[1])
     elseif n == 2
+        A[1] < zero(T) && throw(PosDefException(1))
         A[1] = sqrt(A[1])
         A[2] /= A[1]
-        A[4] = sqrt(A[4] - abs2(A[2]))
+        (A[4] -= abs2(A[2])) < zero(T) && throw(PosDefException(2))
+        A[4] = sqrt(A[4])
     else
         _, info = LAPACK.potrf!('L', A)
-        info ≠ 0 && throw(PosDefException(info))
+        iszero(info) || throw(PosDefException(info))
     end
     A
 end

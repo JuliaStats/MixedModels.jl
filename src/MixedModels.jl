@@ -8,7 +8,7 @@ using StatsFuns: log2π
 using NamedArrays: NamedArray, setnames!
 using Base.LinAlg: BlasFloat, BlasReal, HermOrSym, PosDefException, checksquare, copytri!
 
-import Base: cor, cond, convert, eltype, full, logdet, std
+import Base: ReshapedArray, cor, cond, convert, eltype, full, logdet, std
 import Base.LinAlg: A_mul_B!, A_mul_Bc!, Ac_mul_B!, A_ldiv_B!, Ac_ldiv_B!, A_rdiv_B!, A_rdiv_Bc!
 import NLopt: Opt
 import StatsBase: coef, coeftable, dof, deviance, fit!, fitted, loglikelihood,
@@ -21,6 +21,7 @@ export
        Bernoulli,
        Binomial,
        Block,
+       BlockedSparse,
        Gamma,
        LogitLink,
        LogLink,
@@ -42,9 +43,10 @@ export
        coef,
        coeftable,
        cond,
+       describeblocks,
        condVar,
-       dof,
        deviance,
+       dof,
        fit!,
        fitted,
        fixef,      # extract the fixed-effects parameter estimates

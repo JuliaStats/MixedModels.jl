@@ -6,42 +6,36 @@ is a [`MatrixTerm`]{@ref}, in which case this becomes `copy!(L, A)`.
 """
 function scaleInflate! end
 
-function scaleInflate!(Ljj::LowerTriangular{T,Matrix{T}}, Ajj::Matrix{T},
-                       Λj::MatrixTerm{T}) where T
+function scaleInflate!(Ljj::Matrix{T}, Ajj::Matrix{T}, Λj::MatrixTerm{T}) where T
     @argcheck(size(Ljj) == size(Ajj), DimensionMismatch)
-    copy!(Ljj.data, Ajj)
+    copy!(Ljj, Ajj)
 end
 
 function scaleInflate!(Ljj::Diagonal{T}, Ajj::Diagonal{T},
                        Λj::ScalarFactorReTerm{T}) where T<:AbstractFloat
-    @argcheck(length(Λj.Λ) == 1, DimensionMismatch)
-    broadcast!((x,k) -> k * x + one(T), Ljj.diag, Ajj.diag, abs2(Λj.Λ[1]))
+    broadcast!((x,k) -> k * x + one(T), Ljj.diag, Ajj.diag, abs2(Λj.Λ))
     Ljj
 end
 
-function scaleInflate!(Ljj::LowerTriangular{T,Matrix{T}}, Ajj::Diagonal{T},
-                       Λj::ScalarFactorReTerm{T}) where T
-    Ldat = Ljj.data
+function scaleInflate!(Ljj::Matrix{T}, Ajj::Diagonal{T}, Λj::ScalarFactorReTerm{T}) where T
     Ad = Ajj.diag
-    @argcheck(length(Ad) == size(Ldat, 1), DimensionMismatch)
+    @argcheck(length(Ad) == size(Ljj, 1), DimensionMismatch)
     lambsq = abs2(Λj.Λ)
-    fill!(Ldat, zero(T))
-    for (j, jj) in zip(eachindex(Ad), diagind(Ldat))
-        Ldat[jj] = lambsq * Ad[j] + one(T)
+    fill!(Ljj, zero(T))
+    for j in eachindex(Ad)
+        Ljj[j,j] = lambsq * Ad[j] + one(T)
     end
     Ljj
 end
 
-function scaleInflate!(Ljj::LowerTriangular{T,UniformBlockDiagonal{T}},
-                       Ajj::UniformBlockDiagonal{T},
-                       Λj::VectorFactorReTerm{T}) where {T}
-    @argcheck size(Ljj) == size(Ajj) DimensionMismatch
-    Ljjdat = Ljj.data
-    Ljjdd = Ljjdat.data
+function scaleInflate!(Ljj::UniformBlockDiagonal{T}, Ajj::UniformBlockDiagonal{T},
+                       Λj::VectorFactorReTerm{T}) where T
+    @argcheck(size(Ljj) == size(Ajj), DimensionMismatch)
+    Ljjdd = Ljj.data
     copy!(Ljjdd, Ajj.data)
     k, m, n = size(Ljjdd)
-    λ = LowerTriangular(Λj.Λ)
-    for Lf in Ljjdat.facevec
+    λ = Λj.Λ
+    for Lf in Ljj.facevec
         Ac_mul_B!(λ, A_mul_B!(Lf, λ))
     end
     for j in 1:n, i in 1:k
@@ -50,21 +44,20 @@ function scaleInflate!(Ljj::LowerTriangular{T,UniformBlockDiagonal{T}},
     Ljj
 end
 
-function scaleInflate!(Ljj::LowerTriangular{T,Matrix{T}}, Ajj::UniformBlockDiagonal{T},
-                       Λj::VectorFactorReTerm{T}) where {T}
+function scaleInflate!(Ljj::Matrix{T}, Ajj::UniformBlockDiagonal{T},
+                       Λj::VectorFactorReTerm{T}) where T
     @argcheck size(Ljj) == size(Ajj) DimensionMismatch
-    λ = LowerTriangular(Λj.Λ)
+    λ = Λj.Λ
     Afv = Ajj.facevec
     m, n, l = size(Ajj.data)
     m == n || throw(ArgumentError("Diagonal blocks of Ajj must be square"))
-    Ld = Ljj.data
-    fill!(Ld, zero(T))
+    fill!(Ljj, zero(T))
     tmp = Array{T}(m, m)
     offset = 0
     for k in eachindex(Afv)
         Ac_mul_B!(λ, A_mul_B!(copy!(tmp, Afv[k]), λ))
         for j in 1:n, i in 1:n
-            Ld[offset + i, offset + j] = tmp[i, j] + T(i == j)
+            Ljj[offset + i, offset + j] = tmp[i, j] + T(i == j)
         end
         offset += m
     end

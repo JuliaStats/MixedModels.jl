@@ -4,19 +4,23 @@
 Convert sparse `S` to `Diagonal` if `S` is diagonal or to `full(S)` if
 the proportion of nonzeros exceeds `threshold`.
 """
-function densify(S::SparseMatrixCSC, threshold::Real = 0.3)
-    dropzeros!(S)
+function densify(A::SparseMatrixCSC, threshold::Real = 0.3)
+    S = sparse(A)
     m, n = size(S)
     if m == n && isdiag(S)  # convert diagonal sparse to Diagonal
         Diagonal(diag(S))
-    elseif nnz(S)/(*(size(S)...)) ≤ threshold ||   # very sparse matrices left as is
-        all(d -> iszero(d) || d == 1, diff(S.colptr))
-        S
+    elseif nnz(S)/(S.m * S.n) ≤ threshold
+        A
     else
-        full(S)
+        Array(S)
     end
 end
 densify(A::AbstractMatrix, threshold::Real = 0.3) = A
+function densify(A::BlockedSparse, threshold::Real=0.3)
+    Asp = A.cscmat
+    Ad = densify(Asp)
+    Ad === Asp ? A : Ad
+end
 
 function LinearMixedModel(f, trms, wts)
     n = size(trms[1], 1)
@@ -30,9 +34,8 @@ function LinearMixedModel(f, trms, wts)
     A = BlockArray(AbstractMatrix{T}, sz, sz)
     L = BlockArray(AbstractMatrix{T}, sz, sz)
     for j in 1:nt, i in j:nt
-        Aij = densify(trms[i]'trms[j])
-        A[Block(i, j)] = Aij
-        L[Block(i, j)] = deepcopy(Aij)
+        Lij = L[Block(i,j)] = densify(trms[i]'trms[j])
+        A[Block(i,j)] = deepcopy(isa(Lij, BlockedSparse) ? Lij.cscmat : Lij)
     end
                   # check for fill-in due to non-nested grouping factors
     for i in 2:nt
@@ -42,7 +45,7 @@ function LinearMixedModel(f, trms, wts)
                 tj = trms[j]
                 if isa(tj, AbstractFactorReTerm) && !isnested(tj.f, ti.f)
                     for k in i:nt
-                        L[Block(k, i)] = full(L[Block(k, i)])
+                        L[Block(k, i)] = Matrix(L[Block(k, i)])
                     end
                     break
                 end
@@ -57,17 +60,14 @@ end
 
 model_response(mf::ModelFrame, d::Distribution=Normal()) =
     model_response(mf.df[mf.terms.eterms[1]], d)
-model_response(v::AbstractVector, d::Distribution) = convert(Vector{partype(d)}, v)
+
+model_response(v::AbstractVector, d::Distribution) = Vector{partype(d)}(v)
+
 function model_response(v::PooledDataVector, d::Bernoulli)
     levs = DataArrays.levels(v)
     nlevs = length(levs)
-    if nlevs < 2
-        zeros(v, partype(d))
-    elseif nlevs == 2
-        partype(d)[cv == levs[2] for cv in v]
-    else
-        throw(ArgumentError("length(levels(v)) = $nlevs, should be ≤ 2 for Bernoulli"))
-    end
+    @argcheck(nlevs ≤ 2)
+    nlevs < 2 ? zeros(v, partype(d)) : partype(d)[cv == levs[2] for cv in v]
 end
 
 """
@@ -139,22 +139,18 @@ function updateL!(m::LinearMixedModel{T}) where T
     Ldat = m.L.data
     nblk = nblocks(A, 2)
     for j in 1:nblk
-        Ljj = Ldat[Block(j, j)]
+        Ljj = scaleInflate!(Ldat[Block(j, j)], A[Block(j, j)], trms[j])
         LjjH = isa(Ljj, Diagonal) ? Ljj : Hermitian(Ljj, :L)
-        LjjLT = isa(Ljj, Diagonal) ? Ljj : LowerTriangular(Ljj)
-        scaleInflate!(LjjLT, A[Block(j, j)], trms[j])
         for jj in 1:(j - 1)
             rankUpdate!(-one(T), Ldat[Block(j, jj)], LjjH)
         end
         cholUnblocked!(Ljj, Val{:L})
         for i in (j + 1):nblk
-            Lij = copy!(Ldat[Block(i, j)], A[Block(i, j)])
-            A_mul_Λ!(Lij, trms[j])
-            Λc_mul_B!(trms[i], Lij)
+            Lij = Λc_mul_B!(trms[i], A_mul_Λ!(copy!(Ldat[Block(i, j)], A[Block(i, j)]), trms[j]))
             for jj in 1:(j - 1)
                 αβA_mul_Bc!(-one(T), Ldat[Block(i, jj)], Ldat[Block(j, jj)], one(T), Lij)
             end
-            A_rdiv_Bc!(Lij, LjjLT)
+            A_rdiv_Bc!(Lij, isa(Ljj, Diagonal) ? Ljj : LowerTriangular(Ljj))
         end
     end
     m
@@ -345,15 +341,11 @@ Perform sequential likelihood ratio tests on a sequence of models.
 The returned value is a `DataFrame` containing information on the likelihood ratio tests.
 """
 function lrt(mods::LinearMixedModel...) # not tested
-    if (nm = length(mods)) <= 1
-        throw(ArgumentError("at least two models are required for a likelihood ratio test"))
-    end
+    (nm = length(mods)) > 1 || throw(ArgumentError("at least two models are required for a likelihood ratio test"))
     m1 = mods[1]
     n = nobs(m1)
     for i in 2:nm
-        if nobs(mods[i]) != n
-            throw(ArgumentError("number of observations must be constant across models"))
-        end
+        nobs(mods[i]) == n || throw(ArgumentError("number of observations must be constant across models"))
     end
     mods = mods[sortperm([dof(m)::Int for m in mods])]
     degf = Int[dof(m) for m in mods]

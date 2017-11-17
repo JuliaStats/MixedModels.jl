@@ -10,9 +10,7 @@ function αβA_mul_Bc!(α::T, A::SparseMatrixCSC{T}, B::SparseMatrixCSC{T},
     arv = rowvals(A)
     bnz = nonzeros(B)
     brv = rowvals(B)
-    if β ≠ one(T)
-        β ≠ zero(T) ? scale!(C, β) : fill!(C, β)
-    end
+    β == 1 || scale!(C, β)
     for j = 1:A.n
         for ib in nzrange(B, j)
             αbnz = α * bnz[ib]
@@ -25,15 +23,16 @@ function αβA_mul_Bc!(α::T, A::SparseMatrixCSC{T}, B::SparseMatrixCSC{T},
     C
 end
 
+αβA_mul_Bc!(α::T, A::BlockedSparse{T}, B::BlockedSparse{T}, β::T, C::Matrix{T}) where T =
+    αβA_mul_Bc!(α, A.cscmat, B.cscmat, β, C)
+
 function αβA_mul_Bc!(α::T, A::StridedVecOrMat{T}, B::SparseMatrixCSC{T}, β::T,
                      C::StridedVecOrMat{T}) where T
     m, n = size(A)
     p, q = size(B)
     r, s = size(C)
     @argcheck(r == m && s == p && n == q, DimensionMismatch)
-    if β ≠ one(T)
-        iszero(β) ? fill!(C, β) : scale!(C, β)
-    end
+    β == 1 || scale!(C, β)
     nz = nonzeros(B)
     rv = rowvals(B)
     @inbounds for j in 1:q, k in nzrange(B, j)
@@ -45,6 +44,9 @@ function αβA_mul_Bc!(α::T, A::StridedVecOrMat{T}, B::SparseMatrixCSC{T}, β::
     end
     C
 end
+
+αβA_mul_Bc!(α::T, A::StridedVecOrMat{T}, B::BlockedSparse{T}, β::T, 
+            C::StridedVecOrMat{T}) where T = αβA_mul_Bc!(α, A, B.cscmat, β, C)
 
 αβAc_mul_B!(α::T, A::StridedMatrix{T}, B::StridedVector{T}, β::T,
             C::StridedVector{T}) where {T<:BlasFloat} = BLAS.gemv!('C', α, A, B, β, C)
@@ -74,9 +76,7 @@ if VERSION < v"0.7.0-DEV.586"
     A_rdiv_Bc!(A::StridedMatrix{T}, D::Diagonal{T}) where {T} = A_rdiv_B!(A, D)
 
     function A_rdiv_Bc!(A::SparseMatrixCSC{T}, D::Diagonal{T}) where T
-        if size(D, 2) ≠ size(A, 2)
-            throw(DimensionMismatch("size(A,2)=$(size(A,2)) should be size(D, 1)=$(size(D,1))"))
-        end
+        @argcheck(size(D, 2) == size(A, 2), DimensionMismatch)
         dd = D.diag
         nonz = nonzeros(A)
         for j in 1:A.n
@@ -89,28 +89,22 @@ if VERSION < v"0.7.0-DEV.586"
     end
 end
 
-function A_rdiv_Bc!(A::Matrix{T}, B::LowerTriangular{T,UniformBlockDiagonal{T}}) where {T}
-    m, n, k = size(B.data.data)
-    @argcheck size(A, 2) == size(B, 1) && m == n DimensionMismatch
-    offset = 0
-    one2m = 1:m
-    for f in B.data.facevec
-        BLAS.trsm!('R', 'L', 'T', 'N', one(T), f, view(A, :, one2m + offset))
-        offset += m
+function A_rdiv_Bc!(A::Matrix{T}, B::LowerTriangular{T,UniformBlockDiagonal{T}}) where T
+    Bd = B.data
+    m, n, k = size(Bd.data)
+    @argcheck(size(A, 2) == size(Bd, 1) && m == n, DimensionMismatch)
+    inds = 1:m
+    for f in Bd.facevec
+        BLAS.trsm!('R', 'L', 'T', 'N', one(T), f, view(A, :, inds))
+        inds += m
     end
     A
 end
 
-function A_rdiv_Bc!(A::SparseMatrixCSC{T}, B::LowerTriangular{T,UniformBlockDiagonal{T}}) where {T}
-    nz = nonzeros(A)
-    offset = 0
-    m, n, k = size(B.data.data)
-    for f in B.data.facevec
-        nzr = nzrange(A, offset + 1).start : nzrange(A, offset + n).stop
-        q = div(length(nzr), m)
-            ## FIXME Still allocating 1.4 GB.  Call BLAS.trsm directly
-        A_rdiv_Bc!(unsafe_wrap(Array, pointer(nz, nzr[1]), (q, m)), LowerTriangular(f))
-        offset += n
+function A_rdiv_Bc!(A::BlockedSparse{T}, B::LowerTriangular{T,UniformBlockDiagonal{T}}) where T
+    @argcheck(length(A.colblocks) == length(B.data.facevec), DimensionMismatch)
+    for (b,f) in zip(A.colblocks, B.data.facevec)
+        A_rdiv_Bc!(b, LowerTriangular(f))
     end
     A
 end

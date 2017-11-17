@@ -13,7 +13,7 @@ function UniformBlockDiagonal(dat::Array{T,3}) where T
         SubArray{T,2,Array{T,3}}[view(dat,:,:,i) for i in 1:size(dat, 3)])
 end
 
-function Base.size(A::UniformBlockDiagonal{T}) where {T}
+function Base.size(A::UniformBlockDiagonal)
     m, n, l = size(A.data)
     (l * m, l * n)
 end
@@ -21,7 +21,7 @@ end
 function Base.getindex(A::UniformBlockDiagonal{T}, i::Int, j::Int) where {T}
     m, n, l = size(A.data)
     (0 < i ≤ l * m && 0 < j ≤ l * n) ||
-        throw(IndexError("attempt to access $M × $N array at index [$i, $j]"))
+        throw(IndexError("attempt to access $(l*m) × $(l*n) array at index [$i, $j]"))
     iblk, ioffset = divrem(i - 1, m)
     jblk, joffset = divrem(j - 1, n)
     if iblk == jblk
@@ -47,6 +47,35 @@ function Base.full(A::UniformBlockDiagonal{T}) where T
     res
 end
 
+"""
+    BlockedSparse{T}
+
+A `SparseMatrixCSC` whose nonzeros form blocks of rows or columns or both.
+
+# Members
+* `cscmat`: `SparseMatrixCSC{T}` representation for general calculations
+* `nzsasmat`: ReshapedArray{T,2,SubArray{T, 1, Vector{T}}} `cscmat.nzval` as a matrix 
+* `rowblocks`: `Vector{Vector{SubArray{T,2,Matrix{T}}}}` of row blocks of nonzeros
+* `colblocks`: `Vector{ReshapedArray{T,2,SubArray{T,1,Vector{T}}}}` of column blocks of nonzeros
+"""
+mutable struct BlockedSparse{Tv,Ti} <: AbstractMatrix{Tv}
+    cscmat::SparseMatrixCSC{Tv,Ti}
+    nzsasmat::Matrix{Tv}
+    rowblocks::Vector{Vector{SubArray{Tv,1,Vector{Tv}}}}
+    colblocks::Vector{StridedMatrix{Tv}}
+end
+
+Base.size(A::BlockedSparse) = size(A.cscmat)
+Base.size(A::BlockedSparse, d) = size(A.cscmat, d)
+Base.getindex(A::BlockedSparse{T}, i::Integer, j::Integer) where {T} = getindex(A.cscmat, i, j)
+Base.full(A::BlockedSparse{T}) where {T} = full(A.cscmat)
+Base.sparse(A::BlockedSparse) = A.cscmat
+Base.nnz(A::BlockedSparse) = nnz(A.cscmat)
+function Base.copy!(L::BlockedSparse{T,I}, A::SparseMatrixCSC{T,I}) where {T,I}
+    @argcheck(nnz(L) == nnz(A), DimensionMismatch)
+    copy!(nonzeros(L.cscmat), nonzeros(A))
+    L
+end
 """
     OptSummary
 

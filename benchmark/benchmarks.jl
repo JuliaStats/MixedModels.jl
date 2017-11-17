@@ -50,7 +50,7 @@ const mods = Dict{Symbol,Vector{Expr}}(
     :bs10 => [:(1+U+V+W+((1+U+V+W)|G)+((1+U+V+W)|H))],
     :cake => [:(1+A*B+(1|G))],
     :cbpp => [:(1+A+(1|G))],      # Binomial glmm, create and rename variables
-    :d3 => [:(1+U+(1|G)+(1|H)+(1|I))],
+    :d3 => [:(1+U+(1|G)+(1|H)+(1|I)), :(1+U+(1+U|G)+(1+U|H)+(1+U|I))],
     :dialectNL => [:(1+A+T+U+V+W+X+(1|G)+(1|H)+(1|I))],
     :egsingle => [:(1+A+U+V+(1|G)+(1|H))],
     :epilepsy => [],              # unknown origin
@@ -98,8 +98,8 @@ end
 end
 
 @benchgroup "crossed" ["multiple", "crossed", "scalar"] begin
-    for ds in [:Assay, :Demand, :InstEval, :Penicillin, :ScotsSec, :d3, :dialectNL,
-               :egsingle, :paulsim]
+    for ds in [:Assay, :Demand, :InstEval, :Penicillin, :ScotsSec, :d3,
+               :dialectNL, :egsingle, :paulsim]
         for rhs in mods[ds]
             @bench string(ds, ':', rhs) fitbobyqa($(QuoteNode(rhs)), $(QuoteNode(ds)))
         end

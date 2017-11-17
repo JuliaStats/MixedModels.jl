@@ -160,6 +160,7 @@ end
     @test diag(cor(fm)[1]) ≈ ones(2)
     @test isapprox(cond(fm), [4.175251], atol=0.0001)
     @test loglikelihood(fm) ≈ -875.9696722323523
+    show(IOBuffer(), fm)
 
     u3 = ranef(fm, uscale=true)
     @test length(u3) == 1
@@ -209,8 +210,8 @@ end
     @test isapprox(fixef(fm), [0.4991229873, 0.31130780953], atol = 1.e-4)
 end
 
-
 @testset "simulate!" begin
+    @test MixedModels.stddevcor(cholfact!(eye(3))) == (ones(3), eye(3))
     fm = fit!(lmm(@formula(Y ~ 1 + (1 | G)), dat[:Dyestuff]))
     refit!(simulate!(MersenneTwister(1234321), fm))
     @test isapprox(deviance(fm), 339.0218639362958, atol=0.001)
