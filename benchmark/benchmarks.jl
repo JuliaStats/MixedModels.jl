@@ -98,7 +98,7 @@ end
 end
 
 @benchgroup "crossed" ["multiple", "crossed", "scalar"] begin
-    for ds in [:Assay, :Demand, :InstEval, :Penicillin, :ScotsSec, # :d3,
+    for ds in [:Assay, :Demand, :InstEval, :Penicillin, :ScotsSec, :d3,
                :dialectNL, :egsingle, :paulsim]
         for rhs in mods[ds]
             @bench string(ds, ':', rhs) fitbobyqa($(QuoteNode(rhs)), $(QuoteNode(ds)))
