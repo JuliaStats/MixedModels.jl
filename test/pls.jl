@@ -211,6 +211,7 @@ end
 end
 
 @testset "simulate!" begin
+    @test MixedModels.stddevcor(cholfact!(eye(3))) == (ones(3), eye(3))
     fm = fit!(lmm(@formula(Y ~ 1 + (1 | G)), dat[:Dyestuff]))
     refit!(simulate!(MersenneTwister(1234321), fm))
     @test isapprox(deviance(fm), 339.0218639362958, atol=0.001)
