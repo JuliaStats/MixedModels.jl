@@ -15,13 +15,16 @@ mutable struct MatrixTerm{T,S<:AbstractMatrix} <: AbstractTerm{T}
 end
 
 function MatrixTerm(X::AbstractMatrix, cnms)
-    nonzeros = mapslices(x -> !all(iszero, x), X, 1)
-    if count(nonzeros) < size(X, 2)
-        inds = find(nonzeros)
+    T = eltype(X)
+    cf = cholfact!(Symmetric(X'X, :U), Val{true}, tol = -one(T))
+    r = cf.rank
+    n, p = size(X)
+    if r < p
+        inds = sort!(cf.piv[1:r])
         X = X[:, inds]
         cnms = cnms[inds]
     end
-    MatrixTerm{eltype(X),typeof(X)}(X, X, cnms)
+    MatrixTerm{T,typeof(X)}(X, X, cnms)
 end
 
 function MatrixTerm(y::Vector)
