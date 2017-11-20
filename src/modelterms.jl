@@ -13,7 +13,17 @@ mutable struct MatrixTerm{T,S<:AbstractMatrix} <: AbstractTerm{T}
     wtx::S
     cnames::Vector{String}
 end
-MatrixTerm(X, cnms) = MatrixTerm{eltype(X),typeof(X)}(X, X, cnms)
+
+function MatrixTerm(X::AbstractMatrix, cnms)
+    nonzeros = mapslices(x -> !all(iszero, x), X, 1)
+    if count(nonzeros) < size(X, 2)
+        inds = find(nonzeros)
+        X = X[:, inds]
+        cnms = cnms[inds]
+    end
+    MatrixTerm{eltype(X),typeof(X)}(X, X, cnms)
+end
+
 function MatrixTerm(y::Vector)
     T = eltype(y)
     m = reshape(y, (length(y), 1))
