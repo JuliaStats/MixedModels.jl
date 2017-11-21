@@ -161,7 +161,7 @@ function ranef(m::MixedModel; uscale=false, named=false)
 end
 
 function StatsBase.vcov(m::MixedModel)
-    Xtrm = m.trms[end - 1]
+    Xtrm = lmm(m).trms[end - 1]
     iperm = invperm(Xtrm.piv)
     p = length(iperm)
     r = Xtrm.rank

@@ -1,4 +1,11 @@
-fixef(m::GeneralizedLinearMixedModel) = m.β
+function fixef(m::GeneralizedLinearMixedModel{T}, permuted=true) where T
+    permuted && return m.β
+    Xtrm = m.LMM.trms[end - 1]
+    iperm = invperm(Xtrm.piv)
+    p = length(iperm)
+    r = Xtrm.rank
+    r == p ? m.β[iperm] : copy!(fill(-zero(T), p), m.β)[iperm]
+end
 
 """
     glmm(f::Formula, fr::ModelFrame, d::Distribution[, l::GLM.Link])

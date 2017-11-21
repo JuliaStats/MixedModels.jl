@@ -156,7 +156,7 @@ function updateL!(m::LinearMixedModel{T}) where T
     m
 end
 
-StatsBase.coef(m::LinearMixedModel) = fixef(m, false)
+StatsBase.coef(m::MixedModel) = fixef(m, false)
 
 """
     fit!(m::LinearMixedModel[, verbose::Bool=false])
@@ -263,7 +263,7 @@ function fixef(m::LinearMixedModel{T}, permuted=true) where T
     permuted && return fixef!(Vector{T}(size(m)[2]), m)
     Xtrm = m.trms[end - 1]
     piv = Xtrm.piv
-    v = fill(zero(T), size(piv))
+    v = fill(-zero(T), size(piv))
     fixef!(view(v, 1:Xtrm.rank), m)
     ipermute!(v, piv)
 end
