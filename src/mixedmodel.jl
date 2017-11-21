@@ -33,11 +33,11 @@ fixefnames(m::MixedModel) = lmm(m).trms[end - 1].cnames
 ## methods for generics defined in StatsBase
 
 function StatsBase.coeftable(m::MixedModel)
-    fe = fixef(m)
+    co = coef(m)
     se = stderr(m)
-    z = fe ./ se
+    z = co ./ se
     pvalue = ccdf.(Chisq(1), abs2.(z))
-    CoefTable(hcat(fe, se, z, pvalue), ["Estimate", "Std.Error", "z value", "P(>|z|)"],
+    CoefTable(hcat(co, se, z, pvalue), ["Estimate", "Std.Error", "z value", "P(>|z|)"],
         fixefnames(m), 4)
 end
 
@@ -161,8 +161,22 @@ function ranef(m::MixedModel; uscale=false, named=false)
 end
 
 function StatsBase.vcov(m::MixedModel)
+    Xtrm = m.trms[end - 1]
+    iperm = invperm(Xtrm.piv)
+    p = length(iperm)
+    r = Xtrm.rank
     Linv = inv(feL(m))
-    varest(m) * (Linv'Linv)
+    permvcov = varest(m) * (Linv'Linv)
+    if p == Xtrm.rank
+        permvcov[iperm, iperm]
+    else
+        T = eltype(permvcov)
+        covmat = fill(zero(T)/zero(T), (p, p))
+        for j in 1:r, i in 1:r
+            covmat[i,j] = permvcov[i, j]
+        end
+        covmat[iperm, iperm]
+    end
 end
 
 Base.cor(m::MixedModel{T}) where {T} = Matrix{T}[stddevcor(t)[2] for t in reterms(m)]
