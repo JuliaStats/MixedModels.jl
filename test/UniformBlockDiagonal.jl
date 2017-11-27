@@ -1,4 +1,5 @@
-using Base.Test, CategoricalArrays, RData, MixedModels
+using Compat, CategoricalArrays, RData, MixedModels
+using Compat.Test
 
 if !isdefined(:dat) || !isa(dat, Dict{Symbol, Any})
     dat = convert(Dict{Symbol,Any}, load(joinpath(dirname(@__FILE__), "dat.rda")))
