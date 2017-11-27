@@ -54,7 +54,7 @@ abstract type AbstractFactorReTerm{T} <: AbstractTerm{T} end
 Is factor `A` nested in factor `B`?  That is, does each value of `A` occur with just
 one value of B?
 """
-function isnested(A::PooledDataVector{V,R}, B::PooledDataVector{W,S}) where {V,R,W,S}
+function isnested(A::CategoricalVector{V,R}, B::CategoricalVector{W,S}) where {V,R,W,S}
     @argcheck length(A) == length(B) DimensionMismatch
     bins = zeros(S, length(A.pool))
     @inbounds for (a, b) in zip(A.refs, B.refs)
@@ -74,7 +74,7 @@ end
 Scalar random-effects term from a grouping factor
 
 # Members
-* `f`: the grouping factor as a `PooledDataArray` (soon to switch to CategoricalArray)
+* `f`: the grouping factor as a `CategoricalVector`
 * `z`: the raw random-effects model matrix as a vector.
 * `wtz`: a weighted copy of `z`
 * `fnm`: the name of the grouping factor as a `Symbol`
@@ -82,18 +82,18 @@ Scalar random-effects term from a grouping factor
 * `Λ`: the relative covariance multiplier
 """
 mutable struct ScalarFactorReTerm{T,V,R} <: AbstractFactorReTerm{T}
-    f::PooledDataVector{V,R}
+    f::CategoricalVector{V,R}
     z::Vector{T}
     wtz::Vector{T}
     fnm::Symbol
     cnms::Vector{String}
     Λ::T
 end
-function ScalarFactorReTerm(f::PooledDataVector, fnm::Symbol)
+function ScalarFactorReTerm(f::CategoricalVector, fnm::Symbol)
     v = ones(Float64, length(f))
     ScalarFactorReTerm(f, v, v, fnm, ["(Intercept)"], 1.0)
 end
-ScalarFactorReTerm(f::AbstractVector, fnm::Symbol) = ScalarFactorReTerm(pool(f), fnm)
+ScalarFactorReTerm(f::AbstractVector, fnm::Symbol) = ScalarFactorReTerm(categorical(f), fnm)
 
 function cond(A::ScalarFactorReTerm)
     Λ = A.Λ
@@ -129,7 +129,7 @@ vsize(A::ScalarFactorReTerm) = 1
 Random-effects term from a grouping factor, model matrix and block pattern
 
 # Members
-* `f`: the grouping factor as an `PooledDataVector`
+* `f`: the grouping factor as an `CategoricalVector`
 * `z`: the transposed raw random-effects model matrix
 * `wtz`: a weighted copy of `z`
 * `wtzv`: a view of `wtz` as a `Vector{SVector{S,T}}`
@@ -140,7 +140,7 @@ Random-effects term from a grouping factor, model matrix and block pattern
 * `inds`: linear indices of θ elements in the relative covariance factor
 """
 mutable struct VectorFactorReTerm{T,V,R,S} <: AbstractFactorReTerm{T}
-    f::PooledDataVector{V,R}
+    f::CategoricalVector{V,R}
     z::Matrix{T}
     wtz::Matrix{T}
     wtzv::Vector{SVector{S,T}}
@@ -150,7 +150,7 @@ mutable struct VectorFactorReTerm{T,V,R,S} <: AbstractFactorReTerm{T}
     Λ::LowerTriangular{T,Matrix{T}}
     inds::Vector{Int}
 end
-function VectorFactorReTerm(f::PooledDataVector, z::Matrix{T}, fnm, cnms, blks) where T
+function VectorFactorReTerm(f::CategoricalVector, z::Matrix{T}, fnm, cnms, blks) where T
     k, n = size(z)
     @argcheck(k == sum(blks), DimensionMismatch)
     m = reshape(1:abs2(k), (k, k))
@@ -204,7 +204,7 @@ Return the levels of the grouping factor.
 
 # Examples
 ```jldoctest
-julia> trm = ScalarFactorReTerm(pool(repeat('A':'F', inner = 5)), :G);
+julia> trm = ScalarFactorReTerm(categorical(repeat('A':'F', inner = 5)), :G);
 
 julia> show(MixedModels.levs(trm))
 ['A', 'B', 'C', 'D', 'E', 'F']

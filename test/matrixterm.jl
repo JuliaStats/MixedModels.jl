@@ -1,4 +1,5 @@
-using Base.Test, MixedModels
+using Compat, MixedModels
+using Compat.Test
 
 @testset "vectorterm" begin
     trm = MatrixTerm(ones(10))
