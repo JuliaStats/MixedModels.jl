@@ -359,7 +359,7 @@ The *penalized residual sum of squares* (PRSS),
 is the sum of the residual sum of squares, measuring fidelity of the model to the data, and a penalty on the size of $\bf u$, measuring the complexity of the model.
 Minimizing $r^2$ with respect to $\bf u$,
 \begin{equation}
-  r^2_{\beta,\theta} =\min_{\bf u}\left\{\|{\bf y} -{\bf X}{\beta} -{\bf Z}\Lambda_\theta{\bf u}\|^2+\|{\bf u}\|^2\right\}
+  r^2_{\beta,\theta} =\min_{\bf u}\left(|{\bf y} -{\bf X}{\beta} -{\bf Z}\Lambda_\theta{\bf u}|^2+|{\bf u}|^2\right)
 \end{equation}
 is a direct (i.e. non-iterative) computation.
 The particular method used to solve this generates a *blocked Choleksy factor*, ${\bf L}_\theta$, which is an lower triangular $q\times q$ matrix satisfying
