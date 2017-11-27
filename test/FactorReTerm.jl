@@ -90,7 +90,7 @@ end
     end
 
     @testset "utilities" begin
-        @test MixedModels.levs(corr) == DataArrays.levels(slp[:G])
+        @test MixedModels.levs(corr) == levels(slp[:G])
         @test MixedModels.nlevs(corr) == 18
         @test MixedModels.vsize(corr) == 2
         @test MixedModels.nrandomeff(corr) == 36

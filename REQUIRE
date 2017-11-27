@@ -1,13 +1,14 @@
 julia 0.6
 ArgCheck
 BlockArrays
-DataArrays
-DataFrames 0.9
+CategoricalArrays
+DataFrames 0.11.0
 Distributions 0.11
 GLM 0.7
 NamedArrays
 NLopt 0.3
 Showoff
 StaticArrays 0.6
-StatsBase 0.11
-StatsFuns 0.3
+StatsBase 0.19
+StatsFuns 0.5
+StatsModels 0.1

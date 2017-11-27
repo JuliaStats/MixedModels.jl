@@ -1,4 +1,5 @@
-using DataArrays, DataFrames, MixedModels, RData, Base.Test
+using CategoricalArrays, Compat, DataFrames, MixedModels, RData
+using Compat.Test
 
 const dat = convert(Dict{Symbol,Any},load(joinpath(dirname(@__FILE__), "dat.rda")))
 

@@ -1,14 +1,15 @@
-using Base.Test, DataArrays, RData, MixedModels
+using Base.Test, CategoricalArrays, RData, MixedModels
 
 if !isdefined(:dat) || !isa(dat, Dict{Symbol, Any})
     dat = convert(Dict{Symbol,Any}, load(joinpath(dirname(@__FILE__), "dat.rda")))
 end
+
 @testset "UBlk" begin
     ex22 = UniformBlockDiagonal(reshape(Vector(1.0:12.0), (2, 2, 3)))
     Lblk = UniformBlockDiagonal(fill(0., (2,2,3)))
-    vf1 = VectorFactorReTerm(PooledDataArray(repeat(1:3, inner=4)),
+    vf1 = VectorFactorReTerm(categorical(repeat(1:3, inner=4)),
         hcat(ones(12), repeat([-1.0, 1.0], outer=6))', :G, ["(Intercept)", "U"], [2])
-    vf2 = VectorFactorReTerm(PooledDataArray(repeat(['A','B'], outer=6)),
+    vf2 = VectorFactorReTerm(categorical(repeat(['A','B'], outer=6)),
         hcat(ones(12), repeat([-1.0, 0.0, 1.0], inner=2, outer=2))', :G, ["(Intercept)", "U"], [2])
     prd = vf2'vf1
     
@@ -69,6 +70,6 @@ end
         L22 = MixedModels.scaleInflate!(UniformBlockDiagonal(fill(0., size(A22.data))), A22, Vf2)
         for b in L21.rowblocks[1]
             BLAS.syr!('L', -1.0, b, L22.facevec[1])
-        end 
+        end
     end
 end
