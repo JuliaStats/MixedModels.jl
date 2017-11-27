@@ -1,4 +1,4 @@
-using DataFrames, RData, MixedModels
+using DataFrames, RData, MixedModels, StatsModels
 
 const dat = convert(Dict{Symbol,DataFrame}, load(Pkg.dir("MixedModels", "test", "dat.rda")));
 
@@ -10,7 +10,7 @@ const mods = Dict{Symbol,Vector{Expr}}(
     :AvgDailyGain => [:(1+A*U+(1|G)), :(1+A+U+(1|G))],
     :BIB => [:(1+A*U+(1|G)), :(1+A+U+(1|G))],
     :Bond => [:(1+A+(1|G))],
-    :Chem97 => [:(1q+(1|G)+(1|H)),:(1+U+(1|G)+(1|H))],
+    :Chem97 => [:(1+(1|G)+(1|H)),:(1+U+(1|G)+(1|H))],
     :Contraception => [],           # glmm and rename variables
     :Cultivation => [:(1+A*B+(1|G)), :(1+A+B+(1|G)), :(1+A+(1|G))],
     :Demand => [:(1+U+V+W+X+(1|G)+(1|H))],
@@ -69,7 +69,7 @@ const mods = Dict{Symbol,Vector{Expr}}(
     :star => []                   # not sure it is worthwhile working with these data
     );
 
-fitbobyqa(rhs::Expr, dsname::Symbol) = fit!(lmm(DataFrames.Formula(:Y, rhs), dat[dsname]))
+fitbobyqa(rhs::Expr, dsname::Symbol) = fit!(lmm(Formula(:Y, rhs), dat[dsname]))
 
 @benchgroup "simplescalar" ["single", "simple", "scalar"] begin
     for ds in [:Alfalfa, :AvgDailyGain, :BIB, :Bond, :cake, :Cultivation, :Dyestuff,
@@ -90,7 +90,7 @@ end
 end
 
 @benchgroup "nested" ["multiple", "nested", "scalar"] begin
-    for ds in [:Animal, :Genetics, :Pastes, :Semi2]
+    for ds in [:Animal, :Chem97, :Genetics, :Pastes, :Semi2]
         for rhs in mods[ds]
             @bench string(ds, ':', rhs) fitbobyqa($(QuoteNode(rhs)), $(QuoteNode(ds)))
         end
@@ -107,7 +107,7 @@ end
 end
 
 @benchgroup "crossedvector" ["multiple", "crossed", "vector"] begin
-    for ds in [:bs10, :gb12]
+    for ds in [:bs10, :gb12, :kb07]
         for rhs in mods[ds]
             @bench string(ds, ':', rhs) fitbobyqa($(QuoteNode(rhs)), $(QuoteNode(ds)))
         end
