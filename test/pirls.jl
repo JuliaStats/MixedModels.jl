@@ -17,6 +17,7 @@ end
         Bernoulli()));
     @test isapprox(gm1.θ[1], 0.573054, atol=0.005)
     @test lowerbd(gm1) == push!(fill(-Inf, 7), 0.)
+    @test StatsBase.dof(gm0) == length(gm0.β) + length(gm0.θ)
     @test isapprox(LaplaceDeviance(gm1), 2361.5457542860527, rtol=0.00001)
     @test isapprox(loglikelihood(gm1), -1180.7729, rtol=0.00001)
     # the next three values are not well defined in the optimization

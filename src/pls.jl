@@ -257,7 +257,7 @@ Returns the fixed-effects parameter vector estimate.
 """
 fixef(m::LinearMixedModel{T}) where {T} = fixef!(Vector{T}(size(m)[2]), m)
 
-StatsBase.dof(m::LinearMixedModel) = size(m.trms[end - 1].wtx, 2) + sum(nθ, m.trms) + 1
+StatsBase.dof(m::LinearMixedModel) = size(m)[2] + sum(nθ, m.trms) + 1
 
 StatsBase.loglikelihood(m::LinearMixedModel) = -objective(m)/2
 
