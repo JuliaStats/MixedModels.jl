@@ -74,6 +74,8 @@ function loglikelihood(m::GeneralizedLinearMixedModel{T}) where T
     accum - (mapreduce(u -> sum(abs2, u), + , m.u) + logdet(m)) / 2
 end
 
+StatsBase.dof(m::GeneralizedLinearMixedModel) = dof(m.LMM)
+
 function lowerbd(m::GeneralizedLinearMixedModel)
     lb = lowerbd(m.LMM)
     vcat(fill(convert(eltype(lb), -Inf), size(m.β)), lb)
