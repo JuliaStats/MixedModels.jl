@@ -63,8 +63,8 @@ model_response(mf::ModelFrame, d::Distribution=Normal()) =
 
 model_response(v::AbstractVector, d::Distribution) = Vector{partype(d)}(v)
 
-function model_response(v::PooledDataVector, d::Bernoulli)
-    levs = DataArrays.levels(v)
+function model_response(v::CategoricalVector, d::Bernoulli)
+    levs = levels(v)
     nlevs = length(levs)
     @argcheck(nlevs ≤ 2)
     nlevs < 2 ? zeros(v, partype(d)) : partype(d)[cv == levs[2] for cv in v]
@@ -94,7 +94,7 @@ function lmm(f::Formula, fr::AbstractDataFrame;
     isempty(tdict) && throw(ArgumentError("No random-effects terms found in $f"))
     trms = AbstractTerm{T}[]
     for (grp, lhs) in tdict
-        gr = compact(pool(getindex(mf.df, grp)))
+        gr = compress(categorical(getindex(mf.df, grp)))
         if (length(lhs) == 1 && lhs[1] == 1)
             push!(trms, ScalarFactorReTerm(gr, grp))
         else
@@ -268,7 +268,7 @@ function fixef(m::LinearMixedModel{T}, permuted=true) where T
     ipermute!(v, piv)
 end
 
-StatsBase.dof(m::LinearMixedModel) = size(m.trms[end - 1].wtx, 2) + sum(nθ, m.trms) + 1
+StatsBase.dof(m::LinearMixedModel) = size(m)[2] + sum(nθ, m.trms) + 1
 
 StatsBase.loglikelihood(m::LinearMixedModel) = -objective(m)/2
 

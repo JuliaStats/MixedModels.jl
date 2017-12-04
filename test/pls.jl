@@ -1,4 +1,5 @@
-using Base.Test, StatsBase, DataFrames, RData, MixedModels
+using Compat, StatsBase, DataFrames, RData, MixedModels
+using Compat.Test
 
 if !isdefined(:dat) || !isa(dat, Dict{Symbol, Any})
     dat = convert(Dict{Symbol,Any}, load(joinpath(dirname(@__FILE__), "dat.rda")))
@@ -24,6 +25,8 @@ end
     @test isapprox(aic(fm1), 333.3270598811394, atol=0.001)
     @test isapprox(bic(fm1), 337.5306520261259, atol=0.001)
     @test fixef(fm1) ≈ [1527.5]
+    @test StatsBase.dof(fm1) == 3
+    @test StatsBase.nobs(fm1) == 30
     @test MixedModels.fixef!(zeros(1),fm1) ≈ [1527.5]
     @test coef(fm1) ≈ [1527.5]
     @test cond(fm1) == ones(1)

@@ -1,4 +1,5 @@
-using Base.Test, DataFrames, RData, MixedModels
+using Compat, DataFrames, RData, MixedModels
+using Compat.Test
 
 if !isdefined(:dat) || !isa(dat, Dict{Symbol, Any})
     dat = convert(Dict{Symbol,Any}, load(joinpath(dirname(@__FILE__), "dat.rda")))
@@ -18,6 +19,8 @@ end
     @test lowerbd(gm1) == push!(fill(-Inf, 7), 0.)
     @test isapprox(LaplaceDeviance(gm1), 2361.57129, rtol=0.00001)
     @test isapprox(loglikelihood(gm1), -1180.78565, rtol=0.00001)
+    @test StatsBase.dof(gm0) == length(gm0.β) + length(gm0.θ)
+    @test StatsBase.nobs(gm0) == 1934
     # the next three values are not well defined in the optimization
     #@test isapprox(logdet(gm1), 75.7275, atol=0.1)
     #@test isapprox(sum(abs2, gm1.u[1]), 48.4747, atol=0.1)
@@ -50,7 +53,7 @@ end
     @test isapprox(sum(gm3.resp.devresid), 7156.558983084621, atol=0.1)
 end
 
-if false # still missing a method needed here
+#=
 @testset "grouseticks" begin
     gm4 = fit!(glmm(@formula(t ~ 1 + y + ch + (1|i) + (1|b) + (1|l)), dat[:grouseticks],
                     Poisson()))
@@ -60,4 +63,4 @@ if false # still missing a method needed here
     @test isapprox(sum(x -> sum(abs2, x), gm4.u), 196.8695297987013, atol=0.1)
     @test isapprox(sum(gm4.resp.devresid), 220.92685781326136, atol=0.1)
 end
-end
+=#

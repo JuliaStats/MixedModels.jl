@@ -1,4 +1,5 @@
-using Base.Test, DataFrames, RData, MixedModels
+using Compat, DataFrames, RData, MixedModels
+using Compat.Test
 
 if !isdefined(:dat) || !isa(dat, Dict{Symbol, Any})
     dat = convert(Dict{Symbol,Any}, load(joinpath(dirname(@__FILE__), "dat.rda")))
@@ -90,7 +91,7 @@ end
     end
 
     @testset "utilities" begin
-        @test MixedModels.levs(corr) == DataArrays.levels(slp[:G])
+        @test MixedModels.levs(corr) == levels(slp[:G])
         @test MixedModels.nlevs(corr) == 18
         @test MixedModels.vsize(corr) == 2
         @test MixedModels.nrandomeff(corr) == 36
