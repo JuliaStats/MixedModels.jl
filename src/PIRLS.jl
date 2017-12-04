@@ -83,6 +83,8 @@ function lowerbd(m::GeneralizedLinearMixedModel)
     vcat(fill(convert(eltype(lb), -Inf), size(m.β)), lb)
 end
 
+StatsBase.nobs(m::GeneralizedLinearMixedModel) = length(m.η)
+
 """
     updateη!(m::GeneralizedLinearMixedModel)
 
