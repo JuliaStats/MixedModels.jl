@@ -48,15 +48,15 @@ function Base.full(A::UniformBlockDiagonal{T}) where T
 end
 
 """
-    BlockedSparse{T}
+    BlockedSparse{Tv, Ti}
 
 A `SparseMatrixCSC` whose nonzeros form blocks of rows or columns or both.
 
 # Members
-* `cscmat`: `SparseMatrixCSC{T}` representation for general calculations
-* `nzsasmat`: ReshapedArray{T,2,SubArray{T, 1, Vector{T}}} `cscmat.nzval` as a matrix 
-* `rowblocks`: `Vector{Vector{SubArray{T,2,Matrix{T}}}}` of row blocks of nonzeros
-* `colblocks`: `Vector{ReshapedArray{T,2,SubArray{T,1,Vector{T}}}}` of column blocks of nonzeros
+* `cscmat`: `SparseMatrixCSC{Tv, Ti}` representation for general calculations
+* `nzsasmat`: Matrix{Tv} `cscmat.nzval` as a matrix 
+* `rowblocks`: `Vector{Vector{SubArray{Tv,1,Vector{Tv}}}}` of row blocks of nonzeros
+* `colblocks`: `Vector{StridedMatrix{Tv}}` of column blocks of nonzeros
 """
 mutable struct BlockedSparse{Tv,Ti} <: AbstractMatrix{Tv}
     cscmat::SparseMatrixCSC{Tv,Ti}

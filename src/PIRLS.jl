@@ -1,3 +1,7 @@
+function StatsBase.dof(m::GeneralizedLinearMixedModel)
+    length(m.β) + length(m.θ) + GLM.dispersion_parameter(m.resp.d)
+end
+
 fixef(m::GeneralizedLinearMixedModel) = m.β
 
 """
@@ -78,6 +82,8 @@ function lowerbd(m::GeneralizedLinearMixedModel)
     lb = lowerbd(m.LMM)
     vcat(fill(convert(eltype(lb), -Inf), size(m.β)), lb)
 end
+
+StatsBase.nobs(m::GeneralizedLinearMixedModel) = length(m.η)
 
 """
     updateη!(m::GeneralizedLinearMixedModel)
