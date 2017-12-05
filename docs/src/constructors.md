@@ -11,15 +11,28 @@ lmm
 For illustration, several data sets from the *lme4* package for *R* are made available in `.rda` format in this package.
 These include the `Dyestuff` and `Dyestuff2` data sets.
 ````julia
-julia> using DataFrames, RData, MixedModels
+julia> using DataFrames, RData, MixedModels, StatsBase
 
 julia> const dat = convert(Dict{Symbol,DataFrame},
     load(Pkg.dir("MixedModels", "test", "dat.rda")));
 
-julia> dump(dat[:Dyestuff])
-DataFrames.DataFrame  30 observations of 2 variables
-  G: DataArrays.PooledDataArray{String,UInt8,1}(30) String["A", "A", "A", "A"]
-  Y: DataArrays.DataArray{Float64,1}(30) [1545.0, 1440.0, 1440.0, 1520.0]
+julia> describe(dat[:Dyestuff])
+G
+Summary Stats:
+Length:         30
+Type:           CategoricalArrays.CategoricalString{UInt8}
+Number Unique:  6
+
+Y
+Summary Stats:
+Mean:           1527.500000
+Minimum:        1440.000000
+1st Quartile:   1468.750000
+Median:         1530.000000
+3rd Quartile:   1575.000000
+Maximum:        1635.000000
+Length:         30
+Type:           Float64
 
 
 ````
@@ -67,7 +80,7 @@ The second and subsequent calls to such functions are much faster.)
 
 ````julia
 julia> @time fit!(lmm(@formula(Y ~ 1 + (1|G)), dat[:Dyestuff2]))
-  0.000860 seconds (1.40 k allocations: 75.156 KiB)
+  0.000941 seconds (1.44 k allocations: 74.375 KiB)
 Linear mixed model fit by maximum likelihood
  Formula: Y ~ 1 + (1 | G)
    logLik   -2 logLik     AIC        BIC    
@@ -141,7 +154,7 @@ Linear mixed model fit by maximum likelihood
 
 Variance components:
               Column    Variance  Std.Dev.   Corr.
- G        (Intercept)  584.258968 24.17145
+ G        (Intercept)  584.258971 24.17145
           U             33.632805  5.79938  0.00
  Residual              653.115782 25.55613
  Number of obs: 180; levels of grouping factors: 18
@@ -511,10 +524,10 @@ sdest
 ```
 ````julia
 julia> varest(fm2)
-654.9414511016189
+654.9414530367545
 
 julia> sdest(fm2)
-25.591823911195128
+25.591823949002823
 
 ````
 
