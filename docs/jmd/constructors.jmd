@@ -11,10 +11,10 @@ lmm
 For illustration, several data sets from the *lme4* package for *R* are made available in `.rda` format in this package.
 These include the `Dyestuff` and `Dyestuff2` data sets.
 ```{julia;term=true}
-using DataFrames, RData, MixedModels
+using DataFrames, RData, MixedModels, StatsBase
 const dat = convert(Dict{Symbol,DataFrame},
     load(Pkg.dir("MixedModels", "test", "dat.rda")));
-dump(dat[:Dyestuff])
+describe(dat[:Dyestuff])
 ```
 The columns in these data sets have been renamed for convenience.
 The response is always named `Y`.
