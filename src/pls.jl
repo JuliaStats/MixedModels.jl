@@ -219,6 +219,8 @@ end
 
 StatsBase.fitted(m::LinearMixedModel{T}) where {T} = fitted!(Vector{T}(nobs(m)), m)
 
+StatsBase.predict(m::LinearMixedModel) = fitted(m)
+
 StatsBase.residuals(m::LinearMixedModel) = model_response(m) .- fitted(m)
 
 """

@@ -48,6 +48,7 @@ end
                     Bernoulli()));
     @test isapprox(LaplaceDeviance(gm3), 8151.39972809092, atol=0.001)
     @test lowerbd(gm3) == vcat(fill(-Inf, 6), zeros(2))
+    @test fitted(gm3) == predict(gm3)
     # these two values are not well defined at the optimum
     @test isapprox(sum(x -> sum(abs2, x), gm3.u), 273.31563469936697, atol=0.1)
     @test isapprox(sum(gm3.resp.devresid), 7156.558983084621, atol=0.1)

@@ -123,6 +123,7 @@ end
     @test isapprox(objective(fm1), 237721.7687745563, atol=0.001)
     ftd1 = fitted(fm1);
     @test size(ftd1) == (73421, )
+    @test ftd1 == predict(fm1)
     @test isapprox(ftd1[1], 3.17876, atol=0.0001)
     resid1 = residuals(fm1);
     @test size(resid1) == (73421, )

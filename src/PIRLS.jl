@@ -2,6 +2,8 @@ function StatsBase.dof(m::GeneralizedLinearMixedModel)
     length(m.β) + length(m.θ) + GLM.dispersion_parameter(m.resp.d)
 end
 
+StatsBase.fitted(m::GeneralizedLinearMixedModel) = m.resp.mu
+
 function fixef(m::GeneralizedLinearMixedModel{T}, permuted=true) where T
     permuted && return m.β
     Xtrm = m.LMM.trms[end - 1]
@@ -91,6 +93,8 @@ function lowerbd(m::GeneralizedLinearMixedModel)
 end
 
 StatsBase.nobs(m::GeneralizedLinearMixedModel) = length(m.η)
+
+StatsBase.predict(m::GeneralizedLinearMixedModel) = fitted(m)
 
 """
     updateη!(m::GeneralizedLinearMixedModel)
