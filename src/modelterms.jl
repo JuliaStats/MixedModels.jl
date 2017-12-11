@@ -11,13 +11,24 @@ Term with an explicit, constant matrix representation
 mutable struct MatrixTerm{T,S<:AbstractMatrix} <: AbstractTerm{T}
     x::S
     wtx::S
+    piv::Vector{Int}
+    rank::Int
     cnames::Vector{String}
 end
-MatrixTerm(X, cnms) = MatrixTerm{eltype(X),typeof(X)}(X, X, cnms)
+
+function MatrixTerm(X::AbstractMatrix, cnms)
+    T = eltype(X)
+    cf = cholfact!(Symmetric(X'X, :U), Val{true}, tol = -one(T))
+    r = cf.rank
+    piv = cf.piv
+    X = X[:, piv[1:r]]
+    MatrixTerm{T,typeof(X)}(X, X, piv, r, cnms)
+end
+
 function MatrixTerm(y::Vector)
     T = eltype(y)
     m = reshape(y, (length(y), 1))
-    MatrixTerm{T,Matrix{T}}(m, m, [""])
+    MatrixTerm{T,Matrix{T}}(m, m, [1], Int(all(iszero, y)), [""])
 end
 
 function reweight!(A::MatrixTerm{T}, sqrtwts::Vector{T}) where T

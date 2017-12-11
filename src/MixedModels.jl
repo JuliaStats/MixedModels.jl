@@ -12,7 +12,7 @@ import Base: cor, cond, convert, eltype, full, logdet, std
 import Base.LinAlg: A_mul_B!, A_mul_Bc!, Ac_mul_B!, A_ldiv_B!, Ac_ldiv_B!, A_rdiv_B!, A_rdiv_Bc!
 import NLopt: Opt
 import StatsBase: coef, coeftable, dof, deviance, fit!, fitted, loglikelihood,
-    model_response, nobs, vcov
+    model_response, nobs, predict, vcov
 
 export
        @formula,
@@ -64,6 +64,7 @@ export
        objective,  # the objective function in fitting a model
        pwrss,      # penalized, weighted residual sum-of-squares
        pirls!,     # use Penalized Iteratively Reweighted Least Squares to obtain conditional modes of random effects
+       predict,
        ranef,      # extract the conditional modes of the random effects
        refit!,     # install a response and refit the model
        remat,      # factory for construction of ReMat objects

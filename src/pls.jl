@@ -156,7 +156,7 @@ function updateL!(m::LinearMixedModel{T}) where T
     m
 end
 
-StatsBase.coef(m::LinearMixedModel) = fixef(m)
+StatsBase.coef(m::MixedModel) = fixef(m, false)
 
 """
     fit!(m::LinearMixedModel[, verbose::Bool=false])
@@ -219,6 +219,8 @@ end
 
 StatsBase.fitted(m::LinearMixedModel{T}) where {T} = fitted!(Vector{T}(nobs(m)), m)
 
+StatsBase.predict(m::LinearMixedModel) = fitted(m)
+
 StatsBase.residuals(m::LinearMixedModel) = model_response(m) .- fitted(m)
 
 """
@@ -243,19 +245,30 @@ end
 """
     fixef!(v::Vector{T}, m::LinearMixedModel{T}) where T
 
-Overwrite `v` with the fixed-effects coefficients of model `m`
+Overwrite `v` with the pivoted and, possibly, truncated fixed-effects coefficients of model `m`
 """
 function fixef!(v::AbstractVector{T}, m::LinearMixedModel{T}) where T
-    !isfit(m) && throw(ArgumentError("Model m has not been fit"))
-    Ac_ldiv_B!(feL(m), copy!(v, m.L.data.blocks[end, end - 1]))
+    L = feL(m)
+    @argcheck(length(v) == size(L, 1), DimensionMismatch)
+    Ac_ldiv_B!(L, copy!(v, m.L.data.blocks[end, end - 1]))
 end
 
 """
-    fixef(m::MixedModel)
+    fixef(m::MixedModel, permuted=true)
 
-Returns the fixed-effects parameter vector estimate.
+Return the fixed-effects parameter vector estimate of `m`.
+
+If `permuted` is `true` the vector elements are permuted according to
+`m.trms[end - 1].piv` and truncated to the rank of that term.
 """
-fixef(m::LinearMixedModel{T}) where {T} = fixef!(Vector{T}(size(m)[2]), m)
+function fixef(m::LinearMixedModel{T}, permuted=true) where T
+    permuted && return fixef!(Vector{T}(size(m)[2]), m)
+    Xtrm = m.trms[end - 1]
+    piv = Xtrm.piv
+    v = fill(-zero(T), size(piv))
+    fixef!(view(v, 1:Xtrm.rank), m)
+    ipermute!(v, piv)
+end
 
 StatsBase.dof(m::LinearMixedModel) = size(m)[2] + sum(nθ, m.trms) + 1
 

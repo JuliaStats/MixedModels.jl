@@ -123,6 +123,7 @@ end
     @test isapprox(objective(fm1), 237721.7687745563, atol=0.001)
     ftd1 = fitted(fm1);
     @test size(ftd1) == (73421, )
+    @test ftd1 == predict(fm1)
     @test isapprox(ftd1[1], 3.17876, atol=0.0001)
     resid1 = residuals(fm1);
     @test size(resid1) == (73421, )
@@ -156,7 +157,7 @@ end
     @test isapprox(logdet(fm), 73.90322021999222, atol=0.001)
     @test isapprox(stderr(fm), [6.632257721914501, 1.5022354739749826], atol=0.0001)
     @test coef(fm) ≈ [251.40510484848477,10.4672859595959]
-    @test fixef(fm) ≈ [251.40510484848477,10.4672859595959]
+    @test fixef(fm) ≈ [10.4672859595959, 251.40510484848477]
     @test isapprox(stderr(fm), [6.632246393963571, 1.502190605041084], atol=0.01)
     @test isapprox(std(fm)[1], [23.780468100188497, 5.716827903196682], atol=0.01)
     @test isapprox(logdet(fm), 73.90337187545992, atol=0.001)
@@ -188,7 +189,7 @@ end
     @test isapprox(deviance(fmnc), 1752.0032551398835, atol=0.001)
     @test isapprox(objective(fmnc), 1752.0032551398835, atol=0.001)
     @test coef(fmnc) ≈ [251.40510484848585, 10.467285959595715]
-    @test fixef(fmnc) ≈ [251.40510484848585, 10.467285959595715]
+    @test fixef(fmnc) ≈ [10.467285959595715, 251.40510484848477]
     @test isapprox(stderr(fmnc), [6.707710260366577, 1.5193083237479683], atol=0.001)
     @test isapprox(getθ(fmnc), [0.9458106880922268, 0.22692826607677266], atol=0.0001)
     @test std(fmnc)[1] ≈ [24.171449463289047, 5.799379721123582]
@@ -210,7 +211,7 @@ end
     @test isapprox(objective(fm), 901641.2930413672, rtol = 1e-6)
     fit!(fm)
     @test isapprox(objective(fm), 884957.5540213, rtol = 1e-6)
-    @test isapprox(fixef(fm), [0.4991229873, 0.31130780953], atol = 1.e-4)
+    @test isapprox(coef(fm), [0.4991229873, 0.31130780953], atol = 1.e-4)
 end
 
 @testset "simulate!" begin
