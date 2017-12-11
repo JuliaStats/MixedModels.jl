@@ -258,6 +258,10 @@ function StatsBase.fit!(m::GeneralizedLinearMixedModel{T};
     m
 end
 
+function StatsBase.predict(obj::GeneralizedLinearMixedModel{})
+    linkinv(Link(obj.resp),StatsBase.predict(obj.LMM))
+end
+
 function Base.show(io::IO, m::GeneralizedLinearMixedModel)
     println(io, "Generalized Linear Mixed Model fit by minimizing the Laplace approximation to the deviance")
     println(io, "  ", m.LMM.formula)

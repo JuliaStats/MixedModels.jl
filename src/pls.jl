@@ -206,6 +206,14 @@ function StatsBase.fit!(m::LinearMixedModel{T}, verbose::Bool=false) where T
     m
 end
 
+function StatsBase.predict(obj::LinearMixedModel{})
+    ranef_total = 0
+    for grp=1:length(obj.trms)-2
+        ranef_total += full(obj.trms[grp])*collect(Base.Iterators.flatten(ranef(obj)[grp]))
+    end
+    obj.trms[end-1].x*fixef(obj) + ranef_total
+end
+
 function fitted!(v::AbstractArray{T}, m::LinearMixedModel{T}) where T
     ## FIXME: Create and use `effects(m) -> β, b` w/o calculating β twice
     trms = m.trms
