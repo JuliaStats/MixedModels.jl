@@ -205,7 +205,7 @@ function StatsBase.fit!(m::LinearMixedModel{T}, verbose::Bool=false) where T
     m
 end
 
-function fitted!(v::AbstractArray{T}, m::LinearMixedModel{T}, trms::AbstractTerm{T}) where T
+function fitted!(v::AbstractArray{T}, m::LinearMixedModel{T}, trms::Array{AbstractTerm{T}}) where T
     ## FIXME: Create and use `effects(m) -> β, b` w/o calculating β twice
     A_mul_B!(vec(v), trms[end - 1], fixef(m))
     b = ranef(m)
