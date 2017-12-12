@@ -206,9 +206,8 @@ function StatsBase.fit!(m::LinearMixedModel{T}, verbose::Bool=false) where T
     m
 end
 
-function fitted!(v::AbstractArray{T}, m::LinearMixedModel{T}) where T
+function fitted!(v::AbstractArray{T}, m::LinearMixedModel{T}, trms::AbstractTerm{T}) where T
     ## FIXME: Create and use `effects(m) -> β, b` w/o calculating β twice
-    trms = m.trms
     A_mul_B!(vec(v), trms[end - 1], fixef(m))
     b = ranef(m)
     for j in eachindex(b)
@@ -217,19 +216,18 @@ function fitted!(v::AbstractArray{T}, m::LinearMixedModel{T}) where T
     v
 end
 
+function fitted!(v::AbstractArray{T}, m::LinearMixedModel{T}) where T = fitted!(v, m, m.trms)
+
 StatsBase.fitted(m::LinearMixedModel{T}) where {T} = fitted!(Vector{T}(nobs(m)), m)
 
 StatsBase.predict(m::LinearMixedModel) = fitted(m)
 
-function StatsBase.predict(obj::LinearMixedModel,newDF)
+function StatsBase.predict(m::LinearMixedModel{T}, newDF::AbstractDataFrame) where T
     # just a hack here, we'll generate a new model to have it do the dataframe manipulation
-    new_obj = lmm(obj.formula,newDF)
-    # println(full(new_obj.trms[1]))
-    ranef_total = 0
-    for grp=1:length(obj.trms)-2
-        ranef_total += full(new_obj.trms[grp])*collect(Base.Iterators.flatten(ranef(obj)[grp]))
-    end
-    new_obj.trms[end-1].x*fixef(obj) + ranef_total
+    # note, you do need at least 2 of the levels from the training data
+    # could be done in one line...
+    new_m = lmm(m.formula,newDF)
+    fitted!(Vector{T}(size(newDF,1)), m, new_m.trms)
 end
 
 StatsBase.residuals(m::LinearMixedModel) = model_response(m) .- fitted(m)
