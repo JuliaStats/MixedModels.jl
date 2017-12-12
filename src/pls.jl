@@ -58,8 +58,7 @@ function LinearMixedModel(f, trms, wts)
     LinearMixedModel(f, trms, sqrtwts, A, LowerTriangular(L), optsum)
 end
 
-model_response(mf::ModelFrame, d::Distribution=Normal()) =
-    model_response(mf.df[mf.terms.eterms[1]], d)
+model_response(mf::ModelFrame, d::Distribution=Normal()) = model_response(mf.df[mf.terms.eterms[1]], d)
 
 model_response(v::AbstractVector, d::Distribution) = Vector{partype(d)}(v)
 
@@ -216,7 +215,7 @@ function fitted!(v::AbstractArray{T}, m::LinearMixedModel{T}, trms::AbstractTerm
     v
 end
 
-function fitted!(v::AbstractArray{T}, m::LinearMixedModel{T}) where T = fitted!(v, m, m.trms)
+fitted!(v::AbstractArray{T}, m::LinearMixedModel{T}) where {T} = fitted!(v, m, m.trms)
 
 StatsBase.fitted(m::LinearMixedModel{T}) where {T} = fitted!(Vector{T}(nobs(m)), m)
 
