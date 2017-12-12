@@ -198,9 +198,9 @@ end
 function Base.sparse(A::VectorFactorReTerm{T,V,R,S}) where {T,V,R,S}
     n = size(A, 1)
     colind = Matrix{Int32}(S, n)
-    rr = A.f.refs
+    lvls = levels(A.f)
     @inbounds for j in 1:n
-        offset = (rr[j] - 1) * S
+        offset = (findfirst(lvls,A.f[j]) - 1) * S
         for i in 1:S
             colind[i, j] = offset + i
         end

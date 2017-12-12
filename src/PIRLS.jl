@@ -96,6 +96,10 @@ StatsBase.nobs(m::GeneralizedLinearMixedModel) = length(m.η)
 
 StatsBase.predict(m::GeneralizedLinearMixedModel) = fitted(m)
 
+function StatsBase.predict(obj::GeneralizedLinearMixedModel,newDF)
+    linkinv(Link(glmm_fit.resp),StatsBase.predict(obj.LMM,newDF))
+end
+
 """
     updateη!(m::GeneralizedLinearMixedModel)
 

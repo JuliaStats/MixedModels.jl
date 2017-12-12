@@ -221,6 +221,17 @@ StatsBase.fitted(m::LinearMixedModel{T}) where {T} = fitted!(Vector{T}(nobs(m)),
 
 StatsBase.predict(m::LinearMixedModel) = fitted(m)
 
+function StatsBase.predict(obj::LinearMixedModel,newDF)
+    # just a hack here, we'll generate a new model to have it do the dataframe manipulation
+    new_obj = lmm(obj.formula,newDF)
+    # println(full(new_obj.trms[1]))
+    ranef_total = 0
+    for grp=1:length(obj.trms)-2
+        ranef_total += full(new_obj.trms[grp])*collect(Base.Iterators.flatten(ranef(obj)[grp]))
+    end
+    new_obj.trms[end-1].x*fixef(obj) + ranef_total
+end
+
 StatsBase.residuals(m::LinearMixedModel) = model_response(m) .- fitted(m)
 
 """
