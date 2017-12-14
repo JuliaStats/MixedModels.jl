@@ -1,5 +1,6 @@
 using Compat, StatsBase, DataFrames, RData, MixedModels
 using Compat.Test
+using CategoricalArrays
 
 if !isdefined(:dat) || !isa(dat, Dict{Symbol, Any})
     dat = convert(Dict{Symbol,Any}, load(joinpath(dirname(@__FILE__), "dat.rda")))
@@ -113,7 +114,8 @@ end
 end
 
 @testset "InstEval" begin
-    fm1 = lmm(@formula(Y ~ 1 + A + (1 | G) + (1 | H) + (1 | I)), dat[:InstEval])
+    df = dat[:InstEval]
+    fm1 = lmm(@formula(Y ~ 1 + A + (1 | G) + (1 | H) + (1 | I)), df)
     @test size(fm1) == (73421, 2, 4114, 3)
     @test getθ(fm1) == ones(3)
     @test lowerbd(fm1) == zeros(3)
@@ -124,6 +126,18 @@ end
     ftd1 = fitted(fm1);
     @test size(ftd1) == (73421, )
     @test ftd1 == predict(fm1)
+    
+    # fit with a subset of the data
+    # set the categoricals first, so the levels will be copied
+    df[:G] = categorical(df[:G])
+    df[:H] = categorical(df[:H])
+    df[:I] = categorical(df[:I])
+    subset = df[1:1000,:]
+    println(size(df))
+    println(size(subset))
+    ftd2 = predict(fm1,subset)
+    @test ftd2 == ftd1[1:1000]
+    
     @test isapprox(ftd1[1], 3.17876, atol=0.0001)
     resid1 = residuals(fm1);
     @test size(resid1) == (73421, )
