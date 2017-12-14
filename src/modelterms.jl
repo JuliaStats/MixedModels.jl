@@ -198,14 +198,14 @@ end
 function Base.sparse(A::VectorFactorReTerm{T,V,R,S}) where {T,V,R,S}
     n = size(A, 1)
     colind = Matrix{Int32}(S, n)
-    ord_lookup = A.f.pool.invindex
+    rr = A.f.refs
     @inbounds for j in 1:n
-        offset = (ord_lookup[A.f[j]] - 1) * S
+        offset = (rr[j] - 1) * S
         for i in 1:S
             colind[i, j] = offset + i
         end
     end
-    sparse(Vector{Int32}(repeat(1:n, inner=S)), vec(colind), vec(A.z), n, length(ord_lookup)*S)
+    sparse(Vector{Int32}(repeat(1:n, inner=S)), vec(colind), vec(A.z))
 end
 
 """
