@@ -198,15 +198,14 @@ end
 function Base.sparse(A::VectorFactorReTerm{T,V,R,S}) where {T,V,R,S}
     n = size(A, 1)
     colind = Matrix{Int32}(S, n)
-    lvls = levels(A.f)
-    ord = CategoricalArrays.order(A.f.pool)
+    ord_lookup = A.f.pool.invindex
     @inbounds for j in 1:n
-        offset = (ord[A.f[j]] - 1) * S
+        offset = (ord_lookup[A.f[j]] - 1) * S
         for i in 1:S
             colind[i, j] = offset + i
         end
     end
-    sparse(Vector{Int32}(repeat(1:n, inner=S)), vec(colind), vec(A.z), n, length(lvls)*S)
+    sparse(Vector{Int32}(repeat(1:n, inner=S)), vec(colind), vec(A.z), n, length(ord_lookup)*S)
 end
 
 """
