@@ -132,17 +132,19 @@ end
     @test ftd1 == predict(fm1)
     @test ftd1 == predict(fm1, df)
     @test fitted(fm1) == predict(fm1, df)
+    @test predict(fm1) == predict(fm1, df)    
     
     # fit with a subset of the data
-    subset = df[1:1000,:]
+    n = 73420
+    subset = df[1:n, :]
     # make sure they have the same num of columns (of course)
-    @test size(df,1) == size(subset,1)
-    ftd2 = 
-    @test ftd2 == ftd1[1:1000]
+    @test size(df, 2) == size(subset, 2)
+    ftd2 = predict(fm1, subset)
+    @test ftd2 == ftd1[1:n]
     # the above test, done on one line (maybe clearer)
-    @test ftd1[1:1000] == predict(fm1, df[1:1000,:])
+    @test ftd1[1:n] == predict(fm1, df[1:n,:])
     # again, the same, but clearer for the problem
-    @test predict(fm1, df)[1:1000] == predict(fm1, df[1:1000,:])
+    @test predict(fm1, df)[1:n] == predict(fm1, df[1:n,:])
     
     @test isapprox(ftd1[1], 3.17876, atol=0.0001)
     resid1 = residuals(fm1);
