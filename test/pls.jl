@@ -115,6 +115,10 @@ end
 
 @testset "InstEval" begin
     df = dat[:InstEval]
+    # set the categoricals first, so the levels will be copied
+    df[:G] = categorical(df[:G])
+    df[:H] = categorical(df[:H])
+    df[:I] = categorical(df[:I])    
     fm1 = lmm(@formula(Y ~ 1 + A + (1 | G) + (1 | H) + (1 | I)), df)
     @test size(fm1) == (73421, 2, 4114, 3)
     @test getθ(fm1) == ones(3)
@@ -126,17 +130,19 @@ end
     ftd1 = fitted(fm1);
     @test size(ftd1) == (73421, )
     @test ftd1 == predict(fm1)
+    @test ftd1 == predict(fm1, df)
+    @test fitted(fm1) == predict(fm1, df)
     
     # fit with a subset of the data
-    # set the categoricals first, so the levels will be copied
-    df[:G] = categorical(df[:G])
-    df[:H] = categorical(df[:H])
-    df[:I] = categorical(df[:I])
     subset = df[1:1000,:]
-    println(size(df))
-    println(size(subset))
-    ftd2 = predict(fm1,subset)
+    # make sure they have the same num of columns (of course)
+    @test size(df,1) == size(subset,1)
+    ftd2 = 
     @test ftd2 == ftd1[1:1000]
+    # the above test, done on one line (maybe clearer)
+    @test ftd1[1:1000] == predict(fm1, df[1:1000,:])
+    # again, the same, but clearer for the problem
+    @test predict(fm1, df)[1:1000] == predict(fm1, df[1:1000,:])
     
     @test isapprox(ftd1[1], 3.17876, atol=0.0001)
     resid1 = residuals(fm1);
