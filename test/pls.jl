@@ -6,6 +6,52 @@ if !isdefined(:dat) || !isa(dat, Dict{Symbol, Any})
     dat = convert(Dict{Symbol,Any}, load(joinpath(dirname(@__FILE__), "dat.rda")))
 end
 
+@testset "InstEval" begin
+    df = dat[:InstEval]
+    # set the categoricals first, so the levels will be copied
+    df[:G] = categorical(df[:G])
+    df[:H] = categorical(df[:H])
+    df[:I] = categorical(df[:I])    
+    fm1 = lmm(@formula(Y ~ 1 + A + (1 | G) + (1 | H) + (1 | I)), df)
+    @test size(fm1) == (73421, 2, 4114, 3)
+    @test getθ(fm1) == ones(3)
+    @test lowerbd(fm1) == zeros(3)
+
+    fit!(fm1);
+
+    @test isapprox(objective(fm1), 237721.7687745563, atol=0.001)
+    ftd1 = fitted(fm1);
+    @test size(ftd1) == (73421, )
+    @test ftd1 == predict(fm1)
+    @test ftd1 == predict(fm1, df)
+    @test fitted(fm1) == predict(fm1, df)
+    @test predict(fm1) == predict(fm1, df)    
+    
+    # fit with a subset of the data
+    n = 1000
+    subset = df[1:n, :]
+    # make sure they have the same num of columns (of course)
+    @test size(df, 2) == size(subset, 2)
+    @test levels(subset[:G]) == levels(df[:G])
+    @test levels(subset[:H]) == levels(df[:H])
+    @test levels(subset[:I]) == levels(df[:I])
+    ftd2 = predict(fm1, subset)
+    @test ftd2 == ftd1[1:n]
+    # the above test, done on one line (maybe clearer)
+    @test ftd1[1:n] == predict(fm1, df[1:n,:])
+    # again, the same, but clearer
+    @test predict(fm1, df)[1:n] == predict(fm1, df[1:n,:])
+    
+    @test isapprox(ftd1[1], 3.17876, atol=0.0001)
+    resid1 = residuals(fm1);
+    @test size(resid1) == (73421, )
+    @test isapprox(resid1[1], 1.82124, atol=0.00001)
+
+    fm2 = fit!(lmm(@formula(Y ~ 1 + A*I + (1 | G) + (1 | H)), dat[:InstEval]))
+    @test isapprox(objective(fm2), 237585.5534151694, atol=0.001)
+    @test size(fm2) == (73421, 28, 4100, 2)
+end
+
 @testset "Dyestuff" begin
     fm1 = lmm(@formula(Y ~ 1 + (1|G)), dat[:Dyestuff])
 
@@ -113,48 +159,7 @@ end
     @test isapprox(logdet(fm), 101.0381339953986, atol=0.001)
 end
 
-@testset "InstEval" begin
-    df = dat[:InstEval]
-    # set the categoricals first, so the levels will be copied
-    df[:G] = categorical(df[:G])
-    df[:H] = categorical(df[:H])
-    df[:I] = categorical(df[:I])    
-    fm1 = lmm(@formula(Y ~ 1 + A + (1 | G) + (1 | H) + (1 | I)), df)
-    @test size(fm1) == (73421, 2, 4114, 3)
-    @test getθ(fm1) == ones(3)
-    @test lowerbd(fm1) == zeros(3)
 
-    fit!(fm1);
-
-    @test isapprox(objective(fm1), 237721.7687745563, atol=0.001)
-    ftd1 = fitted(fm1);
-    @test size(ftd1) == (73421, )
-    @test ftd1 == predict(fm1)
-    @test ftd1 == predict(fm1, df)
-    @test fitted(fm1) == predict(fm1, df)
-    @test predict(fm1) == predict(fm1, df)    
-    
-    # fit with a subset of the data
-    n = 73420
-    subset = df[1:n, :]
-    # make sure they have the same num of columns (of course)
-    @test size(df, 2) == size(subset, 2)
-    ftd2 = predict(fm1, subset)
-    @test ftd2 == ftd1[1:n]
-    # the above test, done on one line (maybe clearer)
-    @test ftd1[1:n] == predict(fm1, df[1:n,:])
-    # again, the same, but clearer for the problem
-    @test predict(fm1, df)[1:n] == predict(fm1, df[1:n,:])
-    
-    @test isapprox(ftd1[1], 3.17876, atol=0.0001)
-    resid1 = residuals(fm1);
-    @test size(resid1) == (73421, )
-    @test isapprox(resid1[1], 1.82124, atol=0.00001)
-
-    fm2 = fit!(lmm(@formula(Y ~ 1 + A*I + (1 | G) + (1 | H)), dat[:InstEval]))
-    @test isapprox(objective(fm2), 237585.5534151694, atol=0.001)
-    @test size(fm2) == (73421, 28, 4100, 2)
-end
 
 @testset "sleep" begin
     fm = lmm(@formula(Y ~ 1 + U + (1 + U | G)), dat[:sleepstudy]);

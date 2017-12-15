@@ -69,6 +69,49 @@ function model_response(v::CategoricalVector, d::Bernoulli)
     nlevs < 2 ? zeros(v, partype(d)) : partype(d)[cv == levs[2] for cv in v]
 end
 
+function get_tdict(terms)
+    tdict = Dict{Symbol, Vector{Any}}()
+    for t in filter(x -> Meta.isexpr(x, :call) && x.args[1] == :|, terms)
+        fnm = t.args[3]
+        isa(fnm, Symbol) || throw(ArgumentError("rhs of $t must be a symbol"))
+        tdict[fnm] = haskey(tdict, fnm) ? push!(tdict[fnm], t.args[2]) : [t.args[2]]
+    end
+    isempty(tdict) && throw(ArgumentError("No random-effects terms found in $f"))
+    tdict
+end
+
+function get_trms(tdict::Dict,df,fr::AbstractDataFrame,T::Type,n::Int)
+    trms = AbstractTerm{T}[]
+    for (grp, lhs) in tdict
+        gr = compress(categorical(getindex(df, grp)))
+        if (length(lhs) == 1 && lhs[1] == 1)
+            push!(trms, ScalarFactorReTerm(gr, grp))
+        else
+            m = T[]
+            coefnms = String[]
+            trsize = Int[]
+            for l in lhs
+                if l == 1
+                    append!(m, ones(T, n))
+                    push!(coefnms, "(Intercept)")
+                    push!(trsize, 1)
+                else
+                    fr = ModelFrame(Formula(nothing, l), df)
+                    append!(m, ModelMatrix(fr).m)
+                    cnms = coefnames(fr)
+                    append!(coefnms, cnms)
+                    push!(trsize, length(cnms))
+                end
+            end
+            push!(trms,
+                  length(coefnms) == 1 ? ScalarFactorReTerm(gr, m, m, grp, coefnms, one(T)) :
+                  VectorFactorReTerm(gr, transpose(reshape(m, (n, sum(trsize)))), grp,
+                  coefnms,  trsize))
+        end
+    end
+    trms
+end
+
 """
     lmm(f::DataFrames.Formula, fr::DataFrames.DataFrame; weights = [], contrasts = Dict())
 
@@ -84,41 +127,8 @@ function lmm(f::Formula, fr::AbstractDataFrame;
     n = size(X, 1)
     T = eltype(X)
     y = model_response(mf, rdist)
-    tdict = Dict{Symbol, Vector{Any}}()
-    for t in filter(x -> Meta.isexpr(x, :call) && x.args[1] == :|, mf.terms.terms)
-        fnm = t.args[3]
-        isa(fnm, Symbol) || throw(ArgumentError("rhs of $t must be a symbol"))
-        tdict[fnm] = haskey(tdict, fnm) ? push!(tdict[fnm], t.args[2]) : [t.args[2]]
-    end
-    isempty(tdict) && throw(ArgumentError("No random-effects terms found in $f"))
-    trms = AbstractTerm{T}[]
-    for (grp, lhs) in tdict
-        gr = compress(categorical(getindex(mf.df, grp)))
-        if (length(lhs) == 1 && lhs[1] == 1)
-            push!(trms, ScalarFactorReTerm(gr, grp))
-        else
-            m = T[]
-            coefnms = String[]
-            trsize = Int[]
-            for l in lhs
-                if l == 1
-                    append!(m, ones(T, n))
-                    push!(coefnms, "(Intercept)")
-                    push!(trsize, 1)
-                else
-                    fr = ModelFrame(Formula(nothing, l), mf.df)
-                    append!(m, ModelMatrix(fr).m)
-                    cnms = coefnames(fr)
-                    append!(coefnms, cnms)
-                    push!(trsize, length(cnms))
-                end
-            end
-            push!(trms,
-                  length(coefnms) == 1 ? ScalarFactorReTerm(gr, m, m, grp, coefnms, one(T)) :
-                  VectorFactorReTerm(gr, transpose(reshape(m, (n, sum(trsize)))), grp,
-                  coefnms,  trsize))
-        end
-    end
+    tdict = get_tdict(mf.terms.terms)
+    trms = get_trms(tdict,mf.df,fr,T,n)
     sort!(trms, by = nrandomeff, rev = true)
     push!(trms, MatrixTerm(X, coefnames(mf)))
     push!(trms, MatrixTerm(y))
@@ -221,12 +231,27 @@ StatsBase.fitted(m::LinearMixedModel{T}) where {T} = fitted!(Vector{T}(nobs(m)),
 
 StatsBase.predict(m::LinearMixedModel) = fitted(m)
 
-function StatsBase.predict(m::LinearMixedModel{T}, newDF::AbstractDataFrame) where T
-    # just a hack here, we'll generate a new model to have it do the dataframe manipulation
-    # note, you do need at least 2 of the levels from the training data
-    # could be done in one line...
-    new_m = lmm(m.formula,newDF)
-    fitted!(Vector{T}(size(newDF,1)), m, new_m.trms)
+function StatsBase.predict(m::LinearMixedModel{T}, test::AbstractDataFrame; #, train::AbstractDataFrame;
+	 contrasts=Dict()) where T
+    mf = ModelFrame(m.formula, test, contrasts=contrasts)
+    X = ModelMatrix(mf).m
+    n = size(X, 1)
+    T = eltype(X)
+
+    # # can the tdict be used from the original data? (without building this modelframe again)
+    # mf_train = ModelFrame(m.formula, train, contrasts=contrasts)    
+    # tdict = get_tdict(mf_train.terms.terms)
+    tdict = get_tdict(mf.terms.terms)
+
+    # make a new trms object
+    trms = get_trms(tdict,mf.df,test,T,n)
+    
+    sort!(trms, by = nrandomeff, rev = true)
+    push!(trms, MatrixTerm(X, coefnames(mf)))
+    # for the indexing on fitted
+    push!(trms, MatrixTerm(X, coefnames(mf)))
+    
+    fitted!(Vector{T}(size(test,1)), m, trms)
 end
 
 StatsBase.residuals(m::LinearMixedModel) = model_response(m) .- fitted(m)
