@@ -217,7 +217,7 @@ end
 
 function fitted!(v::AbstractArray{T}, m::LinearMixedModel{T}, trms::Array{AbstractTerm{T}}) where T
     ## FIXME: Create and use `effects(m) -> β, b` w/o calculating β twice
-    A_mul_B!(vec(v), trms[end - 1], fixef(m))
+    A_mul_B!(vec(v), trms[end - 1].x[:,invperm(trms[end - 1].piv)], fixef(m)[invperm(m.trms[end-1].piv)])
     b = ranef(m)
     for j in eachindex(b)
         unscaledre!(vec(v), trms[j], b[j])

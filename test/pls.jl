@@ -22,10 +22,14 @@ end
     @test isapprox(objective(fm1), 237721.7687745563, atol=0.001)
     ftd1 = fitted(fm1);
     @test size(ftd1) == (73421, )
+    # predict just wraps fitted, so this is easy
     @test ftd1 == predict(fm1)
+    # predict with the same data...
     @test ftd1 == predict(fm1, df)
+    # these two have already been tested above, but just for
+    # completeness (to close the triangle)
     @test fitted(fm1) == predict(fm1, df)
-    @test predict(fm1) == predict(fm1, df)    
+    @test predict(fm1) == predict(fm1, df)
     
     # fit with a subset of the data
     n = 1000

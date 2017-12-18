@@ -97,7 +97,7 @@ StatsBase.nobs(m::GeneralizedLinearMixedModel) = length(m.η)
 StatsBase.predict(m::GeneralizedLinearMixedModel) = fitted(m)
 
 function StatsBase.predict(m::GeneralizedLinearMixedModel{T},df::AbstractDataFrame) where T
-    linkinv(Link(m.resp),StatsBase.predict(m.LMM,df))
+    linkinv.(Link(m.resp),StatsBase.predict(m.LMM,df))
 end
 
 """
