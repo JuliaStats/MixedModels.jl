@@ -236,7 +236,6 @@ function StatsBase.predict(m::LinearMixedModel{T}, test::AbstractDataFrame; #, t
     mf = ModelFrame(m.formula, test, contrasts=contrasts)
     X = ModelMatrix(mf).m
     n = size(X, 1)
-    T = eltype(X)
 
     # # can the tdict be used from the original data? (without building this modelframe again)
     # mf_train = ModelFrame(m.formula, train, contrasts=contrasts)    
@@ -244,14 +243,17 @@ function StatsBase.predict(m::LinearMixedModel{T}, test::AbstractDataFrame; #, t
     tdict = get_tdict(mf.terms.terms)
 
     # make a new trms object
-    trms = get_trms(tdict,mf.df,test,T,n)
-    
+    trms = get_trms(tdict, mf.df, test, T,n)
+
+    # now, sort them to have the same order as in the training data
     sort!(trms, by = nrandomeff, rev = true)
     push!(trms, MatrixTerm(X, coefnames(mf)))
     # for the indexing on fitted
-    push!(trms, MatrixTerm(X, coefnames(mf)))
+    # push!(trms, AbstractArray{T})
+    # push!(trms, zeros(T, 0))
+    push!(trms, MatrixTerm(zeros(T, 0)))
     
-    fitted!(Vector{T}(size(test,1)), m, trms)
+    fitted!(Vector{T}(size(test, 1)), m, trms)
 end
 
 StatsBase.residuals(m::LinearMixedModel) = model_response(m) .- fitted(m)
