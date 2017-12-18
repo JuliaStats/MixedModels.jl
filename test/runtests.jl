@@ -3,8 +3,8 @@ using Compat.Test
 
 const dat = convert(Dict{Symbol,Any},load(joinpath(dirname(@__FILE__), "dat.rda")))
 
+include("pls.jl")
 include("UniformBlockDiagonal.jl")
 include("matrixterm.jl")
 include("FactorReTerm.jl")
-include("pls.jl")
 include("pirls.jl")
