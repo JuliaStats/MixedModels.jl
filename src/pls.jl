@@ -80,7 +80,7 @@ function get_tdict(terms)
     tdict
 end
 
-function get_trms(tdict::Dict,df,fr::AbstractDataFrame,T::Type,n::Int)
+function get_trms(tdict::Dict, df, fr::AbstractDataFrame, T::Type, n::Int)
     trms = AbstractTerm{T}[]
     for (grp, lhs) in tdict
         gr = compress(categorical(getindex(df, grp)))
@@ -128,7 +128,7 @@ function lmm(f::Formula, fr::AbstractDataFrame;
     T = eltype(X)
     y = model_response(mf, rdist)
     tdict = get_tdict(mf.terms.terms)
-    trms = get_trms(tdict,mf.df,fr,T,n)
+    trms = get_trms(tdict, mf.df, fr, T, n)
     sort!(trms, by = nrandomeff, rev = true)
     push!(trms, MatrixTerm(X, coefnames(mf)))
     push!(trms, MatrixTerm(y))
@@ -246,11 +246,15 @@ function StatsBase.predict(m::LinearMixedModel{T}, test::AbstractDataFrame; #, t
     trms = get_trms(tdict, mf.df, test, T,n)
 
     # now, sort them to have the same order as in the training data
-    sort!(trms, by = nrandomeff, rev = true)
+    # they were sorted this way in the training:
+    # sort!(trms, by = nrandomeff, rev = true)
+    # now we'll just use that as a lookup
+    fnms = [m.trms[i].fnm for i=1:(length(m.trms)-2)]
+    sort_idx = [findfirst(fnms,x) for x=[y.fnm for y in trms]]
+    trms = trms[sort_idx]
+    # need the fixed effects data:
     push!(trms, MatrixTerm(X, coefnames(mf)))
-    # for the indexing on fitted
-    # push!(trms, AbstractArray{T})
-    # push!(trms, zeros(T, 0))
+    # for the indexing on fitted:
     push!(trms, MatrixTerm(zeros(T, 0)))
     
     fitted!(Vector{T}(size(test, 1)), m, trms)
