@@ -23,7 +23,7 @@ function αβA_mul_Bc!(α::T, A::SparseMatrixCSC{T}, B::SparseMatrixCSC{T},
     C
 end
 
-αβA_mul_Bc!(α::T, A::BlockedSparse{T}, B::BlockedSparse{T}, β::T, C::Matrix{T}) where T =
+αβA_mul_Bc!(α::T, A::BlockedSparse{T}, B::BlockedSparse{T}, β::T, C::Matrix{T}) where {T} =
     αβA_mul_Bc!(α, A.cscmat, B.cscmat, β, C)
 
 function αβA_mul_Bc!(α::T, A::StridedVecOrMat{T}, B::SparseMatrixCSC{T}, β::T,
@@ -46,13 +46,16 @@ function αβA_mul_Bc!(α::T, A::StridedVecOrMat{T}, B::SparseMatrixCSC{T}, β::
 end
 
 αβA_mul_Bc!(α::T, A::StridedVecOrMat{T}, B::BlockedSparse{T}, β::T, 
-            C::StridedVecOrMat{T}) where T = αβA_mul_Bc!(α, A, B.cscmat, β, C)
-
+            C::StridedVecOrMat{T}) where {T} = αβA_mul_Bc!(α, A, B.cscmat, β, C)
+         
 αβAc_mul_B!(α::T, A::StridedMatrix{T}, B::StridedVector{T}, β::T,
             C::StridedVector{T}) where {T<:BlasFloat} = BLAS.gemv!('C', α, A, B, β, C)
 
 αβAc_mul_B!(α::T, A::SparseMatrixCSC{T}, B::StridedVector{T}, β::T,
-            C::StridedVector{T}) where T = Ac_mul_B!(α, A, B, β, C)
+            C::StridedVector{T}) where {T} = Ac_mul_B!(α, A, B, β, C)
+
+αβAc_mul_B!(α::T, A::BlockedSparse{T}, B::StridedVector{T}, β::T, 
+            C::StridedVector{T}) where {T} = αβAc_mul_B!(α, A.cscmat, B, β, C)
 
 function Ac_ldiv_B!(A::LowerTriangular{T,UniformBlockDiagonal{T}}, B::StridedVector{T}) where {T}
     @argcheck length(B) == size(A, 2) DimensionMismatch
