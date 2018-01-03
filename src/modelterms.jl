@@ -43,6 +43,8 @@ end
 
 eltype(A::MatrixTerm) = eltype(A.wtx)
 
+Base.length(A::MatrixTerm) = length(A.wtx)
+
 Base.size(A::MatrixTerm) = size(A.wtx)
 
 Base.size(A::MatrixTerm, i) = size(A.wtx, i)
