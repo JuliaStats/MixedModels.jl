@@ -59,7 +59,7 @@ const mods = Dict{Symbol,Vector{Expr}}(
     :ergoStool => [:(1+A+(1|G))],
     :gb12 => [:(1+S+T+U+V+W+X+Z+((1+S+U+W)|G)+((1+S+T+V)|H))],
     :grouseticks => [],           # rename variables, glmm needs formula
-    :guimmun => [],               # rename variables, glmm needs formula
+    :guImmun => [],               # rename variables, glmm needs formula
     :guPrenat => [],              # rename variables, glmm needs formula
     :kb07 => [:(1+S+T+U+V+W+X+Z+((1+S+T+U+V+W+X+Z)|G)+((1+S+T+U+V+W+X+Z)|H)),
               :(1+S+T+U+V+W+X+Z+(1|G)+((0+S)|G)+((0+T)|G)+((0+U)|G)+((0+V)|G)+((0+W)|G)+
@@ -73,27 +73,28 @@ const mods = Dict{Symbol,Vector{Expr}}(
     );
 
 fitbobyqa(rhs::Expr, dsname::Symbol) = fit!(lmm(Formula(:Y, rhs), dat[dsname]))
+compactstr(ds,rhs) = replace(string(ds, ':', rhs), ' ', "")
 
 SUITE["simplescalar"] = BenchmarkGroup(["single", "simple", "scalar"])
 for ds in [:Alfalfa, :AvgDailyGain, :BIB, :Bond, :cake, :Cultivation, :Dyestuff,
     :Dyestuff2, :ergoStool, :Exam, :Gasoline, :Hsb82, :IncBlk, :Mississippi,
     :PBIB, :Rail, :Semiconductor, :TeachingII]
     for rhs in mods[ds]
-        SUITE["simplescalar"][string(ds, ':', rhs)] = @benchmarkable fitbobyqa($(QuoteNode(rhs)), $(QuoteNode(ds)))
+        SUITE["simplescalar"][compactstr(ds, rhs)] = @benchmarkable fitbobyqa($(QuoteNode(rhs)), $(QuoteNode(ds)))
     end
 end
 
 SUITE["singlevector"] = BenchmarkGroup(["single", "vector"])
 for ds in [:Early, :HR, :Oxboys, :SIMS, :sleepstudy, :Weights, :WWheat]
     for rhs in mods[ds]
-        SUITE["singlevector"][string(ds, ':', rhs)] = @benchmarkable fitbobyqa($(QuoteNode(rhs)), $(QuoteNode(ds)))
+        SUITE["singlevector"][compactstr(ds, rhs)] = @benchmarkable fitbobyqa($(QuoteNode(rhs)), $(QuoteNode(ds)))
     end
 end
 
 SUITE["nested"] = BenchmarkGroup(["multiple", "nested", "scalar"])
 for ds in [:Animal, :Chem97, :Genetics, :Pastes, :Semi2]
     for rhs in mods[ds]
-        SUITE["nested"][string(ds, ':', rhs)] = @benchmarkable fitbobyqa($(QuoteNode(rhs)), $(QuoteNode(ds)))
+        SUITE["nested"][compactstr(ds, rhs)] = @benchmarkable fitbobyqa($(QuoteNode(rhs)), $(QuoteNode(ds)))
     end
 end
 
@@ -102,7 +103,7 @@ SUITE["crossed"] = BenchmarkGroup(["multiple", "crossed", "scalar"])
 for ds in [:Assay, :Demand, :InstEval, :Penicillin, :ScotsSec,
            :dialectNL, :egsingle, :ml1m, :paulsim]
     for rhs in mods[ds]
-        SUITE["crossed"][string(ds, ':', rhs)] = @benchmarkable fitbobyqa($(QuoteNode(rhs)), $(QuoteNode(ds)))
+        SUITE["crossed"][compactstr(ds, rhs)] = @benchmarkable fitbobyqa($(QuoteNode(rhs)), $(QuoteNode(ds)))
     end
 end
 
