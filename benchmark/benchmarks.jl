@@ -110,6 +110,6 @@ end
 SUITE["crossedvector"] = BenchmarkGroup(["multiple", "crossed", "vector"])
 for ds in [:bs10, :d3, :gb12, :kb07]
     for rhs in mods[ds]
-        SUITE["crossedvector"][string(ds, ':', rhs)] = @benchmarkable fitbobyqa($(QuoteNode(rhs)), $(QuoteNode(ds)))
+        SUITE["crossedvector"][compactstr(ds, rhs)] = @benchmarkable fitbobyqa($(QuoteNode(rhs)), $(QuoteNode(ds)))
     end
 end
