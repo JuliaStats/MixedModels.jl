@@ -31,8 +31,8 @@ function LinearMixedModel(f, trms, wts)
         reweight!.(trms, Vector[sqrtwts])
     end
     nt = length(trms)
-    A = BlockArray(AbstractMatrix{T}, sz, sz)
-    L = BlockArray(AbstractMatrix{T}, sz, sz)
+    A = BlockArrays._BlockArray(AbstractMatrix{T}, sz, sz)
+    L = BlockArrays._BlockArray(AbstractMatrix{T}, sz, sz)
     for j in 1:nt, i in j:nt
         Lij = L[Block(i,j)] = densify(trms[i]'trms[j])
         A[Block(i,j)] = deepcopy(isa(Lij, BlockedSparse) ? Lij.cscmat : Lij)
