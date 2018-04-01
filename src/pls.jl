@@ -206,6 +206,8 @@ function StatsBase.fit!(m::LinearMixedModel{T}, verbose::Bool=false) where T
     m
 end
 
+fitlmm(f::Formula, fr::AbstractDataFrame) = fit!(lmm(f, fr))
+
 function fitted!(v::AbstractArray{T}, m::LinearMixedModel{T}) where T
     ## FIXME: Create and use `effects(m) -> β, b` w/o calculating β twice
     trms = m.trms

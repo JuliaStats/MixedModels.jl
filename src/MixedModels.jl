@@ -48,6 +48,7 @@ export
        deviance,
        dof,
        fit!,
+       fitlmm,
        fitted,
        fixef,      # extract the fixed-effects parameter estimates
        fnames,
