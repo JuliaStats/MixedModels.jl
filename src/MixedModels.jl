@@ -2,17 +2,17 @@ __precompile__()
 
 module MixedModels
 
-using ArgCheck, BlockArrays, CategoricalArrays, DataFrames, Distributions
+using ArgCheck, BlockArrays, CategoricalArrays, Compat, DataFrames, Distributions
 using GLM, NLopt, Showoff, StaticArrays, StatsBase, StatsModels
 using StatsFuns: log2π
 using NamedArrays: NamedArray, setnames!
-using Base.LinAlg: BlasFloat, BlasReal, HermOrSym, PosDefException, checksquare, copytri!
+using Compat.LinearAlgebra: BlasFloat, BlasReal, HermOrSym, PosDefException, checksquare, copytri!
 
-import Base: cor, cond, convert, eltype, full, logdet, std
-import Base.LinAlg: A_mul_B!, A_mul_Bc!, Ac_mul_B!, A_ldiv_B!, Ac_ldiv_B!, A_rdiv_B!, A_rdiv_Bc!
+import Base: cor, convert, eltype, full, logdet, std
+import Compat.LinearAlgebra: A_mul_B!, A_mul_Bc!, Ac_mul_B!, A_ldiv_B!, Ac_ldiv_B!, A_rdiv_B!, A_rdiv_Bc!, cond
 import NLopt: Opt
-import StatsBase: coef, coeftable, dof, deviance, fit!, fitted, loglikelihood,
-    model_response, nobs, predict, vcov
+import StatsBase: coef, coeftable, dof, deviance, fit, fit!, fitted, loglikelihood,
+    model_response, nobs, predict, stderr, vcov
 
 export
        @formula,
@@ -47,6 +47,7 @@ export
        condVar,
        deviance,
        dof,
+       fit,
        fit!,
        fitlmm,
        fitted,
@@ -91,5 +92,6 @@ include("pls.jl")
 include("simulate.jl")
 include("PIRLS.jl")
 include("mixedmodel.jl")
+include("deprecates.jl")
 
 end # module

@@ -7,7 +7,7 @@ In this chapter we consider models with multiple simple, scalar random-effects t
 
 ```{julia;term=true}
 using DataFrames, Distributions, FreqTables, Gadfly, MixedModels, RData
-using Gadfly.Geom: density, histogram, point
+using Gadfly.Geom: density, histogram, line, point
 using Gadfly.Guide: xlabel, ylabel
 const dat = convert(Dict{Symbol,DataFrame}, load(Pkg.dir("MixedModels", "test", "dat.rda")));
 const ppt250 = inv(500) : inv(250) : 1.;
@@ -81,7 +81,7 @@ Even when we apply each of the six samples to each of the 24 plates, something c
 A model incorporating random effects for both the plate and the sample is straightforward to specify — we include simple, scalar random effects terms for both these factors.
 
 ```{julia;term=true}
-penm = fit!(lmm(@formula(Y ~ 1 + (1|G) + (1|H)), dat[:Penicillin]))
+penm = fit(LinearMixedModel, @formula(Y ~ 1 + (1|G) + (1|H)), dat[:Penicillin])
 ```
 
 This model display indicates that the sample-to-sample variability has the greatest contribution, then plate-to-plate variability and finally the “residual” variability that cannot be attributed to either the sample or the plate. These conclusions are consistent with what we see in the data plot (Fig. [fig:Penicillindot]).
@@ -406,7 +406,7 @@ it is sufficiently diffuse to warrant treating it as if it were a continuous res
 At this point we will fit models that have random effects for student, instructor, and department (or the combination) to these data. In the next chapter we will fit models incorporating fixed-effects for instructor and department to these data.
 
 ```{julia;term=true}
-@time instm = fit!(lmm(@formula(Y ~ 1 + A + (1|G) + (1|H) + (1|I)), dat[:InstEval]))
+@time instm = fit(LinearMixedModel, @formula(Y ~ 1 + A + (1|G) + (1|H) + (1|I)), dat[:InstEval])
 ```
 
 (Fitting this complex model to a moderately large data set takes a few seconds on a modest desktop computer. Although this is more time than required for earlier model fits, it is a remarkably short time for fitting a model of this size and complexity. In some ways it is remarkable that such a model can be fit at all on such a computer.)

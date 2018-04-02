@@ -5,7 +5,7 @@ const dat = convert(Dict{Symbol,DataFrame}, load(Pkg.dir("MixedModels", "test", 
 ```
 
 ```{julia;term=true}
-mm1 = fit!(lmm(@formula(Y ~ 1+S+T+U+V+W+X+Z+(1+S+T+U+V+W+X+Z|G)+(1+S+T+U+V+W+X+Z|H)), dat[:kb07]))
+mm1 = fit(LinearMixedModel, @formula(Y ~ 1+S+T+U+V+W+X+Z+(1+S+T+U+V+W+X+Z|G)+(1+S+T+U+V+W+X+Z|H)), dat[:kb07])
 ```
 
 ```{julia;term=true}

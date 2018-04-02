@@ -25,7 +25,7 @@ As is customary (though not required) in Julia, a function whose name ends in `!
 An optional second argument of `true` in the call to `fit!` produces verbose output from the optimization.
 
 ```{julia;term=true}
-sleepm = fit!(lmm(@formula(Y ~ 1 + U + (1+U|G)), dat[:sleepstudy]), true)
+sleepm = fit!(LinearMixedModel(@formula(Y ~ 1 + U + (1+U|G)), dat[:sleepstudy]), true)
 ```
 
 The variables in the optimization are the elements of a lower triangular matrix, $\Lambda$, which is the relative covariance factor of the random effects.
@@ -274,7 +274,7 @@ show(names(oxboys))
 ```
 
 ```{julia;term=true}
-oxboysm = fit!(lmm(@formula(height ~ 1 + age + (1+age | Subject)), oxboys))
+oxboysm = fit(LinearMixedModel, @formula(height ~ 1 + age + (1+age | Subject)), oxboys)
 ```
 
 ```{julia;term=true}
@@ -383,7 +383,7 @@ When the time origin is the beginning of the treatment there is not generally a 
 
 ```{julia;term=true}
 early = rcopy(R"subset(Early, select = c(cog, tos, id, trt, trttos))");
-earlym = fit!(lmm(@formula(cog ~ 1 + tos + trttos + (1 + tos | id)), early))
+earlym = fit(LinearMixedModel, @formula(cog ~ 1 + tos + trttos + (1 + tos | id)), early)
 ```
 
 The model converges to a singular covariance matrix for the random effects.

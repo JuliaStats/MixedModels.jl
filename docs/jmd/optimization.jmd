@@ -101,12 +101,12 @@ For a linear mixed model, where all the conditional and unconditional distributi
 In the types of `LinearMixedModel` available through the `MixedModels` package, groups of random effects and the corresponding columns of the model matrix, $\bf Z$, are associated with *random-effects terms* in the model formula.
 
 For the simple example
-```{julia;echo=false}
+```{julia;echo=false;results="hidden"}
 using DataFrames, RData, MixedModels
-const dat=convert(Dict{Symbol,DataFrame},load(Pkg.dir("MixedModels", "test", "dat.rda")))
+const dat=convert(Dict{Symbol,DataFrame},load(Pkg.dir("MixedModels", "test", "dat.rda")));
 ```
 ```{julia;term=true}
-fm1 = fit!(lmm(@formula(Y ~ 1 + (1|G)), dat[:Dyestuff]))
+fm1 = fit(LinearMixedModel, @formula(Y ~ 1 + (1|G)), dat[:Dyestuff])
 ```
 the only random effects term in the formula is `(1|G)`, a simple, scalar random-effects term.
 ```{julia;term=true}
@@ -120,7 +120,7 @@ This `ScalarFactorReTerm` contributes a block of columns to the model matrix $\b
 ```{julia;term=true}
 getθ(t1)
 getΛ(t1)
-full(t1)
+convert(Array{Int}, full(t1)) # matrix is floating point but all integers
 ```
 
 Because there is only one random-effects term in the model, the matrix $\bf Z$ is the indicators matrix shown as the result of `full(t1)`, but stored in a special sparse format.
@@ -130,7 +130,7 @@ For a `ScalarFactorReTerm` this block is a multiple of the identity, in this cas
 
 For a vector-valued random-effects term, as in
 ```{julia;term=true}
-fm2 = fit!(lmm(@formula(Y ~ 1 + U + (1+U|G)), dat[:sleepstudy]))
+fm2 = fit(LinearMixedModel, @formula(Y ~ 1 + U + (1+U|G)), dat[:sleepstudy])
 t21 = fm2.trms[1]
 ```
 the random-effects term `(1+U|G)` generates a
@@ -139,7 +139,7 @@ VectorFactorReTerm
 ```
 The model matrix $\bf Z$ for this model is
 ```{julia;term=true}
-full(t21)
+convert(Array{Int}, full(t21))
 ```
 and $\Lambda_\theta$ is a $36\times36$ block diagonal matrix with $18$ diagonal blocks, all of the form
 ```{julia;term=true}
@@ -152,7 +152,7 @@ getθ(t21)
 
 Random-effects terms in the model formula that have the same grouping factor are amagamated into a single `VectorFactorReTerm` object.
 ```{julia;term=true}
-fm3 = fit!(lmm(@formula(Y ~ 1 + U + (1|G) + (0+U|G)), dat[:sleepstudy]))
+fm3 = fit(LinearMixedModel, @formula(Y ~ 1 + U + (1|G) + (0+U|G)), dat[:sleepstudy])
 t31 = fm3.trms[1]
 ```
 For this model the matrix $\bf Z$ is the same as that of model `fm2` but the diagonal blocks of $\Lambda_\theta$ are themselves diagonal.
@@ -163,7 +163,7 @@ getθ(t31)
 Random-effects terms with distinct grouping factors generate distinct elements of the `trms` member of the `LinearMixedModel` object.
 Multiple `AbstractFactorReTerm` (i.e. either a `ScalarFactorReTerm` or a `VectorFactorReTerm`) objects are sorted by decreasing numbers of random effects.
 ```{julia;term=true}
-fm4 = fit!(lmm(@formula(Y ~ 1 + (1|H) + (1|G)), dat[:Penicillin]))
+fm4 = fit(LinearMixedModel, @formula(Y ~ 1 + (1|H) + (1|G)), dat[:Penicillin])
 t41 = fm4.trms[1]
 t42 = fm4.trms[2]
 ```
@@ -173,8 +173,8 @@ Note that the first `ScalarFactorReTerm` in `fm4.trms` corresponds to grouping f
 
 An optional `Bool` argument of `true` in the call to `fit!` of a `LinearMixedModel` causes printing of the objective and the $\theta$ parameter at each evaluation during the optimization.
 ```{julia;term=true}
-fit!(lmm(@formula(Y ~ 1 + (1|G)), dat[:Dyestuff]), true);
-fit!(lmm(@formula(Y ~ 1 + U + (1+U|G)), dat[:sleepstudy]), true);
+fit!(LinearMixedModel(@formula(Y ~ 1 + (1|G)), dat[:Dyestuff]), true);
+fit!(LinearMixedModel(@formula(Y ~ 1 + U + (1+U|G)), dat[:sleepstudy]), true);
 ``` 
 
 A shorter summary of the optimization process is always available as an
@@ -193,7 +193,7 @@ To modify the optimization process the input fields can be changed after constru
 
 Suppose, for example, that the user wishes to try a [Nelder-Mead](https://en.wikipedia.org/wiki/Nelder%E2%80%93Mead_method) optimization method instead of the default [`BOBYQA`](https://en.wikipedia.org/wiki/BOBYQA) (Bounded Optimization BY Quadratic Approximation) method.
 ```{julia;term=true}
-fm2 = lmm(@formula(Y ~ 1 + U + (1+U|G)), dat[:sleepstudy]);
+fm2 = LinearMixedModel(@formula(Y ~ 1 + U + (1+U|G)), dat[:sleepstudy]);
 fm2.optsum.optimizer = :LN_NELDERMEAD;
 fit!(fm2)
 fm2.optsum
@@ -241,7 +241,7 @@ Poisson
 The `glmm` function generates, but does not fit, a `GeneralizedLinearMixedModel` object.
 
 ```{julia;term=true}
-mdl = glmm(@formula(r2 ~ 1 + a + g + b + s + (1|id) + (1|item)),
+mdl = GeneralizedLinearMixedModel(@formula(r2 ~ 1 + a + g + b + s + (1|id) + (1|item)),
            dat[:VerbAgg], Bernoulli());
 typeof(mdl)
 ```
@@ -307,7 +307,7 @@ mdl.LMM.optsum
 
 As one would hope, given the name of the option, this fit is comparatively fast.
 ```{julia;term=true}
-@time(fit!(glmm(@formula(r2 ~ 1 + a + g + b + s + (1 | id) + (1 | item)), 
+@time(fit!(GeneralizedLinearMixedModel(@formula(r2 ~ 1 + a + g + b + s + (1 | id) + (1 | item)), 
         dat[:VerbAgg], Bernoulli()), fast=true))
 ```
 
@@ -315,7 +315,7 @@ The alternative algorithm is to use PIRLS to find the conditional mode of the ra
 Because it is slower to incorporate the $\beta$ parameters in the general nonlinear optimization, the fast fit is performed first and used to determine starting estimates for the more general optimization.
 
 ```{julia;term=true}
-@time mdl1 = fit!(glmm(@formula(r2 ~ 1+a+g+b+s+(1|id)+(1|item)), 
+@time mdl1 = fit!(GeneralizedLinearMixedModel(@formula(r2 ~ 1+a+g+b+s+(1|id)+(1|item)), 
         dat[:VerbAgg], Bernoulli()), verbose = true)
 ```
 

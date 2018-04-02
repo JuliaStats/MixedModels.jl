@@ -1,9 +1,9 @@
 # Model constructors
 
-The `lmm` function creates a linear mixed-effects model representation from a `Formula` and an appropriate `data` type.
-At present the data type must be a `DataFrame` but this is expected to change.
+The `LinearMixedModel` type represents a linear mixed-effects model.
+Typically it is constructed from a `Formula` and an appropriate `data` type, usually a `DataFrame`.
 ```@docs
-lmm
+LinearMixedModel
 ```
 
 ## Examples of linear mixed-effects model fits
@@ -52,7 +52,7 @@ Categorical covariates not suitable as grouping factors are named starting with 
 The formula language in *Julia* is similar to that in *R* except that the formula must be enclosed in a call to the `@formula` macro.
 A basic model with simple, scalar random effects for the levels of `G` (the batch of an intermediate product, in this case) is declared and fit as
 ````julia
-julia> fm1 = fit!(lmm(@formula(Y ~ 1 + (1|G)), dat[:Dyestuff]))
+julia> fm1 = fit(LinearMixedModel, @formula(Y ~ 1 + (1|G)), dat[:Dyestuff])
 Linear mixed model fit by maximum likelihood
  Formula: Y ~ 1 + (1 | G)
    logLik   -2 logLik     AIC        BIC    
@@ -60,7 +60,7 @@ Linear mixed model fit by maximum likelihood
 
 Variance components:
               Column    Variance  Std.Dev. 
- G        (Intercept)  1388.3333 37.260345
+ G        (Intercept)  1388.3332 37.260344
  Residual              2451.2500 49.510100
  Number of obs: 30; levels of grouping factors: 6
 
@@ -79,8 +79,8 @@ Variance components:
 The second and subsequent calls to such functions are much faster.)
 
 ````julia
-julia> @time fit!(lmm(@formula(Y ~ 1 + (1|G)), dat[:Dyestuff2]))
-  0.000941 seconds (1.44 k allocations: 74.375 KiB)
+julia> @time fit(LinearMixedModel, @formula(Y ~ 1 + (1|G)), dat[:Dyestuff2])
+  0.000789 seconds (1.34 k allocations: 71.859 KiB)
 Linear mixed model fit by maximum likelihood
  Formula: Y ~ 1 + (1 | G)
    logLik   -2 logLik     AIC        BIC    
@@ -119,7 +119,7 @@ It corresponds to a shift in the intercept for each level of the grouping factor
 The *sleepstudy* data are observations of reaction time, `Y`, on several subjects, `G`, after 0 to 9 days of sleep deprivation, `U`.
 A model with random intercepts and random slopes for each subject, allowing for within-subject correlation of the slope and intercept, is fit as
 ````julia
-julia> fm2 = fit!(lmm(@formula(Y ~ 1 + U + (1+U|G)), dat[:sleepstudy]))
+julia> fm2 = fit(LinearMixedModel, @formula(Y ~ 1 + U + (1+U|G)), dat[:sleepstudy])
 Linear mixed model fit by maximum likelihood
  Formula: Y ~ 1 + U + ((1 + U) | G)
    logLik   -2 logLik     AIC        BIC    
@@ -146,7 +146,7 @@ U             10.4673   1.50224 6.96781  <1e-11
 
 A model with uncorrelated random effects for the intercept and slope by subject is fit as
 ````julia
-julia> fm3 = fit!(lmm(@formula(Y ~ 1 + U + (1|G) + (0+U|G)), dat[:sleepstudy]))
+julia> fm3 = fit(LinearMixedModel, @formula(Y ~ 1 + U + (1|G) + (0+U|G)), dat[:sleepstudy])
 Linear mixed model fit by maximum likelihood
  Formula: Y ~ 1 + U + (1 | G) + ((0 + U) | G)
    logLik   -2 logLik     AIC        BIC    
@@ -154,7 +154,7 @@ Linear mixed model fit by maximum likelihood
 
 Variance components:
               Column    Variance  Std.Dev.   Corr.
- G        (Intercept)  584.258971 24.17145
+ G        (Intercept)  584.258973 24.17145
           U             33.632805  5.79938  0.00
  Residual              653.115782 25.55613
  Number of obs: 180; levels of grouping factors: 18
@@ -179,7 +179,7 @@ and, internally, are amalgamated into a single vector-valued term.
 A model for the *Penicillin* data incorporates random effects for the plate, `G`, and for the sample, `H`.
 As every sample is used on every plate these two factors are *crossed*.
 ````julia
-julia> fm4 = fit!(lmm(@formula(Y ~ 1 + (1|G) + (1|H)), dat[:Penicillin]))
+julia> fm4 = fit(LinearMixedModel, @formula(Y ~ 1 + (1|G) + (1|H)), dat[:Penicillin])
 Linear mixed model fit by maximum likelihood
  Formula: Y ~ 1 + (1 | G) + (1 | H)
    logLik   -2 logLik     AIC        BIC    
@@ -188,7 +188,7 @@ Linear mixed model fit by maximum likelihood
 Variance components:
               Column    Variance  Std.Dev. 
  G        (Intercept)  0.7149795 0.8455646
- H        (Intercept)  3.1351920 1.7706474
+ H        (Intercept)  3.1351924 1.7706474
  Residual              0.3024264 0.5499331
  Number of obs: 144; levels of grouping factors: 24, 6
 
@@ -206,7 +206,7 @@ Variance components:
 In contrast the sample, `G`, grouping factor is *nested* within the batch, `H`, grouping factor in the *Pastes* data.
 That is, each level of `G` occurs in conjunction with only one level of `H`.
 ````julia
-julia> fm5 = fit!(lmm(@formula(Y ~ 1 + (1|G) + (1|H)), dat[:Pastes]))
+julia> fm5 = fit(LinearMixedModel, @formula(Y ~ 1 + (1|G) + (1|H)), dat[:Pastes])
 Linear mixed model fit by maximum likelihood
  Formula: Y ~ 1 + (1 | G) + (1 | H)
    logLik   -2 logLik     AIC        BIC    
@@ -214,8 +214,8 @@ Linear mixed model fit by maximum likelihood
 
 Variance components:
               Column    Variance  Std.Dev.  
- G        (Intercept)  8.4336166 2.90406897
- H        (Intercept)  1.1991794 1.09507048
+ G        (Intercept)  8.4336167 2.90406898
+ H        (Intercept)  1.1991793 1.09507045
  Residual              0.6780021 0.82340884
  Number of obs: 60; levels of grouping factors: 30, 10
 
@@ -234,17 +234,17 @@ In observational studies it is common to encounter *partially crossed* grouping 
 For example, the *InstEval* data are course evaluations by students, `G`, of instructors, `H`.
 Additional covariates include the academic department, `I`, in which the course was given and `A`, whether or not it was a service course.
 ````julia
-julia> fm6 = fit!(lmm(@formula(Y ~ 1 + A * I + (1|G) + (1|H)), dat[:InstEval]))
+julia> fm6 = fit(LinearMixedModel, @formula(Y ~ 1 + A * I + (1|G) + (1|H)), dat[:InstEval])
 Linear mixed model fit by maximum likelihood
  Formula: Y ~ 1 + A * I + (1 | G) + (1 | H)
      logLik        -2 logLik          AIC             BIC       
  -1.18792777×10⁵  2.37585553×10⁵  2.37647553×10⁵  2.37932876×10⁵
 
 Variance components:
-              Column     Variance   Std.Dev.  
- G        (Intercept)  0.105417976 0.32468135
- H        (Intercept)  0.258416368 0.50834670
- Residual              1.384727771 1.17674457
+              Column    Variance   Std.Dev.  
+ G        (Intercept)  0.10541790 0.32468122
+ H        (Intercept)  0.25841635 0.50834669
+ Residual              1.38472780 1.17674458
  Number of obs: 73421; levels of grouping factors: 2972, 1128
 
   Fixed-effects parameters:
@@ -253,21 +253,21 @@ Variance components:
 A: 1            0.252025 0.0686507   3.67112  0.0002
 I: 5            0.129536  0.101294   1.27882  0.2010
 I: 10          -0.176751 0.0881352  -2.00545  0.0449
-I: 12          0.0517102 0.0817524  0.632522  0.5270
+I: 12          0.0517102 0.0817523  0.632523  0.5270
 I: 6           0.0347319  0.085621  0.405647  0.6850
 I: 7             0.14594 0.0997984   1.46235  0.1436
 I: 4            0.151689 0.0816897   1.85689  0.0633
 I: 8            0.104206  0.118751  0.877517  0.3802
-I: 9           0.0440401 0.0962985  0.457329  0.6474
+I: 9           0.0440401 0.0962985   0.45733  0.6474
 I: 14          0.0517546 0.0986029  0.524879  0.5997
 I: 1           0.0466719  0.101942  0.457828  0.6471
 I: 3           0.0563461 0.0977925   0.57618  0.5645
-I: 11          0.0596536  0.100233   0.59515  0.5517
-I: 2          0.00556281  0.110867 0.0501756  0.9600
+I: 11          0.0596536  0.100233  0.595151  0.5517
+I: 2          0.00556285  0.110867 0.0501761  0.9600
 A: 1 & I: 5    -0.180757  0.123179  -1.46744  0.1423
-A: 1 & I: 10   0.0186492  0.110017  0.169513  0.8654
-A: 1 & I: 12   -0.282269 0.0792937  -3.55979  0.0004
-A: 1 & I: 6    -0.494464 0.0790278  -6.25683   <1e-9
+A: 1 & I: 10   0.0186492  0.110017  0.169512  0.8654
+A: 1 & I: 12   -0.282269 0.0792937   -3.5598  0.0004
+A: 1 & I: 6    -0.494464 0.0790278  -6.25684   <1e-9
 A: 1 & I: 7    -0.392054  0.110313  -3.55403  0.0004
 A: 1 & I: 4    -0.278547 0.0823727  -3.38154  0.0007
 A: 1 & I: 8    -0.189526  0.111449  -1.70056  0.0890
@@ -287,15 +287,15 @@ A: 1 & I: 2    -0.384773  0.091843  -4.18946   <1e-4
 
 ## Fitting generalized linear mixed models
 
-To create a GLMM using
+To create a GLMM representation
 ```@docs
-glmm
+GeneralizedLinearMixedModel
 ```
 the distribution family for the response, and possibly the link function, must be specified.
 
 ````julia
-julia> gm1 = fit!(glmm(@formula(r2 ~ 1 + a + g + b + s + m + (1|id) + (1|item)), dat[:VerbAgg],
-    Bernoulli()))
+julia> gm1 = fit(GeneralizedLinearMixedModel, @formula(r2 ~ 1 + a + g + b + s + m + (1|id) + (1|item)),
+    dat[:VerbAgg], Bernoulli())
 Generalized Linear Mixed Model fit by minimizing the Laplace approximation to the deviance
   Formula: r2 ~ 1 + a + g + b + s + m + (1 | id) + (1 | item)
   Distribution: Distributions.Bernoulli{Float64}
@@ -304,21 +304,21 @@ Generalized Linear Mixed Model fit by minimizing the Laplace approximation to th
   Deviance (Laplace approximation): 8135.8329
 
 Variance components:
-          Column     Variance   Std.Dev. 
- id   (Intercept)  1.793470989 1.3392054
- item (Intercept)  0.117151977 0.3422747
+          Column     Variance   Std.Dev.  
+ id   (Intercept)  1.793432300 1.33919091
+ item (Intercept)  0.117130236 0.34224295
 
  Number of obs: 7584; levels of grouping factors: 316, 24
 
 Fixed-effects parameters:
               Estimate Std.Error  z value P(>|z|)
-(Intercept)   0.553345  0.385363  1.43591  0.1510
-a            0.0574211 0.0167527  3.42757  0.0006
-g: M          0.320792  0.191206  1.67773  0.0934
-b: scold      -1.05975   0.18416 -5.75448   <1e-8
-b: shout       -2.1038  0.186519 -11.2793  <1e-28
-s: self       -1.05429  0.151196   -6.973  <1e-11
-m: do         -0.70698  0.151009 -4.68172   <1e-5
+(Intercept)   0.552284  0.385354  1.43318  0.1518
+a            0.0574478 0.0167526  3.42919  0.0006
+g: M          0.320861  0.191204   1.6781  0.0933
+b: scold      -1.05954  0.184146 -5.75381   <1e-8
+b: shout      -2.10341  0.186504 -11.2781  <1e-28
+s: self       -1.05388  0.151184 -6.97085  <1e-11
+m: do        -0.706925  0.150997 -4.68173   <1e-5
 
 
 ````
@@ -349,13 +349,13 @@ nobs(::StatisticalModel)
 ```
 ````julia
 julia> loglikelihood(fm1)
--163.6635299405672
+-163.6635299405682
 
 julia> aic(fm1)
-333.3270598811344
+333.3270598811364
 
 julia> bic(fm1)
-337.5306520261209
+337.5306520261229
 
 julia> dof(fm1)   # 1 fixed effect, 2 variances
 3
@@ -364,7 +364,7 @@ julia> nobs(fm1)  # 30 observations
 30
 
 julia> loglikelihood(gm1)
--4067.9164280544696
+-4067.9164365980514
 
 ````
 
@@ -385,10 +385,10 @@ This value is also accessible as the `deviance` but the user should bear in mind
 For example, it is not necessarily non-negative.
 ````julia
 julia> objective(fm1)
-327.3270598811344
+327.3270598811364
 
 julia> deviance(fm1)
-327.3270598811344
+327.3270598811364
 
 ````
 
@@ -402,7 +402,7 @@ LaplaceDeviance
 ```
 ````julia
 julia> LaplaceDeviance(gm1)
-8135.832856108941
+8135.83287319609
 
 ````
 
@@ -423,7 +423,7 @@ julia> show(coef(fm1))
 julia> show(fixef(fm1))
 [1527.5]
 julia> show(fixef(gm1))
-[0.553345, 0.0574211, 0.320792, -1.05975, -2.1038, -1.05429, -0.70698]
+[0.0574478, -1.05388, -0.706925, -1.05954, 0.320861, -2.10341, 0.552284]
 ````
 
 
@@ -442,13 +442,13 @@ julia> vcov(fm2)
 
 julia> vcov(gm1)
 7×7 Array{Float64,2}:
-  0.148505    -0.0056046    -0.00977076  -0.0169713    -0.0171437    -0.0114552    -0.0114564  
- -0.0056046    0.000280653   7.1912e-5   -1.43714e-5   -2.90566e-5   -1.4797e-5    -1.02415e-5 
- -0.00977076   7.1912e-5     0.0365599   -9.25611e-5   -0.00016239   -8.04416e-5   -5.25878e-5 
- -0.0169713   -1.43714e-5   -9.25611e-5   0.0339151     0.0171841     0.000265792   0.000172093
- -0.0171437   -2.90566e-5   -0.00016239   0.0171841     0.0347894     0.000658953   0.000520519
- -0.0114552   -1.4797e-5    -8.04416e-5   0.000265792   0.000658953   0.0228602     0.000247779
- -0.0114564   -1.02415e-5   -5.25878e-5   0.000172093   0.000520519   0.000247779   0.0228036  
+  0.148498    -0.00560449   -0.00977058   …  -0.0114534    -0.0114545  
+ -0.00560449   0.000280648   7.19112e-5      -1.47965e-5   -1.02415e-5 
+ -0.00977058   7.19112e-5    0.0365591       -8.04373e-5   -5.25873e-5 
+ -0.0169685   -1.43715e-5   -9.25583e-5       0.000265763   0.000172081
+ -0.0171409   -2.90566e-5   -0.000162386      0.000658871   0.000520472
+ -0.0114534   -1.47965e-5   -8.04373e-5   …   0.0228565     0.000247746
+ -0.0114545   -1.02415e-5   -5.25873e-5       0.000247746   0.0228     
 
 ````
 
@@ -461,10 +461,10 @@ The standard errors are the square roots of the diagonal elements of the estimat
 stderr
 ```
 ````julia
-julia> show(stderr(fm2))
+julia> show(StatsBase.stderr(fm2))
 [6.63226, 1.50224]
-julia> show(stderr(gm1))
-[0.385363, 0.0167527, 0.191206, 0.18416, 0.186519, 0.151196, 0.151009]
+julia> show(StatsBase.stderr(gm1))
+[0.385354, 0.0167526, 0.191204, 0.184146, 0.186504, 0.151184, 0.150997]
 ````
 
 
@@ -506,9 +506,9 @@ Variance components:
 
 julia> VarCorr(gm1)
 Variance components:
-          Column     Variance   Std.Dev. 
- id   (Intercept)  1.793470989 1.3392054
- item (Intercept)  0.117151977 0.3422747
+          Column     Variance   Std.Dev.  
+ id   (Intercept)  1.793432300 1.33919091
+ item (Intercept)  0.117130236 0.34224295
 
 
 ````
@@ -524,10 +524,10 @@ sdest
 ```
 ````julia
 julia> varest(fm2)
-654.9414530367545
+654.941450830681
 
 julia> sdest(fm2)
-25.591823949002823
+25.591823905901684
 
 ````
 
@@ -544,7 +544,7 @@ ranef
 ````julia
 julia> ranef(fm1)
 1-element Array{Array{Float64,2},1}:
- [-16.6282 0.369516 26.9747 -21.8014 53.5798 -42.4943]
+ [-16.6282 0.369516 … 53.5798 -42.4943]
 
 julia> ranef(fm1, named=true)[1]
 1×6 Named Array{Float64,2}

@@ -258,7 +258,7 @@ rowlengths(A::MatrixTerm{T}) where {T} = T[]
 
 vsize(A::VectorFactorReTerm{T,V,R,S}) where {T,V,R,S} = S
 
-Base.eltype(::AbstractFactorReTerm{T}) where {T} = T
+eltype(::AbstractFactorReTerm{T}) where {T} = T
 
 Base.full(A::AbstractFactorReTerm) = full(sparse(A))
 

@@ -8,7 +8,7 @@ In this chapter we consider models with multiple simple, scalar random-effects t
 ````julia
 julia> using DataFrames, Distributions, FreqTables, Gadfly, MixedModels, RData
 
-julia> using Gadfly.Geom: density, histogram, point
+julia> using Gadfly.Geom: density, histogram, line, point
 
 julia> using Gadfly.Guide: xlabel, ylabel
 
@@ -116,7 +116,7 @@ Even when we apply each of the six samples to each of the 24 plates, something c
 A model incorporating random effects for both the plate and the sample is straightforward to specify — we include simple, scalar random effects terms for both these factors.
 
 ````julia
-julia> penm = fit!(lmm(@formula(Y ~ 1 + (1|G) + (1|H)), dat[:Penicillin]))
+julia> penm = fit(LinearMixedModel, @formula(Y ~ 1 + (1|G) + (1|H)), dat[:Penicillin])
 Linear mixed model fit by maximum likelihood
  Formula: Y ~ 1 + (1 | G) + (1 | H)
    logLik   -2 logLik     AIC        BIC    
@@ -125,7 +125,7 @@ Linear mixed model fit by maximum likelihood
 Variance components:
               Column    Variance  Std.Dev. 
  G        (Intercept)  0.7149795 0.8455646
- H        (Intercept)  3.1351920 1.7706474
+ H        (Intercept)  3.1351924 1.7706474
  Residual              0.3024264 0.5499331
  Number of obs: 144; levels of grouping factors: 24, 6
 
@@ -164,7 +164,7 @@ or as the `Final parameter vector` in the `opsum` field of `penm`
 ````julia
 julia> penm.optsum
 Initial parameter vector: [1.0, 1.0]
-Initial objective value:  364.6267798165791
+Initial objective value:  364.6267798165433
 
 Optimizer (from NLopt):   LN_BOBYQA
 Lower bounds:             [0.0, 0.0]
@@ -177,7 +177,7 @@ maxfeval:                 -1
 
 Function evaluations:     44
 Final parameter vector:   [1.53758, 3.21975]
-Final objective value:    332.1883486722809
+Final objective value:    332.1883486722732
 Return code:              FTOL_REACHED
 
 
@@ -195,7 +195,7 @@ A bootstrap simulation of the model
 
 ````julia
 julia> @time penmbstp = bootstrap(10000, penm);
-  9.382835 seconds (19.42 M allocations: 867.233 MiB, 4.28% gc time)
+ 13.519157 seconds (17.92 M allocations: 816.905 MiB, 5.69% gc time)
 
 ````
 
@@ -218,7 +218,6 @@ Plot(...)
 ````
 
 
-![](./assets//MultipleTerms_11_1.svg)
 
 
 
@@ -357,8 +356,8 @@ Linear mixed model fit by maximum likelihood
 
 Variance components:
               Column    Variance  Std.Dev.  
- G        (Intercept)  8.4336166 2.90406897
- H        (Intercept)  1.1991794 1.09507048
+ G        (Intercept)  8.4336167 2.90406898
+ H        (Intercept)  1.1991793 1.09507045
  Residual              0.6780021 0.82340884
  Number of obs: 60; levels of grouping factors: 30, 10
 
@@ -395,7 +394,7 @@ confirm this impression in that all the prediction intervals for the random effe
 julia> srand(4321234);
 
 julia> @time pstsbstp = bootstrap(10000, pstsm);
-  7.142706 seconds (14.38 M allocations: 680.942 MiB, 2.69% gc time)
+  9.520945 seconds (13.85 M allocations: 659.111 MiB, 2.39% gc time)
 
 ````
 
@@ -410,7 +409,6 @@ Plot(...)
 ````
 
 
-![](./assets//MultipleTerms_17_1.svg)
 
 ````julia
 julia> plot(x = pstsbstp[:σ₁], Geom.density(), Guide.xlabel("σ₁"))
@@ -419,7 +417,6 @@ Plot(...)
 ````
 
 
-![](./assets//MultipleTerms_18_1.svg)
 
 ````julia
 julia> plot(x = pstsbstp[:σ₂], Geom.density(), Guide.xlabel("σ₂"))
@@ -428,7 +425,6 @@ Plot(...)
 ````
 
 
-![](./assets//MultipleTerms_19_1.svg)
 
 
 
@@ -442,11 +438,10 @@ Plot(...)
 ````
 
 
-![](./assets//MultipleTerms_20_1.svg)
 
 ````julia
 julia> count(x -> x < 1.0e-5, pstsbstp[:σ₂])
-3665
+3661
 
 ````
 
@@ -498,9 +493,9 @@ Linear mixed model fit by maximum likelihood
  -124.20085  248.40170  254.40170  260.68473
 
 Variance components:
-              Column    Variance  Std.Dev. 
- G        (Intercept)  9.6328208 3.1036786
- Residual              0.6780001 0.8234076
+              Column    Variance   Std.Dev. 
+ G        (Intercept)  9.63282135 3.1036787
+ Residual              0.67800006 0.8234076
  Number of obs: 60; levels of grouping factors: 30
 
   Fixed-effects parameters:
@@ -540,7 +535,7 @@ A bootstrap sample
 
 ````julia
 julia> @time psts1bstp = bootstrap(10000, pstsm1);
-  2.722676 seconds (6.08 M allocations: 285.117 MiB, 3.40% gc time)
+  3.810911 seconds (6.16 M allocations: 275.817 MiB, 2.57% gc time)
 
 ````
 
@@ -634,24 +629,24 @@ it is sufficiently diffuse to warrant treating it as if it were a continuous res
 At this point we will fit models that have random effects for student, instructor, and department (or the combination) to these data. In the next chapter we will fit models incorporating fixed-effects for instructor and department to these data.
 
 ````julia
-julia> @time instm = fit!(lmm(@formula(Y ~ 1 + A + (1|G) + (1|H) + (1|I)), dat[:InstEval]))
-  2.632963 seconds (28.59 k allocations: 188.855 MiB, 1.23% gc time)
+julia> @time instm = fit(LinearMixedModel, @formula(Y ~ 1 + A + (1|G) + (1|H) + (1|I)), dat[:InstEval])
+  2.183438 seconds (342.65 k allocations: 200.968 MiB, 1.08% gc time)
 Linear mixed model fit by maximum likelihood
  Formula: Y ~ 1 + A + (1 | G) + (1 | H) + (1 | I)
      logLik        -2 logLik          AIC             BIC       
  -1.18860884×10⁵  2.37721769×10⁵  2.37733769×10⁵  2.37788993×10⁵
 
 Variance components:
-              Column     Variance    Std.Dev.  
- G        (Intercept)  0.1059726808 0.32553445
- H        (Intercept)  0.2652041233 0.51497973
- I        (Intercept)  0.0061677025 0.07853472
- Residual              1.3864886097 1.17749251
+              Column     Variance     Std.Dev.  
+ G        (Intercept)  0.1059725479 0.325534250
+ H        (Intercept)  0.2652049098 0.514980495
+ I        (Intercept)  0.0061678670 0.078535769
+ Residual              1.3864885942 1.177492503
  Number of obs: 73421; levels of grouping factors: 2972, 1128, 14
 
   Fixed-effects parameters:
                Estimate Std.Error  z value P(>|z|)
-(Intercept)     3.28258 0.0284114  115.537  <1e-99
+(Intercept)     3.28258 0.0284116  115.537  <1e-99
 A: 1         -0.0925886 0.0133832 -6.91828  <1e-11
 
 

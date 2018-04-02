@@ -13,19 +13,12 @@ function fixef(m::GeneralizedLinearMixedModel{T}, permuted=true) where T
     r == p ? m.β[iperm] : copy!(fill(-zero(T), p), m.β)[iperm]
 end
 
-"""
-    glmm(f::Formula, fr::ModelFrame, d::Distribution[, l::GLM.Link])
-
-Return a `GeneralizedLinearMixedModel` object.
-
-The value is ready to be `fit!` but has not yet been fit.
-"""
-function glmm(f::Formula, fr::AbstractDataFrame, d::Distribution, l::Link; wt=[], offset=[],
-              contrasts = Dict())
+function GeneralizedLinearMixedModel(f::Formula, fr::AbstractDataFrame,
+         d::Distribution, l::Link; wt=[], offset=[], contrasts = Dict())
     if d == Binomial() && isempty(wt)
         d = Bernoulli()
     end
-    LMM = lmm(f, fr; weights = wt, contrasts=contrasts, rdist=d)
+    LMM = LinearMixedModel(f, fr; weights = wt, contrasts=contrasts, rdist=d)
     X = LMM.trms[end - 1].x
     T = eltype(X)
     y = copy(model_response(LMM))
@@ -44,8 +37,14 @@ function glmm(f::Formula, fr::AbstractDataFrame, d::Distribution, l::Link; wt=[]
     res
 end
 
-glmm(f::Formula, fr::AbstractDataFrame, d::Distribution; wt=[], offset=[], contrasts=Dict()) =
-    glmm(f, fr, d, GLM.canonicallink(d), wt=wt, offset=offset, contrasts=contrasts)
+GeneralizedLinearMixedModel(f::Formula, fr::AbstractDataFrame, d::Distribution; wt=[], offset=[], contrasts=Dict()) =
+        GeneralizedLinearMixedModel(f, fr, d, GLM.canonicallink(d), wt=wt, offset=offset, contrasts=contrasts)
+
+fit(::Type{GeneralizedLinearMixedModel}, f::Formula, fr::AbstractDataFrame, d::Distribution) =
+    fit!(GeneralizedLinearMixedModel(f, fr, d, GLM.canonicallink(d)))
+
+fit(::Type{GeneralizedLinearMixedModel}, f::Formula, fr::AbstractDataFrame, d::Distribution, l::Link) =
+    fit!(GeneralizedLinearMixedModel(f, fr, d, l))
 
 """
     LaplaceDeviance(m::GeneralizedLinearMixedModel{T})::T where T
@@ -217,7 +216,7 @@ function StatsBase.fit!(m::GeneralizedLinearMixedModel{T};
         optsum.lowerbd = vcat(fill!(similar(β), T(-Inf)), optsum.lowerbd)
         optsum.initial = vcat(β, m.θ)
         optsum.final = copy(optsum.initial)
-        optsum.initial_step = vcat(stderr(m) ./ 3, min.(T(0.05), m.θ ./ 4))
+        optsum.initial_step = vcat(StatsBase.stderr(m) ./ 3, min.(T(0.05), m.θ ./ 4))
     end
     setpar! = fast ? setθ! : setβθ!
     feval = 0
