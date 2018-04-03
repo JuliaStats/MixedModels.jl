@@ -6,7 +6,7 @@ if !isdefined(:dat) || !isa(dat, Dict{Symbol, Any})
 end
 
 @testset "Dyestuff" begin
-    fm1 = lmm(@formula(Y ~ 1 + (1|G)), dat[:Dyestuff])
+    fm1 = LinearMixedModel(@formula(Y ~ 1 + (1|G)), dat[:Dyestuff])
 
     @test nblocks(fm1.A) == (3, 3)
     @test size(fm1.trms) == (3, )
@@ -54,7 +54,7 @@ end
 end
 
 @testset "Dyestuff2" begin
-    fm = lmm(@formula(Y ~ 1 + (1 | G)), dat[:Dyestuff2])
+    fm = LinearMixedModel(@formula(Y ~ 1 + (1 | G)), dat[:Dyestuff2])
     @test lowerbd(fm) == zeros(1)
     fit!(fm, true)
     show(IOBuffer(), fm)
@@ -70,7 +70,7 @@ end
 end
 
 @testset "penicillin" begin
-    fm = lmm(@formula(Y ~ 1 + (1 | G) + (1 | H)), dat[:Penicillin]);
+    fm = LinearMixedModel(@formula(Y ~ 1 + (1 | G) + (1 | H)), dat[:Penicillin]);
     @test size(fm) == (144, 1, 30, 2)
     @test getθ(fm) == ones(2)
     @test lowerbd(fm) == zeros(2)
@@ -93,7 +93,7 @@ end
 end
 
 @testset "pastes" begin
-    fm = lmm(@formula(Y ~ (1 | G) + (1 | H)), dat[:Pastes])
+    fm = LinearMixedModel(@formula(Y ~ (1 | G) + (1 | H)), dat[:Pastes])
     @test size(fm) == (60, 1, 40, 2)
     @test getθ(fm) == ones(2)
     @test lowerbd(fm) == zeros(2)
@@ -113,7 +113,7 @@ end
 end
 
 @testset "InstEval" begin
-    fm1 = lmm(@formula(Y ~ 1 + A + (1 | G) + (1 | H) + (1 | I)), dat[:InstEval])
+    fm1 = LinearMixedModel(@formula(Y ~ 1 + A + (1 | G) + (1 | H) + (1 | I)), dat[:InstEval])
     @test size(fm1) == (73421, 2, 4114, 3)
     @test getθ(fm1) == ones(3)
     @test lowerbd(fm1) == zeros(3)
@@ -129,13 +129,13 @@ end
     @test size(resid1) == (73421, )
     @test isapprox(resid1[1], 1.82124, atol=0.00001)
 
-    fm2 = fit!(lmm(@formula(Y ~ 1 + A*I + (1 | G) + (1 | H)), dat[:InstEval]))
+    fm2 = fit!(LinearMixedModel(@formula(Y ~ 1 + A*I + (1 | G) + (1 | H)), dat[:InstEval]))
     @test isapprox(objective(fm2), 237585.5534151694, atol=0.001)
     @test size(fm2) == (73421, 28, 4100, 2)
 end
 
 @testset "sleep" begin
-    fm = lmm(@formula(Y ~ 1 + U + (1 + U | G)), dat[:sleepstudy]);
+    fm = LinearMixedModel(@formula(Y ~ 1 + U + (1 + U | G)), dat[:sleepstudy]);
     @test lowerbd(fm) == [0.0, -Inf, 0.0]
     A11 = fm.A[Block(1,1)]
     @test isa(A11, UniformBlockDiagonal{Float64})
@@ -179,7 +179,7 @@ end
 
     simulate!(fm)  # to test one of the unscaledre methods
 
-    fmnc = lmm(@formula(Y ~ 1 + U + (1|G) + (0+U|G)), dat[:sleepstudy])
+    fmnc = LinearMixedModel(@formula(Y ~ 1 + U + (1|G) + (0+U|G)), dat[:sleepstudy])
     @test size(fmnc) == (180,2,36,1)
     @test getθ(fmnc) == ones(2)
     @test lowerbd(fmnc) == zeros(2)
@@ -199,13 +199,13 @@ end
 
     MixedModels.lrt(fm, fmnc)
 
-    fmrs = fit!(lmm(@formula(Y ~ 1 + U + (0 + U|G)), dat[:sleepstudy]))
+    fmrs = fit!(LinearMixedModel(@formula(Y ~ 1 + U + (0 + U|G)), dat[:sleepstudy]))
     @test isapprox(objective(fmrs), 1774.080315280528, rtol=0.00001)
     @test isapprox(getθ(fmrs), [0.24353985679033105], rtol=0.00001)   
 end
 
 @testset "d3" begin
-    fm = updateL!(lmm(@formula(Y ~ 1 + U + (1+U|G) + (1+U|H) + (1+U|I)), dat[:d3]));
+    fm = updateL!(LinearMixedModel(@formula(Y ~ 1 + U + (1+U|G) + (1+U|H) + (1+U|I)), dat[:d3]));
     @test isapprox(pwrss(fm), 5.1261847180180885e6, rtol = 1e-6)
     @test isapprox(logdet(fm), 52718.0137366602, rtol = 1e-6)
     @test isapprox(objective(fm), 901641.2930413672, rtol = 1e-6)
@@ -216,7 +216,7 @@ end
 
 @testset "simulate!" begin
     @test MixedModels.stddevcor(cholfact!(eye(3))) == (ones(3), eye(3))
-    fm = fit!(lmm(@formula(Y ~ 1 + (1 | G)), dat[:Dyestuff]))
+    fm = fit!(LinearMixedModel(@formula(Y ~ 1 + (1 | G)), dat[:Dyestuff]))
     refit!(simulate!(MersenneTwister(1234321), fm))
     @test isapprox(deviance(fm), 339.0218639362958, atol=0.001)
     refit!(fm, dat[:Dyestuff][:Y])

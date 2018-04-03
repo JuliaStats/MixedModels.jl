@@ -1,9 +1,9 @@
 # Model constructors
 
-The `lmm` function creates a linear mixed-effects model representation from a `Formula` and an appropriate `data` type.
-At present the data type must be a `DataFrame` but this is expected to change.
+The `LinearMixedModel` type represents a linear mixed-effects model.
+Typically it is constructed from a `Formula` and an appropriate `data` type, usually a `DataFrame`.
 ```@docs
-lmm
+LinearMixedModel
 ```
 
 ## Examples of linear mixed-effects model fits
@@ -28,14 +28,14 @@ Categorical covariates not suitable as grouping factors are named starting with 
 The formula language in *Julia* is similar to that in *R* except that the formula must be enclosed in a call to the `@formula` macro.
 A basic model with simple, scalar random effects for the levels of `G` (the batch of an intermediate product, in this case) is declared and fit as
 ```{julia;term=true}
-fm1 = fit!(lmm(@formula(Y ~ 1 + (1|G)), dat[:Dyestuff]))
+fm1 = fit(LinearMixedModel, @formula(Y ~ 1 + (1|G)), dat[:Dyestuff])
 ```
 
 (If you are new to Julia you may find that this first fit takes an unexpectedly long time, due to Just-In-Time (JIT) compilation of the code.
 The second and subsequent calls to such functions are much faster.)
 
 ```{julia;term=true}
-@time fit!(lmm(@formula(Y ~ 1 + (1|G)), dat[:Dyestuff2]))
+@time fit(LinearMixedModel, @formula(Y ~ 1 + (1|G)), dat[:Dyestuff2])
 ```
 
 ### Simple, scalar random effects
@@ -54,12 +54,12 @@ It corresponds to a shift in the intercept for each level of the grouping factor
 The *sleepstudy* data are observations of reaction time, `Y`, on several subjects, `G`, after 0 to 9 days of sleep deprivation, `U`.
 A model with random intercepts and random slopes for each subject, allowing for within-subject correlation of the slope and intercept, is fit as
 ```{julia;term=true}
-fm2 = fit!(lmm(@formula(Y ~ 1 + U + (1+U|G)), dat[:sleepstudy]))
+fm2 = fit(LinearMixedModel, @formula(Y ~ 1 + U + (1+U|G)), dat[:sleepstudy])
 ```
 
 A model with uncorrelated random effects for the intercept and slope by subject is fit as
 ```{julia;term=true}
-fm3 = fit!(lmm(@formula(Y ~ 1 + U + (1|G) + (0+U|G)), dat[:sleepstudy]))
+fm3 = fit(LinearMixedModel, @formula(Y ~ 1 + U + (1|G) + (0+U|G)), dat[:sleepstudy])
 ```
 
 Although technically there are two random-effects *terms* in the formula for *fm3* both have the same grouping factor
@@ -70,33 +70,33 @@ and, internally, are amalgamated into a single vector-valued term.
 A model for the *Penicillin* data incorporates random effects for the plate, `G`, and for the sample, `H`.
 As every sample is used on every plate these two factors are *crossed*.
 ```{julia;term=true}
-fm4 = fit!(lmm(@formula(Y ~ 1 + (1|G) + (1|H)), dat[:Penicillin]))
+fm4 = fit(LinearMixedModel, @formula(Y ~ 1 + (1|G) + (1|H)), dat[:Penicillin])
 ```
 
 In contrast the sample, `G`, grouping factor is *nested* within the batch, `H`, grouping factor in the *Pastes* data.
 That is, each level of `G` occurs in conjunction with only one level of `H`.
 ```{julia;term=true}
-fm5 = fit!(lmm(@formula(Y ~ 1 + (1|G) + (1|H)), dat[:Pastes]))
+fm5 = fit(LinearMixedModel, @formula(Y ~ 1 + (1|G) + (1|H)), dat[:Pastes])
 ```
 
 In observational studies it is common to encounter *partially crossed* grouping factors.
 For example, the *InstEval* data are course evaluations by students, `G`, of instructors, `H`.
 Additional covariates include the academic department, `I`, in which the course was given and `A`, whether or not it was a service course.
 ```{julia;term=true}
-fm6 = fit!(lmm(@formula(Y ~ 1 + A * I + (1|G) + (1|H)), dat[:InstEval]))
+fm6 = fit(LinearMixedModel, @formula(Y ~ 1 + A * I + (1|G) + (1|H)), dat[:InstEval])
 ```
 
 ## Fitting generalized linear mixed models
 
-To create a GLMM using
+To create a GLMM representation
 ```@docs
-glmm
+GeneralizedLinearMixedModel
 ```
 the distribution family for the response, and possibly the link function, must be specified.
 
 ```{julia;term=true}
-gm1 = fit!(glmm(@formula(r2 ~ 1 + a + g + b + s + m + (1|id) + (1|item)), dat[:VerbAgg],
-    Bernoulli()))
+gm1 = fit(GeneralizedLinearMixedModel, @formula(r2 ~ 1 + a + g + b + s + m + (1|id) + (1|item)),
+    dat[:VerbAgg], Bernoulli())
 ```
 
 The canonical link, which is `GLM.LogitLink` for the `Bernoulli` distribution, is used if no explicit link is specified.
@@ -179,8 +179,8 @@ The standard errors are the square roots of the diagonal elements of the estimat
 stderr
 ```
 ```{julia;term=true}
-show(stderr(fm2))
-show(stderr(gm1))
+show(StatsBase.stderr(fm2))
+show(StatsBase.stderr(gm1))
 ```
 
 Finally, the `coeftable` generic produces a table of coefficient estimates, their standard errors, and their ratio.

@@ -69,9 +69,9 @@ The data are described in Davies (), the fourth edition of the book mentioned ab
 
 First attach the packages to be used
 ```{julia;term=true}
-using DataFrames, Distributions, Gadfly, GLM, MixedModels, RData
+using DataFrames, Distributions, Gadfly, GLM, MixedModels, RData, RCall
 ```
-and allow for unqualified names for some graphics functions.
+and allow for unqualified names for some graphics functions
 ```{julia;term=true}
 using Gadfly.Geom: point, line, histogram, density, vline
 using Gadfly.Guide: xlabel, ylabel, yticks
@@ -84,11 +84,11 @@ Access the `Dyestuff` data
 ```{julia;term=true}
 const dat = convert(Dict{Symbol,DataFrame}, load(Pkg.dir("MixedModels", "test", "dat.rda")));
 dyestuff = dat[:Dyestuff];
-dump(dyestuff)
+describe(dyestuff)
 ```
 and plot it
 ```{julia;echo=false;fig_cap="Yield versus Batch for the Dyestuff data"; fig_width=8;}
-plot(dyestuff, x = "Y", y = "G", point, xlabel("Yield of dyestuff (g)"), ylabel("Batch"))
+plot(dyestuff, x = :Y, y = :G, point, xlabel("Yield of dyestuff (g)"), ylabel("Batch"))
 ```
 
 In the dotplot we can see that there is considerable variability in yield, even for preparations from the same batch, but there is also noticeable batch-to-batch variability.
@@ -99,11 +99,9 @@ In a plot, however, the order of the levels influences the perception of the pat
 Rather than providing an arbitrary pattern it is best to order the levels according to some criterion for the plot.
 In this case a good choice is to order the batches by increasing mean yield, which can be easily done in R.
 
-(Note: at present this plot fails because of the ongoing DataFrames conversion.)
-
 ```{julia;term=true}
-#dyestuff = rcopy("within(Dyestuff, Batch <- reorder(Batch, Yield, mean))");
-#plot(dyestuff, x="Y", y="G", point, xlabel("Yield of dyestuff (g)"))
+dyestuffR = rcopy(R"within(lme4::Dyestuff, Batch <- reorder(Batch, Yield, mean))");
+plot(dyestuffR, x = :Yield, y = :Batch, point, xlabel("Yield of dyestuff (g)"), ylabel("Batch"))
 ```
 
 In Sect. [sec:DyestuffLMM] we will use mixed models to quantify the variability in yield between batches.
@@ -122,11 +120,11 @@ The data are simulated data presented in Box and Tiao (1973), where the authors 
 The structure and summary are intentionally similar to those of the `Dyestuff` data.
 ```{julia;term=true}
 dyestuff2 = dat[:Dyestuff2];
-dump(dyestuff2)
+describe(dyestuff2)
 ```
 As can be seen in a data plot
 ```{julia;echo=false;fig_width=8}
-plot(dyestuff2, x = "Y", y = "G", point, xlabel("Simulated response"), ylabel(""))
+plot(dyestuff2, x = :Y, y = :G, point, xlabel("Simulated response"), ylabel(""))
 ```
 the batch-to-batch variability in these data is small compared to the within-batch variability.
 In some approaches to mixed models it can be difficult to fit models to such data.
@@ -144,7 +142,7 @@ The structure of the formula will be explained after showing the example.
 
 A model allowing for an overall level of the `Yield` and for an additive random effect for each level of `Batch` can be fit as
 ```{julia;term=true}
-mm1 = fit!(lmm(@formula(Y ~ 1 + (1 | G)), dyestuff))
+mm1 = fit(LinearMixedModel, @formula(Y ~ 1 + (1 | G)), dyestuff)
 ```
 
 As shown in the summary of the model fit, the default estimation criterion is maximum likelihood.
@@ -187,7 +185,7 @@ The standard error of the intercept estimate is 17.69 g.
 Fitting a similar model to the `dyestuff2` data produces an estimate $\widehat{\sigma_1^2}=0$.
 
 ```{julia;term=true}
-mm2 = fit!(lmm(@formula(Y ~ 1 + (1 | G)), dyestuff2))
+mm2 = fit(LinearMixedModel, @formula(Y ~ 1 + (1 | G)), dyestuff2)
 ```
 
 An estimate of `0` for $\sigma_1$ does not mean that there is no variation between the groups.
@@ -335,7 +333,7 @@ For a linear mixed model, where all the conditional and unconditional distributi
 The optional second argument, `verbose`, in a call to `fit!` of a `LinearMixedModel` object produces output showing the progress of the iterative optimization of $\tilde{d}(\bf\theta|\bf y)$.
 
 ```{julia;term=true}
-mm1 = fit!(lmm(@formula(Y ~ 1 + (1 | G)), dyestuff), true);
+mm1 = fit!(LinearMixedModel(@formula(Y ~ 1 + (1 | G)), dyestuff), true);
 ```
 
 The algorithm converges after 18 function evaluations to a profiled deviance of 327.32706 at $\theta=0.752581$. In this model the parameter $\theta$ is of length 1, the single element being the ratio $\sigma_1/\sigma$.
@@ -349,7 +347,7 @@ mm1.optsum
 The full list of fields in a `LinearMixedModel` object is
 
 ```{julia;term=true}
-fieldnames(LinearMixedModel)
+showcompact(fieldnames(LinearMixedModel))
 ```
 
 The `formula` field is a copy of the model formula
@@ -520,12 +518,12 @@ First set the random number seed for reproducibility.
 
 ```{julia;term=true}
 srand(1234321);
-mm1bstp = bootstrap(10000, mm1);
+mm1bstp = bootstrap(100000, mm1);
 size(mm1bstp)
 ```
 
 ```{julia;term=true}
-show(names(mm1bstp))
+showcompact(names(mm1bstp))
 ```
 
 #### Histograms, kernel density plots and quantile-quantile plots
@@ -539,15 +537,15 @@ Finally, the extent to which the distribution of a sample can be approximated by
 The [`Gadfly`](https://github.com/GiovineItalia/Gadfly.jl) package for Julia uses a "grammar of graphics" specification, similar to the [`ggplot2`](http://ggplot2.org/) package for R.  A histogram or a kernel density plot are describes as *geometries* and specified by `Geom.histogram` and `Geom.density`, respectively.
 
 ```{julia;term=true}
-plot(mm1bstp, x = :β₁, Geom.histogram)
+plot(mm1bstp, x = :β₁, histogram)
 ```
 
 ```{julia;term=true}
-plot(mm1bstp, x = :σ, Geom.histogram)
+plot(mm1bstp, x = :σ, histogram)
 ```
 
 ```{julia;term=true}
-plot(mm1bstp, x = :σ₁, Geom.histogram)
+plot(mm1bstp, x = :σ₁, histogram)
 ```
 
 The last two histograms show that, even if the models are defined in terms of variances, the variance is usually not a good scale on which to assess the variability of the parameter estimates.  The standard deviation or, in some cases, the logarithm of the standard deviation is a more suitable scale.
@@ -561,7 +559,7 @@ length(mm1bstp[:θ₁]) - countnz(mm1bstp[:θ₁])
 That is, nearly 1/10 of the `theta1` values are zeros.  Because such a spike or pulse will be spread out or diffused in a kernel density plot,
 
 ```{julia;term=true}
-plot(mm1bstp, x = :θ₁, Geom.density)
+plot(mm1bstp, density, x = :θ₁)
 ```
 
 such a plot is not suitable for a sample of a bounded parameter that includes values on the boundary.
@@ -569,11 +567,11 @@ such a plot is not suitable for a sample of a bounded parameter that includes va
 The density of the estimates of the other two parameters, $\beta_1$ and $\sigma$, are depicted well in kernel density plots.
 
 ```{julia;term=true}
-plot(mm1bstp, x = :β₁, Geom.density)
+plot(mm1bstp, density, x = :β₁)
 ```
 
 ```{julia;term=true}
-plot(mm1bstp, x = :σ, Geom.density)
+plot(mm1bstp, density, x = :σ)
 ```
 
 The standard approach of summarizing a sample by its mean and standard deviation, or of constructing a confidence interval using the sample mean, the standard error of the mean and quantiles of a *t* or normal distribution, are based on the assumption that the sample is approximately normal (also called Gaussian) in shape.  A *normal probability plot*, which plots sample quantiles versus quantiles of the standard normal distribution, $\mathcal{N}(0,1)$, can be used to assess the validity of this assumption.  If the points fall approximately along a straight line, the assumption of normality should be valid.  Systematic departures from a straight line are cause for concern.
@@ -597,34 +595,34 @@ The kernel density estimate of $\sigma$ is more symmetric
 
 ```{julia;echo=false;fig_width=8}
 zquantiles = quantile(Normal(), ppt250);
-plot(x = zquantiles, y = quantile(mm1bstp[:β₁], ppt250), Geom.line,
-    Guide.xlabel("Standard Normal Quantiles"), Guide.ylabel("β₁"))
+plot(x = zquantiles, y = quantile(mm1bstp[:β₁], ppt250), line)
+#    Guide.xlabel("Standard Normal Quantiles"), Guide.ylabel("β₁"))
 ```
 
 and the normal probability plot of $\sigma$ is also reasonably straight.
 
 ```{julia;echo=false;fig_width=8}
-plot(x = zquantiles, y = quantile(mm1bstp[:σ], ppt250), Geom.line,
-    Guide.xlabel("Standard Normal quantiles"), Guide.ylabel("σ"))
+plot(x = zquantiles, y = quantile(mm1bstp[:σ], ppt250), line,
+     xlabel("Standard Normal quantiles"), ylabel("σ"))
 ```
 
 The normal probability plot of $\sigma_1$ has a flat section at $\sigma_1 = 0$.
 
 ```{julia;echo=false;fig_width=8}
-plot(x = zquantiles, y = quantile(mm1bstp[:σ₁], ppt250), Geom.line,
-    Guide.xlabel("Standard Normal Quantiles"), Guide.ylabel("σ₁"))
+plot(x = zquantiles, y = quantile(mm1bstp[:σ₁], ppt250), line,
+     xlabel("Standard Normal Quantiles"), ylabel("σ₁"))
 ```
 
 In terms of the variances, $\sigma^2$ and $\sigma_1^2$, the normal probability plots are
 
 ```{julia;echo=false}
-plot(x = zquantiles, y = quantile(abs2.(mm1bstp[:σ]), ppt250), Geom.line,
-    Guide.xlabel("Standard Normal quantiles"), Guide.ylabel("σ²"))
+plot(x = zquantiles, y = quantile(abs2.(mm1bstp[:σ]), ppt250), line,
+     xlabel("Standard Normal quantiles"), ylabel("σ²"))
 ```
 
 ```{julia;echo=false}
-plot(x = zquantiles, y = quantile(abs2.(mm1bstp[:σ₁]), ppt250), Geom.line,
-    Guide.xlabel("Standard Normal Quantiles"), Guide.ylabel("σ₁²"))
+plot(x = zquantiles, y = quantile(abs2.(mm1bstp[:σ₁]), ppt250), line,
+     xlabel("Standard Normal Quantiles"), ylabel("σ₁²"))
 ```
 
 ### Confidence intervals based on bootstrap samples
@@ -741,7 +739,7 @@ The empirical cumulative distribution function (ecdf) of a sample maps the range
 plot(layer(x = quantile(mm1bstp[:σ₁], ppt250), y = ppt250, line),
      layer(xintercept = quantile(mm1bstp[:σ₁], [0.1, 0.9]), vline(color = colorant"orange")),
      layer(xintercept = hpdinterval(mm1bstp[:σ₁], 0.8), vline(color=colorant"red")),
-     ylabel(""), Guide.xlabel("σ₁"), yticks(ticks=[0.0, 0.1, 0.9, 1.0])
+     ylabel(""), xlabel("σ₁"), yticks(ticks=[0.0, 0.1, 0.9, 1.0])
 )
 ```
 

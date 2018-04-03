@@ -58,28 +58,8 @@ function LinearMixedModel(f, trms, wts)
     LinearMixedModel(f, trms, sqrtwts, A, LowerTriangular(L), optsum)
 end
 
-model_response(mf::ModelFrame, d::Distribution=Normal()) =
-    model_response(mf.df[mf.terms.eterms[1]], d)
-
-model_response(v::AbstractVector, d::Distribution) = Vector{partype(d)}(v)
-
-function model_response(v::CategoricalVector, d::Bernoulli)
-    levs = levels(v)
-    nlevs = length(levs)
-    @argcheck(nlevs ≤ 2)
-    nlevs < 2 ? zeros(v, partype(d)) : partype(d)[cv == levs[2] for cv in v]
-end
-
-"""
-    lmm(f::DataFrames.Formula, fr::DataFrames.DataFrame; weights = [], contrasts = Dict())
-
-Create a `LinearMixedModel` from `f`, a formula that contains both fixed-effects terms
-and random effects, and `fr`.
-
-The return value is ready to be `fit!` but has not yet been fit.
-"""
-function lmm(f::Formula, fr::AbstractDataFrame;
-             weights::Vector = [], contrasts=Dict(), rdist::Distribution=Normal())
+function LinearMixedModel(f::Formula, fr::AbstractDataFrame;
+    weights::Vector = [], contrasts=Dict(), rdist::Distribution=Normal())
     mf = ModelFrame(f, fr, contrasts=contrasts)
     X = ModelMatrix(mf).m
     n = size(X, 1)
@@ -117,7 +97,7 @@ function lmm(f::Formula, fr::AbstractDataFrame;
             push!(trms,
                   length(coefnms) == 1 ? ScalarFactorReTerm(gr, m, m, grp, coefnms, one(T)) :
                   VectorFactorReTerm(gr, transpose(reshape(m, (n, sum(trsize)))), grp,
-                  coefnms,  trsize))
+                      coefnms,  trsize))
         end
     end
     sort!(trms, by = nrandomeff, rev = true)
@@ -126,6 +106,18 @@ function lmm(f::Formula, fr::AbstractDataFrame;
     LinearMixedModel(f, trms, oftype(y, weights))
 end
 
+model_response(mf::ModelFrame, d::Distribution) = model_response(mf.df[mf.terms.eterms[1]], d)
+
+model_response(v::AbstractVector, d::Distribution) = Vector{partype(d)}(v)
+
+function model_response(v::CategoricalVector, d::Bernoulli)
+    levs = levels(v)
+    nlevs = length(levs)
+    @argcheck(nlevs ≤ 2)
+    nlevs < 2 ? zeros(v, partype(d)) : partype(d)[cv == levs[2] for cv in v]
+end
+
+fit(::Type{LinearMixedModel}, f::Formula, fr::AbstractDataFrame) = fit!(LinearMixedModel(f, fr))
 """
     updateL!(m::LinearMixedModel)
 
@@ -205,6 +197,8 @@ function StatsBase.fit!(m::LinearMixedModel{T}, verbose::Bool=false) where T
     end
     m
 end
+
+fitlmm(f::Formula, fr::AbstractDataFrame) = fit!(lmm(f, fr))
 
 function fitted!(v::AbstractArray{T}, m::LinearMixedModel{T}) where T
     ## FIXME: Create and use `effects(m) -> β, b` w/o calculating β twice

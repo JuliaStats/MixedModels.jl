@@ -34,7 +34,7 @@ fixefnames(m::MixedModel) = lmm(m).trms[end - 1].cnames
 
 function StatsBase.coeftable(m::MixedModel)
     co = coef(m)
-    se = stderr(m)
+    se = StatsBase.stderr(m)
     z = co ./ se
     pvalue = ccdf.(Chisq(1), abs2.(z))
     CoefTable(hcat(co, se, z, pvalue), ["Estimate", "Std.Error", "z value", "P(>|z|)"],
