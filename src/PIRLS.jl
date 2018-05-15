@@ -216,7 +216,7 @@ function StatsBase.fit!(m::GeneralizedLinearMixedModel{T};
         optsum.lowerbd = vcat(fill!(similar(β), T(-Inf)), optsum.lowerbd)
         optsum.initial = vcat(β, m.θ)
         optsum.final = copy(optsum.initial)
-        optsum.initial_step = vcat(StatsBase.stderr(m) ./ 3, min.(T(0.05), m.θ ./ 4))
+        optsum.initial_step = vcat(StatsBase.stderror(m) ./ 3, min.(T(0.05), m.θ ./ 4))
     end
     setpar! = fast ? setθ! : setβθ!
     feval = 0

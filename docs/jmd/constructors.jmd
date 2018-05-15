@@ -176,11 +176,11 @@ vcov(gm1)
 
 The standard errors are the square roots of the diagonal elements of the estimated variance-covariance matrix of the fixed-effects coefficient estimators.
 ```@docs
-stderr
+stderror
 ```
 ```{julia;term=true}
-show(StatsBase.stderr(fm2))
-show(StatsBase.stderr(gm1))
+show(StatsBase.stderror(fm2))
+show(StatsBase.stderror(gm1))
 ```
 
 Finally, the `coeftable` generic produces a table of coefficient estimates, their standard errors, and their ratio.

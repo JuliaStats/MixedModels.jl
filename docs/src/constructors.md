@@ -458,12 +458,12 @@ julia> vcov(gm1)
 
 The standard errors are the square roots of the diagonal elements of the estimated variance-covariance matrix of the fixed-effects coefficient estimators.
 ```@docs
-stderr
+stderror
 ```
 ````julia
-julia> show(StatsBase.stderr(fm2))
+julia> show(StatsBase.stderror(fm2))
 [6.63226, 1.50224]
-julia> show(StatsBase.stderr(gm1))
+julia> show(StatsBase.stderror(gm1))
 [0.385354, 0.0167526, 0.191204, 0.184146, 0.186504, 0.151184, 0.150997]
 ````
 

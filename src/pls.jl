@@ -87,7 +87,7 @@ function LinearMixedModel(f::Formula, fr::AbstractDataFrame;
                     push!(coefnms, "(Intercept)")
                     push!(trsize, 1)
                 else
-                    fr = ModelFrame(Formula(nothing, l), mf.df)
+                    fr = ModelFrame(@eval(@formula($nothing ~ $l)), mf.df)
                     append!(m, ModelMatrix(fr).m)
                     cnms = coefnames(fr)
                     append!(coefnms, cnms)
