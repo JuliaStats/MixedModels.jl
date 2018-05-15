@@ -12,7 +12,7 @@ import Base: cor, convert, eltype, full, logdet, std
 import Compat.LinearAlgebra: A_mul_B!, A_mul_Bc!, Ac_mul_B!, A_ldiv_B!, Ac_ldiv_B!, A_rdiv_B!, A_rdiv_Bc!, cond
 import NLopt: Opt
 import StatsBase: coef, coeftable, dof, deviance, fit, fit!, fitted, loglikelihood,
-    model_response, nobs, predict, stderr, vcov
+    model_response, nobs, predict, stderror, vcov
 
 export
        @formula,

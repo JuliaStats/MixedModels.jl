@@ -72,7 +72,7 @@ const mods = Dict{Symbol,Vector{Expr}}(
     :star => []                   # not sure it is worthwhile working with these data
     );
 
-fitbobyqa(rhs::Expr, dsname::Symbol) = fit(LinearMixedModel, Formula(:Y, rhs), dat[dsname])
+fitbobyqa(rhs::Expr, dsname::Symbol) = fit(LinearMixedModel, @eval(@formula(Y ~ $rhs)), dat[dsname])
 compactstr(ds,rhs) = replace(string(ds, ':', rhs), ' ', "")
 
 SUITE["simplescalar"] = BenchmarkGroup(["single", "simple", "scalar"])

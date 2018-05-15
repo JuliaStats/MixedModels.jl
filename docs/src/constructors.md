@@ -80,7 +80,7 @@ The second and subsequent calls to such functions are much faster.)
 
 ````julia
 julia> @time fit(LinearMixedModel, @formula(Y ~ 1 + (1|G)), dat[:Dyestuff2])
-  0.000789 seconds (1.34 k allocations: 71.859 KiB)
+  0.001232 seconds (1.26 k allocations: 74.123 KiB)
 Linear mixed model fit by maximum likelihood
  Formula: Y ~ 1 + (1 | G)
    logLik   -2 logLik     AIC        BIC    
@@ -236,7 +236,7 @@ Additional covariates include the academic department, `I`, in which the course 
 ````julia
 julia> fm6 = fit(LinearMixedModel, @formula(Y ~ 1 + A * I + (1|G) + (1|H)), dat[:InstEval])
 Linear mixed model fit by maximum likelihood
- Formula: Y ~ 1 + A * I + (1 | G) + (1 | H)
+ Formula: Y ~ 1 + A + I + A & I + (1 | G) + (1 | H)
      logLik        -2 logLik          AIC             BIC       
  -1.18792777×10⁵  2.37585553×10⁵  2.37647553×10⁵  2.37932876×10⁵
 
@@ -458,12 +458,12 @@ julia> vcov(gm1)
 
 The standard errors are the square roots of the diagonal elements of the estimated variance-covariance matrix of the fixed-effects coefficient estimators.
 ```@docs
-stderr
+stderror
 ```
 ````julia
-julia> show(StatsBase.stderr(fm2))
+julia> show(StatsBase.stderror(fm2))
 [6.63226, 1.50224]
-julia> show(StatsBase.stderr(gm1))
+julia> show(StatsBase.stderror(gm1))
 [0.385354, 0.0167526, 0.191204, 0.184146, 0.186504, 0.151184, 0.150997]
 ````
 
