@@ -195,7 +195,7 @@ A bootstrap simulation of the model
 
 ````julia
 julia> @time penmbstp = bootstrap(10000, penm);
- 13.519157 seconds (17.92 M allocations: 816.905 MiB, 5.69% gc time)
+ 13.155906 seconds (16.06 M allocations: 786.972 MiB, 2.41% gc time)
 
 ````
 
@@ -394,7 +394,7 @@ confirm this impression in that all the prediction intervals for the random effe
 julia> srand(4321234);
 
 julia> @time pstsbstp = bootstrap(10000, pstsm);
-  9.520945 seconds (13.85 M allocations: 659.111 MiB, 2.39% gc time)
+  9.528515 seconds (12.30 M allocations: 635.462 MiB, 2.33% gc time)
 
 ````
 
@@ -535,7 +535,7 @@ A bootstrap sample
 
 ````julia
 julia> @time psts1bstp = bootstrap(10000, pstsm1);
-  3.810911 seconds (6.16 M allocations: 275.817 MiB, 2.57% gc time)
+  3.816650 seconds (5.36 M allocations: 263.656 MiB, 3.11% gc time)
 
 ````
 
@@ -630,7 +630,7 @@ At this point we will fit models that have random effects for student, instructo
 
 ````julia
 julia> @time instm = fit(LinearMixedModel, @formula(Y ~ 1 + A + (1|G) + (1|H) + (1|I)), dat[:InstEval])
-  2.183438 seconds (342.65 k allocations: 200.968 MiB, 1.08% gc time)
+  2.366413 seconds (155.16 k allocations: 197.943 MiB, 1.60% gc time)
 Linear mixed model fit by maximum likelihood
  Formula: Y ~ 1 + A + (1 | G) + (1 | H) + (1 | I)
      logLik        -2 logLik          AIC             BIC       

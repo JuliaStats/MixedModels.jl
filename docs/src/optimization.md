@@ -772,7 +772,7 @@ As one would hope, given the name of the option, this fit is comparatively fast.
 ````julia
 julia> @time(fit!(GeneralizedLinearMixedModel(@formula(r2 ~ 1 + a + g + b + s + (1 | id) + (1 | item)), 
         dat[:VerbAgg], Bernoulli()), fast=true))
-  0.410434 seconds (87.56 k allocations: 10.268 MiB, 36.42% gc time)
+  0.267392 seconds (43.78 k allocations: 8.827 MiB, 3.74% gc time)
 Generalized Linear Mixed Model fit by minimizing the Laplace approximation to the deviance
   Formula: r2 ~ 1 + a + g + b + s + (1 | id) + (1 | item)
   Distribution: Distributions.Bernoulli{Float64}
@@ -1670,7 +1670,7 @@ f_821: 8151.39996 [0.0574498, -1.05229, -1.05935, 0.320877, -2.10547, 0.197165, 
 f_822: 8151.39995 [0.0574517, -1.05229, -1.05928, 0.320894, -2.10545, 0.197081, 1.3397, 0.495241]
 f_823: 8151.39995 [0.0574503, -1.0523, -1.05922, 0.320991, -2.10546, 0.197084, 1.33971, 0.495215]
 f_824: 8151.39995 [0.0574533, -1.05231, -1.0592, 0.321, -2.10545, 0.197008, 1.33973, 0.4952]
-  6.818758 seconds (1.48 M allocations: 94.632 MiB, 0.53% gc time)
+  5.875655 seconds (1.44 M allocations: 93.282 MiB, 0.45% gc time)
 Generalized Linear Mixed Model fit by minimizing the Laplace approximation to the deviance
   Formula: r2 ~ 1 + a + g + b + s + (1 | id) + (1 | item)
   Distribution: Distributions.Bernoulli{Float64}
