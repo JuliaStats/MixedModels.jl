@@ -4,9 +4,10 @@ module MixedModels
 
 using ArgCheck, BlockArrays, CategoricalArrays, Compat, DataFrames, Distributions
 using GLM, NLopt, Showoff, StaticArrays, StatsBase, StatsModels
-using StatsFuns: log2π
+using StatsFuns: log2π, sqrt2
 using NamedArrays: NamedArray, setnames!
 using Compat.LinearAlgebra: BlasFloat, BlasReal, HermOrSym, PosDefException, checksquare, copytri!
+using GaussQuadrature: hermite
 
 import Base: cor, convert, eltype, full, logdet, std
 import Compat.LinearAlgebra: A_mul_B!, A_mul_Bc!, Ac_mul_B!, A_ldiv_B!, Ac_ldiv_B!, A_rdiv_B!, A_rdiv_Bc!, cond
