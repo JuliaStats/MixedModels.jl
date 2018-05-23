@@ -4,10 +4,10 @@ module MixedModels
 
 using ArgCheck, BlockArrays, CategoricalArrays, Compat, DataFrames, Distributions
 using GLM, NLopt, Showoff, StaticArrays, StatsBase, StatsModels
-using StatsFuns: log2π, sqrt2
-using NamedArrays: NamedArray, setnames!
 using Compat.LinearAlgebra: BlasFloat, BlasReal, HermOrSym, PosDefException, checksquare, copytri!
 using GaussQuadrature: hermite
+using NamedArrays: NamedArray, setnames!
+using StatsFuns: log2π, sqrt2π
 
 import Base: cor, convert, eltype, full, logdet, std
 import Compat.LinearAlgebra: A_mul_B!, A_mul_Bc!, Ac_mul_B!, A_ldiv_B!, Ac_ldiv_B!, A_rdiv_B!, A_rdiv_Bc!, cond
@@ -56,6 +56,7 @@ export
        fnames,
        getΛ,
        getθ,
+       GHnorm,
        glmm,       # define a GeneralizedLinearMixedModel
        LaplaceDeviance, # Laplace approximation to GLMM deviance
        lmm,        # create a LinearMixedModel from a formula/data specification
@@ -93,6 +94,7 @@ include("pls.jl")
 include("simulate.jl")
 include("PIRLS.jl")
 include("mixedmodel.jl")
+include("gausshermite.jl")
 include("deprecates.jl")
 
 end # module
