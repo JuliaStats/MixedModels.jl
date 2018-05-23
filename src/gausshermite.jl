@@ -49,6 +49,37 @@ end
 GHnorm(k) = GHnorm(Int(k))
 
 #=
+steps:
+1. ensure that the conditional standard deviations of the random effects are being evalated correctly
+2. for each value of u, just need to call updateμ! to get the deviance residuals
+3. Is it necessary to sum the deviance residuals for each level of the factor separately? Related to separation of integrals?
+=#
+#=
+    // function used below in glmerAGQ
+    //
+    // fac: mapped integer vector indicating the factor levels
+    // u: current conditional modes
+    // devRes: current deviance residuals (i.e. similar to results of 
+    // family()$dev.resid, but computed in glmFamily.cpp)
+    static Ar1 devcCol(const MiVec& fac, const Ar1& u, const Ar1& devRes) {
+        Ar1  ans(u.square());
+        for (int i = 0; i < devRes.size(); ++i) ans[fac[i] - 1] += devRes[i];
+        // return: vector the size of u (i.e. length = number of
+        // grouping factor levels), containing the squared conditional
+        // modes plus the sum of the deviance residuals associated
+        // with each level
+        return ans;
+    }
+=#
+function devcCol!(u::Vector{T}, devRes::Vector{T}, refs::Vector{<:Integer}) where T <: AbstractFloat
+    map!(abs2, u, u)
+    for i in eachindex(refs,devRes)
+        ans[refs[i]] += devRes[i]
+    end
+    u
+end
+#=
+
         pwrssUpdate(rp, pp, true, tol, maxit, verb); // should be a
                                                      // no-op
 
@@ -61,7 +92,30 @@ GHnorm(k) = GHnorm(Int(k))
         if (pp->L().factor()->nzmax !=  q)
             throw std::invalid_argument("AGQ only defined for a single scalar random-effects term");
         const Ar1         sd(MAr1((double*)pp->L().factor()->x, q).inverse());
-
+=#
+function AGQDeviance(m::GeneralizedLinearMixedModel, quad::GaussHermiteNormalized{K}) where {K}
+    length(m.u) == 1 && size(m.u[1], 1) == 1 || throw(ArgumentError("m must have only one scalar random effects term"))
+    trm1 = m.LMM.trms[1]
+    isa(trm1, ScalarFactorReTerm) || throw(ArgumentError("first term in m must be a ScalarFactorReTerm"))
+    u = vec(m.u[1])
+    u₀ = vec(m.u₀[1])
+    Compat.copyto!(u₀, u)
+    devresid = m.resp.devresid
+    refs = trm1.f.refs
+    devc0 = devcCol!(copy(u), devresid, refs)
+    sd = inv.(m.LMM.L.data[Block(1,1)].diag)
+    mult = zeros(sd)
+    for (z, wt, ldens) in zip(quad.z, quad.wt, quad.lognormaldens)
+        if iszero(z)
+            mult .+= wt
+        else
+            u .= u₀ .+ z .* sd
+            updateη!(m)
+        end
+    end
+    mult
+end
+#=
         const MMat     GQmat(as<MMat>(GQmat_));
         Ar1             mult(q);
 
