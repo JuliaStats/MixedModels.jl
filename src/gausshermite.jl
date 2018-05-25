@@ -3,6 +3,38 @@ using GaussQuadrature: hermite
 using StatsFuns: sqrt2, sqrt2π
 
 """
+    Gauss-Hermite
+
+As described in
+
+* [Gauss-Hermite quadrature on Wikipedia](http://en.wikipedia.org/wiki/Gauss-Hermite_quadrature)
+
+*Gauss-Hermite* quadrature uses a weighted sum of values of `f(x)` at specific `x` values to approximate
+
+```math
+\\int_{-\\infty}^\\infty f(x) e^{-x^2} dx
+```
+
+An `n`-point rule, as returned by `hermite(n)` from the 
+[`GaussQuadrature``](https://github.com/billmclean/GaussQuadrature.jl) package provides `n` abscicca
+values (i.e. values of `x`) and `n` weights.
+
+As noted in the Wikipedia article, a modified version can be used to evaluate the expectation `E[h(x)]`
+with respect to a `Normal(μ, σ)` density as
+```julia
+using GaussQuadrature
+
+x, w = hermite(5)
+μ = 3.
+σ = 2.
+sum(@. abs2(√2*σ*x + μ)*w)/√π  # E[X^2] where X ∼ N(μ, σ)
+```
+
+For evaluation of the log-likelihood of a GLMM the integral to evaluate for each level of the grouping
+factor is approximately Gaussian shaped.
+"""
+GaussHermiteQuadrature
+"""
     GaussHermiteNormalized{K}
 
 A struct with 3 SVector{K,Float64} members
@@ -49,6 +81,37 @@ end
 GHnorm(k) = GHnorm(Int(k))
 
 #=
+steps:
+1. ensure that the conditional standard deviations of the random effects are being evalated correctly
+2. for each value of u, just need to call updateμ! to get the deviance residuals
+3. Is it necessary to sum the deviance residuals for each level of the factor separately? Related to separation of integrals?
+=#
+#=
+    // function used below in glmerAGQ
+    //
+    // fac: mapped integer vector indicating the factor levels
+    // u: current conditional modes
+    // devRes: current deviance residuals (i.e. similar to results of 
+    // family()$dev.resid, but computed in glmFamily.cpp)
+    static Ar1 devcCol(const MiVec& fac, const Ar1& u, const Ar1& devRes) {
+        Ar1  ans(u.square());
+        for (int i = 0; i < devRes.size(); ++i) ans[fac[i] - 1] += devRes[i];
+        // return: vector the size of u (i.e. length = number of
+        // grouping factor levels), containing the squared conditional
+        // modes plus the sum of the deviance residuals associated
+        // with each level
+        return ans;
+    }
+=#
+function devcCol!(u::Vector{T}, devRes::Vector{T}, refs::Vector{<:Integer}) where T <: AbstractFloat
+    map!(abs2, u, u)
+    for i in eachindex(refs,devRes)
+        u[refs[i]] += devRes[i]
+    end
+    u
+end
+#=
+
         pwrssUpdate(rp, pp, true, tol, maxit, verb); // should be a
                                                      // no-op
 
@@ -61,7 +124,31 @@ GHnorm(k) = GHnorm(Int(k))
         if (pp->L().factor()->nzmax !=  q)
             throw std::invalid_argument("AGQ only defined for a single scalar random-effects term");
         const Ar1         sd(MAr1((double*)pp->L().factor()->x, q).inverse());
-
+=#
+function AGQDeviance(m::GeneralizedLinearMixedModel, k::Integer)
+    length(m.u) == 1 && size(m.u[1], 1) == 1 || throw(ArgumentError("m must have only one scalar random effects term"))
+    trm1 = m.LMM.trms[1]
+    isa(trm1, ScalarFactorReTerm) || throw(ArgumentError("first term in m must be a ScalarFactorReTerm"))
+    u = vec(m.u[1])
+    u₀ = vec(m.u₀[1])
+    Compat.copyto!(u₀, u)
+    devresid = m.resp.devresid
+    refs = trm1.f.refs
+    devc0 = devcCol!(copy(u), devresid, refs)
+    sd = inv.(m.LMM.L.data[Block(1,1)].diag)
+    mult = zeros(sd)
+    quad = GHnorm(k)
+    for (z, wt, ldens) in zip(quad.z, quad.wt, quad.lognormaldens)
+        if iszero(z)
+            mult .+= wt
+        else
+            u .= u₀ .+ z .* sd
+            updateη!(m)
+        end
+    end
+    mult
+end
+#=
         const MMat     GQmat(as<MMat>(GQmat_));
         Ar1             mult(q);
 
