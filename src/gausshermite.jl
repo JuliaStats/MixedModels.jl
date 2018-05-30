@@ -1,6 +1,5 @@
-using StaticArrays
-using GaussQuadrature: hermite
-using StatsFuns: sqrt2, sqrt2π
+using Compat, StaticArrays
+using Compat.LinearAlgebra
 
 """
     Gauss-Hermite
@@ -45,26 +44,26 @@ A struct with 3 SVector{K,Float64} members
 struct GaussHermiteNormalized{K}
     z::SVector{K, Float64}
     wt::SVector{K,Float64}
-    lognormaldens::SVector{K,Float64}
+    logdensity::SVector{K,Float64}
 end
-function GaussHermiteNormalized(k::Int)
-    x, w = hermite(k)
-    isodd(k) && (x[(k + 1) >> 1] = 0.)
-    GaussHermiteNormalized{k}(
-        SVector{k,Float64}(x .* sqrt2),
-        SVector{k,Float64}(normalize!(w, 1)),
-        SVector{k,Float64}((-log(sqrt2π)) .- abs2.(x)))
+function GaussHermiteNormalized(k::Integer)
+    ev = eigfact(SymTridiagonal(zeros(k), sqrt.((1:k-1) ./ 2)))
+    z = (ev.values .- reverse(ev.values)) ./ √2
+    w = abs2.(ev.vectors[1,:])
+    GaussHermiteNormalized(SVector{k}(z), 
+        SVector{k}((w .+ reverse(w)) ./ 2),
+        SVector{k}((-log(2π)/2) .- abs2.(z) ./ 2))
 end
-GaussHermiteNormalized(k) = GaussHermiteNormalized(Int(k))
-
+Base.start(gh::GaussHermiteNormalized) = 1
+Base.next(gh::GaussHermiteNormalized, i) = (gh.z[i], gh.wt[i], gh.logdensity[i]), i+1
+Base.done(gh::GaussHermiteNormalized{K}, i) where {K} = K < i 
 """
     GHnormd
 
 Memoized values of `GHnorm`{@ref} stored as a `Dict{Int,GaussHermiteNormalized}`
 """
 const GHnormd = Dict{Int,GaussHermiteNormalized}(
-    0 => GaussHermiteNormalized(SVector{0,Float64}(), SVector{0,Float64}(), SVector{0,Float64}()),
-    1 => GaussHermiteNormalized(SVector{1,Float64}(0),SVector{1,Float64}(1),SVector{1,Float64}(-log(sqrt2π)))
+    1 => GaussHermiteNormalized(SVector{1}(0.),SVector{1}(1.),SVector{1}(-log(2π)/2))
     )
 
 """
@@ -87,30 +86,6 @@ steps:
 3. Is it necessary to sum the deviance residuals for each level of the factor separately? Related to separation of integrals?
 =#
 #=
-    // function used below in glmerAGQ
-    //
-    // fac: mapped integer vector indicating the factor levels
-    // u: current conditional modes
-    // devRes: current deviance residuals (i.e. similar to results of 
-    // family()$dev.resid, but computed in glmFamily.cpp)
-    static Ar1 devcCol(const MiVec& fac, const Ar1& u, const Ar1& devRes) {
-        Ar1  ans(u.square());
-        for (int i = 0; i < devRes.size(); ++i) ans[fac[i] - 1] += devRes[i];
-        // return: vector the size of u (i.e. length = number of
-        // grouping factor levels), containing the squared conditional
-        // modes plus the sum of the deviance residuals associated
-        // with each level
-        return ans;
-    }
-=#
-function devcCol!(u::Vector{T}, devRes::Vector{T}, refs::Vector{<:Integer}) where T <: AbstractFloat
-    map!(abs2, u, u)
-    for i in eachindex(refs,devRes)
-        u[refs[i]] += devRes[i]
-    end
-    u
-end
-#=
 
         pwrssUpdate(rp, pp, true, tol, maxit, verb); // should be a
                                                      // no-op
@@ -125,6 +100,16 @@ end
             throw std::invalid_argument("AGQ only defined for a single scalar random-effects term");
         const Ar1         sd(MAr1((double*)pp->L().factor()->x, q).inverse());
 =#
+struct RaggedArray{T,I}
+    vals::Vector{T}
+    inds::Vector{I}
+end
+function Base.sum!(s::Vector{T}, a::RaggedArray{T}) where T
+    for (v, i) in zip(a.vals, a.inds)
+        s[i] += v
+    end
+    s
+end
 function AGQDeviance(m::GeneralizedLinearMixedModel, k::Integer)
     length(m.u) == 1 && size(m.u[1], 1) == 1 || throw(ArgumentError("m must have only one scalar random effects term"))
     trm1 = m.LMM.trms[1]
@@ -132,21 +117,23 @@ function AGQDeviance(m::GeneralizedLinearMixedModel, k::Integer)
     u = vec(m.u[1])
     u₀ = vec(m.u₀[1])
     Compat.copyto!(u₀, u)
-    devresid = m.resp.devresid
-    refs = trm1.f.refs
-    devc0 = devcCol!(copy(u), devresid, refs)
+    ra = RaggedArray(m.resp.devresid, trm1.f.refs)
+    devc0 = sum!(map!(abs2, similar(u), u), ra)  # the deviance components at z = 0
     sd = inv.(m.LMM.L.data[Block(1,1)].diag)
     mult = zeros(sd)
-    quad = GHnorm(k)
-    for (z, wt, ldens) in zip(quad.z, quad.wt, quad.lognormaldens)
+    devc = similar(devc0)
+    for (z, wt, ldens) in GHnorm(k)
         if iszero(z)
             mult .+= wt
         else
             u .= u₀ .+ z .* sd
             updateη!(m)
+            mult .+= exp.(-(sum!(map!(abs2, devc, u), ra) .- devc0) ./ 2 - ldens) .* (wt/√2π)
         end
     end
-    mult
+    Compat.copyto!(u, u₀)
+    updateη!(m)
+    sum(devc0) + logdet(m) - 2 * sum(log, mult)
 end
 #=
         const MMat     GQmat(as<MMat>(GQmat_));
