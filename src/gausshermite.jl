@@ -54,9 +54,14 @@ function GaussHermiteNormalized(k::Integer)
         SVector{k}((w .+ reverse(w)) ./ 2),
         SVector{k}((-log(2π)/2) .- abs2.(z) ./ 2))
 end
-Base.start(gh::GaussHermiteNormalized) = 1
-Base.next(gh::GaussHermiteNormalized, i) = (gh.z[i], gh.wt[i], gh.logdensity[i]), i+1
-Base.done(gh::GaussHermiteNormalized{K}, i) where {K} = K < i 
+@static if VERSION ≥ v"0.7.0-DEV.5124"
+    Base.iterate(g::GaussHermiteNormalized{K}, i=1) where {K} = 
+        (K < i ? nothing : ((g.z[i], g.wt[i], g.logdensity[i]), i + 1))
+else
+    Base.start(gh::GaussHermiteNormalized) = 1
+    Base.next(gh::GaussHermiteNormalized, i) = (gh.z[i], gh.wt[i], gh.logdensity[i]), i+1
+    Base.done(gh::GaussHermiteNormalized{K}, i) where {K} = K < i 
+end
 """
     GHnormd
 
