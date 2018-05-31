@@ -5,7 +5,6 @@ module MixedModels
 using ArgCheck, BlockArrays, CategoricalArrays, Compat, DataFrames, Distributions
 using GLM, NLopt, Showoff, StaticArrays, StatsBase, StatsModels
 using Compat.LinearAlgebra: BlasFloat, BlasReal, HermOrSym, PosDefException, checksquare, copytri!
-using GaussQuadrature: hermite
 using NamedArrays: NamedArray, setnames!
 using StatsFuns: log2π, sqrt2π
 
