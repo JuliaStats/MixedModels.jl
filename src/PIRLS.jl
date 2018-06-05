@@ -31,7 +31,8 @@ function GeneralizedLinearMixedModel(f::Formula, fr::AbstractDataFrame,
     β = coef(gl)
     u = [zeros(T, vsize(t), nlevs(t)) for t in reterms(LMM)]
     res = GeneralizedLinearMixedModel(LMM, β, copy(β), getθ(LMM), copy.(u), u,
-        zeros.(u), gl.rr, similar(y), oftype(y, wt))
+        zeros.(u), gl.rr, similar(y), oftype(y, wt), AGQvecs(
+            length(u) == 1 && isa(LMM.trms[1], ScalarFactorReTerm) ? length(u[1]) : 0, T))
     setβθ!(res, vcat(coef(gl), getθ(LMM)))
     LaplaceDeviance!(res)
     res

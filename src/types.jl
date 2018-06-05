@@ -184,6 +184,17 @@ struct LinearMixedModel{T <: AbstractFloat} <: MixedModel{T}
     optsum::OptSummary{T}
 end
 
+struct AGQvecs{T <: AbstractFloat}
+    devc::Vector{T}
+    devc0::Vector{T}
+    mult::Vector{T}
+    sd::Vector{T}
+end
+function AGQvecs(k::Integer, T::DataType)
+    v = Vector{T}(Compat.undef, k)
+    AGQvecs(v, similar(v), similar(v), similar(v))
+end
+
 """
     GeneralizedLinearMixedModel
 
@@ -212,6 +223,7 @@ struct GeneralizedLinearMixedModel{T <: AbstractFloat} <: MixedModel{T}
     resp::GlmResp
     η::Vector{T}
     wt::Vector{T}
+    AGQ::AGQvecs{T}
 end
 
 """

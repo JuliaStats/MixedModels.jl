@@ -116,24 +116,23 @@ function Base.sum!(s::Vector{T}, a::RaggedArray{T}) where T
     s
 end
 function AGQDeviance(m::GeneralizedLinearMixedModel, k::Integer)
-    length(m.u) == 1 && size(m.u[1], 1) == 1 || throw(ArgumentError("m must have only one scalar random effects term"))
-    trm1 = m.LMM.trms[1]
-    isa(trm1, ScalarFactorReTerm) || throw(ArgumentError("first term in m must be a ScalarFactorReTerm"))
+    length(m.u[1]) == length(m.AGQ.devc) || 
+        throw(ArgumentError("m must have a single scalar random-effect term"))
     u = vec(m.u[1])
     u₀ = vec(m.u₀[1])
     Compat.copyto!(u₀, u)
-    ra = RaggedArray(m.resp.devresid, trm1.f.refs)
-    devc0 = sum!(map!(abs2, similar(u), u), ra)  # the deviance components at z = 0
-    sd = inv.(m.LMM.L.data[Block(1,1)].diag)
-    mult = zeros(sd)
-    devc = similar(devc0)
+    ra = RaggedArray(m.resp.devresid, m.LMM.trms[1].f.refs)
+    devc0 = sum!(broadcast!(abs2, m.AGQ.devc0, u), ra)  # the deviance components at z = 0
+    sd = broadcast!(inv, m.AGQ.sd, m.LMM.L.data[Block(1,1)].diag)
+    mult = fill!(m.AGQ.mult, 0)
+    devc = m.AGQ.devc
     for (z, wt, ldens) in GHnorm(k)
         if iszero(z)
             mult .+= wt
         else
             u .= u₀ .+ z .* sd
             updateη!(m)
-            mult .+= exp.(-(sum!(map!(abs2, devc, u), ra) .- devc0) ./ 2 - ldens) .* (wt/√2π)
+            mult .+= exp.(-(sum!(broadcast!(abs2, devc, u), ra) .- devc0) ./ 2 .- ldens) .* (wt/√2π)
         end
     end
     Compat.copyto!(u, u₀)
