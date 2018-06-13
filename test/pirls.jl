@@ -11,12 +11,12 @@ end
     gm0 = fit!(GeneralizedLinearMixedModel(@formula(use ~ 1 + a + a2 + urb + l + (1 | urbdist)), contraception,
                     Bernoulli()), fast = true);
     @test isapprox(getθ(gm0)[1], 0.5720734451352923, atol=0.001)
-    @test isapprox(LaplaceDeviance(gm0), 2361.657188518064, atol=0.001)
+    @test isapprox(deviance(gm0,true), 2361.657188518064, atol=0.001)
     gm1 = fit(GeneralizedLinearMixedModel, @formula(use ~ 1 + a + a2 + urb + l + (1 | urbdist)), contraception,
         Bernoulli());
     @test isapprox(gm1.θ[1], 0.573054, atol=0.005)
     @test lowerbd(gm1) == push!(fill(-Inf, 7), 0.)
-    @test isapprox(LaplaceDeviance(gm1), 2361.57129, rtol=0.00001)
+    @test isapprox(deviance(gm1,true), 2361.57129, rtol=0.00001)
     @test isapprox(loglikelihood(gm1), -1180.78565, rtol=0.00001)
     @test StatsBase.dof(gm0) == length(gm0.β) + length(gm0.θ)
     @test StatsBase.nobs(gm0) == 1934
@@ -32,7 +32,7 @@ end
     cbpp[:prop] = cbpp[:i] ./ cbpp[:s]
     gm2 = fit!(GeneralizedLinearMixedModel(@formula(prop ~ 1 + p + (1 | h)), cbpp, Binomial(),
                     wt = cbpp[:s]));
-    @test isapprox(LaplaceDeviance(gm2), 100.09585619324639, atol=0.0001)
+    @test isapprox(deviance(gm2,true), 100.09585619324639, atol=0.0001)
     @test isapprox(sum(abs2, gm2.u[1]), 9.723175126731014, atol=0.0001)
     @test isapprox(logdet(gm2), 16.90113, atol=0.0001)
     @test isapprox(sum(gm2.resp.devresid), 73.47179193718736, atol=0.001)
@@ -45,7 +45,7 @@ end
     verbagg = dat[:VerbAgg]
     gm3 = fit(GeneralizedLinearMixedModel, @formula(r2 ~ 1 + a + g + b + s + (1 | id) + (1 | item)),
          verbagg, Bernoulli());
-    @test isapprox(LaplaceDeviance(gm3), 8151.39972809092, atol=0.001)
+    @test isapprox(deviance(gm3), 8151.39972809092, atol=0.001)
     @test lowerbd(gm3) == vcat(fill(-Inf, 6), zeros(2))
     @test fitted(gm3) == predict(gm3)
     # these two values are not well defined at the optimum

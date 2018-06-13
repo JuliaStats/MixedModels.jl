@@ -640,14 +640,36 @@ iter = 4
 obj = 8201.848598910707
 iter = 5
 obj = 8201.848559060705
-8201.848559060705
+Generalized Linear Mixed Model fit by maximum likelihood
+  Formula: r2 ~ 1 + a + g + b + s + (1 | id) + (1 | item)
+  Distribution: Distributions.Bernoulli{Float64}
+  Link: GLM.LogitLink()
+
+  Deviance: 8201.8486
+
+Variance components:
+          Column   Variance Std.Dev. 
+ id   (Intercept)         1        1
+ item (Intercept)         1        1
+
+ Number of obs: 7584; levels of grouping factors: 316, 24
+
+Fixed-effects parameters:
+              Estimate Std.Error  z value P(>|z|)
+(Intercept)   0.218535  0.491968 0.444206  0.6569
+a            0.0514385 0.0130432  3.94371   <1e-4
+g: M          0.290225  0.148818   1.9502  0.0512
+b: scold     -0.979124  0.504402 -1.94116  0.0522
+b: shout      -1.95402  0.505235 -3.86754  0.0001
+s: self      -0.979493  0.412168 -2.37644  0.0175
+
 
 ````
 
 
 
 ````julia
-julia> LaplaceDeviance(mdl)
+julia> deviance(mdl)
 8201.848559060705
 
 ````
@@ -772,13 +794,13 @@ As one would hope, given the name of the option, this fit is comparatively fast.
 ````julia
 julia> @time(fit!(GeneralizedLinearMixedModel(@formula(r2 ~ 1 + a + g + b + s + (1 | id) + (1 | item)), 
         dat[:VerbAgg], Bernoulli()), fast=true))
-  0.267392 seconds (43.78 k allocations: 8.827 MiB, 3.74% gc time)
-Generalized Linear Mixed Model fit by minimizing the Laplace approximation to the deviance
+  0.263251 seconds (44.23 k allocations: 8.835 MiB, 3.48% gc time)
+Generalized Linear Mixed Model fit by maximum likelihood
   Formula: r2 ~ 1 + a + g + b + s + (1 | id) + (1 | item)
   Distribution: Distributions.Bernoulli{Float64}
   Link: GLM.LogitLink()
 
-  Deviance (Laplace approximation): 8151.5833
+  Deviance: 8151.5833
 
 Variance components:
           Column    Variance   Std.Dev. 
@@ -1670,13 +1692,13 @@ f_821: 8151.39996 [0.0574498, -1.05229, -1.05935, 0.320877, -2.10547, 0.197165, 
 f_822: 8151.39995 [0.0574517, -1.05229, -1.05928, 0.320894, -2.10545, 0.197081, 1.3397, 0.495241]
 f_823: 8151.39995 [0.0574503, -1.0523, -1.05922, 0.320991, -2.10546, 0.197084, 1.33971, 0.495215]
 f_824: 8151.39995 [0.0574533, -1.05231, -1.0592, 0.321, -2.10545, 0.197008, 1.33973, 0.4952]
-  5.875655 seconds (1.44 M allocations: 93.282 MiB, 0.45% gc time)
-Generalized Linear Mixed Model fit by minimizing the Laplace approximation to the deviance
+  9.607621 seconds (1.44 M allocations: 148.847 MiB, 0.38% gc time)
+Generalized Linear Mixed Model fit by maximum likelihood
   Formula: r2 ~ 1 + a + g + b + s + (1 | id) + (1 | item)
   Distribution: Distributions.Bernoulli{Float64}
   Link: GLM.LogitLink()
 
-  Deviance (Laplace approximation): 8151.4000
+  Deviance: 8151.4000
 
 Variance components:
           Column    Variance   Std.Dev.  

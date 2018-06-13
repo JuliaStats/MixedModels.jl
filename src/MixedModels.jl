@@ -57,7 +57,6 @@ export
        getθ,
        GHnorm,
        glmm,       # define a GeneralizedLinearMixedModel
-       LaplaceDeviance, # Laplace approximation to GLMM deviance
        lmm,        # create a LinearMixedModel from a formula/data specification
        loglikelihood,
        lowerbd,    # lower bounds on the covariance parameters
