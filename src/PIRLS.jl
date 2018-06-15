@@ -30,10 +30,12 @@ function GeneralizedLinearMixedModel(f::Formula, fr::AbstractDataFrame,
     gl = isempty(wt) ? glm(X, y, d, l) : glm(X, y, d, l, wts=wt)
     β = coef(gl)
     u = [zeros(T, vsize(t), nlevs(t)) for t in reterms(LMM)]
+    vv = length(u) == 1 ? vec(u[1]) : T[]
     res = GeneralizedLinearMixedModel(LMM, β, copy(β), getθ(LMM), copy.(u), u,
-        zeros.(u), gl.rr, similar(y), oftype(y, wt), AGHQ(1,T[],T[],T[],T[]))
+        zeros.(u), gl.rr, similar(y), oftype(y, wt), similar(vv),
+        similar(vv), similar(vv), similar(vv))
     setβθ!(res, vcat(coef(gl), getθ(LMM)))
-    deviance!(res)
+    deviance!(res, 1)
     res
 end
 
@@ -56,26 +58,17 @@ is defined as the squared length of the conditional modes, `u`, plus the determi
 of `Λ'Z'WZΛ + I`, plus the sum of the squared deviance residuals.
 """
 
-function deviance(m::GeneralizedLinearMixedModel{T}, forceLaplace=false) where T
-    agq = m.agq
-    if agq.nnodes == 1 || forceLaplace
-        return T(sum(m.resp.devresid) + logdet(m) + sum(u -> sum(abs2, u), m.u))
-    end
+function deviance(m::GeneralizedLinearMixedModel{T}, nAGQ=1) where T
+    nAGQ == 1 && return T(sum(m.resp.devresid) + logdet(m) + sum(u -> sum(abs2, u), m.u))
     u = vec(m.u[1])
     u₀ = vec(m.u₀[1])
     Compat.copyto!(u₀, u)
     ra = RaggedArray(m.resp.devresid, m.LMM.trms[1].f.refs)
-    if length(agq.devc) ≠ length(u)
-        agq.devc = similar(u)
-        agq.devc0 = similar(u)
-        agq.mult = similar(u)
-        agq.sd = similar(u)
-    end
-    devc0 = sum!(broadcast!(abs2, agq.devc0, u), ra)  # the deviance components at z = 0
-    sd = broadcast!(inv, agq.sd, m.LMM.L.data[Block(1,1)].diag)
-    mult = fill!(agq.mult, 0)
-    devc = agq.devc
-    for (z, wt, ldens) in GHnorm(agq.nnodes)
+    devc0 = sum!(broadcast!(abs2, m.devc0, u), ra)  # the deviance components at z = 0
+    sd = broadcast!(inv, m.sd, m.LMM.L.data[Block(1,1)].diag)
+    mult = fill!(m.mult, 0)
+    devc = m.devc
+    for (z, wt, ldens) in GHnorm(nAGQ)
         if iszero(z)
             mult .+= wt
         else
@@ -90,16 +83,16 @@ function deviance(m::GeneralizedLinearMixedModel{T}, forceLaplace=false) where T
 end
 
 """
-    deviance!(m::GeneralizedLinearMixedModel, forceLaplace=false)
+    deviance!(m::GeneralizedLinearMixedModel, nAGQ=1)
 
 Update `m.η`, `m.μ`, etc., install the working response and working weights in
 `m.LMM`, update `m.LMM.A` and `m.LMM.R`, then evaluate the [`deviance`](@ref).
 """
-function deviance!(m::GeneralizedLinearMixedModel, forceLaplace=false)
+function deviance!(m::GeneralizedLinearMixedModel, nAGQ=1)
     updateη!(m)
     GLM.wrkresp!(vec(m.LMM.trms[end].x), m.resp)
     reweight!(m.LMM, m.resp.wrkwt)
-    deviance(m, forceLaplace)
+    deviance(m, nAGQ)
 end
 
 function loglikelihood(m::GeneralizedLinearMixedModel{T}) where T
@@ -168,14 +161,14 @@ function pirls!(m::GeneralizedLinearMixedModel{T}, varyβ::Bool=false, verbose::
         copy!(u₀[j], fill!(u[j], 0))
     end
     varyβ && copy!(β₀, β)
-    obj₀ = deviance!(m, true) * 1.0001
+    obj₀ = deviance!(m) * 1.0001
     verbose && @show(varyβ, obj₀, β)
 
     while iter < maxiter
         iter += 1
         varyβ && Ac_ldiv_B!(feL(m), Compat.copyto!(β, lm.L.data.blocks[end, end - 1]))
         ranef!(u, m.LMM, β, true) # solve for new values of u
-        obj = deviance!(m, true)  # update GLM vecs and evaluate Laplace approx
+        obj = deviance!(m)        # update GLM vecs and evaluate Laplace approx
         verbose && @show(iter, obj)
         nhalf = 0
         while obj > obj₀
@@ -190,7 +183,7 @@ function pirls!(m::GeneralizedLinearMixedModel{T}, varyβ::Bool=false, verbose::
                 map!(average, u[i], u[i], u₀[i])
             end
             varyβ && map!(average, β, β, β₀)
-            obj = deviance!(m, true)
+            obj = deviance!(m)
             verbose && @show(nhalf, obj)
         end
         if isapprox(obj, obj₀; atol = 0.00001)
@@ -238,12 +231,12 @@ which `pirls!` optimizes both the random effects and the fixed-effects parameter
 is used.
 """
 function StatsBase.fit!(m::GeneralizedLinearMixedModel{T};
-                        verbose::Bool=false, fast::Bool=false) where T
+                        verbose::Bool=false, fast::Bool=false, nAGQ=1) where T
     β = m.β
     lm = m.LMM
     optsum = lm.optsum
     if !fast
-        fit!(m, verbose=verbose, fast=true)
+        fit!(m, verbose=verbose, fast=true, nAGQ=nAGQ)
         optsum.lowerbd = vcat(fill!(similar(β), T(-Inf)), optsum.lowerbd)
         optsum.initial = vcat(β, m.θ)
         optsum.final = copy(optsum.initial)
@@ -254,7 +247,7 @@ function StatsBase.fit!(m::GeneralizedLinearMixedModel{T};
     function obj(x, g)
         isempty(g) || error("gradient not defined for this model")
         feval += 1
-        val = deviance(pirls!(setpar!(m, x), fast))
+        val = deviance(pirls!(setpar!(m, x), fast), nAGQ)
         feval == 1 && (optsum.finitial = val)
         verbose && println("f_", feval, ": ", round(val, 5), " ", x)
         val
@@ -277,6 +270,7 @@ function StatsBase.fit!(m::GeneralizedLinearMixedModel{T};
     end
     ## ensure that the parameter values saved in m are xmin
     pirls!(setpar!(m, xmin), fast)
+    optsum.nAGQ = nAGQ
     optsum.feval = feval
     optsum.final = xmin
     optsum.fmin = fmin
@@ -289,11 +283,12 @@ function StatsBase.fit!(m::GeneralizedLinearMixedModel{T};
 end
 
 function Base.show(io::IO, m::GeneralizedLinearMixedModel)
-    println(io, "Generalized Linear Mixed Model fit by maximum likelihood")
+    nAGQ = m.LMM.optsum.nAGQ
+    println(io, "Generalized Linear Mixed Model fit by maximum likelihood (nAGQ = $nAGQ)")
     println(io, "  ", m.LMM.formula)
     println(io, "  Distribution: ", Distribution(m.resp))
     println(io, "  Link: ", Link(m.resp), "\n")
-    println(io, string("  Deviance: ", @sprintf("%.4f", deviance(m))), "\n")
+    println(io, string("  Deviance: ", @sprintf("%.4f", deviance(m, nAGQ))), "\n")
 
     show(io,VarCorr(m))
     gl = grplevels(m.LMM)

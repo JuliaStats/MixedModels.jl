@@ -115,12 +115,13 @@ mutable struct OptSummary{T <: AbstractFloat}
     feval::Int
     optimizer::Symbol
     returnvalue::Symbol
+    nAGQ::Integer           # doesn't really belong here but I needed some place to store it
 end
 function OptSummary(initial::Vector{T}, lowerbd::Vector{T},
     optimizer::Symbol; ftol_rel::T=zero(T), ftol_abs::T=zero(T), xtol_rel::T=zero(T),
     initial_step::Vector{T}=T[]) where T <: AbstractFloat
     OptSummary(initial, lowerbd, T(Inf), ftol_rel, ftol_abs, xtol_rel, zeros(initial),
-        initial_step, -1, copy(initial), T(Inf), -1, optimizer, :FAILURE)
+        initial_step, -1, copy(initial), T(Inf), -1, optimizer, :FAILURE, 1)
 end
 
 function Base.show(io::IO, s::OptSummary)
@@ -283,14 +284,6 @@ function Base.sum!(s::AbstractVector{T}, a::RaggedArray{T}) where T
     s
 end
 
-mutable struct AGHQ{T<:AbstractFloat}
-    nnodes::Integer
-    devc::Vector{T}
-    devc0::Vector{T}
-    mult::Vector{T}
-    sd::Vector{T}
-end
-
 """
     GeneralizedLinearMixedModel
 
@@ -319,7 +312,10 @@ struct GeneralizedLinearMixedModel{T <: AbstractFloat} <: MixedModel{T}
     resp::GlmResp
     η::Vector{T}
     wt::Vector{T}
-    agq::AGHQ{T}
+    devc::Vector{T}
+    devc0::Vector{T}
+    sd::Vector{T}
+    mult::Vector{T}
 end
 
 """

@@ -1,14 +1,14 @@
-agqvals(m::GeneralizedLinearMixedModel, maxk=31) = [AGQDeviance(m,k) for k in 1:2:maxk]
+agqvals(m::GeneralizedLinearMixedModel, maxk=31) = [deviance(m,k) for k in 1:2:maxk]
 
 function unscaledcond(m::GeneralizedLinearMixedModel{T}, zv::AbstractVector{T}) where T
-    length(m.u[1]) == length(m.AGQ.devc) || throw(ArgumentError("m must have a single scalar random-effect term"))
+    length(m.u[1]) == length(m.devc) || throw(ArgumentError("m must have a single scalar random-effect term"))
     u = vec(m.u[1])
     u₀ = vec(m.u₀[1])
     Compat.copyto!(u₀, u)
     ra = RaggedArray(m.resp.devresid, m.LMM.trms[1].f.refs)
-    devc0 = sum!(broadcast!(abs2, m.AGQ.devc0, u), ra)  # the deviance components at z = 0
-    sd = broadcast!(inv, m.AGQ.sd, m.LMM.L.data[Block(1,1)].diag)
-    devc = m.AGQ.devc
+    devc0 = sum!(broadcast!(abs2, m.devc0, u), ra)  # the deviance components at z = 0
+    sd = broadcast!(inv, m.sd, m.LMM.L.data[Block(1,1)].diag)
+    devc = m.devc
     res = zeros(T, (length(devc), length(zv)))
     for (j, z) in enumerate(zv)
         u .= u₀ .+ z .* sd
@@ -21,19 +21,18 @@ function unscaledcond(m::GeneralizedLinearMixedModel{T}, zv::AbstractVector{T}) 
 end
 
 function ugrid(m::GeneralizedLinearMixedModel{T}, uv::AbstractVector{T}) where T
-    length(m.u[1]) == length(m.AGQ.devc) || throw(ArgumentError("m must have a single scalar random-effect term"))
+    length(m.u[1]) == length(m.devc) || throw(ArgumentError("m must have a single scalar random-effect term"))
     u = vec(m.u[1])
-    Compat.copyto!(vec(m.u₀[1]), u)
+    u₀ = Compat.copyto!(vec(m.u₀[1]), u)
     ra = RaggedArray(m.resp.devresid, m.LMM.trms[1].f.refs)
-    devc0 = sum!(broadcast!(abs2, m.AGQ.devc0, u), ra)  # the deviance components at z = 0
     res = zeros(T, (length(u), length(uv)))
-    devc = m.AGQ.devc
+    devc = m.devc
     for (j, uu) in enumerate(uv)
         fill!(u, uu)
         updateη!(m)
-        Compat.copyto!(view(res, :, j), .-(sum!(fill!(devc, 0), ra) ./ 2))
+        Compat.copyto!(view(res, :, j), sum!(fill!(devc, abs2.(uu)), ra))
     end
-    Compat.copyto!(u, vec(m.u₀[1]))
+    Compat.copyto!(u, u₀)
     updateη!(m)
     uv, res'
 end
