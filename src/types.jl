@@ -209,12 +209,12 @@ values (i.e. values of `x`) and `n` weights.
 As noted in the Wikipedia article, a modified version can be used to evaluate the expectation `E[h(x)]`
 with respect to a `Normal(μ, σ)` density as
 ```julia
-using GaussQuadrature
+using MixedModels
 
-x, w = hermite(5)
+gn5 = GHnorm(5)
 μ = 3.
 σ = 2.
-sum(@. abs2(√2*σ*x + μ)*w)/√π  # E[X^2] where X ∼ N(μ, σ)
+sum(@. abs2(σ*gn5.z + μ)*gn5.wt) # E[X^2] where X ∼ N(μ, σ)
 ```
 
 For evaluation of the log-likelihood of a GLMM the integral to evaluate for each level of the grouping
@@ -224,30 +224,27 @@ GaussHermiteQuadrature
 """
     GaussHermiteNormalized{K}
 
-A struct with 3 SVector{K,Float64} members
+A struct with 2 SVector{K,Float64} members
 - `z`: abscissae for the K-point Gauss-Hermite quadrature rule on the Z scale
 - `wt`: Gauss-Hermite weights normalized to sum to unity
-- `lognormaldens`: log of standard normal density at `z`
 """
 struct GaussHermiteNormalized{K}
     z::SVector{K, Float64}
     wt::SVector{K,Float64}
-    logdensity::SVector{K,Float64}
 end
 function GaussHermiteNormalized(k::Integer)
-    ev = eigfact(SymTridiagonal(zeros(k), sqrt.((1:k-1) ./ 2)))
-    z = (ev.values .- reverse(ev.values)) ./ √2
-    w = abs2.(ev.vectors[1,:])
-    GaussHermiteNormalized(SVector{k}(z), 
-        SVector{k}((w .+ reverse(w)) ./ 2),
-        SVector{k}((-log(2π)/2) .- abs2.(z) ./ 2))
+    ev = eigfact(SymTridiagonal(zeros(k), sqrt.(1:k-1)))
+    w = normalize(abs2.(ev.vectors[1,:]), 1)
+    GaussHermiteNormalized(SVector{k}((ev.values .- reverse(ev.values)) ./ 2),
+        SVector{k}((w .+ reverse(w)) ./ 2))
 end
+
 @static if VERSION ≥ v"0.7.0-DEV.5124"
     Base.iterate(g::GaussHermiteNormalized{K}, i=1) where {K} = 
-        (K < i ? nothing : ((g.z[i], g.wt[i], g.logdensity[i]), i + 1))
+        (K < i ? nothing : ((g.z[i], g.wt[i]), i + 1))
 else
     Base.start(gh::GaussHermiteNormalized) = 1
-    Base.next(gh::GaussHermiteNormalized, i) = (gh.z[i], gh.wt[i], gh.logdensity[i]), i+1
+    Base.next(gh::GaussHermiteNormalized, i) = (gh.z[i], gh.wt[i]), i+1
     Base.done(gh::GaussHermiteNormalized{K}, i) where {K} = K < i 
 end
 
@@ -257,7 +254,7 @@ end
 Memoized values of `GHnorm`{@ref} stored as a `Dict{Int,GaussHermiteNormalized}`
 """
 const GHnormd = Dict{Int,GaussHermiteNormalized}(
-    1 => GaussHermiteNormalized(SVector{1}(0.),SVector{1}(1.),SVector{1}(-log(2π)/2))
+    1 => GaussHermiteNormalized(SVector{1}(0.),SVector{1}(1.))
     )
 
 """
