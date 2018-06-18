@@ -68,18 +68,21 @@ function deviance(m::GeneralizedLinearMixedModel{T}, nAGQ=1) where T
     sd = broadcast!(inv, m.sd, m.LMM.L.data[Block(1,1)].diag)
     mult = fill!(m.mult, 0)
     devc = m.devc
-    for (z, wt, ldens) in GHnorm(nAGQ)
-        if iszero(z)
-            mult .+= wt
-        else
-            u .= u₀ .+ z .* sd
-            updateη!(m)
-            mult .+= exp.(-(sum!(broadcast!(abs2, devc, u), ra) .- devc0) ./ 2 .- ldens) .* (wt/√2π)
+    for (z, wt) in GHnorm(nAGQ)
+        if !iszero(wt)
+            if iszero(z)
+                mult .+= wt
+            else
+                @. u = u₀ + z * sd
+                updateη!(m)
+                sum!(broadcast!(abs2, devc, u), ra)
+                @. mult += exp((abs2(z) + devc0 - devc)/2)*wt
+            end
         end
     end
     Compat.copyto!(u, u₀)
     updateη!(m)
-    sum(devc0) + logdet(m) - 2 * sum(log, mult)
+    sum(devc0) - 2 * (sum(log, mult) + sum(log, sd))
 end
 
 """

@@ -80,6 +80,7 @@ export
 import Base: ==, *
 
 include("types.jl")
+include("gausshermite.jl")
 include("modelterms.jl")
 include("linalg/cholUnblocked.jl")
 include("linalg/rankUpdate.jl")
@@ -91,7 +92,6 @@ include("pls.jl")
 include("simulate.jl")
 include("PIRLS.jl")
 include("mixedmodel.jl")
-include("gausshermite.jl")
 include("deprecates.jl")
 
 end # module
