@@ -557,3 +557,22 @@ function Ac_mul_B!(C::SparseMatrixCSC{T}, A::ScalarFactorReTerm{T}, B::ScalarFac
     end
     C
 end
+
+function Ac_mul_B!(C::Matrix{T}, A::VectorFactorReTerm{T,V,R,S}, B::ScalarFactorReTerm{T}) where {T,V,R,S}
+    m, n = size(B)
+    @argcheck size(C, 1) == size(A, 2) && n == size(C, 2) && size(A, 1) == m DimensionMismatch
+    Ar = A.f.refs
+    Br = B.f.refs
+    Az = A.wtz
+    Bz = B.wtz
+    fill!(C, zero(T))
+    for j in 1:m
+        offset = S * (Ar[j] - 1)
+        Bzj = Bz[j]
+        Brj = Br[j]
+        for k in 1:S
+            C[offset + k, Brj] += Az[k,j] * Bzj
+        end
+    end
+    C
+end
