@@ -66,6 +66,8 @@ else
     Base.done(gh::GaussHermiteNormalized{K}, i) where {K} = K < i 
 end
 
+Base.length(g::GaussHermiteNormalized{K}) where {K} = K
+
 """
     GHnormd
 

@@ -49,7 +49,7 @@ fit(::Type{GeneralizedLinearMixedModel}, f::Formula, fr::AbstractDataFrame, d::D
     fit!(GeneralizedLinearMixedModel(f, fr, d, l))
 
 """
-    deviance(m::GeneralizedLinearMixedModel{T}, forceLaplace=false)::T where T
+    deviance(m::GeneralizedLinearMixedModel{T}, nAGQ=1)::T where T
 
 Return the deviance of `m` evaluated by adaptive Gauss-Hermite quadrature
 
