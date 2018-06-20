@@ -1,3 +1,6 @@
+using Compat, StaticArrays
+using Compat.LinearAlgebra
+
 """
     UniformBlockDiagonal{T}
 
@@ -76,6 +79,7 @@ function Base.copy!(L::BlockedSparse{T,I}, A::SparseMatrixCSC{T,I}) where {T,I}
     copy!(nonzeros(L.cscmat), nonzeros(A))
     L
 end
+
 """
     OptSummary
 
@@ -111,12 +115,13 @@ mutable struct OptSummary{T <: AbstractFloat}
     feval::Int
     optimizer::Symbol
     returnvalue::Symbol
+    nAGQ::Integer           # doesn't really belong here but I needed some place to store it
 end
 function OptSummary(initial::Vector{T}, lowerbd::Vector{T},
     optimizer::Symbol; ftol_rel::T=zero(T), ftol_abs::T=zero(T), xtol_rel::T=zero(T),
     initial_step::Vector{T}=T[]) where T <: AbstractFloat
     OptSummary(initial, lowerbd, T(Inf), ftol_rel, ftol_abs, xtol_rel, zeros(initial),
-        initial_step, -1, copy(initial), T(Inf), -1, optimizer, :FAILURE)
+        initial_step, -1, copy(initial), T(Inf), -1, optimizer, :FAILURE, 1)
 end
 
 function Base.show(io::IO, s::OptSummary)
@@ -184,6 +189,17 @@ struct LinearMixedModel{T <: AbstractFloat} <: MixedModel{T}
     optsum::OptSummary{T}
 end
 
+struct RaggedArray{T,I}
+    vals::Vector{T}
+    inds::Vector{I}
+end
+function Base.sum!(s::AbstractVector{T}, a::RaggedArray{T}) where T
+    for (v, i) in zip(a.vals, a.inds)
+        s[i] += v
+    end
+    s
+end
+
 """
     GeneralizedLinearMixedModel
 
@@ -212,6 +228,10 @@ struct GeneralizedLinearMixedModel{T <: AbstractFloat} <: MixedModel{T}
     resp::GlmResp
     η::Vector{T}
     wt::Vector{T}
+    devc::Vector{T}
+    devc0::Vector{T}
+    sd::Vector{T}
+    mult::Vector{T}
 end
 
 """

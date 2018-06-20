@@ -4,11 +4,11 @@ module MixedModels
 
 using ArgCheck, BlockArrays, CategoricalArrays, Compat, DataFrames, Distributions
 using GLM, NLopt, Showoff, StaticArrays, StatsBase, StatsModels
-using StatsFuns: log2π
-using NamedArrays: NamedArray, setnames!
 using Compat.LinearAlgebra: BlasFloat, BlasReal, HermOrSym, PosDefException, checksquare, copytri!
+using NamedArrays: NamedArray, setnames!
+using StatsFuns: log2π
 
-import Base: cor, convert, eltype, full, logdet, std
+import Base: cor, eltype, full, logdet, std
 import Compat.LinearAlgebra: A_mul_B!, A_mul_Bc!, Ac_mul_B!, A_ldiv_B!, Ac_ldiv_B!, A_rdiv_B!, A_rdiv_Bc!, cond
 import NLopt: Opt
 import StatsBase: coef, coeftable, dof, deviance, fit, fit!, fitted, loglikelihood,
@@ -33,6 +33,7 @@ export
        MixedModel,
        OptSummary,
        Poisson,
+       RaggedArray,
        ScalarFactorReTerm,
        UniformBlockDiagonal,
        VarCorr,
@@ -49,15 +50,14 @@ export
        dof,
        fit,
        fit!,
-       fitlmm,
        fitted,
        fixef,      # extract the fixed-effects parameter estimates
        fnames,
        getΛ,
        getθ,
-       glmm,       # define a GeneralizedLinearMixedModel
-       LaplaceDeviance, # Laplace approximation to GLMM deviance
-       lmm,        # create a LinearMixedModel from a formula/data specification
+       GHnorm,
+#       glmm,       # define a GeneralizedLinearMixedModel
+#       lmm,        # create a LinearMixedModel from a formula/data specification
        loglikelihood,
        lowerbd,    # lower bounds on the covariance parameters
        model_response,
@@ -69,7 +69,6 @@ export
        predict,
        ranef,      # extract the conditional modes of the random effects
        refit!,     # install a response and refit the model
-       remat,      # factory for construction of ReMat objects
        sdest,      # the estimate of the standard deviation of the per-observation noise
        setθ!,
        simulate!,  # simulate a new response in place
@@ -81,6 +80,7 @@ export
 import Base: ==, *
 
 include("types.jl")
+include("gausshermite.jl")
 include("modelterms.jl")
 include("linalg/cholUnblocked.jl")
 include("linalg/rankUpdate.jl")

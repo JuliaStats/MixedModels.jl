@@ -80,7 +80,7 @@ The second and subsequent calls to such functions are much faster.)
 
 ````julia
 julia> @time fit(LinearMixedModel, @formula(Y ~ 1 + (1|G)), dat[:Dyestuff2])
-  0.001232 seconds (1.26 k allocations: 74.123 KiB)
+  0.001298 seconds (1.26 k allocations: 74.123 KiB)
 Linear mixed model fit by maximum likelihood
  Formula: Y ~ 1 + (1 | G)
    logLik   -2 logLik     AIC        BIC    
@@ -296,12 +296,12 @@ the distribution family for the response, and possibly the link function, must b
 ````julia
 julia> gm1 = fit(GeneralizedLinearMixedModel, @formula(r2 ~ 1 + a + g + b + s + m + (1|id) + (1|item)),
     dat[:VerbAgg], Bernoulli())
-Generalized Linear Mixed Model fit by minimizing the Laplace approximation to the deviance
+Generalized Linear Mixed Model fit by maximum likelihood
   Formula: r2 ~ 1 + a + g + b + s + m + (1 | id) + (1 | item)
   Distribution: Distributions.Bernoulli{Float64}
   Link: GLM.LogitLink()
 
-  Deviance (Laplace approximation): 8135.8329
+  Deviance: 8135.8329
 
 Variance components:
           Column     Variance   Std.Dev.  
@@ -398,11 +398,11 @@ julia> deviance(fm1)
 
 The value optimized when fitting a `GeneralizedLinearMixedModel` is the Laplace approximation to the deviance.
 ```@docs
-LaplaceDeviance
+deviance!
 ```
 ````julia
-julia> LaplaceDeviance(gm1)
-8135.83287319609
+julia> deviance!(gm1)
+Error: UndefVarError: deviance! not defined
 
 ````
 

@@ -146,10 +146,10 @@ deviance(fm1)
 
 The value optimized when fitting a `GeneralizedLinearMixedModel` is the Laplace approximation to the deviance.
 ```@docs
-LaplaceDeviance
+deviance!
 ```
 ```{julia;term=true}
-LaplaceDeviance(gm1)
+MixedModels.deviance!(gm1)
 ```
 
 ## Fixed-effects parameter estimates

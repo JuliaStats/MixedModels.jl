@@ -276,7 +276,7 @@ pirls!(mdl, true, true)
 ```
 
 ```{julia;term=true}
-LaplaceDeviance(mdl)
+deviance(mdl)
 ```
 
 ```{julia;term=true}
