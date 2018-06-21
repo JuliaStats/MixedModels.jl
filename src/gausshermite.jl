@@ -2,7 +2,7 @@ using Compat, StaticArrays
 using Compat.LinearAlgebra
 
 """
-    Gauss-Hermite
+    GaussHermiteQuadrature
 
 As described in
 
@@ -26,7 +26,7 @@ using MixedModels
 gn5 = GHnorm(5)
 μ = 3.
 σ = 2.
-sum(@. abs2(σ*gn5.z + μ)*gn5.wt) # E[X^2] where X ∼ N(μ, σ)
+sum(@. abs2(σ*gn5.z + μ)*gn5.w) # E[X^2] where X ∼ N(μ, σ)
 ```
 
 For evaluation of the log-likelihood of a GLMM the integral to evaluate for each level of the grouping
@@ -42,7 +42,7 @@ A struct with 2 SVector{K,Float64} members
 """
 struct GaussHermiteNormalized{K}
     z::SVector{K, Float64}
-    wt::SVector{K,Float64}
+    w::SVector{K,Float64}
 end
 function GaussHermiteNormalized(k::Integer)
     sytr = SymTridiagonal(zeros(k), sqrt.(1:k-1))
@@ -59,10 +59,10 @@ end
 
 @static if VERSION ≥ v"0.7.0-DEV.5124"
     Base.iterate(g::GaussHermiteNormalized{K}, i=1) where {K} = 
-        (K < i ? nothing : ((g.z[i], g.wt[i]), i + 1))
+        (K < i ? nothing : ((z = g.z[i], w = g.w[i]), i + 1))
 else
     Base.start(gh::GaussHermiteNormalized) = 1
-    Base.next(gh::GaussHermiteNormalized, i) = (gh.z[i], gh.wt[i]), i+1
+    Base.next(gh::GaussHermiteNormalized, i) = (gh.z[i], gh.w[i]), i+1
     Base.done(gh::GaussHermiteNormalized{K}, i) where {K} = K < i 
 end
 

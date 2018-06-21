@@ -316,7 +316,7 @@ Because it is slower to incorporate the $\beta$ parameters in the general nonlin
 
 ```{julia;term=true}
 @time mdl1 = fit!(GeneralizedLinearMixedModel(@formula(r2 ~ 1+a+g+b+s+(1|id)+(1|item)), 
-        dat[:VerbAgg], Bernoulli()), verbose = true)
+        dat[:VerbAgg], Bernoulli()))
 ```
 
 This fit provided slightly better results (Laplace approximation to the deviance of 8151.400 versus 8151.583) but took 6 times as long.

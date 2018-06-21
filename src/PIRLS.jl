@@ -68,15 +68,15 @@ function deviance(m::GeneralizedLinearMixedModel{T}, nAGQ=1) where T
     sd = broadcast!(inv, m.sd, m.LMM.L.data[Block(1,1)].diag)
     mult = fill!(m.mult, 0)
     devc = m.devc
-    for (z, wt) in GHnorm(nAGQ)
-        if !iszero(wt)
+    for (z, w) in GHnorm(nAGQ)
+        if !iszero(w)
             if iszero(z)
-                mult .+= wt
+                mult .+= w
             else
                 @. u = u₀ + z * sd
                 updateη!(m)
                 sum!(broadcast!(abs2, devc, u), ra)
-                @. mult += exp((abs2(z) + devc0 - devc)/2)*wt
+                @. mult += exp((abs2(z) + devc0 - devc)/2)*w
             end
         end
     end
@@ -225,7 +225,7 @@ end
 sdest(m::GeneralizedLinearMixedModel{T}) where T = convert(T, NaN)
 
 """
-    fit!(m::GeneralizedLinearMixedModel[, verbose = false, fast = false])
+    fit!(m::GeneralizedLinearMixedModel[, verbose = false, fast = false, nAGQ=1])
 
 Optimize the objective function for `m`.
 
