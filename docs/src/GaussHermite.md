@@ -18,23 +18,38 @@ A slight variation of this is the *normalized Gauss-Hermite* rule for which the 
 g(z) = \phi(z) = \frac{e^{-z^2/2}}{\sqrt{2\pi}}
 ```
 
-That is, the expected value of $f(z)$, where $\mathcal{Z}\sim\mathscr{N}(0,1)$, is
+Thus, the expected value of $f(z)$, where $\mathcal{Z}\sim\mathscr{N}(0,1)$, is approximated as
 ```math
-\mathbb{E}[f]=\int_{-\infty}^{\infty} f(z) \phi(z)\,dz\approx\sum_{i=1}^k f(z_i)\.w_i .
+\mathbb{E}[f]=\int_{-\infty}^{\infty} f(z) \phi(z)\,dz\approx\sum_{i=1}^k w_i\,f(z_i) .
 ```
 
-Naturally, there is a caveat.  A `k`th order rule is exact when `f` is a `k-1` order polynomial.
-To obtain a reasonable approximation the function, `f`, should be close to a low order polynomial over the range of interest. 
+Naturally, there is a caveat. For the approximation to be accurate the function $f(z)$ must behave like a low-order polynomial over the range of interest.
+More formally, a `k`th order rule is exact when `f` is a `k-1` order polynomial.
 
 ## Evaluating the weights and abscissae
 
 In the [*Golub-Welsch algorithm*](https://en.wikipedia.org/wiki/Gaussian_quadrature#The_Golub-Welsch_algorithm) the abscissae for a particular Gaussian quadrature rule are determined as the eigenvalues of a symmetric tri-diagonal matrix and the weights are derived from the squares of the first row of the matrix of eigenvectors.
-For a `k`th order normalized Gauss-Hermite rule the tridiagonal matrix has zeros on the diagonal and the square roots of `1:k-1` on the super- and sub-diagonal.
-
+For a `k`th order normalized Gauss-Hermite rule the tridiagonal matrix has zeros on the diagonal and the square roots of `1:k-1` on the super- and sub-diagonal, e.g.
 ````julia
-using Compat, DataFrames, DataFramesMeta, FreqTables, Gadfly, MixedModels, RData 
-using Compat.LinearAlgebra
+julia> sym3 = SymTridiagonal(zeros(3), sqrt.(1:2))
+3×3 SymTridiagonal{Float64}:
+ 0.0  1.0       ⋅     
+ 1.0  0.0      1.41421
+  ⋅   1.41421  0.0    
 
+julia> ev = eigfact(sym3);
+
+julia> show(ev.values)
+[-1.73205, 1.11022e-15, 1.73205]
+julia> show(abs2.(ev.vectors[1,:]))
+[0.166667, 0.666667, 0.166667]
+````
+
+
+
+
+As a function of `k` this can be written as
+````julia
 function gausshermitenorm(k)
     ev = eigfact(SymTridiagonal(zeros(k), sqrt.(1:k-1)))
     ev.values, abs2.(ev.vectors[1,:])
@@ -43,6 +58,8 @@ end
 
 
 
+
+providing
 ````julia
 julia> gausshermitenorm(3)
 ([-1.73205, 1.11022e-15, 1.73205], [0.166667, 0.666667, 0.166667])
@@ -52,9 +69,14 @@ julia> gausshermitenorm(3)
 
 
 
+
 The weights and positions are often shown as a *lollipop plot*.
 For the 9th order rule these are
-![](./assets//GaussHermite_3_1.svg)
+![Lollipop plot of 9th order normalized Gauss-Hermite rule](./assets//GaussHermite_4_1.svg)
+
+
+Notice that the magnitudes of the weights drop quite dramatically away from zero, even on a logarithmic scale
+![Lollipop plot of 9th order normalized Gauss-Hermite rule (logarithmic scale](./assets//GaussHermite_5_1.svg)
 
 
 
@@ -63,6 +85,8 @@ The definition of `MixedModels.GHnorm` is similar to the `gausshermitenorm` func
 GHnorm
 ```
 ````julia
+julia> using MixedModels
+
 julia> GHnorm(3)
 MixedModels.GaussHermiteNormalized{3}([-1.73205, 0.0, 1.73205], [0.166667, 0.666667, 0.166667])
 
@@ -102,20 +126,24 @@ Several covariates were recorded including the woman's age (centered at the mean
 The version of the data used here is that used in review of multilevel modeling software conducted by the Center for Multilevel Modelling, currently at University of Bristol (http://www.bristol.ac.uk/cmm/learning/mmsoftware/data-rev.html).
 These data are available as the `Contraception` data frame in the test data for the `MixedModels` package.
 ````julia
-julia> const dat = convert(Dict{Symbol,DataFrame}, load(Pkg.dir("MixedModels","test","dat.rda")));
+julia> using DataFrames, DataFramesMeta, RData
 
-julia> const contra = @transform(dat[:Contraception], a2 = abs2.(:a));
+julia> const dat = convert(Dict{Symbol,DataFrame},
+     load(Pkg.dir("MixedModels","test","dat.rda")));
+
+julia> const contra = @transform(dat[:Contraception],
+     a2 = abs2.(:a), urbdist = string.(:urb, :d));
 
 julia> head(contra)
-6×7 DataFrames.DataFrame
-│ Row │ w │ d │ use │ l  │ a       │ urb │ a2      │
-├─────┼───┼───┼─────┼────┼─────────┼─────┼─────────┤
-│ 1   │ 1 │ 1 │ N   │ 3+ │ 18.44   │ Y   │ 340.034 │
-│ 2   │ 2 │ 1 │ N   │ 0  │ -5.5599 │ Y   │ 30.9125 │
-│ 3   │ 3 │ 1 │ N   │ 2  │ 1.44    │ Y   │ 2.0736  │
-│ 4   │ 4 │ 1 │ N   │ 3+ │ 8.44    │ Y   │ 71.2336 │
-│ 5   │ 5 │ 1 │ N   │ 0  │ -13.559 │ Y   │ 183.846 │
-│ 6   │ 6 │ 1 │ N   │ 0  │ -11.56  │ Y   │ 133.634 │
+6×8 DataFrames.DataFrame
+│ Row │ w │ d │ use │ l  │ a       │ urb │ a2      │ urbdist │
+├─────┼───┼───┼─────┼────┼─────────┼─────┼─────────┼─────────┤
+│ 1   │ 1 │ 1 │ N   │ 3+ │ 18.44   │ Y   │ 340.034 │ Y1      │
+│ 2   │ 2 │ 1 │ N   │ 0  │ -5.5599 │ Y   │ 30.9125 │ Y1      │
+│ 3   │ 3 │ 1 │ N   │ 2  │ 1.44    │ Y   │ 2.0736  │ Y1      │
+│ 4   │ 4 │ 1 │ N   │ 3+ │ 8.44    │ Y   │ 71.2336 │ Y1      │
+│ 5   │ 5 │ 1 │ N   │ 0  │ -13.559 │ Y   │ 183.846 │ Y1      │
+│ 6   │ 6 │ 1 │ N   │ 0  │ -11.56  │ Y   │ 133.634 │ Y1      │
 
 ````
 
@@ -124,7 +152,7 @@ julia> head(contra)
 
 
 Because a smoothed scatterplot of contraception use versus age
-![Scatterplot smooth of contraception use versus age](./assets//GaussHermite_7_1.svg)
+![Scatterplot smooth of contraception use versus age](./assets//GaussHermite_9_1.svg)
 
 
 shows that the proportion of women using artificial contraception is approximately quadratic in age,
@@ -134,7 +162,8 @@ A model with fixed-effects for age, age squared, number of live children and urb
 ````julia
 julia> const form1 = @formula use ~ 1 + a + a2 + l + urb + (1|d);
 
-julia> m1 = fit!(GeneralizedLinearMixedModel(form1, contra, Bernoulli()), fast=true)
+julia> m1 = fit!(GeneralizedLinearMixedModel(form1, contra,
+    Bernoulli()), fast=true)
 Generalized Linear Mixed Model fit by maximum likelihood (nAGQ = 1)
   Formula: use ~ 1 + a + a2 + l + urb + (1 | d)
   Distribution: Distributions.Bernoulli{Float64}
@@ -165,13 +194,14 @@ urb: Y         0.684401    0.119684   5.7184   <1e-7
 
 
 
-For a model such as `m1`, which has a single, scalar random-effects term, the unscaled conditional density of the spherical random effects variable, $\mathcal{U}$, given the observed data, $\mathcal{Y}=\mathbf{y}_0$ can be expressed as a product of scalar functions, $f_i(u_i),\; i=1,\dots,q$.
+For a model such as `m1`, which has a single, scalar random-effects term, the unscaled conditional density of the spherical random effects variable, $\mathcal{U}$,
+given the observed data, $\mathcal{Y}=\mathbf{y}_0$, can be expressed as a product of scalar density functions, $f_i(u_i),\; i=1,\dots,q$.
 In the PIRLS algorithm, which determines the conditional mode vector, $\tilde{\mathbf{u}}$, the optimization is performed on the *deviance scale*, 
 ```math
 D(\mathbf{u})=-2\sum_{i=1}^q \log(f_i(u_i))
 ```
 The objective, $D$, consists of two parts: the sum of the (squared) *deviance residuals*, measuring fidelity to the data, and the squared length of $\mathbf{u}$, which is the penalty.
-For PIRLS only the sum of these components is needed.
+In the PIRLS algorithm, only the sum of these components is needed.
 To use Gauss-Hermite quadrature the contributions of each of the $u_i,\;i=1,\dots,q$ should be separately evaluated.
 ````julia
 julia> const devc0 = map!(abs2, m1.devc0, m1.u[1]);  # start with uᵢ²
@@ -180,8 +210,8 @@ julia> const devresid = m1.resp.devresid;   # n-dimensional vector of deviance r
 
 julia> const refs = m1.LMM.trms[1].f.refs;  # n-dimensional vector of indices in 1:q
 
-julia> for (i, dr) in enumerate(devresid)
-    devc0[refs[i]] += dr
+julia> for (dr, i) in zip(devresid, refs)
+    devc0[i] += dr
 end
 
 julia> show(devc0)
@@ -193,8 +223,10 @@ julia> show(devc0)
 
 
 One thing to notice is that, even on the deviance scale, the contributions of different districts can be different magnitudes.
-Primarily this is due to different sample sizes in the different districts.
+This is primarily due to different sample sizes in the different districts.
 ````julia
+julia> using FreqTables
+
 julia> freqtable(contra, :d)'
 1×60 Named RowVector{Int64,Array{Int64,1}}
 ' ╲ d │   1    2    3    4    5    6    7  …   55   56   57   58   59   60   61
@@ -219,8 +251,8 @@ for (j, u) in enumerate(xvals)
     fill!(devc, abs2(u))
     fill!(uv, u)
     MixedModels.updateη!(m1)
-    for (i, dr) in enumerate(devresid)
-        devc[refs[i]] += dr
+    for (dr, i) in zip(devresid, refs)
+        devc[i] += dr
     end
     copy!(view(results, :, j), devc)
 end
@@ -230,12 +262,12 @@ end
 
 
 A plot of the deviance contribution versus $u_1$
-![Deviance contribution of u₁](./assets//GaussHermite_12_1.svg)
+![Deviance contribution of u₁](./assets//GaussHermite_14_1.svg)
 
 
 shows that the deviance contribution is very close to a quadratic.
 This is also true for $u_3$
-![Deviance contribution of u₃](./assets//GaussHermite_13_1.svg)
+![Deviance contribution of u₃](./assets//GaussHermite_15_1.svg)
 
 
 
@@ -250,7 +282,7 @@ julia> m1.u₀[1]
 
 
 
-the minima themselves, evaluated as `devc0` above and a horizontal scale, which is the inverse of diagonal of the Cholesky factor.
+the minima themselves, evaluated as `devc0` above, and a horizontal scale, which is the inverse of diagonal of the Cholesky factor.
 As shown below, this is an estimate of the conditional standard deviations of the components of $\mathcal{U}$.
 ````julia
 julia> const s = inv.(m1.LMM.L.data[Block(1,1)].diag);
@@ -271,8 +303,8 @@ for (j, z) in enumerate(xvals)
     @. uv = u₀ + z * s
     MixedModels.updateη!(m1)
     @. devc = abs2(uv) - devc0
-    for (i, dr) in enumerate(devresid)
-        devc[refs[i]] += dr
+    for (dr, i) in zip(devresid, refs)
+        devc[i] += dr
     end
     copy!(view(results, :, j), devc)
 end
@@ -280,6 +312,47 @@ end
 
 
 
-![Scaled and shifted deviance contributions](./assets//GaussHermite_17_1.svg)
+![Scaled and shifted deviance contributions](./assets//GaussHermite_19_1.svg)
 
-![Scaled and shifted deviance contributions](./assets//GaussHermite_18_1.svg)
+![Scaled and shifted deviance contributions](./assets//GaussHermite_20_1.svg)
+
+
+
+On the original density scale these become
+````julia
+for (j, z) in enumerate(xvals)
+    @. uv = u₀ + z * s
+    MixedModels.updateη!(m1)
+    @. devc = abs2(uv) - devc0
+    for (dr, i) in zip(devresid, refs)
+        devc[i] += dr
+    end
+    copy!(view(results, :, j), @. exp(-devc/2))
+end
+````
+
+
+
+![Scaled and shifted conditional density](./assets//GaussHermite_22_1.svg)
+
+![Scaled and shifted conditional density](./assets//GaussHermite_23_1.svg)
+
+
+and the function to be integrated with the normalized Gauss-Hermite rule is
+````julia
+for (j, z) in enumerate(xvals)
+    @. uv = u₀ + z * s
+    MixedModels.updateη!(m1)
+    @. devc = abs2(uv) - devc0
+    for (dr, i) in zip(devresid, refs)
+        devc[i] += dr
+    end
+    copy!(view(results, :, j), @. exp((abs2(z) - devc)/2))
+end
+````
+
+
+
+![Function to be integrated with normalized Gauss-Hermite rule](./assets//GaussHermite_25_1.svg)
+
+![Function to be integrated with normalized Gauss-Hermite rule](./assets//GaussHermite_26_1.svg)
