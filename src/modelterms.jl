@@ -576,3 +576,22 @@ function Ac_mul_B!(C::Matrix{T}, A::VectorFactorReTerm{T,V,R,S}, B::ScalarFactor
     end
     C
 end
+
+function Ac_mul_B!(C::Matrix{T}, A::ScalarFactorReTerm{T}, B::VectorFactorReTerm{T,V,R,S}) where {T,V,R,S}
+    m, n = size(B)
+    @argcheck size(C, 1) == size(A, 2) && n == size(C, 2) && size(A, 1) == m DimensionMismatch
+    Ar = A.f.refs
+    Br = B.f.refs
+    Az = A.wtz
+    Bz = B.wtz
+    fill!(C, zero(T))
+    for j in 1:m
+        offset = S * (Br[j] - 1)
+        Azj = Az[j]
+        Arj = Ar[j]
+        for k in 1:S
+            C[Arj, offset + k] += Azj * Bz[k,j]
+        end
+    end
+    C
+end

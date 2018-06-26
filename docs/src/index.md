@@ -9,13 +9,13 @@ It is similar in scope to the [*lme4*](https://github.com/lme4/lme4) package for
 
 ```@contents
 Pages = [
-        "index.md",
         "constructors.md",
         "optimization.md",
         "bootstrap.md",
         "SimpleLMM.md",
         "MultipleTerms.md",
         "SingularCovariance.md",
-        "SubjectItem.md"]
+        "SubjectItem.md",
+        "GaussHermite.md"]
 Depth = 2
 ```
