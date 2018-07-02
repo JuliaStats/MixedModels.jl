@@ -95,14 +95,39 @@ GeneralizedLinearMixedModel
 the distribution family for the response, and possibly the link function, must be specified.
 
 ```{julia;term=true}
-gm1 = fit(GeneralizedLinearMixedModel, @formula(r2 ~ 1 + a + g + b + s + m + (1|id) + (1|item)),
-    dat[:VerbAgg], Bernoulli())
+verbaggform = @formula(r2 ~ 1 + a + g + b + s + m + (1|id) + (1|item));
+gm1 = fit(GeneralizedLinearMixedModel, verbaggform, dat[:VerbAgg], Bernoulli())
 ```
 
 The canonical link, which is `GLM.LogitLink` for the `Bernoulli` distribution, is used if no explicit link is specified.
 
 Note that, in keeping with convention in the [`GLM` package](https://github.com/JuliaStats/GLM.jl), the distribution family for a binary (i.e. 0/1) response is the `Bernoulli` distribution.
 The `Binomial` distribution is only used when the response is the fraction of trials returning a positive, in which case the number of trials must be specified as the case weights.
+
+### Optional arguments to fit!
+
+An alternative approach is to create the `GeneralizedLinearMixedModel` object then call `fit!` on it.
+In this form optional arguments `fast` and/or `nAGQ` can be passed to the optimization process.
+
+As the name implies, `fast=true`, provides a faster but somewhat less accurate fit.
+These fits may suffice for model comparisons.
+```{julia;term=true}
+gm1a = fit!(GeneralizedLinearMixedModel(verbaggform, dat[:VerbAgg], Bernoulli()), fast=true)
+deviance(gm1a) - deviance(gm1)
+@time fit(GeneralizedLinearMixedModel, verbaggform, dat[:VerbAgg], Bernoulli());
+@time fit!(GeneralizedLinearMixedModel(verbaggform, dat[:VerbAgg], Bernoulli()), fast=true);
+```
+
+The optional argument `nAGQ=k` causes evaluation of the deviance function to use a `k` point
+adaptive Gauss-Hermite quadrature rule.
+This method only applies to models with a single, simple, scalar random-effects term, such as
+```{julia;term=true}
+contraform = @formula(use ~ 1 + a + l + urb + (1|d))
+@time gm2 = fit!(GeneralizedLinearMixedModel(contraform, dat[:Contraception], Bernoulli()), nAGQ=9)
+@time deviance(fit!(GeneralizedLinearMixedModel(contraform, dat[:Contraception], Bernoulli()), nAGQ=9, fast=true))
+@time deviance(fit!(GeneralizedLinearMixedModel(contraform, dat[:Contraception], Bernoulli())))
+@time deviance(fit!(GeneralizedLinearMixedModel(contraform, dat[:Contraception], Bernoulli()), fast=true))
+```
 
 # Extractor functions
 

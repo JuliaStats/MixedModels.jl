@@ -80,7 +80,7 @@ The second and subsequent calls to such functions are much faster.)
 
 ````julia
 julia> @time fit(LinearMixedModel, @formula(Y ~ 1 + (1|G)), dat[:Dyestuff2])
-  0.001298 seconds (1.26 k allocations: 74.123 KiB)
+  0.000827 seconds (1.11 k allocations: 63.703 KiB)
 Linear mixed model fit by maximum likelihood
  Formula: Y ~ 1 + (1 | G)
    logLik   -2 logLik     AIC        BIC    
@@ -294,9 +294,10 @@ GeneralizedLinearMixedModel
 the distribution family for the response, and possibly the link function, must be specified.
 
 ````julia
-julia> gm1 = fit(GeneralizedLinearMixedModel, @formula(r2 ~ 1 + a + g + b + s + m + (1|id) + (1|item)),
-    dat[:VerbAgg], Bernoulli())
-Generalized Linear Mixed Model fit by maximum likelihood
+julia> verbaggform = @formula(r2 ~ 1 + a + g + b + s + m + (1|id) + (1|item));
+
+julia> gm1 = fit(GeneralizedLinearMixedModel, verbaggform, dat[:VerbAgg], Bernoulli())
+Generalized Linear Mixed Model fit by maximum likelihood (nAGQ = 1)
   Formula: r2 ~ 1 + a + g + b + s + m + (1 | id) + (1 | item)
   Distribution: Distributions.Bernoulli{Float64}
   Link: GLM.LogitLink()
@@ -331,6 +332,105 @@ The canonical link, which is `GLM.LogitLink` for the `Bernoulli` distribution, i
 
 Note that, in keeping with convention in the [`GLM` package](https://github.com/JuliaStats/GLM.jl), the distribution family for a binary (i.e. 0/1) response is the `Bernoulli` distribution.
 The `Binomial` distribution is only used when the response is the fraction of trials returning a positive, in which case the number of trials must be specified as the case weights.
+
+### Optional arguments to fit!
+
+An alternative approach is to create the `GeneralizedLinearMixedModel` object then call `fit!` on it.
+In this form optional arguments `fast` and/or `nAGQ` can be passed to the optimization process.
+
+As the name implies, `fast=true`, provides a faster but somewhat less accurate fit.
+These fits may suffice for model comparisons.
+````julia
+julia> gm1a = fit!(GeneralizedLinearMixedModel(verbaggform, dat[:VerbAgg], Bernoulli()), fast=true)
+Generalized Linear Mixed Model fit by maximum likelihood (nAGQ = 1)
+  Formula: r2 ~ 1 + a + g + b + s + m + (1 | id) + (1 | item)
+  Distribution: Distributions.Bernoulli{Float64}
+  Link: GLM.LogitLink()
+
+  Deviance: 8136.1709
+
+Variance components:
+          Column    Variance   Std.Dev.  
+ id   (Intercept)  1.79270001 1.33891748
+ item (Intercept)  0.11875573 0.34460953
+
+ Number of obs: 7584; levels of grouping factors: 316, 24
+
+Fixed-effects parameters:
+              Estimate Std.Error  z value P(>|z|)
+(Intercept)   0.548543  0.385673   1.4223  0.1549
+a            0.0543802 0.0167462  3.24732  0.0012
+g: M          0.304244  0.191141  1.59172  0.1114
+b: scold      -1.01749  0.185216 -5.49352   <1e-7
+b: shout      -2.02067  0.187522 -10.7756  <1e-26
+s: self       -1.01255   0.15204 -6.65975  <1e-10
+m: do        -0.679102  0.151857 -4.47198   <1e-5
+
+
+julia> deviance(gm1a) - deviance(gm1)
+0.33799851004550874
+
+julia> @time fit(GeneralizedLinearMixedModel, verbaggform, dat[:VerbAgg], Bernoulli());
+ 10.058616 seconds (985.54 k allocations: 97.321 MiB, 2.21% gc time)
+
+julia> @time fit!(GeneralizedLinearMixedModel(verbaggform, dat[:VerbAgg], Bernoulli()), fast=true);
+  0.696153 seconds (49.39 k allocations: 9.666 MiB)
+
+````
+
+
+
+
+
+The optional argument `nAGQ=k` causes evaluation of the deviance function to use a `k` point
+adaptive Gauss-Hermite quadrature rule.
+This method only applies to models with a single, simple, scalar random-effects term, such as
+````julia
+julia> contraform = @formula(use ~ 1 + a + l + urb + (1|d))
+Formula: use ~ 1 + a + l + urb + (1 | d)
+
+julia> @time gm2 = fit!(GeneralizedLinearMixedModel(contraform, dat[:Contraception], Bernoulli()), nAGQ=9)
+  1.326066 seconds (226.67 k allocations: 13.128 MiB, 0.61% gc time)
+Generalized Linear Mixed Model fit by maximum likelihood (nAGQ = 9)
+  Formula: use ~ 1 + a + l + urb + (1 | d)
+  Distribution: Distributions.Bernoulli{Float64}
+  Link: GLM.LogitLink()
+
+  Deviance: 2413.3485
+
+Variance components:
+       Column    Variance   Std.Dev.  
+ d (Intercept)  0.21550265 0.46422263
+
+ Number of obs: 1934; levels of grouping factors: 60
+
+Fixed-effects parameters:
+               Estimate  Std.Error  z value P(>|z|)
+(Intercept)    -1.69013   0.145712 -11.5991  <1e-30
+a            -0.0265993 0.00782942 -3.39735  0.0007
+l: 1            1.10933   0.156856  7.07229  <1e-11
+l: 2            1.37652   0.173347  7.94082  <1e-14
+l: 3+           1.34558   0.177814  7.56736  <1e-13
+urb: Y         0.732397   0.118486  6.18132   <1e-9
+
+
+julia> @time deviance(fit!(GeneralizedLinearMixedModel(contraform, dat[:Contraception], Bernoulli()), nAGQ=9, fast=true))
+  0.038004 seconds (8.18 k allocations: 1.213 MiB)
+2413.6637188688433
+
+julia> @time deviance(fit!(GeneralizedLinearMixedModel(contraform, dat[:Contraception], Bernoulli())))
+  0.459737 seconds (123.17 k allocations: 7.163 MiB)
+2413.615689850273
+
+julia> @time deviance(fit!(GeneralizedLinearMixedModel(contraform, dat[:Contraception], Bernoulli()), fast=true))
+  0.028823 seconds (9.39 k allocations: 1.259 MiB)
+2413.661866498401
+
+````
+
+
+
+
 
 # Extractor functions
 
@@ -401,8 +501,8 @@ The value optimized when fitting a `GeneralizedLinearMixedModel` is the Laplace 
 deviance!
 ```
 ````julia
-julia> deviance!(gm1)
-Error: UndefVarError: deviance! not defined
+julia> MixedModels.deviance!(gm1)
+8135.83287319609
 
 ````
 

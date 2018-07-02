@@ -6,12 +6,12 @@ makedocs(
     pages = ["index.md",
              "constructors.md",
              "optimization.md",
+             "GaussHermite.md",
              "bootstrap.md",
              "SimpleLMM.md",
              "MultipleTerms.md",
              "SingularCovariance.md",
-             "SubjectItem.md",
-             "GaussHermite.md"]
+             "SubjectItem.md"]
 )
 
 deploydocs(

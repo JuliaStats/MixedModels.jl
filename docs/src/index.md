@@ -11,11 +11,11 @@ It is similar in scope to the [*lme4*](https://github.com/lme4/lme4) package for
 Pages = [
         "constructors.md",
         "optimization.md",
+        "GaussHermite.md",
         "bootstrap.md",
         "SimpleLMM.md",
         "MultipleTerms.md",
         "SingularCovariance.md",
-        "SubjectItem.md",
-        "GaussHermite.md"]
+        "SubjectItem.md"]
 Depth = 2
 ```
