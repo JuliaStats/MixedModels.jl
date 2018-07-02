@@ -57,7 +57,6 @@ If the distribution `D` does not have a scale parameter the Laplace approximatio
 is defined as the squared length of the conditional modes, `u`, plus the determinant
 of `Λ'Z'WZΛ + I`, plus the sum of the squared deviance residuals.
 """
-
 function deviance(m::GeneralizedLinearMixedModel{T}, nAGQ=1) where T
     nAGQ == 1 && return T(sum(m.resp.devresid) + logdet(m) + sum(u -> sum(abs2, u), m.u))
     u = vec(m.u[1])
@@ -70,7 +69,7 @@ function deviance(m::GeneralizedLinearMixedModel{T}, nAGQ=1) where T
     devc = m.devc
     for (z, w) in GHnorm(nAGQ)
         if !iszero(w)
-            if iszero(z)
+            if iszero(z)  # devc == devc0 in this case
                 mult .+= w
             else
                 @. u = u₀ + z * sd
@@ -122,15 +121,22 @@ StatsBase.nobs(m::GeneralizedLinearMixedModel) = length(m.η)
 
 StatsBase.predict(m::GeneralizedLinearMixedModel) = fitted(m)
 
+updatedevresid!(r::GLM.GlmResp, η::AbstractVector) = updateμ!(r, η)
+
+fastlogitdevres(η, y) = 2log1p(exp(iszero(y) ? η : -η))
+
+function updatedevresid!(r::GLM.GlmResp{V,<:Bernoulli,LogitLink}, η::V) where V<:AbstractVector{<:AbstractFloat}
+    map!(fastlogitdevres, r.devresid, η, r.y)
+    r
+end
+
 """
     updateη!(m::GeneralizedLinearMixedModel)
 
 Update the linear predictor, `m.η`, from the offset and the `B`-scale random effects.
 """
 function updateη!(m::GeneralizedLinearMixedModel)
-    η = m.η
-    b = m.b
-    u = m.u
+    η, b, u = m.η, m.b, m.u
     trms = m.LMM.trms
     A_mul_B!(η, trms[end - 1].x, m.β)
     for i in eachindex(b)

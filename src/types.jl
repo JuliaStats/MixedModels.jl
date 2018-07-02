@@ -205,7 +205,7 @@ end
 
 Generalized linear mixed-effects model representation
 
-# Members
+# Fields
 - `LMM`: a [`LinearMixedModel`](@ref) - the local approximation to the GLMM.
 - `β`: the fixed-effects vector
 - `β₀`: similar to `β`. Used in the PIRLS algorithm if step-halving is needed.
@@ -216,6 +216,14 @@ Generalized linear mixed-effects model representation
 - `resp`: a `GlmResp` object
 - `η`: the linear predictor
 - `wt`: vector of prior case weights, a value of `T[]` indicates equal weights.
+The following fields are used in adaptive Gauss-Hermite quadrature, which applies
+only to models with a single random-effects term, in which case their lengths are
+the number of levels in the grouping factor for that term.  Otherwise they are
+zero-length vectors.
+- `devc`: vector of deviance components
+- `devc0`: vector of deviance components at offset of zero
+- `sd`: approximate standard deviation of the conditional density
+- `mult`: multiplier
 """
 struct GeneralizedLinearMixedModel{T <: AbstractFloat} <: MixedModel{T}
     LMM::LinearMixedModel{T}
