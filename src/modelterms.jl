@@ -224,7 +224,7 @@ julia> show(MixedModels.levs(trm))
 julia>
 ```
 """
-levs(A::AbstractFactorReTerm) = levels(A.f)
+levs(A::AbstractFactorReTerm) = CategoricalArrays.index(A.f.pool)
 
 """
     nlevs(A::FactorReTerm)

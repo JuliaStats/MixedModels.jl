@@ -148,14 +148,14 @@ original scale.
 function ranef(m::MixedModel; uscale=false, named=false)
     LMM = lmm(m)
     T = eltype(LMM.sqrtwts)
-    v = Matrix{T}[Matrix{T}(vsize(t), nlevs(t)) for t in reterms(LMM)]
+    retrms = reterms(LMM)
+    v = Matrix{T}[Matrix{T}(vsize(t), nlevs(t)) for t in retrms]
     ranef!(v, LMM, uscale)
     named || return v
     vnmd = map(NamedArray, v)
-    trms = reterms(LMM)
-    for (i, vnm) in enumerate(vnmd)
-        setnames!(vnm, trms[i].cnms, 1)
-        setnames!(vnm, string.(levs(trms[i])), 2)
+    for (trm, vnm) in zip(retrms, vnmd)
+        setnames!(vnm, trm.cnms, 1)
+        setnames!(vnm, string.(levs(trm)), 2)
     end
     vnmd
 end
