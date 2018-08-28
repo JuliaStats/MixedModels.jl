@@ -34,6 +34,9 @@ for details.
 [coveralls-img]: https://coveralls.io/repos/github/dmbates/MixedModels.jl/badge.svg?branch=master
 [coveralls-url]: https://coveralls.io/github/dmbates/MixedModels.jl?branch=master
 
+[codecov-img]: https://codecov.io/github/dmbates/MixedModels.jl/badge.svg?branch=master
+[codecov-url]: https://codecov.io/github/dmbates/MixedModels.jl?branch=master
+
 [issues-url]: https://github.com/dmbates/MixedModels.jl/issues
 
 [pkg-0.5-img]: http://pkg.julialang.org/badges/MixedModels_0.5.svg
