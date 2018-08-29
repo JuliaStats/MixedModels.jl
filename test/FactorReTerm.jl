@@ -8,7 +8,11 @@ end
 @testset "scalarRe" begin
     dyestuff = dat[:Dyestuff]
     pastes = dat[:Pastes]
-    sf = ScalarFactorReTerm(dyestuff[:G], :G)
+    batch = dyestuff[:G]
+    sf = ScalarFactorReTerm(batch, :G)
+    b2 = categorical(reverse(string.(batch)))
+    reverse!(b2.refs)
+    bb = ScalarFactorReTerm(b2, :G)
     sf1 = ScalarFactorReTerm(pastes[:G], :G)
     sf2 = ScalarFactorReTerm(pastes[:H], :H)
     Yield = Array(dyestuff[:Y])
@@ -23,13 +27,17 @@ end
         @test size(sf2) == (60, 10)
     end
 
+    @testset "order" begin
+        @test bb.refs == sf.refs
+    end
+    
     @testset "utilities" begin
         @test MixedModels.levs(sf) == string.('A':'F')
         @test MixedModels.nlevs(sf) == 6
         @test MixedModels.vsize(sf) == 1
         @test MixedModels.nrandomeff(sf) == 6
         @test eltype(sf) == Float64
-        @test sparse(sf) == sparse(Int32[1:30;], convert(Vector{Int32},sf.f.refs), ones(30))
+        @test sparse(sf) == sparse(Int32[1:30;], convert(Vector{Int32},sf.refs), ones(30))
         fsf = full(sf)
         @test size(fsf) == (30, 6)
         @test countnz(fsf) == 30
@@ -115,7 +123,7 @@ end
     @test isa(vrp, UniformBlockDiagonal{Float64})
     @test size(vrp) == (36, 36)
 
-    scl = ScalarFactorReTerm(slp[:G], Array(slp[:U]), Array(slp[:U]), :G, ["U"], 1.0)
+    scl = ScalarFactorReTerm(slp[:G].refs, levels(slp[:G]), Array(slp[:U]), Array(slp[:U]), :G, ["U"], 1.0)
 
     @test sparse(corr)'sparse(scl) == corr'scl
 

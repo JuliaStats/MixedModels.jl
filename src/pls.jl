@@ -43,7 +43,7 @@ function LinearMixedModel(f, trms, wts)
         if isa(ti, AbstractFactorReTerm)
             for j in 1:(i - 1)
                 tj = trms[j]
-                if isa(tj, AbstractFactorReTerm) && !isnested(tj.f, ti.f)
+                if isa(tj, AbstractFactorReTerm) && !isnested(tj, ti)
                     for k in i:nt
                         L[Block(k, i)] = Matrix(L[Block(k, i)])
                     end
@@ -95,7 +95,7 @@ function LinearMixedModel(f::Formula, fr::AbstractDataFrame;
                 end
             end
             push!(trms,
-                  length(coefnms) == 1 ? ScalarFactorReTerm(gr, m, m, grp, coefnms, one(T)) :
+                  length(coefnms) == 1 ? ScalarFactorReTerm(gr, m, grp, coefnms) :
                   VectorFactorReTerm(gr, transpose(reshape(m, (n, sum(trsize)))), grp,
                       coefnms,  trsize))
         end

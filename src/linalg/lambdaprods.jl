@@ -21,7 +21,7 @@ function A_mul_Λ!(A::BlockedSparse{T}, B::VectorFactorReTerm{T}) where T
     end
     A
 end
-function A_mul_Λ!(A::Matrix{T}, B::VectorFactorReTerm{T,V,R,S}) where {T,V,R,S}
+function A_mul_Λ!(A::Matrix{T}, B::VectorFactorReTerm{T,R,S}) where {T,R,S}
     λ = B.Λ
     m, n = size(A)
     q, r = divrem(n, S)
@@ -44,7 +44,7 @@ the diagonal plus a copy! operation in one step.
 function Λc_mul_B! end
 Λc_mul_B!(A::MatrixTerm, B) = B
 Λc_mul_B!(A::ScalarFactorReTerm, B) = scale!(A.Λ, B)
-function Λc_mul_B!(A::VectorFactorReTerm{T,V,R,S}, B::Matrix{T}) where {T,V,R,S}
+function Λc_mul_B!(A::VectorFactorReTerm{T,R,S}, B::Matrix{T}) where {T,R,S}
     m, n = size(B)
     Ac_mul_B!(A.Λ, reshape(B, (S, div(m, S) * n)))
     B
@@ -68,7 +68,7 @@ function Λ_mul_B!(C::Matrix{T}, A::ScalarFactorReTerm{T}, B::Matrix{T}) where T
     scale!(C, A.Λ, B)
 end
 
-function Λ_mul_B!(C::Matrix{T}, A::VectorFactorReTerm{T,V,R,S}, B::Matrix{T}) where {T,V,R,S}
+function Λ_mul_B!(C::Matrix{T}, A::VectorFactorReTerm{T,R,S}, B::Matrix{T}) where {T,R,S}
     @argcheck(size(C) == size(B) == (S, div(size(A, 2), S)), DimensionMismatch)
     A_mul_B!(A.Λ, copy!(C, B))
 end

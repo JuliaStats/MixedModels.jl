@@ -62,14 +62,14 @@ A_mul_B!(R::StridedVecOrMat{T}, A::MatrixTerm{T}, B::StridedVecOrMat{T}) where {
 abstract type AbstractFactorReTerm{T} <: AbstractTerm{T} end
 
 """
-    isnested(A, B)
+    isnested(A::AbstractFactorReTerm, B::AbstractFactorReTerm)
 
 Is factor `A` nested in factor `B`?  That is, does each value of `A` occur with just
 one value of B?
 """
-function isnested(A::CategoricalVector{V,R}, B::CategoricalVector{W,S}) where {V,R,W,S}
-    @argcheck length(A) == length(B) DimensionMismatch
-    bins = zeros(S, length(A.pool))
+function isnested(A::AbstractFactorReTerm, B::AbstractFactorReTerm)
+    @argcheck length(A.refs) == length(B.refs) DimensionMismatch
+    bins = zeros(eltype(B.refs), length(A.levels))
     @inbounds for (a, b) in zip(A.refs, B.refs)
         bba = bins[a]
         if iszero(bba)
@@ -87,25 +87,26 @@ end
 Scalar random-effects term from a grouping factor
 
 # Members
-* `f`: the grouping factor as a `CategoricalVector`
+* `refs`: indices into `levels` for the grouping factor
+* `levels`: possible values of the grouping factor
 * `z`: the raw random-effects model matrix as a vector.
 * `wtz`: a weighted copy of `z`
 * `fnm`: the name of the grouping factor as a `Symbol`
 * `cnm`: the column name as a string
 * `Λ`: the relative covariance multiplier
 """
-mutable struct ScalarFactorReTerm{T,V,R} <: AbstractFactorReTerm{T}
-    f::CategoricalVector{V,R}
+mutable struct ScalarFactorReTerm{T,R} <: AbstractFactorReTerm{T}
+    refs::Vector{R}
+    levels::Vector{String}
     z::Vector{T}
     wtz::Vector{T}
     fnm::Symbol
     cnms::Vector{String}
     Λ::T
 end
-function ScalarFactorReTerm(f::CategoricalVector, fnm::Symbol)
-    v = ones(Float64, length(f))
-    ScalarFactorReTerm(f, v, v, fnm, ["(Intercept)"], 1.0)
-end
+ScalarFactorReTerm(f::CategoricalVector, v::Vector, fnm::Symbol, colnms) =
+    ScalarFactorReTerm(CategoricalArrays.order(f.pool)[f.refs], string.(levels(f)), v, copy(v), fnm, colnms, 1.0)
+ScalarFactorReTerm(f::CategoricalVector, fnm::Symbol) = ScalarFactorReTerm(f, ones(length(f)), fnm, ["(Intercept)"])
 ScalarFactorReTerm(f::AbstractVector, fnm::Symbol) = ScalarFactorReTerm(categorical(f), fnm)
 
 function cond(A::ScalarFactorReTerm)
@@ -142,7 +143,9 @@ vsize(A::ScalarFactorReTerm) = 1
 Random-effects term from a grouping factor, model matrix and block pattern
 
 # Members
-* `f`: the grouping factor as an `CategoricalVector`
+
+* `refs`: indices into `levels` for the grouping factor
+* `levels`: possible values of the grouping factor
 * `z`: the transposed raw random-effects model matrix
 * `wtz`: a weighted copy of `z`
 * `wtzv`: a view of `wtz` as a `Vector{SVector{S,T}}`
@@ -152,8 +155,9 @@ Random-effects term from a grouping factor, model matrix and block pattern
 * `Λ`: the relative covariance factor
 * `inds`: linear indices of θ elements in the relative covariance factor
 """
-mutable struct VectorFactorReTerm{T,V,R,S} <: AbstractFactorReTerm{T}
-    f::CategoricalVector{V,R}
+mutable struct VectorFactorReTerm{T,R,S} <: AbstractFactorReTerm{T}
+    refs::Vector{R}
+    levels::Vector{String}
     z::Matrix{T}
     wtz::Matrix{T}
     wtzv::Vector{SVector{S,T}}
@@ -163,7 +167,7 @@ mutable struct VectorFactorReTerm{T,V,R,S} <: AbstractFactorReTerm{T}
     Λ::LowerTriangular{T,Matrix{T}}
     inds::Vector{Int}
 end
-function VectorFactorReTerm(f::CategoricalVector, z::Matrix{T}, fnm, cnms, blks) where T
+function VectorFactorReTerm(f::CategoricalVector, z::Matrix{T}, fnm, cnms, blks) where {T}
     k, n = size(z)
     @argcheck(k == sum(blks), DimensionMismatch)
     m = reshape(1:abs2(k), (k, k))
@@ -175,11 +179,12 @@ function VectorFactorReTerm(f::CategoricalVector, z::Matrix{T}, fnm, cnms, blks)
         end
         offset += kk
     end
-    VectorFactorReTerm(f, z, z, reinterpret(SVector{k,T}, z, (n,)), fnm, cnms, blks, 
+    VectorFactorReTerm(CategoricalArrays.order(f.pool)[f.refs], string.(levels(f)), z, z, 
+                       reinterpret(SVector{k,T}, z, (n,)), fnm, cnms, blks, 
                        LowerTriangular(eye(T, k)), inds)
 end
 
-function reweight!(A::VectorFactorReTerm{T,V,R,S}, sqrtwts::Vector) where {T,V,R,S} 
+function reweight!(A::VectorFactorReTerm{T,R,S}, sqrtwts::Vector) where {T,R,S} 
     if !isempty(sqrtwts)
         z = A.z
         if A.wtz === z
@@ -194,13 +199,13 @@ end
 function Base.sparse(A::ScalarFactorReTerm)
     Az = A.z
     m = length(Az)
-    sparse(Vector{Int32}(1:m), Vector{Int32}(A.f.refs), Az, m, nlevs(A))
+    sparse(Vector{Int32}(1:m), Vector{Int32}(A.refs), Az, m, nlevs(A))
 end
 
-function Base.sparse(A::VectorFactorReTerm{T,V,R,S}) where {T,V,R,S}
+function Base.sparse(A::VectorFactorReTerm{T,R,S}) where {T,R,S}
     n = size(A, 1)
     colind = Matrix{Int32}(S, n)
-    rr = A.f.refs
+    rr = A.refs
     @inbounds for j in 1:n
         offset = (rr[j] - 1) * S
         for i in 1:S
@@ -224,7 +229,7 @@ julia> show(MixedModels.levs(trm))
 julia>
 ```
 """
-levs(A::AbstractFactorReTerm) = CategoricalArrays.index(A.f.pool)
+levs(A::AbstractFactorReTerm) = A.levels
 
 """
     nlevs(A::FactorReTerm)
@@ -256,16 +261,16 @@ end
 
 rowlengths(A::MatrixTerm{T}) where {T} = T[]
 
-vsize(A::VectorFactorReTerm{T,V,R,S}) where {T,V,R,S} = S
+vsize(A::VectorFactorReTerm{T,R,S}) where {T,R,S} = S
 
 eltype(::AbstractFactorReTerm{T}) where {T} = T
 
 Base.full(A::AbstractFactorReTerm) = full(sparse(A))
 
-Base.size(A::AbstractFactorReTerm) = (length(A.f), nrandomeff(A))
+Base.size(A::AbstractFactorReTerm) = (length(A.refs), nrandomeff(A))
 
 Base.size(A::AbstractFactorReTerm, i::Integer) =
-    i < 1 ? throw(BoundsError()) : i == 1 ? length(A.f) :  i == 2 ? nrandomeff(A) : 1
+    i < 1 ? throw(BoundsError()) : i == 1 ? length(A.refs) :  i == 2 ? nrandomeff(A) : 1
 
 cond(A::VectorFactorReTerm) = cond(A.Λ)
 
@@ -349,8 +354,8 @@ function setθ!(A::VectorFactorReTerm{T}, v::AbstractVector{T}) where T
     A
 end
 
-function Ac_mul_B!(α::Real, A::MatrixTerm{T}, B::ScalarFactorReTerm{T,V,R}, β::Real,
-                   C::Matrix{T}) where {T,V,R}
+function Ac_mul_B!(α::Real, A::MatrixTerm{T}, B::ScalarFactorReTerm{T,R}, β::Real,
+                   C::Matrix{T}) where {T,R}
     Awt = A.wtx
     n, p = size(Awt)
     m, q = size(B)
@@ -358,7 +363,7 @@ function Ac_mul_B!(α::Real, A::MatrixTerm{T}, B::ScalarFactorReTerm{T,V,R}, β:
     if β ≠ one(T)
         iszero(β) ? fill!(C, β) : scale!(β, C)
     end
-    rr = B.f.refs
+    rr = B.refs
     zz = B.wtz
     @inbounds for j in 1:n
         rrj = rr[j]
@@ -376,8 +381,8 @@ Ac_mul_B!(R::Matrix{T}, A::MatrixTerm{T}, B::AbstractFactorReTerm{T}) where {T} 
 Base.Ac_mul_B(A::MatrixTerm{T}, B::AbstractFactorReTerm{T}) where {T} =
     Ac_mul_B!(Array{T}(size(A, 2), size(B, 2)), A, B)
 
-function Ac_mul_B!(α::Real, A::MatrixTerm{T}, B::VectorFactorReTerm{T,V,R,S}, β::Real,
-                   C::Matrix{T}) where {T,V,R,S}
+function Ac_mul_B!(α::Real, A::MatrixTerm{T}, B::VectorFactorReTerm{T,R,S}, β::Real,
+                   C::Matrix{T}) where {T,R,S}
     Awt = A.wtx
     n, p = size(Awt)
     m, q = size(B)
@@ -385,7 +390,7 @@ function Ac_mul_B!(α::Real, A::MatrixTerm{T}, B::VectorFactorReTerm{T,V,R,S}, �
     if β ≠ one(T)
         iszero(β) ? fill!(C, β) : scale!(β, C)
     end
-    rr = B.f.refs
+    rr = B.refs
     zz = B.wtzv
     @inbounds for j in 1:n
         v = zz[j]
@@ -403,28 +408,28 @@ end
 Ac_mul_B!(C::Matrix{T}, A::MatrixTerm{T}, B::VectorFactorReTerm{T}) where {T} =
     Ac_mul_B!(one(T), A, B, zero(T), C)
 
-function Ac_mul_B!(C::Diagonal{T}, A::ScalarFactorReTerm{T,V,R}, 
-                   B::ScalarFactorReTerm{T,V,R}) where {T,V,R}
+function Ac_mul_B!(C::Diagonal{T}, A::ScalarFactorReTerm{T,R}, 
+                   B::ScalarFactorReTerm{T,R}) where {T,R}
     @argcheck A === B
     d = C.diag
     fill!(d, zero(T))
-    @inbounds for (ri, Azi) in zip(A.f.refs, A.wtz)
+    @inbounds for (ri, Azi) in zip(A.refs, A.wtz)
         d[ri] += abs2(Azi)
     end
     C
 end
 
-function Base.Ac_mul_B(A::ScalarFactorReTerm{T,V,R}, 
-                       B::ScalarFactorReTerm{T,W,S}) where {T,V,R,W,S}
+function Base.Ac_mul_B(A::ScalarFactorReTerm{T,R}, 
+                       B::ScalarFactorReTerm{T,S}) where {T,R,S}
     A === B ? Ac_mul_B!(Diagonal(Vector{T}(nlevs(A))), A, B) :
-        sparse(Vector{Int32}(A.f.refs), Vector{Int32}(B.f.refs), A.wtz .* B.wtz)
+        sparse(Vector{Int32}(A.refs), Vector{Int32}(B.refs), A.wtz .* B.wtz)
 end
 
 function Base.Ac_mul_B(A::VectorFactorReTerm, B::ScalarFactorReTerm)
     nzeros = copy(A.wtz)
     k, n = size(nzeros)
     rowind = Matrix{Int32}(k, n)
-    refs = A.f.refs
+    refs = A.refs
     bwtz = B.wtz
     for j in 1:n
         bwtzj = bwtz[j]
@@ -434,19 +439,19 @@ function Base.Ac_mul_B(A::VectorFactorReTerm, B::ScalarFactorReTerm)
             nzeros[i, j] *= bwtzj
         end
     end
-    sparse(vec(rowind), Vector{Int32}(repeat(B.f.refs, inner=k)), vec(nzeros),
+    sparse(vec(rowind), Vector{Int32}(repeat(B.refs, inner=k)), vec(nzeros),
            k * nlevs(A), nlevs(B))
 end
 
 Base.Ac_mul_B(A::ScalarFactorReTerm, B::VectorFactorReTerm) = Ac_mul_B(B, A)'
 
-function Ac_mul_B!(C::UniformBlockDiagonal{T}, A::VectorFactorReTerm{T,V,R,S},
-                   B::VectorFactorReTerm{T,W,U,P}) where {T,V,R,S,W,U,P}
+function Ac_mul_B!(C::UniformBlockDiagonal{T}, A::VectorFactorReTerm{T,R,S},
+                   B::VectorFactorReTerm{T,U,P}) where {T,R,S,U,P}
     @argcheck(A === B)
     Cd = C.data
     @argcheck(size(Cd) == (S, S, nlevs(A)), DimensionMismatch)
     fill!(Cd, zero(T))
-    for (r, v) in zip(A.f.refs, A.wtzv)
+    for (r, v) in zip(A.refs, A.wtzv)
         @inbounds for j in 1:S
             vj = v[j]
             for i in 1:S
@@ -457,7 +462,7 @@ function Ac_mul_B!(C::UniformBlockDiagonal{T}, A::VectorFactorReTerm{T,V,R,S},
     C
 end
 
-function Base.Ac_mul_B(A::VectorFactorReTerm{T,V,R,S}, B::VectorFactorReTerm{T,W,U,P}) where {T,V,R,S,W,U,P}
+function Base.Ac_mul_B(A::VectorFactorReTerm{T,R,S}, B::VectorFactorReTerm{T,U,P}) where {T,R,S,U,P}
     if A === B
         return Ac_mul_B!(UniformBlockDiagonal(Array{T}(S, S, nlevs(A))), A, A)
     end
@@ -469,8 +474,8 @@ function Base.Ac_mul_B(A::VectorFactorReTerm{T,V,R,S}, B::VectorFactorReTerm{T,W
     I = sizehint!(Int32[], nz)
     J = sizehint!(Int32[], nz)
     vals = sizehint!(T[], nz)
-    Ar = A.f.refs
-    Br = B.f.refs
+    Ar = A.refs
+    Br = B.refs
     for i in 1:m
         Azi = Az[i]
         Bzi = Bz[i]
@@ -528,8 +533,8 @@ end
 function Ac_mul_B!(C::Matrix{T}, A::ScalarFactorReTerm{T}, B::ScalarFactorReTerm{T}) where T
     m, n = size(B)
     @argcheck size(C, 1) == size(A, 2) && n == size(C, 2) && size(A, 1) == m DimensionMismatch
-    Ar = A.f.refs
-    Br = B.f.refs
+    Ar = A.refs
+    Br = B.refs
     Az = A.wtz
     Bz = B.wtz
     fill!(C, zero(T))
@@ -542,8 +547,8 @@ end
 function Ac_mul_B!(C::SparseMatrixCSC{T}, A::ScalarFactorReTerm{T}, B::ScalarFactorReTerm{T}) where T
     m, n = size(B)
     @argcheck size(C, 1) == size(A, 2) && n == size(C, 2) && size(A, 1) == m DimensionMismatch
-    Ar = A.f.refs
-    Br = B.f.refs
+    Ar = A.refs
+    Br = B.refs
     Az = A.wtz
     Bz = B.wtz
     nz = nonzeros(C)
@@ -558,11 +563,11 @@ function Ac_mul_B!(C::SparseMatrixCSC{T}, A::ScalarFactorReTerm{T}, B::ScalarFac
     C
 end
 
-function Ac_mul_B!(C::Matrix{T}, A::VectorFactorReTerm{T,V,R,S}, B::ScalarFactorReTerm{T}) where {T,V,R,S}
+function Ac_mul_B!(C::Matrix{T}, A::VectorFactorReTerm{T,R,S}, B::ScalarFactorReTerm{T}) where {T,R,S}
     m, n = size(B)
     @argcheck size(C, 1) == size(A, 2) && n == size(C, 2) && size(A, 1) == m DimensionMismatch
-    Ar = A.f.refs
-    Br = B.f.refs
+    Ar = A.refs
+    Br = B.refs
     Az = A.wtz
     Bz = B.wtz
     fill!(C, zero(T))
@@ -577,11 +582,11 @@ function Ac_mul_B!(C::Matrix{T}, A::VectorFactorReTerm{T,V,R,S}, B::ScalarFactor
     C
 end
 
-function Ac_mul_B!(C::Matrix{T}, A::ScalarFactorReTerm{T}, B::VectorFactorReTerm{T,V,R,S}) where {T,V,R,S}
+function Ac_mul_B!(C::Matrix{T}, A::ScalarFactorReTerm{T}, B::VectorFactorReTerm{T,R,S}) where {T,R,S}
     m, n = size(B)
     @argcheck size(C, 1) == size(A, 2) && n == size(C, 2) && size(A, 1) == m DimensionMismatch
-    Ar = A.f.refs
-    Br = B.f.refs
+    Ar = A.refs
+    Br = B.refs
     Az = A.wtz
     Bz = B.wtz
     fill!(C, zero(T))

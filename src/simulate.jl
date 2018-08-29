@@ -183,7 +183,7 @@ function unscaledre!(y::AbstractVector, A::ScalarFactorReTerm, b::AbstractVecOrM
     m, n = size(A)
     @argcheck(length(y) == m && length(b) == n, DimensionMismatch)
     z = A.z
-    r = A.f.refs
+    r = A.refs
     for i in eachindex(r)
         y[i] += b[r[i]] * z[i]
     end
@@ -196,7 +196,7 @@ function unscaledre!(y::AbstractVector{T}, A::VectorFactorReTerm{T,V,R},
     k, n = size(Z)
     l = nlevs(A)
     @argcheck length(y) == n && size(b) == (k, l) DimensionMismatch
-    inds = A.f.refs
+    inds = A.refs
     for i in eachindex(y)
         ii = inds[i]
         for j in 1:k
