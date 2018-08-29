@@ -20,6 +20,10 @@ end
     @test isapprox(loglikelihood(gm1), -1180.78565, rtol=0.00001)
     @test StatsBase.dof(gm0) == length(gm0.β) + length(gm0.θ)
     @test StatsBase.nobs(gm0) == 1934
+    fit!(gm0, fast=true, nAGQ=7)
+    @test isapprox(deviance(gm0, 7),2360.9838, atol=0.001)
+    fit!(gm0, nAGQ=7)
+    @test isapprox(deviance(gm0, 7),2360.9002, atol=0.001)
     # the next three values are not well defined in the optimization
     #@test isapprox(logdet(gm1), 75.7275, atol=0.1)
     #@test isapprox(sum(abs2, gm1.u[1]), 48.4747, atol=0.1)

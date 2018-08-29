@@ -62,7 +62,7 @@ function deviance(m::GeneralizedLinearMixedModel{T}, nAGQ=1) where T
     u = vec(m.u[1])
     u₀ = vec(m.u₀[1])
     Compat.copyto!(u₀, u)
-    ra = RaggedArray(m.resp.devresid, m.LMM.trms[1].f.refs)
+    ra = RaggedArray(m.resp.devresid, m.LMM.trms[1].refs)
     devc0 = sum!(map!(abs2, m.devc0, u), ra)  # the deviance components at z = 0
     sd = map!(inv, m.sd, m.LMM.L.data[Block(1,1)].diag)
     mult = fill!(m.mult, 0)
