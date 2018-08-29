@@ -1,8 +1,7 @@
-using Compat, DataFrames, RData, MixedModels
-using Compat.Test
+using DataFrames, LinearAlgebra, MixedModels, RData, SparseArrays, Test
 
-if !isdefined(:dat) || !isa(dat, Dict{Symbol, Any})
-    dat = convert(Dict{Symbol,Any}, load(joinpath(dirname(@__FILE__), "dat.rda")))
+if !isdefined(:dat) || !isa(dat, Dict{Symbol, DataFrame})
+    dat = Dict(Symbol(k) => v for (k, v) in load(joinpath(dirname(@__FILE__), "dat.rda")))
 end
 
 @testset "scalarRe" begin
@@ -38,7 +37,7 @@ end
         @test MixedModels.nrandomeff(sf) == 6
         @test eltype(sf) == Float64
         @test sparse(sf) == sparse(Int32[1:30;], convert(Vector{Int32},sf.refs), ones(30))
-        fsf = full(sf)
+        fsf = Matrix(sf)
         @test size(fsf) == (30, 6)
         @test countnz(fsf) == 30
         @test sort!(unique(fsf)) == [0.0, 1.0]

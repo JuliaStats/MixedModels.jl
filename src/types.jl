@@ -1,5 +1,4 @@
-using Compat, StaticArrays
-using Compat.LinearAlgebra
+using StaticArrays, SparseArrays, LinearAlgebra
 
 """
     UniformBlockDiagonal{T}
@@ -34,7 +33,7 @@ function Base.getindex(A::UniformBlockDiagonal{T}, i::Int, j::Int) where {T}
     end
 end
 
-function Base.full(A::UniformBlockDiagonal{T}) where T
+function LinearAlgebra.Matrix(A::UniformBlockDiagonal{T}) where T
     res = zeros(T, size(A))
     Ad = A.data
     m, n, l = size(Ad)
@@ -71,9 +70,9 @@ end
 Base.size(A::BlockedSparse) = size(A.cscmat)
 Base.size(A::BlockedSparse, d) = size(A.cscmat, d)
 Base.getindex(A::BlockedSparse{T}, i::Integer, j::Integer) where {T} = getindex(A.cscmat, i, j)
-Base.full(A::BlockedSparse{T}) where {T} = full(A.cscmat)
-Base.sparse(A::BlockedSparse) = A.cscmat
-Base.nnz(A::BlockedSparse) = nnz(A.cscmat)
+LinearAlgebra.Matrix(A::BlockedSparse{T}) where {T} = full(A.cscmat)
+SparseArrays.sparse(A::BlockedSparse) = A.cscmat
+SparseArrays.nnz(A::BlockedSparse) = nnz(A.cscmat)
 function Base.copy!(L::BlockedSparse{T,I}, A::SparseMatrixCSC{T,I}) where {T,I}
     @argcheck(nnz(L) == nnz(A), DimensionMismatch)
     copy!(nonzeros(L.cscmat), nonzeros(A))

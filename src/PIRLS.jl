@@ -1,3 +1,5 @@
+using Printf: @sprintf
+
 function StatsBase.dof(m::GeneralizedLinearMixedModel)
     length(m.β) + length(m.θ) + GLM.dispersion_parameter(m.resp.d)
 end

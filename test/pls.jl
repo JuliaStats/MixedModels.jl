@@ -1,8 +1,7 @@
-using Compat, StatsBase, DataFrames, RData, MixedModels
-using Compat.Test
+using StatsBase, DataFrames, LinearAlgebra, MixedModels, SparseArrays, Test
 
-if !isdefined(:dat) || !isa(dat, Dict{Symbol, Any})
-    dat = convert(Dict{Symbol,Any}, load(joinpath(dirname(@__FILE__), "dat.rda")))
+if !isdefined(:dat) || !isa(dat, Dict{Symbol, DataFrame})
+    dat = Dict(Symbol(k) => v for (k, v) in load(joinpath(dirname(@__FILE__), "dat.rda")))
 end
 
 @testset "Dyestuff" begin
@@ -146,7 +145,7 @@ end
     updateL!(fm);
     b11 = LowerTriangular(fm.L.data[Block(1, 1)].facevec[1])
     @test b11 * b11' == fm.A[Block(1, 1)].facevec[1] + I
-    @test countnz(full(fm.L.data[Block(1, 1)])) == 18 * 4
+    @test countn(Matrix(fm.L.data[Block(1, 1)])) == 18 * 4
 
 
     fit!(fm)

@@ -1,7 +1,7 @@
 using Compat, Compat.Test, DataFrames, RData, MixedModels
 
-if !isdefined(:dat) || !isa(dat, Dict{Symbol, Any})
-    dat = convert(Dict{Symbol,Any}, load(joinpath(dirname(@__FILE__), "dat.rda")))
+if !isdefined(:dat) || !isa(dat, Dict{Symbol, DataFrame})
+    dat = Dict(Symbol(k) => v for (k, v) in load(joinpath(dirname(@__FILE__), "dat.rda")))
 end
 
 @testset "contra" begin

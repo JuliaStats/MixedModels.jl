@@ -1,8 +1,7 @@
-using Compat, CategoricalArrays, RData, MixedModels
-using Compat.Test
+using CategoricalArrays, LinearAlgebra, MixedModels, RData, Test
 
-if !isdefined(:dat) || !isa(dat, Dict{Symbol, Any})
-    dat = convert(Dict{Symbol,Any}, load(joinpath(dirname(@__FILE__), "dat.rda")))
+if !isdefined(:dat) || !isa(dat, Dict{Symbol, DataFrame})
+    dat = Dict(Symbol(k) => v for (k, v) in load(joinpath(dirname(@__FILE__), "dat.rda")))
 end
 
 @testset "UBlk" begin
@@ -48,7 +47,7 @@ end
         MixedModels.scaleInflate!(Lblk, ex22, vf1)
         target = Λ'ex22.facevec[1]*Λ + I
         @test Lblk.facevec[1] == target
-        @test MixedModels.scaleInflate!(full(Lblk), ex22, vf1)[1:2, 1:2] == target
+        @test MixedModels.scaleInflate!(Matrix(Lblk), ex22, vf1)[1:2, 1:2] == target
     end
 
     @testset "updateL" begin

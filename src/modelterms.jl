@@ -196,13 +196,13 @@ function reweight!(A::VectorFactorReTerm{T,R,S}, sqrtwts::Vector) where {T,R,S}
     A
 end
 
-function Base.sparse(A::ScalarFactorReTerm)
+function SparseArrays.sparse(A::ScalarFactorReTerm)
     Az = A.z
     m = length(Az)
     sparse(Vector{Int32}(1:m), Vector{Int32}(A.refs), Az, m, nlevs(A))
 end
 
-function Base.sparse(A::VectorFactorReTerm{T,R,S}) where {T,R,S}
+function SparseArrays.sparse(A::VectorFactorReTerm{T,R,S}) where {T,R,S}
     n = size(A, 1)
     colind = Matrix{Int32}(S, n)
     rr = A.refs
@@ -265,7 +265,7 @@ vsize(A::VectorFactorReTerm{T,R,S}) where {T,R,S} = S
 
 eltype(::AbstractFactorReTerm{T}) where {T} = T
 
-Base.full(A::AbstractFactorReTerm) = full(sparse(A))
+LinearAlgebra.Matrix(A::AbstractFactorReTerm) = Matrix(sparse(A))
 
 Base.size(A::AbstractFactorReTerm) = (length(A.refs), nrandomeff(A))
 

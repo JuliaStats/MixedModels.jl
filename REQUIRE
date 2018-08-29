@@ -1,4 +1,4 @@
-julia 0.6.1
+julia 0.7
 ArgCheck
 BlockArrays 0.3.0
 CategoricalArrays
@@ -6,10 +6,10 @@ Compat
 DataFrames 0.11.0
 Distributions 0.11
 GLM 0.11
-NamedArrays
-NLopt 0.3
-Showoff
-StaticArrays 0.6
+NamedArrays 0.7
+NLopt 0.5
+Showoff 0.2
+StaticArrays 0.8
 StatsBase 0.22.0
 StatsFuns 0.5
 StatsModels 0.2.4
