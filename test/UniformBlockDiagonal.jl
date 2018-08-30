@@ -1,6 +1,6 @@
-using CategoricalArrays, LinearAlgebra, MixedModels, RData, Test
+using CategoricalArrays, LinearAlgebra, MixedModels, RData, SparseArrays, Test
 
-if !isdefined(:dat) || !isa(dat, Dict{Symbol, DataFrame})
+if !@isdefined(dat) || !isa(dat, Dict{Symbol, DataFrame})
     dat = Dict(Symbol(k) => v for (k, v) in load(joinpath(dirname(@__FILE__), "dat.rda")))
 end
 
@@ -8,9 +8,11 @@ end
     ex22 = UniformBlockDiagonal(reshape(Vector(1.0:12.0), (2, 2, 3)))
     Lblk = UniformBlockDiagonal(fill(0., (2,2,3)))
     vf1 = VectorFactorReTerm(categorical(repeat(1:3, inner=4)),
-        hcat(ones(12), repeat([-1.0, 1.0], outer=6))', :G, ["(Intercept)", "U"], [2])
+                             vcat(ones(1,12), repeat([-1.0, 1.0], outer=6)'),
+                             :G, ["(Intercept)", "U"], [2])
     vf2 = VectorFactorReTerm(categorical(repeat(['A','B'], outer=6)),
-        hcat(ones(12), repeat([-1.0, 0.0, 1.0], inner=2, outer=2))', :G, ["(Intercept)", "U"], [2])
+                             vcat(ones(1,12), repeat([-1.0, 0.0, 1.0], inner=2, outer=2)'),
+                             :G, ["(Intercept)", "U"], [2])
     prd = vf2'vf1
     
     @testset "size" begin
@@ -53,8 +55,10 @@ end
     @testset "updateL" begin
         @test ones(2, 2) == MixedModels.rankUpdate!(1.0, ones(2), Hermitian(zeros(2, 2)))
         d3 = dat[:d3]
-        Vf1 = VectorFactorReTerm(d3[:G], hcat(ones(130418), d3[:U])', :G, ["(Intercept)", "U"], [2])
-        Vf2 = VectorFactorReTerm(d3[:H], hcat(ones(130418), d3[:U])', :H, ["(Intercept)", "U"], [2])
+        modelmat = ones(2, size(d3, 1))
+        copyto!(view(modelmat, 2, :), d3[:U])
+        Vf1 = VectorFactorReTerm(d3[:G], modelmat, :G, ["(Intercept)", "U"], [2])
+        Vf2 = VectorFactorReTerm(d3[:H], modelmat, :H, ["(Intercept)", "U"], [2])
         @test getΛ(Vf1) == LowerTriangular(eye(2))
         setθ!(Vf2, [1.75, 0.0, 1.0])
         A11 = Vf1'Vf1
@@ -64,8 +68,8 @@ end
         MixedModels.Λc_mul_B!(Vf2, MixedModels.A_mul_Λ!(L21, Vf1))
         L21cb1 = copy(L21.colblocks[1])
         @test L21cb1 == Vf2.Λ * A21cb1 * Vf1.Λ
-        Base.LinAlg.A_rdiv_Bc!(L21, LowerTriangular(L11))
-        @test L21.colblocks[1] == Base.LinAlg.A_rdiv_Bc!(L21cb1, LowerTriangular(L11.facevec[1]))
+        rdiv!(L21, adjoint(LowerTriangular(L11)))
+        @test L21.colblocks[1] == rdiv!(L21cb1, adjoint(LowerTriangular(L11.facevec[1])))
         A22 = Vf2'Vf2
         L22 = MixedModels.scaleInflate!(UniformBlockDiagonal(fill(0., size(A22.data))), A22, Vf2)
         for b in L21.rowblocks[1]

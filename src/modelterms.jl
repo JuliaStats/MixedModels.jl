@@ -180,8 +180,8 @@ function VectorFactorReTerm(f::CategoricalVector, z::Matrix{T}, fnm, cnms, blks)
         offset += kk
     end
     VectorFactorReTerm(CategoricalArrays.order(f.pool)[f.refs], string.(levels(f)), z, z, 
-                       reinterpret(SVector{k,T}, z, (n,)), fnm, cnms, blks, 
-                       LowerTriangular(eye(T, k)), inds)
+                       reinterpret(SVector{k,T}, vec(z)), fnm, cnms, blks, 
+                       LowerTriangular(Matrix{T}(I, k, k)), inds)
 end
 
 function reweight!(A::VectorFactorReTerm{T,R,S}, sqrtwts::Vector) where {T,R,S} 
@@ -189,7 +189,7 @@ function reweight!(A::VectorFactorReTerm{T,R,S}, sqrtwts::Vector) where {T,R,S}
         z = A.z
         if A.wtz === z
             A.wtz = similar(z)
-            A.wtzv = reinterpret(SVector{S,T}, A.wtz, (size(z, 2),))
+            A.wtzv = reinterpret(SVector{S,T}, vec(A.wtz))
         end
         scale!(A.wtz, z, sqrtwts)
     end

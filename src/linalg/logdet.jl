@@ -20,7 +20,7 @@ end
 
 function LD(d::DenseMatrix{T}) where T
     s = log(one(T))
-    for i in 1:Base.LinAlg.checksquare(d)
+    for i in 1:LinearAlgebra.checksquare(d)
         s += log(d[i, i])
     end
     s

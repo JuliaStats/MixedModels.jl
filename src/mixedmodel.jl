@@ -16,14 +16,14 @@ lmm(m::GeneralizedLinearMixedModel) = m.LMM
 
 Return the vector of the condition numbers of the blocks of `m.trms`
 """
-Base.cond(m::MixedModel) = cond.(reterms(m))
+LinearAlgebra.cond(m::MixedModel) = cond.(reterms(m))
 
 """
     std{T}(m::MixedModel{T})
 
 Return the estimated standard deviations of the variance components as a `Vector{Vector{T}}`.
 """
-function Base.std(m::MixedModel{T}) where T
+function Statistics.std(m::MixedModel{T}) where T
     rl =  filter(!isempty, rowlengths.(lmm(m).trms))
     s = sdest(m)
     isfinite(s) ? s .* push!(rl, [1.]) : rl
@@ -179,7 +179,7 @@ function StatsBase.vcov(m::MixedModel)
     end
 end
 
-Base.cor(m::MixedModel{T}) where {T} = Matrix{T}[stddevcor(t)[2] for t in reterms(m)]
+Statistics.cor(m::MixedModel{T}) where {T} = Matrix{T}[stddevcor(t)[2] for t in reterms(m)]
 
 """
     condVar(m::MixedModel)

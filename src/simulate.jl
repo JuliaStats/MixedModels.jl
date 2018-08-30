@@ -70,7 +70,7 @@ function subscriptednames(nm, len)
         [string(nm, lpad(string(j), nd, '0')) for j in 1:len]
 end
 
-function stddevcor!(σ::Vector{T}, ρ::Matrix{T}, scr::Matrix{T}, L::LinAlg.Cholesky{T}) where T
+function stddevcor!(σ::Vector{T}, ρ::Matrix{T}, scr::Matrix{T}, L::Cholesky{T}) where T
     @argcheck(length(σ) == (k = size(L, 2)) && size(ρ) == (k, k) && size(scr) == (k, k), DimensionMismatch)
     if L.uplo == 'L'
         copy!(scr, L.factors)
@@ -95,35 +95,35 @@ function stddevcor!(σ::Vector{T}, ρ::Matrix{T}, scr::Matrix{T}, L::LinAlg.Chol
     end
     σ, ρ
 end
+
 function stddevcor!(σ::Vector, ρ::Matrix, scr::Matrix, L::ScalarFactorReTerm)
     σ[1] = L.Λ
     ρ[1] = 1
 end
+
 function stddevcor!(σ::Vector{T}, ρ::Matrix{T}, scr::Matrix{T},
     L::VectorFactorReTerm{T}) where T
-    stddevcor!(σ, ρ, scr, LinAlg.Cholesky(L.Λ))
+    stddevcor!(σ, ρ, scr, Cholesky(L.Λ))
 end
-function stddevcor(L::LinAlg.Cholesky{T}) where T
+
+function stddevcor(L::Cholesky{T}) where T
     k = size(L, 1)
     stddevcor!(Vector{T}(k), Matrix{T}((k, k)), Matrix{T}((k, k)), L)
 end
-stddevcor(L::LowerTriangular) = stddevcor(LinAlg.Cholesky(L))
+
+stddevcor(L::LowerTriangular) = stddevcor(Cholesky(L))
 stddevcor(L::VectorFactorReTerm) = stddevcor(L.Λ)
 stddevcor(L::ScalarFactorReTerm{T}) where T = [L.Λ], ones(T, 1, 1)
 
-if VERSION < v"0.7.0-DEV.393"
-    Base.LinAlg.Cholesky(L::LowerTriangular) = LinAlg.Cholesky(L, 'L')
-else
-    function Base.LinAlg.Cholesky(L::LowerTriangular)
-        info = 0
-        for k in 1:size(L,2)
-            if iszero(L[k, k])
-                info = k
-                break
-            end
+function LinearAlgebra.Cholesky(L::LowerTriangular)
+    info = 0
+    for k in 1:size(L,2)
+        if iszero(L[k, k])
+            info = k
+            break
         end
-        LinAlg.Cholesky(L, 'L', info)
     end
+    Cholesky(L, 'L', info)
 end
 
 """
