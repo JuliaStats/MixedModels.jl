@@ -11,11 +11,7 @@ using Printf: @printf, @sprintf
 using StatsFuns: log2π
 
 import Base: *
-#import Base: eltype
-#import LinearAlgebra: mul_B!, A_mul_Bc!, Ac_mul_B!, A_ldiv_B!, Ac_ldiv_B!, A_rdiv_B!, A_rdiv_Bc!, cond, logdet
 import NLopt: Opt
-#import StatsBase: coef, coeftable, dof, deviance, fit, fit!, fitted, loglikelihood,
-    #model_response, nobs, predict, stderror, vcov
 
 export
        @formula,
