@@ -57,7 +57,7 @@ end
 αβAc_mul_B!(α::T, A::BlockedSparse{T}, B::StridedVector{T}, β::T,
             C::StridedVector{T}) where {T} = αβAc_mul_B!(α, A.cscmat, B, β, C)
 
-function LinearAlgebra.ldiv!(A::Adjoint{LowerTriangular{T,UniformBlockDiagonal{T}}}, B::StridedVector{T}) where {T}
+function LinearAlgebra.ldiv!(A::Adjoint{T,LowerTriangular{T,UniformBlockDiagonal{T}}}, B::StridedVector{T}) where {T}
     @argcheck length(B) == size(A, 2) DimensionMismatch
     m, n, k = size(A.data.data)
     fv = A.data.facevec
@@ -68,22 +68,23 @@ function LinearAlgebra.ldiv!(A::Adjoint{LowerTriangular{T,UniformBlockDiagonal{T
     B
 end
 
-function LinearAlgebra.rdiv!(A::Matrix{T}, B::Adjoint{LowerTriangular{T,UniformBlockDiagonal{T}}}) where T
+function LinearAlgebra.rdiv!(A::Matrix{T}, B::Adjoint{T,LowerTriangular{T,UniformBlockDiagonal{T}}}) where T
     Bd = B.data
     m, n, k = size(Bd.data)
     @argcheck(size(A, 2) == size(Bd, 1) && m == n, DimensionMismatch)
     inds = 1:m
     for f in Bd.facevec
         BLAS.trsm!('R', 'L', 'T', 'N', one(T), f, view(A, :, inds))
-        inds += m
+        inds = inds .+ m
     end
     A
 end
 
-function A_rdiv_Bc!(A::BlockedSparse{T}, B::LowerTriangular{T,UniformBlockDiagonal{T}}) where T
-    @argcheck(length(A.colblocks) == length(B.data.facevec), DimensionMismatch)
-    for (b,f) in zip(A.colblocks, B.data.facevec)
-        A_rdiv_Bc!(b, LowerTriangular(f))
+function LinearAlgebra.rdiv!(A::BlockedSparse{T}, B::Adjoint{T,LowerTriangular{T,UniformBlockDiagonal{T}}}) where T
+    Bp = B.parent
+    @argcheck(length(A.colblocks) == length(Bp.data.facevec), DimensionMismatch)
+    for (b,f) in zip(A.colblocks, Bp.data.facevec)
+        rdiv!(b, adjoint(LowerTriangular(f)))
     end
     A
 end

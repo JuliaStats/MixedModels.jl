@@ -1,4 +1,4 @@
-using CategoricalArrays, LinearAlgebra, MixedModels, RData, SparseArrays, Test
+using CategoricalArrays, DataFrames, LinearAlgebra, MixedModels, RData, SparseArrays, Test
 
 if !@isdefined(dat) || !isa(dat, Dict{Symbol, DataFrame})
     dat = Dict(Symbol(k) => v for (k, v) in load(joinpath(dirname(@__FILE__), "dat.rda")))
@@ -14,7 +14,7 @@ end
                              vcat(ones(1,12), repeat([-1.0, 0.0, 1.0], inner=2, outer=2)'),
                              :G, ["(Intercept)", "U"], [2])
     prd = vf2'vf1
-    
+
     @testset "size" begin
         @test size(ex22) == (6, 6)
         @test size(ex22, 1) == 6
@@ -59,7 +59,7 @@ end
         copyto!(view(modelmat, 2, :), d3[:U])
         Vf1 = VectorFactorReTerm(d3[:G], modelmat, :G, ["(Intercept)", "U"], [2])
         Vf2 = VectorFactorReTerm(d3[:H], modelmat, :H, ["(Intercept)", "U"], [2])
-        @test getΛ(Vf1) == LowerTriangular(eye(2))
+        @test getΛ(Vf1) == LowerTriangular(Matrix(I, 2, 2))
         setθ!(Vf2, [1.75, 0.0, 1.0])
         A11 = Vf1'Vf1
         L11 = MixedModels.cholUnblocked!(MixedModels.scaleInflate!(UniformBlockDiagonal(fill(0., size(A11.data))), A11, Vf1), Val{:L})

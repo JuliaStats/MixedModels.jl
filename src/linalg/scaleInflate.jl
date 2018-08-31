@@ -52,7 +52,7 @@ function scaleInflate!(Ljj::Matrix{T}, Ajj::UniformBlockDiagonal{T},
     m, n, l = size(Ajj.data)
     m == n || throw(ArgumentError("Diagonal blocks of Ajj must be square"))
     fill!(Ljj, zero(T))
-    tmp = Array{T}(m, m)
+    tmp = Array{T}(undef, m, m)
     offset = 0
     for k in eachindex(Afv)
         lmul!(adjoint(λ), rmul!(copyto!(tmp, Afv[k]), λ))

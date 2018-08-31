@@ -17,7 +17,7 @@ A_mul_Λ!(A, B::ScalarFactorReTerm) = rmul!(A, B.Λ)
 function A_mul_Λ!(A::BlockedSparse{T}, B::VectorFactorReTerm{T}) where T
     λ = B.Λ
     for blk in A.colblocks
-        A_mul_B!(blk, λ)
+        rmul!(blk, λ)
     end
     A
 end
@@ -51,7 +51,7 @@ function Λc_mul_B!(A::VectorFactorReTerm{T,R,S}, B::Matrix{T}) where {T,R,S}
 end
 
 function Λc_mul_B!(A::VectorFactorReTerm{T}, B::BlockedSparse{T}) where T
-    Ac_mul_B!(A.Λ, B.nzsasmat)
+    lmul!(adjoint(A.Λ), B.nzsasmat)
     B
 end
 

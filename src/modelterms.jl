@@ -473,15 +473,16 @@ function *(A::Adjoint{T,VectorFactorReTerm{T,R,S}}, B::VectorFactorReTerm{T,U,P}
     if A.parent === B
         return mul!(UniformBlockDiagonal(Array{T}(undef, S, S, nlevs(B))), A, B)
     end
-    Az = A.wtzv
+    Ap = A.parent
+    Az = Ap.wtzv
     Bz = B.wtzv
-    @argcheck((m = size(A, 1)) == size(B, 1), DimensionMismatch)
+    @argcheck((m = size(Ap, 1)) == size(B, 1), DimensionMismatch)
     ab = S * P
     nz = ab * m
     I = sizehint!(Int32[], nz)
     J = sizehint!(Int32[], nz)
     vals = sizehint!(T[], nz)
-    Ar = A.refs
+    Ar = Ap.refs
     Br = B.refs
     for i in 1:m
         Azi = Az[i]
@@ -508,7 +509,7 @@ function *(A::Adjoint{T,VectorFactorReTerm{T,R,S}}, B::VectorFactorReTerm{T,U,P}
     q, r = divrem(length(nzs), S)
     iszero(r) || throw(DimensionMismatch("nnz(cscmat) = $(nnz(cscmat)) should be a multiple of $S"))
     nzasmat = reshape(nzs, (S, q))
-    rowblocks = [SubArray{T,1,Vector{T}}[] for i in 1:nlevs(A)]
+    rowblocks = [SubArray{T,1,Vector{T}}[] for i in 1:nlevs(Ap)]
     rv = rowvals(cscmat)
     inds = 1:S
     pattern = Vector(inds)
@@ -518,7 +519,7 @@ function *(A::Adjoint{T,VectorFactorReTerm{T,R,S}}, B::VectorFactorReTerm{T,U,P}
         rows .% S == pattern ||
             throw(ArgumentError("Rows for block $b are not contiguous starting at a multiple of $S"))
         push!(rowblocks[div(rows[1], S) + 1], view(nzs, inds))
-        inds += S
+        inds = inds .+ S
     end
     nlB = nlevs(B)
     colblocks = sizehint!(StridedMatrix{T}[], nlB)
@@ -532,7 +533,7 @@ function *(A::Adjoint{T,VectorFactorReTerm{T,R,S}}, B::VectorFactorReTerm{T,U,P}
             rv[inds] == rows || throw(DimensionMismatch("Rows differ ($rows ≠ $(rv[inds])) at column block $j"))
         end
         push!(colblocks, reshape(view(nzs, i1:inds[end]), (length(rows), P)))
-        colrange += P
+        colrange = colrange .+ P
     end
     BlockedSparse(cscmat, nzasmat, rowblocks, colblocks)
 end
