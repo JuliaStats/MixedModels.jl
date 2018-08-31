@@ -34,7 +34,7 @@ fixefnames(m::MixedModel) = lmm(m).trms[end - 1].cnames
 
 function StatsBase.coeftable(m::MixedModel)
     co = coef(m)
-    se = StatsBase.stderror(m)
+    se = stderror(m)
     z = co ./ se
     pvalue = ccdf.(Chisq(1), abs2.(z))
     CoefTable(hcat(co, se, z, pvalue), ["Estimate", "Std.Error", "z value", "P(>|z|)"],
@@ -121,7 +121,7 @@ function ranef!(v::Vector, m::LinearMixedModel{T}, β::AbstractArray{T}, uscale:
     for i in k: -1 :1
         Lii = Ldat[Block(i, i)]
         vi = vec(v[i])
-        Ac_ldiv_B!(isa(Lii, Diagonal) ? Lii : LowerTriangular(Lii), vi)
+        ldiv!(adjoint(isa(Lii, Diagonal) ? Lii : LowerTriangular(Lii)), vi)
         for j in 1:(i - 1)
             αβAc_mul_B!(-one(T), Ldat[Block(i, j)], vi, one(T), vec(v[j]))
         end

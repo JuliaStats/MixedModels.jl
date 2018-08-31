@@ -11,7 +11,7 @@ struct UniformBlockDiagonal{T} <: AbstractMatrix{T}
 end
 
 function UniformBlockDiagonal(dat::Array{T,3}) where T
-    UniformBlockDiagonal(dat, 
+    UniformBlockDiagonal(dat,
         SubArray{T,2,Array{T,3}}[view(dat,:,:,i) for i in 1:size(dat, 3)])
 end
 
@@ -56,7 +56,7 @@ A `SparseMatrixCSC` whose nonzeros form blocks of rows or columns or both.
 
 # Members
 * `cscmat`: `SparseMatrixCSC{Tv, Ti}` representation for general calculations
-* `nzsasmat`: Matrix{Tv} `cscmat.nzval` as a matrix 
+* `nzsasmat`: Matrix{Tv} `cscmat.nzval` as a matrix
 * `rowblocks`: `Vector{Vector{SubArray{Tv,1,Vector{Tv}}}}` of row blocks of nonzeros
 * `colblocks`: `Vector{StridedMatrix{Tv}}` of column blocks of nonzeros
 """
@@ -119,7 +119,7 @@ end
 function OptSummary(initial::Vector{T}, lowerbd::Vector{T},
     optimizer::Symbol; ftol_rel::T=zero(T), ftol_abs::T=zero(T), xtol_rel::T=zero(T),
     initial_step::Vector{T}=T[]) where T <: AbstractFloat
-    OptSummary(initial, lowerbd, T(Inf), ftol_rel, ftol_abs, xtol_rel, zeros(initial),
+    OptSummary(initial, lowerbd, T(Inf), ftol_rel, ftol_abs, xtol_rel, zero(initial),
         initial_step, -1, copy(initial), T(Inf), -1, optimizer, :FAILURE, 1)
 end
 
@@ -287,7 +287,7 @@ function Base.show(io::IO, vc::VarCorr)
     if isfinite(vc.s)
         push!(fnms,"Residual")
         push!(stdm, [1.])
-        scale!(stdm, vc.s)
+        rmul!(stdm, vc.s)
         push!(cnms, "")
     end
     nmwd = maximum(map(strwidth, string.(fnms))) + 1

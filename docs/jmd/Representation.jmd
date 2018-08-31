@@ -106,10 +106,10 @@ function cholBlocked!{T}(m::LinearMixedModel{T})
     end
     for (j, λ) in enumerate(Λ)
         for i in j:n
-            A_mul_B!(L[i, j], λ)
+            rmul!(L[i, j], λ)
         end
         for jj in 1:j
-            Ac_mul_B!(λ, L[j, jj])
+            lmul!(adjoint(λ), L[j, jj])
         end
         L[j, j] += I
     end

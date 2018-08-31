@@ -10,7 +10,7 @@ function αβA_mul_Bc!(α::T, A::SparseMatrixCSC{T}, B::SparseMatrixCSC{T},
     arv = rowvals(A)
     bnz = nonzeros(B)
     brv = rowvals(B)
-    β == 1 || scale!(C, β)
+    β == 1 || rmul!(C, β)
     for j = 1:A.n
         for ib in nzrange(B, j)
             αbnz = α * bnz[ib]
@@ -32,7 +32,7 @@ function αβA_mul_Bc!(α::T, A::StridedVecOrMat{T}, B::SparseMatrixCSC{T}, β::
     p, q = size(B)
     r, s = size(C)
     @argcheck(r == m && s == p && n == q, DimensionMismatch)
-    β == 1 || scale!(C, β)
+    β == 1 || rmul!(C, β)
     nz = nonzeros(B)
     rv = rowvals(B)
     @inbounds for j in 1:q, k in nzrange(B, j)
@@ -45,54 +45,30 @@ function αβA_mul_Bc!(α::T, A::StridedVecOrMat{T}, B::SparseMatrixCSC{T}, β::
     C
 end
 
-αβA_mul_Bc!(α::T, A::StridedVecOrMat{T}, B::BlockedSparse{T}, β::T, 
+αβA_mul_Bc!(α::T, A::StridedVecOrMat{T}, B::BlockedSparse{T}, β::T,
             C::StridedVecOrMat{T}) where {T} = αβA_mul_Bc!(α, A, B.cscmat, β, C)
-         
+
 αβAc_mul_B!(α::T, A::StridedMatrix{T}, B::StridedVector{T}, β::T,
             C::StridedVector{T}) where {T<:BlasFloat} = BLAS.gemv!('C', α, A, B, β, C)
 
 αβAc_mul_B!(α::T, A::SparseMatrixCSC{T}, B::StridedVector{T}, β::T,
             C::StridedVector{T}) where {T} = Ac_mul_B!(α, A, B, β, C)
 
-αβAc_mul_B!(α::T, A::BlockedSparse{T}, B::StridedVector{T}, β::T, 
+αβAc_mul_B!(α::T, A::BlockedSparse{T}, B::StridedVector{T}, β::T,
             C::StridedVector{T}) where {T} = αβAc_mul_B!(α, A.cscmat, B, β, C)
 
-function Ac_ldiv_B!(A::LowerTriangular{T,UniformBlockDiagonal{T}}, B::StridedVector{T}) where {T}
+function LinearAlgebra.ldiv!(A::Adjoint{LowerTriangular{T,UniformBlockDiagonal{T}}}, B::StridedVector{T}) where {T}
     @argcheck length(B) == size(A, 2) DimensionMismatch
     m, n, k = size(A.data.data)
     fv = A.data.facevec
     bb = reshape(B, (n, k))
     for j in 1:k
-        Ac_ldiv_B!(LowerTriangular(fv[j]), view(bb, :, j))
+        ldiv!(adjoint(LowerTriangular(fv[j])), view(bb, :, j))
     end
     B
 end
 
-if VERSION < v"0.7.0-DEV.586"
-    Ac_ldiv_B!(D::Diagonal{T}, B::StridedVecOrMat{T}) where {T} = A_ldiv_B!(D, B)
-
-    function A_rdiv_B!(A::StridedMatrix{T}, D::Diagonal{T}) where T
-        scale!(A, inv.(D.diag))
-        A
-    end
-
-    A_rdiv_Bc!(A::StridedMatrix{T}, D::Diagonal{T}) where {T} = A_rdiv_B!(A, D)
-
-    function A_rdiv_Bc!(A::SparseMatrixCSC{T}, D::Diagonal{T}) where T
-        @argcheck(size(D, 2) == size(A, 2), DimensionMismatch)
-        dd = D.diag
-        nonz = nonzeros(A)
-        for j in 1:A.n
-            ddj = dd[j]
-            for k in nzrange(A, j)
-                nonz[k] /= ddj
-            end
-        end
-        A
-    end
-end
-
-function A_rdiv_Bc!(A::Matrix{T}, B::LowerTriangular{T,UniformBlockDiagonal{T}}) where T
+function LinearAlgebra.rdiv!(A::Matrix{T}, B::Adjoint{LowerTriangular{T,UniformBlockDiagonal{T}}}) where T
     Bd = B.data
     m, n, k = size(Bd.data)
     @argcheck(size(A, 2) == size(Bd, 1) && m == n, DimensionMismatch)

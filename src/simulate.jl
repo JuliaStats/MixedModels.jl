@@ -213,7 +213,7 @@ end
 
 function unscaledre!(rng::AbstractRNG, y::AbstractVector{T},
                      A::ScalarFactorReTerm{T}) where T
-    unscaledre!(y, A, scale!(A.Λ, randn(rng, vsize(A), nlevs(A))))
+    unscaledre!(y, A, lmul!(A.Λ, randn(rng, vsize(A), nlevs(A))))
 end
 
 unscaledre!(y::AbstractVector, A::AbstractFactorReTerm) = unscaledre!(Base.GLOBAL_RNG, y, A)

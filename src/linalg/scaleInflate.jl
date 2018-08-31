@@ -36,7 +36,7 @@ function scaleInflate!(Ljj::UniformBlockDiagonal{T}, Ajj::UniformBlockDiagonal{T
     k, m, n = size(Ljjdd)
     λ = Λj.Λ
     for Lf in Ljj.facevec
-        Ac_mul_B!(λ, A_mul_B!(Lf, λ))
+        lmul!(adjoint(λ), rmul!(Lf, λ))
     end
     for j in 1:n, i in 1:k
         Ljjdd[i, i, j] += one(T)
@@ -55,7 +55,7 @@ function scaleInflate!(Ljj::Matrix{T}, Ajj::UniformBlockDiagonal{T},
     tmp = Array{T}(m, m)
     offset = 0
     for k in eachindex(Afv)
-        Ac_mul_B!(λ, A_mul_B!(copy!(tmp, Afv[k]), λ))
+        lmul!(adjoint(λ), rmul!(copyto!(tmp, Afv[k]), λ))
         for j in 1:n, i in 1:n
             Ljj[offset + i, offset + j] = tmp[i, j] + T(i == j)
         end

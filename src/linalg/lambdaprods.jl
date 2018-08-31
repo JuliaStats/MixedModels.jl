@@ -13,7 +13,7 @@ the diagonal plus a copy! operation in one step.
 """
 function A_mul_Λ! end
 A_mul_Λ!(A, B::MatrixTerm) = A
-A_mul_Λ!(A, B::ScalarFactorReTerm) = scale!(A, B.Λ)
+A_mul_Λ!(A, B::ScalarFactorReTerm) = rmul!(A, B.Λ)
 function A_mul_Λ!(A::BlockedSparse{T}, B::VectorFactorReTerm{T}) where T
     λ = B.Λ
     for blk in A.colblocks
@@ -28,7 +28,7 @@ function A_mul_Λ!(A::Matrix{T}, B::VectorFactorReTerm{T,R,S}) where {T,R,S}
     iszero(r) || throw(DimensionMismatch("size(A, 2) = $n is not a multiple of S = $S"))
     A3 = reshape(A, (m, S, q))
     for k in 1:q
-        A_mul_B!(view(A3, :, :, k), λ)
+        rmul!(view(A3, :, :, k), λ)
     end
     A
 end
@@ -43,7 +43,7 @@ the diagonal plus a copy! operation in one step.
 """
 function Λc_mul_B! end
 Λc_mul_B!(A::MatrixTerm, B) = B
-Λc_mul_B!(A::ScalarFactorReTerm, B) = scale!(A.Λ, B)
+Λc_mul_B!(A::ScalarFactorReTerm, B) = lmul!(A.Λ, B)
 function Λc_mul_B!(A::VectorFactorReTerm{T,R,S}, B::Matrix{T}) where {T,R,S}
     m, n = size(B)
     Ac_mul_B!(A.Λ, reshape(B, (S, div(m, S) * n)))
@@ -65,7 +65,7 @@ function Λ_mul_B!(C::Matrix, A::AbstractFactorReTerm, B::Matrix) end
 
 function Λ_mul_B!(C::Matrix{T}, A::ScalarFactorReTerm{T}, B::Matrix{T}) where T
     @argcheck(size(C) == size(B) == (1, size(A, 2)), DimensionMismatch)
-    scale!(C, A.Λ, B)
+    mul!(C, A.Λ, B)
 end
 
 function Λ_mul_B!(C::Matrix{T}, A::VectorFactorReTerm{T,R,S}, B::Matrix{T}) where {T,R,S}

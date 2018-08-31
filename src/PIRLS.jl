@@ -44,11 +44,11 @@ end
 GeneralizedLinearMixedModel(f::Formula, fr::AbstractDataFrame, d::Distribution; wt=[], offset=[], contrasts=Dict()) =
         GeneralizedLinearMixedModel(f, fr, d, GLM.canonicallink(d), wt=wt, offset=offset, contrasts=contrasts)
 
-fit(::Type{GeneralizedLinearMixedModel}, f::Formula, fr::AbstractDataFrame, d::Distribution) =
-    fit!(GeneralizedLinearMixedModel(f, fr, d, GLM.canonicallink(d)))
+StatsBase.fit(::Type{GeneralizedLinearMixedModel}, f::Formula, fr::AbstractDataFrame,
+              d::Distribution) = fit!(GeneralizedLinearMixedModel(f, fr, d, GLM.canonicallink(d)))
 
-fit(::Type{GeneralizedLinearMixedModel}, f::Formula, fr::AbstractDataFrame, d::Distribution, l::Link) =
-    fit!(GeneralizedLinearMixedModel(f, fr, d, l))
+StatsBase.fit(::Type{GeneralizedLinearMixedModel}, f::Formula, fr::AbstractDataFrame,
+              d::Distribution, l::Link) = fit!(GeneralizedLinearMixedModel(f, fr, d, l))
 
 """
     deviance(m::GeneralizedLinearMixedModel{T}, nAGQ=1)::T where T
@@ -59,7 +59,7 @@ If the distribution `D` does not have a scale parameter the Laplace approximatio
 is defined as the squared length of the conditional modes, `u`, plus the determinant
 of `Λ'Z'WZΛ + I`, plus the sum of the squared deviance residuals.
 """
-function deviance(m::GeneralizedLinearMixedModel{T}, nAGQ=1) where T
+function StatsBase.deviance(m::GeneralizedLinearMixedModel{T}, nAGQ=1) where T
     nAGQ == 1 && return T(sum(m.resp.devresid) + logdet(m) + sum(u -> sum(abs2, u), m.u))
     u = vec(m.u[1])
     u₀ = vec(m.u₀[1])
@@ -99,7 +99,7 @@ function deviance!(m::GeneralizedLinearMixedModel, nAGQ=1)
     deviance(m, nAGQ)
 end
 
-function loglikelihood(m::GeneralizedLinearMixedModel{T}) where T
+function StatsBase.loglikelihood(m::GeneralizedLinearMixedModel{T}) where T
     accum = zero(T)
     D = Distribution(m.resp)
     if D <: Binomial
@@ -140,7 +140,7 @@ Update the linear predictor, `m.η`, from the offset and the `B`-scale random ef
 function updateη!(m::GeneralizedLinearMixedModel)
     η, b, u = m.η, m.b, m.u
     trms = m.LMM.trms
-    A_mul_B!(η, trms[end - 1].x, m.β)
+    mul!(η, trms[end - 1].x, m.β)
     for i in eachindex(b)
         unscaledre!(η, trms[i], Λ_mul_B!(b[i], trms[i], u[i]))
     end
@@ -148,7 +148,7 @@ function updateη!(m::GeneralizedLinearMixedModel)
     m
 end
 
-average(a::T, b::T) where {T <: AbstractFloat} = (a + b) / 2
+average(a::T, b::T) where {T<:AbstractFloat} = (a + b) / 2
 
 """
     pirls!(m::GeneralizedLinearMixedModel)
@@ -177,7 +177,7 @@ function pirls!(m::GeneralizedLinearMixedModel{T}, varyβ::Bool=false, verbose::
 
     while iter < maxiter
         iter += 1
-        varyβ && Ac_ldiv_B!(feL(m), Compat.copyto!(β, lm.L.data.blocks[end, end - 1]))
+        varyβ && ldiv!(adjoint(feL(m)), Compat.copyto!(β, lm.L.data.blocks[end, end - 1]))
         ranef!(u, m.LMM, β, true) # solve for new values of u
         obj = deviance!(m)        # update GLM vecs and evaluate Laplace approx
         verbose && @show(iter, obj)
@@ -251,7 +251,7 @@ function StatsBase.fit!(m::GeneralizedLinearMixedModel{T};
         optsum.lowerbd = vcat(fill!(similar(β), T(-Inf)), optsum.lowerbd)
         optsum.initial = vcat(β, m.θ)
         optsum.final = copy(optsum.initial)
-        optsum.initial_step = vcat(StatsBase.stderror(m) ./ 3, min.(T(0.05), m.θ ./ 4))
+        optsum.initial_step = vcat(stderror(m) ./ 3, min.(T(0.05), m.θ ./ 4))
     end
     setpar! = fast ? setθ! : setβθ!
     feval = 0

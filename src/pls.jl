@@ -106,18 +106,19 @@ function LinearMixedModel(f::Formula, fr::AbstractDataFrame;
     LinearMixedModel(f, trms, oftype(y, weights))
 end
 
-model_response(mf::ModelFrame, d::Distribution) = model_response(mf.df[mf.terms.eterms[1]], d)
+StatsBase.model_response(mf::ModelFrame, d::Distribution) = model_response(mf.df[mf.terms.eterms[1]], d)
 
-model_response(v::AbstractVector, d::Distribution) = Vector{partype(d)}(v)
+StatsBase.model_response(v::AbstractVector, d::Distribution) = Vector{partype(d)}(v)
 
-function model_response(v::CategoricalVector, d::Bernoulli)
+function StatsBase.model_response(v::CategoricalVector, d::Bernoulli)
     levs = levels(v)
     nlevs = length(levs)
     @argcheck(nlevs ≤ 2)
     nlevs < 2 ? zeros(v, partype(d)) : partype(d)[cv == levs[2] for cv in v]
 end
 
-fit(::Type{LinearMixedModel}, f::Formula, fr::AbstractDataFrame) = fit!(LinearMixedModel(f, fr))
+StatsBase.fit(::Type{LinearMixedModel}, f::Formula, fr::AbstractDataFrame) = fit!(LinearMixedModel(f, fr))
+
 """
     updateL!(m::LinearMixedModel)
 
@@ -242,7 +243,7 @@ Overwrite `v` with the pivoted and, possibly, truncated fixed-effects coefficien
 function fixef!(v::AbstractVector{T}, m::LinearMixedModel{T}) where T
     L = feL(m)
     @argcheck(length(v) == size(L, 1), DimensionMismatch)
-    Ac_ldiv_B!(L, copy!(v, m.L.data.blocks[end, end - 1]))
+    ldiv!(adjoint(L), copy!(v, m.L.data.blocks[end, end - 1]))
 end
 
 """
