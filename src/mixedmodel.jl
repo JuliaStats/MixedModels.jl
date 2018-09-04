@@ -115,7 +115,7 @@ function ranef!(v::Vector, m::LinearMixedModel{T}, β::AbstractArray{T}, uscale:
     Ldat = m.L.data
     @argcheck((k = length(v)) == nreterms(m), DimensionMismatch)
     for j in 1:k
-        αβAc_mul_B!(-one(T), Ldat[Block(k + 1, j)], β, one(T), vec(copy!(v[j],
+        αβAc_mul_B!(-one(T), Ldat[Block(k + 1, j)], β, one(T), vec(copyto!(v[j],
                     Ldat[Block(nblocks(Ldat, 2), j)])))
     end
     for i in k: -1 :1
@@ -149,7 +149,7 @@ function ranef(m::MixedModel; uscale=false, named=false)
     LMM = lmm(m)
     T = eltype(LMM.sqrtwts)
     retrms = reterms(LMM)
-    v = Matrix{T}[Matrix{T}(vsize(t), nlevs(t)) for t in retrms]
+    v = Matrix{T}[Matrix{T}(undef, vsize(t), nlevs(t)) for t in retrms]
     ranef!(v, LMM, uscale)
     named || return v
     vnmd = map(NamedArray, v)

@@ -2,13 +2,13 @@
     scaleInflate!(L::AbstractMatrix, A::AbstractMatrix, Λ::AbstractTerm)
 
 Overwrite a diagonal block of `L` with the corresponding block of `Λ'AΛ + I` except when Λ
-is a [`MatrixTerm`]{@ref}, in which case this becomes `copy!(L, A)`.
+is a [`MatrixTerm`]{@ref}, in which case this becomes `copyto!(L, A)`.
 """
 function scaleInflate! end
 
 function scaleInflate!(Ljj::Matrix{T}, Ajj::Matrix{T}, Λj::MatrixTerm{T}) where T
     @argcheck(size(Ljj) == size(Ajj), DimensionMismatch)
-    copy!(Ljj, Ajj)
+    copyto!(Ljj, Ajj)
 end
 
 function scaleInflate!(Ljj::Diagonal{T}, Ajj::Diagonal{T},
@@ -32,7 +32,7 @@ function scaleInflate!(Ljj::UniformBlockDiagonal{T}, Ajj::UniformBlockDiagonal{T
                        Λj::VectorFactorReTerm{T}) where T
     @argcheck(size(Ljj) == size(Ajj), DimensionMismatch)
     Ljjdd = Ljj.data
-    copy!(Ljjdd, Ajj.data)
+    copyto!(Ljjdd, Ajj.data)
     k, m, n = size(Ljjdd)
     λ = Λj.Λ
     for Lf in Ljj.facevec

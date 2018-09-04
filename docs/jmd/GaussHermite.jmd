@@ -155,7 +155,7 @@ for (j, u) in enumerate(xvals)
     for (dr, i) in zip(devresid, refs)
         devc[i] += dr
     end
-    copy!(view(results, :, j), devc)
+    copyto!(view(results, :, j), devc)
 end
 ```
 A plot of the deviance contribution versus $u_1$
@@ -188,7 +188,7 @@ for (j, z) in enumerate(xvals)
     for (dr, i) in zip(devresid, refs)
         devc[i] += dr
     end
-    copy!(view(results, :, j), devc)
+    copyto!(view(results, :, j), devc)
 end
 ```
 ```{julia;echo=false;fig_cap="Scaled and shifted deviance contributions"}
@@ -207,7 +207,7 @@ for (j, z) in enumerate(xvals)
     for (dr, i) in zip(devresid, refs)
         devc[i] += dr
     end
-    copy!(view(results, :, j), @. exp(-devc/2))
+    copyto!(view(results, :, j), @. exp(-devc/2))
 end
 ```
 ```{julia;echo=false;fig_cap="Scaled and shifted conditional density"}
@@ -225,7 +225,7 @@ for (j, z) in enumerate(xvals)
     for (dr, i) in zip(devresid, refs)
         devc[i] += dr
     end
-    copy!(view(results, :, j), @. exp((abs2(z) - devc)/2))
+    copyto!(view(results, :, j), @. exp((abs2(z) - devc)/2))
 end
 ```
 ```{julia;echo=false;fig_cap="Function to be integrated with normalized Gauss-Hermite rule"}

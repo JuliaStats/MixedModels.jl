@@ -53,7 +53,7 @@ function LinearMixedModel(f, trms, wts)
         end
     end
     optsum = OptSummary(getθ(trms), lowerbd(trms), :LN_BOBYQA;
-        ftol_rel = convert(T, 1.0e-12), ftol_abs = convert(T, 1.0e-8))
+        ftol_rel = T(1.0e-12), ftol_abs = T(1.0e-8))
     fill!(optsum.xtol_abs, 1.0e-10)
     LinearMixedModel(f, trms, sqrtwts, A, LowerTriangular(L), optsum)
 end
@@ -96,7 +96,7 @@ function LinearMixedModel(f::Formula, fr::AbstractDataFrame;
             end
             push!(trms,
                   length(coefnms) == 1 ? ScalarFactorReTerm(gr, m, grp, coefnms) :
-                  VectorFactorReTerm(gr, transpose(reshape(m, (n, sum(trsize)))), grp,
+                  VectorFactorReTerm(gr, collect(adjoint(reshape(m, (n, sum(trsize))))), grp,
                       coefnms,  trsize))
         end
     end
@@ -139,11 +139,11 @@ function updateL!(m::LinearMixedModel{T}) where T
         end
         cholUnblocked!(Ljj, Val{:L})
         for i in (j + 1):nblk
-            Lij = Λc_mul_B!(trms[i], A_mul_Λ!(copy!(Ldat[Block(i, j)], A[Block(i, j)]), trms[j]))
+            Lij = Λc_mul_B!(trms[i], A_mul_Λ!(copyto!(Ldat[Block(i, j)], A[Block(i, j)]), trms[j]))
             for jj in 1:(j - 1)
                 αβA_mul_Bc!(-one(T), Ldat[Block(i, jj)], Ldat[Block(j, jj)], one(T), Lij)
             end
-            A_rdiv_Bc!(Lij, isa(Ljj, Diagonal) ? Ljj : LowerTriangular(Ljj))
+            rdiv!(Lij, isa(Ljj, Diagonal) ? Ljj : LowerTriangular(Ljj)')
         end
     end
     m
@@ -166,11 +166,11 @@ function StatsBase.fit!(m::LinearMixedModel{T}, verbose::Bool=false) where T
         feval += 1
         val = objective(updateL!(setθ!(m, x)))
         feval == 1 && (optsum.finitial = val)
-        verbose && println("f_", feval, ": ", round(val, 5), " ", x)
+        verbose && println("f_", feval, ": ", round(val, digits=5), " ", x)
         val
     end
     NLopt.min_objective!(opt, obj)
-    fmin, xmin, ret = NLopt.optimize!(opt, copy!(optsum.final, optsum.initial))
+    fmin, xmin, ret = NLopt.optimize!(opt, copyto!(optsum.final, optsum.initial))
     ## check if small non-negative parameter values can be set to zero
     xmin_ = copy(xmin)
     lb = optsum.lowerbd
@@ -182,7 +182,7 @@ function StatsBase.fit!(m::LinearMixedModel{T}, verbose::Bool=false) where T
     if xmin_ ≠ xmin
         if (zeroobj = obj(xmin_, T[])) ≤ (fmin + 1.e-5)
             fmin = zeroobj
-            copy!(xmin, xmin_)
+            copyto!(xmin, xmin_)
         end
     end
     ## ensure that the parameter values saved in m are xmin
@@ -202,7 +202,7 @@ end
 function fitted!(v::AbstractArray{T}, m::LinearMixedModel{T}) where T
     ## FIXME: Create and use `effects(m) -> β, b` w/o calculating β twice
     trms = m.trms
-    A_mul_B!(vec(v), trms[end - 1], fixef(m))
+    mul!(vec(v), trms[end - 1], fixef(m))
     b = ranef(m)
     for j in eachindex(b)
         unscaledre!(vec(v), trms[j], b[j])
@@ -210,7 +210,7 @@ function fitted!(v::AbstractArray{T}, m::LinearMixedModel{T}) where T
     v
 end
 
-StatsBase.fitted(m::LinearMixedModel{T}) where {T} = fitted!(Vector{T}(nobs(m)), m)
+StatsBase.fitted(m::LinearMixedModel{T}) where {T} = fitted!(Vector{T}(undef, nobs(m)), m)
 
 StatsBase.predict(m::LinearMixedModel) = fitted(m)
 
@@ -243,7 +243,7 @@ Overwrite `v` with the pivoted and, possibly, truncated fixed-effects coefficien
 function fixef!(v::AbstractVector{T}, m::LinearMixedModel{T}) where T
     L = feL(m)
     @argcheck(length(v) == size(L, 1), DimensionMismatch)
-    ldiv!(adjoint(L), copy!(v, m.L.data.blocks[end, end - 1]))
+    ldiv!(adjoint(L), copyto!(v, m.L.data.blocks[end, end - 1]))
 end
 
 """
@@ -255,12 +255,12 @@ If `permuted` is `true` the vector elements are permuted according to
 `m.trms[end - 1].piv` and truncated to the rank of that term.
 """
 function fixef(m::LinearMixedModel{T}, permuted=true) where T
-    permuted && return fixef!(Vector{T}(size(m)[2]), m)
+    permuted && return fixef!(Vector{T}(undef, size(m)[2]), m)
     Xtrm = m.trms[end - 1]
     piv = Xtrm.piv
     v = fill(-zero(T), size(piv))
     fixef!(view(v, 1:Xtrm.rank), m)
-    ipermute!(v, piv)
+    invpermute!(v, piv)
 end
 
 StatsBase.dof(m::LinearMixedModel) = size(m)[2] + sum(nθ, m.trms) + 1
@@ -373,7 +373,7 @@ function reweight!(m::LinearMixedModel, weights)
     ntrm = length(trms)
     A = m.A
     for j in 1:ntrm, i in j:ntrm
-        Ac_mul_B!(A[Block(i, j)], trms[i], trms[j])
+        mul!(A[Block(i, j)], trms[i]', trms[j])
     end
     updateL!(m)
 end
@@ -388,9 +388,9 @@ function Base.show(io::IO, m::LinearMixedModel)
     println(io, " ", m.formula)
     oo = objective(m)
     nums = showoff([-oo/ 2, oo, aic(m), bic(m)])
-    fieldwd = max(maximum(strwidth.(nums)) + 1, 11)
+    fieldwd = max(maximum(textwidth.(nums)) + 1, 11)
     for label in [" logLik", "-2 logLik", "AIC", "BIC"]
-        print(io, Base.cpad(label, fieldwd))
+        print(io, rpad(lpad(label, (fieldwd + textwidth(label)) >> 1), fieldwd))
     end
     println(io)
     for num in nums

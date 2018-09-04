@@ -126,7 +126,7 @@ What do we expect them to look like?
 To make it more convenient to plot the data we copy the contents of `y0` vector to the `:Y` column of the data frame then look for a systematic shift
 
 ```{julia;term=true}
-copy!(dat[:Y], y0)
+copyto!(dat[:Y], y0)
 plot(dat, x = :Y, Geom.density, Guide.xlabel("Simulated responses"))
 ```
 

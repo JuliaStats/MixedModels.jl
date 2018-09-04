@@ -73,9 +73,9 @@ Base.getindex(A::BlockedSparse{T}, i::Integer, j::Integer) where {T} = getindex(
 LinearAlgebra.Matrix(A::BlockedSparse{T}) where {T} = full(A.cscmat)
 SparseArrays.sparse(A::BlockedSparse) = A.cscmat
 SparseArrays.nnz(A::BlockedSparse) = nnz(A.cscmat)
-function Base.copy!(L::BlockedSparse{T,I}, A::SparseMatrixCSC{T,I}) where {T,I}
+function Base.copyto!(L::BlockedSparse{T,I}, A::SparseMatrixCSC{T,I}) where {T,I}
     @argcheck(nnz(L) == nnz(A), DimensionMismatch)
-    copy!(nonzeros(L.cscmat), nonzeros(A))
+    copyto!(nonzeros(L.cscmat), nonzeros(A))
     L
 end
 
@@ -278,30 +278,32 @@ function VarCorr(m::MixedModel{T}) where T
     VarCorr(σ, ρ, fnms, cnms, sdest(m))
 end
 
+cpad(s::String, n::Integer) = rpad(lpad(s, (n + textwidth(s)) >> 1), n)
+
 function Base.show(io::IO, vc::VarCorr)
     # FIXME: Do this one term at a time
     fnms = copy(vc.fnms)
     stdm = copy(vc.σ)
     cor = vc.ρ
-    cnms = reduce(append!, String[], vc.cnms)
+    cnms = reduce(append!, vc.cnms, init=String[])
     if isfinite(vc.s)
-        push!(fnms,"Residual")
+        push!(fnms, :Residual)
         push!(stdm, [1.])
         rmul!(stdm, vc.s)
         push!(cnms, "")
     end
-    nmwd = maximum(map(strwidth, string.(fnms))) + 1
+    nmwd = maximum(map(textwidth, string.(fnms))) + 1
     write(io, "Variance components:\n")
-    cnmwd = max(6, maximum(map(strwidth, cnms))) + 1
+    cnmwd = max(6, maximum(map(textwidth, cnms))) + 1
     tt = vcat(stdm...)
     vars = showoff(abs2.(tt), :plain)
     stds = showoff(tt, :plain)
-    varwd = 1 + max(length("Variance"), maximum(map(strwidth, vars)))
-    stdwd = 1 + max(length("Std.Dev."), maximum(map(strwidth, stds)))
+    varwd = 1 + max(length("Variance"), maximum(map(textwidth, vars)))
+    stdwd = 1 + max(length("Std.Dev."), maximum(map(textwidth, stds)))
     write(io, " "^(2+nmwd))
-    write(io, Base.cpad("Column", cnmwd))
-    write(io, Base.cpad("Variance", varwd))
-    write(io, Base.cpad("Std.Dev.", stdwd))
+    write(io, cpad("Column", cnmwd))
+    write(io, cpad("Variance", varwd))
+    write(io, cpad("Std.Dev.", stdwd))
     any(s -> length(s) > 1, stdm) && write(io,"  Corr.")
     println(io)
     ind = 1

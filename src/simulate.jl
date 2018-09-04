@@ -73,7 +73,7 @@ end
 function stddevcor!(σ::Vector{T}, ρ::Matrix{T}, scr::Matrix{T}, L::Cholesky{T}) where T
     @argcheck(length(σ) == (k = size(L, 2)) && size(ρ) == (k, k) && size(scr) == (k, k), DimensionMismatch)
     if L.uplo == 'L'
-        copy!(scr, L.factors)
+        copyto!(scr, L.factors)
         for i in 1 : k
             σ[i] = σi = norm(view(scr, i, 1 : i))
             for j in 1 : i
@@ -82,14 +82,14 @@ function stddevcor!(σ::Vector{T}, ρ::Matrix{T}, scr::Matrix{T}, L::Cholesky{T}
         end
         A_mul_Bc!(ρ, LowerTriangular(scr), LowerTriangular(scr))
     elseif L.uplo == 'U'
-        copy!(scr, L.factors)
+        copyto!(scr, L.factors)
         for j in 1 : k
             σ[j] = σj = norm(view(scr, 1 : j, j))
             for i in 1 : j
                 scr[i, j] /= σj
             end
         end
-        Ac_mul_B!(ρ, UpperTriangular(scr), UpperTriangular(scr))
+        mul!(ρ, UpperTriangular(scr)', UpperTriangular(scr))
     else
         throw(ArgumentError("L.uplo should be 'L' or 'U'"))
     end
@@ -138,7 +138,7 @@ function reevaluateAend!(m::LinearMixedModel)
     trmn = reweight!(trms[end], m.sqrtwts)
     nblk = nblocks(A, 2)
     for i in eachindex(trms)
-        Ac_mul_B!(A[Block(nblk, i)], trmn, trms[i])
+        mul!(A[Block(nblk, i)], trmn', trms[i])
     end
     m
 end
@@ -154,7 +154,7 @@ refit!(m::LinearMixedModel) = fit!(updateL!(resetθ!(reevaluateAend!(m))))
 function refit!(m::LinearMixedModel, y)
     resp = m.trms[end]
     @argcheck length(y) == size(resp, 1) DimensionMismatch
-    copy!(resp, y)
+    copyto!(resp, y)
     refit!(m)
 end
 
@@ -208,7 +208,7 @@ end
 
 function unscaledre!(rng::AbstractRNG, y::AbstractVector{T},
                      A::VectorFactorReTerm{T}) where T
-    unscaledre!(y, A, A_mul_B!(LowerTriangular(A.Λ), randn(rng, vsize(A), nlevs(A))))
+    unscaledre!(y, A, lmul!(LowerTriangular(A.Λ), randn(rng, vsize(A), nlevs(A))))
 end
 
 function unscaledre!(rng::AbstractRNG, y::AbstractVector{T},

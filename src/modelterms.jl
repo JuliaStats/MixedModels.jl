@@ -49,19 +49,22 @@ Base.length(A::MatrixTerm) = length(A.wtx)
 
 Base.size(A::MatrixTerm) = size(A.wtx)
 
-Base.size(A::Adjoint{T,MatrixTerm{T}}) where {T} = reverse(size(A.parent))
+Base.size(A::Adjoint{T,<:MatrixTerm{T}}) where {T} = reverse(size(A.parent))
 
 Base.size(A::MatrixTerm, i) = size(A.wtx, i)
 
-Base.copy!(A::MatrixTerm{T}, src::AbstractVecOrMat{T}) where {T} = copyto!(A.x, src)
+Base.copyto!(A::MatrixTerm{T}, src::AbstractVecOrMat{T}) where {T} = copyto!(A.x, src)
+
+*(A::Adjoint{T,<:MatrixTerm{T}}, B::MatrixTerm{T}) where {T} = A.parent.wtx'B.wtx
 
 LinearAlgebra.mul!(R::AbstractMatrix{T}, A::MatrixTerm{T}, B::MatrixTerm{T}) where {T} =
     mul!(R, A.wtx, B.wtx)
 
-*(A::Adjoint{T,MatrixTerm{T}}, B::MatrixTerm{T}) where {T} = A.wtx'B.wtx
-
 LinearAlgebra.mul!(R::StridedVecOrMat{T}, A::MatrixTerm{T}, B::StridedVecOrMat{T}) where {T} =
     mul!(R, A.x, B)
+
+LinearAlgebra.mul!(C, A::Adjoint{T,<:MatrixTerm{T}}, B::MatrixTerm{T}) where {T} =
+    mul!(C, A.parent.wtx', B.wtx)
 
 abstract type AbstractFactorReTerm{T} <: AbstractTerm{T} end
 
@@ -208,7 +211,7 @@ end
 
 function SparseArrays.sparse(A::VectorFactorReTerm{T,R,S}) where {T,R,S}
     n = size(A, 1)
-    colind = Matrix{Int32}(S, n)
+    colind = Matrix{Int32}(undef, S, n)
     rr = A.refs
     @inbounds for j in 1:n
         offset = (rr[j] - 1) * S
@@ -328,7 +331,7 @@ function getθ end
 getθ(::MatrixTerm{T}) where {T} = T[]
 getθ(A::ScalarFactorReTerm) = [A.Λ]
 getθ(A::VectorFactorReTerm) = A.Λ.data[A.inds]
-getθ(v::Vector{AbstractTerm{T}}) where {T} = reduce(append!, getθ(t) for t in v, init = T[])
+getθ(v::Vector{AbstractTerm{T}}) where {T} = vcat(getθ.(v)...)
 
 """
     lowerbd{T}(A::FactorReTerm{T})
@@ -344,9 +347,8 @@ function lowerbd end
 
 lowerbd(::MatrixTerm{T}) where {T} = T[]
 lowerbd(A::ScalarFactorReTerm{T}) where {T} = zeros(T, 1)
-lowerbd(A::VectorFactorReTerm{T}) where {T} =
-    T[x ∈ diagind(A.Λ.data) ? zero(T) : convert(T, -Inf) for x in A.inds]
-lowerbd(v::Vector{AbstractTerm{T}}) where {T} = reduce(append!, lowerbd(t) for t in v, init=T[])
+lowerbd(A::VectorFactorReTerm{T}) where {T} = T[x ∈ diagind(A.Λ.data) ? zero(T) : T(-Inf) for x in A.inds]
+lowerbd(v::Vector{AbstractTerm{T}}) where {T} = vcat(lowerbd.(v)...)
 
 function setθ!(A::ScalarFactorReTerm{T}, v::T) where {T}
     A.Λ = v
@@ -379,11 +381,11 @@ function αβAc_mul_B!(α::Real, A::MatrixTerm{T}, B::ScalarFactorReTerm{T,R}, �
     C
 end
 
-LinearAlgebra.mul!(R::Matrix{T}, A::Adjoint{T,MatrixTerm{T}}, B::AbstractFactorReTerm{T}) where {T} =
+LinearAlgebra.mul!(R::Matrix{T}, A::Adjoint{T,<:MatrixTerm{T}}, B::AbstractFactorReTerm{T}) where {T} =
     αβAc_mul_B!(one(T), A.parent, B, zero(T), R)
 
-*(A::Adjoint{T,MatrixTerm{T}}, B::AbstractFactorReTerm{T}) where {T} =
-    mul!(Matrix{T}(undef, size(A, 2), size(B, 2)), A, B)
+*(A::Adjoint{T,<:MatrixTerm{T}}, B::AbstractFactorReTerm{T}) where {T} =
+    mul!(Matrix{T}(undef, size(A.parent, 2), size(B, 2)), A, B)
 
 function αβAc_mul_B!(α::Real, A::MatrixTerm{T}, B::VectorFactorReTerm{T,R,S}, β::Real,
                    C::Matrix{T}) where {T,R,S}
@@ -409,10 +411,10 @@ function αβAc_mul_B!(α::Real, A::MatrixTerm{T}, B::VectorFactorReTerm{T,R,S},
     C
 end
 
-LinearAlgebra.mul!(C::Matrix{T}, A::Adjoint{T,MatrixTerm{T}}, B::VectorFactorReTerm{T}) where {T} =
+LinearAlgebra.mul!(C::Matrix{T}, A::Adjoint{T,<:MatrixTerm{T}}, B::VectorFactorReTerm{T}) where {T} =
     αβAc_mul_B!(one(T), A.parent, B, zero(T), C)
 
-function LinearAlgebra.mul!(C::Diagonal{T}, A::Adjoint{T,ScalarFactorReTerm{T,R}},
+function LinearAlgebra.mul!(C::Diagonal{T}, A::Adjoint{T,<:ScalarFactorReTerm{T,R}},
                             B::ScalarFactorReTerm{T,R}) where {T,R}
 	Ap = A.parent
     @argcheck Ap === B
@@ -424,17 +426,17 @@ function LinearAlgebra.mul!(C::Diagonal{T}, A::Adjoint{T,ScalarFactorReTerm{T,R}
     C
 end
 
-function *(A::Adjoint{T,ScalarFactorReTerm{T,R}}, B::ScalarFactorReTerm{T,S}) where {T,R,S}
+function *(A::Adjoint{T,<:ScalarFactorReTerm{T,R}}, B::ScalarFactorReTerm{T,S}) where {T,R,S}
 	Ap = A.parent
     Ap === B ? mul!(Diagonal(Vector{T}(undef, nlevs(B))), A, B) :
         sparse(Vector{Int32}(Ap.refs), Vector{Int32}(B.refs), Ap.wtz .* B.wtz)
 end
 
-function *(A::Adjoint{T,VectorFactorReTerm{T}}, B::ScalarFactorReTerm{T}) where {T}
+function *(A::Adjoint{T,<:VectorFactorReTerm{T}}, B::ScalarFactorReTerm{T}) where {T}
 	Ap = A.parent
     nzeros = copy(Ap.wtz)
     k, n = size(nzeros)
-    rowind = Matrix{Int32}(k, n)
+    rowind = Matrix{Int32}(undef, k, n)
     refs = Ap.refs
     bwtz = B.wtz
     for j in 1:n
@@ -446,12 +448,12 @@ function *(A::Adjoint{T,VectorFactorReTerm{T}}, B::ScalarFactorReTerm{T}) where 
         end
     end
     sparse(vec(rowind), Vector{Int32}(repeat(B.refs, inner=k)), vec(nzeros),
-           k * nlevs(A.p), nlevs(B))
+           k * nlevs(Ap), nlevs(B))
 end
 
-*(A::Adjoint{T,ScalarFactorReTerm{T}}, B::VectorFactorReTerm{T}) where {T} = adjoint(B'A)
+*(A::Adjoint{T,<:ScalarFactorReTerm{T}}, B::VectorFactorReTerm{T}) where {T} = adjoint(B'A)
 
-function LinearAlgebra.mul!(C::UniformBlockDiagonal{T}, A::Adjoint{T,VectorFactorReTerm{T,R,S}},
+function LinearAlgebra.mul!(C::UniformBlockDiagonal{T}, A::Adjoint{T,<:VectorFactorReTerm{T,R,S}},
                             B::VectorFactorReTerm{T,U,P}) where {T,R,S,U,P}
     @argcheck(A.parent === B)
 	Ap = A.parent
@@ -469,7 +471,7 @@ function LinearAlgebra.mul!(C::UniformBlockDiagonal{T}, A::Adjoint{T,VectorFacto
     C
 end
 
-function *(A::Adjoint{T,VectorFactorReTerm{T,R,S}}, B::VectorFactorReTerm{T,U,P}) where {T,R,S,U,P}
+function *(A::Adjoint{T,<:VectorFactorReTerm{T,R,S}}, B::VectorFactorReTerm{T,U,P}) where {T,R,S,U,P}
     if A.parent === B
         return mul!(UniformBlockDiagonal(Array{T}(undef, S, S, nlevs(B))), A, B)
     end
@@ -538,7 +540,7 @@ function *(A::Adjoint{T,VectorFactorReTerm{T,R,S}}, B::VectorFactorReTerm{T,U,P}
     BlockedSparse(cscmat, nzasmat, rowblocks, colblocks)
 end
 
-function LinearAlgebra.mul!(C::Matrix{T}, A::Adjoint{T,ScalarFactorReTerm{T}}, B::ScalarFactorReTerm{T}) where T
+function LinearAlgebra.mul!(C::Matrix{T}, A::Adjoint{T,<:ScalarFactorReTerm{T}}, B::ScalarFactorReTerm{T}) where T
     m, n = size(B)
 	Ap = A.parent
     @argcheck size(C, 1) == size(Ap, 2) && n == size(C, 2) && size(Ap, 1) == m DimensionMismatch
@@ -553,7 +555,7 @@ function LinearAlgebra.mul!(C::Matrix{T}, A::Adjoint{T,ScalarFactorReTerm{T}}, B
     C
 end
 
-function LinearAlgebra.mul!(C::SparseMatrixCSC{T}, A::Adjoint{T,ScalarFactorReTerm{T}}, B::ScalarFactorReTerm{T}) where T
+function LinearAlgebra.mul!(C::SparseMatrixCSC{T}, A::Adjoint{T,<:ScalarFactorReTerm{T}}, B::ScalarFactorReTerm{T}) where T
     m, n = size(B)
 	Ap = A.parent
     @argcheck size(C, 1) == size(Ap, 2) && n == size(C, 2) && size(Ap, 1) == m DimensionMismatch
@@ -573,7 +575,7 @@ function LinearAlgebra.mul!(C::SparseMatrixCSC{T}, A::Adjoint{T,ScalarFactorReTe
     C
 end
 
-function LinearAlgebra.mul!(C::Matrix{T}, A::Adjoint{T,VectorFactorReTerm{T,R,S}},
+function LinearAlgebra.mul!(C::Matrix{T}, A::Adjoint{T,<:VectorFactorReTerm{T,R,S}},
                             B::ScalarFactorReTerm{T}) where {T,R,S}
     m, n = size(B)
 	Ap = A.parent
@@ -594,7 +596,7 @@ function LinearAlgebra.mul!(C::Matrix{T}, A::Adjoint{T,VectorFactorReTerm{T,R,S}
     C
 end
 
-function LinearAlgebra.mul!(C::Matrix{T}, A::Adjoint{T,ScalarFactorReTerm{T}},
+function LinearAlgebra.mul!(C::Matrix{T}, A::Adjoint{T,<:ScalarFactorReTerm{T}},
 	                        B::VectorFactorReTerm{T,R,S}) where {T,R,S}
     m, n = size(B)
 	Ap = A.parent

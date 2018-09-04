@@ -12,7 +12,7 @@ function fixef(m::GeneralizedLinearMixedModel{T}, permuted=true) where T
     iperm = invperm(Xtrm.piv)
     p = length(iperm)
     r = Xtrm.rank
-    r == p ? m.β[iperm] : copy!(fill(-zero(T), p), m.β)[iperm]
+    r == p ? m.β[iperm] : copyto!(fill(-zero(T), p), m.β)[iperm]
 end
 
 function GeneralizedLinearMixedModel(f::Formula, fr::AbstractDataFrame,
@@ -116,7 +116,7 @@ end
 
 function lowerbd(m::GeneralizedLinearMixedModel)
     lb = lowerbd(m.LMM)
-    vcat(fill(convert(eltype(lb), -Inf), size(m.β)), lb)
+    vcat(fill(eltype(lb)(-Inf), size(m.β)), lb)
 end
 
 StatsBase.nobs(m::GeneralizedLinearMixedModel) = length(m.η)
@@ -169,9 +169,9 @@ function pirls!(m::GeneralizedLinearMixedModel{T}, varyβ::Bool=false, verbose::
     β₀ = m.β₀
     lm = m.LMM
     for j in eachindex(u)         # start from u all zeros
-        copy!(u₀[j], fill!(u[j], 0))
+        copyto!(u₀[j], fill!(u[j], 0))
     end
-    varyβ && copy!(β₀, β)
+    varyβ && copyto!(β₀, β)
     obj₀ = deviance!(m) * 1.0001
     verbose && @show(varyβ, obj₀, β)
 
@@ -200,8 +200,8 @@ function pirls!(m::GeneralizedLinearMixedModel{T}, varyβ::Bool=false, verbose::
         if isapprox(obj, obj₀; atol = 0.00001)
             break
         end
-        copy!.(u₀, u)
-        copy!(β₀, β)
+        copyto!.(u₀, u)
+        copyto!(β₀, β)
         obj₀ = obj
     end
     m
@@ -221,12 +221,12 @@ end
 
 function setβ!(m::GeneralizedLinearMixedModel, v)
     β = m.β
-    copy!(β, view(v, 1 : length(β)))
+    copyto!(β, view(v, 1 : length(β)))
     m
 end
 
 function setθ!(m::GeneralizedLinearMixedModel, v)
-    setθ!(m.LMM, copy!(m.θ, v))
+    setθ!(m.LMM, copyto!(m.θ, v))
     m
 end
 
@@ -265,7 +265,7 @@ function StatsBase.fit!(m::GeneralizedLinearMixedModel{T};
     end
     opt = Opt(optsum)
     NLopt.min_objective!(opt, obj)
-    fmin, xmin, ret = NLopt.optimize(opt, copy!(optsum.final, optsum.initial))
+    fmin, xmin, ret = NLopt.optimize(opt, copyto!(optsum.final, optsum.initial))
     ## check if very small parameter values bounded below by zero can be set to zero
     xmin_ = copy(xmin)
     for i in eachindex(xmin_)
@@ -276,7 +276,7 @@ function StatsBase.fit!(m::GeneralizedLinearMixedModel{T};
     if xmin ≠ xmin_
         if (zeroobj = obj(xmin_, T[])) ≤ (fmin + 1.e-5)
             fmin = zeroobj
-            copy!(xmin, xmin_)
+            copyto!(xmin, xmin_)
         end
     end
     ## ensure that the parameter values saved in m are xmin

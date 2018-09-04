@@ -1,6 +1,6 @@
-using DataFrames, LinearAlgebra, MixedModels, RData, SparseArrays, Test
+using DataFrames, LinearAlgebra, MixedModels, Random, RData, SparseArrays, Test
 
-if !@isdefined(:dat) || !isa(dat, Dict{Symbol, DataFrame})
+if !@isdefined(dat) || !isa(dat, Dict{Symbol, DataFrame})
     dat = Dict(Symbol(k) => v for (k, v) in load(joinpath(dirname(@__FILE__), "dat.rda")))
 end
 
@@ -14,7 +14,7 @@ end
     bb = ScalarFactorReTerm(b2, :G)
     sf1 = ScalarFactorReTerm(pastes[:G], :G)
     sf2 = ScalarFactorReTerm(pastes[:H], :H)
-    Yield = Array(dyestuff[:Y])
+    Yield = dyestuff[:Y]
     ScalarFactorReTerm(repeat(1:3, inner=2), :G) # just to test a constructor
 
     @testset "size" begin
@@ -39,12 +39,12 @@ end
         @test sparse(sf) == sparse(Int32[1:30;], convert(Vector{Int32},sf.refs), ones(30))
         fsf = Matrix(sf)
         @test size(fsf) == (30, 6)
-        @test countnz(fsf) == 30
+        @test count(!iszero, fsf) == 30
         @test sort!(unique(fsf)) == [0.0, 1.0]
         @test cond(sf) == 1.0
         @test MixedModels.nθ(sf) == 1
         @test getθ(sf) == ones(1)
-        @test MixedModels.getθ!(Vector{Float64}(1), sf) == ones(1)
+        @test MixedModels.getθ!(Vector{Float64}(undef, 1), sf) == ones(1)
         @test lowerbd(sf) == zeros(1)
         @test eltype(sf) == Float64
         @test getθ(setθ!(sf, 0.5)) == [0.5]
@@ -54,7 +54,7 @@ end
 
     @testset "products" begin
         @test MatrixTerm(ones(30))'sf == fill(5.0, (1, 6))
-        @test Ac_mul_B!(Array{Float64}((size(sf1, 2), size(sf2, 2))), sf1, sf2) == Array(sf1'sf2)
+        @test mul!(Array{Float64}(undef, (size(sf1, 2), size(sf2, 2))), sf1', sf2) == Array(sf1'sf2)
 
         crp = sf'sf
         @test isa(crp, Diagonal{Float64})
@@ -66,7 +66,7 @@ end
         @test crp.diag == fill(5.,6)
         rhs = MatrixTerm(Yield)'sf
         @test rhs == reshape([7525.0,7640.0,7820.0,7490.0,8000.0,7350.0], (1, 6))
-        @test A_ldiv_B!(crp, copy(rhs)') == reshape([1505.,1528.,1564.,1498.,1600.,1470.], (6, 1))
+        @test ldiv!(crp, copy(rhs)') == reshape([1505.,1528.,1564.,1498.,1600.,1470.], (6, 1))
 
         @test isa(sf1'sf1, Diagonal{Float64})
         @test isa(sf2'sf2, Diagonal{Float64})
@@ -75,7 +75,7 @@ end
         @test MixedModels.Λc_mul_B!(sf, ones(6)) == fill(0.5, 6)
         @test MixedModels.A_mul_Λ!(ones(6, 6), sf) == fill(0.5, (6, 6))
 
-        @test MixedModels.Λ_mul_B!(Matrix{Float64}(1, 6), sf, ones(1, 6)) == fill(0.5, (1,6))
+        @test MixedModels.Λ_mul_B!(Matrix{Float64}(undef, 1, 6), sf, ones(1, 6)) == fill(0.5, (1,6))
     end
 
     @testset "reweight!" begin
@@ -86,11 +86,11 @@ end
 
 @testset "vectorRe" begin
     slp = dat[:sleepstudy]
-    corr = VectorFactorReTerm(slp[:G], hcat(ones(size(slp, 1)), Array(slp[:U]))',
+    corr = VectorFactorReTerm(slp[:G], vcat(ones(1, size(slp, 1)), slp[:U]'),
         :G, ["(Intercept)", "U"], [2])
-    nocorr = VectorFactorReTerm(slp[:G], hcat(ones(size(slp, 1)), Array(slp[:U]))',
+    nocorr = VectorFactorReTerm(slp[:G], vcat(ones(1, size(slp, 1)), slp[:U]'),
             :G, ["(Intercept)", "U"], [1, 1])
-    Reaction = Array(slp[:Y])
+    Reaction = slp[:Y]
 
     @testset "sizes" begin
         @test size(corr) == (180,36)
@@ -109,11 +109,11 @@ end
         @test MixedModels.nθ(nocorr) == 2
         @test getθ(corr) == [1.0, 0.0, 1.0]
         @test getθ(nocorr) == ones(2)
-        @test MixedModels.getθ!(Vector{Float64}(2), nocorr) == ones(2)
+        @test MixedModels.getθ!(Vector{Float64}(undef, 2), nocorr) == ones(2)
         @test lowerbd(nocorr) == zeros(2)
         @test lowerbd(corr) == [0.0, -Inf, 0.0]
         @test getθ(setθ!(corr, fill(0.5, 3))) == [0.5, 0.5, 0.5]
-        @test_throws DimensionMismatch MixedModels.getθ!(Vector{Float64}(2), corr)
+        @test_throws DimensionMismatch MixedModels.getθ!(Vector{Float64}(undef, 2), corr)
         @test_throws DimensionMismatch setθ!(corr, ones(2))
     end
 
@@ -126,7 +126,7 @@ end
 
     @test sparse(corr)'sparse(scl) == corr'scl
 
-    b = MixedModels.Λ_mul_B!(Matrix{Float64}(2,18), corr, ones(2,18))
+    b = MixedModels.Λ_mul_B!(Matrix{Float64}(undef, 2,18), corr, ones(2,18))
     @test b == reshape(repeat([0.5, 1.0], outer=18), (2,18))
     
     @testset "reweight!" begin
