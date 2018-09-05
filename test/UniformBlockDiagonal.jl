@@ -1,4 +1,4 @@
-using CategoricalArrays, DataFrames, LinearAlgebra, MixedModels, RData, SparseArrays, Test
+using CategoricalArrays, DataFrames, LinearAlgebra, MixedModels, Random, RData, SparseArrays, Test
 
 if !@isdefined(dat) || !isa(dat, Dict{Symbol, DataFrame})
     dat = Dict(Symbol(k) => v for (k, v) in load(joinpath(dirname(@__FILE__), "dat.rda")))

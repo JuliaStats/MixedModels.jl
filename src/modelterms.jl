@@ -167,7 +167,7 @@ mutable struct VectorFactorReTerm{T,R,S} <: AbstractFactorReTerm{T}
     levels::Vector{String}
     z::Matrix{T}
     wtz::Matrix{T}
-    wtzv::Vector{SVector{S,T}}
+    wtzv::Base.ReinterpretArray{SVector{S,T}}
     fnm::Symbol
     cnms::Vector{String}
     blks::Vector{Int}
@@ -187,7 +187,7 @@ function VectorFactorReTerm(f::CategoricalVector, z::Matrix{T}, fnm, cnms, blks)
         offset += kk
     end
     VectorFactorReTerm(CategoricalArrays.order(f.pool)[f.refs], string.(levels(f)), z, z,
-                       collect(reinterpret(SVector{k,T}, vec(z))), fnm, cnms, blks,
+                       reinterpret(SVector{k,T}, vec(z)), fnm, cnms, blks,
                        LowerTriangular(Matrix{T}(I, k, k)), inds)
 end
 
@@ -195,10 +195,10 @@ function reweight!(A::VectorFactorReTerm{T,R,S}, sqrtwts::Vector) where {T,R,S}
     if !isempty(sqrtwts)
         z = A.z
         if A.wtz === z
-            A.wtz = similar(z)
+            A.wtz = copy(z)
             A.wtzv = reinterpret(SVector{S,T}, vec(A.wtz))
         end
-        mul!(A.wtz, z, Diagonal(sqrtwts))
+        A.wtz .= z * Diagonal(sqrtwts)
     end
     A
 end
