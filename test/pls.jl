@@ -145,8 +145,7 @@ end
     updateL!(fm);
     b11 = LowerTriangular(fm.L.data[Block(1, 1)].facevec[1])
     @test b11 * b11' == fm.A[Block(1, 1)].facevec[1] + I
-    @test countn(Matrix(fm.L.data[Block(1, 1)])) == 18 * 4
-
+    @test count(!iszero, Matrix(fm.L.data[Block(1, 1)])) == 18 * 4
 
     fit!(fm)
 
@@ -200,7 +199,7 @@ end
 
     fmrs = fit!(LinearMixedModel(@formula(Y ~ 1 + U + (0 + U|G)), dat[:sleepstudy]))
     @test isapprox(objective(fmrs), 1774.080315280528, rtol=0.00001)
-    @test isapprox(getθ(fmrs), [0.24353985679033105], rtol=0.00001)   
+    @test isapprox(getθ(fmrs), [0.24353985679033105], rtol=0.00001)
 end
 
 @testset "d3" begin

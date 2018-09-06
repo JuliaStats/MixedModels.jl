@@ -297,7 +297,7 @@ function setθ!(m::LinearMixedModel, v)
             setθ!(trm, v[offset])
         else
             k = nθ(trm)
-            iszero(k) || setθ!(trm, view(v, (1:k) + offset))
+            iszero(k) || setθ!(trm, view(v, (1:k) .+ offset))
             offset += k
         end
     end

@@ -75,16 +75,16 @@ function stddevcor!(σ::Vector{T}, ρ::Matrix{T}, scr::Matrix{T}, L::Cholesky{T}
     if L.uplo == 'L'
         copyto!(scr, L.factors)
         for i in 1 : k
-            σ[i] = σi = norm(view(scr, i, 1 : i))
+            σ[i] = σi = norm(view(scr, i, 1:i))
             for j in 1 : i
                 scr[i, j] /= σi
             end
         end
-        A_mul_Bc!(ρ, LowerTriangular(scr), LowerTriangular(scr))
+        mul!(ρ, LowerTriangular(scr), adjoint(LowerTriangular(scr)))
     elseif L.uplo == 'U'
         copyto!(scr, L.factors)
         for j in 1 : k
-            σ[j] = σj = norm(view(scr, 1 : j, j))
+            σ[j] = σj = norm(view(scr, 1:j, j))
             for i in 1 : j
                 scr[i, j] /= σj
             end
@@ -108,7 +108,7 @@ end
 
 function stddevcor(L::Cholesky{T}) where T
     k = size(L, 1)
-    stddevcor!(Vector{T}(k), Matrix{T}((k, k)), Matrix{T}((k, k)), L)
+    stddevcor!(Vector{T}(undef, k), Matrix{T}(undef, k, k), Matrix{T}(undef, k, k), L)
 end
 
 stddevcor(L::LowerTriangular) = stddevcor(Cholesky(L))
