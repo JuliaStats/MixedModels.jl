@@ -2,7 +2,7 @@ __precompile__()
 
 module MixedModels
 
-using ArgCheck, BlockArrays, CategoricalArrays, Compat, DataFrames, Distributions, GLM, LinearAlgebra
+using ArgCheck, BlockArrays, CategoricalArrays, DataFrames, Distributions, GLM, LinearAlgebra
 using NLopt, Random, Showoff, SparseArrays, StaticArrays, Statistics, StatsBase, StatsModels
 using LinearAlgebra: BlasFloat, BlasReal, HermOrSym, PosDefException, checksquare, copytri!
 using NamedArrays: NamedArray, setnames!

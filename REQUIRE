@@ -2,7 +2,6 @@ julia 0.7
 ArgCheck
 BlockArrays 0.3.0
 CategoricalArrays
-Compat
 DataFrames 0.11.0
 Distributions 0.11
 GLM 0.11

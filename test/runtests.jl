@@ -1,5 +1,4 @@
-using CategoricalArrays, Compat, DataFrames, MixedModels, RData
-using Compat.Test
+using CategoricalArrays, DataFrames, LinearAlgebra, MixedModels, RData, Test
 
 const dat = Dict(Symbol(k) => v for (k,v) in load(joinpath(dirname(@__FILE__), "dat.rda")))
 

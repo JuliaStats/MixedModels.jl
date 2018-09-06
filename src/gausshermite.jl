@@ -1,5 +1,4 @@
-using Compat, StaticArrays
-using Compat.LinearAlgebra
+using StaticArrays, LinearAlgebra
 
 """
     GaussHermiteQuadrature

@@ -56,7 +56,7 @@ function describeblocks(io::IO, m::MixedModel)
                 blocksize(A, i, j), " ", typeof(L.data[Block(i, j)]))
     end
 end
-describeblocks(m::MixedModel) = describeblocks(Base.STDOUT, m)
+describeblocks(m::MixedModel) = describeblocks(stdout, m)
 
 """
     fnames(m::MixedModel)

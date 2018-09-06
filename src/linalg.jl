@@ -57,7 +57,9 @@ end
 αβAc_mul_B!(α::T, A::BlockedSparse{T}, B::StridedVector{T}, β::T,
             C::StridedVector{T}) where {T} = αβAc_mul_B!(α, A.cscmat, B, β, C)
 
-function LinearAlgebra.ldiv!(A::Adjoint{T,<:LowerTriangular{T,UniformBlockDiagonal{T}}}, B::StridedVector{T}) where {T}
+function LinearAlgebra.ldiv!(adjA::Adjoint{T,<:LowerTriangular{T,UniformBlockDiagonal{T}}},
+                             B::StridedVector{T}) where {T}
+    A = adjA.parent
     @argcheck length(B) == size(A, 2) DimensionMismatch
     m, n, k = size(A.data.data)
     fv = A.data.facevec
