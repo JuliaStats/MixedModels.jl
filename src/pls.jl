@@ -356,8 +356,8 @@ function lrt(mods::LinearMixedModel...) # not tested
     mods = mods[sortperm([dof(m)::Int for m in mods])]
     degf = Int[dof(m) for m in mods]
     dev = [deviance(m)::Float64 for m in mods]
-    csqr = unshift!([(dev[i-1]-dev[i])::Float64 for i in 2:nm],NaN)
-    pval = unshift!([ccdf(Chisq(degf[i]-degf[i-1]),csqr[i])::Float64 for i in 2:nm],NaN)
+    csqr = pushfirst!([(dev[i-1]-dev[i])::Float64 for i in 2:nm],NaN)
+    pval = pushfirst!([ccdf(Chisq(degf[i]-degf[i-1]),csqr[i])::Float64 for i in 2:nm],NaN)
     DataFrame(Df = degf, Deviance = dev, Chisq=csqr,pval=pval)
 end
 

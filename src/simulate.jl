@@ -25,11 +25,11 @@ function bootstrap(N, m::LinearMixedModel{T};
         append!(cnms, Symbol.(subscriptednames('ρ', nρtot)))
     end
 
-    dfr = DataFrame(Any[Vector{T}(N) for _ in eachindex(cnms)], cnms)
-    scrβ = Vector{T}(p)
-    scrθ = Vector{T}(k)
-    scrσ = [Vector{T}(l) for l in Λsize]
-    scrρ = [Matrix{T}(l, l) for l in Λsize]
+    dfr = DataFrame(Any[Vector{T}(undef, N) for _ in eachindex(cnms)], cnms)
+    scrβ = Vector{T}(undef, p)
+    scrθ = Vector{T}(undef, k)
+    scrσ = [Vector{T}(undef, l) for l in Λsize]
+    scrρ = [Matrix{T}(undef, l, l) for l in Λsize]
     scr = similar.(scrρ)
     for i in 1 : N
         j = 0
@@ -238,4 +238,4 @@ function simulate!(rng::AbstractRNG, m::LinearMixedModel{T};
 end
 
 simulate!(m::LinearMixedModel{T}; β=coef(m), σ=sdest(m), θ=T[]) where {T} =
-    simulate!(Base.GLOBAL_RNG, m, β=β, σ=σ, θ=θ)
+    simulate!(Random.GLOBAL_RNG, m, β=β, σ=σ, θ=θ)

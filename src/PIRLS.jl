@@ -25,7 +25,7 @@ function GeneralizedLinearMixedModel(f::Formula, fr::AbstractDataFrame,
     T = eltype(X)
     y = copy(model_response(LMM))
     if isempty(wt)
-        LMM = LinearMixedModel(LMM.formula, LMM.trms, ones(y), LMM.A, LMM.L, LMM.optsum)
+        LMM = LinearMixedModel(LMM.formula, LMM.trms, fill!(similar(y), 1), LMM.A, LMM.L, LMM.optsum)
     end
     updateL!(setθ!(LMM, getθ(LMM)))
             # fit a glm to the fixed-effects only - awkward syntax is to by-pass a test
