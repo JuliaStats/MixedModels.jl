@@ -5,7 +5,7 @@ end
 
 function αβA_mul_Bc!(α::T, A::SparseMatrixCSC{T}, B::SparseMatrixCSC{T},
                      β::T, C::Matrix{T}) where T <: Number
-    @argcheck B.m == size(C, 2) && A.m == size(C, 1) && A.n == B.n  DimensionMismatch
+    @argcheck(B.m == size(C, 2) && A.m == size(C, 1) && A.n == B.n, DimensionMismatch)
     anz = nonzeros(A)
     arv = rowvals(A)
     bnz = nonzeros(B)
@@ -38,7 +38,7 @@ function αβA_mul_Bc!(α::T, A::StridedVecOrMat{T}, B::SparseMatrixCSC{T}, β::
     @inbounds for j in 1:q, k in nzrange(B, j)
         rvk = rv[k]
         anzk = α * nz[k]
-        for jj in 1:r  # use .= fusing in v0.6.0 and later
+        for jj in 1:r
             C[jj, rvk] += A[jj, j] * anzk
         end
     end
@@ -70,14 +70,14 @@ function LinearAlgebra.ldiv!(adjA::Adjoint{T,<:LowerTriangular{T,UniformBlockDia
     B
 end
 
-function LinearAlgebra.rdiv!(A::Matrix{T}, B::Adjoint{T,<:LowerTriangular{T,UniformBlockDiagonal{T}}}) where T
-    Bd = B.parent.data
+function LinearAlgebra.rdiv!(A::Matrix{T},
+                             adjB::Adjoint{T,<:LowerTriangular{T,UniformBlockDiagonal{T}}}) where T
+    Bd = adjB.parent.data
     m, n, k = size(Bd.data)
     @argcheck(size(A, 2) == size(Bd, 1) && m == n, DimensionMismatch)
     inds = 1:m
-    for f in Bd.facevec
-        BLAS.trsm!('R', 'L', 'T', 'N', one(T), f, view(A, :, inds))
-        inds = inds .+ m
+    for (i, f) in enumerate(Bd.facevec)
+        BLAS.trsm!('R', 'L', 'T', 'N', one(T), f, view(A, :, inds .+ m * (i-1)))
     end
     A
 end
