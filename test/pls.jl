@@ -201,7 +201,7 @@ end
     @test isapprox(objective(fmrs), 1774.080315280528, rtol=0.00001)
     @test isapprox(getθ(fmrs), [0.24353985679033105], rtol=0.00001)
 end
-#=
+
 @testset "d3" begin
     fm = updateL!(LinearMixedModel(@formula(Y ~ 1 + U + (1+U|G) + (1+U|H) + (1+U|I)), dat[:d3]));
     @test isapprox(pwrss(fm), 5.1261847180180885e6, rtol = 1e-6)
@@ -211,7 +211,7 @@ end
     @test isapprox(objective(fm), 884957.5540213, rtol = 1e-6)
     @test isapprox(coef(fm), [0.4991229873, 0.31130780953], atol = 1.e-4)
 end
-=#
+
 @testset "simulate!" begin
     @test MixedModels.stddevcor(cholesky!(Matrix(I, 3, 3))) == (ones(3), Matrix(I, 3, 3))
     fm = fit!(LinearMixedModel(@formula(Y ~ 1 + (1 | G)), dat[:Dyestuff]))
