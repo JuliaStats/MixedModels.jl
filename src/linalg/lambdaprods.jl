@@ -12,6 +12,7 @@ See also [`scaleinflate!`]{@ref} which performs two such multiplications plus in
 the diagonal plus a copyto! operation in one step.
 """
 function A_mul_Λ! end
+
 A_mul_Λ!(A, B::MatrixTerm) = A
 A_mul_Λ!(A, B::ScalarFactorReTerm) = rmul!(A, B.Λ)
 function A_mul_Λ!(A::BlockedSparse{T}, B::VectorFactorReTerm{T}) where T
@@ -46,7 +47,7 @@ function Λc_mul_B! end
 Λc_mul_B!(A::ScalarFactorReTerm, B) = lmul!(A.Λ, B)
 function Λc_mul_B!(A::VectorFactorReTerm{T,R,S}, B::Matrix{T}) where {T,R,S}
     m, n = size(B)
-    lmul!(A.Λ, reshape(B, (S, div(m, S) * n)))
+    lmul!(adjoint(A.Λ), reshape(B, (S, div(m, S) * n)))
     B
 end
 
