@@ -49,7 +49,7 @@ end
     verbagg = dat[:VerbAgg]
     gm3 = fit(GeneralizedLinearMixedModel, @formula(r2 ~ 1 + a + g + b + s + (1 | id) + (1 | item)),
          verbagg, Bernoulli());
-    @test isapprox(deviance(gm3), 8151.402931868084, atol=0.001)
+    @test isapprox(deviance(gm3), 8151.40, atol=0.01)
     @test lowerbd(gm3) == vcat(fill(-Inf, 6), zeros(2))
     @test fitted(gm3) == predict(gm3)
     # these two values are not well defined at the optimum
