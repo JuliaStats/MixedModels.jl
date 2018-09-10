@@ -31,10 +31,11 @@ function GeneralizedLinearMixedModel(f::Formula, fr::AbstractDataFrame,
             # fit a glm to the fixed-effects only - awkward syntax is to by-pass a test
     gl = isempty(wt) ? glm(X, y, d, l) : glm(X, y, d, l, wts=wt)
     β = coef(gl)
-    u = [zeros(T, vsize(t), nlevs(t)) for t in reterms(LMM)]
+    u = [fill(zero(T), vsize(t), nlevs(t)) for t in reterms(LMM)]
     vv = length(u) == 1 ? vec(u[1]) : T[]
+
     res = GeneralizedLinearMixedModel(LMM, β, copy(β), getθ(LMM), copy.(u), u,
-        zeros.(u), gl.rr, similar(y), oftype(y, wt), similar(vv),
+        zero.(u), gl.rr, similar(y), oftype(y, wt), similar(vv),
         similar(vv), similar(vv), similar(vv))
     setβθ!(res, vcat(coef(gl), getθ(LMM)))
     deviance!(res, 1)
