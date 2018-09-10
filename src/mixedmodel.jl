@@ -71,7 +71,7 @@ function getθ!(v::AbstractVector{T}, m::LinearMixedModel{T}) where T
     offset = 0
     for λ in trms
         nli = nθ(λ)
-        getθ!(view(v, offset + (1 : nli)), λ)
+        getθ!(view(v, offset .+ (1 : nli)), λ)
         offset += nli
     end
     v

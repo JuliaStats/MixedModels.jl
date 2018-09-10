@@ -2,7 +2,7 @@ using BenchmarkTools, RData, MixedModels, StatsModels
 
 const SUITE = BenchmarkGroup()
 
-const dat = Dict(Symbol(k)=>v for (k,v) in load(joinpath("..", "test", "dat.rda")));
+const dat = Dict(Symbol(k)=>v for (k,v) in load(joinpath(dirname(pathof(MixedModels)), "..", "test", "dat.rda")));
 
 const mods = Dict{Symbol,Vector{Expr}}(
     :Alfalfa => [:(1+A*B+(1|G)), :(1+A+B+(1|G))],
@@ -106,11 +106,9 @@ for ds in [:Assay, :Demand, :InstEval, :Penicillin, :ScotsSec,
     end
 end
 
-#=
 SUITE["crossedvector"] = BenchmarkGroup(["multiple", "crossed", "vector"])
 for ds in [:bs10, :d3, :gb12, :kb07]
     for rhs in mods[ds]
         SUITE["crossedvector"][compactstr(ds, rhs)] = @benchmarkable fitbobyqa($(QuoteNode(rhs)), $(QuoteNode(ds)))
     end
 end
-=#
