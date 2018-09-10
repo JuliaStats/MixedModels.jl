@@ -53,7 +53,7 @@ function describeblocks(io::IO, m::MixedModel)
     L = lm.L
     for i in 1 : nblocks(A, 2), j in 1 : i
         println(io, i, ",", j, ": ", typeof(A[Block(i, j)]), " ",
-                blocksize(A, i, j), " ", typeof(L.data[Block(i, j)]))
+                blocksize(A, (i, j)), " ", typeof(L.data[Block(i, j)]))
     end
 end
 describeblocks(m::MixedModel) = describeblocks(Base.STDOUT, m)
@@ -115,7 +115,7 @@ function ranef!(v::Vector, m::LinearMixedModel{T}, β::AbstractArray{T}, uscale:
     Ldat = m.L.data
     @argcheck((k = length(v)) == nreterms(m), DimensionMismatch)
     for j in 1:k
-        αβAc_mul_B!(-one(T), Ldat[Block(k + 1, j)], β, one(T), 
+        αβAc_mul_B!(-one(T), Ldat[Block(k + 1, j)], β, one(T),
                     vec(copyto!(v[j], Ldat[Block(nblocks(Ldat, 2), j)])))
     end
     for i in k: -1 :1
