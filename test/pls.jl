@@ -1,8 +1,7 @@
-using Compat, StatsBase, DataFrames, RData, MixedModels
-using Compat.Test
+using DataFrames, LinearAlgebra, MixedModels, Random, RData, SparseArrays, Statistics, StatsBase, Test
 
-if !isdefined(:dat) || !isa(dat, Dict{Symbol, Any})
-    dat = convert(Dict{Symbol,Any}, load(joinpath(dirname(@__FILE__), "dat.rda")))
+if !@isdefined(dat) || !isa(dat, Dict{Symbol, DataFrame})
+    dat = Dict(Symbol(k) => v for (k, v) in load(joinpath(dirname(@__FILE__), "dat.rda")))
 end
 
 @testset "Dyestuff" begin
@@ -34,7 +33,7 @@ end
     @test length(cm.rownms) == 1
     @test length(cm.colnms) == 4
     @test MixedModels.fnames(fm1) == [:G]
-    @test model_response(fm1) == Vector(dat[:Dyestuff][:Y])
+    @test model_response(fm1) == dat[:Dyestuff][:Y]
     rfu = ranef(fm1, uscale = true)
     rfb = ranef(fm1)
     cv = condVar(fm1)
@@ -146,8 +145,7 @@ end
     updateL!(fm);
     b11 = LowerTriangular(fm.L.data[Block(1, 1)].facevec[1])
     @test b11 * b11' == fm.A[Block(1, 1)].facevec[1] + I
-    @test countnz(full(fm.L.data[Block(1, 1)])) == 18 * 4
-
+    @test count(!iszero, Matrix(fm.L.data[Block(1, 1)])) == 18 * 4
 
     fit!(fm)
 
@@ -201,7 +199,7 @@ end
 
     fmrs = fit!(LinearMixedModel(@formula(Y ~ 1 + U + (0 + U|G)), dat[:sleepstudy]))
     @test isapprox(objective(fmrs), 1774.080315280528, rtol=0.00001)
-    @test isapprox(getθ(fmrs), [0.24353985679033105], rtol=0.00001)   
+    @test isapprox(getθ(fmrs), [0.24353985679033105], rtol=0.00001)
 end
 
 @testset "d3" begin
@@ -215,17 +213,17 @@ end
 end
 
 @testset "simulate!" begin
-    @test MixedModels.stddevcor(cholfact!(eye(3))) == (ones(3), eye(3))
+    @test MixedModels.stddevcor(cholesky!(Matrix(I, 3, 3))) == (ones(3), Matrix(I, 3, 3))
     fm = fit!(LinearMixedModel(@formula(Y ~ 1 + (1 | G)), dat[:Dyestuff]))
-    refit!(simulate!(MersenneTwister(1234321), fm))
+    refit!(simulate!(Random.MersenneTwister(1234321), fm))
     @test isapprox(deviance(fm), 339.0218639362958, atol=0.001)
     refit!(fm, dat[:Dyestuff][:Y])
-    srand(1234321)
+    Random.seed!(1234321)
     refit!(simulate!(fm))
     @test isapprox(deviance(fm), 339.0218639362958, atol=0.001)
     simulate!(fm, θ = getθ(fm))
     @test_throws DimensionMismatch refit!(fm, zeros(29))
-    srand(1234321)
+    Random.seed!(1234321)
     dfr = bootstrap(10, fm)
     @test size(dfr) == (10, 5)
     @test names(dfr) == Symbol[:obj, :σ, :β₁, :θ₁, :σ₁]

@@ -25,11 +25,11 @@ function bootstrap(N, m::LinearMixedModel{T};
         append!(cnms, Symbol.(subscriptednames('ρ', nρtot)))
     end
 
-    dfr = DataFrame(Any[Vector{T}(N) for _ in eachindex(cnms)], cnms)
-    scrβ = Vector{T}(p)
-    scrθ = Vector{T}(k)
-    scrσ = [Vector{T}(l) for l in Λsize]
-    scrρ = [Matrix{T}(l, l) for l in Λsize]
+    dfr = DataFrame(Any[Vector{T}(undef, N) for _ in eachindex(cnms)], cnms)
+    scrβ = Vector{T}(undef, p)
+    scrθ = Vector{T}(undef, k)
+    scrσ = [Vector{T}(undef, l) for l in Λsize]
+    scrρ = [Matrix{T}(undef, l, l) for l in Λsize]
     scr = similar.(scrρ)
     for i in 1 : N
         j = 0
@@ -70,60 +70,60 @@ function subscriptednames(nm, len)
         [string(nm, lpad(string(j), nd, '0')) for j in 1:len]
 end
 
-function stddevcor!(σ::Vector{T}, ρ::Matrix{T}, scr::Matrix{T}, L::LinAlg.Cholesky{T}) where T
+function stddevcor!(σ::Vector{T}, ρ::Matrix{T}, scr::Matrix{T}, L::Cholesky{T}) where T
     @argcheck(length(σ) == (k = size(L, 2)) && size(ρ) == (k, k) && size(scr) == (k, k), DimensionMismatch)
     if L.uplo == 'L'
-        copy!(scr, L.factors)
+        copyto!(scr, L.factors)
         for i in 1 : k
-            σ[i] = σi = norm(view(scr, i, 1 : i))
+            σ[i] = σi = norm(view(scr, i, 1:i))
             for j in 1 : i
                 scr[i, j] /= σi
             end
         end
-        A_mul_Bc!(ρ, LowerTriangular(scr), LowerTriangular(scr))
+        mul!(ρ, LowerTriangular(scr), adjoint(LowerTriangular(scr)))
     elseif L.uplo == 'U'
-        copy!(scr, L.factors)
+        copyto!(scr, L.factors)
         for j in 1 : k
-            σ[j] = σj = norm(view(scr, 1 : j, j))
+            σ[j] = σj = norm(view(scr, 1:j, j))
             for i in 1 : j
                 scr[i, j] /= σj
             end
         end
-        Ac_mul_B!(ρ, UpperTriangular(scr), UpperTriangular(scr))
+        mul!(ρ, UpperTriangular(scr)', UpperTriangular(scr))
     else
         throw(ArgumentError("L.uplo should be 'L' or 'U'"))
     end
     σ, ρ
 end
+
 function stddevcor!(σ::Vector, ρ::Matrix, scr::Matrix, L::ScalarFactorReTerm)
     σ[1] = L.Λ
     ρ[1] = 1
 end
+
 function stddevcor!(σ::Vector{T}, ρ::Matrix{T}, scr::Matrix{T},
     L::VectorFactorReTerm{T}) where T
-    stddevcor!(σ, ρ, scr, LinAlg.Cholesky(L.Λ))
+    stddevcor!(σ, ρ, scr, Cholesky(L.Λ))
 end
-function stddevcor(L::LinAlg.Cholesky{T}) where T
+
+function stddevcor(L::Cholesky{T}) where T
     k = size(L, 1)
-    stddevcor!(Vector{T}(k), Matrix{T}((k, k)), Matrix{T}((k, k)), L)
+    stddevcor!(Vector{T}(undef, k), Matrix{T}(undef, k, k), Matrix{T}(undef, k, k), L)
 end
-stddevcor(L::LowerTriangular) = stddevcor(LinAlg.Cholesky(L))
+
+stddevcor(L::LowerTriangular) = stddevcor(Cholesky(L))
 stddevcor(L::VectorFactorReTerm) = stddevcor(L.Λ)
 stddevcor(L::ScalarFactorReTerm{T}) where T = [L.Λ], ones(T, 1, 1)
 
-if VERSION < v"0.7.0-DEV.393"
-    Base.LinAlg.Cholesky(L::LowerTriangular) = LinAlg.Cholesky(L, 'L')
-else
-    function Base.LinAlg.Cholesky(L::LowerTriangular)
-        info = 0
-        for k in 1:size(L,2)
-            if iszero(L[k, k])
-                info = k
-                break
-            end
+function LinearAlgebra.Cholesky(L::LowerTriangular)
+    info = 0
+    for k in 1:size(L,2)
+        if iszero(L[k, k])
+            info = k
+            break
         end
-        LinAlg.Cholesky(L, 'L', info)
     end
+    Cholesky(L, 'L', info)
 end
 
 """
@@ -138,7 +138,7 @@ function reevaluateAend!(m::LinearMixedModel)
     trmn = reweight!(trms[end], m.sqrtwts)
     nblk = nblocks(A, 2)
     for i in eachindex(trms)
-        Ac_mul_B!(A[Block(nblk, i)], trmn, trms[i])
+        mul!(A[Block(nblk, i)], trmn', trms[i])
     end
     m
 end
@@ -154,7 +154,7 @@ refit!(m::LinearMixedModel) = fit!(updateL!(resetθ!(reevaluateAend!(m))))
 function refit!(m::LinearMixedModel, y)
     resp = m.trms[end]
     @argcheck length(y) == size(resp, 1) DimensionMismatch
-    copy!(resp, y)
+    copyto!(resp, y)
     refit!(m)
 end
 
@@ -208,12 +208,12 @@ end
 
 function unscaledre!(rng::AbstractRNG, y::AbstractVector{T},
                      A::VectorFactorReTerm{T}) where T
-    unscaledre!(y, A, A_mul_B!(LowerTriangular(A.Λ), randn(rng, vsize(A), nlevs(A))))
+    unscaledre!(y, A, lmul!(LowerTriangular(A.Λ), randn(rng, vsize(A), nlevs(A))))
 end
 
 function unscaledre!(rng::AbstractRNG, y::AbstractVector{T},
                      A::ScalarFactorReTerm{T}) where T
-    unscaledre!(y, A, scale!(A.Λ, randn(rng, vsize(A), nlevs(A))))
+    unscaledre!(y, A, lmul!(A.Λ, randn(rng, vsize(A), nlevs(A))))
 end
 
 unscaledre!(y::AbstractVector, A::AbstractFactorReTerm) = unscaledre!(Base.GLOBAL_RNG, y, A)
@@ -238,4 +238,4 @@ function simulate!(rng::AbstractRNG, m::LinearMixedModel{T};
 end
 
 simulate!(m::LinearMixedModel{T}; β=coef(m), σ=sdest(m), θ=T[]) where {T} =
-    simulate!(Base.GLOBAL_RNG, m, β=β, σ=σ, θ=θ)
+    simulate!(Random.GLOBAL_RNG, m, β=β, σ=σ, θ=θ)

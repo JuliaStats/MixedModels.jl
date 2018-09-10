@@ -1,3 +1,5 @@
+using Printf: @sprintf
+
 function StatsBase.dof(m::GeneralizedLinearMixedModel)
     length(m.β) + length(m.θ) + GLM.dispersion_parameter(m.resp.d)
 end
@@ -10,7 +12,7 @@ function fixef(m::GeneralizedLinearMixedModel{T}, permuted=true) where T
     iperm = invperm(Xtrm.piv)
     p = length(iperm)
     r = Xtrm.rank
-    r == p ? m.β[iperm] : copy!(fill(-zero(T), p), m.β)[iperm]
+    r == p ? m.β[iperm] : copyto!(fill(-zero(T), p), m.β)[iperm]
 end
 
 function GeneralizedLinearMixedModel(f::Formula, fr::AbstractDataFrame,
@@ -23,16 +25,17 @@ function GeneralizedLinearMixedModel(f::Formula, fr::AbstractDataFrame,
     T = eltype(X)
     y = copy(model_response(LMM))
     if isempty(wt)
-        LMM = LinearMixedModel(LMM.formula, LMM.trms, ones(y), LMM.A, LMM.L, LMM.optsum)
+        LMM = LinearMixedModel(LMM.formula, LMM.trms, fill!(similar(y), 1), LMM.A, LMM.L, LMM.optsum)
     end
     updateL!(setθ!(LMM, getθ(LMM)))
             # fit a glm to the fixed-effects only - awkward syntax is to by-pass a test
     gl = isempty(wt) ? glm(X, y, d, l) : glm(X, y, d, l, wts=wt)
     β = coef(gl)
-    u = [zeros(T, vsize(t), nlevs(t)) for t in reterms(LMM)]
+    u = [fill(zero(T), vsize(t), nlevs(t)) for t in reterms(LMM)]
     vv = length(u) == 1 ? vec(u[1]) : T[]
+
     res = GeneralizedLinearMixedModel(LMM, β, copy(β), getθ(LMM), copy.(u), u,
-        zeros.(u), gl.rr, similar(y), oftype(y, wt), similar(vv),
+        zero.(u), gl.rr, similar(y), oftype(y, wt), similar(vv),
         similar(vv), similar(vv), similar(vv))
     setβθ!(res, vcat(coef(gl), getθ(LMM)))
     deviance!(res, 1)
@@ -42,11 +45,11 @@ end
 GeneralizedLinearMixedModel(f::Formula, fr::AbstractDataFrame, d::Distribution; wt=[], offset=[], contrasts=Dict()) =
         GeneralizedLinearMixedModel(f, fr, d, GLM.canonicallink(d), wt=wt, offset=offset, contrasts=contrasts)
 
-fit(::Type{GeneralizedLinearMixedModel}, f::Formula, fr::AbstractDataFrame, d::Distribution) =
-    fit!(GeneralizedLinearMixedModel(f, fr, d, GLM.canonicallink(d)))
+StatsBase.fit(::Type{GeneralizedLinearMixedModel}, f::Formula, fr::AbstractDataFrame,
+              d::Distribution) = fit!(GeneralizedLinearMixedModel(f, fr, d, GLM.canonicallink(d)))
 
-fit(::Type{GeneralizedLinearMixedModel}, f::Formula, fr::AbstractDataFrame, d::Distribution, l::Link) =
-    fit!(GeneralizedLinearMixedModel(f, fr, d, l))
+StatsBase.fit(::Type{GeneralizedLinearMixedModel}, f::Formula, fr::AbstractDataFrame,
+              d::Distribution, l::Link) = fit!(GeneralizedLinearMixedModel(f, fr, d, l))
 
 """
     deviance(m::GeneralizedLinearMixedModel{T}, nAGQ=1)::T where T
@@ -57,11 +60,11 @@ If the distribution `D` does not have a scale parameter the Laplace approximatio
 is defined as the squared length of the conditional modes, `u`, plus the determinant
 of `Λ'Z'WZΛ + I`, plus the sum of the squared deviance residuals.
 """
-function deviance(m::GeneralizedLinearMixedModel{T}, nAGQ=1) where T
+function StatsBase.deviance(m::GeneralizedLinearMixedModel{T}, nAGQ=1) where T
     nAGQ == 1 && return T(sum(m.resp.devresid) + logdet(m) + sum(u -> sum(abs2, u), m.u))
     u = vec(m.u[1])
     u₀ = vec(m.u₀[1])
-    Compat.copyto!(u₀, u)
+    copyto!(u₀, u)
     ra = RaggedArray(m.resp.devresid, m.LMM.trms[1].refs)
     devc0 = sum!(map!(abs2, m.devc0, u), ra)  # the deviance components at z = 0
     sd = map!(inv, m.sd, m.LMM.L.data[Block(1,1)].diag)
@@ -79,7 +82,7 @@ function deviance(m::GeneralizedLinearMixedModel{T}, nAGQ=1) where T
             end
         end
     end
-    Compat.copyto!(u, u₀)
+    copyto!(u, u₀)
     updateη!(m)
     sum(devc0) - 2 * (sum(log, mult) + sum(log, sd))
 end
@@ -97,7 +100,7 @@ function deviance!(m::GeneralizedLinearMixedModel, nAGQ=1)
     deviance(m, nAGQ)
 end
 
-function loglikelihood(m::GeneralizedLinearMixedModel{T}) where T
+function StatsBase.loglikelihood(m::GeneralizedLinearMixedModel{T}) where T
     accum = zero(T)
     D = Distribution(m.resp)
     if D <: Binomial
@@ -114,7 +117,7 @@ end
 
 function lowerbd(m::GeneralizedLinearMixedModel)
     lb = lowerbd(m.LMM)
-    vcat(fill(convert(eltype(lb), -Inf), size(m.β)), lb)
+    vcat(fill(eltype(lb)(-Inf), size(m.β)), lb)
 end
 
 StatsBase.nobs(m::GeneralizedLinearMixedModel) = length(m.η)
@@ -138,7 +141,7 @@ Update the linear predictor, `m.η`, from the offset and the `B`-scale random ef
 function updateη!(m::GeneralizedLinearMixedModel)
     η, b, u = m.η, m.b, m.u
     trms = m.LMM.trms
-    A_mul_B!(η, trms[end - 1].x, m.β)
+    mul!(η, trms[end - 1].x, m.β)
     for i in eachindex(b)
         unscaledre!(η, trms[i], Λ_mul_B!(b[i], trms[i], u[i]))
     end
@@ -146,7 +149,7 @@ function updateη!(m::GeneralizedLinearMixedModel)
     m
 end
 
-average(a::T, b::T) where {T <: AbstractFloat} = (a + b) / 2
+average(a::T, b::T) where {T<:AbstractFloat} = (a + b) / 2
 
 """
     pirls!(m::GeneralizedLinearMixedModel)
@@ -167,15 +170,15 @@ function pirls!(m::GeneralizedLinearMixedModel{T}, varyβ::Bool=false, verbose::
     β₀ = m.β₀
     lm = m.LMM
     for j in eachindex(u)         # start from u all zeros
-        copy!(u₀[j], fill!(u[j], 0))
+        copyto!(u₀[j], fill!(u[j], 0))
     end
-    varyβ && copy!(β₀, β)
+    varyβ && copyto!(β₀, β)
     obj₀ = deviance!(m) * 1.0001
     verbose && @show(varyβ, obj₀, β)
 
     while iter < maxiter
         iter += 1
-        varyβ && Ac_ldiv_B!(feL(m), Compat.copyto!(β, lm.L.data.blocks[end, end - 1]))
+        varyβ && ldiv!(adjoint(feL(m)), copyto!(β, lm.L.data.blocks[end, end - 1]))
         ranef!(u, m.LMM, β, true) # solve for new values of u
         obj = deviance!(m)        # update GLM vecs and evaluate Laplace approx
         verbose && @show(iter, obj)
@@ -198,8 +201,8 @@ function pirls!(m::GeneralizedLinearMixedModel{T}, varyβ::Bool=false, verbose::
         if isapprox(obj, obj₀; atol = 0.00001)
             break
         end
-        copy!.(u₀, u)
-        copy!(β₀, β)
+        copyto!.(u₀, u)
+        copyto!(β₀, β)
         obj₀ = obj
     end
     m
@@ -219,12 +222,12 @@ end
 
 function setβ!(m::GeneralizedLinearMixedModel, v)
     β = m.β
-    copy!(β, view(v, 1 : length(β)))
+    copyto!(β, view(v, 1 : length(β)))
     m
 end
 
 function setθ!(m::GeneralizedLinearMixedModel, v)
-    setθ!(m.LMM, copy!(m.θ, v))
+    setθ!(m.LMM, copyto!(m.θ, v))
     m
 end
 
@@ -249,7 +252,7 @@ function StatsBase.fit!(m::GeneralizedLinearMixedModel{T};
         optsum.lowerbd = vcat(fill!(similar(β), T(-Inf)), optsum.lowerbd)
         optsum.initial = vcat(β, m.θ)
         optsum.final = copy(optsum.initial)
-        optsum.initial_step = vcat(StatsBase.stderror(m) ./ 3, min.(T(0.05), m.θ ./ 4))
+        optsum.initial_step = vcat(stderror(m) ./ 3, min.(T(0.05), m.θ ./ 4))
     end
     setpar! = fast ? setθ! : setβθ!
     feval = 0
@@ -263,7 +266,7 @@ function StatsBase.fit!(m::GeneralizedLinearMixedModel{T};
     end
     opt = Opt(optsum)
     NLopt.min_objective!(opt, obj)
-    fmin, xmin, ret = NLopt.optimize(opt, copy!(optsum.final, optsum.initial))
+    fmin, xmin, ret = NLopt.optimize(opt, copyto!(optsum.final, optsum.initial))
     ## check if very small parameter values bounded below by zero can be set to zero
     xmin_ = copy(xmin)
     for i in eachindex(xmin_)
@@ -274,7 +277,7 @@ function StatsBase.fit!(m::GeneralizedLinearMixedModel{T};
     if xmin ≠ xmin_
         if (zeroobj = obj(xmin_, T[])) ≤ (fmin + 1.e-5)
             fmin = zeroobj
-            copy!(xmin, xmin_)
+            copyto!(xmin, xmin_)
         end
     end
     ## ensure that the parameter values saved in m are xmin

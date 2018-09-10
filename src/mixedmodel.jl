@@ -16,14 +16,14 @@ lmm(m::GeneralizedLinearMixedModel) = m.LMM
 
 Return the vector of the condition numbers of the blocks of `m.trms`
 """
-Base.cond(m::MixedModel) = cond.(reterms(m))
+LinearAlgebra.cond(m::MixedModel) = cond.(reterms(m))
 
 """
     std{T}(m::MixedModel{T})
 
 Return the estimated standard deviations of the variance components as a `Vector{Vector{T}}`.
 """
-function Base.std(m::MixedModel{T}) where T
+function Statistics.std(m::MixedModel{T}) where T
     rl =  filter(!isempty, rowlengths.(lmm(m).trms))
     s = sdest(m)
     isfinite(s) ? s .* push!(rl, [1.]) : rl
@@ -34,7 +34,7 @@ fixefnames(m::MixedModel) = lmm(m).trms[end - 1].cnames
 
 function StatsBase.coeftable(m::MixedModel)
     co = coef(m)
-    se = StatsBase.stderror(m)
+    se = stderror(m)
     z = co ./ se
     pvalue = ccdf.(Chisq(1), abs2.(z))
     CoefTable(hcat(co, se, z, pvalue), ["Estimate", "Std.Error", "z value", "P(>|z|)"],
@@ -53,7 +53,7 @@ function describeblocks(io::IO, m::MixedModel)
     L = lm.L
     for i in 1 : nblocks(A, 2), j in 1 : i
         println(io, i, ",", j, ": ", typeof(A[Block(i, j)]), " ",
-                blocksize(A, i, j), " ", typeof(L.data[Block(i, j)]))
+                blocksize(A, (i, j)), " ", typeof(L.data[Block(i, j)]))
     end
 end
 describeblocks(m::MixedModel) = describeblocks(Base.STDOUT, m)
@@ -71,7 +71,7 @@ function getθ!(v::AbstractVector{T}, m::LinearMixedModel{T}) where T
     offset = 0
     for λ in trms
         nli = nθ(λ)
-        getθ!(view(v, offset + (1 : nli)), λ)
+        getθ!(view(v, offset .+ (1 : nli)), λ)
         offset += nli
     end
     v
@@ -115,13 +115,13 @@ function ranef!(v::Vector, m::LinearMixedModel{T}, β::AbstractArray{T}, uscale:
     Ldat = m.L.data
     @argcheck((k = length(v)) == nreterms(m), DimensionMismatch)
     for j in 1:k
-        αβAc_mul_B!(-one(T), Ldat[Block(k + 1, j)], β, one(T), vec(copy!(v[j],
-                    Ldat[Block(nblocks(Ldat, 2), j)])))
+        αβAc_mul_B!(-one(T), Ldat[Block(k + 1, j)], β, one(T),
+                    vec(copyto!(v[j], Ldat[Block(nblocks(Ldat, 2), j)])))
     end
     for i in k: -1 :1
         Lii = Ldat[Block(i, i)]
         vi = vec(v[i])
-        Ac_ldiv_B!(isa(Lii, Diagonal) ? Lii : LowerTriangular(Lii), vi)
+        ldiv!(adjoint(isa(Lii, Diagonal) ? Lii : LowerTriangular(Lii)), vi)
         for j in 1:(i - 1)
             αβAc_mul_B!(-one(T), Ldat[Block(i, j)], vi, one(T), vec(v[j]))
         end
@@ -149,7 +149,7 @@ function ranef(m::MixedModel; uscale=false, named=false)
     LMM = lmm(m)
     T = eltype(LMM.sqrtwts)
     retrms = reterms(LMM)
-    v = Matrix{T}[Matrix{T}(vsize(t), nlevs(t)) for t in retrms]
+    v = Matrix{T}[Matrix{T}(undef, vsize(t), nlevs(t)) for t in retrms]
     ranef!(v, LMM, uscale)
     named || return v
     vnmd = map(NamedArray, v)
@@ -179,7 +179,7 @@ function StatsBase.vcov(m::MixedModel)
     end
 end
 
-Base.cor(m::MixedModel{T}) where {T} = Matrix{T}[stddevcor(t)[2] for t in reterms(m)]
+Statistics.cor(m::MixedModel{T}) where {T} = Matrix{T}[stddevcor(t)[2] for t in reterms(m)]
 
 """
     condVar(m::MixedModel)

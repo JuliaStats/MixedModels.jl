@@ -2,17 +2,16 @@ __precompile__()
 
 module MixedModels
 
-using ArgCheck, BlockArrays, CategoricalArrays, Compat, DataFrames, Distributions
-using GLM, NLopt, Showoff, StaticArrays, StatsBase, StatsModels
-using Compat.LinearAlgebra: BlasFloat, BlasReal, HermOrSym, PosDefException, checksquare, copytri!
+using ArgCheck, BlockArrays, CategoricalArrays, DataFrames, Distributions, GLM, LinearAlgebra
+using NLopt, Random, Showoff, SparseArrays, StaticArrays, Statistics, StatsBase, StatsModels
+using LinearAlgebra: BlasFloat, BlasReal, HermOrSym, PosDefException, checksquare, copytri!
 using NamedArrays: NamedArray, setnames!
+using Printf: @printf, @sprintf
+
 using StatsFuns: log2π
 
-import Base: cor, eltype, full, logdet, std
-import Compat.LinearAlgebra: A_mul_B!, A_mul_Bc!, Ac_mul_B!, A_ldiv_B!, Ac_ldiv_B!, A_rdiv_B!, A_rdiv_Bc!, cond
+import Base: *
 import NLopt: Opt
-import StatsBase: coef, coeftable, dof, deviance, fit, fit!, fitted, loglikelihood,
-    model_response, nobs, predict, stderror, vcov
 
 export
        @formula,
@@ -56,8 +55,6 @@ export
        getΛ,
        getθ,
        GHnorm,
-#       glmm,       # define a GeneralizedLinearMixedModel
-#       lmm,        # create a LinearMixedModel from a formula/data specification
        loglikelihood,
        lowerbd,    # lower bounds on the covariance parameters
        model_response,

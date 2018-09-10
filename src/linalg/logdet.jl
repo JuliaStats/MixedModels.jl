@@ -20,7 +20,7 @@ end
 
 function LD(d::DenseMatrix{T}) where T
     s = log(one(T))
-    for i in 1:Base.LinAlg.checksquare(d)
+    for i in 1:LinearAlgebra.checksquare(d)
         s += log(d[i, i])
     end
     s
@@ -31,7 +31,7 @@ end
 
 Return the value of `log(det(Λ'Z'ZΛ + I))` evaluated in place.
 """
-function logdet(m::LinearMixedModel{T}) where {T}
+function LinearAlgebra.logdet(m::LinearMixedModel{T}) where {T}
     s = log(one(T))
     Ldat = m.L.data
     for (i, trm) in enumerate(m.trms)
@@ -42,4 +42,4 @@ function logdet(m::LinearMixedModel{T}) where {T}
     2s
 end
 
-logdet(m::GeneralizedLinearMixedModel) = logdet(m.LMM)
+LinearAlgebra.logdet(m::GeneralizedLinearMixedModel) = logdet(m.LMM)

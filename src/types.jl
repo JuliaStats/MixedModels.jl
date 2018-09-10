@@ -1,5 +1,4 @@
-using Compat, StaticArrays
-using Compat.LinearAlgebra
+using StaticArrays, SparseArrays, LinearAlgebra
 
 """
     UniformBlockDiagonal{T}
@@ -12,7 +11,7 @@ struct UniformBlockDiagonal{T} <: AbstractMatrix{T}
 end
 
 function UniformBlockDiagonal(dat::Array{T,3}) where T
-    UniformBlockDiagonal(dat, 
+    UniformBlockDiagonal(dat,
         SubArray{T,2,Array{T,3}}[view(dat,:,:,i) for i in 1:size(dat, 3)])
 end
 
@@ -34,7 +33,7 @@ function Base.getindex(A::UniformBlockDiagonal{T}, i::Int, j::Int) where {T}
     end
 end
 
-function Base.full(A::UniformBlockDiagonal{T}) where T
+function LinearAlgebra.Matrix(A::UniformBlockDiagonal{T}) where T
     res = zeros(T, size(A))
     Ad = A.data
     m, n, l = size(Ad)
@@ -57,7 +56,7 @@ A `SparseMatrixCSC` whose nonzeros form blocks of rows or columns or both.
 
 # Members
 * `cscmat`: `SparseMatrixCSC{Tv, Ti}` representation for general calculations
-* `nzsasmat`: Matrix{Tv} `cscmat.nzval` as a matrix 
+* `nzsasmat`: Matrix{Tv} `cscmat.nzval` as a matrix
 * `rowblocks`: `Vector{Vector{SubArray{Tv,1,Vector{Tv}}}}` of row blocks of nonzeros
 * `colblocks`: `Vector{StridedMatrix{Tv}}` of column blocks of nonzeros
 """
@@ -71,12 +70,12 @@ end
 Base.size(A::BlockedSparse) = size(A.cscmat)
 Base.size(A::BlockedSparse, d) = size(A.cscmat, d)
 Base.getindex(A::BlockedSparse{T}, i::Integer, j::Integer) where {T} = getindex(A.cscmat, i, j)
-Base.full(A::BlockedSparse{T}) where {T} = full(A.cscmat)
-Base.sparse(A::BlockedSparse) = A.cscmat
-Base.nnz(A::BlockedSparse) = nnz(A.cscmat)
-function Base.copy!(L::BlockedSparse{T,I}, A::SparseMatrixCSC{T,I}) where {T,I}
+LinearAlgebra.Matrix(A::BlockedSparse{T}) where {T} = full(A.cscmat)
+SparseArrays.sparse(A::BlockedSparse) = A.cscmat
+SparseArrays.nnz(A::BlockedSparse) = nnz(A.cscmat)
+function Base.copyto!(L::BlockedSparse{T,I}, A::SparseMatrixCSC{T,I}) where {T,I}
     @argcheck(nnz(L) == nnz(A), DimensionMismatch)
-    copy!(nonzeros(L.cscmat), nonzeros(A))
+    copyto!(nonzeros(L.cscmat), nonzeros(A))
     L
 end
 
@@ -120,7 +119,7 @@ end
 function OptSummary(initial::Vector{T}, lowerbd::Vector{T},
     optimizer::Symbol; ftol_rel::T=zero(T), ftol_abs::T=zero(T), xtol_rel::T=zero(T),
     initial_step::Vector{T}=T[]) where T <: AbstractFloat
-    OptSummary(initial, lowerbd, T(Inf), ftol_rel, ftol_abs, xtol_rel, zeros(initial),
+    OptSummary(initial, lowerbd, T(Inf), ftol_rel, ftol_abs, xtol_rel, zero(initial),
         initial_step, -1, copy(initial), T(Inf), -1, optimizer, :FAILURE, 1)
 end
 
@@ -279,30 +278,32 @@ function VarCorr(m::MixedModel{T}) where T
     VarCorr(σ, ρ, fnms, cnms, sdest(m))
 end
 
+cpad(s::String, n::Integer) = rpad(lpad(s, (n + textwidth(s)) >> 1), n)
+
 function Base.show(io::IO, vc::VarCorr)
     # FIXME: Do this one term at a time
     fnms = copy(vc.fnms)
     stdm = copy(vc.σ)
     cor = vc.ρ
-    cnms = reduce(append!, String[], vc.cnms)
+    cnms = reduce(append!, vc.cnms, init=String[])
     if isfinite(vc.s)
-        push!(fnms,"Residual")
+        push!(fnms, :Residual)
         push!(stdm, [1.])
-        scale!(stdm, vc.s)
+        rmul!(stdm, vc.s)
         push!(cnms, "")
     end
-    nmwd = maximum(map(strwidth, string.(fnms))) + 1
+    nmwd = maximum(map(textwidth, string.(fnms))) + 1
     write(io, "Variance components:\n")
-    cnmwd = max(6, maximum(map(strwidth, cnms))) + 1
+    cnmwd = max(6, maximum(map(textwidth, cnms))) + 1
     tt = vcat(stdm...)
     vars = showoff(abs2.(tt), :plain)
     stds = showoff(tt, :plain)
-    varwd = 1 + max(length("Variance"), maximum(map(strwidth, vars)))
-    stdwd = 1 + max(length("Std.Dev."), maximum(map(strwidth, stds)))
+    varwd = 1 + max(length("Variance"), maximum(map(textwidth, vars)))
+    stdwd = 1 + max(length("Std.Dev."), maximum(map(textwidth, stds)))
     write(io, " "^(2+nmwd))
-    write(io, Base.cpad("Column", cnmwd))
-    write(io, Base.cpad("Variance", varwd))
-    write(io, Base.cpad("Std.Dev.", stdwd))
+    write(io, cpad("Column", cnmwd))
+    write(io, cpad("Variance", varwd))
+    write(io, cpad("Std.Dev.", stdwd))
     any(s -> length(s) > 1, stdm) && write(io,"  Corr.")
     println(io)
     ind = 1

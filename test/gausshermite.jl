@@ -1,5 +1,4 @@
-using Compat, MixedModels
-using Compat.Test
+using MixedModels, Test
 
 @testset "GHnorm" begin
     gh2 = GHnorm(2)

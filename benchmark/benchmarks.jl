@@ -1,8 +1,8 @@
-using BenchmarkTools, DataFrames, RData, MixedModels, StatsModels
+using BenchmarkTools, RData, MixedModels, StatsModels
 
 const SUITE = BenchmarkGroup()
 
-const dat = convert(Dict{Symbol,DataFrame}, load(Pkg.dir("MixedModels", "test", "dat.rda")));
+const dat = Dict(Symbol(k)=>v for (k,v) in load(joinpath(dirname(pathof(MixedModels)), "..", "test", "dat.rda")));
 
 const mods = Dict{Symbol,Vector{Expr}}(
     :Alfalfa => [:(1+A*B+(1|G)), :(1+A+B+(1|G))],
@@ -73,7 +73,7 @@ const mods = Dict{Symbol,Vector{Expr}}(
     );
 
 fitbobyqa(rhs::Expr, dsname::Symbol) = fit(LinearMixedModel, @eval(@formula(Y ~ $rhs)), dat[dsname])
-compactstr(ds,rhs) = replace(string(ds, ':', rhs), ' ', "")
+compactstr(ds,rhs) = replace(string(ds, ':', rhs), ' ' => "")
 
 SUITE["simplescalar"] = BenchmarkGroup(["single", "simple", "scalar"])
 for ds in [:Alfalfa, :AvgDailyGain, :BIB, :Bond, :cake, :Cultivation, :Dyestuff,
@@ -97,7 +97,6 @@ for ds in [:Animal, :Chem97, :Genetics, :Pastes, :Semi2]
         SUITE["nested"][compactstr(ds, rhs)] = @benchmarkable fitbobyqa($(QuoteNode(rhs)), $(QuoteNode(ds)))
     end
 end
-
 
 SUITE["crossed"] = BenchmarkGroup(["multiple", "crossed", "scalar"])
 for ds in [:Assay, :Demand, :InstEval, :Penicillin, :ScotsSec,

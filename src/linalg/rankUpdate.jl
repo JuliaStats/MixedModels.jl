@@ -34,7 +34,7 @@ function rankUpdate!(α::T, A::SparseMatrixCSC{T},
     m, n = size(A)
     @argcheck m == size(C, 2) && C.uplo == 'L' DimensionMismatch
     Cd = C.data
-    β == 1 || scale!(LowerTriangular(Cd), β)
+    β == 1 || rmul!(LowerTriangular(Cd), β)
     rv = rowvals(A)
     nz = nonzeros(A)
     @inbounds for jj in 1:n
@@ -78,7 +78,7 @@ end
 function rankUpdate!(α::T, A::BlockedSparse{T}, C::HermOrSym{T,UniformBlockDiagonal{T}}) where T
     Arb = A.rowblocks
     Cdf = C.data.facevec
-    (m = length(Arb)) == length(Cdf) || 
+    (m = length(Arb)) == length(Cdf) ||
         throw(DimensionMismatch("length(A.rowblocks) = $m ≠ $(length(Cdf)) = length(C.data.facevec)"))
     for (b, d) in zip(Arb, Cdf)
         for v in b
