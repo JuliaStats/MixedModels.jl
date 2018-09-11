@@ -35,8 +35,8 @@ for details.
 [travis-img]: https://travis-ci.org/dmbates/MixedModels.jl.svg?branch=master
 [travis-url]: https://travis-ci.org/dmbates/MixedModels.jl
 
-[appveyor-img]: https://ci.appveyor.com/api/projects/status/h227adt6ovd1u3sx/branch/master?svg=true
-[appveyor-url]: https://ci.appveyor.com/project/dmbates/documenter-jl/branch/master
+[appveyor-img]: https://ci.appveyor.com/api/projects/status/github/dmbates/MixedModels.jl?svg=true
+[appveyor-url]: https://ci.appveyor.com/project/dmbates/mixedmodels-jl
 
 [coveralls-img]: https://coveralls.io/repos/github/dmbates/MixedModels.jl/badge.svg?branch=master
 [coveralls-url]: https://coveralls.io/github/dmbates/MixedModels.jl?branch=master
