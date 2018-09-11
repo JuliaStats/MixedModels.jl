@@ -1,4 +1,3 @@
-
 # Normalized Gauss-Hermite Quadrature
 
 [*Gaussian Quadrature rules*](https://en.wikipedia.org/wiki/Gaussian_quadrature) provide sets of `x` values, called *abscissae*, and weights, `w`, to approximate an integral with respect to a *weight function*, $g(x)$.
@@ -31,15 +30,16 @@ More formally, a `k`th order rule is exact when `f` is a `k-1` order polynomial.
 In the [*Golub-Welsch algorithm*](https://en.wikipedia.org/wiki/Gaussian_quadrature#The_Golub-Welsch_algorithm) the abscissae for a particular Gaussian quadrature rule are determined as the eigenvalues of a symmetric tri-diagonal matrix and the weights are derived from the squares of the first row of the matrix of eigenvectors.
 For a `k`th order normalized Gauss-Hermite rule the tridiagonal matrix has zeros on the diagonal and the square roots of `1:k-1` on the super- and sub-diagonal, e.g.
 ```{julia;term=true}
+using LinearAlgebra
 sym3 = SymTridiagonal(zeros(3), sqrt.(1:2))
-ev = eigfact(sym3);
+ev = eigen(sym3);
 show(ev.values)
 show(abs2.(ev.vectors[1,:]))
 ```
 As a function of `k` this can be written as
 ```{julia;results="hidden"}
 function gausshermitenorm(k)
-    ev = eigfact(SymTridiagonal(zeros(k), sqrt.(1:k-1)))
+    ev = eigen(SymTridiagonal(zeros(k), sqrt.(1:k-1)))
     ev.values, abs2.(ev.vectors[1,:])
 end
 ```
@@ -93,11 +93,11 @@ The version of the data used here is that used in review of multilevel modeling 
 These data are available as the `Contraception` data frame in the test data for the `MixedModels` package.
 ```{julia;term=true}
 using DataFrames, DataFramesMeta, RData
-const dat = convert(Dict{Symbol,DataFrame},
-     load(Pkg.dir("MixedModels","test","dat.rda")));
+const dat = Dict(Symbol(k)=>v for (k,v) in 
+    load(joinpath(dirname(pathof(MixedModels)), "..", "test", "dat.rda")));
 const contra = @transform(dat[:Contraception],
      a2 = abs2.(:a), urbdist = string.(:urb, :d));
-head(contra)
+describe(contra)
 ```
 
 Because a smoothed scatterplot of contraception use versus age
@@ -126,7 +126,7 @@ To use Gauss-Hermite quadrature the contributions of each of the $u_i,\;i=1,\dot
 ```{julia;term=true}
 const devc0 = map!(abs2, m1.devc0, m1.u[1]);  # start with uᵢ²
 const devresid = m1.resp.devresid;   # n-dimensional vector of deviance residuals
-const refs = m1.LMM.trms[1].f.refs;  # n-dimensional vector of indices in 1:q
+const refs = m1.LMM.trms[1].refs;  # n-dimensional vector of indices in 1:q
 for (dr, i) in zip(devresid, refs)
     devc0[i] += dr
 end

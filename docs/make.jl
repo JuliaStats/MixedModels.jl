@@ -11,7 +11,8 @@ makedocs(
              "SimpleLMM.md",
              "MultipleTerms.md",
              "SingularCovariance.md",
-             "SubjectItem.md"]
+             "SubjectItem.md",
+             "benchmarks.md"]
 )
 
 deploydocs(

@@ -103,7 +103,7 @@ In the types of `LinearMixedModel` available through the `MixedModels` package, 
 For the simple example
 ```{julia;echo=false;results="hidden"}
 using DataFrames, RData, MixedModels
-const dat=convert(Dict{Symbol,DataFrame},load(Pkg.dir("MixedModels", "test", "dat.rda")));
+const dat=Dict(Symbol(k)=>v for (k,v) in load(joinpath(dirname(pathof(MixedModels)), "..", "test", "dat.rda")));
 ```
 ```{julia;term=true}
 fm1 = fit(LinearMixedModel, @formula(Y ~ 1 + (1|G)), dat[:Dyestuff])
@@ -120,10 +120,10 @@ This `ScalarFactorReTerm` contributes a block of columns to the model matrix $\b
 ```{julia;term=true}
 getθ(t1)
 getΛ(t1)
-convert(Array{Int}, full(t1)) # matrix is floating point but all integers
+convert(Array{Int}, Matrix(t1)) # matrix is floating point but integer-valued
 ```
 
-Because there is only one random-effects term in the model, the matrix $\bf Z$ is the indicators matrix shown as the result of `full(t1)`, but stored in a special sparse format.
+Because there is only one random-effects term in the model, the matrix $\bf Z$ is the indicators matrix shown as the result of `Matrix(t1)`, but stored in a special sparse format.
 Furthermore, there is only one block in $\Lambda_\theta$.
 For a `ScalarFactorReTerm` this block is a multiple of the identity, in this case $0.75258\cdot{\bf I}_6$.
 
@@ -139,7 +139,7 @@ VectorFactorReTerm
 ```
 The model matrix $\bf Z$ for this model is
 ```{julia;term=true}
-convert(Array{Int}, full(t21))
+convert(Array{Int}, Matrix(t21))
 ```
 and $\Lambda_\theta$ is a $36\times36$ block diagonal matrix with $18$ diagonal blocks, all of the form
 ```{julia;term=true}
@@ -237,8 +237,7 @@ Bernoulli
 Poisson
 ```
 
-
-The `glmm` function generates, but does not fit, a `GeneralizedLinearMixedModel` object.
+A `GeneralizedLinearMixedModel` object is generated from a formula, data frame and distribution family.
 
 ```{julia;term=true}
 mdl = GeneralizedLinearMixedModel(@formula(r2 ~ 1 + a + g + b + s + (1|id) + (1|item)),

@@ -2,16 +2,23 @@
 
 | **Documentation**                                                               | **PackageEvaluator**                                            | **Build Status**                                                                                |
 |:-------------------------------------------------------------------------------:|:---------------------------------------------------------------:|:-----------------------------------------------------------------------------------------------:|
-| [![][docs-stable-img]][docs-stable-url] [![][docs-latest-img]][docs-latest-url] | [![][pkg-0.5-img]][pkg-0.5-url] [![][pkg-0.6-img]][pkg-0.6-url] | [![][travis-img]][travis-url] [![][appveyor-img]][appveyor-url] [![][coveralls-img]][coveralls-url] [![][codecov-img]][codecov-url] |
+| [![][docs-stable-img]][docs-stable-url] [![][docs-latest-img]][docs-latest-url] | [![][pkg-0.7-img]][pkg-0.7-url] | [![][travis-img]][travis-url] [![][appveyor-img]][appveyor-url] [![][coveralls-img]][coveralls-url] [![][codecov-img]][codecov-url] |
 
 [![DOI](https://zenodo.org/badge/9106942.svg)](https://zenodo.org/badge/latestdoi/9106942)
 
 ## Installation
 
-The package is registered in `METADATA.jl` and so can be installed with `Pkg.add`.
+The package is registered in `METADATA.jl` and can be installed using `Pkg.add` or in the `Pkg` REPL, entered by typing `]` as the first character in a line.
 
 ```julia
-julia> Pkg.add("MixedModels")
+(v1.0) pkg> add MixedModels
+  Updating registry at `~/.julia/registries/General`
+  Updating git-repo `https://github.com/JuliaRegistries/General.git`
+ Resolving package versions...
+  Updating `~/.julia/environments/v1.0/Project.toml`
+ [no changes]
+  Updating `~/.julia/environments/v1.0/Manifest.toml`
+ [no changes]
 ```
 
 The package provides the functions `lmm`, to create a linear mixed-effects model
@@ -39,7 +46,7 @@ for details.
 
 [issues-url]: https://github.com/dmbates/MixedModels.jl/issues
 
-[pkg-0.5-img]: http://pkg.julialang.org/badges/MixedModels_0.5.svg
-[pkg-0.5-url]: http://pkg.julialang.org/?pkg=MixedModels
-[pkg-0.6-img]: http://pkg.julialang.org/badges/MixedModels_0.6.svg
-[pkg-0.6-url]: http://pkg.julialang.org/?pkg=MixedModels
+[pkg-0.7-img]: http://pkg.julialang.org/badges/MixedModels_0.7.svg
+[pkg-0.7-url]: http://pkg.julialang.org/?pkg=MixedModels
+[pkg-1.0-img]: http://pkg.julialang.org/badges/MixedModels_1.0.svg
+[pkg-1.0-url]: http://pkg.julialang.org/?pkg=MixedModels

@@ -69,7 +69,12 @@ The data are described in Davies (), the fourth edition of the book mentioned ab
 
 First attach the packages to be used
 ````julia
-julia> using DataFrames, Distributions, Gadfly, GLM, MixedModels, RData, RCall
+julia> using DataFrames, Distributions, GLM, LinearAlgebra, MixedModels
+
+julia> using Random, RCall, RData, SparseArrays
+
+julia> using Gadfly
+Error: Failed to precompile Gadfly [c91e804a-d5a3-530f-b6f0-dfbca275c004] to /home/bates/.julia/compiled/v1.0/Gadfly/DvECm.ji.
 
 ````
 
@@ -79,8 +84,10 @@ julia> using DataFrames, Distributions, Gadfly, GLM, MixedModels, RData, RCall
 and allow for unqualified names for some graphics functions
 ````julia
 julia> using Gadfly.Geom: point, line, histogram, density, vline
+Error: Failed to precompile Gadfly [c91e804a-d5a3-530f-b6f0-dfbca275c004] to /home/bates/.julia/compiled/v1.0/Gadfly/DvECm.ji.
 
 julia> using Gadfly.Guide: xlabel, ylabel, yticks
+Error: Failed to precompile Gadfly [c91e804a-d5a3-530f-b6f0-dfbca275c004] to /home/bates/.julia/compiled/v1.0/Gadfly/DvECm.ji.
 
 ````
 
@@ -93,28 +100,17 @@ This data frame and others have been stored in saved RData format in the `test` 
 
 Access the `Dyestuff` data
 ````julia
-julia> const dat = convert(Dict{Symbol,DataFrame}, load(Pkg.dir("MixedModels", "test", "dat.rda")));
+julia> const dat = Dict(Symbol(k)=>v for (k,v) in 
+    load(joinpath(dirname(pathof(MixedModels)), "..", "test", "dat.rda")));
 
 julia> dyestuff = dat[:Dyestuff];
 
 julia> describe(dyestuff)
-G
-Summary Stats:
-Length:         30
-Type:           CategoricalArrays.CategoricalString{UInt8}
-Number Unique:  6
-
-Y
-Summary Stats:
-Mean:           1527.500000
-Minimum:        1440.000000
-1st Quartile:   1468.750000
-Median:         1530.000000
-3rd Quartile:   1575.000000
-Maximum:        1635.000000
-Length:         30
-Type:           Float64
-
+2×8 DataFrames.DataFrame. Omitted printing of 1 columns
+│ Row │ variable │ mean   │ min    │ median │ max    │ nunique │ nmissing │
+├─────┼──────────┼────────┼────────┼────────┼────────┼─────────┼──────────┤
+│ 1   │ G        │        │ A      │        │ F      │ 6       │          │
+│ 2   │ Y        │ 1527.5 │ 1440.0 │ 1530.0 │ 1635.0 │         │          │
 
 ````
 
@@ -122,7 +118,10 @@ Type:           Float64
 
 
 and plot it
-![Yield versus Batch for the Dyestuff data](./assets//SimpleLMM_4_1.svg)
+<pre class="julia-error">
+ERROR: UndefVarError: xlabel not defined
+</pre>
+
 
 
 
@@ -138,7 +137,7 @@ In this case a good choice is to order the batches by increasing mean yield, whi
 julia> dyestuffR = rcopy(R"within(lme4::Dyestuff, Batch <- reorder(Batch, Yield, mean))");
 
 julia> plot(dyestuffR, x = :Yield, y = :Batch, point, xlabel("Yield of dyestuff (g)"), ylabel("Batch"))
-Plot(...)
+Error: UndefVarError: xlabel not defined
 
 ````
 
@@ -164,23 +163,11 @@ The structure and summary are intentionally similar to those of the `Dyestuff` d
 julia> dyestuff2 = dat[:Dyestuff2];
 
 julia> describe(dyestuff2)
-G
-Summary Stats:
-Length:         30
-Type:           CategoricalArrays.CategoricalString{UInt8}
-Number Unique:  6
-
-Y
-Summary Stats:
-Mean:           5.665600
-Minimum:        -0.892000
-1st Quartile:   2.765000
-Median:         5.365000
-3rd Quartile:   8.151000
-Maximum:        13.434000
-Length:         30
-Type:           Float64
-
+2×8 DataFrames.DataFrame. Omitted printing of 1 columns
+│ Row │ variable │ mean   │ min    │ median │ max    │ nunique │ nmissing │
+├─────┼──────────┼────────┼────────┼────────┼────────┼─────────┼──────────┤
+│ 1   │ G        │        │ A      │        │ F      │ 6       │          │
+│ 2   │ Y        │ 5.6656 │ -0.892 │ 5.365  │ 13.434 │         │          │
 
 ````
 
@@ -188,7 +175,10 @@ Type:           Float64
 
 
 As can be seen in a data plot
-![](./assets//SimpleLMM_7_1.svg)
+<pre class="julia-error">
+ERROR: UndefVarError: xlabel not defined
+</pre>
+
 
 
 the batch-to-batch variability in these data is small compared to the within-batch variability.
@@ -215,7 +205,7 @@ Linear mixed model fit by maximum likelihood
 
 Variance components:
               Column    Variance  Std.Dev. 
- G        (Intercept)  1388.3332 37.260344
+ G        (Intercept)  1388.3333 37.260345
  Residual              2451.2500 49.510100
  Number of obs: 30; levels of grouping factors: 6
 
@@ -310,7 +300,7 @@ Even when the final fitted model is not singular, we must allow for such models 
 It happens that this model corresponds to the linear model (i.e. a model with fixed-effects only)
 ````julia
 julia> lm1 = lm(@formula(Y ~ 1), dyestuff2)
-StatsModels.DataFrameRegressionModel{GLM.LinearModel{GLM.LmResp{Array{Float64,1}},GLM.DensePredChol{Float64,Base.LinAlg.Cholesky{Float64,Array{Float64,2}}}},Array{Float64,2}}
+StatsModels.DataFrameRegressionModel{GLM.LinearModel{GLM.LmResp{Array{Float64,1}},GLM.DensePredChol{Float64,LinearAlgebra.Cholesky{Float64,Array{Float64,2}}}},Array{Float64,2}}
 
 Formula: Y ~ +1
 
@@ -490,7 +480,7 @@ Whether or not verbose output is requested, the `optsum` field of a `LinearMixed
 ````julia
 julia> mm1.optsum
 Initial parameter vector: [1.0]
-Initial objective value:  327.7670216246183
+Initial objective value:  327.76702162461663
 
 Optimizer (from NLopt):   LN_BOBYQA
 Lower bounds:             [0.0]
@@ -503,7 +493,7 @@ maxfeval:                 -1
 
 Function evaluations:     18
 Final parameter vector:   [0.752581]
-Final objective value:    327.3270598811364
+Final objective value:    327.3270598811373
 Return code:              FTOL_REACHED
 
 
@@ -516,8 +506,9 @@ Return code:              FTOL_REACHED
 The full list of fields in a `LinearMixedModel` object is
 
 ````julia
-julia> showcompact(fieldnames(LinearMixedModel))
-Symbol[:formula, :trms, :sqrtwts, :A, :L, :optsum]
+julia> fieldnames(LinearMixedModel)
+(:formula, :trms, :sqrtwts, :A, :L, :optsum)
+
 ````
 
 
@@ -570,7 +561,7 @@ The last two elements are $\bf X$, the $n\times p$ model matrix for the fixed-ef
 
 ````julia
 julia> mm1.trms[end - 1]
-MixedModels.MatrixTerm{Float64,Array{Float64,2}}([1.0; 1.0; … ; 1.0; 1.0], [1.0; 1.0; … ; 1.0; 1.0], [1], 1, String["(Intercept)"])
+MatrixTerm{Float64,Array{Float64,2}}([1.0; 1.0; … ; 1.0; 1.0], [1.0; 1.0; … ; 1.0; 1.0], [1], 1, ["(Intercept)"])
 
 ````
 
@@ -578,7 +569,7 @@ MixedModels.MatrixTerm{Float64,Array{Float64,2}}([1.0; 1.0; … ; 1.0; 1.0], [1.
 
 ````julia
 julia> mm1.trms[end]
-MixedModels.MatrixTerm{Float64,Array{Float64,2}}([1545.0; 1440.0; … ; 1480.0; 1445.0], [1545.0; 1440.0; … ; 1480.0; 1445.0], [1], 0, String[""])
+MatrixTerm{Float64,Array{Float64,2}}([1545.0; 1440.0; … ; 1480.0; 1445.0], [1545.0; 1440.0; … ; 1480.0; 1445.0], [1], 0, [""])
 
 ````
 
@@ -590,7 +581,7 @@ The elements of `trms` before the last two represent vertical sections of $\bf Z
 
 ````julia
 julia> mm1.trms[1]
-MixedModels.ScalarFactorReTerm{Float64,String,UInt8}(CategoricalArrays.CategoricalString{UInt8}["A", "A", "A", "A", "A", "B", "B", "B", "B", "B"  …  "E", "E", "E", "E", "E", "F", "F", "F", "F", "F"], [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0  …  1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0], [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0  …  1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0], :G, String["(Intercept)"], 0.7525806571450242)
+ScalarFactorReTerm{Float64,UInt8}(UInt8[0x01, 0x01, 0x01, 0x01, 0x01, 0x02, 0x02, 0x02, 0x02, 0x02  …  0x05, 0x05, 0x05, 0x05, 0x05, 0x06, 0x06, 0x06, 0x06, 0x06], ["A", "B", "C", "D", "E", "F"], [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0  …  1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0], [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0  …  1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0], :G, ["(Intercept)"], 0.7525806932030558)
 
 ````
 
@@ -603,7 +594,7 @@ In small examples the structure is more obvious when the `ScalarReMat` is conver
 
 ````julia
 julia> sparse(mm1.trms[1])
-30×6 SparseMatrixCSC{Float64,Int32} with 30 stored entries:
+30×6 SparseArrays.SparseMatrixCSC{Float64,Int32} with 30 stored entries:
   [1 ,  1]  =  1.0
   [2 ,  1]  =  1.0
   [3 ,  1]  =  1.0
@@ -611,7 +602,10 @@ julia> sparse(mm1.trms[1])
   [5 ,  1]  =  1.0
   [6 ,  2]  =  1.0
   [7 ,  2]  =  1.0
+  [8 ,  2]  =  1.0
+  [9 ,  2]  =  1.0
   ⋮
+  [22,  5]  =  1.0
   [23,  5]  =  1.0
   [24,  5]  =  1.0
   [25,  5]  =  1.0
@@ -626,7 +620,7 @@ julia> sparse(mm1.trms[1])
 
 
 ````julia
-julia> full(mm1.trms[1])
+julia> Matrix(mm1.trms[1])
 30×6 Array{Float64,2}:
  1.0  0.0  0.0  0.0  0.0  0.0
  1.0  0.0  0.0  0.0  0.0  0.0
@@ -669,7 +663,7 @@ julia> nblocks(mm1.A)
 
 ````julia
 julia> mm1.A[Block(1, 1)]
-6×6 Diagonal{Float64}:
+6×6 LinearAlgebra.Diagonal{Float64,Array{Float64,1}}:
  5.0   ⋅    ⋅    ⋅    ⋅    ⋅ 
   ⋅   5.0   ⋅    ⋅    ⋅    ⋅ 
   ⋅    ⋅   5.0   ⋅    ⋅    ⋅ 
@@ -720,7 +714,7 @@ julia> mm1.A[Block(3, 2)]
 ````julia
 julia> mm1.A[Block(3, 3)]
 1×1 Array{Float64,2}:
- 7.01129e7
+ 7.0112875e7
 
 ````
 
@@ -738,7 +732,7 @@ It is not necessary to store the full $\Lambda$ matrix.  Storing the small lower
 ````julia
 julia> getΛ(mm1)
 1-element Array{Float64,1}:
- 0.752581
+ 0.7525806932030558
 
 ````
 
@@ -756,14 +750,18 @@ The `L` field is a blocked matrix like the `A` field containing the upper Choles
 
 ````julia
 julia> mm1.L
-8×8 LowerTriangular{Float64,BlockArrays.BlockArray{Float64,2,AbstractArray{Float64,2}}}:
+8×8 LinearAlgebra.LowerTriangular{Float64,BlockArrays.BlockArray{Float64,2,AbstractArray{Float64,2}}}:
     1.95752      ⋅           ⋅       …      ⋅           ⋅          ⋅   
     0.0         1.95752      ⋅              ⋅           ⋅          ⋅   
     0.0         0.0         1.95752         ⋅           ⋅          ⋅   
     0.0         0.0         0.0             ⋅           ⋅          ⋅   
     0.0         0.0         0.0             ⋅           ⋅          ⋅   
-    0.0         0.0         0.0      …     1.95752      ⋅          ⋅   
-    1.92228     1.92228     1.92228        1.92228     2.79804     ⋅   
+    0.0         0.0         0.0    
+ ──────────────────────────────────  …     1.95752      ⋅          ⋅   
+ ───────────────────────────────
+    1.92228     1.92228     1.92228
+ ──────────────────────────────────        1.92228     2.79804     ⋅   
+ ───────────────────────────────
  2893.03     2937.24     3006.45        2825.75     4274.01     271.178
 
 ````
@@ -772,7 +770,7 @@ julia> mm1.L
 
 ````julia
 julia> mm1.L.data[Block(1, 1)]
-6×6 Diagonal{Float64}:
+6×6 LinearAlgebra.Diagonal{Float64,Array{Float64,1}}:
  1.95752   ⋅        ⋅        ⋅        ⋅        ⋅     
   ⋅       1.95752   ⋅        ⋅        ⋅        ⋅     
   ⋅        ⋅       1.95752   ⋅        ⋅        ⋅     
@@ -796,7 +794,7 @@ julia> mm1.L.data[Block(2, 1)]
 ````julia
 julia> mm1.L.data[Block(2, 2)]
 1×1 Array{Float64,2}:
- 2.79804
+ 2.798041784037937
 
 ````
 
@@ -814,7 +812,7 @@ julia> mm1.L.data[Block(3, 1)]
 ````julia
 julia> mm1.L.data[Block(3, 2)]
 1×1 Array{Float64,2}:
- 4274.01
+ 4274.008825117949
 
 ````
 
@@ -823,7 +821,7 @@ julia> mm1.L.data[Block(3, 2)]
 ````julia
 julia> mm1.L.data[Block(3, 3)]
 1×1 Array{Float64,2}:
- 271.178
+ 271.17798578517414
 
 ````
 
@@ -835,7 +833,7 @@ All the information needed to evaluate the profiled log-likelihood is available 
 
 ````julia
 julia> 2 * sum(log.(diag(mm1.L.data[Block(1,1)])))
-8.060146149034855
+8.060146573941458
 
 ````
 
@@ -859,7 +857,7 @@ The penalized residual sum of squares is the square of the single element of the
 
 ````julia
 julia> abs2(mm1.L.data[Block(3, 3)][1, 1])
-73537.50101605429
+73537.49997450411
 
 ````
 
@@ -867,7 +865,7 @@ julia> abs2(mm1.L.data[Block(3, 3)][1, 1])
 
 ````julia
 julia> pwrss(mm1)
-73537.50101605429
+73537.49997450411
 
 ````
 
@@ -879,7 +877,7 @@ The objective is
 
 ````julia
 julia> logdet(mm1) + nobs(mm1) * (1 + log(2π * pwrss(mm1) / nobs(mm1)))
-327.3270598811364
+327.3270598811373
 
 ````
 
@@ -896,7 +894,7 @@ One way to assess the variability of the parameter estimates is to generate a pa
 First set the random number seed for reproducibility.
 
 ````julia
-julia> srand(1234321);
+julia> Random.seed!(1234321);
 
 julia> mm1bstp = bootstrap(100000, mm1);
 
@@ -908,8 +906,16 @@ julia> size(mm1bstp)
 
 
 ````julia
-julia> showcompact(names(mm1bstp))
-Symbol[:obj, :σ, :β₁, :θ₁, :σ₁]
+julia> describe(mm1bstp)
+5×8 DataFrames.DataFrame. Omitted printing of 1 columns
+│ Row │ variable │ mean     │ min     │ median  │ max     │ nunique │ nmissing │
+├─────┼──────────┼──────────┼─────────┼─────────┼─────────┼─────────┼──────────┤
+│ 1   │ obj      │ 324.03   │ 284.104 │ 324.346 │ 353.114 │         │          │
+│ 2   │ σ        │ 48.8259  │ 23.0686 │ 48.6577 │ 81.1291 │         │          │
+│ 3   │ β₁       │ 1527.41  │ 1442.75 │ 1527.47 │ 1598.74 │         │          │
+│ 4   │ θ₁       │ 0.611039 │ 0.0     │ 0.61079 │ 2.9935  │         │          │
+│ 5   │ σ₁       │ 28.9064  │ 0.0     │ 29.6869 │ 94.001  │         │          │
+
 ````
 
 
@@ -928,7 +934,7 @@ The [`Gadfly`](https://github.com/GiovineItalia/Gadfly.jl) package for Julia use
 
 ````julia
 julia> plot(mm1bstp, x = :β₁, histogram)
-Plot(...)
+Error: UndefVarError: plot not defined
 
 ````
 
@@ -936,7 +942,7 @@ Plot(...)
 
 ````julia
 julia> plot(mm1bstp, x = :σ, histogram)
-Plot(...)
+Error: UndefVarError: plot not defined
 
 ````
 
@@ -944,7 +950,7 @@ Plot(...)
 
 ````julia
 julia> plot(mm1bstp, x = :σ₁, histogram)
-Plot(...)
+Error: UndefVarError: plot not defined
 
 ````
 
@@ -954,10 +960,10 @@ Plot(...)
 
 The last two histograms show that, even if the models are defined in terms of variances, the variance is usually not a good scale on which to assess the variability of the parameter estimates.  The standard deviation or, in some cases, the logarithm of the standard deviation is a more suitable scale.
 
-The histogram of $\sigma_1^2$ has a "spike" at zero.  Because the value of $\sigma^2$ is never zero, a value of $\sigma_1^2=0$ must correspond to $\theta=0$.  There are several ways to count the zeros in `theta1`.  The simplest is to use `countnz`, which counts the non-zeros, and subtrack that value from the total number of values in `theta1`.
+The histogram of $\sigma_1^2$ has a "spike" at zero.  Because the value of $\sigma^2$ is never zero, a value of $\sigma_1^2=0$ must correspond to $\theta=0$.  There are several ways to count the zeros in `theta1`.  The simplest is to use `count` on the nonzeros, and subtrack that value from the total number of values in `theta1`.
 
 ````julia
-julia> length(mm1bstp[:θ₁]) - countnz(mm1bstp[:θ₁])
+julia> length(mm1bstp[:θ₁]) - count(!iszero, mm1bstp[:θ₁])
 10090
 
 ````
@@ -970,7 +976,7 @@ That is, nearly 1/10 of the `theta1` values are zeros.  Because such a spike or 
 
 ````julia
 julia> plot(mm1bstp, density, x = :θ₁)
-Plot(...)
+Error: UndefVarError: plot not defined
 
 ````
 
@@ -984,7 +990,7 @@ The density of the estimates of the other two parameters, $\beta_1$ and $\sigma$
 
 ````julia
 julia> plot(mm1bstp, density, x = :β₁)
-Plot(...)
+Error: UndefVarError: plot not defined
 
 ````
 
@@ -992,7 +998,7 @@ Plot(...)
 
 ````julia
 julia> plot(mm1bstp, density, x = :σ)
-Plot(...)
+Error: UndefVarError: plot not defined
 
 ````
 
@@ -1027,28 +1033,43 @@ julia> const ppt250 = ppoints(250)
 
 The kernel density estimate of $\sigma$ is more symmetric
 
-![](./assets//SimpleLMM_53_1.svg)
+<pre class="julia-error">
+ERROR: UndefVarError: plot not defined
+</pre>
+
 
 
 
 
 and the normal probability plot of $\sigma$ is also reasonably straight.
 
-![](./assets//SimpleLMM_54_1.svg)
+<pre class="julia-error">
+ERROR: UndefVarError: xlabel not defined
+</pre>
+
 
 
 
 The normal probability plot of $\sigma_1$ has a flat section at $\sigma_1 = 0$.
 
-![](./assets//SimpleLMM_55_1.svg)
+<pre class="julia-error">
+ERROR: UndefVarError: xlabel not defined
+</pre>
+
 
 
 
 In terms of the variances, $\sigma^2$ and $\sigma_1^2$, the normal probability plots are
 
-![](./assets//SimpleLMM_56_1.svg)
+<pre class="julia-error">
+ERROR: UndefVarError: xlabel not defined
+</pre>
 
-![](./assets//SimpleLMM_57_1.svg)
+
+<pre class="julia-error">
+ERROR: UndefVarError: xlabel not defined
+</pre>
+
 
 
 
@@ -1068,8 +1089,8 @@ One possible interval containing 95% of the sample is $(\sigma_{[1]}, \sigma_{[9
 ````julia
 julia> sigma95 = quantile(mm1bstp[:σ], [0.025, 0.975])
 2-element Array{Float64,1}:
- 35.5837
- 63.099 
+ 35.583660074554146
+ 63.098968794766435
 
 ````
 
@@ -1135,8 +1156,8 @@ For example, the 95% HPD interval calculated from the sample of $\beta_1$ values
 ````julia
 julia> hpdinterval(mm1bstp[:β₁])
 2-element Array{Float64,1}:
- 1493.01
- 1562.08
+ 1493.009507788377 
+ 1562.0769558913403
 
 ````
 
@@ -1149,8 +1170,8 @@ which is very close to the central probability interval of
 ````julia
 julia> quantile(mm1bstp[:β₁], [0.025, 0.975])
 2-element Array{Float64,1}:
- 1492.85
- 1561.92
+ 1492.8482234420476
+ 1561.924809144168 
 
 ````
 
@@ -1165,8 +1186,8 @@ The HPD interval on $\sigma^2$ is
 ````julia
 julia> hpdinterval(abs2.(mm1bstp[:σ]))
 2-element Array{Float64,1}:
- 1162.81
- 3834.32
+ 1162.8123802050015
+ 3834.3190914091965
 
 ````
 
@@ -1179,8 +1200,8 @@ which is shifted to the left relative to the central probability interval
 ````julia
 julia> quantile(abs2.(mm1bstp[:σ]), [0.025, 0.975])
 2-element Array{Float64,1}:
- 1266.2 
- 3981.48
+ 1266.1968643014757
+ 3981.479863066154 
 
 ````
 
@@ -1195,8 +1216,8 @@ The HPD interval does not have the property that the endpoints of the interval o
 ````julia
 julia> sigma95hpd = hpdinterval(mm1bstp[:σ])
 2-element Array{Float64,1}:
- 35.4254
- 62.8875
+ 35.42542537228529
+ 62.88749001676501
 
 ````
 
@@ -1205,8 +1226,8 @@ julia> sigma95hpd = hpdinterval(mm1bstp[:σ])
 ````julia
 julia> abs2.(sigma95hpd)
 2-element Array{Float64,1}:
- 1254.96
- 3954.84
+ 1254.9607628073543
+ 3954.8364006087186
 
 ````
 
@@ -1219,8 +1240,8 @@ Finally, a 95% HPD interval on $\sigma_1$ includes the boundary value $\sigma_1=
 ````julia
 julia> hpdinterval(mm1bstp[:σ₁])
 2-element Array{Float64,1}:
-  0.0   
- 54.5986
+  0.0             
+ 54.59856859889488
 
 ````
 
@@ -1233,8 +1254,8 @@ In fact, the confidence level or coverage probability must be rather small befor
 ````julia
 julia> hpdinterval(mm1bstp[:σ₁], 0.798)
 2-element Array{Float64,1}:
-  0.0   
- 42.3371
+  0.0             
+ 42.33710948814182
 
 ````
 
@@ -1243,8 +1264,8 @@ julia> hpdinterval(mm1bstp[:σ₁], 0.798)
 ````julia
 julia> hpdinterval(mm1bstp[:σ₁], 0.799)
 2-element Array{Float64,1}:
-  0.0   
- 42.3943
+  0.0              
+ 42.394347640663185
 
 ````
 
@@ -1256,7 +1277,11 @@ julia> hpdinterval(mm1bstp[:σ₁], 0.799)
 
 The empirical cumulative distribution function (ecdf) of a sample maps the range of the sample onto `[0,1]` by `x → proportion of sample ≤ x`.  In general this is a "step function", which takes jumps of size `1/length(samp)` at each observed sample value.  For large samples, we can plot it as a qq plot where the theoretical quantiles are the probability points and are on the vertical axis.
 
-![](./assets//SimpleLMM_71_1.svg)
+<pre class="julia-error">
+ERROR: LoadError: UndefVarError: @colorant_str not defined
+in expression starting at none:2
+</pre>
+
 
 
 
@@ -1264,7 +1289,11 @@ The orange lines added to the plot show the construction of the central probabil
 
 The differences in the widths becomes more dramatic on the scale of $\sigma_1^2$
 
-![](./assets//SimpleLMM_72_1.svg)
+<pre class="julia-error">
+ERROR: LoadError: UndefVarError: @colorant_str not defined
+in expression starting at none:3
+</pre>
+
 
 
 

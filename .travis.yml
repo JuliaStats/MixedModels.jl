@@ -10,7 +10,6 @@ julia:
   - nightly
 matrix:
   allow_failures:
-  - julia: 1.0     # currently an outdated function in StatsModels fails under 1.0, warns under 0.7
   - julia: nightly
 notifications:
   email: false

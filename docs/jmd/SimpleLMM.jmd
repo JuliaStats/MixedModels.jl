@@ -69,7 +69,9 @@ The data are described in Davies (), the fourth edition of the book mentioned ab
 
 First attach the packages to be used
 ```{julia;term=true}
-using DataFrames, Distributions, Gadfly, GLM, MixedModels, RData, RCall
+using DataFrames, Distributions, GLM, LinearAlgebra, MixedModels
+using Random, RCall, RData, SparseArrays
+using Gadfly
 ```
 and allow for unqualified names for some graphics functions
 ```{julia;term=true}
@@ -82,7 +84,8 @@ This data frame and others have been stored in saved RData format in the `test` 
 
 Access the `Dyestuff` data
 ```{julia;term=true}
-const dat = convert(Dict{Symbol,DataFrame}, load(Pkg.dir("MixedModels", "test", "dat.rda")));
+const dat = Dict(Symbol(k)=>v for (k,v) in 
+    load(joinpath(dirname(pathof(MixedModels)), "..", "test", "dat.rda")));
 dyestuff = dat[:Dyestuff];
 describe(dyestuff)
 ```
@@ -347,7 +350,7 @@ mm1.optsum
 The full list of fields in a `LinearMixedModel` object is
 
 ```{julia;term=true}
-showcompact(fieldnames(LinearMixedModel))
+fieldnames(LinearMixedModel)
 ```
 
 The `formula` field is a copy of the model formula
@@ -398,7 +401,7 @@ sparse(mm1.trms[1])
 ```
 
 ```{julia;term=true}
-full(mm1.trms[1])
+Matrix(mm1.trms[1])
 ```
 
 The `A` field is a representation of the blocked, square, symmetric matrix $\bf A = [Z : X : y]'[Z : X : y]$.
@@ -517,13 +520,13 @@ One way to assess the variability of the parameter estimates is to generate a pa
 First set the random number seed for reproducibility.
 
 ```{julia;term=true}
-srand(1234321);
+Random.seed!(1234321);
 mm1bstp = bootstrap(100000, mm1);
 size(mm1bstp)
 ```
 
 ```{julia;term=true}
-showcompact(names(mm1bstp))
+describe(mm1bstp)
 ```
 
 #### Histograms, kernel density plots and quantile-quantile plots
@@ -550,10 +553,10 @@ plot(mm1bstp, x = :σ₁, histogram)
 
 The last two histograms show that, even if the models are defined in terms of variances, the variance is usually not a good scale on which to assess the variability of the parameter estimates.  The standard deviation or, in some cases, the logarithm of the standard deviation is a more suitable scale.
 
-The histogram of $\sigma_1^2$ has a "spike" at zero.  Because the value of $\sigma^2$ is never zero, a value of $\sigma_1^2=0$ must correspond to $\theta=0$.  There are several ways to count the zeros in `theta1`.  The simplest is to use `countnz`, which counts the non-zeros, and subtrack that value from the total number of values in `theta1`.
+The histogram of $\sigma_1^2$ has a "spike" at zero.  Because the value of $\sigma^2$ is never zero, a value of $\sigma_1^2=0$ must correspond to $\theta=0$.  There are several ways to count the zeros in `theta1`.  The simplest is to use `count` on the nonzeros, and subtrack that value from the total number of values in `theta1`.
 
 ```{julia;term=true}
-length(mm1bstp[:θ₁]) - countnz(mm1bstp[:θ₁])
+length(mm1bstp[:θ₁]) - count(!iszero, mm1bstp[:θ₁])
 ```
 
 That is, nearly 1/10 of the `theta1` values are zeros.  Because such a spike or pulse will be spread out or diffused in a kernel density plot,

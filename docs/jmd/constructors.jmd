@@ -11,9 +11,9 @@ LinearMixedModel
 For illustration, several data sets from the *lme4* package for *R* are made available in `.rda` format in this package.
 These include the `Dyestuff` and `Dyestuff2` data sets.
 ```{julia;term=true}
-using DataFrames, RData, MixedModels, StatsBase
-const dat = convert(Dict{Symbol,DataFrame},
-    load(Pkg.dir("MixedModels", "test", "dat.rda")));
+using DataFrames, MixedModels, RData, StatsBase
+const dat = Dict(Symbol(k)=>v for (k,v) in 
+    load(joinpath(dirname(pathof(MixedModels)), "..", "test", "dat.rda")));
 describe(dat[:Dyestuff])
 ```
 The columns in these data sets have been renamed for convenience.

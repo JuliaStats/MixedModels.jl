@@ -287,9 +287,9 @@ function StatsBase.fit!(m::GeneralizedLinearMixedModel{T};
     optsum.final = xmin
     optsum.fmin = fmin
     optsum.returnvalue = ret
-    ret == :ROUNDOFF_LIMITED && warn("NLopt was roundoff limited")
+    ret == :ROUNDOFF_LIMITED && @warn("NLopt was roundoff limited")
     if ret ∈ [:FAILURE, :INVALID_ARGS, :OUT_OF_MEMORY, :FORCED_STOP, :MAXEVAL_REACHED]
-        warn("NLopt optimization failure: $ret")
+        @warn("NLopt optimization failure: $ret")
     end
     m
 end

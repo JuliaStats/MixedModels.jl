@@ -11,13 +11,19 @@ First, fit a model to the `sleepstudy` data from [`lme4`](https://github.com/lme
 Load the required packages
 
 ````julia
-julia> using DataFrames, FreqTables, Gadfly, MixedModels, RData
+julia> using DataFrames, FreqTables, LinearAlgebra, MixedModels, Random, RData
+
+julia> using Gadfly
+Error: Failed to precompile Gadfly [c91e804a-d5a3-530f-b6f0-dfbca275c004] to /home/bates/.julia/compiled/v1.0/Gadfly/DvECm.ji.
 
 julia> using Gadfly.Geom: density, histogram, point
+Error: Failed to precompile Gadfly [c91e804a-d5a3-530f-b6f0-dfbca275c004] to /home/bates/.julia/compiled/v1.0/Gadfly/DvECm.ji.
 
 julia> using Gadfly.Guide: xlabel, ylabel
+Error: Failed to precompile Gadfly [c91e804a-d5a3-530f-b6f0-dfbca275c004] to /home/bates/.julia/compiled/v1.0/Gadfly/DvECm.ji.
 
-julia> const dat = convert(Dict{Symbol,DataFrame}, load(Pkg.dir("MixedModels", "test", "dat.rda")));
+julia> const dat = Dict(Symbol(k)=>v for (k,v) in 
+    load(joinpath(dirname(pathof(MixedModels)), "..", "test", "dat.rda")));
 
 ````
 
@@ -276,7 +282,7 @@ The `MixedModels` package provides a `bootstrap` method to create a parametric b
 For reproducibility, set the random number seed to some arbitrary value.
 
 ````julia
-julia> srand(1234321);
+julia> Random.seed!(1234321);
 
 ````
 
@@ -338,18 +344,30 @@ Here the covariance matrix estimate is non-singular in 9,686 of the 10,000 sampl
 
 Empirical densities of the θ components are:
 
-![](./assets//SingularCovariance_14_1.svg)
+<pre class="julia-error">
+ERROR: UndefVarError: xlabel not defined
+</pre>
 
-![](./assets//SingularCovariance_15_1.svg)
+
+<pre class="julia-error">
+ERROR: UndefVarError: xlabel not defined
+</pre>
+
 
 
 
 A density plot is typically a good way to visualize such a large sample.
 However, when there is a spike such as the spike at zero here, a histogram provides a more informative plot.
 
-![](./assets//SingularCovariance_16_1.svg)
+<pre class="julia-error">
+ERROR: UndefVarError: xlabel not defined
+</pre>
 
-![](./assets//SingularCovariance_17_1.svg)
+
+<pre class="julia-error">
+ERROR: UndefVarError: xlabel not defined
+</pre>
+
 
 
 
@@ -369,7 +387,7 @@ Thus
 function recipcond(bstrp::DataFrame)
     T = eltype(bstrp[:θ₁])
     val = sizehint!(T[], size(bstrp, 1))
-    d = Matrix{T}(2, 2)
+    d = Matrix{T}(undef, 2, 2)
     for (t1, t2, t3) in zip(bstrp[:θ₁], bstrp[:θ₂], bstrp[:θ₃])
         d[1, 1] = t1
         d[1, 2] = t2
@@ -384,7 +402,10 @@ rc = recipcond(sleepmbstrp)
 
 
 
-![](./assets//SingularCovariance_19_1.svg)
+<pre class="julia-error">
+ERROR: UndefVarError: xlabel not defined
+</pre>
+
 
 
 
@@ -402,7 +423,10 @@ julia> sum(issmall, rc)
 
 The density of the estimated correlation
 
-![](./assets//SingularCovariance_21_1.svg)
+<pre class="julia-error">
+ERROR: UndefVarError: xlabel not defined
+</pre>
+
 
 ````julia
 julia> sum(isfinite, sleepmbstrp[:ρ₁])  # recall that ρ = NaN in 7 cases
@@ -434,9 +458,9 @@ In this case the bootstrap simulations that resulted in $\rho = -1$ were not clo
 That is, the values of $\theta_2$ were definitely negative.
 
 ````julia
-julia> sleepmbstrp[:θ₂][find(x -> x == -1, sleepmbstrp[:ρ₁])]
+julia> sleepmbstrp[:θ₂][findall(x -> x == -1, sleepmbstrp[:ρ₁])]
 1-element Array{Float64,1}:
- -0.254495
+ -0.2544952267491184
 
 ````
 
@@ -459,7 +483,8 @@ julia> R"""
 library(nlme)
 plot(Oxboys)
 """
-RCall.RObject{RCall.VecSxp}
+RCall.RObject{RCall.NilSxp}
+NULL
 
 
 ````
@@ -484,15 +509,15 @@ Linear mixed model fit by maximum likelihood
 
 Variance components:
               Column    Variance   Std.Dev.    Corr.
- Subject  (Intercept)  62.7890195 7.92395226
-          age           2.7117909 1.64675163  0.64
- Residual               0.4354541 0.65988947
+ Subject  (Intercept)  62.7888388 7.92394087
+          age           2.7115491 1.64667821  0.64
+ Residual               0.4354569 0.65989157
  Number of obs: 234; levels of grouping factors: 26
 
   Fixed-effects parameters:
              Estimate Std.Error z value P(>|z|)
-(Intercept)   149.372   1.55461 96.0828  <1e-99
-age           6.52547  0.329774 19.7877  <1e-86
+(Intercept)   149.372   1.55461  96.083  <1e-99
+age           6.52547   0.32976 19.7885  <1e-86
 
 
 ````
@@ -501,7 +526,7 @@ age           6.52547  0.329774 19.7877  <1e-86
 
 ````julia
 julia> show(getθ(oxboysm))
-[12.008, 1.60168, 1.91367]
+[12.0079, 1.60155, 1.91362]
 ````
 
 
@@ -512,7 +537,7 @@ As seen in the plot and by the estimate $\widehat{\theta_1} = 12.0$, the estimat
 It is unlikely that bootstrap samples will include singular covariance estimates.
 
 ````julia
-julia> srand(4321234);
+julia> Random.seed!(4321234);
 
 julia> oxboysmbtstrp = bootstrap(10000, oxboysm);
 
@@ -539,11 +564,14 @@ false       │ 10000
 
 The empirical density of the correlation estimates shows that even in this case the correlation is not precisely estimated.
 
-![](./assets//SingularCovariance_32_1.svg)
+<pre class="julia-error">
+ERROR: UndefVarError: xlabel not defined
+</pre>
+
 
 ````julia
 julia> extrema(oxboysmbtstrp[:ρ₁])
-(-0.04869178624968976, 0.9352905798612754)
+(0.033603332880225045, 0.9352626530655941)
 
 ````
 
@@ -557,7 +585,7 @@ The reciprocal condition number
 julia> rc = recipcond(oxboysmbtstrp);
 
 julia> extrema(rc)
-(0.06152149310502919, 0.3686950157128226)
+(0.06198656881812736, 0.36249490895418984)
 
 ````
 
@@ -567,7 +595,10 @@ julia> extrema(rc)
 
 does not get very close to zero.
 
-![](./assets//SingularCovariance_35_1.svg)
+<pre class="julia-error">
+ERROR: UndefVarError: xlabel not defined
+</pre>
+
 
 
 
@@ -589,23 +620,23 @@ The subject labels distinguish between the male and the female subjects.  Consid
 ````julia
 julia> orthfemale = rcopy(R"subset(Orthodont, Sex == 'Female', -Sex)");
 
-julia> orthfm = fit!(lmm(@formula(distance ~ 1 + age + (1 + age | Subject)), orthfemale))
+julia> orthfm = fit!(LinearMixedModel(@formula(distance ~ 1 + age + (1 + age | Subject)), orthfemale))
 Linear mixed model fit by maximum likelihood
  Formula: distance ~ 1 + age + ((1 + age) | Subject)
    logLik   -2 logLik     AIC        BIC    
   -67.25463  134.50927  146.50927  157.21441
 
 Variance components:
-              Column     Variance   Std.Dev.    Corr.
- Subject  (Intercept)  2.971189195 1.72371378
-          age          0.021509463 0.14666105 -0.30
- Residual              0.446597842 0.66827976
+              Column    Variance   Std.Dev.    Corr.
+ Subject  (Intercept)  2.97138401 1.72377029
+          age          0.02151328 0.14667406 -0.30
+ Residual              0.44659786 0.66827978
  Number of obs: 44; levels of grouping factors: 27
 
   Fixed-effects parameters:
              Estimate Std.Error z value P(>|z|)
-(Intercept)   17.3727  0.725181 23.9564  <1e-99
-age          0.479545   0.06313 7.59616  <1e-13
+(Intercept)   17.3727  0.725193  23.956  <1e-99
+age          0.479545 0.0631327 7.59583  <1e-13
 
 
 ````
@@ -614,7 +645,7 @@ age          0.479545   0.06313 7.59616  <1e-13
 
 ````julia
 julia> srand(1234123)
-MersenneTwister(UInt32[0x0012d4cb], Base.dSFMT.DSFMT_state(Int32[1849428804, 1072710534, 1722234079, 1073299110, 2058053067, 1072801015, 18044541, 1072957251, 668716466, 1073001711  …  -1153221639, 1073553062, 1653158638, 1073411494, 780501209, -2117144994, -394908522, -1446490633, 382, 0]), [1.39169, 1.01459, 1.69258, 1.91239, 1.6891, 1.69523, 1.38824, 1.00049, 1.93803, 1.94006  …  1.97007, 1.85482, 1.55931, 1.20623, 1.79846, 1.70858, 1.79727, 1.41108, 1.47938, 1.55753], 382)
+Error: UndefVarError: srand not defined
 
 julia> orthfmbtstrp = bootstrap(10000, orthfm);
 
@@ -627,8 +658,8 @@ julia> freqtable(issmall.(orthfmbtstrp[:θ₁]), issmall.(orthfmbtstrp[:θ₃]))
 2×2 Named Array{Int64,2}
 Dim1 ╲ Dim2 │ false   true
 ────────────┼─────────────
-false       │  6773   3195
-true        │    32      0
+false       │  6839   3124
+true        │    37      0
 
 ````
 
@@ -639,7 +670,10 @@ true        │    32      0
 For this model almost 1/3 of the bootstrap samples converge to singular covariance estimates for the vector-valued random effects.
 A histogram of the estimated correlations of the random effects is dominated by the boundary values.
 
-![](./assets//SingularCovariance_40_1.svg)
+<pre class="julia-error">
+ERROR: UndefVarError: xlabel not defined
+</pre>
+
 
 
 
@@ -703,10 +737,10 @@ Linear mixed model fit by maximum likelihood
  -1185.6369  2371.2738  2385.2738  2411.4072
 
 Variance components:
-              Column    Variance  Std.Dev.    Corr.
- id       (Intercept)  165.47659 12.8637705
-          tos           10.74482  3.2779291 -1.00
- Residual               74.94683  8.6571838
+              Column    Variance   Std.Dev.    Corr.
+ id       (Intercept)  165.476453 12.8637651
+          tos           10.744791  3.2779247 -1.00
+ Residual               74.946837  8.6571841
  Number of obs: 309; levels of grouping factors: 103
 
   Fixed-effects parameters:
@@ -727,9 +761,9 @@ The model converges to a singular covariance matrix for the random effects.
 ````julia
 julia> getθ(earlym)
 3-element Array{Float64,1}:
-  1.48591 
- -0.378637
-  0.0     
+  1.4859063765534406
+ -0.3786363648039024
+  0.0               
 
 ````
 
@@ -739,4 +773,7 @@ julia> getθ(earlym)
 
 The conditional (on the observed responses) means of the random effects fall along a line.
 
-![](./assets//SingularCovariance_46_1.svg)
+<pre class="julia-error">
+ERROR: UndefVarError: xlabel not defined
+</pre>
+

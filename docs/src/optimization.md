@@ -111,7 +111,7 @@ Linear mixed model fit by maximum likelihood
 
 Variance components:
               Column    Variance  Std.Dev. 
- G        (Intercept)  1388.3332 37.260344
+ G        (Intercept)  1388.3333 37.260345
  Residual              2451.2500 49.510100
  Number of obs: 30; levels of grouping factors: 6
 
@@ -128,7 +128,7 @@ Variance components:
 the only random effects term in the formula is `(1|G)`, a simple, scalar random-effects term.
 ````julia
 julia> t1 = fm1.trms[1]
-MixedModels.ScalarFactorReTerm{Float64,String,UInt8}(CategoricalArrays.CategoricalString{UInt8}["A", "A", "A", "A", "A", "B", "B", "B", "B", "B"  …  "E", "E", "E", "E", "E", "F", "F", "F", "F", "F"], [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0  …  1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0], [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0  …  1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0], :G, String["(Intercept)"], 0.7525806571450242)
+ScalarFactorReTerm{Float64,UInt8}(UInt8[0x01, 0x01, 0x01, 0x01, 0x01, 0x02, 0x02, 0x02, 0x02, 0x02  …  0x05, 0x05, 0x05, 0x05, 0x05, 0x06, 0x06, 0x06, 0x06, 0x06], ["A", "B", "C", "D", "E", "F"], [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0  …  1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0], [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0  …  1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0], :G, ["(Intercept)"], 0.7525806932030558)
 
 ````
 
@@ -143,12 +143,12 @@ This `ScalarFactorReTerm` contributes a block of columns to the model matrix $\b
 ````julia
 julia> getθ(t1)
 1-element Array{Float64,1}:
- 0.752581
+ 0.7525806932030558
 
 julia> getΛ(t1)
-0.7525806571450242
+0.7525806932030558
 
-julia> convert(Array{Int}, full(t1)) # matrix is floating point but all integers
+julia> convert(Array{Int}, Matrix(t1)) # matrix is floating point but integer-valued
 30×6 Array{Int64,2}:
  1  0  0  0  0  0
  1  0  0  0  0  0
@@ -177,7 +177,7 @@ julia> convert(Array{Int}, full(t1)) # matrix is floating point but all integers
 
 
 
-Because there is only one random-effects term in the model, the matrix $\bf Z$ is the indicators matrix shown as the result of `full(t1)`, but stored in a special sparse format.
+Because there is only one random-effects term in the model, the matrix $\bf Z$ is the indicators matrix shown as the result of `Matrix(t1)`, but stored in a special sparse format.
 Furthermore, there is only one block in $\Lambda_\theta$.
 For a `ScalarFactorReTerm` this block is a multiple of the identity, in this case $0.75258\cdot{\bf I}_6$.
 
@@ -204,7 +204,7 @@ U             10.4673   1.50224 6.96781  <1e-11
 
 
 julia> t21 = fm2.trms[1]
-MixedModels.VectorFactorReTerm{Float64,String,UInt8,2}(CategoricalArrays.CategoricalString{UInt8}["308", "308", "308", "308", "308", "308", "308", "308", "308", "308"  …  "372", "372", "372", "372", "372", "372", "372", "372", "372", "372"], [1.0 1.0 … 1.0 1.0; 0.0 1.0 … 8.0 9.0], [1.0 1.0 … 1.0 1.0; 0.0 1.0 … 8.0 9.0], StaticArrays.SArray{Tuple{2},Float64,1,2}[[1.0, 0.0], [1.0, 1.0], [1.0, 2.0], [1.0, 3.0], [1.0, 4.0], [1.0, 5.0], [1.0, 6.0], [1.0, 7.0], [1.0, 8.0], [1.0, 9.0]  …  [1.0, 0.0], [1.0, 1.0], [1.0, 2.0], [1.0, 3.0], [1.0, 4.0], [1.0, 5.0], [1.0, 6.0], [1.0, 7.0], [1.0, 8.0], [1.0, 9.0]], :G, String["(Intercept)", "U"], [2], [0.929221 0.0; 0.0181684 0.222645], [1, 2, 4])
+VectorFactorReTerm{Float64,UInt8,2}(UInt8[0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01  …  0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12], ["308", "309", "310", "330", "331", "332", "333", "334", "335", "337", "349", "350", "351", "352", "369", "370", "371", "372"], [1.0 1.0 … 1.0 1.0; 0.0 1.0 … 8.0 9.0], [1.0 1.0 … 1.0 1.0; 0.0 1.0 … 8.0 9.0], StaticArrays.SArray{Tuple{2},Float64,1,2}[[1.0, 0.0], [1.0, 1.0], [1.0, 2.0], [1.0, 3.0], [1.0, 4.0], [1.0, 5.0], [1.0, 6.0], [1.0, 7.0], [1.0, 8.0], [1.0, 9.0]  …  [1.0, 0.0], [1.0, 1.0], [1.0, 2.0], [1.0, 3.0], [1.0, 4.0], [1.0, 5.0], [1.0, 6.0], [1.0, 7.0], [1.0, 8.0], [1.0, 9.0]], :G, ["(Intercept)", "U"], [2], [0.929221 0.0; 0.0181684 0.222645], [1, 2, 4])
 
 ````
 
@@ -217,7 +217,7 @@ VectorFactorReTerm
 ```
 The model matrix $\bf Z$ for this model is
 ````julia
-julia> convert(Array{Int}, full(t21))
+julia> convert(Array{Int}, Matrix(t21))
 180×36 Array{Int64,2}:
  1  0  0  0  0  0  0  0  0  0  0  0  0  …  0  0  0  0  0  0  0  0  0  0  0  0
  1  1  0  0  0  0  0  0  0  0  0  0  0     0  0  0  0  0  0  0  0  0  0  0  0
@@ -261,9 +261,9 @@ The $\theta$ vector is
 ````julia
 julia> getθ(t21)
 3-element Array{Float64,1}:
- 0.929221 
- 0.0181684
- 0.222645 
+ 0.929221316877856   
+ 0.018168376276495105
+ 0.22264487411010955 
 
 ````
 
@@ -293,7 +293,7 @@ U             10.4673   1.51931 6.88951  <1e-11
 
 
 julia> t31 = fm3.trms[1]
-MixedModels.VectorFactorReTerm{Float64,String,UInt8,2}(CategoricalArrays.CategoricalString{UInt8}["308", "308", "308", "308", "308", "308", "308", "308", "308", "308"  …  "372", "372", "372", "372", "372", "372", "372", "372", "372", "372"], [1.0 1.0 … 1.0 1.0; 0.0 1.0 … 8.0 9.0], [1.0 1.0 … 1.0 1.0; 0.0 1.0 … 8.0 9.0], StaticArrays.SArray{Tuple{2},Float64,1,2}[[1.0, 0.0], [1.0, 1.0], [1.0, 2.0], [1.0, 3.0], [1.0, 4.0], [1.0, 5.0], [1.0, 6.0], [1.0, 7.0], [1.0, 8.0], [1.0, 9.0]  …  [1.0, 0.0], [1.0, 1.0], [1.0, 2.0], [1.0, 3.0], [1.0, 4.0], [1.0, 5.0], [1.0, 6.0], [1.0, 7.0], [1.0, 8.0], [1.0, 9.0]], :G, String["(Intercept)", "U"], [1, 1], [0.945818 0.0; 0.0 0.226927], [1, 4])
+VectorFactorReTerm{Float64,UInt8,2}(UInt8[0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01  …  0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12], ["308", "309", "310", "330", "331", "332", "333", "334", "335", "337", "349", "350", "351", "352", "369", "370", "371", "372"], [1.0 1.0 … 1.0 1.0; 0.0 1.0 … 8.0 9.0], [1.0 1.0 … 1.0 1.0; 0.0 1.0 … 8.0 9.0], StaticArrays.SArray{Tuple{2},Float64,1,2}[[1.0, 0.0], [1.0, 1.0], [1.0, 2.0], [1.0, 3.0], [1.0, 4.0], [1.0, 5.0], [1.0, 6.0], [1.0, 7.0], [1.0, 8.0], [1.0, 9.0]  …  [1.0, 0.0], [1.0, 1.0], [1.0, 2.0], [1.0, 3.0], [1.0, 4.0], [1.0, 5.0], [1.0, 6.0], [1.0, 7.0], [1.0, 8.0], [1.0, 9.0]], :G, ["(Intercept)", "U"], [1, 1], [0.945818 0.0; 0.0 0.226927], [1, 4])
 
 ````
 
@@ -309,8 +309,8 @@ julia> getΛ(t31)
 
 julia> getθ(t31)
 2-element Array{Float64,1}:
- 0.945818
- 0.226927
+ 0.9458180688242811
+ 0.2269271487186899
 
 ````
 
@@ -327,10 +327,10 @@ Linear mixed model fit by maximum likelihood
  -166.09417  332.18835  340.18835  352.06760
 
 Variance components:
-              Column    Variance  Std.Dev. 
- G        (Intercept)  0.7149795 0.8455646
- H        (Intercept)  3.1351924 1.7706474
- Residual              0.3024264 0.5499331
+              Column    Variance   Std.Dev. 
+ G        (Intercept)  0.71497949 0.8455646
+ H        (Intercept)  3.13519326 1.7706477
+ Residual              0.30242640 0.5499331
  Number of obs: 144; levels of grouping factors: 24, 6
 
   Fixed-effects parameters:
@@ -339,10 +339,10 @@ Variance components:
 
 
 julia> t41 = fm4.trms[1]
-MixedModels.ScalarFactorReTerm{Float64,String,UInt8}(CategoricalArrays.CategoricalString{UInt8}["a", "a", "a", "a", "a", "a", "b", "b", "b", "b"  …  "w", "w", "w", "w", "x", "x", "x", "x", "x", "x"], [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0  …  1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0], [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0  …  1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0], :G, String["(Intercept)"], 1.5375772637253458)
+ScalarFactorReTerm{Float64,UInt8}(UInt8[0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x02, 0x02, 0x02, 0x02  …  0x17, 0x17, 0x17, 0x17, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18], ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"  …  "o", "p", "q", "r", "s", "t", "u", "v", "w", "x"], [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0  …  1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0], [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0  …  1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0], :G, ["(Intercept)"], 1.5375772478878553)
 
 julia> t42 = fm4.trms[2]
-MixedModels.ScalarFactorReTerm{Float64,String,UInt8}(CategoricalArrays.CategoricalString{UInt8}["A", "B", "C", "D", "E", "F", "A", "B", "C", "D"  …  "C", "D", "E", "F", "A", "B", "C", "D", "E", "F"], [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0  …  1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0], [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0  …  1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0], :H, String["(Intercept)"], 3.219750701314265)
+ScalarFactorReTerm{Float64,UInt8}(UInt8[0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x01, 0x02, 0x03, 0x04  …  0x03, 0x04, 0x05, 0x06, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06], ["A", "B", "C", "D", "E", "F"], [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0  …  1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0], [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0  …  1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0], :H, ["(Intercept)"], 3.2197511648538444)
 
 ````
 
@@ -564,15 +564,14 @@ Bernoulli
 Poisson
 ```
 
-
-The `glmm` function generates, but does not fit, a `GeneralizedLinearMixedModel` object.
+A `GeneralizedLinearMixedModel` object is generated from a formula, data frame and distribution family.
 
 ````julia
 julia> mdl = GeneralizedLinearMixedModel(@formula(r2 ~ 1 + a + g + b + s + (1|id) + (1|item)),
            dat[:VerbAgg], Bernoulli());
 
 julia> typeof(mdl)
-MixedModels.GeneralizedLinearMixedModel{Float64}
+GeneralizedLinearMixedModel{Float64}
 
 ````
 
@@ -587,12 +586,12 @@ The starting estimate for $\beta$ is determined by fitting a GLM to the fixed-ef
 ````julia
 julia> mdl.β
 6-element Array{Float64,1}:
-  0.0399404
- -0.776656 
- -0.794186 
-  0.231317 
- -1.53919  
-  0.206053 
+  0.039940376051149765
+ -0.7766556048305931  
+ -0.7941857249205394  
+  0.23131667674984369 
+ -1.5391882085456954  
+  0.2060530221032335  
 
 ````
 
@@ -637,13 +636,15 @@ obj = 8205.604285133919
 iter = 3
 obj = 8201.89659746689
 iter = 4
-obj = 8201.848598910707
+obj = 8201.848598910705
 iter = 5
-obj = 8201.848559060705
+obj = 8201.848559060703
+iter = 6
+obj = 8201.848559060623
 Generalized Linear Mixed Model fit by maximum likelihood (nAGQ = 1)
   Formula: r2 ~ 1 + a + g + b + s + (1 | id) + (1 | item)
-  Distribution: Distributions.Bernoulli{Float64}
-  Link: GLM.LogitLink()
+  Distribution: Bernoulli{Float64}
+  Link: LogitLink()
 
   Deviance: 8201.8486
 
@@ -670,7 +671,7 @@ s: self      -0.979493  0.412168 -2.37644  0.0175
 
 ````julia
 julia> deviance(mdl)
-8201.848559060705
+8201.848559060623
 
 ````
 
@@ -679,12 +680,12 @@ julia> deviance(mdl)
 ````julia
 julia> mdl.β
 6-element Array{Float64,1}:
-  0.0514385
- -0.979493 
- -0.979124 
-  0.290225 
- -1.95402  
-  0.218535 
+  0.051438542580815434
+ -0.9794925718038259  
+ -0.9791237061900352  
+  0.29022454166301187 
+ -1.9540167628141156  
+  0.21853493716522268 
 
 ````
 
@@ -718,43 +719,6 @@ julia> mdl.b # conditional modes of b
 
 ````julia
 julia> fit!(mdl, fast=true, verbose=true);
-f_1: 8201.84856 [1.0, 1.0]
-f_2: 8190.11782 [1.75, 1.0]
-f_3: 8224.45098 [1.0, 1.75]
-f_4: 9026.00391 [0.25, 1.0]
-f_5: 8205.79378 [1.0, 0.25]
-f_6: 8157.04103 [1.38583, 0.736457]
-f_7: 8367.72422 [1.33715, 0.0]
-f_8: 8170.28883 [1.41365, 1.11042]
-f_9: 8158.82932 [1.27225, 0.762811]
-f_10: 8161.93341 [1.40936, 0.868084]
-f_11: 8156.30098 [1.32694, 0.721015]
-f_12: 8156.11668 [1.32365, 0.714275]
-f_13: 8156.00207 [1.31847, 0.708856]
-f_14: 8155.75359 [1.32072, 0.701702]
-f_15: 8155.27522 [1.32636, 0.687802]
-f_16: 8154.41 [1.33859, 0.660408]
-f_17: 8153.39496 [1.37582, 0.613358]
-f_18: 8152.74094 [1.39515, 0.563096]
-f_19: 8151.76473 [1.36763, 0.509124]
-f_20: 8152.80894 [1.26776, 0.475123]
-f_21: 8152.86642 [1.4148, 0.471099]
-f_22: 8151.76959 [1.32589, 0.527523]
-f_23: 8151.73776 [1.36681, 0.498606]
-f_24: 8151.58516 [1.33974, 0.493492]
-f_25: 8151.60206 [1.33758, 0.486311]
-f_26: 8151.6005 [1.34692, 0.491348]
-f_27: 8151.58338 [1.33958, 0.497337]
-f_28: 8151.58359 [1.33927, 0.49802]
-f_29: 8151.58335 [1.33972, 0.496955]
-f_30: 8151.58351 [1.34041, 0.497255]
-f_31: 8151.5834 [1.33957, 0.49622]
-f_32: 8151.58348 [1.34031, 0.496495]
-f_33: 8151.58334 [1.33956, 0.496833]
-f_34: 8151.58334 [1.33953, 0.496902]
-f_35: 8151.58334 [1.33963, 0.496867]
-f_36: 8151.58334 [1.33963, 0.496803]
-f_37: 8151.58334 [1.33956, 0.496833]
 
 ````
 
@@ -767,7 +731,7 @@ The optimization process is summarized by
 ````julia
 julia> mdl.LMM.optsum
 Initial parameter vector: [1.0, 1.0]
-Initial objective value:  8201.848559060627
+Initial objective value:  8201.848559060621
 
 Optimizer (from NLopt):   LN_BOBYQA
 Lower bounds:             [0.0, 0.0]
@@ -778,10 +742,10 @@ xtol_abs:                 [1.0e-10, 1.0e-10]
 initial_step:             [0.75, 0.75]
 maxfeval:                 -1
 
-Function evaluations:     37
-Final parameter vector:   [1.33956, 0.496833]
-Final objective value:    8151.583340132134
-Return code:              FTOL_REACHED
+Function evaluations:     1
+Final parameter vector:   [1.0, 1.0]
+Final objective value:    0.0
+Return code:              FORCED_STOP
 
 
 ````
@@ -794,11 +758,11 @@ As one would hope, given the name of the option, this fit is comparatively fast.
 ````julia
 julia> @time(fit!(GeneralizedLinearMixedModel(@formula(r2 ~ 1 + a + g + b + s + (1 | id) + (1 | item)), 
         dat[:VerbAgg], Bernoulli()), fast=true))
-  0.323385 seconds (44.50 k allocations: 8.845 MiB, 4.13% gc time)
+  1.226362 seconds (2.07 M allocations: 22.624 MiB, 0.80% gc time)
 Generalized Linear Mixed Model fit by maximum likelihood (nAGQ = 1)
   Formula: r2 ~ 1 + a + g + b + s + (1 | id) + (1 | item)
-  Distribution: Distributions.Bernoulli{Float64}
-  Link: GLM.LogitLink()
+  Distribution: Bernoulli{Float64}
+  Link: LogitLink()
 
   Deviance: 8151.5833
 
@@ -831,29 +795,29 @@ Because it is slower to incorporate the $\beta$ parameters in the general nonlin
 ````julia
 julia> @time mdl1 = fit!(GeneralizedLinearMixedModel(@formula(r2 ~ 1+a+g+b+s+(1|id)+(1|item)), 
         dat[:VerbAgg], Bernoulli()))
-  5.653474 seconds (866.27 k allocations: 83.738 MiB, 0.68% gc time)
+ 53.809381 seconds (61.66 M allocations: 508.662 MiB, 0.27% gc time)
 Generalized Linear Mixed Model fit by maximum likelihood (nAGQ = 1)
   Formula: r2 ~ 1 + a + g + b + s + (1 | id) + (1 | item)
-  Distribution: Distributions.Bernoulli{Float64}
-  Link: GLM.LogitLink()
+  Distribution: Bernoulli{Float64}
+  Link: LogitLink()
 
-  Deviance: 8151.4000
+  Deviance: 8151.3997
 
 Variance components:
-          Column    Variance   Std.Dev.  
- id   (Intercept)  1.79487217 1.33972840
- item (Intercept)  0.24522279 0.49519975
+          Column    Variance   Std.Dev. 
+ id   (Intercept)  1.79484880 1.3397197
+ item (Intercept)  0.24532098 0.4952989
 
  Number of obs: 7584; levels of grouping factors: 316, 24
 
 Fixed-effects parameters:
               Estimate Std.Error  z value P(>|z|)
-(Intercept)   0.197008  0.405161 0.486248  0.6268
-a            0.0574533 0.0167575  3.42852  0.0006
-g: M             0.321  0.191261  1.67834  0.0933
-b: scold       -1.0592  0.256755 -4.12535   <1e-4
-b: shout      -2.10545  0.258478 -8.14555  <1e-15
-s: self       -1.05231  0.210261 -5.00476   <1e-6
+(Intercept)   0.198989  0.405179 0.491114  0.6233
+a            0.0574285 0.0167574  3.42705  0.0006
+g: M          0.320731   0.19126  1.67694  0.0936
+b: scold      -1.05884  0.256803 -4.12316   <1e-4
+b: shout      -2.10547  0.258526 -8.14412  <1e-15
+s: self       -1.05523    0.2103 -5.01774   <1e-6
 
 
 ````
@@ -870,7 +834,7 @@ The comparison of the slow and fast fit is available in the optimization summary
 ````julia
 julia> mdl1.LMM.optsum
 Initial parameter vector: [0.0543791, -1.01344, -1.0165, 0.304089, -2.0218, 0.208273, 1.33956, 0.496833]
-Initial objective value:  8151.583340132032
+Initial objective value:  8151.583340131868
 
 Optimizer (from NLopt):   LN_BOBYQA
 Lower bounds:             [-Inf, -Inf, -Inf, -Inf, -Inf, -Inf, 0.0, 0.0]
@@ -881,9 +845,9 @@ xtol_abs:                 [1.0e-10, 1.0e-10]
 initial_step:             [0.135142, 0.00558444, 0.0637411, 0.0858438, 0.0864116, 0.0702961, 0.05, 0.05]
 maxfeval:                 -1
 
-Function evaluations:     824
-Final parameter vector:   [0.0574533, -1.05231, -1.0592, 0.321, -2.10545, 0.197008, 1.33973, 0.4952]
-Final objective value:    8151.399954176272
+Function evaluations:     1100
+Final parameter vector:   [0.0574285, -1.05523, -1.05884, 0.320731, -2.10547, 0.198989, 1.33972, 0.495299]
+Final objective value:    8151.399721088063
 Return code:              FTOL_REACHED
 
 

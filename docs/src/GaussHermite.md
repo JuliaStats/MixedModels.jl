@@ -1,4 +1,3 @@
-
 # Normalized Gauss-Hermite Quadrature
 
 [*Gaussian Quadrature rules*](https://en.wikipedia.org/wiki/Gaussian_quadrature) provide sets of `x` values, called *abscissae*, and weights, `w`, to approximate an integral with respect to a *weight function*, $g(x)$.
@@ -31,13 +30,15 @@ More formally, a `k`th order rule is exact when `f` is a `k-1` order polynomial.
 In the [*Golub-Welsch algorithm*](https://en.wikipedia.org/wiki/Gaussian_quadrature#The_Golub-Welsch_algorithm) the abscissae for a particular Gaussian quadrature rule are determined as the eigenvalues of a symmetric tri-diagonal matrix and the weights are derived from the squares of the first row of the matrix of eigenvectors.
 For a `k`th order normalized Gauss-Hermite rule the tridiagonal matrix has zeros on the diagonal and the square roots of `1:k-1` on the super- and sub-diagonal, e.g.
 ````julia
+julia> using LinearAlgebra
+
 julia> sym3 = SymTridiagonal(zeros(3), sqrt.(1:2))
-3×3 SymTridiagonal{Float64}:
+3×3 SymTridiagonal{Float64,Array{Float64,1}}:
  0.0  1.0       ⋅     
  1.0  0.0      1.41421
   ⋅   1.41421  0.0    
 
-julia> ev = eigfact(sym3);
+julia> ev = eigen(sym3);
 
 julia> show(ev.values)
 [-1.73205, 1.11022e-15, 1.73205]
@@ -51,7 +52,7 @@ julia> show(abs2.(ev.vectors[1,:]))
 As a function of `k` this can be written as
 ````julia
 function gausshermitenorm(k)
-    ev = eigfact(SymTridiagonal(zeros(k), sqrt.(1:k-1)))
+    ev = eigen(SymTridiagonal(zeros(k), sqrt.(1:k-1)))
     ev.values, abs2.(ev.vectors[1,:])
 end
 ````
@@ -72,11 +73,22 @@ julia> gausshermitenorm(3)
 
 The weights and positions are often shown as a *lollipop plot*.
 For the 9th order rule these are
-![Lollipop plot of 9th order normalized Gauss-Hermite rule](./assets//GaussHermite_4_1.svg)
+<pre class="julia-error">
+ERROR: Failed to precompile Gadfly &#91;c91e804a-d5a3-530f-b6f0-dfbca275c004&#93; to /home/bates/.julia/compiled/v1.0/Gadfly/DvECm.ji.
+</pre>
+
+
+<pre class="julia-error">
+ERROR: UndefVarError: Guide not defined
+</pre>
+
 
 
 Notice that the magnitudes of the weights drop quite dramatically away from zero, even on a logarithmic scale
-![Lollipop plot of 9th order normalized Gauss-Hermite rule (logarithmic scale](./assets//GaussHermite_5_1.svg)
+<pre class="julia-error">
+ERROR: UndefVarError: Guide not defined
+</pre>
+
 
 
 
@@ -128,22 +140,24 @@ These data are available as the `Contraception` data frame in the test data for 
 ````julia
 julia> using DataFrames, DataFramesMeta, RData
 
-julia> const dat = convert(Dict{Symbol,DataFrame},
-     load(Pkg.dir("MixedModels","test","dat.rda")));
+julia> const dat = Dict(Symbol(k)=>v for (k,v) in 
+    load(joinpath(dirname(pathof(MixedModels)), "..", "test", "dat.rda")));
 
 julia> const contra = @transform(dat[:Contraception],
      a2 = abs2.(:a), urbdist = string.(:urb, :d));
 
-julia> head(contra)
-6×8 DataFrames.DataFrame
-│ Row │ w │ d │ use │ l  │ a       │ urb │ a2      │ urbdist │
-├─────┼───┼───┼─────┼────┼─────────┼─────┼─────────┼─────────┤
-│ 1   │ 1 │ 1 │ N   │ 3+ │ 18.44   │ Y   │ 340.034 │ Y1      │
-│ 2   │ 2 │ 1 │ N   │ 0  │ -5.5599 │ Y   │ 30.9125 │ Y1      │
-│ 3   │ 3 │ 1 │ N   │ 2  │ 1.44    │ Y   │ 2.0736  │ Y1      │
-│ 4   │ 4 │ 1 │ N   │ 3+ │ 8.44    │ Y   │ 71.2336 │ Y1      │
-│ 5   │ 5 │ 1 │ N   │ 0  │ -13.559 │ Y   │ 183.846 │ Y1      │
-│ 6   │ 6 │ 1 │ N   │ 0  │ -11.56  │ Y   │ 133.634 │ Y1      │
+julia> describe(contra)
+8×8 DataFrames.DataFrame. Omitted printing of 2 columns
+│ Row │ variable │ mean       │ min    │ median  │ max     │ nunique │
+├─────┼──────────┼────────────┼────────┼─────────┼─────────┼─────────┤
+│ 1   │ w        │            │ 1      │         │ 1934    │ 1934    │
+│ 2   │ d        │            │ 1      │         │ 61      │ 60      │
+│ 3   │ use      │            │ N      │         │ Y       │ 2       │
+│ 4   │ l        │            │ 0      │         │ 3+      │ 4       │
+│ 5   │ a        │ 0.00219788 │ -13.56 │ -1.5599 │ 19.44   │         │
+│ 6   │ urb      │            │ N      │         │ Y       │ 2       │
+│ 7   │ a2       │ 81.1966    │ 0.1936 │ 55.3536 │ 377.914 │         │
+│ 8   │ urbdist  │            │ N1     │         │ Y9      │ 102     │
 
 ````
 
@@ -152,7 +166,10 @@ julia> head(contra)
 
 
 Because a smoothed scatterplot of contraception use versus age
-![Scatterplot smooth of contraception use versus age](./assets//GaussHermite_9_1.svg)
+<pre class="julia-error">
+ERROR: UndefVarError: Guide not defined
+</pre>
+
 
 
 shows that the proportion of women using artificial contraception is approximately quadratic in age,
@@ -166,8 +183,8 @@ julia> m1 = fit!(GeneralizedLinearMixedModel(form1, contra,
     Bernoulli()), fast=true)
 Generalized Linear Mixed Model fit by maximum likelihood (nAGQ = 1)
   Formula: use ~ 1 + a + a2 + l + urb + (1 | d)
-  Distribution: Distributions.Bernoulli{Float64}
-  Link: GLM.LogitLink()
+  Distribution: Bernoulli{Float64}
+  Link: LogitLink()
 
   Deviance: 2372.7844
 
@@ -208,7 +225,7 @@ julia> const devc0 = map!(abs2, m1.devc0, m1.u[1]);  # start with uᵢ²
 
 julia> const devresid = m1.resp.devresid;   # n-dimensional vector of deviance residuals
 
-julia> const refs = m1.LMM.trms[1].f.refs;  # n-dimensional vector of indices in 1:q
+julia> const refs = m1.LMM.trms[1].refs;  # n-dimensional vector of indices in 1:q
 
 julia> for (dr, i) in zip(devresid, refs)
     devc0[i] += dr
@@ -228,7 +245,7 @@ This is primarily due to different sample sizes in the different districts.
 julia> using FreqTables
 
 julia> freqtable(contra, :d)'
-1×60 Named RowVector{Int64,Array{Int64,1}}
+1×60 Named Adjoint{Int64,Array{Int64,1}}
 ' ╲ d │   1    2    3    4    5    6    7  …   55   56   57   58   59   60   61
 ──────┼────────────────────────────────────────────────────────────────────────
 1     │ 117   20    2   30   39   65   18  …    6   45   27   33   10   32   42
@@ -254,7 +271,7 @@ for (j, u) in enumerate(xvals)
     for (dr, i) in zip(devresid, refs)
         devc[i] += dr
     end
-    copy!(view(results, :, j), devc)
+    copyto!(view(results, :, j), devc)
 end
 ````
 
@@ -262,12 +279,18 @@ end
 
 
 A plot of the deviance contribution versus $u_1$
-![Deviance contribution of u₁](./assets//GaussHermite_14_1.svg)
+<pre class="julia-error">
+ERROR: UndefVarError: Guide not defined
+</pre>
+
 
 
 shows that the deviance contribution is very close to a quadratic.
 This is also true for $u_3$
-![Deviance contribution of u₃](./assets//GaussHermite_15_1.svg)
+<pre class="julia-error">
+ERROR: UndefVarError: Guide not defined
+</pre>
+
 
 
 
@@ -288,7 +311,7 @@ As shown below, this is an estimate of the conditional standard deviations of th
 julia> const s = inv.(m1.LMM.L.data[Block(1,1)].diag);
 
 julia> s'
-1×60 RowVector{Float64,Array{Float64,1}}:
+1×60 Adjoint{Float64,Array{Float64,1}}:
  0.406889  0.713511  0.952164  0.627135  …  0.839679  0.654965  0.60326
 
 ````
@@ -306,15 +329,21 @@ for (j, z) in enumerate(xvals)
     for (dr, i) in zip(devresid, refs)
         devc[i] += dr
     end
-    copy!(view(results, :, j), devc)
+    copyto!(view(results, :, j), devc)
 end
 ````
 
 
 
-![Scaled and shifted deviance contributions](./assets//GaussHermite_19_1.svg)
+<pre class="julia-error">
+ERROR: UndefVarError: Guide not defined
+</pre>
 
-![Scaled and shifted deviance contributions](./assets//GaussHermite_20_1.svg)
+
+<pre class="julia-error">
+ERROR: UndefVarError: Guide not defined
+</pre>
+
 
 
 
@@ -327,15 +356,21 @@ for (j, z) in enumerate(xvals)
     for (dr, i) in zip(devresid, refs)
         devc[i] += dr
     end
-    copy!(view(results, :, j), @. exp(-devc/2))
+    copyto!(view(results, :, j), @. exp(-devc/2))
 end
 ````
 
 
 
-![Scaled and shifted conditional density](./assets//GaussHermite_22_1.svg)
+<pre class="julia-error">
+ERROR: UndefVarError: Guide not defined
+</pre>
 
-![Scaled and shifted conditional density](./assets//GaussHermite_23_1.svg)
+
+<pre class="julia-error">
+ERROR: UndefVarError: Guide not defined
+</pre>
+
 
 
 and the function to be integrated with the normalized Gauss-Hermite rule is
@@ -347,12 +382,18 @@ for (j, z) in enumerate(xvals)
     for (dr, i) in zip(devresid, refs)
         devc[i] += dr
     end
-    copy!(view(results, :, j), @. exp((abs2(z) - devc)/2))
+    copyto!(view(results, :, j), @. exp((abs2(z) - devc)/2))
 end
 ````
 
 
 
-![Function to be integrated with normalized Gauss-Hermite rule](./assets//GaussHermite_25_1.svg)
+<pre class="julia-error">
+ERROR: UndefVarError: Guide not defined
+</pre>
 
-![Function to be integrated with normalized Gauss-Hermite rule](./assets//GaussHermite_26_1.svg)
+
+<pre class="julia-error">
+ERROR: UndefVarError: Guide not defined
+</pre>
+

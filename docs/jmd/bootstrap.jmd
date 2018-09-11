@@ -25,7 +25,8 @@ package for [`R`](https://www.r-project.org) is fit by
 using DataFrames, MixedModels, RData, Gadfly
 ```
 ```{julia;echo=false;results="hidden"}
-const dat = convert(Dict{Symbol,DataFrame}, load(Pkg.dir("MixedModels", "test", "dat.rda")));
+const dat = Dict(Symbol(k)=>v for (k,v) in 
+    load(joinpath(dirname(pathof(MixedModels)), "..", "test", "dat.rda")));
 ```
 ```{julia;term=true}
 ds = names!(dat[:Dyestuff], [:Batch, :Yield])

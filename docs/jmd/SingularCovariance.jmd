@@ -11,10 +11,12 @@ First, fit a model to the `sleepstudy` data from [`lme4`](https://github.com/lme
 Load the required packages
 
 ```{julia;term=true}
-using DataFrames, FreqTables, Gadfly, MixedModels, RData
+using DataFrames, FreqTables, LinearAlgebra, MixedModels, Random, RData
+using Gadfly
 using Gadfly.Geom: density, histogram, point
 using Gadfly.Guide: xlabel, ylabel
-const dat = convert(Dict{Symbol,DataFrame}, load(Pkg.dir("MixedModels", "test", "dat.rda")));
+const dat = Dict(Symbol(k)=>v for (k,v) in 
+    load(joinpath(dirname(pathof(MixedModels)), "..", "test", "dat.rda")));
 ```
 
 The model specification for the Julia `lmm` function is similar to that for the R function `lmer`.
@@ -130,7 +132,7 @@ The `MixedModels` package provides a `bootstrap` method to create a parametric b
 For reproducibility, set the random number seed to some arbitrary value.
 
 ```{julia;term=true}
-srand(1234321);
+Random.seed!(1234321);
 ```
 
 Arguments to the `bootstrap` function are the number of samples to generate and the model from which to generate them.
@@ -203,7 +205,7 @@ Thus
 function recipcond(bstrp::DataFrame)
     T = eltype(bstrp[:θ₁])
     val = sizehint!(T[], size(bstrp, 1))
-    d = Matrix{T}(2, 2)
+    d = Matrix{T}(undef, 2, 2)
     for (t1, t2, t3) in zip(bstrp[:θ₁], bstrp[:θ₂], bstrp[:θ₃])
         d[1, 1] = t1
         d[1, 2] = t2
@@ -249,7 +251,7 @@ In this case the bootstrap simulations that resulted in $\rho = -1$ were not clo
 That is, the values of $\theta_2$ were definitely negative.
 
 ```{julia;term=true}
-sleepmbstrp[:θ₂][find(x -> x == -1, sleepmbstrp[:ρ₁])]
+sleepmbstrp[:θ₂][findall(x -> x == -1, sleepmbstrp[:ρ₁])]
 ```
 
 ## The Oxboys data
@@ -285,7 +287,7 @@ As seen in the plot and by the estimate $\widehat{\theta_1} = 12.0$, the estimat
 It is unlikely that bootstrap samples will include singular covariance estimates.
 
 ```{julia;term=true}
-srand(4321234);
+Random.seed!(4321234);
 oxboysmbtstrp = bootstrap(10000, oxboysm);
 ```
 
@@ -328,7 +330,7 @@ The subject labels distinguish between the male and the female subjects.  Consid
 
 ```{julia;term=true}
 orthfemale = rcopy(R"subset(Orthodont, Sex == 'Female', -Sex)");
-orthfm = fit!(lmm(@formula(distance ~ 1 + age + (1 + age | Subject)), orthfemale))
+orthfm = fit!(LinearMixedModel(@formula(distance ~ 1 + age + (1 + age | Subject)), orthfemale))
 ```
 
 ```{julia;term=true}

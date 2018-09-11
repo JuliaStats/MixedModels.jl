@@ -1,7 +1,8 @@
 
 ```{julia;term=true}
 using DataFrames, MixedModels, RData
-const dat = convert(Dict{Symbol,DataFrame}, load(Pkg.dir("MixedModels", "test", "dat.rda")));
+const dat = Dict(Symbol(k)=>v for (k,v) in 
+    load(joinpath(dirname(pathof(MixedModels)), "..", "test", "dat.rda")));
 ```
 
 ```{julia;term=true}

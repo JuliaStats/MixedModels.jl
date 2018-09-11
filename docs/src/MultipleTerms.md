@@ -6,13 +6,19 @@ The mixed models considered in the previous chapter had only one random-effects 
 In this chapter we consider models with multiple simple, scalar random-effects terms, showing examples where the grouping factors for these terms are in completely crossed or nested or partially crossed configurations. For ease of description we will refer to the random effects as being crossed or nested although, strictly speaking, the distinction between nested and non-nested refers to the grouping factors, not the random effects.
 
 ````julia
-julia> using DataFrames, Distributions, FreqTables, Gadfly, MixedModels, RData
+julia> using DataFrames, Distributions, FreqTables, MixedModels, RData, Random
+
+julia> using Gadfly
+Error: Failed to precompile Gadfly [c91e804a-d5a3-530f-b6f0-dfbca275c004] to /home/bates/.julia/compiled/v1.0/Gadfly/DvECm.ji.
 
 julia> using Gadfly.Geom: density, histogram, line, point
+Error: Failed to precompile Gadfly [c91e804a-d5a3-530f-b6f0-dfbca275c004] to /home/bates/.julia/compiled/v1.0/Gadfly/DvECm.ji.
 
 julia> using Gadfly.Guide: xlabel, ylabel
+Error: Failed to precompile Gadfly [c91e804a-d5a3-530f-b6f0-dfbca275c004] to /home/bates/.julia/compiled/v1.0/Gadfly/DvECm.ji.
 
-julia> const dat = convert(Dict{Symbol,DataFrame}, load(Pkg.dir("MixedModels", "test", "dat.rda")));
+julia> const dat = Dict(Symbol(k)=>v for (k,v) in 
+    load(joinpath(dirname(pathof(MixedModels)), "..", "test", "dat.rda")));
 
 julia> const ppt250 = inv(500) : inv(250) : 1.;
 
@@ -58,11 +64,13 @@ The data are derived from Table 6.6, p. 144 of Davies (), where they are descr
 > assess the variability between samples of penicillin by the *B. subtilis* method. In this test method a bulk-innoculated nutrient agar medium is poured into a Petri dish of approximately 90 mm. diameter, known as a plate. When the medium has set, six small hollow cylinders or pots (about 4 mm. in diameter) are cemented onto the surface at equally spaced intervals. A few drops of the penicillin solutions to be compared are placed in the respective cylinders, and the whole plate is placed in an incubator for a given time. Penicillin diffuses from the pots into the agar, and this produces a clear circular zone of inhibition of growth of the organisms, which can be readily measured. The diameter of the zone is related in a known way to the concentration of penicillin in the solution.
 
 ````julia
-julia> names(dat[:Penicillin])
-3-element Array{Symbol,1}:
- :Y
- :G
- :H
+julia> describe(dat[:Penicillin])
+3×8 DataFrames.DataFrame. Omitted printing of 1 columns
+│ Row │ variable │ mean    │ min  │ median │ max  │ nunique │ nmissing │
+├─────┼──────────┼─────────┼──────┼────────┼──────┼─────────┼──────────┤
+│ 1   │ Y        │ 22.9722 │ 18.0 │ 23.0   │ 27.0 │         │          │
+│ 2   │ G        │         │ a    │        │ x    │ 24      │          │
+│ 3   │ H        │         │ A    │        │ F    │ 6       │          │
 
 ````
 
@@ -123,10 +131,10 @@ Linear mixed model fit by maximum likelihood
  -166.09417  332.18835  340.18835  352.06760
 
 Variance components:
-              Column    Variance  Std.Dev. 
- G        (Intercept)  0.7149795 0.8455646
- H        (Intercept)  3.1351924 1.7706474
- Residual              0.3024264 0.5499331
+              Column    Variance   Std.Dev. 
+ G        (Intercept)  0.71497949 0.8455646
+ H        (Intercept)  3.13519326 1.7706477
+ Residual              0.30242640 0.5499331
  Number of obs: 144; levels of grouping factors: 24, 6
 
   Fixed-effects parameters:
@@ -164,7 +172,7 @@ or as the `Final parameter vector` in the `opsum` field of `penm`
 ````julia
 julia> penm.optsum
 Initial parameter vector: [1.0, 1.0]
-Initial objective value:  364.6267798165433
+Initial objective value:  364.62677981659544
 
 Optimizer (from NLopt):   LN_BOBYQA
 Lower bounds:             [0.0, 0.0]
@@ -177,7 +185,7 @@ maxfeval:                 -1
 
 Function evaluations:     44
 Final parameter vector:   [1.53758, 3.21975]
-Final objective value:    332.1883486722732
+Final objective value:    332.18834867237246
 Return code:              FTOL_REACHED
 
 
@@ -195,7 +203,7 @@ A bootstrap simulation of the model
 
 ````julia
 julia> @time penmbstp = bootstrap(10000, penm);
- 12.957938 seconds (16.06 M allocations: 786.972 MiB, 3.24% gc time)
+ 13.027475 seconds (23.95 M allocations: 901.832 MiB, 1.33% gc time)
 
 ````
 
@@ -205,15 +213,24 @@ julia> @time penmbstp = bootstrap(10000, penm);
 
 provides the density plots
 
-![](./assets//MultipleTerms_8_1.svg)
+<pre class="julia-error">
+ERROR: UndefVarError: xlabel not defined
+</pre>
 
-![](./assets//MultipleTerms_9_1.svg)
 
-![](./assets//MultipleTerms_10_1.svg)
+<pre class="julia-error">
+ERROR: UndefVarError: xlabel not defined
+</pre>
+
+
+<pre class="julia-error">
+ERROR: UndefVarError: xlabel not defined
+</pre>
+
 
 ````julia
 julia> plot(penmbstp, x = :σ₂, density, xlabel("σ₂"))
-Plot(...)
+Error: UndefVarError: xlabel not defined
 
 ````
 
@@ -274,12 +291,14 @@ The third example from Davies (1972) is described as coming from
 The structure and summary of the data object are
 
 ````julia
-julia> names(dat[:Pastes])
-4-element Array{Symbol,1}:
- :Y
- :H
- :c
- :G
+julia> describe(dat[:Pastes])
+4×8 DataFrames.DataFrame. Omitted printing of 1 columns
+│ Row │ variable │ mean    │ min  │ median │ max  │ nunique │ nmissing │
+├─────┼──────────┼─────────┼──────┼────────┼──────┼─────────┼──────────┤
+│ 1   │ Y        │ 60.0533 │ 54.2 │ 59.3   │ 66.0 │         │          │
+│ 2   │ H        │         │ A    │        │ J    │ 10      │          │
+│ 3   │ c        │         │ a    │        │ c    │ 3       │          │
+│ 4   │ G        │         │ A:a  │        │ J:c  │ 30      │          │
 
 ````
 
@@ -348,7 +367,7 @@ In a small data set like we can quickly detect a factor being implicitly nested 
 Fitting a model with simple, scalar random effects for nested factors is done in exactly the same way as fitting a model with random effects for crossed grouping factors. We include random-effects terms for each factor, as in
 
 ````julia
-julia> pstsm = fit!(lmm(@formula(Y ~ 1 + (1|G) + (1|H)), dat[:Pastes]))
+julia> pstsm = fit!(LinearMixedModel(@formula(Y ~ 1 + (1|G) + (1|H)), dat[:Pastes]))
 Linear mixed model fit by maximum likelihood
  Formula: Y ~ 1 + (1 | G) + (1 | H)
    logLik   -2 logLik     AIC        BIC    
@@ -356,9 +375,9 @@ Linear mixed model fit by maximum likelihood
 
 Variance components:
               Column    Variance  Std.Dev.  
- G        (Intercept)  8.4336167 2.90406898
- H        (Intercept)  1.1991793 1.09507045
- Residual              0.6780021 0.82340884
+ G        (Intercept)  8.4336167 2.90406899
+ H        (Intercept)  1.1991787 1.09507018
+ Residual              0.6780021 0.82340886
  Number of obs: 60; levels of grouping factors: 30, 10
 
   Fixed-effects parameters:
@@ -391,20 +410,23 @@ Plots of the prediction intervals of the random effects (Fig. [fig:fm04ranef])
 confirm this impression in that all the prediction intervals for the random effects for contain zero. Furthermore, a bootstrap sample
 
 ````julia
-julia> srand(4321234);
+julia> Random.seed!(4321234);
 
 julia> @time pstsbstp = bootstrap(10000, pstsm);
-  9.419357 seconds (12.30 M allocations: 635.462 MiB, 2.34% gc time)
+ 10.514014 seconds (23.74 M allocations: 1.029 GiB, 1.76% gc time)
 
 ````
 
 
 
-![](./assets//MultipleTerms_16_1.svg)
+<pre class="julia-error">
+ERROR: UndefVarError: xlabel not defined
+</pre>
+
 
 ````julia
 julia> plot(pstsbstp, x = :σ, density, xlabel("σ"))
-Plot(...)
+Error: UndefVarError: xlabel not defined
 
 ````
 
@@ -412,7 +434,7 @@ Plot(...)
 
 ````julia
 julia> plot(x = pstsbstp[:σ₁], Geom.density(), Guide.xlabel("σ₁"))
-Plot(...)
+Error: UndefVarError: Geom not defined
 
 ````
 
@@ -420,7 +442,7 @@ Plot(...)
 
 ````julia
 julia> plot(x = pstsbstp[:σ₂], Geom.density(), Guide.xlabel("σ₂"))
-Plot(...)
+Error: UndefVarError: Geom not defined
 
 ````
 
@@ -433,7 +455,7 @@ and a normal probability plot of
 ````julia
 julia> plot(x = zquantiles, y = quantile(pstsbstp[:σ₂], ppt250), Geom.line,
     Guide.xlabel("Standard Normal Quantiles"), Guide.ylabel("σ₂"))
-Plot(...)
+Error: UndefVarError: Guide not defined
 
 ````
 
@@ -441,7 +463,7 @@ Plot(...)
 
 ````julia
 julia> count(x -> x < 1.0e-5, pstsbstp[:σ₂])
-3661
+3671
 
 ````
 
@@ -454,8 +476,8 @@ Over 1/3 of the bootstrap samples of $\sigma_2$ are zero.  Even a 50% confidence
 ````julia
 julia> hpdinterval(pstsbstp[:σ₂])
 2-element Array{Float64,1}:
- 0.0    
- 2.07348
+ 0.0              
+ 2.073479680297123
 
 ````
 
@@ -486,7 +508,7 @@ In Sect. [sec:variability] we referred to likelihood ratio tests (LRTs) for whi
 The restricted model fit
 
 ````julia
-julia> pstsm1 = fit!(lmm(@formula(Y ~ 1 + (1|G)), dat[:Pastes]))
+julia> pstsm1 = fit!(LinearMixedModel(@formula(Y ~ 1 + (1|G)), dat[:Pastes]))
 Linear mixed model fit by maximum likelihood
  Formula: Y ~ 1 + (1 | G)
    logLik   -2 logLik     AIC        BIC    
@@ -494,8 +516,8 @@ Linear mixed model fit by maximum likelihood
 
 Variance components:
               Column    Variance   Std.Dev. 
- G        (Intercept)  9.63282135 3.1036787
- Residual              0.67800006 0.8234076
+ G        (Intercept)  9.63282202 3.1036788
+ Residual              0.67800001 0.8234076
  Number of obs: 60; levels of grouping factors: 30
 
   Fixed-effects parameters:
@@ -535,7 +557,7 @@ A bootstrap sample
 
 ````julia
 julia> @time psts1bstp = bootstrap(10000, pstsm1);
-  3.810468 seconds (5.36 M allocations: 263.656 MiB, 2.88% gc time)
+  3.777799 seconds (8.00 M allocations: 307.767 MiB, 1.78% gc time)
 
 ````
 
@@ -545,13 +567,19 @@ julia> @time psts1bstp = bootstrap(10000, pstsm1);
 
 provides empirical density plots
 
-![](./assets//MultipleTerms_26_1.svg)
+<pre class="julia-error">
+ERROR: UndefVarError: xlabel not defined
+</pre>
+
 
 
 
 and
 
-![](./assets//MultipleTerms_27_1.svg)
+<pre class="julia-error">
+ERROR: UndefVarError: xlabel not defined
+</pre>
+
 
 
 
@@ -599,8 +627,16 @@ The data are from a special evaluation of lecturers by students at the Swiss Fed
 The variables
 
 ````julia
-julia> show(names(dat[:InstEval]))
-Symbol[:G, :H, :studage, :lectage, :A, :I, :Y]
+julia> names(dat[:InstEval])
+7-element Array{Symbol,1}:
+ :G      
+ :H      
+ :studage
+ :lectage
+ :A      
+ :I      
+ :Y      
+
 ````
 
 
@@ -613,7 +649,7 @@ Although the response, `Y`, is on a scale of 1 to 5,
 
 ````julia
 julia> freqtable(dat[:InstEval][:Y])'
-1×5 Named RowVector{Int64,Array{Int64,1}}
+1×5 Named LinearAlgebra.Adjoint{Int64,Array{Int64,1}}
 ' ╲ Dim1 │     1      2      3      4      5
 ─────────┼──────────────────────────────────
 1        │ 10186  12951  17609  16921  15754
@@ -630,23 +666,23 @@ At this point we will fit models that have random effects for student, instructo
 
 ````julia
 julia> @time instm = fit(LinearMixedModel, @formula(Y ~ 1 + A + (1|G) + (1|H) + (1|I)), dat[:InstEval])
-  2.669603 seconds (206.36 k allocations: 200.873 MiB, 1.62% gc time)
+  2.169195 seconds (30.32 k allocations: 186.810 MiB, 0.95% gc time)
 Linear mixed model fit by maximum likelihood
  Formula: Y ~ 1 + A + (1 | G) + (1 | H) + (1 | I)
      logLik        -2 logLik          AIC             BIC       
  -1.18860884×10⁵  2.37721769×10⁵  2.37733769×10⁵  2.37788993×10⁵
 
 Variance components:
-              Column     Variance     Std.Dev.  
- G        (Intercept)  0.1059725479 0.325534250
- H        (Intercept)  0.2652049098 0.514980495
- I        (Intercept)  0.0061678670 0.078535769
- Residual              1.3864885942 1.177492503
+              Column     Variance    Std.Dev. 
+ G        (Intercept)  0.1059727787 0.3255346
+ H        (Intercept)  0.2652041783 0.5149798
+ I        (Intercept)  0.0061673544 0.0785325
+ Residual              1.3864885827 1.1774925
  Number of obs: 73421; levels of grouping factors: 2972, 1128, 14
 
   Fixed-effects parameters:
                Estimate Std.Error  z value P(>|z|)
-(Intercept)     3.28258 0.0284116  115.537  <1e-99
+(Intercept)     3.28258  0.028411  115.539  <1e-99
 A: 1         -0.0925886 0.0133832 -6.91828  <1e-11
 
 

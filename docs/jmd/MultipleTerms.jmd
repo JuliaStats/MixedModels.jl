@@ -6,10 +6,12 @@ The mixed models considered in the previous chapter had only one random-effects 
 In this chapter we consider models with multiple simple, scalar random-effects terms, showing examples where the grouping factors for these terms are in completely crossed or nested or partially crossed configurations. For ease of description we will refer to the random effects as being crossed or nested although, strictly speaking, the distinction between nested and non-nested refers to the grouping factors, not the random effects.
 
 ```{julia;term=true}
-using DataFrames, Distributions, FreqTables, Gadfly, MixedModels, RData
+using DataFrames, Distributions, FreqTables, MixedModels, RData, Random
+using Gadfly
 using Gadfly.Geom: density, histogram, line, point
 using Gadfly.Guide: xlabel, ylabel
-const dat = convert(Dict{Symbol,DataFrame}, load(Pkg.dir("MixedModels", "test", "dat.rda")));
+const dat = Dict(Symbol(k)=>v for (k,v) in 
+    load(joinpath(dirname(pathof(MixedModels)), "..", "test", "dat.rda")));
 const ppt250 = inv(500) : inv(250) : 1.;
 const zquantiles = quantile(Normal(), ppt250);
 function hpdinterval(v, level=0.95)
@@ -46,7 +48,7 @@ The data are derived from Table 6.6, p. 144 of Davies (), where they are descr
 > assess the variability between samples of penicillin by the *B. subtilis* method. In this test method a bulk-innoculated nutrient agar medium is poured into a Petri dish of approximately 90 mm. diameter, known as a plate. When the medium has set, six small hollow cylinders or pots (about 4 mm. in diameter) are cemented onto the surface at equally spaced intervals. A few drops of the penicillin solutions to be compared are placed in the respective cylinders, and the whole plate is placed in an incubator for a given time. Penicillin diffuses from the pots into the agar, and this produces a clear circular zone of inhibition of growth of the organisms, which can be readily measured. The diameter of the zone is related in a known way to the concentration of penicillin in the solution.
 
 ```{julia;term=true}
-names(dat[:Penicillin])
+describe(dat[:Penicillin])
 ```
 
 of the data, then plot it
@@ -185,7 +187,7 @@ The third example from Davies (1972) is described as coming from
 The structure and summary of the data object are
 
 ```{julia;term=true}
-names(dat[:Pastes])
+describe(dat[:Pastes])
 ```
 
 As stated in the description in Davies (1972), there are 30 samples, three from each of the 10 delivery batches. We have labelled the levels of the `sample` factor with the label of the `batch` factor followed by `a`, `b` or `c` to distinguish the three samples taken from that batch.
@@ -231,7 +233,7 @@ In a small data set like we can quickly detect a factor being implicitly nested 
 Fitting a model with simple, scalar random effects for nested factors is done in exactly the same way as fitting a model with random effects for crossed grouping factors. We include random-effects terms for each factor, as in
 
 ```{julia;term=true}
-pstsm = fit!(lmm(@formula(Y ~ 1 + (1|G) + (1|H)), dat[:Pastes]))
+pstsm = fit!(LinearMixedModel(@formula(Y ~ 1 + (1|G) + (1|H)), dat[:Pastes]))
 ```
 
 Not only is the model specification similar for nested and crossed factors, the internal calculations are performed according to the methods described in Sect. [sec:definitions] for each model type. Comparing the patterns in the matrices $\Lambda$, $\mathbf Z'\mathbf Z$ and $\mathbf L$ for this model (Fig. [fig:fm04LambdaLimage]) to those in Fig. [fig:fm03LambdaLimage] shows that models with nested factors produce simple repeated structures along the diagonal of the sparse Cholesky factor, $\mathbf L$. This type of structure has the desirable property that there is no “fill-in” during calculation of the Cholesky factor. In other words, the number of non-zeros in $\mathbf L$ is the same as the number of non-zeros in the lower triangle of the matrix being factored, $\Lambda'\mathbf Z'\mathbf Z\Lambda+\mathbf I$ (which, because $\Lambda$ is diagonal, has the same structure as $\mathbf Z'\mathbf
@@ -253,7 +255,7 @@ Plots of the prediction intervals of the random effects (Fig. [fig:fm04ranef])
 confirm this impression in that all the prediction intervals for the random effects for contain zero. Furthermore, a bootstrap sample
 
 ```{julia;term=true}
-srand(4321234);
+Random.seed!(4321234);
 @time pstsbstp = bootstrap(10000, pstsm);
 ```
 
@@ -313,7 +315,7 @@ In Sect. [sec:variability] we referred to likelihood ratio tests (LRTs) for whi
 The restricted model fit
 
 ```{julia;term=true}
-pstsm1 = fit!(lmm(@formula(Y ~ 1 + (1|G)), dat[:Pastes]))
+pstsm1 = fit!(LinearMixedModel(@formula(Y ~ 1 + (1|G)), dat[:Pastes]))
 ```
 
 is compared to model `pstsm` with
@@ -390,7 +392,7 @@ The data are from a special evaluation of lecturers by students at the Swiss Fed
 The variables
 
 ```{julia;term=true}
-show(names(dat[:InstEval]))
+names(dat[:InstEval])
 ```
 
 have somewhat cryptic names. Factor `s` designates the student and `d` the instructor. The factor `dept` is the department for the course and `service` indicates whether the course was a service course taught to students from other departments.
