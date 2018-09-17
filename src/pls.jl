@@ -155,7 +155,7 @@ StatsBase.coef(m::MixedModel) = fixef(m, false)
     fit!(m::LinearMixedModel[, verbose::Bool=false])
 
 Optimize the objective of a `LinearMixedModel`.  When `verbose` is `true` the values of the
-objective and the parameters are printed on STDOUT at each function evaluation.
+objective and the parameters are printed on stdout at each function evaluation.
 """
 function StatsBase.fit!(m::LinearMixedModel{T}, verbose::Bool=false) where T
     optsum = m.optsum
