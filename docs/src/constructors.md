@@ -17,7 +17,7 @@ julia> const dat = Dict(Symbol(k)=>v for (k,v) in
     load(joinpath(dirname(pathof(MixedModels)), "..", "test", "dat.rda")));
 
 julia> describe(dat[:Dyestuff])
-2×8 DataFrame. Omitted printing of 1 columns
+2×8 DataFrames.DataFrame. Omitted printing of 1 columns
 │ Row │ variable │ mean   │ min    │ median │ max    │ nunique │ nmissing │
 ├─────┼──────────┼────────┼────────┼────────┼────────┼─────────┼──────────┤
 │ 1   │ G        │        │ A      │        │ F      │ 6       │          │
@@ -68,7 +68,7 @@ The second and subsequent calls to such functions are much faster.)
 
 ````julia
 julia> @time fit(LinearMixedModel, @formula(Y ~ 1 + (1|G)), dat[:Dyestuff2])
-  0.000801 seconds (1.24 k allocations: 69.188 KiB)
+  0.005229 seconds (1.29 k allocations: 71.641 KiB)
 Linear mixed model fit by maximum likelihood
  Formula: Y ~ 1 + (1 | G)
    logLik   -2 logLik     AIC        BIC    
@@ -114,10 +114,10 @@ Linear mixed model fit by maximum likelihood
  -875.96967 1751.93934 1763.93934 1783.09709
 
 Variance components:
-              Column    Variance  Std.Dev.   Corr.
- G        (Intercept)  565.51067 23.780468
-          U             32.68212  5.716828  0.08
- Residual              654.94145 25.591824
+              Column    Variance   Std.Dev.   Corr.
+ G        (Intercept)  565.510675 23.780468
+          U             32.682123  5.716828  0.08
+ Residual              654.941448 25.591824
  Number of obs: 180; levels of grouping factors: 18
 
   Fixed-effects parameters:
@@ -142,7 +142,7 @@ Linear mixed model fit by maximum likelihood
 
 Variance components:
               Column    Variance  Std.Dev.   Corr.
- G        (Intercept)  584.258973 24.17145
+ G        (Intercept)  584.258972 24.17145
           U             33.632805  5.79938  0.00
  Residual              653.115782 25.55613
  Number of obs: 180; levels of grouping factors: 18
@@ -174,10 +174,10 @@ Linear mixed model fit by maximum likelihood
  -166.09417  332.18835  340.18835  352.06760
 
 Variance components:
-              Column    Variance   Std.Dev. 
- G        (Intercept)  0.71497949 0.8455646
- H        (Intercept)  3.13519326 1.7706477
- Residual              0.30242640 0.5499331
+              Column    Variance  Std.Dev. 
+ G        (Intercept)  0.7149795 0.8455646
+ H        (Intercept)  3.1351929 1.7706476
+ Residual              0.3024264 0.5499331
  Number of obs: 144; levels of grouping factors: 24, 6
 
   Fixed-effects parameters:
@@ -201,10 +201,10 @@ Linear mixed model fit by maximum likelihood
  -123.99723  247.99447  255.99447  264.37184
 
 Variance components:
-              Column    Variance  Std.Dev.  
- G        (Intercept)  8.4336167 2.90406899
- H        (Intercept)  1.1991787 1.09507018
- Residual              0.6780021 0.82340886
+              Column    Variance   Std.Dev.  
+ G        (Intercept)  8.43361674 2.90406900
+ H        (Intercept)  1.19917985 1.09507070
+ Residual              0.67800208 0.82340882
  Number of obs: 60; levels of grouping factors: 30, 10
 
   Fixed-effects parameters:
@@ -230,41 +230,41 @@ Linear mixed model fit by maximum likelihood
 
 Variance components:
               Column    Variance   Std.Dev.  
- G        (Intercept)  0.10541790 0.32468122
- H        (Intercept)  0.25841634 0.50834667
- Residual              1.38472780 1.17674458
+ G        (Intercept)  0.10541799 0.32468137
+ H        (Intercept)  0.25841637 0.50834671
+ Residual              1.38472777 1.17674456
  Number of obs: 73421; levels of grouping factors: 2972, 1128
 
   Fixed-effects parameters:
-                Estimate Std.Error  z value P(>|z|)
-(Intercept)      3.22961  0.064053  50.4209  <1e-99
-A: 1            0.252025 0.0686507  3.67112  0.0002
-I: 5            0.129536  0.101294  1.27882  0.2010
-I: 10          -0.176751 0.0881352 -2.00545  0.0449
-I: 12          0.0517102 0.0817523 0.632523  0.5270
-I: 6           0.0347319  0.085621 0.405647  0.6850
-I: 7             0.14594 0.0997984  1.46235  0.1436
-I: 4            0.151689 0.0816897  1.85689  0.0633
-I: 8            0.104206  0.118751 0.877517  0.3802
-I: 9           0.0440401 0.0962985  0.45733  0.6474
-I: 14          0.0517546 0.0986029 0.524879  0.5997
-I: 1           0.0466719  0.101942 0.457828  0.6471
-I: 3           0.0563461 0.0977925  0.57618  0.5645
-I: 11          0.0596536  0.100233 0.595151  0.5517
-I: 2          0.00556285  0.110867 0.050176  0.9600
-A: 1 & I: 5    -0.180757  0.123179 -1.46744  0.1423
-A: 1 & I: 10   0.0186492  0.110017 0.169512  0.8654
-A: 1 & I: 12   -0.282269 0.0792937  -3.5598  0.0004
-A: 1 & I: 6    -0.494464 0.0790278 -6.25684   <1e-9
-A: 1 & I: 7    -0.392054  0.110313 -3.55403  0.0004
-A: 1 & I: 4    -0.278547 0.0823727 -3.38154  0.0007
-A: 1 & I: 8    -0.189526  0.111449 -1.70056  0.0890
-A: 1 & I: 9    -0.499868 0.0885423 -5.64553   <1e-7
-A: 1 & I: 14   -0.497162 0.0917162 -5.42065   <1e-7
-A: 1 & I: 1     -0.24042 0.0982071  -2.4481  0.0144
-A: 1 & I: 3    -0.223013 0.0890548 -2.50422  0.0123
-A: 1 & I: 11   -0.516997 0.0809077 -6.38997   <1e-9
-A: 1 & I: 2    -0.384773  0.091843 -4.18946   <1e-4
+               Estimate Std.Error   z value P(>|z|)
+(Intercept)     3.22961  0.064053   50.4209  <1e-99
+A: 1           0.252025 0.0686507   3.67112  0.0002
+I: 5           0.129536  0.101294   1.27882  0.2010
+I: 10         -0.176751 0.0881352  -2.00545  0.0449
+I: 12         0.0517102 0.0817524  0.632522  0.5270
+I: 6          0.0347319  0.085621  0.405647  0.6850
+I: 7            0.14594 0.0997984   1.46235  0.1436
+I: 4           0.151689 0.0816897   1.85689  0.0633
+I: 8           0.104206  0.118751  0.877517  0.3802
+I: 9          0.0440401 0.0962985  0.457329  0.6474
+I: 14         0.0517546 0.0986029  0.524879  0.5997
+I: 1          0.0466719  0.101942  0.457828  0.6471
+I: 3          0.0563461 0.0977925   0.57618  0.5645
+I: 11         0.0596536  0.100233   0.59515  0.5517
+I: 2          0.0055628  0.110867 0.0501756  0.9600
+A: 1 & I: 5   -0.180757  0.123179  -1.46744  0.1423
+A: 1 & I: 10  0.0186492  0.110017  0.169513  0.8654
+A: 1 & I: 12  -0.282269 0.0792937  -3.55979  0.0004
+A: 1 & I: 6   -0.494464 0.0790278  -6.25683   <1e-9
+A: 1 & I: 7   -0.392054  0.110313  -3.55403  0.0004
+A: 1 & I: 4   -0.278547 0.0823727  -3.38154  0.0007
+A: 1 & I: 8   -0.189526  0.111449  -1.70056  0.0890
+A: 1 & I: 9   -0.499868 0.0885423  -5.64553   <1e-7
+A: 1 & I: 14  -0.497162 0.0917162  -5.42065   <1e-7
+A: 1 & I: 1    -0.24042 0.0982071   -2.4481  0.0144
+A: 1 & I: 3   -0.223013 0.0890548  -2.50422  0.0123
+A: 1 & I: 11  -0.516997 0.0809077  -6.38997   <1e-9
+A: 1 & I: 2   -0.384773  0.091843  -4.18946   <1e-4
 
 
 ````
@@ -287,27 +287,27 @@ julia> verbaggform = @formula(r2 ~ 1 + a + g + b + s + m + (1|id) + (1|item));
 julia> gm1 = fit(GeneralizedLinearMixedModel, verbaggform, dat[:VerbAgg], Bernoulli())
 Generalized Linear Mixed Model fit by maximum likelihood (nAGQ = 1)
   Formula: r2 ~ 1 + a + g + b + s + m + (1 | id) + (1 | item)
-  Distribution: Bernoulli{Float64}
-  Link: LogitLink()
+  Distribution: Distributions.Bernoulli{Float64}
+  Link: GLM.LogitLink()
 
   Deviance: 8135.8329
 
 Variance components:
-          Column     Variance   Std.Dev. 
- id   (Intercept)  1.793480630 1.3392090
- item (Intercept)  0.117154495 0.3422784
+          Column    Variance   Std.Dev.  
+ id   (Intercept)  1.79354795 1.33923409
+ item (Intercept)  0.11714433 0.34226354
 
  Number of obs: 7584; levels of grouping factors: 316, 24
 
 Fixed-effects parameters:
               Estimate Std.Error  z value P(>|z|)
-(Intercept)   0.553223  0.385364  1.43558  0.1511
-a            0.0574216 0.0167528  3.42759  0.0006
-g: M          0.320801  0.191207  1.67777  0.0934
-b: scold      -1.05979  0.184162 -5.75464   <1e-8
-b: shout       -2.1038  0.186521 -11.2792  <1e-28
-s: self       -1.05402  0.151197 -6.97116  <1e-11
-m: do        -0.707036   0.15101 -4.68205   <1e-5
+(Intercept)   0.553482  0.385367  1.43625  0.1509
+a            0.0574142  0.016753  3.42709  0.0006
+g: M          0.320715   0.19121  1.67729  0.0935
+b: scold      -1.05979  0.184155  -5.7549   <1e-8
+b: shout      -2.10387  0.186514   -11.28  <1e-28
+s: self       -1.05408  0.151192 -6.97183  <1e-11
+m: do         -0.70706  0.151005 -4.68238   <1e-5
 
 
 ````
@@ -332,14 +332,14 @@ These fits may suffice for model comparisons.
 julia> gm1a = fit!(GeneralizedLinearMixedModel(verbaggform, dat[:VerbAgg], Bernoulli()), fast=true)
 Generalized Linear Mixed Model fit by maximum likelihood (nAGQ = 1)
   Formula: r2 ~ 1 + a + g + b + s + m + (1 | id) + (1 | item)
-  Distribution: Bernoulli{Float64}
-  Link: LogitLink()
+  Distribution: Distributions.Bernoulli{Float64}
+  Link: GLM.LogitLink()
 
   Deviance: 8136.1709
 
 Variance components:
           Column    Variance   Std.Dev.  
- id   (Intercept)  1.79270002 1.33891748
+ id   (Intercept)  1.79270003 1.33891748
  item (Intercept)  0.11875573 0.34460953
 
  Number of obs: 7584; levels of grouping factors: 316, 24
@@ -356,13 +356,13 @@ m: do        -0.679102  0.151857 -4.47198   <1e-5
 
 
 julia> deviance(gm1a) - deviance(gm1)
-0.33801208853947173
+0.3380131264857482
 
 julia> @time fit(GeneralizedLinearMixedModel, verbaggform, dat[:VerbAgg], Bernoulli());
- 25.902558 seconds (49.55 M allocations: 405.082 MiB, 0.27% gc time)
+ 10.132972 seconds (66.82 M allocations: 544.006 MiB, 0.84% gc time)
 
 julia> @time fit!(GeneralizedLinearMixedModel(verbaggform, dat[:VerbAgg], Bernoulli()), fast=true);
-  1.229799 seconds (2.39 M allocations: 25.665 MiB, 0.22% gc time)
+  0.413562 seconds (2.39 M allocations: 25.664 MiB, 9.85% gc time)
 
 ````
 
@@ -378,41 +378,41 @@ julia> contraform = @formula(use ~ 1 + a + l + urb + (1|d))
 Formula: use ~ 1 + a + l + urb + (1 | d)
 
 julia> @time gm2 = fit!(GeneralizedLinearMixedModel(contraform, dat[:Contraception], Bernoulli()), nAGQ=9)
-  0.770637 seconds (8.20 M allocations: 66.588 MiB, 3.14% gc time)
+  1.035872 seconds (7.74 M allocations: 87.080 MiB, 2.62% gc time)
 Generalized Linear Mixed Model fit by maximum likelihood (nAGQ = 9)
   Formula: use ~ 1 + a + l + urb + (1 | d)
-  Distribution: Bernoulli{Float64}
-  Link: LogitLink()
+  Distribution: Distributions.Bernoulli{Float64}
+  Link: GLM.LogitLink()
 
-  Deviance: 2413.3485
+  Deviance: 2413.3486
 
 Variance components:
        Column    Variance   Std.Dev.  
- d (Intercept)  0.21548177 0.46420014
+ d (Intercept)  0.21541837 0.46413185
 
  Number of obs: 1934; levels of grouping factors: 60
 
 Fixed-effects parameters:
                Estimate  Std.Error  z value P(>|z|)
-(Intercept)    -1.68982   0.145706 -11.5975  <1e-30
-a            -0.0265921 0.00782925 -3.39651  0.0007
-l: 1            1.10911   0.156852  7.07105  <1e-11
-l: 2            1.37627   0.173343  7.93957  <1e-14
-l: 3+            1.3453   0.177809  7.56598  <1e-13
-urb: Y          0.73235   0.118484  6.18102   <1e-9
+(Intercept)    -1.68871   0.145683 -11.5917  <1e-30
+a            -0.0265664 0.00782864 -3.39349  0.0007
+l: 1            1.10837   0.156839  7.06696  <1e-11
+l: 2            1.37544   0.173328   7.9355  <1e-14
+l: 3+           1.34429    0.17779  7.56115  <1e-13
+urb: Y         0.732131   0.118477   6.1795   <1e-9
 
 
 julia> @time deviance(fit!(GeneralizedLinearMixedModel(contraform, dat[:Contraception], Bernoulli()), nAGQ=9, fast=true))
-  0.039671 seconds (411.62 k allocations: 4.317 MiB, 6.89% gc time)
-2413.663718869012
+  0.049685 seconds (423.38 k allocations: 4.970 MiB)
+2413.6637188688405
 
 julia> @time deviance(fit!(GeneralizedLinearMixedModel(contraform, dat[:Contraception], Bernoulli())))
-  0.625872 seconds (4.42 M allocations: 39.021 MiB, 0.50% gc time)
-2413.6156912345245
+  0.568639 seconds (4.67 M allocations: 41.168 MiB, 1.33% gc time)
+2413.6156906517303
 
 julia> @time deviance(fit!(GeneralizedLinearMixedModel(contraform, dat[:Contraception], Bernoulli()), fast=true))
-  0.051843 seconds (217.78 k allocations: 2.884 MiB, 6.08% gc time)
-2413.6618664984017
+  0.029177 seconds (237.74 k allocations: 3.055 MiB)
+2413.661866498401
 
 ````
 
@@ -437,13 +437,13 @@ nobs(::StatisticalModel)
 ```
 ````julia
 julia> loglikelihood(fm1)
--163.66352994056865
+-163.66352994057004
 
 julia> aic(fm1)
-333.3270598811373
+333.3270598811401
 
 julia> bic(fm1)
-337.5306520261238
+337.5306520261266
 
 julia> dof(fm1)   # 1 fixed effect, 2 variances
 3
@@ -452,7 +452,7 @@ julia> nobs(fm1)  # 30 observations
 30
 
 julia> loglikelihood(gm1)
--4067.916429808715
+-4067.9164292897494
 
 ````
 
@@ -473,10 +473,10 @@ This value is also accessible as the `deviance` but the user should bear in mind
 For example, it is not necessarily non-negative.
 ````julia
 julia> objective(fm1)
-327.3270598811373
+327.3270598811401
 
 julia> deviance(fm1)
-327.3270598811373
+327.3270598811401
 
 ````
 
@@ -490,7 +490,7 @@ deviance!
 ```
 ````julia
 julia> MixedModels.deviance!(gm1)
-8135.832859617447
+8135.8328585795025
 
 ````
 
@@ -511,7 +511,7 @@ julia> show(coef(fm1))
 julia> show(fixef(fm1))
 [1527.5]
 julia> show(fixef(gm1))
-[0.0574216, -1.05402, -0.707036, -1.05979, 0.320801, -2.1038, 0.553223]
+[0.0574142, -1.05408, -0.70706, -1.05979, 0.320715, -2.10387, 0.553482]
 ````
 
 
@@ -530,13 +530,13 @@ julia> vcov(fm2)
 
 julia> vcov(gm1)
 7×7 Array{Float64,2}:
-  0.148506    -0.00560462   -0.00977081   …  -0.0114554    -0.0114566  
- -0.00560462   0.000280655   7.19123e-5      -1.47964e-5   -1.02415e-5 
- -0.00977081   7.19123e-5    0.03656         -8.04385e-5   -5.25882e-5 
- -0.0169716   -1.43714e-5   -9.25614e-5       0.000265781   0.000172095
- -0.017144    -2.90564e-5   -0.000162389      0.000658924   0.000520519
- -0.0114554   -1.47964e-5   -8.04385e-5   …   0.0228606     0.00024777 
- -0.0114566   -1.02415e-5   -5.25882e-5       0.00024777    0.0228041  
+  0.148508    -0.00560481   -0.00977113   …  -0.0114546    -0.0114558  
+ -0.00560481   0.000280664   7.1914e-5       -1.47964e-5   -1.02415e-5 
+ -0.00977113   7.1914e-5     0.0365613       -8.0437e-5    -5.2587e-5  
+ -0.0169703   -1.43713e-5   -9.25596e-5       0.000265787   0.000172098
+ -0.0171428   -2.90563e-5   -0.000162386      0.000658938   0.000520526
+ -0.0114546   -1.47964e-5   -8.0437e-5    …   0.0228589     0.000247775
+ -0.0114558   -1.02415e-5   -5.2587e-5        0.000247775   0.0228024  
 
 ````
 
@@ -552,7 +552,7 @@ stderror
 julia> show(StatsBase.stderror(fm2))
 [6.63226, 1.50224]
 julia> show(StatsBase.stderror(gm1))
-[0.385364, 0.0167528, 0.191207, 0.184162, 0.186521, 0.151197, 0.15101]
+[0.385367, 0.016753, 0.19121, 0.184155, 0.186514, 0.151192, 0.151005]
 ````
 
 
@@ -586,17 +586,17 @@ VarCorr
 ````julia
 julia> VarCorr(fm2)
 Variance components:
-              Column    Variance  Std.Dev.   Corr.
- G        (Intercept)  565.51067 23.780468
-          U             32.68212  5.716828  0.08
- Residual              654.94145 25.591824
+              Column    Variance   Std.Dev.   Corr.
+ G        (Intercept)  565.510675 23.780468
+          U             32.682123  5.716828  0.08
+ Residual              654.941448 25.591824
 
 
 julia> VarCorr(gm1)
 Variance components:
-          Column     Variance   Std.Dev. 
- id   (Intercept)  1.793480630 1.3392090
- item (Intercept)  0.117154495 0.3422784
+          Column    Variance   Std.Dev.  
+ id   (Intercept)  1.79354795 1.33923409
+ item (Intercept)  0.11714433 0.34226354
 
 
 ````
@@ -612,10 +612,10 @@ sdest
 ```
 ````julia
 julia> varest(fm2)
-654.941450830681
+654.9414479434892
 
 julia> sdest(fm2)
-25.591823905901684
+25.591823849493203
 
 ````
 

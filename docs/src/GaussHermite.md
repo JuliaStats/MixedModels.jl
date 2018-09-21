@@ -33,7 +33,7 @@ For a `k`th order normalized Gauss-Hermite rule the tridiagonal matrix has zeros
 julia> using LinearAlgebra
 
 julia> sym3 = SymTridiagonal(zeros(3), sqrt.(1:2))
-3×3 SymTridiagonal{Float64,Array{Float64,1}}:
+3×3 LinearAlgebra.SymTridiagonal{Float64,Array{Float64,1}}:
  0.0  1.0       ⋅     
  1.0  0.0      1.41421
   ⋅   1.41421  0.0    
@@ -73,22 +73,11 @@ julia> gausshermitenorm(3)
 
 The weights and positions are often shown as a *lollipop plot*.
 For the 9th order rule these are
-<pre class="julia-error">
-ERROR: Failed to precompile Gadfly &#91;c91e804a-d5a3-530f-b6f0-dfbca275c004&#93; to /home/bates/.julia/compiled/v1.0/Gadfly/DvECm.ji.
-</pre>
-
-
-<pre class="julia-error">
-ERROR: UndefVarError: Guide not defined
-</pre>
-
+![Lollipop plot of 9th order normalized Gauss-Hermite rule](./assets//GaussHermite_4_1.svg)
 
 
 Notice that the magnitudes of the weights drop quite dramatically away from zero, even on a logarithmic scale
-<pre class="julia-error">
-ERROR: UndefVarError: Guide not defined
-</pre>
-
+![Lollipop plot of 9th order normalized Gauss-Hermite rule (logarithmic scale](./assets//GaussHermite_5_1.svg)
 
 
 
@@ -166,10 +155,7 @@ julia> describe(contra)
 
 
 Because a smoothed scatterplot of contraception use versus age
-<pre class="julia-error">
-ERROR: UndefVarError: Guide not defined
-</pre>
-
+![Scatterplot smooth of contraception use versus age](./assets//GaussHermite_9_1.svg)
 
 
 shows that the proportion of women using artificial contraception is approximately quadratic in age,
@@ -183,14 +169,14 @@ julia> m1 = fit!(GeneralizedLinearMixedModel(form1, contra,
     Bernoulli()), fast=true)
 Generalized Linear Mixed Model fit by maximum likelihood (nAGQ = 1)
   Formula: use ~ 1 + a + a2 + l + urb + (1 | d)
-  Distribution: Bernoulli{Float64}
-  Link: LogitLink()
+  Distribution: Distributions.Bernoulli{Float64}
+  Link: GLM.LogitLink()
 
   Deviance: 2372.7844
 
 Variance components:
        Column    Variance   Std.Dev.  
- d (Intercept)  0.22532962 0.47468897
+ d (Intercept)  0.22532961 0.47468897
 
  Number of obs: 1934; levels of grouping factors: 60
 
@@ -245,7 +231,7 @@ This is primarily due to different sample sizes in the different districts.
 julia> using FreqTables
 
 julia> freqtable(contra, :d)'
-1×60 Named Adjoint{Int64,Array{Int64,1}}
+1×60 Named LinearAlgebra.Adjoint{Int64,Array{Int64,1}}
 ' ╲ d │   1    2    3    4    5    6    7  …   55   56   57   58   59   60   61
 ──────┼────────────────────────────────────────────────────────────────────────
 1     │ 117   20    2   30   39   65   18  …    6   45   27   33   10   32   42
@@ -279,18 +265,12 @@ end
 
 
 A plot of the deviance contribution versus $u_1$
-<pre class="julia-error">
-ERROR: UndefVarError: Guide not defined
-</pre>
-
+![Deviance contribution of u₁](./assets//GaussHermite_14_1.svg)
 
 
 shows that the deviance contribution is very close to a quadratic.
 This is also true for $u_3$
-<pre class="julia-error">
-ERROR: UndefVarError: Guide not defined
-</pre>
-
+![Deviance contribution of u₃](./assets//GaussHermite_15_1.svg)
 
 
 
@@ -311,7 +291,7 @@ As shown below, this is an estimate of the conditional standard deviations of th
 julia> const s = inv.(m1.LMM.L.data[Block(1,1)].diag);
 
 julia> s'
-1×60 Adjoint{Float64,Array{Float64,1}}:
+1×60 LinearAlgebra.Adjoint{Float64,Array{Float64,1}}:
  0.406889  0.713511  0.952164  0.627135  …  0.839679  0.654965  0.60326
 
 ````
@@ -335,15 +315,9 @@ end
 
 
 
-<pre class="julia-error">
-ERROR: UndefVarError: Guide not defined
-</pre>
+![Scaled and shifted deviance contributions](./assets//GaussHermite_19_1.svg)
 
-
-<pre class="julia-error">
-ERROR: UndefVarError: Guide not defined
-</pre>
-
+![Scaled and shifted deviance contributions](./assets//GaussHermite_20_1.svg)
 
 
 
@@ -362,15 +336,9 @@ end
 
 
 
-<pre class="julia-error">
-ERROR: UndefVarError: Guide not defined
-</pre>
+![Scaled and shifted conditional density](./assets//GaussHermite_22_1.svg)
 
-
-<pre class="julia-error">
-ERROR: UndefVarError: Guide not defined
-</pre>
-
+![Scaled and shifted conditional density](./assets//GaussHermite_23_1.svg)
 
 
 and the function to be integrated with the normalized Gauss-Hermite rule is
@@ -388,12 +356,6 @@ end
 
 
 
-<pre class="julia-error">
-ERROR: UndefVarError: Guide not defined
-</pre>
+![Function to be integrated with normalized Gauss-Hermite rule](./assets//GaussHermite_25_1.svg)
 
-
-<pre class="julia-error">
-ERROR: UndefVarError: Guide not defined
-</pre>
-
+![Function to be integrated with normalized Gauss-Hermite rule](./assets//GaussHermite_26_1.svg)

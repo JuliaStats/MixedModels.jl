@@ -14,6 +14,7 @@ The value, $\bf y$, of $\mathcal{Y}$ is observed; the value, $\bf b$, of $\mathc
 ## Linear Mixed-Effects Models
 
 In a linear mixed model the unconditional distribution of $\mathcal{B}$ and the conditional distribution, $(\mathcal{Y} | \mathcal{B}=\bf{b})$, are both multivariate Gaussian distributions,
+
 \begin{equation}
 \begin{aligned}
   (\mathcal{Y} | \mathcal{B}=\bf{b}) &\sim\mathcal{N}(\bf{ X\beta + Z b},\sigma^2\bf{I})\\\\
@@ -26,61 +27,78 @@ The *model matrices*, $\bf X$ and $\bf Z$, of dimension $n\times p$ and $n\times
 Although the matrix $\bf Z$ can be large (i.e. both $n$ and $q$ can be large), it is sparse (i.e. most of the elements in the matrix are zero).
 
 The *relative covariance factor*, $\Lambda_\theta$, is a $q\times q$ lower-triangular matrix, depending on the *variance-component parameter*, $\bf\theta$, and generating the symmetric $q\times q$ variance-covariance matrix, $\Sigma_\theta$, as
+
 \begin{equation}
-  \Sigma_\theta=\sigma^2\Lambda_\theta\Lambda_\theta'
+\Sigma_\theta=\sigma^2\Lambda_\theta\Lambda_\theta'
 \end{equation}
 
 The *spherical random effects*, $\mathcal{U}\sim\mathcal{N}({\bf 0},\sigma^2{\bf I}_q)$, determine $\mathcal B$ according to
+
 \begin{equation}
-  \mathcal{B}=\Lambda_\theta\mathcal{U}.
+\mathcal{B}=\Lambda_\theta\mathcal{U}.
 \end{equation}
 
 The *penalized residual sum of squares* (PRSS),
+
 \begin{equation}
-  r^2(\theta,\beta,{\bf u})=\|{\bf y} -{\bf X}\beta -{\bf Z}\Lambda_\theta{\bf u}\|^2+\|{\bf u}\|^2,
+r^2(\theta,\beta,{\bf u})=\|{\bf y} -{\bf X}\beta -{\bf Z}\Lambda_\theta{\bf u}\|^2+\|{\bf u}\|^2,
 \end{equation}
+
 is the sum of the residual sum of squares, measuring fidelity of the model to the data, and a penalty on the size of $\bf u$, measuring the complexity of the model.
 Minimizing $r^2$ with respect to $\bf u$,
+
 \begin{equation}
-  r^2_{\beta,\theta} =\min_{\bf u}\left(\|{\bf y} -{\bf X}{\beta} -{\bf Z}\Lambda_\theta{\bf u}\|^2+\|{\bf u}\|^2\right)
+r^2_{\beta,\theta} =\min_{\bf u}\left(\|{\bf y} -{\bf X}{\beta} -{\bf Z}\Lambda_\theta{\bf u}\|^2+\|{\bf u}\|^2\right)
 \end{equation}
+
 is a direct (i.e. non-iterative) computation.
 The particular method used to solve this generates a *blocked Choleksy factor*, ${\bf L}_\theta$, which is an lower triangular $q\times q$ matrix satisfying
+
 \begin{equation}
-  {\bf L}_\theta{\bf L}_\theta'=\Lambda_\theta'{\bf Z}'{\bf Z}\Lambda_\theta+{\bf I}_q .
+{\bf L}_\theta{\bf L}_\theta'=\Lambda_\theta'{\bf Z}'{\bf Z}\Lambda_\theta+{\bf I}_q .
 \end{equation}
+
 where ${\bf I}_q$ is the $q\times q$ *identity matrix*.
 
 Negative twice the log-likelihood of the parameters, given the data, $\bf y$, is
+
 \begin{equation}
 d({\bf\theta},{\bf\beta},\sigma|{\bf y})
 =n\log(2\pi\sigma^2)+\log(|{\bf L}_\theta|^2)+\frac{r^2_{\beta,\theta}}{\sigma^2}.
 \end{equation}
+
 where $|{\bf L}_\theta|$ denotes the *determinant* of ${\bf L}_\theta$.
 Because ${\bf L}_\theta$ is triangular, its determinant is the product of its diagonal elements.
 
 Because the conditional mean, $\bf\mu_{\mathcal Y|\mathcal B=\bf b}=\bf
 X\bf\beta+\bf Z\Lambda_\theta\bf u$, is a linear function of both $\bf\beta$ and $\bf u$, minimization of the PRSS with respect to both $\bf\beta$ and $\bf u$ to produce
+
 \begin{equation}
 r^2_\theta =\min_{{\bf\beta},{\bf u}}\left(\|{\bf y} -{\bf X}{\bf\beta} -{\bf Z}\Lambda_\theta{\bf u}\|^2+\|{\bf u}\|^2\right)
 \end{equation}
+
 is also a direct calculation.
 The values of $\bf u$ and $\bf\beta$ that provide this minimum are called, respectively, the *conditional mode*, $\tilde{\bf u}_\theta$, of the spherical random effects and the conditional estimate, $\widehat{\bf\beta}_\theta$, of the fixed effects.
 At the conditional estimate of the fixed effects the objective is
+
 \begin{equation}
 d({\bf\theta},\widehat{\beta}_\theta,\sigma|{\bf y})
 =n\log(2\pi\sigma^2)+\log(|{\bf L}_\theta|^2)+\frac{r^2_\theta}{\sigma^2}.
 \end{equation}
 
 Minimizing this expression with respect to $\sigma^2$ produces the conditional estimate
+
 \begin{equation}
 \widehat{\sigma^2}_\theta=\frac{r^2_\theta}{n}
 \end{equation}
+
 which provides the *profiled log-likelihood* on the deviance scale as
+
 \begin{equation}
 \tilde{d}(\theta|{\bf y})=d(\theta,\widehat{\beta}_\theta,\widehat{\sigma}_\theta|{\bf y})
 =\log(|{\bf L}_\theta|^2)+n\left[1+\log\left(\frac{2\pi r^2_\theta}{n}\right)\right],
 \end{equation}
+
 a function of $\bf\theta$ alone.
 
 The MLE of $\bf\theta$, written $\widehat{\bf\theta}$, is the value that minimizes this profiled objective.
@@ -88,10 +106,11 @@ We determine this value by numerical optimization.
 In the process of evaluating $\tilde{d}(\widehat{\theta}|{\bf y})$ we determine $\widehat{\beta}=\widehat{\beta}_{\widehat\theta}$, $\tilde{\bf u}_{\widehat{\theta}}$ and $r^2_{\widehat{\theta}}$, from which we can evaluate $\widehat{\sigma}=\sqrt{r^2_{\widehat{\theta}}/n}$.
 
 The elements of the conditional mode of $\mathcal B$, evaluated at the parameter estimates,
+
 \begin{equation}
-\tilde{\bf b}_{\widehat{\theta}}=
-\Lambda_{\widehat{\theta}}\tilde{\bf u}_{\widehat{\theta}}
+\tilde{\bf b}_{\widehat{\theta}}=\Lambda_{\widehat{\theta}}\tilde{\bf u}_{\widehat{\theta}}
 \end{equation}
+
 are sometimes called the *best linear unbiased predictors* or BLUPs of the random effects.
 Although BLUPs an appealing acronym, I don’t find the term particularly instructive (what is a “linear unbiased predictor” and in what sense are these the “best”?) and prefer the term “conditional modes”, because these are the values of $\bf b$ that maximize the density of the conditional distribution $\mathcal{B} | \mathcal{Y} = {\bf y}$.
 For a linear mixed model, where all the conditional and unconditional distributions are Gaussian, these values are also the *conditional means*.
@@ -128,7 +147,7 @@ Variance components:
 the only random effects term in the formula is `(1|G)`, a simple, scalar random-effects term.
 ````julia
 julia> t1 = fm1.trms[1]
-ScalarFactorReTerm{Float64,UInt8}(UInt8[0x01, 0x01, 0x01, 0x01, 0x01, 0x02, 0x02, 0x02, 0x02, 0x02  …  0x05, 0x05, 0x05, 0x05, 0x05, 0x06, 0x06, 0x06, 0x06, 0x06], ["A", "B", "C", "D", "E", "F"], [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0  …  1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0], [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0  …  1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0], :G, ["(Intercept)"], 0.7525806932030558)
+ScalarFactorReTerm{Float64,UInt8}(UInt8[0x01, 0x01, 0x01, 0x01, 0x01, 0x02, 0x02, 0x02, 0x02, 0x02  …  0x05, 0x05, 0x05, 0x05, 0x05, 0x06, 0x06, 0x06, 0x06, 0x06], ["A", "B", "C", "D", "E", "F"], [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0  …  1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0], [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0  …  1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0], :G, ["(Intercept)"], 0.7525806916429085)
 
 ````
 
@@ -143,10 +162,10 @@ This `ScalarFactorReTerm` contributes a block of columns to the model matrix $\b
 ````julia
 julia> getθ(t1)
 1-element Array{Float64,1}:
- 0.7525806932030558
+ 0.7525806916429085
 
 julia> getΛ(t1)
-0.7525806932030558
+0.7525806916429085
 
 julia> convert(Array{Int}, Matrix(t1)) # matrix is floating point but integer-valued
 30×6 Array{Int64,2}:
@@ -191,10 +210,10 @@ Linear mixed model fit by maximum likelihood
  -875.96967 1751.93934 1763.93934 1783.09709
 
 Variance components:
-              Column    Variance  Std.Dev.   Corr.
- G        (Intercept)  565.51067 23.780468
-          U             32.68212  5.716828  0.08
- Residual              654.94145 25.591824
+              Column    Variance   Std.Dev.   Corr.
+ G        (Intercept)  565.510675 23.780468
+          U             32.682123  5.716828  0.08
+ Residual              654.941448 25.591824
  Number of obs: 180; levels of grouping factors: 18
 
   Fixed-effects parameters:
@@ -248,7 +267,7 @@ julia> convert(Array{Int}, Matrix(t21))
 and $\Lambda_\theta$ is a $36\times36$ block diagonal matrix with $18$ diagonal blocks, all of the form
 ````julia
 julia> getΛ(t21)
-2×2 LowerTriangular{Float64,Array{Float64,2}}:
+2×2 LinearAlgebra.LowerTriangular{Float64,Array{Float64,2}}:
  0.929221    ⋅      
  0.0181684  0.222645
 
@@ -261,9 +280,9 @@ The $\theta$ vector is
 ````julia
 julia> getθ(t21)
 3-element Array{Float64,1}:
- 0.929221316877856   
- 0.018168376276495105
- 0.22264487411010955 
+ 0.9292213207755098  
+ 0.018168375197030517
+ 0.2226448795181448  
 
 ````
 
@@ -281,7 +300,7 @@ Linear mixed model fit by maximum likelihood
 
 Variance components:
               Column    Variance  Std.Dev.   Corr.
- G        (Intercept)  584.258973 24.17145
+ G        (Intercept)  584.258972 24.17145
           U             33.632805  5.79938  0.00
  Residual              653.115782 25.55613
  Number of obs: 180; levels of grouping factors: 18
@@ -303,14 +322,14 @@ VectorFactorReTerm{Float64,UInt8,2}(UInt8[0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x
 For this model the matrix $\bf Z$ is the same as that of model `fm2` but the diagonal blocks of $\Lambda_\theta$ are themselves diagonal.
 ````julia
 julia> getΛ(t31)
-2×2 LowerTriangular{Float64,Array{Float64,2}}:
+2×2 LinearAlgebra.LowerTriangular{Float64,Array{Float64,2}}:
  0.945818   ⋅      
  0.0       0.226927
 
 julia> getθ(t31)
 2-element Array{Float64,1}:
- 0.9458180688242811
- 0.2269271487186899
+ 0.9458180679955643 
+ 0.22692714885616277
 
 ````
 
@@ -327,10 +346,10 @@ Linear mixed model fit by maximum likelihood
  -166.09417  332.18835  340.18835  352.06760
 
 Variance components:
-              Column    Variance   Std.Dev. 
- G        (Intercept)  0.71497949 0.8455646
- H        (Intercept)  3.13519326 1.7706477
- Residual              0.30242640 0.5499331
+              Column    Variance  Std.Dev. 
+ G        (Intercept)  0.7149795 0.8455646
+ H        (Intercept)  3.1351929 1.7706476
+ Residual              0.3024264 0.5499331
  Number of obs: 144; levels of grouping factors: 24, 6
 
   Fixed-effects parameters:
@@ -339,10 +358,10 @@ Variance components:
 
 
 julia> t41 = fm4.trms[1]
-ScalarFactorReTerm{Float64,UInt8}(UInt8[0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x02, 0x02, 0x02, 0x02  …  0x17, 0x17, 0x17, 0x17, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18], ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"  …  "o", "p", "q", "r", "s", "t", "u", "v", "w", "x"], [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0  …  1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0], [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0  …  1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0], :G, ["(Intercept)"], 1.5375772478878553)
+ScalarFactorReTerm{Float64,UInt8}(UInt8[0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x02, 0x02, 0x02, 0x02  …  0x17, 0x17, 0x17, 0x17, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18], ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"  …  "o", "p", "q", "r", "s", "t", "u", "v", "w", "x"], [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0  …  1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0], [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0  …  1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0], :G, ["(Intercept)"], 1.5375772633492775)
 
 julia> t42 = fm4.trms[2]
-ScalarFactorReTerm{Float64,UInt8}(UInt8[0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x01, 0x02, 0x03, 0x04  …  0x03, 0x04, 0x05, 0x06, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06], ["A", "B", "C", "D", "E", "F"], [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0  …  1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0], [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0  …  1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0], :H, ["(Intercept)"], 3.2197511648538444)
+ScalarFactorReTerm{Float64,UInt8}(UInt8[0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x01, 0x02, 0x03, 0x04  …  0x03, 0x04, 0x05, 0x06, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06], ["A", "B", "C", "D", "E", "F"], [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0  …  1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0], [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0  …  1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0], :H, ["(Intercept)"], 3.219750970454426)
 
 ````
 
@@ -448,7 +467,7 @@ object, which is the `optsum` member of the `LinearMixedModel`.
 ````julia
 julia> fm2.optsum
 Initial parameter vector: [1.0, 0.0, 1.0]
-Initial objective value:  1784.6422961924507
+Initial objective value:  1784.6422961924623
 
 Optimizer (from NLopt):   LN_BOBYQA
 Lower bounds:             [0.0, -Inf, 0.0]
@@ -461,7 +480,7 @@ maxfeval:                 -1
 
 Function evaluations:     57
 Final parameter vector:   [0.929221, 0.0181684, 0.222645]
-Final objective value:    1751.9393444646757
+Final objective value:    1751.9393444646912
 Return code:              FTOL_REACHED
 
 
@@ -503,7 +522,7 @@ U             10.4673   1.50222  6.9679  <1e-11
 
 julia> fm2.optsum
 Initial parameter vector: [1.0, 0.0, 1.0]
-Initial objective value:  1784.6422961924507
+Initial objective value:  1784.6422961924623
 
 Optimizer (from NLopt):   LN_NELDERMEAD
 Lower bounds:             [0.0, -Inf, 0.0]
@@ -516,7 +535,7 @@ maxfeval:                 -1
 
 Function evaluations:     140
 Final parameter vector:   [0.929236, 0.0181688, 0.222641]
-Final objective value:    1751.9393444749974
+Final objective value:    1751.939344474996
 Return code:              FTOL_REACHED
 
 
@@ -550,12 +569,14 @@ The unconstrained components of $\eta$ are mapped to the, possiby constrained, c
 For historical reasons, the inverse of this function, taking components of $\mu$ to the corresponding component of $\eta$ is called the *link function* and more frequently used map from $\eta$ to $\mu$ is the *inverse link*.
 
 A *generalized linear mixed-effects model* (GLMM) is defined, for the purposes of this package, by
+
 \begin{equation}
 \begin{aligned}
   (\mathcal{Y} | \mathcal{B}=\bf{b}) &\sim\mathcal{D}(\bf{g^{-1}(X\beta + Z b)},\phi)\\\\
   \mathcal{B}&\sim\mathcal{N}(\bf{0},\Sigma_\theta) .
 \end{aligned}
 \end{equation}
+
 where $\mathcal{D}$ indicates the distribution family parameterized by the mean and, when needed, a common scale parameter, $\phi$.
 (There is no scale parameter for `Bernoulli` or for `Poisson`.
 Specifying the mean completely determines the distribution.)
@@ -586,12 +607,12 @@ The starting estimate for $\beta$ is determined by fitting a GLM to the fixed-ef
 ````julia
 julia> mdl.β
 6-element Array{Float64,1}:
-  0.039940376051149765
- -0.7766556048305931  
- -0.7941857249205394  
-  0.23131667674984369 
- -1.5391882085456954  
-  0.2060530221032335  
+  0.0399403760511496 
+ -0.7766556048305922 
+ -0.7941857249205367 
+  0.23131667674984427
+ -1.5391882085456925 
+  0.2060530221032339 
 
 ````
 
@@ -638,9 +659,9 @@ obj = 8201.89659746689
 iter = 4
 obj = 8201.848598910705
 iter = 5
-obj = 8201.848559060703
+obj = 8201.848559060705
 iter = 6
-obj = 8201.848559060623
+obj = 8201.848559060621
 Generalized Linear Mixed Model fit by maximum likelihood (nAGQ = 1)
   Formula: r2 ~ 1 + a + g + b + s + (1 | id) + (1 | item)
   Distribution: Bernoulli{Float64}
@@ -671,7 +692,7 @@ s: self      -0.979493  0.412168 -2.37644  0.0175
 
 ````julia
 julia> deviance(mdl)
-8201.848559060623
+8201.848559060621
 
 ````
 
@@ -680,12 +701,12 @@ julia> deviance(mdl)
 ````julia
 julia> mdl.β
 6-element Array{Float64,1}:
-  0.051438542580815434
- -0.9794925718038259  
- -0.9791237061900352  
-  0.29022454166301187 
- -1.9540167628141156  
-  0.21853493716522268 
+  0.05143854258081302
+ -0.9794925718037633 
+ -0.9791237061899951 
+  0.29022454166301037
+ -1.9540167628140128 
+  0.21853493716520428
 
 ````
 
@@ -758,7 +779,7 @@ As one would hope, given the name of the option, this fit is comparatively fast.
 ````julia
 julia> @time(fit!(GeneralizedLinearMixedModel(@formula(r2 ~ 1 + a + g + b + s + (1 | id) + (1 | item)), 
         dat[:VerbAgg], Bernoulli()), fast=true))
-  1.226362 seconds (2.07 M allocations: 22.624 MiB, 0.80% gc time)
+  0.353420 seconds (2.08 M allocations: 22.976 MiB, 2.85% gc time)
 Generalized Linear Mixed Model fit by maximum likelihood (nAGQ = 1)
   Formula: r2 ~ 1 + a + g + b + s + (1 | id) + (1 | item)
   Distribution: Bernoulli{Float64}
@@ -795,7 +816,7 @@ Because it is slower to incorporate the $\beta$ parameters in the general nonlin
 ````julia
 julia> @time mdl1 = fit!(GeneralizedLinearMixedModel(@formula(r2 ~ 1+a+g+b+s+(1|id)+(1|item)), 
         dat[:VerbAgg], Bernoulli()))
- 53.809381 seconds (61.66 M allocations: 508.662 MiB, 0.27% gc time)
+  9.644185 seconds (67.58 M allocations: 549.651 MiB, 1.12% gc time)
 Generalized Linear Mixed Model fit by maximum likelihood (nAGQ = 1)
   Formula: r2 ~ 1 + a + g + b + s + (1 | id) + (1 | item)
   Distribution: Bernoulli{Float64}
@@ -804,20 +825,20 @@ Generalized Linear Mixed Model fit by maximum likelihood (nAGQ = 1)
   Deviance: 8151.3997
 
 Variance components:
-          Column    Variance   Std.Dev. 
- id   (Intercept)  1.79484880 1.3397197
- item (Intercept)  0.24532098 0.4952989
+          Column    Variance   Std.Dev.  
+ id   (Intercept)  1.79495852 1.33976062
+ item (Intercept)  0.24530649 0.49528425
 
  Number of obs: 7584; levels of grouping factors: 316, 24
 
 Fixed-effects parameters:
               Estimate Std.Error  z value P(>|z|)
-(Intercept)   0.198989  0.405179 0.491114  0.6233
-a            0.0574285 0.0167574  3.42705  0.0006
-g: M          0.320731   0.19126  1.67694  0.0936
-b: scold      -1.05884  0.256803 -4.12316   <1e-4
-b: shout      -2.10547  0.258526 -8.14412  <1e-15
-s: self       -1.05523    0.2103 -5.01774   <1e-6
+(Intercept)   0.198877  0.405184  0.49083  0.6235
+a            0.0574199 0.0167578  3.42645  0.0006
+g: M          0.320705  0.191265  1.67676  0.0936
+b: scold      -1.05865  0.256796 -4.12254   <1e-4
+b: shout      -2.10531  0.258519 -8.14373  <1e-15
+s: self       -1.05484  0.210294   -5.016   <1e-6
 
 
 ````
@@ -834,7 +855,7 @@ The comparison of the slow and fast fit is available in the optimization summary
 ````julia
 julia> mdl1.LMM.optsum
 Initial parameter vector: [0.0543791, -1.01344, -1.0165, 0.304089, -2.0218, 0.208273, 1.33956, 0.496833]
-Initial objective value:  8151.583340131868
+Initial objective value:  8151.583340131869
 
 Optimizer (from NLopt):   LN_BOBYQA
 Lower bounds:             [-Inf, -Inf, -Inf, -Inf, -Inf, -Inf, 0.0, 0.0]
@@ -845,9 +866,9 @@ xtol_abs:                 [1.0e-10, 1.0e-10]
 initial_step:             [0.135142, 0.00558444, 0.0637411, 0.0858438, 0.0864116, 0.0702961, 0.05, 0.05]
 maxfeval:                 -1
 
-Function evaluations:     1100
-Final parameter vector:   [0.0574285, -1.05523, -1.05884, 0.320731, -2.10547, 0.198989, 1.33972, 0.495299]
-Final objective value:    8151.399721088063
+Function evaluations:     1213
+Final parameter vector:   [0.0574199, -1.05484, -1.05865, 0.320705, -2.10531, 0.198877, 1.33976, 0.495284]
+Final objective value:    8151.399730117162
 Return code:              FTOL_REACHED
 
 

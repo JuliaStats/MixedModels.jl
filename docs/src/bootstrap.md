@@ -23,7 +23,6 @@ For example, a simple linear mixed-effects model for the `Dyestuff` data in the 
 package for [`R`](https://www.r-project.org) is fit by
 ````julia
 julia> using DataFrames, MixedModels, RData, Gadfly
-Error: Failed to precompile Gadfly [c91e804a-d5a3-530f-b6f0-dfbca275c004] to /home/bates/.julia/compiled/v1.0/Gadfly/DvECm.ji.
 
 ````
 
@@ -80,10 +79,9 @@ Variance components:
 Now bootstrap the model parameters
 ````julia
 julia> results = bootstrap(100_000, m1);
-Error: UndefVarError: warn not defined
 
 julia> showcompact(names(results))
-Error: UndefVarError: results not defined
+Error: UndefVarError: showcompact not defined
 
 ````
 
@@ -98,20 +96,11 @@ plot(results, x = :σ, Geom.density, Guide.xlabel("Parametric bootstrap estimate
 ````
 
 
-<pre class="julia-error">
-ERROR: UndefVarError: Guide not defined
-</pre>
+![Density of parametric bootstrap estimates of σ from model m1](./assets//bootstrap_6_1.svg)
 
+![Density of parametric bootstrap estimates of σ₁ from model m1](./assets//bootstrap_7_1.svg)
 
-<pre class="julia-error">
-ERROR: UndefVarError: Guide not defined
-</pre>
-
-
-<pre class="julia-error">
-ERROR: UndefVarError: Guide not defined
-</pre>
-
+![Histogram of parametric bootstrap estimates of σ₁ from model m1](./assets//bootstrap_8_1.svg)
 
 
 
