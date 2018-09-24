@@ -416,7 +416,7 @@ LinearAlgebra.mul!(C::Matrix{T}, adjA::Adjoint{T,<:MatrixTerm{T}}, B::VectorFact
 
 function LinearAlgebra.mul!(C::Diagonal{T}, adjA::Adjoint{T,<:ScalarFactorReTerm{T,R}},
                             B::ScalarFactorReTerm{T,R}) where {T,R}
-	A = adjA.parent
+    A = adjA.parent
     @argcheck A === B
     d = C.diag
     fill!(d, zero(T))
@@ -433,7 +433,7 @@ function *(adjA::Adjoint{T,<:ScalarFactorReTerm{T,R}}, B::ScalarFactorReTerm{T,S
 end
 
 function *(adjA::Adjoint{T,<:VectorFactorReTerm{T}}, B::ScalarFactorReTerm{T}) where {T}
-	A = adjA.parent
+    A = adjA.parent
     nzeros = copy(A.wtz)
     k, n = size(nzeros)
     rowind = Matrix{Int32}(undef, k, n)
@@ -578,7 +578,7 @@ end
 function LinearAlgebra.mul!(C::Matrix{T}, adjA::Adjoint{T,<:VectorFactorReTerm{T,R,S}},
                             B::ScalarFactorReTerm{T}) where {T,R,S}
     m, n = size(B)
-	A = adjA.parent
+    A = adjA.parent
     @argcheck size(C, 1) == size(A, 2) && n == size(C, 2) && size(A, 1) == m DimensionMismatch
     Ar = A.refs
     Br = B.refs
