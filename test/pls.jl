@@ -11,6 +11,7 @@ end
     @test size(fm1.trms) == (3, )
     @test nblocks(fm1.L.data) == (3, 3)
     @test lowerbd(fm1) == zeros(1)
+    @test fm1.lowerbd == zeros(1)
     @test getθ(fm1) == ones(1)
     @test getΛ(fm1) == [1.0]
 
@@ -20,14 +21,18 @@ end
     fit!(fm1);
     @test isapprox(objective(fm1), 327.3270598811428, atol=0.001)
     @test isapprox(getθ(fm1), [0.752580], atol=1.e-5)
+    @test isapprox(fm1.θ, [0.752580], atol=1.e-5)
     @test isapprox(deviance(fm1), 327.32705988, atol=0.001)
     @test isapprox(aic(fm1), 333.3270598811394, atol=0.001)
     @test isapprox(bic(fm1), 337.5306520261259, atol=0.001)
     @test fixef(fm1) ≈ [1527.5]
+    @test fm1.β ≈ [1527.5]
     @test StatsBase.dof(fm1) == 3
     @test StatsBase.nobs(fm1) == 30
     @test MixedModels.fixef!(zeros(1),fm1) ≈ [1527.5]
     @test coef(fm1) ≈ [1527.5]
+    @test fm1.X == ones(30,1)
+    @test fm1.y == dat[:Dyestuff][:Y]
     @test cond(fm1) == ones(1)
     cm = coeftable(fm1)
     @test length(cm.rownms) == 1

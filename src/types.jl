@@ -189,6 +189,8 @@ Linear mixed-effects model representation
 * `b`: random effects on the original scale, as a vector of matrices
 * `u`: random effects on the orthogonal scale, as a vector of matrices
 * `lowerbd`: lower bounds on the elements of θ
+* `X`: the fixed-effects model matrix
+* `y`: the response vector
 """
 struct LinearMixedModel{T <: AbstractFloat} <: MixedModel{T}
     formula::Formula
@@ -216,10 +218,16 @@ function Base.getproperty(m::LinearMixedModel, s::Symbol)
         ranef(m, uscale = true)
     elseif s == :lowerbd
         m.optsum.lowerbd
+    elseif s == :X
+        m.trms[end - 1].x
+    elseif s == :y
+        vec(m.trms[end].x)
     else
         throw(ArgumentError(string("Unrecognized property name:", s)))
     end
 end
+
+Base.setproperty!(m::LinearMixedModel, s::Symbol, y) = s == :θ ? setθ!(m, y) : throw(ArgumentError("Property $s cannot be set"))
 
 struct RaggedArray{T,I}
     vals::Vector{T}
