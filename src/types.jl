@@ -171,13 +171,24 @@ abstract type MixedModel{T} <: RegressionModel end # model with fixed and random
 
 Linear mixed-effects model representation
 
-# Members
+## Fields
+
 * `formula`: the formula for the model
 * `trms`: a `Vector{AbstractTerm}` representing the model.  The last element is the response.
 * `sqrtwts`: vector of square roots of the case weights.  Can be empty.
 * `A`: an `nt × nt` symmetric `BlockMatrix` of matrices representing `hcat(Z,X,y)'hcat(Z,X,y)`
 * `L`: a `nt × nt` `BlockMatrix` - the lower Cholesky factor of `Λ'AΛ+I`
 * `optsum`: an [`OptSummary`](@ref) object
+
+## Properties
+
+* `θ` or `theta`: the covariance parameter vector used to form λ
+* `β` or `beta`: the fixed-effects coefficient vector
+* `λ` or `lambda`: a vector of lower triangular matrices repeated on the diagonal blocks of `Λ`
+* `σ` or `sigma`: current value of the standard deviation of the per-observation noise
+* `b`: random effects on the original scale, as a vector of matrices
+* `u`: random effects on the orthogonal scale, as a vector of matrices
+* `lowerbd`: lower bounds on the elements of θ
 """
 struct LinearMixedModel{T <: AbstractFloat} <: MixedModel{T}
     formula::Formula
@@ -186,6 +197,28 @@ struct LinearMixedModel{T <: AbstractFloat} <: MixedModel{T}
     A::BlockMatrix{T}            # cross-product blocks
     L::LowerTriangular{T,BlockArray{T,2,AbstractMatrix{T}}}
     optsum::OptSummary{T}
+end
+
+function Base.getproperty(m::LinearMixedModel, s::Symbol)
+    if s ∈ fieldnames(LinearMixedModel)
+        Core.getfield(m, s)
+    elseif s ∈ [:θ, :theta]
+        getθ(m)
+    elseif s ∈ [:β, :beta]
+        fixef(m)
+    elseif s ∈ [:λ, :lambda]
+        getΛ(m)
+    elseif s ∈ [:σ, :sigma]
+        sdest(m)
+    elseif s == :b
+        ranef(m)
+    elseif s == :u
+        ranef(m, uscale = true)
+    elseif s == :lowerbd
+        m.optsum.lowerbd
+    else
+        throw(ArgumentError(string("Unrecognized property name:", s)))
+    end
 end
 
 struct RaggedArray{T,I}
