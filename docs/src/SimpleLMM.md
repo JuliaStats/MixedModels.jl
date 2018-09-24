@@ -74,7 +74,6 @@ julia> using DataFrames, Distributions, GLM, LinearAlgebra, MixedModels
 julia> using Random, RCall, RData, SparseArrays
 
 julia> using Gadfly
-Error: Failed to precompile Gadfly [c91e804a-d5a3-530f-b6f0-dfbca275c004] to /home/bates/.julia/compiled/v1.0/Gadfly/DvECm.ji.
 
 ````
 
@@ -84,10 +83,8 @@ Error: Failed to precompile Gadfly [c91e804a-d5a3-530f-b6f0-dfbca275c004] to /ho
 and allow for unqualified names for some graphics functions
 ````julia
 julia> using Gadfly.Geom: point, line, histogram, density, vline
-Error: Failed to precompile Gadfly [c91e804a-d5a3-530f-b6f0-dfbca275c004] to /home/bates/.julia/compiled/v1.0/Gadfly/DvECm.ji.
 
 julia> using Gadfly.Guide: xlabel, ylabel, yticks
-Error: Failed to precompile Gadfly [c91e804a-d5a3-530f-b6f0-dfbca275c004] to /home/bates/.julia/compiled/v1.0/Gadfly/DvECm.ji.
 
 ````
 
@@ -118,10 +115,7 @@ julia> describe(dyestuff)
 
 
 and plot it
-<pre class="julia-error">
-ERROR: UndefVarError: xlabel not defined
-</pre>
-
+![Yield versus Batch for the Dyestuff data](./assets//SimpleLMM_4_1.svg)
 
 
 
@@ -137,7 +131,7 @@ In this case a good choice is to order the batches by increasing mean yield, whi
 julia> dyestuffR = rcopy(R"within(lme4::Dyestuff, Batch <- reorder(Batch, Yield, mean))");
 
 julia> plot(dyestuffR, x = :Yield, y = :Batch, point, xlabel("Yield of dyestuff (g)"), ylabel("Batch"))
-Error: UndefVarError: xlabel not defined
+Plot(...)
 
 ````
 
@@ -175,10 +169,7 @@ julia> describe(dyestuff2)
 
 
 As can be seen in a data plot
-<pre class="julia-error">
-ERROR: UndefVarError: xlabel not defined
-</pre>
-
+![](./assets//SimpleLMM_7_1.svg)
 
 
 the batch-to-batch variability in these data is small compared to the within-batch variability.
@@ -480,7 +471,7 @@ Whether or not verbose output is requested, the `optsum` field of a `LinearMixed
 ````julia
 julia> mm1.optsum
 Initial parameter vector: [1.0]
-Initial objective value:  327.76702162461663
+Initial objective value:  327.76702162461254
 
 Optimizer (from NLopt):   LN_BOBYQA
 Lower bounds:             [0.0]
@@ -493,7 +484,7 @@ maxfeval:                 -1
 
 Function evaluations:     18
 Final parameter vector:   [0.752581]
-Final objective value:    327.3270598811373
+Final objective value:    327.3270598811401
 Return code:              FTOL_REACHED
 
 
@@ -561,7 +552,7 @@ The last two elements are $\bf X$, the $n\times p$ model matrix for the fixed-ef
 
 ````julia
 julia> mm1.trms[end - 1]
-MatrixTerm{Float64,Array{Float64,2}}([1.0; 1.0; … ; 1.0; 1.0], [1.0; 1.0; … ; 1.0; 1.0], [1], 1, ["(Intercept)"])
+MixedModels.MatrixTerm{Float64,Array{Float64,2}}([1.0; 1.0; … ; 1.0; 1.0], [1.0; 1.0; … ; 1.0; 1.0], [1], 1, ["(Intercept)"])
 
 ````
 
@@ -569,7 +560,7 @@ MatrixTerm{Float64,Array{Float64,2}}([1.0; 1.0; … ; 1.0; 1.0], [1.0; 1.0; … 
 
 ````julia
 julia> mm1.trms[end]
-MatrixTerm{Float64,Array{Float64,2}}([1545.0; 1440.0; … ; 1480.0; 1445.0], [1545.0; 1440.0; … ; 1480.0; 1445.0], [1], 0, [""])
+MixedModels.MatrixTerm{Float64,Array{Float64,2}}([1545.0; 1440.0; … ; 1480.0; 1445.0], [1545.0; 1440.0; … ; 1480.0; 1445.0], [1], 0, [""])
 
 ````
 
@@ -581,7 +572,7 @@ The elements of `trms` before the last two represent vertical sections of $\bf Z
 
 ````julia
 julia> mm1.trms[1]
-ScalarFactorReTerm{Float64,UInt8}(UInt8[0x01, 0x01, 0x01, 0x01, 0x01, 0x02, 0x02, 0x02, 0x02, 0x02  …  0x05, 0x05, 0x05, 0x05, 0x05, 0x06, 0x06, 0x06, 0x06, 0x06], ["A", "B", "C", "D", "E", "F"], [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0  …  1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0], [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0  …  1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0], :G, ["(Intercept)"], 0.7525806932030558)
+MixedModels.ScalarFactorReTerm{Float64,UInt8}(UInt8[0x01, 0x01, 0x01, 0x01, 0x01, 0x02, 0x02, 0x02, 0x02, 0x02  …  0x05, 0x05, 0x05, 0x05, 0x05, 0x06, 0x06, 0x06, 0x06, 0x06], ["A", "B", "C", "D", "E", "F"], [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0  …  1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0], [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0  …  1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0], :G, ["(Intercept)"], 0.7525806916429085)
 
 ````
 
@@ -732,7 +723,7 @@ It is not necessary to store the full $\Lambda$ matrix.  Storing the small lower
 ````julia
 julia> getΛ(mm1)
 1-element Array{Float64,1}:
- 0.7525806932030558
+ 0.7525806916429085
 
 ````
 
@@ -794,7 +785,7 @@ julia> mm1.L.data[Block(2, 1)]
 ````julia
 julia> mm1.L.data[Block(2, 2)]
 1×1 Array{Float64,2}:
- 2.798041784037937
+ 2.798041788324706
 
 ````
 
@@ -812,7 +803,7 @@ julia> mm1.L.data[Block(3, 1)]
 ````julia
 julia> mm1.L.data[Block(3, 2)]
 1×1 Array{Float64,2}:
- 4274.008825117949
+ 4274.008831665986
 
 ````
 
@@ -821,7 +812,7 @@ julia> mm1.L.data[Block(3, 2)]
 ````julia
 julia> mm1.L.data[Block(3, 3)]
 1×1 Array{Float64,2}:
- 271.17798578517414
+ 271.17798586827877
 
 ````
 
@@ -833,7 +824,7 @@ All the information needed to evaluate the profiled log-likelihood is available 
 
 ````julia
 julia> 2 * sum(log.(diag(mm1.L.data[Block(1,1)])))
-8.060146573941458
+8.060146555556736
 
 ````
 
@@ -857,7 +848,7 @@ The penalized residual sum of squares is the square of the single element of the
 
 ````julia
 julia> abs2(mm1.L.data[Block(3, 3)][1, 1])
-73537.49997450411
+73537.5000195764
 
 ````
 
@@ -865,7 +856,7 @@ julia> abs2(mm1.L.data[Block(3, 3)][1, 1])
 
 ````julia
 julia> pwrss(mm1)
-73537.49997450411
+73537.5000195764
 
 ````
 
@@ -877,7 +868,7 @@ The objective is
 
 ````julia
 julia> logdet(mm1) + nobs(mm1) * (1 + log(2π * pwrss(mm1) / nobs(mm1)))
-327.3270598811373
+327.3270598811401
 
 ````
 
@@ -907,14 +898,14 @@ julia> size(mm1bstp)
 
 ````julia
 julia> describe(mm1bstp)
-5×8 DataFrames.DataFrame. Omitted printing of 1 columns
-│ Row │ variable │ mean     │ min     │ median  │ max     │ nunique │ nmissing │
-├─────┼──────────┼──────────┼─────────┼─────────┼─────────┼─────────┼──────────┤
-│ 1   │ obj      │ 324.03   │ 284.104 │ 324.346 │ 353.114 │         │          │
-│ 2   │ σ        │ 48.8259  │ 23.0686 │ 48.6577 │ 81.1291 │         │          │
-│ 3   │ β₁       │ 1527.41  │ 1442.75 │ 1527.47 │ 1598.74 │         │          │
-│ 4   │ θ₁       │ 0.611039 │ 0.0     │ 0.61079 │ 2.9935  │         │          │
-│ 5   │ σ₁       │ 28.9064  │ 0.0     │ 29.6869 │ 94.001  │         │          │
+5×8 DataFrames.DataFrame. Omitted printing of 2 columns
+│ Row │ variable │ mean     │ min     │ median   │ max     │ nunique │
+├─────┼──────────┼──────────┼─────────┼──────────┼─────────┼─────────┤
+│ 1   │ obj      │ 324.03   │ 284.104 │ 324.346  │ 353.114 │         │
+│ 2   │ σ        │ 48.8259  │ 23.0686 │ 48.6577  │ 81.1291 │         │
+│ 3   │ β₁       │ 1527.41  │ 1442.75 │ 1527.47  │ 1598.74 │         │
+│ 4   │ θ₁       │ 0.611039 │ 0.0     │ 0.610791 │ 2.9935  │         │
+│ 5   │ σ₁       │ 28.9064  │ 0.0     │ 29.6869  │ 94.001  │         │
 
 ````
 
@@ -934,7 +925,7 @@ The [`Gadfly`](https://github.com/GiovineItalia/Gadfly.jl) package for Julia use
 
 ````julia
 julia> plot(mm1bstp, x = :β₁, histogram)
-Error: UndefVarError: plot not defined
+Plot(...)
 
 ````
 
@@ -942,7 +933,7 @@ Error: UndefVarError: plot not defined
 
 ````julia
 julia> plot(mm1bstp, x = :σ, histogram)
-Error: UndefVarError: plot not defined
+Plot(...)
 
 ````
 
@@ -950,7 +941,7 @@ Error: UndefVarError: plot not defined
 
 ````julia
 julia> plot(mm1bstp, x = :σ₁, histogram)
-Error: UndefVarError: plot not defined
+Plot(...)
 
 ````
 
@@ -976,7 +967,7 @@ That is, nearly 1/10 of the `theta1` values are zeros.  Because such a spike or 
 
 ````julia
 julia> plot(mm1bstp, density, x = :θ₁)
-Error: UndefVarError: plot not defined
+Plot(...)
 
 ````
 
@@ -990,7 +981,7 @@ The density of the estimates of the other two parameters, $\beta_1$ and $\sigma$
 
 ````julia
 julia> plot(mm1bstp, density, x = :β₁)
-Error: UndefVarError: plot not defined
+Plot(...)
 
 ````
 
@@ -998,7 +989,7 @@ Error: UndefVarError: plot not defined
 
 ````julia
 julia> plot(mm1bstp, density, x = :σ)
-Error: UndefVarError: plot not defined
+Plot(...)
 
 ````
 
@@ -1033,43 +1024,26 @@ julia> const ppt250 = ppoints(250)
 
 The kernel density estimate of $\sigma$ is more symmetric
 
-<pre class="julia-error">
-ERROR: UndefVarError: plot not defined
-</pre>
-
-
 
 
 
 and the normal probability plot of $\sigma$ is also reasonably straight.
 
-<pre class="julia-error">
-ERROR: UndefVarError: xlabel not defined
-</pre>
-
+![](./assets//SimpleLMM_54_1.svg)
 
 
 
 The normal probability plot of $\sigma_1$ has a flat section at $\sigma_1 = 0$.
 
-<pre class="julia-error">
-ERROR: UndefVarError: xlabel not defined
-</pre>
-
+![](./assets//SimpleLMM_55_1.svg)
 
 
 
 In terms of the variances, $\sigma^2$ and $\sigma_1^2$, the normal probability plots are
 
-<pre class="julia-error">
-ERROR: UndefVarError: xlabel not defined
-</pre>
+![](./assets//SimpleLMM_56_1.svg)
 
-
-<pre class="julia-error">
-ERROR: UndefVarError: xlabel not defined
-</pre>
-
+![](./assets//SimpleLMM_57_1.svg)
 
 
 
@@ -1089,8 +1063,8 @@ One possible interval containing 95% of the sample is $(\sigma_{[1]}, \sigma_{[9
 ````julia
 julia> sigma95 = quantile(mm1bstp[:σ], [0.025, 0.975])
 2-element Array{Float64,1}:
- 35.583660074554146
- 63.098968794766435
+ 35.583660009490394
+ 63.098974223383514
 
 ````
 
@@ -1156,8 +1130,8 @@ For example, the 95% HPD interval calculated from the sample of $\beta_1$ values
 ````julia
 julia> hpdinterval(mm1bstp[:β₁])
 2-element Array{Float64,1}:
- 1493.009507788377 
- 1562.0769558913403
+ 1493.0095078364832
+ 1562.0769558441043
 
 ````
 
@@ -1170,8 +1144,8 @@ which is very close to the central probability interval of
 ````julia
 julia> quantile(mm1bstp[:β₁], [0.025, 0.975])
 2-element Array{Float64,1}:
- 1492.8482234420476
- 1561.924809144168 
+ 1492.8482234769042
+ 1561.9248091295565
 
 ````
 
@@ -1186,8 +1160,8 @@ The HPD interval on $\sigma^2$ is
 ````julia
 julia> hpdinterval(abs2.(mm1bstp[:σ]))
 2-element Array{Float64,1}:
- 1162.8123802050015
- 3834.3190914091965
+ 1162.8123800843332
+ 3834.3190953162807
 
 ````
 
@@ -1200,8 +1174,8 @@ which is shifted to the left relative to the central probability interval
 ````julia
 julia> quantile(abs2.(mm1bstp[:σ]), [0.025, 0.975])
 2-element Array{Float64,1}:
- 1266.1968643014757
- 3981.479863066154 
+ 1266.19685967107 
+ 3981.480548146139
 
 ````
 
@@ -1216,8 +1190,8 @@ The HPD interval does not have the property that the endpoints of the interval o
 ````julia
 julia> sigma95hpd = hpdinterval(mm1bstp[:σ])
 2-element Array{Float64,1}:
- 35.42542537228529
- 62.88749001676501
+ 35.425432298937515
+ 62.887490039924856
 
 ````
 
@@ -1226,8 +1200,8 @@ julia> sigma95hpd = hpdinterval(mm1bstp[:σ])
 ````julia
 julia> abs2.(sigma95hpd)
 2-element Array{Float64,1}:
- 1254.9607628073543
- 3954.8364006087186
+ 1254.9612535666054
+ 3954.8364035216478
 
 ````
 
@@ -1240,8 +1214,8 @@ Finally, a 95% HPD interval on $\sigma_1$ includes the boundary value $\sigma_1=
 ````julia
 julia> hpdinterval(mm1bstp[:σ₁])
 2-element Array{Float64,1}:
-  0.0             
- 54.59856859889488
+  0.0              
+ 54.598575738834825
 
 ````
 
@@ -1255,7 +1229,7 @@ In fact, the confidence level or coverage probability must be rather small befor
 julia> hpdinterval(mm1bstp[:σ₁], 0.798)
 2-element Array{Float64,1}:
   0.0             
- 42.33710948814182
+ 42.33711824330485
 
 ````
 
@@ -1265,7 +1239,7 @@ julia> hpdinterval(mm1bstp[:σ₁], 0.798)
 julia> hpdinterval(mm1bstp[:σ₁], 0.799)
 2-element Array{Float64,1}:
   0.0              
- 42.394347640663185
+ 42.394347358762985
 
 ````
 
@@ -1277,11 +1251,7 @@ julia> hpdinterval(mm1bstp[:σ₁], 0.799)
 
 The empirical cumulative distribution function (ecdf) of a sample maps the range of the sample onto `[0,1]` by `x → proportion of sample ≤ x`.  In general this is a "step function", which takes jumps of size `1/length(samp)` at each observed sample value.  For large samples, we can plot it as a qq plot where the theoretical quantiles are the probability points and are on the vertical axis.
 
-<pre class="julia-error">
-ERROR: LoadError: UndefVarError: @colorant_str not defined
-in expression starting at none:2
-</pre>
-
+![](./assets//SimpleLMM_71_1.svg)
 
 
 
@@ -1289,11 +1259,7 @@ The orange lines added to the plot show the construction of the central probabil
 
 The differences in the widths becomes more dramatic on the scale of $\sigma_1^2$
 
-<pre class="julia-error">
-ERROR: LoadError: UndefVarError: @colorant_str not defined
-in expression starting at none:3
-</pre>
-
+![](./assets//SimpleLMM_72_1.svg)
 
 
 

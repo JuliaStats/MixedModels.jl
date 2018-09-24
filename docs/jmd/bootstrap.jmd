@@ -36,7 +36,7 @@ m1 = fit(LinearMixedModel, @formula(Yield ~ 1 + (1 | Batch)), ds)
 Now bootstrap the model parameters
 ```{julia;term=true;}
 results = bootstrap(100_000, m1);
-showcompact(names(results))
+show(names(results))
 ```
 The results for each bootstrap replication are stored in the columns of the matrix passed in as the first
 argument.  A density plot of the bootstrapped values of `σ` is created as

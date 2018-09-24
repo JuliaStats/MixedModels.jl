@@ -9,13 +9,10 @@ In this chapter we consider models with multiple simple, scalar random-effects t
 julia> using DataFrames, Distributions, FreqTables, MixedModels, RData, Random
 
 julia> using Gadfly
-Error: Failed to precompile Gadfly [c91e804a-d5a3-530f-b6f0-dfbca275c004] to /home/bates/.julia/compiled/v1.0/Gadfly/DvECm.ji.
 
 julia> using Gadfly.Geom: density, histogram, line, point
-Error: Failed to precompile Gadfly [c91e804a-d5a3-530f-b6f0-dfbca275c004] to /home/bates/.julia/compiled/v1.0/Gadfly/DvECm.ji.
 
 julia> using Gadfly.Guide: xlabel, ylabel
-Error: Failed to precompile Gadfly [c91e804a-d5a3-530f-b6f0-dfbca275c004] to /home/bates/.julia/compiled/v1.0/Gadfly/DvECm.ji.
 
 julia> const dat = Dict(Symbol(k)=>v for (k,v) in 
     load(joinpath(dirname(pathof(MixedModels)), "..", "test", "dat.rda")));
@@ -131,10 +128,10 @@ Linear mixed model fit by maximum likelihood
  -166.09417  332.18835  340.18835  352.06760
 
 Variance components:
-              Column    Variance   Std.Dev. 
- G        (Intercept)  0.71497949 0.8455646
- H        (Intercept)  3.13519326 1.7706477
- Residual              0.30242640 0.5499331
+              Column    Variance  Std.Dev. 
+ G        (Intercept)  0.7149795 0.8455646
+ H        (Intercept)  3.1351929 1.7706476
+ Residual              0.3024264 0.5499331
  Number of obs: 144; levels of grouping factors: 24, 6
 
   Fixed-effects parameters:
@@ -172,7 +169,7 @@ or as the `Final parameter vector` in the `opsum` field of `penm`
 ````julia
 julia> penm.optsum
 Initial parameter vector: [1.0, 1.0]
-Initial objective value:  364.62677981659544
+Initial objective value:  364.6267798165819
 
 Optimizer (from NLopt):   LN_BOBYQA
 Lower bounds:             [0.0, 0.0]
@@ -185,7 +182,7 @@ maxfeval:                 -1
 
 Function evaluations:     44
 Final parameter vector:   [1.53758, 3.21975]
-Final objective value:    332.18834867237246
+Final objective value:    332.1883486725131
 Return code:              FTOL_REACHED
 
 
@@ -203,7 +200,7 @@ A bootstrap simulation of the model
 
 ````julia
 julia> @time penmbstp = bootstrap(10000, penm);
- 13.027475 seconds (23.95 M allocations: 901.832 MiB, 1.33% gc time)
+ 15.657643 seconds (23.96 M allocations: 902.155 MiB, 1.48% gc time)
 
 ````
 
@@ -213,24 +210,15 @@ julia> @time penmbstp = bootstrap(10000, penm);
 
 provides the density plots
 
-<pre class="julia-error">
-ERROR: UndefVarError: xlabel not defined
-</pre>
+![](./assets//MultipleTerms_8_1.svg)
 
+![](./assets//MultipleTerms_9_1.svg)
 
-<pre class="julia-error">
-ERROR: UndefVarError: xlabel not defined
-</pre>
-
-
-<pre class="julia-error">
-ERROR: UndefVarError: xlabel not defined
-</pre>
-
+![](./assets//MultipleTerms_10_1.svg)
 
 ````julia
 julia> plot(penmbstp, x = :σ₂, density, xlabel("σ₂"))
-Error: UndefVarError: xlabel not defined
+Plot(...)
 
 ````
 
@@ -374,10 +362,10 @@ Linear mixed model fit by maximum likelihood
  -123.99723  247.99447  255.99447  264.37184
 
 Variance components:
-              Column    Variance  Std.Dev.  
- G        (Intercept)  8.4336167 2.90406899
- H        (Intercept)  1.1991787 1.09507018
- Residual              0.6780021 0.82340886
+              Column    Variance   Std.Dev.  
+ G        (Intercept)  8.43361674 2.90406900
+ H        (Intercept)  1.19917985 1.09507070
+ Residual              0.67800208 0.82340882
  Number of obs: 60; levels of grouping factors: 30, 10
 
   Fixed-effects parameters:
@@ -413,20 +401,17 @@ confirm this impression in that all the prediction intervals for the random effe
 julia> Random.seed!(4321234);
 
 julia> @time pstsbstp = bootstrap(10000, pstsm);
- 10.514014 seconds (23.74 M allocations: 1.029 GiB, 1.76% gc time)
+ 13.214743 seconds (23.76 M allocations: 1.030 GiB, 1.89% gc time)
 
 ````
 
 
 
-<pre class="julia-error">
-ERROR: UndefVarError: xlabel not defined
-</pre>
-
+![](./assets//MultipleTerms_16_1.svg)
 
 ````julia
 julia> plot(pstsbstp, x = :σ, density, xlabel("σ"))
-Error: UndefVarError: xlabel not defined
+Plot(...)
 
 ````
 
@@ -434,7 +419,7 @@ Error: UndefVarError: xlabel not defined
 
 ````julia
 julia> plot(x = pstsbstp[:σ₁], Geom.density(), Guide.xlabel("σ₁"))
-Error: UndefVarError: Geom not defined
+Plot(...)
 
 ````
 
@@ -442,7 +427,7 @@ Error: UndefVarError: Geom not defined
 
 ````julia
 julia> plot(x = pstsbstp[:σ₂], Geom.density(), Guide.xlabel("σ₂"))
-Error: UndefVarError: Geom not defined
+Plot(...)
 
 ````
 
@@ -455,7 +440,7 @@ and a normal probability plot of
 ````julia
 julia> plot(x = zquantiles, y = quantile(pstsbstp[:σ₂], ppt250), Geom.line,
     Guide.xlabel("Standard Normal Quantiles"), Guide.ylabel("σ₂"))
-Error: UndefVarError: Guide not defined
+Plot(...)
 
 ````
 
@@ -463,7 +448,7 @@ Error: UndefVarError: Guide not defined
 
 ````julia
 julia> count(x -> x < 1.0e-5, pstsbstp[:σ₂])
-3671
+3666
 
 ````
 
@@ -476,8 +461,8 @@ Over 1/3 of the bootstrap samples of $\sigma_2$ are zero.  Even a 50% confidence
 ````julia
 julia> hpdinterval(pstsbstp[:σ₂])
 2-element Array{Float64,1}:
- 0.0              
- 2.073479680297123
+ 0.0               
+ 2.0734802559482324
 
 ````
 
@@ -516,8 +501,8 @@ Linear mixed model fit by maximum likelihood
 
 Variance components:
               Column    Variance   Std.Dev. 
- G        (Intercept)  9.63282202 3.1036788
- Residual              0.67800001 0.8234076
+ G        (Intercept)  9.63282172 3.1036787
+ Residual              0.67800003 0.8234076
  Number of obs: 60; levels of grouping factors: 30
 
   Fixed-effects parameters:
@@ -557,7 +542,7 @@ A bootstrap sample
 
 ````julia
 julia> @time psts1bstp = bootstrap(10000, pstsm1);
-  3.777799 seconds (8.00 M allocations: 307.767 MiB, 1.78% gc time)
+  4.459490 seconds (8.00 M allocations: 307.947 MiB, 2.06% gc time)
 
 ````
 
@@ -567,19 +552,13 @@ julia> @time psts1bstp = bootstrap(10000, pstsm1);
 
 provides empirical density plots
 
-<pre class="julia-error">
-ERROR: UndefVarError: xlabel not defined
-</pre>
-
+![](./assets//MultipleTerms_26_1.svg)
 
 
 
 and
 
-<pre class="julia-error">
-ERROR: UndefVarError: xlabel not defined
-</pre>
-
+![](./assets//MultipleTerms_27_1.svg)
 
 
 
@@ -666,24 +645,24 @@ At this point we will fit models that have random effects for student, instructo
 
 ````julia
 julia> @time instm = fit(LinearMixedModel, @formula(Y ~ 1 + A + (1|G) + (1|H) + (1|I)), dat[:InstEval])
-  2.169195 seconds (30.32 k allocations: 186.810 MiB, 0.95% gc time)
+  2.824129 seconds (348.46 k allocations: 203.625 MiB, 1.47% gc time)
 Linear mixed model fit by maximum likelihood
  Formula: Y ~ 1 + A + (1 | G) + (1 | H) + (1 | I)
      logLik        -2 logLik          AIC             BIC       
  -1.18860884×10⁵  2.37721769×10⁵  2.37733769×10⁵  2.37788993×10⁵
 
 Variance components:
-              Column     Variance    Std.Dev. 
- G        (Intercept)  0.1059727787 0.3255346
- H        (Intercept)  0.2652041783 0.5149798
- I        (Intercept)  0.0061673544 0.0785325
- Residual              1.3864885827 1.1774925
+              Column     Variance    Std.Dev.  
+ G        (Intercept)  0.1059760822 0.32553968
+ H        (Intercept)  0.2652109229 0.51498633
+ I        (Intercept)  0.0061663253 0.07852595
+ Residual              1.3864870539 1.17749185
  Number of obs: 73421; levels of grouping factors: 2972, 1128, 14
 
   Fixed-effects parameters:
                Estimate Std.Error  z value P(>|z|)
-(Intercept)     3.28258  0.028411  115.539  <1e-99
-A: 1         -0.0925886 0.0133832 -6.91828  <1e-11
+(Intercept)     3.28258 0.0284098  115.544  <1e-99
+A: 1         -0.0925882 0.0133832 -6.91826  <1e-11
 
 
 ````
