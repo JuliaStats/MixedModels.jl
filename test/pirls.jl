@@ -1,4 +1,4 @@
-using DataFrames, MixedModels, RData, Test
+using DataFrames, MixedModels, RData, StatsBase, Test
 
 if !@isdefined(dat) || !isa(dat, Dict{Symbol, DataFrame})
     dat = Dict(Symbol(k) => v for (k, v) in load(joinpath(dirname(@__FILE__), "dat.rda")))
@@ -21,9 +21,16 @@ end
     @test StatsBase.dof(gm0) == length(gm0.β) + length(gm0.θ)
     @test StatsBase.nobs(gm0) == 1934
     fit!(gm0, fast=true, nAGQ=7)
-    @test isapprox(deviance(gm0, 7),2360.9838, atol=0.001)
+    @test isapprox(deviance(gm0, 7), 2360.9838, atol=0.001)
     fit!(gm0, nAGQ=7)
-    @test isapprox(deviance(gm0, 7),2360.9002, atol=0.001)
+    @test isapprox(deviance(gm0, 7), 2360.9002, atol=0.001)
+    @test gm0.β == gm0.beta
+    @test gm0.θ == gm0.theta
+    @test isnan(gm0.σ)
+    @test gm0.lowerbd == [0.]
+    @test gm0.formula == @formula(use ~ 1 + a + a2 + urb + l + (1 | urbdist))
+    @test gm0.y == contraception[:use]
+    @test :θ in propertynames(gm0)
     # the next three values are not well defined in the optimization
     #@test isapprox(logdet(gm1), 75.7275, atol=0.1)
     #@test isapprox(sum(abs2, gm1.u[1]), 48.4747, atol=0.1)

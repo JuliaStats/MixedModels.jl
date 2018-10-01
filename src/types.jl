@@ -202,15 +202,13 @@ struct LinearMixedModel{T <: AbstractFloat} <: MixedModel{T}
 end
 
 function Base.getproperty(m::LinearMixedModel, s::Symbol)
-    if s ∈ fieldnames(LinearMixedModel)
-        Core.getfield(m, s)
-    elseif s ∈ [:θ, :theta]
+    if s ∈ (:θ, :theta)
         getθ(m)
-    elseif s ∈ [:β, :beta]
+    elseif s ∈ (:β, :beta)
         fixef(m)
-    elseif s ∈ [:λ, :lambda]
+    elseif s ∈ (:λ, :lambda)
         getΛ(m)
-    elseif s ∈ [:σ, :sigma]
+    elseif s ∈ (:σ, :sigma)
         sdest(m)
     elseif s == :b
         ranef(m)
@@ -223,11 +221,14 @@ function Base.getproperty(m::LinearMixedModel, s::Symbol)
     elseif s == :y
         vec(m.trms[end].x)
     else
-        throw(ArgumentError(string("Unrecognized property name:", s)))
+        getfield(m, s)
     end
 end
 
-Base.setproperty!(m::LinearMixedModel, s::Symbol, y) = s == :θ ? setθ!(m, y) : throw(ArgumentError("Property $s cannot be set"))
+Base.setproperty!(m::LinearMixedModel, s::Symbol, y) = s == :θ ? setθ!(m, y) : setfield!(m, s, y)
+
+Base.propertynames(m::LinearMixedModel, private=false) =
+    (:formula, :trms, :A, :L, :optsum, :θ, :theta, :β, :beta, :λ, :lambda, :σ, :sigma, :b, :u, :lowerbd, :X, :y)
 
 struct RaggedArray{T,I}
     vals::Vector{T}
@@ -264,6 +265,19 @@ zero-length vectors.
 - `devc0`: vector of deviance components at offset of zero
 - `sd`: approximate standard deviation of the conditional density
 - `mult`: multiplier
+
+# Properties
+
+In addition to the fieldnames, the following names are also accessible through the `.` extractor
+
+- `theta`: synonym for `θ`
+- `beta`: synonym for `β`
+- `σ` or `sigma`: common scale parameter (value is `NaN` for distributions without a scale parameter)
+- `lowerbd`: vector of lower bounds on the combined elements of `β` and `θ`
+- `formula`, `trms`, `A`, `L`, and `optsum`: fields of the `LMM` field
+- `X`: fixed-effects model matrix
+- `y`: response vector
+
 """
 struct GeneralizedLinearMixedModel{T <: AbstractFloat} <: MixedModel{T}
     LMM::LinearMixedModel{T}
@@ -281,6 +295,34 @@ struct GeneralizedLinearMixedModel{T <: AbstractFloat} <: MixedModel{T}
     sd::Vector{T}
     mult::Vector{T}
 end
+
+
+function Base.getproperty(m::GeneralizedLinearMixedModel, s::Symbol)
+    if s == :theta
+        m.θ
+    elseif s == :beta
+        m.β
+    elseif s ∈ (:λ, :lambda)
+        getΛ(m)
+    elseif s ∈ (:σ, :sigma)
+        sdest(m)
+    elseif s == :lowerbd
+        m.LMM.optsum.lowerbd
+    elseif s ∈ (:formula, :trms, :A, :L, :optsum)
+        getfield(m.LMM, s)
+    elseif s == :X
+        m.LMM.trms[end - 1].x
+    elseif s == :y
+        vec(m.LMM.trms[end].x)
+    else
+        getfield(m, s)
+    end
+end
+
+Base.setproperty!(m::GeneralizedLinearMixedModel, s::Symbol, y) = s == :θ ? setθ!(m, y) : setfield!(m, s, y)
+
+Base.propertynames(m::GeneralizedLinearMixedModel, private=false) =
+    (:theta, :beta, :λ, :lambda, :σ, :sigma, :X, :y, :lowerbd, fieldnames(typeof(m))..., fieldnames(typeof(m.LMM))...)
 
 """
     VarCorr
