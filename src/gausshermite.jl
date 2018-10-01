@@ -45,25 +45,14 @@ struct GaussHermiteNormalized{K}
 end
 function GaussHermiteNormalized(k::Integer)
     sytr = SymTridiagonal(zeros(k), sqrt.(1:k-1))
-    @static if VERSION ≥ v"0.7.0-DEV.5190"
-        ev = eigen(sytr)
-    else
-        ev = eigfact(sytr)
-    end
+    ev = eigen(sytr)
     w = abs2.(ev.vectors[1,:])
     GaussHermiteNormalized(
         SVector{k}((ev.values .- reverse(ev.values)) ./ 2),
         SVector{k}(normalize((w .+ reverse(w)) ./ 2, 1)))
 end
 
-@static if VERSION ≥ v"0.7.0-DEV.5124"
-    Base.iterate(g::GaussHermiteNormalized{K}, i=1) where {K} = 
-        (K < i ? nothing : ((z = g.z[i], w = g.w[i]), i + 1))
-else
-    Base.start(gh::GaussHermiteNormalized) = 1
-    Base.next(gh::GaussHermiteNormalized, i) = (gh.z[i], gh.w[i]), i+1
-    Base.done(gh::GaussHermiteNormalized{K}, i) where {K} = K < i 
-end
+Base.iterate(g::GaussHermiteNormalized{K}, i=1) where {K} = (K < i ? nothing : ((z = g.z[i], w = g.w[i]), i + 1))
 
 Base.length(g::GaussHermiteNormalized{K}) where {K} = K
 
