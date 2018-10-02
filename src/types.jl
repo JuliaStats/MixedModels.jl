@@ -171,13 +171,26 @@ abstract type MixedModel{T} <: RegressionModel end # model with fixed and random
 
 Linear mixed-effects model representation
 
-# Members
+## Fields
+
 * `formula`: the formula for the model
 * `trms`: a `Vector{AbstractTerm}` representing the model.  The last element is the response.
 * `sqrtwts`: vector of square roots of the case weights.  Can be empty.
 * `A`: an `nt × nt` symmetric `BlockMatrix` of matrices representing `hcat(Z,X,y)'hcat(Z,X,y)`
 * `L`: a `nt × nt` `BlockMatrix` - the lower Cholesky factor of `Λ'AΛ+I`
 * `optsum`: an [`OptSummary`](@ref) object
+
+## Properties
+
+* `θ` or `theta`: the covariance parameter vector used to form λ
+* `β` or `beta`: the fixed-effects coefficient vector
+* `λ` or `lambda`: a vector of lower triangular matrices repeated on the diagonal blocks of `Λ`
+* `σ` or `sigma`: current value of the standard deviation of the per-observation noise
+* `b`: random effects on the original scale, as a vector of matrices
+* `u`: random effects on the orthogonal scale, as a vector of matrices
+* `lowerbd`: lower bounds on the elements of θ
+* `X`: the fixed-effects model matrix
+* `y`: the response vector
 """
 struct LinearMixedModel{T <: AbstractFloat} <: MixedModel{T}
     formula::Formula
@@ -187,6 +200,35 @@ struct LinearMixedModel{T <: AbstractFloat} <: MixedModel{T}
     L::LowerTriangular{T,BlockArray{T,2,AbstractMatrix{T}}}
     optsum::OptSummary{T}
 end
+
+function Base.getproperty(m::LinearMixedModel, s::Symbol)
+    if s ∈ (:θ, :theta)
+        getθ(m)
+    elseif s ∈ (:β, :beta)
+        fixef(m)
+    elseif s ∈ (:λ, :lambda)
+        getΛ(m)
+    elseif s ∈ (:σ, :sigma)
+        sdest(m)
+    elseif s == :b
+        ranef(m)
+    elseif s == :u
+        ranef(m, uscale = true)
+    elseif s == :lowerbd
+        m.optsum.lowerbd
+    elseif s == :X
+        m.trms[end - 1].x
+    elseif s == :y
+        vec(m.trms[end].x)
+    else
+        getfield(m, s)
+    end
+end
+
+Base.setproperty!(m::LinearMixedModel, s::Symbol, y) = s == :θ ? setθ!(m, y) : setfield!(m, s, y)
+
+Base.propertynames(m::LinearMixedModel, private=false) =
+    (:formula, :trms, :A, :L, :optsum, :θ, :theta, :β, :beta, :λ, :lambda, :σ, :sigma, :b, :u, :lowerbd, :X, :y)
 
 struct RaggedArray{T,I}
     vals::Vector{T}
@@ -223,6 +265,19 @@ zero-length vectors.
 - `devc0`: vector of deviance components at offset of zero
 - `sd`: approximate standard deviation of the conditional density
 - `mult`: multiplier
+
+# Properties
+
+In addition to the fieldnames, the following names are also accessible through the `.` extractor
+
+- `theta`: synonym for `θ`
+- `beta`: synonym for `β`
+- `σ` or `sigma`: common scale parameter (value is `NaN` for distributions without a scale parameter)
+- `lowerbd`: vector of lower bounds on the combined elements of `β` and `θ`
+- `formula`, `trms`, `A`, `L`, and `optsum`: fields of the `LMM` field
+- `X`: fixed-effects model matrix
+- `y`: response vector
+
 """
 struct GeneralizedLinearMixedModel{T <: AbstractFloat} <: MixedModel{T}
     LMM::LinearMixedModel{T}
@@ -240,6 +295,34 @@ struct GeneralizedLinearMixedModel{T <: AbstractFloat} <: MixedModel{T}
     sd::Vector{T}
     mult::Vector{T}
 end
+
+
+function Base.getproperty(m::GeneralizedLinearMixedModel, s::Symbol)
+    if s == :theta
+        m.θ
+    elseif s == :beta
+        m.β
+    elseif s ∈ (:λ, :lambda)
+        getΛ(m)
+    elseif s ∈ (:σ, :sigma)
+        sdest(m)
+    elseif s == :lowerbd
+        m.LMM.optsum.lowerbd
+    elseif s ∈ (:formula, :trms, :A, :L, :optsum)
+        getfield(m.LMM, s)
+    elseif s == :X
+        m.LMM.trms[end - 1].x
+    elseif s == :y
+        vec(m.LMM.trms[end].x)
+    else
+        getfield(m, s)
+    end
+end
+
+Base.setproperty!(m::GeneralizedLinearMixedModel, s::Symbol, y) = s == :θ ? setθ!(m, y) : setfield!(m, s, y)
+
+Base.propertynames(m::GeneralizedLinearMixedModel, private=false) =
+    (:theta, :beta, :λ, :lambda, :σ, :sigma, :X, :y, :lowerbd, fieldnames(typeof(m))..., fieldnames(typeof(m.LMM))...)
 
 """
     VarCorr
