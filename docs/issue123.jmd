@@ -1,0 +1,145 @@
+---
+title: "Comments on issue #123"
+author: "Douglas Bates"
+date: "2018-10-02"
+---
+
+[The issue](https://github.com/dmbates/MixedModels.jl/issues/123) concerns missing linear algebra methods for some of the matrix types in the package.
+
+Sadly I haven't addressed the issue earlier and it is now quite old. Things have changed with the release of
+```{julia; term=true}
+using BlockArrays, DataFrames, InteractiveUtils, LinearAlgebra, MixedModels, Random
+versioninfo()
+```
+and the most recent `MixedModels` release (v1.1.0 is the latest as I write this).
+
+A function to generate an example showing the problem is given in the issue but it uses simulated data without setting the random number seed.
+I modified this function to take an `AbstractRNG` as the first argument, as is common now in simulation functions.
+```{julia; term=true}
+function simulatemodel(rng::AbstractRNG, n::Int, ng::Int)
+    df = DataFrame(Y = randn(rng, n), X = rand(rng, n), G = rand(rng, 1:ng, n), H = rand(rng, 1:ng, n))
+    f = @formula(Y ~ 1 + X + (1 + X|H) + (1|G)) # simple model with random slopes and intercepts
+    m = LinearMixedModel(f, df)
+end
+```
+
+## Internal representation of a LinearMixedModel
+
+A couple of things about the internal representation of the model in the `LinearMixedModel` type.
+The `trms` field is a vector of matrix-like objects constructed from the terms in the model formula.
+The random-effects terms are first, ordered by the number of random effects.
+These are followed by the model matrix for the fixed-effects and the response, represented as a matrix with only 1 column.
+
+```{julia;term=true}
+m1 = simulatemodel(MersenneTwister(1234321), 10_000, 100);
+show(typeof.(m1.trms))
+show(size.(m1.trms))
+```
+
+### The `A` and Λ fields
+
+The `A` field in the `LinearMixedModel` type is a blocked matrix corresponding to `M'M`, where `M` is the horizonal concatenation of these terms.
+The size of `M` would be `(10000,303)` so `A` is of size `(303,303)` but divided into blocks corresponding to the terms.
+```{julia;term=true}
+nblocks(m1.A)
+blocksizes(m1.A)
+```
+
+`A` is symmetric and sparse.  Only the lower triangle is stored explicitly.
+```{julia; term=true}
+Symmetric(m1.A, :L)
+```
+
+There is another matrix, `Λ`, stored implicitly in the random-effects terms and depending on the parameter vector `θ`.
+It is block-diagonal with the same block sizes as `A`.
+All the off-diagonal blocks are zero.
+The rightmost two diagonal blocks, corresponding to the fixed-effects and the response, are always the identity.
+The diagonal blocks for the random-effects terms are either a multiple of the identity, for a scalar random-effects term like `(1|G)`, or repetitions of small, lower-triangular matrix, `λ`, for vector-valued random-effects terms like `(1+X | H)`.
+
+The size of `λ` for a vector-valued random effects term is the dimension of the random effects for each level of the grouping factor.
+In this case `(1+X | H)` generates a two-dimensional random effect for each of the 100 levels of `H`. 
+
+
+```{julia; term=true}
+show(m1.θ)
+m1.λ[1]
+m1.λ[2]
+```
+
+Optimization of the log-likelihood is with respect to the `θ` parameters, as can be seen in the verbose output.
+```{julia; term=true}
+fit!(m1, true)
+show(m1.θ)
+m1.λ[1]
+m1.λ[2]
+```
+
+### The `L` field
+
+The `L` field in a `LinearMixedModel` is the lower-triangular Cholesky factor of
+
+\begin{equation}
+  \begin{bmatrix}
+    \Lambda^\prime\mathbf{Z}^\prime\mathbf{Z}\Lambda + \mathbf{I} & \Lambda^\prime\mathbf{Z}^\prime\mathbf{X} & \Lambda^\prime\mathbf{Z}^\prime\mathbf{y} \\
+    \mathbf{X}^\prime\mathbf{Z}\Lambda  & \mathbf{X}^\prime\mathbf{X} & \mathbf{X}^\prime\mathbf{y} \\
+    \mathbf{y}^\prime\mathbf{Z}\Lambda  & \mathbf{y}^\prime\mathbf{X} & \mathbf{y}^\prime\mathbf{y}
+  \end{bmatrix}
+\end{equation}
+
+in the same block pattern as `A`.
+```{julia; term=true}
+m1.L
+```
+
+An inelegant but fast summary of the block sizes and types of the `A` and `L` fields is available as
+```{julia; term=true}
+describeblocks(m1)
+```
+For each of the blocks in the lower triangle, the type and size of the block in `A` is listed followed by the type of the `L` block.
+The `(1,1)` block is always the biggest block and hence the most important in preserving sparsity.
+It will be `Diagonal` if the term with the most random effects is a scalar random-effects term.
+For a vector-valued random-effects term, as in this example, it is `UniformBlockDiagonal` which means that it is block diagonal with $k$ diagonal blocks of size $\ell\times\ell$ where $k$ is the number of levels of the grouping factor and $\ell$ is the dimension of the random effects associated with each level.
+In this example $k=100$ and $\ell=2$.
+
+Although the `(1,1)` block of `L` always has the same structure as that of `A`, the `(2,2)` block can be subject to "fill-in".
+Here the `(2,2)` block of `A` is `Diagonal` but the `(2,2)` block of `L` has non-zero off-diagonal elements and is stored as a full, dense matrix.
+
+Furthermore, the `(2,1)` block is created as a sparse matrix but may not have a high proportion of zeros, in which case it is converted to a dense matrix as has been done here.
+The "break-even" point where the complexity of sparse matrix operations is offset by storing and computing with only the non-zeros, as opposed to all the elements of a dense matrix even when most of them as zero, is surprisingly high, especially when using multi-threaded accelerated BLAS (Basic Linear Algebra Subroutines) such as [MKL](https://software.intel.com/en-us/mkl).
+
+### Updating `L`.
+
+Once the model representation has been created, evaluation of the profiled log-likelihood requires only installation of a new value of `θ` and updating of `L`.
+
+The `updateL!` function is now defined (in `src/pls.jl`) as
+```{julia;eval=false}
+function updateL!(m::LinearMixedModel{T}) where T
+    trms = m.trms
+    A = m.A
+    Ldat = m.L.data
+    nblk = nblocks(A, 2)
+    for j in 1:nblk
+        Ljj = scaleInflate!(Ldat[Block(j, j)], A[Block(j, j)], trms[j])
+        LjjH = isa(Ljj, Diagonal) ? Ljj : Hermitian(Ljj, :L)
+        for jj in 1:(j - 1)
+            rankUpdate!(-one(T), Ldat[Block(j, jj)], LjjH)
+        end
+        cholUnblocked!(Ljj, Val{:L})
+        for i in (j + 1):nblk
+            Lij = Λc_mul_B!(trms[i], A_mul_Λ!(copyto!(Ldat[Block(i, j)], A[Block(i, j)]), trms[j]))
+            for jj in 1:(j - 1)
+                αβA_mul_Bc!(-one(T), Ldat[Block(i, jj)], Ldat[Block(j, jj)], one(T), Lij)
+            end
+            rdiv!(Lij, isa(Ljj, Diagonal) ? Ljj : LowerTriangular(Ljj)')
+        end
+    end
+    m
+end
+```
+
+It relies on having appropriate methods for `scaleInflate!`, `rankUpdate!`, `cholUnblocked!`, `Λc_mul_B!`, `A_mul_Λ!`, `αβA_mul_Bc!` and `rdiv!`.
+All of the methods act in-place, as indicated by the `!` at the end of the name.
+
+Making sure that all of the available methods are available is a bit tricky.
+I keep accumulating examples but I don't have an exhaustive collection by any means so there may be situations that I have missed.
+I appreciate it when users bring attention to a (reproducible, if possible) example that fails because then I know what I need to add.
