@@ -35,7 +35,7 @@ fm1 = fit(LinearMixedModel, @formula(Y ~ 1 + (1|G)), dat[:Dyestuff])
 The second and subsequent calls to such functions are much faster.)
 
 ```{julia;term=true}
-@time fit(LinearMixedModel, @formula(Y ~ 1 + (1|G)), dat[:Dyestuff2])
+@time fit(LinearMixedModel, @formula(Y ~ 1 + (1|G)), dat[:Dyestuff2]);
 ```
 
 ### Simple, scalar random effects
@@ -169,7 +169,7 @@ objective(fm1)
 deviance(fm1)
 ```
 
-The value optimized when fitting a `GeneralizedLinearMixedModel` is the Laplace approximation to the deviance.
+The value optimized when fitting a `GeneralizedLinearMixedModel` is the Laplace approximation to the deviance or an adaptive Gauss-Hermite evaluation.
 ```@docs
 deviance!
 ```
@@ -190,6 +190,13 @@ show(fixef(fm1))
 show(fixef(gm1))
 ```
 
+An alternative extractor for the fixed-effects coefficient is the `β` property.
+Properties whose names are Greek letters usually have an alternative spelling, which is the name of the Greek letter.
+```{julia;term=true}
+show(fm1.β)
+show(fm1.beta)
+show(gm1.β)
+```
 The variance-covariance matrix of the fixed-effects coefficients is returned by
 ```@docs
 vcov
@@ -236,6 +243,7 @@ sdest
 ```{julia;term=true}
 varest(fm2)
 sdest(fm2)
+fm2.σ
 ```
 
 ## Conditional modes of the random effects
@@ -246,6 +254,7 @@ ranef
 ```
 ```{julia;term=true}
 ranef(fm1)
+fm1.b
 ranef(fm1, named=true)[1]
 ```
 returns the *conditional modes* of the random effects given the observed data.
