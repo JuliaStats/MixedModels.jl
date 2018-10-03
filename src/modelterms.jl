@@ -568,8 +568,8 @@ function LinearAlgebra.mul!(C::SparseMatrixCSC{T}, adjA::Adjoint{T,<:ScalarFacto
     fill!(nz, zero(T))
     for i in 1:m
         rng = nzrange(C, Br[i])
-        k = findfirst(view(rv, rng), Ar[i])
-        iszero(k) && throw(ArgumentError("C is not compatible with A and B at index $i"))
+        k = findfirst(x -> x == Ar[i], view(rv, rng))
+        k == nothing && throw(ArgumentError("C is not compatible with A and B at index $i"))
         nz[rng[k]] += Az[i] * Bz[i]
     end
     C
