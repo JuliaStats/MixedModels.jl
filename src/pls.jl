@@ -139,7 +139,7 @@ function updateL!(m::LinearMixedModel{T}) where T
         end
         cholUnblocked!(Ljj, Val{:L})
         for i in (j + 1):nblk
-            Lij = Λc_mul_B!(trms[i], A_mul_Λ!(copyto!(Ldat[Block(i, j)], A[Block(i, j)]), trms[j]))
+            Lij = lmul!(Λ(trms[i])', rmul!(copyto!(Ldat[Block(i, j)], A[Block(i, j)]), Λ(trms[j])))
             for jj in 1:(j - 1)
                 αβA_mul_Bc!(-one(T), Ldat[Block(i, jj)], Ldat[Block(j, jj)], one(T), Lij)
             end

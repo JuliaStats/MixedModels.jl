@@ -33,6 +33,7 @@ export
        OptSummary,
        Poisson,
        RaggedArray,
+       RepeatedBlockDiagonal,
        ScalarFactorReTerm,
        UniformBlockDiagonal,
        VarCorr,
@@ -55,6 +56,8 @@ export
        getΛ,
        getθ,
        GHnorm,
+       Λ,
+       Lambda,
        loglikelihood,
        lowerbd,    # lower bounds on the covariance parameters
        model_response,
@@ -83,7 +86,7 @@ include("modelterms.jl")
 include("linalg/cholUnblocked.jl")
 include("linalg/rankUpdate.jl")
 include("linalg/scaleInflate.jl")
-include("linalg/lambdaprods.jl")
+#include("linalg/lambdaprods.jl")
 include("linalg/logdet.jl")
 include("linalg.jl")
 include("pls.jl")

@@ -66,6 +66,8 @@ LinearAlgebra.mul!(R::StridedVecOrMat{T}, A::MatrixTerm{T}, B::StridedVecOrMat{T
 LinearAlgebra.mul!(C, A::Adjoint{T,<:MatrixTerm{T}}, B::MatrixTerm{T}) where {T} =
     mul!(C, A.parent.wtx', B.wtx)
 
+Λ(A::MatrixTerm) = I
+
 abstract type AbstractFactorReTerm{T} <: AbstractTerm{T} end
 
 """
@@ -87,6 +89,8 @@ function isnested(A::AbstractFactorReTerm, B::AbstractFactorReTerm)
     end
     true
 end
+
+Lambda(A::AbstractTerm) = Λ(A)
 
 """
     ScalarFactorReTerm
@@ -133,6 +137,8 @@ function reweight!(A::ScalarFactorReTerm, sqrtwts::Vector)
     end
     A
 end
+
+Λ(A::ScalarFactorReTerm) = A.Λ * I
 
 """
     vsize(A::AbstractFactorReTerm)
@@ -190,6 +196,8 @@ function VectorFactorReTerm(f::CategoricalVector, z::Matrix{T}, fnm, cnms, blks)
                        reinterpret(SVector{k,T}, vec(z)), fnm, cnms, blks,
                        LowerTriangular(Matrix{T}(I, k, k)), inds)
 end
+
+Λ(A::VectorFactorReTerm{T}) where {T} = RepeatedBlockDiagonal(A.Λ, size(A.z, 2))
 
 function reweight!(A::VectorFactorReTerm{T,R,S}, sqrtwts::Vector) where {T,R,S}
     if !isempty(sqrtwts)

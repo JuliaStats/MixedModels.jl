@@ -90,3 +90,53 @@ function LinearAlgebra.rdiv!(A::BlockedSparse{T}, B::Adjoint{T,<:LowerTriangular
     end
     A
 end
+
+LinearAlgebra.mul!(C::AbstractVecOrMat, A::AbstractVecOrMat, J::UniformScaling) = mul!(C, A, J.λ)
+
+LinearAlgebra.mul!(C::AbstractVecOrMat, J::UniformScaling, B::AbstractVecOrMat) = mul!(C, J.λ, B)
+
+LinearAlgebra.rmul!(A::AbstractVecOrMat, J::UniformScaling) = rmul!(A, J.λ)
+
+LinearAlgebra.lmul!(J::UniformScaling, B::AbstractVecOrMat) = lmul!(J.λ, B)
+
+function LinearAlgebra.rmul!(A::BlockedSparse{T}, 
+    B::RepeatedBlockDiagonal{T, LowerTriangular{T,Matrix{T}}}) where {T}
+    λ = B.data
+    for blk in A.colblocks
+        rmul!(blk, λ)
+    end
+    A
+end
+
+function LinearAlgebra.rmul!(A::Matrix{T}, 
+    B::RepeatedBlockDiagonal{T,LowerTriangular{T,Matrix{T}}}) where {T}
+    λ = B.data
+    m, n = size(A)
+    l = size(λ, 1)
+    q, r = divrem(n, l)
+    iszero(r) || throw(DimensionMismatch("size(A, 2) = $n is not a multiple of block size = $l"))
+    A3 = reshape(A, (m, l, q))
+    for k in 1:q
+        rmul!(view(A3, :, :, k), λ)
+    end
+    A
+end
+
+function LinearAlgebra.lmul!(adjA::Adjoint{T,RepeatedBlockDiagonal{T, LowerTriangular{T,Matrix{T}}}},
+    B::Matrix{T}) where {T}
+    m, n = size(B)
+    λ = adjA.parent.data
+    l = size(λ, 1)
+    lmul!(adjoint(λ), reshape(B, (l, div(m, l) * n)))
+    B
+end
+
+function LinearAlgebra.lmul!(adjA::Adjoint{T,RepeatedBlockDiagonal{T, LowerTriangular{T,Matrix{T}}}},
+    B::BlockedSparse{T}) where {T}
+    lmul!(adjoint(adjA.parent.data), B.nzsasmat)
+    B
+end
+
+
+LinearAlgebra.mul!(C::Matrix{T}, A::RepeatedBlockDiagonal{T,LowerTriangular{T,Matrix{T}}}, B::Matrix{T}) where {T} =
+    mul!(C, A.data, B)
