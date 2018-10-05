@@ -30,7 +30,7 @@ More formally, a `k`th order rule is exact when `f` is a `k-1` order polynomial.
 In the [*Golub-Welsch algorithm*](https://en.wikipedia.org/wiki/Gaussian_quadrature#The_Golub-Welsch_algorithm) the abscissae for a particular Gaussian quadrature rule are determined as the eigenvalues of a symmetric tri-diagonal matrix and the weights are derived from the squares of the first row of the matrix of eigenvectors.
 For a `k`th order normalized Gauss-Hermite rule the tridiagonal matrix has zeros on the diagonal and the square roots of `1:k-1` on the super- and sub-diagonal, e.g.
 ```{julia;term=true}
-using LinearAlgebra
+using LinearAlgebra, Gadfly
 sym3 = SymTridiagonal(zeros(3), sqrt.(1:2))
 ev = eigen(sym3);
 show(ev.values)
