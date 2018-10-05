@@ -566,7 +566,7 @@ end
 function LinearAlgebra.mul!(C::SparseMatrixCSC{T}, adjA::Adjoint{T,<:ScalarFactorReTerm{T}}, B::ScalarFactorReTerm{T}) where T
     m, n = size(B)
 	A = adjA.parent
-    @argcheck size(C, 1) == size(A, 2) && n == size(C, 2) && size(A, 1) == m DimensionMismatch
+    @argcheck(size(C, 1) == size(A, 2) && n == size(C, 2) && size(A, 1) == m, DimensionMismatch)
     Ar = A.refs
     Br = B.refs
     Az = A.wtz
@@ -574,11 +574,16 @@ function LinearAlgebra.mul!(C::SparseMatrixCSC{T}, adjA::Adjoint{T,<:ScalarFacto
     nz = nonzeros(C)
     rv = rowvals(C)
     fill!(nz, zero(T))
-    for i in 1:m
-        rng = nzrange(C, Br[i])
-        k = findfirst(view(rv, rng), Ar[i])
-        iszero(k) && throw(ArgumentError("C is not compatible with A and B at index $i"))
-        nz[rng[k]] += Az[i] * Bz[i]
+    for k in 1:m       # iterate over rows of A and B
+        i = Ar[k]      # [i,j] are Cartesian indices in C - find and verify corresponding position K in rv and nz
+        j = Br[k]
+        coljlast = Int(C.colptr[j + 1] - 1)
+        K = searchsortedfirst(rv, i, Int(C.colptr[j]), coljlast, Base.Order.Forward)
+        if K ≤ coljlast && rv[K] == i
+            nz[K] += Az[k] * Bz[k]
+        else
+            throw(ArgumentError("C does not have the nonzero pattern of A'B"))
+        end
     end
     C
 end
