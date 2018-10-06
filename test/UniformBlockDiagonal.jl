@@ -65,7 +65,7 @@ end
         L11 = MixedModels.cholUnblocked!(MixedModels.scaleInflate!(UniformBlockDiagonal(fill(0., size(A11.data))), A11, Vf1), Val{:L})
         L21 = Vf2'Vf1
         A21cb1 = copy(L21.colblocks[1])
-        MixedModels.Λc_mul_B!(Vf2, MixedModels.A_mul_Λ!(L21, Vf1))
+        lmul!(Λ(Vf2)', rmul!(L21, Λ(Vf1)))
         L21cb1 = copy(L21.colblocks[1])
         @test L21cb1 == Vf2.Λ * A21cb1 * Vf1.Λ
         rdiv!(L21, adjoint(LowerTriangular(L11)))
@@ -75,5 +75,34 @@ end
         for b in L21.rowblocks[1]
             BLAS.syr!('L', -1.0, b, L22.facevec[1])
         end
+    end
+end
+
+@testset "RBlk" begin
+    ex22 = RepeatedBlockDiagonal(reshape(Vector(1.0:4.0), (2, 2)), 5)
+    vf1 = VectorFactorReTerm(categorical(repeat(1:3, inner=4)),
+                             vcat(ones(1,12), repeat([-1.0, 1.0], outer=6)'),
+                             :G, ["(Intercept)", "U"], [2])
+    Λ1 = Λ(vf1)
+    vf2 = VectorFactorReTerm(categorical(repeat(['A','B'], outer=6)),
+                             vcat(ones(1,12), repeat([-1.0, 0.0, 1.0], inner=2, outer=2)'),
+                             :G, ["(Intercept)", "U"], [2])
+    Λ2 = Λ(vf2)
+
+    @testset "size" begin
+        @test size(ex22) == (10, 10)
+        @test size(ex22, 1) == 10
+        @test size(ex22, 2) == 10
+        @test size(ex22.data) == (2, 2)
+        @test ex22.nblocks == 5
+        @test Λ1 == I
+    end
+
+    @testset "elements" begin
+        @test ex22[1, 1] == 1
+        @test ex22[2, 1] == 2
+        @test ex22[3, 1] == 0
+        @test ex22[2, 2] == 4
+        @test ex22[3, 3] == 1
     end
 end

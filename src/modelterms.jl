@@ -66,6 +66,8 @@ LinearAlgebra.mul!(R::StridedVecOrMat{T}, A::MatrixTerm{T}, B::StridedVecOrMat{T
 LinearAlgebra.mul!(C, A::Adjoint{T,<:MatrixTerm{T}}, B::MatrixTerm{T}) where {T} =
     mul!(C, A.parent.wtx', B.wtx)
 
+Λ(A::MatrixTerm) = I
+
 abstract type AbstractFactorReTerm{T} <: AbstractTerm{T} end
 
 """
@@ -87,6 +89,8 @@ function isnested(A::AbstractFactorReTerm, B::AbstractFactorReTerm)
     end
     true
 end
+
+Lambda(A::AbstractTerm) = Λ(A)
 
 """
     ScalarFactorReTerm
@@ -133,6 +137,8 @@ function reweight!(A::ScalarFactorReTerm, sqrtwts::Vector)
     end
     A
 end
+
+Λ(A::ScalarFactorReTerm) = A.Λ * I
 
 """
     vsize(A::AbstractFactorReTerm)
@@ -190,6 +196,8 @@ function VectorFactorReTerm(f::CategoricalVector, z::Matrix{T}, fnm, cnms, blks)
                        reinterpret(SVector{k,T}, vec(z)), fnm, cnms, blks,
                        LowerTriangular(Matrix{T}(I, k, k)), inds)
 end
+
+Λ(A::VectorFactorReTerm{T}) where {T} = RepeatedBlockDiagonal(A.Λ, size(A.z, 2))
 
 function reweight!(A::VectorFactorReTerm{T,R,S}, sqrtwts::Vector) where {T,R,S}
     if !isempty(sqrtwts)
@@ -558,7 +566,7 @@ end
 function LinearAlgebra.mul!(C::SparseMatrixCSC{T}, adjA::Adjoint{T,<:ScalarFactorReTerm{T}}, B::ScalarFactorReTerm{T}) where T
     m, n = size(B)
 	A = adjA.parent
-    @argcheck size(C, 1) == size(A, 2) && n == size(C, 2) && size(A, 1) == m DimensionMismatch
+    @argcheck(size(C, 1) == size(A, 2) && n == size(C, 2) && size(A, 1) == m, DimensionMismatch)
     Ar = A.refs
     Br = B.refs
     Az = A.wtz
@@ -566,11 +574,16 @@ function LinearAlgebra.mul!(C::SparseMatrixCSC{T}, adjA::Adjoint{T,<:ScalarFacto
     nz = nonzeros(C)
     rv = rowvals(C)
     fill!(nz, zero(T))
-    for i in 1:m
-        rng = nzrange(C, Br[i])
-        k = findfirst(x -> x == Ar[i], view(rv, rng))
-        k == nothing && throw(ArgumentError("C is not compatible with A and B at index $i"))
-        nz[rng[k]] += Az[i] * Bz[i]
+    for k in 1:m       # iterate over rows of A and B
+        i = Ar[k]      # [i,j] are Cartesian indices in C - find and verify corresponding position K in rv and nz
+        j = Br[k]
+        coljlast = Int(C.colptr[j + 1] - 1)
+        K = searchsortedfirst(rv, i, Int(C.colptr[j]), coljlast, Base.Order.Forward)
+        if K ≤ coljlast && rv[K] == i
+            nz[K] += Az[k] * Bz[k]
+        else
+            throw(ArgumentError("C does not have the nonzero pattern of A'B"))
+        end
     end
     C
 end

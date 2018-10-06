@@ -64,14 +64,12 @@ end
     @test isapprox(sum(gm3.resp.devresid), 7156.558983084621, atol=0.1)
 end
 
-#=  Needs a method αβA_mul_Bc!(::Float64, ::SparseMatrixCSC{Float64,Int32}, ::SparseMatrixCSC{Float64,Int32}, ::Float64, ::SparseMatrixCSC{Float64,Int32})
 @testset "grouseticks" begin
-    gm4 = fit(GeneralizedLinearMixedModel, @formula(t ~ 1 + y + ch + (1|i) + (1|b) + (1|l)),
-              dat[:grouseticks], Poisson())
-    @test isapprox(LaplaceDeviance(gm4), 849.5439802900257, atol=0.001)
+    gm4 = fit!(GeneralizedLinearMixedModel(@formula(t ~ 1 + y + ch + (1|i) + (1|b) + (1|l)),
+              dat[:grouseticks], Poisson()), fast=true)  # fails in pirls! with fast=false
+    @test isapprox(deviance(gm4), 851.4046, atol=0.001)
     @test lowerbd(gm4) == vcat(fill(-Inf, 4), zeros(3))
     # these two values are not well defined at the optimum
-    @test isapprox(sum(x -> sum(abs2, x), gm4.u), 196.8695297987013, atol=0.1)
-    @test isapprox(sum(gm4.resp.devresid), 220.92685781326136, atol=0.1)
+    #@test isapprox(sum(x -> sum(abs2, x), gm4.u), 196.8695297987013, atol=0.1)
+    #@test isapprox(sum(gm4.resp.devresid), 220.92685781326136, atol=0.1)
 end
-=#

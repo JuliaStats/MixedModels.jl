@@ -72,10 +72,10 @@ end
         @test isa(sf2'sf2, Diagonal{Float64})
         @test isa(sf2'sf1,SparseMatrixCSC{Float64})
 
-        @test MixedModels.Λc_mul_B!(sf, ones(6)) == fill(0.5, 6)
-        @test MixedModels.A_mul_Λ!(ones(6, 6), sf) == fill(0.5, (6, 6))
+        @test lmul!(Λ(sf)', ones(6)) == fill(0.5, 6)
+        @test rmul!(ones(6, 6), Λ(sf)) == fill(0.5, (6, 6))
 
-        @test MixedModels.Λ_mul_B!(Matrix{Float64}(undef, 1, 6), sf, ones(1, 6)) == fill(0.5, (1,6))
+        @test mul!(Matrix{Float64}(undef, 1, 6), Λ(sf), ones(1, 6)) == fill(0.5, (1,6))
     end
 
     @testset "reweight!" begin
@@ -126,7 +126,7 @@ end
 
     @test sparse(corr)'sparse(scl) == corr'scl
 
-    b = MixedModels.Λ_mul_B!(Matrix{Float64}(undef, 2,18), corr, ones(2,18))
+    b = mul!(Matrix{Float64}(undef, 2,18), Λ(corr), ones(2,18))
     @test b == reshape(repeat([0.5, 1.0], outer=18), (2,18))
     
     @testset "reweight!" begin

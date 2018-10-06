@@ -50,6 +50,63 @@ function LinearAlgebra.Matrix(A::UniformBlockDiagonal{T}) where T
 end
 
 """
+    RepeatedBlockDiagonal{T}
+
+A block diagonal matrix consisting of `k` blocks each of which is the same `m×m` `Matrix{T}`.
+
+This is the form of the `Λ` matrix from a `VectorFactorReTerm`.
+"""
+struct RepeatedBlockDiagonal{T,S<:AbstractMatrix{T}} <: AbstractMatrix{T}
+    data::S
+    nblocks::Int
+
+    function RepeatedBlockDiagonal{T,S}(data,nblocks) where {T,S<:AbstractMatrix{T}}
+        new{T,S}(data, nblocks)
+    end
+end
+
+function RepeatedBlockDiagonal(A::AbstractMatrix, nblocks::Integer)
+    RepeatedBlockDiagonal{eltype(A), typeof(A)}(A, Int(nblocks))
+end
+
+function Base.size(A::RepeatedBlockDiagonal)
+    m, n = size(A.data)
+    nb = A.nblocks
+    (m * nb, n * nb)
+end
+
+function Base.getindex(A::RepeatedBlockDiagonal{T}, i::Int, j::Int) where {T}
+    m, n = size(A.data)
+    nb = A.nblocks
+    (0 < i ≤ nb * m && 0 < j ≤ nb * n) ||
+        throw(IndexError("attempt to access $(nb*m) × $(nb*n) array at index [$i, $j]"))
+    iblk, ioffset = divrem(i - 1, m)
+    jblk, joffset = divrem(j - 1, n)
+    if iblk == jblk
+        A.data[ioffset+1, joffset+1]
+    else
+        zero(T)
+    end
+end
+
+function LinearAlgebra.Matrix(A::RepeatedBlockDiagonal{T}) where T
+    res = zeros(T, size(A))
+    Ad = A.data
+    m, n = size(Ad)
+    nb = A.nblocks
+    offseti = 0
+    offsetj = 0
+    for k = 1:nb
+        for j = 1:n, i = 1:m
+            res[offseti + i, offsetj + j] = Ad[i, j]
+        end
+        offseti += m
+        offsetj += n
+    end
+    res
+end
+
+"""
     BlockedSparse{Tv, Ti}
 
 A `SparseMatrixCSC` whose nonzeros form blocks of rows or columns or both.
@@ -68,11 +125,17 @@ mutable struct BlockedSparse{Tv,Ti} <: AbstractMatrix{Tv}
 end
 
 Base.size(A::BlockedSparse) = size(A.cscmat)
+
 Base.size(A::BlockedSparse, d) = size(A.cscmat, d)
+
 Base.getindex(A::BlockedSparse{T}, i::Integer, j::Integer) where {T} = getindex(A.cscmat, i, j)
+
 LinearAlgebra.Matrix(A::BlockedSparse{T}) where {T} = full(A.cscmat)
+
 SparseArrays.sparse(A::BlockedSparse) = A.cscmat
+
 SparseArrays.nnz(A::BlockedSparse) = nnz(A.cscmat)
+
 function Base.copyto!(L::BlockedSparse{T,I}, A::SparseMatrixCSC{T,I}) where {T,I}
     @argcheck(nnz(L) == nnz(A), DimensionMismatch)
     copyto!(nonzeros(L.cscmat), nonzeros(A))
