@@ -132,7 +132,7 @@ function reweight!(A::ScalarFactorReTerm, sqrtwts::Vector)
         if A.z == A.wtz
             A.wtz = A.z .* sqrtwts
         else
-            A.wtz .= A.z .* sqrtwts
+            mul!(A.wtz, Diagonal(sqrtwts), A.z)
         end
     end
     A
@@ -206,7 +206,7 @@ function reweight!(A::VectorFactorReTerm{T,R,S}, sqrtwts::Vector) where {T,R,S}
             A.wtz = copy(z)
             A.wtzv = reinterpret(SVector{S,T}, vec(A.wtz))
         end
-        A.wtz .= z * Diagonal(sqrtwts)
+        mul!(A.wtz, z, Diagonal(sqrtwts))
     end
     A
 end

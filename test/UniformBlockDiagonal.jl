@@ -53,7 +53,7 @@ end
     end
 
     @testset "updateL" begin
-        @test ones(2, 2) == MixedModels.rankUpdate!(1.0, ones(2), Hermitian(zeros(2, 2)))
+        @test ones(2, 2) == MixedModels.rankUpdate!(Hermitian(zeros(2, 2)), ones(2))
         d3 = dat[:d3]
         modelmat = ones(2, size(d3, 1))
         copyto!(view(modelmat, 2, :), d3[:U])

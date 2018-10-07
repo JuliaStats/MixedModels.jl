@@ -21,32 +21,31 @@ function Base.size(A::UniformBlockDiagonal)
 end
 
 function Base.getindex(A::UniformBlockDiagonal{T}, i::Int, j::Int) where {T}
-    m, n, l = size(A.data)
+    Ad = A.data
+    m, n, l = size(Ad)
     (0 < i ≤ l * m && 0 < j ≤ l * n) ||
         throw(IndexError("attempt to access $(l*m) × $(l*n) array at index [$i, $j]"))
     iblk, ioffset = divrem(i - 1, m)
     jblk, joffset = divrem(j - 1, n)
-    if iblk == jblk
-        A.data[ioffset+1, joffset+1, iblk+1]
-    else
-        zero(T)
-    end
+    iblk == jblk ? Ad[ioffset+1, joffset+1, iblk+1] : zero(T)
 end
 
 function LinearAlgebra.Matrix(A::UniformBlockDiagonal{T}) where T
-    res = zeros(T, size(A))
     Ad = A.data
     m, n, l = size(Ad)
-    offseti = 0
-    offsetj = 0
-    for k = 1:l
-        for j = 1:n, i = 1:m
-            res[offseti + i, offsetj + j] = Ad[i, j, k]
+    mat = zeros(T, (m*l, n*l))
+    for k = 0:(l-1)
+        kp1 = k + 1
+        km = k * m
+        kn = k * n
+        for j = 1:n
+            knpj = kn + j
+            for i = 1:m
+                mat[km + i, knpj] = Ad[i, j, kp1]
+            end
         end
-        offseti += m
-        offsetj += n
     end
-    res
+    mat
 end
 
 """
@@ -82,28 +81,25 @@ function Base.getindex(A::RepeatedBlockDiagonal{T}, i::Int, j::Int) where {T}
         throw(IndexError("attempt to access $(nb*m) × $(nb*n) array at index [$i, $j]"))
     iblk, ioffset = divrem(i - 1, m)
     jblk, joffset = divrem(j - 1, n)
-    if iblk == jblk
-        A.data[ioffset+1, joffset+1]
-    else
-        zero(T)
-    end
+    iblk == jblk ? A.data[ioffset+1, joffset+1] : zero(T)
 end
 
 function LinearAlgebra.Matrix(A::RepeatedBlockDiagonal{T}) where T
-    res = zeros(T, size(A))
+    mat = zeros(T, size(A))
     Ad = A.data
     m, n = size(Ad)
     nb = A.nblocks
-    offseti = 0
-    offsetj = 0
-    for k = 1:nb
-        for j = 1:n, i = 1:m
-            res[offseti + i, offsetj + j] = Ad[i, j]
+    for k = 0:(nb-1)
+        km = k * m
+        kn = k * n
+        for j = 1:n
+            knpj = kn + j
+            for i = 1:m
+                mat[km + i, knpj] = Ad[i, j]
+            end
         end
-        offseti += m
-        offsetj += n
     end
-    res
+    mat
 end
 
 """
@@ -130,14 +126,14 @@ Base.size(A::BlockedSparse, d) = size(A.cscmat, d)
 
 Base.getindex(A::BlockedSparse{T}, i::Integer, j::Integer) where {T} = getindex(A.cscmat, i, j)
 
-LinearAlgebra.Matrix(A::BlockedSparse{T}) where {T} = full(A.cscmat)
+LinearAlgebra.Matrix(A::BlockedSparse{T}) where {T} = Matrix(A.cscmat)
 
 SparseArrays.sparse(A::BlockedSparse) = A.cscmat
 
 SparseArrays.nnz(A::BlockedSparse) = nnz(A.cscmat)
 
 function Base.copyto!(L::BlockedSparse{T,I}, A::SparseMatrixCSC{T,I}) where {T,I}
-    @argcheck(nnz(L) == nnz(A), DimensionMismatch)
+    @argcheck(size(L) == size(A) && nnz(L) == nnz(A), DimensionMismatch)
     copyto!(nonzeros(L.cscmat), nonzeros(A))
     L
 end
@@ -147,7 +143,8 @@ end
 
 Summary of an `NLopt` optimization
 
-# Members
+# Fields
+
 * `initial`: a copy of the initial parameter values in the optimization
 * `lowerbd`: lower bounds on the parameter values
 * `ftol_rel`: as in NLopt
@@ -161,6 +158,9 @@ Summary of an `NLopt` optimization
 * `feval`: the number of function evaluations
 * `optimizer`: the name of the optimizer used, as a `Symbol`
 * `returnvalue`: the return value, as a `Symbol`
+* `nAGQ`: number of adaptive Gauss-Hermite quadrature points in deviance evaluation for GLMMs
+
+The latter field doesn't really belong here but it has to be in a mutable struct in case it is changed.
 """
 mutable struct OptSummary{T <: AbstractFloat}
     initial::Vector{T}
@@ -237,7 +237,7 @@ Linear mixed-effects model representation
 ## Fields
 
 * `formula`: the formula for the model
-* `trms`: a `Vector{AbstractTerm}` representing the model.  The last element is the response.
+* `trms`: a `Vector` of `AbstractTerm` types representing the model.  The last element is the response.
 * `sqrtwts`: vector of square roots of the case weights.  Can be empty.
 * `A`: an `nt × nt` symmetric `BlockMatrix` of matrices representing `hcat(Z,X,y)'hcat(Z,X,y)`
 * `L`: a `nt × nt` `BlockMatrix` - the lower Cholesky factor of `Λ'AΛ+I`
@@ -257,7 +257,7 @@ Linear mixed-effects model representation
 """
 struct LinearMixedModel{T <: AbstractFloat} <: MixedModel{T}
     formula::Formula
-    trms::Vector{AbstractTerm{T}}
+    trms::Vector
     sqrtwts::Vector{T}
     A::BlockMatrix{T}            # cross-product blocks
     L::LowerTriangular{T,BlockArray{T,2,AbstractMatrix{T}}}

@@ -1,40 +1,34 @@
 """
-    rankUpdate!(A, C)
-    rankUpdate!(α, A, C)
-    rankUpdate!(α, A, β, C)
+    rankUpdate!(C, A)
+    rankUpdate!(C, A, α)
+    rankUpdate!(C, A, α, β)
 
-A rank-k update of a Hermitian (Symmetric) matrix.
+A rank-k update, C := β*C + α*A'A, of a Hermitian (Symmetric) matrix.
 
 `α` and `β` both default to 1.0.  When `α` is -1.0 this is a downdate operation.
 The name `rankUpdate!` is borrowed from [https://github.com/andreasnoack/LinearAlgebra.jl]
+The order of the arguments
 """
 function rankUpdate! end
 
-function rankUpdate!(α::T, a::StridedVector{T},
-                     A::HermOrSym{T,S}) where {T<:BlasReal,S<:StridedMatrix}
-    BLAS.syr!(A.uplo, α, a, A.data)
-    A
+function rankUpdate!(C::HermOrSym{T,S}, a::StridedVector{T}, 
+        α::T=one(T)) where {T<:BlasReal,S<:StridedMatrix}
+    BLAS.syr!(C.uplo, α, a, C.data)
+    C  ## to ensure that the return value is HermOrSym
 end
 
-rankUpdate!(a::StridedVector{T}, A::HermOrSym{T,S}) where {T<:BlasReal,S<:StridedMatrix} =
-    rankUpdate!(one(T), a, A)
-
-rankUpdate!(α::T, A::StridedMatrix{T}, β::T,
-            C::HermOrSym{T,S}) where {T<:BlasReal,S<:StridedMatrix} =
+function rankUpdate!(C::HermOrSym{T,S}, A::StridedMatrix{T},
+        α::T=one(T), β::T=one(T)) where {T<:BlasReal,S<:StridedMatrix}
     BLAS.syrk!(C.uplo, 'N', α, A, β, C.data)
+    C
+end
 
-rankUpdate!(α::T, A::StridedMatrix{T}, C::HermOrSym{T,S}) where {T<:Real,S<:StridedMatrix} =
-    rankUpdate!(α, A, one(T), C)
-
-rankUpdate!(A::StridedMatrix{T}, C::HermOrSym{T,S}) where {T<:Real,S<:StridedMatrix} =
-    rankUpdate!(one(T), A, one(T), C)
-
-function rankUpdate!(α::T, A::SparseMatrixCSC{T},
-                     β::T, C::HermOrSym{T,S}) where {T,S<:StridedMatrix{T}}
+function rankUpdate!(C::HermOrSym{T,S}, A::SparseMatrixCSC{T}, α::T=one(T), β::T=one(T)) where {T,S}
     m, n = size(A)
-    @argcheck m == size(C, 2) && C.uplo == 'L' DimensionMismatch
+    @argcheck(m == size(C, 2), DimensionMismatch)
+    @argcheck(C.uplo == 'L', ArgumentError)
     Cd = C.data
-    β == 1 || rmul!(LowerTriangular(Cd), β)
+    isone(β) || rmul!(LowerTriangular(Cd), β)
     rv = rowvals(A)
     nz = nonzeros(A)
     @inbounds for jj in 1:n
@@ -52,13 +46,7 @@ function rankUpdate!(α::T, A::SparseMatrixCSC{T},
     C
 end
 
-rankUpdate!(α::T, A::SparseMatrixCSC{T}, C::HermOrSym{T}) where {T} =
-    rankUpdate!(α, A, one(T), C)
-
-rankUpdate!(α::T, A::BlockedSparse{T}, C::HermOrSym{T}) where {T} =
-    rankUpdate!(α, A.cscmat, one(T), C)
-
-function rankUpdate!(α::T, A::SparseMatrixCSC{T}, C::Diagonal{T}) where T <: Number
+function rankUpdate!(C::Diagonal{T}, A::SparseMatrixCSC{T}, α=one(T)) where T <: Number
     m, n = size(A)
     dd = C.diag
     @argcheck(length(dd) == m, DimensionMismatch)
@@ -75,7 +63,7 @@ function rankUpdate!(α::T, A::SparseMatrixCSC{T}, C::Diagonal{T}) where T <: Nu
     C
 end
 
-function rankUpdate!(α::T, A::BlockedSparse{T}, C::HermOrSym{T,UniformBlockDiagonal{T}}) where T
+function rankUpdate!(C::HermOrSym{T,UniformBlockDiagonal{T}}, A::BlockedSparse{T}, α=one(T)) where T
     Arb = A.rowblocks
     Cdf = C.data.facevec
     (m = length(Arb)) == length(Cdf) ||

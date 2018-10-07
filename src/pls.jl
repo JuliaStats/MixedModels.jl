@@ -135,13 +135,13 @@ function updateL!(m::LinearMixedModel{T}) where T
         Ljj = scaleInflate!(Ldat[Block(j, j)], A[Block(j, j)], trms[j])
         LjjH = isa(Ljj, Diagonal) ? Ljj : Hermitian(Ljj, :L)
         for jj in 1:(j - 1)
-            rankUpdate!(-one(T), Ldat[Block(j, jj)], LjjH)
+            rankUpdate!(LjjH, Ldat[Block(j, jj)], -one(T))
         end
         cholUnblocked!(Ljj, Val{:L})
         for i in (j + 1):nblk
             Lij = lmul!(Λ(trms[i])', rmul!(copyto!(Ldat[Block(i, j)], A[Block(i, j)]), Λ(trms[j])))
             for jj in 1:(j - 1)
-                αβA_mul_Bc!(-one(T), Ldat[Block(i, jj)], Ldat[Block(j, jj)], one(T), Lij)
+                mulαβ!(Lij, Ldat[Block(i, jj)], Ldat[Block(j, jj)]', -one(T), one(T))
             end
             rdiv!(Lij, isa(Ljj, Diagonal) ? Ljj : LowerTriangular(Ljj)')
         end

@@ -115,15 +115,15 @@ function ranef!(v::Vector, m::LinearMixedModel{T}, β::AbstractArray{T}, uscale:
     Ldat = m.L.data
     @argcheck((k = length(v)) == nreterms(m), DimensionMismatch)
     for j in 1:k
-        αβAc_mul_B!(-one(T), Ldat[Block(k + 1, j)], β, one(T),
-                    vec(copyto!(v[j], Ldat[Block(nblocks(Ldat, 2), j)])))
+        mulαβ!(vec(copyto!(v[j], Ldat[Block(nblocks(Ldat, 2), j)])), Ldat[Block(k + 1, j)]', β,
+            -one(T), one(T))
     end
     for i in k: -1 :1
         Lii = Ldat[Block(i, i)]
         vi = vec(v[i])
         ldiv!(adjoint(isa(Lii, Diagonal) ? Lii : LowerTriangular(Lii)), vi)
         for j in 1:(i - 1)
-            αβAc_mul_B!(-one(T), Ldat[Block(i, j)], vi, one(T), vec(v[j]))
+            mulαβ!(vec(v[j]), Ldat[Block(i, j)]', vi, -one(T), one(T))
         end
     end
     if !uscale

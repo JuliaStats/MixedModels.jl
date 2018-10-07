@@ -183,24 +183,21 @@ function unscaledre!(y::AbstractVector, A::ScalarFactorReTerm, b::AbstractVecOrM
     m, n = size(A)
     @argcheck(length(y) == m && length(b) == n, DimensionMismatch)
     z = A.z
-    r = A.refs
-    for i in eachindex(r)
-        y[i] += b[r[i]] * z[i]
+    for (i, r) in enumerate(A.refs)
+        y[i] += b[r] * z[i]
     end
     y
 end
 
-function unscaledre!(y::AbstractVector{T}, A::VectorFactorReTerm{T,V,R},
-                     b::DenseMatrix) where {T,V,R}
+function unscaledre!(y::AbstractVector{T}, A::VectorFactorReTerm{T,R,S},
+                     b::DenseMatrix) where {T,R,S}
     Z = A.z
     k, n = size(Z)
     l = nlevs(A)
-    @argcheck length(y) == n && size(b) == (k, l) DimensionMismatch
-    inds = A.refs
-    for i in eachindex(y)
-        ii = inds[i]
+    @argcheck(length(y) == n && size(b) == (k, l), DimensionMismatch)
+    for (i, ii) in enumerate(A.refs)
         for j in 1:k
-            y[i] += Z[j,i] * b[j, ii]
+            y[i] += Z[j, i] * b[j, ii]
         end
     end
     y
