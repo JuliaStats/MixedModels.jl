@@ -11,19 +11,19 @@ The order of the arguments
 """
 function rankUpdate! end
 
-function rankUpdate!(C::HermOrSym{T,S}, a::StridedVector{T}, 
-        α::T=one(T)) where {T<:BlasReal,S<:StridedMatrix}
-    BLAS.syr!(C.uplo, α, a, C.data)
+function rankUpdate!(C::HermOrSym{T,S}, a::StridedVector{T},  
+        α=true) where {T<:BlasReal,S<:StridedMatrix}
+    BLAS.syr!(C.uplo, T(α), a, C.data)
     C  ## to ensure that the return value is HermOrSym
 end
 
 function rankUpdate!(C::HermOrSym{T,S}, A::StridedMatrix{T},
-        α::T=one(T), β::T=one(T)) where {T<:BlasReal,S<:StridedMatrix}
-    BLAS.syrk!(C.uplo, 'N', α, A, β, C.data)
+        α=true, β=true) where {T<:BlasReal,S<:StridedMatrix}
+    BLAS.syrk!(C.uplo, 'N', T(α), A, T(β), C.data)
     C
 end
 
-function rankUpdate!(C::HermOrSym{T,S}, A::SparseMatrixCSC{T}, α::T=one(T), β::T=one(T)) where {T,S}
+function rankUpdate!(C::HermOrSym{T,S}, A::SparseMatrixCSC{T}, α=true, β=true) where {T,S}
     m, n = size(A)
     @argcheck(m == size(C, 2), DimensionMismatch)
     @argcheck(C.uplo == 'L', ArgumentError)
@@ -46,24 +46,26 @@ function rankUpdate!(C::HermOrSym{T,S}, A::SparseMatrixCSC{T}, α::T=one(T), β:
     C
 end
 
-function rankUpdate!(C::Diagonal{T}, A::SparseMatrixCSC{T}, α=one(T)) where T <: Number
+function rankUpdate!(C::Diagonal{T}, A::SparseMatrixCSC{T}, α=true, β=true) where {T <: Number}
     m, n = size(A)
     dd = C.diag
     @argcheck(length(dd) == m, DimensionMismatch)
+    isone(β) || rmul!(dd, β)
     nz = nonzeros(A)
     rv = rowvals(A)
-    for j in 1:n
+    @inbounds for j in 1:n
         nzr = nzrange(A, j)
         if !isempty(nzr)
             length(nzr) == 1 || throw(ArgumentError("A*A' has off-diagonal elements"))
             k = nzr[1]
-            @inbounds dd[rv[k]] += α * abs2(nz[k])
+            dd[rv[k]] += α * abs2(nz[k])
         end
     end
     C
 end
 
-function rankUpdate!(C::HermOrSym{T,UniformBlockDiagonal{T}}, A::BlockedSparse{T}, α=one(T)) where T
+function rankUpdate!(C::HermOrSym{T,UniformBlockDiagonal{T}}, A::BlockedSparse{T},
+        α=true) where {T}
     Arb = A.rowblocks
     Cdf = C.data.facevec
     (m = length(Arb)) == length(Cdf) ||

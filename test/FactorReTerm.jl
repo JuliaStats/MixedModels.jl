@@ -126,7 +126,7 @@ end
 
     @test sparse(corr)'sparse(scl) == corr'scl
 
-    b = mul!(Matrix{Float64}(undef, 2,18), Λ(corr), ones(2,18))
+    b = mul!(Matrix{Float64}(undef, 2,18), Λ(corr).data, ones(2,18))
     @test b == reshape(repeat([0.5, 1.0], outer=18), (2,18))
     
     @testset "reweight!" begin

@@ -10,7 +10,7 @@ struct UniformBlockDiagonal{T} <: AbstractMatrix{T}
     facevec::Vector{SubArray{T,2,Array{T,3}}}
 end
 
-function UniformBlockDiagonal(dat::Array{T,3}) where T
+function UniformBlockDiagonal(dat::Array{T,3}) where {T}
     UniformBlockDiagonal(dat,
         SubArray{T,2,Array{T,3}}[view(dat,:,:,i) for i in 1:size(dat, 3)])
 end
@@ -30,7 +30,7 @@ function Base.getindex(A::UniformBlockDiagonal{T}, i::Int, j::Int) where {T}
     iblk == jblk ? Ad[ioffset+1, joffset+1, iblk+1] : zero(T)
 end
 
-function LinearAlgebra.Matrix(A::UniformBlockDiagonal{T}) where T
+function LinearAlgebra.Matrix(A::UniformBlockDiagonal{T}) where {T}
     Ad = A.data
     m, n, l = size(Ad)
     mat = zeros(T, (m*l, n*l))
@@ -124,9 +124,9 @@ Base.size(A::BlockedSparse) = size(A.cscmat)
 
 Base.size(A::BlockedSparse, d) = size(A.cscmat, d)
 
-Base.getindex(A::BlockedSparse{T}, i::Integer, j::Integer) where {T} = getindex(A.cscmat, i, j)
+Base.getindex(A::BlockedSparse, i::Integer, j::Integer) = getindex(A.cscmat, i, j)
 
-LinearAlgebra.Matrix(A::BlockedSparse{T}) where {T} = Matrix(A.cscmat)
+LinearAlgebra.Matrix(A::BlockedSparse) = Matrix(A.cscmat)
 
 SparseArrays.sparse(A::BlockedSparse) = A.cscmat
 
@@ -224,8 +224,6 @@ function NLopt.Opt(optsum::OptSummary)
     end
     opt
 end
-
-abstract type AbstractTerm{T} end
 
 abstract type MixedModel{T} <: RegressionModel end # model with fixed and random effects
 
@@ -382,7 +380,17 @@ function Base.getproperty(m::GeneralizedLinearMixedModel, s::Symbol)
     end
 end
 
-Base.setproperty!(m::GeneralizedLinearMixedModel, s::Symbol, y) = s == :θ ? setθ!(m, y) : setfield!(m, s, y)
+function Base.setproperty!(m::GeneralizedLinearMixedModel, s::Symbol, y)
+    if s ∈ (:θ, :theta)
+        setθ!(m, y)
+    elseif s ∈ (:β, :beta)
+        setβ!(m, y)
+    elseif s ∈ (:βθ, :betatheta)
+        setβθ!(m, y)
+    else
+        setfield!(m, s, y)
+    end
+end
 
 Base.propertynames(m::GeneralizedLinearMixedModel, private=false) =
     (:theta, :beta, :λ, :lambda, :σ, :sigma, :X, :y, :lowerbd, fieldnames(typeof(m))..., fieldnames(typeof(m.LMM))...)

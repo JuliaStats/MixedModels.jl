@@ -23,10 +23,10 @@ LinearAlgebra.cond(m::MixedModel) = cond.(reterms(m))
 
 Return the estimated standard deviations of the variance components as a `Vector{Vector{T}}`.
 """
-function Statistics.std(m::MixedModel{T}) where T
+function Statistics.std(m::MixedModel{T}) where {T}
     rl =  filter(!isempty, rowlengths.(lmm(m).trms))
     s = sdest(m)
-    isfinite(s) ? s .* push!(rl, [1.]) : rl
+    isfinite(s) ? rmul!(push!(rl, [1.]), s) : rl
 end
 
 fixefnames(m::MixedModel) = lmm(m).trms[end - 1].cnames
@@ -65,7 +65,7 @@ Return the names of the grouping factors for the random-effects terms.
 """
 fnames(m::MixedModel) = map(x -> x.fnm, reterms(m))
 
-function getθ!(v::AbstractVector{T}, m::LinearMixedModel{T}) where T
+function getθ!(v::AbstractVector{T}, m::LinearMixedModel{T}) where {T}
     trms = m.trms
     @argcheck(length(v) == sum(nθ, trms), DimensionMismatch)
     offset = 0
@@ -111,7 +111,7 @@ Overwrite `v` with the conditional modes of the random effects for `m`.
 If `uscale` is `true` the random effects are on the spherical (i.e. `u`) scale, otherwise
 on the original scale
 """
-function ranef!(v::Vector, m::LinearMixedModel{T}, β::AbstractArray{T}, uscale::Bool) where T
+function ranef!(v::Vector, m::LinearMixedModel{T}, β::AbstractArray{T}, uscale::Bool) where {T}
     Ldat = m.L.data
     @argcheck((k = length(v)) == nreterms(m), DimensionMismatch)
     for j in 1:k
@@ -128,8 +128,8 @@ function ranef!(v::Vector, m::LinearMixedModel{T}, β::AbstractArray{T}, uscale:
     end
     if !uscale
         trms = m.trms
-        for j in 1:k
-            mul!(v[j], Λ(trms[j]), v[j])
+        for (j, vv) in enumerate(v)
+            lmul!(trms[j].Λ, vv)
         end
     end
     v
@@ -140,10 +140,11 @@ ranef!(v::Vector, m::LinearMixedModel, uscale::Bool) = ranef!(v, m, fixef(m), us
 """
     ranef(m::MixedModel; uscale=false, named=true)
 
-Return, as a `Vector{Vector{T}}` (`Vector{NamedVector{T}}` if `named=true`) the conditional modes of the random effects in model `m`.
+Return, as a `Vector{Vector{T}}` (`Vector{NamedVector{T}}` if `named=true`),
+the conditional modes of the random effects in model `m`.
 
-If `uscale` is `true` the random effects are on the spherical (i.e. `u`) scale, otherwise on the
-original scale.
+If `uscale` is `true` the random effects are on the spherical (i.e. `u`) scale, otherwise on
+the original scale.
 """
 function ranef(m::MixedModel; uscale=false, named=false)
     LMM = lmm(m)

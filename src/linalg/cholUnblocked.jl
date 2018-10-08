@@ -8,13 +8,13 @@ because these are part of the inner calculations in a blocked Cholesky factoriza
 """
 function cholUnblocked! end
 
-function cholUnblocked!(D::Diagonal{T}, ::Type{Val{:L}}) where T<:AbstractFloat
+function cholUnblocked!(D::Diagonal{T}, ::Type{Val{:L}}) where {T<:AbstractFloat}
     map!(sqrt, D.diag, D.diag)
     D
 end
 
-function cholUnblocked!(A::StridedMatrix{T}, ::Type{Val{:L}}) where T<:BlasFloat
-    n = checksquare(A)
+function cholUnblocked!(A::StridedMatrix{T}, ::Type{Val{:L}}) where {T<:BlasFloat}
+    n = LinearAlgebra.checksquare(A)
     if n == 1
         A[1] < zero(T) && throw(PosDefException(1))
         A[1] = sqrt(A[1])
