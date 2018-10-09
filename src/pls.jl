@@ -131,7 +131,9 @@ This is the crucial step in evaluating the objective, given a new parameter valu
 function updateL!(m::LinearMixedModel{T}) where {T}
     A = m.A
     Ldat = m.L.data
-    for (j, trm) in enumerate(m.trms)
+    trms = m.trms
+    nblk = length(trms)
+    for (j, trm) in enumerate(trms)
         Ljj = scaleInflate!(Ldat[Block(j, j)], A[Block(j, j)], trm)
         LjjH = isa(Ljj, Diagonal) ? Ljj : Hermitian(Ljj, :L)
         for jj in 1:(j - 1)
@@ -139,7 +141,7 @@ function updateL!(m::LinearMixedModel{T}) where {T}
         end
         cholUnblocked!(Ljj, Val{:L})
         for i in (j + 1):nblk
-            Lij = lmul!(Λ(trm)', rmul!(copyto!(Ldat[Block(i, j)], A[Block(i, j)]), Λ(trm)))
+            Lij = lmul!(Λ(trms[i])', rmul!(copyto!(Ldat[Block(i, j)], A[Block(i, j)]), Λ(trm)))
             for jj in 1:(j - 1)
                 mulαβ!(Lij, Ldat[Block(i, jj)], Ldat[Block(j, jj)]', -one(T), one(T))
             end
