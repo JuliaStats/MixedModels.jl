@@ -4,7 +4,7 @@ module MixedModels
 
 using ArgCheck, BlockArrays, CategoricalArrays, DataFrames, Distributions, GLM, LinearAlgebra
 using NLopt, Random, Showoff, SparseArrays, StaticArrays, Statistics, StatsBase, StatsModels
-using LinearAlgebra: BlasFloat, BlasReal, HermOrSym, PosDefException, checksquare, copytri!
+using LinearAlgebra: BlasFloat, BlasReal, HermOrSym, PosDefException, copytri!
 using NamedArrays: NamedArray, setnames!
 using Printf: @printf, @sprintf
 
@@ -86,7 +86,6 @@ include("modelterms.jl")
 include("linalg/cholUnblocked.jl")
 include("linalg/rankUpdate.jl")
 include("linalg/scaleInflate.jl")
-#include("linalg/lambdaprods.jl")
 include("linalg/logdet.jl")
 include("linalg.jl")
 include("pls.jl")

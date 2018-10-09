@@ -6,7 +6,7 @@ end
 
 StatsBase.fitted(m::GeneralizedLinearMixedModel) = m.resp.mu
 
-function fixef(m::GeneralizedLinearMixedModel{T}, permuted=true) where T
+function fixef(m::GeneralizedLinearMixedModel{T}, permuted=true) where {T}
     permuted && return m.β
     Xtrm = m.LMM.trms[end - 1]
     iperm = invperm(Xtrm.piv)
@@ -42,17 +42,18 @@ function GeneralizedLinearMixedModel(f::Formula, fr::AbstractDataFrame,
     res
 end
 
-GeneralizedLinearMixedModel(f::Formula, fr::AbstractDataFrame, d::Distribution; wt=[], offset=[], contrasts=Dict()) =
-        GeneralizedLinearMixedModel(f, fr, d, GLM.canonicallink(d), wt=wt, offset=offset, contrasts=contrasts)
+GeneralizedLinearMixedModel(f::Formula, fr::AbstractDataFrame, d::Distribution;
+    wt=[], offset=[], contrasts=Dict()) = GeneralizedLinearMixedModel(f, fr, d,
+    GLM.canonicallink(d), wt=wt, offset=offset, contrasts=contrasts)
 
 StatsBase.fit(::Type{GeneralizedLinearMixedModel}, f::Formula, fr::AbstractDataFrame,
-              d::Distribution) = fit!(GeneralizedLinearMixedModel(f, fr, d, GLM.canonicallink(d)))
+    d::Distribution) = fit!(GeneralizedLinearMixedModel(f, fr, d, GLM.canonicallink(d)))
 
 StatsBase.fit(::Type{GeneralizedLinearMixedModel}, f::Formula, fr::AbstractDataFrame,
-              d::Distribution, l::Link) = fit!(GeneralizedLinearMixedModel(f, fr, d, l))
+    d::Distribution, l::Link) = fit!(GeneralizedLinearMixedModel(f, fr, d, l))
 
 """
-    deviance(m::GeneralizedLinearMixedModel{T}, nAGQ=1)::T where T
+    deviance(m::GeneralizedLinearMixedModel{T}, nAGQ=1)::T where {T}
 
 Return the deviance of `m` evaluated by adaptive Gauss-Hermite quadrature
 
@@ -60,7 +61,7 @@ If the distribution `D` does not have a scale parameter the Laplace approximatio
 is defined as the squared length of the conditional modes, `u`, plus the determinant
 of `Λ'Z'WZΛ + I`, plus the sum of the squared deviance residuals.
 """
-function StatsBase.deviance(m::GeneralizedLinearMixedModel{T}, nAGQ=1) where T
+function StatsBase.deviance(m::GeneralizedLinearMixedModel{T}, nAGQ=1) where {T}
     nAGQ == 1 && return T(sum(m.resp.devresid) + logdet(m) + sum(u -> sum(abs2, u), m.u))
     u = vec(m.u[1])
     u₀ = vec(m.u₀[1])
@@ -100,7 +101,7 @@ function deviance!(m::GeneralizedLinearMixedModel, nAGQ=1)
     deviance(m, nAGQ)
 end
 
-function StatsBase.loglikelihood(m::GeneralizedLinearMixedModel{T}) where T
+function StatsBase.loglikelihood(m::GeneralizedLinearMixedModel{T}) where {T}
     accum = zero(T)
     D = Distribution(m.resp)
     if D <: Binomial
@@ -162,7 +163,7 @@ optimized and `β` is held fixed.
 
 Passing `verbose = true` provides verbose output of the iterations.
 """
-function pirls!(m::GeneralizedLinearMixedModel{T}, varyβ::Bool=false, verbose::Bool=false) where T
+function pirls!(m::GeneralizedLinearMixedModel{T}, varyβ=false, verbose=false) where {T}
     iter, maxiter, obj = 0, 100, T(-Inf)
     u₀ = m.u₀
     u = m.u
@@ -222,7 +223,7 @@ end
 
 function setβ!(m::GeneralizedLinearMixedModel, v)
     β = m.β
-    copyto!(β, view(v, 1 : length(β)))
+    copyto!(β, view(v, 1:length(β)))
     m
 end
 
@@ -231,7 +232,7 @@ function setθ!(m::GeneralizedLinearMixedModel, v)
     m
 end
 
-sdest(m::GeneralizedLinearMixedModel{T}) where T = convert(T, NaN)
+sdest(m::GeneralizedLinearMixedModel{T}) where {T} = convert(T, NaN)
 
 """
     fit!(m::GeneralizedLinearMixedModel[, verbose = false, fast = false, nAGQ=1])
@@ -243,7 +244,7 @@ which `pirls!` optimizes both the random effects and the fixed-effects parameter
 is used.
 """
 function StatsBase.fit!(m::GeneralizedLinearMixedModel{T};
-                        verbose::Bool=false, fast::Bool=false, nAGQ=1) where T
+                        verbose::Bool=false, fast::Bool=false, nAGQ=1) where {T}
     β = m.β
     lm = m.LMM
     optsum = lm.optsum
@@ -313,4 +314,4 @@ function Base.show(io::IO, m::GeneralizedLinearMixedModel)
     show(io, coeftable(m))
 end
 
-varest(m::GeneralizedLinearMixedModel{T}) where T = one(T)
+varest(m::GeneralizedLinearMixedModel{T}) where {T} = one(T)

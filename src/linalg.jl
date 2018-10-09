@@ -1,10 +1,11 @@
-function αβA_mul_Bc!(α::T, A::StridedMatrix{T}, B::StridedMatrix{T},
-                     β::T, C::StridedMatrix{T}) where T <: BlasFloat
-    BLAS.gemm!('N', 'C', α, A, B, β, C)
+function mulαβ!(C::StridedMatrix{T}, A::StridedMatrix{T}, 
+        adjB::Adjoint{T,<:StridedMatrix{T}}, α=true, β=false) where {T<:BlasFloat}
+    BLAS.gemm!('N', 'C', T(α), A, adjB.parent, T(β), C)
 end
 
-function αβA_mul_Bc!(α::T, A::SparseMatrixCSC{T}, B::SparseMatrixCSC{T},
-                     β::T, C::Matrix{T}) where T <: Number
+function mulαβ!(C::Matrix{T}, A::SparseMatrixCSC{T}, adjB::Adjoint{T,<:SparseMatrixCSC{T}},
+        α=true, β=false) where T <: Number
+    B = adjB.parent
     @argcheck(B.m == size(C, 2) && A.m == size(C, 1) && A.n == B.n, DimensionMismatch)
     anz = nonzeros(A)
     arv = rowvals(A)
@@ -23,41 +24,12 @@ function αβA_mul_Bc!(α::T, A::SparseMatrixCSC{T}, B::SparseMatrixCSC{T},
     C
 end
 
-αβA_mul_Bc!(α::T, A::BlockedSparse{T}, B::BlockedSparse{T}, β::T, C::Matrix{T}) where {T} =
-    αβA_mul_Bc!(α, A.cscmat, B.cscmat, β, C)
+mulαβ!(C::Matrix{T}, A::BlockedSparse{T}, adjB::Adjoint{T,<:BlockedSparse{T}}, α=true, β=false) where {T} =
+    mulαβ!(C, A.cscmat, adjB.parent.cscmat', α, β)
 
-function αβA_mul_Bc!(α::T, A::StridedVecOrMat{T}, B::SparseMatrixCSC{T}, β::T,
-                     C::StridedVecOrMat{T}) where T
-    m, n = size(A)
-    p, q = size(B)
-    r, s = size(C)
-    @argcheck(r == m && s == p && n == q, DimensionMismatch)
-    isone(β) || rmul!(C, β)
-    nz = nonzeros(B)
-    rv = rowvals(B)
-    @inbounds for j in 1:q, k in nzrange(B, j)
-        rvk = rv[k]
-        anzk = α * nz[k]
-        for jj in 1:r
-            C[jj, rvk] += A[jj, j] * anzk
-        end
-    end
-    C
-end
-
-αβA_mul_Bc!(α::T, A::StridedVecOrMat{T}, B::BlockedSparse{T}, β::T,
-            C::StridedVecOrMat{T}) where {T} = αβA_mul_Bc!(α, A, B.cscmat, β, C)
-
-αβAc_mul_B!(α::T, A::StridedMatrix{T}, B::StridedVector{T}, β::T,
-            C::StridedVector{T}) where {T<:BlasFloat} = BLAS.gemv!('C', α, A, B, β, C)
-
-αβAc_mul_B!(α::T, A::SparseMatrixCSC{T}, B::StridedVector{T}, β::T,
-            C::StridedVector{T}) where {T} = mul!(C, adjoint(A), B, α, β)
-
-αβAc_mul_B!(α::T, A::BlockedSparse{T}, B::StridedVector{T}, β::T,
-            C::StridedVector{T}) where {T} = αβAc_mul_B!(α, A.cscmat, B, β, C)
-
-function αβA_mul_Bc!(α::T, A::SparseMatrixCSC{T}, B::SparseMatrixCSC{T}, β::T, C::SparseMatrixCSC{T}) where {T}
+function mulαβ!(C::SparseMatrixCSC{T}, A::SparseMatrixCSC{T}, adjB::Adjoint{T,<:SparseMatrixCSC{T}},
+        α=true, β=false) where {T}
+    B = adjB.parent
     @argcheck(C.m == A.m && C.n == B.m && A.n == B.n, DimensionMismatch)
     Anz = nonzeros(A)
     Bnz = nonzeros(B)
@@ -86,8 +58,43 @@ function αβA_mul_Bc!(α::T, A::SparseMatrixCSC{T}, B::SparseMatrixCSC{T}, β::
     C
 end
 
+mulαβ!(C::BlockedSparse{T}, A::BlockedSparse{T}, adjB::Adjoint{T,<:BlockedSparse{T}}, α=true, β=false) where {T} =
+    mulαβ!(C.cscmat, A.cscmat, adjB.parent.cscmat', α, β)
+
+function mulαβ!(C::StridedVecOrMat{T}, A::StridedVecOrMat{T}, adjB::Adjoint{T,<:SparseMatrixCSC{T}},
+        α=true, β=false) where T
+    B = adjB.parent
+    m, n = size(A)
+    p, q = size(B)
+    r, s = size(C)
+    @argcheck(r == m && s == p && n == q, DimensionMismatch)
+    isone(β) || rmul!(C, β)
+    nz = nonzeros(B)
+    rv = rowvals(B)
+    @inbounds for j in 1:q, k in nzrange(B, j)
+        rvk = rv[k]
+        anzk = α * nz[k]
+        for jj in 1:r
+            C[jj, rvk] += A[jj, j] * anzk
+        end
+    end
+    C
+end
+
+mulαβ!(C::StridedVecOrMat{T}, A::StridedVecOrMat{T}, adjB::Adjoint{T,<:BlockedSparse{T}},
+    α=true, β=false) where {T} = mulαβ!(C, A, adjB.parent.cscmat', α, β)
+
+mulαβ!(C::StridedVector{T}, adjA::Adjoint{T,<:StridedMatrix{T}}, B::StridedVector{T},
+    α=true, β=false) where {T<:BlasFloat} = BLAS.gemv!('C', T(α), adjA.parent, B, T(β), C)
+
+mulαβ!( C::StridedVector{T}, adjA::Adjoint{T,<:SparseMatrixCSC{T}}, B::StridedVector{T},
+    α=true, β=false) where {T} = mul!(C, adjA, B, T(α), T(β))
+
+mulαβ!(C::StridedVector{T}, adjA::Adjoint{T,<:BlockedSparse{T}}, B::StridedVector{T},
+    α=true, β=false) where {T} = mulαβ!(α, adjA.parent.cscmat', B, β, C)
+
 function LinearAlgebra.ldiv!(adjA::Adjoint{T,<:LowerTriangular{T,UniformBlockDiagonal{T}}},
-                             B::StridedVector{T}) where {T}
+        B::StridedVector{T}) where {T}
     A = adjA.parent
     @argcheck length(B) == size(A, 2) DimensionMismatch
     m, n, k = size(A.data.data)
@@ -100,7 +107,7 @@ function LinearAlgebra.ldiv!(adjA::Adjoint{T,<:LowerTriangular{T,UniformBlockDia
 end
 
 function LinearAlgebra.rdiv!(A::Matrix{T},
-                             adjB::Adjoint{T,<:LowerTriangular{T,UniformBlockDiagonal{T}}}) where T
+        adjB::Adjoint{T,<:LowerTriangular{T,UniformBlockDiagonal{T}}}) where T
     Bd = adjB.parent.data
     m, n, k = size(Bd.data)
     @argcheck(size(A, 2) == size(Bd, 1) && m == n, DimensionMismatch)
@@ -111,7 +118,8 @@ function LinearAlgebra.rdiv!(A::Matrix{T},
     A
 end
 
-function LinearAlgebra.rdiv!(A::BlockedSparse{T}, B::Adjoint{T,<:LowerTriangular{T,UniformBlockDiagonal{T}}}) where T
+function LinearAlgebra.rdiv!(A::BlockedSparse{T},
+        B::Adjoint{T,<:LowerTriangular{T,UniformBlockDiagonal{T}}}) where T
     Bp = B.parent
     @argcheck(length(A.colblocks) == length(Bp.data.facevec), DimensionMismatch)
     for (b,f) in zip(A.colblocks, Bp.data.facevec)
@@ -120,6 +128,8 @@ function LinearAlgebra.rdiv!(A::BlockedSparse{T}, B::Adjoint{T,<:LowerTriangular
     A
 end
 
+## Note: ifdef these methods once a new version of the LinearAlgebra standard package is released
+## Not yet sure what condition to use 
 LinearAlgebra.mul!(C::AbstractVecOrMat, A::AbstractVecOrMat, J::UniformScaling) = mul!(C, A, J.λ)
 
 LinearAlgebra.mul!(C::AbstractVecOrMat, J::UniformScaling, B::AbstractVecOrMat) = mul!(C, J.λ, B)
@@ -129,7 +139,7 @@ LinearAlgebra.rmul!(A::AbstractVecOrMat, J::UniformScaling) = rmul!(A, J.λ)
 LinearAlgebra.lmul!(J::UniformScaling, B::AbstractVecOrMat) = lmul!(J.λ, B)
 
 function LinearAlgebra.rmul!(A::BlockedSparse{T}, 
-    B::RepeatedBlockDiagonal{T, LowerTriangular{T,Matrix{T}}}) where {T}
+        B::RepeatedBlockDiagonal{T, LowerTriangular{T,Matrix{T}}}) where {T}
     λ = B.data
     for blk in A.colblocks
         rmul!(blk, λ)
@@ -138,7 +148,7 @@ function LinearAlgebra.rmul!(A::BlockedSparse{T},
 end
 
 function LinearAlgebra.rmul!(A::Matrix{T}, 
-    B::RepeatedBlockDiagonal{T,LowerTriangular{T,Matrix{T}}}) where {T}
+        B::RepeatedBlockDiagonal{T,LowerTriangular{T,Matrix{T}}}) where {T}
     λ = B.data
     m, n = size(A)
     l = size(λ, 1)
@@ -152,7 +162,7 @@ function LinearAlgebra.rmul!(A::Matrix{T},
 end
 
 function LinearAlgebra.lmul!(adjA::Adjoint{T,RepeatedBlockDiagonal{T, LowerTriangular{T,Matrix{T}}}},
-    B::Matrix{T}) where {T}
+        B::Matrix{T}) where {T}
     m, n = size(B)
     λ = adjA.parent.data
     l = size(λ, 1)
@@ -161,11 +171,12 @@ function LinearAlgebra.lmul!(adjA::Adjoint{T,RepeatedBlockDiagonal{T, LowerTrian
 end
 
 function LinearAlgebra.lmul!(adjA::Adjoint{T,RepeatedBlockDiagonal{T, LowerTriangular{T,Matrix{T}}}},
-    B::BlockedSparse{T}) where {T}
+        B::BlockedSparse{T}) where {T}
     lmul!(adjoint(adjA.parent.data), B.nzsasmat)
     B
 end
 
-
+#=
 LinearAlgebra.mul!(C::Matrix{T}, A::RepeatedBlockDiagonal{T,LowerTriangular{T,Matrix{T}}}, B::Matrix{T}) where {T} =
     mul!(C, A.data, B)
+=#

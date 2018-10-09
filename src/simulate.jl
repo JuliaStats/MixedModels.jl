@@ -11,7 +11,7 @@ and `θᵢ, i = 1,...,k` the covariance parameters.
 `β`, `σ`, and `θ` are the values of the parameters in `m` for simulation of the responses.
 """
 function bootstrap(N, m::LinearMixedModel{T};
-                   β = fixef(m), σ = sdest(m), θ = getθ(m)) where T
+                   β = fixef(m), σ = sdest(m), θ = getθ(m)) where {T}
     y₀ = copy(model_response(m)) # to restore original state of m
     p = size(m.trms[end - 1], 2)
     @argcheck(length(β) == p, DimensionMismatch)
@@ -20,7 +20,7 @@ function bootstrap(N, m::LinearMixedModel{T};
     Λsize = vsize.(trms)
     cnms = vcat([:obj, :σ], Symbol.(subscriptednames('β', p)),
         Symbol.(subscriptednames('θ', k)), Symbol.(subscriptednames('σ', sum(Λsize))))
-    nρ = [(l * (l - 1)) >> 1 for l in Λsize]
+    nρ = [(l * (l - 1)) >> 1 for l in Λsize]  # FIXME: Do this more carefully.
     if (nρtot = sum(nρ)) > 0
         append!(cnms, Symbol.(subscriptednames('ρ', nρtot)))
     end
@@ -70,8 +70,9 @@ function subscriptednames(nm, len)
         [string(nm, lpad(string(j), nd, '0')) for j in 1:len]
 end
 
-function stddevcor!(σ::Vector{T}, ρ::Matrix{T}, scr::Matrix{T}, L::Cholesky{T}) where T
-    @argcheck(length(σ) == (k = size(L, 2)) && size(ρ) == (k, k) && size(scr) == (k, k), DimensionMismatch)
+function stddevcor!(σ::Vector{T}, ρ::Matrix{T}, scr::Matrix{T}, L::Cholesky{T}) where {T}
+    @argcheck(length(σ) == (k = size(L, 2)) && size(ρ) == (k, k) && size(scr) == (k, k),
+        DimensionMismatch)
     if L.uplo == 'L'
         copyto!(scr, L.factors)
         for i in 1 : k
@@ -102,20 +103,20 @@ function stddevcor!(σ::Vector, ρ::Matrix, scr::Matrix, L::ScalarFactorReTerm)
 end
 
 function stddevcor!(σ::Vector{T}, ρ::Matrix{T}, scr::Matrix{T},
-    L::VectorFactorReTerm{T}) where T
+    L::VectorFactorReTerm{T}) where {T}
     stddevcor!(σ, ρ, scr, Cholesky(L.Λ))
 end
 
-function stddevcor(L::Cholesky{T}) where T
+function stddevcor(L::Cholesky{T}) where {T}
     k = size(L, 1)
     stddevcor!(Vector{T}(undef, k), Matrix{T}(undef, k, k), Matrix{T}(undef, k, k), L)
 end
 
 stddevcor(L::LowerTriangular) = stddevcor(Cholesky(L))
 stddevcor(L::VectorFactorReTerm) = stddevcor(L.Λ)
-stddevcor(L::ScalarFactorReTerm{T}) where T = [L.Λ], ones(T, 1, 1)
+stddevcor(L::ScalarFactorReTerm{T}) where {T} = [L.Λ], ones(T, 1, 1)
 
-function LinearAlgebra.Cholesky(L::LowerTriangular)
+function LinearAlgebra.Cholesky(L::LowerTriangular)  # FIXME: this is type piracy 
     info = 0
     for k in 1:size(L,2)
         if iszero(L[k, k])
@@ -137,8 +138,8 @@ function reevaluateAend!(m::LinearMixedModel)
     trms = m.trms
     trmn = reweight!(trms[end], m.sqrtwts)
     nblk = nblocks(A, 2)
-    for i in eachindex(trms)
-        mul!(A[Block(nblk, i)], trmn', trms[i])
+    for (i, trm) in enumerate(trms)
+        mul!(A[Block(nblk, i)], trmn', trm)
     end
     m
 end
@@ -171,8 +172,8 @@ function resetθ!(m::LinearMixedModel)
 end
 
 """
-    unscaledre!(y::AbstractVector{T}, M::AbstractFactorReTerm{T}, b) where T
-    unscaledre!(rng::AbstractRNG, y::AbstractVector{T}, M::AbstractFactorReTerm{T}) where T
+    unscaledre!(y::AbstractVector{T}, M::AbstractFactorReTerm{T}, b) where {T}
+    unscaledre!(rng::AbstractRNG, y::AbstractVector{T}, M::AbstractFactorReTerm{T}) where {T}
 
 Add unscaled random effects defined by `M` and `b` to `y`.  When `rng` is present the `b`
 vector is generated as `randn(rng, size(M, 2))`
@@ -183,36 +184,33 @@ function unscaledre!(y::AbstractVector, A::ScalarFactorReTerm, b::AbstractVecOrM
     m, n = size(A)
     @argcheck(length(y) == m && length(b) == n, DimensionMismatch)
     z = A.z
-    r = A.refs
-    for i in eachindex(r)
-        y[i] += b[r[i]] * z[i]
+    for (i, r) in enumerate(A.refs)
+        y[i] += b[r] * z[i]
     end
     y
 end
 
-function unscaledre!(y::AbstractVector{T}, A::VectorFactorReTerm{T,V,R},
-                     b::DenseMatrix) where {T,V,R}
+function unscaledre!(y::AbstractVector{T}, A::VectorFactorReTerm{T,R,S},
+                     b::DenseMatrix) where {T,R,S}
     Z = A.z
     k, n = size(Z)
     l = nlevs(A)
-    @argcheck length(y) == n && size(b) == (k, l) DimensionMismatch
-    inds = A.refs
-    for i in eachindex(y)
-        ii = inds[i]
+    @argcheck(length(y) == n && size(b) == (k, l), DimensionMismatch)
+    for (i, ii) in enumerate(A.refs)
         for j in 1:k
-            y[i] += Z[j,i] * b[j, ii]
+            y[i] += Z[j, i] * b[j, ii]
         end
     end
     y
 end
 
 function unscaledre!(rng::AbstractRNG, y::AbstractVector{T},
-                     A::VectorFactorReTerm{T}) where T
+                     A::VectorFactorReTerm{T}) where {T}
     unscaledre!(y, A, lmul!(LowerTriangular(A.Λ), randn(rng, vsize(A), nlevs(A))))
 end
 
 function unscaledre!(rng::AbstractRNG, y::AbstractVector{T},
-                     A::ScalarFactorReTerm{T}) where T
+                     A::ScalarFactorReTerm{T}) where {T}
     unscaledre!(y, A, lmul!(A.Λ, randn(rng, vsize(A), nlevs(A))))
 end
 
@@ -224,7 +222,7 @@ unscaledre!(y::AbstractVector, A::AbstractFactorReTerm) = unscaledre!(Base.GLOBA
 Overwrite the response (i.e. `m.trms[end]`) with a simulated response vector from model `m`.
 """
 function simulate!(rng::AbstractRNG, m::LinearMixedModel{T};
-                   β=coef(m), σ=sdest(m), θ=T[]) where T
+                   β=coef(m), σ=sdest(m), θ=T[]) where {T}
     if !isempty(θ)
         setθ!(m, θ)
     end

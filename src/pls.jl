@@ -106,7 +106,8 @@ function LinearMixedModel(f::Formula, fr::AbstractDataFrame;
     LinearMixedModel(f, trms, oftype(y, weights))
 end
 
-StatsBase.model_response(mf::ModelFrame, d::Distribution) = model_response(mf.df[mf.terms.eterms[1]], d)
+StatsBase.model_response(mf::ModelFrame, d::Distribution) =
+    model_response(mf.df[mf.terms.eterms[1]], d)
 
 StatsBase.model_response(v::AbstractVector, d::Distribution) = Vector{partype(d)}(v)
 
@@ -117,7 +118,8 @@ function StatsBase.model_response(v::CategoricalVector, d::Bernoulli)
     nlevs < 2 ? zeros(v, partype(d)) : partype(d)[cv == levs[2] for cv in v]
 end
 
-StatsBase.fit(::Type{LinearMixedModel}, f::Formula, fr::AbstractDataFrame) = fit!(LinearMixedModel(f, fr))
+StatsBase.fit(::Type{LinearMixedModel}, f::Formula, fr::AbstractDataFrame) =
+    fit!(LinearMixedModel(f, fr))
 
 """
     updateL!(m::LinearMixedModel)
@@ -126,22 +128,22 @@ Update the blocked lower Cholesky factor, `m.L`, from `m.A` and `m.trms` (used f
 
 This is the crucial step in evaluating the objective, given a new parameter value.
 """
-function updateL!(m::LinearMixedModel{T}) where T
-    trms = m.trms
+function updateL!(m::LinearMixedModel{T}) where {T}
     A = m.A
     Ldat = m.L.data
-    nblk = nblocks(A, 2)
-    for j in 1:nblk
-        Ljj = scaleInflate!(Ldat[Block(j, j)], A[Block(j, j)], trms[j])
+    trms = m.trms
+    nblk = length(trms)
+    for (j, trm) in enumerate(trms)
+        Ljj = scaleInflate!(Ldat[Block(j, j)], A[Block(j, j)], trm)
         LjjH = isa(Ljj, Diagonal) ? Ljj : Hermitian(Ljj, :L)
         for jj in 1:(j - 1)
-            rankUpdate!(-one(T), Ldat[Block(j, jj)], LjjH)
+            rankUpdate!(LjjH, Ldat[Block(j, jj)], -one(T))
         end
         cholUnblocked!(Ljj, Val{:L})
         for i in (j + 1):nblk
-            Lij = lmul!(Λ(trms[i])', rmul!(copyto!(Ldat[Block(i, j)], A[Block(i, j)]), Λ(trms[j])))
+            Lij = lmul!(Λ(trms[i])', rmul!(copyto!(Ldat[Block(i, j)], A[Block(i, j)]), Λ(trm)))
             for jj in 1:(j - 1)
-                αβA_mul_Bc!(-one(T), Ldat[Block(i, jj)], Ldat[Block(j, jj)], one(T), Lij)
+                mulαβ!(Lij, Ldat[Block(i, jj)], Ldat[Block(j, jj)]', -one(T), one(T))
             end
             rdiv!(Lij, isa(Ljj, Diagonal) ? Ljj : LowerTriangular(Ljj)')
         end
@@ -157,7 +159,7 @@ StatsBase.coef(m::MixedModel) = fixef(m, false)
 Optimize the objective of a `LinearMixedModel`.  When `verbose` is `true` the values of the
 objective and the parameters are printed on stdout at each function evaluation.
 """
-function StatsBase.fit!(m::LinearMixedModel{T}, verbose::Bool=false) where T
+function StatsBase.fit!(m::LinearMixedModel{T}, verbose::Bool=false) where {T}
     optsum = m.optsum
     opt = Opt(optsum)
     feval = 0
@@ -199,7 +201,7 @@ function StatsBase.fit!(m::LinearMixedModel{T}, verbose::Bool=false) where T
     m
 end
 
-function fitted!(v::AbstractArray{T}, m::LinearMixedModel{T}) where T
+function fitted!(v::AbstractArray{T}, m::LinearMixedModel{T}) where {T}
     ## FIXME: Create and use `effects(m) -> β, b` w/o calculating β twice
     trms = m.trms
     mul!(vec(v), trms[end - 1], fixef(m))
@@ -232,15 +234,15 @@ Return negative twice the log-likelihood of model `m`
 """
 function objective(m::LinearMixedModel)
     wts = m.sqrtwts
-    logdet(m) + nobs(m) * (1 + log2π + log(varest(m))) - (isempty(wts) ? 0 : 2sum(log, wts))
+    logdet(m) + nobs(m)*(1 + log2π + log(varest(m))) - (isempty(wts) ? 0 : 2sum(log, wts))
 end
 
 """
-    fixef!(v::Vector{T}, m::LinearMixedModel{T}) where T
+    fixef!(v::Vector{T}, m::LinearMixedModel{T})
 
 Overwrite `v` with the pivoted and, possibly, truncated fixed-effects coefficients of model `m`
 """
-function fixef!(v::AbstractVector{T}, m::LinearMixedModel{T}) where T
+function fixef!(v::AbstractVector{T}, m::LinearMixedModel{T}) where {T}
     L = feL(m)
     @argcheck(length(v) == size(L, 1), DimensionMismatch)
     ldiv!(adjoint(L), copyto!(v, m.L.data.blocks[end, end - 1]))
@@ -254,7 +256,7 @@ Return the fixed-effects parameter vector estimate of `m`.
 If `permuted` is `true` the vector elements are permuted according to
 `m.trms[end - 1].piv` and truncated to the rank of that term.
 """
-function fixef(m::LinearMixedModel{T}, permuted=true) where T
+function fixef(m::LinearMixedModel{T}, permuted=true) where {T}
     permuted && return fixef!(Vector{T}(undef, size(m)[2]), m)
     Xtrm = m.trms[end - 1]
     piv = Xtrm.piv
