@@ -31,7 +31,7 @@ function bootstrap(N, m::LinearMixedModel{T};
     scrσ = [Vector{T}(undef, l) for l in Λsize]
     scrρ = [Matrix{T}(undef, l, l) for l in Λsize]
     scr = similar.(scrρ)
-    for i in 1 : N
+    @showprogress for i in 1 : N
         j = 0
         refit!(simulate!(m, β = β, σ = σ, θ = θ))
         dfr[j += 1][i] = objective(m)
