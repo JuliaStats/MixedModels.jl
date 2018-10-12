@@ -128,15 +128,12 @@ function LinearAlgebra.rdiv!(A::BlockedSparse{T},
     A
 end
 
-## Note: ifdef these methods once a new version of the LinearAlgebra standard package is released
-## Not yet sure what condition to use 
-LinearAlgebra.mul!(C::AbstractVecOrMat, A::AbstractVecOrMat, J::UniformScaling) = mul!(C, A, J.λ)
-
-LinearAlgebra.mul!(C::AbstractVecOrMat, J::UniformScaling, B::AbstractVecOrMat) = mul!(C, J.λ, B)
-
-LinearAlgebra.rmul!(A::AbstractVecOrMat, J::UniformScaling) = rmul!(A, J.λ)
-
-LinearAlgebra.lmul!(J::UniformScaling, B::AbstractVecOrMat) = lmul!(J.λ, B)
+if VERSION <= v"1.1.0-DEV.421"
+    LinearAlgebra.mul!(C::AbstractMatrix, A::AbstractMatrix, J::UniformScaling) = mul!(C, A, J.λ)
+    LinearAlgebra.mul!(C::AbstractVecOrMat, J::UniformScaling, B::AbstractVecOrMat) = mul!(C, J.λ, B)
+    LinearAlgebra.rmul!(A::AbstractMatrix, J::UniformScaling) = rmul!(A, J.λ)
+    LinearAlgebra.lmul!(J::UniformScaling, B::AbstractVecOrMat) = lmul!(J.λ, B)
+end
 
 function LinearAlgebra.rmul!(A::BlockedSparse{T}, 
         B::RepeatedBlockDiagonal{T, LowerTriangular{T,Matrix{T}}}) where {T}
