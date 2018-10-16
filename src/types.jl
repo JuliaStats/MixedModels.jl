@@ -34,7 +34,7 @@ function LinearAlgebra.Matrix(A::UniformBlockDiagonal{T}) where {T}
     Ad = A.data
     m, n, l = size(Ad)
     mat = zeros(T, (m*l, n*l))
-    for k = 0:(l-1)
+    @inbounds for k = 0:(l-1)
         kp1 = k + 1
         km = k * m
         kn = k * n
@@ -262,6 +262,11 @@ struct LinearMixedModel{T <: AbstractFloat} <: MixedModel{T}
     optsum::OptSummary{T}
 end
 
+function normalized_variance_cumsum(Λ)
+    vars = cumsum(abs2.(svdvals(Λ)))
+    vars ./ vars[end]
+end
+
 function Base.getproperty(m::LinearMixedModel, s::Symbol)
     if s ∈ (:θ, :theta)
         getθ(m)
@@ -281,6 +286,8 @@ function Base.getproperty(m::LinearMixedModel, s::Symbol)
         m.trms[end - 1].x
     elseif s == :y
         vec(m.trms[end].x)
+    elseif s == :rePCA
+        normalized_variance_cumsum.(getΛ(m))
     else
         getfield(m, s)
     end
@@ -289,7 +296,7 @@ end
 Base.setproperty!(m::LinearMixedModel, s::Symbol, y) = s == :θ ? setθ!(m, y) : setfield!(m, s, y)
 
 Base.propertynames(m::LinearMixedModel, private=false) =
-    (:formula, :trms, :A, :L, :optsum, :θ, :theta, :β, :beta, :λ, :lambda, :σ, :sigma, :b, :u, :lowerbd, :X, :y)
+    (:formula, :trms, :A, :L, :optsum, :θ, :theta, :β, :beta, :λ, :lambda, :σ, :sigma, :b, :u, :lowerbd, :X, :y, :rePCA)
 
 struct RaggedArray{T,I}
     vals::Vector{T}

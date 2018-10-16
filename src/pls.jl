@@ -136,6 +136,7 @@ function updateL!(m::LinearMixedModel{T}) where {T}
     for (j, trm) in enumerate(trms)
         Ljj = scaleInflate!(Ldat[Block(j, j)], A[Block(j, j)], trm)
         LjjH = isa(Ljj, Diagonal) ? Ljj : Hermitian(Ljj, :L)
+        LjjT = isa(Ljj, Diagonal) ? Ljj : LowerTriangular(Ljj)
         for jj in 1:(j - 1)
             rankUpdate!(LjjH, Ldat[Block(j, jj)], -one(T))
         end
@@ -145,7 +146,7 @@ function updateL!(m::LinearMixedModel{T}) where {T}
             for jj in 1:(j - 1)
                 mulαβ!(Lij, Ldat[Block(i, jj)], Ldat[Block(j, jj)]', -one(T), one(T))
             end
-            rdiv!(Lij, isa(Ljj, Diagonal) ? Ljj : LowerTriangular(Ljj)')
+            rdiv!(Lij, LjjT')
         end
     end
     m

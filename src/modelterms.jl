@@ -460,7 +460,7 @@ function mulαβ!(C::Matrix{T}, adjA::Adjoint{T,<:MatrixTerm{T}}, B::ScalarFacto
 end
 
 function mulαβ!(C::Matrix{T}, adjA::Adjoint{T,<:MatrixTerm{T}},
-    B::VectorFactorReTerm{T,R,S}, α=true, β=false) where {T,R,S}
+        B::VectorFactorReTerm{T,R,S}, α=true, β=false) where {T,R,S}
     A = adjA.parent
     Awt = A.wtx
     n, p = size(Awt)

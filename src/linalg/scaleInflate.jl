@@ -34,28 +34,35 @@ function scaleInflate!(Ljj::UniformBlockDiagonal{T}, Ajj::UniformBlockDiagonal{T
         Λj::VectorFactorReTerm{T}) where {T}
     Ljjdd = Ljj.data
     Ajjdd = Ajj.data
-    @argcheck(size(Ljjdd) == size(Ajjdd), DimensionMismatch)
+    if ((m, n, l) = size(Ljjdd)) != size(Ajjdd) 
+        throw(DimensionMismatch("size(Ljj.data) = $(size(Ljjdd)) != $(size(Ajjdd)) = size(Ajj.data)"))
+    end
     copyto!(Ljjdd, Ajjdd)
+    m, n, l = size(Ljjdd)
     λ = Λj.Λ
-    for Lf in Ljj.facevec
+    Lfv = Ljj.facevec
+    dind = diagind(Lfv[1])
+    @inbounds for Lf in Lfv
         lmul!(adjoint(λ), rmul!(Lf, λ))
-        for d in diagind(Lf)
-            Lf[d] += one(T)
-        end
+    end
+    @inbounds for k in 1:l, i in 1:m
+        Ljjdd[i, i, k] += one(T)
     end
     Ljj
 end
 
 function scaleInflate!(Ljj::Matrix{T}, Ajj::UniformBlockDiagonal{T},
         Λj::VectorFactorReTerm{T}) where {T}
-    @argcheck(size(Ljj) == size(Ajj), DimensionMismatch)
+    if size(Ljj) != size(Ajj)
+        throw(DimensionMismatch("size(Ljj) = $(size(Ljj)) != $(size(Ajj)) = size(Ajj)"))
+    end
     λ = Λj.Λ
     Afv = Ajj.facevec
     m, n, l = size(Ajj.data)
     m == n || throw(ArgumentError("Diagonal blocks of Ajj must be square"))
     fill!(Ljj, zero(T))
     tmp = Array{T}(undef, m, m)
-    for (k, Af) in enumerate(Afv)
+    @inbounds for (k, Af) in enumerate(Afv)
         lmul!(adjoint(λ), rmul!(copyto!(tmp, Af), λ))
         offset = (k - 1)*m
         for j in 1:m, i in 1:m
