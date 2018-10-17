@@ -17,7 +17,7 @@ julia> const dat = Dict(Symbol(k)=>v for (k,v) in
     load(joinpath(dirname(pathof(MixedModels)), "..", "test", "dat.rda")));
 
 julia> describe(dat[:Dyestuff])
-2×8 DataFrames.DataFrame. Omitted printing of 1 columns
+2×8 DataFrame. Omitted printing of 1 columns
 │ Row │ variable │ mean   │ min    │ median │ max    │ nunique │ nmissing │
 │     │ Symbol   │ Union… │ Any    │ Union… │ Any    │ Union…  │ Nothing  │
 ├─────┼──────────┼────────┼────────┼────────┼────────┼─────────┼──────────┤
@@ -69,7 +69,7 @@ The second and subsequent calls to such functions are much faster.)
 
 ````julia
 julia> @time fit(LinearMixedModel, @formula(Y ~ 1 + (1|G)), dat[:Dyestuff2]);
-  0.004344 seconds (2.05 k allocations: 94.672 KiB)
+  0.004363 seconds (2.14 k allocations: 92.922 KiB)
 
 ````
 
@@ -273,8 +273,8 @@ julia> verbaggform = @formula(r2 ~ 1 + a + g + b + s + m + (1|id) + (1|item));
 julia> gm1 = fit(GeneralizedLinearMixedModel, verbaggform, dat[:VerbAgg], Bernoulli())
 Generalized Linear Mixed Model fit by maximum likelihood (nAGQ = 1)
   Formula: r2 ~ 1 + a + g + b + s + m + (1 | id) + (1 | item)
-  Distribution: Distributions.Bernoulli{Float64}
-  Link: GLM.LogitLink()
+  Distribution: Bernoulli{Float64}
+  Link: LogitLink()
 
   Deviance: 8135.8329
 
@@ -318,8 +318,8 @@ These fits may suffice for model comparisons.
 julia> gm1a = fit!(GeneralizedLinearMixedModel(verbaggform, dat[:VerbAgg], Bernoulli()), fast=true)
 Generalized Linear Mixed Model fit by maximum likelihood (nAGQ = 1)
   Formula: r2 ~ 1 + a + g + b + s + m + (1 | id) + (1 | item)
-  Distribution: Distributions.Bernoulli{Float64}
-  Link: GLM.LogitLink()
+  Distribution: Bernoulli{Float64}
+  Link: LogitLink()
 
   Deviance: 8136.1709
 
@@ -345,10 +345,10 @@ julia> deviance(gm1a) - deviance(gm1)
 0.33801208853947173
 
 julia> @time fit(GeneralizedLinearMixedModel, verbaggform, dat[:VerbAgg], Bernoulli());
-  7.039021 seconds (50.44 M allocations: 431.591 MiB, 0.94% gc time)
+ 18.752051 seconds (50.51 M allocations: 429.787 MiB, 0.56% gc time)
 
 julia> @time fit!(GeneralizedLinearMixedModel(verbaggform, dat[:VerbAgg], Bernoulli()), fast=true);
-  0.376394 seconds (2.43 M allocations: 26.920 MiB, 1.68% gc time)
+  0.832384 seconds (2.43 M allocations: 26.828 MiB, 0.60% gc time)
 
 ````
 
@@ -364,11 +364,11 @@ julia> contraform = @formula(use ~ 1 + a + l + urb + (1|d))
 Formula: use ~ 1 + a + l + urb + (1 | d)
 
 julia> @time gm2 = fit!(GeneralizedLinearMixedModel(contraform, dat[:Contraception], Bernoulli()), nAGQ=9)
-  1.488533 seconds (10.13 M allocations: 159.748 MiB, 3.88% gc time)
+  1.829199 seconds (10.44 M allocations: 174.877 MiB, 4.43% gc time)
 Generalized Linear Mixed Model fit by maximum likelihood (nAGQ = 9)
   Formula: use ~ 1 + a + l + urb + (1 | d)
-  Distribution: Distributions.Bernoulli{Float64}
-  Link: GLM.LogitLink()
+  Distribution: Bernoulli{Float64}
+  Link: LogitLink()
 
   Deviance: 2413.3485
 
@@ -389,15 +389,15 @@ urb: Y          0.73235   0.118484  6.18102   <1e-9
 
 
 julia> @time deviance(fit!(GeneralizedLinearMixedModel(contraform, dat[:Contraception], Bernoulli()), nAGQ=9, fast=true))
-  0.051598 seconds (432.38 k allocations: 5.307 MiB)
+  0.062080 seconds (433.26 k allocations: 5.212 MiB)
 2413.663718869012
 
 julia> @time deviance(fit!(GeneralizedLinearMixedModel(contraform, dat[:Contraception], Bernoulli())))
-  0.548831 seconds (4.61 M allocations: 44.561 MiB, 2.06% gc time)
+  0.599225 seconds (4.62 M allocations: 44.423 MiB, 2.36% gc time)
 2413.6156912345245
 
 julia> @time deviance(fit!(GeneralizedLinearMixedModel(contraform, dat[:Contraception], Bernoulli()), fast=true))
-  0.028554 seconds (226.60 k allocations: 3.143 MiB)
+  0.028738 seconds (227.39 k allocations: 3.134 MiB)
 2413.6618664984017
 
 ````

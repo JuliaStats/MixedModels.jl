@@ -29,7 +29,7 @@ Although the matrix $\bf Z$ can be large (i.e. both $n$ and $q$ can be large), i
 The *relative covariance factor*, $\Lambda_\theta$, is a $q\times q$ lower-triangular matrix, depending on the *variance-component parameter*, $\bf\theta$, and generating the symmetric $q\times q$ variance-covariance matrix, $\Sigma_\theta$, as
 
 \begin{equation}
-\Sigma_\theta=\sigma^2\Lambda_\theta\Lambda_\theta'
+\Sigma_\theta=\sigma^2\Lambda_\theta\Lambda_\theta^\prime
 \end{equation}
 
 The *spherical random effects*, $\mathcal{U}\sim\mathcal{N}({\bf 0},\sigma^2{\bf I}_q)$, determine $\mathcal B$ according to
@@ -125,7 +125,7 @@ using DataFrames, RData, MixedModels
 const dat=Dict(Symbol(k)=>v for (k,v) in load(joinpath(dirname(pathof(MixedModels)), "..", "test", "dat.rda")));
 ```
 ```{julia;term=true}
-fm1 = fit(LinearMixedModel, @formula(Y ~ 1 + (1|G)), dat[:Dyestuff])
+fm1 = fit!(LinearMixedModel(@formula(Y ~ 1 + (1|G)), dat[:Dyestuff]))
 ```
 the only random effects term in the formula is `(1|G)`, a simple, scalar random-effects term.
 ```{julia;term=true}
@@ -139,7 +139,7 @@ This `ScalarFactorReTerm` contributes a block of columns to the model matrix $\b
 ```{julia;term=true}
 getθ(t1)
 getΛ(t1)
-convert(Array{Int}, Matrix(t1)) # matrix is floating point but integer-valued
+Matrix(t1)
 ```
 
 Because there is only one random-effects term in the model, the matrix $\bf Z$ is the indicators matrix shown as the result of `Matrix(t1)`, but stored in a special sparse format.
@@ -158,7 +158,7 @@ VectorFactorReTerm
 ```
 The model matrix $\bf Z$ for this model is
 ```{julia;term=true}
-convert(Array{Int}, Matrix(t21))
+convert(Array{Int}, Matrix(t21))  # convert to integers for more compact printing
 ```
 and $\Lambda_\theta$ is a $36\times36$ block diagonal matrix with $18$ diagonal blocks, all of the form
 ```{julia;term=true}
@@ -182,7 +182,7 @@ getθ(t31)
 Random-effects terms with distinct grouping factors generate distinct elements of the `trms` member of the `LinearMixedModel` object.
 Multiple `AbstractFactorReTerm` (i.e. either a `ScalarFactorReTerm` or a `VectorFactorReTerm`) objects are sorted by decreasing numbers of random effects.
 ```{julia;term=true}
-fm4 = fit(LinearMixedModel, @formula(Y ~ 1 + (1|H) + (1|G)), dat[:Penicillin])
+fm4 = fit!(LinearMixedModel(@formula(Y ~ 1 + (1|H) + (1|G)), dat[:Penicillin]))
 t41 = fm4.trms[1]
 t42 = fm4.trms[2]
 ```

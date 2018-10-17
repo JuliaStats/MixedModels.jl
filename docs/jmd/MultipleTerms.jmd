@@ -13,7 +13,7 @@ using Gadfly.Guide: xlabel, ylabel
 const dat = Dict(Symbol(k)=>v for (k,v) in 
     load(joinpath(dirname(pathof(MixedModels)), "..", "test", "dat.rda")));
 const ppt250 = inv(500) : inv(250) : 1.;
-const zquantiles = quantile(Normal(), ppt250);
+const zquantiles = quantile.(Normal(), ppt250);
 function hpdinterval(v, level=0.95)
     n = length(v)
     if !(0 < level < 1)
@@ -83,7 +83,7 @@ Even when we apply each of the six samples to each of the 24 plates, something c
 A model incorporating random effects for both the plate and the sample is straightforward to specify — we include simple, scalar random effects terms for both these factors.
 
 ```{julia;term=true}
-penm = fit(LinearMixedModel, @formula(Y ~ 1 + (1|G) + (1|H)), dat[:Penicillin])
+penm = fit!(LinearMixedModel(@formula(Y ~ 1 + (1|G) + (1|H)), dat[:Penicillin]))
 ```
 
 This model display indicates that the sample-to-sample variability has the greatest contribution, then plate-to-plate variability and finally the “residual” variability that cannot be attributed to either the sample or the plate. These conclusions are consistent with what we see in the data plot (Fig. [fig:Penicillindot]).
@@ -97,7 +97,7 @@ In chapter [chap:ExamLMM] we saw that a model with a single, simple, scalar ran
 The relative covariance factor, $\Lambda_\theta$, (Fig. [fig:fm03LambdaLimage], left panel) is no longer a multiple of the identity. It is now block diagonal, with two blocks, one of size 24 and one of size 6, each of which is a multiple of the identity. The diagonal elements of the two blocks are $\theta_1$ and $\theta_2$, respectively. The numeric values of these parameters can be obtained as
 
 ```{julia;term=true}
-show(getθ(penm))
+show(penm.θ)
 ```
 
 or as the `Final parameter vector` in the `opsum` field of `penm`

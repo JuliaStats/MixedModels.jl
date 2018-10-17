@@ -31,27 +31,26 @@ julia> using DataFrames, MixedModels, RData, Gadfly
 
 ````julia
 julia> ds = names!(dat[:Dyestuff], [:Batch, :Yield])
-30×2 DataFrames.DataFrame
-│ Row │ Batch │ Yield  │
-├─────┼───────┼────────┤
-│ 1   │ A     │ 1545.0 │
-│ 2   │ A     │ 1440.0 │
-│ 3   │ A     │ 1440.0 │
-│ 4   │ A     │ 1520.0 │
-│ 5   │ A     │ 1580.0 │
-│ 6   │ B     │ 1540.0 │
-│ 7   │ B     │ 1555.0 │
-│ 8   │ B     │ 1490.0 │
+30×2 DataFrame
+│ Row │ Batch        │ Yield   │
+│     │ Categorical… │ Float64 │
+├─────┼──────────────┼─────────┤
+│ 1   │ A            │ 1545.0  │
+│ 2   │ A            │ 1440.0  │
+│ 3   │ A            │ 1440.0  │
+│ 4   │ A            │ 1520.0  │
+│ 5   │ A            │ 1580.0  │
+│ 6   │ B            │ 1540.0  │
+│ 7   │ B            │ 1555.0  │
 ⋮
-│ 22  │ E     │ 1630.0 │
-│ 23  │ E     │ 1515.0 │
-│ 24  │ E     │ 1635.0 │
-│ 25  │ E     │ 1625.0 │
-│ 26  │ F     │ 1520.0 │
-│ 27  │ F     │ 1455.0 │
-│ 28  │ F     │ 1450.0 │
-│ 29  │ F     │ 1480.0 │
-│ 30  │ F     │ 1445.0 │
+│ 23  │ E            │ 1515.0  │
+│ 24  │ E            │ 1635.0  │
+│ 25  │ E            │ 1625.0  │
+│ 26  │ F            │ 1520.0  │
+│ 27  │ F            │ 1455.0  │
+│ 28  │ F            │ 1450.0  │
+│ 29  │ F            │ 1480.0  │
+│ 30  │ F            │ 1445.0  │
 
 julia> m1 = fit(LinearMixedModel, @formula(Yield ~ 1 + (1 | Batch)), ds)
 Linear mixed model fit by maximum likelihood
@@ -80,9 +79,8 @@ Now bootstrap the model parameters
 ````julia
 julia> results = bootstrap(100_000, m1);
 
-julia> showcompact(names(results))
-Error: UndefVarError: showcompact not defined
-
+julia> show(names(results))
+Symbol[:obj, :σ, :β₁, :θ₁, :σ₁]
 ````
 
 

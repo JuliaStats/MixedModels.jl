@@ -62,8 +62,9 @@ The data are derived from Table 6.6, p. 144 of Davies (), where they are descr
 
 ````julia
 julia> describe(dat[:Penicillin])
-3×8 DataFrames.DataFrame. Omitted printing of 1 columns
+3×8 DataFrame. Omitted printing of 1 columns
 │ Row │ variable │ mean    │ min  │ median │ max  │ nunique │ nmissing │
+│     │ Symbol   │ Union…  │ Any  │ Union… │ Any  │ Union…  │ Nothing  │
 ├─────┼──────────┼─────────┼──────┼────────┼──────┼─────────┼──────────┤
 │ 1   │ Y        │ 22.9722 │ 18.0 │ 23.0   │ 27.0 │         │          │
 │ 2   │ G        │         │ a    │        │ x    │ 24      │          │
@@ -128,10 +129,10 @@ Linear mixed model fit by maximum likelihood
  -166.09417  332.18835  340.18835  352.06760
 
 Variance components:
-              Column    Variance  Std.Dev. 
- G        (Intercept)  0.7149795 0.8455646
- H        (Intercept)  3.1351929 1.7706476
- Residual              0.3024264 0.5499331
+              Column    Variance   Std.Dev. 
+ G        (Intercept)  0.71497949 0.8455646
+ H        (Intercept)  3.13519326 1.7706477
+ Residual              0.30242640 0.5499331
  Number of obs: 144; levels of grouping factors: 24, 6
 
   Fixed-effects parameters:
@@ -169,7 +170,7 @@ or as the `Final parameter vector` in the `opsum` field of `penm`
 ````julia
 julia> penm.optsum
 Initial parameter vector: [1.0, 1.0]
-Initial objective value:  364.6267798165819
+Initial objective value:  364.62677981659544
 
 Optimizer (from NLopt):   LN_BOBYQA
 Lower bounds:             [0.0, 0.0]
@@ -182,7 +183,7 @@ maxfeval:                 -1
 
 Function evaluations:     44
 Final parameter vector:   [1.53758, 3.21975]
-Final objective value:    332.1883486725131
+Final objective value:    332.18834867237246
 Return code:              FTOL_REACHED
 
 
@@ -200,7 +201,7 @@ A bootstrap simulation of the model
 
 ````julia
 julia> @time penmbstp = bootstrap(10000, penm);
- 15.657643 seconds (23.96 M allocations: 902.155 MiB, 1.48% gc time)
+ 24.313179 seconds (83.13 M allocations: 2.532 GiB, 3.95% gc time)
 
 ````
 
@@ -280,8 +281,9 @@ The structure and summary of the data object are
 
 ````julia
 julia> describe(dat[:Pastes])
-4×8 DataFrames.DataFrame. Omitted printing of 1 columns
+4×8 DataFrame. Omitted printing of 1 columns
 │ Row │ variable │ mean    │ min  │ median │ max  │ nunique │ nmissing │
+│     │ Symbol   │ Union…  │ Any  │ Union… │ Any  │ Union…  │ Nothing  │
 ├─────┼──────────┼─────────┼──────┼────────┼──────┼─────────┼──────────┤
 │ 1   │ Y        │ 60.0533 │ 54.2 │ 59.3   │ 66.0 │         │          │
 │ 2   │ H        │         │ A    │        │ J    │ 10      │          │
@@ -362,10 +364,10 @@ Linear mixed model fit by maximum likelihood
  -123.99723  247.99447  255.99447  264.37184
 
 Variance components:
-              Column    Variance   Std.Dev.  
- G        (Intercept)  8.43361674 2.90406900
- H        (Intercept)  1.19917985 1.09507070
- Residual              0.67800208 0.82340882
+              Column    Variance  Std.Dev.  
+ G        (Intercept)  8.4336167 2.90406899
+ H        (Intercept)  1.1991787 1.09507018
+ Residual              0.6780021 0.82340886
  Number of obs: 60; levels of grouping factors: 30, 10
 
   Fixed-effects parameters:
@@ -401,7 +403,7 @@ confirm this impression in that all the prediction intervals for the random effe
 julia> Random.seed!(4321234);
 
 julia> @time pstsbstp = bootstrap(10000, pstsm);
- 13.214743 seconds (23.76 M allocations: 1.030 GiB, 1.89% gc time)
+ 17.509696 seconds (67.42 M allocations: 2.024 GiB, 4.36% gc time)
 
 ````
 
@@ -448,7 +450,7 @@ Plot(...)
 
 ````julia
 julia> count(x -> x < 1.0e-5, pstsbstp[:σ₂])
-3666
+3671
 
 ````
 
@@ -461,8 +463,8 @@ Over 1/3 of the bootstrap samples of $\sigma_2$ are zero.  Even a 50% confidence
 ````julia
 julia> hpdinterval(pstsbstp[:σ₂])
 2-element Array{Float64,1}:
- 0.0               
- 2.0734802559482324
+ 0.0              
+ 2.073479680297123
 
 ````
 
@@ -501,8 +503,8 @@ Linear mixed model fit by maximum likelihood
 
 Variance components:
               Column    Variance   Std.Dev. 
- G        (Intercept)  9.63282172 3.1036787
- Residual              0.67800003 0.8234076
+ G        (Intercept)  9.63282202 3.1036788
+ Residual              0.67800001 0.8234076
  Number of obs: 60; levels of grouping factors: 30
 
   Fixed-effects parameters:
@@ -520,11 +522,12 @@ is compared to model `pstsm` with
 
 ````julia
 julia> MixedModels.lrt(pstsm1, pstsm)
-2×4 DataFrames.DataFrame
-│ Row │ Df │ Deviance │ Chisq    │ pval     │
-├─────┼────┼──────────┼──────────┼──────────┤
-│ 1   │ 3  │ 248.402  │ NaN      │ NaN      │
-│ 2   │ 4  │ 247.994  │ 0.407234 │ 0.523377 │
+2×4 DataFrame
+│ Row │ Df    │ Deviance │ Chisq    │ pval     │
+│     │ Int64 │ Float64  │ Float64  │ Float64  │
+├─────┼───────┼──────────┼──────────┼──────────┤
+│ 1   │ 3     │ 248.402  │ NaN      │ NaN      │
+│ 2   │ 4     │ 247.994  │ 0.407234 │ 0.523377 │
 
 ````
 
@@ -542,7 +545,7 @@ A bootstrap sample
 
 ````julia
 julia> @time psts1bstp = bootstrap(10000, pstsm1);
-  4.459490 seconds (8.00 M allocations: 307.947 MiB, 2.06% gc time)
+  6.902661 seconds (23.19 M allocations: 700.737 MiB, 4.32% gc time)
 
 ````
 
@@ -628,7 +631,7 @@ Although the response, `Y`, is on a scale of 1 to 5,
 
 ````julia
 julia> freqtable(dat[:InstEval][:Y])'
-1×5 Named LinearAlgebra.Adjoint{Int64,Array{Int64,1}}
+1×5 Named Adjoint{Int64,Array{Int64,1}}
 ' ╲ Dim1 │     1      2      3      4      5
 ─────────┼──────────────────────────────────
 1        │ 10186  12951  17609  16921  15754
@@ -645,24 +648,24 @@ At this point we will fit models that have random effects for student, instructo
 
 ````julia
 julia> @time instm = fit(LinearMixedModel, @formula(Y ~ 1 + A + (1|G) + (1|H) + (1|I)), dat[:InstEval])
-  2.824129 seconds (348.46 k allocations: 203.625 MiB, 1.47% gc time)
+  3.911847 seconds (2.74 M allocations: 323.059 MiB, 8.79% gc time)
 Linear mixed model fit by maximum likelihood
  Formula: Y ~ 1 + A + (1 | G) + (1 | H) + (1 | I)
      logLik        -2 logLik          AIC             BIC       
  -1.18860884×10⁵  2.37721769×10⁵  2.37733769×10⁵  2.37788993×10⁵
 
 Variance components:
-              Column     Variance    Std.Dev.  
- G        (Intercept)  0.1059760822 0.32553968
- H        (Intercept)  0.2652109229 0.51498633
- I        (Intercept)  0.0061663253 0.07852595
- Residual              1.3864870539 1.17749185
+              Column     Variance    Std.Dev. 
+ G        (Intercept)  0.1059727787 0.3255346
+ H        (Intercept)  0.2652041783 0.5149798
+ I        (Intercept)  0.0061673544 0.0785325
+ Residual              1.3864885827 1.1774925
  Number of obs: 73421; levels of grouping factors: 2972, 1128, 14
 
   Fixed-effects parameters:
                Estimate Std.Error  z value P(>|z|)
-(Intercept)     3.28258 0.0284098  115.544  <1e-99
-A: 1         -0.0925882 0.0133832 -6.91826  <1e-11
+(Intercept)     3.28258  0.028411  115.539  <1e-99
+A: 1         -0.0925886 0.0133832 -6.91828  <1e-11
 
 
 ````

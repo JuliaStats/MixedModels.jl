@@ -41,7 +41,7 @@
   </g>
   <g clip-path="url(#img-311db59d-4)">
     <g id="img-311db59d-5">
-      <g pointer-events="visible" opacity="1" fill="#000000" fill-opacity="0.000" stroke="#000000" stroke-opacity="0.000" class="guide background" id="img-311db59d-6">
+      <g pointer-events="visible" opacity="0" fill="#000000" fill-opacity="0.000" stroke="#000000" stroke-opacity="0.000" class="guide background" id="img-311db59d-6">
         <g transform="translate(72.55,42.86)">
           <path d="M-63.87,-37.86 L 63.87 -37.86 63.87 37.86 -63.87 37.86 z" class="primitive"/>
         </g>

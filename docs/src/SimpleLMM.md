@@ -103,8 +103,9 @@ julia> const dat = Dict(Symbol(k)=>v for (k,v) in
 julia> dyestuff = dat[:Dyestuff];
 
 julia> describe(dyestuff)
-2×8 DataFrames.DataFrame. Omitted printing of 1 columns
+2×8 DataFrame. Omitted printing of 1 columns
 │ Row │ variable │ mean   │ min    │ median │ max    │ nunique │ nmissing │
+│     │ Symbol   │ Union… │ Any    │ Union… │ Any    │ Union…  │ Nothing  │
 ├─────┼──────────┼────────┼────────┼────────┼────────┼─────────┼──────────┤
 │ 1   │ G        │        │ A      │        │ F      │ 6       │          │
 │ 2   │ Y        │ 1527.5 │ 1440.0 │ 1530.0 │ 1635.0 │         │          │
@@ -157,8 +158,9 @@ The structure and summary are intentionally similar to those of the `Dyestuff` d
 julia> dyestuff2 = dat[:Dyestuff2];
 
 julia> describe(dyestuff2)
-2×8 DataFrames.DataFrame. Omitted printing of 1 columns
+2×8 DataFrame. Omitted printing of 1 columns
 │ Row │ variable │ mean   │ min    │ median │ max    │ nunique │ nmissing │
+│     │ Symbol   │ Union… │ Any    │ Union… │ Any    │ Union…  │ Nothing  │
 ├─────┼──────────┼────────┼────────┼────────┼────────┼─────────┼──────────┤
 │ 1   │ G        │        │ A      │        │ F      │ 6       │          │
 │ 2   │ Y        │ 5.6656 │ -0.892 │ 5.365  │ 13.434 │         │          │
@@ -196,7 +198,7 @@ Linear mixed model fit by maximum likelihood
 
 Variance components:
               Column    Variance  Std.Dev. 
- G        (Intercept)  1388.3333 37.260345
+ G        (Intercept)  1388.3334 37.260347
  Residual              2451.2500 49.510100
  Number of obs: 30; levels of grouping factors: 6
 
@@ -291,7 +293,7 @@ Even when the final fitted model is not singular, we must allow for such models 
 It happens that this model corresponds to the linear model (i.e. a model with fixed-effects only)
 ````julia
 julia> lm1 = lm(@formula(Y ~ 1), dyestuff2)
-StatsModels.DataFrameRegressionModel{GLM.LinearModel{GLM.LmResp{Array{Float64,1}},GLM.DensePredChol{Float64,LinearAlgebra.Cholesky{Float64,Array{Float64,2}}}},Array{Float64,2}}
+StatsModels.DataFrameRegressionModel{LinearModel{LmResp{Array{Float64,1}},DensePredChol{Float64,Cholesky{Float64,Array{Float64,2}}}},Array{Float64,2}}
 
 Formula: Y ~ +1
 
@@ -471,7 +473,7 @@ Whether or not verbose output is requested, the `optsum` field of a `LinearMixed
 ````julia
 julia> mm1.optsum
 Initial parameter vector: [1.0]
-Initial objective value:  327.76702162461254
+Initial objective value:  327.76702162461663
 
 Optimizer (from NLopt):   LN_BOBYQA
 Lower bounds:             [0.0]
@@ -484,7 +486,7 @@ maxfeval:                 -1
 
 Function evaluations:     18
 Final parameter vector:   [0.752581]
-Final objective value:    327.3270598811401
+Final objective value:    327.3270598811424
 Return code:              FTOL_REACHED
 
 
@@ -552,7 +554,7 @@ The last two elements are $\bf X$, the $n\times p$ model matrix for the fixed-ef
 
 ````julia
 julia> mm1.trms[end - 1]
-MixedModels.MatrixTerm{Float64,Array{Float64,2}}([1.0; 1.0; … ; 1.0; 1.0], [1.0; 1.0; … ; 1.0; 1.0], [1], 1, ["(Intercept)"])
+MatrixTerm{Float64,Array{Float64,2}}([1.0; 1.0; … ; 1.0; 1.0], [1.0; 1.0; … ; 1.0; 1.0], [1], 1, ["(Intercept)"])
 
 ````
 
@@ -560,7 +562,7 @@ MixedModels.MatrixTerm{Float64,Array{Float64,2}}([1.0; 1.0; … ; 1.0; 1.0], [1.
 
 ````julia
 julia> mm1.trms[end]
-MixedModels.MatrixTerm{Float64,Array{Float64,2}}([1545.0; 1440.0; … ; 1480.0; 1445.0], [1545.0; 1440.0; … ; 1480.0; 1445.0], [1], 0, [""])
+MatrixTerm{Float64,Array{Float64,2}}([1545.0; 1440.0; … ; 1480.0; 1445.0], [1545.0; 1440.0; … ; 1480.0; 1445.0], [1], 0, [""])
 
 ````
 
@@ -572,7 +574,7 @@ The elements of `trms` before the last two represent vertical sections of $\bf Z
 
 ````julia
 julia> mm1.trms[1]
-MixedModels.ScalarFactorReTerm{Float64,UInt8}(UInt8[0x01, 0x01, 0x01, 0x01, 0x01, 0x02, 0x02, 0x02, 0x02, 0x02  …  0x05, 0x05, 0x05, 0x05, 0x05, 0x06, 0x06, 0x06, 0x06, 0x06], ["A", "B", "C", "D", "E", "F"], [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0  …  1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0], [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0  …  1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0], :G, ["(Intercept)"], 0.7525806916429085)
+ScalarFactorReTerm{Float64,UInt8}(UInt8[0x01, 0x01, 0x01, 0x01, 0x01, 0x02, 0x02, 0x02, 0x02, 0x02  …  0x05, 0x05, 0x05, 0x05, 0x05, 0x06, 0x06, 0x06, 0x06, 0x06], ["A", "B", "C", "D", "E", "F"], [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0  …  1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0], [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0  …  1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0], :G, ["(Intercept)"], 0.75258072175308)
 
 ````
 
@@ -585,7 +587,7 @@ In small examples the structure is more obvious when the `ScalarReMat` is conver
 
 ````julia
 julia> sparse(mm1.trms[1])
-30×6 SparseArrays.SparseMatrixCSC{Float64,Int32} with 30 stored entries:
+30×6 SparseMatrixCSC{Float64,Int32} with 30 stored entries:
   [1 ,  1]  =  1.0
   [2 ,  1]  =  1.0
   [3 ,  1]  =  1.0
@@ -654,7 +656,7 @@ julia> nblocks(mm1.A)
 
 ````julia
 julia> mm1.A[Block(1, 1)]
-6×6 LinearAlgebra.Diagonal{Float64,Array{Float64,1}}:
+6×6 Diagonal{Float64,Array{Float64,1}}:
  5.0   ⋅    ⋅    ⋅    ⋅    ⋅ 
   ⋅   5.0   ⋅    ⋅    ⋅    ⋅ 
   ⋅    ⋅   5.0   ⋅    ⋅    ⋅ 
@@ -723,7 +725,7 @@ It is not necessary to store the full $\Lambda$ matrix.  Storing the small lower
 ````julia
 julia> getΛ(mm1)
 1-element Array{Float64,1}:
- 0.7525806916429085
+ 0.75258072175308
 
 ````
 
@@ -741,7 +743,7 @@ The `L` field is a blocked matrix like the `A` field containing the upper Choles
 
 ````julia
 julia> mm1.L
-8×8 LinearAlgebra.LowerTriangular{Float64,BlockArrays.BlockArray{Float64,2,AbstractArray{Float64,2}}}:
+8×8 LowerTriangular{Float64,BlockArrays.BlockArray{Float64,2,AbstractArray{Float64,2}}}:
     1.95752      ⋅           ⋅       …      ⋅           ⋅          ⋅   
     0.0         1.95752      ⋅              ⋅           ⋅          ⋅   
     0.0         0.0         1.95752         ⋅           ⋅          ⋅   
@@ -761,7 +763,7 @@ julia> mm1.L
 
 ````julia
 julia> mm1.L.data[Block(1, 1)]
-6×6 LinearAlgebra.Diagonal{Float64,Array{Float64,1}}:
+6×6 Diagonal{Float64,Array{Float64,1}}:
  1.95752   ⋅        ⋅        ⋅        ⋅        ⋅     
   ⋅       1.95752   ⋅        ⋅        ⋅        ⋅     
   ⋅        ⋅       1.95752   ⋅        ⋅        ⋅     
@@ -785,7 +787,7 @@ julia> mm1.L.data[Block(2, 1)]
 ````julia
 julia> mm1.L.data[Block(2, 2)]
 1×1 Array{Float64,2}:
- 2.798041788324706
+ 2.7980417055919244
 
 ````
 
@@ -803,7 +805,7 @@ julia> mm1.L.data[Block(3, 1)]
 ````julia
 julia> mm1.L.data[Block(3, 2)]
 1×1 Array{Float64,2}:
- 4274.008831665986
+ 4274.008705291662
 
 ````
 
@@ -812,7 +814,7 @@ julia> mm1.L.data[Block(3, 2)]
 ````julia
 julia> mm1.L.data[Block(3, 3)]
 1×1 Array{Float64,2}:
- 271.17798586827877
+ 271.177984264646
 
 ````
 
@@ -824,7 +826,7 @@ All the information needed to evaluate the profiled log-likelihood is available 
 
 ````julia
 julia> 2 * sum(log.(diag(mm1.L.data[Block(1,1)])))
-8.060146555556736
+8.060146910373954
 
 ````
 
@@ -848,7 +850,7 @@ The penalized residual sum of squares is the square of the single element of the
 
 ````julia
 julia> abs2(mm1.L.data[Block(3, 3)][1, 1])
-73537.5000195764
+73537.4991498366
 
 ````
 
@@ -856,7 +858,7 @@ julia> abs2(mm1.L.data[Block(3, 3)][1, 1])
 
 ````julia
 julia> pwrss(mm1)
-73537.5000195764
+73537.4991498366
 
 ````
 
@@ -868,7 +870,7 @@ The objective is
 
 ````julia
 julia> logdet(mm1) + nobs(mm1) * (1 + log(2π * pwrss(mm1) / nobs(mm1)))
-327.3270598811401
+327.3270598811424
 
 ````
 
@@ -898,8 +900,9 @@ julia> size(mm1bstp)
 
 ````julia
 julia> describe(mm1bstp)
-5×8 DataFrames.DataFrame. Omitted printing of 2 columns
+5×8 DataFrame. Omitted printing of 2 columns
 │ Row │ variable │ mean     │ min     │ median   │ max     │ nunique │
+│     │ Symbol   │ Float64  │ Float64 │ Float64  │ Float64 │ Nothing │
 ├─────┼──────────┼──────────┼─────────┼──────────┼─────────┼─────────┤
 │ 1   │ obj      │ 324.03   │ 284.104 │ 324.346  │ 353.114 │         │
 │ 2   │ σ        │ 48.8259  │ 23.0686 │ 48.6577  │ 81.1291 │         │
@@ -1063,8 +1066,8 @@ One possible interval containing 95% of the sample is $(\sigma_{[1]}, \sigma_{[9
 ````julia
 julia> sigma95 = quantile(mm1bstp[:σ], [0.025, 0.975])
 2-element Array{Float64,1}:
- 35.583660009490394
- 63.098974223383514
+ 35.58365986273306 
+ 63.098968467157626
 
 ````
 
@@ -1130,8 +1133,8 @@ For example, the 95% HPD interval calculated from the sample of $\beta_1$ values
 ````julia
 julia> hpdinterval(mm1bstp[:β₁])
 2-element Array{Float64,1}:
- 1493.0095078364832
- 1562.0769558441043
+ 1493.009506908017 
+ 1562.0769567557636
 
 ````
 
@@ -1144,8 +1147,8 @@ which is very close to the central probability interval of
 ````julia
 julia> quantile(mm1bstp[:β₁], [0.025, 0.975])
 2-element Array{Float64,1}:
- 1492.8482234769042
- 1561.9248091295565
+ 1492.848222804122 
+ 1561.9248094116124
 
 ````
 
@@ -1160,8 +1163,8 @@ The HPD interval on $\sigma^2$ is
 ````julia
 julia> hpdinterval(abs2.(mm1bstp[:σ]))
 2-element Array{Float64,1}:
- 1162.8123800843332
- 3834.3190953162807
+ 1162.8123674714316
+ 3834.319048668444 
 
 ````
 
@@ -1174,8 +1177,8 @@ which is shifted to the left relative to the central probability interval
 ````julia
 julia> quantile(abs2.(mm1bstp[:σ]), [0.025, 0.975])
 2-element Array{Float64,1}:
- 1266.19685967107 
- 3981.480548146139
+ 1266.1968492267372
+ 3981.4798217228795
 
 ````
 
@@ -1190,8 +1193,8 @@ The HPD interval does not have the property that the endpoints of the interval o
 ````julia
 julia> sigma95hpd = hpdinterval(mm1bstp[:σ])
 2-element Array{Float64,1}:
- 35.425432298937515
- 62.887490039924856
+ 35.425425171170225
+ 62.88748972878741 
 
 ````
 
@@ -1200,8 +1203,8 @@ julia> sigma95hpd = hpdinterval(mm1bstp[:σ])
 ````julia
 julia> abs2.(sigma95hpd)
 2-element Array{Float64,1}:
- 1254.9612535666054
- 3954.8364035216478
+ 1254.960748558181 
+ 3954.8363643883417
 
 ````
 
@@ -1214,8 +1217,8 @@ Finally, a 95% HPD interval on $\sigma_1$ includes the boundary value $\sigma_1=
 ````julia
 julia> hpdinterval(mm1bstp[:σ₁])
 2-element Array{Float64,1}:
-  0.0              
- 54.598575738834825
+  0.0             
+ 54.59857004471835
 
 ````
 
@@ -1228,8 +1231,8 @@ In fact, the confidence level or coverage probability must be rather small befor
 ````julia
 julia> hpdinterval(mm1bstp[:σ₁], 0.798)
 2-element Array{Float64,1}:
-  0.0             
- 42.33711824330485
+  0.0              
+ 42.337106279435886
 
 ````
 
@@ -1238,8 +1241,8 @@ julia> hpdinterval(mm1bstp[:σ₁], 0.798)
 ````julia
 julia> hpdinterval(mm1bstp[:σ₁], 0.799)
 2-element Array{Float64,1}:
-  0.0              
- 42.394347358762985
+  0.0             
+ 42.39434830181817
 
 ````
 

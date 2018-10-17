@@ -30,10 +30,10 @@ More formally, a `k`th order rule is exact when `f` is a `k-1` order polynomial.
 In the [*Golub-Welsch algorithm*](https://en.wikipedia.org/wiki/Gaussian_quadrature#The_Golub-Welsch_algorithm) the abscissae for a particular Gaussian quadrature rule are determined as the eigenvalues of a symmetric tri-diagonal matrix and the weights are derived from the squares of the first row of the matrix of eigenvectors.
 For a `k`th order normalized Gauss-Hermite rule the tridiagonal matrix has zeros on the diagonal and the square roots of `1:k-1` on the super- and sub-diagonal, e.g.
 ````julia
-julia> using LinearAlgebra
+julia> using LinearAlgebra, Gadfly
 
 julia> sym3 = SymTridiagonal(zeros(3), sqrt.(1:2))
-3×3 LinearAlgebra.SymTridiagonal{Float64,Array{Float64,1}}:
+3×3 SymTridiagonal{Float64,Array{Float64,1}}:
  0.0  1.0       ⋅     
  1.0  0.0      1.41421
   ⋅   1.41421  0.0    
@@ -136,8 +136,9 @@ julia> const contra = @transform(dat[:Contraception],
      a2 = abs2.(:a), urbdist = string.(:urb, :d));
 
 julia> describe(contra)
-8×8 DataFrames.DataFrame. Omitted printing of 2 columns
+8×8 DataFrame. Omitted printing of 2 columns
 │ Row │ variable │ mean       │ min    │ median  │ max     │ nunique │
+│     │ Symbol   │ Union…     │ Any    │ Union…  │ Any     │ Union…  │
 ├─────┼──────────┼────────────┼────────┼─────────┼─────────┼─────────┤
 │ 1   │ w        │            │ 1      │         │ 1934    │ 1934    │
 │ 2   │ d        │            │ 1      │         │ 61      │ 60      │
@@ -169,14 +170,14 @@ julia> m1 = fit!(GeneralizedLinearMixedModel(form1, contra,
     Bernoulli()), fast=true)
 Generalized Linear Mixed Model fit by maximum likelihood (nAGQ = 1)
   Formula: use ~ 1 + a + a2 + l + urb + (1 | d)
-  Distribution: Distributions.Bernoulli{Float64}
-  Link: GLM.LogitLink()
+  Distribution: Bernoulli{Float64}
+  Link: LogitLink()
 
   Deviance: 2372.7844
 
 Variance components:
        Column    Variance   Std.Dev.  
- d (Intercept)  0.22532961 0.47468897
+ d (Intercept)  0.22532962 0.47468897
 
  Number of obs: 1934; levels of grouping factors: 60
 
@@ -231,7 +232,7 @@ This is primarily due to different sample sizes in the different districts.
 julia> using FreqTables
 
 julia> freqtable(contra, :d)'
-1×60 Named LinearAlgebra.Adjoint{Int64,Array{Int64,1}}
+1×60 Named Adjoint{Int64,Array{Int64,1}}
 ' ╲ d │   1    2    3    4    5    6    7  …   55   56   57   58   59   60   61
 ──────┼────────────────────────────────────────────────────────────────────────
 1     │ 117   20    2   30   39   65   18  …    6   45   27   33   10   32   42
@@ -291,7 +292,7 @@ As shown below, this is an estimate of the conditional standard deviations of th
 julia> const s = inv.(m1.LMM.L.data[Block(1,1)].diag);
 
 julia> s'
-1×60 LinearAlgebra.Adjoint{Float64,Array{Float64,1}}:
+1×60 Adjoint{Float64,Array{Float64,1}}:
  0.406889  0.713511  0.952164  0.627135  …  0.839679  0.654965  0.60326
 
 ````
