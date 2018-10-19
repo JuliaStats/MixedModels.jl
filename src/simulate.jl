@@ -124,7 +124,7 @@ function LinearAlgebra.Cholesky(L::LowerTriangular)  # FIXME: this is type pirac
             break
         end
     end
-    Cholesky(L, 'L', info)
+    Cholesky(L, 'L', LinearAlgebra.BlasInt(info))
 end
 
 """
