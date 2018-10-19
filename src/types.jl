@@ -225,8 +225,9 @@ function NLopt.Opt(optsum::OptSummary)
     opt
 end
 
-abstract type MixedModel{T} <: RegressionModel end # model with fixed and random effects
+abstract type MixedModel{T} <: StatsModels.RegressionModel end # model with fixed and random effects
 
+#=
 """
     LinearMixedModel
 
@@ -254,7 +255,7 @@ Linear mixed-effects model representation
 * `y`: the response vector
 """
 struct LinearMixedModel{T <: AbstractFloat} <: MixedModel{T}
-    formula::Formula
+    formula::FormulaTerm
     trms::Vector
     sqrtwts::Vector{T}
     A::BlockMatrix{T}            # cross-product blocks
@@ -490,3 +491,4 @@ function Base.show(io::IO, vc::VarCorr)
         end
     end
 end
+=#

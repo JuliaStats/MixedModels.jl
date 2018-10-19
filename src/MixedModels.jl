@@ -14,6 +14,7 @@ using StatsFuns: log2π
 
 import Base: *
 import NLopt: Opt
+import StatsModels: apply_schema, model_cols
 
 export
        @formula,
@@ -84,16 +85,17 @@ import Base: ==, *
 
 include("types.jl")
 include("gausshermite.jl")
-include("modelterms.jl")
-include("linalg/cholUnblocked.jl")
-include("linalg/rankUpdate.jl")
-include("linalg/scaleInflate.jl")
-include("linalg/logdet.jl")
-include("linalg.jl")
-include("pls.jl")
-include("simulate.jl")
-include("PIRLS.jl")
-include("mixedmodel.jl")
-include("deprecates.jl")
+include("newterms.jl")
+#include("modelterms.jl")
+#include("linalg/cholUnblocked.jl")
+#include("linalg/rankUpdate.jl")
+#include("linalg/scaleInflate.jl")
+#include("linalg/logdet.jl")
+#include("linalg.jl")
+#include("pls.jl")
+#include("simulate.jl")
+#include("PIRLS.jl")
+#include("mixedmodel.jl")
+#include("deprecates.jl")
 
 end # module

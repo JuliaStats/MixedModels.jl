@@ -1,3 +1,4 @@
+#=
 abstract type AbstractTerm{T} end
 
 """
@@ -34,6 +35,7 @@ function nθ end
 Return a vector of the Euclidean lengths of the rows of `A.Λ`
 """
 function rowlengths end
+=#
 
 """
     MatrixTerm
@@ -125,6 +127,11 @@ abstract type AbstractFactorReTerm{T} <: AbstractTerm{T} end
 Overwrite `v` with the elements of the blocks in the lower triangle of `A.Λ` (column-major ordering)
 """
 function getθ! end
+
+struct RanefTerm <: AbstractTerm
+    predictors::TermOrTerms
+    groups::CategoricalTerm
+end
 
 """
     isnested(A::AbstractFactorReTerm, B::AbstractFactorReTerm)
