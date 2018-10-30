@@ -144,7 +144,7 @@ function updateη!(m::GeneralizedLinearMixedModel)
     trms = m.LMM.trms
     mul!(η, trms[end - 1].x, m.β)
     for i in eachindex(b)
-        unscaledre!(η, trms[i], mul!(b[i], Λ(trms[i]), u[i]))
+        unscaledre!(η, trms[i], mul!(b[i], trms[i].Λ, u[i]))
     end
     updateμ!(m.resp, η)
     m
@@ -260,9 +260,11 @@ function StatsBase.fit!(m::GeneralizedLinearMixedModel{T};
     function obj(x, g)
         isempty(g) || error("gradient not defined for this model")
         feval += 1
-        val = deviance(pirls!(setpar!(m, x), fast), nAGQ)
+        val = deviance(pirls!(setpar!(m, x), fast, verbose), nAGQ)
         feval == 1 && (optsum.finitial = val)
-        verbose && println("f_", feval, ": ", round(val, 5), " ", x)
+        if verbose
+            println("f_", feval, ": ", round(val, 5), " ", x)
+        end
         val
     end
     opt = Opt(optsum)
@@ -282,7 +284,7 @@ function StatsBase.fit!(m::GeneralizedLinearMixedModel{T};
         end
     end
     ## ensure that the parameter values saved in m are xmin
-    pirls!(setpar!(m, xmin), fast)
+    pirls!(setpar!(m, xmin), fast, verbose)
     optsum.nAGQ = nAGQ
     optsum.feval = feval
     optsum.final = xmin
