@@ -12,15 +12,14 @@ matrix:
   allow_failures:
   - julia: nightly
 after_success:
-  - julia --project=test/coverage -e 'using Pkg; Pkg.instantiate()'
-  - julia --project=test/coverage test/coverage/coverage.jl
+  - julia -e 'using Pkg; Pkg.add("Coverage"); using Coverage; Codecov.submit(process_folder()); Coveralls.submit(process_folder())'
 jobs:
   include:
-    - stage: deploy
+    - stage: "Documentation"
       julia: 1.0
       os: linux
       script:
-        - julia --project=docs -e 'using Pkg; ps=Pkg.PackageSpec(name="Documenter", version="0.19"); Pkg.add(ps); Pkg.pin(ps); Pkg.instantiate()'
+        - julia --project=docs/ -e 'using Pkg; Pkg.instantiate(); Pkg.add(PackageSpec(path=pwd())))'
         - julia --project=docs --color=yes docs/make.jl
       after_success: skip
 notifications:
