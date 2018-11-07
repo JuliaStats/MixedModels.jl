@@ -16,10 +16,5 @@ makedocs(
 )
 
 deploydocs(
-    repo    = "github.com/dmbates/MixedModels.jl.git",
-    julia   = "1.0",
-    osname  = "linux",
-    target  = "build",
-    deps    = nothing,
-    make    = nothing
+    repo    = "github.com/dmbates/MixedModels.jl.git"
 )
