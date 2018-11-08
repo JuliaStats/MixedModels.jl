@@ -227,7 +227,6 @@ end
 
 abstract type MixedModel{T} <: StatsModels.RegressionModel end # model with fixed and random effects
 
-#=
 """
     LinearMixedModel
 
@@ -263,6 +262,7 @@ struct LinearMixedModel{T <: AbstractFloat} <: MixedModel{T}
     optsum::OptSummary{T}
 end
 
+#=
 function normalized_variance_cumsum(Λ)
     vars = cumsum(abs2.(svdvals(Λ)))
     vars ./ vars[end]
