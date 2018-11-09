@@ -3,21 +3,24 @@ struct RandomEffectsTerm <: AbstractTerm
     rhs::CategoricalTerm
 end
 
-struct FixefTerm <: AbstractTerm
-    trms::TermOrTerms
+struct ReMat{T,R,S} <: AbstractMatrix{T}
+    trm::CategoricalTerm
+    refs::Vector{R}
+    z::Matrix{T}
+    wtz::Matrix{T}
+    wtzv::Base.ReinterpretArray{SVector{S,T}}
 end
 
-israndomeffectsterm(x) = false
-israndomeffectsterm(x::RandomEffectsTerm) = true
+function apply_schema(t::FunctionTerm{typeof(|)}, schema, Mod::Type{<:MixedModel})
+    lhs, rhs = apply_schema.(t.args_parsed, Ref(schema), Mod)
+    RandomEffectsTerm(isa(lhs, Tuple) ? apply_schema.(lhs, Ref(schema), Mod) : lhs, rhs)
+end
 
-apply_schema(t::FunctionTerm{typeof(|)}, schema, Mod::Type{<:MixedModel}) = 
-    RandomEffectsTerm(apply_schema.(t.args_parsed, Ref(schema), Mod)...)
+StatsModels.termnames(t::RandomEffectsTerm) = string(t.rhs.sym)
 
-function apply_schema(terms::NTuple{N,AbstractTerm}, schema, Mod::Type{<:MixedModel}) where N
-    fetrms = AbstractTerm[]
-    retrms = AbstractTerm[]
-    for trm in apply_schema.(terms, Ref(schema), Mod)
-        isa(trm, RandomEffectsTerm) ? push!(retrms, trm) : push!(fetrms, trm)
-    end
-    (fetrms, retrms)
+function StatsModels.model_cols(t::RandomEffectsTerm, d::NamedTuple)
+    z = Matrix(transpose(model_cols(t.lhs, d)))
+    k = size(z, 1)
+    grp = t.rhs
+    ReMat(grp, getindex.(Ref(t.rhs.contrasts.invindex), d[grp.sym]), z, z, reinterpret(SVector{k,eltype(z)}, vec(z)))
 end
