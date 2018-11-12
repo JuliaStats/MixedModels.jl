@@ -255,11 +255,18 @@ Linear mixed-effects model representation
 """
 struct LinearMixedModel{T <: AbstractFloat} <: MixedModel{T}
     formula::FormulaTerm
-    trms::Vector
+    cols::Vector{AbstractVecOrMat{T}}
+#=
     sqrtwts::Vector{T}
     A::BlockMatrix{T}            # cross-product blocks
     L::LowerTriangular{T,BlockArray{T,2,AbstractMatrix{T}}}
     optsum::OptSummary{T}
+=#
+end
+
+function LinearMixedModel(f::FormulaTerm, d::NamedTuple)
+    form = apply_schema(f, schema(d), LinearMixedModel)
+    LinearMixedModel(form, model_cols(form, d))
 end
 
 #=
