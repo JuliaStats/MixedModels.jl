@@ -1,8 +1,3 @@
-struct RandomEffectsTerm <: AbstractTerm
-    lhs::TermOrTerms
-    rhs::CategoricalTerm
-end
-
 struct ReMat{T,R,S} <: AbstractMatrix{T}
     trm::CategoricalTerm
     refs::Vector{R}
@@ -29,6 +24,24 @@ Base.getindex(A::ReMat, i::Integer, j::Integer) = getindex(sparse(A), i, j)
 
 Base.Matrix(A::ReMat) = Matrix(sparse(A))
 
+"""
+    nranef(A::AbstractMatrix)
+
+Return the number of random effects represented by `A`.  Zero unless `A` is an `ReMat`.
+""" 
+nranef(A::ReMat{T,R,S}) where {T,R,S} = S*length(A.refs) 
+nranef(A) = 0
+
+*(A::Adjoint{T,ReMat{T}}, B::ReMat{T}) where {T} = sparse(A)'sparse(B)
+*(A::Adjoint{T,Matrix{T}}, B::ReMat{T}) where {T} = A'sparse(B)
+
+abstract type MixedModel{T} <: StatsModels.RegressionModel end # model with fixed and random effects
+
+struct RandomEffectsTerm <: AbstractTerm
+    lhs::TermOrTerms
+    rhs::CategoricalTerm
+end
+
 function apply_schema(t::FunctionTerm{typeof(|)}, schema, Mod::Type{<:MixedModel})
     lhs, rhs = apply_schema.(t.args_parsed, Ref(schema), Mod)
     RandomEffectsTerm(isa(lhs, Tuple) ? apply_schema.(lhs, Ref(schema), Mod) : lhs, rhs)
@@ -40,18 +53,6 @@ function StatsModels.model_cols(t::RandomEffectsTerm, d::NamedTuple)
     z = Matrix(transpose(model_cols(t.lhs, d)))
     k = size(z, 1)
     grp = t.rhs
-    ReMat(grp, getindex.(Ref(t.rhs.contrasts.invindex), d[grp.sym]), z, z, reinterpret(SVector{k,eltype(z)}, vec(z)))
-end
-
-function StatsModels.model_cols(f::FormulaTerm, d::NamedTuple, Mod::Type{<:MixedModel})
-    resp = float(model_cols(f.lhs, d))
-    val = AbstractVecOrMat{eltype(resp)}[]
-    push!(val, resp)
-    push!(val, model_cols(tuple((t for t in f.rhs if !isa(t, RandomEffectsTerm))...), d))
-    for t in f.rhs
-        if isa(t, RandomEffectsTerm)
-            push!(val, model_cols(t, d))
-        end
-    end
-    val
+    ReMat(grp, getindex.(Ref(t.rhs.contrasts.invindex), d[grp.sym]), z, z,
+        reinterpret(SVector{k,eltype(z)}, vec(z)))
 end

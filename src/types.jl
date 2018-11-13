@@ -225,8 +225,6 @@ function NLopt.Opt(optsum::OptSummary)
     opt
 end
 
-abstract type MixedModel{T} <: StatsModels.RegressionModel end # model with fixed and random effects
-
 """
     LinearMixedModel
 
@@ -255,18 +253,61 @@ Linear mixed-effects model representation
 """
 struct LinearMixedModel{T <: AbstractFloat} <: MixedModel{T}
     formula::FormulaTerm
-    cols::Vector{AbstractVecOrMat{T}}
-#=
+    cols::Vector
     sqrtwts::Vector{T}
     A::BlockMatrix{T}            # cross-product blocks
+#=
     L::LowerTriangular{T,BlockArray{T,2,AbstractMatrix{T}}}
     optsum::OptSummary{T}
 =#
 end
 
+"""
+    densify(S::SparseMatrix, threshold=0.3)
+
+Convert sparse `S` to `Diagonal` if `S` is diagonal or to `full(S)` if
+the proportion of nonzeros exceeds `threshold`.
+"""
+function densify(A::SparseMatrixCSC, threshold::Real = 0.3)
+    S = sparse(A)
+    m, n = size(S)
+    if m == n && isdiag(S)  # convert diagonal sparse to Diagonal
+        Diagonal(diag(S))
+    elseif nnz(S)/(S.m * S.n) ≤ threshold
+        A
+    else
+        Array(S)
+    end
+end
+densify(A::AbstractMatrix, threshold::Real = 0.3) = A
+
 function LinearMixedModel(f::FormulaTerm, d::NamedTuple)
     form = apply_schema(f, schema(d), LinearMixedModel)
-    LinearMixedModel(form, model_cols(form, d))
+    cols = [reshape(float(model_cols(form.lhs, d)), (:, 1))]
+    push!(cols, model_cols(tuple((t for t in form.rhs if !isa(t, RandomEffectsTerm))...), d))
+    for t in form.rhs
+        if isa(t, RandomEffectsTerm)
+            push!(cols, model_cols(t, d))
+        end
+    end
+    nre = nranef.(cols)
+    if !issorted(nre)
+        cols = cols[sortperm(nre)]
+    end
+    cols = reverse(cols)
+    T = eltype(cols[1])
+    sz = size.(cols, 2)
+    k = length(cols)
+    A = BlockArrays._BlockArray(AbstractMatrix{T}, sz, sz)
+#    L = BlockArrays._BlockArray(AbstractMatrix{T}, k, j)
+    for j in 1:k
+        cj = cols[j]
+        for i in j:k
+            A[Block(i,j)] = densify(cols[i]'cj)
+#        A[Block(i,j)] = deepcopy(isa(Lij, BlockedSparse) ? Lij.cscmat : Lij)
+        end
+    end
+    LinearMixedModel(form, cols, T[], A)
 end
 
 #=
