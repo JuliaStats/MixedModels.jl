@@ -83,9 +83,9 @@ export
 
 import Base: ==, *
 
+include("newterms.jl")
 include("types.jl")
 include("gausshermite.jl")
-include("newterms.jl")
 #include("modelterms.jl")
 #include("linalg/cholUnblocked.jl")
 #include("linalg/rankUpdate.jl")
