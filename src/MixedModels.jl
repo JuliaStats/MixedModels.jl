@@ -2,12 +2,12 @@ __precompile__()
 
 module MixedModels
 
-using ArgCheck, BlockArrays, CategoricalArrays, DataFrames, Distributions, GLM, 
+using BlockArrays, CategoricalArrays, Tables, Distributions, GLM, 
     LinearAlgebra, NLopt, Random, ProgressMeter, Showoff, SparseArrays, StaticArrays,
     Statistics, StatsBase, StatsModels
 
 using LinearAlgebra: BlasFloat, BlasReal, HermOrSym, PosDefException, copytri!
-using NamedArrays: NamedArray, setnames!
+#using NamedArrays: NamedArray, setnames!
 using Printf: @printf, @sprintf
 
 using StatsFuns: log2π
@@ -76,6 +76,7 @@ export
        sdest,      # the estimate of the standard deviation of the per-observation noise
        setθ!,
        simulate!,  # simulate a new response in place
+       sparse,
        std,
        updateL!,   # update the lower-triangular, blocked matrix L to a new θ
        varest,     # estimate of the residual variance
