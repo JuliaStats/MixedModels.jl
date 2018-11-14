@@ -293,11 +293,7 @@ function LinearMixedModel(f::FormulaTerm, d::NamedTuple)
     cols = AbstractMatrix{T}[y, reshape(model_cols(tuple(fixefterms...),d), (length(y),:)),
         model_cols.(ranefterms, Ref(d))...]
     # reorder the random effects terms if necessary then reverse the whole vector
-    nre = nranef.(cols)
-    if !issorted(nre)
-        cols = cols[sortperm(nre)]
-    end
-    cols = reverse(cols)
+    cols = reverse(sort!(cols, by = nranef))
     # create the A and L as BlockMatrix 
     sz = size.(cols, 2)
     k = length(cols)
