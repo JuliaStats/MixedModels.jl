@@ -285,22 +285,22 @@ densify(A::AbstractMatrix, threshold::Real = 0.3) = A
 
 function LinearMixedModel(f::FormulaTerm, d::NamedTuple)
     form = apply_schema(f, schema(d), LinearMixedModel)
-    respvec = float(model_cols(form.lhs, d))
-    T = eltype(respvec)
-    cols = Union{Matrix{T},SparseMatrixCSC{T},ReMat{T}}[
-        reshape(respvec, (:, 1)),
-        model_cols(tuple((t for t in form.rhs if !isa(t, RandomEffectsTerm))...), d)]
+    y = reshape(float(model_cols(form.lhs, d)), (:, 1)) # response as a floating-point mat
+    T = eltype(y)
+    fixefterms = TermOrTerms[]
+    ranefterms = RandomEffectsTerm[]
     for t in form.rhs
-        if isa(t, RandomEffectsTerm)
-            push!(cols, model_cols(t, d))
-        end
+        push!(isa(t, RandomEffectsTerm) ? ranefterms : fixefterms, t)
     end
+    cols = AbstractMatrix{T}[y, reshape(model_cols(tuple(fixefterms...),d), (length(y),:)),
+        model_cols.(ranefterms, Ref(d))...]
+    # reorder the random effects terms if necessary then reverse the whole vector
     nre = nranef.(cols)
     if !issorted(nre)
         cols = cols[sortperm(nre)]
     end
     cols = reverse(cols)
-    T = eltype(cols[1])
+    # create the A and L as BlockMatrix 
     sz = size.(cols, 2)
     k = length(cols)
     A = BlockArrays._BlockArray(AbstractMatrix{T}, sz, sz)
