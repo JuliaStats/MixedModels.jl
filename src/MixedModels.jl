@@ -37,6 +37,7 @@ export
        Poisson,
        RaggedArray,
        RepeatedBlockDiagonal,
+       RandomEffectsTerm,
        ScalarFactorReTerm,
        UniformBlockDiagonal,
        VarCorr,
