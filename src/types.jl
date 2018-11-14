@@ -133,7 +133,7 @@ SparseArrays.sparse(A::BlockedSparse) = A.cscmat
 SparseArrays.nnz(A::BlockedSparse) = nnz(A.cscmat)
 
 function Base.copyto!(L::BlockedSparse{T,I}, A::SparseMatrixCSC{T,I}) where {T,I}
-    @argcheck(size(L) == size(A) && nnz(L) == nnz(A), DimensionMismatch)
+    size(L) == size(A) && nnz(L) == nnz(A) || throw(DimensionMismatch("size(L) ≠ size(A) or nnz(L) ≠ nnz(A"))
     copyto!(nonzeros(L.cscmat), nonzeros(A))
     L
 end
@@ -283,8 +283,11 @@ densify(A::AbstractMatrix, threshold::Real = 0.3) = A
 
 function LinearMixedModel(f::FormulaTerm, d::NamedTuple)
     form = apply_schema(f, schema(d), LinearMixedModel)
-    cols = [reshape(float(model_cols(form.lhs, d)), (:, 1))]
-    push!(cols, model_cols(tuple((t for t in form.rhs if !isa(t, RandomEffectsTerm))...), d))
+    respvec = float(model_cols(form.lhs, d))
+    T = eltype(respvec)
+    cols = Union{Matrix{T},SparseMatrixCSC{T},ReMat{T}}[
+        reshape(respvec, (:, 1)),
+        model_cols(tuple((t for t in form.rhs if !isa(t, RandomEffectsTerm))...), d)]
     for t in form.rhs
         if isa(t, RandomEffectsTerm)
             push!(cols, model_cols(t, d))
