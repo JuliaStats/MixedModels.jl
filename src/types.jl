@@ -256,10 +256,8 @@ struct LinearMixedModel{T <: AbstractFloat} <: MixedModel{T}
     cols::Vector
     sqrtwts::Vector{T}
     A::BlockMatrix{T}            # cross-product blocks
-#=
-    L::LowerTriangular{T,BlockArray{T,2,AbstractMatrix{T}}}
-    optsum::OptSummary{T}
-=#
+    L::BlockMatrix{T}
+    #optsum::OptSummary{T}
 end
 
 """
@@ -283,30 +281,29 @@ densify(A::AbstractMatrix, threshold::Real = 0.3) = A
 
 function LinearMixedModel(f::FormulaTerm, d::NamedTuple)
     form = apply_schema(f, schema(d), LinearMixedModel)
-    y = reshape(float(model_cols(form.lhs, d)), (:, 1)) # response as a floating-point mat
+    y = reshape(float(model_cols(form.lhs, d)), (:, 1)) # y as a floating-point matrix
     T = eltype(y)
     fixefterms = TermOrTerms[]
     ranefterms = RandomEffectsTerm[]
     for t in form.rhs
-        push!(isa(t, RandomEffectsTerm) ? ranefterms : fixefterms, t)
+        push!(t isa RandomEffectsTerm ? ranefterms : fixefterms, t)
     end
-    cols = AbstractMatrix{T}[y, reshape(model_cols(tuple(fixefterms...),d), (length(y),:)),
-        model_cols.(ranefterms, Ref(d))...]
-    # reorder the random effects terms if necessary then reverse the whole vector
-    cols = reverse(sort!(cols, by = nranef))
-    # create the A and L as BlockMatrix 
+    cols = sort!(AbstractMatrix{T}[model_cols.(ranefterms, Ref(d))...,
+        reshape(model_cols(tuple(fixefterms...),d), (length(y),:)), y],
+        by = nranef, rev=true)
+                                # create A and L
     sz = size.(cols, 2)
     k = length(cols)
     A = BlockArrays._BlockArray(AbstractMatrix{T}, sz, sz)
-#    L = BlockArrays._BlockArray(AbstractMatrix{T}, k, j)
+    L = BlockArrays._BlockArray(AbstractMatrix{T}, sz, sz)
     for j in 1:k
         cj = cols[j]
         for i in j:k
-            A[Block(i,j)] = densify(cols[i]'cj)
-#        A[Block(i,j)] = deepcopy(isa(Lij, BlockedSparse) ? Lij.cscmat : Lij)
+            Lij = L[Block(i,j)] = densify(cols[i]'cj)
+            A[Block(i,j)] = deepcopy(isa(Lij, BlockedSparse) ? Lij.cscmat : Lij)
         end
     end
-    LinearMixedModel(form, cols, T[], A)
+    LinearMixedModel(form, cols, T[], A, L)
 end
 
 #=
