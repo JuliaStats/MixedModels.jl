@@ -85,9 +85,17 @@ export
 
 import Base: ==, *
 
-include("newterms.jl")
-include("types.jl")
+abstract type MixedModel{T} <: StatsModels.RegressionModel end # model with fixed and random effects
+
+include("utilities.jl")
+include("arraytypes.jl")
+include("optsummary.jl")
+include("varcorr.jl")
+include("remat.jl")
+include("randomeffectsterm.jl")
+include("linearmixedmodel.jl")
 include("gausshermite.jl")
+#include("generalizedlinearmixedmodel.jl")
 #include("modelterms.jl")
 #include("linalg/cholUnblocked.jl")
 #include("linalg/rankUpdate.jl")
