@@ -52,9 +52,12 @@ struct RandomEffectsTerm <: AbstractTerm
     rhs::CategoricalTerm
 end
 
+Base.show(io::IO, t::RandomEffectsTerm) = print(io, "($(t.lhs) | $(t.rhs))")
+StatsModels.is_matrix_term(::Type{RandomEffectsTerm}) = false
+
 function apply_schema(t::FunctionTerm{typeof(|)}, schema, Mod::Type{<:MixedModel})
     lhs, rhs = apply_schema.(t.args_parsed, Ref(schema), Mod)
-    RandomEffectsTerm(isa(lhs, Tuple) ? apply_schema.(lhs, Ref(schema), Mod) : lhs, rhs)
+    RandomEffectsTerm(MatrixTerm(lhs), rhs)
 end
 
 StatsModels.termnames(t::RandomEffectsTerm) = string(t.rhs.sym)

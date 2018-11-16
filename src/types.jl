@@ -281,17 +281,15 @@ densify(A::AbstractMatrix, threshold::Real = 0.3) = A
 
 function LinearMixedModel(f::FormulaTerm, d::NamedTuple)
     form = apply_schema(f, schema(d), LinearMixedModel)
-    y = reshape(float(model_cols(form.lhs, d)), (:, 1)) # y as a floating-point matrix
+    y, Xs = model_cols(form, d)
+
+    y = reshape(float(y), (:, 1)) # y as a floating-point matrix
     T = eltype(y)
-    fixefterms = TermOrTerms[]
-    ranefterms = RandomEffectsTerm[]
-    for t in form.rhs
-        push!(t isa RandomEffectsTerm ? ranefterms : fixefterms, t)
-    end
-    cols = sort!(AbstractMatrix{T}[model_cols.(ranefterms, Ref(d))...,
-        reshape(model_cols(tuple(fixefterms...),d), (length(y),:)), y],
-        by = nranef, rev=true)
-                                # create A and L
+
+    # might need to add a guard to make sure Xs isn't just a single matrix
+    cols = sort!(AbstractMatrix{T}[Xs..., y], by=nranef, rev=true)
+
+    # create A and L
     sz = size.(cols, 2)
     k = length(cols)
     A = BlockArrays._BlockArray(AbstractMatrix{T}, sz, sz)
