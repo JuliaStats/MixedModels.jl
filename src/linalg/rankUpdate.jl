@@ -25,8 +25,8 @@ end
 
 function rankUpdate!(C::HermOrSym{T,S}, A::SparseMatrixCSC{T}, α=true, β=true) where {T,S}
     m, n = size(A)
-    @argcheck(m == size(C, 2), DimensionMismatch)
-    @argcheck(C.uplo == 'L', ArgumentError)
+    m == size(C, 2) || throw(DimensionMismatch(""))
+    C.uplo == 'L' || throw(ArgumentError("C.uplo must be 'L'"))
     Cd = C.data
     isone(β) || rmul!(LowerTriangular(Cd), β)
     rv = rowvals(A)
@@ -49,7 +49,7 @@ end
 function rankUpdate!(C::Diagonal{T}, A::SparseMatrixCSC{T}, α=true, β=true) where {T <: Number}
     m, n = size(A)
     dd = C.diag
-    @argcheck(length(dd) == m, DimensionMismatch)
+    length(dd) == m || throw(DimensionMismatch(""))
     isone(β) || rmul!(dd, β)
     nz = nonzeros(A)
     rv = rowvals(A)
@@ -69,7 +69,7 @@ function rankUpdate!(C::HermOrSym{T,UniformBlockDiagonal{T}}, A::BlockedSparse{T
     Arb = A.rowblocks
     Cdf = C.data.facevec
     (m = length(Arb)) == length(Cdf) ||
-        throw(DimensionMismatch("length(A.rowblocks) = $m ≠ $(length(Cdf)) = length(C.data.facevec)"))
+        throw(DimensionMismatch("length(A.rowblocks) ≠ length(C.data.facevec)"))
     for (b, d) in zip(Arb, Cdf)
         for v in b
             BLAS.syr!('L', α, v, d)

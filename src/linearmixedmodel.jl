@@ -112,3 +112,45 @@ Base.setproperty!(m::LinearMixedModel, s::Symbol, y) = s == :θ ? setθ!(m, y) :
 
 Base.propertynames(m::LinearMixedModel, private=false) =
     (:formula, :trms, :A, :L, :optsum, :θ, :theta, :β, :beta, :λ, :lambda, :σ, :sigma, :b, :u, :lowerbd, :X, :y, :rePCA)
+
+"""
+    updateL!(m::LinearMixedModel)
+
+Update the blocked lower Cholesky factor, `m.L`, from `m.A` and `m.cols` (used for λ only)
+
+This is the crucial step in evaluating the objective, given a new parameter value.
+"""
+function updateL!(m::LinearMixedModel{T}) where {T}
+    A = m.A
+    L = m.L
+    cols = m.cols
+    k = length(cols)
+    for j in 1:k
+        for i in j:k    # copy lower triangle of A to L
+            copyto!(L[Block(i, j)], A[Block(i, j)])
+        end
+        Ljj = L[Block(j, j)]
+        if isa(cols[j], ReMat)   # for ReMat terms
+            λ = cols[j].λ
+            for i in j:k         # postmultiply column by Λ
+                rmulΛ!(L[Block(i, j)], λ)
+            end
+            for jj in 1:j        # premultiply row by Λ'
+                lmulλ!(λ', L[Block(j, jj)])
+            end
+            Ljj += I  # inflate the diagonal of the diagonal block(check if this allocates)
+        end
+        for jj in 1:(j - 1)
+            rankUpdate!(Hermitian(Ljj, :L), L[Block(j, jj)], -one(T))
+        end
+        cholUnblocked!(Ljj, Val{:L})
+        for i in (j + 1):k
+            for jj in 1:(j - 1)
+                mulαβ!(Lij, L[Block(i, jj)], L[Block(j, jj)]', -one(T), one(T))
+            end
+            rdiv!(Lij, LowerTriangular(Ljj)')
+        end
+    end
+    m
+end
+
