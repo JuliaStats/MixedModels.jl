@@ -1,21 +1,21 @@
-using DataFrames, LinearAlgebra, MixedModels, Random, RData, SparseArrays, Test
+using LinearAlgebra, MixedModels, Random, RData, SparseArrays, StatsModels, Tables, Test
 
-if !@isdefined(dat) || !isa(dat, Dict{Symbol, DataFrame})
-    dat = Dict(Symbol(k) => v for (k, v) in load(joinpath(dirname(@__FILE__), "dat.rda")))
+if !@isdefined(dat) || !isa(dat, Dict{Symbol, NamedTuple})
+    dat = Dict(Symbol(k) => columntable(v) for (k, v) in load(joinpath(dirname(@__FILE__), "dat.rda")))
 end
 
-@testset "scalarRe" begin
-    dyestuff = dat[:Dyestuff]
-    pastes = dat[:Pastes]
-    batch = dyestuff[:G]
-    sf = ScalarFactorReTerm(batch, :G)
-    b2 = categorical(reverse(string.(batch)))
-    reverse!(b2.refs)
-    bb = ScalarFactorReTerm(b2, :G)
-    sf1 = ScalarFactorReTerm(pastes[:G], :G)
-    sf2 = ScalarFactorReTerm(pastes[:H], :H)
-    Yield = dyestuff[:Y]
-    ScalarFactorReTerm(repeat(1:3, inner=2), :G) # just to test a constructor
+const LMM = LinearMixedModel
+
+@testset "scalarReMat" begin
+    ds = dat[:Dyestuff]
+    f1 = @formula(Y ~ 1 + (1|G))
+    y1, Xs1 = model_cols(apply_schema(f1, schema(ds), LMM), ds)
+    sf = Xs1[2]
+    psts = dat[:Pastes]
+    f2 = @formula(Y ~ 1 + (1|G) + (1|H))
+    y2, Xs2 = model_cols(apply_schema(f2, schema(psts), LMM), psts)
+    sf1 = Xs2[2]
+    sf2 = Xs2[3]
 
     @testset "size" begin
         @test size(sf) == (30, 6)
@@ -25,18 +25,13 @@ end
         @test size(sf1) == (60, 30)
         @test size(sf2) == (60, 10)
     end
-
-    @testset "order" begin
-        @test bb.refs == sf.refs
-    end
     
     @testset "utilities" begin
         @test MixedModels.levs(sf) == string.('A':'F')
         @test MixedModels.nlevs(sf) == 6
-        @test MixedModels.vsize(sf) == 1
         @test MixedModels.nrandomeff(sf) == 6
         @test eltype(sf) == Float64
-        @test sparse(sf) == sparse(Int32[1:30;], convert(Vector{Int32},sf.refs), ones(30))
+        @test sparse(sf) == sparse(1:30, sf.refs, ones(30))
         fsf = Matrix(sf)
         @test size(fsf) == (30, 6)
         @test count(!iszero, fsf) == 30
@@ -46,14 +41,13 @@ end
         @test getθ(sf) == ones(1)
         @test MixedModels.getθ!(Vector{Float64}(undef, 1), sf) == ones(1)
         @test lowerbd(sf) == zeros(1)
-        @test eltype(sf) == Float64
-        @test getθ(setθ!(sf, 0.5)) == [0.5]
+        @test getθ(setθ!(sf, [0.5])) == [0.5]
         @test_throws DimensionMismatch MixedModels.getθ!(Float64[], sf)
-        @test_throws MethodError setθ!(sf, ones(2))
+        @test_throws DimensionMismatch setθ!(sf, ones(2))
     end
 
     @testset "products" begin
-        @test MatrixTerm(ones(30))'sf == fill(5.0, (1, 6))
+        @test ones(30, 1)'sf == fill(5.0, (1, 6))
         @test mul!(Array{Float64}(undef, (size(sf1, 2), size(sf2, 2))), sf1', sf2) == Array(sf1'sf2)
 
         crp = sf'sf
@@ -64,9 +58,9 @@ end
         @test crp[6,6] == 5
         @test size(crp) == (6,6)
         @test crp.diag == fill(5.,6)
-        rhs = MatrixTerm(Yield)'sf
+        rhs = y1'sf
         @test rhs == reshape([7525.0,7640.0,7820.0,7490.0,8000.0,7350.0], (1, 6))
-        @test ldiv!(crp, copy(rhs)') == reshape([1505.,1528.,1564.,1498.,1600.,1470.], (6, 1))
+        @test ldiv!(crp, copy(rhs)') == [1505.,1528.,1564.,1498.,1600.,1470.]
 
         @test isa(sf1'sf1, Diagonal{Float64})
         @test isa(sf2'sf2, Diagonal{Float64})
