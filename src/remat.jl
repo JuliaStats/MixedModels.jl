@@ -100,6 +100,10 @@ function isnested(A::ReMat, B::ReMat)
     true
 end
 
+function lmulΛ!(adjA::Adjoint{T,ReMat{T,R,1}}, B::AbstractMatrix{T}) where {T,R}
+    lmul!(first(adjA.parent.λ), B)
+end
+
 LinearAlgebra.Matrix(A::ReMat) = Matrix(sparse(A))
 
 function LinearAlgebra.mul!(C::Diagonal{T}, adjA::Adjoint{T,<:ReMat{T,R,1}},
@@ -234,7 +238,7 @@ function *(adjA::Adjoint{T,<:ReMat{T,R,S}}, B::ReMat{T,U,P}) where {T,R,S,U,P}
     BlockedSparse(cscmat, nzasmat, rowblocks, colblocks)
 end
 
-    function reweight!(A::ReMat, sqrtwts::Vector)
+function reweight!(A::ReMat, sqrtwts::Vector)
     if length(sqrtwts) > 0
         if A.z == A.wtz
             A.wtz = A.z .* sqrtwts
@@ -245,9 +249,19 @@ end
     A
 end
 
+rmulΛ!(A::AbstractMatrix{T}, B::ReMat{T,R,1}) where {T,R} = rmul!(A, first(B.λ))
+
 function rowlengths(A::ReMat)
     ld = A.λ.data
     [norm(view(ld, i, 1:i)) for i in 1:size(ld, 1)]
+end
+
+function scaleinflate!(A::AbstractMatrix{T}, B::ReMat{T,R,1}) where {T,R}
+    rmul!(A, abs2(first(B.λ)))
+    for k in diagind(A)
+        A[k] += 1
+    end
+    A
 end
 
 function setθ!(A::ReMat{T}, v::AbstractVector{T}) where {T}

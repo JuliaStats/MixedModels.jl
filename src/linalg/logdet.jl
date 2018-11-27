@@ -33,11 +33,11 @@ Return the value of `log(det(Λ'Z'ZΛ + I))` evaluated in place.
 """
 function LinearAlgebra.logdet(m::LinearMixedModel{T}) where {T}
     s = log(one(T))
-    Ldat = m.L.data
-    @inbounds for (i, trm) in enumerate(m.trms)
-        isa(trm, AbstractFactorReTerm) && (s += LD(Ldat[Block(i, i)]))
+    L = m.L
+    @inbounds for (i, trm) in enumerate(m.cols)
+        isa(trm, ReMat) && (s += LD(L[Block(i, i)]))
     end
     2s
 end
 
-LinearAlgebra.logdet(m::GeneralizedLinearMixedModel) = logdet(m.LMM)
+#LinearAlgebra.logdet(m::GeneralizedLinearMixedModel) = logdet(m.LMM)
