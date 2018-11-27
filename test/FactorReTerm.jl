@@ -1,7 +1,8 @@
 using LinearAlgebra, MixedModels, Random, RData, SparseArrays, StatsModels, Tables, Test
 
 if !@isdefined(dat) || !isa(dat, Dict{Symbol, NamedTuple})
-    dat = Dict(Symbol(k) => columntable(v) for (k, v) in load(joinpath(dirname(@__FILE__), "dat.rda")))
+    const dat = Dict(Symbol(k) => columntable(v) for (k, v) in 
+        load(joinpath(dirname(pathof(MixedModels)), "..", "test", "dat.rda")))
 end
 
 const LMM = LinearMixedModel
@@ -29,7 +30,6 @@ const LMM = LinearMixedModel
     @testset "utilities" begin
         @test MixedModels.levs(sf) == string.('A':'F')
         @test MixedModels.nlevs(sf) == 6
-        @test MixedModels.nrandomeff(sf) == 6
         @test eltype(sf) == Float64
         @test sparse(sf) == sparse(1:30, sf.refs, ones(30))
         fsf = Matrix(sf)

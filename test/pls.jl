@@ -1,32 +1,34 @@
-using DataFrames, LinearAlgebra, MixedModels, Random, RData, SparseArrays, Statistics, StatsBase, Test
+using LinearAlgebra, MixedModels, Random, RData, SparseArrays, Statistics, StatsBase, Tables, Test
 
-if !@isdefined(dat) || !isa(dat, Dict{Symbol, DataFrame})
-    dat = Dict(Symbol(k) => v for (k, v) in load(joinpath(dirname(@__FILE__), "dat.rda")))
+if !@isdefined(dat) || !isa(dat, Dict{Symbol, NamedTuple})
+    const dat = Dict(Symbol(k) => columntable(v) for (k, v) in 
+        load(joinpath(dirname(pathof(MixedModels)), "..", "test", "dat.rda")))
 end
 
+const LMM = LinearMixedModel
+
 @testset "Dyestuff" begin
-    fm1 = LinearMixedModel(@formula(Y ~ 1 + (1|G)), dat[:Dyestuff])
+    fm1 = LMM(@formula(Y ~ 1 + (1|G)), dat[:Dyestuff])
 
     @test nblocks(fm1.A) == (3, 3)
-    @test size(fm1.trms) == (3, )
-    @test nblocks(fm1.L.data) == (3, 3)
+    @test size(fm1.cols) == (3, )
+    @test nblocks(fm1.L) == (3, 3)
     @test lowerbd(fm1) == zeros(1)
     @test fm1.lowerbd == zeros(1)
     @test getθ(fm1) == ones(1)
-    @test getΛ(fm1) == [1.0]
     fm1.θ = ones(1)
     @test getθ(fm1) == ones(1)
 
     @test objective(updateL!(setθ!(fm1, [0.713]))) ≈ 327.34216280955366
-    MixedModels.describeblocks(IOBuffer(), fm1)
+#    MixedModels.describeblocks(IOBuffer(), fm1)
 
     fit!(fm1);
     @test :θ in propertynames(fm1)
     @test isapprox(objective(fm1), 327.3270598811428, atol=0.001)
     @test isapprox(getθ(fm1), [0.752580], atol=1.e-5)
-    @test isapprox(fm1.λ, [0.752580], atol=1.e-5)
+    @test isapprox(fm1.λ, [LowerTriangular(reshape(getθ(fm1), (1,1)))], atol=1.e-5)
     @test isapprox(fm1.θ, [0.752580], atol=1.e-5)
-    @test isapprox(deviance(fm1), 327.32705988, atol=0.001)
+#    @test isapprox(deviance(fm1), 327.32705988, atol=0.001)
     @test isapprox(aic(fm1), 333.3270598811394, atol=0.001)
     @test isapprox(bic(fm1), 337.5306520261259, atol=0.001)
     @test fixef(fm1) ≈ [1527.5]
@@ -68,7 +70,7 @@ end
 end
 
 @testset "Dyestuff2" begin
-    fm = fit(LinearMixedModel, @formula(Y ~ 1 + (1 | G)), dat[:Dyestuff2])
+    fm = fit!(LMM(@formula(Y ~ 1 + (1 | G)), dat[:Dyestuff2]))
     @test lowerbd(fm) == zeros(1)
     show(IOBuffer(), fm)
     @test getθ(fm)[1] < 1.0e-9
