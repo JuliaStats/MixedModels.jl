@@ -6,7 +6,7 @@ Linear mixed-effects model representation
 ## Fields
 
 * `formula`: the formula for the model
-* `trms`: a `Vector` of `AbstractTerm` types representing the model.  The last element is the response.
+* `cols`: a `Vector` of `Union{ReMat,FeMat}` representing the model.  The last element is the response.
 * `sqrtwts`: vector of square roots of the case weights.  Can be empty.
 * `A`: an `nt × nt` symmetric `BlockMatrix` of matrices representing `hcat(Z,X,y)'hcat(Z,X,y)`
 * `L`: a `nt × nt` `BlockMatrix` - the lower Cholesky factor of `Λ'AΛ+I`
@@ -70,17 +70,72 @@ function LinearMixedModel(f::FormulaTerm, d::NamedTuple)
             end
         end
     end
-    lbd = T[]
-    θ = T[]
-    for c in filter(x -> isa(x, ReMat), cols)
-        append!(lbd, lowerbd(c))
-        append!(θ, getθ(c))
-    end
+    lbd = reduce(append!,  lowerbd(c) for c in cols if isa(c, ReMat))
+    θ = reduce(append!, getθ(c) for c in cols if isa(c, ReMat))
     optsum = OptSummary(θ, lbd, :LN_BOBYQA;
         ftol_rel = T(1.0e-12), ftol_abs = T(1.0e-8))
     fill!(optsum.xtol_abs, 1.0e-10)
     LinearMixedModel(form, cols, T[], A, L, optsum)
 end
+
+StatsBase.dof(m::LinearMixedModel) = 
+    size(m)[2] + sum(nθ(c) for c in m.cols if isa(c, ReMat)) + 1
+
+"""
+    fit!(m::LinearMixedModel[, verbose::Bool=false])
+
+Optimize the objective of a `LinearMixedModel`.  When `verbose` is `true` the values of the
+objective and the parameters are printed on stdout at each function evaluation.
+"""
+function StatsBase.fit!(m::LinearMixedModel{T}, verbose::Bool=false) where {T}
+    optsum = m.optsum
+    opt = Opt(optsum)
+    feval = 0
+    function obj(x, g)
+        isempty(g) || error("gradient not defined")
+        feval += 1
+        val = objective(updateL!(setθ!(m, x)))
+        feval == 1 && (optsum.finitial = val)
+        verbose && println("f_", feval, ": ", round(val, digits=5), " ", x)
+        val
+    end
+    NLopt.min_objective!(opt, obj)
+    fmin, xmin, ret = NLopt.optimize!(opt, copyto!(optsum.final, optsum.initial))
+    ## check if small non-negative parameter values can be set to zero
+    xmin_ = copy(xmin)
+    lb = optsum.lowerbd
+    for i in eachindex(xmin_)
+        if iszero(lb[i]) && zero(T) < xmin_[i] < T(0.001)
+            xmin_[i] = zero(T)
+        end
+    end
+    if xmin_ ≠ xmin
+        if (zeroobj = obj(xmin_, T[])) ≤ (fmin + 1.e-5)
+            fmin = zeroobj
+            copyto!(xmin, xmin_)
+        end
+    end
+    ## ensure that the parameter values saved in m are xmin
+    updateL!(setθ!(m, xmin))
+
+    optsum.feval = feval
+    optsum.final = xmin
+    optsum.fmin = fmin
+    optsum.returnvalue = ret
+    ret == :ROUNDOFF_LIMITED && @warn("NLopt was roundoff limited")
+    if ret ∈ [:FAILURE, :INVALID_ARGS, :OUT_OF_MEMORY, :FORCED_STOP, :MAXFEVAL_REACHED]
+        @warn("NLopt optimization failure: $ret")
+    end
+    m
+end
+
+"""
+    getθ(m::LinearMixedModel)
+
+Return the current covariance parameter vector.
+"""
+getθ(m::LinearMixedModel{T}) where {T} = 
+    reduce(append!, getθ(m) for m in m.cols if isa(m, ReMat))
 
 function Base.getproperty(m::LinearMixedModel, s::Symbol)
     if s ∈ (:θ, :theta)
@@ -88,7 +143,7 @@ function Base.getproperty(m::LinearMixedModel, s::Symbol)
     elseif s ∈ (:β, :beta)
         fixef(m)
     elseif s ∈ (:λ, :lambda)
-        getλ(m)
+        [m.λ for m in m.cols if isa(m, ReMat)]
     elseif s ∈ (:σ, :sigma)
         sdest(m)
     elseif s == :b
@@ -108,10 +163,67 @@ function Base.getproperty(m::LinearMixedModel, s::Symbol)
     end
 end
 
-Base.setproperty!(m::LinearMixedModel, s::Symbol, y) = s == :θ ? setθ!(m, y) : setfield!(m, s, y)
+StatsBase.loglikelihood(m::LinearMixedModel) = -objective(m) / 2
+
+lowerbd(m::LinearMixedModel) = m.optsum.lowerbd
+
+StatsBase.nobs(m::LinearMixedModel) = size(first(m.cols), 1)
+
+"""
+    objective(m::LinearMixedModel)
+
+Return negative twice the log-likelihood of model `m`
+"""
+function objective(m::LinearMixedModel)
+    wts = m.sqrtwts
+    logdet(m) + nobs(m)*(1 + log2π + log(varest(m))) - (isempty(wts) ? 0 : 2sum(log, wts))
+end
 
 Base.propertynames(m::LinearMixedModel, private=false) =
-    (:formula, :trms, :A, :L, :optsum, :θ, :theta, :β, :beta, :λ, :lambda, :σ, :sigma, :b, :u, :lowerbd, :X, :y, :rePCA)
+    (:formula, :cols, :sqrtwts, :A, :L, :optsum, :θ, :theta, :β, :beta, :λ, :lambda, :σ, :sigma, :b, :u, :lowerbd, :X, :y, :rePCA)
+
+"""
+    pwrss(m::LinearMixedModel)
+
+The penalized, weighted residual sum-of-squares.
+"""
+pwrss(m::LinearMixedModel) = abs2(sqrtpwrss(m))
+
+"""
+    setθ!{T}(m::LinearMixedModel{T}, v::Vector{T})
+
+Install `v` as the θ parameters in `m`.
+"""
+function setθ!(m::LinearMixedModel, v)
+    offset = 0
+    for trm in m.cols
+        if isa(trm, ReMat)
+            k = nθ(trm)
+            setθ!(trm, view(v, (1:k) .+ offset))
+            offset += k
+        end
+    end
+    m
+end
+
+Base.setproperty!(m::LinearMixedModel, s::Symbol, y) = s == :θ ? setθ!(m, y) : setfield!(m, s, y)
+
+function Base.size(m::LinearMixedModel)
+    cols = m.cols
+    n, p = size(cols[end - 1])
+    k = sum(isa.(cols, ReMat))
+    q = sum(size(c, 2) for c in cols if isa(c, ReMat))
+    n, p, q, k
+end
+
+"""
+    sqrtpwrss(m::LinearMixedModel)
+
+Return the square root of the penalized, weighted residual sum-of-squares (pwrss).
+
+This value is the contents of the `1 × 1` bottom right block of `m.L`
+"""
+sqrtpwrss(m::LinearMixedModel) = first(m.L.blocks[end, end])
 
 """
     updateL!(m::LinearMixedModel)
@@ -130,21 +242,22 @@ function updateL!(m::LinearMixedModel{T}) where {T}
             copyto!(L[Block(i, j)], A[Block(i, j)])
         end
         Ljj = L[Block(j, j)]
-        if isa(cols[j], ReMat)   # for ReMat terms
-            λ = cols[j].λ
-            for i in j:k         # postmultiply column by Λ
-                rmulΛ!(L[Block(i, j)], λ)
+        cj = cols[j]
+        if isa(cj, ReMat)        # for ReMat terms
+            scaleinflate!(Ljj, cj)
+            for i in (j+1):k         # postmultiply column by Λ
+                rmulΛ!(L[Block(i, j)], cj)
             end
-            for jj in 1:j        # premultiply row by Λ'
-                lmulλ!(λ', L[Block(j, jj)])
+            for jj in 1:(j-1)        # premultiply row by Λ'
+                lmulΛ!(cj', L[Block(j, jj)])
             end
-            Ljj += I  # inflate the diagonal of the diagonal block(check if this allocates)
         end
         for jj in 1:(j - 1)
             rankUpdate!(Hermitian(Ljj, :L), L[Block(j, jj)], -one(T))
         end
         cholUnblocked!(Ljj, Val{:L})
         for i in (j + 1):k
+            Lij = L[Block(i, j)]
             for jj in 1:(j - 1)
                 mulαβ!(Lij, L[Block(i, jj)], L[Block(j, jj)]', -one(T), one(T))
             end
@@ -154,3 +267,9 @@ function updateL!(m::LinearMixedModel{T}) where {T}
     m
 end
 
+"""
+    varest(m::LinearMixedModel)
+
+Returns the estimate of σ², the variance of the conditional distribution of Y given B.
+"""
+varest(m::LinearMixedModel) = pwrss(m) / nobs(m)
