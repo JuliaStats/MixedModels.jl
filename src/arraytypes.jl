@@ -49,60 +49,6 @@ function LinearAlgebra.Matrix(A::UniformBlockDiagonal{T}) where {T}
 end
 
 """
-    RepeatedBlockDiagonal{T}
-
-A block diagonal matrix consisting of `k` blocks each of which is the same `m×m` `Matrix{T}`.
-
-This is the form of the `Λ` matrix from a `VectorFactorReTerm`.
-"""
-struct RepeatedBlockDiagonal{T,S<:AbstractMatrix{T}} <: AbstractMatrix{T}
-    data::S
-    nblocks::Int
-
-    function RepeatedBlockDiagonal{T,S}(data,nblocks) where {T,S<:AbstractMatrix{T}}
-        new{T,S}(data, nblocks)
-    end
-end
-
-function RepeatedBlockDiagonal(A::AbstractMatrix, nblocks::Integer)
-    RepeatedBlockDiagonal{eltype(A), typeof(A)}(A, Int(nblocks))
-end
-
-function Base.size(A::RepeatedBlockDiagonal)
-    m, n = size(A.data)
-    nb = A.nblocks
-    (m * nb, n * nb)
-end
-
-function Base.getindex(A::RepeatedBlockDiagonal{T}, i::Int, j::Int) where {T}
-    m, n = size(A.data)
-    nb = A.nblocks
-    (0 < i ≤ nb * m && 0 < j ≤ nb * n) ||
-        throw(IndexError("attempt to access $(nb*m) × $(nb*n) array at index [$i, $j]"))
-    iblk, ioffset = divrem(i - 1, m)
-    jblk, joffset = divrem(j - 1, n)
-    iblk == jblk ? A.data[ioffset+1, joffset+1] : zero(T)
-end
-
-function LinearAlgebra.Matrix(A::RepeatedBlockDiagonal{T}) where T
-    mat = zeros(T, size(A))
-    Ad = A.data
-    m, n = size(Ad)
-    nb = A.nblocks
-    for k = 0:(nb-1)
-        km = k * m
-        kn = k * n
-        for j = 1:n
-            knpj = kn + j
-            for i = 1:m
-                mat[km + i, knpj] = Ad[i, j]
-            end
-        end
-    end
-    mat
-end
-
-"""
     BlockedSparse{Tv, Ti}
 
 A `SparseMatrixCSC` whose nonzeros form blocks of rows or columns or both.
