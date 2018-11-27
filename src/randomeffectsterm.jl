@@ -33,6 +33,5 @@ function StatsModels.model_cols(t::RandomEffectsTerm, d::NamedTuple)
         II = R.(vec([(r - 1)*S + j for j in 1:S, r in refs]))
     end
     ReMat(grp, refs, z, z, reinterpret(SVector{S,eltype(z)}, vec(z)),
-        LowerTriangular(Matrix{T}(I, S, S)), inds, 
-        sparse(II, J, vec(z)))
+        LowerTriangular(Matrix{T}(I, S, S)), inds, sparse(II, J, vec(z)))
 end
