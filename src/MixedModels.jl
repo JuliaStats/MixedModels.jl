@@ -31,17 +31,16 @@ export
        InverseLink,
        GeneralizedLinearMixedModel,
        LinearMixedModel,
-       MatrixTerm,
+#       MatrixTerm,
        MixedModel,
        OptSummary,
        Poisson,
        RaggedArray,
-       RepeatedBlockDiagonal,
+#       RepeatedBlockDiagonal,
        RandomEffectsTerm,
-       ScalarFactorReTerm,
+       ReMat,
        UniformBlockDiagonal,
        VarCorr,
-       VectorFactorReTerm,
 
        bootstrap,
        bootstrap!,
@@ -99,13 +98,12 @@ include("gausshermite.jl")
 #include("modelterms.jl")
 include("linalg/cholUnblocked.jl")
 include("linalg/rankUpdate.jl")
-include("linalg/scaleInflate.jl")
-#include("linalg/logdet.jl")
-#include("linalg.jl")
+#include("linalg/scaleInflate.jl")
+include("linalg/logdet.jl")
+include("linalg.jl")
 #include("pls.jl")
 #include("simulate.jl")
 #include("PIRLS.jl")
 #include("mixedmodel.jl")
-#include("deprecates.jl")
 
 end # module
