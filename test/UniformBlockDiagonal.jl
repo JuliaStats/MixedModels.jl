@@ -1,18 +1,20 @@
-using CategoricalArrays, DataFrames, LinearAlgebra, MixedModels, Random, RData, SparseArrays, Test
+using LinearAlgebra, MixedModels, Random, RData, SparseArrays, StatsModels, Tables, Test
 
-if !@isdefined(dat) || !isa(dat, Dict{Symbol, DataFrame})
-    dat = Dict(Symbol(k) => v for (k, v) in load(joinpath(dirname(@__FILE__), "dat.rda")))
+if !@isdefined(dat) || !isa(dat, Dict{Symbol, NamedTuple})
+    const dat = Dict(Symbol(k) => columntable(v) for (k, v) in 
+        load(joinpath(dirname(pathof(MixedModels)), "..", "test", "dat.rda")))
 end
+
+const LMM = LinearMixedModel
 
 @testset "UBlk" begin
     ex22 = UniformBlockDiagonal(reshape(Vector(1.0:12.0), (2, 2, 3)))
     Lblk = UniformBlockDiagonal(fill(0., (2,2,3)))
-    vf1 = VectorFactorReTerm(categorical(repeat(1:3, inner=4)),
-                             vcat(ones(1,12), repeat([-1.0, 1.0], outer=6)'),
-                             :G, ["(Intercept)", "U"], [2])
-    vf2 = VectorFactorReTerm(categorical(repeat(['A','B'], outer=6)),
-                             vcat(ones(1,12), repeat([-1.0, 0.0, 1.0], inner=2, outer=2)'),
-                             :G, ["(Intercept)", "U"], [2])
+    ds = (Y = rand(12), A = repeat(['N','Y'], outer=6), G = repeat('a':'c', inner=4),
+        H = repeat('A':'B', outer=6), U = repeat([-1,0,1], inner=2, outer=2))
+    sch = schema(ds, Dict(:A=>EffectsCoding()))
+    vf1 = model_cols(apply_schema(@formula(Y ~ 1 + A + (1+A|G)), sch, LMM), ds)[2][2]
+    vf2 = model_cols(apply_schema(@formula(Y ~ 1 + U + (1+U|H)), sch, LMM), ds)[2][2]
     prd = vf2'vf1
 
     @testset "size" begin
@@ -41,8 +43,8 @@ end
         @test ex22.facevec[3] == reshape(9:12, (2,2))
     end
 
-    @testset "scaleInflate" begin
-        MixedModels.scaleInflate!(Lblk, ex22, vf1)
+    @testset "scaleinflate" begin
+        MixedModels.scaleinflate!(copyto!(Lblk, ex22), vf1)
         @test Lblk.facevec[1] == [2. 3.; 2. 5.]
         setθ!(vf1, [1.,1.,1.])
         Λ = vf1.Λ

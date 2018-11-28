@@ -1,8 +1,8 @@
-using BenchmarkTools, RData, MixedModels, StatsModels
+using BenchmarkTools, RData, MixedModels, StatsModels, Tables
 
 const SUITE = BenchmarkGroup()
 
-const dat = Dict(Symbol(k)=>v for (k,v) in load(joinpath(dirname(pathof(MixedModels)), "..", "test", "dat.rda")));
+const dat = Dict(Symbol(k)=>columntable(v) for (k,v) in load(joinpath(dirname(pathof(MixedModels)), "..", "test", "dat.rda")));
 
 const mods = Dict{Symbol,Vector{Expr}}(
     :Alfalfa => [:(1+A*B+(1|G)), :(1+A+B+(1|G))],
