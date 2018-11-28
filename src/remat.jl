@@ -100,7 +100,7 @@ function isnested(A::ReMat, B::ReMat)
     true
 end
 
-function lmulΛ!(adjA::Adjoint{T,ReMat{T,R,1}}, B::AbstractMatrix{T}) where {T,R}
+function lmulΛ!(adjA::Adjoint{T,ReMat{T,R,1}}, B::M) where{M<:AbstractMatrix{T}} where{T,R}
     lmul!(first(adjA.parent.λ), B)
 end
 
@@ -169,6 +169,24 @@ function LinearAlgebra.mul!(C::Matrix{T}, adjA::Adjoint{T,<:ReMat{T,R,1}},
     C
 end
 
+function LinearAlgebra.mul!(C::UniformBlockDiagonal{T}, adjA::Adjoint{T,ReMat{T,R,S}},
+        B::ReMat{T,R,S}) where {T,R,S}
+    A = adjA.parent
+    @assert A === B
+    Cd = C.data
+    size(Cd) == (S, S, nlevs(B)) || throw(DimensionMismatch(""))
+    fill!(Cd, zero(T))
+    for (r, v) in zip(A.refs, A.wtzv)
+        @inbounds for j in 1:S
+            vj = v[j]
+            for i in 1:S
+                Cd[i, j, r] += vj * v[i]
+            end
+        end
+    end
+    C
+end
+
 function *(adjA::Adjoint{T,<:ReMat{T,R,S}}, B::ReMat{T,U,P}) where {T,R,S,U,P}
     A = adjA.parent
     if A === B
@@ -230,7 +248,8 @@ function *(adjA::Adjoint{T,<:ReMat{T,R,S}}, B::ReMat{T,U,P}) where {T,R,S,U,P}
         i1 = inds[1]
         for k in 2:P
             inds = nzrange(cscmat, colrange[k])
-            rv[inds] == rows || throw(DimensionMismatch("Rows differ ($rows ≠ $(rv[inds])) at column block $j"))
+            rv[inds] == rows || 
+                throw(DimensionMismatch("Rows differ ($rows ≠ $(rv[inds])) at column block $j"))
         end
         push!(colblocks, reshape(view(nzs, i1:inds[end]), (length(rows), P)))
         colrange = colrange .+ P
@@ -249,19 +268,73 @@ function reweight!(A::ReMat, sqrtwts::Vector)
     A
 end
 
-rmulΛ!(A::AbstractMatrix{T}, B::ReMat{T,R,1}) where {T,R} = rmul!(A, first(B.λ))
+rmulΛ!(A::M, B::ReMat{T,R,1}) where{M<:AbstractMatrix{T}} where{T,R} = rmul!(A, first(B.λ))
 
 function rowlengths(A::ReMat)
     ld = A.λ.data
     [norm(view(ld, i, 1:i)) for i in 1:size(ld, 1)]
 end
 
-function scaleinflate!(A::AbstractMatrix{T}, B::ReMat{T,R,1}) where {T,R}
-    rmul!(A, abs2(first(B.λ)))
-    for k in diagind(A)
-        A[k] += 1
+"""
+    scaleinflate!(L::AbstractMatrix, A::AbstractMatrix, Λ::ReMat)
+
+Overwrite a diagonal block of `L` with the corresponding block of `Λ'AΛ + I`
+"""
+function scaleinflate! end
+
+function scaleinflate!(Ljj::Diagonal{T}, Ajj::Diagonal{T}, Λj::ReMat{T,R,1}) where {T,R}
+    broadcast!((x,k) -> k * x + one(T), Ljj.diag, Ajj.diag, abs2(Λj.λ[1]))
+    Ljj
+end
+
+function scaleinflate!(Ljj::Matrix{T}, Ajj::Diagonal{T}, Λj::ReMat{T,R,1}) where {T,R}
+    n = LinearAlgebra.checksquare(Ljj)
+    Ad = Ajj.diag
+    length(Ad) == n || throw(DimensionMismatch(""))
+    lambsq = abs2(Λj.λ[1])
+    fill!(Ljj, zero(T))
+    for (j, dj) in enumerate(Ad)
+        Ljj[j,j] = lambsq * dj + one(T)
     end
-    A
+    Ljj
+end
+
+function scaleinflate!(Ljj::UniformBlockDiagonal{T}, Ajj::UniformBlockDiagonal{T},
+        Λj::ReMat{T}) where {T}
+    Ljjdd = Ljj.data
+    Ajjdd = Ajj.data
+    ((m, n, l) = size(Ljjdd)) == size(Ajjdd) || throw(DimensionMismatch(""))
+    copyto!(Ljjdd, Ajjdd)
+    m, n, l = size(Ljjdd)
+    λ = Λj.λ
+    Lfv = Ljj.facevec
+    @inbounds for Lf in Lfv
+        lmul!(adjoint(λ), rmul!(Lf, λ))
+    end
+    @inbounds for k in 1:l, i in 1:m
+        Ljjdd[i, i, k] += one(T)
+    end
+    Ljj
+end
+
+function scaleinflate!(Ljj::Matrix{T}, Ajj::UniformBlockDiagonal{T}, Λj::ReMat{T}) where{T}
+    if size(Ljj) != size(Ajj)
+        throw(DimensionMismatch("size(Ljj) = $(size(Ljj)) != $(size(Ajj)) = size(Ajj)"))
+    end
+    λ = Λj.λ
+    Afv = Ajj.facevec
+    m, n, l = size(Ajj.data)
+    m == n || throw(ArgumentError("Diagonal blocks of Ajj must be square"))
+    fill!(Ljj, zero(T))
+    tmp = Array{T}(undef, m, m)
+    @inbounds for (k, Af) in enumerate(Afv)
+        lmul!(adjoint(λ), rmul!(copyto!(tmp, Af), λ))
+        offset = (k - 1)*m
+        for j in 1:m, i in 1:m
+            Ljj[offset + i, offset + j] = tmp[i, j] + (i == j)
+        end
+    end
+    Ljj
 end
 
 function setθ!(A::ReMat{T}, v::AbstractVector{T}) where {T}

@@ -143,6 +143,11 @@ function LinearAlgebra.rdiv!(A::Matrix{T},
     A
 end
 
+function LinearAlgebra.rdiv!(A::SparseMatrixCSC{T},
+        adjB::Adjoint{T,<:LowerTriangular{T,<:Diagonal{T}}}) where T
+    rdiv!(A, adjB.parent.data)
+end
+
 function LinearAlgebra.rdiv!(A::BlockedSparse{T},
         B::Adjoint{T,<:LowerTriangular{T,UniformBlockDiagonal{T}}}) where T
     Bp = B.parent
