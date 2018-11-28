@@ -55,15 +55,14 @@ function LinearMixedModel(f::FormulaTerm, d::NamedTuple)
             A[Block(i,j)] = deepcopy(isa(Lij, BlockedSparse) ? Lij.cscmat : Lij)
         end
     end
-                  # check for fill-in due to non-nested grouping factors
-    for i in 2:k
+    for i in 2:k            # check for fill-in due to non-nested grouping factors
         ci = cols[i]
         if isa(ci, ReMat)
             for j in 1:(i - 1)
                 cj = cols[j]
                 if isa(cj, ReMat) && !isnested(cj, ci)
-                    for k in i:k
-                        L[Block(k, i)] = Matrix(L[Block(k, i)])
+                    for l in i:k
+                        L[Block(l, i)] = Matrix(L[Block(l, i)])
                     end
                     break
                 end
@@ -72,11 +71,17 @@ function LinearMixedModel(f::FormulaTerm, d::NamedTuple)
     end
     lbd = reduce(append!,  lowerbd(c) for c in cols if isa(c, ReMat))
     θ = reduce(append!, getθ(c) for c in cols if isa(c, ReMat))
-    optsum = OptSummary(θ, lbd, :LN_BOBYQA;
-        ftol_rel = T(1.0e-12), ftol_abs = T(1.0e-8))
+    optsum = OptSummary(θ, lbd, :LN_BOBYQA, ftol_rel = T(1.0e-12), ftol_abs = T(1.0e-8))
     fill!(optsum.xtol_abs, 1.0e-10)
     LinearMixedModel(form, cols, T[], A, L, optsum)
 end
+
+"""
+    cond(m::MixedModel)
+
+Return a vector of condition numbers of the λ matrices for the random-effects terms
+"""
+LinearAlgebra.cond(m::MixedModel) = cond.(c.λ for c in m.cols if isa(c, ReMat))
 
 StatsBase.dof(m::LinearMixedModel) = 
     size(m)[2] + sum(nθ(c) for c in m.cols if isa(c, ReMat)) + 1
@@ -153,9 +158,9 @@ function Base.getproperty(m::LinearMixedModel, s::Symbol)
     elseif s == :lowerbd
         m.optsum.lowerbd
     elseif s == :X
-        m.trms[end - 1].x
+        m.cols[end - 1]
     elseif s == :y
-        vec(m.trms[end].x)
+        vec(m.cols[end])
     elseif s == :rePCA
         normalized_variance_cumsum.(getλ(m))
     else
@@ -238,19 +243,21 @@ function updateL!(m::LinearMixedModel{T}) where {T}
     cols = m.cols
     k = length(cols)
     for j in 1:k
-        for i in j:k    # copy lower triangle of A to L
+        for i in (j+1):k    # copy strict lower triangle of A to L
             copyto!(L[Block(i, j)], A[Block(i, j)])
         end
         Ljj = L[Block(j, j)]
         cj = cols[j]
         if isa(cj, ReMat)        # for ReMat terms
-            scaleinflate!(Ljj, cj)
+            scaleinflate!(Ljj, A[Block(j,j)], cj)
             for i in (j+1):k         # postmultiply column by Λ
                 rmulΛ!(L[Block(i, j)], cj)
             end
             for jj in 1:(j-1)        # premultiply row by Λ'
                 lmulΛ!(cj', L[Block(j, jj)])
             end
+        else
+            copyto!(Ljj, A[Block(j,j)])
         end
         for jj in 1:(j - 1)
             rankUpdate!(Hermitian(Ljj, :L), L[Block(j, jj)], -one(T))
