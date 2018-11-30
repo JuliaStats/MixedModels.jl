@@ -104,6 +104,10 @@ function lmulΛ!(adjA::Adjoint{T,ReMat{T,R,1}}, B::M) where{M<:AbstractMatrix{T}
     lmul!(first(adjA.parent.λ), B)
 end
 
+function lmulΛ!(adjA::Adjoint{T,<:ReMat{T}}, B::BlockedSparse{T}) where{T}
+    lmul!(adjoint(adjA.parent.λ), B.nzsasmat)
+end
+
 LinearAlgebra.Matrix(A::ReMat) = Matrix(sparse(A))
 
 function LinearAlgebra.mul!(C::Diagonal{T}, adjA::Adjoint{T,<:ReMat{T,R,1}},
@@ -269,6 +273,25 @@ function reweight!(A::ReMat, sqrtwts::Vector)
 end
 
 rmulΛ!(A::M, B::ReMat{T,R,1}) where{M<:AbstractMatrix{T}} where{T,R} = rmul!(A, first(B.λ))
+
+function rmulΛ!(A::M, B::ReMat{T,R,S}) where{M<:AbstractMatrix{T}} where{T,R,S}
+    m, n = size(A)
+    q, r = divrem(n, S)
+    iszero(r) || throw(DimensionMismatch("size(A, 2) = is not a multiple of block size"))
+    A3 = reshape(A, (m, S, q))
+    for k in 1:q
+        rmul!(view(A3, :, :, k), B.λ)
+    end
+    A
+end
+
+function rmulΛ!(A::BlockedSparse{T}, B::ReMat{T}) where {T} 
+    for blk in A.colblocks
+        rmul!(blk, B.λ)
+    end
+    A
+end
+
 
 function rowlengths(A::ReMat)
     ld = A.λ.data
