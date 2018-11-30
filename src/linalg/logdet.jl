@@ -37,8 +37,8 @@ lower Cholesky factor.
 function LinearAlgebra.logdet(m::LinearMixedModel{T}) where {T}
     s = log(one(T))
     L = m.L
-    @inbounds for (i, trm) in enumerate(m.cols)
-        isa(trm, ReMat) && (s += LD(L[Block(i, i)]))
+    @inbounds for (i, trm) in enumerate(m.reterms)
+        s += LD(L[Block(i, i)])
     end
     if m.optsum.REML
         feindex = length(m.trms) - 1

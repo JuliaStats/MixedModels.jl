@@ -299,35 +299,29 @@ function rowlengths(A::ReMat)
 end
 
 """
-    scaleinflate!(L::AbstractMatrix, A::AbstractMatrix, Λ::ReMat)
+    scaleinflate!(L::AbstractMatrix, Λ::ReMat)
 
-Overwrite a diagonal block of `L` with the corresponding block of `Λ'AΛ + I`
+Overwrite L with `Λ'LΛ + I`
 """
 function scaleinflate! end
-
-function scaleinflate!(Ljj::Diagonal{T}, Ajj::Diagonal{T}, Λj::ReMat{T,R,1}) where {T,R}
-    broadcast!((x,k) -> k * x + one(T), Ljj.diag, Ajj.diag, abs2(Λj.λ[1]))
+ 
+function scaleinflate!(Ljj::Diagonal{T}, Λj::ReMat{T,R,1}) where {T,R}
+    Ljjd = Ljj.diag
+    broadcast!((x, λsqr) -> x * λsqr + 1, Ljjd, Ljjd, abs2(first(Λj.λ)))
     Ljj
 end
 
-function scaleinflate!(Ljj::Matrix{T}, Ajj::Diagonal{T}, Λj::ReMat{T,R,1}) where {T,R}
-    n = LinearAlgebra.checksquare(Ljj)
-    Ad = Ajj.diag
-    length(Ad) == n || throw(DimensionMismatch(""))
-    lambsq = abs2(Λj.λ[1])
-    fill!(Ljj, zero(T))
-    for (j, dj) in enumerate(Ad)
-        Ljj[j,j] = lambsq * dj + one(T)
+function scaleinflate!(Ljj::Matrix{T}, Λj::ReMat{T,R,1}) where {T,R}
+    lambsq = abs2(first(Λj.λ))
+    @inbounds for i in diagind(Ljj)
+        Ljj[i] *= lambsq 
+        Ljj[i] += one(T)
     end
     Ljj
 end
 
-function scaleinflate!(Ljj::UniformBlockDiagonal{T}, Ajj::UniformBlockDiagonal{T},
-        Λj::ReMat{T}) where {T}
+function scaleinflate!(Ljj::UniformBlockDiagonal{T}, Λj::ReMat{T}) where {T}
     Ljjdd = Ljj.data
-    Ajjdd = Ajj.data
-    ((m, n, l) = size(Ljjdd)) == size(Ajjdd) || throw(DimensionMismatch(""))
-    copyto!(Ljjdd, Ajjdd)
     m, n, l = size(Ljjdd)
     λ = Λj.λ
     Lfv = Ljj.facevec
@@ -340,21 +334,17 @@ function scaleinflate!(Ljj::UniformBlockDiagonal{T}, Ajj::UniformBlockDiagonal{T
     Ljj
 end
 
-function scaleinflate!(Ljj::Matrix{T}, Ajj::UniformBlockDiagonal{T}, Λj::ReMat{T}) where{T}
-    if size(Ljj) != size(Ajj)
-        throw(DimensionMismatch("size(Ljj) = $(size(Ljj)) != $(size(Ajj)) = size(Ajj)"))
-    end
-    λ = Λj.λ
-    Afv = Ajj.facevec
-    m, n, l = size(Ajj.data)
-    m == n || throw(ArgumentError("Diagonal blocks of Ajj must be square"))
-    fill!(Ljj, zero(T))
-    tmp = Array{T}(undef, m, m)
-    @inbounds for (k, Af) in enumerate(Afv)
-        lmul!(adjoint(λ), rmul!(copyto!(tmp, Af), λ))
-        offset = (k - 1)*m
-        for j in 1:m, i in 1:m
-            Ljj[offset + i, offset + j] = tmp[i, j] + (i == j)
+function scaleinflate!(Ljj::Matrix{T}, Λj::ReMat{T,R,S}) where{T,R,S}
+    n = LinearAlgebra.checksquare(Ljj)
+    q, r = divrem(n, S)
+    iszero(r) || throw(DimensionMismatch("size(Ljj, 1) is not a multiple of S"))
+    λ = Λj.Λ
+    @inbounds for k in 1:q
+        diaginds = 1:S + (k - 1)*S
+        tmp = view(Ljj, diaginds, diaginds)
+        lmul!(adjoint(λ), rmul!(tmp, λ))
+        for j in 1:S
+            tmp[j, j] += 1
         end
     end
     Ljj
