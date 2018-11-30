@@ -83,6 +83,23 @@ Return a vector of condition numbers of the λ matrices for the random-effects t
 """
 LinearAlgebra.cond(m::MixedModel) = cond.(c.λ for c in m.cols if isa(c, ReMat))
 
+
+"""
+    describeblocks(io::IO, m::MixedModel)
+    describeblocks(m::MixedModel)
+
+Describe the types and sizes of the blocks in the lower triangle of `m.A` and `m.L`.
+"""
+function describeblocks(io::IO, m::LinearMixedModel)
+    A = m.A
+    L = m.L
+    for i in 1:nblocks(A, 2), j in 1:i
+        println(io, i, ",", j, ": ", typeof(A[Block(i, j)]), " ",
+                blocksize(A, (i, j)), " ", typeof(L[Block(i, j)]))
+    end
+end
+describeblocks(m::MixedModel) = describeblocks(stdout, m)
+
 StatsBase.dof(m::LinearMixedModel) = 
     size(m)[2] + sum(nθ(c) for c in m.cols if isa(c, ReMat)) + 1
 
