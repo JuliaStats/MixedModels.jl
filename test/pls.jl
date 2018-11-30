@@ -11,7 +11,7 @@ const LMM = LinearMixedModel
     fm1 = LMM(@formula(Y ~ 1 + (1|G)), dat[:Dyestuff])
 
     @test nblocks(fm1.A) == (3, 3)
-    @test size(fm1.cols) == (3, )
+    @test size(fm1.reterms) == (1, )
     @test nblocks(fm1.L) == (3, 3)
     @test lowerbd(fm1) == zeros(1)
     @test fm1.lowerbd == zeros(1)
@@ -20,7 +20,7 @@ const LMM = LinearMixedModel
     @test getθ(fm1) == ones(1)
 
     @test objective(updateL!(setθ!(fm1, [0.713]))) ≈ 327.34216280955366
-#    MixedModels.describeblocks(IOBuffer(), fm1)
+    MixedModels.describeblocks(IOBuffer(), fm1)
 
     fit!(fm1);
     @test :θ in propertynames(fm1)
@@ -69,7 +69,7 @@ end
     fm = fit!(LMM(@formula(Y ~ 1 + (1 | G)), dat[:Dyestuff2]))
     @test lowerbd(fm) == zeros(1)
     show(IOBuffer(), fm)
-    @test getθ(fm)[1] < 1.0e-9
+    @test fm.θ ≈ zeros(1)
     @test objective(fm) ≈ 162.87303665382575
     @test_broken abs(std(fm)[1][1]) < 1.0e-9
     @test_broken std(fm)[2] ≈ [3.653231351374652]
@@ -93,7 +93,7 @@ end
     @test_broken isapprox(fixef(fm), [22.97222222222222], atol=0.001)
     @test_broken coef(fm)[1] ≈ mean(dat[:Penicillin][:Y])
     @test_broken isapprox(StatsBase.stderror(fm), [0.7445960346851368], atol=0.0001)
-    @test isapprox(getθ(fm), [1.5375772376554968, 3.219751321180035], atol=0.001)
+    @test isapprox(fm.θ, [1.5375772376554968, 3.219751321180035], atol=0.001)
     @test_broken isapprox(std(fm)[1], [0.8455645948223015], atol=0.0001)
     @test_broken isapprox(std(fm)[2], [1.770647779277388], atol=0.0001)
     @test isapprox(varest(fm), 0.3024263987592062, atol=0.0001)
@@ -115,7 +115,7 @@ end
     @test_broken isapprox(coef(fm), [60.05333333333329], atol=0.001)
     @test_broken isapprox(fixef(fm), [60.05333333333329], atol=0.001)
     @test_broken isapprox(StatsBase.stderror(fm), [0.6421359883527029], atol=0.0001)
-    @test isapprox(getθ(fm), [3.5268858714382905, 1.3299230213750168], atol=0.001)
+    @test isapprox(fm.θ, [3.5268858714382905, 1.3299230213750168], atol=0.001)
     @test_broken isapprox(std(fm)[1], [2.904069002535747], atol=0.001)
     @test_broken isapprox(std(fm)[2], [1.095070371687089], atol=0.0001)
     @test_broken isapprox(std(fm)[3], [0.8234088395243269], atol=0.0001)

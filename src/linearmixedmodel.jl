@@ -6,7 +6,8 @@ Linear mixed-effects model representation
 ## Fields
 
 * `formula`: the formula for the model
-* `cols`: a `Vector` of `Union{ReMat,FeMat}` representing the model.  The last element is the response.
+* `reterms`: a `Vector{ReMat{T}}` of random-effects terms.
+* `feterms`: a `Vector{FeMat{T}}` of the fixed-effects model matrix and the response
 * `sqrtwts`: vector of square roots of the case weights.  Can be empty.
 * `A`: an `nt × nt` symmetric `BlockMatrix` of matrices representing `hcat(Z,X,y)'hcat(Z,X,y)`
 * `L`: a `nt × nt` `BlockMatrix` - the lower Cholesky factor of `Λ'AΛ+I`
@@ -26,7 +27,8 @@ Linear mixed-effects model representation
 """
 struct LinearMixedModel{T <: AbstractFloat} <: MixedModel{T}
     formula::FormulaTerm
-    cols::Vector
+    reterms::Vector{ReMat{T}}
+    feterms::Vector{Matrix{T}}
     sqrtwts::Vector{T}
     A::BlockMatrix{T}            # cross-product blocks
     L::BlockMatrix{T}
@@ -40,40 +42,44 @@ function LinearMixedModel(f::FormulaTerm, d::NamedTuple)
     y = reshape(float(y), (:, 1)) # y as a floating-point matrix
     T = eltype(y)
 
-    # might need to add a guard to make sure Xs isn't just a single matrix
-    cols = sort!(AbstractMatrix{T}[Xs..., y], by=nranef, rev=true)
+    reterms = ReMat{T}[]
+    feterms = Matrix{T}[]
+    for x in Xs
+        push!(isa(x, ReMat{T}) ? reterms : feterms, x)
+    end
+    push!(feterms, y)
+    sort!(reterms, by=nranef, rev=true)
 
     # create A and L
-    sz = size.(cols, 2)
-    k = length(cols)
+    sz = append!(size.(reterms, 2), size.(feterms, 2))
     A = BlockArrays._BlockArray(AbstractMatrix{T}, sz, sz)
     L = BlockArrays._BlockArray(AbstractMatrix{T}, sz, sz)
+    q = length(reterms)
+    k = q + length(feterms)
     for j in 1:k
-        cj = cols[j]
+        cj = j ≤ q ? reterms[j] : feterms[j - q]
         for i in j:k
-            Lij = L[Block(i,j)] = densify(cols[i]'cj)
+            Lij = L[Block(i,j)] = densify((i ≤ q ? reterms[i] : feterms[i - q])'cj)
             A[Block(i,j)] = deepcopy(isa(Lij, BlockedSparse) ? Lij.cscmat : Lij)
         end
     end
-    for i in 2:k            # check for fill-in due to non-nested grouping factors
-        ci = cols[i]
-        if isa(ci, ReMat)
-            for j in 1:(i - 1)
-                cj = cols[j]
-                if isa(cj, ReMat) && !isnested(cj, ci)
-                    for l in i:k
-                        L[Block(l, i)] = Matrix(L[Block(l, i)])
-                    end
-                    break
+    for i in 2:q            # check for fill-in due to non-nested grouping factors
+        ci = reterms[i]
+        for j in 1:(i - 1)
+            cj = reterms[j]
+            if !isnested(cj, ci)
+                for l in i:k
+                    L[Block(l, i)] = Matrix(L[Block(l, i)])
                 end
+                break
             end
         end
     end
-    lbd = reduce(append!,  lowerbd(c) for c in cols if isa(c, ReMat))
-    θ = reduce(append!, getθ(c) for c in cols if isa(c, ReMat))
+    lbd = reduce(append!,  lowerbd(c) for c in reterms)
+    θ = reduce(append!, getθ(c) for c in reterms)
     optsum = OptSummary(θ, lbd, :LN_BOBYQA, ftol_rel = T(1.0e-12), ftol_abs = T(1.0e-8))
     fill!(optsum.xtol_abs, 1.0e-10)
-    LinearMixedModel(form, cols, T[], A, L, optsum)
+    LinearMixedModel(form, reterms, feterms, T[], A, L, optsum)
 end
 
 """
@@ -81,7 +87,7 @@ end
 
 Return a vector of condition numbers of the λ matrices for the random-effects terms
 """
-LinearAlgebra.cond(m::MixedModel) = cond.(c.λ for c in m.cols if isa(c, ReMat))
+LinearAlgebra.cond(m::MixedModel) = [cond(c.λ) for c in m.reterms]
 
 
 """
@@ -100,8 +106,7 @@ function describeblocks(io::IO, m::LinearMixedModel)
 end
 describeblocks(m::MixedModel) = describeblocks(stdout, m)
 
-StatsBase.dof(m::LinearMixedModel) = 
-    size(m)[2] + sum(nθ(c) for c in m.cols if isa(c, ReMat)) + 1
+StatsBase.dof(m::LinearMixedModel) = size(m)[2] + sum(nθ, m.reterms) + 1
 
 """
     fit!(m::LinearMixedModel[, verbose::Bool=false])
@@ -156,8 +161,7 @@ end
 
 Return the current covariance parameter vector.
 """
-getθ(m::LinearMixedModel{T}) where {T} = 
-    reduce(append!, getθ(m) for m in m.cols if isa(m, ReMat))
+getθ(m::LinearMixedModel{T}) where {T} = reduce(append!, getθ.(m.reterms))
 
 function Base.getproperty(m::LinearMixedModel, s::Symbol)
     if s ∈ (:θ, :theta)
@@ -165,7 +169,7 @@ function Base.getproperty(m::LinearMixedModel, s::Symbol)
     elseif s ∈ (:β, :beta)
         fixef(m)
     elseif s ∈ (:λ, :lambda)
-        [m.λ for m in m.cols if isa(m, ReMat)]
+        getfield.(m.reterms, :λ)
     elseif s ∈ (:σ, :sigma)
         sdest(m)
     elseif s == :b
@@ -175,9 +179,9 @@ function Base.getproperty(m::LinearMixedModel, s::Symbol)
     elseif s == :lowerbd
         m.optsum.lowerbd
     elseif s == :X
-        m.cols[end - 1]
+        first(m.feterms)
     elseif s == :y
-        vec(m.cols[end])
+        vec(m.feterms[end])
     elseif s == :rePCA
         normalized_variance_cumsum.(getλ(m))
     else
@@ -189,7 +193,7 @@ StatsBase.loglikelihood(m::LinearMixedModel) = -objective(m) / 2
 
 lowerbd(m::LinearMixedModel) = m.optsum.lowerbd
 
-StatsBase.nobs(m::LinearMixedModel) = size(first(m.cols), 1)
+StatsBase.nobs(m::LinearMixedModel) = first(size(m))
 
 """
     objective(m::LinearMixedModel)
@@ -218,12 +222,10 @@ Install `v` as the θ parameters in `m`.
 """
 function setθ!(m::LinearMixedModel, v)
     offset = 0
-    for trm in m.cols
-        if isa(trm, ReMat)
-            k = nθ(trm)
-            setθ!(trm, view(v, (1:k) .+ offset))
-            offset += k
-        end
+    for trm in m.reterms
+        k = nθ(trm)
+        setθ!(trm, view(v, (1:k) .+ offset))
+        offset += k
     end
     m
 end
@@ -231,11 +233,8 @@ end
 Base.setproperty!(m::LinearMixedModel, s::Symbol, y) = s == :θ ? setθ!(m, y) : setfield!(m, s, y)
 
 function Base.size(m::LinearMixedModel)
-    cols = m.cols
-    n, p = size(cols[end - 1])
-    k = sum(isa.(cols, ReMat))
-    q = sum(size(c, 2) for c in cols if isa(c, ReMat))
-    n, p, q, k
+    n, p = size(first(m.feterms))
+    n, p, sum(size.(m.reterms, 2)), length(m.reterms)
 end
 
 """
@@ -250,42 +249,42 @@ sqrtpwrss(m::LinearMixedModel) = first(m.L.blocks[end, end])
 """
     updateL!(m::LinearMixedModel)
 
-Update the blocked lower Cholesky factor, `m.L`, from `m.A` and `m.cols` (used for λ only)
+Update the blocked lower Cholesky factor, `m.L`, from `m.A` and `m.reterms` (used for λ only)
 
 This is the crucial step in evaluating the objective, given a new parameter value.
 """
 function updateL!(m::LinearMixedModel{T}) where {T}
     A = m.A
     L = m.L
-    cols = m.cols
-    k = length(cols)
-    for j in 1:k
-        for i in (j+1):k    # copy strict lower triangle of A to L
+    k = nblocks(A, 2)
+    for j in 1:k                         # copy lower triangle of A to L
+        for i in j:nblocks(A, 1)
             copyto!(L[Block(i, j)], A[Block(i, j)])
         end
-        Ljj = L[Block(j, j)]
-        cj = cols[j]
-        if isa(cj, ReMat)        # for ReMat terms
-            scaleinflate!(Ljj, A[Block(j,j)], cj)
-            for i in (j+1):k         # postmultiply column by Λ
-                rmulΛ!(L[Block(i, j)], cj)
-            end
-            for jj in 1:(j-1)        # premultiply row by Λ'
-                lmulΛ!(cj', L[Block(j, jj)])
-            end
-        else
-            copyto!(Ljj, A[Block(j,j)])
+    end
+    for (j, cj) in enumerate(m.reterms)  # pre- and post-multiply by Λ, add I to diagonal
+        scaleinflate!(L[Block(j, j)], cj)
+        for i in (j+1):k         # postmultiply column by Λ
+            rmulΛ!(L[Block(i, j)], cj)
         end
+        for jj in 1:(j-1)        # premultiply row by Λ'
+            lmulΛ!(cj', L[Block(j, jj)])
+        end
+    end
+    for j in 1:k                         # blocked Cholesky
+        Ljj = L[Block(j, j)]
+        LjjH = isa(Ljj, Diagonal) ? Ljj : Hermitian(Ljj, :L)
         for jj in 1:(j - 1)
-            rankUpdate!(Hermitian(Ljj, :L), L[Block(j, jj)], -one(T))
+            rankUpdate!(LjjH, L[Block(j, jj)], -one(T))
         end
         cholUnblocked!(Ljj, Val{:L})
+        LjjTt = isa(Ljj, Diagonal) ? Ljj : LowerTriangular(Ljj)'
         for i in (j + 1):k
             Lij = L[Block(i, j)]
             for jj in 1:(j - 1)
                 mulαβ!(Lij, L[Block(i, jj)], L[Block(j, jj)]', -one(T), one(T))
             end
-            rdiv!(Lij, LowerTriangular(Ljj)')
+            rdiv!(Lij, LjjTt)
         end
     end
     m
