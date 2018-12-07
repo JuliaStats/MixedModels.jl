@@ -28,7 +28,7 @@ Linear mixed-effects model representation
 struct LinearMixedModel{T <: AbstractFloat} <: MixedModel{T}
     formula::FormulaTerm
     reterms::Vector{ReMat{T}}
-    feterms::Vector{Matrix{T}}
+    feterms::Vector{FeMat{T}}
     sqrtwts::Vector{T}
     A::BlockMatrix{T}            # cross-product blocks
     L::BlockMatrix{T}
@@ -43,11 +43,15 @@ function LinearMixedModel(f::FormulaTerm, d::NamedTuple)
     T = eltype(y)
 
     reterms = ReMat{T}[]
-    feterms = Matrix{T}[]
+    feterms = FeMat{T}[]
     for x in Xs
-        push!(isa(x, ReMat{T}) ? reterms : feterms, x)
+        if isa(x, ReMat{T})
+            push!(reterms, x)
+        else
+            push!(feterms, FeMat(x, String[]))
+        end
     end
-    push!(feterms, y)
+    push!(feterms, FeMat(y, String[]))
     sort!(reterms, by=nranef, rev=true)
 
     # create A and L
@@ -82,6 +86,8 @@ function LinearMixedModel(f::FormulaTerm, d::NamedTuple)
     LinearMixedModel(form, reterms, feterms, T[], A, L, optsum)
 end
 
+StatsBase.coef(m::MixedModel) = fixef(m, false)
+
 """
     cond(m::MixedModel)
 
@@ -107,6 +113,14 @@ end
 describeblocks(m::MixedModel) = describeblocks(stdout, m)
 
 StatsBase.dof(m::LinearMixedModel) = size(m)[2] + sum(nθ, m.reterms) + 1
+
+"""
+    feL(m::MixedModel)
+
+Return the lower Cholesky factor for the fixed-effects parameters, as an `LowerTriangular`
+`p × p` matrix.
+"""
+feL(m::LinearMixedModel) = LowerTriangular(m.L.blocks[end - 1, end - 1])
 
 """
     fit!(m::LinearMixedModel[, verbose::Bool=false])
@@ -157,6 +171,34 @@ function StatsBase.fit!(m::LinearMixedModel{T}, verbose::Bool=false) where {T}
 end
 
 """
+    fixef!(v::Vector{T}, m::LinearMixedModel{T})
+
+Overwrite `v` with the pivoted and, possibly, truncated fixed-effects coefficients of model `m`
+"""
+function fixef!(v::AbstractVector{T}, m::LinearMixedModel{T}) where {T}
+    L = feL(m)
+    length(v) == size(L, 1) || throw(DimensionMismatch(""))
+    ldiv!(adjoint(L), copyto!(v, m.L.data.blocks[end, end - 1]))
+end
+
+"""
+    fixef(m::MixedModel, permuted=true)
+
+Return the fixed-effects parameter vector estimate of `m`.
+
+If `permuted` is `true` the vector elements are permuted according to
+`m.trms[end - 1].piv` and truncated to the rank of that term.
+"""
+function fixef(m::LinearMixedModel{T}, permuted=true) where {T}
+    permuted && return fixef!(Vector{T}(undef, size(m)[2]), m)
+    Xtrm = first(m.feterms)
+    piv = Xtrm.piv
+    v = fill(-zero(T), size(piv))
+    fixef!(view(v, 1:Xtrm.rank), m)
+    invpermute!(v, piv)
+end
+
+"""
     getθ(m::LinearMixedModel)
 
 Return the current covariance parameter vector.
@@ -179,9 +221,9 @@ function Base.getproperty(m::LinearMixedModel, s::Symbol)
     elseif s == :lowerbd
         m.optsum.lowerbd
     elseif s == :X
-        first(m.feterms)
+        first(m.feterms).x
     elseif s == :y
-        vec(m.feterms[end])
+        vec(m.feterms[end].x)
     elseif s == :rePCA
         normalized_variance_cumsum.(getλ(m))
     else
@@ -214,6 +256,13 @@ Base.propertynames(m::LinearMixedModel, private=false) =
 The penalized, weighted residual sum-of-squares.
 """
 pwrss(m::LinearMixedModel) = abs2(sqrtpwrss(m))
+
+"""
+    sdest(m::LinearMixedModel)
+
+Return the estimate of σ, the standard deviation of the per-observation noise.
+"""
+sdest(m::LinearMixedModel) = sqrtpwrss(m) / √nobs(m)
 
 """
     setθ!{T}(m::LinearMixedModel{T}, v::Vector{T})
@@ -278,13 +327,13 @@ function updateL!(m::LinearMixedModel{T}) where {T}
             rankUpdate!(LjjH, L[Block(j, jj)], -one(T))
         end
         cholUnblocked!(Ljj, Val{:L})
-        LjjTt = isa(Ljj, Diagonal) ? Ljj : LowerTriangular(Ljj)'
+        LjjT = isa(Ljj, Diagonal) ? Ljj : LowerTriangular(Ljj)
         for i in (j + 1):k
             Lij = L[Block(i, j)]
             for jj in 1:(j - 1)
                 mulαβ!(Lij, L[Block(i, jj)], L[Block(j, jj)]', -one(T), one(T))
             end
-            rdiv!(Lij, LjjTt)
+            rdiv!(Lij, LjjT')
         end
     end
     m
