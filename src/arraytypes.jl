@@ -15,9 +15,12 @@ function UniformBlockDiagonal(dat::Array{T,3}) where {T}
         SubArray{T,2,Array{T,3}}[view(dat,:,:,i) for i in 1:size(dat, 3)])
 end
 
-function Base.size(A::UniformBlockDiagonal)
-    m, n, l = size(A.data)
-    (l * m, l * n)
+function Base.copyto!(dest::UniformBlockDiagonal{T}, src::UniformBlockDiagonal{T}) where{T}
+    sdat = src.data
+    ddat = dest.data
+    size(ddat) == size(sdat) || throw(DimensionMismatch(""))
+    copyto!(ddat, sdat)
+    dest
 end
 
 function Base.getindex(A::UniformBlockDiagonal{T}, i::Int, j::Int) where {T}
@@ -46,6 +49,11 @@ function LinearAlgebra.Matrix(A::UniformBlockDiagonal{T}) where {T}
         end
     end
     mat
+end
+
+function Base.size(A::UniformBlockDiagonal)
+    m, n, l = size(A.data)
+    (l * m, l * n)
 end
 
 """

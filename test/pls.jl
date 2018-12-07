@@ -31,14 +31,14 @@ const LMM = LinearMixedModel
     @test_broken isapprox(deviance(fm1), 327.32705988, atol=0.001)
     @test isapprox(aic(fm1), 333.3270598811394, atol=0.001)
     @test isapprox(bic(fm1), 337.5306520261259, atol=0.001)
-    @test_broken fixef(fm1) ≈ [1527.5]
-    @test_broken fm1.β ≈ [1527.5]
+    @test fixef(fm1) ≈ [1527.5]
+    @test fm1.β ≈ [1527.5]
     @test StatsBase.dof(fm1) == 3
     @test StatsBase.nobs(fm1) == 30
-    @test_broken MixedModels.fixef!(zeros(1),fm1) ≈ [1527.5]
-    @test_broken coef(fm1) ≈ [1527.5]
-    @test_broken fm1.σ == sdest(fm1)
-    @test_broken isapprox(fm1.σ, 49.510099986291145, atol=1.e-5)
+    @test MixedModels.fixef!(zeros(1),fm1) ≈ [1527.5]
+    @test coef(fm1) ≈ [1527.5]
+    @test fm1.σ == sdest(fm1)
+    @test isapprox(fm1.σ, 49.510099986291145, atol=1.e-5)
     @test fm1.X == ones(30,1)
     @test fm1.y == dat[:Dyestuff][:Y]
     @test cond(fm1) == ones(1)
@@ -78,7 +78,7 @@ end
     @test_broken abs(std(fm)[1][1]) < 1.0e-9
     @test_broken std(fm)[2] ≈ [3.653231351374652]
     @test_broken StatsBase.stderror(fm) ≈ [0.6669857396443261]
-    @test_broken coef(fm) ≈ [5.6656]
+    @test coef(fm) ≈ [5.6656]
     @test logdet(fm) ≈ 0.0
 #    refit!(fm, dat[:Dyestuff][:Y])
     @test_broken isapprox(objective(fm), 327.3270598811428, atol=0.001)
@@ -93,10 +93,10 @@ end
     fit!(fm)
 
     @test isapprox(objective(fm), 332.18834867227616, atol=0.001)
-    @test_broken isapprox(coef(fm), [22.97222222222222], atol=0.001)
-    @test_broken isapprox(fixef(fm), [22.97222222222222], atol=0.001)
-    @test_broken coef(fm)[1] ≈ mean(dat[:Penicillin][:Y])
-    @test_broken isapprox(StatsBase.stderror(fm), [0.7445960346851368], atol=0.0001)
+    @test isapprox(coef(fm), [22.97222222222222], atol=0.001)
+    @test isapprox(fixef(fm), [22.97222222222222], atol=0.001)
+    @test coef(fm)[1] ≈ mean(dat[:Penicillin][:Y])
+    @test isapprox(StatsBase.stderror(fm), [0.7445960346851368], atol=0.0001)
     @test isapprox(fm.θ, [1.5375772376554968, 3.219751321180035], atol=0.001)
     @test_broken isapprox(std(fm)[1], [0.8455645948223015], atol=0.0001)
     @test_broken isapprox(std(fm)[2], [1.770647779277388], atol=0.0001)
@@ -116,8 +116,8 @@ end
     fit!(fm);
 
     @test isapprox(objective(fm), 247.99446586289676, atol=0.001)
-    @test_broken isapprox(coef(fm), [60.05333333333329], atol=0.001)
-    @test_broken isapprox(fixef(fm), [60.05333333333329], atol=0.001)
+    @test isapprox(coef(fm), [60.05333333333329], atol=0.001)
+    @test isapprox(fixef(fm), [60.05333333333329], atol=0.001)
     @test_broken isapprox(StatsBase.stderror(fm), [0.6421359883527029], atol=0.0001)
     @test isapprox(fm.θ, [3.5268858714382905, 1.3299230213750168], atol=0.001)
     @test_broken isapprox(std(fm)[1], [2.904069002535747], atol=0.001)
@@ -170,8 +170,8 @@ end
     @test isapprox(pwrss(fm), 117889.46144025437)
     @test isapprox(logdet(fm), 73.90322021999222, atol=0.001)
     @test isapprox(StatsBase.stderror(fm), [6.632257721914501, 1.5022354739749826], atol=0.0001)
-    @test_broken coef(fm) ≈ [251.40510484848477,10.4672859595959]
-    @test_broken fixef(fm) ≈ [10.4672859595959, 251.40510484848477]
+    @test coef(fm) ≈ [251.40510484848477,10.4672859595959]
+    @test fixef(fm) ≈ [10.4672859595959, 251.40510484848477]
     @test_broken isapprox(StatsBase.stderror(fm), [6.632246393963571, 1.502190605041084], atol=0.01)
     @test_broken isapprox(std(fm)[1], [23.780468100188497, 5.716827903196682], atol=0.01)
     @test isapprox(logdet(fm), 73.90337187545992, atol=0.001)
