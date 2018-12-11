@@ -56,14 +56,9 @@ export
        fitted,
        fixef,      # extract the fixed-effects parameter estimates
        fnames,
-       getΛ,
-       getθ,
        GHnorm,
-       Λ,
-       Lambda,
        loglikelihood,
        lowerbd,    # lower bounds on the covariance parameters
-       model_response,
        nblocks,
        nobs,
        objective,  # the objective function in fitting a model
@@ -73,6 +68,7 @@ export
        ranef,      # extract the conditional modes of the random effects
        refit!,     # install a response and refit the model
        residuals,
+       response,
        sdest,      # the estimate of the standard deviation of the per-observation noise
        setθ!,
        simulate!,  # simulate a new response in place
