@@ -48,3 +48,50 @@ function normalized_variance_cumsum(A::AbstractMatrix)
     vars = cumsum(abs2.(svdvals(A)))
     vars ./ vars[end]
 end
+
+
+function stddevcor!(σ::Vector{T}, ρ::Matrix{T}, scr::Matrix{T}, L::Cholesky{T}) where {T}
+    length(σ) == (k = size(L, 2)) && size(ρ) == (k, k) && size(scr) == (k, k) || 
+        throw(DimensionMismatch(""))
+    if L.uplo == 'L'
+        copyto!(scr, L.factors)
+        for i in 1 : k
+            σ[i] = σi = norm(view(scr, i, 1:i))
+            for j in 1:i
+                scr[i, j] /= σi
+            end
+        end
+        mul!(ρ, LowerTriangular(scr), adjoint(LowerTriangular(scr)))
+    elseif L.uplo == 'U'
+        copyto!(scr, L.factors)
+        for j in 1 : k
+            σ[j] = σj = norm(view(scr, 1:j, j))
+            for i in 1 : j
+                scr[i, j] /= σj
+            end
+        end
+        mul!(ρ, UpperTriangular(scr)', UpperTriangular(scr))
+    else
+        throw(ArgumentError("L.uplo should be 'L' or 'U'"))
+    end
+    σ, ρ
+end
+
+function stddevcor!(σ::Vector{T}, ρ::Matrix{T}, scr::Matrix{T}, L::LowerTriangular{T}) where {T}
+    length(σ) == (k = size(L, 2)) && size(ρ) == (k, k) && size(scr) == (k, k) || 
+        throw(DimensionMismatch(""))
+    copyto!(scr, L)
+    for i in 1:k
+        σ[i] = σi = norm(view(scr, i, 1:i))
+        for j in 1:i
+            scr[i, j] /= σi
+        end
+    end
+    mul!(ρ, LowerTriangular(scr), adjoint(LowerTriangular(scr)))
+    σ, ρ
+end
+
+function stddevcor(L::Cholesky{T}) where {T}
+    k = size(L, 1)
+    stddevcor!(Vector{T}(undef, k), Matrix{T}(undef, k, k), Matrix{T}(undef, k, k), L)
+end

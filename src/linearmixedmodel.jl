@@ -178,7 +178,7 @@ Overwrite `v` with the pivoted and, possibly, truncated fixed-effects coefficien
 function fixef!(v::AbstractVector{T}, m::LinearMixedModel{T}) where {T}
     L = feL(m)
     length(v) == size(L, 1) || throw(DimensionMismatch(""))
-    ldiv!(adjoint(L), copyto!(v, m.L.data.blocks[end, end - 1]))
+    ldiv!(adjoint(L), copyto!(v, m.L.blocks[end, end - 1]))
 end
 
 """
@@ -256,6 +256,8 @@ Base.propertynames(m::LinearMixedModel, private=false) =
 The penalized, weighted residual sum-of-squares.
 """
 pwrss(m::LinearMixedModel) = abs2(sqrtpwrss(m))
+
+StatsBase.response(m::LinearMixedModel) = vec(m.feterms[end].x)
 
 """
     sdest(m::LinearMixedModel)
