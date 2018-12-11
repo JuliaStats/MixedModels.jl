@@ -336,6 +336,7 @@ function rmulΛ!(A::BlockedSparse{T}, B::ReMat{T}) where {T}
     A
 end
 
+rowlengths(A::ReMat{T,R,1}) where {T,R} = vec(abs.(A.λ.data))
 
 function rowlengths(A::ReMat)
     ld = A.λ.data
@@ -382,14 +383,16 @@ function scaleinflate!(Ljj::Matrix{T}, Λj::ReMat{T,R,S}) where{T,R,S}
     n = LinearAlgebra.checksquare(Ljj)
     q, r = divrem(n, S)
     iszero(r) || throw(DimensionMismatch("size(Ljj, 1) is not a multiple of S"))
-    λ = Λj.Λ
+    λ = Λj.λ
+    offset = 0
     @inbounds for k in 1:q
-        diaginds = 1:S + (k - 1)*S
-        tmp = view(Ljj, diaginds, diaginds)
+        inds = (offset + 1):(offset + S)
+        tmp = view(Ljj, inds, inds)
         lmul!(adjoint(λ), rmul!(tmp, λ))
-        for j in 1:S
-            tmp[j, j] += 1
-        end
+        offset += S
+    end
+    for k in diagind(Ljj)
+        Ljj[k] += 1
     end
     Ljj
 end
@@ -397,4 +400,21 @@ end
 function setθ!(A::ReMat{T}, v::AbstractVector{T}) where {T}
     A.λ.data[A.inds] = v
     A
+end
+
+function stddevcor!(σ::Vector, ρ::Matrix, scr::Matrix, A::ReMat{T,R,1}) where {T,R}
+    copyto!(σ, A.λ)
+    ρ[1] = 1
+    σ, ρ
+end
+
+stddevcor!(σ::Vector{T}, ρ::Matrix{T}, scr::Matrix{T}, A::ReMat{T}) where {T} =
+    stddevcor!(σ, ρ, scr, A.λ)
+
+stddevcor(A::ReMat{T,R,1}) where {T,R} = (vec(A.λ), ones(T, 1, 1))
+
+function stddevcor(A::ReMat)
+    σ = rowlengths(A)
+    std = Diagonal(σ) \ A.λ
+    σ, std * std'
 end
