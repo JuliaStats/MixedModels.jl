@@ -88,6 +88,15 @@ end
 
 StatsBase.coef(m::MixedModel) = fixef(m, false)
 
+function StatsBase.coeftable(m::MixedModel)
+    co = coef(m)
+    se = stderror(m)
+    z = co ./ se
+    pvalue = ccdf.(Chisq(1), abs2.(z))
+    CoefTable(hcat(co, se, z, pvalue), ["Estimate", "Std.Error", "z value", "P(>|z|)"],
+        fixefnames(m), 4)
+end
+
 """
     cond(m::MixedModel)
 
@@ -198,6 +207,16 @@ function fixef(m::LinearMixedModel{T}, permuted=true) where {T}
     invpermute!(v, piv)
 end
 
+fixefnames(m::LinearMixedModel) = 
+    StatsModels.termnames.(filter(t -> !isa(t, RandomEffectsTerm), collect(m.formula.rhs)))
+
+"""
+    fnames(m::MixedModel)
+
+Return the names of the grouping factors for the random-effects terms.
+"""
+fnames(m::MixedModel) = map(x -> x.trm.sym, m.reterms)
+
 """
     getθ(m::LinearMixedModel)
 
@@ -257,6 +276,62 @@ The penalized, weighted residual sum-of-squares.
 """
 pwrss(m::LinearMixedModel) = abs2(sqrtpwrss(m))
 
+"""
+    ranef!(v::Vector{Matrix{T}}, m::MixedModel{T}, β, uscale::Bool) where {T}
+
+Overwrite `v` with the conditional modes of the random effects for `m`.
+
+If `uscale` is `true` the random effects are on the spherical (i.e. `u`) scale, otherwise
+on the original scale
+"""
+function ranef!(v::Vector, m::LinearMixedModel{T}, β::AbstractArray{T}, uscale::Bool) where {T}
+    (k = length(v)) == length(m.reterms) || throw(DimensionMismatch(""))
+    L = m.L
+    for j in 1:k
+        mulαβ!(vec(copyto!(v[j], L[Block(nblocks(L, 2), j)])), L[Block(k + 1, j)]', β,
+            -one(T), one(T))
+    end
+    for i in k: -1 :1
+        Lii = L[Block(i, i)]
+        vi = vec(v[i])
+        ldiv!(adjoint(isa(Lii, Diagonal) ? Lii : LowerTriangular(Lii)), vi)
+        for j in 1:(i - 1)
+            mulαβ!(vec(v[j]), L[Block(i, j)]', vi, -one(T), one(T))
+        end
+    end
+    if !uscale
+        for (t, vv) in zip(m.reterms, v)
+            lmul!(t.λ, vv)
+        end
+    end
+    v
+end
+
+ranef!(v::Vector, m::LinearMixedModel, uscale::Bool) = ranef!(v, m, fixef(m), uscale)
+
+"""
+    ranef(m::LinearMixedModel; uscale=false) #, named=true)
+
+Return, as a `Vector{Vector{T}}` (`Vector{NamedVector{T}}` if `named=true`),
+the conditional modes of the random effects in model `m`.
+
+If `uscale` is `true` the random effects are on the spherical (i.e. `u`) scale, otherwise on
+the original scale.
+"""
+function ranef(m::LinearMixedModel{T}; uscale=false) where {T}#, named=false)
+    v = [Matrix{T}(undef, size(t.z, 1), nlevs(t)) for t in m.reterms]
+    ranef!(v, m, uscale)
+#=
+    named || return v
+    vnmd = map(NamedArray, v)
+    for (trm, vnm) in zip(retrms, vnmd)
+        setnames!(vnm, trm.cnms, 1)
+        setnames!(vnm, string.(levs(trm)), 2)
+    end
+    vnmd
+=#
+end
+
 StatsBase.response(m::LinearMixedModel) = vec(m.feterms[end].x)
 
 """
@@ -296,6 +371,17 @@ Return the square root of the penalized, weighted residual sum-of-squares (pwrss
 This value is the contents of the `1 × 1` bottom right block of `m.L`
 """
 sqrtpwrss(m::LinearMixedModel) = first(m.L.blocks[end, end])
+
+"""
+    std(m::MixedModel)
+
+Return the estimated standard deviations of the random effects as a `Vector{Vector{T}}`.
+"""
+function Statistics.std(m::LinearMixedModel)
+    rl = rowlengths.(m.reterms)
+    s = sdest(m)
+    isfinite(s) ? rmul!(push!(rl, [1.]), s) : rl
+end
 
 """
     updateL!(m::LinearMixedModel)
@@ -347,3 +433,21 @@ end
 Returns the estimate of σ², the variance of the conditional distribution of Y given B.
 """
 varest(m::LinearMixedModel) = pwrss(m) / nobs(m)
+
+function StatsBase.vcov(m::LinearMixedModel{T}) where {T}
+    Xtrm = first(m.feterms)
+    iperm = invperm(Xtrm.piv)
+    p = length(iperm)
+    r = Xtrm.rank
+    Linv = inv(feL(m))
+    permvcov = varest(m) * (Linv'Linv)
+    if p == Xtrm.rank
+        permvcov[iperm, iperm]
+    else
+        covmat = fill(zero(T)/zero(T), (p, p))
+        for j in 1:r, i in 1:r
+            covmat[i,j] = permvcov[i, j]
+        end
+        covmat[iperm, iperm]
+    end
+end
