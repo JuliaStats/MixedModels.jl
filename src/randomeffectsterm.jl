@@ -13,6 +13,19 @@ end
 
 StatsModels.termnames(t::RandomEffectsTerm) = string(t.rhs.sym)
 
+struct NoCorrTerm <: AbstractTerm
+    reterm::RandomEffectsTerm
+end
+
+function nocorr end
+
+function apply_schema(t::FunctionTerm{typeof(nocorr)}, schema, Mod::Type{<:MixedModel})
+    args = apply_schema.(t.args_parsed, Ref(schema), Mod)
+    isone(length(args)) && isa(args[1], RandomEffectsTerm) || 
+        throw(ArgumentError("argument to nocorr must be a random-effect term"))
+    NoCorrTerm(args[1])
+end
+
 function StatsModels.model_cols(t::RandomEffectsTerm, d::NamedTuple)
     z = Matrix(transpose(model_cols(t.lhs, d)))
     T = eltype(z)
