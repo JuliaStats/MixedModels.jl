@@ -61,6 +61,7 @@ export
        lowerbd,    # lower bounds on the covariance parameters
        nblocks,
        nobs,
+       nocorr,
        objective,  # the objective function in fitting a model
        pwrss,      # penalized, weighted residual sum-of-squares
        pirls!,     # use Penalized Iteratively Reweighted Least Squares to obtain conditional modes of random effects
