@@ -1,7 +1,7 @@
 using LinearAlgebra, MixedModels, Random, RData, SparseArrays, StatsModels, Tables, Test
 
 if !@isdefined(dat) || !isa(dat, Dict{Symbol, NamedTuple})
-    const dat = Dict(Symbol(k) => columntable(v) for (k, v) in 
+    const dat = Dict(Symbol(k) => columntable(v) for (k, v) in
         load(joinpath(dirname(pathof(MixedModels)), "..", "test", "dat.rda")))
 end
 
