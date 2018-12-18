@@ -1,6 +1,6 @@
 struct RandomEffectsTerm <: AbstractTerm
     lhs::TermOrTerms
-    rhs::CategoricalTerm
+    rhs::TermOrTerms
 end
 
 Base.show(io::IO, t::RandomEffectsTerm) = print(io, "($(t.lhs) | $(t.rhs))")
