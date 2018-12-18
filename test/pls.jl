@@ -59,9 +59,9 @@ const LMM = LinearMixedModel
     @test isapprox(pwrss(fm1), 73537.49947885796, atol=0.001)
     @test isapprox(StatsBase.stderror(fm1), [17.69455188898009], atol=0.0001)
 
-#    vc = VarCorr(fm1)
-#    show(IOBuffer(), vc)
-    @test_broken vc.s == sdest(fm1)
+    vc = VarCorr(fm1)
+    show(IOBuffer(), vc)
+    @test vc.s == sdest(fm1)
 end
 
 @testset "Dyestuff2" begin
