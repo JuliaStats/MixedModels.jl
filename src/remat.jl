@@ -32,12 +32,11 @@ SparseArrays.sparse(A::ReMat) = adjoint(A.adjA)
 Base.getindex(A::ReMat, i::Integer, j::Integer) = getindex(A.adjA, j, i)
 
 """
-    nranef(A::AbstractMatrix)
+    nranef(A::ReMat)
 
 Return the number of random effects represented by `A`.  Zero unless `A` is an `ReMat`.
 """ 
 nranef(A::ReMat) = size(A.adjA, 1)
-nranef(A) = 0
 
 LinearAlgebra.cond(A::ReMat) = cond(A.λ)
 
