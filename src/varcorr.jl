@@ -17,22 +17,23 @@ struct VarCorr{T}
     σ::Vector{Vector{T}}
     ρ::Vector{Matrix{T}}
     fnms::Vector{Symbol}
-    cnms::Vector{Vector{String}}
+#    cnms::Vector{Vector{String}}
     s::T
 end
 function VarCorr(m::MixedModel{T}) where T
     fnms = Symbol[]
-    cnms = Vector{String}[]
+#    cnms = Vector{String}[]
     σ = Vector{T}[]
     ρ = Matrix{T}[]
-    for trm in reterms(m)
+    for trm in m.reterms
         σi, ρi = stddevcor(trm)
         push!(σ, σi)
         push!(ρ, ρi)
-        push!(fnms, trm.fnm)
-        push!(cnms, trm.cnms)
+        push!(fnms, trm.trm.sym)
+#        push!(cnms, trm.cnms)
     end
-    VarCorr(σ, ρ, fnms, cnms, sdest(m))
+    VarCorr(σ, ρ, fnms, #cnms, 
+        sdest(m))
 end
 
 cpad(s::String, n::Integer) = rpad(lpad(s, (n + textwidth(s)) >> 1), n)
@@ -42,23 +43,23 @@ function Base.show(io::IO, vc::VarCorr)
     fnms = copy(vc.fnms)
     stdm = copy(vc.σ)
     cor = vc.ρ
-    cnms = reduce(append!, vc.cnms, init=String[])
+#    cnms = reduce(append!, vc.cnms, init=String[])
     if isfinite(vc.s)
         push!(fnms, :Residual)
         push!(stdm, [1.])
         rmul!(stdm, vc.s)
-        push!(cnms, "")
+#        push!(cnms, "")
     end
     nmwd = maximum(map(textwidth, string.(fnms))) + 1
     write(io, "Variance components:\n")
-    cnmwd = max(6, maximum(map(textwidth, cnms))) + 1
+#    cnmwd = max(6, maximum(map(textwidth, cnms))) + 1
     tt = vcat(stdm...)
     vars = showoff(abs2.(tt), :plain)
     stds = showoff(tt, :plain)
     varwd = 1 + max(length("Variance"), maximum(map(textwidth, vars)))
     stdwd = 1 + max(length("Std.Dev."), maximum(map(textwidth, stds)))
     write(io, " "^(2+nmwd))
-    write(io, cpad("Column", cnmwd))
+#    write(io, cpad("Column", cnmwd))
     write(io, cpad("Variance", varwd))
     write(io, cpad("Std.Dev.", stdwd))
     any(s -> length(s) > 1, stdm) && write(io,"  Corr.")
@@ -68,14 +69,14 @@ function Base.show(io::IO, vc::VarCorr)
         stdmi = stdm[i]
         write(io, ' ')
         write(io, rpad(fnms[i], nmwd))
-        write(io, rpad(cnms[ind], cnmwd))
+#        write(io, rpad(cnms[ind], cnmwd))
         write(io, lpad(vars[ind], varwd))
         write(io, lpad(stds[ind], stdwd))
         ind += 1
         println(io)
         for j in 2:length(stdmi)
             write(io, " "^(1 + nmwd))
-            write(io, rpad(cnms[ind], cnmwd))
+#            write(io, rpad(cnms[ind], cnmwd))
             write(io, lpad(vars[ind], varwd))
             write(io, lpad(stds[ind], stdwd))
             ind += 1

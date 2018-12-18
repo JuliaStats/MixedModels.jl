@@ -62,10 +62,13 @@ const LMM = LinearMixedModel
     vc = VarCorr(fm1)
     show(IOBuffer(), vc)
     @test vc.s == sdest(fm1)
+<<<<<<< HEAD
 
     fit!(fm1, REML=true)
     @test isapprox(objective(fm1), 319.65427684225216, atol=0.0001)
     print(IOBuffer(), fm1)
+=======
+>>>>>>> Clean up VarCorr
 end
 
 @testset "Dyestuff2" begin
