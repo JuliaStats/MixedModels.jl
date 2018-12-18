@@ -35,6 +35,8 @@ struct LinearMixedModel{T <: AbstractFloat} <: MixedModel{T}
     optsum::OptSummary{T}
 end
 
+LinearMixedModel(f::FormulaTerm, d) = LinearMixedModel(f, columntable(d))
+
 function LinearMixedModel(f::FormulaTerm, d::NamedTuple)
     form = apply_schema(f, schema(d), LinearMixedModel)
     y, Xs = model_cols(form, d)
