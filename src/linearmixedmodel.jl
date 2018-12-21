@@ -108,6 +108,36 @@ LinearAlgebra.cond(m::MixedModel) = [cond(c.λ) for c in m.reterms]
 
 
 """
+    condVar(m::LinearMixedModel)
+
+Return the conditional variances matrices of the random effects.
+
+The random effects are returned by `ranef` as a vector of length `k`,
+where `k` is the number of random effects terms.  The `i`th element
+is a matrix of size `vᵢ × ℓᵢ`  where `vᵢ` is the size of the
+vector-valued random effects for each of the `ℓᵢ` levels of the grouping
+factor.  Technically those values are the modes of the conditional
+distribution of the random effects given the observed data.
+
+This function returns an array of `k` three dimensional arrays,
+where the `i`th array is of size `vᵢ × vᵢ × ℓᵢ`.  These are the
+diagonal blocks from the conditional variance-covariance matrix,
+
+    s² Λ(Λ'Z'ZΛ + I)⁻¹Λ'
+"""
+function condVar(m::LinearMixedModel{T}) where {T}
+    retrms = m.reterms
+    t1 = first(retrms)
+    L11 = m.L[Block(1, 1)]
+    if !isone(length(retrms)) || !isa(L11, Diagonal{T, Vector{T}})
+        throw(ArgumentError("code for vector-valued r.e. or more than one term not yet written"))
+    end
+    ll = first(t1.λ)
+    Ld = L11.diag
+    Array{T, 3}[reshape(abs2.(ll ./ Ld) .* varest(m), (1, 1, length(Ld)))]
+end
+
+"""
     describeblocks(io::IO, m::MixedModel)
     describeblocks(m::MixedModel)
 
@@ -122,6 +152,8 @@ function describeblocks(io::IO, m::LinearMixedModel)
     end
 end
 describeblocks(m::MixedModel) = describeblocks(stdout, m)
+
+StatsBase.deviance(m::MixedModel) = objective(m)
 
 StatsBase.dof(m::LinearMixedModel) = size(m)[2] + sum(nθ, m.reterms) + 1
 
@@ -181,6 +213,18 @@ function StatsBase.fit!(m::LinearMixedModel{T}, verbose::Bool=false) where {T}
     m
 end
 
+function fitted!(v::AbstractArray{T}, m::LinearMixedModel{T}) where {T}
+    ## FIXME: Create and use `effects(m) -> β, b` w/o calculating β twice
+    vv = vec(v)
+    mul!(vv, m.feterms[end - 1], fixef(m))
+    for (rt, bb) in zip(m.reterms, ranef(m))
+        unscaledre!(vv, rt, bb)
+    end
+    v
+end
+
+StatsBase.fitted(m::LinearMixedModel{T}) where {T} = fitted!(Vector{T}(undef, nobs(m)), m)
+
 """
     fixef!(v::Vector{T}, m::LinearMixedModel{T})
 
@@ -209,8 +253,10 @@ function fixef(m::LinearMixedModel{T}, permuted=true) where {T}
     invpermute!(v, piv)
 end
 
-fixefnames(m::LinearMixedModel) = 
-    StatsModels.termnames.(filter(t -> !isa(t, RandomEffectsTerm), collect(m.formula.rhs)))
+function fixefnames(m::LinearMixedModel)
+    fnms = StatsModels.termnames(first(m.formula.rhs))
+    isa(fnms, String) ? [fnms] : fnms
+end    
 
 """
     fnames(m::MixedModel)
@@ -268,8 +314,11 @@ function objective(m::LinearMixedModel)
     logdet(m) + nobs(m)*(1 + log2π + log(varest(m))) - (isempty(wts) ? 0 : 2sum(log, wts))
 end
 
+StatsBase.predict(m::LinearMixedModel) = fitted(m)
+
 Base.propertynames(m::LinearMixedModel, private=false) =
-    (:formula, :cols, :sqrtwts, :A, :L, :optsum, :θ, :theta, :β, :beta, :λ, :lambda, :σ, :sigma, :b, :u, :lowerbd, :X, :y, :rePCA)
+    (:formula, :cols, :sqrtwts, :A, :L, :optsum, :θ, :theta, :β, :beta, :λ, :lambda,
+     :σ, :sigma, :b, :u, :lowerbd, :X, :y, :rePCA, :reterms, :feterms)
 
 """
     pwrss(m::LinearMixedModel)
@@ -334,6 +383,43 @@ function ranef(m::LinearMixedModel{T}; uscale=false) where {T}#, named=false)
 =#
 end
 
+"""
+    reevaluateAend!(m::LinearMixedModel)
+
+Reevaluate the last column of `m.A` from `m.feterms`.  This function should be called
+after updating the response, `m.feterms[end]`.
+"""
+function reevaluateAend!(m::LinearMixedModel)
+    A = m.A
+    rtrms = m.reterms
+    nre = length(rtrms)
+    ftrms = m.feterms
+    trmn = reweight!(ftrms[end], m.sqrtwts)
+    nblk = nblocks(A, 2)
+    for i in 1:nblk
+        mul!(A[Block(nblk, i)], trmn', i ≤ nre ? rtrms[i] : ftrms[i - nre])
+    end
+    m
+end
+
+"""
+    refit!(m::LinearMixedModel[, y::Vector])
+
+Refit the model `m` after installing response `y`.
+
+If `y` is omitted the current response vector is used.
+"""
+refit!(m::LinearMixedModel) = fit!(reevaluateAend!(m))
+
+function refit!(m::LinearMixedModel, y)
+    resp = m.feterms[end]
+    length(y) == size(resp, 1) || throw(DimensionMismatch(""))
+    copyto!(resp, y)
+    refit!(m)
+end
+
+StatsBase.residuals(m::LinearMixedModel) = response(m) .- fitted(m)
+
 StatsBase.response(m::LinearMixedModel) = vec(m.feterms[end].x)
 
 """
@@ -359,6 +445,36 @@ function setθ!(m::LinearMixedModel, v)
 end
 
 Base.setproperty!(m::LinearMixedModel, s::Symbol, y) = s == :θ ? setθ!(m, y) : setfield!(m, s, y)
+
+function Base.show(io::IO, m::LinearMixedModel)
+    if m.optsum.feval < 0
+        @warn("Model has not been fit")
+        return nothing
+    end
+    n, p, q, k = size(m)
+    println(io, "Linear mixed model fit by maximum likelihood")
+    println(io, " ", m.formula)
+    oo = objective(m)
+    nums = showoff([-oo/ 2, oo, aic(m), bic(m)])
+    fieldwd = max(maximum(textwidth.(nums)) + 1, 11)
+    for label in [" logLik", "-2 logLik", "AIC", "BIC"]
+        print(io, rpad(lpad(label, (fieldwd + textwidth(label)) >> 1), fieldwd))
+    end
+    println(io)
+    for num in nums
+        print(io, lpad(num, fieldwd))
+    end
+    println(io); println(io)
+
+    show(io,VarCorr(m))
+
+    gl = [size(t.z, 2) for t in m.reterms]
+    @printf(io," Number of obs: %d; levels of grouping factors: %d", n, gl[1])
+    for l in gl[2:end] @printf(io, ", %d", l) end
+    println(io)
+    @printf(io,"\n  Fixed-effects parameters:\n")
+    show(io,coeftable(m))
+end
 
 function Base.size(m::LinearMixedModel)
     n, p = size(first(m.feterms))

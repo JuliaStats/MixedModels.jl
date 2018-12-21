@@ -1,7 +1,7 @@
 using LinearAlgebra, MixedModels, Random, RData, SparseArrays, Statistics, StatsBase, Tables, Test
 
 if !@isdefined(dat) || !isa(dat, Dict{Symbol, NamedTuple})
-    const dat = Dict(Symbol(k) => columntable(v) for (k, v) in 
+    const dat = Dict(Symbol(k) => columntable(v) for (k, v) in
         load(joinpath(dirname(pathof(MixedModels)), "..", "test", "dat.rda")))
 end
 
@@ -27,7 +27,7 @@ const LMM = LinearMixedModel
     @test isapprox(objective(fm1), 327.3270598811428, atol=0.001)
     @test isapprox(fm1.θ, [0.752580], atol=1.e-5)
     @test isapprox(fm1.λ, [LowerTriangular(reshape(fm1.θ, (1,1)))], atol=1.e-5)
-    @test_broken isapprox(deviance(fm1), 327.32705988, atol=0.001)
+    @test isapprox(deviance(fm1), 327.32705988, atol=0.001)
     @test isapprox(aic(fm1), 333.3270598811394, atol=0.001)
     @test isapprox(bic(fm1), 337.5306520261259, atol=0.001)
     @test fixef(fm1) ≈ [1527.5]
@@ -48,10 +48,10 @@ const LMM = LinearMixedModel
     @test response(fm1) == dat[:Dyestuff][:Y]
     rfu = ranef(fm1, uscale = true)
     rfb = ranef(fm1)
-#    cv = condVar(fm1)
     @test abs(sum(rfu[1])) < 1.e-5
-    @test_broken length(cv) == 1
-    @test_broken size(cv[1]) == (1, 1, 6)
+    cv = condVar(fm1)
+    @test length(cv) == 1
+    @test size(first(cv)) == (1, 1, 6)
     show(IOBuffer(), fm1.optsum)
 
     @test isapprox(logdet(fm1), 8.06014522999825, atol=0.001)
@@ -75,8 +75,8 @@ end
     @test StatsBase.stderror(fm) ≈ [0.6669857396443261]
     @test coef(fm) ≈ [5.6656]
     @test logdet(fm) ≈ 0.0
-#    refit!(fm, dat[:Dyestuff][:Y])
-    @test_broken isapprox(objective(fm), 327.3270598811428, atol=0.001)
+    refit!(fm, dat[:Dyestuff][:Y])
+    @test isapprox(objective(fm), 327.3270598811428, atol=0.001)
 end
 
 @testset "penicillin" begin
@@ -131,13 +131,13 @@ end
     fit!(fm1);
 
     @test isapprox(objective(fm1), 237721.7687745563, atol=0.001)
-#    ftd1 = fitted(fm1);
-    @test_broken size(ftd1) == (73421, )
-    @test_broken ftd1 == predict(fm1)
-    @test_broken isapprox(ftd1[1], 3.17876, atol=0.0001)
-#    resid1 = residuals(fm1);
-    @test_broken size(resid1) == (73421, )
-    @test_broken isapprox(resid1[1], 1.82124, atol=0.00001)
+    ftd1 = fitted(fm1);
+    @test size(ftd1) == (73421, )
+    @test ftd1 == predict(fm1)
+    @test isapprox(ftd1[1], 3.17876, atol=0.0001)
+    resid1 = residuals(fm1);
+    @test size(resid1) == (73421, )
+    @test isapprox(resid1[1], 1.82124, atol=0.00001)
 
     fm2 = fit!(LinearMixedModel(@formula(Y ~ 1 + A*I + (1 | G) + (1 | H)), dat[:InstEval]))
     @test isapprox(objective(fm2), 237585.5534151694, atol=0.001)
@@ -186,7 +186,7 @@ end
     @test size(b3[1]) == (2, 18)
     @test isapprox(b3[1][1, 1], 2.815819441982976, atol=0.001)
 
-#    simulate!(fm)  # to test one of the unscaledre methods
+    simulate!(fm)  # to test one of the unscaledre methods
 
 #    fmnc = LinearMixedModel(@formula(Y ~ 1 + U + (1|G) + (0+U|G)), dat[:sleepstudy])
     @test_broken size(fmnc) == (180,2,36,1)
@@ -222,10 +222,9 @@ end
     @test isapprox(coef(fm), [0.4991229873, 0.31130780953], atol = 1.e-4)
 end
 
-#=
 @testset "simulate!" begin
     @test MixedModels.stddevcor(cholesky!(Matrix(I, 3, 3))) == (ones(3), Matrix(I, 3, 3))
-    fm = fit!(LinearMixedModel(@formula(Y ~ 1 + (1 | G)), dat[:Dyestuff]))
+    fm = fit!(LMM(@formula(Y ~ 1 + (1 | G)), dat[:Dyestuff]))
     refit!(simulate!(Random.MersenneTwister(1234321), fm))
     @test isapprox(deviance(fm), 339.0218639362958, atol=0.001)
     refit!(fm, dat[:Dyestuff][:Y])
@@ -235,8 +234,7 @@ end
     simulate!(fm, θ = fm.θ)
     @test_throws DimensionMismatch refit!(fm, zeros(29))
     Random.seed!(1234321)
-    dfr = bootstrap(10, fm)
-    @test size(dfr) == (10, 5)
-    @test names(dfr) == Symbol[:obj, :σ, :β₁, :θ₁, :σ₁]
+#    dfr = bootstrap(10, fm)
+    @test_broken size(dfr) == (10, 5)
+    @test_broken names(dfr) == Symbol[:obj, :σ, :β₁, :θ₁, :σ₁]
 end
-=#

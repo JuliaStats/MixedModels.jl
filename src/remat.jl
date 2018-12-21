@@ -417,3 +417,5 @@ function stddevcor(A::ReMat)
     std = Diagonal(σ) \ A.λ
     σ, std * std'
 end
+
+vsize(A::ReMat{T,R,S}) where {T,R,S} = S
