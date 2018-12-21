@@ -94,3 +94,15 @@ function stddevcor(L::Cholesky{T}) where {T}
     k = size(L, 1)
     stddevcor!(Vector{T}(undef, k), Matrix{T}(undef, k, k), Matrix{T}(undef, k, k), L)
 end
+
+"""
+    subscriptednames(nm, len)
+
+Return a `Vector{String}` of `nm` with subscripts from `₁` to `len`
+"""
+function subscriptednames(nm, len)
+    nd = ndigits(len)
+    nd == 1 ?
+        [string(nm, '₀' + j) for j in 1:len] :
+        [string(nm, lpad(string(j), nd, '0')) for j in 1:len]
+end

@@ -99,7 +99,7 @@ include("linalg/rankUpdate.jl")
 include("linalg/logdet.jl")
 include("linalg.jl")
 #include("pls.jl")
-#include("simulate.jl")
+include("simulate.jl")
 #include("PIRLS.jl")
 #include("mixedmodel.jl")
 

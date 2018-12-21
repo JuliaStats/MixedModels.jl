@@ -11,16 +11,15 @@ and `θᵢ, i = 1,...,k` the covariance parameters.
 `β`, `σ`, and `θ` are the values of the parameters in `m` for simulation of the responses.
 """
 function bootstrap(N, m::LinearMixedModel{T};
-                   β = fixef(m), σ = sdest(m), θ = getθ(m)) where {T}
-    y₀ = copy(model_response(m)) # to restore original state of m
-    p = size(m.trms[end - 1], 2)
-    @argcheck(length(β) == p, DimensionMismatch)
-    @argcheck(length(θ) == (k = length(getθ(m))), DimensionMismatch)
-    trms = reterms(m)
+        β = fixef(m), σ = sdest(m), θ = getθ(m)) where {T}
+    y₀ = copy(response(m))          # to restore original state of m
+    n, p, q, nre = size(m)
+    length(β) == p && length(θ) == (k = length(getθ(m))) || throw(DimensionMismatch(""))
+    trms = m.reterms
     Λsize = vsize.(trms)
     cnms = vcat([:obj, :σ], Symbol.(subscriptednames('β', p)),
         Symbol.(subscriptednames('θ', k)), Symbol.(subscriptednames('σ', sum(Λsize))))
-    nρ = [(l * (l - 1)) >> 1 for l in Λsize]  # FIXME: Do this more carefully.
+    nρ = [(l * (l - 1)) >> 1 for l in Λsize]
     if (nρtot = sum(nρ)) > 0
         append!(cnms, Symbol.(subscriptednames('ρ', nρtot)))
     end
@@ -58,18 +57,7 @@ function bootstrap(N, m::LinearMixedModel{T};
     dfr
 end
 
-"""
-    subscriptednames(nm, len)
-
-Return a `Vector{String}` of `nm` with subscripts from `₁` to `len`
-"""
-function subscriptednames(nm, len)
-    nd = ndigits(len)
-    nd == 1 ?
-        [string(nm, '₀' + j) for j in 1:len] :
-        [string(nm, lpad(string(j), nd, '0')) for j in 1:len]
-end
-
+#=
 function stddevcor!(σ::Vector{T}, ρ::Matrix{T}, scr::Matrix{T}, L::Cholesky{T}) where {T}
     @argcheck(length(σ) == (k = size(L, 2)) && size(ρ) == (k, k) && size(scr) == (k, k),
         DimensionMismatch)
@@ -126,51 +114,7 @@ function LinearAlgebra.Cholesky(L::LowerTriangular)  # FIXME: this is type pirac
     end
     Cholesky(L, 'L', LinearAlgebra.BlasInt(info))
 end
-
-"""
-    reevaluateAend!(m::LinearMixedModel)
-
-Reevaluate the last column of `m.A` from `m.trms`.  This function should be called
-after updating the response, `m.trms[end]`.
-"""
-function reevaluateAend!(m::LinearMixedModel)
-    A = m.A
-    trms = m.trms
-    trmn = reweight!(trms[end], m.sqrtwts)
-    nblk = nblocks(A, 2)
-    for (i, trm) in enumerate(trms)
-        mul!(A[Block(nblk, i)], trmn', trm)
-    end
-    m
-end
-
-"""
-    refit!(m::LinearMixedModel[, y::Vector])
-
-Refit the model `m` after installing response `y`.
-
-If `y` is omitted the current response vector is used.
-"""
-refit!(m::LinearMixedModel) = fit!(updateL!(resetθ!(reevaluateAend!(m))))
-function refit!(m::LinearMixedModel, y)
-    resp = m.trms[end]
-    @argcheck length(y) == size(resp, 1) DimensionMismatch
-    copyto!(resp, y)
-    refit!(m)
-end
-
-"""
-    resetθ!(m::LinearMixedModel)
-
-Reset the value of `m.θ` to the initial values and mark the model as not having been fit
-"""
-function resetθ!(m::LinearMixedModel)
-    opt = m.optsum
-    opt.feval = -1
-    opt.fmin = Inf
-    updateL!(setθ!(m, opt.initial))
-end
-
+=#
 """
     unscaledre!(y::AbstractVector{T}, M::AbstractFactorReTerm{T}, b) where {T}
     unscaledre!(rng::AbstractRNG, y::AbstractVector{T}, M::AbstractFactorReTerm{T}) where {T}
@@ -180,9 +124,9 @@ vector is generated as `randn(rng, size(M, 2))`
 """
 function unscaledre! end
 
-function unscaledre!(y::AbstractVector, A::ScalarFactorReTerm, b::AbstractVecOrMat)
+function unscaledre!(y::AbstractVector{T}, A::ReMat{T,R,1}, b::AbstractVector{T}) where {T,R}
     m, n = size(A)
-    @argcheck(length(y) == m && length(b) == n, DimensionMismatch)
+    length(y) == m && length(b) == n || throw(DimensionMismatch(""))
     z = A.z
     for (i, r) in enumerate(A.refs)
         y[i] += b[r] * z[i]
@@ -190,12 +134,14 @@ function unscaledre!(y::AbstractVector, A::ScalarFactorReTerm, b::AbstractVecOrM
     y
 end
 
-function unscaledre!(y::AbstractVector{T}, A::VectorFactorReTerm{T,R,S},
-                     b::DenseMatrix) where {T,R,S}
+unscaledre!(y::AbstractVector{T}, A::ReMat{T,R,1}, B::AbstractMatrix{T}) where {T,R} = 
+    unscaledre!(y, A, vec(B))
+
+function unscaledre!(y::AbstractVector{T}, A::ReMat{T,R,S}, b::AbstractMatrix{T}) where {T,R,S}
     Z = A.z
     k, n = size(Z)
     l = nlevs(A)
-    @argcheck(length(y) == n && size(b) == (k, l), DimensionMismatch)
+    length(y) == n && size(b) == (k, l) || throw(DimensionMismatch(""))
     for (i, ii) in enumerate(A.refs)
         for j in 1:k
             y[i] += Z[j, i] * b[j, ii]
@@ -204,34 +150,30 @@ function unscaledre!(y::AbstractVector{T}, A::VectorFactorReTerm{T,R,S},
     y
 end
 
-function unscaledre!(rng::AbstractRNG, y::AbstractVector{T},
-                     A::VectorFactorReTerm{T}) where {T}
-    unscaledre!(y, A, lmul!(LowerTriangular(A.Λ), randn(rng, vsize(A), nlevs(A))))
-end
+unscaledre!(rng::AbstractRNG, y::AbstractVector{T}, A::ReMat{T}) where {T} =
+    unscaledre!(y, A, lmul!(A.λ, randn(rng, vsize(A), nlevs(A))))
 
-function unscaledre!(rng::AbstractRNG, y::AbstractVector{T},
-                     A::ScalarFactorReTerm{T}) where {T}
-    unscaledre!(y, A, lmul!(A.Λ, randn(rng, vsize(A), nlevs(A))))
-end
+unscaledre!(rng::AbstractRNG, y::AbstractVector{T}, A::ReMat{T,R,1}) where {T,R} =
+    unscaledre!(y, A, lmul!(first(A.λ), randn(rng, vsize(A), nlevs(A))))
 
-unscaledre!(y::AbstractVector, A::AbstractFactorReTerm) = unscaledre!(Base.GLOBAL_RNG, y, A)
+unscaledre!(y::AbstractVector, A::ReMat) = unscaledre!(Base.GLOBAL_RNG, y, A)
 
 """
     simulate!(m::LinearMixedModel; β=fixef(m), σ=sdest(m), θ=getθ(m))
 
 Overwrite the response (i.e. `m.trms[end]`) with a simulated response vector from model `m`.
 """
-function simulate!(rng::AbstractRNG, m::LinearMixedModel{T};
-                   β=coef(m), σ=sdest(m), θ=T[]) where {T}
+function simulate!(rng::AbstractRNG, m::LinearMixedModel{T}; 
+        β=coef(m), σ=sdest(m), θ=T[]) where {T}
     if !isempty(θ)
         setθ!(m, θ)
     end
-    y = randn!(rng, model_response(m)) # initialize to standard normal noise
-    for trm in reterms(m)              # add the unscaled random effects
+    y = randn!(rng, response(m))      # initialize to standard normal noise
+    for trm in m.reterms              # add the unscaled random effects
         unscaledre!(rng, y, trm)
     end
                                   # scale by σ and add fixed-effects contribution
-    BLAS.gemv!('N', one(T), m.trms[end - 1].x, β, σ, y)
+    BLAS.gemv!('N', one(T), first(m.feterms).x, β, σ, y)
     m
 end
 
