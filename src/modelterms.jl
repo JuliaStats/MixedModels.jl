@@ -55,7 +55,7 @@ end
 
 function MatrixTerm(X::AbstractMatrix, cnms)
     T = eltype(X)
-    cf = cholesky!(Symmetric(X'X, :U), Val(true), tol = -one(T))
+    cf = cholesky!(Symmetric(X'X, :U), Val(true), tol = -one(T), check = false)
     r = cf.rank
     piv = cf.piv
     X = X[:, piv[1:r]]
@@ -249,10 +249,10 @@ function reweight!(A::ScalarFactorReTerm, sqrtwts::Vector)
             A.wtz = A.z .* sqrtwts
         else
             mul!(A.wtz, Diagonal(sqrtwts), A.z)
-        end    
-    end    
+        end
+    end
     A
-end    
+end
 
 rowlengths(A::ScalarFactorReTerm) = [abs(A.Λ)]
 
