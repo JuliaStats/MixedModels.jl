@@ -44,8 +44,7 @@ struct GaussHermiteNormalized{K}
     w::SVector{K,Float64}
 end
 function GaussHermiteNormalized(k::Integer)
-    sytr = SymTridiagonal(zeros(k), sqrt.(1:k-1))
-    ev = eigen(sytr)
+    ev = eigen(SymTridiagonal(zeros(k), sqrt.(1:k-1)))
     w = abs2.(ev.vectors[1,:])
     GaussHermiteNormalized(
         SVector{k}((ev.values .- reverse(ev.values)) ./ 2),
