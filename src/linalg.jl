@@ -1,4 +1,4 @@
-function mulαβ!(C::StridedMatrix{T}, A::StridedMatrix{T}, 
+function (C::StridedMatrix{T}, A::StridedMatrix{T}, 
         adjB::Adjoint{T,<:StridedMatrix{T}}, α=true, β=false) where {T<:BlasFloat}
     BLAS.gemm!('N', 'C', T(α), A, adjB.parent, T(β), C)
 end
@@ -26,6 +26,9 @@ end
 
 mulαβ!(C::Matrix{T}, A::BlockedSparse{T}, adjB::Adjoint{T,<:BlockedSparse{T}}, α=true, β=false) where {T} =
     mulαβ!(C, A.cscmat, adjB.parent.cscmat', α, β)
+
+mulαβ!(C::Matrix{T}, A::BlockedSparse{T}, adjB::Adjoint{T,<:Matrix{T}}, α=true, β=false) where {T} =
+    mulαβ!(C, A.cscmat, adjB, α, β)
 
 function mulαβ!(C::SparseMatrixCSC{T}, A::SparseMatrixCSC{T}, adjB::Adjoint{T,<:SparseMatrixCSC{T}},
         α=true, β=false) where {T}
