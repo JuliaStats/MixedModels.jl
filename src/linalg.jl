@@ -1,5 +1,5 @@
-function (C::StridedMatrix{T}, A::StridedMatrix{T}, 
-        adjB::Adjoint{T,<:StridedMatrix{T}}, α=true, β=false) where {T<:BlasFloat}
+function mulαβ!(C::Matrix{T}, A::Matrix{T}, adjB::Adjoint{T,<:Matrix{T}}, 
+        α=true, β=false) where {T<:BlasFloat}
     BLAS.gemm!('N', 'C', T(α), A, adjB.parent, T(β), C)
 end
 
