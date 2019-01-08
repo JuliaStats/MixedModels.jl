@@ -24,8 +24,30 @@ function mulαβ!(C::Matrix{T}, A::SparseMatrixCSC{T}, adjB::Adjoint{T,<:SparseM
     C
 end
 
-mulαβ!(C::Matrix{T}, A::BlockedSparse{T}, adjB::Adjoint{T,<:BlockedSparse{T}}, α=true, β=false) where {T} =
-    mulαβ!(C, A.cscmat, adjB.parent.cscmat', α, β)
+mulαβ!(C::Matrix{T}, A::BlockedSparse{T}, adjB::Adjoint{T,<:BlockedSparse{T}}, α=true,
+       β=false) where {T} = mulαβ!(C, A.cscmat, adjB.parent.cscmat', α, β)
+
+function mulαβ!(C::Matrix{T}, A::SparseMatrixCSC{T}, adjB::Adjoint{T,Matrix{T}},
+        α=true, β=false) where {T}
+    B = adjB.parent
+    A.n == size(B, 2) || throw(DimensionMismatch())
+    A.m == size(C, 1) || throw(DimensionMismatch())
+    size(B, 1) == size(C, 2) || throw(DimensionMismatch())
+    nzv = A.nzval
+    rv = A.rowval
+    if β != 1
+        β != 0 ? rmul!(C, β) : fill!(C, zero(eltype(C)))
+    end
+    for k = 1:size(C, 2)
+        @inbounds for col = 1:A.n
+            αxj = α*B[k,col]
+            for j = nzrange(A, col)
+                C[rv[j], k] += nzv[j]*αxj
+            end
+        end
+    end
+    C
+end
 
 mulαβ!(C::Matrix{T}, A::BlockedSparse{T}, adjB::Adjoint{T,<:Matrix{T}}, α=true, β=false) where {T} =
     mulαβ!(C, A.cscmat, adjB, α, β)
