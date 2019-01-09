@@ -24,3 +24,5 @@
 
 [codecov-img]: https://codecov.io/github/dmbates/MixedModels.jl/badge.svg?branch=master
 [codecov-url]: https://codecov.io/github/dmbates/MixedModels.jl?branch=master
+
+This package defines the `LinearMixedModel` and `GeneralizedLinearMixedModel` types and methods to `fit!` them and examine the results.  Please see the documentation for details.
