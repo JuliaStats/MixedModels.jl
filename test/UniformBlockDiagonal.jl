@@ -47,24 +47,23 @@ const LMM = LinearMixedModel
         MixedModels.scaleinflate!(copyto!(Lblk, ex22), vf1)
         @test Lblk.facevec[1] == [2. 3.; 2. 5.]
         setθ!(vf1, [1.,1.,1.])
-        Λ = vf1.Λ
-        MixedModels.scaleInflate!(Lblk, ex22, vf1)
+        Λ = vf1.λ
+        MixedModels.scaleinflate!(copyto!(Lblk, ex22), vf1)
         target = Λ'ex22.facevec[1]*Λ + I
         @test Lblk.facevec[1] == target
-        @test MixedModels.scaleInflate!(Matrix(Lblk), ex22, vf1)[1:2, 1:2] == target
     end
 
     @testset "updateL" begin
         @test ones(2, 2) == MixedModels.rankUpdate!(Hermitian(zeros(2, 2)), ones(2))
         d3 = dat[:d3]
-        modelmat = ones(2, size(d3, 1))
+        modelmat = ones(2, length(d3[:Y]))
         copyto!(view(modelmat, 2, :), d3[:U])
         Vf1 = VectorFactorReTerm(d3[:G], modelmat, :G, ["(Intercept)", "U"], [2])
         Vf2 = VectorFactorReTerm(d3[:H], modelmat, :H, ["(Intercept)", "U"], [2])
         @test getΛ(Vf1) == LowerTriangular(Matrix(I, 2, 2))
         setθ!(Vf2, [1.75, 0.0, 1.0])
         A11 = Vf1'Vf1
-        L11 = MixedModels.cholUnblocked!(MixedModels.scaleInflate!(UniformBlockDiagonal(fill(0., size(A11.data))), A11, Vf1), Val{:L})
+        L11 = MixedModels.cholUnblocked!(MixedModels.scaleinflate!(UniformBlockDiagonal(fill(0., size(A11.data))), A11, Vf1), Val{:L})
         L21 = Vf2'Vf1
         A21cb1 = copy(L21.colblocks[1])
         lmul!(Λ(Vf2)', rmul!(L21, Λ(Vf1)))
