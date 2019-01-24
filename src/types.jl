@@ -159,6 +159,7 @@ Summary of an `NLopt` optimization
 * `optimizer`: the name of the optimizer used, as a `Symbol`
 * `returnvalue`: the return value, as a `Symbol`
 * `nAGQ`: number of adaptive Gauss-Hermite quadrature points in deviance evaluation for GLMMs
+* `REML`: use the REML criterion for LMM fits
 
 The latter field doesn't really belong here but it has to be in a mutable struct in case it is changed.
 """
@@ -178,12 +179,13 @@ mutable struct OptSummary{T <: AbstractFloat}
     optimizer::Symbol
     returnvalue::Symbol
     nAGQ::Integer           # doesn't really belong here but I needed some place to store it
+    REML::Bool              # similarly, just needed a place to store this information
 end
 function OptSummary(initial::Vector{T}, lowerbd::Vector{T},
     optimizer::Symbol; ftol_rel::T=zero(T), ftol_abs::T=zero(T), xtol_rel::T=zero(T),
     initial_step::Vector{T}=T[]) where T <: AbstractFloat
     OptSummary(initial, lowerbd, T(Inf), ftol_rel, ftol_abs, xtol_rel, zero(initial),
-        initial_step, -1, copy(initial), T(Inf), -1, optimizer, :FAILURE, 1)
+        initial_step, -1, copy(initial), T(Inf), -1, optimizer, :FAILURE, 1, false)
 end
 
 function Base.show(io::IO, s::OptSummary)

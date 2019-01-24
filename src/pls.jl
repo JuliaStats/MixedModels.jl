@@ -155,19 +155,24 @@ end
 StatsBase.coef(m::MixedModel) = fixef(m, false)
 
 """
-    fit!(m::LinearMixedModel[, verbose::Bool=false])
+    fit!(m::LinearMixedModel; verbose=false, REML=false)
 
 Optimize the objective of a `LinearMixedModel`.  When `verbose` is `true` the values of the
-objective and the parameters are printed on stdout at each function evaluation.
+objective and the parameters are printed on stdout at each function evaluation.  The
+objective is negative twice the log-likelihood when `REML` is `false` (the default) or
+the REML criterion.
 """
-function StatsBase.fit!(m::LinearMixedModel{T}; verbose::Bool=false, REML::Bool=false) where {T}
+function StatsBase.fit!(m::LinearMixedModel{T}; verbose=false, REML=nothing) where {T}
     optsum = m.optsum
     opt = Opt(optsum)
     feval = 0
+    if isa(REML, Bool)
+        optsum.REML = REML
+    end
     function obj(x, g)
         isempty(g) || error("gradient not defined")
         feval += 1
-        val = objective(updateL!(setθ!(m, x)), REML)
+        val = objective(updateL!(setθ!(m, x)))
         feval == 1 && (optsum.finitial = val)
         verbose && println("f_", feval, ": ", round(val, digits=5), " ", x)
         val
@@ -229,13 +234,14 @@ lowerbd(m::LinearMixedModel) = lowerbd(m.trms)
 StatsBase.model_response(m::LinearMixedModel) = vec(m.trms[end].x)
 
 """
-    objective(m::LinearMixedModel, REML::Bool=false)
+    objective(m::LinearMixedModel)
 
-Return negative twice the log-likelihood of model `m` or the REML criterion
+Return negative twice the log-likelihood of model `m` or the REML criterion,
+according to the value of `m.optsum.REML`
 """
-function objective(m::LinearMixedModel, REML::Bool=false)
+function objective(m::LinearMixedModel)
     wts = m.sqrtwts
-    logdet(m, REML) + dof_residual(m, REML)*(1 + log2π + log(varest(m, REML))) -
+    logdet(m) + varest_denom(m)*(1 + log2π + log(varest(m))) -
         (isempty(wts) ? 0 : 2sum(log, wts))
 end
 
@@ -269,7 +275,7 @@ end
 
 StatsBase.dof(m::LinearMixedModel) = size(m)[2] + sum(nθ, m.trms) + 1
 
-function StatsBase.dof_residual(m::LinearMixedModel, REML::Bool=false)
+function StatsBase.dof_residual(m::LinearMixedModel)
     (n, p, q, k) = size(m)
     n - REML * p
 end
@@ -290,7 +296,7 @@ end
 
 Return the estimate of σ, the standard deviation of the per-observation noise.
 """
-sdest(m::LinearMixedModel) = sqrtpwrss(m) / √nobs(m)
+sdest(m::LinearMixedModel) = √varest(m)
 
 """
     setθ!{T}(m::LinearMixedModel{T}, v::Vector{T})
@@ -321,12 +327,17 @@ This value is the contents of the `1 × 1` bottom right block of `m.L`
 """
 sqrtpwrss(m::LinearMixedModel) = @views m.L.data.blocks[end, end][1]
 
+function varest_denom(m::LinearMixedModel)
+    (n, p, q, k) = size(m)
+    n - m.optsum.REML * p
+end
+
 """
-    varest(m::LinearMixedModel, REML::Bool=false)
+    varest(m::LinearMixedModel)
 
 Returns the estimate of σ², the variance of the conditional distribution of Y given B.
 """
-varest(m::LinearMixedModel, REML::Bool=false) = pwrss(m) / dof_residual(m, REML)
+varest(m::LinearMixedModel) = pwrss(m) / varest_denom(m)
 
 """
     pwrss(m::LinearMixedModel)
@@ -392,19 +403,25 @@ function Base.show(io::IO, m::LinearMixedModel)
         return nothing
     end
     n, p, q, k = size(m)
-    println(io, "Linear mixed model fit by maximum likelihood")
+    REML = m.optsum.REML
+    println(io, "Linear mixed model fit by ", REML ? "REML" : "maximum likelihood")
     println(io, " ", m.formula)
     oo = objective(m)
-    nums = showoff([-oo/ 2, oo, aic(m), bic(m)])
-    fieldwd = max(maximum(textwidth.(nums)) + 1, 11)
-    for label in [" logLik", "-2 logLik", "AIC", "BIC"]
-        print(io, rpad(lpad(label, (fieldwd + textwidth(label)) >> 1), fieldwd))
+    if REML
+        println(io, " REML criterion at convergence: ", oo)
+    else
+        nums = showoff([-oo/ 2, oo, aic(m), bic(m)])
+        fieldwd = max(maximum(textwidth.(nums)) + 1, 11)
+        for label in [" logLik", "-2 logLik", "AIC", "BIC"]
+            print(io, rpad(lpad(label, (fieldwd + textwidth(label)) >> 1), fieldwd))
+        end
+        println(io)
+        for num in nums
+            print(io, lpad(num, fieldwd))
+        end
+        println(io)
     end
     println(io)
-    for num in nums
-        print(io, lpad(num, fieldwd))
-    end
-    println(io); println(io)
 
     show(io,VarCorr(m))
 

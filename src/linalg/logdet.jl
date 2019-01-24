@@ -27,20 +27,20 @@ function LD(d::DenseMatrix{T}) where {T}
 end
 
 """
-    logdet(m::LinearMixedModel, REML::Bool=false)
+    logdet(m::LinearMixedModel)
 
 Return the value of `log(det(Λ'Z'ZΛ + I)) + log(det(LX*LX'))` evaluated in place.
 
 Here LX is the diagonal term corresponding to the fixed-effects in the blocked
 lower Cholesky factor.
 """
-function LinearAlgebra.logdet(m::LinearMixedModel{T}, REML::Bool=false) where {T}
+function LinearAlgebra.logdet(m::LinearMixedModel{T}) where {T}
     s = log(one(T))
     Ldat = m.L.data
     @inbounds for (i, trm) in enumerate(m.trms)
         isa(trm, AbstractFactorReTerm) && (s += LD(Ldat[Block(i, i)]))
     end
-    if REML
+    if m.optsum.REML
         feindex = length(m.trms) - 1
         fetrm = m.trms[feindex]
         if isa(fetrm, MatrixTerm)
