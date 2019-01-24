@@ -160,14 +160,14 @@ StatsBase.coef(m::MixedModel) = fixef(m, false)
 Optimize the objective of a `LinearMixedModel`.  When `verbose` is `true` the values of the
 objective and the parameters are printed on stdout at each function evaluation.
 """
-function StatsBase.fit!(m::LinearMixedModel{T}, verbose::Bool=false) where {T}
+function StatsBase.fit!(m::LinearMixedModel{T}; verbose::Bool=false, REML::Bool=false) where {T}
     optsum = m.optsum
     opt = Opt(optsum)
     feval = 0
     function obj(x, g)
         isempty(g) || error("gradient not defined")
         feval += 1
-        val = objective(updateL!(setθ!(m, x)))
+        val = objective(updateL!(setθ!(m, x)), REML)
         feval == 1 && (optsum.finitial = val)
         verbose && println("f_", feval, ": ", round(val, digits=5), " ", x)
         val
@@ -229,13 +229,14 @@ lowerbd(m::LinearMixedModel) = lowerbd(m.trms)
 StatsBase.model_response(m::LinearMixedModel) = vec(m.trms[end].x)
 
 """
-    objective(m::LinearMixedModel)
+    objective(m::LinearMixedModel, REML::Bool=false)
 
-Return negative twice the log-likelihood of model `m`
+Return negative twice the log-likelihood of model `m` or the REML criterion
 """
-function objective(m::LinearMixedModel)
+function objective(m::LinearMixedModel, REML::Bool=false)
     wts = m.sqrtwts
-    logdet(m) + nobs(m)*(1 + log2π + log(varest(m))) - (isempty(wts) ? 0 : 2sum(log, wts))
+    logdet(m, REML) + dof_residual(m, REML)*(1 + log2π + log(varest(m, REML))) -
+        (isempty(wts) ? 0 : 2sum(log, wts))
 end
 
 """
@@ -268,16 +269,20 @@ end
 
 StatsBase.dof(m::LinearMixedModel) = size(m)[2] + sum(nθ, m.trms) + 1
 
+function StatsBase.dof_residual(m::LinearMixedModel, REML::Bool=false)
+    (n, p, q, k) = size(m)
+    n - REML * p
+end
+
 StatsBase.loglikelihood(m::LinearMixedModel) = -objective(m)/2
 
 StatsBase.nobs(m::LinearMixedModel) = length(m.trms[end].wtx)
 
 function Base.size(m::LinearMixedModel)
     trms = m.trms
-    n, p = size(trms[end - 1])
     k = length(trms) - 2
     q = sum(size(trms[j], 2) for j in 1:k)
-    n, p, q, k
+    length(trms[end]), trms[k+1].rank, q, k
 end
 
 """
@@ -317,11 +322,11 @@ This value is the contents of the `1 × 1` bottom right block of `m.L`
 sqrtpwrss(m::LinearMixedModel) = @views m.L.data.blocks[end, end][1]
 
 """
-    varest(m::LinearMixedModel)
+    varest(m::LinearMixedModel, REML::Bool=false)
 
 Returns the estimate of σ², the variance of the conditional distribution of Y given B.
 """
-varest(m::LinearMixedModel) = pwrss(m) / nobs(m)
+varest(m::LinearMixedModel, REML::Bool=false) = pwrss(m) / dof_residual(m, REML)
 
 """
     pwrss(m::LinearMixedModel)
