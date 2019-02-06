@@ -31,7 +31,7 @@ julia> using DataFrames, MixedModels, RData, Gadfly
 
 ````julia
 julia> ds = names!(dat[:Dyestuff], [:Batch, :Yield])
-30×2 DataFrame
+30×2 DataFrames.DataFrame
 │ Row │ Batch        │ Yield   │
 │     │ Categorical… │ Float64 │
 ├─────┼──────────────┼─────────┤
@@ -94,11 +94,11 @@ plot(results, x = :σ, Geom.density, Guide.xlabel("Parametric bootstrap estimate
 ````
 
 
-![Density of parametric bootstrap estimates of σ from model m1](./assets//bootstrap_6_1.svg)
+![Density of parametric bootstrap estimates of σ from model m1](./assets/bootstrap_6_1.svg)
 
-![Density of parametric bootstrap estimates of σ₁ from model m1](./assets//bootstrap_7_1.svg)
+![Density of parametric bootstrap estimates of σ₁ from model m1](./assets/bootstrap_7_1.svg)
 
-![Histogram of parametric bootstrap estimates of σ₁ from model m1](./assets//bootstrap_8_1.svg)
+![Histogram of parametric bootstrap estimates of σ₁ from model m1](./assets/bootstrap_8_1.svg)
 
 
 

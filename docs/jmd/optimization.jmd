@@ -190,10 +190,10 @@ Note that the first `ScalarFactorReTerm` in `fm4.trms` corresponds to grouping f
 
 ### Progress of the optimization
 
-An optional `Bool` argument of `true` in the call to `fit!` of a `LinearMixedModel` causes printing of the objective and the $\theta$ parameter at each evaluation during the optimization.
+An optional named argument, `verbose=true`, in the call to `fit!` of a `LinearMixedModel` causes printing of the objective and the $\theta$ parameter at each evaluation during the optimization.
 ```{julia;term=true}
-fit!(LinearMixedModel(@formula(Y ~ 1 + (1|G)), dat[:Dyestuff]), true);
-fit!(LinearMixedModel(@formula(Y ~ 1 + U + (1+U|G)), dat[:sleepstudy]), true);
+fit!(LinearMixedModel(@formula(Y ~ 1 + (1|G)), dat[:Dyestuff]), verbose=true);
+fit!(LinearMixedModel(@formula(Y ~ 1 + U + (1+U|G)), dat[:sleepstudy]), verbose=true);
 ``` 
 
 A shorter summary of the optimization process is always available as an

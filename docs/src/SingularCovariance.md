@@ -34,7 +34,7 @@ As is customary (though not required) in Julia, a function whose name ends in `!
 An optional second argument of `true` in the call to `fit!` produces verbose output from the optimization.
 
 ````julia
-julia> sleepm = fit!(LinearMixedModel(@formula(Y ~ 1 + U + (1+U|G)), dat[:sleepstudy]), true)
+julia> sleepm = fit!(LinearMixedModel(@formula(Y ~ 1 + U + (1+U|G)), dat[:sleepstudy]), verbose=true)
 f_1: 1784.6423 [1.0, 0.0, 1.0]
 f_2: 1790.12564 [1.75, 0.0, 1.0]
 f_3: 1798.99962 [1.0, 1.0, 1.0]
@@ -121,7 +121,7 @@ The corresponding parameter vector is called $\theta$.
 
 ````julia
 julia> Λ = sleepm.λ[1]
-2×2 LowerTriangular{Float64,Array{Float64,2}}:
+2×2 LinearAlgebra.LowerTriangular{Float64,Array{Float64,2}}:
  0.929221    ⋅      
  0.0181684  0.222645
 
@@ -339,18 +339,18 @@ Here the covariance matrix estimate is non-singular in 9,686 of the 10,000 sampl
 
 Empirical densities of the θ components are:
 
-![](./assets//SingularCovariance_14_1.svg)
+![](./assets/SingularCovariance_14_1.svg)
 
-![](./assets//SingularCovariance_15_1.svg)
+![](./assets/SingularCovariance_15_1.svg)
 
 
 
 A density plot is typically a good way to visualize such a large sample.
 However, when there is a spike such as the spike at zero here, a histogram provides a more informative plot.
 
-![](./assets//SingularCovariance_16_1.svg)
+![](./assets/SingularCovariance_16_1.svg)
 
-![](./assets//SingularCovariance_17_1.svg)
+![](./assets/SingularCovariance_17_1.svg)
 
 
 
@@ -385,7 +385,7 @@ rc = recipcond(sleepmbstrp)
 
 
 
-![](./assets//SingularCovariance_19_1.svg)
+![](./assets/SingularCovariance_19_1.svg)
 
 
 
@@ -403,7 +403,7 @@ julia> sum(issmall, rc)
 
 The density of the estimated correlation
 
-![](./assets//SingularCovariance_21_1.svg)
+![](./assets/SingularCovariance_21_1.svg)
 
 ````julia
 julia> sum(isfinite, sleepmbstrp[:ρ₁])  # recall that ρ = NaN in 7 cases
@@ -460,7 +460,8 @@ julia> R"""
 library(nlme)
 plot(Oxboys)
 """
-RCall.RObject{RCall.VecSxp}
+RCall.RObject{RCall.NilSxp}
+NULL
 
 
 ````
@@ -484,16 +485,16 @@ Linear mixed model fit by maximum likelihood
  -362.98384  725.96769  737.96769  758.69962
 
 Variance components:
-              Column    Variance   Std.Dev.   Corr.
- Subject  (Intercept)  62.7908550 7.9240681
-          age           2.7117290 1.6467328  0.64
- Residual               0.4354519 0.6598878
+              Column    Variance   Std.Dev.    Corr.
+ Subject  (Intercept)  62.7888388 7.92394087
+          age           2.7115491 1.64667821  0.64
+ Residual               0.4354569 0.65989157
  Number of obs: 234; levels of grouping factors: 26
 
   Fixed-effects parameters:
              Estimate Std.Error z value P(>|z|)
-(Intercept)   149.372   1.55464 96.0814  <1e-99
-age           6.52547  0.329771 19.7879  <1e-86
+(Intercept)   149.372   1.55461  96.083  <1e-99
+age           6.52547   0.32976 19.7885  <1e-86
 
 
 ````
@@ -502,7 +503,7 @@ age           6.52547  0.329771 19.7879  <1e-86
 
 ````julia
 julia> show(getθ(oxboysm))
-[12.0082, 1.60163, 1.91368]
+[12.0079, 1.60155, 1.91362]
 ````
 
 
@@ -540,11 +541,11 @@ false       │ 10000
 
 The empirical density of the correlation estimates shows that even in this case the correlation is not precisely estimated.
 
-![](./assets//SingularCovariance_32_1.svg)
+![](./assets/SingularCovariance_32_1.svg)
 
 ````julia
 julia> extrema(oxboysmbtstrp[:ρ₁])
-(-0.04873653774573543, 0.9352883543004398)
+(0.033603332880225045, 0.9352626530655941)
 
 ````
 
@@ -558,7 +559,7 @@ The reciprocal condition number
 julia> rc = recipcond(oxboysmbtstrp);
 
 julia> extrema(rc)
-(0.06152561361812922, 0.3686773336861937)
+(0.06198656881812736, 0.36249490895418984)
 
 ````
 
@@ -568,7 +569,7 @@ julia> extrema(rc)
 
 does not get very close to zero.
 
-![](./assets//SingularCovariance_35_1.svg)
+![](./assets/SingularCovariance_35_1.svg)
 
 
 
@@ -614,8 +615,8 @@ age          0.479545 0.0631327 7.59583  <1e-13
 
 
 ````julia
-julia> srand(1234123)
-Error: UndefVarError: srand not defined
+julia> Random.seed!(1234123)
+MersenneTwister(UInt32[0x0012d4cb], Random.DSFMT.DSFMT_state(Int32[1849428804, 1072710534, 1722234079, 1073299110, 2058053067, 1072801015, 18044541, 1072957251, 668716466, 1073001711  …  -1153221639, 1073553062, 1653158638, 1073411494, 780501209, -2117144994, -394908522, -1446490633, 382, 0]), [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0  …  0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], UInt128[0x00000000000000000000000000000000, 0x00000000000000000000000000000000, 0x00000000000000000000000000000000, 0x00000000000000000000000000000000, 0x00000000000000000000000000000000, 0x00000000000000000000000000000000, 0x00000000000000000000000000000000, 0x00000000000000000000000000000000, 0x00000000000000000000000000000000, 0x00000000000000000000000000000000  …  0x00000000000000000000000000000000, 0x00000000000000000000000000000000, 0x00000000000000000000000000000000, 0x00000000000000000000000000000000, 0x00000000000000000000000000000000, 0x00000000000000000000000000000000, 0x00000000000000000000000000000000, 0x00000000000000000000000000000000, 0x00000000000000000000000000000000, 0x00000000000000000000000000000000], 1002, 0)
 
 julia> orthfmbtstrp = bootstrap(10000, orthfm);
 
@@ -628,8 +629,8 @@ julia> freqtable(issmall.(orthfmbtstrp[:θ₁]), issmall.(orthfmbtstrp[:θ₃]))
 2×2 Named Array{Int64,2}
 Dim1 ╲ Dim2 │ false   true
 ────────────┼─────────────
-false       │  6910   3064
-true        │    26      0
+false       │  6784   3184
+true        │    32      0
 
 ````
 
@@ -640,7 +641,7 @@ true        │    26      0
 For this model almost 1/3 of the bootstrap samples converge to singular covariance estimates for the vector-valued random effects.
 A histogram of the estimated correlations of the random effects is dominated by the boundary values.
 
-![](./assets//SingularCovariance_40_1.svg)
+![](./assets/SingularCovariance_40_1.svg)
 
 
 
@@ -740,4 +741,4 @@ julia> getθ(earlym)
 
 The conditional (on the observed responses) means of the random effects fall along a line.
 
-![](./assets//SingularCovariance_46_1.svg)
+![](./assets/SingularCovariance_46_1.svg)

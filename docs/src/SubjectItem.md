@@ -78,7 +78,7 @@ Return code:              FTOL_REACHED
 
 ````julia
 julia> mm1.trms[1].Λ
-8×8 LowerTriangular{Float64,Array{Float64,2}}:
+8×8 LinearAlgebra.LowerTriangular{Float64,Array{Float64,2}}:
   0.476645     ⋅           ⋅          …    ⋅            ⋅           ⋅ 
  -0.0494739   0.102591     ⋅               ⋅            ⋅           ⋅ 
  -0.0557462  -0.0171748   0.102346         ⋅            ⋅           ⋅ 
@@ -94,7 +94,7 @@ julia> mm1.trms[1].Λ
 
 ````julia
 julia> mm1.trms[2].Λ
-8×8 LowerTriangular{Float64,Array{Float64,2}}:
+8×8 LinearAlgebra.LowerTriangular{Float64,Array{Float64,2}}:
   0.570443      ⋅            ⋅          …    ⋅            ⋅           ⋅ 
  -0.023398     0.0640016     ⋅               ⋅            ⋅           ⋅ 
  -0.267225    -0.287873     0.0442821        ⋅            ⋅           ⋅ 

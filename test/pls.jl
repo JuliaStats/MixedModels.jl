@@ -61,6 +61,10 @@ end
     vc = VarCorr(fm1)
     show(IOBuffer(), vc)
     @test vc.s == sdest(fm1)
+
+    fit!(fm1, REML=true)
+    @test isapprox(objective(fm1), 319.65427684225216, atol=0.0001)
+    print(IOBuffer(), fm1)
 end
 
 @testset "Dyestuff2" begin

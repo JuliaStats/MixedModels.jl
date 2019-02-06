@@ -25,7 +25,7 @@ As is customary (though not required) in Julia, a function whose name ends in `!
 An optional second argument of `true` in the call to `fit!` produces verbose output from the optimization.
 
 ```{julia;term=true}
-sleepm = fit!(LinearMixedModel(@formula(Y ~ 1 + U + (1+U|G)), dat[:sleepstudy]), true)
+sleepm = fit!(LinearMixedModel(@formula(Y ~ 1 + U + (1+U|G)), dat[:sleepstudy]), verbose=true)
 ```
 
 The variables in the optimization are the elements of a lower triangular matrix, $\Lambda$, which is the relative covariance factor of the random effects.
@@ -332,7 +332,7 @@ orthfm = fit!(LinearMixedModel(@formula(distance ~ 1 + age + (1 + age | Subject)
 ```
 
 ```{julia;term=true}
-srand(1234123)
+Random.seed!(1234123)
 orthfmbtstrp = bootstrap(10000, orthfm);
 ```
 
