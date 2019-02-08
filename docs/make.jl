@@ -1,7 +1,6 @@
 using Documenter, MixedModels, StatsBase
 
 makedocs(
-    format = Documenter.HTML(),
     sitename = "MixedModels",
     pages = ["index.md",
              "constructors.md",
