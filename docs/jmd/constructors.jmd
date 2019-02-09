@@ -28,14 +28,19 @@ Categorical covariates not suitable as grouping factors are named starting with 
 The formula language in *Julia* is similar to that in *R* except that the formula must be enclosed in a call to the `@formula` macro.
 A basic model with simple, scalar random effects for the levels of `G` (the batch of an intermediate product, in this case) is declared and fit as
 ```{julia;term=true}
-fm1 = fit(LinearMixedModel, @formula(Y ~ 1 + (1|G)), dat[:Dyestuff])
+fm1 = fit!(LinearMixedModel(@formula(Y ~ 1 + (1|G)), dat[:Dyestuff]))
 ```
 
 (If you are new to Julia you may find that this first fit takes an unexpectedly long time, due to Just-In-Time (JIT) compilation of the code.
 The second and subsequent calls to such functions are much faster.)
 
 ```{julia;term=true}
-@time fit(LinearMixedModel, @formula(Y ~ 1 + (1|G)), dat[:Dyestuff2]);
+@time fit!(LinearMixedModel(@formula(Y ~ 1 + (1|G)), dat[:Dyestuff2]));
+```
+
+By default, the model fit is by maximum likelihood.  To use the `REML` criterion instead, add the optional named argument `REML = true` to the call to `fit!`
+```{julia;term=true}
+fm1R = fit!(LinearMixedModel(@formula(Y ~ 1 + (1|G)), dat[:Dyestuff]), REML=true)
 ```
 
 ### Simple, scalar random effects

@@ -9,15 +9,20 @@
      stroke-width="0.3"
      font-size="3.88"
 >
-<g class="plotroot xscalable" id="img-329a83a4-1">
-  <g font-size="3.88" font-family="'PT Sans','Helvetica Neue','Helvetica',sans-serif" fill="#564A55" stroke="#000000" stroke-opacity="0.000" id="img-329a83a4-2">
+<defs>
+  <marker id="arrow" markerWidth="15" markerHeight="7" refX="5" refY="3.5" orient="auto" markerUnits="strokeWidth">
+    <path d="M0,0 L15,3.5 L0,7 z" stroke="context-stroke" fill="context-stroke"/>
+  </marker>
+</defs>
+<g class="plotroot xscalable" id="img-c514b0de-1">
+  <g font-size="3.88" font-family="'PT Sans','Helvetica Neue','Helvetica',sans-serif" fill="#564A55" stroke="#000000" stroke-opacity="0.000" id="img-c514b0de-2">
     <g transform="translate(76.53,88.39)">
       <g class="primitive">
         <text text-anchor="middle" dy="0.6em">Yield of dyestuff (g)</text>
       </g>
     </g>
   </g>
-  <g class="guide xlabels" font-size="2.82" font-family="'PT Sans Caption','Helvetica Neue','Helvetica',sans-serif" fill="#6C606B" id="img-329a83a4-3">
+  <g class="guide xlabels" font-size="2.82" font-family="'PT Sans Caption','Helvetica Neue','Helvetica',sans-serif" fill="#6C606B" id="img-c514b0de-3">
     <g transform="translate(18.63,81.72)">
       <g class="primitive">
         <text text-anchor="middle" dy="0.6em">1400</text>
@@ -49,263 +54,263 @@
       </g>
     </g>
   </g>
-  <g clip-path="url(#img-329a83a4-4)">
-    <g id="img-329a83a4-5">
-      <g pointer-events="visible" opacity="0" fill="#000000" fill-opacity="0.000" stroke="#000000" stroke-opacity="0.000" class="guide background" id="img-329a83a4-6">
-        <g transform="translate(76.53,42.86)">
+  <g clip-path="url(#img-c514b0de-4)">
+    <g id="img-c514b0de-5">
+      <g pointer-events="visible" fill="#000000" fill-opacity="0.000" stroke="#000000" stroke-opacity="0.000" class="guide background" id="img-c514b0de-6">
+        <g transform="translate(76.53,42.86)" id="img-c514b0de-7">
           <path d="M-59.89,-37.86 L 59.89 -37.86 59.89 37.86 -59.89 37.86 z" class="primitive"/>
         </g>
       </g>
-      <g class="guide ygridlines xfixed" stroke-dasharray="0.5,0.5" stroke-width="0.2" stroke="#D0D0E0" id="img-329a83a4-7">
-        <g transform="translate(76.53,68.1)">
+      <g class="guide ygridlines xfixed" stroke-dasharray="0.5,0.5" stroke-width="0.2" stroke="#D0D0E0" id="img-c514b0de-8">
+        <g transform="translate(76.53,68.1)" id="img-c514b0de-9">
           <path fill="none" d="M-59.89,0 L 59.89 0" class="primitive"/>
         </g>
-        <g transform="translate(76.53,55.48)">
+        <g transform="translate(76.53,55.48)" id="img-c514b0de-10">
           <path fill="none" d="M-59.89,0 L 59.89 0" class="primitive"/>
         </g>
-        <g transform="translate(76.53,42.86)">
+        <g transform="translate(76.53,42.86)" id="img-c514b0de-11">
           <path fill="none" d="M-59.89,0 L 59.89 0" class="primitive"/>
         </g>
-        <g transform="translate(76.53,30.24)">
+        <g transform="translate(76.53,30.24)" id="img-c514b0de-12">
           <path fill="none" d="M-59.89,0 L 59.89 0" class="primitive"/>
         </g>
-        <g transform="translate(76.53,17.62)">
+        <g transform="translate(76.53,17.62)" id="img-c514b0de-13">
           <path fill="none" d="M-59.89,0 L 59.89 0" class="primitive"/>
         </g>
       </g>
-      <g class="guide xgridlines yfixed" stroke-dasharray="0.5,0.5" stroke-width="0.2" stroke="#D0D0E0" id="img-329a83a4-8">
-        <g transform="translate(18.63,42.86)">
+      <g class="guide xgridlines yfixed" stroke-dasharray="0.5,0.5" stroke-width="0.2" stroke="#D0D0E0" id="img-c514b0de-14">
+        <g transform="translate(18.63,42.86)" id="img-c514b0de-15">
           <path fill="none" d="M0,-37.86 L 0 37.86" class="primitive"/>
         </g>
-        <g transform="translate(41.79,42.86)">
+        <g transform="translate(41.79,42.86)" id="img-c514b0de-16">
           <path fill="none" d="M0,-37.86 L 0 37.86" class="primitive"/>
         </g>
-        <g transform="translate(64.95,42.86)">
+        <g transform="translate(64.95,42.86)" id="img-c514b0de-17">
           <path fill="none" d="M0,-37.86 L 0 37.86" class="primitive"/>
         </g>
-        <g transform="translate(88.11,42.86)">
+        <g transform="translate(88.11,42.86)" id="img-c514b0de-18">
           <path fill="none" d="M0,-37.86 L 0 37.86" class="primitive"/>
         </g>
-        <g transform="translate(111.26,42.86)">
+        <g transform="translate(111.26,42.86)" id="img-c514b0de-19">
           <path fill="none" d="M0,-37.86 L 0 37.86" class="primitive"/>
         </g>
-        <g transform="translate(134.42,42.86)">
+        <g transform="translate(134.42,42.86)" id="img-c514b0de-20">
           <path fill="none" d="M0,-37.86 L 0 37.86" class="primitive"/>
         </g>
       </g>
-      <g class="plotpanel" id="img-329a83a4-9">
+      <g class="plotpanel" id="img-c514b0de-21">
         <metadata>
           <boundingbox value="16.63166666666666mm 5.0mm 119.78968957064285mm 75.715mm"/>
           <unitbox value="1395.6818262329398 6.5 258.6363475341205 -6.0"/>
         </metadata>
-        <g class="geometry" id="img-329a83a4-10">
-          <g stroke-width="0.3" id="img-329a83a4-11">
-            <g class="color_RGBA{Float32}(0.0f0,0.74736935f0,1.0f0,1.0f0)" stroke="#FFFFFF" fill="#00BFFF" id="img-329a83a4-12">
-              <g class="marker" id="img-329a83a4-13">
-                <g transform="translate(39.47,11.31)">
+        <g class="geometry" id="img-c514b0de-22">
+          <g stroke-width="0.3" id="img-c514b0de-23">
+            <g class="color_RGBA{Float32}(0.0f0,0.74736935f0,1.0f0,1.0f0)" stroke="#FFFFFF" fill="#00BFFF" id="img-c514b0de-24">
+              <g class="marker" id="img-c514b0de-25">
+                <g transform="translate(39.47,11.31)" id="img-c514b0de-26">
                   <circle cx="0" cy="0" r="0.9" class="primitive"/>
                 </g>
               </g>
             </g>
-            <g class="color_RGBA{Float32}(0.0f0,0.74736935f0,1.0f0,1.0f0)" stroke="#FFFFFF" fill="#00BFFF" id="img-329a83a4-14">
-              <g class="marker" id="img-329a83a4-15">
-                <g transform="translate(55.68,11.31)">
+            <g class="color_RGBA{Float32}(0.0f0,0.74736935f0,1.0f0,1.0f0)" stroke="#FFFFFF" fill="#00BFFF" id="img-c514b0de-27">
+              <g class="marker" id="img-c514b0de-28">
+                <g transform="translate(55.68,11.31)" id="img-c514b0de-29">
                   <circle cx="0" cy="0" r="0.9" class="primitive"/>
                 </g>
               </g>
             </g>
-            <g class="color_RGBA{Float32}(0.0f0,0.74736935f0,1.0f0,1.0f0)" stroke="#FFFFFF" fill="#00BFFF" id="img-329a83a4-16">
-              <g class="marker" id="img-329a83a4-17">
-                <g transform="translate(41.79,11.31)">
+            <g class="color_RGBA{Float32}(0.0f0,0.74736935f0,1.0f0,1.0f0)" stroke="#FFFFFF" fill="#00BFFF" id="img-c514b0de-30">
+              <g class="marker" id="img-c514b0de-31">
+                <g transform="translate(41.79,11.31)" id="img-c514b0de-32">
                   <circle cx="0" cy="0" r="0.9" class="primitive"/>
                 </g>
               </g>
             </g>
-            <g class="color_RGBA{Float32}(0.0f0,0.74736935f0,1.0f0,1.0f0)" stroke="#FFFFFF" fill="#00BFFF" id="img-329a83a4-18">
-              <g class="marker" id="img-329a83a4-19">
-                <g transform="translate(44.11,11.31)">
+            <g class="color_RGBA{Float32}(0.0f0,0.74736935f0,1.0f0,1.0f0)" stroke="#FFFFFF" fill="#00BFFF" id="img-c514b0de-33">
+              <g class="marker" id="img-c514b0de-34">
+                <g transform="translate(44.11,11.31)" id="img-c514b0de-35">
                   <circle cx="0" cy="0" r="0.9" class="primitive"/>
                 </g>
               </g>
             </g>
-            <g class="color_RGBA{Float32}(0.0f0,0.74736935f0,1.0f0,1.0f0)" stroke="#FFFFFF" fill="#00BFFF" id="img-329a83a4-20">
-              <g class="marker" id="img-329a83a4-21">
-                <g transform="translate(74.21,11.31)">
+            <g class="color_RGBA{Float32}(0.0f0,0.74736935f0,1.0f0,1.0f0)" stroke="#FFFFFF" fill="#00BFFF" id="img-c514b0de-36">
+              <g class="marker" id="img-c514b0de-37">
+                <g transform="translate(74.21,11.31)" id="img-c514b0de-38">
                   <circle cx="0" cy="0" r="0.9" class="primitive"/>
                 </g>
               </g>
             </g>
-            <g class="color_RGBA{Float32}(0.0f0,0.74736935f0,1.0f0,1.0f0)" stroke="#FFFFFF" fill="#00BFFF" id="img-329a83a4-22">
-              <g class="marker" id="img-329a83a4-23">
-                <g transform="translate(122.84,23.93)">
+            <g class="color_RGBA{Float32}(0.0f0,0.74736935f0,1.0f0,1.0f0)" stroke="#FFFFFF" fill="#00BFFF" id="img-c514b0de-39">
+              <g class="marker" id="img-c514b0de-40">
+                <g transform="translate(122.84,23.93)" id="img-c514b0de-41">
                   <circle cx="0" cy="0" r="0.9" class="primitive"/>
                 </g>
               </g>
             </g>
-            <g class="color_RGBA{Float32}(0.0f0,0.74736935f0,1.0f0,1.0f0)" stroke="#FFFFFF" fill="#00BFFF" id="img-329a83a4-24">
-              <g class="marker" id="img-329a83a4-25">
-                <g transform="translate(127.47,23.93)">
+            <g class="color_RGBA{Float32}(0.0f0,0.74736935f0,1.0f0,1.0f0)" stroke="#FFFFFF" fill="#00BFFF" id="img-c514b0de-42">
+              <g class="marker" id="img-c514b0de-43">
+                <g transform="translate(127.47,23.93)" id="img-c514b0de-44">
                   <circle cx="0" cy="0" r="0.9" class="primitive"/>
                 </g>
               </g>
             </g>
-            <g class="color_RGBA{Float32}(0.0f0,0.74736935f0,1.0f0,1.0f0)" stroke="#FFFFFF" fill="#00BFFF" id="img-329a83a4-26">
-              <g class="marker" id="img-329a83a4-27">
-                <g transform="translate(71.89,23.93)">
+            <g class="color_RGBA{Float32}(0.0f0,0.74736935f0,1.0f0,1.0f0)" stroke="#FFFFFF" fill="#00BFFF" id="img-c514b0de-45">
+              <g class="marker" id="img-c514b0de-46">
+                <g transform="translate(71.89,23.93)" id="img-c514b0de-47">
                   <circle cx="0" cy="0" r="0.9" class="primitive"/>
                 </g>
               </g>
             </g>
-            <g class="color_RGBA{Float32}(0.0f0,0.74736935f0,1.0f0,1.0f0)" stroke="#FFFFFF" fill="#00BFFF" id="img-329a83a4-28">
-              <g class="marker" id="img-329a83a4-29">
-                <g transform="translate(125.16,23.93)">
+            <g class="color_RGBA{Float32}(0.0f0,0.74736935f0,1.0f0,1.0f0)" stroke="#FFFFFF" fill="#00BFFF" id="img-c514b0de-48">
+              <g class="marker" id="img-c514b0de-49">
+                <g transform="translate(125.16,23.93)" id="img-c514b0de-50">
                   <circle cx="0" cy="0" r="0.9" class="primitive"/>
                 </g>
               </g>
             </g>
-            <g class="color_RGBA{Float32}(0.0f0,0.74736935f0,1.0f0,1.0f0)" stroke="#FFFFFF" fill="#00BFFF" id="img-329a83a4-30">
-              <g class="marker" id="img-329a83a4-31">
-                <g transform="translate(108.95,23.93)">
+            <g class="color_RGBA{Float32}(0.0f0,0.74736935f0,1.0f0,1.0f0)" stroke="#FFFFFF" fill="#00BFFF" id="img-c514b0de-51">
+              <g class="marker" id="img-c514b0de-52">
+                <g transform="translate(108.95,23.93)" id="img-c514b0de-53">
                   <circle cx="0" cy="0" r="0.9" class="primitive"/>
                 </g>
               </g>
             </g>
-            <g class="color_RGBA{Float32}(0.0f0,0.74736935f0,1.0f0,1.0f0)" stroke="#FFFFFF" fill="#00BFFF" id="img-329a83a4-32">
-              <g class="marker" id="img-329a83a4-33">
-                <g transform="translate(85.79,36.55)">
+            <g class="color_RGBA{Float32}(0.0f0,0.74736935f0,1.0f0,1.0f0)" stroke="#FFFFFF" fill="#00BFFF" id="img-c514b0de-54">
+              <g class="marker" id="img-c514b0de-55">
+                <g transform="translate(85.79,36.55)" id="img-c514b0de-56">
                   <circle cx="0" cy="0" r="0.9" class="primitive"/>
                 </g>
               </g>
             </g>
-            <g class="color_RGBA{Float32}(0.0f0,0.74736935f0,1.0f0,1.0f0)" stroke="#FFFFFF" fill="#00BFFF" id="img-329a83a4-34">
-              <g class="marker" id="img-329a83a4-35">
-                <g transform="translate(48.74,36.55)">
+            <g class="color_RGBA{Float32}(0.0f0,0.74736935f0,1.0f0,1.0f0)" stroke="#FFFFFF" fill="#00BFFF" id="img-c514b0de-57">
+              <g class="marker" id="img-c514b0de-58">
+                <g transform="translate(48.74,36.55)" id="img-c514b0de-59">
                   <circle cx="0" cy="0" r="0.9" class="primitive"/>
                 </g>
               </g>
             </g>
-            <g class="color_RGBA{Float32}(0.0f0,0.74736935f0,1.0f0,1.0f0)" stroke="#FFFFFF" fill="#00BFFF" id="img-329a83a4-36">
-              <g class="marker" id="img-329a83a4-37">
-                <g transform="translate(108.95,36.55)">
+            <g class="color_RGBA{Float32}(0.0f0,0.74736935f0,1.0f0,1.0f0)" stroke="#FFFFFF" fill="#00BFFF" id="img-c514b0de-60">
+              <g class="marker" id="img-c514b0de-61">
+                <g transform="translate(108.95,36.55)" id="img-c514b0de-62">
                   <circle cx="0" cy="0" r="0.9" class="primitive"/>
                 </g>
               </g>
             </g>
-            <g class="color_RGBA{Float32}(0.0f0,0.74736935f0,1.0f0,1.0f0)" stroke="#FFFFFF" fill="#00BFFF" id="img-329a83a4-38">
-              <g class="marker" id="img-329a83a4-39">
-                <g transform="translate(37.16,36.55)">
+            <g class="color_RGBA{Float32}(0.0f0,0.74736935f0,1.0f0,1.0f0)" stroke="#FFFFFF" fill="#00BFFF" id="img-c514b0de-63">
+              <g class="marker" id="img-c514b0de-64">
+                <g transform="translate(37.16,36.55)" id="img-c514b0de-65">
                   <circle cx="0" cy="0" r="0.9" class="primitive"/>
                 </g>
               </g>
             </g>
-            <g class="color_RGBA{Float32}(0.0f0,0.74736935f0,1.0f0,1.0f0)" stroke="#FFFFFF" fill="#00BFFF" id="img-329a83a4-40">
-              <g class="marker" id="img-329a83a4-41">
-                <g transform="translate(39.47,36.55)">
+            <g class="color_RGBA{Float32}(0.0f0,0.74736935f0,1.0f0,1.0f0)" stroke="#FFFFFF" fill="#00BFFF" id="img-c514b0de-66">
+              <g class="marker" id="img-c514b0de-67">
+                <g transform="translate(39.47,36.55)" id="img-c514b0de-68">
                   <circle cx="0" cy="0" r="0.9" class="primitive"/>
                 </g>
               </g>
             </g>
-            <g class="color_RGBA{Float32}(0.0f0,0.74736935f0,1.0f0,1.0f0)" stroke="#FFFFFF" fill="#00BFFF" id="img-329a83a4-42">
-              <g class="marker" id="img-329a83a4-43">
-                <g transform="translate(92.74,49.17)">
+            <g class="color_RGBA{Float32}(0.0f0,0.74736935f0,1.0f0,1.0f0)" stroke="#FFFFFF" fill="#00BFFF" id="img-c514b0de-69">
+              <g class="marker" id="img-c514b0de-70">
+                <g transform="translate(92.74,49.17)" id="img-c514b0de-71">
                   <circle cx="0" cy="0" r="0.9" class="primitive"/>
                 </g>
               </g>
             </g>
-            <g class="color_RGBA{Float32}(0.0f0,0.74736935f0,1.0f0,1.0f0)" stroke="#FFFFFF" fill="#00BFFF" id="img-329a83a4-44">
-              <g class="marker" id="img-329a83a4-45">
-                <g transform="translate(69.58,49.17)">
+            <g class="color_RGBA{Float32}(0.0f0,0.74736935f0,1.0f0,1.0f0)" stroke="#FFFFFF" fill="#00BFFF" id="img-c514b0de-72">
+              <g class="marker" id="img-c514b0de-73">
+                <g transform="translate(69.58,49.17)" id="img-c514b0de-74">
                   <circle cx="0" cy="0" r="0.9" class="primitive"/>
                 </g>
               </g>
             </g>
-            <g class="color_RGBA{Float32}(0.0f0,0.74736935f0,1.0f0,1.0f0)" stroke="#FFFFFF" fill="#00BFFF" id="img-329a83a4-46">
-              <g class="marker" id="img-329a83a4-47">
-                <g transform="translate(113.58,49.17)">
+            <g class="color_RGBA{Float32}(0.0f0,0.74736935f0,1.0f0,1.0f0)" stroke="#FFFFFF" fill="#00BFFF" id="img-c514b0de-75">
+              <g class="marker" id="img-c514b0de-76">
+                <g transform="translate(113.58,49.17)" id="img-c514b0de-77">
                   <circle cx="0" cy="0" r="0.9" class="primitive"/>
                 </g>
               </g>
             </g>
-            <g class="color_RGBA{Float32}(0.0f0,0.74736935f0,1.0f0,1.0f0)" stroke="#FFFFFF" fill="#00BFFF" id="img-329a83a4-48">
-              <g class="marker" id="img-329a83a4-49">
-                <g transform="translate(88.11,49.17)">
+            <g class="color_RGBA{Float32}(0.0f0,0.74736935f0,1.0f0,1.0f0)" stroke="#FFFFFF" fill="#00BFFF" id="img-c514b0de-78">
+              <g class="marker" id="img-c514b0de-79">
+                <g transform="translate(88.11,49.17)" id="img-c514b0de-80">
                   <circle cx="0" cy="0" r="0.9" class="primitive"/>
                 </g>
               </g>
             </g>
-            <g class="color_RGBA{Float32}(0.0f0,0.74736935f0,1.0f0,1.0f0)" stroke="#FFFFFF" fill="#00BFFF" id="img-329a83a4-50">
-              <g class="marker" id="img-329a83a4-51">
-                <g transform="translate(108.95,49.17)">
+            <g class="color_RGBA{Float32}(0.0f0,0.74736935f0,1.0f0,1.0f0)" stroke="#FFFFFF" fill="#00BFFF" id="img-c514b0de-81">
+              <g class="marker" id="img-c514b0de-82">
+                <g transform="translate(108.95,49.17)" id="img-c514b0de-83">
                   <circle cx="0" cy="0" r="0.9" class="primitive"/>
                 </g>
               </g>
             </g>
-            <g class="color_RGBA{Float32}(0.0f0,0.74736935f0,1.0f0,1.0f0)" stroke="#FFFFFF" fill="#00BFFF" id="img-329a83a4-52">
-              <g class="marker" id="img-329a83a4-53">
-                <g transform="translate(62.63,61.79)">
+            <g class="color_RGBA{Float32}(0.0f0,0.74736935f0,1.0f0,1.0f0)" stroke="#FFFFFF" fill="#00BFFF" id="img-c514b0de-84">
+              <g class="marker" id="img-c514b0de-85">
+                <g transform="translate(62.63,61.79)" id="img-c514b0de-86">
                   <circle cx="0" cy="0" r="0.9" class="primitive"/>
                 </g>
               </g>
             </g>
-            <g class="color_RGBA{Float32}(0.0f0,0.74736935f0,1.0f0,1.0f0)" stroke="#FFFFFF" fill="#00BFFF" id="img-329a83a4-54">
-              <g class="marker" id="img-329a83a4-55">
-                <g transform="translate(92.74,61.79)">
+            <g class="color_RGBA{Float32}(0.0f0,0.74736935f0,1.0f0,1.0f0)" stroke="#FFFFFF" fill="#00BFFF" id="img-c514b0de-87">
+              <g class="marker" id="img-c514b0de-88">
+                <g transform="translate(92.74,61.79)" id="img-c514b0de-89">
                   <circle cx="0" cy="0" r="0.9" class="primitive"/>
                 </g>
               </g>
             </g>
-            <g class="color_RGBA{Float32}(0.0f0,0.74736935f0,1.0f0,1.0f0)" stroke="#FFFFFF" fill="#00BFFF" id="img-329a83a4-56">
-              <g class="marker" id="img-329a83a4-57">
-                <g transform="translate(60.32,61.79)">
+            <g class="color_RGBA{Float32}(0.0f0,0.74736935f0,1.0f0,1.0f0)" stroke="#FFFFFF" fill="#00BFFF" id="img-c514b0de-90">
+              <g class="marker" id="img-c514b0de-91">
+                <g transform="translate(60.32,61.79)" id="img-c514b0de-92">
                   <circle cx="0" cy="0" r="0.9" class="primitive"/>
                 </g>
               </g>
             </g>
-            <g class="color_RGBA{Float32}(0.0f0,0.74736935f0,1.0f0,1.0f0)" stroke="#FFFFFF" fill="#00BFFF" id="img-329a83a4-58">
-              <g class="marker" id="img-329a83a4-59">
-                <g transform="translate(90.42,61.79)">
+            <g class="color_RGBA{Float32}(0.0f0,0.74736935f0,1.0f0,1.0f0)" stroke="#FFFFFF" fill="#00BFFF" id="img-c514b0de-93">
+              <g class="marker" id="img-c514b0de-94">
+                <g transform="translate(90.42,61.79)" id="img-c514b0de-95">
                   <circle cx="0" cy="0" r="0.9" class="primitive"/>
                 </g>
               </g>
             </g>
-            <g class="color_RGBA{Float32}(0.0f0,0.74736935f0,1.0f0,1.0f0)" stroke="#FFFFFF" fill="#00BFFF" id="img-329a83a4-60">
-              <g class="marker" id="img-329a83a4-61">
-                <g transform="translate(83.47,61.79)">
+            <g class="color_RGBA{Float32}(0.0f0,0.74736935f0,1.0f0,1.0f0)" stroke="#FFFFFF" fill="#00BFFF" id="img-c514b0de-96">
+              <g class="marker" id="img-c514b0de-97">
+                <g transform="translate(83.47,61.79)" id="img-c514b0de-98">
                   <circle cx="0" cy="0" r="0.9" class="primitive"/>
                 </g>
               </g>
             </g>
-            <g class="color_RGBA{Float32}(0.0f0,0.74736935f0,1.0f0,1.0f0)" stroke="#FFFFFF" fill="#00BFFF" id="img-329a83a4-62">
-              <g class="marker" id="img-329a83a4-63">
-                <g transform="translate(102,74.41)">
+            <g class="color_RGBA{Float32}(0.0f0,0.74736935f0,1.0f0,1.0f0)" stroke="#FFFFFF" fill="#00BFFF" id="img-c514b0de-99">
+              <g class="marker" id="img-c514b0de-100">
+                <g transform="translate(102,74.41)" id="img-c514b0de-101">
                   <circle cx="0" cy="0" r="0.9" class="primitive"/>
                 </g>
               </g>
             </g>
-            <g class="color_RGBA{Float32}(0.0f0,0.74736935f0,1.0f0,1.0f0)" stroke="#FFFFFF" fill="#00BFFF" id="img-329a83a4-64">
-              <g class="marker" id="img-329a83a4-65">
-                <g transform="translate(74.21,74.41)">
+            <g class="color_RGBA{Float32}(0.0f0,0.74736935f0,1.0f0,1.0f0)" stroke="#FFFFFF" fill="#00BFFF" id="img-c514b0de-102">
+              <g class="marker" id="img-c514b0de-103">
+                <g transform="translate(74.21,74.41)" id="img-c514b0de-104">
                   <circle cx="0" cy="0" r="0.9" class="primitive"/>
                 </g>
               </g>
             </g>
-            <g class="color_RGBA{Float32}(0.0f0,0.74736935f0,1.0f0,1.0f0)" stroke="#FFFFFF" fill="#00BFFF" id="img-329a83a4-66">
-              <g class="marker" id="img-329a83a4-67">
-                <g transform="translate(37.16,74.41)">
+            <g class="color_RGBA{Float32}(0.0f0,0.74736935f0,1.0f0,1.0f0)" stroke="#FFFFFF" fill="#00BFFF" id="img-c514b0de-105">
+              <g class="marker" id="img-c514b0de-106">
+                <g transform="translate(37.16,74.41)" id="img-c514b0de-107">
                   <circle cx="0" cy="0" r="0.9" class="primitive"/>
                 </g>
               </g>
             </g>
-            <g class="color_RGBA{Float32}(0.0f0,0.74736935f0,1.0f0,1.0f0)" stroke="#FFFFFF" fill="#00BFFF" id="img-329a83a4-68">
-              <g class="marker" id="img-329a83a4-69">
-                <g transform="translate(37.16,74.41)">
+            <g class="color_RGBA{Float32}(0.0f0,0.74736935f0,1.0f0,1.0f0)" stroke="#FFFFFF" fill="#00BFFF" id="img-c514b0de-108">
+              <g class="marker" id="img-c514b0de-109">
+                <g transform="translate(37.16,74.41)" id="img-c514b0de-110">
                   <circle cx="0" cy="0" r="0.9" class="primitive"/>
                 </g>
               </g>
             </g>
-            <g class="color_RGBA{Float32}(0.0f0,0.74736935f0,1.0f0,1.0f0)" stroke="#FFFFFF" fill="#00BFFF" id="img-329a83a4-70">
-              <g class="marker" id="img-329a83a4-71">
-                <g transform="translate(85.79,74.41)">
+            <g class="color_RGBA{Float32}(0.0f0,0.74736935f0,1.0f0,1.0f0)" stroke="#FFFFFF" fill="#00BFFF" id="img-c514b0de-111">
+              <g class="marker" id="img-c514b0de-112">
+                <g transform="translate(85.79,74.41)" id="img-c514b0de-113">
                   <circle cx="0" cy="0" r="0.9" class="primitive"/>
                 </g>
               </g>
@@ -315,40 +320,40 @@
       </g>
     </g>
   </g>
-  <g class="guide ylabels" font-size="2.82" font-family="'PT Sans Caption','Helvetica Neue','Helvetica',sans-serif" fill="#6C606B" id="img-329a83a4-72">
-    <g transform="translate(15.63,74.41)">
+  <g class="guide ylabels" font-size="2.82" font-family="'PT Sans Caption','Helvetica Neue','Helvetica',sans-serif" fill="#6C606B" id="img-c514b0de-114">
+    <g transform="translate(15.63,74.41)" id="img-c514b0de-115">
       <g class="primitive">
         <text text-anchor="end" dy="0.35em">A</text>
       </g>
     </g>
-    <g transform="translate(15.63,61.79)">
+    <g transform="translate(15.63,61.79)" id="img-c514b0de-116">
       <g class="primitive">
         <text text-anchor="end" dy="0.35em">B</text>
       </g>
     </g>
-    <g transform="translate(15.63,49.17)">
+    <g transform="translate(15.63,49.17)" id="img-c514b0de-117">
       <g class="primitive">
         <text text-anchor="end" dy="0.35em">C</text>
       </g>
     </g>
-    <g transform="translate(15.63,36.55)">
+    <g transform="translate(15.63,36.55)" id="img-c514b0de-118">
       <g class="primitive">
         <text text-anchor="end" dy="0.35em">D</text>
       </g>
     </g>
-    <g transform="translate(15.63,23.93)">
+    <g transform="translate(15.63,23.93)" id="img-c514b0de-119">
       <g class="primitive">
         <text text-anchor="end" dy="0.35em">E</text>
       </g>
     </g>
-    <g transform="translate(15.63,11.31)">
+    <g transform="translate(15.63,11.31)" id="img-c514b0de-120">
       <g class="primitive">
         <text text-anchor="end" dy="0.35em">F</text>
       </g>
     </g>
   </g>
-  <g font-size="3.88" font-family="'PT Sans','Helvetica Neue','Helvetica',sans-serif" fill="#564A55" stroke="#000000" stroke-opacity="0.000" id="img-329a83a4-73">
-    <g transform="translate(8.81,40.86)">
+  <g font-size="3.88" font-family="'PT Sans','Helvetica Neue','Helvetica',sans-serif" fill="#564A55" stroke="#000000" stroke-opacity="0.000" id="img-c514b0de-121">
+    <g transform="translate(8.81,40.86)" id="img-c514b0de-122">
       <g class="primitive">
         <text text-anchor="middle" dy="0.35em" transform="rotate(-90,0, 2)">Batch</text>
       </g>
@@ -356,7 +361,7 @@
   </g>
 </g>
 <defs>
-  <clipPath id="img-329a83a4-4">
+  <clipPath id="img-c514b0de-4">
     <path d="M16.63,5 L 136.42 5 136.42 80.72 16.63 80.72" />
   </clipPath>
 </defs>

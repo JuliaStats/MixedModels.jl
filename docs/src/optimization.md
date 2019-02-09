@@ -29,7 +29,7 @@ Although the matrix $\bf Z$ can be large (i.e. both $n$ and $q$ can be large), i
 The *relative covariance factor*, $\Lambda_\theta$, is a $q\times q$ lower-triangular matrix, depending on the *variance-component parameter*, $\bf\theta$, and generating the symmetric $q\times q$ variance-covariance matrix, $\Sigma_\theta$, as
 
 \begin{equation}
-\Sigma_\theta=\sigma^2\Lambda_\theta\Lambda_\theta'
+\Sigma_\theta=\sigma^2\Lambda_\theta\Lambda_\theta^\prime
 \end{equation}
 
 The *spherical random effects*, $\mathcal{U}\sim\mathcal{N}({\bf 0},\sigma^2{\bf I}_q)$, determine $\mathcal B$ according to
@@ -122,7 +122,7 @@ In the types of `LinearMixedModel` available through the `MixedModels` package, 
 For the simple example
 
 ````julia
-julia> fm1 = fit(LinearMixedModel, @formula(Y ~ 1 + (1|G)), dat[:Dyestuff])
+julia> fm1 = fit!(LinearMixedModel(@formula(Y ~ 1 + (1|G)), dat[:Dyestuff]))
 Linear mixed model fit by maximum likelihood
  Formula: Y ~ 1 + (1 | G)
    logLik   -2 logLik     AIC        BIC    
@@ -147,7 +147,7 @@ Variance components:
 the only random effects term in the formula is `(1|G)`, a simple, scalar random-effects term.
 ````julia
 julia> t1 = fm1.trms[1]
-ScalarFactorReTerm{Float64,UInt8}(UInt8[0x01, 0x01, 0x01, 0x01, 0x01, 0x02, 0x02, 0x02, 0x02, 0x02  …  0x05, 0x05, 0x05, 0x05, 0x05, 0x06, 0x06, 0x06, 0x06, 0x06], ["A", "B", "C", "D", "E", "F"], [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0  …  1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0], [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0  …  1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0], :G, ["(Intercept)"], 0.7525806932030558)
+MixedModels.ScalarFactorReTerm{Float64,UInt8}(UInt8[0x01, 0x01, 0x01, 0x01, 0x01, 0x02, 0x02, 0x02, 0x02, 0x02  …  0x05, 0x05, 0x05, 0x05, 0x05, 0x06, 0x06, 0x06, 0x06, 0x06], ["A", "B", "C", "D", "E", "F"], [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0  …  1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0], [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0  …  1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0], :G, ["(Intercept)"], 0.7525806932030558)
 
 ````
 
@@ -167,28 +167,28 @@ julia> getθ(t1)
 julia> getΛ(t1)
 0.7525806932030558
 
-julia> convert(Array{Int}, Matrix(t1)) # matrix is floating point but integer-valued
-30×6 Array{Int64,2}:
- 1  0  0  0  0  0
- 1  0  0  0  0  0
- 1  0  0  0  0  0
- 1  0  0  0  0  0
- 1  0  0  0  0  0
- 0  1  0  0  0  0
- 0  1  0  0  0  0
- 0  1  0  0  0  0
- 0  1  0  0  0  0
- 0  1  0  0  0  0
- ⋮              ⋮
- 0  0  0  0  1  0
- 0  0  0  0  1  0
- 0  0  0  0  1  0
- 0  0  0  0  1  0
- 0  0  0  0  0  1
- 0  0  0  0  0  1
- 0  0  0  0  0  1
- 0  0  0  0  0  1
- 0  0  0  0  0  1
+julia> Matrix(t1)
+30×6 Array{Float64,2}:
+ 1.0  0.0  0.0  0.0  0.0  0.0
+ 1.0  0.0  0.0  0.0  0.0  0.0
+ 1.0  0.0  0.0  0.0  0.0  0.0
+ 1.0  0.0  0.0  0.0  0.0  0.0
+ 1.0  0.0  0.0  0.0  0.0  0.0
+ 0.0  1.0  0.0  0.0  0.0  0.0
+ 0.0  1.0  0.0  0.0  0.0  0.0
+ 0.0  1.0  0.0  0.0  0.0  0.0
+ 0.0  1.0  0.0  0.0  0.0  0.0
+ 0.0  1.0  0.0  0.0  0.0  0.0
+ ⋮                        ⋮  
+ 0.0  0.0  0.0  0.0  1.0  0.0
+ 0.0  0.0  0.0  0.0  1.0  0.0
+ 0.0  0.0  0.0  0.0  1.0  0.0
+ 0.0  0.0  0.0  0.0  1.0  0.0
+ 0.0  0.0  0.0  0.0  0.0  1.0
+ 0.0  0.0  0.0  0.0  0.0  1.0
+ 0.0  0.0  0.0  0.0  0.0  1.0
+ 0.0  0.0  0.0  0.0  0.0  1.0
+ 0.0  0.0  0.0  0.0  0.0  1.0
 
 ````
 
@@ -223,7 +223,7 @@ U             10.4673   1.50224 6.96781  <1e-11
 
 
 julia> t21 = fm2.trms[1]
-VectorFactorReTerm{Float64,UInt8,2}(UInt8[0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01  …  0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12], ["308", "309", "310", "330", "331", "332", "333", "334", "335", "337", "349", "350", "351", "352", "369", "370", "371", "372"], [1.0 1.0 … 1.0 1.0; 0.0 1.0 … 8.0 9.0], [1.0 1.0 … 1.0 1.0; 0.0 1.0 … 8.0 9.0], StaticArrays.SArray{Tuple{2},Float64,1,2}[[1.0, 0.0], [1.0, 1.0], [1.0, 2.0], [1.0, 3.0], [1.0, 4.0], [1.0, 5.0], [1.0, 6.0], [1.0, 7.0], [1.0, 8.0], [1.0, 9.0]  …  [1.0, 0.0], [1.0, 1.0], [1.0, 2.0], [1.0, 3.0], [1.0, 4.0], [1.0, 5.0], [1.0, 6.0], [1.0, 7.0], [1.0, 8.0], [1.0, 9.0]], :G, ["(Intercept)", "U"], [2], [0.929221 0.0; 0.0181684 0.222645], [1, 2, 4])
+MixedModels.VectorFactorReTerm{Float64,UInt8,2}(UInt8[0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01  …  0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12], ["308", "309", "310", "330", "331", "332", "333", "334", "335", "337", "349", "350", "351", "352", "369", "370", "371", "372"], [1.0 1.0 … 1.0 1.0; 0.0 1.0 … 8.0 9.0], [1.0 1.0 … 1.0 1.0; 0.0 1.0 … 8.0 9.0], StaticArrays.SArray{Tuple{2},Float64,1,2}[[1.0, 0.0], [1.0, 1.0], [1.0, 2.0], [1.0, 3.0], [1.0, 4.0], [1.0, 5.0], [1.0, 6.0], [1.0, 7.0], [1.0, 8.0], [1.0, 9.0]  …  [1.0, 0.0], [1.0, 1.0], [1.0, 2.0], [1.0, 3.0], [1.0, 4.0], [1.0, 5.0], [1.0, 6.0], [1.0, 7.0], [1.0, 8.0], [1.0, 9.0]], :G, ["(Intercept)", "U"], [2], [0.929221 0.0; 0.0181684 0.222645], [1, 2, 4])
 
 ````
 
@@ -236,7 +236,7 @@ VectorFactorReTerm
 ```
 The model matrix $\bf Z$ for this model is
 ````julia
-julia> convert(Array{Int}, Matrix(t21))
+julia> convert(Array{Int}, Matrix(t21))  # convert to integers for more compact printing
 180×36 Array{Int64,2}:
  1  0  0  0  0  0  0  0  0  0  0  0  0  …  0  0  0  0  0  0  0  0  0  0  0  0
  1  1  0  0  0  0  0  0  0  0  0  0  0     0  0  0  0  0  0  0  0  0  0  0  0
@@ -312,7 +312,7 @@ U             10.4673   1.51931 6.88951  <1e-11
 
 
 julia> t31 = fm3.trms[1]
-VectorFactorReTerm{Float64,UInt8,2}(UInt8[0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01  …  0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12], ["308", "309", "310", "330", "331", "332", "333", "334", "335", "337", "349", "350", "351", "352", "369", "370", "371", "372"], [1.0 1.0 … 1.0 1.0; 0.0 1.0 … 8.0 9.0], [1.0 1.0 … 1.0 1.0; 0.0 1.0 … 8.0 9.0], StaticArrays.SArray{Tuple{2},Float64,1,2}[[1.0, 0.0], [1.0, 1.0], [1.0, 2.0], [1.0, 3.0], [1.0, 4.0], [1.0, 5.0], [1.0, 6.0], [1.0, 7.0], [1.0, 8.0], [1.0, 9.0]  …  [1.0, 0.0], [1.0, 1.0], [1.0, 2.0], [1.0, 3.0], [1.0, 4.0], [1.0, 5.0], [1.0, 6.0], [1.0, 7.0], [1.0, 8.0], [1.0, 9.0]], :G, ["(Intercept)", "U"], [1, 1], [0.945818 0.0; 0.0 0.226927], [1, 4])
+MixedModels.VectorFactorReTerm{Float64,UInt8,2}(UInt8[0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01  …  0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12], ["308", "309", "310", "330", "331", "332", "333", "334", "335", "337", "349", "350", "351", "352", "369", "370", "371", "372"], [1.0 1.0 … 1.0 1.0; 0.0 1.0 … 8.0 9.0], [1.0 1.0 … 1.0 1.0; 0.0 1.0 … 8.0 9.0], StaticArrays.SArray{Tuple{2},Float64,1,2}[[1.0, 0.0], [1.0, 1.0], [1.0, 2.0], [1.0, 3.0], [1.0, 4.0], [1.0, 5.0], [1.0, 6.0], [1.0, 7.0], [1.0, 8.0], [1.0, 9.0]  …  [1.0, 0.0], [1.0, 1.0], [1.0, 2.0], [1.0, 3.0], [1.0, 4.0], [1.0, 5.0], [1.0, 6.0], [1.0, 7.0], [1.0, 8.0], [1.0, 9.0]], :G, ["(Intercept)", "U"], [1, 1], [0.945818 0.0; 0.0 0.226927], [1, 4])
 
 ````
 
@@ -339,7 +339,7 @@ julia> getθ(t31)
 Random-effects terms with distinct grouping factors generate distinct elements of the `trms` member of the `LinearMixedModel` object.
 Multiple `AbstractFactorReTerm` (i.e. either a `ScalarFactorReTerm` or a `VectorFactorReTerm`) objects are sorted by decreasing numbers of random effects.
 ````julia
-julia> fm4 = fit(LinearMixedModel, @formula(Y ~ 1 + (1|H) + (1|G)), dat[:Penicillin])
+julia> fm4 = fit!(LinearMixedModel(@formula(Y ~ 1 + (1|H) + (1|G)), dat[:Penicillin]))
 Linear mixed model fit by maximum likelihood
  Formula: Y ~ 1 + (1 | H) + (1 | G)
    logLik   -2 logLik     AIC        BIC    
@@ -358,10 +358,10 @@ Variance components:
 
 
 julia> t41 = fm4.trms[1]
-ScalarFactorReTerm{Float64,UInt8}(UInt8[0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x02, 0x02, 0x02, 0x02  …  0x17, 0x17, 0x17, 0x17, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18], ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"  …  "o", "p", "q", "r", "s", "t", "u", "v", "w", "x"], [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0  …  1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0], [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0  …  1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0], :G, ["(Intercept)"], 1.5375772478878553)
+MixedModels.ScalarFactorReTerm{Float64,UInt8}(UInt8[0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x02, 0x02, 0x02, 0x02  …  0x17, 0x17, 0x17, 0x17, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18], ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"  …  "o", "p", "q", "r", "s", "t", "u", "v", "w", "x"], [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0  …  1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0], [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0  …  1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0], :G, ["(Intercept)"], 1.5375772478878553)
 
 julia> t42 = fm4.trms[2]
-ScalarFactorReTerm{Float64,UInt8}(UInt8[0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x01, 0x02, 0x03, 0x04  …  0x03, 0x04, 0x05, 0x06, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06], ["A", "B", "C", "D", "E", "F"], [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0  …  1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0], [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0  …  1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0], :H, ["(Intercept)"], 3.2197511648538444)
+MixedModels.ScalarFactorReTerm{Float64,UInt8}(UInt8[0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x01, 0x02, 0x03, 0x04  …  0x03, 0x04, 0x05, 0x06, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06], ["A", "B", "C", "D", "E", "F"], [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0  …  1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0], [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0  …  1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0], :H, ["(Intercept)"], 3.2197511648538444)
 
 ````
 
@@ -372,9 +372,9 @@ Note that the first `ScalarFactorReTerm` in `fm4.trms` corresponds to grouping f
 
 ### Progress of the optimization
 
-An optional `Bool` argument of `true` in the call to `fit!` of a `LinearMixedModel` causes printing of the objective and the $\theta$ parameter at each evaluation during the optimization.
+An optional named argument, `verbose=true`, in the call to `fit!` of a `LinearMixedModel` causes printing of the objective and the $\theta$ parameter at each evaluation during the optimization.
 ````julia
-julia> fit!(LinearMixedModel(@formula(Y ~ 1 + (1|G)), dat[:Dyestuff]), true);
+julia> fit!(LinearMixedModel(@formula(Y ~ 1 + (1|G)), dat[:Dyestuff]), verbose=true);
 f_1: 327.76702 [1.0]
 f_2: 331.03619 [1.75]
 f_3: 330.64583 [0.25]
@@ -394,7 +394,7 @@ f_16: 327.32706 [0.752509]
 f_17: 327.32706 [0.752591]
 f_18: 327.32706 [0.752581]
 
-julia> fit!(LinearMixedModel(@formula(Y ~ 1 + U + (1+U|G)), dat[:sleepstudy]), true);
+julia> fit!(LinearMixedModel(@formula(Y ~ 1 + U + (1+U|G)), dat[:sleepstudy]), verbose=true);
 f_1: 1784.6423 [1.0, 0.0, 1.0]
 f_2: 1790.12564 [1.75, 0.0, 1.0]
 f_3: 1798.99962 [1.0, 1.0, 1.0]
@@ -592,7 +592,7 @@ julia> mdl = GeneralizedLinearMixedModel(@formula(r2 ~ 1 + a + g + b + s + (1|id
            dat[:VerbAgg], Bernoulli());
 
 julia> typeof(mdl)
-GeneralizedLinearMixedModel{Float64}
+MixedModels.GeneralizedLinearMixedModel{Float64}
 
 ````
 
@@ -664,8 +664,8 @@ iter = 6
 obj = 8201.848559060623
 Generalized Linear Mixed Model fit by maximum likelihood (nAGQ = 1)
   Formula: r2 ~ 1 + a + g + b + s + (1 | id) + (1 | item)
-  Distribution: Bernoulli{Float64}
-  Link: LogitLink()
+  Distribution: Distributions.Bernoulli{Float64}
+  Link: GLM.LogitLink()
 
   Deviance: 8201.8486
 
@@ -740,6 +740,36 @@ julia> mdl.b # conditional modes of b
 
 ````julia
 julia> fit!(mdl, fast=true, verbose=true);
+varyβ = true
+obj₀ = 10251.003116042984
+β = [0.0514385, -0.979493, -0.979124, 0.290225, -1.95402, 0.218535]
+iter = 1
+obj = 8292.390783437775
+iter = 2
+obj = 8204.692089323946
+iter = 3
+obj = 8201.87681054392
+iter = 4
+obj = 8201.848569551961
+iter = 5
+obj = 8201.848559060627
+iter = 6
+obj = 8201.848559060621
+varyβ = true
+obj₀ = 10251.003116042953
+β = [0.0514385, -0.979493, -0.979124, 0.290225, -1.95402, 0.218535]
+iter = 1
+obj = 8292.39078343777
+iter = 2
+obj = 8204.692089323944
+iter = 3
+obj = 8201.876810543918
+iter = 4
+obj = 8201.848569551961
+iter = 5
+obj = 8201.848559060627
+iter = 6
+obj = 8201.848559060621
 
 ````
 
@@ -779,11 +809,11 @@ As one would hope, given the name of the option, this fit is comparatively fast.
 ````julia
 julia> @time(fit!(GeneralizedLinearMixedModel(@formula(r2 ~ 1 + a + g + b + s + (1 | id) + (1 | item)), 
         dat[:VerbAgg], Bernoulli()), fast=true))
-  0.881576 seconds (2.11 M allocations: 23.633 MiB, 2.40% gc time)
+  1.370537 seconds (2.12 M allocations: 24.042 MiB, 0.40% gc time)
 Generalized Linear Mixed Model fit by maximum likelihood (nAGQ = 1)
   Formula: r2 ~ 1 + a + g + b + s + (1 | id) + (1 | item)
-  Distribution: Bernoulli{Float64}
-  Link: LogitLink()
+  Distribution: Distributions.Bernoulli{Float64}
+  Link: GLM.LogitLink()
 
   Deviance: 8151.5833
 
@@ -816,11 +846,11 @@ Because it is slower to incorporate the $\beta$ parameters in the general nonlin
 ````julia
 julia> @time mdl1 = fit!(GeneralizedLinearMixedModel(@formula(r2 ~ 1+a+g+b+s+(1|id)+(1|item)), 
         dat[:VerbAgg], Bernoulli()))
- 24.459612 seconds (62.70 M allocations: 531.384 MiB, 0.56% gc time)
+ 61.171357 seconds (63.04 M allocations: 548.014 MiB, 0.15% gc time)
 Generalized Linear Mixed Model fit by maximum likelihood (nAGQ = 1)
   Formula: r2 ~ 1 + a + g + b + s + (1 | id) + (1 | item)
-  Distribution: Bernoulli{Float64}
-  Link: LogitLink()
+  Distribution: Distributions.Bernoulli{Float64}
+  Link: GLM.LogitLink()
 
   Deviance: 8151.3997
 

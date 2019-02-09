@@ -336,7 +336,7 @@ For a linear mixed model, where all the conditional and unconditional distributi
 The optional second argument, `verbose`, in a call to `fit!` of a `LinearMixedModel` object produces output showing the progress of the iterative optimization of $\tilde{d}(\bf\theta|\bf y)$.
 
 ```{julia;term=true}
-mm1 = fit!(LinearMixedModel(@formula(Y ~ 1 + (1 | G)), dyestuff), true);
+mm1 = fit!(LinearMixedModel(@formula(Y ~ 1 + (1 | G)), dyestuff), verbose = true);
 ```
 
 The algorithm converges after 18 function evaluations to a profiled deviance of 327.32706 at $\theta=0.752581$. In this model the parameter $\theta$ is of length 1, the single element being the ratio $\sigma_1/\sigma$.
@@ -597,9 +597,9 @@ const ppt250 = ppoints(250)
 The kernel density estimate of $\sigma$ is more symmetric
 
 ```{julia;echo=false;fig_width=8}
-zquantiles = quantile(Normal(), ppt250);
-plot(x = zquantiles, y = quantile(mm1bstp[:β₁], ppt250), line)
-#    Guide.xlabel("Standard Normal Quantiles"), Guide.ylabel("β₁"))
+zquantiles = quantile.(Normal(), ppt250);
+plot(x = zquantiles, y = quantile(mm1bstp[:β₁], ppt250), line,
+    Guide.xlabel("Standard Normal Quantiles"), Guide.ylabel("β₁"))
 ```
 
 and the normal probability plot of $\sigma$ is also reasonably straight.

@@ -19,7 +19,7 @@ julia> const dat = Dict(Symbol(k)=>v for (k,v) in
 
 julia> const ppt250 = inv(500) : inv(250) : 1.;
 
-julia> const zquantiles = quantile(Normal(), ppt250);
+julia> const zquantiles = quantile.(Normal(), ppt250);
 
 julia> function hpdinterval(v, level=0.95)
     n = length(v)
@@ -62,7 +62,7 @@ The data are derived from Table 6.6, p. 144 of Davies (), where they are descr
 
 ````julia
 julia> describe(dat[:Penicillin])
-3×8 DataFrame. Omitted printing of 1 columns
+3×8 DataFrames.DataFrame. Omitted printing of 1 columns
 │ Row │ variable │ mean    │ min  │ median │ max  │ nunique │ nmissing │
 │     │ Symbol   │ Union…  │ Any  │ Union… │ Any  │ Union…  │ Nothing  │
 ├─────┼──────────┼─────────┼──────┼────────┼──────┼─────────┼──────────┤
@@ -122,7 +122,7 @@ Even when we apply each of the six samples to each of the 24 plates, something c
 A model incorporating random effects for both the plate and the sample is straightforward to specify — we include simple, scalar random effects terms for both these factors.
 
 ````julia
-julia> penm = fit(LinearMixedModel, @formula(Y ~ 1 + (1|G) + (1|H)), dat[:Penicillin])
+julia> penm = fit!(LinearMixedModel(@formula(Y ~ 1 + (1|G) + (1|H)), dat[:Penicillin]))
 Linear mixed model fit by maximum likelihood
  Formula: Y ~ 1 + (1 | G) + (1 | H)
    logLik   -2 logLik     AIC        BIC    
@@ -157,7 +157,7 @@ In chapter [chap:ExamLMM] we saw that a model with a single, simple, scalar ran
 The relative covariance factor, $\Lambda_\theta$, (Fig. [fig:fm03LambdaLimage], left panel) is no longer a multiple of the identity. It is now block diagonal, with two blocks, one of size 24 and one of size 6, each of which is a multiple of the identity. The diagonal elements of the two blocks are $\theta_1$ and $\theta_2$, respectively. The numeric values of these parameters can be obtained as
 
 ````julia
-julia> show(getθ(penm))
+julia> show(penm.θ)
 [1.53758, 3.21975]
 ````
 
@@ -201,7 +201,7 @@ A bootstrap simulation of the model
 
 ````julia
 julia> @time penmbstp = bootstrap(10000, penm);
- 24.313179 seconds (83.13 M allocations: 2.532 GiB, 3.95% gc time)
+ 26.932617 seconds (77.19 M allocations: 2.076 GiB, 3.17% gc time)
 
 ````
 
@@ -211,11 +211,11 @@ julia> @time penmbstp = bootstrap(10000, penm);
 
 provides the density plots
 
-![](./assets//MultipleTerms_8_1.svg)
+![](./assets/MultipleTerms_8_1.svg)
 
-![](./assets//MultipleTerms_9_1.svg)
+![](./assets/MultipleTerms_9_1.svg)
 
-![](./assets//MultipleTerms_10_1.svg)
+![](./assets/MultipleTerms_10_1.svg)
 
 ````julia
 julia> plot(penmbstp, x = :σ₂, density, xlabel("σ₂"))
@@ -281,7 +281,7 @@ The structure and summary of the data object are
 
 ````julia
 julia> describe(dat[:Pastes])
-4×8 DataFrame. Omitted printing of 1 columns
+4×8 DataFrames.DataFrame. Omitted printing of 1 columns
 │ Row │ variable │ mean    │ min  │ median │ max  │ nunique │ nmissing │
 │     │ Symbol   │ Union…  │ Any  │ Union… │ Any  │ Union…  │ Nothing  │
 ├─────┼──────────┼─────────┼──────┼────────┼──────┼─────────┼──────────┤
@@ -403,13 +403,13 @@ confirm this impression in that all the prediction intervals for the random effe
 julia> Random.seed!(4321234);
 
 julia> @time pstsbstp = bootstrap(10000, pstsm);
- 17.509696 seconds (67.42 M allocations: 2.024 GiB, 4.36% gc time)
+ 21.205995 seconds (66.25 M allocations: 1.788 GiB, 3.44% gc time)
 
 ````
 
 
 
-![](./assets//MultipleTerms_16_1.svg)
+![](./assets/MultipleTerms_16_1.svg)
 
 ````julia
 julia> plot(pstsbstp, x = :σ, density, xlabel("σ"))
@@ -450,7 +450,7 @@ Plot(...)
 
 ````julia
 julia> count(x -> x < 1.0e-5, pstsbstp[:σ₂])
-3671
+3669
 
 ````
 
@@ -522,7 +522,7 @@ is compared to model `pstsm` with
 
 ````julia
 julia> MixedModels.lrt(pstsm1, pstsm)
-2×4 DataFrame
+2×4 DataFrames.DataFrame
 │ Row │ Df    │ Deviance │ Chisq    │ pval     │
 │     │ Int64 │ Float64  │ Float64  │ Float64  │
 ├─────┼───────┼──────────┼──────────┼──────────┤
@@ -545,7 +545,7 @@ A bootstrap sample
 
 ````julia
 julia> @time psts1bstp = bootstrap(10000, pstsm1);
-  6.902661 seconds (23.19 M allocations: 700.737 MiB, 4.32% gc time)
+  9.347764 seconds (24.71 M allocations: 704.028 MiB, 3.37% gc time)
 
 ````
 
@@ -555,13 +555,13 @@ julia> @time psts1bstp = bootstrap(10000, pstsm1);
 
 provides empirical density plots
 
-![](./assets//MultipleTerms_26_1.svg)
+![](./assets/MultipleTerms_26_1.svg)
 
 
 
 and
 
-![](./assets//MultipleTerms_27_1.svg)
+![](./assets/MultipleTerms_27_1.svg)
 
 
 
@@ -631,7 +631,7 @@ Although the response, `Y`, is on a scale of 1 to 5,
 
 ````julia
 julia> freqtable(dat[:InstEval][:Y])'
-1×5 Named Adjoint{Int64,Array{Int64,1}}
+1×5 Named LinearAlgebra.Adjoint{Int64,Array{Int64,1}}
 ' ╲ Dim1 │     1      2      3      4      5
 ─────────┼──────────────────────────────────
 1        │ 10186  12951  17609  16921  15754
@@ -648,7 +648,7 @@ At this point we will fit models that have random effects for student, instructo
 
 ````julia
 julia> @time instm = fit(LinearMixedModel, @formula(Y ~ 1 + A + (1|G) + (1|H) + (1|I)), dat[:InstEval])
-  3.911847 seconds (2.74 M allocations: 323.059 MiB, 8.79% gc time)
+  6.545960 seconds (680.61 k allocations: 218.683 MiB, 1.01% gc time)
 Linear mixed model fit by maximum likelihood
  Formula: Y ~ 1 + A + (1 | G) + (1 | H) + (1 | I)
      logLik        -2 logLik          AIC             BIC       

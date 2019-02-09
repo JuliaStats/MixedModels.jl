@@ -29,13 +29,26 @@ end
 """
     logdet(m::LinearMixedModel)
 
-Return the value of `log(det(Λ'Z'ZΛ + I))` evaluated in place.
+Return the value of `log(det(Λ'Z'ZΛ + I)) + log(det(LX*LX'))` evaluated in place.
+
+Here LX is the diagonal term corresponding to the fixed-effects in the blocked
+lower Cholesky factor.
 """
 function LinearAlgebra.logdet(m::LinearMixedModel{T}) where {T}
     s = log(one(T))
     Ldat = m.L.data
     @inbounds for (i, trm) in enumerate(m.trms)
         isa(trm, AbstractFactorReTerm) && (s += LD(Ldat[Block(i, i)]))
+    end
+    if m.optsum.REML
+        feindex = length(m.trms) - 1
+        fetrm = m.trms[feindex]
+        if isa(fetrm, MatrixTerm)
+            lblk = Ldat[Block(feindex, feindex)]
+            for i in 1:fetrm.rank
+                s += log(lblk[i, i])
+            end
+        end
     end
     2s
 end
