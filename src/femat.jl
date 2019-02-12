@@ -26,12 +26,12 @@ function FeMat(X::AbstractMatrix, cnms)
     X = X[:, piv[1:r]]
     FeMat{T,typeof(X)}(X, X, piv, r, cnms)
 end
-
+#=
 function FeMat(y::Vector{T}) where {T}
     m = reshape(y, (:, 1))
     FeMat{T,Matrix{T}}(m, m, [1], Int(!all(iszero, y)), [""])
 end
-
+=#
 function reweight!(A::FeMat{T}, sqrtwts::Vector{T}) where {T}
     if !isempty(sqrtwts)
         if (A.x === A.wtx)

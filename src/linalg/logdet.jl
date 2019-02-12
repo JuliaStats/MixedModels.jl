@@ -41,10 +41,10 @@ function LinearAlgebra.logdet(m::LinearMixedModel{T}) where {T}
         s += LD(L[Block(i, i)])
     end
     if m.optsum.REML
-        feindex = length(m.trms) - 1
-        fetrm = m.trms[feindex]
-        if isa(fetrm, MatrixTerm)
-            lblk = Ldat[Block(feindex, feindex)]
+        feindex = length(m.reterms) + 1
+        fetrm = first(m.feterms)
+        if isa(fetrm, FeMat)
+            lblk = L[Block(feindex, feindex)]
             for i in 1:fetrm.rank
                 s += log(lblk[i, i])
             end

@@ -46,14 +46,15 @@ function LinearMixedModel(f::FormulaTerm, d::NamedTuple)
 
     reterms = ReMat{T}[]
     feterms = FeMat{T}[]
-    for x in Xs
+    for (i,x) in enumerate(Xs)
         if isa(x, ReMat{T})
             push!(reterms, x)
         else
-            push!(feterms, FeMat(x, String[]))
+            cnames = coefnames(form.rhs[i])
+            push!(feterms, FeMat(x, isa(cnames, Vector{String}) ? cnames : [cnames]))
         end
     end
-    push!(feterms, FeMat(y, String[]))
+    push!(feterms, FeMat(y, [coefnames(form.lhs)]))
     sort!(reterms, by=nranef, rev=true)
 
     # create A and L
@@ -96,7 +97,7 @@ function StatsBase.coeftable(m::MixedModel)
     z = co ./ se
     pvalue = ccdf.(Chisq(1), abs2.(z))
     CoefTable(hcat(co, se, z, pvalue), ["Estimate", "Std.Error", "z value", "P(>|z|)"],
-        fixefnames(m), 4)
+        first(m.feterms).cnames, 4)
 end
 
 """
@@ -166,15 +167,18 @@ Return the lower Cholesky factor for the fixed-effects parameters, as an `LowerT
 feL(m::LinearMixedModel) = LowerTriangular(m.L.blocks[end - 1, end - 1])
 
 """
-    fit!(m::LinearMixedModel[, verbose::Bool=false])
+    fit!(m::LinearMixedModel[; verbose::Bool=false, REML=nothing])
 
 Optimize the objective of a `LinearMixedModel`.  When `verbose` is `true` the values of the
 objective and the parameters are printed on stdout at each function evaluation.
 """
-function StatsBase.fit!(m::LinearMixedModel{T}, verbose::Bool=false) where {T}
+function StatsBase.fit!(m::LinearMixedModel{T}; verbose=false, REML=false) where {T}
     optsum = m.optsum
     opt = Opt(optsum)
     feval = 0
+    if isa(REML, Bool)
+        optsum.REML = REML
+    end
     function obj(x, g)
         isempty(g) || error("gradient not defined")
         feval += 1
@@ -254,7 +258,7 @@ function fixef(m::LinearMixedModel{T}, permuted=true) where {T}
 end
 
 function fixefnames(m::LinearMixedModel)
-    fnms = StatsModels.termnames(first(m.formula.rhs))
+    fnms = coefnames(first(m.formula.rhs))
     isa(fnms, String) ? [fnms] : fnms
 end    
 
@@ -311,7 +315,7 @@ Return negative twice the log-likelihood of model `m`
 """
 function objective(m::LinearMixedModel)
     wts = m.sqrtwts
-    logdet(m) + nobs(m)*(1 + log2π + log(varest(m))) - (isempty(wts) ? 0 : 2sum(log, wts))
+    logdet(m) + varest_denom(m)*(1 + log2π + log(varest(m))) - (isempty(wts) ? 0 : 2sum(log, wts))
 end
 
 StatsBase.predict(m::LinearMixedModel) = fitted(m)
@@ -427,7 +431,7 @@ StatsBase.response(m::LinearMixedModel) = vec(m.feterms[end].x)
 
 Return the estimate of σ, the standard deviation of the per-observation noise.
 """
-sdest(m::LinearMixedModel) = sqrtpwrss(m) / √nobs(m)
+sdest(m::LinearMixedModel) = √varest(m)
 
 """
     setθ!{T}(m::LinearMixedModel{T}, v::Vector{T})
@@ -452,19 +456,23 @@ function Base.show(io::IO, m::LinearMixedModel)
         return nothing
     end
     n, p, q, k = size(m)
-    println(io, "Linear mixed model fit by maximum likelihood")
+    REML = m.optsum.REML
+    println(io, "Linear mixed model fit by ", REML ? "REML" : "maximum likelihood")
     println(io, " ", m.formula)
     oo = objective(m)
-    nums = showoff([-oo/ 2, oo, aic(m), bic(m)])
-    fieldwd = max(maximum(textwidth.(nums)) + 1, 11)
-    for label in [" logLik", "-2 logLik", "AIC", "BIC"]
-        print(io, rpad(lpad(label, (fieldwd + textwidth(label)) >> 1), fieldwd))
+    if REML
+        println(io, " REML criterion at convergence: ", oo)
+    else
+        nums = showoff([-oo/ 2, oo, aic(m), bic(m)])
+        fieldwd = max(maximum(textwidth.(nums)) + 1, 11)
+        for label in [" logLik", "-2 logLik", "AIC", "BIC"]
+            print(io, rpad(lpad(label, (fieldwd + textwidth(label)) >> 1), fieldwd))
+        end
+        println(io)
+        print.(Ref(io), lpad.(nums, fieldwd))
+        println(io)
     end
     println(io)
-    for num in nums
-        print(io, lpad(num, fieldwd))
-    end
-    println(io); println(io)
 
     show(io,VarCorr(m))
 
@@ -545,12 +553,17 @@ function updateL!(m::LinearMixedModel{T}) where {T}
     m
 end
 
+function varest_denom(m::LinearMixedModel)
+    (n, p, q, k) = size(m)
+    n - m.optsum.REML * p
+end
+
 """
     varest(m::LinearMixedModel)
 
 Returns the estimate of σ², the variance of the conditional distribution of Y given B.
 """
-varest(m::LinearMixedModel) = pwrss(m) / nobs(m)
+varest(m::LinearMixedModel) = pwrss(m) / varest_denom(m)
 
 function StatsBase.vcov(m::LinearMixedModel{T}) where {T}
     Xtrm = first(m.feterms)

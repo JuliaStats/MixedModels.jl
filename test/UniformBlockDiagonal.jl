@@ -56,17 +56,16 @@ const LMM = LinearMixedModel
     @testset "updateL" begin
         @test ones(2, 2) == MixedModels.rankUpdate!(Hermitian(zeros(2, 2)), ones(2))
         d3 = dat[:d3]
-        modelmat = ones(2, length(d3[:Y]))
-        copyto!(view(modelmat, 2, :), d3[:U])
-        Vf1 = VectorFactorReTerm(d3[:G], modelmat, :G, ["(Intercept)", "U"], [2])
-        Vf2 = VectorFactorReTerm(d3[:H], modelmat, :H, ["(Intercept)", "U"], [2])
-        @test getΛ(Vf1) == LowerTriangular(Matrix(I, 2, 2))
-        setθ!(Vf2, [1.75, 0.0, 1.0])
-        A11 = Vf1'Vf1
-        L11 = MixedModels.cholUnblocked!(MixedModels.scaleinflate!(UniformBlockDiagonal(fill(0., size(A11.data))), A11, Vf1), Val{:L})
-        L21 = Vf2'Vf1
+        sch = schema(d3)
+        vf1 = model_cols(apply_schema(@formula(Y ~ 1 + U + (1+U|G)), sch, LMM), d3)[2][2]
+        vf2 = model_cols(apply_schema(@formula(Y ~ 1 + U + (1+U|H)), sch, LMM), d3)[2][2]
+        @test vf1.λ == LowerTriangular(Matrix(I, 2, 2))
+        setθ!(vf2, [1.75, 0.0, 1.0])
+        A11 = vf1'vf1
+        L11 = MixedModels.cholUnblocked!(MixedModels.scaleinflate!(copyto!(UniformBlockDiagonal(fill(0., size(A11.data))), A11), vf1), Val{:L})
+        L21 = vf2'vf1
         A21cb1 = copy(L21.colblocks[1])
-        lmul!(Λ(Vf2)', rmul!(L21, Λ(Vf1)))
+        lmul!(vf2.λ', rmul!(L21, vf1.λ))
         L21cb1 = copy(L21.colblocks[1])
         @test L21cb1 == Vf2.Λ * A21cb1 * Vf1.Λ
         rdiv!(L21, adjoint(LowerTriangular(L11)))

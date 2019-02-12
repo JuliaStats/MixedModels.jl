@@ -245,8 +245,8 @@ end
 
 @testset "Rank deficient" begin
     Random.seed!(0)
-    data = DataFrame(x = rand(100), y = rand(100), z = repeat(1:20, 5))
-    data.x2 = 1.5 * data.x
+    x = rand(100)
+    data = columntable((x = x, x2 = 1.5 .* x, y = rand(100), z = repeat(1:20, 5)))
     model = fit(LinearMixedModel, @formula(y ~ x + x2 + (1|z)), data)
     @test length(fixef(model)) == 2
 end
