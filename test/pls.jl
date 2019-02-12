@@ -62,13 +62,10 @@ const LMM = LinearMixedModel
     vc = VarCorr(fm1)
     show(IOBuffer(), vc)
     @test vc.s == sdest(fm1)
-<<<<<<< HEAD
 
     fit!(fm1, REML=true)
     @test isapprox(objective(fm1), 319.65427684225216, atol=0.0001)
     print(IOBuffer(), fm1)
-=======
->>>>>>> Clean up VarCorr
 end
 
 @testset "Dyestuff2" begin
@@ -245,8 +242,6 @@ end
     @test_broken size(dfr) == (10, 5)
     @test_broken names(dfr) == Symbol[:obj, :σ, :β₁, :θ₁, :σ₁]
 end
-<<<<<<< HEAD
-<<<<<<< HEAD
 
 @testset "Rank deficient" begin
     Random.seed!(0)
@@ -255,8 +250,3 @@ end
     model = fit(LinearMixedModel, @formula(y ~ x + x2 + (1|z)), data)
     @test length(fixef(model)) == 2
 end
-=======
-=#
->>>>>>> Don't export getθ [ci skip]
-=======
->>>>>>> Add simulate! [ci skip]
