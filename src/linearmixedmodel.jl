@@ -476,7 +476,7 @@ function Base.show(io::IO, m::LinearMixedModel)
 
     show(io,VarCorr(m))
 
-    gl = [size(t.z, 1) for t in m.reterms]
+    gl = [size(t, 2) for t in m.reterms]
     @printf(io," Number of obs: %d; levels of grouping factors: %d", n, gl[1])
     for l in gl[2:end] @printf(io, ", %d", l) end
     println(io)
