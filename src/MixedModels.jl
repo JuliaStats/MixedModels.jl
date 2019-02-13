@@ -9,6 +9,7 @@ using BlockArrays, CategoricalArrays, Tables, Distributions, GLM,
 using LinearAlgebra: BlasFloat, BlasReal, HermOrSym, PosDefException, copytri!
 #using NamedArrays: NamedArray, setnames!
 using Printf: @printf, @sprintf
+using Tables: ColumnTable
 
 using StatsFuns: log2π
 
