@@ -88,7 +88,7 @@ f_50: 1751.93934 [0.929191, 0.0181658, 0.222643]
 f_51: 1751.93935 [0.929254, 0.0182093, 0.222621]
 f_52: 1751.93935 [0.929189, 0.0181298, 0.222573]
 f_53: 1751.93934 [0.929254, 0.0181676, 0.22265]
-f_54: 1751.93934 [0.929215, 0.0181717, 0.222647]
+f_54: 1751.93934 [0.929214, 0.0181717, 0.222647]
 f_55: 1751.93934 [0.929208, 0.0181715, 0.222646]
 f_56: 1751.93934 [0.929209, 0.018173, 0.222652]
 f_57: 1751.93934 [0.929221, 0.0181684, 0.222645]
@@ -98,10 +98,10 @@ Linear mixed model fit by maximum likelihood
  -875.96967 1751.93934 1763.93934 1783.09709
 
 Variance components:
-              Column    Variance  Std.Dev.   Corr.
- G        (Intercept)  565.51067 23.780468
-          U             32.68212  5.716828  0.08
- Residual              654.94145 25.591824
+              Column    Variance   Std.Dev.    Corr.
+ G        (Intercept)  565.510660 23.7804680
+          U             32.682124  5.7168281  0.08
+ Residual              654.941449 25.5918239
  Number of obs: 180; levels of grouping factors: 18
 
   Fixed-effects parameters:
@@ -121,7 +121,7 @@ The corresponding parameter vector is called $\theta$.
 
 ````julia
 julia> Λ = sleepm.λ[1]
-2×2 LinearAlgebra.LowerTriangular{Float64,Array{Float64,2}}:
+2×2 LowerTriangular{Float64,Array{Float64,2}}:
  0.929221    ⋅      
  0.0181684  0.222645
 
@@ -133,15 +133,16 @@ julia> Λ = sleepm.λ[1]
 
 The matrix $\Lambda$ is the left (or lower) Cholesky factor of the covariance matrix of the unconditional distribution of the vector-valued random effects, relative to the variance, $\sigma^2$, of the per-observation noise.
 That is
+```math
 \begin{equation}
     \Sigma = \sigma^2\Lambda\Lambda'
 \end{equation}
-
+```
 In terms of the estimates,
 
 ````julia
 julia> s² = varest(sleepm)    # estimate of the residual variance
-654.941450830681
+654.941448668924
 
 ````
 
@@ -164,7 +165,7 @@ Writing out the expressions for the elements of the covariance matrix in terms o
 
 ````julia
 julia> Λ[2, 1] / sqrt(Λ[2, 1]^2 + Λ[2, 2]^2)
-0.08133214602351191
+0.08133212094454777
 
 ````
 
@@ -180,7 +181,7 @@ Thus the estimated correlation can be written
 
 ````julia
 julia> Λ[2, 1] / norm(view(Λ, 2, :))
-0.08133214602351191
+0.08133212094454777
 
 ````
 
@@ -214,7 +215,7 @@ Some details on the optimization process are available in an `OptSummary` object
 ````julia
 julia> sleepm.optsum
 Initial parameter vector: [1.0, 0.0, 1.0]
-Initial objective value:  1784.6422961924507
+Initial objective value:  1784.6422961924686
 
 Optimizer (from NLopt):   LN_BOBYQA
 Lower bounds:             [0.0, -Inf, 0.0]
@@ -227,7 +228,7 @@ maxfeval:                 -1
 
 Function evaluations:     57
 Final parameter vector:   [0.929221, 0.0181684, 0.222645]
-Final objective value:    1751.9393444646757
+Final objective value:    1751.9393444646948
 Return code:              FTOL_REACHED
 
 
@@ -326,7 +327,7 @@ julia> freqtable(issmall.(sleepmbstrp[:θ₁]), issmall.(sleepmbstrp[:θ₃]))
 2×2 Named Array{Int64,2}
 Dim1 ╲ Dim2 │ false   true
 ────────────┼─────────────
-false       │  9684    309
+false       │  9687    306
 true        │     7      0
 
 ````
@@ -361,11 +362,12 @@ In general the condition number, $\kappa$, of a matrix is the ratio of the large
 For singular matrices it is $\infty$, which is why it is often more convenient to evaluate and plot $\kappa^{-1}$.
 Because $\kappa$ is a ratio of singular values it is unaffected by nonzero scale factors.
 Thus
+```math
 \begin{equation}
 \kappa^{-1}(s^2\Lambda\Lambda') = \kappa^{-1}(\Lambda\Lambda') =
 [\kappa^{-1}(\Lambda)]^2
 \end{equation}
-
+```
 ````julia
 function recipcond(bstrp::DataFrame)
     T = eltype(bstrp[:θ₁])
@@ -393,7 +395,7 @@ $\kappa^{-1}$ is small if either or both of $\theta_1$ or $\theta_3$ is small.
 
 ````julia
 julia> sum(issmall, rc)
-316
+313
 
 ````
 
@@ -415,7 +417,7 @@ julia> sum(isfinite, sleepmbstrp[:ρ₁])  # recall that ρ = NaN in 7 cases
 
 ````julia
 julia> sum(x -> x == -1, sleepmbstrp[:ρ₁])  # number of cases of rho == -1
-1
+2
 
 ````
 
@@ -423,7 +425,7 @@ julia> sum(x -> x == -1, sleepmbstrp[:ρ₁])  # number of cases of rho == -1
 
 ````julia
 julia> sum(x -> x == +1, sleepmbstrp[:ρ₁])  # number of cases of rho == +1
-308
+304
 
 ````
 
@@ -436,8 +438,9 @@ That is, the values of $\theta_2$ were definitely negative.
 
 ````julia
 julia> sleepmbstrp[:θ₂][findall(x -> x == -1, sleepmbstrp[:ρ₁])]
-1-element Array{Float64,1}:
- -0.2544952267491184
+2-element Array{Float64,1}:
+ -0.26586204029006416
+ -0.25449503128677364
 
 ````
 
@@ -460,7 +463,7 @@ julia> R"""
 library(nlme)
 plot(Oxboys)
 """
-RCall.RObject{RCall.NilSxp}
+RObject{NilSxp}
 NULL
 
 
@@ -485,16 +488,16 @@ Linear mixed model fit by maximum likelihood
  -362.98384  725.96769  737.96769  758.69962
 
 Variance components:
-              Column    Variance   Std.Dev.    Corr.
- Subject  (Intercept)  62.7888388 7.92394087
-          age           2.7115491 1.64667821  0.64
- Residual               0.4354569 0.65989157
+              Column     Variance   Std.Dev.    Corr.
+ Subject  (Intercept)  62.78894329 7.92394746
+          age           2.71159677 1.64669268  0.64
+ Residual               0.43545647 0.65989126
  Number of obs: 234; levels of grouping factors: 26
 
   Fixed-effects parameters:
              Estimate Std.Error z value P(>|z|)
-(Intercept)   149.372   1.55461  96.083  <1e-99
-age           6.52547   0.32976 19.7885  <1e-86
+(Intercept)   149.372   1.55461 96.0829  <1e-99
+age           6.52547  0.329763 19.7884  <1e-86
 
 
 ````
@@ -503,7 +506,7 @@ age           6.52547   0.32976 19.7885  <1e-86
 
 ````julia
 julia> show(getθ(oxboysm))
-[12.0079, 1.60155, 1.91362]
+[12.008, 1.60158, 1.91362]
 ````
 
 
@@ -545,7 +548,7 @@ The empirical density of the correlation estimates shows that even in this case 
 
 ````julia
 julia> extrema(oxboysmbtstrp[:ρ₁])
-(0.033603332880225045, 0.9352626530655941)
+(0.033623235242859324, 0.9352618141809922)
 
 ````
 
@@ -559,7 +562,7 @@ The reciprocal condition number
 julia> rc = recipcond(oxboysmbtstrp);
 
 julia> extrema(rc)
-(0.06198656881812736, 0.36249490895418984)
+(0.06198775211313265, 0.3625146203502122)
 
 ````
 
@@ -577,7 +580,7 @@ does not get very close to zero.
 
 ````julia
 julia> R"plot(Orthodont)"
-RCall.RObject{RCall.VecSxp}
+RObject{VecSxp}
 
 
 ````
@@ -598,16 +601,16 @@ Linear mixed model fit by maximum likelihood
   -67.25463  134.50927  146.50927  157.21441
 
 Variance components:
-              Column    Variance   Std.Dev.    Corr.
- Subject  (Intercept)  2.97138401 1.72377029
-          age          0.02151328 0.14667406 -0.30
- Residual              0.44659786 0.66827978
+              Column     Variance   Std.Dev.    Corr.
+ Subject  (Intercept)  2.970884485 1.72362539
+          age          0.021510368 0.14666413 -0.30
+ Residual              0.446615832 0.66829322
  Number of obs: 44; levels of grouping factors: 27
 
   Fixed-effects parameters:
              Estimate Std.Error z value P(>|z|)
-(Intercept)   17.3727  0.725193  23.956  <1e-99
-age          0.479545 0.0631327 7.59583  <1e-13
+(Intercept)   17.3727  0.725169 23.9568  <1e-99
+age          0.479545 0.0631313   7.596  <1e-13
 
 
 ````
@@ -629,8 +632,8 @@ julia> freqtable(issmall.(orthfmbtstrp[:θ₁]), issmall.(orthfmbtstrp[:θ₃]))
 2×2 Named Array{Int64,2}
 Dim1 ╲ Dim2 │ false   true
 ────────────┼─────────────
-false       │  6784   3184
-true        │    32      0
+false       │  6771   3194
+true        │    35      0
 
 ````
 
@@ -668,7 +671,7 @@ Early$trttos <- Early$tos * (Early$trt == "Y")
 xyplot(cog ~ tos | reorder(id, cog, min), Early, 
     type = c("p","l","g"), aspect="xy")
 """
-RCall.RObject{RCall.VecSxp}
+RObject{VecSxp}
 
 
 ````
@@ -706,16 +709,16 @@ Linear mixed model fit by maximum likelihood
 
 Variance components:
               Column    Variance   Std.Dev.    Corr.
- id       (Intercept)  165.476453 12.8637651
-          tos           10.744791  3.2779247 -1.00
- Residual               74.946837  8.6571841
+ id       (Intercept)  165.476297 12.8637590
+          tos           10.744812  3.2779279 -1.00
+ Residual               74.946887  8.6571870
  Number of obs: 309; levels of grouping factors: 103
 
   Fixed-effects parameters:
              Estimate Std.Error  z value P(>|z|)
 (Intercept)   120.783    1.8178  66.4447  <1e-99
 tos           -22.474    1.4878 -15.1055  <1e-50
-trttos        7.65205   1.43609  5.32841   <1e-7
+trttos        7.65206   1.43609  5.32841   <1e-7
 
 
 ````
@@ -729,9 +732,9 @@ The model converges to a singular covariance matrix for the random effects.
 ````julia
 julia> getθ(earlym)
 3-element Array{Float64,1}:
-  1.4859063765534406
- -0.3786363648039024
-  0.0               
+  1.4859051786273185 
+ -0.37863660770421764
+  0.0                
 
 ````
 
