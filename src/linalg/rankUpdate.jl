@@ -46,9 +46,7 @@ function rankUpdate!(C::HermOrSym{T,S}, A::SparseMatrixCSC{T}, α=true, β=true)
     C
 end
 
-function rankUpdate!(C::HermOrSym{T,S}, A::BlockedSparse{T}, α=true, β=true) where {T,S}
-    rankUpdate!(C, sparse(A), α, β)
-end
+rankUpdate!(C::HermOrSym, A::BlockedSparse, α=true, β=true) = rankUpdate!(C, sparse(A), α, β)
 
 function rankUpdate!(C::Diagonal{T}, A::SparseMatrixCSC{T}, α=true, β=true) where {T <: Number}
     m, n = size(A)

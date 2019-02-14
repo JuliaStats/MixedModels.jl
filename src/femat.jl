@@ -20,18 +20,13 @@ end
 
 function FeMat(X::AbstractMatrix, cnms)
     T = eltype(X)
-    cf = cholesky!(Symmetric(X'X, :U), Val(true), tol = -one(T))
+    cf = cholesky!(Symmetric(Matrix(X'X), :U), Val(true), tol = -one(T))
     r = cf.rank
     piv = cf.piv
     X = X[:, piv[1:r]]
     FeMat{T,typeof(X)}(X, X, piv, r, cnms)
 end
-#=
-function FeMat(y::Vector{T}) where {T}
-    m = reshape(y, (:, 1))
-    FeMat{T,Matrix{T}}(m, m, [1], Int(!all(iszero, y)), [""])
-end
-=#
+
 function reweight!(A::FeMat{T}, sqrtwts::Vector{T}) where {T}
     if !isempty(sqrtwts)
         if (A.x === A.wtx)
