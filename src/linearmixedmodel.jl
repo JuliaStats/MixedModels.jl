@@ -285,6 +285,8 @@ function Base.getproperty(m::LinearMixedModel, s::Symbol)
         sdest(m)
     elseif s == :b
         ranef(m)
+    elseif s == :objective
+        objective(m)
     elseif s == :u
         ranef(m, uscale = true)
     elseif s == :lowerbd
