@@ -43,8 +43,6 @@ export
        UniformBlockDiagonal,
        VarCorr,
 
-       bootstrap,
-       bootstrap!,
        coef,
        coeftable,
        cond,
@@ -64,9 +62,10 @@ export
        nobs,
        nocorr,
        objective,  # the objective function in fitting a model
-       pwrss,      # penalized, weighted residual sum-of-squares
+       parametricbootstrap,
        pirls!,     # use Penalized Iteratively Reweighted Least Squares to obtain conditional modes of random effects
        predict,
+       pwrss,      # penalized, weighted residual sum-of-squares
        ranef,      # extract the conditional modes of the random effects
        refit!,     # install a response and refit the model
        residuals,

@@ -1,60 +1,25 @@
 """
     bootstrap(N, m::LinearMixedModel; β::Vector=fixef(m), σ=sdest(m), θ::Vector=getθ(m))
 
-Perform `N` parametric bootstrap replication fits of `m`, returning a data frame
-with column names `:obj`, the objective function at convergence, `:σ`, the estimated
-standard deviation of the residuals, `βᵢ, i = 1,...,p`, the fixed-effects coefficients,
-and `θᵢ, i = 1,...,k` the covariance parameters.
+Perform `N` parametric bootstrap replication fits of `m`, returning a `Tables.RowTable`
+of properties of the refit model given by the tuple of symbols `props`.
 
 # Named Arguments
 
 `β`, `σ`, and `θ` are the values of the parameters in `m` for simulation of the responses.
 """
-function bootstrap(N, m::LinearMixedModel{T};
-        β = fixef(m), σ = sdest(m), θ = getθ(m)) where {T}
+function parametricbootstrap(N::Integer, m::LinearMixedModel,
+        rng::AbstractRNG=Random.GLOBAL_RNG, props=(:objective, :σ, :β, :θ),
+        β = copy(m.β), σ = m.σ, θ = copy(m.θ))
     y₀ = copy(response(m))          # to restore original state of m
     n, p, q, nre = size(m)
     length(β) == p && length(θ) == (k = length(getθ(m))) || throw(DimensionMismatch(""))
-    trms = m.reterms
-    Λsize = vsize.(trms)
-    cnms = vcat([:obj, :σ], Symbol.(subscriptednames('β', p)),
-        Symbol.(subscriptednames('θ', k)), Symbol.(subscriptednames('σ', sum(Λsize))))
-    nρ = [(l * (l - 1)) >> 1 for l in Λsize]
-    if (nρtot = sum(nρ)) > 0
-        append!(cnms, Symbol.(subscriptednames('ρ', nρtot)))
-    end
-
-    dfr = DataFrame(Any[Vector{T}(undef, N) for _ in eachindex(cnms)], cnms)
-    scrβ = Vector{T}(undef, p)
-    scrθ = Vector{T}(undef, k)
-    scrσ = [Vector{T}(undef, l) for l in Λsize]
-    scrρ = [Matrix{T}(undef, l, l) for l in Λsize]
-    scr = similar.(scrρ)
-    @showprogress for i in 1 : N
-        j = 0
-        refit!(simulate!(m, β = β, σ = σ, θ = θ))
-        dfr[j += 1][i] = objective(m)
-        dfr[j += 1][i] = σest = sdest(m)
-        for x in fixef!(scrβ, m)
-            dfr[j += 1][i] = x
-        end
-        for x in getθ!(scrθ, m)
-            dfr[j += 1][i] = x
-        end
-        for l in eachindex(trms)
-            stddevcor!(scrσ[l], scrρ[l], scr[l], trms[l])
-            for x in scrσ[l]
-                dfr[j += 1][i] = σest * x
-            end
-            ρl = scrρ[l]
-            sz = size(ρl, 1)
-            for jj in 1 : (sz - 1), ii in (jj + 1) : sz
-                dfr[j += 1][i] = ρl[ii, jj]
-            end
-        end
-    end
-    refit!(m, y₀)
-    dfr
+    baseval = getproperty.(Ref(m), props)
+    ptype = typeof(baseval)
+    val = [NamedTuple{props, ptype}(
+        getproperty.(Ref(refit!(simulate!(rng, m, β=β, σ=σ, θ=θ))), props)) for _ in 1:N]
+    refit!(m, y₀)                   # restore original state
+    val
 end
 
 #=
