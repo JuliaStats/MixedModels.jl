@@ -277,7 +277,7 @@ StatsBase.dof(m::LinearMixedModel) = size(m)[2] + sum(nθ, m.trms) + 1
 
 function StatsBase.dof_residual(m::LinearMixedModel)
     (n, p, q, k) = size(m)
-    n - REML * p
+    n - m.optsum.REML * p
 end
 
 StatsBase.loglikelihood(m::LinearMixedModel) = -objective(m)/2

@@ -64,6 +64,7 @@ end
 
     fit!(fm1, REML=true)
     @test isapprox(objective(fm1), 319.65427684225216, atol=0.0001)
+    @test dof_residual(fm1) ≥ 0
     print(IOBuffer(), fm1)
 end
 
