@@ -118,8 +118,12 @@ function StatsBase.model_response(v::CategoricalVector, d::Bernoulli)
     nlevs < 2 ? zeros(v, partype(d)) : partype(d)[cv == levs[2] for cv in v]
 end
 
-StatsBase.fit(::Type{LinearMixedModel}, f::Formula, fr::AbstractDataFrame) =
-    fit!(LinearMixedModel(f, fr))
+StatsBase.fit(::Type{LinearMixedModel},
+              f::Formula,
+              fr::AbstractDataFrame;
+              wt=[],
+              contrasts=Dict()) =
+    fit!(LinearMixedModel(f, fr, wt=wt, contrasts=contrasts))
 
 """
     updateL!(m::LinearMixedModel)
