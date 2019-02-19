@@ -53,8 +53,12 @@ StatsBase.fit(::Type{GeneralizedLinearMixedModel},
               l::Link = GLM.canonicallink(d);
               wt=[],
               offset=[],
-              contrasts=Dict()) =
-    fit!(GeneralizedLinearMixedModel(f, fr, d, l, wt=wt, offset=offset, contrasts=contrasts))
+              contrasts=Dict(),
+              verbose=false,
+              fast=false,
+              nAGQ=1) =
+    fit!(GeneralizedLinearMixedModel(f, fr, d, l, wt=wt, offset=offset, contrasts=contrasts),
+         verbose=verbose, fast=fast, nAGQ=nAGQ)
 
 """
     deviance(m::GeneralizedLinearMixedModel{T}, nAGQ=1)::T where {T}

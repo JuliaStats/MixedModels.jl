@@ -122,8 +122,12 @@ StatsBase.fit(::Type{LinearMixedModel},
               f::Formula,
               fr::AbstractDataFrame;
               weights=[],
-              contrasts=Dict()) =
-    fit!(LinearMixedModel(f, fr, weights=weights, contrasts=contrasts))
+              contrasts=Dict(),
+              verbose=false,
+              REML=false) =
+    fit!(LinearMixedModel(f, fr, weights=weights, contrasts=contrasts),
+         verbose=verbose,
+         REML=REML)
 
 """
     updateL!(m::LinearMixedModel)
