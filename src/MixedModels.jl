@@ -15,7 +15,7 @@ using StatsFuns: log2π
 
 import Base: *
 import NLopt: Opt
-import StatsModels: apply_schema, model_cols
+import StatsModels: apply_schema, modelcols
 
 export
        @formula,

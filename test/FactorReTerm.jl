@@ -10,11 +10,11 @@ const LMM = LinearMixedModel
 @testset "scalarReMat" begin
     ds = dat[:Dyestuff]
     f1 = @formula(Y ~ 1 + (1|G))
-    y1, Xs1 = model_cols(apply_schema(f1, schema(ds), LMM), ds)
+    y1, Xs1 = modelcols(apply_schema(f1, schema(ds), LMM), ds)
     sf = Xs1[2]
     psts = dat[:Pastes]
     f2 = @formula(Y ~ 1 + (1|G) + (1|H))
-    y2, Xs2 = model_cols(apply_schema(f2, schema(psts), LMM), psts)
+    y2, Xs2 = modelcols(apply_schema(f2, schema(psts), LMM), psts)
     sf1 = Xs2[2]
     sf2 = Xs2[3]
 

@@ -37,7 +37,7 @@ end
 
 function LinearMixedModel(f::FormulaTerm, d::D, hints=Dict{Symbol,Any}()) where {D<:ColumnTable}
     form = apply_schema(f, schema(f, d, hints), LinearMixedModel)
-    y, Xs = model_cols(form, d)
+    y, Xs = modelcols(form, d)
 
     y = reshape(float(y), (:, 1)) # y as a floating-point matrix
     T = eltype(y)

@@ -13,8 +13,8 @@ const LMM = LinearMixedModel
     ds = (Y = rand(12), A = repeat(['N','Y'], outer=6), G = repeat('a':'c', inner=4),
         H = repeat('A':'B', outer=6), U = repeat([-1,0,1], inner=2, outer=2))
     sch = schema(ds, Dict(:A=>EffectsCoding()))
-    vf1 = model_cols(apply_schema(@formula(Y ~ 1 + A + (1+A|G)), sch, LMM), ds)[2][2]
-    vf2 = model_cols(apply_schema(@formula(Y ~ 1 + U + (1+U|H)), sch, LMM), ds)[2][2]
+    vf1 = modelcols(apply_schema(@formula(Y ~ 1 + A + (1+A|G)), sch, LMM), ds)[2][2]
+    vf2 = modelcols(apply_schema(@formula(Y ~ 1 + U + (1+U|H)), sch, LMM), ds)[2][2]
     prd = vf2'vf1
 
     @testset "size" begin
@@ -57,8 +57,8 @@ const LMM = LinearMixedModel
         @test ones(2, 2) == MixedModels.rankUpdate!(Hermitian(zeros(2, 2)), ones(2))
         d3 = dat[:d3]
         sch = schema(d3)
-        vf1 = model_cols(apply_schema(@formula(Y ~ 1 + U + (1+U|G)), sch, LMM), d3)[2][2]
-        vf2 = model_cols(apply_schema(@formula(Y ~ 1 + U + (1+U|H)), sch, LMM), d3)[2][2]
+        vf1 = modelcols(apply_schema(@formula(Y ~ 1 + U + (1+U|G)), sch, LMM), d3)[2][2]
+        vf2 = modelcols(apply_schema(@formula(Y ~ 1 + U + (1+U|H)), sch, LMM), d3)[2][2]
         @test vf1.λ == LowerTriangular(Matrix(I, 2, 2))
         setθ!(vf2, [1.75, 0.0, 1.0])
         A11 = vf1'vf1

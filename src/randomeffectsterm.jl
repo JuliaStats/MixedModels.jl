@@ -26,8 +26,8 @@ function apply_schema(t::FunctionTerm{typeof(nocorr)}, schema, Mod::Type{<:Mixed
     NoCorrTerm(args[1])
 end
 
-function StatsModels.model_cols(t::RandomEffectsTerm, d::NamedTuple)
-    z = Matrix(transpose(model_cols(t.lhs, d)))
+function StatsModels.modelcols(t::RandomEffectsTerm, d::NamedTuple)
+    z = Matrix(transpose(modelcols(t.lhs, d)))
     T = eltype(z)
     S = size(z, 1)
     grp = t.rhs
