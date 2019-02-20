@@ -476,9 +476,8 @@ function Base.show(io::IO, m::LinearMixedModel)
 
     show(io,VarCorr(m))
 
-    gl = [size(t, 2) for t in m.reterms]
-    @printf(io," Number of obs: %d; levels of grouping factors: %d", n, gl[1])
-    for l in gl[2:end] @printf(io, ", %d", l) end
+    print(io," Number of obs: $n; levels of grouping factors: ")
+    join(io, nlevs.(m.reterms), ", ")
     println(io)
     @printf(io,"\n  Fixed-effects parameters:\n")
     show(io,coeftable(m))

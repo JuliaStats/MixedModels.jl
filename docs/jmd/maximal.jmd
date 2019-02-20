@@ -1,39 +1,88 @@
-# Simulation of Subject-Item mixed models
+---
+title: Simulation of Subject-Item mixed models
+author: Douglas Bates
+date: 2019-02-20
+---
 
 Following the publication of Barr et al. (2011) there has been considerable interest in simulation of subject-item types of data from mixed-effects models to assess the effect of the choice of random-effects structure on the Type I error of tests on the fixed-effects.
-Here we show how such simulations can be carried out efficiently using the [`MixedModels` package](https://github.com/dmbates/MixedModels.jl) for [`Julia`](https://julialang.org).
+Here we show how such simulations can be carried out efficiently using the [`MixedModels`](https://github.com/dmbates/MixedModels.jl) package for [`Julia`](https://julialang.org).
 
 ## Data characteristics
 
 The data characteristics are those from _Maybe maximal: Good enough mixed models optimize power while controlling Type I error_ by Seedorff, Oleson and McMurray, which is just one example of such a study.
-There are 50 subjects, 25 from each of two age groups which we will denote by `y` (younger) and `O` (older).
-Each subject's response is measured on 5 different occasions on each of 20 different items under two noise conditions, `n` (low noise) and `N` (high noise).
+There are 50 subjects, 25 from each of two age groups which we will denote by `'Y'` (younger) and `'O'` (older).
+Each subject's response is measured on 5 different occasions on each of 20 different items under two noise conditions, `'N'` (no noise) and `'Y'` (noise).
 Such an experimental design yields a total of 10,000 measurements.
 
-In the `DataFrame` for this experimental design, the 25 younger subjects are labelled `'a'` to `'y'` while the older subjects are `'A'` to `'Y'` and the items are `'A'` to `'T'`.
+In the data for this experimental design, the 25 younger subjects are labelled `'a'` to `'y'` while the older subjects are `'A'` to `'Y'` and the items are `'A'` to `'T'`.
 ```{julia;term=true}
-using DataFrames, FreqTables, MixedModels, StatsModels, Tables
-df = DataFrame(S = repeat(['a':'y'; 'A':'Y'], inner=40, outer=5),
-    Age = repeat(['y','O'], inner=1000, outer=5),
+using DataFrames, FreqTables, MixedModels, Random, StatsModels, Tables
+df = (S = repeat(['A':'Y'; 'a':'y'], inner=40, outer=5),
+    Age = repeat(['O','Y'], inner=1000, outer=5),
     I = repeat('A':'T', inner=2, outer=250),
-    Noise = repeat(['n','N'], outer=5000),
-    Y = randn(10000))
-describe(df)
-freqtable(df, :Age, :S)
+    Noise = repeat(['N','Y'], outer=5000),
+    Y = ones(10000));
+describe(DataFrame(df))
 freqtable(df, :I, :S)
-freqtable(df, :Noise, :S)
-freqtable(df, :Noise, :I)
+freqtable(df, :Age, :S)    # Age does not vary within levels of S
+freqtable(df, :Age, :I)    # Age does vary within levels of I
+freqtable(df, :Noise, :S)  # Noise does vary within levels of S
+freqtable(df, :Noise, :I)  # and within levels of I
 ```
-The dummy response column `Y` is added as a placeholder.
+The response column, `Y`, is added as a placeholder.
 
-Frequency tables (i.e. cross-tabulations) allow for checking the structure of the design
+As an aside, although `df` is a `NamedTuple`, which is similar to a `list` in `R` except that the names are `Symbol`s, not `String`s,
 ```{julia;term=true}
-freqtable(df, 
+typeof(df)
+```
+it is easily converted to a `DataFrame` if desired (as shown in the call to `describe`).
 
-## Creating a LinearMixedModel and simulating a response
+The trend in Julia packages supporting data science, like the `StatsModels` package, is towards data representations as "column tables" (a `NamedTuple` of arrays) or "row tables" (a vector of `NamedTuple`s).
+Sometimes it is convenient to work on individual columns, sometimes it makes more sense to iterate over rows.
+The `columntable` and `rowtable` functions allow for conversion back and forth between the two representations.
 
-A `LinearMixedModel` with fixed-effects `Age` and `Noise` and their interaction and with random intercepts `S` and `I` is created as
 ```{julia;term=true}
-m1 = LinearMixedModel(@formula(Y ~ 1 + Age * Noise + (1|S) + (1|I)), df, Dict(:Age => HelmertCoding(), :Noise => HelmertCoding()));
-first(m1.feterms).x
+rowtable(df)
+```
+
+## Creating a LinearMixedModel
+
+A `LinearMixedModel` with fixed-effects for `Age` and `Noise` and for their interaction and with random intercepts for `S` and `I` is created as
+```{julia;term=true}
+const hc = HelmertCoding()
+m1 = LinearMixedModel(@formula(Y ~ 1 + Age * Noise + (1|S) + (1|I)), df,
+    Dict(:Age => hc, :Noise => hc));
+first(m1.feterms).x               # model matrix for fixed-effects terms
+```
+The third argument in the call to `LinearMixedModel` is a dictionary of "hints" to use when forming the contrasts for categorical covariates.
+The `HelmertCoding` uses levels of `-1` and `+1`, as shown in the display of the model matrix.
+With this coding the `(Intercept)` coefficient will be a "typical" response level without regard to `Age` and `Noise`.
+In other words, the `(Intercept)` is not defined with respect to an arbitrary reference level for the categorical covariates.
+Note that when 2-level factors are coded as `±1` the interaction terms also have a `±1` coding.
+
+Sometimes coefficient estimates are called the "effect" of the condition in the covariate, e.g. "Noise" versus "no Noise".
+For this encoding the "effect" of changing from the lower level to the higher level is half the coefficient, because the distance between the `±1` values in the model matrix is 2. 
+
+## Simulating a response and fitting the model
+
+The `MixedModels.simulate!` function installs a simulated response in the model object given values of the parameters.
+
+```{julia;term=true}
+rng = Random.MersenneTwister(2052162715);  # repeatable random number generator
+refit!(simulate!(rng, m1, β = [1000., 0, 0, 0], σ = 200., θ = [0.5, 0.5]))
+```
+To use the REML criterion instead of maximum likelihood for parameter optimization, add the optional `REML` argument.
+
+```{julia;term=true}
+fit!(m1, REML=true)
+```
+
+## Fitting alternative models to the same response
+
+Define another model with random slopes with respect to `Noise` and random intercepts for both `S` and `I`.
+
+```{julia;term=true}
+m2 = LinearMixedModel(@formula(Y ~ 1 + Age * Noise + (1+Noise|S) + (1+Noise|I)), df,
+     Dict(:Age => HelmertCoding(), :Noise => HelmertCoding()));
+refit!(m2, response(m1))
 ```

@@ -22,66 +22,8 @@ function parametricbootstrap(N::Integer, m::LinearMixedModel,
     val
 end
 
-#=
-function stddevcor!(σ::Vector{T}, ρ::Matrix{T}, scr::Matrix{T}, L::Cholesky{T}) where {T}
-    @argcheck(length(σ) == (k = size(L, 2)) && size(ρ) == (k, k) && size(scr) == (k, k),
-        DimensionMismatch)
-    if L.uplo == 'L'
-        copyto!(scr, L.factors)
-        for i in 1 : k
-            σ[i] = σi = norm(view(scr, i, 1:i))
-            for j in 1 : i
-                scr[i, j] /= σi
-            end
-        end
-        mul!(ρ, LowerTriangular(scr), adjoint(LowerTriangular(scr)))
-    elseif L.uplo == 'U'
-        copyto!(scr, L.factors)
-        for j in 1 : k
-            σ[j] = σj = norm(view(scr, 1:j, j))
-            for i in 1 : j
-                scr[i, j] /= σj
-            end
-        end
-        mul!(ρ, UpperTriangular(scr)', UpperTriangular(scr))
-    else
-        throw(ArgumentError("L.uplo should be 'L' or 'U'"))
-    end
-    σ, ρ
-end
-
-function stddevcor!(σ::Vector, ρ::Matrix, scr::Matrix, L::ScalarFactorReTerm)
-    σ[1] = L.Λ
-    ρ[1] = 1
-end
-
-function stddevcor!(σ::Vector{T}, ρ::Matrix{T}, scr::Matrix{T},
-    L::VectorFactorReTerm{T}) where {T}
-    stddevcor!(σ, ρ, scr, Cholesky(L.Λ))
-end
-
-function stddevcor(L::Cholesky{T}) where {T}
-    k = size(L, 1)
-    stddevcor!(Vector{T}(undef, k), Matrix{T}(undef, k, k), Matrix{T}(undef, k, k), L)
-end
-
-stddevcor(L::LowerTriangular) = stddevcor(Cholesky(L))
-stddevcor(L::VectorFactorReTerm) = stddevcor(L.Λ)
-stddevcor(L::ScalarFactorReTerm{T}) where {T} = [L.Λ], ones(T, 1, 1)
-
-function LinearAlgebra.Cholesky(L::LowerTriangular)  # FIXME: this is type piracy 
-    info = 0
-    for k in 1:size(L,2)
-        if iszero(L[k, k])
-            info = k
-            break
-        end
-    end
-    Cholesky(L, 'L', LinearAlgebra.BlasInt(info))
-end
-=#
 """
-    unscaledre!(y::AbstractVector{T}, M::AbstractFactorReTerm{T}, b) where {T}
+    unscaledre!(y::AbstractVector{T}, M::ReMat{T}, b) where {T}
     unscaledre!(rng::AbstractRNG, y::AbstractVector{T}, M::AbstractFactorReTerm{T}) where {T}
 
 Add unscaled random effects defined by `M` and `b` to `y`.  When `rng` is present the `b`

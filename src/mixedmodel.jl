@@ -29,9 +29,6 @@ function Statistics.std(m::MixedModel{T}) where {T}
     isfinite(s) ? rmul!(push!(rl, [1.]), s) : rl
 end
 
-fixefnames(m::MixedModel) = lmm(m).trms[end - 1].cnames
-## methods for generics defined in StatsBase
-
 function StatsBase.coeftable(m::MixedModel)
     co = coef(m)
     se = stderror(m)
