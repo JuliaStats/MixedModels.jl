@@ -1,5 +1,6 @@
 """
-    bootstrap(N, m::LinearMixedModel; β::Vector=fixef(m), σ=sdest(m), θ::Vector=getθ(m))
+    parametricbootstrap(N::Integer, m::LinearMixedModel,
+        rng=Random.GLOBAL_RNG, props=(:objective:σ,:β,:θ), β=m.β, σ=m.σ, θ=m.θ)
 
 Perform `N` parametric bootstrap replication fits of `m`, returning a `Tables.RowTable`
 of properties of the refit model given by the tuple of symbols `props`.
@@ -8,16 +9,16 @@ of properties of the refit model given by the tuple of symbols `props`.
 
 `β`, `σ`, and `θ` are the values of the parameters in `m` for simulation of the responses.
 """
-function parametricbootstrap(N::Integer, m::LinearMixedModel,
+function parametricbootstrap(N::Integer, m::LinearMixedModel{T},
         rng::AbstractRNG=Random.GLOBAL_RNG, props=(:objective, :σ, :β, :θ),
-        β = copy(m.β), σ = m.σ, θ = copy(m.θ))
+        β::Vector{T} = m.β, σ::T = m.σ, θ::Vector{T} = m.θ) where {T}
     y₀ = copy(response(m))          # to restore original state of m
     n, p, q, nre = size(m)
     length(β) == p && length(θ) == (k = length(getθ(m))) || throw(DimensionMismatch(""))
     baseval = getproperty.(Ref(m), props)
     ptype = typeof(baseval)
     val = [NamedTuple{props, ptype}(
-        getproperty.(Ref(refit!(simulate!(rng, m, β=β, σ=σ, θ=θ))), props)) for _ in 1:N]
+        getproperty.(Ref(refit!(simulate!(rng, m, β=β, σ=σ, θ=θ))), props)) for _ in Base.OneTo(N)]
     refit!(m, y₀)                   # restore original state
     val
 end
@@ -84,5 +85,5 @@ function simulate!(rng::AbstractRNG, m::LinearMixedModel{T};
     m
 end
 
-simulate!(m::LinearMixedModel{T}; β=coef(m), σ=sdest(m), θ=T[]) where {T} =
+simulate!(m::LinearMixedModel{T}; β=m.β, σ=m.σ, θ=T[]) where {T} =
     simulate!(Random.GLOBAL_RNG, m, β=β, σ=σ, θ=θ)
