@@ -103,7 +103,7 @@ julia> const dat = Dict(Symbol(k)=>v for (k,v) in
 julia> dyestuff = dat[:Dyestuff];
 
 julia> describe(dyestuff)
-2×8 DataFrames.DataFrame. Omitted printing of 1 columns
+2×8 DataFrame. Omitted printing of 1 columns
 │ Row │ variable │ mean   │ min    │ median │ max    │ nunique │ nmissing │
 │     │ Symbol   │ Union… │ Any    │ Union… │ Any    │ Union…  │ Nothing  │
 ├─────┼──────────┼────────┼────────┼────────┼────────┼─────────┼──────────┤
@@ -158,7 +158,7 @@ The structure and summary are intentionally similar to those of the `Dyestuff` d
 julia> dyestuff2 = dat[:Dyestuff2];
 
 julia> describe(dyestuff2)
-2×8 DataFrames.DataFrame. Omitted printing of 1 columns
+2×8 DataFrame. Omitted printing of 1 columns
 │ Row │ variable │ mean   │ min    │ median │ max    │ nunique │ nmissing │
 │     │ Symbol   │ Union… │ Any    │ Union… │ Any    │ Union…  │ Nothing  │
 ├─────┼──────────┼────────┼────────┼────────┼────────┼─────────┼──────────┤
@@ -198,7 +198,7 @@ Linear mixed model fit by maximum likelihood
 
 Variance components:
               Column    Variance  Std.Dev. 
- G        (Intercept)  1388.3333 37.260345
+ G        (Intercept)  1388.3334 37.260347
  Residual              2451.2500 49.510100
  Number of obs: 30; levels of grouping factors: 6
 
@@ -293,7 +293,7 @@ Even when the final fitted model is not singular, we must allow for such models 
 It happens that this model corresponds to the linear model (i.e. a model with fixed-effects only)
 ````julia
 julia> lm1 = lm(@formula(Y ~ 1), dyestuff2)
-StatsModels.DataFrameRegressionModel{GLM.LinearModel{GLM.LmResp{Array{Float64,1}},GLM.DensePredChol{Float64,LinearAlgebra.Cholesky{Float64,Array{Float64,2}}}},Array{Float64,2}}
+StatsModels.DataFrameRegressionModel{LinearModel{LmResp{Array{Float64,1}},DensePredChol{Float64,Cholesky{Float64,Array{Float64,2}}}},Array{Float64,2}}
 
 Formula: Y ~ +1
 
@@ -348,42 +348,46 @@ As mentioned in Sect. [sec:memod], a mixed model incorporates two random variab
 The *conditional mean* of $\mathcal Y$, given $\mathcal B=\bf b$, is the *linear predictor*, $\bf X\bf\beta+\bf Z\bf b$, which depends on the $p$-dimensional *fixed-effects parameter*, $\bf \beta$, and on $\bf b$. The *model matrices*, $\bf X$ and $\bf Z$, of dimension $n\times p$ and $n\times q$, respectively, are determined from the formula for the model and the values of covariates. Although the matrix $\bf Z$ can be large (i.e. both $n$ and $q$ can be large), it is sparse (i.e. most of the elements in the matrix are zero).
 
 The *relative covariance factor*, $\Lambda_\theta$, is a $q\times q$ lower-triangular matrix, depending on the *variance-component parameter*, $\bf\theta$, and generating the symmetric $q\times q$ variance-covariance matrix, $\Sigma_\theta$, as
-
+```math
 \begin{equation}
   \Sigma_\theta=\sigma^2\Lambda_\theta\Lambda_\theta'
 \end{equation}
-
+```
 The *spherical random effects*, $\mathcal{U}\sim\mathcal{N}({\bf 0},\sigma^2{\bf I}_q)$, determine $\mathcal B$ according to
-
+```math
 \begin{equation}
   \mathcal{B}=\Lambda_\theta\mathcal{U}.
 \end{equation}
-
+```
 The *penalized residual sum of squares* (PRSS),
-
+```math
 \begin{equation}
   r^2(\theta,\beta,{\bf u})=\|{\bf y} -{\bf X}\beta -{\bf Z}\Lambda_\theta{\bf u}\|^2+\|{\bf u}\|^2,
 \end{equation}
-
+```
 is the sum of the residual sum of squares, measuring fidelity of the model to the data, and a penalty on the size of $\bf u$, measuring the complexity of the model.
 Minimizing $r^2$ with respect to $\bf u$,
+```math
 \begin{equation}
   r^2_{\beta,\theta} =\min_{\bf u}\left\{\|{\bf y} -{\bf X}{\beta} -{\bf Z}\Lambda_\theta{\bf u}\|^2+\|{\bf u}\|^2\right\}
 \end{equation}
+```
 is a direct (i.e. non-iterative) computation.
 The particular method used to solve this generates a *blocked Choleksy factor*, ${\bf L}_\theta$, which is an lower triangular $q\times q$ matrix satisfying
+```math
 \begin{equation}
   {\bf L}_\theta{\bf L}_\theta'=\Lambda_\theta'{\bf Z}'{\bf Z}\Lambda_\theta+{\bf I}_q .
 \end{equation}
+```
 where ${\bf I}_q$ is the $q\times q$ *identity matrix*.
 
 Negative twice the log-likelihood of the parameters, given the data, $\bf y$, is
-
+```math
 \begin{equation}
 d({\bf\theta},{\bf\beta},\sigma|{\bf y})
 =n\log(2\pi\sigma^2)+\log(|{\bf L}_\theta|^2)+\frac{r^2_{\beta,\theta}}{\sigma^2}.
 \end{equation}
-
+```
 where $|{\bf L}_\theta|$ denotes the *determinant* of ${\bf L}_\theta$.
 Because ${\bf L}_\theta$ is triangular, its determinant is the product of its diagonal elements.
 
@@ -392,32 +396,33 @@ It is the value to be minimized by the parameter estimates.  It is, up to an add
 
 Because the conditional mean, $\bf\mu_{\mathcal Y|\mathcal B=\bf b}=\bf
 X\bf\beta+\bf Z\Lambda_\theta\bf u$, is a linear function of both $\bf\beta$ and $\bf u$, minimization of the PRSS with respect to both $\bf\beta$ and $\bf u$ to produce
-
+```math
 \begin{equation}
 r^2_\theta =\min_{{\bf\beta},{\bf u}}\left\{\|{\bf y} -{\bf X}{\bf\beta} -{\bf Z}\Lambda_\theta{\bf u}\|^2+\|{\bf u}\|^2\right\}
 \end{equation}
-
+```
 is also a direct calculation.
 The values of $\bf u$ and $\bf\beta$ that provide this minimum are called, respectively, the *conditional mode*, $\tilde{\bf u}_\theta$, of the spherical random effects and the conditional estimate, $\widehat{\bf\beta}_\theta$, of the fixed effects.
 At the conditional estimate of the fixed effects the objective is
-
+```math
 \begin{equation}
 d({\bf\theta},\widehat{\beta}_\theta,\sigma|{\bf y})
 =n\log(2\pi\sigma^2)+\log(|{\bf L}_\theta|^2)+\frac{r^2_\theta}{\sigma^2}.
 \end{equation}
-
+```
 Minimizing this expression with respect to $\sigma^2$ produces the conditional estimate
-
+```math
 \begin{equation}
 \widehat{\sigma^2}_\theta=\frac{r^2_\theta}{n}
 \end{equation}
-
+```
 which provides the *profiled log-likelihood* on the deviance scale as
-
+```math
 \begin{equation}
 \tilde{d}(\theta|{\bf y})=d(\theta,\widehat{\beta}_\theta,\widehat{\sigma}_\theta|{\bf y})
 =\log(|{\bf L}_\theta|^2)+n\left[1+\log\left(\frac{2\pi r^2_\theta}{n}\right)\right],
 \end{equation}
+```
 a function of $\bf\theta$ alone.
 
 The MLE of $\bf\theta$, written $\widehat{\bf\theta}$, is the value that minimizes this profiled objective.
@@ -425,12 +430,12 @@ We determine this value by numerical optimization.
 In the process of evaluating $\tilde{d}(\widehat{\theta}|{\bf y})$ we determine $\widehat{\beta}=\widehat{\beta}_{\widehat\theta}$, $\tilde{\bf u}_{\widehat{\theta}}$ and $r^2_{\widehat{\theta}}$, from which we can evaluate $\widehat{\sigma}=\sqrt{r^2_{\widehat{\theta}}/n}$.
 
 The elements of the conditional mode of $\mathcal B$, evaluated at the parameter estimates,
-
+```math
 \begin{equation}
 \tilde{\bf b}_{\widehat{\theta}}=
 \Lambda_{\widehat{\theta}}\tilde{\bf u}_{\widehat{\theta}}
 \end{equation}
-
+```
 are sometimes called the *best linear unbiased predictors* or BLUPs of the random effects.
 Although BLUPs an appealing acronym, I don’t find the term particularly instructive (what is a “linear unbiased predictor” and in what sense are these the “best”?) and prefer the term “conditional modes”, because these are the values of $\bf b$ that maximize the density of the conditional distribution $\mathcal{B} | \mathcal{Y} = {\bf y}$.
 For a linear mixed model, where all the conditional and unconditional distributions are Gaussian, these values are also the *conditional means*.
@@ -486,7 +491,7 @@ maxfeval:                 -1
 
 Function evaluations:     18
 Final parameter vector:   [0.752581]
-Final objective value:    327.3270598811373
+Final objective value:    327.3270598811424
 Return code:              FTOL_REACHED
 
 
@@ -554,7 +559,7 @@ The last two elements are $\bf X$, the $n\times p$ model matrix for the fixed-ef
 
 ````julia
 julia> mm1.trms[end - 1]
-MixedModels.MatrixTerm{Float64,Array{Float64,2}}([1.0; 1.0; … ; 1.0; 1.0], [1.0; 1.0; … ; 1.0; 1.0], [1], 1, ["(Intercept)"])
+MatrixTerm{Float64,Array{Float64,2}}([1.0; 1.0; … ; 1.0; 1.0], [1.0; 1.0; … ; 1.0; 1.0], [1], 1, ["(Intercept)"])
 
 ````
 
@@ -562,7 +567,7 @@ MixedModels.MatrixTerm{Float64,Array{Float64,2}}([1.0; 1.0; … ; 1.0; 1.0], [1.
 
 ````julia
 julia> mm1.trms[end]
-MixedModels.MatrixTerm{Float64,Array{Float64,2}}([1545.0; 1440.0; … ; 1480.0; 1445.0], [1545.0; 1440.0; … ; 1480.0; 1445.0], [1], 0, [""])
+MatrixTerm{Float64,Array{Float64,2}}([1545.0; 1440.0; … ; 1480.0; 1445.0], [1545.0; 1440.0; … ; 1480.0; 1445.0], [1], 0, [""])
 
 ````
 
@@ -574,7 +579,7 @@ The elements of `trms` before the last two represent vertical sections of $\bf Z
 
 ````julia
 julia> mm1.trms[1]
-MixedModels.ScalarFactorReTerm{Float64,UInt8}(UInt8[0x01, 0x01, 0x01, 0x01, 0x01, 0x02, 0x02, 0x02, 0x02, 0x02  …  0x05, 0x05, 0x05, 0x05, 0x05, 0x06, 0x06, 0x06, 0x06, 0x06], ["A", "B", "C", "D", "E", "F"], [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0  …  1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0], [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0  …  1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0], :G, ["(Intercept)"], 0.7525806932030558)
+ScalarFactorReTerm{Float64,UInt8}(UInt8[0x01, 0x01, 0x01, 0x01, 0x01, 0x02, 0x02, 0x02, 0x02, 0x02  …  0x05, 0x05, 0x05, 0x05, 0x05, 0x06, 0x06, 0x06, 0x06, 0x06], ["A", "B", "C", "D", "E", "F"], [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0  …  1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0], [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0  …  1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0], :G, ["(Intercept)"], 0.75258072175308)
 
 ````
 
@@ -587,7 +592,7 @@ In small examples the structure is more obvious when the `ScalarReMat` is conver
 
 ````julia
 julia> sparse(mm1.trms[1])
-30×6 SparseArrays.SparseMatrixCSC{Float64,Int32} with 30 stored entries:
+30×6 SparseMatrixCSC{Float64,Int32} with 30 stored entries:
   [1 ,  1]  =  1.0
   [2 ,  1]  =  1.0
   [3 ,  1]  =  1.0
@@ -656,7 +661,7 @@ julia> nblocks(mm1.A)
 
 ````julia
 julia> mm1.A[Block(1, 1)]
-6×6 LinearAlgebra.Diagonal{Float64,Array{Float64,1}}:
+6×6 Diagonal{Float64,Array{Float64,1}}:
  5.0   ⋅    ⋅    ⋅    ⋅    ⋅ 
   ⋅   5.0   ⋅    ⋅    ⋅    ⋅ 
   ⋅    ⋅   5.0   ⋅    ⋅    ⋅ 
@@ -725,7 +730,7 @@ It is not necessary to store the full $\Lambda$ matrix.  Storing the small lower
 ````julia
 julia> getΛ(mm1)
 1-element Array{Float64,1}:
- 0.7525806932030558
+ 0.75258072175308
 
 ````
 
@@ -743,7 +748,7 @@ The `L` field is a blocked matrix like the `A` field containing the upper Choles
 
 ````julia
 julia> mm1.L
-8×8 LinearAlgebra.LowerTriangular{Float64,BlockArrays.BlockArray{Float64,2,AbstractArray{Float64,2}}}:
+8×8 LowerTriangular{Float64,BlockArrays.BlockArray{Float64,2,AbstractArray{Float64,2}}}:
     1.95752      ⋅           ⋅       …      ⋅           ⋅          ⋅   
     0.0         1.95752      ⋅              ⋅           ⋅          ⋅   
     0.0         0.0         1.95752         ⋅           ⋅          ⋅   
@@ -763,7 +768,7 @@ julia> mm1.L
 
 ````julia
 julia> mm1.L.data[Block(1, 1)]
-6×6 LinearAlgebra.Diagonal{Float64,Array{Float64,1}}:
+6×6 Diagonal{Float64,Array{Float64,1}}:
  1.95752   ⋅        ⋅        ⋅        ⋅        ⋅     
   ⋅       1.95752   ⋅        ⋅        ⋅        ⋅     
   ⋅        ⋅       1.95752   ⋅        ⋅        ⋅     
@@ -787,7 +792,7 @@ julia> mm1.L.data[Block(2, 1)]
 ````julia
 julia> mm1.L.data[Block(2, 2)]
 1×1 Array{Float64,2}:
- 2.798041784037937
+ 2.7980417055919244
 
 ````
 
@@ -805,7 +810,7 @@ julia> mm1.L.data[Block(3, 1)]
 ````julia
 julia> mm1.L.data[Block(3, 2)]
 1×1 Array{Float64,2}:
- 4274.008825117949
+ 4274.008705291662
 
 ````
 
@@ -814,7 +819,7 @@ julia> mm1.L.data[Block(3, 2)]
 ````julia
 julia> mm1.L.data[Block(3, 3)]
 1×1 Array{Float64,2}:
- 271.17798578517414
+ 271.177984264646
 
 ````
 
@@ -826,7 +831,7 @@ All the information needed to evaluate the profiled log-likelihood is available 
 
 ````julia
 julia> 2 * sum(log.(diag(mm1.L.data[Block(1,1)])))
-8.060146573941458
+8.060146910373954
 
 ````
 
@@ -850,7 +855,7 @@ The penalized residual sum of squares is the square of the single element of the
 
 ````julia
 julia> abs2(mm1.L.data[Block(3, 3)][1, 1])
-73537.49997450411
+73537.4991498366
 
 ````
 
@@ -858,7 +863,7 @@ julia> abs2(mm1.L.data[Block(3, 3)][1, 1])
 
 ````julia
 julia> pwrss(mm1)
-73537.49997450411
+73537.4991498366
 
 ````
 
@@ -870,7 +875,7 @@ The objective is
 
 ````julia
 julia> logdet(mm1) + nobs(mm1) * (1 + log(2π * pwrss(mm1) / nobs(mm1)))
-327.3270598811373
+327.3270598811424
 
 ````
 
@@ -900,15 +905,15 @@ julia> size(mm1bstp)
 
 ````julia
 julia> describe(mm1bstp)
-5×8 DataFrames.DataFrame. Omitted printing of 1 columns
-│ Row │ variable │ mean     │ min     │ median  │ max     │ nunique │ nmissing │
-│     │ Symbol   │ Float64  │ Float64 │ Float64 │ Float64 │ Nothing │ Nothing  │
-├─────┼──────────┼──────────┼─────────┼─────────┼─────────┼─────────┼──────────┤
-│ 1   │ obj      │ 324.03   │ 284.104 │ 324.346 │ 353.114 │         │          │
-│ 2   │ σ        │ 48.8259  │ 23.0686 │ 48.6577 │ 81.1291 │         │          │
-│ 3   │ β₁       │ 1527.41  │ 1442.75 │ 1527.47 │ 1598.74 │         │          │
-│ 4   │ θ₁       │ 0.611039 │ 0.0     │ 0.61079 │ 2.9935  │         │          │
-│ 5   │ σ₁       │ 28.9064  │ 0.0     │ 29.6869 │ 94.001  │         │          │
+5×8 DataFrame. Omitted printing of 2 columns
+│ Row │ variable │ mean     │ min     │ median   │ max     │ nunique │
+│     │ Symbol   │ Float64  │ Float64 │ Float64  │ Float64 │ Nothing │
+├─────┼──────────┼──────────┼─────────┼──────────┼─────────┼─────────┤
+│ 1   │ obj      │ 324.03   │ 284.104 │ 324.346  │ 353.114 │         │
+│ 2   │ σ        │ 48.8259  │ 23.0686 │ 48.6577  │ 81.1291 │         │
+│ 3   │ β₁       │ 1527.41  │ 1442.75 │ 1527.47  │ 1598.74 │         │
+│ 4   │ θ₁       │ 0.611039 │ 0.0     │ 0.610791 │ 2.9935  │         │
+│ 5   │ σ₁       │ 28.9064  │ 0.0     │ 29.6869  │ 94.001  │         │
 
 ````
 
@@ -1067,8 +1072,8 @@ One possible interval containing 95% of the sample is $(\sigma_{[1]}, \sigma_{[9
 ````julia
 julia> sigma95 = quantile(mm1bstp[:σ], [0.025, 0.975])
 2-element Array{Float64,1}:
- 35.583660074554146
- 63.09896877865457 
+ 35.58365989114112 
+ 63.098968467157626
 
 ````
 
@@ -1134,8 +1139,8 @@ For example, the 95% HPD interval calculated from the sample of $\beta_1$ values
 ````julia
 julia> hpdinterval(mm1bstp[:β₁])
 2-element Array{Float64,1}:
- 1493.009507788377 
- 1562.0769558913405
+ 1493.0095069080169
+ 1562.0769567557636
 
 ````
 
@@ -1148,8 +1153,8 @@ which is very close to the central probability interval of
 ````julia
 julia> quantile(mm1bstp[:β₁], [0.025, 0.975])
 2-element Array{Float64,1}:
- 1492.8482234420492
- 1561.9248091441677
+ 1492.848222804122 
+ 1561.9248094116124
 
 ````
 
@@ -1164,8 +1169,8 @@ The HPD interval on $\sigma^2$ is
 ````julia
 julia> hpdinterval(abs2.(mm1bstp[:σ]))
 2-element Array{Float64,1}:
- 1162.812380205002 
- 3834.3190914091965
+ 1162.8123674714316
+ 3834.319048668444 
 
 ````
 
@@ -1178,8 +1183,8 @@ which is shifted to the left relative to the central probability interval
 ````julia
 julia> quantile(abs2.(mm1bstp[:σ]), [0.025, 0.975])
 2-element Array{Float64,1}:
- 1266.1968643014757
- 3981.4798610328708
+ 1266.19685124846  
+ 3981.4798217228795
 
 ````
 
@@ -1194,8 +1199,8 @@ The HPD interval does not have the property that the endpoints of the interval o
 ````julia
 julia> sigma95hpd = hpdinterval(mm1bstp[:σ])
 2-element Array{Float64,1}:
- 35.42542537228528
- 62.88749001676501
+ 35.425425171170225
+ 62.887489728787415
 
 ````
 
@@ -1204,8 +1209,8 @@ julia> sigma95hpd = hpdinterval(mm1bstp[:σ])
 ````julia
 julia> abs2.(sigma95hpd)
 2-element Array{Float64,1}:
- 1254.9607628073538
- 3954.8364006087186
+ 1254.960748558181 
+ 3954.8363643883426
 
 ````
 
@@ -1219,7 +1224,7 @@ Finally, a 95% HPD interval on $\sigma_1$ includes the boundary value $\sigma_1=
 julia> hpdinterval(mm1bstp[:σ₁])
 2-element Array{Float64,1}:
   0.0             
- 54.59856859889488
+ 54.59857004471835
 
 ````
 
@@ -1232,8 +1237,8 @@ In fact, the confidence level or coverage probability must be rather small befor
 ````julia
 julia> hpdinterval(mm1bstp[:σ₁], 0.798)
 2-element Array{Float64,1}:
-  0.0             
- 42.33710948814182
+  0.0              
+ 42.337106279435886
 
 ````
 
@@ -1242,8 +1247,8 @@ julia> hpdinterval(mm1bstp[:σ₁], 0.798)
 ````julia
 julia> hpdinterval(mm1bstp[:σ₁], 0.799)
 2-element Array{Float64,1}:
-  0.0              
- 42.394347640663185
+  0.0             
+ 42.39434829198112
 
 ````
 

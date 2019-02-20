@@ -37,10 +37,11 @@ The corresponding parameter vector is called $\theta$.
 
 The matrix $\Lambda$ is the left (or lower) Cholesky factor of the covariance matrix of the unconditional distribution of the vector-valued random effects, relative to the variance, $\sigma^2$, of the per-observation noise.
 That is
+```math
 \begin{equation}
     \Sigma = \sigma^2\Lambda\Lambda'
 \end{equation}
-
+```
 In terms of the estimates,
 
 ```{julia;term=true}
@@ -194,11 +195,12 @@ In general the condition number, $\kappa$, of a matrix is the ratio of the large
 For singular matrices it is $\infty$, which is why it is often more convenient to evaluate and plot $\kappa^{-1}$.
 Because $\kappa$ is a ratio of singular values it is unaffected by nonzero scale factors.
 Thus
+```math
 \begin{equation}
 \kappa^{-1}(s^2\Lambda\Lambda') = \kappa^{-1}(\Lambda\Lambda') =
 [\kappa^{-1}(\Lambda)]^2
 \end{equation}
-
+```
 ```{julia}
 function recipcond(bstrp::DataFrame)
     T = eltype(bstrp[:θ₁])
