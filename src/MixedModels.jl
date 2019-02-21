@@ -43,6 +43,9 @@ export
        UniformBlockDiagonal,
        VarCorr,
 
+       aic,
+       aicc,
+       bic,
        coef,
        coeftable,
        cond,
