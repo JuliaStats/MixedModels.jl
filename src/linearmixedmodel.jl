@@ -103,8 +103,7 @@ end
 
 Return a vector of condition numbers of the λ matrices for the random-effects terms
 """
-LinearAlgebra.cond(m::MixedModel) = [cond(c.λ) for c in m.reterms]
-
+LinearAlgebra.cond(m::MixedModel) = cond.(m.λ)
 
 """
     condVar(m::LinearMixedModel)
@@ -155,6 +154,11 @@ describeblocks(m::MixedModel) = describeblocks(stdout, m)
 StatsBase.deviance(m::MixedModel) = objective(m)
 
 StatsBase.dof(m::LinearMixedModel) = size(m)[2] + sum(nθ, m.reterms) + 1
+
+function StatsBase.dof_residual(m::LinearMixedModel)
+    (n, p, q, k) = size(m)
+    n - m.optsum.REML * p
+end
 
 """
     feL(m::MixedModel)
@@ -218,7 +222,7 @@ end
 function fitted!(v::AbstractArray{T}, m::LinearMixedModel{T}) where {T}
     ## FIXME: Create and use `effects(m) -> β, b` w/o calculating β twice
     vv = vec(v)
-    mul!(vv, m.feterms[end - 1], fixef(m))
+    mul!(vv, first(m.feterms), fixef(m))
     for (rt, bb) in zip(m.reterms, ranef(m))
         unscaledre!(vv, rt, bb)
     end
@@ -275,18 +279,22 @@ Return the current covariance parameter vector.
 getθ(m::LinearMixedModel{T}) where {T} = reduce(append!, getθ.(m.reterms))
 
 function Base.getproperty(m::LinearMixedModel, s::Symbol)
-    if s ∈ (:θ, :theta)
+    if s == :θ || s == :theta
         getθ(m)
-    elseif s ∈ (:β, :beta)
-        fixef(m)
-    elseif s ∈ (:λ, :lambda)
+    elseif s == :β || s == :beta
+        coef(m)
+    elseif s == :λ || s == :lambda
         getfield.(m.reterms, :λ)
-    elseif s ∈ (:σ, :sigma)
+    elseif s == :σ || s == :sigma
         sdest(m)
     elseif s == :b
         ranef(m)
     elseif s == :objective
         objective(m)
+    elseif s == :pvalues
+        ccdf.(Chisq(1), abs2.(coef(m) ./ stderror(m)))
+    elseif s == :stderror
+        stderror(m)
     elseif s == :u
         ranef(m, uscale = true)
     elseif s == :lowerbd
@@ -296,13 +304,18 @@ function Base.getproperty(m::LinearMixedModel, s::Symbol)
     elseif s == :y
         vec(m.feterms[end].x)
     elseif s == :rePCA
-        normalized_variance_cumsum.(getλ(m))
+        normalized_variance_cumsum.(getfield.(m.reterms, :λ))
     else
         getfield(m, s)
     end
 end
 
-StatsBase.loglikelihood(m::LinearMixedModel) = -objective(m) / 2
+function StatsBase.loglikelihood(m::LinearMixedModel)
+    if m.optsum.REML
+        throw(ArgumentError("loglikelihood not available for models fit by REML"))
+    end
+    -objective(m) / 2
+end
 
 lowerbd(m::LinearMixedModel) = m.optsum.lowerbd
 
@@ -315,14 +328,14 @@ Return negative twice the log-likelihood of model `m`
 """
 function objective(m::LinearMixedModel)
     wts = m.sqrtwts
-    logdet(m) + varest_denom(m)*(1 + log2π + log(varest(m))) - (isempty(wts) ? 0 : 2sum(log, wts))
+    logdet(m) + dof_residual(m)*(1 + log2π + log(varest(m))) - (isempty(wts) ? 0 : 2sum(log, wts))
 end
 
 StatsBase.predict(m::LinearMixedModel) = fitted(m)
 
 Base.propertynames(m::LinearMixedModel, private=false) =
-    (:formula, :cols, :sqrtwts, :A, :L, :optsum, :θ, :theta, :β, :beta, :λ, :lambda,
-     :σ, :sigma, :b, :u, :lowerbd, :X, :y, :rePCA, :reterms, :feterms)
+    (:formula, :sqrtwts, :A, :L, :optsum, :θ, :theta, :β, :beta, :λ, :lambda, :stderror,
+     :σ, :sigma, :b, :u, :lowerbd, :X, :y, :rePCA, :reterms, :feterms, :objective, :pvalues)
 
 """
     pwrss(m::LinearMixedModel)
@@ -413,13 +426,13 @@ Refit the model `m` after installing response `y`.
 
 If `y` is omitted the current response vector is used.
 """
-refit!(m::LinearMixedModel) = fit!(reevaluateAend!(m))
+refit!(m::LinearMixedModel; REML=nothing) = fit!(reevaluateAend!(m), REML=REML)
 
-function refit!(m::LinearMixedModel, y)
+function refit!(m::LinearMixedModel, y, REML=nothing)
     resp = m.feterms[end]
     length(y) == size(resp, 1) || throw(DimensionMismatch(""))
     copyto!(resp, y)
-    refit!(m)
+    refit!(m, REML=REML)
 end
 
 StatsBase.residuals(m::LinearMixedModel) = response(m) .- fitted(m)
@@ -552,7 +565,7 @@ function updateL!(m::LinearMixedModel{T}) where {T}
     m
 end
 
-function varest_denom(m::LinearMixedModel)
+function dof_residual(m::LinearMixedModel)
     (n, p, q, k) = size(m)
     n - m.optsum.REML * p
 end
@@ -562,7 +575,7 @@ end
 
 Returns the estimate of σ², the variance of the conditional distribution of Y given B.
 """
-varest(m::LinearMixedModel) = pwrss(m) / varest_denom(m)
+varest(m::LinearMixedModel) = pwrss(m) / dof_residual(m)
 
 function StatsBase.vcov(m::LinearMixedModel{T}) where {T}
     Xtrm = first(m.feterms)
