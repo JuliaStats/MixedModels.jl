@@ -1,31 +1,58 @@
-"""
-    parametricbootstrap(N::Integer, m::LinearMixedModel,
-        rng=Random.GLOBAL_RNG, props=(:objective:σ,:β,:θ), β=m.β, σ=m.σ, θ=m.θ)
+getprops(m, props) = NamedTuple{props}(getproperty.(Ref(m), props))
 
-Perform `N` parametric bootstrap replication fits of `m`, returning a `Tables.RowTable`
-of properties of the refit model given by the tuple of symbols `props`.
+"""
+    parametricbootstrap(rng::AbstractRNG, nsamp::Integer, m::LinearMixedModel,
+        props=(:objective, :σ, :β, :θ); β = m.β, σ = m.σ, θ = m.θ)
+    parametricbootstrap(nsamp::Integer, m::LinearMixedModel,
+        props=(:objective, :σ, :β, :θ); β = m.β, σ = m.σ, θ = m.θ)
+
+Perform `nsamp` parametric bootstrap replication fits of `m`, returning a 
+`Vector{NamedTuple}` (a.k.a. `Tables.RowTable`) of `properties` of the refit model.
+
+The default random number generator is `Random.GLOBAL_RNG`.
 
 # Named Arguments
 
-`β`, `σ`, and `θ` are the values of the parameters in `m` for simulation of the responses.
+`β`, `σ`, and `θ` are the values of `m`'s parameters for simulating the responses.
 """
-function parametricbootstrap(N::Integer, m::LinearMixedModel{T},
-        rng::AbstractRNG=Random.GLOBAL_RNG, props=(:objective, :σ, :β, :θ),
-        β::Vector{T} = m.β, σ::T = m.σ, θ::Vector{T} = m.θ) where {T}
-    y₀ = copy(response(m))          # to restore original state of m
-    n, p, q, nre = size(m)
-    length(β) == p && length(θ) == (k = length(getθ(m))) || throw(DimensionMismatch(""))
-    baseval = getproperty.(Ref(m), props)
-    ptype = typeof(baseval)
-    val = [NamedTuple{props, ptype}(
-        getproperty.(Ref(refit!(simulate!(rng, m, β=β, σ=σ, θ=θ))), props)) for _ in Base.OneTo(N)]
-    refit!(m, y₀)                   # restore original state
-    val
+function parametricbootstrap(rng::AbstractRNG, nsamp::Integer, m::LinearMixedModel,
+        props=(:objective, :σ, :β, :θ); β = m.β, σ = m.σ, θ = m.θ)
+    y₀ = copy(response(m))  # to restore original state of m
+    try
+        [getprops(refit!(simulate!(rng, m, β = β, σ = σ, θ = θ)), props) for _ in 1:nsamp]
+    finally
+        refit!(m, y₀)
+    end
+end
+
+function parametricbootstrap(nsamp::Integer, m::LinearMixedModel,
+    props=(:objective, :σ, :β, :θ); β = m.β, σ = m.σ, θ = m.θ)
+    parametricbootstrap(Random.GLOBAL_RNG, nsamp, m, props, β = β, σ = σ, θ = θ)
 end
 
 """
+    simulate!(rng::AbstractRNG, m::LinearMixedModel{T}; β=m.β, σ=m.σ, θ=T[])
+    simulate!(m::LinearMixedModel; β=m.β, σ=m.σ, θ=m.θ)
+
+Overwrite the response (i.e. `m.trms[end]`) with a simulated response vector from model `m`.
+"""
+function simulate!(rng::AbstractRNG, m::LinearMixedModel{T}; β=m.β, σ=m.σ, θ=T[]) where {T}
+    isempty(θ) || setθ!(m, θ)
+    y = randn!(rng, response(m))      # initialize y to standard normal
+    for trm in m.reterms              # add the unscaled random effects
+        unscaledre!(rng, y, trm)
+    end
+                    # scale by σ and add fixed-effects contribution
+    BLAS.gemv!('N', one(T), m.X, β, σ, y)
+    m
+end
+
+simulate!(m::LinearMixedModel{T}; β=m.β, σ=m.σ, θ=T[]) where {T} =
+    simulate!(Random.GLOBAL_RNG, m, β=β, σ=σ, θ=θ)
+
+"""
     unscaledre!(y::AbstractVector{T}, M::ReMat{T}, b) where {T}
-    unscaledre!(rng::AbstractRNG, y::AbstractVector{T}, M::AbstractFactorReTerm{T}) where {T}
+    unscaledre!(rng::AbstractRNG, y::AbstractVector{T}, M::ReMat{T}) where {T}
 
 Add unscaled random effects defined by `M` and `b` to `y`.  When `rng` is present the `b`
 vector is generated as `randn(rng, size(M, 2))`
@@ -36,7 +63,7 @@ function unscaledre!(y::AbstractVector{T}, A::ReMat{T,R,1}, b::AbstractVector{T}
     m, n = size(A)
     length(y) == m && length(b) == n || throw(DimensionMismatch(""))
     z = A.z
-    for (i, r) in enumerate(A.refs)
+    @inbounds for (i, r) in enumerate(A.refs)
         y[i] += b[r] * z[i]
     end
     y
@@ -50,7 +77,7 @@ function unscaledre!(y::AbstractVector{T}, A::ReMat{T,R,S}, b::AbstractMatrix{T}
     k, n = size(Z)
     l = nlevs(A)
     length(y) == n && size(b) == (k, l) || throw(DimensionMismatch(""))
-    for (i, ii) in enumerate(A.refs)
+    @inbounds for (i, ii) in enumerate(A.refs)
         for j in 1:k
             y[i] += Z[j, i] * b[j, ii]
         end
@@ -64,26 +91,4 @@ unscaledre!(rng::AbstractRNG, y::AbstractVector{T}, A::ReMat{T}) where {T} =
 unscaledre!(rng::AbstractRNG, y::AbstractVector{T}, A::ReMat{T,R,1}) where {T,R} =
     unscaledre!(y, A, lmul!(first(A.λ), randn(rng, vsize(A), nlevs(A))))
 
-unscaledre!(y::AbstractVector, A::ReMat) = unscaledre!(Base.GLOBAL_RNG, y, A)
-
-"""
-    simulate!(m::LinearMixedModel; β=fixef(m), σ=sdest(m), θ=getθ(m))
-
-Overwrite the response (i.e. `m.trms[end]`) with a simulated response vector from model `m`.
-"""
-function simulate!(rng::AbstractRNG, m::LinearMixedModel{T}; 
-        β=coef(m), σ=sdest(m), θ=T[]) where {T}
-    if !isempty(θ)
-        setθ!(m, θ)
-    end
-    y = randn!(rng, response(m))      # initialize to standard normal noise
-    for trm in m.reterms              # add the unscaled random effects
-        unscaledre!(rng, y, trm)
-    end
-                                  # scale by σ and add fixed-effects contribution
-    BLAS.gemv!('N', one(T), first(m.feterms).x, β, σ, y)
-    m
-end
-
-simulate!(m::LinearMixedModel{T}; β=m.β, σ=m.σ, θ=T[]) where {T} =
-    simulate!(Random.GLOBAL_RNG, m, β=β, σ=σ, θ=θ)
+unscaledre!(y::AbstractVector, A::ReMat) = unscaledre!(Random.GLOBAL_RNG, y, A)
