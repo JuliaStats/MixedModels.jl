@@ -112,11 +112,11 @@ mulαβ!(C::StridedVecOrMat{T}, A::StridedVecOrMat{T}, adjB::Adjoint{T,<:Blocked
 mulαβ!(C::StridedVector{T}, adjA::Adjoint{T,<:StridedMatrix{T}}, B::StridedVector{T},
     α=true, β=false) where {T<:BlasFloat} = BLAS.gemv!('C', T(α), adjA.parent, B, T(β), C)
 
-mulαβ!( C::StridedVector{T}, adjA::Adjoint{T,<:SparseMatrixCSC{T}}, B::StridedVector{T},
+mulαβ!(C::StridedVector{T}, adjA::Adjoint{T,<:SparseMatrixCSC{T}}, B::StridedVector{T},
     α=true, β=false) where {T} = mul!(C, adjA, B, T(α), T(β))
 
 mulαβ!(C::StridedVector{T}, adjA::Adjoint{T,<:BlockedSparse{T}}, B::StridedVector{T},
-    α=true, β=false) where {T} = mulαβ!(α, adjA.parent.cscmat', B, β, C)
+    α=true, β=false) where {T} = mulαβ!(C, adjA.parent.cscmat', B, α, β)
 
 function LinearAlgebra.ldiv!(adjA::Adjoint{T,<:LowerTriangular{T,UniformBlockDiagonal{T}}},
         B::StridedVector{T}) where {T}
