@@ -46,11 +46,19 @@ GeneralizedLinearMixedModel(f::Formula, fr::AbstractDataFrame, d::Distribution;
     wt=[], offset=[], contrasts=Dict()) = GeneralizedLinearMixedModel(f, fr, d,
     GLM.canonicallink(d), wt=wt, offset=offset, contrasts=contrasts)
 
-StatsBase.fit(::Type{GeneralizedLinearMixedModel}, f::Formula, fr::AbstractDataFrame,
-    d::Distribution) = fit!(GeneralizedLinearMixedModel(f, fr, d, GLM.canonicallink(d)))
-
-StatsBase.fit(::Type{GeneralizedLinearMixedModel}, f::Formula, fr::AbstractDataFrame,
-    d::Distribution, l::Link) = fit!(GeneralizedLinearMixedModel(f, fr, d, l))
+StatsBase.fit(::Type{GeneralizedLinearMixedModel},
+              f::Formula,
+              fr::AbstractDataFrame,
+              d::Distribution,
+              l::Link = GLM.canonicallink(d);
+              wt=[],
+              offset=[],
+              contrasts=Dict(),
+              verbose=false,
+              fast=false,
+              nAGQ=1) =
+    fit!(GeneralizedLinearMixedModel(f, fr, d, l, wt=wt, offset=offset, contrasts=contrasts),
+         verbose=verbose, fast=fast, nAGQ=nAGQ)
 
 """
     deviance(m::GeneralizedLinearMixedModel{T}, nAGQ=1)::T where {T}
