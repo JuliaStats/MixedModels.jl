@@ -527,6 +527,21 @@ function LinearAlgebra.mul!(C::UniformBlockDiagonal{T},
     C
 end
 
+function LinearAlgebra.mul!(C::Matrix{T},
+        adjA::Adjoint{T,<:VectorFactorReTerm{T,R,S}},
+        B::VectorFactorReTerm{T,U,P}) where {T,R,S,U,P}
+    A = adjA.parent
+    @argcheck((m = size(A, 1)) == size(B, 1) && size(C,1) == size(A,2) && 
+        size(C,2) == size(B,2), DimensionMismatch)
+    fill!(C, zero(T))
+    blk = PseudoBlockArray(C, fill(S, div(size(A,2),S)), fill(P, div(size(B,2),P)))
+    scratch = Array{T}(undef, S, P)
+    for (i, j, Av, Bv) in zip(A.refs, B.refs, A.wtzv, B.wtzv)
+        blk[Block(Int(i), Int(j))] += mul!(scratch, Av, Bv')
+    end
+    C
+end
+
 function *(adjA::Adjoint{T,<:VectorFactorReTerm{T,R,S}},
         B::VectorFactorReTerm{T,U,P}) where {T,R,S,U,P}
     A = adjA.parent
