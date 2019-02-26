@@ -185,20 +185,29 @@ One of the great joys of programming in Julia is the ability to use `for` loops 
 In fact, `for` loops are often the most effective way of writing an iterative calculation.
 
 Begin by creating the vector of vectors that will hold the result, say 10,000 replications of vectors of p-values, then run the loop to simulate a response, re-fit the model to the simulated response and extract and store the p-values.
+The straightforward way to write a function to do such a simulation is
 ```julia
-const samp = Vector{Vector{Float64}}(undef, 10_000);
-for i in eachindex(samp)
-    refit!(simulate!(rng, m1, β = [1000., 0, 0, 0], σ = 200., θ = [0.5, 0.5]))
-    samp[i] = m1.pvalues
+function simulatepvalues(rng::AbstractRNG, nsamp::Integer, m::LinearMixedModel;
+        β = m.β, σ = m.σ, θ = m.θ)
+    samp = Vector{Vector{Float64}}(undef, nsamp)
+    for i in 1:nsamp
+        refit!(simulate!(rng, m1, β = m.β, σ = m.σ, θ = m.θ), REML=true)
+        samp[i] = m1.pvalues
+    end
+    samp
 end
+samp = simulatepvalues(rng, 10_000, m1, β = [1000., 0., 0., 0.], σ = 200., θ = [0.5,0.5]);
+typeof(samp)
 ```
 
-The `eachindex` function is used to ensure that the number of times the loop is executed corresponds to the size of the `samp` vector.
-The `samp` vector is declared to be `const`, allowing for more efficient code within the loop.
+Because the simulation is carried out inside a function, which will be compiled by the JIT compiler, it is fast.
+```julia
+@time simulatepvalues(Random.MersenneTwister(1234), 10_000, m1, β = [1000., 0., 0., 0.], σ = 200., θ = [0.5,0.5]);
+```
 
 The first element of the vectors of p-values should be very small as the value of $\beta_1$ used in the simulations, $1000.0$, is much larger than a typical standard error for that coefficient in this model.
 ```julia
-extrema(getfield.(samp, 1))
+extrema(getindex.(samp, 1))
 ```
 
 ## Fitting alternative models to the same response
