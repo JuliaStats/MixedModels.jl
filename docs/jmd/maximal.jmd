@@ -19,7 +19,7 @@ Such an experimental design yields a total of 10,000 measurements.
 
 In the data for this experimental design, the 25 younger subjects are labelled `'a'` to `'y'` while the older subjects are `'A'` to `'Y'` and the items are `'A'` to `'T'`.
 ```{julia}
-using DataFrames, FreqTables, MixedModels, Random, StatsModels, Tables
+using DataFrames, Distributions, FreqTables, Gadfly, MixedModels, Random, StatsModels, Tables
 df = (S = repeat(['A':'Y'; 'a':'y'], inner=40, outer=5),
     Age = repeat(['O','Y'], inner=1000, outer=5),
     I = repeat('A':'T', inner=2, outer=250),
@@ -166,6 +166,39 @@ loglikelihood(m1)
 hence all the other information criteria extractors also fail
 ```julia
 aicc(m1)    # the corrected Akaike's Information Criterion
+```
+
+## Simulation of Type I error and power
+
+The basic approach to simulating Type I error and power for a test is to simulate samples from the model, evaluate the test and accumulate the results.
+Because it is possible to calculate the p-values we store these.
+
+In practice, a simulation should be performed in a function to take advantage of the Just-In-Time (JIT) compilation of Julia functions but it helps first to show the development of the steps.
+
+The p-values for the fixed-effects coefficients from a model fit are available as the `pvalues` property of the model.
+```julia
+m1.pvalues
+```
+
+A loop could be used to accumulate such p-values for a large number of simulated responses.
+One of the great joys of programming in Julia is the ability to use `for` loops when convenient and not fear a catastrophic drop in efficiency.
+In fact, `for` loops are often the most effective way of writing an iterative calculation.
+
+Begin by creating the vector of vectors that will hold the result, say 10,000 replications of vectors of p-values, then run the loop to simulate a response, re-fit the model to the simulated response and extract and store the p-values.
+```julia
+const samp = Vector{Vector{Float64}}(undef, 10_000);
+for i in eachindex(samp)
+    refit!(simulate!(rng, m1, β = [1000., 0, 0, 0], σ = 200., θ = [0.5, 0.5]))
+    samp[i] = m1.pvalues
+end
+```
+
+The `eachindex` function is used to ensure that the number of times the loop is executed corresponds to the size of the `samp` vector.
+The `samp` vector is declared to be `const`, allowing for more efficient code within the loop.
+
+The first element of the vectors of p-values should be very small as the value of $\beta_1$ used in the simulations, $1000.0$, is much larger than a typical standard error for that coefficient in this model.
+```julia
+extrema(getfield.(samp, 1))
 ```
 
 ## Fitting alternative models to the same response
