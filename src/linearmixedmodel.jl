@@ -35,7 +35,8 @@ struct LinearMixedModel{T <: AbstractFloat} <: MixedModel{T}
     optsum::OptSummary{T}
 end
 
-function LinearMixedModel(f::FormulaTerm, d::D, hints=Dict{Symbol,Any}()) where {D<:ColumnTable}
+function LinearMixedModel(f::FormulaTerm, d::D, hints=Dict{Symbol,Any}(); 
+    weights=[]) where {D<:ColumnTable}
     form = apply_schema(f, schema(f, d, hints), LinearMixedModel)
     y, Xs = modelcols(form, d)
 
@@ -52,7 +53,7 @@ function LinearMixedModel(f::FormulaTerm, d::D, hints=Dict{Symbol,Any}()) where 
             push!(feterms, FeMat(x, isa(cnames, Vector{String}) ? cnames : [cnames]))
         end
     end
-    push!(feterms, FeMat(y, [coefnames(form.lhs)]))
+    push!(feterms, FeMat(y, [""]))
     sort!(reterms, by=nranef, rev=true)
 
     # create A and L
@@ -80,12 +81,15 @@ function LinearMixedModel(f::FormulaTerm, d::D, hints=Dict{Symbol,Any}()) where 
             end
         end
     end
-    lbd = reduce(append!,  lowerbd(c) for c in reterms)
-    θ = reduce(append!, getθ(c) for c in reterms)
+    lbd = foldl(vcat, lowerbd(c) for c in reterms)
+    θ = foldl(vcat, getθ(c) for c in reterms)
     optsum = OptSummary(θ, lbd, :LN_BOBYQA, ftol_rel = T(1.0e-12), ftol_abs = T(1.0e-8))
     fill!(optsum.xtol_abs, 1.0e-10)
-    LinearMixedModel(form, reterms, feterms, T[], A, L, optsum)
+    LinearMixedModel(form, reterms, feterms, sqrt.(convert(Vector{T}, weights)), A, L, optsum)
 end
+
+LinearMixedModel(f::FormulaTerm, d, hints=Dict{Symbol,Any}()) = 
+    LinearMixedModel(f, columntable(d), hints)
 
 StatsBase.coef(m::MixedModel) = fixef(m, false)
 
@@ -276,7 +280,7 @@ fnames(m::MixedModel) = map(x -> x.trm.sym, m.reterms)
 
 Return the current covariance parameter vector.
 """
-getθ(m::LinearMixedModel{T}) where {T} = reduce(append!, getθ.(m.reterms))
+getθ(m::LinearMixedModel{T}) where {T} = foldl(vcat, getθ.(m.reterms))
 
 function Base.getproperty(m::LinearMixedModel, s::Symbol)
     if s == :θ || s == :theta
@@ -438,6 +442,12 @@ end
 StatsBase.residuals(m::LinearMixedModel) = response(m) .- fitted(m)
 
 StatsBase.response(m::LinearMixedModel) = vec(m.feterms[end].x)
+
+function reweight!(m::LinearMixedModel, sqrtwts::AbstractVector)
+    reweight!.(m.feterms, Ref(sqrtwts))
+    reweight!.(m.reterms, Ref(sqrtwts))
+    m
+end
 
 """
     sdest(m::LinearMixedModel)

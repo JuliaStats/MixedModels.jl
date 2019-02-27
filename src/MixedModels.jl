@@ -32,12 +32,10 @@ export
        InverseLink,
        GeneralizedLinearMixedModel,
        LinearMixedModel,
-#       MatrixTerm,
        MixedModel,
        OptSummary,
        Poisson,
        RaggedArray,
-#       RepeatedBlockDiagonal,
        RandomEffectsTerm,
        ReMat,
        UniformBlockDiagonal,
@@ -95,7 +93,7 @@ include("remat.jl")
 include("randomeffectsterm.jl")
 include("linearmixedmodel.jl")
 include("gausshermite.jl")
-#include("generalizedlinearmixedmodel.jl")
+include("generalizedlinearmixedmodel.jl")
 include("linalg/cholUnblocked.jl")
 include("linalg/rankUpdate.jl")
 #include("linalg/scaleInflate.jl")
