@@ -199,15 +199,26 @@ where the `i`th array is of size `vᵢ × vᵢ × ℓᵢ`.  These are the
 diagonal blocks from the conditional variance-covariance matrix,
 
     s² Λ(Λ'Z'ZΛ + I)⁻¹Λ'
+
+FIXME: Change the output type to that of the (1,1) block of lmm(m).L.data
 """
 function condVar(m::MixedModel)
-    lm = lmm(m)
-    λ = lm.trms[1]
-    L11 = lm.L.data[Block(1, 1)]
-    if nreterms(lm) ≠ 1 || !isa(L11, Diagonal{eltype(λ)})
-        throw(ArgumentError("code for vector-valued r.e. or more than one term not yet written"))
-    end
-    ll = λ.Λ[1]
+    nreterms(m) == 1 || throw(ArgumentError("condVar requires a single r.e. term"))
+    condVar(lmm(m).L.data[Block(1,1)], first(lmm(m).trms).Λ, varest(m))
+end
+
+function condVar(L11::Diagonal{T}, Λ::T, ssqr::T) where {T}
     Ld = L11.diag
-    Array{eltype(Ld), 3}[reshape(abs2.(ll ./ Ld) .* varest(m), (1, 1, length(Ld)))]
+    Array{T, 3}[reshape(abs2.(Λ ./ Ld) .* ssqr, (1, 1, :))]
+end
+
+function condVar(L11::UniformBlockDiagonal{T}, Λ::LowerTriangular{T}, ssqr::T) where {T}
+    value = copy(L11)
+    scratch = similar(first(L11.facevec))
+    for L in value.facevec
+        LinearAlgebra.inv!(LowerTriangular(copyto!(scratch, LowerTriangular(L))))
+        rmul!(scratch, Λ)
+        rmul!(mul!(L, scratch', scratch), ssqr)
+    end
+    value
 end

@@ -15,6 +15,8 @@ function UniformBlockDiagonal(dat::Array{T,3}) where {T}
         SubArray{T,2,Array{T,3}}[view(dat,:,:,i) for i in 1:size(dat, 3)])
 end
 
+Base.copy(A::UniformBlockDiagonal) = UniformBlockDiagonal(copy(A.data))
+
 function Base.size(A::UniformBlockDiagonal)
     m, n, l = size(A.data)
     (l * m, l * n)
