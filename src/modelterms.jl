@@ -534,10 +534,15 @@ function LinearAlgebra.mul!(C::Matrix{T},
     @argcheck((m = size(A, 1)) == size(B, 1) && size(C,1) == size(A,2) && 
         size(C,2) == size(B,2), DimensionMismatch)
     fill!(C, zero(T))
-    blk = PseudoBlockArray(C, fill(S, div(size(A,2),S)), fill(P, div(size(B,2),P)))
-    scratch = Array{T}(undef, S, P)
     for (i, j, Av, Bv) in zip(A.refs, B.refs, A.wtzv, B.wtzv)
-        blk[Block(Int(i), Int(j))] += mul!(scratch, Av, Bv')
+        ioffset = (i - 1) * S
+        joffset = (j - 1) * P
+        for (jj, Bvjj) in enumerate(Bv)
+            jind = joffset + jj
+            for (ii, Avii) in enumerate(Av)
+                C[ioffset + ii, jind] += Avii * Bvjj
+            end
+        end
     end
     C
 end
