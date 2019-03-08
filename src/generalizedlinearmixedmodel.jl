@@ -5,7 +5,7 @@ Generalized linear mixed-effects model representation
 
 # Fields
 - `LMM`: a [`LinearMixedModel`](@ref) - the local approximation to the GLMM.
-- `β`: the fixed-effects vector
+- `β`: the pivoted and possibly truncated fixed-effects vector
 - `β₀`: similar to `β`. Used in the PIRLS algorithm if step-halving is needed.
 - `θ`: covariance parameter vector
 - `b`: similar to `u`, equivalent to `broadcast!(*, b, LMM.Λ, u)`
@@ -57,20 +57,16 @@ end
 function Base.getproperty(m::GeneralizedLinearMixedModel, s::Symbol)
     if s == :theta
         m.θ
+    elseif s == :coef
+        coef(m)
     elseif s == :beta
-        m.β
-    elseif s ∈ (:λ, :lambda)
-        getΛ(m)
+        m.β 
     elseif s ∈ (:σ, :sigma)
         sdest(m)
-    elseif s == :lowerbd
-        m.LMM.optsum.lowerbd
-    elseif s ∈ (:formula, :trms, :A, :L, :optsum)
-        getfield(m.LMM, s)
-    elseif s == :X
-        m.LMM.trms[end - 1].x
+    elseif s ∈ (:A, :L, :λ, :lowerbd, :optsum, :X)
+        getproperty(m.LMM, s)
     elseif s == :y
-        vec(m.LMM.trms[end].x)
+        m.resp.y
     else
         getfield(m, s)
     end
@@ -89,22 +85,26 @@ function Base.setproperty!(m::GeneralizedLinearMixedModel, s::Symbol, y)
 end
 
 Base.propertynames(m::GeneralizedLinearMixedModel, private=false) =
-(:theta, :beta, :λ, :lambda, :σ, :sigma, :X, :y, :lowerbd, fieldnames(typeof(m))..., fieldnames(typeof(m.LMM))...)
+(:A, :L, :theta, :beta, :coef, :λ, :lambda, :σ, :sigma, :X, :y, :lowerbd, fieldnames(typeof(m))...)
+
+for f in (:(StatsBase.vcov), :(LinearAlgebra.logdet), :feL) # delegate GLMM method to LMM field
+    @eval begin
+        $f(m::GeneralizedLinearMixedModel) = $f(m.LMM)
+    end
+end
 
 function StatsBase.dof(m::GeneralizedLinearMixedModel)
     length(m.β) + length(m.θ) + GLM.dispersion_parameter(m.resp.d)
 end
 
-feL(m::GeneralizedLinearMixedModel) = feL(m.LMM)
-
 StatsBase.fitted(m::GeneralizedLinearMixedModel) = m.resp.mu
 
 function fixef(m::GeneralizedLinearMixedModel{T}, permuted=true) where {T}
     permuted && return m.β
-    Xtrm = first(m.feterms)
+    Xtrm = first(m.LMM.feterms)
     piv = Xtrm.piv
     v = fill(-zero(T), size(piv))
-    fixef!(view(v, 1:Xtrm.rank), m)
+    copyto!(view(v, 1:Xtrm.rank), m.β)
     invpermute!(v, piv)
 end
 
@@ -114,24 +114,26 @@ function GeneralizedLinearMixedModel(f::FormulaTerm, tbl::D, d::Distribution, l:
         d = Bernoulli()
     end
     LMM = LinearMixedModel(f, tbl, hints; weights = wt)
-    X = LMM.X
-    T = eltype(X)
     y = copy(LMM.y)
+        # the sqrtwts field must be the correct length and type but we don't know those
+        # until after the model is constructed if wt is empty.  Because a LinearMixedModel
+        # type is immutable, another one must be created.
     if isempty(wt)
         LMM = LinearMixedModel(LMM.formula, LMM.reterms, LMM.feterms, fill!(similar(y), 1), 
         LMM.A, LMM.L, LMM.optsum)
     end
-    updateL!(setθ!(LMM, getθ(LMM)))
-    # fit a glm to the fixed-effects only - awkward syntax is to by-pass a test
-    gl = isempty(wt) ? glm(X, y, d, l) : glm(X, y, d, l, wts=wt)
+    updateL!(LMM)
+        # fit a glm to the fixed-effects only - awkward syntax is to by-pass a test
+    gl = isempty(wt) ? glm(LMM.X, y, d, l) : glm(LMM.X, y, d, l, wts=wt)
     β = coef(gl)
-    u = [fill(zero(T), vsize(t), nlevs(t)) for t in LMM.reterms]
-    vv = length(u) == 1 ? vec(u[1]) : T[]
+    u = [fill(zero(eltype(y)), vsize(t), nlevs(t)) for t in LMM.reterms]
+        # vv is a template vector used to initialize fields for AGQ
+        # it is empty unless there is a single random-effects term
+    vv = length(u) == 1 ? vec(first(u)) : similar(y, 0)
     
-    res = GeneralizedLinearMixedModel(LMM, β, copy(β), getθ(LMM), copy.(u), u,
-    zero.(u), gl.rr, similar(y), oftype(y, wt), similar(vv),
-    similar(vv), similar(vv), similar(vv))
-    setβθ!(res, vcat(coef(gl), getθ(LMM)))
+    res = GeneralizedLinearMixedModel(LMM, β, copy(β), LMM.θ, copy.(u), u,
+        zero.(u), gl.rr, similar(y), oftype(y, wt), similar(vv),
+        similar(vv), similar(vv), similar(vv))
     deviance!(res, 1)
     res
 end
@@ -158,12 +160,12 @@ of `Λ'Z'WZΛ + I`, plus the sum of the squared deviance residuals.
 """
 function StatsBase.deviance(m::GeneralizedLinearMixedModel{T}, nAGQ=1) where {T}
     nAGQ == 1 && return T(sum(m.resp.devresid) + logdet(m) + sum(u -> sum(abs2, u), m.u))
-    u = vec(m.u[1])
-    u₀ = vec(m.u₀[1])
+    u = vec(first(m.u))
+    u₀ = vec(first(m.u₀))
     copyto!(u₀, u)
-    ra = RaggedArray(m.resp.devresid, m.LMM.trms[1].refs)
+    ra = RaggedArray(m.resp.devresid, first(m.LMM.reterms).refs)
     devc0 = sum!(map!(abs2, m.devc0, u), ra)  # the deviance components at z = 0
-    sd = map!(inv, m.sd, m.LMM.L.data[Block(1,1)].diag)
+    sd = map!(inv, m.sd, m.LMM.L[Block(1,1)].diag)
     mult = fill!(m.mult, 0)
     devc = m.devc
     for (z, w) in GHnorm(nAGQ)
@@ -210,8 +212,6 @@ function StatsBase.loglikelihood(m::GeneralizedLinearMixedModel{T}) where {T}
     end
     accum - (mapreduce(u -> sum(abs2, u), + , m.u) + logdet(m)) / 2
 end
-
-LinearAlgebra.logdet(m::GeneralizedLinearMixedModel) = logdet(m.LMM)
 
 function lowerbd(m::GeneralizedLinearMixedModel)
     lb = lowerbd(m.LMM)
@@ -416,4 +416,3 @@ function Base.show(io::IO, m::GeneralizedLinearMixedModel)
 end
 
 varest(m::GeneralizedLinearMixedModel{T}) where {T} = one(T)
-    

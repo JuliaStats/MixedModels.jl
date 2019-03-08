@@ -6,7 +6,8 @@ end
 Base.show(io::IO, t::RandomEffectsTerm) = print(io, "($(t.lhs) | $(t.rhs))")
 StatsModels.is_matrix_term(::Type{RandomEffectsTerm}) = false
 
-function apply_schema(t::FunctionTerm{typeof(|)}, schema, Mod::Type{<:MixedModel})
+function StatsModels.apply_schema(t::FunctionTerm{typeof(|)}, schema,
+        Mod::Type{<:MixedModel})
     lhs, rhs = apply_schema.(t.args_parsed, Ref(schema), Mod)
     RandomEffectsTerm(MatrixTerm(lhs), rhs)
 end
@@ -19,7 +20,8 @@ end
 
 function nocorr end
 
-function apply_schema(t::FunctionTerm{typeof(nocorr)}, schema, Mod::Type{<:MixedModel})
+function StatsModels.apply_schema(t::FunctionTerm{typeof(nocorr)}, schema,
+        Mod::Type{<:MixedModel})
     args = apply_schema.(t.args_parsed, Ref(schema), Mod)
     isone(length(args)) && isa(args[1], RandomEffectsTerm) || 
         throw(ArgumentError("argument to nocorr must be a random-effect term"))

@@ -240,11 +240,8 @@ StatsBase.fitted(m::LinearMixedModel{T}) where {T} = fitted!(Vector{T}(undef, no
 
 Overwrite `v` with the pivoted and, possibly, truncated fixed-effects coefficients of model `m`
 """
-function fixef!(v::AbstractVector{T}, m::LinearMixedModel{T}) where {T}
-    L = feL(m)
-    length(v) == size(L, 1) || throw(DimensionMismatch(""))
-    ldiv!(adjoint(L), copyto!(v, m.L.blocks[end, end - 1]))
-end
+fixef!(v::AbstractVector{T}, m::LinearMixedModel{T}) where {T} =
+    ldiv!(feL(m)', copyto!(v, m.L.blocks[end, end - 1]))
 
 """
     fixef(m::MixedModel, permuted=true)
@@ -255,12 +252,18 @@ If `permuted` is `true` the vector elements are permuted according to
 `m.trms[end - 1].piv` and truncated to the rank of that term.
 """
 function fixef(m::LinearMixedModel{T}, permuted=true) where {T}
-    permuted && return fixef!(Vector{T}(undef, size(m)[2]), m)
-    Xtrm = first(m.feterms)
-    piv = Xtrm.piv
-    v = fill(-zero(T), size(piv))
-    fixef!(view(v, 1:Xtrm.rank), m)
-    invpermute!(v, piv)
+    val = ldiv!(feL(m)', vec(copy(m.L.blocks[end, end-1])))
+    if !permuted
+        Xtrm = first(m.feterms)
+        piv = Xtrm.piv
+        rnk = Xtrm.rank
+        p = length(piv)
+        if rnk < p
+            val = copyto!(fill(-zero(T), p), val)
+        end
+        invpermute!(val, piv)
+    end
+    val
 end
 
 function fixefnames(m::LinearMixedModel)
@@ -304,9 +307,9 @@ function Base.getproperty(m::LinearMixedModel, s::Symbol)
     elseif s == :lowerbd
         m.optsum.lowerbd
     elseif s == :X
-        first(m.feterms).x
+        modelmatrix(m)
     elseif s == :y
-        vec(m.feterms[end].x)
+        vec(last(m.feterms).x)
     elseif s == :rePCA
         normalized_variance_cumsum.(getfield.(m.reterms, :λ))
     else
@@ -322,6 +325,11 @@ function StatsBase.loglikelihood(m::LinearMixedModel)
 end
 
 lowerbd(m::LinearMixedModel) = m.optsum.lowerbd
+
+function StatsBase.modelmatrix(m::LinearMixedModel)
+    fetrm = first(m.feterms)
+    fetrm.x[:, invperm(fetrm.piv)]
+end
 
 StatsBase.nobs(m::LinearMixedModel) = first(size(m))
 
@@ -403,6 +411,8 @@ function ranef(m::LinearMixedModel{T}; uscale=false) where {T}#, named=false)
     vnmd
 =#
 end
+
+LinearAlgebra.rank(m::LinearMixedModel) = first(m.feterms).rank
 
 """
     reevaluateAend!(m::LinearMixedModel)
@@ -573,11 +583,6 @@ function updateL!(m::LinearMixedModel{T}) where {T}
         end
     end
     m
-end
-
-function dof_residual(m::LinearMixedModel)
-    (n, p, q, k) = size(m)
-    n - m.optsum.REML * p
 end
 
 """

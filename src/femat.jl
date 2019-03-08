@@ -21,11 +21,10 @@ end
 function FeMat(X::AbstractMatrix, cnms)
     dX = Matrix(X)    # unconditionally densify for now
     T = eltype(dX)
-    cf = cholesky!(Symmetric(Matrix(dX'dX), :U), Val(true), tol = -one(T))
-    r = cf.rank
-    piv = cf.piv
-    dX = dX[:, piv[1:r]]
-    FeMat{T,typeof(dX)}(dX, dX, piv, r, cnms)
+    ch = statscholesky(Symmetric(dX'dX))
+    r = ch.rank
+    dXp = r == size(dX, 2) ? dX : dX[ch.piv]
+    FeMat{T,typeof(dX)}(dXp, dXp, ch.piv, r, cnms)
 end
 
 function reweight!(A::FeMat{T}, sqrtwts::Vector{T}) where {T}

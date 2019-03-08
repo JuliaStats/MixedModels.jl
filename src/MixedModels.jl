@@ -15,7 +15,6 @@ using StatsFuns: log2π
 
 import Base: *
 import NLopt: Opt
-import StatsModels: apply_schema, modelcols
 
 export
        @formula,
@@ -75,6 +74,7 @@ export
        setθ!,
        simulate!,  # simulate a new response in place
        sparse,
+       statscholesky,
        std,
        updateL!,   # update the lower-triangular, blocked matrix L to a new θ
        varest,     # estimate of the residual variance
@@ -94,6 +94,7 @@ include("randomeffectsterm.jl")
 include("linearmixedmodel.jl")
 include("gausshermite.jl")
 include("generalizedlinearmixedmodel.jl")
+include("linalg/statschol.jl")
 include("linalg/cholUnblocked.jl")
 include("linalg/rankUpdate.jl")
 #include("linalg/scaleInflate.jl")
