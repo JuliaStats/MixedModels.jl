@@ -29,7 +29,8 @@ end
 """
     logdet(m::LinearMixedModel)
 
-Return the value of `log(det(Λ'Z'ZΛ + I)) + log(det(LX*LX'))` evaluated in place.
+Return the value of `log(det(Λ'Z'ZΛ + I)) + m.optsum.REML * log(det(LX*LX'))`
+evaluated in place.
 
 Here LX is the diagonal term corresponding to the fixed-effects in the blocked
 lower Cholesky factor.
@@ -43,11 +44,9 @@ function LinearAlgebra.logdet(m::LinearMixedModel{T}) where {T}
     if m.optsum.REML
         feindex = length(m.reterms) + 1
         fetrm = first(m.feterms)
-        if isa(fetrm, FeMat)
-            lblk = L[Block(feindex, feindex)]
-            for i in 1:fetrm.rank
-                s += log(lblk[i, i])
-            end
+        lblk = L[Block(feindex, feindex)]
+        for i in 1:fetrm.rank
+            s += log(lblk[i, i])
         end
     end
     2s

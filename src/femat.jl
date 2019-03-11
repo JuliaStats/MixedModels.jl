@@ -22,9 +22,9 @@ function FeMat(X::AbstractMatrix, cnms)
     dX = Matrix(X)    # unconditionally densify for now
     T = eltype(dX)
     ch = statscholesky(Symmetric(dX'dX))
-    r = ch.rank
-    dXp = r == size(dX, 2) ? dX : dX[ch.piv]
-    FeMat{T,typeof(dX)}(dXp, dXp, ch.piv, r, cnms)
+    pivot = ch.piv
+    dXp = all(pivot .== 1:size(dX, 2)) ? dX : dX[:, ch.piv]
+    FeMat{T,typeof(dX)}(dXp, dXp, pivot, ch.rank, cnms[pivot])
 end
 
 function reweight!(A::FeMat{T}, sqrtwts::Vector{T}) where {T}
@@ -41,7 +41,11 @@ Base.adjoint(A::FeMat) = Adjoint(A)
 
 Base.eltype(A::FeMat{T}) where {T} = T
 
+fullrankwtx(A::FeMat) = rank(A) == size(A, 2) ? A.wtx : A.wtx[:, 1:rank(A)]
+
 Base.length(A::FeMat) = length(A.wtx)
+
+LinearAlgebra.rank(A::FeMat) = A.rank
 
 Base.size(A::FeMat) = size(A.wtx)
 
@@ -51,13 +55,11 @@ Base.size(A::FeMat, i) = size(A.wtx, i)
 
 Base.copyto!(A::FeMat{T}, src::AbstractVecOrMat{T}) where {T} = copyto!(A.x, src)
 
-*(A::Adjoint{T,<:FeMat{T}}, B::FeMat{T}) where {T} = A.parent.wtx'B.wtx
-
-LinearAlgebra.mul!(R::AbstractMatrix{T}, A::FeMat{T}, B::FeMat{T}) where {T} =
-    mul!(R, A.wtx, B.wtx)
+*(adjA::Adjoint{T,<:FeMat{T}}, B::FeMat{T}) where {T} =
+    fullrankwtx(adjA.parent)'fullrankwtx(B)
 
 LinearAlgebra.mul!(R::StridedVecOrMat{T}, A::FeMat{T}, B::StridedVecOrMat{T}) where {T} =
     mul!(R, A.x, B)
 
-LinearAlgebra.mul!(C, A::Adjoint{T,<:FeMat{T}}, B::FeMat{T}) where {T} =
-    mul!(C, A.parent.wtx', B.wtx)
+LinearAlgebra.mul!(C, adjA::Adjoint{T,<:FeMat{T}}, B::FeMat{T}) where {T} =
+    mul!(C, fullrankwtx(adjA.parent)', fullrankwtx(B))

@@ -129,7 +129,7 @@ end
 
 *(adjA::Adjoint{T,<:ReMat{T}}, B::ReMat{T}) where {T} = adjA.parent.adjA * sparse(B)
 *(adjA::Adjoint{T,<:FeMat{T}}, B::ReMat{T}) where {T} =
-    mul!(Matrix{T}(undef, size(adjA.parent, 2), size(B, 2)), adjA, B)
+    mul!(Matrix{T}(undef, rank(adjA.parent), size(B, 2)), adjA, B)
 
 LinearAlgebra.mul!(C::AbstractMatrix{T}, adjA::Adjoint{T,<:FeMat{T}},
         B::ReMat{T}) where {T} = mulαβ!(C, adjA, B)
@@ -139,13 +139,14 @@ function mulαβ!(C::Matrix{T}, adjA::Adjoint{T,<:FeMat{T}}, B::ReMat{T,R,1},
     A = adjA.parent
     Awt = A.wtx
     n, p = size(Awt)
+    r = A.rank
     m, q = size(B)
-    size(C) == (p, q) && m == n || throw(DimensionMismatch(""))
+    size(C) == (r, q) && m == n || throw(DimensionMismatch(""))
     isone(β) || rmul!(C, β)
     zz = B.wtz
     @inbounds for (j, rrj) in enumerate(B.refs)
         αzj = α * zz[j]
-        for i in 1:p
+        for i in 1:r
             C[i, rrj] += αzj * Awt[j, i]
         end
     end
@@ -157,8 +158,9 @@ function mulαβ!(C::Matrix{T}, adjA::Adjoint{T,<:FeMat{T}},
     A = adjA.parent
     Awt = A.wtx
     n, p = size(Awt)
+    r = rank(A)
     m, q = size(B)
-    size(C) == (p, q) && m == n || throw(DimensionMismatch(""))
+    size(C) == (r, q) && m == n || throw(DimensionMismatch(""))
     isone(β) || rmul!(C, β)
     rr = B.refs
     @inbounds for (j,v) in enumerate(B.wtzv)
@@ -166,7 +168,7 @@ function mulαβ!(C::Matrix{T}, adjA::Adjoint{T,<:FeMat{T}},
         for k in 1:S
             jj = coloffset + k
             avk = α * v[k]
-            for i in 1:p
+            for i in 1:r
                 C[i, jj] += avk * Awt[j, i]
             end
         end

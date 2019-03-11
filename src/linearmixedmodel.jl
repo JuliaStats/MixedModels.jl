@@ -57,7 +57,7 @@ function LinearMixedModel(f::FormulaTerm, d::D, hints=Dict{Symbol,Any}();
     sort!(reterms, by=nranef, rev=true)
 
     # create A and L
-    sz = append!(size.(reterms, 2), size.(feterms, 2))
+    sz = append!(size.(reterms, 2), rank.(feterms))
     A = BlockArrays._BlockArray(AbstractMatrix{T}, sz, sz)
     L = BlockArrays._BlockArray(AbstractMatrix{T}, sz, sz)
     q = length(reterms)
@@ -138,6 +138,8 @@ function condVar(m::LinearMixedModel{T}) where {T}
     Ld = L11.diag
     Array{T, 3}[reshape(abs2.(ll ./ Ld) .* varest(m), (1, 1, length(Ld)))]
 end
+
+Statistics.cor(m::LinearMixedModel{T}) where {T} = Matrix{T}[stddevcor(t)[2] for t in m.reterms]
 
 """
     describeblocks(io::IO, m::MixedModel)

@@ -170,11 +170,10 @@ end
     @test isapprox(logdet(fm), 73.90322021999222, atol=0.001)
     @test isapprox(StatsBase.stderror(fm), [6.632257721914501, 1.5022354739749826], atol=0.0001)
     @test coef(fm) ≈ [251.40510484848477,10.4672859595959]
-    @test fixef(fm) ≈ [10.4672859595959, 251.40510484848477]
-    @test isapprox(StatsBase.stderror(fm), [6.632246393963571, 1.502190605041084], atol=0.01)
+    @test fixef(fm) ≈  [251.40510484848477,10.4672859595959]
     @test isapprox(std(fm)[1], [23.780468100188497, 5.716827903196682], atol=0.01)
     @test isapprox(logdet(fm), 73.90337187545992, atol=0.001)
-    @test_broken diag(cor(fm)[1]) ≈ ones(2)
+    @test diag(cor(fm)[1]) ≈ ones(2)
     @test isapprox(cond(fm), [4.175251], atol=0.0001)
     @test loglikelihood(fm) ≈ -875.9696722323523
     show(IOBuffer(), fm)
@@ -246,7 +245,8 @@ end
 @testset "Rank deficient" begin
     Random.seed!(0)
     x = rand(100)
-    data = columntable((x = x, x2 = 1.5 .* x, y = rand(100), z = categorical(repeat(1:20, 5))))
-    # model = fit!(LinearMixedModel(@formula(y ~ x + x2 + (1|z)), data))
-    @test_broken length(fixef(model)) == 2
+    data = columntable((x = x, x2 = 1.5 .* x, y = rand(100), z = repeat('A':'T', 5)))
+    model = fit!(LinearMixedModel(@formula(y ~ x + x2 + (1|z)), data))
+    @test length(fixef(model)) == 2
+    @test length(coef(model)) == 3
 end
