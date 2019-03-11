@@ -262,8 +262,7 @@ optimized and `β` is held fixed.
 
 Passing `verbose = true` provides verbose output of the iterations.
 """
-function pirls!(m::GeneralizedLinearMixedModel{T}, varyβ=false, verbose=false) where {T}
-    iter, maxiter, obj = 0, 100, T(-Inf)
+function pirls!(m::GeneralizedLinearMixedModel{T}, varyβ=false, verbose=false; maxiter::Integer=10) where {T}
     u₀ = m.u₀
     u = m.u
     β = m.β
@@ -275,7 +274,7 @@ function pirls!(m::GeneralizedLinearMixedModel{T}, varyβ=false, verbose=false) 
     varyβ && copyto!(β₀, β)
     obj₀ = deviance!(m) * 1.0001
     verbose && @show(varyβ, obj₀, β)
-
+    iter = 0
     while iter < maxiter
         iter += 1
         varyβ && ldiv!(adjoint(feL(m)), copyto!(β, lm.L.blocks[end, end - 1]))

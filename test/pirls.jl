@@ -1,15 +1,13 @@
-using DataFrames, LinearAlgebra, MixedModels, RData, StatsBase, Test
+using DataFrames, LinearAlgebra, MixedModels, RData, StatsBase, Tables, Test
 
-if !@isdefined(dat) || !isa(dat, Dict{Symbol, DataFrame})
-    dat = Dict(Symbol(k) => v for (k, v) in load(joinpath(dirname(@__FILE__), "dat.rda")))
+if !@isdefined(dat) || !isa(dat, Dict{Symbol, NamedTuple})
+    const dat = Dict(Symbol(k) => columntable(v) for (k, v) in
+        load(joinpath(dirname(pathof(MixedModels)), "..", "test", "dat.rda")))
 end
 
 @testset "contra" begin
-    contraception = dat[:Contraception]
-    contraception[:a2] = abs2.(contraception[:a])
-    contraception[:urbdist] = string.(contraception[:urb], contraception[:d])
-    gm0 = fit!(GeneralizedLinearMixedModel(@formula(use ~ 1 + a + a2 + urb + l + (1 | urbdist)), contraception,
-                    Bernoulli()), fast = true);
+    gm0 = GeneralizedLinearMixedModel(@formula(use ~ 1 + a + abs2(a) + urb + l + (1|d)),
+        dat[:Contraception], Bernoulli());
     @test gm0.lowerbd == [0.]
     @test isapprox(getθ(gm0)[1], 0.5720734451352923, atol=0.001)
     @test isapprox(deviance(gm0,true), 2361.657188518064, atol=0.001)
