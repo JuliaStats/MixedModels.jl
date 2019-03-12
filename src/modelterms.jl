@@ -391,7 +391,7 @@ function reweight!(A::VectorFactorReTerm{T,R,S}, sqrtwts::Vector) where {T,R,S}
             A.wtz = copy(z)
             A.wtzv = reinterpret(SVector{S,T}, vec(A.wtz))
         end
-        mul!(A.wtz, z, Diagonal(sqrtwts))
+        rmul!(copyto!(A.wtz, z), Diagonal(sqrtwts))
     end
     A
 end
