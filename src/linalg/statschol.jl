@@ -23,6 +23,11 @@ function statscholesky(xtx::Symmetric{T}, tol::Real=-1) where{T<:AbstractFloat}
             nleft -= 1
         end
     end
+    for j in (r+1):n   # an MKL <-> OpenBLAS difference
+        for i in (r+1):jj
+            chunp.factors[i,j] = zero(T)
+        end
+    end
     CholeskyPivoted(chunp.factors, chunp.uplo, piv, r, tol, chpiv.info)
 end
 

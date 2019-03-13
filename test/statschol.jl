@@ -1,6 +1,6 @@
-using LinearAlgebra, StatsModels, Random, Test
+using LinearAlgebra, MixedModels, StatsModels, Random, Test
 
-xtx(X) = Symmetric(X'X)  # creat the symmetric matrix X'X from X
+xtx(X) = X'X  # creat the symmetric matrix X'X from X
 
 const rng = Random.MersenneTwister(4321234)
 
@@ -15,7 +15,7 @@ const simdat = (
 
 @testset "fullranknumeric" begin
     XtX = xtx(modelmatrix(@formula(Y ~ 1 + U), simdat))
-    ch = statscholesky(XtX)
+    ch = statscholesky(Symmetric(XtX, :U))
     @test ch.rank == 2
     @test ch.piv == 1:2
     @test iszero(ch.info)
@@ -24,7 +24,7 @@ end
 
 @testset "fullrankcategorical" begin
     XtX = xtx(modelmatrix(@formula(Y ~ 1 + G*H), simdat))
-    ch = statscholesky(XtX)
+    ch = statscholesky(Symmetric(XtX, :U))
     @test ch.rank == 100
     @test ch.piv == 1:100
     @test iszero(ch.info)
@@ -33,7 +33,7 @@ end
 
 @testset "dependentcolumn" begin
     XtX = xtx(modelmatrix(@formula(Y ~ 1 + U + V + Z), simdat))
-    ch = statscholesky(XtX)
+    ch = statscholesky(Symmetric(XtX, :U))
     perm = [1,2,4,3]
     @test ch.rank == 3
     @test ch.piv == perm
@@ -42,10 +42,10 @@ end
 
 @testset "missingcells" begin
     XtX = xtx(modelmatrix(@formula(Y ~ 1 + G*H), simdat)[5:end,:])
-    ch = statscholesky(XtX)
+    ch = statscholesky(Symmetric(XtX, :U))
     perm = [1:42; 44:100; 43]
     @test ch.rank == 98
     @test ch.piv == perm
-    @test isapprox(xtx(ch.U), XtX[perm, perm])
+    @test isapprox(xtx(ch.U), XtX[perm, perm], atol=0.00001)
 end
 
