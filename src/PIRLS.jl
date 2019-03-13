@@ -184,8 +184,11 @@ function pirls!(m::GeneralizedLinearMixedModel{T}, varyβ=false, verbose=false) 
     varyβ && copyto!(β₀, β)
     obj₀ = deviance!(m) * 1.0001
     if verbose
-        print("varyβ = $varyβ, obj₀ = obj₀, β =")
-        show(β)
+        print("varyβ = ", varyβ, ", obj₀ = ", obj₀)
+        if varyβ
+            print(", β =")
+            show(β)
+        end
         println()
     end
 
