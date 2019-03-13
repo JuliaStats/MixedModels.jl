@@ -455,10 +455,12 @@ StatsBase.residuals(m::LinearMixedModel) = response(m) .- fitted(m)
 
 StatsBase.response(m::LinearMixedModel) = vec(m.feterms[end].x)
 
-function reweight!(m::LinearMixedModel, sqrtwts::AbstractVector)
+function reweight!(m::LinearMixedModel, weights)
+    sqrtwts = map!(sqrt, m.sqrtwts, weights)
     reweight!.(m.feterms, Ref(sqrtwts))
     reweight!.(m.reterms, Ref(sqrtwts))
-    m
+    updateA!(m)
+    updateL!(m)
 end
 
 """
@@ -542,6 +544,28 @@ function Statistics.std(m::LinearMixedModel)
     s = sdest(m)
     isfinite(s) ? rmul!(push!(rl, [1.]), s) : rl
 end
+
+"""
+    updateA!(m::LinearMixedModel)
+
+Update the cross-product array, `m.A`, using `m.reterms` and `m.feterms`
+
+This is usually done after a reweight! operation.
+"""
+function updateA!(m::LinearMixedModel)
+    reterms = m.reterms
+    feterms = m.feterms
+    A = m.A
+    q = length(reterms)
+    k = q + length(feterms)
+    for j in 1:k
+        cj = j ≤ q ? reterms[j] : feterms[j - q]
+        for i in j:k
+            mul!(A[Block(i, j)], (i ≤ q ? reterms[i] : feterms[i - q])', cj)
+        end
+    end
+    m
+end    
 
 """
     updateL!(m::LinearMixedModel)

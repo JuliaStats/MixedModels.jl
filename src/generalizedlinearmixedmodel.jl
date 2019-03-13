@@ -273,14 +273,19 @@ function pirls!(m::GeneralizedLinearMixedModel{T}, varyβ=false, verbose=false; 
     end
     varyβ && copyto!(β₀, β)
     obj₀ = deviance!(m) * 1.0001
-    verbose && @show(varyβ, obj₀, β)
-    iter = 0
-    while iter < maxiter
-        iter += 1
+    if verbose
+        print("varyβ = ", varyβ, ", obj₀ = ", obj₀)
+        if varyβ
+            print(", β =")
+            show(β)
+        end
+        println()
+    end
+    for iter in 1:maxiter
         varyβ && ldiv!(adjoint(feL(m)), copyto!(β, lm.L.blocks[end, end - 1]))
         ranef!(u, m.LMM, β, true) # solve for new values of u
         obj = deviance!(m)        # update GLM vecs and evaluate Laplace approx
-        verbose && @show(iter, obj)
+        verbose && println(lpad(iter,4), ": ", obj)
         nhalf = 0
         while obj > obj₀
             nhalf += 1
@@ -295,7 +300,7 @@ function pirls!(m::GeneralizedLinearMixedModel{T}, varyβ=false, verbose=false; 
             end
             varyβ && map!(average, β, β, β₀)
             obj = deviance!(m)
-            verbose && @show(nhalf, obj)
+            verbose && println(lpad(nhalf, 8), ", ", obj)
         end
         if isapprox(obj, obj₀; atol = 0.00001)
             break

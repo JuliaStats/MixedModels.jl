@@ -311,7 +311,7 @@ function reweight!(A::ReMat, sqrtwts::Vector)
         if A.z === A.wtz
             A.wtz = copy(A.z)
         end    
-        mul!(A.wtz, A.z, Diagonal(sqrtwts))
+        rmul!(copyto!(A.wtz, A.z), Diagonal(sqrtwts))
     end
     A
 end
