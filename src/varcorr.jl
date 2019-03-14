@@ -20,7 +20,7 @@ struct VarCorr{T}
 #    cnms::Vector{Vector{String}}
     s::T
 end
-function VarCorr(m::MixedModel{T}) where T
+function VarCorr(m::MixedModel{T}) where {T}
     fnms = Symbol[]
 #    cnms = Vector{String}[]
     σ = Vector{T}[]
@@ -35,8 +35,6 @@ function VarCorr(m::MixedModel{T}) where T
     VarCorr(σ, ρ, fnms, #cnms, 
         sdest(m))
 end
-
-cpad(s::String, n::Integer) = rpad(lpad(s, (n + textwidth(s)) >> 1), n)
 
 function Base.show(io::IO, vc::VarCorr)
         # FIXME: Do this one term at a time

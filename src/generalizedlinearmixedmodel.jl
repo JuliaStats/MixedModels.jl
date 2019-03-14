@@ -53,109 +53,14 @@ struct GeneralizedLinearMixedModel{T <: AbstractFloat} <: MixedModel{T}
     mult::Vector{T}
 end
 
-
-function Base.getproperty(m::GeneralizedLinearMixedModel, s::Symbol)
-    if s == :theta
-        m.θ
-    elseif s == :coef
-        coef(m)
-    elseif s == :beta
-        m.β 
-    elseif s ∈ (:σ, :sigma)
-        sdest(m)
-    elseif s ∈ (:A, :L, :λ, :lowerbd, :optsum, :X)
-        getproperty(m.LMM, s)
-    elseif s == :y
-        m.resp.y
-    else
-        getfield(m, s)
-    end
-end
-
-function Base.setproperty!(m::GeneralizedLinearMixedModel, s::Symbol, y)
-    if s ∈ (:θ, :theta)
-        setθ!(m, y)
-    elseif s ∈ (:β, :beta)
-        setβ!(m, y)
-    elseif s ∈ (:βθ, :betatheta)
-        setβθ!(m, y)
-    else
-        setfield!(m, s, y)
-    end
-end
-
-Base.propertynames(m::GeneralizedLinearMixedModel, private=false) =
-(:A, :L, :theta, :beta, :coef, :λ, :lambda, :σ, :sigma, :X, :y, :lowerbd, fieldnames(typeof(m))...)
-
-for f in (:(StatsBase.vcov), :(LinearAlgebra.logdet), :feL) # delegate GLMM method to LMM field
-    @eval begin
-        $f(m::GeneralizedLinearMixedModel) = $f(m.LMM)
-    end
-end
-
-function StatsBase.dof(m::GeneralizedLinearMixedModel)
-    length(m.β) + length(m.θ) + GLM.dispersion_parameter(m.resp.d)
-end
-
-StatsBase.fitted(m::GeneralizedLinearMixedModel) = m.resp.mu
-
-function fixef(m::GeneralizedLinearMixedModel{T}, permuted=true) where {T}
-    permuted && return m.β
-    Xtrm = first(m.LMM.feterms)
-    piv = Xtrm.piv
-    v = fill(-zero(T), size(piv))
-    copyto!(view(v, 1:Xtrm.rank), m.β)
-    invpermute!(v, piv)
-end
-
-function GeneralizedLinearMixedModel(f::FormulaTerm, tbl::D, d::Distribution, l::Link;
-        wt=[], offset=[], hints = Dict{Symbol,Any}()) where {D<:ColumnTable}
-    if d == Binomial() && isempty(wt)
-        d = Bernoulli()
-    end
-    LMM = LinearMixedModel(f, tbl, hints; weights = wt)
-    y = copy(LMM.y)
-        # the sqrtwts field must be the correct length and type but we don't know those
-        # until after the model is constructed if wt is empty.  Because a LinearMixedModel
-        # type is immutable, another one must be created.
-    if isempty(wt)
-        LMM = LinearMixedModel(LMM.formula, LMM.reterms, LMM.feterms, fill!(similar(y), 1), 
-        LMM.A, LMM.L, LMM.optsum)
-    end
-    updateL!(LMM)
-        # fit a glm to the fixed-effects only - awkward syntax is to by-pass a test
-    gl = isempty(wt) ? glm(LMM.X, y, d, l) : glm(LMM.X, y, d, l, wts=wt)
-    β = coef(gl)
-    u = [fill(zero(eltype(y)), vsize(t), nlevs(t)) for t in LMM.reterms]
-        # vv is a template vector used to initialize fields for AGQ
-        # it is empty unless there is a single random-effects term
-    vv = length(u) == 1 ? vec(first(u)) : similar(y, 0)
-    
-    res = GeneralizedLinearMixedModel(LMM, β, copy(β), LMM.θ, copy.(u), u,
-        zero.(u), gl.rr, similar(y), oftype(y, wt), similar(vv),
-        similar(vv), similar(vv), similar(vv))
-    deviance!(res, 1)
-    res
-end
-
-GeneralizedLinearMixedModel(f::FormulaTerm, tbl, d::Distribution;
-        wt=[], offset=[], hints=Dict{Symbol,Any}()) =
-    GeneralizedLinearMixedModel(f, columntable(tbl), d, GLM.canonicallink(d),
-        wt=wt, offset=offset, hints=hints)
-
-StatsBase.fit(::Type{GeneralizedLinearMixedModel}, f::FormulaTerm, tbl, d::Distribution) =
-fit!(GeneralizedLinearMixedModel(f, columntable(tbl), d, GLM.canonicallink(d)))
-
-StatsBase.fit(::Type{GeneralizedLinearMixedModel}, f::FormulaTerm, tbl, d::Distribution,
-    l::Link) = fit!(GeneralizedLinearMixedModel(f,columntable(tbl), d, l))
-
 """
 deviance(m::GeneralizedLinearMixedModel{T}, nAGQ=1)::T where {T}
 
-Return the deviance of `m` evaluated by adaptive Gauss-Hermite quadrature
+Return the deviance of `m` evaluated by the Laplace approximation (`nAGQ=1`)
+or `nAGQ`-point adaptive Gauss-Hermite quadrature.
 
 If the distribution `D` does not have a scale parameter the Laplace approximation
-is defined as the squared length of the conditional modes, `u`, plus the determinant
+is the squared length of the conditional modes, `u`, plus the determinant
 of `Λ'Z'WZΛ + I`, plus the sum of the squared deviance residuals.
 """
 function StatsBase.deviance(m::GeneralizedLinearMixedModel{T}, nAGQ=1) where {T}
@@ -198,6 +103,143 @@ function deviance!(m::GeneralizedLinearMixedModel, nAGQ=1)
     deviance(m, nAGQ)
 end
 
+function StatsBase.dof(m::GeneralizedLinearMixedModel)
+    length(m.β) + length(m.θ) + GLM.dispersion_parameter(m.resp.d)
+end
+
+StatsBase.fit(::Type{GeneralizedLinearMixedModel}, f::FormulaTerm, tbl, d::Distribution) =
+    fit!(GeneralizedLinearMixedModel(f, columntable(tbl), d, GLM.canonicallink(d)))
+
+StatsBase.fit(::Type{GeneralizedLinearMixedModel}, f::FormulaTerm, tbl, d::Distribution,
+    l::Link) = fit!(GeneralizedLinearMixedModel(f,columntable(tbl), d, l))
+
+"""
+    fit!(m::GeneralizedLinearMixedModel[, verbose = false, fast = false, nAGQ=1])
+
+Optimize the objective function for `m`.
+
+When `fast` is `true` a potentially much faster but slightly less accurate algorithm, in
+which `pirls!` optimizes both the random effects and the fixed-effects parameters,
+is used.
+"""
+function StatsBase.fit!(m::GeneralizedLinearMixedModel{T};
+                        verbose::Bool=false, fast::Bool=false, nAGQ=1) where {T}
+    β = m.β
+    lm = m.LMM
+    optsum = lm.optsum
+    if !fast
+        fit!(m, verbose=verbose, fast=true, nAGQ=nAGQ)
+        optsum.lowerbd = vcat(fill!(similar(β), T(-Inf)), optsum.lowerbd)
+        optsum.initial = vcat(β, m.θ)
+        optsum.final = copy(optsum.initial)
+        optsum.initial_step = vcat(stderror(m) ./ 3, min.(T(0.05), m.θ ./ 4))
+    end
+    setpar! = fast ? setθ! : setβθ!
+    feval = 0
+    function obj(x, g)
+        isempty(g) || error("gradient not defined for this model")
+        feval += 1
+        val = deviance(pirls!(setpar!(m, x), fast, verbose), nAGQ)
+        feval == 1 && (optsum.finitial = val)
+        if verbose
+            println("f_", feval, ": ", val, " ", x)
+        end
+        val
+    end
+    opt = Opt(optsum)
+    NLopt.min_objective!(opt, obj)
+    fmin, xmin, ret = NLopt.optimize(opt, copyto!(optsum.final, optsum.initial))
+    ## check if very small parameter values bounded below by zero can be set to zero
+    xmin_ = copy(xmin)
+    for i in eachindex(xmin_)
+        if iszero(optsum.lowerbd[i]) && zero(T) < xmin_[i] < T(0.001)
+            xmin_[i] = zero(T)
+        end
+    end
+    if xmin ≠ xmin_
+        if (zeroobj = obj(xmin_, T[])) ≤ (fmin + 1.e-5)
+            fmin = zeroobj
+            copyto!(xmin, xmin_)
+        end
+    end
+    ## ensure that the parameter values saved in m are xmin
+    pirls!(setpar!(m, xmin), fast, verbose)
+    optsum.nAGQ = nAGQ
+    optsum.feval = feval
+    optsum.final = xmin
+    optsum.fmin = fmin
+    optsum.returnvalue = ret
+    ret == :ROUNDOFF_LIMITED && @warn("NLopt was roundoff limited")
+    if ret ∈ [:FAILURE, :INVALID_ARGS, :OUT_OF_MEMORY, :FORCED_STOP, :MAXEVAL_REACHED]
+        @warn("NLopt optimization failure: $ret")
+    end
+    m
+end
+
+StatsBase.fitted(m::GeneralizedLinearMixedModel) = m.resp.mu
+
+function fixef(m::GeneralizedLinearMixedModel{T}, permuted=true) where {T}
+    permuted && return m.β
+    Xtrm = first(m.LMM.feterms)
+    piv = Xtrm.piv
+    v = fill(-zero(T), size(piv))
+    copyto!(view(v, 1:Xtrm.rank), m.β)
+    invpermute!(v, piv)
+end
+
+function GeneralizedLinearMixedModel(f::FormulaTerm, tbl::D, d::Distribution, l::Link;
+        wt=[], offset=[], hints = Dict{Symbol,Any}()) where {D<:ColumnTable}
+    if d == Binomial() && isempty(wt)
+        d = Bernoulli()
+    end
+    LMM = LinearMixedModel(f, tbl, hints; weights = wt)
+    y = copy(LMM.y)
+        # the sqrtwts field must be the correct length and type but we don't know those
+        # until after the model is constructed if wt is empty.  Because a LinearMixedModel
+        # type is immutable, another one must be created.
+    if isempty(wt)
+        LMM = LinearMixedModel(LMM.formula, LMM.reterms, LMM.feterms, fill!(similar(y), 1), 
+            LMM.A, LMM.L, LMM.optsum)
+    end
+    updateL!(LMM)
+        # fit a glm to the fixed-effects only - awkward syntax is to by-pass a test
+    gl = isempty(wt) ? glm(LMM.X, y, d, l) : glm(LMM.X, y, d, l, wts=wt)
+    β = coef(gl)
+    u = [fill(zero(eltype(y)), vsize(t), nlevs(t)) for t in LMM.reterms]
+        # vv is a template vector used to initialize fields for AGQ
+        # it is empty unless there is a single random-effects term
+    vv = length(u) == 1 ? vec(first(u)) : similar(y, 0)
+    
+    res = GeneralizedLinearMixedModel(LMM, β, copy(β), LMM.θ, copy.(u), u,
+        zero.(u), gl.rr, similar(y), oftype(y, wt), similar(vv),
+        similar(vv), similar(vv), similar(vv))
+    deviance!(res, 1)
+    res
+end
+
+GeneralizedLinearMixedModel(f::FormulaTerm, tbl, d::Distribution;
+        wt=[], offset=[], hints=Dict{Symbol,Any}()) =
+    GeneralizedLinearMixedModel(f, columntable(tbl), d, GLM.canonicallink(d),
+        wt=wt, offset=offset, hints=hints)
+
+function Base.getproperty(m::GeneralizedLinearMixedModel, s::Symbol)
+    if s == :theta
+        m.θ
+    elseif s == :coef
+        coef(m)
+    elseif s == :beta
+        m.β 
+    elseif s ∈ (:σ, :sigma)
+        sdest(m)
+    elseif s ∈ (:A, :L, :λ, :lowerbd, :optsum, :X, :reterms, :feterms, :formula)
+        getproperty(m.LMM, s)
+    elseif s == :y
+        m.resp.y
+    else
+        getfield(m, s)
+    end
+end
+
 function StatsBase.loglikelihood(m::GeneralizedLinearMixedModel{T}) where {T}
     accum = zero(T)
     D = Distribution(m.resp)
@@ -213,43 +255,12 @@ function StatsBase.loglikelihood(m::GeneralizedLinearMixedModel{T}) where {T}
     accum - (mapreduce(u -> sum(abs2, u), + , m.u) + logdet(m)) / 2
 end
 
-function lowerbd(m::GeneralizedLinearMixedModel)
-    lb = lowerbd(m.LMM)
-    vcat(fill(eltype(lb)(-Inf), size(m.β)), lb)
-end
-
 StatsBase.nobs(m::GeneralizedLinearMixedModel) = length(m.η)
 
 StatsBase.predict(m::GeneralizedLinearMixedModel) = fitted(m)
 
-updatedevresid!(r::GLM.GlmResp, η::AbstractVector) = updateμ!(r, η)
-
-fastlogitdevres(η, y) = 2log1p(exp(iszero(y) ? η : -η))
-
-function updatedevresid!(r::GLM.GlmResp{V,<:Bernoulli,LogitLink}, η::V) where V<:AbstractVector{<:AbstractFloat}
-    map!(fastlogitdevres, r.devresid, η, r.y)
-    r
-end
-
-"""
-    updateη!(m::GeneralizedLinearMixedModel)
-
-Update the linear predictor, `m.η`, from the offset and the `B`-scale random effects.
-"""
-function updateη!(m::GeneralizedLinearMixedModel)
-    η = m.η
-    b = m.b
-    u = m.u
-    reterms = m.LMM.reterms
-    mul!(η, m.LMM.X, m.β)
-    for i in eachindex(b)
-        unscaledre!(η, reterms[i], mul!(b[i], reterms[i].λ, u[i]))
-    end
-    updateμ!(m.resp, η)
-    m
-end
-
-average(a::T, b::T) where {T<:AbstractFloat} = (a + b) / 2
+Base.propertynames(m::GeneralizedLinearMixedModel, private=false) =
+(:A, :L, :theta, :beta, :coef, :λ, :lambda, :σ, :sigma, :X, :y, :lowerbd, fieldnames(typeof(m))...)
 
 """
     pirls!(m::GeneralizedLinearMixedModel)
@@ -335,70 +346,19 @@ function setθ!(m::GeneralizedLinearMixedModel, v)
     m
 end
 
-sdest(m::GeneralizedLinearMixedModel{T}) where {T} = convert(T, NaN)
-
-"""
-    fit!(m::GeneralizedLinearMixedModel[, verbose = false, fast = false, nAGQ=1])
-
-Optimize the objective function for `m`.
-
-When `fast` is `true` a potentially much faster but slightly less accurate algorithm, in
-which `pirls!` optimizes both the random effects and the fixed-effects parameters,
-is used.
-"""
-function StatsBase.fit!(m::GeneralizedLinearMixedModel{T};
-                        verbose::Bool=false, fast::Bool=false, nAGQ=1) where {T}
-    β = m.β
-    lm = m.LMM
-    optsum = lm.optsum
-    if !fast
-        fit!(m, verbose=verbose, fast=true, nAGQ=nAGQ)
-        optsum.lowerbd = vcat(fill!(similar(β), T(-Inf)), optsum.lowerbd)
-        optsum.initial = vcat(β, m.θ)
-        optsum.final = copy(optsum.initial)
-        optsum.initial_step = vcat(stderror(m) ./ 3, min.(T(0.05), m.θ ./ 4))
+function Base.setproperty!(m::GeneralizedLinearMixedModel, s::Symbol, y)
+    if s == :β
+        setβ!(m, y)
+    elseif s == :θ        
+        setθ!(m, y)
+    elseif s == :βθ
+        setβθ!(m, y)
+    else
+        setfield!(m, s, y)
     end
-    setpar! = fast ? setθ! : setβθ!
-    feval = 0
-    function obj(x, g)
-        isempty(g) || error("gradient not defined for this model")
-        feval += 1
-        val = deviance(pirls!(setpar!(m, x), fast, verbose), nAGQ)
-        feval == 1 && (optsum.finitial = val)
-        if verbose
-            println("f_", feval, ": ", round(val, 5), " ", x)
-        end
-        val
-    end
-    opt = Opt(optsum)
-    NLopt.min_objective!(opt, obj)
-    fmin, xmin, ret = NLopt.optimize(opt, copyto!(optsum.final, optsum.initial))
-    ## check if very small parameter values bounded below by zero can be set to zero
-    xmin_ = copy(xmin)
-    for i in eachindex(xmin_)
-        if iszero(optsum.lowerbd[i]) && zero(T) < xmin_[i] < T(0.001)
-            xmin_[i] = zero(T)
-        end
-    end
-    if xmin ≠ xmin_
-        if (zeroobj = obj(xmin_, T[])) ≤ (fmin + 1.e-5)
-            fmin = zeroobj
-            copyto!(xmin, xmin_)
-        end
-    end
-    ## ensure that the parameter values saved in m are xmin
-    pirls!(setpar!(m, xmin), fast, verbose)
-    optsum.nAGQ = nAGQ
-    optsum.feval = feval
-    optsum.final = xmin
-    optsum.fmin = fmin
-    optsum.returnvalue = ret
-    ret == :ROUNDOFF_LIMITED && @warn("NLopt was roundoff limited")
-    if ret ∈ [:FAILURE, :INVALID_ARGS, :OUT_OF_MEMORY, :FORCED_STOP, :MAXEVAL_REACHED]
-        @warn("NLopt optimization failure: $ret")
-    end
-    m
 end
+
+sdest(m::GeneralizedLinearMixedModel{T}) where {T} = convert(T, NaN)
 
 function Base.show(io::IO, m::GeneralizedLinearMixedModel)
     nAGQ = m.LMM.optsum.nAGQ
@@ -409,14 +369,39 @@ function Base.show(io::IO, m::GeneralizedLinearMixedModel)
     println(io, string("  Deviance: ", @sprintf("%.4f", deviance(m, nAGQ))), "\n")
 
     show(io,VarCorr(m))
-    gl = grplevels(m.LMM)
-    print(io, "\n Number of obs: ", length(m.η), "; levels of grouping factors: ", gl[1])
-    for l in gl[2:end]
-        print(io, ", ", l)
-    end
+
+    print(io," Number of obs: $(length(m.y)); levels of grouping factors: ")
+    join(io, nlevs.(m.reterms), ", ")
     println(io)
+
     println(io, "\nFixed-effects parameters:")
     show(io, coeftable(m))
 end
 
+"""
+    updateη!(m::GeneralizedLinearMixedModel)
+
+Update the linear predictor, `m.η`, from the offset and the `B`-scale random effects.
+"""
+function updateη!(m::GeneralizedLinearMixedModel)
+    η = m.η
+    b = m.b
+    u = m.u
+    reterms = m.LMM.reterms
+    mul!(η, m.LMM.X, m.β)
+    for i in eachindex(b)
+        unscaledre!(η, reterms[i], mul!(b[i], reterms[i].λ, u[i]))
+    end
+    updateμ!(m.resp, η)
+    m
+end
+
 varest(m::GeneralizedLinearMixedModel{T}) where {T} = one(T)
+
+
+for f in (:(StatsBase.vcov), :(LinearAlgebra.logdet), :feL, :lowerbd) # delegate GLMM method to LMM field
+    @eval begin
+        $f(m::GeneralizedLinearMixedModel) = $f(m.LMM)
+    end
+end
+

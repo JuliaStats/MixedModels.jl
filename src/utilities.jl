@@ -1,3 +1,7 @@
+average(a::T, b::T) where {T<:AbstractFloat} = (a + b) / 2
+
+cpad(s::String, n::Integer) = rpad(lpad(s, (n + textwidth(s)) >> 1), n)
+
 """
 densify(S::SparseMatrix, threshold=0.3)
 
@@ -106,3 +110,13 @@ function subscriptednames(nm, len)
         [string(nm, '₀' + j) for j in 1:len] :
         [string(nm, lpad(string(j), nd, '0')) for j in 1:len]
 end
+
+updatedevresid!(r::GLM.GlmResp, η::AbstractVector) = updateμ!(r, η)
+
+fastlogitdevres(η, y) = 2log1p(exp(iszero(y) ? η : -η))
+
+function updatedevresid!(r::GLM.GlmResp{V,<:Bernoulli,LogitLink}, η::V) where V<:AbstractVector{<:AbstractFloat}
+    map!(fastlogitdevres, r.devresid, η, r.y)
+    r
+end
+

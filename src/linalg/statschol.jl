@@ -24,7 +24,7 @@ function statscholesky(xtx::Symmetric{T}, tol::Real=-1) where{T<:AbstractFloat}
         end
     end
     for j in (r+1):n   # an MKL <-> OpenBLAS difference
-        for i in (r+1):jj
+        for i in (r+1):j
             chunp.factors[i,j] = zero(T)
         end
     end
