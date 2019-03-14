@@ -1,6 +1,6 @@
 using CategoricalArrays, DataFrames, LinearAlgebra, MixedModels, RData, Tables, Test
 
-const dat = Dict(Symbol(k) => columntable(v) for (k,v) in load(joinpath(dirname(@__FILE__), "dat.rda")))
+const dat = Dict(Symbol(k) => v for (k,v) in load(joinpath(dirname(@__FILE__), "dat.rda")))
 
 include("statschol.jl")
 include("UniformBlockDiagonal.jl")

@@ -1,7 +1,7 @@
-using CategoricalArrays, LinearAlgebra, MixedModels, Random, RData, SparseArrays, Statistics, StatsBase, Tables, Test
+using CategoricalArrays, DataFrames, LinearAlgebra, MixedModels, Random, RData, SparseArrays, Statistics, StatsBase, Tables, Test
 
-if !@isdefined(dat) || !isa(dat, Dict{Symbol, NamedTuple})
-    const dat = Dict(Symbol(k) => columntable(v) for (k, v) in
+if !@isdefined(dat) || !isa(dat, Dict{Symbol, DataFrame})
+    const dat = Dict(Symbol(k) => v for (k, v) in
         load(joinpath(dirname(pathof(MixedModels)), "..", "test", "dat.rda")))
 end
 
