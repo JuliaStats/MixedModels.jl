@@ -287,7 +287,7 @@ function pirls!(m::GeneralizedLinearMixedModel{T}, varyβ=false, verbose=false; 
     if verbose
         print("varyβ = ", varyβ, ", obj₀ = ", obj₀)
         if varyβ
-            print(", β =")
+            print(", β = ")
             show(β)
         end
         println()

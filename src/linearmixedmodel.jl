@@ -57,19 +57,18 @@ function LinearMixedModel(f::FormulaTerm, d::D, hints=Dict{Symbol,Any}();
     sort!(reterms, by=nranef, rev=true)
 
     # create A and L
+    terms = vcat(reterms, feterms)
+    k = length(terms)
     sz = append!(size.(reterms, 2), rank.(feterms))
     A = BlockArrays._BlockArray(AbstractMatrix{T}, sz, sz)
     L = BlockArrays._BlockArray(AbstractMatrix{T}, sz, sz)
-    q = length(reterms)
-    k = q + length(feterms)
     for j in 1:k
-        cj = j ≤ q ? reterms[j] : feterms[j - q]
         for i in j:k
-            Lij = L[Block(i,j)] = densify((i ≤ q ? reterms[i] : feterms[i - q])'cj)
+            Lij = L[Block(i,j)] = densify(terms[i]'terms[j])
             A[Block(i,j)] = deepcopy(isa(Lij, BlockedSparse) ? Lij.cscmat : Lij)
         end
     end
-    for i in 2:q            # check for fill-in due to non-nested grouping factors
+    for i in 2:length(reterms) # check for fill-in due to non-nested grouping factors
         ci = reterms[i]
         for j in 1:(i - 1)
             cj = reterms[j]
@@ -553,15 +552,12 @@ Update the cross-product array, `m.A`, using `m.reterms` and `m.feterms`
 This is usually done after a reweight! operation.
 """
 function updateA!(m::LinearMixedModel)
-    reterms = m.reterms
-    feterms = m.feterms
+    terms = vcat(m.reterms, m.feterms)
+    k = length(terms)
     A = m.A
-    q = length(reterms)
-    k = q + length(feterms)
     for j in 1:k
-        cj = j ≤ q ? reterms[j] : feterms[j - q]
         for i in j:k
-            mul!(A[Block(i, j)], (i ≤ q ? reterms[i] : feterms[i - q])', cj)
+            mul!(A[Block(i, j)], terms[i]', terms[j])
         end
     end
     m

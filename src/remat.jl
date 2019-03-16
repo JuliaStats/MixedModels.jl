@@ -103,6 +103,11 @@ function lmulΛ!(adjA::Adjoint{T,ReMat{T,R,1}}, B::M) where{M<:AbstractMatrix{T}
     lmul!(first(adjA.parent.λ), B)
 end
 
+function lmulΛ!(adjA::Adjoint{T,ReMat{T,R,S}}, B::M) where{M<:AbstractMatrix{T}} where{T,R,S}
+    lmul!(adjoint(adjA.parent.λ), reshape(B, S, :))
+    B
+end
+
 function lmulΛ!(adjA::Adjoint{T,<:ReMat{T}}, B::BlockedSparse{T}) where{T}
     lmul!(adjoint(adjA.parent.λ), B.nzsasmat)
 end
@@ -230,6 +235,40 @@ function LinearAlgebra.mul!(C::UniformBlockDiagonal{T}, adjA::Adjoint{T,ReMat{T,
             vj = v[j]
             for i in 1:S
                 Cd[i, j, r] += vj * v[i]
+            end
+        end
+    end
+    C
+end
+
+function LinearAlgebra.mul!(C::Matrix{T}, adjA::Adjoint{T,ReMat{T,R,S}},
+        B::ReMat{T,U,P}) where {T,R,S,U,P}
+    A = adjA.parent
+    m, n = size(A)
+    p, q = size(B)
+    m == p && size(C, 1) == n && size(C, 2) == q || throw(DimensionMismatch(""))
+    fill!(C, zero(T))
+
+    Az = A.wtzv
+    Bz = B.wtzv
+    ab = S * P
+    Ar = A.refs
+    Br = B.refs
+    for i in 1:m
+        Azi = Az[i]
+        Bzi = Bz[i]
+        if iszero(Azi) || iszero(Bzi)
+            continue
+        end
+        Ari = Ar[i]
+        Bri = Br[i]
+        ioffset = (Ari - 1) * S
+        joffset = (Bri - 1) * P
+        for jj in 1:P
+            jjo = jj + joffset
+            Bzijj = Bzi[jj]
+            for ii in 1:S
+                C[ii + ioffset, jjo] += Azi[ii] * Bzijj
             end
         end
     end
