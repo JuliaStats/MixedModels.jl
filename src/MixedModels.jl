@@ -97,12 +97,8 @@ include("generalizedlinearmixedmodel.jl")
 include("linalg/statschol.jl")
 include("linalg/cholUnblocked.jl")
 include("linalg/rankUpdate.jl")
-#include("linalg/scaleInflate.jl")
 include("linalg/logdet.jl")
 include("linalg.jl")
-#include("pls.jl")
 include("simulate.jl")
-#include("PIRLS.jl")
-#include("mixedmodel.jl")
 
 end # module
