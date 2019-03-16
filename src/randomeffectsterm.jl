@@ -39,13 +39,12 @@ function StatsModels.modelcols(t::RandomEffectsTerm, d::NamedTuple)
         push!(inds, m[i,j])
     end
     invindex = grp.contrasts.invindex
-    refs = getindex.(Ref(invindex), d[grp.sym])
-    R = eltype(refs)
-    J = R.(1:length(refs))
+    refs = convert(Vector{Int32}, getindex.(Ref(invindex), d[grp.sym]))
+    J = Int32.(1:length(refs))
     II = refs
     if S > 1
         J = repeat(J, inner=S)
-        II = R.(vec([(r - 1)*S + j for j in 1:S, r in refs]))
+        II = Int32.(vec([(r - 1)*S + j for j in 1:S, r in refs]))
     end
     ReMat(grp, refs, z, z, reinterpret(SVector{S,eltype(z)}, vec(z)),
         LowerTriangular(Matrix{T}(I, S, S)), inds, sparse(II, J, vec(z)))

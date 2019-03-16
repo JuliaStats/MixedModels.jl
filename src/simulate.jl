@@ -59,7 +59,7 @@ vector is generated as `randn(rng, size(M, 2))`
 """
 function unscaledre! end
 
-function unscaledre!(y::AbstractVector{T}, A::ReMat{T,R,1}, b::AbstractVector{T}) where {T,R}
+function unscaledre!(y::AbstractVector{T}, A::ReMat{T,1}, b::AbstractVector{T}) where {T}
     m, n = size(A)
     length(y) == m && length(b) == n || throw(DimensionMismatch(""))
     z = A.z
@@ -69,10 +69,10 @@ function unscaledre!(y::AbstractVector{T}, A::ReMat{T,R,1}, b::AbstractVector{T}
     y
 end
 
-unscaledre!(y::AbstractVector{T}, A::ReMat{T,R,1}, B::AbstractMatrix{T}) where {T,R} = 
+unscaledre!(y::AbstractVector{T}, A::ReMat{T,1}, B::AbstractMatrix{T}) where {T} = 
     unscaledre!(y, A, vec(B))
 
-function unscaledre!(y::AbstractVector{T}, A::ReMat{T,R,S}, b::AbstractMatrix{T}) where {T,R,S}
+function unscaledre!(y::AbstractVector{T}, A::ReMat{T,S}, b::AbstractMatrix{T}) where {T,S}
     Z = A.z
     k, n = size(Z)
     l = nlevs(A)
@@ -88,7 +88,7 @@ end
 unscaledre!(rng::AbstractRNG, y::AbstractVector{T}, A::ReMat{T}) where {T} =
     unscaledre!(y, A, lmul!(A.λ, randn(rng, vsize(A), nlevs(A))))
 
-unscaledre!(rng::AbstractRNG, y::AbstractVector{T}, A::ReMat{T,R,1}) where {T,R} =
+unscaledre!(rng::AbstractRNG, y::AbstractVector{T}, A::ReMat{T,1}) where {T} =
     unscaledre!(y, A, lmul!(first(A.λ), randn(rng, vsize(A), nlevs(A))))
 
 unscaledre!(y::AbstractVector, A::ReMat) = unscaledre!(Random.GLOBAL_RNG, y, A)
