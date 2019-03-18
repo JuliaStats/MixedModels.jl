@@ -19,12 +19,11 @@ mutable struct FeMat{T,S<:AbstractMatrix}
 end
 
 function FeMat(X::AbstractMatrix, cnms)
-    dX = Matrix(X)    # unconditionally densify for now
-    T = eltype(dX)
-    ch = statscholesky(Symmetric(dX'dX))
+    T = eltype(X)
+    ch = statscholesky(Symmetric(X'X))
     pivot = ch.piv
-    dXp = all(pivot .== 1:size(dX, 2)) ? dX : dX[:, ch.piv]
-    FeMat{T,typeof(dX)}(dXp, dXp, pivot, ch.rank, cnms[pivot])
+    Xp = all(pivot .== 1:size(X, 2)) ? X : X[:, ch.piv]
+    FeMat{T,typeof(X)}(Xp, Xp, pivot, ch.rank, cnms[pivot])
 end
 
 function reweight!(A::FeMat{T}, sqrtwts::Vector{T}) where {T}
