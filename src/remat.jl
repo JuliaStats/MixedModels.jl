@@ -23,6 +23,7 @@ mutable struct ReMat{T,S} <: AbstractMatrix{T}
     λ::LowerTriangular{T,Matrix{T}}
     inds::Vector{Int}
     adjA::SparseMatrixCSC{T}
+    scratch::Matrix{T}
 end
 
 Base.size(A::ReMat) = size(A.adjA')
@@ -238,10 +239,8 @@ function LinearAlgebra.mul!(C::Matrix{T}, adjA::Adjoint{T,ReMat{T,S}},
     Ar = A.refs
     Br = B.refs
     if isone(S) && isone(P)
-        Az = A.wtz
-        Bz = B.wtz
-        @inbounds for i in 1:m
-            C[Ar[i], Br[i]] += Az[i] * Bz[i]
+        for (ar, az, br, bz) in zip(Ar, vec(A.wtz), Br, vec(B.wtz))
+            C[ar, br] += az * bz
         end
         return C
     end

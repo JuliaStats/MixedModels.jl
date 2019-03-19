@@ -388,7 +388,7 @@ function updateη!(m::GeneralizedLinearMixedModel)
     b = m.b
     u = m.u
     reterms = m.LMM.reterms
-    mul!(η, m.LMM.X, m.β)
+    mul!(η, modelmatrix(m), m.β)
     for i in eachindex(b)
         unscaledre!(η, reterms[i], mul!(b[i], reterms[i].λ, u[i]))
     end
@@ -398,8 +398,12 @@ end
 
 varest(m::GeneralizedLinearMixedModel{T}) where {T} = one(T)
 
-
-for f in (:(StatsBase.vcov), :(LinearAlgebra.logdet), :feL, :lowerbd) # delegate GLMM method to LMM field
+            # delegate GLMM method to LMM field
+for f in (:(StatsBase.vcov), 
+    :(LinearAlgebra.logdet), 
+    :feL, 
+    :lowerbd,
+    :(StatsModels.modelmatrix)) 
     @eval begin
         $f(m::GeneralizedLinearMixedModel) = $f(m.LMM)
     end
