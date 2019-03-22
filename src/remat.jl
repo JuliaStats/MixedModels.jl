@@ -164,21 +164,26 @@ end
 function mulαβ!(C::Matrix{T}, adjA::Adjoint{T,<:FeMat{T}},
         B::ReMat{T,S}, α=true, β=false) where {T,S}
     A = adjA.parent
-    Awt = A.wtx
-    n, p = size(Awt)
     r = rank(A)
-    m, q = size(B)
-    size(C) == (r, q) && m == n || throw(DimensionMismatch(""))
+    Awt = A.wtx
+    n, q = size(B)
+    size(C) == (r, q) && size(Awt, 1) == n || throw(DimensionMismatch(""))
     isone(β) || rmul!(C, β)
     rr = B.refs
-    @inbounds for (j,v) in enumerate(B.wtzv)
-        coloffset = (rr[j] - 1) * S
-        for k in 1:S
-            jj = coloffset + k
-            avk = α * v[k]
-            for i in 1:r
-                C[i, jj] += avk * Awt[j, i]
+    scr = B.scratch
+    vscr = vec(scr)
+    @inbounds for i in 1:r
+        fill!(scr, 0)
+        for k in 1:n
+            aki = α * Awt[k,i]
+            kk = Int(rr[k])
+            vk = B.wtzv[k]
+            for ii in 1:S
+                scr[ii, kk] += aki * vk[ii]
             end
+        end
+        for j in 1:q
+            C[i, j] += vscr[j]
         end
     end
     C
