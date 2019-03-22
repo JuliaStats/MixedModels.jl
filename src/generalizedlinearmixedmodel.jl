@@ -399,11 +399,14 @@ end
 varest(m::GeneralizedLinearMixedModel{T}) where {T} = one(T)
 
             # delegate GLMM method to LMM field
-for f in (:(StatsBase.vcov), 
-    :(LinearAlgebra.logdet), 
+for f in (
+    :describeblocks,
     :feL, 
+    :(LinearAlgebra.logdet), 
     :lowerbd,
-    :(StatsModels.modelmatrix)) 
+    :(StatsModels.modelmatrix),
+    :(StatsBase.vcov), 
+    )
     @eval begin
         $f(m::GeneralizedLinearMixedModel) = $f(m.LMM)
     end
