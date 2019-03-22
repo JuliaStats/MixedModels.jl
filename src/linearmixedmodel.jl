@@ -427,13 +427,11 @@ after updating the response, `m.feterms[end]`.
 """
 function reevaluateAend!(m::LinearMixedModel)
     A = m.A
-    rtrms = m.reterms
-    nre = length(rtrms)
     ftrms = m.feterms
-    trmn = reweight!(ftrms[end], m.sqrtwts)
-    nblk = nblocks(A, 2)
-    for i in 1:nblk
-        mul!(A[Block(nblk, i)], trmn', i ≤ nre ? rtrms[i] : ftrms[i - nre])
+    trmn = reweight!(last(ftrms), m.sqrtwts)
+    nblk = nblocks(A, 1)
+    for (j, trm) in enumerate(vcat(m.reterms, ftrms))
+        mul!(A[Block(nblk, j)], trmn', trm)
     end
     m
 end
