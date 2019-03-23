@@ -22,11 +22,11 @@ mutable struct ReMat{T,S} <: AbstractMatrix{T}
     wtzv::Base.ReinterpretArray{SVector{S,T}}
     λ::LowerTriangular{T,Matrix{T}}
     inds::Vector{Int}
-    adjA::SparseMatrixCSC{T}
+    adjA::SparseMatrixCSC{T,Int32}
     scratch::Matrix{T}
 end
 
-Base.size(A::ReMat) = size(A.adjA')
+Base.size(A::ReMat) = (length(A.refs), length(A.scratch))
 
 SparseArrays.sparse(A::ReMat) = adjoint(A.adjA)
 
@@ -164,13 +164,14 @@ end
 function mulαβ!(C::Matrix{T}, adjA::Adjoint{T,<:FeMat{T}},
         B::ReMat{T,S}, α=true, β=false) where {T,S}
     A = adjA.parent
-    r = rank(A)
     Awt = A.wtx
-    n, q = size(B)
-    size(C) == (r, q) && size(Awt, 1) == n || throw(DimensionMismatch(""))
-    isone(β) || rmul!(C, β)
+    r = rank(A)
     rr = B.refs
     scr = B.scratch
+    n = length(rr)
+    q = length(scr)
+    size(C) == (r, q) && size(Awt, 1) == n || throw(DimensionMismatch(""))
+    isone(β) || rmul!(C, β)
     vscr = vec(scr)
     @inbounds for i in 1:r
         fill!(scr, 0)
