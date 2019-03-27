@@ -1,3 +1,4 @@
+#=
 getprops(m, props) = NamedTuple{props}(getproperty.(Ref(m), props))
 
 """
@@ -29,7 +30,7 @@ function parametricbootstrap(nsamp::Integer, m::LinearMixedModel,
     props=(:objective, :σ, :β, :θ); β = m.β, σ = m.σ, θ = m.θ)
     parametricbootstrap(Random.GLOBAL_RNG, nsamp, m, props, β = β, σ = σ, θ = θ)
 end
-
+=#
 """
     simulate!(rng::AbstractRNG, m::LinearMixedModel{T}; β=m.β, σ=m.σ, θ=T[])
     simulate!(m::LinearMixedModel; β=m.β, σ=m.σ, θ=m.θ)
@@ -85,10 +86,10 @@ function unscaledre!(y::AbstractVector{T}, A::ReMat{T,S}, b::AbstractMatrix{T}) 
     y
 end
 
-unscaledre!(rng::AbstractRNG, y::AbstractVector{T}, A::ReMat{T}) where {T} =
-    unscaledre!(y, A, lmul!(A.λ, randn(rng, vsize(A), nlevs(A))))
+unscaledre!(rng::AbstractRNG, y::AbstractVector{T}, A::ReMat{T,S}) where {T,S} =
+    unscaledre!(y, A, lmul!(A.λ, randn(rng, S, nlevs(A))))
 
 unscaledre!(rng::AbstractRNG, y::AbstractVector{T}, A::ReMat{T,1}) where {T} =
-    unscaledre!(y, A, lmul!(first(A.λ), randn(rng, vsize(A), nlevs(A))))
+    unscaledre!(y, A, lmul!(first(A.λ), randn(rng, 1, nlevs(A))))
 
 unscaledre!(y::AbstractVector, A::ReMat) = unscaledre!(Random.GLOBAL_RNG, y, A)

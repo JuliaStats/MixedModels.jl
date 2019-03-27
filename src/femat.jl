@@ -28,7 +28,7 @@ end
 
 function reweight!(A::FeMat{T}, sqrtwts::Vector{T}) where {T}
     if !isempty(sqrtwts)
-        if (A.x === A.wtx)
+        if A.x === A.wtx
             A.wtx = similar(A.x)
         end
         mul!(A.wtx, Diagonal(sqrtwts), A.x)

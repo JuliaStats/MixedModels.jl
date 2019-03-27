@@ -41,7 +41,7 @@ nranef(A::ReMat) = size(A.adjA, 1)
 
 LinearAlgebra.cond(A::ReMat) = cond(A.λ)
 
-getθ(A::ReMat) = vec(A.λ.data)[A.inds]
+getθ(A::ReMat{T}) where {T} = getθ!(Vector{T}(undef, nθ(A)), A)
 
 """
     getθ!(v::AbstractVector{T}, A::ReMat{T}) where {T}
@@ -88,7 +88,7 @@ That is, does each value of `A` occur with just one value of B?
 """
 function isnested(A::ReMat, B::ReMat)
     size(A, 1) == size(B, 1) || throw(DimensionMismatch("must have size(A,1) == size(B,1)"))
-    bins = zeros(eltype(B.refs), nlevs(A))
+    bins = zeros(Int32, nlevs(A))
     @inbounds for (a, b) in zip(A.refs, B.refs)
         bba = bins[a]
         if iszero(bba)    # bins[a] not yet set?
@@ -168,19 +168,19 @@ function mulαβ!(C::Matrix{T}, adjA::Adjoint{T,<:FeMat{T}},
     r = rank(A)
     rr = B.refs
     scr = B.scratch
+    vscr = vec(scr)
+    Bwt = B.wtz
     n = length(rr)
     q = length(scr)
     size(C) == (r, q) && size(Awt, 1) == n || throw(DimensionMismatch(""))
     isone(β) || rmul!(C, β)
-    vscr = vec(scr)
     @inbounds for i in 1:r
         fill!(scr, 0)
         for k in 1:n
             aki = α * Awt[k,i]
             kk = Int(rr[k])
-            vk = B.wtzv[k]
             for ii in 1:S
-                scr[ii, kk] += aki * vk[ii]
+                scr[ii, kk] += aki * Bwt[ii, k]
             end
         end
         for j in 1:q
@@ -347,7 +347,7 @@ end
 function reweight!(A::ReMat, sqrtwts::Vector)
     if length(sqrtwts) > 0
         if A.z === A.wtz
-            A.wtz = copy(A.z)
+            A.wtz = similar(A.z)
         end    
         rmul!(copyto!(A.wtz, A.z), Diagonal(sqrtwts))
     end

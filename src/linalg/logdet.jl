@@ -48,5 +48,3 @@ function LinearAlgebra.logdet(m::LinearMixedModel{T}) where {T}
     end
     2s
 end
-
-#LinearAlgebra.logdet(m::GeneralizedLinearMixedModel) = logdet(m.LMM)

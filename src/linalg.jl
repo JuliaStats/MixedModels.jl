@@ -12,7 +12,7 @@ function mulαβ!(C::Matrix{T}, A::SparseMatrixCSC{T}, adjB::Adjoint{T,<:SparseM
     bnz = nonzeros(B)
     brv = rowvals(B)
     isone(β) || rmul!(C, β)
-    for j = 1:A.n
+    @inbounds for j = 1:A.n
         for ib in nzrange(B, j)
             αbnz = α * bnz[ib]
             jj = brv[ib]
@@ -142,12 +142,12 @@ function LinearAlgebra.rdiv!(A::Matrix{T},
     end
     A
 end
-
+#=
 function LinearAlgebra.rdiv!(A::SparseMatrixCSC{T},
         adjB::Adjoint{T,<:LowerTriangular{T,<:Diagonal{T}}}) where T
     rdiv!(A, adjB.parent.data)
 end
-
+=#
 function LinearAlgebra.rdiv!(A::BlockedSparse{T},
         B::Adjoint{T,<:LowerTriangular{T,UniformBlockDiagonal{T}}}) where T
     Bp = B.parent

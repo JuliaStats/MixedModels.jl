@@ -29,6 +29,13 @@ end
     @test isnan(gm0.σ)
     @test length(gm0.y) == size(gm0.X, 1)
     @test :θ in propertynames(gm0)
+    gm0.β = gm0.beta
+    @test gm0.β == gm0.beta
+    gm0.θ = gm0.theta
+    @test gm0.θ == gm0.theta
+    gm0.βθ = vcat(gm0.β, gm0.theta)
+    @test gm0.β == gm0.beta
+    @test gm0.θ == gm0.theta
     # the next three values are not well defined in the optimization
     #@test isapprox(logdet(gm1), 75.7217, atol=0.1)
     #@test isapprox(sum(abs2, gm1.u[1]), 48.4747, atol=0.1)

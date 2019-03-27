@@ -142,6 +142,7 @@ end
     resid1 = residuals(fm1);
     @test size(resid1) == (73421, )
     @test isapprox(resid1[1], 1.82124, atol=0.00001)
+    @test length(fm1.rePCA) == 3
 
     fm2 = fit!(LinearMixedModel(@formula(Y ~ 1 + A*I + (1 | G) + (1 | H)), dat[:InstEval]))
     @test isapprox(objective(fm2), 237585.5534151694, atol=0.001)
@@ -161,6 +162,7 @@ end
     b11 = LowerTriangular(fm.L[Block(1, 1)].facevec[1])
     @test b11 * b11' == fm.A[Block(1, 1)].facevec[1] + I
     @test count(!iszero, Matrix(fm.L[Block(1, 1)])) == 18 * 4
+    @test rank(fm) == 2
 
     fit!(fm)
 
@@ -248,5 +250,6 @@ end
     data = columntable((x = x, x2 = 1.5 .* x, y = rand(100), z = repeat('A':'T', 5)))
     model = fit!(LinearMixedModel(@formula(y ~ x + x2 + (1|z)), data))
     @test length(fixef(model)) == 2
+    @test rank(model) == 2
     @test length(coef(model)) == 3
 end

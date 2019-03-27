@@ -257,20 +257,14 @@ function fixef(m::LinearMixedModel{T}, permuted=true) where {T}
     if !permuted
         Xtrm = first(m.feterms)
         piv = Xtrm.piv
-        rnk = Xtrm.rank
         p = length(piv)
-        if rnk < p
+        if Xtrm.rank < p
             val = copyto!(fill(-zero(T), p), val)
         end
         invpermute!(val, piv)
     end
     val
 end
-
-function fixefnames(m::LinearMixedModel)
-    fnms = coefnames(first(m.formula.rhs))
-    isa(fnms, String) ? [fnms] : fnms
-end    
 
 """
     fnames(m::MixedModel)
@@ -446,7 +440,7 @@ If `y` is omitted the current response vector is used.
 refit!(m::LinearMixedModel; REML=nothing) = fit!(reevaluateAend!(m), REML=REML)
 
 function refit!(m::LinearMixedModel, y, REML=nothing)
-    resp = m.feterms[end]
+    resp = last(m.feterms)
     length(y) == size(resp, 1) || throw(DimensionMismatch(""))
     copyto!(resp, y)
     refit!(m, REML=REML)

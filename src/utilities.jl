@@ -79,7 +79,7 @@ function stddevcor!(σ::Vector{T}, ρ::Matrix{T}, scr::Matrix{T}, L::Cholesky{T}
     end
     σ, ρ
 end
-
+#=
 function stddevcor!(σ::Vector{T}, ρ::Matrix{T}, scr::Matrix{T}, L::LowerTriangular{T}) where {T}
     length(σ) == (k = size(L, 2)) && size(ρ) == (k, k) && size(scr) == (k, k) || 
         throw(DimensionMismatch(""))
@@ -93,12 +93,12 @@ function stddevcor!(σ::Vector{T}, ρ::Matrix{T}, scr::Matrix{T}, L::LowerTriang
     mul!(ρ, LowerTriangular(scr), adjoint(LowerTriangular(scr)))
     σ, ρ
 end
-
+=#
 function stddevcor(L::Cholesky{T}) where {T}
     k = size(L, 1)
     stddevcor!(Vector{T}(undef, k), Matrix{T}(undef, k, k), Matrix{T}(undef, k, k), L)
 end
-
+#=
 """
     subscriptednames(nm, len)
 
@@ -119,4 +119,4 @@ function updatedevresid!(r::GLM.GlmResp{V,<:Bernoulli,LogitLink}, η::V) where V
     map!(fastlogitdevres, r.devresid, η, r.y)
     r
 end
-
+=#

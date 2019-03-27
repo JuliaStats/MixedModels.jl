@@ -94,10 +94,5 @@ end
 
 function densify(A::BlockedSparse, threshold::Real = 0.25)
     m, n = size(A)
-    p, q = size(A.nzsasmat)
-    if (p * q)/(m * n)  ≤ threshold
-        A
-    else
-        Matrix(A.cscmat)
-    end
+    nnz(A)/(m * n)  ≤ threshold ? A : Matrix(A)
 end

@@ -12,8 +12,6 @@ function StatsModels.apply_schema(t::FunctionTerm{typeof(|)}, schema,
     RandomEffectsTerm(MatrixTerm(lhs), rhs)
 end
 
-StatsModels.termnames(t::RandomEffectsTerm) = string(t.rhs.sym)
-
 struct NoCorrTerm <: AbstractTerm
     reterm::RandomEffectsTerm
 end
