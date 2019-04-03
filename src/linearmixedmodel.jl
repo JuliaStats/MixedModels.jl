@@ -448,7 +448,7 @@ end
 
 StatsBase.residuals(m::LinearMixedModel) = response(m) .- fitted(m)
 
-StatsBase.response(m::LinearMixedModel) = vec(m.feterms[end].x)
+StatsBase.response(m::LinearMixedModel) = vec(last(m.feterms).x)
 
 function reweight!(m::LinearMixedModel, weights)
     sqrtwts = map!(sqrt, m.sqrtwts, weights)
@@ -511,7 +511,7 @@ function Base.show(io::IO, m::LinearMixedModel)
     print(io," Number of obs: $n; levels of grouping factors: ")
     join(io, nlevs.(m.reterms), ", ")
     println(io)
-    @printf(io,"\n  Fixed-effects parameters:\n")
+    println(io,"\n  Fixed-effects parameters:")
     show(io,coeftable(m))
 end
 
