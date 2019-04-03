@@ -23,6 +23,24 @@ function Base.copyto!(dest::UniformBlockDiagonal{T}, src::UniformBlockDiagonal{T
     dest
 end
 
+function Base.copyto!(dest::Matrix{T}, src::UniformBlockDiagonal{T}) where {T}
+    size(dest) == size(src) || throw(DimensionMismatch(""))
+    fill!(dest, zero(T))
+    sdat = src.data
+    m, n, l = size(sdat)
+    for k in 1:l
+        ioffset = (k - 1) * m
+        joffset = (k - 1) * n
+        for j in 1:n
+            jind = joffset + j
+            for i in 1:m
+                dest[ioffset + i, jind] = sdat[i,j,k]
+            end
+        end
+    end
+    dest
+end
+
 function Base.getindex(A::UniformBlockDiagonal{T}, i::Int, j::Int) where {T}
     Ad = A.data
     m, n, l = size(Ad)
@@ -63,13 +81,11 @@ A `SparseMatrixCSC` whose nonzeros form blocks of rows or columns or both.
 
 # Members
 * `cscmat`: `SparseMatrixCSC{Tv, Ti}` representation for general calculations
-* `nzsasmat`: Matrix{Tv} `cscmat.nzval` as a matrix
 * `rowblocks`: `Vector{Vector{SubArray{Tv,1,Vector{Tv}}}}` of row blocks of nonzeros
 * `colblocks`: `Vector{StridedMatrix{Tv}}` of column blocks of nonzeros
 """
 mutable struct BlockedSparse{Tv,Ti} <: AbstractMatrix{Tv}
     cscmat::SparseMatrixCSC{Tv,Ti}
-    nzsasmat::Matrix{Tv}
     rowblocks::Vector{Vector{SubArray{Tv,1,Vector{Tv}}}}
     colblocks::Vector{StridedMatrix{Tv}}
 end
