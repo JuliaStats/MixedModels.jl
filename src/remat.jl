@@ -106,13 +106,19 @@ function lmulΛ!(adjA::Adjoint{T,ReMat{T,1}}, B::M) where{M<:AbstractMatrix{T}} 
     lmul!(first(adjA.parent.λ), B)
 end
 
-function lmulΛ!(adjA::Adjoint{T,ReMat{T,S}}, B::Matrix{T}) where {T,S}
+function lmulΛ!(adjA::Adjoint{T,ReMat{T,S}}, B::VecOrMat{T}) where {T,S}
     lmul!(adjoint(adjA.parent.λ), reshape(B, S, :))
     B
 end
 
-function lmulΛ!(adjA::Adjoint{T,<:ReMat{T}}, B::BlockedSparse{T}) where {T}
-    lmul!(adjoint(adjA.parent.λ), B.nzsasmat)
+function lmulΛ!(adjA::Adjoint{T,<:ReMat{T,S}}, B::BlockedSparse{T}) where {T,S}
+    lmulΛ!(adjA, nonzeros(B.cscmat))
+    B
+end
+
+function lmulΛ!(adjA::Adjoint{T,<:ReMat{T,S}}, B::SparseMatrixCSC{T}) where {T,S}
+    lmulΛ!(adjA, nonzeros(B))
+    B
 end
 
 LinearAlgebra.Matrix(A::ReMat) = Matrix(sparse(A))
@@ -279,47 +285,15 @@ function *(adjA::Adjoint{T,<:ReMat{T,S}}, B::ReMat{T,P}) where {T,S,P}
     if A === B
         return mul!(UniformBlockDiagonal(Array{T}(undef, S, S, nlevs(A))), adjA, A)
     end
-    Az = A.wtzv
-    Bz = B.wtzv
-    (m = size(A, 1)) == size(B, 1) || throw(DimensionMismatch(""))
-    ab = S * P
-    nz = ab * m
-    I = sizehint!(Int32[], nz)
-    J = sizehint!(Int32[], nz)
-    vals = sizehint!(T[], nz)
-    Ar = A.refs
-    Br = B.refs
-    for i in 1:m
-        Azi = Az[i]
-        Bzi = Bz[i]
-        if iszero(Azi) || iszero(Bzi)
-            continue
-        end
-        Ari = Ar[i]
-        Bri = Br[i]
-        ioffset = (Ari - 1) * S
-        joffset = (Bri - 1) * P
-        for jj in 1:P
-            jjo = jj + joffset
-            Bzijj = Bzi[jj]
-            for ii in 1:S
-                push!(I, ii + ioffset)
-                push!(J, jjo)
-                push!(vals, Azi[ii] * Bzijj)
-            end
-        end
-    end
-    cscmat = sparse(I, J, vals)
+    cscmat = A.adjA * adjoint(B.adjA)
     nzs = nonzeros(cscmat)
-    q, r = divrem(length(nzs), S)
-    iszero(r) || throw(DimensionMismatch("nnz(cscmat) = $(nnz(cscmat)) should be a multiple of $S"))
-    nzasmat = reshape(nzs, (S, q))
+    nzasmat = reshape(nzs, (S, :))
     rowblocks = [SubArray{T,1,Vector{T}}[] for i in 1:nlevs(A)]
     rv = rowvals(cscmat)
     inds = 1:S
     pattern = Vector(inds)
     pattern[S] = 0
-    for b in 1:q
+    for b in 1:size(nzasmat,2)
         rows = view(rv, inds)
         rows .% S == pattern ||
             throw(ArgumentError("Rows for block $b are not contiguous starting at a multiple of $S"))
@@ -341,7 +315,7 @@ function *(adjA::Adjoint{T,<:ReMat{T,S}}, B::ReMat{T,P}) where {T,S,P}
         push!(colblocks, reshape(view(nzs, i1:inds[end]), (length(rows), P)))
         colrange = colrange .+ P
     end
-    BlockedSparse(cscmat, nzasmat, rowblocks, colblocks)
+    BlockedSparse(cscmat, rowblocks, colblocks)
 end
 
 function reweight!(A::ReMat, sqrtwts::Vector)

@@ -64,12 +64,12 @@ const LMM = LinearMixedModel
         A11 = vf1'vf1
         L11 = MixedModels.cholUnblocked!(MixedModels.scaleinflate!(copyto!(UniformBlockDiagonal(fill(0., size(A11.data))), A11), vf1), Val{:L})
         L21 = vf2'vf1
-        A21cb1 = copy(L21.colblocks[1])
+#        A21cb1 = copy(L21.colblocks[1])
 #        lmul!(vf2.λ', rmul!(L21, vf1.λ))
 #        L21cb1 = copy(L21.colblocks[1])
 #        @test L21cb1 == Vf2.Λ * A21cb1 * Vf1.Λ
 #        rdiv!(L21, adjoint(LowerTriangular(L11)))
-        @test_broken L21.colblocks[1] == rdiv!(L21cb1, adjoint(LowerTriangular(L11.facevec[1])))
+#        @test_broken L21.colblocks[1] == rdiv!(L21cb1, adjoint(LowerTriangular(L11.facevec[1])))
 #        A22 = Vf2'Vf2
 #        L22 = MixedModels.scaleInflate!(UniformBlockDiagonal(fill(0., size(A22.data))), A22, Vf2)
 #        for b in L21.rowblocks[1]
