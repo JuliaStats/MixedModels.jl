@@ -75,19 +75,17 @@ function Base.size(A::UniformBlockDiagonal)
 end
 
 """
-    BlockedSparse{Tv, Ti}
+    BlockedSparse{Tv,S,P}
 
 A `SparseMatrixCSC` whose nonzeros form blocks of rows or columns or both.
 
 # Members
-* `cscmat`: `SparseMatrixCSC{Tv, Ti}` representation for general calculations
-* `rowblocks`: `Vector{Vector{SubArray{Tv,1,Vector{Tv}}}}` of row blocks of nonzeros
-* `colblocks`: `Vector{StridedMatrix{Tv}}` of column blocks of nonzeros
+* `cscmat`: `SparseMatrixCSC{Tv, Int32}` representation for general calculations
+* `blkpattern`: `SparseMatrixCSC{Bool,Int32}` pattern of blocks of size (S,P)
 """
-mutable struct BlockedSparse{Tv,Ti} <: AbstractMatrix{Tv}
-    cscmat::SparseMatrixCSC{Tv,Ti}
-    rowblocks::Vector{Vector{SubArray{Tv,1,Vector{Tv}}}}
-    colblocks::Vector{StridedMatrix{Tv}}
+mutable struct BlockedSparse{Tv,S,P} <: AbstractMatrix{Tv}
+    cscmat::SparseMatrixCSC{Tv,Int32}
+    blkpattern::SparseMatrixCSC{Bool,Int32}
 end
 
 Base.size(A::BlockedSparse) = size(A.cscmat)

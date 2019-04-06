@@ -286,36 +286,12 @@ function *(adjA::Adjoint{T,<:ReMat{T,S}}, B::ReMat{T,P}) where {T,S,P}
         return mul!(UniformBlockDiagonal(Array{T}(undef, S, S, nlevs(A))), adjA, A)
     end
     cscmat = A.adjA * adjoint(B.adjA)
-    nzs = nonzeros(cscmat)
-    nzasmat = reshape(nzs, (S, :))
-    rowblocks = [SubArray{T,1,Vector{T}}[] for i in 1:nlevs(A)]
-    rv = rowvals(cscmat)
-    inds = 1:S
-    pattern = Vector(inds)
-    pattern[S] = 0
-    for b in 1:size(nzasmat,2)
-        rows = view(rv, inds)
-        rows .% S == pattern ||
-            throw(ArgumentError("Rows for block $b are not contiguous starting at a multiple of $S"))
-        push!(rowblocks[div(rows[1], S) + 1], view(nzs, inds))
-        inds = inds .+ S
+    if nnz(cscmat) > *(0.25, size(cscmat)...)
+        return Matrix(cscmat)
     end
-    nlB = nlevs(B)
-    colblocks = sizehint!(StridedMatrix{T}[], nlB)
-    colrange = 1:P
-    for j in 1:nlB
-        inds = nzrange(cscmat, colrange[1])
-        rows = rv[inds]
-        i1 = inds[1]
-        for k in 2:P
-            inds = nzrange(cscmat, colrange[k])
-            rv[inds] == rows || 
-                throw(DimensionMismatch("Rows differ ($rows ≠ $(rv[inds])) at column block $j"))
-        end
-        push!(colblocks, reshape(view(nzs, i1:inds[end]), (length(rows), P)))
-        colrange = colrange .+ P
-    end
-    BlockedSparse(cscmat, rowblocks, colblocks)
+    blkpattern = sparse(A.refs, B.refs, trues(size(B, 1)))
+    @assert size(cscmat) == size(blkpattern) .* (S, P)
+    BlockedSparse{T,S,P}(cscmat, blkpattern)
 end
 
 function reweight!(A::ReMat, sqrtwts::Vector)
