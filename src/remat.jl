@@ -102,6 +102,11 @@ end
 
 lmulΛ!(adjA::Adjoint{T,ReMat{T,1}}, B::Matrix{T}) where {T} = lmul!(first(adjA.parent.λ), B)
 
+function lmulΛ!(adjA::Adjoint{T,ReMat{T,1}}, B::SparseMatrixCSC{T}) where {T}
+    lmul!(first(adjA.parent.λ), nonzeros(B))
+    B
+end
+
 function lmulΛ!(adjA::Adjoint{T,ReMat{T,1}}, B::M) where{M<:AbstractMatrix{T}} where {T}
     lmul!(first(adjA.parent.λ), B)
 end
