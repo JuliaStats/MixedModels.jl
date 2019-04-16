@@ -26,7 +26,7 @@ const LMM = LinearMixedModel
         @test size(vf1) == (12, 6)
         @test size(vf2) == (12, 4)
         @test size(prd) == (4, 6)
-        @test nnz(prd) == 24
+        @test_broken nnz(prd) == 24
     end
 
     @testset "elements" begin
