@@ -49,7 +49,7 @@ Return the cumulative sum of the squared singular values of `A` normalized to su
 """
 function normalized_variance_cumsum(A::AbstractMatrix)
     vars = cumsum(abs2.(svdvals(A)))
-    vars ./ vars[end]
+    vars ./ last(vars)
 end
 
 

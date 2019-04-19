@@ -50,7 +50,7 @@ function LinearMixedModel(f::FormulaTerm, d::D, hints=Dict{Symbol,Any}();
             push!(reterms, x)
         else
             cnames = coefnames(form.rhs[i])
-            push!(feterms, FeMat(x, isa(cnames, Vector{String}) ? cnames : [cnames]))
+            push!(feterms, FeMat(x, isa(cnames, String) ? [cnames] : collect(cnames)))
         end
     end
     push!(feterms, FeMat(y, [""]))
@@ -306,7 +306,7 @@ function Base.getproperty(m::LinearMixedModel, s::Symbol)
     elseif s == :y
         vec(last(m.feterms).x)
     elseif s == :rePCA
-        normalized_variance_cumsum.(getfield.(m.reterms, :λ))
+        rePCA(m)
     else
         getfield(m, s)
     end
@@ -412,6 +412,13 @@ function ranef(m::LinearMixedModel{T}; uscale=false) where {T}#, named=false)
 end
 
 LinearAlgebra.rank(m::LinearMixedModel) = first(m.feterms).rank
+
+function rePCA(m::LinearMixedModel{T}) where {T}
+    re = m.reterms
+    nt = length(re)
+    tup = ntuple(i -> normalized_variance_cumsum(re[i].λ), nt)
+    NamedTuple{ntuple(i -> re[i].trm.sym, nt), typeof(tup)}(tup)
+end
 
 """
     reevaluateAend!(m::LinearMixedModel)
