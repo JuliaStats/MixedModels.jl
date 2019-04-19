@@ -27,7 +27,9 @@ function StatsModels.apply_schema(t::FunctionTerm{typeof(nocorr)}, schema,
 end
 
 function StatsModels.modelcols(t::RandomEffectsTerm, d::NamedTuple)
-    z = Matrix(transpose(modelcols(t.lhs, d)))
+    lhs = t.lhs
+    z = Matrix(transpose(modelcols(lhs, d)))
+    cnames = coefnames(lhs)
     T = eltype(z)
     S = size(z, 1)
     grp = t.rhs
@@ -44,6 +46,7 @@ function StatsModels.modelcols(t::RandomEffectsTerm, d::NamedTuple)
         J = repeat(J, inner=S)
         II = Int32.(vec([(r - 1)*S + j for j in 1:S, r in refs]))
     end
-    ReMat{T,S}(grp, refs, z, z, LowerTriangular(Matrix{T}(I, S, S)), inds,
+    ReMat{T,S}(grp, refs, isa(cnames, String) ? [cnames] : collect(cnames), 
+        z, z, LowerTriangular(Matrix{T}(I, S, S)), inds,
         sparse(II, J, vec(z)), Matrix{T}(undef, (S, length(invindex))))
 end
