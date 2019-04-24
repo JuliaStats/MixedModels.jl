@@ -225,6 +225,8 @@ end
     fit!(fm)
     @test isapprox(objective(fm), 884957.5540213, rtol = 1e-6)
     @test isapprox(coef(fm), [0.4991229873, 0.31130780953], atol = 1.e-4)
+    bv = ranef(fm)
+    @test length(bv) == 3
 end
 
 @testset "simulate!" begin

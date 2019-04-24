@@ -116,7 +116,7 @@ mulαβ!( C::StridedVector{T}, adjA::Adjoint{T,<:SparseMatrixCSC{T}}, B::Strided
     α=true, β=false) where {T} = mul!(C, adjA, B, T(α), T(β))
 
 mulαβ!(C::StridedVector{T}, adjA::Adjoint{T,<:BlockedSparse{T}}, B::StridedVector{T},
-    α=true, β=false) where {T} = mulαβ!(α, adjA.parent.cscmat', B, β, C)
+    α=true, β=false) where {T} = mulαβ!(C, adjA.parent.cscmat', B, α, β)
 
 function LinearAlgebra.ldiv!(adjA::Adjoint{T,<:LowerTriangular{T,UniformBlockDiagonal{T}}},
         B::StridedVector{T}) where {T}
@@ -154,11 +154,4 @@ function LinearAlgebra.rdiv!(A::BlockedSparse{T,S,P},
         rdiv!(reshape(view(nzv, cbpt[j]:(cbpt[j + 1] - 1)), :, P), adjoint(LowerTriangular(f)))
     end
     A
-end
-
-if VERSION <= v"1.1.0-DEV.421"
-    LinearAlgebra.mul!(C::AbstractMatrix, A::AbstractMatrix, J::UniformScaling) = mul!(C, A, J.λ)
-    LinearAlgebra.mul!(C::AbstractVecOrMat, J::UniformScaling, B::AbstractVecOrMat) = mul!(C, J.λ, B)
-    LinearAlgebra.rmul!(A::AbstractMatrix, J::UniformScaling) = rmul!(A, J.λ)
-    LinearAlgebra.lmul!(J::UniformScaling, B::AbstractVecOrMat) = lmul!(J.λ, B)
 end

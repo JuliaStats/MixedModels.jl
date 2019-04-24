@@ -54,7 +54,7 @@ struct GeneralizedLinearMixedModel{T <: AbstractFloat} <: MixedModel{T}
 end
 
 """
-deviance(m::GeneralizedLinearMixedModel{T}, nAGQ=1)::T where {T}
+    deviance(m::GeneralizedLinearMixedModel{T}, nAGQ=1)::T where {T}
 
 Return the deviance of `m` evaluated by the Laplace approximation (`nAGQ=1`)
 or `nAGQ`-point adaptive Gauss-Hermite quadrature.
