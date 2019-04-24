@@ -296,9 +296,9 @@ function *(adjA::Adjoint{T,<:ReMat{T,S}}, B::ReMat{T,P}) where {T,S,P}
     if nnz(cscmat) > *(0.25, size(cscmat)...)
         return Matrix(cscmat)
     end
-    blkpattern = sparse(A.refs, B.refs, trues(size(B, 1)))
-    @assert size(cscmat) == size(blkpattern) .* (S, P)
-    BlockedSparse{T,S,P}(cscmat, blkpattern)
+
+    BlockedSparse{T,S,P}(cscmat, reshape(cscmat.nzval, S, :),
+        cscmat.colptr[1:P:(cscmat.n + 1)])
 end
 
 function reweight!(A::ReMat, sqrtwts::Vector)
@@ -324,9 +324,12 @@ function rmulΛ!(A::M, B::ReMat{T,S}) where{M<:AbstractMatrix{T}} where{T,S}
     A
 end
 
-function rmulΛ!(A::BlockedSparse{T}, B::ReMat{T}) where {T} 
-    for blk in A.colblocks
-        rmul!(blk, B.λ)
+function rmulΛ!(A::BlockedSparse{T,S,P}, B::ReMat{T,P}) where {T,S,P}
+    cbpt = A.colblkptr
+    csc = A.cscmat
+    nzv = csc.nzval
+    for j in 1:div(csc.n, P)
+        rmul!(reshape(view(nzv, cbpt[j]:(cbpt[j + 1] - 1)), :, P), B.λ)
     end
     A
 end

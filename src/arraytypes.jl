@@ -83,9 +83,10 @@ A `SparseMatrixCSC` whose nonzeros form blocks of rows or columns or both.
 * `cscmat`: `SparseMatrixCSC{Tv, Int32}` representation for general calculations
 * `blkpattern`: `SparseMatrixCSC{Bool,Int32}` pattern of blocks of size (S,P)
 """
-mutable struct BlockedSparse{Tv,S,P} <: AbstractMatrix{Tv}
-    cscmat::SparseMatrixCSC{Tv,Int32}
-    blkpattern::SparseMatrixCSC{Bool,Int32}
+mutable struct BlockedSparse{T,S,P} <: AbstractMatrix{T}
+    cscmat::SparseMatrixCSC{T,Int32}
+    nzsasmat::Matrix{T}
+    colblkptr::Vector{Int32}
 end
 
 Base.size(A::BlockedSparse) = size(A.cscmat)
@@ -100,13 +101,8 @@ SparseArrays.sparse(A::BlockedSparse) = A.cscmat
 
 SparseArrays.nnz(A::BlockedSparse) = nnz(A.cscmat)
 
-function Base.copyto!(L::BlockedSparse{T,I}, A::SparseMatrixCSC{T,I}) where {T,I}
+function Base.copyto!(L::BlockedSparse{T}, A::SparseMatrixCSC{T}) where {T}
     size(L) == size(A) && nnz(L) == nnz(A) || throw(DimensionMismatch("size(L) ≠ size(A) or nnz(L) ≠ nnz(A"))
     copyto!(nonzeros(L.cscmat), nonzeros(A))
     L
-end
-
-function densify(A::BlockedSparse, threshold::Real = 0.25)
-    m, n = size(A)
-    nnz(A)/(m * n)  ≤ threshold ? A : Matrix(A)
 end

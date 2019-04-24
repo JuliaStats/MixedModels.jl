@@ -66,16 +66,21 @@ function rankUpdate!(C::Diagonal{T}, A::SparseMatrixCSC{T}, α=true, β=true) wh
     C
 end
 
-function rankUpdate!(C::HermOrSym{T,UniformBlockDiagonal{T}}, A::BlockedSparse{T},
-        α=true) where {T}
-    Arb = A.rowblocks
+function rankUpdate!(C::HermOrSym{T,UniformBlockDiagonal{T}}, A::BlockedSparse{T,S},
+        α=true) where {T,S}
+    Ac = A.cscmat
+    cp = Ac.colptr
+    all(diff(cp) .== S) || 
+        throw(ArgumentError("Each column of A must contain exactly S nonzeros"))
+    j,k,l = size(C.data.data)
+    S == j == k && div(Ac.m, S) == l ||
+        throw(DimensionMismatch("div(A.cscmat.m, S) ≠ length(C.data.facevec)"))
+    nz = Ac.nzval
+    rv = Ac.rowval
     Cdf = C.data.facevec
-    (m = length(Arb)) == length(Cdf) ||
-        throw(DimensionMismatch("length(A.rowblocks) ≠ length(C.data.facevec)"))
-    for (b, d) in zip(Arb, Cdf)
-        for v in b
-            BLAS.syr!('L', α, v, d)
-        end
+    for j in 1:Ac.n
+        nzr = nzrange(Ac, j)
+        BLAS.syr!('L', α, view(nz, nzr), Cdf[div(rv[last(nzr)], S)])
     end
     C
 end

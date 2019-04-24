@@ -142,18 +142,16 @@ function LinearAlgebra.rdiv!(A::Matrix{T},
     end
     A
 end
-#=
-function LinearAlgebra.rdiv!(A::SparseMatrixCSC{T},
-        adjB::Adjoint{T,<:LowerTriangular{T,<:Diagonal{T}}}) where T
-    rdiv!(A, adjB.parent.data)
-end
-=#
-function LinearAlgebra.rdiv!(A::BlockedSparse{T},
-        B::Adjoint{T,<:LowerTriangular{T,UniformBlockDiagonal{T}}}) where T
-    Bp = B.parent
-    length(A.colblocks) == length(Bp.data.facevec) || throw(DimensionMismatch(""))
-    for (b,f) in zip(A.colblocks, Bp.data.facevec)
-        rdiv!(b, adjoint(LowerTriangular(f)))
+
+function LinearAlgebra.rdiv!(A::BlockedSparse{T,S,P},
+        B::Adjoint{T,<:LowerTriangular{T,UniformBlockDiagonal{T}}}) where {T,S,P}
+    Bpd = B.parent.data
+    j,k,l = size(Bpd.data)
+    cbpt = A.colblkptr
+    nzv = A.cscmat.nzval
+    P == j == k && length(cbpt) == (l + 1) || throw(DimensionMismatch(""))
+    for (j,f) in enumerate(Bpd.facevec)
+        rdiv!(reshape(view(nzv, cbpt[j]:(cbpt[j + 1] - 1)), :, P), adjoint(LowerTriangular(f)))
     end
     A
 end
