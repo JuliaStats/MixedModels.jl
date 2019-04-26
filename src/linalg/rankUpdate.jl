@@ -23,7 +23,7 @@ function rankUpdate!(C::HermOrSym{T,S}, A::StridedMatrix{T},
     C
 end
 
-function rankUpdate!(C::HermOrSym{T,S}, A::SparseMatrixCSC{T}, α=true, β=true) where {T,S}
+function rankUpdate!(C::HermOrSym{T,Matrix{T}}, A::SparseMatrixCSC{T}, α=true, β=true) where {T}
     m, n = size(A)
     m == size(C, 2) || throw(DimensionMismatch(""))
     C.uplo == 'L' || throw(ArgumentError("C.uplo must be 'L'"))
