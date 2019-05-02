@@ -2,7 +2,6 @@ name = "MixedModels"
 uuid = "ff71e718-51f3-5ec2-a782-8ffcbfa3c316"
 
 [deps]
-ArgCheck = "dce04be8-c92d-5529-be00-80e4d2c0e197"
 BlockArrays = "8e7c35d0-a365-5155-bbbb-fb81a777f24e"
 CategoricalArrays = "324d7699-5711-5eae-9e2f-1d82baa6b597"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
@@ -32,7 +31,7 @@ Showoff = "≥ 0.2.0"
 StaticArrays = "≥ 0.8.0"
 StatsBase = "≥ 0.22.0"
 StatsFuns = "≥ 0.5.0"
-StatsModels = "≥ 0.3.1"
+StatsModels = "> 0.5.0"
 julia = "≥ 1.1.0"
 
 [extras]
