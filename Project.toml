@@ -1,5 +1,6 @@
 name = "MixedModels"
 uuid = "ff71e718-51f3-5ec2-a782-8ffcbfa3c316"
+author = ["Douglas Bates <dmbates@gmail.com>"]
 
 [deps]
 BlockArrays = "8e7c35d0-a365-5155-bbbb-fb81a777f24e"
@@ -31,7 +32,7 @@ Showoff = "≥ 0.2.0"
 StaticArrays = "≥ 0.8.0"
 StatsBase = "≥ 0.22.0"
 StatsFuns = "≥ 0.5.0"
-StatsModels = "> 0.5.0"
+StatsModels = "≥ 0.5.0"
 julia = "≥ 1.1.0"
 
 [extras]
