@@ -359,7 +359,7 @@ struct GeneralizedLinearMixedModel{T <: AbstractFloat} <: MixedModel{T}
     b::Vector{Matrix{T}}
     u::Vector{Matrix{T}}
     u₀::Vector{Matrix{T}}
-    resp::GlmResp
+    resp::GLM.GlmResp
     η::Vector{T}
     wt::Vector{T}
     devc::Vector{T}
