@@ -133,7 +133,7 @@ StatsBase.nobs(m::GeneralizedLinearMixedModel) = length(m.η)
 
 StatsBase.predict(m::GeneralizedLinearMixedModel) = fitted(m)
 
-updatedevresid!(r::GLM.GlmResp, η::AbstractVector) = updateμ!(r, η)
+updatedevresid!(r::GLM.GlmResp, η::AbstractVector) = GLM.updateμ!(r, η)
 
 fastlogitdevres(η, y) = 2log1p(exp(iszero(y) ? η : -η))
 
@@ -154,7 +154,7 @@ function updateη!(m::GeneralizedLinearMixedModel)
     for i in eachindex(b)
         unscaledre!(η, trms[i], mul!(b[i], trms[i].Λ, u[i]))
     end
-    updateμ!(m.resp, η)
+    GLM.updateμ!(m.resp, η)
     m
 end
 
@@ -317,7 +317,7 @@ function Base.show(io::IO, m::GeneralizedLinearMixedModel)
     println(io, "Generalized Linear Mixed Model fit by maximum likelihood (nAGQ = $nAGQ)")
     println(io, "  ", m.LMM.formula)
     println(io, "  Distribution: ", Distribution(m.resp))
-    println(io, "  Link: ", Link(m.resp), "\n")
+    println(io, "  Link: ", GLM.Link(m.resp), "\n")
     println(io, string("  Deviance: ", @sprintf("%.4f", deviance(m, nAGQ))), "\n")
 
     show(io,VarCorr(m))
