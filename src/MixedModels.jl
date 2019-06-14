@@ -1,8 +1,6 @@
-__precompile__()
-
 module MixedModels
 
-using ArgCheck, BlockArrays, CategoricalArrays, DataFrames, Distributions, GLM, 
+using ArgCheck, BlockArrays, CategoricalArrays, DataFrames, Distributions, GLM,
     LinearAlgebra, NLopt, Random, ProgressMeter, Showoff, SparseArrays, StaticArrays,
     Statistics, StatsBase, StatsModels
 

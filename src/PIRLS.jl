@@ -16,7 +16,7 @@ function fixef(m::GeneralizedLinearMixedModel{T}, permuted=true) where {T}
 end
 
 function GeneralizedLinearMixedModel(f::Formula, fr::AbstractDataFrame,
-         d::Distribution, l::Link; wt=[], offset=[], contrasts = Dict())
+         d::Distribution, l::GLM.Link; wt=[], offset=[], contrasts = Dict())
     if d == Binomial() && isempty(wt)
         d = Bernoulli()
     end
@@ -50,7 +50,7 @@ StatsBase.fit(::Type{GeneralizedLinearMixedModel},
               f::Formula,
               fr::AbstractDataFrame,
               d::Distribution,
-              l::Link = GLM.canonicallink(d);
+              l::GLM.Link = GLM.canonicallink(d);
               wt=[],
               offset=[],
               contrasts=Dict(),
