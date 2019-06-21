@@ -36,7 +36,7 @@ struct LinearMixedModel{T <: AbstractFloat} <: MixedModel{T}
 end
 
 function LinearMixedModel(f::FormulaTerm, d::D, hints=Dict{Symbol,Any}(); 
-    weights=[]) where {D<:ColumnTable}
+    weights=[]) where {D<:Tables.ColumnTable}
     form = apply_schema(f, schema(f, d, hints), LinearMixedModel)
     y, Xs = modelcols(form, d)
 

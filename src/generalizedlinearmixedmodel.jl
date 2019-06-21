@@ -188,7 +188,7 @@ function fixef(m::GeneralizedLinearMixedModel{T}, permuted=true) where {T}
 end
 
 function GeneralizedLinearMixedModel(f::FormulaTerm, tbl::D, d::Distribution, l::Link;
-        wt=[], offset=[], hints = Dict{Symbol,Any}()) where {D<:ColumnTable}
+        wt=[], offset=[], hints = Dict{Symbol,Any}()) where {D<:Tables.ColumnTable}
     if d == Binomial() && isempty(wt)
         d = Bernoulli()
     end
