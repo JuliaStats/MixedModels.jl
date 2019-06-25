@@ -6,7 +6,7 @@ end
 Base.show(io::IO, t::RandomEffectsTerm) = print(io, "($(t.lhs) | $(t.rhs))")
 StatsModels.is_matrix_term(::Type{RandomEffectsTerm}) = false
 
-function StatsModels.apply_schema(t::FunctionTerm{typeof(|)}, schema,
+function StatsModels.apply_schema(t::FunctionTerm{typeof(|)}, schema::StatsModels.FullRank,
         Mod::Type{<:MixedModel})
     lhs, rhs = apply_schema.(t.args_parsed, Ref(schema), Mod)
     RandomEffectsTerm(MatrixTerm(lhs), rhs)

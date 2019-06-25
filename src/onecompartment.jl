@@ -11,30 +11,28 @@ This function is based on the output of the R function call
     deriv(~ dose*K*Ka*(exp(-K*time)-exp(-Ka*time))/(Cl*(Ka - K)), c("K","Ka","Cl"))
 which performs symbolic differentiation followed by common subexpression elimination.
 """
-function onecompartment!(grad::AbstractVector{T}, dose::T, time::T,
-        K::T, Ka::T, Cl::T) where T<:AbstractFloat
+function onecompartment(dose::T, t::T, K::T, Ka::T, Cl::T) where T<:AbstractFloat
     _expr1 = dose * K
     _expr2 = _expr1 * Ka
-    _expr5 = exp(-K * time)
-    _expr8 = exp(-Ka * time)
+    _expr5 = exp(-K * t)
+    _expr8 = exp(-Ka * t)
     _expr9 = _expr5 - _expr8
     _expr10 = _expr2 * _expr9
     _expr11 = Ka - K
     _expr12 = Cl * _expr11
     _expr21 = _expr12^2
     _expr22 = _expr10 * Cl/_expr21
-    grad[1] = (dose * Ka * _expr9 - _expr2 * (_expr5 * time))/_expr12 + _expr22
-    grad[2] = (_expr1 * _expr9 + _expr2 * (_expr8 * time))/_expr12 - _expr22
-    grad[3] = -(_expr10 * _expr11/_expr21)
-    _expr10/_expr12
+    _expr10/_expr12,
+    (K = (dose * Ka * _expr9 - _expr2 * (_expr5 * t))/_expr12 + _expr22,
+     Ka = (_expr1 * _expr9 + _expr2 * (_expr8 * t))/_expr12 - _expr22,
+     Cl = -(_expr10 * _expr11/_expr21))
 end
 
-function onecompartment!(grad::AbstractVector{T}, dose::T, time::T,
+function onecompartment(dose::T, t::T,
         logpars::AbstractVector{T}) where {T<:AbstractFloat}
-    K, Ka, Cl = pars = exp.(logpars)
-    μ = onecompartment!(grad, dose, time, K, Ka, Cl)
-    grad .*= pars
-    μ
+    K, Ka, Cl = exp.(logpars)
+    μ, g = onecompartment(dose, t, K, Ka, Cl)
+    μ, (lK = g.K * K, lKa = g.Ka * Ka, lCl = g.Cl * Cl)
 end
 
 """
@@ -47,15 +45,14 @@ returns a NamedTuple including names `dose`, `time`, and `conc`.
 Returns the sum of squared residuals.
 """ 
 function resgrad!(μ, resid, Jac, df, β)
-    grad = similar(μ, 3)
-    rss = zero(eltype(grad))
+    rss = zero(eltype(μ))
     for (i,r) in enumerate(Tables.rows(df))
-        μ[i] = onecompartment!(grad, r.dose, r.time, β)
+        μ[i], g = onecompartment(r.dose, r.time, β)
         resi = resid[i] = r.conc - μ[i]
         rss += abs2(resi)
-        for j in 1:3
-            Jac[i,j] = grad[j]
-        end
+        Jac[i,1] = g.lK
+        Jac[i,2] = g.lKa
+        Jac[i,3] = g.lCl
     end
     rss
 end
@@ -92,7 +89,7 @@ function increment!(δ, resid, Jac)
     sum(abs2, view(resid, 1:n)) / sum(abs2, view(resid, (n+1):m))
 end
 
-function nls!(β, df, f)
+function nls!(β, df)
     δ = similar(β)     # parameter increment
     b = copy(β)        # trial parameter value
     n = size(df, 1)
