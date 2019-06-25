@@ -191,5 +191,5 @@ function pnls!(m::LinearMixedModel, β, b, df)
     if iter > maxiter
         throw(ErrorException("Maximum number of iterations, $maxiter, exceeded"))
     end
-    (lK = β[1], lKa = β[2], lCl = β[3], )
+    objective(lmm)
 end
