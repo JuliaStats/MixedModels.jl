@@ -31,9 +31,9 @@ The *relative covariance factor*, $\Lambda_\theta$, is a $q\times q$ lower-trian
 \begin{equation}
 \Sigma_\theta=\sigma^2\Lambda_\theta\Lambda_\theta'
 \end{equation}
-
+```
 The *spherical random effects*, $\mathcal{U}\sim\mathcal{N}(\bf{0},\sigma^2\bf{I}_q)$, determine $\mathcal B$ according to
-
+```math
 \begin{equation}
 \mathcal{B}=\Lambda_\theta\mathcal{U}.
 \end{equation}

@@ -496,7 +496,7 @@ julia> deviance(fm1)
 
 The value optimized when fitting a `GeneralizedLinearMixedModel` is the Laplace approximation to the deviance or an adaptive Gauss-Hermite evaluation.
 ```@docs
-deviance!
+MixedModels.deviance!
 ```
 ````julia
 julia> MixedModels.deviance!(gm1)
