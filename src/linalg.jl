@@ -6,13 +6,13 @@ end
 function mulαβ!(C::Matrix{T}, A::SparseMatrixCSC{T}, adjB::Adjoint{T,<:SparseMatrixCSC{T}},
         α=true, β=false) where T <: Number
     B = adjB.parent
-    @argcheck(B.m == size(C, 2) && A.m == size(C, 1) && A.n == B.n, DimensionMismatch)
+    B.m == size(C, 2) && A.m == size(C, 1) && A.n == B.n || throw(DimensionMismatch(""))
     anz = nonzeros(A)
     arv = rowvals(A)
     bnz = nonzeros(B)
     brv = rowvals(B)
     isone(β) || rmul!(C, β)
-    for j = 1:A.n
+    @inbounds for j = 1:A.n
         for ib in nzrange(B, j)
             αbnz = α * bnz[ib]
             jj = brv[ib]
@@ -55,7 +55,7 @@ mulαβ!(C::Matrix{T}, A::BlockedSparse{T}, adjB::Adjoint{T,<:Matrix{T}}, α=tru
 function mulαβ!(C::SparseMatrixCSC{T}, A::SparseMatrixCSC{T}, adjB::Adjoint{T,<:SparseMatrixCSC{T}},
         α=true, β=false) where {T}
     B = adjB.parent
-    @argcheck(C.m == A.m && C.n == B.m && A.n == B.n, DimensionMismatch)
+    C.m == A.m && C.n == B.m && A.n == B.n || throw(DimensionMismatch(""))
     Anz = nonzeros(A)
     Bnz = nonzeros(B)
     Cnz = nonzeros(C)
@@ -92,7 +92,7 @@ function mulαβ!(C::StridedVecOrMat{T}, A::StridedVecOrMat{T}, adjB::Adjoint{T,
     m, n = size(A)
     p, q = size(B)
     r, s = size(C)
-    @argcheck(r == m && s == p && n == q, DimensionMismatch)
+    r == m && s == p && n == q || throw(DimensionMismatch(""))
     isone(β) || rmul!(C, β)
     nz = nonzeros(B)
     rv = rowvals(B)
@@ -121,7 +121,7 @@ mulαβ!(C::StridedVector{T}, adjA::Adjoint{T,<:BlockedSparse{T}}, B::StridedVec
 function LinearAlgebra.ldiv!(adjA::Adjoint{T,<:LowerTriangular{T,UniformBlockDiagonal{T}}},
         B::StridedVector{T}) where {T}
     A = adjA.parent
-    @argcheck length(B) == size(A, 2) DimensionMismatch
+    length(B) == size(A, 2) || throw(DimensionMismatch(""))
     m, n, k = size(A.data.data)
     fv = A.data.facevec
     bb = reshape(B, (n, k))
@@ -135,7 +135,7 @@ function LinearAlgebra.rdiv!(A::Matrix{T},
         adjB::Adjoint{T,<:LowerTriangular{T,UniformBlockDiagonal{T}}}) where T
     Bd = adjB.parent.data
     m, n, k = size(Bd.data)
-    @argcheck(size(A, 2) == size(Bd, 1) && m == n, DimensionMismatch)
+    size(A, 2) == size(Bd, 1) && m == n || throw(DimensionMismatch(""))
     inds = 1:m
     for (i, f) in enumerate(Bd.facevec)
         BLAS.trsm!('R', 'L', 'T', 'N', one(T), f, view(A, :, inds .+ m * (i-1)))
@@ -143,62 +143,15 @@ function LinearAlgebra.rdiv!(A::Matrix{T},
     A
 end
 
-function LinearAlgebra.rdiv!(A::BlockedSparse{T},
-        B::Adjoint{T,<:LowerTriangular{T,UniformBlockDiagonal{T}}}) where T
-    Bp = B.parent
-    @argcheck(length(A.colblocks) == length(Bp.data.facevec), DimensionMismatch)
-    for (b,f) in zip(A.colblocks, Bp.data.facevec)
-        rdiv!(b, adjoint(LowerTriangular(f)))
+function LinearAlgebra.rdiv!(A::BlockedSparse{T,S,P},
+        B::Adjoint{T,<:LowerTriangular{T,UniformBlockDiagonal{T}}}) where {T,S,P}
+    Bpd = B.parent.data
+    j,k,l = size(Bpd.data)
+    cbpt = A.colblkptr
+    nzv = A.cscmat.nzval
+    P == j == k && length(cbpt) == (l + 1) || throw(DimensionMismatch(""))
+    for (j,f) in enumerate(Bpd.facevec)
+        rdiv!(reshape(view(nzv, cbpt[j]:(cbpt[j + 1] - 1)), :, P), adjoint(LowerTriangular(f)))
     end
     A
 end
-
-if VERSION <= v"1.1.0-DEV.421"
-    LinearAlgebra.mul!(C::AbstractMatrix, A::AbstractMatrix, J::UniformScaling) = mul!(C, A, J.λ)
-    LinearAlgebra.mul!(C::AbstractVecOrMat, J::UniformScaling, B::AbstractVecOrMat) = mul!(C, J.λ, B)
-    LinearAlgebra.rmul!(A::AbstractMatrix, J::UniformScaling) = rmul!(A, J.λ)
-    LinearAlgebra.lmul!(J::UniformScaling, B::AbstractVecOrMat) = lmul!(J.λ, B)
-end
-
-function LinearAlgebra.rmul!(A::BlockedSparse{T}, 
-        B::RepeatedBlockDiagonal{T, LowerTriangular{T,Matrix{T}}}) where {T}
-    λ = B.data
-    for blk in A.colblocks
-        rmul!(blk, λ)
-    end
-    A
-end
-
-function LinearAlgebra.rmul!(A::Matrix{T}, 
-        B::RepeatedBlockDiagonal{T,LowerTriangular{T,Matrix{T}}}) where {T}
-    λ = B.data
-    m, n = size(A)
-    l = size(λ, 1)
-    q, r = divrem(n, l)
-    iszero(r) || throw(DimensionMismatch("size(A, 2) = $n is not a multiple of block size = $l"))
-    A3 = reshape(A, (m, l, q))
-    for k in 1:q
-        rmul!(view(A3, :, :, k), λ)
-    end
-    A
-end
-
-function LinearAlgebra.lmul!(adjA::Adjoint{T,RepeatedBlockDiagonal{T, LowerTriangular{T,Matrix{T}}}},
-        B::Matrix{T}) where {T}
-    m, n = size(B)
-    λ = adjA.parent.data
-    l = size(λ, 1)
-    lmul!(adjoint(λ), reshape(B, (l, div(m, l) * n)))
-    B
-end
-
-function LinearAlgebra.lmul!(adjA::Adjoint{T,RepeatedBlockDiagonal{T, LowerTriangular{T,Matrix{T}}}},
-        B::BlockedSparse{T}) where {T}
-    lmul!(adjoint(adjA.parent.data), B.nzsasmat)
-    B
-end
-
-#=
-LinearAlgebra.mul!(C::Matrix{T}, A::RepeatedBlockDiagonal{T,LowerTriangular{T,Matrix{T}}}, B::Matrix{T}) where {T} =
-    mul!(C, A.data, B)
-=#

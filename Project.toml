@@ -1,18 +1,15 @@
 name = "MixedModels"
 uuid = "ff71e718-51f3-5ec2-a782-8ffcbfa3c316"
-version = "1.1.7"
+version = "2.0.0"
 author = ["Douglas Bates <dmbates@gmail.com>"]
 
 [deps]
-ArgCheck = "dce04be8-c92d-5529-be00-80e4d2c0e197"
 BlockArrays = "8e7c35d0-a365-5155-bbbb-fb81a777f24e"
 CategoricalArrays = "324d7699-5711-5eae-9e2f-1d82baa6b597"
-DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
 GLM = "38e38edf-8417-5370-95a0-9cbb8c7f171a"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 NLopt = "76087f3c-5699-56af-9a33-bf431cd00edd"
-NamedArrays = "86f7a689-2022-50b4-a561-43c23ac3c673"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 ProgressMeter = "92933f4c-e287-5a05-a399-4b506db050ca"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
@@ -23,25 +20,31 @@ Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 StatsFuns = "4c63d2b9-4356-54db-8cca-17b64c39e42c"
 StatsModels = "3eaba693-59b7-5ba5-a881-562e759f1c8d"
+Tables = "bd369af6-aec1-5ad0-b16a-f7cc5008161c"
 
 [compat]
 BlockArrays = "0.3, 0.4, 0.5, 0.6, 0.7"
-DataFrames = "0.11, 0.12, 0.13, 0.14, 0.15, 0.16, 0.17, 0.18"
 Distributions = "0.11, 0.12, 0.13, 0.14, 0.15, 0.16, 0.17, 0.18, 0.19, 0.20"
 GLM = "1"
 NLopt = "0.5"
-NamedArrays = "0.7, 0.8, 0.9"
 ProgressMeter = "1"
+RData = "≥ 0.5.0"
 Showoff = "0.2"
 StaticArrays = "0.8, 0.9, 0.10, 0.11"
 StatsBase = "0.22, 0.23, 0.24, 0.25, 0.26, 0.27, 0.28, 0.29, 0.30"
 StatsFuns = "0.7, 0.8"
-StatsModels = "0.4, 0.5"
+StatsModels = "0.6"
 julia = "1"
 
 [extras]
+DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+DataFramesMeta = "1313f7d8-7da2-5740-9ea0-a2ca25f37964"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 RData = "df47a6cb-8c03-5eed-afd8-b6050d6c41da"
+SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
+Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["RData", "Test"]
+test = ["DataFrames", "DataFramesMeta", "Statistics", "LinearAlgebra", "SparseArrays", "Random", "RData", "Test"]

@@ -7,4 +7,5 @@ using MixedModels, Test
     @test GHnorm(2) === gh2
     gh9 = GHnorm(9.0)
     @test sum(gh9.w) ≈ 1
+    @test length(gh9) == 9
 end

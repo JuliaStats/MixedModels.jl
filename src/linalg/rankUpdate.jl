@@ -23,10 +23,10 @@ function rankUpdate!(C::HermOrSym{T,S}, A::StridedMatrix{T},
     C
 end
 
-function rankUpdate!(C::HermOrSym{T,S}, A::SparseMatrixCSC{T}, α=true, β=true) where {T,S}
+function rankUpdate!(C::HermOrSym{T,Matrix{T}}, A::SparseMatrixCSC{T}, α=true, β=true) where {T}
     m, n = size(A)
-    @argcheck(m == size(C, 2), DimensionMismatch)
-    @argcheck(C.uplo == 'L', ArgumentError)
+    m == size(C, 2) || throw(DimensionMismatch(""))
+    C.uplo == 'L' || throw(ArgumentError("C.uplo must be 'L'"))
     Cd = C.data
     isone(β) || rmul!(LowerTriangular(Cd), β)
     rv = rowvals(A)
@@ -46,10 +46,12 @@ function rankUpdate!(C::HermOrSym{T,S}, A::SparseMatrixCSC{T}, α=true, β=true)
     C
 end
 
+rankUpdate!(C::HermOrSym, A::BlockedSparse, α=true, β=true) = rankUpdate!(C, sparse(A), α, β)
+
 function rankUpdate!(C::Diagonal{T}, A::SparseMatrixCSC{T}, α=true, β=true) where {T <: Number}
     m, n = size(A)
     dd = C.diag
-    @argcheck(length(dd) == m, DimensionMismatch)
+    length(dd) == m || throw(DimensionMismatch(""))
     isone(β) || rmul!(dd, β)
     nz = nonzeros(A)
     rv = rowvals(A)
@@ -64,16 +66,21 @@ function rankUpdate!(C::Diagonal{T}, A::SparseMatrixCSC{T}, α=true, β=true) wh
     C
 end
 
-function rankUpdate!(C::HermOrSym{T,UniformBlockDiagonal{T}}, A::BlockedSparse{T},
-        α=true) where {T}
-    Arb = A.rowblocks
+function rankUpdate!(C::HermOrSym{T,UniformBlockDiagonal{T}}, A::BlockedSparse{T,S},
+        α=true) where {T,S}
+    Ac = A.cscmat
+    cp = Ac.colptr
+    all(diff(cp) .== S) || 
+        throw(ArgumentError("Each column of A must contain exactly S nonzeros"))
+    j,k,l = size(C.data.data)
+    S == j == k && div(Ac.m, S) == l ||
+        throw(DimensionMismatch("div(A.cscmat.m, S) ≠ length(C.data.facevec)"))
+    nz = Ac.nzval
+    rv = Ac.rowval
     Cdf = C.data.facevec
-    (m = length(Arb)) == length(Cdf) ||
-        throw(DimensionMismatch("length(A.rowblocks) = $m ≠ $(length(Cdf)) = length(C.data.facevec)"))
-    for (b, d) in zip(Arb, Cdf)
-        for v in b
-            BLAS.syr!('L', α, v, d)
-        end
+    for j in 1:Ac.n
+        nzr = nzrange(Ac, j)
+        BLAS.syr!('L', α, view(nz, nzr), Cdf[div(rv[last(nzr)], S)])
     end
     C
 end

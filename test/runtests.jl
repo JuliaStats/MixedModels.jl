@@ -1,7 +1,8 @@
-using CategoricalArrays, DataFrames, LinearAlgebra, MixedModels, RData, Test
+using CategoricalArrays, DataFrames, LinearAlgebra, MixedModels, RData, Tables, Test
 
 const dat = Dict(Symbol(k) => v for (k,v) in load(joinpath(dirname(@__FILE__), "dat.rda")))
 
+include("statschol.jl")
 include("UniformBlockDiagonal.jl")
 include("linalg.jl")
 include("matrixterm.jl")
