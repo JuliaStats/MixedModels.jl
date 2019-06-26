@@ -118,6 +118,7 @@ end
     @test isa(vrp, UniformBlockDiagonal{Float64})
     @test size(vrp) == (36, 36)
 
+    @test mul!(Array{Float64}(undef, 36, 36), corr', corr) == Matrix(vrp)
     scl = ScalarFactorReTerm(slp[:G].refs, levels(slp[:G]), Array(slp[:U]), Array(slp[:U]), :G, ["U"], 1.0)
 
     @test sparse(corr)'sparse(scl) == corr'scl

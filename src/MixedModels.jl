@@ -1,5 +1,3 @@
-__precompile__()
-
 module MixedModels
 
 using BlockArrays, CategoricalArrays, Tables, Distributions, GLM, 

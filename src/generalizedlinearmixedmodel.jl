@@ -365,7 +365,7 @@ function Base.show(io::IO, m::GeneralizedLinearMixedModel)
     println(io, "Generalized Linear Mixed Model fit by maximum likelihood (nAGQ = $nAGQ)")
     println(io, "  ", m.LMM.formula)
     println(io, "  Distribution: ", Distribution(m.resp))
-    println(io, "  Link: ", Link(m.resp), "\n")
+    println(io, "  Link: ", GLM.Link(m.resp), "\n")
     println(io, string("  Deviance: ", @sprintf("%.4f", deviance(m, nAGQ))), "\n")
 
     show(io,VarCorr(m))
