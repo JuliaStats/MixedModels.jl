@@ -15,8 +15,6 @@ import NLopt: Opt
 
 export
        @formula,
-       AbstractFactorReTerm,
-       AbstractReTerm,
        Bernoulli,
        Binomial,
        Block,
@@ -59,7 +57,6 @@ export
        nobs,
        nocorr,
        objective,  # the objective function in fitting a model
-       parametricbootstrap,
        pirls!,     # use Penalized Iteratively Reweighted Least Squares to obtain conditional modes of random effects
        predict,
        pwrss,      # penalized, weighted residual sum-of-squares
@@ -97,6 +94,5 @@ include("linalg/rankUpdate.jl")
 include("linalg/logdet.jl")
 include("linalg.jl")
 include("simulate.jl")
-include("onecompartment.jl")
 
 end # module
