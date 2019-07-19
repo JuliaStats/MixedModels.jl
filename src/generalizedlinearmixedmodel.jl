@@ -44,7 +44,7 @@ struct GeneralizedLinearMixedModel{T <: AbstractFloat} <: MixedModel{T}
     b::Vector{Matrix{T}}
     u::Vector{Matrix{T}}
     u₀::Vector{Matrix{T}}
-    resp::GlmResp
+    resp::GLM.GlmResp
     η::Vector{T}
     wt::Vector{T}
     devc::Vector{T}
@@ -111,7 +111,7 @@ StatsBase.fit(::Type{GeneralizedLinearMixedModel}, f::FormulaTerm, tbl, d::Distr
     fit!(GeneralizedLinearMixedModel(f, columntable(tbl), d, GLM.canonicallink(d)))
 
 StatsBase.fit(::Type{GeneralizedLinearMixedModel}, f::FormulaTerm, tbl, d::Distribution,
-    l::Link) = fit!(GeneralizedLinearMixedModel(f,columntable(tbl), d, l))
+    l::GLM.Link) = fit!(GeneralizedLinearMixedModel(f,columntable(tbl), d, l))
 
 """
     fit!(m::GeneralizedLinearMixedModel[, verbose = false, fast = false, nAGQ=1])
@@ -187,7 +187,7 @@ function fixef(m::GeneralizedLinearMixedModel{T}, permuted=true) where {T}
     invpermute!(v, piv)
 end
 
-function GeneralizedLinearMixedModel(f::FormulaTerm, tbl::D, d::Distribution, l::Link;
+function GeneralizedLinearMixedModel(f::FormulaTerm, tbl::D, d::Distribution, l::GLM.Link;
         wt=[], offset=[], hints = Dict{Symbol,Any}()) where {D<:Tables.ColumnTable}
     if d == Binomial() && isempty(wt)
         d = Bernoulli()
@@ -392,7 +392,7 @@ function updateη!(m::GeneralizedLinearMixedModel)
     for i in eachindex(b)
         unscaledre!(η, reterms[i], mul!(b[i], reterms[i].λ, u[i]))
     end
-    updateμ!(m.resp, η)
+    GLM.updateμ!(m.resp, η)
     m
 end
 
