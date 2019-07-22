@@ -14,11 +14,11 @@ using DataFrames, FreqTables, LinearAlgebra, MixedModels, Random, RData
 using Gadfly
 using Gadfly.Geom: density, histogram, point
 using Gadfly.Guide: xlabel, ylabel
-const dat = Dict(Symbol(k)=>v for (k,v) in 
-    load(joinpath(dirname(pathof(MixedModels)), "..", "test", "dat.rda")));
+const testdir = normpath(joinpath(dirname(pathof(MixedModels)), "..", "test"));
+const dat = Dict(Symbol(k)=>v for (k,v) in load(joinpath(testdir, "dat.rda")));
 ```
 
-However, the `LinearMixedModel` constructor only creates a model structure but does not fit it.
+The `LinearMixedModel` constructor creates a model structure but does not fit it.
 An explicit call to `fit!` is required to fit the model.
 As is customary (though not required) in Julia, a function whose name ends in `!` is a _mutating function_ that modifies one or more of its arguments.
 
@@ -143,7 +143,7 @@ Addition, named arguments can be used to override these parameter values, allowi
 - `σ`: the standard deviation of the per-observation noise
 - `β₁` to `βₚ`: the fixed-effects coefficients
 - `θ₁` to `θₖ`: the covariance parameter elements
-- `σ₁` to `σₛ`: the estimates standard deviations of random effects.
+- `σ₁` to `σₛ`: the estimated standard deviations of random effects.
 - `ρ₁` to `ρₜ`: the estimated correlations of random effects
 
 The `ρᵢ` and `σᵢ` values are derived from the `θᵢ` and `σ` values.

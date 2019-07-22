@@ -12,7 +12,7 @@ Pages = [
         "constructors.md",
         "optimization.md",
         "GaussHermite.md",
-        "bootstrap.md",
+#        "bootstrap.md",
         "SimpleLMM.md",
         "MultipleTerms.md",
         "SingularCovariance.md",

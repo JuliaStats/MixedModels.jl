@@ -13,10 +13,19 @@ Load the required packages
 julia> using DataFrames, FreqTables, LinearAlgebra, MixedModels, Random, RData
 
 julia> using Gadfly
+Error: ArgumentError: Package Gadfly not found in current path:
+- Run `import Pkg; Pkg.add("Gadfly")` to install the Gadfly package.
+
 
 julia> using Gadfly.Geom: density, histogram, point
+Error: ArgumentError: Package Gadfly not found in current path:
+- Run `import Pkg; Pkg.add("Gadfly")` to install the Gadfly package.
+
 
 julia> using Gadfly.Guide: xlabel, ylabel
+Error: ArgumentError: Package Gadfly not found in current path:
+- Run `import Pkg; Pkg.add("Gadfly")` to install the Gadfly package.
+
 
 julia> const dat = Dict(Symbol(k)=>v for (k,v) in 
     load(joinpath(dirname(pathof(MixedModels)), "..", "test", "dat.rda")));
@@ -88,27 +97,29 @@ f_50: 1751.93934 [0.929191, 0.0181658, 0.222643]
 f_51: 1751.93935 [0.929254, 0.0182093, 0.222621]
 f_52: 1751.93935 [0.929189, 0.0181298, 0.222573]
 f_53: 1751.93934 [0.929254, 0.0181676, 0.22265]
-f_54: 1751.93934 [0.929214, 0.0181717, 0.222647]
+f_54: 1751.93934 [0.929215, 0.0181717, 0.222647]
 f_55: 1751.93934 [0.929208, 0.0181715, 0.222646]
 f_56: 1751.93934 [0.929209, 0.018173, 0.222652]
 f_57: 1751.93934 [0.929221, 0.0181684, 0.222645]
 Linear mixed model fit by maximum likelihood
- Formula: Y ~ 1 + U + ((1 + U) | G)
+ Y ~ 1 + U + (1 + U | G)
    logLik   -2 logLik     AIC        BIC    
  -875.96967 1751.93934 1763.93934 1783.09709
 
 Variance components:
-              Column    Variance   Std.Dev.    Corr.
- G        (Intercept)  565.510660 23.7804680
-          U             32.682124  5.7168281  0.08
- Residual              654.941449 25.5918239
+              Column    Variance  Std.Dev.   Corr.
+ G        (Intercept)  565.51069 23.780469
+          U             32.68212  5.716828  0.08
+ Residual              654.94145 25.591824
  Number of obs: 180; levels of grouping factors: 18
 
   Fixed-effects parameters:
-             Estimate Std.Error z value P(>|z|)
-(Intercept)   251.405   6.63226 37.9064  <1e-99
-U             10.4673   1.50224 6.96781  <1e-11
-
+───────────────────────────────────────────────────
+             Estimate  Std.Error   z value  P(>|z|)
+───────────────────────────────────────────────────
+(Intercept)  251.405     6.63226  37.9064    <1e-99
+U             10.4673    1.50224   6.96781   <1e-11
+───────────────────────────────────────────────────
 
 ````
 
@@ -121,7 +132,7 @@ The corresponding parameter vector is called $\theta$.
 
 ````julia
 julia> Λ = sleepm.λ[1]
-2×2 LowerTriangular{Float64,Array{Float64,2}}:
+2×2 LinearAlgebra.LowerTriangular{Float64,Array{Float64,2}}:
  0.929221    ⋅      
  0.0181684  0.222645
 
@@ -142,7 +153,7 @@ In terms of the estimates,
 
 ````julia
 julia> s² = varest(sleepm)    # estimate of the residual variance
-654.941448668924
+654.9414513956141
 
 ````
 
@@ -165,7 +176,7 @@ Writing out the expressions for the elements of the covariance matrix in terms o
 
 ````julia
 julia> Λ[2, 1] / sqrt(Λ[2, 1]^2 + Λ[2, 2]^2)
-0.08133212094454777
+0.08133222508252107
 
 ````
 
@@ -181,7 +192,7 @@ Thus the estimated correlation can be written
 
 ````julia
 julia> Λ[2, 1] / norm(view(Λ, 2, :))
-0.08133212094454777
+0.08133222508252107
 
 ````
 
@@ -215,7 +226,7 @@ Some details on the optimization process are available in an `OptSummary` object
 ````julia
 julia> sleepm.optsum
 Initial parameter vector: [1.0, 0.0, 1.0]
-Initial objective value:  1784.6422961924686
+Initial objective value:  1784.642296192471
 
 Optimizer (from NLopt):   LN_BOBYQA
 Lower bounds:             [0.0, -Inf, 0.0]
@@ -228,7 +239,7 @@ maxfeval:                 -1
 
 Function evaluations:     57
 Final parameter vector:   [0.929221, 0.0181684, 0.222645]
-Final objective value:    1751.9393444646948
+Final objective value:    1751.9393444647023
 Return code:              FTOL_REACHED
 
 
@@ -302,9 +313,11 @@ The `ρᵢ` and `σᵢ` values are derived from the `θᵢ` and `σ` values.
 
 ````julia
 julia> sleepmbstrp = bootstrap(10000, sleepm);
+Error: UndefVarError: bootstrap not defined
 
 julia> show(names(sleepmbstrp))
-Symbol[:obj, :σ, :β₁, :β₂, :θ₁, :θ₂, :θ₃, :σ₁, :σ₂, :ρ₁]
+Error: UndefVarError: sleepmbstrp not defined
+
 ````
 
 
@@ -324,11 +337,7 @@ issmall (generic function with 1 method)
 
 ````julia
 julia> freqtable(issmall.(sleepmbstrp[:θ₁]), issmall.(sleepmbstrp[:θ₃]))
-2×2 Named Array{Int64,2}
-Dim1 ╲ Dim2 │ false   true
-────────────┼─────────────
-false       │  9687    306
-true        │     7      0
+Error: UndefVarError: sleepmbstrp not defined
 
 ````
 
@@ -340,18 +349,34 @@ Here the covariance matrix estimate is non-singular in 9,686 of the 10,000 sampl
 
 Empirical densities of the θ components are:
 
-![](./assets/SingularCovariance_14_1.svg)
+````
+Error: UndefVarError: xlabel not defined
+````
 
-![](./assets/SingularCovariance_15_1.svg)
+
+
+````
+Error: UndefVarError: xlabel not defined
+````
+
+
 
 
 
 A density plot is typically a good way to visualize such a large sample.
 However, when there is a spike such as the spike at zero here, a histogram provides a more informative plot.
 
-![](./assets/SingularCovariance_16_1.svg)
+````
+Error: UndefVarError: xlabel not defined
+````
 
-![](./assets/SingularCovariance_17_1.svg)
+
+
+````
+Error: UndefVarError: sleepmbstrp not defined
+````
+
+
 
 
 
@@ -386,8 +411,28 @@ rc = recipcond(sleepmbstrp)
 ````
 
 
+````
+Error: UndefVarError: sleepmbstrp not defined
+````
 
-![](./assets/SingularCovariance_19_1.svg)
+
+
+````julia
+extrema(rc)
+````
+
+
+````
+Error: UndefVarError: rc not defined
+````
+
+
+
+````
+Error: UndefVarError: xlabel not defined
+````
+
+
 
 
 
@@ -395,7 +440,7 @@ $\kappa^{-1}$ is small if either or both of $\theta_1$ or $\theta_3$ is small.
 
 ````julia
 julia> sum(issmall, rc)
-313
+Error: UndefVarError: rc not defined
 
 ````
 
@@ -405,11 +450,15 @@ julia> sum(issmall, rc)
 
 The density of the estimated correlation
 
-![](./assets/SingularCovariance_21_1.svg)
+````
+Error: UndefVarError: sleepmbstrp not defined
+````
+
+
 
 ````julia
 julia> sum(isfinite, sleepmbstrp[:ρ₁])  # recall that ρ = NaN in 7 cases
-9993
+Error: UndefVarError: sleepmbstrp not defined
 
 ````
 
@@ -417,7 +466,7 @@ julia> sum(isfinite, sleepmbstrp[:ρ₁])  # recall that ρ = NaN in 7 cases
 
 ````julia
 julia> sum(x -> x == -1, sleepmbstrp[:ρ₁])  # number of cases of rho == -1
-2
+Error: UndefVarError: sleepmbstrp not defined
 
 ````
 
@@ -425,7 +474,7 @@ julia> sum(x -> x == -1, sleepmbstrp[:ρ₁])  # number of cases of rho == -1
 
 ````julia
 julia> sum(x -> x == +1, sleepmbstrp[:ρ₁])  # number of cases of rho == +1
-304
+Error: UndefVarError: sleepmbstrp not defined
 
 ````
 
@@ -438,9 +487,7 @@ That is, the values of $\theta_2$ were definitely negative.
 
 ````julia
 julia> sleepmbstrp[:θ₂][findall(x -> x == -1, sleepmbstrp[:ρ₁])]
-2-element Array{Float64,1}:
- -0.26586204029006416
- -0.25449503128677364
+Error: UndefVarError: sleepmbstrp not defined
 
 ````
 
@@ -463,8 +510,7 @@ julia> R"""
 library(nlme)
 plot(Oxboys)
 """
-RObject{NilSxp}
-NULL
+RCall.RObject{RCall.VecSxp}
 
 
 ````
@@ -482,23 +528,12 @@ Symbol[:Subject, :age, :height, :Occasion]
 
 ````julia
 julia> oxboysm = fit(LinearMixedModel, @formula(height ~ 1 + age + (1+age | Subject)), oxboys)
-Linear mixed model fit by maximum likelihood
- Formula: height ~ 1 + age + ((1 + age) | Subject)
-   logLik   -2 logLik     AIC        BIC    
- -362.98384  725.96769  737.96769  758.69962
-
-Variance components:
-              Column     Variance   Std.Dev.    Corr.
- Subject  (Intercept)  62.78894329 7.92394746
-          age           2.71159677 1.64669268  0.64
- Residual               0.43545647 0.65989126
- Number of obs: 234; levels of grouping factors: 26
-
-  Fixed-effects parameters:
-             Estimate Std.Error z value P(>|z|)
-(Intercept)   149.372   1.55461 96.0829  <1e-99
-age           6.52547  0.329763 19.7884  <1e-86
-
+Error: MethodError: Cannot `convert` an object of type Tuple{Array{Float64,2},MixedModels.ReMat{Float64,2}} to an object of type Array{Float64,2}
+Closest candidates are:
+  convert(::Type{Array{S,N}}, !Matched::PooledArrays.PooledArray{T,R,N,RA} where RA) where {S, T, R, N} at /home/bates/.julia/packages/PooledArrays/ufJSl/src/PooledArrays.jl:288
+  convert(::Type{Array{T,N}}, !Matched::StaticArrays.SizedArray{S,T,N,M} where M) where {T, S, N} at /home/bates/.julia/packages/StaticArrays/3KEjZ/src/SizedArray.jl:62
+  convert(::Type{T<:Array}, !Matched::AbstractArray) where T<:Array at array.jl:474
+  ...
 
 ````
 
@@ -506,7 +541,8 @@ age           6.52547  0.329763 19.7884  <1e-86
 
 ````julia
 julia> show(getθ(oxboysm))
-[12.008, 1.60158, 1.91362]
+Error: UndefVarError: getθ not defined
+
 ````
 
 
@@ -520,6 +556,7 @@ It is unlikely that bootstrap samples will include singular covariance estimates
 julia> Random.seed!(4321234);
 
 julia> oxboysmbtstrp = bootstrap(10000, oxboysm);
+Error: UndefVarError: bootstrap not defined
 
 ````
 
@@ -531,10 +568,7 @@ In this bootstrap sample, there are no singular estimated covariance matrices fo
 
 ````julia
 julia> freqtable(issmall.(oxboysmbtstrp[:θ₁]), issmall.(oxboysmbtstrp[:θ₃]))
-1×1 Named Array{Int64,2}
-Dim1 ╲ Dim2 │ false
-────────────┼──────
-false       │ 10000
+Error: UndefVarError: oxboysmbtstrp not defined
 
 ````
 
@@ -544,11 +578,15 @@ false       │ 10000
 
 The empirical density of the correlation estimates shows that even in this case the correlation is not precisely estimated.
 
-![](./assets/SingularCovariance_32_1.svg)
+````
+Error: UndefVarError: xlabel not defined
+````
+
+
 
 ````julia
 julia> extrema(oxboysmbtstrp[:ρ₁])
-(0.033623235242859324, 0.9352618141809922)
+Error: UndefVarError: oxboysmbtstrp not defined
 
 ````
 
@@ -560,9 +598,10 @@ The reciprocal condition number
 
 ````julia
 julia> rc = recipcond(oxboysmbtstrp);
+Error: UndefVarError: oxboysmbtstrp not defined
 
 julia> extrema(rc)
-(0.06198775211313265, 0.3625146203502122)
+Error: UndefVarError: rc not defined
 
 ````
 
@@ -572,7 +611,11 @@ julia> extrema(rc)
 
 does not get very close to zero.
 
-![](./assets/SingularCovariance_35_1.svg)
+````
+Error: UndefVarError: xlabel not defined
+````
+
+
 
 
 
@@ -580,7 +623,7 @@ does not get very close to zero.
 
 ````julia
 julia> R"plot(Orthodont)"
-RObject{VecSxp}
+RCall.RObject{RCall.VecSxp}
 
 
 ````
@@ -596,22 +639,24 @@ julia> orthfemale = rcopy(R"subset(Orthodont, Sex == 'Female', -Sex)");
 
 julia> orthfm = fit!(LinearMixedModel(@formula(distance ~ 1 + age + (1 + age | Subject)), orthfemale))
 Linear mixed model fit by maximum likelihood
- Formula: distance ~ 1 + age + ((1 + age) | Subject)
+ distance ~ 1 + age + (1 + age | Subject)
    logLik   -2 logLik     AIC        BIC    
   -67.25463  134.50927  146.50927  157.21441
 
 Variance components:
               Column     Variance   Std.Dev.    Corr.
- Subject  (Intercept)  2.970884485 1.72362539
-          age          0.021510368 0.14666413 -0.30
- Residual              0.446615832 0.66829322
- Number of obs: 44; levels of grouping factors: 27
+ Subject  (Intercept)  2.972608260 1.72412536
+          age          0.021511576 0.14666825 -0.30
+ Residual              0.446536611 0.66823395
+ Number of obs: 44; levels of grouping factors: 11
 
   Fixed-effects parameters:
-             Estimate Std.Error z value P(>|z|)
-(Intercept)   17.3727  0.725169 23.9568  <1e-99
-age          0.479545 0.0631313   7.596  <1e-13
-
+────────────────────────────────────────────────────
+              Estimate  Std.Error   z value  P(>|z|)
+────────────────────────────────────────────────────
+(Intercept)  17.3727    0.725245   23.9543    <1e-99
+age           0.479545  0.0631293   7.59624   <1e-13
+────────────────────────────────────────────────────
 
 ````
 
@@ -619,9 +664,10 @@ age          0.479545 0.0631313   7.596  <1e-13
 
 ````julia
 julia> Random.seed!(1234123)
-MersenneTwister(UInt32[0x0012d4cb], Random.DSFMT.DSFMT_state(Int32[1849428804, 1072710534, 1722234079, 1073299110, 2058053067, 1072801015, 18044541, 1072957251, 668716466, 1073001711  …  -1153221639, 1073553062, 1653158638, 1073411494, 780501209, -2117144994, -394908522, -1446490633, 382, 0]), [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0  …  0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], UInt128[0x00000000000000000000000000000000, 0x00000000000000000000000000000000, 0x00000000000000000000000000000000, 0x00000000000000000000000000000000, 0x00000000000000000000000000000000, 0x00000000000000000000000000000000, 0x00000000000000000000000000000000, 0x00000000000000000000000000000000, 0x00000000000000000000000000000000, 0x00000000000000000000000000000000  …  0x00000000000000000000000000000000, 0x00000000000000000000000000000000, 0x00000000000000000000000000000000, 0x00000000000000000000000000000000, 0x00000000000000000000000000000000, 0x00000000000000000000000000000000, 0x00000000000000000000000000000000, 0x00000000000000000000000000000000, 0x00000000000000000000000000000000, 0x00000000000000000000000000000000], 1002, 0)
+Random.MersenneTwister(UInt32[0x0012d4cb], Random.DSFMT.DSFMT_state(Int32[1849428804, 1072710534, 1722234079, 1073299110, 2058053067, 1072801015, 18044541, 1072957251, 668716466, 1073001711  …  -1153221639, 1073553062, 1653158638, 1073411494, 780501209, -2117144994, -394908522, -1446490633, 382, 0]), [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0  …  0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], UInt128[0x00000000000000000000000000000000, 0x00000000000000000000000000000000, 0x00000000000000000000000000000000, 0x00000000000000000000000000000000, 0x00000000000000000000000000000000, 0x00000000000000000000000000000000, 0x00000000000000000000000000000000, 0x00000000000000000000000000000000, 0x00000000000000000000000000000000, 0x00000000000000000000000000000000  …  0x00000000000000000000000000000000, 0x00000000000000000000000000000000, 0x00000000000000000000000000000000, 0x00000000000000000000000000000000, 0x00000000000000000000000000000000, 0x00000000000000000000000000000000, 0x00000000000000000000000000000000, 0x00000000000000000000000000000000, 0x00000000000000000000000000000000, 0x00000000000000000000000000000000], 1002, 0)
 
 julia> orthfmbtstrp = bootstrap(10000, orthfm);
+Error: UndefVarError: bootstrap not defined
 
 ````
 
@@ -629,11 +675,7 @@ julia> orthfmbtstrp = bootstrap(10000, orthfm);
 
 ````julia
 julia> freqtable(issmall.(orthfmbtstrp[:θ₁]), issmall.(orthfmbtstrp[:θ₃]))
-2×2 Named Array{Int64,2}
-Dim1 ╲ Dim2 │ false   true
-────────────┼─────────────
-false       │  6771   3194
-true        │    35      0
+Error: UndefVarError: orthfmbtstrp not defined
 
 ````
 
@@ -644,7 +686,11 @@ true        │    35      0
 For this model almost 1/3 of the bootstrap samples converge to singular covariance estimates for the vector-valued random effects.
 A histogram of the estimated correlations of the random effects is dominated by the boundary values.
 
-![](./assets/SingularCovariance_40_1.svg)
+````
+Error: UndefVarError: xlabel not defined
+````
+
+
 
 
 
@@ -671,7 +717,7 @@ Early$trttos <- Early$tos * (Early$trt == "Y")
 xyplot(cog ~ tos | reorder(id, cog, min), Early, 
     type = c("p","l","g"), aspect="xy")
 """
-RObject{VecSxp}
+RCall.RObject{RCall.VecSxp}
 
 
 ````
@@ -702,24 +748,12 @@ When the time origin is the beginning of the treatment there is not generally a 
 julia> early = rcopy(R"subset(Early, select = c(cog, tos, id, trt, trttos))");
 
 julia> earlym = fit(LinearMixedModel, @formula(cog ~ 1 + tos + trttos + (1 + tos | id)), early)
-Linear mixed model fit by maximum likelihood
- Formula: cog ~ 1 + tos + trttos + ((1 + tos) | id)
-   logLik   -2 logLik     AIC        BIC    
- -1185.6369  2371.2738  2385.2738  2411.4072
-
-Variance components:
-              Column    Variance   Std.Dev.    Corr.
- id       (Intercept)  165.476297 12.8637590
-          tos           10.744812  3.2779279 -1.00
- Residual               74.946887  8.6571870
- Number of obs: 309; levels of grouping factors: 103
-
-  Fixed-effects parameters:
-             Estimate Std.Error  z value P(>|z|)
-(Intercept)   120.783    1.8178  66.4447  <1e-99
-tos           -22.474    1.4878 -15.1055  <1e-50
-trttos        7.65206   1.43609  5.32841   <1e-7
-
+Error: MethodError: Cannot `convert` an object of type Tuple{Array{Float64,2},MixedModels.ReMat{Float64,2}} to an object of type Array{Float64,2}
+Closest candidates are:
+  convert(::Type{Array{S,N}}, !Matched::PooledArrays.PooledArray{T,R,N,RA} where RA) where {S, T, R, N} at /home/bates/.julia/packages/PooledArrays/ufJSl/src/PooledArrays.jl:288
+  convert(::Type{Array{T,N}}, !Matched::StaticArrays.SizedArray{S,T,N,M} where M) where {T, S, N} at /home/bates/.julia/packages/StaticArrays/3KEjZ/src/SizedArray.jl:62
+  convert(::Type{T<:Array}, !Matched::AbstractArray) where T<:Array at array.jl:474
+  ...
 
 ````
 
@@ -731,10 +765,7 @@ The model converges to a singular covariance matrix for the random effects.
 
 ````julia
 julia> getθ(earlym)
-3-element Array{Float64,1}:
-  1.4859051786273185 
- -0.37863660770421764
-  0.0                
+Error: UndefVarError: getθ not defined
 
 ````
 
@@ -744,4 +775,14 @@ julia> getθ(earlym)
 
 The conditional (on the observed responses) means of the random effects fall along a line.
 
-![](./assets/SingularCovariance_46_1.svg)
+````
+Error: UndefVarError: earlym not defined
+````
+
+
+
+````
+Error: UndefVarError: rr not defined
+````
+
+

@@ -31,9 +31,10 @@ The *relative covariance factor*, $\Lambda_\theta$, is a $q\times q$ lower-trian
 \begin{equation}
 \Sigma_\theta=\sigma^2\Lambda_\theta\Lambda_\theta'
 \end{equation}
+```
 
 The *spherical random effects*, $\mathcal{U}\sim\mathcal{N}(\bf{0},\sigma^2\bf{I}_q)$, determine $\mathcal B$ according to
-
+```math
 \begin{equation}
 \mathcal{B}=\Lambda_\theta\mathcal{U}.
 \end{equation}
@@ -53,7 +54,7 @@ r^2_{\beta,\theta} =\min_{\bf{u}}\left(\|\bf{y} -\bf{X}{\beta} -\bf{Z}\Lambda_\t
 ```
 is a direct (i.e. non-iterative) computation.
 The particular method used to solve this generates a *blocked Choleksy factor*, $\bf{L}_\theta$, which is an lower triangular $q\times q$ matrix satisfying
-
+```math
 \begin{equation}
 \bf{L}_\theta\bf{L}_\theta'=\Lambda_\theta'\bf{Z}'\bf{Z}\Lambda_\theta+\bf{I}_q .
 \end{equation}
@@ -129,64 +130,60 @@ fm1 = fit!(LinearMixedModel(@formula(Y ~ 1 + (1|G)), dat[:Dyestuff]))
 ```
 the only random effects term in the formula is `(1|G)`, a simple, scalar random-effects term.
 ```{julia;term=true}
-t1 = fm1.trms[1]
+t1 = first(fm1.reterms)
 ```
 ```@docs
-ScalarFactorReTerm
+ReMat
 ```
 
-This `ScalarFactorReTerm` contributes a block of columns to the model matrix $\bf Z$ and a diagonal block to $\Lambda_\theta$.
+This `RandomEffectsTerm` contributes a block of columns to the model matrix $\bf Z$ and a diagonal block to $\Lambda_\theta$.
+In this case the diagonal block of $\Lambda_\theta$ (which is also the only block) is a multiple of the $6\times6$
+identity matrix where the multiple is 
 ```{julia;term=true}
-getθ(t1)
-getΛ(t1)
-Matrix(t1)
+t1.λ
 ```
 
 Because there is only one random-effects term in the model, the matrix $\bf Z$ is the indicators matrix shown as the result of `Matrix(t1)`, but stored in a special sparse format.
 Furthermore, there is only one block in $\Lambda_\theta$.
-For a `ScalarFactorReTerm` this block is a multiple of the identity, in this case $0.75258\cdot{\bf I}_6$.
 
 
 For a vector-valued random-effects term, as in
 ```{julia;term=true}
-fm2 = fit(LinearMixedModel, @formula(Y ~ 1 + U + (1+U|G)), dat[:sleepstudy])
-t21 = fm2.trms[1]
+fm2 = fit!(LinearMixedModel(@formula(Y ~ 1 + U + (1+U|G)), dat[:sleepstudy]))
 ```
-the random-effects term `(1+U|G)` generates a
-```@docs
-VectorFactorReTerm
-```
-The model matrix $\bf Z$ for this model is
+the model matrix $\bf Z$ for is of the form
 ```{julia;term=true}
+t21 = first(fm2.reterms);
 convert(Array{Int}, Matrix(t21))  # convert to integers for more compact printing
 ```
 and $\Lambda_\theta$ is a $36\times36$ block diagonal matrix with $18$ diagonal blocks, all of the form
 ```{julia;term=true}
-getΛ(t21)
+t21.λ
 ```
 The $\theta$ vector is
 ```{julia;term=true}
-getθ(t21)
+MixedModels.getθ(t21)
 ```
 
+__This model cannot be fit in v"2.0.0".  Watch for updates.__
 Random-effects terms in the model formula that have the same grouping factor are amagamated into a single `VectorFactorReTerm` object.
 ```{julia;term=true}
-fm3 = fit(LinearMixedModel, @formula(Y ~ 1 + U + (1|G) + (0+U|G)), dat[:sleepstudy])
-t31 = fm3.trms[1]
+#fm3 = fit(LinearMixedModel(@formula(Y ~ 1 + U + (1|G) + (0+U|G)), dat[:sleepstudy]))
+#t31 = first(fm3.retrms)
 ```
 For this model the matrix $\bf Z$ is the same as that of model `fm2` but the diagonal blocks of $\Lambda_\theta$ are themselves diagonal.
 ```{julia;term=true}
-getΛ(t31)
-getθ(t31)
+#getΛ(t31)
+#getθ(t31)
 ```
 Random-effects terms with distinct grouping factors generate distinct elements of the `trms` member of the `LinearMixedModel` object.
 Multiple `AbstractFactorReTerm` (i.e. either a `ScalarFactorReTerm` or a `VectorFactorReTerm`) objects are sorted by decreasing numbers of random effects.
 ```{julia;term=true}
 fm4 = fit!(LinearMixedModel(@formula(Y ~ 1 + (1|H) + (1|G)), dat[:Penicillin]))
-t41 = fm4.trms[1]
-t42 = fm4.trms[2]
+t41 = first(fm4.reterms)
+t42 = last(fm4.reterms)
 ```
-Note that the first `ScalarFactorReTerm` in `fm4.trms` corresponds to grouping factor `G` even though the term `(1|G)` occurs in the formula after `(1|H)`.
+Note that the first `ReMat` in `fm4.terms` corresponds to grouping factor `G` even though the term `(1|G)` occurs in the formula after `(1|H)`.
 
 ### Progress of the optimization
 
@@ -335,7 +332,7 @@ The alternative algorithm is to use PIRLS to find the conditional mode of the ra
 Because it is slower to incorporate the $\beta$ parameters in the general nonlinear optimization, the fast fit is performed first and used to determine starting estimates for the more general optimization.
 
 ```{julia;term=true}
-@time mdl1 = fit!(GeneralizedLinearMixedModel(@formula(r2 ~ 1+a+g+b+s+(1|id)+(1|item)), 
+@time mdl1 = fit!(GeneralizedLinearMixedModel(@formula(r2 ~ 1+a+g+b+s+(1|id)+(1|item)),
         dat[:VerbAgg], Bernoulli()))
 ```
 
@@ -346,4 +343,4 @@ The comparison of the slow and fast fit is available in the optimization summary
 
 ```{julia;term=true}
 mdl1.LMM.optsum
-```
+``

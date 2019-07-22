@@ -1,4 +1,3 @@
-
 # A Simple, Linear, Mixed-effects Model
 
 In this book we describe the theory behind a type of statistical model called *mixed-effects* models and the practice of fitting and analyzing such models using the [`MixedModels`](https://github.com/dmbates/MixedModels.jl) package for [`Julia`](https://julialang.org).
@@ -69,9 +68,8 @@ The data are described in Davies (), the fourth edition of the book mentioned ab
 
 First attach the packages to be used
 ```{julia;term=true}
-using DataFrames, Distributions, GLM, LinearAlgebra, MixedModels
-using Random, RCall, RData, SparseArrays
-using Gadfly
+using DataFrames, Distributions, GLM, Gadfly, LinearAlgebra
+using MixedModels, Random, RData, SparseArrays
 ```
 and allow for unqualified names for some graphics functions
 ```{julia;term=true}
@@ -103,8 +101,8 @@ Rather than providing an arbitrary pattern it is best to order the levels accord
 In this case a good choice is to order the batches by increasing mean yield, which can be easily done in R.
 
 ```{julia;term=true}
-dyestuffR = rcopy(R"within(lme4::Dyestuff, Batch <- reorder(Batch, Yield, mean))");
-plot(dyestuffR, x = :Yield, y = :Batch, point, xlabel("Yield of dyestuff (g)"), ylabel("Batch"))
+#dyestuffR = rcopy(R"within(lme4::Dyestuff, Batch <- reorder(Batch, Yield, mean))");
+#plot(dyestuffR, x = :Yield, y = :Batch, point, xlabel("Yield of dyestuff (g)"), ylabel("Batch"))
 ```
 
 In Sect. [sec:DyestuffLMM] we will use mixed models to quantify the variability in yield between batches.
@@ -145,7 +143,7 @@ The structure of the formula will be explained after showing the example.
 
 A model allowing for an overall level of the `Yield` and for an additive random effect for each level of `Batch` can be fit as
 ```{julia;term=true}
-mm1 = fit(LinearMixedModel, @formula(Y ~ 1 + (1 | G)), dyestuff)
+mm1 = fit!(LinearMixedModel(@formula(Y ~ 1 + (1 | G)), dyestuff))
 ```
 
 As shown in the summary of the model fit, the default estimation criterion is maximum likelihood.
@@ -188,7 +186,7 @@ The standard error of the intercept estimate is 17.69 g.
 Fitting a similar model to the `dyestuff2` data produces an estimate $\widehat{\sigma_1^2}=0$.
 
 ```{julia;term=true}
-mm2 = fit(LinearMixedModel, @formula(Y ~ 1 + (1 | G)), dyestuff2)
+mm2 = fit!(LinearMixedModel(@formula(Y ~ 1 + (1 | G)), dyestuff2))
 ```
 
 An estimate of `0` for $\sigma_1$ does not mean that there is no variation between the groups.
@@ -235,12 +233,12 @@ In this section we provide some definitions and formulas without derivation and 
 In Chap. [chap:computational] we revisit these definitions providing derivations and more explanation.
 
 As mentioned in Sect. [sec:memod], a mixed model incorporates two random variables: $\mathcal{B}$, the $q$-dimensional vector of random effects, and $\mathcal{Y}$, the $n$-dimensional response vector. In a linear mixed model the unconditional distribution of $\mathcal{B}$ and the conditional distribution, $(\mathcal{Y} | \mathcal{B}=\bf{b})$, are both multivariate Gaussian distributions,
-
+```math
 \begin{aligned}
   (\mathcal{Y} | \mathcal{B}=\bf{b}) &\sim\mathcal{N}(\bf{ X\beta + Z b},\sigma^2\bf{I})\\\\
   \mathcal{B}&\sim\mathcal{N}(\bf{0},\Sigma_\theta) .
 \end{aligned}
-
+```
 The *conditional mean* of $\mathcal Y$, given $\mathcal B=\bf b$, is the *linear predictor*, $\bf X\bf\beta+\bf Z\bf b$, which depends on the $p$-dimensional *fixed-effects parameter*, $\bf \beta$, and on $\bf b$. The *model matrices*, $\bf X$ and $\bf Z$, of dimension $n\times p$ and $n\times q$, respectively, are determined from the formula for the model and the values of covariates. Although the matrix $\bf Z$ can be large (i.e. both $n$ and $q$ can be large), it is sparse (i.e. most of the elements in the matrix are zero).
 
 The *relative covariance factor*, $\Lambda_\theta$, is a $q\times q$ lower-triangular matrix, depending on the *variance-component parameter*, $\bf\theta$, and generating the symmetric $q\times q$ variance-covariance matrix, $\Sigma_\theta$, as
@@ -376,37 +374,38 @@ These fields are not often used when fitting linear mixed models but are vital t
 mm1.sqrtwts
 ```
 
-The `trms` field is a vector of length $\ge 3$.
+The `reterms` field is a vector of `ReMat` objects.
 
 ```{julia;term=true}
-length(mm1.trms)
+length(mm1.reterms)
 ```
 
-The last two elements are $\bf X$, the $n\times p$ model matrix for the fixed-effects parameters, $\bf\beta$, and $\bf y$, the response vector stored as a matrix of size $n\times 1$.  In `mm1`, $\bf X$ consists of a single column of 1's
+And the `feterms` field is a vector of length 2.  The first element is $\bf X$, the $n\times p$ model matrix for the fixed-effects parameters, $\bf\beta$, and
+the last element is $\bf y$, the response vector stored as a matrix of size $n\times 1$.  In `mm1`, $\bf X$ consists of a single column of 1's
 
 ```{julia;term=true}
-mm1.trms[end - 1]
+first(mm1.feterms).x
 ```
 
 ```{julia;term=true}
-mm1.trms[end]
+last(mm1.feterms).x
 ```
 
-The elements of `trms` before the last two represent vertical sections of $\bf Z$ associated with the random effects terms in the model.  In `mm1` there is only one random effects term, `(1 | Batch)`, and $\bf Z$ has only one section, the one generated by this term, of type `ScalarReMat`.
+The elements of `reterms` represent vertical sections of $\bf Z$ associated with the random effects terms in the model.  In `mm1` there is only one random effects term, `(1 | Batch)`, and $\bf Z$ has only one section, the one generated by this term, of type `ScalarReMat`.
 
 ```{julia;term=true}
-mm1.trms[1]
+first(mm1.reterms)
 ```
 
 In practice these matrices are stored in a highly condensed form because, in some models, they can be very large.
-In small examples the structure is more obvious when the `ScalarReMat` is converted to a sparse or a dense matrix.
+In small examples the structure is more obvious when the `ReMat` is converted to a sparse or a dense matrix.
 
 ```{julia;term=true}
-sparse(mm1.trms[1])
+sparse(first(mm1.reterms))
 ```
 
 ```{julia;term=true}
-Matrix(mm1.trms[1])
+Matrix(first(mm1.reterms))
 ```
 
 The `A` field is a representation of the blocked, square, symmetric matrix $\bf A = [Z : X : y]'[Z : X : y]$.
@@ -449,7 +448,7 @@ Changing the value of $\theta$ changes the $\Lambda$ field.
 It is not necessary to store the full $\Lambda$ matrix.  Storing the small lower-triangular matrices is sufficient.
 
 ```{julia;term=true}
-getΛ(mm1)
+first(mm1.λ)
 ```
 
 The `L` field is a blocked matrix like the `A` field containing the upper Cholesky factor of
@@ -461,49 +460,49 @@ The `L` field is a blocked matrix like the `A` field containing the upper Choles
 \end{bmatrix}   
 
 ```{julia;term=true}
-mm1.L
+LowerTriangular(mm1.L)
 ```
 
 ```{julia;term=true}
-mm1.L.data[Block(1, 1)]
+mm1.L[Block(1, 1)]
 ```
 
 ```{julia;term=true}
-mm1.L.data[Block(2, 1)]
+mm1.L[Block(2, 1)]
 ```
 
 ```{julia;term=true}
-mm1.L.data[Block(2, 2)]
+mm1.L[Block(2, 2)]
 ```
 
 ```{julia;term=true}
-mm1.L.data[Block(3, 1)]
+mm1.L[Block(3, 1)]
 ```
 
 ```{julia;term=true}
-mm1.L.data[Block(3, 2)]
+mm1.L[Block(3, 2)]
 ```
 
 ```{julia;term=true}
-mm1.L.data[Block(3, 3)]
+mm1.L[Block(3, 3)]
 ```
 
-All the information needed to evaluate the profiled log-likelihood is available in the `R` field; $\log(|\bf R_\theta|^2)$ is
+All the information needed to evaluate the profiled log-likelihood is available in the `L` field; $\log(|\bf L_\theta|^2)$ is
 
 ```{julia;term=true}
-2 * sum(log.(diag(mm1.L.data[Block(1,1)])))
+2 * sum(log, diag(mm1.L[Block(1,1)]))
 ```
 
-It can also be evaluated as `logdet(mm1)` or `2 * logdet(mm1.R[1, 1])`
+It can also be evaluated as `logdet(mm1)` or `2 * logdet(mm1.L[Block(1, 1)])`
 
 ```{julia;term=true}
-logdet(mm1) == (2*logdet(mm1.L.data[Block(1, 1)])) == (2*sum(log.(diag(mm1.L.data[Block(1, 1)]))))
+logdet(mm1) == (2*logdet(mm1.L[Block(1, 1)])) == (2*sum(log.(diag(mm1.L[Block(1, 1)]))))
 ```
 
-The penalized residual sum of squares is the square of the single element of the lower-right block, `R[3, 3]` in this case
+The penalized residual sum of squares is the square of the single element of the lower-right block, `L[3, 3]` in this case
 
 ```{julia;term=true}
-abs2(mm1.L.data[Block(3, 3)][1, 1])
+abs2(mm1.L[Block(3, 3)][1, 1])
 ```
 
 ```{julia;term=true}
@@ -525,7 +524,7 @@ One way to assess the variability of the parameter estimates is to generate a pa
 First set the random number seed for reproducibility.
 
 ```{julia;term=true}
-Random.seed!(1234321);
+rng = Random.MersenneTwister(1234321);
 mm1bstp = bootstrap(100000, mm1);
 size(mm1bstp)
 ```

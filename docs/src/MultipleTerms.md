@@ -7,19 +7,33 @@ In this chapter we consider models with multiple simple, scalar random-effects t
 
 ````julia
 julia> using DataFrames, Distributions, FreqTables, MixedModels, RData, Random
+Error: ArgumentError: Package Distributions not found in current path:
+- Run `import Pkg; Pkg.add("Distributions")` to install the Distributions package.
+
 
 julia> using Gadfly
+Error: ArgumentError: Package Gadfly not found in current path:
+- Run `import Pkg; Pkg.add("Gadfly")` to install the Gadfly package.
+
 
 julia> using Gadfly.Geom: density, histogram, line, point
+Error: ArgumentError: Package Gadfly not found in current path:
+- Run `import Pkg; Pkg.add("Gadfly")` to install the Gadfly package.
+
 
 julia> using Gadfly.Guide: xlabel, ylabel
+Error: ArgumentError: Package Gadfly not found in current path:
+- Run `import Pkg; Pkg.add("Gadfly")` to install the Gadfly package.
+
 
 julia> const dat = Dict(Symbol(k)=>v for (k,v) in 
     load(joinpath(dirname(pathof(MixedModels)), "..", "test", "dat.rda")));
+Error: UndefVarError: MixedModels not defined
 
 julia> const ppt250 = inv(500) : inv(250) : 1.;
 
 julia> const zquantiles = quantile.(Normal(), ppt250);
+Error: UndefVarError: Normal not defined
 
 julia> function hpdinterval(v, level=0.95)
     n = length(v)
@@ -62,13 +76,7 @@ The data are derived from Table 6.6, p. 144 of Davies (), where they are descr
 
 ````julia
 julia> describe(dat[:Penicillin])
-3×8 DataFrames.DataFrame. Omitted printing of 1 columns
-│ Row │ variable │ mean    │ min  │ median │ max  │ nunique │ nmissing │
-│     │ Symbol   │ Union…  │ Any  │ Union… │ Any  │ Union…  │ Nothing  │
-├─────┼──────────┼─────────┼──────┼────────┼──────┼─────────┼──────────┤
-│ 1   │ Y        │ 22.9722 │ 18.0 │ 23.0   │ 27.0 │         │          │
-│ 2   │ G        │         │ a    │        │ x    │ 24      │          │
-│ 3   │ H        │         │ A    │        │ F    │ 6       │          │
+Error: UndefVarError: dat not defined
 
 ````
 
@@ -90,15 +98,7 @@ If we wish to be more specific, we could describe these factors as being *comple
 We can see this in Fig. [fig:Penicillindot] and, because there are moderate numbers of levels in these factors, we can check it in a cross-tabulation
 ````julia
 julia> freqtable(dat[:Penicillin][:H], dat[:Penicillin][:G])
-6×24 Named Array{Int64,2}
-Dim1 ╲ Dim2 │ a  b  c  d  e  f  g  h  i  j  …  o  p  q  r  s  t  u  v  w  x
-────────────┼──────────────────────────────────────────────────────────────
-A           │ 1  1  1  1  1  1  1  1  1  1  …  1  1  1  1  1  1  1  1  1  1
-B           │ 1  1  1  1  1  1  1  1  1  1     1  1  1  1  1  1  1  1  1  1
-C           │ 1  1  1  1  1  1  1  1  1  1     1  1  1  1  1  1  1  1  1  1
-D           │ 1  1  1  1  1  1  1  1  1  1     1  1  1  1  1  1  1  1  1  1
-E           │ 1  1  1  1  1  1  1  1  1  1     1  1  1  1  1  1  1  1  1  1
-F           │ 1  1  1  1  1  1  1  1  1  1  …  1  1  1  1  1  1  1  1  1  1
+Error: UndefVarError: dat not defined
 
 ````
 
@@ -123,22 +123,8 @@ A model incorporating random effects for both the plate and the sample is straig
 
 ````julia
 julia> penm = fit!(LinearMixedModel(@formula(Y ~ 1 + (1|G) + (1|H)), dat[:Penicillin]))
-Linear mixed model fit by maximum likelihood
- Formula: Y ~ 1 + (1 | G) + (1 | H)
-   logLik   -2 logLik     AIC        BIC    
- -166.09417  332.18835  340.18835  352.06760
-
-Variance components:
-              Column    Variance   Std.Dev. 
- G        (Intercept)  0.71497949 0.8455646
- H        (Intercept)  3.13519326 1.7706477
- Residual              0.30242640 0.5499331
- Number of obs: 144; levels of grouping factors: 24, 6
-
-  Fixed-effects parameters:
-             Estimate Std.Error z value P(>|z|)
-(Intercept)   22.9722  0.744596 30.8519  <1e-99
-
+Error: LoadError: UndefVarError: @formula not defined
+in expression starting at none:1
 
 ````
 
@@ -158,7 +144,8 @@ The relative covariance factor, $\Lambda_\theta$, (Fig. [fig:fm03LambdaLimage],
 
 ````julia
 julia> show(penm.θ)
-[1.53758, 3.21975]
+Error: UndefVarError: penm not defined
+
 ````
 
 
@@ -169,23 +156,7 @@ or as the `Final parameter vector` in the `opsum` field of `penm`
 
 ````julia
 julia> penm.optsum
-Initial parameter vector: [1.0, 1.0]
-Initial objective value:  364.62677981659544
-
-Optimizer (from NLopt):   LN_BOBYQA
-Lower bounds:             [0.0, 0.0]
-ftol_rel:                 1.0e-12
-ftol_abs:                 1.0e-8
-xtol_rel:                 0.0
-xtol_abs:                 [1.0e-10, 1.0e-10]
-initial_step:             [0.75, 0.75]
-maxfeval:                 -1
-
-Function evaluations:     44
-Final parameter vector:   [1.53758, 3.21975]
-Final objective value:    332.18834867237246
-Return code:              FTOL_REACHED
-
+Error: UndefVarError: penm not defined
 
 ````
 
@@ -201,7 +172,7 @@ A bootstrap simulation of the model
 
 ````julia
 julia> @time penmbstp = bootstrap(10000, penm);
- 26.932617 seconds (77.19 M allocations: 2.076 GiB, 3.17% gc time)
+Error: UndefVarError: bootstrap not defined
 
 ````
 
@@ -211,15 +182,27 @@ julia> @time penmbstp = bootstrap(10000, penm);
 
 provides the density plots
 
-![](./assets/MultipleTerms_8_1.svg)
+````
+Error: UndefVarError: xlabel not defined
+````
 
-![](./assets/MultipleTerms_9_1.svg)
 
-![](./assets/MultipleTerms_10_1.svg)
+
+````
+Error: UndefVarError: xlabel not defined
+````
+
+
+
+````
+Error: UndefVarError: xlabel not defined
+````
+
+
 
 ````julia
 julia> plot(penmbstp, x = :σ₂, density, xlabel("σ₂"))
-Plot(...)
+Error: UndefVarError: xlabel not defined
 
 ````
 
@@ -281,14 +264,7 @@ The structure and summary of the data object are
 
 ````julia
 julia> describe(dat[:Pastes])
-4×8 DataFrames.DataFrame. Omitted printing of 1 columns
-│ Row │ variable │ mean    │ min  │ median │ max  │ nunique │ nmissing │
-│     │ Symbol   │ Union…  │ Any  │ Union… │ Any  │ Union…  │ Nothing  │
-├─────┼──────────┼─────────┼──────┼────────┼──────┼─────────┼──────────┤
-│ 1   │ Y        │ 60.0533 │ 54.2 │ 59.3   │ 66.0 │         │          │
-│ 2   │ H        │         │ A    │        │ J    │ 10      │          │
-│ 3   │ c        │         │ a    │        │ c    │ 3       │          │
-│ 4   │ G        │         │ A:a  │        │ J:c  │ 30      │          │
+Error: UndefVarError: dat not defined
 
 ````
 
@@ -300,19 +276,7 @@ As stated in the description in Davies (1972), there are 30 samples, three from 
 
 ````julia
 julia> freqtable(dat[:Pastes][:H], dat[:Pastes][:G])
-10×30 Named Array{Int64,2}
-Dim1 ╲ Dim2 │ A:a  A:b  A:c  B:a  B:b  B:c  …  I:a  I:b  I:c  J:a  J:b  J:c
-────────────┼──────────────────────────────────────────────────────────────
-A           │   2    2    2    0    0    0  …    0    0    0    0    0    0
-B           │   0    0    0    2    2    2       0    0    0    0    0    0
-C           │   0    0    0    0    0    0       0    0    0    0    0    0
-D           │   0    0    0    0    0    0       0    0    0    0    0    0
-E           │   0    0    0    0    0    0       0    0    0    0    0    0
-F           │   0    0    0    0    0    0       0    0    0    0    0    0
-G           │   0    0    0    0    0    0       0    0    0    0    0    0
-H           │   0    0    0    0    0    0       0    0    0    0    0    0
-I           │   0    0    0    0    0    0       2    2    2    0    0    0
-J           │   0    0    0    0    0    0  …    0    0    0    2    2    2
+Error: UndefVarError: dat not defined
 
 ````
 
@@ -358,22 +322,8 @@ Fitting a model with simple, scalar random effects for nested factors is done in
 
 ````julia
 julia> pstsm = fit!(LinearMixedModel(@formula(Y ~ 1 + (1|G) + (1|H)), dat[:Pastes]))
-Linear mixed model fit by maximum likelihood
- Formula: Y ~ 1 + (1 | G) + (1 | H)
-   logLik   -2 logLik     AIC        BIC    
- -123.99723  247.99447  255.99447  264.37184
-
-Variance components:
-              Column    Variance  Std.Dev.  
- G        (Intercept)  8.4336167 2.90406899
- H        (Intercept)  1.1991787 1.09507018
- Residual              0.6780021 0.82340886
- Number of obs: 60; levels of grouping factors: 30, 10
-
-  Fixed-effects parameters:
-             Estimate Std.Error z value P(>|z|)
-(Intercept)   60.0533  0.642136 93.5212  <1e-99
-
+Error: LoadError: UndefVarError: @formula not defined
+in expression starting at none:1
 
 ````
 
@@ -401,19 +351,24 @@ confirm this impression in that all the prediction intervals for the random effe
 
 ````julia
 julia> Random.seed!(4321234);
+Error: UndefVarError: Random not defined
 
 julia> @time pstsbstp = bootstrap(10000, pstsm);
- 21.205995 seconds (66.25 M allocations: 1.788 GiB, 3.44% gc time)
+Error: UndefVarError: bootstrap not defined
 
 ````
 
 
 
-![](./assets/MultipleTerms_16_1.svg)
+````
+Error: UndefVarError: xlabel not defined
+````
+
+
 
 ````julia
 julia> plot(pstsbstp, x = :σ, density, xlabel("σ"))
-Plot(...)
+Error: UndefVarError: xlabel not defined
 
 ````
 
@@ -421,7 +376,7 @@ Plot(...)
 
 ````julia
 julia> plot(x = pstsbstp[:σ₁], Geom.density(), Guide.xlabel("σ₁"))
-Plot(...)
+Error: UndefVarError: pstsbstp not defined
 
 ````
 
@@ -429,7 +384,7 @@ Plot(...)
 
 ````julia
 julia> plot(x = pstsbstp[:σ₂], Geom.density(), Guide.xlabel("σ₂"))
-Plot(...)
+Error: UndefVarError: pstsbstp not defined
 
 ````
 
@@ -442,7 +397,7 @@ and a normal probability plot of
 ````julia
 julia> plot(x = zquantiles, y = quantile(pstsbstp[:σ₂], ppt250), Geom.line,
     Guide.xlabel("Standard Normal Quantiles"), Guide.ylabel("σ₂"))
-Plot(...)
+Error: UndefVarError: pstsbstp not defined
 
 ````
 
@@ -450,7 +405,7 @@ Plot(...)
 
 ````julia
 julia> count(x -> x < 1.0e-5, pstsbstp[:σ₂])
-3669
+Error: UndefVarError: pstsbstp not defined
 
 ````
 
@@ -462,9 +417,7 @@ Over 1/3 of the bootstrap samples of $\sigma_2$ are zero.  Even a 50% confidence
 
 ````julia
 julia> hpdinterval(pstsbstp[:σ₂])
-2-element Array{Float64,1}:
- 0.0              
- 2.073479680297123
+Error: UndefVarError: pstsbstp not defined
 
 ````
 
@@ -496,21 +449,8 @@ The restricted model fit
 
 ````julia
 julia> pstsm1 = fit!(LinearMixedModel(@formula(Y ~ 1 + (1|G)), dat[:Pastes]))
-Linear mixed model fit by maximum likelihood
- Formula: Y ~ 1 + (1 | G)
-   logLik   -2 logLik     AIC        BIC    
- -124.20085  248.40170  254.40170  260.68473
-
-Variance components:
-              Column    Variance   Std.Dev. 
- G        (Intercept)  9.63282202 3.1036788
- Residual              0.67800001 0.8234076
- Number of obs: 60; levels of grouping factors: 30
-
-  Fixed-effects parameters:
-             Estimate Std.Error z value P(>|z|)
-(Intercept)   60.0533  0.576536 104.162  <1e-99
-
+Error: LoadError: UndefVarError: @formula not defined
+in expression starting at none:1
 
 ````
 
@@ -522,12 +462,7 @@ is compared to model `pstsm` with
 
 ````julia
 julia> MixedModels.lrt(pstsm1, pstsm)
-2×4 DataFrames.DataFrame
-│ Row │ Df    │ Deviance │ Chisq    │ pval     │
-│     │ Int64 │ Float64  │ Float64  │ Float64  │
-├─────┼───────┼──────────┼──────────┼──────────┤
-│ 1   │ 3     │ 248.402  │ NaN      │ NaN      │
-│ 2   │ 4     │ 247.994  │ 0.407234 │ 0.523377 │
+Error: UndefVarError: MixedModels not defined
 
 ````
 
@@ -545,7 +480,7 @@ A bootstrap sample
 
 ````julia
 julia> @time psts1bstp = bootstrap(10000, pstsm1);
-  9.347764 seconds (24.71 M allocations: 704.028 MiB, 3.37% gc time)
+Error: UndefVarError: bootstrap not defined
 
 ````
 
@@ -555,13 +490,21 @@ julia> @time psts1bstp = bootstrap(10000, pstsm1);
 
 provides empirical density plots
 
-![](./assets/MultipleTerms_26_1.svg)
+````
+Error: UndefVarError: xlabel not defined
+````
+
+
 
 
 
 and
 
-![](./assets/MultipleTerms_27_1.svg)
+````
+Error: UndefVarError: xlabel not defined
+````
+
+
 
 
 
@@ -610,14 +553,7 @@ The variables
 
 ````julia
 julia> names(dat[:InstEval])
-7-element Array{Symbol,1}:
- :G      
- :H      
- :studage
- :lectage
- :A      
- :I      
- :Y      
+Error: UndefVarError: dat not defined
 
 ````
 
@@ -631,10 +567,7 @@ Although the response, `Y`, is on a scale of 1 to 5,
 
 ````julia
 julia> freqtable(dat[:InstEval][:Y])'
-1×5 Named LinearAlgebra.Adjoint{Int64,Array{Int64,1}}
-' ╲ Dim1 │     1      2      3      4      5
-─────────┼──────────────────────────────────
-1        │ 10186  12951  17609  16921  15754
+Error: UndefVarError: dat not defined
 
 ````
 
@@ -648,25 +581,8 @@ At this point we will fit models that have random effects for student, instructo
 
 ````julia
 julia> @time instm = fit(LinearMixedModel, @formula(Y ~ 1 + A + (1|G) + (1|H) + (1|I)), dat[:InstEval])
-  6.545960 seconds (680.61 k allocations: 218.683 MiB, 1.01% gc time)
-Linear mixed model fit by maximum likelihood
- Formula: Y ~ 1 + A + (1 | G) + (1 | H) + (1 | I)
-     logLik        -2 logLik          AIC             BIC       
- -1.18860884×10⁵  2.37721769×10⁵  2.37733769×10⁵  2.37788993×10⁵
-
-Variance components:
-              Column     Variance    Std.Dev. 
- G        (Intercept)  0.1059727787 0.3255346
- H        (Intercept)  0.2652041783 0.5149798
- I        (Intercept)  0.0061673544 0.0785325
- Residual              1.3864885827 1.1774925
- Number of obs: 73421; levels of grouping factors: 2972, 1128, 14
-
-  Fixed-effects parameters:
-               Estimate Std.Error  z value P(>|z|)
-(Intercept)     3.28258  0.028411  115.539  <1e-99
-A: 1         -0.0925886 0.0133832 -6.91828  <1e-11
-
+Error: LoadError: UndefVarError: @formula not defined
+in expression starting at none:1
 
 ````
 

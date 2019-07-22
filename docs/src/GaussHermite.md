@@ -41,9 +41,9 @@ julia> sym3 = SymTridiagonal(zeros(3), sqrt.(1:2))
 julia> ev = eigen(sym3);
 
 julia> show(ev.values)
-[-1.73205, 1.11022e-15, 1.73205]
+[-1.7320508075688739, 1.1102230246251565e-15, 1.7320508075688774]
 julia> show(abs2.(ev.vectors[1,:]))
-[0.166667, 0.666667, 0.166667]
+[0.16666666666666743, 0.6666666666666657, 0.16666666666666677]
 ````
 
 
@@ -63,7 +63,7 @@ end
 providing
 ````julia
 julia> gausshermitenorm(3)
-([-1.73205, 1.11022e-15, 1.73205], [0.166667, 0.666667, 0.166667])
+([-1.7320508075688739, 1.1102230246251565e-15, 1.7320508075688774], [0.16666666666666743, 0.6666666666666657, 0.16666666666666677])
 
 ````
 
@@ -89,7 +89,7 @@ GHnorm
 julia> using MixedModels
 
 julia> GHnorm(3)
-MixedModels.GaussHermiteNormalized{3}([-1.73205, 0.0, 1.73205], [0.166667, 0.666667, 0.166667])
+MixedModels.GaussHermiteNormalized{3}([-1.7320508075688772, 0.0, 1.7320508075688772], [0.16666666666666666, 0.6666666666666666, 0.16666666666666666])
 
 ````
 
@@ -127,27 +127,27 @@ Several covariates were recorded including the woman's age (centered at the mean
 The version of the data used here is that used in review of multilevel modeling software conducted by the Center for Multilevel Modelling, currently at University of Bristol (http://www.bristol.ac.uk/cmm/learning/mmsoftware/data-rev.html).
 These data are available as the `Contraception` data frame in the test data for the `MixedModels` package.
 ````julia
-julia> using DataFrames, DataFramesMeta, RData
+julia> using DataFrames, DataFramesMeta, PooledArrays, RData
 
 julia> const dat = Dict(Symbol(k)=>v for (k,v) in 
     load(joinpath(dirname(pathof(MixedModels)), "..", "test", "dat.rda")));
 
-julia> const contra = @transform(dat[:Contraception],
-     a2 = abs2.(:a), urbdist = string.(:urb, :d));
+julia> contra = dat[:Contraception];
+
+julia> contra.urbdist = PooledArray(string.(contra.urb, contra.d));
 
 julia> describe(contra)
-8×8 DataFrames.DataFrame. Omitted printing of 2 columns
-│ Row │ variable │ mean       │ min    │ median  │ max     │ nunique │
-│     │ Symbol   │ Union…     │ Any    │ Union…  │ Any     │ Union…  │
-├─────┼──────────┼────────────┼────────┼─────────┼─────────┼─────────┤
-│ 1   │ w        │            │ 1      │         │ 1934    │ 1934    │
-│ 2   │ d        │            │ 1      │         │ 61      │ 60      │
-│ 3   │ use      │            │ N      │         │ Y       │ 2       │
-│ 4   │ l        │            │ 0      │         │ 3+      │ 4       │
-│ 5   │ a        │ 0.00219788 │ -13.56 │ -1.5599 │ 19.44   │         │
-│ 6   │ urb      │            │ N      │         │ Y       │ 2       │
-│ 7   │ a2       │ 81.1966    │ 0.1936 │ 55.3536 │ 377.914 │         │
-│ 8   │ urbdist  │            │ N1     │         │ Y9      │ 102     │
+7×8 DataFrames.DataFrame. Omitted printing of 1 columns
+│ Row │ variable │ mean       │ min    │ median  │ max   │ nunique │ nmissing │
+│     │ Symbol   │ Union…     │ Any    │ Union…  │ Any   │ Union…  │ Nothing  │
+├─────┼──────────┼────────────┼────────┼─────────┼───────┼─────────┼──────────┤
+│ 1   │ w        │            │ 1      │         │ 1934  │ 1934    │          │
+│ 2   │ d        │            │ 1      │         │ 61    │ 60      │          │
+│ 3   │ use      │            │ N      │         │ Y     │ 2       │          │
+│ 4   │ l        │            │ 0      │         │ 3+    │ 4       │          │
+│ 5   │ a        │ 0.00219788 │ -13.56 │ -1.5599 │ 19.44 │         │          │
+│ 6   │ urb      │            │ N      │         │ Y     │ 2       │          │
+│ 7   │ urbdist  │            │ N1     │         │ Y9    │ 102     │          │
 
 ````
 
@@ -164,12 +164,12 @@ a column named `:a2`, which is the square of the age, `:a`, is added to the data
 
 A model with fixed-effects for age, age squared, number of live children and urban location and with random effects for district, is fit as
 ````julia
-julia> const form1 = @formula use ~ 1 + a + a2 + l + urb + (1|d);
+julia> const form1 = @formula use ~ 1 + a + abs2(a) + l + urb + (1|d);
 
 julia> m1 = fit!(GeneralizedLinearMixedModel(form1, contra,
     Bernoulli()), fast=true)
 Generalized Linear Mixed Model fit by maximum likelihood (nAGQ = 1)
-  Formula: use ~ 1 + a + a2 + l + urb + (1 | d)
+  use ~ 1 + a + :(abs2(a)) + l + urb + (1 | d)
   Distribution: Distributions.Bernoulli{Float64}
   Link: GLM.LogitLink()
 
@@ -178,19 +178,20 @@ Generalized Linear Mixed Model fit by maximum likelihood (nAGQ = 1)
 Variance components:
        Column    Variance   Std.Dev.  
  d (Intercept)  0.22532962 0.47468897
-
  Number of obs: 1934; levels of grouping factors: 60
 
 Fixed-effects parameters:
-               Estimate   Std.Error  z value P(>|z|)
-(Intercept)    -1.01528    0.173972 -5.83585   <1e-8
-a            0.00351346  0.00921057 0.381459  0.7029
-a2           -0.0044867 0.000722835 -6.20708   <1e-9
-l: 1           0.801881    0.161867  4.95396   <1e-6
-l: 2           0.901017    0.184771   4.8764   <1e-5
-l: 3+          0.899412    0.185401  4.85118   <1e-5
-urb: Y         0.684401    0.119684   5.7184   <1e-7
-
+─────────────────────────────────────────────────────────
+                Estimate    Std.Error    z value  P(>|z|)
+─────────────────────────────────────────────────────────
+(Intercept)  -1.01528     0.17102      -5.93659    <1e-8 
+a             0.00351346  0.00905427    0.388044   0.6980
+abs2(a)      -0.0044867   0.000710568  -6.31423    <1e-9 
+l: 1          0.801881    0.15912       5.03948    <1e-6 
+l: 2          0.901017    0.181635      4.96058    <1e-6 
+l: 3+         0.899412    0.182255      4.93492    <1e-6 
+urb: Y        0.684401    0.117653      5.81711    <1e-8 
+─────────────────────────────────────────────────────────
 
 ````
 
@@ -212,14 +213,14 @@ julia> const devc0 = map!(abs2, m1.devc0, m1.u[1]);  # start with uᵢ²
 
 julia> const devresid = m1.resp.devresid;   # n-dimensional vector of deviance residuals
 
-julia> const refs = m1.LMM.trms[1].refs;  # n-dimensional vector of indices in 1:q
+julia> const refs = first(m1.LMM.reterms).refs;  # n-dimensional vector of indices in 1:q
 
 julia> for (dr, i) in zip(devresid, refs)
     devc0[i] += dr
 end
 
 julia> show(devc0)
-[121.293, 22.0226, 2.91895, 30.7877, 47.5419, 69.5551, 23.4047, 46.279, 24.4528, 7.75949, 9.77364, 42.7589, 27.5526, 156.421, 26.1925, 27.4161, 24.5381, 57.5662, 31.1792, 22.3417, 27.478, 19.9885, 16.0108, 9.76147, 83.8633, 15.5687, 42.7598, 51.4686, 32.7332, 70.4157, 39.686, 27.544, 14.6975, 53.0474, 64.8499, 19.7439, 19.4156, 11.2423, 37.4169, 54.2651, 39.5826, 17.3984, 60.2275, 28.8192, 42.4441, 112.992, 17.2977, 51.5772, 2.18724, 22.9614, 47.4145, 87.2315, 25.9235, 9.47034, 61.1762, 27.1028, 48.0163, 8.46023, 30.3652, 47.3741]
+[121.29271732037381, 22.022616584792157, 2.9189470077568815, 30.787663285604463, 47.54194892617376, 69.5551027266817, 23.404661975119016, 46.278972511771194, 24.452790660106285, 7.759486808162704, 9.773642012229715, 42.758899197375214, 27.55258296025928, 156.42050918413568, 26.192528465478446, 27.41606592283949, 24.53807998706048, 57.56622794422132, 31.17918972119896, 22.341704270829478, 27.47795435305743, 19.98849931828665, 16.01083182651243, 9.76147424098032, 83.86327333184504, 15.568691000134612, 42.759834922611084, 51.4686085923028, 32.73318539378988, 70.41570018014733, 39.68595071245362, 27.544035486599572, 14.697521329069456, 53.047387080466144, 64.8498751790296, 19.74388471335329, 19.41560762843377, 11.24225195317607, 37.4169056771788, 54.265100914550594, 39.582567676932435, 17.398376861694395, 60.22753493954879, 28.81920320245103, 42.44406989459817, 112.99168546261657, 17.29767014093067, 51.57724964178295, 2.1872365393253617, 22.961445513475827, 47.4144787249708, 87.23151593184475, 25.923544725410718, 9.470338276203224, 61.17621091100317, 27.10277382789131, 48.016309596183284, 8.460230441606681, 30.365249790485223, 47.37405167335912]
 ````
 
 
@@ -246,10 +247,10 @@ julia> freqtable(contra, :d)'
 Because the first district has one of the largest sample sizes and the third district has the smallest sample size, these two will be used for illustration.
 For a range of $u$ values, evaluate the individual components of the deviance and store them in a matrix.
 ````julia
-const devc = m1.devc
-const xvals = -5.0:2.0^(-4):5.0
-const uv = vec(m1.u[1])
-const u₀ = vec(m1.u₀[1])
+const devc = m1.devc;
+const xvals = -5.0:2.0^(-4):5.0;
+const uv = vec(m1.u[1]);
+const u₀ = vec(m1.u₀[1]);
 results = zeros(length(devc0), length(xvals))
 for (j, u) in enumerate(xvals)
     fill!(devc, abs2(u))
@@ -289,7 +290,7 @@ julia> m1.u₀[1]
 the minima themselves, evaluated as `devc0` above, and a horizontal scale, which is the inverse of diagonal of the Cholesky factor.
 As shown below, this is an estimate of the conditional standard deviations of the components of $\mathcal{U}$.
 ````julia
-julia> const s = inv.(m1.LMM.L.data[Block(1,1)].diag);
+julia> const s = inv.(m1.LMM.L[Block(1,1)].diag);
 
 julia> s'
 1×60 LinearAlgebra.Adjoint{Float64,Array{Float64,1}}:

@@ -1,4 +1,3 @@
-#=
 getprops(m, props) = NamedTuple{props}(getproperty.(Ref(m), props))
 
 """
@@ -30,7 +29,6 @@ function parametricbootstrap(nsamp::Integer, m::LinearMixedModel,
     props=(:objective, :σ, :β, :θ); β = m.β, σ = m.σ, θ = m.θ)
     parametricbootstrap(Random.GLOBAL_RNG, nsamp, m, props, β = β, σ = σ, θ = θ)
 end
-=#
 """
     simulate!(rng::AbstractRNG, m::LinearMixedModel{T}; β=m.β, σ=m.σ, θ=T[])
     simulate!(m::LinearMixedModel; β=m.β, σ=m.σ, θ=m.θ)

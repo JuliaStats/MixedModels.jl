@@ -59,12 +59,13 @@ It corresponds to a shift in the intercept for each level of the grouping factor
 The *sleepstudy* data are observations of reaction time, `Y`, on several subjects, `G`, after 0 to 9 days of sleep deprivation, `U`.
 A model with random intercepts and random slopes for each subject, allowing for within-subject correlation of the slope and intercept, is fit as
 ```{julia;term=true}
-fm2 = fit(LinearMixedModel, @formula(Y ~ 1 + U + (1+U|G)), dat[:sleepstudy])
+fm2 = fit!(LinearMixedModel(@formula(Y ~ 1 + U + (1+U|G)), dat[:sleepstudy]))
 ```
 
 A model with uncorrelated random effects for the intercept and slope by subject is fit as
 ```{julia;term=true}
-fm3 = fit(LinearMixedModel, @formula(Y ~ 1 + U + (1|G) + (0+U|G)), dat[:sleepstudy])
+# This model is not currently (v"2.0.0") available
+#fm3 = fit(LinearMixedModel, @formula(Y ~ 1 + U + (1|G) + (0+U|G)), dat[:sleepstudy])
 ```
 
 Although technically there are two random-effects *terms* in the formula for *fm3* both have the same grouping factor
@@ -75,20 +76,20 @@ and, internally, are amalgamated into a single vector-valued term.
 A model for the *Penicillin* data incorporates random effects for the plate, `G`, and for the sample, `H`.
 As every sample is used on every plate these two factors are *crossed*.
 ```{julia;term=true}
-fm4 = fit(LinearMixedModel, @formula(Y ~ 1 + (1|G) + (1|H)), dat[:Penicillin])
+fm4 = fit!(LinearMixedModel(@formula(Y ~ 1 + (1|G) + (1|H)), dat[:Penicillin]))
 ```
 
 In contrast the sample, `G`, grouping factor is *nested* within the batch, `H`, grouping factor in the *Pastes* data.
 That is, each level of `G` occurs in conjunction with only one level of `H`.
 ```{julia;term=true}
-fm5 = fit(LinearMixedModel, @formula(Y ~ 1 + (1|G) + (1|H)), dat[:Pastes])
+fm5 = fit!(LinearMixedModel(@formula(Y ~ 1 + (1|G) + (1|H)), dat[:Pastes]))
 ```
 
 In observational studies it is common to encounter *partially crossed* grouping factors.
 For example, the *InstEval* data are course evaluations by students, `G`, of instructors, `H`.
 Additional covariates include the academic department, `I`, in which the course was given and `A`, whether or not it was a service course.
 ```{julia;term=true}
-fm6 = fit(LinearMixedModel, @formula(Y ~ 1 + A * I + (1|G) + (1|H)), dat[:InstEval])
+fm6 = fit!(LinearMixedModel(@formula(Y ~ 1 + A * I + (1|G) + (1|H)), dat[:InstEval]))
 ```
 
 ## Fitting generalized linear mixed models
@@ -101,7 +102,7 @@ the distribution family for the response, and possibly the link function, must b
 
 ```{julia;term=true}
 verbaggform = @formula(r2 ~ 1 + a + g + b + s + m + (1|id) + (1|item));
-gm1 = fit(GeneralizedLinearMixedModel, verbaggform, dat[:VerbAgg], Bernoulli())
+gm1 = fit!(GeneralizedLinearMixedModel(verbaggform, dat[:VerbAgg], Bernoulli()))
 ```
 
 The canonical link, which is `GLM.LogitLink` for the `Bernoulli` distribution, is used if no explicit link is specified.
@@ -119,7 +120,7 @@ These fits may suffice for model comparisons.
 ```{julia;term=true}
 gm1a = fit!(GeneralizedLinearMixedModel(verbaggform, dat[:VerbAgg], Bernoulli()), fast=true)
 deviance(gm1a) - deviance(gm1)
-@time fit(GeneralizedLinearMixedModel, verbaggform, dat[:VerbAgg], Bernoulli());
+@time fit!(GeneralizedLinearMixedModel(verbaggform, dat[:VerbAgg], Bernoulli()));
 @time fit!(GeneralizedLinearMixedModel(verbaggform, dat[:VerbAgg], Bernoulli()), fast=true);
 ```
 
@@ -176,7 +177,7 @@ deviance(fm1)
 
 The value optimized when fitting a `GeneralizedLinearMixedModel` is the Laplace approximation to the deviance or an adaptive Gauss-Hermite evaluation.
 ```@docs
-deviance!
+MixedModels.deviance!
 ```
 ```{julia;term=true}
 MixedModels.deviance!(gm1)
@@ -260,7 +261,6 @@ ranef
 ```{julia;term=true}
 ranef(fm1)
 fm1.b
-ranef(fm1, named=true)[1]
 ```
 returns the *conditional modes* of the random effects given the observed data.
 That is, these are the values that maximize the conditional density of the random effects given the observed data.

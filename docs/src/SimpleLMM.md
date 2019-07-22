@@ -70,8 +70,14 @@ The data are described in Davies (), the fourth edition of the book mentioned ab
 First attach the packages to be used
 ````julia
 julia> using DataFrames, Distributions, GLM, LinearAlgebra, MixedModels
+Error: ArgumentError: Package Distributions not found in current path:
+- Run `import Pkg; Pkg.add("Distributions")` to install the Distributions package.
+
 
 julia> using Random, RCall, RData, SparseArrays
+Error: ArgumentError: Package RCall not found in current path:
+- Run `import Pkg; Pkg.add("RCall")` to install the RCall package.
+
 
 julia> using Gadfly
 
@@ -99,16 +105,13 @@ Access the `Dyestuff` data
 ````julia
 julia> const dat = Dict(Symbol(k)=>v for (k,v) in 
     load(joinpath(dirname(pathof(MixedModels)), "..", "test", "dat.rda")));
+Error: UndefVarError: MixedModels not defined
 
 julia> dyestuff = dat[:Dyestuff];
+Error: UndefVarError: dat not defined
 
 julia> describe(dyestuff)
-2×8 DataFrame. Omitted printing of 1 columns
-│ Row │ variable │ mean   │ min    │ median │ max    │ nunique │ nmissing │
-│     │ Symbol   │ Union… │ Any    │ Union… │ Any    │ Union…  │ Nothing  │
-├─────┼──────────┼────────┼────────┼────────┼────────┼─────────┼──────────┤
-│ 1   │ G        │        │ A      │        │ F      │ 6       │          │
-│ 2   │ Y        │ 1527.5 │ 1440.0 │ 1530.0 │ 1635.0 │         │          │
+Error: UndefVarError: dyestuff not defined
 
 ````
 
@@ -116,7 +119,11 @@ julia> describe(dyestuff)
 
 
 and plot it
-![Yield versus Batch for the Dyestuff data](./assets/SimpleLMM_4_1.svg)
+````
+Error: UndefVarError: dyestuff not defined
+````
+
+
 
 
 
@@ -130,9 +137,11 @@ In this case a good choice is to order the batches by increasing mean yield, whi
 
 ````julia
 julia> dyestuffR = rcopy(R"within(lme4::Dyestuff, Batch <- reorder(Batch, Yield, mean))");
+Error: LoadError: UndefVarError: @R_str not defined
+in expression starting at none:1
 
 julia> plot(dyestuffR, x = :Yield, y = :Batch, point, xlabel("Yield of dyestuff (g)"), ylabel("Batch"))
-Plot(...)
+Error: UndefVarError: dyestuffR not defined
 
 ````
 
@@ -156,14 +165,10 @@ The data are simulated data presented in Box and Tiao (1973), where the authors 
 The structure and summary are intentionally similar to those of the `Dyestuff` data.
 ````julia
 julia> dyestuff2 = dat[:Dyestuff2];
+Error: UndefVarError: dat not defined
 
 julia> describe(dyestuff2)
-2×8 DataFrame. Omitted printing of 1 columns
-│ Row │ variable │ mean   │ min    │ median │ max    │ nunique │ nmissing │
-│     │ Symbol   │ Union… │ Any    │ Union… │ Any    │ Union…  │ Nothing  │
-├─────┼──────────┼────────┼────────┼────────┼────────┼─────────┼──────────┤
-│ 1   │ G        │        │ A      │        │ F      │ 6       │          │
-│ 2   │ Y        │ 5.6656 │ -0.892 │ 5.365  │ 13.434 │         │          │
+Error: UndefVarError: dyestuff2 not defined
 
 ````
 
@@ -171,7 +176,11 @@ julia> describe(dyestuff2)
 
 
 As can be seen in a data plot
-![](./assets/SimpleLMM_7_1.svg)
+````
+Error: UndefVarError: dyestuff2 not defined
+````
+
+
 
 
 the batch-to-batch variability in these data is small compared to the within-batch variability.
@@ -191,21 +200,8 @@ The structure of the formula will be explained after showing the example.
 A model allowing for an overall level of the `Yield` and for an additive random effect for each level of `Batch` can be fit as
 ````julia
 julia> mm1 = fit(LinearMixedModel, @formula(Y ~ 1 + (1 | G)), dyestuff)
-Linear mixed model fit by maximum likelihood
- Formula: Y ~ 1 + (1 | G)
-   logLik   -2 logLik     AIC        BIC    
- -163.66353  327.32706  333.32706  337.53065
-
-Variance components:
-              Column    Variance  Std.Dev. 
- G        (Intercept)  1388.3334 37.260347
- Residual              2451.2500 49.510100
- Number of obs: 30; levels of grouping factors: 6
-
-  Fixed-effects parameters:
-             Estimate Std.Error z value P(>|z|)
-(Intercept)    1527.5   17.6946  86.326  <1e-99
-
+Error: LoadError: UndefVarError: @formula not defined
+in expression starting at none:1
 
 ````
 
@@ -254,21 +250,8 @@ Fitting a similar model to the `dyestuff2` data produces an estimate $\widehat{\
 
 ````julia
 julia> mm2 = fit(LinearMixedModel, @formula(Y ~ 1 + (1 | G)), dyestuff2)
-Linear mixed model fit by maximum likelihood
- Formula: Y ~ 1 + (1 | G)
-   logLik   -2 logLik     AIC        BIC    
- -81.436518 162.873037 168.873037 173.076629
-
-Variance components:
-              Column    Variance  Std.Dev. 
- G        (Intercept)   0.000000 0.0000000
- Residual              13.346099 3.6532314
- Number of obs: 30; levels of grouping factors: 6
-
-  Fixed-effects parameters:
-             Estimate Std.Error z value P(>|z|)
-(Intercept)    5.6656  0.666986 8.49433  <1e-16
-
+Error: LoadError: UndefVarError: @formula not defined
+in expression starting at none:1
 
 ````
 
@@ -293,14 +276,8 @@ Even when the final fitted model is not singular, we must allow for such models 
 It happens that this model corresponds to the linear model (i.e. a model with fixed-effects only)
 ````julia
 julia> lm1 = lm(@formula(Y ~ 1), dyestuff2)
-StatsModels.DataFrameRegressionModel{LinearModel{LmResp{Array{Float64,1}},DensePredChol{Float64,Cholesky{Float64,Array{Float64,2}}}},Array{Float64,2}}
-
-Formula: Y ~ +1
-
-Coefficients:
-             Estimate Std.Error t value Pr(>|t|)
-(Intercept)    5.6656  0.678388 8.35156    <1e-8
-
+Error: LoadError: UndefVarError: @formula not defined
+in expression starting at none:1
 
 ````
 
@@ -311,7 +288,7 @@ Coefficients:
 The log-likelihood for this model
 ````julia
 julia> loglikelihood(lm1)
--81.43651832691287
+Error: UndefVarError: loglikelihood not defined
 
 ````
 
@@ -446,24 +423,8 @@ The optional second argument, `verbose`, in a call to `fit!` of a `LinearMixedMo
 
 ````julia
 julia> mm1 = fit!(LinearMixedModel(@formula(Y ~ 1 + (1 | G)), dyestuff), verbose = true);
-f_1: 327.76702 [1.0]
-f_2: 331.03619 [1.75]
-f_3: 330.64583 [0.25]
-f_4: 327.69511 [0.97619]
-f_5: 327.56631 [0.928569]
-f_6: 327.3826 [0.833327]
-f_7: 327.35315 [0.807188]
-f_8: 327.34663 [0.799688]
-f_9: 327.341 [0.792188]
-f_10: 327.33253 [0.777188]
-f_11: 327.32733 [0.747188]
-f_12: 327.32862 [0.739688]
-f_13: 327.32706 [0.752777]
-f_14: 327.32707 [0.753527]
-f_15: 327.32706 [0.752584]
-f_16: 327.32706 [0.752509]
-f_17: 327.32706 [0.752591]
-f_18: 327.32706 [0.752581]
+Error: LoadError: UndefVarError: @formula not defined
+in expression starting at none:1
 
 ````
 
@@ -477,23 +438,7 @@ Whether or not verbose output is requested, the `optsum` field of a `LinearMixed
 
 ````julia
 julia> mm1.optsum
-Initial parameter vector: [1.0]
-Initial objective value:  327.76702162461663
-
-Optimizer (from NLopt):   LN_BOBYQA
-Lower bounds:             [0.0]
-ftol_rel:                 1.0e-12
-ftol_abs:                 1.0e-8
-xtol_rel:                 0.0
-xtol_abs:                 [1.0e-10]
-initial_step:             [0.75]
-maxfeval:                 -1
-
-Function evaluations:     18
-Final parameter vector:   [0.752581]
-Final objective value:    327.3270598811424
-Return code:              FTOL_REACHED
-
+Error: UndefVarError: mm1 not defined
 
 ````
 
@@ -505,7 +450,7 @@ The full list of fields in a `LinearMixedModel` object is
 
 ````julia
 julia> fieldnames(LinearMixedModel)
-(:formula, :trms, :sqrtwts, :A, :L, :optsum)
+Error: UndefVarError: LinearMixedModel not defined
 
 ````
 
@@ -517,7 +462,7 @@ The `formula` field is a copy of the model formula
 
 ````julia
 julia> mm1.formula
-Formula: Y ~ 1 + (1 | G)
+Error: UndefVarError: mm1 not defined
 
 ````
 
@@ -535,7 +480,7 @@ These fields are not often used when fitting linear mixed models but are vital t
 
 ````julia
 julia> mm1.sqrtwts
-0-element Array{Float64,1}
+Error: UndefVarError: mm1 not defined
 
 ````
 
@@ -547,7 +492,7 @@ The `trms` field is a vector of length $\ge 3$.
 
 ````julia
 julia> length(mm1.trms)
-3
+Error: UndefVarError: mm1 not defined
 
 ````
 
@@ -559,7 +504,7 @@ The last two elements are $\bf X$, the $n\times p$ model matrix for the fixed-ef
 
 ````julia
 julia> mm1.trms[end - 1]
-MatrixTerm{Float64,Array{Float64,2}}([1.0; 1.0; … ; 1.0; 1.0], [1.0; 1.0; … ; 1.0; 1.0], [1], 1, ["(Intercept)"])
+Error: UndefVarError: mm1 not defined
 
 ````
 
@@ -567,7 +512,7 @@ MatrixTerm{Float64,Array{Float64,2}}([1.0; 1.0; … ; 1.0; 1.0], [1.0; 1.0; … 
 
 ````julia
 julia> mm1.trms[end]
-MatrixTerm{Float64,Array{Float64,2}}([1545.0; 1440.0; … ; 1480.0; 1445.0], [1545.0; 1440.0; … ; 1480.0; 1445.0], [1], 0, [""])
+Error: UndefVarError: mm1 not defined
 
 ````
 
@@ -579,7 +524,7 @@ The elements of `trms` before the last two represent vertical sections of $\bf Z
 
 ````julia
 julia> mm1.trms[1]
-ScalarFactorReTerm{Float64,UInt8}(UInt8[0x01, 0x01, 0x01, 0x01, 0x01, 0x02, 0x02, 0x02, 0x02, 0x02  …  0x05, 0x05, 0x05, 0x05, 0x05, 0x06, 0x06, 0x06, 0x06, 0x06], ["A", "B", "C", "D", "E", "F"], [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0  …  1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0], [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0  …  1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0], :G, ["(Intercept)"], 0.75258072175308)
+Error: UndefVarError: mm1 not defined
 
 ````
 
@@ -592,26 +537,7 @@ In small examples the structure is more obvious when the `ScalarReMat` is conver
 
 ````julia
 julia> sparse(mm1.trms[1])
-30×6 SparseMatrixCSC{Float64,Int32} with 30 stored entries:
-  [1 ,  1]  =  1.0
-  [2 ,  1]  =  1.0
-  [3 ,  1]  =  1.0
-  [4 ,  1]  =  1.0
-  [5 ,  1]  =  1.0
-  [6 ,  2]  =  1.0
-  [7 ,  2]  =  1.0
-  [8 ,  2]  =  1.0
-  [9 ,  2]  =  1.0
-  ⋮
-  [22,  5]  =  1.0
-  [23,  5]  =  1.0
-  [24,  5]  =  1.0
-  [25,  5]  =  1.0
-  [26,  6]  =  1.0
-  [27,  6]  =  1.0
-  [28,  6]  =  1.0
-  [29,  6]  =  1.0
-  [30,  6]  =  1.0
+Error: UndefVarError: mm1 not defined
 
 ````
 
@@ -619,27 +545,7 @@ julia> sparse(mm1.trms[1])
 
 ````julia
 julia> Matrix(mm1.trms[1])
-30×6 Array{Float64,2}:
- 1.0  0.0  0.0  0.0  0.0  0.0
- 1.0  0.0  0.0  0.0  0.0  0.0
- 1.0  0.0  0.0  0.0  0.0  0.0
- 1.0  0.0  0.0  0.0  0.0  0.0
- 1.0  0.0  0.0  0.0  0.0  0.0
- 0.0  1.0  0.0  0.0  0.0  0.0
- 0.0  1.0  0.0  0.0  0.0  0.0
- 0.0  1.0  0.0  0.0  0.0  0.0
- 0.0  1.0  0.0  0.0  0.0  0.0
- 0.0  1.0  0.0  0.0  0.0  0.0
- ⋮                        ⋮  
- 0.0  0.0  0.0  0.0  1.0  0.0
- 0.0  0.0  0.0  0.0  1.0  0.0
- 0.0  0.0  0.0  0.0  1.0  0.0
- 0.0  0.0  0.0  0.0  1.0  0.0
- 0.0  0.0  0.0  0.0  0.0  1.0
- 0.0  0.0  0.0  0.0  0.0  1.0
- 0.0  0.0  0.0  0.0  0.0  1.0
- 0.0  0.0  0.0  0.0  0.0  1.0
- 0.0  0.0  0.0  0.0  0.0  1.0
+Error: UndefVarError: mm1 not defined
 
 ````
 
@@ -653,7 +559,7 @@ The number of blocks of the rows and columns of `A` is the number of vertical se
 
 ````julia
 julia> nblocks(mm1.A)
-(3, 3)
+Error: UndefVarError: mm1 not defined
 
 ````
 
@@ -661,13 +567,7 @@ julia> nblocks(mm1.A)
 
 ````julia
 julia> mm1.A[Block(1, 1)]
-6×6 Diagonal{Float64,Array{Float64,1}}:
- 5.0   ⋅    ⋅    ⋅    ⋅    ⋅ 
-  ⋅   5.0   ⋅    ⋅    ⋅    ⋅ 
-  ⋅    ⋅   5.0   ⋅    ⋅    ⋅ 
-  ⋅    ⋅    ⋅   5.0   ⋅    ⋅ 
-  ⋅    ⋅    ⋅    ⋅   5.0   ⋅ 
-  ⋅    ⋅    ⋅    ⋅    ⋅   5.0
+Error: UndefVarError: mm1 not defined
 
 ````
 
@@ -675,8 +575,7 @@ julia> mm1.A[Block(1, 1)]
 
 ````julia
 julia> mm1.A[Block(2, 1)]
-1×6 Array{Float64,2}:
- 5.0  5.0  5.0  5.0  5.0  5.0
+Error: UndefVarError: mm1 not defined
 
 ````
 
@@ -684,8 +583,7 @@ julia> mm1.A[Block(2, 1)]
 
 ````julia
 julia> mm1.A[Block(2, 2)]
-1×1 Array{Float64,2}:
- 30.0
+Error: UndefVarError: mm1 not defined
 
 ````
 
@@ -693,8 +591,7 @@ julia> mm1.A[Block(2, 2)]
 
 ````julia
 julia> mm1.A[Block(3, 1)]
-1×6 Array{Float64,2}:
- 7525.0  7640.0  7820.0  7490.0  8000.0  7350.0
+Error: UndefVarError: mm1 not defined
 
 ````
 
@@ -702,8 +599,7 @@ julia> mm1.A[Block(3, 1)]
 
 ````julia
 julia> mm1.A[Block(3, 2)]
-1×1 Array{Float64,2}:
- 45825.0
+Error: UndefVarError: mm1 not defined
 
 ````
 
@@ -711,8 +607,7 @@ julia> mm1.A[Block(3, 2)]
 
 ````julia
 julia> mm1.A[Block(3, 3)]
-1×1 Array{Float64,2}:
- 7.0112875e7
+Error: UndefVarError: mm1 not defined
 
 ````
 
@@ -729,8 +624,7 @@ It is not necessary to store the full $\Lambda$ matrix.  Storing the small lower
 
 ````julia
 julia> getΛ(mm1)
-1-element Array{Float64,1}:
- 0.75258072175308
+Error: UndefVarError: getΛ not defined
 
 ````
 
@@ -748,19 +642,7 @@ The `L` field is a blocked matrix like the `A` field containing the upper Choles
 
 ````julia
 julia> mm1.L
-8×8 LowerTriangular{Float64,BlockArrays.BlockArray{Float64,2,AbstractArray{Float64,2}}}:
-    1.95752      ⋅           ⋅       …      ⋅           ⋅          ⋅   
-    0.0         1.95752      ⋅              ⋅           ⋅          ⋅   
-    0.0         0.0         1.95752         ⋅           ⋅          ⋅   
-    0.0         0.0         0.0             ⋅           ⋅          ⋅   
-    0.0         0.0         0.0             ⋅           ⋅          ⋅   
-    0.0         0.0         0.0    
- ──────────────────────────────────  …     1.95752      ⋅          ⋅   
- ───────────────────────────────
-    1.92228     1.92228     1.92228
- ──────────────────────────────────        1.92228     2.79804     ⋅   
- ───────────────────────────────
- 2893.03     2937.24     3006.45        2825.75     4274.01     271.178
+Error: UndefVarError: mm1 not defined
 
 ````
 
@@ -768,13 +650,7 @@ julia> mm1.L
 
 ````julia
 julia> mm1.L.data[Block(1, 1)]
-6×6 Diagonal{Float64,Array{Float64,1}}:
- 1.95752   ⋅        ⋅        ⋅        ⋅        ⋅     
-  ⋅       1.95752   ⋅        ⋅        ⋅        ⋅     
-  ⋅        ⋅       1.95752   ⋅        ⋅        ⋅     
-  ⋅        ⋅        ⋅       1.95752   ⋅        ⋅     
-  ⋅        ⋅        ⋅        ⋅       1.95752   ⋅     
-  ⋅        ⋅        ⋅        ⋅        ⋅       1.95752
+Error: UndefVarError: mm1 not defined
 
 ````
 
@@ -782,8 +658,7 @@ julia> mm1.L.data[Block(1, 1)]
 
 ````julia
 julia> mm1.L.data[Block(2, 1)]
-1×6 Array{Float64,2}:
- 1.92228  1.92228  1.92228  1.92228  1.92228  1.92228
+Error: UndefVarError: mm1 not defined
 
 ````
 
@@ -791,8 +666,7 @@ julia> mm1.L.data[Block(2, 1)]
 
 ````julia
 julia> mm1.L.data[Block(2, 2)]
-1×1 Array{Float64,2}:
- 2.7980417055919244
+Error: UndefVarError: mm1 not defined
 
 ````
 
@@ -800,8 +674,7 @@ julia> mm1.L.data[Block(2, 2)]
 
 ````julia
 julia> mm1.L.data[Block(3, 1)]
-1×6 Array{Float64,2}:
- 2893.03  2937.24  3006.45  2879.58  3075.65  2825.75
+Error: UndefVarError: mm1 not defined
 
 ````
 
@@ -809,8 +682,7 @@ julia> mm1.L.data[Block(3, 1)]
 
 ````julia
 julia> mm1.L.data[Block(3, 2)]
-1×1 Array{Float64,2}:
- 4274.008705291662
+Error: UndefVarError: mm1 not defined
 
 ````
 
@@ -818,8 +690,7 @@ julia> mm1.L.data[Block(3, 2)]
 
 ````julia
 julia> mm1.L.data[Block(3, 3)]
-1×1 Array{Float64,2}:
- 271.177984264646
+Error: UndefVarError: mm1 not defined
 
 ````
 
@@ -831,7 +702,7 @@ All the information needed to evaluate the profiled log-likelihood is available 
 
 ````julia
 julia> 2 * sum(log.(diag(mm1.L.data[Block(1,1)])))
-8.060146910373954
+Error: UndefVarError: mm1 not defined
 
 ````
 
@@ -843,7 +714,7 @@ It can also be evaluated as `logdet(mm1)` or `2 * logdet(mm1.R[1, 1])`
 
 ````julia
 julia> logdet(mm1) == (2*logdet(mm1.L.data[Block(1, 1)])) == (2*sum(log.(diag(mm1.L.data[Block(1, 1)]))))
-true
+Error: UndefVarError: mm1 not defined
 
 ````
 
@@ -855,7 +726,7 @@ The penalized residual sum of squares is the square of the single element of the
 
 ````julia
 julia> abs2(mm1.L.data[Block(3, 3)][1, 1])
-73537.4991498366
+Error: UndefVarError: mm1 not defined
 
 ````
 
@@ -863,7 +734,7 @@ julia> abs2(mm1.L.data[Block(3, 3)][1, 1])
 
 ````julia
 julia> pwrss(mm1)
-73537.4991498366
+Error: UndefVarError: pwrss not defined
 
 ````
 
@@ -875,7 +746,7 @@ The objective is
 
 ````julia
 julia> logdet(mm1) + nobs(mm1) * (1 + log(2π * pwrss(mm1) / nobs(mm1)))
-327.3270598811424
+Error: UndefVarError: logdet not defined
 
 ````
 
@@ -895,9 +766,10 @@ First set the random number seed for reproducibility.
 julia> Random.seed!(1234321);
 
 julia> mm1bstp = bootstrap(100000, mm1);
+Error: UndefVarError: bootstrap not defined
 
 julia> size(mm1bstp)
-(100000, 5)
+Error: UndefVarError: mm1bstp not defined
 
 ````
 
@@ -905,15 +777,7 @@ julia> size(mm1bstp)
 
 ````julia
 julia> describe(mm1bstp)
-5×8 DataFrame. Omitted printing of 2 columns
-│ Row │ variable │ mean     │ min     │ median   │ max     │ nunique │
-│     │ Symbol   │ Float64  │ Float64 │ Float64  │ Float64 │ Nothing │
-├─────┼──────────┼──────────┼─────────┼──────────┼─────────┼─────────┤
-│ 1   │ obj      │ 324.03   │ 284.104 │ 324.346  │ 353.114 │         │
-│ 2   │ σ        │ 48.8259  │ 23.0686 │ 48.6577  │ 81.1291 │         │
-│ 3   │ β₁       │ 1527.41  │ 1442.75 │ 1527.47  │ 1598.74 │         │
-│ 4   │ θ₁       │ 0.611039 │ 0.0     │ 0.610791 │ 2.9935  │         │
-│ 5   │ σ₁       │ 28.9064  │ 0.0     │ 29.6869  │ 94.001  │         │
+Error: UndefVarError: mm1bstp not defined
 
 ````
 
@@ -933,7 +797,7 @@ The [`Gadfly`](https://github.com/GiovineItalia/Gadfly.jl) package for Julia use
 
 ````julia
 julia> plot(mm1bstp, x = :β₁, histogram)
-Plot(...)
+Error: UndefVarError: mm1bstp not defined
 
 ````
 
@@ -941,7 +805,7 @@ Plot(...)
 
 ````julia
 julia> plot(mm1bstp, x = :σ, histogram)
-Plot(...)
+Error: UndefVarError: mm1bstp not defined
 
 ````
 
@@ -949,7 +813,7 @@ Plot(...)
 
 ````julia
 julia> plot(mm1bstp, x = :σ₁, histogram)
-Plot(...)
+Error: UndefVarError: mm1bstp not defined
 
 ````
 
@@ -963,7 +827,7 @@ The histogram of $\sigma_1^2$ has a "spike" at zero.  Because the value of $\sig
 
 ````julia
 julia> length(mm1bstp[:θ₁]) - count(!iszero, mm1bstp[:θ₁])
-10090
+Error: UndefVarError: mm1bstp not defined
 
 ````
 
@@ -975,7 +839,7 @@ That is, nearly 1/10 of the `theta1` values are zeros.  Because such a spike or 
 
 ````julia
 julia> plot(mm1bstp, density, x = :θ₁)
-Plot(...)
+Error: UndefVarError: mm1bstp not defined
 
 ````
 
@@ -989,7 +853,7 @@ The density of the estimates of the other two parameters, $\beta_1$ and $\sigma$
 
 ````julia
 julia> plot(mm1bstp, density, x = :β₁)
-Plot(...)
+Error: UndefVarError: mm1bstp not defined
 
 ````
 
@@ -997,7 +861,7 @@ Plot(...)
 
 ````julia
 julia> plot(mm1bstp, density, x = :σ)
-Plot(...)
+Error: UndefVarError: mm1bstp not defined
 
 ````
 
@@ -1032,27 +896,53 @@ julia> const ppt250 = ppoints(250)
 
 The kernel density estimate of $\sigma$ is more symmetric
 
-![](./assets/SimpleLMM_53_1.svg)
+````
+Error: UndefVarError: Normal not defined
+````
+
+
+
+````
+Error: UndefVarError: mm1bstp not defined
+````
+
+
 
 
 
 and the normal probability plot of $\sigma$ is also reasonably straight.
 
-![](./assets/SimpleLMM_54_1.svg)
+````
+Error: UndefVarError: mm1bstp not defined
+````
+
+
 
 
 
 The normal probability plot of $\sigma_1$ has a flat section at $\sigma_1 = 0$.
 
-![](./assets/SimpleLMM_55_1.svg)
+````
+Error: UndefVarError: mm1bstp not defined
+````
+
+
 
 
 
 In terms of the variances, $\sigma^2$ and $\sigma_1^2$, the normal probability plots are
 
-![](./assets/SimpleLMM_56_1.svg)
+````
+Error: UndefVarError: mm1bstp not defined
+````
 
-![](./assets/SimpleLMM_57_1.svg)
+
+
+````
+Error: UndefVarError: mm1bstp not defined
+````
+
+
 
 
 
@@ -1071,9 +961,7 @@ One possible interval containing 95% of the sample is $(\sigma_{[1]}, \sigma_{[9
 
 ````julia
 julia> sigma95 = quantile(mm1bstp[:σ], [0.025, 0.975])
-2-element Array{Float64,1}:
- 35.58365989114112 
- 63.098968467157626
+Error: UndefVarError: mm1bstp not defined
 
 ````
 
@@ -1085,7 +973,7 @@ This approach has the advantage that the endpoints of a 95% interval on $\sigma^
 
 ````julia
 julia> isapprox(abs2.(sigma95), quantile(abs2.(mm1bstp[:σ]), [0.025, 0.975]))
-true
+Error: UndefVarError: sigma95 not defined
 
 ````
 
@@ -1098,7 +986,7 @@ in Julia as
 
 ````julia
 julia> abs2.(sigma95) ≈ quantile(abs2.(mm1bstp[:σ]), [0.025, 0.975])
-true
+Error: UndefVarError: sigma95 not defined
 
 ````
 
@@ -1138,9 +1026,7 @@ For example, the 95% HPD interval calculated from the sample of $\beta_1$ values
 
 ````julia
 julia> hpdinterval(mm1bstp[:β₁])
-2-element Array{Float64,1}:
- 1493.0095069080169
- 1562.0769567557636
+Error: UndefVarError: mm1bstp not defined
 
 ````
 
@@ -1152,9 +1038,7 @@ which is very close to the central probability interval of
 
 ````julia
 julia> quantile(mm1bstp[:β₁], [0.025, 0.975])
-2-element Array{Float64,1}:
- 1492.848222804122 
- 1561.9248094116124
+Error: UndefVarError: mm1bstp not defined
 
 ````
 
@@ -1168,9 +1052,7 @@ The HPD interval on $\sigma^2$ is
 
 ````julia
 julia> hpdinterval(abs2.(mm1bstp[:σ]))
-2-element Array{Float64,1}:
- 1162.8123674714316
- 3834.319048668444 
+Error: UndefVarError: mm1bstp not defined
 
 ````
 
@@ -1182,9 +1064,7 @@ which is shifted to the left relative to the central probability interval
 
 ````julia
 julia> quantile(abs2.(mm1bstp[:σ]), [0.025, 0.975])
-2-element Array{Float64,1}:
- 1266.19685124846  
- 3981.4798217228795
+Error: UndefVarError: mm1bstp not defined
 
 ````
 
@@ -1198,9 +1078,7 @@ The HPD interval does not have the property that the endpoints of the interval o
 
 ````julia
 julia> sigma95hpd = hpdinterval(mm1bstp[:σ])
-2-element Array{Float64,1}:
- 35.425425171170225
- 62.887489728787415
+Error: UndefVarError: mm1bstp not defined
 
 ````
 
@@ -1208,9 +1086,7 @@ julia> sigma95hpd = hpdinterval(mm1bstp[:σ])
 
 ````julia
 julia> abs2.(sigma95hpd)
-2-element Array{Float64,1}:
- 1254.960748558181 
- 3954.8363643883426
+Error: UndefVarError: sigma95hpd not defined
 
 ````
 
@@ -1222,9 +1098,7 @@ Finally, a 95% HPD interval on $\sigma_1$ includes the boundary value $\sigma_1=
 
 ````julia
 julia> hpdinterval(mm1bstp[:σ₁])
-2-element Array{Float64,1}:
-  0.0             
- 54.59857004471835
+Error: UndefVarError: mm1bstp not defined
 
 ````
 
@@ -1236,9 +1110,7 @@ In fact, the confidence level or coverage probability must be rather small befor
 
 ````julia
 julia> hpdinterval(mm1bstp[:σ₁], 0.798)
-2-element Array{Float64,1}:
-  0.0              
- 42.337106279435886
+Error: UndefVarError: mm1bstp not defined
 
 ````
 
@@ -1246,9 +1118,7 @@ julia> hpdinterval(mm1bstp[:σ₁], 0.798)
 
 ````julia
 julia> hpdinterval(mm1bstp[:σ₁], 0.799)
-2-element Array{Float64,1}:
-  0.0             
- 42.39434829198112
+Error: UndefVarError: mm1bstp not defined
 
 ````
 
@@ -1260,7 +1130,11 @@ julia> hpdinterval(mm1bstp[:σ₁], 0.799)
 
 The empirical cumulative distribution function (ecdf) of a sample maps the range of the sample onto `[0,1]` by `x → proportion of sample ≤ x`.  In general this is a "step function", which takes jumps of size `1/length(samp)` at each observed sample value.  For large samples, we can plot it as a qq plot where the theoretical quantiles are the probability points and are on the vertical axis.
 
-![](./assets/SimpleLMM_71_1.svg)
+````
+Error: UndefVarError: mm1bstp not defined
+````
+
+
 
 
 
@@ -1268,7 +1142,17 @@ The orange lines added to the plot show the construction of the central probabil
 
 The differences in the widths becomes more dramatic on the scale of $\sigma_1^2$
 
-![](./assets/SimpleLMM_72_1.svg)
+````
+Error: UndefVarError: mm1bstp not defined
+````
+
+
+
+````
+Error: UndefVarError: quantile not defined
+````
+
+
 
 
 
@@ -1291,8 +1175,7 @@ The `ranef` extractor returns the conditional modes.
 
 ````julia
 julia> ranef(mm1)  # FIXME return an ordered dict
-1-element Array{Array{Float64,2},1}:
- [-16.6282 0.369516 … 53.5798 -42.4943]
+Error: UndefVarError: ranef not defined
 
 ````
 
@@ -1310,18 +1193,7 @@ Given the data, 𝐲, and the parameter estimates, we can evaluate a measure of 
 
 ````julia
 julia> condVar(mm1)
-1-element Array{Array{Float64,3},1}:
- [362.31]
-
-[362.31]
-
-[362.31]
-
-[362.31]
-
-[362.31]
-
-[362.31]
+Error: UndefVarError: condVar not defined
 
 ````
 

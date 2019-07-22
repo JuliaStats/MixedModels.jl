@@ -30,7 +30,7 @@ const dat = Dict(Symbol(k)=>v for (k,v) in
 ```
 ```{julia;term=true}
 ds = names!(dat[:Dyestuff], [:Batch, :Yield])
-m1 = fit(LinearMixedModel, @formula(Yield ~ 1 + (1 | Batch)), ds)
+m1 = fit!(LinearMixedModel(@formula(Yield ~ 1 + (1 | Batch)), ds))
 ```
 
 Now bootstrap the model parameters

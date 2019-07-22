@@ -23,6 +23,9 @@ For example, a simple linear mixed-effects model for the `Dyestuff` data in the 
 package for [`R`](https://www.r-project.org) is fit by
 ````julia
 julia> using DataFrames, MixedModels, RData, Gadfly
+Error: ArgumentError: Package Gadfly not found in current path:
+- Run `import Pkg; Pkg.add("Gadfly")` to install the Gadfly package.
+
 
 ````
 
@@ -31,7 +34,7 @@ julia> using DataFrames, MixedModels, RData, Gadfly
 
 ````julia
 julia> ds = names!(dat[:Dyestuff], [:Batch, :Yield])
-30×2 DataFrames.DataFrame
+30×2 DataFrame
 │ Row │ Batch        │ Yield   │
 │     │ Categorical… │ Float64 │
 ├─────┼──────────────┼─────────┤
@@ -53,21 +56,12 @@ julia> ds = names!(dat[:Dyestuff], [:Batch, :Yield])
 │ 30  │ F            │ 1445.0  │
 
 julia> m1 = fit(LinearMixedModel, @formula(Yield ~ 1 + (1 | Batch)), ds)
-Linear mixed model fit by maximum likelihood
- Formula: Yield ~ 1 + (1 | Batch)
-   logLik   -2 logLik     AIC        BIC    
- -163.66353  327.32706  333.32706  337.53065
-
-Variance components:
-              Column    Variance  Std.Dev. 
- Batch    (Intercept)  1388.3333 37.260345
- Residual              2451.2500 49.510100
- Number of obs: 30; levels of grouping factors: 6
-
-  Fixed-effects parameters:
-             Estimate Std.Error z value P(>|z|)
-(Intercept)    1527.5   17.6946  86.326  <1e-99
-
+Error: MethodError: Cannot `convert` an object of type Tuple{Array{Float64,2},ReMat{Float64,1}} to an object of type Array{Float64,2}
+Closest candidates are:
+  convert(::Type{Array{S,N}}, !Matched::PooledArrays.PooledArray{T,R,N,RA} where RA) where {S, T, R, N} at /home/bates/.julia/packages/PooledArrays/ufJSl/src/PooledArrays.jl:288
+  convert(::Type{Array{T,N}}, !Matched::StaticArrays.SizedArray{S,T,N,M} where M) where {T, S, N} at /home/bates/.julia/packages/StaticArrays/3KEjZ/src/SizedArray.jl:62
+  convert(::Type{T<:Array}, !Matched::AbstractArray) where T<:Array at array.jl:474
+  ...
 
 ````
 
@@ -78,9 +72,11 @@ Variance components:
 Now bootstrap the model parameters
 ````julia
 julia> results = bootstrap(100_000, m1);
+Error: UndefVarError: bootstrap not defined
 
 julia> show(names(results))
-Symbol[:obj, :σ, :β₁, :θ₁, :σ₁]
+Error: UndefVarError: results not defined
+
 ````
 
 
@@ -94,11 +90,23 @@ plot(results, x = :σ, Geom.density, Guide.xlabel("Parametric bootstrap estimate
 ````
 
 
-![Density of parametric bootstrap estimates of σ from model m1](./assets/bootstrap_6_1.svg)
+````
+Error: UndefVarError: Guide not defined
+````
 
-![Density of parametric bootstrap estimates of σ₁ from model m1](./assets/bootstrap_7_1.svg)
 
-![Histogram of parametric bootstrap estimates of σ₁ from model m1](./assets/bootstrap_8_1.svg)
+
+````
+Error: UndefVarError: Guide not defined
+````
+
+
+
+````
+Error: UndefVarError: Guide not defined
+````
+
+
 
 
 

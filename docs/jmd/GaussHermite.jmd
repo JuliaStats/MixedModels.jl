@@ -92,11 +92,11 @@ Several covariates were recorded including the woman's age (centered at the mean
 The version of the data used here is that used in review of multilevel modeling software conducted by the Center for Multilevel Modelling, currently at University of Bristol (http://www.bristol.ac.uk/cmm/learning/mmsoftware/data-rev.html).
 These data are available as the `Contraception` data frame in the test data for the `MixedModels` package.
 ```{julia;term=true}
-using DataFrames, DataFramesMeta, RData
+using DataFrames, DataFramesMeta, PooledArrays, RData
 const dat = Dict(Symbol(k)=>v for (k,v) in 
     load(joinpath(dirname(pathof(MixedModels)), "..", "test", "dat.rda")));
-const contra = @transform(dat[:Contraception],
-     a2 = abs2.(:a), urbdist = string.(:urb, :d));
+contra = dat[:Contraception];
+contra.urbdist = PooledArray(string.(contra.urb, contra.d));
 describe(contra)
 ```
 
@@ -109,7 +109,7 @@ a column named `:a2`, which is the square of the age, `:a`, is added to the data
 
 A model with fixed-effects for age, age squared, number of live children and urban location and with random effects for district, is fit as
 ```{julia;term=true}
-const form1 = @formula use ~ 1 + a + a2 + l + urb + (1|d);
+const form1 = @formula use ~ 1 + a + abs2(a) + l + urb + (1|d);
 m1 = fit!(GeneralizedLinearMixedModel(form1, contra,
     Bernoulli()), fast=true)
 ```
@@ -126,7 +126,7 @@ To use Gauss-Hermite quadrature the contributions of each of the $u_i,\;i=1,\dot
 ```{julia;term=true}
 const devc0 = map!(abs2, m1.devc0, m1.u[1]);  # start with uᵢ²
 const devresid = m1.resp.devresid;   # n-dimensional vector of deviance residuals
-const refs = m1.LMM.trms[1].refs;  # n-dimensional vector of indices in 1:q
+const refs = first(m1.LMM.reterms).refs;  # n-dimensional vector of indices in 1:q
 for (dr, i) in zip(devresid, refs)
     devc0[i] += dr
 end
@@ -143,10 +143,10 @@ freqtable(contra, :d)'
 Because the first district has one of the largest sample sizes and the third district has the smallest sample size, these two will be used for illustration.
 For a range of $u$ values, evaluate the individual components of the deviance and store them in a matrix.
 ```{julia;}
-const devc = m1.devc
-const xvals = -5.0:2.0^(-4):5.0
-const uv = vec(m1.u[1])
-const u₀ = vec(m1.u₀[1])
+const devc = m1.devc;
+const xvals = -5.0:2.0^(-4):5.0;
+const uv = vec(m1.u[1]);
+const u₀ = vec(m1.u₀[1]);
 results = zeros(length(devc0), length(xvals))
 for (j, u) in enumerate(xvals)
     fill!(devc, abs2(u))
@@ -175,7 +175,7 @@ m1.u₀[1]
 the minima themselves, evaluated as `devc0` above, and a horizontal scale, which is the inverse of diagonal of the Cholesky factor.
 As shown below, this is an estimate of the conditional standard deviations of the components of $\mathcal{U}$.
 ```{julia;term=true}
-const s = inv.(m1.LMM.L.data[Block(1,1)].diag);
+const s = inv.(m1.LMM.L[Block(1,1)].diag);
 s'
 ```
 
@@ -195,7 +195,7 @@ end
 plot(x=xvals,y=view(results, 1, :),Geom.line,Guide.xlabel("Scaled and shifted u₁"),Guide.ylabel("Shifted deviance contribution"))
 ```
 ```{julia;echo=false;fig_cap="Scaled and shifted deviance contributions"}
-plot(x=xvals,y=view(results, 1, :),Geom.line,Guide.xlabel("Scaled and shifted u₃"),Guide.ylabel("Shifted deviance contribution"))
+plot(x=xvals,y=view(results, 3, :),Geom.line,Guide.xlabel("Scaled and shifted u₃"),Guide.ylabel("Shifted deviance contribution"))
 ```
 
 On the original density scale these become
@@ -214,7 +214,7 @@ end
 plot(x=xvals,y=view(results, 1, :),Geom.line,Guide.xlabel("Scaled and shifted u₁"),Guide.ylabel("Conditional density"))
 ```
 ```{julia;echo=false;fig_cap="Scaled and shifted conditional density"}
-plot(x=xvals,y=view(results, 1, :),Geom.line,Guide.xlabel("Scaled and shifted u₃"),Guide.ylabel("Conditional density"))
+plot(x=xvals,y=view(results, 3, :),Geom.line,Guide.xlabel("Scaled and shifted u₃"),Guide.ylabel("Conditional density"))
 ```
 and the function to be integrated with the normalized Gauss-Hermite rule is
 ```{julia}
@@ -232,5 +232,5 @@ end
 plot(x=xvals,y=view(results, 1, :),Geom.line,Guide.xlabel("Scaled and shifted u₁"),Guide.ylabel("Kernel ratio"))
 ```
 ```{julia;echo=false;fig_cap="Function to be integrated with normalized Gauss-Hermite rule"}
-plot(x=xvals,y=view(results, 1, :),Geom.line,Guide.xlabel("Scaled and shifted u₃"),Guide.ylabel("Kernel ratio"))
+plot(x=xvals,y=view(results, 3, :),Geom.line,Guide.xlabel("Scaled and shifted u₃"),Guide.ylabel("Kernel ratio"))
 ```
