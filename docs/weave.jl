@@ -6,7 +6,7 @@ weavit(fnm::AbstractString) =
 
 weavit("constructors.jmd")
 weavit("optimization.jmd")
-#weavit("bootstrap.jmd")
+weavit("bootstrap.jmd")
 #weavit("SimpleLMM.jmd")
 #weavit("MultipleTerms.jmd")
 #weavit("SingularCovariance.jmd")
