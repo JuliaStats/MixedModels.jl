@@ -343,4 +343,4 @@ The comparison of the slow and fast fit is available in the optimization summary
 
 ```{julia;term=true}
 mdl1.LMM.optsum
-``
+```

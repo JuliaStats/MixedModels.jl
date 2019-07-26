@@ -39,13 +39,13 @@ const LMM = LinearMixedModel
     @test fm1.σ == sdest(fm1)
     @test isapprox(fm1.σ, 49.510099986291145, atol=1.e-5)
     @test fm1.X == ones(30,1)
-    @test fm1.y == dat[:Dyestuff][:Y]
+    @test fm1.y == dat[:Dyestuff][!, :Y]
     @test cond(fm1) == ones(1)
     cm = coeftable(fm1)
     @test length(cm.rownms) == 1
     @test length(cm.colnms) == 4
     @test MixedModels.fnames(fm1) == [:G]
-    @test response(fm1) == dat[:Dyestuff][:Y]
+    @test response(fm1) == dat[:Dyestuff][!, :Y]
     rfu = ranef(fm1, uscale = true)
     rfb = ranef(fm1)
     @test abs(sum(rfu[1])) < 1.e-5
@@ -80,7 +80,7 @@ end
     @test StatsBase.stderror(fm) ≈ [0.6669857396443261]
     @test coef(fm) ≈ [5.6656]
     @test logdet(fm) ≈ 0.0
-    refit!(fm, dat[:Dyestuff][:Y])
+    refit!(fm, dat[:Dyestuff][!, :Y])
     @test isapprox(objective(fm), 327.3270598811428, atol=0.001)
 end
 
@@ -95,7 +95,7 @@ end
     @test isapprox(objective(fm), 332.18834867227616, atol=0.001)
     @test isapprox(coef(fm), [22.97222222222222], atol=0.001)
     @test isapprox(fixef(fm), [22.97222222222222], atol=0.001)
-    @test coef(fm)[1] ≈ mean(dat[:Penicillin][:Y])
+    @test coef(fm)[1] ≈ mean(dat[:Penicillin][!, :Y])
     @test isapprox(StatsBase.stderror(fm), [0.7445960346851368], atol=0.0001)
     @test isapprox(fm.θ, [1.5375772376554968, 3.219751321180035], atol=0.001)
     @test isapprox(std(fm)[1], [0.8455645948223015], atol=0.0001)
@@ -235,7 +235,7 @@ end
     fm = fit!(LMM(@formula(Y ~ 1 + (1 | G)), dat[:Dyestuff]))
     refit!(simulate!(Random.MersenneTwister(1234321), fm))
     @test isapprox(deviance(fm), 339.0218639362958, atol=0.001)
-    refit!(fm, dat[:Dyestuff][:Y])
+    refit!(fm, dat[:Dyestuff][!, :Y])
     Random.seed!(1234321)
     refit!(simulate!(fm))
     @test isapprox(deviance(fm), 339.0218639362958, atol=0.001)
