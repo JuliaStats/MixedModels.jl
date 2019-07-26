@@ -19,14 +19,14 @@ function parametricbootstrap(rng::AbstractRNG, nsamp::Integer, m::LinearMixedMod
         props=(:objective, :σ, :β, :θ); β = m.β, σ = m.σ, θ = m.θ)
     y₀ = copy(response(m))  # to restore original state of m
     try
-        [getprops(refit!(simulate!(rng, m, β = β, σ = σ, θ = θ)), props) for _ in 1:nsamp]
+        Table([getprops(refit!(simulate!(rng, m, β = β, σ = σ, θ = θ)), props) for _ in 1:nsamp])
     finally
         refit!(m, y₀)
     end
 end
 
 function parametricbootstrap(nsamp::Integer, m::LinearMixedModel,
-    props=(:objective, :σ, :β, :θ); β = m.β, σ = m.σ, θ = m.θ)
+        props=(:objective, :σ, :β, :θ); β = m.β, σ = m.σ, θ = m.θ)
     parametricbootstrap(Random.GLOBAL_RNG, nsamp, m, props, β = β, σ = σ, θ = θ)
 end
 """

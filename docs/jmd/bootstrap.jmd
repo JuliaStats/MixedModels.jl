@@ -1,9 +1,9 @@
+
 # Parametric bootstrap for linear mixed-effects models
 
 Julia is well-suited to implementing bootstrapping and other simulation-based methods for statistical models.
-The `bootstrap!` function in the [MixedModels package](https://github.com/dmbates/MixedModels.jl) provides
-an efficient parametric bootstrap for linear mixed-effects models, assuming that the results of interest
-from each simulated response vector can be incorporated into a vector of floating-point values.
+The `parametricbootstrap` function in the [MixedModels package](https://github.com/dmbates/MixedModels.jl) provides
+an efficient parametric bootstrap for linear mixed-effects models.
 
 ## The parametric bootstrap
 
@@ -11,48 +11,67 @@ from each simulated response vector can be incorporated into a vector of floatin
 for generating sample values of a statistic, allowing for visualization of the distribution of the
 statistic or for inference from this sample of values.
 
-A _parametric bootstrap_ is used with a parametric model, `m`, that has been fitted to data.
+A _parametric bootstrap_ is used with a parametric model, `m`, that has been fit to data.
 The procedure is to simulate `n` response vectors from `m` using the estimated parameter values
 and refit `m` to these responses in turn, accumulating the statistics of interest at each iteration.
 
-The parameters of a linear mixed-effects model as fit by the `lmm` function are the fixed-effects
+The parameters of a `LinearMixedModel` object are the fixed-effects
 parameters, `β`, the standard deviation, `σ`, of the per-observation noise, and the covariance
 parameter, `θ`, that defines the variance-covariance matrices of the random effects.
 
 For example, a simple linear mixed-effects model for the `Dyestuff` data in the [`lme4`](http://github.com/lme4/lme4)
 package for [`R`](https://www.r-project.org) is fit by
-```{julia;term=true}
-using DataFrames, MixedModels, RData, Gadfly
+
+```julia
+using DataFrames, Gadfly, MixedModels, Random, RData
+testdir = normpath(joinpath(dirname(pathof(MixedModels)), "..", "test"));
+const dat = Dict(Symbol(k)=>v for (k,v) in load(joinpath(testdir, "dat.rda")));
 ```
-```{julia;echo=false;results="hidden"}
-const dat = Dict(Symbol(k)=>v for (k,v) in 
-    load(joinpath(dirname(pathof(MixedModels)), "..", "test", "dat.rda")));
-```
-```{julia;term=true}
-ds = names!(dat[:Dyestuff], [:Batch, :Yield])
+
+```julia
+ds = names!(dat[:Dyestuff], [:Batch, :Yield])  # the Dyestuff data
 m1 = fit!(LinearMixedModel(@formula(Yield ~ 1 + (1 | Batch)), ds))
 ```
 
-Now bootstrap the model parameters
-```{julia;term=true;}
-results = bootstrap(100_000, m1);
-show(names(results))
-```
-The results for each bootstrap replication are stored in the columns of the matrix passed in as the first
-argument.  A density plot of the bootstrapped values of `σ` is created as
-```{julia;eval=false;term=true}
-plot(results, x = :σ, Geom.density, Guide.xlabel("Parametric bootstrap estimates of σ"))
-```
-```{julia;echo=false;fig_cap="Density of parametric bootstrap estimates of σ from model m1"; fig_width=8;}
-plot(results, x = :σ, Geom.density, Guide.xlabel("Parametric bootstrap estimates of σ"))
-```
-```{julia;echo=false;fig_cap="Density of parametric bootstrap estimates of σ₁ from model m1"; fig_width=8;}
-plot(results, x = :σ₁, Geom.density, Guide.xlabel("Parametric bootstrap estimates of σ₁"))
-```
-```{julia;echo=false;fig_cap="Histogram of parametric bootstrap estimates of σ₁ from model m1"; fig_width=8;}
-plot(results, x = :σ₁, Geom.histogram, Guide.xlabel("Parametric bootstrap estimates of σ₁"))
+To bootstrap the model parameters, we first initialize a random number generator
+
+```julia
+rng = MersenneTwister(1234321);
 ```
 
-The distribution of the bootstrap samples of `σ` is a bit skewed but not terribly so.  However, the
-distribution of the bootstrap samples of the estimate of `σ₁` is highly skewed and has a spike at
-zero.
+then create a bootstrap sample
+
+```julia
+samp = parametricbootstrap(rng, 100_000, m1, (:σ, :β, :θ))
+```
+
+The results from the sampling are returned as a `Table`, as defined in the `TypedTables.jl` package.
+Both $\beta$ and $\theta$ are vectors - in this case one-dimensional vectors.  The `first` and `last` functions are useful for extracting individual elements from the sampled vectors.
+
+Notice that, for some samples, the estimated value of $\theta$ is `[0.0]`.  In fact, this is the case for about about 10% of all the samples.
+
+```julia
+sum(iszero, samp.θ)
+```
+
+A density plot of the bootstrapped values of `σ` shows a slightly skewed but unimodal distribution
+
+```julia
+plot(x=samp.σ, Geom.density, Guide.xlabel("Parametric bootstrap estimates of σ"))
+```
+
+but a density plot of the bootstrap estimates of $\theta_1$, or of $\sigma_1=\theta_1 \cdot \sigma$
+
+```julia
+plot(x=first.(samp.θ), Geom.density, Guide.xlabel("Parametric bootstrap estimates of θ₁"))
+```
+
+```julia
+plot(x=first.(samp.θ) .* samp.σ, Geom.density, Guide.xlabel("Parametric bootstrap estimates of σ₁"))
+```
+
+has a mode at zero.  Although this mode shows up as being diffuse, this is an artifact of the way that density plots are created.  In fact, it is a pulse, as can be seen from a histogram.
+
+```julia
+plot(x=first.(samp.θ).*samp.σ, Geom.histogram, Guide.xlabel("Parametric bootstrap estimates of σ₁"))
+```

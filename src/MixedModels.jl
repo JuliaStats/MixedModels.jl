@@ -2,7 +2,7 @@ module MixedModels
 
 using BlockArrays, CategoricalArrays, Tables, Distributions, GLM, 
     LinearAlgebra, NLopt, Random, ProgressMeter, Showoff, SparseArrays, StaticArrays,
-    Statistics, StatsBase, StatsModels
+    Statistics, StatsBase, StatsModels, TypedTables
 
 using LinearAlgebra: BlasFloat, BlasReal, HermOrSym, PosDefException, copytri!
 #using NamedArrays: NamedArray, setnames!
@@ -57,6 +57,7 @@ export
        nobs,
        nocorr,
        objective,  # the objective function in fitting a model
+       parametricbootstrap,
        pirls!,     # use Penalized Iteratively Reweighted Least Squares to obtain conditional modes of random effects
        predict,
        pwrss,      # penalized, weighted residual sum-of-squares
