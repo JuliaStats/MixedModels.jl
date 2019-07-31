@@ -5,7 +5,7 @@ os:
   - linux
   - osx
 julia:
-  - 1.1
+  - 1.2
   - nightly
 matrix:
   allow_failures:
@@ -15,10 +15,10 @@ after_success:
 jobs:
   include:
     - stage: "Documentation"
-      julia: 1.0
+      julia: 1.2
       os: linux
       script:
-        - julia --project=docs/ -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd())); Pkg.instantiate(); Pkg.add("StatsBase")'
+        - julia --project=docs/ -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd())); Pkg.instantiate();'
         - julia --project=docs/ docs/make.jl
       after_success: skip
 notifications:

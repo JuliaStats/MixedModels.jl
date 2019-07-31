@@ -1,4 +1,4 @@
-using CategoricalArrays, DataFrames, LinearAlgebra, MixedModels, Random, RData, SparseArrays, Statistics, StatsBase, Tables, Test
+using DataFrames, LinearAlgebra, MixedModels, Random, RData, SparseArrays, Statistics, Tables, Test
 
 if !@isdefined(dat) || !isa(dat, Dict{Symbol, DataFrame})
     const dat = Dict(Symbol(k) => v for (k, v) in
@@ -32,8 +32,8 @@ const LMM = LinearMixedModel
     @test isapprox(bic(fm1), 337.5306520261259, atol=0.001)
     @test fixef(fm1) ≈ [1527.5]
     @test fm1.β ≈ [1527.5]
-    @test StatsBase.dof(fm1) == 3
-    @test StatsBase.nobs(fm1) == 30
+    @test dof(fm1) == 3
+    @test nobs(fm1) == 30
     @test MixedModels.fixef!(zeros(1),fm1) ≈ [1527.5]
     @test coef(fm1) ≈ [1527.5]
     @test fm1.σ == sdest(fm1)
@@ -57,7 +57,7 @@ const LMM = LinearMixedModel
     @test isapprox(logdet(fm1), 8.06014522999825, atol=0.001)
     @test isapprox(varest(fm1), 2451.2501089607676, atol=0.001)
     @test isapprox(pwrss(fm1), 73537.49947885796, atol=0.001)
-    @test isapprox(StatsBase.stderror(fm1), [17.69455188898009], atol=0.0001)
+    @test isapprox(stderror(fm1), [17.69455188898009], atol=0.0001)
 
     vc = VarCorr(fm1)
     show(IOBuffer(), vc)
@@ -77,7 +77,7 @@ end
     @test objective(fm) ≈ 162.87303665382575
     @test abs(std(fm)[1][1]) < 1.0e-9
     @test std(fm)[2] ≈ [3.653231351374652]
-    @test StatsBase.stderror(fm) ≈ [0.6669857396443261]
+    @test stderror(fm) ≈ [0.6669857396443261]
     @test coef(fm) ≈ [5.6656]
     @test logdet(fm) ≈ 0.0
     refit!(fm, dat[:Dyestuff][!, :Y])
@@ -96,7 +96,7 @@ end
     @test isapprox(coef(fm), [22.97222222222222], atol=0.001)
     @test isapprox(fixef(fm), [22.97222222222222], atol=0.001)
     @test coef(fm)[1] ≈ mean(dat[:Penicillin][!, :Y])
-    @test isapprox(StatsBase.stderror(fm), [0.7445960346851368], atol=0.0001)
+    @test isapprox(stderror(fm), [0.7445960346851368], atol=0.0001)
     @test isapprox(fm.θ, [1.5375772376554968, 3.219751321180035], atol=0.001)
     @test isapprox(std(fm)[1], [0.8455645948223015], atol=0.0001)
     @test isapprox(std(fm)[2], [1.770647779277388], atol=0.0001)
@@ -118,7 +118,7 @@ end
     @test isapprox(objective(fm), 247.99446586289676, atol=0.001)
     @test isapprox(coef(fm), [60.05333333333329], atol=0.001)
     @test isapprox(fixef(fm), [60.05333333333329], atol=0.001)
-    @test isapprox(StatsBase.stderror(fm), [0.6421359883527029], atol=0.0001)
+    @test isapprox(stderror(fm), [0.6421359883527029], atol=0.0001)
     @test isapprox(fm.θ, [3.5268858714382905, 1.3299230213750168], atol=0.001)
     @test isapprox(std(fm)[1], [2.904069002535747], atol=0.001)
     @test isapprox(std(fm)[2], [1.095070371687089], atol=0.0001)
@@ -171,7 +171,7 @@ end
     @test isapprox(fm.θ, [0.929221307, 0.01816838, 0.22264487096], atol=1.e-6)
     @test isapprox(pwrss(fm), 117889.46144025437)
     @test isapprox(logdet(fm), 73.90322021999222, atol=0.001)
-    @test isapprox(StatsBase.stderror(fm), [6.632257721914501, 1.5022354739749826], atol=0.0001)
+    @test isapprox(stderror(fm), [6.632257721914501, 1.5022354739749826], atol=0.0001)
     @test coef(fm) ≈ [251.40510484848477,10.4672859595959]
     @test fixef(fm) ≈  [251.40510484848477,10.4672859595959]
     @test isapprox(std(fm)[1], [23.780468100188497, 5.716827903196682], atol=0.01)
@@ -205,7 +205,7 @@ end
     @test_broken isapprox(objective(fmnc), 1752.0032551398835, atol=0.001)
     @test_broken coef(fmnc) ≈ [251.40510484848585, 10.467285959595715]
     @test_broken fixef(fmnc) ≈ [10.467285959595715, 251.40510484848477]
-    @test_broken isapprox(StatsBase.stderror(fmnc), [6.707710260366577, 1.5193083237479683], atol=0.001)
+    @test_broken isapprox(stderror(fmnc), [6.707710260366577, 1.5193083237479683], atol=0.001)
     @test_broken isapprox(fmnc.θ, [0.9458106880922268, 0.22692826607677266], atol=0.0001)
     @test_broken std(fmnc)[1] ≈ [24.171449463289047, 5.799379721123582]
     @test_broken std(fmnc)[2] ≈ [25.556130034081047]

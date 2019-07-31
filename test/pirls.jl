@@ -1,4 +1,4 @@
-using CategoricalArrays, DataFrames, DataFramesMeta, LinearAlgebra, MixedModels, RData, StatsBase, Tables, Test
+using DataFramesMeta, LinearAlgebra, MixedModels, RData, Test
 
 if !@isdefined(dat) || !isa(dat, Dict{Symbol, DataFrame})
     const dat = Dict(Symbol(k) => v for (k, v) in
@@ -18,8 +18,8 @@ end
     @test lowerbd(gm1) == vcat(fill(-Inf, 7), 0.)
     @test isapprox(deviance(gm1,true), 2361.54575, rtol=0.00001)
     @test isapprox(loglikelihood(gm1), -1180.77288, rtol=0.00001)
-    @test StatsBase.dof(gm0) == length(gm0.β) + length(gm0.θ)
-    @test StatsBase.nobs(gm0) == 1934
+    @test dof(gm0) == length(gm0.β) + length(gm0.θ)
+    @test nobs(gm0) == 1934
     fit!(gm0, fast=true, nAGQ=7)
     @test isapprox(deviance(gm0, 7), 2360.9838, atol=0.001)
     fit!(gm0, nAGQ=7)
