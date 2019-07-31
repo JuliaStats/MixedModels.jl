@@ -1,4 +1,4 @@
-using DataFrames, LinearAlgebra, MixedModels, Random, RData, SparseArrays, StatsModels, Tables, Test
+using DataFrames, LinearAlgebra, MixedModels, Random, RData, SparseArrays, StatsModels, Test
 
 if !@isdefined(dat) || !isa(dat, Dict{Symbol, DataFrame})
     const dat = Dict(Symbol(k) => v for (k, v) in
@@ -26,7 +26,7 @@ const LMM = LinearMixedModel
         @test size(sf1) == (60, 30)
         @test size(sf2) == (60, 10)
     end
-    
+
     @testset "utilities" begin
         @test MixedModels.levs(sf) == string.('A':'F')
         @test MixedModels.nlevs(sf) == 6
@@ -114,7 +114,7 @@ end
     end
 
     vrp = corr'corr
-    
+
     @test isa(vrp, UniformBlockDiagonal{Float64})
     @test size(vrp) == (36, 36)
 
@@ -125,7 +125,7 @@ end
 
     b = mul!(Matrix{Float64}(undef, 2,18), Λ(corr).data, ones(2,18))
     @test b == reshape(repeat([0.5, 1.0], outer=18), (2,18))
-    
+
     @testset "reweight!" begin
         wts = rand(MersenneTwister(1234321), size(corr, 1))
         @test MixedModels.reweight!(corr, wts).wtz[1, :] == wts

@@ -1,6 +1,6 @@
 module MixedModels
 
-using BlockArrays, CategoricalArrays, Tables, Distributions, GLM, 
+using BlockArrays, CategoricalArrays, Tables, Distributions, GLM,
     LinearAlgebra, NLopt, Random, ProgressMeter, Showoff, SparseArrays, StaticArrays,
     Statistics, StatsBase, StatsModels, TypedTables
 
@@ -45,6 +45,7 @@ export
        condVar,
        deviance,
        dof,
+       dof_residual,
        fit,
        fit!,
        fitted,
@@ -71,6 +72,7 @@ export
        sparse,
        statscholesky,
        std,
+       stderror,
        updateL!,   # update the lower-triangular, blocked matrix L to a new θ
        varest,     # estimate of the residual variance
        vcov
