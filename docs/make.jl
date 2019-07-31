@@ -12,9 +12,9 @@ makedocs(
 #             "SingularCovariance.md",
 #             "SubjectItem.md",
 #             "benchmarks.md"
-    ]
-)
+        ]
+    )
 
 deploydocs(
     repo    = "github.com/dmbates/MixedModels.jl.git"
-)
+    )
