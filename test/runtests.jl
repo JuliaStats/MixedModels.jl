@@ -1,4 +1,4 @@
-using CategoricalArrays, DataFrames, LinearAlgebra, MixedModels, RData, Tables, Test
+using RData
 
 const dat = Dict(Symbol(k) => v for (k,v) in load(joinpath(dirname(@__FILE__), "dat.rda")))
 

@@ -1,7 +1,7 @@
-using DataFrames, LinearAlgebra, MixedModels, Random, RData, SparseArrays, StatsModels, Tables, Test
+using DataFrames, LinearAlgebra, MixedModels, Random, RData, SparseArrays, StatsModels, Test
 
 if !@isdefined(dat) || !isa(dat, Dict{Symbol, DataFrame})
-    const dat = Dict(Symbol(k) => v for (k, v) in 
+    const dat = Dict(Symbol(k) => v for (k, v) in
         load(joinpath(dirname(pathof(MixedModels)), "..", "test", "dat.rda")))
 end
 
