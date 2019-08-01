@@ -107,11 +107,23 @@ function StatsBase.dof(m::GeneralizedLinearMixedModel)
     length(m.β) + length(m.θ) + GLM.dispersion_parameter(m.resp.d)
 end
 
-StatsBase.fit(::Type{GeneralizedLinearMixedModel}, f::FormulaTerm, tbl, d::Distribution) =
-    fit!(GeneralizedLinearMixedModel(f, columntable(tbl), d, GLM.canonicallink(d)))
+StatsBase.fit(::Type{GeneralizedLinearMixedModel}, f::FormulaTerm, tbl, d::Distribution; kw...) =
+    fit!(GeneralizedLinearMixedModel(f, columntable(tbl), d, GLM.canonicallink(d),
+                                     wt = get(kw, :wt, []),
+                                     offset = get(kw, :offset, []),
+                                     hints = get(kw, :hints, Dict{Symbol,Any}())),
+                                     verbose = get(kw, :verbose, false),
+                                     fast = get(kw, :fast, false),
+                                     nAGQ = get(kw, :nAGQ, 1))
 
 StatsBase.fit(::Type{GeneralizedLinearMixedModel}, f::FormulaTerm, tbl, d::Distribution,
-    l::GLM.Link) = fit!(GeneralizedLinearMixedModel(f,columntable(tbl), d, l))
+    l::GLM.Link; kw...) = fit!(GeneralizedLinearMixedModel(f,columntable(tbl), d, l,
+                               wt = get(kw, :wt, []),
+                               offset = get(kw, :offset, []),
+                               hints = get(kw, :hints, Dict{Symbol,Any}())),
+                               verbose = get(kw, :verbose, false),
+                               fast = get(kw, :fast, false),
+                               nAGQ = get(kw, :nAGQ, 1))
 
 """
     fit!(m::GeneralizedLinearMixedModel[, verbose = false, fast = false, nAGQ=1])
@@ -198,7 +210,7 @@ function GeneralizedLinearMixedModel(f::FormulaTerm, tbl::D, d::Distribution, l:
         # until after the model is constructed if wt is empty.  Because a LinearMixedModel
         # type is immutable, another one must be created.
     if isempty(wt)
-        LMM = LinearMixedModel(LMM.formula, LMM.reterms, LMM.feterms, fill!(similar(y), 1), 
+        LMM = LinearMixedModel(LMM.formula, LMM.reterms, LMM.feterms, fill!(similar(y), 1),
             LMM.A, LMM.L, LMM.optsum)
     end
     updateL!(LMM)
@@ -209,7 +221,7 @@ function GeneralizedLinearMixedModel(f::FormulaTerm, tbl::D, d::Distribution, l:
         # vv is a template vector used to initialize fields for AGQ
         # it is empty unless there is a single random-effects term
     vv = length(u) == 1 ? vec(first(u)) : similar(y, 0)
-    
+
     res = GeneralizedLinearMixedModel(LMM, β, copy(β), LMM.θ, copy.(u), u,
         zero.(u), gl.rr, similar(y), oftype(y, wt), similar(vv),
         similar(vv), similar(vv), similar(vv))
@@ -228,7 +240,7 @@ function Base.getproperty(m::GeneralizedLinearMixedModel, s::Symbol)
     elseif s == :coef
         coef(m)
     elseif s == :beta
-        m.β 
+        m.β
     elseif s ∈ (:σ, :sigma)
         sdest(m)
     elseif s ∈ (:A, :L, :λ, :lowerbd, :optsum, :X, :reterms, :feterms, :formula)
@@ -349,7 +361,7 @@ end
 function Base.setproperty!(m::GeneralizedLinearMixedModel, s::Symbol, y)
     if s == :β
         setβ!(m, y)
-    elseif s == :θ        
+    elseif s == :θ
         setθ!(m, y)
     elseif s == :βθ
         setβθ!(m, y)
@@ -401,14 +413,13 @@ varest(m::GeneralizedLinearMixedModel{T}) where {T} = one(T)
             # delegate GLMM method to LMM field
 for f in (
     :describeblocks,
-    :feL, 
-    :(LinearAlgebra.logdet), 
+    :feL,
+    :(LinearAlgebra.logdet),
     :lowerbd,
     :(StatsModels.modelmatrix),
-    :(StatsBase.vcov), 
+    :(StatsBase.vcov),
     )
     @eval begin
         $f(m::GeneralizedLinearMixedModel) = $f(m.LMM)
     end
 end
-
