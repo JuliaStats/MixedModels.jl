@@ -201,8 +201,11 @@ end
 
 function GeneralizedLinearMixedModel(f::FormulaTerm, tbl::D, d::Distribution, l::GLM.Link;
         wt=[], offset=[], hints = Dict{Symbol,Any}()) where {D<:Tables.ColumnTable}
-    if d == Binomial() && isempty(wt)
+    if isa(d, Binomial) && isempty(wt)
         d = Bernoulli()
+    end
+    if isa(d, Normal) && isa(l, IdentityLink)
+        throw(ArgumentError("use LinearMixedModel for Normal distribution with IdentityLink"))
     end
     LMM = LinearMixedModel(f, tbl, hints; weights = wt)
     y = copy(LMM.y)
