@@ -10,7 +10,7 @@ function StatsBase.fit(
             LinearMixedModel(
                 f,
                 columntable(tbl),
-                hints = get(kw, :hints, Dict{Symbol,Any}())
+                get(kw, :hints, Dict{Symbol,Any}())
             ),
             verbose = get(kw, :verbose, false),
             REML = get(kw, :REML, false)
