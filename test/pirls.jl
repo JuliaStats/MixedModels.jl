@@ -12,8 +12,7 @@ end
     @test gm0.lowerbd == zeros(1)
     @test isapprox(gm0.θ, [0.5720734451352923], atol=0.001)
     @test isapprox(deviance(gm0,true), 2361.657188518064, atol=0.001)
-    gm1 = fit(GeneralizedLinearMixedModel, @formula(use ~ 1+a+abs2(a)+urb+l+(1|urbdist)),
-        contra, Bernoulli());
+    gm1 = fit(MixedModel, contraform, contra, Bernoulli());
     @test isapprox(gm1.θ, [0.573054], atol=0.005)
     @test lowerbd(gm1) == vcat(fill(-Inf, 7), 0.)
     @test isapprox(deviance(gm1,true), 2361.54575, rtol=0.00001)
