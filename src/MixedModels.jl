@@ -107,5 +107,6 @@ include("linalg/rankUpdate.jl")
 include("linalg/logdet.jl")
 include("linalg.jl")
 include("simulate.jl")
+include("mixed.jl")
 
 end # module

@@ -107,6 +107,7 @@ function StatsBase.dof(m::GeneralizedLinearMixedModel)
     length(m.β) + length(m.θ) + GLM.dispersion_parameter(m.resp.d)
 end
 
+#=
 StatsBase.fit(::Type{GeneralizedLinearMixedModel}, f::FormulaTerm, tbl, d::Distribution; kw...) =
     fit!(GeneralizedLinearMixedModel(f, columntable(tbl), d, GLM.canonicallink(d),
                                      wt = get(kw, :wt, []),
@@ -124,7 +125,7 @@ StatsBase.fit(::Type{GeneralizedLinearMixedModel}, f::FormulaTerm, tbl, d::Distr
                                verbose = get(kw, :verbose, false),
                                fast = get(kw, :fast, false),
                                nAGQ = get(kw, :nAGQ, 1))
-
+=#
 """
     fit!(m::GeneralizedLinearMixedModel[, verbose = false, fast = false, nAGQ=1])
 
