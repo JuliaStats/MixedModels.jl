@@ -10,3 +10,5 @@ include("FactorReTerm.jl")
 include("pls.jl")
 include("pirls.jl")
 include("gausshermite.jl")
+
+using MixedModels

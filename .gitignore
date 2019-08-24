@@ -2,3 +2,4 @@ docs/build
 docs/site
 test/scratch.jl
 tune.json
+Manifest.toml

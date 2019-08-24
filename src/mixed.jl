@@ -1,13 +1,35 @@
-function StatsBase.fit(::Type{MixedModel}, f::FormulaTerm, tbl, d::Distribution = Normal();
-    kw...)
-    if isa(d, Normal)
-        fit!(LinearMixedModel(f, columntable(tbl), get(kw, :hints, Dict{Symbol,Any}())),
-            verbose = get(kw, :verbose, false), REML = get(kw, :REML, false))
-    else
-        fit!(GeneralizedLinearMixedModel(f, columntable(tbl), d, GLM.canonicallink(d),
-                wt = get(kw, :wt, []), offset = get(kw, :offset, []),
-                hints = get(kw, :hints, Dict{Symbol,Any}())),
-            verbose = get(kw, :verbose, false), fast = get(kw, :fast, false),
-            nAGQ = get(kw, :nAGQ, 1))
-    end
-end
+# LinearMixedModel
+fit(::Type{MixedModel}, f::FormulaTerm, tbl;
+    wts = [],
+    contrasts = Dict{Symbol,Any}(),
+    verbose::Bool = false,
+    REML::Bool = false) =
+    fit(LinearMixedModel,
+        f, tbl, wts = wts, contrasts = contrasts,
+        verbose = verbose, REML = REML)
+# GeneralizedLinearMixedModel
+fit(::Type{MixedModel}, f::FormulaTerm, tbl,
+    d::Distribution, l::Link = canonicallink(d);
+    wts = [],
+    contrasts = Dict{Symbol,Any}(),
+    offset = [],
+    verbose::Bool = false,
+    REML::Bool = false,
+    fast::Bool = false,
+    nAGQ::Integer = 1) =
+    fit(GeneralizedLinearMixedModel,
+        f, tbl, d, l, wts = wts, contrasts = contrasts, offset = offset,
+        verbose = verbose, fast = fast, nAGQ = nAGQ)
+# LinearMixedModel
+fit(::Type{MixedModel}, f::FormulaTerm, tbl,
+    d::Normal, l::IdentityLink;
+    wts = [],
+    contrasts = Dict{Symbol,Any}(),
+    verbose::Bool = false,
+    REML::Bool = false,
+    offset = [],
+    fast::Bool = false,
+    nAGQ::Integer = 1) =
+    fit(LinearMixedModel, f, tbl,
+        wts = wts, contrasts = contrasts,
+        verbose = verbose, REML = REML)

@@ -267,14 +267,14 @@ m1.X                               # model matrix for fixed-effects terms
 
 #### HelmertCoding of contrasts
 
-The third argument in the call to `LinearMixedModel` is a dictionary of "hints" to use when forming the contrasts for categorical covariates.
+The third argument in the call to `LinearMixedModel` is a dictionary of "contrasts" to use when forming the contrasts for categorical covariates.
 `HelmertCoding` applied to a 2-level factor creates a  `±1` coding of the levels, as shown in the display of the model matrix.
 With this coding the `(Intercept)` coefficient will be a "typical" response level without regard to `Age` and `Noise`.
 In other words, the `(Intercept)` is not defined with respect to an arbitrary reference level for the categorical covariates.
 Note that when 2-level factors are coded as `±1` the interaction terms also have a `±1` coding.
 
 Sometimes coefficient estimates are called the "effect" of the condition in the covariate, e.g. "Noise" versus "Quiet".
-For the `HelmertCoding` the "effect" of changing from the lower level to the higher level is twice the coefficient, because the distance between the `±1` values in the model matrix is 2. 
+For the `HelmertCoding` the "effect" of changing from the lower level to the higher level is twice the coefficient, because the distance between the `±1` values in the model matrix is 2.
 
 ## Simulating a response and fitting the model
 
@@ -293,7 +293,7 @@ Linear mixed model fit by maximum likelihood
  -6.72750605×10⁴  1.34550121×10⁵  1.34564121×10⁵  1.34614593×10⁵
 
 Variance components:
-            Variance  Std.Dev. 
+            Variance  Std.Dev.
  S          9606.815  98.01436
  I         10335.779 101.66503
  Residual  39665.426 199.16181
@@ -333,7 +333,7 @@ Linear mixed model fit by REML
  REML criterion at convergence: 134528.135222923
 
 Variance components:
-            Variance  Std.Dev. 
+            Variance  Std.Dev.
  S          9867.226  99.33391
  I         10736.171 103.61550
  Residual  39673.394 199.18181
@@ -418,5 +418,3 @@ Age: Y             -27.0764   14.0038  -1.9335  0.0532
 Noise: Q           -2.21268   2.03817 -1.08562  0.2776
 Age: Y & Noise: Q  0.257456   2.02853 0.126917  0.8990
 ````
-
-

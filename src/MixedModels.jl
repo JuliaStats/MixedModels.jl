@@ -18,11 +18,13 @@ using BlockArrays,
 
 using LinearAlgebra: BlasFloat, BlasReal, HermOrSym, PosDefException, copytri!
 using Printf: @printf, @sprintf
+using GLM: Link, canonicallink
 
 using StatsFuns: log2π
 
 import Base: *
 import NLopt: Opt
+import StatsBase: fit, fit!
 
 export @formula,
        Bernoulli,
@@ -40,6 +42,7 @@ export @formula,
        LogitLink,
        LogLink,
        MixedModel,
+       Normal,
        OptSummary,
        Poisson,
        RaggedArray,
@@ -110,6 +113,5 @@ include("linalg/rankUpdate.jl")
 include("linalg/logdet.jl")
 include("linalg.jl")
 include("simulate.jl")
-include("mixed.jl")
 
 end # module

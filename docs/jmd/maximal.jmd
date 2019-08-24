@@ -117,14 +117,14 @@ m1.X                               # model matrix for fixed-effects terms
 
 #### HelmertCoding of contrasts
 
-The third argument in the call to `LinearMixedModel` is a dictionary of "hints" to use when forming the contrasts for categorical covariates.
+The third argument in the call to `LinearMixedModel` is a dictionary of "contrasts" to use when forming the contrasts for categorical covariates.
 `HelmertCoding` applied to a 2-level factor creates a  `±1` coding of the levels, as shown in the display of the model matrix.
 With this coding the `(Intercept)` coefficient will be a "typical" response level without regard to `Age` and `Noise`.
 In other words, the `(Intercept)` is not defined with respect to an arbitrary reference level for the categorical covariates.
 Note that when 2-level factors are coded as `±1` the interaction terms also have a `±1` coding.
 
 Sometimes coefficient estimates are called the "effect" of the condition in the covariate, e.g. "Noise" versus "Quiet".
-For the `HelmertCoding` the "effect" of changing from the lower level to the higher level is twice the coefficient, because the distance between the `±1` values in the model matrix is 2. 
+For the `HelmertCoding` the "effect" of changing from the lower level to the higher level is twice the coefficient, because the distance between the `±1` values in the model matrix is 2.
 
 ## Simulating a response and fitting the model
 

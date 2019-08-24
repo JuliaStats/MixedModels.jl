@@ -52,8 +52,8 @@ logistic(η) = inv(1 + exp(-η))
 
 Return a random sample from `[Bernoulli(logistic(x)) for x in v]`
 """
-bresp(rng::AbstractRNG, v::AbstractVector{<:AbstractFloat}) = 
+bresp(rng::AbstractRNG, v::AbstractVector{<:AbstractFloat}) =
     rand(rng, length(v)) .< logistic.(v)
 
 copyto!(dat.Y, bresp(rng, response(m1)))
-g1 = GLMM(@formula(Y ~ 1 + A*B*C + (1|G) + (1|H)), dat, Bernoulli(), hints=contrasts)
+g1 = GLMM(@formula(Y ~ 1 + A*B*C + (1|G) + (1|H)), dat, Bernoulli(), contrasts=contrasts)

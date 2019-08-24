@@ -25,7 +25,7 @@
 [codecov-img]: https://codecov.io/github/dmbates/MixedModels.jl/badge.svg?branch=master
 [codecov-url]: https://codecov.io/github/dmbates/MixedModels.jl?branch=master
 
-This package defines the `LinearMixedModel` and `GeneralizedLinearMixedModel` types and methods to `fit!` them and examine the results.
+This package defines linear mixed models (`LinearMixedModel`) and generalized linear mixed models (`GeneralizedLinearMixedModel`). Users can use the abstraction for statistical model API to build, fit (`fit`/`fit!`), and query the fitted models.
 
 A _mixed-effects model_ is a statistical model for a _response_ variable as a function of one or more _covariates_.
 For a categorical covariate the coefficients associated with the levels of the covariate are sometimes called _effects_, as in "the effect of using Treatment 1 versus the placebo".
@@ -58,7 +58,6 @@ The user-visible changes include:
 - `bootstrap` is now named `parametricbootstrap` to avoid conflict with a similar name in the `Bootstrap` package.  The bootstrap sample is returned as a `Table`.
 
 - A `fit` method for the abstract type `MixedModel` has been added.  It is called as
-
 
 ```
 julia> using Tables, MixedModels

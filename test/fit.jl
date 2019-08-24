@@ -12,6 +12,21 @@ end
 
 @testset "generalized" begin
     gm1 = fit(MixedModel, @formula(use ~ 1 + urb + l + a + abs2(a) + (1|d)),
-        dat[:Contraception], Bernoulli())
+              dat[:Contraception], Bernoulli())
     @test deviance(gm1) ≈ 2372.7286 atol=1.0e-3
+end
+
+@testset "Normal-IdentityLink" begin
+    @test isa(fit(MixedModel, @formula(Y ~ 1 + (1|G)), dat[:Dyestuff], Normal()),
+              LinearMixedModel)
+    @test_throws(ArgumentError("use LinearMixedModel for Normal distribution with IdentityLink"),
+                 fit(GeneralizedLinearMixedModel,
+                     @formula(Y ~ 1 + (1|G)),
+                     dat[:Dyestuff]))
+end
+
+@testset "Normal Distribution GLMM" begin
+    @test_broken(isa(fit(MixedModel, @formula(Y ~ 1 + (1|G)), dat[:Dyestuff],
+                         Normal(), SqrtLink),
+                     GeneralizedLinearMixedModel))
 end
