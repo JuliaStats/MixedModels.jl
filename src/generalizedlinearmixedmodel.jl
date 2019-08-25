@@ -107,26 +107,38 @@ function StatsBase.dof(m::GeneralizedLinearMixedModel)
     length(m.β) + length(m.θ) + GLM.dispersion_parameter(m.resp.d)
 end
 
-StatsBase.fit(::Type{GeneralizedLinearMixedModel}, f::FormulaTerm, tbl, d::Distribution; kw...) =
-    fit!(GeneralizedLinearMixedModel(f, columntable(tbl), d, GLM.canonicallink(d),
-                                     wt = get(kw, :wt, []),
-                                     offset = get(kw, :offset, []),
-                                     hints = get(kw, :hints, Dict{Symbol,Any}())),
-                                     verbose = get(kw, :verbose, false),
-                                     fast = get(kw, :fast, false),
-                                     nAGQ = get(kw, :nAGQ, 1))
-
-StatsBase.fit(::Type{GeneralizedLinearMixedModel}, f::FormulaTerm, tbl, d::Distribution,
-    l::GLM.Link; kw...) = fit!(GeneralizedLinearMixedModel(f,columntable(tbl), d, l,
-                               wt = get(kw, :wt, []),
-                               offset = get(kw, :offset, []),
-                               hints = get(kw, :hints, Dict{Symbol,Any}())),
-                               verbose = get(kw, :verbose, false),
-                               fast = get(kw, :fast, false),
-                               nAGQ = get(kw, :nAGQ, 1))
-
+fit(::Type{GeneralizedLinearMixedModel}, f::FormulaTerm, tbl,
+    d::Distribution = Normal(), l::Link = canonicallink(d);
+    wts = [],
+    contrasts = Dict{Symbol,Any}(),
+    offset = [],
+    verbose::Bool = false,
+    fast::Bool = false,
+    nAGQ::Integer = 1) =
+    fit(GeneralizedLinearMixedModel, f, columntable(tbl), d, l,
+        wts = wts,
+        offset = offset,
+        contrasts = contrasts,
+        verbose = verbose,
+        fast = fast,
+        nAGQ = nAGQ)
+fit(::Type{GeneralizedLinearMixedModel}, f::FormulaTerm, tbl::Tables.ColumnTable,
+    d::Distribution, l::Link = canonicallink(d);
+    wts = [],
+    contrasts = Dict{Symbol,Any}(),
+    offset = [],
+    verbose::Bool = false,
+    fast::Bool = false,
+    nAGQ::Integer = 1) =
+    fit!(GeneralizedLinearMixedModel(f, tbl, d, l,
+                                     wts = wts,
+                                     offset = offset,
+                                     contrasts = contrasts),
+                                     verbose = verbose,
+                                     fast = fast,
+                                     nAGQ = nAGQ)
 """
-    fit!(m::GeneralizedLinearMixedModel[, verbose = false, fast = false, nAGQ=1])
+    fit!(m::GeneralizedLinearMixedModel[, verbose = false, fast = false, nAGQ = 1])
 
 Optimize the objective function for `m`.
 
@@ -134,8 +146,10 @@ When `fast` is `true` a potentially much faster but slightly less accurate algor
 which `pirls!` optimizes both the random effects and the fixed-effects parameters,
 is used.
 """
-function StatsBase.fit!(m::GeneralizedLinearMixedModel{T};
-                        verbose::Bool=false, fast::Bool=false, nAGQ=1) where {T}
+function fit!(m::GeneralizedLinearMixedModel{T};
+              verbose::Bool = false,
+              fast::Bool = false,
+              nAGQ::Integer = 1) where {T}
     β = m.β
     lm = m.LMM
     optsum = lm.optsum
@@ -198,24 +212,47 @@ function fixef(m::GeneralizedLinearMixedModel{T}, permuted=true) where {T}
     copyto!(view(v, 1:Xtrm.rank), m.β)
     invpermute!(v, piv)
 end
-
-function GeneralizedLinearMixedModel(f::FormulaTerm, tbl::D, d::Distribution, l::GLM.Link;
-        wt=[], offset=[], hints = Dict{Symbol,Any}()) where {D<:Tables.ColumnTable}
-    if d == Binomial() && isempty(wt)
+GeneralizedLinearMixedModel(f::FormulaTerm, tbl,
+                            d::Distribution,
+                            l::Link = canonicallink(d);
+                            wts = [],
+                            offset = [],
+                            contrasts = Dict{Symbol,Any}()) =
+    GeneralizedLinearMixedModel(f, Tables.columntable(tbl),
+                                d, l;
+                                wts = [],
+                                offset = [],
+                                contrasts = Dict{Symbol,Any}())
+GeneralizedLinearMixedModel(f::FormulaTerm, tbl::Tables.ColumnTable,
+                            d::Normal,
+                            l::IdentityLink;
+                            wts = [],
+                            offset = [],
+                            contrasts = Dict{Symbol,Any}()) =
+    throw(ArgumentError("use LinearMixedModel for Normal distribution with IdentityLink"))
+function GeneralizedLinearMixedModel(f::FormulaTerm, tbl::Tables.ColumnTable,
+                                     d::Distribution,
+                                     l::Link = canonicallink(d);
+                                     wts = [],
+                                     offset = [],
+                                     contrasts = Dict{Symbol,Any}())
+    if isa(d, Binomial) && isempty(wts)
         d = Bernoulli()
     end
-    LMM = LinearMixedModel(f, tbl, hints; weights = wt)
+    (isa(d, Normal) && isa(link, IdentityLink)) &&
+        throw(ArgumentError("use LinearMixedModel for Normal distribution with IdentityLink"))
+    LMM = LinearMixedModel(f, tbl, contrasts = contrasts; wts = wts)
     y = copy(LMM.y)
         # the sqrtwts field must be the correct length and type but we don't know those
         # until after the model is constructed if wt is empty.  Because a LinearMixedModel
         # type is immutable, another one must be created.
-    if isempty(wt)
+    if isempty(wts)
         LMM = LinearMixedModel(LMM.formula, LMM.reterms, LMM.feterms, fill!(similar(y), 1),
             LMM.A, LMM.L, LMM.optsum)
     end
     updateL!(LMM)
         # fit a glm to the fixed-effects only - awkward syntax is to by-pass a test
-    gl = isempty(wt) ? glm(LMM.X, y, d, l) : glm(LMM.X, y, d, l, wts=wt)
+    gl = isempty(wts) ? glm(LMM.X, y, d, l) : glm(LMM.X, y, d, l, wts = wts)
     β = coef(gl)
     u = [fill(zero(eltype(y)), vsize(t), nlevs(t)) for t in LMM.reterms]
         # vv is a template vector used to initialize fields for AGQ
@@ -223,16 +260,11 @@ function GeneralizedLinearMixedModel(f::FormulaTerm, tbl::D, d::Distribution, l:
     vv = length(u) == 1 ? vec(first(u)) : similar(y, 0)
 
     res = GeneralizedLinearMixedModel(LMM, β, copy(β), LMM.θ, copy.(u), u,
-        zero.(u), gl.rr, similar(y), oftype(y, wt), similar(vv),
+        zero.(u), gl.rr, similar(y), oftype(y, wts), similar(vv),
         similar(vv), similar(vv), similar(vv))
     deviance!(res, 1)
     res
 end
-
-GeneralizedLinearMixedModel(f::FormulaTerm, tbl, d::Distribution;
-        wt=[], offset=[], hints=Dict{Symbol,Any}()) =
-    GeneralizedLinearMixedModel(f, columntable(tbl), d, GLM.canonicallink(d),
-        wt=wt, offset=offset, hints=hints)
 
 function Base.getproperty(m::GeneralizedLinearMixedModel, s::Symbol)
     if s == :theta

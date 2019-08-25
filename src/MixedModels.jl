@@ -1,32 +1,48 @@
 module MixedModels
-
-using BlockArrays, CategoricalArrays, Tables, Distributions, GLM,
-    LinearAlgebra, NLopt, Random, ProgressMeter, Showoff, SparseArrays, StaticArrays,
-    Statistics, StatsBase, StatsModels, TypedTables
+using BlockArrays,
+      CategoricalArrays,
+      Distributions,
+      GLM,
+      LinearAlgebra,
+      NLopt,
+      Random,
+      ProgressMeter,
+      Showoff,
+      SparseArrays,
+      StaticArrays,
+      Statistics,
+      StatsBase,
+      StatsModels,
+      Tables,
+      TypedTables
 
 using LinearAlgebra: BlasFloat, BlasReal, HermOrSym, PosDefException, copytri!
-#using NamedArrays: NamedArray, setnames!
 using Printf: @printf, @sprintf
+using GLM: Link, canonicallink
 
 using StatsFuns: log2π
 
 import Base: *
 import NLopt: Opt
+import StatsBase: fit, fit!
 
-export
-       @formula,
+export @formula,
        Bernoulli,
        Binomial,
        Block,
        BlockedSparse,
+       DummyCoding,
+       EffectsCoding,
        Gamma,
-       LogitLink,
-       LogLink,
+       GeneralizedLinearMixedModel,
+       HelmertCoding,
        InverseGaussian,
        InverseLink,
-       GeneralizedLinearMixedModel,
        LinearMixedModel,
+       LogitLink,
+       LogLink,
        MixedModel,
+       Normal,
        OptSummary,
        Poisson,
        RaggedArray,
@@ -34,7 +50,6 @@ export
        ReMat,
        UniformBlockDiagonal,
        VarCorr,
-
        aic,
        aicc,
        bic,
@@ -49,32 +64,32 @@ export
        fit,
        fit!,
        fitted,
-       fixef,      # extract the fixed-effects parameter estimates
+       fixef,
        fnames,
        GHnorm,
        loglikelihood,
-       lowerbd,    # lower bounds on the covariance parameters
+       lowerbd,
        nblocks,
        nobs,
        nocorr,
-       objective,  # the objective function in fitting a model
+       objective,
        parametricbootstrap,
-       pirls!,     # use Penalized Iteratively Reweighted Least Squares to obtain conditional modes of random effects
+       pirls!,
        predict,
-       pwrss,      # penalized, weighted residual sum-of-squares
-       ranef,      # extract the conditional modes of the random effects
-       refit!,     # install a response and refit the model
+       pwrss,
+       ranef,
+       refit!,
        residuals,
        response,
-       sdest,      # the estimate of the standard deviation of the per-observation noise
+       sdest,
        setθ!,
-       simulate!,  # simulate a new response in place
+       simulate!,
        sparse,
        statscholesky,
        std,
        stderror,
-       updateL!,   # update the lower-triangular, blocked matrix L to a new θ
-       varest,     # estimate of the residual variance
+       updateL!,
+       varest,
        vcov
 
 import Base: ==, *
@@ -91,6 +106,7 @@ include("randomeffectsterm.jl")
 include("linearmixedmodel.jl")
 include("gausshermite.jl")
 include("generalizedlinearmixedmodel.jl")
+include("mixed.jl")
 include("linalg/statschol.jl")
 include("linalg/cholUnblocked.jl")
 include("linalg/rankUpdate.jl")

@@ -36,7 +36,7 @@ end
     df = (Y = randn(rng, 400), A = repeat(['N','Y'], outer=200),
         G = repeat('A':'T', inner = 2, outer=10), H = repeat('a':'j', inner=40))
     lmm1 = fit!(LinearMixedModel(@formula(Y ~ 1+A+(1+A|G)+(1+A|H)), df,
-        weights = ones(400)))
+        wts  = ones(400)))
     @test loglikelihood(lmm1) ≈ -578.9080978272708
     MixedModels.reweight!(lmm1, ones(400))
     @test loglikelihood(fit!(lmm1)) ≈ -578.9080978272708

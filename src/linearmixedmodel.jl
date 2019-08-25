@@ -34,11 +34,17 @@ struct LinearMixedModel{T <: AbstractFloat} <: MixedModel{T}
     L::BlockMatrix{T}
     optsum::OptSummary{T}
 end
-
-function LinearMixedModel(f::FormulaTerm, d::D, hints=Dict{Symbol,Any}(); 
-    weights=[]) where {D<:Tables.ColumnTable}
-    form = apply_schema(f, schema(f, d, hints), LinearMixedModel)
-    y, Xs = modelcols(form, d)
+LinearMixedModel(f::FormulaTerm, tbl;
+                 contrasts = Dict{Symbol,Any}(),
+                 wts = []) =
+    LinearMixedModel(f::FormulaTerm, Tables.columntable(tbl),
+                     contrasts = contrasts,
+                     wts = wts)
+function LinearMixedModel(f::FormulaTerm, tbl::Tables.ColumnTable;
+                          contrasts = Dict{Symbol,Any}(),
+                          wts = [])
+    form = apply_schema(f, schema(f, tbl, contrasts), LinearMixedModel)
+    y, Xs = modelcols(form, tbl)
 
     y = reshape(float(y), (:, 1)) # y as a floating-point matrix
     T = eltype(y)
@@ -84,11 +90,24 @@ function LinearMixedModel(f::FormulaTerm, d::D, hints=Dict{Symbol,Any}();
     θ = foldl(vcat, getθ(c) for c in reterms)
     optsum = OptSummary(θ, lbd, :LN_BOBYQA, ftol_rel = T(1.0e-12), ftol_abs = T(1.0e-8))
     fill!(optsum.xtol_abs, 1.0e-10)
-    LinearMixedModel(form, reterms, feterms, sqrt.(convert(Vector{T}, weights)), A, L, optsum)
+    LinearMixedModel(form, reterms, feterms, sqrt.(convert(Vector{T}, wts)), A, L, optsum)
 end
-
-LinearMixedModel(f::FormulaTerm, d, hints=Dict{Symbol,Any}()) = 
-    LinearMixedModel(f, columntable(d), hints)
+fit(::Type{LinearMixedModel}, f::FormulaTerm, tbl;
+    wts = [],
+    contrasts = Dict{Symbol,Any}(),
+    verbose::Bool = false,
+    REML::Bool = false) =
+    fit(LinearMixedModel, f, Tables.columntable(tbl),
+        wts = wts, contrasts = contrasts, verbose = verbose, REML = REML)
+fit(::Type{LinearMixedModel},
+    f::FormulaTerm,
+    tbl::Tables.ColumnTable;
+    wts = wts, contrasts = contrasts, verbose = verbose, REML = REML) =
+    fit!(LinearMixedModel(f, tbl,
+                          contrasts = contrasts,
+                          wts = wts),
+                          verbose = verbose,
+                          REML = REML)
 
 StatsBase.coef(m::MixedModel) = fixef(m, false)
 
@@ -174,18 +193,16 @@ Return the lower Cholesky factor for the fixed-effects parameters, as an `LowerT
 feL(m::LinearMixedModel) = LowerTriangular(m.L.blocks[end - 1, end - 1])
 
 """
-    fit!(m::LinearMixedModel[; verbose::Bool=false, REML=nothing])
+    fit!(m::LinearMixedModel[; verbose::Bool=false, REML::Bool=false])
 
 Optimize the objective of a `LinearMixedModel`.  When `verbose` is `true` the values of the
 objective and the parameters are printed on stdout at each function evaluation.
 """
-function StatsBase.fit!(m::LinearMixedModel{T}; verbose=false, REML=false) where {T}
+function fit!(m::LinearMixedModel{T}; verbose::Bool=false, REML::Bool=false) where {T}
     optsum = m.optsum
     opt = Opt(optsum)
     feval = 0
-    if isa(REML, Bool)
-        optsum.REML = REML
-    end
+    optsum.REML = REML
     function obj(x, g)
         isempty(g) || error("gradient not defined")
         feval += 1
@@ -286,7 +303,7 @@ function Base.getproperty(m::LinearMixedModel, s::Symbol)
     elseif s == :β || s == :beta
         coef(m)
     elseif s == :λ || s == :lambda
-        getfield.(m.reterms, :λ)
+        getproperty.(m.reterms, :λ)
     elseif s == :σ || s == :sigma
         sdest(m)
     elseif s == :b
@@ -463,13 +480,13 @@ Refit the model `m` after installing response `y`.
 
 If `y` is omitted the current response vector is used.
 """
-refit!(m::LinearMixedModel; REML=nothing) = fit!(reevaluateAend!(m), REML=REML)
+refit!(m::LinearMixedModel) = fit!(reevaluateAend!(m))
 
-function refit!(m::LinearMixedModel, y, REML=nothing)
+function refit!(m::LinearMixedModel, y)
     resp = last(m.feterms)
     length(y) == size(resp, 1) || throw(DimensionMismatch(""))
     copyto!(resp, y)
-    refit!(m, REML=REML)
+    refit!(m)
 end
 
 StatsBase.residuals(m::LinearMixedModel) = response(m) .- fitted(m)
@@ -583,7 +600,7 @@ function updateA!(m::LinearMixedModel)
         end
     end
     m
-end    
+end
 
 """
     updateL!(m::LinearMixedModel)

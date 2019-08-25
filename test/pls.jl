@@ -70,7 +70,7 @@ const LMM = LinearMixedModel
 end
 
 @testset "Dyestuff2" begin
-    fm = fit!(LMM(@formula(Y ~ 1 + (1 | G)), dat[:Dyestuff2]))
+    fm = fit(MixedModel, @formula(Y ~ 1 + (1 | G)), dat[:Dyestuff2])
     @test lowerbd(fm) == zeros(1)
     show(IOBuffer(), fm)
     @test fm.θ ≈ zeros(1)
@@ -232,7 +232,7 @@ end
 
 @testset "simulate!" begin
     @test MixedModels.stddevcor(cholesky!(Matrix(I, 3, 3))) == (ones(3), Matrix(I, 3, 3))
-    fm = fit!(LMM(@formula(Y ~ 1 + (1 | G)), dat[:Dyestuff]))
+    fm = fit(MixedModel, @formula(Y ~ 1 + (1 | G)), dat[:Dyestuff])
     refit!(simulate!(Random.MersenneTwister(1234321), fm))
     @test isapprox(deviance(fm), 339.0218639362958, atol=0.001)
     refit!(fm, dat[:Dyestuff][!, :Y])
