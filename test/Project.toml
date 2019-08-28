@@ -11,4 +11,4 @@ Tables = "bd369af6-aec1-5ad0-b16a-f7cc5008161c"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [compat]
-RData = "0.5"
+RData = "0.5, 0.6"
