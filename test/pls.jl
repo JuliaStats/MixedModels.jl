@@ -1,4 +1,5 @@
-using DataFrames, LinearAlgebra, MixedModels, Random, RData, SparseArrays, Statistics, Tables, Test
+using DataFrames, LinearAlgebra, MixedModels, NamedArrays
+using Random, RData, SparseArrays, Statistics, Tables, Test
 
 if !@isdefined(dat) || !isa(dat, Dict{Symbol, DataFrame})
     const dat = Dict(Symbol(k) => v for (k, v) in
@@ -151,7 +152,7 @@ end
 end
 
 @testset "sleep" begin
-    fm = LMM(@formula(Y ~ 1 + U + (1 + U | G)), dat[:sleepstudy]);
+    fm = LinearMixedModel(@formula(Y ~ 1 + U + (1 + U | G)), dat[:sleepstudy]);
     @test lowerbd(fm) == [0.0, -Inf, 0.0]
     A11 = fm.A[Block(1,1)]
     @test isa(A11, UniformBlockDiagonal{Float64})
@@ -183,9 +184,10 @@ end
 
     u3 = ranef(fm, uscale=true)
     @test length(u3) == 1
-    @test size(u3[1]) == (2, 18)
-    @test isapprox(u3[1][1, 1], 3.030300122575336, atol=0.001)
-#    u3n = ranef(fm, uscale=true, named=true)
+    @test size(first(u3)) == (2, 18)
+    @test isapprox(first(u3)[1, 1], 3.030300122575336, atol=0.001)
+    u3n = first(ranef(fm, uscale=true, named=true))
+    @test u3n isa NamedArrays.NamedArray
 
     b3 = ranef(fm)
     @test length(b3) == 1
@@ -242,9 +244,9 @@ end
     simulate!(fm, θ = fm.θ)
     @test_throws DimensionMismatch refit!(fm, zeros(29))
     Random.seed!(1234321)
-#    dfr = bootstrap(10, fm)
-    @test_broken size(dfr) == (10, 5)
-    @test_broken names(dfr) == Symbol[:obj, :σ, :β₁, :θ₁, :σ₁]
+    rtbl = parametricbootstrap(10, fm)
+    @test length(rtbl) == 10
+    @test keys(first(rtbl)) == (:objective, :σ, :β, :θ)
 end
 
 @testset "Rank deficient" begin

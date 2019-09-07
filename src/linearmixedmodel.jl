@@ -433,18 +433,16 @@ the conditional modes of the random effects in model `m`.
 If `uscale` is `true` the random effects are on the spherical (i.e. `u`) scale, otherwise on
 the original scale.
 """
-function ranef(m::LinearMixedModel{T}; uscale=false) where {T}#, named=false)
+function ranef(m::LinearMixedModel{T}; uscale=false, named=false) where {T}
     v = [Matrix{T}(undef, size(t.z, 1), nlevs(t)) for t in m.reterms]
     ranef!(v, m, uscale)
-#=
     named || return v
     vnmd = map(NamedArray, v)
-    for (trm, vnm) in zip(retrms, vnmd)
-        setnames!(vnm, trm.cnms, 1)
-        setnames!(vnm, string.(levs(trm)), 2)
+    for (trm, vnm) in zip(m.reterms, vnmd)
+        setnames!(vnm, trm.cnames, 1)
+        setnames!(vnm, string.(trm.trm.contrasts.levels), 2)
     end
     vnmd
-=#
 end
 
 LinearAlgebra.rank(m::LinearMixedModel) = first(m.feterms).rank
