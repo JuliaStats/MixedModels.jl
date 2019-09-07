@@ -13,7 +13,7 @@ As described in
 \\int_{-\\infty}^\\infty f(x) e^{-x^2} dx
 ```
 
-An `n`-point rule, as returned by `hermite(n)` from the 
+An `n`-point rule, as returned by `hermite(n)` from the
 [`GaussQuadrature``](https://github.com/billmclean/GaussQuadrature.jl) package provides `n` abscicca
 values (i.e. values of `x`) and `n` weights.
 
@@ -48,7 +48,7 @@ function GaussHermiteNormalized(k::Integer)
     w = abs2.(ev.vectors[1,:])
     GaussHermiteNormalized(
         SVector{k}((ev.values .- reverse(ev.values)) ./ 2),
-        SVector{k}(normalize((w .+ reverse(w)) ./ 2, 1)))
+        SVector{k}(LinearAlgebra.normalize((w .+ reverse(w)) ./ 2, 1)))
 end
 
 Base.iterate(g::GaussHermiteNormalized{K}, i=1) where {K} = (K < i ? nothing : ((z = g.z[i], w = g.w[i]), i + 1))
