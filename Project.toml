@@ -1,7 +1,7 @@
 name = "MixedModels"
 uuid = "ff71e718-51f3-5ec2-a782-8ffcbfa3c316"
 author = ["Douglas Bates <dmbates@gmail.com>"]
-version = "2.1.1"
+version = "2.1.2"
 
 [deps]
 BlockArrays = "8e7c35d0-a365-5155-bbbb-fb81a777f24e"
