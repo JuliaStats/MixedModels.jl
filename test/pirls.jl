@@ -1,4 +1,4 @@
-using DataFramesMeta, LinearAlgebra, MixedModels, RData, Test
+using DataFrames, DataFramesMeta, LinearAlgebra, MixedModels, RData, Test
 
 if !@isdefined(dat) || !isa(dat, Dict{Symbol, DataFrame})
     const dat = Dict(Symbol(k) => v for (k, v) in
@@ -6,7 +6,7 @@ if !@isdefined(dat) || !isa(dat, Dict{Symbol, DataFrame})
 end
 
 @testset "contra" begin
-    contra = @transform(dat[:Contraception], urbdist=categorical(string.(:urb, :d)))
+    contra = @transform(dat[:Contraception], urbdist=categorical(string.(:d, :urb)))
     contraform = @formula(use ~ 1+a+abs2(a)+urb+l+(1|urbdist))
     gm0 = fit(MixedModel, contraform, contra, Bernoulli(), fast=true);
     @test gm0.lowerbd == zeros(1)
@@ -20,9 +20,9 @@ end
     @test dof(gm0) == length(gm0.β) + length(gm0.θ)
     @test nobs(gm0) == 1934
     fit!(gm0, fast=true, nAGQ=7)
-    @test isapprox(deviance(gm0, 7), 2360.9838, atol=0.001)
+    @test isapprox(deviance(gm0), 2360.9838, atol=0.001)
     fit!(gm0, nAGQ=7)
-    @test isapprox(deviance(gm0, 7), 2360.8760, atol=0.001)
+    @test isapprox(deviance(gm0), 2360.8760, atol=0.001)
     @test gm0.β == gm0.beta
     @test gm0.θ == gm0.theta
     @test isnan(gm0.σ)
