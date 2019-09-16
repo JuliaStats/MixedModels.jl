@@ -90,6 +90,8 @@ function StatsBase.deviance(m::GeneralizedLinearMixedModel{T}, nAGQ=1) where {T}
     sum(devc0) - 2 * (sum(log, mult) + sum(log, sd))
 end
 
+StatsBase.deviance(m::GeneralizedLinearMixedModel) = deviance(m, m.optsum.nAGQ)
+
 """
 deviance!(m::GeneralizedLinearMixedModel, nAGQ=1)
 
