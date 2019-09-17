@@ -196,29 +196,30 @@ end
 
     simulate!(fm)  # to test one of the unscaledre methods
 
-#    fmnc = LinearMixedModel(@formula(Y ~ 1 + U + (1|G) + (0+U|G)), dat[:sleepstudy])
-    @test_broken size(fmnc) == (180,2,36,1)
-    @test_broken fmnc.θ == ones(2)
-    @test_broken lowerbd(fmnc) == zeros(2)
+    fmnc = zerocorr!(LinearMixedModel(@formula(Y ~ 1 + U + (1+U|G)),
+        dat[:sleepstudy]))
+    @test size(fmnc) == (180,2,36,1)
+    @test fmnc.θ == ones(2)
+    @test lowerbd(fmnc) == zeros(2)
 
-#    fit!(fmnc)
+    fit!(fmnc)
 
-    @test_broken isapprox(deviance(fmnc), 1752.0032551398835, atol=0.001)
-    @test_broken isapprox(objective(fmnc), 1752.0032551398835, atol=0.001)
-    @test_broken coef(fmnc) ≈ [251.40510484848585, 10.467285959595715]
-    @test_broken fixef(fmnc) ≈ [10.467285959595715, 251.40510484848477]
-    @test_broken isapprox(stderror(fmnc), [6.707710260366577, 1.5193083237479683], atol=0.001)
-    @test_broken isapprox(fmnc.θ, [0.9458106880922268, 0.22692826607677266], atol=0.0001)
-    @test_broken std(fmnc)[1] ≈ [24.171449463289047, 5.799379721123582]
-    @test_broken std(fmnc)[2] ≈ [25.556130034081047]
-    @test_broken isapprox(logdet(fmnc), 74.46952585564611, atol=0.001)
+    @test deviance(fmnc) ≈ 1752.0032551398835 atol=0.001
+    @test objective(fmnc) ≈ 1752.0032551398835 atol=0.001
+    @test coef(fmnc) ≈ [251.40510484848585, 10.467285959595715]
+    @test fixef(fmnc) ≈ [251.40510484848477, 10.467285959595715]
+    @test stderror(fmnc) ≈ [6.707710260366577, 1.5193083237479683] atol=0.001
+    @test fmnc.θ ≈ [0.9458106880922268, 0.22692826607677266] atol=0.0001
+    @test first(std(fmnc)) ≈ [24.171449463289047, 5.799379721123582]
+    @test last(std(fmnc)) ≈ [25.556130034081047]
+    @test logdet(fmnc) ≈ 74.46952585564611 atol=0.001
 #    cor(fmnc)
 
 #    MixedModels.lrt(fm, fmnc)
 
     fmrs = fit!(LinearMixedModel(@formula(Y ~ 1 + U + (0 + U|G)), dat[:sleepstudy]))
-    @test isapprox(objective(fmrs), 1774.080315280528, rtol=0.00001)
-    @test isapprox(fmrs.θ, [0.24353985679033105], rtol=0.00001)
+    @test objective(fmrs) ≈ 1774.080315280528 rtol=0.00001
+    @test fmrs.θ ≈ [0.24353985679033105] rtol=0.00001
 end
 
 @testset "d3" begin

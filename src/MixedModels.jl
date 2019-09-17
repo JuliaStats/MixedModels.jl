@@ -91,7 +91,8 @@ export @formula,
        stderror,
        updateL!,
        varest,
-       vcov
+       vcov,
+       zerocorr!
 
 import Base: ==, *
 
@@ -99,10 +100,10 @@ abstract type MixedModel{T} <: StatsModels.RegressionModel end # model with fixe
 
 include("utilities.jl")
 include("arraytypes.jl")
-include("optsummary.jl")
 include("varcorr.jl")
 include("femat.jl")
 include("remat.jl")
+include("optsummary.jl")
 include("randomeffectsterm.jl")
 include("linearmixedmodel.jl")
 include("gausshermite.jl")

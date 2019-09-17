@@ -34,7 +34,7 @@ Base.getindex(A::ReMat, i::Integer, j::Integer) = getindex(A.adjA, j, i)
     nranef(A::ReMat)
 
 Return the number of random effects represented by `A`.  Zero unless `A` is an `ReMat`.
-""" 
+"""
 nranef(A::ReMat) = size(A.adjA, 1)
 
 LinearAlgebra.cond(A::ReMat) = cond(A.λ)
@@ -88,7 +88,7 @@ lowerbd(A::ReMat{T}) where {T} =
     isnested(A::ReMat, B::ReMat)
 
 Is the grouping factor for `A` nested in the grouping factor for `B`?
-    
+
 That is, does each value of `A` occur with just one value of B?
 """
 function isnested(A::ReMat, B::ReMat)
@@ -304,7 +304,7 @@ function reweight!(A::ReMat, sqrtwts::Vector)
     if length(sqrtwts) > 0
         if A.z === A.wtz
             A.wtz = similar(A.z)
-        end    
+        end
         rmul!(copyto!(A.wtz, A.z), Diagonal(sqrtwts))
     end
     A
@@ -346,7 +346,7 @@ end
 Overwrite L with `Λ'LΛ + I`
 """
 function scaleinflate! end
- 
+
 function scaleinflate!(Ljj::Diagonal{T}, Λj::ReMat{T,1}) where {T}
     Ljjd = Ljj.diag
     broadcast!((x, λsqr) -> x * λsqr + 1, Ljjd, Ljjd, abs2(first(Λj.λ)))
@@ -356,7 +356,7 @@ end
 function scaleinflate!(Ljj::Matrix{T}, Λj::ReMat{T,1}) where {T}
     lambsq = abs2(first(Λj.λ))
     @inbounds for i in diagind(Ljj)
-        Ljj[i] *= lambsq 
+        Ljj[i] *= lambsq
         Ljj[i] += one(T)
     end
     Ljj
@@ -417,3 +417,13 @@ function stddevcor(A::ReMat)
 end
 
 vsize(A::ReMat{T,S}) where {T,S} = S
+
+function zerocorr!(A::ReMat{T}) where {T}
+    λ = A.λ
+    A.inds = intersect(A.inds, diagind(λ))
+    fill!(λ.data, 0)
+    for i in A.inds
+        λ.data[i] = 1
+    end
+    A
+end
