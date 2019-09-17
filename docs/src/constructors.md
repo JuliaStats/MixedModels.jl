@@ -13,11 +13,11 @@ These include the `Dyestuff` and `Dyestuff2` data sets.
 ````julia
 julia> using DataFrames, MixedModels, RData, StatsBase
 
-julia> const dat = Dict(Symbol(k)=>v for (k,v) in 
+julia> const dat = Dict(Symbol(k)=>v for (k,v) in
     load(joinpath(dirname(pathof(MixedModels)), "..", "test", "dat.rda")));
 
 julia> describe(dat[:Dyestuff])
-2×8 DataFrames.DataFrame. Omitted printing of 1 columns
+2×8 DataFrame. Omitted printing of 1 columns
 │ Row │ variable │ mean   │ min    │ median │ max    │ nunique │ nmissing │
 │     │ Symbol   │ Union… │ Any    │ Union… │ Any    │ Union…  │ Nothing  │
 ├─────┼──────────┼────────┼────────┼────────┼────────┼─────────┼──────────┤
@@ -66,12 +66,38 @@ Variance components:
 
 
 
+An alternative expression is
+````julia
+julia> fm1 = fit(MixedModel, @formula(Y ~ 1 + (1|G)), dat[:Dyestuff])
+Linear mixed model fit by maximum likelihood
+ Y ~ 1 + (1 | G)
+   logLik   -2 logLik     AIC        BIC    
+ -163.66353  327.32706  333.32706  337.53065
+
+Variance components:
+              Column    Variance  Std.Dev. 
+ G        (Intercept)  1388.3333 37.260345
+ Residual              2451.2500 49.510100
+ Number of obs: 30; levels of grouping factors: 6
+
+  Fixed-effects parameters:
+──────────────────────────────────────────────────
+             Estimate  Std.Error  z value  P(>|z|)
+──────────────────────────────────────────────────
+(Intercept)    1527.5    17.6946   86.326   <1e-99
+──────────────────────────────────────────────────
+
+````
+
+
+
+
 (If you are new to Julia you may find that this first fit takes an unexpectedly long time, due to Just-In-Time (JIT) compilation of the code.
 The second and subsequent calls to such functions are much faster.)
 
 ````julia
-julia> @time fit!(LinearMixedModel(@formula(Y ~ 1 + (1|G)), dat[:Dyestuff2]));
-  0.495632 seconds (861.17 k allocations: 45.431 MiB, 3.88% gc time)
+julia> @time fit(MixedModel, @formula(Y ~ 1 + (1|G)), dat[:Dyestuff2]);
+  0.610968 seconds (963.78 k allocations: 51.795 MiB, 4.34% gc time)
 
 ````
 
@@ -81,7 +107,7 @@ julia> @time fit!(LinearMixedModel(@formula(Y ~ 1 + (1|G)), dat[:Dyestuff2]));
 
 By default, the model fit is by maximum likelihood.  To use the `REML` criterion instead, add the optional named argument `REML = true` to the call to `fit!`
 ````julia
-julia> fm1R = fit!(LinearMixedModel(@formula(Y ~ 1 + (1|G)), dat[:Dyestuff]), REML=true)
+julia> fm1R = fit(MixedModel, @formula(Y ~ 1 + (1|G)), dat[:Dyestuff], REML=true)
 Linear mixed model fit by REML
  Y ~ 1 + (1 | G)
  REML criterion at convergence: 319.6542768422538
@@ -121,7 +147,7 @@ It corresponds to a shift in the intercept for each level of the grouping factor
 The *sleepstudy* data are observations of reaction time, `Y`, on several subjects, `G`, after 0 to 9 days of sleep deprivation, `U`.
 A model with random intercepts and random slopes for each subject, allowing for within-subject correlation of the slope and intercept, is fit as
 ````julia
-julia> fm2 = fit!(LinearMixedModel(@formula(Y ~ 1 + U + (1+U|G)), dat[:sleepstudy]))
+julia> fm2 = fit(MixedModel, @formula(Y ~ 1 + U + (1+U|G)), dat[:sleepstudy])
 Linear mixed model fit by maximum likelihood
  Y ~ 1 + U + (1 + U | G)
    logLik   -2 logLik     AIC        BIC    
@@ -150,8 +176,26 @@ U             10.4673    1.50224   6.96781   <1e-11
 
 A model with uncorrelated random effects for the intercept and slope by subject is fit as
 ````julia
-julia> # This model is not currently (v"2.0.0") available
-#fm3 = fit(LinearMixedModel, @formula(Y ~ 1 + U + (1|G) + (0+U|G)), dat[:sleepstudy])
+julia> fm3 = fit!(zerocorr!(LinearMixedModel(@formula(Y ~ 1 + U + (1+U|G)), dat[:sleepstudy])))
+Linear mixed model fit by maximum likelihood
+ Y ~ 1 + U + (1 + U | G)
+   logLik   -2 logLik     AIC        BIC    
+ -876.00163 1752.00326 1762.00326 1777.96804
+
+Variance components:
+              Column    Variance  Std.Dev.   Corr.
+ G        (Intercept)  584.258970 24.17145
+          U             33.632805  5.79938  0.00
+ Residual              653.115782 25.55613
+ Number of obs: 180; levels of grouping factors: 18
+
+  Fixed-effects parameters:
+───────────────────────────────────────────────────
+             Estimate  Std.Error   z value  P(>|z|)
+───────────────────────────────────────────────────
+(Intercept)  251.405     6.70771  37.48      <1e-99
+U             10.4673    1.51931   6.88951   <1e-11
+───────────────────────────────────────────────────
 
 ````
 
@@ -159,15 +203,18 @@ julia> # This model is not currently (v"2.0.0") available
 
 
 
-Although technically there are two random-effects *terms* in the formula for *fm3* both have the same grouping factor
-and, internally, are amalgamated into a single vector-valued term.
+Note that the use of `zerocorr!` requires the model to be constructed, then altered to eliminate
+the correlation of the random effects, then fit with a call to the mutating function, `fit!`.
+```@docs
+zerocorr!
+```
 
 ### Models with multiple, scalar random-effects terms
 
 A model for the *Penicillin* data incorporates random effects for the plate, `G`, and for the sample, `H`.
 As every sample is used on every plate these two factors are *crossed*.
 ````julia
-julia> fm4 = fit!(LinearMixedModel(@formula(Y ~ 1 + (1|G) + (1|H)), dat[:Penicillin]))
+julia> fm4 = fit(MixedModel, @formula(Y ~ 1 + (1|G) + (1|H)), dat[:Penicillin])
 Linear mixed model fit by maximum likelihood
  Y ~ 1 + (1 | G) + (1 | H)
    logLik   -2 logLik     AIC        BIC    
@@ -196,7 +243,7 @@ Variance components:
 In contrast the sample, `G`, grouping factor is *nested* within the batch, `H`, grouping factor in the *Pastes* data.
 That is, each level of `G` occurs in conjunction with only one level of `H`.
 ````julia
-julia> fm5 = fit!(LinearMixedModel(@formula(Y ~ 1 + (1|G) + (1|H)), dat[:Pastes]))
+julia> fm5 = fit(MixedModel, @formula(Y ~ 1 + (1|G) + (1|H)), dat[:Pastes])
 Linear mixed model fit by maximum likelihood
  Y ~ 1 + (1 | G) + (1 | H)
    logLik   -2 logLik     AIC        BIC    
@@ -290,11 +337,11 @@ the distribution family for the response, and possibly the link function, must b
 ````julia
 julia> verbaggform = @formula(r2 ~ 1 + a + g + b + s + m + (1|id) + (1|item));
 
-julia> gm1 = fit!(GeneralizedLinearMixedModel(verbaggform, dat[:VerbAgg], Bernoulli()))
+julia> gm1 = fit(MixedModel, verbaggform, dat[:VerbAgg], Bernoulli())
 Generalized Linear Mixed Model fit by maximum likelihood (nAGQ = 1)
   r2 ~ 1 + a + g + b + s + m + (1 | id) + (1 | item)
-  Distribution: Distributions.Bernoulli{Float64}
-  Link: GLM.LogitLink()
+  Distribution: Bernoulli{Float64}
+  Link: LogitLink()
 
   Deviance: 8135.8329
 
@@ -339,8 +386,8 @@ These fits may suffice for model comparisons.
 julia> gm1a = fit!(GeneralizedLinearMixedModel(verbaggform, dat[:VerbAgg], Bernoulli()), fast=true)
 Generalized Linear Mixed Model fit by maximum likelihood (nAGQ = 1)
   r2 ~ 1 + a + g + b + s + m + (1 | id) + (1 | item)
-  Distribution: Distributions.Bernoulli{Float64}
-  Link: GLM.LogitLink()
+  Distribution: Bernoulli{Float64}
+  Link: LogitLink()
 
   Deviance: 8136.1709
 
@@ -367,10 +414,10 @@ julia> deviance(gm1a) - deviance(gm1)
 0.33801565450448834
 
 julia> @time fit!(GeneralizedLinearMixedModel(verbaggform, dat[:VerbAgg], Bernoulli()));
-  4.781567 seconds (14.91 M allocations: 124.566 MiB, 0.58% gc time)
+  5.513537 seconds (14.91 M allocations: 124.578 MiB, 6.19% gc time)
 
 julia> @time fit!(GeneralizedLinearMixedModel(verbaggform, dat[:VerbAgg], Bernoulli()), fast=true);
-  0.962336 seconds (2.38 M allocations: 25.948 MiB, 0.81% gc time)
+  0.794115 seconds (2.38 M allocations: 25.960 MiB, 0.61% gc time)
 
 ````
 
@@ -382,54 +429,56 @@ The optional argument `nAGQ=k` causes evaluation of the deviance function to use
 adaptive Gauss-Hermite quadrature rule.
 This method only applies to models with a single, simple, scalar random-effects term, such as
 ````julia
-julia> contraform = @formula(use ~ 1 + a + l + urb + (1|d))
+julia> contraform = @formula(use ~ 1 + a + abs2(a) + l + urb + (1|d))
 FormulaTerm
 Response:
   use(unknown)
 Predictors:
   1
   a(unknown)
+  (a)->abs2(a)
   l(unknown)
   urb(unknown)
   (d)->1 | d
 
 julia> @time gm2 = fit!(GeneralizedLinearMixedModel(contraform, dat[:Contraception], Bernoulli()), nAGQ=9)
-  2.879808 seconds (6.98 M allocations: 221.512 MiB, 4.36% gc time)
+  1.985849 seconds (5.55 M allocations: 119.244 MiB, 4.04% gc time)
 Generalized Linear Mixed Model fit by maximum likelihood (nAGQ = 9)
-  use ~ 1 + a + l + urb + (1 | d)
-  Distribution: Distributions.Bernoulli{Float64}
-  Link: GLM.LogitLink()
+  use ~ 1 + a + :(abs2(a)) + l + urb + (1 | d)
+  Distribution: Bernoulli{Float64}
+  Link: LogitLink()
 
-  Deviance: 2413.3485
+  Deviance: 2372.4589
 
 Variance components:
        Column    Variance   Std.Dev.  
- d (Intercept)  0.21549756 0.46421714
+ d (Intercept)  0.22908893 0.47863236
  Number of obs: 1934; levels of grouping factors: 60
 
 Fixed-effects parameters:
-───────────────────────────────────────────────────────
-               Estimate   Std.Error    z value  P(>|z|)
-───────────────────────────────────────────────────────
-(Intercept)  -1.69016    0.143664    -11.7647    <1e-31
-a            -0.0266002  0.00771936   -3.44591   0.0006
-l: 1          1.10933    0.154651      7.17312   <1e-12
-l: 2          1.37653    0.17091       8.05412   <1e-15
-l: 3+         1.34561    0.175315      7.67538   <1e-13
-urb: Y        0.732416   0.11682       6.26963   <1e-9 
-───────────────────────────────────────────────────────
+─────────────────────────────────────────────────────────
+                Estimate    Std.Error    z value  P(>|z|)
+─────────────────────────────────────────────────────────
+(Intercept)  -1.03542     0.171936     -6.02211    <1e-8 
+a             0.00353273  0.00909429    0.388455   0.6977
+abs2(a)      -0.00456321  0.000714442  -6.3871     <1e-9 
+l: 1          0.815154    0.159787      5.10151    <1e-6 
+l: 2          0.916537    0.182361      5.02594    <1e-6 
+l: 3+         0.915357    0.183022      5.00135    <1e-6 
+urb: Y        0.696695    0.118143      5.89703    <1e-8 
+─────────────────────────────────────────────────────────
 
 julia> @time deviance(fit!(GeneralizedLinearMixedModel(contraform, dat[:Contraception], Bernoulli()), nAGQ=9, fast=true))
-  0.092720 seconds (422.42 k allocations: 4.890 MiB)
-2413.6637188688373
+  0.085185 seconds (402.92 k allocations: 4.407 MiB)
+2372.513592622964
 
 julia> @time deviance(fit!(GeneralizedLinearMixedModel(contraform, dat[:Contraception], Bernoulli())))
-  0.252670 seconds (1.03 M allocations: 9.565 MiB, 4.46% gc time)
-2413.615689739634
+  0.421255 seconds (1.50 M allocations: 13.571 MiB, 2.47% gc time)
+2372.7285823782704
 
 julia> @time deviance(fit!(GeneralizedLinearMixedModel(contraform, dat[:Contraception], Bernoulli()), fast=true))
-  0.057091 seconds (246.10 k allocations: 3.077 MiB)
-2413.6618664984017
+  0.062650 seconds (236.32 k allocations: 3.143 MiB)
+2372.784429135894
 
 ````
 
@@ -503,7 +552,7 @@ julia> deviance(fm1)
 
 The value optimized when fitting a `GeneralizedLinearMixedModel` is the Laplace approximation to the deviance or an adaptive Gauss-Hermite evaluation.
 ```@docs
-deviance!
+MixedModels.deviance!
 ```
 ````julia
 julia> MixedModels.deviance!(gm1)

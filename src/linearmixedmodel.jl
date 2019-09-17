@@ -668,3 +668,31 @@ function StatsBase.vcov(m::LinearMixedModel{T}) where {T}
         covmat[iperm, iperm]
     end
 end
+
+"""
+    zerocorr!(m::LinearMixedModel[, trmnms::Vector{Symbol}])
+
+Rewrite the random effects specification for the grouping factors in `trmnms` to zero correlation parameter.
+
+The default for `trmnms` is all the names of random-effects terms.
+
+A random effects term is in the zero correlation parameter configuration when the off-diagonal elements of
+λ are all zero - hence there are no correlation parameters in that term being estimated.
+"""
+function zerocorr!(m::LinearMixedModel{T}, trmns::Vector{Symbol}) where {T}
+    reterms = m.reterms
+    for trm in reterms
+        if fname(trm) in trmns
+            zerocorr!(trm)
+        end
+    end
+    optsum = m.optsum
+    optsum.lowerbd = foldl(vcat, lowerbd(c) for c in reterms)
+    optsum.initial = foldl(vcat, getθ(c) for c in reterms)
+    optsum.final = copy(optsum.initial)
+    optsum.xtol_abs = fill!(copy(optsum.initial), 1.0e-10)
+    optsum.initial_step = T[]
+    m
+end
+
+zerocorr!(m::LinearMixedModel) = zerocorr!(m, fnames(m))
