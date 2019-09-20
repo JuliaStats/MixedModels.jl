@@ -111,6 +111,11 @@ fit(::Type{LinearMixedModel},
 
 StatsBase.coef(m::MixedModel) = fixef(m, false)
 
+function βs(m::LinearMixedModel)
+    fetrm = first(m.feterms)
+    (; (k => v for (k,v) in zip(Symbol.(fetrm.cnames), fixef(m)))...)
+end
+
 function StatsBase.coeftable(m::MixedModel)
     co = coef(m)
     se = stderror(m)
@@ -302,10 +307,14 @@ function Base.getproperty(m::LinearMixedModel, s::Symbol)
         getθ(m)
     elseif s == :β || s == :beta
         coef(m)
+    elseif s == :βs || s == :betas
+        βs(m)
     elseif s == :λ || s == :lambda
         getproperty.(m.reterms, :λ)
     elseif s == :σ || s == :sigma
         sdest(m)
+    elseif s == :σs || s == :sigmas
+        σs(m)
     elseif s == :b
         ranef(m)
     elseif s == :objective
@@ -382,7 +391,8 @@ StatsBase.predict(m::LinearMixedModel) = fitted(m)
 
 Base.propertynames(m::LinearMixedModel, private=false) =
     (:formula, :sqrtwts, :A, :L, :optsum, :θ, :theta, :β, :beta, :λ, :lambda, :stderror,
-     :σ, :sigma, :b, :u, :lowerbd, :X, :y, :rePCA, :reterms, :feterms, :objective, :pvalues)
+     :σ, :sigma, :σs, :sigmas, :b, :u, :lowerbd, :X, :y, :rePCA, :reterms, :feterms,
+     :objective, :pvalues)
 
 """
     pwrss(m::LinearMixedModel)
@@ -555,6 +565,8 @@ function Base.show(io::IO, m::LinearMixedModel)
     println(io,"\n  Fixed-effects parameters:")
     show(io,coeftable(m))
 end
+
+σs(m::LinearMixedModel) = (;(t.trm.sym => σs(t, m.σ) for t in m.reterms)...)
 
 function Base.size(m::LinearMixedModel)
     n, p = size(first(m.feterms))
