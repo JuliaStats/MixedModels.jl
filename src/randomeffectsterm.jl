@@ -12,20 +12,6 @@ function StatsModels.apply_schema(t::FunctionTerm{typeof(|)}, schema::StatsModel
     RandomEffectsTerm(MatrixTerm(lhs), rhs)
 end
 
-struct NoCorrTerm <: AbstractTerm
-    reterm::RandomEffectsTerm
-end
-
-function nocorr end
-
-function StatsModels.apply_schema(t::FunctionTerm{typeof(nocorr)}, schema,
-        Mod::Type{<:MixedModel})
-    args = apply_schema.(t.args_parsed, Ref(schema), Mod)
-    isone(length(args)) && isa(args[1], RandomEffectsTerm) || 
-        throw(ArgumentError("argument to nocorr must be a random-effect term"))
-    NoCorrTerm(args[1])
-end
-
 function StatsModels.modelcols(t::RandomEffectsTerm, d::NamedTuple)
     lhs = t.lhs
     z = Matrix(transpose(modelcols(lhs, d)))
@@ -46,7 +32,7 @@ function StatsModels.modelcols(t::RandomEffectsTerm, d::NamedTuple)
         J = repeat(J, inner=S)
         II = Int32.(vec([(r - 1)*S + j for j in 1:S, r in refs]))
     end
-    ReMat{T,S}(grp, refs, isa(cnames, String) ? [cnames] : collect(cnames), 
+    ReMat{T,S}(grp, refs, isa(cnames, String) ? [cnames] : collect(cnames),
         z, z, LowerTriangular(Matrix{T}(I, S, S)), inds,
         sparse(II, J, vec(z)), Matrix{T}(undef, (S, length(invindex))))
 end
