@@ -189,7 +189,7 @@ StatsBase.deviance(m::MixedModel) = objective(m)
 
 StatsBase.dof(m::LinearMixedModel) = size(m)[2] + sum(nθ, m.reterms) + 1
 
-function StatsBase.dof_residual(m::LinearMixedModel)
+function StatsBase.dof_residual(m::LinearMixedModel)::Int
     (n, p, q, k) = size(m)
     n - m.optsum.REML * p
 end
@@ -307,6 +307,16 @@ Return the current covariance parameter vector.
 """
 getθ(m::LinearMixedModel{T}) where {T} = foldl(vcat, getθ.(m.reterms))
 
+function getθ!(v::AbstractVector{T}, m::LinearMixedModel{T}) where {T}
+    k = 0
+    for t in m.reterms
+        nt = nθ(t)
+        getθ!(view(v, (k+1):(k+nt)), t)
+        k += nt
+    end
+    v
+end
+
 function Base.getproperty(m::LinearMixedModel, s::Symbol)
     if s == :θ || s == :theta
         getθ(m)
@@ -379,6 +389,8 @@ function StatsBase.modelmatrix(m::LinearMixedModel)
         fetrm.x[:, invperm(fetrm.piv)]
     end
 end
+
+nθ(m::LinearMixedModel) = sum(nθ, m.reterms)
 
 StatsBase.nobs(m::LinearMixedModel) = first(size(m))
 
