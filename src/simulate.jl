@@ -6,7 +6,7 @@ getprops(m, props) = NamedTuple{props}(getproperty.(Ref(m), props))
     parametricbootstrap(nsamp::Integer, m::LinearMixedModel,
         props=(:objective, :σ, :β, :θ); β = m.β, σ = m.σ, θ = m.θ)
 
-Perform `nsamp` parametric bootstrap replication fits of `m`, returning a 
+Perform `nsamp` parametric bootstrap replication fits of `m`, returning a
 `Vector{NamedTuple}` (a.k.a. `Tables.RowTable`) of `properties` of the refit model.
 
 The default random number generator is `Random.GLOBAL_RNG`.
@@ -15,14 +15,25 @@ The default random number generator is `Random.GLOBAL_RNG`.
 
 `β`, `σ`, and `θ` are the values of `m`'s parameters for simulating the responses.
 """
-function parametricbootstrap(rng::AbstractRNG, nsamp::Integer, m::LinearMixedModel,
-        props=(:objective, :σ, :β, :θ); β = m.β, σ = m.σ, θ = m.θ)
+function parametricbootstrap(rng::AbstractRNG, nsamp::Integer, m::LinearMixedModel{T};
+    β = m.β, σ = m.σ, θ = m.θ) where {T}
     y₀ = copy(response(m))  # to restore original state of m
+    θscr = copy(θ)
+    βscr = copy(β)
+    p = size(first(m.feterms), 2)
+    k = nθ(m)
+    vtype = typeof((objective = one(T), σ = one(T), β = SVector{p}(β), θ = SVector{k}(θ)))
+    value = sizehint!(vtype[], nsamp)
     try
-        Table([getprops(refit!(simulate!(rng, m, β = β, σ = σ, θ = θ)), props) for _ in 1:nsamp])
+        @showprogress 1 for _ in 1:nsamp
+            refit!(simulate!(rng, m, β = β, σ = σ, θ = θ))
+            push!(value, vtype((objective(m), sdest(m), SVector{p}(fixef!(βscr, m)),
+                SVector{k}(getθ!(θscr,m)))))
+        end
     finally
         refit!(m, y₀)
     end
+    Table(value)
 end
 
 function parametricbootstrap(nsamp::Integer, m::LinearMixedModel,
@@ -68,7 +79,7 @@ function unscaledre!(y::AbstractVector{T}, A::ReMat{T,1}, b::AbstractVector{T}) 
     y
 end
 
-unscaledre!(y::AbstractVector{T}, A::ReMat{T,1}, B::AbstractMatrix{T}) where {T} = 
+unscaledre!(y::AbstractVector{T}, A::ReMat{T,1}, B::AbstractMatrix{T}) where {T} =
     unscaledre!(y, A, vec(B))
 
 function unscaledre!(y::AbstractVector{T}, A::ReMat{T,S}, b::AbstractMatrix{T}) where {T,S}

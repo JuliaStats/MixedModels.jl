@@ -5,7 +5,7 @@ cpad(s::String, n::Integer) = rpad(lpad(s, (n + textwidth(s)) >> 1), n)
 """
 densify(S::SparseMatrix, threshold=0.25)
 
-Convert sparse `S` to `Diagonal` if `S` is diagonal or to `full(S)` if
+Convert sparse `S` to `Diagonal` if `S` is diagonal or to `Array(S)` if
 the proportion of nonzeros exceeds `threshold`.
 """
 function densify(A::SparseMatrixCSC, threshold::Real = 0.25)
@@ -53,36 +53,23 @@ function normalized_variance_cumsum(A::AbstractMatrix)
 end
 
 
-function stddevcor!(σ::Vector{T}, ρ::Matrix{T}, scr::Matrix{T}, L::Cholesky{T}) where {T}
-    length(σ) == (k = size(L, 2)) && size(ρ) == (k, k) && size(scr) == (k, k) || 
+function stddevcor!(σ::Vector{T}, ρ::Matrix{T}, scr::Matrix{T}, L::LowerTriangular{T}, sc::T) where {T}
+    length(σ) == (k = size(L, 2)) && size(ρ) == (k, k) && size(scr) == (k, k) ||
         throw(DimensionMismatch(""))
-    if L.uplo == 'L'
-        copyto!(scr, L.factors)
-        for i in 1 : k
-            σ[i] = σi = norm(view(scr, i, 1:i))
-            for j in 1:i
-                scr[i, j] /= σi
-            end
+    mul!(scr, sc, L)
+    for (i,r) in enumerate(eachrow(scr))
+        σ[i] = σi = norm(r)
+        for j in 1:i
+            r[j] /= σi
         end
-        mul!(ρ, LowerTriangular(scr), adjoint(LowerTriangular(scr)))
-    elseif L.uplo == 'U'
-        copyto!(scr, L.factors)
-        for j in 1 : k
-            σ[j] = σj = norm(view(scr, 1:j, j))
-            for i in 1 : j
-                scr[i, j] /= σj
-            end
-        end
-        mul!(ρ, UpperTriangular(scr)', UpperTriangular(scr))
-    else
-        throw(ArgumentError("L.uplo should be 'L' or 'U'"))
     end
+    mul!(ρ, LowerTriangular(scr), adjoint(LowerTriangular(scr)))
     σ, ρ
 end
 
-function stddevcor(L::Cholesky{T}) where {T}
+function stddevcor(L::LowerTriangular{T}, sc::T) where {T}
     k = size(L, 1)
-    stddevcor!(Vector{T}(undef, k), Matrix{T}(undef, k, k), Matrix{T}(undef, k, k), L)
+    stddevcor!(Vector{T}(undef, k), Matrix{T}(undef, k, k), Matrix{T}(undef, k, k), L, sc)
 end
 #=
 """
