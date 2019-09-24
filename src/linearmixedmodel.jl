@@ -45,12 +45,8 @@ function LinearMixedModel(f::FormulaTerm, tbl::Tables.ColumnTable;
                           wts = [])
 
     form = apply_schema(f, schema(f, tbl, contrasts), LinearMixedModel)
-    form_fe_lhs = form.lhs
-    form_fe_rhs = Tuple(vcat(
-                        [t for t in form.rhs if !isa(t,RandomEffectsTerm)],
-                        [t.rhs for t in form.rhs if isa(t,RandomEffectsTerm)]))
-    form_fe =  FormulaTerm(form_fe_lhs, form_fe_rhs)
-    tbl, _ = StatsModels.missing_omit(tbl, form_fe)
+    print("changed")
+    tbl, _ = StatsModels.missing_omit(tbl, f)
 
     y, Xs = modelcols(form, tbl)
 
