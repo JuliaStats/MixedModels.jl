@@ -6,6 +6,10 @@ end
 Base.show(io::IO, t::RandomEffectsTerm) = print(io, "($(t.lhs) | $(t.rhs))")
 StatsModels.is_matrix_term(::Type{RandomEffectsTerm}) = false
 
+function StatsModels.termvars(t::RandomEffectsTerm)
+    vcat(StatsModels.termvars(t.lhs), StatsModels.termvars(t.rhs))
+end
+
 function StatsModels.apply_schema(t::FunctionTerm{typeof(|)}, schema::StatsModels.FullRank,
         Mod::Type{<:MixedModel})
     lhs, rhs = apply_schema.(t.args_parsed, Ref(schema), Mod)
