@@ -87,6 +87,14 @@ end
         f = @formula(Y ~ 1 + (1 + G|G))
         @test_throws ArgumentError apply_schema(f, schema(f, slp, contrasts), LinearMixedModel)
     end
+
+    @testset "Detect both blocking and experimental variables" begin
+        # note that U is not in the fixed effects because we want to make square
+        # that we're detecting all the variables in the random effects
+        f = @formula(Y ~ 1 + (1 + U|G))
+        form = apply_schema(f, schema(f, slp, contrasts), LinearMixedModel)
+        @test StatsModels.termvars(form.rhs) == [:U, :G]
+    end
 end
 
 #=
