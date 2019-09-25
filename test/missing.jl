@@ -10,15 +10,16 @@ slp = deepcopy(dat[:sleepstudy])
 slp[!,:U] = Array{Union{Missing, Float64},1}(slp[!,:U])
 slp[1,:U] = missing
 
-@testset "No impact from missing on schema" begin
-    f = @formula(Y ~ 1 + U + (1|G))
-    contrasts =  Dict{Symbol,Any}()
-    form = apply_schema(f, schema(f, dat[:sleepstudy], contrasts), LinearMixedModel)
-    form_missing = apply_schema(f, schema(f, slp, contrasts), LinearMixedModel)
-
-    @test form.lhs == form_missing.lhs
-    @test form.rhs == form_missing.rhs
-end
+# TODO: re-enable this test when better missing support has landed in StatsModels
+# @testset "No impact from missing on schema" begin
+#     f = @formula(Y ~ 1 + U + (1|G))
+#     contrasts =  Dict{Symbol,Any}()
+#     form = apply_schema(f, schema(f, dat[:sleepstudy], contrasts), LinearMixedModel)
+#     form_missing = apply_schema(f, schema(f, slp, contrasts), LinearMixedModel)
+#
+#     @test form.lhs == form_missing.lhs
+#     @test form.rhs == form_missing.rhs
+# end
 
 @testset "Missing Omit" begin
     @testset "Missing from unused variables"

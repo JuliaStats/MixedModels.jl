@@ -43,9 +43,11 @@ LinearMixedModel(f::FormulaTerm, tbl;
 function LinearMixedModel(f::FormulaTerm, tbl::Tables.ColumnTable;
                           contrasts = Dict{Symbol,Any}(),
                           wts = [])
-
+    # TODO: perform missing_omit() after apply_schema() when improved
+    # missing support is in a StatsModels release
+    tbl, _ = StatsModels.missing_omit(tbl, f)
     form = apply_schema(f, schema(f, tbl, contrasts), LinearMixedModel)
-    tbl, _ = StatsModels.missing_omit(tbl, form)
+    # tbl, _ = StatsModels.missing_omit(tbl, form)
 
     y, Xs = modelcols(form, tbl)
 
