@@ -22,14 +22,14 @@ slp[1,:U] = missing
 # end
 
 @testset "Missing Omit" begin
-    @testset "Missing from unused variables"
+    @testset "Missing from unused variables" begin
         # missing from unused variables should have no impact
         m1 = fit(MixedModel, @formula(Y ~ 1 + (1|G)), dat[:sleepstudy])
         m1_missing = fit(MixedModel, @formula(Y ~ 1 + (1|G)), slp)
         @test isapprox(m1.θ, m1_missing.θ, rtol=1.0e-12)
     end
 
-    @testset "Missing from used variables"
+    @testset "Missing from used variables" begin
         m1 = fit(MixedModel, @formula(Y ~ 1 + U + (1|G)), dat[:sleepstudy])
         m1_missing = fit(MixedModel, @formula(Y ~ 1 + U + (1|G)), slp)
         @test nobs(m1) - nobs(m1_missing) == 1
