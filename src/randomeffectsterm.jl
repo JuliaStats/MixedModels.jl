@@ -30,6 +30,9 @@ function StatsModels.modelcols(t::RandomEffectsTerm, d::NamedTuple)
     T = eltype(z)
     S = size(z, 1)
     grp = t.rhs
+    if !hasproperty(grp,:contrasts)
+        throw(ArgumentError("blocking variables (those behind |) must be Categorical"))
+    end
     m = reshape(1:abs2(S), (S, S))
     inds = sizehint!(Int[], (S * (S + 1)) >> 1)
     for j in 1:S, i in j:S
