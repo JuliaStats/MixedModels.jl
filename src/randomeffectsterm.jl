@@ -16,6 +16,12 @@ struct RandomEffectsTerm <: AbstractTerm
     end
 end
 
+# TODO immediately concatenate relevant columns and
+# create a new hidden categorical column
+function RandomEffectsTerm(lhs, rhs::InteractionTerm)
+    throw(ArgumentError("interactions in blocking variables not supported"))
+end
+
 function RandomEffectsTerm(lhs, rhs::FunctionTerm{typeof(/)})
     RandomEffectsTerm(lhs, rhs.args_parsed[1]) +
         RandomEffectsTerm(lhs, rhs.args_parsed[1] & rhs.args_parsed[2])
