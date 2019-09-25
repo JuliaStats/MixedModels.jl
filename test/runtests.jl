@@ -11,5 +11,6 @@ include("pls.jl")
 include("pirls.jl")
 include("gausshermite.jl")
 include("fit.jl")
+include("missing.jl")
 
 using MixedModels

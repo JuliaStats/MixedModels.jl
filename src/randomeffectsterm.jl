@@ -1,6 +1,13 @@
 struct RandomEffectsTerm <: AbstractTerm
     lhs::StatsModels.TermOrTerms
     rhs::StatsModels.TermOrTerms
+    function RandomEffectsTerm(lhs,rhs)
+        if isempty(intersect(StatsModels.termvars(lhs), StatsModels.termvars(rhs)))
+            new(lhs, rhs)
+        else
+            throw(ArgumentError("Same variable appears on both sides of |"))
+        end
+    end
 end
 
 Base.show(io::IO, t::RandomEffectsTerm) = print(io, "($(t.lhs) | $(t.rhs))")

@@ -79,6 +79,16 @@ const LMM = LinearMixedModel
     end
 end
 
+@testset "RandomEffectsTerm" begin
+    slp = dat[:sleepstudy]
+    contrasts =  Dict{Symbol,Any}()
+
+    @testset "Detect same variable as blocking and experimental" begin
+        f = @formula(Y ~ 1 + (1 + G|G))
+        @test_throws ArgumentError apply_schema(f, schema(f, slp, contrasts), LinearMixedModel)
+    end
+end
+
 #=
 @testset "vectorRe" begin
     slp = dat[:sleepstudy]
