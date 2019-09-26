@@ -3,6 +3,9 @@ struct RandomEffectsTerm <: AbstractTerm
     rhs::StatsModels.TermOrTerms
     function RandomEffectsTerm(lhs,rhs)
         if isempty(intersect(StatsModels.termvars(lhs), StatsModels.termvars(rhs)))
+            if !hasproperty(rhs,:contrasts)
+                throw(ArgumentError("blocking variables (those behind |) must be Categorical ($(rhs) is not)"))
+            end
             new(lhs, rhs)
         else
             throw(ArgumentError("Same variable appears on both sides of |"))
@@ -30,9 +33,6 @@ function StatsModels.modelcols(t::RandomEffectsTerm, d::NamedTuple)
     T = eltype(z)
     S = size(z, 1)
     grp = t.rhs
-    if !hasproperty(grp,:contrasts)
-        throw(ArgumentError("blocking variables (those behind |) must be Categorical"))
-    end
     m = reshape(1:abs2(S), (S, S))
     inds = sizehint!(Int[], (S * (S + 1)) >> 1)
     for j in 1:S, i in j:S
