@@ -126,6 +126,11 @@ function lmulΛ!(adjA::Adjoint{T,<:ReMat{T,S}}, B::BlockedSparse{T}) where {T,S}
     B
 end
 
+function lmulΛ!(adjA::Adjoint{T,ReMat{T,1}}, B::BlockedSparse{T,1,P}) where {T,P}
+    lmulΛ!(adjA, nonzeros(B.cscmat))
+    B
+end
+
 function lmulΛ!(adjA::Adjoint{T,<:ReMat{T,S}}, B::SparseMatrixCSC{T}) where {T,S}
     lmulΛ!(adjA, nonzeros(B))
     B

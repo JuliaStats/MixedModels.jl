@@ -41,3 +41,26 @@ end
     MixedModels.reweight!(lmm1, ones(400))
     @test loglikelihood(fit!(lmm1)) ≈ -578.9080978272708
 end
+
+@testset "lmulλ!" begin
+    gendata(n::Int, ng::Int) = gendata(MersenneTwister(42), n, ng)
+
+    function gendata(rng::AbstractRNG, n::Int, ng::Int)
+        df = DataFrame(Y = randn(rng, n),
+                       X = rand(rng, n),
+                       G = rand(rng, 1:ng, n),
+                       H = rand(rng, 1:ng, n))
+        categorical!(df, [:G, :H])
+    end
+
+    @testset "Adjoint{T,ReMat{T,1}}, BlockedSparse{T,1,2}" begin
+        # this is an indirect test of lmulΛ! for a blocking structure found in
+        # an example in MixedModels.jl#123
+        df = gendata(10000, 500)
+        f = @formula(Y ~ (1 + X|H) + (1|G))
+        m500 = fit!(LinearMixedModel(f, df))
+        # the real test here isn't in the theta comparison but in that the fit
+        # completes successfully
+        @test m500.theta ≈ [0.07797345952252123, -0.17640571417349787, 0, 0]
+    end
+end
