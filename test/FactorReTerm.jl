@@ -97,6 +97,21 @@ end
     end
 end
 
+@testset "Categorical Blocking Variable" begin
+    # deepcopy because we're going to modify it
+    slp = deepcopy(dat[:sleepstudy])
+    contrasts =  Dict{Symbol,Any}()
+    f = @formula(Y ~ 1 + (1|G))
+
+    # this works fine because StatsModels is smart enough to treat strings
+    # as Categorical. Note however that this is a far less efficient to store
+    # the original dataframe, although it doesn't matter for the contrast matrix
+    slp[!,:G] = convert.(String, slp[!, :G])
+    @test_nowarn LinearMixedModel(f, slp)
+    slp[!,:G] = parse.(Int, slp[!, :G])
+    @test_throws ArgumentError LinearMixedModel(f, slp)
+end
+
 #=
 @testset "vectorRe" begin
     slp = dat[:sleepstudy]
