@@ -71,7 +71,7 @@ function stddevcor(L::LowerTriangular{T}, sc::T) where {T}
     k = size(L, 1)
     stddevcor!(Vector{T}(undef, k), Matrix{T}(undef, k, k), Matrix{T}(undef, k, k), L, sc)
 end
-#=
+
 """
     subscriptednames(nm, len)
 
@@ -83,7 +83,7 @@ function subscriptednames(nm, len)
         [string(nm, '₀' + j) for j in 1:len] :
         [string(nm, lpad(string(j), nd, '0')) for j in 1:len]
 end
-
+#=
 updatedevresid!(r::GLM.GlmResp, η::AbstractVector) = updateμ!(r, η)
 
 fastlogitdevres(η, y) = 2log1p(exp(iszero(y) ? η : -η))

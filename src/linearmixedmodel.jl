@@ -116,6 +116,8 @@ function βs(m::LinearMixedModel)
     (; (k => v for (k,v) in zip(Symbol.(fetrm.cnames), fixef(m)))...)
 end
 
+StatsBase.coefnames(m::LinearMixedModel) = first(m.feterms).cnames
+
 function StatsBase.coeftable(m::MixedModel)
     co = coef(m)
     se = stderror(m)
