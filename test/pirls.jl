@@ -76,3 +76,18 @@ end
     #@test isapprox(sum(x -> sum(abs2, x), gm4.u), 196.8695297987013, atol=0.1)
     #@test isapprox(sum(gm4.resp.devresid), 220.92685781326136, atol=0.1)
 end
+
+@testset "lexdec" begin
+    lexdec = load(joinpath(dirname(pathof(MixedModels)), "..", "test", "lexdec.rds"))
+    gmldγ = fit(MixedModel,  @formula(RT_raw ~ 1 + Class * NativeLanguage + (1|Subject) + (1|Word)),
+                lexdec, Gamma(), IdentityLink(), fast=false)
+    @test all(gmldγ.optsum.initial_step .> 0)
+    @test first(gmldγ.θ) == 0
+
+    # don't know how much sense this model makes, but it's a boundary fit on two
+    # boundaries and it uses InverseGaussian()
+    gmldig = fit(MixedModel,  @formula(RT_raw ~ 1 + Class * NativeLanguage + (1|Subject) + (1|Word)),
+                 lexdec, InverseGaussian(), IdentityLink(), fast=false)
+    @test all(gmldγ.optsum.initial_step .> 0)
+    @test all(gmldig.θ .== 0)
+end
