@@ -166,6 +166,9 @@ function fit!(m::GeneralizedLinearMixedModel{T};
         optsum.initial = vcat(β, m.θ)
         optsum.final = copy(optsum.initial)
         optsum.initial_step = vcat(stderror(m) ./ 3, min.(T(0.05), m.θ ./ 4))
+        # force a non-zero step
+        ss = optsum.initial_step
+        optsum.initial_step[ss .== 0] .= min(ss[ss .≠ 0]...)
     end
     setpar! = fast ? setθ! : setβθ!
     feval = 0
