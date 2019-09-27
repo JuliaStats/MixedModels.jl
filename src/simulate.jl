@@ -22,12 +22,13 @@ function parametricbootstrap(rng::AbstractRNG, nsamp::Integer, m::LinearMixedMod
     βscr = copy(β)
     p = size(first(m.feterms), 2)
     k = nθ(m)
-    vtype = typeof((objective = one(T), σ = one(T), β = SVector{p}(β), θ = SVector{k}(θ)))
+    nms = (:objective, :σ, Symbol.(subscriptednames("β", p))..., :θ)
+    vtype = NamedTuple{nms, typeof((one(T), one(T), β..., SVector{k}(θ)))}
     value = sizehint!(vtype[], nsamp)
     try
         @showprogress 1 for _ in 1:nsamp
             refit!(simulate!(rng, m, β = β, σ = σ, θ = θ))
-            push!(value, vtype((objective(m), sdest(m), SVector{p}(fixef!(βscr, m)),
+            push!(value, vtype((objective(m), sdest(m), fixef!(βscr, m)...,
                 SVector{k}(getθ!(θscr,m)))))
         end
     finally
@@ -40,6 +41,21 @@ function parametricbootstrap(nsamp::Integer, m::LinearMixedModel,
         props=(:objective, :σ, :β, :θ); β = m.β, σ = m.σ, θ = m.θ)
     parametricbootstrap(Random.GLOBAL_RNG, nsamp, m, props, β = β, σ = σ, θ = θ)
 end
+
+"""
+    shortestCovInt(v, level = 0.95)
+
+Return the shortest interval containing `level` proportion of the values of `v`
+"""
+function shortestCovInt(v, level = 0.95)
+    n = length(v)
+    0 < level < 1 || throw(ArgumentError("level = $level should be in (0,1)"))
+    vv = issorted(v) ? v : sort(v)
+    ilen = Int(ceil(n * level))   # the length of the interval in indices
+    len, i = findmin([vv[i + ilen - 1] - vv[i] for i in 1:(n + 1 - ilen)])
+    vv[[i, i + ilen - 1]]
+end
+
 """
     simulate!(rng::AbstractRNG, m::LinearMixedModel{T}; β=m.β, σ=m.σ, θ=T[])
     simulate!(m::LinearMixedModel; β=m.β, σ=m.σ, θ=m.θ)
