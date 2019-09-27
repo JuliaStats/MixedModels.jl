@@ -23,7 +23,7 @@ In a linear mixed model the unconditional distribution of $\mathcal{B}$ and the 
 \end{equation}
 ```
 The *conditional mean* of $\mathcal Y$, given $\mathcal B=\bf b$, is the *linear predictor*, $\bf X\bf\beta+\bf Z\bf b$, which depends on the $p$-dimensional *fixed-effects parameter*, $\bf \beta$, and on $\bf b$.
-The *model matrices*, $\bf X$ and $\bf Z$, of dimension $n\times p$ and $n\times q$, respectively, are determined from the formula for the model and the values of covariates. 
+The *model matrices*, $\bf X$ and $\bf Z$, of dimension $n\times p$ and $n\times q$, respectively, are determined from the formula for the model and the values of covariates.
 Although the matrix $\bf Z$ can be large (i.e. both $n$ and $q$ can be large), it is sparse (i.e. most of the elements in the matrix are zero).
 
 The *relative covariance factor*, $\Lambda_\theta$, is a $q\times q$ lower-triangular matrix, depending on the *variance-component parameter*, $\bf\theta$, and generating the symmetric $q\times q$ variance-covariance matrix, $\Sigma_\theta$, as
@@ -138,7 +138,7 @@ ReMat
 
 This `RandomEffectsTerm` contributes a block of columns to the model matrix $\bf Z$ and a diagonal block to $\Lambda_\theta$.
 In this case the diagonal block of $\Lambda_\theta$ (which is also the only block) is a multiple of the $6\times6$
-identity matrix where the multiple is 
+identity matrix where the multiple is
 ```{julia;term=true}
 t1.λ
 ```
@@ -165,19 +165,22 @@ The $\theta$ vector is
 MixedModels.getθ(t21)
 ```
 
-__This model cannot be fit in v"2.0.0".  Watch for updates.__
-Random-effects terms in the model formula that have the same grouping factor are amagamated into a single `VectorFactorReTerm` object.
+Random-effects terms in the model formula that have the same grouping factor are amagamated into a single `ReMat` object.
 ```{julia;term=true}
-#fm3 = fit(LinearMixedModel(@formula(Y ~ 1 + U + (1|G) + (0+U|G)), dat[:sleepstudy]))
-#t31 = first(fm3.retrms)
+fm3 = fit!(zerocorr!(LinearMixedModel(@formula(Y ~ 1 + U + (1+U|G)), dat[:sleepstudy]), [:G]))
+t31 = first(fm3.retrms)
+```
+Note that we could also have achieved this by re-fitting (a copy of) `fm2`.
+```{julia;term=true}
+fm3alt = zerocorr!(deepcopy(fm2), [:G])
 ```
 For this model the matrix $\bf Z$ is the same as that of model `fm2` but the diagonal blocks of $\Lambda_\theta$ are themselves diagonal.
 ```{julia;term=true}
-#getΛ(t31)
-#getθ(t31)
+getΛ(t31)
+getθ(t31)
 ```
 Random-effects terms with distinct grouping factors generate distinct elements of the `trms` member of the `LinearMixedModel` object.
-Multiple `AbstractFactorReTerm` (i.e. either a `ScalarFactorReTerm` or a `VectorFactorReTerm`) objects are sorted by decreasing numbers of random effects.
+Multiple `ReMat` objects are sorted by decreasing numbers of random effects.
 ```{julia;term=true}
 fm4 = fit!(LinearMixedModel(@formula(Y ~ 1 + (1|H) + (1|G)), dat[:Penicillin]))
 t41 = first(fm4.reterms)
@@ -191,7 +194,7 @@ An optional named argument, `verbose=true`, in the call to `fit!` of a `LinearMi
 ```{julia;term=true}
 fit!(LinearMixedModel(@formula(Y ~ 1 + (1|G)), dat[:Dyestuff]), verbose=true);
 fit!(LinearMixedModel(@formula(Y ~ 1 + U + (1+U|G)), dat[:sleepstudy]), verbose=true);
-``` 
+```
 
 A shorter summary of the optimization process is always available as an
 ```@docs
@@ -324,7 +327,7 @@ mdl.LMM.optsum
 
 As one would hope, given the name of the option, this fit is comparatively fast.
 ```{julia;term=true}
-@time(fit!(GeneralizedLinearMixedModel(@formula(r2 ~ 1 + a + g + b + s + (1 | id) + (1 | item)), 
+@time(fit!(GeneralizedLinearMixedModel(@formula(r2 ~ 1 + a + g + b + s + (1 | id) + (1 | item)),
         dat[:VerbAgg], Bernoulli()), fast=true))
 ```
 

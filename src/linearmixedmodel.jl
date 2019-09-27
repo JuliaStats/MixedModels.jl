@@ -697,6 +697,10 @@ function zerocorr!(m::LinearMixedModel{T}, trmns::Vector{Symbol}) where {T}
     optsum.final = copy(optsum.initial)
     optsum.xtol_abs = fill!(copy(optsum.initial), 1.0e-10)
     optsum.initial_step = T[]
+
+    # the model is no longer fitted
+    optsum.feval == -1
+
     m
 end
 
