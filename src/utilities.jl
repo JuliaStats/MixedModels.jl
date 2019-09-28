@@ -72,6 +72,8 @@ function stddevcor(L::LowerTriangular{T}, sc::T) where {T}
     stddevcor!(Vector{T}(undef, k), Matrix{T}(undef, k, k), Matrix{T}(undef, k, k), L, sc)
 end
 
+stddevcor(L::Cholesky{T}, sc::T) where {T} = stddevcor(L.L, sc)
+
 """
     subscriptednames(nm, len)
 
