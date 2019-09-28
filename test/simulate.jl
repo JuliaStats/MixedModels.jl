@@ -31,7 +31,7 @@ println(freqtable(dat, :C, :G))
 println(freqtable(dat, :A, :I))
 println(freqtable(dat, :B, :I))
 println(freqtable(dat, :C, :I))
-m1 = LMM(@formula(Y ~ 1 + A*B*C + (1|G) + (1|I)), dat, contrasts);
+m1 = LMM(@formula(Y ~ 1 + A*B*C + (1|G) + (1|I)), dat, contrasts=contrasts);
 β = rand(rng, 8);
 show(refit!(simulate!(rng, m1, β=β, σ=0.4, θ=[0.8, 0.6])))
 println()
@@ -39,11 +39,11 @@ println()
 println()
 show(m1.optsum);
 
-m2 = LMM(@formula(Y ~ 1 + A*B*C + (1+A+B+C|G) + (1|I)), dat, contrasts);
+m2 = LMM(@formula(Y ~ 1 + A*B*C + (1+A+B+C|G) + (1|I)), dat, contrasts=contrasts);
 show(refit!(m2, copy(response(m1))))
-m3 = LMM(@formula(Y ~ 1 + A*B*C + (1+A+B+C|G) + (1+A+B+C|I)), dat, contrasts);
+m3 = LMM(@formula(Y ~ 1 + A*B*C + (1+A+B+C|G) + (1+A+B+C|I)), dat, contrasts=contrasts);
 show(refit!(m3, copy(response(m1))))
-m4 = LMM(@formula(Y ~ 1 + A*B*C + (1+A*B*C|G) + (1+A*B*C|I)), dat, contrasts);
+m4 = LMM(@formula(Y ~ 1 + A*B*C + (1+A*B*C|G) + (1+A*B*C|I)), dat, contrasts=contrasts);
 show(refit!(m4, copy(response(m1))))
 
 logistic(η) = inv(1 + exp(-η))
@@ -57,3 +57,6 @@ bresp(rng::AbstractRNG, v::AbstractVector{<:AbstractFloat}) =
 
 copyto!(dat.Y, bresp(rng, response(m1)))
 g1 = GLMM(@formula(Y ~ 1 + A*B*C + (1|G) + (1|H)), dat, Bernoulli(), contrasts=contrasts)
+fit!(g1, fast=true);
+show(deviance(g1))
+#fit!(g1)

@@ -234,20 +234,20 @@ end
 end
 
 @testset "simulate!" begin
-    @test MixedModels.stddevcor(cholesky!(Matrix(I, 3, 3))) == (ones(3), Matrix(I, 3, 3))
+    @test MixedModels.stddevcor(cholesky!(Matrix(1.0I, 3, 3)), 1.0) == (ones(3), Matrix(I, 3, 3))
     fm = fit(MixedModel, @formula(Y ~ 1 + (1 | G)), dat[:Dyestuff])
     refit!(simulate!(Random.MersenneTwister(1234321), fm))
-    @test isapprox(deviance(fm), 339.0218639362958, atol=0.001)
+    @test deviance(fm) ≈ 339.0218639362958 atol=0.001
     refit!(fm, dat[:Dyestuff][!, :Y])
     Random.seed!(1234321)
     refit!(simulate!(fm))
-    @test isapprox(deviance(fm), 339.0218639362958, atol=0.001)
+    @test deviance(fm) ≈ 339.0218639362958 atol=0.001
     simulate!(fm, θ = fm.θ)
     @test_throws DimensionMismatch refit!(fm, zeros(29))
     Random.seed!(1234321)
     rtbl = parametricbootstrap(10, fm)
     @test length(rtbl) == 10
-    @test keys(first(rtbl)) == (:objective, :σ, :β, :θ)
+    @test keys(first(rtbl)) == (:objective, :σ, :β₁, :θ)
 end
 
 @testset "Rank deficient" begin

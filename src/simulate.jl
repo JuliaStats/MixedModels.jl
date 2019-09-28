@@ -39,7 +39,7 @@ end
 
 function parametricbootstrap(nsamp::Integer, m::LinearMixedModel,
         props=(:objective, :σ, :β, :θ); β = m.β, σ = m.σ, θ = m.θ)
-    parametricbootstrap(Random.GLOBAL_RNG, nsamp, m, props, β = β, σ = σ, θ = θ)
+    parametricbootstrap(Random.GLOBAL_RNG, nsamp, m, β = β, σ = σ, θ = θ)
 end
 
 """
