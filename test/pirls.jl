@@ -82,12 +82,12 @@ end
     gmldγ = fit(MixedModel,  @formula(RT_raw ~ 1 + Class * NativeLanguage + (1|Subject) + (1|Word)),
                 lexdec, Gamma(), IdentityLink(), fast=false)
     @test all(gmldγ.optsum.initial_step .> 0)
-    @test first(gmldγ.θ) == 0
+    @test first(gmldγ.θ) ≈ 0 atol=0.001
 
     # don't know how much sense this model makes, but it's a boundary fit on two
     # boundaries and it uses InverseGaussian()
     gmldig = fit(MixedModel,  @formula(RT_raw ~ 1 + Class * NativeLanguage + (1|Subject) + (1|Word)),
                  lexdec, InverseGaussian(), IdentityLink(), fast=false)
     @test all(gmldγ.optsum.initial_step .> 0)
-    @test all(gmldig.θ .== 0)
+    @test all(isapprox.(gmldig.θ, 0, atol=0.001))
 end
