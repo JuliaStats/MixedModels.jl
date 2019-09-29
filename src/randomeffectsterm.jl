@@ -75,7 +75,11 @@ function _ranef_refs(grp::CategoricalTerm, d::NamedTuple)
     refs, length(invindex)
 end
 
-# function _ranef_refs(grp::InteractionTerm{NTuple{N, d::NamedTuple)
-#     invindex = grp.contrasts.invindex
-#     refs = convert(Vector{Int32}, getindex.(Ref(invindex), d[grp.sym]))
-# end
+function _ranef_refs(grp::InteractionTerm{<:NTuple{N,CategoricalTerm}},
+                     d::NamedTuple) where {N}
+    combos = zip(getproperty.(Ref(d), [g.sym for g in grp.terms])...)
+    uniques = unique(combos)
+    invindex = Dict(x => i for (i,x) in enumerate(uniques))
+    refs = convert(Vector{Int32}, getindex.(Ref(invindex), combos))
+    refs, length(invindex)
+end
