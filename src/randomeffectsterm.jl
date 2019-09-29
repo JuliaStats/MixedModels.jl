@@ -20,39 +20,25 @@ end
 # create a new hidden categorical column
 function RandomEffectsTerm(lhs, rhs::InteractionTerm)
     throw(ArgumentError("interactions in blocking variables not supported"))
+function StatsModels.apply_schema(t::FunctionTerm{typeof(/)},
+                                  sch::StatsModels.FullRank,
+                                  Mod::Type{<:MixedModel})
+    length(t.args_parsed) == 2 ||
+        throw(ArgumentError("malformed nesting term: $t " *
+                            "(Exactly two arguments are supported)"))
+    
+    first, second = apply_schema.(t.args_parsed, Ref(sch.schema), Mod)
+    return first + first & second
 end
 
-function RandomEffectsTerm(lhs, rhs::FunctionTerm{typeof(/)})
-    RandomEffectsTerm(lhs, rhs.args_parsed[1]) +
-        RandomEffectsTerm(lhs, rhs.args_parsed[1] & rhs.args_parsed[2])
-end
+RandomEffectsTerm(lhs, rhs::NTuple{2, AbstractTerm}) =
+    (RandomEffectsTerm(lhs, rhs[1]), RandomEffectsTerm(lhs, rhs[2]))
 
 Base.show(io::IO, t::RandomEffectsTerm) = print(io, "($(t.lhs) | $(t.rhs))")
 StatsModels.is_matrix_term(::Type{RandomEffectsTerm}) = false
 
 function StatsModels.termvars(t::RandomEffectsTerm)
     vcat(StatsModels.termvars(t.lhs), StatsModels.termvars(t.rhs))
-end
-
-# this is too generic and it's type piracy
-function StatsModels.collect_matrix_terms(tt::Tuple)
-    nonnested = [t for t in tt if t isa AbstractTerm]
-    nested = [t for t in tt if t isa Tuple{RandomEffectsTerm, RandomEffectsTerm}]
-
-    if length(nested) + length(nonnested) != length(tt)
-        throw(ArgumentError("tuple should contain only Terms and tuples of RandomEffectTerms"))
-    end
-
-    terms = copy(nonnested)
-    for rt in nested
-        terms = append!(terms, rt)
-    end
-
-    StatsModels.collect_matrix_terms(Tuple(terms))
-end
-
-function StatsModels.collect_matrix_terms(tt::Tuple{AbstractTerm,Tuple{RandomEffectsTerm,RandomEffectsTerm}})
-    StatsModels.collect_matrix_terms(Tuple(vcat(tt[1],tt[2][1],tt[2][2])))
 end
 
 function StatsModels.apply_schema(t::FunctionTerm{typeof(|)}, schema::StatsModels.FullRank,
