@@ -16,10 +16,6 @@ struct RandomEffectsTerm <: AbstractTerm
     end
 end
 
-# TODO immediately concatenate relevant columns and
-# create a new hidden categorical column
-function RandomEffectsTerm(lhs, rhs::InteractionTerm)
-    throw(ArgumentError("interactions in blocking variables not supported"))
 function StatsModels.apply_schema(t::FunctionTerm{typeof(/)},
                                   sch::StatsModels.FullRank,
                                   Mod::Type{<:MixedModel})
@@ -59,15 +55,27 @@ function StatsModels.modelcols(t::RandomEffectsTerm, d::NamedTuple)
     for j in 1:S, i in j:S
         push!(inds, m[i,j])
     end
-    invindex = grp.contrasts.invindex
-    refs = convert(Vector{Int32}, getindex.(Ref(invindex), d[grp.sym]))
+    refs, n_levels = _ranef_refs(grp, d)
     J = Int32.(1:length(refs))
     II = refs
     if S > 1
         J = repeat(J, inner=S)
         II = Int32.(vec([(r - 1)*S + j for j in 1:S, r in refs]))
     end
-    ReMat{T,S}(grp, refs, isa(cnames, String) ? [cnames] : collect(cnames),
+    ReMat{T,S, typeof(grp)}(grp, refs, isa(cnames, String) ? [cnames] : collect(cnames),
         z, z, LowerTriangular(Matrix{T}(I, S, S)), inds,
-        sparse(II, J, vec(z)), Matrix{T}(undef, (S, length(invindex))))
+        sparse(II, J, vec(z)), Matrix{T}(undef, (S, n_levels)))
 end
+
+
+# extract vector of refs from ranef grouping term and data
+function _ranef_refs(grp::CategoricalTerm, d::NamedTuple)
+    invindex = grp.contrasts.invindex
+    refs = convert(Vector{Int32}, getindex.(Ref(invindex), d[grp.sym]))
+    refs, length(invindex)
+end
+
+# function _ranef_refs(grp::InteractionTerm{NTuple{N, d::NamedTuple)
+#     invindex = grp.contrasts.invindex
+#     refs = convert(Vector{Int32}, getindex.(Ref(invindex), d[grp.sym]))
+# end
