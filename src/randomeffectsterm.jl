@@ -72,6 +72,9 @@ function fulldummy(t::CategoricalTerm)
     t = CategoricalTerm(t.sym, new_contrasts)
 end
 
+fulldummy(x) =
+    throw(ArgumentError("fulldummy can't be used outside of a mixedmodel formula"))
+
 function StatsModels.apply_schema(t::FunctionTerm{typeof(fulldummy)},
                                   sch::StatsModels.FullRank,
                                   Mod::Type{<:MixedModel})
