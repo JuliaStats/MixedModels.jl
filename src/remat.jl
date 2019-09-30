@@ -399,12 +399,40 @@ function setθ!(A::ReMat{T}, v::AbstractVector{T}) where {T}
     A
 end
 
+σs(A::ReMat{T,1}, sc::T) where {T} = NamedTuple{(Symbol(first(A.cnames)),)}(sc*abs(first(A.λ.data)),)
+
 function σs(A::ReMat{T}, sc::T) where {T}
-    (; (k => v for (k,v) in zip(Symbol.(A.cnames), σs(A.λ, sc)))...)
+    λ = A.λ.data
+    NamedTuple{(Symbol.(A.cnames)...,)}(ntuple(i -> sc*norm(view(λ,i,1:i)), size(λ, 1)))
 end
 
-function σs(L::LowerTriangular{T}, sc::T) where T
-    [sc*norm(view(r, 1:i)) for (i,r) in enumerate(eachrow(L.data))]
+function σρs(A::ReMat{T,1}, sc::T) where {T}
+    NamedTuple{(σ,)}(NamedTuple{(Symbol(first(A.cnames)),)}(sc*abs(first(A.λ.data)),))
+end
+
+function rowcol(i, k)
+    count = 0
+    for col in 1:(k-1)
+        for row in (col + 1):k
+            count += 1
+            if count == i
+                return row, col
+            end
+        end
+    end
+    return
+end
+
+function ρ(i, λ::AbstractMatrix{T}, k, σs::NamedTuple, sc::T)::T where {T}
+    row, col = rowcol(i, k)
+    (dot(view(λ,row,:), view(λ,col,:)) * abs2(sc)) / (σs[row] * σs[col])
+end
+
+function σρs(A::ReMat{T}, sc::T) where {T}
+    λ = A.λ.data
+    k = size(λ, 1)
+    σs = NamedTuple{(Symbol.(A.cnames)...,)}(ntuple(i -> sc*norm(view(λ,i,1:i)), k))
+    (σs, ntuple(i -> ρ(i,λ,k,σs,sc), (k * (k - 1)) >> 1))
 end
 
 function stddevcor!(σ::Vector, ρ::Matrix, scr::Matrix, A::ReMat{T,1}) where {T}
