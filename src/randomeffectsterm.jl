@@ -55,16 +55,17 @@ function StatsModels.modelcols(t::RandomEffectsTerm, d::NamedTuple)
     for j in 1:S, i in j:S
         push!(inds, m[i,j])
     end
-    refs, n_levels = _ranef_refs(grp, d)
+    refs, levels = _ranef_refs(grp, d)
     J = Int32.(1:length(refs))
     II = refs
     if S > 1
         J = repeat(J, inner=S)
         II = Int32.(vec([(r - 1)*S + j for j in 1:S, r in refs]))
     end
-    ReMat{T,S, typeof(grp)}(grp, refs, isa(cnames, String) ? [cnames] : collect(cnames),
+    ReMat{T,S, typeof(grp), typeof(levels)}(
+        grp, refs, levels, isa(cnames, String) ? [cnames] : collect(cnames),
         z, z, LowerTriangular(Matrix{T}(I, S, S)), inds,
-        sparse(II, J, vec(z)), Matrix{T}(undef, (S, n_levels)))
+        sparse(II, J, vec(z)), Matrix{T}(undef, (S, length(levels))))
 end
 
 
@@ -72,7 +73,7 @@ end
 function _ranef_refs(grp::CategoricalTerm, d::NamedTuple)
     invindex = grp.contrasts.invindex
     refs = convert(Vector{Int32}, getindex.(Ref(invindex), d[grp.sym]))
-    refs, length(invindex)
+    refs, grp.contrasts.levels
 end
 
 function _ranef_refs(grp::InteractionTerm{<:NTuple{N,CategoricalTerm}},
@@ -81,5 +82,5 @@ function _ranef_refs(grp::InteractionTerm{<:NTuple{N,CategoricalTerm}},
     uniques = unique(combos)
     invindex = Dict(x => i for (i,x) in enumerate(uniques))
     refs = convert(Vector{Int32}, getindex.(Ref(invindex), combos))
-    refs, length(invindex)
+    refs, uniques
 end
