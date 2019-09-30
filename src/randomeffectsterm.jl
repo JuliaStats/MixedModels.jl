@@ -62,7 +62,7 @@ function StatsModels.modelcols(t::RandomEffectsTerm, d::NamedTuple)
         J = repeat(J, inner=S)
         II = Int32.(vec([(r - 1)*S + j for j in 1:S, r in refs]))
     end
-    ReMat{T,S, typeof(grp), typeof(levels)}(
+    ReMat{T,S}(
         grp, refs, levels, isa(cnames, String) ? [cnames] : collect(cnames),
         z, z, LowerTriangular(Matrix{T}(I, S, S)), inds,
         sparse(II, J, vec(z)), Matrix{T}(undef, (S, length(levels))))
