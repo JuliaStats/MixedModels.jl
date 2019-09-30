@@ -45,7 +45,9 @@ LinearAlgebra.cond(A::ReMat) = cond(A.λ)
 
 Return the name of the grouping factor as a `Symbol`
 """
-fname(A::ReMat) = A.trm.sym
+fname(A::ReMat) = fname(A.trm)
+fname(A::CategoricalTerm) = A.sym
+fname(A::InteractionTerm) = Symbol(join(fname.(A.terms), " & "))
 
 getθ(A::ReMat{T}) where {T} = getθ!(Vector{T}(undef, nθ(A)), A)
 
