@@ -22,6 +22,8 @@ function Base.getproperty(bsamp::MixedModelBootstrap, s::Symbol)
         getproperty(getfield(bsamp, :bstr), s)
     elseif s == :σs
         σs(bsamp)
+    elseif s == :σρs
+        σρs(bsamp)
     elseif haskey(getfield(bsamp, :cnamedict), string(s))
         getfield(bsamp, :bstr)[getfield(bsamp, :cnamedict)[string(s)]]
     else
@@ -83,23 +85,27 @@ function parametricbootstrap(nsamp::Integer, m::LinearMixedModel, β = m.β, σ 
 end
 
 function Base.propertynames(bsamp::MixedModelBootstrap)
-    append!([:model, :objective, :σ, :θ, :σs], Symbol.(keys(bsamp.cnamedict)))
+    append!([:model, :objective, :σ, :θ, :σs, :σρs], Symbol.(keys(bsamp.cnamedict)))
 end
 
-function σs(bsamp::MixedModelBootstrap{T}) where {T}
+function byreterm(bsamp::MixedModelBootstrap{T}, f::Function) where {T}
     m = bsamp.m
     oldθ = getθ(m)     # keep a copy to restore later
     retrms = m.reterms
-    value = [typeof(v)[] for v in σs.(retrms, m.σ)]
+    value = [typeof(v)[] for v in f.(retrms, m.σ)]
     for (σ,θ) in zip(bsamp.bstr.σ, bsamp.bstr.θ)
         setθ!(m, θ)
-        for (i, v) in enumerate(σs.(retrms, σ))
+        for (i, v) in enumerate(f.(retrms, σ))
             push!(value[i], v)
         end
     end
     refit!(setθ!(m, oldθ))
     NamedTuple{(Symbol.(fnames(m))...,)}(value)
 end
+
+σs(bsamp::MixedModelBootstrap) = byreterm(bsamp, σs)
+
+σρs(bsamp::MixedModelBootstrap) = byreterm(bsamp, σρs)
 
 """
     shortestCovInt(v, level = 0.95)
