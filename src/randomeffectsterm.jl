@@ -59,3 +59,21 @@ function StatsModels.modelcols(t::RandomEffectsTerm, d::NamedTuple)
         z, z, LowerTriangular(Matrix{T}(I, S, S)), inds,
         sparse(II, J, vec(z)), Matrix{T}(undef, (S, length(invindex))))
 end
+
+
+# add some syntax to manually promote to full dummy coding
+fulldummy(t::AbstractTerm) =
+    throw(ArgumentError("can't promote $t (of type $(typeof(t))) to full dummy " *
+                        "coding (only CategoricalTerms)"))
+
+function fulldummy(t::CategoricalTerm)
+    new_contrasts = StatsModels.ContrastsMatrix(StatsModels.FullDummyCoding(),
+                                                t.contrasts.levels)
+    t = CategoricalTerm(t.sym, new_contrasts)
+end
+
+function StatsModels.apply_schema(t::FunctionTerm{typeof(fulldummy)},
+                                  sch::StatsModels.FullRank,
+                                  Mod::Type{<:MixedModel})
+    fulldummy(apply_schema.(t.args_parsed, Ref(sch), Mod)...)
+end
