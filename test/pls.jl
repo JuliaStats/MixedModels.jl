@@ -234,7 +234,6 @@ end
 end
 
 @testset "simulate!" begin
-    @test MixedModels.stddevcor(cholesky!(Matrix(1.0I, 3, 3)), 1.0) == (ones(3), Matrix(I, 3, 3))
     fm = fit(MixedModel, @formula(Y ~ 1 + (1 | G)), dat[:Dyestuff])
     refit!(simulate!(Random.MersenneTwister(1234321), fm))
     @test deviance(fm) ≈ 339.0218639362958 atol=0.001

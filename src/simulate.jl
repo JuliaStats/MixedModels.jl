@@ -132,7 +132,9 @@ function simulate!(rng::AbstractRNG, m::LinearMixedModel{T}; β=m.β, σ=m.σ, �
     m
 end
 
-simulate!(m::LinearMixedModel; β=m.β, σ=m.σ, θ=T[]) = simulate!(Random.GLOBAL_RNG, m, β=β, σ=σ, θ=θ)
+function simulate!(m::LinearMixedModel{T}; β=m.β, σ=m.σ, θ=T[]) where {T}
+    simulate!(Random.GLOBAL_RNG, m, β=β, σ=σ, θ=θ)
+end
 
 """
     unscaledre!(y::AbstractVector{T}, M::ReMat{T}, b) where {T}
