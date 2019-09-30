@@ -6,7 +6,7 @@ struct RandomEffectsTerm <: AbstractTerm
             # when the minimum Julia version is increased to 1.2, we can change
             # this to the more generic !hasproperty(rhs,:contrasts)
             # which actually tests the property we care about
-            if !isa(rhs, CategoricalTerm)
+            if !isa(rhs, Union{CategoricalTerm,InteractionTerm})
                 throw(ArgumentError("blocking variables (those behind |) must be Categorical ($(rhs) is not)"))
             end
             new(lhs, rhs)
@@ -22,7 +22,7 @@ function StatsModels.apply_schema(t::FunctionTerm{typeof(/)},
     length(t.args_parsed) == 2 ||
         throw(ArgumentError("malformed nesting term: $t " *
                             "(Exactly two arguments are supported)"))
-    
+
     first, second = apply_schema.(t.args_parsed, Ref(sch.schema), Mod)
     return first + first & second
 end
