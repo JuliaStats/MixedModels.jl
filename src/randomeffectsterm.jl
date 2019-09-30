@@ -34,9 +34,15 @@ function StatsModels.termvars(t::RandomEffectsTerm)
     vcat(StatsModels.termvars(t.lhs), StatsModels.termvars(t.rhs))
 end
 
-function StatsModels.apply_schema(t::FunctionTerm{typeof(|)}, schema::StatsModels.FullRank,
-        Mod::Type{<:MixedModel})
-    lhs, rhs = apply_schema.(t.args_parsed, Ref(schema), Mod)
+function StatsModels.apply_schema(t::FunctionTerm{typeof(|)},
+                                  schema::StatsModels.FullRank,
+                                  Mod::Type{<:MixedModel})
+    schema = StatsModels.FullRank(schema.schema)
+    lhs, rhs = t.args_parsed
+    if !StatsModels.hasintercept(lhs) && !StatsModels.omitsintercept(lhs)
+        lhs = InterceptTerm{true}() + lhs
+    end
+    lhs, rhs = apply_schema.((lhs, rhs), Ref(schema), Mod)
     RandomEffectsTerm(MatrixTerm(lhs), rhs)
 end
 
