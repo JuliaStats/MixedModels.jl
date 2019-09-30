@@ -243,7 +243,8 @@ end
     @test deviance(fm) ≈ 339.0218639362958 atol=0.001
     simulate!(fm, θ = fm.θ)
     @test_throws DimensionMismatch refit!(fm, zeros(29))
-    bsamp = parametricbootstrap(MersenneTwister(1234321), 10, fm) @test length(bsamp.objective) == 10
+    bsamp = parametricbootstrap(MersenneTwister(1234321), 10, fm)
+    @test length(bsamp.objective) == 10
     @test keys(bsamp.bstr) == (:objective, :σ, :β₁, :θ)
 end
 
