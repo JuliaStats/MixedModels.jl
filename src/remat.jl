@@ -408,6 +408,10 @@ function σs(A::ReMat{T}, sc::T) where {T}
     (; (k => v for (k,v) in zip(Symbol.(A.cnames), σs(A.λ, sc)))...)
 end
 
+function σs(L::LowerTriangular{T}, sc::T) where T
+    [sc*norm(view(r, 1:i)) for (i,r) in enumerate(eachrow(L.data))]
+end
+
 function stddevcor!(σ::Vector, ρ::Matrix, scr::Matrix, A::ReMat{T,1}) where {T}
     copyto!(σ, A.λ)
     ρ[1] = 1
