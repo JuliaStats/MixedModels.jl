@@ -87,3 +87,21 @@ function _ranef_refs(grp::InteractionTerm{<:NTuple{N,CategoricalTerm}},
     refs = convert(Vector{Int32}, getindex.(Ref(invindex), combos))
     refs, uniques
 end
+
+
+# add some syntax to manually promote to full dummy coding
+fulldummy(t::AbstractTerm) =
+    throw(ArgumentError("can't promote $t (of type $(typeof(t))) to full dummy " *
+                        "coding (only CategoricalTerms)"))
+
+function fulldummy(t::CategoricalTerm)
+    new_contrasts = StatsModels.ContrastsMatrix(StatsModels.FullDummyCoding(),
+                                                t.contrasts.levels)
+    t = CategoricalTerm(t.sym, new_contrasts)
+end
+
+function StatsModels.apply_schema(t::FunctionTerm{typeof(fulldummy)},
+                                  sch::StatsModels.FullRank,
+                                  Mod::Type{<:MixedModel})
+    fulldummy(apply_schema.(t.args_parsed, Ref(sch), Mod)...)
+end
