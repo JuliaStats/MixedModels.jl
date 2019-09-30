@@ -1,4 +1,34 @@
-getprops(m, props) = NamedTuple{props}(getproperty.(Ref(m), props))
+struct MixedModelBootstrap{T<:AbstractFloat}
+    m::LinearMixedModel{T}
+    bstr::Tables.ColumnTable
+    cnamedict::Dict{String,Int}
+end
+
+function MixedModelBootstrap(m::LinearMixedModel, bstr::NamedTuple) where {T}
+    dict = Dict{String,Int}()
+    k = findfirst(isequal(:β₁), keys(bstr))
+    isnothing(k) && throw(ArgumentError("No :β₁ in keys(bstr)"))
+    for nm in coefnames(m)
+        dict[nm] = k
+        k += 1
+    end
+    MixedModelBootstrap(m, bstr, dict)
+end
+
+function Base.getproperty(bsamp::MixedModelBootstrap, s::Symbol)
+    if s == :model
+        getfield(bsamp, :m)
+    elseif s ∈ [:objective, :σ, :θ]
+        getproperty(getfield(bsamp, :bstr), s)
+    elseif s == :σs
+        σs(bsamp)
+    elseif haskey(getfield(bsamp, :cnamedict), string(s))
+        getfield(bsamp, :bstr)[getfield(bsamp, :cnamedict)[string(s)]]
+    else
+        getfield(bsamp, s)
+    end
+end
+
 
 """
     parametricbootstrap(rng::AbstractRNG, nsamp::Integer, m::LinearMixedModel,
@@ -7,7 +37,7 @@ getprops(m, props) = NamedTuple{props}(getproperty.(Ref(m), props))
         props=(:objective, :σ, :β, :θ); β = m.β, σ = m.σ, θ = m.θ)
 
 Perform `nsamp` parametric bootstrap replication fits of `m`, returning a
-`Vector{NamedTuple}` (a.k.a. `Tables.RowTable`) of `properties` of the refit model.
+`Tables.ColumnTable` of parameter estimates of the refit model.
 
 The default random number generator is `Random.GLOBAL_RNG`.
 
@@ -20,26 +50,55 @@ function parametricbootstrap(rng::AbstractRNG, nsamp::Integer, m::LinearMixedMod
     y₀ = copy(response(m))  # to restore original state of m
     θscr = copy(θ)
     βscr = copy(β)
-    p = size(first(m.feterms), 2)
-    k = nθ(m)
-    nms = (:objective, :σ, Symbol.(subscriptednames("β", p))..., :θ)
-    vtype = NamedTuple{nms, typeof((one(T), one(T), β..., SVector{k}(θ)))}
-    value = sizehint!(vtype[], nsamp)
+    k = length(θ)
+    bnms = Symbol.(subscriptednames("β", length(β)))
+    vnms = (:objective, :σ, bnms..., :θ)
+    value = (;(nm => nm == :θ ? SVector{k,T}[] : Vector{T}(undef, nsamp)
+        for nm in vnms)...)
     try
-        @showprogress 1 for _ in 1:nsamp
+        @showprogress 1 for i in 1:nsamp
             refit!(simulate!(rng, m, β = β, σ = σ, θ = θ))
-            push!(value, vtype((objective(m), sdest(m), fixef!(βscr, m)...,
-                SVector{k}(getθ!(θscr,m)))))
+            value.objective[i] = objective(m)
+            value.σ[i] = sdest(m)
+            fixef!(βscr, m)
+            for (j, bnm) in enumerate(bnms)
+                getproperty(value, bnm)[i] = βscr[j]
+            end
+            push!(value.θ, SVector{k, T}(getθ!(θscr, m)))
         end
     finally
         refit!(m, y₀)
     end
-    Table(value)
+    MixedModelBootstrap(deepcopy(m), value)
 end
 
-function parametricbootstrap(nsamp::Integer, m::LinearMixedModel,
-        props=(:objective, :σ, :β, :θ); β = m.β, σ = m.σ, θ = m.θ)
+function mktable(nsamp, p, k, T)
+    nms = (:objective, :σ, Symbol.(subscriptednames("β", p))..., :θ)
+    (; (nm => nm == :θ ? Vector{SVector{k,T}}(undef, nsamp) : Vector{T}(undef, nsamp) for nm in nms)...)
+end
+
+
+function parametricbootstrap(nsamp::Integer, m::LinearMixedModel, β = m.β, σ = m.σ, θ = m.θ)
     parametricbootstrap(Random.GLOBAL_RNG, nsamp, m, β = β, σ = σ, θ = θ)
+end
+
+function Base.propertynames(bsamp::MixedModelBootstrap)
+    append!([:model, :objective, :σ, :θ, :σs], Symbol.(keys(bsamp.cnamedict)))
+end
+
+function σs(bsamp::MixedModelBootstrap{T}) where {T}
+    m = bsamp.m
+    oldθ = getθ(m)     # keep a copy to restore later
+    retrms = m.reterms
+    value = [typeof(v)[] for v in σs.(retrms, m.σ)]
+    for (σ,θ) in zip(bsamp.bstr.σ, bsamp.bstr.θ)
+        setθ!(m, θ)
+        for (i, v) in enumerate(σs.(retrms, σ))
+            push!(value[i], v)
+        end
+    end
+    refit!(setθ!(m, oldθ))
+    NamedTuple{(Symbol.(fnames(m))...,)}(value)
 end
 
 """
@@ -73,8 +132,7 @@ function simulate!(rng::AbstractRNG, m::LinearMixedModel{T}; β=m.β, σ=m.σ, �
     m
 end
 
-simulate!(m::LinearMixedModel{T}; β=m.β, σ=m.σ, θ=T[]) where {T} =
-    simulate!(Random.GLOBAL_RNG, m, β=β, σ=σ, θ=θ)
+simulate!(m::LinearMixedModel; β=m.β, σ=m.σ, θ=T[]) = simulate!(Random.GLOBAL_RNG, m, β=β, σ=σ, θ=θ)
 
 """
     unscaledre!(y::AbstractVector{T}, M::ReMat{T}, b) where {T}
