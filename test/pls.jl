@@ -243,10 +243,9 @@ end
     @test deviance(fm) ≈ 339.0218639362958 atol=0.001
     simulate!(fm, θ = fm.θ)
     @test_throws DimensionMismatch refit!(fm, zeros(29))
-    Random.seed!(1234321)
-    rtbl = parametricbootstrap(10, fm)
-    @test length(rtbl) == 10
-    @test keys(first(rtbl)) == (:objective, :σ, :β₁, :θ)
+    bsamp = parametricbootstrap(MersenneTwister(1234321), 10, fm)
+    @test length(bsamp.objective) == 10
+    @test keys(bsamp.bstr) == (:objective, :σ, :β₁, :θ)
 end
 
 @testset "Rank deficient" begin
