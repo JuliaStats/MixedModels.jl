@@ -19,56 +19,40 @@ struct VarCorr{T}
 end
 VarCorr(m::MixedModel) = VarCorr(σρs(m), m.σ)
 
+function formats(vc::VarCorr)
+    σρ = vc.σρ
+    nmwd = max(10, maximum(textwidth.(string.(keys(σρ))))) + 1
+    cnmwd = max(6, maximum(textwidth.(string.(keys.(getproperty.(values(σρ), :σ))...,))))
+    σvec = [x for x in values.(getproperty.(values(σρ), :σ))...]
+    varwd = 1 + max(textwidth("Variance"), maximum(textwidth.(showoff(abs2.(σvec), :plain))))
+    stdwd = 1 + max(textwidth("Std.Dev."), maximum(textwidth.(showoff(σvec, :plain))))
+    nmwd, cnmwd, varwd, stdwd, maximum(length.(σvec))
+end
 
 function Base.show(io::IO, vc::VarCorr)
-    println(io, vc.σρ)
-    println(io, "Residual: ", vc.s)
-#=        # FIXME: Do this one term at a time
-    fnms = copy(vc.fnms)
-    stdm = copy(vc.σ)
-    cor = vc.ρ
-    cnms = reduce(append!, vc.cnms, init=String[])
-    if isfinite(vc.s)
-        push!(fnms, :Residual)
-        push!(stdm, [1.])
-        rmul!(stdm, vc.s)
-        push!(cnms, "")
-    end
-    nmwd = maximum(map(textwidth, string.(fnms))) + 1
-    write(io, "Variance components:\n")
-    cnmwd = max(6, maximum(map(textwidth, cnms))) + 1
-    tt = vcat(stdm...)
-    vars = showoff(abs2.(tt), :plain)
-    stds = showoff(tt, :plain)
-    varwd = 1 + max(length("Variance"), maximum(map(textwidth, vars)))
-    stdwd = 1 + max(length("Std.Dev."), maximum(map(textwidth, stds)))
+    nmwd, cnmwd, varwd, stdwd, nρ = formats(vc)
+    println(io, "Variance components:")
     write(io, " "^(2+nmwd))
     write(io, cpad("Column", cnmwd))
     write(io, cpad("Variance", varwd))
     write(io, cpad("Std.Dev.", stdwd))
-    any(s -> length(s) > 1, stdm) && write(io,"  Corr.")
+    nρ > 1 && write(io,"  Corr.")
     println(io)
-    ind = 1
-    for i in 1:length(fnms)
-        stdmi = stdm[i]
-        write(io, ' ')
-        write(io, rpad(fnms[i], nmwd))
-        write(io, rpad(cnms[ind], cnmwd))
-        write(io, lpad(vars[ind], varwd))
-        write(io, lpad(stds[ind], stdwd))
-        ind += 1
+    for (n,v) in pairs(σρ)
+        write(io, rpad(string(n), nmwd))
+        firstrow = true
+        for (cn, cv) in pairs(v.σ)
+            !firstrow && write(io, " "^nmwd)
+            write(io, rpad(string(cn), cnmwd))
+            write(io, lpad(first(showoff([abs2(cv)], :plain)), varwd))
+            write(io, lpad(first(showoff([cv], :plain)), stdwd))
+            firstrow = false
+        end
         println(io)
-        for j in 2:length(stdmi)
-            write(io, " "^(1 + nmwd))
-            write(io, rpad(cnms[ind], cnmwd))
-            write(io, lpad(vars[ind], varwd))
-            write(io, lpad(stds[ind], stdwd))
-            ind += 1
+    end
+end
+#=        # FIXME: Do this one term at a time
             for k in 1:(j-1)
                 @printf(io, "%6.2f", cor[i][j, k])
             end
-            println(io)
-        end
-    end
 =#
-end
