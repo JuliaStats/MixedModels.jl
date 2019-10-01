@@ -38,7 +38,7 @@ function Base.show(io::IO, vc::VarCorr)
     write(io, cpad("Std.Dev.", stdwd))
     nρ > 1 && write(io,"  Corr.")
     println(io)
-    for (n,v) in pairs(σρ)
+    for (n,v) in pairs(vc.σρ)
         write(io, rpad(string(n), nmwd))
         firstrow = true
         for (cn, cv) in pairs(v.σ)
@@ -46,12 +46,16 @@ function Base.show(io::IO, vc::VarCorr)
             write(io, rpad(string(cn), cnmwd))
             write(io, lpad(first(showoff([abs2(cv)], :plain)), varwd))
             write(io, lpad(first(showoff([cv], :plain)), stdwd))
+            println(io)
             firstrow = false
         end
-        println(io)
     end
+    write(io, rpad("Residual", nmwd))
+    write(io, " "^cnmwd)
+    write(io, lpad(first(showoff([abs2(vc.s)], :plain)), varwd))
+    write(io, lpad(first(showoff([vc.s], :plain)), stdwd))
 end
-#=        # FIXME: Do this one term at a time
+#= 
             for k in 1:(j-1)
                 @printf(io, "%6.2f", cor[i][j, k])
             end
