@@ -3,9 +3,6 @@ struct RandomEffectsTerm <: AbstractTerm
     rhs::StatsModels.TermOrTerms
     function RandomEffectsTerm(lhs,rhs)
         if isempty(intersect(StatsModels.termvars(lhs), StatsModels.termvars(rhs)))
-            # when the minimum Julia version is increased to 1.2, we can change
-            # this to the more generic !hasproperty(rhs,:contrasts)
-            # which actually tests the property we care about
             if !isa(rhs, Union{CategoricalTerm,InteractionTerm{<:NTuple{N,CategoricalTerm} where N}})
                 throw(ArgumentError("blocking variables (those behind |) must be Categorical ($(rhs) is not)"))
             end
