@@ -330,6 +330,8 @@ function Base.getproperty(m::LinearMixedModel, s::Symbol)
         sdest(m)
     elseif s == :σs || s == :sigmas
         σs(m)
+    elseif s == :σρs || s == :sigmarhos
+        σρs(m)
     elseif s == :b
         ranef(m)
     elseif s == :objective
