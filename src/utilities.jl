@@ -52,27 +52,31 @@ function normalized_variance_cumsum(A::AbstractMatrix)
     vars ./ last(vars)
 end
 
+const strictlowertrid = Dict(
+    1 => (),
+    2 => ((2,1),),
+    3 => ((2,1), (3,1), (3,2)),
+    4 => ((2,1), (3,1), (4,1), (3,2), (4,2), (4,3)))
 
-function stddevcor!(σ::Vector{T}, ρ::Matrix{T}, scr::Matrix{T}, L::LowerTriangular{T}, sc::T) where {T}
-    length(σ) == (k = size(L, 2)) && size(ρ) == (k, k) && size(scr) == (k, k) ||
-        throw(DimensionMismatch(""))
-    mul!(scr, sc, L)
-    for (i,r) in enumerate(eachrow(scr))
-        σ[i] = σi = norm(r)
-        for j in 1:i
-            r[j] /= σi
+function lowertriinds(k)
+    indpairs = NTuple{2,Int}[]
+    for j in 1:(k-1)
+        for i in (j+1):k
+            push!(indpairs, (i,j))
         end
     end
-    mul!(ρ, LowerTriangular(scr), adjoint(LowerTriangular(scr)))
-    σ, ρ
+    (indpairs...,)
 end
 
-function stddevcor(L::LowerTriangular{T}, sc::T) where {T}
-    k = size(L, 1)
-    stddevcor!(Vector{T}(undef, k), Matrix{T}(undef, k, k), Matrix{T}(undef, k, k), L, sc)
-end
+"""
+    indpairs(k)
 
-stddevcor(L::Cholesky{T}, sc::T) where {T} = stddevcor(L.L, sc)
+Return a tuple of (row,column) tuples in the strict lower triangle of a `k` by `k` matrix.
+
+The results are memoized in the `strictlowertrid` `Dict` and created by `lowertriinds(k)`
+when needed.
+"""
+indpairs(k) = get!(strictlowertrid, k, lowertriinds(k))
 
 """
     subscriptednames(nm, len)

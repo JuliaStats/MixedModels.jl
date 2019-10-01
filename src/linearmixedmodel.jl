@@ -169,8 +169,6 @@ function condVar(m::LinearMixedModel{T}) where {T}
     Array{T, 3}[reshape(abs2.(ll ./ Ld) .* varest(m), (1, 1, length(Ld)))]
 end
 
-Statistics.cor(m::LinearMixedModel{T}) where {T} = Matrix{T}[stddevcor(t)[2] for t in m.reterms]
-
 """
     describeblocks(io::IO, m::MixedModel)
     describeblocks(m::MixedModel)
@@ -300,7 +298,7 @@ end
 
 Return the names of the grouping factors for the random-effects terms.
 """
-fnames(m::MixedModel) = map(x -> x.trm.sym, m.reterms)
+fnames(m::MixedModel) = ((Symbol(tr.trm.sym) for tr in m.reterms)...,)
 
 """
     getθ(m::LinearMixedModel)
@@ -585,7 +583,15 @@ function Base.show(io::IO, m::LinearMixedModel)
     show(io,coeftable(m))
 end
 
-σs(m::LinearMixedModel) = (;(t.trm.sym => σs(t, m.σ) for t in m.reterms)...)
+function σs(m::LinearMixedModel)
+    σ = sdest(m)
+    NamedTuple{fnames(m)}(((σs(t, σ) for t in m.reterms)...,))
+end
+
+function σρs(m::LinearMixedModel)
+    σ = sdest(m)
+    NamedTuple{fnames(m)}(((σρs(t, σ) for t in m.reterms)...,))
+end
 
 function Base.size(m::LinearMixedModel)
     n, p = size(first(m.feterms))
@@ -710,7 +716,7 @@ The default for `trmnms` is all the names of random-effects terms.
 A random effects term is in the zero correlation parameter configuration when the off-diagonal elements of
 λ are all zero - hence there are no correlation parameters in that term being estimated.
 """
-function zerocorr!(m::LinearMixedModel{T}, trmns::Vector{Symbol}) where {T}
+function zerocorr!(m::LinearMixedModel{T}, trmns) where {T}
     reterms = m.reterms
     for trm in reterms
         if fname(trm) in trmns
