@@ -14,28 +14,16 @@ variance-covariance matrices.
 The main purpose of defining this type is to isolate the logic in the show method.
 """
 struct VarCorr{T}
-    σ::Vector{Vector{T}}
-    ρ::Vector{Matrix{T}}
-    fnms::Vector{Symbol}
-    cnms::Vector{Vector{String}}
+    σρ::NamedTuple
     s::T
 end
-function VarCorr(m::MixedModel{T}) where {T}
-    fnms = fname.(m.reterms)
-    cnms = Vector{String}[]
-    σ = Vector{T}[]
-    ρ = Matrix{T}[]
-    for trm in m.reterms
-        σi, ρi = stddevcor(trm)
-        push!(σ, σi)
-        push!(ρ, ρi)
-        push!(cnms, trm.cnames)
-    end
-    VarCorr(σ, ρ, fnms, cnms, sdest(m))
-end
+VarCorr(m::MixedModel) = VarCorr(σρs(m), m.σ)
+
 
 function Base.show(io::IO, vc::VarCorr)
-        # FIXME: Do this one term at a time
+    println(io, vc.σρ)
+    println(io, "Residual: ", vc.s)
+#=        # FIXME: Do this one term at a time
     fnms = copy(vc.fnms)
     stdm = copy(vc.σ)
     cor = vc.ρ
@@ -82,4 +70,5 @@ function Base.show(io::IO, vc::VarCorr)
             println(io)
         end
     end
+=#
 end

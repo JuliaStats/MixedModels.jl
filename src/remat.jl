@@ -399,7 +399,8 @@ function setθ!(A::ReMat{T}, v::AbstractVector{T}) where {T}
     A
 end
 
-σs(A::ReMat{T,1}, sc::T) where {T} = NamedTuple{(Symbol(first(A.cnames)),)}(sc*abs(first(A.λ.data)),)
+σs(A::ReMat{T,1}, sc::T) where {T} =
+    NamedTuple{(Symbol(first(A.cnames)),)}(sc*abs(first(A.λ.data)),)
 
 function σs(A::ReMat{T}, sc::T) where {T}
     λ = A.λ.data
@@ -407,24 +408,11 @@ function σs(A::ReMat{T}, sc::T) where {T}
 end
 
 function σρs(A::ReMat{T,1}, sc::T) where {T}
-    NamedTuple{(σ,)}(NamedTuple{(Symbol(first(A.cnames)),)}(sc*abs(first(A.λ.data)),))
-end
-
-function rowcol(i, k)
-    count = 0
-    for col in 1:(k-1)
-        for row in (col + 1):k
-            count += 1
-            if count == i
-                return row, col
-            end
-        end
-    end
-    return
+    NamedTuple{(:σ,)}((NamedTuple{(Symbol(first(A.cnames)),)}((sc*abs(first(A.λ.data)),)),))
 end
 
 function ρ(i, λ::AbstractMatrix{T}, k, σs::NamedTuple, sc::T)::T where {T}
-    row, col = rowcol(i, k)
+    row, col = indpairs(k)[i]
     (dot(view(λ,row,:), view(λ,col,:)) * abs2(sc)) / (σs[row] * σs[col])
 end
 
@@ -432,24 +420,7 @@ function σρs(A::ReMat{T}, sc::T) where {T}
     λ = A.λ.data
     k = size(λ, 1)
     σs = NamedTuple{(Symbol.(A.cnames)...,)}(ntuple(i -> sc*norm(view(λ,i,1:i)), k))
-    (σs, ntuple(i -> ρ(i,λ,k,σs,sc), (k * (k - 1)) >> 1))
-end
-
-function stddevcor!(σ::Vector, ρ::Matrix, scr::Matrix, A::ReMat{T,1}) where {T}
-    copyto!(σ, A.λ)
-    ρ[1] = 1
-    σ, ρ
-end
-
-stddevcor!(σ::Vector{T}, ρ::Matrix{T}, scr::Matrix{T}, A::ReMat{T}) where {T} =
-    stddevcor!(σ, ρ, scr, A.λ)
-
-stddevcor(A::ReMat{T,1}) where {T} = (vec(A.λ), ones(T, 1, 1))
-
-function stddevcor(A::ReMat)
-    σ = rowlengths(A)
-    std = Diagonal(σ) \ A.λ
-    σ, std * std'
+    NamedTuple{(:σ,:ρ)}((σs, ntuple(i -> ρ(i,λ,k,σs,sc), (k * (k - 1)) >> 1)))
 end
 
 vsize(A::ReMat{T,S}) where {T,S} = S
