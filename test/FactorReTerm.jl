@@ -192,7 +192,7 @@ end
         # implict intercept
         ff = apply_schema(@formula(y ~ 1 + (f | g)), schema(dat), MixedModel)
         rem = modelcols(ff.rhs[end], dat) 
-        size(rem) == (18, 18)
+        @test size(rem) == (18, 18)
         @test rem[1:3, 1:4] == [1 0 0 0
                                 1 1 0 0
                                 1 0 1 0]
@@ -200,7 +200,7 @@ end
         # explicit intercept
         ff = apply_schema(@formula(y ~ 1 + (1+f | g)), schema(dat), MixedModel)
         rem = modelcols(ff.rhs[end], dat) 
-        size(rem) == (18, 18)
+        @test size(rem) == (18, 18)
         @test rem[1:3, 1:4] == [1 0 0 0
                                 1 1 0 0
                                 1 0 1 0]
@@ -208,7 +208,7 @@ end
         # explicit intercept + full dummy
         ff = apply_schema(@formula(y ~ 1 + (1+fulldummy(f) | g)), schema(dat), MixedModel)
         rem = modelcols(ff.rhs[end], dat)
-        size(rem) == (18, 24)
+        @test size(rem) == (18, 24)
         @test rem[1:3, 1:4] == [1 1 0 0
                                 1 0 1 0
                                 1 0 0 1]
@@ -216,7 +216,7 @@ end
         # explicit dropped intercept (implicit full dummy)
         ff = apply_schema(@formula(y ~ 1 + (0+f | g)), schema(dat), MixedModel)
         rem = modelcols(ff.rhs[end], dat)
-        size(rem) == (18, 18)
+        @test size(rem) == (18, 18)
         @test rem[1:3, 1:4] == [1 0 0 0
                                 0 1 0 0
                                 0 0 1 0]
