@@ -6,7 +6,7 @@ struct RandomEffectsTerm <: AbstractTerm
             # when the minimum Julia version is increased to 1.2, we can change
             # this to the more generic !hasproperty(rhs,:contrasts)
             # which actually tests the property we care about
-            if !isa(rhs, Union{CategoricalTerm,InteractionTerm})
+            if !isa(rhs, Union{CategoricalTerm,InteractionTerm{<:NTuple{N,CategoricalTerm} where N}})
                 throw(ArgumentError("blocking variables (those behind |) must be Categorical ($(rhs) is not)"))
             end
             new(lhs, rhs)
