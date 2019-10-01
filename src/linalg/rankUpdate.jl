@@ -11,7 +11,7 @@ The order of the arguments
 """
 function rankUpdate! end
 
-function rankUpdate!(C::HermOrSym{T,S}, a::StridedVector{T},  
+function rankUpdate!(C::HermOrSym{T,S}, a::StridedVector{T},
         α=true) where {T<:BlasReal,S<:StridedMatrix}
     BLAS.syr!(C.uplo, T(α), a, C.data)
     C  ## to ensure that the return value is HermOrSym
@@ -70,7 +70,7 @@ function rankUpdate!(C::HermOrSym{T,UniformBlockDiagonal{T}}, A::BlockedSparse{T
         α=true) where {T,S}
     Ac = A.cscmat
     cp = Ac.colptr
-    all(diff(cp) .== S) || 
+    all(diff(cp) .== S) ||
         throw(ArgumentError("Each column of A must contain exactly S nonzeros"))
     j,k,l = size(C.data.data)
     S == j == k && div(Ac.m, S) == l ||
@@ -86,3 +86,6 @@ function rankUpdate!(C::HermOrSym{T,UniformBlockDiagonal{T}}, A::BlockedSparse{T
 end
 
 rankUpdate!(C::HermOrSym{T,Matrix{T}}, A::BlockedSparse{T}, α=true) where {T} = rankUpdate!(C, A.cscmat, α)
+
+# missing method
+# rankUpdate!(::LinearAlgebra.Diagonal{Float64,Array{Float64,1}}, ::LinearAlgebra.Diagonal{Float64,SparseArrays.SparseVector{Float64,Int32}}, ::Float64)
