@@ -65,6 +65,20 @@ function LinearMixedModel(f::FormulaTerm, tbl::Tables.ColumnTable;
         end
     end
     push!(feterms, FeMat(y, [""]))
+
+    # detect and combine RE terms with the same grouping var
+    grps = Set([fname(rt) for rt in reterms])
+    if length(grps) != length(reterms)
+        # this reduction step could be expensive for large models
+        reterms_simplified = ReMat{T}[]
+        for gg in grps
+            combined = amalgamate([ret for ret in reterms if fname(ret) == gg])
+            push!(reterms_simplified, combined)
+        end
+        reterms = reterms_simplified
+    end
+
+
     sort!(reterms, by=nranef, rev=true)
 
     # create A and L
