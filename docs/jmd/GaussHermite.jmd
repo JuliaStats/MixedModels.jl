@@ -95,7 +95,7 @@ These data are available as the `Contraception` data frame in the test data for 
 using DataFrames, DataFramesMeta, PooledArrays, RData
 const dat = Dict(Symbol(k)=>v for (k,v) in 
     load(joinpath(dirname(pathof(MixedModels)), "..", "test", "dat.rda")));
-contra = dat.Contraception;
+contra = dat[:Contraception];
 contra.urbdist = PooledArray(string.(contra.urb, contra.d));
 describe(contra)
 ```
