@@ -127,7 +127,7 @@ end
 
 Overwrite the response (i.e. `m.trms[end]`) with a simulated response vector from model `m`.
 """
-function simulate!(rng::AbstractRNG, m::LinearMixedModel{T}; β=m.β, σ=m.σ, θ=T[]) where {T}
+function simulate!(rng::AbstractRNG, m::LinearMixedModel{T}; β = coef(m), σ=m.σ, θ=T[]) where {T}
     isempty(θ) || setθ!(m, θ)
     y = randn!(rng, response(m))      # initialize y to standard normal
     for trm in m.reterms              # add the unscaled random effects
