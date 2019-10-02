@@ -24,6 +24,7 @@ using GLM: Link, canonicallink
 using StatsFuns: log2π
 
 import Base: *
+import GLM: dispersion, dispersion_parameter
 import NLopt: Opt
 import StatsBase: fit, fit!
 
@@ -61,6 +62,8 @@ export @formula,
        describeblocks,
        condVar,
        deviance,
+       dispersion,
+       dispersion_parameter,
        dof,
        dof_residual,
        fit,
