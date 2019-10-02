@@ -176,7 +176,7 @@ fm3alt = zerocorr!(deepcopy(fm2), [:G])
 ```
 For this model the matrix $\bf Z$ is the same as that of model `fm2` but the diagonal blocks of $\Lambda_\theta$ are themselves diagonal.
 ```{julia;term=true}
-MixedModels.getΛ(t31)
+t31.λ
 MixedModels.getθ(t31)
 ```
 Random-effects terms with distinct grouping factors generate distinct elements of the `trms` member of the `LinearMixedModel` object.
