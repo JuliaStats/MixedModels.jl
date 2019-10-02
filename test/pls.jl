@@ -19,6 +19,7 @@ const LMM = LinearMixedModel
     @test fm1.θ == ones(1)
     fm1.θ = ones(1)
     @test fm1.θ == ones(1)
+#    @test_warn "Model has not been fit" show(fm1)
 
     @test objective(updateL!(setθ!(fm1, [0.713]))) ≈ 327.34216280955366
     MixedModels.describeblocks(IOBuffer(), fm1)
@@ -38,7 +39,21 @@ const LMM = LinearMixedModel
     @test nobs(fm1) == 30
     @test MixedModels.fixef!(zeros(1),fm1) ≈ [1527.5]
     @test coef(fm1) ≈ [1527.5]
+    fm1β = fm1.βs
+    @test fm1β isa NamedTuple
+    @test isone(length(fm1β))
+    @test first(values(fm1β)) ≈ 1527.5
+    fm1σρ = fm1.σρs
+    @test fm1σρ isa NamedTuple
+    @test isone(length(fm1σρ))
+    @test isone(length(getproperty(first(fm1σρ), :σ)))
+    @test isempty(getproperty(first(fm1σρ), :ρ))
     @test fm1.σ == sdest(fm1)
+    @test fm1.b == ranef(fm1)
+    @test fm1.u == ranef(fm1, uscale=true)
+    @test fm1.stderror == stderror(fm1)
+    @test isone(length(fm1.pvalue))
+    @test fm1.objective == objective(fm1)
     @test fm1.σ ≈ 49.510099986291145 atol=1.e-5
     @test fm1.X == ones(30,1)
     @test fm1.y == dat[:Dyestuff][!, :Y]
@@ -67,6 +82,7 @@ const LMM = LinearMixedModel
 
     fit!(fm1, REML=true)
     @test objective(fm1) ≈ 319.65427684225216 atol=0.0001
+    @test_throws ArgumentError loglikelihood(fm1)
     @test dof_residual(fm1) ≥ 0
     print(IOBuffer(), fm1)
 end
