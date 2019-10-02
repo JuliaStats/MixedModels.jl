@@ -52,7 +52,7 @@ const LMM = LinearMixedModel
     @test fm1.b == ranef(fm1)
     @test fm1.u == ranef(fm1, uscale=true)
     @test fm1.stderror == stderror(fm1)
-    @test isone(length(fm1.pvalue))
+    @test isone(length(fm1.pvalues))
     @test fm1.objective == objective(fm1)
     @test fm1.σ ≈ 49.510099986291145 atol=1.e-5
     @test fm1.X == ones(30,1)
