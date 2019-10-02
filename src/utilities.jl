@@ -11,7 +11,9 @@ the proportion of nonzeros exceeds `threshold`.
 function densify(A::SparseMatrixCSC, threshold::Real = 0.25)
     m, n = size(A)
     if m == n && isdiag(A)  # convert diagonal sparse to Diagonal
-        Diagonal(diag(A))
+        # the diagonal is always dense (otherwise rank deficit)
+        # so make sure it's stored as such
+        Diagonal(Vector(diag(A)))
     elseif nnz(A)/(m * n) ≤ threshold
         A
     else
@@ -19,6 +21,9 @@ function densify(A::SparseMatrixCSC, threshold::Real = 0.25)
     end
 end
 densify(A::AbstractMatrix, threshold::Real = 0.3) = A
+
+densify(A::SparseVector, threshold::Real = 0.3)  = Vector(A)
+densify(A::Diagonal{T, SparseVector}, threshold::Real = 0.3) where T = Diagonal(Vector(A.diag))
 
 """
     RaggedArray{T,I}

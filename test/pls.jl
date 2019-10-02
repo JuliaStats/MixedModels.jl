@@ -254,7 +254,7 @@ end
 
     # combining [ReMat{T,S1}, ReMat{T,S2}] for S1 ≠ S2
     slpcat = categorical!(deepcopy(dat[:sleepstudy]), [:U])
-    @test LinearMixedModel(@formula(Y ~ 1 + U + (1|G) + (0 + U|G)), slpcat) isa LinearMixedModel
+    @test LMM(@formula(Y ~ 1 + U + (1|G) + (0 + U|G)), slpcat) isa LMM
 end
 
 @testset "d3" begin

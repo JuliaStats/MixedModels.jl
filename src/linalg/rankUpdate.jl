@@ -66,6 +66,8 @@ function rankUpdate!(C::Diagonal{T}, A::SparseMatrixCSC{T}, α=true, β=true) wh
     C
 end
 
+rankUpdate!(C::Diagonal{T}, A::BlockedSparse{T}, α=true, β=true) where {T <: Number} = rankUpdate!(C, sparse(A), α, β)
+
 function rankUpdate!(C::HermOrSym{T,UniformBlockDiagonal{T}}, A::BlockedSparse{T,S},
         α=true) where {T,S}
     Ac = A.cscmat
@@ -87,5 +89,11 @@ end
 
 rankUpdate!(C::HermOrSym{T,Matrix{T}}, A::BlockedSparse{T}, α=true) where {T} = rankUpdate!(C, A.cscmat, α)
 
-# missing method
-# rankUpdate!(::LinearAlgebra.Diagonal{Float64,Array{Float64,1}}, ::LinearAlgebra.Diagonal{Float64,SparseArrays.SparseVector{Float64,Int32}}, ::Float64)
+function rankUpdate!(C::Diagonal{T,S}, A::Diagonal{T,S}, α::Number=true, β::Number=true) where {T, S}    # C := β*C + α*A'A
+
+    length(C.diag) == length(A.diag) ||
+        throw(DimensionMismatch("length(C.diag) ≠ length(A.diag)"))
+
+    C.diag .= β .* C.diag .+ α .* abs2.(A.diag)
+    C
+end
