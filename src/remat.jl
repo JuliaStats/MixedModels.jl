@@ -416,7 +416,8 @@ function σs(A::ReMat{T}, sc::T) where {T}
 end
 
 function σρs(A::ReMat{T,1}, sc::T) where {T}
-    NamedTuple{(:σ,)}((NamedTuple{(Symbol(first(A.cnames)),)}((sc*abs(first(A.λ.data)),)),))
+    NamedTuple{(:σ,:ρ)}((NamedTuple{(Symbol(first(A.cnames)),)}((sc*abs(first(A.λ.data)),)),
+        ()))
 end
 
 function ρ(i, λ::AbstractMatrix{T}, k, σs::NamedTuple, sc::T)::T where {T}
