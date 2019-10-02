@@ -89,8 +89,7 @@ end
 
 rankUpdate!(C::HermOrSym{T,Matrix{T}}, A::BlockedSparse{T}, α=true) where {T} = rankUpdate!(C, A.cscmat, α)
 
-function rankUpdate!(C::Diagonal{T,S}, A::Diagonal{T,S}, α::Number=true, β::Number=true) where {T, S}    # C := β*C + α*A'A
-
+function rankUpdate!(C::Diagonal{T,S}, A::Diagonal{T,S}, α::Number=true, β::Number=true) where {T, S}
     length(C.diag) == length(A.diag) ||
         throw(DimensionMismatch("length(C.diag) ≠ length(A.diag)"))
 

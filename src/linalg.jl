@@ -1,6 +1,18 @@
-function mulαβ!(C::Matrix{T}, A::Matrix{T}, adjB::Adjoint{T,<:Matrix{T}}, 
+function mulαβ!(C::Matrix{T}, A::Matrix{T}, adjB::Adjoint{T,<:Matrix{T}},
         α=true, β=false) where {T<:BlasFloat}
     BLAS.gemm!('N', 'C', T(α), A, adjB.parent, T(β), C)
+end
+
+function mulαβ!(C::Matrix{T}, A::Matrix{T}, adjB::Diagonal{T,S},
+        α=true, β=false) where {T<:BlasFloat,S}
+    # adapted from LinearAlgebra/src/diagonal.jl in 1.3
+    C .= (A .* permutedims(adjB.diag)) .* α .+ C .* β
+end
+
+function mulαβ!(C::SparseMatrixCSC{T}, A::SparseMatrixCSC{T}, adjB::Diagonal{T,S},
+        α=true, β=false) where {T<:BlasFloat,S}
+    # adapted from LinearAlgebra/src/diagonal.jl in 1.3
+    C .= (A .* permutedims(adjB.diag)) .* α .+ C .* β
 end
 
 function mulαβ!(C::Matrix{T}, A::SparseMatrixCSC{T}, adjB::Adjoint{T,<:SparseMatrixCSC{T}},
