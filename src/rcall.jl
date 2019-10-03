@@ -1,5 +1,6 @@
-import RCall: rcopy, RClass, rcopytype, S4Sxp
-
+import RCall: rcopy, RClass, rcopytype, reval, S4Sxp, sexp, protect, unprotect, sexpclass, @rput, @rget
+# if RCall is available, then so is DataFrames
+import DataFrames: DataFrame
 # from R
 # note that weights are not extracted
 function rcopy(::Type{LinearMixedModel}, s::Ptr{S4Sxp})
@@ -11,56 +12,66 @@ function rcopy(::Type{LinearMixedModel}, s::Ptr{S4Sxp})
     m = LinearMixedModel(f,data)
     m.optsum.REML = reml
     m.optsum.feval = rcopy(s[:optinfo][:feval])
+    m.optsum.final = rcopy(s[:optinfo][:val])
+    m.optsum.optimizer = Symbol("$(rcopy(s[:optinfo][:optimizer])) (lme4)")
+    m.optsum.returnvalue = Bool(rcopy(s[:optinfo][:conv][:opt])) ? :FAILURE : :SUCCESS
+    m.optsum.fmin = reml ? rcopy(s[:devcomp][:cmp][:REML]) : rcopy(s[:devcomp][:cmp][:dev])
     updateL!(setθ!(m, θ))
 end
 
 rcopytype(::Type{RClass{:lmerMod}}, s::Ptr{S4Sxp}) = LinearMixedModel
 
-#     jreml = ifelse(REML, "true", "false")
-#
-#     julia_assign("jlmerdat",data)
-#     jcall <- sprintf("jm = fit!(LinearMixedModel(@formula(%s),jlmerdat),REML=%s);",jf,jreml)
-#
-#     jout <- julia_command(jcall)
-#
-#     joptimizerOutput <- list(par=julia_eval("jm.optsum.final"),
-#                          fval=julia_eval("jm.optsum.fmin"),
-#                          feval=julia_eval("jm.optsum.feval"),
-#                          # MixedModels.jl doesn't yet implement a lot of the
-#                          # post-fit convergence checks that lme4 does but a very
-#                          # crude one is provided by checking whether we reached
-#                          # iteration stop. Julia has a few good packages for
-#                          # Automatic Differentiation, maybe it's worthwhile to
-#                          # use those for the gradient and Hessian checks to
-#                          # really speed things up?
-#                          conv=julia_eval("jm.optsum.maxfeval") == julia_eval("jm.optsum.feval"),
-#                          message=julia_eval("jm.optsum.returnvalue"),
-#                          optimizer=julia_eval("jm.optsum.optimizer"))
-#
-#
-#     # we could extract this from the julia object, but the parsing is quite fast
-#     # in lme4 and then we don't need to worry about converting formats and
-#     # datatypes
-#
-#     parsedFormula <- lFormula(formula=formula,
-#                               data=data,
-#                               REML=REML)
-#     # this bit should probably be reworked to extract the julia fields
-#     devianceFunction <- do.call(mkLmerDevfun, parsedFormula)
-#     optimizerOutput <- optimizeLmer(devianceFunction,start=joptimizerOutput$par,
-#                                     control=list(maxeval=1))
-#     optimizerOutput$feval <- joptimizerOutput$feval
-#     optimizerOutput$message <- joptimizerOutput$message
-#     optimizerOutput$optimizer <- joptimizerOutput$optimizer
-#
-#     rho <- environment(devianceFunction)
-#     # especially rho$resp seems relevant
-#
-#     mkMerMod(rho = rho,
-#             opt = optimizerOutput,
-#             reTrms = parsedFormula$reTrms,
-#             fr = parsedFormula$fr)
-#
-# }
-#
-# system.time(jm1 <- jmer(y ~ 1 + service + (1|s) + (1|d) + (1|dept), InstEval, REML=FALSE))
+# TODO: add alternative methods for tbl
+# TODO: fix some conversions -- Julia->R->Julia roundtrip currently due to
+#        ERROR: REvalError: Error in function (x, value, pos = -1, envir = as.environment(pos), inherits = FALSE,  :
+#          SET_VECTOR_ELT() can only be applied to a 'list', not a 'character'
+function sexp(::Type{RClass{:lmerMod}}, x::Tuple{LinearMixedModel{T}, DataFrame}) where T
+    m, tbl = x
+    # should we assume the user is smart enough?
+    reval("""if(!require(lme4)){install.packages("lme4"); library(lme4)}""")
+
+    data = tbl
+    formula = String(Symbol(m.formula))
+    θ = m.θ
+
+    REML = m.optsum.REML ? "TRUE" : "FALSE"
+    par = m.optsum.final
+    fval = m.optsum.fmin
+    feval = m.optsum.feval
+    conv = m.optsum.returnvalue == :SUCCESS ? 0 : 1
+    optimizer = String(m.optsum.optimizer)
+    message = "fit with MixedModels.jl"
+    # yes, it overwrites any variable named data, but you shouldn't be naming
+    # your variables that anyway!
+    @rput data
+    @rput par
+
+    r = """
+         parsedFormula <- lFormula(formula=$(formula),
+                                   data=data,
+                                   REML=$(REML))
+         # this bit should probably be reworked to extract the julia fields
+         # but it's easier to just let lme4 do a single step and the internal
+         # representations are slightly different anyway
+         devianceFunction <- do.call(mkLmerDevfun, parsedFormula)
+         optimizerOutput <- optimizeLmer(devianceFunction,start=par,
+                                         control=list(maxeval=1,calc.derivs=FALSE))
+         optimizerOutput\$feval <- $(feval)
+         optimizerOutput\$message <- "$(message)"
+         optimizerOutput\$optimizer <- "$(optimizer)"
+
+         rho <- environment(devianceFunction)
+
+         mkMerMod(rho = rho,
+                 opt = optimizerOutput,
+                 reTrms = parsedFormula\$reTrms,
+                 fr = parsedFormula\$fr)
+    """
+    @debug r
+    r = reval(r)
+    r = protect(sexp(r))
+    unprotect(1)
+    r
+end
+
+sexpclass(x::Tuple{LinearMixedModel{T}, DataFrame}) where T = RClass{:lmerMod}
