@@ -24,6 +24,12 @@ notifications:
 
 install:
   - ps: iex ((new-object net.webclient).DownloadString("https://raw.githubusercontent.com/JuliaCI/Appveyor.jl/version-1/bin/install.ps1"))
+# taken from RCall
+# Download and install R binary
+  - ps: |
+      (new-object net.webclient).DownloadString("http://cran.rstudio.com/bin/windows/base/") -match 'href="(R-[0-9.]*[a-zA-Z]*-win.exe)"';
+      (new-object net.webclient).DownloadFile($("http://cran.rstudio.com/bin/windows/base/"+$matches[1]),"C:\projects\R-binary.exe")
+  - C:\projects\R-binary.exe /VERYSILENT /DIR=C:\projects\R
 
 build_script:
   - echo "%JL_BUILD_SCRIPT%"
