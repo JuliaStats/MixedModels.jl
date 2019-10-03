@@ -12,10 +12,7 @@ Pages = [
         "constructors.md",
         "optimization.md",
         "GaussHermite.md",
-#        "bootstrap.md",
-        "SimpleLMM.md",
-        "MultipleTerms.md",
-        "SingularCovariance.md",
-        "SubjectItem.md"]
+        "bootstrap.md",
+]
 Depth = 2
 ```
