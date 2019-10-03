@@ -1,6 +1,4 @@
-using RCall, MixedModels
-
-import RCall: rcopy, RClass, rcopytype
+import RCall: rcopy, RClass, rcopytype, S4Sxp
 
 # from R
 # note that weights are not extracted

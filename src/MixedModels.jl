@@ -7,6 +7,7 @@ using BlockArrays,
       NamedArrays,
       NLopt,
       Random,
+      Requires,
       ProgressMeter,
       Showoff,
       SparseArrays,
@@ -120,5 +121,9 @@ include("linalg/rankUpdate.jl")
 include("linalg/logdet.jl")
 include("linalg.jl")
 include("simulate.jl")
+
+function __init__()
+    @require RCall="6f49c342-dc21-5d91-9882-a32aef131414" include("rcall.jl")
+end
 
 end # module
