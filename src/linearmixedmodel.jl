@@ -324,6 +324,7 @@ end
 function Base.getproperty(m::LinearMixedModel, s::Symbol)
     if s == :θ || s == :theta
         v = getθ(m)
+        
         SVector{length(v)}(v)
     elseif s == :β || s == :beta
         coef(m)
