@@ -187,6 +187,10 @@ describeblocks(m::MixedModel) = describeblocks(stdout, m)
 
 StatsBase.deviance(m::MixedModel) = objective(m)
 
+GLM.dispersion(m::LinearMixedModel, sqr::Bool=false) = sqr ? varest(m) : sdest(m)
+
+GLM.dispersion_parameter(m::LinearMixedModel) = true
+
 StatsBase.dof(m::LinearMixedModel) = size(m)[2] + sum(nθ, m.reterms) + 1
 
 function StatsBase.dof_residual(m::LinearMixedModel)::Int

@@ -13,62 +13,63 @@ variance-covariance matrices.
 
 The main purpose of defining this type is to isolate the logic in the show method.
 """
-struct VarCorr{T}
+struct VarCorr
     σρ::NamedTuple
-    s::T
+    s
 end
-VarCorr(m::MixedModel) = VarCorr(σρs(m), m.σ)
-
+VarCorr(m::MixedModel) =
+   VarCorr(σρs(m), dispersion_parameter(m) ? dispersion(m) : nothing)
 
 function Base.show(io::IO, vc::VarCorr)
-    println(io, vc.σρ)
-    println(io, "Residual: ", vc.s)
-#=        # FIXME: Do this one term at a time
-    fnms = copy(vc.fnms)
-    stdm = copy(vc.σ)
-    cor = vc.ρ
-    cnms = reduce(append!, vc.cnms, init=String[])
-    if isfinite(vc.s)
-        push!(fnms, :Residual)
-        push!(stdm, [1.])
-        rmul!(stdm, vc.s)
-        push!(cnms, "")
+    σρ = vc.σρ
+    nmvec = string.([keys(σρ)...])
+    cnmvec = string.(foldl(vcat, [keys(sig)...] for sig in getproperty.(values(σρ), :σ)))
+    σvec = vcat(collect.(values.(getproperty.(values(σρ), :σ)))...)
+    if !isnothing(vc.s)
+        push!(σvec, vc.s)
+        push!(nmvec, "Residual")
     end
-    nmwd = maximum(map(textwidth, string.(fnms))) + 1
-    write(io, "Variance components:\n")
-    cnmwd = max(6, maximum(map(textwidth, cnms))) + 1
-    tt = vcat(stdm...)
-    vars = showoff(abs2.(tt), :plain)
-    stds = showoff(tt, :plain)
-    varwd = 1 + max(length("Variance"), maximum(map(textwidth, vars)))
-    stdwd = 1 + max(length("Std.Dev."), maximum(map(textwidth, stds)))
-    write(io, " "^(2+nmwd))
+    nmwd = maximum(textwidth.(nmvec)) + 1
+    cnmwd = maximum(textwidth.(cnmvec)) + 1
+    nρ = maximum(length.(getproperty.(values(σρ), :ρ)))
+    varvec = abs2.(σvec)
+    showσvec = showoff(σvec, :plain)
+    showvarvec = showoff(varvec, :plain)
+    varwd = maximum(textwidth.(showvarvec)) + 1
+    stdwd = maximum(textwidth.(showσvec)) + 1
+    println(io, "Variance components:")
+    write(io, " "^(nmwd))
     write(io, cpad("Column", cnmwd))
     write(io, cpad("Variance", varwd))
     write(io, cpad("Std.Dev.", stdwd))
-    any(s -> length(s) > 1, stdm) && write(io,"  Corr.")
+    iszero(nρ) || write(io,"  Corr.")
     println(io)
     ind = 1
-    for i in 1:length(fnms)
-        stdmi = stdm[i]
-        write(io, ' ')
-        write(io, rpad(fnms[i], nmwd))
-        write(io, rpad(cnms[ind], cnmwd))
-        write(io, lpad(vars[ind], varwd))
-        write(io, lpad(stds[ind], stdwd))
-        ind += 1
-        println(io)
-        for j in 2:length(stdmi)
-            write(io, " "^(1 + nmwd))
-            write(io, rpad(cnms[ind], cnmwd))
-            write(io, lpad(vars[ind], varwd))
-            write(io, lpad(stds[ind], stdwd))
-            ind += 1
-            for k in 1:(j-1)
-                @printf(io, "%6.2f", cor[i][j, k])
+    for (i,v) in enumerate(values(vc.σρ))
+        write(io, rpad(nmvec[i], nmwd))
+        firstrow = true
+        k = length(v.σ)   # number of columns in grp factor k
+        ρ = v.ρ
+        ρind = 0
+        for j in 1:k
+            !firstrow && write(io, " "^nmwd)
+            write(io, rpad(cnmvec[ind], cnmwd))
+            write(io, lpad(showvarvec[ind], varwd))
+            write(io, lpad(showσvec[ind], stdwd))
+            for l in 1:(j - 1)
+                ρind += 1
+                @printf(io, "%6.2f", ρ[ρind])
             end
             println(io)
+            firstrow = false
+            ind += 1
         end
     end
-=#
+    if !isnothing(vc.s)
+        write(io, rpad(last(nmvec), nmwd))
+        write(io, " "^cnmwd)
+        write(io, lpad(showvarvec[ind], varwd))
+        write(io, lpad(showσvec[ind], stdwd))
+    end
+    println(io)
 end
