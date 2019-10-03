@@ -42,11 +42,12 @@ rng = MersenneTwister(1234321);
 then create a bootstrap sample
 
 ```julia
-samp = parametricbootstrap(rng, 100_000, m1, (:σ, :β, :θ))
+samp = parametricbootstrap(rng, 100_000, m1);
+DataFrame(samp.bstr)
 ```
 
-The results from the sampling are returned as a `Table`, as defined in the `TypedTables.jl` package.
-Both $\beta$ and $\theta$ are vectors - in this case one-dimensional vectors.  The `first` and `last` functions are useful for extracting individual elements from the sampled vectors.
+The results from the bootstrap sampling are returned as a `Table`, as defined in the `TypedTables.jl` package.
+The $\theta$ column is a vector - in this case a one-dimensional vector.  The `first` and `last` functions are useful for extracting individual elements from the sampled vectors.
 
 Notice that, for some samples, the estimated value of $\theta$ is `[0.0]`.  In fact, this is the case for about about 10% of all the samples.
 
@@ -67,11 +68,11 @@ plot(x=first.(samp.θ), Geom.density, Guide.xlabel("Parametric bootstrap estimat
 ```
 
 ```julia
-plot(x=first.(samp.θ) .* samp.σ, Geom.density, Guide.xlabel("Parametric bootstrap estimates of σ₁"))
+plot(x=first.(samp.σs.Batch), Geom.density, Guide.xlabel("Parametric bootstrap estimates of σ₁"))
 ```
 
-has a mode at zero.  Although this mode shows up as being diffuse, this is an artifact of the way that density plots are created.  In fact, it is a pulse, as can be seen from a histogram.
+has a mode at zero.  Although this mode appears to be diffuse, this is an artifact of the way that density plots are created.  In fact, it is a pulse, as can be seen from a histogram.
 
 ```julia
-plot(x=first.(samp.θ).*samp.σ, Geom.histogram, Guide.xlabel("Parametric bootstrap estimates of σ₁"))
+plot(x=first.(samp.σs.Batch), Geom.histogram, Guide.xlabel("Parametric bootstrap estimates of σ₁"))
 ```

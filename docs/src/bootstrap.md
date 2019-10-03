@@ -11,7 +11,7 @@ an efficient parametric bootstrap for linear mixed-effects models.
 for generating sample values of a statistic, allowing for visualization of the distribution of the
 statistic or for inference from this sample of values.
 
-A _parametric bootstrap_ is used with a parametric model, `m`, that has been fitted to data.
+A _parametric bootstrap_ is used with a parametric model, `m`, that has been fit to data.
 The procedure is to simulate `n` response vectors from `m` using the estimated parameter values
 and refit `m` to these responses in turn, accumulating the statistics of interest at each iteration.
 
@@ -43,9 +43,9 @@ Linear mixed model fit by maximum likelihood
  -163.66353  327.32706  333.32706  337.53065
 
 Variance components:
-              Column    Variance  Std.Dev. 
- Batch    (Intercept)  1388.3334 37.260347
- Residual              2451.2500 49.510100
+            Column    Variance  Std.Dev. 
+Batch    (Intercept)  1388.3333 37.260345
+Residual              2451.2500 49.510100
  Number of obs: 30; levels of grouping factors: 6
 
   Fixed-effects parameters:
@@ -73,40 +73,40 @@ rng = MersenneTwister(1234321);
 then create a bootstrap sample
 
 ````julia
-samp = parametricbootstrap(rng, 100_000, m1, (:σ, :β, :θ))
+samp = parametricbootstrap(rng, 100_000, m1);
+DataFrame(samp.bstr)
 ````
 
 
 ````
-Table with 3 columns and 100000 rows:
-      σ        β          θ
-    ┌─────────────────────────────────
- 1  │ 67.4315  [1509.13]  [0.212245]
- 2  │ 47.9831  [1538.08]  [0.532841]
- 3  │ 50.1346  [1508.02]  [0.434076]
- 4  │ 53.2238  [1538.47]  [0.771382]
- 5  │ 45.2975  [1520.62]  [0.423428]
- 6  │ 36.7556  [1536.94]  [1.33812]
- 7  │ 53.8161  [1519.88]  [0.867993]
- 8  │ 47.8989  [1528.43]  [0.785752]
- 9  │ 41.4     [1497.46]  [0.365355]
- 10 │ 64.616   [1532.65]  [0.0]
- 11 │ 57.2036  [1552.54]  [0.00848485]
- 12 │ 49.355   [1519.28]  [0.493776]
- 13 │ 59.6272  [1509.04]  [0.306747]
- 14 │ 51.5431  [1531.7]   [0.630042]
- 15 │ 64.0205  [1536.17]  [0.238096]
- 16 │ 58.6856  [1526.42]  [0.0]
- 17 │ 43.218   [1517.67]  [0.832206]
- ⋮  │    ⋮         ⋮           ⋮
+100000×4 DataFrame
+│ Row    │ objective │ σ       │ β₁      │ θ          │
+│        │ Float64   │ Float64 │ Float64 │ StaticAr…  │
+├────────┼───────────┼─────────┼─────────┼────────────┤
+│ 1      │ 339.022   │ 67.4315 │ 1509.13 │ [0.212245] │
+│ 2      │ 322.689   │ 47.9831 │ 1538.08 │ [0.53284]  │
+│ 3      │ 324.002   │ 50.1346 │ 1508.02 │ [0.434076] │
+│ 4      │ 331.887   │ 53.2238 │ 1538.47 │ [0.771383] │
+│ 5      │ 317.771   │ 45.2975 │ 1520.62 │ [0.423428] │
+│ 6      │ 315.181   │ 36.7556 │ 1536.94 │ [1.33812]  │
+│ 7      │ 333.641   │ 53.8161 │ 1519.88 │ [0.867993] │
+⋮
+│ 99993  │ 316.391   │ 46.8395 │ 1550.0  │ [0.124962] │
+│ 99994  │ 317.945   │ 44.8718 │ 1521.41 │ [0.478633] │
+│ 99995  │ 325.988   │ 51.6486 │ 1555.92 │ [0.44905]  │
+│ 99996  │ 326.679   │ 52.1719 │ 1551.36 │ [0.455478] │
+│ 99997  │ 331.908   │ 61.1217 │ 1500.47 │ [0.0]      │
+│ 99998  │ 316.566   │ 40.2188 │ 1531.02 │ [0.905006] │
+│ 99999  │ 323.937   │ 51.2282 │ 1530.76 │ [0.331144] │
+│ 100000 │ 315.836   │ 38.3816 │ 1544.5  │ [1.1136]   │
 ````
 
 
 
 
 
-The results from the sampling are returned as a `Table`, as defined in the `TypedTables.jl` package.
-Both $\beta$ and $\theta$ are vectors - in this case one-dimensional vectors.  The `first` and `last` functions are useful for extracting individual elements from the sampled vectors.
+The results from the bootstrap sampling are returned as a `Table`, as defined in the `TypedTables.jl` package.
+The $\theta$ column is a vector - in this case a one-dimensional vector.  The `first` and `last` functions are useful for extracting individual elements from the sampled vectors.
 
 Notice that, for some samples, the estimated value of $\theta$ is `[0.0]`.  In fact, this is the case for about about 10% of all the samples.
 
@@ -144,7 +144,7 @@ plot(x=first.(samp.θ), Geom.density, Guide.xlabel("Parametric bootstrap estimat
 ![](./assets/bootstrap_7_1.svg)
 
 ````julia
-plot(x=first.(samp.θ) .* samp.σ, Geom.density, Guide.xlabel("Parametric bootstrap estimates of σ₁"))
+plot(x=first.(samp.σs.Batch), Geom.density, Guide.xlabel("Parametric bootstrap estimates of σ₁"))
 ````
 
 
@@ -152,10 +152,10 @@ plot(x=first.(samp.θ) .* samp.σ, Geom.density, Guide.xlabel("Parametric bootst
 
 
 
-has a mode at zero.  Although this mode shows up as being diffuse, this is an artifact of the way that density plots are created.  In fact, it is a pulse, as can be seen from a histogram.
+has a mode at zero.  Although this mode appears to be diffuse, this is an artifact of the way that density plots are created.  In fact, it is a pulse, as can be seen from a histogram.
 
 ````julia
-plot(x=first.(samp.θ).*samp.σ, Geom.histogram, Guide.xlabel("Parametric bootstrap estimates of σ₁"))
+plot(x=first.(samp.σs.Batch), Geom.histogram, Guide.xlabel("Parametric bootstrap estimates of σ₁"))
 ````
 
 

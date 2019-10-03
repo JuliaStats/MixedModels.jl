@@ -168,7 +168,7 @@ MixedModels.getθ(t21)
 Random-effects terms in the model formula that have the same grouping factor are amagamated into a single `ReMat` object.
 ```{julia;term=true}
 fm3 = fit!(zerocorr!(LinearMixedModel(@formula(Y ~ 1 + U + (1+U|G)), dat[:sleepstudy]), [:G]))
-t31 = first(fm3.retrms)
+t31 = first(fm3.reterms)
 ```
 Note that we could also have achieved this by re-fitting (a copy of) `fm2`.
 ```{julia;term=true}
@@ -176,8 +176,8 @@ fm3alt = zerocorr!(deepcopy(fm2), [:G])
 ```
 For this model the matrix $\bf Z$ is the same as that of model `fm2` but the diagonal blocks of $\Lambda_\theta$ are themselves diagonal.
 ```{julia;term=true}
-getΛ(t31)
-getθ(t31)
+t31.λ
+MixedModels.getθ(t31)
 ```
 Random-effects terms with distinct grouping factors generate distinct elements of the `trms` member of the `LinearMixedModel` object.
 Multiple `ReMat` objects are sorted by decreasing numbers of random effects.

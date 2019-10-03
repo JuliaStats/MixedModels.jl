@@ -17,7 +17,7 @@ julia> const dat = Dict(Symbol(k)=>v for (k,v) in
     load(joinpath(dirname(pathof(MixedModels)), "..", "test", "dat.rda")));
 
 julia> describe(dat[:Dyestuff])
-2×8 DataFrame. Omitted printing of 1 columns
+2×8 DataFrames.DataFrame. Omitted printing of 1 columns
 │ Row │ variable │ mean   │ min    │ median │ max    │ nunique │ nmissing │
 │     │ Symbol   │ Union… │ Any    │ Union… │ Any    │ Union…  │ Nothing  │
 ├─────┼──────────┼────────┼────────┼────────┼────────┼─────────┼──────────┤
@@ -48,9 +48,9 @@ Linear mixed model fit by maximum likelihood
  -163.66353  327.32706  333.32706  337.53065
 
 Variance components:
-              Column    Variance  Std.Dev. 
- G        (Intercept)  1388.3333 37.260345
- Residual              2451.2500 49.510100
+            Column    Variance  Std.Dev. 
+G        (Intercept)  1388.3333 37.260345
+Residual              2451.2500 49.510100
  Number of obs: 30; levels of grouping factors: 6
 
   Fixed-effects parameters:
@@ -75,9 +75,9 @@ Linear mixed model fit by maximum likelihood
  -163.66353  327.32706  333.32706  337.53065
 
 Variance components:
-              Column    Variance  Std.Dev. 
- G        (Intercept)  1388.3333 37.260345
- Residual              2451.2500 49.510100
+            Column    Variance  Std.Dev. 
+G        (Intercept)  1388.3333 37.260345
+Residual              2451.2500 49.510100
  Number of obs: 30; levels of grouping factors: 6
 
   Fixed-effects parameters:
@@ -97,7 +97,7 @@ The second and subsequent calls to such functions are much faster.)
 
 ````julia
 julia> @time fit(MixedModel, @formula(Y ~ 1 + (1|G)), dat[:Dyestuff2]);
-  0.610968 seconds (963.78 k allocations: 51.795 MiB, 4.34% gc time)
+  0.661148 seconds (1.03 M allocations: 55.163 MiB, 7.06% gc time)
 
 ````
 
@@ -113,9 +113,9 @@ Linear mixed model fit by REML
  REML criterion at convergence: 319.6542768422538
 
 Variance components:
-              Column    Variance  Std.Dev. 
- G        (Intercept)  1764.0506 42.000602
- Residual              2451.2499 49.510099
+            Column    Variance  Std.Dev. 
+G        (Intercept)  1764.0506 42.000602
+Residual              2451.2499 49.510099
  Number of obs: 30; levels of grouping factors: 6
 
   Fixed-effects parameters:
@@ -154,10 +154,10 @@ Linear mixed model fit by maximum likelihood
  -875.96967 1751.93934 1763.93934 1783.09709
 
 Variance components:
-              Column    Variance  Std.Dev.   Corr.
- G        (Intercept)  565.51069 23.780469
-          U             32.68212  5.716828  0.08
- Residual              654.94145 25.591824
+            Column    Variance  Std.Dev.   Corr.
+G        (Intercept)  565.51069 23.780469
+         U             32.68212  5.716828  0.08
+Residual              654.94145 25.591824
  Number of obs: 180; levels of grouping factors: 18
 
   Fixed-effects parameters:
@@ -183,10 +183,10 @@ Linear mixed model fit by maximum likelihood
  -876.00163 1752.00326 1762.00326 1777.96804
 
 Variance components:
-              Column    Variance  Std.Dev.   Corr.
- G        (Intercept)  584.258970 24.17145
-          U             33.632805  5.79938  0.00
- Residual              653.115782 25.55613
+            Column    Variance  Std.Dev.   Corr.
+G        (Intercept)  584.258970 24.17145
+         U             33.632805  5.79938  0.00
+Residual              653.115782 25.55613
  Number of obs: 180; levels of grouping factors: 18
 
   Fixed-effects parameters:
@@ -221,10 +221,10 @@ Linear mixed model fit by maximum likelihood
  -166.09417  332.18835  340.18835  352.06760
 
 Variance components:
-              Column    Variance   Std.Dev. 
- G        (Intercept)  0.71497949 0.8455646
- H        (Intercept)  3.13519360 1.7706478
- Residual              0.30242640 0.5499331
+            Column    Variance   Std.Dev. 
+G        (Intercept)  0.71497949 0.8455646
+H        (Intercept)  3.13519360 1.7706478
+Residual              0.30242640 0.5499331
  Number of obs: 144; levels of grouping factors: 24, 6
 
   Fixed-effects parameters:
@@ -250,10 +250,10 @@ Linear mixed model fit by maximum likelihood
  -123.99723  247.99447  255.99447  264.37184
 
 Variance components:
-              Column    Variance   Std.Dev.  
- G        (Intercept)  8.43361634 2.90406893
- H        (Intercept)  1.19918042 1.09507097
- Residual              0.67800208 0.82340882
+            Column    Variance   Std.Dev.  
+G        (Intercept)  8.43361634 2.90406893
+H        (Intercept)  1.19918042 1.09507097
+Residual              0.67800208 0.82340882
  Number of obs: 60; levels of grouping factors: 30, 10
 
   Fixed-effects parameters:
@@ -280,10 +280,10 @@ Linear mixed model fit by maximum likelihood
  -1.18792777×10⁵  2.37585553×10⁵  2.37647553×10⁵  2.37932876×10⁵
 
 Variance components:
-              Column    Variance   Std.Dev.  
- G        (Intercept)  0.10541798 0.32468136
- H        (Intercept)  0.25841636 0.50834669
- Residual              1.38472777 1.17674456
+            Column    Variance   Std.Dev.  
+G        (Intercept)  0.10541798 0.32468136
+H        (Intercept)  0.25841636 0.50834669
+Residual              1.38472777 1.17674456
  Number of obs: 73421; levels of grouping factors: 2972, 1128
 
   Fixed-effects parameters:
@@ -340,15 +340,16 @@ julia> verbaggform = @formula(r2 ~ 1 + a + g + b + s + m + (1|id) + (1|item));
 julia> gm1 = fit(MixedModel, verbaggform, dat[:VerbAgg], Bernoulli())
 Generalized Linear Mixed Model fit by maximum likelihood (nAGQ = 1)
   r2 ~ 1 + a + g + b + s + m + (1 | id) + (1 | item)
-  Distribution: Bernoulli{Float64}
-  Link: LogitLink()
+  Distribution: Distributions.Bernoulli{Float64}
+  Link: GLM.LogitLink()
 
   Deviance: 8135.8329
 
 Variance components:
-          Column   Variance  Std.Dev.  
- id   (Intercept)  1.793473 1.33920611
- item (Intercept)  0.117149 0.34227036
+        Column    Variance   Std.Dev.  
+id   (Intercept)  1.64355891 1.28201362
+item (Intercept)  0.10735667 0.32765327
+
  Number of obs: 7584; levels of grouping factors: 316, 24
 
 Fixed-effects parameters:
@@ -386,15 +387,16 @@ These fits may suffice for model comparisons.
 julia> gm1a = fit!(GeneralizedLinearMixedModel(verbaggform, dat[:VerbAgg], Bernoulli()), fast=true)
 Generalized Linear Mixed Model fit by maximum likelihood (nAGQ = 1)
   r2 ~ 1 + a + g + b + s + m + (1 | id) + (1 | item)
-  Distribution: Bernoulli{Float64}
-  Link: LogitLink()
+  Distribution: Distributions.Bernoulli{Float64}
+  Link: GLM.LogitLink()
 
   Deviance: 8136.1709
 
 Variance components:
-          Column    Variance   Std.Dev.  
- id   (Intercept)  1.79270002 1.33891748
- item (Intercept)  0.11875573 0.34460953
+        Column     Variance   Std.Dev.  
+id   (Intercept)  1.636122430 1.27911001
+item (Intercept)  0.108383391 0.32921633
+
  Number of obs: 7584; levels of grouping factors: 316, 24
 
 Fixed-effects parameters:
@@ -414,10 +416,10 @@ julia> deviance(gm1a) - deviance(gm1)
 0.33801565450448834
 
 julia> @time fit!(GeneralizedLinearMixedModel(verbaggform, dat[:VerbAgg], Bernoulli()));
-  5.513537 seconds (14.91 M allocations: 124.578 MiB, 6.19% gc time)
+  5.250240 seconds (14.91 M allocations: 124.927 MiB, 0.57% gc time)
 
 julia> @time fit!(GeneralizedLinearMixedModel(verbaggform, dat[:VerbAgg], Bernoulli()), fast=true);
-  0.794115 seconds (2.38 M allocations: 25.960 MiB, 0.61% gc time)
+  0.867577 seconds (2.38 M allocations: 26.275 MiB, 0.53% gc time)
 
 ````
 
@@ -442,17 +444,18 @@ Predictors:
   (d)->1 | d
 
 julia> @time gm2 = fit!(GeneralizedLinearMixedModel(contraform, dat[:Contraception], Bernoulli()), nAGQ=9)
-  1.985849 seconds (5.55 M allocations: 119.244 MiB, 4.04% gc time)
+  4.579913 seconds (9.52 M allocations: 322.623 MiB, 4.09% gc time)
 Generalized Linear Mixed Model fit by maximum likelihood (nAGQ = 9)
   use ~ 1 + a + :(abs2(a)) + l + urb + (1 | d)
-  Distribution: Bernoulli{Float64}
-  Link: LogitLink()
+  Distribution: Distributions.Bernoulli{Float64}
+  Link: GLM.LogitLink()
 
   Deviance: 2372.4589
 
 Variance components:
-       Column    Variance   Std.Dev.  
- d (Intercept)  0.22908893 0.47863236
+     Column    Variance   Std.Dev. 
+d (Intercept)  0.22226267 0.4714474
+
  Number of obs: 1934; levels of grouping factors: 60
 
 Fixed-effects parameters:
@@ -469,15 +472,15 @@ urb: Y        0.696695    0.118143      5.89703    <1e-8
 ─────────────────────────────────────────────────────────
 
 julia> @time deviance(fit!(GeneralizedLinearMixedModel(contraform, dat[:Contraception], Bernoulli()), nAGQ=9, fast=true))
-  0.085185 seconds (402.92 k allocations: 4.407 MiB)
+  0.101267 seconds (413.46 k allocations: 5.063 MiB)
 2372.513592622964
 
 julia> @time deviance(fit!(GeneralizedLinearMixedModel(contraform, dat[:Contraception], Bernoulli())))
-  0.421255 seconds (1.50 M allocations: 13.571 MiB, 2.47% gc time)
+  0.398170 seconds (1.50 M allocations: 13.667 MiB)
 2372.7285823782704
 
 julia> @time deviance(fit!(GeneralizedLinearMixedModel(contraform, dat[:Contraception], Bernoulli()), fast=true))
-  0.062650 seconds (236.32 k allocations: 3.143 MiB)
+  0.074245 seconds (236.92 k allocations: 3.239 MiB, 13.11% gc time)
 2372.784429135894
 
 ````
@@ -668,17 +671,18 @@ VarCorr
 ````julia
 julia> VarCorr(fm2)
 Variance components:
-              Column    Variance  Std.Dev.   Corr.
- G        (Intercept)  565.51069 23.780469
-          U             32.68212  5.716828  0.08
- Residual              654.94145 25.591824
+            Column    Variance  Std.Dev.   Corr.
+G        (Intercept)  565.51069 23.780469
+         U             32.68212  5.716828  0.08
+Residual              654.94145 25.591824
 
 
 julia> VarCorr(gm1)
 Variance components:
-          Column   Variance  Std.Dev.  
- id   (Intercept)  1.793473 1.33920611
- item (Intercept)  0.117149 0.34227036
+        Column    Variance   Std.Dev.  
+id   (Intercept)  1.64355891 1.28201362
+item (Intercept)  0.10735667 0.32765327
+
 
 
 ````
