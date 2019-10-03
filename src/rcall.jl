@@ -28,7 +28,7 @@ rcopytype(::Type{RClass{:lmerMod}}, s::Ptr{S4Sxp}) = LinearMixedModel
 function sexp(::Type{RClass{:lmerMod}}, x::Tuple{LinearMixedModel{T}, DataFrame}) where T
     m, tbl = x
     # should we assume the user is smart enough?
-    reval("""if(!require(lme4)){install.packages("lme4"); library(lme4)}""")
+    reval("library(lme4)")
 
     data = tbl
     formula = String(Symbol(m.formula))

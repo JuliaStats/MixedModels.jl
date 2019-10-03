@@ -3,7 +3,11 @@ const LMM = LinearMixedModel
 const GLMM = GeneralizedLinearMixedModel
 
 @testset "RCall for lme4" begin
-    reval("""if(!require(lme4)){install.packages("lme4"); library(lme4)}""")
+    reval("""
+    if(!require(lme4)){
+        install.packages("lme4",repos="https://cloud.r-project.org")
+        library(lme4)
+    }""")
 
     @testset "lmerMod" begin
         sleepstudy = rcopy(R"sleepstudy")
