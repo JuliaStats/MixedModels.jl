@@ -1,4 +1,7 @@
 environment:
+  global:
+    CRAN: https://cloud.r-project.org/
+
   matrix:
   - julia_version: 1.2
   - julia_version: nightly
