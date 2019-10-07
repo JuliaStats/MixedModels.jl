@@ -1,5 +1,7 @@
 docs/build
 docs/site
+docs/src/*.md
+docs/src/assets/*.svg
 test/scratch.jl
 tune.json
 Manifest.toml
