@@ -70,10 +70,21 @@ function _amalgamate(reterms::Vector, T::Type)
     end
 
     λ = LowerTriangular(Matrix{T}(I, Snew, Snew))
-    adjA =  foldl(vcat, [rr.adjA for rr in reterms])
     scratch =  foldl(vcat, [rr.scratch for rr in reterms])
 
-    ReMat{T,Snew}(trm, refs, levels, cnames, z, wtz, λ, inds, adjA, scratch)
+    ReMat{T,Snew}(trm, refs, levels, cnames, z, wtz, λ, inds, adjA(refs, z), scratch)
+end
+
+function adjA(refs::AbstractVector, z::AbstractMatrix)
+    S, n = size(z)
+    length(refs) == n || throw(DimensionMismatch)
+    J = Int32.(1:n)
+    II = refs
+    if S > 1
+        J = repeat(J, inner=S)
+        II = Int32.(vec([(r - 1)*S + j for j in 1:S, r in refs]))
+    end
+    sparse(II, J, vec(z))
 end
 
 Base.size(A::ReMat) = (length(A.refs), length(A.scratch))
