@@ -11,7 +11,7 @@ The order of the arguments
 """
 function rankUpdate! end
 
-function rankUpdate!(C::HermOrSym{T,S}, a::StridedVector{T},  
+function rankUpdate!(C::HermOrSym{T,S}, a::StridedVector{T},
         α=true) where {T<:BlasReal,S<:StridedMatrix}
     BLAS.syr!(C.uplo, T(α), a, C.data)
     C  ## to ensure that the return value is HermOrSym
@@ -66,11 +66,13 @@ function rankUpdate!(C::Diagonal{T}, A::SparseMatrixCSC{T}, α=true, β=true) wh
     C
 end
 
+rankUpdate!(C::Diagonal{T}, A::BlockedSparse{T}, α=true, β=true) where {T <: Number} = rankUpdate!(C, sparse(A), α, β)
+
 function rankUpdate!(C::HermOrSym{T,UniformBlockDiagonal{T}}, A::BlockedSparse{T,S},
         α=true) where {T,S}
     Ac = A.cscmat
     cp = Ac.colptr
-    all(diff(cp) .== S) || 
+    all(diff(cp) .== S) ||
         throw(ArgumentError("Each column of A must contain exactly S nonzeros"))
     j,k,l = size(C.data.data)
     S == j == k && div(Ac.m, S) == l ||
@@ -86,3 +88,11 @@ function rankUpdate!(C::HermOrSym{T,UniformBlockDiagonal{T}}, A::BlockedSparse{T
 end
 
 rankUpdate!(C::HermOrSym{T,Matrix{T}}, A::BlockedSparse{T}, α=true) where {T} = rankUpdate!(C, A.cscmat, α)
+
+function rankUpdate!(C::Diagonal{T,S}, A::Diagonal{T,S}, α::Number=true, β::Number=true) where {T, S}
+    length(C.diag) == length(A.diag) ||
+        throw(DimensionMismatch("length(C.diag) ≠ length(A.diag)"))
+
+    C.diag .= β .* C.diag .+ α .* abs2.(A.diag)
+    C
+end

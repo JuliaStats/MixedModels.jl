@@ -237,9 +237,24 @@ end
 
     MixedModels.likelihoodratiotest(fm, fmnc)
 
-    fmrs = fit!(LinearMixedModel(@formula(Y ~ 1 + U + (0 + U|G)), dat[:sleepstudy]))
+    fmrs = LinearMixedModel(@formula(Y ~ 1 + U + (0 + U|G)), dat[:sleepstudy]);
+    fit!(fmrs)
     @test objective(fmrs) ≈ 1774.080315280528 rtol=0.00001
     @test fmrs.θ ≈ [0.24353985679033105] rtol=0.00001
+
+    fm_ind = LinearMixedModel(@formula(Y ~ 1 + U + (1|G) + (0 + U|G)), dat[:sleepstudy]);
+    fit!(fm_ind)
+    @test objective(fm_ind) ≈ objective(fmnc)
+    @test coef(fm_ind) ≈ coef(fmnc)
+    @test fixef(fm_ind) ≈ fixef(fmnc)
+    @test stderror(fm_ind) ≈ stderror(fmnc)
+    @test fm_ind.θ ≈ fmnc.θ
+    @test std(fm_ind) ≈ std(fmnc)
+    @test logdet(fm_ind) ≈ logdet(fmnc)
+
+    # combining [ReMat{T,S1}, ReMat{T,S2}] for S1 ≠ S2
+    slpcat = categorical!(deepcopy(dat[:sleepstudy]), [:U])
+    @test LMM(@formula(Y ~ 1 + U + (1|G) + (0 + U|G)), slpcat) isa LMM
 end
 
 @testset "d3" begin

@@ -25,6 +25,68 @@ mutable struct ReMat{T,S} <: AbstractMatrix{T}
     scratch::Matrix{T}
 end
 
+"""
+    amalgamate(reterms::Vector{ReMat})
+
+Combine multiple ReMat with the same grouping variable into a single object.
+"""
+amalgamate(reterms::Vector{ReMat{T,S} where S}) where {T} = _amalgamate(reterms,T)
+# constant S
+amalgamate(reterms::Vector{ReMat{T,S}}) where {T,S} = _amalgamate(reterms,T)
+function _amalgamate(reterms::Vector, T::Type)
+    if length(reterms) == 1
+        return first(reterms)
+    end
+
+    trm = first(reterms).trm
+    refs = first(reterms).refs
+    levels = first(reterms).levels
+    cnames =  foldl(vcat,[rr.cnames for rr in reterms])
+    z = foldl(vcat, [rr.z for rr in reterms])
+    wtz = z
+
+    Snew = size(z, 1)
+    # taken straight from modelcols(t::RandomEffectsTerm, d::NamedTuple)
+    m = reshape(1:abs2(Snew), (Snew, Snew))
+    mask = BitMatrix([0 for idx in m])
+    blks = [ [size(rr.λ,1), size(rr.λ,1)] for rr in reterms]
+    for (ii, bb) in enumerate(blks)
+        if ii != 1
+            prev = blks[ii-1][2]
+            blks[ii] = [prev+1,prev+bb[1]]
+        else
+            blks[ii] = [1, blks[ii][1]]
+        end
+        for jj in blks[ii][1]:blks[ii][2]
+            mask[jj,jj] = 1
+        end
+    end
+
+    inds = sizehint!(Int[], (Snew * (Snew + 1)) >> 1)
+    for j in 1:Snew, i in j:Snew
+        if mask[i,j]
+            push!(inds, m[i,j])
+        end
+    end
+
+    λ = LowerTriangular(Matrix{T}(I, Snew, Snew))
+    scratch =  foldl(vcat, [rr.scratch for rr in reterms])
+
+    ReMat{T,Snew}(trm, refs, levels, cnames, z, wtz, λ, inds, adjA(refs, z), scratch)
+end
+
+function adjA(refs::AbstractVector, z::AbstractMatrix)
+    S, n = size(z)
+    length(refs) == n || throw(DimensionMismatch)
+    J = Int32.(1:n)
+    II = refs
+    if S > 1
+        J = repeat(J, inner=S)
+        II = Int32.(vec([(r - 1)*S + j for j in 1:S, r in refs]))
+    end
+    sparse(II, J, vec(z))
+end
+
 Base.size(A::ReMat) = (length(A.refs), length(A.scratch))
 
 SparseArrays.sparse(A::ReMat) = adjoint(A.adjA)
