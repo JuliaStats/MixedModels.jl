@@ -33,48 +33,46 @@ Combine multiple ReMat with the same grouping variable into a single object.
 amalgamate(reterms::Vector{ReMat{T,S} where S}) where {T} = _amalgamate(reterms,T)
 # constant S
 amalgamate(reterms::Vector{ReMat{T,S}}) where {T,S} = _amalgamate(reterms,T)
+
 function _amalgamate(reterms::Vector, T::Type)
-    if length(reterms) == 1
-        return first(reterms)
+    factordict = Dict{Symbol, Vector{Int}}()
+    for (i, rt) in enumerate(reterms)
+        push!(get!(factordict, rt.trm.sym, Int[]), i)
     end
-
-    trm = first(reterms).trm
-    refs = first(reterms).refs
-    levels = first(reterms).levels
-    cnames =  foldl(vcat,[rr.cnames for rr in reterms])
-    z = foldl(vcat, [rr.z for rr in reterms])
-    wtz = z
-
-    Snew = size(z, 1)
-    # taken straight from modelcols(t::RandomEffectsTerm, d::NamedTuple)
-    m = reshape(1:abs2(Snew), (Snew, Snew))
-    mask = BitMatrix([0 for idx in m])
-    blks = [ [size(rr.λ,1), size(rr.λ,1)] for rr in reterms]
-    for (ii, bb) in enumerate(blks)
-        if ii != 1
-            prev = blks[ii-1][2]
-            blks[ii] = [prev+1,prev+bb[1]]
+    length(factordict) == length(reterms) && return reterms
+    value = ReMat{T}[]
+    for (f, inds) in factordict
+        if isone(length(inds))
+            push!(value, reterms[first(inds)])
         else
-            blks[ii] = [1, blks[ii][1]]
-        end
-        for jj in blks[ii][1]:blks[ii][2]
-            mask[jj,jj] = 1
+            trms = reterms[inds]
+            trm1 = first(trms)
+            trm = trm1.trm
+            refs = trm1.refs
+            levs = trm1.levels
+            cnames =  foldl(vcat, rr.cnames for rr in trms)
+            z = foldl(vcat, rr.z for rr in trms)
+
+            Snew = size(z, 1)
+            inds = (1:abs2(Snew))[vec(BlockDiagonal([indmat(rt) for rt in trms]))]
+
+            λ = LowerTriangular(Matrix{T}(I, Snew, Snew))
+            scratch =  foldl(vcat, rr.scratch for rr in trms)
+
+            push!(
+                value,
+                ReMat{T,Snew}(trm, refs, levs, cnames, z, z, λ, inds, adjA(refs,z), scratch)
+            )
         end
     end
-
-    inds = sizehint!(Int[], (Snew * (Snew + 1)) >> 1)
-    for j in 1:Snew, i in j:Snew
-        if mask[i,j]
-            push!(inds, m[i,j])
-        end
-    end
-
-    λ = LowerTriangular(Matrix{T}(I, Snew, Snew))
-    scratch =  foldl(vcat, [rr.scratch for rr in reterms])
-
-    ReMat{T,Snew}(trm, refs, levels, cnames, z, wtz, λ, inds, adjA(refs, z), scratch)
+    value
 end
 
+"""
+    adjA(refs::AbstractVector, z::AbstractMatrix{T})
+
+Returns the adjoint of an `ReMat` as a `SparseMatrixCSC{T,Int32}`
+"""
 function adjA(refs::AbstractVector, z::AbstractMatrix)
     S, n = size(z)
     length(refs) == n || throw(DimensionMismatch)
@@ -128,6 +126,16 @@ function getθ!(v::AbstractVector{T}, A::ReMat{T}) where {T}
 end
 
 levs(A::ReMat) = A.levels
+
+"""
+    indmat(A::ReMat)
+
+Return a `Bool` indicator matrix of the potential non-zeros in `A.λ`
+"""
+function indmat end
+
+indmat(rt::ReMat{T,1}) where {T} = ones(Bool, 1, 1)
+indmat(rt::ReMat{T,S}) where {T,S} = reshape([i in rt.inds for i in 1:abs2(S)], S, S)
 
 nlevs(A::ReMat) = length(levs(A))
 

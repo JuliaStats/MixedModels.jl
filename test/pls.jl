@@ -1,4 +1,4 @@
-using DataFrames, LinearAlgebra, MixedModels, NamedArrays
+using BlockArrays, DataFrames, LinearAlgebra, MixedModels, NamedArrays
 using Random, RData, SparseArrays, Statistics, Tables, Test
 
 if !@isdefined(dat) || !isa(dat, Dict{Symbol, DataFrame})
@@ -11,9 +11,9 @@ const LMM = LinearMixedModel
 @testset "Dyestuff" begin
     fm1 = LMM(@formula(Y ~ 1 + (1|G)), dat[:Dyestuff])
 
-    @test nblocks(fm1.A) == (3, 3)
+    @test BlockArrays.nblocks(fm1.A) == (3, 3)
     @test size(fm1.reterms) == (1, )
-    @test nblocks(fm1.L) == (3, 3)
+    @test BlockArrays.nblocks(fm1.L) == (3, 3)
     @test lowerbd(fm1) == zeros(1)
     @test fm1.lowerbd == zeros(1)
     @test fm1.θ == ones(1)

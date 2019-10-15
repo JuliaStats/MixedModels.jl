@@ -1,4 +1,4 @@
-using DataFrames, DataFramesMeta, LinearAlgebra, MixedModels, RData, Test
+using DataFrames, LinearAlgebra, MixedModels, RData, Test
 
 if !@isdefined(dat) || !isa(dat, Dict{Symbol, DataFrame})
     const dat = Dict(Symbol(k) => v for (k, v) in
@@ -6,7 +6,8 @@ if !@isdefined(dat) || !isa(dat, Dict{Symbol, DataFrame})
 end
 
 @testset "contra" begin
-    contra = @transform(dat[:Contraception], urbdist=categorical(string.(:d, :urb)))
+    contra = dat[:Contraception]
+    contra[!, :urbdist] = categorical(string.(contra[!, :d], contra[!, :urb]))
     contraform = @formula(use ~ 1+a+abs2(a)+urb+l+(1|urbdist))
     gm0 = fit(MixedModel, contraform, contra, Bernoulli(), fast=true);
     @test gm0.lowerbd == zeros(1)
@@ -43,7 +44,8 @@ end
 end
 
 @testset "cbpp" begin
-    cbpp = @transform(dat[:cbpp], prop = :i ./ :s)
+    cbpp = dat[:cbpp]
+    cbpp[!, :prop] = cbpp[!, :i] ./ cbpp[!, :s]
     gm2 = fit(MixedModel, @formula(prop ~ 1 + p + (1|h)), cbpp, Binomial(), wts = cbpp[!,:s])
     @test isapprox(deviance(gm2,true), 100.09585619324639, atol=0.0001)
     @test isapprox(sum(abs2, gm2.u[1]), 9.723175126731014, atol=0.0001)

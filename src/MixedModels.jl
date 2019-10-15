@@ -1,21 +1,23 @@
 module MixedModels
-using BlockArrays,
-      CategoricalArrays,
-      Distributions,
-      GLM,
-      LinearAlgebra,
-      NamedArrays,
-      NLopt,
-      Random,
-      ProgressMeter,
-      Showoff,
-      SparseArrays,
-      StaticArrays,
-      Statistics,
-      StatsBase,
-      StatsModels,
-      Tables,
-      TypedTables
+
+using BlockArrays
+using BlockDiagonals
+using CategoricalArrays
+using Distributions
+using GLM
+using LinearAlgebra
+using NamedArrays
+using NLopt
+using Random
+using ProgressMeter
+using Showoff
+using SparseArrays
+using StaticArrays
+using Statistics
+using StatsBase
+using StatsModels
+using Tables
+using TypedTables
 
 using LinearAlgebra: BlasFloat, BlasReal, HermOrSym, PosDefException, copytri!
 using Printf: @printf, @sprintf

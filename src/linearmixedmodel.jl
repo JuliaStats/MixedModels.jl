@@ -67,17 +67,9 @@ function LinearMixedModel(f::FormulaTerm, tbl::Tables.ColumnTable;
     push!(feterms, FeMat(y, [""]))
 
     # detect and combine RE terms with the same grouping var
-    grps = Set([fname(rt) for rt in reterms])
-    if length(grps) != length(reterms)
-        # this reduction step could be expensive for large models
-        reterms_simplified = ReMat{T}[]
-        for gg in grps
-            combined = amalgamate([ret for ret in reterms if fname(ret) == gg])
-            push!(reterms_simplified, combined)
-        end
-        reterms = reterms_simplified
+    if length(reterms) > 1
+        reterms = amalgamate(reterms)
     end
-
 
     sort!(reterms, by=nranef, rev=true)
 
@@ -192,9 +184,9 @@ Describe the types and sizes of the blocks in the lower triangle of `m.A` and `m
 function describeblocks(io::IO, m::LinearMixedModel)
     A = m.A
     L = m.L
-    for i in 1:nblocks(A, 2), j in 1:i
+    for i in 1:BlockArrays.nblocks(A, 2), j in 1:i
         println(io, i, ",", j, ": ", typeof(A[Block(i, j)]), " ",
-                blocksize(A, (i, j)), " ", typeof(L[Block(i, j)]))
+            BlockArrays.blocksize(A, (i, j)), " ", typeof(L[Block(i, j)]))
     end
 end
 describeblocks(m::MixedModel) = describeblocks(stdout, m)
@@ -450,8 +442,8 @@ function ranef!(v::Vector, m::LinearMixedModel{T}, β::AbstractArray{T}, uscale:
     (k = length(v)) == length(m.reterms) || throw(DimensionMismatch(""))
     L = m.L
     for j in 1:k
-        mulαβ!(vec(copyto!(v[j], L[Block(nblocks(L, 2), j)])), L[Block(k + 1, j)]', β,
-            -one(T), one(T))
+        mulαβ!(vec(copyto!(v[j], L[Block(BlockArrays.nblocks(L, 2), j)])),
+            L[Block(k + 1, j)]', β, -one(T), one(T))
     end
     for i in k: -1 :1
         Lii = L[Block(i, i)]
@@ -511,7 +503,7 @@ function reevaluateAend!(m::LinearMixedModel)
     A = m.A
     ftrms = m.feterms
     trmn = reweight!(last(ftrms), m.sqrtwts)
-    nblk = nblocks(A, 1)
+    nblk = BlockArrays.nblocks(A, 1)
     for (j, trm) in enumerate(vcat(m.reterms, ftrms))
         mul!(A[Block(nblk, j)], trmn', trm)
     end
@@ -667,9 +659,9 @@ This is the crucial step in evaluating the objective, given a new parameter valu
 function updateL!(m::LinearMixedModel{T}) where {T}
     A = m.A
     L = m.L
-    k = nblocks(A, 2)
+    k = BlockArrays.nblocks(A, 2)
     for j in 1:k                         # copy lower triangle of A to L
-        for i in j:nblocks(A, 1)
+        for i in j:BlockArrays.nblocks(A, 1)
             copyto!(L[Block(i, j)], A[Block(i, j)])
         end
     end
