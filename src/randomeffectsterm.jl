@@ -103,3 +103,27 @@ function StatsModels.apply_schema(t::FunctionTerm{typeof(fulldummy)},
                                   Mod::Type{<:MixedModel})
     fulldummy(apply_schema.(t.args_parsed, Ref(sch), Mod)...)
 end
+
+
+# specify zero correlation
+struct ZeroCorr <: AbstractTerm
+    term::RandomEffectsTerm
+end
+StatsModels.is_matrix_term(::Type{ZeroCorr}) = false
+
+"""
+    zerocorr(term::RandomEffectsTerm)
+
+Remove correlations between random effects in `term`.
+"""
+zerocorr(x) = ZeroCorr(x)
+
+function StatsModels.apply_schema(t::FunctionTerm{typeof(zerocorr)},
+                                  sch::StatsModels.FullRank,
+                                  Mod::Type{<:MixedModel})
+    ZeroCorr(apply_schema(t.args_parsed..., sch, Mod))
+end
+
+StatsModels.modelcols(t::ZeroCorr, d::NamedTuple) =
+    zerocorr!(modelcols(t.term, d))
+

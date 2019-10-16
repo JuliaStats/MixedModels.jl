@@ -66,17 +66,6 @@ A model with random intercepts and random slopes for each subject, allowing for 
 fm2 = fit(MixedModel, @formula(Y ~ 1 + U + (1+U|G)), dat[:sleepstudy])
 ```
 
-A model with uncorrelated random effects for the intercept and slope by subject is fit as
-```{julia;term=true}
-fm3 = fit!(zerocorr!(LinearMixedModel(@formula(Y ~ 1 + U + (1+U|G)), dat[:sleepstudy])))
-```
-
-Note that the use of `zerocorr!` requires the model to be constructed, then altered to eliminate
-the correlation of the random effects, then fit with a call to the mutating function, `fit!`.
-```@docs
-zerocorr!
-```
-
 ### Models with multiple, scalar random-effects terms
 
 A model for the *Penicillin* data incorporates random effects for the plate, `G`, and for the sample, `H`.
@@ -96,6 +85,52 @@ For example, the *InstEval* data are course evaluations by students, `G`, of ins
 Additional covariates include the academic department, `I`, in which the course was given and `A`, whether or not it was a service course.
 ```{julia;term=true}
 fm6 = fit!(LinearMixedModel(@formula(Y ~ 1 + A * I + (1|G) + (1|H)), dat[:InstEval]))
+```
+
+### Simplifying the random effect correlation structure
+
+MixedEffects.jl estimates not only the *variance* of the effects for each random effect level, but also the *correlation* between the random effects for different predictors.
+So, for the model of the *sleepstudy* data above, one of the parameters that is estimated is the correlation between each subject's random intercept (i.e., their baseline reaction time) and slope (i.e., their particular change in reaction time over days of sleep deprivation).
+In some cases, you may wish to simplify the random effects structure by removing these correlation parameters.
+This often arises when there are many random effects you want to estimate (as is common in psychological experiments with many conditions and covariates), since the number of random effects parameters increases as the square of the number of predictors, making these models difficult to estimate from limited data.
+
+A model with uncorrelated random effects for the intercept and slope by subject is fit as
+```{julia;term=true}
+fm3 = fit!(zerocorr!(LinearMixedModel(@formula(Y ~ 1 + U + (1+U|G)), dat[:sleepstudy])))
+```
+
+Note that the use of `zerocorr!` requires the model to be constructed, then altered to eliminate
+the correlation of the random effects, then fit with a call to the mutating function, `fit!`.
+```@docs
+zerocorr!
+```
+
+The special syntax `zerocorr` can be applied to individual random effects terms inside the `@formula`:
+```{julia;term=true}
+fit(MixedModel, @formula(Y ~ 1 + U + zerocorr(1+U|G)), dat[:sleepstudy])
+```
+
+Alternatively, correlations between parameters can be removed by including them as separate random effects terms:
+```{julia;term=true}
+fit(MixedModel, @formula(Y ~ 1 + U + (1|G) + (0+U|G)), dat[:sleepstudy])
+```
+Note that it's necessary to explicitly block the inclusion of an intercept term by adding `0`.
+
+Finally, for predictors that are categorical, MixedModels.jl will estimate correlations between each level.
+Notice the large number of correlation parameters if we treat `U` as a categorical variable by giving it contrasts:
+```{julia;term=true}
+fit(MixedModel, @formula(Y ~ 1 + U + (1+U|G)), dat[:sleepstudy], contrasts=Dict(:U=>DummyCoding()))
+```
+
+Separating the `1` and `U` random effects into separate terms removes the correlations between the intercept and the levels of `U`, but not between the levels themselves:
+```{julia;term=true}
+fit(MixedModel, @formula(Y ~ 1 + U + (1|G) + (0+U|G)), dat[:sleepstudy], contrasts=Dict(:U=>DummyCoding()))
+```
+
+But using `zerocorr` on the individual terms (or `zerocorr!` on the constructed model object as above) does remove the correlations between the levels:
+```{julia;term=true}
+fit(MixedModel, @formula(Y ~ 1 + U + zerocorr(1+U|G)), dat[:sleepstudy], contrasts=Dict(:U=>DummyCoding()))
+fit(MixedModel, @formula(Y ~ 1 + U + (1|G) + zerocorr(0+U|G)), dat[:sleepstudy], contrasts=Dict(:U=>DummyCoding()))
 ```
 
 ## Fitting generalized linear mixed models
