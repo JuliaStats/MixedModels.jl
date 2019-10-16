@@ -234,6 +234,8 @@ end
     @test first(std(fmnc)) ≈ [24.171449463289047, 5.799379721123582]
     @test last(std(fmnc)) ≈ [25.556130034081047]
     @test logdet(fmnc) ≈ 74.46952585564611 atol=0.001
+    ρ = first(fmnc.σρs.G.ρ)
+    @test ρ === -0.0   # test that systematic zero correlations are returned as -0.0
 
     fmnc2 = LinearMixedModel(@formula(Y ~ 1 + U + zerocorr(1+U|G)),
                              dat[:sleepstudy])
