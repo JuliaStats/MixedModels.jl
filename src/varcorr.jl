@@ -1,15 +1,11 @@
 """
 VarCorr
 
-An encapsulation of information on the fitted random-effects
-variance-covariance matrices.
+Information from the fitted random-effects variance-covariance matrices.
 
 # Members
-* `σ`: a `Vector{Vector{T}}` of unscaled standard deviations
-* `ρ`: a `Vector{Matrix{T}}` of correlation matrices
-* `fnms`: a `Vector{Symbol}` of grouping factor names
-* `cnms`: a `Vector{Vector{String}}` of column names
-* `s`: the estimate of σ, the standard deviation of the per-observation noise.  When there is no scaling factor this value is `NaN`
+* `σρ`: a `NamedTuple` of `NamedTuple`s as returned from `σρs`
+* `s`: the estimate of the scale parameter in the distribution of the conditional dist'n of Y
 
 The main purpose of defining this type is to isolate the logic in the show method.
 """
@@ -17,8 +13,7 @@ struct VarCorr
     σρ::NamedTuple
     s
 end
-VarCorr(m::MixedModel) =
-   VarCorr(σρs(m), dispersion_parameter(m) ? dispersion(m) : nothing)
+VarCorr(m::MixedModel) = VarCorr(σρs(m), dispersion_parameter(m) ? dispersion(m) : nothing)
 
 function Base.show(io::IO, vc::VarCorr)
     σρ = vc.σρ
