@@ -53,7 +53,8 @@ function Base.show(io::IO, vc::VarCorr)
             write(io, lpad(showσvec[ind], stdwd))
             for l in 1:(j - 1)
                 ρind += 1
-                @printf(io, "%6.2f", ρ[ρind])
+                ρval = ρ[ρind]
+                ρval === -0.0 ? write(io, "   .  ") : @printf(io, "%6.2f", ρval)
             end
             println(io)
             firstrow = false
