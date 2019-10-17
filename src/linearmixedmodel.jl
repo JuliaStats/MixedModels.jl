@@ -77,8 +77,8 @@ function LinearMixedModel(f::FormulaTerm, tbl::Tables.ColumnTable;
     terms = vcat(reterms, feterms)
     k = length(terms)
     sz = append!(size.(reterms, 2), rank.(feterms))
-    A = BlockArrays._BlockArray(AbstractMatrix{T}, sz, sz)
-    L = BlockArrays._BlockArray(AbstractMatrix{T}, sz, sz)
+    A = BlockArray(undef_blocks, AbstractMatrix{T}, sz, sz)
+    L = BlockArray(undef_blocks, AbstractMatrix{T}, sz, sz)
     for j in 1:k
         for i in j:k
             Lij = L[Block(i,j)] = densify(terms[i]'terms[j])

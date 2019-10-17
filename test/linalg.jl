@@ -1,4 +1,4 @@
-using LinearAlgebra, MixedModels, Random, SparseArrays, StatsModels, Test
+using DataFrames, LinearAlgebra, MixedModels, Random, SparseArrays, StatsModels, Test
 using MixedModels: mulαβ!
 
 @testset "mulαβ!" begin
