@@ -57,40 +57,27 @@ function normalized_variance_cumsum(A::AbstractMatrix)
     vars ./ last(vars)
 end
 
-const strictlowertrid = Dict(
-    1 => (),
-    2 => ((2,1),),
-    3 => ((2,1), (3,1), (3,2)),
-    4 => ((2,1), (3,1), (3,2), (4,1), (4,2), (4,3)),
-)
+"""
+    ltriindprs
 
-function lowertriinds(k)
-    indpairs = NTuple{2,Int}[]
-    for i in 2:k
-        for j in 1:(i-1)
-            push!(indpairs, (i,j))
+A row-major order `Vector{NTuple{2,Int}}` of indices in the strict lower triangle.
+"""
+
+const ltriindprs = NTuple{2,Int}[]
+
+function checkindprsk(k::Integer)
+    kchoose2 = (k * (k - 1)) >> 1
+    global ltriindprs
+    if length(ltriindprs) < kchoose2
+        sizehint!(empty!(ltriindprs), kchoose2)
+        for i in 1:k
+            for j in 1:(i-1)
+                push!(ltriindprs, (i,j))
+            end
         end
     end
-    (indpairs...,)
+    ltriindprs
 end
-
-"""
-    indpairs(k)
-
-Return a tuple of (row,column) tuples in the strict lower triangle of a `k` by `k` matrix,
-**in row-major order**.
-
-These indices are used when creating `ρ` from `θ` and the `ρ` values are printed in row-major
-order.
-
-The results are memoized in the `strictlowertrid` `Dict` and created by `lowertriinds(k)`
-when needed.
-
-Actually, all this shouldn't be necessary as a simple recursion will work.  The `k`'th
-value is the `k-1`'th value with pairs `(k,i) for i in 1:(k-1)` appended but I can't work
-out how to do that.
-"""
-indpairs(k) = get!(strictlowertrid, k, lowertriinds(k))
 
 """
     subscriptednames(nm, len)
