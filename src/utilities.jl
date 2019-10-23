@@ -70,10 +70,8 @@ function checkindprsk(k::Integer)
     global ltriindprs
     if length(ltriindprs) < kchoose2
         sizehint!(empty!(ltriindprs), kchoose2)
-        for i in 1:k
-            for j in 1:(i-1)
-                push!(ltriindprs, (i,j))
-            end
+        for i in 1:k, j in 1:(i-1)
+            push!(ltriindprs, (i,j))
         end
     end
     ltriindprs
