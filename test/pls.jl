@@ -286,7 +286,6 @@ end
     @test keys(σρ.G) == (:σ, :ρ)
     @test length(σρ.G) == 2
     @test length(first(σρ.G)) == 11
-    @test first(first(σρ.G)) ≈ 0.4746528234146568 rtol=1e-4
     @test length(σρ.G.ρ) == 55
     @test iszero(σρ.G.ρ[46])
     @test σρ.G.ρ[46] === -0.0
