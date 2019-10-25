@@ -254,7 +254,7 @@ end
     @test first(std(fmnc2)) ≈ [24.171449463289047, 5.799379721123582]
     @test last(std(fmnc2)) ≈ [25.556130034081047]
     @test logdet(fmnc2) ≈ 74.46952585564611 atol=0.001
-    
+
 
 #    MixedModels.lrt(fm, fmnc)
 
@@ -277,7 +277,18 @@ end
 
     # combining [ReMat{T,S1}, ReMat{T,S2}] for S1 ≠ S2
     slpcat = categorical!(deepcopy(dat[:sleepstudy]), [:U])
-    @test LMM(@formula(Y ~ 1 + U + (1|G) + (0 + U|G)), slpcat) isa LMM
+    fm_cat = LMM(@formula(Y ~ 1 + U + (1|G) + (0 + U|G)), slpcat)
+    @test fm_cat isa LMM
+    σρ = fit!(fm_cat).σρs
+    @test σρ isa NamedTuple
+    @test isone(length(σρ))
+    @test first(keys(σρ)) == :G
+    @test keys(σρ.G) == (:σ, :ρ)
+    @test length(σρ.G) == 2
+    @test length(first(σρ.G)) == 11
+    @test length(σρ.G.ρ) == 55
+    @test iszero(σρ.G.ρ[46])
+    @test σρ.G.ρ[46] === -0.0
 end
 
 @testset "d3" begin

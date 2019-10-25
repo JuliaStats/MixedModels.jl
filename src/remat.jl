@@ -490,8 +490,8 @@ NamedTuple{(:σ,:ρ)}(
     (NamedTuple{(Symbol(first(A.cnames)),)}((sc*abs(first(A.λ.data)),)), ())
 )
 
-function ρ(i, λ::AbstractMatrix{T}, im::Matrix{Bool}, k, σs::NamedTuple, sc::T)::T where {T}
-    row, col = indpairs(k)[i]
+function ρ(i, λ::AbstractMatrix{T}, im::Matrix{Bool}, indpairs, σs, sc::T)::T where {T}
+    row, col = indpairs[i]
     if iszero(dot(view(im, row, :), view(im, col, :)))
         -zero(T)
     else
@@ -503,8 +503,9 @@ function σρs(A::ReMat{T}, sc::T) where {T}
     λ = A.λ.data
     k = size(λ, 1)
     im = indmat(A)
+    indpairs = checkindprsk(k)
     σs = NamedTuple{(Symbol.(A.cnames)...,)}(ntuple(i -> sc*norm(view(λ,i,1:i)), k))
-    NamedTuple{(:σ,:ρ)}((σs, ntuple(i -> ρ(i,λ,im,k,σs,sc), (k * (k - 1)) >> 1)))
+    NamedTuple{(:σ,:ρ)}((σs, ntuple(i -> ρ(i,λ,im,indpairs,σs,sc), (k * (k - 1)) >> 1)))
 end
 
 vsize(A::ReMat{T,S}) where {T,S} = S
