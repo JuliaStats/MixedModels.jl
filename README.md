@@ -86,3 +86,5 @@ julia> m1 = fit(MixedModel, @formula(yield ~ 1 + (1|batch)), Dyestuff)
     (Intercept)    1527.5    17.6946   86.326   <1e-99
     ──────────────────────────────────────────────────
 ```
+
+The development of this package was supported by the Center for Interdisciplinary Research, Bielefeld (ZiF)/Cooperation Group "Statistical models for psychological and linguistic data".
