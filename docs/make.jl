@@ -16,5 +16,5 @@ makedocs(
     )
 
 deploydocs(
-    repo    = "github.com/dmbates/MixedModels.jl.git"
+    repo    = "github.com/JuliaStats/MixedModels.jl.git"
     )
