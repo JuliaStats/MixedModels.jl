@@ -1,9 +1,7 @@
-
 # Parametric bootstrap for linear mixed-effects models
 
 Julia is well-suited to implementing bootstrapping and other simulation-based methods for statistical models.
-The `parametricbootstrap` function in the [MixedModels package](https://github.com/dmbates/MixedModels.jl) provides
-an efficient parametric bootstrap for linear mixed-effects models.
+The `parametricbootstrap` function in the [MixedModels package](https://github.com/JuliaStats/MixedModels.jl) provides an efficient parametric bootstrap for linear mixed-effects models.
 
 ## The parametric bootstrap
 
@@ -33,7 +31,7 @@ ds = names!(dat[:Dyestuff], [:Batch, :Yield])  # the Dyestuff data
 m1 = fit(MixedModel, @formula(Yield ~ 1 + (1 | Batch)), ds)
 ```
 
-To bootstrap the model parameters, we first initialize a random number generator
+To bootstrap the model parameters, first initialize a random number generator
 
 ```julia
 rng = MersenneTwister(1234321);
@@ -42,37 +40,41 @@ rng = MersenneTwister(1234321);
 then create a bootstrap sample
 
 ```julia
-samp = parametricbootstrap(rng, 100_000, m1);
-DataFrame(samp.bstr)
+samp = parametricbootstrap(rng, 10_000, m1);
+propertynames(samp)
 ```
 
-The results from the bootstrap sampling are returned as a `Table`, as defined in the `TypedTables.jl` package.
-The $\theta$ column is a vector - in this case a one-dimensional vector.  The `first` and `last` functions are useful for extracting individual elements from the sampled vectors.
-
-Notice that, for some samples, the estimated value of $\theta$ is `[0.0]`.  In fact, this is the case for about about 10% of all the samples.
-
-```julia
-sum(iszero, samp.θ)
-```
-
-A density plot of the bootstrapped values of `σ` shows a slightly skewed but unimodal distribution
-
-```julia
+As shown above, the sample has several named properties, which allow for convenient extraction of information.  For example, a density plot of the estimates of `σ`, the residual standard deviation, can be created as
+```{julia;label="sigmadensity";fig_width=7;fig_height=4;fig_ext=".svg"}
 plot(x=samp.σ, Geom.density, Guide.xlabel("Parametric bootstrap estimates of σ"))
 ```
-
-but a density plot of the bootstrap estimates of $\theta_1$, or of $\sigma_1=\theta_1 \cdot \sigma$
-
-```julia
-plot(x=first.(samp.θ), Geom.density, Guide.xlabel("Parametric bootstrap estimates of θ₁"))
+For the estimates of the intercept parameter, the `getproperty` extractor must be used
+```{julia;label="betadensity";fig_width=7;fig_height=4;fig_ext=".svg"}
+plot(x = getproperty(samp, Symbol("(Intercept)")), Geom.density,
+    Guide.xlabel("Parametric bootstrap estimates of β₁"))
 ```
 
+The `σs` property contains the estimates of the standard deviation of the random effects in a hierarchical format.
 ```julia
-plot(x=first.(samp.σs.Batch), Geom.density, Guide.xlabel("Parametric bootstrap estimates of σ₁"))
+typeof(samp.σs)
 ```
 
-has a mode at zero.  Although this mode appears to be diffuse, this is an artifact of the way that density plots are created.  In fact, it is a pulse, as can be seen from a histogram.
-
+This is to allow for random effects associated with more than one grouping factor.
+If we only have one grouping factor for random effects, which is the case here, we can use the `first` extractor, as in
 ```julia
-plot(x=first.(samp.σs.Batch), Geom.histogram, Guide.xlabel("Parametric bootstrap estimates of σ₁"))
+first(samp.σs)
+```
+or, to carry this one step further,
+```{julia;label="sigma1density";fig_width=7;fig_height=4;fig_ext=".svg"}
+plot(x=first.(first(samp.σs)), Geom.density,
+    Guide.xlabel("Parametric bootstrap estimates of σ₁"))
+```
+
+Notice that this density plot has a spike, or mode, at zero.
+Although this mode appears to be diffuse, this is an artifact of the way that density plots are created.
+In fact, it is a pulse, as can be seen from a histogram.
+
+```{julia;label="sigma1histogram";fig_width=7;fig_height=4;fig_ext=".svg"}
+plot(x=first.(first(samp.σs)), Geom.histogram,
+    Guide.xlabel("Parametric bootstrap estimates of σ₁"))
 ```

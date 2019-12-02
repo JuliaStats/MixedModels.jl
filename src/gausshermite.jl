@@ -71,7 +71,7 @@ const GHnormd = Dict{Int,GaussHermiteNormalized}(
 
 Return the (unique) GaussHermiteNormalized{k} object.
 
-The values are memoized in [`GHnormd`](@ref) when first evaluated.  Subsequent evaluations
+The function values are stored (memoized) when first evaluated.  Subsequent evaluations
 for the same `k` have very low overhead.
 """
 GHnorm(k::Int) = get!(GHnormd, k) do
