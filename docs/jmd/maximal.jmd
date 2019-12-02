@@ -1,12 +1,8 @@
 ---
 title: Simulation of Subject-Item mixed models
 author: Douglas Bates
-date: 2019-02-21
+date: 2019-12-01
 ---
-[Note: The "terms2.0 - Son of Terms" release of the `StatsModels` package is imminent.
-After that release and a corresponding release of `"MixedModels"` these calculations can be reproduced.
-To reproduce the results in this document now requires the `"terms2.0"` branch of MixedModels and the `"dfk/terms2.0"` branch of StatsModels.]
-
 Following the publication of Barr et al. (2011) there has been considerable interest in simulation of subject-item types of data from mixed-effects models to assess the effect of the choice of random-effects structure on the Type I error of tests on the fixed-effects.
 Here we show how such simulations can be carried out efficiently using the [`MixedModels`](https://github.com/dmbates/MixedModels.jl) package for [`Julia`](https://julialang.org).
 
@@ -20,11 +16,13 @@ Such an experimental design yields a total of 10,000 measurements.
 In the data for this experimental design, the 25 younger subjects are labelled `'a'` to `'y'` while the older subjects are `'A'` to `'Y'` and the items are `'A'` to `'T'`.
 ```{julia}
 using DataFrames, Distributions, FreqTables, Gadfly, MixedModels, Random, StatsModels, Tables
+```
+```{julia}
 df = (S = repeat(['A':'Y'; 'a':'y'], inner=40, outer=5),
     Age = repeat(['O','Y'], inner=1000, outer=5),
     I = repeat('A':'T', inner=2, outer=250),
     Noise = repeat(['Q','N'], outer=5000),
-    Y = ones(10000))
+    Y = ones(10000));
 ```
 The response column, `Y`, is added as a placeholder.
 
@@ -110,8 +108,8 @@ freqtable(df, :Noise, :I)
 
 A `LinearMixedModel` with fixed-effects for `Age` and `Noise` and for their interaction and with random intercepts for `S` and `I` is created as
 ```{julia}
-const hc = HelmertCoding();
-m1 = LinearMixedModel(@formula(Y ~ 1 + Age * Noise + (1|S) + (1|I)), df, Dict(:Age => hc, :Noise => hc));
+contrasts = Dict(:Age => HelmertCoding(), :Noise => HelmertCoding());
+m1 = LinearMixedModel(@formula(Y ~ 1 + Age * Noise + (1|S) + (1|I)), df, contrasts = contrasts);
 m1.X                               # model matrix for fixed-effects terms
 ```
 

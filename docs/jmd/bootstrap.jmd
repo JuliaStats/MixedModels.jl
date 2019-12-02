@@ -30,7 +30,7 @@ const dat = Dict(Symbol(k)=>v for (k,v) in load(joinpath(testdir, "dat.rda")));
 
 ```julia
 ds = names!(dat[:Dyestuff], [:Batch, :Yield])  # the Dyestuff data
-m1 = fit!(LinearMixedModel(@formula(Yield ~ 1 + (1 | Batch)), ds))
+m1 = fit(MixedModel, @formula(Yield ~ 1 + (1 | Batch)), ds)
 ```
 
 To bootstrap the model parameters, we first initialize a random number generator
