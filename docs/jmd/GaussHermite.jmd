@@ -51,7 +51,6 @@ gausshermitenorm(3)
 The weights and positions are often shown as a *lollipop plot*.
 For the 9th order rule these are
 ```{julia;echo=false;fig_cap="Lollipop plot of 9th order normalized Gauss-Hermite rule"}
-using Gadfly
 gh9=gausshermitenorm(9)
 plot(x=gh9[1], y=gh9[2], Geom.hair, Geom.point, Guide.ylabel("Weight"), Guide.xlabel(""))
 ```
@@ -92,20 +91,20 @@ Several covariates were recorded including the woman's age (centered at the mean
 The version of the data used here is that used in review of multilevel modeling software conducted by the Center for Multilevel Modelling, currently at University of Bristol (http://www.bristol.ac.uk/cmm/learning/mmsoftware/data-rev.html).
 These data are available as the `Contraception` data frame in the test data for the `MixedModels` package.
 ```{julia;term=true}
-using DataFrames, DataFramesMeta, PooledArrays, RData
-const dat = Dict(Symbol(k)=>v for (k,v) in 
+using DataFrames, PooledArrays, RData
+const dat = Dict(Symbol(k)=>v for (k,v) in
     load(joinpath(dirname(pathof(MixedModels)), "..", "test", "dat.rda")));
 contra = dat[:Contraception];
 contra.urbdist = PooledArray(string.(contra.urb, contra.d));
 describe(contra)
 ```
 
-Because a smoothed scatterplot of contraception use versus age
+A smoothed scatterplot of contraception use versus age
 ```{julia;echo=false;fig_cap="Scatterplot smooth of contraception use versus age"}
-plot(contra, x=:a, y=:use, Geom.smooth, Guide.xlabel("Centered age (yr)"), Guide.ylabel("Contraception use"))
+plot(contra, x=:a, y=:use, Geom.smooth, Guide.xlabel("Centered age (yr)"),
+    Guide.ylabel("Contraception use"))
 ```
-shows that the proportion of women using artificial contraception is approximately quadratic in age,
-a column named `:a2`, which is the square of the age, `:a`, is added to the data frame using the `@transform` macro.
+shows that the proportion of women using artificial contraception is approximately quadratic in age.
 
 A model with fixed-effects for age, age squared, number of live children and urban location and with random effects for district, is fit as
 ```{julia;term=true}
@@ -116,7 +115,7 @@ m1 = fit!(GeneralizedLinearMixedModel(form1, contra,
 
 For a model such as `m1`, which has a single, scalar random-effects term, the unscaled conditional density of the spherical random effects variable, $\mathcal{U}$,
 given the observed data, $\mathcal{Y}=\mathbf{y}_0$, can be expressed as a product of scalar density functions, $f_i(u_i),\; i=1,\dots,q$.
-In the PIRLS algorithm, which determines the conditional mode vector, $\tilde{\mathbf{u}}$, the optimization is performed on the *deviance scale*, 
+In the PIRLS algorithm, which determines the conditional mode vector, $\tilde{\mathbf{u}}$, the optimization is performed on the *deviance scale*,
 ```math
 D(\mathbf{u})=-2\sum_{i=1}^q \log(f_i(u_i))
 ```
@@ -133,7 +132,7 @@ end
 show(devc0)
 ```
 
-One thing to notice is that, even on the deviance scale, the contributions of different districts can be different magnitudes.
+One thing to notice is that, even on the deviance scale, the contributions of different districts can be of different magnitudes.
 This is primarily due to different sample sizes in the different districts.
 ```{julia;term=true}
 using FreqTables
@@ -160,15 +159,17 @@ end
 ```
 A plot of the deviance contribution versus $u_1$
 ```{julia;echo=false;fig_cap="Deviance contribution of u₁"}
-plot(x=xvals, y=view(results, 1, :), Geom.line, Guide.xlabel("u₁"), Guide.ylabel("Deviance contribution"))
+plot(x=xvals, y=view(results, 1, :), Geom.line, Guide.xlabel("u₁"),
+    Guide.ylabel("Deviance contribution"))
 ```
 shows that the deviance contribution is very close to a quadratic.
 This is also true for $u_3$
 ```{julia;echo=false;fig_cap="Deviance contribution of u₃"}
-plot(x=xvals, y=view(results, 3, :), Geom.line, Guide.xlabel("u₃"), Guide.ylabel("Deviance contribution"))
+plot(x=xvals, y=view(results, 3, :), Geom.line, Guide.xlabel("u₃"),
+    Guide.ylabel("Deviance contribution"))
 ```
 
-The PIRLS algorithm provides the locations of the minima of these scalar functions, stored as 
+The PIRLS algorithm provides the locations of the minima of these scalar functions, stored as
 ```{julia;term=true}
 m1.u₀[1]
 ```
@@ -192,10 +193,14 @@ for (j, z) in enumerate(xvals)
 end
 ```
 ```{julia;echo=false;fig_cap="Scaled and shifted deviance contributions"}
-plot(x=xvals,y=view(results, 1, :),Geom.line,Guide.xlabel("Scaled and shifted u₁"),Guide.ylabel("Shifted deviance contribution"))
+plot(x=xvals, y=view(results, 1, :), Geom.line,
+    Guide.xlabel("Scaled and shifted u₁"),
+    Guide.ylabel("Shifted deviance contribution"))
 ```
 ```{julia;echo=false;fig_cap="Scaled and shifted deviance contributions"}
-plot(x=xvals,y=view(results, 3, :),Geom.line,Guide.xlabel("Scaled and shifted u₃"),Guide.ylabel("Shifted deviance contribution"))
+plot(x=xvals, y=view(results, 3, :), Geom.line,
+    Guide.xlabel("Scaled and shifted u₃"),
+    Guide.ylabel("Shifted deviance contribution"))
 ```
 
 On the original density scale these become
@@ -211,10 +216,14 @@ for (j, z) in enumerate(xvals)
 end
 ```
 ```{julia;echo=false;fig_cap="Scaled and shifted conditional density"}
-plot(x=xvals,y=view(results, 1, :),Geom.line,Guide.xlabel("Scaled and shifted u₁"),Guide.ylabel("Conditional density"))
+plot(x=xvals, y=view(results, 1, :), Geom.line,
+    Guide.xlabel("Scaled and shifted u₁"),
+    Guide.ylabel("Conditional density"))
 ```
 ```{julia;echo=false;fig_cap="Scaled and shifted conditional density"}
-plot(x=xvals,y=view(results, 3, :),Geom.line,Guide.xlabel("Scaled and shifted u₃"),Guide.ylabel("Conditional density"))
+plot(x=xvals, y=view(results, 3, :), Geom.line,
+    Guide.xlabel("Scaled and shifted u₃"),
+    Guide.ylabel("Conditional density"))
 ```
 and the function to be integrated with the normalized Gauss-Hermite rule is
 ```{julia}
@@ -229,8 +238,10 @@ for (j, z) in enumerate(xvals)
 end
 ```
 ```{julia;echo=false;fig_cap="Function to be integrated with normalized Gauss-Hermite rule"}
-plot(x=xvals,y=view(results, 1, :),Geom.line,Guide.xlabel("Scaled and shifted u₁"),Guide.ylabel("Kernel ratio"))
+plot(x=xvals, y=view(results, 1, :), Geom.line,
+    Guide.xlabel("Scaled and shifted u₁"), Guide.ylabel("Kernel ratio"))
 ```
 ```{julia;echo=false;fig_cap="Function to be integrated with normalized Gauss-Hermite rule"}
-plot(x=xvals,y=view(results, 3, :),Geom.line,Guide.xlabel("Scaled and shifted u₃"),Guide.ylabel("Kernel ratio"))
+plot(x=xvals, y=view(results, 3, :), Geom.line,
+    Guide.xlabel("Scaled and shifted u₃"), Guide.ylabel("Kernel ratio"))
 ```

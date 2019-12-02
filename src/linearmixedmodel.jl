@@ -365,6 +365,14 @@ function Base.getproperty(m::LinearMixedModel, s::Symbol)
     end
 end
 
+"""
+    issingular(m::LinearMixedModel, θ=m.θ)
+
+Test whether the model `m` is singular if the parameter vector is `θ`.
+"""
+issingular(m::LinearMixedModel{T}, θ::AbstractVector{T}=m.θ) where {T} =
+    any(isapprox.(m.optsum.lowerbd, θ))
+
 function StatsBase.loglikelihood(m::LinearMixedModel)
     if m.optsum.REML
         throw(ArgumentError("loglikelihood not available for models fit by REML"))

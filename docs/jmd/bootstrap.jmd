@@ -34,7 +34,7 @@ m1 = fit(MixedModel, @formula(Yield ~ 1 + (1 | Batch)), ds)
 To bootstrap the model parameters, first initialize a random number generator
 
 ```julia
-rng = MersenneTwister(1234321);
+const rng = MersenneTwister(1234321);
 ```
 
 then create a bootstrap sample
@@ -77,4 +77,68 @@ In fact, it is a pulse, as can be seen from a histogram.
 ```{julia;label="sigma1histogram";fig_width=7;fig_height=4;fig_ext=".svg"}
 plot(x=first.(first(samp.σs)), Geom.histogram,
     Guide.xlabel("Parametric bootstrap estimates of σ₁"))
+```
+
+A value of zero for the standard deviation of the random effects is an example of a *singular* covariance.
+It is easy to detect the singularity in the case of a scalar random-effects term.
+However, it is not as straightforward to detect singularity in vector-valued random-effects terms.
+
+For example, if we bootstrap a model fit to the `sleepstudy` data
+```julia
+m2 = fit(MixedModel, @formula(Y ~ 1+U+(1+U|G)), dat[:sleepstudy])
+```
+```
+samp2 = parametricbootstrap(rng, 10_000, m2);
+```
+the singularity can be exhibited as a standard deviation of zero or as a correlation of $\pm1$.
+The `σρs` property of the sample is a vector of named tuples
+```julia
+σρ = first(samp2.σρs);
+typeof(σρ)
+```
+where the first element of the tuple is itself a tuple of standard deviations and the second (also the last) element of the tuple is the correlation.
+
+A histogram of the estimated correlations from the bootstrap sample has a spike at `+1`.
+```{julia;label="rhohistogram";fig_width=7;fig_height=4;fig_ext=".svg"}
+ρs = first.(last.(σρ))
+plot(x = ρs, Geom.histogram,
+    Guide.xlabel("Parametric bootstrap samples of correlation of random effects"))
+```
+or, as a count,
+```julia
+sum(ρs .≈ 1)
+```
+
+Close examination of the histogram shows a few values of `-1`.
+```julia
+sum(ρs .≈ -1)
+```
+
+Furthermore there are even a few cases where the estimate of the standard deviation of the random effect for the intercept is zero.
+```julia
+sum(first.(first.(first.(σρ))) .≈ 0)
+```
+
+There is a general condition to check for singularity of an estimated covariance matrix or matrices in a bootstrap sample.
+The parameter optimized in the estimation is `θ`, the relative covariance parameter.
+Some of the elements of this parameter vector must be non-negative and, when one of these components is approximately zero, one of the covariance matrices will be singular.
+
+The boundary values are available as
+```julia
+samp2.model.optsum.lowerbd
+```
+so the check on singularity becomes
+```julia
+sum(θ -> any(θ .≈ samp2.model.optsum.lowerbd), samp2.θ)
+```
+
+The `issingular` method for a `LinearMixedModel` object that tests if a parameter vector `θ` corresponds to a boundary or singular fit.
+The default value of `θ` is that from the model but another value can be given as the second argument.
+```@docs
+issingular
+```
+
+Using this function the number of singular fits in the bootstrap sample can be counted as
+```julia
+sum(issingular.(Ref(samp2.m), samp2.θ))
 ```

@@ -126,11 +126,12 @@ using DataFrames, RData, MixedModels
 const dat=Dict(Symbol(k)=>v for (k,v) in load(joinpath(dirname(pathof(MixedModels)), "..", "test", "dat.rda")));
 ```
 ```{julia;term=true}
-fm1 = fit!(LinearMixedModel(@formula(Y ~ 1 + (1|G)), dat[:Dyestuff]))
+fm1 = fit(MixedModel, @formula(Y ~ 1 + (1|G)), dat[:Dyestuff])
 ```
 the only random effects term in the formula is `(1|G)`, a simple, scalar random-effects term.
 ```{julia;term=true}
-t1 = first(fm1.reterms)
+t1 = first(fm1.reterms);
+Int.(t1)  # convert to integers for more compact display
 ```
 ```@docs
 ReMat
@@ -149,12 +150,12 @@ Furthermore, there is only one block in $\Lambda_\theta$.
 
 For a vector-valued random-effects term, as in
 ```{julia;term=true}
-fm2 = fit!(LinearMixedModel(@formula(Y ~ 1 + U + (1+U|G)), dat[:sleepstudy]))
+fm2 = fit(MixedModel, @formula(Y ~ 1 + U + (1+U|G)), dat[:sleepstudy])
 ```
-the model matrix $\bf Z$ for is of the form
+the model matrix $\bf Z$ is of the form
 ```{julia;term=true}
 t21 = first(fm2.reterms);
-convert(Array{Int}, Matrix(t21))  # convert to integers for more compact printing
+Int.(t21) # convert to integers for more compact display
 ```
 and $\Lambda_\theta$ is a $36\times36$ block diagonal matrix with $18$ diagonal blocks, all of the form
 ```{julia;term=true}
@@ -168,7 +169,8 @@ MixedModels.getθ(t21)
 Random-effects terms in the model formula that have the same grouping factor are amagamated into a single `ReMat` object.
 ```{julia;term=true}
 fm3 = fit!(zerocorr!(LinearMixedModel(@formula(Y ~ 1 + U + (1+U|G)), dat[:sleepstudy]), [:G]))
-t31 = first(fm3.reterms)
+t31 = first(fm3.reterms);
+Int.(t31)
 ```
 Note that we could also have achieved this by re-fitting (a copy of) `fm2`.
 ```{julia;term=true}
@@ -182,18 +184,20 @@ MixedModels.getθ(t31)
 Random-effects terms with distinct grouping factors generate distinct elements of the `trms` member of the `LinearMixedModel` object.
 Multiple `ReMat` objects are sorted by decreasing numbers of random effects.
 ```{julia;term=true}
-fm4 = fit!(LinearMixedModel(@formula(Y ~ 1 + (1|H) + (1|G)), dat[:Penicillin]))
-t41 = first(fm4.reterms)
-t42 = last(fm4.reterms)
+fm4 = fit(MixedModel, @formula(Y ~ 1 + (1|H) + (1|G)), dat[:Penicillin])
+t41 = first(fm4.reterms);
+Int.(t41)
+t42 = last(fm4.reterms);
+Int.(t42)
 ```
 Note that the first `ReMat` in `fm4.terms` corresponds to grouping factor `G` even though the term `(1|G)` occurs in the formula after `(1|H)`.
 
 ### Progress of the optimization
 
-An optional named argument, `verbose=true`, in the call to `fit!` of a `LinearMixedModel` causes printing of the objective and the $\theta$ parameter at each evaluation during the optimization.
+An optional named argument, `verbose=true`, in the call to `fit` for a `LinearMixedModel` causes printing of the objective and the $\theta$ parameter at each evaluation during the optimization.
 ```{julia;term=true}
-fit!(LinearMixedModel(@formula(Y ~ 1 + (1|G)), dat[:Dyestuff]), verbose=true);
-fit!(LinearMixedModel(@formula(Y ~ 1 + U + (1+U|G)), dat[:sleepstudy]), verbose=true);
+fit(MixedModel, @formula(Y ~ 1 + (1|G)), dat[:Dyestuff], verbose=true);
+fit(MixedModel, @formula(Y ~ 1 + U + (1+U|G)), dat[:sleepstudy], verbose=true);
 ```
 
 A shorter summary of the optimization process is always available as an
@@ -327,8 +331,9 @@ mdl.LMM.optsum
 
 As one would hope, given the name of the option, this fit is comparatively fast.
 ```{julia;term=true}
-@time(fit!(GeneralizedLinearMixedModel(@formula(r2 ~ 1 + a + g + b + s + (1 | id) + (1 | item)),
-        dat[:VerbAgg], Bernoulli()), fast=true))
+@time(fit!(GeneralizedLinearMixedModel(
+    @formula(r2 ~ 1 + a + g + b + s + (1 | id) + (1 | item)),
+    dat[:VerbAgg], Bernoulli()), fast=true))
 ```
 
 The alternative algorithm is to use PIRLS to find the conditional mode of the random effects, given $\beta$ and $\theta$ and then use the general nonlinear optimizer to fit with respect to both $\beta$ and $\theta$.
