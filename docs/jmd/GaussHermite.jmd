@@ -181,7 +181,7 @@ s'
 ```
 
 The curves can be put on a common scale, corresponding to the standard normal, as
-```{julia}
+```{julia;term=true}
 for (j, z) in enumerate(xvals)
     @. uv = u₀ + z * s
     MixedModels.updateη!(m1)
@@ -204,7 +204,7 @@ plot(x=xvals, y=view(results, 3, :), Geom.line,
 ```
 
 On the original density scale these become
-```{julia}
+```{julia;term=true}
 for (j, z) in enumerate(xvals)
     @. uv = u₀ + z * s
     MixedModels.updateη!(m1)
@@ -226,7 +226,7 @@ plot(x=xvals, y=view(results, 3, :), Geom.line,
     Guide.ylabel("Conditional density"))
 ```
 and the function to be integrated with the normalized Gauss-Hermite rule is
-```{julia}
+```{julia;term=true}
 for (j, z) in enumerate(xvals)
     @. uv = u₀ + z * s
     MixedModels.updateη!(m1)

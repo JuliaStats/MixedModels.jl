@@ -370,8 +370,7 @@ end
 
 Test whether the model `m` is singular if the parameter vector is `θ`.
 """
-issingular(m::LinearMixedModel{T}, θ::AbstractVector{T}=m.θ) where {T} =
-    any(isapprox.(m.optsum.lowerbd, θ))
+issingular(m::LinearMixedModel, θ::AbstractVector=m.θ) = any(isapprox.(m.optsum.lowerbd, θ))
 
 function StatsBase.loglikelihood(m::LinearMixedModel)
     if m.optsum.REML
