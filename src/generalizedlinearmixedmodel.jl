@@ -246,7 +246,7 @@ function GeneralizedLinearMixedModel(f::FormulaTerm, tbl::Tables.ColumnTable,
     if isa(d, Binomial) && isempty(wts)
         d = Bernoulli()
     end
-    (isa(d, Normal) && isa(link, IdentityLink)) &&
+    (isa(d, Normal) && isa(l, IdentityLink)) &&
         throw(ArgumentError("use LinearMixedModel for Normal distribution with IdentityLink"))
     LMM = LinearMixedModel(f, tbl, contrasts = contrasts; wts = wts)
     y = copy(LMM.y)
