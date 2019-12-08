@@ -2,7 +2,6 @@ module MixedModels
 
 using BlockArrays
 using BlockDiagonals
-using CategoricalArrays
 using Distributions
 using GLM
 using LinearAlgebra
