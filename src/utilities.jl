@@ -60,6 +60,24 @@ function normalized_variance_cumsum(A::AbstractMatrix)
 end
 
 """
+    ltriindprs
+
+A row-major order `Vector{NTuple{2,Int}}` of indices in the strict lower triangle.
+"""
+const ltriindprs = NTuple{2,Int}[]
+
+function checkindprsk(k::Integer)
+    kchoose2 = (k * (k - 1)) >> 1
+    if length(ltriindprs) < kchoose2
+        sizehint!(empty!(ltriindprs), kchoose2)
+        for i in 1:k, j in 1:(i-1)
+            push!(ltriindprs, (i,j))
+        end
+    end
+    ltriindprs
+end
+
+"""
     subscriptednames(nm, len)
 
 Return a `Vector{String}` of `nm` with subscripts from `₁` to `len`
