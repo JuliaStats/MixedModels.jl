@@ -1,7 +1,6 @@
 using DataFrames, LinearAlgebra, MixedModels, Random, SparseArrays, StatsModels, Test
-using MixedModels: mulαβ!
 
-@testset "mulαβ!" begin
+@testset "mul!" begin
     for (m, p, n, q, k) in (
                             (10, 0.7, 5, 0.3, 15),
                             (100, 0.01, 100, 0.01, 20),
@@ -15,12 +14,12 @@ using MixedModels: mulαβ!
         ab = a * b
         arbt = Array(b')
         aab = Array(a) * Array(b)
-        @test aab ≈ mulαβ!(c, a, bs', true, true)
-        @test aab ≈ mulαβ!(c, a, bs')
-        @test aab ≈ mulαβ!(c, a, arbt')
-        @test aab ≈ mulαβ!(c, a, arbt')
-        @test aab ≈ mulαβ!(fill!(c, 0.0), a, arbt', true, true)
-        @test maximum(abs, mulαβ!(c, a, arbt', -1.0, true)) ≤ sqrt(eps())
+        @test aab ≈ mul!(c, a, bs', true, true)
+        @test aab ≈ mul!(c, a, bs')
+        @test aab ≈ mul!(c, a, arbt')
+        @test aab ≈ mul!(c, a, arbt')
+        @test aab ≈ mul!(fill!(c, 0.0), a, arbt', true, true)
+        @test maximum(abs, mul!(c, a, arbt', -1.0, true)) ≤ sqrt(eps())
         @test maximum(abs.(ab - aab)) < 100*eps()
         @test a*bs' == ab
         @test as'*b == ab

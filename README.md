@@ -19,9 +19,6 @@
 [appveyor-img]: https://ci.appveyor.com/api/projects/status/github/JuliaStats/MixedModels.jl?svg=true
 [appveyor-url]: https://ci.appveyor.com/project/JuliaStats/mixedmodels-jl
 
-[coveralls-img]: https://coveralls.io/repos/github/JuliaStats/MixedModels.jl/badge.svg?branch=master
-[coveralls-url]: https://coveralls.io/github/JuliaStats/MixedModels.jl?branch=master
-
 [codecov-img]: https://codecov.io/github/JuliaStats/MixedModels.jl/badge.svg?branch=master
 [codecov-url]: https://codecov.io/github/JuliaStats/MixedModels.jl?branch=master
 
