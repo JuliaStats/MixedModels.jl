@@ -312,9 +312,16 @@ end
     @test deviance(fm) ≈ 339.0218639362958 atol=0.001
     simulate!(fm, θ = fm.θ)
     @test_throws DimensionMismatch refit!(fm, zeros(29))
-    bsamp = parametricbootstrap(MersenneTwister(1234321), 10, fm)
-    @test length(bsamp.objective) == 10
+    bsamp = parametricbootstrap(MersenneTwister(1234321), 100, fm)
+    @test isa(propertynames(bsamp), Vector{Symbol})
+    @test length(bsamp.objective) == 100
     @test keys(bsamp.bstr) == (:objective, :σ, :β₁, :θ)
+    @test length(bsamp.objective) == 100
+    @test isa(bsamp.model, LinearMixedModel)
+    @test isa(bsamp.σs, NamedTuple)
+    @test isa(bsamp.σρs, NamedTuple)
+    @test length(bsamp.σs) == 1
+    @test shortestCovInt(bsamp.σ) ≈ [44.44223738360321, 75.89648041542026] rtol = 1.e-4
 end
 
 @testset "Rank deficient" begin
