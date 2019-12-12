@@ -321,7 +321,7 @@ end
     @test isa(bsamp.σs, NamedTuple)
     @test isa(bsamp.σρs, NamedTuple)
     @test length(bsamp.σs) == 1
-    @test shortestCovInt(bsamp.σ) ≈ [44.44223738360321, 75.89648041542026] rtol = 1.e-4
+    @test shortestCovInt(bsamp.σ) ≈ [48.2551828768727, 81.85810781858969] rtol = 1.e-4
 end
 
 @testset "Rank deficient" begin
