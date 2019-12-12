@@ -41,6 +41,13 @@ end
     @test loglikelihood(fit!(lmm1)) ≈ -578.9080978272708
 end
 
+@testset "rankupdate!" begin
+    @test ones(2, 2) == MixedModels.rankUpdate!(Hermitian(zeros(2, 2)), ones(2))
+    d2 = Diagonal(fill(2., 2))
+    @test Diagonal(fill(5.,2)) == MixedModels.rankUpdate!(Diagonal(ones(2)), d2, 1.)
+    @test Diagonal(fill(-3.,2)) == MixedModels.rankUpdate!(Diagonal(ones(2)), d2, -1.)
+end
+
 @testset "lmulλ!" begin
     gendata(n::Int, ng::Int) = gendata(MersenneTwister(42), n, ng)
 

@@ -24,9 +24,9 @@ function StatsModels.apply_schema(
     sch::StatsModels.FullRank,
     Mod::Type{<:MixedModel},
 )
-    length(t.args_parsed) == 2 || throw(ArgumentError("malformed nesting term: $t " *
-                                                      "(Exactly two arguments are supported)"))
-
+    if length(t.args_parsed) ≠ 2
+        throw(ArgumentError("malformed nesting term: $t (Exactly two arguments required"))
+    end
     first, second = apply_schema.(t.args_parsed, Ref(sch.schema), Mod)
     return first + first & second
 end

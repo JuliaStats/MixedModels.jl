@@ -79,12 +79,6 @@ function parametricbootstrap(
     MixedModelBootstrap(deepcopy(m), value)
 end
 
-function mktable(nsamp, p, k, T)
-    nms = (:objective, :σ, Symbol.(subscriptednames("β", p))..., :θ)
-    (; (nm => nm == :θ ? Vector{SVector{k,T}}(undef, nsamp) : Vector{T}(undef, nsamp) for nm in nms)...)
-end
-
-
 function parametricbootstrap(nsamp::Integer, m::LinearMixedModel, β = m.β, σ = m.σ, θ = m.θ)
     parametricbootstrap(Random.GLOBAL_RNG, nsamp, m, β = β, σ = σ, θ = θ)
 end
