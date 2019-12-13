@@ -76,12 +76,22 @@ function LinearAlgebra.rdiv!(
     A::Matrix{T},
     adjB::Adjoint{T,<:LowerTriangular{T,UniformBlockDiagonal{T}}},
 ) where {T}
+    m, n = size(A)
     Bd = adjB.parent.data
-    m, n, k = size(Bd.data)
-    size(A, 2) == size(Bd, 1) && m == n || throw(DimensionMismatch(""))
-    inds = 1:m
-    for (i, f) in enumerate(Bd.facevec)
-        BLAS.trsm!('R', 'L', 'T', 'N', one(T), f, view(A, :, inds .+ m * (i - 1)))
+    r, s, blk = size(Bd.data)
+    n == size(Bd, 1) && r == s || throw(DimensionMismatch())
+    for b = 1:blk
+        coloffset = (b - 1) * s
+        for i = 1:m
+            for j = 1:s
+                Aij = A[i, j+coloffset]
+                for k = 1:j-1
+                    Aij -= A[i, k+coloffset] * Bd.data[j, k, b]'
+                end
+                A[i, j+coloffset] = Aij / Bd.data[j, j, b]'
+            end
+        end
+        A
     end
     A
 end

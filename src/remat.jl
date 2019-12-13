@@ -386,13 +386,23 @@ end
 
 rmulΛ!(A::M, B::ReMat{T,1}) where{M<:AbstractMatrix{T}} where{T} = rmul!(A, first(B.λ))
 
-function rmulΛ!(A::M, B::ReMat{T,S}) where{M<:AbstractMatrix{T}} where{T,S}
+function rmulΛ!(A::M, B::ReMat{T,S}) where {M<:AbstractMatrix{T}} where {T,S}
     m, n = size(A)
     q, r = divrem(n, S)
-    iszero(r) || throw(DimensionMismatch("size(A, 2) = is not a multiple of block size"))
-    A3 = reshape(A, (m, S, q))
-    for k in 1:q
-        rmul!(view(A3, :, :, k), B.λ)
+    iszero(r) || throw(DimensionMismatch("size(A, 2) is not a multiple of block size"))
+    Bd = B.λ.data
+    m, n = size(A)
+    for k = 1:q
+        coloffset = (k - 1) * S
+        for i = 1:m
+            for j = 1:S
+                Aij = A[i, j + coloffset] * Bd[j, j]
+                for k = j + 1:S
+                    Aij += A[i, k + coloffset] * Bd[k, j]
+                end
+                A[i, j + coloffset] = Aij
+            end
+        end
     end
     A
 end
