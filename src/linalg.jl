@@ -80,7 +80,7 @@ function LinearAlgebra.rdiv!(
     Bd = adjB.parent.data
     r, s, blk = size(Bd.data)
     n == size(Bd, 1) && r == s || throw(DimensionMismatch())
-    for b = 1:blk
+    @inbounds for b = 1:blk
         coloffset = (b - 1) * s
         for i = 1:m
             for j = 1:s
@@ -91,7 +91,6 @@ function LinearAlgebra.rdiv!(
                 A[i, j+coloffset] = Aij / Bd.data[j, j, b]'
             end
         end
-        A
     end
     A
 end
