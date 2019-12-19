@@ -232,10 +232,7 @@ end
 *(adjA::Adjoint{T,<:ReMat{T}}, B::ReMat{T}) where {T} = adjA.parent.adjA * sparse(B)
 *(adjA::Adjoint{T,<:FeMat{T}}, B::ReMat{T}) where {T} =
     mul!(Matrix{T}(undef, rank(adjA.parent), size(B, 2)), adjA, B)
-#=
-LinearAlgebra.mul!(C::AbstractMatrix{T}, adjA::Adjoint{T,<:FeMat{T}},
-        B::ReMat{T}) where {T} = mul!(C, adjA, B)
-=#
+
 function LinearAlgebra.mul!(C::Matrix{T}, adjA::Adjoint{T,<:FeMat{T}}, B::ReMat{T,1},
         α::Number, β::Number) where {T}
     A = adjA.parent
