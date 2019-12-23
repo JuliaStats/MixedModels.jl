@@ -14,7 +14,7 @@ function densify(A::SparseMatrixCSC, threshold::Real = 0.25)
         # the diagonal is always dense (otherwise rank deficit)
         # so make sure it's stored as such
         Diagonal(Vector(diag(A)))
-    elseif nnz(A)/(m * n) ≤ threshold
+    elseif nnz(A) / (m * n) ≤ threshold
         A
     else
         Array(A)
@@ -22,8 +22,9 @@ function densify(A::SparseMatrixCSC, threshold::Real = 0.25)
 end
 densify(A::AbstractMatrix, threshold::Real = 0.3) = A
 
-densify(A::SparseVector, threshold::Real = 0.3)  = Vector(A)
-densify(A::Diagonal{T, SparseVector}, threshold::Real = 0.3) where T = Diagonal(Vector(A.diag))
+densify(A::SparseVector, threshold::Real = 0.3) = Vector(A)
+densify(A::Diagonal{T,SparseVector}, threshold::Real = 0.3) where {T} =
+    Diagonal(Vector(A.diag))
 
 """
     RaggedArray{T,I}
@@ -40,7 +41,8 @@ struct RaggedArray{T,I}
     vals::Vector{T}
     inds::Vector{I}
 end
-function Base.sum!(s::AbstractVector{T}, a::RaggedArray{T}) where T
+
+function Base.sum!(s::AbstractVector{T}, a::RaggedArray{T}) where {T}
     for (v, i) in zip(a.vals, a.inds)
         s[i] += v
     end
@@ -82,17 +84,6 @@ Return a `Vector{String}` of `nm` with subscripts from `₁` to `len`
 """
 function subscriptednames(nm, len)
     nd = ndigits(len)
-    nd == 1 ?
-        [string(nm, '₀' + j) for j in 1:len] :
-        [string(nm, lpad(string(j), nd, '0')) for j in 1:len]
+    nd == 1 ? [string(nm, '₀' + j) for j = 1:len] :
+    [string(nm, lpad(string(j), nd, '0')) for j = 1:len]
 end
-#=
-updatedevresid!(r::GLM.GlmResp, η::AbstractVector) = updateμ!(r, η)
-
-fastlogitdevres(η, y) = 2log1p(exp(iszero(y) ? η : -η))
-
-function updatedevresid!(r::GLM.GlmResp{V,<:Bernoulli,LogitLink}, η::V) where V<:AbstractVector{<:AbstractFloat}
-    map!(fastlogitdevres, r.devresid, η, r.y)
-    r
-end
-=#

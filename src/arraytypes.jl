@@ -1,21 +1,21 @@
-using StaticArrays, SparseArrays, LinearAlgebra
-
 """
     UniformBlockDiagonal{T}
 
 Homogeneous block diagonal matrices.  `k` diagonal blocks each of size `m×m`
 """
 struct UniformBlockDiagonal{T} <: AbstractMatrix{T}
-    data::Array{T, 3}
+    data::Array{T,3}
     facevec::Vector{SubArray{T,2,Array{T,3}}}
 end
 
 function UniformBlockDiagonal(dat::Array{T,3}) where {T}
-    UniformBlockDiagonal(dat,
-        SubArray{T,2,Array{T,3}}[view(dat,:,:,i) for i in 1:size(dat, 3)])
+    UniformBlockDiagonal(
+        dat,
+        SubArray{T,2,Array{T,3}}[view(dat, :, :, i) for i = 1:size(dat, 3)],
+    )
 end
 
-function Base.copyto!(dest::UniformBlockDiagonal{T}, src::UniformBlockDiagonal{T}) where{T}
+function Base.copyto!(dest::UniformBlockDiagonal{T}, src::UniformBlockDiagonal{T}) where {T}
     sdat = src.data
     ddat = dest.data
     size(ddat) == size(sdat) || throw(DimensionMismatch(""))
@@ -28,13 +28,13 @@ function Base.copyto!(dest::Matrix{T}, src::UniformBlockDiagonal{T}) where {T}
     fill!(dest, zero(T))
     sdat = src.data
     m, n, l = size(sdat)
-    for k in 1:l
+    for k = 1:l
         ioffset = (k - 1) * m
         joffset = (k - 1) * n
-        for j in 1:n
+        for j = 1:n
             jind = joffset + j
-            for i in 1:m
-                dest[ioffset + i, jind] = sdat[i,j,k]
+            for i = 1:m
+                dest[ioffset+i, jind] = sdat[i, j, k]
             end
         end
     end
@@ -45,7 +45,7 @@ function Base.getindex(A::UniformBlockDiagonal{T}, i::Int, j::Int) where {T}
     Ad = A.data
     m, n, l = size(Ad)
     (0 < i ≤ l * m && 0 < j ≤ l * n) ||
-        throw(IndexError("attempt to access $(l*m) × $(l*n) array at index [$i, $j]"))
+    throw(IndexError("attempt to access $(l*m) × $(l*n) array at index [$i, $j]"))
     iblk, ioffset = divrem(i - 1, m)
     jblk, joffset = divrem(j - 1, n)
     iblk == jblk ? Ad[ioffset+1, joffset+1, iblk+1] : zero(T)
@@ -54,7 +54,7 @@ end
 function LinearAlgebra.Matrix(A::UniformBlockDiagonal{T}) where {T}
     Ad = A.data
     m, n, l = size(Ad)
-    mat = zeros(T, (m*l, n*l))
+    mat = zeros(T, (m * l, n * l))
     @inbounds for k = 0:(l-1)
         kp1 = k + 1
         km = k * m
@@ -62,7 +62,7 @@ function LinearAlgebra.Matrix(A::UniformBlockDiagonal{T}) where {T}
         for j = 1:n
             knpj = kn + j
             for i = 1:m
-                mat[km + i, knpj] = Ad[i, j, kp1]
+                mat[km+i, knpj] = Ad[i, j, kp1]
             end
         end
     end
@@ -81,7 +81,10 @@ A `SparseMatrixCSC` whose nonzeros form blocks of rows or columns or both.
 
 # Members
 * `cscmat`: `SparseMatrixCSC{Tv, Int32}` representation for general calculations
-* `blkpattern`: `SparseMatrixCSC{Bool,Int32}` pattern of blocks of size (S,P)
+* `nzasmat`: nonzeros of `cscmat` as a dense matrix
+* `colblkptr`: pattern of blocks of columns
+
+The only time these are created are as products of `ReMat`s.
 """
 mutable struct BlockedSparse{T,S,P} <: AbstractMatrix{T}
     cscmat::SparseMatrixCSC{T,Int32}
@@ -102,7 +105,8 @@ SparseArrays.sparse(A::BlockedSparse) = A.cscmat
 SparseArrays.nnz(A::BlockedSparse) = nnz(A.cscmat)
 
 function Base.copyto!(L::BlockedSparse{T}, A::SparseMatrixCSC{T}) where {T}
-    size(L) == size(A) && nnz(L) == nnz(A) || throw(DimensionMismatch("size(L) ≠ size(A) or nnz(L) ≠ nnz(A"))
+    size(L) == size(A) && nnz(L) == nnz(A) ||
+    throw(DimensionMismatch("size(L) ≠ size(A) or nnz(L) ≠ nnz(A"))
     copyto!(nonzeros(L.cscmat), nonzeros(A))
     L
 end

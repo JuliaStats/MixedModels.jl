@@ -233,11 +233,8 @@ end
 *(adjA::Adjoint{T,<:FeMat{T}}, B::ReMat{T}) where {T} =
     mul!(Matrix{T}(undef, rank(adjA.parent), size(B, 2)), adjA, B)
 
-LinearAlgebra.mul!(C::AbstractMatrix{T}, adjA::Adjoint{T,<:FeMat{T}},
-        B::ReMat{T}) where {T} = mulαβ!(C, adjA, B)
-
-function mulαβ!(C::Matrix{T}, adjA::Adjoint{T,<:FeMat{T}}, B::ReMat{T,1},
-        α=true, β=false) where {T}
+function LinearAlgebra.mul!(C::Matrix{T}, adjA::Adjoint{T,<:FeMat{T}}, B::ReMat{T,1},
+        α::Number, β::Number) where {T}
     A = adjA.parent
     Awt = A.wtx
     n, p = size(Awt)
@@ -255,8 +252,8 @@ function mulαβ!(C::Matrix{T}, adjA::Adjoint{T,<:FeMat{T}}, B::ReMat{T,1},
     C
 end
 
-function mulαβ!(C::Matrix{T}, adjA::Adjoint{T,<:FeMat{T}},
-        B::ReMat{T,S}, α=true, β=false) where {T,S}
+function LinearAlgebra.mul!(C::Matrix{T}, adjA::Adjoint{T,<:FeMat{T}}, B::ReMat{T,S},
+    α::Number, β::Number) where {T,S}
     A = adjA.parent
     Awt = A.wtx
     r = rank(A)
@@ -374,8 +371,7 @@ function *(adjA::Adjoint{T,<:ReMat{T,S}}, B::ReMat{T,P}) where {T,S,P}
         return Matrix(cscmat)
     end
 
-    BlockedSparse{T,S,P}(cscmat, reshape(cscmat.nzval, S, :),
-        cscmat.colptr[1:P:(cscmat.n + 1)])
+    BlockedSparse{T,S,P}(cscmat, reshape(cscmat.nzval, S, :), cscmat.colptr[1:P:(cscmat.n + 1)])
 end
 
 function reweight!(A::ReMat, sqrtwts::Vector)

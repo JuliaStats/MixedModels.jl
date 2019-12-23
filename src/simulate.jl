@@ -47,18 +47,23 @@ The default random number generator is `Random.GLOBAL_RNG`.
 
 `β`, `σ`, and `θ` are the values of `m`'s parameters for simulating the responses.
 """
-function parametricbootstrap(rng::AbstractRNG, nsamp::Integer, m::LinearMixedModel{T};
-    β = m.β, σ = m.σ, θ = m.θ) where {T}
+function parametricbootstrap(
+    rng::AbstractRNG,
+    nsamp::Integer,
+    m::LinearMixedModel{T};
+    β = m.β,
+    σ = m.σ,
+    θ = m.θ,
+) where {T}
     y₀ = copy(response(m))  # to restore original state of m
     θscr = copy(θ)
     βscr = copy(β)
     k = length(θ)
     bnms = Symbol.(subscriptednames("β", length(β)))
     vnms = (:objective, :σ, bnms..., :θ)
-    value = (;(nm => nm == :θ ? SVector{k,T}[] : Vector{T}(undef, nsamp)
-        for nm in vnms)...)
+    value = (; (nm => nm == :θ ? SVector{k,T}[] : Vector{T}(undef, nsamp) for nm in vnms)...)
     try
-        @showprogress 1 for i in 1:nsamp
+        @showprogress 1 for i = 1:nsamp
             refit!(simulate!(rng, m, β = β, σ = σ, θ = θ))
             value.objective[i] = objective(m)
             value.σ[i] = sdest(m)
@@ -66,19 +71,13 @@ function parametricbootstrap(rng::AbstractRNG, nsamp::Integer, m::LinearMixedMod
             for (j, bnm) in enumerate(bnms)
                 getproperty(value, bnm)[i] = βscr[j]
             end
-            push!(value.θ, SVector{k, T}(getθ!(θscr, m)))
+            push!(value.θ, SVector{k,T}(getθ!(θscr, m)))
         end
     finally
         refit!(m, y₀)
     end
     MixedModelBootstrap(deepcopy(m), value)
 end
-
-function mktable(nsamp, p, k, T)
-    nms = (:objective, :σ, Symbol.(subscriptednames("β", p))..., :θ)
-    (; (nm => nm == :θ ? Vector{SVector{k,T}}(undef, nsamp) : Vector{T}(undef, nsamp) for nm in nms)...)
-end
-
 
 function parametricbootstrap(nsamp::Integer, m::LinearMixedModel, β = m.β, σ = m.σ, θ = m.θ)
     parametricbootstrap(Random.GLOBAL_RNG, nsamp, m, β = β, σ = σ, θ = θ)
@@ -93,7 +92,7 @@ function byreterm(bsamp::MixedModelBootstrap{T}, f::Function) where {T}
     oldθ = getθ(m)     # keep a copy to restore later
     retrms = m.reterms
     value = [typeof(v)[] for v in f.(retrms, m.σ)]
-    for (σ,θ) in zip(bsamp.bstr.σ, bsamp.bstr.θ)
+    for (σ, θ) in zip(bsamp.bstr.σ, bsamp.bstr.θ)
         setθ!(m, θ)
         for (i, v) in enumerate(f.(retrms, σ))
             push!(value[i], v)
@@ -117,7 +116,7 @@ function shortestCovInt(v, level = 0.95)
     0 < level < 1 || throw(ArgumentError("level = $level should be in (0,1)"))
     vv = issorted(v) ? v : sort(v)
     ilen = Int(ceil(n * level))   # the length of the interval in indices
-    len, i = findmin([vv[i + ilen - 1] - vv[i] for i in 1:(n + 1 - ilen)])
+    len, i = findmin([vv[i+ilen-1] - vv[i] for i = 1:(n+1-ilen)])
     vv[[i, i + ilen - 1]]
 end
 
@@ -127,7 +126,13 @@ end
 
 Overwrite the response (i.e. `m.trms[end]`) with a simulated response vector from model `m`.
 """
-function simulate!(rng::AbstractRNG, m::LinearMixedModel{T}; β = coef(m), σ=m.σ, θ=T[]) where {T}
+function simulate!(
+    rng::AbstractRNG,
+    m::LinearMixedModel{T};
+    β = coef(m),
+    σ = m.σ,
+    θ = T[],
+) where {T}
     isempty(θ) || setθ!(m, θ)
     y = randn!(rng, response(m))      # initialize y to standard normal
     for trm in m.reterms              # add the unscaled random effects
@@ -138,8 +143,8 @@ function simulate!(rng::AbstractRNG, m::LinearMixedModel{T}; β = coef(m), σ=m.
     m
 end
 
-function simulate!(m::LinearMixedModel{T}; β=m.β, σ=m.σ, θ=T[]) where {T}
-    simulate!(Random.GLOBAL_RNG, m, β=β, σ=σ, θ=θ)
+function simulate!(m::LinearMixedModel{T}; β = m.β, σ = m.σ, θ = T[]) where {T}
+    simulate!(Random.GLOBAL_RNG, m, β = β, σ = σ, θ = θ)
 end
 
 """
@@ -170,7 +175,7 @@ function unscaledre!(y::AbstractVector{T}, A::ReMat{T,S}, b::AbstractMatrix{T}) 
     l = nlevs(A)
     length(y) == n && size(b) == (k, l) || throw(DimensionMismatch(""))
     @inbounds for (i, ii) in enumerate(A.refs)
-        for j in 1:k
+        for j = 1:k
             y[i] += Z[j, i] * b[j, ii]
         end
     end

@@ -1,11 +1,11 @@
 """
-VarCorr
+    VarCorr
 
 Information from the fitted random-effects variance-covariance matrices.
 
 # Members
 * `σρ`: a `NamedTuple` of `NamedTuple`s as returned from `σρs`
-* `s`: the estimate of the scale parameter in the distribution of the conditional dist'n of Y
+* `s`: the estimate of the per-observation dispersion parameter
 
 The main purpose of defining this type is to isolate the logic in the show method.
 """
@@ -37,21 +37,21 @@ function Base.show(io::IO, vc::VarCorr)
     write(io, cpad("Column", cnmwd))
     write(io, cpad("Variance", varwd))
     write(io, cpad("Std.Dev.", stdwd))
-    iszero(nρ) || write(io,"  Corr.")
+    iszero(nρ) || write(io, "  Corr.")
     println(io)
     ind = 1
-    for (i,v) in enumerate(values(vc.σρ))
+    for (i, v) in enumerate(values(vc.σρ))
         write(io, rpad(nmvec[i], nmwd))
         firstrow = true
         k = length(v.σ)   # number of columns in grp factor k
         ρ = v.ρ
         ρind = 0
-        for j in 1:k
+        for j = 1:k
             !firstrow && write(io, " "^nmwd)
             write(io, rpad(cnmvec[ind], cnmwd))
             write(io, lpad(showvarvec[ind], varwd))
             write(io, lpad(showσvec[ind], stdwd))
-            for l in 1:(j - 1)
+            for l = 1:(j-1)
                 ρind += 1
                 ρval = ρ[ρind]
                 ρval === -0.0 ? write(io, "   .  ") : @printf(io, "%6.2f", ρval)

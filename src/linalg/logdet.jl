@@ -12,15 +12,15 @@ function LD(d::UniformBlockDiagonal{T}) where {T}
     m, n, k = size(dat)
     m == n || throw(ArgumentError("Blocks of d must be square"))
     s = log(one(T))
-    @inbounds for j in 1:k, i in 1:m
-        s += log(dat[i,i,j])
+    @inbounds for j = 1:k, i = 1:m
+        s += log(dat[i, i, j])
     end
     s
 end
 
 function LD(d::DenseMatrix{T}) where {T}
     s = log(one(T))
-    for i in 1:LinearAlgebra.checksquare(d)
+    for i = 1:LinearAlgebra.checksquare(d)
         s += log(d[i, i])
     end
     s
@@ -39,7 +39,7 @@ function LinearAlgebra.logdet(m::LinearMixedModel{T}) where {T}
     s = log(one(T))
     L = m.L
     nre = length(m.reterms)
-    @inbounds for i in 1:nre
+    @inbounds for i = 1:nre
         s += LD(L[Block(i, i)])
     end
     if m.optsum.REML

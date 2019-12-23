@@ -2,7 +2,7 @@
 
 |**Documentation**|**Citation**|**Build Status**|**Code Coverage**|
 |:-:|:-:|:-:|:-:|
-|[![][docs-stable-img]][docs-stable-url] [![][docs-latest-img]][docs-latest-url] | [![][doi-img]][doi-url] | [![][travis-img]][travis-url] [![][appveyor-img]][appveyor-url] | [![][coveralls-img]][coveralls-url] [![][codecov-img]][codecov-url]|
+|[![][docs-stable-img]][docs-stable-url] [![][docs-latest-img]][docs-latest-url] | [![][doi-img]][doi-url] | [![][travis-img]][travis-url] [![][appveyor-img]][appveyor-url] | [![][codecov-img]][codecov-url]|
 
 [doi-img]: https://zenodo.org/badge/9106942.svg
 [doi-url]: https://zenodo.org/badge/latestdoi/9106942
@@ -18,9 +18,6 @@
 
 [appveyor-img]: https://ci.appveyor.com/api/projects/status/github/JuliaStats/MixedModels.jl?svg=true
 [appveyor-url]: https://ci.appveyor.com/project/JuliaStats/mixedmodels-jl
-
-[coveralls-img]: https://coveralls.io/repos/github/JuliaStats/MixedModels.jl/badge.svg?branch=master
-[coveralls-url]: https://coveralls.io/github/JuliaStats/MixedModels.jl?branch=master
 
 [codecov-img]: https://codecov.io/github/JuliaStats/MixedModels.jl/badge.svg?branch=master
 [codecov-url]: https://codecov.io/github/JuliaStats/MixedModels.jl?branch=master

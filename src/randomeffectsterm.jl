@@ -1,9 +1,15 @@
 struct RandomEffectsTerm <: AbstractTerm
     lhs::StatsModels.TermOrTerms
     rhs::StatsModels.TermOrTerms
-    function RandomEffectsTerm(lhs,rhs)
+    function RandomEffectsTerm(lhs, rhs)
         if isempty(intersect(StatsModels.termvars(lhs), StatsModels.termvars(rhs)))
-            if !isa(rhs, Union{CategoricalTerm,InteractionTerm{<:NTuple{N,CategoricalTerm} where N}})
+            if !isa(
+                rhs,
+                Union{
+                    CategoricalTerm,
+                    InteractionTerm{<:NTuple{N,CategoricalTerm} where {N}},
+                },
+            )
                 throw(ArgumentError("blocking variables (those behind |) must be Categorical ($(rhs) is not)"))
             end
             new(lhs, rhs)
@@ -13,18 +19,19 @@ struct RandomEffectsTerm <: AbstractTerm
     end
 end
 
-function StatsModels.apply_schema(t::FunctionTerm{typeof(/)},
-                                  sch::StatsModels.FullRank,
-                                  Mod::Type{<:MixedModel})
-    length(t.args_parsed) == 2 ||
-        throw(ArgumentError("malformed nesting term: $t " *
-                            "(Exactly two arguments are supported)"))
-
+function StatsModels.apply_schema(
+    t::FunctionTerm{typeof(/)},
+    sch::StatsModels.FullRank,
+    Mod::Type{<:MixedModel},
+)
+    if length(t.args_parsed) ≠ 2
+        throw(ArgumentError("malformed nesting term: $t (Exactly two arguments required"))
+    end
     first, second = apply_schema.(t.args_parsed, Ref(sch.schema), Mod)
     return first + first & second
 end
 
-RandomEffectsTerm(lhs, rhs::NTuple{2, AbstractTerm}) =
+RandomEffectsTerm(lhs, rhs::NTuple{2,AbstractTerm}) =
     (RandomEffectsTerm(lhs, rhs[1]), RandomEffectsTerm(lhs, rhs[2]))
 
 Base.show(io::IO, t::RandomEffectsTerm) = print(io, "($(t.lhs) | $(t.rhs))")
@@ -34,9 +41,11 @@ function StatsModels.termvars(t::RandomEffectsTerm)
     vcat(StatsModels.termvars(t.lhs), StatsModels.termvars(t.rhs))
 end
 
-function StatsModels.apply_schema(t::FunctionTerm{typeof(|)},
-                                  schema::StatsModels.FullRank,
-                                  Mod::Type{<:MixedModel})
+function StatsModels.apply_schema(
+    t::FunctionTerm{typeof(|)},
+    schema::StatsModels.FullRank,
+    Mod::Type{<:MixedModel},
+)
     schema = StatsModels.FullRank(schema.schema)
     lhs, rhs = t.args_parsed
     if !StatsModels.hasintercept(lhs) && !StatsModels.omitsintercept(lhs)
@@ -55,15 +64,23 @@ function StatsModels.modelcols(t::RandomEffectsTerm, d::NamedTuple)
     grp = t.rhs
     m = reshape(1:abs2(S), (S, S))
     inds = sizehint!(Int[], (S * (S + 1)) >> 1)
-    for j in 1:S, i in j:S
-        push!(inds, m[i,j])
+    for j = 1:S, i = j:S
+        push!(inds, m[i, j])
     end
     refs, levels = _ranef_refs(grp, d)
 
     ReMat{T,S}(
-        grp, refs, levels, isa(cnames, String) ? [cnames] : collect(cnames),
-        z, z, LowerTriangular(Matrix{T}(I, S, S)), inds,
-        adjA(refs, z), Matrix{T}(undef, (S, length(levels))))
+        grp,
+        refs,
+        levels,
+        isa(cnames, String) ? [cnames] : collect(cnames),
+        z,
+        z,
+        LowerTriangular(Matrix{T}(I, S, S)),
+        inds,
+        adjA(refs, z),
+        Matrix{T}(undef, (S, length(levels))),
+    )
 end
 
 
@@ -74,11 +91,13 @@ function _ranef_refs(grp::CategoricalTerm, d::NamedTuple)
     refs, grp.contrasts.levels
 end
 
-function _ranef_refs(grp::InteractionTerm{<:NTuple{N,CategoricalTerm}},
-                     d::NamedTuple) where {N}
+function _ranef_refs(
+    grp::InteractionTerm{<:NTuple{N,CategoricalTerm}},
+    d::NamedTuple,
+) where {N}
     combos = zip(getproperty.(Ref(d), [g.sym for g in grp.terms])...)
     uniques = unique(combos)
-    invindex = Dict(x => i for (i,x) in enumerate(uniques))
+    invindex = Dict(x => i for (i, x) in enumerate(uniques))
     refs = convert(Vector{Int32}, getindex.(Ref(invindex), combos))
     refs, uniques
 end
@@ -90,17 +109,21 @@ fulldummy(t::AbstractTerm) =
                         "coding (only CategoricalTerms)"))
 
 function fulldummy(t::CategoricalTerm)
-    new_contrasts = StatsModels.ContrastsMatrix(StatsModels.FullDummyCoding(),
-                                                t.contrasts.levels)
+    new_contrasts = StatsModels.ContrastsMatrix(
+        StatsModels.FullDummyCoding(),
+        t.contrasts.levels,
+    )
     t = CategoricalTerm(t.sym, new_contrasts)
 end
 
 fulldummy(x) =
     throw(ArgumentError("fulldummy isn't supported outside of a MixedModel formula"))
 
-function StatsModels.apply_schema(t::FunctionTerm{typeof(fulldummy)},
-                                  sch::StatsModels.FullRank,
-                                  Mod::Type{<:MixedModel})
+function StatsModels.apply_schema(
+    t::FunctionTerm{typeof(fulldummy)},
+    sch::StatsModels.FullRank,
+    Mod::Type{<:MixedModel},
+)
     fulldummy(apply_schema.(t.args_parsed, Ref(sch), Mod)...)
 end
 
@@ -118,12 +141,12 @@ Remove correlations between random effects in `term`.
 """
 zerocorr(x) = ZeroCorr(x)
 
-function StatsModels.apply_schema(t::FunctionTerm{typeof(zerocorr)},
-                                  sch::StatsModels.FullRank,
-                                  Mod::Type{<:MixedModel})
+function StatsModels.apply_schema(
+    t::FunctionTerm{typeof(zerocorr)},
+    sch::StatsModels.FullRank,
+    Mod::Type{<:MixedModel},
+)
     ZeroCorr(apply_schema(t.args_parsed..., sch, Mod))
 end
 
-StatsModels.modelcols(t::ZeroCorr, d::NamedTuple) =
-    zerocorr!(modelcols(t.term, d))
-
+StatsModels.modelcols(t::ZeroCorr, d::NamedTuple) = zerocorr!(modelcols(t.term, d))

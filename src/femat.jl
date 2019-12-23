@@ -55,7 +55,7 @@ Base.size(A::FeMat, i) = size(A.wtx, i)
 Base.copyto!(A::FeMat{T}, src::AbstractVecOrMat{T}) where {T} = copyto!(A.x, src)
 
 *(adjA::Adjoint{T,<:FeMat{T}}, B::FeMat{T}) where {T} =
-    fullrankwtx(adjA.parent)'fullrankwtx(B)
+    fullrankwtx(adjA.parent)' * fullrankwtx(B)
 
 LinearAlgebra.mul!(R::StridedVecOrMat{T}, A::FeMat{T}, B::StridedVecOrMat{T}) where {T} =
     mul!(R, A.x, B)

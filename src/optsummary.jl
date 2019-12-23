@@ -23,7 +23,7 @@ Summary of an `NLopt` optimization
 
 The latter field doesn't really belong here but it has to be in a mutable struct in case it is changed.
 """
-mutable struct OptSummary{T <: AbstractFloat}
+mutable struct OptSummary{T<:AbstractFloat}
     initial::Vector{T}
     lowerbd::Vector{T}
     finitial::T
@@ -38,14 +38,36 @@ mutable struct OptSummary{T <: AbstractFloat}
     feval::Int
     optimizer::Symbol
     returnvalue::Symbol
-    nAGQ::Integer           # doesn't really belong here but I needed some place to store it
+    nAGQ::Integer           # don't really belong here but I needed a place to store them
     REML::Bool
 end
-function OptSummary(initial::Vector{T}, lowerbd::Vector{T},
-    optimizer::Symbol; ftol_rel::T=zero(T), ftol_abs::T=zero(T), xtol_rel::T=zero(T),
-    initial_step::Vector{T}=T[]) where T <: AbstractFloat
-    OptSummary(initial, lowerbd, T(Inf), ftol_rel, ftol_abs, xtol_rel, zero(initial),
-        initial_step, -1, copy(initial), T(Inf), -1, optimizer, :FAILURE, 1, false)
+function OptSummary(
+    initial::Vector{T},
+    lowerbd::Vector{T},
+    optimizer::Symbol;
+    ftol_rel::T = zero(T),
+    ftol_abs::T = zero(T),
+    xtol_rel::T = zero(T),
+    initial_step::Vector{T} = T[],
+) where {T<:AbstractFloat}
+    OptSummary(
+        initial,
+        lowerbd,
+        T(Inf),
+        ftol_rel,
+        ftol_abs,
+        xtol_rel,
+        zero(initial),
+        initial_step,
+        -1,
+        copy(initial),
+        T(Inf),
+        -1,
+        optimizer,
+        :FAILURE,
+        1,
+        false,
+    )
 end
 
 function Base.show(io::IO, s::OptSummary)
@@ -74,7 +96,7 @@ function NLopt.Opt(optsum::OptSummary)
     NLopt.ftol_rel!(opt, optsum.ftol_rel) # relative criterion on objective
     NLopt.ftol_abs!(opt, optsum.ftol_abs) # absolute criterion on objective
     NLopt.xtol_rel!(opt, optsum.xtol_rel) # relative criterion on parameter values
-    if length(optsum.xtol_abs) == length(lb)  # not true for the second optimization in GLMM
+    if length(optsum.xtol_abs) == length(lb)  # not true for fast=false optimization in GLMM
         NLopt.xtol_abs!(opt, optsum.xtol_abs) # absolute criterion on parameter values
     end
     NLopt.lower_bounds!(opt, lb)

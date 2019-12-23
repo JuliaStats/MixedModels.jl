@@ -1,7 +1,6 @@
 using DataFrames, LinearAlgebra, MixedModels, Random, SparseArrays, StatsModels, Test
-using MixedModels: mulαβ!
 
-@testset "mulαβ!" begin
+@testset "mul!" begin
     for (m, p, n, q, k) in (
                             (10, 0.7, 5, 0.3, 15),
                             (100, 0.01, 100, 0.01, 20),
@@ -15,12 +14,12 @@ using MixedModels: mulαβ!
         ab = a * b
         arbt = Array(b')
         aab = Array(a) * Array(b)
-        @test aab ≈ mulαβ!(c, a, bs', true, true)
-        @test aab ≈ mulαβ!(c, a, bs')
-        @test aab ≈ mulαβ!(c, a, arbt')
-        @test aab ≈ mulαβ!(c, a, arbt')
-        @test aab ≈ mulαβ!(fill!(c, 0.0), a, arbt', true, true)
-        @test maximum(abs, mulαβ!(c, a, arbt', -1.0, true)) ≤ sqrt(eps())
+        @test aab ≈ mul!(c, a, bs', true, true)
+        @test aab ≈ mul!(c, a, bs')
+        @test aab ≈ mul!(c, a, arbt')
+        @test aab ≈ mul!(c, a, arbt')
+        @test aab ≈ mul!(fill!(c, 0.0), a, arbt', true, true)
+        @test maximum(abs, mul!(c, a, arbt', -1.0, true)) ≤ sqrt(eps())
         @test maximum(abs.(ab - aab)) < 100*eps()
         @test a*bs' == ab
         @test as'*b == ab
@@ -40,6 +39,13 @@ end
     @test loglikelihood(lmm1) ≈ -578.9080978272708
     MixedModels.reweight!(lmm1, ones(400))
     @test loglikelihood(fit!(lmm1)) ≈ -578.9080978272708
+end
+
+@testset "rankupdate!" begin
+    @test ones(2, 2) == MixedModels.rankUpdate!(Hermitian(zeros(2, 2)), ones(2))
+    d2 = Diagonal(fill(2., 2))
+    @test Diagonal(fill(5.,2)) == MixedModels.rankUpdate!(Diagonal(ones(2)), d2, 1.)
+    @test Diagonal(fill(-3.,2)) == MixedModels.rankUpdate!(Diagonal(ones(2)), d2, -1.)
 end
 
 @testset "lmulλ!" begin
