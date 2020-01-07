@@ -391,7 +391,6 @@ function rmulΛ!(A::M, B::ReMat{T,S}) where {M<:AbstractMatrix{T}} where {T,S}
     q, r = divrem(n, S)
     iszero(r) || throw(DimensionMismatch("size(A, 2) is not a multiple of block size"))
     Bd = B.λ.data
-    m, n = size(A)
     @inbounds for k = 1:q
         coloffset = (k - 1) * S
         for i = 1:m
