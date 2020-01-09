@@ -408,7 +408,7 @@ function rmulΛ!(A::M, B::ReMat{T,S}) where {M<:AbstractMatrix{T}} where {T,S}
     q, r = divrem(n, S)
     iszero(r) || throw(DimensionMismatch("size(A, 2) is not a multiple of block size"))
     Bd = B.λ.data
-    Threads.@threads for k = 1:q
+    for k = 1:q
         _rmullowertriblk!(A, Bd, (k - 1) * S, S)
     end
     A
