@@ -72,6 +72,24 @@ function LinearAlgebra.ldiv!(
     B
 end
 
+"""
+    _rdivlowertriblk!(A::AbstractMatrix, Bd::Array, b, S)
+
+Divide in-place a block of `S` columns of `A` starting at `(b-1)*s+1` on the right by the lower-triangular `b`th face of Bd.
+"""
+function _rdivlowertriblk!(A::AbstractMatrix, Bd::Array, b, S)
+    coloffset = (b - 1) * S
+    @inbounds @simd for i = 1:size(A, 1)
+        for j = 1:S
+            Aij = A[i, j + coloffset]
+            for k = 1:j-1
+                Aij -= A[i, k + coloffset] * Bd[j, k, b]'
+            end
+            A[i, j + coloffset] = Aij / Bd[j, j, b]'
+        end
+    end
+end
+
 function LinearAlgebra.rdiv!(
     A::Matrix{T},
     adjB::Adjoint{T,<:LowerTriangular{T,UniformBlockDiagonal{T}}},
@@ -80,17 +98,8 @@ function LinearAlgebra.rdiv!(
     Bd = adjB.parent.data
     r, s, blk = size(Bd.data)
     n == size(Bd, 1) && r == s || throw(DimensionMismatch())
-    @inbounds for b = 1:blk
-        coloffset = (b - 1) * s
-        for i = 1:m
-            for j = 1:s
-                Aij = A[i, j+coloffset]
-                for k = 1:j-1
-                    Aij -= A[i, k+coloffset] * Bd.data[j, k, b]'
-                end
-                A[i, j+coloffset] = Aij / Bd.data[j, j, b]'
-            end
-        end
+    for b = 1:blk
+        _rdivlowertriblk!(A, Bd.data, b, s)
     end
     A
 end
