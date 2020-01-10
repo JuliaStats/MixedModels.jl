@@ -386,13 +386,30 @@ end
 
 rmulΛ!(A::M, B::ReMat{T,1}) where{M<:AbstractMatrix{T}} where{T} = rmul!(A, first(B.λ))
 
-function rmulΛ!(A::M, B::ReMat{T,S}) where{M<:AbstractMatrix{T}} where{T,S}
+"""
+    _rmullowertriblk!(A::AbstractMatrix{T}, Bd::Matrix, coloffset, S)
+
+Multiply in-place a block of `S` columns of `A` starting at `coloffset+1` on the right by the lower triangular `Bd`.
+"""
+function _rmullowertriblk!(A::AbstractMatrix, Bd::Matrix, coloffset, S)
+    @inbounds @simd for i = 1:size(A, 1)
+        for j = 1:S
+            Aij = A[i, j + coloffset] * Bd[j, j]
+            for k = j + 1:S
+                Aij += A[i, k + coloffset] * Bd[k, j]
+            end
+            A[i, j + coloffset] = Aij
+        end
+    end
+end
+
+function rmulΛ!(A::M, B::ReMat{T,S}) where {M<:AbstractMatrix{T}} where {T,S}
     m, n = size(A)
     q, r = divrem(n, S)
-    iszero(r) || throw(DimensionMismatch("size(A, 2) = is not a multiple of block size"))
-    A3 = reshape(A, (m, S, q))
-    for k in 1:q
-        rmul!(view(A3, :, :, k), B.λ)
+    iszero(r) || throw(DimensionMismatch("size(A, 2) is not a multiple of block size"))
+    Bd = B.λ.data
+    for k = 1:q
+        _rmullowertriblk!(A, Bd, (k - 1) * S, S)
     end
     A
 end
@@ -436,16 +453,40 @@ function scaleinflate!(Ljj::Matrix{T}, Λj::ReMat{T,1}) where {T}
     Ljj
 end
 
-function scaleinflate!(Ljj::UniformBlockDiagonal{T}, Λj::ReMat{T}) where {T}
-    Ljjdd = Ljj.data
-    m, n, l = size(Ljjdd)
-    λ = Λj.λ
-    Lfv = Ljj.facevec
-    @inbounds for Lf in Lfv
-        lmul!(adjoint(λ), rmul!(Lf, λ))
+"""
+    _scaleinflateface!(A::Array, λ::Matrix, f, S)
+
+Replace the `f`'th `S×S` face of `A` by `λ'A[:,:,f]*λ + I` where `λ` is `S×S` lower triangular
+"""
+function _scaleinflateface!(A::Array, λ::Matrix, f, S)
+    @inbounds @simd for i = 1:S                   # rmul!(A[:,:,f], λ)
+        for j = 1:S
+            Aij = A[i, j, f] * λ[j, j]
+            for k = j + 1:S
+                Aij += A[i, k, f] * λ[k, j]
+            end
+            A[i, j, f] = Aij
+        end
     end
-    @inbounds for k in 1:l, i in 1:m
-        Ljjdd[i, i, k] += one(T)
+    for j = 1:S                  # lmul!(λ, A[:,:,f])
+        for i = 1:S
+            Aij = λ[i, i]'A[i, j, f]
+            for k = i + 1:S
+                Aij += λ[k, i]'A[k, j, f]
+            end
+            A[i, j, f] = Aij
+        end
+        A[j, j, f] += true      # inflate diagonal
+    end
+end
+
+function scaleinflate!(Ljj::UniformBlockDiagonal{T}, Λj::ReMat{T,S}) where {T,S}
+    A = Ljj.data
+    m, n, l = size(A)
+    m == n == S || throw(DimensionMismatch())
+    λ = Λj.λ.data
+    for f in 1:l
+        _scaleinflateface!(A, λ, f, S)
     end
     Ljj
 end
