@@ -1,4 +1,4 @@
-using BenchmarkTools, DataFrames, MixedModels, RData, StatsModels, Tables
+using BenchmarkTools, DataFrames, MixedModels, RData, Tables
 
 const SUITE = BenchmarkGroup()
 
@@ -9,7 +9,7 @@ const dat = Dict(Symbol(k) => v for (k, v) in load(joinpath(
     "dat.rda",
 )));
 
-categorical!(dat[:ml1m], [:G,:H])
+categorical!(dat[:ml1m], [:G,:H]);  # forgot to convert these grouping factors
 
 const mods = Dict{Symbol,Vector{Expr}}(
     :Alfalfa => [:(1 + A * B + (1 | G)), :(1 + A + B + (1 | G))],
