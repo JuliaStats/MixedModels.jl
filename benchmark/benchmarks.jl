@@ -32,7 +32,7 @@ const mods = Dict{Symbol,Vector{Expr}}(
     :Genetics => [:(1 + A + (1 | G) + (1 | H))],
     :HR => [:(1 + A * U + V + (1 + U | G))],
     :Hsb82 => [:(1 + A + B + C + U + (1 | G))],
-    :IncBlk => [:(1 + A + U + V + W + Z + (1 | G))],
+    :IncBlk => [:(1 + A + U +  + W + Z + (1 | G))],
     :InstEval => [:(1 + A + (1 | G) + (1 | H) + (1 | I)), :(1 + A * I + (1 | G) + (1 | H))],
     :KKL => [],                      # variables must be renamed
     :KWDYZ => [],                    # variables must be renamed
@@ -75,14 +75,13 @@ const mods = Dict{Symbol,Vector{Expr}}(
     :kb07 => [
         :(1 + S + T + U + V + W + X + Z + ((1 + S + T + U + V + W + X + Z) | G) +
           ((1 + S + T + U + V + W + X + Z) | H)),
-        :(1 + S + T + U + V + W + X + Z + (1 | G) + ((0 + S) | G) + ((0 + T) | G) +
-          ((0 + U) | G) + ((0 + V) | G) + ((0 + W) | G) + ((0 + X) | G) + ((0 + Z) | G) +
-          (1 | H) + ((0 + S) | H) + ((0 + T) | H) + ((0 + U) | H) + ((0 + V) | H) +
-          ((0 + W) | H) + ((0 + X) | H) + ((0 + Z) | H)),
+        :(1 + S + T + U + V + W + X + Z +
+          zerocorr((1 + S + T + U + V + W + X + Z) | G) +
+          zerocorr((1 + S + T + U + V + W + X + Z) | H)),
     ],
     :ml1m => [:(1 + (1 | G) + (1 | H))],
     :paulsim => [:(1 + S + T + U + (1 | H) + (1 | G))],  # names of H and G should be reversed
-    :sleepstudy => [:(1 + U + (1 + U | G)), :(1 + U + (1 | G) + (0 + U | G))],
+    :sleepstudy => [:(1 + U + (1 + U | G)), :(1 + U + zerocorr(1 + U | G))],
     :s3bbx => [],                    # probably drop this one
     :star => [],                     # not sure it is worthwhile working with these data
 );
