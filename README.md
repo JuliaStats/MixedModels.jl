@@ -2,7 +2,7 @@
 
 |**Documentation**|**Citation**|**Build Status**|**Code Coverage**|
 |:-:|:-:|:-:|:-:|
-|[![][docs-stable-img]][docs-stable-url] [![][docs-latest-img]][docs-latest-url] | [![][doi-img]][doi-url] | [![][travis-img]][travis-url] [![][appveyor-img]][appveyor-url] | [![][codecov-img]][codecov-url]|
+|[![][docs-stable-img]][docs-stable-url] [![][docs-latest-img]][docs-latest-url] | [![][doi-img]][doi-url] | [![][travis-img]][travis-url] [![][appveyor-img]][appveyor-url] [![PkgEval][pkgeval-img]][pkgeval-url] | [![][codecov-img]][codecov-url]|
 
 [doi-img]: https://zenodo.org/badge/9106942.svg
 [doi-url]: https://zenodo.org/badge/latestdoi/9106942
@@ -21,6 +21,11 @@
 
 [codecov-img]: https://codecov.io/github/JuliaStats/MixedModels.jl/badge.svg?branch=master
 [codecov-url]: https://codecov.io/github/JuliaStats/MixedModels.jl?branch=master
+
+[pkgeval-img]: https://juliaci.github.io/NanosoldierReports/pkgeval_badges/M/MixedModels.svg
+[pkgeval-url]: https://juliaci.github.io/NanosoldierReports/pkgeval_badges/report.html
+
+[![PkgEval][pkgeval-img]][pkgeval-url]
 
 This package defines linear mixed models (`LinearMixedModel`) and generalized linear mixed models (`GeneralizedLinearMixedModel`). Users can use the abstraction for statistical model API to build, fit (`fit`/`fit!`), and query the fitted models.
 
