@@ -25,8 +25,6 @@
 [pkgeval-img]: https://juliaci.github.io/NanosoldierReports/pkgeval_badges/M/MixedModels.svg
 [pkgeval-url]: https://juliaci.github.io/NanosoldierReports/pkgeval_badges/report.html
 
-[![PkgEval][pkgeval-img]][pkgeval-url]
-
 This package defines linear mixed models (`LinearMixedModel`) and generalized linear mixed models (`GeneralizedLinearMixedModel`). Users can use the abstraction for statistical model API to build, fit (`fit`/`fit!`), and query the fitted models.
 
 A _mixed-effects model_ is a statistical model for a _response_ variable as a function of one or more _covariates_.

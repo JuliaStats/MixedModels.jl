@@ -1,9 +1,14 @@
-using DataFrames, LinearAlgebra, MixedModels, Random, RData, SparseArrays, StatsModels, Test
+using DataFrames
+using Feather
+using LinearAlgebra
+using MixedModels
+using Random
+using SparseArrays
+using StatsModels
+using Test
 
-if !@isdefined(dat) || !isa(dat, Dict{Symbol, DataFrame})
-    const dat = Dict(Symbol(k) => v for (k, v) in
-        load(joinpath(dirname(pathof(MixedModels)), "..", "test", "dat.rda")))
-end
+dat(nm::AbstractString) = Feather.read(joinpath(MixedModels.TestData, nm * ".feather"))
+dat(nm::Symbol) = dat(string(nm))
 
 const LMM = LinearMixedModel
 
@@ -54,10 +59,10 @@ const LMM = LinearMixedModel
 
     @testset "updateL" begin
         @test ones(2, 2) == MixedModels.rankUpdate!(Hermitian(zeros(2, 2)), ones(2))
-        d3 = dat[:d3]
+        d3 = dat(:d3)
         sch = schema(d3)
-        vf1 = modelcols(apply_schema(@formula(Y ~ 1 + U + (1+U|G)), sch, LMM), d3)[2][2]
-        vf2 = modelcols(apply_schema(@formula(Y ~ 1 + U + (1+U|H)), sch, LMM), d3)[2][2]
+        vf1 = modelcols(apply_schema(@formula(y ~ 1 + u + (1+u|g)), sch, LMM), d3)[2][2]
+        vf2 = modelcols(apply_schema(@formula(y ~ 1 + u + (1+u|h)), sch, LMM), d3)[2][2]
         @test vf1.λ == LowerTriangular(Matrix(I, 2, 2))
         setθ!(vf2, [1.75, 0.0, 1.0])
         A11 = vf1'vf1
