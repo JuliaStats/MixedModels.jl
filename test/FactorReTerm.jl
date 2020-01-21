@@ -67,10 +67,8 @@ const LMM = LinearMixedModel
         @test isa(sf2'sf2, Diagonal{Float64})
         @test isa(sf2'sf1,SparseMatrixCSC{Float64})
 
-        @test_broken lmul!(Λ(sf)', ones(6)) == fill(0.5, 6)
-        @test_broken rmul!(ones(6, 6), Λ(sf)) == fill(0.5, (6, 6))
-
-        @test_broken mul!(Matrix{Float64}(undef, 1, 6), Λ(sf), ones(1, 6)) == fill(0.5, (1,6))
+        @test MixedModels.lmulΛ!(sf', ones(6)) == fill(0.5, 6)
+        @test MixedModels.rmulΛ!(ones(6, 6), sf) == fill(0.5, (6, 6))
     end
 
     @testset "reweight!" begin
@@ -174,7 +172,7 @@ end
     dat = (y = rand(18),
            g = string.(repeat('a':'f', inner=3)),
            f = string.(repeat('A':'C', outer=6)))
-    
+
     @testset "fulldummy" begin
         @test_throws ArgumentError fulldummy(1)
 
@@ -191,7 +189,7 @@ end
 
         # implict intercept
         ff = apply_schema(@formula(y ~ 1 + (f | g)), schema(dat), MixedModel)
-        rem = modelcols(ff.rhs[end], dat) 
+        rem = modelcols(ff.rhs[end], dat)
         @test size(rem) == (18, 18)
         @test rem[1:3, 1:4] == [1 0 0 0
                                 1 1 0 0
@@ -199,7 +197,7 @@ end
 
         # explicit intercept
         ff = apply_schema(@formula(y ~ 1 + (1+f | g)), schema(dat), MixedModel)
-        rem = modelcols(ff.rhs[end], dat) 
+        rem = modelcols(ff.rhs[end], dat)
         @test size(rem) == (18, 18)
         @test rem[1:3, 1:4] == [1 0 0 0
                                 1 1 0 0
@@ -220,6 +218,6 @@ end
         @test rem[1:3, 1:4] == [1 0 0 0
                                 0 1 0 0
                                 0 0 1 0]
-        
+
     end
 end
