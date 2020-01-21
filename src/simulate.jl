@@ -1,42 +1,39 @@
 struct MixedModelBootstrap{T<:AbstractFloat}
     m::LinearMixedModel{T}
-    bstr::Tables.ColumnTable
-    cnamedict::Dict{String,Int}
-end
-
-function MixedModelBootstrap(m::LinearMixedModel, bstr::NamedTuple) where {T}
-    dict = Dict{String,Int}()
-    k = findfirst(isequal(:β₁), keys(bstr))
-    isnothing(k) && throw(ArgumentError("No :β₁ in keys(bstr)"))
-    for nm in coefnames(m)
-        dict[nm] = k
-        k += 1
-    end
-    MixedModelBootstrap(m, bstr, dict)
+    bstr::Vector
 end
 
 function Base.getproperty(bsamp::MixedModelBootstrap, s::Symbol)
     if s == :model
         getfield(bsamp, :m)
     elseif s ∈ [:objective, :σ, :θ]
-        getproperty(getfield(bsamp, :bstr), s)
+        getproperty.(getfield(bsamp, :bstr), s)
     elseif s == :σs
         σs(bsamp)
     elseif s == :σρs
         σρs(bsamp)
-    elseif haskey(getfield(bsamp, :cnamedict), string(s))
-        getfield(bsamp, :bstr)[getfield(bsamp, :cnamedict)[string(s)]]
     else
         getfield(bsamp, s)
     end
 end
 
+function _sampler!(rng::AbstractRNG, m::LinearMixedModel{T}, n, β, σ, θ, βsc, θsc) where {T}
+    map(1:n) do _
+        refit!(simulate!(rng, m, β = β, σ = σ, θ = θ))
+        (
+        objective = m.objective,
+        σ = m.σ,
+        β = SVector{length(βsc),T}(fixef!(βsc, m)),
+        θ = SVector{length(θsc),T}(getθ!(θsc, m)),
+        )
+    end
+end
 
 """
-    parametricbootstrap(rng::AbstractRNG, nsamp::Integer, m::LinearMixedModel,
-        props=(:objective, :σ, :β, :θ); β = m.β, σ = m.σ, θ = m.θ)
-    parametricbootstrap(nsamp::Integer, m::LinearMixedModel,
-        props=(:objective, :σ, :β, :θ); β = m.β, σ = m.σ, θ = m.θ)
+    parametricbootstrap(rng::AbstractRNG, nsamp::Integer, m::LinearMixedModel;
+        β = m.β, σ = m.σ, θ = m.θ)
+    parametricbootstrap(nsamp::Integer, m::LinearMixedModel;
+        β = m.β, σ = m.σ, θ = m.θ)
 
 Perform `nsamp` parametric bootstrap replication fits of `m`, returning a
 `Tables.ColumnTable` of parameter estimates of the refit model.
@@ -49,34 +46,14 @@ The default random number generator is `Random.GLOBAL_RNG`.
 """
 function parametricbootstrap(
     rng::AbstractRNG,
-    nsamp::Integer,
-    m::LinearMixedModel{T};
+    n::Integer,
+    m::LinearMixedModel;
     β = m.β,
     σ = m.σ,
     θ = m.θ,
-) where {T}
-    y₀ = copy(response(m))  # to restore original state of m
-    θscr = copy(θ)
-    βscr = copy(β)
-    k = length(θ)
-    bnms = Symbol.(subscriptednames("β", length(β)))
-    vnms = (:objective, :σ, bnms..., :θ)
-    value = (; (nm => nm == :θ ? SVector{k,T}[] : Vector{T}(undef, nsamp) for nm in vnms)...)
-    try
-        @showprogress 1 for i = 1:nsamp
-            refit!(simulate!(rng, m, β = β, σ = σ, θ = θ))
-            value.objective[i] = objective(m)
-            value.σ[i] = sdest(m)
-            fixef!(βscr, m)
-            for (j, bnm) in enumerate(bnms)
-                getproperty(value, bnm)[i] = βscr[j]
-            end
-            push!(value.θ, SVector{k,T}(getθ!(θscr, m)))
-        end
-    finally
-        refit!(m, y₀)
-    end
-    MixedModelBootstrap(deepcopy(m), value)
+)
+    samp = _sampler!(rng, deepcopy(m), n, β, σ, θ, similar(β), similar(θ))
+    MixedModelBootstrap(deepcopy(m), samp)
 end
 
 function parametricbootstrap(nsamp::Integer, m::LinearMixedModel, β = m.β, σ = m.σ, θ = m.θ)
@@ -84,7 +61,7 @@ function parametricbootstrap(nsamp::Integer, m::LinearMixedModel, β = m.β, σ 
 end
 
 function Base.propertynames(bsamp::MixedModelBootstrap)
-    append!([:model, :objective, :σ, :θ, :σs, :σρs], Symbol.(keys(bsamp.cnamedict)))
+    [:model, :objective, :σ, :β, :θ, :σs, :σρs]
 end
 
 function byreterm(bsamp::MixedModelBootstrap{T}, f::Function) where {T}
@@ -92,9 +69,9 @@ function byreterm(bsamp::MixedModelBootstrap{T}, f::Function) where {T}
     oldθ = getθ(m)     # keep a copy to restore later
     retrms = m.reterms
     value = [typeof(v)[] for v in f.(retrms, m.σ)]
-    for (σ, θ) in zip(bsamp.bstr.σ, bsamp.bstr.θ)
-        setθ!(m, θ)
-        for (i, v) in enumerate(f.(retrms, σ))
+    for r in bsamp.bstr
+        setθ!(m, r.θ)
+        for (i, v) in enumerate(f.(retrms, r.σ))
             push!(value[i], v)
         end
     end
@@ -107,11 +84,11 @@ end
 σρs(bsamp::MixedModelBootstrap) = byreterm(bsamp, σρs)
 
 """
-    shortestCovInt(v, level = 0.95)
+    shortestcovint(v, level = 0.95)
 
 Return the shortest interval containing `level` proportion of the values of `v`
 """
-function shortestCovInt(v, level = 0.95)
+function shortestcovint(v, level = 0.95)
     n = length(v)
     0 < level < 1 || throw(ArgumentError("level = $level should be in (0,1)"))
     vv = issorted(v) ? v : sort(v)
