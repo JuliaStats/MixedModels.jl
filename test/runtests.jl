@@ -2,6 +2,7 @@ using RData
 
 const dat = Dict(Symbol(k) => v for (k,v) in load(joinpath(dirname(@__FILE__), "dat.rda")))
 
+include("utilities.jl")
 include("statschol.jl")
 include("UniformBlockDiagonal.jl")
 include("linalg.jl")
