@@ -6,7 +6,7 @@ end
 function Base.getproperty(bsamp::MixedModelBootstrap, s::Symbol)
     if s == :model
         getfield(bsamp, :m)
-    elseif s ∈ [:objective, :σ, :θ]
+    elseif s ∈ [:objective, :β, :σ, :θ]
         getproperty.(getfield(bsamp, :bstr), s)
     elseif s == :σs
         σs(bsamp)
