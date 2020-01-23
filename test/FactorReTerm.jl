@@ -67,10 +67,8 @@ const LMM = LinearMixedModel
         @test isa(sf2'sf2, Diagonal{Float64})
         @test isa(sf2'sf1,SparseMatrixCSC{Float64})
 
-        @test_broken lmul!(Λ(sf)', ones(6)) == fill(0.5, 6)
-        @test_broken rmul!(ones(6, 6), Λ(sf)) == fill(0.5, (6, 6))
-
-        @test_broken mul!(Matrix{Float64}(undef, 1, 6), Λ(sf), ones(1, 6)) == fill(0.5, (1,6))
+        @test MixedModels.lmulΛ!(sf', ones(6)) == fill(0.5, 6)
+        @test MixedModels.rmulΛ!(ones(6, 6), sf) == fill(0.5, (6, 6))
     end
 
     @testset "reweight!" begin
@@ -104,7 +102,7 @@ end
     f = @formula(Y ~ 1 + (1|G))
 
     # String blocking-variables work fine because StatsModels is smart enough to
-    # treat strings to treat strings as Categorical. Note however that this is a
+    # treat strings as Categorical. Note however that this is a
     # far less efficient to store the original dataframe, although it doesn't
     # matter for the contrast matrix
     slp[!,:G] = convert.(String, slp[!, :G])
@@ -113,68 +111,12 @@ end
     @test_throws ArgumentError LinearMixedModel(f, slp)
 end
 
-#=
-@testset "vectorRe" begin
-    slp = dat[:sleepstudy]
-    corr = VectorFactorReTerm(slp[:G], vcat(ones(1, size(slp, 1)), slp[:U]'),
-        :G, ["(Intercept)", "U"], [2])
-    nocorr = VectorFactorReTerm(slp[:G], vcat(ones(1, size(slp, 1)), slp[:U]'),
-            :G, ["(Intercept)", "U"], [1, 1])
-    Reaction = slp[:Y]
-
-    @testset "sizes" begin
-        @test size(corr) == (180,36)
-        @test size(nocorr) == (180,36)
-    end
-
-    @testset "utilities" begin
-        @test MixedModels.levs(corr) == levels(slp[:G])
-        @test MixedModels.nlevs(corr) == 18
-        @test MixedModels.vsize(corr) == 2
-        @test MixedModels.nrandomeff(corr) == 36
-        @test eltype(corr) == Float64
-        @test nnz(sparse(corr)) == 360
-        @test cond(corr) == 1.0
-        @test MixedModels.nθ(corr) == 3
-        @test MixedModels.nθ(nocorr) == 2
-        @test MixedModels.getθ(corr) == [1.0, 0.0, 1.0]
-        @test MixedModels.getθ(nocorr) == ones(2)
-        @test MixedModels.getθ!(Vector{Float64}(undef, 2), nocorr) == ones(2)
-        @test lowerbd(nocorr) == zeros(2)
-        @test lowerbd(corr) == [0.0, -Inf, 0.0]
-        @test MixedModels.getθ(setθ!(corr, fill(0.5, 3))) == [0.5, 0.5, 0.5]
-        @test_throws DimensionMismatch MixedModels.getθ!(Vector{Float64}(undef, 2), corr)
-        @test_throws DimensionMismatch setθ!(corr, ones(2))
-    end
-
-    vrp = corr'corr
-
-    @test isa(vrp, UniformBlockDiagonal{Float64})
-    @test size(vrp) == (36, 36)
-
-    @test mul!(Array{Float64}(undef, 36, 36), corr', corr) == Matrix(vrp)
-    scl = ScalarFactorReTerm(slp[:G].refs, levels(slp[:G]), Array(slp[:U]), Array(slp[:U]), :G, ["U"], 1.0)
-
-    @test sparse(corr)'sparse(scl) == corr'scl
-
-    b = mul!(Matrix{Float64}(undef, 2,18), Λ(corr).data, ones(2,18))
-    @test b == reshape(repeat([0.5, 1.0], outer=18), (2,18))
-
-    @testset "reweight!" begin
-        wts = rand(MersenneTwister(1234321), size(corr, 1))
-        @test MixedModels.reweight!(corr, wts).wtz[1, :] == wts
-        @test corr.z[1, :] == ones(size(corr, 1))
-    end
-
-end
-=#
-
 @testset "random effects term syntax" begin
 
     dat = (y = rand(18),
            g = string.(repeat('a':'f', inner=3)),
            f = string.(repeat('A':'C', outer=6)))
-    
+
     @testset "fulldummy" begin
         @test_throws ArgumentError fulldummy(1)
 
@@ -191,7 +133,7 @@ end
 
         # implict intercept
         ff = apply_schema(@formula(y ~ 1 + (f | g)), schema(dat), MixedModel)
-        rem = modelcols(ff.rhs[end], dat) 
+        rem = modelcols(ff.rhs[end], dat)
         @test size(rem) == (18, 18)
         @test rem[1:3, 1:4] == [1 0 0 0
                                 1 1 0 0
@@ -199,7 +141,7 @@ end
 
         # explicit intercept
         ff = apply_schema(@formula(y ~ 1 + (1+f | g)), schema(dat), MixedModel)
-        rem = modelcols(ff.rhs[end], dat) 
+        rem = modelcols(ff.rhs[end], dat)
         @test size(rem) == (18, 18)
         @test rem[1:3, 1:4] == [1 0 0 0
                                 1 1 0 0
@@ -220,6 +162,12 @@ end
         @test rem[1:3, 1:4] == [1 0 0 0
                                 0 1 0 0
                                 0 0 1 0]
-        
+    end
+
+    @testset "nesting" begin
+        ff = apply_schema(@formula(y ~ 1 + (1|g/f)), schema(dat), MixedModel)
+        @test modelcols(last(ff.rhs), dat) == float(Matrix(I, 18, 18))
+
+        @test_broken fit(MixedModel, @formula(Y ~ 1 + (1|H/c)), dat[:Pastes])
     end
 end

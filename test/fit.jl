@@ -26,7 +26,7 @@ end
 end
 
 @testset "Normal Distribution GLMM" begin
-    @test_broken(isa(fit(MixedModel, @formula(Y ~ 1 + (1|G)), dat[:Dyestuff],
-                         Normal(), SqrtLink),
-                     GeneralizedLinearMixedModel))
+    @test isa(fit(MixedModel, @formula(Y ~ 1 + (1|G)), dat[:Dyestuff],
+                         Normal(), SqrtLink()),
+                     GeneralizedLinearMixedModel)
 end
