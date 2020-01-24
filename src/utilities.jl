@@ -1,5 +1,15 @@
+"""
+    average(a::T, b::T) where {T<:AbstractFloat}
+
+Return the average of `a` and `b`
+"""
 average(a::T, b::T) where {T<:AbstractFloat} = (a + b) / 2
 
+"""
+    cpad(s::AbstractString, n::Integer)
+
+Return a string of length `n` containing `s` in the center (more-or-less).
+"""
 cpad(s::String, n::Integer) = rpad(lpad(s, (n + textwidth(s)) >> 1), n)
 
 """
@@ -78,12 +88,8 @@ function checkindprsk(k::Integer)
 end
 
 """
-    subscriptednames(nm, len)
+    replicate(f::Function, n::Integer)
 
-Return a `Vector{String}` of `nm` with subscripts from `₁` to `len`
+Return a vector of the values of `n` calls to `f()` - used in simulations where the value of `f` is stochastic.
 """
-function subscriptednames(nm, len)
-    nd = ndigits(len)
-    nd == 1 ? [string(nm, '₀' + j) for j = 1:len] :
-    [string(nm, lpad(string(j), nd, '0')) for j = 1:len]
-end
+replicate(f::Function, n) = [f() for _ in Base.OneTo(n)]

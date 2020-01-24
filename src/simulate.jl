@@ -1,3 +1,24 @@
+"""
+    MixedModelBootstrap{T<:AbstractFloat}
+
+Object returned by `parametericbootstrap` with fields
+- `m`: a copy of the model that was bootstrapped
+- `bstr`: the parameter estimates from the bootstrap replicates as a vector of named tuples.
+
+The schema of `bstr` is, by default,
+```
+Tables.Schema:
+ :objective  T
+ :σ          T
+ :β          StaticArrays.SArray{Tuple{2},T,1,2}
+ :θ          StaticArrays.SArray{Tuple{3},T,1,3}
+```
+where the sizes of the `β` and `θ` elements are determined by the model.
+
+Characteristics of the bootstrap replicates can be extracted as properties.  The `σs` and
+`σρs` properties unravel the `σ` and `θ` estimates into estimates of the standard deviations
+and correlations of the random-effects terms.
+"""
 struct MixedModelBootstrap{T<:AbstractFloat}
     m::LinearMixedModel{T}
     bstr::Vector
@@ -17,17 +38,7 @@ function Base.getproperty(bsamp::MixedModelBootstrap, s::Symbol)
     end
 end
 
-function _sampler!(rng::AbstractRNG, m::LinearMixedModel{T}, n, β, σ, θ, βsc, θsc) where {T}
-    map(1:n) do _
-        refit!(simulate!(rng, m, β = β, σ = σ, θ = θ))
-        (
-        objective = m.objective,
-        σ = m.σ,
-        β = SVector{length(βsc),T}(fixef!(βsc, m)),
-        θ = SVector{length(θsc),T}(getθ!(θsc, m)),
-        )
-    end
-end
+issingular(bsamp::MixedModelBootstrap) = issingular.(Ref(bsamp.m), bsamp.θ)
 
 """
     parametricbootstrap(rng::AbstractRNG, nsamp::Integer, m::LinearMixedModel;
@@ -35,8 +46,7 @@ end
     parametricbootstrap(nsamp::Integer, m::LinearMixedModel;
         β = m.β, σ = m.σ, θ = m.θ)
 
-Perform `nsamp` parametric bootstrap replication fits of `m`, returning a
-`Tables.ColumnTable` of parameter estimates of the refit model.
+Perform `nsamp` parametric bootstrap replication fits of `m`, returning a `MixedModelBootstrap`.
 
 The default random number generator is `Random.GLOBAL_RNG`.
 
@@ -47,13 +57,23 @@ The default random number generator is `Random.GLOBAL_RNG`.
 function parametricbootstrap(
     rng::AbstractRNG,
     n::Integer,
-    m::LinearMixedModel;
-    β = m.β,
-    σ = m.σ,
-    θ = m.θ,
-)
-    samp = _sampler!(rng, deepcopy(m), n, β, σ, θ, similar(β), similar(θ))
-    MixedModelBootstrap(deepcopy(m), samp)
+    morig::LinearMixedModel{T};
+    β = morig.β,
+    σ = morig.σ,
+    θ = morig.θ,
+) where {T}
+    βsc, θsc, p, k, m = similar(β), similar(θ), length(β), length(θ), deepcopy(morig)
+    y₀ = copy(response(m))
+    samp = replicate(n) do
+        refit!(simulate!(rng, m, β = β, σ = σ, θ = θ))
+        (
+         objective = m.objective,
+         σ = m.σ,
+         β = SVector{p,T}(fixef!(βsc, m)),
+         θ = SVector{k,T}(getθ!(θsc, m)),
+        )
+    end
+    MixedModelBootstrap(refit!(m, y₀), samp)
 end
 
 function parametricbootstrap(nsamp::Integer, m::LinearMixedModel, β = m.β, σ = m.σ, θ = m.θ)
