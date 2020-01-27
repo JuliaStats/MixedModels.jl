@@ -304,7 +304,7 @@ end
 
 @testset "simulate!" begin
     fm = fit(MixedModel, @formula(Y ~ 1 + (1 | G)), dat[:Dyestuff])
-    refit!(simulate!(Random.MersenneTwister(1234321), fm))
+    refit!(simulate!(MersenneTwister(1234321), fm))
     @test deviance(fm) ≈ 339.0218639362958 atol=0.001
     refit!(fm, dat[:Dyestuff][!, :Y])
     Random.seed!(1234321)
@@ -315,13 +315,12 @@ end
     bsamp = parametricbootstrap(MersenneTwister(1234321), 100, fm)
     @test isa(propertynames(bsamp), Vector{Symbol})
     @test length(bsamp.objective) == 100
-    @test keys(bsamp.bstr) == (:objective, :σ, :β₁, :θ)
-    @test length(bsamp.objective) == 100
+    @test keys(first(bsamp.bstr)) == (:objective, :σ, :β, :θ)
     @test isa(bsamp.model, LinearMixedModel)
     @test isa(bsamp.σs, NamedTuple)
     @test isa(bsamp.σρs, NamedTuple)
     @test length(bsamp.σs) == 1
-    @test shortestCovInt(bsamp.σ) ≈ [48.2551828768727, 81.85810781858969] rtol = 1.e-4
+    @test shortestcovint(bsamp.σ) ≈ [48.2551828768727, 81.85810781858969] rtol = 1.e-4
 end
 
 @testset "Rank deficient" begin

@@ -31,7 +31,7 @@ const dat = Dict(Symbol(k)=>v for (k,v) in load(datf));
 ```
 
 ```{julia;term=true}
-ds = names!(dat[:Dyestuff], [:Batch, :Yield])  # the Dyestuff data
+ds = rename!(dat[:Dyestuff], [:Batch, :Yield])  # the Dyestuff data
 m1 = fit(MixedModel, @formula(Yield ~ 1 + (1 | Batch)), ds)
 ```
 
@@ -54,8 +54,7 @@ plot(x=samp.σ, Geom.density, Guide.xlabel("Parametric bootstrap estimates of σ
 ```
 For the estimates of the intercept parameter, the `getproperty` extractor must be used
 ```{julia;label="betadensity";fig_width=7;fig_height=4;fig_ext=".svg"}
-plot(x = getproperty(samp, Symbol("(Intercept)")), Geom.density,
-    Guide.xlabel("Parametric bootstrap estimates of β₁"))
+plot(x = first.(samp.β), Geom.density, Guide.xlabel("Parametric bootstrap estimates of β₁"))
 ```
 
 The `σs` property contains the estimates of the standard deviation of the random effects in a hierarchical format.
@@ -129,17 +128,17 @@ Some of the elements of this parameter vector must be non-negative and, when one
 
 The boundary values are available as
 ```{julia;term=true}
-samp2.model.optsum.lowerbd
+samp2.m.optsum.lowerbd
 ```
 so the check on singularity becomes
 ```{julia;term=true}
-sum(θ -> any(θ .≈ samp2.model.optsum.lowerbd), samp2.θ)
+sum(θ -> any(θ .≈ samp2.m.optsum.lowerbd), samp2.θ)
 ```
 
 The `issingular` method for a `LinearMixedModel` object that tests if a parameter vector `θ` corresponds to a boundary or singular fit.
 The default value of `θ` is that from the model but another value can be given as the second argument.
 
-Using this function the number of singular fits in the bootstrap sample can be counted as
+This operation is encapsulated in a method for the `issingular` function.
 ```{julia;term=true}
-sum(issingular.(Ref(samp2.m), samp2.θ))
+sum(issingular(samp2))
 ```

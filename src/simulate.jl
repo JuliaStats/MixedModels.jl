@@ -1,45 +1,52 @@
+"""
+    MixedModelBootstrap{T<:AbstractFloat}
+
+Object returned by `parametericbootstrap` with fields
+- `m`: a copy of the model that was bootstrapped
+- `bstr`: the parameter estimates from the bootstrap replicates as a vector of named tuples.
+
+The schema of `bstr` is, by default,
+```
+Tables.Schema:
+ :objective  T
+ :σ          T
+ :β          StaticArrays.SArray{Tuple{2},T,1,2}
+ :θ          StaticArrays.SArray{Tuple{3},T,1,3}
+```
+where the sizes of the `β` and `θ` elements are determined by the model.
+
+Characteristics of the bootstrap replicates can be extracted as properties.  The `σs` and
+`σρs` properties unravel the `σ` and `θ` estimates into estimates of the standard deviations
+and correlations of the random-effects terms.
+"""
 struct MixedModelBootstrap{T<:AbstractFloat}
     m::LinearMixedModel{T}
-    bstr::Tables.ColumnTable
-    cnamedict::Dict{String,Int}
-end
-
-function MixedModelBootstrap(m::LinearMixedModel, bstr::NamedTuple) where {T}
-    dict = Dict{String,Int}()
-    k = findfirst(isequal(:β₁), keys(bstr))
-    isnothing(k) && throw(ArgumentError("No :β₁ in keys(bstr)"))
-    for nm in coefnames(m)
-        dict[nm] = k
-        k += 1
-    end
-    MixedModelBootstrap(m, bstr, dict)
+    bstr::Vector
 end
 
 function Base.getproperty(bsamp::MixedModelBootstrap, s::Symbol)
     if s == :model
         getfield(bsamp, :m)
-    elseif s ∈ [:objective, :σ, :θ]
-        getproperty(getfield(bsamp, :bstr), s)
+    elseif s ∈ [:objective, :β, :σ, :θ]
+        getproperty.(getfield(bsamp, :bstr), s)
     elseif s == :σs
         σs(bsamp)
     elseif s == :σρs
         σρs(bsamp)
-    elseif haskey(getfield(bsamp, :cnamedict), string(s))
-        getfield(bsamp, :bstr)[getfield(bsamp, :cnamedict)[string(s)]]
     else
         getfield(bsamp, s)
     end
 end
 
+issingular(bsamp::MixedModelBootstrap) = issingular.(Ref(bsamp.m), bsamp.θ)
 
 """
-    parametricbootstrap(rng::AbstractRNG, nsamp::Integer, m::LinearMixedModel,
-        props=(:objective, :σ, :β, :θ); β = m.β, σ = m.σ, θ = m.θ)
-    parametricbootstrap(nsamp::Integer, m::LinearMixedModel,
-        props=(:objective, :σ, :β, :θ); β = m.β, σ = m.σ, θ = m.θ)
+    parametricbootstrap(rng::AbstractRNG, nsamp::Integer, m::LinearMixedModel;
+        β = m.β, σ = m.σ, θ = m.θ)
+    parametricbootstrap(nsamp::Integer, m::LinearMixedModel;
+        β = m.β, σ = m.σ, θ = m.θ)
 
-Perform `nsamp` parametric bootstrap replication fits of `m`, returning a
-`Tables.ColumnTable` of parameter estimates of the refit model.
+Perform `nsamp` parametric bootstrap replication fits of `m`, returning a `MixedModelBootstrap`.
 
 The default random number generator is `Random.GLOBAL_RNG`.
 
@@ -49,34 +56,24 @@ The default random number generator is `Random.GLOBAL_RNG`.
 """
 function parametricbootstrap(
     rng::AbstractRNG,
-    nsamp::Integer,
-    m::LinearMixedModel{T};
-    β = m.β,
-    σ = m.σ,
-    θ = m.θ,
+    n::Integer,
+    morig::LinearMixedModel{T};
+    β = morig.β,
+    σ = morig.σ,
+    θ = morig.θ,
 ) where {T}
-    y₀ = copy(response(m))  # to restore original state of m
-    θscr = copy(θ)
-    βscr = copy(β)
-    k = length(θ)
-    bnms = Symbol.(subscriptednames("β", length(β)))
-    vnms = (:objective, :σ, bnms..., :θ)
-    value = (; (nm => nm == :θ ? SVector{k,T}[] : Vector{T}(undef, nsamp) for nm in vnms)...)
-    try
-        @showprogress 1 for i = 1:nsamp
-            refit!(simulate!(rng, m, β = β, σ = σ, θ = θ))
-            value.objective[i] = objective(m)
-            value.σ[i] = sdest(m)
-            fixef!(βscr, m)
-            for (j, bnm) in enumerate(bnms)
-                getproperty(value, bnm)[i] = βscr[j]
-            end
-            push!(value.θ, SVector{k,T}(getθ!(θscr, m)))
-        end
-    finally
-        refit!(m, y₀)
+    βsc, θsc, p, k, m = similar(β), similar(θ), length(β), length(θ), deepcopy(morig)
+    y₀ = copy(response(m))
+    samp = replicate(n) do
+        refit!(simulate!(rng, m, β = β, σ = σ, θ = θ))
+        (
+         objective = m.objective,
+         σ = m.σ,
+         β = SVector{p,T}(fixef!(βsc, m)),
+         θ = SVector{k,T}(getθ!(θsc, m)),
+        )
     end
-    MixedModelBootstrap(deepcopy(m), value)
+    MixedModelBootstrap(refit!(m, y₀), samp)
 end
 
 function parametricbootstrap(nsamp::Integer, m::LinearMixedModel, β = m.β, σ = m.σ, θ = m.θ)
@@ -84,7 +81,7 @@ function parametricbootstrap(nsamp::Integer, m::LinearMixedModel, β = m.β, σ 
 end
 
 function Base.propertynames(bsamp::MixedModelBootstrap)
-    append!([:model, :objective, :σ, :θ, :σs, :σρs], Symbol.(keys(bsamp.cnamedict)))
+    [:model, :objective, :σ, :β, :θ, :σs, :σρs]
 end
 
 function byreterm(bsamp::MixedModelBootstrap{T}, f::Function) where {T}
@@ -92,9 +89,9 @@ function byreterm(bsamp::MixedModelBootstrap{T}, f::Function) where {T}
     oldθ = getθ(m)     # keep a copy to restore later
     retrms = m.reterms
     value = [typeof(v)[] for v in f.(retrms, m.σ)]
-    for (σ, θ) in zip(bsamp.bstr.σ, bsamp.bstr.θ)
-        setθ!(m, θ)
-        for (i, v) in enumerate(f.(retrms, σ))
+    for r in bsamp.bstr
+        setθ!(m, r.θ)
+        for (i, v) in enumerate(f.(retrms, r.σ))
             push!(value[i], v)
         end
     end
@@ -107,11 +104,11 @@ end
 σρs(bsamp::MixedModelBootstrap) = byreterm(bsamp, σρs)
 
 """
-    shortestCovInt(v, level = 0.95)
+    shortestcovint(v, level = 0.95)
 
 Return the shortest interval containing `level` proportion of the values of `v`
 """
-function shortestCovInt(v, level = 0.95)
+function shortestcovint(v, level = 0.95)
     n = length(v)
     0 < level < 1 || throw(ArgumentError("level = $level should be in (0,1)"))
     vv = issorted(v) ? v : sort(v)
