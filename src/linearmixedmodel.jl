@@ -29,6 +29,7 @@ struct LinearMixedModel{T<:AbstractFloat} <: MixedModel{T}
     formula::FormulaTerm
     reterms::Vector{ReMat{T}}
     feterms::Vector{FeMat{T}}
+    allterms::Vector{Union{ReMat{T}, FeMat{T}}}
     sqrtwts::Vector{T}
     A::BlockMatrix{T}            # cross-product blocks
     L::BlockMatrix{T}
@@ -78,7 +79,7 @@ function LinearMixedModel(
     sort!(reterms, by = nranef, rev = true)
 
     # create A and L
-    terms = vcat(reterms, feterms)
+    terms = convert(Vector{Union{ReMat{T},FeMat{T}}}, vcat(reterms, feterms))
     k = length(terms)
     sz = append!(size.(reterms, 2), rank.(feterms))
     A = BlockArray(undef_blocks, AbstractMatrix{T}, sz, sz)
@@ -105,7 +106,7 @@ function LinearMixedModel(
     θ = foldl(vcat, getθ(c) for c in reterms)
     optsum = OptSummary(θ, lbd, :LN_BOBYQA, ftol_rel = T(1.0e-12), ftol_abs = T(1.0e-8))
     fill!(optsum.xtol_abs, 1.0e-10)
-    LinearMixedModel(form, reterms, feterms, sqrt.(convert(Vector{T}, wts)), A, L, optsum)
+    LinearMixedModel(form, reterms, feterms, terms, sqrt.(convert(Vector{T}, wts)), A, L, optsum)
 end
 
 fit(
@@ -246,16 +247,17 @@ Describe the types and sizes of the blocks in the lower triangle of `m.A` and `m
 function describeblocks(io::IO, m::LinearMixedModel)
     A = m.A
     L = m.L
-    for i = 1:BlockArrays.nblocks(A, 2), j = 1:i
+    for i = 1:length(m.allterms), j = 1:i
+        Aij = A[Block(i,j)]
         println(
             io,
             i,
             ",",
             j,
             ": ",
-            typeof(A[Block(i, j)]),
+            typeof(Aij),
             " ",
-            BlockArrays.blocksize(A, (i, j)),
+            size(Aij),
             " ",
             typeof(L[Block(i, j)]),
         )
@@ -554,7 +556,7 @@ function ranef!(
     L = m.L
     for j = 1:k
         mul!(
-            vec(copyto!(v[j], L[Block(BlockArrays.nblocks(L, 2), j)])),
+            vec(copyto!(v[j], L[Block(length(m.allterms), j)])),
             L[Block(k + 1, j)]',
             β,
             -one(T),
@@ -619,7 +621,7 @@ function reevaluateAend!(m::LinearMixedModel)
     A = m.A
     ftrms = m.feterms
     trmn = reweight!(last(ftrms), m.sqrtwts)
-    nblk = BlockArrays.nblocks(A, 1)
+    nblk = length(m.allterms)
     for (j, trm) in enumerate(vcat(m.reterms, ftrms))
         mul!(A[Block(nblk, j)], trmn', trm)
     end
@@ -776,9 +778,9 @@ This is the crucial step in evaluating the objective, given a new parameter valu
 function updateL!(m::LinearMixedModel{T}) where {T}
     A = m.A
     L = m.L
-    k = BlockArrays.nblocks(A, 2)
+    k = length(m.allterms)
     for j = 1:k                         # copy lower triangle of A to L
-        for i = j:BlockArrays.nblocks(A, 1)
+        for i = j:length(m.allterms)
             copyto!(L[Block(i, j)], A[Block(i, j)])
         end
     end

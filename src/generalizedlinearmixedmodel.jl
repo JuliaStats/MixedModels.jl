@@ -323,6 +323,7 @@ function GeneralizedLinearMixedModel(
             LMM.formula,
             LMM.reterms,
             LMM.feterms,
+            LMM.allterms,
             fill!(similar(y), 1),
             LMM.A,
             LMM.L,
