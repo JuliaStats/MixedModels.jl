@@ -6,8 +6,7 @@ Linear mixed-effects model representation
 ## Fields
 
 * `formula`: the formula for the model
-* `reterms`: a `Vector{ReMat{T}}` of random-effects terms.
-* `feterms`: a `Vector{FeMat{T}}` of the fixed-effects model matrix and the response
+* `allterms`: a vector of random-effects terms, the fixed-effects terms and the response
 * `sqrtwts`: vector of square roots of the case weights.  Can be empty.
 * `A`: an `nt × nt` symmetric `BlockMatrix` of matrices representing `hcat(Z,X,y)'hcat(Z,X,y)`
 * `L`: a `nt × nt` `BlockMatrix` - the lower Cholesky factor of `Λ'AΛ+I`
@@ -20,6 +19,8 @@ Linear mixed-effects model representation
 * `λ` or `lambda`: a vector of lower triangular matrices repeated on the diagonal blocks of `Λ`
 * `σ` or `sigma`: current value of the standard deviation of the per-observation noise
 * `b`: random effects on the original scale, as a vector of matrices
+* `reterms`: a `Vector{ReMat{T}}` of random-effects terms.
+* `feterms`: a `Vector{FeMat{T}}` of the fixed-effects model matrix and the response
 * `u`: random effects on the orthogonal scale, as a vector of matrices
 * `lowerbd`: lower bounds on the elements of θ
 * `X`: the fixed-effects model matrix
@@ -27,8 +28,7 @@ Linear mixed-effects model representation
 """
 struct LinearMixedModel{T<:AbstractFloat} <: MixedModel{T}
     formula::FormulaTerm
-    reterms::Vector{ReMat{T}}
-    feterms::Vector{FeMat{T}}
+    allterms::Vector{Union{ReMat{T}, FeMat{T}}}
     sqrtwts::Vector{T}
     A::BlockMatrix{T}            # cross-product blocks
     L::BlockMatrix{T}
@@ -77,35 +77,13 @@ function LinearMixedModel(
 
     sort!(reterms, by = nranef, rev = true)
 
-    # create A and L
-    terms = vcat(reterms, feterms)
-    k = length(terms)
-    sz = append!(size.(reterms, 2), rank.(feterms))
-    A = BlockArray(undef_blocks, AbstractMatrix{T}, sz, sz)
-    L = BlockArray(undef_blocks, AbstractMatrix{T}, sz, sz)
-    for j = 1:k
-        for i = j:k
-            Lij = L[Block(i, j)] = densify(terms[i]' * terms[j])
-            A[Block(i, j)] = deepcopy(isa(Lij, BlockedSparse) ? Lij.cscmat : Lij)
-        end
-    end
-    for i = 2:length(reterms) # check for fill-in due to non-nested grouping factors
-        ci = reterms[i]
-        for j = 1:(i-1)
-            cj = reterms[j]
-            if !isnested(cj, ci)
-                for l = i:k
-                    L[Block(l, i)] = Matrix(L[Block(l, i)])
-                end
-                break
-            end
-        end
-    end
+    allterms = convert(Vector{Union{ReMat{T},FeMat{T}}}, vcat(reterms, feterms))
+    A, L = createAL(allterms)
     lbd = foldl(vcat, lowerbd(c) for c in reterms)
     θ = foldl(vcat, getθ(c) for c in reterms)
     optsum = OptSummary(θ, lbd, :LN_BOBYQA, ftol_rel = T(1.0e-12), ftol_abs = T(1.0e-8))
     fill!(optsum.xtol_abs, 1.0e-10)
-    LinearMixedModel(form, reterms, feterms, sqrt.(convert(Vector{T}, wts)), A, L, optsum)
+    LinearMixedModel(form, allterms, sqrt.(convert(Vector{T}, wts)), A, L, optsum)
 end
 
 fit(
@@ -237,6 +215,33 @@ function condVar(m::LinearMixedModel{T}) where {T}
     Array{T,3}[reshape(abs2.(ll ./ Ld) .* varest(m), (1, 1, length(Ld)))]
 end
 
+function createAL(allterms::Vector{Union{ReMat{T},FeMat{T}}}) where {T}
+    k = length(allterms)
+    sz = [isa(t, ReMat) ? size(t, 2) : rank(t) for t in allterms]
+    A = BlockArray(undef_blocks, AbstractMatrix{T}, sz, sz)
+    L = BlockArray(undef_blocks, AbstractMatrix{T}, sz, sz)
+    for j = 1:k
+        for i = j:k
+            Lij = L[Block(i, j)] = densify(allterms[i]' * allterms[j])
+            A[Block(i, j)] = deepcopy(isa(Lij, BlockedSparse) ? Lij.cscmat : Lij)
+        end
+    end
+    nretrm = sum(Base.Fix2(isa, ReMat), allterms)
+    for i = 2:nretrm      # check for fill-in due to non-nested grouping factors
+        ci = allterms[i]
+        for j = 1:(i-1)
+            cj = allterms[j]
+            if !isnested(cj, ci)
+                for l = i:k
+                    L[Block(l, i)] = Matrix(L[Block(l, i)])
+                end
+                break
+            end
+        end
+    end
+    A, L
+end
+
 """
     describeblocks(io::IO, m::MixedModel)
     describeblocks(m::MixedModel)
@@ -246,16 +251,17 @@ Describe the types and sizes of the blocks in the lower triangle of `m.A` and `m
 function describeblocks(io::IO, m::LinearMixedModel)
     A = m.A
     L = m.L
-    for i = 1:BlockArrays.nblocks(A, 2), j = 1:i
+    for i = 1:length(m.allterms), j = 1:i
+        Aij = A[Block(i,j)]
         println(
             io,
             i,
             ",",
             j,
             ": ",
-            typeof(A[Block(i, j)]),
+            typeof(Aij),
             " ",
-            BlockArrays.blocksize(A, (i, j)),
+            size(Aij),
             " ",
             typeof(L[Block(i, j)]),
         )
@@ -269,7 +275,7 @@ GLM.dispersion(m::LinearMixedModel, sqr::Bool = false) = sqr ? varest(m) : sdest
 
 GLM.dispersion_parameter(m::LinearMixedModel) = true
 
-StatsBase.dof(m::LinearMixedModel) = size(m)[2] + sum(nθ, m.reterms) + 1
+StatsBase.dof(m::LinearMixedModel) = size(m)[2] + nθ(m) + 1
 
 function StatsBase.dof_residual(m::LinearMixedModel)::Int
     (n, p, q, k) = size(m)
@@ -415,10 +421,14 @@ function Base.getproperty(m::LinearMixedModel, s::Symbol)
         σρs(m)
     elseif s == :b
         ranef(m)
+    elseif s == :feterms
+        filter(Base.Fix2(isa, FeMat), getfield(m, :allterms))
     elseif s == :objective
         objective(m)
     elseif s == :pvalues
         ccdf.(Chisq(1), abs2.(coef(m) ./ stderror(m)))
+    elseif s == :reterms
+        filter(Base.Fix2(isa, ReMat), getfield(m, :allterms))
     elseif s == :stderror
         stderror(m)
     elseif s == :u
@@ -483,7 +493,7 @@ function StatsBase.modelmatrix(m::LinearMixedModel)
     end
 end
 
-nθ(m::LinearMixedModel) = sum(nθ, m.reterms)
+nθ(m::LinearMixedModel) = sum(nθ, m.allterms)
 
 StatsBase.nobs(m::LinearMixedModel) = first(size(m))
 
@@ -554,7 +564,7 @@ function ranef!(
     L = m.L
     for j = 1:k
         mul!(
-            vec(copyto!(v[j], L[Block(BlockArrays.nblocks(L, 2), j)])),
+            vec(copyto!(v[j], L[Block(length(m.allterms), j)])),
             L[Block(k + 1, j)]',
             β,
             -one(T),
@@ -589,11 +599,12 @@ If `uscale` is `true` the random effects are on the spherical (i.e. `u`) scale, 
 the original scale.
 """
 function ranef(m::LinearMixedModel{T}; uscale = false, named = false) where {T}
-    v = [Matrix{T}(undef, size(t.z, 1), nlevs(t)) for t in m.reterms]
+    reterms = m.reterms
+    v = [Matrix{T}(undef, size(t.z, 1), nlevs(t)) for t in reterms]
     ranef!(v, m, uscale)
     named || return v
     vnmd = map(NamedArray, v)
-    for (trm, vnm) in zip(m.reterms, vnmd)
+    for (trm, vnm) in zip(reterms, vnmd)
         setnames!(vnm, trm.cnames, 1)
         setnames!(vnm, string.(trm.trm.contrasts.levels), 2)
     end
@@ -617,10 +628,9 @@ after updating the response, `m.feterms[end]`.
 """
 function reevaluateAend!(m::LinearMixedModel)
     A = m.A
-    ftrms = m.feterms
-    trmn = reweight!(last(ftrms), m.sqrtwts)
-    nblk = BlockArrays.nblocks(A, 1)
-    for (j, trm) in enumerate(vcat(m.reterms, ftrms))
+    trmn = reweight!(last(m.allterms), m.sqrtwts)
+    nblk = length(m.allterms)
+    for (j, trm) in enumerate(m.allterms)
         mul!(A[Block(nblk, j)], trmn', trm)
     end
     m
@@ -648,8 +658,7 @@ StatsBase.response(m::LinearMixedModel) = vec(last(m.feterms).x)
 
 function reweight!(m::LinearMixedModel, weights)
     sqrtwts = map!(sqrt, m.sqrtwts, weights)
-    reweight!.(m.feterms, Ref(sqrtwts))
-    reweight!.(m.reterms, Ref(sqrtwts))
+    reweight!.(m.allterms, Ref(sqrtwts))
     updateA!(m)
     updateL!(m)
 end
@@ -750,17 +759,17 @@ end
 """
     updateA!(m::LinearMixedModel)
 
-Update the cross-product array, `m.A`, using `m.reterms` and `m.feterms`
+Update the cross-product array, `m.A`, from `m.allterms`
 
 This is usually done after a reweight! operation.
 """
 function updateA!(m::LinearMixedModel)
-    terms = vcat(m.reterms, m.feterms)
-    k = length(terms)
+    allterms = m.allterms
+    k = length(allterms)
     A = m.A
     for j = 1:k
         for i = j:k
-            mul!(A[Block(i, j)], terms[i]', terms[j])
+            mul!(A[Block(i, j)], allterms[i]', allterms[j])
         end
     end
     m
@@ -776,9 +785,9 @@ This is the crucial step in evaluating the objective, given a new parameter valu
 function updateL!(m::LinearMixedModel{T}) where {T}
     A = m.A
     L = m.L
-    k = BlockArrays.nblocks(A, 2)
+    k = length(m.allterms)
     for j = 1:k                         # copy lower triangle of A to L
-        for i = j:BlockArrays.nblocks(A, 1)
+        for i = j:k
             copyto!(L[Block(i, j)], A[Block(i, j)])
         end
     end

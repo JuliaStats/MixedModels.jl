@@ -62,3 +62,5 @@ LinearAlgebra.mul!(R::StridedVecOrMat{T}, A::FeMat{T}, B::StridedVecOrMat{T}) wh
 
 LinearAlgebra.mul!(C, adjA::Adjoint{T,<:FeMat{T}}, B::FeMat{T}) where {T} =
     mul!(C, fullrankwtx(adjA.parent)', fullrankwtx(B))
+
+nθ(A::FeMat) = 0
