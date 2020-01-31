@@ -321,8 +321,6 @@ function GeneralizedLinearMixedModel(
     if isempty(wts)
         LMM = LinearMixedModel(
             LMM.formula,
-            LMM.reterms,
-            LMM.feterms,
             LMM.allterms,
             fill!(similar(y), 1),
             LMM.A,
