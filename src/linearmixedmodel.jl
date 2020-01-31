@@ -204,7 +204,7 @@ diagonal blocks from the conditional variance-covariance matrix,
     s² Λ(Λ'Z'ZΛ + I)⁻¹Λ'
 """
 function condVar(m::LinearMixedModel{T}) where {T}
-    retrms = filter(Base.Fix2(isa, ReMat), m.allterms)
+    retrms = m.reterms
     t1 = first(retrms)
     L11 = m.L[Block(1, 1)]
     if !isone(length(retrms)) || !isa(L11, Diagonal{T,Vector{T}})
