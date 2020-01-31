@@ -254,8 +254,14 @@ function GeneralizedLinearMixedModel(f::FormulaTerm, tbl::Tables.ColumnTable,
         # until after the model is constructed if wt is empty.  Because a LinearMixedModel
         # type is immutable, another one must be created.
     if isempty(wts)
-        LMM = LinearMixedModel(LMM.formula, LMM.reterms, LMM.feterms, fill!(similar(y), 1),
-            LMM.A, LMM.L, LMM.optsum)
+        LMM = LinearMixedModel(
+            LMM.formula,
+            LMM.allterms,
+            fill!(similar(y), 1),
+            LMM.A,
+            LMM.L,
+            LMM.optsum,
+        )
     end
     updateL!(LMM)
         # fit a glm to the fixed-effects only - awkward syntax is to by-pass a test
