@@ -65,16 +65,14 @@ function parametricbootstrap(
     βsc, θsc, p, k, m = similar(β), similar(θ), length(β), length(θ), deepcopy(morig)
     y₀ = copy(response(m))
     # we need to do for in-place operations to work across threads
-    if Threads.nthreads() > 1
-        m_threads = [deepcopy(m) for _ in Base.OneTo(Threads.nthreads())]
-    else
-        m_threads = [m]
-    end
-    # this assumes a thread-safe RNG. The default MersenneTwister seems to be ok on Linux
-    # TODO: check thread safety issues
-    # rng = MersenneTwister(42); replicate(10) do; [rand(rng,1),Threads.threadid()] ; end
+    m_threads = [m]
+    Threads.resize_nthreads!(m_threads)
+    # we use locks to guarantee thread-safety, but there might be better ways to do this for some RNGs
+    # see https://docs.julialang.org/en/v1.3/manual/parallel-computing/#Side-effects-and-mutable-function-arguments-1
+    # see https://docs.julialang.org/en/v1/stdlib/Future/index.html
+    rnglock = ReentrantLock()
     samp = replicate(n) do
-        refit!(simulate!(rng, m_threads[Threads.threadid()], β = β, σ = σ, θ = θ))
+        refit!(simulate!(rng, rnglock, m_threads[Threads.threadid()], β = β, σ = σ, θ = θ))
         (
          objective = m.objective,
          σ = m.σ,
@@ -134,13 +132,18 @@ Overwrite the response (i.e. `m.trms[end]`) with a simulated response vector fro
 """
 function simulate!(
     rng::AbstractRNG,
+    rnglock::ReentrantLock,
     m::LinearMixedModel{T};
     β = coef(m),
     σ = m.σ,
     θ = T[],
 ) where {T}
     isempty(θ) || setθ!(m, θ)
+
+    lock(rnglock)
     y = randn!(rng, response(m))      # initialize y to standard normal
+    unlock(rnglock)
+
     for trm in m.reterms              # add the unscaled random effects
         unscaledre!(rng, y, trm)
     end
@@ -151,6 +154,10 @@ end
 
 function simulate!(m::LinearMixedModel{T}; β = m.β, σ = m.σ, θ = T[]) where {T}
     simulate!(Random.GLOBAL_RNG, m, β = β, σ = σ, θ = θ)
+end
+
+function simulate!(rng::AbstractRNG, m::LinearMixedModel{T}; β = m.β, σ = m.σ, θ = T[]) where {T}
+    simulate!(rng, ReentrantLock(), m, β = β, σ = σ, θ = θ)
 end
 
 """
@@ -188,10 +195,26 @@ function unscaledre!(y::AbstractVector{T}, A::ReMat{T,S}, b::AbstractMatrix{T}) 
     y
 end
 
+function unscaledre!(rng::AbstractRNG, rnglock::ReentrantLock, y::AbstractVector{T}, A::ReMat{T,S}) where {T,S}
+    lock(rnglock)
+    rng_nums = randn(rng, S, nlevs(A))
+    unlock(rnglock)
+
+    unscaledre!(y, A, lmul!(A.λ, rng_nums))
+end
+
 unscaledre!(rng::AbstractRNG, y::AbstractVector{T}, A::ReMat{T,S}) where {T,S} =
-    unscaledre!(y, A, lmul!(A.λ, randn(rng, S, nlevs(A))))
+    unscaledre!(rng, ReentrantLock(), y, A)
+
+function unscaledre!(rng::AbstractRNG, y::AbstractVector{T}, A::ReMat{T,1}) where {T}
+    lock(rnglock)
+    rng_nums = rrandn(rng, 1, nlevs(A))
+    unlock(rnglock)
+
+    unscaledre!(y, A, lmul!(first(A.λ), rng_nums))
+end
 
 unscaledre!(rng::AbstractRNG, y::AbstractVector{T}, A::ReMat{T,1}) where {T} =
-    unscaledre!(y, A, lmul!(first(A.λ), randn(rng, 1, nlevs(A))))
+    unscaledre!(rng, ReentrantLock(), y, A)
 
 unscaledre!(y::AbstractVector, A::ReMat) = unscaledre!(Random.GLOBAL_RNG, y, A)

@@ -91,16 +91,21 @@ end
     replicate(f::Function, n::Integer)
 
 Return a vector of the values of `n` calls to `f()` - used in simulations where the value of `f` is stochastic.
+
+Note that if `f()` is not thread-safe or depends on a non thread-safe RNG, then you must set `use_threads=false`.
 """
 # rng = MersenneTwister(42); replicate(10) do; [rand(rng,1),Threads.threadid()] ; end
-function replicate(f::Function, n)
-    # get the type
-    rr = f()
-    # pre-allocate
-    results = [rr for _ in Base.OneTo(n)]
-    Threads.@threads for idx = 2:n
-        results[idx] = f()
+function replicate(f::Function, n, use_threads=true)
+    if use_threads
+        # get the type
+        rr = f()
+        # pre-allocate
+        results = [rr for _ in Base.OneTo(n)]
+        Threads.@threads for idx = 2:n
+            results[idx] = f()
+        end
+    else
+        results = [f() for _ in Base.OneTo(n)]
     end
-
     results
 end
