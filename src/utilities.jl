@@ -92,4 +92,15 @@ end
 
 Return a vector of the values of `n` calls to `f()` - used in simulations where the value of `f` is stochastic.
 """
-replicate(f::Function, n) = [f() for _ in Base.OneTo(n)]
+# rng = MersenneTwister(42); replicate(10) do; [rand(rng,1),Threads.threadid()] ; end
+function replicate(f::Function, n)
+    # get the type
+    rr = f()
+    # pre-allocate
+    results = [rr for _ in Base.OneTo(n)]
+    Threads.@threads for idx = 2:n
+        results[idx] = f()
+    end
+
+    results
+end

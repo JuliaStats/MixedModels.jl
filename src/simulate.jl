@@ -64,8 +64,17 @@ function parametricbootstrap(
 ) where {T}
     βsc, θsc, p, k, m = similar(β), similar(θ), length(β), length(θ), deepcopy(morig)
     y₀ = copy(response(m))
+    # we need to do for in-place operations to work across threads
+    if Threads.nthreads() > 1
+        m_threads = [deepcopy(m) for _ in Base.OneTo(Threads.nthreads())]
+    else
+        m_threads = [m]
+    end
+    # this assumes a thread-safe RNG. The default MersenneTwister seems to be ok on Linux
+    # TODO: check thread safety issues
+    # rng = MersenneTwister(42); replicate(10) do; [rand(rng,1),Threads.threadid()] ; end
     samp = replicate(n) do
-        refit!(simulate!(rng, m, β = β, σ = σ, θ = θ))
+        refit!(simulate!(rng, m_threads[Threads.threadid()], β = β, σ = σ, θ = θ))
         (
          objective = m.objective,
          σ = m.σ,
