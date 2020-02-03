@@ -88,14 +88,16 @@ function checkindprsk(k::Integer)
 end
 
 """
-    replicate(f::Function, n::Integer)
+    replicate(f::Function, n::Integer, use_threads=false)
 
 Return a vector of the values of `n` calls to `f()` - used in simulations where the value of `f` is stochastic.
 
-Note that if `f()` is not thread-safe or depends on a non thread-safe RNG, then you must set `use_threads=false`.
+Note that if `f()` is not thread-safe or depends on a non thread-safe RNG,
+    then you must set `use_threads=false`. Also note that ordering of replications
+    is not guaranteed when `use_threads=true`, although the replications are not
+    otherwise affected for thread-safe `f()`.
 """
-# rng = MersenneTwister(42); replicate(10) do; [rand(rng,1),Threads.threadid()] ; end
-function replicate(f::Function, n, use_threads=true)
+function replicate(f::Function, n::Integer; use_threads=false)
     if use_threads
         # get the type
         rr = f()

@@ -61,6 +61,7 @@ function parametricbootstrap(
     β = morig.β,
     σ = morig.σ,
     θ = morig.θ,
+    use_threads = false,
 ) where {T}
     βsc, θsc, p, k, m = similar(β), similar(θ), length(β), length(θ), deepcopy(morig)
     y₀ = copy(response(m))
@@ -71,7 +72,7 @@ function parametricbootstrap(
     # see https://docs.julialang.org/en/v1.3/manual/parallel-computing/#Side-effects-and-mutable-function-arguments-1
     # see https://docs.julialang.org/en/v1/stdlib/Future/index.html
     rnglock = ReentrantLock()
-    samp = replicate(n) do
+    samp = replicate(n, use_threads=use_threads) do
         refit!(simulate!(rng, rnglock, m_threads[Threads.threadid()], β = β, σ = σ, θ = θ))
         (
          objective = m.objective,
@@ -83,8 +84,8 @@ function parametricbootstrap(
     MixedModelBootstrap(refit!(m, y₀), samp)
 end
 
-function parametricbootstrap(nsamp::Integer, m::LinearMixedModel, β = m.β, σ = m.σ, θ = m.θ)
-    parametricbootstrap(Random.GLOBAL_RNG, nsamp, m, β = β, σ = σ, θ = θ)
+function parametricbootstrap(nsamp::Integer, m::LinearMixedModel, β = m.β, σ = m.σ, θ = m.θ, use_threads = false)
+    parametricbootstrap(Random.GLOBAL_RNG, nsamp, m, β = β, σ = σ, θ = θ, use_threads = false)
 end
 
 function Base.propertynames(bsamp::MixedModelBootstrap)
@@ -206,9 +207,9 @@ end
 unscaledre!(rng::AbstractRNG, y::AbstractVector{T}, A::ReMat{T,S}) where {T,S} =
     unscaledre!(rng, ReentrantLock(), y, A)
 
-function unscaledre!(rng::AbstractRNG, y::AbstractVector{T}, A::ReMat{T,1}) where {T}
+function unscaledre!(rng::AbstractRNG, rnglock::ReentrantLock, y::AbstractVector{T}, A::ReMat{T,1}) where {T}
     lock(rnglock)
-    rng_nums = rrandn(rng, 1, nlevs(A))
+    rng_nums = randn(rng, 1, nlevs(A))
     unlock(rnglock)
 
     unscaledre!(y, A, lmul!(first(A.λ), rng_nums))
