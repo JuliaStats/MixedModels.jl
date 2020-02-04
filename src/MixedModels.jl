@@ -5,6 +5,8 @@ using BlockDiagonals
 using Distributions
 using Feather
 using GLM
+using Interpolations
+using InvertedIndices
 using LinearAlgebra
 using NamedArrays
 using NLopt
@@ -146,5 +148,6 @@ include("linalg/rankUpdate.jl")
 include("linalg/logdet.jl")
 include("linalg.jl")
 include("simulate.jl")
+include("profile.jl")
 
 end # module
