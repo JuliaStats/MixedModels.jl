@@ -311,7 +311,8 @@ end
     @test deviance(fm) ≈ 339.0218639362958 atol=0.001
     simulate!(fm, θ = fm.θ)
     @test_throws DimensionMismatch refit!(fm, zeros(29))
-    bsamp = parametricbootstrap(MersenneTwister(1234321), 100, fm)
+
+    bsamp = parametricbootstrap(MersenneTwister(1234321), 100, fm, use_threads=false)
     @test isa(propertynames(bsamp), Vector{Symbol})
     @test length(bsamp.objective) == 100
     @test keys(first(bsamp.bstr)) == (:objective, :σ, :β, :θ)
@@ -320,6 +321,15 @@ end
     @test isa(bsamp.σρs, NamedTuple)
     @test length(bsamp.σs) == 1
     @test shortestcovint(bsamp.σ) ≈ [48.2551828768727, 81.85810781858969] rtol = 1.e-4
+
+    bsamp_threaded = parametricbootstrap(MersenneTwister(1234321), 100, fm, use_threads=true)
+    # even though it's bad practice with floating point, exact equality should
+    # be a valid test here -- if everything is working right, then it's the exact
+    # same operations occuring within each bootstrap sample, which IEEE 754
+    # guarantees will yield the same result
+    @test sort(bsamp_threaded.σ) == sort(bsamp.σ)
+    @test sort(bsamp_threaded.θ) == sort(bsamp.θ)
+    @test sort(bsamp_threaded.β) == sort(bsamp.β)
 end
 
 @testset "Rank deficient" begin

@@ -7,3 +7,17 @@ using LinearAlgebra, MixedModels, Random, SparseArrays, Test
 	@test MixedModels.densify(rsparsev) == Vector(rsparsev)
 	@test MixedModels.densify(Diagonal(rsparsev)) == Diagonal(Vector(rsparsev))
 end
+
+@testset "threaded_replicate" begin
+	rng = MersenneTwister(42);
+	single_thread = replicate(10,use_threads=false) do; randn(rng, 1)[1] ; end
+	rng = MersenneTwister(42);
+	multi_thread = replicate(10,use_threads=true) do
+		if Threads.threadid() % 2 == 0
+			sleep(0.001)
+		end
+		r = randn(rng, 1)[1];
+	end
+
+	@test all(sort!(single_thread) .== sort!(multi_thread))
+end

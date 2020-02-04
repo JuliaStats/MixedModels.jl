@@ -61,23 +61,44 @@ function parametricbootstrap(
     β = morig.β,
     σ = morig.σ,
     θ = morig.θ,
+    use_threads = false,
 ) where {T}
     βsc, θsc, p, k, m = similar(β), similar(θ), length(β), length(θ), deepcopy(morig)
     y₀ = copy(response(m))
-    samp = replicate(n) do
-        refit!(simulate!(rng, m, β = β, σ = σ, θ = θ))
+    # we need to do for in-place operations to work across threads
+    m_threads = [m]
+    βsc_threads = [βsc]
+    θsc_threads = [θsc]
+
+    if use_threads
+        Threads.resize_nthreads!(m_threads)
+        Threads.resize_nthreads!(βsc_threads)
+        Threads.resize_nthreads!(θsc_threads)
+    end
+    # we use locks to guarantee thread-safety, but there might be better ways to do this for some RNGs
+    # see https://docs.julialang.org/en/v1.3/manual/parallel-computing/#Side-effects-and-mutable-function-arguments-1
+    # see https://docs.julialang.org/en/v1/stdlib/Future/index.html
+    rnglock = ReentrantLock()
+    samp = replicate(n, use_threads=use_threads) do
+        mod = m_threads[Threads.threadid()]
+        local βsc = βsc_threads[Threads.threadid()]
+        local θsc = θsc_threads[Threads.threadid()]
+        lock(rnglock)
+        mod = simulate!(rng, mod, β = β, σ = σ, θ = θ)
+        unlock(rnglock)
+        refit!(mod)
         (
-         objective = m.objective,
-         σ = m.σ,
-         β = SVector{p,T}(fixef!(βsc, m)),
-         θ = SVector{k,T}(getθ!(θsc, m)),
+         objective = mod.objective,
+         σ = mod.σ,
+         β = SVector{p,T}(fixef!(βsc, mod)),
+         θ = SVector{k,T}(getθ!(θsc, mod)),
         )
     end
     MixedModelBootstrap(refit!(m, y₀), samp)
 end
 
-function parametricbootstrap(nsamp::Integer, m::LinearMixedModel, β = m.β, σ = m.σ, θ = m.θ)
-    parametricbootstrap(Random.GLOBAL_RNG, nsamp, m, β = β, σ = σ, θ = θ)
+function parametricbootstrap(nsamp::Integer, m::LinearMixedModel, β = m.β, σ = m.σ, θ = m.θ, use_threads = false)
+    parametricbootstrap(Random.GLOBAL_RNG, nsamp, m, β = β, σ = σ, θ = θ, use_threads = false)
 end
 
 function Base.propertynames(bsamp::MixedModelBootstrap)
@@ -131,7 +152,9 @@ function simulate!(
     θ = T[],
 ) where {T}
     isempty(θ) || setθ!(m, θ)
+
     y = randn!(rng, response(m))      # initialize y to standard normal
+
     for trm in m.reterms              # add the unscaled random effects
         unscaledre!(rng, y, trm)
     end
@@ -179,10 +202,16 @@ function unscaledre!(y::AbstractVector{T}, A::ReMat{T,S}, b::AbstractMatrix{T}) 
     y
 end
 
-unscaledre!(rng::AbstractRNG, y::AbstractVector{T}, A::ReMat{T,S}) where {T,S} =
-    unscaledre!(y, A, lmul!(A.λ, randn(rng, S, nlevs(A))))
+function unscaledre!(rng::AbstractRNG, y::AbstractVector{T}, A::ReMat{T,S}) where {T,S}
+    rng_nums = randn(rng, S, nlevs(A))
 
-unscaledre!(rng::AbstractRNG, y::AbstractVector{T}, A::ReMat{T,1}) where {T} =
-    unscaledre!(y, A, lmul!(first(A.λ), randn(rng, 1, nlevs(A))))
+    unscaledre!(y, A, lmul!(A.λ, rng_nums))
+end
+
+function unscaledre!(rng::AbstractRNG, y::AbstractVector{T}, A::ReMat{T,1}) where {T}
+    rng_nums = randn(rng, 1, nlevs(A))
+
+    unscaledre!(y, A, lmul!(first(A.λ), rng_nums))
+end
 
 unscaledre!(y::AbstractVector, A::ReMat) = unscaledre!(Random.GLOBAL_RNG, y, A)
