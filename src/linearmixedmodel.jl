@@ -517,6 +517,7 @@ StatsBase.predict(m::LinearMixedModel) = fitted(m)
 
 Base.propertynames(m::LinearMixedModel, private = false) = (
     :formula,
+    :allterms,
     :sqrtwts,
     :A,
     :L,
@@ -680,7 +681,7 @@ end
 
 StatsBase.residuals(m::LinearMixedModel) = response(m) .- fitted(m)
 
-StatsBase.response(m::LinearMixedModel) = vec(last(m.feterms).x)
+StatsBase.response(m::LinearMixedModel) = vec(last(m.allterms).x)
 
 function reweight!(m::LinearMixedModel, weights)
     sqrtwts = map!(sqrt, m.sqrtwts, weights)
