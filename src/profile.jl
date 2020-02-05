@@ -22,23 +22,40 @@ function FeProfile(m::LinearMixedModel, j::Integer)
     FeProfile(fit!(LinearMixedModel(m.formula, allterms, m.sqrtwts, A, L, deepcopy(m.optsum))), y₀, xⱼ, j)
 end
 
-refit!(pr::FeProfile, βⱼ) = refit!(pr.m, pr.y₀ .- βⱼ * pr.xⱼ)
+function refit!(pr::FeProfile, βⱼ)
+    refit!(pr.m, pr.y₀ .- βⱼ * pr.xⱼ)
+    pr
+end
 
-"""
-    dropcol(m::AbstractMatrix, j)
+getprops(pr::FeProfile, props=(:objective, :σ, :β, :θ)) = getprops(pr.m, props)
 
-Return a copy of `m` having dropped column `j`
-"""
-dropcol(M::AbstractMatrix, j) = M[:, deleteat!(collect(axes(M, 2)), j)]
+function getprops(m::MixedModel, props=(:objective, :σ, :β, :θ))
+    NamedTuple{props}(map(Base.Fix1(getproperty, m), props))
+end
 
-function profileβ(m::LinearMixedModel{T}, β::Vector{T}=m.β, std::Vector{T}=m.stderror) where {T}
-    d0 = deviance(m)
-    y0 = copy(response(m))
-    X0 = copy(first(m.feterms))
-    eachβ = eachindex(β)
-    colvec = collect(eachβ)
-    for i in eachβ
-        freecols = deleteat!(colvec, i)
-        m.feterms[1] = FeMat(X0.x[:,freecols], X0.cnames[freecols])
+function profileβ(m::LinearMixedModel{T}, steps=-5:5) where {T}
+    refit!(m)
+    β, θ, std, obj, k = m.β, m.θ, m.stderror, objective(m), nθ(m)
+    p = length(β)
+    val = map(eachindex(β)) do j
+        prj = FeProfile(m, j)
+        estj, stdj = β[j], std[j]
+        map(steps) do s
+            if iszero(s)
+                (ζ=zero(T), σ=m.σ, β=SVector{p}(β), θ=SVector{k}(θ))
+            else
+                βj = estj + s * stdj
+                props = getprops(refit!(prj, βj))
+                splice!(props.β, j:j-1, βj)
+                (
+                    ζ=sign(s) * sqrt(props.objective - obj),
+                    σ=props.σ,
+                    β=SVector{p}(props.β),
+                    θ=SVector{k}(props.θ),
+                )
+            end                
+        end
     end
+    updateL!(setθ!(m, θ))
+    val
 end
