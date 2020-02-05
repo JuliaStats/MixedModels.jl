@@ -1,0 +1,7 @@
+[TestData]
+git-tree-sha1 = "9d575764bc1c1a7860c34c5b153251e5f2ee6704"
+lazy = true
+
+    [[TestData.download]]
+    sha256 = "0b63ae3e9e457ee4b33482d3bf8cc7f20c8ed7c8b2c863af311ba0944c6d46e4"
+    url = "https://ndownloader.figshare.com/files/21085968"

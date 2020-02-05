@@ -8,6 +8,7 @@ using LinearAlgebra
 using NamedArrays
 using NLopt
 using Random
+using Pkg.Artifacts
 using ProgressMeter
 using Showoff
 using SparseArrays
@@ -52,6 +53,7 @@ export @formula,
        RandomEffectsTerm,
        ReMat,
        SqrtLink,
+       TestData,
        UniformBlockDiagonal,
        VarCorr,
        aic,
@@ -106,6 +108,10 @@ export @formula,
 import Base: ==, *
 
 abstract type MixedModel{T} <: StatsModels.RegressionModel end # model with fixed and random effects
+
+function __init__()
+    global TestData = artifact"TestData"
+end
 
 include("utilities.jl")
 include("arraytypes.jl")

@@ -1,19 +1,24 @@
-using DataFrames, LinearAlgebra, MixedModels, Random, RData, SparseArrays, StatsModels, Test
-
-if !@isdefined(dat) || !isa(dat, Dict{Symbol, DataFrame})
-    const dat = Dict(Symbol(k) => v for (k, v) in
-        load(joinpath(dirname(pathof(MixedModels)), "..", "test", "dat.rda")))
-end
+using DataFrames
+using Feather
+using LinearAlgebra
+using MixedModels
+using Random
+using SparseArrays
+using StatsModels
+using Test
 
 const LMM = LinearMixedModel
 
+data(nm::AbstractString) = Feather.read(joinpath(MixedModels.TestData, string(nm, ".feather")))
+data(nm::Symbol) = data(string(nm))
+
 @testset "scalarReMat" begin
-    ds = dat[:Dyestuff]
-    f1 = @formula(Y ~ 1 + (1|G))
+    ds = data("dyestuff")
+    f1 = @formula(yield ~ 1 + (1|batch))
     y1, Xs1 = modelcols(apply_schema(f1, schema(ds), LMM), ds)
     sf = Xs1[2]
-    psts = dat[:Pastes]
-    f2 = @formula(Y ~ 1 + (1|G) + (1|H))
+    psts = data("pastes")
+    f2 = @formula(strength ~ 1 + (1|sample) + (1|batch))
     y2, Xs2 = modelcols(apply_schema(f2, schema(psts), LMM), psts)
     sf1 = Xs2[2]
     sf2 = Xs2[3]
@@ -78,36 +83,36 @@ const LMM = LinearMixedModel
 end
 
 @testset "RandomEffectsTerm" begin
-    slp = dat[:sleepstudy]
+    slp = data("sleepstudy")
     contrasts =  Dict{Symbol,Any}()
 
     @testset "Detect same variable as blocking and experimental" begin
-        f = @formula(Y ~ 1 + (1 + G|G))
+        f = @formula(reaction ~ 1 + (1 + subj|subj))
         @test_throws ArgumentError apply_schema(f, schema(f, slp, contrasts), LinearMixedModel)
     end
 
     @testset "Detect both blocking and experimental variables" begin
         # note that U is not in the fixed effects because we want to make square
         # that we're detecting all the variables in the random effects
-        f = @formula(Y ~ 1 + (1 + U|G))
+        f = @formula(reaction ~ 1 + (1 + days|subj))
         form = apply_schema(f, schema(f, slp, contrasts), LinearMixedModel)
-        @test StatsModels.termvars(form.rhs) == [:U, :G]
+        @test StatsModels.termvars(form.rhs) == [:days, :subj]
     end
 end
 
 @testset "Categorical Blocking Variable" begin
     # deepcopy because we're going to modify it
-    slp = deepcopy(dat[:sleepstudy])
+    slp = deepcopy(data("sleepstudy"))
     contrasts =  Dict{Symbol,Any}()
-    f = @formula(Y ~ 1 + (1|G))
+    f = @formula(reaction ~ 1 + (1|subj))
 
     # String blocking-variables work fine because StatsModels is smart enough to
     # treat strings as Categorical. Note however that this is a
     # far less efficient to store the original dataframe, although it doesn't
     # matter for the contrast matrix
-    slp[!,:G] = convert.(String, slp[!, :G])
+    slp[!,:subj] = convert.(String, slp[!, :subj])
     # @test_throws ArgumentError LinearMixedModel(f, slp)
-    slp[!,:G] = parse.(Int, slp[!, :G])
+    slp.subj = parse.(Int, getindex.(slp.subj, Ref(2:4)))
     @test_throws ArgumentError LinearMixedModel(f, slp)
 end
 
@@ -169,5 +174,6 @@ end
         @test modelcols(last(ff.rhs), dat) == float(Matrix(I, 18, 18))
 
         @test_broken fit(MixedModel, @formula(Y ~ 1 + (1|H/c)), dat[:Pastes])
+
     end
 end

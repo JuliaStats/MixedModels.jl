@@ -1,13 +1,11 @@
-using DataFrames, LinearAlgebra, MixedModels, RData, Test
-if !@isdefined(dat) || !isa(dat, Dict{Symbol, DataFrame})
-    const dat = Dict(Symbol(k) => v for (k, v) in
-        load(joinpath(dirname(pathof(MixedModels)), "..", "test", "dat.rda")))
-end
+using DataFrames, Feather, LinearAlgebra, MixedModels, Test
+
+dat(nm::AbstractString) = Feather.read(joinpath(MixedModels.TestData, string(nm, ".feather")))
+dat(nm::Symbol) = dat(string(nm))
 
 @testset "contra" begin
-    contra = dat[:Contraception]
-    contra[!, :urbdist] = categorical(string.(contra[!, :d], contra[!, :urb]))
-    contraform = @formula(use ~ 1+a+abs2(a)+urb+l+(1|urbdist))
+    contra = dat(:contra)
+    contraform = @formula(use ~ 1+age+abs2(age)+urban+livch+(1|urbdist))
     gm0 = fit(MixedModel, contraform, contra, Bernoulli(), fast=true);
     @test gm0.lowerbd == zeros(1)
     @test isapprox(gm0.θ, [0.5720734451352923], atol=0.001)
@@ -28,7 +26,7 @@ end
     @test isnan(gm1.σ)
     @test length(gm1.y) == size(gm1.X, 1)
     @test :θ in propertynames(gm0)
-    gm0.βθ = vcat(gm0.β, gm0.theta)
+    # gm0.βθ = vcat(gm0.β, gm0.theta)
     # the next three values are not well defined in the optimization
     #@test isapprox(logdet(gm1), 75.7217, atol=0.1)
     #@test isapprox(sum(abs2, gm1.u[1]), 48.4747, atol=0.1)
@@ -37,12 +35,11 @@ end
 end
 
 @testset "cbpp" begin
-    cbpp = dat[:cbpp]
-    cbpp[!, :prop] = cbpp[!, :i] ./ cbpp[!, :s]
-    gm2 = fit(MixedModel, @formula(prop ~ 1 + p + (1|h)), cbpp, Binomial(), wts=cbpp[!,:s])
-    @test isapprox(deviance(gm2,true), 100.09585619892968, atol=0.0001)
-    @test isapprox(sum(abs2, gm2.u[1]), 9.723054788538546, atol=0.0001)
-    @test isapprox(logdet(gm2), 16.90105378801136, atol=0.0001)
+    cbpp = dat(:cbpp)
+    gm2 = fit(MixedModel, @formula((incid/hsz) ~ 1 + period + (1|herd)), cbpp, Binomial(), wts=float(cbpp.hsz))
+    @test deviance(gm2,true) ≈ 100.09585619892968 atol=0.0001
+    @test sum(abs2, gm2.u[1]) ≈ 9.723054788538546 atol=0.0001
+    @test logdet(gm2) ≈ 16.90105378801136 atol=0.0001
     @test isapprox(sum(gm2.resp.devresid), 73.47174762237978, atol=0.001)
     @test isapprox(loglikelihood(gm2), -92.02628186840045, atol=0.001)
     @test isnan(sdest(gm2))
@@ -50,8 +47,8 @@ end
 end
 
 @testset "verbagg" begin
-    gm3 = fit(MixedModel, @formula(r2 ~ 1 + a + g + b + s + (1|id)+(1|item)), dat[:VerbAgg],
-         Bernoulli())
+    gm3 = fit(MixedModel, @formula(r2 ~ 1+anger+gender+btype+situ+(1|subj)+(1|item)),
+        dat(:verbagg), Bernoulli())
     @test deviance(gm3) ≈ 8151.40 rtol=1e-5
     @test lowerbd(gm3) == vcat(fill(-Inf, 6), zeros(2))
     @test fitted(gm3) == predict(gm3)
@@ -61,8 +58,11 @@ end
 end
 
 @testset "grouseticks" begin
-    gm4 = fit(MixedModel, @formula(t ~ 1 + y + ch + (1|i) + (1|b) + (1|l)),
-              dat[:grouseticks], Poisson(), fast=true)  # fails in pirls! with fast=false
+    center(v::AbstractVector) = v .- (sum(v) / length(v))
+    grouseticks = dat(:grouseticks)
+    grouseticks.ch = center(grouseticks.height)
+    gm4 = fit(MixedModel, @formula(ticks ~ 1+year+ch+ (1|index) + (1|brood) + (1|location)),
+        grouseticks, Poisson(), fast=true)  # fails in pirls! with fast=false
     @test isapprox(deviance(gm4), 851.4046, atol=0.001)
     # these two values are not well defined at the optimum
     #@test isapprox(sum(x -> sum(abs2, x), gm4.u), 196.8695297987013, atol=0.1)

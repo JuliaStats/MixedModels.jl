@@ -1,6 +1,4 @@
-using RData
-
-const dat = Dict(Symbol(k) => v for (k,v) in load(joinpath(dirname(@__FILE__), "dat.rda")))
+using Feather, MixedModels
 
 include("utilities.jl")
 include("statschol.jl")
@@ -13,5 +11,3 @@ include("pirls.jl")
 include("gausshermite.jl")
 include("fit.jl")
 include("missing.jl")
-
-using MixedModels

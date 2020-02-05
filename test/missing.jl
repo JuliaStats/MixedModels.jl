@@ -1,14 +1,11 @@
-using MixedModels, RData, Test
+using Feather, MixedModels, Test
 
-if !@isdefined(dat) || !isa(dat, Dict{Symbol, DataFrame})
-    const dat = Dict(Symbol(k) => v for (k, v) in
-        load(joinpath(dirname(pathof(MixedModels)), "..", "test", "dat.rda")))
-end
-
+dat(nm::AbstractString) = Feather.read(joinpath(MixedModels.TestData, string(nm, ".feather")))
+dat(nm::Symbol) = dat(string(nm))
 # deepcopy because we're going to modify it
-slp = deepcopy(dat[:sleepstudy])
-slp[!,:U] = Array{Union{Missing, Float64},1}(slp[!,:U])
-slp[1,:U] = missing
+slp = deepcopy(dat(:sleepstudy))
+slp[!,:days] = Array{Union{Missing, Float64},1}(slp[!,:days])
+slp[1,:days] = missing
 
 # TODO: re-enable this test when better missing support has landed in StatsModels
 # @testset "No impact from missing on schema" begin
@@ -24,14 +21,14 @@ slp[1,:U] = missing
 @testset "Missing Omit" begin
     @testset "Missing from unused variables" begin
         # missing from unused variables should have no impact
-        m1 = fit(MixedModel, @formula(Y ~ 1 + (1|G)), dat[:sleepstudy])
-        m1_missing = fit(MixedModel, @formula(Y ~ 1 + (1|G)), slp)
+        m1 = fit(MixedModel, @formula(reaction ~ 1 + (1|subj)), dat(:sleepstudy))
+        m1_missing = fit(MixedModel, @formula(reaction ~ 1 + (1|subj)), slp)
         @test isapprox(m1.θ, m1_missing.θ, rtol=1.0e-12)
     end
 
     @testset "Missing from used variables" begin
-        m1 = fit(MixedModel, @formula(Y ~ 1 + U + (1|G)), dat[:sleepstudy])
-        m1_missing = fit(MixedModel, @formula(Y ~ 1 + U + (1|G)), slp)
+        m1 = fit(MixedModel, @formula(reaction ~ 1 + days + (1|subj)), dat(:sleepstudy))
+        m1_missing = fit(MixedModel, @formula(reaction ~ 1 + days + (1|subj)), slp)
         @test nobs(m1) - nobs(m1_missing) == 1
     end
 end
