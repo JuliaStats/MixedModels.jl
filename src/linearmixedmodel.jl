@@ -869,7 +869,7 @@ function zerocorr!(m::LinearMixedModel{T}, trmns) where {T}
     optsum.initial_step = T[]
 
     # the model is no longer fitted
-    optsum.feval == -1
+    optsum.feval = -1
 
     m
 end
