@@ -550,9 +550,10 @@ vsize(A::ReMat{T,S}) where {T,S} = S
 function zerocorr!(A::ReMat{T}) where {T}
     λ = A.λ
     A.inds = intersect(A.inds, diagind(λ))
+    old_vals = [λ[i] for i in A.inds]
     fill!(λ.data, 0)
-    for i in A.inds
-        λ.data[i] = 1
+    for (old, idx) in enumerate(A.inds)
+        λ.data[idx] = old_vals[old]
     end
     A
 end
