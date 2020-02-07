@@ -223,6 +223,11 @@ end
     fmnc = zerocorr!(deepcopy(fm))
     @test fmnc.optsum.feval < 0
     @test size(fmnc) == (180,2,36,1)
+    @test fmnc.θ == [fm.θ[1], fm.θ[3]]
+    @test lowerbd(fmnc) == zeros(2)
+
+    fmnc = zerocorr!(LMM(@formula(reaction ~ 1 + days + (1+days|subj)), slp));
+    @test size(fmnc) == (180,2,36,1)
     @test fmnc.θ == ones(2)
     @test lowerbd(fmnc) == zeros(2)
 
