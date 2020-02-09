@@ -122,3 +122,20 @@ function rankUpdate!(
     C.diag .= β .* C.diag .+ α .* abs2.(A.diag)
     C
 end
+
+
+function rankUpdate!(
+    C::HermOrSym{T,Matrix{T}},
+    A::Diagonal{T,S},
+    α::Number = true,
+    β::Number = true,
+) where {T,S}
+    m, n = size(A)
+    m == size(C, 2) || throw(DimensionMismatch(""))
+    C.uplo == 'L' || throw(ArgumentError("C.uplo must be 'L'"))
+    # C := β*C + α*A'A
+    # this can be made more efficient
+    # BLAS.syrk!(C.uplo, 'T', T(α), Matrix(A), T(β), C.data)
+    # diagononality is a type of sparsity ....
+    rankUpdate!(C, SparseArrays.sparse(A), α, β)
+end
