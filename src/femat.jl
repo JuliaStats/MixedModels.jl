@@ -20,13 +20,24 @@ end
 
 function FeMat(X::AbstractMatrix, cnms)
     T = eltype(X)
-    ch = statscholesky(Symmetric(X'X))
-    pivot = ch.piv
-    Xp = all(pivot .== 1:size(X, 2)) ? X : X[:, ch.piv]
-    if rank(X) < length(pivot)
-        @warn "fixed-effects matrix is rank deficient"
+    if size(X,2) > 0
+        ch = statscholesky(Symmetric(X'X))
+        pivot = ch.piv
+        rank = ch.rank
+        Xp = all(pivot .== 1:size(X, 2)) ? X : X[:, ch.piv]
+        if rank < length(pivot)
+            @warn "fixed-effects matrix is rank deficient"
+        end
+    else
+        # although it doesn't take long for an empty matrix,
+        # we can still skip the Cholesky step, which gets the rank
+        # wrong anyway
+        pivot = zeros(Int,0)
+        Xp = X
+        rank = 0
     end
-    FeMat{T,typeof(X)}(Xp, Xp, pivot, ch.rank, cnms[pivot])
+    # ch.rank is wrong for empty FE
+    FeMat{T,typeof(X)}(Xp, Xp, pivot, rank, cnms[pivot])
 end
 
 function reweight!(A::FeMat{T}, sqrtwts::Vector{T}) where {T}
