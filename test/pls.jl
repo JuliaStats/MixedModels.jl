@@ -331,11 +331,23 @@ end
 end
 
 @testset "Rank deficient" begin
-    Random.seed!(0)
-    x = rand(100)
-    data = columntable((x = x, x2 = 1.5 .* x, y = rand(100), z = repeat('A':'T', 5)))
+    rng = MersenneTwister(0)
+    x = rand(rng, 100)
+    data = columntable((x = x, x2 = 1.5 .* x, y = rand(rng, 100), z = repeat('A':'T', 5)))
     model = fit!(LinearMixedModel(@formula(y ~ x + x2 + (1|z)), data))
     @test length(fixef(model)) == 2
     @test rank(model) == 2
     @test length(coef(model)) == 3
+    ct = coeftable(model)
+    @test ct.rownms ==  ["(Intercept)", "x", "x2"]
+    @test last(coef(model)) == -0.0
+
+    # check preserving of name ordering in coeftable and placement of
+    # pivoted-out element
+    fill!(data.x, 0)
+    model2 = fit!(LinearMixedModel(@formula(y ~ x + x2 + (1|z)), data))
+    ct = coeftable(model2)
+    @test ct.rownms ==  ["(Intercept)", "x", "x2"]
+    @test coef(model2)[2] == -0.0
+    @test last(fixef(model)) ≈ (last(fixef(model2)) * 1.5)
 end
