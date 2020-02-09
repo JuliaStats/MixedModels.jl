@@ -126,10 +126,10 @@ end
 
 function rankUpdate!(
     C::HermOrSym{T,Matrix{T}},
-    A::Diagonal{T,S},
+    A::Diagonal{T},
     α::Number = true,
     β::Number = true,
-) where {T,S}
+) where {T}
     m, n = size(A)
     m == size(C, 2) || throw(DimensionMismatch(""))
     C.uplo == 'L' || throw(ArgumentError("C.uplo must be 'L'"))
