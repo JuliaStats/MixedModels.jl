@@ -170,10 +170,15 @@ function StatsBase.coeftable(m::MixedModel)
     se = stderror(m)
     z = co ./ se
     pvalue = ccdf.(Chisq(1), abs2.(z))
+    # undo the pivot in names because coef, stderror, ignore the pivot
+    piv = first(m.feterms).piv
+    names = first(m.feterms).cnames
+    invpermute!(names, piv)
+
     CoefTable(
         hcat(co, se, z, pvalue),
         ["Estimate", "Std.Error", "z value", "P(>|z|)"],
-        first(m.feterms).cnames,
+        names,
         4,
     )
 end
