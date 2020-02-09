@@ -23,6 +23,9 @@ function FeMat(X::AbstractMatrix, cnms)
     ch = statscholesky(Symmetric(X'X))
     pivot = ch.piv
     Xp = all(pivot .== 1:size(X, 2)) ? X : X[:, ch.piv]
+    if rank(X) < length(pivot)
+        @warn "fixed-effects matrix is rank deficient"
+    end
     FeMat{T,typeof(X)}(Xp, Xp, pivot, ch.rank, cnms[pivot])
 end
 
