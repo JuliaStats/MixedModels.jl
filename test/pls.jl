@@ -340,6 +340,8 @@ end
     @test length(coef(model)) == 3
     ct = coeftable(model)
     @test ct.rownms ==  ["(Intercept)", "x", "x2"]
+    @test fixefnames(model, true) == ["(Intercept)", "x"]
+    @test fixefnames(model, false) == ["(Intercept)", "x", "x2"]
     @test last(coef(model)) == -0.0
 
     # check preserving of name ordering in coeftable and placement of
@@ -348,6 +350,8 @@ end
     model2 = fit!(LinearMixedModel(@formula(y ~ x + x2 + (1|z)), data))
     ct = coeftable(model2)
     @test ct.rownms ==  ["(Intercept)", "x", "x2"]
+    @test fixefnames(model2, true) == ["(Intercept)", "x2"]
+    @test fixefnames(model2, false) == ["(Intercept)", "x", "x2"]
     @test coef(model2)[2] == -0.0
     @test last(fixef(model)) ≈ (last(fixef(model2)) * 1.5)
 end
