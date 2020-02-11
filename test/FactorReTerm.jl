@@ -9,15 +9,12 @@ using Test
 
 const LMM = LinearMixedModel
 
-data(nm::AbstractString) = Feather.read(joinpath(MixedModels.TestData, string(nm, ".feather")))
-data(nm::Symbol) = data(string(nm))
-
 @testset "scalarReMat" begin
-    ds = data("dyestuff")
+    ds = testdata("dyestuff")
     f1 = @formula(yield ~ 1 + (1|batch))
     y1, Xs1 = modelcols(apply_schema(f1, schema(ds), LMM), ds)
     sf = Xs1[2]
-    psts = data("pastes")
+    psts = testdata("pastes")
     f2 = @formula(strength ~ 1 + (1|sample) + (1|batch))
     y2, Xs2 = modelcols(apply_schema(f2, schema(psts), LMM), psts)
     sf1 = Xs2[2]
@@ -83,7 +80,7 @@ data(nm::Symbol) = data(string(nm))
 end
 
 @testset "RandomEffectsTerm" begin
-    slp = data("sleepstudy")
+    slp = testdata("sleepstudy")
     contrasts =  Dict{Symbol,Any}()
 
     @testset "Detect same variable as blocking and experimental" begin
@@ -102,7 +99,7 @@ end
 
 @testset "Categorical Blocking Variable" begin
     # deepcopy because we're going to modify it
-    slp = deepcopy(data("sleepstudy"))
+    slp = deepcopy(testdata("sleepstudy"))
     contrasts =  Dict{Symbol,Any}()
     f = @formula(reaction ~ 1 + (1|subj))
 
