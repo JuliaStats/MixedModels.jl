@@ -27,8 +27,14 @@ function StatsModels.apply_schema(
     if length(t.args_parsed) ≠ 2
         throw(ArgumentError("malformed nesting term: $t (Exactly two arguments required"))
     end
+
     first, second = apply_schema.(t.args_parsed, Ref(sch.schema), Mod)
-    return first + first & second
+
+    if !(typeof(first) <: CategoricalTerm)
+        throw(ArgumentError("nesting terms requires categorical grouping term, got $first.  Manually specify $first as `CategoricalTerm` in hints/contrasts"))
+    end
+
+    return first + fulldummy(first) & second
 end
 
 RandomEffectsTerm(lhs, rhs::NTuple{2,AbstractTerm}) =
