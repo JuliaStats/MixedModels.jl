@@ -3,6 +3,7 @@ module MixedModels
 using BlockArrays
 using BlockDiagonals
 using Distributions
+using Feather
 using GLM
 using LinearAlgebra
 using NamedArrays
@@ -99,6 +100,8 @@ export @formula,
        statscholesky,
        std,
        stderror,
+       testdata,
+       testdatasets,
        updateL!,
        varest,
        vcov,

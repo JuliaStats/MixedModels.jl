@@ -115,3 +115,18 @@ function replicate(f::Function, n::Integer; use_threads=false)
     end
     results
 end
+
+"""
+    testdata(nm)
+
+Return a data frame of test data set named `nm`, which can be a `String` or `Symbol`
+"""
+testdata(nm::AbstractString) = Feather.read(joinpath(TestData, nm * ".feather"))
+testdata(nm::Symbol) = testdata(string(nm))
+
+"""
+    testdatasets()
+
+Return a vector of names of the available test data sets
+"""
+testdatasets() = first.(Base.Filesystem.splitext.(filter(Base.Fix2(endswith, ".feather"), readdir(TestData))))
