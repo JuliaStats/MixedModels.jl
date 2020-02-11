@@ -550,9 +550,7 @@ vsize(A::ReMat{T,S}) where {T,S} = S
 function zerocorr!(A::ReMat{T}) where {T}
     λ = A.λ
     A.inds = intersect(A.inds, diagind(λ))
-    fill!(λ.data, 0)
-    for i in A.inds
-        λ.data[i] = 1
-    end
+    # zero out all entries not on the diagonal
+    λ[setdiff(A.inds, diagind(λ))] .= 0
     A
 end
