@@ -28,8 +28,8 @@ function StatsModels.apply_schema(
         throw(ArgumentError("malformed nesting term: $t (Exactly two arguments required"))
     end
 
-    first, second = apply_schema.(t.args_parsed, Ref(sch.schema), Mod)
-
+    first, second = apply_schema.(t.args_parsed, Ref(sch), Mod)
+    
     if !(typeof(first) <: CategoricalTerm)
         throw(ArgumentError("nesting terms requires categorical grouping term, got $first.  Manually specify $first as `CategoricalTerm` in hints/contrasts"))
     end

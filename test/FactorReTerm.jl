@@ -175,5 +175,16 @@ end
 
         @test_broken fit(MixedModel, @formula(Y ~ 1 + (1|H/c)), dat[:Pastes])
 
+        # in fixed effects:
+        d2 = (a = rand(20), b = repeat([:X, :Y], outer=10))
+        f2 = apply_schema(@formula(0 ~ 1 + b/a), schema(d2), MixedModel)
+        @test modelcols(f2.rhs, d2) == [ones(20) d2.b .== :Y (d2.b .== :X).*d2.a (d2.b .== :Y).*d2.a]
+        @test coefnames(f2.rhs) == ["(Intercept)", "b: Y", "b: X & a", "b: Y & a"]
+
+        f3 = apply_schema(@formula(0 ~ 0 + b/a), schema(d2), MixedModel)
+        @test modelcols(f3.rhs, d2) == [d2.b .== :X d2.b .== :Y (d2.b .== :X).*d2.a (d2.b .== :Y).*d2.a]
+        @test coefnames(f3.rhs) == ["b: X", "b: Y", "b: X & a", "b: Y & a"]
+
+        
     end
 end
