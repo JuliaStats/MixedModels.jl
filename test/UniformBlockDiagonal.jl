@@ -7,9 +7,6 @@ using SparseArrays
 using StatsModels
 using Test
 
-dat(nm::AbstractString) = Feather.read(joinpath(MixedModels.TestData, nm * ".feather"))
-dat(nm::Symbol) = dat(string(nm))
-
 const LMM = LinearMixedModel
 
 @testset "UBlk" begin
@@ -59,7 +56,7 @@ const LMM = LinearMixedModel
 
     @testset "updateL" begin
         @test ones(2, 2) == MixedModels.rankUpdate!(Hermitian(zeros(2, 2)), ones(2))
-        d3 = dat(:d3)
+        d3 = MixedModels.dataset(:d3)
         sch = schema(d3)
         vf1 = modelcols(apply_schema(@formula(y ~ 1 + u + (1+u|g)), sch, LMM), d3)[2][2]
         vf2 = modelcols(apply_schema(@formula(y ~ 1 + u + (1+u|h)), sch, LMM), d3)[2][2]

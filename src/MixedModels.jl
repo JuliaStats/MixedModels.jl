@@ -3,6 +3,7 @@ module MixedModels
 using BlockArrays
 using BlockDiagonals
 using Distributions
+using Feather
 using GLM
 using LinearAlgebra
 using NamedArrays

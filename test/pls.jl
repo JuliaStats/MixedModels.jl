@@ -1,13 +1,10 @@
 using BlockArrays, DataFrames, Feather, LinearAlgebra, MixedModels, NamedArrays
 using Random, SparseArrays, Statistics, Tables, Test
 
-dat(nm::AbstractString) = Feather.read(joinpath(MixedModels.TestData, nm * ".feather"))
-dat(nm::Symbol) = dat(string(nm))
-
 const LMM = LinearMixedModel
 
 @testset "Dyestuff" begin
-    ds = dat(:dyestuff)
+    ds = MixedModels.dataset(:dyestuff)
     fm1 = LMM(@formula(yield ~ 1 + (1|batch)), ds)
 
     @test length(fm1.allterms) == 3
@@ -86,7 +83,7 @@ const LMM = LinearMixedModel
 end
 
 @testset "Dyestuff2" begin
-    ds2 = dat(:dyestuff2)
+    ds2 = MixedModels.dataset(:dyestuff2)
     fm = fit(MixedModel, @formula(yield ~ 1 + (1|batch)), ds2)
     @test lowerbd(fm) == zeros(1)
     show(IOBuffer(), fm)
@@ -97,12 +94,12 @@ end
     @test stderror(fm) ≈ [0.6669857396443261]
     @test coef(fm) ≈ [5.6656]
     @test logdet(fm) ≈ 0.0
-    refit!(fm, float(dat(:dyestuff)[!, :yield]))
+    refit!(fm, float(MixedModels.dataset(:dyestuff)[!, :yield]))
     @test objective(fm) ≈ 327.3270598811428 atol=0.001
 end
 
 @testset "penicillin" begin
-    pen = dat(:penicillin)
+    pen = MixedModels.dataset(:penicillin)
     fm = LMM(@formula(diameter ~ 1 + (1 | plate) + (1 | sample)), pen);
     @test size(fm) == (144, 1, 30, 2)
     @test fm.θ == ones(2)
@@ -126,7 +123,7 @@ end
 end
 
 @testset "pastes" begin
-    fm = LMM(@formula(strength ~ (1|sample) + (1|batch)), dat(:pastes))
+    fm = LMM(@formula(strength ~ (1|sample) + (1|batch)), MixedModels.dataset(:pastes))
     @test size(fm) == (60, 1, 40, 2)
     @test fm.θ == ones(2)
     @test lowerbd(fm) == zeros(2)
@@ -146,7 +143,7 @@ end
 end
 
 @testset "InstEval" begin
-    insteval = dat(:insteval)
+    insteval = MixedModels.dataset(:insteval)
     fm1 = LMM(@formula(y ~ 1 + service + (1|s) + (1|d) + (1|dept)), insteval)
     @test size(fm1) == (73421, 2, 4114, 3)
     @test fm1.θ == ones(3)
@@ -170,7 +167,7 @@ end
 end
 
 @testset "sleep" begin
-    slp = dat(:sleepstudy)
+    slp = MixedModels.dataset(:sleepstudy)
     fm = LinearMixedModel(@formula(reaction ~ 1 + days + (1+days|subj)), slp);
     @test lowerbd(fm) == [0.0, -Inf, 0.0]
     A11 = fm.A[Block(1,1)]
@@ -294,7 +291,7 @@ end
 end
 
 @testset "d3" begin
-    fm = updateL!(LMM(@formula(y ~ 1 + u + (1+u|g) + (1+u|h) + (1+u|i)), dat(:d3)));
+    fm = updateL!(LMM(@formula(y ~ 1 + u + (1+u|g) + (1+u|h) + (1+u|i)), MixedModels.dataset(:d3)));
     @test pwrss(fm) ≈ 5.1261847180180885e6 rtol = 1e-6
     @test objective(fm) ≈ 901641.2930413672 rtol = 1e-6
     fit!(fm)
@@ -305,7 +302,7 @@ end
 end
 
 @testset "simulate!" begin
-    ds = dat(:dyestuff)
+    ds = MixedModels.dataset(:dyestuff)
     fm = fit(MixedModel, @formula(yield ~ 1 + (1|batch)), ds)
     refit!(simulate!(Random.MersenneTwister(1234321), fm))
     @test deviance(fm) ≈ 339.0218639362958 atol=0.001
