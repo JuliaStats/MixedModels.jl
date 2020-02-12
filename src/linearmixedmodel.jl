@@ -450,6 +450,8 @@ function Base.getproperty(m::LinearMixedModel, s::Symbol)
         filter(Base.Fix2(isa, FeMat), getfield(m, :allterms))
     elseif s == :objective
         objective(m)
+    elseif s == :PCA
+        NamedTuple{fnames(m)}(PCA.(m.reterms))
     elseif s == :pvalues
         ccdf.(Chisq(1), abs2.(coef(m) ./ stderror(m)))
     elseif s == :reterms
@@ -535,6 +537,7 @@ Base.propertynames(m::LinearMixedModel, private = false) = (
     :lowerbd,
     :X,
     :y,
+    :PCA,
     :rePCA,
     :reterms,
     :feterms,
@@ -616,11 +619,19 @@ end
 
 LinearAlgebra.rank(m::LinearMixedModel) = first(m.feterms).rank
 
-function rePCA(m::LinearMixedModel{T}) where {T}
-    re = m.reterms
-    nt = length(re)
-    tup = ntuple(i -> normalized_variance_cumsum(re[i].λ), nt)
-    NamedTuple{ntuple(i -> re[i].trm.sym, nt),typeof(tup)}(tup)
+"""
+    rePCA(m::LinearMixedModel; loadings::Bool=false, corr::Bool=true)
+
+Return a named tuple of the normalized cumulative variance of a principal components
+analysis of the random effects covariance matrices or correlation
+matrices when `corr` is `true`.
+
+The normalized cumulative variance is the proportion of the variance for the first
+principal component, the first two principal components, etc.  The last element is
+always 1.0 representing the complete proportion of the variance.
+"""
+function rePCA(m::LinearMixedModel, corr::Bool=true, loadings::Bool=true)
+    NamedTuple{fnames(m)}(normalized_variance_cumsum.(m.reterms, loadings, corr))
 end
 
 """

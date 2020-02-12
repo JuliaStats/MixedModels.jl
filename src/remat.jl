@@ -374,6 +374,11 @@ function *(adjA::Adjoint{T,<:ReMat{T,S}}, B::ReMat{T,P}) where {T,S,P}
     BlockedSparse{T,S,P}(cscmat, reshape(cscmat.nzval, S, :), cscmat.colptr[1:P:(cscmat.n + 1)])
 end
 
+PCA(A::ReMat{T,1}, corr::Bool=true) where {T} = 
+    PCA(corr ? abs.(vec(A.λ)) : ones(T,1), ones(T,1,1), corr)
+
+PCA(A::ReMat{T,S}, corr::Bool=true) where {T,S} = PCA(A.λ, corr)
+
 function reweight!(A::ReMat, sqrtwts::Vector)
     if length(sqrtwts) > 0
         if A.z === A.wtz
