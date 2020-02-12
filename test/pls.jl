@@ -313,7 +313,13 @@ end
     simulate!(fm, θ = fm.θ)
     @test_throws DimensionMismatch refit!(fm, zeros(29))
 
-    bsamp = parametricbootstrap(MersenneTwister(1234321), 100, fm, use_threads=false)
+    # this should give the same results as passing with
+    # MersenneTwister(1234321)
+    # by setting the seed first, we test the method for the default RNG
+    # and still get reproducible results which can be compared to the
+    # multi-threaded output.
+    Random.seed!(1234321)
+    bsamp = parametricbootstrap(100, fm, use_threads=false)
     @test isa(propertynames(bsamp), Vector{Symbol})
     @test length(bsamp.objective) == 100
     @test keys(first(bsamp.bstr)) == (:objective, :σ, :β, :θ)

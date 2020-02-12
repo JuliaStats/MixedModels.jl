@@ -97,7 +97,7 @@ function parametricbootstrap(
     MixedModelBootstrap(refit!(m, y₀), samp)
 end
 
-function parametricbootstrap(nsamp::Integer, m::LinearMixedModel, β = m.β, σ = m.σ, θ = m.θ, use_threads = false)
+function parametricbootstrap(nsamp::Integer, m::LinearMixedModel; β = m.β, σ = m.σ, θ = m.θ, use_threads = false)
     parametricbootstrap(Random.GLOBAL_RNG, nsamp, m, β = β, σ = σ, θ = θ, use_threads = false)
 end
 
