@@ -2,7 +2,7 @@
 
 |**Documentation**|**Citation**|**Build Status**|**Code Coverage**|
 |:-:|:-:|:-:|:-:|
-|[![][docs-stable-img]][docs-stable-url] [![][docs-latest-img]][docs-latest-url] | [![][doi-img]][doi-url] | [![][travis-img]][travis-url] [![][appveyor-img]][appveyor-url] [![PkgEval][pkgeval-img]][pkgeval-url] | [![][codecov-img]][codecov-url]|
+|[![][docs-stable-img]][docs-stable-url] [![][docs-latest-img]][docs-latest-url] | [![][doi-img]][doi-url] | [![CI-url][CI-img]][pkgeval-url] [![PkgEval][pkgeval-img]][pkgeval-url] | [![][codecov-img]][codecov-url]|
 
 [doi-img]: https://zenodo.org/badge/9106942.svg
 [doi-url]: https://zenodo.org/badge/latestdoi/9106942
@@ -13,14 +13,11 @@
 [docs-stable-img]: https://img.shields.io/badge/docs-stable-blue.svg
 [docs-stable-url]: https://juliastats.github.io/MixedModels.jl/stable
 
-[travis-img]: https://travis-ci.org/JuliaStats/MixedModels.jl.svg?branch=master
-[travis-url]: https://travis-ci.org/JuliaStats/MixedModels.jl
-
-[appveyor-img]: https://ci.appveyor.com/api/projects/status/github/JuliaStats/MixedModels.jl?svg=true
-[appveyor-url]: https://ci.appveyor.com/project/JuliaStats/mixedmodels-jl
-
 [codecov-img]: https://codecov.io/github/JuliaStats/MixedModels.jl/badge.svg?branch=master
 [codecov-url]: https://codecov.io/github/JuliaStats/MixedModels.jl?branch=master
+
+[CI-img]: https://github.com/JuliaStats/MixedModels.jl/workflows/CI/badge.svg
+[CI-url]: https://github.com/JuliaStats/MixedModels.jl/actions?workflow=CI
 
 [pkgeval-img]: https://juliaci.github.io/NanosoldierReports/pkgeval_badges/M/MixedModels.svg
 [pkgeval-url]: https://juliaci.github.io/NanosoldierReports/pkgeval_badges/report.html
