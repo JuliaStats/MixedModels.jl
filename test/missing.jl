@@ -1,7 +1,7 @@
 using Feather, MixedModels, Test
 
 # deepcopy because we're going to modify it
-slp = deepcopy(testdata(:sleepstudy))
+slp = deepcopy(MixedModels.dataset(:sleepstudy))
 slp[!,:days] = Array{Union{Missing, Float64},1}(slp[!,:days])
 slp[1,:days] = missing
 
@@ -19,13 +19,13 @@ slp[1,:days] = missing
 @testset "Missing Omit" begin
     @testset "Missing from unused variables" begin
         # missing from unused variables should have no impact
-        m1 = fit(MixedModel, @formula(reaction ~ 1 + (1|subj)), testdata(:sleepstudy))
+        m1 = fit(MixedModel, @formula(reaction ~ 1 + (1|subj)), MixedModels.dataset(:sleepstudy))
         m1_missing = fit(MixedModel, @formula(reaction ~ 1 + (1|subj)), slp)
         @test isapprox(m1.θ, m1_missing.θ, rtol=1.0e-12)
     end
 
     @testset "Missing from used variables" begin
-        m1 = fit(MixedModel, @formula(reaction ~ 1 + days + (1|subj)), testdata(:sleepstudy))
+        m1 = fit(MixedModel, @formula(reaction ~ 1 + days + (1|subj)), MixedModels.dataset(:sleepstudy))
         m1_missing = fit(MixedModel, @formula(reaction ~ 1 + days + (1|subj)), slp)
         @test nobs(m1) - nobs(m1_missing) == 1
     end

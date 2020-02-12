@@ -117,16 +117,23 @@ function replicate(f::Function, n::Integer; use_threads=false)
 end
 
 """
-    testdata(nm)
+    dataset(nm)
 
-Return a data frame of test data set named `nm`, which can be a `String` or `Symbol`
+Return the data frame of test data set named `nm`, which can be a `String` or `Symbol`
 """
-testdata(nm::AbstractString) = Feather.read(joinpath(TestData, nm * ".feather"))
-testdata(nm::Symbol) = testdata(string(nm))
+function dataset(nm::AbstractString)
+    path = joinpath(TestData, nm * ".feather")
+    if !isfile(path)
+        throw(ArgumentError(
+            "Dataset \"$nm\" is not available.\nUse MixedModels.datasets() for available names."))
+    end
+    Feather.read(path)
+end
+dataset(nm::Symbol) = dataset(string(nm))
 
 """
-    testdatasets()
+    datasets()
 
 Return a vector of names of the available test data sets
 """
-testdatasets() = first.(Base.Filesystem.splitext.(filter(Base.Fix2(endswith, ".feather"), readdir(TestData))))
+datasets() = first.(Base.Filesystem.splitext.(filter(Base.Fix2(endswith, ".feather"), readdir(TestData))))

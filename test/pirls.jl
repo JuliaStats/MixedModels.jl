@@ -1,7 +1,7 @@
 using DataFrames, Feather, LinearAlgebra, MixedModels, Test
 
 @testset "contra" begin
-    contra = testdata(:contra)
+    contra = MixedModels.dataset(:contra)
     contraform = @formula(use ~ 1+age+abs2(age)+urban+livch+(1|urbdist))
     gm0 = fit(MixedModel, contraform, contra, Bernoulli(), fast=true);
     @test gm0.lowerbd == zeros(1)
@@ -32,7 +32,7 @@ using DataFrames, Feather, LinearAlgebra, MixedModels, Test
 end
 
 @testset "cbpp" begin
-    cbpp = testdata(:cbpp)
+    cbpp = MixedModels.dataset(:cbpp)
     gm2 = fit(MixedModel, @formula((incid/hsz) ~ 1 + period + (1|herd)), cbpp, Binomial(), wts=float(cbpp.hsz))
     @test deviance(gm2,true) ≈ 100.09585619892968 atol=0.0001
     @test sum(abs2, gm2.u[1]) ≈ 9.723054788538546 atol=0.0001
@@ -45,7 +45,7 @@ end
 
 @testset "verbagg" begin
     gm3 = fit(MixedModel, @formula(r2 ~ 1+anger+gender+btype+situ+(1|subj)+(1|item)),
-        testdata(:verbagg), Bernoulli())
+        MixedModels.dataset(:verbagg), Bernoulli())
     @test deviance(gm3) ≈ 8151.40 rtol=1e-5
     @test lowerbd(gm3) == vcat(fill(-Inf, 6), zeros(2))
     @test fitted(gm3) == predict(gm3)
@@ -56,7 +56,7 @@ end
 
 @testset "grouseticks" begin
     center(v::AbstractVector) = v .- (sum(v) / length(v))
-    grouseticks = testdata(:grouseticks)
+    grouseticks = MixedModels.dataset(:grouseticks)
     grouseticks.ch = center(grouseticks.height)
     gm4 = fit(MixedModel, @formula(ticks ~ 1+year+ch+ (1|index) + (1|brood) + (1|location)),
         grouseticks, Poisson(), fast=true)  # fails in pirls! with fast=false

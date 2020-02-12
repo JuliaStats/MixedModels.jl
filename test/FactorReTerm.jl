@@ -10,11 +10,11 @@ using Test
 const LMM = LinearMixedModel
 
 @testset "scalarReMat" begin
-    ds = testdata("dyestuff")
+    ds = MixedModels.dataset("dyestuff")
     f1 = @formula(yield ~ 1 + (1|batch))
     y1, Xs1 = modelcols(apply_schema(f1, schema(ds), LMM), ds)
     sf = Xs1[2]
-    psts = testdata("pastes")
+    psts = MixedModels.dataset("pastes")
     f2 = @formula(strength ~ 1 + (1|sample) + (1|batch))
     y2, Xs2 = modelcols(apply_schema(f2, schema(psts), LMM), psts)
     sf1 = Xs2[2]
@@ -80,7 +80,7 @@ const LMM = LinearMixedModel
 end
 
 @testset "RandomEffectsTerm" begin
-    slp = testdata("sleepstudy")
+    slp = MixedModels.dataset("sleepstudy")
     contrasts =  Dict{Symbol,Any}()
 
     @testset "Detect same variable as blocking and experimental" begin
@@ -99,7 +99,7 @@ end
 
 @testset "Categorical Blocking Variable" begin
     # deepcopy because we're going to modify it
-    slp = deepcopy(testdata("sleepstudy"))
+    slp = deepcopy(MixedModels.dataset("sleepstudy"))
     contrasts =  Dict{Symbol,Any}()
     f = @formula(reaction ~ 1 + (1|subj))
 

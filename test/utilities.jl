@@ -21,3 +21,10 @@ end
 
 	@test all(sort!(single_thread) .== sort!(multi_thread))
 end
+
+@testset "datasets" begin
+	@test isa(MixedModels.datasets(), Vector{String})
+	@test size(MixedModels.dataset(:dyestuff)) == (30, 2)
+	@test size(MixedModels.dataset("dyestuff")) == (30, 2)
+	@test_throws ArgumentError MixedModels.dataset(:foo)
+end
