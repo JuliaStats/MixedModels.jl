@@ -2,7 +2,7 @@
 
 |**Documentation**|**Citation**|**Build Status**|**Code Coverage**|
 |:-:|:-:|:-:|:-:|
-|[![][docs-stable-img]][docs-stable-url] [![][docs-latest-img]][docs-latest-url] | [![][doi-img]][doi-url] | [![CI-url][CI-img]][pkgeval-url] [![PkgEval][pkgeval-img]][pkgeval-url] | [![][codecov-img]][codecov-url]|
+|[![][docs-stable-img]][docs-stable-url] [![][docs-latest-img]][docs-latest-url] | [![][doi-img]][doi-url] | [![T1-url][T1-img]][pkgeval-url] [![T2-url][T2-img]][pkgeval-url] [![PkgEval][pkgeval-img]][pkgeval-url] | [![][codecov-img]][codecov-url]|
 
 [doi-img]: https://zenodo.org/badge/9106942.svg
 [doi-url]: https://zenodo.org/badge/latestdoi/9106942
@@ -16,8 +16,11 @@
 [codecov-img]: https://codecov.io/github/JuliaStats/MixedModels.jl/badge.svg?branch=master
 [codecov-url]: https://codecov.io/github/JuliaStats/MixedModels.jl?branch=master
 
-[CI-img]: https://github.com/JuliaStats/MixedModels.jl/workflows/CI/badge.svg
-[CI-url]: https://github.com/JuliaStats/MixedModels.jl/actions?workflow=CI
+[T1-img]: https://github.com/JuliaStats/MixedModels.jl/workflows/Tier1/badge.svg
+[T1-url]: https://github.com/JuliaStats/MixedModels.jl/actions?workflow=Tier1
+
+[T2-img]: https://github.com/JuliaStats/MixedModels.jl/workflows/Tier2/badge.svg
+[T2-url]: https://github.com/JuliaStats/MixedModels.jl/actions?workflow=Tier2
 
 [pkgeval-img]: https://juliaci.github.io/NanosoldierReports/pkgeval_badges/M/MixedModels.svg
 [pkgeval-url]: https://juliaci.github.io/NanosoldierReports/pkgeval_badges/report.html
@@ -41,6 +44,21 @@ In a `LinearMixedModel` the conditional mean, 𝛍 = 𝔼[𝓨|𝓑 = 𝐛], is 
 
 In a `GeneralizedLinearMixedModel`, the conditional mean, 𝔼[𝓨|𝓑 = 𝐛], is related to the linear predictor via a _link function_.
 Typical distribution forms are _Bernoulli_ for binary data or _Poisson_ for count data.
+
+## Currently Supported Platforms
+
+|OS|OS Version|Arch|Julia|Tier|
+|:-:|:-:|:-:|:-:|:-:|
+|Linux|Ubuntu 18.04|x64|v1.3|1|
+|macOS|Catalina 10.15|x64|v1.3|1|
+|Windows|Server 2019|x64|v1.3|1|
+|Linux|Ubuntu 18.04|x86|v1.3|2|
+|Windows|Server 2019|x84|v1.3|2|
+|Linux|Ubuntu 18.04|x64|v1.4|2|
+|macOS|Catalina 10.15|x64|v1.4|2|
+|Windows|Server 2019|x64|v1.4|2|
+|Linux|Ubuntu 18.04|x86|v1.4|2|
+|Windows|Server 2019|x84|v1.4|2|
 
 ## Version 2.0.0
 
