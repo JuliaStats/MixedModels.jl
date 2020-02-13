@@ -1,5 +1,4 @@
-using Documenter, MixedModels, StatsBase
-using Documenter, StatsBase
+using Documenter, Weave, MixedModels, StatsBase
 
 for file in ["constructors.jmd",
              "optimization.jmd",
