@@ -70,6 +70,8 @@ function parametricbootstrap(
     βsc_threads = [βsc]
     θsc_threads = [θsc]
 
+    β_names = (Symbol.(coefnames(morig))..., )
+    
     if use_threads
         Threads.resize_nthreads!(m_threads)
         Threads.resize_nthreads!(βsc_threads)
@@ -90,7 +92,7 @@ function parametricbootstrap(
         (
          objective = mod.objective,
          σ = mod.σ,
-         β = SVector{p,T}(fixef!(βsc, mod)),
+         β = NamedTuple{β_names}(SVector{p,T}(fixef!(βsc, mod))),
          θ = SVector{k,T}(getθ!(θsc, mod)),
         )
     end
