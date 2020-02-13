@@ -15,4 +15,12 @@ using LinearAlgebra, MixedModels, Random, Test
     wts = rand(MersenneTwister(123454321), 30)
     MixedModels.reweight!(trm, wts)
     @test mul!(prd, trm', trm)[ipiv[1], ipiv[1]] ≈ sum(abs2, wts)
+
+    # empty fixed effects
+    trm = MixedModels.FeMat(ones(10,0), String[])
+    @test size(trm) == (10, 0)
+    @test length(trm) == 0
+    @test size(trm') == (0, 10)
+    @test eltype(trm) == Float64
+    @test trm.rank == 0
 end

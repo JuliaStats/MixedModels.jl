@@ -122,3 +122,20 @@ function rankUpdate!(
     C.diag .= β .* C.diag .+ α .* abs2.(A.diag)
     C
 end
+
+
+function rankUpdate!(
+    C::HermOrSym{T,Matrix{T}},
+    A::Diagonal{T},
+    α::Number = true,
+    β::Number = true,
+) where {T}
+    m, n = size(A)
+    m == size(C, 2) || throw(DimensionMismatch(""))
+    adiag = A.diag
+    cdata = C.data
+    for (i, a) in zip(diagind(cdata), adiag)
+        cdata[i] = β * cdata[i] + α * abs2(a)
+    end
+    C
+end

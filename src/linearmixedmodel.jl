@@ -161,19 +161,21 @@ fit(
 
 StatsBase.coef(m::MixedModel) = fixef(m, false)
 
-βs(m::LinearMixedModel) = NamedTuple{(Symbol.(first(m.feterms).cnames)...,)}((fixef(m)...,))
+βs(m::LinearMixedModel) = NamedTuple{(Symbol.(fixefnames(m))...,)}((fixef(m)...,))
 
-StatsBase.coefnames(m::LinearMixedModel) = first(m.feterms).cnames
+StatsBase.coefnames(m::LinearMixedModel) = fixefnames(m, false)
 
 function StatsBase.coeftable(m::MixedModel)
     co = coef(m)
     se = stderror(m)
     z = co ./ se
     pvalue = ccdf.(Chisq(1), abs2.(z))
+    names = coefnames(m)
+
     CoefTable(
         hcat(co, se, z, pvalue),
         ["Estimate", "Std.Error", "z value", "P(>|z|)"],
-        first(m.feterms).cnames,
+        names,
         4,
     )
 end
@@ -377,6 +379,28 @@ function fixef(m::LinearMixedModel{T}, permuted = true) where {T}
         end
         invpermute!(val, piv)
     end
+    val
+end
+
+"""
+    fixefnames(m::MixedModel, permuted=true)
+
+Return the associated term names for fixed-effects parameter vector estimate of `m`.
+
+If `permuted` is `true` the vector elements are permuted according to
+`first(m.feterms).piv` and truncated to the rank of that term.
+"""
+function fixefnames(m::LinearMixedModel{T}, permuted = true) where {T}
+    Xtrm = first(m.feterms)
+    val = copy(Xtrm.cnames)
+    if !permuted
+        piv = Xtrm.piv
+        p = length(piv)
+        invpermute!(val, piv)
+    else
+        val = val[1:Xtrm.rank]
+    end
+
     val
 end
 

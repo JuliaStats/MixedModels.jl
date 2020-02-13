@@ -46,6 +46,9 @@ end
     d2 = Diagonal(fill(2., 2))
     @test Diagonal(fill(5.,2)) == MixedModels.rankUpdate!(Diagonal(ones(2)), d2, 1.)
     @test Diagonal(fill(-3.,2)) == MixedModels.rankUpdate!(Diagonal(ones(2)), d2, -1.)
+
+    # when converting straight from diagonal to symmetric, the type is different
+    @test Diagonal(fill(5.,2)) == MixedModels.rankUpdate!(Symmetric(Matrix(1. * I(2)), :L), d2)
 end
 
 @testset "lmulλ!" begin

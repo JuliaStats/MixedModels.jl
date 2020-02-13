@@ -53,6 +53,9 @@ struct GeneralizedLinearMixedModel{T<:AbstractFloat} <: MixedModel{T}
     mult::Vector{T}
 end
 
+StatsBase.coefnames(m::GeneralizedLinearMixedModel) = fixefnames(m, false)
+
+
 """
     deviance(m::GeneralizedLinearMixedModel{T}, nAGQ=1)::T where {T}
 
@@ -269,6 +272,10 @@ function fixef(m::GeneralizedLinearMixedModel{T}, permuted = true) where {T}
     v = fill(-zero(T), size(piv))
     copyto!(view(v, 1:Xtrm.rank), m.β)
     invpermute!(v, piv)
+end
+
+function fixefnames(m::GeneralizedLinearMixedModel{T}, permuted = true) where {T}
+    fixefnames(m.LMM, permuted)
 end
 
 GeneralizedLinearMixedModel(
