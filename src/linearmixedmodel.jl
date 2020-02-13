@@ -176,7 +176,8 @@ function StatsBase.coeftable(m::MixedModel)
         hcat(co, se, z, pvalue),
         ["Estimate", "Std.Error", "z value", "P(>|z|)"],
         names,
-        4,
+        4, # pvalcol
+        3, # teststatcol
     )
 end
 

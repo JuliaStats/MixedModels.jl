@@ -364,3 +364,10 @@ end
     @test coef(model2)[2] == -0.0
     @test last(fixef(model)) ≈ (last(fixef(model2)) * 1.5)
 end
+
+@testset "coeftable" begin
+    ds = MixedModels.dataset(:dyestuff);
+    fm = fit(MixedModel, @formula(yield ~ 1 + (1|batch)), ds);
+    ct = coeftable(fm);
+    @test [3,4] == [ct.teststatcol, ct.pvalcol]
+end
