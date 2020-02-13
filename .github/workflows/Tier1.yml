@@ -33,11 +33,11 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: julia-actions/julia-uploadcodecov@v0.1
-        if: startsWith(job.os, 'Ubuntu 18.04')
+        if: startsWith(matrix.os, 'Ubuntu')
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
       - uses: julia-actions/julia-docdeploy@releases/v1
-        if: startsWith(job.os, 'Ubuntu 18.04')
+        if: startsWith(matrix.os, 'Ubuntu')
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DOCUMENTER_KEY: ${{ secrets.DOCUMENTER_KEY }}
