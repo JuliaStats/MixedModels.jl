@@ -32,7 +32,7 @@ function FeMat(X::AbstractMatrix, cnms)
         # although it doesn't take long for an empty matrix,
         # we can still skip the Cholesky step, which gets the rank
         # wrong anyway
-        pivot = zeros(Int,0)
+        pivot = Int[]
         Xp = X
         rank = 0
     end
