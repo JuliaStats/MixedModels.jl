@@ -132,10 +132,10 @@ function rankUpdate!(
 ) where {T}
     m, n = size(A)
     m == size(C, 2) || throw(DimensionMismatch(""))
-    C.uplo == 'L' || throw(ArgumentError("C.uplo must be 'L'"))
-    # C := β*C + α*A'A
-    # this can be made more efficient
-    # BLAS.syrk!(C.uplo, 'T', T(α), Matrix(A), T(β), C.data)
-    # diagononality is a type of sparsity ....
-    rankUpdate!(C, SparseArrays.sparse(A), α, β)
+    adiag = A.diag
+    cdata = C.data
+    for (i, a) in zip(diagind(cdata), adiag)
+        cdata[i] = β * cdata[i] + α * abs2(a)
+    end
+    C
 end
