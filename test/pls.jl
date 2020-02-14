@@ -304,6 +304,10 @@ end
 @testset "simulate!" begin
     ds = MixedModels.dataset(:dyestuff)
     fm = fit(MixedModel, @formula(yield ~ 1 + (1|batch)), ds)
+    resp₀ = copy(response(fm))
+    # type conversion of ints to floats
+    simulate!(Random.MersenneTwister(1234321), fm, β=[1], σ=1)
+    refit!(fm,resp₀)
     refit!(simulate!(Random.MersenneTwister(1234321), fm))
     @test deviance(fm) ≈ 339.0218639362958 atol=0.001
     refit!(fm, float(ds.yield))
@@ -313,6 +317,8 @@ end
     simulate!(fm, θ = fm.θ)
     @test_throws DimensionMismatch refit!(fm, zeros(29))
 
+    # type conversion of ints to floats
+    parametricbootstrap(Random.MersenneTwister(1234321), 1, fm, β=[1], σ=1)
     # this should give the same results as passing with
     # MersenneTwister(1234321)
     # by setting the seed first, we test the method for the default RNG

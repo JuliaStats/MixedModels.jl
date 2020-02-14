@@ -63,6 +63,9 @@ function parametricbootstrap(
     θ = morig.θ,
     use_threads = false,
 ) where {T}
+    β = convert(Vector{T},β)
+    σ = T(σ)
+    θ = convert(Vector{T},θ)
     βsc, θsc, p, k, m = similar(β), similar(θ), length(β), length(θ), deepcopy(morig)
     y₀ = copy(response(m))
     # we need to do for in-place operations to work across threads
@@ -151,6 +154,9 @@ function simulate!(
     σ = m.σ,
     θ = T[],
 ) where {T}
+    β = convert(Vector{T},β)
+    σ = T(σ)
+    θ = convert(Vector{T},θ)
     isempty(θ) || setθ!(m, θ)
 
     y = randn!(rng, response(m))      # initialize y to standard normal
