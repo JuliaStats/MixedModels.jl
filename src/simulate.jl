@@ -58,20 +58,26 @@ function parametricbootstrap(
     rng::AbstractRNG,
     n::Integer,
     morig::LinearMixedModel{T};
-    β = morig.β,
+    β = coef(morig),
     σ = morig.σ,
     θ = morig.θ,
     use_threads = false,
 ) where {T}
     βsc, θsc, p, k, m = similar(β), similar(θ), length(β), length(θ), deepcopy(morig)
     y₀ = copy(response(m))
+
+    β_names = (Symbol.(fixefnames(morig))..., )
+    rank = length(β_names)
+    # fixef! requires that we take all coefs, even for pivoted terms
+    if rank ≠ length(βsc)
+        resize!(βsc, rank)
+    end
+
     # we need to do for in-place operations to work across threads
     m_threads = [m]
     βsc_threads = [βsc]
     θsc_threads = [θsc]
 
-    β_names = (Symbol.(fixefnames(morig))..., )
-    
     if use_threads
         Threads.resize_nthreads!(m_threads)
         Threads.resize_nthreads!(βsc_threads)
@@ -92,7 +98,10 @@ function parametricbootstrap(
         (
          objective = mod.objective,
          σ = mod.σ,
-         β = NamedTuple{β_names}(SVector{p,T}(fixef!(βsc, mod))),
+         # fixef! does the pivoted, but not truncated coefs
+         # coef does the non-pivoted
+         # fixef does either pivoted+truncated or unpivoted
+         β = NamedTuple{β_names}(fixef!(βsc, mod)[1:rank]),
          θ = SVector{k,T}(getθ!(θsc, mod)),
         )
     end
@@ -153,7 +162,18 @@ function simulate!(
     σ = m.σ,
     θ = T[],
 ) where {T}
+    length(β) == length(fixef(m)) ||
+        length(β) == length(coef(m)) ||
+            throw(ArgumentError("You must specify all (non-singular) βs"))
+
     isempty(θ) || setθ!(m, θ)
+
+    if length(β) ≠ length(coef(m))
+        padding = length(coef(m)) - length(β)
+        for ii in 1:padding
+            push!(β, -0.0)
+        end
+    end
 
     y = randn!(rng, response(m))      # initialize y to standard normal
 
@@ -165,7 +185,7 @@ function simulate!(
     m
 end
 
-function simulate!(m::LinearMixedModel{T}; β = m.β, σ = m.σ, θ = T[]) where {T}
+function simulate!(m::LinearMixedModel{T}; β = coef(m), σ = m.σ, θ = T[]) where {T}
     simulate!(Random.GLOBAL_RNG, m, β = β, σ = σ, θ = θ)
 end
 
