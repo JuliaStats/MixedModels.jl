@@ -70,7 +70,7 @@ function parametricbootstrap(
     βsc_threads = [βsc]
     θsc_threads = [θsc]
 
-    β_names = (Symbol.(coefnames(morig))..., )
+    β_names = (Symbol.(fixefnames(morig))...)
     
     if use_threads
         Threads.resize_nthreads!(m_threads)
