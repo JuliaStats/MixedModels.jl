@@ -61,7 +61,10 @@ end
 
 function rownormalize!(A::AbstractMatrix)
     for r in eachrow(A)
-        normalize!(r)
+        # all zeros arise in zerocorr situations
+        if any(r .≉ 0)
+            normalize!(r)
+        end
     end
     A
 end
