@@ -63,6 +63,9 @@ function parametricbootstrap(
     θ = morig.θ,
     use_threads = false,
 ) where {T}
+    β = convert(Vector{T},β)
+    σ = T(σ)
+    θ = convert(Vector{T},θ)
     βsc, θsc, p, k, m = similar(β), similar(θ), length(β), length(θ), deepcopy(morig)
     y₀ = copy(response(m))
 
@@ -166,6 +169,9 @@ function simulate!(
         length(β) == length(coef(m)) ||
             throw(ArgumentError("You must specify all (non-singular) βs"))
 
+    β = convert(Vector{T},β)
+    σ = T(σ)
+    θ = convert(Vector{T},θ)
     isempty(θ) || setθ!(m, θ)
 
     if length(β) ≠ length(coef(m))
