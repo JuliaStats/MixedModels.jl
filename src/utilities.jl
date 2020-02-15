@@ -171,27 +171,57 @@ end
 
 PCA(re::ReMat, corr::Bool=true) = PCA(re.λ, corr)
 
-function Base.show(io::IO, pca::PCA, ndigitsmat=2, ndigitsvec=2, ndigitscum=4)
+function Base.getproperty(pca::PCA, s::Symbol)
+    if s == :cumvar
+        cumvv = cumsum(abs2.(pca.sv.S))
+        cumvv ./ last(cumvv)
+    elseif s == :loadings
+        pca.sv.U
+    else
+        getfield(pca, s)
+    end
+end
+
+
+Base.propertynames(pca::PCA, private = false) = (
+    :covcor,
+    :sv,
+    :corr,
+    :cumvar,
+    :loadings,
+#    :rotation,
+)
+
+function Base.show(io::IO, pca::PCA;
+        ndigitsmat=2, ndigitsvec=2, ndigitscum=4,
+        covcor=true, loadings=true, variances=false, stddevs=false)
     println(io)
-    println(io,
-            "Principal components based on ",
-            pca.corr ? "correlation" : "(relative) covariance",
-            " matrix")
-    Base.print_matrix(io, round.(pca.covcor,digits=ndigitsmat))
-    println(io)
-    println(io, "Standard deviations:")
-    sv = pca.sv
-    show(io, round.(sv.S,digits=ndigitsvec))
-    println(io)
-    println(io, "Variances:")
-    vv = abs2.(sv.S)
-    show(io, round.(vv,digits=ndigitsvec))
-    println(io)
+    if covcor
+        println(io,
+                "Principal components based on ",
+                pca.corr ? "correlation" : "(relative) covariance",
+                " matrix")
+        # TODO: find a print method that only displays the lower triangle
+        Base.print_matrix(io, round.(pca.covcor, digits=ndigitsmat))
+        println(io)
+    end
+    if stddevs
+        println(io, "Standard deviations:")
+        sv = pca.sv
+        show(io, round.(sv.S, digits=ndigitsvec))
+        println(io)
+    end
+    if variances
+        println(io, "Variances:")
+        vv = abs2.(sv.S)
+        show(io, round.(vv, digits=ndigitsvec))
+        println(io)
+    end
     println(io, "Normalized cumulative variances:")
-    cumvv = cumsum(vv)
-    cumvv = cumvv ./ last(cumvv)
-    show(io, round.(cumvv,digits=ndigitscum))
+    show(io, round.(pca.cumvar, digits=ndigitscum))
     println(io)
-    println(io, "Component loadings")
-    Base.print_matrix(io, round.(sv.U,digits=ndigitsmat))
+    if loadings
+        println(io, "Component loadings")
+        Base.print_matrix(io, round.(pca.loadings, digits=ndigitsmat))
+    end
 end
