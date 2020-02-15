@@ -194,8 +194,8 @@ function Base.show(io::IO, pca::PCA;
                 "Principal components based on ",
                 pca.corr ? "correlation" : "(relative) covariance",
                 " matrix")
-        # TODO: find a print method that only displays the lower triangle
-        Base.print_matrix(io, round.(pca.covcor, digits=ndigitsmat))
+        # only display the lower triangle of symmetric matrix
+        Base.print_matrix(io, round.(LowerTriangular(pca.covcor), digits=ndigitsmat))
         println(io)
     end
     if stddevs
