@@ -122,14 +122,13 @@ In the types of `LinearMixedModel` available through the `MixedModels` package, 
 
 For the simple example
 ```{julia;echo=false;results="hidden"}
-using DataFrames, RData, MixedModels
-const dat=Dict(Symbol(k)=>v for (k,v) in
-    load(joinpath(dirname(pathof(MixedModels)),"..","test","dat.rda")));
+using DataFrames, MixedModels
 ```
 ```{julia;term=true}
-fm1 = fit(MixedModel, @formula(Y ~ 1 + (1|G)), dat[:Dyestuff])
+dyestuff = MixedModels.dataset(:dyestuff)
+fm1 = fit(MixedModel, @formula(yield ~ 1 + (1|batch)), dyestuff)
 ```
-the only random effects term in the formula is `(1|G)`, a simple, scalar random-effects term.
+the only random effects term in the formula is `(1|batch)`, a simple, scalar random-effects term.
 ```{julia;term=true}
 t1 = first(fm1.reterms);
 Int.(t1)  # convert to integers for more compact display
@@ -151,7 +150,8 @@ Furthermore, there is only one block in $\Lambda_\theta$.
 
 For a vector-valued random-effects term, as in
 ```{julia;term=true}
-fm2 = fit(MixedModel, @formula(Y ~ 1+U+(1+U|G)), dat[:sleepstudy])
+sleepstudy = MixedModels.dataset(:sleepstudy)
+fm2 = fit(MixedModel, @formula(reaction ~ 1+days+(1+days|subj)), sleepstudy)
 ```
 the model matrix $\bf Z$ is of the form
 ```{julia;term=true}
@@ -169,8 +169,8 @@ MixedModels.getθ(t21)
 
 Random-effects terms in the model formula that have the same grouping factor are amagamated into a single `ReMat` object.
 ```{julia;term=true}
-fm3 = fit!(zerocorr!(LinearMixedModel(@formula(Y ~ 1+U+(1+U|G)),
-    dat[:sleepstudy])))
+fm3 = fit!(zerocorr!(LinearMixedModel(@formula(reaction ~ 1+days+(1+days|subj)),
+    sleepstudy)))
 t31 = first(fm3.reterms);
 Int.(t31)
 ```
@@ -186,8 +186,10 @@ MixedModels.getθ(t31)
 Random-effects terms with distinct grouping factors generate distinct elements of the `trms` member of the `LinearMixedModel` object.
 Multiple `ReMat` objects are sorted by decreasing numbers of random effects.
 ```{julia;term=true}
-fm4 = fit(MixedModel, @formula(Y ~ 1 + (1|H) + (1|G)),
-    dat[:Penicillin])
+penicillin = MixedModels.dataset(:penicillin)
+fm4 = fit(MixedModel,
+    @formula(diameter ~ 1 + (1|plate) + (1|sample)),
+    penicillin)
 Int.(first(fm4.reterms))
 Int.(last(fm4.reterms))
 ```
@@ -197,9 +199,13 @@ Note that the first `ReMat` in `fm4.terms` corresponds to grouping factor `G` ev
 
 An optional named argument, `verbose=true`, in the call to `fit` for a `LinearMixedModel` causes printing of the objective and the $\theta$ parameter at each evaluation during the optimization.
 ```{julia;term=true}
-fit(MixedModel, @formula(Y ~ 1 + (1|G)), dat[:Dyestuff],
+fit(MixedModel,
+    @formula(yield ~ 1 + (1|batch)),
+    dyestuff,
     verbose=true);
-fit(MixedModel, @formula(Y ~ 1 + U + (1+U|G)), dat[:sleepstudy],
+fit(MixedModel,
+    @formula(reaction ~ 1 + days + (1+days|subj)),
+    sleepstudy,
     verbose=true);
 ```
 
@@ -219,7 +225,7 @@ To modify the optimization process the input fields can be changed after constru
 
 Suppose, for example, that the user wishes to try a [Nelder-Mead](https://en.wikipedia.org/wiki/Nelder%E2%80%93Mead_method) optimization method instead of the default [`BOBYQA`](https://en.wikipedia.org/wiki/BOBYQA) (Bounded Optimization BY Quadratic Approximation) method.
 ```{julia;term=true}
-fm2 = LinearMixedModel(@formula(Y ~ 1+U+(1+U|G)), dat[:sleepstudy]);
+fm2 = LinearMixedModel(@formula(reaction ~ 1+days+(1+days|subj)), sleepstudy);
 fm2.optsum.optimizer = :LN_NELDERMEAD;
 fit!(fm2)
 fm2.optsum
@@ -276,8 +282,9 @@ Poisson
 A `GeneralizedLinearMixedModel` object is generated from a formula, data frame and distribution family.
 
 ```{julia;term=true}
-const vaform = @formula(r2 ~ 1 + a + g + b + s + (1|id) + (1|item));
-mdl = GeneralizedLinearMixedModel(vaform, dat[:VerbAgg], Bernoulli());
+verbagg = MixedModels.dataset(:verbagg)
+const vaform = @formula(r2 ~ 1 + anger + gender + btype + situ + (1|subj) + (1|item));
+mdl = GeneralizedLinearMixedModel(vaform, verbagg, Bernoulli());
 typeof(mdl)
 ```
 
@@ -343,14 +350,14 @@ mdl.LMM.optsum
 As one would hope, given the name of the option, this fit is comparatively fast.
 ```{julia;term=true}
 @time(fit!(GeneralizedLinearMixedModel(vaform,
-    dat[:VerbAgg], Bernoulli()), fast=true))
+    verbagg, Bernoulli()), fast=true))
 ```
 
 The alternative algorithm is to use PIRLS to find the conditional mode of the random effects, given $\beta$ and $\theta$ and then use the general nonlinear optimizer to fit with respect to both $\beta$ and $\theta$.
 Because it is slower to incorporate the $\beta$ parameters in the general nonlinear optimization, the fast fit is performed first and used to determine starting estimates for the more general optimization.
 
 ```{julia;term=true}
-@time mdl1 = fit(MixedModel, vaform, dat[:VerbAgg], Bernoulli())
+@time mdl1 = fit(MixedModel, vaform, verbagg, Bernoulli())
 ```
 
 This fit provided slightly better results (Laplace approximation to the deviance of 8151.400 versus 8151.583) but took 6 times as long.

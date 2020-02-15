@@ -9,11 +9,12 @@ for file in ["constructors.jmd",
              # "SingularCovariance.jmd",
              # "SubjectItem.jmd",
              ]
-    weave(joinpath("jmd", file),
+    weave(joinpath("docs", "jmd", file),
           doctype = "github",
           fig_path = "assets",
           fig_ext = ".svg",
-          out_path = "src")
+          out_path = joinpath("docs", "src"),
+    )
 end
 
 makedocs(
