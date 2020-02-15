@@ -49,6 +49,8 @@ end
 
     # when converting straight from diagonal to symmetric, the type is different
     @test Diagonal(fill(5.,2)) == MixedModels.rankUpdate!(Symmetric(Matrix(1. * I(2)), :L), d2)
+    # generic method
+    @test Diagonal(fill(5.,2)) == MixedModels.rankUpdate!(Matrix(1. * I(2)), d2)
 end
 
 @testset "lmulλ!" begin
