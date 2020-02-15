@@ -1,21 +1,20 @@
-using Documenter, Weave, MixedModels, StatsBase
 
-for file in ["constructors.jmd",
-             "optimization.jmd",
-             "GaussHermite.jmd",
-             "bootstrap.jmd",
-             # "SimpleLMM.jmd",
-             # "MultipleTerms.jmd",
-             # "SingularCovariance.jmd",
-             # "SubjectItem.jmd",
-             ]
-    weave(joinpath("docs", "jmd", file),
-          doctype = "github",
-          fig_path = "assets",
-          fig_ext = ".svg",
-          out_path = joinpath("docs", "src"),
-    )
-end
+using Documenter, Weave, StatsBase
+using MixedModels
+foreach(filename -> weave(joinpath("docs", "jmd", filename),
+                          doctype = "github",
+                          fig_path = "assets",
+                          fig_ext = ".svg",
+                          out_path = "src"),
+        ["constructors.jmd",
+         "optimization.jmd",
+         "GaussHermite.jmd",
+         "bootstrap.jmd",
+         # "SimpleLMM.jmd",
+         # "MultipleTerms.jmd",
+         # "SingularCovariance.jmd",
+         # "SubjectItem.jmd",
+        ])
 
 makedocs(
     sitename = "MixedModels",
@@ -30,7 +29,6 @@ makedocs(
             # "SubjectItem.md",
             # "benchmarks.md"
         ],
-    throw_errors = true,
     )
 
 deploydocs(
