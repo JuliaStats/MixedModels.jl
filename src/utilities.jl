@@ -79,10 +79,6 @@ function normalized_variance_cumsum(A::AbstractMatrix, corr::Bool=true)
     vars ./ last(vars)
 end
 
-normalized_variance_cumsum(A::ReMat, corr::Bool=true) =
-    normalized_variance_cumsum(A.λ, corr)
-
-
 """
     ltriindprs
 
@@ -169,8 +165,6 @@ function PCA(covfac::AbstractMatrix, corr::Bool=true)
     PCA(Symmetric(covf*covf', :L), svd(covf), corr)
 end
 
-PCA(re::ReMat, corr::Bool=true) = PCA(re.λ, corr)
-
 function Base.getproperty(pca::PCA, s::Symbol)
     if s == :cumvar
         cumvv = cumsum(abs2.(pca.sv.S))
@@ -181,7 +175,6 @@ function Base.getproperty(pca::PCA, s::Symbol)
         getfield(pca, s)
     end
 end
-
 
 Base.propertynames(pca::PCA, private = false) = (
     :covcor,
