@@ -79,6 +79,10 @@ function normalized_variance_cumsum(A::AbstractMatrix, corr::Bool=true)
     vars ./ last(vars)
 end
 
+normalized_variance_cumsum(A::ReMat, corr::Bool=true) =
+    normalized_variance_cumsum(A.λ, corr)
+
+
 """
     ltriindprs
 
@@ -165,26 +169,29 @@ function PCA(covfac::AbstractMatrix, corr::Bool=true)
     PCA(Symmetric(covf*covf', :L), svd(covf), corr)
 end
 
-function Base.show(io::IO, pca::PCA)
+PCA(re::ReMat, corr::Bool=true) = PCA(re.λ, corr)
+
+function Base.show(io::IO, pca::PCA, ndigitsmat=2, ndigitsvec=2, ndigitscum=4)
     println(io)
     println(io,
             "Principal components based on ",
             pca.corr ? "correlation" : "(relative) covariance",
             " matrix")
-    show(io, pca.covcor)
+    Base.print_matrix(io, round.(pca.covcor,digits=ndigitsmat))
     println(io)
     println(io, "Standard deviations:")
     sv = pca.sv
-    show(io, sv.S)
+    show(io, round.(sv.S,digits=ndigitsvec))
     println(io)
     println(io, "Variances:")
     vv = abs2.(sv.S)
-    show(io, vv)
+    show(io, round.(vv,digits=ndigitsvec))
     println(io)
     println(io, "Normalized cumulative variances:")
     cumvv = cumsum(vv)
-    show(io, cumvv ./ last(cumvv))
+    cumvv = cumvv ./ last(cumvv)
+    show(io, round.(cumvv,digits=ndigitscum))
     println(io)
     println(io, "Component loadings")
-    println(io, sv.U)
+    Base.print_matrix(io, round.(sv.U,digits=ndigitsmat))
 end
