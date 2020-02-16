@@ -15,12 +15,10 @@ The value, $\bf y$, of $\mathcal{Y}$ is observed; the value, $\bf b$, of $\mathc
 
 In a linear mixed model the unconditional distribution of $\mathcal{B}$ and the conditional distribution, $(\mathcal{Y} | \mathcal{B}=\bf{b})$, are both multivariate Gaussian distributions,
 ```math
-\begin{equation}
 \begin{aligned}
   (\mathcal{Y} | \mathcal{B}=\bf{b}) &\sim\mathcal{N}(\bf{ X\beta + Z b},\sigma^2\bf{I})\\\\
   \mathcal{B}&\sim\mathcal{N}(\bf{0},\Sigma_\theta) .
 \end{aligned}
-\end{equation}
 ```
 The *conditional mean* of $\mathcal Y$, given $\mathcal B=\bf b$, is the *linear predictor*, $\bf X\bf\beta+\bf Z\bf b$, which depends on the $p$-dimensional *fixed-effects parameter*, $\bf \beta$, and on $\bf b$.
 The *model matrices*, $\bf X$ and $\bf Z$, of dimension $n\times p$ and $n\times q$, respectively, are determined from the formula for the model and the values of covariates.
@@ -28,45 +26,33 @@ Although the matrix $\bf Z$ can be large (i.e. both $n$ and $q$ can be large), i
 
 The *relative covariance factor*, $\Lambda_\theta$, is a $q\times q$ lower-triangular matrix, depending on the *variance-component parameter*, $\bf\theta$, and generating the symmetric $q\times q$ variance-covariance matrix, $\Sigma_\theta$, as
 ```math
-\begin{equation}
 \Sigma_\theta=\sigma^2\Lambda_\theta\Lambda_\theta'
-\end{equation}
 ```
 
 The *spherical random effects*, $\mathcal{U}\sim\mathcal{N}(\bf{0},\sigma^2\bf{I}_q)$, determine $\mathcal B$ according to
 ```math
-\begin{equation}
 \mathcal{B}=\Lambda_\theta\mathcal{U}.
-\end{equation}
 ```
 The *penalized residual sum of squares* (PRSS),
 ```math
-\begin{equation}
 r^2(\theta,\beta,\bf{u})=\|\bf{y} - \bf{X}\beta -\bf{Z}\Lambda_\theta\bf{u}\|^2+\|\bf{u}\|^2,
-\end{equation}
 ```
 is the sum of the residual sum of squares, measuring fidelity of the model to the data, and a penalty on the size of $\bf u$, measuring the complexity of the model.
 Minimizing $r^2$ with respect to $\bf u$,
 ```math
-\begin{equation}
 r^2_{\beta,\theta} =\min_{\bf{u}}\left(\|\bf{y} -\bf{X}{\beta} -\bf{Z}\Lambda_\theta\bf{u}\|^2+\|\bf{u}\|^2\right)
-\end{equation}
 ```
 is a direct (i.e. non-iterative) computation.
 The particular method used to solve this generates a *blocked Choleksy factor*, $\bf{L}_\theta$, which is an lower triangular $q\times q$ matrix satisfying
 ```math
-\begin{equation}
 \bf{L}_\theta\bf{L}_\theta'=\Lambda_\theta'\bf{Z}'\bf{Z}\Lambda_\theta+\bf{I}_q .
-\end{equation}
 ```
 where ${\bf I}_q$ is the $q\times q$ *identity matrix*.
 
 Negative twice the log-likelihood of the parameters, given the data, $\bf y$, is
 ```math
-\begin{equation}
 d({\bf\theta},{\bf\beta},\sigma|{\bf y})
 =n\log(2\pi\sigma^2)+\log(|{\bf L}_\theta|^2)+\frac{r^2_{\beta,\theta}}{\sigma^2}.
-\end{equation}
 ```
 where $|{\bf L}_\theta|$ denotes the *determinant* of ${\bf L}_\theta$.
 Because ${\bf L}_\theta$ is triangular, its determinant is the product of its diagonal elements.
@@ -74,31 +60,23 @@ Because ${\bf L}_\theta$ is triangular, its determinant is the product of its di
 Because the conditional mean, $\bf\mu_{\mathcal Y|\mathcal B=\bf b}=\bf
 X\bf\beta+\bf Z\Lambda_\theta\bf u$, is a linear function of both $\bf\beta$ and $\bf u$, minimization of the PRSS with respect to both $\bf\beta$ and $\bf u$ to produce
 ```math
-\begin{equation}
 r^2_\theta =\min_{{\bf\beta},{\bf u}}\left(\|{\bf y} -{\bf X}{\bf\beta} -{\bf Z}\Lambda_\theta{\bf u}\|^2+\|{\bf u}\|^2\right)
-\end{equation}
 ```
 is also a direct calculation.
 The values of $\bf u$ and $\bf\beta$ that provide this minimum are called, respectively, the *conditional mode*, $\tilde{\bf u}_\theta$, of the spherical random effects and the conditional estimate, $\widehat{\bf\beta}_\theta$, of the fixed effects.
 At the conditional estimate of the fixed effects the objective is
 ```math
-\begin{equation}
 d({\bf\theta},\widehat{\beta}_\theta,\sigma|{\bf y})
 =n\log(2\pi\sigma^2)+\log(|{\bf L}_\theta|^2)+\frac{r^2_\theta}{\sigma^2}.
-\end{equation}
 ```
 Minimizing this expression with respect to $\sigma^2$ produces the conditional estimate
 ```math
-\begin{equation}
 \widehat{\sigma^2}_\theta=\frac{r^2_\theta}{n}
-\end{equation}
 ```
 which provides the *profiled log-likelihood* on the deviance scale as
 ```math
-\begin{equation}
 \tilde{d}(\theta|{\bf y})=d(\theta,\widehat{\beta}_\theta,\widehat{\sigma}_\theta|{\bf y})
 =\log(|{\bf L}_\theta|^2)+n\left[1+\log\left(\frac{2\pi r^2_\theta}{n}\right)\right],
-\end{equation}
 ```
 a function of $\bf\theta$ alone.
 
@@ -108,9 +86,7 @@ In the process of evaluating $\tilde{d}(\widehat{\theta}|{\bf y})$ we determine 
 
 The elements of the conditional mode of $\mathcal B$, evaluated at the parameter estimates,
 ```math
-\begin{equation}
 \tilde{\bf b}_{\widehat{\theta}}=\Lambda_{\widehat{\theta}}\tilde{\bf u}_{\widehat{\theta}}
-\end{equation}
 ```
 are sometimes called the *best linear unbiased predictors* or BLUPs of the random effects.
 Although BLUPs an appealing acronym, I don’t find the term particularly instructive (what is a “linear unbiased predictor” and in what sense are these the “best”?) and prefer the term “conditional modes”, because these are the values of $\bf b$ that maximize the density of the conditional distribution $\mathcal{B} | \mathcal{Y} = {\bf y}$.
@@ -264,12 +240,10 @@ For historical reasons, the inverse of this function, taking components of $\mu$
 
 A *generalized linear mixed-effects model* (GLMM) is defined, for the purposes of this package, by
 ```math
-\begin{equation}
 \begin{aligned}
   (\mathcal{Y} | \mathcal{B}=\bf{b}) &\sim\mathcal{D}(\bf{g^{-1}(X\beta + Z b)},\phi)\\\\
   \mathcal{B}&\sim\mathcal{N}(\bf{0},\Sigma_\theta) .
 \end{aligned}
-\end{equation}
 ```
 where $\mathcal{D}$ indicates the distribution family parameterized by the mean and, when needed, a common scale parameter, $\phi$.
 (There is no scale parameter for `Bernoulli` or for `Poisson`.
