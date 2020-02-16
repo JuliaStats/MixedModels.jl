@@ -12,6 +12,25 @@ The order of the arguments
 function rankUpdate! end
 
 function rankUpdate!(
+    C::AbstractMatrix{T},
+    A::AbstractMatrix{T},
+    α=true,
+    β=true) where {T}
+
+    m, n = size(A)
+    m == size(C, 2) || throw(DimensionMismatch(""))
+    @info "it is surprising that this function is called - please report a use case as a MixedModels issue"
+    @warn "using generic method, this will be slower than usual"
+
+    A = A'A
+
+    for (i, el) in enumerate(C)
+        C[i] = β * el + α * A[i]
+    end
+    C
+end
+
+function rankUpdate!(
     C::HermOrSym{T,S},
     a::StridedVector{T},
     α = true,
