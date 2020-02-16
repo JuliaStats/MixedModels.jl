@@ -112,13 +112,27 @@ function deviance!(m::GeneralizedLinearMixedModel, nAGQ = 1)
     deviance(m, nAGQ)
 end
 
-GLM.dispersion(m::GeneralizedLinearMixedModel, sqr::Bool = false) =
-    dispersion(m.resp, dof_residual(m), sqr)
+function GLM.dispersion(m::GeneralizedLinearMixedModel, sqr::Bool = false)
+# adapted from GLM.dispersion(::AbstractGLM, ::Bool)
+# TODO: PR for a GLM.dispersion(resp::GLM.GlmResp, dof_residual::Int, sqr::Bool)
+    r = m.resp
+    if dispersion_parameter(r.d)
+        wrkwt, wrkresid = r.wrkwt, r.wrkresid
+        s = sum(i -> wrkwt[i] * abs2(wrkresid[i]), eachindex(wrkwt, wrkresid)) / dof_residual(m)
+        sqr ? s : sqrt(s)
+    else
+        one(eltype(r.mu))
+    end
+end
 
 GLM.dispersion_parameter(m::GeneralizedLinearMixedModel) = dispersion_parameter(m.resp.d)
 
-function StatsBase.dof(m::GeneralizedLinearMixedModel)
+function StatsBase.dof(m::GeneralizedLinearMixedModel)::Int
     length(m.β) + length(m.θ) + GLM.dispersion_parameter(m.resp.d)
+end
+
+function StatsBase.dof_residual(m::GeneralizedLinearMixedModel)::Int
+    nobs(m) - dof(m)
 end
 
 fit(
