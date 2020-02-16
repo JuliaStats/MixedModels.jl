@@ -23,7 +23,7 @@ using DataFrames, Feather, LinearAlgebra, MixedModels, Test
     @test isnan(gm1.σ)
     @test length(gm1.y) == size(gm1.X, 1)
     @test :θ in propertynames(gm0)
-    @testset "GLMM rePCA"
+    @testset "GLMM rePCA" begin
         @test length(MixedModels.PCA(gm0)) == 1
         @test length(MixedModels.rePCA(gm0)) == 1
         @test length(gm0.rePCA) == 1
