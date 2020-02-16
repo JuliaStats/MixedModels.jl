@@ -62,21 +62,11 @@ end
 function rownormalize!(A::AbstractMatrix)
     for r in eachrow(A)
         # all zeros arise in zerocorr situations
-        if any(r .≉ 0)
+        if !iszero(r)
             normalize!(r)
         end
     end
     A
-end
-
-"""
-    normalized_variance_cumsum(A::AbstractMatrix, corr::Bool=true)
-
-Return the cumulative sum of the squared singular values of `A` normalized to sum to 1
-"""
-function normalized_variance_cumsum(A::AbstractMatrix, corr::Bool=true)
-    vars = cumsum(abs2.(svdvals(corr ? rownormalize!(copy(A)) : A)))
-    vars ./ last(vars)
 end
 
 """
@@ -169,8 +159,11 @@ end
 """
     PCA(::AbstractMatrix; corr::Bool=true)
     PCA(::ReMat; corr::Bool=true)
+    PCA(::LinearMixedModel; corr::Bool=true)
 
 Constructs a [`MixedModels.PCA`](@ref]) object from a covariance matrix.
+
+For `LinearMixedModel`, a named tuple of PCA on each of the random-effects terms is returned.
 
 If `corr=true`, then the covariance is first standardized to the correlation scale.
 """
