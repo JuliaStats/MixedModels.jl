@@ -237,4 +237,6 @@ function Base.show(io::IO, pca::PCA;
         println(io, "Component loadings")
         Base.print_matrix(io, round.(pca.loadings, digits=ndigitsmat))
     end
+
+    nothing
 end
