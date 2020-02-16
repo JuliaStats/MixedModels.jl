@@ -52,13 +52,17 @@ Likeihood ratio test applied to a set of nested models.
 Note that nesting of the models is not checked.  It is incumbent on the user to check this.
 """
 function likelihoodratiotest(m::LinearMixedModel...)
+    if any(getproperty.(getproperty.(m,:optsum),:REML))
+        reduce(==,coefnames.(m))  ||
+                throw(ArgumentError("Likelihood-ratio tests for REML-fitted models are only valid when the fixed-effects specifications are identical"))
+    end
     m = collect(m)   # change the tuple to an array
     dofs = dof.(m)
     formulas = String.(Symbol.(getproperty.(m,:formula)))
     ord = sortperm(dofs)
     dofs = dofs[ord]
     formulas = formulas[ord]
-    devs = deviance.(m)[ord]
+    devs = objective.(m)[ord]
     dofdiffs = diff(dofs)
     devdiffs = .-(diff(devs))
     pvals = ccdf.(Chisq.(dofdiffs), devdiffs)
