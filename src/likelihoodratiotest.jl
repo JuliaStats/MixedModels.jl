@@ -21,7 +21,7 @@ end
 
 Base.propertynames(lrt::LikelihoodRatioTest, private = false) = (
     :deviance,
-    :formaulas,
+    :formulas,
     :models,
     :pvalues,
     :tests,
@@ -29,11 +29,11 @@ Base.propertynames(lrt::LikelihoodRatioTest, private = false) = (
 
 function Base.getproperty(lrt::LikelihoodRatioTest, s::Symbol)
     if s == :dof
-        lrt.models[:dof]
+        lrt.models.dof
     elseif s == :deviance
-        lrt.test[:deviance]
+        lrt.models.deviance
     elseif s == :pvalues
-        lrt.test[:pvalues]
+        lrt.tests.pvalues
     elseif s == :formulae
         lrt.formulas
     else
