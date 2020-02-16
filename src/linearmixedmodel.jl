@@ -620,7 +620,7 @@ end
 LinearAlgebra.rank(m::LinearMixedModel) = first(m.feterms).rank
 
 """
-    rePCA(m::LinearMixedModel; loadings::Bool=false, corr::Bool=true)
+    rePCA(m::LinearMixedModel; corr::Bool=true)
 
 Return a named tuple of the normalized cumulative variance of a principal components
 analysis of the random effects covariance matrices or correlation
@@ -635,8 +635,15 @@ function rePCA(m::LinearMixedModel; corr::Bool=true)
     NamedTuple{fnames(m)}(getproperty.(pca,:cumvar))
 end
 
+"""
+    rePCA(m::LinearMixedModel; corr::Bool=true)
+
+Return a named tuple of the principal components analysis of the random effects
+covariance matrices or correlation matrices when `corr` is `true`.
+"""
+
 function PCA(m::LinearMixedModel; corr::Bool=true)
-    NamedTuple{fnames(m)}(PCA.(m.reterms))
+    NamedTuple{fnames(m)}(PCA.(m.reterms), corr=corr)
 end
 
 """

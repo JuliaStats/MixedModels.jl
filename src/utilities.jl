@@ -153,12 +153,27 @@ datasets() = first.(Base.Filesystem.splitext.(filter(Base.Fix2(endswith, ".feath
     PCA{T<:AbstractFloat}
 
 Principal Components Analysis
+
+## Fields
+
+* `covcorr` covariance or correlation matrix
+* `sv` singular value decomposition
+* `corr` is this a correlation matrix
 """
 struct PCA{T<:AbstractFloat}
     covcor::Symmetric{T,Matrix{T}}
     sv::SVD{T,T,Matrix{T}}
     corr::Bool
 end
+
+"""
+    PCA(::AbstractMatrix; corr::Bool=true)
+    PCA(::ReMat; corr::Bool=true)
+
+Constructs a [`MixedModels.PCA`](@ref]) object from a covariance matrix.
+
+If `corr=true`, then the covariance is first standardized to the correlation scale.
+"""
 
 function PCA(covfac::AbstractMatrix; corr::Bool=true)
     covf = corr ? rownormalize!(copy(covfac)) : copy(covfac)
