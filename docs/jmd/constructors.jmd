@@ -11,42 +11,35 @@ LinearMixedModel
 For illustration, several data sets from the *lme4* package for *R* are made available in `.rda` format in this package.
 These include the `Dyestuff` and `Dyestuff2` data sets.
 ```{julia;term=true}
-using DataFrames, MixedModels, RData, StatsBase
-datf = joinpath(dirname(pathof(MixedModels)),"..","test","dat.rda")
-const dat = Dict(Symbol(k)=>v for (k,v) in load(datf))
-describe(dat[:Dyestuff])
+using DataFrames, MixedModels, StatsBase
+dyestuff = MixedModels.dataset(:dyestuff)
+describe(dyestuff)
 ```
-The columns in these data sets have been renamed for convenience.
-The response is always named `Y`.
-Potential grouping factors for random-effects terms are named `G`, `H`, etc.
-Numeric covariates are named starting with `U`.
-Categorical covariates not suitable as grouping factors are named starting with `A`.
-
 
 ### Models with simple, scalar random effects
 
 The formula language in *Julia* is similar to that in *R* except that the formula must be enclosed in a call to the `@formula` macro.
 A basic model with simple, scalar random effects for the levels of `G` (the batch of an intermediate product, in this case) is declared and fit as
 ```{julia;term=true}
-fm1 = fit!(LinearMixedModel(@formula(Y ~ 1 + (1|G)),
-    dat[:Dyestuff]))
+fm1 = fit!(LinearMixedModel(@formula(yield ~ 1 + (1|batch)),
+    dyestuff))
 ```
 
 An alternative expression is
 ```{julia;term=true}
-fm1 = fit(MixedModel, @formula(Y ~ 1 + (1|G)), dat[:Dyestuff])
+fm1 = fit(MixedModel, @formula(yield ~ 1 + (1|batch)), dyestuff)
 ```
 (If you are new to Julia you may find that this first fit takes an unexpectedly long time, due to Just-In-Time (JIT) compilation of the code.
 The second and subsequent calls to such functions are much faster.)
 
 ```{julia;term=true}
-@time fit(MixedModel, @formula(Y ~ 1 + (1|G)), dat[:Dyestuff2]);
+@time fit(MixedModel, @formula(yield ~ 1 + (1|batch)), dyestuff);
 ```
 
 By default, the model fit is by maximum likelihood.  To use the `REML` criterion instead, add the optional named argument `REML = true` to the call to `fit!`
 ```{julia;term=true}
-fm1R = fit(MixedModel, @formula(Y ~ 1 + (1|G)),
-    dat[:Dyestuff], REML=true)
+fm1R = fit(MixedModel, @formula(yield ~ 1 + (1|batch)),
+    dyestuff, REML=true)
 ```
 
 ### Simple, scalar random effects
@@ -62,10 +55,11 @@ It corresponds to a shift in the intercept for each level of the grouping factor
 
 ### Models with vector-valued random effects
 
-The *sleepstudy* data are observations of reaction time, `Y`, on several subjects, `G`, after 0 to 9 days of sleep deprivation, `U`.
+The *sleepstudy* data are observations of reaction time, `reaction`, on several subjects, `G`, after 0 to 9 days of sleep deprivation, `days`.
 A model with random intercepts and random slopes for each subject, allowing for within-subject correlation of the slope and intercept, is fit as
 ```{julia;term=true}
-fm2 = fit(MixedModel, @formula(Y ~ 1+U + (1+U|G)), dat[:sleepstudy])
+sleepstudy = MixedModels.dataset(:sleepstudy)
+fm2 = fit(MixedModel, @formula(reaction ~ 1+days + (1+days|subj)), sleepstudy)
 ```
 
 ### Models with multiple, scalar random-effects terms
@@ -73,20 +67,24 @@ fm2 = fit(MixedModel, @formula(Y ~ 1+U + (1+U|G)), dat[:sleepstudy])
 A model for the *Penicillin* data incorporates random effects for the plate, `G`, and for the sample, `H`.
 As every sample is used on every plate these two factors are *crossed*.
 ```{julia;term=true}
-fm4 = fit(MixedModel,@formula(Y ~ 1+(1|G)+(1|H)),dat[:Penicillin])
+penicillin = MixedModels.dataset(:penicillin)
+fm4 = fit(MixedModel,@formula(diameter ~ 1+(1|plate)+(1|sample)),
+    penicillin)
 ```
 
 In contrast the sample, `G`, grouping factor is *nested* within the batch, `H`, grouping factor in the *Pastes* data.
 That is, each level of `G` occurs in conjunction with only one level of `H`.
 ```{julia;term=true}
-fm5 = fit(MixedModel, @formula(Y ~ 1 + (1|G) + (1|H)), dat[:Pastes])
+pastes = MixedModels.dataset(:pastes)
+fm5 = fit(MixedModel, @formula(strength ~ 1 + (1|sample) + (1|batch)), pastes)
 ```
 
 In observational studies it is common to encounter *partially crossed* grouping factors.
 For example, the *InstEval* data are course evaluations by students, `G`, of instructors, `H`.
 Additional covariates include the academic department, `I`, in which the course was given and `A`, whether or not it was a service course.
 ```{julia;term=true}
-fm6 = fit(MixedModel,@formula(Y ~ 1+ A*I +(1|G)+(1|H)),dat[:InstEval])
+insteval = MixedModels.dataset(:insteval)
+fm6 = fit(MixedModel,@formula(y ~ 1+ service*dept +(1|s)+(1|d)), insteval)
 ```
 
 ### Simplifying the random effect correlation structure
@@ -98,8 +96,8 @@ This often arises when there are many random effects you want to estimate (as is
 
 A model with uncorrelated random effects for the intercept and slope by subject is fit as
 ```{julia;term=true}
-fm3 = fit!(zerocorr!(LinearMixedModel(@formula(Y ~ 1+U+(1+U|G)),
-    dat[:sleepstudy])))
+fm3 = fit!(zerocorr!(LinearMixedModel(@formula(reaction ~ 1+days+(1+days|subj)),
+    sleepstudy)))
 ```
 
 Note that the use of `zerocorr!` requires the model to be constructed, then altered to eliminate
@@ -113,34 +111,34 @@ The special syntax `zerocorr` can be applied to individual random effects terms 
 zerocorr
 ```
 ```{julia;term=true}
-fit(MixedModel, @formula(Y ~ 1 + U + zerocorr(1+U|G)), dat[:sleepstudy])
+fit(MixedModel, @formula(reaction ~ 1 + days + zerocorr(1+days|subj)), sleepstudy)
 ```
 
 Alternatively, correlations between parameters can be removed by including them as separate random effects terms:
 ```{julia;term=true}
-fit(MixedModel, @formula(Y ~ 1+U+(1|G)+(0+U|G)), dat[:sleepstudy])
+fit(MixedModel, @formula(reaction ~ 1+days+(1|subj)+(0+days|subj)), sleepstudy)
 ```
-Note that it **is** necessary to explicitly block the inclusion of an intercept term by adding `0` in the random-effects term `(0+U|G)`.
+Note that it **is** necessary to explicitly block the inclusion of an intercept term by adding `0` in the random-effects term `(0+days|subj)`.
 
 Finally, for predictors that are categorical, MixedModels.jl will estimate correlations between each level.
-Notice the large number of correlation parameters if we treat `U` as a categorical variable by giving it contrasts:
+Notice the large number of correlation parameters if we treat `days` as a categorical variable by giving it contrasts:
 ```{julia;term=true}
-fit(MixedModel, @formula(Y ~ 1+U+(1+U|G)), dat[:sleepstudy],
-    contrasts=Dict(:U=>DummyCoding()))
+fit(MixedModel, @formula(reaction ~ 1+days+(1+days|subj)), sleepstudy,
+    contrasts=Dict(:days=>DummyCoding()))
 ```
 
-Separating the `1` and `U` random effects into separate terms removes the correlations between the intercept and the levels of `U`, but not between the levels themselves:
+Separating the `1` and `days` random effects into separate terms removes the correlations between the intercept and the levels of `days`, but not between the levels themselves:
 ```{julia;term=true}
-fit(MixedModel, @formula(Y ~ 1+U+(1|G)+(0+U|G)), dat[:sleepstudy],
-    contrasts=Dict(:U=>DummyCoding()))
+fit(MixedModel, @formula(reaction ~ 1+days+(1|subj)+(0+days|subj)), sleepstudy,
+    contrasts=Dict(:days=>DummyCoding()))
 ```
 
 But using `zerocorr` on the individual terms (or `zerocorr!` on the constructed model object as above) does remove the correlations between the levels:
 ```{julia;term=true}
-fit(MixedModel, @formula(Y ~ 1+U+zerocorr(1+U|G)), dat[:sleepstudy],
-    contrasts=Dict(:U=>DummyCoding()))
-fit(MixedModel, @formula(Y ~ 1+U+(1|G)+zerocorr(0+U|G)),dat[:sleepstudy],
-    contrasts=Dict(:U=>DummyCoding()))
+fit(MixedModel, @formula(reaction ~ 1+days+zerocorr(1+days|subj)), sleepstudy,
+    contrasts=Dict(:days=>DummyCoding()))
+fit(MixedModel, @formula(reaction ~ 1+days+(1|subj)+zerocorr(0+days|subj)),sleepstudy,
+    contrasts=Dict(:days=>DummyCoding()))
 ```
 
 ## Fitting generalized linear mixed models
@@ -152,8 +150,9 @@ GeneralizedLinearMixedModel
 the distribution family for the response, and possibly the link function, must be specified.
 
 ```{julia;term=true}
-verbaggform = @formula(r2 ~ 1+a+g+b+s+m+(1|id)+(1|item));
-gm1 = fit(MixedModel, verbaggform, dat[:VerbAgg], Bernoulli())
+verbagg = MixedModels.dataset(:verbagg)
+verbaggform = @formula(r2 ~ 1+anger+gender+btype+situ+mode+(1|subj)+(1|item));
+gm1 = fit(MixedModel, verbaggform, verbagg, Bernoulli())
 ```
 
 The canonical link, which is `GLM.LogitLink` for the `Bernoulli` distribution, is used if no explicit link is specified.
@@ -169,12 +168,12 @@ In this form optional arguments `fast` and/or `nAGQ` can be passed to the optimi
 As the name implies, `fast=true`, provides a faster but somewhat less accurate fit.
 These fits may suffice for model comparisons.
 ```{julia;term=true}
-gm1a = fit!(GeneralizedLinearMixedModel(verbaggform, dat[:VerbAgg],
+gm1a = fit!(GeneralizedLinearMixedModel(verbaggform, verbagg,
     Bernoulli()), fast=true)
 deviance(gm1a) - deviance(gm1)
-@time fit!(GeneralizedLinearMixedModel(verbaggform, dat[:VerbAgg],
+@time fit!(GeneralizedLinearMixedModel(verbaggform, verbagg,
     Bernoulli()));
-@time fit!(GeneralizedLinearMixedModel(verbaggform, dat[:VerbAgg],
+@time fit!(GeneralizedLinearMixedModel(verbaggform, verbagg,
     Bernoulli()), fast=true);
 ```
 
@@ -182,15 +181,16 @@ The optional argument `nAGQ=k` causes evaluation of the deviance function to use
 adaptive Gauss-Hermite quadrature rule.
 This method only applies to models with a single, simple, scalar random-effects term, such as
 ```{julia;term=true}
-contraform = @formula(use ~ 1+a+abs2(a)+l+urb+(1|d));
+contra = MixedModels.dataset(:contra)
+contraform = @formula(use ~ 1+age+abs2(age)+livch+urban+(1|dist));
 @time gm2 = fit!(GeneralizedLinearMixedModel(contraform,
-    dat[:Contraception], Bernoulli()), nAGQ=9)
+    contra, Bernoulli()), nAGQ=9)
 @time deviance(fit!(GeneralizedLinearMixedModel(contraform,
-    dat[:Contraception], Bernoulli()), nAGQ=9, fast=true))
+    contra, Bernoulli()), nAGQ=9, fast=true))
 @time deviance(fit!(GeneralizedLinearMixedModel(contraform,
-    dat[:Contraception], Bernoulli())))
+    contra, Bernoulli())))
 @time deviance(fit!(GeneralizedLinearMixedModel(contraform,
-    dat[:Contraception], Bernoulli()), fast=true))
+    contra, Bernoulli()), fast=true))
 ```
 
 # Extractor functions
