@@ -643,7 +643,7 @@ covariance matrices or correlation matrices when `corr` is `true`.
 """
 
 function PCA(m::LinearMixedModel; corr::Bool=true)
-    NamedTuple{fnames(m)}(PCA.(m.reterms), corr=corr)
+    NamedTuple{fnames(m)}(PCA.(m.reterms, corr=corr))
 end
 
 """
