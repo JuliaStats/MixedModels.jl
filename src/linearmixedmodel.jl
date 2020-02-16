@@ -487,28 +487,6 @@ end
 
 lowerbd(m::LinearMixedModel) = m.optsum.lowerbd
 
-"""
-    likelihoodratiotest(m::LinearMixedModel...)
-
-Likeihood ratio test applied to a set of nested models.
-
-Note that nesting of the models is not checked.  It is incumbent on the user to check this.
-"""
-function likelihoodratiotest(m::LinearMixedModel...)
-    m = collect(m)   # change the tuple to an array
-    dofs = dof.(m)
-    ord = sortperm(dofs)
-    dofs = dofs[ord]
-    devs = deviance.(m)[ord]
-    dofdiffs = diff(dofs)
-    devdiffs = .-(diff(devs))
-    pvals = ccdf.(Chisq.(dofdiffs), devdiffs)
-    (
-     models = (dof = dofs, deviance = devs),
-     tests = (dofdiff = dofdiffs, deviancediff = devdiffs, p_values = pvals),
-    )
-end
-
 function StatsBase.modelmatrix(m::LinearMixedModel)
     fetrm = first(m.feterms)
     if fetrm.rank == size(fetrm, 2)
