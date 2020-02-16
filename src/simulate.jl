@@ -42,9 +42,9 @@ issingular(bsamp::MixedModelBootstrap) = issingular.(Ref(bsamp.m), bsamp.θ)
 
 """
     parametricbootstrap(rng::AbstractRNG, nsamp::Integer, m::LinearMixedModel;
-        β = m.β, σ = m.σ, θ = m.θ)
+        β = coef(β), σ = m.σ, θ = m.θ, use_threads=false)
     parametricbootstrap(nsamp::Integer, m::LinearMixedModel;
-        β = m.β, σ = m.σ, θ = m.θ)
+        β = coef(β), σ = m.σ, θ = m.θ, use_threads=false)
 
 Perform `nsamp` parametric bootstrap replication fits of `m`, returning a `MixedModelBootstrap`.
 
@@ -53,7 +53,7 @@ The default random number generator is `Random.GLOBAL_RNG`.
 # Named Arguments
 
 `β`, `σ`, and `θ` are the values of `m`'s parameters for simulating the responses.
-`use_threads` determines whether or not to use thread-based parallelism. 
+`use_threads` determines whether or not to use thread-based parallelism.
 """
 function parametricbootstrap(
     rng::AbstractRNG,
