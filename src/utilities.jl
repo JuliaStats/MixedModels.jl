@@ -193,6 +193,18 @@ Base.propertynames(pca::PCA, private = false) = (
 #    :rotation,
 )
 
+Base.show(pca::PCA;
+        ndigitsmat=2, ndigitsvec=2, ndigitscum=4,
+        covcor=true, loadings=true, variances=false, stddevs=false) =
+        Base.show(Base.stdout, pca,
+                    ndigitsmat=ndigitsmat,
+                    ndigitsvec=ndigitsvec,
+                    ndigitscum=ndigitscum,
+                    covcor=covcor,
+                    loadings=loadings,
+                    variances=variances,
+                    stddevs=stddevs)
+
 function Base.show(io::IO, pca::PCA;
         ndigitsmat=2, ndigitsvec=2, ndigitscum=4,
         covcor=true, loadings=true, variances=false, stddevs=false)
