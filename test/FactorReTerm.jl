@@ -188,4 +188,20 @@ end
         # errors for too much nesting
         @test_throws ArgumentError apply_schema(@formula(0 ~ 1 + b/c/a), schema(d2), MixedModel)
     end
+
+    @testset "multiple terms with same grouping" begin
+        dat = MixedModels.dataset(:kb07)
+        sch = schema(dat)
+        f1 = @formula(rt_trunc ~ 1 + (1 + prec + load | spkr))
+        ff1 = apply_schema(f1, sch, MixedModel)
+
+        retrm = ff1.rhs[end]
+        @test retrm.lhs.terms[end].contrasts.contrasts isa DummyCoding
+
+        f2 = @formula(rt_trunc ~ 1 + (1 + prec | spkr) + (0 + load | spkr))
+        ff2 = apply_schema(f2, sch, MixedModel)
+
+        retrm2 = ff2.rhs[end]
+        @test retrm2.lhs.terms[end].contrasts.contrasts isa DummyCoding
+    end
 end
