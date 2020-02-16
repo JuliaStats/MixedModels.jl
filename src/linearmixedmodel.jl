@@ -626,22 +626,17 @@ Return a named tuple of the normalized cumulative variance of a principal compon
 analysis of the random effects covariance matrices or correlation
 matrices when `corr` is `true`.
 
-If `loadings=true`, then a named tuple with two entries, one for the cumulative
-variances, and one for the loadings.
-
 The normalized cumulative variance is the proportion of the variance for the first
 principal component, the first two principal components, etc.  The last element is
 always 1.0 representing the complete proportion of the variance.
 """
-function rePCA(m::LinearMixedModel, corr::Bool=true; loadings::Bool=false)
-    pca = PCA.(m.reterms, corr)
-    if !loadings
-        NamedTuple{fnames(m)}(getproperty.(pca,:cumvar))
-    else
-        cumvar = NamedTuple{fnames(m)}(getproperty.(pca,:cumvar))
-        loadings = NamedTuple{fnames(m)}(getproperty.(pca,:loadings))
-        NamedTuple{(:cumvar,:loadings)}([cumvar,loadings])
-    end
+function rePCA(m::LinearMixedModel; corr::Bool=true)
+    pca = PCA.(m.reterms, corr=corr)
+    NamedTuple{fnames(m)}(getproperty.(pca,:cumvar))
+end
+
+function PCA(m::LinearMixedModel; corr::Bool=true)
+    NamedTuple{fnames(m)}(PCA.(m.reterms))
 end
 
 """

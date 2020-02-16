@@ -160,7 +160,7 @@ struct PCA{T<:AbstractFloat}
     corr::Bool
 end
 
-function PCA(covfac::AbstractMatrix, corr::Bool=true)
+function PCA(covfac::AbstractMatrix; corr::Bool=true)
     covf = corr ? rownormalize!(copy(covfac)) : copy(covfac)
     PCA(Symmetric(covf*covf', :L), svd(covf), corr)
 end
