@@ -42,9 +42,9 @@ issingular(bsamp::MixedModelBootstrap) = issingular.(Ref(bsamp.m), bsamp.θ)
 
 """
     parametricbootstrap(rng::AbstractRNG, nsamp::Integer, m::LinearMixedModel;
-        β = coef(β), σ = m.σ, θ = m.θ, use_threads=false)
+        β = coef(m), σ = m.σ, θ = m.θ, use_threads=false)
     parametricbootstrap(nsamp::Integer, m::LinearMixedModel;
-        β = coef(β), σ = m.σ, θ = m.θ, use_threads=false)
+        β = coef(m), σ = m.σ, θ = m.θ, use_threads=false)
 
 Perform `nsamp` parametric bootstrap replication fits of `m`, returning a `MixedModelBootstrap`.
 
