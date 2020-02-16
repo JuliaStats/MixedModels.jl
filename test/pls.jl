@@ -159,7 +159,11 @@ end
     resid1 = residuals(fm1);
     @test size(resid1) == (73421, )
     @test first(resid1) ≈ 1.82124 atol=0.00001
-    @test length(fm1.rePCA) == 3
+
+    @testset "PCA" begin
+        @test length(fm1.rePCA) == 3
+        @test length(MixedModels.PCA(fm1)) == 3
+    end
 
     fm2 = fit!(LinearMixedModel(@formula(y ~ 1 + service*dept + (1|s) + (1|d)), insteval))
     @test objective(fm2) ≈ 237585.5534151694 atol=0.001
@@ -227,6 +231,13 @@ end
     @test size(fmnc) == (180,2,36,1)
     @test fmnc.θ == ones(2)
     @test lowerbd(fmnc) == zeros(2)
+
+    @testset "zerocorr PCA" begin
+        @test length(fmnc.rePCA) == 1
+        @test fmnc.rePCA.subj == [0.5, 1.0]
+        @test MixedModels.PCA(fmnc).subj.loadings == I(2)
+        @test show(IOBuffer(), MixedModels.PCA(fmnc)) === nothing
+    end
 
     fit!(fmnc)
 

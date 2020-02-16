@@ -373,7 +373,7 @@ function Base.getproperty(m::GeneralizedLinearMixedModel, s::Symbol)
         m.β
     elseif s ∈ (:σ, :sigma)
         sdest(m)
-    elseif s ∈ (:A, :L, :λ, :lowerbd, :optsum, :X, :reterms, :feterms, :formula, :σs, :σρs)
+    elseif s ∈ (:A, :L, :λ, :lowerbd, :PCA, :rePCA, :optsum, :X, :reterms, :feterms, :formula, :σs, :σρs)
         getproperty(m.LMM, s)
     elseif s == :y
         m.resp.y
@@ -566,6 +566,8 @@ for f in (
     :feL,
     :(LinearAlgebra.logdet),
     :lowerbd,
+    :PCA,
+    :rePCA,
     :(StatsModels.modelmatrix),
     :(StatsBase.vcov),
     :σs,

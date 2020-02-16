@@ -59,14 +59,14 @@ function Base.sum!(s::AbstractVector{T}, a::RaggedArray{T}) where {T}
     s
 end
 
-"""
-    normalized_variance_cumsum(A::AbstractMatrix)
-
-Return the cumulative sum of the squared singular values of `A` normalized to sum to 1
-"""
-function normalized_variance_cumsum(A::AbstractMatrix)
-    vars = cumsum(abs2.(svdvals(A)))
-    vars ./ last(vars)
+function rownormalize!(A::AbstractMatrix)
+    for r in eachrow(A)
+        # all zeros arise in zerocorr situations
+        if !iszero(r)
+            normalize!(r)
+        end
+    end
+    A
 end
 
 """
@@ -137,3 +137,106 @@ dataset(nm::Symbol) = dataset(string(nm))
 Return a vector of names of the available test data sets
 """
 datasets() = first.(Base.Filesystem.splitext.(filter(Base.Fix2(endswith, ".feather"), readdir(TestData))))
+
+
+"""
+    PCA{T<:AbstractFloat}
+
+Principal Components Analysis
+
+## Fields
+
+* `covcorr` covariance or correlation matrix
+* `sv` singular value decomposition
+* `corr` is this a correlation matrix
+"""
+struct PCA{T<:AbstractFloat}
+    covcor::Symmetric{T,Matrix{T}}
+    sv::SVD{T,T,Matrix{T}}
+    corr::Bool
+end
+
+"""
+    PCA(::AbstractMatrix; corr::Bool=true)
+    PCA(::ReMat; corr::Bool=true)
+    PCA(::LinearMixedModel; corr::Bool=true)
+
+Constructs a [`MixedModels.PCA`](@ref]) object from a covariance matrix.
+
+For `LinearMixedModel`, a named tuple of PCA on each of the random-effects terms is returned.
+
+If `corr=true`, then the covariance is first standardized to the correlation scale.
+"""
+
+function PCA(covfac::AbstractMatrix; corr::Bool=true)
+    covf = corr ? rownormalize!(copy(covfac)) : copy(covfac)
+    PCA(Symmetric(covf*covf', :L), svd(covf), corr)
+end
+
+function Base.getproperty(pca::PCA, s::Symbol)
+    if s == :cumvar
+        cumvv = cumsum(abs2.(pca.sv.S))
+        cumvv ./ last(cumvv)
+    elseif s == :loadings
+        pca.sv.U
+    else
+        getfield(pca, s)
+    end
+end
+
+Base.propertynames(pca::PCA, private = false) = (
+    :covcor,
+    :sv,
+    :corr,
+    :cumvar,
+    :loadings,
+#    :rotation,
+)
+
+Base.show(pca::PCA;
+        ndigitsmat=2, ndigitsvec=2, ndigitscum=4,
+        covcor=true, loadings=true, variances=false, stddevs=false) =
+        Base.show(Base.stdout, pca,
+                    ndigitsmat=ndigitsmat,
+                    ndigitsvec=ndigitsvec,
+                    ndigitscum=ndigitscum,
+                    covcor=covcor,
+                    loadings=loadings,
+                    variances=variances,
+                    stddevs=stddevs)
+
+function Base.show(io::IO, pca::PCA;
+        ndigitsmat=2, ndigitsvec=2, ndigitscum=4,
+        covcor=true, loadings=true, variances=false, stddevs=false)
+    println(io)
+    if covcor
+        println(io,
+                "Principal components based on ",
+                pca.corr ? "correlation" : "(relative) covariance",
+                " matrix")
+        # only display the lower triangle of symmetric matrix
+        Base.print_matrix(io, round.(LowerTriangular(pca.covcor), digits=ndigitsmat))
+        println(io)
+    end
+    if stddevs
+        println(io, "Standard deviations:")
+        sv = pca.sv
+        show(io, round.(sv.S, digits=ndigitsvec))
+        println(io)
+    end
+    if variances
+        println(io, "Variances:")
+        vv = abs2.(sv.S)
+        show(io, round.(vv, digits=ndigitsvec))
+        println(io)
+    end
+    println(io, "Normalized cumulative variances:")
+    show(io, round.(pca.cumvar, digits=ndigitscum))
+    println(io)
+    if loadings
+        println(io, "Component loadings")
+        Base.print_matrix(io, round.(pca.loadings, digits=ndigitsmat))
+    end
+
+    nothing
+end
