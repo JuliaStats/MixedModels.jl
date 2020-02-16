@@ -636,7 +636,7 @@ function rePCA(m::LinearMixedModel; corr::Bool=true)
 end
 
 """
-    rePCA(m::LinearMixedModel; corr::Bool=true)
+    PCA(m::LinearMixedModel; corr::Bool=true)
 
 Return a named tuple of the principal components analysis of the random effects
 covariance matrices or correlation matrices when `corr` is `true`.
