@@ -109,6 +109,13 @@ export @formula,
 
 import Base: ==, *
 
+"""
+    MixedModel
+
+Abstract type for mixed models.  MixedModels.jl implements two subtypes:
+`LinearMixedModel` and `GeneralizedLinearMixedModel`.  See the documentation for
+each for more details.
+"""
 abstract type MixedModel{T} <: StatsModels.RegressionModel end # model with fixed and random effects
 
 function __init__()
