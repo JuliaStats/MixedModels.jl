@@ -851,8 +851,13 @@ end
 Returns the estimate of σ², the variance of the conditional distribution of Y given B.
 """
 varest(m::LinearMixedModel) = pwrss(m) / dof_residual(m)
+"""
+    vcov(m::LinearMixedModel)
 
-function StatsBase.vcov(m::LinearMixedModel{T}) where {T}
+Returns the variance-covariance matrix of the fixed effects.
+If `corr=true`, then correlation of fixed effects is returned instead.
+"""
+function StatsBase.vcov(m::LinearMixedModel{T}; corr=false) where {T}
     Xtrm = first(m.feterms)
     iperm = invperm(Xtrm.piv)
     p = length(iperm)
@@ -860,14 +865,16 @@ function StatsBase.vcov(m::LinearMixedModel{T}) where {T}
     Linv = inv(feL(m))
     permvcov = varest(m) * (Linv'Linv)
     if p == Xtrm.rank
-        permvcov[iperm, iperm]
+        vv = permvcov[iperm, iperm]
     else
         covmat = fill(zero(T) / zero(T), (p, p))
         for j = 1:r, i = 1:r
             covmat[i, j] = permvcov[i, j]
         end
-        covmat[iperm, iperm]
+        vv = covmat[iperm, iperm]
     end
+
+    corr ?  StatsBase.cov2cor!(vv,stderror(m)) : vv
 end
 
 """
