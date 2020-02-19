@@ -1,4 +1,17 @@
 """
+    allequal(x::Array)
+    allequal(x::Tuple)
+Return the equality of all elements of the array
+"""
+function allequal(x::Array,comparison=isequal)::Bool
+    all(comparison.(first(x),  x))
+end
+
+function allequal(x::Tuple, comparison=isequal)::Bool
+    all(comparison.(first(x),  x))
+end
+
+"""
     average(a::T, b::T) where {T<:AbstractFloat}
 
 Return the average of `a` and `b`

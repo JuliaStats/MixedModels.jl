@@ -52,10 +52,27 @@ Likeihood ratio test applied to a set of nested models.
 Note that nesting of the models is not checked.  It is incumbent on the user to check this.
 """
 function likelihoodratiotest(m::LinearMixedModel...)
+    allequal(getproperty.(getproperty.(m,:optsum),:REML)) ||
+        throw(ArgumentError("Models must all be fit with the same objective (i.e. alll ML or all REML)"))
     if any(getproperty.(getproperty.(m,:optsum),:REML))
-        reduce(==,coefnames.(m))  ||
+        allequal(coefnames.(m))  ||
                 throw(ArgumentError("Likelihood-ratio tests for REML-fitted models are only valid when the fixed-effects specifications are identical"))
     end
+    _likelihoodratiotest(m...)
+end
+
+function likelihoodratiotest(m::GeneralizedLinearMixedModel...)
+    # TODO: test that all models are fit with same fast/nAGQ option?
+    glms = getproperty.(m,:resp);
+    allequal(Distribution.(glms)) ||
+        throw(ArgumentError("Models must be fit to the same distribution"))
+    allequal(string.(Link.(glms))) ||
+        throw(ArgumentError("Models must have the link function"))
+
+    _likelihoodratiotest(m...)
+end
+
+function _likelihoodratiotest(m::Vararg{T}) where T <: MixedModel
     m = collect(m)   # change the tuple to an array
     dofs = dof.(m)
     formulas = String.(Symbol.(getproperty.(m,:formula)))
