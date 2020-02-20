@@ -103,21 +103,61 @@ function Base.show(io::IO, lrt::LikelihoodRatioTest; digits=2)
     println(io, "Model Formulae")
 
     for (i, f) in enumerate(lrt.formulas)
-        println("$i: $f")
+        println(io, "$i: $f")
     end
-    cols = hcat(lrt.models.dof, lrt.models.deviance,
-                _prepend_0(lrt.tests.deviancediff),
-                _prepend_0(lrt.tests.dofdiff),
-                _prepend_0(lrt.tests.pvalues))
 
-    ct = CoefTable(
-        cols, # cols
-        ["model-dof", "deviance", "χ²", "χ²-dof", "P(>χ²)"], # colnms
-        string.(1:length(lrt.formulas)), # rownms
-        5, # pvalcol
-        3 # teststatcol
-    )
-    show(io, ct)
+    # the following was adapted from StatsModels#162
+    # from nalimilan Δdf = lrt.tests.dofdiff
+    Δdev = lrt.tests.deviancediff
+
+    nc = 6
+    nr = length(lrt.formulas)
+    outrows = Matrix{String}(undef, nr+1, nc)
+
+    outrows[1, :] = ["",
+                    "model-dof",
+                    "deviance",
+                    "χ²",
+                    "χ²-dof",
+                    "P(>χ²)"] # colnms
+
+
+    outrows[2, :] = ["[1]",
+                    @sprintf("%.0d", lrt.dof[1]),
+                    @sprintf("%.4f", lrt.deviance[1]),
+                    " "," ", " "]
+
+    for i in 2:nr
+        outrows[i+1, :] = ["[$i]",
+                           @sprintf("%.0d", lrt.dof[i]),
+                           @sprintf("%.4f", lrt.deviance[i]),
+                           @sprintf("%.0d", Δdf[i-1]),
+                           @sprintf("%.4f", Δdev[i-1]),
+                           string(StatsBase.PValue(lrt.pvalues[i-1]))]
+    end
+    colwidths = length.(outrows)
+    max_colwidths = [maximum(view(colwidths, :, i)) for i in 1:nc]
+    totwidth = sum(max_colwidths) + 2*5
+
+    println(io, '─'^totwidth)
+
+    for r in 1:nr+1
+        for c in 1:nc
+            cur_cell = outrows[r, c]
+            cur_cell_len = length(cur_cell)
+
+            padding = " "^(max_colwidths[c]-cur_cell_len)
+            if c > 1
+                padding = "  "*padding
+            end
+
+            print(io, padding)
+            print(io, cur_cell)
+        end
+        print(io, "\n")
+        r == 1 && println(io, '─'^totwidth)
+    end
+    print(io, '─'^totwidth)
 
     nothing
 end
