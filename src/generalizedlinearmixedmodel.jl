@@ -523,6 +523,10 @@ end
 sdest(m::GeneralizedLinearMixedModel{T}) where {T} = convert(T, NaN)
 
 function Base.show(io::IO, m::GeneralizedLinearMixedModel)
+    if m.optsum.feval < 0
+        @warn("Model has not been fit")
+        return nothing
+    end
     nAGQ = m.LMM.optsum.nAGQ
     println(io, "Generalized Linear Mixed Model fit by maximum likelihood (nAGQ = $nAGQ)")
     println(io, "  ", m.LMM.formula)
