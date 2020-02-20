@@ -450,6 +450,10 @@ function Base.getproperty(m::LinearMixedModel, s::Symbol)
         filter(Base.Fix2(isa, FeMat), getfield(m, :allterms))
     elseif s == :objective
         objective(m)
+    elseif s == :corr
+        vcov(m, corr=true)
+    elseif s == :vcov
+        vcov(m, corr=false)
     elseif s == :PCA
         NamedTuple{fnames(m)}(PCA.(m.reterms))
     elseif s == :pvalues
@@ -537,6 +541,8 @@ Base.propertynames(m::LinearMixedModel, private = false) = (
     :lowerbd,
     :X,
     :y,
+    :corr,
+    :vcov,
     :PCA,
     :rePCA,
     :reterms,
