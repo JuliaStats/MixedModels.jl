@@ -207,6 +207,9 @@ end
     @test last(values(first(σs))) ≈ 5.716827808126002 atol=0.0001
     show(IOBuffer(), fm)
 
+    @test fm.vcov ≈ [43.986843599069985 -1.370391879315539; -1.370391879315539 2.2567113314443645] atol=0.0001
+    @test fm.corr ≈ [1.0 -0.1375451787621904; -0.1375451787621904 1.0] atol=0.0001
+
     u3 = ranef(fm, uscale=true)
     @test length(u3) == 1
     @test size(first(u3)) == (2, 18)
