@@ -105,7 +105,7 @@ function checkindprsk(k::Integer)
 end
 
     """
-        replicate(f::Function, n::Integer, use_threads=false)
+        replicate(f::Function, n::Integer; use_threads=false)
 
     Return a vector of the values of `n` calls to `f()` - used in simulations where the value of `f` is stochastic.
 
