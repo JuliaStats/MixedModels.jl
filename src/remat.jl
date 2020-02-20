@@ -564,7 +564,7 @@ julia> using MixedModels
 
 julia> mod = fit(MixedModel, 
                  @formula(rt_trunc ~ 1 + spkr + prec + load + (1 + spkr + prec | subj)), 
-                 kb07);
+                 MixedModels.dataset(:kb07));
 
 julia> VarCorr(mod)
 Variance components:
@@ -581,11 +581,10 @@ julia> MixedModels.corrmat(mod.reterms[1])
  -0.982951  -0.0316047   1.0      
 ```
 """
-function corrmat(A::ReMat)
+function corrmat(A::ReMat{T}) where {T}
     λ = A.λ
-    ρ_scaled = λ * λ'
-    σ_rel_inv = diagm(1 ./ sqrt.(diag(ρ_scaled)))
-    ρ = σ_rel_inv * ρ_scaled * σ_rel_inv
+    λnorm = rownormalize!(copy!(zeros(T, size(λ)), λ))
+    Symmetric(λnorm * λnorm', :L) 
 end
 
 vsize(A::ReMat{T,S}) where {T,S} = S
