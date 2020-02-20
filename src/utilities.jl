@@ -3,11 +3,15 @@
     allequal(x::Tuple)
 Return the equality of all elements of the array
 """
-function allequal(x::Array,comparison=isequal)::Bool
+function allequal(x::Array; comparison=isequal)::Bool
     all(comparison.(first(x),  x))
 end
 
-function allequal(x::Tuple, comparison=isequal)::Bool
+function allequal(x::Tuple; comparison=isequal)::Bool
+    all(comparison.(first(x),  x))
+end
+
+function allequal(x...; comparison=isequal)::Bool
     all(comparison.(first(x),  x))
 end
 
@@ -100,34 +104,34 @@ function checkindprsk(k::Integer)
     ltriindprs
 end
 
-"""
-    replicate(f::Function, n::Integer, use_threads=false)
+    """
+        replicate(f::Function, n::Integer, use_threads=false)
 
-Return a vector of the values of `n` calls to `f()` - used in simulations where the value of `f` is stochastic.
+    Return a vector of the values of `n` calls to `f()` - used in simulations where the value of `f` is stochastic.
 
-Note that if `f()` is not thread-safe or depends on a non thread-safe RNG,
-    then you must set `use_threads=false`. Also note that ordering of replications
-    is not guaranteed when `use_threads=true`, although the replications are not
-    otherwise affected for thread-safe `f()`.
-"""
-function replicate(f::Function, n::Integer; use_threads=false)
-    if use_threads
-        # no macro version yet: https://github.com/timholy/ProgressMeter.jl/issues/143
-        p = Progress(n)
-        # get the type
-        rr = f()
-        next!(p)
-        # pre-allocate
-        results = [rr for _ in Base.OneTo(n)]
-        Threads.@threads for idx = 2:n
-            results[idx] = f()
+    Note that if `f()` is not thread-safe or depends on a non thread-safe RNG,
+        then you must set `use_threads=false`. Also note that ordering of replications
+        is not guaranteed when `use_threads=true`, although the replications are not
+        otherwise affected for thread-safe `f()`.
+    """
+    function replicate(f::Function, n::Integer; use_threads=false)
+        if use_threads
+            # no macro version yet: https://github.com/timholy/ProgressMeter.jl/issues/143
+            p = Progress(n)
+            # get the type
+            rr = f()
             next!(p)
+            # pre-allocate
+            results = [rr for _ in Base.OneTo(n)]
+            Threads.@threads for idx = 2:n
+                results[idx] = f()
+                next!(p)
+            end
+        else
+            results = @showprogress [f() for _ in Base.OneTo(n)]
         end
-    else
-        results = @showprogress [f() for _ in Base.OneTo(n)]
+        results
     end
-    results
-end
 
 """
     dataset(nm)
