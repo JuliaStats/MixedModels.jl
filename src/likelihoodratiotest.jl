@@ -67,7 +67,7 @@ function likelihoodratiotest(m::GeneralizedLinearMixedModel...)
     allequal(Distribution.(glms)) ||
         throw(ArgumentError("Models must be fit to the same distribution"))
     allequal(string.(Link.(glms))) ||
-        throw(ArgumentError("Models must have the link function"))
+        throw(ArgumentError("Models must have the same link function"))
 
     _likelihoodratiotest(m...)
 end
