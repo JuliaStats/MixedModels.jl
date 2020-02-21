@@ -550,6 +550,43 @@ function σρs(A::ReMat{T}, sc::T) where {T}
     NamedTuple{(:σ,:ρ)}((σs, ntuple(i -> ρ(i,λ,im,indpairs,σs,sc), (k * (k - 1)) >> 1)))
 end
 
+"""
+    corrmat(A::ReMat)
+
+Return the estimated correlation matrix for `A`.  The diagonal elements are 1
+and the off-diagonal elements are the correlations between those random effect
+terms
+
+# Example
+
+```jldoctest
+julia> using MixedModels
+
+julia> mod = fit(MixedModel, 
+                 @formula(rt_trunc ~ 1 + spkr + prec + load + (1 + spkr + prec | subj)), 
+                 MixedModels.dataset(:kb07));
+
+julia> VarCorr(mod)
+Variance components:
+             Column      Variance   Std.Dev.   Corr.
+subj     (Intercept)     136593.752 369.58592
+         spkr: old        22923.238 151.40422  0.21
+         prec: maintain   32348.431 179.85669 -0.98 -0.03
+Residual                 642324.227 801.45133
+
+julia> MixedModels.corrmat(mod.reterms[1])
+3×3 Array{Float64,2}:
+  1.0        0.214843   -0.982951 
+  0.214843   1.0        -0.0316047
+ -0.982951  -0.0316047   1.0      
+```
+"""
+function corrmat(A::ReMat{T}) where {T}
+    λ = A.λ
+    λnorm = rownormalize!(copy!(zeros(T, size(λ)), λ))
+    Symmetric(λnorm * λnorm', :L) 
+end
+
 vsize(A::ReMat{T,S}) where {T,S} = S
 
 function zerocorr!(A::ReMat{T}) where {T}
