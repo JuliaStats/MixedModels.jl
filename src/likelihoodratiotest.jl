@@ -107,7 +107,8 @@ function Base.show(io::IO, lrt::LikelihoodRatioTest; digits=2)
     end
 
     # the following was adapted from StatsModels#162
-    # from nalimilan Δdf = lrt.tests.dofdiff
+    # from nalimilan
+    Δdf = lrt.tests.dofdiff
     Δdev = lrt.tests.deviancediff
 
     nc = 6
