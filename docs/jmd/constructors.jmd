@@ -28,7 +28,7 @@ describe(dyestuff)
 
 ### Models with simple, scalar random effects
 
-The formula language in *Julia* is similar to that in *R* which are based on (Wilkinson and Rogers [1973](https://dx.doi.org/10.2307/2346786)). However, in Julia the formula must be enclosed in a call to the `@formula` macro.
+The formula language in *Julia* is similar to that in *R* which is based on (Wilkinson and Rogers [1973](https://dx.doi.org/10.2307/2346786)). However, in Julia the formula must be enclosed in a call to the `@formula` macro.
 
 A basic model with simple, scalar random effects for the levels of `batch` (the batch of an intermediate product, in this case) is declared and fit as
 
@@ -53,9 +53,9 @@ dyestuff2 = MixedModels.dataset(:dyestuff2)
 @benchmark fit(MixedModel, $fm, $dyestuff2)
 ```
 
-By default, the model fit is by maximum likelihood. To use the `REML` criterion instead, add the optional named argument `REML = true` to the call to `fit`
+By default, the model fit is by maximum likelihood. To use the `REML` criterion instead, add the optional named argument `REML=true` to the call to `fit`
 ```@example Main
-fm1reml = fit(MixedModel, fm, dyestuff, REML = true)
+fm1reml = fit(MixedModel, fm, dyestuff, REML=true)
 ```
 ```@setup Main
 @testset "fm1reml" begin
@@ -121,8 +121,8 @@ In observational studies it is common to encounter *partially crossed* grouping 
 For example, the *InstEval* data are course evaluations by students, `s`, of instructors, `d`.
 Additional covariates include the academic department, `dept`, in which the course was given and `service`, whether or not it was a service course.
 ```@example Main
-instaeval = MixedModels.dataset(:insteval)
-fm5 = fit(MixedModel, @formula(y ~ 1 + service * dept + (1|s) + (1|d)), instaeval)
+insteval = MixedModels.dataset(:insteval)
+fm5 = fit(MixedModel, @formula(y ~ 1 + service * dept + (1|s) + (1|d)), insteval)
 ```
 ```@setup Main
 @testset "fm5" begin
