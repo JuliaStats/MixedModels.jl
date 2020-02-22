@@ -132,8 +132,8 @@ function Base.show(io::IO, lrt::LikelihoodRatioTest; digits=2)
         outrows[i+1, :] = ["[$i]",
                            @sprintf("%.0d", lrt.dof[i]),
                            @sprintf("%.4f", lrt.deviance[i]),
-                           @sprintf("%.0d", Δdf[i-1]),
                            @sprintf("%.4f", Δdev[i-1]),
+                           @sprintf("%.0d", Δdf[i-1]),
                            string(StatsBase.PValue(lrt.pvalues[i-1]))]
     end
     colwidths = length.(outrows)
