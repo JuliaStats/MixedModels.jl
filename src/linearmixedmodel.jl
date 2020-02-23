@@ -159,15 +159,21 @@ fit(
     REML = REML,
 )
 
-StatsBase.coef(m::MixedModel) = fixef(m, false)
+function StatsBase.coef(m::LinearMixedModel{T}) where {T}
+    piv = fetrm(m).piv
+    invpermute!(fixef!(similar(piv, T), m), piv)
+end
 
-βs(m::LinearMixedModel) = NamedTuple{(Symbol.(fixefnames(m))...,)}((fixef(m)...,))
+βs(m::LinearMixedModel) = NamedTuple{(Symbol.(coefnames(m))...,)}(coef(m))
 
-StatsBase.coefnames(m::LinearMixedModel) = fixefnames(m, false)
+function StatsBase.coefnames(m::LinearMixedModel)
+    Xtrm = fetrm(m)
+    invpermute!(copy(Xtrm.cnames), Xtrm.piv)
+end
 
-function StatsBase.coeftable(m::MixedModel)
+function StatsBase.coeftable(m::LinearMixedModel)
     co = coef(m)
-    se = stderror(m)
+    se = stderror!(similar(co), m)
     z = co ./ se
     pvalue = ccdf.(Chisq(1), abs2.(z))
     names = coefnames(m)
@@ -286,12 +292,29 @@ function StatsBase.dof_residual(m::LinearMixedModel)::Int
 end
 
 """
+    feind(m::MixedModel)
+
+An internal utility to return the index in `m.allterms` of the fixed-effects term.
+"""
+feind(m::MixedModel) = findfirst(Base.Fix2(isa, FeMat), m.allterms)
+
+"""
     feL(m::MixedModel)
 
 Return the lower Cholesky factor for the fixed-effects parameters, as an `LowerTriangular`
 `p × p` matrix.
 """
-feL(m::LinearMixedModel) = LowerTriangular(m.L.blocks[end-1, end-1])
+function feL(m::LinearMixedModel)
+    k = feind(m)
+    LowerTriangular(m.L.blocks[k, k])
+end
+
+"""
+    fetrm(m::LinearMixedModel)
+
+Return the fixed-effects term from `m.allterms`
+"""
+fetrm(m) = m.allterms[feind(m)]
 
 """
     fit!(m::LinearMixedModel[; verbose::Bool=false, REML::Bool=false])
@@ -344,7 +367,8 @@ end
 
 function fitted!(v::AbstractArray{T}, m::LinearMixedModel{T}) where {T}
     ## FIXME: Create and use `effects(m) -> β, b` w/o calculating β twice
-    vv = mul!(vec(v), first(m.feterms), fixef(m))
+    Xtrm = fetrm(m)
+    vv = mul!(vec(v), Xtrm, fixef!(similar(Xtrm.piv, T), m))
     for (rt, bb) in zip(m.reterms, ranef(m))
         unscaledre!(vv, rt, bb)
     end
@@ -356,53 +380,44 @@ StatsBase.fitted(m::LinearMixedModel{T}) where {T} = fitted!(Vector{T}(undef, no
 """
     fixef!(v::Vector{T}, m::LinearMixedModel{T})
 
-Overwrite `v` with the pivoted and, possibly, truncated fixed-effects coefficients of model `m`
-"""
-fixef!(v::AbstractVector{T}, m::LinearMixedModel{T}) where {T} =
-    ldiv!(feL(m)', copyto!(v, m.L.blocks[end, end-1]))
+Overwrite `v` with the pivoted fixed-effects coefficients of model `m`
 
+For full rank models the length of `v` must be the rank of `X`.  For rank-deficient models
+the length of `v` can be the rank of `X` or the number of columns of `X`.  In the latter
+case the calculated coefficients are padded with -0.0 out to the number of columns.
 """
-    fixef(m::MixedModel, permuted=true)
-
-Return the fixed-effects parameter vector estimate of `m`.
-
-If `permuted` is `true` the vector elements are permuted according to
-`first(m.feterms).piv` and truncated to the rank of that term.
-"""
-function fixef(m::LinearMixedModel{T}, permuted = true) where {T}
-    val = ldiv!(feL(m)', vec(copy(m.L.blocks[end, end-1])))
-    if !permuted
-        Xtrm = first(m.feterms)
-        piv = Xtrm.piv
-        p = length(piv)
-        if Xtrm.rank < p
-            val = copyto!(fill(-zero(T), p), val)
-        end
-        invpermute!(val, piv)
+function fixef!(v::AbstractVector{T}, m::LinearMixedModel{T}) where {T}
+    Xtrm = fetrm(m)
+    if isfullrank(Xtrm)
+        ldiv!(feL(m)', copyto!(v, m.L.blocks[end, end-1]))
+    else
+        ldiv!(
+            feL(m)',
+            view(copyto!(fill!(v, -zero(T)), m.L.blocks[end, end-1]), 1:(Xtrm.rank)),
+        )
     end
-    val
+    v
 end
 
 """
-    fixefnames(m::MixedModel, permuted=true)
+    fixef(m::MixedModel)
 
-Return the associated term names for fixed-effects parameter vector estimate of `m`.
+Return the fixed-effects parameter vector estimate of `m`.
 
-If `permuted` is `true` the vector elements are permuted according to
-`first(m.feterms).piv` and truncated to the rank of that term.
+In the rank-deficient case the truncated parameter vector, of length `rank(m)` is returned.
+This is unlike `coef` which always returns a vector whose length matches the number of
+columns in `X`.
 """
-function fixefnames(m::LinearMixedModel{T}, permuted = true) where {T}
-    Xtrm = first(m.feterms)
-    val = copy(Xtrm.cnames)
-    if !permuted
-        piv = Xtrm.piv
-        p = length(piv)
-        invpermute!(val, piv)
-    else
-        val = val[1:Xtrm.rank]
-    end
+fixef(m::LinearMixedModel{T}) where {T} = fixef!(Vector{T}(undef, fetrm(m).rank), m)
 
-    val
+"""
+    fixefnames(m::MixedModel)
+
+Return a (permuted and truncated in the rank-deficient case) vector of coefficient names. 
+"""
+function fixefnames(m::LinearMixedModel{T}) where {T}
+    Xtrm = fetrm(m)
+    Xtrm.cnames[1:Xtrm.rank]
 end
 
 """
@@ -789,6 +804,29 @@ function Statistics.std(m::LinearMixedModel)
 end
 
 """
+    stderror!(v::AbstractVector, m::LinearMixedModel)
+
+Overwrite `v` with the standard errors of the fixed-effects coefficients in `m`
+
+The length of `v` should be the total number of coefficients (i.e. `length(coef(m))`).
+When the model matrix is rank-deficient the coefficients forced to `-0.0` have an
+undefined (i.e. `NaN`) standard error.
+"""
+function stderror!(v::AbstractVector{T}, m::LinearMixedModel{T}) where {T}
+    L = feL(m)
+    scr = Vector{T}(undef, size(L, 2))
+    s = sdest(m)
+    fill!(v, zero(T) / zero(T))  # initialize to appropriate NaN for rank-deficient case
+    for i in eachindex(scr)
+        fill!(scr, false)
+        scr[i] = true
+        v[i] = s * norm(ldiv!(L, scr))
+    end
+    invpermute!(v, fetrm(m).piv)
+    v
+end
+
+"""
     updateA!(m::LinearMixedModel)
 
 Update the cross-product array, `m.A`, from `m.allterms`
@@ -857,6 +895,7 @@ end
 Returns the estimate of σ², the variance of the conditional distribution of Y given B.
 """
 varest(m::LinearMixedModel) = pwrss(m) / dof_residual(m)
+
 """
     vcov(m::LinearMixedModel)
 
@@ -864,7 +903,7 @@ Returns the variance-covariance matrix of the fixed effects.
 If `corr=true`, then correlation of fixed effects is returned instead.
 """
 function StatsBase.vcov(m::LinearMixedModel{T}; corr=false) where {T}
-    Xtrm = first(m.feterms)
+    Xtrm = fetrm(m)
     iperm = invperm(Xtrm.piv)
     p = length(iperm)
     r = Xtrm.rank
@@ -880,7 +919,7 @@ function StatsBase.vcov(m::LinearMixedModel{T}; corr=false) where {T}
         vv = covmat[iperm, iperm]
     end
 
-    corr ?  StatsBase.cov2cor!(vv,stderror(m)) : vv
+    corr ?  StatsBase.cov2cor!(vv, stderror(m)) : vv
 end
 
 """

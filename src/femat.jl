@@ -77,4 +77,11 @@ LinearAlgebra.mul!(R::StridedVecOrMat{T}, A::FeMat{T}, B::StridedVecOrMat{T}) wh
 LinearAlgebra.mul!(C, adjA::Adjoint{T,<:FeMat{T}}, B::FeMat{T}) where {T} =
     mul!(C, fullrankwtx(adjA.parent)', fullrankwtx(B))
 
+"""
+    isfullrank(A::FeMat)
+
+Does `A` have full column rank?
+"""
+isfullrank(A::FeMat) = A.rank == length(A.piv)
+
 nθ(A::FeMat) = 0
