@@ -95,6 +95,8 @@ end
 
 StatsBase.deviance(m::GeneralizedLinearMixedModel) = deviance(m, m.optsum.nAGQ)
 
+objective(m::GeneralizedLinearMixedModel) = deviance(m)
+
 """
 deviance!(m::GeneralizedLinearMixedModel, nAGQ=1)
 

@@ -1,4 +1,21 @@
 """
+    allequal(x::Array)
+    allequal(x::Tuple)
+Return the equality of all elements of the array
+"""
+function allequal(x::Array; comparison=isequal)::Bool
+    all(comparison.(first(x),  x))
+end
+
+function allequal(x::Tuple; comparison=isequal)::Bool
+    all(comparison.(first(x),  x))
+end
+
+function allequal(x...; comparison=isequal)::Bool
+    all(comparison.(first(x),  x))
+end
+
+"""
     average(a::T, b::T) where {T<:AbstractFloat}
 
 Return the average of `a` and `b`
@@ -88,7 +105,7 @@ function checkindprsk(k::Integer)
 end
 
 """
-    replicate(f::Function, n::Integer, use_threads=false)
+    replicate(f::Function, n::Integer; use_threads=false)
 
 Return a vector of the values of `n` calls to `f()` - used in simulations where the value of `f` is stochastic.
 
