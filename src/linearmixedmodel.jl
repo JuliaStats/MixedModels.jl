@@ -382,7 +382,7 @@ StatsBase.fitted(m::LinearMixedModel{T}) where {T} = fitted!(Vector{T}(undef, no
 
 Overwrite `v` with the pivoted fixed-effects coefficients of model `m`
 
-For full rank models the length of `v` must be the rank of `X`.  For rank-deficient models
+For full-rank models the length of `v` must be the rank of `X`.  For rank-deficient models
 the length of `v` can be the rank of `X` or the number of columns of `X`.  In the latter
 case the calculated coefficients are padded with -0.0 out to the number of columns.
 """
@@ -824,6 +824,10 @@ function stderror!(v::AbstractVector{T}, m::LinearMixedModel{T}) where {T}
     end
     invpermute!(v, fetrm(m).piv)
     v
+end
+
+function StatsBase.stderror(m::LinearMixedModel{T}) where {T}
+    stderror!(similar(fetrm(m).piv, T), m)
 end
 
 """
