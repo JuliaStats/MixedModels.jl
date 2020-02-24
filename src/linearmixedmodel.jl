@@ -448,7 +448,7 @@ function getθ!(v::AbstractVector{T}, m::LinearMixedModel{T}) where {T}
     v
 end
 
-function Base.getproperty(m::LinearMixedModel, s::Symbol)
+function Base.getproperty(m::LinearMixedModel{T}, s::Symbol) where {T}
     if s == :θ || s == :theta
         getθ(m)
     elseif s == :β || s == :beta
@@ -466,7 +466,7 @@ function Base.getproperty(m::LinearMixedModel, s::Symbol)
     elseif s == :b
         ranef(m)
     elseif s == :feterms
-        filter(Base.Fix2(isa, FeMat), getfield(m, :allterms))
+        convert(Vector{FeMat{T}}, filter(Base.Fix2(isa, FeMat), getfield(m, :allterms)))
     elseif s == :objective
         objective(m)
     elseif s == :corr
@@ -478,7 +478,7 @@ function Base.getproperty(m::LinearMixedModel, s::Symbol)
     elseif s == :pvalues
         ccdf.(Chisq(1), abs2.(coef(m) ./ stderror(m)))
     elseif s == :reterms
-        filter(Base.Fix2(isa, ReMat), getfield(m, :allterms))
+        convert(Vector{ReMat{T}}, filter(Base.Fix2(isa, ReMat), getfield(m, :allterms)))
     elseif s == :stderror
         stderror(m)
     elseif s == :u
