@@ -165,7 +165,7 @@ end
         @test length(MixedModels.PCA(fm1)) == 3
     end
 
-    fm2 = fit!(LinearMixedModel(@formula(y ~ 1 + service*dept + (1|s) + (1|d)), insteval))
+    fm2 = fit(MixedModel, @formula(y ~ 1 + service*dept + (1|s) + (1|d)), insteval)
     @test objective(fm2) ≈ 237585.5534151694 atol=0.001
     @test size(fm2) == (73421, 28, 4100, 2)
 end
@@ -360,29 +360,35 @@ end
 end
 
 @testset "Rank deficient" begin
-    rng = MersenneTwister(0)
-    x = rand(rng, 100)
+    rng = MersenneTwister(0);
+    x = rand(rng, 100);
     data = columntable((x = x, x2 = 1.5 .* x, y = rand(rng, 100), z = repeat('A':'T', 5)))
-    model = fit!(LinearMixedModel(@formula(y ~ x + x2 + (1|z)), data))
+    model = fit(MixedModel, @formula(y ~ x + x2 + (1|z)), data)
     @test length(fixef(model)) == 2
     @test rank(model) == 2
     @test length(coef(model)) == 3
     ct = coeftable(model)
     @test ct.rownms ==  ["(Intercept)", "x", "x2"]
-    @test fixefnames(model, true) == ["(Intercept)", "x"]
-    @test fixefnames(model, false) == ["(Intercept)", "x", "x2"]
+    @test fixefnames(model) == ["(Intercept)", "x"]
+    @test coefnames(model) == ["(Intercept)", "x", "x2"]
     @test last(coef(model)) == -0.0
+    stde = MixedModels.stderror!(zeros(3), model)
+    @test isnan(last(stde))
+
 
     # check preserving of name ordering in coeftable and placement of
     # pivoted-out element
     fill!(data.x, 0)
-    model2 = fit!(LinearMixedModel(@formula(y ~ x + x2 + (1|z)), data))
+    model2 = fit(MixedModel, @formula(y ~ x + x2 + (1|z)), data)
     ct = coeftable(model2)
     @test ct.rownms ==  ["(Intercept)", "x", "x2"]
-    @test fixefnames(model2, true) == ["(Intercept)", "x2"]
-    @test fixefnames(model2, false) == ["(Intercept)", "x", "x2"]
+    @test fixefnames(model2) == ["(Intercept)", "x2"]
+    @test coefnames(model2) == ["(Intercept)", "x", "x2"]
     @test coef(model2)[2] == -0.0
     @test last(fixef(model)) ≈ (last(fixef(model2)) * 1.5)
+    stde2 = MixedModels.stderror!(zeros(3), model2)
+    @test isnan(stde2[2])
+
 end
 
 @testset "coeftable" begin

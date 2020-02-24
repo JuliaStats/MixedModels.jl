@@ -53,7 +53,9 @@ struct GeneralizedLinearMixedModel{T<:AbstractFloat} <: MixedModel{T}
     mult::Vector{T}
 end
 
-StatsBase.coefnames(m::GeneralizedLinearMixedModel) = fixefnames(m, false)
+StatsBase.coefnames(m::GeneralizedLinearMixedModel) = coefnames(m.LMM)
+
+StatsBase.coeftable(m::GeneralizedLinearMixedModel) = coeftable(m.LMM)
 
 
 """
