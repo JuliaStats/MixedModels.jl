@@ -2,26 +2,28 @@
     MixedModelBootstrap{T<:AbstractFloat}
 
 Object returned by `parametericbootstrap` with fields
-- `m`: a copy of the model that was bootstrapped
 - `bstr`: the parameter estimates from the bootstrap replicates as a vector of named tuples.
-
+- ``
 The schema of `bstr` is, by default,
 ```
 Tables.Schema:
  :objective  T
  :σ          T
- :β          StaticArrays.SArray{Tuple{2},T,1,2}
- :θ          StaticArrays.SArray{Tuple{3},T,1,3}
+ :β          StaticArrays.SArray{Tuple{p},T,1,p}
+ :θ          StaticArrays.SArray{Tuple{p},T,1,k}
 ```
-where the sizes of the `β` and `θ` elements are determined by the model.
+where the sizes, `p` and `k`, of the `β` and `θ` elements are determined by the model.
 
 Characteristics of the bootstrap replicates can be extracted as properties.  The `σs` and
 `σρs` properties unravel the `σ` and `θ` estimates into estimates of the standard deviations
 and correlations of the random-effects terms.
 """
 struct MixedModelBootstrap{T<:AbstractFloat}
-    m::LinearMixedModel{T}
     bstr::Vector
+    λ::Vector{LowerTriangular{T,Matrix{T}}}
+    inds::Vector{Vector{Int}}
+    lowerbd::Vector{T}
+    fcnames::NamedTuple
 end
 
 function Base.getproperty(bsamp::MixedModelBootstrap, s::Symbol)
@@ -38,7 +40,7 @@ function Base.getproperty(bsamp::MixedModelBootstrap, s::Symbol)
     end
 end
 
-issingular(bsamp::MixedModelBootstrap) = issingular.(Ref(bsamp.m), bsamp.θ)
+issingular(bsamp::MixedModelBootstrap) = map(θ -> any(θ .≈ bsamp.lowerbd), bsamp.θ)
 
 """
     parametricbootstrap(rng::AbstractRNG, nsamp::Integer, m::LinearMixedModel;
@@ -68,16 +70,11 @@ function parametricbootstrap(
     σ = T(σ)
     θ = convert(Vector{T},θ)
     βsc, θsc, p, k, m = similar(β), similar(θ), length(β), length(θ), deepcopy(morig)
-    y₀ = copy(response(m))
 
     β_names = (Symbol.(fixefnames(morig))..., )
     rank = length(β_names)
-    # fixef! requires that we take all coefs, even for pivoted terms
-    if rank ≠ length(βsc)
-        resize!(βsc, rank)
-    end
 
-    # we need to do for in-place operations to work across threads
+    # we need arrays of these for in-place operations to work across threads
     m_threads = [m]
     βsc_threads = [βsc]
     θsc_threads = [θsc]
@@ -102,22 +99,32 @@ function parametricbootstrap(
         (
          objective = mod.objective,
          σ = mod.σ,
-         # fixef! does the pivoted, but not truncated coefs
-         # coef does the non-pivoted
-         # fixef does either pivoted+truncated or unpivoted
-         β = NamedTuple{β_names}(fixef!(βsc, mod)[1:rank]),
+         β = NamedTuple{β_names}(fixef!(βsc, mod)),
          θ = SVector{k,T}(getθ!(θsc, mod)),
         )
     end
-    MixedModelBootstrap(refit!(m, y₀), samp)
+    MixedModelBootstrap(
+        samp,
+        deepcopy(morig.λ),
+        getfield.(morig.reterms, :inds),
+        copy(morig.optsum.lowerbd),
+        NamedTuple{Symbol.(fnames(morig))}(map(t -> Symbol.((t.cnames...,)), morig.reterms)),
+    )
 end
 
-function parametricbootstrap(nsamp::Integer, m::LinearMixedModel; β = m.β, σ = m.σ, θ = m.θ, use_threads = false)
-    parametricbootstrap(Random.GLOBAL_RNG, nsamp, m, β = β, σ = σ, θ = θ, use_threads = use_threads)
+function parametricbootstrap(
+    nsamp::Integer,
+    m::LinearMixedModel;
+    β = m.β,
+    σ = m.σ,
+    θ = m.θ,
+    use_threads = false
+)
+    parametricbootstrap(Random.GLOBAL_RNG, nsamp, m, β=β, σ=σ, θ=θ, use_threads=use_threads)
 end
 
 function Base.propertynames(bsamp::MixedModelBootstrap)
-    [:model, :objective, :σ, :β, :θ, :σs, :σρs]
+    [:objective, :σ, :β, :θ, :σs, :σρs, :λ, :inds, :lowerbd, :bstr, :fcnames]
 end
 
 function byreterm(bsamp::MixedModelBootstrap{T}, f::Function) where {T}
@@ -135,6 +142,21 @@ function byreterm(bsamp::MixedModelBootstrap{T}, f::Function) where {T}
     NamedTuple{(Symbol.(fnames(m))...,)}(value)
 end
 
+function tidyβ(bsamp::MixedModelBootstrap{T}) where {T}
+    β = bsamp.β
+    colnms = (:iter, :coefname, :β)
+    result = sizehint!(
+        NamedTuple{colnms,Tuple{Int,Symbol,T}}[],
+        length(β) * length(first(β)),
+    )
+    for (i, r) in enumerate(β)
+        for (k, v) in pairs(r)
+            push!(result, NamedTuple{colnms}((i, k, v)))
+        end
+    end
+    result
+end
+
 σs(bsamp::MixedModelBootstrap) = byreterm(bsamp, σs)
 
 σρs(bsamp::MixedModelBootstrap) = byreterm(bsamp, σρs)
@@ -150,7 +172,7 @@ function shortestcovint(v, level = 0.95)
     vv = issorted(v) ? v : sort(v)
     ilen = Int(ceil(n * level))   # the length of the interval in indices
     len, i = findmin([vv[i+ilen-1] - vv[i] for i = 1:(n+1-ilen)])
-    vv[[i, i + ilen - 1]]
+    Tuple(vv[[i, i + ilen - 1]])
 end
 
 """
