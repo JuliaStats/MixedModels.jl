@@ -47,6 +47,7 @@ export @formula,
        LogitLink,
        LogLink,
        MixedModel,
+       MixedModelBootstrap,
        Normal,
        OptSummary,
        Poisson,
@@ -56,15 +57,7 @@ export @formula,
        SqrtLink,
        TestData,
        UniformBlockDiagonal,
-       VarCorr,
-       aic,
-       aicc,
-       bic,
-       coef,
-       coefnames,
-       coeftable,
-       cond,
-       condVar,
+       
        describeblocks,
        deviance,
        dispersion,
@@ -146,5 +139,6 @@ include("linalg/rankUpdate.jl")
 include("linalg/logdet.jl")
 include("linalg.jl")
 include("simulate.jl")
+include("bootstrap.jl")
 
 end # module
