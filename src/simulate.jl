@@ -26,22 +26,6 @@ struct MixedModelBootstrap{T<:AbstractFloat}
     fcnames::NamedTuple
 end
 
-function Base.getproperty(bsamp::MixedModelBootstrap, s::Symbol)
-    if s == :model
-        getfield(bsamp, :m)
-    elseif s ∈ [:objective, :β, :σ, :θ]
-        getproperty.(getfield(bsamp, :bstr), s)
-    elseif s == :σs
-        σs(bsamp)
-    elseif s == :σρs
-        σρs(bsamp)
-    else
-        getfield(bsamp, s)
-    end
-end
-
-issingular(bsamp::MixedModelBootstrap) = map(θ -> any(θ .≈ bsamp.lowerbd), bsamp.θ)
-
 """
     parametricbootstrap(rng::AbstractRNG, nsamp::Integer, m::LinearMixedModel;
         β = coef(m), σ = m.σ, θ = m.θ, use_threads=false)
@@ -123,43 +107,44 @@ function parametricbootstrap(
     parametricbootstrap(Random.GLOBAL_RNG, nsamp, m, β=β, σ=σ, θ=θ, use_threads=use_threads)
 end
 
+function Base.getproperty(bsamp::MixedModelBootstrap, s::Symbol)
+    if s ∈ [:objective, :σ, :θ]
+        getproperty.(getfield(bsamp, :bstr), s)
+    elseif s == :β
+        tidyβ(bsamp)
+    elseif s == :σs
+        tidyσs(bsamp)
+    elseif s == :σρs
+        σρs(bsamp)
+    else
+        getfield(bsamp, s)
+    end
+end
+
+issingular(bsamp::MixedModelBootstrap) = map(θ -> any(θ .≈ bsamp.lowerbd), bsamp.θ)
+
 function Base.propertynames(bsamp::MixedModelBootstrap)
     [:objective, :σ, :β, :θ, :σs, :σρs, :λ, :inds, :lowerbd, :bstr, :fcnames]
 end
 
-function byreterm(bsamp::MixedModelBootstrap{T}, f::Function) where {T}
-    m = bsamp.m
-    oldθ = getθ(m)     # keep a copy to restore later
-    retrms = m.reterms
-    value = [typeof(v)[] for v in f.(retrms, m.σ)]
-    for r in bsamp.bstr
-        setθ!(m, r.θ)
-        for (i, v) in enumerate(f.(retrms, r.σ))
-            push!(value[i], v)
+"""
+    setθ!(bsamp::MixedModelsBootstrap, i::Integer)
+
+Install the values of the i'th θ value of `bsamp.bstr` in `bsamp.λ`
+"""
+function setθ!(bsamp::MixedModelBootstrap, i::Integer) where {T}
+    θ = bsamp.bstr[i].θ
+    offset = 0
+    for (λ, inds) in zip(bsamp.λ, bsamp.inds)
+        λdat = λ.data
+        fill!(λdat, false)
+        for j in eachindex(inds)
+            λdat[inds[j]] = θ[j + offset]
         end
+        offset += length(inds)
     end
-    refit!(setθ!(m, oldθ))
-    NamedTuple{(Symbol.(fnames(m))...,)}(value)
+    bsamp
 end
-
-function tidyβ(bsamp::MixedModelBootstrap{T}) where {T}
-    β = bsamp.β
-    colnms = (:iter, :coefname, :β)
-    result = sizehint!(
-        NamedTuple{colnms,Tuple{Int,Symbol,T}}[],
-        length(β) * length(first(β)),
-    )
-    for (i, r) in enumerate(β)
-        for (k, v) in pairs(r)
-            push!(result, NamedTuple{colnms}((i, k, v)))
-        end
-    end
-    result
-end
-
-σs(bsamp::MixedModelBootstrap) = byreterm(bsamp, σs)
-
-σρs(bsamp::MixedModelBootstrap) = byreterm(bsamp, σρs)
 
 """
     shortestcovint(v, level = 0.95)
@@ -173,6 +158,42 @@ function shortestcovint(v, level = 0.95)
     ilen = Int(ceil(n * level))   # the length of the interval in indices
     len, i = findmin([vv[i+ilen-1] - vv[i] for i = 1:(n+1-ilen)])
     Tuple(vv[[i, i + ilen - 1]])
+end
+
+function tidyβ(bsamp::MixedModelBootstrap{T}) where {T}
+    bstr = bsamp.bstr
+    colnms = (:iter, :coefname, :β)
+    result = sizehint!(
+        NamedTuple{colnms,Tuple{Int,Symbol,T}}[],
+        length(bstr) * length(first(bstr).β),
+    )
+    for (i, r) in enumerate(bstr)
+        for (k, v) in pairs(r.β)
+            push!(result, NamedTuple{colnms}((i, k, v)))
+        end
+    end
+    result
+end
+
+function tidyσs(bsamp::MixedModelBootstrap{T}) where {T}
+    bstr = bsamp.bstr
+    fcnames = bsamp.fcnames
+    λ = bsamp.λ
+    colnms = (:iter, :group, :column, :σ)
+    result = sizehint!(
+        NamedTuple{colnms,Tuple{Int,Symbol,Symbol,T}}[],
+        length(bstr) * sum(length, fcnames),
+    )
+    for (iter, r) in enumerate(bstr)
+        setθ!(bsamp, iter)    # install r.θ in λ
+        σ = r.σ
+        for (grp, ll) in zip(keys(fcnames), λ)
+            for (cn, col) in zip(getproperty(fcnames, grp), eachcol(ll))
+                push!(result, NamedTuple{colnms}((iter, grp, cn, σ * norm(col))))
+            end
+        end
+    end
+    result
 end
 
 """
