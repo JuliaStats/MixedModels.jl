@@ -188,7 +188,7 @@ function tidyσs(bsamp::MixedModelBootstrap{T}) where {T}
         setθ!(bsamp, iter)    # install r.θ in λ
         σ = r.σ
         for (grp, ll) in zip(keys(fcnames), λ)
-            for (cn, col) in zip(getproperty(fcnames, grp), eachcol(ll))
+            for (cn, col) in zip(getproperty(fcnames, grp), eachrow(ll))
                 push!(result, NamedTuple{colnms}((iter, grp, cn, σ * norm(col))))
             end
         end
