@@ -556,7 +556,7 @@ function Base.setproperty!(m::GeneralizedLinearMixedModel, s::Symbol, y)
     end
 end
 
-sdest(m::GeneralizedLinearMixedModel{T}) where {T} = dispersion_parameter(m) ? convert(T, NaN) : √varest(m)
+sdest(m::GeneralizedLinearMixedModel{T}) where {T} = dispersion_parameter(m) ? √varest(m) : convert(T, NaN) 
 
 function Base.show(io::IO, m::GeneralizedLinearMixedModel)
     if m.optsum.feval < 0
