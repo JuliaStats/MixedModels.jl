@@ -1,24 +1,6 @@
-using Documenter, Weave, StatsBase
+using Documenter
+using StatsBase
 using MixedModels
-foreach(
-    filename -> weave(
-        joinpath(dirname(pathof(MixedModels)), "..", "docs", "jmd", filename),
-        doctype = "github",
-        fig_path = joinpath("docs", "assets"),
-        fig_ext = ".svg",
-        out_path = joinpath("docs", "src"),
-    ),
-    [
-        "constructors.jmd",
-        "optimization.jmd",
-        "GaussHermite.jmd",
-        "bootstrap.jmd",
-        # "SimpleLMM.jmd",
-        # "MultipleTerms.jmd",
-        # "SingularCovariance.jmd",
-        # "SubjectItem.jmd",
-    ],
-)
 
 makedocs(
     root = joinpath(dirname(pathof(MixedModels)), "..", "docs"),

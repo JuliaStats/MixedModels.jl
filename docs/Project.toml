@@ -6,7 +6,6 @@ FreqTables = "da1fdf0e-e0ff-5433-a45f-9bb5ff651cb1"
 Gadfly = "c91e804a-d5a3-530f-b6f0-dfbca275c004"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
-Weave = "44d3d7a6-8a23-5bf8-98c5-b353f8df5ec9"
 
 [compat]
 BenchmarkTools = "0.5"
@@ -15,4 +14,3 @@ Documenter = "0.24"
 FreqTables = "0.3"
 Gadfly = "1"
 StatsBase = "0.32"
-Weave = "0.9"
