@@ -287,8 +287,12 @@ GLM.dispersion_parameter(m::LinearMixedModel) = true
 StatsBase.dof(m::LinearMixedModel) = size(m)[2] + nθ(m) + 1
 
 function StatsBase.dof_residual(m::LinearMixedModel)::Int
-    (n, p, q, k) = size(m)
-    n - m.optsum.REML * p
+    # nobs - rank(FE) - 1 (dispersion)
+    # this differs from lme4 by not including nθ
+    # a better estimate would be a number somewhere between the number of
+    # variance components and the number of conditional modes
+    # nobs, rank FE, num conditional modes, num grouping vars
+    nobs(m) - size(m)[2] - 1
 end
 
 """
@@ -528,7 +532,7 @@ Return negative twice the log-likelihood of model `m`
 """
 function objective(m::LinearMixedModel)
     wts = m.sqrtwts
-    logdet(m) + dof_residual(m) * (1 + log2π + log(varest(m))) -
+    logdet(m) + ssqdenom(m) * (1 + log2π + log(varest(m))) -
     (isempty(wts) ? 0 : 2 * sum(log, wts))
 end
 
@@ -778,8 +782,16 @@ function σρs(m::LinearMixedModel)
     NamedTuple{fnames(m)}(((σρs(t, σ) for t in m.reterms)...,))
 end
 
+"""
+    size(m::LinearMixedModel)
+
+Returns the size of a mixed model as a tuple of length four:
+the number of observations, the number of (non-singular) fixed-effects parameters,
+the number of conditional modes (random effects), the number of grouping variables
+"""
 function Base.size(m::LinearMixedModel)
-    n, p = size(first(m.feterms))
+    n = size(first(m.feterms),1)
+    p = first(m.feterms).rank
     n, p, sum(size.(m.reterms, 2)), length(m.reterms)
 end
 
@@ -791,6 +803,20 @@ Return the square root of the penalized, weighted residual sum-of-squares (pwrss
 This value is the contents of the `1 × 1` bottom right block of `m.L`
 """
 sqrtpwrss(m::LinearMixedModel) = first(m.L.blocks[end, end])
+
+"""
+    ssqdenom(m::LinearMixedModel)
+
+Return the denominator for penalized sums-of-squares.
+
+For MLE, this value is either the number of observation for ML. For REML, this
+value is the number of observations minus the rank of the fixed-effects matrix.
+The difference is analagous to the use of n or n-1 in the denominator when
+calculating the variance.
+"""
+function ssqdenom(m::LinearMixedModel)::Int
+    nobs(m) - m.optsum.REML * first(m.feterms).rank
+end
 
 """
     std(m::MixedModel)
@@ -898,7 +924,7 @@ end
 
 Returns the estimate of σ², the variance of the conditional distribution of Y given B.
 """
-varest(m::LinearMixedModel) = pwrss(m) / dof_residual(m)
+varest(m::LinearMixedModel) = pwrss(m) / ssqdenom(m)
 
 """
     vcov(m::LinearMixedModel)
