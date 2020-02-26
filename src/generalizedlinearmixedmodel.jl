@@ -69,7 +69,11 @@ is the squared length of the conditional modes, `u`, plus the determinant
 of `Λ'Z'WZΛ + I`, plus the sum of the squared deviance residuals.
 """
 function StatsBase.deviance(m::GeneralizedLinearMixedModel{T}, nAGQ = 1) where {T}
-    nAGQ == 1 && return T(sum(m.resp.devresid) + logdet(m) + sum(u -> sum(abs2, u), m.u))
+    # TODO: fix dispersion's contribution for non Gaussians 
+    disp = dispersion_parameter(m) ? nobs(m) * (1 + log2π + log(varest(m))) : zero(T)
+    nAGQ == 1 && return T(sum(m.resp.devresid) + logdet(m) +
+                            sum(u -> sum(abs2, u), m.u) + disp)
+    # TODO: incorporate disp into nAGQ > 1
     u = vec(first(m.u))
     u₀ = vec(first(m.u₀))
     copyto!(u₀, u)
