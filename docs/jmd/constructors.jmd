@@ -166,7 +166,7 @@ The special syntax `zerocorr` can be applied to individual random effects terms 
 fm2zerocorr_fm = fit(MixedModel, @formula(reaction ~ 1 + days + zerocorr(1 + days|subj)), sleepstudy)
 ```
 ```@setup Main
-    all(fm2zerocorr == fm2zerocorr_fm
+    all(fm2zerocorr == fm2zerocorr_fm)
 ```
 
 Alternatively, correlations between parameters can be removed by including them as separate random effects terms:
@@ -317,9 +317,6 @@ fixef
 ```
 ```@example Main
 coef(fm1)
-```
-```@example Main
-fixef(fm1)
 ```
 ```@example Main
 fixef(fm1)

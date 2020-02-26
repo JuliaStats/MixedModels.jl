@@ -97,15 +97,15 @@ For a linear mixed model, where all the conditional and unconditional distributi
 In the types of `LinearMixedModel` available through the `MixedModels` package, groups of random effects and the corresponding columns of the model matrix, $\bf Z$, are associated with *random-effects terms* in the model formula.
 
 For the simple example
-```{julia;echo=false;results="hidden"}
+```@example Main
 using DataFrames, MixedModels
 ```
-```{julia;term=true}
+```@example Main
 dyestuff = MixedModels.dataset(:dyestuff)
 fm1 = fit(MixedModel, @formula(yield ~ 1 + (1|batch)), dyestuff)
 ```
 the only random effects term in the formula is `(1|batch)`, a simple, scalar random-effects term.
-```{julia;term=true}
+```@example Main
 t1 = first(fm1.reterms);
 Int.(t1)  # convert to integers for more compact display
 ```
@@ -116,7 +116,7 @@ ReMat
 This `RandomEffectsTerm` contributes a block of columns to the model matrix $\bf Z$ and a diagonal block to $\Lambda_\theta$.
 In this case the diagonal block of $\Lambda_\theta$ (which is also the only block) is a multiple of the $6\times6$
 identity matrix where the multiple is
-```{julia;term=true}
+```@example Main
 t1.λ
 ```
 
@@ -125,43 +125,43 @@ Furthermore, there is only one block in $\Lambda_\theta$.
 
 
 For a vector-valued random-effects term, as in
-```{julia;term=true}
+```@example Main
 sleepstudy = MixedModels.dataset(:sleepstudy)
 fm2 = fit(MixedModel, @formula(reaction ~ 1+days+(1+days|subj)), sleepstudy)
 ```
 the model matrix $\bf Z$ is of the form
-```{julia;term=true}
+```@example Main
 t21 = first(fm2.reterms);
 Int.(t21) # convert to integers for more compact display
 ```
 and $\Lambda_\theta$ is a $36\times36$ block diagonal matrix with $18$ diagonal blocks, all of the form
-```{julia;term=true}
+```@example Main
 t21.λ
 ```
 The $\theta$ vector is
-```{julia;term=true}
+```@example Main
 MixedModels.getθ(t21)
 ```
 
 Random-effects terms in the model formula that have the same grouping factor are amagamated into a single `ReMat` object.
-```{julia;term=true}
+```@example Main
 fm3 = fit!(zerocorr!(LinearMixedModel(@formula(reaction ~ 1+days+(1+days|subj)),
     sleepstudy)))
 t31 = first(fm3.reterms);
 Int.(t31)
 ```
 Note that we could also have achieved this by re-fitting (a copy of) `fm2`.
-```{julia;term=true}
+```@example Main
 fm3alt = fit!(zerocorr!(deepcopy(fm2)))
 ```
 For this model the matrix $\bf Z$ is the same as that of model `fm2` but the diagonal blocks of $\Lambda_\theta$ are themselves diagonal.
-```{julia;term=true}
+```@example Main
 t31.λ
 MixedModels.getθ(t31)
 ```
 Random-effects terms with distinct grouping factors generate distinct elements of the `trms` member of the `LinearMixedModel` object.
 Multiple `ReMat` objects are sorted by decreasing numbers of random effects.
-```{julia;term=true}
+```@example Main
 penicillin = MixedModels.dataset(:penicillin)
 fm4 = fit(MixedModel,
     @formula(diameter ~ 1 + (1|plate) + (1|sample)),
@@ -174,7 +174,7 @@ Note that the first `ReMat` in `fm4.terms` corresponds to grouping factor `G` ev
 ### Progress of the optimization
 
 An optional named argument, `verbose=true`, in the call to `fit` for a `LinearMixedModel` causes printing of the objective and the $\theta$ parameter at each evaluation during the optimization.
-```{julia;term=true}
+```@example Main
 fit(MixedModel,
     @formula(yield ~ 1 + (1|batch)),
     dyestuff,
@@ -190,7 +190,7 @@ A shorter summary of the optimization process is always available as an
 OptSummary
 ```
 object, which is the `optsum` member of the `LinearMixedModel`.
-```{julia;term=true}
+```@example Main
 fm2.optsum
 ```
 
@@ -200,7 +200,7 @@ The `OptSummary` object contains both input and output fields for the optimizer.
 To modify the optimization process the input fields can be changed after constructing the model but before fitting it.
 
 Suppose, for example, that the user wishes to try a [Nelder-Mead](https://en.wikipedia.org/wiki/Nelder%E2%80%93Mead_method) optimization method instead of the default [`BOBYQA`](https://en.wikipedia.org/wiki/BOBYQA) (Bounded Optimization BY Quadratic Approximation) method.
-```{julia;term=true}
+```@example Main
 fm2 = LinearMixedModel(@formula(reaction ~ 1+days+(1+days|subj)), sleepstudy);
 fm2.optsum.optimizer = :LN_NELDERMEAD;
 fit!(fm2)
@@ -226,7 +226,7 @@ Singularity can be checked with the `issingular` predicate function.
 ```@docs
 issingular
 ```
-```{julia;term=true}
+```@example Main
 issingular(fm2)
 ```
 
@@ -255,7 +255,7 @@ Poisson
 
 A `GeneralizedLinearMixedModel` object is generated from a formula, data frame and distribution family.
 
-```{julia;term=true}
+```@example Main
 verbagg = MixedModels.dataset(:verbagg)
 const vaform = @formula(r2 ~ 1 + anger + gender + btype + situ + (1|subj) + (1|item));
 mdl = GeneralizedLinearMixedModel(vaform, verbagg, Bernoulli());
@@ -266,13 +266,13 @@ A separate call to `fit!` can be used to fit the model.
 This involves optimizing an objective function, the Laplace approximation to the deviance, with respect to the parameters, which are $\beta$, the fixed-effects coefficients, and $\theta$, the covariance parameters.
 The starting estimate for $\beta$ is determined by fitting a GLM to the fixed-effects part of the formula
 
-```{julia;term=true}
+```@example Main
 mdl.β
 ```
 
 and the starting estimate for $\theta$, which is a vector of the two standard deviations of the random effects, is chosen to be
 
-```{julia;term=true}
+```@example Main
 mdl.θ
 ```
 
@@ -287,19 +287,19 @@ In a call to the `pirls!` function the first argument is a `GeneralizedLinearMix
 (By convention, the names of such *mutating functions* end in `!` as a warning to the user that they can modify an argument, usually the first argument.)
 The second and third arguments are optional logical values indicating if $\beta$ is to be varied and if verbose output is to be printed.
 
-```{julia;term=true}
+```@example Main
 pirls!(mdl, true, true)
 ```
 
-```{julia;term=true}
+```@example Main
 deviance(mdl)
 ```
 
-```{julia;term=true}
+```@example Main
 mdl.β
 ```
 
-```{julia;term=true}
+```@example Main
 mdl.θ # current values of the standard deviations of the random effects
 ```
 
@@ -307,22 +307,22 @@ If the optimization with respect to $\beta$ is performed within PIRLS then the n
 This is the "fast" algorithm.
 Given a value of $\theta$, PIRLS is used to determine the conditional estimate of $\beta$ and the conditional mode of the random effects, **b**.
 
-```{julia;term=true}
+```@example Main
 mdl.b # conditional modes of b
 ```
 
-```{julia;term=true}
+```@example Main
 fit!(mdl, fast=true, verbose=true);
 ```
 
 The optimization process is summarized by
 
-```{julia;term=true}
+```@example Main
 mdl.LMM.optsum
 ```
 
 As one would hope, given the name of the option, this fit is comparatively fast.
-```{julia;term=true}
+```@example Main
 @time(fit!(GeneralizedLinearMixedModel(vaform,
     verbagg, Bernoulli()), fast=true))
 ```
@@ -330,7 +330,7 @@ As one would hope, given the name of the option, this fit is comparatively fast.
 The alternative algorithm is to use PIRLS to find the conditional mode of the random effects, given $\beta$ and $\theta$ and then use the general nonlinear optimizer to fit with respect to both $\beta$ and $\theta$.
 Because it is slower to incorporate the $\beta$ parameters in the general nonlinear optimization, the fast fit is performed first and used to determine starting estimates for the more general optimization.
 
-```{julia;term=true}
+```@example Main
 @time mdl1 = fit(MixedModel, vaform, verbagg, Bernoulli())
 ```
 
@@ -339,6 +339,6 @@ That is not terribly important when the times involved are a few seconds but can
 
 The comparison of the slow and fast fit is available in the optimization summary after the slow fit.
 
-```{julia;term=true}
+```@example Main
 mdl1.LMM.optsum
 ```
