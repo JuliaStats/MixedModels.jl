@@ -424,17 +424,28 @@ function Base.getproperty(m::GeneralizedLinearMixedModel, s::Symbol)
 end
 
 function StatsBase.loglikelihood(m::GeneralizedLinearMixedModel{T}) where {T}
-    r = m.resp
-    D = Distribution(m.resp)
-    accum = (
-        if D <: Binomial
-            sum(logpdf(D(round(Int, n), μ), round(Int, y * n))
-                for (μ, y, n) in zip(r.mu, r.y, m.wt))
-        else
-            sum(logpdf(D(μ), y) for (μ, y) in zip(r.mu, r.y))
+    accum = zero(T)
+    # adapted from GLM.jl
+    # note the use of loglik_obs to handle the different parameterizations
+    # of various response distributions which may not just be location+scale
+    r   = m.resp
+    wts = r.wts
+    y   = r.y
+    mu  = r.mu
+    d   = r.d
+    if length(wts) == length(y)
+        # in GLM.jl, they use the deviance of the
+        ϕ = deviance(r)/sum(wts)
+        @inbounds for i in eachindex(y, mu, wts)
+            accum += GLM.loglik_obs(d, y[i], mu[i], wts[i], ϕ)
         end
-    )
-    accum - (sum(sum(abs2, u) for u in m.u) + logdet(m)) / 2
+    else
+        ϕ = deviance(r)/length(y)
+        @inbounds for i in eachindex(y, mu)
+            accum += GLM.loglik_obs(d, y[i], mu[i], 1, ϕ)
+        end
+    end
+    accum
 end
 
 StatsBase.nobs(m::GeneralizedLinearMixedModel) = length(m.η)
