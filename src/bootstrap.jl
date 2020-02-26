@@ -115,8 +115,7 @@ of `iter`, `type`, `group`, `name` and `value`.
 """
 function allpars(bsamp::MixedModelBootstrap{T}) where {T}
     bstr, λ, fcnames = bsamp.bstr, bsamp.λ, bsamp.fcnames
-#    npars = 2 + length(first(bstr).β) + sum(map(k -> (k * (k + 1)) >> 1, size.(bsamp.λ, 2)))
-    npars = 2 + length(first(bstr).β) + sum(size.(bsamp.λ, 2))
+    npars = 2 + length(first(bstr).β) + sum(map(k -> (k * (k + 1)) >> 1, size.(bsamp.λ, 2)))
     nresrow = length(bstr) * npars
     cols = (
         sizehint!(Int[], nresrow),
@@ -125,6 +124,7 @@ function allpars(bsamp::MixedModelBootstrap{T}) where {T}
         sizehint!(Union{Missing,Symbol,Tuple{Symbol,Symbol}}[], nresrow),
         sizehint!(T[], nresrow),
     )
+    nrmdr = Vector{T}[]  # normalized rows of λ
     for (i, r) in enumerate(bstr)
         σ = r.σ
         push!.(cols, (i, :objective, missing, missing, r.objective))
@@ -134,8 +134,14 @@ function allpars(bsamp::MixedModelBootstrap{T}) where {T}
         end
         setθ!(bsamp, i)
         for (grp, ll) in zip(keys(fcnames), λ)
-            for (cn, row) in zip(getproperty(fcnames, grp), eachrow(ll))
-                push!.(cols, (i, :σ, grp, cn, σ * norm(row)))
+            rownms = getproperty(fcnames, grp)
+            empty!(nrmdr)
+            for (j, rnm, row) in zip(eachindex(rownms), rownms, eachrow(ll))
+                push!.(cols, (i, :σ, grp, rnm, σ * norm(row)))
+                push!(nrmdr, normalize(row))
+                for k in 1:(j - 1)
+                    push!.(cols, (i, :ρ, grp, (rownms[k], rnm), dot(nrmdr[j], nrmdr[k])))
+                end
             end
         end
     end
@@ -190,9 +196,15 @@ function shortestcovint(v, level = 0.95)
     n = length(v)
     0 < level < 1 || throw(ArgumentError("level = $level should be in (0,1)"))
     vv = issorted(v) ? v : sort(v)
-    ilen = Int(ceil(n * level))   # the length of the interval in indices
-    len, i = findmin([vv[i+ilen-1] - vv[i] for i = 1:(n+1-ilen)])
-    Tuple(vv[[i, i + ilen - 1]])
+    ilen = Int(ceil(n * level)) # number of elements (counting endpoints) in interval
+                                # skip non-finite elements at the ends of sorted vv
+    start = findfirst(isfinite, vv)
+    stop = findlast(isfinite, vv)
+    if stop < (start + ilen - 1)
+        return (vv[1], vv[end])
+    end
+    len, i = findmin([vv[i+ilen-1] - vv[i] for i = start:(stop+1-ilen)])
+    (vv[i], vv[i + ilen - 1])
 end
 
 function tidyβ(bsamp::MixedModelBootstrap{T}) where {T}
