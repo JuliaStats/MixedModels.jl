@@ -585,7 +585,7 @@ function updateη!(m::GeneralizedLinearMixedModel)
     m
 end
 
-varest(m::GeneralizedLinearMixedModel{T}) where {T} = one(T)
+varest(m::GeneralizedLinearMixedModel{T}) where {T} = dispersion_parameter(m) ? dispersion(m) : one(T)
 
             # delegate GLMM method to LMM field
 for f in (
