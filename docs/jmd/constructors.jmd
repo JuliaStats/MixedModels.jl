@@ -20,7 +20,7 @@ using Test
 ```
 
 ```@example Main
-using MixedModels, StatsModels
+using MixedModels
 using StatsBase: describe
 dyestuff = MixedModels.dataset(:dyestuff)
 describe(dyestuff)
