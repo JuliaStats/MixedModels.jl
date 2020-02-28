@@ -57,6 +57,7 @@ export @formula,
        SqrtLink,
        TestData,
        UniformBlockDiagonal,
+       VarCorr,
        
        aic,
        aicc,
