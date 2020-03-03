@@ -503,33 +503,6 @@ Test whether the model `m` is singular if the parameter vector is `θ`.
 """
 issingular(m::LinearMixedModel, θ=m.θ) = any(isapprox.(lowerbd(m), θ))
 
-function StatsBase.leverage(m::LinearMixedModel{T}) where {T}
-    L = m.L
-    trms = m.allterms
-    l = length(trms)
-    n, p, q, k = size(m)
-    X = m.X
-    result = Vector{T}(undef, size(X, 1))
-    for i in eachindex(result)
-        for j in 1:(l-1)
-            blk = vec(L[Block(l, j)])
-            if isa(trms[j], FeMat)
-                for jj in 1:p
-                    blk[jj] = X[i, jj]
-                end
-            else
-                fill!(blk, false)
-                adjA = trms[k].adjA
-                nzv = nonzeros(adjA)
-                rwv = rowvals(adjA)
-                for jj in nzrange(adjA, i)
-                    blk[rwv[jj]] = nzv[jj]
-                end
-            end
-        end
-    end
-end
-
 function StatsBase.loglikelihood(m::LinearMixedModel)
     if m.optsum.REML
         throw(ArgumentError("loglikelihood not available for models fit by REML"))
