@@ -10,6 +10,7 @@ using NamedArrays
 using NLopt
 using Random
 using Pkg.Artifacts
+using PooledArrays
 using ProgressMeter
 using Showoff
 using SparseArrays
@@ -18,7 +19,6 @@ using Statistics
 using StatsBase
 using StatsModels
 using Tables
-using TypedTables
 
 using LinearAlgebra: BlasFloat, BlasReal, HermOrSym, PosDefException, copytri!
 using Printf: @printf, @sprintf
