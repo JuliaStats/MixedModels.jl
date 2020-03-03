@@ -342,7 +342,7 @@ end
     bsamp = parametricbootstrap(100, fm, use_threads=false)
     @test isa(propertynames(bsamp), Vector{Symbol})
     @test length(bsamp.objective) == 100
-    @test keys(first(bsamp.bstr)) == (:objective, :σ, :β, :θ)
+    @test keys(first(bsamp.bstr)) == (:objective, :σ, :β, :se, :θ)
     @test isa(bsamp.σs, Vector{<:NamedTuple})
     @test length(bsamp.σs) == 100
     cov = shortestcovint(bsamp.σ)

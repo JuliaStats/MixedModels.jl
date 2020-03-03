@@ -3,13 +3,18 @@
 
 Object returned by `parametericbootstrap` with fields
 - `bstr`: the parameter estimates from the bootstrap replicates as a vector of named tuples.
-- ``
+- `λ`: `Vector{LowerTriangular{T,Matrix{T}}}` containing copies of the λ field from `ReMat` model terms
+- `inds`: `Vector{Vector{Int}}` containing copies of the `inds` field from `ReMat` model terms
+- `lowerbd`: `Vector{T}` containing the vector of lower bounds
+- `fcnames`: NamedTuple whose keys are the grouping factor names and whose values are the column names
+
 The schema of `bstr` is, by default,
 ```
 Tables.Schema:
  :objective  T
  :σ          T
- :β          StaticArrays.SArray{Tuple{p},T,1,p}
+ :β          NamedTuple{β_names}{NTuple{p,T}}
+ :se         StaticArrays.SArray{Tuple{p},T,1,p}
  :θ          StaticArrays.SArray{Tuple{p},T,1,k}
 ```
 where the sizes, `p` and `k`, of the `β` and `θ` elements are determined by the model.
@@ -45,14 +50,12 @@ function parametricbootstrap(
     rng::AbstractRNG,
     n::Integer,
     morig::LinearMixedModel{T};
-    β = coef(morig),
-    σ = morig.σ,
-    θ = morig.θ,
-    use_threads = false,
+    β::AbstractVector=coef(morig),
+    σ=morig.σ,
+    θ::AbstractVector=morig.θ,
+    use_threads::Bool=false,
 ) where {T}
-    β = convert(Vector{T},β)
-    σ = T(σ)
-    θ = convert(Vector{T},θ)
+    β, σ, θ = convert(Vector{T}, β), T(σ), convert(Vector{T}, θ)
     βsc, θsc, p, k, m = similar(β), similar(θ), length(β), length(θ), deepcopy(morig)
 
     β_names = (Symbol.(fixefnames(morig))..., )
@@ -84,6 +87,7 @@ function parametricbootstrap(
          objective = mod.objective,
          σ = mod.σ,
          β = NamedTuple{β_names}(fixef!(βsc, mod)),
+         se = SVector{p,T}(stderror!(βsc, mod)),
          θ = SVector{k,T}(getθ!(θsc, mod)),
         )
     end
@@ -92,7 +96,7 @@ function parametricbootstrap(
         deepcopy(morig.λ),
         getfield.(morig.reterms, :inds),
         copy(morig.optsum.lowerbd),
-        NamedTuple{Symbol.(fnames(morig))}(map(t -> Symbol.((t.cnames...,)), morig.reterms)),
+        NamedTuple{Symbol.(fnames(morig))}(map(t -> (t.cnames...,), morig.reterms)),
     )
 end
 
@@ -119,33 +123,46 @@ function allpars(bsamp::MixedModelBootstrap{T}) where {T}
     nresrow = length(bstr) * npars
     cols = (
         sizehint!(Int[], nresrow),
-        sizehint!(Symbol[], nresrow), 
-        sizehint!(Union{Missing,Symbol}[], nresrow),
-        sizehint!(Union{Missing,Symbol,Tuple{Symbol,Symbol}}[], nresrow),
+        sizehint!(String[], nresrow), 
+        sizehint!(Union{Missing,String}[], nresrow),
+        sizehint!(Union{Missing,String}[], nresrow),
         sizehint!(T[], nresrow),
     )
     nrmdr = Vector{T}[]  # normalized rows of λ
     for (i, r) in enumerate(bstr)
         σ = r.σ
-        push!.(cols, (i, :objective, missing, missing, r.objective))
-        push!.(cols, (i, :σ, missing, missing, σ))
+        push!.(cols, (i, "dev", missing, missing, r.objective))
+        push!.(cols, (i, "σ", "residual", missing, σ))
         for (nm, v) in pairs(r.β)
-            push!.(cols, (i, :β, missing, nm, v))
+            push!.(cols, (i, "β", missing, String(nm), v))
         end
         setθ!(bsamp, i)
         for (grp, ll) in zip(keys(fcnames), λ)
             rownms = getproperty(fcnames, grp)
+            grpstr = String(grp)
             empty!(nrmdr)
             for (j, rnm, row) in zip(eachindex(rownms), rownms, eachrow(ll))
-                push!.(cols, (i, :σ, grp, rnm, σ * norm(row)))
+                push!.(cols, (i, "σ", grpstr, rnm, σ * norm(row)))
                 push!(nrmdr, normalize(row))
                 for k in 1:(j - 1)
-                    push!.(cols, (i, :ρ, grp, (rownms[k], rnm), dot(nrmdr[j], nrmdr[k])))
+                    push!.(cols, (
+                        i,
+                        "ρ",
+                        grpstr,
+                        string(rownms[k], ", ", rnm),
+                        dot(nrmdr[j], nrmdr[k])
+                    ))
                 end
             end
         end
     end
-    NamedTuple{(:iter,:type,:group,:names,:value)}(cols)
+    (
+        iter=cols[1],
+        type=PooledArray(cols[2]),
+        group=PooledArray(cols[3]),
+        names=PooledArray(cols[4]),
+        value=cols[5],
+    )
 end
 
 function Base.getproperty(bsamp::MixedModelBootstrap, s::Symbol)
@@ -163,6 +180,8 @@ function Base.getproperty(bsamp::MixedModelBootstrap, s::Symbol)
 end
 
 issingular(bsamp::MixedModelBootstrap) = map(θ -> any(θ .≈ bsamp.lowerbd), bsamp.θ)
+
+ppoints(n::Integer) = inv(2n):inv(n):1
 
 function Base.propertynames(bsamp::MixedModelBootstrap)
     [:allpars, :objective, :σ, :β, :θ, :σs, :λ, :inds, :lowerbd, :bstr, :fcnames]
@@ -236,7 +255,7 @@ function tidyσs(bsamp::MixedModelBootstrap{T}) where {T}
         σ = r.σ
         for (grp, ll) in zip(keys(fcnames), λ)
             for (cn, col) in zip(getproperty(fcnames, grp), eachrow(ll))
-                push!(result, NamedTuple{colnms}((iter, grp, cn, σ * norm(col))))
+                push!(result, NamedTuple{colnms}((iter, grp, Symbol(cn), σ * norm(col))))
             end
         end
     end
