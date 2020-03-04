@@ -1,4 +1,7 @@
-using DataFrames, Feather, LinearAlgebra, MixedModels, Test
+using DataFrames
+using LinearAlgebra
+using MixedModels
+using Test
 
 @testset "contra" begin
     contra = MixedModels.dataset(:contra)

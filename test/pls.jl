@@ -1,4 +1,4 @@
-using BlockArrays, DataFrames, Feather, LinearAlgebra, MixedModels, NamedArrays
+using BlockArrays, DataFrames, LinearAlgebra, MixedModels, NamedArrays
 using Random, SparseArrays, Statistics, Tables, Test
 
 const LMM = LinearMixedModel
