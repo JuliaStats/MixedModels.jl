@@ -25,7 +25,8 @@ For example, a simple linear mixed-effects model for the `Dyestuff` data in the 
 package for [`R`](https://www.r-project.org) is fit by
 
 ```@example Main
-using DataFrames, Gadfly, MixedModels, Random
+using Gadfly, MixedModels, Random
+using DataFrames
 ```
 
 ```@example Main
@@ -42,11 +43,18 @@ const rng = MersenneTwister(1234321);
 then create a bootstrap sample
 
 ```@example Main
-samp = parametricbootstrap(rng, 10_000, m1);
-propertynames(samp)
+samp = parametricbootstrap(rng, 10_000, m1, use_threads=true));
+df = DataFrame(samp.allpars);
+first(df, 10)
 ```
 
-As shown above, the sample has several named properties, which allow for convenient extraction of information.  For example, a density plot of the estimates of `σ`, the residual standard deviation, can be created as
+```@example Main
+last(df, 10)
+```
+
+The simplest way of accessing the parameter estimates in the parametric bootstrap object is to create a `DataFrame` from the `allpars` property as shown above.
+
+A density plot of the estimates of `σ`, the residual standard deviation, can be created as
 ```@example Main
 plot(x=samp.σ, Geom.density, Guide.xlabel("Parametric bootstrap estimates of σ"))
 ```

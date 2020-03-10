@@ -131,8 +131,6 @@ function allpars(bsamp::MixedModelBootstrap{T}) where {T}
     nrmdr = Vector{T}[]  # normalized rows of λ
     for (i, r) in enumerate(bstr)
         σ = r.σ
-        push!.(cols, (i, "dev", missing, missing, r.objective))
-        push!.(cols, (i, "σ", "residual", missing, σ))
         for (nm, v) in pairs(r.β)
             push!.(cols, (i, "β", missing, String(nm), v))
         end
@@ -155,6 +153,7 @@ function allpars(bsamp::MixedModelBootstrap{T}) where {T}
                 end
             end
         end
+        push!.(cols, (i, "σ", "residual", missing, σ))
     end
     (
         iter=cols[1],
