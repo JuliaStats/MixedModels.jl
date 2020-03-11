@@ -345,6 +345,8 @@ end
     @test keys(first(bsamp.bstr)) == (:objective, :σ, :β, :se, :θ)
     @test isa(bsamp.σs, Vector{<:NamedTuple})
     @test length(bsamp.σs) == 100
+    allpars = DataFrame(bsamp.allpars)
+    @test isa(allpars, DataFrame)
     cov = shortestcovint(bsamp.σ)
     @test first(cov) ≈ 48.2551828768727 rtol = 1.e-4
     @test last(cov) ≈ 81.85810781858969 rtol = 1.e-4
