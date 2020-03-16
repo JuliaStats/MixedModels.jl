@@ -245,6 +245,11 @@ function tidyβ(bsamp::MixedModelBootstrap{T}) where {T}
     result
 end
 
+"""
+    tidyσs(bsamp::MixedModelBootstrap)
+Return a tidy (row)table with the estimates of the variance components (on the standard deviation scale) spread into columns
+of `iter`, `group`, `column` and `σ`.
+"""
 function tidyσs(bsamp::MixedModelBootstrap{T}) where {T}
     bstr = bsamp.bstr
     fcnames = bsamp.fcnames
