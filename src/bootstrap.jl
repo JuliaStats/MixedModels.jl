@@ -225,6 +225,11 @@ function shortestcovint(v, level = 0.95)
     (vv[i], vv[i + ilen - 1])
 end
 
+"""
+    tidyβ(bsamp::MixedModelBootstrap)
+Return a tidy (row)table with the parameter estimates spread into columns
+of `iter`, `coefname` and `β`
+"""
 function tidyβ(bsamp::MixedModelBootstrap{T}) where {T}
     bstr = bsamp.bstr
     colnms = (:iter, :coefname, :β)
