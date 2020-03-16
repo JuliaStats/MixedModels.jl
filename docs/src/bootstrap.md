@@ -84,6 +84,7 @@ The shortest such intervals, obtained with the `shortestcovint` extractor, corre
 shortestcovint
 ```
 
+We generate these for all random and fixed effects:
 ```@example Main
 by(df, [:type, :group, :names], interval = :value => shortestcovint)
 ```
