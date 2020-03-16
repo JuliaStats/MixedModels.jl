@@ -139,7 +139,6 @@ The parameter optimized in the estimation is `θ`, the relative covariance param
 Some of the elements of this parameter vector must be non-negative and, when one of these components is approximately zero, one of the covariance matrices will be singular.
 
 The `issingular` method for a `LinearMixedModel` object that tests if a parameter vector `θ` corresponds to a boundary or singular fit.
-The default value of `θ` is that from the model but another value can be given as the second argument.
 
 This operation is encapsulated in a method for the `issingular` function.
 ```@example Main
