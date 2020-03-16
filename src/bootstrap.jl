@@ -5,7 +5,7 @@ Object returned by `parametericbootstrap` with fields
 - `bstr`: the parameter estimates from the bootstrap replicates as a vector of named tuples.
 - `λ`: `Vector{LowerTriangular{T,Matrix{T}}}` containing copies of the λ field from `ReMat` model terms
 - `inds`: `Vector{Vector{Int}}` containing copies of the `inds` field from `ReMat` model terms
-- `lowerbd`: `Vector{T}` containing the vector of lower bounds
+- `lowerbd`: `Vector{T}` containing the vector of lower bounds (corresponds to the identically named field of [`OptSummary`](@ref))
 - `fcnames`: NamedTuple whose keys are the grouping factor names and whose values are the column names
 
 The schema of `bstr` is, by default,
