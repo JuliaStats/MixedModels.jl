@@ -29,7 +29,7 @@ Tables = "bd369af6-aec1-5ad0-b16a-f7cc5008161c"
 [compat]
 BlockArrays = "0.11"
 BlockDiagonals = "0.1"
-Distributions = "0.21, 0.22"
+Distributions = "0.21, 0.22, 0.23"
 Feather = "0.5"
 GLM = "1"
 NLopt = "0.5"
