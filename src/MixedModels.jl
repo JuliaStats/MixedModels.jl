@@ -10,6 +10,7 @@ using NamedArrays
 using NLopt
 using Random
 using Pkg.Artifacts
+using PooledArrays
 using ProgressMeter
 using Showoff
 using SparseArrays
@@ -18,7 +19,6 @@ using Statistics
 using StatsBase
 using StatsModels
 using Tables
-using TypedTables
 
 using LinearAlgebra: BlasFloat, BlasReal, HermOrSym, PosDefException, copytri!
 using Printf: @printf, @sprintf
@@ -47,6 +47,7 @@ export @formula,
        LogitLink,
        LogLink,
        MixedModel,
+       MixedModelBootstrap,
        Normal,
        OptSummary,
        Poisson,
@@ -57,6 +58,7 @@ export @formula,
        TestData,
        UniformBlockDiagonal,
        VarCorr,
+       
        aic,
        aicc,
        bic,
@@ -146,5 +148,6 @@ include("linalg/rankUpdate.jl")
 include("linalg/logdet.jl")
 include("linalg.jl")
 include("simulate.jl")
+include("bootstrap.jl")
 
 end # module

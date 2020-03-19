@@ -25,7 +25,11 @@ For example, a simple linear mixed-effects model for the `Dyestuff` data in the 
 package for [`R`](https://www.r-project.org) is fit by
 
 ```@example Main
-using DataFrames, Gadfly, MixedModels, Random
+using DataFrames
+using DataFramesMeta  # dplyr-like operations
+using Gadfly          # plotting package
+using MixedModels
+using Random
 ```
 
 ```@example Main
@@ -33,41 +37,33 @@ dyestuff = MixedModels.dataset(:dyestuff)
 m1 = fit(MixedModel, @formula(yield ~ 1 + (1 | batch)), dyestuff)
 ```
 
-To bootstrap the model parameters, first initialize a random number generator
+To bootstrap the model parameters, first initialize a random number generator then create a bootstrap sample
 
 ```@example Main
 const rng = MersenneTwister(1234321);
+samp = parametricbootstrap(rng, 10_000, m1, use_threads=true);
+df = DataFrame(samp.allpars);
+first(df, 10)
 ```
 
-then create a bootstrap sample
+Especially for those with a background in [`R`](https://www.R-project.org/) or [`pandas`](https://pandas.pydata.org),
+the simplest way of accessing the parameter estimates in the parametric bootstrap object is to create a `DataFrame` from the `allpars` property as shown above.
 
+The [`DataFramesMeta`](https://github.com/JuliaData/DataFramesMeta.jl) package provides macros for extracting rows or columns of a dataframe.
+A density plot of the estimates of `σ`, the residual standard deviation, can be created as
 ```@example Main
-samp = parametricbootstrap(rng, 10_000, m1);
-propertynames(samp)
-```
-
-As shown above, the sample has several named properties, which allow for convenient extraction of information.  For example, a density plot of the estimates of `σ`, the residual standard deviation, can be created as
-```@example Main
-plot(x=samp.σ, Geom.density, Guide.xlabel("Parametric bootstrap estimates of σ"))
+σres = @where(df, :type .== "σ", :group .== "residual").value
+plot(x = σres, Geom.density, Guide.xlabel("Parametric bootstrap estimates of σ"))
 ```
 For the estimates of the intercept parameter, the `getproperty` extractor must be used
 ```@example Main
-plot(x = first.(samp.β), Geom.density, Guide.xlabel("Parametric bootstrap estimates of β₁"))
+plot(@where(df, :type .== "β"), x = :value, Geom.density, Guide.xlabel("Parametric bootstrap estimates of β₁"))
 ```
 
-The `σs` property contains the estimates of the standard deviation of the random effects in a hierarchical format.
+A density plot of the estimates of the standard deviation of the random effects is obtained as
 ```@example Main
-typeof(samp.σs)
-```
-
-This is to allow for random effects associated with more than one grouping factor.
-If we only have one grouping factor for random effects, which is the case here, we can use the `first` extractor, as in
-```@example Main
-first(samp.σs)
-```
-or, to carry this one step further,
-```@example Main
-plot(x=first.(first(samp.σs)), Geom.density,
+σbatch = @where(df, :type .== "σ", :group .== "batch").value
+plot(x = σbatch, Geom.density,
     Guide.xlabel("Parametric bootstrap estimates of σ₁"))
 ```
 
@@ -76,8 +72,21 @@ Although this mode appears to be diffuse, this is an artifact of the way that de
 In fact, it is a pulse, as can be seen from a histogram.
 
 ```@example Main
-plot(x=first.(first(samp.σs)), Geom.histogram,
+plot(x = σbatch, Geom.histogram,
     Guide.xlabel("Parametric bootstrap estimates of σ₁"))
+```
+
+The bootstrap sample can be used to generate intervals that cover a certain percentage of the bootstrapped values.
+We refer to these as "coverage intervals", similar to a confidence interval.
+The shortest such intervals, obtained with the `shortestcovint` extractor, correspond to a highest posterior density interval in Bayesian inference.
+
+```@docs
+shortestcovint
+```
+
+We generate these for all random and fixed effects:
+```@example Main
+by(df, [:type, :group, :names], interval = :value => shortestcovint)
 ```
 
 A value of zero for the standard deviation of the random effects is an example of a *singular* covariance.
@@ -95,18 +104,18 @@ m2 = fit(
 ```
 ```@example Main
 samp2 = parametricbootstrap(rng, 10_000, m2, use_threads=true);
+df2 = DataFrame(samp2.allpars);
+first(df2, 10)
 ```
 the singularity can be exhibited as a standard deviation of zero or as a correlation of $\pm1$.
-The `σρs` property of the sample is a vector of named tuples
+
 ```@example Main
-σρ = first(samp2.σρs);
-typeof(σρ)
+by(df2, [:type,:group,:names], interval = :value=>shortestcovint)
 ```
-where the first element of the tuple is itself a tuple of standard deviations and the second (also the last) element of the tuple is the correlation.
 
 A histogram of the estimated correlations from the bootstrap sample has a spike at `+1`.
 ```@example Main
-ρs = first.(last.(σρ))
+ρs = @where(df2, :type .== "ρ", :group .== "subj").value
 plot(x = ρs, Geom.histogram,
     Guide.xlabel("Parametric bootstrap samples of correlation of random effects"))
 ```
@@ -122,24 +131,15 @@ sum(ρs .≈ -1)
 
 Furthermore there are even a few cases where the estimate of the standard deviation of the random effect for the intercept is zero.
 ```@example Main
-sum(first.(first.(first.(σρ))) .≈ 0)
+σs = @where(df2, :type .== "σ", :group .== "subj", :names .== "(Intercept)").value 
+sum(σs .≈ 0)
 ```
 
 There is a general condition to check for singularity of an estimated covariance matrix or matrices in a bootstrap sample.
 The parameter optimized in the estimation is `θ`, the relative covariance parameter.
 Some of the elements of this parameter vector must be non-negative and, when one of these components is approximately zero, one of the covariance matrices will be singular.
 
-The boundary values are available as
-```@example Main
-samp2.m.optsum.lowerbd
-```
-so the check on singularity becomes
-```@example Main
-sum(θ -> any(θ .≈ samp2.m.optsum.lowerbd), samp2.θ)
-```
-
 The `issingular` method for a `LinearMixedModel` object that tests if a parameter vector `θ` corresponds to a boundary or singular fit.
-The default value of `θ` is that from the model but another value can be given as the second argument.
 
 This operation is encapsulated in a method for the `issingular` function.
 ```@example Main

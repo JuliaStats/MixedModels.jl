@@ -28,7 +28,10 @@ describe(dyestuff)
 
 ### Models with simple, scalar random effects
 
-The formula language in *Julia* is similar to that in *R* which is based on (Wilkinson and Rogers [1973](https://dx.doi.org/10.2307/2346786)). However, in Julia the formula must be enclosed in a call to the `@formula` macro.
+The formula language in *Julia* is similar to that in *R* which is based on (Wilkinson and Rogers [1973](https://dx.doi.org/10.2307/2346786)). In Julia a formula must be enclosed in a call to the `@formula` macro.
+```@docs
+@formula
+```
 
 A basic model with simple, scalar random effects for the levels of `batch` (the batch of an intermediate product, in this case) is declared and fit as
 

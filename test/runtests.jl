@@ -1,4 +1,4 @@
-using Feather, MixedModels
+using MixedModels
 
 include("utilities.jl")
 include("statschol.jl")

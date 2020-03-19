@@ -21,7 +21,7 @@ Summary of an `NLopt` optimization
 * `nAGQ`: number of adaptive Gauss-Hermite quadrature points in deviance evaluation for GLMMs
 * `REML`: use the REML criterion for LMM fits
 
-The latter field doesn't really belong here but it has to be in a mutable struct in case it is changed.
+The latter two fields are model characteristics and not related directly to the `NLopt` package or algorithms.
 """
 mutable struct OptSummary{T<:AbstractFloat}
     initial::Vector{T}

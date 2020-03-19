@@ -159,7 +159,7 @@ For this model the matrix $\bf Z$ is the same as that of model `fm2` but the dia
 t31.λ
 MixedModels.getθ(t31)
 ```
-Random-effects terms with distinct grouping factors generate distinct elements of the `trms` member of the `LinearMixedModel` object.
+Random-effects terms with distinct grouping factors generate distinct elements of the `allterms` field of the `LinearMixedModel` object.
 Multiple `ReMat` objects are sorted by decreasing numbers of random effects.
 ```@example Main
 penicillin = MixedModels.dataset(:penicillin)
@@ -193,6 +193,30 @@ object, which is the `optsum` member of the `LinearMixedModel`.
 ```@example Main
 fm2.optsum
 ```
+
+## A blocked Cholesky factor
+
+A `LinearMixedModel` object contains two blocked matrices; a symmetric matrix `A` (only the lower triangle is stored) and a lower-triangular `L` which is the lower Cholesky factor of the updated and inflated `A`.
+```@docs
+describeblocks
+```
+shows the structure of the blocks
+```@example Main
+describeblocks(fm2)
+```
+
+The operation of installing a new value of the variance parameters, `θ`, and updating `L`
+```@docs
+setθ!
+updateL!
+```
+is the central step in evaluating the objective (negative twice the log-likelihood).
+
+Typically, the (1,1) block is the largest block in `A` and `L` and it has a special form, either `Diagonal` or
+```@docs
+UniformBlockDiagonal
+```
+providing a compact representation and fast matrix multiplication or solutions of linear systems of equations.
 
 ### Modifying the optimization process
 

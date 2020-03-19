@@ -1,4 +1,4 @@
-using BlockArrays, DataFrames, Feather, LinearAlgebra, MixedModels, NamedArrays
+using BlockArrays, DataFrames, LinearAlgebra, MixedModels, NamedArrays
 using Random, SparseArrays, Statistics, Tables, Test
 
 const LMM = LinearMixedModel
@@ -342,12 +342,14 @@ end
     bsamp = parametricbootstrap(100, fm, use_threads=false)
     @test isa(propertynames(bsamp), Vector{Symbol})
     @test length(bsamp.objective) == 100
-    @test keys(first(bsamp.bstr)) == (:objective, :σ, :β, :θ)
-    @test isa(bsamp.model, LinearMixedModel)
-    @test isa(bsamp.σs, NamedTuple)
-    @test isa(bsamp.σρs, NamedTuple)
-    @test length(bsamp.σs) == 1
-    @test shortestcovint(bsamp.σ) ≈ [48.2551828768727, 81.85810781858969] rtol = 1.e-4
+    @test keys(first(bsamp.bstr)) == (:objective, :σ, :β, :se, :θ)
+    @test isa(bsamp.σs, Vector{<:NamedTuple})
+    @test length(bsamp.σs) == 100
+    allpars = DataFrame(bsamp.allpars)
+    @test isa(allpars, DataFrame)
+    cov = shortestcovint(bsamp.σ)
+    @test first(cov) ≈ 48.2551828768727 rtol = 1.e-4
+    @test last(cov) ≈ 81.85810781858969 rtol = 1.e-4
 
     bsamp_threaded = parametricbootstrap(MersenneTwister(1234321), 100, fm, use_threads=true)
     # even though it's bad practice with floating point, exact equality should
@@ -356,7 +358,7 @@ end
     # guarantees will yield the same result
     @test sort(bsamp_threaded.σ) == sort(bsamp.σ)
     @test sort(bsamp_threaded.θ) == sort(bsamp.θ)
-    @test sort(bsamp_threaded.β) == sort(bsamp.β)
+    @test sort(columntable(bsamp_threaded.β).β) == sort(columntable(bsamp.β).β)
 end
 
 @testset "Rank deficient" begin

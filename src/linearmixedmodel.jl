@@ -448,7 +448,7 @@ function getθ!(v::AbstractVector{T}, m::LinearMixedModel{T}) where {T}
     v
 end
 
-function Base.getproperty(m::LinearMixedModel, s::Symbol)
+function Base.getproperty(m::LinearMixedModel{T}, s::Symbol) where {T}
     if s == :θ || s == :theta
         getθ(m)
     elseif s == :β || s == :beta
@@ -466,7 +466,7 @@ function Base.getproperty(m::LinearMixedModel, s::Symbol)
     elseif s == :b
         ranef(m)
     elseif s == :feterms
-        filter(Base.Fix2(isa, FeMat), getfield(m, :allterms))
+        convert(Vector{FeMat{T}}, filter(Base.Fix2(isa, FeMat), getfield(m, :allterms)))
     elseif s == :objective
         objective(m)
     elseif s == :corr
@@ -478,7 +478,7 @@ function Base.getproperty(m::LinearMixedModel, s::Symbol)
     elseif s == :pvalues
         ccdf.(Chisq(1), abs2.(coef(m) ./ stderror(m)))
     elseif s == :reterms
-        filter(Base.Fix2(isa, ReMat), getfield(m, :allterms))
+        convert(Vector{ReMat{T}}, filter(Base.Fix2(isa, ReMat), getfield(m, :allterms)))
     elseif s == :stderror
         stderror(m)
     elseif s == :u
@@ -790,9 +790,9 @@ the number of observations, the number of (non-singular) fixed-effects parameter
 the number of conditional modes (random effects), the number of grouping variables
 """
 function Base.size(m::LinearMixedModel)
-    n = size(first(m.feterms),1)
-    p = first(m.feterms).rank
-    n, p, sum(size.(m.reterms, 2)), length(m.reterms)
+    n, p = size(fetrm(m))
+    reterms = m.reterms
+    n, p, sum(size.(reterms, 2)), length(reterms)
 end
 
 """

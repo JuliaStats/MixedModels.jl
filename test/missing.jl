@@ -1,4 +1,4 @@
-using Feather, MixedModels, Test
+using MixedModels, Test
 
 # deepcopy because we're going to modify it
 slp = deepcopy(MixedModels.dataset(:sleepstudy))
