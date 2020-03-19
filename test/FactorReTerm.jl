@@ -1,5 +1,4 @@
 using DataFrames
-using Feather
 using LinearAlgebra
 using MixedModels
 using Random

@@ -1,4 +1,4 @@
-using MixedModels, Feather, Test
+using MixedModels, Test
 
 @testset "linear" begin
     m1 = fit(MixedModel, @formula(yield ~ 1 + (1|batch)), MixedModels.dataset(:dyestuff))
