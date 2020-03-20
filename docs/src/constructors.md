@@ -434,7 +434,7 @@ condVar
 condVar(fm1)
 ```
 
-## Case-wise diagnostics
+## Case-wise diagnostics and residual degrees of freedom
 
 The `leverage` values
 ```@docs
@@ -454,7 +454,34 @@ The sum of the leverage values is also the trace of the so-called "hat" matrix, 
 For a linear mixed model the sum of the leverage values will be between `p`, the rank of the fixed-effects model matrix, and `p + q` where `q` is the total number of random effects.
 This number does not represent a dimension (or "degrees of freedom") of a linear subspace of all possible fitted values because the projection is not an orthogonal projection.
 Nevertheless, it is a reasonable measure of the effective degrees of freedom of the model and `n - sum(leverage(m))` can be considered the effective residual degrees of freedom.
+
+For model `fm1` the dimensions are
 ```@example Main
 n, p, q, k = size(fm1)
+```
+which implies that the sum of the leverage values should be in the range [1, 7].
+The actual value is
+```@example Main
 sum(leverage(fm1))
 ```
+
+For model `fm2` the dimensions are
+```@example Main
+n, p, q, k = size(fm2)
+```
+providing a range of [2, 38] for the effective degrees of freedom for the model.
+The observed value is
+```@example Main
+sum(leverage(fm2))
+```
+
+When a model converges to a singular covariance, such as
+```@example Main
+fm3 = fit(MixedModel, @formula(yield ~ 1+(1|batch)), MixedModels.dataset(:dyestuff2))
+```
+the effective degrees of freedom is the lower bound.
+```@example Main
+sum(leverage(fm3))
+```
+
+
