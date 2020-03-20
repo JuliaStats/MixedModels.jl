@@ -503,6 +503,25 @@ Test whether the model `m` is singular if the parameter vector is `θ`.
 """
 issingular(m::LinearMixedModel, θ=m.θ) = any(isapprox.(lowerbd(m), θ))
 
+function StatsBase.leverage(m::LinearMixedModel{T}) where {T}
+    # This can be done more efficiently but reusing existing tools is easier.
+    # The i'th leverage value is obtained by replacing the response with the i'th
+    # basis vector, updating A and L, then taking the sum of squared values of the
+    # last row of L, excluding the last position.
+    yorig = copy(m.y)
+    l = length(m.allterms)
+    value = map(eachindex(yorig)) do i
+        fill!(m.y, zero(T))
+        m.y[i] = one(T)
+        reevaluateAend!(m)
+        updateL!(m)
+        sum(j -> sum(abs2, m.L[Block(l, j)]), 1:(l-1))
+    end
+    copyto!(m.y, yorig)
+    updateL!(reevaluateAend!(m))
+    value
+end
+
 function StatsBase.loglikelihood(m::LinearMixedModel)
     if m.optsum.REML
         throw(ArgumentError("loglikelihood not available for models fit by REML"))

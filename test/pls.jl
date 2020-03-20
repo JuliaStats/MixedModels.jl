@@ -1,5 +1,13 @@
-using BlockArrays, DataFrames, LinearAlgebra, MixedModels, NamedArrays
-using Random, SparseArrays, Statistics, Tables, Test
+using BlockArrays
+using DataFrames
+using LinearAlgebra
+using MixedModels
+using NamedArrays
+using Random
+using SparseArrays
+using Statistics
+using Tables
+using Test
 
 const LMM = LinearMixedModel
 
@@ -14,7 +22,7 @@ const LMM = LinearMixedModel
     @test fm1.θ == ones(1)
     fm1.θ = ones(1)
     @test fm1.θ == ones(1)
-#    @test_warn "Model has not been fit" show(fm1)
+    @test_logs (:warn, "Model has not been fit") show(fm1)
 
     @test objective(updateL!(setθ!(fm1, [0.713]))) ≈ 327.34216280955366
     MixedModels.describeblocks(IOBuffer(), fm1)
@@ -53,6 +61,8 @@ const LMM = LinearMixedModel
     @test fm1.X == ones(30,1)
     @test fm1.y == ds[!, :yield]
     @test cond(fm1) == ones(1)
+    @test first(leverage(fm1)) ≈ 0.15650534392640486 rtol=1.e-5
+    @test sum(leverage(fm1)) ≈ 4.695160317792145 rtol=1.e-5
     cm = coeftable(fm1)
     @test length(cm.rownms) == 1
     @test length(cm.colnms) == 4
@@ -199,6 +209,7 @@ end
     @test logdet(fm) ≈ 73.90337187545992 atol=0.001
     @test cond(fm) ≈ [4.175251] atol=0.0001
     @test loglikelihood(fm) ≈ -875.9696722323523
+    @test sum(leverage(fm)) ≈ 28.611525700136877 rtol=1.e-5
     σs = fm.σs
     @test length(σs) == 1
     @test keys(σs) == (:subj,)
