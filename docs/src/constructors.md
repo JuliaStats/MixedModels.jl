@@ -433,3 +433,28 @@ condVar
 ```@example Main
 condVar(fm1)
 ```
+
+## Case-wise diagnostics
+
+The `leverage` values
+```@docs
+leverage
+```
+```@example Main
+leverage(fm1)
+```
+are used in diagnostics for linear regression models to determine cases that exert a strong influence on their own predicted response.
+
+The documentation refers to a "projection". 
+For a linear model without random effects the fitted values are obtained by orthogonal projection of the response onto the column span of the model matrix and the sum of the leverage values is the dimension of this column span.
+That is, the sum of the leverage values is the rank of the model matrix and `n - sum(leverage(m))` is the degrees of freedom for residuals.
+The sum of the leverage values is also the trace of the so-called "hat" matrix, `H`.
+(The name "hat matrix" reflects the fact that $\hat{\mathbf{y}} = \mathbf{H} \mathbf{y}$.  That is, `H` puts a hat on `y`.)
+
+For a linear mixed model the sum of the leverage values will be between `p`, the rank of the fixed-effects model matrix, and `p + q` where `q` is the total number of random effects.
+This number does not represent a dimension (or "degrees of freedom") of a linear subspace of all possible fitted values because the projection is not an orthogonal projection.
+Nevertheless, it is a reasonable measure of the effective degrees of freedom of the model and `n - sum(leverage(m))` can be considered the effective residual degrees of freedom.
+```@example Main
+n, p, q, k = size(fm1)
+sum(leverage(fm1))
+```
