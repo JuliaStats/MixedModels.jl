@@ -484,4 +484,22 @@ the effective degrees of freedom is the lower bound.
 sum(leverage(fm3))
 ```
 
+Models for which the estimates of the variances of the random effects are large relative to the residual variance have effective degrees of freedom close to the upper bound.
+```@example Main
+fm4 = fit(MixedModel, @formula(diameter ~ 1+(1|plate)+(1|sample)),
+    MixedModels.dataset(:penicillin))
+```
+```@example Main
+sum(leverage(fm4))
+```
+
+Also, a model fit by the REML criterion generally has larger estimates of the variance components and hence a larger effective degrees of freedom.
+```@example Main
+fm4r = fit(MixedModel, @formula(diameter ~ 1+(1|plate)+(1|sample)),
+    MixedModels.dataset(:penicillin), REML=true)
+```
+```@example Main
+sum(leverage(fm4r))
+```
+
 
