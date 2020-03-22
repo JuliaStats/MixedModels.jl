@@ -433,3 +433,73 @@ condVar
 ```@example Main
 condVar(fm1)
 ```
+
+## Case-wise diagnostics and residual degrees of freedom
+
+The `leverage` values
+```@docs
+leverage
+```
+```@example Main
+leverage(fm1)
+```
+are used in diagnostics for linear regression models to determine cases that exert a strong influence on their own predicted response.
+
+The documentation refers to a "projection". 
+For a linear model without random effects the fitted values are obtained by orthogonal projection of the response onto the column span of the model matrix and the sum of the leverage values is the dimension of this column span.
+That is, the sum of the leverage values is the rank of the model matrix and `n - sum(leverage(m))` is the degrees of freedom for residuals.
+The sum of the leverage values is also the trace of the so-called "hat" matrix, `H`.
+(The name "hat matrix" reflects the fact that $\hat{\mathbf{y}} = \mathbf{H} \mathbf{y}$.  That is, `H` puts a hat on `y`.)
+
+For a linear mixed model the sum of the leverage values will be between `p`, the rank of the fixed-effects model matrix, and `p + q` where `q` is the total number of random effects.
+This number does not represent a dimension (or "degrees of freedom") of a linear subspace of all possible fitted values because the projection is not an orthogonal projection.
+Nevertheless, it is a reasonable measure of the effective degrees of freedom of the model and `n - sum(leverage(m))` can be considered the effective residual degrees of freedom.
+
+For model `fm1` the dimensions are
+```@example Main
+n, p, q, k = size(fm1)
+```
+which implies that the sum of the leverage values should be in the range [1, 7].
+The actual value is
+```@example Main
+sum(leverage(fm1))
+```
+
+For model `fm2` the dimensions are
+```@example Main
+n, p, q, k = size(fm2)
+```
+providing a range of [2, 38] for the effective degrees of freedom for the model.
+The observed value is
+```@example Main
+sum(leverage(fm2))
+```
+
+When a model converges to a singular covariance, such as
+```@example Main
+fm3 = fit(MixedModel, @formula(yield ~ 1+(1|batch)), MixedModels.dataset(:dyestuff2))
+```
+the effective degrees of freedom is the lower bound.
+```@example Main
+sum(leverage(fm3))
+```
+
+Models for which the estimates of the variances of the random effects are large relative to the residual variance have effective degrees of freedom close to the upper bound.
+```@example Main
+fm4 = fit(MixedModel, @formula(diameter ~ 1+(1|plate)+(1|sample)),
+    MixedModels.dataset(:penicillin))
+```
+```@example Main
+sum(leverage(fm4))
+```
+
+Also, a model fit by the REML criterion generally has larger estimates of the variance components and hence a larger effective degrees of freedom.
+```@example Main
+fm4r = fit(MixedModel, @formula(diameter ~ 1+(1|plate)+(1|sample)),
+    MixedModels.dataset(:penicillin), REML=true)
+```
+```@example Main
+sum(leverage(fm4r))
+```
+
+
