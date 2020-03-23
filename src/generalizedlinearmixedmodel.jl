@@ -554,7 +554,8 @@ function Base.show(io::IO, m::GeneralizedLinearMixedModel)
     println(io, "  ", m.LMM.formula)
     println(io, "  Distribution: ", Distribution(m.resp))
     println(io, "  Link: ", GLM.Link(m.resp), "\n")
-    println(io, string("  Deviance: ", @sprintf("%.4f", deviance(m, nAGQ))), "\n")
+    println(io, "  Deviance: ", Ryu.writefixed(deviance(m, nAGQ), 4))
+    println(io)
 
     show(io, VarCorr(m))
 

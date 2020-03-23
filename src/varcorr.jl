@@ -54,7 +54,7 @@ function Base.show(io::IO, vc::VarCorr)
             for l = 1:(j-1)
                 ρind += 1
                 ρval = ρ[ρind]
-                ρval === -0.0 ? write(io, "   .  ") : @printf(io, "%6.2f", ρval)
+                ρval === -0.0 ? write(io, "   .  ") : write(io, lpad(Ryu.writefixed(ρval, 2, true), 6))
             end
             println(io)
             firstrow = false

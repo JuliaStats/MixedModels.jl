@@ -124,16 +124,16 @@ function Base.show(io::IO, lrt::LikelihoodRatioTest; digits=2)
 
 
     outrows[2, :] = ["[1]",
-                    @sprintf("%.0d", lrt.dof[1]),
-                    @sprintf("%.4f", lrt.deviance[1]),
+                    string(lrt.dof[1]),
+                    Ryu.writefixed(lrt.deviance[1], 4),
                     " "," ", " "]
 
     for i in 2:nr
         outrows[i+1, :] = ["[$i]",
-                           @sprintf("%.0d", lrt.dof[i]),
-                           @sprintf("%.4f", lrt.deviance[i]),
-                           @sprintf("%.4f", Δdev[i-1]),
-                           @sprintf("%.0d", Δdf[i-1]),
+                           string(lrt.dof[i]),
+                           Ryu.writefixed(lrt.deviance[i], 4),
+                           Ryu.writefixed(Δdev[i-1], 4),
+                           string(Δdf[i-1]),
                            string(StatsBase.PValue(lrt.pvalues[i-1]))]
     end
     colwidths = length.(outrows)

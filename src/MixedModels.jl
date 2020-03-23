@@ -21,7 +21,7 @@ using StatsModels
 using Tables
 
 using LinearAlgebra: BlasFloat, BlasReal, HermOrSym, PosDefException, copytri!
-using Printf: @printf, @sprintf
+using Base: Ryu
 using GLM: Link, canonicallink
 
 using StatsFuns: log2π
