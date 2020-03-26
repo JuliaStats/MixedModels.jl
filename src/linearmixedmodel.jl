@@ -252,14 +252,15 @@ function createAL(allterms::Vector{Union{ReMat{T},FeMat{T}}}) where {T}
 end
 
 """
-    describeblocks(io::IO, m::MixedModel)
-    describeblocks(m::MixedModel)
+    describeblocks(io::IO, m::LinearMixedModel)
+    describeblocks(m::LinearMixedModel)
 
 Describe the types and sizes of the blocks in the lower triangle of `m.A` and `m.L`.
 """
 function describeblocks(io::IO, m::LinearMixedModel)
     A = m.A
     L = m.L
+    println(io, "Blk:         A type                dim                L type")
     for i = 1:length(m.allterms), j = 1:i
         Aij = A[Block(i,j)]
         println(
@@ -268,11 +269,11 @@ function describeblocks(io::IO, m::LinearMixedModel)
             ",",
             j,
             ": ",
-            typeof(Aij),
+            lpad(shorttype(Aij), 21),
             " ",
-            size(Aij),
+            cpad(string(size(Aij)), 20),
             " ",
-            typeof(L[Block(i, j)]),
+            shorttype(L[Block(i, j)]),
         )
     end
 end
