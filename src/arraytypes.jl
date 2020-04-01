@@ -74,8 +74,6 @@ function Base.size(A::UniformBlockDiagonal)
     (l * m, l * n)
 end
 
-shorttype(::UniformBlockDiagonal) = "UniformBlockDiagonal"
-
 """
     BlockedSparse{Tv,S,P}
 
@@ -112,5 +110,3 @@ function Base.copyto!(L::BlockedSparse{T}, A::SparseMatrixCSC{T}) where {T}
     copyto!(nonzeros(L.cscmat), nonzeros(A))
     L
 end
-
-shorttype(::BlockedSparse) = "BlockedSparse"

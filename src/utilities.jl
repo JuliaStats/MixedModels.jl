@@ -260,7 +260,3 @@ function Base.show(io::IO, pca::PCA;
 
     nothing
 end
-
-shorttype(::Matrix) = "Dense"
-shorttype(::SparseMatrixCSC) = "Sparse"
-shorttype(::Diagonal) = "Diagonal"
