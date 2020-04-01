@@ -49,9 +49,10 @@ function Base.show(io::IO, ::MIME"text/plain", b::BlockDescription)
         for j in 1:i
             print(io, cpad(b.ALtypes[i, j], colwidth))
         end
-        println()
+        println(io)
     end
 end
+Base.show(io::IO, b::BlockDescription) = show(io, MIME"text/plain"(), b)
 
-@deprecate describeblocks(io, m) show(io, MIME"text/plain", BlockDescription(m))
-@deprecate describeblocks(m) show(stdout, MIME"text/plain", BlockDescription(m))
+@deprecate describeblocks(io, m) show(io, BlockDescription(m))
+@deprecate describeblocks(m) show(stdout, BlockDescription(m))

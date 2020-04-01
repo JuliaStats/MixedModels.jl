@@ -54,7 +54,13 @@ fits = Dict(k => fit.(MixedModel, forms[k], Ref(MixedModels.dataset[k])) for k i
     @test_logs (:warn, "Model has not been fit") show(fm1)
 
     @test objective(updateL!(setθ!(fm1, [0.713]))) ≈ 327.34216280955366
-    MixedModels.describeblocks(IOBuffer(), fm1)
+    @test_deprecated MixedModels.describeblocks(IOBuffer(), fm1)
+    
+    io = IOBuffer()
+    show(io, BlockDescription(fm1))
+    @test_broken countlines(io) == 3
+    output = String(take!(io))
+    @test startswith(output, "rows:")
 
     fit!(fm1);
     @test :θ in propertynames(fm1)
