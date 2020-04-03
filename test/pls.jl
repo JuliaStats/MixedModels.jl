@@ -58,7 +58,7 @@ fits = Dict(k => fit.(MixedModel, forms[k], Ref(MixedModels.dataset[k])) for k i
     
     io = IOBuffer()
     show(io, BlockDescription(fm1))
-    @test_broken countlines(io) == 3
+    @test_broken countlines(io) == 3  # probably needs seekstart(io) but that will break the next test
     output = String(take!(io))
     @test startswith(output, "rows:")
 
