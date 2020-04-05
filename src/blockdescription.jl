@@ -34,6 +34,8 @@ function BlockDescription(m::LinearMixedModel)
      )
 end
 
+BlockDescription(m::GeneralizedLinearMixedModel) = BlockDescription(m.LMM)
+
 shorttype(::UniformBlockDiagonal,::UniformBlockDiagonal) = "BlkDiag"
 shorttype(::UniformBlockDiagonal,::Matrix) = "BlkDiag/Dense"
 shorttype(::SparseMatrixCSC,::BlockedSparse) = "Sparse"
