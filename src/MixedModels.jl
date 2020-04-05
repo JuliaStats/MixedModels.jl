@@ -35,6 +35,7 @@ export @formula,
        Bernoulli,
        Binomial,
        Block,
+       BlockDescription,
        BlockedSparse,
        DummyCoding,
        EffectsCoding,
@@ -150,5 +151,6 @@ include("linalg/logdet.jl")
 include("linalg.jl")
 include("simulate.jl")
 include("bootstrap.jl")
+include("blockdescription.jl")
 
 end # module

@@ -251,32 +251,6 @@ function createAL(allterms::Vector{Union{ReMat{T},FeMat{T}}}) where {T}
     A, L
 end
 
-"""
-    describeblocks(io::IO, m::MixedModel)
-    describeblocks(m::MixedModel)
-
-Describe the types and sizes of the blocks in the lower triangle of `m.A` and `m.L`.
-"""
-function describeblocks(io::IO, m::LinearMixedModel)
-    A = m.A
-    L = m.L
-    for i = 1:length(m.allterms), j = 1:i
-        Aij = A[Block(i,j)]
-        println(
-            io,
-            i,
-            ",",
-            j,
-            ": ",
-            typeof(Aij),
-            " ",
-            size(Aij),
-            " ",
-            typeof(L[Block(i, j)]),
-        )
-    end
-end
-describeblocks(m::MixedModel) = describeblocks(stdout, m)
 
 StatsBase.deviance(m::MixedModel) = objective(m)
 
