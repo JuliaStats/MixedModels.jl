@@ -180,8 +180,6 @@ end
 
 issingular(bsamp::MixedModelBootstrap) = map(θ -> any(θ .≈ bsamp.lowerbd), bsamp.θ)
 
-ppoints(n::Integer) = inv(2n):inv(n):1
-
 function Base.propertynames(bsamp::MixedModelBootstrap)
     [:allpars, :objective, :σ, :β, :θ, :σs, :λ, :inds, :lowerbd, :bstr, :fcnames]
 end

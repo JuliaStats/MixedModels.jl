@@ -506,11 +506,11 @@ end
 lowerbd(m::LinearMixedModel) = m.optsum.lowerbd
 
 function StatsBase.modelmatrix(m::LinearMixedModel)
-    fetrm = first(m.feterms)
-    if fetrm.rank == size(fetrm, 2)
-        fetrm.x
+    fe = fetrm(m)
+    if fe.rank == size(fe, 2)
+        fe.x
     else
-        fetrm.x[:, invperm(fetrm.piv)]
+        fe.x[:, invperm(fe.piv)]
     end
 end
 
