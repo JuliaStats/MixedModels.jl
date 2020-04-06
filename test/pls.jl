@@ -360,8 +360,8 @@ end
 
 @testset "d3" begin
     fm = first(fits[:d3])
-    @test pwrss(fm) ≈ 5.30480294295329e6 rtol=1.e-6
-    @test objective(fm) ≈ 884957.5540213 rtol = 1e-6
+    @test pwrss(fm) ≈ 5.30480294295329e6 rtol=1.e-4
+    @test objective(fm) ≈ 884957.5540213 rtol = 1e-4
     @test coef(fm) ≈ [0.4991229873, 0.31130780953] atol = 1.e-4
     @test length(ranef(fm)) == 3
 
