@@ -9,6 +9,8 @@ using StatsModels
 using Tables
 using Test
 
+using MixedModels: dataset, likelihoodratiotest
+
 const fms = Dict(
     :dyestuff => [@formula(yield ~ 1 + (1|batch))],
     :dyestuff2 => [@formula(yield ~ 1 + (1|batch))],
@@ -35,12 +37,19 @@ const fms = Dict(
     ],
 )
 
-fits = Dict(k => fit.(MixedModel, fms[k], Ref(MixedModels.dataset(k))) for k in keys(fms))
+const fittedmodels = Dict{Symbol,Vector{LinearMixedModel}}();
+function models(nm::Symbol)
+    if haskey(fittedmodels, nm)
+        fittedmodels[nm]
+    else
+        fittedmodels[nm] = fit.(MixedModel, fms[nm], Ref(dataset(nm)))
+    end
+end
 
 const io = IOBuffer()
 
 @testset "Dyestuff" begin
-    fm1 = first(fits[:dyestuff])
+    fm1 = only(models(:dyestuff))
 
     @test length(fm1.allterms) == 3
     @test size(fm1.reterms) == (1, )
@@ -132,7 +141,7 @@ end
 
 @testset "Dyestuff2" begin
     ds2 = MixedModels.dataset(:dyestuff2)
-    fm = first(fits[:dyestuff2])
+    fm = only(models(:dyestuff2))
     @test lowerbd(fm) == zeros(1)
     show(IOBuffer(), fm)
     @test fm.θ ≈ zeros(1)
@@ -147,7 +156,7 @@ end
 end
 
 @testset "penicillin" begin
-    fm = first(fits[:penicillin])
+    fm = only(models(:penicillin))
     @test size(fm) == (144, 1, 30, 2)
     @test fm.optsum.initial == ones(2)
     @test lowerbd(fm) == zeros(2)
@@ -179,7 +188,7 @@ end
 end
 
 @testset "pastes" begin
-    fm = last(fits[:pastes])
+    fm = last(models(:pastes))
     @test size(fm) == (60, 1, 40, 2)
     @test fm.optsum.initial == ones(2)
     @test lowerbd(fm) == zeros(2)
@@ -201,13 +210,13 @@ end
     @test "Sparse" in tokens
     @test "Diagonal" in tokens
 
-    lrt = MixedModels.likelihoodratiotest(fits[:pastes]...)
+    lrt = likelihoodratiotest(models(:pastes)...)
     @test length(lrt.deviance) == length(lrt.formulas) == length(lrt.models )== 2
     @test first(lrt.tests.pvalues) ≈ 0.5233767966395597 atol=0.0001
 end
 
 @testset "InstEval" begin
-    fm1 = first(fits[:insteval])
+    fm1 = first(models(:insteval))
     @test size(fm1) == (73421, 2, 4114, 3)
     @test fm1.optsum.initial == ones(3)
     @test lowerbd(fm1) == zeros(3)
@@ -233,13 +242,13 @@ end
     @test "Sparse/Dense" in tokens
     @test "Diag/Dense" in tokens
 
-    fm2 = last(fits[:insteval])
+    fm2 = last(models(:insteval))
     @test objective(fm2) ≈ 237585.5534151694 atol=0.001
     @test size(fm2) == (73421, 28, 4100, 2)
 end
 
 @testset "sleep" begin
-    fm = last(fits[:sleepstudy])
+    fm = last(models(:sleepstudy))
     @test lowerbd(fm) == [0.0, -Inf, 0.0]
     A11 = fm.A[Block(1,1)]
     @test isa(A11, UniformBlockDiagonal{Float64})
@@ -294,7 +303,7 @@ end
     @test fmnc.θ == [fm.θ[1], fm.θ[3]]
     @test lowerbd(fmnc) == zeros(2)
 
-    fmnc = fits[:sleepstudy][2]
+    fmnc = models(:sleepstudy)[2]
     @test size(fmnc) == (180,2,36,1)
     @test fmnc.optsum.initial == ones(2)
     @test lowerbd(fmnc) == zeros(2)
@@ -348,18 +357,18 @@ end
     @test iszero(σρ.subj.ρ[46])
     @test σρ.subj.ρ[46] === -0.0
 
-    show(io, BlockDescription(first(fits[:sleepstudy])))
+    show(io, BlockDescription(first(models(:sleepstudy))))
     @test countlines(seekstart(io)) == 3
     @test "Diagonal" in Set(split(String(take!(io)), r"\s+"))
 
-    show(io, BlockDescription(last(fits[:sleepstudy])))
+    show(io, BlockDescription(last(models(:sleepstudy))))
     @test countlines(seekstart(io)) == 3
     @test "BlkDiag" in Set(split(String(take!(io)), r"\s+"))
 
 end
 
 @testset "d3" begin
-    fm = first(fits[:d3])
+    fm = only(models(:d3))
     @test pwrss(fm) ≈ 5.30480294295329e6 rtol=1.e-4
     @test objective(fm) ≈ 884957.5540213 rtol = 1e-4
     @test coef(fm) ≈ [0.4991229873, 0.31130780953] atol = 1.e-4
@@ -371,14 +380,14 @@ end
 end
 
 @testset "kb07" begin
-    pca = last(fits[:kb07]).PCA
+    pca = last(models(:kb07)).PCA
     @test keys(pca) == (:subj, :item)
-    @test issingular(last(fits[:kb07]))
+    @test issingular(last(models(:kb07)))
 end
 
 @testset "simulate!" begin
-    ds = MixedModels.dataset(:dyestuff)
-    fm = fit(MixedModel, @formula(yield ~ 1 + (1|batch)), ds)
+    ds = dataset(:dyestuff)
+    fm = only(models(:dyestuff))
     resp₀ = copy(response(fm))
     # type conversion of ints to floats
     simulate!(Random.MersenneTwister(1234321), fm, β=[1], σ=1)
@@ -457,6 +466,6 @@ end
 end
 
 @testset "coeftable" begin
-    ct = coeftable(first(fits[:dyestuff]));
+    ct = coeftable(only(models(:dyestuff)));
     @test [3,4] == [ct.teststatcol, ct.pvalcol]
 end
