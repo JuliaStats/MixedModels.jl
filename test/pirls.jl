@@ -1,4 +1,3 @@
-using LinearAlgebra
 using MixedModels
 using Test
 
