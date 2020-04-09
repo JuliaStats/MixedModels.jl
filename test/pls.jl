@@ -149,6 +149,7 @@ end
     @test stderror(fm) ≈ [0.6669857396443261]
     @test coef(fm) ≈ [5.6656]
     @test logdet(fm) ≈ 0.0
+    @test issingular(fm)
     refit!(fm, float(MixedModels.dataset(:dyestuff)[!, :yield]))
     @test objective(fm) ≈ 327.3270598811428 atol=0.001
 end
@@ -380,7 +381,6 @@ end
 @testset "kb07" begin
     pca = last(models(:kb07)).PCA
     @test keys(pca) == (:subj, :item)
-    @test issingular(last(models(:kb07)))
 end
 
 @testset "simulate!" begin

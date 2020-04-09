@@ -303,17 +303,15 @@ objective and the parameters are printed on stdout at each function evaluation.
 function fit!(m::LinearMixedModel{T}; verbose::Bool = false, REML::Bool = false) where {T}
     optsum = m.optsum
     opt = Opt(optsum)
-    feval = 0
     optsum.REML = REML
     function obj(x, g)
-        isempty(g) || error("gradient not defined")
-        feval += 1
+        isempty(g) || throw(ArgumentError("g should be empty for this objective"))
         val = objective(updateL!(setθ!(m, x)))
-        feval == 1 && (optsum.finitial = val)
-        verbose && println("f_", feval, ": ", round(val, digits = 5), " ", x)
+        verbose && println(round(val, digits = 5), " ", x)
         val
     end
     NLopt.min_objective!(opt, obj)
+    optsum.finitial = obj(optsum.initial, T[])
     fmin, xmin, ret = NLopt.optimize!(opt, copyto!(optsum.final, optsum.initial))
     ## check if small non-negative parameter values can be set to zero
     xmin_ = copy(xmin)
@@ -332,7 +330,7 @@ function fit!(m::LinearMixedModel{T}; verbose::Bool = false, REML::Bool = false)
     ## ensure that the parameter values saved in m are xmin
     updateL!(setθ!(m, xmin))
 
-    optsum.feval = feval
+    optsum.feval = opt.numevals
     optsum.final = xmin
     optsum.fmin = fmin
     optsum.returnvalue = ret
@@ -474,8 +472,10 @@ end
     issingular(m::LinearMixedModel, θ=m.θ)
 
 Test whether the model `m` is singular if the parameter vector is `θ`.
+
+Equality comparisons are used b/c small non-negative θ values are replaced by 0 in `fit!`.
 """
-issingular(m::LinearMixedModel, θ=m.θ) = any(isapprox.(lowerbd(m), θ))
+issingular(m::LinearMixedModel, θ=m.θ) = any(lowerbd(m) .== θ)
 
 function StatsBase.leverage(m::LinearMixedModel{T}) where {T}
     # This can be done more efficiently but reusing existing tools is easier.
