@@ -56,7 +56,6 @@ export @formula,
        RandomEffectsTerm,
        ReMat,
        SqrtLink,
-       TestData,
        UniformBlockDiagonal,
        VarCorr,
        
