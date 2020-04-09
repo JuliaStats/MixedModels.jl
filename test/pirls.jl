@@ -1,25 +1,32 @@
-using DataFrames
 using LinearAlgebra
 using MixedModels
 using Test
 
+using MixedModels: dataset
+
+const fms = Dict(
+    :cbpp => [@formula((incid/hsz) ~ 1 + period + (1|herd))],
+    :contra => [@formula(use ~ 1+age+abs2(age)+urban+livch+(1|urbdist))],
+    :grouseticks => [@formula(ticks ~ 1+year+ch+ (1|index) + (1|brood) + (1|location))],
+    :verbagg => [@formula(r2 ~ 1+anger+gender+btype+situ+(1|subj)+(1|item))],
+)
+
 @testset "contra" begin
-    contra = MixedModels.dataset(:contra)
-    contraform = @formula(use ~ 1+age+abs2(age)+urban+livch+(1|urbdist))
-    gm0 = fit(MixedModel, contraform, contra, Bernoulli(), fast=true);
+    contra = dataset(:contra)
+    gm0 = fit(MixedModel, only(fms[:contra]), contra, Bernoulli(), fast=true);
     @test gm0.lowerbd == zeros(1)
     @test isapprox(gm0.θ, [0.5720734451352923], atol=0.001)
-    @test isapprox(deviance(gm0,true), 2361.657188518064, atol=0.001)
-    gm1 = fit(MixedModel, contraform, contra, Bernoulli());
+    @test isapprox(deviance(gm0), 2361.657188518064, atol=0.001)
+    gm1 = fit(MixedModel, only(fms[:contra]), contra, Bernoulli());
     @test isapprox(gm1.θ, [0.573054], atol=0.005)
     @test lowerbd(gm1) == vcat(fill(-Inf, 7), 0.)
-    @test isapprox(deviance(gm1,true), 2361.54575, rtol=0.00001)
+    @test isapprox(deviance(gm1), 2361.54575, rtol=0.00001)
     @test isapprox(loglikelihood(gm1), -1180.77288, rtol=0.00001)
     @test dof(gm0) == length(gm0.β) + length(gm0.θ)
     @test nobs(gm0) == 1934
     fit!(gm0, fast=true, nAGQ=7)
     @test isapprox(deviance(gm0), 2360.9838, atol=0.001)
-    gm1 = fit(MixedModel, contraform, contra, Bernoulli(), nAGQ=7)
+    gm1 = fit(MixedModel, only(fms[:contra]), contra, Bernoulli(), nAGQ=7)
     @test isapprox(deviance(gm1), 2360.8760, atol=0.001)
     @test gm1.β == gm1.beta
     @test gm1.θ == gm1.theta
@@ -31,7 +38,6 @@ using Test
         @test length(MixedModels.rePCA(gm0)) == 1
         @test length(gm0.rePCA) == 1
     end
-    # gm0.βθ = vcat(gm0.β, gm0.theta)
     # the next three values are not well defined in the optimization
     #@test isapprox(logdet(gm1), 75.7217, atol=0.1)
     #@test isapprox(sum(abs2, gm1.u[1]), 48.4747, atol=0.1)
@@ -41,8 +47,8 @@ using Test
 end
 
 @testset "cbpp" begin
-    cbpp = MixedModels.dataset(:cbpp)
-    gm2 = fit(MixedModel, @formula((incid/hsz) ~ 1 + period + (1|herd)), cbpp, Binomial(), wts=float(cbpp.hsz))
+    cbpp = dataset(:cbpp)
+    gm2 = fit(MixedModel, only(fms[:cbpp]), cbpp, Binomial(), wts=float(cbpp.hsz))
     @test deviance(gm2,true) ≈ 100.09585619892968 atol=0.0001
     @test sum(abs2, gm2.u[1]) ≈ 9.723054788538546 atol=0.0001
     @test logdet(gm2) ≈ 16.90105378801136 atol=0.0001
@@ -53,22 +59,20 @@ end
 end
 
 @testset "verbagg" begin
-    gm3 = fit(MixedModel, @formula(r2 ~ 1+anger+gender+btype+situ+(1|subj)+(1|item)),
-        MixedModels.dataset(:verbagg), Bernoulli())
+    gm3 = fit(MixedModel, only(fms[:verbagg]), dataset(:verbagg), Bernoulli())
     @test deviance(gm3) ≈ 8151.40 rtol=1e-5
     @test lowerbd(gm3) == vcat(fill(-Inf, 6), zeros(2))
     @test fitted(gm3) == predict(gm3)
     # these two values are not well defined at the optimum
-    @test isapprox(sum(x -> sum(abs2, x), gm3.u), 273.29266717430795, rtol=1e-3)
-    @test sum(gm3.resp.devresid) ≈ 7156.547357801238 rtol=1e-4
+    @test isapprox(sum(x -> sum(abs2, x), gm3.u), 273.29646346940785, rtol=1e-3)
+    @test sum(gm3.resp.devresid) ≈ 7156.550941446312 rtol=1e-4
 end
 
 @testset "grouseticks" begin
     center(v::AbstractVector) = v .- (sum(v) / length(v))
-    grouseticks = MixedModels.dataset(:grouseticks)
+    grouseticks = dataset(:grouseticks)
     grouseticks.ch = center(grouseticks.height)
-    gm4 = fit(MixedModel, @formula(ticks ~ 1+year+ch+ (1|index) + (1|brood) + (1|location)),
-        grouseticks, Poisson(), fast=true)  # fails in pirls! with fast=false
+    gm4 = fit(MixedModel, only(fms[:grouseticks]), grouseticks, Poisson(), fast=true)  # fails in pirls! with fast=false
     @test isapprox(deviance(gm4), 851.4046, atol=0.001)
     # these two values are not well defined at the optimum
     #@test isapprox(sum(x -> sum(abs2, x), gm4.u), 196.8695297987013, atol=0.1)
