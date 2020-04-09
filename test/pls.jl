@@ -39,10 +39,8 @@ const fms = Dict(
 
 const fittedmodels = Dict{Symbol,Vector{LinearMixedModel}}();
 function models(nm::Symbol)
-    if haskey(fittedmodels, nm)
-        fittedmodels[nm]
-    else
-        fittedmodels[nm] = fit.(MixedModel, fms[nm], Ref(dataset(nm)))
+    get!(fittedmodels, nm) do
+        fit.(MixedModel, fms[nm], Ref(dataset(nm)))
     end
 end
 
