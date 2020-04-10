@@ -53,7 +53,7 @@ Note that nesting of the models is not checked.  It is incumbent on the user to 
 """
 function likelihoodratiotest(m::LinearMixedModel...)
     allequal(getproperty.(getproperty.(m,:optsum),:REML)) ||
-        throw(ArgumentError("Models must all be fit with the same objective (i.e. alll ML or all REML)"))
+        throw(ArgumentError("Models must all be fit with the same objective (i.e. all ML or all REML)"))
     if any(getproperty.(getproperty.(m,:optsum),:REML))
         allequal(coefnames.(m))  ||
                 throw(ArgumentError("Likelihood-ratio tests for REML-fitted models are only valid when the fixed-effects specifications are identical"))
