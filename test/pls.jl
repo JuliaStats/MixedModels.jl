@@ -163,7 +163,7 @@ end
     @test objective(fm) ≈ 332.18834867227616 atol=0.001
     @test coef(fm) ≈ [22.97222222222222] atol=0.001
     @test fixef(fm) ≈ [22.97222222222222] atol=0.001
-    @test coef(fm)[1] ≈ mean(MixedModels.dataset(:penicillin).diameter)
+    @test coef(fm)[1] ≈ mean(dataset(:penicillin).diameter)
     @test stderror(fm) ≈ [0.7445960346851368] atol=0.0001
     @test fm.θ ≈ [1.5375772376554968, 3.219751321180035] atol=0.001
     @test first(std(fm)) ≈ [0.8455645948223015] atol=0.0001
