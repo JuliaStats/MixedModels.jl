@@ -327,7 +327,7 @@ end
     @test ρ === -0.0   # test that systematic zero correlations are returned as -0.0
 
     MixedModels.likelihoodratiotest(fm, fmnc)
-    slp = MixedModels.dataset(:sleepstudy)
+    slp = dataset(:sleepstudy)
     fmrs = fit(MixedModel, @formula(reaction ~ 1+days + (0+days|subj)), slp);
     @test objective(fmrs) ≈ 1774.080315280528 rtol=0.00001
     @test fmrs.θ ≈ [0.24353985679033105] rtol=0.00001
