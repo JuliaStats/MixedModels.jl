@@ -335,7 +335,7 @@ function fit!(m::LinearMixedModel{T}; verbose::Bool = false, REML::Bool = false)
     optsum.fmin = fmin
     optsum.returnvalue = ret
     ret == :ROUNDOFF_LIMITED && @warn("NLopt was roundoff limited")
-    if ret ∈ [:FAILURE, :INVALID_ARGS, :OUT_OF_MEMORY, :FORCED_STOP, :MAXFEVAL_REACHED]
+    if ret ∈ [:FAILURE, :INVALID_ARGS, :OUT_OF_MEMORY, :FORCED_STOP, :MAXEVAL_REACHED]
         @warn("NLopt optimization failure: $ret")
     end
     m
