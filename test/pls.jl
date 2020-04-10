@@ -76,6 +76,7 @@ const io = IOBuffer()
     @test aic(fm1) ≈ 333.3270598811394 atol=0.001
     @test bic(fm1) ≈ 337.5306520261259 atol=0.001
     @test fixef(fm1) ≈ [1527.5]
+    @test dispersion_parameter(fm1)
     @test first(first(fm1.σs)) ≈ 37.26034462135931 atol=0.0001
     @test fm1.β ≈ [1527.5]
     @test dof(fm1) == 3
@@ -135,6 +136,14 @@ const io = IOBuffer()
 
     print(io, fm1)
     @test startswith(String(take!(io)), "Linear mixed model fit by REML")
+
+    fm1.optsum.maxfeval = 5
+    @test_logs (:warn, "NLopt optimization failure: MAXEVAL_REACHED") fit!(fm1)
+    fm1.optsum.maxfeval = -1
+
+    vc = fm1.vcov
+    @test isa(vc, Matrix{Float64})
+    @test only(vc) ≈ 409.79495436473167 rtol=1.e-6
 end
 
 @testset "Dyestuff2" begin
@@ -170,6 +179,8 @@ end
     @test std(fm)[2] ≈ [1.770647779277388] atol=0.0001
     @test varest(fm) ≈ 0.3024263987592062 atol=0.0001
     @test logdet(fm) ≈ 95.74614821367786 atol=0.001
+
+    @test_throws ArgumentError condVar(fm)
 
     rfu = ranef(fm, uscale=true)
     @test length(rfu) == 2
@@ -327,7 +338,7 @@ end
     @test ρ === -0.0   # test that systematic zero correlations are returned as -0.0
 
     MixedModels.likelihoodratiotest(fm, fmnc)
-    slp = dataset(:sleepstudy)
+    slp = MixedModels.dataset(:sleepstudy)
     fmrs = fit(MixedModel, @formula(reaction ~ 1+days + (0+days|subj)), slp);
     @test objective(fmrs) ≈ 1774.080315280528 rtol=0.00001
     @test fmrs.θ ≈ [0.24353985679033105] rtol=0.00001
@@ -438,7 +449,7 @@ end
 @testset "Rank deficient" begin
     rng = MersenneTwister(0);
     x = rand(rng, 100);
-    data = columntable((x = x, x2 = 1.5 .* x, y = rand(rng, 100), z = repeat('A':'T', 5)))
+    data = (x = x, x2 = 1.5 .* x, y = rand(rng, 100), z = repeat('A':'T', 5))
     model = fit(MixedModel, @formula(y ~ x + x2 + (1|z)), data)
     @test length(fixef(model)) == 2
     @test rank(model) == 2
@@ -450,6 +461,8 @@ end
     @test last(coef(model)) == -0.0
     stde = MixedModels.stderror!(zeros(3), model)
     @test isnan(last(stde))
+    vc = vcov(model)
+    @test isnan(last(vc))
 
     @test size(StatsModels.modelmatrix(model), 2) == 3
     # check preserving of name ordering in coeftable and placement of
