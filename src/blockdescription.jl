@@ -43,6 +43,8 @@ shorttype(::Diagonal,::Diagonal) = "Diagonal"
 shorttype(::Diagonal,::Matrix) = "Diag/Dense"
 shorttype(::Matrix,::Matrix) = "Dense"
 shorttype(::SparseMatrixCSC,::SparseMatrixCSC) = "Sparse"
+shorttype(::SparseMatrixCSC,::Matrix) = "Sparse/Dense"
+
 
 function Base.show(io::IO, ::MIME"text/plain", b::BlockDescription)
     rowwidth = max(maximum(ndigits, b.blkrows) + 1, 5)

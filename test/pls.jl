@@ -1,4 +1,3 @@
-using BlockArrays
 using DataFrames
 using LinearAlgebra
 using MixedModels
@@ -6,11 +5,13 @@ using NamedArrays
 using Random
 using SparseArrays
 using Statistics
+using StatsModels
 using Tables
 using Test
 
-const LMM = LinearMixedModel
-const forms = Dict(
+using MixedModels: dataset, likelihoodratiotest
+
+const fms = Dict(
     :dyestuff => [@formula(yield ~ 1 + (1|batch))],
     :dyestuff2 => [@formula(yield ~ 1 + (1|batch))],
     :d3 => [@formula(y ~ 1 + u + (1+u|g) + (1+u|h) + (1+u|i))],
@@ -23,7 +24,6 @@ const forms = Dict(
         @formula(rt_trunc ~ 1+spkr*prec*load+(1|subj)+(1+prec|item)),
         @formula(rt_trunc ~ 1+spkr*prec*load+(1+spkr+prec+load|subj)+(1+spkr+prec+load|item)),
     ],
-    :ml1m => [@formula(Y ~ 1 + (1|G) + (1|H))],
     :pastes => [
         @formula(strength ~ 1 + (1|sample)),
         @formula(strength ~ 1 + (1|sample) + (1|batch)),
@@ -32,31 +32,36 @@ const forms = Dict(
     :sleepstudy => [
         @formula(reaction ~ 1 + days + (1|subj)),
         @formula(reaction ~ 1 + days + zerocorr(1+days|subj)),
+        @formula(reaction ~ 1 + days + (1|subj) + (0+days|subj)),
         @formula(reaction ~ 1 + days + (1+days|subj)),
     ],
 )
 
-#=         # replace all the model fits by
-fits = Dict(k => fit.(MixedModel, forms[k], Ref(MixedModels.dataset[k])) for k in keys(forms))
-=#
+const fittedmodels = Dict{Symbol,Vector{LinearMixedModel}}();
+function models(nm::Symbol)
+    get!(fittedmodels, nm) do
+        fit.(MixedModel, fms[nm], Ref(dataset(nm)))
+    end
+end
+
+const io = IOBuffer()
 
 @testset "Dyestuff" begin
-    ds = MixedModels.dataset(:dyestuff)
-    fm1 = LMM(@formula(yield ~ 1 + (1|batch)), ds)
+    fm1 = only(models(:dyestuff))
 
     @test length(fm1.allterms) == 3
     @test size(fm1.reterms) == (1, )
     @test lowerbd(fm1) == zeros(1)
     @test fm1.lowerbd == zeros(1)
-    @test fm1.θ == ones(1)
+    @test fm1.optsum.initial == ones(1)
     fm1.θ = ones(1)
     @test fm1.θ == ones(1)
+    fm1.optsum.feval = -1
     @test_logs (:warn, "Model has not been fit") show(fm1)
 
     @test objective(updateL!(setθ!(fm1, [0.713]))) ≈ 327.34216280955366
     @test_deprecated MixedModels.describeblocks(IOBuffer(), fm1)
-    
-    io = IOBuffer()
+ 
     show(io, BlockDescription(fm1))
     @test countlines(seekstart(io)) == 3
     output = String(take!(io))
@@ -71,6 +76,7 @@ fits = Dict(k => fit.(MixedModel, forms[k], Ref(MixedModels.dataset[k])) for k i
     @test aic(fm1) ≈ 333.3270598811394 atol=0.001
     @test bic(fm1) ≈ 337.5306520261259 atol=0.001
     @test fixef(fm1) ≈ [1527.5]
+    @test dispersion_parameter(fm1)
     @test first(first(fm1.σs)) ≈ 37.26034462135931 atol=0.0001
     @test fm1.β ≈ [1527.5]
     @test dof(fm1) == 3
@@ -94,6 +100,7 @@ fits = Dict(k => fit.(MixedModel, forms[k], Ref(MixedModels.dataset[k])) for k i
     @test fm1.objective == objective(fm1)
     @test fm1.σ ≈ 49.510099986291145 atol=1.e-5
     @test fm1.X == ones(30,1)
+    ds = MixedModels.dataset(:dyestuff)
     @test fm1.y == ds[!, :yield]
     @test cond(fm1) == ones(1)
     @test first(leverage(fm1)) ≈ 0.15650534392640486 rtol=1.e-5
@@ -117,19 +124,31 @@ fits = Dict(k => fit.(MixedModel, forms[k], Ref(MixedModels.dataset[k])) for k i
     @test stderror(fm1) ≈ [17.69455188898009] atol=0.0001
 
     vc = VarCorr(fm1)
-    show(IOBuffer(), vc)
+    show(io, vc)
+    str = String(take!(io))
+    @test startswith(str, "Variance components:")
     @test vc.s == sdest(fm1)
 
     fit!(fm1, REML=true)
     @test objective(fm1) ≈ 319.65427684225216 atol=0.0001
     @test_throws ArgumentError loglikelihood(fm1)
     @test dof_residual(fm1) ≥ 0
-    print(IOBuffer(), fm1)
+
+    print(io, fm1)
+    @test startswith(String(take!(io)), "Linear mixed model fit by REML")
+
+    fm1.optsum.maxfeval = 5
+    @test_logs (:warn, "NLopt optimization failure: MAXEVAL_REACHED") fit!(fm1)
+    fm1.optsum.maxfeval = -1
+
+    vc = fm1.vcov
+    @test isa(vc, Matrix{Float64})
+    @test only(vc) ≈ 409.79495436473167 rtol=1.e-6
 end
 
 @testset "Dyestuff2" begin
     ds2 = MixedModels.dataset(:dyestuff2)
-    fm = fit(MixedModel, @formula(yield ~ 1 + (1|batch)), ds2)
+    fm = only(models(:dyestuff2))
     @test lowerbd(fm) == zeros(1)
     show(IOBuffer(), fm)
     @test fm.θ ≈ zeros(1)
@@ -139,41 +158,50 @@ end
     @test stderror(fm) ≈ [0.6669857396443261]
     @test coef(fm) ≈ [5.6656]
     @test logdet(fm) ≈ 0.0
+    @test issingular(fm)
     refit!(fm, float(MixedModels.dataset(:dyestuff)[!, :yield]))
     @test objective(fm) ≈ 327.3270598811428 atol=0.001
 end
 
 @testset "penicillin" begin
-    pen = MixedModels.dataset(:penicillin)
-    fm = LMM(@formula(diameter ~ 1 + (1 | plate) + (1 | sample)), pen);
+    fm = only(models(:penicillin))
     @test size(fm) == (144, 1, 30, 2)
-    @test fm.θ == ones(2)
+    @test fm.optsum.initial == ones(2)
     @test lowerbd(fm) == zeros(2)
-
-    fit!(fm)
 
     @test objective(fm) ≈ 332.18834867227616 atol=0.001
     @test coef(fm) ≈ [22.97222222222222] atol=0.001
     @test fixef(fm) ≈ [22.97222222222222] atol=0.001
-    @test coef(fm)[1] ≈ mean(pen.diameter)
+    @test coef(fm)[1] ≈ mean(dataset(:penicillin).diameter)
     @test stderror(fm) ≈ [0.7445960346851368] atol=0.0001
     @test fm.θ ≈ [1.5375772376554968, 3.219751321180035] atol=0.001
     @test first(std(fm)) ≈ [0.8455645948223015] atol=0.0001
     @test std(fm)[2] ≈ [1.770647779277388] atol=0.0001
     @test varest(fm) ≈ 0.3024263987592062 atol=0.0001
     @test logdet(fm) ≈ 95.74614821367786 atol=0.001
+
+    @test_throws ArgumentError condVar(fm)
+
     rfu = ranef(fm, uscale=true)
+    @test length(rfu) == 2
+    @test first(first(rfu)) ≈ 0.523162392717432 rtol=1.e-4
+
     rfb = ranef(fm)
     @test length(rfb) == 2
+    @test last(last(rfb)) ≈ -3.001823834230942 rtol=1.e-4
+
+    show(io, BlockDescription(fm))
+    @test countlines(seekstart(io)) == 4
+    tokens = Set(split(String(take!(io)), r"\s+"))
+    @test "Diag/Dense" in tokens
+    @test "Diagonal" in tokens
 end
 
 @testset "pastes" begin
-    fm = LMM(@formula(strength ~ (1|sample) + (1|batch)), MixedModels.dataset(:pastes))
+    fm = last(models(:pastes))
     @test size(fm) == (60, 1, 40, 2)
-    @test fm.θ == ones(2)
+    @test fm.optsum.initial == ones(2)
     @test lowerbd(fm) == zeros(2)
-
-    fit!(fm);
 
     @test objective(fm) ≈ 247.99446586289676 atol=0.001
     @test coef(fm) ≈ [60.05333333333329] atol=0.001
@@ -185,16 +213,23 @@ end
     @test std(fm)[3] ≈ [0.8234088395243269] atol=0.0001
     @test varest(fm) ≈ 0.6780020742644107 atol=0.0001
     @test logdet(fm) ≈ 101.0381339953986 atol=0.001
+
+    show(io, BlockDescription(fm))
+    @test countlines(seekstart(io)) == 4
+    tokens = Set(split(String(take!(io)), r"\s+"))
+    @test "Sparse" in tokens
+    @test "Diagonal" in tokens
+
+    lrt = likelihoodratiotest(models(:pastes)...)
+    @test length(lrt.deviance) == length(lrt.formulas) == length(lrt.models )== 2
+    @test first(lrt.tests.pvalues) ≈ 0.5233767966395597 atol=0.0001
 end
 
 @testset "InstEval" begin
-    insteval = MixedModels.dataset(:insteval)
-    fm1 = LMM(@formula(y ~ 1 + service + (1|s) + (1|d) + (1|dept)), insteval)
+    fm1 = first(models(:insteval))
     @test size(fm1) == (73421, 2, 4114, 3)
-    @test fm1.θ == ones(3)
+    @test fm1.optsum.initial == ones(3)
     @test lowerbd(fm1) == zeros(3)
-
-    fit!(fm1);
 
     @test objective(fm1) ≈ 237721.7687745563 atol=0.001
     ftd1 = fitted(fm1);
@@ -210,28 +245,33 @@ end
         @test length(MixedModels.PCA(fm1)) == 3
     end
 
-    fm2 = fit(MixedModel, @formula(y ~ 1 + service*dept + (1|s) + (1|d)), insteval)
+    show(io, BlockDescription(fm1))
+    @test countlines(seekstart(io)) == 5
+    tokens = Set(split(String(take!(io)), r"\s+"))
+    @test "Sparse" in tokens
+    @test "Sparse/Dense" in tokens
+    @test "Diag/Dense" in tokens
+
+    fm2 = last(models(:insteval))
     @test objective(fm2) ≈ 237585.5534151694 atol=0.001
     @test size(fm2) == (73421, 28, 4100, 2)
 end
 
 @testset "sleep" begin
-    slp = MixedModels.dataset(:sleepstudy)
-    fm = LinearMixedModel(@formula(reaction ~ 1 + days + (1+days|subj)), slp);
+    fm = last(models(:sleepstudy))
     @test lowerbd(fm) == [0.0, -Inf, 0.0]
     A11 = fm.A[Block(1,1)]
     @test isa(A11, UniformBlockDiagonal{Float64})
     @test isa(fm.L[Block(1, 1)], UniformBlockDiagonal{Float64})
     @test size(A11) == (36, 36)
-    @test A11.facevec[1] == [10. 45.; 45. 285.]
+    a11 = A11.facevec[1]
+    @test a11 == [10. 45.; 45. 285.]
     @test length(A11.facevec) == 18
-    updateL!(fm);
+    λ = first(fm.λ)
     b11 = LowerTriangular(fm.L[Block(1, 1)].facevec[1])
-    @test b11 * b11' == fm.A[Block(1, 1)].facevec[1] + I
+    @test b11 * b11' ≈ λ'a11*λ + I rtol=1e-5
     @test count(!iszero, Matrix(fm.L[Block(1, 1)])) == 18 * 4
     @test rank(fm) == 2
-
-    fit!(fm)
 
     @test objective(fm) ≈ 1751.9393444647046
     @test fm.θ ≈ [0.929221307, 0.01816838, 0.22264487096] atol=1.e-6
@@ -251,9 +291,6 @@ end
     @test length(σs.subj) == 2
     @test first(values(σs.subj)) ≈ 23.780468626896745 atol=0.0001
     @test last(values(first(σs))) ≈ 5.716827808126002 atol=0.0001
-    show(IOBuffer(), fm)
-
-    @test fm.vcov ≈ [43.986843599069985 -1.370391879315539; -1.370391879315539 2.2567113314443645] atol=0.0001
     @test fm.corr ≈ [1.0 -0.1375451787621904; -0.1375451787621904 1.0] atol=0.0001
 
     u3 = ranef(fm, uscale=true)
@@ -261,7 +298,7 @@ end
     @test size(first(u3)) == (2, 18)
     @test first(u3)[1, 1] ≈ 3.030300122575336 atol=0.001
     u3n = first(ranef(fm, uscale=true, named=true))
-    @test u3n isa NamedArrays.NamedArray
+    @test u3n isa NamedArray
 
     b3 = ranef(fm)
     @test length(b3) == 1
@@ -276,9 +313,9 @@ end
     @test fmnc.θ == [fm.θ[1], fm.θ[3]]
     @test lowerbd(fmnc) == zeros(2)
 
-    fmnc = zerocorr!(LMM(@formula(reaction ~ 1 + days + (1+days|subj)), slp));
+    fmnc = models(:sleepstudy)[2]
     @test size(fmnc) == (180,2,36,1)
-    @test fmnc.θ == ones(2)
+    @test fmnc.optsum.initial == ones(2)
     @test lowerbd(fmnc) == zeros(2)
 
     @testset "zerocorr PCA" begin
@@ -287,8 +324,6 @@ end
         @test MixedModels.PCA(fmnc).subj.loadings == I(2)
         @test show(IOBuffer(), MixedModels.PCA(fmnc)) === nothing
     end
-
-    fit!(fmnc)
 
     @test deviance(fmnc) ≈ 1752.0032551398835 atol=0.001
     @test objective(fmnc) ≈ 1752.0032551398835 atol=0.001
@@ -302,25 +337,8 @@ end
     ρ = first(fmnc.σρs.subj.ρ)
     @test ρ === -0.0   # test that systematic zero correlations are returned as -0.0
 
-    fmnc2 = LinearMixedModel(@formula(reaction ~ 1+days+zerocorr(1+days|subj)), slp)
-    @test size(fmnc2) == (180,2,36,1)
-    @test fmnc2.θ == ones(2)
-    @test lowerbd(fmnc2) == zeros(2)
-
-    fit!(fmnc2)
-
-    @test deviance(fmnc2) ≈ 1752.0032551398835 atol=0.001
-    @test objective(fmnc2) ≈ 1752.0032551398835 atol=0.001
-    @test coef(fmnc2) ≈ [251.40510484848585, 10.467285959595715]
-    @test fixef(fmnc2) ≈ [251.40510484848477, 10.467285959595715]
-    @test stderror(fmnc2) ≈ [6.707710260366577, 1.5193083237479683] atol=0.001
-    @test fmnc2.θ ≈ [0.9458106880922268, 0.22692826607677266] atol=0.0001
-    @test first(std(fmnc2)) ≈ [24.171449463289047, 5.799379721123582]
-    @test last(std(fmnc2)) ≈ [25.556130034081047]
-    @test logdet(fmnc2) ≈ 74.46952585564611 atol=0.001
-
     MixedModels.likelihoodratiotest(fm, fmnc)
-
+    slp = MixedModels.dataset(:sleepstudy)
     fmrs = fit(MixedModel, @formula(reaction ~ 1+days + (0+days|subj)), slp);
     @test objective(fmrs) ≈ 1774.080315280528 rtol=0.00001
     @test fmrs.θ ≈ [0.24353985679033105] rtol=0.00001
@@ -336,9 +354,9 @@ end
 
     # combining [ReMat{T,S1}, ReMat{T,S2}] for S1 ≠ S2
     slpcat = categorical!(deepcopy(slp), [:days])
-    fm_cat = LMM(@formula(reaction ~ 1 + days + (1|subj) + (0 + days|subj)), slpcat)
-    @test fm_cat isa LMM
-    σρ = fit!(fm_cat).σρs
+    fm_cat = fit(MixedModel, @formula(reaction ~ 1+days+(1|subj)+(0+days|subj)),slpcat)
+    @test fm_cat isa LinearMixedModel
+    σρ = fm_cat.σρs
     @test σρ isa NamedTuple
     @test isone(length(σρ))
     @test first(keys(σρ)) == :subj
@@ -348,22 +366,41 @@ end
     @test length(σρ.subj.ρ) == 55
     @test iszero(σρ.subj.ρ[46])
     @test σρ.subj.ρ[46] === -0.0
+
+    show(io, BlockDescription(first(models(:sleepstudy))))
+    @test countlines(seekstart(io)) == 3
+    @test "Diagonal" in Set(split(String(take!(io)), r"\s+"))
+
+    show(io, BlockDescription(last(models(:sleepstudy))))
+    @test countlines(seekstart(io)) == 3
+    @test "BlkDiag" in Set(split(String(take!(io)), r"\s+"))
+
 end
 
 @testset "d3" begin
-    fm = updateL!(LMM(@formula(y ~ 1 + u + (1+u|g) + (1+u|h) + (1+u|i)), MixedModels.dataset(:d3)));
-    @test pwrss(fm) ≈ 5.1261847180180885e6 rtol = 1e-6
-    @test objective(fm) ≈ 901641.2930413672 rtol = 1e-6
-    fit!(fm)
-    @test objective(fm) ≈ 884957.5540213 rtol = 1e-6
+    fm = only(models(:d3))
+    @test pwrss(fm) ≈ 5.30480294295329e6 rtol=1.e-4
+    @test objective(fm) ≈ 884957.5540213 rtol = 1e-4
     @test coef(fm) ≈ [0.4991229873, 0.31130780953] atol = 1.e-4
-    bv = ranef(fm)
-    @test length(bv) == 3
+    @test length(ranef(fm)) == 3
+
+    show(io, BlockDescription(fm))
+    tokens = Set(split(String(take!(io)), r"\s+"))
+    @test "BlkDiag/Dense" in tokens
+end
+
+@testset "kb07" begin
+    pca = last(models(:kb07)).PCA
+    @test keys(pca) == (:subj, :item)
+    show(io, last(models(:kb07)))
+    tokens = Set(split(String(take!(io)), r"\s+"))
+    @test "Corr." in tokens
+    @test "+0.44" in tokens
 end
 
 @testset "simulate!" begin
-    ds = MixedModels.dataset(:dyestuff)
-    fm = fit(MixedModel, @formula(yield ~ 1 + (1|batch)), ds)
+    ds = dataset(:dyestuff)
+    fm = only(models(:dyestuff))
     resp₀ = copy(response(fm))
     # type conversion of ints to floats
     simulate!(Random.MersenneTwister(1234321), fm, β=[1], σ=1)
@@ -396,6 +433,7 @@ end
     cov = shortestcovint(bsamp.σ)
     @test first(cov) ≈ 48.2551828768727 rtol = 1.e-4
     @test last(cov) ≈ 81.85810781858969 rtol = 1.e-4
+    @test sum(issingular(bsamp)) == 57
 
     bsamp_threaded = parametricbootstrap(MersenneTwister(1234321), 100, fm, use_threads=true)
     # even though it's bad practice with floating point, exact equality should
@@ -405,12 +443,13 @@ end
     @test sort(bsamp_threaded.σ) == sort(bsamp.σ)
     @test sort(bsamp_threaded.θ) == sort(bsamp.θ)
     @test sort(columntable(bsamp_threaded.β).β) == sort(columntable(bsamp.β).β)
+
 end
 
 @testset "Rank deficient" begin
     rng = MersenneTwister(0);
     x = rand(rng, 100);
-    data = columntable((x = x, x2 = 1.5 .* x, y = rand(rng, 100), z = repeat('A':'T', 5)))
+    data = (x = x, x2 = 1.5 .* x, y = rand(rng, 100), z = repeat('A':'T', 5))
     model = fit(MixedModel, @formula(y ~ x + x2 + (1|z)), data)
     @test length(fixef(model)) == 2
     @test rank(model) == 2
@@ -422,8 +461,10 @@ end
     @test last(coef(model)) == -0.0
     stde = MixedModels.stderror!(zeros(3), model)
     @test isnan(last(stde))
+    vc = vcov(model)
+    @test isnan(last(vc))
 
-
+    @test size(StatsModels.modelmatrix(model), 2) == 3
     # check preserving of name ordering in coeftable and placement of
     # pivoted-out element
     fill!(data.x, 0)
@@ -440,8 +481,6 @@ end
 end
 
 @testset "coeftable" begin
-    ds = MixedModels.dataset(:dyestuff);
-    fm = fit(MixedModel, @formula(yield ~ 1 + (1|batch)), ds);
-    ct = coeftable(fm);
+    ct = coeftable(only(models(:dyestuff)));
     @test [3,4] == [ct.teststatcol, ct.pvalcol]
 end

@@ -91,14 +91,6 @@ function _likelihoodratiotest(m::Vararg{T}) where T <: MixedModel
     )
 end
 
-function _array_union_nothing(arr::Array{T}) where T
-    Array{Union{T,Nothing}}(arr)
-end
-
-function _prepend_0(arr::Array{T}) where T
-    pushfirst!(copy(arr), -zero(T))
-end
-
 function Base.show(io::IO, lrt::LikelihoodRatioTest; digits=2)
     println(io, "Model Formulae")
 
