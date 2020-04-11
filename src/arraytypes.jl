@@ -15,6 +15,11 @@ function UniformBlockDiagonal(dat::Array{T,3}) where {T}
     )
 end
 
+function Base.axes(A::UniformBlockDiagonal)
+    m, n, l = size(A.data)
+    (Base.OneTo(m * l), Base.OneTo(n * l))
+end
+
 function Base.copyto!(dest::UniformBlockDiagonal{T}, src::UniformBlockDiagonal{T}) where {T}
     sdat = src.data
     ddat = dest.data
@@ -42,10 +47,9 @@ function Base.copyto!(dest::Matrix{T}, src::UniformBlockDiagonal{T}) where {T}
 end
 
 function Base.getindex(A::UniformBlockDiagonal{T}, i::Int, j::Int) where {T}
+    @boundscheck checkbounds(A, i, j)
     Ad = A.data
     m, n, l = size(Ad)
-    (0 < i ≤ l * m && 0 < j ≤ l * n) ||
-    throw(IndexError("attempt to access $(l*m) × $(l*n) array at index [$i, $j]"))
     iblk, ioffset = divrem(i - 1, m)
     jblk, joffset = divrem(j - 1, n)
     iblk == jblk ? Ad[ioffset+1, joffset+1, iblk+1] : zero(T)

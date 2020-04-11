@@ -26,22 +26,6 @@ function LinearAlgebra.mul!(
 end
 
 LinearAlgebra.mul!(
-    C::Matrix{T},
-    A::BlockedSparse{T},
-    adjB::Adjoint{T,<:Matrix{T}},
-    α::Number,
-    β::Number,
-) where {T} = mul!(C, A.cscmat, adjB, α, β)
-
-LinearAlgebra.mul!(
-    C::BlockedSparse{T},
-    A::BlockedSparse{T},
-    adjB::Adjoint{T,<:BlockedSparse{T}},
-    α::Number,
-    β::Number,
-) where {T} = mul!(C.cscmat, A.cscmat, adjB.parent.cscmat', α, β)
-
-LinearAlgebra.mul!(
     C::StridedVecOrMat{T},
     A::StridedVecOrMat{T},
     adjB::Adjoint{T,<:BlockedSparse{T}},

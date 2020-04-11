@@ -127,8 +127,10 @@ function rankUpdate!(
     C
 end
 
+#=
 rankUpdate!(C::HermOrSym{T,Matrix{T}}, A::BlockedSparse{T}, α = true) where {T} =
     rankUpdate!(C, A.cscmat, α)
+=#
 
 function rankUpdate!(
     C::Diagonal{T,S},
