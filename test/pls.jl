@@ -392,10 +392,10 @@ end
 @testset "kb07" begin
     pca = last(models(:kb07)).PCA
     @test keys(pca) == (:subj, :item)
-    show(io, last(models(:kb07)))
+    show(io, models(:kb07)[2])
     tokens = Set(split(String(take!(io)), r"\s+"))
     @test "Corr." in tokens
-    @test "+0.44" in tokens
+    @test "-0.89" in tokens
 end
 
 @testset "simulate!" begin
