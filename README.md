@@ -49,14 +49,9 @@ Typical distribution forms are _Bernoulli_ for binary data or _Poisson_ for coun
 
 |OS|OS Version|Arch|Julia|Tier|
 |:-:|:-:|:-:|:-:|:-:|
-|Linux|Ubuntu 18.04|x64|v1.3|1|
-|macOS|Catalina 10.15|x64|v1.3|1|
-|Windows|Server 2019|x64|v1.3|1|
-|Linux|Ubuntu 18.04|x86|v1.3|2|
-|Windows|Server 2019|x86|v1.3|2|
-|Linux|Ubuntu 18.04|x64|v1.4|2|
-|macOS|Catalina 10.15|x64|v1.4|2|
-|Windows|Server 2019|x64|v1.4|2|
+|Linux|Ubuntu 18.04|x64|v1.4|1|
+|macOS|Catalina 10.15|x64|v1.4|1|
+|Windows|Server 2019|x64|v1.4|1|
 |Linux|Ubuntu 18.04|x86|v1.4|2|
 |Windows|Server 2019|x86|v1.4|2|
 
