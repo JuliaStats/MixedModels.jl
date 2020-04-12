@@ -242,7 +242,14 @@ end
 
     @testset "PCA" begin
         @test length(fm1.rePCA) == 3
-        @test length(MixedModels.PCA(fm1)) == 3
+        pca = MixedModels.PCA(fm1)
+        @test length(pca) == 3
+        @test :covcor in propertynames(first(pca))
+        str = String(take!(io))
+        show(io, first(pca), stddevs=true, variances=true)
+        str = String(take!(io))
+        @test !isempty(findall("Standard deviations:", str))
+        @test !isempty(findall("Variances:", str))        
     end
 
     show(io, BlockDescription(fm1))

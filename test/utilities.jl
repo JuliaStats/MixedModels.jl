@@ -1,11 +1,32 @@
-using LinearAlgebra, MixedModels, Random, SparseArrays, Test
+using LinearAlgebra
+using MixedModels
+using Random
+using SparseArrays
+using Test
 
-@testset "utilities" begin
-	@test MixedModels.average(1.1, 1.2) == 1.15
-	@test MixedModels.densify(sparse(1:5, 1:5, ones(5))) == Diagonal(ones(5))
+using MixedModels: allequal, average, densify, dataset
+
+@testset "average" begin
+	@test average(1.1, 1.2) == 1.15
+end
+
+@testset "densify" begin
+	@test densify(sparse(1:5, 1:5, ones(5))) == Diagonal(ones(5))
 	rsparsev = SparseVector(float.(rand(MersenneTwister(123454321), Bool, 20)))
-	@test MixedModels.densify(rsparsev) == Vector(rsparsev)
-	@test MixedModels.densify(Diagonal(rsparsev)) == Diagonal(Vector(rsparsev))
+	@test densify(rsparsev) == Vector(rsparsev)
+	@test densify(Diagonal(rsparsev)) == Diagonal(Vector(rsparsev))
+end
+
+@testset "allequal" begin
+	@test allequal((true, true, true))
+	@test allequal([true, true, true])
+	@test !allequal((true, false, true))
+	@test !allequal([true, false, true])
+	@test !allequal(collect(1:4))
+	@test allequal((false, false, false))
+	@test allequal([false, false, false])
+	@test allequal(ones(3))
+	@test allequal(1, 1, 1)
 end
 
 @testset "threaded_replicate" begin
