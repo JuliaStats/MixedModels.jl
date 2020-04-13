@@ -260,19 +260,15 @@ function fit!(
         optsum.final = copy(optsum.initial)
     end
     setpar! = fast ? setθ! : setβθ!
-    feval = 0
     function obj(x, g)
-        isempty(g) || error("gradient not defined for this model")
-        feval += 1
+        isempty(g) || throw(ArgumentError("g should be empty for this objective"))
         val = deviance(pirls!(setpar!(m, x), fast, verbose), nAGQ)
-        feval == 1 && (optsum.finitial = val)
-        if verbose
-            println("f_", feval, ": ", val, " ", x)
-        end
+        verbose && println(round(val, digits = 5), " ", x)
         val
     end
     opt = Opt(optsum)
     NLopt.min_objective!(opt, obj)
+    optsum.finitial = obj(optsum.initial, T[])
     fmin, xmin, ret = NLopt.optimize(opt, copyto!(optsum.final, optsum.initial))
     ## check if very small parameter values bounded below by zero can be set to zero
     xmin_ = copy(xmin)
@@ -290,7 +286,7 @@ function fit!(
     ## ensure that the parameter values saved in m are xmin
     pirls!(setpar!(m, xmin), fast, verbose)
     optsum.nAGQ = nAGQ
-    optsum.feval = feval
+    optsum.feval = opt.numevals
     optsum.final = xmin
     optsum.fmin = fmin
     optsum.returnvalue = ret
