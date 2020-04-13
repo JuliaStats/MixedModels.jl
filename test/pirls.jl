@@ -77,3 +77,15 @@ end
     #@test isapprox(sum(x -> sum(abs2, x), gm4.u), 196.8695297987013, atol=0.1)
     #@test isapprox(sum(gm4.resp.devresid), 220.92685781326136, atol=0.1)
 end
+
+@testset "dispersion parameter" begin
+    @testset "gaussian with non identity link" begin
+        dyestuff = MixedModels.dataset(:dyestuff)
+        gauss = fit(MixedModel, @formula(yield ~ 1 + (1|batch)), dyestuff, Normal(), SqrtLink(), fast=true)
+        @test only(gauss.θ) ≈ 0.5528913 atol=0.001 # value from lme4
+    end
+    @testset "inverse gaussian" begin
+    end
+    @testset "gamma" begin
+    end
+end
