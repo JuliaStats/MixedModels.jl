@@ -69,7 +69,7 @@ is the squared length of the conditional modes, `u`, plus the determinant
 of `Λ'Z'WZΛ + I`, plus the sum of the squared deviance residuals.
 """
 function StatsBase.deviance(m::GeneralizedLinearMixedModel{T}, nAGQ = 1) where {T}
-    # TODO: fix dispersion's contribution for non Gaussians 
+    # TODO: fix dispersion's contribution for non Gaussians
     disp = dispersion_parameter(m) ? nobs(m) * (1 + log2π + log(varest(m))) : zero(T)
     nAGQ == 1 && return T(sum(m.resp.devresid) + logdet(m) +
                             sum(u -> sum(abs2, u), m.u) + disp)
@@ -415,7 +415,6 @@ function StatsBase.loglikelihood(m::GeneralizedLinearMixedModel{T}) where {T}
     mu  = r.mu
     d   = r.d
     if length(wts) == length(y)
-        # in GLM.jl, they use the deviance of the
         ϕ = deviance(r)/sum(wts)
         @inbounds for i in eachindex(y, mu, wts)
             accum += GLM.loglik_obs(d, y[i], mu[i], wts[i], ϕ)
@@ -426,7 +425,7 @@ function StatsBase.loglikelihood(m::GeneralizedLinearMixedModel{T}) where {T}
             accum += GLM.loglik_obs(d, y[i], mu[i], 1, ϕ)
         end
     end
-    accum
+    accum  - (mapreduce(u -> sum(abs2, u), +, m.u) + logdet(m)) / 2
 end
 
 StatsBase.nobs(m::GeneralizedLinearMixedModel) = length(m.η)
@@ -556,7 +555,7 @@ function Base.setproperty!(m::GeneralizedLinearMixedModel, s::Symbol, y)
     end
 end
 
-sdest(m::GeneralizedLinearMixedModel{T}) where {T} = dispersion_parameter(m) ? √varest(m) : convert(T, NaN) 
+sdest(m::GeneralizedLinearMixedModel{T}) where {T} = dispersion_parameter(m) ? √varest(m) : convert(T, NaN)
 
 function Base.show(io::IO, m::GeneralizedLinearMixedModel)
     if m.optsum.feval < 0
