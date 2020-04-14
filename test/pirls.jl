@@ -6,6 +6,7 @@ using MixedModels: dataset
 const fms = Dict(
     :cbpp => [@formula((incid/hsz) ~ 1 + period + (1|herd))],
     :contra => [@formula(use ~ 1+age+abs2(age)+urban+livch+(1|urbdist))],
+    :dyestuff => [@formula(yield ~ 1 + (1|batch))],
     :grouseticks => [@formula(ticks ~ 1+year+ch+ (1|index) + (1|brood) + (1|location))],
     :verbagg => [@formula(r2 ~ 1+anger+gender+btype+situ+(1|subj)+(1|item))],
 )
@@ -81,9 +82,24 @@ end
 @testset "dispersion parameter" begin
     @testset "gaussian with non identity link" begin
         dyestuff = MixedModels.dataset(:dyestuff)
-        gauss = fit(MixedModel, @formula(yield ~ 1 + (1|batch)), dyestuff, Normal(), SqrtLink(), fast=true)
+
+        gauss = fit(MixedModel, only(fms[:dyestuff]), dyestuff, Normal(), SqrtLink(), fast=true)
         @test only(gauss.θ) ≈ 0.5528913 atol=0.001 # value from lme4
+        # this corresponds to the deviance(gauss)  from lme4
+        # NB: "deviance" is complicated in lme4
+        # this is the way deviance(glmm) is computed in lme4
+        # but there are several "deviances" defined:
+        # https://github.com/lme4/lme4/issues/375#issuecomment-214494445
+        @test sum(gauss.resp.devresid) ≈ 58830. atol=0.001 # value from lme4
+
+        # bobyqa fails here
+        neldermead = GeneralizedLinearMixedModel(only(fms[:dyestuff]), dyestuff, Normal(), SqrtLink());
+        neldermead.optsum.optimizer = :LN_NELDERMEAD;
+        fit!(neldermead)
+        @test only(neldermead.θ) ≈ 0.5528913 atol=0.001 # value from lme4
+        @test sum(neldermead.resp.devresid) ≈ 58830. atol=0.001 # value from lme4
     end
+
     @testset "inverse gaussian" begin
     end
     @testset "gamma" begin
