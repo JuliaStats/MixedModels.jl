@@ -7,6 +7,10 @@ function allequal(x::Array; comparison=isequal)::Bool
     all(comparison.(first(x),  x))
 end
 
+allequal(x::Vector{Bool})::Bool = !any(x) || all(x)
+
+allequal(x::NTuple{N,Bool}) where {N} = !any(x) || all(x)
+
 function allequal(x::Tuple; comparison=isequal)::Bool
     all(comparison.(first(x),  x))
 end
@@ -50,7 +54,7 @@ end
 densify(A::AbstractMatrix, threshold::Real = 0.3) = A
 
 densify(A::SparseVector, threshold::Real = 0.3) = Vector(A)
-densify(A::Diagonal{T,SparseVector}, threshold::Real = 0.3) where {T} =
+densify(A::Diagonal{T,SparseVector{T,Ti}}, threshold::Real = 0.3) where {T,Ti} =
     Diagonal(Vector(A.diag))
 
 """
