@@ -27,7 +27,7 @@ using GLM: ProbitLink
 
     # differing FE with REML
     fm1 = fit(MixedModel,@formula(reaction ~ 1 + days + (1+days|subj)),slp, REML=true);
-    fm0 = fit(MixedModel,@formula(reaction ~ 1 + days + (1|subj)),slp, REML=true);
+ 
     @test_throws ArgumentError likelihoodratiotest(fm0,fm1)
 
     contra = MixedModels.dataset(:contra);
