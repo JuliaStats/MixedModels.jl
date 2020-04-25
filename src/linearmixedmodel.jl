@@ -765,16 +765,6 @@ function Base.show(io::IO, m::LinearMixedModel)
     show(io, coeftable(m))
 end
 
-function σs(m::LinearMixedModel)
-    σ = sdest(m)
-    NamedTuple{fnames(m)}(((σs(t, σ) for t in m.reterms)...,))
-end
-
-function σρs(m::LinearMixedModel)
-    σ = sdest(m)
-    NamedTuple{fnames(m)}(((σρs(t, σ) for t in m.reterms)...,))
-end
-
 """
     size(m::LinearMixedModel)
 
@@ -925,13 +915,14 @@ varest(m::LinearMixedModel) = pwrss(m) / ssqdenom(m)
 Returns the variance-covariance matrix of the fixed effects.
 If `corr=true`, then correlation of fixed effects is returned instead.
 """
-function StatsBase.vcov(m::LinearMixedModel{T}; corr=false) where {T}
+function StatsBase.vcov(m::MixedModel; corr=false)
     Xtrm = fetrm(m)
     iperm = invperm(Xtrm.piv)
     p = length(iperm)
     r = Xtrm.rank
     Linv = inv(feL(m))
-    permvcov = varest(m) * (Linv'Linv)
+    T = eltype(Linv)
+    permvcov = dispersion(m, true) * (Linv'Linv)
     if p == Xtrm.rank
         vv = permvcov[iperm, iperm]
     else
