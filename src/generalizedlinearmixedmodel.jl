@@ -126,7 +126,7 @@ function GLM.dispersion(m::GeneralizedLinearMixedModel{T}, sqr::Bool = false) wh
 # TODO: PR for a GLM.dispersion(resp::GLM.GlmResp, dof_residual::Int, sqr::Bool)
     r = m.resp
     if dispersion_parameter(r.d)
-        s = sum(wt * abs2(re) for (wt, re) in (r.wrkwt, r.wrkresid)) / dof_residual(m)
+        s = sum(wt * abs2(re) for (wt, re) in zip(r.wrkwt, r.wrkresid)) / dof_residual(m)
         sqr ? s : sqrt(s)
     else
         one(T)
