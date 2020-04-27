@@ -188,13 +188,6 @@ function StatsBase.coeftable(m::LinearMixedModel)
 end
 
 """
-    cond(m::MixedModel)
-
-Return a vector of condition numbers of the λ matrices for the random-effects terms
-"""
-LinearAlgebra.cond(m::MixedModel) = cond.(m.λ)
-
-"""
     condVar(m::LinearMixedModel)
 
 Return the conditional variances matrices of the random effects.
@@ -251,8 +244,7 @@ function createAL(allterms::Vector{Union{ReMat{T},FeMat{T}}}) where {T}
     A, L
 end
 
-
-StatsBase.deviance(m::MixedModel) = objective(m)
+StatsBase.deviance(m::LinearMixedModel) = objective(m)
 
 GLM.dispersion(m::LinearMixedModel, sqr::Bool = false) = sqr ? varest(m) : sdest(m)
 
@@ -270,14 +262,14 @@ function StatsBase.dof_residual(m::LinearMixedModel)::Int
 end
 
 """
-    feind(m::MixedModel)
+    feind(m::LinearMixedModel)
 
 An internal utility to return the index in `m.allterms` of the fixed-effects term.
 """
-feind(m::MixedModel) = findfirst(Base.Fix2(isa, FeMat), m.allterms)
+feind(m::LinearMixedModel) = findfirst(Base.Fix2(isa, FeMat), m.allterms)
 
 """
-    feL(m::MixedModel)
+    feL(m::LinearMixedModel)
 
 Return the lower Cholesky factor for the fixed-effects parameters, as an `LowerTriangular`
 `p × p` matrix.
@@ -292,7 +284,7 @@ end
 
 Return the fixed-effects term from `m.allterms`
 """
-fetrm(m) = m.allterms[feind(m)]
+fetrm(m::LinearMixedModel) = m.allterms[feind(m)]
 
 """
     fit!(m::LinearMixedModel[; verbose::Bool=false, REML::Bool=false])
@@ -805,6 +797,8 @@ end
     std(m::MixedModel)
 
 Return the estimated standard deviations of the random effects as a `Vector{Vector{T}}`.
+
+FIXME: This uses an old convention of isfinite(sdest(m)).  Probably drop in favor of m.σs
 """
 function Statistics.std(m::LinearMixedModel)
     rl = rowlengths.(m.reterms)
@@ -908,33 +902,6 @@ end
 Returns the estimate of σ², the variance of the conditional distribution of Y given B.
 """
 varest(m::LinearMixedModel) = pwrss(m) / ssqdenom(m)
-
-"""
-    vcov(m::LinearMixedModel)
-
-Returns the variance-covariance matrix of the fixed effects.
-If `corr=true`, then correlation of fixed effects is returned instead.
-"""
-function StatsBase.vcov(m::MixedModel; corr=false)
-    Xtrm = fetrm(m)
-    iperm = invperm(Xtrm.piv)
-    p = length(iperm)
-    r = Xtrm.rank
-    Linv = inv(feL(m))
-    T = eltype(Linv)
-    permvcov = dispersion(m, true) * (Linv'Linv)
-    if p == Xtrm.rank
-        vv = permvcov[iperm, iperm]
-    else
-        covmat = fill(zero(T) / zero(T), (p, p))
-        for j = 1:r, i = 1:r
-            covmat[i, j] = permvcov[i, j]
-        end
-        vv = covmat[iperm, iperm]
-    end
-
-    corr ?  StatsBase.cov2cor!(vv, stderror(m)) : vv
-end
 
 """
     zerocorr!(m::LinearMixedModel[, trmnms::Vector{Symbol}])

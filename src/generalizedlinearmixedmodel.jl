@@ -578,16 +578,6 @@ function Base.show(io::IO, m::GeneralizedLinearMixedModel)
     show(io, coeftable(m))
 end
 
-function σs(m::MixedModel)
-    σ = dispersion(m)
-    NamedTuple{fnames(m)}(((σs(t, σ) for t in m.reterms)...,))
-end
-
-function σρs(m::MixedModel)
-    σ = dispersion(m)
-    NamedTuple{fnames(m)}(((σρs(t, σ) for t in m.reterms)...,))
-end
-
 """
     updateη!(m::GeneralizedLinearMixedModel)
 
