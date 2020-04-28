@@ -40,6 +40,10 @@ function FeMat(X::AbstractMatrix, cnms)
     FeMat{T,typeof(X)}(Xp, Xp, pivot, rank, cnms[pivot])
 end
 
+function FeMat(X::SparseMatrixCSC, cnms)
+    FeMat{eltype(X),typeof(X)}(X, X, range(1,stop=size(X,2)), minimum(size(X)), cnms)
+end
+
 function reweight!(A::FeMat{T}, sqrtwts::Vector{T}) where {T}
     if !isempty(sqrtwts)
         if A.x === A.wtx
