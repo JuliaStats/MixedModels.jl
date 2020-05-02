@@ -264,3 +264,20 @@ function Base.show(io::IO, pca::PCA;
 
     nothing
 end
+
+"""
+    copyltri(A::AbstractMatrix{T}) where {T}
+
+Return a freshly allocated `Matrix{T}` containing a copy of the lower triangle of `A`
+
+One use of this function is to extract a copy of the `L` or `A` fields of a
+[`LinearMixedModel`](@ref) object without needing to contend with the `undef` blocks.
+"""
+function copyltri(A::AbstractMatrix{T}) where {T}
+    N = LinearAlgebra.checksquare(A)
+    val = zeros(T, N, N)
+    for j in 1:N, i in j:N
+        val[i,j] = A[i,j]
+    end
+    val
+end
