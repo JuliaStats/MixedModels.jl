@@ -51,7 +51,7 @@ end
     gm2 = fit(MixedModel, @formula(prop ~ 1 + p + (1|h)), cbpp, Binomial(), wts = cbpp[!,:s])
     @test isapprox(deviance(gm2,true), 100.09585619324639, atol=0.0001)
     @test isapprox(sum(abs2, gm2.u[1]), 9.723175126731014, atol=0.0001)
-    @test isapprox(logdet(gm2), 16.90099, atol=0.0001)
+    @test isapprox(logdet(gm2), 16.90099, atol=0.001)
     @test isapprox(sum(gm2.resp.devresid), 73.47179193718736, atol=0.001)
     @test isapprox(loglikelihood(gm2), -92.02628186555876, atol=0.001)
     @test isnan(sdest(gm2))

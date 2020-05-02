@@ -127,13 +127,6 @@ function StatsBase.coeftable(m::MixedModel)
 end
 
 """
-    cond(m::MixedModel)
-
-Return a vector of condition numbers of the λ matrices for the random-effects terms
-"""
-LinearAlgebra.cond(m::MixedModel) = cond.(m.λ)
-
-"""
     condVar(m::LinearMixedModel)
 
 Return the conditional variances matrices of the random effects.
@@ -231,12 +224,29 @@ function StatsBase.dof_residual(m::LinearMixedModel)::Int
 end
 
 """
-    feL(m::MixedModel)
+    feind(m::LinearMixedModel)
+
+An internal utility to return the index in `m.allterms` of the fixed-effects term.
+"""
+feind(m::LinearMixedModel) = findfirst(Base.Fix2(isa, FeMat), m.allterms)
+
+"""
+    feL(m::LinearMixedModel)
 
 Return the lower Cholesky factor for the fixed-effects parameters, as an `LowerTriangular`
 `p × p` matrix.
 """
-feL(m::LinearMixedModel) = LowerTriangular(m.L.blocks[end - 1, end - 1])
+function feL(m::LinearMixedModel)
+    k = feind(m)
+    LowerTriangular(m.L.blocks[k, k])
+end
+
+"""
+    fetrm(m::LinearMixedModel)
+
+Return the fixed-effects term from `m.allterms`
+"""
+fetrm(m::LinearMixedModel) = m.allterms[feind(m)]
 
 """
     fit!(m::LinearMixedModel[; verbose::Bool=false, REML::Bool=false])
@@ -636,16 +646,13 @@ function Base.show(io::IO, m::LinearMixedModel)
     show(io,coeftable(m))
 end
 
-function σs(m::LinearMixedModel)
-    σ = sdest(m)
-    NamedTuple{fnames(m)}(((σs(t, σ) for t in m.reterms)...,))
-end
+"""
+    size(m::LinearMixedModel)
 
-function σρs(m::LinearMixedModel)
-    σ = sdest(m)
-    NamedTuple{fnames(m)}(((σρs(t, σ) for t in m.reterms)...,))
-end
-
+Returns the size of a mixed model as a tuple of length four:
+the number of observations, the number of (non-singular) fixed-effects parameters,
+the number of conditional modes (random effects), the number of grouping variables
+"""
 function Base.size(m::LinearMixedModel)
     n, p = size(first(m.feterms))
     n, p, sum(size.(m.reterms, 2)), length(m.reterms)
@@ -660,10 +667,26 @@ This value is the contents of the `1 × 1` bottom right block of `m.L`
 """
 sqrtpwrss(m::LinearMixedModel) = first(m.L.blocks[end, end])
 
+
+"""
+    ssqdenom(m::LinearMixedModel)
+Return the denominator for penalized sums-of-squares.
+For MLE, this value is the number of observations. For REML, this
+value is the number of observations minus the rank of the fixed-effects matrix.
+The difference is analagous to the use of n or n-1 in the denominator when
+calculating the variance.
+"""
+function ssqdenom(m::LinearMixedModel)::Int
+    (n, p, q, k)  = size(m)
+    m.optsum.REML ? n - p : n
+end
+
 """
     std(m::MixedModel)
 
 Return the estimated standard deviations of the random effects as a `Vector{Vector{T}}`.
+
+FIXME: This uses an old convention of isfinite(sdest(m)).  Probably drop in favor of m.σs
 """
 function Statistics.std(m::LinearMixedModel)
     rl = rowlengths.(m.reterms)
@@ -739,25 +762,7 @@ end
 
 Returns the estimate of σ², the variance of the conditional distribution of Y given B.
 """
-varest(m::LinearMixedModel) = pwrss(m) / dof_residual(m)
-
-function StatsBase.vcov(m::LinearMixedModel{T}) where {T}
-    Xtrm = first(m.feterms)
-    iperm = invperm(Xtrm.piv)
-    p = length(iperm)
-    r = Xtrm.rank
-    Linv = inv(feL(m))
-    permvcov = varest(m) * (Linv'Linv)
-    if p == Xtrm.rank
-        permvcov[iperm, iperm]
-    else
-        covmat = fill(zero(T)/zero(T), (p, p))
-        for j in 1:r, i in 1:r
-            covmat[i,j] = permvcov[i, j]
-        end
-        covmat[iperm, iperm]
-    end
-end
+varest(m::LinearMixedModel) = pwrss(m) / ssqdenom(m)
 
 """
     zerocorr!(m::LinearMixedModel[, trmnms::Vector{Symbol}])
