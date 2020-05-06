@@ -94,18 +94,20 @@ function chol_unblocked!(A::AbstractMatrix{<:Real})
     A
 end
 
-function chol_unblocked_and_fwd!(Ȧ::AbstractMatrix{T}, A::AbstractMatrix{T})where{T<:Real}
-    if LinearAlgebra.checksquare(Ȧ) ≠ LinearAlgebra.checksquare(A)
-        throw(DimensionMismatch("Ȧ and A must be square and of the same size"))
+function chol_unblocked_and_fwd!(Ȧ::Vector{T}, A::T) where {T<:AbstractMatrix{<:Real}}
+    if !all(isequal(LinearAlgebra.checksquare(A)), LinearAlgebra.checksquare.(Ȧ))
+        throw(DimensionMismatch("A and elements of Ȧ must be square and the same size"))
     end
     for j in axes(A, 2)
         r, d, B, c = level2partition(A, j)
-        ṙ, ḋ, Ḃ, ċ = level2partition(Ȧ, j)
         A[j, j] = d = sqrt(d - sum(abs2, r))
         invd = inv(d)
-        Ȧ[j,j] = ḋ = (ḋ/2 - dot(r, ṙ)) / d
         mul!(c, B, r, -invd, invd)
-        ċ .= (ċ .- Ḃ*r .- B*ṙ .- c*ḋ) ./ d
+        for Ȧk in Ȧ
+            ṙ, ḋ, Ḃ, ċ = level2partition(Ȧk, j)
+            Ȧk[j, j] = ḋ = (ḋ/2 - dot(r, ṙ)) / d
+            ċ .= (ċ .- Ḃ*r .- B*ṙ .- c*ḋ) ./ d
+        end
     end
     Ȧ, A
 end
