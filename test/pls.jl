@@ -435,7 +435,10 @@ end
     allpars = DataFrame(bsamp.allpars)
     @test isa(allpars, DataFrame)
     cov = shortestcovint(shuffle(1.:100.))
-    @test first(cov) == 5.
+    # there is no unique shortest coverage interval here, but the left-most one
+    # is currently returned, so we take that. If this behavior changes, then
+    # we'll have to change the test
+    @test first(cov) == 1.
     @test last(cov) == 95.
     # I'm not sure we actually need to test the exact number of singular fits returned
     # but we should probably test the issingular method, so we can just compare
