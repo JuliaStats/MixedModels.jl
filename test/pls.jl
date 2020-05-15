@@ -440,12 +440,7 @@ end
     # we'll have to change the test
     @test first(cov) == 1.
     @test last(cov) == 95.
-    # I'm not sure we actually need to test the exact number of singular fits returned
-    # but we should probably test the issingular method, so we can just compare
-    # the single and multi threaded results
-    @test_broken sum(issingular(bsamp)) == 57
-
-
+    
     bsamp_threaded = parametricbootstrap(MersenneTwister(1234321), 100, fm, use_threads=true)
     # even though it's bad practice with floating point, exact equality should
     # be a valid test here -- if everything is working right, then it's the exact
