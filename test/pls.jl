@@ -61,7 +61,7 @@ const io = IOBuffer()
 
     @test objective(updateL!(setθ!(fm1, [0.713]))) ≈ 327.34216280955366
     @test_deprecated MixedModels.describeblocks(IOBuffer(), fm1)
- 
+
     show(io, BlockDescription(fm1))
     @test countlines(seekstart(io)) == 3
     output = String(take!(io))
@@ -249,7 +249,7 @@ end
         show(io, first(pca), stddevs=true, variances=true)
         str = String(take!(io))
         @test !isempty(findall("Standard deviations:", str))
-        @test !isempty(findall("Variances:", str))        
+        @test !isempty(findall("Variances:", str))
     end
 
     show(io, BlockDescription(fm1))
