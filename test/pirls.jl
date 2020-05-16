@@ -1,4 +1,7 @@
+using PooledArrays
+using Distributions
 using MixedModels
+using Random
 using Test
 
 using MixedModels: dataset
@@ -100,8 +103,27 @@ end
         @test sum(neldermead.resp.devresid) ≈ 58830. atol=0.001 # value from lme4
     end
 
+    ## simulate some data ##
+    rng = MersenneTwister(42);
+    ng = 25
+    ns = 500
+    # random effect
+    u = repeat(randn(rng, ns) .* 0.1, ng);
+    id = PooledArray(string.(repeat(1:ns, ng)));
+    # fixed effect
+    x = rand(rng, ns*ng);
+
     @testset "inverse gaussian" begin
+        rng = MersenneTwister(42);
+        y =  map(d ->  rand(rng, d), InverseGaussian.(1. ./ sqrt.(1. .+ u + x)));
+        dat = (u=u, id=id, x=x, y=y)
+        # invgauss = fit(MixedModel, @formula(y ~ 1 + x + (1|id)), dat, InverseGaussian())
     end
+
     @testset "gamma" begin
+        rng = MersenneTwister(42);
+        y =  map(d ->  rand(rng, d), Gamma.(1. ./ (1. .+ u + x)));
+        dat = (u=u, id=id, x=x, y=y)
+        # gamma = fit(MixedModel, @formula(y ~ 1 + x + (1|id)), dat, Gamma())
     end
 end
