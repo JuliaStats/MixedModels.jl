@@ -2,15 +2,13 @@ using LinearAlgebra, MixedModels, StatsModels, Random, Test
 
 xtx(X) = X'X  # creat the symmetric matrix X'X from X
 
-const rng = Random.MersenneTwister(4321234)
-
 const simdat = (
     G = repeat('A':'T', inner=10),
     H = repeat('a':'e', inner=2, outer=20),
-    U = repeat(0.:9, outer=20), 
+    U = repeat(0.:9, outer=20),
     V = repeat(-4.5:4.5, outer=20),
-    Y = 0.1 * randn(rng, 200),
-    Z = rand(rng, 200)
+    Y = 1:200,
+    Z = 1:200
 )
 
 @testset "fullranknumeric" begin
@@ -48,4 +46,3 @@ end
     @test ch.piv == perm
     @test isapprox(xtx(ch.U), XtX[perm, perm], atol=0.00001)
 end
-
