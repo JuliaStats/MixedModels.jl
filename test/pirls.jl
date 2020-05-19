@@ -117,13 +117,17 @@ end
         rng = MersenneTwister(42);
         y =  map(d ->  rand(rng, d), InverseGaussian.(1. ./ sqrt.(1. .+ u + x)));
         dat = (u=u, id=id, x=x, y=y)
-        # invgauss = fit(MixedModel, @formula(y ~ 1 + x + (1|id)), dat, InverseGaussian())
+        invgauss = GeneralizedLinearMixedModel(@formula(y ~ 1 + x + (1|id)), dat, InverseGaussian());
+        #invgauss.optsum.optimizer = :LN_NELDERMEAD;
+        # fit!(invgauss)
     end
 
     @testset "gamma" begin
         rng = MersenneTwister(42);
         y =  map(d ->  rand(rng, d), Gamma.(1. ./ (1. .+ u + x)));
         dat = (u=u, id=id, x=x, y=y)
-        # gamma = fit(MixedModel, @formula(y ~ 1 + x + (1|id)), dat, Gamma())
+        gamma = GeneralizedLinearMixedModel(@formula(y ~ 1 + x + (1|id)), dat, Gamma());
+        #gamma.optsum.optimizer = :LN_NELDERMEAD;
+        # fit!(gamma)
     end
 end
