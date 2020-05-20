@@ -12,6 +12,8 @@ const fms = Dict(
     :dyestuff => [@formula(yield ~ 1 + (1|batch))],
     :grouseticks => [@formula(ticks ~ 1+year+ch+ (1|index) + (1|brood) + (1|location))],
     :verbagg => [@formula(r2 ~ 1+anger+gender+btype+situ+(1|subj)+(1|item))],
+    :sdio_relaxivity => [@formula(T2 ~ 1 + C + (1 + C|Trial)), # canonical inverse link
+                         @formula(R2 ~ 1 + C + (1 + C|Trial))], # identity link
 )
 
 @testset "contra" begin
