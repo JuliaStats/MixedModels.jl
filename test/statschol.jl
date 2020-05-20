@@ -1,4 +1,4 @@
-using LinearAlgebra, MixedModels, StatsModels, Random, Test
+using LinearAlgebra, MixedModels, StatsModels, Test
 
 xtx(X) = X'X  # creat the symmetric matrix X'X from X
 
