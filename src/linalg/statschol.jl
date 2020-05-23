@@ -30,5 +30,5 @@ function statscholesky(xtx::Symmetric{T}, tol::Real = 0.0) where {T<:AbstractFlo
             chunp.factors[i, j] = zero(T)
         end
     end
-    CholeskyPivoted(chunp.factors, chunp.uplo, piv, r, tol, chpiv.info)
+    CholeskyPivoted(chunp.factors, chunp.uplo, piv, r, tol, 0)
 end
