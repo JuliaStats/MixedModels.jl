@@ -5,6 +5,8 @@ using BlockDiagonals
 using Distributions
 using Feather
 using GLM
+using Interpolations
+using InvertedIndices
 using LinearAlgebra
 using NamedArrays
 using NLopt
@@ -58,7 +60,7 @@ export @formula,
        SqrtLink,
        UniformBlockDiagonal,
        VarCorr,
-       
+
        aic,
        aicc,
        bic,
@@ -154,5 +156,6 @@ include("linalg.jl")
 include("simulate.jl")
 include("bootstrap.jl")
 include("blockdescription.jl")
+include("profile.jl")
 
 end # module
