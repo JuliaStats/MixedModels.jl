@@ -6,11 +6,12 @@ retains the original order unless singularity is detected.  Columns that are
 (computationally) linearly dependent on columns to their left are moved to the
 right hand side in a left circular shift.
 """
-function statscholesky(xtx::Symmetric{T}, tol::Real = -1) where {T<:AbstractFloat}
+function statscholesky(xtx::Symmetric{T}, tol::Real = 0.0) where {T<:AbstractFloat}
     n = size(xtx, 2)
+    println(tol)
     chpiv = cholesky(xtx, Val(true), tol = T(tol), check = false)
     chunp = cholesky(xtx, check = false)
-    @assert issuccess(chunp) "Cholesky Decomposition failed"
+    @assert chpiv.info == 0 "Cholesky decomposition failed"
     r = chpiv.rank
     piv = [1:n;]
     if r < n
