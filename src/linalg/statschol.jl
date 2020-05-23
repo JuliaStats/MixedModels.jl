@@ -10,7 +10,7 @@ function statscholesky(xtx::Symmetric{T}, tol::Real = -1) where {T<:AbstractFloa
     n = size(xtx, 2)
     chpiv = cholesky(xtx, Val(true), tol = T(-1), check = false)
     chunp = cholesky(xtx, check = false)
-    @assert issuccess(chpiv) && issuccess(chunp) 
+    @assert issuccess(chunp) "Cholesky Decomposition failed"
     r = chpiv.rank
     piv = [1:n;]
     if r < n
