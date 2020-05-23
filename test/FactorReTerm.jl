@@ -1,4 +1,3 @@
-using DataFrames
 using LinearAlgebra
 using MixedModels
 using Random
@@ -6,14 +5,16 @@ using SparseArrays
 using StatsModels
 using Test
 
+using MixedModels: dataset, levs, modelcols, nlevs
+
 const LMM = LinearMixedModel
 
 @testset "scalarReMat" begin
-    ds = MixedModels.dataset("dyestuff")
+    ds = dataset("dyestuff")
     f1 = @formula(yield ~ 1 + (1|batch))
     y1, Xs1 = modelcols(apply_schema(f1, schema(ds), LMM), ds)
     sf = Xs1[2]
-    psts = MixedModels.dataset("pastes")
+    psts = dataset("pastes")
     f2 = @formula(strength ~ 1 + (1|sample) + (1|batch))
     y2, Xs2 = modelcols(apply_schema(f2, schema(psts), LMM), psts)
     sf1 = Xs2[2]
@@ -29,8 +30,8 @@ const LMM = LinearMixedModel
     end
 
     @testset "utilities" begin
-        @test MixedModels.levs(sf) == string.('A':'F')
-        @test MixedModels.nlevs(sf) == 6
+        @test levs(sf) == string.('A':'F')
+        @test nlevs(sf) == 6
         @test eltype(sf) == Float64
         @test sparse(sf) == sparse(1:30, sf.refs, ones(30))
         fsf = Matrix(sf)
@@ -79,26 +80,26 @@ const LMM = LinearMixedModel
 end
 
 @testset "RandomEffectsTerm" begin
-    slp = MixedModels.dataset("sleepstudy")
+    slp = dataset("sleepstudy")
     contrasts =  Dict{Symbol,Any}()
 
     @testset "Detect same variable as blocking and experimental" begin
         f = @formula(reaction ~ 1 + (1 + subj|subj))
-        @test_throws ArgumentError apply_schema(f, schema(f, slp, contrasts), LinearMixedModel)
+        @test_throws ArgumentError apply_schema(f, schema(f, slp, contrasts), LMM)
     end
 
     @testset "Detect both blocking and experimental variables" begin
         # note that U is not in the fixed effects because we want to make square
         # that we're detecting all the variables in the random effects
         f = @formula(reaction ~ 1 + (1 + days|subj))
-        form = apply_schema(f, schema(f, slp, contrasts), LinearMixedModel)
+        form = apply_schema(f, schema(f, slp, contrasts), LMM)
         @test StatsModels.termvars(form.rhs) == [:days, :subj]
     end
 end
 
 @testset "Categorical Blocking Variable" begin
     # deepcopy because we're going to modify it
-    slp = deepcopy(MixedModels.dataset("sleepstudy"))
+    slp = deepcopy(dataset("sleepstudy"))
     contrasts =  Dict{Symbol,Any}()
     f = @formula(reaction ~ 1 + (1|subj))
 

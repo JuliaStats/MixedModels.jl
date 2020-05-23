@@ -1,4 +1,3 @@
-using DataFrames
 using LinearAlgebra
 using MixedModels
 using Random

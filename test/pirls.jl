@@ -84,6 +84,37 @@ end
     #@test isapprox(sum(gm4.resp.devresid), 220.92685781326136, atol=0.1)
 end
 
+@testset "goldstein" begin # from a 2020-04-22 msg by Ben Goldstein to R-SIG-Mixed-Models
+    goldstein =
+        categorical!(
+            DataFrame(
+                group = repeat(1:10, outer=10),
+                y = [
+                    83, 3, 8, 78, 901, 21, 4, 1, 1, 39,
+                    82, 3, 2, 82, 874, 18, 5, 1, 3, 50,
+                    87, 7, 3, 67, 914, 18, 0, 1, 1, 38,
+                    86, 13, 5, 65, 913, 13, 2, 0, 0, 48,
+                    90, 5, 5, 71, 886, 19, 3, 0, 2, 32,
+                    96, 1, 1, 87, 860, 21, 3, 0, 1, 54,
+                    83, 2, 4, 70, 874, 19, 5, 0, 4, 36,
+                    100, 11, 3, 71, 950, 21, 6, 0, 1, 40,
+                    89, 5, 5, 73, 859, 29, 3, 0, 2, 38,
+                    78, 13, 6, 100, 852, 24, 5, 0, 1, 39
+                    ],
+                ),
+            :group,
+        )
+    gform = @formula(y ~ 1 + (1|group))
+    m1 = fit(MixedModel, gform, goldstein, Poisson())
+    @test deviance(m1) ≈ 193.5587302384811 rtol=1.e-5
+    @test only(m1.β) ≈ 4.192196439077657 atol=1.e-5
+    @test only(m1.θ) ≈ 1.838245201739852 atol=1.e-5
+    m11 = fit(MixedModel, gform, goldstein, Poisson(), nAGQ=11)
+    @test deviance(m11) ≈ 193.51028088736842 rtol=1.e-5
+    @test only(m11.β) ≈ 4.192196439077657 atol=1.e-5
+    @test only(m11.θ) ≈ 1.838245201739852 atol=1.e-5
+end
+
 @testset "dispersion parameter" begin
     @testset "gaussian with non identity link" begin
         dyestuff = MixedModels.dataset(:dyestuff)
