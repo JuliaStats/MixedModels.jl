@@ -8,11 +8,11 @@ right hand side in a left circular shift.
 """
 function statscholesky(xtx::Symmetric{T}, tol::Real = 0.0) where {T<:AbstractFloat}
     n = size(xtx, 2)
-    println(tol)
-    chpiv = cholesky(xtx, Val(true), tol = T(tol), check = false)
+    #chpiv = cholesky(xtx, Val(true), tol = T(tol), check = false)
     chunp = cholesky(xtx, check = false)
-    @assert chpiv.info == 0 "Cholesky decomposition failed"
-    r = chpiv.rank
+    #@assert chpiv.info == 0 "Cholesky decomposition failed"
+    r = rank(xtx) #chpiv.rank
+    #@assert r == rank(xtx)
     piv = [1:n;]
     if r < n
         nleft = n
