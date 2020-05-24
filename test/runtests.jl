@@ -1,4 +1,8 @@
 using MixedModels
+import InteractiveUtils: versioninfo
+
+# there seem to be processor-specific issues and knowing this is helpful 
+println(versioninfo())
 
 include("utilities.jl")
 include("statschol.jl")

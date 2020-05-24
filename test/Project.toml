@@ -2,6 +2,7 @@
 BlockArrays = "8e7c35d0-a365-5155-bbbb-fb81a777f24e"
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 GLM = "38e38edf-8417-5370-95a0-9cbb8c7f171a"
+InteractiveUtils = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 NamedArrays = "86f7a689-2022-50b4-a561-43c23ac3c673"
 PooledArrays = "2dfb63ee-cc39-5dd5-95bd-886bf059d720"
