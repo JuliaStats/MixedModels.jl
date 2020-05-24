@@ -14,6 +14,7 @@ function statscholesky(xtx::Symmetric{T}, tol::Real = 0.0) where {T<:AbstractFlo
     r = rank(xtx) #chpiv.rank
     println(chpiv.rank)
     println(r)
+    println(versioninfo())
     #@assert r == rank(xtx)
     piv = [1:n;]
     if r < n
