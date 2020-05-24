@@ -1,3 +1,5 @@
+import InteractiveUtils: versioninfo
+
 """
     statscholesky(xtx::Symmetric{T}, tol::Real=-1) where {T<:AbstractFloat}
 
