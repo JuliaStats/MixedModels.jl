@@ -10,7 +10,6 @@ function statscholesky(xtx::Symmetric{T}, tol::Real = 0.0) where {T<:AbstractFlo
     n = size(xtx, 2)
     chpiv = cholesky(xtx, Val(true), tol = T(tol), check = false)
     chunp = cholesky(xtx, check = false)
-    #@assert chpiv.info == 0 "Cholesky decomposition failed"
     r = rank(xtx) #chpiv.rank
     println("Rank: $(r); Cholesky rank: $(chpiv.rank)")
     piv = [1:n;]
@@ -30,5 +29,5 @@ function statscholesky(xtx::Symmetric{T}, tol::Real = 0.0) where {T<:AbstractFlo
             chunp.factors[i, j] = zero(T)
         end
     end
-    CholeskyPivoted(chunp.factors, chunp.uplo, piv, r, tol, 0)
+    CholeskyPivoted(chunp.factors, chunp.uplo, piv, r, tol, chpiv.info)
 end
