@@ -8,7 +8,11 @@ const simdat = (
     U = repeat(0.:9, outer=20),
     V = repeat(-4.5:4.5, outer=20),
     Y = (1:200)/200,
+<<<<<<< HEAD
     Z = (-99:100)/200
+=======
+    Z = (1:200)/200
+>>>>>>> parent of 64677bd... make z not a constant multiple of y
 )
 
 @testset "fullranknumeric" begin
