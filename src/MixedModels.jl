@@ -20,7 +20,7 @@ using StatsBase
 using StatsModels
 using Tables
 
-using LinearAlgebra: BlasFloat, BlasReal, HermOrSym, PosDefException, copytri!, issuccess
+using LinearAlgebra: BlasFloat, BlasReal, HermOrSym, PosDefException, copytri!
 using Base: Ryu
 using GLM: Link, canonicallink
 
