@@ -1,0 +1,35 @@
+name: Tier2
+on:
+  push:
+    branches:
+      - master
+    paths-ignore:
+      - 'LICENSE.md'
+      - 'README.md'
+  pull_request:
+    branches:
+      - master
+    paths-ignore:
+      - 'LICENSE.md'
+      - 'README.md'
+  release:
+    types:
+      - created
+jobs:
+  ci:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        julia-version: [1.4]
+        julia-arch: [x86]
+        os: [ubuntu-18.04, windows-2019]
+    steps:
+      - uses: actions/checkout@v2
+      - uses: julia-actions/setup-julia@v1
+        with:
+          version: ${{ matrix.julia-version }}
+      - uses: julia-actions/julia-buildpkg@v0.1
+      - uses: julia-actions/julia-runtest@v0.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
