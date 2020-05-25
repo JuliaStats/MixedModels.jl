@@ -8,11 +8,7 @@ const simdat = (
     U = repeat(0.:9, outer=20),
     V = repeat(-4.5:4.5, outer=20),
     Y = (1:200)/200,
-<<<<<<< HEAD
-    Z = (-99:100)/200
-=======
     Z = (1:200)/200
->>>>>>> parent of 64677bd... make z not a constant multiple of y
 )
 
 @testset "fullranknumeric" begin
@@ -43,9 +39,9 @@ end
 end
 
 @testset "missingcells" begin
-    XtX = xtx(modelmatrix(@formula(Y ~ 1 + G*H), simdat)[5:end,:])
+    XtX = xtx(modelmatrix(@formula(Y ~ 0 + G*H), simdat)[5:end,:])
     ch = statscholesky(Symmetric(XtX, :U))
-    perm = [1:42; 44:100; 43]
+    perm = [1:42; 44:100; 42]
     @test ch.rank == 98
     @test ch.piv == perm
     @test isapprox(xtx(ch.U), XtX[perm, perm], atol=0.00001)
