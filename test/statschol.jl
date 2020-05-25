@@ -41,7 +41,7 @@ end
 @testset "missingcells" begin
     XtX = xtx(modelmatrix(@formula(Y ~ 0 + G*H), simdat)[5:end,:])
     ch = statscholesky(Symmetric(XtX, :U))
-    perm = [1:42; 44:100; 42]
+    perm = [1:41; 43:99; 42]
     @test ch.rank == 98
     @test ch.piv == perm
     @test isapprox(xtx(ch.U), XtX[perm, perm], atol=0.00001)
