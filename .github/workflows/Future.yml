@@ -24,6 +24,7 @@ jobs:
         with:
           version: ${{ matrix.julia-version }}
       - uses: julia-actions/julia-buildpkg@v0.1
+      - run: export OPENBLAS_CORETYPE=haswell 
       - uses: julia-actions/julia-runtest@v0.1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
