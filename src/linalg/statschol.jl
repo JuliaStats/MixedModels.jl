@@ -11,7 +11,9 @@ function statscholesky(xtx::Symmetric{T}, tol::Real = 0.0) where {T<:AbstractFlo
     chpiv = cholesky(xtx, Val(true), tol = T(tol), check = false)
     chunp = cholesky(xtx, check = false)
     r = rank(xtx) #chpiv.rank
-    r == chpiv.rank || println("Rank: $(r); Cholesky rank: $(chpiv.rank)")
+    if r ≠ chpiv.rank
+         @warn "SVD and Cholesky-based ranks give different answers: your model may be ill-conditioned"
+    end
     piv = [1:n;]
     if r < n
         nleft = n
