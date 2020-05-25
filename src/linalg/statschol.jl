@@ -17,7 +17,8 @@ function statscholesky(xtx::Symmetric{T}, tol::Real = 0.0) where {T<:AbstractFlo
         nleft = n
         while r < nleft
             k = chunp.info
-            if k < nleft
+            # the 0 lowerbound is for MKL compatibility
+            if 0 < k < nleft
                 piv = piv[[1:k-1; k+1:n; k]]
                 chunp = cholesky!(Symmetric(xtx[piv, piv]), check = false)
             end
