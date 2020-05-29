@@ -1,7 +1,7 @@
 [TestData]
-git-tree-sha1 = "9d575764bc1c1a7860c34c5b153251e5f2ee6704"
+git-tree-sha1 = "d3fe9d4e2e432b1ec1d8f0a80cf778a94f81e7c6"
 lazy = true
 
     [[TestData.download]]
-    sha256 = "0b63ae3e9e457ee4b33482d3bf8cc7f20c8ed7c8b2c863af311ba0944c6d46e4"
-    url = "https://ndownloader.figshare.com/files/21085968"
+    sha256 = "7bb283955521bd513cdd0a8c57e8440b3d40450ba338769806cf4fba0b9662f4"
+    url = "https://osf.io/uyb5j/download"
