@@ -3,10 +3,10 @@ git-tree-sha1 = "6614babc98083a65c25b7ec1ef2e38b345de65c9"
 lazy = true
 
     [[TestData.download]]
-    sha256 = "e85dc5f76251707034ff1e086775349650d81ddebabba67c0f065143c5cee134"
+    sha256 = "92e1d57966e6d4716d9925450b4a100d923e3df4c40060d110860cf968ec6559"
     # when updating this, making sure to include the version (change to new) and
     # displayName (don't change) because the default link always points to the newest
     # (and so will not match the SHA for users not yet on the most recent version)
     # and Julia invokes wget without using HTTP metadata, so we need the link
     # to end with the right extension unless we want to fall back to gzip compression
-    url = "https://osf.io/uyb5j/download'?'version=2'&'displayName=data.tar.xz"
+    url = "https://osf.io/pcjk6/download"
