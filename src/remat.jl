@@ -444,10 +444,12 @@ end
 function scaleinflate!(Ljj::UniformBlockDiagonal{T}, Λj::ReMat{T,S}) where {T,S}
     λ = Λj.λ
     dind = diagind(S, S)
-    for f in Ljj.facevec
+    Ldat = Ljj.data
+    for k in axes(Ldat, 3)
+        f = view(Ldat, :, :, k)
         lmul!(λ', rmul!(f, λ))
         for i in dind
-            f[i] += one(T)
+            f[i] += one(T)  # inflate diagonal
         end
     end
     Ljj

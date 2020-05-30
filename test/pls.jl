@@ -271,11 +271,11 @@ end
     @test isa(A11, UniformBlockDiagonal{Float64})
     @test isa(fm.L[Block(1, 1)], UniformBlockDiagonal{Float64})
     @test size(A11) == (36, 36)
-    a11 = A11.facevec[1]
+    a11 = view(A11.data, :, :, 1)
     @test a11 == [10. 45.; 45. 285.]
-    @test length(A11.facevec) == 18
+    @test size(A11.data, 3) == 18
     λ = first(fm.λ)
-    b11 = LowerTriangular(fm.L[Block(1, 1)].facevec[1])
+    b11 = LowerTriangular(view(fm.L[Block(1, 1)].data, :, :, 1))
     @test b11 * b11' ≈ λ'a11*λ + I rtol=1e-5
     @test count(!iszero, Matrix(fm.L[Block(1, 1)])) == 18 * 4
     @test rank(fm) == 2

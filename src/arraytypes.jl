@@ -5,14 +5,6 @@ Homogeneous block diagonal matrices.  `k` diagonal blocks each of size `m×m`
 """
 struct UniformBlockDiagonal{T} <: AbstractMatrix{T}
     data::Array{T,3}
-    facevec::Vector{SubArray{T,2,Array{T,3}}}
-end
-
-function UniformBlockDiagonal(dat::Array{T,3}) where {T}
-    UniformBlockDiagonal(
-        dat,
-        SubArray{T,2,Array{T,3}}[view(dat, :, :, i) for i = 1:size(dat, 3)],
-    )
 end
 
 function Base.axes(A::UniformBlockDiagonal)

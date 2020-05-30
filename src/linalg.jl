@@ -47,11 +47,11 @@ function LinearAlgebra.ldiv!(
 ) where {T}
     A = adjA.parent
     length(B) == size(A, 2) || throw(DimensionMismatch(""))
-    m, n, k = size(A.data.data)
-    fv = A.data.facevec
+    Adat = A.data.data
+    m, n, k = size(Adat)
     bb = reshape(B, (n, k))
-    for j = 1:k
-        ldiv!(adjoint(LowerTriangular(fv[j])), view(bb, :, j))
+    for j in axes(Adat, 3)
+        ldiv!(adjoint(LowerTriangular(view(Adat, :, :, j))), view(bb, :, j))
     end
     B
 end
@@ -77,12 +77,16 @@ function LinearAlgebra.rdiv!(
     B::Adjoint{T,<:LowerTriangular{T,UniformBlockDiagonal{T}}},
 ) where {T,S,P}
     Bpd = B.parent.data
-    j, k, l = size(Bpd.data)
+    Bdat = Bpd.data
+    j, k, l = size(Bdat)
     cbpt = A.colblkptr
     nzv = A.cscmat.nzval
     P == j == k && length(cbpt) == (l + 1) || throw(DimensionMismatch(""))
-    for (j, f) in enumerate(Bpd.facevec)
-        rdiv!(reshape(view(nzv, cbpt[j]:(cbpt[j+1]-1)), :, P), adjoint(LowerTriangular(f)))
+    for j in axes(Bdat, 3)
+        rdiv!(
+            reshape(view(nzv,cbpt[j]:(cbpt[j+1]-1)),:,P),
+            adjoint(LowerTriangular(view(Bdat,:,:,j)))
+            )
     end
     A
 end
