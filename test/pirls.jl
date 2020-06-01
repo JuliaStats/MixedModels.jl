@@ -3,7 +3,7 @@ using Test
 
 using MixedModels: dataset
 
-const fms = Dict(
+const gfms = Dict(
     :cbpp => [@formula((incid/hsz) ~ 1 + period + (1|herd))],
     :contra => [@formula(use ~ 1+age+abs2(age)+urban+livch+(1|urbdist))],
     :grouseticks => [@formula(ticks ~ 1+year+ch+ (1|index) + (1|brood) + (1|location))],
@@ -12,11 +12,11 @@ const fms = Dict(
 
 @testset "contra" begin
     contra = dataset(:contra)
-    gm0 = fit(MixedModel, only(fms[:contra]), contra, Bernoulli(), fast=true);
+    gm0 = fit(MixedModel, only(gfms[:contra]), contra, Bernoulli(), fast=true);
     @test gm0.lowerbd == zeros(1)
     @test isapprox(gm0.θ, [0.5720734451352923], atol=0.001)
     @test isapprox(deviance(gm0), 2361.657188518064, atol=0.001)
-    gm1 = fit(MixedModel, only(fms[:contra]), contra, Bernoulli());
+    gm1 = fit(MixedModel, only(gfms[:contra]), contra, Bernoulli());
     @test isapprox(gm1.θ, [0.573054], atol=0.005)
     @test lowerbd(gm1) == vcat(fill(-Inf, 7), 0.)
     @test isapprox(deviance(gm1), 2361.54575, rtol=0.00001)
@@ -25,7 +25,7 @@ const fms = Dict(
     @test nobs(gm0) == 1934
     fit!(gm0, fast=true, nAGQ=7)
     @test isapprox(deviance(gm0), 2360.9838, atol=0.001)
-    gm1 = fit(MixedModel, only(fms[:contra]), contra, Bernoulli(), nAGQ=7)
+    gm1 = fit(MixedModel, only(gfms[:contra]), contra, Bernoulli(), nAGQ=7)
     @test isapprox(deviance(gm1), 2360.8760, atol=0.001)
     @test gm1.β == gm1.beta
     @test gm1.θ == gm1.theta
@@ -47,7 +47,7 @@ end
 
 @testset "cbpp" begin
     cbpp = dataset(:cbpp)
-    gm2 = fit(MixedModel, only(fms[:cbpp]), cbpp, Binomial(), wts=float(cbpp.hsz))
+    gm2 = fit(MixedModel, only(gfms[:cbpp]), cbpp, Binomial(), wts=float(cbpp.hsz))
     @test deviance(gm2,true) ≈ 100.09585619892968 atol=0.0001
     @test sum(abs2, gm2.u[1]) ≈ 9.723054788538546 atol=0.0001
     @test logdet(gm2) ≈ 16.90105378801136 atol=0.0001
@@ -58,7 +58,7 @@ end
 end
 
 @testset "verbagg" begin
-    gm3 = fit(MixedModel, only(fms[:verbagg]), dataset(:verbagg), Bernoulli())
+    gm3 = fit(MixedModel, only(gfms[:verbagg]), dataset(:verbagg), Bernoulli())
     @test deviance(gm3) ≈ 8151.40 rtol=1e-5
     @test lowerbd(gm3) == vcat(fill(-Inf, 6), zeros(2))
     @test fitted(gm3) == predict(gm3)
@@ -71,7 +71,7 @@ end
     center(v::AbstractVector) = v .- (sum(v) / length(v))
     grouseticks = dataset(:grouseticks)
     grouseticks.ch = center(grouseticks.height)
-    gm4 = fit(MixedModel, only(fms[:grouseticks]), grouseticks, Poisson(), fast=true)  # fails in pirls! with fast=false
+    gm4 = fit(MixedModel, only(gfms[:grouseticks]), grouseticks, Poisson(), fast=true)  # fails in pirls! with fast=false
     @test isapprox(deviance(gm4), 851.4046, atol=0.001)
     # these two values are not well defined at the optimum
     #@test isapprox(sum(x -> sum(abs2, x), gm4.u), 196.8695297987013, atol=0.1)
