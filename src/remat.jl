@@ -428,7 +428,7 @@ function scaleinflate! end
 
 function scaleinflate!(Ljj::Diagonal{T}, Λj::ReMat{T,1}) where {T}
     Ljjd = Ljj.diag
-    broadcast!((x, λsqr) -> x * λsqr + 1, Ljjd, Ljjd, abs2(first(Λj.λ)))
+    Ljjd .= Ljjd .* abs2(only(Λj.λ)) .+ one(T)
     Ljj
 end
 
