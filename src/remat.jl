@@ -419,60 +419,6 @@ function rowlengths(A::ReMat)
     [norm(view(ld, i, 1:i)) for i in 1:size(ld, 1)]
 end
 
-"""
-    scaleinflate!(L::AbstractMatrix, Λ::ReMat)
-
-Overwrite L with `Λ'LΛ + I`
-"""
-function scaleinflate! end
-
-function scaleinflate!(Ljj::Diagonal{T}, Λj::ReMat{T,1}) where {T}
-    Ljjd = Ljj.diag
-    Ljjd .= Ljjd .* abs2(only(Λj.λ)) .+ one(T)
-    Ljj
-end
-
-function scaleinflate!(Ljj::Matrix{T}, Λj::ReMat{T,1}) where {T}
-    lambsq = abs2(first(Λj.λ))
-    @inbounds for i in diagind(Ljj)
-        Ljj[i] *= lambsq
-        Ljj[i] += one(T)
-    end
-    Ljj
-end
-
-function scaleinflate!(Ljj::UniformBlockDiagonal{T}, Λj::ReMat{T,S}) where {T,S}
-    λ = Λj.λ
-    dind = diagind(S, S)
-    Ldat = Ljj.data
-    for k in axes(Ldat, 3)
-        f = view(Ldat, :, :, k)
-        lmul!(λ', rmul!(f, λ))
-        for i in dind
-            f[i] += one(T)  # inflate diagonal
-        end
-    end
-    Ljj
-end
-
-function scaleinflate!(Ljj::Matrix{T}, Λj::ReMat{T,S}) where{T,S}
-    n = LinearAlgebra.checksquare(Ljj)
-    q, r = divrem(n, S)
-    iszero(r) || throw(DimensionMismatch("size(Ljj, 1) is not a multiple of S"))
-    λ = Λj.λ
-    offset = 0
-    @inbounds for k in 1:q
-        inds = (offset + 1):(offset + S)
-        tmp = view(Ljj, inds, inds)
-        lmul!(adjoint(λ), rmul!(tmp, λ))
-        offset += S
-    end
-    for k in diagind(Ljj)
-        Ljj[k] += 1
-    end
-    Ljj
-end
-
 function setθ!(A::ReMat{T}, v::AbstractVector{T}) where {T}
     A.λ.data[A.inds] = v
     A
