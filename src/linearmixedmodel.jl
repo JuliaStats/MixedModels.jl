@@ -32,6 +32,7 @@ struct LinearMixedModel{T<:AbstractFloat} <: MixedModel{T}
     sqrtwts::Vector{T}
     A::BlockMatrix{T}            # cross-product blocks
     L::BlockMatrix{T}
+    Ldot::Vector
     optsum::OptSummary{T}
 end
 LinearMixedModel(f::FormulaTerm, tbl; contrasts = Dict{Symbol,Any}(), wts = []) =
@@ -83,7 +84,8 @@ function LinearMixedModel(
     θ = foldl(vcat, getθ(c) for c in reterms)
     optsum = OptSummary(θ, lbd, :LN_BOBYQA, ftol_rel = T(1.0e-12), ftol_abs = T(1.0e-8))
     fill!(optsum.xtol_abs, 1.0e-10)
-    LinearMixedModel(form, allterms, sqrt.(convert(Vector{T}, wts)), A, L, optsum)
+    Ldot = [deepcopy(L) for _ in θ]
+    LinearMixedModel(form, allterms, sqrt.(convert(Vector{T}, wts)), A, L, Ldot, optsum)
 end
 
 fit(
@@ -847,50 +849,6 @@ function updateA!(m::LinearMixedModel)
     for j = 1:k
         for i = j:k
             mul!(A[Block(i, j)], allterms[i]', allterms[j])
-        end
-    end
-    m
-end
-
-"""
-    updateL!(m::LinearMixedModel)
-
-Update the blocked lower Cholesky factor, `m.L`, from `m.A` and `m.reterms` (used for λ only)
-
-This is the crucial step in evaluating the objective, given a new parameter value.
-"""
-function updateL!(m::LinearMixedModel{T}) where {T}
-    A = m.A
-    L = m.L
-    k = length(m.allterms)
-    for j = 1:k                         # copy lower triangle of A to L
-        for i = j:k
-            copyto!(L[Block(i, j)], A[Block(i, j)])
-        end
-    end
-    for (j, cj) in enumerate(m.reterms)  # pre- and post-multiply by Λ, add I to diagonal
-        scaleinflate!(L[Block(j, j)], cj)
-        for i = (j+1):k         # postmultiply column by Λ
-            rmulΛ!(L[Block(i, j)], cj)
-        end
-        for jj = 1:(j-1)        # premultiply row by Λ'
-            lmulΛ!(cj', L[Block(j, jj)])
-        end
-    end
-    for j = 1:k                         # blocked Cholesky
-        Ljj = L[Block(j, j)]
-        LjjH = isa(Ljj, Diagonal) ? Ljj : Hermitian(Ljj, :L)
-        for jj = 1:(j-1)
-            rankUpdate!(LjjH, L[Block(j, jj)], -one(T))
-        end
-        cholUnblocked!(Ljj, Val{:L})
-        LjjT = isa(Ljj, Diagonal) ? Ljj : LowerTriangular(Ljj)
-        for i = (j+1):k
-            Lij = L[Block(i, j)]
-            for jj = 1:(j-1)
-                mul!(Lij, L[Block(i, jj)], L[Block(j, jj)]', -one(T), one(T))
-            end
-            rdiv!(Lij, LjjT')
         end
     end
     m

@@ -20,7 +20,7 @@ using StatsBase
 using StatsModels
 using Tables
 
-using LinearAlgebra: BlasFloat, BlasReal, HermOrSym, PosDefException, copytri!
+using LinearAlgebra: BlasFloat, BlasReal, HermOrSym, PosDefException, checksquare, copytri!
 using Base: Ryu
 using GLM: Link, canonicallink
 
@@ -142,6 +142,7 @@ include("remat.jl")
 include("optsummary.jl")
 include("randomeffectsterm.jl")
 include("linearmixedmodel.jl")
+include("updateL.jl")
 include("gausshermite.jl")
 include("generalizedlinearmixedmodel.jl")
 include("mixedmodel.jl")

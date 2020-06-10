@@ -14,7 +14,7 @@ function cholUnblocked!(D::Diagonal{T}, ::Type{Val{:L}}) where {T<:AbstractFloat
 end
 
 function cholUnblocked!(A::StridedMatrix{T}, ::Type{Val{:L}}) where {T<:BlasFloat}
-    n = LinearAlgebra.checksquare(A)
+    n = checksquare(A)
     if n == 1
         A[1] < zero(T) && throw(PosDefException(1))
         A[1] = sqrt(A[1])
@@ -48,7 +48,7 @@ end
 Return the partition r, d, B, c of views forming the lower-left block anchored at `A[j,j]`
 """
 function level2partition(A::AbstractMatrix, j)
-    N = LinearAlgebra.checksquare(A)
+    N = checksquare(A)
     checkbounds(Bool, axes(A, 1), j) || throw(ArgumentError("j=$j must be in 1:$N"))
     view(A, j, 1:(j-1)), A[j, j], view(A, (j+1):N, 1:(j-1)), view(A, (j+1):N, j)
 end
@@ -66,7 +66,7 @@ Note how close this code is to the pseudo-code in the reference - much closer th
 Python code in the appendix.
 """
 function chol_unblocked_fwd!(Ȧ::AbstractMatrix{T}, L::AbstractMatrix{T}) where {T<:Real}
-    if LinearAlgebra.checksquare(Ȧ) ≠ LinearAlgebra.checksquare(L)
+    if checksquare(Ȧ) ≠ checksquare(L)
         throw(DimensionMismatch("Ȧ and L must be square and of the same size"))
     end
     for j in axes(Ȧ, 2)
@@ -83,7 +83,7 @@ function chol_unblocked_fwd(Σ̇::AbstractMatrix{T}, L::AbstractMatrix{T}) where
 end
 
 function chol_unblocked!(A::AbstractMatrix{<:Real})
-    LinearAlgebra.checksquare(A)
+    checksquare(A)
     for j in axes(A, 2)
         r, d, B, c = level2partition(A, j)
         A[j, j] = d = sqrt(d - sum(abs2, r))
@@ -95,7 +95,7 @@ function chol_unblocked!(A::AbstractMatrix{<:Real})
 end
 
 function chol_unblocked_and_fwd!(Ȧ::Vector{T}, A::T) where {T<:AbstractMatrix{<:Real}}
-    if !all(isequal(LinearAlgebra.checksquare(A)), LinearAlgebra.checksquare.(Ȧ))
+    if !all(isequal(checksquare(A)), checksquare.(Ȧ))
         throw(DimensionMismatch("A and elements of Ȧ must be square and the same size"))
     end
     for j in axes(A, 2)
@@ -110,4 +110,45 @@ function chol_unblocked_and_fwd!(Ȧ::Vector{T}, A::T) where {T<:AbstractMatrix{
         end
     end
     Ȧ, A
+end
+
+function level3partition(A::AbstractMatrix, j, k)
+    N = checksquare(A)
+    view(A, j:k, 1:j-1), view(A, j:k, j:k), view(A, k+1:N, 1:j-1), view(A, k+1:N, j:k)
+end
+
+function chol_blocked!(A::AbstractMatrix, Nb)
+    N = checksquare(A)
+    for j in 1:Nb:N
+        k = min(N, j + Nb + 1)
+        R, D, B, C = level3partition(A, j, k)
+        chol_unblocked!(mul!(D, R, adjoint(R), -1, 1))
+        mul!(C, B, adjoint(R), -1, 1)
+        rdiv!(C, LowerTriangular(D))
+    end
+    A
+end
+
+function chol_blocked_and_fwd!(Ȧ::Vector{AbstractMatrix}, A::AbstractMatrix, Nb)
+    N = checksquare(A)
+    if !all(isequal(N), checksquare.(Ȧ))
+        throw(DimensionMismatch("A and elements of Ȧ must be square and the same size"))
+    end
+    for j in 1:Nb:N
+        k = min(N, j + Nb + 1)
+        R, D, B, C = level3partition(A, j, k)
+        chol_unblocked!(mul!(D, R, adjoint(R), -1, 1))
+        mul!(C, B, adjoint(R), -1, 1)
+        rdiv!(C, LowerTriangular(D))
+        for Ȧk in Ȧ
+            Ṙ, Ḋ, Ḃ, Ċ = level3partition(Ȧk)
+            chol_unblocked_fwd!(mul!(mul!(Ḋ, Ṙ, R', -1, 1), R, adjoint(Ṙ), -1, 1), D)
+            rdiv!(mul!(mul!(mul!(Ċ, Ḃ, R, -1, 1), B, Ṙ, -1, 1), C, adjoint(Ḋ), -1, 1), D)
+        end
+    end
+    Ȧ, A
+end
+
+function Λdot(re::ReMat{T,1}) where {T}
+    isone(only(re.inds)) || throw(ArgumentError("malformed ReMat"))
 end

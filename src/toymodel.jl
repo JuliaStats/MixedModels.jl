@@ -27,7 +27,7 @@ function ToyModel(m::LinearMixedModel{T}) where {T}
 end
 
 function indmat(inds, A)
-    result = Diagonal(falses(LinearAlgebra.checksquare(A)))
+    result = Diagonal(falses(checksquare(A)))
     result[inds] .= true
     result
 end
@@ -54,8 +54,8 @@ end
 
 Symmetrize `A` in place from its lower triangle by adding its transpose to it
 """
-function symmetrize!(A::Matrix)
-    n = LinearAlgebra.checksquare(A)
+function symmetrize!(A::AbstractMatrix)
+    n = checksquare(A)
     for j in 1:n
         A[j, j] *= 2
         for i in (j+1):n
