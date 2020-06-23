@@ -57,6 +57,19 @@ function Base.size(A::UniformBlockDiagonal)
 end
 
 """
+    byface(f, A::UniformBlockDiagonal)
+
+Apply `f` across the faces of `A`
+"""
+function byface(f, A::UniformBlockDiagonal)
+    Ad = A.data
+    @inbounds for k in axes(Ad, 3)
+        f(view(Ad, :, :, k))
+    end
+    A
+end
+
+"""
     BlockedSparse{Tv,S,P}
 
 A `SparseMatrixCSC` whose nonzeros form blocks of rows or columns or both.
