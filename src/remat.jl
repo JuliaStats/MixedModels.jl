@@ -178,19 +178,24 @@ function isnested(A::ReMat, B::ReMat)
     true
 end
 
-lmulΛ!(adjA::Adjoint{T,ReMat{T,1}}, B::Matrix{T}) where {T} = lmul!(first(adjA.parent.λ), B)
+lmulΛ!(adjA::Adjoint{T,ReMat{T,1}}, B::Matrix{T}) where {T} = lmul!(only(adjA.parent.λ), B)
 
-function lmulΛ!(adjA::Adjoint{T,ReMat{T,1}}, B::SparseMatrixCSC{T}) where {T}
-    lmul!(first(adjA.parent.λ), nonzeros(B))
+function lmulΛ!(adjA::Adjoint{T,ReMat{T,1}}, B::M) where{M<:AbstractMatrix{T}} where {T}
+    lmul!(only(adjA.parent.λ), B)
+end
+
+function lmulΛ!(adjA::Adjoint{T,ReMat{T,1}}, B::BlockedSparse{T,1,P}) where {T,P}
+    lmulΛ!(adjA, nonzeros(B.cscmat))
     B
 end
 
-function lmulΛ!(adjA::Adjoint{T,ReMat{T,1}}, B::M) where{M<:AbstractMatrix{T}} where {T}
-    lmul!(first(adjA.parent.λ), B)
+function lmulΛ!(adjA::Adjoint{T,ReMat{T,1}}, B::Diagonal{T}) where {T}
+    lmul!(only(adjA.parent.λ), B.diag)
+    B
 end
 
-function lmulΛ!(adjA::Adjoint{T,ReMat{T,S}}, B::VecOrMat{T}) where {T,S}
-    lmul!(adjoint(adjA.parent.λ), reshape(B, S, :))
+function lmulΛ!(adjA::Adjoint{T,ReMat{T,1}}, B::SparseMatrixCSC{T}) where {T}
+    lmul!(only(adjA.parent.λ), nonzeros(B))
     B
 end
 
@@ -199,13 +204,17 @@ function lmulΛ!(adjA::Adjoint{T,<:ReMat{T,S}}, B::BlockedSparse{T}) where {T,S}
     B
 end
 
-function lmulΛ!(adjA::Adjoint{T,ReMat{T,1}}, B::BlockedSparse{T,1,P}) where {T,P}
-    lmulΛ!(adjA, nonzeros(B.cscmat))
+function lmulΛ!(adjA::Adjoint{T,<:ReMat{T,S}}, B::SparseMatrixCSC{T}) where {T,S}
+    lmulΛ!(adjA, nonzeros(B))
     B
 end
 
-function lmulΛ!(adjA::Adjoint{T,<:ReMat{T,S}}, B::SparseMatrixCSC{T}) where {T,S}
-    lmulΛ!(adjA, nonzeros(B))
+function lmulΛ!(adjA::Adjoint{T,<:ReMat{T,S}}, B::UniformBlockDiagonal{T}) where {T,S}
+    lmulΛ!(adjA.parent.λ', B)
+end
+
+function lmulΛ!(adjA::Adjoint{T,<:ReMat{T,S}}, B::VecOrMat{T}) where {T,S}
+    lmul!(adjoint(adjA.parent.λ), reshape(B, S, :))
     B
 end
 
@@ -389,7 +398,21 @@ function reweight!(A::ReMat, sqrtwts::Vector)
     A
 end
 
-rmulΛ!(A::M, B::ReMat{T,1}) where{M<:AbstractMatrix{T}} where{T} = rmul!(A, only(B.λ))
+rmulΛ!(A::M, B::ReMat{T,1}) where{M<:AbstractMatrix{T}} where {T} = rmul!(A, only(B.λ))
+
+function rmulΛ!(A::Diagonal{T}, B::ReMat{T,1}) where {T}
+    rmul!(A.diag, only(B.λ))
+    A
+end
+
+function rmulΛ!(A::UniformBlockDiagonal{T}, B::ReMat{T,S}) where {T,S}
+    Adat, λ = A.data, B.λ
+    for k in axes(Adat, 3)
+        rmul!(view(Adat, :, :, k), λ)
+    end
+    A
+end
+
 function rmulΛ!(A::M, B::ReMat{T,S}) where {M<:AbstractMatrix{T}} where {T,S}
     m, n = size(A)
     q, r = divrem(n, S)
