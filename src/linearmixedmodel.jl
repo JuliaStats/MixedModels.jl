@@ -8,6 +8,7 @@ Linear mixed-effects model representation
 * `formula`: the formula for the model
 * `allterms`: a vector of random-effects terms, the fixed-effects terms and the response
 * `sqrtwts`: vector of square roots of the case weights.  Can be empty.
+* `parmap` : Vector{NTuple{3,Int}} of (row, column, block) mapping of θ to λ
 * `A`: an `nt × nt` symmetric `BlockMatrix` of matrices representing `hcat(Z,X,y)'hcat(Z,X,y)`
 * `L`: a `nt × nt` `BlockMatrix` - the lower Cholesky factor of `Λ'AΛ+I`
 * `optsum`: an [`OptSummary`](@ref) object
@@ -30,6 +31,7 @@ struct LinearMixedModel{T<:AbstractFloat} <: MixedModel{T}
     formula::FormulaTerm
     allterms::Vector{Union{ReMat{T}, FeMat{T}}}
     sqrtwts::Vector{T}
+    parmap::Vector{NTuple{3,Int}}
     A::BlockMatrix{T}            # cross-product blocks
     L::BlockMatrix{T}
     Ldot::Vector
@@ -85,7 +87,15 @@ function LinearMixedModel(
     optsum = OptSummary(θ, lbd, :LN_BOBYQA, ftol_rel = T(1.0e-12), ftol_abs = T(1.0e-8))
     fill!(optsum.xtol_abs, 1.0e-10)
     Ldot = [deepcopy(L) for _ in θ]
-    LinearMixedModel(form, allterms, sqrt.(convert(Vector{T}, wts)), A, L, Ldot, optsum)
+    parmap = NTuple{3,Int}[]
+    for (k, trm) in enumerate(reterms)
+        n = checksquare(trm.λ)
+        for ind in trm.inds
+            d,r = divrem(ind-1, n)
+            push!(parmap, (k, r+1, d+1))
+        end
+    end
+    LinearMixedModel(form, allterms, sqrt.(convert(Vector{T}, wts)), parmap, A, L, Ldot, optsum)
 end
 
 fit(
@@ -405,11 +415,10 @@ Return the current covariance parameter vector.
 getθ(m::LinearMixedModel{T}) where {T} = foldl(vcat, getθ.(m.reterms))
 
 function getθ!(v::AbstractVector{T}, m::LinearMixedModel{T}) where {T}
-    k = 0
-    for t in m.reterms
-        nt = nθ(t)
-        getθ!(view(v, (k+1):(k+nt)), t)
-        k += nt
+    parmap = m.parmap
+    length(v) == length(parmap) || throw(DimensionMismatch("length(v) = $(length(v)) ≠ length(m.parmap)"))
+    for (k, tp) in enumerate(parmap)
+        v[k] = m.allterms[tp[1]][tp[2], tp[3]]
     end
     v
 end
@@ -508,7 +517,7 @@ function StatsBase.modelmatrix(m::LinearMixedModel)
     end
 end
 
-nθ(m::LinearMixedModel) = sum(nθ, m.allterms)
+nθ(m::LinearMixedModel) = length(m.parmap)
 
 StatsBase.nobs(m::LinearMixedModel) = first(size(m))
 
@@ -713,12 +722,11 @@ sdest(m::LinearMixedModel) = √varest(m)
 
 Install `v` as the θ parameters in `m`.
 """
-function setθ!(m::LinearMixedModel, v)
-    offset = 0
-    for trm in m.reterms
-        k = nθ(trm)
-        setθ!(trm, view(v, (1:k) .+ offset))
-        offset += k
+function setθ!(m::LinearMixedModel{T}, θ::Vector{T}) where {T}
+    parmap, reterms = m.parmap, m.allterms
+    length(θ) == length(parmap) || throw(DimensionMismatch())
+    for (tv, tr) in zip(θ, parmap)
+        reterms[tr[1]].λ[tr[2], tr[3]] = tv
     end
     m
 end
