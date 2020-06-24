@@ -78,6 +78,15 @@ function chol_unblocked_fwd!(Ȧ::AbstractMatrix{T}, L::AbstractMatrix{T}) where
     Ȧ
 end
 
+function chol_unblocked_fwd!(Ȧ::UniformBlockDiagonal{T}, L::UniformBlockDiagonal{T}) where {T}
+    Adotdata, Ldata = Ȧ.data, L.data
+    size(Adotdata) == size(Ldata) || throw(DimensionMismatch)
+    for k in axes(Ldata, 3)
+        chol_unblocked_fwd!(view(Adotdata, :, :, k), view(Ldata, :, :, k))
+    end
+    Ȧ
+end
+
 function chol_unblocked_fwd(Σ̇::AbstractMatrix{T}, L::AbstractMatrix{T}) where {T<:Real}
     chol_unblocked_fwd!(copy(Σ̇), L)
 end
@@ -147,8 +156,4 @@ function chol_blocked_and_fwd!(Ȧ::Vector{AbstractMatrix}, A::AbstractMatrix, N
         end
     end
     Ȧ, A
-end
-
-function Λdot(re::ReMat{T,1}) where {T}
-    isone(only(re.inds)) || throw(ArgumentError("malformed ReMat"))
 end
