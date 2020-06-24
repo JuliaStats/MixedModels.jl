@@ -10,7 +10,7 @@ The name `rankUpdate!` is borrowed from [https://github.com/andreasnoack/LinearA
 The order of the arguments
 """
 function rankUpdate! end
-
+#=
 function rankUpdate!(
     C::AbstractMatrix{T},
     A::AbstractMatrix{T},
@@ -29,9 +29,10 @@ function rankUpdate!(
     end
     C
 end
+=#
 
 function rankUpdate!(
-    C::HermOrSym{T,S},
+    C::Hermitian{T,S},
     a::StridedVector{T},
     α = true,
 ) where {T<:BlasReal,S<:StridedMatrix}
@@ -40,7 +41,7 @@ function rankUpdate!(
 end
 
 function rankUpdate!(
-    C::HermOrSym{T,S},
+    C::Hermitian{T,S},
     A::StridedMatrix{T},
     α = true,
     β = true,
@@ -50,7 +51,7 @@ function rankUpdate!(
 end
 
 function rankUpdate!(
-    C::HermOrSym{T,Matrix{T}},
+    C::Hermitian{T,Matrix{T}},
     A::SparseMatrixCSC{T},
     α = true,
     β = true,
@@ -77,17 +78,18 @@ function rankUpdate!(
     C
 end
 
-rankUpdate!(C::HermOrSym, A::BlockedSparse, α = true, β = true) =
+function rankUpdate!(C::Hermitian, A::BlockedSparse, α = true, β = true)
     rankUpdate!(C, sparse(A), α, β)
+end
 
 function rankUpdate!(
-    C::Diagonal{T},
+    C::Hermitian{T,Diagonal{T,Vector{T}}},
     A::SparseMatrixCSC{T},
     α = true,
     β = true,
 ) where {T<:Number}
     m, n = size(A)
-    dd = C.diag
+    dd = C.data.diag
     length(dd) == m || throw(DimensionMismatch(""))
     isone(β) || rmul!(dd, β)
     nz = nonzeros(A)
@@ -103,11 +105,12 @@ function rankUpdate!(
     C
 end
 
-rankUpdate!(C::Diagonal{T}, A::BlockedSparse{T}, α = true, β = true) where {T<:Number} =
+function rankUpdate!(C::Hermitian{T,<:Diagonal{T,Vector{T}}}, A::BlockedSparse{T}, α = true, β = true) where {T<:Number}
     rankUpdate!(C, sparse(A), α, β)
+end
 
 function rankUpdate!(
-    C::HermOrSym{T,UniformBlockDiagonal{T}},
+    C::Hermitian{T,UniformBlockDiagonal{T}},
     A::BlockedSparse{T,S},
     α = true,
 ) where {T,S}
@@ -128,10 +131,6 @@ function rankUpdate!(
 end
 
 #=
-rankUpdate!(C::HermOrSym{T,Matrix{T}}, A::BlockedSparse{T}, α = true) where {T} =
-    rankUpdate!(C, A.cscmat, α)
-=#
-
 function rankUpdate!(
     C::Diagonal{T,S},
     A::Diagonal{T,S},
@@ -144,9 +143,8 @@ function rankUpdate!(
     C
 end
 
-
 function rankUpdate!(
-    C::HermOrSym{T,Matrix{T}},
+    C::Hermitian{T,Matrix{T}},
     A::Diagonal{T},
     α::Number = true,
     β::Number = true,
@@ -160,3 +158,4 @@ function rankUpdate!(
     end
     C
 end
+=#
