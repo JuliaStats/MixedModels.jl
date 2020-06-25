@@ -83,5 +83,3 @@ LinearAlgebra.mul!(C, adjA::Adjoint{T,<:FeMat{T}}, B::FeMat{T}) where {T} =
 Does `A` have full column rank?
 """
 isfullrank(A::FeMat) = A.rank == length(A.piv)
-
-nθ(A::FeMat) = 0
