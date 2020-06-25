@@ -319,6 +319,7 @@ end
     @test size(fmnc) == (180,2,36,1)
     @test fmnc.θ == [fm.θ[1], fm.θ[3]]
     @test lowerbd(fmnc) == zeros(2)
+    @test_throws DimensionMismatch MixedModels.getθ!(fm.θ, fmnc)
 
     fmnc = models(:sleepstudy)[2]
     @test size(fmnc) == (180,2,36,1)
