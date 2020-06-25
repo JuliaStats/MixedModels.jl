@@ -43,7 +43,7 @@ function _amalgamate(reterms::Vector, T::Type)
     value = ReMat{T}[]
     for (f, inds) in factordict
         if isone(length(inds))
-            push!(value, reterms[first(inds)])
+            push!(value, reterms[only(inds)])
         else
             trms = reterms[inds]
             trm1 = first(trms)
@@ -178,15 +178,17 @@ function isnested(A::ReMat, B::ReMat)
     true
 end
 
-lmulΛ!(adjA::Adjoint{T,ReMat{T,1}}, B::Matrix{T}) where {T} = lmul!(first(adjA.parent.λ), B)
+function lmulΛ!(adjA::Adjoint{T,ReMat{T,1}}, B::Matrix{T}) where {T}
+    lmul!(only(adjA.parent.λ.data), B)
+end
 
 function lmulΛ!(adjA::Adjoint{T,ReMat{T,1}}, B::SparseMatrixCSC{T}) where {T}
-    lmul!(first(adjA.parent.λ), nonzeros(B))
+    lmul!(only(adjA.parent.λ.data), nonzeros(B))
     B
 end
 
 function lmulΛ!(adjA::Adjoint{T,ReMat{T,1}}, B::M) where{M<:AbstractMatrix{T}} where {T}
-    lmul!(first(adjA.parent.λ), B)
+    lmul!(only(adjA.parent.λ.data), B)
 end
 
 function lmulΛ!(adjA::Adjoint{T,ReMat{T,S}}, B::VecOrMat{T}) where {T,S}
@@ -200,7 +202,7 @@ function lmulΛ!(adjA::Adjoint{T,<:ReMat{T,S}}, B::BlockedSparse{T}) where {T,S}
 end
 
 function lmulΛ!(adjA::Adjoint{T,ReMat{T,1}}, B::BlockedSparse{T,1,P}) where {T,P}
-    lmulΛ!(adjA, nonzeros(B.cscmat))
+    lmul!(only(adjA.parent.λ.data), nonzeros(B.cscmat))
     B
 end
 
@@ -240,7 +242,7 @@ function LinearAlgebra.mul!(C::Matrix{T}, adjA::Adjoint{T,<:FeMat{T}}, B::ReMat{
     n, p = size(Awt)
     r = A.rank
     m, q = size(B)
-    size(C) == (r, q) && m == n || throw(DimensionMismatch(""))
+    size(C) == (r, q) && m == n || throw(DimensionMismatch())
     isone(β) || rmul!(C, β)
     zz = B.wtz
     @inbounds for (j, rrj) in enumerate(B.refs)
@@ -374,8 +376,10 @@ function *(adjA::Adjoint{T,<:ReMat{T,S}}, B::ReMat{T,P}) where {T,S,P}
     BlockedSparse{T,S,P}(cscmat, reshape(cscmat.nzval, S, :), cscmat.colptr[1:P:(cscmat.n + 1)])
 end
 
-PCA(A::ReMat{T,1}; corr::Bool=true) where {T} =
-    PCA(corr ? reshape(abs.(vec(A.λ)),1,1) : reshape(ones(T,1),1,1), corr=corr)
+function PCA(A::ReMat{T,1}; corr::Bool=true) where {T}
+    val = ones(T, 1, 1)
+    PCA(corr ? val : abs(only(A.λ)) * val, corr=corr)
+end
 
 PCA(A::ReMat{T,S}; corr::Bool=true) where {T,S} = PCA(A.λ, corr=corr)
 
@@ -389,7 +393,8 @@ function reweight!(A::ReMat, sqrtwts::Vector)
     A
 end
 
-rmulΛ!(A::M, B::ReMat{T,1}) where{M<:AbstractMatrix{T}} where{T} = rmul!(A, only(B.λ))
+rmulΛ!(A::M, B::ReMat{T,1}) where{M<:AbstractMatrix{T}} where{T} = rmul!(A, only(B.λ.data))
+
 function rmulΛ!(A::M, B::ReMat{T,S}) where {M<:AbstractMatrix{T}} where {T,S}
     m, n = size(A)
     q, r = divrem(n, S)
@@ -428,12 +433,12 @@ function scaleinflate! end
 
 function scaleinflate!(Ljj::Diagonal{T}, Λj::ReMat{T,1}) where {T}
     Ljjd = Ljj.diag
-    broadcast!((x, λsqr) -> x * λsqr + 1, Ljjd, Ljjd, abs2(first(Λj.λ)))
+    broadcast!((x, λsqr) -> x * λsqr + 1, Ljjd, Ljjd, abs2(only(Λj.λ.data)))
     Ljj
 end
 
 function scaleinflate!(Ljj::Matrix{T}, Λj::ReMat{T,1}) where {T}
-    lambsq = abs2(first(Λj.λ))
+    lambsq = abs2(only(Λj.λ.data))
     @inbounds for i in diagind(Ljj)
         Ljj[i] *= lambsq
         Ljj[i] += one(T)
@@ -478,18 +483,20 @@ function setθ!(A::ReMat{T}, v::AbstractVector{T}) where {T}
     A
 end
 
-σs(A::ReMat{T,1}, sc::T) where {T} =
-    NamedTuple{(Symbol(first(A.cnames)),)}(sc*abs(first(A.λ.data)),)
+function σs(A::ReMat{T,1}, sc::T) where {T}
+    NamedTuple{(Symbol(only(A.cnames)),)}(sc*abs(only(A.λ.data)),)
+end
 
 function σs(A::ReMat{T}, sc::T) where {T}
     λ = A.λ.data
     NamedTuple{(Symbol.(A.cnames)...,)}(ntuple(i -> sc*norm(view(λ,i,1:i)), size(λ, 1)))
 end
 
-σρs(A::ReMat{T,1}, sc::T) where {T} =
-NamedTuple{(:σ,:ρ)}(
-    (NamedTuple{(Symbol(first(A.cnames)),)}((sc*abs(first(A.λ.data)),)), ())
-)
+function σρs(A::ReMat{T,1}, sc::T) where {T}
+    NamedTuple{(:σ,:ρ)}(
+        (NamedTuple{(Symbol(only(A.cnames)),)}((sc*abs(only(A.λ.data)),)), ())
+    )
+end
 
 function ρ(i, λ::AbstractMatrix{T}, im::Matrix{Bool}, indpairs, σs, sc::T)::T where {T}
     row, col = indpairs[i]
