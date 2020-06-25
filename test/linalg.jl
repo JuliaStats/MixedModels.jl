@@ -52,6 +52,7 @@ end
     @test loglikelihood(fit!(wm1)) ≈ loglikelihood(m1)
 end
 
+#=  I don't see this testset as meaningful b/c diagonal A does not occur after amalgamation of ReMat's for the same grouping factor - D.B.
 @testset "rankupdate!" begin
     @test ones(2, 2) == rankUpdate!(Hermitian(zeros(2, 2)), ones(2))
     d2 = Diagonal(fill(2., 2))
@@ -63,6 +64,7 @@ end
     # generic method
     @test Diagonal(fill(5.,2)) == rankUpdate!(Matrix(1. * I(2)), d2)
 end
+=#
 
 @testset "lmulλ!" begin
     levs(ng, tag='S') = string.(tag, lpad.(string.(1:ng), ndigits(ng), '0'))
