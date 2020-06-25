@@ -531,7 +531,7 @@ end
 
 nθ(m::LinearMixedModel) = length(m.parmap)
 
-StatsBase.nobs(m::LinearMixedModel) = first(size(m))
+StatsBase.nobs(m::LinearMixedModel) = length(first(m.allterms).refs)
 
 """
     objective(m::LinearMixedModel)
@@ -902,9 +902,8 @@ function updateL!(m::LinearMixedModel{T}) where {T}
     end
     for j = 1:k                         # blocked Cholesky
         Ljj = L[Block(j, j)]
-        LjjH = isa(Ljj, Diagonal) ? Ljj : Hermitian(Ljj, :L)
         for jj = 1:(j-1)
-            rankUpdate!(LjjH, L[Block(j, jj)], -one(T))
+            rankUpdate!(Hermitian(Ljj, :L), L[Block(j, jj)], -one(T), one(T))
         end
         cholUnblocked!(Ljj, Val{:L})
         LjjT = isa(Ljj, Diagonal) ? Ljj : LowerTriangular(Ljj)
