@@ -48,15 +48,18 @@ function rankUpdate!(C::HermOrSym, A::BlockedSparse, α, β)
     rankUpdate!(C, sparse(A), α, β)
 end
 
-function rankUpdate!(C::HermOrSym{T,Diagonal{T}}, A::SparseMatrixCSC{T}, α, β) where {T}
+function rankUpdate!(
+    C::HermOrSym{T,Diagonal{T,Vector{T}}},
+    A::SparseMatrixCSC{T},
+    α,
+    β,
+) where {T}
     dd = C.data.diag
     A.m == length(dd) || throw(DimensionMismatch())
     isone(β) || rmul!(dd, β)
-    nz = nonzeros(A)
-    rv = rowvals(A)
-    @inbounds for j = 1:A.n
-        k = only(nzrange(A, j))
-        dd[rv[k]] += α * abs2(nz[k])
+    all(isone.(diff(A.colptr))) || throw(ArgumentError("Columns of A must have exactly 1 nonzero"))
+    for (r, nz) in zip(rowvals(A), nonzeros(A))
+        dd[r] += α * abs2(nz)
     end
     C
 end
@@ -73,9 +76,7 @@ function rankUpdate!(
 ) where {T,S}
     Ac = A.cscmat
     cp = Ac.colptr
-    if any(diff(cp) .≠ S)
-        throw(ArgumentError("Each column of A must contain exactly S nonzeros"))
-    end
+    all(diff(cp) .== S) || throw(ArgumentError("Columns of A must have exactly $S nonzeros"))
     Cdat = C.data.data
     j, k, l = size(Cdat)
     S == j == k && div(Ac.m, S) == l ||
@@ -88,7 +89,7 @@ function rankUpdate!(
     end
     C
 end
-
+#=  I don't think Diagonal A can occur after the terms with the same grouping factor have been amalgamated.
 function rankUpdate!(C::HermOrSym{T,Diagonal{T}}, A::Diagonal{T}, α, β) where {T}
     Cdiag = C.data.diag
     if length(Cdiag) ≠ length(A.diag)
@@ -107,3 +108,4 @@ function rankUpdate!(C::HermOrSym{T,Matrix{T}}, A::Diagonal{T}, α, β) where {T
     end
     C
 end
+=#
