@@ -393,9 +393,14 @@ function reweight!(A::ReMat, sqrtwts::Vector)
     A
 end
 
-rmulΛ!(A::M, B::ReMat{T,1}) where{M<:AbstractMatrix{T}} where{T} = rmul!(A, only(B.λ.data))
+rmulΛ!(A::Matrix{T}, B::ReMat{T,1}) where{T} = rmul!(A, only(B.λ.data))
 
-function rmulΛ!(A::M, B::ReMat{T,S}) where {M<:AbstractMatrix{T}} where {T,S}
+function rmulΛ!(A::SparseMatrixCSC{T}, B::ReMat{T,1}) where {T}
+    rmul!(nonzeros(A), only(B.λ.data))
+    A
+end
+
+function rmulΛ!(A::Matrix{T}, B::ReMat{T,S}) where {T,S} 
     m, n = size(A)
     q, r = divrem(n, S)
     iszero(r) || throw(DimensionMismatch("size(A, 2) is not a multiple of block size"))
