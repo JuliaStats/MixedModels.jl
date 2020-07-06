@@ -811,6 +811,7 @@ function Base.size(m::LinearMixedModel)
     dd.n, dd.p, sum(size.(m.reterms, 2)), dd.nretrms
 end
 
+#=
 """
     sqrtpwrss(m::LinearMixedModel)
 
@@ -819,6 +820,7 @@ Return the square root of the penalized, weighted residual sum-of-squares (pwrss
 This is the element in the lower-right of `m.L`
 """
 sqrtpwrss(m::LinearMixedModel) = last(m.L)
+=#
 
 """
     ssqdenom(m::LinearMixedModel)
