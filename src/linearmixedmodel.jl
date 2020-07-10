@@ -190,7 +190,7 @@ function StatsBase.coeftable(m::LinearMixedModel)
 
     CoefTable(
         hcat(co, se, z, pvalue),
-        ["Estimate", "Std.Error", "z value", "P(>|z|)"],
+        ["Coef.", "Std. Error", "z", "Pr(>|z|)"],
         names,
         4, # pvalcol
         3, # teststatcol
@@ -391,7 +391,7 @@ fixef(m::LinearMixedModel{T}) where {T} = fixef!(Vector{T}(undef, fetrm(m).rank)
 """
     fixefnames(m::MixedModel)
 
-Return a (permuted and truncated in the rank-deficient case) vector of coefficient names. 
+Return a (permuted and truncated in the rank-deficient case) vector of coefficient names.
 """
 function fixefnames(m::LinearMixedModel{T}) where {T}
     Xtrm = fetrm(m)
