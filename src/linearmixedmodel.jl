@@ -192,7 +192,7 @@ function StatsBase.coeftable(m::LinearMixedModel)
 
     CoefTable(
         hcat(co, se, z, pvalue),
-        ["Estimate", "Std.Error", "z value", "P(>|z|)"],
+        ["Coef.", "Std. Error", "z", "Pr(>|z|)"],
         names,
         4, # pvalcol
         3, # teststatcol
