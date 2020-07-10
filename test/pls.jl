@@ -370,10 +370,13 @@ end
     @test first(keys(σρ)) == :subj
     @test keys(σρ.subj) == (:σ, :ρ)
     @test length(σρ.subj) == 2
-    @test length(first(σρ.subj)) == 11
-    @test length(σρ.subj.ρ) == 55
-    @test iszero(σρ.subj.ρ[46])
-    @test σρ.subj.ρ[46] === -0.0
+    @test length(first(σρ.subj)) == 10
+    @test length(σρ.subj.ρ) == 45
+    # test that there's no correlation between the intercept and days columns
+    ρs_intercept = σρ.subj.ρ[1 .+ cumsum(0:8)]
+    @test all(iszero.(ρs_intercept))
+    # amalgamate should set these to -0.0 to indicate structural zeros
+    @test all(ρs_intercept .=== -0.0)
 
     show(io, BlockDescription(first(models(:sleepstudy))))
     @test countlines(seekstart(io)) == 3
