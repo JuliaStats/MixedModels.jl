@@ -46,7 +46,7 @@ function LinearMixedModel(f::FormulaTerm, tbl::Tables.ColumnTable;
     # TODO: perform missing_omit() after apply_schema() when improved
     # missing support is in a StatsModels release
     tbl, _ = StatsModels.missing_omit(tbl, f)
-    sch = try 
+    sch = try
         schema(f, tbl, contrasts)
     catch e
         if isa(e, OutOfMemoryError)
@@ -82,6 +82,8 @@ function LinearMixedModel(f::FormulaTerm, tbl::Tables.ColumnTable;
     sort!(reterms, by=nranef, rev=true)
 
     allterms = convert(Vector{Union{ReMat{T},FeMat{T}}}, vcat(reterms, feterms))
+    sqrtwts = sqrt.(convert(Vector{T}, wts))
+    reweight!.(allterms, Ref(sqrtwts))
     A, L = createAL(allterms)
     lbd = foldl(vcat, lowerbd(c) for c in reterms)
     θ = foldl(vcat, getθ(c) for c in reterms)
