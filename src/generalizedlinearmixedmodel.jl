@@ -606,6 +606,7 @@ for f in (
     :(LinearAlgebra.logdet),
     :lowerbd,
     :PCA,
+    :ranef,
     :rePCA,
     :(StatsBase.coefnames),
     :(StatsModels.modelmatrix),

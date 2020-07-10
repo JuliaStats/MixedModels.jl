@@ -16,11 +16,18 @@ const gfms = Dict(
     @test gm0.lowerbd == zeros(1)
     @test isapprox(gm0.θ, [0.5720734451352923], atol=0.001)
     @test isapprox(deviance(gm0), 2361.657188518064, atol=0.001)
+    # the first 9 BLUPs -- I don't think there's much point in testing all 102
+    blups = [-0.9546698228978889, -0.034754272678681725, -0.2513196374772515,
+              0.10836392818271358, -0.38610152013564464, -0.19309267616660894,
+              0.059291406326190885, -0.29649374611805296, -0.4564504918851189]
+    @test only(ranef(gm0))[1:9] ≈ blups atol=1e-4
+
     gm1 = fit(MixedModel, only(gfms[:contra]), contra, Bernoulli());
     @test isapprox(gm1.θ, [0.573054], atol=0.005)
     @test lowerbd(gm1) == vcat(fill(-Inf, 7), 0.)
     @test isapprox(deviance(gm1), 2361.54575, rtol=0.00001)
     @test isapprox(loglikelihood(gm1), -1180.77288, rtol=0.00001)
+
     @test dof(gm0) == length(gm0.β) + length(gm0.θ)
     @test nobs(gm0) == 1934
     fit!(gm0, fast=true, nAGQ=7)
@@ -32,6 +39,7 @@ const gfms = Dict(
     @test isnan(gm1.σ)
     @test length(gm1.y) == size(gm1.X, 1)
     @test :θ in propertynames(gm0)
+
     @testset "GLMM rePCA" begin
         @test length(MixedModels.PCA(gm0)) == 1
         @test length(MixedModels.rePCA(gm0)) == 1
@@ -79,10 +87,10 @@ end
 end
 
 @testset "goldstein" begin # from a 2020-04-22 msg by Ben Goldstein to R-SIG-Mixed-Models
-    goldstein = 
+    goldstein =
         categorical!(
             DataFrame(
-                group = repeat(1:10, outer=10), 
+                group = repeat(1:10, outer=10),
                 y = [
                     83, 3, 8, 78, 901, 21, 4, 1, 1, 39,
                     82, 3, 2, 82, 874, 18, 5, 1, 3, 50,
