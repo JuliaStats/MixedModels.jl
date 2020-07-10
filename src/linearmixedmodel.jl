@@ -80,6 +80,8 @@ function LinearMixedModel(
     sort!(reterms, by = nranef, rev = true)
 
     allterms = convert(Vector{Union{ReMat{T},FeMat{T}}}, vcat(reterms, feterms))
+    sqrtwts = sqrt.(convert(Vector{T}, wts))
+    reweight!.(allterms, Ref(sqrtwts))
     A, L = createAL(allterms)
     lbd = foldl(vcat, lowerbd(c) for c in reterms)
     θ = foldl(vcat, getθ(c) for c in reterms)
@@ -88,7 +90,7 @@ function LinearMixedModel(
     LinearMixedModel(
         form,
         allterms,
-        sqrt.(convert(Vector{T}, wts)),
+        sqrtwts,
         mkparmap(reterms),
         A,
         L,
@@ -391,7 +393,7 @@ fixef(m::LinearMixedModel{T}) where {T} = fixef!(Vector{T}(undef, fetrm(m).rank)
 """
     fixefnames(m::MixedModel)
 
-Return a (permuted and truncated in the rank-deficient case) vector of coefficient names. 
+Return a (permuted and truncated in the rank-deficient case) vector of coefficient names.
 """
 function fixefnames(m::LinearMixedModel{T}) where {T}
     Xtrm = fetrm(m)
