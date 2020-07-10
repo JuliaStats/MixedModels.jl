@@ -114,15 +114,15 @@ function rankUpdate!(
     Ac = A.cscmat
     cp = Ac.colptr
     all(diff(cp) .== S) || throw(ArgumentError("Each column of A must contain exactly S nonzeros"))
-    j, k, l = size(C.data.data)
+    Cdat = C.data.data
+    j, k, l = size(Cdat)
     S == j == k && div(Ac.m, S) == l ||
-    throw(DimensionMismatch("div(A.cscmat.m, S) ≠ length(C.data.facevec)"))
+    throw(DimensionMismatch("div(A.cscmat.m, S) ≠ size(C.data.data, 3)"))
     nz = Ac.nzval
     rv = Ac.rowval
-    Cdf = C.data.facevec
     for j = 1:Ac.n
         nzr = nzrange(Ac, j)
-        BLAS.syr!('L', α, view(nz, nzr), Cdf[div(rv[last(nzr)], S)])
+        BLAS.syr!('L', α, view(nz, nzr), view(Cdat, :, :, div(rv[last(nzr)], S)))
     end
     C
 end

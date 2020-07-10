@@ -271,11 +271,11 @@ end
     @test isa(A11, UniformBlockDiagonal{Float64})
     @test isa(fm.L[Block(1, 1)], UniformBlockDiagonal{Float64})
     @test size(A11) == (36, 36)
-    a11 = A11.facevec[1]
+    a11 = view(A11.data, :, :, 1)
     @test a11 == [10. 45.; 45. 285.]
-    @test length(A11.facevec) == 18
+    @test size(A11.data, 3) == 18
     λ = first(fm.λ)
-    b11 = LowerTriangular(fm.L[Block(1, 1)].facevec[1])
+    b11 = LowerTriangular(view(fm.L[Block(1, 1)].data, :, :, 1))
     @test b11 * b11' ≈ λ'a11*λ + I rtol=1e-5
     @test count(!iszero, Matrix(fm.L[Block(1, 1)])) == 18 * 4
     @test rank(fm) == 2
@@ -319,6 +319,7 @@ end
     @test size(fmnc) == (180,2,36,1)
     @test fmnc.θ == [fm.θ[1], fm.θ[3]]
     @test lowerbd(fmnc) == zeros(2)
+    @test_throws DimensionMismatch MixedModels.getθ!(fm.θ, fmnc)
 
     fmnc = models(:sleepstudy)[2]
     @test size(fmnc) == (180,2,36,1)
@@ -327,8 +328,8 @@ end
 
     @testset "zerocorr PCA" begin
         @test length(fmnc.rePCA) == 1
-        @test fmnc.rePCA.subj == [0.5, 1.0]
-        @test MixedModels.PCA(fmnc).subj.loadings == I(2)
+        @test fmnc.rePCA.subj ≈ [0.5, 1.0]
+        @test any(Ref(fmnc.PCA.subj.loadings) .≈ (I(2), I(2)[:, [2,1]]))
         @test show(IOBuffer(), MixedModels.PCA(fmnc)) === nothing
     end
 
@@ -440,7 +441,7 @@ end
     # we'll have to change the test
     @test first(cov) == 1.
     @test last(cov) == 95.
-    
+
     bsamp_threaded = parametricbootstrap(MersenneTwister(1234321), 100, fm, use_threads=true)
     # even though it's bad practice with floating point, exact equality should
     # be a valid test here -- if everything is working right, then it's the exact
@@ -489,4 +490,25 @@ end
 @testset "coeftable" begin
     ct = coeftable(only(models(:dyestuff)));
     @test [3,4] == [ct.teststatcol, ct.pvalcol]
+end
+
+@testset "wts" begin
+    # example from https://github.com/JuliaStats/MixedModels.jl/issues/194
+    data = DataFrame(a = [1.55945122,0.004391538,0.005554163,-0.173029772,4.586284429,0.259493671,-0.091735715,5.546487603,0.457734831,-0.030169602],
+                     b = [0.24520519,0.080624178,0.228083467,0.2471453,0.398994279,0.037213859,0.102144973,0.241380251,0.206570975,0.15980803],
+                     c = categorical(["H","F","K","P","P","P","D","M","I","D"]),
+                     w1 = [20,40,35,12,29,25,65,105,30,75],
+                     w2 = [0.04587156,0.091743119,0.080275229,0.027522936,0.066513761,0.05733945,0.149082569,0.240825688,0.068807339,0.172018349])
+
+    #= no need to fit yet another model without weights, but here are the reference values from lme4
+    m1 = fit(MixedModel, @formula(a ~ 1 + b + (1|c)), data)
+    @test m1.θ ≈ [0.0]
+    @test stderror(m1) ≈  [1.084912, 4.966336] atol = 1.e-4
+    @test vcov(m1) ≈ [1.177035 -4.802598; -4.802598 24.664497] atol = 1.e-4
+    =#
+
+    m2 = fit(MixedModel, @formula(a ~ 1 + b + (1|c)), data, wts = data.w1)
+    @test m2.θ ≈ [0.295181729258352]  atol = 1.e-4
+    @test stderror(m2) ≈  [0.9640167, 3.6309696] atol = 1.e-4
+    @test vcov(m2) ≈ [0.9293282 -2.557527; -2.5575267 13.183940] atol = 1.e-4
 end

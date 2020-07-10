@@ -8,6 +8,7 @@ Linear mixed-effects model representation
 * `formula`: the formula for the model
 * `allterms`: a vector of random-effects terms, the fixed-effects terms and the response
 * `sqrtwts`: vector of square roots of the case weights.  Can be empty.
+* `parmap` : Vector{NTuple{3,Int}} of (block, row, column) mapping of θ to λ
 * `A`: an `nt × nt` symmetric `BlockMatrix` of matrices representing `hcat(Z,X,y)'hcat(Z,X,y)`
 * `L`: a `nt × nt` `BlockMatrix` - the lower Cholesky factor of `Λ'AΛ+I`
 * `optsum`: an [`OptSummary`](@ref) object
@@ -30,6 +31,7 @@ struct LinearMixedModel{T<:AbstractFloat} <: MixedModel{T}
     formula::FormulaTerm
     allterms::Vector{Union{ReMat{T}, FeMat{T}}}
     sqrtwts::Vector{T}
+    parmap::Vector{NTuple{3,Int}}
     A::BlockMatrix{T}            # cross-product blocks
     L::BlockMatrix{T}
     optsum::OptSummary{T}
@@ -78,12 +80,22 @@ function LinearMixedModel(
     sort!(reterms, by = nranef, rev = true)
 
     allterms = convert(Vector{Union{ReMat{T},FeMat{T}}}, vcat(reterms, feterms))
+    sqrtwts = sqrt.(convert(Vector{T}, wts))
+    reweight!.(allterms, Ref(sqrtwts))
     A, L = createAL(allterms)
     lbd = foldl(vcat, lowerbd(c) for c in reterms)
     θ = foldl(vcat, getθ(c) for c in reterms)
     optsum = OptSummary(θ, lbd, :LN_BOBYQA, ftol_rel = T(1.0e-12), ftol_abs = T(1.0e-8))
     fill!(optsum.xtol_abs, 1.0e-10)
-    LinearMixedModel(form, allterms, sqrt.(convert(Vector{T}, wts)), A, L, optsum)
+    LinearMixedModel(
+        form,
+        allterms,
+        sqrtwts,
+        mkparmap(reterms),
+        A,
+        L,
+        optsum,
+        )
 end
 
 fit(
@@ -180,7 +192,7 @@ function StatsBase.coeftable(m::LinearMixedModel)
 
     CoefTable(
         hcat(co, se, z, pvalue),
-        ["Estimate", "Std.Error", "z value", "P(>|z|)"],
+        ["Coef.", "Std. Error", "z", "Pr(>|z|)"],
         names,
         4, # pvalcol
         3, # teststatcol
@@ -381,7 +393,7 @@ fixef(m::LinearMixedModel{T}) where {T} = fixef!(Vector{T}(undef, fetrm(m).rank)
 """
     fixefnames(m::MixedModel)
 
-Return a (permuted and truncated in the rank-deficient case) vector of coefficient names. 
+Return a (permuted and truncated in the rank-deficient case) vector of coefficient names.
 """
 function fixefnames(m::LinearMixedModel{T}) where {T}
     Xtrm = fetrm(m)
@@ -400,14 +412,15 @@ fnames(m::MixedModel) = ((tr.trm.sym for tr in m.reterms)...,)
 
 Return the current covariance parameter vector.
 """
-getθ(m::LinearMixedModel{T}) where {T} = foldl(vcat, getθ.(m.reterms))
+getθ(m::LinearMixedModel{T}) where {T} = getθ!(Vector{T}(undef, length(m.parmap)), m)
 
 function getθ!(v::AbstractVector{T}, m::LinearMixedModel{T}) where {T}
-    k = 0
-    for t in m.reterms
-        nt = nθ(t)
-        getθ!(view(v, (k+1):(k+nt)), t)
-        k += nt
+    pmap = m.parmap
+    if length(v) ≠ length(pmap)
+        throw(DimensionMismatch("length(v) = $(length(v)) ≠ length(m.parmap) = $(length(pmap))"))
+    end
+    for (k, tp) in enumerate(pmap)
+        v[k] = m.allterms[tp[1]].λ[tp[2], tp[3]]
     end
     v
 end
@@ -497,6 +510,18 @@ end
 
 lowerbd(m::LinearMixedModel) = m.optsum.lowerbd
 
+function mkparmap(reterms::Vector)
+    parmap = NTuple{3,Int}[]
+    for (k, trm) in enumerate(reterms)
+        n = LinearAlgebra.checksquare(trm.λ)
+        for ind in trm.inds
+            d,r = divrem(ind-1, n)
+            push!(parmap, (k, r+1, d+1))
+        end
+    end
+    parmap
+end
+
 function StatsBase.modelmatrix(m::LinearMixedModel)
     fe = fetrm(m)
     if fe.rank == size(fe, 2)
@@ -506,7 +531,7 @@ function StatsBase.modelmatrix(m::LinearMixedModel)
     end
 end
 
-nθ(m::LinearMixedModel) = sum(nθ, m.allterms)
+nθ(m::LinearMixedModel) = length(m.parmap)
 
 StatsBase.nobs(m::LinearMixedModel) = first(size(m))
 
@@ -551,6 +576,7 @@ Base.propertynames(m::LinearMixedModel, private = false) = (
     :rePCA,
     :reterms,
     :feterms,
+    :allterms,
     :objective,
     :pvalues,
 )
@@ -711,12 +737,11 @@ sdest(m::LinearMixedModel) = √varest(m)
 
 Install `v` as the θ parameters in `m`.
 """
-function setθ!(m::LinearMixedModel, v)
-    offset = 0
-    for trm in m.reterms
-        k = nθ(trm)
-        setθ!(trm, view(v, (1:k) .+ offset))
-        offset += k
+function setθ!(m::LinearMixedModel{T}, θ::Vector{T}) where {T}
+    parmap, reterms = m.parmap, m.allterms
+    length(θ) == length(parmap) || throw(DimensionMismatch())
+    for (tv, tr) in zip(θ, parmap)
+        reterms[tr[1]].λ[tr[2], tr[3]] = tv
     end
     m
 end
@@ -775,9 +800,9 @@ end
 
 Return the square root of the penalized, weighted residual sum-of-squares (pwrss).
 
-This value is the contents of the `1 × 1` bottom right block of `m.L`
+This is the element in the lower-right of `m.L`
 """
-sqrtpwrss(m::LinearMixedModel) = first(m.L.blocks[end, end])
+sqrtpwrss(m::LinearMixedModel) = last(m.L)
 
 """
     ssqdenom(m::LinearMixedModel)
@@ -920,6 +945,9 @@ function zerocorr!(m::LinearMixedModel{T}, trmns) where {T}
             zerocorr!(trm)
         end
     end
+    newparmap = mkparmap(reterms)
+    copyto!(m.parmap, newparmap)
+    resize!(m.parmap, length(newparmap))
     optsum = m.optsum
     optsum.lowerbd = foldl(vcat, lowerbd(c) for c in reterms)
     optsum.initial = foldl(vcat, getθ(c) for c in reterms)

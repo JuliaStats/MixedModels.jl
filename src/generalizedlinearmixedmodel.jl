@@ -60,7 +60,7 @@ function StatsBase.coeftable(m::GeneralizedLinearMixedModel)
     pvalue = ccdf.(Chisq(1), abs2.(z))
     CoefTable(
         hcat(co, se, z, pvalue),
-        ["Estimate", "Std.Error", "z value", "P(>|z|)"],
+        ["Coef.", "Std. Error", "z", "Pr(>|z|)"],
         coefnames(m),
         4, # pvalcol
         3, # teststatcol
@@ -356,6 +356,7 @@ function GeneralizedLinearMixedModel(
             LMM.formula,
             LMM.allterms,
             fill!(similar(y), 1),
+            LMM.parmap,
             LMM.A,
             LMM.L,
             LMM.optsum,
@@ -417,7 +418,7 @@ function StatsBase.loglikelihood(m::GeneralizedLinearMixedModel{T}) where {T}
     D = Distribution(m.resp)
     accum = (
         if D <: Binomial
-            sum(logpdf(D(round(Int, n), μ), round(Int, y * n)) 
+            sum(logpdf(D(round(Int, n), μ), round(Int, y * n))
                 for (μ, y, n) in zip(r.mu, r.y, m.wt))
         else
             sum(logpdf(D(μ), y) for (μ, y) in zip(r.mu, r.y))
