@@ -482,7 +482,7 @@ for f in (
     :fetrm,
     :(LinearAlgebra.logdet),
     :lowerbd,
-    :PCA,
+    :ranef,
     :rePCA,
     :(StatsBase.coefnames),
     :(StatsModels.modelmatrix),

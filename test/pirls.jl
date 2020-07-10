@@ -14,12 +14,19 @@ end
     gm0 = fit(MixedModel, contraform, contra, Bernoulli(), fast=true);
     @test gm0.lowerbd == zeros(1)
     @test isapprox(gm0.θ, [0.5720734451352923], atol=0.001)
-    @test isapprox(deviance(gm0,true), 2361.657188518064, atol=0.001)
+    @test isapprox(deviance(gm0), 2361.657188518064, atol=0.001)
+    # the first 9 BLUPs -- I don't think there's much point in testing all 102
+    blups = [-0.9546542382159384, -0.9243280740976597, -0.5994415212823175, 
+             -0.5853637765024964, -0.5582547143159903, -0.5230879394455542, 
+             -0.5180165911218682, -0.5175868781594128, -0.4955043890201569]
+    @test sort(vec(first(ranef(gm0))))[1:9] ≈ blups atol=1e-4
+
     gm1 = fit(MixedModel, contraform, contra, Bernoulli());
     @test isapprox(gm1.θ, [0.573054], atol=0.005)
     @test lowerbd(gm1) == vcat(fill(-Inf, 7), 0.)
     @test isapprox(deviance(gm1,true), 2361.54575, rtol=0.00001)
     @test isapprox(loglikelihood(gm1), -1180.77288, rtol=0.00001)
+
     @test dof(gm0) == length(gm0.β) + length(gm0.θ)
     @test nobs(gm0) == 1934
     fit!(gm0, fast=true, nAGQ=7)
@@ -31,13 +38,11 @@ end
     @test isnan(gm0.σ)
     @test length(gm0.y) == size(gm0.X, 1)
     @test :θ in propertynames(gm0)
-    gm0.β = gm0.beta
-    @test gm0.β == gm0.beta
-    gm0.θ = gm0.theta
-    @test gm0.θ == gm0.theta
-    gm0.βθ = vcat(gm0.β, gm0.theta)
-    @test gm0.β == gm0.beta
-    @test gm0.θ == gm0.theta
+
+    @testset "GLMM rePCA" begin
+        @test length(MixedModels.rePCA(gm0)) == 1
+        @test length(gm0.rePCA) == 1
+    end
     # the next three values are not well defined in the optimization
     #@test isapprox(logdet(gm1), 75.7217, atol=0.1)
     #@test isapprox(sum(abs2, gm1.u[1]), 48.4747, atol=0.1)
