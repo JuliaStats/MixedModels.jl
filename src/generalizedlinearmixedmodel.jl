@@ -418,7 +418,7 @@ function StatsBase.loglikelihood(m::GeneralizedLinearMixedModel{T}) where {T}
     D = Distribution(m.resp)
     accum = (
         if D <: Binomial
-            sum(logpdf(D(round(Int, n), μ), round(Int, y * n)) 
+            sum(logpdf(D(round(Int, n), μ), round(Int, y * n))
                 for (μ, y, n) in zip(r.mu, r.y, m.wt))
         else
             sum(logpdf(D(μ), y) for (μ, y) in zip(r.mu, r.y))
@@ -606,6 +606,7 @@ for f in (
     :(LinearAlgebra.logdet),
     :lowerbd,
     :PCA,
+    :ranef,
     :rePCA,
     :(StatsBase.coefnames),
     :(StatsModels.modelmatrix),
