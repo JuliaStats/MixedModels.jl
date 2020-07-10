@@ -80,6 +80,8 @@ function LinearMixedModel(
     sort!(reterms, by = nranef, rev = true)
 
     allterms = convert(Vector{Union{ReMat{T},FeMat{T}}}, vcat(reterms, feterms))
+    sqrtwts = sqrt.(convert(Vector{T}, wts))
+    reweight!.(allterms, Ref(sqrtwts))
     A, L = createAL(allterms)
     lbd = foldl(vcat, lowerbd(c) for c in reterms)
     θ = foldl(vcat, getθ(c) for c in reterms)
@@ -88,7 +90,7 @@ function LinearMixedModel(
     LinearMixedModel(
         form,
         allterms,
-        sqrt.(convert(Vector{T}, wts)),
+        sqrtwts,
         mkparmap(reterms),
         A,
         L,
@@ -308,12 +310,7 @@ function fit!(m::LinearMixedModel{T}; verbose::Bool = false, REML::Bool = false)
     optsum.REML = REML
     function obj(x, g)
         isempty(g) || throw(ArgumentError("g should be empty for this objective"))
-        setθ!(m, x)
-        if !isempty(m.sqrtwts)
-            reweight!.(m.allterms, Ref(m.sqrtwts))
-            updateA!(m)
-        end
-        val = objective(updateL!(m))
+        val = objective(updateL!(setθ!(m, x)))
         verbose && println(round(val, digits = 5), " ", x)
         val
     end
