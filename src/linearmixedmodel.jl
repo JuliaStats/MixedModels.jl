@@ -308,7 +308,12 @@ function fit!(m::LinearMixedModel{T}; verbose::Bool = false, REML::Bool = false)
     optsum.REML = REML
     function obj(x, g)
         isempty(g) || throw(ArgumentError("g should be empty for this objective"))
-        val = objective(updateL!(setθ!(m, x)))
+        setθ!(m, x)
+        if !isempty(m.sqrtwts)
+            reweight!.(m.allterms, Ref(m.sqrtwts))
+            updateA!(m)
+        end
+        val = objective(updateL!(m))
         verbose && println(round(val, digits = 5), " ", x)
         val
     end
@@ -391,7 +396,7 @@ fixef(m::LinearMixedModel{T}) where {T} = fixef!(Vector{T}(undef, fetrm(m).rank)
 """
     fixefnames(m::MixedModel)
 
-Return a (permuted and truncated in the rank-deficient case) vector of coefficient names. 
+Return a (permuted and truncated in the rank-deficient case) vector of coefficient names.
 """
 function fixefnames(m::LinearMixedModel{T}) where {T}
     Xtrm = fetrm(m)
