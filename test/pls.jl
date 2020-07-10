@@ -499,14 +499,16 @@ end
                      c = categorical(["H","F","K","P","P","P","D","M","I","D"]),
                      w1 = [20,40,35,12,29,25,65,105,30,75],
                      w2 = [0.04587156,0.091743119,0.080275229,0.027522936,0.066513761,0.05733945,0.149082569,0.240825688,0.068807339,0.172018349])
+
+    #= no need to fit yet another model without weights, but here are the reference values from lme4
     m1 = fit(MixedModel, @formula(a ~ 1 + b + (1|c)), data)
-    m2 = fit(MixedModel, @formula(a ~ 1 + b + (1|c)), data, wts = data.w1)
-
     @test m1.θ ≈ [0.0]
-    @test m2.θ ≈ [0.295181729258352]  atol = 1.e-4
-
     @test stderror(m1) ≈  [1.084912, 4.966336] atol = 1.e-4
-    @test stderror(m2) ≈  [0.9640167, 3.6309696] atol = 1.e-4
     @test vcov(m1) ≈ [1.177035 -4.802598; -4.802598 24.664497] atol = 1.e-4
+    =#
+
+    m2 = fit(MixedModel, @formula(a ~ 1 + b + (1|c)), data, wts = data.w1)
+    @test m2.θ ≈ [0.295181729258352]  atol = 1.e-4
+    @test stderror(m2) ≈  [0.9640167, 3.6309696] atol = 1.e-4
     @test vcov(m2) ≈ [0.9293282 -2.557527; -2.5575267 13.183940] atol = 1.e-4
 end
