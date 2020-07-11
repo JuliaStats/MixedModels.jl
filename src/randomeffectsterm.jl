@@ -60,7 +60,7 @@ function StatsModels.apply_schema(
         !StatsModels.hasintercept(lhs) &&
         !StatsModels.omitsintercept(lhs) &&
         ConstantTerm(1) ∉ schema.already &&
-        InterceptTerm{True}() ∉ schema.already
+        InterceptTerm{true}() ∉ schema.already
     )
         lhs = InterceptTerm{true}() + lhs
     end
