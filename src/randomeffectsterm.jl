@@ -56,7 +56,12 @@ function StatsModels.apply_schema(
 
     schema = get!(schema.subs, rhs, StatsModels.FullRank(schema.base.schema))
 
-    if !StatsModels.hasintercept(lhs) && !StatsModels.omitsintercept(lhs)
+    if (
+        !StatsModels.hasintercept(lhs) &&
+        !StatsModels.omitsintercept(lhs) &&
+        ConstantTerm(1) ∉ schema.already &&
+        InterceptTerm{true}() ∉ schema.already
+    )
         lhs = InterceptTerm{true}() + lhs
     end
     lhs, rhs = apply_schema.((lhs, rhs), Ref(schema), Mod)
