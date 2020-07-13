@@ -26,6 +26,10 @@ end
 StatsModels.contrasts_matrix(::Grouping, baseind, n) = zeros(0,0)
 StatsModels.termnames(::Grouping, levels::AbstractVector, baseind::Integer) = levels
 
+# this is needed until StatsModels stops assuming all contrasts have a .levels field
+Base.getproperty(g::Grouping, prop::Symbol) =
+    prop == :levels ? nothing : getfield(g, prop)
+
 # special-case categorical terms with Grouping contrasts.
 StatsModels.modelcols(::CategoricalTerm{Grouping}, d::NamedTuple) =
     error("can't create model columns directly from a Grouping term")
