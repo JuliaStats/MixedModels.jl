@@ -14,4 +14,7 @@ using StatsModels
 
     @test all(t.contrasts.invindex[lev] == i for (i,lev) in enumerate(levs))
     @test all(t.contrasts.levels[i] == lev for (i,lev) in enumerate(levs))
+
+    @test_throws OutOfMemoryError fit(MixedModel, @formula(y ~ 1 + (1 | grp)), d)
+    @test fit(MixedModel, @formula(y ~ 1 + (1 | grp)), d, contrasts=Dict(:grp => Grouping())) isa LinearMixedModel
 end
