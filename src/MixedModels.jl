@@ -155,5 +155,6 @@ include("linalg.jl")
 include("simulate.jl")
 include("bootstrap.jl")
 include("blockdescription.jl")
+include("grouping.jl")
 
 end # module
