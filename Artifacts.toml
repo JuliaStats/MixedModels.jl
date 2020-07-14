@@ -1,9 +1,9 @@
 [TestData]
-git-tree-sha1 = "6614babc98083a65c25b7ec1ef2e38b345de65c9"
+git-tree-sha1 = "8e1cb0be00e404a4a5e162bddc1d0235cc720ece"
 lazy = true
 
     [[TestData.download]]
-    sha256 = "92e1d57966e6d4716d9925450b4a100d923e3df4c40060d110860cf968ec6559"
+    sha256 = "c4b979ef93a10a6517eebf88d660500ff47ac1586e9cc897e4d10ffaa6378eb2"
     # when updating this, making sure to include the version (change to new) and
     # displayName (don't change) because the default link always points to the newest
     # (and so will not match the SHA for users not yet on the most recent version)
