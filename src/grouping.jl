@@ -9,7 +9,6 @@ of levels, while still holding onto the vector of levels and constructing the
 level-to-index mapping (`invindex` field of the [`ContrastsMatrix`](@ref).).
 
 Note that calling `modelcols` on a `CategoricalTerm{Grouping}` is an error.
-This is intended only as a placeholder for other packages to build on.
 
 # Examples
 
