@@ -92,3 +92,15 @@ function Base.copyto!(L::BlockedSparse{T}, A::SparseMatrixCSC{T}) where {T}
     copyto!(nonzeros(L.cscmat), nonzeros(A))
     L
 end
+
+LinearAlgebra.rdiv!(A::BlockedSparse, B::Diagonal) = rdiv!(A.cscmat, B)
+
+function LinearAlgebra.mul!(
+    C::BlockedSparse{T,1,P},
+    A::SparseMatrixCSC{T,Ti},
+    adjB::Adjoint{T,BlockedSparse{T,P,1}},
+    α,
+    β
+    ) where {T,P,Ti}
+    mul!(C.cscmat, A, adjB.parent.cscmat', α, β)
+end
