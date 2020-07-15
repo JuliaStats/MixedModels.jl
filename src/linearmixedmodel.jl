@@ -54,7 +54,15 @@ function LinearMixedModel(
     # TODO: perform missing_omit() after apply_schema() when improved
     # missing support is in a StatsModels release
     tbl, _ = StatsModels.missing_omit(tbl, f)
-    form = apply_schema(f, schema(f, tbl, contrasts), LinearMixedModel)
+    sch = try
+        schema(f, tbl, contrasts)
+    catch e
+        if isa(e, OutOfMemoryError)
+            @warn "Random effects grouping variables with many levels can cause out-of-memory errors.  Try manually specifying `Grouping()` contrasts for those variables."
+        end
+        rethrow(e)
+    end
+    form = apply_schema(f, sch, LinearMixedModel)
     # tbl, _ = StatsModels.missing_omit(tbl, form)
 
     y, Xs = modelcols(form, tbl)
@@ -81,6 +89,8 @@ function LinearMixedModel(
 
     sort!(reterms, by = nranef, rev = true)
     allterms = convert(Vector{Union{ReMat{T},FeMat{T}}}, vcat(reterms, feterms))
+    sqrtwts = sqrt.(convert(Vector{T}, wts))
+    reweight!.(allterms, Ref(sqrtwts))
     A, L = createAL(allterms)
     lbd = foldl(vcat, lowerbd(c) for c in reterms)
     θ = foldl(vcat, getθ(c) for c in reterms)
@@ -90,7 +100,7 @@ function LinearMixedModel(
     LinearMixedModel(
         form,
         allterms,
-        sqrt.(convert(Vector{T}, wts)),
+        sqrtwts,
         mkparmap(reterms),
         (n = size(X, 1), p = X.rank, nretrms = length(reterms)),
         A,
@@ -193,7 +203,7 @@ function StatsBase.coeftable(m::LinearMixedModel)
 
     CoefTable(
         hcat(co, se, z, pvalue),
-        ["Estimate", "Std.Error", "z value", "P(>|z|)"],
+        ["Coef.", "Std. Error", "z", "Pr(>|z|)"],
         names,
         4, # pvalcol
         3, # teststatcol
@@ -395,7 +405,7 @@ fixef(m::LinearMixedModel{T}) where {T} = fixef!(Vector{T}(undef, fetrm(m).rank)
 """
     fixefnames(m::MixedModel)
 
-Return a (permuted and truncated in the rank-deficient case) vector of coefficient names. 
+Return a (permuted and truncated in the rank-deficient case) vector of coefficient names.
 """
 function fixefnames(m::LinearMixedModel{T}) where {T}
     Xtrm = fetrm(m)

@@ -49,12 +49,19 @@ end
 
 function StatsModels.apply_schema(
     t::FunctionTerm{typeof(|)},
-    schema::StatsModels.FullRank,
-    Mod::Type{<:MixedModel},
+    schema::MultiSchema{StatsModels.FullRank},
+    Mod::Type{<:MixedModel}
 )
-    schema = StatsModels.FullRank(schema.schema)
     lhs, rhs = t.args_parsed
-    if !StatsModels.hasintercept(lhs) && !StatsModels.omitsintercept(lhs)
+
+    schema = get!(schema.subs, rhs, StatsModels.FullRank(schema.base.schema))
+
+    if (
+        !StatsModels.hasintercept(lhs) &&
+        !StatsModels.omitsintercept(lhs) &&
+        ConstantTerm(1) ∉ schema.already &&
+        InterceptTerm{true}() ∉ schema.already
+    )
         lhs = InterceptTerm{true}() + lhs
     end
     lhs, rhs = apply_schema.((lhs, rhs), Ref(schema), Mod)
@@ -149,7 +156,7 @@ zerocorr(x) = ZeroCorr(x)
 
 function StatsModels.apply_schema(
     t::FunctionTerm{typeof(zerocorr)},
-    sch::StatsModels.FullRank,
+    sch::MultiSchema,
     Mod::Type{<:MixedModel},
 )
     ZeroCorr(apply_schema(t.args_parsed..., sch, Mod))

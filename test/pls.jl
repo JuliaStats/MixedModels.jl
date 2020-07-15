@@ -370,10 +370,31 @@ end
     @test first(keys(σρ)) == :subj
     @test keys(σρ.subj) == (:σ, :ρ)
     @test length(σρ.subj) == 2
-    @test length(first(σρ.subj)) == 11
-    @test length(σρ.subj.ρ) == 55
-    @test iszero(σρ.subj.ρ[46])
-    @test σρ.subj.ρ[46] === -0.0
+    @test length(first(σρ.subj)) == 10
+    @test length(σρ.subj.ρ) == 45
+    # test that there's no correlation between the intercept and days columns
+    ρs_intercept = σρ.subj.ρ[1 .+ cumsum(0:8)]
+    @test all(iszero.(ρs_intercept))
+    # amalgamate should set these to -0.0 to indicate structural zeros
+    @test all(ρs_intercept .=== -0.0)
+
+    # also works without explicitly dropped intercept
+    fm_cat2 = fit(MixedModel, @formula(reaction ~ 1+days+(1|subj)+(days|subj)),slpcat)
+    @test fm_cat2 isa LinearMixedModel
+    σρ = fm_cat2.σρs
+    @test σρ isa NamedTuple
+    @test isone(length(σρ))
+    @test first(keys(σρ)) == :subj
+    @test keys(σρ.subj) == (:σ, :ρ)
+    @test length(σρ.subj) == 2
+    @test length(first(σρ.subj)) == 10
+    @test length(σρ.subj.ρ) == 45
+    # test that there's no correlation between the intercept and days columns
+    ρs_intercept = σρ.subj.ρ[1 .+ cumsum(0:8)]
+    @test all(iszero.(ρs_intercept))
+    # amalgamate should set these to -0.0 to indicate structural zeros
+    @test all(ρs_intercept .=== -0.0)
+    
 
     show(io, BlockDescription(first(models(:sleepstudy))))
     @test countlines(seekstart(io)) == 3
@@ -441,7 +462,7 @@ end
     # we'll have to change the test
     @test first(cov) == 1.
     @test last(cov) == 95.
-    
+
     bsamp_threaded = parametricbootstrap(MersenneTwister(1234321), 100, fm, use_threads=true)
     # even though it's bad practice with floating point, exact equality should
     # be a valid test here -- if everything is working right, then it's the exact
@@ -490,4 +511,25 @@ end
 @testset "coeftable" begin
     ct = coeftable(only(models(:dyestuff)));
     @test [3,4] == [ct.teststatcol, ct.pvalcol]
+end
+
+@testset "wts" begin
+    # example from https://github.com/JuliaStats/MixedModels.jl/issues/194
+    data = DataFrame(a = [1.55945122,0.004391538,0.005554163,-0.173029772,4.586284429,0.259493671,-0.091735715,5.546487603,0.457734831,-0.030169602],
+                     b = [0.24520519,0.080624178,0.228083467,0.2471453,0.398994279,0.037213859,0.102144973,0.241380251,0.206570975,0.15980803],
+                     c = categorical(["H","F","K","P","P","P","D","M","I","D"]),
+                     w1 = [20,40,35,12,29,25,65,105,30,75],
+                     w2 = [0.04587156,0.091743119,0.080275229,0.027522936,0.066513761,0.05733945,0.149082569,0.240825688,0.068807339,0.172018349])
+
+    #= no need to fit yet another model without weights, but here are the reference values from lme4
+    m1 = fit(MixedModel, @formula(a ~ 1 + b + (1|c)), data)
+    @test m1.θ ≈ [0.0]
+    @test stderror(m1) ≈  [1.084912, 4.966336] atol = 1.e-4
+    @test vcov(m1) ≈ [1.177035 -4.802598; -4.802598 24.664497] atol = 1.e-4
+    =#
+
+    m2 = fit(MixedModel, @formula(a ~ 1 + b + (1|c)), data, wts = data.w1)
+    @test m2.θ ≈ [0.295181729258352]  atol = 1.e-4
+    @test stderror(m2) ≈  [0.9640167, 3.6309696] atol = 1.e-4
+    @test vcov(m2) ≈ [0.9293282 -2.557527; -2.5575267 13.183940] atol = 1.e-4
 end

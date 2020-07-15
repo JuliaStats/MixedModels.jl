@@ -69,7 +69,7 @@ function rankUpdate!(C::HermOrSym{T,Diagonal{T}}, A::BlockedSparse{T}, α, β) w
 end
 
 function rankUpdate!(
-    C::HermOrSym{T,UniformBlockDiagonal{T}}, 
+    C::HermOrSym{T,UniformBlockDiagonal{T}},
     A::BlockedSparse{T,S},
     α,
     β,
@@ -96,7 +96,7 @@ function rankUpdate!(C::HermOrSym{T,Diagonal{T}}, A::Diagonal{T}, α, β) where 
         throw(DimensionMismatch("length(C.data.diag) ≠ length(A.diag)"))
     end
 
-    Cdiag = β .* Cdiag .+ α .* abs2.(A.diag)
+    Cdiag .= β .* Cdiag .+ α .* abs2.(A.diag)
     C
 end
 
