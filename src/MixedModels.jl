@@ -39,6 +39,7 @@ export @formula,
        BlockedSparse,
        DummyCoding,
        EffectsCoding,
+       Grouping,
        Gamma,
        GeneralizedLinearMixedModel,
        HelmertCoding,
@@ -155,5 +156,6 @@ include("linalg.jl")
 include("simulate.jl")
 include("bootstrap.jl")
 include("blockdescription.jl")
+include("grouping.jl")
 
 end # module
