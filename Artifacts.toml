@@ -1,12 +1,26 @@
+# when generating a new artifact, add the new feather file to the datasets folder at
+# https://osf.io/a94tr/, then download that folder to generate the tarball
+# (so that we don't forget datasets)
+
 [TestData]
-git-tree-sha1 = "6614babc98083a65c25b7ec1ef2e38b345de65c9"
+# compute this using
+# using Tar, Inflate, SHA
+# filename = "download?version=4" # I just used wget for the URL below and this is how it saved it
+# println("sha256: ", bytes2hex(open(sha256, filename)))
+# println("git-tree-sha1: ", Tar.tree_hash(IOBuffer(inflate_gzip(filename))))
+# from https://julialang.github.io/Pkg.jl/dev/artifacts/
+git-tree-sha1 = "4d1410cd290622e426411273ef379fe82b749ca4"
 lazy = true
 
     [[TestData.download]]
-    sha256 = "92e1d57966e6d4716d9925450b4a100d923e3df4c40060d110860cf968ec6559"
-    # when updating this, making sure to include the version (change to new) and
-    # displayName (don't change) because the default link always points to the newest
-    # (and so will not match the SHA for users not yet on the most recent version)
-    # and Julia invokes wget without using HTTP metadata, so we need the link
+    # this is the SHA from https://osf.io/pcjk6/?show=revision
+    sha256 = "b66369456c0ec9d1490d61d0c0686999e6422051295aeb9e14ab27693ccaec54"
+    # when updating this, make sure to change to change the version number,
+    # because if the version number isn't included, it will always point to the
+    # latest version, which means it will break existing users when we update
+    # between releases.
+    url = "https://osf.io/pcjk6/download?version=4"
+
+    # for future work on using xz-compressed data:
+    # Julia invokes wget without using HTTP metadata, so we need the link
     # to end with the right extension unless we want to fall back to gzip compression
-    url = "https://osf.io/pcjk6/download?version=2"
