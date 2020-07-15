@@ -9,4 +9,4 @@ lazy = true
     # (and so will not match the SHA for users not yet on the most recent version)
     # and Julia invokes wget without using HTTP metadata, so we need the link
     # to end with the right extension unless we want to fall back to gzip compression
-    url = "https://osf.io/pcjk6/download"
+    url = "https://osf.io/pcjk6/download?version=2"
