@@ -357,6 +357,7 @@ function GeneralizedLinearMixedModel(
             LMM.allterms,
             fill!(similar(y), 1),
             LMM.parmap,
+            LMM.dims,
             LMM.A,
             LMM.L,
             LMM.optsum,

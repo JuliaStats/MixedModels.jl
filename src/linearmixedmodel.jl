@@ -9,6 +9,7 @@ Linear mixed-effects model representation
 * `allterms`: a vector of random-effects terms, the fixed-effects terms and the response
 * `sqrtwts`: vector of square roots of the case weights.  Can be empty.
 * `parmap` : Vector{NTuple{3,Int}} of (block, row, column) mapping of θ to λ
+* `dims` : NamedTuple{(:n, :p, :nretrms),NTuple{3,Int}} of dimensions.  `p` is the rank of `X`, which may be smaller than `size(X, 2)`.
 * `A`: an `nt × nt` symmetric `BlockMatrix` of matrices representing `hcat(Z,X,y)'hcat(Z,X,y)`
 * `L`: a `nt × nt` `BlockMatrix` - the lower Cholesky factor of `Λ'AΛ+I`
 * `optsum`: an [`OptSummary`](@ref) object
@@ -32,6 +33,7 @@ struct LinearMixedModel{T<:AbstractFloat} <: MixedModel{T}
     allterms::Vector{Union{ReMat{T}, FeMat{T}}}
     sqrtwts::Vector{T}
     parmap::Vector{NTuple{3,Int}}
+    dims::NamedTuple{(:n, :p, :nretrms),NTuple{3,Int}}
     A::BlockMatrix{T}            # cross-product blocks
     L::BlockMatrix{T}
     optsum::OptSummary{T}
@@ -52,7 +54,7 @@ function LinearMixedModel(
     # TODO: perform missing_omit() after apply_schema() when improved
     # missing support is in a StatsModels release
     tbl, _ = StatsModels.missing_omit(tbl, f)
-    sch = try 
+    sch = try
         schema(f, tbl, contrasts)
     catch e
         if isa(e, OutOfMemoryError)
@@ -86,13 +88,13 @@ function LinearMixedModel(
     end
 
     sort!(reterms, by = nranef, rev = true)
-
     allterms = convert(Vector{Union{ReMat{T},FeMat{T}}}, vcat(reterms, feterms))
     sqrtwts = sqrt.(convert(Vector{T}, wts))
     reweight!.(allterms, Ref(sqrtwts))
     A, L = createAL(allterms)
     lbd = foldl(vcat, lowerbd(c) for c in reterms)
     θ = foldl(vcat, getθ(c) for c in reterms)
+    X = first(feterms)
     optsum = OptSummary(θ, lbd, :LN_BOBYQA, ftol_rel = T(1.0e-12), ftol_abs = T(1.0e-8))
     fill!(optsum.xtol_abs, 1.0e-10)
     LinearMixedModel(
@@ -100,6 +102,7 @@ function LinearMixedModel(
         allterms,
         sqrtwts,
         mkparmap(reterms),
+        (n = size(X, 1), p = X.rank, nretrms = length(reterms)),
         A,
         L,
         optsum,
@@ -270,7 +273,7 @@ GLM.dispersion(m::LinearMixedModel, sqr::Bool = false) = sqr ? varest(m) : sdest
 
 GLM.dispersion_parameter(m::LinearMixedModel) = true
 
-StatsBase.dof(m::LinearMixedModel) = size(m)[2] + nθ(m) + 1
+StatsBase.dof(m::LinearMixedModel) = m.dims.p + nθ(m) + 1
 
 function StatsBase.dof_residual(m::LinearMixedModel)::Int
     # nobs - rank(FE) - 1 (dispersion)
@@ -278,7 +281,8 @@ function StatsBase.dof_residual(m::LinearMixedModel)::Int
     # a better estimate would be a number somewhere between the number of
     # variance components and the number of conditional modes
     # nobs, rank FE, num conditional modes, num grouping vars
-    nobs(m) - size(m)[2] - 1
+    dd = m.dims
+    dd.n - dd.p - 1
 end
 
 """
@@ -286,7 +290,7 @@ end
 
 An internal utility to return the index in `m.allterms` of the fixed-effects term.
 """
-feind(m::LinearMixedModel) = findfirst(Base.Fix2(isa, FeMat), m.allterms)
+feind(m::LinearMixedModel) = m.dims.nretrms + 1
 
 """
     feL(m::LinearMixedModel)
@@ -427,8 +431,15 @@ function getθ!(v::AbstractVector{T}, m::LinearMixedModel{T}) where {T}
     if length(v) ≠ length(pmap)
         throw(DimensionMismatch("length(v) = $(length(v)) ≠ length(m.parmap) = $(length(pmap))"))
     end
+    reind = 1
+    λ = first(m.allterms).λ
     for (k, tp) in enumerate(pmap)
-        v[k] = m.allterms[tp[1]].λ[tp[2], tp[3]]
+        tp1 = first(tp)
+        if reind ≠ tp1
+            reind = tp1
+            λ = m.allterms[tp1].λ
+        end
+        v[k] = λ[tp[2], tp[3]]
     end
     v
 end
@@ -463,7 +474,7 @@ function Base.getproperty(m::LinearMixedModel{T}, s::Symbol) where {T}
     elseif s == :pvalues
         ccdf.(Chisq(1), abs2.(coef(m) ./ stderror(m)))
     elseif s == :reterms
-        convert(Vector{ReMat{T}}, filter(Base.Fix2(isa, ReMat), getfield(m, :allterms)))
+        convert(Vector{ReMat{T}}, getfield(m, :allterms)[Base.OneTo(getfield(m, :dims).nretrms)])
     elseif s == :stderror
         stderror(m)
     elseif s == :u
@@ -541,7 +552,7 @@ end
 
 nθ(m::LinearMixedModel) = length(m.parmap)
 
-StatsBase.nobs(m::LinearMixedModel) = length(first(m.allterms).refs)
+StatsBase.nobs(m::LinearMixedModel) = m.dims.n
 
 """
     objective(m::LinearMixedModel)
@@ -550,8 +561,9 @@ Return negative twice the log-likelihood of model `m`
 """
 function objective(m::LinearMixedModel)
     wts = m.sqrtwts
-    logdet(m) + ssqdenom(m) * (1 + log2π + log(varest(m))) -
-    (isempty(wts) ? 0 : 2 * sum(log, wts))
+    denomdf = ssqdenom(m)
+    val = logdet(m) + denomdf * (1 + log2π + log(varest(m)))
+    isempty(wts) ? val : val - 2.0 * sum(log, wts)
 end
 
 StatsBase.predict(m::LinearMixedModel) = fitted(m)
@@ -594,7 +606,7 @@ Base.propertynames(m::LinearMixedModel, private = false) = (
 
 The penalized, weighted residual sum-of-squares.
 """
-pwrss(m::LinearMixedModel) = abs2(sqrtpwrss(m))
+pwrss(m::LinearMixedModel) = abs2(last(m.L))
 
 """
     ranef!(v::Vector{Matrix{T}}, m::MixedModel{T}, β, uscale::Bool) where {T}
@@ -748,8 +760,15 @@ Install `v` as the θ parameters in `m`.
 function setθ!(m::LinearMixedModel{T}, θ::Vector{T}) where {T}
     parmap, reterms = m.parmap, m.allterms
     length(θ) == length(parmap) || throw(DimensionMismatch())
+    reind = 1
+    λ = first(reterms).λ
     for (tv, tr) in zip(θ, parmap)
-        reterms[tr[1]].λ[tr[2], tr[3]] = tv
+        tr1 = first(tr)
+        if reind ≠ tr1
+            reind = tr1
+            λ = reterms[tr1].λ
+        end
+        λ[tr[2], tr[3]] = tv
     end
     m
 end
@@ -798,11 +817,11 @@ the number of observations, the number of (non-singular) fixed-effects parameter
 the number of conditional modes (random effects), the number of grouping variables
 """
 function Base.size(m::LinearMixedModel)
-    n, p = size(fetrm(m))
-    reterms = m.reterms
-    n, p, sum(size.(reterms, 2)), length(reterms)
+    dd = m.dims
+    dd.n, dd.p, sum(size.(m.reterms, 2)), dd.nretrms
 end
 
+#=
 """
     sqrtpwrss(m::LinearMixedModel)
 
@@ -811,6 +830,7 @@ Return the square root of the penalized, weighted residual sum-of-squares (pwrss
 This is the element in the lower-right of `m.L`
 """
 sqrtpwrss(m::LinearMixedModel) = last(m.L)
+=#
 
 """
     ssqdenom(m::LinearMixedModel)
@@ -823,7 +843,8 @@ The difference is analagous to the use of n or n-1 in the denominator when
 calculating the variance.
 """
 function ssqdenom(m::LinearMixedModel)::Int
-    nobs(m) - m.optsum.REML * first(m.feterms).rank
+    dd = m.dims
+    dd.n - m.optsum.REML * dd.p
 end
 
 """
