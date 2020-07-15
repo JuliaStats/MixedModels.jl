@@ -54,8 +54,10 @@ end
 
 @testset "rankupdate!" begin
     x = [1 1; 1 1];
-    err = ErrorException("We haven't implemented a method for Array{Int64,2}, Array{Int64,2}. Please file an issue on GitHub.");
-    @test_throws err rankUpdate!(x, x, 1, 1);
+    # in Julia 1.6+, typeof(x) == Matrix{Int64}
+    # in < 1.6, typeof(x) == Array{Int64, 2}
+    err = ErrorException("We haven't implemented a method for $(typeof(x))m $(typeof(x)). Please file an issue on GitHub.");
+    @test_throws ErrorException rankUpdate!(x, x, 1, 1);
 end
 
 #=  I don't see this testset as meaningful b/c diagonal A does not occur after amalgamation of ReMat's for the same grouping factor - D.B.
