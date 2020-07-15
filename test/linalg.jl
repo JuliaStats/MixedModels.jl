@@ -53,6 +53,13 @@ end
 end
 
 @testset "rankupdate!" begin
+    x = [1 1; 1 1];
+    err = ErrorException("We haven't implemented a method for Array{Int64,2}, Array{Int64,2}. Please file an issue on GitHub.");
+    @test_throws err rankUpdate!(x, x, 1, 1);
+end
+
+#=  I don't see this testset as meaningful b/c diagonal A does not occur after amalgamation of ReMat's for the same grouping factor - D.B.
+@testset "rankupdate!" begin
     @test ones(2, 2) == rankUpdate!(Hermitian(zeros(2, 2)), ones(2))
     d2 = Diagonal(fill(2., 2))
     @test Diagonal(fill(5.,2)) == rankUpdate!(Diagonal(ones(2)), d2, 1.)
@@ -63,6 +70,7 @@ end
     # generic method
     @test Diagonal(fill(5.,2)) == rankUpdate!(Matrix(1. * I(2)), d2)
 end
+=#
 
 @testset "lmulλ!" begin
     levs(ng, tag='S') = string.(tag, lpad.(string.(1:ng), ndigits(ng), '0'))

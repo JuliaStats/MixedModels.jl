@@ -53,7 +53,7 @@ const LMM = LinearMixedModel
     end
 
     @testset "updateL" begin
-        @test ones(2, 2) == MixedModels.rankUpdate!(Hermitian(zeros(2, 2)), ones(2))
+        @test ones(2, 2) == MixedModels.rankUpdate!(Hermitian(zeros(2, 2)), ones(2), 1., 1.)
         d3 = MixedModels.dataset(:d3)
         sch = schema(d3)
         vf1 = modelcols(apply_schema(@formula(y ~ 1 + u + (1+u|g)), sch, LMM), d3)[2][2]
