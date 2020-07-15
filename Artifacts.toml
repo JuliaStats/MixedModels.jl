@@ -3,9 +3,8 @@
 # (so that we don't forget datasets)
 
 [TestData]
-# this can be computed by:
-#  git ls-files -s datasets/*.feather | git hash-object --stdin
-git-tree-sha1 = "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"
+# this is black magic to compute. Just let it error and copy over the new value.
+git-tree-sha1 = "4d1410cd290622e426411273ef379fe82b749ca4"
 lazy = true
 
     [[TestData.download]]
