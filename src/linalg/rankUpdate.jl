@@ -11,6 +11,10 @@ The order of the arguments
 """
 function rankUpdate! end
 
+function rankUpdate!(C::AbstractMatrix, a::AbstractArray, α, β)
+    error("We haven't implemented a method for $(typeof(C)), $(typeof(a)). Please file an issue on GitHub.")
+end
+
 function rankUpdate!(C::HermOrSym{T,S}, a::StridedVector{T}, α, β) where {T,S}
     isone(β) || throw(ArgumentError("isone(β) is false"))
     BLAS.syr!(C.uplo, T(α), a, C.data)
