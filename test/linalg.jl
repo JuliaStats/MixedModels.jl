@@ -52,7 +52,6 @@ end
     @test loglikelihood(fit!(wm1)) ≈ loglikelihood(m1)
 end
 
-#=  I don't see this testset as meaningful b/c diagonal A does not occur after amalgamation of ReMat's for the same grouping factor - D.B.
 @testset "rankupdate!" begin
     x = [1 1; 1 1];
     err = ErrorException("We haven't implemented a method for Array{Int64,2}, Array{Int64,2}. Please file an issue on GitHub.");
