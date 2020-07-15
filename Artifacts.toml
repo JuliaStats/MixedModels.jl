@@ -3,7 +3,12 @@
 # (so that we don't forget datasets)
 
 [TestData]
-# this is black magic to compute. Just let it error and copy over the new value.
+# compute this using
+# using Tar, Inflate, SHA
+# filename = "download?version=4" # I just used wget for the URL below and this is how it saved it
+# println("sha256: ", bytes2hex(open(sha256, filename)))
+# println("git-tree-sha1: ", Tar.tree_hash(IOBuffer(inflate_gzip(filename))))
+# from https://julialang.github.io/Pkg.jl/dev/artifacts/
 git-tree-sha1 = "4d1410cd290622e426411273ef379fe82b749ca4"
 lazy = true
 
