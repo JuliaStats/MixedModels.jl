@@ -10,6 +10,7 @@ function simulate!(
     β = coef(m),
     σ = m.σ,
     θ = T[],
+    rnglock = ReentrantLock()
 ) where {T}
     length(β) == length(fixef(m)) ||
         length(β) == length(coef(m)) ||
@@ -27,12 +28,15 @@ function simulate!(
         end
     end
 
+    lock(rnglock)
     y = randn!(rng, response(m))      # initialize y to standard normal
 
     for trm in m.reterms              # add the unscaled random effects
         unscaledre!(rng, y, trm)
     end
-                    # scale by σ and add fixed-effects contribution
+    unlock(rnglock)
+
+    # scale by σ and add fixed-effects contribution
     BLAS.gemv!('N', one(T), m.X, β, σ, y)
     m
 end

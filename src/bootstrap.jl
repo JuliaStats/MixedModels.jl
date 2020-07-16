@@ -79,9 +79,9 @@ function parametricbootstrap(
         mod = m_threads[Threads.threadid()]
         local βsc = βsc_threads[Threads.threadid()]
         local θsc = θsc_threads[Threads.threadid()]
-        lock(rnglock)
-        mod = simulate!(rng, mod, β = β, σ = σ, θ = θ)
-        unlock(rnglock)
+        #lock(rnglock)
+        mod = simulate!(rng, mod, β = β, σ = σ, θ = θ, rnglock=rnglock)
+        #unlock(rnglock)
         refit!(mod)
         (
          objective = mod.objective,
@@ -123,7 +123,7 @@ function allpars(bsamp::MixedModelBootstrap{T}) where {T}
     nresrow = length(bstr) * npars
     cols = (
         sizehint!(Int[], nresrow),
-        sizehint!(String[], nresrow), 
+        sizehint!(String[], nresrow),
         sizehint!(Union{Missing,String}[], nresrow),
         sizehint!(Union{Missing,String}[], nresrow),
         sizehint!(T[], nresrow),
