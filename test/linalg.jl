@@ -56,7 +56,7 @@ end
     x = [1 1; 1 1];
     # in Julia 1.6+, typeof(x) == Matrix{Int64}
     # in < 1.6, typeof(x) == Array{Int64, 2}
-    err = ErrorException("We haven't implemented a method for $(typeof(x))m $(typeof(x)). Please file an issue on GitHub.");
+    err = ErrorException("We haven't implemented a method for $(typeof(x)), $(typeof(x)). Please file an issue on GitHub.");
     @test_throws ErrorException rankUpdate!(x, x, 1, 1);
 end
 
