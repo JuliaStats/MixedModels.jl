@@ -559,11 +559,11 @@ StatsBase.nobs(m::LinearMixedModel) = m.dims.n
 
 Return negative twice the log-likelihood of model `m`
 """
-function objective(m::LinearMixedModel)
+function objective(m::LinearMixedModel{T}) where {T}
     wts = m.sqrtwts
-    denomdf = ssqdenom(m)
-    val = logdet(m) + denomdf * (1 + log2π + log(varest(m)))
-    isempty(wts) ? val : val - 2.0 * sum(log, wts)
+    denomdf = T(ssqdenom(m))
+    val = logdet(m) + denomdf * (one(T) + log2π + log(pwrss(m) / denomdf))
+    isempty(wts) ? val : val - T(2.0) * sum(log, wts)
 end
 
 StatsBase.predict(m::LinearMixedModel) = fitted(m)
