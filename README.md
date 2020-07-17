@@ -2,13 +2,13 @@
 
 |**Documentation**|**Citation**|**Build Status**|**Code Coverage**|
 |:-:|:-:|:-:|:-:|
-|[![][docs-stable-img]][docs-stable-url] [![][docs-latest-img]][docs-latest-url] | [![][doi-img]][doi-url] | [![T1-url][T1-img]][pkgeval-url] [![T2-url][T2-img]][pkgeval-url] [![PkgEval][pkgeval-img]][pkgeval-url] | [![][codecov-img]][codecov-url]|
+|[![Stable Docs][docs-stable-img]][docs-stable-url] [![Dev Docs][docs-dev-img]][docs-dev-url] | [![DOI][doi-img]][doi-url] | [![Tier 1][T1-img]][T1-url] [![Tier 2][T2-img]][T2-url] [![PkgEval][pkgeval-img]][pkgeval-url] | [![CodeCov][codecov-img]][codecov-url] |
 
 [doi-img]: https://zenodo.org/badge/9106942.svg
 [doi-url]: https://zenodo.org/badge/latestdoi/9106942
 
-[docs-latest-img]: https://img.shields.io/badge/docs-dev-blue.svg
-[docs-latest-url]: https://juliastats.github.io/MixedModels.jl/dev
+[docs-dev-img]: https://img.shields.io/badge/docs-dev-blue.svg
+[docs-dev-url]: https://juliastats.github.io/MixedModels.jl/dev
 
 [docs-stable-img]: https://img.shields.io/badge/docs-stable-blue.svg
 [docs-stable-url]: https://juliastats.github.io/MixedModels.jl/stable
