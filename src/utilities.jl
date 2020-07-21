@@ -34,12 +34,12 @@ Return a string of length `n` containing `s` in the center (more-or-less).
 cpad(s::String, n::Integer) = rpad(lpad(s, (n + textwidth(s)) >> 1), n)
 
 """
-densify(S::SparseMatrix, threshold=0.25)
+densify(S::SparseMatrix, threshold=0.1)
 
 Convert sparse `S` to `Diagonal` if `S` is diagonal or to `Array(S)` if
 the proportion of nonzeros exceeds `threshold`.
 """
-function densify(A::SparseMatrixCSC, threshold::Real = 0.25)
+function densify(A::SparseMatrixCSC, threshold::Real = 0.1)
     m, n = size(A)
     if m == n && isdiag(A)  # convert diagonal sparse to Diagonal
         # the diagonal is always dense (otherwise rank deficit)
@@ -51,10 +51,10 @@ function densify(A::SparseMatrixCSC, threshold::Real = 0.25)
         Array(A)
     end
 end
-densify(A::AbstractMatrix, threshold::Real = 0.3) = A
+densify(A::AbstractMatrix, threshold::Real = 0.1) = A
 
-densify(A::SparseVector, threshold::Real = 0.3) = Vector(A)
-densify(A::Diagonal{T,SparseVector{T,Ti}}, threshold::Real = 0.3) where {T,Ti} =
+densify(A::SparseVector, threshold::Real = 0.1) = Vector(A)
+densify(A::Diagonal{T,SparseVector{T,Ti}}, threshold::Real = 0.1) where {T,Ti} =
     Diagonal(Vector(A.diag))
 
 """
