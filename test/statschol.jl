@@ -1,16 +1,14 @@
-using LinearAlgebra, MixedModels, StatsModels, Random, Test
+using LinearAlgebra, MixedModels, StatsModels, Test
 
 xtx(X) = X'X  # creat the symmetric matrix X'X from X
-
-const rng = Random.MersenneTwister(4321234)
 
 const simdat = (
     G = repeat('A':'T', inner=10),
     H = repeat('a':'e', inner=2, outer=20),
-    U = repeat(0.:9, outer=20), 
+    U = repeat(0.:9, outer=20),
     V = repeat(-4.5:4.5, outer=20),
-    Y = 0.1 * randn(rng, 200),
-    Z = rand(rng, 200)
+    Y = (1:200)/200,
+    Z = (1:200)/200
 )
 
 @testset "fullranknumeric" begin
@@ -41,11 +39,12 @@ end
 end
 
 @testset "missingcells" begin
-    XtX = xtx(modelmatrix(@formula(Y ~ 1 + G*H), simdat)[5:end,:])
+    mm = modelmatrix(@formula(Y ~ 1 + G*H), simdat);
+    mm
+    XtX = xtx([7:end,:])
     ch = statscholesky(Symmetric(XtX, :U))
-    perm = [1:42; 44:100; 43]
-    @test ch.rank == 98
+    perm = [1:42; 44:61; 63:100; 43; 62]
+    @test ch.rank == 97
     @test ch.piv == perm
     @test isapprox(xtx(ch.U), XtX[perm, perm], atol=0.00001)
 end
-
