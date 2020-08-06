@@ -15,7 +15,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        julia-version: [1.5.0-rc1, nightly]
+        julia-version: [1.5, nightly]
         julia-arch: [x64]
         os: [ubuntu-18.04]
     steps:
