@@ -74,6 +74,15 @@ mutable struct BlockedSparse{T,S,P} <: AbstractMatrix{T}
     colblkptr::Vector{Int32}
 end
 
+function densify(A::BlockedSparse, threshold::Real = 0.1)
+    m, n = size(A)
+    if nnz(A) / (m * n) ≤ threshold
+        A
+    else
+        Array(A)
+    end
+end
+
 Base.size(A::BlockedSparse) = size(A.cscmat)
 
 Base.size(A::BlockedSparse, d) = size(A.cscmat, d)
