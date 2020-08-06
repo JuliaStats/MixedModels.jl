@@ -39,10 +39,13 @@ end
 end
 
 @testset "missingcells" begin
-    XtX = xtx(modelmatrix(@formula(Y ~ 1 + G*H), simdat)[6:end,:])
+    mm = modelmatrix(@formula(Y ~ 1 + G*H), simdat)
+    # when a cell is missing, the indicator for it is always zero
+    mm[:, 43] .= 0
+    XtX = xtx(mm)
     ch = statscholesky(Symmetric(XtX, :U))
     perm = [1:42; 44:100; 43]
-    @test ch.rank == 98
+    @test ch.rank == 99
     @test ch.piv == perm
     @test isapprox(xtx(ch.U), XtX[perm, perm], atol=0.00001)
 end
