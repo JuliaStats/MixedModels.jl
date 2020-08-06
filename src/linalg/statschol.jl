@@ -4,9 +4,7 @@
 Return a `CholeskyPivoted` object created from `xtx` where the pivoting scheme
 retains the original order unless singularity is detected.  Columns that are
 (computationally) linearly dependent on columns to their left are moved to the
-right hand side in a left circular shift. If xtx is ill conditioned, then a
-circular shift may not be possible, in which case the default pivoting scheme
-from `LinearAlgebra` is used.
+right hand side in a left circular shift.
 """
 function statscholesky(xtx::Symmetric{T}, tol::Real = -1) where {T<:AbstractFloat}
     n = size(xtx, 2)
@@ -16,15 +14,12 @@ function statscholesky(xtx::Symmetric{T}, tol::Real = -1) where {T<:AbstractFloa
     piv = [1:n;]
     r = chpiv.rank
 
-    if r <  n
+    if r < n
 
         k = chunp.info
         if k > r
             @warn """Fixed-effects matrix may be ill conditioned.
-                    Falling back to standard Cholesky pivot, which may drop lower-order terms before
-                    corresponding higher level terms.
-                """
-            return chpiv
+                     Left-circular shift may fail."""
         end
 
         nleft = n
