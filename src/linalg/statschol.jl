@@ -4,31 +4,47 @@
 Return a `CholeskyPivoted` object created from `xtx` where the pivoting scheme
 retains the original order unless singularity is detected.  Columns that are
 (computationally) linearly dependent on columns to their left are moved to the
-right hand side in a left circular shift.
+right hand side in a left circular shift. If xtx is ill conditioned, then a
+circular shift may not be possible, in which case the default pivoting scheme
+from `LinearAlgebra` is used.
 """
 function statscholesky(xtx::Symmetric{T}, tol::Real = -1) where {T<:AbstractFloat}
     n = size(xtx, 2)
     chpiv = cholesky(xtx, Val(true), tol = T(tol), check = false)
-    chunp = cholesky(xtx, check = false)
-    r = chpiv.rank
+    chunp = cholesky(xtx, check = false);
 
     piv = [1:n;]
-    if r < n
+    r = chpiv.rank
+
+    if r <  n
+
+        k = chunp.info
+        if k > r
+            @warn """Fixed-effects matrix may be ill conditioned.
+                    Falling back to standard Cholesky pivot, which may drop lower-order terms before
+                    corresponding higher level terms.
+                """
+            return chpiv
+        end
+
         nleft = n
-        while r < nleft
-            k = chunp.info
+        while nleft > r
             # the 0 lowerbound is for MKL compatibility
             if 0 < k < nleft
                 piv = piv[[1:k-1; k+1:n; k]]
                 chunp = cholesky!(Symmetric(xtx[piv, piv]), check = false)
             end
+            k = chunp.info
             nleft -= 1
         end
-    end
-    for j = (r+1):n   # an MKL <-> OpenBLAS difference
-        for i = (r+1):j
-            chunp.factors[i, j] = zero(T)
+
+        for j = (r+1):n   # an MKL <-> OpenBLAS difference
+            for i = (r+1):j
+                chunp.factors[i, j] = zero(T)
+            end
         end
+
     end
+
     CholeskyPivoted(chunp.factors, chunp.uplo, piv, r, tol, chpiv.info)
 end
