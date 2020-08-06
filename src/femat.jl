@@ -25,8 +25,11 @@ function FeMat(X::AbstractMatrix, cnms)
         pivot = ch.piv
         rank = ch.rank
         Xp = all(pivot .== 1:size(X, 2)) ? X : X[:, ch.piv]
-        if rank < length(pivot)
-            @warn "fixed-effects matrix is rank deficient"
+        # single-column rank deficiency is the result of a constant column vector
+        # this generally happens when constructing a dummy response, so we don't
+        # warn.
+        if rank < length(pivot) && size(X,2) > 1
+            @warn "Fixed-effects matrix is rank deficient"
         end
     else
         # although it doesn't take long for an empty matrix,
