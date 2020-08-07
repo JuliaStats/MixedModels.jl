@@ -843,8 +843,8 @@ The difference is analagous to the use of n or n-1 in the denominator when
 calculating the variance.
 """
 function ssqdenom(m::LinearMixedModel)::Int
-    dd = m.dims
-    dd.n - m.optsum.REML * dd.p
+    n = m.dims.n
+    m.optsum.REML ? n - m.dims.p : n
 end
 
 """
