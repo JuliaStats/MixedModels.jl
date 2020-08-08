@@ -521,7 +521,7 @@ end
 ranef!(v::Vector, m::LinearMixedModel, uscale::Bool) = ranef!(v, m, fixef(m), uscale)
 
 """
-    ranef(m::LinearMixedModel; uscale=false) #, named=true)
+    ranef(m::LinearMixedModel; uscale=false, named=false)
 
 Return, as a `Vector{Vector{T}}` (`Vector{NamedVector{T}}` if `named=true`),
 the conditional modes of the random effects in model `m`.
