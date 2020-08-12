@@ -46,7 +46,15 @@ function LinearMixedModel(f::FormulaTerm, tbl::Tables.ColumnTable;
     # TODO: perform missing_omit() after apply_schema() when improved
     # missing support is in a StatsModels release
     tbl, _ = StatsModels.missing_omit(tbl, f)
-    form = apply_schema(f, schema(f, tbl, contrasts), LinearMixedModel)
+    sch = try 
+        schema(f, tbl, contrasts)
+    catch e
+        if isa(e, OutOfMemoryError)
+            @warn "Random effects grouping variables with many levels can cause out-of-memory errors.  Try manually specifying `Grouping()` contrasts for those variables."
+        end
+        rethrow(e)
+    end
+    form = apply_schema(f, sch, LinearMixedModel)
     # tbl, _ = StatsModels.missing_omit(tbl, form)
 
     y, Xs = modelcols(form, tbl)

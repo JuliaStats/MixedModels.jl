@@ -36,6 +36,7 @@ export @formula,
        BlockedSparse,
        DummyCoding,
        EffectsCoding,
+       Grouping,
        Gamma,
        GeneralizedLinearMixedModel,
        HelmertCoding,
@@ -122,5 +123,6 @@ include("linalg/rankUpdate.jl")
 include("linalg/logdet.jl")
 include("linalg.jl")
 include("simulate.jl")
+include("grouping.jl")
 
 end # module
