@@ -35,11 +35,11 @@ end
     rng = Random.MersenneTwister(1234321)
     df = (Y = randn(rng, 400), A = repeat(['N','Y'], outer=200),
         G = repeat('A':'T', inner = 2, outer=10), H = repeat('a':'j', inner=40))
-    lmm1 = fit!(LinearMixedModel(@formula(Y ~ 1+A+(1+A|G)+(1+A|H)), df,
-        wts  = ones(400)))
-    @test loglikelihood(lmm1) ≈ -578.9080978272708
-    MixedModels.reweight!(lmm1, ones(400))
-    @test loglikelihood(fit!(lmm1)) ≈ -578.9080978272708
+    m1 = fit(MixedModel, @formula(Y ~ 1 + A + (1+A|G) + (1+A|H)), df)
+    wm1 = fit(MixedModel, @formula(Y ~ 1+A+(1+A|G)+(1+A|H)), df, wts  = ones(400))
+    @test loglikelihood(wm1) ≈ loglikelihood(m1)
+    MixedModels.reweight!(wm1, ones(400))
+    @test loglikelihood(fit!(wm1)) ≈ loglikelihood(m1)
 end
 
 @testset "lmulλ!" begin
@@ -61,6 +61,6 @@ end
         m500 = fit!(LinearMixedModel(f, df))
         # the real test here isn't in the theta comparison but in that the fit
         # completes successfully
-        @test m500.theta ≈ [0.07797345952252123, -0.17640571417349787, 0, 0]
+        @test length(m500.u) == 2
     end
 end
