@@ -1,14 +1,16 @@
-using LinearAlgebra, MixedModels, StatsModels, Test
+using LinearAlgebra, MixedModels, StableRNGs, StatsModels, Test
 
 xtx(X) = X'X  # creat the symmetric matrix X'X from X
+
+const rng = StableRNG(4321234)
 
 const simdat = (
     G = repeat('A':'T', inner=10),
     H = repeat('a':'e', inner=2, outer=20),
     U = repeat(0.:9, outer=20),
     V = repeat(-4.5:4.5, outer=20),
-    Y = (1:200)/200,
-    Z = (1:200)/200
+    Y = 0.1 * randn(rng, 200),
+    Z = rand(rng, 200)
 )
 
 @testset "fullranknumeric" begin
