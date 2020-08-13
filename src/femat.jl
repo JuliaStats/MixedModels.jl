@@ -6,7 +6,7 @@ Term with an explicit, constant matrix representation
 # Fields
 * `x`: matrix
 * `wtx`: weighted matrix
-* `piv`: pivot `Vector{Int}`` for pivoted Cholesky factorization of `wtx'wtx`
+* `piv`: pivot `Vector{Int}`` for pivoted QR factorization of `x`
 * `rank`: computational rank of `x`
 * `cnames`: vector of column names
 """
@@ -21,10 +21,11 @@ end
 function FeMat(X::AbstractMatrix, cnms)
     T = eltype(X)
     if size(X,2) > 0
-        ch = statscholesky(Symmetric(X'X))
-        pivot = ch.piv
-        rank = ch.rank
-        Xp = all(pivot .== 1:size(X, 2)) ? X : X[:, ch.piv]
+        st = statsqr(X)
+        pivot = st.p
+        rank = findfirst(<=(0), diff(st.p))
+        rank = isnothing(rank) ? length(pivot) : rank
+        Xp = pivot == collect(1:size(X, 2)) ? X : X[:, pivot]
         # single-column rank deficiency is the result of a constant column vector
         # this generally happens when constructing a dummy response, so we don't
         # warn.
@@ -33,13 +34,12 @@ function FeMat(X::AbstractMatrix, cnms)
         end
     else
         # although it doesn't take long for an empty matrix,
-        # we can still skip the Cholesky step, which gets the rank
+        # we can still skip the factorization step, which gets the rank
         # wrong anyway
         pivot = Int[]
         Xp = X
         rank = 0
     end
-    # ch.rank is wrong for empty FE
     FeMat{T,typeof(X)}(Xp, Xp, pivot, rank, cnms[pivot])
 end
 

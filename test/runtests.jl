@@ -7,7 +7,7 @@ println(versioninfo())
 println(BLAS.openblas_get_config())
 
 include("utilities.jl")
-include("statschol.jl")
+include("pivot.jl")
 include("UniformBlockDiagonal.jl")
 include("linalg.jl")
 include("matrixterm.jl")

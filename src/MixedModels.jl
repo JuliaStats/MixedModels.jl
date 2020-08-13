@@ -106,7 +106,6 @@ export @formula,
        setθ!,
        simulate!,
        sparse,
-       statscholesky,
        std,
        stderror,
        updateL!,
@@ -150,7 +149,7 @@ include("gausshermite.jl")
 include("generalizedlinearmixedmodel.jl")
 include("mixedmodel.jl")
 include("likelihoodratiotest.jl")
-include("linalg/statschol.jl")
+include("linalg/pivot.jl")
 include("linalg/cholUnblocked.jl")
 include("linalg/rankUpdate.jl")
 include("linalg/logdet.jl")

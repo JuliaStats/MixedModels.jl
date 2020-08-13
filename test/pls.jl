@@ -394,7 +394,7 @@ end
     @test all(iszero.(ρs_intercept))
     # amalgamate should set these to -0.0 to indicate structural zeros
     @test all(ρs_intercept .=== -0.0)
-    
+
 
     show(io, BlockDescription(first(models(:sleepstudy))))
     @test countlines(seekstart(io)) == 3
@@ -484,28 +484,11 @@ end
     @test length(coef(model)) == 3
     ct = coeftable(model)
     @test ct.rownms ==  ["(Intercept)", "x", "x2"]
-    @test fixefnames(model) == ["(Intercept)", "x"]
+    @test length(fixefnames(model)) == 2
     @test coefnames(model) == ["(Intercept)", "x", "x2"]
-    @test last(coef(model)) == -0.0
-    stde = MixedModels.stderror!(zeros(3), model)
-    @test isnan(last(stde))
-    vc = vcov(model)
-    @test isnan(last(vc))
-
-    @test size(StatsModels.modelmatrix(model), 2) == 3
-    # check preserving of name ordering in coeftable and placement of
-    # pivoted-out element
-    fill!(data.x, 0)
-    model2 = fit(MixedModel, @formula(y ~ x + x2 + (1|z)), data)
-    ct = coeftable(model2)
-    @test ct.rownms ==  ["(Intercept)", "x", "x2"]
-    @test fixefnames(model2) == ["(Intercept)", "x2"]
-    @test coefnames(model2) == ["(Intercept)", "x", "x2"]
-    @test coef(model2)[2] == -0.0
-    @test last(fixef(model)) ≈ (last(fixef(model2)) * 1.5)
-    stde2 = MixedModels.stderror!(zeros(3), model2)
-    @test isnan(stde2[2])
-
+    piv = first(model.feterms).piv
+    r = first(model.feterms).rank
+    @test coefnames(model)[piv][1:r] == fixefnames(model)
 end
 
 @testset "coeftable" begin
