@@ -37,7 +37,7 @@ amalgamate(reterms::Vector{ReMat{T,S}}) where {T,S} = _amalgamate(reterms,T)
 function _amalgamate(reterms::Vector, T::Type)
     factordict = Dict{Symbol, Vector{Int}}()
     for (i, rt) in enumerate(reterms)
-        push!(get!(factordict, rt.trm.sym, Int[]), i)
+        push!(get!(factordict, fname(rt), Int[]), i)
     end
     length(factordict) == length(reterms) && return reterms
     value = ReMat{T}[]
