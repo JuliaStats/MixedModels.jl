@@ -417,7 +417,7 @@ end
 
 Return the names of the grouping factors for the random-effects terms.
 """
-fnames(m::MixedModel) = ((tr.trm.sym for tr in m.reterms)...,)
+fnames(m::MixedModel) = (fname.(m.reterms)...,)
 
 """
     getθ(m::LinearMixedModel)

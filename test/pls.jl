@@ -312,6 +312,12 @@ end
     @test size(first(b3)) == (2, 18)
     @test first(first(b3)) ≈ 2.815819441982976 atol=0.001
 
+    b3tbl = raneftables(fm)
+    @test length(b3tbl) == 1
+    @test keys(b3tbl) == (:subj,)
+    @test isa(b3tbl, NamedTuple)
+    @test Tables.istable(only(b3tbl))
+
     simulate!(fm)  # to test one of the unscaledre methods
 
     fmnc = zerocorr!(deepcopy(fm))
