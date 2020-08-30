@@ -417,7 +417,7 @@ end
 
 Return the names of the grouping factors for the random-effects terms.
 """
-fnames(m::MixedModel) = (fname.(m.reterms)...,)
+fnames(m::MixedModel) = ((tr.trm.sym for tr in m.reterms)...,)
 
 """
     getθ(m::LinearMixedModel)
@@ -671,6 +671,22 @@ function ranef(m::LinearMixedModel{T}; uscale = false, named = false) where {T}
         setnames!(vnm, string.(trm.trm.contrasts.levels), 2)
     end
     vnmd
+end
+
+function retbl(mat, trm)
+    merge(
+        NamedTuple{(trm.trm.sym,)}((trm.levels,)),
+        columntable(Tables.table(transpose(mat), header=Symbol.(trm.cnames))),
+        )
+end
+
+"""
+    raneftables(m::LinearMixedModel; uscale = false)
+
+Return the conditional means of the random effects as a NamedTuple of columntables
+"""
+function raneftables(m::LinearMixedModel{T}; uscale = false) where {T}
+    NamedTuple{fnames(m)}((map(retbl, ranef(m, uscale=uscale), m.reterms)...,))
 end
 
 LinearAlgebra.rank(m::LinearMixedModel) = first(m.feterms).rank
