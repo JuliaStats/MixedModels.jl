@@ -1,4 +1,4 @@
-using MixedModels
+using MixedModels, Tables
 using Test
 
 using MixedModels: dataset
@@ -21,6 +21,10 @@ const gfms = Dict(
               0.10836392818271358, -0.38610152013564464, -0.19309267616660894,
               0.059291406326190885, -0.29649374611805296, -0.4564504918851189]
     @test only(ranef(gm0))[1:9] ≈ blups atol=1e-4
+    retbl = raneftables(gm0)
+    @test isone(length(retbl))
+    @test isa(retbl, NamedTuple)
+    @test Tables.istable(only(retbl))
 
     gm1 = fit(MixedModel, only(gfms[:contra]), contra, Bernoulli());
     @test isapprox(gm1.θ, [0.573054], atol=0.005)

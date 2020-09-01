@@ -6,6 +6,22 @@ Return a vector of condition numbers of the λ matrices for the random-effects t
 """
 LinearAlgebra.cond(m::MixedModel) = cond.(m.λ)
 
+function retbl(mat, trm)
+    merge(
+        NamedTuple{(fname(trm),)}((trm.levels,)),
+        columntable(Tables.table(transpose(mat), header=Symbol.(trm.cnames))),
+        )
+end
+
+"""
+    raneftables(m::LinearMixedModel; uscale = false)
+
+Return the conditional means of the random effects as a NamedTuple of columntables
+"""
+function raneftables(m::MixedModel{T}; uscale = false) where {T}
+    NamedTuple{fnames(m)}((map(retbl, ranef(m, uscale=uscale), m.reterms)...,))
+end
+
 function σs(m::MixedModel)
     σ = dispersion(m)
     NamedTuple{fnames(m)}(((σs(t, σ) for t in m.reterms)...,))
