@@ -673,22 +673,6 @@ function ranef(m::LinearMixedModel{T}; uscale = false, named = false) where {T}
     vnmd
 end
 
-function retbl(mat, trm)
-    merge(
-        NamedTuple{(trm.trm.sym,)}((trm.levels,)),
-        columntable(Tables.table(transpose(mat), header=Symbol.(trm.cnames))),
-        )
-end
-
-"""
-    raneftables(m::LinearMixedModel; uscale = false)
-
-Return the conditional means of the random effects as a NamedTuple of columntables
-"""
-function raneftables(m::LinearMixedModel{T}; uscale = false) where {T}
-    NamedTuple{fnames(m)}((map(retbl, ranef(m, uscale=uscale), m.reterms)...,))
-end
-
 LinearAlgebra.rank(m::LinearMixedModel) = first(m.feterms).rank
 
 """

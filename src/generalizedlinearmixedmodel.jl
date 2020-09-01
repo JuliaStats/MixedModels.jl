@@ -520,6 +520,8 @@ function pirls!(
     m
 end
 
+ranef(m::GeneralizedLinearMixedModel; uscale::Bool=false) = ranef(m.LMM, uscale=uscale)
+
 """
     setβθ!(m::GeneralizedLinearMixedModel, v)
 
@@ -607,7 +609,6 @@ for f in (
     :(LinearAlgebra.logdet),
     :lowerbd,
     :PCA,
-    :ranef,
     :rePCA,
     :(StatsBase.coefnames),
     :(StatsModels.modelmatrix),
