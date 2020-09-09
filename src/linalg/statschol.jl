@@ -12,7 +12,7 @@ function statscholesky(xtx::Symmetric{T}, tol::Real = -1) where {T<:AbstractFloa
     chunp = cholesky(xtx, check = false)
     r = chpiv.rank
     piv = [1:n;]
-    if r < n
+    if chunp.info > 0
         nleft = n
         while r < nleft
             k = chunp.info
