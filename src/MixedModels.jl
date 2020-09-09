@@ -24,7 +24,7 @@ using LinearAlgebra: BlasFloat, BlasReal, HermOrSym, PosDefException, copytri!
 using Base: Ryu
 using GLM: Link, canonicallink
 
-using StatsFuns: log2π
+using StatsFuns: log2π, normccdf
 
 import Base: *
 import GLM: dispersion, dispersion_parameter

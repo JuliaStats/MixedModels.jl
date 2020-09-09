@@ -165,10 +165,12 @@ function allpars(bsamp::MixedModelBootstrap{T}) where {T}
 end
 
 function Base.getproperty(bsamp::MixedModelBootstrap, s::Symbol)
-    if s ∈ [:objective, :σ, :θ]
+    if s ∈ [:objective, :σ, :θ, :se]
         getproperty.(getfield(bsamp, :bstr), s)
     elseif s == :β
         tidyβ(bsamp)
+    elseif s == :coeftable
+        tidyβsezp(bsamp)
     elseif s == :σs
         tidyσs(bsamp)
     elseif s == :allpars
@@ -181,7 +183,7 @@ end
 issingular(bsamp::MixedModelBootstrap) = map(θ -> any(θ .≈ bsamp.lowerbd), bsamp.θ)
 
 function Base.propertynames(bsamp::MixedModelBootstrap)
-    [:allpars, :objective, :σ, :β, :θ, :σs, :λ, :inds, :lowerbd, :bstr, :fcnames]
+    [:allpars, :objective, :σ, :β, :se, :coeftable, :θ, :σs, :λ, :inds, :lowerbd, :bstr, :fcnames]
 end
 
 """
@@ -238,6 +240,24 @@ function tidyβ(bsamp::MixedModelBootstrap{T}) where {T}
     for (i, r) in enumerate(bstr)
         for (k, v) in pairs(r.β)
             push!(result, NamedTuple{colnms}((i, k, v)))
+        end
+    end
+    result
+end
+
+function coeftable(bsamp::MixedModelBootstrap{T}) where {T}
+    bstr = bsamp.bstr
+    colnms = (:iter, :coefname, :β, :se, :z, :p)
+    result = sizehint!(
+        NamedTuple{colnms,Tuple{Int,Symbol,T,T,T,T}}[],
+        length(bstr) * length(first(bstr).β),
+    )
+    for (i, r) in enumerate(bstr)
+        for (p, s) in zip(pairs(r.β), r.se)
+            β = last(p)
+            z = β / s
+            push!(result,
+                NamedTuple{colnms}((i, first(p), β, s, z, 2normccdf(abs(z)))))
         end
     end
     result
