@@ -170,7 +170,7 @@ function Base.getproperty(bsamp::MixedModelBootstrap, s::Symbol)
     elseif s == :β
         tidyβ(bsamp)
     elseif s == :coeftable
-        tidyβsezp(bsamp)
+        coeftable(bsamp)
     elseif s == :σs
         tidyσs(bsamp)
     elseif s == :allpars
@@ -245,7 +245,7 @@ function tidyβ(bsamp::MixedModelBootstrap{T}) where {T}
     result
 end
 
-function coeftable(bsamp::MixedModelBootstrap{T}) where {T}
+function StatsBase.coeftable(bsamp::MixedModelBootstrap{T}) where {T}
     bstr = bsamp.bstr
     colnms = (:iter, :coefname, :β, :se, :z, :p)
     result = sizehint!(
