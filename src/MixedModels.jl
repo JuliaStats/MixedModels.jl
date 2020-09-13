@@ -12,7 +12,6 @@ using Random
 using Pkg.Artifacts
 using PooledArrays
 using ProgressMeter
-using Showoff
 using SparseArrays
 using StaticArrays
 using Statistics

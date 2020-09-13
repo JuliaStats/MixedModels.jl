@@ -191,7 +191,7 @@ end
 
 Install the values of the i'th θ value of `bsamp.bstr` in `bsamp.λ`
 """
-function setθ!(bsamp::MixedModelBootstrap, i::Integer) where {T}
+function setθ!(bsamp::MixedModelBootstrap, i::Integer)
     θ = bsamp.bstr[i].θ
     offset = 0
     for (λ, inds) in zip(bsamp.λ, bsamp.inds)
