@@ -6,7 +6,7 @@ Term with an explicit, constant matrix representation
 # Fields
 * `x`: matrix
 * `wtx`: weighted matrix
-* `piv`: pivot `Vector{Int}`` for pivoted QR factorization of `x`
+* `piv`: pivot `Vector{Int}` for pivoted Cholesky factorization of `wtx'wtx`
 * `rank`: computational rank of `x`
 * `cnames`: vector of column names
 """

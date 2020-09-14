@@ -7,7 +7,6 @@ A rank-k update, C := β*C + α*A'A, of a Hermitian (Symmetric) matrix.
 
 `α` and `β` both default to 1.0.  When `α` is -1.0 this is a downdate operation.
 The name `rankUpdate!` is borrowed from [https://github.com/andreasnoack/LinearAlgebra.jl]
-The order of the arguments
 """
 function rankUpdate! end
 
@@ -29,19 +28,17 @@ end
 function rankUpdate!(C::HermOrSym{T,S}, A::SparseMatrixCSC{T}, α, β) where {T,S}
     A.m == size(C, 2) || throw(DimensionMismatch())
     C.uplo == 'L' || throw(ArgumentError("C.uplo must be 'L'"))
-    Cd = C.data
+    Cd, rv, nz = C.data, rowvals(A), nonzeros(A)
     isone(β) || rmul!(LowerTriangular(Cd), β)
-    rv = rowvals(A)
-    nz = nonzeros(A)
-    @inbounds for jj = 1:A.n
+    @inbounds for jj in 1:A.n
         rangejj = nzrange(A, jj)
         lenrngjj = length(rangejj)
         for (k, j) in enumerate(rangejj)
             anzj = α * nz[j]
-            rvj = rv[j]
-            for i = k:lenrngjj
+            colj = view(Cd, :, rv[j])
+            for i in k:lenrngjj
                 kk = rangejj[i]
-                Cd[rv[kk], rvj] += nz[kk] * anzj
+                colj[rv[kk]] += nz[kk] * anzj
             end
         end
     end

@@ -417,7 +417,7 @@ end
 
 Return the names of the grouping factors for the random-effects terms.
 """
-fnames(m::MixedModel) = ((tr.trm.sym for tr in m.reterms)...,)
+fnames(m::MixedModel) = (fname.(m.reterms)...,)
 
 """
     getθ(m::LinearMixedModel)
@@ -652,7 +652,7 @@ end
 ranef!(v::Vector, m::LinearMixedModel, uscale::Bool) = ranef!(v, m, fixef(m), uscale)
 
 """
-    ranef(m::LinearMixedModel; uscale=false, named=true)
+    ranef(m::LinearMixedModel; uscale=false, named=false)
 
 Return, as a `Vector{Vector{T}}` (`Vector{NamedVector{T}}` if `named=true`),
 the conditional modes of the random effects in model `m`.
@@ -789,7 +789,7 @@ function Base.show(io::IO, m::LinearMixedModel)
     if REML
         println(io, " REML criterion at convergence: ", oo)
     else
-        nums = showoff([-oo / 2, oo, aic(m), bic(m)])
+        nums = Ryu.writefixed.([-oo / 2, oo, aic(m), bic(m)], 4)
         fieldwd = max(maximum(textwidth.(nums)) + 1, 11)
         for label in [" logLik", "-2 logLik", "AIC", "BIC"]
             print(io, rpad(lpad(label, (fieldwd + textwidth(label)) >> 1), fieldwd))
@@ -843,8 +843,8 @@ The difference is analagous to the use of n or n-1 in the denominator when
 calculating the variance.
 """
 function ssqdenom(m::LinearMixedModel)::Int
-    dd = m.dims
-    dd.n - m.optsum.REML * dd.p
+    n = m.dims.n
+    m.optsum.REML ? n - m.dims.p : n
 end
 
 """

@@ -86,7 +86,7 @@ shortestcovint
 
 We generate these for all random and fixed effects:
 ```@example Main
-by(df, [:type, :group, :names], interval = :value => shortestcovint)
+combine(groupby(df, [:type, :group, :names]), :value => shortestcovint => :interval)
 ```
 
 A value of zero for the standard deviation of the random effects is an example of a *singular* covariance.
@@ -110,7 +110,7 @@ first(df2, 10)
 the singularity can be exhibited as a standard deviation of zero or as a correlation of $\pm1$.
 
 ```@example Main
-by(df2, [:type,:group,:names], interval = :value=>shortestcovint)
+combine(groupby(df2, [:type, :group, :names]), :value => shortestcovint => :interval)
 ```
 
 A histogram of the estimated correlations from the bootstrap sample has a spike at `+1`.

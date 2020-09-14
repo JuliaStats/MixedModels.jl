@@ -11,40 +11,9 @@ using Test
 
 using MixedModels: dataset, likelihoodratiotest
 
-const fms = Dict(
-    :dyestuff => [@formula(yield ~ 1 + (1|batch))],
-    :dyestuff2 => [@formula(yield ~ 1 + (1|batch))],
-    :d3 => [@formula(y ~ 1 + u + (1+u|g) + (1+u|h) + (1+u|i))],
-    :insteval => [
-        @formula(y ~ 1 + service + (1|s) + (1|d) + (1|dept)),
-        @formula(y ~ 1 + service*dept + (1|s) + (1|d)),
-    ],
-    :kb07 => [
-        @formula(rt_trunc ~ 1+spkr+prec+load+(1|subj)+(1|item)),
-        @formula(rt_trunc ~ 1+spkr*prec*load+(1|subj)+(1+prec|item)),
-        @formula(rt_trunc ~ 1+spkr*prec*load+(1+spkr+prec+load|subj)+(1+spkr+prec+load|item)),
-    ],
-    :pastes => [
-        @formula(strength ~ 1 + (1|sample)),
-        @formula(strength ~ 1 + (1|sample) + (1|batch)),
-    ],
-    :penicillin => [@formula(diameter ~ 1 + (1|plate) + (1|sample))],
-    :sleepstudy => [
-        @formula(reaction ~ 1 + days + (1|subj)),
-        @formula(reaction ~ 1 + days + zerocorr(1+days|subj)),
-        @formula(reaction ~ 1 + days + (1|subj) + (0+days|subj)),
-        @formula(reaction ~ 1 + days + (1+days|subj)),
-    ],
-)
-
-const fittedmodels = Dict{Symbol,Vector{LinearMixedModel}}();
-function models(nm::Symbol)
-    get!(fittedmodels, nm) do
-        fit.(MixedModel, fms[nm], Ref(dataset(nm)))
-    end
-end
-
 const io = IOBuffer()
+
+include("modelcache.jl")
 
 @testset "Dyestuff" begin
     fm1 = only(models(:dyestuff))
@@ -312,6 +281,12 @@ end
     @test size(first(b3)) == (2, 18)
     @test first(first(b3)) ≈ 2.815819441982976 atol=0.001
 
+    b3tbl = raneftables(fm)
+    @test length(b3tbl) == 1
+    @test keys(b3tbl) == (:subj,)
+    @test isa(b3tbl, NamedTuple)
+    @test Tables.istable(only(b3tbl))
+
     simulate!(fm)  # to test one of the unscaledre methods
 
     fmnc = zerocorr!(deepcopy(fm))
@@ -425,53 +400,6 @@ end
     tokens = Set(split(String(take!(io)), r"\s+"))
     @test "Corr." in tokens
     @test "-0.89" in tokens
-end
-
-@testset "simulate!" begin
-    ds = dataset(:dyestuff)
-    fm = only(models(:dyestuff))
-    resp₀ = copy(response(fm))
-    # type conversion of ints to floats
-    simulate!(Random.MersenneTwister(1234321), fm, β=[1], σ=1)
-    refit!(fm,resp₀)
-    refit!(simulate!(Random.MersenneTwister(1234321), fm))
-    @test deviance(fm) ≈ 339.0218639362958 atol=0.001
-    refit!(fm, float(ds.yield))
-    Random.seed!(1234321)
-    refit!(simulate!(fm))
-    @test deviance(fm) ≈ 339.0218639362958 atol=0.001
-    simulate!(fm, θ = fm.θ)
-    @test_throws DimensionMismatch refit!(fm, zeros(29))
-
-    # two implicit tests
-    # 1. type conversion of ints to floats
-    # 2. test method for default RNG
-    parametricbootstrap(1, fm, β=[1], σ=1)
-
-    bsamp = parametricbootstrap(MersenneTwister(1234321), 100, fm, use_threads=false)
-    @test isa(propertynames(bsamp), Vector{Symbol})
-    @test length(bsamp.objective) == 100
-    @test keys(first(bsamp.bstr)) == (:objective, :σ, :β, :se, :θ)
-    @test isa(bsamp.σs, Vector{<:NamedTuple})
-    @test length(bsamp.σs) == 100
-    allpars = DataFrame(bsamp.allpars)
-    @test isa(allpars, DataFrame)
-    cov = shortestcovint(shuffle(1.:100.))
-    # there is no unique shortest coverage interval here, but the left-most one
-    # is currently returned, so we take that. If this behavior changes, then
-    # we'll have to change the test
-    @test first(cov) == 1.
-    @test last(cov) == 95.
-
-    bsamp_threaded = parametricbootstrap(MersenneTwister(1234321), 100, fm, use_threads=true)
-    # even though it's bad practice with floating point, exact equality should
-    # be a valid test here -- if everything is working right, then it's the exact
-    # same operations occuring within each bootstrap sample, which IEEE 754
-    # guarantees will yield the same result
-    @test sort(bsamp_threaded.σ) == sort(bsamp.σ)
-    @test sort(bsamp_threaded.θ) == sort(bsamp.θ)
-    @test sort(columntable(bsamp_threaded.β).β) == sort(columntable(bsamp.β).β)
-    @test sum(issingular(bsamp)) == sum(issingular(bsamp_threaded))
 end
 
 @testset "Rank deficient" begin

@@ -12,7 +12,6 @@ using Random
 using Pkg.Artifacts
 using PooledArrays
 using ProgressMeter
-using Showoff
 using SparseArrays
 using StaticArrays
 using Statistics
@@ -24,7 +23,7 @@ using LinearAlgebra: BlasFloat, BlasReal, HermOrSym, PosDefException, copytri!
 using Base: Ryu
 using GLM: Link, canonicallink
 
-using StatsFuns: log2π
+using StatsFuns: log2π, normccdf
 
 import Base: *
 import GLM: dispersion, dispersion_parameter
@@ -67,6 +66,7 @@ export @formula,
        bic,
        coef,
        coefnames,
+       coefpvalues,
        coeftable,
        cond,
        condVar,
@@ -96,6 +96,7 @@ export @formula,
        predict,
        pwrss,
        ranef,
+       raneftables,
        rank,
        refit!,
        replicate,

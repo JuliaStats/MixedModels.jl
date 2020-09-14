@@ -170,8 +170,6 @@ end
         ff = apply_schema(@formula(y ~ 1 + (1|g/f)), schema(dat), MixedModel)
         @test modelcols(last(ff.rhs), dat) == float(Matrix(I, 18, 18))
 
-        @test_broken fit(MixedModel, @formula(Y ~ 1 + (1|H/c)), dat[:Pastes])
-
         # in fixed effects:
         d2 = (a = rand(20), b = repeat([:X, :Y], outer=10), c = repeat([:S,:T],outer=10))
         f2 = apply_schema(@formula(0 ~ 1 + b/a), schema(d2), MixedModel)
@@ -187,6 +185,16 @@ end
 
         # errors for too much nesting
         @test_throws ArgumentError apply_schema(@formula(0 ~ 1 + b/c/a), schema(d2), MixedModel)
+
+        # fitted model to test amalgamate and fnames, and equivalence with other formulations
+        psts = dataset("pastes")
+        m = fit(MixedModel, @formula(strength ~ 1 + (1|batch/cask)), psts)
+        m2 = fit(MixedModel, @formula(strength ~ 1 + (1|batch) + (1|batch&cask)), psts)
+        m3 = fit(MixedModel, @formula(strength ~ 1 + (1|batch) + (1|sample)), psts)
+
+        @test fnames(m) == fnames(m2) == (Symbol("batch & cask"), :batch)
+        @test m.λ == m2.λ == m3.λ
+        @test deviance(m) == deviance(m2) == deviance(m3)
     end
 
     @testset "multiple terms with same grouping" begin
