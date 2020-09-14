@@ -133,7 +133,7 @@ fm5 = fit(MixedModel, @formula(y ~ 1 + service * dept + (1|s) + (1|d)), insteval
 ```@setup Main
 @testset "fm5" begin
     @test deviance(fm5) ≈ 2.37585553e5
-    @test varest(fm5) ≈ 1.38472777
+    @test varest(fm5) ≈ 1.38472777 atol = 1e-6
     @test VarCorr(fm5).σρ.s.σ[1] ≈ 0.32468136 rtol = 6
     @test VarCorr(fm5).σρ.d.σ[1] ≈ 0.50834669 rtol = 6
 end
@@ -445,7 +445,7 @@ leverage(fm1)
 ```
 are used in diagnostics for linear regression models to determine cases that exert a strong influence on their own predicted response.
 
-The documentation refers to a "projection". 
+The documentation refers to a "projection".
 For a linear model without random effects the fitted values are obtained by orthogonal projection of the response onto the column span of the model matrix and the sum of the leverage values is the dimension of this column span.
 That is, the sum of the leverage values is the rank of the model matrix and `n - sum(leverage(m))` is the degrees of freedom for residuals.
 The sum of the leverage values is also the trace of the so-called "hat" matrix, `H`.
