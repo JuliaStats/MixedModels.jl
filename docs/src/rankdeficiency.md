@@ -1,7 +1,7 @@
 # Rank deficiency in mixed-effects models
 
-```@setup
-CurrentModule = MixedModels
+```@setup Main
+using MixedModels
 ```
 
 The *(column) rank* of a matrix refers to the number of independent columns in the matrix.
@@ -30,11 +30,9 @@ In practice this is done via 'pivoting': the effective rank of the model matrix 
 In subsequent calculations, these columns are effectively ignored (as their estimates are zero and thus won't contribute to any other computations).
 For display purposes, this pivoting is unwound at the end and the zeroed estimates are displayed in the output.
 
-Both the pivoted and unpivoted coefficients are available in MixedModels:
-
-```@docs
-fixef
-```
+Both the pivoted and unpivoted coefficients are available in MixedModels.
+The [`fixef`](@ref) extractor returns the pivoted, truncated estimates (i.e. the non redudant terms), while the [`coef`](@ref) extractor returns the unpivoted estimates (i.e. all terms, included the redudant ones).
+The same holds for the associated [`fixefnames`](@ref) and [`coefnames`](@ref).
 
 ### Pivoting is platform dependent
 In MixedModels.jl, we use standard numerical techniques to detect rank eficiency.

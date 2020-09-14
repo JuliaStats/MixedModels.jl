@@ -317,7 +317,7 @@ MixedModels.deviance!(gm1)
 ## Fixed-effects parameter estimates
 
 The `coef` and `fixef` extractors both return the maximum likelihood estimates of the fixed-effects coefficients.
-They differ in their behavior in the rank deficient case.
+They differ in their behavior in the rank-deficient case.
 The associated `coefnames` and `fixefnames` return the corresponding coefficient names.
 ```@docs
 coef
