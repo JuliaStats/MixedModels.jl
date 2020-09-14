@@ -24,6 +24,8 @@ function statscholesky(xtx::Symmetric{T}, tol::Real = -1) where {T<:AbstractFloa
         nleft = n
         while nleft > r
             # the 0 lowerbound is for MKL compatibility
+            # this arises when the unpivoted Cholesky succeeds but the pivoted
+            # Chokesky estimates less than full rank (see #367)
             if 0 < k < nleft
                 piv = piv[[1:k-1; k+1:n; k]]
                 chunp = cholesky!(Symmetric(xtx[piv, piv]), check = false)
