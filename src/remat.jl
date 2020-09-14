@@ -54,7 +54,13 @@ function _amalgamate(reterms::Vector, T::Type)
             z = foldl(vcat, rr.z for rr in trms)
 
             Snew = size(z, 1)
-            inds = (1:abs2(Snew))[vec(BlockDiagonal([indmat(rt) for rt in trms]))]
+            btemp = Matrix{Bool}(I, Snew, Snew)
+            offset = 0
+            for m in indmat.(trms)
+                inds = (offset + 1):(offset + size(m, 1))
+                view(btemp, inds, inds) .= m
+            end
+            inds = (1:abs2(Snew))[vec(btemp)]
 
             λ = LowerTriangular(Matrix{T}(I, Snew, Snew))
             scratch =  foldl(vcat, rr.scratch for rr in trms)
