@@ -1,7 +1,7 @@
 # Rank deficiency in mixed-effects models
 
-```@meta
-CurrentModule = MixedModels
+```@setup Main
+using MixedModels
 ```
 
 The *(column) rank* of a matrix refers to the number of independent columns in the matrix.
@@ -69,7 +69,6 @@ In addition to handling naturally occuring rank deficiency in the random effects
 For example, we can use `fulldummy` to fit both an intercept term and $n$ indicator variables in the random effects for a categorical variable with $n$ levels instead of the usual $n-1$ contrasts.
 
 ```@example Main
-using MixedModels
 kb07 = MixedModels.dataset(:kb07)
 contrasts = Dict(var => HelmertCoding() for var in (:spkr, :prec, :load))
 fit(MixedModel, @formula(rt_raw ~ spkr * prec * load + (1|subj) + (1+prec|item)), kb07; contrasts=contrasts)
