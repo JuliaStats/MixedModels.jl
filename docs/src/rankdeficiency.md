@@ -1,7 +1,7 @@
 # Rank deficiency in mixed-effects models
 
-```@setup Main
-using MixedModels
+```@setup
+CurrentModule = MixedModels
 ```
 
 The *(column) rank* of a matrix refers to the number of independent columns in the matrix.
@@ -32,7 +32,7 @@ For display purposes, this pivoting is unwound at the end and the zeroed estimat
 
 Both the pivoted and unpivoted coefficients are available in MixedModels:
 
-```@docs Main
+```@docs
 fixef
 ```
 
