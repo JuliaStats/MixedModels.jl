@@ -57,8 +57,10 @@ function _amalgamate(reterms::Vector, T::Type)
             btemp = Matrix{Bool}(I, Snew, Snew)
             offset = 0
             for m in indmat.(trms)
-                inds = (offset + 1):(offset + size(m, 1))
+                sz = size(m, 1)
+                inds = (offset + 1):(offset + sz)
                 view(btemp, inds, inds) .= m
+                offset += sz
             end
             inds = (1:abs2(Snew))[vec(btemp)]
 
