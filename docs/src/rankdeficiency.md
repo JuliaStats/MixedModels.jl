@@ -32,7 +32,7 @@ For display purposes, this pivoting is unwound at the end and the zeroed estimat
 
 Both the pivoted and unpivoted coefficients are available in MixedModels:
 
-```@docs
+```@docs Main
 fixef
 ```
 
