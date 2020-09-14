@@ -1,5 +1,9 @@
 # Rank deficiency in mixed-effects models
 
+```@meta
+CurrentModule = MixedModels
+```
+
 The *(column) rank* of a matrix refers to the number of independent columns in the matrix.
 Clearly, the rank can never be more than the number of columns; however, the rank can be less than the number of columns.
 In a regression context, this corresponds to (linear) independency of the predictors.
