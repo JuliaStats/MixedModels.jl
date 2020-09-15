@@ -346,6 +346,12 @@ function GeneralizedLinearMixedModel(
     end
     (isa(d, Normal) && isa(l, IdentityLink)) &&
     throw(ArgumentError("use LinearMixedModel for Normal distribution with IdentityLink"))
+
+    if !any(isa(d, dist) for dist in (Bernoulli, Binomial, Poisson))
+        @warn """Results for families with a dispersion parameter are known to be inaccurate.
+                 Please do not rely on these results without verifying them elsewhere."""
+    end
+
     LMM = LinearMixedModel(f, tbl, contrasts = contrasts; wts = wts)
     y = copy(LMM.y)
         # the sqrtwts field must be the correct length and type but we don't know those
