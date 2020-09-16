@@ -51,7 +51,7 @@ Likeihood ratio test applied to a set of nested models.
 
 Note that nesting of the models is not checked.  It is incumbent on the user 
 to check this. This differs from [`StatsModels.lrtest`](@ref) as nesting in 
-mixed models, especially in the random effects specification may be non obvious.
+mixed models, especially in the random effects specification, may be non obvious.
 
 This functionality may be deprecated in the future in favor of [`StatsModels.lrtest`](@ref).
 """
