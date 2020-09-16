@@ -82,7 +82,13 @@ function _likelihoodratiotest(m::Vararg{T}) where T <: MixedModel
     devs = objective.(m)[ord]
     dofdiffs = diff(dofs)
     devdiffs = .-(diff(devs))
-    pvals = ccdf.(Chisq.(dofdiffs), devdiffs)
+    pvals = map(zip(dofdiffs, devdiffs)) do (dof, dev)
+        if dev > 0
+            ccdf(Chisq(dof), dev)
+        else
+            NaN
+        end
+    end
 
     LikelihoodRatioTest(
         formulas,
@@ -153,4 +159,35 @@ function Base.show(io::IO, lrt::LikelihoodRatioTest; digits=2)
     print(io, '─'^totwidth)
 
     nothing
+end
+
+function _isnested(m::LinearMixedModel...)
+    allequal(getproperty.(getproperty.(m,:optsum),:REML)) ||
+        throw(ArgumentError("Models must all be fit with the same objective (i.e. all ML or all REML)"))
+    if any(getproperty.(getproperty.(m,:optsum),:REML))
+        allequal(coefnames.(m))  ||
+                throw(ArgumentError("Likelihood-ratio tests for REML-fitted models are only valid when the fixed-effects specifications are identical"))
+    end
+
+    true
+end
+
+function _isnested(m::GeneralizedLinearMixedModel...)
+        # TODO: test that all models are fit with same fast/nAGQ option?
+        glms = getproperty.(m,:resp);
+        
+        if !allequal(Distribution.(glms))
+            @error "Models must be fit to the same distribution"
+        end
+        
+        if !allequal(string.(Link.(glms)))
+            @error "Models must have the same link function"
+        end
+
+        true
+end
+
+function StatsModels.isnested(m1::MixedModel, m2::MixedModel; atol::Real=0.0)
+    _isnested(m1, m2)
+
 end
