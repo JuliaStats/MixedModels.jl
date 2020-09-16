@@ -4,7 +4,8 @@
 Return the equality of all elements of the array
 """
 function allequal(x::Array; comparison=isequal)::Bool
-    all(comparison.(first(x),  x))
+    # the ref is necessary in case the elements of x are themselves arrays
+    all(comparison.(x,  Ref(first(x))))
 end
 
 allequal(x::Vector{Bool})::Bool = !any(x) || all(x)
@@ -12,11 +13,11 @@ allequal(x::Vector{Bool})::Bool = !any(x) || all(x)
 allequal(x::NTuple{N,Bool}) where {N} = !any(x) || all(x)
 
 function allequal(x::Tuple; comparison=isequal)::Bool
-    all(comparison.(first(x),  x))
+    all(comparison.(x,  Ref(first(x))))
 end
 
 function allequal(x...; comparison=isequal)::Bool
-    all(comparison.(first(x),  x))
+    all(comparison.(x,  Ref(first(x))))
 end
 
 """
