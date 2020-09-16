@@ -168,7 +168,7 @@ function _iscomparable(m::GeneralizedLinearMixedModel...)
         # TODO: test that all models are fit with same fast/nAGQ option?
         glms = getproperty.(m,:resp);
         
-        iallequal(Distribution.(glms)) ||
+        allequal(Distribution.(glms)) ||
             throw(ArgumentError("Models must be fit to the same distribution"))
                 
         allequal(string.(Link.(glms))) || 
