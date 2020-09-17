@@ -98,7 +98,7 @@ function LinearMixedModel(
     optsum = OptSummary(θ, lbd, :LN_BOBYQA, ftol_rel = T(1.0e-12), ftol_abs = T(1.0e-8))
     fill!(optsum.xtol_abs, 1.0e-10)
     LinearMixedModel(
-        form,
+        f,
         allterms,
         sqrtwts,
         mkparmap(reterms),

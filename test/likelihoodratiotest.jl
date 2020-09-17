@@ -43,8 +43,6 @@ end
 @testset "likelihoodratio test" begin
     slp = dataset(:sleepstudy);
     
-
-
     fm0 = fit(MixedModel,@formula(reaction ~ 1 + (1+days|subj)),slp);
     fm1 = fit(MixedModel,@formula(reaction ~ 1 + days + (1+days|subj)),slp);
 
