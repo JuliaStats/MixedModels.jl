@@ -29,6 +29,12 @@ include("modelcache.jl")
     m2 = LinearMixedModel(@formula(rt_trunc ~ 1 + (1|item)), kb07)
     @test !isnested(m1, m2)
 
+    # mismatched grouping vars
+    kb07  = dataset(:kb07)
+    m1 = fit(MixedModel, @formula(rt_trunc ~ 1 + prec + (1|subj)), kb07, REML=true)
+    m2 = fit(MixedModel, @formula(rt_trunc ~ 1 + prec + (1+prec|subj)), kb07, REML=true)
+    @test isnested(m1, m2)
+
 end
 
 @testset "likelihoodratio test" begin
