@@ -33,7 +33,7 @@ function σρs(m::MixedModel)
 end
 
 """
-    vcov(m::LinearMixedModel)
+    vcov(m::MixedModel; corr=false)
 
 Returns the variance-covariance matrix of the fixed effects.
 If `corr=true`, then correlation of fixed effects is returned instead.
