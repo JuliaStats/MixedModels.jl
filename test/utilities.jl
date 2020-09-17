@@ -27,6 +27,9 @@ end
 	@test allequal([false, false, false])
 	@test allequal(ones(3))
 	@test allequal(1, 1, 1)
+
+	# equality of arrays with broadcasting
+	@test allequal(["(Intercept)", "days"], ["(Intercept)", "days"])
 end
 
 @testset "threaded_replicate" begin
