@@ -189,7 +189,12 @@ is conservative for `MixedModel`s and may reject nested models with different
 parameterizations as being non nested. 
 """
 function StatsModels.isnested(m1::MixedModel, m2::MixedModel; atol::Real=0.0)
-    _iscomparable(m1, m2) || return false
+    try
+        _iscomparable(m1, m2)    
+    catch e
+        @error e.msg
+        false
+    end || return false
     
     # check that the nested fixef are a subset of the outer
     all(in.(coefnames(m1),  Ref(coefnames(m2)))) || return false
