@@ -7,6 +7,8 @@ Linear mixed-effects model representation
 
 * `formula`: the formula for the model
 * `allterms`: a vector of random-effects terms, the fixed-effects terms and the response
+* `reterms`: a `Vector{AbstractReMat{T}}` of random-effects terms.
+* `feterms`: a `Vector{FeMat{T}}` of the fixed-effects model matrix and the response
 * `sqrtwts`: vector of square roots of the case weights.  Can be empty.
 * `parmap` : Vector{NTuple{3,Int}} of (block, row, column) mapping of θ to λ
 * `dims` : NamedTuple{(:n, :p, :nretrms),NTuple{3,Int}} of dimensions.  `p` is the rank of `X`, which may be smaller than `size(X, 2)`.
@@ -21,8 +23,6 @@ Linear mixed-effects model representation
 * `λ` or `lambda`: a vector of lower triangular matrices repeated on the diagonal blocks of `Λ`
 * `σ` or `sigma`: current value of the standard deviation of the per-observation noise
 * `b`: random effects on the original scale, as a vector of matrices
-* `reterms`: a `Vector{ReMat{T}}` of random-effects terms.
-* `feterms`: a `Vector{FeMat{T}}` of the fixed-effects model matrix and the response
 * `u`: random effects on the orthogonal scale, as a vector of matrices
 * `lowerbd`: lower bounds on the elements of θ
 * `X`: the fixed-effects model matrix
@@ -30,7 +30,9 @@ Linear mixed-effects model representation
 """
 struct LinearMixedModel{T<:AbstractFloat} <: MixedModel{T}
     formula::FormulaTerm
-    allterms::Vector{Union{ReMat{T}, FeMat{T}}}
+    allterms::Vector{Union{AbstractReMat{T}, FeMat{T}}}
+    reterms::Vector{AbstractReMat{T}}
+    feterms::Vector{FeMat{T}}
     sqrtwts::Vector{T}
     parmap::Vector{NTuple{3,Int}}
     dims::NamedTuple{(:n, :p, :nretrms),NTuple{3,Int}}
@@ -70,10 +72,10 @@ function LinearMixedModel(
     y = reshape(float(y), (:, 1)) # y as a floating-point matrix
     T = eltype(y)
 
-    reterms = ReMat{T}[]
+    reterms = AbstractReMat{T}[]
     feterms = FeMat{T}[]
     for (i, x) in enumerate(Xs)
-        if isa(x, ReMat{T})
+        if isa(x, AbstractReMat{T})
             push!(reterms, x)
         else
             cnames = coefnames(form.rhs[i])
@@ -88,7 +90,7 @@ function LinearMixedModel(
     end
 
     sort!(reterms, by = nranef, rev = true)
-    allterms = convert(Vector{Union{ReMat{T},FeMat{T}}}, vcat(reterms, feterms))
+    allterms = convert(Vector{Union{AbstractReMat{T},FeMat{T}}}, vcat(reterms, feterms))
     sqrtwts = sqrt.(convert(Vector{T}, wts))
     reweight!.(allterms, Ref(sqrtwts))
     A, L = createAL(allterms)
@@ -100,6 +102,8 @@ function LinearMixedModel(
     LinearMixedModel(
         form,
         allterms,
+        reterms,
+        feterms,
         sqrtwts,
         mkparmap(reterms),
         (n = size(X, 1), p = X.rank, nretrms = length(reterms)),
@@ -240,7 +244,7 @@ function condVar(m::LinearMixedModel{T}) where {T}
     Array{T,3}[reshape(abs2.(ll ./ Ld) .* varest(m), (1, 1, length(Ld)))]
 end
 
-function createAL(allterms::Vector{Union{ReMat{T},FeMat{T}}}) where {T}
+function createAL(allterms::Vector{Union{AbstractReMat{T},FeMat{T}}}) where {T}
     k = length(allterms)
     sz = [isa(t, ReMat) ? size(t, 2) : rank(t) for t in allterms]
     A = BlockArray(undef_blocks, AbstractMatrix{T}, sz, sz)
@@ -461,8 +465,6 @@ function Base.getproperty(m::LinearMixedModel{T}, s::Symbol) where {T}
         σρs(m)
     elseif s == :b
         ranef(m)
-    elseif s == :feterms
-        convert(Vector{FeMat{T}}, filter(Base.Fix2(isa, FeMat), getfield(m, :allterms)))
     elseif s == :objective
         objective(m)
     elseif s == :corr
@@ -473,8 +475,6 @@ function Base.getproperty(m::LinearMixedModel{T}, s::Symbol) where {T}
         NamedTuple{fnames(m)}(PCA.(m.reterms))
     elseif s == :pvalues
         ccdf.(Chisq(1), abs2.(coef(m) ./ stderror(m)))
-    elseif s == :reterms
-        convert(Vector{ReMat{T}}, getfield(m, :allterms)[Base.OneTo(getfield(m, :dims).nretrms)])
     elseif s == :stderror
         stderror(m)
     elseif s == :u
@@ -529,7 +529,7 @@ end
 
 lowerbd(m::LinearMixedModel) = m.optsum.lowerbd
 
-function mkparmap(reterms::Vector)
+function mkparmap(reterms::Vector{AbstractReMat})
     parmap = NTuple{3,Int}[]
     for (k, trm) in enumerate(reterms)
         n = LinearAlgebra.checksquare(trm.λ)
@@ -758,7 +758,7 @@ sdest(m::LinearMixedModel) = √varest(m)
 Install `v` as the θ parameters in `m`.
 """
 function setθ!(m::LinearMixedModel{T}, θ::Vector{T}) where {T}
-    parmap, reterms = m.parmap, m.allterms
+    parmap, reterms = m.parmap, m.reterms
     length(θ) == length(parmap) || throw(DimensionMismatch())
     reind = 1
     λ = first(reterms).λ
