@@ -58,7 +58,7 @@ This functionality may be deprecated in the future in favor of [`StatsModels.lrt
 function likelihoodratiotest(m::MixedModel...)
     _iscomparable(m...) || throw(
             ArgumentError("""Models are not comparable: are the objectives, data
-                             and, where approriate, the link and family the same?
+                             and, where appropriate, the link and family the same?
             """))
     
     m = collect(m)   # change the tuple to an array
