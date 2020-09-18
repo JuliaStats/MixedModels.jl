@@ -355,6 +355,8 @@ function GeneralizedLinearMixedModel(
         LMM = LinearMixedModel(
             LMM.formula,
             LMM.allterms,
+            LMM.reterms,
+            LMM.feterms,
             fill!(similar(y), 1),
             LMM.parmap,
             LMM.dims,
@@ -405,7 +407,9 @@ function Base.getproperty(m::GeneralizedLinearMixedModel, s::Symbol)
         σs(m)
     elseif s == :σρs
         σρs(m)
-    elseif s ∈ (:A, :L, :λ, :lowerbd, :corr, :PCA, :rePCA, :optsum, :X, :allterms, :reterms, :feterms, :formula)
+    elseif s ∈ (:A, :L, :optsum, :allterms, :reterms, :feterms, :formula)
+        getfield(m.LMM, s)
+    elseif s ∈ (:λ, :lowerbd, :corr, :PCA, :rePCA, :X,)
         getproperty(m.LMM, s)
     elseif s == :y
         m.resp.y

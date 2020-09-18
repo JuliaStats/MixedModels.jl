@@ -28,13 +28,11 @@ mutable struct ReMat{T,S} <: AbstractReMat{T}
 end
 
 """
-    amalgamate(reterms::Vector{ReMat})
+    amalgamate(reterms::Vector{AbstractReMat})
 
 Combine multiple ReMat with the same grouping variable into a single object.
 """
-amalgamate(reterms::Vector{ReMat{T,S} where S}) where {T} = _amalgamate(reterms,T)
-# constant S
-amalgamate(reterms::Vector{ReMat{T,S}}) where {T,S} = _amalgamate(reterms,T)
+amalgamate(reterms::Vector{AbstractReMat{T}}) where {T} = _amalgamate(reterms,T)
 
 function _amalgamate(reterms::Vector, T::Type)
     factordict = Dict{Symbol, Vector{Int}}()
@@ -42,7 +40,7 @@ function _amalgamate(reterms::Vector, T::Type)
         push!(get!(factordict, fname(rt), Int[]), i)
     end
     length(factordict) == length(reterms) && return reterms
-    value = ReMat{T}[]
+    value = AbstractReMat{T}[]
     for (f, inds) in factordict
         if isone(length(inds))
             push!(value, reterms[only(inds)])
