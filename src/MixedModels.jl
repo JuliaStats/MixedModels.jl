@@ -1,8 +1,8 @@
 module MixedModels
 
+using Arrow
 using BlockArrays
 using Distributions
-using Feather
 using GLM
 using LinearAlgebra
 using NamedArrays
