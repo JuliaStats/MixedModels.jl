@@ -68,7 +68,8 @@ function LinearMixedModel(
     y, Xs = modelcols(form, tbl)
 
     y = reshape(float(y), (:, 1)) # y as a floating-point matrix
-    T = eltype(y)
+    T = promote_type(Float64, eltype(y))  # ensure that eltype of model matrices is at least Float64
+    y = convert(Matrix{T}, y)
 
     reterms = ReMat{T}[]
     feterms = FeMat{T}[]

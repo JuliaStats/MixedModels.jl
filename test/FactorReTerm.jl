@@ -1,3 +1,4 @@
+using DataFrames
 using LinearAlgebra
 using MixedModels
 using Random
@@ -98,8 +99,9 @@ end
 end
 
 @testset "Categorical Blocking Variable" begin
-    # deepcopy because we're going to modify it
-    slp = deepcopy(dataset("sleepstudy"))
+    # deepcopy because we're going to modify it.  Don't need the copy if dataset returns an Arrow.Table
+    #slp = deepcopy(DataFrame(dataset("sleepstudy")))
+    slp = DataFrame(dataset("sleepstudy"))
     contrasts =  Dict{Symbol,Any}()
     f = @formula(reaction ~ 1 + (1|subj))
 
@@ -203,13 +205,13 @@ end
         f1 = @formula(rt_trunc ~ 1 + (1 + prec + load | spkr))
         ff1 = apply_schema(f1, sch, MixedModel)
 
-        retrm = ff1.rhs[end]
-        @test retrm.lhs.terms[end].contrasts.contrasts isa DummyCoding
+        retrm = last(ff1.rhs)
+        @test last(retrm.lhs.terms).contrasts.contrasts isa DummyCoding
 
         f2 = @formula(rt_trunc ~ 1 + (1 + prec | spkr) + (0 + load | spkr))
         ff2 = apply_schema(f2, sch, MixedModel)
 
-        retrm2 = ff2.rhs[end]
-        @test retrm2.lhs.terms[end].contrasts.contrasts isa DummyCoding
+        retrm2 = last(ff2.rhs)
+        @test last(retrm2.lhs.terms).contrasts.contrasts isa DummyCoding
     end
 end
