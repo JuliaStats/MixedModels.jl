@@ -5,6 +5,7 @@ version = "3.0.0-DEV"
 
 [deps]
 BlockArrays = "8e7c35d0-a365-5155-bbbb-fb81a777f24e"
+DataAPI = "9a962f9c-6df0-11e9-0e5d-c546b8b5ee8a"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
 Feather = "becb17da-46f6-5d3c-ad1b-1c5fe96bc73c"
 GLM = "38e38edf-8417-5370-95a0-9cbb8c7f171a"

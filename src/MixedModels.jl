@@ -25,6 +25,7 @@ using GLM: Link, canonicallink
 using StatsFuns: log2π, normccdf
 
 import Base: *
+import DataAPI: levels, refpool, refarray, refvalue
 import GLM: dispersion, dispersion_parameter
 import NLopt: Opt
 import StatsBase: fit, fit!
