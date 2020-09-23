@@ -1,5 +1,7 @@
 using DataFrames, LinearAlgebra, MixedModels, RData, Test
 
+using GLM: SqrtLink
+
 if !@isdefined(dat) || !isa(dat, Dict{Symbol, DataFrame})
     const dat = Dict(Symbol(k) => v for (k, v) in
         load(joinpath(dirname(pathof(MixedModels)), "..", "test", "dat.rda")))
@@ -75,4 +77,14 @@ end
     # these two values are not well defined at the optimum
     #@test isapprox(sum(x -> sum(abs2, x), gm4.u), 196.8695297987013, atol=0.1)
     #@test isapprox(sum(gm4.resp.devresid), 220.92685781326136, atol=0.1)
+end
+
+@testset "dispersion" begin
+
+    form = @formula(Y ~ 1 + U + (1 + U | G))
+
+    @test_logs (:warn, r"dispersion parameter") GeneralizedLinearMixedModel(form, dat[:sleepstudy], Gamma())
+    @test_logs (:warn, r"dispersion parameter") GeneralizedLinearMixedModel(form, dat[:sleepstudy], InverseGaussian())
+    @test_logs (:warn, r"dispersion parameter") GeneralizedLinearMixedModel(form, dat[:sleepstudy], Normal(), SqrtLink())
+
 end

@@ -233,9 +233,9 @@ GeneralizedLinearMixedModel(f::FormulaTerm, tbl,
 GeneralizedLinearMixedModel(f::FormulaTerm, tbl::Tables.ColumnTable,
                             d::Normal,
                             l::IdentityLink;
-                            wts = [],
-                            offset = [],
-                            contrasts = Dict{Symbol,Any}()) =
+                            wts = wts,
+                            offset = offset,
+                            contrasts = contrasts) =
     throw(ArgumentError("use LinearMixedModel for Normal distribution with IdentityLink"))
 function GeneralizedLinearMixedModel(f::FormulaTerm, tbl::Tables.ColumnTable,
                                      d::Distribution,
@@ -247,7 +247,14 @@ function GeneralizedLinearMixedModel(f::FormulaTerm, tbl::Tables.ColumnTable,
         d = Bernoulli()
     end
     (isa(d, Normal) && isa(l, IdentityLink)) &&
-        throw(ArgumentError("use LinearMixedModel for Normal distribution with IdentityLink"))
+    throw(ArgumentError("use LinearMixedModel for Normal distribution with IdentityLink"))
+
+    if !any(isa(d, dist) for dist in (Bernoulli, Binomial, Poisson))
+        @warn """Results for families with a dispersion parameter are not reliable. 
+                 It is best to avoid trying to fit such models in MixedModels until 
+                 the authors get a better understanding of those cases."""
+    end
+
     LMM = LinearMixedModel(f, tbl, contrasts = contrasts; wts = wts)
     y = copy(LMM.y)
         # the sqrtwts field must be the correct length and type but we don't know those
