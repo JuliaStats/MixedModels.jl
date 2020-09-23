@@ -120,3 +120,14 @@ end
     @test only(m11.β) ≈ 4.192196439077657 atol=1.e-5
     @test only(m11.θ) ≈ 1.838245201739852 atol=1.e-5
 end
+
+@testset "dispersion" begin
+
+    form = @formula(reaction ~ 1 + days + (1+days|subj))
+    dat = dataset(:sleepstudy)
+
+    @test_logs (:warn, r"dispersion parameter") GeneralizedLinearMixedModel(form, dat, Gamma())
+    @test_logs (:warn, r"dispersion parameter") GeneralizedLinearMixedModel(form, dat, InverseGaussian())
+    @test_logs (:warn, r"dispersion parameter") GeneralizedLinearMixedModel(form, dat, Normal(), SqrtLink())
+
+end
