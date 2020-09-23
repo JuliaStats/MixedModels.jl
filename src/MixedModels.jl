@@ -1,6 +1,7 @@
 module MixedModels
 
 using BlockArrays
+using DataAPI
 using Distributions
 using Feather
 using GLM

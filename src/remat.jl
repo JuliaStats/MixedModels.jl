@@ -133,7 +133,15 @@ function getθ!(v::AbstractVector{T}, A::ReMat{T}) where {T}
     v
 end
 
-levels(A::ReMat) = A.levels
+function DataAPI.levels(A::ReMat)
+    pool = A.levels
+    present = falses(size(pool))
+    @inbounds for i in A.refs
+        present[i] = true
+        all(present) && return pool
+    end
+    pool[present]
+end
 
 """
     indmat(A::ReMat)

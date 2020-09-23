@@ -5,7 +5,7 @@ using SparseArrays
 using StatsModels
 using Test
 
-using MixedModels: dataset, refpool, modelcols, nlevs
+using MixedModels: dataset, levels, modelcols, nlevs, refpool
 
 const LMM = LinearMixedModel
 
@@ -31,6 +31,7 @@ const LMM = LinearMixedModel
 
     @testset "utilities" begin
         @test refpool(sf) == string.('A':'F')
+        @test levels(sf) == string.('A':'F')
         @test nlevs(sf) == 6
         @test eltype(sf) == Float64
         @test sparse(sf) == sparse(1:30, sf.refs, ones(30))
