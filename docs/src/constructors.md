@@ -1,7 +1,7 @@
 # Model constructors
 
 The `LinearMixedModel` type represents a linear mixed-effects model.
-Typically it is constructed from a `Formula` and an appropriate `data` type, usually a `DataFrame`.
+Typically it is constructed from a `Formula` and an appropriate `Table` type, usually a `DataFrame`.
 ```@docs
 LinearMixedModel
 ```
@@ -15,7 +15,7 @@ These include the `Dyestuff` and `Dyestuff2` data sets.
 MixedModels.dataset
 ```
 
-```@example Main
+```@setup Main
 using Test
 ```
 
@@ -56,7 +56,7 @@ dyestuff2 = MixedModels.dataset(:dyestuff2)
 @benchmark fit(MixedModel, $fm, $dyestuff2)
 ```
 
-By default, the model fit is by maximum likelihood. To use the `REML` criterion instead, add the optional named argument `REML=true` to the call to `fit`
+By default, the model is fit by maximum likelihood. To use the `REML` criterion instead, add the optional named argument `REML=true` to the call to `fit`
 ```@example Main
 fm1reml = fit(MixedModel, fm, dyestuff, REML=true)
 ```
@@ -123,6 +123,11 @@ describe(pastes)
 fm4 = fit(MixedModel, @formula(strength ~ 1 + (1|sample) + (1|batch)), pastes)
 ```
 
+An alternative syntax with a solidus (the "`/`" character) separating grouping factors, read "`cask` nested within `sample`", fits the same model.
+```@example Main
+fit(MixedModel, @formula(strength ~ 1 + (1|sample/cask)), pastes)
+```
+
 In observational studies it is common to encounter *partially crossed* grouping factors.
 For example, the *InstEval* data are course evaluations by students, `s`, of instructors, `d`.
 Additional covariates include the academic department, `dept`, in which the course was given and `service`, whether or not it was a service course.
@@ -150,7 +155,7 @@ A model with uncorrelated random effects for the intercept and slope by subject 
 ```@example Main
 fm2zerocorr = fit!(zerocorr!(LinearMixedModel(@formula(reaction ~ 1 + days + (1 + days|subj)), sleepstudy)))
 ```
-```@example Main
+```@setup Main
 @testset "ZeroCorr deepcopy" begin
     fm2zerocorr_alt = fit!(zerocorr!(deepcopy(fm2)))
     @test deviance(fm2zerocorr) ≈ deviance(fm2zerocorr_alt) rtol = 6
@@ -194,11 +199,28 @@ fit(MixedModel, @formula(reaction ~ 1 + days + (1|subj) + (0 + days|subj)), slee
     contrasts = Dict(:days => DummyCoding()))
 ```
 
+An alternative is to force all the levels of `days` as indicators using `fulldummy` encoding.
+```@docs
+fulldummy
+```
+```@example Main
+fit(MixedModel, @formula(reaction ~ 1 + days + (1 + fulldummy(days)|subj)), sleepstudy,
+    contrasts = Dict(:days => DummyCoding()))
+```
+This fit produces a better fit as measured by the objective (negative twice the log-likelihood is 1610.8) but at the expense of adding many more parameters to the model.
+As a result, model comparison criteria such, as `AIC` and `BIC`, are inflated.
+
 But using `zerocorr` on the individual terms (or `zerocorr!` on the constructed model object as above) does remove the correlations between the levels:
 ```@example Main
 fit(MixedModel, @formula(reaction ~ 1 + days + zerocorr(1 + days|subj)), sleepstudy,
     contrasts = Dict(:days => DummyCoding()))
+```
+```@example Main
 fit(MixedModel, @formula(reaction ~ 1 + days + (1|subj) + zerocorr(0 + days|subj)), sleepstudy,
+    contrasts = Dict(:days => DummyCoding()))
+```
+```@example Main
+fit(MixedModel, @formula(reaction ~ 1 + days + zerocorr(1 + fulldummy(days)|subj)), sleepstudy,
     contrasts = Dict(:days => DummyCoding()))
 ```
 

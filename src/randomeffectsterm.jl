@@ -121,6 +121,14 @@ fulldummy(t::AbstractTerm) =
     throw(ArgumentError("can't promote $t (of type $(typeof(t))) to full dummy " *
                         "coding (only CategoricalTerms)"))
 
+"""
+    fulldummy(term::CategoricalTerm)
+
+Assign "contrasts" that include all indicator columns (dummy variables) and an intercept column.
+
+This will result in an under-determined set of contrasts, which is not a problem in the random
+effects because of the regularization, or "shrinkage", of the conditional modes.
+"""
 function fulldummy(t::CategoricalTerm)
     new_contrasts = StatsModels.ContrastsMatrix(
         StatsModels.FullDummyCoding(),
