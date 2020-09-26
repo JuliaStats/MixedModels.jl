@@ -53,8 +53,13 @@ struct GeneralizedLinearMixedModel{T<:AbstractFloat} <: MixedModel{T}
     mult::Vector{T}
 end
 
+function StatsBase.coef(m::GeneralizedLinearMixedModel{T}) where {T}
+    piv = fetrm(m.LMM).piv
+    invpermute!(copyto!(fill(T(-0.0), length(piv)), m.β), piv)
+end
+
 function StatsBase.coeftable(m::GeneralizedLinearMixedModel)
-    co = fixef(m)
+    co = coef(m)
     se = stderror(m)
     z = co ./ se
     pvalue = ccdf.(Chisq(1), abs2.(z))
@@ -105,6 +110,8 @@ function StatsBase.deviance(m::GeneralizedLinearMixedModel{T}, nAGQ = 1) where {
 end
 
 StatsBase.deviance(m::GeneralizedLinearMixedModel) = deviance(m, m.optsum.nAGQ)
+
+fixef(m::GeneralizedLinearMixedModel) = m.β
 
 objective(m::GeneralizedLinearMixedModel) = deviance(m)
 
@@ -291,19 +298,6 @@ end
 
 StatsBase.fitted(m::GeneralizedLinearMixedModel) = m.resp.mu
 
-function fixef(m::GeneralizedLinearMixedModel{T}, permuted = true) where {T}
-    permuted && return m.β
-    Xtrm = first(m.LMM.feterms)
-    piv = Xtrm.piv
-    v = fill(-zero(T), size(piv))
-    copyto!(view(v, 1:Xtrm.rank), m.β)
-    invpermute!(v, piv)
-end
-
-function fixefnames(m::GeneralizedLinearMixedModel{T}, permuted = true) where {T}
-    fixefnames(m.LMM, permuted)
-end
-
 GeneralizedLinearMixedModel(
     f::FormulaTerm,
     tbl,
@@ -445,6 +439,7 @@ Base.propertynames(m::GeneralizedLinearMixedModel, private = false) = (
     :theta,
     :beta,
     :coef,
+    :fixef,
     :λ,
     :lambda,
     :σ,
@@ -613,6 +608,7 @@ varest(m::GeneralizedLinearMixedModel{T}) where {T} = one(T)
 for f in (
     :feL,
     :fetrm,
+    :fixefnames,
     :(LinearAlgebra.logdet),
     :lowerbd,
     :PCA,
