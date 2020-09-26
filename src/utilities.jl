@@ -173,11 +173,13 @@ Principal Components Analysis
 
 * `covcorr` covariance or correlation matrix
 * `sv` singular value decomposition
-* `corr` is this a correlation matrix
+* `rnames` rownames of the original matrix
+* `corr` is this a correlation matrix?
 """
 struct PCA{T<:AbstractFloat}
     covcor::Symmetric{T,Matrix{T}}
     sv::SVD{T,T,Matrix{T}}
+    rnames::Union{Vector{String}, Missing}
     corr::Bool
 end
 
@@ -193,9 +195,9 @@ For `LinearMixedModel`, a named tuple of PCA on each of the random-effects terms
 If `corr=true`, then the covariance is first standardized to the correlation scale.
 """
 
-function PCA(covfac::AbstractMatrix; corr::Bool=true)
+function PCA(covfac::AbstractMatrix, rnames=missing; corr::Bool=true)
     covf = corr ? rownormalize!(copy(covfac)) : copy(covfac)
-    PCA(Symmetric(covf*covf', :L), svd(covf), corr)
+    PCA(Symmetric(covf*covf', :L), svd(covf), rnames, corr)
 end
 
 function Base.getproperty(pca::PCA, s::Symbol)
@@ -240,27 +242,53 @@ function Base.show(io::IO, pca::PCA;
                 pca.corr ? "correlation" : "(relative) covariance",
                 " matrix")
         # only display the lower triangle of symmetric matrix
-        Base.print_matrix(io, round.(LowerTriangular(pca.covcor), digits=ndigitsmat))
+        printmat = round.(LowerTriangular(pca.covcor), digits=ndigitsmat)
+        if pca.rnames !== missing 
+            n = length(pca.rnames)
+            cv = string.(printmat)
+            for i = 1:n, j = (i+1):n
+                cv[i, j] = ""
+            end
+            neg = startswith.(cv, "-")
+            if any(neg)
+                cv[.!neg] .= " ".* cv[.!neg]
+            end
+            # this hurts type stability, 
+            # but this show method shouldn't be a bottleneck
+            printmat = Text.([pca.rnames cv])
+        end
+        
+        Base.print_matrix(io, printmat)
         println(io)
     end
     if stddevs
-        println(io, "Standard deviations:")
+        println(io, "\nStandard deviations:")
         sv = pca.sv
         show(io, round.(sv.S, digits=ndigitsvec))
         println(io)
     end
     if variances
-        println(io, "Variances:")
+        println(io, "\nVariances:")
         vv = abs2.(sv.S)
         show(io, round.(vv, digits=ndigitsvec))
         println(io)
     end
-    println(io, "Normalized cumulative variances:")
+    println(io, "\nNormalized cumulative variances:")
     show(io, round.(pca.cumvar, digits=ndigitscum))
     println(io)
     if loadings
-        println(io, "Component loadings")
-        Base.print_matrix(io, round.(pca.loadings, digits=ndigitsmat))
+        println(io, "\nComponent loadings")
+        printmat = round.(pca.loadings, digits=ndigitsmat)
+        
+        if pca.rnames !== missing 
+            pclabs = [Text(""); Text.( "PC$i" for i in 1:length(pca.rnames))]
+            pclabs = reshape(pclabs, 1, :)
+            # this hurts type stability, 
+            # but this show method shouldn't be a bottleneck
+            printmat = [pclabs; Text.(pca.rnames) printmat]
+        end
+            
+        Base.print_matrix(io, printmat)
     end
 
     nothing

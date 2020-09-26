@@ -386,10 +386,12 @@ end
 
 function PCA(A::ReMat{T,1}; corr::Bool=true) where {T}
     val = ones(T, 1, 1)
-    PCA(corr ? val : abs(only(A.λ)) * val, corr=corr)
+    # TODO: use DataAPI
+    PCA(corr ? val : abs(only(A.λ)) * val, A.cnames; corr=corr)
 end
 
-PCA(A::ReMat{T,S}; corr::Bool=true) where {T,S} = PCA(A.λ, corr=corr)
+# TODO: use DataAPI
+PCA(A::ReMat{T,S}; corr::Bool=true) where {T,S} = PCA(A.λ, A.cnames; corr=corr)
 
 function reweight!(A::ReMat, sqrtwts::Vector)
     if length(sqrtwts) > 0
