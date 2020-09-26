@@ -6,6 +6,9 @@ using Test
 
 using MixedModels: allequal, average, densify, dataset
 
+const io = IOBuffer()
+include("modelcache.jl")
+
 @testset "average" begin
 	@test average(1.1, 1.2) == 1.15
 end
@@ -51,4 +54,17 @@ end
 	@test size(MixedModels.dataset(:dyestuff)) == (30, 2)
 	@test size(MixedModels.dataset("dyestuff")) == (30, 2)
 	@test_throws ArgumentError MixedModels.dataset(:foo)
+end
+
+@testset "PCA" begin
+	pca = models(:kb07)[3].PCA.item
+	
+	show(io, pca, covcor=true, loadings=false)
+	str = String(take!(io))
+	@test !isempty(findall("load: yes        0.18   0.16  -0.14   1.0", str))
+	
+	show(io, pca, covcor=false, loadings=true)
+	str = String(take!(io))
+	@test !isempty(findall("PC1    PC2    PC3    PC4", str))
+	@test !isempty(findall("load: yes       -0.19  -0.63  -0.75  -0.02", str))
 end
