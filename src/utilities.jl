@@ -246,8 +246,9 @@ function Base.show(io::IO, pca::PCA;
         if pca.rnames !== missing 
             n = length(pca.rnames)
             cv = string.(printmat)
+            dotpad = lpad(".", div(maximum(length, cv),2))
             for i = 1:n, j = (i+1):n
-                cv[i, j] = ""
+                cv[i, j] = dotpad
             end
             neg = startswith.(cv, "-")
             if any(neg)
