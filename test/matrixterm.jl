@@ -32,7 +32,7 @@ end
     onsets = 5 .+ cumsum(Int.(round.((rand(StableRNG(1),nrowsX).*100)))) # minimal distance + random distance
     ncolsBasis = 30 # expand each ncolsX by 30
 
-    X = rand(MersenneTwister(2),nrowsX,ncolsX) # generate predictors
+    X = rand(StableRNG(2),nrowsX,ncolsX) # generate predictors
 
     # generate Diagonal Basis Expansion Matrices
     basis = spdiagm(1 => 0.7*ones(ncolsBasis-1), 0 => 0.3*ones(ncolsBasis-1))
