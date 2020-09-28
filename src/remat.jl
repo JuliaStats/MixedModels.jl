@@ -134,6 +134,8 @@ function getθ!(v::AbstractVector{T}, A::ReMat{T}) where {T}
 end
 
 function DataAPI.levels(A::ReMat)
+    # These checks are for cases where unused levels are present.
+    # Such cases may never occur b/c of the way an ReMat is constructed.
     pool = A.levels
     present = falses(size(pool))
     @inbounds for i in A.refs
