@@ -31,6 +31,7 @@ import NLopt: Opt
 import StatsBase: fit, fit!
 
 export @formula,
+       AbstractReMat,
        Bernoulli,
        Binomial,
        Block,
