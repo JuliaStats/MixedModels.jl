@@ -1,4 +1,4 @@
-using LinearAlgebra, MixedModels, Random, Test, SparseArrays
+using LinearAlgebra, MixedModels, StableRNGs, Test, SparseArrays
 
 @testset "femat" begin
     trm = MixedModels.FeMat(hcat(ones(30), repeat(0:9, outer = 3)), ["(Intercept)", "U"])
@@ -29,10 +29,10 @@ end
     ## Generate a sparse design matrix
     nrowsX = 50 # n events
     ncolsX = 10 # n predictors
-    onsets = 5 .+ cumsum(Int.(round.((rand(MersenneTwister(1),nrowsX).*100)))) # minimal distance + random distance
+    onsets = 5 .+ cumsum(Int.(round.((rand(StableRNG(1),nrowsX).*100)))) # minimal distance + random distance
     ncolsBasis = 30 # expand each ncolsX by 30
 
-    X = rand(MersenneTwister(2),nrowsX,ncolsX) # generate predictors
+    X = rand(StableRNG(2),nrowsX,ncolsX) # generate predictors
 
     # generate Diagonal Basis Expansion Matrices
     basis = spdiagm(1 => 0.7*ones(ncolsBasis-1), 0 => 0.3*ones(ncolsBasis-1))
