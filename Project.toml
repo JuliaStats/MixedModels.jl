@@ -1,6 +1,6 @@
 name = "MixedModels"
 uuid = "ff71e718-51f3-5ec2-a782-8ffcbfa3c316"
-author = ["Phillip Alday <phillip.alday@mpi.nl>", "Douglas Bates <dmbates@gmail.com>", "Jose Bayoan Santiago Calderon <jbs3hp@virginia.edu>"]
+author = ["Phillip Alday <me@phillipalday.com>", "Douglas Bates <dmbates@gmail.com>", "Jose Bayoan Santiago Calderon <jbs3hp@virginia.edu>"]
 version = "3.0.0-DEV"
 
 [deps]
