@@ -654,8 +654,7 @@ ranef!(v::Vector, m::LinearMixedModel, uscale::Bool) = ranef!(v, m, fixef(m), us
 """
     ranef(m::LinearMixedModel; uscale=false, named=false)
 
-Return, as a `Vector{Vector{T}}` (`Vector{NamedVector{T}}` if `named=true`),
-the conditional modes of the random effects in model `m`.
+Return, as a `Vector{Matrix{T}}`, the conditional modes of the random effects in model `m`.
 
 If `uscale` is `true` the random effects are on the spherical (i.e. `u`) scale, otherwise on
 the original scale.
@@ -664,13 +663,6 @@ function ranef(m::LinearMixedModel{T}; uscale = false, named = false) where {T}
     reterms = m.reterms
     v = [Matrix{T}(undef, size(t.z, 1), nlevs(t)) for t in reterms]
     ranef!(v, m, uscale)
-    named || return v
-    vnmd = map(NamedArray, v)
-    for (trm, vnm) in zip(reterms, vnmd)
-        setnames!(vnm, trm.cnames, 1)
-        setnames!(vnm, string.(trm.trm.contrasts.levels), 2)
-    end
-    vnmd
 end
 
 LinearAlgebra.rank(m::LinearMixedModel) = first(m.feterms).rank
