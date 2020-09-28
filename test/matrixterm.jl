@@ -1,4 +1,4 @@
-using LinearAlgebra, MixedModels, Random, Test, SparseArrays
+using LinearAlgebra, MixedModels, StableRNGs, Test, SparseArrays
 
 @testset "femat" begin
     trm = MixedModels.FeMat(hcat(ones(30), repeat(0:9, outer = 3)), ["(Intercept)", "U"])
