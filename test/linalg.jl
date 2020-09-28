@@ -1,4 +1,11 @@
-using DataFrames, LinearAlgebra, MixedModels, Random, SparseArrays, StatsModels, Test
+using LinearAlgebra
+using MixedModels
+using PooledArrays
+using Random
+using SparseArrays
+using Test
+
+using MixedModels: rankUpdate!
 
 @testset "mul!" begin
     for (m, p, n, q, k) in (
@@ -31,38 +38,55 @@ using DataFrames, LinearAlgebra, MixedModels, Random, SparseArrays, StatsModels,
 end
 
 @testset "reweight!" begin
-    rng = Random.MersenneTwister(1234321)
-    df = (Y = randn(rng, 400), A = repeat(['N','Y'], outer=200),
-        G = repeat('A':'T', inner = 2, outer=10), H = repeat('a':'j', inner=40))
-    lmm1 = fit!(LinearMixedModel(@formula(Y ~ 1+A+(1+A|G)+(1+A|H)), df,
-        wts  = ones(400)))
-    @test loglikelihood(lmm1) ≈ -578.9080978272708
-    MixedModels.reweight!(lmm1, ones(400))
-    @test loglikelihood(fit!(lmm1)) ≈ -578.9080978272708
+    rng = MersenneTwister(1234321)
+    df = (
+        Y = randn(rng, 400),
+        A = repeat(PooledArray(["N","Y"]), outer=200),
+        G = repeat(PooledArray(string.('A':'T')), inner = 2, outer=10),
+        H = repeat(PooledArray(string.('a':'j')), inner=40),
+        )
+    m1 = fit(MixedModel, @formula(Y ~ 1 + A + (1+A|G) + (1+A|H)), df)
+    wm1 = fit(MixedModel, @formula(Y ~ 1+A+(1+A|G)+(1+A|H)), df, wts  = ones(400))
+    @test loglikelihood(wm1) ≈ loglikelihood(m1)
+    MixedModels.reweight!(wm1, ones(400))
+    @test loglikelihood(fit!(wm1)) ≈ loglikelihood(m1)
 end
 
 @testset "rankupdate!" begin
-    @test ones(2, 2) == MixedModels.rankUpdate!(Hermitian(zeros(2, 2)), ones(2))
-    d2 = Diagonal(fill(2., 2))
-    @test Diagonal(fill(5.,2)) == MixedModels.rankUpdate!(Diagonal(ones(2)), d2, 1.)
-    @test Diagonal(fill(-3.,2)) == MixedModels.rankUpdate!(Diagonal(ones(2)), d2, -1.)
-
-    # when converting straight from diagonal to symmetric, the type is different
-    @test Diagonal(fill(5.,2)) == MixedModels.rankUpdate!(Symmetric(Matrix(1. * I(2)), :L), d2)
-    # generic method
-    @test Diagonal(fill(5.,2)) == MixedModels.rankUpdate!(Matrix(1. * I(2)), d2)
+    x = [1 1; 1 1];
+    # in Julia 1.6+, typeof(x) == Matrix{Int64}
+    # in < 1.6, typeof(x) == Array{Int64, 2}
+    err = ErrorException("We haven't implemented a method for $(typeof(x)), $(typeof(x)). Please file an issue on GitHub.");
+    @test_throws ErrorException rankUpdate!(x, x, 1, 1);
 end
 
-@testset "lmulλ!" begin
-    gendata(n::Int, ng::Int) = gendata(MersenneTwister(42), n, ng)
+#=  I don't see this testset as meaningful b/c diagonal A does not occur after amalgamation of ReMat's for the same grouping factor - D.B.
+@testset "rankupdate!" begin
+    @test ones(2, 2) == rankUpdate!(Hermitian(zeros(2, 2)), ones(2))
+    d2 = Diagonal(fill(2., 2))
+    @test Diagonal(fill(5.,2)) == rankUpdate!(Diagonal(ones(2)), d2, 1.)
+    @test Diagonal(fill(-3.,2)) == rankUpdate!(Diagonal(ones(2)), d2, -1.)
 
-    function gendata(rng::AbstractRNG, n::Int, ng::Int)
-        df = DataFrame(Y = randn(rng, n),
-                       X = rand(rng, n),
-                       G = rand(rng, 1:ng, n),
-                       H = rand(rng, 1:ng, n))
-        categorical!(df, [:G, :H])
+    # when converting straight from diagonal to symmetric, the type is different
+    @test Diagonal(fill(5.,2)) == rankUpdate!(Symmetric(Matrix(1. * I(2)), :L), d2)
+    # generic method
+    @test Diagonal(fill(5.,2)) == rankUpdate!(Matrix(1. * I(2)), d2)
+end
+=#
+
+@testset "lmulλ!" begin
+    levs(ng, tag='S') = string.(tag, lpad.(string.(1:ng), ndigits(ng), '0'))
+
+    function gendata(rng::AbstractRNG, n::Integer, ng::Integer, nh::Integer)
+        (
+            Y = randn(rng, n),
+            X = rand(rng, n),
+            G = PooledArray(rand(rng, levs(ng, 'G'), n)),
+            H = PooledArray(rand(rng, levs(nh, 'H'), n)),
+        )
     end
+    gendata(n::Integer, ng::Integer, nh::Integer) = gendata(MersenneTwister(42), n, ng, nh)
+    gendata(n::Integer, ng::Integer) = gendata(MersenneTwister(42), n, ng, ng)
 
     @testset "Adjoint{T,ReMat{T,1}}, BlockedSparse{T,1,2}" begin
         # this is an indirect test of lmulΛ! for a blocking structure found in
@@ -72,6 +96,6 @@ end
         m500 = fit!(LinearMixedModel(f, df))
         # the real test here isn't in the theta comparison but in that the fit
         # completes successfully
-        @test m500.theta ≈ [0.07797345952252123, -0.17640571417349787, 0, 0]
+        @test length(m500.u) == 2
     end
 end

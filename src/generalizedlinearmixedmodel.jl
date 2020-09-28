@@ -53,10 +53,19 @@ struct GeneralizedLinearMixedModel{T<:AbstractFloat} <: MixedModel{T}
     mult::Vector{T}
 end
 
-StatsBase.coefnames(m::GeneralizedLinearMixedModel) = coefnames(m.LMM)
-
-StatsBase.coeftable(m::GeneralizedLinearMixedModel) = coeftable(m.LMM)
-
+function StatsBase.coeftable(m::GeneralizedLinearMixedModel)
+    co = fixef(m)
+    se = stderror(m)
+    z = co ./ se
+    pvalue = ccdf.(Chisq(1), abs2.(z))
+    CoefTable(
+        hcat(co, se, z, pvalue),
+        ["Coef.", "Std. Error", "z", "Pr(>|z|)"],
+        coefnames(m),
+        4, # pvalcol
+        3, # teststatcol
+    )
+end
 
 """
     deviance(m::GeneralizedLinearMixedModel{T}, nAGQ=1)::T where {T}
@@ -73,7 +82,7 @@ function StatsBase.deviance(m::GeneralizedLinearMixedModel{T}, nAGQ = 1) where {
     u = vec(first(m.u))
     u₀ = vec(first(m.u₀))
     copyto!(u₀, u)
-    ra = RaggedArray(m.resp.devresid, first(m.LMM.reterms).refs)
+    ra = RaggedArray(m.resp.devresid, first(m.LMM.allterms).refs)
     devc0 = sum!(map!(abs2, m.devc0, u), ra)  # the deviance components at z = 0
     sd = map!(inv, m.sd, m.LMM.L[Block(1, 1)].diag)
     mult = fill!(m.mult, 0)
@@ -112,16 +121,15 @@ function deviance!(m::GeneralizedLinearMixedModel, nAGQ = 1)
     deviance(m, nAGQ)
 end
 
-function GLM.dispersion(m::GeneralizedLinearMixedModel, sqr::Bool = false)
+function GLM.dispersion(m::GeneralizedLinearMixedModel{T}, sqr::Bool = false) where {T}
 # adapted from GLM.dispersion(::AbstractGLM, ::Bool)
 # TODO: PR for a GLM.dispersion(resp::GLM.GlmResp, dof_residual::Int, sqr::Bool)
     r = m.resp
     if dispersion_parameter(r.d)
-        wrkwt, wrkresid = r.wrkwt, r.wrkresid
-        s = sum(i -> wrkwt[i] * abs2(wrkresid[i]), eachindex(wrkwt, wrkresid)) / dof_residual(m)
+        s = sum(wt * abs2(re) for (wt, re) in zip(r.wrkwt, r.wrkresid)) / dof_residual(m)
         sqr ? s : sqrt(s)
     else
-        one(eltype(r.mu))
+        one(T)
     end
 end
 
@@ -338,6 +346,13 @@ function GeneralizedLinearMixedModel(
     end
     (isa(d, Normal) && isa(l, IdentityLink)) &&
     throw(ArgumentError("use LinearMixedModel for Normal distribution with IdentityLink"))
+
+    if !any(isa(d, dist) for dist in (Bernoulli, Binomial, Poisson))
+        @warn """Results for families with a dispersion parameter are not reliable. 
+                 It is best to avoid trying to fit such models in MixedModels until 
+                 the authors get a better understanding of those cases."""
+    end
+
     LMM = LinearMixedModel(f, tbl, contrasts = contrasts; wts = wts)
     y = copy(LMM.y)
         # the sqrtwts field must be the correct length and type but we don't know those
@@ -347,7 +362,11 @@ function GeneralizedLinearMixedModel(
         LMM = LinearMixedModel(
             LMM.formula,
             LMM.allterms,
+            LMM.reterms,
+            LMM.feterms,
             fill!(similar(y), 1),
+            LMM.parmap,
+            LMM.dims,
             LMM.A,
             LMM.L,
             LMM.optsum,
@@ -391,7 +410,13 @@ function Base.getproperty(m::GeneralizedLinearMixedModel, s::Symbol)
         m.β
     elseif s ∈ (:σ, :sigma)
         sdest(m)
-    elseif s ∈ (:A, :L, :λ, :lowerbd, :corr, :vcov, :PCA, :rePCA, :optsum, :X, :reterms, :feterms, :formula, :σs, :σρs)
+    elseif s == :σs
+        σs(m)
+    elseif s == :σρs
+        σρs(m)
+    elseif s ∈ (:A, :L, :optsum, :allterms, :reterms, :feterms, :formula)
+        getfield(m.LMM, s)
+    elseif s ∈ (:λ, :lowerbd, :corr, :PCA, :rePCA, :X,)
         getproperty(m.LMM, s)
     elseif s == :y
         m.resp.y
@@ -401,18 +426,17 @@ function Base.getproperty(m::GeneralizedLinearMixedModel, s::Symbol)
 end
 
 function StatsBase.loglikelihood(m::GeneralizedLinearMixedModel{T}) where {T}
-    accum = zero(T)
+    r = m.resp
     D = Distribution(m.resp)
-    if D <: Binomial
-        for (μ, y, n) in zip(m.resp.mu, m.resp.y, m.wt)
-            accum += logpdf(D(round(Int, n), μ), round(Int, y * n))
+    accum = (
+        if D <: Binomial
+            sum(logpdf(D(round(Int, n), μ), round(Int, y * n))
+                for (μ, y, n) in zip(r.mu, r.y, m.wt))
+        else
+            sum(logpdf(D(μ), y) for (μ, y) in zip(r.mu, r.y))
         end
-    else
-        for (μ, y) in zip(m.resp.mu, m.resp.y)
-            accum += logpdf(D(μ), y)
-        end
-    end
-    accum - (mapreduce(u -> sum(abs2, u), +, m.u) + logdet(m)) / 2
+    )
+    accum - (sum(sum(abs2, u) for u in m.u) + logdet(m)) / 2
 end
 
 StatsBase.nobs(m::GeneralizedLinearMixedModel) = length(m.η)
@@ -507,6 +531,8 @@ function pirls!(
     m
 end
 
+ranef(m::GeneralizedLinearMixedModel; uscale::Bool=false) = ranef(m.LMM, uscale=uscale)
+
 """
     setβθ!(m::GeneralizedLinearMixedModel, v)
 
@@ -589,16 +615,13 @@ varest(m::GeneralizedLinearMixedModel{T}) where {T} = one(T)
 
             # delegate GLMM method to LMM field
 for f in (
-    :describeblocks,
     :feL,
     :(LinearAlgebra.logdet),
     :lowerbd,
     :PCA,
     :rePCA,
+    :(StatsBase.coefnames),
     :(StatsModels.modelmatrix),
-    :(StatsBase.vcov),
-    :σs,
-    :σρs,
 )
     @eval begin
         $f(m::GeneralizedLinearMixedModel) = $f(m.LMM)

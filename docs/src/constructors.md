@@ -1,7 +1,7 @@
 # Model constructors
 
 The `LinearMixedModel` type represents a linear mixed-effects model.
-Typically it is constructed from a `Formula` and an appropriate `data` type, usually a `DataFrame`.
+Typically it is constructed from a `Formula` and an appropriate `Table` type, usually a `DataFrame`.
 ```@docs
 LinearMixedModel
 ```
@@ -15,7 +15,7 @@ These include the `Dyestuff` and `Dyestuff2` data sets.
 MixedModels.dataset
 ```
 
-```@example Main
+```@setup Main
 using Test
 ```
 
@@ -56,7 +56,7 @@ dyestuff2 = MixedModels.dataset(:dyestuff2)
 @benchmark fit(MixedModel, $fm, $dyestuff2)
 ```
 
-By default, the model fit is by maximum likelihood. To use the `REML` criterion instead, add the optional named argument `REML=true` to the call to `fit`
+By default, the model is fit by maximum likelihood. To use the `REML` criterion instead, add the optional named argument `REML=true` to the call to `fit`
 ```@example Main
 fm1reml = fit(MixedModel, fm, dyestuff, REML=true)
 ```
@@ -123,6 +123,11 @@ describe(pastes)
 fm4 = fit(MixedModel, @formula(strength ~ 1 + (1|sample) + (1|batch)), pastes)
 ```
 
+An alternative syntax with a solidus (the "`/`" character) separating grouping factors, read "`cask` nested within `sample`", fits the same model.
+```@example Main
+fit(MixedModel, @formula(strength ~ 1 + (1|sample/cask)), pastes)
+```
+
 In observational studies it is common to encounter *partially crossed* grouping factors.
 For example, the *InstEval* data are course evaluations by students, `s`, of instructors, `d`.
 Additional covariates include the academic department, `dept`, in which the course was given and `service`, whether or not it was a service course.
@@ -133,7 +138,7 @@ fm5 = fit(MixedModel, @formula(y ~ 1 + service * dept + (1|s) + (1|d)), insteval
 ```@setup Main
 @testset "fm5" begin
     @test deviance(fm5) ≈ 2.37585553e5
-    @test varest(fm5) ≈ 1.38472777
+    @test varest(fm5) ≈ 1.38472777 atol = 1e-6
     @test VarCorr(fm5).σρ.s.σ[1] ≈ 0.32468136 rtol = 6
     @test VarCorr(fm5).σρ.d.σ[1] ≈ 0.50834669 rtol = 6
 end
@@ -150,7 +155,7 @@ A model with uncorrelated random effects for the intercept and slope by subject 
 ```@example Main
 fm2zerocorr = fit!(zerocorr!(LinearMixedModel(@formula(reaction ~ 1 + days + (1 + days|subj)), sleepstudy)))
 ```
-```@example Main
+```@setup Main
 @testset "ZeroCorr deepcopy" begin
     fm2zerocorr_alt = fit!(zerocorr!(deepcopy(fm2)))
     @test deviance(fm2zerocorr) ≈ deviance(fm2zerocorr_alt) rtol = 6
@@ -194,11 +199,28 @@ fit(MixedModel, @formula(reaction ~ 1 + days + (1|subj) + (0 + days|subj)), slee
     contrasts = Dict(:days => DummyCoding()))
 ```
 
+An alternative is to force all the levels of `days` as indicators using `fulldummy` encoding.
+```@docs
+fulldummy
+```
+```@example Main
+fit(MixedModel, @formula(reaction ~ 1 + days + (1 + fulldummy(days)|subj)), sleepstudy,
+    contrasts = Dict(:days => DummyCoding()))
+```
+This fit produces a better fit as measured by the objective (negative twice the log-likelihood is 1610.8) but at the expense of adding many more parameters to the model.
+As a result, model comparison criteria such, as `AIC` and `BIC`, are inflated.
+
 But using `zerocorr` on the individual terms (or `zerocorr!` on the constructed model object as above) does remove the correlations between the levels:
 ```@example Main
 fit(MixedModel, @formula(reaction ~ 1 + days + zerocorr(1 + days|subj)), sleepstudy,
     contrasts = Dict(:days => DummyCoding()))
+```
+```@example Main
 fit(MixedModel, @formula(reaction ~ 1 + days + (1|subj) + zerocorr(0 + days|subj)), sleepstudy,
+    contrasts = Dict(:days => DummyCoding()))
+```
+```@example Main
+fit(MixedModel, @formula(reaction ~ 1 + days + zerocorr(1 + fulldummy(days)|subj)), sleepstudy,
     contrasts = Dict(:days => DummyCoding()))
 ```
 
@@ -317,15 +339,21 @@ MixedModels.deviance!(gm1)
 ## Fixed-effects parameter estimates
 
 The `coef` and `fixef` extractors both return the maximum likelihood estimates of the fixed-effects coefficients.
+They differ in their behavior in the rank-deficient case.
+The associated `coefnames` and `fixefnames` return the corresponding coefficient names.
 ```@docs
 coef
+coefnames
 fixef
+fixefnames
 ```
 ```@example Main
 coef(fm1)
+coefnames(fm1)
 ```
 ```@example Main
 fixef(fm1)
+fixefnames
 ```
 
 An alternative extractor for the fixed-effects coefficient is the `β` property.
@@ -445,7 +473,7 @@ leverage(fm1)
 ```
 are used in diagnostics for linear regression models to determine cases that exert a strong influence on their own predicted response.
 
-The documentation refers to a "projection". 
+The documentation refers to a "projection".
 For a linear model without random effects the fitted values are obtained by orthogonal projection of the response onto the column span of the model matrix and the sum of the leverage values is the dimension of this column span.
 That is, the sum of the leverage values is the rank of the model matrix and `n - sum(leverage(m))` is the degrees of freedom for residuals.
 The sum of the leverage values is also the trace of the so-called "hat" matrix, `H`.

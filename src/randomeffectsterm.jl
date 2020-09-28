@@ -49,12 +49,19 @@ end
 
 function StatsModels.apply_schema(
     t::FunctionTerm{typeof(|)},
-    schema::StatsModels.FullRank,
-    Mod::Type{<:MixedModel},
+    schema::MultiSchema{StatsModels.FullRank},
+    Mod::Type{<:MixedModel}
 )
-    schema = StatsModels.FullRank(schema.schema)
     lhs, rhs = t.args_parsed
-    if !StatsModels.hasintercept(lhs) && !StatsModels.omitsintercept(lhs)
+
+    schema = get!(schema.subs, rhs, StatsModels.FullRank(schema.base.schema))
+
+    if (
+        !StatsModels.hasintercept(lhs) &&
+        !StatsModels.omitsintercept(lhs) &&
+        ConstantTerm(1) ∉ schema.already &&
+        InterceptTerm{true}() ∉ schema.already
+    )
         lhs = InterceptTerm{true}() + lhs
     end
     lhs, rhs = apply_schema.((lhs, rhs), Ref(schema), Mod)
@@ -114,6 +121,19 @@ fulldummy(t::AbstractTerm) =
     throw(ArgumentError("can't promote $t (of type $(typeof(t))) to full dummy " *
                         "coding (only CategoricalTerms)"))
 
+"""
+    fulldummy(term::CategoricalTerm)
+
+Assign "contrasts" that include all indicator columns (dummy variables) and an intercept column.
+
+This will result in an under-determined set of contrasts, which is not a problem in the random
+effects because of the regularization, or "shrinkage", of the conditional modes.
+
+The interaction of `fulldummy` with complex random effects is subtle and complex with numerous 
+potential edge cases. As we discover these edge cases, we will document and determine their 
+behavior. Until such time, please check the model summary to verify that the expansion is 
+working as you expected. If it is not, please report a use case on GitHub.
+"""
 function fulldummy(t::CategoricalTerm)
     new_contrasts = StatsModels.ContrastsMatrix(
         StatsModels.FullDummyCoding(),
@@ -149,7 +169,7 @@ zerocorr(x) = ZeroCorr(x)
 
 function StatsModels.apply_schema(
     t::FunctionTerm{typeof(zerocorr)},
-    sch::StatsModels.FullRank,
+    sch::MultiSchema,
     Mod::Type{<:MixedModel},
 )
     ZeroCorr(apply_schema(t.args_parsed..., sch, Mod))

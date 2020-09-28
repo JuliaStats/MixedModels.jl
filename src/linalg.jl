@@ -47,31 +47,13 @@ function LinearAlgebra.ldiv!(
 ) where {T}
     A = adjA.parent
     length(B) == size(A, 2) || throw(DimensionMismatch(""))
-    m, n, k = size(A.data.data)
-    fv = A.data.facevec
+    Adat = A.data.data
+    m, n, k = size(Adat)
     bb = reshape(B, (n, k))
-    for j = 1:k
-        ldiv!(adjoint(LowerTriangular(fv[j])), view(bb, :, j))
+    for j in axes(Adat, 3)
+        ldiv!(adjoint(LowerTriangular(view(Adat, :, :, j))), view(bb, :, j))
     end
     B
-end
-
-"""
-    _rdivlowertriblk!(A::AbstractMatrix, Bd::Array, b, S)
-
-Divide in-place a block of `S` columns of `A` starting at `(b-1)*s+1` on the right by the lower-triangular `b`th face of Bd.
-"""
-function _rdivlowertriblk!(A::AbstractMatrix, Bd::Array, b, S)
-    coloffset = (b - 1) * S
-    @inbounds @simd for i = 1:size(A, 1)
-        for j = 1:S
-            Aij = A[i, j + coloffset]
-            for k = 1:j-1
-                Aij -= A[i, k + coloffset] * Bd[j, k, b]'
-            end
-            A[i, j + coloffset] = Aij / Bd[j, j, b]'
-        end
-    end
 end
 
 function LinearAlgebra.rdiv!(
@@ -80,10 +62,12 @@ function LinearAlgebra.rdiv!(
 ) where {T}
     m, n = size(A)
     Bd = adjB.parent.data
-    r, s, blk = size(Bd.data)
+    Bdd = Bd.data
+    r, s, blk = size(Bdd)
     n == size(Bd, 1) && r == s || throw(DimensionMismatch())
-    for b = 1:blk
-        _rdivlowertriblk!(A, Bd.data, b, s)
+    for b = axes(Bd.data, 3)
+        coloffset = (b - 1) * s
+        rdiv!(view(A, :, coloffset+1:coloffset+s), adjoint(LowerTriangular(view(Bdd, :, :, b))))
     end
     A
 end
@@ -93,12 +77,16 @@ function LinearAlgebra.rdiv!(
     B::Adjoint{T,<:LowerTriangular{T,UniformBlockDiagonal{T}}},
 ) where {T,S,P}
     Bpd = B.parent.data
-    j, k, l = size(Bpd.data)
+    Bdat = Bpd.data
+    j, k, l = size(Bdat)
     cbpt = A.colblkptr
     nzv = A.cscmat.nzval
     P == j == k && length(cbpt) == (l + 1) || throw(DimensionMismatch(""))
-    for (j, f) in enumerate(Bpd.facevec)
-        rdiv!(reshape(view(nzv, cbpt[j]:(cbpt[j+1]-1)), :, P), adjoint(LowerTriangular(f)))
+    for j in axes(Bdat, 3)
+        rdiv!(
+            reshape(view(nzv,cbpt[j]:(cbpt[j+1]-1)),:,P),
+            adjoint(LowerTriangular(view(Bdat,:,:,j)))
+            )
     end
     A
 end
