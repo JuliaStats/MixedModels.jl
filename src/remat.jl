@@ -48,7 +48,7 @@ function _amalgamate(reterms::Vector, T::Type)
             trms = reterms[inds]
             trm1 = first(trms)
             trm = trm1.trm
-            refs = trm1.refs
+            refs = refarray(trm1)
             levs = trm1.levels
             cnames =  foldl(vcat, rr.cnames for rr in trms)
             z = foldl(vcat, rr.z for rr in trms)
@@ -133,7 +133,17 @@ function getθ!(v::AbstractVector{T}, A::ReMat{T}) where {T}
     v
 end
 
-levs(A::ReMat) = A.levels
+function DataAPI.levels(A::ReMat)
+    # These checks are for cases where unused levels are present.
+    # Such cases may never occur b/c of the way an ReMat is constructed.
+    pool = A.levels
+    present = falses(size(pool))
+    @inbounds for i in A.refs
+        present[i] = true
+        all(present) && return pool
+    end
+    pool[present]
+end
 
 """
     indmat(A::ReMat)
@@ -145,7 +155,7 @@ function indmat end
 indmat(rt::ReMat{T,1}) where {T} = ones(Bool, 1, 1)
 indmat(rt::ReMat{T,S}) where {T,S} = reshape([i in rt.inds for i in 1:abs2(S)], S, S)
 
-nlevs(A::ReMat) = length(levs(A))
+nlevs(A::ReMat) = length(A.levels)
 
 """
     nθ(A::ReMat)
@@ -392,6 +402,12 @@ end
 
 # TODO: use DataAPI
 PCA(A::ReMat{T,S}; corr::Bool=true) where {T,S} = PCA(A.λ, A.cnames; corr=corr)
+
+refarray(A::ReMat) = A.refs
+
+refpool(A::ReMat) = A.levels
+
+refvalue(A::ReMat, i::Integer) = A.levels[i]
 
 function reweight!(A::ReMat, sqrtwts::Vector)
     if length(sqrtwts) > 0

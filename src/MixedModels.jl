@@ -1,6 +1,7 @@
 module MixedModels
 
 using BlockArrays
+using DataAPI
 using Distributions
 using Feather
 using GLM
@@ -25,6 +26,7 @@ using GLM: Link, canonicallink
 using StatsFuns: log2π, normccdf
 
 import Base: *
+import DataAPI: levels, refpool, refarray, refvalue
 import GLM: dispersion, dispersion_parameter
 import NLopt: Opt
 import StatsBase: fit, fit!
@@ -85,6 +87,7 @@ export @formula,
        GHnorm,
        issingular,
        leverage,
+       levels,
        logdet,
        loglikelihood,
        lowerbd,
@@ -97,7 +100,10 @@ export @formula,
        ranef,
        raneftables,
        rank,
+       refarray,
        refit!,
+       refpool,
+       refvalue,
        replicate,
        residuals,
        response,
