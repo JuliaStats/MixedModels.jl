@@ -609,7 +609,6 @@ varest(m::GeneralizedLinearMixedModel{T}) where {T} = one(T)
             # delegate GLMM method to LMM field
 for f in (
     :feL,
-    :fetrm,
     :(LinearAlgebra.logdet),
     :lowerbd,
     :PCA,

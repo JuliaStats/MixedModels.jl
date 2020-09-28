@@ -187,14 +187,14 @@ fit(
 )
 
 function StatsBase.coef(m::LinearMixedModel{T}) where {T}
-    piv = fetrm(m).piv
+    piv = first(m.feterms).piv
     invpermute!(fixef!(similar(piv, T), m), piv)
 end
 
 βs(m::LinearMixedModel) = NamedTuple{(Symbol.(coefnames(m))...,)}(coef(m))
 
 function StatsBase.coefnames(m::LinearMixedModel)
-    Xtrm = fetrm(m)
+    Xtrm = first(m.feterms)
     invpermute!(copy(Xtrm.cnames), Xtrm.piv)
 end
 
@@ -290,29 +290,15 @@ function StatsBase.dof_residual(m::LinearMixedModel)::Int
 end
 
 """
-    feind(m::LinearMixedModel)
-
-An internal utility to return the index in `m.allterms` of the fixed-effects term.
-"""
-feind(m::LinearMixedModel) = m.dims.nretrms + 1
-
-"""
     feL(m::LinearMixedModel)
 
 Return the lower Cholesky factor for the fixed-effects parameters, as an `LowerTriangular`
 `p × p` matrix.
 """
 function feL(m::LinearMixedModel)
-    k = feind(m)
+    k = m.dims.nretrms + 1
     LowerTriangular(m.L.blocks[k, k])
 end
-
-"""
-    fetrm(m::LinearMixedModel)
-
-Return the fixed-effects term from `m.allterms`
-"""
-fetrm(m::LinearMixedModel) = m.allterms[feind(m)]
 
 """
     fit!(m::LinearMixedModel[; verbose::Bool=false, REML::Bool=false])
@@ -363,7 +349,7 @@ end
 
 function fitted!(v::AbstractArray{T}, m::LinearMixedModel{T}) where {T}
     ## FIXME: Create and use `effects(m) -> β, b` w/o calculating β twice
-    Xtrm = fetrm(m)
+    Xtrm = first(m.feterms)
     vv = mul!(vec(v), Xtrm, fixef!(similar(Xtrm.piv, T), m))
     for (rt, bb) in zip(m.reterms, ranef(m))
         unscaledre!(vv, rt, bb)
@@ -383,7 +369,7 @@ the length of `v` can be the rank of `X` or the number of columns of `X`.  In th
 case the calculated coefficients are padded with -0.0 out to the number of columns.
 """
 function fixef!(v::AbstractVector{T}, m::LinearMixedModel{T}) where {T}
-    Xtrm = fetrm(m)
+    Xtrm = first(m.feterms)
     if isfullrank(Xtrm)
         ldiv!(feL(m)', copyto!(v, m.L.blocks[end, end-1]))
     else
@@ -404,7 +390,7 @@ In the rank-deficient case the truncated parameter vector, of length `rank(m)` i
 This is unlike `coef` which always returns a vector whose length matches the number of
 columns in `X`.
 """
-fixef(m::LinearMixedModel{T}) where {T} = fixef!(Vector{T}(undef, fetrm(m).rank), m)
+fixef(m::LinearMixedModel{T}) where {T} = fixef!(Vector{T}(undef, first(m.feterms).rank), m)
 
 """
     fixefnames(m::MixedModel)
@@ -412,7 +398,7 @@ fixef(m::LinearMixedModel{T}) where {T} = fixef!(Vector{T}(undef, fetrm(m).rank)
 Return a (permuted and truncated in the rank-deficient case) vector of coefficient names.
 """
 function fixefnames(m::LinearMixedModel{T}) where {T}
-    Xtrm = fetrm(m)
+    Xtrm = first(m.feterms)
     Xtrm.cnames[1:Xtrm.rank]
 end
 
@@ -542,7 +528,7 @@ function mkparmap(reterms::Vector{AbstractReMat{T}}) where {T}
 end
 
 function StatsBase.modelmatrix(m::LinearMixedModel)
-    fe = fetrm(m)
+    fe = first(m.feterms)
     if fe.rank == size(fe, 2)
         fe.x
     else
@@ -622,7 +608,7 @@ function ranef!(
     β::AbstractArray{T},
     uscale::Bool,
 ) where {T}
-    (k = length(v)) == length(m.reterms) || throw(DimensionMismatch(""))
+    (k = length(v)) == m.dims.nretrms || throw(DimensionMismatch(""))
     L = m.L
     for j = 1:k
         mul!(
@@ -879,12 +865,12 @@ function stderror!(v::AbstractVector{T}, m::LinearMixedModel{T}) where {T}
         scr[i] = true
         v[i] = s * norm(ldiv!(L, scr))
     end
-    invpermute!(v, fetrm(m).piv)
+    invpermute!(v, first(m.feterms).piv)
     v
 end
 
 function StatsBase.stderror(m::LinearMixedModel{T}) where {T}
-    stderror!(similar(fetrm(m).piv, T), m)
+    stderror!(similar(first(m.feterms).piv, T), m)
 end
 
 """
