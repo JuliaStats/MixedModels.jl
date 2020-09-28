@@ -15,7 +15,7 @@ Tables.Schema:
  :σ          T
  :β          NamedTuple{β_names}{NTuple{p,T}}
  :se         StaticArrays.SArray{Tuple{p},T,1,p}
- :θ          StaticArrays.SArray{Tuple{p},T,1,k}
+ :θ          StaticArrays.SArray{Tuple{k},T,1,k}
 ```
 where the sizes, `p` and `k`, of the `β` and `θ` elements are determined by the model.
 

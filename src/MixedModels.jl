@@ -6,7 +6,6 @@ using Distributions
 using Feather
 using GLM
 using LinearAlgebra
-using NamedArrays
 using NLopt
 using Random
 using Pkg.Artifacts
