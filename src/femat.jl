@@ -44,7 +44,9 @@ function FeMat(X::AbstractMatrix, cnms)
 end
 
 function FeMat(X::SparseMatrixCSC, cnms)
-    FeMat{eltype(X),typeof(X)}(X, X, range(1,stop=size(X,2)), minimum(size(X)), cnms)
+    @debug "Full rank is assumed for sparse fixed-effect matrices."
+    rank = size(X,2)
+    FeMat{eltype(X),typeof(X)}(X, X, 1:rank, rank, cnms)
 end
 
 function reweight!(A::FeMat{T}, sqrtwts::Vector{T}) where {T}

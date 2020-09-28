@@ -1,5 +1,7 @@
 using LinearAlgebra, MixedModels, StableRNGs, Test, SparseArrays
 
+include("modelcache.jl")
+
 @testset "femat" begin
     trm = MixedModels.FeMat(hcat(ones(30), repeat(0:9, outer = 3)), ["(Intercept)", "U"])
     piv = trm.piv
@@ -12,7 +14,7 @@ using LinearAlgebra, MixedModels, StableRNGs, Test, SparseArrays
     prd = trm'trm
     @test typeof(prd) == Matrix{Float64}
     @test prd == [30.0 135.0; 135.0 855.0][piv, piv]
-    wts = rand(MersenneTwister(123454321), 30)
+    wts = rand(StableRNG(123454321), 30)
     MixedModels.reweight!(trm, wts)
     @test mul!(prd, trm', trm)[ipiv[1], ipiv[1]] ≈ sum(abs2, wts)
 
@@ -26,50 +28,48 @@ using LinearAlgebra, MixedModels, StableRNGs, Test, SparseArrays
 end
 
 @testset "fematSparse" begin
-    ## Generate a sparse design matrix
-    nrowsX = 50 # n events
-    ncolsX = 10 # n predictors
-    onsets = 5 .+ cumsum(Int.(round.((rand(StableRNG(1),nrowsX).*100)))) # minimal distance + random distance
-    ncolsBasis = 30 # expand each ncolsX by 30
 
-    X = rand(StableRNG(2),nrowsX,ncolsX) # generate predictors
+    @testset "sparse and dense yield same fit" begin
+        # deepcopy because we're going to modify
+        m = deepcopy(last(models(:insteval)))
+        # this is kinda sparse: 
+        # julia> mean(first(m.feterms).x)
+        # 0.10040140325753434
+        
+        fe = first(m.feterms)
+        X =  MixedModels.FeMat(SparseMatrixCSC(fe.x), fe.cnames)
+        @test typeof(X.x) <: SparseMatrixCSC
+        @test typeof(X.wtx) <: SparseMatrixCSC
+        @test X.rank == 28
+        @test X.cnames == fe.cnames
 
-    # generate Diagonal Basis Expansion Matrices
-    basis = spdiagm(1 => 0.7*ones(ncolsBasis-1), 0 => 0.3*ones(ncolsBasis-1))
-    bases = repeat([basis],length(onsets))
+        dense_θ = copy(m.θ)
+        dense_feval = m.optsum.feval
+        m.feterms[1] = X    
+        refit!(m)
 
-    # Generate sparse indices... for rows
-    rows =  copy.(rowvals.(bases))
-    for r in 1:length(rows)
-        rows[r] .+= onsets[r]-1
+        @test dense_θ ≈ m.θ
     end
-    rows = vcat(rows...)
-    rows = repeat(rows,ncolsX)
 
-    # ... for cols
-    cols = []
-    for Xcol in 1:ncolsX
-        for b in 1:length(bases)
-            for c in 1:ncolsBasis
-                push!(cols,repeat([c+(Xcol-1)*ncolsBasis],length(nzrange(bases[b],c))))
-            end
-        end
+    @testset "rank defiency in sparse FeMat" begin
+        trm = MixedModels.FeMat(SparseMatrixCSC(hcat(ones(30), 
+                                                     repeat(0:9, outer = 3), 
+                                                     2repeat(0:9, outer = 3))), 
+                                ["(Intercept)", "U", "V"])
+        piv = trm.piv
+        ipiv = invperm(piv)
+        @test_broken rank(trm) == 2
+        @test size(trm) == (30, 3)
+        @test length(trm) == 90
+        @test size(trm') == (3, 30)
+        @test eltype(trm) == Float64
+        @test trm.x === trm.wtx
+        prd = trm'trm
+        @test typeof(prd) == typeof(prd)
+        @test prd == [30.0 135.0 270.0; 135.0 855.0 1710.0; 270.0 1710.0 3420][piv, piv]
+        wts = rand(StableRNG(123454321), 30)
+        MixedModels.reweight!(trm, wts)
+        @test mul!(prd, trm', trm)[ipiv[1], ipiv[1]] ≈ sum(abs2, wts)
     end
-    cols = vcat(cols...)
-
-    # ... for values
-    vals = []
-    for Xcol in 1:ncolsX
-        push!(vals,vcat(nonzeros.(bases).*X[:,Xcol]...))
-    end
-    vals = vcat(vals...)
-
-    # Generate the matrix
-    Xdc = sparse(rows,cols,vals)
-
-    # Actual testing starts here
-    trm = MixedModels.FeMat(Xdc,string.(collect(range('a',length=10))))
-
-    @test typeof(trm.x) <: SparseMatrixCSC
-
+    
 end
