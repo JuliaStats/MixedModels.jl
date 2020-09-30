@@ -6,9 +6,10 @@ Term with an explicit, constant matrix representation
 # Fields
 * `x`: matrix
 * `wtx`: weighted matrix
-* `piv`: pivot `Vector{Int}` for pivoted Cholesky factorization of `wtx'wtx`
+* `piv`: pivot `Vector{Int}` for moving linearly dependent columns to the right
 * `rank`: computational rank of `x`
 * `cnames`: vector of column names
+
 """
 mutable struct FeMat{T,S<:AbstractMatrix}
     x::S
@@ -18,6 +19,14 @@ mutable struct FeMat{T,S<:AbstractMatrix}
     cnames::Vector{String}
 end
 
+"""
+    FeMat(X::AbstractMatrix, cnms)
+    
+Convenience constructor for [`FeMat`](@ref) that computes the rank and pivot with unit weights.
+
+See the vignette "[Rank deficiency in mixed-effects models](@ref)" for more information on the 
+computation of the rank and pivot.
+"""
 function FeMat(X::AbstractMatrix, cnms)
     T = eltype(X)
     if size(X,2) > 0
@@ -41,6 +50,20 @@ function FeMat(X::AbstractMatrix, cnms)
         rank = 0
     end
     FeMat{T,typeof(X)}(Xp, Xp, pivot, rank, cnms[pivot])
+end
+
+"""
+    FeMat(X::SparseMatrixCSC, cnms)
+    
+Convenience constructor for a sparse [`FeMat`](@ref) assuming full rank, identity pivot and unit weights.
+
+Note: automatic rank deficiency handling may be added to this method in the future, as discused in
+the vignette "[Rank deficiency in mixed-effects models](@ref)" for general `FeMat`.
+"""
+function FeMat(X::SparseMatrixCSC, cnms)
+    @debug "Full rank is assumed for sparse fixed-effect matrices."
+    rank = size(X,2)
+    FeMat{eltype(X),typeof(X)}(X, X, 1:rank, rank, cnms)
 end
 
 function reweight!(A::FeMat{T}, sqrtwts::Vector{T}) where {T}

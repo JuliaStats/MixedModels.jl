@@ -15,7 +15,7 @@ Tables.Schema:
  :σ          T
  :β          NamedTuple{β_names}{NTuple{p,T}}
  :se         StaticArrays.SArray{Tuple{p},T,1,p}
- :θ          StaticArrays.SArray{Tuple{p},T,1,k}
+ :θ          StaticArrays.SArray{Tuple{k},T,1,k}
 ```
 where the sizes, `p` and `k`, of the `β` and `θ` elements are determined by the model.
 
@@ -45,6 +45,12 @@ The default random number generator is `Random.GLOBAL_RNG`.
 
 `β`, `σ`, and `θ` are the values of `m`'s parameters for simulating the responses.
 `use_threads` determines whether or not to use thread-based parallelism.
+
+Note that `use_threads=true` may not offer a performance boost and may even 
+decrease peformance if multithreaded linear algebra (BLAS) routines are available.
+In this case, threads at the level of the linear algebra may already occupy all 
+processors/processor cores. There are plans to provide better support in coordinating
+Julia- and BLAS-level threads in the future. 
 """
 function parametricbootstrap(
     rng::AbstractRNG,

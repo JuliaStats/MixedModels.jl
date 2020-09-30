@@ -7,6 +7,8 @@ Linear mixed-effects model representation
 
 * `formula`: the formula for the model
 * `allterms`: a vector of random-effects terms, the fixed-effects terms and the response
+* `reterms`: a `Vector{AbstractReMat{T}}` of random-effects terms.
+* `feterms`: a `Vector{FeMat{T}}` of the fixed-effects model matrix and the response
 * `sqrtwts`: vector of square roots of the case weights.  Can be empty.
 * `parmap` : Vector{NTuple{3,Int}} of (block, row, column) mapping of θ to λ
 * `dims` : NamedTuple{(:n, :p, :nretrms),NTuple{3,Int}} of dimensions.  `p` is the rank of `X`, which may be smaller than `size(X, 2)`.
@@ -21,8 +23,6 @@ Linear mixed-effects model representation
 * `λ` or `lambda`: a vector of lower triangular matrices repeated on the diagonal blocks of `Λ`
 * `σ` or `sigma`: current value of the standard deviation of the per-observation noise
 * `b`: random effects on the original scale, as a vector of matrices
-* `reterms`: a `Vector{ReMat{T}}` of random-effects terms.
-* `feterms`: a `Vector{FeMat{T}}` of the fixed-effects model matrix and the response
 * `u`: random effects on the orthogonal scale, as a vector of matrices
 * `lowerbd`: lower bounds on the elements of θ
 * `X`: the fixed-effects model matrix
@@ -30,7 +30,9 @@ Linear mixed-effects model representation
 """
 struct LinearMixedModel{T<:AbstractFloat} <: MixedModel{T}
     formula::FormulaTerm
-    allterms::Vector{Union{ReMat{T}, FeMat{T}}}
+    allterms::Vector{Union{AbstractReMat{T}, FeMat{T}}}
+    reterms::Vector{AbstractReMat{T}}
+    feterms::Vector{FeMat{T}}
     sqrtwts::Vector{T}
     parmap::Vector{NTuple{3,Int}}
     dims::NamedTuple{(:n, :p, :nretrms),NTuple{3,Int}}
@@ -70,10 +72,10 @@ function LinearMixedModel(
     y = reshape(float(y), (:, 1)) # y as a floating-point matrix
     T = eltype(y)
 
-    reterms = ReMat{T}[]
+    reterms = AbstractReMat{T}[]
     feterms = FeMat{T}[]
     for (i, x) in enumerate(Xs)
-        if isa(x, ReMat{T})
+        if isa(x, AbstractReMat{T})
             push!(reterms, x)
         else
             cnames = coefnames(form.rhs[i])
@@ -88,7 +90,7 @@ function LinearMixedModel(
     end
 
     sort!(reterms, by = nranef, rev = true)
-    allterms = convert(Vector{Union{ReMat{T},FeMat{T}}}, vcat(reterms, feterms))
+    allterms = convert(Vector{Union{AbstractReMat{T},FeMat{T}}}, vcat(reterms, feterms))
     sqrtwts = sqrt.(convert(Vector{T}, wts))
     reweight!.(allterms, Ref(sqrtwts))
     A, L = createAL(allterms)
@@ -100,6 +102,8 @@ function LinearMixedModel(
     LinearMixedModel(
         form,
         allterms,
+        reterms,
+        feterms,
         sqrtwts,
         mkparmap(reterms),
         (n = size(X, 1), p = X.rank, nretrms = length(reterms)),
@@ -183,14 +187,14 @@ fit(
 )
 
 function StatsBase.coef(m::LinearMixedModel{T}) where {T}
-    piv = fetrm(m).piv
+    piv = first(m.feterms).piv
     invpermute!(fixef!(similar(piv, T), m), piv)
 end
 
 βs(m::LinearMixedModel) = NamedTuple{(Symbol.(coefnames(m))...,)}(coef(m))
 
 function StatsBase.coefnames(m::LinearMixedModel)
-    Xtrm = fetrm(m)
+    Xtrm = first(m.feterms)
     invpermute!(copy(Xtrm.cnames), Xtrm.piv)
 end
 
@@ -240,7 +244,7 @@ function condVar(m::LinearMixedModel{T}) where {T}
     Array{T,3}[reshape(abs2.(ll ./ Ld) .* varest(m), (1, 1, length(Ld)))]
 end
 
-function createAL(allterms::Vector{Union{ReMat{T},FeMat{T}}}) where {T}
+function createAL(allterms::Vector{Union{AbstractReMat{T},FeMat{T}}}) where {T}
     k = length(allterms)
     sz = [isa(t, ReMat) ? size(t, 2) : rank(t) for t in allterms]
     A = BlockArray(undef_blocks, AbstractMatrix{T}, sz, sz)
@@ -286,29 +290,15 @@ function StatsBase.dof_residual(m::LinearMixedModel)::Int
 end
 
 """
-    feind(m::LinearMixedModel)
-
-An internal utility to return the index in `m.allterms` of the fixed-effects term.
-"""
-feind(m::LinearMixedModel) = m.dims.nretrms + 1
-
-"""
     feL(m::LinearMixedModel)
 
 Return the lower Cholesky factor for the fixed-effects parameters, as an `LowerTriangular`
 `p × p` matrix.
 """
 function feL(m::LinearMixedModel)
-    k = feind(m)
+    k = m.dims.nretrms + 1
     LowerTriangular(m.L.blocks[k, k])
 end
-
-"""
-    fetrm(m::LinearMixedModel)
-
-Return the fixed-effects term from `m.allterms`
-"""
-fetrm(m::LinearMixedModel) = m.allterms[feind(m)]
 
 """
     fit!(m::LinearMixedModel[; verbose::Bool=false, REML::Bool=false])
@@ -359,7 +349,7 @@ end
 
 function fitted!(v::AbstractArray{T}, m::LinearMixedModel{T}) where {T}
     ## FIXME: Create and use `effects(m) -> β, b` w/o calculating β twice
-    Xtrm = fetrm(m)
+    Xtrm = first(m.feterms)
     vv = mul!(vec(v), Xtrm, fixef!(similar(Xtrm.piv, T), m))
     for (rt, bb) in zip(m.reterms, ranef(m))
         unscaledre!(vv, rt, bb)
@@ -379,7 +369,7 @@ the length of `v` can be the rank of `X` or the number of columns of `X`.  In th
 case the calculated coefficients are padded with -0.0 out to the number of columns.
 """
 function fixef!(v::AbstractVector{T}, m::LinearMixedModel{T}) where {T}
-    Xtrm = fetrm(m)
+    Xtrm = first(m.feterms)
     if isfullrank(Xtrm)
         ldiv!(feL(m)', copyto!(v, m.L.blocks[end, end-1]))
     else
@@ -400,7 +390,7 @@ In the rank-deficient case the truncated parameter vector, of length `rank(m)` i
 This is unlike `coef` which always returns a vector whose length matches the number of
 columns in `X`.
 """
-fixef(m::LinearMixedModel{T}) where {T} = fixef!(Vector{T}(undef, fetrm(m).rank), m)
+fixef(m::LinearMixedModel{T}) where {T} = fixef!(Vector{T}(undef, first(m.feterms).rank), m)
 
 """
     fixefnames(m::MixedModel)
@@ -408,7 +398,7 @@ fixef(m::LinearMixedModel{T}) where {T} = fixef!(Vector{T}(undef, fetrm(m).rank)
 Return a (permuted and truncated in the rank-deficient case) vector of coefficient names.
 """
 function fixefnames(m::LinearMixedModel{T}) where {T}
-    Xtrm = fetrm(m)
+    Xtrm = first(m.feterms)
     Xtrm.cnames[1:Xtrm.rank]
 end
 
@@ -461,8 +451,6 @@ function Base.getproperty(m::LinearMixedModel{T}, s::Symbol) where {T}
         σρs(m)
     elseif s == :b
         ranef(m)
-    elseif s == :feterms
-        convert(Vector{FeMat{T}}, filter(Base.Fix2(isa, FeMat), getfield(m, :allterms)))
     elseif s == :objective
         objective(m)
     elseif s == :corr
@@ -473,8 +461,6 @@ function Base.getproperty(m::LinearMixedModel{T}, s::Symbol) where {T}
         NamedTuple{fnames(m)}(PCA.(m.reterms))
     elseif s == :pvalues
         ccdf.(Chisq(1), abs2.(coef(m) ./ stderror(m)))
-    elseif s == :reterms
-        convert(Vector{ReMat{T}}, getfield(m, :allterms)[Base.OneTo(getfield(m, :dims).nretrms)])
     elseif s == :stderror
         stderror(m)
     elseif s == :u
@@ -529,7 +515,7 @@ end
 
 lowerbd(m::LinearMixedModel) = m.optsum.lowerbd
 
-function mkparmap(reterms::Vector)
+function mkparmap(reterms::Vector{AbstractReMat{T}}) where {T}
     parmap = NTuple{3,Int}[]
     for (k, trm) in enumerate(reterms)
         n = LinearAlgebra.checksquare(trm.λ)
@@ -542,7 +528,7 @@ function mkparmap(reterms::Vector)
 end
 
 function StatsBase.modelmatrix(m::LinearMixedModel)
-    fe = fetrm(m)
+    fe = first(m.feterms)
     if fe.rank == size(fe, 2)
         fe.x
     else
@@ -622,7 +608,7 @@ function ranef!(
     β::AbstractArray{T},
     uscale::Bool,
 ) where {T}
-    (k = length(v)) == length(m.reterms) || throw(DimensionMismatch(""))
+    (k = length(v)) == m.dims.nretrms || throw(DimensionMismatch(""))
     L = m.L
     for j = 1:k
         mul!(
@@ -654,8 +640,7 @@ ranef!(v::Vector, m::LinearMixedModel, uscale::Bool) = ranef!(v, m, fixef(m), us
 """
     ranef(m::LinearMixedModel; uscale=false, named=false)
 
-Return, as a `Vector{Vector{T}}` (`Vector{NamedVector{T}}` if `named=true`),
-the conditional modes of the random effects in model `m`.
+Return, as a `Vector{Matrix{T}}`, the conditional modes of the random effects in model `m`.
 
 If `uscale` is `true` the random effects are on the spherical (i.e. `u`) scale, otherwise on
 the original scale.
@@ -664,13 +649,6 @@ function ranef(m::LinearMixedModel{T}; uscale = false, named = false) where {T}
     reterms = m.reterms
     v = [Matrix{T}(undef, size(t.z, 1), nlevs(t)) for t in reterms]
     ranef!(v, m, uscale)
-    named || return v
-    vnmd = map(NamedArray, v)
-    for (trm, vnm) in zip(reterms, vnmd)
-        setnames!(vnm, trm.cnames, 1)
-        setnames!(vnm, string.(trm.trm.contrasts.levels), 2)
-    end
-    vnmd
 end
 
 LinearAlgebra.rank(m::LinearMixedModel) = first(m.feterms).rank
@@ -758,7 +736,7 @@ sdest(m::LinearMixedModel) = √varest(m)
 Install `v` as the θ parameters in `m`.
 """
 function setθ!(m::LinearMixedModel{T}, θ::Vector{T}) where {T}
-    parmap, reterms = m.parmap, m.allterms
+    parmap, reterms = m.parmap, m.reterms
     length(θ) == length(parmap) || throw(DimensionMismatch())
     reind = 1
     λ = first(reterms).λ
@@ -837,7 +815,7 @@ sqrtpwrss(m::LinearMixedModel) = last(m.L)
 
 Return the denominator for penalized sums-of-squares.
 
-For MLE, this value is either the number of observation for ML. For REML, this
+For MLE, this value is the number of observations. For REML, this
 value is the number of observations minus the rank of the fixed-effects matrix.
 The difference is analagous to the use of n or n-1 in the denominator when
 calculating the variance.
@@ -879,12 +857,12 @@ function stderror!(v::AbstractVector{T}, m::LinearMixedModel{T}) where {T}
         scr[i] = true
         v[i] = s * norm(ldiv!(L, scr))
     end
-    invpermute!(v, fetrm(m).piv)
+    invpermute!(v, first(m.feterms).piv)
     v
 end
 
 function StatsBase.stderror(m::LinearMixedModel{T}) where {T}
-    stderror!(similar(fetrm(m).piv, T), m)
+    stderror!(similar(first(m.feterms).piv, T), m)
 end
 
 """

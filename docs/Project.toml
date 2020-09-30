@@ -11,8 +11,8 @@ StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 
 [compat]
 BenchmarkTools = "0.5"
-DataFrames = "0.20"
-Documenter = "0.24"
-FreqTables = "0.3"
+DataFrames = "0.21"
+Documenter = "0.25"
+FreqTables = "0.4"
 Gadfly = "1"
-StatsBase = "0.32"
+StatsBase = "0.33"

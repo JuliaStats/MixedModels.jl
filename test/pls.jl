@@ -1,7 +1,6 @@
 using DataFrames
 using LinearAlgebra
 using MixedModels
-using NamedArrays
 using Random
 using SparseArrays
 using Statistics
@@ -273,8 +272,6 @@ end
     @test length(u3) == 1
     @test size(first(u3)) == (2, 18)
     @test first(u3)[1, 1] ≈ 3.030300122575336 atol=0.001
-    u3n = first(ranef(fm, uscale=true, named=true))
-    @test u3n isa NamedArray
 
     b3 = ranef(fm)
     @test length(b3) == 1
