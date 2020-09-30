@@ -815,7 +815,7 @@ sqrtpwrss(m::LinearMixedModel) = last(m.L)
 
 Return the denominator for penalized sums-of-squares.
 
-For MLE, this value is either the number of observation for ML. For REML, this
+For MLE, this value is the number of observations. For REML, this
 value is the number of observations minus the rank of the fixed-effects matrix.
 The difference is analagous to the use of n or n-1 in the denominator when
 calculating the variance.
