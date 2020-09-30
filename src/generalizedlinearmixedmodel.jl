@@ -528,6 +528,8 @@ end
 
 ranef(m::GeneralizedLinearMixedModel; uscale::Bool=false) = ranef(m.LMM, uscale=uscale)
 
+LinearAlgebra.rank(m::GeneralizedLinearMixedModel) = first(m.LMM.feterms).rank
+
 """
     setβθ!(m::GeneralizedLinearMixedModel, v)
 
