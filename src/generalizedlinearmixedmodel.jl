@@ -54,7 +54,7 @@ struct GeneralizedLinearMixedModel{T<:AbstractFloat} <: MixedModel{T}
 end
 
 function StatsBase.coef(m::GeneralizedLinearMixedModel{T}) where {T}
-    piv = fetrm(m.LMM).piv
+    piv = first(m.LMM.feterms).piv
     invpermute!(copyto!(fill(T(-0.0), length(piv)), m.β), piv)
 end
 
