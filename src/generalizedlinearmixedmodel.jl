@@ -60,7 +60,7 @@ function StatsBase.coeftable(m::GeneralizedLinearMixedModel)
     pvalue = ccdf.(Chisq(1), abs2.(z))
     CoefTable(
         hcat(co, se, z, pvalue),
-        ["Estimate", "Std.Error", "z value", "P(>|z|)"],
+        ["Coef.", "Std. Error", "z", "Pr(>|z|)"],
         coefnames(m),
         4, # pvalcol
         3, # teststatcol
@@ -346,6 +346,13 @@ function GeneralizedLinearMixedModel(
     end
     (isa(d, Normal) && isa(l, IdentityLink)) &&
     throw(ArgumentError("use LinearMixedModel for Normal distribution with IdentityLink"))
+
+    if !any(isa(d, dist) for dist in (Bernoulli, Binomial, Poisson))
+        @warn """Results for families with a dispersion parameter are not reliable. 
+                 It is best to avoid trying to fit such models in MixedModels until 
+                 the authors get a better understanding of those cases."""
+    end
+
     LMM = LinearMixedModel(f, tbl, contrasts = contrasts; wts = wts)
     y = copy(LMM.y)
         # the sqrtwts field must be the correct length and type but we don't know those
@@ -355,7 +362,11 @@ function GeneralizedLinearMixedModel(
         LMM = LinearMixedModel(
             LMM.formula,
             LMM.allterms,
+            LMM.reterms,
+            LMM.feterms,
             fill!(similar(y), 1),
+            LMM.parmap,
+            LMM.dims,
             LMM.A,
             LMM.L,
             LMM.optsum,
@@ -403,7 +414,9 @@ function Base.getproperty(m::GeneralizedLinearMixedModel, s::Symbol)
         σs(m)
     elseif s == :σρs
         σρs(m)
-    elseif s ∈ (:A, :L, :λ, :lowerbd, :corr, :PCA, :rePCA, :optsum, :X, :reterms, :feterms, :formula)
+    elseif s ∈ (:A, :L, :optsum, :allterms, :reterms, :feterms, :formula)
+        getfield(m.LMM, s)
+    elseif s ∈ (:λ, :lowerbd, :corr, :PCA, :rePCA, :X,)
         getproperty(m.LMM, s)
     elseif s == :y
         m.resp.y
@@ -417,7 +430,7 @@ function StatsBase.loglikelihood(m::GeneralizedLinearMixedModel{T}) where {T}
     D = Distribution(m.resp)
     accum = (
         if D <: Binomial
-            sum(logpdf(D(round(Int, n), μ), round(Int, y * n)) 
+            sum(logpdf(D(round(Int, n), μ), round(Int, y * n))
                 for (μ, y, n) in zip(r.mu, r.y, m.wt))
         else
             sum(logpdf(D(μ), y) for (μ, y) in zip(r.mu, r.y))
@@ -518,6 +531,8 @@ function pirls!(
     m
 end
 
+ranef(m::GeneralizedLinearMixedModel; uscale::Bool=false) = ranef(m.LMM, uscale=uscale)
+
 """
     setβθ!(m::GeneralizedLinearMixedModel, v)
 
@@ -601,7 +616,6 @@ varest(m::GeneralizedLinearMixedModel{T}) where {T} = one(T)
             # delegate GLMM method to LMM field
 for f in (
     :feL,
-    :fetrm,
     :(LinearAlgebra.logdet),
     :lowerbd,
     :PCA,

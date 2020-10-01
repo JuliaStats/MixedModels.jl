@@ -11,6 +11,7 @@ makedocs(
         "optimization.md",
         "GaussHermite.md",
         "bootstrap.md",
+        "rankdeficiency.md",
         # "SimpleLMM.md",
         # "MultipleTerms.md",
         # "SingularCovariance.md",

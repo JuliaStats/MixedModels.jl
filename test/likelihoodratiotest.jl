@@ -3,11 +3,51 @@ using Test
 
 using MixedModels: dataset, likelihoodratiotest
 using GLM: ProbitLink
+using StatsModels: lrtest, isnested
+
+include("modelcache.jl")
+
+@testset "isnested" begin
+    slp = dataset(:sleepstudy)
+
+    # these tests don't actually depend on the models being fit, 
+    # so we just construct them
+
+    # mismatched RE terms 
+    m1 = LinearMixedModel(@formula(reaction ~ 1 + days + (1+days|subj)), slp)
+    m2 = LinearMixedModel(@formula(reaction ~ 1 + days + (0+days|subj)), slp)
+    @test !isnested(m1, m2)
+
+    # mismatched FE
+    m1 = LinearMixedModel(@formula(reaction ~ 1 + days + (1|subj)), slp)
+    m2 = LinearMixedModel(@formula(reaction ~ 0 + days + (1|subj)), slp)
+    @test !isnested(m1, m2)
+
+    # mismatched grouping vars
+    kb07  = dataset(:kb07)
+    m1 = LinearMixedModel(@formula(rt_trunc ~ 1 + (1|subj)), kb07)
+    m2 = LinearMixedModel(@formula(rt_trunc ~ 1 + (1|item)), kb07)
+    @test !isnested(m1, m2)
+
+    # fixed-effects specification in REML and 
+    # conversion of internal ArgumentError into @error for StatsModels.isnested
+    kb07  = dataset(:kb07)
+    m1 = fit(MixedModel, @formula(rt_trunc ~ 1 + prec + (1|subj)), kb07, REML=true)
+    m2 = fit(MixedModel, @formula(rt_trunc ~ 1 + prec + (1+prec|subj)), kb07, REML=true)
+    @test isnested(m1, m2)
+    m2 = fit(MixedModel, @formula(rt_trunc ~ 1 + (1+prec|subj)), kb07, REML=true)
+    @test !isnested(m1, m2)
+
+end
 
 @testset "likelihoodratio test" begin
     slp = dataset(:sleepstudy);
+    
+
+
     fm0 = fit(MixedModel,@formula(reaction ~ 1 + (1+days|subj)),slp);
     fm1 = fit(MixedModel,@formula(reaction ~ 1 + days + (1+days|subj)),slp);
+
     lrt = likelihoodratiotest(fm0,fm1);
 
     @test [deviance(fm0), deviance(fm1)] == lrt.deviance

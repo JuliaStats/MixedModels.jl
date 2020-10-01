@@ -15,7 +15,7 @@ Tables.Schema:
  :σ          T
  :β          NamedTuple{β_names}{NTuple{p,T}}
  :se         StaticArrays.SArray{Tuple{p},T,1,p}
- :θ          StaticArrays.SArray{Tuple{p},T,1,k}
+ :θ          StaticArrays.SArray{Tuple{k},T,1,k}
 ```
 where the sizes, `p` and `k`, of the `β` and `θ` elements are determined by the model.
 
@@ -45,6 +45,12 @@ The default random number generator is `Random.GLOBAL_RNG`.
 
 `β`, `σ`, and `θ` are the values of `m`'s parameters for simulating the responses.
 `use_threads` determines whether or not to use thread-based parallelism.
+
+Note that `use_threads=true` may not offer a performance boost and may even 
+decrease peformance if multithreaded linear algebra (BLAS) routines are available.
+In this case, threads at the level of the linear algebra may already occupy all 
+processors/processor cores. There are plans to provide better support in coordinating
+Julia- and BLAS-level threads in the future. 
 """
 function parametricbootstrap(
     rng::AbstractRNG,
@@ -165,10 +171,12 @@ function allpars(bsamp::MixedModelBootstrap{T}) where {T}
 end
 
 function Base.getproperty(bsamp::MixedModelBootstrap, s::Symbol)
-    if s ∈ [:objective, :σ, :θ]
+    if s ∈ [:objective, :σ, :θ, :se]
         getproperty.(getfield(bsamp, :bstr), s)
     elseif s == :β
         tidyβ(bsamp)
+    elseif s == :coefpvalues
+        coefpvalues(bsamp)
     elseif s == :σs
         tidyσs(bsamp)
     elseif s == :allpars
@@ -181,7 +189,7 @@ end
 issingular(bsamp::MixedModelBootstrap) = map(θ -> any(θ .≈ bsamp.lowerbd), bsamp.θ)
 
 function Base.propertynames(bsamp::MixedModelBootstrap)
-    [:allpars, :objective, :σ, :β, :θ, :σs, :λ, :inds, :lowerbd, :bstr, :fcnames]
+    [:allpars, :objective, :σ, :β, :se, :coefpvalues, :θ, :σs, :λ, :inds, :lowerbd, :bstr, :fcnames]
 end
 
 """
@@ -189,7 +197,7 @@ end
 
 Install the values of the i'th θ value of `bsamp.bstr` in `bsamp.λ`
 """
-function setθ!(bsamp::MixedModelBootstrap, i::Integer) where {T}
+function setθ!(bsamp::MixedModelBootstrap, i::Integer)
     θ = bsamp.bstr[i].θ
     offset = 0
     for (λ, inds) in zip(bsamp.λ, bsamp.inds)
@@ -238,6 +246,29 @@ function tidyβ(bsamp::MixedModelBootstrap{T}) where {T}
     for (i, r) in enumerate(bstr)
         for (k, v) in pairs(r.β)
             push!(result, NamedTuple{colnms}((i, k, v)))
+        end
+    end
+    result
+end
+
+"""
+    coefpvalues(bsamp::MixedModelBootstrap)
+
+Return a rowtable with columns `(:iter, :coefname, :β, :se, :z, :p)`
+"""
+function coefpvalues(bsamp::MixedModelBootstrap{T}) where {T}
+    bstr = bsamp.bstr
+    colnms = (:iter, :coefname, :β, :se, :z, :p)
+    result = sizehint!(
+        NamedTuple{colnms,Tuple{Int,Symbol,T,T,T,T}}[],
+        length(bstr) * length(first(bstr).β),
+    )
+    for (i, r) in enumerate(bstr)
+        for (p, s) in zip(pairs(r.β), r.se)
+            β = last(p)
+            z = β / s
+            push!(result,
+                NamedTuple{colnms}((i, first(p), β, s, z, 2normccdf(abs(z)))))
         end
     end
     result

@@ -5,7 +5,7 @@ using SparseArrays
 using StatsModels
 using Test
 
-using MixedModels: dataset, levs, modelcols, nlevs
+using MixedModels: dataset, levels, modelcols, nlevs
 
 const LMM = LinearMixedModel
 
@@ -30,7 +30,10 @@ const LMM = LinearMixedModel
     end
 
     @testset "utilities" begin
-        @test levs(sf) == string.('A':'F')
+        @test levels(sf) == string.('A':'F')
+        @test refpool(sf) == levels(sf)
+        @test refarray(sf) == repeat(1:6, inner=5)
+        @test refvalue(sf, 3) == "C"
         @test nlevs(sf) == 6
         @test eltype(sf) == Float64
         @test sparse(sf) == sparse(1:30, sf.refs, ones(30))
@@ -124,18 +127,18 @@ end
 
         f = @formula(y ~ 1 + fulldummy(f))
         f1 = apply_schema(f, schema(dat))
-        @test typeof(f1.rhs.terms[end]) <: FunctionTerm{typeof(fulldummy)}
+        @test typeof(last(f1.rhs.terms)) <: FunctionTerm{typeof(fulldummy)}
         @test_throws ArgumentError modelcols(f1, dat)
 
         f2 = apply_schema(f, schema(dat), MixedModel)
-        @test typeof(f2.rhs.terms[end]) <: CategoricalTerm{<:StatsModels.FullDummyCoding}
+        @test typeof(last(f2.rhs.terms)) <: CategoricalTerm{<:StatsModels.FullDummyCoding}
         @test modelcols(f2.rhs, dat)[1:3, :] == [1 1 0 0
                                                  1 0 1 0
                                                  1 0 0 1]
 
         # implict intercept
         ff = apply_schema(@formula(y ~ 1 + (f | g)), schema(dat), MixedModel)
-        rem = modelcols(ff.rhs[end], dat)
+        rem = modelcols(last(ff.rhs), dat)
         @test size(rem) == (18, 18)
         @test rem[1:3, 1:4] == [1 0 0 0
                                 1 1 0 0
@@ -143,7 +146,7 @@ end
 
         # explicit intercept
         ff = apply_schema(@formula(y ~ 1 + (1+f | g)), schema(dat), MixedModel)
-        rem = modelcols(ff.rhs[end], dat)
+        rem = modelcols(last(ff.rhs), dat)
         @test size(rem) == (18, 18)
         @test rem[1:3, 1:4] == [1 0 0 0
                                 1 1 0 0
@@ -151,7 +154,7 @@ end
 
         # explicit intercept + full dummy
         ff = apply_schema(@formula(y ~ 1 + (1+fulldummy(f) | g)), schema(dat), MixedModel)
-        rem = modelcols(ff.rhs[end], dat)
+        rem = modelcols(last(ff.rhs), dat)
         @test size(rem) == (18, 24)
         @test rem[1:3, 1:4] == [1 1 0 0
                                 1 0 1 0
@@ -159,7 +162,7 @@ end
 
         # explicit dropped intercept (implicit full dummy)
         ff = apply_schema(@formula(y ~ 1 + (0+f | g)), schema(dat), MixedModel)
-        rem = modelcols(ff.rhs[end], dat)
+        rem = modelcols(last(ff.rhs), dat)
         @test size(rem) == (18, 18)
         @test rem[1:3, 1:4] == [1 0 0 0
                                 0 1 0 0
@@ -169,8 +172,6 @@ end
     @testset "nesting" begin
         ff = apply_schema(@formula(y ~ 1 + (1|g/f)), schema(dat), MixedModel)
         @test modelcols(last(ff.rhs), dat) == float(Matrix(I, 18, 18))
-
-        @test_broken fit(MixedModel, @formula(Y ~ 1 + (1|H/c)), dat[:Pastes])
 
         # in fixed effects:
         d2 = (a = rand(20), b = repeat([:X, :Y], outer=10), c = repeat([:S,:T],outer=10))
@@ -187,5 +188,31 @@ end
 
         # errors for too much nesting
         @test_throws ArgumentError apply_schema(@formula(0 ~ 1 + b/c/a), schema(d2), MixedModel)
+
+        # fitted model to test amalgamate and fnames, and equivalence with other formulations
+        psts = dataset("pastes")
+        m = fit(MixedModel, @formula(strength ~ 1 + (1|batch/cask)), psts)
+        m2 = fit(MixedModel, @formula(strength ~ 1 + (1|batch) + (1|batch&cask)), psts)
+        m3 = fit(MixedModel, @formula(strength ~ 1 + (1|batch) + (1|sample)), psts)
+
+        @test fnames(m) == fnames(m2) == (Symbol("batch & cask"), :batch)
+        @test m.λ == m2.λ == m3.λ
+        @test deviance(m) == deviance(m2) == deviance(m3)
+    end
+
+    @testset "multiple terms with same grouping" begin
+        dat = MixedModels.dataset(:kb07)
+        sch = schema(dat)
+        f1 = @formula(rt_trunc ~ 1 + (1 + prec + load | spkr))
+        ff1 = apply_schema(f1, sch, MixedModel)
+
+        retrm = last(ff1.rhs)
+        @test last(retrm.lhs.terms).contrasts.contrasts isa DummyCoding
+
+        f2 = @formula(rt_trunc ~ 1 + (1 + prec | spkr) + (0 + load | spkr))
+        ff2 = apply_schema(f2, sch, MixedModel)
+
+        retrm2 = last(ff2.rhs)
+        @test last(retrm2.lhs.terms).contrasts.contrasts isa DummyCoding
     end
 end

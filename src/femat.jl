@@ -6,9 +6,10 @@ Term with an explicit, constant matrix representation
 # Fields
 * `x`: matrix
 * `wtx`: weighted matrix
-* `piv`: pivot `Vector{Int}`` for pivoted Cholesky factorization of `wtx'wtx`
+* `piv`: pivot `Vector{Int}` for moving linearly dependent columns to the right
 * `rank`: computational rank of `x`
 * `cnames`: vector of column names
+
 """
 mutable struct FeMat{T,S<:AbstractMatrix}
     x::S
@@ -18,26 +19,51 @@ mutable struct FeMat{T,S<:AbstractMatrix}
     cnames::Vector{String}
 end
 
+"""
+    FeMat(X::AbstractMatrix, cnms)
+    
+Convenience constructor for [`FeMat`](@ref) that computes the rank and pivot with unit weights.
+
+See the vignette "[Rank deficiency in mixed-effects models](@ref)" for more information on the 
+computation of the rank and pivot.
+"""
 function FeMat(X::AbstractMatrix, cnms)
     T = eltype(X)
     if size(X,2) > 0
-        ch = statscholesky(Symmetric(X'X))
-        pivot = ch.piv
-        rank = ch.rank
-        Xp = all(pivot .== 1:size(X, 2)) ? X : X[:, ch.piv]
-        if rank < length(pivot)
-            @warn "fixed-effects matrix is rank deficient"
+        st = statsqr(X)
+        pivot = st.p
+        rank = findfirst(<=(0), diff(st.p))
+        rank = isnothing(rank) ? length(pivot) : rank
+        Xp = pivot == collect(1:size(X, 2)) ? X : X[:, pivot]
+        # single-column rank deficiency is the result of a constant column vector
+        # this generally happens when constructing a dummy response, so we don't
+        # warn.
+        if rank < length(pivot) && size(X,2) > 1
+            @warn "Fixed-effects matrix is rank deficient"
         end
     else
         # although it doesn't take long for an empty matrix,
-        # we can still skip the Cholesky step, which gets the rank
+        # we can still skip the factorization step, which gets the rank
         # wrong anyway
         pivot = Int[]
         Xp = X
         rank = 0
     end
-    # ch.rank is wrong for empty FE
     FeMat{T,typeof(X)}(Xp, Xp, pivot, rank, cnms[pivot])
+end
+
+"""
+    FeMat(X::SparseMatrixCSC, cnms)
+    
+Convenience constructor for a sparse [`FeMat`](@ref) assuming full rank, identity pivot and unit weights.
+
+Note: automatic rank deficiency handling may be added to this method in the future, as discused in
+the vignette "[Rank deficiency in mixed-effects models](@ref)" for general `FeMat`.
+"""
+function FeMat(X::SparseMatrixCSC, cnms)
+    @debug "Full rank is assumed for sparse fixed-effect matrices."
+    rank = size(X,2)
+    FeMat{eltype(X),typeof(X)}(X, X, 1:rank, rank, cnms)
 end
 
 function reweight!(A::FeMat{T}, sqrtwts::Vector{T}) where {T}
@@ -83,5 +109,3 @@ LinearAlgebra.mul!(C, adjA::Adjoint{T,<:FeMat{T}}, B::FeMat{T}) where {T} =
 Does `A` have full column rank?
 """
 isfullrank(A::FeMat) = A.rank == length(A.piv)
-
-nθ(A::FeMat) = 0

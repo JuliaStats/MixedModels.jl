@@ -1,7 +1,6 @@
 using DataFrames
 using LinearAlgebra
 using MixedModels
-using NamedArrays
 using Random
 using SparseArrays
 using Statistics
@@ -11,40 +10,9 @@ using Test
 
 using MixedModels: dataset, likelihoodratiotest
 
-const fms = Dict(
-    :dyestuff => [@formula(yield ~ 1 + (1|batch))],
-    :dyestuff2 => [@formula(yield ~ 1 + (1|batch))],
-    :d3 => [@formula(y ~ 1 + u + (1+u|g) + (1+u|h) + (1+u|i))],
-    :insteval => [
-        @formula(y ~ 1 + service + (1|s) + (1|d) + (1|dept)),
-        @formula(y ~ 1 + service*dept + (1|s) + (1|d)),
-    ],
-    :kb07 => [
-        @formula(rt_trunc ~ 1+spkr+prec+load+(1|subj)+(1|item)),
-        @formula(rt_trunc ~ 1+spkr*prec*load+(1|subj)+(1+prec|item)),
-        @formula(rt_trunc ~ 1+spkr*prec*load+(1+spkr+prec+load|subj)+(1+spkr+prec+load|item)),
-    ],
-    :pastes => [
-        @formula(strength ~ 1 + (1|sample)),
-        @formula(strength ~ 1 + (1|sample) + (1|batch)),
-    ],
-    :penicillin => [@formula(diameter ~ 1 + (1|plate) + (1|sample))],
-    :sleepstudy => [
-        @formula(reaction ~ 1 + days + (1|subj)),
-        @formula(reaction ~ 1 + days + zerocorr(1+days|subj)),
-        @formula(reaction ~ 1 + days + (1|subj) + (0+days|subj)),
-        @formula(reaction ~ 1 + days + (1+days|subj)),
-    ],
-)
-
-const fittedmodels = Dict{Symbol,Vector{LinearMixedModel}}();
-function models(nm::Symbol)
-    get!(fittedmodels, nm) do
-        fit.(MixedModel, fms[nm], Ref(dataset(nm)))
-    end
-end
-
 const io = IOBuffer()
+
+include("modelcache.jl")
 
 @testset "Dyestuff" begin
     fm1 = only(models(:dyestuff))
@@ -271,11 +239,11 @@ end
     @test isa(A11, UniformBlockDiagonal{Float64})
     @test isa(fm.L[Block(1, 1)], UniformBlockDiagonal{Float64})
     @test size(A11) == (36, 36)
-    a11 = A11.facevec[1]
+    a11 = view(A11.data, :, :, 1)
     @test a11 == [10. 45.; 45. 285.]
-    @test length(A11.facevec) == 18
+    @test size(A11.data, 3) == 18
     λ = first(fm.λ)
-    b11 = LowerTriangular(fm.L[Block(1, 1)].facevec[1])
+    b11 = LowerTriangular(view(fm.L[Block(1, 1)].data, :, :, 1))
     @test b11 * b11' ≈ λ'a11*λ + I rtol=1e-5
     @test count(!iszero, Matrix(fm.L[Block(1, 1)])) == 18 * 4
     @test rank(fm) == 2
@@ -304,13 +272,17 @@ end
     @test length(u3) == 1
     @test size(first(u3)) == (2, 18)
     @test first(u3)[1, 1] ≈ 3.030300122575336 atol=0.001
-    u3n = first(ranef(fm, uscale=true, named=true))
-    @test u3n isa NamedArray
 
     b3 = ranef(fm)
     @test length(b3) == 1
     @test size(first(b3)) == (2, 18)
     @test first(first(b3)) ≈ 2.815819441982976 atol=0.001
+
+    b3tbl = raneftables(fm)
+    @test length(b3tbl) == 1
+    @test keys(b3tbl) == (:subj,)
+    @test isa(b3tbl, NamedTuple)
+    @test Tables.istable(only(b3tbl))
 
     simulate!(fm)  # to test one of the unscaledre methods
 
@@ -319,6 +291,7 @@ end
     @test size(fmnc) == (180,2,36,1)
     @test fmnc.θ == [fm.θ[1], fm.θ[3]]
     @test lowerbd(fmnc) == zeros(2)
+    @test_throws DimensionMismatch MixedModels.getθ!(fm.θ, fmnc)
 
     fmnc = models(:sleepstudy)[2]
     @test size(fmnc) == (180,2,36,1)
@@ -327,8 +300,8 @@ end
 
     @testset "zerocorr PCA" begin
         @test length(fmnc.rePCA) == 1
-        @test fmnc.rePCA.subj == [0.5, 1.0]
-        @test MixedModels.PCA(fmnc).subj.loadings == I(2)
+        @test fmnc.rePCA.subj ≈ [0.5, 1.0]
+        @test any(Ref(fmnc.PCA.subj.loadings) .≈ (I(2), I(2)[:, [2,1]]))
         @test show(IOBuffer(), MixedModels.PCA(fmnc)) === nothing
     end
 
@@ -369,10 +342,31 @@ end
     @test first(keys(σρ)) == :subj
     @test keys(σρ.subj) == (:σ, :ρ)
     @test length(σρ.subj) == 2
-    @test length(first(σρ.subj)) == 11
-    @test length(σρ.subj.ρ) == 55
-    @test iszero(σρ.subj.ρ[46])
-    @test σρ.subj.ρ[46] === -0.0
+    @test length(first(σρ.subj)) == 10
+    @test length(σρ.subj.ρ) == 45
+    # test that there's no correlation between the intercept and days columns
+    ρs_intercept = σρ.subj.ρ[1 .+ cumsum(0:8)]
+    @test all(iszero.(ρs_intercept))
+    # amalgamate should set these to -0.0 to indicate structural zeros
+    @test all(ρs_intercept .=== -0.0)
+
+    # also works without explicitly dropped intercept
+    fm_cat2 = fit(MixedModel, @formula(reaction ~ 1+days+(1|subj)+(days|subj)),slpcat)
+    @test fm_cat2 isa LinearMixedModel
+    σρ = fm_cat2.σρs
+    @test σρ isa NamedTuple
+    @test isone(length(σρ))
+    @test first(keys(σρ)) == :subj
+    @test keys(σρ.subj) == (:σ, :ρ)
+    @test length(σρ.subj) == 2
+    @test length(first(σρ.subj)) == 10
+    @test length(σρ.subj.ρ) == 45
+    # test that there's no correlation between the intercept and days columns
+    ρs_intercept = σρ.subj.ρ[1 .+ cumsum(0:8)]
+    @test all(iszero.(ρs_intercept))
+    # amalgamate should set these to -0.0 to indicate structural zeros
+    @test all(ρs_intercept .=== -0.0)
+
 
     show(io, BlockDescription(first(models(:sleepstudy))))
     @test countlines(seekstart(io)) == 3
@@ -405,53 +399,6 @@ end
     @test "-0.89" in tokens
 end
 
-@testset "simulate!" begin
-    ds = dataset(:dyestuff)
-    fm = only(models(:dyestuff))
-    resp₀ = copy(response(fm))
-    # type conversion of ints to floats
-    simulate!(Random.MersenneTwister(1234321), fm, β=[1], σ=1)
-    refit!(fm,resp₀)
-    refit!(simulate!(Random.MersenneTwister(1234321), fm))
-    @test deviance(fm) ≈ 339.0218639362958 atol=0.001
-    refit!(fm, float(ds.yield))
-    Random.seed!(1234321)
-    refit!(simulate!(fm))
-    @test deviance(fm) ≈ 339.0218639362958 atol=0.001
-    simulate!(fm, θ = fm.θ)
-    @test_throws DimensionMismatch refit!(fm, zeros(29))
-
-    # two implicit tests
-    # 1. type conversion of ints to floats
-    # 2. test method for default RNG
-    parametricbootstrap(1, fm, β=[1], σ=1)
-
-    bsamp = parametricbootstrap(MersenneTwister(1234321), 100, fm, use_threads=false)
-    @test isa(propertynames(bsamp), Vector{Symbol})
-    @test length(bsamp.objective) == 100
-    @test keys(first(bsamp.bstr)) == (:objective, :σ, :β, :se, :θ)
-    @test isa(bsamp.σs, Vector{<:NamedTuple})
-    @test length(bsamp.σs) == 100
-    allpars = DataFrame(bsamp.allpars)
-    @test isa(allpars, DataFrame)
-    cov = shortestcovint(shuffle(1.:100.))
-    # there is no unique shortest coverage interval here, but the left-most one
-    # is currently returned, so we take that. If this behavior changes, then
-    # we'll have to change the test
-    @test first(cov) == 1.
-    @test last(cov) == 95.
-    
-    bsamp_threaded = parametricbootstrap(MersenneTwister(1234321), 100, fm, use_threads=true)
-    # even though it's bad practice with floating point, exact equality should
-    # be a valid test here -- if everything is working right, then it's the exact
-    # same operations occuring within each bootstrap sample, which IEEE 754
-    # guarantees will yield the same result
-    @test sort(bsamp_threaded.σ) == sort(bsamp.σ)
-    @test sort(bsamp_threaded.θ) == sort(bsamp.θ)
-    @test sort(columntable(bsamp_threaded.β).β) == sort(columntable(bsamp.β).β)
-    @test sum(issingular(bsamp)) == sum(issingular(bsamp_threaded))
-end
-
 @testset "Rank deficient" begin
     rng = MersenneTwister(0);
     x = rand(rng, 100);
@@ -462,31 +409,35 @@ end
     @test length(coef(model)) == 3
     ct = coeftable(model)
     @test ct.rownms ==  ["(Intercept)", "x", "x2"]
-    @test fixefnames(model) == ["(Intercept)", "x"]
+    @test length(fixefnames(model)) == 2
     @test coefnames(model) == ["(Intercept)", "x", "x2"]
-    @test last(coef(model)) == -0.0
-    stde = MixedModels.stderror!(zeros(3), model)
-    @test isnan(last(stde))
-    vc = vcov(model)
-    @test isnan(last(vc))
-
-    @test size(StatsModels.modelmatrix(model), 2) == 3
-    # check preserving of name ordering in coeftable and placement of
-    # pivoted-out element
-    fill!(data.x, 0)
-    model2 = fit(MixedModel, @formula(y ~ x + x2 + (1|z)), data)
-    ct = coeftable(model2)
-    @test ct.rownms ==  ["(Intercept)", "x", "x2"]
-    @test fixefnames(model2) == ["(Intercept)", "x2"]
-    @test coefnames(model2) == ["(Intercept)", "x", "x2"]
-    @test coef(model2)[2] == -0.0
-    @test last(fixef(model)) ≈ (last(fixef(model2)) * 1.5)
-    stde2 = MixedModels.stderror!(zeros(3), model2)
-    @test isnan(stde2[2])
-
+    piv = first(model.feterms).piv
+    r = first(model.feterms).rank
+    @test coefnames(model)[piv][1:r] == fixefnames(model)
 end
 
 @testset "coeftable" begin
     ct = coeftable(only(models(:dyestuff)));
     @test [3,4] == [ct.teststatcol, ct.pvalcol]
+end
+
+@testset "wts" begin
+    # example from https://github.com/JuliaStats/MixedModels.jl/issues/194
+    data = DataFrame(a = [1.55945122,0.004391538,0.005554163,-0.173029772,4.586284429,0.259493671,-0.091735715,5.546487603,0.457734831,-0.030169602],
+                     b = [0.24520519,0.080624178,0.228083467,0.2471453,0.398994279,0.037213859,0.102144973,0.241380251,0.206570975,0.15980803],
+                     c = categorical(["H","F","K","P","P","P","D","M","I","D"]),
+                     w1 = [20,40,35,12,29,25,65,105,30,75],
+                     w2 = [0.04587156,0.091743119,0.080275229,0.027522936,0.066513761,0.05733945,0.149082569,0.240825688,0.068807339,0.172018349])
+
+    #= no need to fit yet another model without weights, but here are the reference values from lme4
+    m1 = fit(MixedModel, @formula(a ~ 1 + b + (1|c)), data)
+    @test m1.θ ≈ [0.0]
+    @test stderror(m1) ≈  [1.084912, 4.966336] atol = 1.e-4
+    @test vcov(m1) ≈ [1.177035 -4.802598; -4.802598 24.664497] atol = 1.e-4
+    =#
+
+    m2 = fit(MixedModel, @formula(a ~ 1 + b + (1|c)), data, wts = data.w1)
+    @test m2.θ ≈ [0.295181729258352]  atol = 1.e-4
+    @test stderror(m2) ≈  [0.9640167, 3.6309696] atol = 1.e-4
+    @test vcov(m2) ≈ [0.9293282 -2.557527; -2.5575267 13.183940] atol = 1.e-4
 end

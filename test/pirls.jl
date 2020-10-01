@@ -1,9 +1,9 @@
-using MixedModels
+using MixedModels, Tables
 using Test
 
 using MixedModels: dataset
 
-const fms = Dict(
+const gfms = Dict(
     :cbpp => [@formula((incid/hsz) ~ 1 + period + (1|herd))],
     :contra => [@formula(use ~ 1+age+abs2(age)+urban+livch+(1|urbdist))],
     :grouseticks => [@formula(ticks ~ 1+year+ch+ (1|index) + (1|brood) + (1|location))],
@@ -12,26 +12,38 @@ const fms = Dict(
 
 @testset "contra" begin
     contra = dataset(:contra)
-    gm0 = fit(MixedModel, only(fms[:contra]), contra, Bernoulli(), fast=true);
+    gm0 = fit(MixedModel, only(gfms[:contra]), contra, Bernoulli(), fast=true);
     @test gm0.lowerbd == zeros(1)
     @test isapprox(gm0.θ, [0.5720734451352923], atol=0.001)
     @test isapprox(deviance(gm0), 2361.657188518064, atol=0.001)
-    gm1 = fit(MixedModel, only(fms[:contra]), contra, Bernoulli());
+    # the first 9 BLUPs -- I don't think there's much point in testing all 102
+    blups = [-0.9546698228978889, -0.034754272678681725, -0.2513196374772515,
+              0.10836392818271358, -0.38610152013564464, -0.19309267616660894,
+              0.059291406326190885, -0.29649374611805296, -0.4564504918851189]
+    @test only(ranef(gm0))[1:9] ≈ blups atol=1e-4
+    retbl = raneftables(gm0)
+    @test isone(length(retbl))
+    @test isa(retbl, NamedTuple)
+    @test Tables.istable(only(retbl))
+
+    gm1 = fit(MixedModel, only(gfms[:contra]), contra, Bernoulli());
     @test isapprox(gm1.θ, [0.573054], atol=0.005)
     @test lowerbd(gm1) == vcat(fill(-Inf, 7), 0.)
     @test isapprox(deviance(gm1), 2361.54575, rtol=0.00001)
     @test isapprox(loglikelihood(gm1), -1180.77288, rtol=0.00001)
+
     @test dof(gm0) == length(gm0.β) + length(gm0.θ)
     @test nobs(gm0) == 1934
     fit!(gm0, fast=true, nAGQ=7)
     @test isapprox(deviance(gm0), 2360.9838, atol=0.001)
-    gm1 = fit(MixedModel, only(fms[:contra]), contra, Bernoulli(), nAGQ=7)
+    gm1 = fit(MixedModel, only(gfms[:contra]), contra, Bernoulli(), nAGQ=7)
     @test isapprox(deviance(gm1), 2360.8760, atol=0.001)
     @test gm1.β == gm1.beta
     @test gm1.θ == gm1.theta
     @test isnan(gm1.σ)
     @test length(gm1.y) == size(gm1.X, 1)
     @test :θ in propertynames(gm0)
+
     @testset "GLMM rePCA" begin
         @test length(MixedModels.PCA(gm0)) == 1
         @test length(MixedModels.rePCA(gm0)) == 1
@@ -47,7 +59,7 @@ end
 
 @testset "cbpp" begin
     cbpp = dataset(:cbpp)
-    gm2 = fit(MixedModel, only(fms[:cbpp]), cbpp, Binomial(), wts=float(cbpp.hsz))
+    gm2 = fit(MixedModel, only(gfms[:cbpp]), cbpp, Binomial(), wts=float(cbpp.hsz))
     @test deviance(gm2,true) ≈ 100.09585619892968 atol=0.0001
     @test sum(abs2, gm2.u[1]) ≈ 9.723054788538546 atol=0.0001
     @test logdet(gm2) ≈ 16.90105378801136 atol=0.0001
@@ -58,7 +70,7 @@ end
 end
 
 @testset "verbagg" begin
-    gm3 = fit(MixedModel, only(fms[:verbagg]), dataset(:verbagg), Bernoulli())
+    gm3 = fit(MixedModel, only(gfms[:verbagg]), dataset(:verbagg), Bernoulli())
     @test deviance(gm3) ≈ 8151.40 rtol=1e-5
     @test lowerbd(gm3) == vcat(fill(-Inf, 6), zeros(2))
     @test fitted(gm3) == predict(gm3)
@@ -71,7 +83,7 @@ end
     center(v::AbstractVector) = v .- (sum(v) / length(v))
     grouseticks = dataset(:grouseticks)
     grouseticks.ch = center(grouseticks.height)
-    gm4 = fit(MixedModel, only(fms[:grouseticks]), grouseticks, Poisson(), fast=true)  # fails in pirls! with fast=false
+    gm4 = fit(MixedModel, only(gfms[:grouseticks]), grouseticks, Poisson(), fast=true)  # fails in pirls! with fast=false
     @test isapprox(deviance(gm4), 851.4046, atol=0.001)
     # these two values are not well defined at the optimum
     #@test isapprox(sum(x -> sum(abs2, x), gm4.u), 196.8695297987013, atol=0.1)
@@ -79,10 +91,10 @@ end
 end
 
 @testset "goldstein" begin # from a 2020-04-22 msg by Ben Goldstein to R-SIG-Mixed-Models
-    goldstein = 
+    goldstein =
         categorical!(
             DataFrame(
-                group = repeat(1:10, outer=10), 
+                group = repeat(1:10, outer=10),
                 y = [
                     83, 3, 8, 78, 901, 21, 4, 1, 1, 39,
                     82, 3, 2, 82, 874, 18, 5, 1, 3, 50,
@@ -107,4 +119,15 @@ end
     @test deviance(m11) ≈ 193.51028088736842 rtol=1.e-5
     @test only(m11.β) ≈ 4.192196439077657 atol=1.e-5
     @test only(m11.θ) ≈ 1.838245201739852 atol=1.e-5
+end
+
+@testset "dispersion" begin
+
+    form = @formula(reaction ~ 1 + days + (1+days|subj))
+    dat = dataset(:sleepstudy)
+
+    @test_logs (:warn, r"dispersion parameter") GeneralizedLinearMixedModel(form, dat, Gamma())
+    @test_logs (:warn, r"dispersion parameter") GeneralizedLinearMixedModel(form, dat, InverseGaussian())
+    @test_logs (:warn, r"dispersion parameter") GeneralizedLinearMixedModel(form, dat, Normal(), SqrtLink())
+
 end

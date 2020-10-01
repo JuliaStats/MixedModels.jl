@@ -22,7 +22,7 @@ const LMM = LinearMixedModel
         @test size(ex22, 1) == 6
         @test size(ex22, 2) == 6
         @test size(ex22.data) == (2, 2, 3)
-        @test length(ex22.facevec) == 3
+    #    @test length(ex22.facevec) == 3
         @test size(vf1) == (12, 6)
         @test size(vf2) == (12, 4)
         @test size(prd) == (4, 6)
@@ -39,21 +39,21 @@ const LMM = LinearMixedModel
     end
 
     @testset "facevec" begin
-        @test ex22.facevec[3] == reshape(9:12, (2,2))
+        @test view(ex22.data, :, :, 3) == reshape(9:12, (2,2))
     end
 
     @testset "scaleinflate" begin
         MixedModels.scaleinflate!(copyto!(Lblk, ex22), vf1)
-        @test Lblk.facevec[1] == [2. 3.; 2. 5.]
+        @test view(Lblk.data, :, :, 1) == [2. 3.; 2. 5.]
         setθ!(vf1, [1.,1.,1.])
         Λ = vf1.λ
         MixedModels.scaleinflate!(copyto!(Lblk, ex22), vf1)
-        target = Λ'ex22.facevec[1]*Λ + I
-        @test Lblk.facevec[1] == target
+        target = Λ'view(ex22.data, :, :, 1)*Λ + I
+        @test view(Lblk.data, :, :, 1) == target
     end
 
     @testset "updateL" begin
-        @test ones(2, 2) == MixedModels.rankUpdate!(Hermitian(zeros(2, 2)), ones(2))
+        @test ones(2, 2) == MixedModels.rankUpdate!(Hermitian(zeros(2, 2)), ones(2), 1., 1.)
         d3 = MixedModels.dataset(:d3)
         sch = schema(d3)
         vf1 = modelcols(apply_schema(@formula(y ~ 1 + u + (1+u|g)), sch, LMM), d3)[2][2]
