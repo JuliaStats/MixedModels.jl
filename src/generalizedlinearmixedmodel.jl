@@ -317,10 +317,9 @@ GeneralizedLinearMixedModel(
     Tables.columntable(tbl),
     d,
     l;
-    wts = [],
-    offset = [],
-    contrasts = Dict{Symbol,Any}(),
-)
+    wts = wts,
+    offset = offset,
+    contrasts = contrasts)
 
 GeneralizedLinearMixedModel(
     f::FormulaTerm,
