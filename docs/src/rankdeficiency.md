@@ -59,6 +59,17 @@ Determining the rank of a matrix is the type of problem that is well-defined in 
 
 Currently, a coarse heuristic is applied to reduce the chance that the intercept column will be pivoted, but even this behavior is not guaranteed.
 
+### Undetected Rank Deficiency
+
+Undetected rank deficiency in the fixed effects will lead to numerical issues, such as nonsensical estimates. 
+A `PosDefException` may indicate rank deficiency because the covariance matrix will only be positive semidefinite and not positive definite (see [Details of the parameter estimation](@ref)).
+In other words, checking that the fixed effects are full rank is a great first step in debugging a `PosDefException`.
+
+Note that `PosDefException` is not specific to rank deficiency and may arise in other ill-conditioned models.
+In any case, examining the model specification and the data to verify that they work together is the first step.
+For generalized linear mixed-effects models, it may also be worthwhile to try out `fast=true` instead of the default `fast=false`.
+See this [GitHub issue](https://github.com/JuliaStats/MixedModels.jl/issues/349) and linked Discourse discussion for more information.
+
 ## Random effects
 
 Rank deficiency presents less of a problem in the random effects than in the fixed effects because the "estimates" (more formally, the conditional modes of the random effects given the observed data) are determined as the solution to a penalized least squares problem.
