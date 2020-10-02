@@ -122,8 +122,13 @@ function StatsBase.coeftable(m::MixedModel)
     se = stderror(m)
     z = co ./ se
     pvalue = ccdf.(Chisq(1), abs2.(z))
-    CoefTable(hcat(co, se, z, pvalue), ["Estimate", "Std.Error", "z value", "P(>|z|)"],
-        first(m.feterms).cnames, 4)
+    CoefTable(
+        hcat(co, se, z, pvalue),
+        ["Coef.", "Std. Error", "z", "Pr(>|z|)"],
+        coefnames(m),
+        4, # pvalcol
+        3, # teststatcol
+    )
 end
 
 """

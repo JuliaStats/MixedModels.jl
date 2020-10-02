@@ -53,20 +53,6 @@ struct GeneralizedLinearMixedModel{T <: AbstractFloat} <: MixedModel{T}
     mult::Vector{T}
 end
 
-function StatsBase.coeftable(m::GeneralizedLinearMixedModel)
-    co = fixef(m)
-    se = stderror(m)
-    z = co ./ se
-    pvalue = ccdf.(Chisq(1), abs2.(z))
-    CoefTable(
-        hcat(co, se, z, pvalue),
-        ["Estimate", "Std.Error", "z value", "P(>|z|)"],
-        coefnames(m),
-        4, # pvalcol
-        3, # teststatcol
-    )
-end
-
 """
     deviance(m::GeneralizedLinearMixedModel{T}, nAGQ=1)::T where {T}
 
