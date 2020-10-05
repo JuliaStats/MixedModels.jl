@@ -702,22 +702,22 @@ function reevaluateAend!(m::LinearMixedModel)
 end
 
 """
-    refit!(m::LinearMixedModel[, y::Vector])
+    refit!(m::LinearMixedModel[, y::Vector]; REML=m.optsum.reml)
 
 Refit the model `m` after installing response `y`.
 
 If `y` is omitted the current response vector is used.
 """
-function refit!(m::LinearMixedModel)
+function refit!(m::LinearMixedModel; REML=m.optsum.REML)
     m.optsum.feval = -1
-    fit!(reevaluateAend!(m))
+    fit!(reevaluateAend!(m); REML=REML)
 end
 
-function refit!(m::LinearMixedModel, y)
+function refit!(m::LinearMixedModel, y; REML=m.optsum.REML)
     resp = last(m.feterms)
     length(y) == size(resp, 1) || throw(DimensionMismatch(""))
     copyto!(resp, y)
-    refit!(m)
+    refit!(m; REML=REML)
 end
 
 StatsBase.residuals(m::LinearMixedModel) = response(m) .- fitted(m)
