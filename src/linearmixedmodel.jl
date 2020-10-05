@@ -957,7 +957,6 @@ function zerocorr!(m::LinearMixedModel{T}, trmns) where {T}
             zerocorr!(trm)     
         end
     end
-    
     newparmap = mkparmap(reterms)
     copyto!(m.parmap, newparmap)
     resize!(m.parmap, length(newparmap))
