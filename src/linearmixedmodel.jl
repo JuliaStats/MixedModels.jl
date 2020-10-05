@@ -309,7 +309,7 @@ objective and the parameters are printed on stdout at each function evaluation.
 """
 function fit!(m::LinearMixedModel{T}; verbose::Bool = false, REML::Bool = false) where {T}
     optsum = m.optsum
-    # this doesn't matter for LMM, but it does for GLMM, so let's be
+    # this doesn't matter for LMM, but it does for GLMM, so let's be consistent
     if optsum.feval > 0
         throw(ArgumentError("This model has already been fitted. Use refit!() instead."))
     end
