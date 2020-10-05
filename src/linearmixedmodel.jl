@@ -954,7 +954,7 @@ function zerocorr!(m::LinearMixedModel{T}, trmns) where {T}
     reterms = m.reterms
     for trm in reterms
         if fname(trm) in trmns
-            zerocorr!(trm)     
+            zerocorr!(trm)
         end
     end
     newparmap = mkparmap(reterms)
