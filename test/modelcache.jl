@@ -4,7 +4,9 @@ using MixedModels: dataset
 try 
     # this a dummy test to see if these things are already defined
     fms
-catch
+catch e
+
+isa(e, UndefVarError) || rethrow(e)
 
 const global fms = Dict(
     :dyestuff => [@formula(yield ~ 1 + (1|batch))],
