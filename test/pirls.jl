@@ -36,7 +36,7 @@ const gfms = Dict(
 
     @test dof(gm0) == length(gm0.β) + length(gm0.θ)
     @test nobs(gm0) == 1934
-    fit!(gm0, fast=true, nAGQ=7)
+    refit!(gm0, fast=true, nAGQ=7)
     @test isapprox(deviance(gm0), 2360.9838, atol=0.001)
     gm1 = fit(MixedModel, only(gfms[:contra]), contra, Bernoulli(), nAGQ=7)
     @test isapprox(deviance(gm1), 2360.8760, atol=0.001)
