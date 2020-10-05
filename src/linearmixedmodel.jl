@@ -963,8 +963,8 @@ function zerocorr!(m::LinearMixedModel{T}, trmns) where {T}
     copyto!(m.parmap, newparmap)
     resize!(m.parmap, length(newparmap))
     optsum = m.optsum
-    optsum.lowerbd = foldl(vcat, lowerbd(c) for c in reterms)
-    optsum.initial = foldl(vcat, getθ(c) for c in reterms)
+    optsum.lowerbd = mapfoldl(lowerbd, vcat, reterms)
+    optsum.initial = mapfoldl(getθ, vcat, reterms)
     optsum.final = copy(optsum.initial)
     optsum.xtol_abs = fill!(copy(optsum.initial), 1.0e-10)
     optsum.initial_step = T[]
