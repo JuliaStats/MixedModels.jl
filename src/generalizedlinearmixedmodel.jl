@@ -530,6 +530,36 @@ ranef(m::GeneralizedLinearMixedModel; uscale::Bool=false) = ranef(m.LMM, uscale=
 LinearAlgebra.rank(m::GeneralizedLinearMixedModel) = first(m.LMM.feterms).rank
 
 """
+    refit!(m::LinearMixedModel[, y::Vector];
+          fast::Bool = (length(m.θ) == length(m.optsum.final)), 
+          nAGQ::Integer = m.optsum.nAGQ))
+
+Refit the model `m` after installing response `y`.
+
+If `y` is omitted the current response vector is used.
+
+If not specified, the `fast` and `nAGQ` options from the previous fit are used.
+
+"""
+function refit!(m::GeneralizedLinearMixedModel;
+                fast::Bool = (length(m.θ) == length(m.optsum.final)), 
+                nAGQ::Integer = m.optsum.nAGQ) 
+
+    reevaluateAend!(m.LMM)
+    fit!(m; fast=fast, nAGQ=nAGQ)
+end
+
+function refit!(m::GeneralizedLinearMixedModel, y; 
+                fast::Bool = (length(m.θ) == length(m.optsum.final)), 
+                nAGQ::Integer = m.optsum.nAGQ)
+    resp = m.y
+    length(y) == size(resp, 1) || throw(DimensionMismatch(""))
+    copyto!(resp, y)
+    refit!(m)
+end
+
+
+"""
     setβθ!(m::GeneralizedLinearMixedModel, v)
 
 Set the parameter vector, `:βθ`, of `m` to `v`.
