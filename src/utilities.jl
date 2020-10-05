@@ -242,7 +242,7 @@ function Base.show(io::IO, pca::PCA;
                 pca.corr ? "correlation" : "(relative) covariance",
                 " matrix")
         # only display the lower triangle of symmetric matrix
-        printmat = round.(LowerTriangular(pca.covcor), digits=ndigitsmat)
+        printmat = round.(pca.covcor.data, digits=ndigitsmat)
         if pca.rnames !== missing 
             n = length(pca.rnames)
             cv = string.(printmat)
