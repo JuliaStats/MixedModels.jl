@@ -1,5 +1,5 @@
-# when generating a new artifact, add the new feather file to the datasets folder at
-# https://osf.io/a94tr/, then download that folder to generate the tarball
+# when generating a new artifact, add the new feather file to the datasets folder in Arrow format at
+# https://osf.io/djaqb/, then download that folder to generate the tarball
 # (so that we don't forget datasets)
 
 [TestData]
