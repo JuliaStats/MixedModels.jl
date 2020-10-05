@@ -138,7 +138,7 @@ function replicate(f::Function, n::Integer; use_threads=false)
     results
 end
 
-cacheddatasets = Dict{String,Any}()
+cacheddatasets = Dict{String, Arrow.Table}()
 """
     dataset(nm)
 
@@ -146,12 +146,12 @@ Return the data frame of test data set named `nm`, which can be a `String` or `S
 """
 function dataset(nm::AbstractString)
     get!(cacheddatasets, nm) do
-        path = joinpath(TestData, nm * ".feather")
+        path = joinpath(TestData, nm * ".arrow")
         if !isfile(path)
             throw(ArgumentError(
                 "Dataset \"$nm\" is not available.\nUse MixedModels.datasets() for available names."))
         end
-        Feather.read(path)
+        Arrow.Table(path)
     end
 end
 dataset(nm::Symbol) = dataset(string(nm))
@@ -161,7 +161,7 @@ dataset(nm::Symbol) = dataset(string(nm))
 
 Return a vector of names of the available test data sets
 """
-datasets() = first.(Base.Filesystem.splitext.(filter(Base.Fix2(endswith, ".feather"), readdir(TestData))))
+datasets() = first.(Base.Filesystem.splitext.(filter(endswith(".arrow"), readdir(TestData))))
 
 
 """

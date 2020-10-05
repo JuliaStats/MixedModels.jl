@@ -1,4 +1,6 @@
-using MixedModels, Tables
+using DataFrames
+using MixedModels
+using Tables
 using Test
 
 using MixedModels: dataset
@@ -81,7 +83,7 @@ end
 
 @testset "grouseticks" begin
     center(v::AbstractVector) = v .- (sum(v) / length(v))
-    grouseticks = dataset(:grouseticks)
+    grouseticks = DataFrame(dataset(:grouseticks))
     grouseticks.ch = center(grouseticks.height)
     gm4 = fit(MixedModel, only(gfms[:grouseticks]), grouseticks, Poisson(), fast=true)  # fails in pirls! with fast=false
     @test isapprox(deviance(gm4), 851.4046, atol=0.001)

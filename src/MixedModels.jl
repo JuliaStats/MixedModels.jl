@@ -1,9 +1,9 @@
 module MixedModels
 
+using Arrow
 using BlockArrays
 using DataAPI
 using Distributions
-using Feather
 using GLM
 using LinearAlgebra
 using NLopt

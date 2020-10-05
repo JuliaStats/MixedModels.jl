@@ -69,7 +69,7 @@ include("modelcache.jl")
     @test fm1.σ ≈ 49.510099986291145 atol=1.e-5
     @test fm1.X == ones(30,1)
     ds = MixedModels.dataset(:dyestuff)
-    @test fm1.y == ds[!, :yield]
+    @test fm1.y == ds[:yield]
     @test cond(fm1) == ones(1)
     @test first(leverage(fm1)) ≈ 0.15650534392640486 rtol=1.e-5
     @test sum(leverage(fm1)) ≈ 4.695160317792145 rtol=1.e-5
@@ -77,7 +77,7 @@ include("modelcache.jl")
     @test length(cm.rownms) == 1
     @test length(cm.colnms) == 4
     @test fnames(fm1) == (:batch,)
-    @test response(fm1) == ds[!, :yield]
+    @test response(fm1) == ds[:yield]
     rfu = ranef(fm1, uscale = true)
     rfb = ranef(fm1)
     @test abs(sum(rfu[1])) < 1.e-5
@@ -127,7 +127,7 @@ end
     @test coef(fm) ≈ [5.6656]
     @test logdet(fm) ≈ 0.0
     @test issingular(fm)
-    refit!(fm, float(MixedModels.dataset(:dyestuff)[!, :yield]))
+    refit!(fm, float(MixedModels.dataset(:dyestuff)[:yield]))
     @test objective(fm) ≈ 327.3270598811428 atol=0.001
 end
 
@@ -333,7 +333,7 @@ end
     @test logdet(fm_ind) ≈ logdet(fmnc)
 
     # combining [ReMat{T,S1}, ReMat{T,S2}] for S1 ≠ S2
-    slpcat = categorical!(deepcopy(slp), [:days])
+    slpcat = categorical!(DataFrame(slp), [:days])
     fm_cat = fit(MixedModel, @formula(reaction ~ 1+days+(1|subj)+(0+days|subj)),slpcat)
     @test fm_cat isa LinearMixedModel
     σρ = fm_cat.σρs
@@ -391,6 +391,7 @@ end
 end
 
 @testset "kb07" begin
+    global io
     pca = last(models(:kb07)).PCA
     @test keys(pca) == (:subj, :item)
     show(io, models(:kb07)[2])
