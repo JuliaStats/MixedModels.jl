@@ -702,7 +702,7 @@ function reevaluateAend!(m::LinearMixedModel)
 end
 
 """
-    refit!(m::LinearMixedModel[, y::Vector]; REML=m.optsum.reml)
+    refit!(m::LinearMixedModel[, y::Vector]; REML=m.optsum.REML)
 
 Refit the model `m` after installing response `y`.
 
