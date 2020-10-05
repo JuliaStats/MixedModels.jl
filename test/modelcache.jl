@@ -32,11 +32,14 @@ const global fms = Dict(
     ],
 )
 
-const global fittedmodels = Dict{Symbol,Vector{LinearMixedModel}}();
+# for some reason it seems necessary to prime the pump in julia-1.6.0-DEV
+const global fittedmodels = Dict{Symbol,Vector{LinearMixedModel}}(
+    :dyestuff => [fit(MixedModel, only(fms[:dyestuff]), dataset(:dyestuff))]
+);
 end
 
 function models(nm::Symbol)
     get!(fittedmodels, nm) do
-        fit.(MixedModel, fms[nm], Ref(dataset(nm)))
+        [fit(MixedModel, f, dataset(nm)) for f in fms[nm]]
     end
 end
