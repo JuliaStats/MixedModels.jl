@@ -309,6 +309,10 @@ objective and the parameters are printed on stdout at each function evaluation.
 """
 function fit!(m::LinearMixedModel{T}; verbose::Bool = false, REML::Bool = false) where {T}
     optsum = m.optsum
+    # this doesn't matter for LMM, but it does for GLMM, so let's be
+    if optsum.feval > 0
+        throw(ArgumentError("This model has already been fitted. Use refit!() instead."))
+    end
     opt = Opt(optsum)
     optsum.REML = REML
     function obj(x, g)
@@ -704,7 +708,10 @@ Refit the model `m` after installing response `y`.
 
 If `y` is omitted the current response vector is used.
 """
-refit!(m::LinearMixedModel) = fit!(reevaluateAend!(m))
+function refit!(m::LinearMixedModel)
+    m.optsum.feval = -1
+    fit!(reevaluateAend!(m))
+end
 
 function refit!(m::LinearMixedModel, y)
     resp = last(m.feterms)
