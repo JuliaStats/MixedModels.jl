@@ -37,7 +37,7 @@ include("modelcache.jl")
 
     fit!(fm1);
     @test_throws ArgumentError fit!(fm1)
-    
+
     @test :θ in propertynames(fm1)
     @test objective(fm1) ≈ 327.3270598811428 atol=0.001
     @test fm1.θ ≈ [0.752580] atol=1.e-5
@@ -99,7 +99,7 @@ include("modelcache.jl")
     @test startswith(str, "Variance components:")
     @test vc.s == sdest(fm1)
 
-    fit!(fm1, REML=true)
+    refit!(fm1, REML=true)
     @test objective(fm1) ≈ 319.65427684225216 atol=0.0001
     @test_throws ArgumentError loglikelihood(fm1)
     @test dof_residual(fm1) ≥ 0
