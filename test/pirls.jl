@@ -6,8 +6,7 @@ using Test
 using MixedModels: dataset
 
 const gfms = Dict(
-    :cbpp => [@formula((incid/hsz) ~ 1 + period + (1|herd)),
-              @formula((1-incid/hsz) ~ 1 + period + (1|herd))],
+    :cbpp => [@formula((incid/hsz) ~ 1 + period + (1|herd))],
     :contra => [@formula(use ~ 1+age+abs2(age)+urban+livch+(1|urbdist))],
     :grouseticks => [@formula(ticks ~ 1+year+ch+ (1|index) + (1|brood) + (1|location))],
     :verbagg => [@formula(r2 ~ 1+anger+gender+btype+situ+(1|subj)+(1|item))],
@@ -71,12 +70,17 @@ end
     @test isapprox(loglikelihood(gm2), -92.02628186840045, atol=0.001)
     @test isnan(sdest(gm2))
     @test varest(gm2) == 1
-    
-    gm2i = fit(MixedModel, last(gfms[:cbpp]), cbpp, Binomial(), wts=float(cbpp.hsz))
-
-    
-    @testset "GLMM refit" begin
         
+    @testset "GLMM refit" begin
+        gm2r = deepcopy(gm2)
+        @test_throws ArgumentError fit!(gm2r)
+        refit!(gm2r, 1 .- gm2.y; fast=true)
+        @test gm2r.β ≈ -gm2.β atol=1e-3
+        @test gm2r.θ ≈ gm2.θ atol=1e-3
+        
+        refit!(gm2r, 1 .- gm2.y; fast=false)
+        @test gm2r.β ≈ -gm2.β atol=1e-3
+        @test gm2r.θ ≈ gm2.θ atol=1e-3 
     end
 end
 

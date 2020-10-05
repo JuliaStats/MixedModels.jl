@@ -249,6 +249,11 @@ function fit!(
     β = m.β
     lm = m.LMM
     optsum = lm.optsum
+    
+    if optsum.feval > 0
+        throw(ArgumentError("This model has already been fitted. Use refit!() instead."))
+    end
+    
     if !fast
         optsum.lowerbd = vcat(fill!(similar(β), T(-Inf)), optsum.lowerbd)
         optsum.initial = vcat(β, m.θ)
@@ -530,7 +535,7 @@ ranef(m::GeneralizedLinearMixedModel; uscale::Bool=false) = ranef(m.LMM, uscale=
 LinearAlgebra.rank(m::GeneralizedLinearMixedModel) = first(m.LMM.feterms).rank
 
 """
-    refit!(m::LinearMixedModel[, y::Vector];
+    refit!(m::GeneralizedLinearMixedModel[, y::Vector];
           fast::Bool = (length(m.θ) == length(m.optsum.final)), 
           nAGQ::Integer = m.optsum.nAGQ))
 
@@ -541,20 +546,36 @@ If `y` is omitted the current response vector is used.
 If not specified, the `fast` and `nAGQ` options from the previous fit are used.
 
 """
-function refit!(m::GeneralizedLinearMixedModel;
+function refit!(m::GeneralizedLinearMixedModel{T};
                 fast::Bool = (length(m.θ) == length(m.optsum.final)), 
-                nAGQ::Integer = m.optsum.nAGQ) 
-
+                nAGQ::Integer = m.optsum.nAGQ)  where T
+    
+    deviance!(m, 1)
     reevaluateAend!(m.LMM)
+    
+    reterms = m.LMM.reterms
+    optsum = m.LMM.optsum
+    # we need to reset optsum so that it
+    # plays nice with the modifications fit!() does 
+    optsum.lowerbd = foldl(vcat, lowerbd(c) for c in reterms)
+    optsum.initial = foldl(vcat, getθ(c) for c in reterms)
+    optsum.final = copy(optsum.initial)
+    optsum.xtol_abs = fill!(copy(optsum.initial), 1.0e-10)
+    optsum.initial_step = T[]
+    optsum.feval = -1
+
     fit!(m; fast=fast, nAGQ=nAGQ)
 end
 
-function refit!(m::GeneralizedLinearMixedModel, y; 
+function refit!(m::GeneralizedLinearMixedModel{T}, y; 
                 fast::Bool = (length(m.θ) == length(m.optsum.final)), 
-                nAGQ::Integer = m.optsum.nAGQ)
+                nAGQ::Integer = m.optsum.nAGQ) where T
     resp = m.y
     length(y) == size(resp, 1) || throw(DimensionMismatch(""))
+    # GLMM
     copyto!(resp, y)
+    # for the internal GLM
+    copyto!(m.resp.y, y)
     refit!(m)
 end
 
