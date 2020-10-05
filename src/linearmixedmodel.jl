@@ -944,14 +944,20 @@ The default for `trmnms` is all the names of random-effects terms.
 
 A random effects term is in the zero correlation parameter configuration when the off-diagonal elements of
 λ are all zero - hence there are no correlation parameters in that term being estimated.
+
+Note that this is numerically equivalent to specifying a formula with `zerocorr` around each random effects
+term, but the `formula`  fields in the resulting model will differ. In particular, `zerocorr!` will **not**
+change the original `formula`'s terms to be of type of `ZeroCorr` because this would involve changing 
+immutatable types.  This may have implications for software that manipulates the formula of a fitted model.
 """
 function zerocorr!(m::LinearMixedModel{T}, trmns) where {T}
     reterms = m.reterms
     for trm in reterms
         if fname(trm) in trmns
-            zerocorr!(trm)
+            zerocorr!(trm)     
         end
     end
+    
     newparmap = mkparmap(reterms)
     copyto!(m.parmap, newparmap)
     resize!(m.parmap, length(newparmap))
