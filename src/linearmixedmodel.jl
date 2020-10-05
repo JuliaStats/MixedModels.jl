@@ -948,7 +948,7 @@ A random effects term is in the zero correlation parameter configuration when th
 Note that this is numerically equivalent to specifying a formula with `zerocorr` around each random effects
 term, but the `formula`  fields in the resulting model will differ. In particular, `zerocorr!` will **not**
 change the original `formula`'s terms to be of type of `ZeroCorr` because this would involve changing 
-immutatable types.  This may have implications for software that manipulates the formula of a fitted model.
+immutable types.  This may have implications for software that manipulates the formula of a fitted model.
 """
 function zerocorr!(m::LinearMixedModel{T}, trmns) where {T}
     reterms = m.reterms
