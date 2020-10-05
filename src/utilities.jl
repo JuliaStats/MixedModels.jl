@@ -242,10 +242,9 @@ function Base.show(io::IO, pca::PCA;
                 pca.corr ? "correlation" : "(relative) covariance",
                 " matrix")
         # only display the lower triangle of symmetric matrix
-        printmat = round.(pca.covcor.data, digits=ndigitsmat)
-        if pca.rnames !== missing 
+        if pca.rnames !== missing
             n = length(pca.rnames)
-            cv = string.(printmat)
+            cv = string.(round.(pca.covcor, digits=ndigitsmat))
             dotpad = lpad(".", div(maximum(length, cv),2))
             for i = 1:n, j = (i+1):n
                 cv[i, j] = dotpad
@@ -257,6 +256,11 @@ function Base.show(io::IO, pca::PCA;
             # this hurts type stability, 
             # but this show method shouldn't be a bottleneck
             printmat = Text.([pca.rnames cv])
+        else
+            # if there are no names, then we cheat and use the print method
+            # for LowerTriangular, which automatically covers the . in the 
+            # upper triangle
+            printmat = round.(LowerTriangular(pca.covcor), digits=ndigitsmat)
         end
         
         Base.print_matrix(io, printmat)
