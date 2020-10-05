@@ -1,14 +1,8 @@
 using MixedModels
 using MixedModels: dataset
 
-try 
-    # this a dummy test to see if these things are already defined
-    fms
-catch e
 
-isa(e, UndefVarError) || rethrow(e)
-
-const global fms = Dict(
+@isdefined(fms) || const global fms = Dict(
     :dyestuff => [@formula(yield ~ 1 + (1|batch))],
     :dyestuff2 => [@formula(yield ~ 1 + (1|batch))],
     :d3 => [@formula(y ~ 1 + u + (1+u|g) + (1+u|h) + (1+u|i))],
@@ -35,10 +29,9 @@ const global fms = Dict(
 )
 
 # for some reason it seems necessary to prime the pump in julia-1.6.0-DEV
-const global fittedmodels = Dict{Symbol,Vector{LinearMixedModel}}(
+@isdefined(fittedmodels) || const global fittedmodels = Dict{Symbol,Vector{LinearMixedModel}}(
     :dyestuff => [fit(MixedModel, only(fms[:dyestuff]), dataset(:dyestuff))]
 );
-end
 
 function models(nm::Symbol)
     get!(fittedmodels, nm) do
