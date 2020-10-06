@@ -949,8 +949,10 @@ Note that this is numerically equivalent to specifying a formula with `zerocorr`
 term, but the `formula`  fields in the resulting model will differ. In particular, `zerocorr!` will **not**
 change the original `formula`'s terms to be of type of `ZeroCorr` because this would involve changing 
 immutable types.  This may have implications for software that manipulates the formula of a fitted model.
+
+This is an internal function and may disappear in a future release without being considered a breaking change.
 """
-function zerocorr!(m::LinearMixedModel{T}, trmns) where {T}
+function _zerocorr!(m::LinearMixedModel{T}, trmns) where {T}
     reterms = m.reterms
     for trm in reterms
         if fname(trm) in trmns
@@ -973,4 +975,4 @@ function zerocorr!(m::LinearMixedModel{T}, trmns) where {T}
     m
 end
 
-zerocorr!(m::LinearMixedModel) = zerocorr!(m, fnames(m))
+_zerocorr!(m::LinearMixedModel) = _zerocorr!(m, fnames(m))

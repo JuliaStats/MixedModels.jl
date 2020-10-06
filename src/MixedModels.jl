@@ -117,8 +117,7 @@ export @formula,
        updateL!,
        varest,
        vcov,
-       zerocorr,
-       zerocorr!
+       zerocorr
 
 import Base: ==, *
 
