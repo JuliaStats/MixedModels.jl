@@ -435,3 +435,18 @@ end
     @test stderror(m2) ≈  [0.9640167, 3.6309696] atol = 1.e-4
     @test vcov(m2) ≈ [0.9293282 -2.557527; -2.5575267 13.183940] atol = 1.e-4
 end
+
+@testset "unifying ReMat eltypes" begin
+    sleepstudy = dataset(:sleepstudy)
+
+    re = LinearMixedModel(@formula(reaction ~ 1 + days + (1|subj) + (days|subj)), sleepstudy).reterms
+    # make sure that the eltypes are still correct
+    # otherwise this test isn't checking what it should be
+    @test eltype(sleepstudy.days) == Int8
+    @test eltype(sleepstudy.reaction) == Float64
+
+    # use explicit typeof() and == is to remind us that things may break
+    # if we change things and don't check their type implications now
+    # that we're starting to support a non trivial type hierarchy
+    @test typeof(re) == Vector{AbstractReMat{Float64}}
+end
