@@ -1,4 +1,6 @@
-using MixedModels, Tables
+using DataFrames
+using MixedModels
+using Tables
 using Test
 
 using MixedModels: dataset
@@ -34,7 +36,7 @@ const gfms = Dict(
 
     @test dof(gm0) == length(gm0.β) + length(gm0.θ)
     @test nobs(gm0) == 1934
-    fit!(gm0, fast=true, nAGQ=7)
+    refit!(gm0, fast=true, nAGQ=7)
     @test isapprox(deviance(gm0), 2360.9838, atol=0.001)
     gm1 = fit(MixedModel, only(gfms[:contra]), contra, Bernoulli(), nAGQ=7)
     @test isapprox(deviance(gm1), 2360.8760, atol=0.001)
@@ -55,11 +57,12 @@ const gfms = Dict(
     #@test isapprox(sum(gm1.resp.devresid), 2237.349, atol=0.1)
     show(IOBuffer(), gm1)
     show(IOBuffer(), BlockDescription(gm0))
+    
 end
 
 @testset "cbpp" begin
     cbpp = dataset(:cbpp)
-    gm2 = fit(MixedModel, only(gfms[:cbpp]), cbpp, Binomial(), wts=float(cbpp.hsz))
+    gm2 = fit(MixedModel, first(gfms[:cbpp]), cbpp, Binomial(), wts=float(cbpp.hsz))
     @test deviance(gm2,true) ≈ 100.09585619892968 atol=0.0001
     @test sum(abs2, gm2.u[1]) ≈ 9.723054788538546 atol=0.0001
     @test logdet(gm2) ≈ 16.90105378801136 atol=0.0001
@@ -67,6 +70,18 @@ end
     @test isapprox(loglikelihood(gm2), -92.02628186840045, atol=0.001)
     @test isnan(sdest(gm2))
     @test varest(gm2) == 1
+        
+    @testset "GLMM refit" begin
+        gm2r = deepcopy(gm2)
+        @test_throws ArgumentError fit!(gm2r)
+        refit!(gm2r, 1 .- gm2.y; fast=true)
+        @test gm2r.β ≈ -gm2.β atol=1e-3
+        @test gm2r.θ ≈ gm2.θ atol=1e-3
+        
+        refit!(gm2r, 1 .- gm2.y; fast=false)
+        @test gm2r.β ≈ -gm2.β atol=1e-3
+        @test gm2r.θ ≈ gm2.θ atol=1e-3 
+    end
 end
 
 @testset "verbagg" begin
@@ -81,7 +96,7 @@ end
 
 @testset "grouseticks" begin
     center(v::AbstractVector) = v .- (sum(v) / length(v))
-    grouseticks = dataset(:grouseticks)
+    grouseticks = DataFrame(dataset(:grouseticks))
     grouseticks.ch = center(grouseticks.height)
     gm4 = fit(MixedModel, only(gfms[:grouseticks]), grouseticks, Poisson(), fast=true)  # fails in pirls! with fast=false
     @test isapprox(deviance(gm4), 851.4046, atol=0.001)

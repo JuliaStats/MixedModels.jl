@@ -49,7 +49,7 @@ end
     wm1 = fit(MixedModel, @formula(Y ~ 1+A+(1+A|G)+(1+A|H)), df, wts  = ones(400))
     @test loglikelihood(wm1) ≈ loglikelihood(m1)
     MixedModels.reweight!(wm1, ones(400))
-    @test loglikelihood(fit!(wm1)) ≈ loglikelihood(m1)
+    @test loglikelihood(refit!(wm1)) ≈ loglikelihood(m1)
 end
 
 @testset "rankupdate!" begin

@@ -24,6 +24,9 @@ include("modelcache.jl")
     @test fm1.optsum.initial == ones(1)
     fm1.θ = ones(1)
     @test fm1.θ == ones(1)
+    
+    @test_throws ArgumentError fit!(fm1)
+    
     fm1.optsum.feval = -1
     @test_logs (:warn, "Model has not been fit") show(fm1)
 
@@ -35,7 +38,8 @@ include("modelcache.jl")
     output = String(take!(io))
     @test startswith(output, "rows:")
 
-    fit!(fm1);
+    refit!(fm1)
+
     @test :θ in propertynames(fm1)
     @test objective(fm1) ≈ 327.3270598811428 atol=0.001
     @test fm1.θ ≈ [0.752580] atol=1.e-5
@@ -69,7 +73,7 @@ include("modelcache.jl")
     @test fm1.σ ≈ 49.510099986291145 atol=1.e-5
     @test fm1.X == ones(30,1)
     ds = MixedModels.dataset(:dyestuff)
-    @test fm1.y == ds[!, :yield]
+    @test fm1.y == ds[:yield]
     @test cond(fm1) == ones(1)
     @test first(leverage(fm1)) ≈ 0.15650534392640486 rtol=1.e-5
     @test sum(leverage(fm1)) ≈ 4.695160317792145 rtol=1.e-5
@@ -77,7 +81,7 @@ include("modelcache.jl")
     @test length(cm.rownms) == 1
     @test length(cm.colnms) == 4
     @test fnames(fm1) == (:batch,)
-    @test response(fm1) == ds[!, :yield]
+    @test response(fm1) == ds[:yield]
     rfu = ranef(fm1, uscale = true)
     rfb = ranef(fm1)
     @test abs(sum(rfu[1])) < 1.e-5
@@ -97,7 +101,7 @@ include("modelcache.jl")
     @test startswith(str, "Variance components:")
     @test vc.s == sdest(fm1)
 
-    fit!(fm1, REML=true)
+    refit!(fm1, REML=true)
     @test objective(fm1) ≈ 319.65427684225216 atol=0.0001
     @test_throws ArgumentError loglikelihood(fm1)
     @test dof_residual(fm1) ≥ 0
@@ -106,12 +110,15 @@ include("modelcache.jl")
     @test startswith(String(take!(io)), "Linear mixed model fit by REML")
 
     fm1.optsum.maxfeval = 5
+    fm1.optsum.feval = -1
     @test_logs (:warn, "NLopt optimization failure: MAXEVAL_REACHED") fit!(fm1)
     fm1.optsum.maxfeval = -1
 
     vc = fm1.vcov
     @test isa(vc, Matrix{Float64})
     @test only(vc) ≈ 409.79495436473167 rtol=1.e-6
+    # since we're caching the fits, we should get it back to being correctly fitted
+    refit!(fm1)
 end
 
 @testset "Dyestuff2" begin
@@ -127,7 +134,7 @@ end
     @test coef(fm) ≈ [5.6656]
     @test logdet(fm) ≈ 0.0
     @test issingular(fm)
-    refit!(fm, float(MixedModels.dataset(:dyestuff)[!, :yield]))
+    refit!(fm, float(MixedModels.dataset(:dyestuff)[:yield]))
     @test objective(fm) ≈ 327.3270598811428 atol=0.001
 end
 
@@ -333,7 +340,7 @@ end
     @test logdet(fm_ind) ≈ logdet(fmnc)
 
     # combining [ReMat{T,S1}, ReMat{T,S2}] for S1 ≠ S2
-    slpcat = categorical!(deepcopy(slp), [:days])
+    slpcat = categorical!(DataFrame(slp), [:days])
     fm_cat = fit(MixedModel, @formula(reaction ~ 1+days+(1|subj)+(0+days|subj)),slpcat)
     @test fm_cat isa LinearMixedModel
     σρ = fm_cat.σρs
@@ -391,6 +398,7 @@ end
 end
 
 @testset "kb07" begin
+    global io
     pca = last(models(:kb07)).PCA
     @test keys(pca) == (:subj, :item)
     show(io, models(:kb07)[2])

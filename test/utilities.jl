@@ -51,8 +51,11 @@ end
 
 @testset "datasets" begin
 	@test isa(MixedModels.datasets(), Vector{String})
-	@test size(MixedModels.dataset(:dyestuff)) == (30, 2)
-	@test size(MixedModels.dataset("dyestuff")) == (30, 2)
+	@test length(MixedModels.dataset(:dyestuff)) == 2
+	@test length(MixedModels.dataset("dyestuff")) == 2
+	dyestuff = MixedModels.dataset(:dyestuff);
+	@test keys(dyestuff) == [:batch, :yield]
+	@test length(dyestuff.batch) == 30
 	@test_throws ArgumentError MixedModels.dataset(:foo)
 end
 

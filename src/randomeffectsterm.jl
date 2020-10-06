@@ -1,4 +1,6 @@
-struct RandomEffectsTerm <: AbstractTerm
+abstract type AbstractReTerm <: AbstractTerm end
+
+struct RandomEffectsTerm <: AbstractReTerm
     lhs::StatsModels.TermOrTerms
     rhs::StatsModels.TermOrTerms
     function RandomEffectsTerm(lhs, rhs)
@@ -155,7 +157,7 @@ end
 
 
 # specify zero correlation
-struct ZeroCorr <: AbstractTerm
+struct ZeroCorr <: AbstractReTerm
     term::RandomEffectsTerm
 end
 StatsModels.is_matrix_term(::Type{ZeroCorr}) = false
