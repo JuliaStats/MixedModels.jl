@@ -142,7 +142,7 @@ cacheddatasets = Dict{String, Arrow.Table}()
 """
     dataset(nm)
 
-Return the data frame of test data set named `nm`, which can be a `String` or `Symbol`
+Return, as an `Arrow.Table`, the test data set named `nm`, which can be a `String` or `Symbol`
 """
 function dataset(nm::AbstractString)
     get!(cacheddatasets, nm) do
