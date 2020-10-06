@@ -8,8 +8,9 @@ LinearMixedModel
 
 ## Examples of linear mixed-effects model fits
 
-For illustration, several data sets from the *lme4* package for *R* are made available in `.feather` format in this package.
-These include the `Dyestuff` and `Dyestuff2` data sets.
+For illustration, several data sets from the *lme4* package for *R* are made available in `.arrow` format in this package.
+Often, for convenience, we will convert these to `DataFrame`s.
+These data sets include the `dyestuff` and `dyestuff2` data sets.
 
 ```@docs
 MixedModels.dataset
@@ -20,9 +21,9 @@ using Test
 ```
 
 ```@example Main
-using MixedModels
+using DataFrames, MixedModels
 using StatsBase: describe
-dyestuff = MixedModels.dataset(:dyestuff)
+dyestuff = DataFrame(MixedModels.dataset(:dyestuff))
 describe(dyestuff)
 ```
 
@@ -67,6 +68,18 @@ fm1reml = fit(MixedModel, fm, dyestuff, REML=true)
     @test VarCorr(fm1reml).σρ.batch.σ[1] ≈ 42.000602
 end
 ```
+### Float-point type in the model
+
+The type of `fm1`
+```@example Main
+typeof(fm1)
+```
+includes the floating point type used internally for the various matrices, vectors, etc. that represent the model.
+At present, this will always be `Float64` because the parameter estimates are optimized using the [`NLopt` package](https://github.com/JuliaOpt/NLopt.jl) which calls compiled C code that only allows for optimization with respect to a `Float64` parameter vector.
+
+So in theory other floating point types, such as `BigFloat` or `Float32`, can be used to define a model but in practice only `Float64` works at present.
+
+> In theory, theory and practice are the same.  In practice, they aren't.  -- Anon
 
 ### Simple, scalar random effects
 
@@ -116,16 +129,16 @@ end
 In contrast the `sample` grouping factor is *nested* within the `batch` grouping factor in the *Pastes* data.
 That is, each level of `sample` occurs in conjunction with only one level of `batch`.
 ```@example Main
-pastes = MixedModels.dataset(:pastes)
+pastes = DataFrame(MixedModels.dataset(:pastes))
 describe(pastes)
 ```
 ```@example Main
 fm4 = fit(MixedModel, @formula(strength ~ 1 + (1|sample) + (1|batch)), pastes)
 ```
 
-An alternative syntax with a solidus (the "`/`" character) separating grouping factors, read "`cask` nested within `sample`", fits the same model.
+An alternative syntax with a solidus (the "`/`" character) separating grouping factors, read "`cask` nested within `batch`", fits the same model.
 ```@example Main
-fit(MixedModel, @formula(strength ~ 1 + (1|sample/cask)), pastes)
+fit(MixedModel, @formula(strength ~ 1 + (1|batch/cask)), pastes)
 ```
 
 In observational studies it is common to encounter *partially crossed* grouping factors.

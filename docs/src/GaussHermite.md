@@ -95,7 +95,7 @@ Several covariates were recorded including the woman's age (centered at the mean
 The version of the data used here is that used in review of multilevel modeling software conducted by the Center for Multilevel Modelling, currently at University of Bristol (http://www.bristol.ac.uk/cmm/learning/mmsoftware/data-rev.html).
 These data are available as the `Contraception` data frame in the test data for the `MixedModels` package.
 ```@example Main
-contra = MixedModels.dataset(:contra)
+contra = DataFrame(MixedModels.dataset(:contra))
 describe(contra)
 ```
 
