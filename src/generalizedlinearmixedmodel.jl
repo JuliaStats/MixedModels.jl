@@ -53,14 +53,19 @@ struct GeneralizedLinearMixedModel{T<:AbstractFloat} <: MixedModel{T}
     mult::Vector{T}
 end
 
+function StatsBase.coef(m::GeneralizedLinearMixedModel{T}) where {T}
+    piv = first(m.LMM.feterms).piv
+    invpermute!(copyto!(fill(T(-0.0), length(piv)), m.β), piv)
+end
+
 function StatsBase.coeftable(m::GeneralizedLinearMixedModel)
-    co = fixef(m)
+    co = coef(m)
     se = stderror(m)
     z = co ./ se
     pvalue = ccdf.(Chisq(1), abs2.(z))
     CoefTable(
         hcat(co, se, z, pvalue),
-        ["Estimate", "Std.Error", "z value", "P(>|z|)"],
+        ["Coef.", "Std. Error", "z", "Pr(>|z|)"],
         coefnames(m),
         4, # pvalcol
         3, # teststatcol
@@ -105,6 +110,8 @@ function StatsBase.deviance(m::GeneralizedLinearMixedModel{T}, nAGQ = 1) where {
 end
 
 StatsBase.deviance(m::GeneralizedLinearMixedModel) = deviance(m, m.optsum.nAGQ)
+
+fixef(m::GeneralizedLinearMixedModel) = m.β
 
 objective(m::GeneralizedLinearMixedModel) = deviance(m)
 
@@ -242,6 +249,11 @@ function fit!(
     β = m.β
     lm = m.LMM
     optsum = lm.optsum
+
+    if optsum.feval > 0
+        throw(ArgumentError("This model has already been fitted. Use refit!() instead."))
+    end
+
     if !fast
         optsum.lowerbd = vcat(fill!(similar(β), T(-Inf)), optsum.lowerbd)
         optsum.initial = vcat(β, m.θ)
@@ -287,19 +299,6 @@ end
 
 StatsBase.fitted(m::GeneralizedLinearMixedModel) = m.resp.mu
 
-function fixef(m::GeneralizedLinearMixedModel{T}, permuted = true) where {T}
-    permuted && return m.β
-    Xtrm = first(m.LMM.feterms)
-    piv = Xtrm.piv
-    v = fill(-zero(T), size(piv))
-    copyto!(view(v, 1:Xtrm.rank), m.β)
-    invpermute!(v, piv)
-end
-
-function fixefnames(m::GeneralizedLinearMixedModel{T}, permuted = true) where {T}
-    fixefnames(m.LMM, permuted)
-end
-
 GeneralizedLinearMixedModel(
     f::FormulaTerm,
     tbl,
@@ -313,10 +312,9 @@ GeneralizedLinearMixedModel(
     Tables.columntable(tbl),
     d,
     l;
-    wts = [],
-    offset = [],
-    contrasts = Dict{Symbol,Any}(),
-)
+    wts = wts,
+    offset = offset,
+    contrasts = contrasts)
 
 GeneralizedLinearMixedModel(
     f::FormulaTerm,
@@ -342,6 +340,13 @@ function GeneralizedLinearMixedModel(
     end
     (isa(d, Normal) && isa(l, IdentityLink)) &&
     throw(ArgumentError("use LinearMixedModel for Normal distribution with IdentityLink"))
+
+    if !any(isa(d, dist) for dist in (Bernoulli, Binomial, Poisson))
+        @warn """Results for families with a dispersion parameter are not reliable.
+                 It is best to avoid trying to fit such models in MixedModels until
+                 the authors get a better understanding of those cases."""
+    end
+
     LMM = LinearMixedModel(f, tbl, contrasts = contrasts; wts = wts)
     y = copy(LMM.y)
         # the sqrtwts field must be the correct length and type but we don't know those
@@ -351,7 +356,11 @@ function GeneralizedLinearMixedModel(
         LMM = LinearMixedModel(
             LMM.formula,
             LMM.allterms,
+            LMM.reterms,
+            LMM.feterms,
             fill!(similar(y), 1),
+            LMM.parmap,
+            LMM.dims,
             LMM.A,
             LMM.L,
             LMM.optsum,
@@ -399,7 +408,9 @@ function Base.getproperty(m::GeneralizedLinearMixedModel, s::Symbol)
         σs(m)
     elseif s == :σρs
         σρs(m)
-    elseif s ∈ (:A, :L, :λ, :lowerbd, :corr, :PCA, :rePCA, :optsum, :X, :reterms, :feterms, :formula)
+    elseif s ∈ (:A, :L, :optsum, :allterms, :reterms, :feterms, :formula)
+        getfield(m.LMM, s)
+    elseif s ∈ (:λ, :lowerbd, :corr, :PCA, :rePCA, :X,)
         getproperty(m.LMM, s)
     elseif s == :y
         m.resp.y
@@ -440,6 +451,7 @@ Base.propertynames(m::GeneralizedLinearMixedModel, private = false) = (
     :theta,
     :beta,
     :coef,
+    :fixef,
     :λ,
     :lambda,
     :σ,
@@ -521,6 +533,53 @@ function pirls!(
     end
     m
 end
+
+ranef(m::GeneralizedLinearMixedModel; uscale::Bool=false) = ranef(m.LMM, uscale=uscale)
+
+LinearAlgebra.rank(m::GeneralizedLinearMixedModel) = first(m.LMM.feterms).rank
+
+"""
+    refit!(m::GeneralizedLinearMixedModel[, y::Vector];
+          fast::Bool = (length(m.θ) == length(m.optsum.final)),
+          nAGQ::Integer = m.optsum.nAGQ))
+
+Refit the model `m` after installing response `y`.
+
+If `y` is omitted the current response vector is used.
+
+If not specified, the `fast` and `nAGQ` options from the previous fit are used.
+
+"""
+function refit!(m::GeneralizedLinearMixedModel{T};
+                fast::Bool = (length(m.θ) == length(m.optsum.final)),
+                nAGQ::Integer = m.optsum.nAGQ)  where T
+
+    deviance!(m, 1)
+    reevaluateAend!(m.LMM)
+
+    reterms = m.LMM.reterms
+    optsum = m.LMM.optsum
+    # we need to reset optsum so that it
+    # plays nice with the modifications fit!() does
+    optsum.lowerbd = mapfoldl(lowerbd, vcat, reterms)
+    optsum.initial = mapfoldl(getθ, vcat, reterms)
+    optsum.final = copy(optsum.initial)
+    optsum.xtol_abs = fill!(copy(optsum.initial), 1.0e-10)
+    optsum.initial_step = T[]
+    optsum.feval = -1
+
+    fit!(m; fast=fast, nAGQ=nAGQ)
+end
+
+function refit!(m::GeneralizedLinearMixedModel{T}, y;
+                fast::Bool = (length(m.θ) == length(m.optsum.final)),
+                nAGQ::Integer = m.optsum.nAGQ) where T
+    m_resp_y = m.resp.y
+    length(y) == size(m_resp_y, 1) || throw(DimensionMismatch(""))
+    copyto!(m_resp_y, y)
+    refit!(m)
+end
+
 
 """
     setβθ!(m::GeneralizedLinearMixedModel, v)
@@ -606,6 +665,7 @@ varest(m::GeneralizedLinearMixedModel{T}) where {T} = dispersion_parameter(m) ? 
 for f in (
     :feL,
     :fetrm,
+    :fixefnames,
     :(LinearAlgebra.logdet),
     :lowerbd,
     :PCA,

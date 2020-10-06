@@ -198,11 +198,11 @@ fm2.optsum
 
 A `LinearMixedModel` object contains two blocked matrices; a symmetric matrix `A` (only the lower triangle is stored) and a lower-triangular `L` which is the lower Cholesky factor of the updated and inflated `A`.
 ```@docs
-describeblocks
+BlockDescription
 ```
 shows the structure of the blocks
 ```@example Main
-describeblocks(fm2)
+BlockDescription(fm2)
 ```
 
 The operation of installing a new value of the variance parameters, `θ`, and updating `L`

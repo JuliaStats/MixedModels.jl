@@ -6,6 +6,22 @@ Return a vector of condition numbers of the λ matrices for the random-effects t
 """
 LinearAlgebra.cond(m::MixedModel) = cond.(m.λ)
 
+function retbl(mat, trm)
+    merge(
+        NamedTuple{(fname(trm),)}((trm.levels,)),
+        columntable(Tables.table(transpose(mat), header=Symbol.(trm.cnames))),
+        )
+end
+
+"""
+    raneftables(m::LinearMixedModel; uscale = false)
+
+Return the conditional means of the random effects as a NamedTuple of columntables
+"""
+function raneftables(m::MixedModel{T}; uscale = false) where {T}
+    NamedTuple{fnames(m)}((map(retbl, ranef(m, uscale=uscale), m.reterms)...,))
+end
+
 function σs(m::MixedModel)
     σ = dispersion(m)
     NamedTuple{fnames(m)}(((σs(t, σ) for t in m.reterms)...,))
@@ -17,13 +33,13 @@ function σρs(m::MixedModel)
 end
 
 """
-    vcov(m::LinearMixedModel)
+    vcov(m::MixedModel; corr=false)
 
 Returns the variance-covariance matrix of the fixed effects.
 If `corr=true`, then correlation of fixed effects is returned instead.
 """
 function StatsBase.vcov(m::MixedModel; corr=false)
-    Xtrm = fetrm(m)
+    Xtrm = first(m isa GeneralizedLinearMixedModel ? m.LMM.feterms : m.feterms)
     iperm = invperm(Xtrm.piv)
     p = length(iperm)
     r = Xtrm.rank

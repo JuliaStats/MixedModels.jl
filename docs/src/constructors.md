@@ -1,28 +1,29 @@
 # Model constructors
 
 The `LinearMixedModel` type represents a linear mixed-effects model.
-Typically it is constructed from a `Formula` and an appropriate `data` type, usually a `DataFrame`.
+Typically it is constructed from a `Formula` and an appropriate `Table` type, usually a `DataFrame`.
 ```@docs
 LinearMixedModel
 ```
 
 ## Examples of linear mixed-effects model fits
 
-For illustration, several data sets from the *lme4* package for *R* are made available in `.feather` format in this package.
-These include the `Dyestuff` and `Dyestuff2` data sets.
+For illustration, several data sets from the *lme4* package for *R* are made available in `.arrow` format in this package.
+Often, for convenience, we will convert these to `DataFrame`s.
+These data sets include the `dyestuff` and `dyestuff2` data sets.
 
 ```@docs
 MixedModels.dataset
 ```
 
-```@example Main
+```@setup Main
 using Test
 ```
 
 ```@example Main
-using MixedModels
+using DataFrames, MixedModels
 using StatsBase: describe
-dyestuff = MixedModels.dataset(:dyestuff)
+dyestuff = DataFrame(MixedModels.dataset(:dyestuff))
 describe(dyestuff)
 ```
 
@@ -56,7 +57,7 @@ dyestuff2 = MixedModels.dataset(:dyestuff2)
 @benchmark fit(MixedModel, $fm, $dyestuff2)
 ```
 
-By default, the model fit is by maximum likelihood. To use the `REML` criterion instead, add the optional named argument `REML=true` to the call to `fit`
+By default, the model is fit by maximum likelihood. To use the `REML` criterion instead, add the optional named argument `REML=true` to the call to `fit`
 ```@example Main
 fm1reml = fit(MixedModel, fm, dyestuff, REML=true)
 ```
@@ -67,6 +68,18 @@ fm1reml = fit(MixedModel, fm, dyestuff, REML=true)
     @test VarCorr(fm1reml).σρ.batch.σ[1] ≈ 42.000602
 end
 ```
+### Float-point type in the model
+
+The type of `fm1`
+```@example Main
+typeof(fm1)
+```
+includes the floating point type used internally for the various matrices, vectors, etc. that represent the model.
+At present, this will always be `Float64` because the parameter estimates are optimized using the [`NLopt` package](https://github.com/JuliaOpt/NLopt.jl) which calls compiled C code that only allows for optimization with respect to a `Float64` parameter vector.
+
+So in theory other floating point types, such as `BigFloat` or `Float32`, can be used to define a model but in practice only `Float64` works at present.
+
+> In theory, theory and practice are the same.  In practice, they aren't.  -- Anon
 
 ### Simple, scalar random effects
 
@@ -116,11 +129,16 @@ end
 In contrast the `sample` grouping factor is *nested* within the `batch` grouping factor in the *Pastes* data.
 That is, each level of `sample` occurs in conjunction with only one level of `batch`.
 ```@example Main
-pastes = MixedModels.dataset(:pastes)
+pastes = DataFrame(MixedModels.dataset(:pastes))
 describe(pastes)
 ```
 ```@example Main
 fm4 = fit(MixedModel, @formula(strength ~ 1 + (1|sample) + (1|batch)), pastes)
+```
+
+An alternative syntax with a solidus (the "`/`" character) separating grouping factors, read "`cask` nested within `batch`", fits the same model.
+```@example Main
+fit(MixedModel, @formula(strength ~ 1 + (1|batch/cask)), pastes)
 ```
 
 In observational studies it is common to encounter *partially crossed* grouping factors.
@@ -133,7 +151,7 @@ fm5 = fit(MixedModel, @formula(y ~ 1 + service * dept + (1|s) + (1|d)), insteval
 ```@setup Main
 @testset "fm5" begin
     @test deviance(fm5) ≈ 2.37585553e5
-    @test varest(fm5) ≈ 1.38472777
+    @test varest(fm5) ≈ 1.38472777 atol = 1e-6
     @test VarCorr(fm5).σρ.s.σ[1] ≈ 0.32468136 rtol = 6
     @test VarCorr(fm5).σρ.d.σ[1] ≈ 0.50834669 rtol = 6
 end
@@ -150,7 +168,7 @@ A model with uncorrelated random effects for the intercept and slope by subject 
 ```@example Main
 fm2zerocorr = fit!(zerocorr!(LinearMixedModel(@formula(reaction ~ 1 + days + (1 + days|subj)), sleepstudy)))
 ```
-```@example Main
+```@setup Main
 @testset "ZeroCorr deepcopy" begin
     fm2zerocorr_alt = fit!(zerocorr!(deepcopy(fm2)))
     @test deviance(fm2zerocorr) ≈ deviance(fm2zerocorr_alt) rtol = 6
@@ -194,11 +212,28 @@ fit(MixedModel, @formula(reaction ~ 1 + days + (1|subj) + (0 + days|subj)), slee
     contrasts = Dict(:days => DummyCoding()))
 ```
 
+An alternative is to force all the levels of `days` as indicators using `fulldummy` encoding.
+```@docs
+fulldummy
+```
+```@example Main
+fit(MixedModel, @formula(reaction ~ 1 + days + (1 + fulldummy(days)|subj)), sleepstudy,
+    contrasts = Dict(:days => DummyCoding()))
+```
+This fit produces a better fit as measured by the objective (negative twice the log-likelihood is 1610.8) but at the expense of adding many more parameters to the model.
+As a result, model comparison criteria such, as `AIC` and `BIC`, are inflated.
+
 But using `zerocorr` on the individual terms (or `zerocorr!` on the constructed model object as above) does remove the correlations between the levels:
 ```@example Main
 fit(MixedModel, @formula(reaction ~ 1 + days + zerocorr(1 + days|subj)), sleepstudy,
     contrasts = Dict(:days => DummyCoding()))
+```
+```@example Main
 fit(MixedModel, @formula(reaction ~ 1 + days + (1|subj) + zerocorr(0 + days|subj)), sleepstudy,
+    contrasts = Dict(:days => DummyCoding()))
+```
+```@example Main
+fit(MixedModel, @formula(reaction ~ 1 + days + zerocorr(1 + fulldummy(days)|subj)), sleepstudy,
     contrasts = Dict(:days => DummyCoding()))
 ```
 
@@ -317,15 +352,21 @@ MixedModels.deviance!(gm1)
 ## Fixed-effects parameter estimates
 
 The `coef` and `fixef` extractors both return the maximum likelihood estimates of the fixed-effects coefficients.
+They differ in their behavior in the rank-deficient case.
+The associated `coefnames` and `fixefnames` return the corresponding coefficient names.
 ```@docs
 coef
+coefnames
 fixef
+fixefnames
 ```
 ```@example Main
 coef(fm1)
+coefnames(fm1)
 ```
 ```@example Main
 fixef(fm1)
+fixefnames
 ```
 
 An alternative extractor for the fixed-effects coefficient is the `β` property.
@@ -445,7 +486,7 @@ leverage(fm1)
 ```
 are used in diagnostics for linear regression models to determine cases that exert a strong influence on their own predicted response.
 
-The documentation refers to a "projection". 
+The documentation refers to a "projection".
 For a linear model without random effects the fitted values are obtained by orthogonal projection of the response onto the column span of the model matrix and the sum of the leverage values is the dimension of this column span.
 That is, the sum of the leverage values is the rank of the model matrix and `n - sum(leverage(m))` is the degrees of freedom for residuals.
 The sum of the leverage values is also the trace of the so-called "hat" matrix, `H`.

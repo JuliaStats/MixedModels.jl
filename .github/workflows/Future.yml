@@ -27,3 +27,4 @@ jobs:
       - uses: julia-actions/julia-runtest@v0.1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # OPENBLAS_CORETYPE: haswell

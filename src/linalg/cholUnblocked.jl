@@ -32,8 +32,9 @@ function cholUnblocked!(A::StridedMatrix{T}, ::Type{Val{:L}}) where {T<:BlasFloa
 end
 
 function cholUnblocked!(D::UniformBlockDiagonal, ::Type{Val{:L}})
-    for f in D.facevec
-        cholUnblocked!(f, Val{:L})
+    Ddat = D.data
+    for k in axes(Ddat, 3)
+        cholUnblocked!(view(Ddat, :, :, k), Val{:L})
     end
     D
 end

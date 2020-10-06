@@ -1,18 +1,16 @@
 module MixedModels
 
+using Arrow
 using BlockArrays
-using BlockDiagonals
+using DataAPI
 using Distributions
-using Feather
 using GLM
 using LinearAlgebra
-using NamedArrays
 using NLopt
 using Random
 using Pkg.Artifacts
 using PooledArrays
 using ProgressMeter
-using Showoff
 using SparseArrays
 using StaticArrays
 using Statistics
@@ -24,14 +22,16 @@ using LinearAlgebra: BlasFloat, BlasReal, HermOrSym, PosDefException, copytri!
 using Base: Ryu
 using GLM: Link, canonicallink
 
-using StatsFuns: log2π
+using StatsFuns: log2π, normccdf
 
 import Base: *
+import DataAPI: levels, refpool, refarray, refvalue
 import GLM: dispersion, dispersion_parameter
 import NLopt: Opt
 import StatsBase: fit, fit!
 
 export @formula,
+       AbstractReMat,
        Bernoulli,
        Binomial,
        Block,
@@ -39,9 +39,11 @@ export @formula,
        BlockedSparse,
        DummyCoding,
        EffectsCoding,
+       Grouping,
        Gamma,
        GeneralizedLinearMixedModel,
        HelmertCoding,
+       HypothesisCoding,
        IdentityLink,
        InverseGaussian,
        InverseLink,
@@ -57,15 +59,17 @@ export @formula,
        RaggedArray,
        RandomEffectsTerm,
        ReMat,
+       SeqDiffCoding,
        SqrtLink,
        UniformBlockDiagonal,
        VarCorr,
-       
+
        aic,
        aicc,
        bic,
        coef,
        coefnames,
+       coefpvalues,
        coeftable,
        cond,
        condVar,
@@ -85,6 +89,7 @@ export @formula,
        GHnorm,
        issingular,
        leverage,
+       levels,
        logdet,
        loglikelihood,
        lowerbd,
@@ -95,8 +100,12 @@ export @formula,
        predict,
        pwrss,
        ranef,
+       raneftables,
        rank,
+       refarray,
        refit!,
+       refpool,
+       refvalue,
        replicate,
        residuals,
        response,
@@ -105,7 +114,6 @@ export @formula,
        setθ!,
        simulate!,
        sparse,
-       statscholesky,
        std,
        stderror,
        updateL!,
@@ -142,13 +150,14 @@ include("varcorr.jl")
 include("femat.jl")
 include("remat.jl")
 include("optsummary.jl")
+include("schema.jl")
 include("randomeffectsterm.jl")
 include("linearmixedmodel.jl")
 include("gausshermite.jl")
 include("generalizedlinearmixedmodel.jl")
 include("mixedmodel.jl")
 include("likelihoodratiotest.jl")
-include("linalg/statschol.jl")
+include("linalg/pivot.jl")
 include("linalg/cholUnblocked.jl")
 include("linalg/rankUpdate.jl")
 include("linalg/logdet.jl")
@@ -156,5 +165,6 @@ include("linalg.jl")
 include("simulate.jl")
 include("bootstrap.jl")
 include("blockdescription.jl")
+include("grouping.jl")
 
 end # module

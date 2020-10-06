@@ -13,6 +13,7 @@ Pages = [
         "optimization.md",
         "GaussHermite.md",
         "bootstrap.md",
+        "rankdeficiency.md",
 ]
 Depth = 2
 ```

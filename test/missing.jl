@@ -1,8 +1,10 @@
-using MixedModels, Test
+using DataFrames
+using MixedModels
+using Test
 
-# deepcopy because we're going to modify it
-slp = deepcopy(MixedModels.dataset(:sleepstudy))
-slp[!,:days] = Array{Union{Missing, Float64},1}(slp[!,:days])
+# convert to DataFrame to modify it
+slp = DataFrame(MixedModels.dataset(:sleepstudy))
+allowmissing!(slp, :days)
 slp[1,:days] = missing
 
 # TODO: re-enable this test when better missing support has landed in StatsModels

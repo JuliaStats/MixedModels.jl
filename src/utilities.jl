@@ -4,7 +4,8 @@
 Return the equality of all elements of the array
 """
 function allequal(x::Array; comparison=isequal)::Bool
-    all(comparison.(first(x),  x))
+    # the ref is necessary in case the elements of x are themselves arrays
+    all(comparison.(x,  Ref(first(x))))
 end
 
 allequal(x::Vector{Bool})::Bool = !any(x) || all(x)
@@ -12,11 +13,11 @@ allequal(x::Vector{Bool})::Bool = !any(x) || all(x)
 allequal(x::NTuple{N,Bool}) where {N} = !any(x) || all(x)
 
 function allequal(x::Tuple; comparison=isequal)::Bool
-    all(comparison.(first(x),  x))
+    all(comparison.(x,  Ref(first(x))))
 end
 
 function allequal(x...; comparison=isequal)::Bool
-    all(comparison.(first(x),  x))
+    all(comparison.(x,  Ref(first(x))))
 end
 
 """
@@ -34,12 +35,12 @@ Return a string of length `n` containing `s` in the center (more-or-less).
 cpad(s::String, n::Integer) = rpad(lpad(s, (n + textwidth(s)) >> 1), n)
 
 """
-densify(S::SparseMatrix, threshold=0.25)
+densify(S::SparseMatrix, threshold=0.1)
 
 Convert sparse `S` to `Diagonal` if `S` is diagonal or to `Array(S)` if
 the proportion of nonzeros exceeds `threshold`.
 """
-function densify(A::SparseMatrixCSC, threshold::Real = 0.25)
+function densify(A::SparseMatrixCSC, threshold::Real = 0.1)
     m, n = size(A)
     if m == n && isdiag(A)  # convert diagonal sparse to Diagonal
         # the diagonal is always dense (otherwise rank deficit)
@@ -51,10 +52,10 @@ function densify(A::SparseMatrixCSC, threshold::Real = 0.25)
         Array(A)
     end
 end
-densify(A::AbstractMatrix, threshold::Real = 0.3) = A
+densify(A::AbstractMatrix, threshold::Real = 0.1) = A
 
-densify(A::SparseVector, threshold::Real = 0.3) = Vector(A)
-densify(A::Diagonal{T,SparseVector{T,Ti}}, threshold::Real = 0.3) where {T,Ti} =
+densify(A::SparseVector, threshold::Real = 0.1) = Vector(A)
+densify(A::Diagonal{T,SparseVector{T,Ti}}, threshold::Real = 0.1) where {T,Ti} =
     Diagonal(Vector(A.diag))
 
 """
@@ -137,20 +138,20 @@ function replicate(f::Function, n::Integer; use_threads=false)
     results
 end
 
-cacheddatasets = Dict{String,Any}()
+cacheddatasets = Dict{String, Arrow.Table}()
 """
     dataset(nm)
 
-Return the data frame of test data set named `nm`, which can be a `String` or `Symbol`
+Return, as an `Arrow.Table`, the test data set named `nm`, which can be a `String` or `Symbol`
 """
 function dataset(nm::AbstractString)
     get!(cacheddatasets, nm) do
-        path = joinpath(TestData, nm * ".feather")
+        path = joinpath(TestData, nm * ".arrow")
         if !isfile(path)
             throw(ArgumentError(
                 "Dataset \"$nm\" is not available.\nUse MixedModels.datasets() for available names."))
         end
-        Feather.read(path)
+        Arrow.Table(path)
     end
 end
 dataset(nm::Symbol) = dataset(string(nm))
@@ -160,7 +161,7 @@ dataset(nm::Symbol) = dataset(string(nm))
 
 Return a vector of names of the available test data sets
 """
-datasets() = first.(Base.Filesystem.splitext.(filter(Base.Fix2(endswith, ".feather"), readdir(TestData))))
+datasets() = first.(Base.Filesystem.splitext.(filter(endswith(".arrow"), readdir(TestData))))
 
 
 """
@@ -172,11 +173,13 @@ Principal Components Analysis
 
 * `covcorr` covariance or correlation matrix
 * `sv` singular value decomposition
-* `corr` is this a correlation matrix
+* `rnames` rownames of the original matrix
+* `corr` is this a correlation matrix?
 """
 struct PCA{T<:AbstractFloat}
     covcor::Symmetric{T,Matrix{T}}
     sv::SVD{T,T,Matrix{T}}
+    rnames::Union{Vector{String}, Missing}
     corr::Bool
 end
 
@@ -192,9 +195,9 @@ For `LinearMixedModel`, a named tuple of PCA on each of the random-effects terms
 If `corr=true`, then the covariance is first standardized to the correlation scale.
 """
 
-function PCA(covfac::AbstractMatrix; corr::Bool=true)
+function PCA(covfac::AbstractMatrix, rnames=missing; corr::Bool=true)
     covf = corr ? rownormalize!(copy(covfac)) : copy(covfac)
-    PCA(Symmetric(covf*covf', :L), svd(covf), corr)
+    PCA(Symmetric(covf*covf', :L), svd(covf), rnames, corr)
 end
 
 function Base.getproperty(pca::PCA, s::Symbol)
@@ -239,27 +242,58 @@ function Base.show(io::IO, pca::PCA;
                 pca.corr ? "correlation" : "(relative) covariance",
                 " matrix")
         # only display the lower triangle of symmetric matrix
-        Base.print_matrix(io, round.(LowerTriangular(pca.covcor), digits=ndigitsmat))
+        if pca.rnames !== missing
+            n = length(pca.rnames)
+            cv = string.(round.(pca.covcor, digits=ndigitsmat))
+            dotpad = lpad(".", div(maximum(length, cv),2))
+            for i = 1:n, j = (i+1):n
+                cv[i, j] = dotpad
+            end
+            neg = startswith.(cv, "-")
+            if any(neg)
+                cv[.!neg] .= " ".* cv[.!neg]
+            end
+            # this hurts type stability, 
+            # but this show method shouldn't be a bottleneck
+            printmat = Text.([pca.rnames cv])
+        else
+            # if there are no names, then we cheat and use the print method
+            # for LowerTriangular, which automatically covers the . in the 
+            # upper triangle
+            printmat = round.(LowerTriangular(pca.covcor), digits=ndigitsmat)
+        end
+        
+        Base.print_matrix(io, printmat)
         println(io)
     end
     if stddevs
-        println(io, "Standard deviations:")
+        println(io, "\nStandard deviations:")
         sv = pca.sv
         show(io, round.(sv.S, digits=ndigitsvec))
         println(io)
     end
     if variances
-        println(io, "Variances:")
+        println(io, "\nVariances:")
         vv = abs2.(sv.S)
         show(io, round.(vv, digits=ndigitsvec))
         println(io)
     end
-    println(io, "Normalized cumulative variances:")
+    println(io, "\nNormalized cumulative variances:")
     show(io, round.(pca.cumvar, digits=ndigitscum))
     println(io)
     if loadings
-        println(io, "Component loadings")
-        Base.print_matrix(io, round.(pca.loadings, digits=ndigitsmat))
+        println(io, "\nComponent loadings")
+        printmat = round.(pca.loadings, digits=ndigitsmat)
+        
+        if pca.rnames !== missing 
+            pclabs = [Text(""); Text.( "PC$i" for i in 1:length(pca.rnames))]
+            pclabs = reshape(pclabs, 1, :)
+            # this hurts type stability, 
+            # but this show method shouldn't be a bottleneck
+            printmat = [pclabs; Text.(pca.rnames) printmat]
+        end
+            
+        Base.print_matrix(io, printmat)
     end
 
     nothing
