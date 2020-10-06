@@ -151,27 +151,6 @@ So, for the model of the *sleepstudy* data above, one of the parameters that is 
 In some cases, you may wish to simplify the random effects structure by removing these correlation parameters.
 This often arises when there are many random effects you want to estimate (as is common in psychological experiments with many conditions and covariates), since the number of random effects parameters increases as the square of the number of predictors, making these models difficult to estimate from limited data.
 
-A model with uncorrelated random effects for the intercept and slope by subject is fit as
-```@example Main
-fm2zerocorr = fit!(zerocorr!(LinearMixedModel(@formula(reaction ~ 1 + days + (1 + days|subj)), sleepstudy)))
-```
-```@setup Main
-@testset "ZeroCorr deepcopy" begin
-    fm2zerocorr_alt = fit!(zerocorr!(deepcopy(fm2)))
-    @test deviance(fm2zerocorr) ≈ deviance(fm2zerocorr_alt) rtol = 6
-    @test varest(fm2zerocorr) ≈ varest(fm2zerocorr_alt) rtol = 6
-    @test collect(VarCorr(fm2zerocorr).σρ.subj.σ) ≈ collect(VarCorr(fm2zerocorr_alt).σρ.subj.σ) rtol = 6
-    @test collect(VarCorr(fm2zerocorr).σρ.subj.ρ) ≈ collect(VarCorr(fm2zerocorr_alt).σρ.subj.ρ) rtol = 2
-    @test collect(VarCorr(fm2zerocorr).s) ≈ collect(VarCorr(fm2zerocorr_alt).s) rtol = 6
-end
-```
-
-Note that the use of `zerocorr!` requires the model to be constructed, then altered to eliminate
-the correlation of the random effects, then fit with a call to the mutating function, `fit!`.
-```@docs
-zerocorr!
-```
-
 The special syntax `zerocorr` can be applied to individual random effects terms inside the `@formula`:
 ```@example Main
 fm2zerocorr_fm = fit(MixedModel, @formula(reaction ~ 1 + days + zerocorr(1 + days|subj)), sleepstudy)
@@ -182,9 +161,8 @@ fm2zerocorr_fm = fit(MixedModel, @formula(reaction ~ 1 + days + zerocorr(1 + day
 
 Alternatively, correlations between parameters can be removed by including them as separate random effects terms:
 ```@example Main
-fit(MixedModel, @formula(reaction ~ 1 + days + (1|subj) + (0 + days|subj)), sleepstudy)
+fit(MixedModel, @formula(reaction ~ 1 + days + (1|subj) + (days|subj)), sleepstudy)
 ```
-Note that it **is** necessary to explicitly block the inclusion of an intercept term by adding `0` in the random-effects term `(0+days|subj)`.
 
 Finally, for predictors that are categorical, MixedModels.jl will estimate correlations between each level.
 Notice the large number of correlation parameters if we treat `days` as a categorical variable by giving it contrasts:
@@ -195,7 +173,7 @@ fit(MixedModel, @formula(reaction ~ 1 + days + (1 + days|subj)), sleepstudy,
 
 Separating the `1` and `days` random effects into separate terms removes the correlations between the intercept and the levels of `days`, but not between the levels themselves:
 ```@example Main
-fit(MixedModel, @formula(reaction ~ 1 + days + (1|subj) + (0 + days|subj)), sleepstudy,
+fit(MixedModel, @formula(reaction ~ 1 + days + (1|subj) + (days|subj)), sleepstudy,
     contrasts = Dict(:days => DummyCoding()))
 ```
 
@@ -210,13 +188,13 @@ fit(MixedModel, @formula(reaction ~ 1 + days + (1 + fulldummy(days)|subj)), slee
 This fit produces a better fit as measured by the objective (negative twice the log-likelihood is 1610.8) but at the expense of adding many more parameters to the model.
 As a result, model comparison criteria such, as `AIC` and `BIC`, are inflated.
 
-But using `zerocorr` on the individual terms (or `zerocorr!` on the constructed model object as above) does remove the correlations between the levels:
+But using `zerocorr` on the individual terms does remove the correlations between the levels:
 ```@example Main
 fit(MixedModel, @formula(reaction ~ 1 + days + zerocorr(1 + days|subj)), sleepstudy,
     contrasts = Dict(:days => DummyCoding()))
 ```
 ```@example Main
-fit(MixedModel, @formula(reaction ~ 1 + days + (1|subj) + zerocorr(0 + days|subj)), sleepstudy,
+fit(MixedModel, @formula(reaction ~ 1 + days + (1|subj) + zerocorr(days|subj)), sleepstudy,
     contrasts = Dict(:days => DummyCoding()))
 ```
 ```@example Main
