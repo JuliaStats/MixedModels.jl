@@ -24,6 +24,9 @@ include("modelcache.jl")
     @test fm1.optsum.initial == ones(1)
     fm1.θ = ones(1)
     @test fm1.θ == ones(1)
+    
+    @test_throws ArgumentError fit!(fm1)
+    
     fm1.optsum.feval = -1
     @test_logs (:warn, "Model has not been fit") show(fm1)
 
@@ -35,7 +38,8 @@ include("modelcache.jl")
     output = String(take!(io))
     @test startswith(output, "rows:")
 
-    fit!(fm1);
+    refit!(fm1)
+
     @test :θ in propertynames(fm1)
     @test objective(fm1) ≈ 327.3270598811428 atol=0.001
     @test fm1.θ ≈ [0.752580] atol=1.e-5
@@ -97,7 +101,7 @@ include("modelcache.jl")
     @test startswith(str, "Variance components:")
     @test vc.s == sdest(fm1)
 
-    fit!(fm1, REML=true)
+    refit!(fm1, REML=true)
     @test objective(fm1) ≈ 319.65427684225216 atol=0.0001
     @test_throws ArgumentError loglikelihood(fm1)
     @test dof_residual(fm1) ≥ 0
@@ -106,12 +110,15 @@ include("modelcache.jl")
     @test startswith(String(take!(io)), "Linear mixed model fit by REML")
 
     fm1.optsum.maxfeval = 5
+    fm1.optsum.feval = -1
     @test_logs (:warn, "NLopt optimization failure: MAXEVAL_REACHED") fit!(fm1)
     fm1.optsum.maxfeval = -1
 
     vc = fm1.vcov
     @test isa(vc, Matrix{Float64})
     @test only(vc) ≈ 409.79495436473167 rtol=1.e-6
+    # since we're caching the fits, we should get it back to being correctly fitted
+    refit!(fm1)
 end
 
 @testset "Dyestuff2" begin

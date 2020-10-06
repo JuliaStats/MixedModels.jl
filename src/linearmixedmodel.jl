@@ -309,6 +309,10 @@ objective and the parameters are printed on stdout at each function evaluation.
 """
 function fit!(m::LinearMixedModel{T}; verbose::Bool = false, REML::Bool = false) where {T}
     optsum = m.optsum
+    # this doesn't matter for LMM, but it does for GLMM, so let's be consistent
+    if optsum.feval > 0
+        throw(ArgumentError("This model has already been fitted. Use refit!() instead."))
+    end
     opt = Opt(optsum)
     optsum.REML = REML
     function obj(x, g)
@@ -698,19 +702,22 @@ function reevaluateAend!(m::LinearMixedModel)
 end
 
 """
-    refit!(m::LinearMixedModel[, y::Vector])
+    refit!(m::LinearMixedModel[, y::Vector]; REML=m.optsum.REML)
 
 Refit the model `m` after installing response `y`.
 
 If `y` is omitted the current response vector is used.
 """
-refit!(m::LinearMixedModel) = fit!(reevaluateAend!(m))
+function refit!(m::LinearMixedModel; REML=m.optsum.REML)
+    m.optsum.feval = -1
+    fit!(reevaluateAend!(m); REML=REML)
+end
 
-function refit!(m::LinearMixedModel, y)
+function refit!(m::LinearMixedModel, y; REML=m.optsum.REML)
     resp = last(m.feterms)
     length(y) == size(resp, 1) || throw(DimensionMismatch(""))
     copyto!(resp, y)
-    refit!(m)
+    refit!(m; REML=REML)
 end
 
 StatsBase.residuals(m::LinearMixedModel) = response(m) .- fitted(m)
@@ -956,8 +963,8 @@ function zerocorr!(m::LinearMixedModel{T}, trmns) where {T}
     copyto!(m.parmap, newparmap)
     resize!(m.parmap, length(newparmap))
     optsum = m.optsum
-    optsum.lowerbd = foldl(vcat, lowerbd(c) for c in reterms)
-    optsum.initial = foldl(vcat, getθ(c) for c in reterms)
+    optsum.lowerbd = mapfoldl(lowerbd, vcat, reterms)
+    optsum.initial = mapfoldl(getθ, vcat, reterms)
     optsum.final = copy(optsum.initial)
     optsum.xtol_abs = fill!(copy(optsum.initial), 1.0e-10)
     optsum.initial_step = T[]

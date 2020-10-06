@@ -249,6 +249,11 @@ function fit!(
     β = m.β
     lm = m.LMM
     optsum = lm.optsum
+
+    if optsum.feval > 0
+        throw(ArgumentError("This model has already been fitted. Use refit!() instead."))
+    end
+
     if !fast
         optsum.lowerbd = vcat(fill!(similar(β), T(-Inf)), optsum.lowerbd)
         optsum.initial = vcat(β, m.θ)
@@ -341,8 +346,8 @@ function GeneralizedLinearMixedModel(
     throw(ArgumentError("use LinearMixedModel for Normal distribution with IdentityLink"))
 
     if !any(isa(d, dist) for dist in (Bernoulli, Binomial, Poisson))
-        @warn """Results for families with a dispersion parameter are not reliable. 
-                 It is best to avoid trying to fit such models in MixedModels until 
+        @warn """Results for families with a dispersion parameter are not reliable.
+                 It is best to avoid trying to fit such models in MixedModels until
                  the authors get a better understanding of those cases."""
     end
 
@@ -528,6 +533,49 @@ end
 ranef(m::GeneralizedLinearMixedModel; uscale::Bool=false) = ranef(m.LMM, uscale=uscale)
 
 LinearAlgebra.rank(m::GeneralizedLinearMixedModel) = first(m.LMM.feterms).rank
+
+"""
+    refit!(m::GeneralizedLinearMixedModel[, y::Vector];
+          fast::Bool = (length(m.θ) == length(m.optsum.final)),
+          nAGQ::Integer = m.optsum.nAGQ))
+
+Refit the model `m` after installing response `y`.
+
+If `y` is omitted the current response vector is used.
+
+If not specified, the `fast` and `nAGQ` options from the previous fit are used.
+
+"""
+function refit!(m::GeneralizedLinearMixedModel{T};
+                fast::Bool = (length(m.θ) == length(m.optsum.final)),
+                nAGQ::Integer = m.optsum.nAGQ)  where T
+
+    deviance!(m, 1)
+    reevaluateAend!(m.LMM)
+
+    reterms = m.LMM.reterms
+    optsum = m.LMM.optsum
+    # we need to reset optsum so that it
+    # plays nice with the modifications fit!() does
+    optsum.lowerbd = mapfoldl(lowerbd, vcat, reterms)
+    optsum.initial = mapfoldl(getθ, vcat, reterms)
+    optsum.final = copy(optsum.initial)
+    optsum.xtol_abs = fill!(copy(optsum.initial), 1.0e-10)
+    optsum.initial_step = T[]
+    optsum.feval = -1
+
+    fit!(m; fast=fast, nAGQ=nAGQ)
+end
+
+function refit!(m::GeneralizedLinearMixedModel{T}, y;
+                fast::Bool = (length(m.θ) == length(m.optsum.final)),
+                nAGQ::Integer = m.optsum.nAGQ) where T
+    m_resp_y = m.resp.y
+    length(y) == size(m_resp_y, 1) || throw(DimensionMismatch(""))
+    copyto!(m_resp_y, y)
+    refit!(m)
+end
+
 
 """
     setβθ!(m::GeneralizedLinearMixedModel, v)
