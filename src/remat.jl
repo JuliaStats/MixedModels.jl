@@ -24,7 +24,7 @@ mutable struct ReMat{T,S} <: AbstractReMat{T}
     λ::LowerTriangular{T,Matrix{T}}
     inds::Vector{Int}
     adjA::SparseMatrixCSC{T,Int32}
-    scratch::Matrix{T}
+    scratch::Matrix{T}  # see if we can eliminate this - only used in one method
 end
 
 """
@@ -91,6 +91,23 @@ function adjA(refs::AbstractVector, z::AbstractMatrix)
         II = Int32.(vec([(r - 1)*S + j for j in 1:S, r in refs]))
     end
     sparse(II, J, vec(z))
+end
+
+function converteltype(x::ReMat, T::DataType)
+    z = T.(x.z)
+    S = size(z, 1)
+    ReMat{T,S}(
+        x.trm,
+        x.refs,
+        x.levels,
+        x.cnames,
+        z,
+        z,
+        T.(x.λ),
+        x.inds,
+        adjA(x.refs, z),
+        Matrix{T}(undef, (S, length(x.levels))),
+    )
 end
 
 Base.size(A::ReMat) = (length(A.refs), length(A.scratch))
@@ -251,7 +268,7 @@ end
 
 *(adjA::Adjoint{T,<:ReMat{T}}, B::ReMat{T}) where {T} = adjA.parent.adjA * sparse(B)
 *(adjA::Adjoint{T,<:FeMat{T}}, B::ReMat{T}) where {T} =
-    mul!(Matrix{T}(undef, rank(adjA.parent), size(B, 2)), adjA, B)
+    mul!(zeros(T, rank(adjA.parent), size(B, 2)), adjA, B)  # can't use undef when T == BigFloat
 
 function LinearAlgebra.mul!(C::Matrix{T}, adjA::Adjoint{T,<:FeMat{T}}, B::ReMat{T,1},
         α::Number, β::Number) where {T}
@@ -261,7 +278,7 @@ function LinearAlgebra.mul!(C::Matrix{T}, adjA::Adjoint{T,<:FeMat{T}}, B::ReMat{
     r = A.rank
     m, q = size(B)
     size(C) == (r, q) && m == n || throw(DimensionMismatch())
-    isone(β) || rmul!(C, β)
+    isone(β) || rmul!(C, T(β))
     zz = B.wtz
     @inbounds for (j, rrj) in enumerate(B.refs)
         αzj = α * zz[j]

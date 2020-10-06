@@ -76,11 +76,14 @@ function LinearMixedModel(
     reterms = AbstractReMat{T}[]
     feterms = FeMat{T}[]
     for (i, x) in enumerate(Xs)
-        if isa(x, AbstractReMat{T})
-            push!(reterms, x)
+        if isa(x, AbstractReMat)
+            push!(reterms, eltype(x) ≠ T ? converteltype(x, T) : x)
         else
             cnames = coefnames(form.rhs[i])
-            push!(feterms, FeMat(x, isa(cnames, String) ? [cnames] : collect(cnames)))
+            push!(
+                feterms,
+                FeMat(T.(x), isa(cnames, String) ? [cnames] : collect(cnames)),
+            )
         end
     end
     push!(feterms, FeMat(y, [""]))
