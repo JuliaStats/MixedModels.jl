@@ -52,8 +52,6 @@ Typical distribution forms are _Bernoulli_ for binary data or _Poisson_ for coun
 |Linux|Ubuntu 18.04|x64|v1.4, 1.5|1|
 |macOS|Catalina 10.15|x64|v1.4, 1.5|1|
 |Windows|Server 2019|x64|v1.4, 1.5 |1|
-|Linux|Ubuntu 18.04|x86|  |2|
-|Windows|Server 2019|x86| |2|
 
 Upon release of the next Julia LTS, Tier 1 will become Tier 2 and Julia LTS will become Tier 1.
 
