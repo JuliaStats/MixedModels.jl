@@ -49,52 +49,104 @@ Typical distribution forms are _Bernoulli_ for binary data or _Poisson_ for coun
 
 |OS|OS Version|Arch|Julia|Tier|
 |:-:|:-:|:-:|:-:|:-:|
-|Linux|Ubuntu 18.04|x64|v1.4|1|
-|macOS|Catalina 10.15|x64|v1.4|1|
-|Windows|Server 2019|x64|v1.4|1|
-|Linux|Ubuntu 18.04|x86|v1.4|2|
-|Windows|Server 2019|x86|v1.4|2|
+|Linux|Ubuntu 18.04|x64|v1.4, 1.5|1|
+|macOS|Catalina 10.15|x64|v1.4, 1.5|1|
+|Windows|Server 2019|x64|v1.4, 1.5 |1|
 
-## Version 2.0.0
+Upon release of the next Julia LTS, Tier 1 will become Tier 2 and Julia LTS will become Tier 1.
 
-Version 2.0.0 contains some user-visible changes and many changes in the underlying code.
+## Version 3.0.0
 
-The user-visible changes include:
+Version 3.0.0 contains some user-visible changes and many changes in the underlying code.
 
-- Update formula specification to `StatsModels v"0.6.2"`, allowing for function calls within the fixed-effects terms and for interaction terms on the left-hand side of a random-effects term.
+Please see [NEWS](NEWS.md) for a complete overview.
+The most dramatic user-facing change is a re-working of `parametricbootstrap` for speed and convenience.
+Additionally, several formula features have been added and [the handling of rank deficiency has changed](https://juliastats.org/MixedModels.jl/dev/rankdeficiency/).
 
-- Use of properties in a model in addition to extractor functions.  For example, to obtain the covariance parameter, $\theta$, from a model, the recommended approach now is to access the `θ` property, as in `m.θ`, instead of the extractor `getθ(m)`.
+## Quick Start
+```julia-repl
+julia> using MixedModels
 
-- `bootstrap` is now named `parametricbootstrap` to avoid conflict with a similar name in the `Bootstrap` package.  The bootstrap sample is returned as a `Table`.
+julia> m1 = fit(MixedModel, @formula(yield ~ 1 + (1|batch)), MixedModels.dataset(:dyestuff))
+Linear mixed model fit by maximum likelihood
+ yield ~ 1 + (1 | batch)
+   logLik   -2 logLik     AIC        BIC
+  -163.6635   327.3271   333.3271   337.5307
 
-- A `fit` method for the abstract type `MixedModel` has been added.  It is called as
+Variance components:
+            Column   VarianceStd.Dev.
+batch    (Intercept)  1388.33 37.2603
+Residual              2451.25 49.5101
+ Number of obs: 30; levels of grouping factors: 6
 
+  Fixed-effects parameters:
+────────────────────────────────────────────────
+              Coef.  Std. Error      z  Pr(>|z|)
+────────────────────────────────────────────────
+(Intercept)  1527.5     17.6946  86.33    <1e-99
+────────────────────────────────────────────────
+
+
+julia> using Random
+
+julia> bs = parametricbootstrap(MersenneTwister(42), 1000, m1);
+Progress: 100%%|████████████████████████████████████████████████| Time: 0:00:00
+
+julia> propertynames(bs)
+13-element Vector{Symbol}:
+ :allpars
+ :objective
+ :σ
+ :β
+ :se
+ :coefpvalues
+ :θ
+ :σs
+ :λ
+ :inds
+ :lowerbd
+ :bstr
+ :fcnames
+
+julia> bs.coefpvalues # returns a row table
+1000-element Vector{NamedTuple{(:iter, :coefname, :β, :se, :z, :p), Tuple{Int64, Symbol, Float64, Float64, Float64, Float64}}}:
+ (iter = 1, coefname = Symbol("(Intercept)"), β = 1517.0670832927115, se = 20.76271142094811, z = 73.0669059804057, p = 0.0)
+ (iter = 2, coefname = Symbol("(Intercept)"), β = 1503.5781855888436, se = 8.1387737362628, z = 184.7425956676446, p = 0.0)
+ (iter = 3, coefname = Symbol("(Intercept)"), β = 1529.2236379016574, se = 16.523824785737837, z = 92.54659001356465, p = 0.0)
+ ⋮
+ (iter = 998, coefname = Symbol("(Intercept)"), β = 1498.3795009457242, se = 25.649682012258104, z = 58.417079019913054, p = 0.0)
+ (iter = 999, coefname = Symbol("(Intercept)"), β = 1526.1076747922416, se = 16.22412120273579, z = 94.06411945042063, p = 0.0)
+ (iter = 1000, coefname = Symbol("(Intercept)"), β = 1557.7546433870125, se = 12.557577103806015, z = 124.04898098653763, p = 0.0)
+
+julia> using DataFrames
+
+julia> DataFrame(bs.coefpvalues) # puts it into a DataFrame
+1000×6 DataFrame
+│ Row  │ iter  │ coefname    │ β       │ se      │ z       │ p       │
+│      │ Int64 │ Symbol      │ Float64 │ Float64 │ Float64 │ Float64 │
+├──────┼───────┼─────────────┼─────────┼─────────┼─────────┼─────────┤
+│ 1    │ 1     │ (Intercept) │ 1517.07 │ 20.7627 │ 73.0669 │ 0.0     │
+│ 2    │ 2     │ (Intercept) │ 1503.58 │ 8.13877 │ 184.743 │ 0.0     │
+│ 3    │ 3     │ (Intercept) │ 1529.22 │ 16.5238 │ 92.5466 │ 0.0     │
+⋮
+│ 998  │ 998   │ (Intercept) │ 1498.38 │ 25.6497 │ 58.4171 │ 0.0     │
+│ 999  │ 999   │ (Intercept) │ 1526.11 │ 16.2241 │ 94.0641 │ 0.0     │
+│ 1000 │ 1000  │ (Intercept) │ 1557.75 │ 12.5576 │ 124.049 │ 0.0     │
+
+julia> DataFrame(bs.β)
+1000×3 DataFrame
+│ Row  │ iter  │ coefname    │ β       │
+│      │ Int64 │ Symbol      │ Float64 │
+├──────┼───────┼─────────────┼─────────┤
+│ 1    │ 1     │ (Intercept) │ 1517.07 │
+│ 2    │ 2     │ (Intercept) │ 1503.58 │
+│ 3    │ 3     │ (Intercept) │ 1529.22 │
+⋮
+│ 998  │ 998   │ (Intercept) │ 1498.38 │
+│ 999  │ 999   │ (Intercept) │ 1526.11 │
+│ 1000 │ 1000  │ (Intercept) │ 1557.75 │
 ```
-julia> using Tables, MixedModels
 
-julia> Dyestuff = columntable((batch = string.(repeat('A':'F', inner=5)),
-       yield = [1545, 1440, 1440, 1520, 1580, 1540, 1555, 1490, 1560, 1495, 1595, 1550, 1605,
-        1510, 1560, 1445, 1440, 1595, 1465, 1545, 1595, 1630, 1515, 1635, 1625, 1520, 1455,
-        1450, 1480, 1445]));
-
-julia> m1 = fit(MixedModel, @formula(yield ~ 1 + (1|batch)), Dyestuff)
-    Linear mixed model fit by maximum likelihood
-     yield ~ 1 + (1 | batch)
-       logLik   -2 logLik     AIC        BIC    
-     -163.66353  327.32706  333.32706  337.53065
-
-        Variance components:
-                  Column    Variance  Std.Dev.
-     batch    (Intercept)  1388.3334 37.260347
-     Residual              2451.2500 49.510100
-     Number of obs: 30; levels of grouping factors: 6
-
-     Fixed-effects parameters:
-    ──────────────────────────────────────────────────
-                 Estimate  Std.Error  z value  P(>|z|)
-    ──────────────────────────────────────────────────
-    (Intercept)    1527.5    17.6946   86.326   <1e-99
-    ──────────────────────────────────────────────────
-```
+## Funding Acknowledgement
 
 The development of this package was supported by the Center for Interdisciplinary Research, Bielefeld (ZiF)/Cooperation Group "Statistical models for psychological and linguistic data".
