@@ -337,7 +337,6 @@ As one would hope, given the name of the option, this fit is comparatively fast.
 ```
 
 The alternative algorithm is to use PIRLS to find the conditional mode of the random effects, given $\beta$ and $\theta$ and then use the general nonlinear optimizer to fit with respect to both $\beta$ and $\theta$.
-Because it is slower to incorporate the $\beta$ parameters in the general nonlinear optimization, the fast fit is performed first and used to determine starting estimates for the more general optimization.
 
 ```@example Main
 mdl1 = @btime fit(MixedModel, vaform, verbagg, Bernoulli())
