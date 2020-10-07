@@ -624,7 +624,14 @@ function Base.show(io::IO, m::GeneralizedLinearMixedModel)
     println(io, "  ", m.LMM.formula)
     println(io, "  Distribution: ", Distribution(m.resp))
     println(io, "  Link: ", GLM.Link(m.resp), "\n")
-    println(io, "  Deviance: ", Ryu.writefixed(deviance(m, nAGQ), 4))
+    println(io)
+    nums = Ryu.writefixed.([loglikelihood(m), deviance(m), aic(m), aicc(m), bic(m)], 4)
+    fieldwd = max(maximum(textwidth.(nums)) + 1, 11)
+    for label in [" logLik", " deviance", "AIC", "AICc", "BIC"]
+        print(io, rpad(lpad(label, (fieldwd + textwidth(label)) >> 1), fieldwd))
+    end
+    println(io)
+    print.(Ref(io), lpad.(nums, fieldwd))
     println(io)
 
     show(io, VarCorr(m))

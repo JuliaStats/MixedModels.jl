@@ -98,7 +98,7 @@ In the types of `LinearMixedModel` available through the `MixedModels` package, 
 
 For the simple example
 ```@example Main
-using DataFrames, MixedModels
+using BenchmarkTools, DataFrames, MixedModels
 ```
 ```@example Main
 dyestuff = MixedModels.dataset(:dyestuff)
@@ -145,8 +145,7 @@ MixedModels.getθ(t21)
 
 Random-effects terms in the model formula that have the same grouping factor are amalgamated into a single `ReMat` object.
 ```@example Main
-fm3 = fit!(LinearMixedModel(@formula(reaction ~ 1+days+(1|subj) + (0+days|subj)),
-    sleepstudy))
+fm3 = fit(MixedModel, @formula(reaction ~ 1+days+(1|subj) + (0+days|subj)), sleepstudy)
 t31 = first(fm3.reterms);
 Int.(t31)
 ```
@@ -170,17 +169,7 @@ Note that the first `ReMat` in `fm4.terms` corresponds to grouping factor `G` ev
 
 ### Progress of the optimization
 
-An optional named argument, `verbose=true`, in the call to `fit` for a `LinearMixedModel` causes printing of the objective and the $\theta$ parameter at each evaluation during the optimization.
-```@example Main
-fit(MixedModel,
-    @formula(yield ~ 1 + (1|batch)),
-    dyestuff,
-    verbose=true);
-fit(MixedModel,
-    @formula(reaction ~ 1 + days + (1+days|subj)),
-    sleepstudy,
-    verbose=true);
-```
+An optional named argument, `verbose=true`, in the call to `fit` for a `LinearMixedModel` causes printing of the objective and the $\theta$ parameter at each evaluation during the optimization.  (Not illustrated here.)
 
 A shorter summary of the optimization process is always available as an
 ```@docs
@@ -333,7 +322,7 @@ mdl.b # conditional modes of b
 ```
 
 ```@example Main
-fit!(mdl, fast=true, verbose=true);
+fit!(mdl, fast=true);
 ```
 
 The optimization process is summarized by
@@ -344,15 +333,13 @@ mdl.LMM.optsum
 
 As one would hope, given the name of the option, this fit is comparatively fast.
 ```@example Main
-@time(fit!(GeneralizedLinearMixedModel(vaform,
-    verbagg, Bernoulli()), fast=true))
+@btime fit(MixedModel, vaform, verbagg, Bernoulli(), fast=true)
 ```
 
 The alternative algorithm is to use PIRLS to find the conditional mode of the random effects, given $\beta$ and $\theta$ and then use the general nonlinear optimizer to fit with respect to both $\beta$ and $\theta$.
-Because it is slower to incorporate the $\beta$ parameters in the general nonlinear optimization, the fast fit is performed first and used to determine starting estimates for the more general optimization.
 
 ```@example Main
-@time mdl1 = fit(MixedModel, vaform, verbagg, Bernoulli())
+mdl1 = @btime fit(MixedModel, vaform, verbagg, Bernoulli())
 ```
 
 This fit provided slightly better results (Laplace approximation to the deviance of 8151.400 versus 8151.583) but took 6 times as long.
