@@ -235,7 +235,7 @@ The `Binomial` distribution is only used when the response is the fraction of tr
 ### Optional arguments to fit
 
 An alternative approach is to create the `GeneralizedLinearMixedModel` object then call `fit!` on it.
-In this form optional arguments `fast` and/or `nAGQ` can be passed to the optimization process.
+The optional arguments `fast` and/or `nAGQ` can be passed to the optimization process via both `fit` and `fit!` (i.e these optimization settings are not used nor recognized when constructing the model). 
 
 As the name implies, `fast=true`, provides a faster but somewhat less accurate fit.
 These fits may suffice for model comparisons.
@@ -527,5 +527,4 @@ fm4r = fit(MixedModel, @formula(diameter ~ 1+(1|plate)+(1|sample)),
 ```@example Main
 sum(leverage(fm4r))
 ```
-
 
