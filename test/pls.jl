@@ -293,13 +293,6 @@ end
 
     simulate!(fm)  # to test one of the unscaledre methods
 
-    fmnc = zerocorr!(deepcopy(fm))
-    @test fmnc.optsum.feval < 0
-    @test size(fmnc) == (180,2,36,1)
-    @test fmnc.θ == [fm.θ[1], fm.θ[3]]
-    @test lowerbd(fmnc) == zeros(2)
-    @test_throws DimensionMismatch MixedModels.getθ!(fm.θ, fmnc)
-
     fmnc = models(:sleepstudy)[2]
     @test size(fmnc) == (180,2,36,1)
     @test fmnc.optsum.initial == ones(2)
@@ -448,4 +441,19 @@ end
     @test m2.θ ≈ [0.295181729258352]  atol = 1.e-4
     @test stderror(m2) ≈  [0.9640167, 3.6309696] atol = 1.e-4
     @test vcov(m2) ≈ [0.9293282 -2.557527; -2.5575267 13.183940] atol = 1.e-4
+end
+
+@testset "unifying ReMat eltypes" begin
+    sleepstudy = dataset(:sleepstudy)
+
+    re = LinearMixedModel(@formula(reaction ~ 1 + days + (1|subj) + (days|subj)), sleepstudy).reterms
+    # make sure that the eltypes are still correct
+    # otherwise this test isn't checking what it should be
+    @test eltype(sleepstudy.days) == Int8
+    @test eltype(sleepstudy.reaction) == Float64
+
+    # use explicit typeof() and == is to remind us that things may break
+    # if we change things and don't check their type implications now
+    # that we're starting to support a non trivial type hierarchy
+    @test typeof(re) == Vector{AbstractReMat{Float64}}
 end

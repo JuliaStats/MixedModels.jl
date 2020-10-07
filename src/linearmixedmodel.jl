@@ -78,6 +78,18 @@ function LinearMixedModel(
     for (i, x) in enumerate(Xs)
         if isa(x, AbstractReMat{T})
             push!(reterms, x)
+        elseif isa(x, ReMat) # this can occur in weird situation where x is a ReMat{U}
+            # avoid keeping a second copy if unweighted
+            z = convert(Matrix{T}, x.z)
+            wtz = x.z === x.wtz ? z : convert(Matrix{T}, x.wtz)
+            S = size(z, 1)
+            x = ReMat{T,S}(x.trm, x.refs, x.levels, x.cnames, z, wtz,
+                           convert(LowerTriangular{Float64, Matrix{Float64}}, x.λ),
+                           x.inds,
+                           convert(SparseMatrixCSC{T,Int32}, x.adjA),
+                           convert(Matrix{T}, x.scratch)
+                           )
+            push!(reterms, x)
         else
             cnames = coefnames(form.rhs[i])
             push!(feterms, FeMat(x, isa(cnames, String) ? [cnames] : collect(cnames)))
@@ -943,7 +955,7 @@ Returns the estimate of σ², the variance of the conditional distribution of Y 
 varest(m::LinearMixedModel) = pwrss(m) / ssqdenom(m)
 
 """
-    zerocorr!(m::LinearMixedModel[, trmnms::Vector{Symbol}])
+    _zerocorr!(m::LinearMixedModel[, trmnms::Vector{Symbol}])
 
 Rewrite the random effects specification for the grouping factors in `trmnms` to zero correlation parameter.
 
@@ -951,8 +963,15 @@ The default for `trmnms` is all the names of random-effects terms.
 
 A random effects term is in the zero correlation parameter configuration when the off-diagonal elements of
 λ are all zero - hence there are no correlation parameters in that term being estimated.
+
+Note that this is numerically equivalent to specifying a formula with `zerocorr` around each random effects
+term, but the `formula`  fields in the resulting model will differ. In particular, `zerocorr!` will **not**
+change the original `formula`'s terms to be of type of `ZeroCorr` because this would involve changing
+immutable types.  This may have implications for software that manipulates the formula of a fitted model.
+
+This is an internal function and may disappear in a future release without being considered a breaking change.
 """
-function zerocorr!(m::LinearMixedModel{T}, trmns) where {T}
+function _zerocorr!(m::LinearMixedModel{T}, trmns) where {T}
     reterms = m.reterms
     for trm in reterms
         if fname(trm) in trmns
@@ -975,4 +994,4 @@ function zerocorr!(m::LinearMixedModel{T}, trmns) where {T}
     m
 end
 
-zerocorr!(m::LinearMixedModel) = zerocorr!(m, fnames(m))
+_zerocorr!(m::LinearMixedModel) = _zerocorr!(m, fnames(m))

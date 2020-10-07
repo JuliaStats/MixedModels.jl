@@ -143,17 +143,14 @@ The $\theta$ vector is
 MixedModels.getθ(t21)
 ```
 
-Random-effects terms in the model formula that have the same grouping factor are amagamated into a single `ReMat` object.
+Random-effects terms in the model formula that have the same grouping factor are amalgamated into a single `ReMat` object.
 ```@example Main
-fm3 = fit!(zerocorr!(LinearMixedModel(@formula(reaction ~ 1+days+(1+days|subj)),
-    sleepstudy)))
+fm3 = fit!(LinearMixedModel(@formula(reaction ~ 1+days+(1|subj) + (0+days|subj)),
+    sleepstudy))
 t31 = first(fm3.reterms);
 Int.(t31)
 ```
-Note that we could also have achieved this by re-fitting (a copy of) `fm2`.
-```@example Main
-fm3alt = fit!(zerocorr!(deepcopy(fm2)))
-```
+
 For this model the matrix $\bf Z$ is the same as that of model `fm2` but the diagonal blocks of $\Lambda_\theta$ are themselves diagonal.
 ```@example Main
 t31.λ
