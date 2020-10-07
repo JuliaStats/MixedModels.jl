@@ -787,9 +787,9 @@ function Base.show(io::IO, m::LinearMixedModel)
     if REML
         println(io, " REML criterion at convergence: ", oo)
     else
-        nums = Ryu.writefixed.([-oo / 2, oo, aic(m), bic(m)], 4)
+        nums = Ryu.writefixed.([-oo / 2, oo, aic(m), aicc(m), bic(m)], 4)
         fieldwd = max(maximum(textwidth.(nums)) + 1, 11)
-        for label in [" logLik", "-2 logLik", "AIC", "BIC"]
+        for label in ["  logLik", "-2 logLik", "AIC", "AICc", "BIC"]
             print(io, rpad(lpad(label, (fieldwd + textwidth(label)) >> 1), fieldwd))
         end
         println(io)
