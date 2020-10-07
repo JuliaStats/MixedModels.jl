@@ -136,7 +136,7 @@ describe(pastes)
 fm4 = fit(MixedModel, @formula(strength ~ 1 + (1|sample) + (1|batch)), pastes)
 ```
 
-An alternative syntax with a solidus (the "`/`" character) separating grouping factors, read "`cask` nested within `batch`", fits the same model.
+An alternative syntax with a solidus (the "`/`" character) separating grouping factors, read "`cask` nested within `batch`", fits the same model. (`sample` is just an explicitly stored version of `batch & cask`.)
 ```@example Main
 fit(MixedModel, @formula(strength ~ 1 + (1|batch/cask)), pastes)
 ```
@@ -160,16 +160,13 @@ end
 ### Simplifying the random effect correlation structure
 
 MixedEffects.jl estimates not only the *variance* of the effects for each random effect level, but also the *correlation* between the random effects for different predictors.
-So, for the model of the *sleepstudy* data above, one of the parameters that is estimated is the correlation between each subject's random intercept (i.e., their baseline reaction time) and slope (i.e., their particular change in reaction time over days of sleep deprivation).
+So, for the model of the *sleepstudy* data above, one of the parameters that is estimated is the correlation between each subject's random intercept (i.e., their baseline reaction time) and slope (i.e., their particular change in reaction time per day of sleep deprivation).
 In some cases, you may wish to simplify the random effects structure by removing these correlation parameters.
 This often arises when there are many random effects you want to estimate (as is common in psychological experiments with many conditions and covariates), since the number of random effects parameters increases as the square of the number of predictors, making these models difficult to estimate from limited data.
 
 The special syntax `zerocorr` can be applied to individual random effects terms inside the `@formula`:
 ```@example Main
 fm2zerocorr_fm = fit(MixedModel, @formula(reaction ~ 1 + days + zerocorr(1 + days|subj)), sleepstudy)
-```
-```@setup Main
-    all(fm2zerocorr == fm2zerocorr_fm)
 ```
 
 Alternatively, correlations between parameters can be removed by including them as separate random effects terms:
@@ -189,6 +186,7 @@ Separating the `1` and `days` random effects into separate terms removes the cor
 fit(MixedModel, @formula(reaction ~ 1 + days + (1|subj) + (days|subj)), sleepstudy,
     contrasts = Dict(:days => DummyCoding()))
 ```
+(Notice that the variance component for `days: 1` is estimated as zero, so the correlations for this component are undefined and expressed as `NaN`, not a number.)
 
 An alternative is to force all the levels of `days` as indicators using `fulldummy` encoding.
 ```@docs
@@ -234,7 +232,7 @@ The canonical link, which is `LogitLink` for the `Bernoulli` distribution, is us
 Note that, in keeping with convention in the [`GLM` package](https://github.com/JuliaStats/GLM.jl), the distribution family for a binary (i.e. 0/1) response is the `Bernoulli` distribution.
 The `Binomial` distribution is only used when the response is the fraction of trials returning a positive, in which case the number of trials must be specified as the case weights.
 
-### Optional arguments to fit!
+### Optional arguments to fit
 
 An alternative approach is to create the `GeneralizedLinearMixedModel` object then call `fit!` on it.
 In this form optional arguments `fast` and/or `nAGQ` can be passed to the optimization process.
@@ -344,7 +342,7 @@ coefnames(fm1)
 ```
 ```@example Main
 fixef(fm1)
-fixefnames
+fixefnames(fm1)
 ```
 
 An alternative extractor for the fixed-effects coefficient is the `β` property.
@@ -444,6 +442,15 @@ For a `LinearMixedModel` these are also the conditional mean values.
 These are sometimes called the *best linear unbiased predictors* or [`BLUPs`](https://en.wikipedia.org/wiki/Best_linear_unbiased_prediction) but that name is not particularly meaningful.
 
 At a superficial level these can be considered as the "estimates" of the random effects, with a bit of hand waving, but pursuing this analogy too far usually results in confusion.
+
+To obtain tables associating the values of the conditional modes with the levels of the grouping factor, use
+```@docs
+raneftables
+```
+as in
+```@example Main
+DataFrame(only(raneftables(fm1)))
+```
 
 The corresponding conditional variances are returned by
 ```@docs

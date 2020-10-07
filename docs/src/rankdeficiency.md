@@ -42,7 +42,7 @@ The same holds for the associated [`fixefnames`](@ref) and [`coefnames`](@ref).
 In MixedModels.jl, we use standard numerical techniques to detect rank deficiency.
 We currently offer no guarantees as to which exactly of the standard techniques (pivoted QR decomposition, pivoted Cholesky decomposition, etc.) will be used.
 This choice should be viewed as an implementation detail.
-Similarly, we offer no guarentees as to which of columns will be treated as redundant.
+Similarly, we offer no guarantees as to which of columns will be treated as redundant.
 This choice may vary between releases and even between platforms (both in broad strokes of "Linux" vs. "Windows" and at the level of which BLAS options are loaded on a given processor architecture) for the same release.
 In other words, *you should not rely on the order of the pivoted columns being consistent!* when you switch to a different computer or a different operating system.
 If consistency in the pivoted columns is important to you, then you should instead determine your rank ahead of time and remove extraneous columns / predictors from your model specification.
