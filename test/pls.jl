@@ -134,6 +134,7 @@ end
     @test coef(fm) ≈ [5.6656]
     @test logdet(fm) ≈ 0.0
     @test issingular(fm)
+    #### modifies the model!
     refit!(fm, float(MixedModels.dataset(:dyestuff)[:yield]))
     @test objective(fm) ≈ 327.3270598811428 atol=0.001
     refit!(fm, float(MixedModels.dataset(:dyestuff2)[:yield]))
@@ -292,7 +293,9 @@ end
     @test isa(b3tbl, NamedTuple)
     @test Tables.istable(only(b3tbl))
 
+    #### modifies the model!
     simulate!(fm)  # to test one of the unscaledre methods
+    refit!(fm, dataset(:sleepstudy)[:reaction])
 
     fmnc = models(:sleepstudy)[2]
     @test size(fmnc) == (180,2,36,1)
