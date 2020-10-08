@@ -7,21 +7,21 @@ using MixedModels: dataset
 
 const gfms = Dict(
     :cbpp => [@formula((incid/hsz) ~ 1 + period + (1|herd))],
-    :contra => [@formula(use ~ 1+age+abs2(age)+urban+livch+(1|urbdist))],
+    :contra => [@formula(use ~ 1+age+abs2(age)+urban+livch+(1|urban&dist))],
     :grouseticks => [@formula(ticks ~ 1+year+ch+ (1|index) + (1|brood) + (1|location))],
     :verbagg => [@formula(r2 ~ 1+anger+gender+btype+situ+(1|subj)+(1|item))],
 )
 
-@testset "contra" begin
+#@testset "contra" begin
     contra = dataset(:contra)
     gm0 = fit(MixedModel, only(gfms[:contra]), contra, Bernoulli(), fast=true);
     @test gm0.lowerbd == zeros(1)
     @test isapprox(gm0.θ, [0.5720734451352923], atol=0.001)
     @test isapprox(deviance(gm0), 2361.657188518064, atol=0.001)
     # the first 9 BLUPs -- I don't think there's much point in testing all 102
-    blups = [-0.9546698228978889, -0.034754272678681725, -0.2513196374772515,
-              0.10836392818271358, -0.38610152013564464, -0.19309267616660894,
-              0.059291406326190885, -0.29649374611805296, -0.4564504918851189]
+    blups = [-0.5853637711570235, -0.9546542393824562, -0.034754249031292345, # values are the same but in different order
+              0.2894692928724314, 0.6381376605845264, -0.2513134928312374,
+              0.031321447845204374, 0.10836110432794945, 0.24632286640099466]
     @test only(ranef(gm0))[1:9] ≈ blups atol=1e-4
     retbl = raneftables(gm0)
     @test isone(length(retbl))
@@ -58,7 +58,7 @@ const gfms = Dict(
     show(IOBuffer(), gm1)
     show(IOBuffer(), BlockDescription(gm0))
     
-end
+#end
 
 @testset "cbpp" begin
     cbpp = dataset(:cbpp)
