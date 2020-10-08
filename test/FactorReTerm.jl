@@ -26,8 +26,8 @@ const LMM = LinearMixedModel
         @test size(sf,1) == 30
         @test size(sf,2) == 6
         @test size(sf,3) == 1
-        @test size(sf1) == (60, 30)
-        @test size(sf2) == (60, 10)
+        @test size(sf1) == (60, 10)
+        @test size(sf2) == (60, 30)
     end
 
     @testset "utilities" begin

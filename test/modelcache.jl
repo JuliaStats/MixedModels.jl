@@ -16,8 +16,8 @@ using MixedModels: dataset
         @formula(rt_trunc ~ 1+spkr*prec*load+(1+spkr+prec+load|subj)+(1+spkr+prec+load|item)),
     ],
     :pastes => [
-        @formula(strength ~ 1 + (1|sample)),
-        @formula(strength ~ 1 + (1|sample) + (1|batch)),
+        @formula(strength ~ 1 + (1|batch&cask)),
+        @formula(strength ~ 1 + (1|batch/cask)),
     ],
     :penicillin => [@formula(diameter ~ 1 + (1|plate) + (1|sample))],
     :sleepstudy => [
