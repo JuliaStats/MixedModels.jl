@@ -24,9 +24,9 @@ include("modelcache.jl")
     @test fm1.optsum.initial == ones(1)
     fm1.θ = ones(1)
     @test fm1.θ == ones(1)
-    
+
     @test_throws ArgumentError fit!(fm1)
-    
+
     fm1.optsum.feval = -1
     @test_logs (:warn, "Model has not been fit") show(fm1)
 
@@ -136,6 +136,7 @@ end
     @test issingular(fm)
     refit!(fm, float(MixedModels.dataset(:dyestuff)[:yield]))
     @test objective(fm) ≈ 327.3270598811428 atol=0.001
+    refit!(fm, float(MixedModels.dataset(:dyestuff2)[:yield]))
 end
 
 @testset "penicillin" begin
