@@ -514,8 +514,7 @@ function StatsBase.leverage(m::LinearMixedModel{T}) where {T}
     value = map(eachindex(yorig)) do i
         fill!(m.y, zero(T))
         m.y[i] = one(T)
-        reevaluateAend!(m)
-        updateL!(m)
+        updateL!(reevaluateAend!(m))
         sum(j -> sum(abs2, m.L[Block(l, j)]), 1:(l-1))
     end
     copyto!(m.y, yorig)
