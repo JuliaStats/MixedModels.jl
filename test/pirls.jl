@@ -12,7 +12,7 @@ const gfms = Dict(
     :verbagg => [@formula(r2 ~ 1+anger+gender+btype+situ+(1|subj)+(1|item))],
 )
 
-#@testset "contra" begin
+@testset "contra" begin
     contra = dataset(:contra)
     gm0 = fit(MixedModel, only(gfms[:contra]), contra, Bernoulli(), fast=true);
     @test gm0.lowerbd == zeros(1)
@@ -58,7 +58,7 @@ const gfms = Dict(
     show(IOBuffer(), gm1)
     show(IOBuffer(), BlockDescription(gm0))
     
-#end
+end
 
 @testset "cbpp" begin
     cbpp = dataset(:cbpp)
