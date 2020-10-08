@@ -16,7 +16,7 @@ const LMM = LinearMixedModel
     y1, Xs1 = modelcols(apply_schema(f1, schema(ds), LMM), ds)
     sf = Xs1[2]
     psts = dataset("pastes")
-    f2 = @formula(strength ~ 1 + (1|sample) + (1|batch))
+    f2 = @formula(strength ~ 1 + (1|batch/cask))
     y2, Xs2 = modelcols(apply_schema(f2, schema(psts), LMM), psts)
     sf1 = Xs2[2]
     sf2 = Xs2[3]
@@ -195,11 +195,10 @@ end
         psts = dataset("pastes")
         m = fit(MixedModel, @formula(strength ~ 1 + (1|batch/cask)), psts)
         m2 = fit(MixedModel, @formula(strength ~ 1 + (1|batch) + (1|batch&cask)), psts)
-        m3 = fit(MixedModel, @formula(strength ~ 1 + (1|batch) + (1|sample)), psts)
 
         @test fnames(m) == fnames(m2) == (Symbol("batch & cask"), :batch)
-        @test m.λ == m2.λ == m3.λ
-        @test deviance(m) == deviance(m2) == deviance(m3)
+        @test m.λ == m2.λ
+        @test deviance(m) == deviance(m2)
     end
 
     @testset "multiple terms with same grouping" begin
