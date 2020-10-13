@@ -113,6 +113,10 @@ StatsBase.deviance(m::GeneralizedLinearMixedModel) = deviance(m, m.optsum.nAGQ)
 
 fixef(m::GeneralizedLinearMixedModel) = m.β
 
+function fixef!(v::AbstractVector{T}, m::GeneralizedLinearMixedModel{T}) where T
+    copyto!(fill!(v, -zero(T)), m.β)
+end
+
 objective(m::GeneralizedLinearMixedModel) = deviance(m)
 
 """
@@ -406,6 +410,8 @@ function Base.getproperty(m::GeneralizedLinearMixedModel, s::Symbol)
         coef(m)
     elseif s == :beta
         m.β
+    elseif s == :objective
+        objective(m)
     elseif s ∈ (:σ, :sigma)
         sdest(m)
     elseif s == :σs
@@ -422,6 +428,12 @@ function Base.getproperty(m::GeneralizedLinearMixedModel, s::Symbol)
         getfield(m, s)
     end
 end
+
+# this copy behavior matches the implicit copy behavior
+# for LinearMixedModel. So this is then different than m.θ,
+# which returns a reference to the same array
+getθ(m::GeneralizedLinearMixedModel)  = copy(m.θ)
+getθ!(v::AbstractVector{T}, m::GeneralizedLinearMixedModel{T}) where {T} = copyto!(v, m.θ)
 
 function StatsBase.loglikelihood(m::GeneralizedLinearMixedModel{T}) where {T}
     r = m.resp
@@ -455,6 +467,7 @@ Base.propertynames(m::GeneralizedLinearMixedModel, private = false) = (
     :X,
     :y,
     :lowerbd,
+    :objective,
     :σρs,
     :σs,
     :corr,
@@ -642,6 +655,14 @@ function Base.show(io::IO, m::GeneralizedLinearMixedModel)
 
     println(io, "\nFixed-effects parameters:")
     show(io, coeftable(m))
+end
+
+function stderror!(v::AbstractVector{T}, m::GeneralizedLinearMixedModel{T}) where {T}
+    # this doesn't actually save an allocation, but it provides this method
+    # which is the variant used by the bootstrap
+    copyto!(fill!(v, -zero(T)), stderror(m))
+    invpermute!(v, first(m.feterms).piv)
+    v
 end
 
 """

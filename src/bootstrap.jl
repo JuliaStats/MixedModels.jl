@@ -44,18 +44,20 @@ The default random number generator is `Random.GLOBAL_RNG`.
 # Named Arguments
 
 `β`, `σ`, and `θ` are the values of `m`'s parameters for simulating the responses.
+`σ` is only valid for `LinearMixedModel` and `GeneralizedLinearMixedModel` when
+the family that has a dispersion parameter.
 `use_threads` determines whether or not to use thread-based parallelism.
 
-Note that `use_threads=true` may not offer a performance boost and may even 
+Note that `use_threads=true` may not offer a performance boost and may even
 decrease peformance if multithreaded linear algebra (BLAS) routines are available.
-In this case, threads at the level of the linear algebra may already occupy all 
+In this case, threads at the level of the linear algebra may already occupy all
 processors/processor cores. There are plans to provide better support in coordinating
-Julia- and BLAS-level threads in the future. 
+Julia- and BLAS-level threads in the future.
 """
 function parametricbootstrap(
     rng::AbstractRNG,
     n::Integer,
-    morig::LinearMixedModel{T};
+    morig::MixedModel{T};
     β::AbstractVector=coef(morig),
     σ=morig.σ,
     θ::AbstractVector=morig.θ,
@@ -108,7 +110,7 @@ end
 
 function parametricbootstrap(
     nsamp::Integer,
-    m::LinearMixedModel;
+    m::MixedModel;
     β = m.β,
     σ = m.σ,
     θ = m.θ,
@@ -129,7 +131,7 @@ function allpars(bsamp::MixedModelBootstrap{T}) where {T}
     nresrow = length(bstr) * npars
     cols = (
         sizehint!(Int[], nresrow),
-        sizehint!(String[], nresrow), 
+        sizehint!(String[], nresrow),
         sizehint!(Union{Missing,String}[], nresrow),
         sizehint!(Union{Missing,String}[], nresrow),
         sizehint!(T[], nresrow),

@@ -377,7 +377,7 @@ end
 StatsBase.fitted(m::LinearMixedModel{T}) where {T} = fitted!(Vector{T}(undef, nobs(m)), m)
 
 """
-    fixef!(v::Vector{T}, m::LinearMixedModel{T})
+    fixef!(v::Vector{T}, m::MixedModel{T})
 
 Overwrite `v` with the pivoted fixed-effects coefficients of model `m`
 
