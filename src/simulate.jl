@@ -58,7 +58,6 @@ function simulate!(
 
     d = m.resp.d
     l = GLM.Link(m.resp)
-    invl(x) = first(GLM.inverselink(l,x))
 
     if length(β) ≠ length(coef(m))
         padding = length(coef(m)) - length(β)
@@ -74,33 +73,57 @@ function simulate!(
 
     lm = m.LMM
 
-    # note that these two vectors will later be sychronized in (re)fit!()
+    # note that these m.resp.y and m.LMM.y will later be sychronized in (re)fit!()
     # but for now we use them as distinct scratch buffers to avoid allocations
-    lmy = randn!(rng, response(lm))      # initialize standard normal
-    y = rand!(rng, m.resp.d, m.resp.y)   # initialize y to the given distribution/model family
 
-    # do we need to worry about weights?
+    # should this be initialized with zeros or standard normal?
+    # the noise term is actually in the GLM and not the LMM part....
+    # so no noise at the LMM level
+    lmy = fill!(m.LMM.y, zero(T))
+    # lmy = randn!(rng, m.LMM.y)
+    y = m.resp.y
 
     for trm in m.reterms             # add the unscaled random effects
         unscaledre!(rng, lmy, trm)
     end
 
+    # do we need to worry about weights?
+
+    # assemble the linear predictor
     # scale by lm.σ and add fixed-effects contribution
     BLAS.gemv!('N', one(T), lm.X, β, lm.σ, lmy)
 
+    # from η to μ
     @inbounds for  idx in 1:length(y)
-        y[idx] += invl(lmy[idx])
+        y[idx] = GLM.linkinv(l, lmy[idx])
     end
 
-    if d isa Bernoulli
-        @inbounds for (idx, val) in enumerate(y)
-            y[idx] = val < d.p
-        end
+    # convert to the distribution / add in noise
+    @inbounds for (idx, val) in enumerate(y)
+        y[idx] = _rand(rng, d, val, σ)
     end
 
     m
 end
 
+"""
+    _rand(rng::AbstractRNG, d::Distribution, location, scale=NaN)
+
+A convenience function taking a draw from a distrbution.
+
+Note that `d` is specified as an existing distribution, such as
+from the `GlmResp.d` field. This isn't vectorized nicely because
+for distributions where the scale/dispersion is dependent on the
+location (e.g. Bernoulli, Binomial, Poisson), it's not really
+possible to avoid creating multiple `Distribution` objects.
+"""
+function _rand(rng::AbstractRNG, d::Distribution, location, scale=NaN)
+    if !isnan(scale)
+        throw(ArgumentError("Families with a dispersion parameter not yet supported"))
+    end
+
+    rand(rng, typeof(d)(location))
+end
 
 function simulate!(m::MixedModel{T}; β = coef(m), σ = m.σ, θ = T[]) where {T}
     simulate!(Random.GLOBAL_RNG, m, β = β, σ = σ, θ = θ)
