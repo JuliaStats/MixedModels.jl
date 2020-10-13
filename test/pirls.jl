@@ -127,7 +127,7 @@ end
 
     @testset "Poisson  simulate!" begin
         gm4sim = refit!(simulate!(StableRNG(42), deepcopy(gm4)))
-        @test all(isapprox.(gm4.β, gm4sim.β; atol=0.1))
+        @test all(isapprox.(gm4.β, gm4sim.β; atol=0.5))
     end
 
 end
