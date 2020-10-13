@@ -1,5 +1,6 @@
 using DataFrames
 using MixedModels
+using StableRNGs
 using Tables
 using Test
 
@@ -46,6 +47,21 @@ const gfms = Dict(
     @test length(gm1.y) == size(gm1.X, 1)
     @test :θ in propertynames(gm0)
 
+    @testset "Bernoulli simulate! and GLMM boostrap" begin
+        bs = parametricbootstrap(StableRNG(42), 100, gm0)
+        bsci = combine(groupby(DataFrame(bs.β), :coefname),
+                       :β => first ∘ shortestcovint => :lower,
+                       :β => last ∘ shortestcovint => :upper)
+        ciwidth = 2 .* stderror(gm0)
+        waldci = DataFrame(coef=fixefnames(gm0),
+                           lower=fixef(gm0) .- ciwidth,
+                           upper=fixef(gm0) .+ ciwidth)
+
+        # coarse tolerances because we're not doing many bootstrap samples
+        @test all(isapprox.(bsci.lower, waldci.lower; atol=0.5))
+        @test all(isapprox.(bsci.upper, waldci.upper; atol=0.5))
+    end
+
     @testset "GLMM rePCA" begin
         @test length(MixedModels.PCA(gm0)) == 1
         @test length(MixedModels.rePCA(gm0)) == 1
@@ -57,7 +73,7 @@ const gfms = Dict(
     #@test isapprox(sum(gm1.resp.devresid), 2237.349, atol=0.1)
     show(IOBuffer(), gm1)
     show(IOBuffer(), BlockDescription(gm0))
-    
+
 end
 
 @testset "cbpp" begin
@@ -70,17 +86,22 @@ end
     @test isapprox(loglikelihood(gm2), -92.02628186840045, atol=0.001)
     @test isnan(sdest(gm2))
     @test varest(gm2) == 1
-        
+
     @testset "GLMM refit" begin
         gm2r = deepcopy(gm2)
         @test_throws ArgumentError fit!(gm2r)
         refit!(gm2r, 1 .- gm2.y; fast=true)
         @test gm2r.β ≈ -gm2.β atol=1e-3
         @test gm2r.θ ≈ gm2.θ atol=1e-3
-        
+
         refit!(gm2r, 1 .- gm2.y; fast=false)
         @test gm2r.β ≈ -gm2.β atol=1e-3
-        @test gm2r.θ ≈ gm2.θ atol=1e-3 
+        @test gm2r.θ ≈ gm2.θ atol=1e-3
+    end
+
+    @testset "Binomial  simulate!" begin
+        gm2sim = refit!(simulate!(StableRNG(42), deepcopy(gm2)), fast=true)
+        @test all(isapprox.(gm2.β, gm2sim.β; atol=0.5))
     end
 end
 
@@ -103,6 +124,12 @@ end
     # these two values are not well defined at the optimum
     #@test isapprox(sum(x -> sum(abs2, x), gm4.u), 196.8695297987013, atol=0.1)
     #@test isapprox(sum(gm4.resp.devresid), 220.92685781326136, atol=0.1)
+
+    @testset "Poisson  simulate!" begin
+        gm4sim = refit!(simulate!(StableRNG(42), deepcopy(gm4)))
+        @test all(isapprox.(gm4.β, gm4sim.β; atol=0.1))
+    end
+
 end
 
 @testset "goldstein" begin # from a 2020-04-22 msg by Ben Goldstein to R-SIG-Mixed-Models

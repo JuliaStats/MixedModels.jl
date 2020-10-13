@@ -100,14 +100,15 @@ function simulate!(
 
     # convert to the distribution / add in noise
     @inbounds for (idx, val) in enumerate(y)
-        y[idx] = _rand(rng, d, val, σ)
+        n = isempty(m.wt) ? 1 : m.wt[idx]
+        y[idx] = _rand(rng, d, val, σ, n)
     end
 
     m
 end
 
 """
-    _rand(rng::AbstractRNG, d::Distribution, location, scale=NaN)
+    _rand(rng::AbstractRNG, d::Distribution, location, scale=NaN, n=1)
 
 A convenience function taking a draw from a distrbution.
 
@@ -116,13 +117,23 @@ from the `GlmResp.d` field. This isn't vectorized nicely because
 for distributions where the scale/dispersion is dependent on the
 location (e.g. Bernoulli, Binomial, Poisson), it's not really
 possible to avoid creating multiple `Distribution` objects.
+
+Note that `n` is the `n` parameter for the Binomial distribution,
+*not* the number of draws from the RNG. It is then used to change the
+random draw (an integer in [0, n]) into a probability (a float in [0,1]).
 """
-function _rand(rng::AbstractRNG, d::Distribution, location, scale=NaN)
+function _rand(rng::AbstractRNG, d::Distribution, location, scale=NaN, n=1)
     if !isnan(scale)
         throw(ArgumentError("Families with a dispersion parameter not yet supported"))
     end
 
-    rand(rng, typeof(d)(location))
+    if d isa Binomial
+        dist = Binomial(n, location)
+    else
+        dist = typeof(d)(location)
+    end
+
+    rand(rng, dist) / n
 end
 
 function simulate!(m::MixedModel{T}; β = coef(m), σ = m.σ, θ = T[]) where {T}
