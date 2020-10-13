@@ -1,6 +1,7 @@
 """
     simulate!(rng::AbstractRNG, m::LinearMixedModel{T}; β=m.β, σ=m.σ, θ=T[])
     simulate!(m::LinearMixedModel; β=m.β, σ=m.σ, θ=m.θ)
+    simulate!(m::MixedModel; β=m.β, σ=(diom.σ, θ=m.θ)
 
 Overwrite the response (i.e. `m.trms[end]`) with a simulated response vector from model `m`.
 """
@@ -37,7 +38,71 @@ function simulate!(
     m
 end
 
-function simulate!(m::LinearMixedModel{T}; β = coef(m), σ = m.σ, θ = T[]) where {T}
+function simulate!(
+    rng::AbstractRNG,
+    m::GeneralizedLinearMixedModel{T};
+    β = coef(m),
+    σ = m.σ,
+    θ = T[],
+) where {T}
+    length(β) == length(fixef(m)) ||
+        length(β) == length(coef(m)) ||
+            throw(ArgumentError("You must specify all (non-singular) βs"))
+
+    dispersion_parameter(m) || isnan(σ) ||
+        throw(ArgumentError("You must not specify a dispersion parameter for model families without a dispersion parameter"))
+
+    β = convert(Vector{T},β)
+    σ = T(σ)
+    θ = convert(Vector{T},θ)
+
+    d = m.resp.d
+    l = GLM.Link(m.resp)
+    invl(x) = first(GLM.inverselink(l,x))
+
+    if length(β) ≠ length(coef(m))
+        padding = length(coef(m)) - length(β)
+        for ii in 1:padding
+            push!(β, -0.0)
+        end
+    end
+
+    fast = (length(m.θ) == length(m.optsum.final))
+    setpar! = fast ? setθ! : setβθ!
+    params = fast ? θ : vcat(β, θ)
+    setpar!(m, params)
+
+    lm = m.LMM
+
+    # note that these two vectors will later be sychronized in (re)fit!()
+    # but for now we use them as distinct scratch buffers to avoid allocations
+    lmy = randn!(rng, response(lm))      # initialize standard normal
+    y = rand!(rng, m.resp.d, m.resp.y)   # initialize y to the given distribution/model family
+
+    # do we need to worry about weights?
+
+    for trm in m.reterms             # add the unscaled random effects
+        unscaledre!(rng, lmy, trm)
+    end
+
+    # scale by lm.σ and add fixed-effects contribution
+    BLAS.gemv!('N', one(T), lm.X, β, lm.σ, lmy)
+
+    @inbounds for  idx in 1:length(y)
+        y[idx] += invl(lmy[idx])
+    end
+
+    if d isa Bernoulli
+        @inbounds for (idx, val) in enumerate(y)
+            y[idx] = val < d.p
+        end
+    end
+
+    m
+end
+
+
+function simulate!(m::MixedModel{T}; β = coef(m), σ = m.σ, θ = T[]) where {T}
     simulate!(Random.GLOBAL_RNG, m, β = β, σ = σ, θ = θ)
 end
 
