@@ -101,7 +101,7 @@ end
 
     @testset "Binomial  simulate!" begin
         gm2sim = refit!(simulate!(StableRNG(42), deepcopy(gm2)), fast=true)
-        @test all(isapprox.(gm2.β, gm2sim.β; atol=0.5))
+        @test isapprox(gm2.β, gm2sim.β; atol=norm(stderror(gm2)))
     end
 end
 
@@ -127,7 +127,7 @@ end
 
     @testset "Poisson  simulate!" begin
         gm4sim = refit!(simulate!(StableRNG(42), deepcopy(gm4)))
-        @test all(isapprox.(gm4.β, gm4sim.β; atol=0.5))
+        @test isapprox(gm4.β, gm4sim.β; atol=norm(stderror(gm4)))
     end
 
 end
