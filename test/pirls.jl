@@ -6,18 +6,13 @@ using Test
 
 using MixedModels: dataset
 
-const gfms = Dict(
-    :cbpp => [@formula((incid/hsz) ~ 1 + period + (1|herd))],
-    :contra => [@formula(use ~ 1+age+abs2(age)+urban+livch+(1|urban&dist))],
-    :grouseticks => [@formula(ticks ~ 1+year+ch+ (1|index) + (1|brood) + (1|location))],
-    :verbagg => [@formula(r2 ~ 1+anger+gender+btype+situ+(1|subj)+(1|item))],
-)
+include("modelcache.jl")
 
 @testset "contra" begin
-    contra = dataset(:contra)
-    gm0 = fit(MixedModel, only(gfms[:contra]), contra, Bernoulli(), fast=true);
     @test gm0.lowerbd == zeros(1)
     @test isapprox(gm0.θ, [0.5720734451352923], atol=0.001)
+    @test !issingular(gm0)
+    @test issingular(gm0, [0])
     @test isapprox(deviance(gm0), 2361.657188518064, atol=0.001)
     # the first 9 BLUPs -- I don't think there's much point in testing all 102
     blups = [-0.5853637711570235, -0.9546542393824562, -0.034754249031292345, # values are the same but in different order
@@ -46,21 +41,6 @@ const gfms = Dict(
     @test isnan(gm1.σ)
     @test length(gm1.y) == size(gm1.X, 1)
     @test :θ in propertynames(gm0)
-
-    @testset "Bernoulli simulate! and GLMM boostrap" begin
-        bs = parametricbootstrap(StableRNG(42), 100, gm0)
-        bsci = combine(groupby(DataFrame(bs.β), :coefname),
-                       :β => first ∘ shortestcovint => :lower,
-                       :β => last ∘ shortestcovint => :upper)
-        ciwidth = 2 .* stderror(gm0)
-        waldci = DataFrame(coef=fixefnames(gm0),
-                           lower=fixef(gm0) .- ciwidth,
-                           upper=fixef(gm0) .+ ciwidth)
-
-        # coarse tolerances because we're not doing many bootstrap samples
-        @test all(isapprox.(bsci.lower, waldci.lower; atol=0.5))
-        @test all(isapprox.(bsci.upper, waldci.upper; atol=0.5))
-    end
 
     @testset "GLMM rePCA" begin
         @test length(MixedModels.PCA(gm0)) == 1
@@ -98,11 +78,6 @@ end
         @test gm2r.β ≈ -gm2.β atol=1e-3
         @test gm2r.θ ≈ gm2.θ atol=1e-3
     end
-
-    @testset "Binomial  simulate!" begin
-        gm2sim = refit!(simulate!(StableRNG(42), deepcopy(gm2)), fast=true)
-        @test isapprox(gm2.β, gm2sim.β; atol=norm(stderror(gm2)))
-    end
 end
 
 @testset "verbagg" begin
@@ -124,12 +99,6 @@ end
     # these two values are not well defined at the optimum
     #@test isapprox(sum(x -> sum(abs2, x), gm4.u), 196.8695297987013, atol=0.1)
     #@test isapprox(sum(gm4.resp.devresid), 220.92685781326136, atol=0.1)
-
-    @testset "Poisson  simulate!" begin
-        gm4sim = refit!(simulate!(StableRNG(42), deepcopy(gm4)))
-        @test isapprox(gm4.β, gm4sim.β; atol=norm(stderror(gm4)))
-    end
-
 end
 
 @testset "goldstein" begin # from a 2020-04-22 msg by Ben Goldstein to R-SIG-Mixed-Models

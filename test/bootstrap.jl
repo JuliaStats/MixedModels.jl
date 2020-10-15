@@ -1,6 +1,8 @@
 using DataFrames
+using LinearAlgebra
 using MixedModels
 using Random
+using StableRNGs
 using Tables
 using Test
 
@@ -9,20 +11,45 @@ using MixedModels: dataset
 include("modelcache.jl")
 
 @testset "simulate!" begin
-    ds = dataset(:dyestuff)
-    fm = only(models(:dyestuff))
-    resp₀ = copy(response(fm))
-    # type conversion of ints to floats
-    simulate!(Random.MersenneTwister(1234321), fm, β=[1], σ=1)
-    refit!(fm,resp₀)
-    refit!(simulate!(Random.MersenneTwister(1234321), fm))
-    @test deviance(fm) ≈ 339.0218639362958 atol=0.001
-    refit!(fm, float(ds.yield))
-    Random.seed!(1234321)
-    refit!(simulate!(fm))
-    @test deviance(fm) ≈ 339.0218639362958 atol=0.001
-    simulate!(fm, θ = fm.θ)
-    @test_throws DimensionMismatch refit!(fm, zeros(29))
+    @testset "LMM" begin
+        ds = dataset(:dyestuff)
+        fm = only(models(:dyestuff))
+        resp₀ = copy(response(fm))
+        # type conversion of ints to floats
+        simulate!(StableRNG(1234321), fm, β=[1], σ=1)
+        refit!(fm,resp₀)
+        refit!(simulate!(StableRNG(1234321), fm))
+        @test deviance(fm) ≈ 334.0334 atol=0.001
+        refit!(fm, float(ds.yield))
+        # Global/implicit RNG method
+        Random.seed!(1234321)
+        refit!(simulate!(fm))
+        @test deviance(fm) ≈ 339.0218639362958 atol=0.001
+        simulate!(fm, θ = fm.θ)
+        @test_throws DimensionMismatch refit!(fm, zeros(29))
+    end
+
+    @testset "Poisson" begin
+        center(v::AbstractVector) = v .- (sum(v) / length(v))
+        grouseticks = DataFrame(dataset(:grouseticks))
+        grouseticks.ch = center(grouseticks.height)
+        gm4 = fit(MixedModel, only(gfms[:grouseticks]), grouseticks, Poisson(), fast=true)  # fails in pirls! with fast=false
+        gm4sim = refit!(simulate!(StableRNG(42), deepcopy(gm4)))
+        @test isapprox(gm4.β, gm4sim.β; atol=norm(stderror(gm4)))
+    end
+
+    @testset "Binomial" begin
+        cbpp = dataset(:cbpp)
+        gm2 = fit(MixedModel, first(gfms[:cbpp]), cbpp, Binomial(), wts=float(cbpp.hsz))
+        gm2sim = refit!(simulate!(StableRNG(42), deepcopy(gm2)), fast=true)
+        @test isapprox(gm2.β, gm2sim.β; atol=norm(stderror(gm2)))
+    end
+
+    @testset "_rand with dispersion" begin
+        @test_throws ArgumentError MixedModels._rand(StableRNG(42), Normal(), 1, 1, 1)
+        @test_throws ArgumentError MixedModels._rand(StableRNG(42), Gamma(), 1, 1, 1)
+        @test_throws ArgumentError MixedModels._rand(StableRNG(42), InverseGaussian(), 1, 1, 1)
+    end
 end
 
 @testset "bootstrap" begin
@@ -64,5 +91,27 @@ end
         @test sort(bsamp_threaded.θ) == sort(bsamp.θ)
         @test sort(columntable(bsamp_threaded.β).β) == sort(columntable(bsamp.β).β)
         @test sum(issingular(bsamp)) == sum(issingular(bsamp_threaded))
+    end
+
+
+    @testset "Bernoulli simulate! and GLMM boostrap" begin
+        contra = dataset(:contra)
+        gm0 = fit(MixedModel, only(gfms[:contra]), contra, Bernoulli(), fast=true)
+        bs = parametricbootstrap(StableRNG(42), 100, gm0)
+        bsci = combine(groupby(DataFrame(bs.β), :coefname),
+                       :β => first ∘ shortestcovint => :lower,
+                       :β => last ∘ shortestcovint => :upper)
+        ciwidth = 2 .* stderror(gm0)
+        waldci = DataFrame(coef=fixefnames(gm0),
+                           lower=fixef(gm0) .- ciwidth,
+                           upper=fixef(gm0) .+ ciwidth)
+
+        # coarse tolerances because we're not doing many bootstrap samples
+        @test all(isapprox.(bsci.lower, waldci.lower; atol=0.5))
+        @test all(isapprox.(bsci.upper, waldci.upper; atol=0.5))
+
+        # can't specify dispersion for families without that parameter
+        @test_throws ArgumentError parametricbootstrap(StableRNG(42), 100, gm0; σ=2)
+        @test sum(issingular(bs)) == 0
     end
 end
