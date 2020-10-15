@@ -495,15 +495,6 @@ function Base.getproperty(m::LinearMixedModel{T}, s::Symbol) where {T}
     end
 end
 
-"""
-    issingular(m::LinearMixedModel, θ=m.θ)
-
-Test whether the model `m` is singular if the parameter vector is `θ`.
-
-Equality comparisons are used b/c small non-negative θ values are replaced by 0 in `fit!`.
-"""
-issingular(m::LinearMixedModel, θ=m.θ) = any(lowerbd(m) .== θ)
-
 function StatsBase.leverage(m::LinearMixedModel{T}) where {T}
     # This can be done more efficiently but reusing existing tools is easier.
     # The i'th leverage value is obtained by replacing the response with the i'th

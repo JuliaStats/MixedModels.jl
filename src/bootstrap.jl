@@ -188,7 +188,16 @@ function Base.getproperty(bsamp::MixedModelBootstrap, s::Symbol)
     end
 end
 
-issingular(bsamp::MixedModelBootstrap) = map(θ -> any(θ .≈ bsamp.lowerbd), bsamp.θ)
+"""
+    issingular(bsamp::MixedModelBootstrap)
+
+Test each bootstrap sample for singularity of the corresponding fit.
+
+Equality comparisons are used b/c small non-negative θ values are replaced by 0 in `fit!`.
+
+See also [`issingular(::MixedModel)`](@ref).
+"""
+issingular(bsamp::MixedModelBootstrap) = map(θ -> any(θ .== bsamp.lowerbd), bsamp.θ)
 
 function Base.propertynames(bsamp::MixedModelBootstrap)
     [:allpars, :objective, :σ, :β, :se, :coefpvalues, :θ, :σs, :λ, :inds, :lowerbd, :bstr, :fcnames]

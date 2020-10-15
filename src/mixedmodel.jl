@@ -6,6 +6,15 @@ Return a vector of condition numbers of the λ matrices for the random-effects t
 """
 LinearAlgebra.cond(m::MixedModel) = cond.(m.λ)
 
+"""
+    issingular(m::MixedModel, θ=m.θ)
+
+Test whether the model `m` is singular if the parameter vector is `θ`.
+
+Equality comparisons are used b/c small non-negative θ values are replaced by 0 in `fit!`.
+"""
+issingular(m::MixedModel, θ=m.θ) = any(lowerbd(m) .== θ)
+
 function retbl(mat, trm)
     merge(
         NamedTuple{(fname(trm),)}((trm.levels,)),
