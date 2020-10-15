@@ -658,10 +658,19 @@ function Base.show(io::IO, m::GeneralizedLinearMixedModel)
 end
 
 function stderror!(v::AbstractVector{T}, m::GeneralizedLinearMixedModel{T}) where {T}
-    # this doesn't actually save an allocation, but it provides this method
-    # which is the variant used by the bootstrap
-    copyto!(fill!(v, -zero(T)), stderror(m))
-    invpermute!(v, first(m.feterms).piv)
+    # initialize to appropriate NaN for rank-deficient case
+    fill!(v, zero(T) / zero(T))
+
+    # the inverse permutation is done here.
+    # if this is changed to access the permuted
+    # model matrix directly, then don't forget to add
+    # in the inverse permutation
+    vcovmat = vcov(m)
+
+    for idx in 1:size(vcovmat,1)
+        v[idx] = sqrt(vcovmat[idx,idx])
+    end
+
     v
 end
 
