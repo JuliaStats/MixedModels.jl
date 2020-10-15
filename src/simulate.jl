@@ -1,7 +1,6 @@
 """
-    simulate!(rng::AbstractRNG, m::LinearMixedModel{T}; β=m.β, σ=m.σ, θ=T[])
-    simulate!(m::LinearMixedModel; β=m.β, σ=m.σ, θ=m.θ)
-    simulate!(m::MixedModel; β=m.β, σ=(diom.σ, θ=m.θ)
+    simulate!(rng::AbstractRNG, m::MixedModel{T}; β=m.β, σ=m.σ, θ=T[])
+    simulate!(m::MixedModel; β=m.β, σ=m.σ, θ=m.θ)
 
 Overwrite the response (i.e. `m.trms[end]`) with a simulated response vector from model `m`.
 """
@@ -76,30 +75,24 @@ function simulate!(
     # note that these m.resp.y and m.LMM.y will later be sychronized in (re)fit!()
     # but for now we use them as distinct scratch buffers to avoid allocations
 
-    # should this be initialized with zeros or standard normal?
-    # the noise term is actually in the GLM and not the LMM part....
-    # so no noise at the LMM level
-    lmy = fill!(m.LMM.y, zero(T))
-    # lmy = randn!(rng, m.LMM.y)
+    # the noise term is actually in the GLM and not the LMM part so no noise
+    # at the LMM level
+    η = fill!(m.LMM.y, zero(T))
     y = m.resp.y
 
-    for trm in m.reterms             # add the unscaled random effects
-        unscaledre!(rng, lmy, trm)
+    # assemble the linear predictor
+    @inbounds for trm in m.reterms             # add the unscaled random effects
+        unscaledre!(rng, η, trm)
     end
 
-    # do we need to worry about weights?
-
-    # assemble the linear predictor
     # scale by lm.σ and add fixed-effects contribution
-    BLAS.gemv!('N', one(T), lm.X, β, lm.σ, lmy)
+    BLAS.gemv!('N', one(T), lm.X, β, lm.σ, η)
 
     # from η to μ
-    @inbounds for  idx in 1:length(y)
-        y[idx] = GLM.linkinv(l, lmy[idx])
-    end
+    GLM.updateμ!(m.resp, η)
 
     # convert to the distribution / add in noise
-    @inbounds for (idx, val) in enumerate(y)
+    @inbounds for (idx, val) in enumerate(m.resp.mu)
         n = isempty(m.wt) ? 1 : m.wt[idx]
         y[idx] = _rand(rng, d, val, σ, n)
     end
