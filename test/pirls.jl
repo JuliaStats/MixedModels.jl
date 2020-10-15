@@ -9,6 +9,8 @@ using MixedModels: dataset
 include("modelcache.jl")
 
 @testset "contra" begin
+    contra = dataset(:contra)
+    gm0 = fit(MixedModel, only(gfms[:contra]), contra, Bernoulli(), fast=true)
     @test gm0.lowerbd == zeros(1)
     @test isapprox(gm0.θ, [0.5720734451352923], atol=0.001)
     @test !issingular(gm0)

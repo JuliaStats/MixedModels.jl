@@ -14,19 +14,25 @@ include("modelcache.jl")
     @testset "LMM" begin
         ds = dataset(:dyestuff)
         fm = only(models(:dyestuff))
+        # # just in case the fit was modified in a previous test
+        # refit!(fm, vec(float.(ds.yield)))
         resp₀ = copy(response(fm))
         # type conversion of ints to floats
         simulate!(StableRNG(1234321), fm, β=[1], σ=1)
         refit!(fm,resp₀)
         refit!(simulate!(StableRNG(1234321), fm))
-        @test deviance(fm) ≈ 334.0334 atol=0.001
+        @test deviance(fm) ≈ 322.6582 atol=0.001
         refit!(fm, float(ds.yield))
         # Global/implicit RNG method
         Random.seed!(1234321)
         refit!(simulate!(fm))
-        @test deviance(fm) ≈ 339.0218639362958 atol=0.001
+        # just make sure this worked, don't check fit
+        # (because the RNG can change between Julia versions)
+        @test response(fm) ≠ resp₀
         simulate!(fm, θ = fm.θ)
         @test_throws DimensionMismatch refit!(fm, zeros(29))
+        # restore the original state
+        refit!(fm, vec(float.(ds.yield)))
     end
 
     @testset "Poisson" begin
