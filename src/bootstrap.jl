@@ -32,9 +32,9 @@ struct MixedModelBootstrap{T<:AbstractFloat}
 end
 
 """
-    parametricbootstrap(rng::AbstractRNG, nsamp::Integer, m::LinearMixedModel;
+    parametricbootstrap(rng::AbstractRNG, nsamp::Integer, m::MixedModel;
         β = coef(m), σ = m.σ, θ = m.θ, use_threads=false)
-    parametricbootstrap(nsamp::Integer, m::LinearMixedModel;
+    parametricbootstrap(nsamp::Integer, m::MixedModel;
         β = coef(m), σ = m.σ, θ = m.θ, use_threads=false)
 
 Perform `nsamp` parametric bootstrap replication fits of `m`, returning a `MixedModelBootstrap`.

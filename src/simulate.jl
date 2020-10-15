@@ -56,7 +56,6 @@ function simulate!(
     θ = convert(Vector{T},θ)
 
     d = m.resp.d
-    l = GLM.Link(m.resp)
 
     if length(β) ≠ length(coef(m))
         padding = length(coef(m)) - length(β)
