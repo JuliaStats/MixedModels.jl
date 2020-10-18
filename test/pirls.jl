@@ -25,6 +25,12 @@ include("modelcache.jl")
     @test isone(length(retbl))
     @test isa(retbl, NamedTuple)
     @test Tables.istable(only(retbl))
+    @test !dispersion_parameter(gm0)
+    @test dispersion(gm0, false) == 1
+    @test dispersion(gm0, true) == 1
+    @test sdest(gm0) === missing
+    @test varest(gm0) === missing
+    @test gm0.σ === missing
 
     gm1 = fit(MixedModel, only(gfms[:contra]), contra, Bernoulli());
     @test isapprox(gm1.θ, [0.573054], atol=0.005)
@@ -40,7 +46,6 @@ include("modelcache.jl")
     @test isapprox(deviance(gm1), 2360.8760, atol=0.001)
     @test gm1.β == gm1.beta
     @test gm1.θ == gm1.theta
-    @test isnan(gm1.σ)
     @test length(gm1.y) == size(gm1.X, 1)
     @test :θ in propertynames(gm0)
 
@@ -66,8 +71,12 @@ end
     @test logdet(gm2) ≈ 16.90105378801136 atol=0.0001
     @test isapprox(sum(gm2.resp.devresid), 73.47174762237978, atol=0.001)
     @test isapprox(loglikelihood(gm2), -92.02628186840045, atol=0.001)
-    @test isnan(sdest(gm2))
-    @test varest(gm2) == 1
+    @test !dispersion_parameter(gm2)
+    @test dispersion(gm2, false) == 1
+    @test dispersion(gm2, true) == 1
+    @test sdest(gm2) === missing
+    @test varest(gm2) === missing
+    @test gm2.σ === missing
 
     @testset "GLMM refit" begin
         gm2r = deepcopy(gm2)
@@ -101,6 +110,12 @@ end
     # these two values are not well defined at the optimum
     #@test isapprox(sum(x -> sum(abs2, x), gm4.u), 196.8695297987013, atol=0.1)
     #@test isapprox(sum(gm4.resp.devresid), 220.92685781326136, atol=0.1)
+    @test !dispersion_parameter(gm4)
+    @test dispersion(gm4, false) == 1
+    @test dispersion(gm4, true) == 1
+    @test sdest(gm4) === missing
+    @test varest(gm4) === missing
+    @test gm4.σ === missing
 end
 
 @testset "goldstein" begin # from a 2020-04-22 msg by Ben Goldstein to R-SIG-Mixed-Models
@@ -142,5 +157,12 @@ end
     @test_logs (:warn, r"dispersion parameter") GeneralizedLinearMixedModel(form, dat, Gamma())
     @test_logs (:warn, r"dispersion parameter") GeneralizedLinearMixedModel(form, dat, InverseGaussian())
     @test_logs (:warn, r"dispersion parameter") GeneralizedLinearMixedModel(form, dat, Normal(), SqrtLink())
+
+    # notes for future tests when GLMM with dispersion works
+    # @test dispersion_parameter(gm)
+    # @test dispersion(gm, false) == val
+    # @test dispersion(gm, true) == val
+    # @test sdest(gm) == dispersion(gm, false) == gm.σ
+    # @test varest(gm) == dispersion(gm, true)
 
 end

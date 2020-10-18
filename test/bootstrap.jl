@@ -118,6 +118,12 @@ end
         @test all(isapprox.(bsci.lower, waldci.lower; atol=0.5))
         @test all(isapprox.(bsci.upper, waldci.upper; atol=0.5))
 
+        σbar = mean(MixedModels.tidyσs(bs)) do x; x.σ end
+        @test σbar ≈ 0.56 atol=0.1
+        apar = filter!(row -> row.type == "σ", DataFrame(MixedModels.allpars(bs)))
+        @test !("Residual" in apar.names)
+        @test mean(apar.value) ≈ σbar
+
         # can't specify dispersion for families without that parameter
         @test_throws ArgumentError parametricbootstrap(StableRNG(42), 100, gm0; σ=2)
         @test sum(issingular(bs)) == 0

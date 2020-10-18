@@ -48,11 +48,13 @@ function simulate!(
         length(β) == length(coef(m)) ||
             throw(ArgumentError("You must specify all (non-singular) βs"))
 
-    dispersion_parameter(m) || isnan(σ) ||
+    dispersion_parameter(m) || ismissing(σ) ||
         throw(ArgumentError("You must not specify a dispersion parameter for model families without a dispersion parameter"))
 
     β = convert(Vector{T},β)
-    σ = T(σ)
+    if σ !== missing
+        σ = T(σ)
+    end
     θ = convert(Vector{T},θ)
 
     d = m.resp.d
@@ -106,7 +108,7 @@ function simulate!(
 end
 
 """
-    _rand(rng::AbstractRNG, d::Distribution, location, scale=NaN, n=1)
+    _rand(rng::AbstractRNG, d::Distribution, location, scale=missing, n=1)
 
 A convenience function taking a draw from a distrbution.
 
@@ -121,7 +123,7 @@ Note that `n` is the `n` parameter for the Binomial distribution,
 random draw (an integer in [0, n]) into a probability (a float in [0,1]).
 """
 function _rand(rng::AbstractRNG, d::Distribution, location, scale=NaN, n=1)
-    if !isnan(scale)
+    if !ismissing(scale)
         throw(ArgumentError("Families with a dispersion parameter not yet supported"))
     end
 

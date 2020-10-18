@@ -625,7 +625,18 @@ function Base.setproperty!(m::GeneralizedLinearMixedModel, s::Symbol, y)
     end
 end
 
-sdest(m::GeneralizedLinearMixedModel{T}) where {T} = convert(T, NaN)
+"""
+    sdest(m::GeneralizedLinearMixedModel)
+
+Return the estimate of the dispersion, i.e. the standard deviation of the per-observation noise.
+
+For models with a dispersion parameter ϕ, this is simply ϕ. For models without a
+dispersion parameter, this value is `missing`. This differs from `disperion`,
+which returns `1` for models without a dispersion parameter.
+
+For Gaussian models, this parameter is often called σ.
+"""
+sdest(m::GeneralizedLinearMixedModel{T}) where {T} =  dispersion_parameter(m) ? dispersion(m, true) : missing
 
 function Base.show(io::IO, m::GeneralizedLinearMixedModel)
     if m.optsum.feval < 0
@@ -692,9 +703,20 @@ function updateη!(m::GeneralizedLinearMixedModel)
     m
 end
 
-varest(m::GeneralizedLinearMixedModel{T}) where {T} = one(T)
+"""
+    varest(m::GeneralizedLinearMixedModel)
 
-            # delegate GLMM method to LMM field
+Returns the estimate of ϕ², the variance of the conditional distribution of Y given B.
+
+For models with a dispersion parameter ϕ, this is simply ϕ². For models without a
+dispersion parameter, this value is `missing`. This differs from `disperion`,
+which returns `1` for models without a dispersion parameter.
+
+For Gaussian models, this parameter is often called σ².
+"""
+varest(m::GeneralizedLinearMixedModel{T}) where {T} = dispersion_parameter(m) ? dispersion(m, true) : missing
+
+# delegate GLMM method to LMM field
 for f in (
     :feL,
     :fetrm,

@@ -44,8 +44,8 @@ The default random number generator is `Random.GLOBAL_RNG`.
 # Named Arguments
 
 `β`, `σ`, and `θ` are the values of `m`'s parameters for simulating the responses.
-`σ` is only valid for `LinearMixedModel` and `GeneralizedLinearMixedModel` when
-the family that has a dispersion parameter.
+`σ` is only valid for `LinearMixedModel` and `GeneralizedLinearMixedModel` for
+families with a dispersion parameter.
 `use_threads` determines whether or not to use thread-based parallelism.
 
 Note that `use_threads=true` may not offer a performance boost and may even
@@ -63,7 +63,10 @@ function parametricbootstrap(
     θ::AbstractVector=morig.θ,
     use_threads::Bool=false,
 ) where {T}
-    β, σ, θ = convert(Vector{T}, β), T(σ), convert(Vector{T}, θ)
+    if σ !== missing
+        σ = T(σ)
+    end
+    β, θ = convert(Vector{T}, β), convert(Vector{T}, θ)
     βsc, θsc, p, k, m = similar(β), similar(θ), length(β), length(θ), deepcopy(morig)
 
     β_names = (Symbol.(fixefnames(morig))..., )
@@ -138,7 +141,7 @@ function allpars(bsamp::MixedModelBootstrap{T}) where {T}
     )
     nrmdr = Vector{T}[]  # normalized rows of λ
     for (i, r) in enumerate(bstr)
-        σ = r.σ
+        σ = r.σ === missing ? 1 : r.σ
         for (nm, v) in pairs(r.β)
             push!.(cols, (i, "β", missing, String(nm), v))
         end
@@ -161,7 +164,7 @@ function allpars(bsamp::MixedModelBootstrap{T}) where {T}
                 end
             end
         end
-        push!.(cols, (i, "σ", "residual", missing, σ))
+        r.σ === missing || push!.(cols, (i, "σ", "residual", missing, r.σ))
     end
     (
         iter=cols[1],
@@ -301,7 +304,7 @@ function tidyσs(bsamp::MixedModelBootstrap{T}) where {T}
     )
     for (iter, r) in enumerate(bstr)
         setθ!(bsamp, iter)    # install r.θ in λ
-        σ = r.σ
+        σ = r.σ === missing ? 1 : r.σ
         for (grp, ll) in zip(keys(fcnames), λ)
             for (cn, col) in zip(getproperty(fcnames, grp), eachrow(ll))
                 push!(result, NamedTuple{colnms}((iter, grp, Symbol(cn), σ * norm(col))))
