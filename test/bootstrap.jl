@@ -105,8 +105,10 @@ end
         gm0 = fit(MixedModel, only(gfms[:contra]), contra, Bernoulli(), fast=true)
         bs = parametricbootstrap(StableRNG(42), 100, gm0)
         bsci = combine(groupby(DataFrame(bs.β), :coefname),
-                       :β => first ∘ shortestcovint => :lower,
-                       :β => last ∘ shortestcovint => :upper)
+                       :β => shortestcovint => :ci)
+        bsci.lower = first.(bsci.ci)
+        bsci.upper = last.(bsci.ci)
+        select!(bsci, Not(:ci))
         ciwidth = 2 .* stderror(gm0)
         waldci = DataFrame(coef=fixefnames(gm0),
                            lower=fixef(gm0) .- ciwidth,
