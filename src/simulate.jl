@@ -80,12 +80,18 @@ function simulate!(
     y = m.resp.y
 
     # assemble the linear predictor
-    @inbounds for trm in m.reterms             # add the unscaled random effects
+
+    # add the unscaled random effects
+    # note that unit scaling may not be correct for
+    # families with a dispersion parameter
+    @inbounds for trm in m.reterms
         unscaledre!(rng, η, trm)
     end
 
-    # scale by lm.σ and add fixed-effects contribution
-    BLAS.gemv!('N', one(T), lm.X, β, lm.σ, η)
+    # add fixed-effects contribution
+    # note that unit scaling may not be correct for
+    # families with a dispersion parameter
+    BLAS.gemv!('N', one(T), lm.X, β, one(T), η)
 
     # from η to μ
     GLM.updateμ!(m.resp, η)
