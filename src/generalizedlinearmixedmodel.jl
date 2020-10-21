@@ -441,7 +441,7 @@ StatsBase.nobs(m::GeneralizedLinearMixedModel) = length(m.η)
 
 StatsBase.predict(m::GeneralizedLinearMixedModel) = fitted(m)
 
-Base.propertynames(m::GeneralizedLinearMixedModel, private = false) = (
+Base.propertynames(m::GeneralizedLinearMixedModel, private::Bool = false) = (
     :A,
     :L,
     :theta,
