@@ -211,7 +211,7 @@ function Base.getproperty(pca::PCA, s::Symbol)
     end
 end
 
-Base.propertynames(pca::PCA, private = false) = (
+Base.propertynames(pca::PCA, private::Bool = false) = (
     :covcor,
     :sv,
     :corr,
