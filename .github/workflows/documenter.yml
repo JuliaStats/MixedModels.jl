@@ -1,13 +1,11 @@
-# This is a basic workflow that is manually triggered
-
-name: Manual Documenter
-
-# Controls when the action will run. Workflow runs when manually triggered using the UI
-# or API.
+name: Documenter
 on:
-  workflow_dispatch:
-
-# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+  push:
+    branches: [master]
+    tags: [v*]
+  pull_request:
+    branches:
+      - master
 jobs:
   Documenter:
     name: Documentation
