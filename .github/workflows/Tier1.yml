@@ -1,4 +1,4 @@
-name: Tier1
+name: Tier 1
 on:
   push:
     branches:
