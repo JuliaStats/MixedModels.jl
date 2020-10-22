@@ -20,8 +20,3 @@ include("missing.jl")
 include("likelihoodratiotest.jl")
 include("grouping.jl")
 include("bootstrap.jl")
-
-# these are run here so that we run them locally when testing
-# and aren't surprised when we get to doc deployment
-using Documenter: doctest
-doctest(MixedModels)
