@@ -572,11 +572,11 @@ subj     (Intercept)     136591.782 369.583
          prec: maintain   32348.269 179.856 -0.98 -0.03
 Residual                 642324.531 801.452
 
-julia> MixedModels.corrmat(mod.reterms[1])
-3×3 LinearAlgebra.Symmetric{Float64,Array{Float64,2}}:
-  1.0        0.214816   -0.982948
-  0.214816   1.0        -0.0315607
- -0.982948  -0.0315607   1.0
+julia> round.(MixedModels.corrmat(mod.reterms[1]),digits=2)
+3×3 Array{Float64,2}:
+  1.0    0.21  -0.98
+  0.21   1.0   -0.03
+ -0.98  -0.03   1.0
 ```
 """
 function corrmat(A::ReMat{T}) where {T}
