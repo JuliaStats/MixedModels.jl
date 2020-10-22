@@ -145,7 +145,7 @@ fm4b = fit(MixedModel, @formula(strength ~ 1 + (1|sample) + (1|batch)), pastes)
 @testset "implicit and explicit nesting" begin
     @test deviance(fm4a) ≈ deviance(fm4b)
     @test varest(fm4a) ≈ varest(fm4b)
-    b@test fm4a.θ ≈ fm4b.θ
+    @test fm4a.θ ≈ fm4b.θ
 end
 ```
 
