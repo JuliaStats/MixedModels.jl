@@ -3,7 +3,6 @@ on:
   push:
     branches:
       - master
-
     paths-ignore:
       - 'LICENSE.md'
       - 'README.md'
@@ -32,5 +31,3 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: julia-actions/julia-uploadcodecov@v0.1
         if:  ${{ startsWith(matrix.os, 'Ubuntu') && startsWith(matrix.julia-version, '1.5') }}
-        env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
