@@ -1,3 +1,9 @@
+MixedModels v3.0.2 Release Notes
+========================
+
+* Compatibility updates
+* Minor updates for formatting in various `show` method for `VarCorr`.
+
 MixedModels v3.0 Release Notes
 ========================
 
@@ -43,12 +49,12 @@ Principal components
 ----------------------------------
 
 * An `AbstractReMat` type has now been introduced to support [#380] work on constrained
-  random-effects structures and random-effects structures appropriate for applications 
-  in GLM-based decovolution as used in fMRI and EEG (see e.g. [unfold.jl](https://github.com/unfoldtoolbox/unfold.jl).) 
+  random-effects structures and random-effects structures appropriate for applications
+  in GLM-based decovolution as used in fMRI and EEG (see e.g. [unfold.jl](https://github.com/unfoldtoolbox/unfold.jl).)
 * Similarly, a constructor for `FeMat{::SparseMatrixCSC,S}` has been introduced [#309].
-  Currently, this constructor assumes a full-rank matrix, but the work on rank 
+  Currently, this constructor assumes a full-rank matrix, but the work on rank
   deficiency may be extended to this constructor as well.
-* Analogous to `AbstractReMat`, an `AbstractReTerm <: AbstractTerm` type  has been introduced [#395]. 
+* Analogous to `AbstractReMat`, an `AbstractReTerm <: AbstractTerm` type  has been introduced [#395].
   Terms created with `zerocorr` are of type `ZeroCorr <: AbstractReTerm`.
 
 Availability of test data sets
