@@ -139,7 +139,7 @@ fm4a = fit(MixedModel, @formula(strength ~ 1 + (1|batch/cask)), pastes)
 If the levels of the inner grouping factor are unique across the levels of the outer grouping factor, then this nesting does not need to expressed explicitly in the model syntax. For example, defining `sample` to be the combination of `batch` and `cask`, yields a naming scheme where the nesting is apparent from the data even if not expressed in the formula. (That is, each level of `sample` occurs in conjunction with only one level of `batch`.) As such, this model is equivalent to the previous one.
 ```@example Main
 pastes.sample = (string.(pastes.cask, "&",  pastes.batch))
-fm4b - fit(MixedModel, @formula(strength ~ 1 + (1|sample) + (1|batch)), pastes)
+fm4b = fit(MixedModel, @formula(strength ~ 1 + (1|sample) + (1|batch)), pastes)
 ```
 ```@setup Main
 @testset "implicit and explicit nesting" begin
