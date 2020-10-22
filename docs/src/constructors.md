@@ -147,7 +147,7 @@ fm4b = fit(MixedModel, @formula(strength ~ 1 + (1|sample) + (1|batch)), pastes)
     @test varest(fm4a) ≈ varest(fm4b)
     b@test fm4a.θ ≈ fm4b.θ
 end
-
+```
 
 In observational studies it is common to encounter *partially crossed* grouping factors.
 For example, the *InstEval* data are course evaluations by students, `s`, of instructors, `d`.
