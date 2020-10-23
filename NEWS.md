@@ -4,6 +4,12 @@ MixedModels v3.1 Release Notes
 * `simulate!` and thus `parametricbootstrap` methods for `GeneralizedLinearMixedModel` [#418].
 * Documented inconsistent behavior in `sdest` and `varest` `GeneralizedLinearMixedModel` [#418].
 
+MixedModels v3.0.2 Release Notes
+========================
+
+* Compatibility updates
+* Minor updates for formatting in various `show` method for `VarCorr`.
+
 MixedModels v3.0 Release Notes
 ========================
 

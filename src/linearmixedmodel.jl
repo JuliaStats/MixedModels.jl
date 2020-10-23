@@ -561,7 +561,7 @@ end
 
 StatsBase.predict(m::LinearMixedModel) = fitted(m)
 
-Base.propertynames(m::LinearMixedModel, private = false) = (
+Base.propertynames(m::LinearMixedModel, private::Bool = false) = (
     :formula,
     :sqrtwts,
     :A,

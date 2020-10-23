@@ -19,7 +19,7 @@ struct LikelihoodRatioTest
     tests::NamedTuple{(:dofdiff,:deviancediff,:pvalues)}
 end
 
-Base.propertynames(lrt::LikelihoodRatioTest, private = false) = (
+Base.propertynames(lrt::LikelihoodRatioTest, private::Bool = false) = (
     :deviance,
     :formulas,
     :models,
