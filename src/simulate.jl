@@ -33,7 +33,8 @@ function simulate!(
         unscaledre!(rng, y, trm)
     end
                     # scale by σ and add fixed-effects contribution
-    BLAS.gemv!('N', one(T), m.X, β, σ, y)
+    mul!(y, m.X, β, one(T), σ)
+
     m
 end
 
@@ -93,7 +94,7 @@ function simulate!(
     # add fixed-effects contribution
     # note that unit scaling may not be correct for
     # families with a dispersion parameter
-    BLAS.gemv!('N', one(T), lm.X, β, one(T), η)
+    mul!(η, lm.X, β, one(T), one(T))
 
     # from η to μ
     GLM.updateμ!(m.resp, η)
