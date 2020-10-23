@@ -129,7 +129,7 @@ function _rand(rng::AbstractRNG, d::Distribution, location, scale=NaN, n=1)
     end
 
     if d isa Binomial
-        dist = Binomial(n, location)
+        dist = Binomial(Int(n), location)
     else
         dist = typeof(d)(location)
     end
