@@ -1,3 +1,9 @@
+MixedModels v3.1 Release Notes
+========================
+
+* `simulate!` and thus `parametricbootstrap` methods for `GeneralizedLinearMixedModel` [#418].
+* Documented inconsistent behavior in `sdest` and `varest` `GeneralizedLinearMixedModel` [#418].
+
 MixedModels v3.0.2 Release Notes
 ========================
 
@@ -91,3 +97,4 @@ Package dependencies
 [#384]: https://github.com/JuliaStats/MixedModels.jl/issues/384
 [#390]: https://github.com/JuliaStats/MixedModels.jl/issues/390
 [#395]: https://github.com/JuliaStats/MixedModels.jl/issues/395
+[#418]: https://github.com/JuliaStats/MixedModels.jl/issues/418
