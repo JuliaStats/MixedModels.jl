@@ -15,9 +15,12 @@ struct VarCorr
 end
 VarCorr(m::MixedModel) = VarCorr(σρs(m), dispersion_parameter(m) ? dispersion(m) : nothing)
 
-function aligncompact(v)
-    digits = maximum(last.(Base.alignment.(Ref(IOContext(stdout, :compact=>true)), v)))
-    Base.Ryu.writefixed.(v, Ref(digits - 1))
+function _printdigits(v)
+    maximum(last.(Base.alignment.(Ref(IOContext(stdout, :compact=>true)), v))) - 1
+end
+
+function aligncompact(v, digits=_printdigits(v))
+    Base.Ryu.writefixed.(v, Ref(digits))
 end
 
 function Base.show(io::IO, vc::VarCorr)
@@ -33,8 +36,9 @@ function Base.show(io::IO, vc::VarCorr)
     cnmwd = maximum(textwidth.(cnmvec)) + 1
     nρ = maximum(length.(getproperty.(values(σρ), :ρ)))
     varvec = abs2.(σvec)
-    showσvec = aligncompact(σvec)
-    showvarvec = aligncompact(varvec)
+    digits = _printdigits(σvec)
+    showσvec = aligncompact(σvec, digits)
+    showvarvec = aligncompact(varvec, digits)
     varwd = maximum(textwidth.(showvarvec)) + 1
     stdwd = maximum(textwidth.(showσvec)) + 1
     println(io, "Variance components:")

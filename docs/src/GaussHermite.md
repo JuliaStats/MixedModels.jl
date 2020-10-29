@@ -1,6 +1,6 @@
 # Normalized Gauss-Hermite Quadrature
 
-[*Gaussian Quadrature rules*](https://en.wikipedia.org/wiki/Gaussian_quadrature) provide sets of `x` values, called *abscissae*, and weights, `w`, to approximate an integral with respect to a *weight function*, $g(x)$.
+[*Gaussian Quadrature rules*](https://en.wikipedia.org/wiki/Gaussian_quadrature) provide sets of `x` values, called *abscissae*, and corresponding weights, `w`, to approximate an integral with respect to a *weight function*, $g(x)$.
 For a `k`th order rule the approximation is
 ```math
 \int f(x)g(x)\,dx \approx \sum_{i=1}^k w_i f(x_i)
@@ -93,7 +93,7 @@ A *binary response* is a "Yes"/"No" type of answer.
 For example, in a 1989 fertility survey of women in Bangladesh (reported in [Huq, N. M. and Cleland, J., 1990](https://www.popline.org/node/371841)) one response of interest was whether the woman used artificial contraception.
 Several covariates were recorded including the woman's age (centered at the mean), the number of live children the woman has had (in 4 categories: 0, 1, 2, and 3 or more), whether she lived in an urban setting, and the district in which she lived.
 The version of the data used here is that used in review of multilevel modeling software conducted by the Center for Multilevel Modelling, currently at University of Bristol (http://www.bristol.ac.uk/cmm/learning/mmsoftware/data-rev.html).
-These data are available as the `Contraception` data frame in the test data for the `MixedModels` package.
+These data are available as the `:contra` dataset.
 ```@example Main
 contra = DataFrame(MixedModels.dataset(:contra))
 describe(contra)
@@ -109,8 +109,7 @@ shows that the proportion of women using artificial contraception is approximate
 A model with fixed-effects for age, age squared, number of live children and urban location and with random effects for district, is fit as
 ```@example Main
 const form1 = @formula use ~ 1 + age + abs2(age) + livch + urban + (1|dist);
-m1 = fit!(GeneralizedLinearMixedModel(form1, contra,
-    Bernoulli()), fast=true)
+m1 = fit(MixedModel, form1, contra, Bernoulli(), fast=true)
 ```
 
 For a model such as `m1`, which has a single, scalar random-effects term, the unscaled conditional density of the spherical random effects variable, $\mathcal{U}$,
@@ -125,7 +124,7 @@ To use Gauss-Hermite quadrature the contributions of each of the $u_i,\;i=1,\dot
 ```@example Main
 const devc0 = map!(abs2, m1.devc0, m1.u[1]);  # start with uᵢ²
 const devresid = m1.resp.devresid;   # n-dimensional vector of deviance residuals
-const refs = first(m1.LMM.reterms).refs;  # n-dimensional vector of indices in 1:q
+const refs = only(m1.LMM.reterms).refs;  # n-dimensional vector of indices in 1:q
 for (dr, i) in zip(devresid, refs)
     devc0[i] += dr
 end
@@ -141,7 +140,7 @@ freqtable(contra, :dist)'
 
 Because the first district has one of the largest sample sizes and the third district has the smallest sample size, these two will be used for illustration.
 For a range of $u$ values, evaluate the individual components of the deviance and store them in a matrix.
-```@setup Main
+```@example Main
 const devc = m1.devc;
 const xvals = -5.0:2.0^(-4):5.0;
 const uv = vec(m1.u[1]);

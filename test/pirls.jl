@@ -1,37 +1,37 @@
 using DataFrames
 using Distributions
 using MixedModels
-using Random
+using StableRNGs
 using Tables
 using Test
 
 using MixedModels: dataset
 
-const gfms = Dict(
-    :cbpp => [@formula((incid/hsz) ~ 1 + period + (1|herd))],
-    :contra => [@formula(use ~ 1+age+abs2(age)+urban+livch+(1|urbdist))],
-    :dyestuff => [@formula(yield ~ 1 + (1|batch))],
-    :grouseticks => [@formula(ticks ~ 1+year+ch+ (1|index) + (1|brood) + (1|location))],
-    :verbagg => [@formula(r2 ~ 1+anger+gender+btype+situ+(1|subj)+(1|item))],
-    :sdio_relaxivity => [@formula(T2 ~ 1 + C + (1 + C|Trial)), # canonical inverse link
-                         @formula(R2 ~ 1 + C + (1 + C|Trial))], # identity link
-)
+include("modelcache.jl")
 
 @testset "contra" begin
     contra = dataset(:contra)
-    gm0 = fit(MixedModel, only(gfms[:contra]), contra, Bernoulli(), fast=true);
+    gm0 = fit(MixedModel, only(gfms[:contra]), contra, Bernoulli(), fast=true)
     @test gm0.lowerbd == zeros(1)
     @test isapprox(gm0.θ, [0.5720734451352923], atol=0.001)
+    @test !issingular(gm0)
+    @test issingular(gm0, [0])
     @test isapprox(deviance(gm0), 2361.657188518064, atol=0.001)
     # the first 9 BLUPs -- I don't think there's much point in testing all 102
-    blups = [-0.9546698228978889, -0.034754272678681725, -0.2513196374772515,
-              0.10836392818271358, -0.38610152013564464, -0.19309267616660894,
-              0.059291406326190885, -0.29649374611805296, -0.4564504918851189]
+    blups = [-0.5853637711570235, -0.9546542393824562, -0.034754249031292345, # values are the same but in different order
+              0.2894692928724314, 0.6381376605845264, -0.2513134928312374,
+              0.031321447845204374, 0.10836110432794945, 0.24632286640099466]
     @test only(ranef(gm0))[1:9] ≈ blups atol=1e-4
     retbl = raneftables(gm0)
     @test isone(length(retbl))
     @test isa(retbl, NamedTuple)
     @test Tables.istable(only(retbl))
+    @test !dispersion_parameter(gm0)
+    @test dispersion(gm0, false) == 1
+    @test dispersion(gm0, true) == 1
+    @test sdest(gm0) === missing
+    @test varest(gm0) === missing
+    @test gm0.σ === missing
 
     gm1 = fit(MixedModel, only(gfms[:contra]), contra, Bernoulli());
     @test isapprox(gm1.θ, [0.573054], atol=0.005)
@@ -47,7 +47,6 @@ const gfms = Dict(
     @test isapprox(deviance(gm1), 2360.8760, atol=0.001)
     @test gm1.β == gm1.beta
     @test gm1.θ == gm1.theta
-    @test isnan(gm1.σ)
     @test length(gm1.y) == size(gm1.X, 1)
     @test :θ in propertynames(gm0)
 
@@ -73,8 +72,12 @@ end
     @test logdet(gm2) ≈ 16.90105378801136 atol=0.0001
     @test isapprox(sum(gm2.resp.devresid), 73.47174762237978, atol=0.001)
     @test isapprox(loglikelihood(gm2), -92.02628186840045, atol=0.001)
-    @test isnan(sdest(gm2))
-    @test varest(gm2) == 1
+    @test !dispersion_parameter(gm2)
+    @test dispersion(gm2, false) == 1
+    @test dispersion(gm2, true) == 1
+    @test sdest(gm2) === missing
+    @test varest(gm2) === missing
+    @test gm2.σ === missing
 
     @testset "GLMM refit" begin
         gm2r = deepcopy(gm2)
@@ -108,6 +111,12 @@ end
     # these two values are not well defined at the optimum
     #@test isapprox(sum(x -> sum(abs2, x), gm4.u), 196.8695297987013, atol=0.1)
     #@test isapprox(sum(gm4.resp.devresid), 220.92685781326136, atol=0.1)
+    @test !dispersion_parameter(gm4)
+    @test dispersion(gm4, false) == 1
+    @test dispersion(gm4, true) == 1
+    @test sdest(gm4) === missing
+    @test varest(gm4) === missing
+    @test gm4.σ === missing
 end
 
 @testset "goldstein" begin # from a 2020-04-22 msg by Ben Goldstein to R-SIG-Mixed-Models
@@ -189,4 +198,11 @@ end
         #gamma.optsum.optimizer = :LN_NELDERMEAD;
         # fit!(gamma)
     end
+    # notes for future tests when GLMM with dispersion works
+    # @test dispersion_parameter(gm)
+    # @test dispersion(gm, false) == val
+    # @test dispersion(gm, true) == val
+    # @test sdest(gm) == dispersion(gm, false) == gm.σ
+    # @test varest(gm) == dispersion(gm, true)
+
 end

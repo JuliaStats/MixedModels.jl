@@ -71,8 +71,8 @@ end
     @test_throws ArgumentError likelihoodratiotest(fm0,fm1)
 
     contra = MixedModels.dataset(:contra);
-    gm0 = fit(MixedModel, @formula(use ~ 1+age+urban+livch+(1|urbdist)), contra, Bernoulli(), fast=true);
-    gm1 = fit(MixedModel, @formula(use ~ 1+age+abs2(age)+urban+livch+(1|urbdist)), contra, Bernoulli(), fast=true);
+    gm0 = fit(MixedModel, @formula(use ~ 1+age+urban+livch+(1|urban&dist)), contra, Bernoulli(), fast=true);
+    gm1 = fit(MixedModel, @formula(use ~ 1+age+abs2(age)+urban+livch+(1|urban&dist)), contra, Bernoulli(), fast=true);
     lrt = likelihoodratiotest(gm0,gm1);
     @test [deviance(gm0), deviance(gm1)] == lrt.deviance
     @test deviance(gm0) - deviance(gm1) == only(lrt.tests.deviancediff)
@@ -83,10 +83,10 @@ end
     @test length(lrt.formulae) == 2
 
     # mismatched links
-    gm_probit = fit(MixedModel, @formula(use ~ 1+age+urban+livch+(1|urbdist)), contra, Bernoulli(), ProbitLink(), fast=true);
+    gm_probit = fit(MixedModel, @formula(use ~ 1+age+urban+livch+(1|urban&dist)), contra, Bernoulli(), ProbitLink(), fast=true);
     @test_throws ArgumentError likelihoodratiotest(gm0,gm_probit)
 
     # mismatched families
-    gm_poisson = fit(MixedModel, @formula(use ~ 1+age+urban+livch+(1|urbdist)), contra, Poisson(), fast=true);
+    gm_poisson = fit(MixedModel, @formula(use ~ 1+age+urban+livch+(1|urban&dist)), contra, Poisson(), fast=true);
     @test_throws ArgumentError MixedModels.likelihoodratiotest(gm0,gm_poisson)
 end

@@ -1,6 +1,6 @@
-using DataFrames
 using LinearAlgebra
 using MixedModels
+using PooledArrays
 using Random
 using SparseArrays
 using Statistics
@@ -134,8 +134,10 @@ end
     @test coef(fm) ≈ [5.6656]
     @test logdet(fm) ≈ 0.0
     @test issingular(fm)
+    #### modifies the model
     refit!(fm, float(MixedModels.dataset(:dyestuff)[:yield]))
     @test objective(fm) ≈ 327.3270598811428 atol=0.001
+    refit!(fm, float(MixedModels.dataset(:dyestuff2)[:yield])) # restore the model in the cache
 end
 
 @testset "penicillin" begin
@@ -271,8 +273,8 @@ end
     @test length(σs) == 1
     @test keys(σs) == (:subj,)
     @test length(σs.subj) == 2
-    @test first(values(σs.subj)) ≈ 23.780468626896745 atol=0.0001
-    @test last(values(first(σs))) ≈ 5.716827808126002 atol=0.0001
+    @test first(values(σs.subj)) ≈ 23.7804686 atol=0.0001
+    @test last(values(first(σs))) ≈ 5.7168278 atol=0.0001
     @test fm.corr ≈ [1.0 -0.1375451787621904; -0.1375451787621904 1.0] atol=0.0001
 
     u3 = ranef(fm, uscale=true)
@@ -292,13 +294,11 @@ end
     @test Tables.istable(only(b3tbl))
 
     simulate!(fm)  # to test one of the unscaledre methods
-
-    fmnc = zerocorr!(deepcopy(fm))
-    @test fmnc.optsum.feval < 0
-    @test size(fmnc) == (180,2,36,1)
-    @test fmnc.θ == [fm.θ[1], fm.θ[3]]
-    @test lowerbd(fmnc) == zeros(2)
-    @test_throws DimensionMismatch MixedModels.getθ!(fm.θ, fmnc)
+    # must restore state of fm as it is cached in the global fittedmodels
+    slp = MixedModels.dataset(:sleepstudy)
+    copyto!(fm.y, slp.reaction)
+    updateL!(MixedModels.reevaluateAend!(fm))
+    @test objective(fm) ≈ 1751.9393444647046 # check the model is properly restored
 
     fmnc = models(:sleepstudy)[2]
     @test size(fmnc) == (180,2,36,1)
@@ -325,12 +325,11 @@ end
     @test ρ === -0.0   # test that systematic zero correlations are returned as -0.0
 
     MixedModels.likelihoodratiotest(fm, fmnc)
-    slp = MixedModels.dataset(:sleepstudy)
     fmrs = fit(MixedModel, @formula(reaction ~ 1+days + (0+days|subj)), slp);
     @test objective(fmrs) ≈ 1774.080315280528 rtol=0.00001
     @test fmrs.θ ≈ [0.24353985679033105] rtol=0.00001
 
-    fm_ind = fit(MixedModel, @formula(reaction ~ 1+days + (1|subj) + (0+days|subj)), slp)
+    fm_ind = models(:sleepstudy)[3]
     @test objective(fm_ind) ≈ objective(fmnc)
     @test coef(fm_ind) ≈ coef(fmnc)
     @test fixef(fm_ind) ≈ fixef(fmnc)
@@ -340,7 +339,7 @@ end
     @test logdet(fm_ind) ≈ logdet(fmnc)
 
     # combining [ReMat{T,S1}, ReMat{T,S2}] for S1 ≠ S2
-    slpcat = categorical!(DataFrame(slp), [:days])
+    slpcat = (subj = slp.subj, days = PooledArray(string.(slp.days)), reaction = slp.reaction)
     fm_cat = fit(MixedModel, @formula(reaction ~ 1+days+(1|subj)+(0+days|subj)),slpcat)
     @test fm_cat isa LinearMixedModel
     σρ = fm_cat.σρs
@@ -431,11 +430,13 @@ end
 
 @testset "wts" begin
     # example from https://github.com/JuliaStats/MixedModels.jl/issues/194
-    data = DataFrame(a = [1.55945122,0.004391538,0.005554163,-0.173029772,4.586284429,0.259493671,-0.091735715,5.546487603,0.457734831,-0.030169602],
-                     b = [0.24520519,0.080624178,0.228083467,0.2471453,0.398994279,0.037213859,0.102144973,0.241380251,0.206570975,0.15980803],
-                     c = categorical(["H","F","K","P","P","P","D","M","I","D"]),
-                     w1 = [20,40,35,12,29,25,65,105,30,75],
-                     w2 = [0.04587156,0.091743119,0.080275229,0.027522936,0.066513761,0.05733945,0.149082569,0.240825688,0.068807339,0.172018349])
+    data = (
+        a = [1.55945122,0.004391538,0.005554163,-0.173029772,4.586284429,0.259493671,-0.091735715,5.546487603,0.457734831,-0.030169602],
+        b = [0.24520519,0.080624178,0.228083467,0.2471453,0.398994279,0.037213859,0.102144973,0.241380251,0.206570975,0.15980803],
+        c = PooledArray(["H","F","K","P","P","P","D","M","I","D"]),
+        w1 = [20,40,35,12,29,25,65,105,30,75],
+        w2 = [0.04587156,0.091743119,0.080275229,0.027522936,0.066513761,0.05733945,0.149082569,0.240825688,0.068807339,0.172018349],
+    )
 
     #= no need to fit yet another model without weights, but here are the reference values from lme4
     m1 = fit(MixedModel, @formula(a ~ 1 + b + (1|c)), data)
@@ -448,4 +449,19 @@ end
     @test m2.θ ≈ [0.295181729258352]  atol = 1.e-4
     @test stderror(m2) ≈  [0.9640167, 3.6309696] atol = 1.e-4
     @test vcov(m2) ≈ [0.9293282 -2.557527; -2.5575267 13.183940] atol = 1.e-4
+end
+
+@testset "unifying ReMat eltypes" begin
+    sleepstudy = dataset(:sleepstudy)
+
+    re = LinearMixedModel(@formula(reaction ~ 1 + days + (1|subj) + (days|subj)), sleepstudy).reterms
+    # make sure that the eltypes are still correct
+    # otherwise this test isn't checking what it should be
+    @test eltype(sleepstudy.days) == Int8
+    @test eltype(sleepstudy.reaction) == Float64
+
+    # use explicit typeof() and == is to remind us that things may break
+    # if we change things and don't check their type implications now
+    # that we're starting to support a non trivial type hierarchy
+    @test typeof(re) == Vector{AbstractReMat{Float64}}
 end

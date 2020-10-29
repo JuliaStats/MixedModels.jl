@@ -32,9 +32,9 @@ struct MixedModelBootstrap{T<:AbstractFloat}
 end
 
 """
-    parametricbootstrap(rng::AbstractRNG, nsamp::Integer, m::LinearMixedModel;
+    parametricbootstrap(rng::AbstractRNG, nsamp::Integer, m::MixedModel;
         β = coef(m), σ = m.σ, θ = m.θ, use_threads=false)
-    parametricbootstrap(nsamp::Integer, m::LinearMixedModel;
+    parametricbootstrap(nsamp::Integer, m::MixedModel;
         β = coef(m), σ = m.σ, θ = m.θ, use_threads=false)
 
 Perform `nsamp` parametric bootstrap replication fits of `m`, returning a `MixedModelBootstrap`.
@@ -44,24 +44,29 @@ The default random number generator is `Random.GLOBAL_RNG`.
 # Named Arguments
 
 `β`, `σ`, and `θ` are the values of `m`'s parameters for simulating the responses.
+`σ` is only valid for `LinearMixedModel` and `GeneralizedLinearMixedModel` for
+families with a dispersion parameter.
 `use_threads` determines whether or not to use thread-based parallelism.
 
-Note that `use_threads=true` may not offer a performance boost and may even 
+Note that `use_threads=true` may not offer a performance boost and may even
 decrease peformance if multithreaded linear algebra (BLAS) routines are available.
-In this case, threads at the level of the linear algebra may already occupy all 
+In this case, threads at the level of the linear algebra may already occupy all
 processors/processor cores. There are plans to provide better support in coordinating
-Julia- and BLAS-level threads in the future. 
+Julia- and BLAS-level threads in the future.
 """
 function parametricbootstrap(
     rng::AbstractRNG,
     n::Integer,
-    morig::LinearMixedModel{T};
+    morig::MixedModel{T};
     β::AbstractVector=coef(morig),
     σ=morig.σ,
     θ::AbstractVector=morig.θ,
     use_threads::Bool=false,
 ) where {T}
-    β, σ, θ = convert(Vector{T}, β), T(σ), convert(Vector{T}, θ)
+    if σ !== missing
+        σ = T(σ)
+    end
+    β, θ = convert(Vector{T}, β), convert(Vector{T}, θ)
     βsc, θsc, p, k, m = similar(β), similar(θ), length(β), length(θ), deepcopy(morig)
 
     β_names = (Symbol.(fixefnames(morig))..., )
@@ -108,7 +113,7 @@ end
 
 function parametricbootstrap(
     nsamp::Integer,
-    m::LinearMixedModel;
+    m::MixedModel;
     β = m.β,
     σ = m.σ,
     θ = m.θ,
@@ -129,14 +134,14 @@ function allpars(bsamp::MixedModelBootstrap{T}) where {T}
     nresrow = length(bstr) * npars
     cols = (
         sizehint!(Int[], nresrow),
-        sizehint!(String[], nresrow), 
+        sizehint!(String[], nresrow),
         sizehint!(Union{Missing,String}[], nresrow),
         sizehint!(Union{Missing,String}[], nresrow),
         sizehint!(T[], nresrow),
     )
     nrmdr = Vector{T}[]  # normalized rows of λ
     for (i, r) in enumerate(bstr)
-        σ = r.σ
+        σ = coalesce(r.σ, one(T))
         for (nm, v) in pairs(r.β)
             push!.(cols, (i, "β", missing, String(nm), v))
         end
@@ -159,7 +164,7 @@ function allpars(bsamp::MixedModelBootstrap{T}) where {T}
                 end
             end
         end
-        push!.(cols, (i, "σ", "residual", missing, σ))
+        r.σ === missing || push!.(cols, (i, "σ", "residual", missing, r.σ))
     end
     (
         iter=cols[1],
@@ -186,7 +191,16 @@ function Base.getproperty(bsamp::MixedModelBootstrap, s::Symbol)
     end
 end
 
-issingular(bsamp::MixedModelBootstrap) = map(θ -> any(θ .≈ bsamp.lowerbd), bsamp.θ)
+"""
+    issingular(bsamp::MixedModelBootstrap)
+
+Test each bootstrap sample for singularity of the corresponding fit.
+
+Equality comparisons are used b/c small non-negative θ values are replaced by 0 in `fit!`.
+
+See also [`issingular(::MixedModel)`](@ref).
+"""
+issingular(bsamp::MixedModelBootstrap) = map(θ -> any(θ .== bsamp.lowerbd), bsamp.θ)
 
 function Base.propertynames(bsamp::MixedModelBootstrap)
     [:allpars, :objective, :σ, :β, :se, :coefpvalues, :θ, :σs, :λ, :inds, :lowerbd, :bstr, :fcnames]
@@ -290,7 +304,7 @@ function tidyσs(bsamp::MixedModelBootstrap{T}) where {T}
     )
     for (iter, r) in enumerate(bstr)
         setθ!(bsamp, iter)    # install r.θ in λ
-        σ = r.σ
+        σ = coalesce(r.σ, one(T))
         for (grp, ll) in zip(keys(fcnames), λ)
             for (cn, col) in zip(getproperty(fcnames, grp), eachrow(ll))
                 push!(result, NamedTuple{colnms}((iter, grp, Symbol(cn), σ * norm(col))))

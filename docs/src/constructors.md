@@ -126,19 +126,27 @@ fm3 = fit(MixedModel, @formula(diameter ~ 1 + (1|plate) + (1|sample)), penicilli
 end
 ```
 
-In contrast the `sample` grouping factor is *nested* within the `batch` grouping factor in the *Pastes* data.
-That is, each level of `sample` occurs in conjunction with only one level of `batch`.
+In contrast, the `cask` grouping factor is *nested* within the `batch` grouping factor in the *Pastes* data.
 ```@example Main
 pastes = DataFrame(MixedModels.dataset(:pastes))
 describe(pastes)
 ```
+This can be expressed using the solidus (the "`/`" character) to separate grouping factors, read "`cask` nested within `batch`":
 ```@example Main
-fm4 = fit(MixedModel, @formula(strength ~ 1 + (1|sample) + (1|batch)), pastes)
+fm4a = fit(MixedModel, @formula(strength ~ 1 + (1|batch/cask)), pastes)
 ```
 
-An alternative syntax with a solidus (the "`/`" character) separating grouping factors, read "`cask` nested within `batch`", fits the same model.
+If the levels of the inner grouping factor are unique across the levels of the outer grouping factor, then this nesting does not need to expressed explicitly in the model syntax. For example, defining `sample` to be the combination of `batch` and `cask`, yields a naming scheme where the nesting is apparent from the data even if not expressed in the formula. (That is, each level of `sample` occurs in conjunction with only one level of `batch`.) As such, this model is equivalent to the previous one.
 ```@example Main
-fit(MixedModel, @formula(strength ~ 1 + (1|batch/cask)), pastes)
+pastes.sample = (string.(pastes.cask, "&",  pastes.batch))
+fm4b = fit(MixedModel, @formula(strength ~ 1 + (1|sample) + (1|batch)), pastes)
+```
+```@setup Main
+@testset "implicit and explicit nesting" begin
+    @test deviance(fm4a) ≈ deviance(fm4b) atol = 1e-5
+    @test varest(fm4a) ≈ varest(fm4b) atol = 1e-5
+    @test fm4a.θ ≈ fm4b.θ atol = 1e-5
+end
 ```
 
 In observational studies it is common to encounter *partially crossed* grouping factors.
@@ -160,44 +168,19 @@ end
 ### Simplifying the random effect correlation structure
 
 MixedEffects.jl estimates not only the *variance* of the effects for each random effect level, but also the *correlation* between the random effects for different predictors.
-So, for the model of the *sleepstudy* data above, one of the parameters that is estimated is the correlation between each subject's random intercept (i.e., their baseline reaction time) and slope (i.e., their particular change in reaction time over days of sleep deprivation).
+So, for the model of the *sleepstudy* data above, one of the parameters that is estimated is the correlation between each subject's random intercept (i.e., their baseline reaction time) and slope (i.e., their particular change in reaction time per day of sleep deprivation).
 In some cases, you may wish to simplify the random effects structure by removing these correlation parameters.
 This often arises when there are many random effects you want to estimate (as is common in psychological experiments with many conditions and covariates), since the number of random effects parameters increases as the square of the number of predictors, making these models difficult to estimate from limited data.
-
-A model with uncorrelated random effects for the intercept and slope by subject is fit as
-```@example Main
-fm2zerocorr = fit!(zerocorr!(LinearMixedModel(@formula(reaction ~ 1 + days + (1 + days|subj)), sleepstudy)))
-```
-```@setup Main
-@testset "ZeroCorr deepcopy" begin
-    fm2zerocorr_alt = fit!(zerocorr!(deepcopy(fm2)))
-    @test deviance(fm2zerocorr) ≈ deviance(fm2zerocorr_alt) rtol = 6
-    @test varest(fm2zerocorr) ≈ varest(fm2zerocorr_alt) rtol = 6
-    @test collect(VarCorr(fm2zerocorr).σρ.subj.σ) ≈ collect(VarCorr(fm2zerocorr_alt).σρ.subj.σ) rtol = 6
-    @test collect(VarCorr(fm2zerocorr).σρ.subj.ρ) ≈ collect(VarCorr(fm2zerocorr_alt).σρ.subj.ρ) rtol = 2
-    @test collect(VarCorr(fm2zerocorr).s) ≈ collect(VarCorr(fm2zerocorr_alt).s) rtol = 6
-end
-```
-
-Note that the use of `zerocorr!` requires the model to be constructed, then altered to eliminate
-the correlation of the random effects, then fit with a call to the mutating function, `fit!`.
-```@docs
-zerocorr!
-```
 
 The special syntax `zerocorr` can be applied to individual random effects terms inside the `@formula`:
 ```@example Main
 fm2zerocorr_fm = fit(MixedModel, @formula(reaction ~ 1 + days + zerocorr(1 + days|subj)), sleepstudy)
 ```
-```@setup Main
-    all(fm2zerocorr == fm2zerocorr_fm)
-```
 
 Alternatively, correlations between parameters can be removed by including them as separate random effects terms:
 ```@example Main
-fit(MixedModel, @formula(reaction ~ 1 + days + (1|subj) + (0 + days|subj)), sleepstudy)
+fit(MixedModel, @formula(reaction ~ 1 + days + (1|subj) + (days|subj)), sleepstudy)
 ```
-Note that it **is** necessary to explicitly block the inclusion of an intercept term by adding `0` in the random-effects term `(0+days|subj)`.
 
 Finally, for predictors that are categorical, MixedModels.jl will estimate correlations between each level.
 Notice the large number of correlation parameters if we treat `days` as a categorical variable by giving it contrasts:
@@ -208,9 +191,10 @@ fit(MixedModel, @formula(reaction ~ 1 + days + (1 + days|subj)), sleepstudy,
 
 Separating the `1` and `days` random effects into separate terms removes the correlations between the intercept and the levels of `days`, but not between the levels themselves:
 ```@example Main
-fit(MixedModel, @formula(reaction ~ 1 + days + (1|subj) + (0 + days|subj)), sleepstudy,
+fit(MixedModel, @formula(reaction ~ 1 + days + (1|subj) + (days|subj)), sleepstudy,
     contrasts = Dict(:days => DummyCoding()))
 ```
+(Notice that the variance component for `days: 1` is estimated as zero, so the correlations for this component are undefined and expressed as `NaN`, not a number.)
 
 An alternative is to force all the levels of `days` as indicators using `fulldummy` encoding.
 ```@docs
@@ -223,13 +207,13 @@ fit(MixedModel, @formula(reaction ~ 1 + days + (1 + fulldummy(days)|subj)), slee
 This fit produces a better fit as measured by the objective (negative twice the log-likelihood is 1610.8) but at the expense of adding many more parameters to the model.
 As a result, model comparison criteria such, as `AIC` and `BIC`, are inflated.
 
-But using `zerocorr` on the individual terms (or `zerocorr!` on the constructed model object as above) does remove the correlations between the levels:
+But using `zerocorr` on the individual terms does remove the correlations between the levels:
 ```@example Main
 fit(MixedModel, @formula(reaction ~ 1 + days + zerocorr(1 + days|subj)), sleepstudy,
     contrasts = Dict(:days => DummyCoding()))
 ```
 ```@example Main
-fit(MixedModel, @formula(reaction ~ 1 + days + (1|subj) + zerocorr(0 + days|subj)), sleepstudy,
+fit(MixedModel, @formula(reaction ~ 1 + days + (1|subj) + zerocorr(days|subj)), sleepstudy,
     contrasts = Dict(:days => DummyCoding()))
 ```
 ```@example Main
@@ -256,10 +240,10 @@ The canonical link, which is `LogitLink` for the `Bernoulli` distribution, is us
 Note that, in keeping with convention in the [`GLM` package](https://github.com/JuliaStats/GLM.jl), the distribution family for a binary (i.e. 0/1) response is the `Bernoulli` distribution.
 The `Binomial` distribution is only used when the response is the fraction of trials returning a positive, in which case the number of trials must be specified as the case weights.
 
-### Optional arguments to fit!
+### Optional arguments to fit
 
 An alternative approach is to create the `GeneralizedLinearMixedModel` object then call `fit!` on it.
-In this form optional arguments `fast` and/or `nAGQ` can be passed to the optimization process.
+The optional arguments `fast` and/or `nAGQ` can be passed to the optimization process via both `fit` and `fit!` (i.e these optimization settings are not used nor recognized when constructing the model).
 
 As the name implies, `fast=true`, provides a faster but somewhat less accurate fit.
 These fits may suffice for model comparisons.
@@ -366,7 +350,7 @@ coefnames(fm1)
 ```
 ```@example Main
 fixef(fm1)
-fixefnames
+fixefnames(fm1)
 ```
 
 An alternative extractor for the fixed-effects coefficient is the `β` property.
@@ -467,6 +451,15 @@ These are sometimes called the *best linear unbiased predictors* or [`BLUPs`](ht
 
 At a superficial level these can be considered as the "estimates" of the random effects, with a bit of hand waving, but pursuing this analogy too far usually results in confusion.
 
+To obtain tables associating the values of the conditional modes with the levels of the grouping factor, use
+```@docs
+raneftables
+```
+as in
+```@example Main
+DataFrame(only(raneftables(fm1)))
+```
+
 The corresponding conditional variances are returned by
 ```@docs
 condVar
@@ -542,5 +535,4 @@ fm4r = fit(MixedModel, @formula(diameter ~ 1+(1|plate)+(1|sample)),
 ```@example Main
 sum(leverage(fm4r))
 ```
-
 

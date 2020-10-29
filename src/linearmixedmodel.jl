@@ -78,6 +78,18 @@ function LinearMixedModel(
     for (i, x) in enumerate(Xs)
         if isa(x, AbstractReMat{T})
             push!(reterms, x)
+        elseif isa(x, ReMat) # this can occur in weird situation where x is a ReMat{U}
+            # avoid keeping a second copy if unweighted
+            z = convert(Matrix{T}, x.z)
+            wtz = x.z === x.wtz ? z : convert(Matrix{T}, x.wtz)
+            S = size(z, 1)
+            x = ReMat{T,S}(x.trm, x.refs, x.levels, x.cnames, z, wtz,
+                           convert(LowerTriangular{Float64, Matrix{Float64}}, x.λ),
+                           x.inds,
+                           convert(SparseMatrixCSC{T,Int32}, x.adjA),
+                           convert(Matrix{T}, x.scratch)
+                           )
+            push!(reterms, x)
         else
             cnames = coefnames(form.rhs[i])
             push!(feterms, FeMat(x, isa(cnames, String) ? [cnames] : collect(cnames)))
@@ -365,7 +377,7 @@ end
 StatsBase.fitted(m::LinearMixedModel{T}) where {T} = fitted!(Vector{T}(undef, nobs(m)), m)
 
 """
-    fixef!(v::Vector{T}, m::LinearMixedModel{T})
+    fixef!(v::Vector{T}, m::MixedModel{T})
 
 Overwrite `v` with the pivoted fixed-effects coefficients of model `m`
 
@@ -483,15 +495,6 @@ function Base.getproperty(m::LinearMixedModel{T}, s::Symbol) where {T}
     end
 end
 
-"""
-    issingular(m::LinearMixedModel, θ=m.θ)
-
-Test whether the model `m` is singular if the parameter vector is `θ`.
-
-Equality comparisons are used b/c small non-negative θ values are replaced by 0 in `fit!`.
-"""
-issingular(m::LinearMixedModel, θ=m.θ) = any(lowerbd(m) .== θ)
-
 function StatsBase.leverage(m::LinearMixedModel{T}) where {T}
     # This can be done more efficiently but reusing existing tools is easier.
     # The i'th leverage value is obtained by replacing the response with the i'th
@@ -502,8 +505,7 @@ function StatsBase.leverage(m::LinearMixedModel{T}) where {T}
     value = map(eachindex(yorig)) do i
         fill!(m.y, zero(T))
         m.y[i] = one(T)
-        reevaluateAend!(m)
-        updateL!(m)
+        updateL!(reevaluateAend!(m))
         sum(j -> sum(abs2, m.L[Block(l, j)]), 1:(l-1))
     end
     copyto!(m.y, yorig)
@@ -559,7 +561,7 @@ end
 
 StatsBase.predict(m::LinearMixedModel) = fitted(m)
 
-Base.propertynames(m::LinearMixedModel, private = false) = (
+Base.propertynames(m::LinearMixedModel, private::Bool = false) = (
     :formula,
     :sqrtwts,
     :A,
@@ -775,9 +777,9 @@ function Base.show(io::IO, m::LinearMixedModel)
     if REML
         println(io, " REML criterion at convergence: ", oo)
     else
-        nums = Ryu.writefixed.([-oo / 2, oo, aic(m), bic(m)], 4)
+        nums = Ryu.writefixed.([-oo / 2, oo, aic(m), aicc(m), bic(m)], 4)
         fieldwd = max(maximum(textwidth.(nums)) + 1, 11)
-        for label in [" logLik", "-2 logLik", "AIC", "BIC"]
+        for label in ["  logLik", "-2 logLik", "AIC", "AICc", "BIC"]
             print(io, rpad(lpad(label, (fieldwd + textwidth(label)) >> 1), fieldwd))
         end
         println(io)
@@ -943,7 +945,7 @@ Returns the estimate of σ², the variance of the conditional distribution of Y 
 varest(m::LinearMixedModel) = pwrss(m) / ssqdenom(m)
 
 """
-    zerocorr!(m::LinearMixedModel[, trmnms::Vector{Symbol}])
+    _zerocorr!(m::LinearMixedModel[, trmnms::Vector{Symbol}])
 
 Rewrite the random effects specification for the grouping factors in `trmnms` to zero correlation parameter.
 
@@ -951,8 +953,15 @@ The default for `trmnms` is all the names of random-effects terms.
 
 A random effects term is in the zero correlation parameter configuration when the off-diagonal elements of
 λ are all zero - hence there are no correlation parameters in that term being estimated.
+
+Note that this is numerically equivalent to specifying a formula with `zerocorr` around each random effects
+term, but the `formula`  fields in the resulting model will differ. In particular, `zerocorr!` will **not**
+change the original `formula`'s terms to be of type of `ZeroCorr` because this would involve changing
+immutable types.  This may have implications for software that manipulates the formula of a fitted model.
+
+This is an internal function and may disappear in a future release without being considered a breaking change.
 """
-function zerocorr!(m::LinearMixedModel{T}, trmns) where {T}
+function _zerocorr!(m::LinearMixedModel{T}, trmns) where {T}
     reterms = m.reterms
     for trm in reterms
         if fname(trm) in trmns
@@ -975,4 +984,4 @@ function zerocorr!(m::LinearMixedModel{T}, trmns) where {T}
     m
 end
 
-zerocorr!(m::LinearMixedModel) = zerocorr!(m, fnames(m))
+_zerocorr!(m::LinearMixedModel) = _zerocorr!(m, fnames(m))
