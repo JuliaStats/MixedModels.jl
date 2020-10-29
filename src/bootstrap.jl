@@ -141,7 +141,7 @@ function allpars(bsamp::MixedModelBootstrap{T}) where {T}
     )
     nrmdr = Vector{T}[]  # normalized rows of λ
     for (i, r) in enumerate(bstr)
-        σ = r.σ === missing ? 1 : r.σ
+        σ = coalesce(r.σ, one(T))
         for (nm, v) in pairs(r.β)
             push!.(cols, (i, "β", missing, String(nm), v))
         end
@@ -304,7 +304,7 @@ function tidyσs(bsamp::MixedModelBootstrap{T}) where {T}
     )
     for (iter, r) in enumerate(bstr)
         setθ!(bsamp, iter)    # install r.θ in λ
-        σ = r.σ === missing ? 1 : r.σ
+        σ = coalesce(r.σ, one(T))
         for (grp, ll) in zip(keys(fcnames), λ)
             for (cn, col) in zip(getproperty(fcnames, grp), eachrow(ll))
                 push!(result, NamedTuple{colnms}((iter, grp, Symbol(cn), σ * norm(col))))
