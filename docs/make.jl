@@ -11,6 +11,7 @@ makedocs(
         "constructors.md",
         "optimization.md",
         "GaussHermite.md",
+        "prediction.md",
         "bootstrap.md",
         "rankdeficiency.md",
         # "SimpleLMM.md",

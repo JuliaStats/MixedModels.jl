@@ -1,0 +1,7 @@
+```@docs
+predict
+```
+
+```@docs
+simulate
+```
