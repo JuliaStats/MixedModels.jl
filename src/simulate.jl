@@ -38,65 +38,12 @@ function simulate!(
     σ = m.σ,
     θ = T[],
 ) where {T}
-    length(β) == length(fixef(m)) ||
-        length(β) == length(coef(m)) ||
-            throw(ArgumentError("You must specify all (non-singular) βs"))
-
-    dispersion_parameter(m) || ismissing(σ) ||
-        throw(ArgumentError("You must not specify a dispersion parameter for model families without a dispersion parameter"))
-
-    β = convert(Vector{T},β)
-    if σ !== missing
-        σ = T(σ)
-    end
-    θ = convert(Vector{T},θ)
-
-    d = m.resp.d
-
-    if length(β) ≠ length(coef(m))
-        padding = length(coef(m)) - length(β)
-        for ii in 1:padding
-            push!(β, -0.0)
-        end
-    end
-
-    fast = (length(m.θ) == length(m.optsum.final))
-    setpar! = fast ? setθ! : setβθ!
-    params = fast ? θ : vcat(β, θ)
-    setpar!(m, params)
-
-    lm = m.LMM
-
     # note that these m.resp.y and m.LMM.y will later be sychronized in (re)fit!()
     # but for now we use them as distinct scratch buffers to avoid allocations
-
-    # the noise term is actually in the GLM and not the LMM part so no noise
-    # at the LMM level
     η = fill!(m.LMM.y, zero(T))
     y = m.resp.y
 
-    # assemble the linear predictor
-
-    # add the unscaled random effects
-    # note that unit scaling may not be correct for
-    # families with a dispersion parameter
-    @inbounds for trm in m.reterms
-        unscaledre!(rng, η, trm)
-    end
-
-    # add fixed-effects contribution
-    # note that unit scaling may not be correct for
-    # families with a dispersion parameter
-    mul!(η, lm.X, β, one(T), one(T))
-
-    # from η to μ
-    GLM.updateμ!(m.resp, η)
-
-    # convert to the distribution / add in noise
-    @inbounds for (idx, val) in enumerate(m.resp.mu)
-        n = isempty(m.wt) ? 1 : m.wt[idx]
-        y[idx] = _rand(rng, d, val, σ, n)
-    end
+    _simulate!(rng, y, η, m.resp, m, m.X, β, σ, θ, m.resp.wts)
 
     m
 end

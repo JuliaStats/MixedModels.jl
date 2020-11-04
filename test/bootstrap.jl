@@ -2,6 +2,7 @@ using DataFrames
 using LinearAlgebra
 using MixedModels
 using Random
+using Statistics
 using StableRNGs
 using Tables
 using Test

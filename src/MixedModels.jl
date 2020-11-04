@@ -20,7 +20,7 @@ using Tables
 
 using LinearAlgebra: BlasFloat, BlasReal, HermOrSym, PosDefException, copytri!
 using Base: Ryu
-using GLM: Link, canonicallink
+using GLM: Link, canonicallink, linkfun, linkinv
 
 using StatsFuns: log2π, normccdf
 

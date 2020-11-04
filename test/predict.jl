@@ -6,6 +6,7 @@ using StableRNGs
 using Tables
 using Test
 
+using GLM: Link, linkfun, linkinv
 using MixedModels: dataset
 
 include("modelcache.jl")
@@ -15,7 +16,30 @@ include("modelcache.jl")
 end
 
 @testset "predict" begin
-    m = last(models(:sleepstudy))
-    @test predict(m) == fitted(m)
-    @test predict(m; use_re=false) == m.X * m.β
+   @testset "LMM" begin
+        m = last(models(:sleepstudy))
+        # these currently use approximate equality
+        # because of floating point, but realistically
+        # this should be exactly equal in most cases
+        @test predict(m) ≈ fitted(m)
+        @test predict(m; use_re=false) ≈ m.X * m.β
+        @test predict(m, m.X) ≈ fitted(m)
+
+        slp = DataFrame(dataset(:sleepstudy))
+
+        @test predict(m, slp) ≈ fitted(m)
+    end
+
+    @testset "GLMM" begin
+        contra = dataset(:contra)
+        gm0 = fit(MixedModel, only(gfms[:contra]), contra, Bernoulli(), fast=true)
+
+        @test_throws ArgumentError predict(gm0; type=:doh)
+
+        @test predict(gm0) ≈ fitted(gm0)
+        @test predict(gm0; type=:linpred) ≈ gm0.resp.eta
+        gm0pop = gm0.X * gm0.β
+        @test predict(gm0, gm0.X; use_re=false, type=:response) ≈ linkinv.(Link(gm0.resp),gm0pop)
+        @test predict(gm0, gm0.X; use_re=false, type=:linpred) ≈ gm0pop
+    end
 end
