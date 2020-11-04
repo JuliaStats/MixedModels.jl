@@ -6,7 +6,7 @@ using Test
 
 using MixedModels: allequal, average, densify, dataset
 
-const io = IOBuffer()
+@isdefined(io) || const global io = IOBuffer()
 include("modelcache.jl")
 
 @testset "average" begin
