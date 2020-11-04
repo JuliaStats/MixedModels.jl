@@ -27,30 +27,7 @@ function simulate!(
     σ = m.σ,
     θ = T[],
 ) where {T}
-    length(β) == length(fixef(m)) ||
-        length(β) == length(coef(m)) ||
-            throw(ArgumentError("You must specify all (non-singular) βs"))
-
-    β = convert(Vector{T},β)
-    σ = T(σ)
-    θ = convert(Vector{T},θ)
-    isempty(θ) || setθ!(m, θ)
-
-    if length(β) ≠ length(coef(m))
-        padding = length(coef(m)) - length(β)
-        for ii in 1:padding
-            push!(β, -0.0)
-        end
-    end
-
-    y = randn!(rng, response(m))      # initialize y to standard normal
-
-    for trm in m.reterms              # add the unscaled random effects
-        unscaledre!(rng, y, trm)
-    end
-                    # scale by σ and add fixed-effects contribution
-    mul!(y, m.X, β, one(T), σ)
-
+    simulate!(rng, m.y, m; β=β, σ=σ, θ=θ)
     m
 end
 
