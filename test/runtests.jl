@@ -6,6 +6,7 @@ import LinearAlgebra: BLAS
 println(versioninfo())
 println(BLAS.openblas_get_config())
 
+include("predict.jl")
 include("utilities.jl")
 include("pivot.jl")
 include("UniformBlockDiagonal.jl")
