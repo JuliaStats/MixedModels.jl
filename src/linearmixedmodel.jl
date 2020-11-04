@@ -559,8 +559,6 @@ function objective(m::LinearMixedModel{T}) where {T}
     isempty(wts) ? val : val - T(2.0) * sum(log, wts)
 end
 
-StatsBase.predict(m::LinearMixedModel) = fitted(m)
-
 Base.propertynames(m::LinearMixedModel, private::Bool = false) = (
     :formula,
     :sqrtwts,
