@@ -264,19 +264,15 @@ function fit!(
         optsum.final = copy(optsum.initial)
     end
     setpar! = fast ? setθ! : setβθ!
-    feval = 0
     function obj(x, g)
-        isempty(g) || error("gradient not defined for this model")
-        feval += 1
+        isempty(g) || throw(ArgumentError("g should be empty for this objective"))
         val = deviance(pirls!(setpar!(m, x), fast, verbose), nAGQ)
-        feval == 1 && (optsum.finitial = val)
-        if verbose
-            println("f_", feval, ": ", val, " ", x)
-        end
+        verbose && println(round(val, digits = 5), " ", x)
         val
     end
     opt = Opt(optsum)
     NLopt.min_objective!(opt, obj)
+    optsum.finitial = obj(optsum.initial, T[])
     fmin, xmin, ret = NLopt.optimize(opt, copyto!(optsum.final, optsum.initial))
     ## check if very small parameter values bounded below by zero can be set to zero
     xmin_ = copy(xmin)
@@ -294,7 +290,7 @@ function fit!(
     ## ensure that the parameter values saved in m are xmin
     pirls!(setpar!(m, xmin), fast, verbose)
     optsum.nAGQ = nAGQ
-    optsum.feval = feval
+    optsum.feval = opt.numevals
     optsum.final = xmin
     optsum.fmin = fmin
     optsum.returnvalue = ret
@@ -352,7 +348,7 @@ function GeneralizedLinearMixedModel(
     if !any(isa(d, dist) for dist in (Bernoulli, Binomial, Poisson))
         @warn """Results for families with a dispersion parameter are not reliable.
                  It is best to avoid trying to fit such models in MixedModels until
-                 the authors get a better understanding of those cases."""
+                 the authors gain a better understanding of those cases."""
     end
 
     LMM = LinearMixedModel(f, tbl, contrasts = contrasts; wts = wts)
@@ -436,17 +432,27 @@ getθ(m::GeneralizedLinearMixedModel)  = copy(m.θ)
 getθ!(v::AbstractVector{T}, m::GeneralizedLinearMixedModel{T}) where {T} = copyto!(v, m.θ)
 
 function StatsBase.loglikelihood(m::GeneralizedLinearMixedModel{T}) where {T}
-    r = m.resp
-    D = Distribution(m.resp)
-    accum = (
-        if D <: Binomial
-            sum(logpdf(D(round(Int, n), μ), round(Int, y * n))
-                for (μ, y, n) in zip(r.mu, r.y, m.wt))
-        else
-            sum(logpdf(D(μ), y) for (μ, y) in zip(r.mu, r.y))
+    accum = zero(T)
+    # adapted from GLM.jl
+    # note the use of loglik_obs to handle the different parameterizations
+    # of various response distributions which may not just be location+scale
+    r   = m.resp
+    wts = r.wts
+    y   = r.y
+    mu  = r.mu
+    d   = r.d
+    if length(wts) == length(y)
+        ϕ = deviance(r)/sum(wts)
+        @inbounds for i in eachindex(y, mu, wts)
+            accum += GLM.loglik_obs(d, y[i], mu[i], wts[i], ϕ)
         end
-    )
-    accum - (sum(sum(abs2, u) for u in m.u) + logdet(m)) / 2
+    else
+        ϕ = deviance(r)/length(y)
+        @inbounds for i in eachindex(y, mu)
+            accum += GLM.loglik_obs(d, y[i], mu[i], 1, ϕ)
+        end
+    end
+    accum  - (mapreduce(u -> sum(abs2, u), +, m.u) + logdet(m)) / 2
 end
 
 StatsBase.nobs(m::GeneralizedLinearMixedModel) = length(m.η)
@@ -634,7 +640,7 @@ which returns `1` for models without a dispersion parameter.
 
 For Gaussian models, this parameter is often called σ.
 """
-sdest(m::GeneralizedLinearMixedModel{T}) where {T} =  dispersion_parameter(m) ? dispersion(m, true) : missing
+sdest(m::GeneralizedLinearMixedModel{T}) where {T} =  dispersion_parameter(m) ? dispersion(m, false) : missing
 
 function Base.show(io::IO, m::GeneralizedLinearMixedModel)
     if m.optsum.feval < 0

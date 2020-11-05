@@ -4,7 +4,10 @@ import LinearAlgebra: BLAS
 
 # there seem to be processor-specific issues and knowing this is helpful
 println(versioninfo())
-println(BLAS.openblas_get_config())
+@show BLAS.vendor()
+if BLAS.vendor() == :openblas
+    println(BLAS.openblas_get_config())
+end
 
 include("predict.jl")
 include("utilities.jl")
