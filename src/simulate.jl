@@ -103,7 +103,11 @@ end
 unscaledre!(y::AbstractVector{T}, A::ReMat{T,1}, B::AbstractMatrix{T}) where {T} =
     unscaledre!(y, A, vec(B))
 
-function unscaledre!(y::AbstractVector{T}, A::ReMat{T,S}, b::AbstractMatrix{T}) where {T,S}
+# the compiler will actually create distinct methods for each of the types in
+# the outer Union
+function unscaledre!(y::AbstractVector{T}, A::ReMat{T,S},
+                     b::Union{AbstractMatrix{T},
+                              AbstractMatrix{Union{T, Missing}} }) where {T,S}
     Z = A.z
     k, n = size(Z)
     l = nlevs(A)
