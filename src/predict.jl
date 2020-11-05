@@ -130,7 +130,7 @@ For `:simulate`, the values are determined by solving for their values by
 using the existing model's estimates for the new data. (These are in general
 *not* the same values as the estimates computed on the new data.)
 
-Predictions based purely on the fixed effects can be obtained with by
+Predictions based purely on the fixed effects can be obtained by
 specifying previously unobserved levels of the random effects and setting
 `new_re_levels=:population`. In the future, it may be possible to specify
 a subset of the grouping variables or overall random-effects structure to use,
