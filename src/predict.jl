@@ -164,10 +164,11 @@ function StatsBase.predict(m::LinearMixedModel{T}, newdata::Tables.ColumnTable;
     # (at least for the response)
 
     # add a response column
-    y = ones(T, length(first(newdata)))
-    newdata = merge(newdata, NamedTuple{(m.formula.lhs.sym,)}(y))
+    # we use the Union here so that we have type stability
+    y = ones(Union{T, Missing}, length(first(newdata)))
+    newdata = merge(newdata, NamedTuple{(m.formula.lhs.sym,)}((y,)))
 
-    mnew = LinearMixedModel(m.formula, newdata; REML=m.optsum.REML)
+    mnew = LinearMixedModel(m.formula, newdata)
 
     grps = getproperty.(m.reterms, :trm)
     y = predict!(y, m, mnew.X; use_re=false)
@@ -185,7 +186,7 @@ function StatsBase.predict(m::LinearMixedModel{T}, newdata::Tables.ColumnTable;
 
     if new_re_levels == :error
         for (grp, known_levels, data_levels) in zip(grps,
-                                                    retermslevels.(m.reterms),
+                                                    levels.(m.reterms),
                                                     levels.(mnew.reterms))
             if sort!(known_levels) != sort!(data_levels)
                 throw(KeyError("New level enountered in $grp"))
@@ -197,6 +198,7 @@ function StatsBase.predict(m::LinearMixedModel{T}, newdata::Tables.ColumnTable;
         blups = ranef(m)[oldreperm]
     elseif new_re_levels == :population
         blups = ranef(mnew)[newreperm]
+        blupsold = ranef(m)[oldreperm]
 
         for (idx, B) in enumerate(blups)
             oldlevels = levels(oldre[idx])
@@ -206,7 +208,7 @@ function StatsBase.predict(m::LinearMixedModel{T}, newdata::Tables.ColumnTable;
                     # setting a BLUP to zero gives you the population value
                     B[lidx] = zero(T)
                 else
-                    B[lidx] = oldre[oldloc]
+                    B[lidx] = blupsold[idx][oldloc]
                 end
             end
         end
@@ -215,6 +217,7 @@ function StatsBase.predict(m::LinearMixedModel{T}, newdata::Tables.ColumnTable;
         # Union{T, Missing} and not just T
         blups = Vector{Matrix{Union{T,Missing}}}(undef, length(m.reterms))
         copyto!(blups, ranef(mnew)[newreperm])
+        blupsold = ranef(m)[oldreperm]
         for (idx, B) in enumerate(blups)
             oldlevels = levels(oldre[idx])
             for (lidx, ll) in enumerate(levels(newre[idx]))
@@ -223,12 +226,13 @@ function StatsBase.predict(m::LinearMixedModel{T}, newdata::Tables.ColumnTable;
                     # missing is poisonous so propogates
                     B[lidx] = missing
                 else
-                    B[lidx] = oldre[oldloc]
+                    B[lidx] = blupsold[idx][oldloc]
                 end
             end
         end
     elseif new_re_levels == :simulate
         updateL!(setθ!(mnew, m.θ))
+        blupsold = ranef(m)[oldreperm]
         for (idx, B) in enumerate(blups)
             oldlevels = levels(oldre[idx])
             for (lidx, ll) in enumerate(levels(newre[idx]))
@@ -236,7 +240,7 @@ function StatsBase.predict(m::LinearMixedModel{T}, newdata::Tables.ColumnTable;
                 if oldloc === nothing
                     # keep the new value
                 else
-                    B[lidx] = oldre[oldloc]
+                    B[lidx] = blupsold[idx][oldloc]
                 end
             end
         end
