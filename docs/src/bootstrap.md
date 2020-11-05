@@ -1,7 +1,7 @@
-# Parametric bootstrap for linear mixed-effects models
+# Parametric bootstrap for mixed-effects models
 
 Julia is well-suited to implementing bootstrapping and other simulation-based methods for statistical models.
-The `parametricbootstrap` function in the [MixedModels package](https://github.com/JuliaStats/MixedModels.jl) provides an efficient parametric bootstrap for linear mixed-effects models.
+The `parametricbootstrap` function in the [MixedModels package](https://github.com/JuliaStats/MixedModels.jl) provides an efficient parametric bootstrap for mixed-effects models.
 
 ```@docs
 parametricbootstrap
@@ -98,7 +98,7 @@ For example, if we bootstrap a model fit to the `sleepstudy` data
 sleepstudy = MixedModels.dataset(:sleepstudy)
 m2 = fit(
     MixedModel,
-    @formula(reaction ~ 1+days+(1+days|subj)), 
+    @formula(reaction ~ 1+days+(1+days|subj)),
     sleepstudy,
 )
 ```
@@ -131,7 +131,7 @@ sum(ρs .≈ -1)
 
 Furthermore there are even a few cases where the estimate of the standard deviation of the random effect for the intercept is zero.
 ```@example Main
-σs = @where(df2, :type .== "σ", :group .== "subj", :names .== "(Intercept)").value 
+σs = @where(df2, :type .== "σ", :group .== "subj", :names .== "(Intercept)").value
 sum(σs .≈ 0)
 ```
 
@@ -139,7 +139,7 @@ There is a general condition to check for singularity of an estimated covariance
 The parameter optimized in the estimation is `θ`, the relative covariance parameter.
 Some of the elements of this parameter vector must be non-negative and, when one of these components is approximately zero, one of the covariance matrices will be singular.
 
-The `issingular` method for a `LinearMixedModel` object that tests if a parameter vector `θ` corresponds to a boundary or singular fit.
+The `issingular` method for a `MixedModel` object that tests if a parameter vector `θ` corresponds to a boundary or singular fit.
 
 This operation is encapsulated in a method for the `issingular` function.
 ```@example Main

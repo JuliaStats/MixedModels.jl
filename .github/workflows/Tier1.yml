@@ -1,4 +1,4 @@
-name: Tier1
+name: Tier 1
 on:
   push:
     branches:
@@ -12,9 +12,6 @@ on:
     paths-ignore:
       - 'LICENSE.md'
       - 'README.md'
-  release:
-    types:
-      - created
 jobs:
   ci:
     runs-on: ${{ matrix.os }}
@@ -33,11 +30,4 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: julia-actions/julia-uploadcodecov@v0.1
-        if: startsWith(matrix.os, 'Ubuntu')
-        env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-      - uses: julia-actions/julia-docdeploy@releases/v1
-        if: ${{ startsWith(matrix.os, 'Ubuntu') && startsWith(matrix.julia-version, '1.5') }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          DOCUMENTER_KEY: ${{ secrets.DOCUMENTER_KEY }}
+        if:  ${{ startsWith(matrix.os, 'Ubuntu') && startsWith(matrix.julia-version, '1.5') }}

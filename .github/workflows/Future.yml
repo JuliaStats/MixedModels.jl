@@ -6,9 +6,6 @@ on:
     paths-ignore:
       - 'LICENSE.md'
       - 'README.md'
-  release:
-    types:
-      - created
 jobs:
   ci:
     runs-on: ${{ matrix.os }}

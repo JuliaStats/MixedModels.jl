@@ -126,19 +126,27 @@ fm3 = fit(MixedModel, @formula(diameter ~ 1 + (1|plate) + (1|sample)), penicilli
 end
 ```
 
-In contrast the `sample` grouping factor is *nested* within the `batch` grouping factor in the *Pastes* data.
-That is, each level of `sample` occurs in conjunction with only one level of `batch`.
+In contrast, the `cask` grouping factor is *nested* within the `batch` grouping factor in the *Pastes* data.
 ```@example Main
 pastes = DataFrame(MixedModels.dataset(:pastes))
 describe(pastes)
 ```
+This can be expressed using the solidus (the "`/`" character) to separate grouping factors, read "`cask` nested within `batch`":
 ```@example Main
-fm4 = fit(MixedModel, @formula(strength ~ 1 + (1|sample) + (1|batch)), pastes)
+fm4a = fit(MixedModel, @formula(strength ~ 1 + (1|batch/cask)), pastes)
 ```
 
-An alternative syntax with a solidus (the "`/`" character) separating grouping factors, read "`cask` nested within `batch`", fits the same model. (`sample` is just an explicitly stored version of `batch & cask`.)
+If the levels of the inner grouping factor are unique across the levels of the outer grouping factor, then this nesting does not need to expressed explicitly in the model syntax. For example, defining `sample` to be the combination of `batch` and `cask`, yields a naming scheme where the nesting is apparent from the data even if not expressed in the formula. (That is, each level of `sample` occurs in conjunction with only one level of `batch`.) As such, this model is equivalent to the previous one.
 ```@example Main
-fit(MixedModel, @formula(strength ~ 1 + (1|batch/cask)), pastes)
+pastes.sample = (string.(pastes.cask, "&",  pastes.batch))
+fm4b = fit(MixedModel, @formula(strength ~ 1 + (1|sample) + (1|batch)), pastes)
+```
+```@setup Main
+@testset "implicit and explicit nesting" begin
+    @test deviance(fm4a) ≈ deviance(fm4b) atol = 1e-5
+    @test varest(fm4a) ≈ varest(fm4b) atol = 1e-5
+    @test fm4a.θ ≈ fm4b.θ atol = 1e-5
+end
 ```
 
 In observational studies it is common to encounter *partially crossed* grouping factors.
@@ -235,7 +243,7 @@ The `Binomial` distribution is only used when the response is the fraction of tr
 ### Optional arguments to fit
 
 An alternative approach is to create the `GeneralizedLinearMixedModel` object then call `fit!` on it.
-The optional arguments `fast` and/or `nAGQ` can be passed to the optimization process via both `fit` and `fit!` (i.e these optimization settings are not used nor recognized when constructing the model). 
+The optional arguments `fast` and/or `nAGQ` can be passed to the optimization process via both `fit` and `fit!` (i.e these optimization settings are not used nor recognized when constructing the model).
 
 As the name implies, `fast=true`, provides a faster but somewhat less accurate fit.
 These fits may suffice for model comparisons.

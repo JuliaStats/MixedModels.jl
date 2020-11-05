@@ -1,12 +1,11 @@
 using LinearAlgebra
 using MixedModels
-using Random
+using StableRNGs
 using SparseArrays
 using Test
 
 using MixedModels: allequal, average, densify, dataset
 
-const io = IOBuffer()
 include("modelcache.jl")
 
 @testset "average" begin
@@ -15,7 +14,7 @@ end
 
 @testset "densify" begin
 	@test densify(sparse(1:5, 1:5, ones(5))) == Diagonal(ones(5))
-	rsparsev = SparseVector(float.(rand(MersenneTwister(123454321), Bool, 20)))
+	rsparsev = SparseVector(float.(rand(StableRNG(123454321), Bool, 20)))
 	@test densify(rsparsev) == Vector(rsparsev)
 	@test densify(Diagonal(rsparsev)) == Diagonal(Vector(rsparsev))
 end
@@ -36,14 +35,14 @@ end
 end
 
 @testset "threaded_replicate" begin
-	rng = MersenneTwister(42);
-	single_thread = replicate(10,use_threads=false) do; randn(rng, 1)[1] ; end
-	rng = MersenneTwister(42);
-	multi_thread = replicate(10,use_threads=true) do
+	rng = StableRNG(42);
+	single_thread = replicate(10;use_threads=false) do; only(randn(rng, 1)) ; end
+	rng = StableRNG(42);
+	multi_thread = replicate(10;use_threads=true) do
 		if Threads.threadid() % 2 == 0
 			sleep(0.001)
 		end
-		r = randn(rng, 1)[1];
+		r = only(randn(rng, 1));
 	end
 
 	@test all(sort!(single_thread) .== sort!(multi_thread))
@@ -60,12 +59,13 @@ end
 end
 
 @testset "PCA" begin
+	io = IOBuffer()
 	pca = models(:kb07)[3].PCA.item
-	
+
 	show(io, pca, covcor=true, loadings=false)
 	str = String(take!(io))
 	@test !isempty(findall("load: yes", str))
-	
+
 	show(io, pca, covcor=false, loadings=true)
 	str = String(take!(io))
 	@test !isempty(findall("PC1", str))

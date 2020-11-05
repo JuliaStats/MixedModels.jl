@@ -1,22 +1,20 @@
 using DataFrames
 using MixedModels
+using StableRNGs
 using Tables
 using Test
 
 using MixedModels: dataset
 
-const gfms = Dict(
-    :cbpp => [@formula((incid/hsz) ~ 1 + period + (1|herd))],
-    :contra => [@formula(use ~ 1+age+abs2(age)+urban+livch+(1|urban&dist))],
-    :grouseticks => [@formula(ticks ~ 1+year+ch+ (1|index) + (1|brood) + (1|location))],
-    :verbagg => [@formula(r2 ~ 1+anger+gender+btype+situ+(1|subj)+(1|item))],
-)
+include("modelcache.jl")
 
 @testset "contra" begin
     contra = dataset(:contra)
-    gm0 = fit(MixedModel, only(gfms[:contra]), contra, Bernoulli(), fast=true);
+    gm0 = fit(MixedModel, only(gfms[:contra]), contra, Bernoulli(), fast=true)
     @test gm0.lowerbd == zeros(1)
     @test isapprox(gm0.θ, [0.5720734451352923], atol=0.001)
+    @test !issingular(gm0)
+    @test issingular(gm0, [0])
     @test isapprox(deviance(gm0), 2361.657188518064, atol=0.001)
     # the first 9 BLUPs -- I don't think there's much point in testing all 102
     blups = [-0.5853637711570235, -0.9546542393824562, -0.034754249031292345, # values are the same but in different order
@@ -27,6 +25,12 @@ const gfms = Dict(
     @test isone(length(retbl))
     @test isa(retbl, NamedTuple)
     @test Tables.istable(only(retbl))
+    @test !dispersion_parameter(gm0)
+    @test dispersion(gm0, false) == 1
+    @test dispersion(gm0, true) == 1
+    @test sdest(gm0) === missing
+    @test varest(gm0) === missing
+    @test gm0.σ === missing
 
     gm1 = fit(MixedModel, only(gfms[:contra]), contra, Bernoulli());
     @test isapprox(gm1.θ, [0.573054], atol=0.005)
@@ -42,7 +46,6 @@ const gfms = Dict(
     @test isapprox(deviance(gm1), 2360.8760, atol=0.001)
     @test gm1.β == gm1.beta
     @test gm1.θ == gm1.theta
-    @test isnan(gm1.σ)
     @test length(gm1.y) == size(gm1.X, 1)
     @test :θ in propertynames(gm0)
 
@@ -57,7 +60,7 @@ const gfms = Dict(
     #@test isapprox(sum(gm1.resp.devresid), 2237.349, atol=0.1)
     show(IOBuffer(), gm1)
     show(IOBuffer(), BlockDescription(gm0))
-    
+
 end
 
 @testset "cbpp" begin
@@ -68,19 +71,23 @@ end
     @test logdet(gm2) ≈ 16.90105378801136 atol=0.0001
     @test isapprox(sum(gm2.resp.devresid), 73.47174762237978, atol=0.001)
     @test isapprox(loglikelihood(gm2), -92.02628186840045, atol=0.001)
-    @test isnan(sdest(gm2))
-    @test varest(gm2) == 1
-        
+    @test !dispersion_parameter(gm2)
+    @test dispersion(gm2, false) == 1
+    @test dispersion(gm2, true) == 1
+    @test sdest(gm2) === missing
+    @test varest(gm2) === missing
+    @test gm2.σ === missing
+
     @testset "GLMM refit" begin
         gm2r = deepcopy(gm2)
         @test_throws ArgumentError fit!(gm2r)
         refit!(gm2r, 1 .- gm2.y; fast=true)
         @test gm2r.β ≈ -gm2.β atol=1e-3
         @test gm2r.θ ≈ gm2.θ atol=1e-3
-        
+
         refit!(gm2r, 1 .- gm2.y; fast=false)
         @test gm2r.β ≈ -gm2.β atol=1e-3
-        @test gm2r.θ ≈ gm2.θ atol=1e-3 
+        @test gm2r.θ ≈ gm2.θ atol=1e-3
     end
 end
 
@@ -103,6 +110,12 @@ end
     # these two values are not well defined at the optimum
     #@test isapprox(sum(x -> sum(abs2, x), gm4.u), 196.8695297987013, atol=0.1)
     #@test isapprox(sum(gm4.resp.devresid), 220.92685781326136, atol=0.1)
+    @test !dispersion_parameter(gm4)
+    @test dispersion(gm4, false) == 1
+    @test dispersion(gm4, true) == 1
+    @test sdest(gm4) === missing
+    @test varest(gm4) === missing
+    @test gm4.σ === missing
 end
 
 @testset "goldstein" begin # from a 2020-04-22 msg by Ben Goldstein to R-SIG-Mixed-Models
@@ -144,5 +157,12 @@ end
     @test_logs (:warn, r"dispersion parameter") GeneralizedLinearMixedModel(form, dat, Gamma())
     @test_logs (:warn, r"dispersion parameter") GeneralizedLinearMixedModel(form, dat, InverseGaussian())
     @test_logs (:warn, r"dispersion parameter") GeneralizedLinearMixedModel(form, dat, Normal(), SqrtLink())
+
+    # notes for future tests when GLMM with dispersion works
+    # @test dispersion_parameter(gm)
+    # @test dispersion(gm, false) == val
+    # @test dispersion(gm, true) == val
+    # @test sdest(gm) == dispersion(gm, false) == gm.σ
+    # @test varest(gm) == dispersion(gm, true)
 
 end

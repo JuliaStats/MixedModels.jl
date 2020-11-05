@@ -113,6 +113,10 @@ StatsBase.deviance(m::GeneralizedLinearMixedModel) = deviance(m, m.optsum.nAGQ)
 
 fixef(m::GeneralizedLinearMixedModel) = m.β
 
+function fixef!(v::AbstractVector{T}, m::GeneralizedLinearMixedModel{T}) where T
+    copyto!(fill!(v, -zero(T)), m.β)
+end
+
 objective(m::GeneralizedLinearMixedModel) = deviance(m)
 
 """
@@ -344,7 +348,7 @@ function GeneralizedLinearMixedModel(
     if !any(isa(d, dist) for dist in (Bernoulli, Binomial, Poisson))
         @warn """Results for families with a dispersion parameter are not reliable.
                  It is best to avoid trying to fit such models in MixedModels until
-                 the authors get a better understanding of those cases."""
+                 the authors gain a better understanding of those cases."""
     end
 
     LMM = LinearMixedModel(f, tbl, contrasts = contrasts; wts = wts)
@@ -402,6 +406,8 @@ function Base.getproperty(m::GeneralizedLinearMixedModel, s::Symbol)
         coef(m)
     elseif s == :beta
         m.β
+    elseif s == :objective
+        objective(m)
     elseif s ∈ (:σ, :sigma)
         sdest(m)
     elseif s == :σs
@@ -418,6 +424,12 @@ function Base.getproperty(m::GeneralizedLinearMixedModel, s::Symbol)
         getfield(m, s)
     end
 end
+
+# this copy behavior matches the implicit copy behavior
+# for LinearMixedModel. So this is then different than m.θ,
+# which returns a reference to the same array
+getθ(m::GeneralizedLinearMixedModel)  = copy(m.θ)
+getθ!(v::AbstractVector{T}, m::GeneralizedLinearMixedModel{T}) where {T} = copyto!(v, m.θ)
 
 function StatsBase.loglikelihood(m::GeneralizedLinearMixedModel{T}) where {T}
     accum = zero(T)
@@ -447,7 +459,7 @@ StatsBase.nobs(m::GeneralizedLinearMixedModel) = length(m.η)
 
 StatsBase.predict(m::GeneralizedLinearMixedModel) = fitted(m)
 
-Base.propertynames(m::GeneralizedLinearMixedModel, private = false) = (
+Base.propertynames(m::GeneralizedLinearMixedModel, private::Bool = false) = (
     :A,
     :L,
     :theta,
@@ -461,6 +473,7 @@ Base.propertynames(m::GeneralizedLinearMixedModel, private = false) = (
     :X,
     :y,
     :lowerbd,
+    :objective,
     :σρs,
     :σs,
     :corr,
@@ -618,7 +631,18 @@ function Base.setproperty!(m::GeneralizedLinearMixedModel, s::Symbol, y)
     end
 end
 
-sdest(m::GeneralizedLinearMixedModel{T}) where {T} = dispersion_parameter(m) ? √varest(m) : convert(T, NaN)
+"""
+    sdest(m::GeneralizedLinearMixedModel)
+
+Return the estimate of the dispersion, i.e. the standard deviation of the per-observation noise.
+
+For models with a dispersion parameter ϕ, this is simply ϕ. For models without a
+dispersion parameter, this value is `missing`. This differs from `disperion`,
+which returns `1` for models without a dispersion parameter.
+
+For Gaussian models, this parameter is often called σ.
+"""
+sdest(m::GeneralizedLinearMixedModel{T}) where {T} =  dispersion_parameter(m) ? dispersion(m, false) : missing
 
 function Base.show(io::IO, m::GeneralizedLinearMixedModel)
     if m.optsum.feval < 0
@@ -650,6 +674,23 @@ function Base.show(io::IO, m::GeneralizedLinearMixedModel)
     show(io, coeftable(m))
 end
 
+function stderror!(v::AbstractVector{T}, m::GeneralizedLinearMixedModel{T}) where {T}
+    # initialize to appropriate NaN for rank-deficient case
+    fill!(v, zero(T) / zero(T))
+
+    # the inverse permutation is done here.
+    # if this is changed to access the permuted
+    # model matrix directly, then don't forget to add
+    # in the inverse permutation
+    vcovmat = vcov(m)
+
+    for idx in 1:size(vcovmat,1)
+        v[idx] = sqrt(vcovmat[idx,idx])
+    end
+
+    v
+end
+
 """
     updateη!(m::GeneralizedLinearMixedModel)
 
@@ -668,9 +709,20 @@ function updateη!(m::GeneralizedLinearMixedModel)
     m
 end
 
-varest(m::GeneralizedLinearMixedModel{T}) where {T} = dispersion_parameter(m) ? dispersion(m) : one(T)
+"""
+    varest(m::GeneralizedLinearMixedModel)
 
-            # delegate GLMM method to LMM field
+Returns the estimate of ϕ², the variance of the conditional distribution of Y given B.
+
+For models with a dispersion parameter ϕ, this is simply ϕ². For models without a
+dispersion parameter, this value is `missing`. This differs from `disperion`,
+which returns `1` for models without a dispersion parameter.
+
+For Gaussian models, this parameter is often called σ².
+"""
+varest(m::GeneralizedLinearMixedModel{T}) where {T} = dispersion_parameter(m) ? dispersion(m, true) : missing
+
+# delegate GLMM method to LMM field
 for f in (
     :feL,
     :fetrm,
