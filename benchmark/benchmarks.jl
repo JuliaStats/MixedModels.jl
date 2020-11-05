@@ -1,171 +1,110 @@
-using BenchmarkTools, DataFrames, MixedModels, RData, Tables
+using BenchmarkTools, MixedModels, StatsModels
+using MixedModels: dataset
 
 const SUITE = BenchmarkGroup()
 
-const dat = Dict(Symbol(k) => v for (k, v) in load(joinpath(
-    dirname(pathof(MixedModels)),
-    "..",
-    "test",
-    "dat.rda",
-)));
-
-categorical!(dat[:ml1m], [:G,:H]);  # forgot to convert these grouping factors
-
-const mods = Dict{Symbol,Vector{Expr}}(
-    :Alfalfa => [:(1 + A * B + (1 | G)), :(1 + A + B + (1 | G))],
-    :Animal => [:(1 + (1 | G) + (1 | H))],
-    :Arabidopsis => [],              # glmm and rename variables
-    :Assay => [:(1+A+B*C+(1|G)+(1|H))],
-    :AvgDailyGain => [:(1 + A * U + (1 | G)), :(1 + A + U + (1 | G))],
-    :BIB => [:(1 + A * U + (1 | G)), :(1 + A + U + (1 | G))],
-    :Bond => [:(1 + A + (1 | G))],
-    :Chem97 => [:(1 + (1 | G) + (1 | H)), :(1 + U + (1 | G) + (1 | H))],
-    :Contraception => [],            # glmm and rename variables
-    :Cultivation => [:(1 + A * B + (1 | G)), :(1 + A + B + (1 | G)), :(1 + A + (1 | G))],
-    :Demand => [:(1 + U + V + W + X + (1 | G) + (1 | H))],
-    :Dyestuff => [:(1 + (1 | G))],
-    :Dyestuff2 => [:(1 + (1 | G))],
-    :Early => [:(1 + U + U & A + (1 + U | G))],
-    :Exam => [:(1 + A * U + B + (1 | G)), :(1 + A + B + U + (1 | G))],
-    :Gasoline => [:(1 + U + (1 | G))],
-    :Gcsemv => [:(1 + A + (1 | G))], # variables must be renamed
-    :Genetics => [:(1 + A + (1 | G) + (1 | H))],
-    :HR => [:(1 + A * U + V + (1 + U | G))],
-    :Hsb82 => [:(1 + A + B + C + U + (1 | G))],
-    :IncBlk => [:(1 + A + U +  + W + Z + (1 | G))],
-    :InstEval => [:(1 + A + (1 | G) + (1 | H) + (1 | I)), :(1 + A * I + (1 | G) + (1 | H))],
-    :KKL => [],                      # variables must be renamed
-    :KWDYZ => [],                    # variables must be renamed
-    :Mississippi => [:(1 + A + (1 | G))],
-    :Mmmec => [],                    # glmm (and offset) and variables renamed
-    :Multilocation => [:(1 + A + (0 + A | G) + (1 | H))],
-    :Oxboys => [:(1 + U + (1 + U | G))],
-    :PBIB => [:(1 + A + (1 | G))],
-    :Pastes => [:(1 + (1 | G) + (1 | H))],
-    :Penicillin => [:(1 + (1 | G) + (1 | H))],
-    :Pixel => [:(1 + U + V + (1 + U | G) + (1 | H))],  # variables must be renamed
-    :Poems => [:(1 + U + V + W + (1 | G) + (1 | H) + (1 | I))],
-    :Rail => [:(1 + (1 | G))],
-    :SIMS => [:(1 + U + (1 + U | G))],
-    :ScotsSec => [:(1 + A + U + V + (1 | G) + (1 | H))],
-    :Semi2 => [:(1 + A + (1 | G) + (1 | H))],
-    :Semiconductor => [:(1 + A * B + (1 | G))],
-    :Socatt => [],                   # variables must be renamed - binomial glmm?
-    :TeachingII => [:(1 + A + T + U + V + W + X + Z + (1 | G))],
-    :VerbAgg => [:(1 + A + B + C + U + (1 | G) + (1 | H))], # Bernoulli glmm and rename variables
-    :Weights => [:(1 + A * U + (1 + U | G))],
-    :WWheat => [:(1 + U + (1 + U | G))],
-    :bdf => [],                      # rename variables and look up model
-    :bs10 => [:(1 + U + V + W + ((1 + U + V + W) | G) + ((1 + U + V + W) | H))],
-    :cake => [:(1 + A * B + (1 | G))],
-    :cbpp => [:(1 + A + (1 | G))],   # Binomial glmm, create and rename variables
+const global contrasts = Dict(
+    :mrk17_exp1 => merge(Dict(n => HelmertCoding() for n in (:F, :P, :Q, :lQ, :lT)),
+     Dict(n => Grouping() for n in (:item, :subj))),
+)
+const global fms = Dict(
+    :dyestuff => [
+        @formula(yield ~ 1 + (1|batch)),
+        ],
+    :dyestuff2 => [
+        @formula(yield ~ 1 + (1|batch)),
+        ],
     :d3 => [
-        :(1 + U + (1 | G) + (1 | H) + (1 | I)),
-        :(1 + U + (1 + U | G) + (1 + U | H) + (1 + U | I)),
-    ],
-    :dialectNL => [:(1 + A + T + U + V + W + X + (1 | G) + (1 | H) + (1 | I))],
-    :egsingle => [:(1 + A + U + V + (1 | G) + (1 | H))],
-    :epilepsy => [],                 # unknown origin
-    :ergoStool => [:(1 + A + (1 | G))],
-    :gb12 => [:(1 + S + T + U + V + W + X + Z + ((1 + S + U + W) | G) +
-                ((1 + S + T + V) | H))],
-    :grouseticks => [],              # rename variables, glmm needs formula
-    :guImmun => [],                  # rename variables, glmm needs formula
-    :guPrenat => [],                 # rename variables, glmm needs formula
+        @formula(y ~ 1 + u + (1+u|g) + (1+u|h) + (1+u|i)),
+        ],
+    :insteval => [
+        @formula(y ~ 1 + service + (1|s) + (1|d) + (1|dept)),
+        @formula(y ~ 1 + service*dept + (1|s) + (1|d)),
+        ],
     :kb07 => [
-        :(1 + S + T + U + V + W + X + Z + ((1 + S + T + U + V + W + X + Z) | G) +
-          ((1 + S + T + U + V + W + X + Z) | H)),
-        :(1 + S + T + U + V + W + X + Z +
-          zerocorr((1 + S + T + U + V + W + X + Z) | G) +
-          zerocorr((1 + S + T + U + V + W + X + Z) | H)),
-    ],
-    :ml1m => [:(1 + (1 | G) + (1 | H))],
-    :paulsim => [:(1 + S + T + U + (1 | H) + (1 | G))],  # names of H and G should be reversed
-    :sleepstudy => [:(1 + U + (1 + U | G)), :(1 + U + zerocorr(1 + U | G))],
-    :s3bbx => [],                    # probably drop this one
-    :star => [],                     # not sure it is worthwhile working with these data
-);
+        @formula(rt_trunc ~ 1+spkr+prec+load+(1|subj)+(1|item)),
+        @formula(rt_trunc ~ 1+spkr*prec*load+(1|subj)+(1+prec|item)),
+        @formula(rt_trunc ~ 1+spkr*prec*load+(1+spkr+prec+load|subj)+(1+spkr+prec+load|item)),
+        ],
+    :machines => [
+        @formula(score ~ 1 + (1|Worker) + (1|Machine)),
+        ],
+    :ml1m => [
+        @formula(y ~ 1 + (1|g) + (1|h)),
+        ],
+    :mrk17_exp1 => [
+        @formula(1000/rt ~ 1+F*P*Q*lQ*lT + (1|item) + (1|subj)),
+        @formula(1000/rt ~ 1+F*P*Q*lQ*lT + (1+P+Q+lQ+lT|item) + (1+F+P+Q+lQ+lT|subj)),
+        ],
+    :pastes => [
+        @formula(strength ~ 1 + (1|batch&cask)),
+        @formula(strength ~ 1 + (1|batch/cask)),
+        ],
+    :penicillin => [
+        @formula(diameter ~ 1 + (1|plate) + (1|sample)),
+        ],
+    :sleepstudy => [
+        @formula(reaction ~ 1 + days + (1|subj)),
+        @formula(reaction ~ 1 + days + zerocorr(1+days|subj)),
+        @formula(reaction ~ 1 + days + (1|subj) + (0+days|subj)),
+        @formula(reaction ~ 1 + days + (1+days|subj)),
+        ],
+)
 
-fitbobyqa(rhs::Expr, dsname::Symbol) =
-    fit(MixedModel, @eval(@formula(Y ~ $rhs)), dat[dsname])
-compactstr(ds, rhs) = replace(string(ds, ':', rhs), ' ' => "")
+function fitbobyqa(dsname::Symbol, index::Integer)
+    fit(
+        MixedModel, 
+        fms[dsname][index], 
+        dataset(dsname), 
+        contrasts=get!(contrasts, dsname, Dict{Symbol,StatsModels.AbstractContrasts}()),
+        )
+end
 
 SUITE["simplescalar"] = BenchmarkGroup(["single", "simple", "scalar"])
-for ds in [
-    :Alfalfa,
-    :AvgDailyGain,
-    :BIB,
-    :Bond,
-    :cake,
-    :Cultivation,
-    :Dyestuff,
-    :Dyestuff2,
-    :ergoStool,
-    :Exam,
-    :Gasoline,
-    :Hsb82,
-    :IncBlk,
-    :Mississippi,
-    :PBIB,
-    :Rail,
-    :Semiconductor,
-    :TeachingII,
+for (ds, i) in [  
+    (:dyestuff, 1,),
+    (:dyestuff2, 1,),
+    (:pastes, 1),
+    (:sleepstudy, 1,),
 ]
-    for rhs in mods[ds]
-        SUITE["simplescalar"][compactstr(ds, rhs)] = @benchmarkable fitbobyqa(
-            $(QuoteNode(rhs)),
-            $(QuoteNode(ds)),
-        )
-    end
+    SUITE["simplescalar"][string(ds, ':', i)] = @benchmarkable fitbobyqa($(QuoteNode(ds)), $(QuoteNode(i)))
 end
 
 SUITE["singlevector"] = BenchmarkGroup(["single", "vector"])
-for ds in [:Early, :HR, :Oxboys, :SIMS, :sleepstudy, :Weights, :WWheat]
-    for rhs in mods[ds]
-        SUITE["singlevector"][compactstr(ds, rhs)] = @benchmarkable fitbobyqa(
-            $(QuoteNode(rhs)),
-            $(QuoteNode(ds)),
-        )
-    end
+for (ds, i) in [  
+    (:sleepstudy, 2,),
+    (:sleepstudy, 3,),
+    (:sleepstudy, 4,),
+]
+    SUITE["singlevector"][string(ds, ':', i)] = @benchmarkable fitbobyqa($(QuoteNode(ds)), $(QuoteNode(i)))
 end
 
 SUITE["nested"] = BenchmarkGroup(["multiple", "nested", "scalar"])
-for ds in [:Animal, :Chem97, :Genetics, :Pastes, :Semi2]
-    for rhs in mods[ds]
-        SUITE["nested"][compactstr(ds, rhs)] = @benchmarkable fitbobyqa(
-            $(QuoteNode(rhs)),
-            $(QuoteNode(ds)),
-        )
-    end
+for (ds, i) in [  
+    (:pastes, 2,),
+]
+    SUITE["nested"][string(ds, ':', i)] = @benchmarkable fitbobyqa($(QuoteNode(ds)), $(QuoteNode(i)))
 end
 
 SUITE["crossed"] = BenchmarkGroup(["multiple", "crossed", "scalar"])
-
-for ds in [
-    :Assay,
-    :Demand,
-    :InstEval,
-    :Penicillin,
-    :ScotsSec,
-    :dialectNL,
-    :egsingle,
-    :ml1m,
-    :paulsim,
+for (ds, i) in [
+    (:insteval, 1),
+    (:insteval, 2),
+    (:kb07, 1),
+    (:machines, 1),
+    (:ml1m, 1),
+    (:mrk17_exp1, 1),
+    (:penicillin, 1),
 ]
-    for rhs in mods[ds]
-        SUITE["crossed"][compactstr(ds, rhs)] = @benchmarkable fitbobyqa(
-            $(QuoteNode(rhs)),
-            $(QuoteNode(ds)),
-        )
-    end
+    SUITE["crossed"][string(ds, ':', i)] = @benchmarkable fitbobyqa($(QuoteNode(ds)), $(QuoteNode(i)))
 end
 
 SUITE["crossedvector"] = BenchmarkGroup(["multiple", "crossed", "vector"])
-for ds in [:bs10, :d3, :gb12, :kb07]
-    for rhs in mods[ds]
-        SUITE["crossedvector"][compactstr(ds, rhs)] = @benchmarkable fitbobyqa(
-            $(QuoteNode(rhs)),
-            $(QuoteNode(ds)),
-        )
-    end
+for (ds, i) in [
+    (:d3, 1),
+    (:kb07, 2),
+    (:kb07, 3),
+    (:mrk17_exp1, 2),
+]
+    SUITE["crossedvector"][string(ds, ':', i)] = @benchmarkable fitbobyqa($(QuoteNode(ds)), $(QuoteNode(i)))
 end
