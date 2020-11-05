@@ -6,7 +6,6 @@ using Test
 
 using MixedModels: allequal, average, densify, dataset
 
-const io = IOBuffer()
 include("modelcache.jl")
 
 @testset "average" begin
@@ -60,6 +59,7 @@ end
 end
 
 @testset "PCA" begin
+	io = IOBuffer()
 	pca = models(:kb07)[3].PCA.item
 
 	show(io, pca, covcor=true, loadings=false)
