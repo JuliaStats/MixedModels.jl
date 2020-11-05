@@ -27,7 +27,11 @@ end
 
         slp = DataFrame(dataset(:sleepstudy))
 
-        @test predict(m, slp) ≈ fitted(m)
+        @test predict(m, slp; new_re_levels=:error) ≈ fitted(m)
+        @test predict(m, slp; new_re_levels=:population) ≈ fitted(m)
+        @test predict(m, slp; new_re_levels=:missing) ≈ fitted(m)
+        @test predict(m, slp; new_re_levels=:simulate) ≈ fitted(m)
+
     end
 
     @testset "GLMM" begin
