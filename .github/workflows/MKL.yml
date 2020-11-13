@@ -1,11 +1,6 @@
 name: MKL
 on:
-  pull_request:
-    branches:
-      - master
-    paths-ignore:
-      - 'LICENSE.md'
-      - 'README.md'
+  workflow_dispatch:
 jobs:
   ci:
     runs-on: ${{ matrix.os }}
