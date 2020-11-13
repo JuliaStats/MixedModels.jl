@@ -21,7 +21,7 @@ jobs:
         with:
           version: ${{ matrix.julia-version }}
       - uses: julia-actions/julia-buildpkg@v0.1
-      - run:  julia --project -e 'using Pkg; Pkg.add("MKL"); Pkg.build("MKL"; verbose=true)'
+      - run:  julia -e 'using Pkg; Pkg.add("MKL"); Pkg.build("MKL"; verbose=true)'
       - uses: julia-actions/julia-runtest@v0.1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
