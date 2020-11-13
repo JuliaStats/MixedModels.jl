@@ -10,7 +10,7 @@ function statscholesky(xtx::Symmetric{T}, tol::Real = -1) where {T<:AbstractFloa
     chpiv = cholesky(xtx, Val(true), tol = T(tol), check = false)
     chunp = cholesky(xtx, check = false);
 
-    piv = [1:n;]
+    piv = LinearAlgebra.BlasInt.(collect(1:n))
     r = chpiv.rank
 
     if r < n
@@ -58,7 +58,7 @@ function statsqr(x::Matrix{T}; ranktol=1e-8) where {T<:AbstractFloat}
     if rank < n
         piv = qrpiv.p
     else
-        piv = collect(1:n)
+        piv = LinearAlgebra.BlasInt.(collect(1:n))
     end
 
     if rank < n && piv[1] ≠ 1
