@@ -248,7 +248,7 @@ diagonal blocks from the conditional variance-covariance matrix,
 function condVar(m::LinearMixedModel{T}) where {T}
     retrms = m.reterms
     t1 = first(retrms)
-    L11 = m.L[Block(1, 1)]
+    L11 = getblock(m.L, 1, 1)
     if !isone(length(retrms)) || !isa(L11, Diagonal{T,Vector{T}})
         throw(ArgumentError("code for multiple or vector-valued r.e. not yet written"))
     end
@@ -275,7 +275,7 @@ function createAL(allterms::Vector{Union{AbstractReMat{T},FeMat{T}}}) where {T}
             cj = allterms[j]
             if !isnested(cj, ci)
                 for l = i:k
-                    L[Block(l, i)] = Matrix(L[Block(l, i)])
+                    L[Block(l, i)] = Matrix(getblock(L, l, i))
                 end
                 break
             end
@@ -506,7 +506,7 @@ function StatsBase.leverage(m::LinearMixedModel{T}) where {T}
         fill!(m.y, zero(T))
         m.y[i] = one(T)
         updateL!(reevaluateAend!(m))
-        sum(j -> sum(abs2, m.L[Block(l, j)]), 1:(l-1))
+        sum(j -> sum(abs2, view(m.L, Block(l, j))), 1:(l-1))
     end
     copyto!(m.y, yorig)
     updateL!(reevaluateAend!(m))
@@ -619,19 +619,19 @@ function ranef!(
     L = m.L
     for j = 1:k
         mul!(
-            vec(copyto!(v[j], L[Block(length(m.allterms), j)])),
-            L[Block(k + 1, j)]',
+            vec(copyto!(v[j], getblock(L, length(m.allterms), j))),
+            getblock(L, k + 1, j)',
             β,
             -one(T),
             one(T),
         )
     end
     for i = k:-1:1
-        Lii = L[Block(i, i)]
+        Lii = getblock(L, i, i)
         vi = vec(v[i])
         ldiv!(adjoint(isa(Lii, Diagonal) ? Lii : LowerTriangular(Lii)), vi)
         for j = 1:(i-1)
-            mul!(vec(v[j]), L[Block(i, j)]', vi, -one(T), one(T))
+            mul!(vec(v[j]), getblock(L, i, j)', vi, -one(T), one(T))
         end
     end
     if !uscale
@@ -698,7 +698,7 @@ function reevaluateAend!(m::LinearMixedModel)
     trmn = reweight!(last(m.allterms), m.sqrtwts)
     nblk = length(m.allterms)
     for (j, trm) in enumerate(m.allterms)
-        mul!(A[Block(nblk, j)], trmn', trm)
+        mul!(getblock(A, nblk, j), trmn', trm)
     end
     m
 end
@@ -888,7 +888,7 @@ function updateA!(m::LinearMixedModel)
     A = m.A
     for j = 1:k
         for i = j:k
-            mul!(A[Block(i, j)], allterms[i]', allterms[j])
+            mul!(getblock(A, i, j), allterms[i]', allterms[j])
         end
     end
     m
@@ -907,29 +907,30 @@ function updateL!(m::LinearMixedModel{T}) where {T}
     k = length(m.allterms)
     for j = 1:k                         # copy lower triangle of A to L
         for i = j:k
-            copyto!(L[Block(i, j)], A[Block(i, j)])
+            copyto!(getblock(L, i, j),
+                    getblock(A, i, j))
         end
     end
     for (j, cj) in enumerate(m.reterms)  # pre- and post-multiply by Λ, add I to diagonal
-        scaleinflate!(L[Block(j, j)], cj)
+        scaleinflate!(getblock(L, j, j), cj)
         for i = (j+1):k         # postmultiply column by Λ
-            rmulΛ!(L[Block(i, j)], cj)
+            rmulΛ!(getblock(L, i, j), cj)
         end
         for jj = 1:(j-1)        # premultiply row by Λ'
-            lmulΛ!(cj', L[Block(j, jj)])
+            lmulΛ!(cj', getblock(L, j, jj))
         end
     end
     for j = 1:k                         # blocked Cholesky
-        Ljj = L[Block(j, j)]
+        Ljj = getblock(L, j, j)
         for jj = 1:(j-1)
-            rankUpdate!(Hermitian(Ljj, :L), L[Block(j, jj)], -one(T), one(T))
+            rankUpdate!(Hermitian(Ljj, :L), getblock(L, j, jj), -one(T), one(T))
         end
         cholUnblocked!(Ljj, Val{:L})
         LjjT = isa(Ljj, Diagonal) ? Ljj : LowerTriangular(Ljj)
         for i = (j+1):k
-            Lij = L[Block(i, j)]
+            Lij = getblock(L, i, j)
             for jj = 1:(j-1)
-                mul!(Lij, L[Block(i, jj)], L[Block(j, jj)]', -one(T), one(T))
+                mul!(Lij, getblock(L, i, jj), getblock(L, j, jj)', -one(T), one(T))
             end
             rdiv!(Lij, LjjT')
         end
