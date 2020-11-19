@@ -25,11 +25,11 @@ function BlockDescription(m::LinearMixedModel)
     ALtypes = fill("", k, k)
     Ltypes = fill(Nothing, k, k)
     for i in 1:k, j in 1:i
-        ALtypes[i, j] = shorttype(A[Block(i,j)], L[Block(i,j)])
+        ALtypes[i, j] = shorttype(getblock(A, i,j), getblock(L, i,j))
     end
     BlockDescription(
         blknms,
-        [size(A[Block(i, 1)], 1) for i in 1:k],
+        [size(getblock(A, i, 1), 1) for i in 1:k],
         ALtypes,
      )
 end
