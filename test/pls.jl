@@ -1,3 +1,4 @@
+using BlockArrays
 using LinearAlgebra
 using MixedModels
 using PooledArrays
@@ -244,19 +245,17 @@ end
 @testset "sleep" begin
     fm = last(models(:sleepstudy))
     @test lowerbd(fm) == [0.0, -Inf, 0.0]
-    A11 = fm.A[Block(1,1)]
-    @show typeof(A11)
+    A11 = getblock(fm.A, 1,1)
     @test isa(A11, UniformBlockDiagonal{Float64})
-    @show typeof(fm.L[Block(1, 1)])
-    @test isa(fm.L[Block(1, 1)], UniformBlockDiagonal{Float64})
+    @test isa(getblock(fm.L, 1, 1), UniformBlockDiagonal{Float64})
     @test size(A11) == (36, 36)
     a11 = view(A11.data, :, :, 1)
     @test a11 == [10. 45.; 45. 285.]
     @test size(A11.data, 3) == 18
     λ = first(fm.λ)
-    b11 = LowerTriangular(view(fm.L[Block(1, 1)].data, :, :, 1))
+    b11 = LowerTriangular(view(getblock(fm.L, 1, 1).data, :, :, 1))
     @test b11 * b11' ≈ λ'a11*λ + I rtol=1e-5
-    @test count(!iszero, Matrix(fm.L[Block(1, 1)])) == 18 * 4
+    @test count(!iszero, Matrix(getblock(fm.L, 1, 1))) == 18 * 4
     @test rank(fm) == 2
 
     @test objective(fm) ≈ 1751.9393444647046
