@@ -24,9 +24,9 @@ include("modelcache.jl")
     @test fm1.optsum.initial == ones(1)
     fm1.θ = ones(1)
     @test fm1.θ == ones(1)
-    
+
     @test_throws ArgumentError fit!(fm1)
-    
+
     fm1.optsum.feval = -1
     @test_logs (:warn, "Model has not been fit") show(fm1)
 
@@ -245,7 +245,9 @@ end
     fm = last(models(:sleepstudy))
     @test lowerbd(fm) == [0.0, -Inf, 0.0]
     A11 = fm.A[Block(1,1)]
+    @show typeof(A11)
     @test isa(A11, UniformBlockDiagonal{Float64})
+    @show typeof(fm.L[Block(1, 1)])
     @test isa(fm.L[Block(1, 1)], UniformBlockDiagonal{Float64})
     @test size(A11) == (36, 36)
     a11 = view(A11.data, :, :, 1)
