@@ -3,50 +3,6 @@ abstract type AbstractReTerm <: AbstractTerm end
 struct RandomEffectsTerm <: AbstractReTerm
     lhs::StatsModels.TermOrTerms
     rhs::StatsModels.TermOrTerms
-    function RandomEffectsTerm(lhs, rhs)
-        if isempty(intersect(StatsModels.termvars(lhs), StatsModels.termvars(rhs)))
-            if !isa(
-                rhs,
-                Union{
-                    CategoricalTerm,
-                    InteractionTerm{<:NTuple{N,CategoricalTerm} where {N}},
-                },
-            )
-                throw(ArgumentError("blocking variables (those behind |) must be Categorical ($(rhs) is not)"))
-            end
-            new(lhs, rhs)
-        else
-            throw(ArgumentError("Same variable appears on both sides of |"))
-        end
-    end
-end
-
-function StatsModels.apply_schema(
-    t::FunctionTerm{typeof(/)},
-    sch::StatsModels.FullRank,
-    Mod::Type{<:MixedModel},
-)
-    if length(t.args_parsed) ≠ 2
-        throw(ArgumentError("malformed nesting term: $t (Exactly two arguments required"))
-    end
-
-    first, second = apply_schema.(t.args_parsed, Ref(sch), Mod)
-    
-    if !(typeof(first) <: CategoricalTerm)
-        throw(ArgumentError("nesting terms requires categorical grouping term, got $first.  Manually specify $first as `CategoricalTerm` in hints/contrasts"))
-    end
-
-    return first + fulldummy(first) & second
-end
-
-RandomEffectsTerm(lhs, rhs::NTuple{2,AbstractTerm}) =
-    (RandomEffectsTerm(lhs, rhs[1]), RandomEffectsTerm(lhs, rhs[2]))
-
-Base.show(io::IO, t::RandomEffectsTerm) = print(io, "($(t.lhs) | $(t.rhs))")
-StatsModels.is_matrix_term(::Type{RandomEffectsTerm}) = false
-
-function StatsModels.termvars(t::RandomEffectsTerm)
-    vcat(StatsModels.termvars(t.lhs), StatsModels.termvars(t.rhs))
 end
 
 function StatsModels.apply_schema(
@@ -56,8 +12,23 @@ function StatsModels.apply_schema(
 )
     lhs, rhs = t.args_parsed
 
+    isempty(intersect(StatsModels.termvars(lhs), StatsModels.termvars(rhs))) ||
+        throw(ArgumentError("Same variable appears on both sides of |"))
+
+    RandomEffectsTerm(lhs, rhs)
+end
+
+function StatsModels.apply_schema(
+    t::RandomEffectsTerm,
+    schema::MultiSchema{StatsModels.FullRank},
+    Mod::Type{<:MixedModel}
+)
+    lhs, rhs = t.lhs, t.rhs
+
+    # get a schema that's specific for the grouping (RHS), creating one if needed
     schema = get!(schema.subs, rhs, StatsModels.FullRank(schema.base.schema))
 
+    # handle intercept in LHS (including checking schema for intercept in another term)
     if (
         !StatsModels.hasintercept(lhs) &&
         !StatsModels.omitsintercept(lhs) &&
@@ -66,7 +37,14 @@ function StatsModels.apply_schema(
     )
         lhs = InterceptTerm{true}() + lhs
     end
+
     lhs, rhs = apply_schema.((lhs, rhs), Ref(schema), Mod)
+
+    # check whether grouping terms are categorical or interaction of categorical
+    rhs isa CategoricalTerm ||
+        rhs isa InteractionTerm{<:NTuple{N,CategoricalTerm} where {N}} ||
+        throw(ArgumentError("blocking variables (those behind |) must be Categorical ($(rhs) is not)"))
+    
     RandomEffectsTerm(MatrixTerm(lhs), rhs)
 end
 
@@ -98,7 +76,6 @@ function StatsModels.modelcols(t::RandomEffectsTerm, d::NamedTuple)
     )
 end
 
-
 # extract vector of refs from ranef grouping term and data
 function _ranef_refs(grp::CategoricalTerm, d::NamedTuple)
     invindex = grp.contrasts.invindex
@@ -116,6 +93,38 @@ function _ranef_refs(
     refs = convert(Vector{Int32}, getindex.(Ref(invindex), combos))
     refs, uniques
 end
+
+
+
+function StatsModels.apply_schema(
+    t::FunctionTerm{typeof(/)},
+    sch::StatsModels.FullRank,
+    Mod::Type{<:MixedModel},
+)
+    if length(t.args_parsed) ≠ 2
+        throw(ArgumentError("malformed nesting term: $t (Exactly two arguments required"))
+    end
+
+    first, second = apply_schema.(t.args_parsed, Ref(sch), Mod)
+
+    if !(typeof(first) <: CategoricalTerm)
+        throw(ArgumentError("nesting terms requires categorical grouping term, got $first.  Manually specify $first as `CategoricalTerm` in hints/contrasts"))
+    end
+
+    return first + fulldummy(first) & second
+end
+
+# expand (lhs | a + b) to (lhs | a) + (lhs | b)
+RandomEffectsTerm(lhs, rhs::NTuple{2,AbstractTerm}) =
+    (RandomEffectsTerm(lhs, rhs[1]), RandomEffectsTerm(lhs, rhs[2]))
+
+Base.show(io::IO, t::RandomEffectsTerm) = print(io, "($(t.lhs) | $(t.rhs))")
+StatsModels.is_matrix_term(::Type{RandomEffectsTerm}) = false
+
+function StatsModels.termvars(t::RandomEffectsTerm)
+    vcat(StatsModels.termvars(t.lhs), StatsModels.termvars(t.rhs))
+end
+
 
 
 # add some syntax to manually promote to full dummy coding
