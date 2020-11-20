@@ -69,7 +69,7 @@ Availability of test data sets
 * Several data sets from the literature were previously saved in `.rda` format
   in the `test` directory and read using the `RData` package. These are now available
   in an `Artifact` in the [`Arrow`](https://github.com/JuliaData/Arrow.jl.git) format [#382].
-* Call `MixedModel.datasets()` to get a listing of the names of available datasets
+* Call `MixedModels.datasets()` to get a listing of the names of available datasets
 * To load, e.g. the `dyestuff` data, use `MixedModels.dataset(:dyestuff)`
 * Data sets are loaded using `Arrow.Table` which returns a column table.  Wrap the
   call in `DataFrame` if you prefer a `DataFrame`.

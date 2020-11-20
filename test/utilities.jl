@@ -46,7 +46,7 @@ end
 		r = only(randn(rng, 1));
 	end
 
-	@test all(sort!(single_thread) .== sort!(multi_thread))
+	@test all(sort!(single_thread) .≈ sort!(multi_thread))
 end
 
 @testset "datasets" begin

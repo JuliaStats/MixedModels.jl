@@ -5,7 +5,7 @@ import LinearAlgebra: BLAS
 # there seem to be processor-specific issues and knowing this is helpful
 println(versioninfo())
 @show BLAS.vendor()
-if BLAS.vendor() == :openblas
+if startswith(string(BLAS.vendor()), "openblas")
     println(BLAS.openblas_get_config())
 end
 
