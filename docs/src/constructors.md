@@ -167,7 +167,7 @@ end
 
 ### Simplifying the random effect correlation structure
 
-MixedEffects.jl estimates not only the *variance* of the effects for each random effect level, but also the *correlation* between the random effects for different predictors.
+MixedModels.jl estimates not only the *variance* of the effects for each random effect level, but also the *correlation* between the random effects for different predictors.
 So, for the model of the *sleepstudy* data above, one of the parameters that is estimated is the correlation between each subject's random intercept (i.e., their baseline reaction time) and slope (i.e., their particular change in reaction time per day of sleep deprivation).
 In some cases, you may wish to simplify the random effects structure by removing these correlation parameters.
 This often arises when there are many random effects you want to estimate (as is common in psychological experiments with many conditions and covariates), since the number of random effects parameters increases as the square of the number of predictors, making these models difficult to estimate from limited data.
