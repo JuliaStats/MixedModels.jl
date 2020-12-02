@@ -8,7 +8,7 @@ using GLM
 using LinearAlgebra
 using NLopt
 using Random
-using Pkg.Artifacts
+using Pkg
 using PooledArrays
 using ProgressMeter
 using SparseArrays
