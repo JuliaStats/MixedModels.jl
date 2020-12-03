@@ -407,6 +407,12 @@ end
     @test "-0.89" in tokens
 end
 
+@testset "oxide" begin
+    # this model has an interesting structure with two diagonal blocks
+    m = only(models(:oxide))
+    @test all(isapprox.(m.θ, [1.689182746, 2.98504262]; atol=1e-4))
+end
+
 @testset "Rank deficient" begin
     rng = MersenneTwister(0);
     x = rand(rng, 100);
