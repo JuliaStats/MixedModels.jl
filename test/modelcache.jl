@@ -9,6 +9,7 @@ using MixedModels: dataset
 )
 
 @isdefined(fms) || const global fms = Dict(
+    :oxide => [@formula(Thickness ~ 1 + (1|Lot/Wafer))],
     :dyestuff => [@formula(yield ~ 1 + (1|batch))],
     :dyestuff2 => [@formula(yield ~ 1 + (1|batch))],
     :d3 => [@formula(y ~ 1 + u + (1+u|g) + (1+u|h) + (1+u|i))],
