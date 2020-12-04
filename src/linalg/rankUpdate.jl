@@ -72,9 +72,12 @@ function rankUpdate!(C::HermOrSym{T,UniformBlockDiagonal{T}}, A::StridedMatrix{T
         for i in 1:blksize, j in 1:i
             iind = ioffset + i
             jind = joffset + j
-            Arow = view(A, iind, :)
-            Acol = view(A, jind, :) # because the column comes from A'
-            Cdat[i,j,k] = Cdat[i,j,k] + α * Arow'Acol
+            AtAij = 0
+            for idx in axes(A, 2)
+                # because the second is actually A', we swap index orders
+                AtAij += A[iind,idx] * A[jind,idx]
+            end
+            Cdat[i,j,k] += α * AtAij
         end
     end
 
