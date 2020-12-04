@@ -63,7 +63,7 @@ end
 
 function rankUpdate!(C::HermOrSym{T,UniformBlockDiagonal{T}}, A::StridedMatrix{T}, α, β) where {T,S}
     Cdat = C.data.data
-    @. Cdat = β * Cdat
+    isone(β) || (Cdat .*= β)
     nblks = size(Cdat, 3)
     blksize = size(Cdat, 1)
 
