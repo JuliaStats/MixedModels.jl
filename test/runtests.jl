@@ -4,7 +4,10 @@ import LinearAlgebra: BLAS
 
 # there seem to be processor-specific issues and knowing this is helpful
 println(versioninfo())
-println(BLAS.openblas_get_config())
+@show BLAS.vendor()
+if startswith(string(BLAS.vendor()), "openblas")
+    println(BLAS.openblas_get_config())
+end
 
 include("utilities.jl")
 include("pivot.jl")

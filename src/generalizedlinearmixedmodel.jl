@@ -89,7 +89,7 @@ function StatsBase.deviance(m::GeneralizedLinearMixedModel{T}, nAGQ = 1) where {
     copyto!(u₀, u)
     ra = RaggedArray(m.resp.devresid, first(m.LMM.allterms).refs)
     devc0 = sum!(map!(abs2, m.devc0, u), ra)  # the deviance components at z = 0
-    sd = map!(inv, m.sd, m.LMM.L[Block(1, 1)].diag)
+    sd = map!(inv, m.sd, getblock(m.LMM.L, 1, 1).diag)
     mult = fill!(m.mult, 0)
     devc = m.devc
     for (z, w) in GHnorm(nAGQ)
@@ -348,7 +348,7 @@ function GeneralizedLinearMixedModel(
     if !any(isa(d, dist) for dist in (Bernoulli, Binomial, Poisson))
         @warn """Results for families with a dispersion parameter are not reliable.
                  It is best to avoid trying to fit such models in MixedModels until
-                 the authors get a better understanding of those cases."""
+                 the authors gain a better understanding of those cases."""
     end
 
     LMM = LinearMixedModel(f, tbl, contrasts = contrasts; wts = wts)
@@ -432,6 +432,7 @@ getθ(m::GeneralizedLinearMixedModel)  = copy(m.θ)
 getθ!(v::AbstractVector{T}, m::GeneralizedLinearMixedModel{T}) where {T} = copyto!(v, m.θ)
 
 function StatsBase.loglikelihood(m::GeneralizedLinearMixedModel{T}) where {T}
+    accum = zero(T)
     # adapted from GLM.jl
     # note the use of loglik_obs to handle the different parameterizations
     # of various response distributions which may not just be location+scale
@@ -440,17 +441,18 @@ function StatsBase.loglikelihood(m::GeneralizedLinearMixedModel{T}) where {T}
     y   = r.y
     mu  = r.mu
     d   = r.d
-    accum = (
-        if length(wts) == length(y)
-            ϕ = deviance(r)/sum(wts)
-            sum(GLM.loglik_obs(d, y[i], mu[i], wts[i], ϕ)
-                        for i in eachindex(y, mu, wts))
-        else
-            ϕ = deviance(r)/length(y)
-            sum(GLM.loglik_obs(d, y[i], mu[i], 1, ϕ) for i in eachindex(y, mu))
+    if length(wts) == length(y)
+        ϕ = deviance(r)/sum(wts)
+        @inbounds for i in eachindex(y, mu, wts)
+            accum += GLM.loglik_obs(d, y[i], mu[i], wts[i], ϕ)
         end
-    )
-    accum - (sum(sum(abs2, u) for u in m.u) + logdet(m)) / 2
+    else
+        ϕ = deviance(r)/length(y)
+        @inbounds for i in eachindex(y, mu)
+            accum += GLM.loglik_obs(d, y[i], mu[i], 1, ϕ)
+        end
+    end
+    accum  - (mapreduce(u -> sum(abs2, u), +, m.u) + logdet(m)) / 2
 end
 
 StatsBase.nobs(m::GeneralizedLinearMixedModel) = length(m.η)
@@ -640,7 +642,7 @@ which returns `1` for models without a dispersion parameter.
 
 For Gaussian models, this parameter is often called σ.
 """
-sdest(m::GeneralizedLinearMixedModel{T}) where {T} =  dispersion_parameter(m) ? dispersion(m, true) : missing
+sdest(m::GeneralizedLinearMixedModel{T}) where {T} =  dispersion_parameter(m) ? dispersion(m, false) : missing
 
 function Base.show(io::IO, m::GeneralizedLinearMixedModel)
     if m.optsum.feval < 0
