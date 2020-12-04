@@ -1,3 +1,21 @@
+MixedModels v3.1.3 Release Notes
+========================
+* Compatibility updates
+* `rankUpdate!` method for `UniformBlockDiagonal` by `Dense` [#447]
+
+MixedModels v3.1.2 Release Notes
+========================
+* Compatibility updates
+* `rankUpdate!` method for `Diagonal` by `Dense` [#446]
+* use eager (install-time) downloading of `TestData` artifact to avoid compatibility
+  issues with `LazyArtifacts` in Julia 1.6 [#444]
+
+MixedModels v3.1.1 Release Notes
+========================
+* Compatibility updates
+* Better `loglikelihood(::GeneralizedLinearMixedModel)` which will work for models with
+  dispersion parameters [#419]. Note that fitting such models is still problematic.
+
 MixedModels v3.1 Release Notes
 ========================
 
@@ -98,3 +116,7 @@ Package dependencies
 [#390]: https://github.com/JuliaStats/MixedModels.jl/issues/390
 [#395]: https://github.com/JuliaStats/MixedModels.jl/issues/395
 [#418]: https://github.com/JuliaStats/MixedModels.jl/issues/418
+[#419]: https://github.com/JuliaStats/MixedModels.jl/issues/419
+[#444]: https://github.com/JuliaStats/MixedModels.jl/issues/444
+[#446]: https://github.com/JuliaStats/MixedModels.jl/issues/446
+[#447]: https://github.com/JuliaStats/MixedModels.jl/issues/447
