@@ -61,6 +61,27 @@ function rankUpdate!(C::HermOrSym{T,Diagonal{T,Vector{T}}}, A::StridedMatrix{T},
     C
 end
 
+function rankUpdate!(C::HermOrSym{T,UniformBlockDiagonal{T}}, A::StridedMatrix{T}, α, β) where {T,S}
+    Cdat = C.data.data
+    @. Cdat = β * Cdat
+    nblks = size(Cdat, 3)
+    blksize = size(Cdat, 1)
+
+    for k in 1:nblks
+        ioffset = (k - 1) * blksize
+        joffset = (k - 1) * blksize
+        for i in 1:blksize, j in 1:blksize
+            iind = ioffset + i
+            jind = joffset + j
+            Arow = view(A, iind, :)
+            Acol = view(A, jind, :) # because the column comes from A'
+            Cdat[i,j,k] = Cdat[i,j,k] + α * Arow'Acol
+        end
+    end
+
+    C
+end
+
 function rankUpdate!(
     C::HermOrSym{T,Diagonal{T,Vector{T}}},
     A::SparseMatrixCSC{T},
