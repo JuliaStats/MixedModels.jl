@@ -70,7 +70,7 @@ function rankUpdate!(C::HermOrSym{T,UniformBlockDiagonal{T}}, A::StridedMatrix{T
     for k in 1:nblks
         ioffset = (k - 1) * blksize
         joffset = (k - 1) * blksize
-        for i in 1:blksize, j in 1:blksize
+        for i in 1:blksize, j in 1:i
             iind = ioffset + i
             jind = joffset + j
             Arow = view(A, iind, :)
