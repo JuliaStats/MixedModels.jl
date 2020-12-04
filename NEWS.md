@@ -1,7 +1,7 @@
 MixedModels v3.1.3 Release Notes
 ========================
 * Compatibility updates
-* `rankUpdate!` method for `BlockDiagonal` by `Dense` [#447]
+* `rankUpdate!` method for `UniformBlockDiagonal` by `Dense` [#447]
 
 MixedModels v3.1.2 Release Notes
 ========================
@@ -116,3 +116,7 @@ Package dependencies
 [#390]: https://github.com/JuliaStats/MixedModels.jl/issues/390
 [#395]: https://github.com/JuliaStats/MixedModels.jl/issues/395
 [#418]: https://github.com/JuliaStats/MixedModels.jl/issues/418
+[#419]: https://github.com/JuliaStats/MixedModels.jl/issues/419
+[#444]: https://github.com/JuliaStats/MixedModels.jl/issues/444
+[#446]: https://github.com/JuliaStats/MixedModels.jl/issues/446
+[#447]: https://github.com/JuliaStats/MixedModels.jl/issues/447
