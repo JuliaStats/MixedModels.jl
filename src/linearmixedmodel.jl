@@ -69,7 +69,7 @@ function LinearMixedModel(
 
     y, Xs = modelcols(form, tbl)
 
-    return LinearMixedModel(y, Xs, form)
+    return LinearMixedModel(y, Xs, form, wts)
 end
 
 """
@@ -124,8 +124,8 @@ end
 
 Private constructor for a `LinearMixedModel` given already assembled fixed and random effects.
 
-To construct a model, you only need a vector of `FeMat`s (the response and
-fixed-effects model matrix), a vector of `AbstractReMat` (the random-effects
+To construct a model, you only need a vector of `FeMat`s (the fixed-effects
+model matrix and response), a vector of `AbstractReMat` (the random-effects
 model matrices), the formula and the weights. Everything else in the structure
 can be derived from these quantities.
 
