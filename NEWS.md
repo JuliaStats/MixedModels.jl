@@ -1,3 +1,7 @@
+MixedModels v3.1.4 Release Notes
+========================
+* [experimental] Additional convenience constructors for `LinearMixedModel` [#449]
+
 MixedModels v3.1.3 Release Notes
 ========================
 * Compatibility updates
@@ -120,3 +124,4 @@ Package dependencies
 [#444]: https://github.com/JuliaStats/MixedModels.jl/issues/444
 [#446]: https://github.com/JuliaStats/MixedModels.jl/issues/446
 [#447]: https://github.com/JuliaStats/MixedModels.jl/issues/447
+[#449]: https://github.com/JuliaStats/MixedModels.jl/issues/449
