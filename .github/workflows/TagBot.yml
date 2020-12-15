@@ -13,3 +13,28 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           ssh: ${{ secrets.DOCUMENTER_KEY }} # see https://juliadocs.github.io/Documenter.jl/stable/man/hosting/#GitHub-Actions
+          changelog: |
+              ## {{ package }} {{ version }}
+              
+              {% if previous_release %}
+              [NEWS file](https://github.com/JuliaStats/MixedModels.jl/blob/{{ version }}/NEWS.md). 
+              [Diff since {{ previous_release }}]({{ compare_url }})
+              {% endif %}
+              
+              {% if custom %}
+              {{ custom }}
+              {% endif %}
+              
+              {% if issues %}
+              **Closed issues:**
+              {% for issue in issues %}
+              - {{ issue.title }} (#{{ issue.number }})
+              {% endfor %}
+              {% endif %}
+              
+              {% if pulls %}
+              **Merged pull requests:**
+              {% for pull in pulls %}
+              - {{ pull.title }} (#{{ pull.number }}) (@{{ pull.author.username }})
+              {% endfor %}
+              {% endif %}            
