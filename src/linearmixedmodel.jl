@@ -76,6 +76,25 @@ function LinearMixedModel(
 
     y, Xs = modelcols(form, tbl)
 
+    return LinearMixedModel(y, Xs, form, wts)
+end
+
+"""
+    LinearMixedModel(y, Xs, form)
+
+Private constructor for a LinearMixedModel.
+
+To construct a model, you only need the response (`y`), already assembled
+model matrices (`Xs`), schematized formula (`form`) and weights (`wts`).
+Everything else in the structure can be derived from these quantities.
+
+!!! note
+    This method is internal and experimental and so may change or disappear in
+    a future release without being considered a breaking change.
+"""
+function LinearMixedModel(y::AbstractArray,
+                           Xs::Tuple, # can't be more specific here without stressing the compiler
+                           form::FormulaTerm, wts = [])
     y = reshape(float(y), (:, 1)) # y as a floating-point matrix
     T = promote_type(Float64, eltype(y))  # ensure that eltype of model matrices is at least Float64
     y = convert(Matrix{T}, y)
@@ -103,6 +122,26 @@ function LinearMixedModel(
         end
     end
     push!(feterms, FeMat(y, [""]))
+
+    return LinearMixedModel(feterms, reterms, form, wts)
+end
+
+"""
+    LinearMixedModel(feterms, reterms, form, wts=[])
+
+Private constructor for a `LinearMixedModel` given already assembled fixed and random effects.
+
+To construct a model, you only need a vector of `FeMat`s (the fixed-effects
+model matrix and response), a vector of `AbstractReMat` (the random-effects
+model matrices), the formula and the weights. Everything else in the structure
+can be derived from these quantities.
+
+!!! note
+    This method is internal and experimental and so may change or disappear in
+    a future release without being considered a breaking change.
+"""
+function LinearMixedModel(feterms::Vector{FeMat{T}}, reterms::Vector{AbstractReMat{T}},
+                          form::FormulaTerm, wts=[]) where T
 
     # detect and combine RE terms with the same grouping var
     if length(reterms) > 1

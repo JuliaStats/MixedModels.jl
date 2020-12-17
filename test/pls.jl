@@ -407,6 +407,25 @@ end
     @test "-0.89" in tokens
 end
 
+@testset "oxide" begin
+    # this model has an interesting structure with two diagonal blocks
+    m = first(models(:oxide))
+    @test all(isapprox.(m.θ, [1.689182746, 2.98504262]; atol=1e-4))
+    m = last(models(:oxide))
+    # NB: this is a poorly defined fit
+    # lme4 gives all sorts of convergence warnings for the different
+    # optimizers and even quite different values
+    # the overall estimates of the standard deviations are similar-ish
+    # but the correlation structure seems particular unstable
+    θneldermead = [1.6454, 8.6373e-02, 8.2128e-05, 8.9552e-01, 1.2014, 2.9286]
+    # two different BOBYQA implementations
+    θnlopt = [1.645, -0.221, 0.986, 0.895, 2.511, 1.169]
+    θminqa = [1.6455, -0.2430, 1.0160, 0.8955, 2.7054, 0.0898]
+    # very loose tolerance for unstable fit
+    # but this is a convenient test of rankUpdate!(::UniformBlockDiagonal)
+    @test all(isapprox.(m.θ, θnlopt; atol=1e-2))
+end
+
 @testset "Rank deficient" begin
     rng = MersenneTwister(0);
     x = rand(rng, 100);

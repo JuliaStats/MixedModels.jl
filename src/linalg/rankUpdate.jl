@@ -49,6 +49,41 @@ function rankUpdate!(C::HermOrSym, A::BlockedSparse, α, β)
     rankUpdate!(C, sparse(A), α, β)
 end
 
+function rankUpdate!(C::HermOrSym{T,Diagonal{T,Vector{T}}}, A::StridedMatrix{T}, α, β) where {T,S}
+    Cdiag = C.data.diag
+    @. Cdiag = β * Cdiag
+
+    for i in 1:length(Cdiag)
+        Arow = view(A, i, :)
+        Cdiag[i] = Cdiag[i] + α * Arow'Arow
+    end
+
+    C
+end
+
+function rankUpdate!(C::HermOrSym{T,UniformBlockDiagonal{T}}, A::StridedMatrix{T}, α, β) where {T,S}
+    Cdat = C.data.data
+    isone(β) || (Cdat .*= β)
+    blksize = size(Cdat, 1)
+
+    for k in axes(Cdat, 3)
+        ioffset = (k - 1) * blksize
+        joffset = (k - 1) * blksize
+        for i in 1:blksize, j in 1:i
+            iind = ioffset + i
+            jind = joffset + j
+            AtAij = 0
+            for idx in axes(A, 2)
+                # because the second is actually A', we swap index orders
+                AtAij += A[iind,idx] * A[jind,idx]
+            end
+            Cdat[i,j,k] += α * AtAij
+        end
+    end
+
+    C
+end
+
 function rankUpdate!(
     C::HermOrSym{T,Diagonal{T,Vector{T}}},
     A::SparseMatrixCSC{T},
