@@ -26,13 +26,13 @@ lower Cholesky factor.
 function LinearAlgebra.logdet(m::LinearMixedModel{T}) where {T}
     L = m.L
     nre = m.dims.nretrms
-    s = LD(getblock(L, 1,1))
+    s = LD(view(L, Block(1,1)))
     for j in 2:nre
-        s += LD(getblock(L, j, j))
+        s += LD(view(L, Block(j, j)))
     end
     if m.optsum.REML
         feindex = nre + 1
-        s += LD(getblock(L, feindex, feindex))
+        s += LD(view(L, Block(feindex, feindex)))
     end
     s + s
 end
