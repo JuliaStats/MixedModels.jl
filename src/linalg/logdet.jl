@@ -31,8 +31,7 @@ function LinearAlgebra.logdet(m::LinearMixedModel{T}) where {T}
         s += LD(L[kp1choose2(j)])
     end
     if m.optsum.REML
-        feindex = nre + 1
-        s += LD(getblock(L, feindex, feindex))
+        s += LD(L[kp1choose2(nre + 1)])
     end
     s + s
 end

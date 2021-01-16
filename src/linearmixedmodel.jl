@@ -546,7 +546,7 @@ function StatsBase.leverage(m::LinearMixedModel{T}) where {T}
         fill!(m.y, zero(T))
         m.y[i] = one(T)
         updateL!(reevaluateAend!(m))
-        sum(j -> sum(abs2, view(m.L, Block(l, j))), 1:(l-1))
+        sum(j -> sum(abs2, m.L[packedlowertri(l, j)]), 1:(l-1))
     end
     copyto!(m.y, yorig)
     updateL!(reevaluateAend!(m))
@@ -657,21 +657,22 @@ function ranef!(
 ) where {T}
     (k = length(v)) == m.dims.nretrms || throw(DimensionMismatch(""))
     L = m.L
+    kp2 = length(m.allterms)
     for j = 1:k
         mul!(
-            vec(copyto!(v[j], getblock(L, length(m.allterms), j))),
-            getblock(L, k + 1, j)',
+            vec(copyto!(v[j], L[packedlowertri(kp2, j)])),
+            L[packedlowertri(k + 1, j)]',
             β,
             -one(T),
             one(T),
         )
     end
     for i = k:-1:1
-        Lii = getblock(L, i, i)
+        Lii = L[kp1choose2(i)]
         vi = vec(v[i])
         ldiv!(adjoint(isa(Lii, Diagonal) ? Lii : LowerTriangular(Lii)), vi)
         for j = 1:(i-1)
-            mul!(vec(v[j]), getblock(L, i, j)', vi, -one(T), one(T))
+            mul!(vec(v[j]), L[packedlowertri(i, j)]', vi, -one(T), one(T))
         end
     end
     if !uscale
@@ -738,7 +739,7 @@ function reevaluateAend!(m::LinearMixedModel)
     trmn = reweight!(last(m.allterms), m.sqrtwts)
     nblk = length(m.allterms)
     for (j, trm) in enumerate(m.allterms)
-        mul!(getblock(A, nblk, j), trmn', trm)
+        mul!(A[packedlowertri(nblk, j)], trmn', trm)
     end
     m
 end
@@ -928,7 +929,7 @@ function updateA!(m::LinearMixedModel)
     A = m.A
     for j = 1:k
         for i = j:k
-            mul!(getblock(A, i, j), allterms[i]', allterms[j])
+            mul!(A[packedlowertri(i,j)], allterms[i]', allterms[j])
         end
     end
     m
