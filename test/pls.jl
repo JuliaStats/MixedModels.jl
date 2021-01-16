@@ -409,7 +409,7 @@ end
 @testset "oxide" begin
     # this model has an interesting structure with two diagonal blocks
     m = first(models(:oxide))
-    @test all(isapprox.(m.θ, [1.689182746, 2.98504262]; atol=1e-4))
+    @test isapprox(m.θ, [1.689182746, 2.98504262]; atol=1e-3)
     m = last(models(:oxide))
     # NB: this is a poorly defined fit
     # lme4 gives all sorts of convergence warnings for the different
