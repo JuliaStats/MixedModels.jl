@@ -1,7 +1,6 @@
 module MixedModels
 
 using Arrow
-using BlockArrays
 using DataAPI
 using Distributions
 using GLM
@@ -42,7 +41,6 @@ export @formula,
        AbstractReMat,
        Bernoulli,
        Binomial,
-       Block,
        BlockDescription,
        BlockedSparse,
        DummyCoding,

@@ -1,4 +1,3 @@
-using BlockArrays
 using LinearAlgebra
 using MixedModels
 using PooledArrays
@@ -245,17 +244,17 @@ end
 @testset "sleep" begin
     fm = last(models(:sleepstudy))
     @test lowerbd(fm) == [0.0, -Inf, 0.0]
-    A11 = getblock(fm.A, 1,1)
+    A11 = first(fm.A)
     @test isa(A11, UniformBlockDiagonal{Float64})
-    @test isa(getblock(fm.L, 1, 1), UniformBlockDiagonal{Float64})
+    @test isa(first(fm.L), UniformBlockDiagonal{Float64})
     @test size(A11) == (36, 36)
     a11 = view(A11.data, :, :, 1)
     @test a11 == [10. 45.; 45. 285.]
     @test size(A11.data, 3) == 18
     λ = first(fm.λ)
-    b11 = LowerTriangular(view(getblock(fm.L, 1, 1).data, :, :, 1))
+    b11 = LowerTriangular(view(first(fm.L).data, :, :, 1))
     @test b11 * b11' ≈ λ'a11*λ + I rtol=1e-5
-    @test count(!iszero, Matrix(getblock(fm.L, 1, 1))) == 18 * 4
+    @test count(!iszero, Matrix(first(fm.L))) == 18 * 4
     @test rank(fm) == 2
 
     @test objective(fm) ≈ 1751.9393444647046
@@ -410,7 +409,7 @@ end
 @testset "oxide" begin
     # this model has an interesting structure with two diagonal blocks
     m = first(models(:oxide))
-    @test all(isapprox.(m.θ, [1.689182746, 2.98504262]; atol=1e-4))
+    @test isapprox(m.θ, [1.689182746, 2.98504262]; atol=1e-3)
     m = last(models(:oxide))
     # NB: this is a poorly defined fit
     # lme4 gives all sorts of convergence warnings for the different

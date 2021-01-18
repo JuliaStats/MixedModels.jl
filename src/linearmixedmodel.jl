@@ -12,8 +12,8 @@ Linear mixed-effects model representation
 * `sqrtwts`: vector of square roots of the case weights.  Can be empty.
 * `parmap` : Vector{NTuple{3,Int}} of (block, row, column) mapping of θ to λ
 * `dims` : NamedTuple{(:n, :p, :nretrms),NTuple{3,Int}} of dimensions.  `p` is the rank of `X`, which may be smaller than `size(X, 2)`.
-* `A`: an `nt × nt` symmetric `BlockMatrix` of matrices representing `hcat(Z,X,y)'hcat(Z,X,y)`
-* `L`: a `nt × nt` `BlockMatrix` - the lower Cholesky factor of `Λ'AΛ+I`
+* `A`: a `Vector{AbstractMatrix}` containing the row-major packed lower triangle of `hcat(Z,X,y)'hcat(Z,X,y)`
+* `L`: the blocked lower Cholesky factor of `Λ'AΛ+I` in the same Vector representation as `A`
 * `optsum`: an [`OptSummary`](@ref) object
 
 ## Properties
@@ -36,8 +36,8 @@ struct LinearMixedModel{T<:AbstractFloat} <: MixedModel{T}
     sqrtwts::Vector{T}
     parmap::Vector{NTuple{3,Int}}
     dims::NamedTuple{(:n, :p, :nretrms),NTuple{3,Int}}
-    A::BlockMatrix{T}            # cross-product blocks
-    L::BlockMatrix{T}
+    A::Vector{AbstractMatrix{T}}            # cross-product blocks
+    L::Vector{AbstractMatrix{T}}
     optsum::OptSummary{T}
 end
 LinearMixedModel(f::FormulaTerm, tbl; contrasts = Dict{Symbol,Any}(), wts = []) =
@@ -287,7 +287,7 @@ diagonal blocks from the conditional variance-covariance matrix,
 function condVar(m::LinearMixedModel{T}) where {T}
     retrms = m.reterms
     t1 = first(retrms)
-    L11 = getblock(m.L, 1, 1)
+    L11 = first(m.L)
     if !isone(length(retrms)) || !isa(L11, Diagonal{T,Vector{T}})
         throw(ArgumentError("code for multiple or vector-valued r.e. not yet written"))
     end
@@ -299,12 +299,13 @@ end
 function createAL(allterms::Vector{Union{AbstractReMat{T},FeMat{T}}}) where {T}
     k = length(allterms)
     sz = [isa(t, ReMat) ? size(t, 2) : rank(t) for t in allterms]
-    A = BlockArray(undef_blocks, AbstractMatrix{T}, sz, sz)
-    L = BlockArray(undef_blocks, AbstractMatrix{T}, sz, sz)
-    for j = 1:k
-        for i = j:k
-            Lij = L[Block(i, j)] = densify(allterms[i]' * allterms[j])
-            A[Block(i, j)] = deepcopy(isa(Lij, BlockedSparse) ? Lij.cscmat : Lij)
+    A = AbstractMatrix{T}[]
+    L = AbstractMatrix{T}[]
+    for i = 1:k
+        for j = 1:i
+            Lij = densify(allterms[i]' * allterms[j])
+            push!(L, Lij)
+            push!(A, deepcopy(isa(Lij, BlockedSparse) ? Lij.cscmat : Lij))
         end
     end
     nretrm = sum(Base.Fix2(isa, ReMat), allterms)
@@ -314,7 +315,8 @@ function createAL(allterms::Vector{Union{AbstractReMat{T},FeMat{T}}}) where {T}
             cj = allterms[j]
             if !isnested(cj, ci)
                 for l = i:k
-                    L[Block(l, i)] = Matrix(getblock(L, l, i))
+                    ind = block(l, i)
+                    L[ind] = Matrix(L[ind])
                 end
                 break
             end
@@ -348,8 +350,7 @@ Return the lower Cholesky factor for the fixed-effects parameters, as an `LowerT
 `p × p` matrix.
 """
 function feL(m::LinearMixedModel)
-    k = m.dims.nretrms + 1
-    LowerTriangular(m.L.blocks[k, k])
+    LowerTriangular(m.L[kp1choose2(m.dims.nretrms + 1)])
 end
 
 """
@@ -425,13 +426,13 @@ the length of `v` can be the rank of `X` or the number of columns of `X`.  In th
 case the calculated coefficients are padded with -0.0 out to the number of columns.
 """
 function fixef!(v::AbstractVector{T}, m::LinearMixedModel{T}) where {T}
-    Xtrm = first(m.feterms)
+    Xtrm = m.allterms[m.dims.nretrms + 1]
     if isfullrank(Xtrm)
-        ldiv!(feL(m)', copyto!(v, m.L.blocks[end, end-1]))
+        ldiv!(feL(m)', copyto!(v, m.L[end-1]))
     else
         ldiv!(
             feL(m)',
-            view(copyto!(fill!(v, -zero(T)), m.L.blocks[end, end-1]), 1:(Xtrm.rank)),
+            view(copyto!(fill!(v, -zero(T)), m.L[end-1]), 1:(Xtrm.rank)),
         )
     end
     v
@@ -545,7 +546,7 @@ function StatsBase.leverage(m::LinearMixedModel{T}) where {T}
         fill!(m.y, zero(T))
         m.y[i] = one(T)
         updateL!(reevaluateAend!(m))
-        sum(j -> sum(abs2, view(m.L, Block(l, j))), 1:(l-1))
+        sum(j -> sum(abs2, m.L[block(l, j)]), 1:(l-1))
     end
     copyto!(m.y, yorig)
     updateL!(reevaluateAend!(m))
@@ -638,7 +639,7 @@ Base.propertynames(m::LinearMixedModel, private::Bool = false) = (
 
 The penalized, weighted residual sum-of-squares.
 """
-pwrss(m::LinearMixedModel) = abs2(last(m.L))
+pwrss(m::LinearMixedModel) = abs2(last(last(m.L)))
 
 """
     ranef!(v::Vector{Matrix{T}}, m::MixedModel{T}, β, uscale::Bool) where {T}
@@ -656,21 +657,22 @@ function ranef!(
 ) where {T}
     (k = length(v)) == m.dims.nretrms || throw(DimensionMismatch(""))
     L = m.L
+    kp2 = length(m.allterms)
     for j = 1:k
         mul!(
-            vec(copyto!(v[j], getblock(L, length(m.allterms), j))),
-            getblock(L, k + 1, j)',
+            vec(copyto!(v[j], L[block(kp2, j)])),
+            L[block(k + 1, j)]',
             β,
             -one(T),
             one(T),
         )
     end
     for i = k:-1:1
-        Lii = getblock(L, i, i)
+        Lii = L[kp1choose2(i)]
         vi = vec(v[i])
         ldiv!(adjoint(isa(Lii, Diagonal) ? Lii : LowerTriangular(Lii)), vi)
         for j = 1:(i-1)
-            mul!(vec(v[j]), getblock(L, i, j)', vi, -one(T), one(T))
+            mul!(vec(v[j]), L[block(i, j)]', vi, -one(T), one(T))
         end
     end
     if !uscale
@@ -737,7 +739,7 @@ function reevaluateAend!(m::LinearMixedModel)
     trmn = reweight!(last(m.allterms), m.sqrtwts)
     nblk = length(m.allterms)
     for (j, trm) in enumerate(m.allterms)
-        mul!(getblock(A, nblk, j), trmn', trm)
+        mul!(A[block(nblk, j)], trmn', trm)
     end
     m
 end
@@ -927,7 +929,7 @@ function updateA!(m::LinearMixedModel)
     A = m.A
     for j = 1:k
         for i = j:k
-            mul!(getblock(A, i, j), allterms[i]', allterms[j])
+            mul!(A[block(i,j)], allterms[i]', allterms[j])
         end
     end
     m
@@ -944,32 +946,29 @@ function updateL!(m::LinearMixedModel{T}) where {T}
     A = m.A
     L = m.L
     k = length(m.allterms)
-    for j = 1:k                         # copy lower triangle of A to L
-        for i = j:k
-            copyto!(getblock(L, i, j),
-                    getblock(A, i, j))
-        end
+    for (l, a) in zip(L, A) # copy each element of A to corresponding element of L
+        copyto!(l, a)       # For some reason copyto!.(L, A) allocates a lot of memory
     end
     for (j, cj) in enumerate(m.reterms)  # pre- and post-multiply by Λ, add I to diagonal
-        scaleinflate!(getblock(L, j, j), cj)
+        scaleinflate!(L[kp1choose2(j)], cj)
         for i = (j+1):k         # postmultiply column by Λ
-            rmulΛ!(getblock(L, i, j), cj)
+            rmulΛ!(L[block(i,j)], cj)
         end
         for jj = 1:(j-1)        # premultiply row by Λ'
-            lmulΛ!(cj', getblock(L, j, jj))
+            lmulΛ!(cj', L[block(j, jj)])
         end
     end
     for j = 1:k                         # blocked Cholesky
-        Ljj = getblock(L, j, j)
+        Ljj = L[kp1choose2(j)]
         for jj = 1:(j-1)
-            rankUpdate!(Hermitian(Ljj, :L), getblock(L, j, jj), -one(T), one(T))
+            rankUpdate!(Hermitian(Ljj, :L), L[block(j, jj)], -one(T), one(T))
         end
         cholUnblocked!(Ljj, Val{:L})
         LjjT = isa(Ljj, Diagonal) ? Ljj : LowerTriangular(Ljj)
         for i = (j+1):k
-            Lij = getblock(L, i, j)
+            Lij = L[block(i, j)]
             for jj = 1:(j-1)
-                mul!(Lij, getblock(L, i, jj), getblock(L, j, jj)', -one(T), one(T))
+                mul!(Lij, L[block(i, jj)], L[block(j, jj)]', -one(T), one(T))
             end
             rdiv!(Lij, LjjT')
         end

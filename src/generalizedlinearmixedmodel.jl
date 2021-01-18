@@ -89,7 +89,7 @@ function StatsBase.deviance(m::GeneralizedLinearMixedModel{T}, nAGQ = 1) where {
     copyto!(u₀, u)
     ra = RaggedArray(m.resp.devresid, first(m.LMM.allterms).refs)
     devc0 = sum!(map!(abs2, m.devc0, u), ra)  # the deviance components at z = 0
-    sd = map!(inv, m.sd, getblock(m.LMM.L, 1, 1).diag)
+    sd = map!(inv, m.sd, first(m.LMM.L).diag)
     mult = fill!(m.mult, 0)
     devc = m.devc
     for (z, w) in GHnorm(nAGQ)
@@ -519,7 +519,7 @@ function pirls!(
         println()
     end
     for iter = 1:maxiter
-        varyβ && ldiv!(adjoint(feL(m)), copyto!(β, lm.L.blocks[end, end-1]))
+        varyβ && ldiv!(adjoint(feL(m)), copyto!(β, lm.L[end-1]))
         ranef!(u, m.LMM, β, true) # solve for new values of u
         obj = deviance!(m)        # update GLM vecs and evaluate Laplace approx
         verbose && println(lpad(iter, 4), ": ", obj)
