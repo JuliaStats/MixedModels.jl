@@ -946,7 +946,9 @@ function updateL!(m::LinearMixedModel{T}) where {T}
     A = m.A
     L = m.L
     k = length(m.allterms)
-    copy!.(L, A)            # copy each element of A to corresponding element of L
+    for (l, a) in zip(L, A) # copy each element of A to corresponding element of L
+        copyto!(l, a)       # For some reason copyto!.(L, A) allocates a lot of memory
+    end
     for (j, cj) in enumerate(m.reterms)  # pre- and post-multiply by Λ, add I to diagonal
         scaleinflate!(L[kp1choose2(j)], cj)
         for i = (j+1):k         # postmultiply column by Λ
