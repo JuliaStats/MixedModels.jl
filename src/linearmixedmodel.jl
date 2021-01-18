@@ -13,7 +13,7 @@ Linear mixed-effects model representation
 * `parmap` : Vector{NTuple{3,Int}} of (block, row, column) mapping of θ to λ
 * `dims` : NamedTuple{(:n, :p, :nretrms),NTuple{3,Int}} of dimensions.  `p` is the rank of `X`, which may be smaller than `size(X, 2)`.
 * `A`: a `Vector{AbstractMatrix}` containing the row-major packed lower triangle of `hcat(Z,X,y)'hcat(Z,X,y)`
-* `L`: the blocked lower Cholesky factor of `Λ'AΛ+I` in the same Vector representation as `A` 
+* `L`: the blocked lower Cholesky factor of `Λ'AΛ+I` in the same Vector representation as `A`
 * `optsum`: an [`OptSummary`](@ref) object
 
 ## Properties
@@ -315,7 +315,7 @@ function createAL(allterms::Vector{Union{AbstractReMat{T},FeMat{T}}}) where {T}
             cj = allterms[j]
             if !isnested(cj, ci)
                 for l = i:k
-                    ind = packedlowertri(l, i)
+                    ind = block(l, i)
                     L[ind] = Matrix(L[ind])
                 end
                 break
@@ -546,7 +546,7 @@ function StatsBase.leverage(m::LinearMixedModel{T}) where {T}
         fill!(m.y, zero(T))
         m.y[i] = one(T)
         updateL!(reevaluateAend!(m))
-        sum(j -> sum(abs2, m.L[packedlowertri(l, j)]), 1:(l-1))
+        sum(j -> sum(abs2, m.L[block(l, j)]), 1:(l-1))
     end
     copyto!(m.y, yorig)
     updateL!(reevaluateAend!(m))
@@ -660,8 +660,8 @@ function ranef!(
     kp2 = length(m.allterms)
     for j = 1:k
         mul!(
-            vec(copyto!(v[j], L[packedlowertri(kp2, j)])),
-            L[packedlowertri(k + 1, j)]',
+            vec(copyto!(v[j], L[block(kp2, j)])),
+            L[block(k + 1, j)]',
             β,
             -one(T),
             one(T),
@@ -672,7 +672,7 @@ function ranef!(
         vi = vec(v[i])
         ldiv!(adjoint(isa(Lii, Diagonal) ? Lii : LowerTriangular(Lii)), vi)
         for j = 1:(i-1)
-            mul!(vec(v[j]), L[packedlowertri(i, j)]', vi, -one(T), one(T))
+            mul!(vec(v[j]), L[block(i, j)]', vi, -one(T), one(T))
         end
     end
     if !uscale
@@ -739,7 +739,7 @@ function reevaluateAend!(m::LinearMixedModel)
     trmn = reweight!(last(m.allterms), m.sqrtwts)
     nblk = length(m.allterms)
     for (j, trm) in enumerate(m.allterms)
-        mul!(A[packedlowertri(nblk, j)], trmn', trm)
+        mul!(A[block(nblk, j)], trmn', trm)
     end
     m
 end
@@ -929,7 +929,7 @@ function updateA!(m::LinearMixedModel)
     A = m.A
     for j = 1:k
         for i = j:k
-            mul!(A[packedlowertri(i,j)], allterms[i]', allterms[j])
+            mul!(A[block(i,j)], allterms[i]', allterms[j])
         end
     end
     m
@@ -952,23 +952,23 @@ function updateL!(m::LinearMixedModel{T}) where {T}
     for (j, cj) in enumerate(m.reterms)  # pre- and post-multiply by Λ, add I to diagonal
         scaleinflate!(L[kp1choose2(j)], cj)
         for i = (j+1):k         # postmultiply column by Λ
-            rmulΛ!(L[packedlowertri(i,j)], cj)
+            rmulΛ!(L[block(i,j)], cj)
         end
         for jj = 1:(j-1)        # premultiply row by Λ'
-            lmulΛ!(cj', L[packedlowertri(j, jj)])
+            lmulΛ!(cj', L[block(j, jj)])
         end
     end
     for j = 1:k                         # blocked Cholesky
         Ljj = L[kp1choose2(j)]
         for jj = 1:(j-1)
-            rankUpdate!(Hermitian(Ljj, :L), L[packedlowertri(j, jj)], -one(T), one(T))
+            rankUpdate!(Hermitian(Ljj, :L), L[block(j, jj)], -one(T), one(T))
         end
         cholUnblocked!(Ljj, Val{:L})
         LjjT = isa(Ljj, Diagonal) ? Ljj : LowerTriangular(Ljj)
         for i = (j+1):k
-            Lij = L[packedlowertri(i, j)]
+            Lij = L[block(i, j)]
             for jj = 1:(j-1)
-                mul!(Lij, L[packedlowertri(i, jj)], L[packedlowertri(j, jj)]', -one(T), one(T))
+                mul!(Lij, L[block(i, jj)], L[block(j, jj)]', -one(T), one(T))
             end
             rdiv!(Lij, LjjT')
         end
