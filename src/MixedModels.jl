@@ -143,7 +143,7 @@ unless that distribution is `Normal` and the link is `IdentityLink`, in which
 case the resulting GLMM would be equivalent to a `LinearMixedModel` anyway and
 so the simpler, equivalent `LinearMixedModel` will be fit instead.
 """
-abstract type MixedModel{T} <: StatsModels.RegressionModel end # model with fixed and random effects
+abstract type MixedModel{Float64} <: StatsModels.RegressionModel end # model with fixed and random effects
 
 function __init__()
     global TestData = artifact"TestData"
@@ -171,5 +171,45 @@ include("simulate.jl")
 include("bootstrap.jl")
 include("blockdescription.jl")
 include("grouping.jl")
+
+
+# this precompiles the private constructor
+# but everything else ultimately dispatches to it
+precompile(LinearMixedModel, (Vector{FeMat{Float64,Matrix{Float64}}},
+                              Vector{AbstractReMat{Float64}},
+                              StatsModels.FormulaTerm,
+                              Array{Float64}))
+# linear algebra precompilation
+precompile(LinearAlgebra.mul!, (Matrix{Float64},
+                                BlockedSparse{Float64},
+                                Adjoint{Float64, BlockedSparse{Float64}},
+                                Float64,Float64))
+
+precompile(LinearAlgebra.mul!, (StridedVecOrMat{Float64},
+                                StridedVecOrMat{Float64},
+                                Adjoint{Float64, BlockedSparse{Float64}},
+                                Float64, Float64))
+
+precompile(LinearAlgebra.mul!, (StridedVector{Float64},
+                                Adjoint{Float64, BlockedSparse{Float64}},
+                                StridedVector{Float64},
+                                Float64, Float64))
+
+@static if VERSION < v"1.6.0-DEV.1468"
+    precompile(LinearAlgebra.ldiv!, (Adjoint{Float64, LowerTriangular{Float64,UniformBlockDiagonal{Float64}}},
+                                     StridedVector{Float64}))
+    precompile(LinearAlgebra.rdiv!, (Matrix{Float64},
+                                     Adjoint{Float64, LowerTriangular{Float64,UniformBlockDiagonal{Float64}}}))
+    precompile(LinearAlgebra.rdiv!, (Matrix{Float64},
+                                     Adjoint{Float64, LowerTriangular{Float64,UniformBlockDiagonal{Float64}}}))
+
+else
+    precompile(LinearAlgebra.ldiv!, (UpperTriangular{Float64, Adjoint{Float64,UniformBlockDiagonal{Float64}}},
+                                     StridedVector{Float64}))
+    precompile(LinearAlgebra.ldiv!, (UpperTriangular{Float64, Adjoint{Float64,UniformBlockDiagonal{Float64}}},
+                                     StridedVector{Float64}))
+    precompile(LinearAlgebra.rdiv!, (BlockedSparse{Float64}, # not yet sure which S and P to precompile
+                                     UpperTriangular{Float64, Adjoint{Float64,UniformBlockDiagonal{Float64}}}))
+end
 
 end # module
