@@ -5,7 +5,7 @@
 [TestData]
 # compute this using
 # using Tar, Inflate, SHA
-#  # I just used wget for the URL below and this is how it saved it
+# filename = "download?version=6" # I just used wget for the URL below and this is how it saved it
 # println("sha256: ", bytes2hex(open(sha256, filename)))
 # println("git-tree-sha1: ", Tar.tree_hash(IOBuffer(inflate_gzip(filename))))
 # from https://julialang.github.io/Pkg.jl/dev/artifacts/
