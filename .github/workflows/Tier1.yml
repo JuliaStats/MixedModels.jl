@@ -3,12 +3,14 @@ on:
   push:
     branches:
       - master
+      - v3.x
     paths-ignore:
       - 'LICENSE.md'
       - 'README.md'
   pull_request:
     branches:
       - master
+      - v3.x
     paths-ignore:
       - 'LICENSE.md'
       - 'README.md'
