@@ -5,21 +5,21 @@
 [TestData]
 # compute this using
 # using Tar, Inflate, SHA
-# filename = "download?version=6" # I just used wget for the URL below and this is how it saved it
+# filename = "download?version=7" # I just used wget for the URL below and this is how it saved it
 # println("sha256: ", bytes2hex(open(sha256, filename)))
 # println("git-tree-sha1: ", Tar.tree_hash(IOBuffer(inflate_gzip(filename))))
 # from https://julialang.github.io/Pkg.jl/dev/artifacts/
-git-tree-sha1 = "547a43a9200ba4d323cfae9cfa41bca0da14cb32"
+git-tree-sha1 = "aba5d7cb6510d3fe430636a9800054aad9ecf62e"
 lazy = false
 
     [[TestData.download]]
-    # this is the SHA from https://osf.io/djaqb/download?version=5
-    sha256 = "33660b732fddc6d12059f8ac80ed6d4de1c862f3ec04c93c94c418a8339fe257"
+    # this is the SHA from https://osf.io/djaqb/download?version=7
+    sha256 = "dfc5260812b4cfbdb913a3b80c5ee0705147f1db9020ae77ac54b0865224a458"
     # when updating this, make sure to change to change the version number,
     # because if the version number isn't included, it will always point to the
     # latest version, which means it will break existing users when we update
     # between releases.
-    url = "https://osf.io/djaqb/download?version=6"
+    url = "https://osf.io/djaqb/download?version=7"
 
     # for future work on using xz-compressed data:
     # Julia invokes wget without using HTTP metadata, so we need the link
