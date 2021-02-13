@@ -48,7 +48,7 @@ Returns the variance-covariance matrix of the fixed effects.
 If `corr=true`, then correlation of fixed effects is returned instead.
 """
 function StatsBase.vcov(m::MixedModel; corr=false)
-    Xtrm = first(m isa GeneralizedLinearMixedModel ? m.LMM.feterms : m.feterms)
+    Xtrm = m isa GeneralizedLinearMixedModel ? m.LMM.feterm : m.feterm
     iperm = invperm(Xtrm.piv)
     p = length(iperm)
     r = Xtrm.rank

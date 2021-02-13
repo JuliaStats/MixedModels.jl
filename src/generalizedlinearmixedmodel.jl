@@ -54,7 +54,7 @@ struct GeneralizedLinearMixedModel{T<:AbstractFloat} <: MixedModel{T}
 end
 
 function StatsBase.coef(m::GeneralizedLinearMixedModel{T}) where {T}
-    piv = first(m.LMM.feterms).piv
+    piv = m.LMM.feterm.piv
     invpermute!(copyto!(fill(T(-0.0), length(piv)), m.β), piv)
 end
 
@@ -87,7 +87,7 @@ function StatsBase.deviance(m::GeneralizedLinearMixedModel{T}, nAGQ = 1) where {
     u = vec(first(m.u))
     u₀ = vec(first(m.u₀))
     copyto!(u₀, u)
-    ra = RaggedArray(m.resp.devresid, first(m.LMM.allterms).refs)
+    ra = RaggedArray(m.resp.devresid, first(m.LMM.reterms).refs)
     devc0 = sum!(map!(abs2, m.devc0, u), ra)  # the deviance components at z = 0
     sd = map!(inv, m.sd, first(m.LMM.L).diag)
     mult = fill!(m.mult, 0)
@@ -359,9 +359,9 @@ function GeneralizedLinearMixedModel(
     if isempty(wts)
         LMM = LinearMixedModel(
             LMM.formula,
-            LMM.allterms,
             LMM.reterms,
-            LMM.feterms,
+            LMM.femat,
+            LMM.feterm,
             fill!(similar(y), 1),
             LMM.parmap,
             LMM.dims,
@@ -414,7 +414,7 @@ function Base.getproperty(m::GeneralizedLinearMixedModel, s::Symbol)
         σs(m)
     elseif s == :σρs
         σρs(m)
-    elseif s ∈ (:A, :L, :optsum, :allterms, :reterms, :feterms, :formula)
+    elseif s ∈ (:A, :L, :optsum, :reterms, :femat, :feterm, :formula)
         getfield(m.LMM, s)
     elseif s ∈ (:λ, :lowerbd, :corr, :PCA, :rePCA, :X,)
         getproperty(m.LMM, s)
@@ -551,7 +551,7 @@ end
 
 ranef(m::GeneralizedLinearMixedModel; uscale::Bool=false) = ranef(m.LMM, uscale=uscale)
 
-LinearAlgebra.rank(m::GeneralizedLinearMixedModel) = first(m.LMM.feterms).rank
+LinearAlgebra.rank(m::GeneralizedLinearMixedModel) = m.LMM.feterm.rank
 
 """
     refit!(m::GeneralizedLinearMixedModel[, y::Vector];

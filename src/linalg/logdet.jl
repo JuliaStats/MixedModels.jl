@@ -31,7 +31,9 @@ function LinearAlgebra.logdet(m::LinearMixedModel{T}) where {T}
         s += LD(L[kp1choose2(j)])
     end
     if m.optsum.REML
-        s += LD(L[kp1choose2(nre + 1)])
+        lastL = last(L)
+        s += LD(lastL)  # this adds the log of sqrtpwrss
+        s -= log(last(lastL))
     end
     s + s
 end
