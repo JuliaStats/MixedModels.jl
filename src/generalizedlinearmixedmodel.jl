@@ -120,9 +120,20 @@ end
 objective(m::GeneralizedLinearMixedModel) = deviance(m)
 
 """
-deviance!(m::GeneralizedLinearMixedModel, nAGQ=1)
+    GLM.wrkresp!(v::AbstractVector{T}, resp::GLM.GlmResp{AbstractVector{T}})
 
-Update `m.η`, `m.μ`, etc., install the working response and working weights in
+A copy of a method from GLM that generalizes the types in the signature
+"""
+function GLM.wrkresp!(v::AbstractVector{T}, r::GLM.GlmResp{Vector{T}}) where {T<:AbstractFloat}
+    v .= r.eta .+ r.wrkresid
+    isempty(r.offset) && return v
+    v .-= r.offset
+end
+
+"""
+    deviance!(m::GeneralizedLinearMixedModel, nAGQ=1)
+    
+Update 'm.η`, `m.μ`, etc., install the working response and working weights in
 `m.LMM`, update `m.LMM.A` and `m.LMM.R`, then evaluate the [`deviance`](@ref).
 """
 function deviance!(m::GeneralizedLinearMixedModel, nAGQ = 1)
@@ -508,7 +519,12 @@ function pirls!(
     for j in eachindex(u)         # start from u all zeros
         copyto!(u₀[j], fill!(u[j], 0))
     end
-    varyβ && copyto!(β₀, β)
+    if varyβ
+        copyto!(β₀, β)
+        Llast = last(lm.L)
+        pp1 = size(Llast, 1)
+        Ltru = view(Llast, pp1, 1:(pp1 - 1)) # name read as L'u
+    end
     obj₀ = deviance!(m) * 1.0001
     if verbose
         print("varyβ = ", varyβ, ", obj₀ = ", obj₀)
@@ -519,7 +535,7 @@ function pirls!(
         println()
     end
     for iter = 1:maxiter
-        varyβ && ldiv!(adjoint(feL(m)), copyto!(β, lm.L[end-1]))
+        varyβ && ldiv!(adjoint(feL(m)), copyto!(β, Ltru))
         ranef!(u, m.LMM, β, true) # solve for new values of u
         obj = deviance!(m)        # update GLM vecs and evaluate Laplace approx
         verbose && println(lpad(iter, 4), ": ", obj)

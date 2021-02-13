@@ -102,7 +102,7 @@ Base.eltype(::FeMat{T}) where {T} = T
 Base.length(A::FeMat) = length(A.wtxy)
 
 function *(adjA::Adjoint{T,<:FeMat{T}}, B::FeMat{T}) where {T}
-    adjA.parent.wtxy' * B.wtxy
+    adjoint(adjA.parent.wtxy) * B.wtxy
 end
 
 function LinearAlgebra.mul!(R::StridedVecOrMat{T}, A::FeMat{T}, B::StridedVecOrMat{T}) where {T}
@@ -110,7 +110,7 @@ function LinearAlgebra.mul!(R::StridedVecOrMat{T}, A::FeMat{T}, B::StridedVecOrM
 end
 
 function LinearAlgebra.mul!(C, adjA::Adjoint{T,<:FeMat{T}}, B::FeMat{T}) where {T}
-    mul!(C, adjA.parent.wtxy', B.wtxy)
+    mul!(C, adjoint(adjA.parent.wtxy), B.wtxy)
 end
 
 function reweight!(A::FeMat{T}, sqrtwts::Vector{T}) where {T}

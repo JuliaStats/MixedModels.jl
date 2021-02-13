@@ -137,7 +137,7 @@ function LinearMixedModel(y::Array{T}, feterm::FeTerm{T}, reterms::Vector{Abstra
     end
 
     sort!(reterms, by = nranef, rev = true)
-    Xy = FeMat(feterm, y)
+    Xy = FeMat(feterm, vec(y))
     sqrtwts = sqrt.(convert(Vector{T}, wts))
     reweight!.(reterms, Ref(sqrtwts))
     reweight!(Xy, sqrtwts)
@@ -932,7 +932,7 @@ function updateA!(m::LinearMixedModel)
             ind += 1
         end
     end
-    femattr = m.femat'
+    femattr = adjoint(m.femat)
     for trm in reterms
         mul!(A[ind], femattr, trm)
         ind += 1

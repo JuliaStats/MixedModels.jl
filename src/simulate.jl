@@ -79,7 +79,8 @@ function simulate!(
 
     # the noise term is actually in the GLM and not the LMM part so no noise
     # at the LMM level
-    η = fill!(m.LMM.y, zero(T))
+    η = fill!(copy(m.LMM.y), zero(T))  # ensure that η is a vector - needed for GLM.updateμ! below
+                                       # A better approach is to change the signature for updateμ!
     y = m.resp.y
 
     # assemble the linear predictor
