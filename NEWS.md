@@ -1,3 +1,9 @@
+MixedModels v4.0.0 Release Notes
+========================
+* Drop dependency on `BlockArrays` and use a `Vector` of matrices to represent
+  the lower triangle in packed, row-major order. The non-exported function `block`
+  can be used for finding the corresponding `Vector` index of a block [#456]
+
 MixedModels v3.1.4 Release Notes
 ========================
 * [experimental] Additional convenience constructors for `LinearMixedModel` [#449]
@@ -125,3 +131,4 @@ Package dependencies
 [#446]: https://github.com/JuliaStats/MixedModels.jl/issues/446
 [#447]: https://github.com/JuliaStats/MixedModels.jl/issues/447
 [#449]: https://github.com/JuliaStats/MixedModels.jl/issues/449
+[#456]: https://github.com/JuliaStats/MixedModels.jl/issues/456

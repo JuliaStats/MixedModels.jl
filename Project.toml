@@ -1,7 +1,7 @@
 name = "MixedModels"
 uuid = "ff71e718-51f3-5ec2-a782-8ffcbfa3c316"
 author = ["Phillip Alday <me@phillipalday.com>", "Douglas Bates <dmbates@gmail.com>", "Jose Bayoan Santiago Calderon <jbs3hp@virginia.edu>"]
-version = "3.1.4"
+version = "4.0.0-DEV"
 
 [deps]
 Arrow = "69666777-d1a9-59fb-9406-91d4454c9d45"
@@ -28,7 +28,7 @@ DataAPI = "1"
 Distributions = "0.21, 0.22, 0.23, 0.24"
 GLM = "1"
 NLopt = "0.5, 0.6"
-PooledArrays = "0.5"
+PooledArrays = "0.5, 1.0"
 ProgressMeter = "1"
 StaticArrays = "0.11, 0.12, 1"
 StatsBase = "0.31, 0.32, 0.33"

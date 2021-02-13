@@ -175,7 +175,8 @@ m1.u₀[1]
 the minima themselves, evaluated as `devc0` above, and a horizontal scale, which is the inverse of diagonal of the Cholesky factor.
 As shown below, this is an estimate of the conditional standard deviations of the components of $\mathcal{U}$.
 ```@example Main
-const s = inv.(m1.LMM.L[Block(1,1)].diag);
+using MixedModels: block
+const s = inv.(m1.LMM.L[block(1,1)].diag);
 s'
 ```
 
