@@ -1,14 +1,18 @@
+
+abstract type MixedModelFitCollection{T<:AbstractFloat} end # model with fixed and random effects
+
+
 """
-    MixedModelBootstrap{T<:AbstractFloat}
+    MixedModelBootstrap{T<:AbstractFloat} <: MixedModelFitCollection{T}
 
 Object returned by `parametericbootstrap` with fields
-- `bstr`: the parameter estimates from the bootstrap replicates as a vector of named tuples.
+- `fits`: the parameter estimates from the bootstrap replicates as a vector of named tuples.
 - `λ`: `Vector{LowerTriangular{T,Matrix{T}}}` containing copies of the λ field from `ReMat` model terms
 - `inds`: `Vector{Vector{Int}}` containing copies of the `inds` field from `ReMat` model terms
 - `lowerbd`: `Vector{T}` containing the vector of lower bounds (corresponds to the identically named field of [`OptSummary`](@ref))
 - `fcnames`: NamedTuple whose keys are the grouping factor names and whose values are the column names
 
-The schema of `bstr` is, by default,
+The schema of `fits` is, by default,
 ```
 Tables.Schema:
  :objective  T
@@ -23,8 +27,8 @@ Characteristics of the bootstrap replicates can be extracted as properties.  The
 `σρs` properties unravel the `σ` and `θ` estimates into estimates of the standard deviations
 and correlations of the random-effects terms.
 """
-struct MixedModelBootstrap{T<:AbstractFloat}
-    bstr::Vector
+struct MixedModelBootstrap{T<:AbstractFloat} <: MixedModelFitCollection{T}
+    fits::Vector
     λ::Vector{LowerTriangular{T,Matrix{T}}}
     inds::Vector{Vector{Int}}
     lowerbd::Vector{T}
@@ -129,9 +133,9 @@ Return a tidy (row)table with the parameter estimates spread into columns
 of `iter`, `type`, `group`, `name` and `value`.
 """
 function allpars(bsamp::MixedModelBootstrap{T}) where {T}
-    bstr, λ, fcnames = bsamp.bstr, bsamp.λ, bsamp.fcnames
-    npars = 2 + length(first(bstr).β) + sum(map(k -> (k * (k + 1)) >> 1, size.(bsamp.λ, 2)))
-    nresrow = length(bstr) * npars
+    fits, λ, fcnames = bsamp.fits, bsamp.λ, bsamp.fcnames
+    npars = 2 + length(first(fits).β) + sum(map(k -> (k * (k + 1)) >> 1, size.(bsamp.λ, 2)))
+    nresrow = length(fits) * npars
     cols = (
         sizehint!(Int[], nresrow),
         sizehint!(String[], nresrow),
@@ -140,7 +144,7 @@ function allpars(bsamp::MixedModelBootstrap{T}) where {T}
         sizehint!(T[], nresrow),
     )
     nrmdr = Vector{T}[]  # normalized rows of λ
-    for (i, r) in enumerate(bstr)
+    for (i, r) in enumerate(fits)
         σ = coalesce(r.σ, one(T))
         for (nm, v) in pairs(r.β)
             push!.(cols, (i, "β", missing, String(nm), v))
@@ -177,7 +181,7 @@ end
 
 function Base.getproperty(bsamp::MixedModelBootstrap, s::Symbol)
     if s ∈ [:objective, :σ, :θ, :se]
-        getproperty.(getfield(bsamp, :bstr), s)
+        getproperty.(getfield(bsamp, :fits), s)
     elseif s == :β
         tidyβ(bsamp)
     elseif s == :coefpvalues
@@ -203,16 +207,16 @@ See also [`issingular(::MixedModel)`](@ref).
 issingular(bsamp::MixedModelBootstrap) = map(θ -> any(θ .== bsamp.lowerbd), bsamp.θ)
 
 function Base.propertynames(bsamp::MixedModelBootstrap)
-    [:allpars, :objective, :σ, :β, :se, :coefpvalues, :θ, :σs, :λ, :inds, :lowerbd, :bstr, :fcnames]
+    [:allpars, :objective, :σ, :β, :se, :coefpvalues, :θ, :σs, :λ, :inds, :lowerbd, :fits, :fcnames]
 end
 
 """
     setθ!(bsamp::MixedModelsBootstrap, i::Integer)
 
-Install the values of the i'th θ value of `bsamp.bstr` in `bsamp.λ`
+Install the values of the i'th θ value of `bsamp.fits` in `bsamp.λ`
 """
 function setθ!(bsamp::MixedModelBootstrap, i::Integer)
-    θ = bsamp.bstr[i].θ
+    θ = bsamp.fits[i].θ
     offset = 0
     for (λ, inds) in zip(bsamp.λ, bsamp.inds)
         λdat = λ.data
@@ -251,13 +255,13 @@ Return a tidy (row)table with the parameter estimates spread into columns
 of `iter`, `coefname` and `β`
 """
 function tidyβ(bsamp::MixedModelBootstrap{T}) where {T}
-    bstr = bsamp.bstr
+    fits = bsamp.fits
     colnms = (:iter, :coefname, :β)
     result = sizehint!(
         NamedTuple{colnms,Tuple{Int,Symbol,T}}[],
-        length(bstr) * length(first(bstr).β),
+        length(fits) * length(first(fits).β),
     )
-    for (i, r) in enumerate(bstr)
+    for (i, r) in enumerate(fits)
         for (k, v) in pairs(r.β)
             push!(result, NamedTuple{colnms}((i, k, v)))
         end
@@ -271,13 +275,13 @@ end
 Return a rowtable with columns `(:iter, :coefname, :β, :se, :z, :p)`
 """
 function coefpvalues(bsamp::MixedModelBootstrap{T}) where {T}
-    bstr = bsamp.bstr
+    fits = bsamp.fits
     colnms = (:iter, :coefname, :β, :se, :z, :p)
     result = sizehint!(
         NamedTuple{colnms,Tuple{Int,Symbol,T,T,T,T}}[],
-        length(bstr) * length(first(bstr).β),
+        length(fits) * length(first(fits).β),
     )
-    for (i, r) in enumerate(bstr)
+    for (i, r) in enumerate(fits)
         for (p, s) in zip(pairs(r.β), r.se)
             β = last(p)
             z = β / s
@@ -294,15 +298,15 @@ Return a tidy (row)table with the estimates of the variance components (on the s
 of `iter`, `group`, `column` and `σ`.
 """
 function tidyσs(bsamp::MixedModelBootstrap{T}) where {T}
-    bstr = bsamp.bstr
+    fits = bsamp.fits
     fcnames = bsamp.fcnames
     λ = bsamp.λ
     colnms = (:iter, :group, :column, :σ)
     result = sizehint!(
         NamedTuple{colnms,Tuple{Int,Symbol,Symbol,T}}[],
-        length(bstr) * sum(length, fcnames),
+        length(fits) * sum(length, fcnames),
     )
-    for (iter, r) in enumerate(bstr)
+    for (iter, r) in enumerate(fits)
         setθ!(bsamp, iter)    # install r.θ in λ
         σ = coalesce(r.σ, one(T))
         for (grp, ll) in zip(keys(fcnames), λ)
