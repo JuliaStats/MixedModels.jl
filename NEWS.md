@@ -2,7 +2,12 @@ MixedModels v4.0.0 Release Notes
 ========================
 * Drop dependency on `BlockArrays` and use a `Vector` of matrices to represent
   the lower triangle in packed, row-major order. The non-exported function `block`
-  can be used for finding the corresponding `Vector` index of a block [#456]
+  can be used for finding the corresponding `Vector` index of a block. [#456]
+* Deprecated and unused `named` argument removed from `ranef` [#469]
+* Introduce an abstract type for collections of fits `MixedModelFitCollection`,
+  and make `MixedModelBootstrap` a subtype of it. Accordingly, rename the `bstr`
+  field to `fits`. [#465]
+
 
 MixedModels v3.1.4 Release Notes
 ========================
