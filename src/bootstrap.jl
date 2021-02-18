@@ -127,12 +127,12 @@ function parametricbootstrap(
 end
 
 """
-    allpars(bsamp::MixedModelBootstrap)
+    allpars(bsamp::MixedModelFitCollection)
 
 Return a tidy (row)table with the parameter estimates spread into columns
 of `iter`, `type`, `group`, `name` and `value`.
 """
-function allpars(bsamp::MixedModelBootstrap{T}) where {T}
+function allpars(bsamp::MixedModelFitCollection{T}) where {T}
     fits, λ, fcnames = bsamp.fits, bsamp.λ, bsamp.fcnames
     npars = 2 + length(first(fits).β) + sum(map(k -> (k * (k + 1)) >> 1, size.(bsamp.λ, 2)))
     nresrow = length(fits) * npars
@@ -179,7 +179,7 @@ function allpars(bsamp::MixedModelBootstrap{T}) where {T}
     )
 end
 
-function Base.getproperty(bsamp::MixedModelBootstrap, s::Symbol)
+function Base.getproperty(bsamp::MixedModelFitCollection, s::Symbol)
     if s ∈ [:objective, :σ, :θ, :se]
         getproperty.(getfield(bsamp, :fits), s)
     elseif s == :β
@@ -196,7 +196,7 @@ function Base.getproperty(bsamp::MixedModelBootstrap, s::Symbol)
 end
 
 """
-    issingular(bsamp::MixedModelBootstrap)
+    issingular(bsamp::MixedModelFitCollection)
 
 Test each bootstrap sample for singularity of the corresponding fit.
 
@@ -204,18 +204,18 @@ Equality comparisons are used b/c small non-negative θ values are replaced by 0
 
 See also [`issingular(::MixedModel)`](@ref).
 """
-issingular(bsamp::MixedModelBootstrap) = map(θ -> any(θ .== bsamp.lowerbd), bsamp.θ)
+issingular(bsamp::MixedModelFitCollection) = map(θ -> any(θ .== bsamp.lowerbd), bsamp.θ)
 
-function Base.propertynames(bsamp::MixedModelBootstrap)
+function Base.propertynames(bsamp::MixedModelFitCollection)
     [:allpars, :objective, :σ, :β, :se, :coefpvalues, :θ, :σs, :λ, :inds, :lowerbd, :fits, :fcnames]
 end
 
 """
-    setθ!(bsamp::MixedModelsBootstrap, i::Integer)
+    setθ!(bsamp::MixedModelFitCollection, i::Integer)
 
 Install the values of the i'th θ value of `bsamp.fits` in `bsamp.λ`
 """
-function setθ!(bsamp::MixedModelBootstrap, i::Integer)
+function setθ!(bsamp::MixedModelFitCollection, i::Integer)
     θ = bsamp.fits[i].θ
     offset = 0
     for (λ, inds) in zip(bsamp.λ, bsamp.inds)
@@ -250,11 +250,11 @@ function shortestcovint(v, level = 0.95)
 end
 
 """
-    tidyβ(bsamp::MixedModelBootstrap)
+    tidyβ(bsamp::MixedModelFitCollection)
 Return a tidy (row)table with the parameter estimates spread into columns
 of `iter`, `coefname` and `β`
 """
-function tidyβ(bsamp::MixedModelBootstrap{T}) where {T}
+function tidyβ(bsamp::MixedModelFitCollection{T}) where {T}
     fits = bsamp.fits
     colnms = (:iter, :coefname, :β)
     result = sizehint!(
@@ -270,11 +270,11 @@ function tidyβ(bsamp::MixedModelBootstrap{T}) where {T}
 end
 
 """
-    coefpvalues(bsamp::MixedModelBootstrap)
+    coefpvalues(bsamp::MixedModelFitCollection)
 
 Return a rowtable with columns `(:iter, :coefname, :β, :se, :z, :p)`
 """
-function coefpvalues(bsamp::MixedModelBootstrap{T}) where {T}
+function coefpvalues(bsamp::MixedModelFitCollection{T}) where {T}
     fits = bsamp.fits
     colnms = (:iter, :coefname, :β, :se, :z, :p)
     result = sizehint!(
@@ -293,11 +293,11 @@ function coefpvalues(bsamp::MixedModelBootstrap{T}) where {T}
 end
 
 """
-    tidyσs(bsamp::MixedModelBootstrap)
+    tidyσs(bsamp::MixedModelFitCollection)
 Return a tidy (row)table with the estimates of the variance components (on the standard deviation scale) spread into columns
 of `iter`, `group`, `column` and `σ`.
 """
-function tidyσs(bsamp::MixedModelBootstrap{T}) where {T}
+function tidyσs(bsamp::MixedModelFitCollection{T}) where {T}
     fits = bsamp.fits
     fcnames = bsamp.fcnames
     λ = bsamp.λ
