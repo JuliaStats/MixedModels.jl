@@ -50,10 +50,10 @@ Convenience constructor for a sparse [`FeTerm`](@ref) assuming full rank, identi
 Note: automatic rank deficiency handling may be added to this method in the future, as discused in
 the vignette "[Rank deficiency in mixed-effects models](@ref)" for general `FeTerm`.
 """
-function FeTerm(X::SparseMatrixCSC, cnms)
+function FeTerm(X::SparseMatrixCSC, cnms::AbstractVector{String})
     @debug "Full rank is assumed for sparse fixed-effect matrices."
     rank = size(X,2)
-    FeTerm{eltype(X),typeof(X)}(X, X, 1:rank, rank, cnms)
+    FeTerm{eltype(X),typeof(X)}(X, collect(1:rank), rank, collect(cnms))
 end
 
 Base.copyto!(A::FeTerm{T}, src::AbstractVecOrMat{T}) where {T} = copyto!(A.x, src)
@@ -100,6 +100,10 @@ Base.adjoint(A::FeMat) = Adjoint(A)
 Base.eltype(::FeMat{T}) where {T} = T
 
 Base.length(A::FeMat) = length(A.wtxy)
+
+Base.size(A::FeMat) = size(A.xy)
+
+Base.getindex(A::FeMat, i, j) = getindex(A.xy, i, j)
 
 function *(adjA::Adjoint{T,<:FeMat{T}}, B::FeMat{T}) where {T}
     adjoint(adjA.parent.wtxy) * B.wtxy

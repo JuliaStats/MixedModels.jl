@@ -735,8 +735,8 @@ end
 """
     reevaluateAend!(m::LinearMixedModel)
 
-Reevaluate the last column of `m.A` from `m.feterm`.  This function should be called
-after updating the response, `m.fe[end]`.
+Reevaluate the last column of `m.A` from `m.femat`.  This function should be called
+after updating the response.
 """
 function reevaluateAend!(m::LinearMixedModel)
     A = m.A
