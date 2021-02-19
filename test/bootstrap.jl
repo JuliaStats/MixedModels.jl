@@ -68,7 +68,7 @@ end
     bsamp = parametricbootstrap(MersenneTwister(1234321), 100, fm, use_threads=false)
     @test isa(propertynames(bsamp), Vector{Symbol})
     @test length(bsamp.objective) == 100
-    @test keys(first(bsamp.bstr)) == (:objective, :σ, :β, :se, :θ)
+    @test keys(first(bsamp.fits)) == (:objective, :σ, :β, :se, :θ)
     @test isa(bsamp.σs, Vector{<:NamedTuple})
     @test length(bsamp.σs) == 100
     allpars = DataFrame(bsamp.allpars)

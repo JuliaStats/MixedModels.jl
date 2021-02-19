@@ -105,7 +105,7 @@ julia> propertynames(bs)
  :λ
  :inds
  :lowerbd
- :bstr
+ :fits
  :fcnames
 
 julia> bs.coefpvalues # returns a row table
