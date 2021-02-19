@@ -569,21 +569,7 @@ function refit!(m::GeneralizedLinearMixedModel{T};
                 fast::Bool = (length(m.θ) == length(m.optsum.final)),
                 nAGQ::Integer = m.optsum.nAGQ)  where T
 
-    deviance!(m, 1)
-    reevaluateAend!(m.LMM)
-
-    reterms = m.LMM.reterms
-    optsum = m.LMM.optsum
-    # we need to reset optsum so that it
-    # plays nice with the modifications fit!() does
-    optsum.lowerbd = mapfoldl(lowerbd, vcat, reterms)
-    optsum.initial = mapfoldl(getθ, vcat, reterms)
-    optsum.final = copy(optsum.initial)
-    optsum.xtol_abs = fill!(copy(optsum.initial), 1.0e-10)
-    optsum.initial_step = T[]
-    optsum.feval = -1
-
-    fit!(m; fast=fast, nAGQ=nAGQ)
+    fit!(unfit!(m); fast=fast, nAGQ=nAGQ)
 end
 
 function refit!(m::GeneralizedLinearMixedModel{T}, y;
@@ -689,6 +675,24 @@ function stderror!(v::AbstractVector{T}, m::GeneralizedLinearMixedModel{T}) wher
     end
 
     v
+end
+
+function unfit!(model::GeneralizedLinearMixedModel{T}) where {T}
+    deviance!(model, 1)
+    reevaluateAend!(model.LMM)
+
+    reterms = model.LMM.reterms
+    optsum = model.LMM.optsum
+    # we need to reset optsum so that it
+    # plays nice with the modifications fit!() does
+    optsum.lowerbd = mapfoldl(lowerbd, vcat, reterms)
+    optsum.initial = mapfoldl(getθ, vcat, reterms)
+    optsum.final = copy(optsum.initial)
+    optsum.xtol_abs = fill!(copy(optsum.initial), 1.0e-10)
+    optsum.initial_step = T[]
+    optsum.feval = -1
+
+    return model
 end
 
 """

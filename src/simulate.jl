@@ -35,7 +35,7 @@ function simulate!(
                     # scale by σ and add fixed-effects contribution
     mul!(y, m.X, β, one(T), σ)
 
-    m
+    unfit!(m)
 end
 
 function simulate!(
@@ -105,7 +105,7 @@ function simulate!(
         y[idx] = _rand(rng, d, val, σ, n)
     end
 
-    m
+    unfit!(m)
 end
 
 """

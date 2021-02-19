@@ -754,8 +754,7 @@ Refit the model `m` after installing response `y`.
 If `y` is omitted the current response vector is used.
 """
 function refit!(m::LinearMixedModel; REML=m.optsum.REML)
-    m.optsum.feval = -1
-    fit!(reevaluateAend!(m); REML=REML)
+    fit!(unfit!(m); REML=REML)
 end
 
 function refit!(m::LinearMixedModel, y; REML=m.optsum.REML)
@@ -935,6 +934,19 @@ function updateA!(m::LinearMixedModel)
         end
     end
     m
+end
+
+"""
+    unfit!(model::MixedModel)
+
+Mark a model as unfitted.
+"""
+function unfit!(model::LinearMixedModel{T}) where {T}
+    model.optsum.feval = -1
+    model.optsum.initial_step = T[]
+    reevaluateAend!(model)
+
+    return model
 end
 
 """

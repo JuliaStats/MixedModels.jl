@@ -150,6 +150,9 @@ function __init__()
 end
 
 include("utilities.jl")
+include("blocks.jl")
+include("pca.jl")
+include("datasets.jl")
 include("arraytypes.jl")
 include("varcorr.jl")
 include("femat.jl")
