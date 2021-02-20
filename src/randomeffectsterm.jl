@@ -5,6 +5,24 @@ struct RandomEffectsTerm <: AbstractReTerm
     rhs::StatsModels.TermOrTerms
 end
 
+# TODO: consider overwriting | with our own function that can be
+# imported with (a la FilePathsBase.:/)
+# using MixedModels: |
+# to avoid conflicts with definitions in other packages...
+Base.:|(a::StatsModels.TermOrTerms, b::StatsModels.TermOrTerms) = RandomEffectsTerm(a, b)
+
+# expand (lhs | a + b) to (lhs | a) + (lhs | b)
+RandomEffectsTerm(lhs, rhs::NTuple{2,AbstractTerm}) =
+    (RandomEffectsTerm(lhs, rhs[1]), RandomEffectsTerm(lhs, rhs[2]))
+
+Base.show(io::IO, t::RandomEffectsTerm) = print(io, "($(t.lhs) | $(t.rhs))")
+StatsModels.is_matrix_term(::Type{RandomEffectsTerm}) = false
+
+function StatsModels.termvars(t::RandomEffectsTerm)
+    vcat(StatsModels.termvars(t.lhs), StatsModels.termvars(t.rhs))
+end
+
+# | in MixedModel formula -> RandomEffectsTerm
 function StatsModels.apply_schema(
     t::FunctionTerm{typeof(|)},
     schema::MultiSchema{StatsModels.FullRank},
@@ -15,9 +33,10 @@ function StatsModels.apply_schema(
     isempty(intersect(StatsModels.termvars(lhs), StatsModels.termvars(rhs))) ||
         throw(ArgumentError("Same variable appears on both sides of |"))
 
-    RandomEffectsTerm(lhs, rhs)
+    apply_schema(RandomEffectsTerm(lhs, rhs), schema, Mod)
 end
 
+# make a potentially untyped RandomEffectsTerm concrete
 function StatsModels.apply_schema(
     t::RandomEffectsTerm,
     schema::MultiSchema{StatsModels.FullRank},
@@ -114,16 +133,6 @@ function StatsModels.apply_schema(
     return first + fulldummy(first) & second
 end
 
-# expand (lhs | a + b) to (lhs | a) + (lhs | b)
-RandomEffectsTerm(lhs, rhs::NTuple{2,AbstractTerm}) =
-    (RandomEffectsTerm(lhs, rhs[1]), RandomEffectsTerm(lhs, rhs[2]))
-
-Base.show(io::IO, t::RandomEffectsTerm) = print(io, "($(t.lhs) | $(t.rhs))")
-StatsModels.is_matrix_term(::Type{RandomEffectsTerm}) = false
-
-function StatsModels.termvars(t::RandomEffectsTerm)
-    vcat(StatsModels.termvars(t.lhs), StatsModels.termvars(t.rhs))
-end
 
 
 
