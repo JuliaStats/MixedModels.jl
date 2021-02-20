@@ -12,7 +12,7 @@ end
 Base.:|(a::StatsModels.TermOrTerms, b::StatsModels.TermOrTerms) = RandomEffectsTerm(a, b)
 
 # expand (lhs | a + b) to (lhs | a) + (lhs | b)
-RandomEffectsTerm(lhs, rhs::NTuple{2,AbstractTerm}) =
+RandomEffectsTerm(lhs::StatsModels.TermOrTerms, rhs::NTuple{2,AbstractTerm}) =
     (RandomEffectsTerm(lhs, rhs[1]), RandomEffectsTerm(lhs, rhs[2]))
 
 Base.show(io::IO, t::RandomEffectsTerm) = print(io, "($(t.lhs) | $(t.rhs))")
