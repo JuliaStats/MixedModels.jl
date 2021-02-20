@@ -27,12 +27,33 @@ dyestuff = DataFrame(MixedModels.dataset(:dyestuff))
 describe(dyestuff)
 ```
 
-### Models with simple, scalar random effects
+### The `@formula` language in Julia
 
-The formula language in *Julia* is similar to that in *R* which is based on (Wilkinson and Rogers [1973](https://dx.doi.org/10.2307/2346786)). In Julia a formula must be enclosed in a call to the `@formula` macro.
+MixedModels.jl builds on the the *Julia* formula language provided by [StatsModels.jl](https://juliastats.org/StatsModels.jl/stable/formula/), which is similar to the formula language in *R* and is also based on (Wilkinson and Rogers [1973](https://dx.doi.org/10.2307/2346786)). There are two ways to construct a formula in *Julia*.  The first way is to enclose the formula expression in the `@formula` macro:
 ```@docs
 @formula
 ```
+
+The second way is to combine `Term`s with operators like `+`, `&`, `~`, and others at "run time".  This is especially useful if you wish to create a formula from a list a variable names.  For instance, the following are equivalent:
+
+```@example Main
+@formula(y ~ 1 + a + b + a & b) == term(:y) ~ term(1) + term(:a) + term(:b) + term(:a) & term(:b)
+```
+
+MixedModels.jl provides additional formula syntax for representing *random-effects terms*.  Most importantly, `|` separates random effects and their grouping factors (as in the formula extension used by the *R* package [`lme4`](https://cran.r-project.org/web/packages/lme4/index.html).  Much like with the base formula language, `|` can be used within the `@formula` macro and to construct a formula programmatically:
+
+```@example Main
+@formula(y ~ 1 + a + b + (1 + a + b | g))
+```
+
+```@example Main
+terms = sum(term(t) for t in [1, :a, :b])
+group = term(:g)
+response = term(:y)
+response ~ terms + (terms | group)
+```
+
+### Models with simple, scalar random effects
 
 A basic model with simple, scalar random effects for the levels of `batch` (the batch of an intermediate product, in this case) is declared and fit as
 
