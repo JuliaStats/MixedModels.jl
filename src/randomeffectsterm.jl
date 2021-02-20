@@ -194,12 +194,24 @@ Remove correlations between random effects in `term`.
 """
 zerocorr(x) = ZeroCorr(x)
 
+# for schema extraction (from runtime-created zerocorr)
+StatsModels.terms(t::ZeroCorr) = StatsModels.terms(t.term)
+StatsModels.termvars(t::ZeroCorr) = StatsModels.termvars(t.term)
+
 function StatsModels.apply_schema(
     t::FunctionTerm{typeof(zerocorr)},
     sch::MultiSchema,
     Mod::Type{<:MixedModel},
 )
     ZeroCorr(apply_schema(t.args_parsed..., sch, Mod))
+end
+
+function StatsModels.apply_schema(
+    t::ZeroCorr,
+    sch::MultiSchema,
+    Mod::Type{<:MixedModel},
+)
+    ZeroCorr(apply_schema(t.term, sch, Mod))
 end
 
 StatsModels.modelcols(t::ZeroCorr, d::NamedTuple) = zerocorr!(modelcols(t.term, d))
