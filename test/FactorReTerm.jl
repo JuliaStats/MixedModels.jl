@@ -99,6 +99,49 @@ end
         form = apply_schema(f, schema(f, slp, contrasts), LMM)
         @test StatsModels.termvars(form.rhs) == [:days, :subj]
     end
+
+    @testset "Runtime construction of random effects terms" begin
+        # operator precedence and basic terms:
+        @test term(:a) | term(:b) isa RandomEffectsTerm
+        @test term(1) + term(:a) | term(:b) isa RandomEffectsTerm
+        @test term(1) + term(:a) + term(:a) & term(:c) | term(:b) isa RandomEffectsTerm
+        
+        # sleep study data:
+        r, d, s, one = term.((:reaction, :days, :subj, 1))
+
+        f1 = @formula(reaction ~ 1 + (1 + days | subj))
+        f2 = r ~ one + (one + d | s)
+        @test f2.rhs[end] isa RandomEffectsTerm
+        ff1 = apply_schema(f1, schema(slp), LMM)
+        ff2 = apply_schema(f2, schema(slp), LMM)
+        # equality of RE terms not defined so check that they generate same modelcols
+        @test modelcols(ff1.rhs[end], slp) == modelcols(ff2.rhs[end], slp)
+        
+        m1 = fit(LMM, f1, slp)
+        m2 = fit(LMM, f2, slp)
+        @test all(m1.λ .== m2.λ)
+    end
+
+    @testset "Runtime construction of ZeroCorr" begin
+        r, d, s, one = term.((:reaction, :days, :subj, 1))
+
+        f1 = @formula(reaction ~ 1 + zerocorr(1 + days | subj))
+        f2 = r ~ one + zerocorr(one + d | s)
+        @test f2.rhs[end] isa MixedModels.ZeroCorr
+        ff1 = apply_schema(f1, schema(slp), LMM)
+        ff2 = apply_schema(f2, schema(slp), LMM)
+        # equality of RE terms not defined so check that they generate same modelcols
+        mc1 = modelcols(ff1.rhs[end], slp)
+        mc2 = modelcols(ff2.rhs[end], slp)
+
+        # test that zerocorr actually worked
+        @test mc1.inds == mc2.inds == [1, 4]
+        
+        m1 = fit(LMM, f1, slp)
+        m2 = fit(LMM, f2, slp)
+        @test all(m1.λ .== m2.λ)
+    end
+    
 end
 
 @testset "Categorical Blocking Variable" begin
