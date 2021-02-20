@@ -120,6 +120,9 @@ end
         m1 = fit(LMM, f1, slp)
         m2 = fit(LMM, f2, slp)
         @test all(m1.λ .== m2.λ)
+
+        @test StatsModels.terms(f2.rhs[end]) == [one, d, s]
+        @test StatsModels.termvars(f2.rhs[end]) == [d.sym, s.sym]
     end
 
     @testset "Runtime construction of ZeroCorr" begin
@@ -140,6 +143,9 @@ end
         m1 = fit(LMM, f1, slp)
         m2 = fit(LMM, f2, slp)
         @test all(m1.λ .== m2.λ)
+
+        @test StatsModels.terms(f2.rhs[end]) == [one, d, s]
+        @test StatsModels.termvars(f2.rhs[end]) == [d.sym, s.sym]
     end
     
 end
