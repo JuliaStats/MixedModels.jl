@@ -36,6 +36,12 @@ function StatsModels.apply_schema(
     apply_schema(RandomEffectsTerm(lhs, rhs), schema, Mod)
 end
 
+# allowed types (or tuple thereof) for blocking variables (RHS of |):
+const GROUPING_TYPE = Union{<:CategoricalTerm, <:InteractionTerm{<:NTuple{N,CategoricalTerm} where {N}}}
+check_re_group_type(term::GROUPING_TYPE) = true
+check_re_group_type(terms::Tuple{Vararg{<:GROUPING_TYPE}}) = true
+check_re_group_type(x) = false
+
 # make a potentially untyped RandomEffectsTerm concrete
 function StatsModels.apply_schema(
     t::RandomEffectsTerm,
@@ -60,8 +66,7 @@ function StatsModels.apply_schema(
     lhs, rhs = apply_schema.((lhs, rhs), Ref(schema), Mod)
 
     # check whether grouping terms are categorical or interaction of categorical
-    rhs isa CategoricalTerm ||
-        rhs isa InteractionTerm{<:NTuple{N,CategoricalTerm} where {N}} ||
+    check_re_group_type(rhs) ||
         throw(ArgumentError("blocking variables (those behind |) must be Categorical ($(rhs) is not)"))
     
     RandomEffectsTerm(MatrixTerm(lhs), rhs)
