@@ -22,6 +22,8 @@ function StatsModels.termvars(t::RandomEffectsTerm)
     vcat(StatsModels.termvars(t.lhs), StatsModels.termvars(t.rhs))
 end
 
+StatsModels.terms(t::RandomEffectsTerm) = union(StatsModels.terms(t.lhs), StatsModels.terms(t.rhs))
+
 # | in MixedModel formula -> RandomEffectsTerm
 function StatsModels.apply_schema(
     t::FunctionTerm{typeof(|)},
