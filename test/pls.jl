@@ -92,7 +92,7 @@ include("modelcache.jl")
 
     @test logdet(fm1) ≈ 8.06014522999825 atol=0.001
     @test varest(fm1) ≈ 2451.2501089607676 atol=0.001
-    @test pwrss(fm1) ≈ 73537.50152584909 atol=0.001
+    @test pwrss(fm1) ≈ 73537.50152584909 atol=0.01 # this quantity is not precisely estimated
     @test stderror(fm1) ≈ [17.69455188898009] atol=0.0001
 
     vc = VarCorr(fm1)
