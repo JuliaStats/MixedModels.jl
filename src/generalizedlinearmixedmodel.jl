@@ -133,7 +133,7 @@ end
 """
     deviance!(m::GeneralizedLinearMixedModel, nAGQ=1)
     
-Update 'm.η`, `m.μ`, etc., install the working response and working weights in
+Update `m.η`, `m.μ`, etc., install the working response and working weights in
 `m.LMM`, update `m.LMM.A` and `m.LMM.R`, then evaluate the [`deviance`](@ref).
 """
 function deviance!(m::GeneralizedLinearMixedModel, nAGQ = 1)
