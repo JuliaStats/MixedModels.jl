@@ -99,11 +99,9 @@ Base.adjoint(A::FeMat) = Adjoint(A)
 
 Base.eltype(::FeMat{T}) where {T} = T
 
-Base.length(A::FeMat) = length(A.wtxy)
-
-Base.size(A::FeMat) = size(A.xy)
-
 Base.getindex(A::FeMat, i, j) = getindex(A.xy, i, j)
+
+Base.length(A::FeMat) = length(A.wtxy)
 
 function *(adjA::Adjoint{T,<:FeMat{T}}, B::FeMat{T}) where {T}
     adjoint(adjA.parent.wtxy) * B.wtxy
