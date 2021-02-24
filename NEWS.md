@@ -9,6 +9,17 @@ MixedModels v4.0.0 Release Notes
   and make `MixedModelBootstrap` a subtype of it. Accordingly, rename the `bstr`
   field to `fits`. [#465]
 
+Run-time formula syntax
+-----------------------
+
+* It is now possible to construct `RandomEffectsTerm`s at run-time from `Term`s
+  (methods for `Base.|(::AbstractTerm, ::AbstractTerm)` added) [#470]
+* `RandomEffectsTerm`s can have left- and right-hand side terms that are
+  "non-concrete", and `apply_schema(::RandomEffectsTerm, ...)` works more like
+  other StatsModels.jl `AbstractTerm`s [#470]
+* Methods for `Base./(::AbstractTerm, ::AbstractTerm)` are added, allowing
+  nesting syntax to be used with `Term`s at run-time as well [#470]
+
 MixedModels v3.1.4 Release Notes
 ========================
 * [experimental] Additional convenience constructors for `LinearMixedModel` [#449]
