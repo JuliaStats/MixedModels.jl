@@ -233,7 +233,9 @@ end
         # runtime
         fr2 = term(1) + term(:b) / term(:a)
         @test length(fr2) == 3
-        @test all(typeof.(fr2) .<: (ConstantTerm, Term, InteractionTerm))
+        @test fr2[1] isa ConstantTerm
+        @test fr2[2] isa Term
+        @test fr2[3] isa InteractionTerm
         frf2 = apply_schema(term(0) ~ fr2, schema(d2), MixedModel)
         @test modelcols(frf2.rhs, d2) == [ones(20) d2.b .== :Y (d2.b .== :X).*d2.a (d2.b .== :Y).*d2.a]
         @test coefnames(frf2.rhs) == ["(Intercept)", "b: Y", "b: X & a", "b: Y & a"]
@@ -246,7 +248,9 @@ end
         # runtime:
         fr3 = term(0) + term(:b) / term(:a)
         @test length(fr3) == 3
-        @test all(typeof.(fr3) .<: (ConstantTerm, Term, InteractionTerm))
+        @test fr3[1] isa ConstantTerm
+        @test fr3[2] isa Term
+        @test fr3[3] isa InteractionTerm
         ffr3 = apply_schema(term(0) ~ fr3, schema(d2), MixedModel)
         @test modelcols(ffr3.rhs, d2) == [d2.b .== :X d2.b .== :Y (d2.b .== :X).*d2.a (d2.b .== :Y).*d2.a]
         @test coefnames(ffr3.rhs) == ["b: X", "b: Y", "b: X & a", "b: Y & a"]
