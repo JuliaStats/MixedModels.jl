@@ -120,8 +120,8 @@ function _ranef_refs(
     refs, uniques
 end
 
-
-
+# TODO: split this off into a RegressionFormula packge?
+Base.:/(a::AbstractTerm, b::AbstractTerm) = a + a & b
 function StatsModels.apply_schema(
     t::FunctionTerm{typeof(/)},
     sch::StatsModels.FullRank,
@@ -139,9 +139,6 @@ function StatsModels.apply_schema(
 
     return first + fulldummy(first) & second
 end
-
-
-
 
 # add some syntax to manually promote to full dummy coding
 fulldummy(t::AbstractTerm) =
