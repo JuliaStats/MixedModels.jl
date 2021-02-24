@@ -29,7 +29,7 @@ describe(dyestuff)
 
 ### The `@formula` language in Julia
 
-MixedModels.jl builds on the the *Julia* formula language provided by [StatsModels.jl](https://juliastats.org/StatsModels.jl/stable/formula/), which is similar to the formula language in *R* and is also based on (Wilkinson and Rogers [1973](https://dx.doi.org/10.2307/2346786)). There are two ways to construct a formula in *Julia*.  The first way is to enclose the formula expression in the `@formula` macro:
+MixedModels.jl builds on the the *Julia* formula language provided by [StatsModels.jl](https://juliastats.org/StatsModels.jl/stable/formula/), which is similar to the formula language in *R* and is also based on the notation from Wilkinson and Rogers ([1973](https://dx.doi.org/10.2307/2346786)). There are two ways to construct a formula in Julia.  The first way is to enclose the formula expression in the `@formula` macro:
 ```@docs
 @formula
 ```
@@ -556,4 +556,3 @@ fm4r = fit(MixedModel, @formula(diameter ~ 1+(1|plate)+(1|sample)),
 ```@example Main
 sum(leverage(fm4r))
 ```
-
