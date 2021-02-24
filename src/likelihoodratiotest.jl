@@ -201,15 +201,15 @@ function StatsModels.isnested(m1::MixedModel, m2::MixedModel; atol::Real=0.0)
     
 
     # check that the same grouping vars occur in the outer model
-    grpng1 = getproperty.(getproperty.(m1.reterms, :trm), :sym)
-    grpng2 = getproperty.(getproperty.(m2.reterms, :trm), :sym)
+    grpng1 = fname.(m1.reterms)
+    grpng2 = fname.(m2.reterms)
 
     all(in.(grpng1, Ref(grpng2))) || return false
 
     # check that every intercept/slope for a grouping var occurs in the 
     # same grouping
-    re1 = Dict(re.trm.sym => re.cnames for re in m1.reterms)
-    re2 = Dict(re.trm.sym => re.cnames for re in m2.reterms)
+    re1 = Dict(fname(re) => re.cnames for re in m1.reterms)
+    re2 = Dict(fname(re) => re.cnames for re in m2.reterms)
 
     all(all(in.(val, Ref(re2[key]))) for (key, val) in re1) || return false
 
