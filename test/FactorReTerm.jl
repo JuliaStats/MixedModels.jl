@@ -99,6 +99,55 @@ end
         form = apply_schema(f, schema(f, slp, contrasts), LMM)
         @test StatsModels.termvars(form.rhs) == [:days, :subj]
     end
+
+    @testset "Runtime construction of random effects terms" begin
+        # operator precedence and basic terms:
+        @test term(:a) | term(:b) isa RandomEffectsTerm
+        @test term(1) + term(:a) | term(:b) isa RandomEffectsTerm
+        @test term(1) + term(:a) + term(:a) & term(:c) | term(:b) isa RandomEffectsTerm
+        
+        # sleep study data:
+        r, d, s, one = term.((:reaction, :days, :subj, 1))
+
+        f1 = @formula(reaction ~ 1 + (1 + days | subj))
+        f2 = r ~ one + (one + d | s)
+        @test f2.rhs[end] isa RandomEffectsTerm
+        ff1 = apply_schema(f1, schema(slp), LMM)
+        ff2 = apply_schema(f2, schema(slp), LMM)
+        # equality of RE terms not defined so check that they generate same modelcols
+        @test modelcols(ff1.rhs[end], slp) == modelcols(ff2.rhs[end], slp)
+        
+        m1 = fit(LMM, f1, slp)
+        m2 = fit(LMM, f2, slp)
+        @test all(m1.λ .== m2.λ)
+
+        @test StatsModels.terms(f2.rhs[end]) == [one, d, s]
+        @test StatsModels.termvars(f2.rhs[end]) == [d.sym, s.sym]
+    end
+
+    @testset "Runtime construction of ZeroCorr" begin
+        r, d, s, one = term.((:reaction, :days, :subj, 1))
+
+        f1 = @formula(reaction ~ 1 + zerocorr(1 + days | subj))
+        f2 = r ~ one + zerocorr(one + d | s)
+        @test f2.rhs[end] isa MixedModels.ZeroCorr
+        ff1 = apply_schema(f1, schema(slp), LMM)
+        ff2 = apply_schema(f2, schema(slp), LMM)
+        # equality of RE terms not defined so check that they generate same modelcols
+        mc1 = modelcols(ff1.rhs[end], slp)
+        mc2 = modelcols(ff2.rhs[end], slp)
+
+        # test that zerocorr actually worked
+        @test mc1.inds == mc2.inds == [1, 4]
+        
+        m1 = fit(LMM, f1, slp)
+        m2 = fit(LMM, f2, slp)
+        @test all(m1.λ .== m2.λ)
+
+        @test StatsModels.terms(f2.rhs[end]) == [one, d, s]
+        @test StatsModels.termvars(f2.rhs[end]) == [d.sym, s.sym]
+    end
+    
 end
 
 @testset "Categorical Blocking Variable" begin
@@ -181,9 +230,30 @@ end
         @test modelcols(f2.rhs, d2) == [ones(20) d2.b .== :Y (d2.b .== :X).*d2.a (d2.b .== :Y).*d2.a]
         @test coefnames(f2.rhs) == ["(Intercept)", "b: Y", "b: X & a", "b: Y & a"]
 
+        # runtime
+        fr2 = term(1) + term(:b) / term(:a)
+        @test length(fr2) == 3
+        @test fr2[1] isa ConstantTerm
+        @test fr2[2] isa Term
+        @test fr2[3] isa InteractionTerm
+        frf2 = apply_schema(term(0) ~ fr2, schema(d2), MixedModel)
+        @test modelcols(frf2.rhs, d2) == [ones(20) d2.b .== :Y (d2.b .== :X).*d2.a (d2.b .== :Y).*d2.a]
+        @test coefnames(frf2.rhs) == ["(Intercept)", "b: Y", "b: X & a", "b: Y & a"]
+
+        # check promotion
         f3 = apply_schema(@formula(0 ~ 0 + b/a), schema(d2), MixedModel)
         @test modelcols(f3.rhs, d2) == [d2.b .== :X d2.b .== :Y (d2.b .== :X).*d2.a (d2.b .== :Y).*d2.a]
         @test coefnames(f3.rhs) == ["b: X", "b: Y", "b: X & a", "b: Y & a"]
+
+        # runtime:
+        fr3 = term(0) + term(:b) / term(:a)
+        @test length(fr3) == 3
+        @test fr3[1] isa ConstantTerm
+        @test fr3[2] isa Term
+        @test fr3[3] isa InteractionTerm
+        ffr3 = apply_schema(term(0) ~ fr3, schema(d2), MixedModel)
+        @test modelcols(ffr3.rhs, d2) == [d2.b .== :X d2.b .== :Y (d2.b .== :X).*d2.a (d2.b .== :Y).*d2.a]
+        @test coefnames(ffr3.rhs) == ["b: X", "b: Y", "b: X & a", "b: Y & a"]
 
         # errors for continuous grouping
         @test_throws ArgumentError apply_schema(@formula(0 ~ 1 + a/b), schema(d2), MixedModel)
@@ -195,10 +265,12 @@ end
         psts = dataset("pastes")
         m = fit(MixedModel, @formula(strength ~ 1 + (1|batch/cask)), psts)
         m2 = fit(MixedModel, @formula(strength ~ 1 + (1|batch) + (1|batch&cask)), psts)
+        mr = fit(MixedModel, term(:strength) ~ term(1) + (term(1)|term(:batch)/term(:cask)), psts)
+        m2r = fit(MixedModel, term(:strength) ~ term(1) + (term(1)|term(:batch)) + (term(1)|term(:batch)&term(:cask)), psts)
 
-        @test fnames(m) == fnames(m2) == (Symbol("batch & cask"), :batch)
-        @test m.λ == m2.λ
-        @test deviance(m) == deviance(m2)
+        @test fnames(m) == fnames(m2) == fnames(mr) == fnames(m2r) == (Symbol("batch & cask"), :batch)
+        @test m.λ == m2.λ == mr.λ == m2r.λ
+        @test deviance(m) == deviance(m2) == deviance(mr) == deviance(m2r)
     end
 
     @testset "multiple terms with same grouping" begin
