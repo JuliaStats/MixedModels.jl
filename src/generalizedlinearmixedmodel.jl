@@ -416,7 +416,7 @@ function Base.getproperty(m::GeneralizedLinearMixedModel, s::Symbol)
         σρs(m)
     elseif s ∈ (:A, :L, :optsum, :allterms, :reterms, :feterms, :formula)
         getfield(m.LMM, s)
-    elseif s ∈ (:λ, :lowerbd, :corr, :PCA, :rePCA, :X,)
+    elseif s ∈ (:dims, :λ, :lowerbd, :corr, :PCA, :rePCA, :X,)
         getproperty(m.LMM, s)
     elseif s == :y
         m.resp.y

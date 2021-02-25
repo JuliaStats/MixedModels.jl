@@ -841,17 +841,6 @@ end
 
 Base.show(io::IO, m::LinearMixedModel) = Base.show(io, MIME"text/plain"(), m)
 
-"""
-    size(m::LinearMixedModel)
-
-Returns the size of a mixed model as a tuple of length four:
-the number of observations, the number of (non-singular) fixed-effects parameters,
-the number of conditional modes (random effects), the number of grouping variables
-"""
-function Base.size(m::LinearMixedModel)
-    dd = m.dims
-    dd.n, dd.p, sum(size.(m.reterms, 2)), dd.nretrms
-end
 
 #=
 """
