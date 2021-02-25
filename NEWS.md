@@ -26,7 +26,10 @@ MixedModels v3.2.0 Release Notes
   `LikelihoodRatioTest`, `PCA`, and `VarCorr`. Note that the interface for
   these is not yet completely stable. In particular, rounding behavior may
   change. White-space padding within Markdown may also change, although this
-  should not impact rendering of the Markdown into HTML or LaTeX.  [#474]
+  should not impact rendering of the Markdown into HTML or LaTeX.  The
+  Markdown presentation of a `MixedModel` is much more compact than the
+  REPL summary. If the REPL-style presentation is desired, then this can
+  be assembled from the Markdown output from `VarCorr` and `coeftable` [#474].
 
 MixedModels v3.1.4 Release Notes
 ========================
