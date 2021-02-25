@@ -49,8 +49,8 @@ Base.getindex(lrt::LikelihoodRatioTest, s::Symbol) = getfield(lrt,s)
 
 Likeihood ratio test applied to a set of nested models.
 
-Note that nesting of the models is not checked.  It is incumbent on the user 
-to check this. This differs from [`StatsModels.lrtest`](@ref) as nesting in 
+Note that nesting of the models is not checked.  It is incumbent on the user
+to check this. This differs from [`StatsModels.lrtest`](@ref) as nesting in
 mixed models, especially in the random effects specification, may be non obvious.
 
 This functionality may be deprecated in the future in favor of [`StatsModels.lrtest`](@ref).
@@ -60,7 +60,7 @@ function likelihoodratiotest(m::MixedModel...)
             ArgumentError("""Models are not comparable: are the objectives, data
                              and, where appropriate, the link and family the same?
             """))
-    
+
     m = collect(m)   # change the tuple to an array
     dofs = dof.(m)
     formulas = String.(Symbol.(getproperty.(m,:formula)))
@@ -85,7 +85,7 @@ function likelihoodratiotest(m::MixedModel...)
     )
 end
 
-function Base.show(io::IO, lrt::LikelihoodRatioTest; digits=2)
+function Base.show(io::IO, ::MIME"text/plain", lrt::LikelihoodRatioTest; digits=2)
     println(io, "Model Formulae")
 
     for (i, f) in enumerate(lrt.formulas)
@@ -149,34 +149,36 @@ function Base.show(io::IO, lrt::LikelihoodRatioTest; digits=2)
     nothing
 end
 
+Base.show(io::IO, lrt::LikelihoodRatioTest; kwargs...) = Base.show(io, MIME"text/plain"(), lrt; kwargs...)
+
 function _iscomparable(m::LinearMixedModel...)
     allequal(getproperty.(getproperty.(m,:optsum),:REML)) ||
         throw(ArgumentError("Models must all be fit with the same objective (i.e. all ML or all REML)"))
-    
+
     if any(getproperty.(getproperty.(m,:optsum),:REML))
         allequal(coefnames.(m))  ||
                 throw(ArgumentError("Likelihood-ratio tests for REML-fitted models are only valid when the fixed-effects specifications are identical"))
     end
 
-    allequal(nobs.(m)) || 
+    allequal(nobs.(m)) ||
         throw(ArgumentError("Models must have the same number of observations"))
-    
+
     true
 end
 
 function _iscomparable(m::GeneralizedLinearMixedModel...)
         # TODO: test that all models are fit with same fast/nAGQ option?
         glms = getproperty.(m,:resp);
-        
+
         allequal(Distribution.(glms)) ||
             throw(ArgumentError("Models must be fit to the same distribution"))
-                
-        allequal(string.(Link.(glms))) || 
+
+        allequal(string.(Link.(glms))) ||
             throw(ArgumentError("Models must have the same link function"))
 
-        allequal(nobs.(m)) || 
+        allequal(nobs.(m)) ||
             throw(ArgumentError("Models must have the same number of observations"))
-        
+
         true
 end
 
@@ -186,19 +188,19 @@ Indicate whether model `m1` is nested in model `m2`, i.e. whether
 `m1` can be obtained by constraining some parameters in `m2`.
 Both models must have been fitted on the same data. This check
 is conservative for `MixedModel`s and may reject nested models with different
-parameterizations as being non nested. 
+parameterizations as being non nested.
 """
 function StatsModels.isnested(m1::MixedModel, m2::MixedModel; atol::Real=0.0)
     try
-        _iscomparable(m1, m2)    
+        _iscomparable(m1, m2)
     catch e
         @error e.msg
         false
     end || return false
-    
+
     # check that the nested fixef are a subset of the outer
     all(in.(coefnames(m1),  Ref(coefnames(m2)))) || return false
-    
+
 
     # check that the same grouping vars occur in the outer model
     grpng1 = fname.(m1.reterms)
@@ -206,7 +208,7 @@ function StatsModels.isnested(m1::MixedModel, m2::MixedModel; atol::Real=0.0)
 
     all(in.(grpng1, Ref(grpng2))) || return false
 
-    # check that every intercept/slope for a grouping var occurs in the 
+    # check that every intercept/slope for a grouping var occurs in the
     # same grouping
     re1 = Dict(fname(re) => re.cnames for re in m1.reterms)
     re2 = Dict(fname(re) => re.cnames for re in m2.reterms)

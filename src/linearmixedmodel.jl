@@ -806,7 +806,7 @@ end
 Base.setproperty!(m::LinearMixedModel, s::Symbol, y) =
     s == :θ ? setθ!(m, y) : setfield!(m, s, y)
 
-function Base.show(io::IO, m::LinearMixedModel)
+function Base.show(io::IO, ::MIME"text/plain", m::LinearMixedModel)
     if m.optsum.feval < 0
         @warn("Model has not been fit")
         return nothing
@@ -838,6 +838,8 @@ function Base.show(io::IO, m::LinearMixedModel)
     println(io, "\n  Fixed-effects parameters:")
     show(io, coeftable(m))
 end
+
+Base.show(io::IO, m::LinearMixedModel) = Base.show(io, MIME"text/plain"(), m)
 
 """
     size(m::LinearMixedModel)

@@ -54,19 +54,10 @@ Base.propertynames(pca::PCA, private::Bool = false) = (
 #    :rotation,
 )
 
-Base.show(pca::PCA;
-        ndigitsmat=2, ndigitsvec=2, ndigitscum=4,
-        covcor=true, loadings=true, variances=false, stddevs=false) =
-        Base.show(Base.stdout, pca,
-                    ndigitsmat=ndigitsmat,
-                    ndigitsvec=ndigitsvec,
-                    ndigitscum=ndigitscum,
-                    covcor=covcor,
-                    loadings=loadings,
-                    variances=variances,
-                    stddevs=stddevs)
+Base.show(pca::PCA; kwargs...) =  Base.show(Base.stdout, MIME"text/plain"(), pca; kwargs...)
+Base.show(io::IO, pca::PCA; kwargs...) = Base.show(io, MIME"text/plain"(), pca; kwargs...)
 
-function Base.show(io::IO, pca::PCA;
+function Base.show(io::IO, ::MIME"text/plain", pca::PCA;
         ndigitsmat=2, ndigitsvec=2, ndigitscum=4,
         covcor=true, loadings=true, variances=false, stddevs=false)
     println(io)
