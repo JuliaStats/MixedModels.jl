@@ -1,7 +1,7 @@
 # for this type of union, the compiler will actually generate the necessary methods
 # but it's also type stable either way
 Base.show(mime::MIME,
-          x::Union{BlockDescription, VarCorr, RandomEffectsTerm, MixedModel}) = Base.show(Base.stdout, mime, x)
+          x::Union{BlockDescription, LikelihoodRatioTest, VarCorr, MixedModel}) = Base.show(Base.stdout, mime, x)
 
 
 function Base.show(io::IO, ::MIME"text/markdown", b::BlockDescription)
@@ -22,9 +22,67 @@ function Base.show(io::IO, ::MIME"text/markdown", b::BlockDescription)
     end
 end
 
+function Base.show(io::IO, ::MIME"text/markdown", lrt::LikelihoodRatioTest; digits=2)
+    # println(io, "Model Formulae")
+
+    # for (i, f) in enumerate(lrt.formulas)
+    #     println(io, "$i: $f")
+    # end
+
+    # the following was adapted from StatsModels#162
+    # from nalimilan
+    Δdf = lrt.tests.dofdiff
+    Δdev = lrt.tests.deviancediff
+
+    nc = 6
+    nr = length(lrt.formulas)
+    outrows = Matrix{String}(undef, nr+2, nc)
+
+    outrows[1, :] = ["",
+                    "model-dof",
+                    "deviance",
+                    "χ²",
+                    "χ²-dof",
+                    "P(>χ²)"] # colnms
+
+    outrows[2, :] = [":-", "-:", "-:",
+                     "-:", "-:", ":-"]
+
+    outrows[3, :] = ["$(replace(lrt.formulas[1], "|" => "\\|"))",
+                    string(lrt.dof[1]),
+                    string(round(Int,lrt.deviance[1])),
+                    " "," ", " "]
+
+    for i in 2:nr
+        outrows[i+2, :] = ["$(replace(lrt.formulas[i], "|" => "\\|"))",
+                           string(lrt.dof[i]),
+                           string(round(Int,lrt.deviance[i])),
+                           string(round(Int,Δdev[i-1])),
+                           string(Δdf[i-1]),
+                           string(StatsBase.PValue(lrt.pvalues[i-1]))]
+    end
+    colwidths = length.(outrows)
+    max_colwidths = [maximum(view(colwidths, :, i)) for i in 1:nc]
+    totwidth = sum(max_colwidths) + 2*5
+
+    for r in 1:nr+2
+        print(io, "|")
+        for c in 1:nc
+            cur_cell = outrows[r, c]
+            cur_cell_len = length(cur_cell)
+
+            print(io, "$(cur_cell)|")
+        end
+        print(io, "\n")
+
+    end
+
+    nothing
+end
+
+
 
 _dname(::GeneralizedLinearMixedModel) = "Dispersion"
-
 _dname(::LinearMixedModel) = "Residual"
 
 function Base.show(io::IO, ::MIME"text/markdown", m::MixedModel; digits=2)
@@ -93,7 +151,7 @@ function Base.show(io::IO, ::MIME"text/markdown", vc::VarCorr)
     digits = _printdigits(σvec)
     showσvec = aligncompact(σvec, digits)
     showvarvec = aligncompact(varvec, digits)
-    println(io, "Variance components:")
+    # println(io, "Variance components:")
     write(io, "|   |Column|Variance|Std.Dev.|")
     iszero(nρ) || write(io, "Corr.|$(repeat("    |", nρ-1))")
     println(io)
