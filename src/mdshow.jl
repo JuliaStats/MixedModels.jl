@@ -5,8 +5,6 @@ Base.show(mime::MIME,
 
 
 function Base.show(io::IO, ::MIME"text/markdown", b::BlockDescription)
-    rowwidth = max(maximum(ndigits, b.blkrows) + 1, 5)
-    colwidth = max(maximum(textwidth, b.blknms) + 1, 14)
     ncols = length(b.blknms)
     print(io, "|rows|")
     println(io, ("$(bn)|" for bn in b.blknms)...)
@@ -144,8 +142,6 @@ function Base.show(io::IO, ::MIME"text/markdown", vc::VarCorr)
         push!(σvec, vc.s)
         push!(nmvec, "Residual")
     end
-    nmwd = maximum(textwidth.(nmvec)) + 1
-    cnmwd = maximum(textwidth.(cnmvec)) + 1
     nρ = maximum(length.(getproperty.(values(σρ), :ρ)))
     varvec = abs2.(σvec)
     digits = _printdigits(σvec)
