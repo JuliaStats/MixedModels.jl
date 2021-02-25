@@ -174,5 +174,6 @@ include("simulate.jl")
 include("bootstrap.jl")
 include("blockdescription.jl")
 include("grouping.jl")
+include("mdshow.jl")
 
 end # module
