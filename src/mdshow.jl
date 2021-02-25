@@ -4,6 +4,25 @@ Base.show(mime::MIME,
           x::Union{BlockDescription, VarCorr, RandomEffectsTerm, MixedModel}) = Base.show(Base.stdout, mime, x)
 
 
+function Base.show(io::IO, ::MIME"text/markdown", b::BlockDescription)
+    rowwidth = max(maximum(ndigits, b.blkrows) + 1, 5)
+    colwidth = max(maximum(textwidth, b.blknms) + 1, 14)
+    ncols = length(b.blknms)
+    print(io, "|rows|")
+    println(io, ("$(bn)|" for bn in b.blknms)...)
+    print(io, "|:--|")
+    println(io, (":--:|" for _ in b.blknms)...)
+    for (i, r) in enumerate(b.blkrows)
+        print(io, "|$(string(r))|")
+        for j in 1:i
+            print(io, "$(b.ALtypes[i, j])|")
+        end
+        i < ncols && print(io, "$("|"^(ncols-i))")
+        println(io)
+    end
+end
+
+
 function Base.show(io::IO, ::MIME"text/markdown", vc::VarCorr)
     σρ = vc.σρ
     nmvec = string.([keys(σρ)...])
