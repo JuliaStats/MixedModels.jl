@@ -23,6 +23,60 @@ function Base.show(io::IO, ::MIME"text/markdown", b::BlockDescription)
 end
 
 
+_dname(::GeneralizedLinearMixedModel) = "Dispersion"
+
+_dname(::LinearMixedModel) = "Residual"
+
+function Base.show(io::IO, ::MIME"text/markdown", m::MixedModel; digits=2)
+    if m.optsum.feval < 0
+        @warn("Model has not been fit")
+        return nothing
+    end
+    n, p, q, k = size(m)
+    REML = m.optsum.REML
+    nrecols = length(fnames(m))
+
+    print(io,"| |Est.|SE |z  |p  | " )
+    for rr in fnames(m)
+        print("σ_$(rr)|")
+    end
+    println(io)
+
+    print(io,"|:-|----:|--:|--:|--:|" )
+    for rr in fnames(m)
+        print("------:|")
+    end
+    println(io)
+
+    co = coef(m)
+    se = stderror(m)
+    z = co ./ se
+    p = ccdf.(Chisq(1), abs2.(z))
+
+
+    for (i, bname) in enumerate(coefnames(m))
+
+        print(io, "|$(bname)|$(round(co[i]; digits=digits))|$(round(se[i]; digits=digits))|")
+        show(io, StatsBase.TestStat(z[i]))
+        print(io, "|")
+        show(io, StatsBase.PValue(p[i]))
+        print(io, "|")
+
+        bname = Symbol(bname)
+
+        for (j, sig) in enumerate(m.σs)
+            bname in keys(sig) && print(io, "$(round(getproperty(sig, bname); digits=digits))")
+            print(io, "|")
+        end
+        println()
+    end
+
+    dispersion_parameter(m) && println("|$(_dname(m))|$(round(dispersion(m); digits=digits))||||$("|"^nrecols)")
+
+    return nothing
+end
+
+
 function Base.show(io::IO, ::MIME"text/markdown", vc::VarCorr)
     σρ = vc.σρ
     nmvec = string.([keys(σρ)...])
