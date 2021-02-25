@@ -7,7 +7,7 @@ Linear mixed-effects model representation
 
 * `formula`: the formula for the model
 * `reterms`: a `Vector{AbstractReMat{T}}` of random-effects terms.
-* `femat`: horizontal concatenation of a full-rank fixed-effects model matrix `X` and response `y` as an `FeMat{T}`
+* `Xymat`: horizontal concatenation of a full-rank fixed-effects model matrix `X` and response `y` as an `FeMat{T}`
 * `feterm`: the fixed-effects model matrix as an `FeMat{T}` 
 * `sqrtwts`: vector of square roots of the case weights.  Can be empty.
 * `parmap` : Vector{NTuple{3,Int}} of (block, row, column) mapping of θ to λ
@@ -31,7 +31,7 @@ Linear mixed-effects model representation
 struct LinearMixedModel{T<:AbstractFloat} <: MixedModel{T}
     formula::FormulaTerm
     reterms::Vector{AbstractReMat{T}}
-    femat::FeMat{T}
+    Xymat::FeMat{T}
     feterm::FeTerm{T}
     sqrtwts::Vector{T}
     parmap::Vector{NTuple{3,Int}}
@@ -531,7 +531,7 @@ function Base.getproperty(m::LinearMixedModel{T}, s::Symbol) where {T}
     elseif s == :X
         modelmatrix(m)
     elseif s == :y
-        let xy = m.femat.xy
+        let xy = m.Xymat.xy
             view(xy, :, size(xy, 2))
         end
     elseif s == :rePCA
@@ -638,7 +638,7 @@ Base.propertynames(m::LinearMixedModel, private::Bool = false) = (
     :rePCA,
     :reterms,
     :feterm,
-    :femat,
+    :Xymat,
     :objective,
     :pvalues,
 )
@@ -735,14 +735,14 @@ end
 """
     reevaluateAend!(m::LinearMixedModel)
 
-Reevaluate the last column of `m.A` from `m.femat`.  This function should be called
+Reevaluate the last column of `m.A` from `m.Xymat`.  This function should be called
 after updating the response.
 """
 function reevaluateAend!(m::LinearMixedModel)
     A = m.A
     reterms = m.reterms
     nre = length(reterms)
-    trmn = reweight!(m.femat, m.sqrtwts)
+    trmn = reweight!(m.Xymat, m.sqrtwts)
     ind = kp1choose2(nre)
     for trm in m.reterms
         ind += 1
@@ -778,7 +778,7 @@ StatsBase.response(m::LinearMixedModel) = m.y
 function reweight!(m::LinearMixedModel, weights)
     sqrtwts = map!(sqrt, m.sqrtwts, weights)
     reweight!.(m.reterms, Ref(sqrtwts))
-    reweight!(m.femat, sqrtwts)
+    reweight!(m.Xymat, sqrtwts)
     updateA!(m)
     updateL!(m)
 end
@@ -917,7 +917,7 @@ end
 """
     updateA!(m::LinearMixedModel)
 
-Update the cross-product array, `m.A`, from `m.reterms` and `m.femat`
+Update the cross-product array, `m.A`, from `m.reterms` and `m.Xymat`
 
 This is usually done after a reweight! operation.
 """
@@ -932,12 +932,12 @@ function updateA!(m::LinearMixedModel)
             ind += 1
         end
     end
-    femattr = adjoint(m.femat)
+    Xymattr = adjoint(m.Xymat)
     for trm in reterms
-        mul!(A[ind], femattr, trm)
+        mul!(A[ind], Xymattr, trm)
         ind += 1
     end
-    mul!(A[end], femattr, m.femat)
+    mul!(A[end], Xymattr, m.Xymat)
     m
 end
 

@@ -152,7 +152,7 @@ end
 include("utilities.jl")
 include("arraytypes.jl")
 include("varcorr.jl")
-include("femat.jl")
+include("Xymat.jl")
 include("remat.jl")
 include("optsummary.jl")
 include("schema.jl")

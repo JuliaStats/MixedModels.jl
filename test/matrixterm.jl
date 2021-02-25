@@ -2,7 +2,7 @@ using LinearAlgebra, MixedModels, StableRNGs, Test, SparseArrays
 
 include("modelcache.jl")
 
-@testset "femat" begin
+@testset "Xymat" begin
     trm = MixedModels.FeTerm(hcat(ones(30), repeat(0:9, outer = 3)), ["(Intercept)", "U"])
     piv = trm.piv
     ipiv = invperm(piv)
@@ -28,7 +28,7 @@ include("modelcache.jl")
     #@test trm.rank == 0
 end
 
-@testset "fematSparse" begin
+@testset "XymatSparse" begin
 
     @testset "sparse and dense yield same fit" begin
         # deepcopy because we're going to modify
