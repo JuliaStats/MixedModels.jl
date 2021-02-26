@@ -31,7 +31,7 @@ function StatsModels.apply_schema(
     end
 
     first, second = apply_schema.(t.args_parsed, Ref(sch), Mod)
-    
+
     if !(typeof(first) <: CategoricalTerm)
         throw(ArgumentError("nesting terms requires categorical grouping term, got $first.  Manually specify $first as `CategoricalTerm` in hints/contrasts"))
     end
@@ -42,7 +42,9 @@ end
 RandomEffectsTerm(lhs, rhs::NTuple{2,AbstractTerm}) =
     (RandomEffectsTerm(lhs, rhs[1]), RandomEffectsTerm(lhs, rhs[2]))
 
-Base.show(io::IO, t::RandomEffectsTerm) = print(io, "($(t.lhs) | $(t.rhs))")
+Base.show(io::IO, t::RandomEffectsTerm) = Base.show(io, MIME"text/plain"(), t)
+
+Base.show(io::IO, ::MIME"text/plain", t::RandomEffectsTerm) = print(io, "($(t.lhs) | $(t.rhs))")
 StatsModels.is_matrix_term(::Type{RandomEffectsTerm}) = false
 
 function StatsModels.termvars(t::RandomEffectsTerm)
@@ -131,9 +133,9 @@ Assign "contrasts" that include all indicator columns (dummy variables) and an i
 This will result in an under-determined set of contrasts, which is not a problem in the random
 effects because of the regularization, or "shrinkage", of the conditional modes.
 
-The interaction of `fulldummy` with complex random effects is subtle and complex with numerous 
-potential edge cases. As we discover these edge cases, we will document and determine their 
-behavior. Until such time, please check the model summary to verify that the expansion is 
+The interaction of `fulldummy` with complex random effects is subtle and complex with numerous
+potential edge cases. As we discover these edge cases, we will document and determine their
+behavior. Until such time, please check the model summary to verify that the expansion is
 working as you expected. If it is not, please report a use case on GitHub.
 """
 function fulldummy(t::CategoricalTerm)
