@@ -4,7 +4,7 @@ import LinearAlgebra: BLAS
 
 # there seem to be processor-specific issues and knowing this is helpful
 println(versioninfo())
-if VERSION ≥ v"1.7.0-DEV.620"
+@static if VERSION ≥ v"1.7.0-DEV.620"
     @show getproperty.(BLAS.get_config().loaded_libs, :libname)
 else
     @show BLAS.vendor()
