@@ -70,7 +70,7 @@ function OptSummary(
     )
 end
 
-function Base.show(io::IO, s::OptSummary)
+function Base.show(io::IO, ::MIME"text/plain", s::OptSummary)
     println(io, "Initial parameter vector: ", s.initial)
     println(io, "Initial objective value:  ", s.finitial)
     println(io)
@@ -88,6 +88,8 @@ function Base.show(io::IO, s::OptSummary)
     println(io, "Final objective value:    ", s.fmin)
     println(io, "Return code:              ", s.returnvalue)
 end
+
+Base.show(io::IO, s::OptSummary) = Base.show(io, MIME"text/plain"(), s)
 
 function NLopt.Opt(optsum::OptSummary)
     lb = optsum.lowerbd

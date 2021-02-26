@@ -42,6 +42,18 @@ function σρs(m::MixedModel)
 end
 
 """
+    size(m::MixedModel)
+
+Returns the size of a mixed model as a tuple of length four:
+the number of observations, the number of (non-singular) fixed-effects parameters,
+the number of conditional modes (random effects), the number of grouping variables
+"""
+function Base.size(m::MixedModel)
+    dd = m.dims
+    dd.n, dd.p, sum(size.(m.reterms, 2)), dd.nretrms
+end
+
+"""
     vcov(m::MixedModel; corr=false)
 
 Returns the variance-covariance matrix of the fixed effects.

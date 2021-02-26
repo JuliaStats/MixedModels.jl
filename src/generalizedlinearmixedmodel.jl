@@ -427,7 +427,7 @@ function Base.getproperty(m::GeneralizedLinearMixedModel, s::Symbol)
         σρs(m)
     elseif s ∈ (:A, :L, :optsum, :reterms, :Xymat, :feterm, :formula)
         getfield(m.LMM, s)
-    elseif s ∈ (:λ, :lowerbd, :corr, :PCA, :rePCA, :X,)
+    elseif s ∈ (:dims, :λ, :lowerbd, :corr, :PCA, :rePCA, :X,)
         getproperty(m.LMM, s)
     elseif s == :y
         m.resp.y
@@ -646,7 +646,7 @@ For Gaussian models, this parameter is often called σ.
 """
 sdest(m::GeneralizedLinearMixedModel{T}) where {T} =  dispersion_parameter(m) ? dispersion(m, false) : missing
 
-function Base.show(io::IO, m::GeneralizedLinearMixedModel)
+function Base.show(io::IO, ::MIME"text/plain", m::GeneralizedLinearMixedModel)
     if m.optsum.feval < 0
         @warn("Model has not been fit")
         return nothing
@@ -675,6 +675,8 @@ function Base.show(io::IO, m::GeneralizedLinearMixedModel)
     println(io, "\nFixed-effects parameters:")
     show(io, coeftable(m))
 end
+
+Base.show(io::IO,  m::GeneralizedLinearMixedModel) = show(io, MIME"text/plain"(), m)
 
 function stderror!(v::AbstractVector{T}, m::GeneralizedLinearMixedModel{T}) where {T}
     # initialize to appropriate NaN for rank-deficient case
