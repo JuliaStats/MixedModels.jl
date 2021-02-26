@@ -1,7 +1,7 @@
 # for this type of union, the compiler will actually generate the necessary methods
 # but it's also type stable either way
 Base.show(mime::MIME,
-          x::Union{BlockDescription, LikelihoodRatioTest, VarCorr, MixedModel}) = Base.show(Base.stdout, mime, x)
+          x::Union{BlockDescription, LikelihoodRatioTest, OptSummary, VarCorr, MixedModel}) = Base.show(Base.stdout, mime, x)
 
 
 function Base.show(io::IO, ::MIME"text/markdown", b::BlockDescription)
@@ -132,6 +132,28 @@ function Base.show(io::IO, ::MIME"text/markdown", m::MixedModel; digits=2)
     return nothing
 end
 
+
+function Base.show(io::IO, ::MIME"text/markdown", s::OptSummary)
+    println("| | |")
+    println("|-|-|")
+    println(io,"|**Initialization**| |")
+    println(io,"|Initial parameter vector|", s.initial,"|")
+    println(io,"|Initial objective value|", s.finitial,"|")
+    println(io,"|**Optimizer settings**| |")
+    println(io,"|Optimizer (from NLopt)|", s.optimizer,"|")
+    println(io,"|`Lower bounds`|", s.lowerbd,"|")
+    println(io,"|`ftol_rel`|", s.ftol_rel,"|")
+    println(io,"|`ftol_abs`|", s.ftol_abs,"|")
+    println(io,"|`xtol_rel`|", s.xtol_rel,"|")
+    println(io,"|`xtol_abs`|", s.xtol_abs,"|")
+    println(io,"|`initial_step`|", s.initial_step,"|")
+    println(io,"|`maxfeval`|", s.maxfeval,"|")
+    println(io,"|**Result**| |")
+    println(io,"|Function evaluations|", s.feval,"|")
+    println(io,"|Final parameter vector|", s.final,"|")
+    println(io,"|Final objective value|", s.fmin,"|")
+    println(io,"|Return code|", s.returnvalue,"|")
+end
 
 function Base.show(io::IO, ::MIME"text/markdown", vc::VarCorr)
     σρ = vc.σρ
