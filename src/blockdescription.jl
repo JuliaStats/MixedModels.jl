@@ -61,6 +61,3 @@ function Base.show(io::IO, ::MIME"text/plain", b::BlockDescription)
 end
 
 Base.show(io::IO, b::BlockDescription) = show(io, MIME"text/plain"(), b)
-
-@deprecate describeblocks(io, m) show(io, BlockDescription(m))
-@deprecate describeblocks(m) show(stdout, BlockDescription(m))

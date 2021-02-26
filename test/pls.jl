@@ -31,7 +31,6 @@ include("modelcache.jl")
     @test_logs (:warn, "Model has not been fit") show(fm1)
 
     @test objective(updateL!(setθ!(fm1, [0.713]))) ≈ 327.34216280955366
-    #@test_deprecated MixedModels.describeblocks(IOBuffer(), fm1)
 
     show(io, BlockDescription(fm1))
     @test countlines(seekstart(io)) == 3
@@ -422,7 +421,7 @@ end
     θminqa = [1.6455, -0.2430, 1.0160, 0.8955, 2.7054, 0.0898]
     # very loose tolerance for unstable fit
     # but this is a convenient test of rankUpdate!(::UniformBlockDiagonal)
-    @test all(isapprox.(m.θ, θnlopt; atol=1e-2))
+    @test isapprox(m.θ, θnlopt; atol=5e-2)
 end
 
 @testset "Rank deficient" begin
