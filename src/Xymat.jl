@@ -81,7 +81,7 @@ A matrix and a (possibly) weighted copy of itself.
 
 # Fields
 - `xy`: original matrix, called `xy` b/c in practice this is `hcat(fullrank(X), y)`
-- `wtxy`: (possibly) weighted copy of `xy`
+- `wtxy`: (possibly) weighted copy of `xy` (shares storage with `xy` until weights are applied)
 
 Upon construction the `xy` and `wtxy` fields refer to the same matrix
 """
