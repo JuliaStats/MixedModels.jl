@@ -47,7 +47,7 @@ include("modelcache.jl")
     end
 
     @testset "glmm" begin
-        @test sprint(show, mime, gm3) == """
+        @test sprint(show, mime, gm3) in ("""
 |            |      Est.|      SE|    z|     p|σ_subj   |σ_item   |
 |:-----------|---------:|-------:|----:|-----:|--------:|--------:|
 |(Intercept) | 0.1955555|0.405190| 0.48|0.6294| 1.339766| 0.495305|
@@ -56,17 +56,31 @@ include("modelcache.jl")
 |btype: scold|-1.0582595|0.256805|-4.12|<1e-04|         |         |
 |btype: shout|-2.1047525|0.258529|-8.14|<1e-15|         |         |
 |situ: self  |-1.0549790|0.210303|-5.02|<1e-06|         |         |
-"""
+""","""
+|            |      Est.|      SE|    z|     p|σ_subj   |σ_item   |
+|:-----------|---------:|-------:|----:|-----:|--------:|--------:|
+|(Intercept) | 0.1955555|0.405190| 0.48|0.6294| 1.339766| 0.495305|
+|anger       | 0.0575541|0.016758| 3.43|0.0006|         |         |
+|gender: M   | 0.3207844|0.191266| 1.68|0.0935|         |         |
+|btype: scold|-1.0582595|0.256805|-4.12|<1e-4 |         |         |
+|btype: shout|-2.1047525|0.258529|-8.14|<1e-15|         |         |
+|situ: self  |-1.0549790|0.210303|-5.02|<1e-6 |         |         |
+""")
     end
 
     @testset "lrt" begin
 
-        @test sprint(show, mime, lrt) == """
+        @test sprint(show, mime, lrt) in ("""
 ||model-dof|deviance|χ²|χ²-dof|P(>χ²)|
 |:-|-:|-:|-:|-:|:-|
 |reaction ~ 1 + days + (1 \\| subj)|4|1794| | | |
 |reaction ~ 1 + days + (1 + days \\| subj)|6|1752|42|2|<1e-09|
-"""
+""","""
+||model-dof|deviance|χ²|χ²-dof|P(>χ²)|
+|:-|-:|-:|-:|-:|:-|
+|reaction ~ 1 + days + (1 \\| subj)|4|1794| | | |
+|reaction ~ 1 + days + (1 + days \\| subj)|6|1752|42|2|<1e-9|
+""")
 
     end
 
