@@ -23,7 +23,7 @@ Run-time formula syntax
 MixedModels v3.2.0 Release Notes
 ========================
 * Markdown `show` methods for `MixedModel`, `BlockDescription`,
-  `LikelihoodRatioTest`, `PCA`, and `VarCorr`. Note that the interface for
+  `LikelihoodRatioTest` and `VarCorr`. Note that the interface for
   these is not yet completely stable. In particular, rounding behavior may
   change. White-space padding within Markdown may also change, although this
   should not impact rendering of the Markdown into HTML or LaTeX.  The
