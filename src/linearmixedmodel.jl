@@ -690,14 +690,16 @@ end
 ranef!(v::Vector, m::LinearMixedModel, uscale::Bool) = ranef!(v, m, fixef(m), uscale)
 
 """
-    ranef(m::LinearMixedModel; uscale=false, named=false)
+    ranef(m::LinearMixedModel; uscale=false)
 
 Return, as a `Vector{Matrix{T}}`, the conditional modes of the random effects in model `m`.
 
 If `uscale` is `true` the random effects are on the spherical (i.e. `u`) scale, otherwise on
 the original scale.
+
+For a named variant, see [`@raneftables`](@ref).
 """
-function ranef(m::LinearMixedModel{T}; uscale = false, named = false) where {T}
+function ranef(m::LinearMixedModel{T}; uscale = false) where {T}
     reterms = m.reterms
     v = [Matrix{T}(undef, size(t.z, 1), nlevs(t)) for t in reterms]
     ranef!(v, m, uscale)
@@ -760,8 +762,7 @@ Refit the model `m` after installing response `y`.
 If `y` is omitted the current response vector is used.
 """
 function refit!(m::LinearMixedModel; REML=m.optsum.REML)
-    m.optsum.feval = -1
-    fit!(reevaluateAend!(m); REML=REML)
+    fit!(unfit!(m); REML=REML)
 end
 
 function refit!(m::LinearMixedModel, y; REML=m.optsum.REML)
@@ -939,6 +940,19 @@ function updateA!(m::LinearMixedModel)
     end
     mul!(A[end], Xymattr, m.Xymat)
     m
+end
+
+"""
+    unfit!(model::MixedModel)
+
+Mark a model as unfitted.
+"""
+function unfit!(model::LinearMixedModel{T}) where {T}
+    model.optsum.feval = -1
+    model.optsum.initial_step = T[]
+    reevaluateAend!(model)
+
+    return model
 end
 
 """

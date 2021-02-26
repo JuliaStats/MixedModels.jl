@@ -2,7 +2,23 @@ MixedModels v4.0.0 Release Notes
 ========================
 * Drop dependency on `BlockArrays` and use a `Vector` of matrices to represent
   the lower triangle in packed, row-major order. The non-exported function `block`
-  can be used for finding the corresponding `Vector` index of a block [#456]
+  can be used for finding the corresponding `Vector` index of a block. [#456]
+* `simulate!` now marks the modified model as being unfitted.
+* Deprecated and unused `named` argument removed from `ranef` [#469]
+* Introduce an abstract type for collections of fits `MixedModelFitCollection`,
+  and make `MixedModelBootstrap` a subtype of it. Accordingly, rename the `bstr`
+  field to `fits`. [#465]
+
+Run-time formula syntax
+-----------------------
+
+* It is now possible to construct `RandomEffectsTerm`s at run-time from `Term`s
+  (methods for `Base.|(::AbstractTerm, ::AbstractTerm)` added) [#470]
+* `RandomEffectsTerm`s can have left- and right-hand side terms that are
+  "non-concrete", and `apply_schema(::RandomEffectsTerm, ...)` works more like
+  other StatsModels.jl `AbstractTerm`s [#470]
+* Methods for `Base./(::AbstractTerm, ::AbstractTerm)` are added, allowing
+  nesting syntax to be used with `Term`s at run-time as well [#470]
 
 MixedModels v3.1.4 Release Notes
 ========================
@@ -132,3 +148,5 @@ Package dependencies
 [#447]: https://github.com/JuliaStats/MixedModels.jl/issues/447
 [#449]: https://github.com/JuliaStats/MixedModels.jl/issues/449
 [#456]: https://github.com/JuliaStats/MixedModels.jl/issues/456
+[#465]: https://github.com/JuliaStats/MixedModels.jl/issues/465
+[#469]: https://github.com/JuliaStats/MixedModels.jl/issues/469

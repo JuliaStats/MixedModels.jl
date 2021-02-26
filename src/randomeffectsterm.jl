@@ -3,43 +3,16 @@ abstract type AbstractReTerm <: AbstractTerm end
 struct RandomEffectsTerm <: AbstractReTerm
     lhs::StatsModels.TermOrTerms
     rhs::StatsModels.TermOrTerms
-    function RandomEffectsTerm(lhs, rhs)
-        if isempty(intersect(StatsModels.termvars(lhs), StatsModels.termvars(rhs)))
-            if !isa(
-                rhs,
-                Union{
-                    CategoricalTerm,
-                    InteractionTerm{<:NTuple{N,CategoricalTerm} where {N}},
-                },
-            )
-                throw(ArgumentError("blocking variables (those behind |) must be Categorical ($(rhs) is not)"))
-            end
-            new(lhs, rhs)
-        else
-            throw(ArgumentError("Same variable appears on both sides of |"))
-        end
-    end
 end
 
-function StatsModels.apply_schema(
-    t::FunctionTerm{typeof(/)},
-    sch::StatsModels.FullRank,
-    Mod::Type{<:MixedModel},
-)
-    if length(t.args_parsed) ≠ 2
-        throw(ArgumentError("malformed nesting term: $t (Exactly two arguments required"))
-    end
+# TODO: consider overwriting | with our own function that can be
+# imported with (a la FilePathsBase.:/)
+# using MixedModels: |
+# to avoid conflicts with definitions in other packages...
+Base.:|(a::StatsModels.TermOrTerms, b::StatsModels.TermOrTerms) = RandomEffectsTerm(a, b)
 
-    first, second = apply_schema.(t.args_parsed, Ref(sch), Mod)
-    
-    if !(typeof(first) <: CategoricalTerm)
-        throw(ArgumentError("nesting terms requires categorical grouping term, got $first.  Manually specify $first as `CategoricalTerm` in hints/contrasts"))
-    end
-
-    return first + fulldummy(first) & second
-end
-
-RandomEffectsTerm(lhs, rhs::NTuple{2,AbstractTerm}) =
+# expand (lhs | a + b) to (lhs | a) + (lhs | b)
+RandomEffectsTerm(lhs::StatsModels.TermOrTerms, rhs::NTuple{2,AbstractTerm}) =
     (RandomEffectsTerm(lhs, rhs[1]), RandomEffectsTerm(lhs, rhs[2]))
 
 Base.show(io::IO, t::RandomEffectsTerm) = print(io, "($(t.lhs) | $(t.rhs))")
@@ -49,6 +22,9 @@ function StatsModels.termvars(t::RandomEffectsTerm)
     vcat(StatsModels.termvars(t.lhs), StatsModels.termvars(t.rhs))
 end
 
+StatsModels.terms(t::RandomEffectsTerm) = union(StatsModels.terms(t.lhs), StatsModels.terms(t.rhs))
+
+# | in MixedModel formula -> RandomEffectsTerm
 function StatsModels.apply_schema(
     t::FunctionTerm{typeof(|)},
     schema::MultiSchema{StatsModels.FullRank},
@@ -56,8 +32,30 @@ function StatsModels.apply_schema(
 )
     lhs, rhs = t.args_parsed
 
+    isempty(intersect(StatsModels.termvars(lhs), StatsModels.termvars(rhs))) ||
+        throw(ArgumentError("Same variable appears on both sides of |"))
+
+    apply_schema(RandomEffectsTerm(lhs, rhs), schema, Mod)
+end
+
+# allowed types (or tuple thereof) for blocking variables (RHS of |):
+const GROUPING_TYPE = Union{<:CategoricalTerm, <:InteractionTerm{<:NTuple{N,CategoricalTerm} where {N}}}
+check_re_group_type(term::GROUPING_TYPE) = true
+check_re_group_type(terms::Tuple{Vararg{<:GROUPING_TYPE}}) = true
+check_re_group_type(x) = false
+
+# make a potentially untyped RandomEffectsTerm concrete
+function StatsModels.apply_schema(
+    t::RandomEffectsTerm,
+    schema::MultiSchema{StatsModels.FullRank},
+    Mod::Type{<:MixedModel}
+)
+    lhs, rhs = t.lhs, t.rhs
+
+    # get a schema that's specific for the grouping (RHS), creating one if needed
     schema = get!(schema.subs, rhs, StatsModels.FullRank(schema.base.schema))
 
+    # handle intercept in LHS (including checking schema for intercept in another term)
     if (
         !StatsModels.hasintercept(lhs) &&
         !StatsModels.omitsintercept(lhs) &&
@@ -66,7 +64,13 @@ function StatsModels.apply_schema(
     )
         lhs = InterceptTerm{true}() + lhs
     end
+
     lhs, rhs = apply_schema.((lhs, rhs), Ref(schema), Mod)
+
+    # check whether grouping terms are categorical or interaction of categorical
+    check_re_group_type(rhs) ||
+        throw(ArgumentError("blocking variables (those behind |) must be Categorical ($(rhs) is not)"))
+    
     RandomEffectsTerm(MatrixTerm(lhs), rhs)
 end
 
@@ -98,7 +102,6 @@ function StatsModels.modelcols(t::RandomEffectsTerm, d::NamedTuple)
     )
 end
 
-
 # extract vector of refs from ranef grouping term and data
 function _ranef_refs(grp::CategoricalTerm, d::NamedTuple)
     invindex = grp.contrasts.invindex
@@ -117,6 +120,25 @@ function _ranef_refs(
     refs, uniques
 end
 
+# TODO: split this off into a RegressionFormula packge?
+Base.:/(a::AbstractTerm, b::AbstractTerm) = a + a & b
+function StatsModels.apply_schema(
+    t::FunctionTerm{typeof(/)},
+    sch::StatsModels.FullRank,
+    Mod::Type{<:MixedModel},
+)
+    if length(t.args_parsed) ≠ 2
+        throw(ArgumentError("malformed nesting term: $t (Exactly two arguments required"))
+    end
+
+    first, second = apply_schema.(t.args_parsed, Ref(sch), Mod)
+
+    if !(typeof(first) <: CategoricalTerm)
+        throw(ArgumentError("nesting terms requires categorical grouping term, got $first.  Manually specify $first as `CategoricalTerm` in hints/contrasts"))
+    end
+
+    return first + fulldummy(first) & second
+end
 
 # add some syntax to manually promote to full dummy coding
 fulldummy(t::AbstractTerm) =
@@ -169,12 +191,24 @@ Remove correlations between random effects in `term`.
 """
 zerocorr(x) = ZeroCorr(x)
 
+# for schema extraction (from runtime-created zerocorr)
+StatsModels.terms(t::ZeroCorr) = StatsModels.terms(t.term)
+StatsModels.termvars(t::ZeroCorr) = StatsModels.termvars(t.term)
+
 function StatsModels.apply_schema(
     t::FunctionTerm{typeof(zerocorr)},
     sch::MultiSchema,
     Mod::Type{<:MixedModel},
 )
     ZeroCorr(apply_schema(t.args_parsed..., sch, Mod))
+end
+
+function StatsModels.apply_schema(
+    t::ZeroCorr,
+    sch::MultiSchema,
+    Mod::Type{<:MixedModel},
+)
+    ZeroCorr(apply_schema(t.term, sch, Mod))
 end
 
 StatsModels.modelcols(t::ZeroCorr, d::NamedTuple) = zerocorr!(modelcols(t.term, d))
