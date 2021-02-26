@@ -1,7 +1,7 @@
 # for this type of union, the compiler will actually generate the necessary methods
 # but it's also type stable either way
-Base.show(mime::MIME,
-          x::Union{BlockDescription, LikelihoodRatioTest, OptSummary, VarCorr, MixedModel}) = Base.show(Base.stdout, mime, x)
+_MdTypes = Union{BlockDescription, LikelihoodRatioTest, OptSummary, VarCorr, MixedModel}
+Base.show(mime::MIME, x::_MdTypes) = Base.show(Base.stdout, mime, x)
 
 
 function Base.show(io::IO, ::MIME"text/markdown", b::BlockDescription)
@@ -20,7 +20,7 @@ function Base.show(io::IO, ::MIME"text/markdown", b::BlockDescription)
     end
 end
 
-function Base.show(io::IO, ::MIME"text/markdown", lrt::LikelihoodRatioTest; digits=2)
+function Base.show(io::IO, ::MIME"text/markdown", lrt::LikelihoodRatioTest)
     # println(io, "Model Formulae")
 
     # for (i, f) in enumerate(lrt.formulas)
@@ -85,8 +85,7 @@ _dname(::LinearMixedModel) = "Residual"
 
 function Base.show(io::IO, ::MIME"text/markdown", m::MixedModel; digits=2)
     if m.optsum.feval < 0
-        @warn("Model has not been fit")
-        return nothing
+        @warn("Model has not been fit: results will be nonsense")
     end
     n, p, q, k = size(m)
     REML = m.optsum.REML
@@ -94,13 +93,13 @@ function Base.show(io::IO, ::MIME"text/markdown", m::MixedModel; digits=2)
 
     print(io,"| |Est.|SE |z  |p  | " )
     for rr in fnames(m)
-        print("σ_$(rr)|")
+        print(io,"σ_$(rr)|")
     end
     println(io)
 
     print(io,"|:-|----:|--:|--:|--:|" )
     for rr in fnames(m)
-        print("------:|")
+        print(io,"------:|")
     end
     println(io)
 
@@ -124,18 +123,18 @@ function Base.show(io::IO, ::MIME"text/markdown", m::MixedModel; digits=2)
             bname in keys(sig) && print(io, "$(round(getproperty(sig, bname); digits=digits))")
             print(io, "|")
         end
-        println()
+        println(io)
     end
 
-    dispersion_parameter(m) && println("|$(_dname(m))|$(round(dispersion(m); digits=digits))||||$("|"^nrecols)")
+    dispersion_parameter(m) && println(io, "|$(_dname(m))|$(round(dispersion(m); digits=digits))||||$("|"^nrecols)")
 
     return nothing
 end
 
 
 function Base.show(io::IO, ::MIME"text/markdown", s::OptSummary)
-    println("| | |")
-    println("|-|-|")
+    println(io,"| | |")
+    println(io,"|-|-|")
     println(io,"|**Initialization**| |")
     println(io,"|Initial parameter vector|", s.initial,"|")
     println(io,"|Initial objective value|", s.finitial,"|")
@@ -150,9 +149,9 @@ function Base.show(io::IO, ::MIME"text/markdown", s::OptSummary)
     println(io,"|`maxfeval`|", s.maxfeval,"|")
     println(io,"|**Result**| |")
     println(io,"|Function evaluations|", s.feval,"|")
-    println(io,"|Final parameter vector|", s.final,"|")
-    println(io,"|Final objective value|", s.fmin,"|")
-    println(io,"|Return code|", s.returnvalue,"|")
+    println(io,"|Final parameter vector|", round.(s.final; digits=4),"|")
+    println(io,"|Final objective value|", round.(s.fmin; digits=4),"|")
+    println(io,"|Return code|`", s.returnvalue,"`|")
 end
 
 function Base.show(io::IO, ::MIME"text/markdown", vc::VarCorr)
@@ -204,6 +203,7 @@ function Base.show(io::IO, ::MIME"text/markdown", vc::VarCorr)
         write(io, "|$(last(nmvec))| |")
         write(io, "$(showvarvec[ind])|")
         write(io, "$(showσvec[ind])|")
+        println(io)
     end
-    println(io)
+    return nothing
 end
