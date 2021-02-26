@@ -803,7 +803,7 @@ end
 Base.setproperty!(m::LinearMixedModel, s::Symbol, y) =
     s == :θ ? setθ!(m, y) : setfield!(m, s, y)
 
-function Base.show(io::IO, m::LinearMixedModel)
+function Base.show(io::IO, ::MIME"text/plain", m::LinearMixedModel)
     if m.optsum.feval < 0
         @warn("Model has not been fit")
         return nothing
@@ -836,17 +836,8 @@ function Base.show(io::IO, m::LinearMixedModel)
     show(io, coeftable(m))
 end
 
-"""
-    size(m::LinearMixedModel)
+Base.show(io::IO, m::LinearMixedModel) = Base.show(io, MIME"text/plain"(), m)
 
-Returns the size of a mixed model as a tuple of length four:
-the number of observations, the number of (non-singular) fixed-effects parameters,
-the number of conditional modes (random effects), the number of grouping variables
-"""
-function Base.size(m::LinearMixedModel)
-    dd = m.dims
-    dd.n, dd.p, sum(size.(m.reterms, 2)), dd.nretrms
-end
 
 #=
 """
