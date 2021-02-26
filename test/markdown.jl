@@ -85,6 +85,7 @@ include("modelcache.jl")
 
 
     @testset "optsum" begin
+        fm1.optsum.feval = 1
         @test sprint(show, mime, fm1.optsum) == """
 | | |
 |-|-|
@@ -101,7 +102,7 @@ include("modelcache.jl")
 |`initial_step`|[0.75, 1.0, 0.75]|
 |`maxfeval`|-1|
 |**Result**| |
-|Function evaluations|57|
+|Function evaluations|1|
 |Final parameter vector|[0.9292, 0.0182, 0.2226]|
 |Final objective value|1751.9393|
 |Return code|`FTOL_REACHED`|
