@@ -2,59 +2,90 @@ using MixedModels
 using Test
 
 using MixedModels: dataset, likelihoodratiotest
+using MixedModels: pirls!, setβθ!, setθ!, updateL!
 
 include("modelcache.jl")
 
 @testset "markdown" begin
-    gm3 = fit(MixedModel, only(gfms[:verbagg]), dataset(:verbagg), Bernoulli())
-    fm1 = last(models(:sleepstudy))
-    fm0 = first(models(:sleepstudy))
-    lrt = likelihoodratiotest(fm0, fm1)
     mime = MIME"text/markdown"()
 
-    @test sprint(show, mime, fm0) == """
-| |Est.|SE |z  |p  | σ_subj|
-|:-|----:|--:|--:|--:|------:|
-|(Intercept)|251.41|9.51|26.45|<1e-99|36.01|
-|days|10.47|0.8|13.06|<1e-38||
-|Residual|30.9|||||
-"""
+    # explicitly setting theta for these to so that we can do exact textual comparisons
 
-    @test sprint(show, mime, fm1) == """
-| |Est.|SE |z  |p  | σ_subj|
-|:-|----:|--:|--:|--:|------:|
-|(Intercept)|251.41|6.63|37.91|<1e-99|23.78|
-|days|10.47|1.5|6.97|<1e-11|5.72|
-|Residual|25.59|||||
-"""
+    βθ = [0.1955554704948119,  0.05755412761885973, 0.3207843518569843, -1.0582595252774376,
+         -2.1047524824609853, -1.0549789653925743,  1.339766125847893,  0.4953047709862237]
+    gm3 = GeneralizedLinearMixedModel(only(gfms[:verbagg]), dataset(:verbagg), Bernoulli())
+    pirls!(setβθ!(gm3, βθ))
 
-    @test sprint(show, mime, gm3) == """
-| |Est.|SE |z  |p  | σ_subj|σ_item|
-|:-|----:|--:|--:|--:|------:|------:|
-|(Intercept)|0.2|0.41|0.48|0.6294|1.34|0.5|
-|anger|0.06|0.02|3.43|0.0006|||
-|gender: M|0.32|0.19|1.68|0.0935|||
-|btype: scold|-1.06|0.26|-4.12|<1e-04|||
-|btype: shout|-2.1|0.26|-8.14|<1e-15|||
-|situ: self|-1.05|0.21|-5.02|<1e-06|||
-"""
+    @test_logs (:warn, "Model has not been fit: results will be nonsense") sprint(show, mime, gm3)
 
-    @test sprint(show, mime, lrt) == """
+    gm3.optsum.feval = 1
+
+    fm0θ = [ 1.1656121258575225]
+    fm0 = updateL!(setθ!(first(models(:sleepstudy)), fm0θ))
+
+    fm1θ = [0.9292213288149662, 0.018168393450877257, 0.22264486671069741]
+    fm1 = updateL!(setθ!(last(models(:sleepstudy)), fm1θ))
+
+    lrt = likelihoodratiotest(fm0, fm1)
+
+    @testset "lmm" begin
+
+        @test sprint(show, mime, fm0) == """
+|           |    Est.|      SE|    z|     p|σ_subj  |
+|:----------|-------:|-------:|----:|-----:|-------:|
+|(Intercept)|251.4051|9.506187|26.45|<1e-99| 36.0121|
+|days       | 10.4673|0.801735|13.06|<1e-38|        |
+|Residual   |30.89543|||||
+"""
+        @test sprint(show, mime, fm1) == """
+|           |    Est.|     SE|    z|     p|σ_subj   |
+|:----------|-------:|------:|----:|-----:|--------:|
+|(Intercept)|251.4051|6.63226|37.91|<1e-99| 23.78047|
+|days       | 10.4673|1.50224| 6.97|<1e-11|  5.71683|
+|Residual   |25.59182|||||
+"""
+    end
+
+    @testset "glmm" begin
+        @test sprint(show, mime, gm3) == """
+|            |      Est.|      SE|    z|     p|σ_subj   |σ_item   |
+|:-----------|---------:|-------:|----:|-----:|--------:|--------:|
+|(Intercept) | 0.1955555|0.405190| 0.48|0.6294| 1.339766| 0.495305|
+|anger       | 0.0575541|0.016758| 3.43|0.0006|         |         |
+|gender: M   | 0.3207844|0.191266| 1.68|0.0935|         |         |
+|btype: scold|-1.0582595|0.256805|-4.12|<1e-04|         |         |
+|btype: shout|-2.1047525|0.258529|-8.14|<1e-15|         |         |
+|situ: self  |-1.0549790|0.210303|-5.02|<1e-06|         |         |
+"""
+    end
+
+    @testset "lrt" begin
+
+        @test sprint(show, mime, lrt) == """
 ||model-dof|deviance|χ²|χ²-dof|P(>χ²)|
 |:-|-:|-:|-:|-:|:-|
 |reaction ~ 1 + days + (1 \\| subj)|4|1794| | | |
 |reaction ~ 1 + days + (1 + days \\| subj)|6|1752|42|2|<1e-09|
 """
 
-    @test sprint(show, mime, BlockDescription(gm3)) == """
-|rows|subj|item|fixed|
-|:--|:--:|:--:|:--:|
-|316|Diagonal|||
-|24|Dense|Diag/Dense||
-|6|Dense|Dense|Dense|
+    end
+
+
+    @testset "blockdescription" begin
+
+        @test sprint(show, mime, BlockDescription(gm3)) == """
+|rows |     subj     |     item     |    fixed     |
+|:----|:------------:|:------------:|:------------:|
+|316  |Diagonal      |              |              |
+|24   |Dense         |Diag/Dense    |              |
+|6    |Dense         |Dense         |Dense         |
 """
 
-    @test sprint(show, mime, fm1.optsum) == """
+    end
+
+
+    @testset "optsum" begin
+        @test sprint(show, mime, fm1.optsum) == """
 | | |
 |-|-|
 |**Initialization**| |
@@ -75,9 +106,12 @@ include("modelcache.jl")
 |Final objective value|1751.9393|
 |Return code|`FTOL_REACHED`|
 """
+    end
 
 
-    @test sprint(show, mime, VarCorr(fm1)) == """
+    @testset "varcorr" begin
+
+        @test sprint(show, mime, VarCorr(fm1)) == """
 |   |Column|Variance|Std.Dev.|Corr.|
 |:--|:-----|-------:|-------:|----:|
 |subj|(Intercept)|565.51069|23.78047| |
@@ -85,11 +119,15 @@ include("modelcache.jl")
 |Residual| |654.94145|25.59182|
 """
 
-    @test sprint(show, mime, VarCorr(gm3)) == """
+        @test sprint(show, mime, VarCorr(gm3)) == """
 |   |Column|Variance|Std.Dev.|
 |:--|:-----|-------:|-------:|
 |subj|(Intercept)|1.794973|1.339766|
 |item|(Intercept)|0.245327|0.495305|
 """
-
+    end
 end
+
+# return these models to their fitted state for the cache
+refit!(fm1)
+refit!(fm0)
