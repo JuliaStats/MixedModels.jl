@@ -46,7 +46,7 @@ end
         @test isapprox(m1.θ, m.θ, rtol = 1.0e-5)
     end
 
-    @testset "rank defiency in sparse FeMat" begin
+    @testset "rank defiency in sparse FeTerm" begin
         trm = MixedModels.FeTerm(SparseMatrixCSC(hcat(ones(30), 
                                                      repeat(0:9, outer = 3), 
                                                      2repeat(0:9, outer = 3))), 
