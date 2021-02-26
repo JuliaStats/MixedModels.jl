@@ -97,7 +97,7 @@ include("modelcache.jl")
 |Initial parameter vector|[1.0, 0.0, 1.0]|
 |Initial objective value|1784.642296192471|
 |**Optimizer settings**| |
-|Optimizer (from NLopt)|LN_BOBYQA|
+|Optimizer (from NLopt)|`LN_BOBYQA`|
 |`Lower bounds`|[0.0, -Inf, 0.0]|
 |`ftol_rel`|1.0e-12|
 |`ftol_abs`|1.0e-8|
