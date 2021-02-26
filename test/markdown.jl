@@ -131,8 +131,7 @@ include("modelcache.jl")
 |item|(Intercept)|0.245327|0.495305|
 """
     end
-end
-
 # return these models to their fitted state for the cache
 refit!(fm1)
 refit!(fm0)
+end
