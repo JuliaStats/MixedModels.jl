@@ -20,6 +20,17 @@ Run-time formula syntax
 * Methods for `Base./(::AbstractTerm, ::AbstractTerm)` are added, allowing
   nesting syntax to be used with `Term`s at run-time as well [#470]
 
+MixedModels v3.2.0 Release Notes
+========================
+* Markdown `show` methods for `MixedModel`, `BlockDescription`,
+  `LikelihoodRatioTest`, `OptSummary` and `VarCorr`. Note that the interface for
+  these is not yet completely stable. In particular, rounding behavior may
+  change. White-space padding within Markdown may also change, although this
+  should not impact rendering of the Markdown into HTML or LaTeX.  The
+  Markdown presentation of a `MixedModel` is much more compact than the
+  REPL summary. If the REPL-style presentation is desired, then this can
+  be assembled from the Markdown output from `VarCorr` and `coeftable` [#474].
+
 MixedModels v3.1.4 Release Notes
 ========================
 * [experimental] Additional convenience constructors for `LinearMixedModel` [#449]
@@ -150,3 +161,5 @@ Package dependencies
 [#456]: https://github.com/JuliaStats/MixedModels.jl/issues/456
 [#465]: https://github.com/JuliaStats/MixedModels.jl/issues/465
 [#469]: https://github.com/JuliaStats/MixedModels.jl/issues/469
+[#470]: https://github.com/JuliaStats/MixedModels.jl/issues/470
+[#474]: https://github.com/JuliaStats/MixedModels.jl/issues/474
