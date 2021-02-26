@@ -86,6 +86,10 @@ include("modelcache.jl")
 
     @testset "optsum" begin
         fm1.optsum.feval = 1
+        fm1.optsum.initial_step = [0.75, 1.0, 0.75]
+        fm1.optsum.finitial = 1784.642296192471
+        fm1.optsum.final = [0.9292, 0.0182, 0.2226]
+        fm1.optsum.fmin =1751.9393444647023
         @test sprint(show, mime, fm1.optsum) == """
 | | |
 |-|-|
