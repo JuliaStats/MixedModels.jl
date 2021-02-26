@@ -85,7 +85,7 @@ function likelihoodratiotest(m::MixedModel...)
     )
 end
 
-function Base.show(io::IO, ::MIME"text/plain", lrt::LikelihoodRatioTest; digits=2)
+function Base.show(io::IO, ::MIME"text/plain", lrt::LikelihoodRatioTest)
     println(io, "Model Formulae")
 
     for (i, f) in enumerate(lrt.formulas)
@@ -149,7 +149,8 @@ function Base.show(io::IO, ::MIME"text/plain", lrt::LikelihoodRatioTest; digits=
     nothing
 end
 
-Base.show(io::IO, lrt::LikelihoodRatioTest; kwargs...) = Base.show(io, MIME"text/plain"(), lrt; kwargs...)
+Base.show(lrt::LikelihoodRatioTest) = Base.show(Base.stdout, MIME"text/plain"(), lrt)
+Base.show(io::IO, lrt::LikelihoodRatioTest) = Base.show(io, MIME"text/plain"(), lrt)
 
 function _iscomparable(m::LinearMixedModel...)
     allequal(getproperty.(getproperty.(m,:optsum),:REML)) ||
