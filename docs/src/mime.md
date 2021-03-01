@@ -32,7 +32,7 @@ If the correlation parameters in the random effects are of interest, then [`VarC
 VarCorr(m1)
 ```
 
-Similarly for [`BlockDescription`](@ref) and [`MixedModels.likelihoodratiotest`](@ref):
+Similarly for [`BlockDescription`](@ref) and `MixedModels.likelihoodratiotest`:
 
 ```@example Main
 BlockDescription(m1)
@@ -47,7 +47,7 @@ To explicitly invoke this behavior, we must specify the right `show` method:
 ```julia
 show(MIME("text/markdown"), m1)
 ```
-```@eval
+```@eval Main
 sprint(show, MIME("text/markdown"), m1)
 ```
 
