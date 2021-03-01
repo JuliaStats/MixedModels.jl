@@ -71,17 +71,16 @@ include("modelcache.jl")
     @testset "lrt" begin
 
         @test sprint(show, mime, lrt) in ("""
-||model-dof|deviance|χ²|χ²-dof|P(>χ²)|
-|:-|-:|-:|-:|-:|:-|
-|reaction ~ 1 + days + (1 \\| subj)|4|1794| | | |
-|reaction ~ 1 + days + (1 + days \\| subj)|6|1752|42|2|<1e-09|
+|                                          | model-dof | deviance |  χ² | χ²-dof | P(>χ²) |
+|:---------------------------------------- | ---------:| --------:| ---:| ------:|:------ |
+| reaction ~ 1 + days + (1 \\| subj)        |         4 |     1794 |     |        |        |
+| reaction ~ 1 + days + (1 + days \\| subj) |         6 |     1752 |  42 |      2 | <1e-09 |
 ""","""
-||model-dof|deviance|χ²|χ²-dof|P(>χ²)|
-|:-|-:|-:|-:|-:|:-|
-|reaction ~ 1 + days + (1 \\| subj)|4|1794| | | |
-|reaction ~ 1 + days + (1 + days \\| subj)|6|1752|42|2|<1e-9|
+|                                          | model-dof | deviance |  χ² | χ²-dof | P(>χ²) |
+|:---------------------------------------- | ---------:| --------:| ---:| ------:|:------ |
+| reaction ~ 1 + days + (1 \\| subj)        |         4 |     1794 |     |        |        |
+| reaction ~ 1 + days + (1 + days \\| subj) |         6 |     1752 |  42 |      2 | <1e-9  |
 """)
-
     end
 
 
@@ -142,7 +141,7 @@ include("modelcache.jl")
 |     |   Column   |Variance |Std.Dev. |
 |:----|:-----------|--------:|--------:|
 |subj |(Intercept) | 1.794973| 1.339766|
-|item |(Intercept) | 0.245327| 0.495305||
+|item |(Intercept) | 0.245327| 0.495305|
 """
     end
 # return these models to their fitted state for the cache

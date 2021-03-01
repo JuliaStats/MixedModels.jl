@@ -34,50 +34,34 @@ function Base.show(io::IO, ::MIME"text/markdown", lrt::LikelihoodRatioTest)
     Δdf = lrt.tests.dofdiff
     Δdev = lrt.tests.deviancediff
 
-    nc = 6
-    nr = length(lrt.formulas)
-    outrows = Matrix{String}(undef, nr+2, nc)
 
-    outrows[1, :] = ["",
+    nr = length(lrt.formulas)
+    outrows = Vector{Vector{String}}(undef, nr+1)
+
+    outrows[1] = ["",
                     "model-dof",
                     "deviance",
                     "χ²",
                     "χ²-dof",
                     "P(>χ²)"] # colnms
 
-    outrows[2, :] = [":-", "-:", "-:",
-                     "-:", "-:", ":-"]
-
-    outrows[3, :] = ["$(replace(lrt.formulas[1], "|" => "\\|"))",
-                    string(lrt.dof[1]),
-                    string(round(Int,lrt.deviance[1])),
+    outrows[2] = [string(lrt.formulas[1]),
+                  string(lrt.dof[1]),
+                  string(round(Int,lrt.deviance[1])),
                     " "," ", " "]
 
     for i in 2:nr
-        outrows[i+2, :] = ["$(replace(lrt.formulas[i], "|" => "\\|"))",
-                           string(lrt.dof[i]),
-                           string(round(Int,lrt.deviance[i])),
-                           string(round(Int,Δdev[i-1])),
-                           string(Δdf[i-1]),
-                           string(StatsBase.PValue(lrt.pvalues[i-1]))]
-    end
-    colwidths = length.(outrows)
-    max_colwidths = [maximum(view(colwidths, :, i)) for i in 1:nc]
-    totwidth = sum(max_colwidths) + 2*5
-
-    for r in 1:nr+2
-        print(io, "|")
-        for c in 1:nc
-            cur_cell = outrows[r, c]
-            cur_cell_len = length(cur_cell)
-
-            print(io, "$(cur_cell)|")
-        end
-        print(io, "\n")
-
+        outrows[i+1] = [string(lrt.formulas[i]),
+                        string(lrt.dof[i]),
+                        string(round(Int,lrt.deviance[i])),
+                        string(round(Int,Δdev[i-1])),
+                        string(Δdf[i-1]),
+                        string(StatsBase.PValue(lrt.pvalues[i-1]))]
     end
 
-    nothing
+    tbl = Markdown.Table(outrows, [:l, :r, :r, :r, :r, :l])
+
+    show(io, Markdown.MD(tbl))
 end
 
 
