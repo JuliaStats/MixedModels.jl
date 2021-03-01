@@ -98,7 +98,7 @@ function Base.show(io::IO, ::MIME"text/markdown", m::MixedModel)
     z = co ./ se
     p = ccdf.(Chisq(1), abs2.(z))
 
-    bnwidth = maximum(length, coefnames(m))
+    bnwidth = max(maximum(length, coefnames(m)), length(_dname(m)))
     fnwidth = maximum(length ∘ string, fnames(m))
     σvec = vcat(collect.(values.(values(m.σs)))...)
     σwidth = _printdigits(σvec)
@@ -148,7 +148,14 @@ function Base.show(io::IO, ::MIME"text/markdown", m::MixedModel)
         println(io)
     end
 
-    dispersion_parameter(m) && println(io, "|$(rpad(_dname(m), bnwidth))|$(string(dispersion(m))[1:cowidth])||||$("|"^nrecols)")
+    if dispersion_parameter(m)
+        print(io, "|$(rpad(_dname(m), bnwidth))|$(string(dispersion(m))[1:cowidth])")
+        print(io, "|$(" "^sewidth)|$(" "^zwidth)|$(" "^pwidth)|")
+        for rr in fnames(m)
+            print(io,"$(" "^σcolwidth)|")
+        end
+        println(io)
+    end
 
     return nothing
 end
@@ -177,7 +184,6 @@ function Base.show(io::IO, ::MIME"text/markdown", s::OptSummary)
 end
 
 function Base.show(io::IO, ::MIME"text/markdown", vc::VarCorr)
-    digits = 2
     σρ = vc.σρ
     nmvec = string.([keys(σρ)...])
     cnmvec = string.(foldl(vcat, [keys(sig)...] for sig in getproperty.(values(σρ), :σ)))
@@ -186,45 +192,56 @@ function Base.show(io::IO, ::MIME"text/markdown", vc::VarCorr)
         push!(σvec, vc.s)
         push!(nmvec, "Residual")
     end
+    nmwd = maximum(textwidth.(nmvec)) + 1
+    cnmwd = maximum(textwidth.(cnmvec)) + 1
     nρ = maximum(length.(getproperty.(values(σρ), :ρ)))
     varvec = abs2.(σvec)
     digits = _printdigits(σvec)
     showσvec = aligncompact(σvec, digits)
     showvarvec = aligncompact(varvec, digits)
-    write(io, "|   |Column|Variance|Std.Dev.|")
-    iszero(nρ) || write(io, "Corr.|$(repeat("    |", nρ-1))")
+    varwd = maximum(textwidth.(showvarvec)) + 1
+    stdwd = maximum(textwidth.(showσvec)) + 1
+    corwd = 6
+    write(io, "|", " "^(nmwd), "|")
+    write(io, cpad("Column", cnmwd), "|")
+    write(io, cpad("Variance", varwd), "|")
+    write(io, cpad("Std.Dev.", stdwd), "|")
+    iszero(nρ) || write(io, "$(cpad("Corr.", corwd))|$(repeat("$(" "^corwd)|", nρ-1))")
     println(io)
-    write(io, "|:--|:-----|-------:|-------:|")
-    iszero(nρ) || write(io, "----:|$(repeat("----:|", nρ-1))")
+    write(io, "|:", "-"^(nmwd-1), "|:", "-"^(cnmwd-1), "|", "-"^(varwd-1), ":|", "-"^(stdwd-1), ":|")
+    iszero(nρ) || write(io, "$(repeat("$("-"^(corwd-1)):|", nρ))")
     println(io)
     ind = 1
     for (i, v) in enumerate(values(vc.σρ))
-        write(io, "|$(nmvec[i])|")
+        write(io, "|$(rpad(nmvec[i], nmwd))|")
         firstrow = true
         k = length(v.σ)   # number of columns in grp factor k
         ρ = v.ρ
         ρind = 0
         for j = 1:k
-            !firstrow && write(io, "| |")
-            write(io, "$(cnmvec[ind])|")
-            write(io, "$(showvarvec[ind])|")
-            write(io, "$(showσvec[ind])|")
+            !firstrow && write(io, "|", " "^nmwd, "|")
+            write(io, "$(rpad(cnmvec[ind], cnmwd))|")
+            write(io, "$(lpad(showvarvec[ind], varwd))|")
+            write(io, "$(lpad(showσvec[ind], stdwd))|")
             for l = 1:(j-1)
                 ρind += 1
                 ρval = ρ[ρind]
-                ρval === -0.0 ? write(io, "   .  ") : write(io, lpad(Ryu.writefixed(ρval, 2, true), 6))
+                ρval === -0.0 ? write(io, cpad(".", corwd)) : write(io, lpad(Ryu.writefixed(ρval, 2, true), corwd))
                 write(io, "|")
             end
-            ρind < nρ && write(io, " |"^(nρ - ρind) )
+            ρind < nρ && write(io, "      |"^(nρ - ρind) )
             println(io)
             firstrow = false
             ind += 1
         end
     end
     if !isnothing(vc.s)
-        write(io, "|$(last(nmvec))| |")
-        write(io, "$(showvarvec[ind])|")
-        write(io, "$(showσvec[ind])|")
+        write(io, "|", rpad(last(nmvec), nmwd))
+        write(io, "|", " "^cnmwd)
+        write(io, "|", lpad(showvarvec[ind], varwd))
+        write(io, "|", lpad(showσvec[ind], stdwd))
+        write(io, "|")
+        write(io, "      |"^(nρ) )
         println(io)
     end
     return nothing

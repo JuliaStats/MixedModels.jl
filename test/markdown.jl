@@ -35,14 +35,14 @@ include("modelcache.jl")
 |:----------|-------:|-------:|----:|-----:|-------:|
 |(Intercept)|251.4051|9.506187|26.45|<1e-99| 36.0121|
 |days       | 10.4673|0.801735|13.06|<1e-38|        |
-|Residual   |30.89543|||||
+|Residual   |30.89543|        |     |      |        |
 """
         @test sprint(show, mime, fm1) == """
 |           |    Est.|     SE|    z|     p|σ_subj   |
 |:----------|-------:|------:|----:|-----:|--------:|
 |(Intercept)|251.4051|6.63226|37.91|<1e-99| 23.78047|
 |days       | 10.4673|1.50224| 6.97|<1e-11|  5.71683|
-|Residual   |25.59182|||||
+|Residual   |25.59182|       |     |      |         |
 """
     end
 
@@ -131,18 +131,18 @@ include("modelcache.jl")
     @testset "varcorr" begin
 
         @test sprint(show, mime, VarCorr(fm1)) == """
-|   |Column|Variance|Std.Dev.|Corr.|
-|:--|:-----|-------:|-------:|----:|
-|subj|(Intercept)|565.51069|23.78047| |
-| |days|32.68212|5.71683| +0.08|
-|Residual| |654.94145|25.59182|
+|         |   Column   | Variance |Std.Dev. |Corr. |
+|:--------|:-----------|---------:|--------:|-----:|
+|subj     |(Intercept) | 565.51069| 23.78047|      |
+|         |days        |  32.68212|  5.71683| +0.08|
+|Residual |            | 654.94145| 25.59182|      |
 """
 
         @test sprint(show, mime, VarCorr(gm3)) == """
-|   |Column|Variance|Std.Dev.|
-|:--|:-----|-------:|-------:|
-|subj|(Intercept)|1.794973|1.339766|
-|item|(Intercept)|0.245327|0.495305|
+|     |   Column   |Variance |Std.Dev. |
+|:----|:-----------|--------:|--------:|
+|subj |(Intercept) | 1.794973| 1.339766|
+|item |(Intercept) | 0.245327| 0.495305||
 """
     end
 # return these models to their fitted state for the cache
