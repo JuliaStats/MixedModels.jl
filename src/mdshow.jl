@@ -23,14 +23,6 @@ function Base.show(io::IO, ::MIME"text/markdown", b::BlockDescription)
 end
 
 function Base.show(io::IO, ::MIME"text/markdown", lrt::LikelihoodRatioTest)
-    # println(io, "Model Formulae")
-
-    # for (i, f) in enumerate(lrt.formulas)
-    #     println(io, "$i: $f")
-    # end
-
-    # the following was adapted from StatsModels#162
-    # from nalimilan
     Δdf = lrt.tests.dofdiff
     Δdev = lrt.tests.deviancediff
 
