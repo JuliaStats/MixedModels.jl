@@ -21,11 +21,11 @@ include("modelcache.jl")
 
     # empty fixed effects
     trm = MixedModels.FeTerm(ones(10,0), String[])
-    #@test size(trm) == (10, 0)
+    #@test size(trm) == (10, 0)  # There no longer are size and length methods for FeTerm
     #@test length(trm) == 0
     #@test size(trm') == (0, 10)
-    #@test eltype(trm) == Float64
-    #@test trm.rank == 0
+    @test eltype(trm) == Float64
+    @test trm.rank == 0
 end
 
 @testset "XymatSparse" begin
