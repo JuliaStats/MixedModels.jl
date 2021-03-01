@@ -65,6 +65,8 @@ const LMM = LinearMixedModel
         L21 = vf2'vf1
         @test isa(L21, BlockedSparse)
         @test L21[1,1] == 30.0
+        @test size(L21) == (344, 9452)
+        @test size(L21, 1) == 344
         MixedModels.lmulΛ!(vf2', MixedModels.rmulΛ!(L21, vf1))
         @test size(Matrix(L21)) == size(sparse(L21))
 #        L21cb1 = copy(L21.colblocks[1])
