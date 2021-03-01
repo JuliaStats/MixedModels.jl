@@ -24,6 +24,10 @@ parameter, `θ`, that defines the variance-covariance matrices of the random eff
 For example, a simple linear mixed-effects model for the `Dyestuff` data in the [`lme4`](http://github.com/lme4/lme4)
 package for [`R`](https://www.r-project.org) is fit by
 
+```@setup Main
+using DisplayAs
+```
+
 ```@example Main
 using DataFrames
 using DataFramesMeta  # dplyr-like operations
@@ -35,6 +39,7 @@ using Random
 ```@example Main
 dyestuff = MixedModels.dataset(:dyestuff)
 m1 = fit(MixedModel, @formula(yield ~ 1 + (1 | batch)), dyestuff)
+ans |> DisplayAs.Text # hide
 ```
 
 To bootstrap the model parameters, first initialize a random number generator then create a bootstrap sample
@@ -101,6 +106,7 @@ m2 = fit(
     @formula(reaction ~ 1+days+(1+days|subj)),
     sleepstudy,
 )
+ans |> DisplayAs.Text # hide
 ```
 ```@example Main
 samp2 = parametricbootstrap(rng, 10_000, m2, use_threads=true);
