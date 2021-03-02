@@ -25,8 +25,8 @@ using DisplayAs
 kbm |> DisplayAs.Text
 ```
 
-This brevity is intentional: we wanted these types work well with traditional academic publishing constraints on tables.
-The summary for a model fit presented in the REPL does not mesh well with being treated a single table (with columns shared between the random and fixed effects).
+This brevity is intentional: we wanted these types to work well with traditional academic publishing constraints on tables.
+The summary for a model fit presented in the REPL does not mesh well with being treated as a single table (with columns shared between the random and fixed effects).
 In our experience, this leads to difficulties in typesetting the resulting tables.
 We nonetheless encourage users to report fit statistics such as the log likelihood or AIC as part of the caption of their table.
 If the correlation parameters in the random effects are of interest, then [`VarCorr`](@ref) can also be pretty printed:
