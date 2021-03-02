@@ -54,7 +54,7 @@ struct GeneralizedLinearMixedModel{T<:AbstractFloat} <: MixedModel{T}
 end
 
 function StatsBase.coef(m::GeneralizedLinearMixedModel{T}) where {T}
-    piv = first(m.LMM.feterms).piv
+    piv = m.LMM.feterm.piv
     invpermute!(copyto!(fill(T(-0.0), length(piv)), m.β), piv)
 end
 
@@ -87,7 +87,7 @@ function StatsBase.deviance(m::GeneralizedLinearMixedModel{T}, nAGQ = 1) where {
     u = vec(first(m.u))
     u₀ = vec(first(m.u₀))
     copyto!(u₀, u)
-    ra = RaggedArray(m.resp.devresid, first(m.LMM.allterms).refs)
+    ra = RaggedArray(m.resp.devresid, first(m.LMM.reterms).refs)
     devc0 = sum!(map!(abs2, m.devc0, u), ra)  # the deviance components at z = 0
     sd = map!(inv, m.sd, first(m.LMM.L).diag)
     mult = fill!(m.mult, 0)
@@ -120,8 +120,19 @@ end
 objective(m::GeneralizedLinearMixedModel) = deviance(m)
 
 """
-deviance!(m::GeneralizedLinearMixedModel, nAGQ=1)
+    GLM.wrkresp!(v::AbstractVector{T}, resp::GLM.GlmResp{AbstractVector{T}})
 
+A copy of a method from GLM that generalizes the types in the signature
+"""
+function GLM.wrkresp!(v::AbstractVector{T}, r::GLM.GlmResp{Vector{T}}) where {T<:AbstractFloat}
+    v .= r.eta .+ r.wrkresid
+    isempty(r.offset) && return v
+    v .-= r.offset
+end
+
+"""
+    deviance!(m::GeneralizedLinearMixedModel, nAGQ=1)
+    
 Update `m.η`, `m.μ`, etc., install the working response and working weights in
 `m.LMM`, update `m.LMM.A` and `m.LMM.R`, then evaluate the [`deviance`](@ref).
 """
@@ -359,9 +370,9 @@ function GeneralizedLinearMixedModel(
     if isempty(wts)
         LMM = LinearMixedModel(
             LMM.formula,
-            LMM.allterms,
             LMM.reterms,
-            LMM.feterms,
+            LMM.Xymat,
+            LMM.feterm,
             fill!(similar(y), 1),
             LMM.parmap,
             LMM.dims,
@@ -414,7 +425,7 @@ function Base.getproperty(m::GeneralizedLinearMixedModel, s::Symbol)
         σs(m)
     elseif s == :σρs
         σρs(m)
-    elseif s ∈ (:A, :L, :optsum, :allterms, :reterms, :feterms, :formula)
+    elseif s ∈ (:A, :L, :optsum, :reterms, :Xymat, :feterm, :formula)
         getfield(m.LMM, s)
     elseif s ∈ (:dims, :λ, :lowerbd, :corr, :PCA, :rePCA, :X,)
         getproperty(m.LMM, s)
@@ -508,7 +519,12 @@ function pirls!(
     for j in eachindex(u)         # start from u all zeros
         copyto!(u₀[j], fill!(u[j], 0))
     end
-    varyβ && copyto!(β₀, β)
+    if varyβ
+        copyto!(β₀, β)
+        Llast = last(lm.L)
+        pp1 = size(Llast, 1)
+        Ltru = view(Llast, pp1, 1:(pp1 - 1)) # name read as L'u
+    end
     obj₀ = deviance!(m) * 1.0001
     if verbose
         print("varyβ = ", varyβ, ", obj₀ = ", obj₀)
@@ -519,7 +535,7 @@ function pirls!(
         println()
     end
     for iter = 1:maxiter
-        varyβ && ldiv!(adjoint(feL(m)), copyto!(β, lm.L[end-1]))
+        varyβ && ldiv!(adjoint(feL(m)), copyto!(β, Ltru))
         ranef!(u, m.LMM, β, true) # solve for new values of u
         obj = deviance!(m)        # update GLM vecs and evaluate Laplace approx
         verbose && println(lpad(iter, 4), ": ", obj)
@@ -551,7 +567,7 @@ end
 
 ranef(m::GeneralizedLinearMixedModel; uscale::Bool=false) = ranef(m.LMM, uscale=uscale)
 
-LinearAlgebra.rank(m::GeneralizedLinearMixedModel) = first(m.LMM.feterms).rank
+LinearAlgebra.rank(m::GeneralizedLinearMixedModel) = m.LMM.feterm.rank
 
 """
     refit!(m::GeneralizedLinearMixedModel[, y::Vector];

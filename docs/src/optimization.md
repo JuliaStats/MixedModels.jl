@@ -120,7 +120,7 @@ identity matrix where the multiple is
 t1.λ
 ```
 
-Because there is only one random-effects term in the model, the matrix $\bf Z$ is the indicators matrix shown as the result of `Matrix(t1)`, but stored in a special sparse format.
+Because there is only one random-effects term in the model, the matrix $\bf Z$ is the indicators matrix shown as the result of `Int.(t1)`, but stored in a special sparse format.
 Furthermore, there is only one block in $\Lambda_\theta$.
 
 
@@ -153,19 +153,23 @@ Int.(t31)
 For this model the matrix $\bf Z$ is the same as that of model `fm2` but the diagonal blocks of $\Lambda_\theta$ are themselves diagonal.
 ```@example Main
 t31.λ
+```
+```@example Main
 MixedModels.getθ(t31)
 ```
-Random-effects terms with distinct grouping factors generate distinct elements of the `allterms` field of the `LinearMixedModel` object.
+Random-effects terms with distinct grouping factors generate distinct elements of the `reterms` field of the `LinearMixedModel` object.
 Multiple `ReMat` objects are sorted by decreasing numbers of random effects.
 ```@example Main
 penicillin = MixedModels.dataset(:penicillin)
 fm4 = fit(MixedModel,
-    @formula(diameter ~ 1 + (1|plate) + (1|sample)),
+    @formula(diameter ~ 1 + (1|sample) + (1|plate)),
     penicillin)
 Int.(first(fm4.reterms))
+```
+```@example Main
 Int.(last(fm4.reterms))
 ```
-Note that the first `ReMat` in `fm4.terms` corresponds to grouping factor `G` even though the term `(1|G)` occurs in the formula after `(1|H)`.
+Note that the first `ReMat` in `fm4.reterms` corresponds to grouping factor `plate` even though the term `(1|plate)` occurs in the formula after `(1|sample)`.
 
 ### Progress of the optimization
 
@@ -183,6 +187,7 @@ fm2.optsum
 ## A blocked Cholesky factor
 
 A `LinearMixedModel` object contains two blocked matrices; a symmetric matrix `A` (only the lower triangle is stored) and a lower-triangular `L` which is the lower Cholesky factor of the updated and inflated `A`.
+In versions 4.0.0 and later of `MixedModels` only the blocks in the lower triangle are stored in `A` and `L`, as a `Vector{AbstractMatrix{T}}`
 ```@docs
 BlockDescription
 ```
@@ -190,6 +195,8 @@ shows the structure of the blocks
 ```@example Main
 BlockDescription(fm2)
 ```
+
+Another change in v4.0.0 and later is that the last row of blocks is constructed from `m.Xymat` which contains the full-rank model matrix `X` with the response `y` concatenated on the right.
 
 The operation of installing a new value of the variance parameters, `θ`, and updating `L`
 ```@docs
@@ -246,7 +253,7 @@ In a [*generalized linear model*](https://en.wikipedia.org/wiki/Generalized_line
 The scalar distributions of individual responses differ only in their means, which are determined by a *linear predictor* expression $\eta=\bf X\beta$, where, as before, $\bf X$ is a model matrix derived from the values of covariates and $\beta$ is a vector of coefficients.
 
 The unconstrained components of $\eta$ are mapped to the, possiby constrained, components of the mean response, $\mu$, via a scalar function, $g^{-1}$, applied to each component of $\eta$.
-For historical reasons, the inverse of this function, taking components of $\mu$ to the corresponding component of $\eta$ is called the *link function* and more frequently used map from $\eta$ to $\mu$ is the *inverse link*.
+For historical reasons, the inverse of this function, taking components of $\mu$ to the corresponding component of $\eta$ is called the *link function* and the more frequently used map from $\eta$ to $\mu$ is the *inverse link*.
 
 A *generalized linear mixed-effects model* (GLMM) is defined, for the purposes of this package, by
 ```math
@@ -298,7 +305,7 @@ In a call to the `pirls!` function the first argument is a `GeneralizedLinearMix
 The second and third arguments are optional logical values indicating if $\beta$ is to be varied and if verbose output is to be printed.
 
 ```@example Main
-pirls!(mdl, true, true)
+pirls!(mdl, true, false);
 ```
 
 ```@example Main
@@ -344,9 +351,3 @@ mdl1 = @btime fit(MixedModel, vaform, verbagg, Bernoulli())
 
 This fit provided slightly better results (Laplace approximation to the deviance of 8151.400 versus 8151.583) but took 6 times as long.
 That is not terribly important when the times involved are a few seconds but can be important when the fit requires many hours or days of computing time.
-
-The comparison of the slow and fast fit is available in the optimization summary after the slow fit.
-
-```@example Main
-mdl1.LMM.optsum
-```

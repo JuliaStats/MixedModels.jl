@@ -92,7 +92,7 @@ include("modelcache.jl")
 |:----|:------------:|:------------:|:------------:|
 |316  |Diagonal      |              |              |
 |24   |Dense         |Diag/Dense    |              |
-|6    |Dense         |Dense         |Dense         |
+|7    |Dense         |Dense         |Dense         |
 """
 
     end

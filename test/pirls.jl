@@ -61,7 +61,6 @@ include("modelcache.jl")
     #@test isapprox(sum(gm1.resp.devresid), 2237.349, atol=0.1)
     show(IOBuffer(), gm1)
     show(IOBuffer(), BlockDescription(gm0))
-
 end
 
 @testset "cbpp" begin

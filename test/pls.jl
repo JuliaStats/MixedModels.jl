@@ -8,7 +8,7 @@ using StatsModels
 using Tables
 using Test
 
-using MixedModels: dataset, likelihoodratiotest
+using MixedModels: likelihoodratiotest
 
 const io = IOBuffer()
 
@@ -17,7 +17,7 @@ include("modelcache.jl")
 @testset "Dyestuff" begin
     fm1 = only(models(:dyestuff))
 
-    @test length(fm1.allterms) == 3
+    @test length(fm1.A) == 3
     @test size(fm1.reterms) == (1, )
     @test lowerbd(fm1) == zeros(1)
     @test fm1.lowerbd == zeros(1)
@@ -31,7 +31,6 @@ include("modelcache.jl")
     @test_logs (:warn, "Model has not been fit") show(fm1)
 
     @test objective(updateL!(setθ!(fm1, [0.713]))) ≈ 327.34216280955366
-    @test_deprecated MixedModels.describeblocks(IOBuffer(), fm1)
 
     show(io, BlockDescription(fm1))
     @test countlines(seekstart(io)) == 3
@@ -92,7 +91,7 @@ include("modelcache.jl")
 
     @test logdet(fm1) ≈ 8.06014522999825 atol=0.001
     @test varest(fm1) ≈ 2451.2501089607676 atol=0.001
-    @test pwrss(fm1) ≈ 73537.49947885796 atol=0.001
+    @test pwrss(fm1) ≈ 73537.50152584909 atol=0.01 # this quantity is not precisely estimated
     @test stderror(fm1) ≈ [17.69455188898009] atol=0.0001
 
     vc = VarCorr(fm1)
@@ -149,7 +148,7 @@ end
     @test objective(fm) ≈ 332.18834867227616 atol=0.001
     @test coef(fm) ≈ [22.97222222222222] atol=0.001
     @test fixef(fm) ≈ [22.97222222222222] atol=0.001
-    @test coef(fm)[1] ≈ mean(dataset(:penicillin).diameter)
+    @test coef(fm)[1] ≈ mean(MixedModels.dataset(:penicillin).diameter)
     @test stderror(fm) ≈ [0.7445960346851368] atol=0.0001
     @test fm.θ ≈ [1.5375772376554968, 3.219751321180035] atol=0.001
     @test first(std(fm)) ≈ [0.8455645948223015] atol=0.0001
@@ -422,7 +421,7 @@ end
     θminqa = [1.6455, -0.2430, 1.0160, 0.8955, 2.7054, 0.0898]
     # very loose tolerance for unstable fit
     # but this is a convenient test of rankUpdate!(::UniformBlockDiagonal)
-    @test all(isapprox.(m.θ, θnlopt; atol=1e-2))
+    @test isapprox(m.θ, θnlopt; atol=5e-2)
 end
 
 @testset "Rank deficient" begin
@@ -437,8 +436,8 @@ end
     @test ct.rownms ==  ["(Intercept)", "x", "x2"]
     @test length(fixefnames(model)) == 2
     @test coefnames(model) == ["(Intercept)", "x", "x2"]
-    piv = first(model.feterms).piv
-    r = first(model.feterms).rank
+    piv = model.feterm.piv
+    r = model.feterm.rank
     @test coefnames(model)[piv][1:r] == fixefnames(model)
 end
 
@@ -471,7 +470,7 @@ end
 end
 
 @testset "unifying ReMat eltypes" begin
-    sleepstudy = dataset(:sleepstudy)
+    sleepstudy = MixedModels.dataset(:sleepstudy)
 
     re = LinearMixedModel(@formula(reaction ~ 1 + days + (1|subj) + (days|subj)), sleepstudy).reterms
     # make sure that the eltypes are still correct

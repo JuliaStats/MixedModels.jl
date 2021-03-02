@@ -41,7 +41,7 @@ To bootstrap the model parameters, first initialize a random number generator th
 
 ```@example Main
 const rng = MersenneTwister(1234321);
-samp = parametricbootstrap(rng, 10_000, m1, use_threads=true);
+samp = parametricbootstrap(rng, 10_000, m1);
 df = DataFrame(samp.allpars);
 first(df, 10)
 ```

@@ -252,21 +252,20 @@ end
 
 *(adjA::Adjoint{T,<:ReMat{T}}, B::ReMat{T}) where {T} = adjA.parent.adjA * sparse(B)
 *(adjA::Adjoint{T,<:FeMat{T}}, B::ReMat{T}) where {T} =
-    mul!(Matrix{T}(undef, rank(adjA.parent), size(B, 2)), adjA, B)
+    mul!(Matrix{T}(undef, size(adjA.parent, 2), size(B, 2)), adjA, B)
 
 function LinearAlgebra.mul!(C::Matrix{T}, adjA::Adjoint{T,<:FeMat{T}}, B::ReMat{T,1},
         α::Number, β::Number) where {T}
     A = adjA.parent
-    Awt = A.wtx
+    Awt = A.wtxy
     n, p = size(Awt)
-    r = A.rank
     m, q = size(B)
-    size(C) == (r, q) && m == n || throw(DimensionMismatch())
+    size(C) == (p, q) && m == n || throw(DimensionMismatch())
     isone(β) || rmul!(C, β)
     zz = B.wtz
     @inbounds for (j, rrj) in enumerate(B.refs)
         αzj = α * zz[j]
-        for i in 1:r
+        for i in 1:p
             C[i, rrj] += αzj * Awt[j, i]
         end
     end
@@ -276,8 +275,8 @@ end
 function LinearAlgebra.mul!(C::Matrix{T}, adjA::Adjoint{T,<:FeMat{T}}, B::ReMat{T,S},
     α::Number, β::Number) where {T,S}
     A = adjA.parent
-    Awt = A.wtx
-    r = rank(A)
+    Awt = A.wtxy
+    r = size(Awt, 2)
     rr = B.refs
     scr = B.scratch
     vscr = vec(scr)
