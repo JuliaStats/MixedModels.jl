@@ -12,14 +12,17 @@ Packages like `IJulia` and `Documenter` can often detect the presence of these d
 
 ```@example Main
 using MixedModels
-m1 = fit(MixedModel, @formula(reaction ~ 1 + days + (1+days|subj)), MixedModels.dataset(:sleepstudy))
+form = @formula(rt_trunc ~ 1 + spkr * prec * load +
+                          (1 + load | item) +
+                          (1 + spkr + prec + load | subj))
+kbm = fit(MixedModel, form, MixedModels.dataset(:kb07))
 ```
 
 Note that the display here is more succinct than the standard REPL display:
 
 ```@example Main
 using DisplayAs
-m1 |> DisplayAs.Text
+kbm |> DisplayAs.Text
 ```
 
 This brevity is intentional: we wanted these types work well with traditional academic publishing constraints on tables.
@@ -29,21 +32,22 @@ We nonetheless encourage users to report fit statistics such as the log likeliho
 If the correlation parameters in the random effects are of interest, then [`VarCorr`](@ref) can also be pretty printed:
 
 ```@example Main
-VarCorr(m1)
+VarCorr(kbm)
 ```
 
 Similarly for [`BlockDescription`](@ref), `OptSummary` and `MixedModels.likelihoodratiotest`:
 
 ```@example Main
-BlockDescription(m1)
+BlockDescription(kbm)
 ```
 
 ```@example Main
-m1.optsum
+kbm.optsum
 ```
 
 ```@example Main
 m0 = fit(MixedModel, @formula(reaction ~ 1 + (1|subj)), MixedModels.dataset(:sleepstudy))
+m1 = fit(MixedModel, @formula(reaction ~ 1 + days + (1+days|subj)), MixedModels.dataset(:sleepstudy))
 MixedModels.likelihoodratiotest(m0,m1)
 ```
 
@@ -52,13 +56,14 @@ To explicitly invoke this behavior, we must specify the right `show` method:
 show(MIME("text/markdown"), m1)
 ```
 ```@example Main
-println(sprint(show, MIME("text/markdown"), m1)) # hide
+println(sprint(show, MIME("text/markdown"), kbm)) # hide
 ```
+(The raw and not rendered output is intentionally shown here.)
 
-(In the future, we may directly support HTML and LaTeX as MIME types.)
+In the future, we may directly support HTML and LaTeX as MIME types.
 
 This output can also be written directly to file:
 
 ```julia
-show(open("model.md", "w"), MIME("text/markdown"), m1)
+show(open("model.md", "w"), MIME("text/markdown"), kbm)
 ```

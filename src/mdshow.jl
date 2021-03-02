@@ -159,12 +159,13 @@ function Base.show(io::IO, ::MIME"text/markdown", vc::VarCorr)
     showσvec = aligncompact(σvec, digits)
     showvarvec = aligncompact(varvec, digits)
 
+
     newrow = [" ", "Column"," Variance", "Std.Dev"]
-    iszero(nρ) || append!(push!(newrow, "Corr."), repeat([" "], nρ-1))
+    iszero(nρ) || push!(newrow, "Corr.")
     rows = [newrow]
 
     align = [:l, :l, :r, :r]
-    iszero(nρ) || append!(align, repeat([:r], nρ))
+    iszero(nρ) || push!(align, :r)
 
     ind = 1
     for (i, v) in enumerate(values(vc.σρ))
@@ -183,7 +184,6 @@ function Base.show(io::IO, ::MIME"text/markdown", vc::VarCorr)
                 ρval = ρ[ρind]
                 ρval === -0.0 ? push!(newrow, ".") : push!(newrow, Ryu.writefixed(ρval, 2, true))
             end
-            ρind < nρ && append!(newrow, repeat([" "], nρ-ρind))
             push!(rows, newrow)
             newrow = Vector{String}()
             firstrow = false
@@ -193,9 +193,15 @@ function Base.show(io::IO, ::MIME"text/markdown", vc::VarCorr)
     end
     if !isnothing(vc.s)
         newrow = [string(last(nmvec)), " ", string(showvarvec[ind]), string(showσvec[ind])]
-        append!(newrow, repeat([" "], nρ))
         push!(rows, newrow)
     end
+
+    # pad out the rows to all have the same length
+    rowlen = maximum(length, rows)
+    for rr in rows
+        append!(rr, repeat([" "], rowlen-length(rr)))
+    end
+    append!(align, repeat([:r], rowlen-length(align)))
     tbl = Markdown.Table(rows, align)
     show(io, Markdown.MD(tbl))
 end
