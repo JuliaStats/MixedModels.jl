@@ -69,71 +69,51 @@ function Base.show(io::IO, ::MIME"text/markdown", m::MixedModel)
     REML = m.optsum.REML
     nrecols = length(fnames(m))
 
+    digits = 4
+
     co = coef(m)
     se = stderror(m)
     z = co ./ se
     p = ccdf.(Chisq(1), abs2.(z))
 
-    bnwidth = max(maximum(length, coefnames(m)), length(_dname(m)))
-    fnwidth = maximum(length ∘ string, fnames(m))
     σvec = vcat(collect.(values.(values(m.σs)))...)
     σwidth = _printdigits(σvec)
-    σcolwidth = max(maximum(length ∘ string, aligncompact(σvec, σwidth)),
-                    fnwidth+2) + 1 # because fn's will be preceded by σ_
 
+    newrow = ["", "Est.", "SE", "z", "p"]
+    align = [:l, :l, :r, :r, :r]
 
-    co = aligncompact(co)
-    se = aligncompact(se)
-
-    cowidth = maximum(length, co)
-    sewidth = maximum(length, se)
-
-    zwidth = maximum(length ∘ string, aligncompact(round.(z; digits=2)))
-    pwidth = 6 # small value formatting
-
-    print(io,"|$(" "^bnwidth)|$(lpad("Est.",cowidth))|$(lpad("SE", sewidth))|$(lpad("z",zwidth))|$(lpad("p",pwidth))|" )
     for rr in fnames(m)
-        print(io,"σ_$(rpad(rr,σcolwidth-2))|")
+        push!(newrow,"σ_$(rr)")
+        push!(align,:r)
     end
-    println(io)
 
-    print(io,"|:", "-"^(bnwidth-1),"|", "-"^(cowidth-1),":|", "-"^(sewidth-1), ":|", "-"^(zwidth-1),":|", "-"^(pwidth-1), ":|" )
-    for rr in fnames(m)
-        print(io,"-"^(σcolwidth-1), ":|")
-    end
-    println(io)
+    rows = [newrow]
 
     for (i, bname) in enumerate(coefnames(m))
-
-        print(io, "|$(rpad(bname, bnwidth))|$(lpad(co[i],cowidth))|$(lpad(se[i], sewidth))|")
-        print(io, lpad(sprint(show, StatsBase.TestStat(z[i])), zwidth))
-        print(io, "|")
-        print(io, rpad(sprint(show, StatsBase.PValue(p[i])), pwidth))
-        print(io, "|")
-
+        newrow = [bname, Ryu.writefixed(co[i],digits), Ryu.writefixed(se[i],digits),
+                  sprint(show, StatsBase.TestStat(z[i])), sprint(show, StatsBase.PValue(p[i]))]
         bname = Symbol(bname)
 
         for (j, sig) in enumerate(m.σs)
             if bname in keys(sig)
-                print(io, "$(lpad(aligncompact(getproperty(sig, bname), σwidth),σcolwidth))")
+                push!(newrow, Ryu.writefixed(getproperty(sig, bname),digits))
             else
-                print(io, " "^σcolwidth)
+                push!(newrow, " ")
             end
-            print(io, "|")
         end
-        println(io)
+        push!(rows, newrow)
     end
 
     if dispersion_parameter(m)
-        print(io, "|$(rpad(_dname(m), bnwidth))|$(string(dispersion(m))[1:cowidth])")
-        print(io, "|$(" "^sewidth)|$(" "^zwidth)|$(" "^pwidth)|")
+        newrow = [_dname(m), Ryu.writefixed(dispersion(m),digits), "", "", ""]
         for rr in fnames(m)
-            print(io,"$(" "^σcolwidth)|")
+            push!(newrow, "")
         end
-        println(io)
+        push!(rows, newrow)
     end
 
-    return nothing
+    tbl = Markdown.Table(rows, align)
+    show(io, Markdown.MD(tbl))
 end
 
 
@@ -173,57 +153,49 @@ function Base.show(io::IO, ::MIME"text/markdown", vc::VarCorr)
         push!(σvec, vc.s)
         push!(nmvec, "Residual")
     end
-    nmwd = maximum(textwidth.(nmvec)) + 1
-    cnmwd = maximum(textwidth.(cnmvec)) + 1
     nρ = maximum(length.(getproperty.(values(σρ), :ρ)))
     varvec = abs2.(σvec)
     digits = _printdigits(σvec)
     showσvec = aligncompact(σvec, digits)
     showvarvec = aligncompact(varvec, digits)
-    varwd = maximum(textwidth.(showvarvec)) + 1
-    stdwd = maximum(textwidth.(showσvec)) + 1
-    corwd = 6
-    write(io, "|", " "^(nmwd), "|")
-    write(io, cpad("Column", cnmwd), "|")
-    write(io, cpad("Variance", varwd), "|")
-    write(io, cpad("Std.Dev.", stdwd), "|")
-    iszero(nρ) || write(io, "$(cpad("Corr.", corwd))|$(repeat("$(" "^corwd)|", nρ-1))")
-    println(io)
-    write(io, "|:", "-"^(nmwd-1), "|:", "-"^(cnmwd-1), "|", "-"^(varwd-1), ":|", "-"^(stdwd-1), ":|")
-    iszero(nρ) || write(io, "$(repeat("$("-"^(corwd-1)):|", nρ))")
-    println(io)
+
+    newrow = [" ", "Column"," Variance", "Std.Dev"]
+    iszero(nρ) || append!(newrow, ["Corr."],  repeat([" "], nρ-1))
+    rows = [newrow]
+
+    align = [:l, :l, :r, :r]
+    iszero(nρ) || append!(align,  repeat([:r], nρ))
+
     ind = 1
     for (i, v) in enumerate(values(vc.σρ))
-        write(io, "|$(rpad(nmvec[i], nmwd))|")
+        newrow = [string(nmvec[i])]
         firstrow = true
         k = length(v.σ)   # number of columns in grp factor k
         ρ = v.ρ
         ρind = 0
         for j = 1:k
-            !firstrow && write(io, "|", " "^nmwd, "|")
-            write(io, "$(rpad(cnmvec[ind], cnmwd))|")
-            write(io, "$(lpad(showvarvec[ind], varwd))|")
-            write(io, "$(lpad(showσvec[ind], stdwd))|")
+            !firstrow && push!(newrow, " ")
+            push!(newrow, string(cnmvec[ind]))
+            push!(newrow, string(showvarvec[ind]))
+            push!(newrow, string(showσvec[ind]))
             for l = 1:(j-1)
                 ρind += 1
                 ρval = ρ[ρind]
-                ρval === -0.0 ? write(io, cpad(".", corwd)) : write(io, lpad(Ryu.writefixed(ρval, 2, true), corwd))
-                write(io, "|")
+                ρval === -0.0 ? push!(newrow, ".") : push!(newrow, Ryu.writefixed(ρval, 2, true))
             end
-            ρind < nρ && write(io, "      |"^(nρ - ρind) )
-            println(io)
+            ρind < nρ && append!(newrow, repeat([" "], nρ-ρind))
+            push!(rows, newrow)
+            newrow = Vector{String}()
             firstrow = false
             ind += 1
         end
+
     end
     if !isnothing(vc.s)
-        write(io, "|", rpad(last(nmvec), nmwd))
-        write(io, "|", " "^cnmwd)
-        write(io, "|", lpad(showvarvec[ind], varwd))
-        write(io, "|", lpad(showσvec[ind], stdwd))
-        write(io, "|")
-        write(io, "      |"^(nρ) )
-        println(io)
+        newrow = [string(last(nmvec)), " ", string(showvarvec[ind]), string(showσvec[ind])]
+        append!(newrow, repeat([" "], nρ))
+        push!(rows, newrow)
     end
-    return nothing
+    tbl = Markdown.Table(rows, align)
+    show(io, Markdown.MD(tbl))
 end
