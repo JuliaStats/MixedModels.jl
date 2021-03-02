@@ -31,6 +31,6 @@ function statsrank(x::AbstractMatrix{T}; ranktol=1e-8) where {T<:AbstractFloat}
     end
 
     # preserve as much of the original column ordering as possible
-    sort!(view(piv, 1:rank))
+    sort!(view(piv, 1:rank)) # maintain the original column order for the linearly independent columns
     (rank = rank, piv = piv)
 end
