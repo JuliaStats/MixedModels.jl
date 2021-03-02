@@ -3,6 +3,11 @@
 
 Term with an explicit, constant matrix representation
 
+Typically, an `FeTerm` represents the model matrix for the fixed effects. 
+
+!!! note
+    `FeTerm` is not the same as [`FeMat`](@ref)!
+
 # Fields
 * `x`: full model matrix
 * `piv`: pivot `Vector{Int}` for moving linearly dependent columns to the right
@@ -79,6 +84,12 @@ isfullrank(A::FeTerm) = A.rank == length(A.piv)
 
 A matrix and a (possibly) weighted copy of itself.
 
+
+Typically, an `FeMat` represents the fixed-effects model matrix with the response (`y`) concatenated as a final column.
+
+!!! note
+    `FeMat` is not the same as [`FeTerm`](@ref).
+
 # Fields
 - `xy`: original matrix, called `xy` b/c in practice this is `hcat(fullrank(X), y)`
 - `wtxy`: (possibly) weighted copy of `xy` (shares storage with `xy` until weights are applied)
@@ -101,7 +112,7 @@ Base.eltype(::FeMat{T}) where {T} = T
 
 Base.getindex(A::FeMat, i, j) = getindex(A.xy, i, j)
 
-Base.length(A::FeMat) = length(A.wtxy)
+Base.length(A::FeMat) = length(A.xy)
 
 function *(adjA::Adjoint{T,<:FeMat{T}}, B::FeMat{T}) where {T}
     adjoint(adjA.parent.wtxy) * B.wtxy

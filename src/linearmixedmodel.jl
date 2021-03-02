@@ -8,7 +8,7 @@ Linear mixed-effects model representation
 * `formula`: the formula for the model
 * `reterms`: a `Vector{AbstractReMat{T}}` of random-effects terms.
 * `Xymat`: horizontal concatenation of a full-rank fixed-effects model matrix `X` and response `y` as an `FeMat{T}`
-* `feterm`: the fixed-effects model matrix as an `FeMat{T}`
+* `feterm`: the fixed-effects model matrix as an `FeTerm{T}`
 * `sqrtwts`: vector of square roots of the case weights.  Can be empty.
 * `parmap` : Vector{NTuple{3,Int}} of (block, row, column) mapping of θ to λ
 * `dims` : NamedTuple{(:n, :p, :nretrms),NTuple{3,Int}} of dimensions.  `p` is the rank of `X`, which may be smaller than `size(X, 2)`.
@@ -295,6 +295,7 @@ function pushALblock!(A, L, blk)
     push!(L, blk)
     push!(A, deepcopy(isa(blk, BlockedSparse) ? blk.cscmat : blk))
 end
+
 function createAL(reterms::Vector{AbstractReMat{T}}, Xy::FeMat{T}) where {T}
     k = length(reterms)
     vlen = kchoose2(k+1)
