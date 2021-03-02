@@ -88,12 +88,12 @@ For example, we can use `fulldummy` to fit both an intercept term and $n$ indica
 kb07 = MixedModels.dataset(:kb07)
 contrasts = Dict(var => HelmertCoding() for var in (:spkr, :prec, :load))
 fit(MixedModel, @formula(rt_raw ~ spkr * prec * load + (1|subj) + (1+prec|item)), kb07; contrasts=contrasts)
-ans |> DisplayAs.Text # hide
+DisplayAs.Text(ans) # hide
 ```
 
 ```@example Main
 fit(MixedModel, @formula(rt_raw ~ spkr * prec * load + (1|subj) + (1+fulldummy(prec)|item)), kb07; contrasts=contrasts)
-ans |> DisplayAs.Text # hide
+DisplayAs.Text(ans) # hide
 ```
 
 This may be useful when the `PCA` property suggests a random effects structure larger than only main effects but smaller than all interaction terms.

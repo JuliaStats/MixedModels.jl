@@ -40,7 +40,7 @@ A basic model with simple, scalar random effects for the levels of `batch` (the 
 ```@example Main
 fm = @formula(yield ~ 1 + (1|batch))
 fm1 = fit(MixedModel, fm, dyestuff)
-ans |> DisplayAs.Text # hide
+DisplayAs.Text(ans) # hide
 ```
 
 ```@setup Main
@@ -62,7 +62,7 @@ dyestuff2 = MixedModels.dataset(:dyestuff2)
 By default, the model is fit by maximum likelihood. To use the `REML` criterion instead, add the optional named argument `REML=true` to the call to `fit`
 ```@example Main
 fm1reml = fit(MixedModel, fm, dyestuff, REML=true)
-ans |> DisplayAs.Text # hide
+DisplayAs.Text(ans) # hide
 ```
 ```@setup Main
 @testset "fm1reml" begin
@@ -102,7 +102,7 @@ A model with random intercepts and random slopes for each subject, allowing for 
 ```@example Main
 sleepstudy = MixedModels.dataset(:sleepstudy)
 fm2 = fit(MixedModel, @formula(reaction ~ 1 + days + (1 + days|subj)), sleepstudy)
-ans |> DisplayAs.Text # hide
+DisplayAs.Text(ans) # hide
 ```
 ```@setup Main
 @testset "fm2" begin
@@ -120,7 +120,7 @@ As every sample is used on every plate these two factors are *crossed*.
 ```@example Main
 penicillin = MixedModels.dataset(:penicillin)
 fm3 = fit(MixedModel, @formula(diameter ~ 1 + (1|plate) + (1|sample)), penicillin)
-ans |> DisplayAs.Text # hide
+DisplayAs.Text(ans) # hide
 ```
 ```@setup Main
 @testset "fm3" begin
@@ -139,14 +139,14 @@ describe(pastes)
 This can be expressed using the solidus (the "`/`" character) to separate grouping factors, read "`cask` nested within `batch`":
 ```@example Main
 fm4a = fit(MixedModel, @formula(strength ~ 1 + (1|batch/cask)), pastes)
-ans |> DisplayAs.Text # hide
+DisplayAs.Text(ans) # hide
 ```
 
 If the levels of the inner grouping factor are unique across the levels of the outer grouping factor, then this nesting does not need to expressed explicitly in the model syntax. For example, defining `sample` to be the combination of `batch` and `cask`, yields a naming scheme where the nesting is apparent from the data even if not expressed in the formula. (That is, each level of `sample` occurs in conjunction with only one level of `batch`.) As such, this model is equivalent to the previous one.
 ```@example Main
 pastes.sample = (string.(pastes.cask, "&",  pastes.batch))
 fm4b = fit(MixedModel, @formula(strength ~ 1 + (1|sample) + (1|batch)), pastes)
-ans |> DisplayAs.Text # hide
+DisplayAs.Text(ans) # hide
 ```
 ```@setup Main
 @testset "implicit and explicit nesting" begin
@@ -162,7 +162,7 @@ Additional covariates include the academic department, `dept`, in which the cour
 ```@example Main
 insteval = MixedModels.dataset(:insteval)
 fm5 = fit(MixedModel, @formula(y ~ 1 + service * dept + (1|s) + (1|d)), insteval)
-ans |> DisplayAs.Text # hide
+DisplayAs.Text(ans) # hide
 ```
 ```@setup Main
 @testset "fm5" begin
@@ -183,13 +183,13 @@ This often arises when there are many random effects you want to estimate (as is
 The special syntax `zerocorr` can be applied to individual random effects terms inside the `@formula`:
 ```@example Main
 fm2zerocorr_fm = fit(MixedModel, @formula(reaction ~ 1 + days + zerocorr(1 + days|subj)), sleepstudy)
-ans |> DisplayAs.Text # hide
+DisplayAs.Text(ans) # hide
 ```
 
 Alternatively, correlations between parameters can be removed by including them as separate random effects terms:
 ```@example Main
 fit(MixedModel, @formula(reaction ~ 1 + days + (1|subj) + (days|subj)), sleepstudy)
-ans |> DisplayAs.Text # hide
+DisplayAs.Text(ans) # hide
 ```
 
 Finally, for predictors that are categorical, MixedModels.jl will estimate correlations between each level.
@@ -197,14 +197,14 @@ Notice the large number of correlation parameters if we treat `days` as a catego
 ```@example Main
 fit(MixedModel, @formula(reaction ~ 1 + days + (1 + days|subj)), sleepstudy,
     contrasts = Dict(:days => DummyCoding()))
-ans |> DisplayAs.Text # hide
+DisplayAs.Text(ans) # hide
 ```
 
 Separating the `1` and `days` random effects into separate terms removes the correlations between the intercept and the levels of `days`, but not between the levels themselves:
 ```@example Main
 fit(MixedModel, @formula(reaction ~ 1 + days + (1|subj) + (days|subj)), sleepstudy,
     contrasts = Dict(:days => DummyCoding()))
-ans |> DisplayAs.Text # hide
+DisplayAs.Text(ans) # hide
 ```
 (Notice that the variance component for `days: 1` is estimated as zero, so the correlations for this component are undefined and expressed as `NaN`, not a number.)
 
@@ -215,7 +215,7 @@ fulldummy
 ```@example Main
 fit(MixedModel, @formula(reaction ~ 1 + days + (1 + fulldummy(days)|subj)), sleepstudy,
     contrasts = Dict(:days => DummyCoding()))
-ans |> DisplayAs.Text # hide
+DisplayAs.Text(ans) # hide
 ```
 This fit produces a better fit as measured by the objective (negative twice the log-likelihood is 1610.8) but at the expense of adding many more parameters to the model.
 As a result, model comparison criteria such, as `AIC` and `BIC`, are inflated.
@@ -224,17 +224,17 @@ But using `zerocorr` on the individual terms does remove the correlations betwee
 ```@example Main
 fit(MixedModel, @formula(reaction ~ 1 + days + zerocorr(1 + days|subj)), sleepstudy,
     contrasts = Dict(:days => DummyCoding()))
-ans |> DisplayAs.Text # hide
+DisplayAs.Text(ans) # hide
 ```
 ```@example Main
 fit(MixedModel, @formula(reaction ~ 1 + days + (1|subj) + zerocorr(days|subj)), sleepstudy,
     contrasts = Dict(:days => DummyCoding()))
-ans |> DisplayAs.Text # hide
+DisplayAs.Text(ans) # hide
 ```
 ```@example Main
 fit(MixedModel, @formula(reaction ~ 1 + days + zerocorr(1 + fulldummy(days)|subj)), sleepstudy,
     contrasts = Dict(:days => DummyCoding()))
-ans |> DisplayAs.Text # hide
+DisplayAs.Text(ans) # hide
 ```
 
 ## Fitting generalized linear mixed models
@@ -249,7 +249,7 @@ the distribution family for the response, and possibly the link function, must b
 verbagg = MixedModels.dataset(:verbagg)
 verbaggform = @formula(r2 ~ 1 + anger + gender + btype + situ + mode + (1|subj) + (1|item));
 gm1 = fit(MixedModel, verbaggform, verbagg, Bernoulli())
-ans |> DisplayAs.Text # hide
+DisplayAs.Text(ans) # hide
 ```
 
 The canonical link, which is `LogitLink` for the `Bernoulli` distribution, is used if no explicit link is specified.
@@ -418,7 +418,7 @@ coeftable
 ```
 ```@example Main
 coeftable(fm2)
-ans |> DisplayAs.Text # hide
+DisplayAs.Text(ans) # hide
 ```
 
 ## Covariance parameter estimates
@@ -429,11 +429,11 @@ VarCorr
 ```
 ```@example Main
 VarCorr(fm2)
-ans |> DisplayAs.Text # hide
+DisplayAs.Text(ans) # hide
 ```
 ```@example Main
 VarCorr(gm1)
-ans |> DisplayAs.Text # hide
+DisplayAs.Text(ans) # hide
 ```
 
 Individual components are returned by other extractors
@@ -532,7 +532,7 @@ sum(leverage(fm2))
 When a model converges to a singular covariance, such as
 ```@example Main
 fm3 = fit(MixedModel, @formula(yield ~ 1+(1|batch)), MixedModels.dataset(:dyestuff2))
-ans |> DisplayAs.Text # hide
+DisplayAs.Text(ans) # hide
 ```
 the effective degrees of freedom is the lower bound.
 ```@example Main
@@ -543,7 +543,7 @@ Models for which the estimates of the variances of the random effects are large 
 ```@example Main
 fm4 = fit(MixedModel, @formula(diameter ~ 1+(1|plate)+(1|sample)),
     MixedModels.dataset(:penicillin))
-ans |> DisplayAs.Text # hide
+DisplayAs.Text(ans) # hide
 ```
 ```@example Main
 sum(leverage(fm4))
@@ -553,7 +553,7 @@ Also, a model fit by the REML criterion generally has larger estimates of the va
 ```@example Main
 fm4r = fit(MixedModel, @formula(diameter ~ 1+(1|plate)+(1|sample)),
     MixedModels.dataset(:penicillin), REML=true)
-ans |> DisplayAs.Text # hide
+DisplayAs.Text(ans) # hide
 ```
 ```@example Main
 sum(leverage(fm4r))

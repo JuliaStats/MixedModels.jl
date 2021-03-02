@@ -31,16 +31,16 @@ function Base.show(io::IO, ::MIME"text/markdown", lrt::LikelihoodRatioTest)
     outrows = Vector{Vector{String}}(undef, nr+1)
 
     outrows[1] = ["",
-                    "model-dof",
-                    "deviance",
-                    "χ²",
-                    "χ²-dof",
-                    "P(>χ²)"] # colnms
+                  "model-dof",
+                  "deviance",
+                  "χ²",
+                  "χ²-dof",
+                  "P(>χ²)"] # colnms
 
     outrows[2] = [string(lrt.formulas[1]),
                   string(lrt.dof[1]),
                   string(round(Int,lrt.deviance[1])),
-                    " "," ", " "]
+                  " "," ", " "]
 
     for i in 2:nr
         outrows[i+1] = [string(lrt.formulas[i]),
@@ -121,24 +121,24 @@ function Base.show(io::IO, ::MIME"text/markdown", s::OptSummary)
     rows = [["",""]]
 
     push!(rows, ["**Initialization**", ""])
-    push!(rows,["Initial parameter vector", string(s.initial)])
-    push!(rows,["Initial objective value", string(s.finitial)])
+    push!(rows, ["Initial parameter vector", string(s.initial)])
+    push!(rows, ["Initial objective value", string(s.finitial)])
 
-    push!(rows,["**Optimizer settings** ", ""])
-    push!(rows,["Optimizer (from NLopt)", "`$(s.optimizer)`"])
-    push!(rows,["`Lower bounds`", string(s.lowerbd)])
-    push!(rows,["`ftol_rel`", string(s.ftol_rel)])
-    push!(rows,["`ftol_abs`", string(s.ftol_abs)])
-    push!(rows,["`xtol_rel`", string(s.xtol_rel)])
-    push!(rows,["`xtol_abs`", string(s.xtol_abs)])
-    push!(rows,["`initial_step`", string(s.initial_step)])
-    push!(rows,["`maxfeval`", string(s.maxfeval)])
+    push!(rows, ["**Optimizer settings** ", ""])
+    push!(rows, ["Optimizer (from NLopt)", "`$(s.optimizer)`"])
+    push!(rows, ["`Lower bounds`", string(s.lowerbd)])
+    push!(rows, ["`ftol_rel`", string(s.ftol_rel)])
+    push!(rows, ["`ftol_abs`", string(s.ftol_abs)])
+    push!(rows, ["`xtol_rel`", string(s.xtol_rel)])
+    push!(rows, ["`xtol_abs`", string(s.xtol_abs)])
+    push!(rows, ["`initial_step`", string(s.initial_step)])
+    push!(rows, ["`maxfeval`", string(s.maxfeval)])
 
-    push!(rows,["**Result**",""])
-    push!(rows,["Function evaluations", string(s.feval)])
-    push!(rows,["Final parameter vector", "$(round.(s.final; digits=4))"])
-    push!(rows,["Final objective value", "$(round.(s.fmin; digits=4))"])
-    push!(rows,["Return code", "`$(s.returnvalue)`"])
+    push!(rows, ["**Result**",""])
+    push!(rows, ["Function evaluations", string(s.feval)])
+    push!(rows, ["Final parameter vector", "$(round.(s.final; digits=4))"])
+    push!(rows, ["Final objective value", "$(round.(s.fmin; digits=4))"])
+    push!(rows, ["Return code", "`$(s.returnvalue)`"])
 
     tbl = Markdown.Table(rows, [:l, :l])
     show(io, Markdown.MD(tbl))

@@ -113,7 +113,7 @@ A model with fixed-effects for age, age squared, number of live children and urb
 ```@example Main
 const form1 = @formula use ~ 1 + age + abs2(age) + livch + urban + (1|dist);
 m1 = fit(MixedModel, form1, contra, Bernoulli(), fast=true)
-ans |> DisplayAs.Text # hide
+DisplayAs.Text(ans) # hide
 ```
 
 For a model such as `m1`, which has a single, scalar random-effects term, the unscaled conditional density of the spherical random effects variable, $\mathcal{U}$,

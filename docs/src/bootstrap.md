@@ -39,7 +39,7 @@ using Random
 ```@example Main
 dyestuff = MixedModels.dataset(:dyestuff)
 m1 = fit(MixedModel, @formula(yield ~ 1 + (1 | batch)), dyestuff)
-ans |> DisplayAs.Text # hide
+DisplayAs.Text(ans) # hide
 ```
 
 To bootstrap the model parameters, first initialize a random number generator then create a bootstrap sample
@@ -106,7 +106,7 @@ m2 = fit(
     @formula(reaction ~ 1+days+(1+days|subj)),
     sleepstudy,
 )
-ans |> DisplayAs.Text # hide
+DisplayAs.Text(ans) # hide
 ```
 ```@example Main
 samp2 = parametricbootstrap(rng, 10_000, m2, use_threads=true);
