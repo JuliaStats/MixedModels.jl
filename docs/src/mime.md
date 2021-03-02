@@ -15,7 +15,12 @@ using MixedModels
 form = @formula(rt_trunc ~ 1 + spkr * prec * load +
                           (1 + load | item) +
                           (1 + spkr + prec + load | subj))
-kbm = fit(MixedModel, form, MixedModels.dataset(:kb07))
+contr = Dict(:spkr => EffectsCoding(),
+             :prec => EffectsCoding(),
+             :load => EffectsCoding(),
+             :item => Grouping(),
+             :subj => Grouping())
+kbm = fit(MixedModel, form, MixedModels.dataset(:kb07); contrasts=contr)
 ```
 
 Note that the display here is more succinct than the standard REPL display:
