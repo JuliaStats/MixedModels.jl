@@ -23,61 +23,37 @@ function Base.show(io::IO, ::MIME"text/markdown", b::BlockDescription)
 end
 
 function Base.show(io::IO, ::MIME"text/markdown", lrt::LikelihoodRatioTest)
-    # println(io, "Model Formulae")
-
-    # for (i, f) in enumerate(lrt.formulas)
-    #     println(io, "$i: $f")
-    # end
-
-    # the following was adapted from StatsModels#162
-    # from nalimilan
     Δdf = lrt.tests.dofdiff
     Δdev = lrt.tests.deviancediff
 
-    nc = 6
+
     nr = length(lrt.formulas)
-    outrows = Matrix{String}(undef, nr+2, nc)
+    outrows = Vector{Vector{String}}(undef, nr+1)
 
-    outrows[1, :] = ["",
-                    "model-dof",
-                    "deviance",
-                    "χ²",
-                    "χ²-dof",
-                    "P(>χ²)"] # colnms
+    outrows[1] = ["",
+                  "model-dof",
+                  "deviance",
+                  "χ²",
+                  "χ²-dof",
+                  "P(>χ²)"] # colnms
 
-    outrows[2, :] = [":-", "-:", "-:",
-                     "-:", "-:", ":-"]
-
-    outrows[3, :] = ["$(replace(lrt.formulas[1], "|" => "\\|"))",
-                    string(lrt.dof[1]),
-                    string(round(Int,lrt.deviance[1])),
-                    " "," ", " "]
+    outrows[2] = [string(lrt.formulas[1]),
+                  string(lrt.dof[1]),
+                  string(round(Int,lrt.deviance[1])),
+                  " "," ", " "]
 
     for i in 2:nr
-        outrows[i+2, :] = ["$(replace(lrt.formulas[i], "|" => "\\|"))",
-                           string(lrt.dof[i]),
-                           string(round(Int,lrt.deviance[i])),
-                           string(round(Int,Δdev[i-1])),
-                           string(Δdf[i-1]),
-                           string(StatsBase.PValue(lrt.pvalues[i-1]))]
-    end
-    colwidths = length.(outrows)
-    max_colwidths = [maximum(view(colwidths, :, i)) for i in 1:nc]
-    totwidth = sum(max_colwidths) + 2*5
-
-    for r in 1:nr+2
-        print(io, "|")
-        for c in 1:nc
-            cur_cell = outrows[r, c]
-            cur_cell_len = length(cur_cell)
-
-            print(io, "$(cur_cell)|")
-        end
-        print(io, "\n")
-
+        outrows[i+1] = [string(lrt.formulas[i]),
+                        string(lrt.dof[i]),
+                        string(round(Int,lrt.deviance[i])),
+                        string(round(Int,Δdev[i-1])),
+                        string(Δdf[i-1]),
+                        string(StatsBase.PValue(lrt.pvalues[i-1]))]
     end
 
-    nothing
+    tbl = Markdown.Table(outrows, [:l, :r, :r, :r, :r, :l])
+
+    show(io, Markdown.MD(tbl))
 end
 
 
@@ -93,91 +69,82 @@ function Base.show(io::IO, ::MIME"text/markdown", m::MixedModel)
     REML = m.optsum.REML
     nrecols = length(fnames(m))
 
+    digits = 4
+
     co = coef(m)
     se = stderror(m)
     z = co ./ se
     p = ccdf.(Chisq(1), abs2.(z))
 
-    bnwidth = maximum(length, coefnames(m))
-    fnwidth = maximum(length ∘ string, fnames(m))
     σvec = vcat(collect.(values.(values(m.σs)))...)
     σwidth = _printdigits(σvec)
-    σcolwidth = max(maximum(length ∘ string, aligncompact(σvec, σwidth)),
-                    fnwidth+2) + 1 # because fn's will be preceded by σ_
 
+    newrow = ["", "Est.", "SE", "z", "p"]
+    align = [:l, :l, :r, :r, :r]
 
-    co = aligncompact(co)
-    se = aligncompact(se)
-
-    cowidth = maximum(length, co)
-    sewidth = maximum(length, se)
-
-    zwidth = maximum(length ∘ string, aligncompact(round.(z; digits=2)))
-    pwidth = 6 # small value formatting
-
-    print(io,"|$(" "^bnwidth)|$(lpad("Est.",cowidth))|$(lpad("SE", sewidth))|$(lpad("z",zwidth))|$(lpad("p",pwidth))|" )
     for rr in fnames(m)
-        print(io,"σ_$(rpad(rr,σcolwidth-2))|")
+        push!(newrow,"σ_$(rr)")
+        push!(align,:r)
     end
-    println(io)
 
-    print(io,"|:", "-"^(bnwidth-1),"|", "-"^(cowidth-1),":|", "-"^(sewidth-1), ":|", "-"^(zwidth-1),":|", "-"^(pwidth-1), ":|" )
-    for rr in fnames(m)
-        print(io,"-"^(σcolwidth-1), ":|")
-    end
-    println(io)
+    rows = [newrow]
 
     for (i, bname) in enumerate(coefnames(m))
-
-        print(io, "|$(rpad(bname, bnwidth))|$(lpad(co[i],cowidth))|$(lpad(se[i], sewidth))|")
-        print(io, lpad(sprint(show, StatsBase.TestStat(z[i])), zwidth))
-        print(io, "|")
-        print(io, rpad(sprint(show, StatsBase.PValue(p[i])), pwidth))
-        print(io, "|")
-
+        newrow = [bname, Ryu.writefixed(co[i],digits), Ryu.writefixed(se[i],digits),
+                  sprint(show, StatsBase.TestStat(z[i])), sprint(show, StatsBase.PValue(p[i]))]
         bname = Symbol(bname)
 
         for (j, sig) in enumerate(m.σs)
             if bname in keys(sig)
-                print(io, "$(lpad(aligncompact(getproperty(sig, bname), σwidth),σcolwidth))")
+                push!(newrow, Ryu.writefixed(getproperty(sig, bname),digits))
             else
-                print(io, " "^σcolwidth)
+                push!(newrow, " ")
             end
-            print(io, "|")
         end
-        println(io)
+        push!(rows, newrow)
     end
 
-    dispersion_parameter(m) && println(io, "|$(rpad(_dname(m), bnwidth))|$(string(dispersion(m))[1:cowidth])||||$("|"^nrecols)")
+    if dispersion_parameter(m)
+        newrow = [_dname(m), Ryu.writefixed(dispersion(m),digits), "", "", ""]
+        for rr in fnames(m)
+            push!(newrow, "")
+        end
+        push!(rows, newrow)
+    end
 
-    return nothing
+    tbl = Markdown.Table(rows, align)
+    show(io, Markdown.MD(tbl))
 end
 
 
 function Base.show(io::IO, ::MIME"text/markdown", s::OptSummary)
-    println(io,"| | |")
-    println(io,"|-|-|")
-    println(io,"|**Initialization**| |")
-    println(io,"|Initial parameter vector|", s.initial,"|")
-    println(io,"|Initial objective value|", s.finitial,"|")
-    println(io,"|**Optimizer settings**| |")
-    println(io,"|Optimizer (from NLopt)|`", s.optimizer,"`|")
-    println(io,"|`Lower bounds`|", s.lowerbd,"|")
-    println(io,"|`ftol_rel`|", s.ftol_rel,"|")
-    println(io,"|`ftol_abs`|", s.ftol_abs,"|")
-    println(io,"|`xtol_rel`|", s.xtol_rel,"|")
-    println(io,"|`xtol_abs`|", s.xtol_abs,"|")
-    println(io,"|`initial_step`|", s.initial_step,"|")
-    println(io,"|`maxfeval`|", s.maxfeval,"|")
-    println(io,"|**Result**| |")
-    println(io,"|Function evaluations|", s.feval,"|")
-    println(io,"|Final parameter vector|", round.(s.final; digits=4),"|")
-    println(io,"|Final objective value|", round.(s.fmin; digits=4),"|")
-    println(io,"|Return code|`", s.returnvalue,"`|")
+    rows = [["", ""],
+
+            ["**Initialization**", ""],
+            ["Initial parameter vector", string(s.initial)],
+            ["Initial objective value", string(s.finitial)],
+
+            ["**Optimizer settings** ", ""],
+            ["Optimizer (from NLopt)", "`$(s.optimizer)`"],
+            ["`Lower bounds`", string(s.lowerbd)],
+            ["`ftol_rel`", string(s.ftol_rel)],
+            ["`ftol_abs`", string(s.ftol_abs)],
+            ["`xtol_rel`", string(s.xtol_rel)],
+            ["`xtol_abs`", string(s.xtol_abs)],
+            ["`initial_step`", string(s.initial_step)],
+            ["`maxfeval`", string(s.maxfeval)],
+
+            ["**Result**",""],
+            ["Function evaluations", string(s.feval)],
+            ["Final parameter vector", "$(round.(s.final; digits=4))"],
+            ["Final objective value", "$(round.(s.fmin; digits=4))"],
+            ["Return code", "`$(s.returnvalue)`"]]
+
+    tbl = Markdown.Table(rows, [:l, :l])
+    show(io, Markdown.MD(tbl))
 end
 
 function Base.show(io::IO, ::MIME"text/markdown", vc::VarCorr)
-    digits = 2
     σρ = vc.σρ
     nmvec = string.([keys(σρ)...])
     cnmvec = string.(foldl(vcat, [keys(sig)...] for sig in getproperty.(values(σρ), :σ)))
@@ -191,41 +158,50 @@ function Base.show(io::IO, ::MIME"text/markdown", vc::VarCorr)
     digits = _printdigits(σvec)
     showσvec = aligncompact(σvec, digits)
     showvarvec = aligncompact(varvec, digits)
-    write(io, "|   |Column|Variance|Std.Dev.|")
-    iszero(nρ) || write(io, "Corr.|$(repeat("    |", nρ-1))")
-    println(io)
-    write(io, "|:--|:-----|-------:|-------:|")
-    iszero(nρ) || write(io, "----:|$(repeat("----:|", nρ-1))")
-    println(io)
+
+
+    newrow = [" ", "Column"," Variance", "Std.Dev"]
+    iszero(nρ) || push!(newrow, "Corr.")
+    rows = [newrow]
+
+    align = [:l, :l, :r, :r]
+    iszero(nρ) || push!(align, :r)
+
     ind = 1
     for (i, v) in enumerate(values(vc.σρ))
-        write(io, "|$(nmvec[i])|")
+        newrow = [string(nmvec[i])]
         firstrow = true
         k = length(v.σ)   # number of columns in grp factor k
         ρ = v.ρ
         ρind = 0
         for j = 1:k
-            !firstrow && write(io, "| |")
-            write(io, "$(cnmvec[ind])|")
-            write(io, "$(showvarvec[ind])|")
-            write(io, "$(showσvec[ind])|")
+            !firstrow && push!(newrow, " ")
+            push!(newrow, string(cnmvec[ind]))
+            push!(newrow, string(showvarvec[ind]))
+            push!(newrow, string(showσvec[ind]))
             for l = 1:(j-1)
                 ρind += 1
                 ρval = ρ[ρind]
-                ρval === -0.0 ? write(io, "   .  ") : write(io, lpad(Ryu.writefixed(ρval, 2, true), 6))
-                write(io, "|")
+                ρval === -0.0 ? push!(newrow, ".") : push!(newrow, Ryu.writefixed(ρval, 2, true))
             end
-            ρind < nρ && write(io, " |"^(nρ - ρind) )
-            println(io)
+            push!(rows, newrow)
+            newrow = Vector{String}()
             firstrow = false
             ind += 1
         end
+
     end
     if !isnothing(vc.s)
-        write(io, "|$(last(nmvec))| |")
-        write(io, "$(showvarvec[ind])|")
-        write(io, "$(showσvec[ind])|")
-        println(io)
+        newrow = [string(last(nmvec)), " ", string(showvarvec[ind]), string(showσvec[ind])]
+        push!(rows, newrow)
     end
-    return nothing
+
+    # pad out the rows to all have the same length
+    rowlen = maximum(length, rows)
+    for rr in rows
+        append!(rr, repeat([" "], rowlen-length(rr)))
+    end
+    append!(align, repeat([:r], rowlen-length(align)))
+    tbl = Markdown.Table(rows, align)
+    show(io, Markdown.MD(tbl))
 end

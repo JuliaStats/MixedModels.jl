@@ -29,6 +29,9 @@ More formally, a `k`th order rule is exact when `f` is a `k-1` order polynomial.
 
 In the [*Golub-Welsch algorithm*](https://en.wikipedia.org/wiki/Gaussian_quadrature#The_Golub-Welsch_algorithm) the abscissae for a particular Gaussian quadrature rule are determined as the eigenvalues of a symmetric tri-diagonal matrix and the weights are derived from the squares of the first row of the matrix of eigenvectors.
 For a `k`th order normalized Gauss-Hermite rule the tridiagonal matrix has zeros on the diagonal and the square roots of `1:k-1` on the super- and sub-diagonal, e.g.
+```@setup Main
+using DisplayAs
+```
 ```@example Main
 using DataFrames, LinearAlgebra, Gadfly
 sym3 = SymTridiagonal(zeros(3), sqrt.(1:2))
@@ -110,6 +113,7 @@ A model with fixed-effects for age, age squared, number of live children and urb
 ```@example Main
 const form1 = @formula use ~ 1 + age + abs2(age) + livch + urban + (1|dist);
 m1 = fit(MixedModel, form1, contra, Bernoulli(), fast=true)
+DisplayAs.Text(ans) # hide
 ```
 
 For a model such as `m1`, which has a single, scalar random-effects term, the unscaled conditional density of the spherical random effects variable, $\mathcal{U}$,

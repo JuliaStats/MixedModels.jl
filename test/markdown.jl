@@ -31,57 +31,56 @@ include("modelcache.jl")
     @testset "lmm" begin
 
         @test sprint(show, mime, fm0) == """
-|           |    Est.|      SE|    z|     p|σ_subj  |
-|:----------|-------:|-------:|----:|-----:|-------:|
-|(Intercept)|251.4051|9.506187|26.45|<1e-99| 36.0121|
-|days       | 10.4673|0.801735|13.06|<1e-38|        |
-|Residual   |30.89543|||||
+|             | Est.     |     SE |     z |      p |  σ_subj |
+|:----------- |:-------- | ------:| -----:| ------:| -------:|
+| (Intercept) | 251.4051 | 9.5062 | 26.45 | <1e-99 | 36.0121 |
+| days        | 10.4673  | 0.8017 | 13.06 | <1e-38 |         |
+| Residual    | 30.8954  |        |       |        |         |
 """
         @test sprint(show, mime, fm1) == """
-|           |    Est.|     SE|    z|     p|σ_subj   |
-|:----------|-------:|------:|----:|-----:|--------:|
-|(Intercept)|251.4051|6.63226|37.91|<1e-99| 23.78047|
-|days       | 10.4673|1.50224| 6.97|<1e-11|  5.71683|
-|Residual   |25.59182|||||
+|             | Est.     |     SE |     z |      p |  σ_subj |
+|:----------- |:-------- | ------:| -----:| ------:| -------:|
+| (Intercept) | 251.4051 | 6.6323 | 37.91 | <1e-99 | 23.7805 |
+| days        | 10.4673  | 1.5022 |  6.97 | <1e-11 |  5.7168 |
+| Residual    | 25.5918  |        |       |        |         |
 """
     end
 
     @testset "glmm" begin
         @test sprint(show, mime, gm3) in ("""
-|            |      Est.|      SE|    z|     p|σ_subj   |σ_item   |
-|:-----------|---------:|-------:|----:|-----:|--------:|--------:|
-|(Intercept) | 0.1955555|0.405190| 0.48|0.6294| 1.339766| 0.495305|
-|anger       | 0.0575541|0.016758| 3.43|0.0006|         |         |
-|gender: M   | 0.3207844|0.191266| 1.68|0.0935|         |         |
-|btype: scold|-1.0582595|0.256805|-4.12|<1e-04|         |         |
-|btype: shout|-2.1047525|0.258529|-8.14|<1e-15|         |         |
-|situ: self  |-1.0549790|0.210303|-5.02|<1e-06|         |         |
+|              | Est.    |     SE |     z |      p | σ_subj | σ_item |
+|:------------ |:------- | ------:| -----:| ------:| ------:| ------:|
+| (Intercept)  | 0.1956  | 0.4052 |  0.48 | 0.6294 | 1.3398 | 0.4953 |
+| anger        | 0.0576  | 0.0168 |  3.43 | 0.0006 |        |        |
+| gender: M    | 0.3208  | 0.1913 |  1.68 | 0.0935 |        |        |
+| btype: scold | -1.0583 | 0.2568 | -4.12 | <1e-04 |        |        |
+| btype: shout | -2.1048 | 0.2585 | -8.14 | <1e-15 |        |        |
+| situ: self   | -1.0550 | 0.2103 | -5.02 | <1e-06 |        |        |
 ""","""
-|            |      Est.|      SE|    z|     p|σ_subj   |σ_item   |
-|:-----------|---------:|-------:|----:|-----:|--------:|--------:|
-|(Intercept) | 0.1955555|0.405190| 0.48|0.6294| 1.339766| 0.495305|
-|anger       | 0.0575541|0.016758| 3.43|0.0006|         |         |
-|gender: M   | 0.3207844|0.191266| 1.68|0.0935|         |         |
-|btype: scold|-1.0582595|0.256805|-4.12|<1e-4 |         |         |
-|btype: shout|-2.1047525|0.258529|-8.14|<1e-15|         |         |
-|situ: self  |-1.0549790|0.210303|-5.02|<1e-6 |         |         |
+|              | Est.    |     SE |     z |      p | σ_subj | σ_item |
+|:------------ |:------- | ------:| -----:| ------:| ------:| ------:|
+| (Intercept)  | 0.1956  | 0.4052 |  0.48 | 0.6294 | 1.3398 | 0.4953 |
+| anger        | 0.0576  | 0.0168 |  3.43 | 0.0006 |        |        |
+| gender: M    | 0.3208  | 0.1913 |  1.68 | 0.0935 |        |        |
+| btype: scold | -1.0583 | 0.2568 | -4.12 |  <1e-4 |        |        |
+| btype: shout | -2.1048 | 0.2585 | -8.14 | <1e-15 |        |        |
+| situ: self   | -1.0550 | 0.2103 | -5.02 |  <1e-6 |        |        |
 """)
     end
 
     @testset "lrt" begin
 
         @test sprint(show, mime, lrt) in ("""
-||model-dof|deviance|χ²|χ²-dof|P(>χ²)|
-|:-|-:|-:|-:|-:|:-|
-|reaction ~ 1 + days + (1 \\| subj)|4|1794| | | |
-|reaction ~ 1 + days + (1 + days \\| subj)|6|1752|42|2|<1e-09|
+|                                          | model-dof | deviance |  χ² | χ²-dof | P(>χ²) |
+|:---------------------------------------- | ---------:| --------:| ---:| ------:|:------ |
+| reaction ~ 1 + days + (1 \\| subj)        |         4 |     1794 |     |        |        |
+| reaction ~ 1 + days + (1 + days \\| subj) |         6 |     1752 |  42 |      2 | <1e-09 |
 ""","""
-||model-dof|deviance|χ²|χ²-dof|P(>χ²)|
-|:-|-:|-:|-:|-:|:-|
-|reaction ~ 1 + days + (1 \\| subj)|4|1794| | | |
-|reaction ~ 1 + days + (1 + days \\| subj)|6|1752|42|2|<1e-9|
+|                                          | model-dof | deviance |  χ² | χ²-dof | P(>χ²) |
+|:---------------------------------------- | ---------:| --------:| ---:| ------:|:------ |
+| reaction ~ 1 + days + (1 \\| subj)        |         4 |     1794 |     |        |        |
+| reaction ~ 1 + days + (1 + days \\| subj) |         6 |     1752 |  42 |      2 | <1e-9  |
 """)
-
     end
 
 
@@ -94,7 +93,6 @@ include("modelcache.jl")
 |24   |Dense         |Diag/Dense    |              |
 |6    |Dense         |Dense         |Dense         |
 """
-
     end
 
 
@@ -104,45 +102,34 @@ include("modelcache.jl")
         fm1.optsum.finitial = 1784.642296192471
         fm1.optsum.final = [0.9292, 0.0182, 0.2226]
         fm1.optsum.fmin =1751.9393444647023
-        @test sprint(show, mime, fm1.optsum) == """
-| | |
-|-|-|
-|**Initialization**| |
-|Initial parameter vector|[1.0, 0.0, 1.0]|
-|Initial objective value|1784.642296192471|
-|**Optimizer settings**| |
-|Optimizer (from NLopt)|`LN_BOBYQA`|
-|`Lower bounds`|[0.0, -Inf, 0.0]|
-|`ftol_rel`|1.0e-12|
-|`ftol_abs`|1.0e-8|
-|`xtol_rel`|0.0|
-|`xtol_abs`|[1.0e-10, 1.0e-10, 1.0e-10]|
-|`initial_step`|[0.75, 1.0, 0.75]|
-|`maxfeval`|-1|
-|**Result**| |
-|Function evaluations|1|
-|Final parameter vector|[0.9292, 0.0182, 0.2226]|
-|Final objective value|1751.9393|
-|Return code|`FTOL_REACHED`|
-"""
+        out =  sprint(show, mime, fm1.optsum)
+        @test startswith(out,"""
+|                          |                             |
+|:------------------------ |:--------------------------- |
+| **Initialization**       |                             |
+| Initial parameter vector | [1.0, 0.0, 1.0]             |
+| Initial objective value  | 1784.642296192471           |
+| **Optimizer settings**   |                             |
+| Optimizer (from NLopt)   | `LN_BOBYQA`                 |
+| `Lower bounds`           | [0.0, -Inf, 0.0]            |""")
     end
 
 
     @testset "varcorr" begin
 
         @test sprint(show, mime, VarCorr(fm1)) == """
-|   |Column|Variance|Std.Dev.|Corr.|
-|:--|:-----|-------:|-------:|----:|
-|subj|(Intercept)|565.51069|23.78047| |
-| |days|32.68212|5.71683| +0.08|
-|Residual| |654.94145|25.59182|
+|          | Column      |  Variance |  Std.Dev | Corr. |
+|:-------- |:----------- | ---------:| --------:| -----:|
+| subj     | (Intercept) | 565.51069 | 23.78047 |       |
+|          | days        |  32.68212 |  5.71683 | +0.08 |
+| Residual |             | 654.94145 | 25.59182 |       |
 """
 
         @test sprint(show, mime, VarCorr(gm3)) == """
-|   |Column|Variance|Std.Dev.|
-|:--|:-----|-------:|-------:|
-|subj|(Intercept)|1.794973|1.339766|
-|item|(Intercept)|0.245327|0.495305|
+|      | Column      |  Variance |  Std.Dev |
+|:---- |:----------- | ---------:| --------:|
+| subj | (Intercept) |  1.794973 | 1.339766 |
+| item | (Intercept) |  0.245327 | 0.495305 |
 """
     end
 # return these models to their fitted state for the cache
