@@ -36,8 +36,10 @@ using DisplayAs
 using DataFrames, LinearAlgebra, Gadfly
 sym3 = SymTridiagonal(zeros(3), sqrt.(1:2))
 ev = eigen(sym3);
-show(ev.values)
-show(abs2.(ev.vectors[1,:]))
+ev.values
+```
+```@example Main
+abs2.(ev.vectors[1,:])
 ```
 As a function of `k` this can be written as
 ```@example Main

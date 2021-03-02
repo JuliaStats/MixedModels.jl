@@ -87,9 +87,9 @@ DisplayAs.Text(ans) # hide
 ```
 ```@setup Main
 @testset "fm1reml" begin
-    @test deviance(fm1reml) ≈ 319.6542768422538
-    @test varest(fm1reml) ≈ 2451.2499
-    @test VarCorr(fm1reml).σρ.batch.σ[1] ≈ 42.000602
+    @test deviance(fm1reml) ≈ 319.6542768422538 atol=0.001
+    @test varest(fm1reml) ≈ 2451.2499 atol=0.001
+    @test VarCorr(fm1reml).σρ.batch.σ[1] ≈ 42.000602 atol=0.001
 end
 ```
 ### Float-point type in the model

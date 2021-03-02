@@ -31,7 +31,7 @@ LinearAlgebra.mul!(
     adjB::Adjoint{T,<:BlockedSparse{T}},
     α::Number,
     β::Number,
-) where {T} = mul!(C, A, adjB.parent.cscmat', α, β)
+) where {T} = mul!(C, A, adjoint(adjB.parent.cscmat), α, β)
 
 LinearAlgebra.mul!(
     C::StridedVector{T},
@@ -39,7 +39,7 @@ LinearAlgebra.mul!(
     B::StridedVector{T},
     α::Number,
     β::Number,
-) where {T} = mul!(C, adjA.parent.cscmat', B, α, β)
+) where {T} = mul!(C, adjoint(adjA.parent.cscmat), B, α, β)
 
 @static if VERSION < v"1.6.0-DEV.1468"
     function LinearAlgebra.ldiv!(
