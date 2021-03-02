@@ -14,6 +14,7 @@ Pages = [
         "GaussHermite.md",
         "bootstrap.md",
         "rankdeficiency.md",
+        "mime.md",
 ]
 Depth = 2
 ```

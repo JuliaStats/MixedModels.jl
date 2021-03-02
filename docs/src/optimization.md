@@ -97,12 +97,16 @@ For a linear mixed model, where all the conditional and unconditional distributi
 In the types of `LinearMixedModel` available through the `MixedModels` package, groups of random effects and the corresponding columns of the model matrix, $\bf Z$, are associated with *random-effects terms* in the model formula.
 
 For the simple example
+```@setup Main
+using DisplayAs
+```
 ```@example Main
 using BenchmarkTools, DataFrames, MixedModels
 ```
 ```@example Main
 dyestuff = MixedModels.dataset(:dyestuff)
 fm1 = fit(MixedModel, @formula(yield ~ 1 + (1|batch)), dyestuff)
+DisplayAs.Text(ans) # hide
 ```
 the only random effects term in the formula is `(1|batch)`, a simple, scalar random-effects term.
 ```@example Main
@@ -128,6 +132,7 @@ For a vector-valued random-effects term, as in
 ```@example Main
 sleepstudy = MixedModels.dataset(:sleepstudy)
 fm2 = fit(MixedModel, @formula(reaction ~ 1+days+(1+days|subj)), sleepstudy)
+DisplayAs.Text(ans) # hide
 ```
 the model matrix $\bf Z$ is of the form
 ```@example Main
@@ -182,6 +187,7 @@ OptSummary
 object, which is the `optsum` member of the `LinearMixedModel`.
 ```@example Main
 fm2.optsum
+DisplayAs.Text(ans) # hide
 ```
 
 ## A blocked Cholesky factor
@@ -194,6 +200,7 @@ BlockDescription
 shows the structure of the blocks
 ```@example Main
 BlockDescription(fm2)
+DisplayAs.Text(ans) # hide
 ```
 
 Another change in v4.0.0 and later is that the last row of blocks is constructed from `m.Xymat` which contains the full-rank model matrix `X` with the response `y` concatenated on the right.
@@ -222,6 +229,7 @@ fm2 = LinearMixedModel(@formula(reaction ~ 1+days+(1+days|subj)), sleepstudy);
 fm2.optsum.optimizer = :LN_NELDERMEAD;
 fit!(fm2)
 fm2.optsum
+DisplayAs.Text(ans) # hide
 ```
 
 The parameter estimates are quite similar to those using `:LN_BOBYQA` but at the expense of 140 functions evaluations for `:LN_NELDERMEAD` versus 57 for `:LN_BOBYQA`.
@@ -305,7 +313,8 @@ In a call to the `pirls!` function the first argument is a `GeneralizedLinearMix
 The second and third arguments are optional logical values indicating if $\beta$ is to be varied and if verbose output is to be printed.
 
 ```@example Main
-pirls!(mdl, true, false);
+pirls!(mdl, true, false)
+DisplayAs.Text(ans) # hide
 ```
 
 ```@example Main
@@ -330,23 +339,27 @@ mdl.b # conditional modes of b
 
 ```@example Main
 fit!(mdl, fast=true);
+DisplayAs.Text(ans) # hide
 ```
 
 The optimization process is summarized by
 
 ```@example Main
 mdl.LMM.optsum
+DisplayAs.Text(ans) # hide
 ```
 
 As one would hope, given the name of the option, this fit is comparatively fast.
 ```@example Main
 @btime fit(MixedModel, vaform, verbagg, Bernoulli(), fast=true)
+DisplayAs.Text(ans) # hide
 ```
 
 The alternative algorithm is to use PIRLS to find the conditional mode of the random effects, given $\beta$ and $\theta$ and then use the general nonlinear optimizer to fit with respect to both $\beta$ and $\theta$.
 
 ```@example Main
 mdl1 = @btime fit(MixedModel, vaform, verbagg, Bernoulli())
+DisplayAs.Text(ans) # hide
 ```
 
 This fit provided slightly better results (Laplace approximation to the deviance of 8151.400 versus 8151.583) but took 6 times as long.
