@@ -118,27 +118,27 @@ end
 
 
 function Base.show(io::IO, ::MIME"text/markdown", s::OptSummary)
-    rows = [["",""]]
+    rows = [["", ""],
 
-    push!(rows, ["**Initialization**", ""])
-    push!(rows, ["Initial parameter vector", string(s.initial)])
-    push!(rows, ["Initial objective value", string(s.finitial)])
+            ["**Initialization**", ""],
+            ["Initial parameter vector", string(s.initial)],
+            ["Initial objective value", string(s.finitial)],
 
-    push!(rows, ["**Optimizer settings** ", ""])
-    push!(rows, ["Optimizer (from NLopt)", "`$(s.optimizer)`"])
-    push!(rows, ["`Lower bounds`", string(s.lowerbd)])
-    push!(rows, ["`ftol_rel`", string(s.ftol_rel)])
-    push!(rows, ["`ftol_abs`", string(s.ftol_abs)])
-    push!(rows, ["`xtol_rel`", string(s.xtol_rel)])
-    push!(rows, ["`xtol_abs`", string(s.xtol_abs)])
-    push!(rows, ["`initial_step`", string(s.initial_step)])
-    push!(rows, ["`maxfeval`", string(s.maxfeval)])
+            ["**Optimizer settings** ", ""],
+            ["Optimizer (from NLopt)", "`$(s.optimizer)`"],
+            ["`Lower bounds`", string(s.lowerbd)],
+            ["`ftol_rel`", string(s.ftol_rel)],
+            ["`ftol_abs`", string(s.ftol_abs)],
+            ["`xtol_rel`", string(s.xtol_rel)],
+            ["`xtol_abs`", string(s.xtol_abs)],
+            ["`initial_step`", string(s.initial_step)],
+            ["`maxfeval`", string(s.maxfeval)],
 
-    push!(rows, ["**Result**",""])
-    push!(rows, ["Function evaluations", string(s.feval)])
-    push!(rows, ["Final parameter vector", "$(round.(s.final; digits=4))"])
-    push!(rows, ["Final objective value", "$(round.(s.fmin; digits=4))"])
-    push!(rows, ["Return code", "`$(s.returnvalue)`"])
+            ["**Result**",""],
+            ["Function evaluations", string(s.feval)],
+            ["Final parameter vector", "$(round.(s.final; digits=4))"],
+            ["Final objective value", "$(round.(s.fmin; digits=4))"],
+            ["Return code", "`$(s.returnvalue)`"]]
 
     tbl = Markdown.Table(rows, [:l, :l])
     show(io, Markdown.MD(tbl))
