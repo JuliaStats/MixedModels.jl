@@ -23,7 +23,6 @@ using DisplayAs
 
 ```@example Main
 using DataFrames, MixedModels
-using StatsBase: describe
 dyestuff = DataFrame(MixedModels.dataset(:dyestuff))
 describe(dyestuff)
 ```
@@ -66,9 +65,9 @@ DisplayAs.Text(ans) # hide
 
 ```@setup Main
 @testset "fm1" begin
-    @test deviance(fm1) ≈ 327.32706
-    @test varest(fm1) ≈ 2451.2500
-    @test VarCorr(fm1).σρ.batch.σ[1] ≈ 37.260345
+    @test isapprox(deviance(fm1), 327.32706, atol=1.e-3)
+    @test isapprox(varest(fm1), 2451.250, atol=1.e-3)
+    @test isapprox(VarCorr(fm1).σρ.batch.σ[1], 37.260, atol=1.e-3)
 end
 ```
 
