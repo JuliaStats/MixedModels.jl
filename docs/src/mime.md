@@ -1,4 +1,4 @@
-# Alternative Output Formats
+# Alternative display and output formats
 
 In the documentation, we have presented the output from MixedModels.jl in the same format you will see when working in the REPL.
 You may have noticed, however, that output from other packages received pretty printing.
@@ -32,10 +32,14 @@ If the correlation parameters in the random effects are of interest, then [`VarC
 VarCorr(m1)
 ```
 
-Similarly for [`BlockDescription`](@ref) and `MixedModels.likelihoodratiotest`:
+Similarly for [`BlockDescription`](@ref), `OptSummary` and `MixedModels.likelihoodratiotest`:
 
 ```@example Main
 BlockDescription(m1)
+```
+
+```@example Main
+m1.optsum
 ```
 
 ```@example Main
@@ -47,8 +51,8 @@ To explicitly invoke this behavior, we must specify the right `show` method:
 ```julia
 show(MIME("text/markdown"), m1)
 ```
-```@eval Main
-sprint(show, MIME("text/markdown"), m1)
+```@example Main
+println(sprint(show, MIME("text/markdown"), m1)) # hide
 ```
 
 (In the future, we may directly support HTML and LaTeX as MIME types.)
