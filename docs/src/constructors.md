@@ -22,7 +22,7 @@ using DisplayAs
 ```
 
 ```@example Main
-using DataFrames, MixedModels
+using DataFrames, MixedModels, StatsModels
 dyestuff = DataFrame(MixedModels.dataset(:dyestuff))
 describe(dyestuff)
 ```
@@ -37,7 +37,7 @@ MixedModels.jl builds on the the *Julia* formula language provided by [StatsMode
 The second way is to combine `Term`s with operators like `+`, `&`, `~`, and others at "run time".  This is especially useful if you wish to create a formula from a list a variable names.  For instance, the following are equivalent:
 
 ```@example Main
-@formula(y ~ 1 + a + b + a & b) == term(:y) ~ term(1) + term(:a) + term(:b) + term(:a) & term(:b)
+@formula(y ~ 1 + a + b + a & b) == (term(:y) ~ term(1) + term(:a) + term(:b) + term(:a) & term(:b))
 ```
 
 MixedModels.jl provides additional formula syntax for representing *random-effects terms*.  Most importantly, `|` separates random effects and their grouping factors (as in the formula extension used by the *R* package [`lme4`](https://cran.r-project.org/web/packages/lme4/index.html).  Much like with the base formula language, `|` can be used within the `@formula` macro and to construct a formula programmatically:
