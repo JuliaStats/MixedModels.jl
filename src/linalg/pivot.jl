@@ -27,7 +27,7 @@ function statsrank(x::AbstractMatrix{T}; ranktol=1e-8) where {T<:AbstractFloat}
         v1 .*= (fdv + true) / sqrt(m)
         qrpiv = qr(x, Val(true))
         piv = qrpiv.p
-        fill!(v1, true)    # restore the contents of the first column
+        fill!(v1, one(T))    # restore the contents of the first column
     end
 
     # preserve as much of the original column ordering as possible
