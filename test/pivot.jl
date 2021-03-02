@@ -47,15 +47,3 @@ end
     unpivoted = st.p[begin:rank(st)]
     @test unpivoted == sort(unpivoted)
 end
-
-@testset "cholesky missing cells" begin
-    mm = modelmatrix(@formula(Y ~ 1 + G*H), simdat)
-    # when a cell is missing, the indicator for it is always zero
-    mm[:, 43] .= 0
-    XtX = xtx(mm)
-    ch = statscholesky(XtX)
-    perm = [1:42; 44:100; 43]
-    @test ch.rank == 99
-    @test ch.piv == perm
-    @test isapprox(xtx(ch.U), XtX[perm, perm], atol=0.00001)
-end
