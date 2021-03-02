@@ -160,11 +160,11 @@ function Base.show(io::IO, ::MIME"text/markdown", vc::VarCorr)
     showvarvec = aligncompact(varvec, digits)
 
     newrow = [" ", "Column"," Variance", "Std.Dev"]
-    iszero(nρ) || append!(newrow, ["Corr."],  repeat([" "], nρ-1))
+    iszero(nρ) || append!(push!(newrow, "Corr."), repeat([" "], nρ-1))
     rows = [newrow]
 
     align = [:l, :l, :r, :r]
-    iszero(nρ) || append!(align,  repeat([:r], nρ))
+    iszero(nρ) || append!(align, repeat([:r], nρ))
 
     ind = 1
     for (i, v) in enumerate(values(vc.σρ))
