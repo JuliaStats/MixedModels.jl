@@ -4,6 +4,11 @@ _MdTypes = Union{BlockDescription, LikelihoodRatioTest, OptSummary, VarCorr, Mix
 Base.show(mime::MIME, x::_MdTypes) = show(Base.stdout, mime, x)
 
 Base.show(io::IO, ::MIME"text/markdown", x::_MdTypes) = show(io, Markdown.MD(_markdown(x)))
+# let's not discuss why we need show above and println below,
+# nor what happens if we try display instead :)
+Base.show(io::IO, ::MIME"text/html", x::_MdTypes) = println(io, Markdown.html(_markdown(x)))
+# print and println because Julia already adds a newline line
+Base.show(io::IO, ::MIME"text/latex", x::_MdTypes) = print(io, Markdown.latex(_markdown(x)))
 
 function _markdown(b::BlockDescription)
     ncols = length(b.blknms)

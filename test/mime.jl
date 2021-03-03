@@ -6,30 +6,27 @@ using MixedModels: pirls!, setβθ!, setθ!, updateL!
 
 include("modelcache.jl")
 
+
+# explicitly setting theta for these to so that we can do exact textual comparisons
+βθ = [0.1955554704948119,  0.05755412761885973, 0.3207843518569843, -1.0582595252774376,
+     -2.1047524824609853, -1.0549789653925743,  1.339766125847893,  0.4953047709862237]
+gm3 = GeneralizedLinearMixedModel(only(gfms[:verbagg]), dataset(:verbagg), Bernoulli())
+pirls!(setβθ!(gm3, βθ))
+
+fm0θ = [ 1.1656121258575225]
+fm0 = updateL!(setθ!(first(models(:sleepstudy)), fm0θ))
+
+fm1θ = [0.9292213288149662, 0.018168393450877257, 0.22264486671069741]
+fm1 = updateL!(setθ!(last(models(:sleepstudy)), fm1θ))
+
+lrt = likelihoodratiotest(fm0, fm1)
+
 @testset "markdown" begin
     mime = MIME"text/markdown"()
-
-    # explicitly setting theta for these to so that we can do exact textual comparisons
-
-    βθ = [0.1955554704948119,  0.05755412761885973, 0.3207843518569843, -1.0582595252774376,
-         -2.1047524824609853, -1.0549789653925743,  1.339766125847893,  0.4953047709862237]
-    gm3 = GeneralizedLinearMixedModel(only(gfms[:verbagg]), dataset(:verbagg), Bernoulli())
-    pirls!(setβθ!(gm3, βθ))
-
     @test_logs (:warn, "Model has not been fit: results will be nonsense") sprint(show, mime, gm3)
-
     gm3.optsum.feval = 1
 
-    fm0θ = [ 1.1656121258575225]
-    fm0 = updateL!(setθ!(first(models(:sleepstudy)), fm0θ))
-
-    fm1θ = [0.9292213288149662, 0.018168393450877257, 0.22264486671069741]
-    fm1 = updateL!(setθ!(last(models(:sleepstudy)), fm1θ))
-
-    lrt = likelihoodratiotest(fm0, fm1)
-
     @testset "lmm" begin
-
         @test sprint(show, mime, fm0) == """
 |             |     Est. |     SE |     z |      p |  σ_subj |
 |:----------- | --------:| ------:| -----:| ------:| -------:|
@@ -132,7 +129,33 @@ include("modelcache.jl")
 | item | (Intercept) |  0.245327 | 0.495305 |
 """
     end
+end
+
+@testset "html" begin
+    # this is minimal since we're mostly testing that dispatch works
+    # the stdlib actually handles most of the conversion
+
+    @test sprint(show, MIME("text/html"), BlockDescription(gm3)) == """
+<table><tr><th align="left">rows</th><th align="left">subj</th><th align="left">item</th><th align="left">fixed</th></tr><tr><td align="left">316</td><td align="left">Diagonal</td><td align="left"></td><td align="left"></td></tr><tr><td align="left">24</td><td align="left">Dense</td><td align="left">Diag/Dense</td><td align="left"></td></tr><tr><td align="left">7</td><td align="left">Dense</td><td align="left">Dense</td><td align="left">Dense</td></tr></table>
+"""
+end
+
+@testset "latex" begin
+    # this is minimal since we're mostly testing that dispatch works
+    # the stdlib actually handles most of the conversion
+
+    @test sprint(show, MIME("text/latex"), BlockDescription(gm3)) == """
+\\begin{tabular}
+{l | l | l | l}
+rows & subj & item & fixed \\\\
+\\hline
+316 & Diagonal &  &  \\\\
+24 & Dense & Diag/Dense &  \\\\
+7 & Dense & Dense & Dense \\\\
+\\end{tabular}
+"""
+end
+
 # return these models to their fitted state for the cache
 refit!(fm1)
 refit!(fm0)
-end
