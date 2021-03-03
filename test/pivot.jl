@@ -47,3 +47,10 @@ end
     unpivoted = pivot[begin:r]
     @test unpivoted == sort(unpivoted)
 end
+
+@testset "zero columns in X" begin
+    X = Matrix{Float64}(undef, 100, 0)
+    r, pivot = statsrank(X)
+    @test iszero(r)
+    @test pivot == collect(axes(X, 2))
+end
