@@ -144,7 +144,9 @@ end
     # this is minimal since we're mostly testing that dispatch works
     # the stdlib actually handles most of the conversion
 
-    @test sprint(show, MIME("text/latex"), BlockDescription(gm3)) == """
+    b = BlockDescription(gm3)
+
+    @test sprint(show, MIME("text/latex"), b) == """
 \\begin{tabular}
 {l | l | l | l}
 rows & subj & item & fixed \\\\
@@ -154,6 +156,10 @@ rows & subj & item & fixed \\\\
 7 & Dense & Dense & Dense \\\\
 \\end{tabular}
 """
+
+    @test sprint(show, MIME("text/xelatex"), b) == sprint(show, MIME("text/latex"), b)
+
+    @test sprint(show, MIME("text/xelatex"), gm3) != sprint(show, MIME("text/latex"), gm3)
 
     @test sprint(show, MIME("text/latex"), gm3) == """
 \\begin{tabular}

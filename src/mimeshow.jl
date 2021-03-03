@@ -9,6 +9,7 @@ Base.show(io::IO, ::MIME"text/markdown", x::_MdTypes) = show(io, Markdown.MD(_ma
 Base.show(io::IO, ::MIME"text/html", x::_MdTypes) = println(io, Markdown.html(_markdown(x)))
 # print and println because Julia already adds a newline line
 Base.show(io::IO, ::MIME"text/latex", x::_MdTypes) = print(io, Markdown.latex(_markdown(x)))
+Base.show(io::IO, ::MIME"text/xelatex", x::_MdTypes) = print(io, Markdown.latex(_markdown(x)))
 
 function Base.show(io::IO, ::MIME"text/latex", x::MixedModel)
     la = Markdown.latex(_markdown(x))

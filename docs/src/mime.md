@@ -73,12 +73,20 @@ println(sprint(show, MIME("text/html"), kbm)) # hide
 ```
 Note for that LaTeX, the column labels for the random effects are slightly changed: σ is placed into math mode and escaped and the grouping variable is turned into a subscript.
 Similarly for the likelihood ratio test, the χ² is escaped into math mode.
-This transformation improves pdfLaTeX and journal compatibility, but also means that XeLaTeX may use a different font at this point.
+This transformation improves pdfLaTeX and journal compatibility, but also means that XeLaTeX and LuaTeX may use a different font at this point.
 ```julia
 show(MIME("text/latex"), m1)
 ```
 ```@example Main
 println(sprint(show, MIME("text/latex"), kbm)) # hide
+```
+This escaping behavior can be disabled by specifying `"text/xelatex"` as the MIME type.
+(Note that other symbols may still be escaped, as the internal conversion uses the `Markdown` module from the standard library, which performs some escaping on its own.)
+```julia
+show(MIME("text/xelatex"), m1)
+```
+```@example Main
+println(sprint(show, MIME("text/xelatex"), kbm)) # hide
 ```
 
 This output can also be written directly to file:
