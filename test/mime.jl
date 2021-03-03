@@ -138,8 +138,10 @@ end
     @test sprint(show, MIME("text/html"), BlockDescription(gm3)) == """
 <table><tr><th align="left">rows</th><th align="left">subj</th><th align="left">item</th><th align="left">fixed</th></tr><tr><td align="left">316</td><td align="left">Diagonal</td><td align="left"></td><td align="left"></td></tr><tr><td align="left">24</td><td align="left">Dense</td><td align="left">Diag/Dense</td><td align="left"></td></tr><tr><td align="left">7</td><td align="left">Dense</td><td align="left">Dense</td><td align="left">Dense</td></tr></table>
 """
-    @test startswith(sprint(show, MIME("text/html"), fm0.optsum), """
-<table><tr><th align="left"></th><th align="left"></th></tr><tr><td align="left"><b>Initialization</b></td><td align="left"></td></tr><tr><td align="left">Initial parameter vector</td><td align="left">&#91;1.0&#93;</td></tr><tr><td align="left">Initial objective value</td><td align="left">1794.774198037785</td></tr><tr><td align="left"><b>Optimizer settings</b> </td><td align="left"></td></tr><tr><td align="left">Optimizer &#40;from NLopt&#41;</td><td align="left"><code>LN_BOBYQA</code>""")
+    optsum = sprint(show, MIME("text/html"), fm0.optsum)
+
+    @test occursin("<b>Initialization</b>", optsum)
+    @test occursin("<code>LN_BOBYQA</code>", optsum)
 end
 
 @testset "latex" begin
