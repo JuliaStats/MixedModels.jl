@@ -175,19 +175,11 @@ rows & subj & item & fixed \\\\
     @test startswith(sprint(show, MIME("text/latex"), lrt),
                      "\\begin{tabular}\n{l | r | r | r | r | l}\n & model-dof & deviance & \$\\chi^2\$ & \$\\chi^2\$-dof & P(>\$\\chi^2\$) \\\\")
 
-    @test startswith(sprint(show, MIME("text/latex"), fm0.optsum), raw"""
-\begin{tabular}
-{l | l}
- &  \\
-\hline
-\textbf{Initialization} &  \\
-Initial parameter vector & [1.0] \\
-Initial objective value & 1794.774198037785 \\
-\textbf{Optimizer settings}  &  \\
-Optimizer (from NLopt) & \texttt{LN\_BOBYQA} \\
-Lower bounds & [0.0] \\
-\texttt{ftol\_rel} & 1.0e-12 \\""")
 
+    optsum = sprint(show, MIME("text/latex"), fm0.optsum)
+
+    @test occursin(raw"\textbf{Initialization}", optsum)
+    @test occursin(raw"\texttt{LN\_BOBYQA}", optsum)
 end
 
 # return these models to their fitted state for the cache
