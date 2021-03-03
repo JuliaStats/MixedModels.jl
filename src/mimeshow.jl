@@ -59,7 +59,6 @@ function _markdown( lrt::LikelihoodRatioTest)
     end
 
     tbl = Markdown.Table(outrows, [:l, :r, :r, :r, :r, :l])
-
     return tbl
 end
 
@@ -120,7 +119,6 @@ function _markdown(m::MixedModel)
     tbl = Markdown.Table(rows, align)
     return tbl
 end
-
 
 function _markdown(s::OptSummary)
     rows = [["", ""],
@@ -207,6 +205,7 @@ function _markdown(vc::VarCorr)
         append!(rr, repeat([" "], rowlen-length(rr)))
     end
     append!(align, repeat([:r], rowlen-length(align)))
+
     tbl = Markdown.Table(rows, align)
     return tbl
 end
