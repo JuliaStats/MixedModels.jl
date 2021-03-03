@@ -57,7 +57,8 @@ m1 = fit(MixedModel, @formula(reaction ~ 1 + days + (1+days|subj)), MixedModels.
 MixedModels.likelihoodratiotest(m0,m1)
 ```
 
-To explicitly invoke this behavior, we must specify the right `show` method:
+To explicitly invoke this behavior, we must specify the right `show` method.
+(The raw and not rendered output is intentionally shown here.)
 ```julia
 show(MIME("text/markdown"), m1)
 ```
@@ -70,15 +71,15 @@ show(MIME("text/html"), m1)
 ```@example Main
 println(sprint(show, MIME("text/html"), kbm)) # hide
 ```
+Note for that LaTeX, the column labels for the random effects are slightly changed: σ is placed into math mode and escaped and the grouping variable is turned into a subscript.
+Similarly for the likelihood ratio test, the χ² is escaped into math mode.
+This transformation improves pdfLaTeX and journal compatibility, but also means that XeLaTeX may use a different font at this point.
 ```julia
 show(MIME("text/latex"), m1)
 ```
 ```@example Main
 println(sprint(show, MIME("text/latex"), kbm)) # hide
 ```
-(The raw and not rendered output is intentionally shown here.)
-
-In the future, we may directly support HTML and LaTeX as MIME types.
 
 This output can also be written directly to file:
 
