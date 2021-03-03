@@ -8,6 +8,8 @@ MixedModels v4.0.0 Release Notes
 * Introduce an abstract type for collections of fits `MixedModelFitCollection`,
   and make `MixedModelBootstrap` a subtype of it. Accordingly, rename the `bstr`
   field to `fits`. [#465]
+* Replace internal `statscholesky` and `statsqr` functions for determining the 
+  rank of `X` by `statsrank`. [#479]
 
 Run-time formula syntax
 -----------------------

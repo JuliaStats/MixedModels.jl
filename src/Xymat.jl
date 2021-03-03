@@ -33,18 +33,14 @@ function FeTerm(X::AbstractMatrix{T}, cnms) where {T}
     if iszero(size(X, 2))
         return FeTerm{T,typeof(X)}(X, Int[], 0, cnms)
     end
-    st = statsqr(X)
-    pivot = st.p
-    rank = findfirst(<=(0), diff(st.p))
-    rank = isnothing(rank) ? length(pivot) : rank
-    Xp = pivot == collect(1:size(X, 2)) ? X : X[:, pivot]
+    rank, pivot = statsrank(X)
         # single-column rank deficiency is the result of a constant column vector
         # this generally happens when constructing a dummy response, so we don't
         # warn.
     if rank < length(pivot) && size(X,2) > 1
         @warn "Fixed-effects matrix is rank deficient"
     end
-    FeTerm{T,typeof(X)}(Xp, pivot, rank, cnms[pivot])
+    FeTerm{T,typeof(X)}(X[:, pivot], pivot, rank, cnms[pivot])
 end
 
 """
