@@ -6,7 +6,8 @@ For example, DataFrames are converted into nice HTML tables.
 In MixedModels, we recently (v3.2.0) introduced limited support for such pretty printing.
 (For more details on how the print and display system in Julia works, check out [this NextJournal post](https://nextjournal.com/sdanisch/julias-display-system).)
 
-In particular, we have defined Markdown output, i.e. `show` methods, for our types, which can be easily translated into HTML, LaTeX or even a MS Word Document using tools such as [pandoc](https://pandoc.org/).
+In particular, we have defined Markdown, HTML and LaTeX output, i.e. `show` methods, for our types.
+Note that the Markdown output can also be easily and more flexibly translated into HTML, LaTeX (e.g. with `booktabs`) or even a MS Word Document using tools such as [pandoc](https://pandoc.org/).
 Packages like `IJulia` and `Documenter` can often detect the presence of these display options and use them automatically.
 
 
@@ -63,6 +64,18 @@ show(MIME("text/markdown"), m1)
 ```@example Main
 println(sprint(show, MIME("text/markdown"), kbm)) # hide
 ```
+```julia
+show(MIME("text/html"), m1)
+```
+```@example Main
+println(sprint(show, MIME("text/html"), kbm)) # hide
+```
+```julia
+show(MIME("text/latex"), m1)
+```
+```@example Main
+println(sprint(show, MIME("text/latex"), kbm)) # hide
+```
 (The raw and not rendered output is intentionally shown here.)
 
 In the future, we may directly support HTML and LaTeX as MIME types.
@@ -70,5 +83,7 @@ In the future, we may directly support HTML and LaTeX as MIME types.
 This output can also be written directly to file:
 
 ```julia
-show(open("model.md", "w"), MIME("text/markdown"), kbm)
+open("model.md", "w") do io
+    show(io, MIME("text/markdown"), kbm)
+end
 ```
