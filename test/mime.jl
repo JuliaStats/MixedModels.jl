@@ -154,6 +154,25 @@ rows & subj & item & fixed \\\\
 7 & Dense & Dense & Dense \\\\
 \\end{tabular}
 """
+
+    @test sprint(show, MIME("text/latex"), gm3) == """
+\\begin{tabular}
+{l | r | r | r | r | r | r}
+ & Est. & SE & z & p & \$\\sigma_\\text{subj}\$ & \$\\sigma_\\text{item}\$ \\\\
+\\hline
+(Intercept) & 0.1956 & 0.4052 & 0.48 & 0.6294 & 1.3398 & 0.4953 \\\\
+anger & 0.0576 & 0.0168 & 3.43 & 0.0006 &   &   \\\\
+gender: M & 0.3208 & 0.1913 & 1.68 & 0.0935 &   &   \\\\
+btype: scold & -1.0583 & 0.2568 & -4.12 & <1e-04 &   &   \\\\
+btype: shout & -2.1048 & 0.2585 & -8.14 & <1e-15 &   &   \\\\
+situ: self & -1.0550 & 0.2103 & -5.02 & <1e-06 &   &   \\\\
+\\end{tabular}
+"""
+
+# not doing the full comparison here because there's a zero-padded exponent
+# that will render differently on different platforms
+@test startswith(sprint(show, MIME("text/latex"), lrt),
+                 "\\begin{tabular}\n{l | r | r | r | r | l}\n & model-dof & deviance & \$\\chi^2\$ & \$\\chi^2\$-dof & P(>\$\\chi^2\$) \\\\")
 end
 
 # return these models to their fitted state for the cache

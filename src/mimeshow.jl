@@ -10,6 +10,22 @@ Base.show(io::IO, ::MIME"text/html", x::_MdTypes) = println(io, Markdown.html(_m
 # print and println because Julia already adds a newline line
 Base.show(io::IO, ::MIME"text/latex", x::_MdTypes) = print(io, Markdown.latex(_markdown(x)))
 
+function Base.show(io::IO, ::MIME"text/latex", x::MixedModel)
+    la = Markdown.latex(_markdown(x))
+    # take advantage of subscripting
+    # including preceding & prevents capturing coefficients
+    la = replace(la, r"& σ\\_([[:alnum:]]*) " => s"& $\\sigma_\\text{\1}$ ")
+    print(io, la)
+end
+
+function Base.show(io::IO, ::MIME"text/latex", x::LikelihoodRatioTest)
+    la = Markdown.latex(_markdown(x))
+    # take advantage of subscripting
+    # including preceding & prevents capturing coefficients
+    la = replace(la, r"χ²" => s"$\\chi^2$")
+    print(io, la)
+end
+
 function _markdown(b::BlockDescription)
     ncols = length(b.blknms)
     align = repeat([:l], ncols+1)
