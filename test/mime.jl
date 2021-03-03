@@ -138,6 +138,9 @@ end
     @test sprint(show, MIME("text/html"), BlockDescription(gm3)) == """
 <table><tr><th align="left">rows</th><th align="left">subj</th><th align="left">item</th><th align="left">fixed</th></tr><tr><td align="left">316</td><td align="left">Diagonal</td><td align="left"></td><td align="left"></td></tr><tr><td align="left">24</td><td align="left">Dense</td><td align="left">Diag/Dense</td><td align="left"></td></tr><tr><td align="left">7</td><td align="left">Dense</td><td align="left">Dense</td><td align="left">Dense</td></tr></table>
 """
+    @test sprint(show, MIME("text/html"), fm0.optsum) == """
+<table><tr><th align="left"></th><th align="left"></th></tr><tr><td align="left"><b>Initialization</b></td><td align="left"></td></tr><tr><td align="left">Initial parameter vector</td><td align="left">&#91;1.0&#93;</td></tr><tr><td align="left">Initial objective value</td><td align="left">1794.774198037785</td></tr><tr><td align="left"><b>Optimizer settings</b> </td><td align="left"></td></tr><tr><td align="left">Optimizer &#40;from NLopt&#41;</td><td align="left"><code>LN_BOBYQA</code></td></tr><tr><td align="left">Lower bounds</td><td align="left">&#91;0.0&#93;</td></tr><tr><td align="left"><code>ftol_rel</code></td><td align="left">1.0e-12</td></tr><tr><td align="left"><code>ftol_abs</code></td><td align="left">1.0e-8</td></tr><tr><td align="left"><code>xtol_rel</code></td><td align="left">0.0</td></tr><tr><td align="left"><code>xtol_abs</code></td><td align="left">&#91;1.0e-10&#93;</td></tr><tr><td align="left"><code>initial_step</code></td><td align="left">&#91;0.75&#93;</td></tr><tr><td align="left"><code>maxfeval</code></td><td align="left">-1</td></tr><tr><td align="left"><b>Result</b></td><td align="left"></td></tr><tr><td align="left">Function evaluations</td><td align="left">14</td></tr><tr><td align="left">Final parameter vector</td><td align="left">&#91;1.1656&#93;</td></tr><tr><td align="left">Final objective value</td><td align="left">1794.0786</td></tr><tr><td align="left">Return code</td><td align="left"><code>FTOL_REACHED</code></td></tr></table>
+"""
 end
 
 @testset "latex" begin
@@ -175,10 +178,35 @@ situ: self & -1.0550 & 0.2103 & -5.02 & <1e-06 &   &   \\\\
 \\end{tabular}
 """
 
-# not doing the full comparison here because there's a zero-padded exponent
-# that will render differently on different platforms
-@test startswith(sprint(show, MIME("text/latex"), lrt),
-                 "\\begin{tabular}\n{l | r | r | r | r | l}\n & model-dof & deviance & \$\\chi^2\$ & \$\\chi^2\$-dof & P(>\$\\chi^2\$) \\\\")
+    # not doing the full comparison here because there's a zero-padded exponent
+    # that will render differently on different platforms
+    @test startswith(sprint(show, MIME("text/latex"), lrt),
+                     "\\begin{tabular}\n{l | r | r | r | r | l}\n & model-dof & deviance & \$\\chi^2\$ & \$\\chi^2\$-dof & P(>\$\\chi^2\$) \\\\")
+
+    @test sprint(show, MIME("text/latex"), fm0.optsum) == raw"""
+\begin{tabular}
+{l | l}
+ &  \\
+\hline
+\textbf{Initialization} &  \\
+Initial parameter vector & [1.0] \\
+Initial objective value & 1794.774198037785 \\
+\textbf{Optimizer settings}  &  \\
+Optimizer (from NLopt) & \texttt{LN\_BOBYQA} \\
+Lower bounds & [0.0] \\
+\texttt{ftol\_rel} & 1.0e-12 \\
+\texttt{ftol\_abs} & 1.0e-8 \\
+\texttt{xtol\_rel} & 0.0 \\
+\texttt{xtol\_abs} & [1.0e-10] \\
+\texttt{initial\_step} & [0.75] \\
+\texttt{maxfeval} & -1 \\
+\textbf{Result} &  \\
+Function evaluations & 14 \\
+Final parameter vector & [1.1656] \\
+Final objective value & 1794.0786 \\
+Return code & \texttt{FTOL\_REACHED} \\
+\end{tabular}
+"""
 end
 
 # return these models to their fitted state for the cache

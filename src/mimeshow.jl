@@ -11,6 +11,22 @@ Base.show(io::IO, ::MIME"text/html", x::_MdTypes) = println(io, Markdown.html(_m
 Base.show(io::IO, ::MIME"text/latex", x::_MdTypes) = print(io, Markdown.latex(_markdown(x)))
 Base.show(io::IO, ::MIME"text/xelatex", x::_MdTypes) = print(io, Markdown.latex(_markdown(x)))
 
+# not sure why this escaping doesn't work automatically
+# FIXME: find out a way to get the stdlib to do this
+function Base.show(io::IO, ::MIME"text/html", x::OptSummary)
+    out = Markdown.html(_markdown(x))
+    out = replace(out, r"&#96;([^[:space:]]*)&#96;" => s"<code>\1</code>")
+    out = replace(out, r"\*\*(.*?)\*\*" => s"<b>\1</b>")
+    println(io, out)
+end
+
+function Base.show(io::IO, ::MIME"text/latex", x::OptSummary)
+    out = Markdown.latex(_markdown(x))
+    out = replace(out, r"`([^[:space:]]*)`" => s"\\texttt{\1}")
+    out = replace(out, r"\*\*(.*?)\*\*" => s"\\textbf{\1}")
+    print(io, out)
+end
+
 function Base.show(io::IO, ::MIME"text/latex", x::MixedModel)
     la = Markdown.latex(_markdown(x))
     # take advantage of subscripting
