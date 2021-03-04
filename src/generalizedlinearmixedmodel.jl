@@ -382,8 +382,9 @@ function GeneralizedLinearMixedModel(
         )
     end
     updateL!(LMM)
-        # fit a glm to the fixed-effects only - awkward syntax is to by-pass a test
-    gl = isempty(wts) ? glm(LMM.X, y, d, l) : glm(LMM.X, y, d, l, wts = wts)
+        # fit a glm to the fixed-effects only
+    T = eltype(LMM.Xymat)
+    gl = glm(LMM.X, y, d, l, wts=convert(Vector{T}, wts), offset=convert(Vector{T}, offset))
     β = coef(gl)
     u = [fill(zero(eltype(y)), vsize(t), nlevs(t)) for t in LMM.reterms]
         # vv is a template vector used to initialize fields for AGQ
