@@ -6,6 +6,7 @@ using DataAPI
 using Distributions
 using GLM
 using LinearAlgebra
+using Markdown
 using NLopt
 using Random
 using Pkg.Artifacts
@@ -173,6 +174,6 @@ include("simulate.jl")
 include("bootstrap.jl")
 include("blockdescription.jl")
 include("grouping.jl")
-include("mdshow.jl")
+include("mimeshow.jl")
 
 end # module
