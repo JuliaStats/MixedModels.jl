@@ -2,6 +2,7 @@
 
 ```@setup Main
 using MixedModels
+using DisplayAs
 ```
 
 The *(column) rank* of a matrix refers to the number of linearly independent columns in the matrix.
@@ -29,8 +30,7 @@ As such, the handling of rank deficiency in `MixedModels.jl` should not be taken
 
 There is a widely accepted convention for how to make the coefficient estimates for these redundant columns well-defined: we set their value to zero and their standard errors to `NaN` (and thus also their $z$ and $p$-values).
 The values that have been defined to be zero, as opposed to evaluating to zero, are displayed as `-0.0` as an additional visual aid to distinguish them from the other coefficients.
-In practice the determination of rank and the redundant coefficients is done via a 'pivoting' scheme during a decomposition to 
-move the surplus columns to the right side of the model matrix.
+In practice the determination of rank and the redundant coefficients is done via a 'pivoting' scheme during a decomposition to move the surplus columns to the right side of the model matrix.
 In subsequent calculations, these columns are effectively ignored (as their estimates are zero and thus won't contribute to any other computations).
 For display purposes, this pivoting is unwound when the `coef` values are displayed.
 
@@ -61,7 +61,7 @@ Currently, a coarse heuristic is applied to reduce the chance that the intercept
 
 ### Undetected Rank Deficiency
 
-Undetected rank deficiency in the fixed effects will lead to numerical issues, such as nonsensical estimates. 
+Undetected rank deficiency in the fixed effects will lead to numerical issues, such as nonsensical estimates.
 A `PosDefException` may indicate rank deficiency because the covariance matrix will only be positive semidefinite and not positive definite (see [Details of the parameter estimation](@ref)).
 In other words, checking that the fixed effects are full rank is a great first step in debugging a `PosDefException`.
 
@@ -80,18 +80,20 @@ The nature of the penalty in the penalized least squares solution is such that t
 In other words, singularity of the covariance matrix for the random effects, which means that there are one or more directions in which there is no variability in the random effects, is different from singularity of the model matrix for the random effects, which would affect the ability to define uniquely these coefficients.
 The penalty term always provides a unique solution for the random-effects coefficients.
 
-In addition to handling naturally occuring rank deficiency in the random effects, the regularization allows us to fit explicitly overparameterized random effects.
+In addition to handling naturally occurring rank deficiency in the random effects, the regularization allows us to fit explicitly overparameterized random effects.
 For example, we can use `fulldummy` to fit both an intercept term and $n$ indicator variables in the random effects for a categorical variable with $n$ levels instead of the usual $n-1$ contrasts.
 
 ```@example Main
 kb07 = MixedModels.dataset(:kb07)
 contrasts = Dict(var => HelmertCoding() for var in (:spkr, :prec, :load))
 fit(MixedModel, @formula(rt_raw ~ spkr * prec * load + (1|subj) + (1+prec|item)), kb07; contrasts=contrasts)
+DisplayAs.Text(ans) # hide
 ```
 
 ```@example Main
 fit(MixedModel, @formula(rt_raw ~ spkr * prec * load + (1|subj) + (1+fulldummy(prec)|item)), kb07; contrasts=contrasts)
+DisplayAs.Text(ans) # hide
 ```
 
 This may be useful when the `PCA` property suggests a random effects structure larger than only main effects but smaller than all interaction terms.
-This is also simiar to the functionality provided by `dummy` in `lme4`, but as in the difference between `zerocorr` in Julia and `||` in R, there are subtle differences in how this explansion interacts with other terms in the random effects.
+This is also similar to the functionality provided by `dummy` in `lme4`, but as in the difference between `zerocorr` in Julia and `||` in R, there are subtle differences in how this expansion interacts with other terms in the random effects.
