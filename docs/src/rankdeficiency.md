@@ -30,8 +30,7 @@ As such, the handling of rank deficiency in `MixedModels.jl` should not be taken
 
 There is a widely accepted convention for how to make the coefficient estimates for these redundant columns well-defined: we set their value to zero and their standard errors to `NaN` (and thus also their $z$ and $p$-values).
 The values that have been defined to be zero, as opposed to evaluating to zero, are displayed as `-0.0` as an additional visual aid to distinguish them from the other coefficients.
-In practice the determination of rank and the redundant coefficients is done via a 'pivoting' scheme during a decomposition to
-move the surplus columns to the right side of the model matrix.
+In practice the determination of rank and the redundant coefficients is done via a 'pivoting' scheme during a decomposition to move the surplus columns to the right side of the model matrix.
 In subsequent calculations, these columns are effectively ignored (as their estimates are zero and thus won't contribute to any other computations).
 For display purposes, this pivoting is unwound when the `coef` values are displayed.
 

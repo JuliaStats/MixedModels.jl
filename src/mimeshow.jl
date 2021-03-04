@@ -1,28 +1,68 @@
 # for this type of union, the compiler will actually generate the necessary methods
 # but it's also type stable either way
 _MdTypes = Union{BlockDescription, LikelihoodRatioTest, OptSummary, VarCorr, MixedModel}
-Base.show(mime::MIME, x::_MdTypes) = Base.show(Base.stdout, mime, x)
+Base.show(mime::MIME, x::_MdTypes) = show(Base.stdout, mime, x)
 
+Base.show(io::IO, ::MIME"text/markdown", x::_MdTypes) = show(io, Markdown.MD(_markdown(x)))
+# let's not discuss why we need show above and println below,
+# nor what happens if we try display instead :)
+Base.show(io::IO, ::MIME"text/html", x::_MdTypes) = println(io, Markdown.html(_markdown(x)))
+# print and println because Julia already adds a newline line
+Base.show(io::IO, ::MIME"text/latex", x::_MdTypes) = print(io, Markdown.latex(_markdown(x)))
+Base.show(io::IO, ::MIME"text/xelatex", x::_MdTypes) = print(io, Markdown.latex(_markdown(x)))
 
-function Base.show(io::IO, ::MIME"text/markdown", b::BlockDescription)
-    rowwidth = max(maximum(ndigits, b.blkrows) + 1, 5)
-    colwidth = max(maximum(textwidth, b.blknms) + 1, 14)
-    ncols = length(b.blknms)
-    print(io, "|", rpad("rows", rowwidth), "|")
-    println(io, ("$(cpad(bn, colwidth))|" for bn in b.blknms)...)
-    print(io, "|", rpad(":", rowwidth, "-"), "|")
-    println(io, (":$("-"^(colwidth-2)):|" for _ in b.blknms)...)
-    for (i, r) in enumerate(b.blkrows)
-        print(io, "|$(rpad(string(r), rowwidth))|")
-        for j in 1:i
-            print(io, "$(rpad(b.ALtypes[i, j],colwidth))|")
-        end
-        i < ncols && print(io, "$(" "^colwidth)|"^(ncols-i))
-        println(io)
-    end
+# not sure why this escaping doesn't work automatically
+# FIXME: find out a way to get the stdlib to do this
+function Base.show(io::IO, ::MIME"text/html", x::OptSummary)
+    out = Markdown.html(_markdown(x))
+    out = replace(out, r"&#96;([^[:space:]]*)&#96;" => s"<code>\1</code>")
+    out = replace(out, r"\*\*(.*?)\*\*" => s"<b>\1</b>")
+    println(io, out)
 end
 
-function Base.show(io::IO, ::MIME"text/markdown", lrt::LikelihoodRatioTest)
+function Base.show(io::IO, ::MIME"text/latex", x::OptSummary)
+    out = Markdown.latex(_markdown(x))
+    out = replace(out, r"`([^[:space:]]*)`" => s"\\texttt{\1}")
+    out = replace(out, r"\*\*(.*?)\*\*" => s"\\textbf{\1}")
+    print(io, out)
+end
+
+function Base.show(io::IO, ::MIME"text/latex", x::MixedModel)
+    la = Markdown.latex(_markdown(x))
+    # take advantage of subscripting
+    # including preceding & prevents capturing coefficients
+    la = replace(la, r"& σ\\_([[:alnum:]]*) " => s"& $\\sigma_\\text{\1}$ ")
+    print(io, la)
+end
+
+function Base.show(io::IO, ::MIME"text/latex", x::LikelihoodRatioTest)
+    la = Markdown.latex(_markdown(x))
+    # take advantage of subscripting
+    # including preceding & prevents capturing coefficients
+    la = replace(la, r"χ²" => s"$\\chi^2$")
+    print(io, la)
+end
+
+function _markdown(b::BlockDescription)
+    ncols = length(b.blknms)
+    align = repeat([:l], ncols+1)
+    newrow = ["rows"; [bn for bn in b.blknms] ]
+    rows = [newrow]
+
+    for (i, r) in enumerate(b.blkrows)
+       newrow =  [string(r)]
+        for j in 1:i
+            push!(newrow, "$(b.ALtypes[i, j])")
+        end
+        i < ncols && append!(newrow, repeat([""], ncols-i))
+        push!(rows, newrow)
+    end
+
+    tbl = Markdown.Table(rows, align)
+    return tbl
+end
+
+function _markdown( lrt::LikelihoodRatioTest)
     Δdf = lrt.tests.dofdiff
     Δdev = lrt.tests.deviancediff
 
@@ -52,16 +92,13 @@ function Base.show(io::IO, ::MIME"text/markdown", lrt::LikelihoodRatioTest)
     end
 
     tbl = Markdown.Table(outrows, [:l, :r, :r, :r, :r, :l])
-
-    show(io, Markdown.MD(tbl))
+    return tbl
 end
-
-
 
 _dname(::GeneralizedLinearMixedModel) = "Dispersion"
 _dname(::LinearMixedModel) = "Residual"
 
-function Base.show(io::IO, ::MIME"text/markdown", m::MixedModel)
+function _markdown(m::MixedModel)
     if m.optsum.feval < 0
         @warn("Model has not been fit: results will be nonsense")
     end
@@ -80,7 +117,7 @@ function Base.show(io::IO, ::MIME"text/markdown", m::MixedModel)
     σwidth = _printdigits(σvec)
 
     newrow = ["", "Est.", "SE", "z", "p"]
-    align = [:l, :l, :r, :r, :r]
+    align = [:l, :r, :r, :r, :r]
 
     for rr in fnames(m)
         push!(newrow,"σ_$(rr)")
@@ -113,11 +150,10 @@ function Base.show(io::IO, ::MIME"text/markdown", m::MixedModel)
     end
 
     tbl = Markdown.Table(rows, align)
-    show(io, Markdown.MD(tbl))
+    return tbl
 end
 
-
-function Base.show(io::IO, ::MIME"text/markdown", s::OptSummary)
+function _markdown(s::OptSummary)
     rows = [["", ""],
 
             ["**Initialization**", ""],
@@ -126,7 +162,7 @@ function Base.show(io::IO, ::MIME"text/markdown", s::OptSummary)
 
             ["**Optimizer settings** ", ""],
             ["Optimizer (from NLopt)", "`$(s.optimizer)`"],
-            ["`Lower bounds`", string(s.lowerbd)],
+            ["Lower bounds", string(s.lowerbd)],
             ["`ftol_rel`", string(s.ftol_rel)],
             ["`ftol_abs`", string(s.ftol_abs)],
             ["`xtol_rel`", string(s.xtol_rel)],
@@ -141,10 +177,10 @@ function Base.show(io::IO, ::MIME"text/markdown", s::OptSummary)
             ["Return code", "`$(s.returnvalue)`"]]
 
     tbl = Markdown.Table(rows, [:l, :l])
-    show(io, Markdown.MD(tbl))
+    return tbl
 end
 
-function Base.show(io::IO, ::MIME"text/markdown", vc::VarCorr)
+function _markdown(vc::VarCorr)
     σρ = vc.σρ
     nmvec = string.([keys(σρ)...])
     cnmvec = string.(foldl(vcat, [keys(sig)...] for sig in getproperty.(values(σρ), :σ)))
@@ -202,6 +238,7 @@ function Base.show(io::IO, ::MIME"text/markdown", vc::VarCorr)
         append!(rr, repeat([" "], rowlen-length(rr)))
     end
     append!(align, repeat([:r], rowlen-length(align)))
+
     tbl = Markdown.Table(rows, align)
-    show(io, Markdown.MD(tbl))
+    return tbl
 end
