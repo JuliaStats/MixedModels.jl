@@ -22,6 +22,14 @@ Run-time formula syntax
 * Methods for `Base./(::AbstractTerm, ::AbstractTerm)` are added, allowing
   nesting syntax to be used with `Term`s at run-time as well [#470]
 
+
+MixedModels v3.3.0 Release Notes
+========================
+* HTML and LaTeX `show` methods for `MixedModel`, `BlockDescription`,
+  `LikelihoodRatioTest`, `OptSummary` and `VarCorr`. Note that the interface for
+  these is not yet completely stable. In particular, rounding behavior may
+  change. [#480]
+
 MixedModels v3.2.0 Release Notes
 ========================
 * Markdown `show` methods for `MixedModel`, `BlockDescription`,
