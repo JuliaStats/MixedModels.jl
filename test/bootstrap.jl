@@ -104,11 +104,7 @@ end
         contra = dataset(:contra)
         gm0 = fit(MixedModel, only(gfms[:contra]), contra, Bernoulli(), fast=true)
         bs = parametricbootstrap(StableRNG(42), 100, gm0)
-        bsci = combine(groupby(DataFrame(bs.β), :coefname),
-                       :β => shortestcovint => :ci)
-        bsci.lower = first.(bsci.ci)
-        bsci.upper = last.(bsci.ci)
-        select!(bsci, Not(:ci))
+        bsci = filter!(:type => ==("β"), DataFrame(shortestcovint(bs)))
         ciwidth = 2 .* stderror(gm0)
         waldci = DataFrame(coef=fixefnames(gm0),
                            lower=fixef(gm0) .- ciwidth,
