@@ -8,6 +8,8 @@ MixedModels v4.0.0 Release Notes
 * Introduce an abstract type for collections of fits `MixedModelFitCollection`,
   and make `MixedModelBootstrap` a subtype of it. Accordingly, rename the `bstr`
   field to `fits`. [#465]
+* The response (dependent variable) is now stored internally as part of the
+  fixed-effects block. The `FeMat` and `FeTerm` types have changed correspondingly. [#464]
 * Replace internal `statscholesky` and `statsqr` functions for determining the
   rank of `X` by `statsrank`. [#479]
 
@@ -173,9 +175,11 @@ Package dependencies
 [#447]: https://github.com/JuliaStats/MixedModels.jl/issues/447
 [#449]: https://github.com/JuliaStats/MixedModels.jl/issues/449
 [#456]: https://github.com/JuliaStats/MixedModels.jl/issues/456
+[#464]: https://github.com/JuliaStats/MixedModels.jl/issues/464
 [#465]: https://github.com/JuliaStats/MixedModels.jl/issues/465
 [#469]: https://github.com/JuliaStats/MixedModels.jl/issues/469
 [#470]: https://github.com/JuliaStats/MixedModels.jl/issues/470
 [#474]: https://github.com/JuliaStats/MixedModels.jl/issues/474
+[#479]: https://github.com/JuliaStats/MixedModels.jl/issues/479
 [#480]: https://github.com/JuliaStats/MixedModels.jl/issues/480
 [#484]: https://github.com/JuliaStats/MixedModels.jl/issues/484
