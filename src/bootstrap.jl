@@ -211,6 +211,64 @@ function Base.propertynames(bsamp::MixedModelFitCollection)
 end
 
 """
+    pvalues(::MixedModelFitCollection; estimator=mean, se=sem)
+
+Compute p-values based on bootstrap samples.
+
+P-values for βs and ρs are two-sided, p-values for σs are one-sided.
+
+The approximation is based on Altman and Bland (2011), using the specified
+`estimator` and `se` to compute a single estimate and standard error from
+the fit collection.
+
+Reference
+----------
+Altman, D.G. and J.M. Bland (2011). How to obtain the P value from a confidence interval.
+BMJ; 343 :d2304 doi:10.1136/bmj.d2304
+"""
+function pvalues(bsamp::MixedModelFitCollection; estimator=mean, se=std)
+    allpars = bsamp.allpars
+    pars = unique(zip(allpars.type, allpars.group, allpars.names))
+
+    colnms = (:type, :group, :names, :p)
+    coltypes = Tuple{String, Union{Missing,String}, Union{Missing,String}, StatsBase.PValue}
+    # not specifying the full eltype (NamedTuple{colnms,coltypes}) leads to prettier printing
+    result = NamedTuple{colnms}[]
+    sizehint!(result, length(pars))
+
+
+    for (t, g, n) in pars
+        gidx = if ismissing(g)
+            ismissing.(allpars.group)
+        else
+            .!ismissing.(allpars.group) .& (allpars.group .== g)
+        end
+
+        nidx = if ismissing(n)
+            ismissing.(allpars.names)
+        else
+            .!ismissing.(allpars.names) .& (allpars.names .== n)
+        end
+
+        tidx = allpars.type .== t # no missings allowed here
+
+        idx = tidx .& gidx .& nidx
+
+        vv = view(allpars.value, idx)
+        z = estimator(vv) / se(vv)
+        p = max(ccdf.(Chisq(1), abs2.(z)), 1 / length(vv))
+
+        if t == "σ"
+            p /= 2
+        end
+
+        push!(result, (; type=t, group=g, names=n, p=p))
+    end
+
+    return result
+end
+
+"""
     setθ!(bsamp::MixedModelFitCollection, i::Integer)
 
 Install the values of the i'th θ value of `bsamp.fits` in `bsamp.λ`
@@ -252,7 +310,7 @@ end
 """
     shortestcovint(bsamp::MixedModelBootstrap, level = 0.95)
 
-Return the shortest interval containing `level` proportion for each parameter from [`bsamp.allpars`](@ref)
+Return the shortest interval containing `level` proportion for each parameter from `bsamp.allpars`
 """
 function shortestcovint(bsamp::MixedModelBootstrap{T}, level = 0.95) where {T}
     allpars = bsamp.allpars
