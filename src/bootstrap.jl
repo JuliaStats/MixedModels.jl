@@ -129,7 +129,7 @@ end
 """
     allpars(bsamp::MixedModelFitCollection)
 
-Return a tidy (row)table with the parameter estimates spread into columns
+Return a tidy (column)table with the parameter estimates spread into columns
 of `iter`, `type`, `group`, `name` and `value`.
 """
 function allpars(bsamp::MixedModelFitCollection{T}) where {T}
