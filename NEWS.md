@@ -1,3 +1,7 @@
+MixedModels v3.4.0 Release Notes
+========================
+* `shortestcovint` method for `MixedModelsBootstrap` [#484]
+
 MixedModels v3.3.0 Release Notes
 ========================
 * HTML and LaTeX `show` methods for `MixedModel`, `BlockDescription`,
@@ -145,3 +149,4 @@ Package dependencies
 [#449]: https://github.com/JuliaStats/MixedModels.jl/issues/449
 [#474]: https://github.com/JuliaStats/MixedModels.jl/issues/474
 [#480]: https://github.com/JuliaStats/MixedModels.jl/issues/480
+[#484]: https://github.com/JuliaStats/MixedModels.jl/issues/484

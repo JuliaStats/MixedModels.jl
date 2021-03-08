@@ -15,26 +15,31 @@ jobs:
           ssh: ${{ secrets.DOCUMENTER_KEY }} # see https://juliadocs.github.io/Documenter.jl/stable/man/hosting/#GitHub-Actions
           changelog: |
               ## {{ package }} {{ version }}
-              
+
               {% if previous_release %}
-              [NEWS file](https://github.com/JuliaStats/MixedModels.jl/blob/{{ version }}/NEWS.md). 
+              [NEWS file](https://github.com/JuliaStats/MixedModels.jl/blob/{{ version }}/NEWS.md).
               [Diff since {{ previous_release }}]({{ compare_url }})
               {% endif %}
-              
+
               {% if custom %}
               {{ custom }}
               {% endif %}
-              
+
+
+              *NB: Closed issues and pull requests are sorted temporally and so may
+              include backports to other versions or work in the development branch for
+              an upcoming breaking release. Please see the [NEWS file](https://github.com/JuliaStats/MixedModels.jl/blob/{{ version }}/NEWS.md)
+              for changes sorted by release.*
               {% if issues %}
               **Closed issues:**
               {% for issue in issues %}
               - {{ issue.title }} (#{{ issue.number }})
               {% endfor %}
               {% endif %}
-              
+
               {% if pulls %}
               **Merged pull requests:**
               {% for pull in pulls %}
               - {{ pull.title }} (#{{ pull.number }}) (@{{ pull.author.username }})
               {% endfor %}
-              {% endif %}            
+              {% endif %}
