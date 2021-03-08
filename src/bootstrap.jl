@@ -250,6 +250,48 @@ function shortestcovint(v, level = 0.95)
 end
 
 """
+    shortestcovint(bsamp::MixedModelBootstrap, level = 0.95)
+
+Return the shortest interval containing `level` proportion for each parameter from [`bsamp.allpars`](@ref)
+"""
+function shortestcovint(bsamp::MixedModelBootstrap{T}, level = 0.95) where {T}
+    allpars = bsamp.allpars
+    pars = unique(zip(allpars.type, allpars.group, allpars.names))
+
+    colnms = (:type, :group, :names, :lower, :upper)
+    coltypes = Tuple{String, Union{Missing,String}, Union{Missing,String}, T, T}
+    # not specifying the full eltype (NamedTuple{colnms,coltypes}) leads to prettier printing
+    result = NamedTuple{colnms}[]
+    sizehint!(result, length(pars))
+
+
+    for (t, g, n) in pars
+        gidx = if ismissing(g)
+            ismissing.(allpars.group)
+        else
+            .!ismissing.(allpars.group) .& (allpars.group .== g)
+        end
+
+        nidx = if ismissing(n)
+            ismissing.(allpars.names)
+        else
+            .!ismissing.(allpars.names) .& (allpars.names .== n)
+        end
+
+        tidx = allpars.type .== t # no missings allowed here
+
+        idx = tidx .& gidx .& nidx
+
+        vv = view(allpars.value, idx)
+
+        lower, upper = shortestcovint(vv, level)
+        push!(result, (; type=t, group=g, names=n, lower=lower, upper=upper))
+    end
+
+    return result
+end
+
+"""
     tidyβ(bsamp::MixedModelFitCollection)
 Return a tidy (row)table with the parameter estimates spread into columns
 of `iter`, `coefname` and `β`

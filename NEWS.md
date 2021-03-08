@@ -8,7 +8,7 @@ MixedModels v4.0.0 Release Notes
 * Introduce an abstract type for collections of fits `MixedModelFitCollection`,
   and make `MixedModelBootstrap` a subtype of it. Accordingly, rename the `bstr`
   field to `fits`. [#465]
-* Replace internal `statscholesky` and `statsqr` functions for determining the 
+* Replace internal `statscholesky` and `statsqr` functions for determining the
   rank of `X` by `statsrank`. [#479]
 
 Run-time formula syntax
@@ -22,6 +22,10 @@ Run-time formula syntax
 * Methods for `Base./(::AbstractTerm, ::AbstractTerm)` are added, allowing
   nesting syntax to be used with `Term`s at run-time as well [#470]
 
+
+MixedModels v3.4.0 Release Notes
+========================
+* `shortestcovint` method for `MixedModelsBootstrap` [#484]
 
 MixedModels v3.3.0 Release Notes
 ========================
@@ -173,3 +177,5 @@ Package dependencies
 [#469]: https://github.com/JuliaStats/MixedModels.jl/issues/469
 [#470]: https://github.com/JuliaStats/MixedModels.jl/issues/470
 [#474]: https://github.com/JuliaStats/MixedModels.jl/issues/474
+[#480]: https://github.com/JuliaStats/MixedModels.jl/issues/480
+[#484]: https://github.com/JuliaStats/MixedModels.jl/issues/484
