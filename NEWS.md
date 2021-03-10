@@ -9,7 +9,7 @@ MixedModels v4.0.0 Release Notes
   and make `MixedModelBootstrap` a subtype of it. Accordingly, rename the `bstr`
   field to `fits`. [#465]
 * The response (dependent variable) is now stored internally as part of the
-  fixed-effects block. The `FeMat` and `FeTerm` types have changed correspondingly. [#464]
+  the renamed `FeMat` field, now called `Xymat` [#464]
 * Replace internal `statscholesky` and `statsqr` functions for determining the
   rank of `X` by `statsrank`. [#479]
 
