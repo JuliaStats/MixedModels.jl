@@ -12,6 +12,8 @@ MixedModels v4.0.0 Release Notes
   the renamed `FeMat` field, now called `Xymat` [#464]
 * Replace internal `statscholesky` and `statsqr` functions for determining the
   rank of `X` by `statsrank`. [#479]
+* Artifacts are now loaded lazily: the test data loaded via `dataset` is
+  downloaded on first use [#486]
 
 Run-time formula syntax
 -----------------------
@@ -183,3 +185,4 @@ Package dependencies
 [#479]: https://github.com/JuliaStats/MixedModels.jl/issues/479
 [#480]: https://github.com/JuliaStats/MixedModels.jl/issues/480
 [#484]: https://github.com/JuliaStats/MixedModels.jl/issues/484
+[#486]: https://github.com/JuliaStats/MixedModels.jl/issues/486

@@ -10,7 +10,7 @@
 # println("git-tree-sha1: ", Tar.tree_hash(IOBuffer(inflate_gzip(filename))))
 # from https://julialang.github.io/Pkg.jl/dev/artifacts/
 git-tree-sha1 = "aba5d7cb6510d3fe430636a9800054aad9ecf62e"
-lazy = false
+lazy = true
 
     [[TestData.download]]
     # this is the SHA from https://osf.io/djaqb/download?version=7
