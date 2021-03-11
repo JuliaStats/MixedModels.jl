@@ -150,3 +150,4 @@ Package dependencies
 [#474]: https://github.com/JuliaStats/MixedModels.jl/issues/474
 [#480]: https://github.com/JuliaStats/MixedModels.jl/issues/480
 [#484]: https://github.com/JuliaStats/MixedModels.jl/issues/484
+[#486]: https://github.com/JuliaStats/MixedModels.jl/issues/486
