@@ -26,12 +26,11 @@ Run-time formula syntax
 * Methods for `Base./(::AbstractTerm, ::AbstractTerm)` are added, allowing
   nesting syntax to be used with `Term`s at run-time as well [#470]
 
-Use of an offset in a GLMM
---------------------------
 
+MixedModels v3.4.1 Release Notes
+========================
 * The value of a named `offset` argument to `GeneralizedLinearMixedModel`,
   which previously was ignored [#453], is now handled properly. [#482]
-
 
 MixedModels v3.4.0 Release Notes
 ========================
