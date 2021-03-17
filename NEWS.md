@@ -27,6 +27,11 @@ Run-time formula syntax
   nesting syntax to be used with `Term`s at run-time as well [#470]
 
 
+MixedModels v3.4.1 Release Notes
+========================
+* The value of a named `offset` argument to `GeneralizedLinearMixedModel`,
+  which previously was ignored [#453], is now handled properly. [#482]
+
 MixedModels v3.4.0 Release Notes
 ========================
 * `shortestcovint` method for `MixedModelsBootstrap` [#484]
@@ -176,6 +181,7 @@ Package dependencies
 [#446]: https://github.com/JuliaStats/MixedModels.jl/issues/446
 [#447]: https://github.com/JuliaStats/MixedModels.jl/issues/447
 [#449]: https://github.com/JuliaStats/MixedModels.jl/issues/449
+[#453]: https://github.com/JuliaStats/MixedModels.jl/issues/453
 [#456]: https://github.com/JuliaStats/MixedModels.jl/issues/456
 [#464]: https://github.com/JuliaStats/MixedModels.jl/issues/464
 [#465]: https://github.com/JuliaStats/MixedModels.jl/issues/465
@@ -184,5 +190,6 @@ Package dependencies
 [#474]: https://github.com/JuliaStats/MixedModels.jl/issues/474
 [#479]: https://github.com/JuliaStats/MixedModels.jl/issues/479
 [#480]: https://github.com/JuliaStats/MixedModels.jl/issues/480
+[#482]: https://github.com/JuliaStats/MixedModels.jl/issues/482
 [#484]: https://github.com/JuliaStats/MixedModels.jl/issues/484
 [#486]: https://github.com/JuliaStats/MixedModels.jl/issues/486
