@@ -163,3 +163,15 @@ end
     # @test varest(gm) == dispersion(gm, true)
 
 end
+
+@testset "mmec" begin
+    # Data on "Malignant melanoma in the European community" from the mlmRev package for R
+    # The offset of log.(expected) is to examine the ratio of observed to expected, based on population
+    mmec = dataset(:mmec)
+    mmform = @formula(deaths ~ 1 + uvb + (1|region))
+    gm5 = fit(MixedModel, mmform, mmec, Poisson(); offset=log.(mmec.expected), nAGQ=11)
+    @test isapprox(deviance(gm5), 655.2533533016059, atol=5.e-3)
+    @test isapprox(first(gm5.θ), 0.4121684550775567, atol=1.e-3)
+    @test isapprox(first(gm5.β), -0.13860166843315044, atol=1.e-3)
+    @test isapprox(last(gm5.β), -0.034414458364713504, atol=1.e-3)
+end

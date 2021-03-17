@@ -138,32 +138,6 @@ function replicate(f::Function, n::Integer; use_threads=false)
     results
 end
 
-cacheddatasets = Dict{String, Arrow.Table}()
-"""
-    dataset(nm)
-
-Return, as an `Arrow.Table`, the test data set named `nm`, which can be a `String` or `Symbol`
-"""
-function dataset(nm::AbstractString)
-    get!(cacheddatasets, nm) do
-        path = joinpath(TestData, nm * ".arrow")
-        if !isfile(path)
-            throw(ArgumentError(
-                "Dataset \"$nm\" is not available.\nUse MixedModels.datasets() for available names."))
-        end
-        Arrow.Table(path)
-    end
-end
-dataset(nm::Symbol) = dataset(string(nm))
-
-"""
-    datasets()
-
-Return a vector of names of the available test data sets
-"""
-datasets() = first.(Base.Filesystem.splitext.(filter(endswith(".arrow"), readdir(TestData))))
-
-
 """
     PCA{T<:AbstractFloat}
 
@@ -253,16 +227,16 @@ function Base.show(io::IO, pca::PCA;
             if any(neg)
                 cv[.!neg] .= " ".* cv[.!neg]
             end
-            # this hurts type stability, 
+            # this hurts type stability,
             # but this show method shouldn't be a bottleneck
             printmat = Text.([pca.rnames cv])
         else
             # if there are no names, then we cheat and use the print method
-            # for LowerTriangular, which automatically covers the . in the 
+            # for LowerTriangular, which automatically covers the . in the
             # upper triangle
             printmat = round.(LowerTriangular(pca.covcor), digits=ndigitsmat)
         end
-        
+
         Base.print_matrix(io, printmat)
         println(io)
     end
@@ -284,15 +258,15 @@ function Base.show(io::IO, pca::PCA;
     if loadings
         println(io, "\nComponent loadings")
         printmat = round.(pca.loadings, digits=ndigitsmat)
-        
-        if pca.rnames !== missing 
+
+        if pca.rnames !== missing
             pclabs = [Text(""); Text.( "PC$i" for i in 1:length(pca.rnames))]
             pclabs = reshape(pclabs, 1, :)
-            # this hurts type stability, 
+            # this hurts type stability,
             # but this show method shouldn't be a bottleneck
             printmat = [pclabs; Text.(pca.rnames) printmat]
         end
-            
+
         Base.print_matrix(io, printmat)
     end
 
