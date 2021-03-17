@@ -197,6 +197,9 @@ fit(
     REML = REML,
 )
 
+
+_offseterr() = throw(ArgumentError("Offsets are not supported in linear models. You can simply shift the response by the offset."))
+
 fit(
     ::Type{MixedModel},
     f::FormulaTerm,
@@ -205,7 +208,8 @@ fit(
     contrasts = Dict{Symbol,Any}(),
     verbose::Bool = false,
     REML::Bool = false,
-) = fit(
+    offset = [],
+) = !isempty(offset) ? _offseterr() : fit(
     LinearMixedModel,
     f,
     tbl,
@@ -228,7 +232,7 @@ fit(
     offset = [],
     fast::Bool = false,
     nAGQ::Integer = 1,
-) = fit(
+) = !isempty(offset) ? _offseterr() : fit(
     LinearMixedModel,
     f,
     tbl,
@@ -237,6 +241,7 @@ fit(
     verbose = verbose,
     REML = REML,
 )
+
 
 function StatsBase.coef(m::LinearMixedModel{T}) where {T}
     piv = first(m.feterms).piv

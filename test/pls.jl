@@ -15,6 +15,16 @@ const io = IOBuffer()
 
 include("modelcache.jl")
 
+@testset "offset" begin
+    let off = repeat([1], 180),
+        slp = MixedModels.dataset(:sleepstudy),
+        frm = @formula(reaction ~ 1 + (1|subj))
+
+        @test_throws ArgumentError fit(MixedModel, frm, slp; offset=off)
+        @test_throws ArgumentError fit(MixedModel, frm, slp, Normal(), IdentityLink(); offset=off)
+    end
+end
+
 @testset "Dyestuff" begin
     fm1 = only(models(:dyestuff))
 
