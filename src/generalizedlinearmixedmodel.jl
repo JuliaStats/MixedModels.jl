@@ -157,6 +157,8 @@ end
 
 GLM.dispersion_parameter(m::GeneralizedLinearMixedModel) = dispersion_parameter(m.resp.d)
 
+Distributions.Distribution(m::GeneralizedLinearMixedModel{T,D}) where {T,D} = D
+
 function StatsBase.dof(m::GeneralizedLinearMixedModel)::Int
     length(m.β) + length(m.θ) + GLM.dispersion_parameter(m.resp.d)
 end
@@ -442,6 +444,8 @@ end
 # which returns a reference to the same array
 getθ(m::GeneralizedLinearMixedModel)  = copy(m.θ)
 getθ!(v::AbstractVector{T}, m::GeneralizedLinearMixedModel{T}) where {T} = copyto!(v, m.θ)
+
+GLM.Link(m::GeneralizedLinearMixedModel) = GLM.Link(m.resp)
 
 function StatsBase.loglikelihood(m::GeneralizedLinearMixedModel{T}) where {T}
     accum = zero(T)
