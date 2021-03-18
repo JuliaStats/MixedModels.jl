@@ -11,8 +11,8 @@ Principal Components Analysis
 * `corr` is this a correlation matrix?
 """
 struct PCA{T<:AbstractFloat}
-    covcor::Symmetric{T,Matrix{T}}
-    sv::SVD{T,T,Matrix{T}}
+    covcor::Symmetric{T,<:AbstractMatrix{T}}
+    sv::SVD{T,T,<:AbstractMatrix{T}}
     rnames::Union{Vector{String}, Missing}
     corr::Bool
 end
@@ -108,13 +108,12 @@ function Base.show(io::IO, ::MIME"text/plain", pca::PCA;
     if loadings
         println(io, "\nComponent loadings")
         printmat = round.(pca.loadings, digits=ndigitsmat)
-
         if pca.rnames !== missing
             pclabs = [Text(""); Text.( "PC$i" for i in 1:length(pca.rnames))]
             pclabs = reshape(pclabs, 1, :)
             # this hurts type stability,
             # but this show method shouldn't be a bottleneck
-            printmat = [pclabs; Text.(pca.rnames) printmat]
+            printmat = [pclabs; Text.(pca.rnames) Matrix(printmat)]
         end
 
         Base.print_matrix(io, printmat)
