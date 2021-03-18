@@ -14,9 +14,8 @@ MixedModels v4.0.0 Release Notes
   rank of `X` by `statsrank`. [#479]
 * Artifacts are now loaded lazily: the test data loaded via `dataset` is
   downloaded on first use [#486]
-* `ReMat` and `PCA` now support covariance factors (`λ`) originating from
-  `<:AbstractMatrix`. Building on this, the covariance factor for random
-  effects without correlation parameters are now stored as `LowerTriangular{T, Diagonal{T, Vector{}}}`. This representation is both more memory efficient and
+* `ReMat` and `PCA` now support covariance factors (`λ`) that are `LowerTriangular`
+  or `Diagonal`. This representation is both more memory efficient and
   enables additional computational optimizations for particular covariance
   structures.[#489]
 

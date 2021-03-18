@@ -386,11 +386,11 @@ end
         # explicit zerocorr
         fmzc = models(:sleepstudy)[2]
         λ = first(fmzc.reterms).λ
-        @test λ isa LowerTriangular{Float64, Diagonal{Float64, Vector{Float64}}}
+        @test λ isa Diagonal{Float64, Vector{Float64}}
         # implicit zerocorr via almagation
         fmnc = models(:sleepstudy)[3]
         λ = first(fmnc.reterms).λ
-        @test λ isa LowerTriangular{Float64, Diagonal{Float64, Vector{Float64}}}
+        @test λ isa Diagonal{Float64, Vector{Float64}}
     end
 
     show(io, BlockDescription(first(models(:sleepstudy))))

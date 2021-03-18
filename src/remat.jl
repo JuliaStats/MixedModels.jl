@@ -130,7 +130,7 @@ Overwrite `v` with the elements of the blocks in the lower triangle of `A.Λ` (c
 """
 function getθ!(v::AbstractVector{T}, A::ReMat{T}) where {T}
     length(v) == length(A.inds) || throw(DimensionMismatch("length(v) ≠ length(A.inds)"))
-    m = A.λ.data
+    m = A.λ
     @inbounds for (j, ind) in enumerate(A.inds)
         v[j] = m[ind]
     end
@@ -176,8 +176,9 @@ Return the vector of lower bounds on the parameters, `θ` associated with `A`
 These are the elements in the lower triangle of `A.λ` in column-major ordering.
 Diagonals have a lower bound of `0`.  Off-diagonals have a lower-bound of `-Inf`.
 """
-lowerbd(A::ReMat{T}) where {T} =
-    T[x ∈ diagind(A.λ.data) ? zero(T) : T(-Inf) for x in A.inds]
+function lowerbd(A::ReMat{T}) where {T}
+    T[x ∈ diagind(A.λ) ? zero(T) : T(-Inf) for x in A.inds]
+end
 
 """
     isnested(A::ReMat, B::ReMat)
@@ -454,8 +455,8 @@ end
 rowlengths(A::ReMat{T,1}) where {T} = vec(abs.(A.λ.data))
 
 function rowlengths(A::ReMat)
-    ld = A.λ.data
-    [norm(view(ld, i, 1:i)) for i in 1:size(ld, 1)]
+    ld = A.λ
+    isa(ld, Diagonal) ? abs.(ld.diag) : [norm(view(ld, i, 1:i)) for i in 1:size(ld, 1)]
 end
 
 """
@@ -541,15 +542,23 @@ function ρ(i, λ::AbstractMatrix{T}, im::Matrix{Bool}, indpairs, σs, sc::T)::T
     end
 end
 
-function σρs(A::ReMat{T}, sc::T) where {T}
-    λ = A.λ.data
+function _σρs(λ::LowerTriangular{T}, sc::T, im::Matrix{Bool}, cnms::Vector{Symbol}) where {T}
+    λ = λ.data
     k = size(λ, 1)
-    im = indmat(A)
     indpairs = checkindprsk(k)
-    σs = NamedTuple{(Symbol.(A.cnames)...,)}(ntuple(i -> sc*norm(view(λ,i,1:i)), k))
+    σs = NamedTuple{(cnms...,)}(ntuple(i -> sc*norm(view(λ,i,1:i)), k))
     NamedTuple{(:σ,:ρ)}((σs, ntuple(i -> ρ(i,λ,im,indpairs,σs,sc), (k * (k - 1)) >> 1)))
 end
 
+function _σρs(λ::Diagonal{T}, sc::T, im::Matrix{Bool}, cnms::Vector{Symbol}) where {T}
+    σs = NamedTuple(zip(cnms, sc .* λ.diag))
+    k = length(σs)
+    NamedTuple{(:σ,:ρ)}((σs, ntuple(i -> -zero(T), (k * (k - 1)) >> 1)))
+end
+
+function σρs(A::ReMat{T}, sc::T) where {T}
+    _σρs(A.λ, sc, indmat(A), Symbol.(A.cnames))
+end
 """
     corrmat(A::ReMat)
 
