@@ -1,10 +1,12 @@
 using DataFrames
+using Distributions
 using MixedModels
 using PooledArrays
 using StableRNGs
 using Tables
 using Test
 
+using GLM: Link
 using MixedModels: dataset
 
 include("modelcache.jl")
@@ -32,6 +34,8 @@ include("modelcache.jl")
     @test sdest(gm0) === missing
     @test varest(gm0) === missing
     @test gm0.σ === missing
+    @test Distribution(gm0) == Distribution(gm0.resp)
+    @test Link(gm0) == Link(gm0.resp)
 
     gm1 = fit(MixedModel, only(gfms[:contra]), contra, Bernoulli());
     @test isapprox(gm1.θ, [0.573054], atol=0.005)
