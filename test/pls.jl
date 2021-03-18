@@ -382,6 +382,16 @@ end
     # amalgamate should set these to -0.0 to indicate structural zeros
     @test all(ρs_intercept .=== -0.0)
 
+    @testset "diagonal λ in zerocorr" begin
+        # explicit zerocorr
+        fmzc = models(:sleepstudy)[2]
+        λ = first(fmzc.reterms).λ
+        @test λ isa Diagonal{Float64, Vector{Float64}}
+        # implicit zerocorr via almagation
+        fmnc = models(:sleepstudy)[3]
+        λ = first(fmnc.reterms).λ
+        @test λ isa Diagonal{Float64, Vector{Float64}}
+    end
 
     show(io, BlockDescription(first(models(:sleepstudy))))
     @test countlines(seekstart(io)) == 3
