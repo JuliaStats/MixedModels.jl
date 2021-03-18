@@ -22,7 +22,7 @@ mutable struct ReMat{T,S} <: AbstractReMat{T}
     cnames::Vector{String}
     z::Matrix{T}
     wtz::Matrix{T}
-    λ::LowerTriangular{T,Matrix{T}}
+    λ::LowerTriangular{T,<:AbstractMatrix{T}}
     inds::Vector{Int}
     adjA::SparseMatrixCSC{T,Int32}
     scratch::Matrix{T}
@@ -64,8 +64,11 @@ function _amalgamate(reterms::Vector, T::Type)
                 offset += sz
             end
             inds = (1:abs2(Snew))[vec(btemp)]
-
-            λ = LowerTriangular(Matrix{T}(I, Snew, Snew))
+            if inds == diagind(btemp)
+                λ = LowerTriangular(Diagonal{T}(I(Snew)))
+            else
+                λ = LowerTriangular(Matrix{T}(I, Snew, Snew))
+            end
             scratch =  foldl(vcat, rr.scratch for rr in trms)
 
             push!(
@@ -589,7 +592,7 @@ end
 vsize(A::ReMat{T,S}) where {T,S} = S
 
 function zerocorr!(A::ReMat{T}) where {T}
-    λ = A.λ
+    λ = A.λ = LowerTriangular(Diagonal(A.λ))
     # zero out all entries not on the diagonal
     λ[setdiff(A.inds, diagind(λ))] .= 0
     A.inds = intersect(A.inds, diagind(λ))
