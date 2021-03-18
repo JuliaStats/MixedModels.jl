@@ -81,7 +81,8 @@ function Base.sum!(s::AbstractVector{T}, a::RaggedArray{T}) where {T}
     s
 end
 
-function rownormalize!(A::AbstractMatrix)
+function rownormalize(A::AbstractMatrix)
+    A = copy(A)
     for r in eachrow(A)
         # all zeros arise in zerocorr situations
         if !iszero(r)
@@ -89,6 +90,10 @@ function rownormalize!(A::AbstractMatrix)
         end
     end
     A
+end
+
+function rownormalize(A::LowerTriangular{T, Diagonal{T, Vector{T}}}) where T
+    one(T) * I(size(A,1))
 end
 
 """

@@ -30,7 +30,7 @@ If `corr=true`, then the covariance is first standardized to the correlation sca
 """
 
 function PCA(covfac::AbstractMatrix, rnames=missing; corr::Bool=true)
-    covf = corr ? rownormalize!(copy(covfac)) : copy(covfac)
+    covf = corr ? rownormalize(covfac) : covfac
     PCA(Symmetric(covf*covf', :L), svd(covf), rnames, corr)
 end
 
