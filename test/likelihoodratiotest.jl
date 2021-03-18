@@ -10,10 +10,10 @@ include("modelcache.jl")
 @testset "isnested" begin
     slp = dataset(:sleepstudy)
 
-    # these tests don't actually depend on the models being fit, 
+    # these tests don't actually depend on the models being fit,
     # so we just construct them
 
-    # mismatched RE terms 
+    # mismatched RE terms
     m1 = LinearMixedModel(@formula(reaction ~ 1 + days + (1+days|subj)), slp)
     m2 = LinearMixedModel(@formula(reaction ~ 1 + days + (0+days|subj)), slp)
     @test !isnested(m1, m2)
@@ -29,7 +29,7 @@ include("modelcache.jl")
     m2 = LinearMixedModel(@formula(rt_trunc ~ 1 + (1|item)), kb07)
     @test !isnested(m1, m2)
 
-    # fixed-effects specification in REML and 
+    # fixed-effects specification in REML and
     # conversion of internal ArgumentError into @error for StatsModels.isnested
     kb07  = dataset(:kb07)
     m1 = fit(MixedModel, @formula(rt_trunc ~ 1 + prec + (1|subj)), kb07, REML=true)
@@ -42,8 +42,6 @@ end
 
 @testset "likelihoodratio test" begin
     slp = dataset(:sleepstudy);
-    
-
 
     fm0 = fit(MixedModel,@formula(reaction ~ 1 + (1+days|subj)),slp);
     fm1 = fit(MixedModel,@formula(reaction ~ 1 + days + (1+days|subj)),slp);
@@ -67,7 +65,7 @@ end
 
     # differing FE with REML
     fm1 = fit(MixedModel,@formula(reaction ~ 1 + days + (1+days|subj)),slp, REML=true);
- 
+
     @test_throws ArgumentError likelihoodratiotest(fm0,fm1)
 
     contra = MixedModels.dataset(:contra);
