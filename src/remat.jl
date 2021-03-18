@@ -551,8 +551,9 @@ function _σρs(λ::LowerTriangular{T}, sc::T, im::Matrix{Bool}, cnms::Vector{Sy
 end
 
 function _σρs(λ::Diagonal{T}, sc::T, im::Matrix{Bool}, cnms::Vector{Symbol}) where {T}
-    σs = NamedTuple(zip(cnms, sc .* λ.diag))
-    k = length(σs)
+    dsc = sc .* λ.diag
+    k = length(dsc)
+    σs = NamedTuple{(cnms...,)}(NTuple{k, T}(dsc))
     NamedTuple{(:σ,:ρ)}((σs, ntuple(i -> -zero(T), (k * (k - 1)) >> 1)))
 end
 
