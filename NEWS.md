@@ -18,6 +18,9 @@ MixedModels v4.0.0 Release Notes
   or `Diagonal`. This representation is both more memory efficient and
   enables additional computational optimizations for particular covariance
   structures.[#489]
+* `GeneralizedLinearMixedModel` now includes the response distribution as one
+  of its type parameters. This will dispatching on the model family and may allow
+  additional specialization in the future.[#490]
 
 Run-time formula syntax
 -----------------------
@@ -198,3 +201,4 @@ Package dependencies
 [#484]: https://github.com/JuliaStats/MixedModels.jl/issues/484
 [#486]: https://github.com/JuliaStats/MixedModels.jl/issues/486
 [#489]: https://github.com/JuliaStats/MixedModels.jl/issues/489
+[#490]: https://github.com/JuliaStats/MixedModels.jl/issues/490
