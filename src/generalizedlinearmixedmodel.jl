@@ -36,7 +36,7 @@ In addition to the fieldnames, the following names are also accessible through t
 - `y`: response vector
 
 """
-struct GeneralizedLinearMixedModel{T<:AbstractFloat} <: MixedModel{T}
+struct GeneralizedLinearMixedModel{T<:AbstractFloat, D<:Distribution} <: MixedModel{T}
     LMM::LinearMixedModel{T}
     β::Vector{T}
     β₀::Vector{T}
@@ -132,7 +132,7 @@ end
 
 """
     deviance!(m::GeneralizedLinearMixedModel, nAGQ=1)
-    
+
 Update `m.η`, `m.μ`, etc., install the working response and working weights in
 `m.LMM`, update `m.LMM.A` and `m.LMM.R`, then evaluate the [`deviance`](@ref).
 """
@@ -156,6 +156,8 @@ function GLM.dispersion(m::GeneralizedLinearMixedModel{T}, sqr::Bool = false) wh
 end
 
 GLM.dispersion_parameter(m::GeneralizedLinearMixedModel) = dispersion_parameter(m.resp.d)
+
+Distributions.Distribution(m::GeneralizedLinearMixedModel{T,D}) where {T,D} = D
 
 function StatsBase.dof(m::GeneralizedLinearMixedModel)::Int
     length(m.β) + length(m.θ) + GLM.dispersion_parameter(m.resp.d)
@@ -391,7 +393,7 @@ function GeneralizedLinearMixedModel(
         # it is empty unless there is a single random-effects term
     vv = length(u) == 1 ? vec(first(u)) : similar(y, 0)
 
-    res = GeneralizedLinearMixedModel(
+    res = GeneralizedLinearMixedModel{T, typeof(d)}(
         LMM,
         β,
         copy(β),
@@ -442,6 +444,8 @@ end
 # which returns a reference to the same array
 getθ(m::GeneralizedLinearMixedModel)  = copy(m.θ)
 getθ!(v::AbstractVector{T}, m::GeneralizedLinearMixedModel{T}) where {T} = copyto!(v, m.θ)
+
+GLM.Link(m::GeneralizedLinearMixedModel) = GLM.Link(m.resp)
 
 function StatsBase.loglikelihood(m::GeneralizedLinearMixedModel{T}) where {T}
     accum = zero(T)
@@ -647,7 +651,7 @@ For Gaussian models, this parameter is often called σ.
 """
 sdest(m::GeneralizedLinearMixedModel{T}) where {T} =  dispersion_parameter(m) ? dispersion(m, false) : missing
 
-function Base.show(io::IO, ::MIME"text/plain", m::GeneralizedLinearMixedModel)
+function Base.show(io::IO, ::MIME"text/plain", m::GeneralizedLinearMixedModel{T,D}) where {T,D}
     if m.optsum.feval < 0
         @warn("Model has not been fit")
         return nothing
@@ -655,8 +659,8 @@ function Base.show(io::IO, ::MIME"text/plain", m::GeneralizedLinearMixedModel)
     nAGQ = m.LMM.optsum.nAGQ
     println(io, "Generalized Linear Mixed Model fit by maximum likelihood (nAGQ = $nAGQ)")
     println(io, "  ", m.LMM.formula)
-    println(io, "  Distribution: ", Distribution(m.resp))
-    println(io, "  Link: ", GLM.Link(m.resp), "\n")
+    println(io, "  Distribution: ", D)
+    println(io, "  Link: ", Link(m), "\n")
     println(io)
     nums = Ryu.writefixed.([loglikelihood(m), deviance(m), aic(m), aicc(m), bic(m)], 4)
     fieldwd = max(maximum(textwidth.(nums)) + 1, 11)
