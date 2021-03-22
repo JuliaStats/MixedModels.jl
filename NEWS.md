@@ -19,7 +19,7 @@ MixedModels v4.0.0 Release Notes
   enables additional computational optimizations for particular covariance
   structures.[#489]
 * `GeneralizedLinearMixedModel` now includes the response distribution as one
-  of its type parameters. This will dispatching on the model family and may allow
+  of its type parameters. This will allow dispatching on the model family and may allow
   additional specialization in the future.[#490]
 
 Run-time formula syntax
