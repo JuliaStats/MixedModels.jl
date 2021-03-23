@@ -285,15 +285,28 @@ diagonal blocks from the conditional variance-covariance matrix,
     s² Λ(Λ'Z'ZΛ + I)⁻¹Λ'
 """
 function condVar(m::LinearMixedModel{T}) where {T}
-    retrms = m.reterms
-    t1 = first(retrms)
-    L11 = first(m.L)
-    if !isone(length(retrms)) || !isa(L11, Diagonal{T,Vector{T}})
-        throw(ArgumentError("code for multiple or vector-valued r.e. not yet written"))
+    L = m.L
+    s = sdest(m)
+    spL = LowerTriangular(sparseL(m))
+    nre = size(spL, 1)
+    val = Array{T,3}[]
+    offset = 0
+    for (i, re) in enumerate(m.reterms)
+        λt = s * transpose(re.λ)
+        vi = size(λt, 2)
+        ℓi = length(re.levels)
+        vali = Array{T}(undef, (vi, vi, ℓi))
+        scratch = Matrix{T}(undef, (size(spL, 1), vi))
+        for b in 1:ℓi
+            fill!(scratch, zero(T))
+            copyto!(view(scratch, (offset + (b - 1) * vi) .+ (1:vi), :), λt)
+            ldiv!(spL, scratch)
+            mul!(view(vali, :, :, b), scratch', scratch)
+        end
+        push!(val, vali)
+        offset += vi * ℓi
     end
-    ll = first(t1.λ)
-    Ld = L11.diag
-    Array{T,3}[reshape(abs2.(ll ./ Ld) .* varest(m), (1, 1, length(Ld)))]
+    val
 end
 
 function pushALblock!(A, L, blk)
@@ -855,6 +868,74 @@ function Base.show(io::IO, ::MIME"text/plain", m::LinearMixedModel)
 end
 
 Base.show(io::IO, m::LinearMixedModel) = Base.show(io, MIME"text/plain"(), m)
+
+"""
+    _coord(A::AbstractMatrix)
+
+Return the positions and values of the nonzeros in `A` as a
+`NamedTuple{(:i, :j, :v), Tuple{Vector{Int32}, Vector{Int32}, Vector{Float64}}}`
+"""
+function _coord(A::Diagonal)
+    (i = Int32.(axes(A,1)), j = Int32.(axes(A,2)), v = A.diag)
+end
+
+function _coord(A::UniformBlockDiagonal{T}) where {T}
+    dat = A.data
+    r, c, k = size(dat)
+    blk = repeat(r .* (0:k-1), inner=r*c)
+    (
+        i = Int32.(repeat(1:r, outer=c*k) .+ blk),
+        j = Int32.(repeat(1:c, inner=r, outer=k) .+ blk),
+        v = vec(dat)
+    )
+end
+
+function _coord(A::SparseMatrixCSC{T,Int32}) where {T}
+    rv = rowvals(A)
+    cv = similar(rv)
+    for j in axes(A, 2), k in nzrange(A, j) 
+        cv[k] = j
+    end
+    (i = rv, j = cv, v = nonzeros(A), )
+end
+
+function _coord(A::Matrix{T}) where {T}
+    m, n = size(A)
+    (
+        i = Int32.(repeat(axes(A, 1), outer=n)),
+        j = Int32.(repeat(axes(A, 2), inner=m)),
+        v = vec(A),
+    )
+end
+
+"""
+    sparseL(m::LinearMixedModel{T}; full::Bool=false) where {T}
+
+Return the lower Cholesky factor `L` as a `SparseMatrix{T,Int32}`.
+
+`full` indicates whether the parts of `L` associated with the fixed-effects and response
+are to be included.
+"""
+function sparseL(m::LinearMixedModel{T}; full::Bool=false) where {T}
+    L, reterms = m.L, m.reterms
+    nt = length(reterms) + (full ? 1 : 0)
+    rowoffset, coloffset = 0, 0
+    val = (i = Int32[], j = Int32[], v = T[])
+    for i in 1:nt, j in 1:i
+        Lblk = L[block(i, j)]
+        cblk = _coord(Lblk)
+        append!(val.i, cblk.i .+ Int32(rowoffset))
+        append!(val.j, cblk.j .+ Int32(coloffset))
+        append!(val.v, cblk.v)
+        if i == j
+            coloffset = 0
+            rowoffset += size(Lblk, 1)
+        else
+            coloffset += size(Lblk, 2)
+        end
+    end
+    dropzeros!(tril!(sparse(val...,)))
+end
 
 
 """
