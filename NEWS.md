@@ -33,6 +33,13 @@ Run-time formula syntax
 * Methods for `Base./(::AbstractTerm, ::AbstractTerm)` are added, allowing
   nesting syntax to be used with `Term`s at run-time as well [#470]
 
+MixedModels v3.4.2 Release Notes
+=======================
+* Threading in `parametricbootstrap` now uses a `SpinLock` instead of a `ReentrantLock`.
+  This improves performance, but care should be taken when nesting spin locks. [#493]
+* Single-threaded use of `paramatricbootstrap` now works when nested within a larger
+  multi-threaded context (e.g. `Threads.@threads for`). (Multi-threaded `parametricbootstrap`
+  worked and continues to work within a nested threading context.) [#493]
 
 MixedModels v3.4.1 Release Notes
 ========================
@@ -202,3 +209,4 @@ Package dependencies
 [#486]: https://github.com/JuliaStats/MixedModels.jl/issues/486
 [#489]: https://github.com/JuliaStats/MixedModels.jl/issues/489
 [#490]: https://github.com/JuliaStats/MixedModels.jl/issues/490
+[#493]: https://github.com/JuliaStats/MixedModels.jl/issues/493
