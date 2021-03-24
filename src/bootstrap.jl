@@ -91,9 +91,10 @@ function parametricbootstrap(
     # see https://docs.julialang.org/en/v1/stdlib/Future/index.html
     rnglock = ReentrantLock()
     samp = replicate(n, use_threads=use_threads) do
-        mod = m_threads[Threads.threadid()]
-        local βsc = βsc_threads[Threads.threadid()]
-        local θsc = θsc_threads[Threads.threadid()]
+        tidx = use_threads ? Threads.threadid() : 1
+        mod = m_threads[tidx]
+        local βsc = βsc_threads[tidx]
+        local θsc = θsc_threads[tidx]
         lock(rnglock)
         mod = simulate!(rng, mod, β = β, σ = σ, θ = θ)
         unlock(rnglock)
