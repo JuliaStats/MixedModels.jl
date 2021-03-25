@@ -33,6 +33,11 @@ Run-time formula syntax
 * Methods for `Base./(::AbstractTerm, ::AbstractTerm)` are added, allowing
   nesting syntax to be used with `Term`s at run-time as well [#470]
 
+MixedModels v3.5.0 Release Notes
+========================
+* The Progressbar for `parametricbootstrap` and `replicate` is not displayed
+  when in a non-interactive (i.e. logging) context. The progressbar can also
+  be manually disabled with `hide_progress=true`.[#495]
 
 MixedModels v3.4.1 Release Notes
 ========================
@@ -202,3 +207,4 @@ Package dependencies
 [#486]: https://github.com/JuliaStats/MixedModels.jl/issues/486
 [#489]: https://github.com/JuliaStats/MixedModels.jl/issues/489
 [#490]: https://github.com/JuliaStats/MixedModels.jl/issues/490
+[#495]: https://github.com/JuliaStats/MixedModels.jl/issues/495
