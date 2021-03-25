@@ -2,14 +2,14 @@ name: Tier 1
 on:
   push:
     branches:
-      - master
+      - main
       - v3.x
     paths-ignore:
       - 'LICENSE.md'
       - 'README.md'
   pull_request:
     branches:
-      - master
+      - main
       - v3.x
     paths-ignore:
       - 'LICENSE.md'

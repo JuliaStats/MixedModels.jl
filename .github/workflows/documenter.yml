@@ -1,11 +1,11 @@
 name: Documenter
 on:
   push:
-    branches: [master]
+    branches: [main]
     tags: [v*]
   pull_request:
     branches:
-      - master
+      - main
       - v3.x
 jobs:
   Documenter:
