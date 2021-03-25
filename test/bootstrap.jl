@@ -68,7 +68,7 @@ end
     bsamp = parametricbootstrap(MersenneTwister(1234321), 100, fm, use_threads=false)
     @test isa(propertynames(bsamp), Vector{Symbol})
     @test length(bsamp.objective) == 100
-    @test keys(first(bsamp.bstr)) == (:objective, :σ, :β, :se, :θ)
+    @test keys(first(bsamp.fits)) == (:objective, :σ, :β, :se, :θ)
     @test isa(bsamp.σs, Vector{<:NamedTuple})
     @test length(bsamp.σs) == 100
     allpars = DataFrame(bsamp.allpars)
@@ -104,11 +104,7 @@ end
         contra = dataset(:contra)
         gm0 = fit(MixedModel, only(gfms[:contra]), contra, Bernoulli(), fast=true)
         bs = parametricbootstrap(StableRNG(42), 100, gm0)
-        bsci = combine(groupby(DataFrame(bs.β), :coefname),
-                       :β => shortestcovint => :ci)
-        bsci.lower = first.(bsci.ci)
-        bsci.upper = last.(bsci.ci)
-        select!(bsci, Not(:ci))
+        bsci = filter!(:type => ==("β"), DataFrame(shortestcovint(bs)))
         ciwidth = 2 .* stderror(gm0)
         waldci = DataFrame(coef=fixefnames(gm0),
                            lower=fixef(gm0) .- ciwidth,

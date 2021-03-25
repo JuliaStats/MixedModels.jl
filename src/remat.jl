@@ -22,7 +22,7 @@ mutable struct ReMat{T,S} <: AbstractReMat{T}
     cnames::Vector{String}
     z::Matrix{T}
     wtz::Matrix{T}
-    λ::LowerTriangular{T,Matrix{T}}
+    λ::Union{LowerTriangular{T,Matrix{T}},Diagonal{T,Vector{T}}}
     inds::Vector{Int}
     adjA::SparseMatrixCSC{T,Int32}
     scratch::Matrix{T}
@@ -64,8 +64,11 @@ function _amalgamate(reterms::Vector, T::Type)
                 offset += sz
             end
             inds = (1:abs2(Snew))[vec(btemp)]
-
-            λ = LowerTriangular(Matrix{T}(I, Snew, Snew))
+            if inds == diagind(btemp)
+                λ = Diagonal{T}(I(Snew))
+            else
+                λ = LowerTriangular(Matrix{T}(I, Snew, Snew))
+            end
             scratch =  foldl(vcat, rr.scratch for rr in trms)
 
             push!(
@@ -127,7 +130,7 @@ Overwrite `v` with the elements of the blocks in the lower triangle of `A.Λ` (c
 """
 function getθ!(v::AbstractVector{T}, A::ReMat{T}) where {T}
     length(v) == length(A.inds) || throw(DimensionMismatch("length(v) ≠ length(A.inds)"))
-    m = A.λ.data
+    m = A.λ
     @inbounds for (j, ind) in enumerate(A.inds)
         v[j] = m[ind]
     end
@@ -173,8 +176,9 @@ Return the vector of lower bounds on the parameters, `θ` associated with `A`
 These are the elements in the lower triangle of `A.λ` in column-major ordering.
 Diagonals have a lower bound of `0`.  Off-diagonals have a lower-bound of `-Inf`.
 """
-lowerbd(A::ReMat{T}) where {T} =
-    T[x ∈ diagind(A.λ.data) ? zero(T) : T(-Inf) for x in A.inds]
+function lowerbd(A::ReMat{T}) where {T}
+    T[x ∈ diagind(A.λ) ? zero(T) : T(-Inf) for x in A.inds]
+end
 
 """
     isnested(A::ReMat, B::ReMat)
@@ -252,21 +256,20 @@ end
 
 *(adjA::Adjoint{T,<:ReMat{T}}, B::ReMat{T}) where {T} = adjA.parent.adjA * sparse(B)
 *(adjA::Adjoint{T,<:FeMat{T}}, B::ReMat{T}) where {T} =
-    mul!(Matrix{T}(undef, rank(adjA.parent), size(B, 2)), adjA, B)
+    mul!(Matrix{T}(undef, size(adjA.parent, 2), size(B, 2)), adjA, B)
 
 function LinearAlgebra.mul!(C::Matrix{T}, adjA::Adjoint{T,<:FeMat{T}}, B::ReMat{T,1},
         α::Number, β::Number) where {T}
     A = adjA.parent
-    Awt = A.wtx
+    Awt = A.wtxy
     n, p = size(Awt)
-    r = A.rank
     m, q = size(B)
-    size(C) == (r, q) && m == n || throw(DimensionMismatch())
+    size(C) == (p, q) && m == n || throw(DimensionMismatch())
     isone(β) || rmul!(C, β)
     zz = B.wtz
     @inbounds for (j, rrj) in enumerate(B.refs)
         αzj = α * zz[j]
-        for i in 1:r
+        for i in 1:p
             C[i, rrj] += αzj * Awt[j, i]
         end
     end
@@ -276,8 +279,8 @@ end
 function LinearAlgebra.mul!(C::Matrix{T}, adjA::Adjoint{T,<:FeMat{T}}, B::ReMat{T,S},
     α::Number, β::Number) where {T,S}
     A = adjA.parent
-    Awt = A.wtx
-    r = rank(A)
+    Awt = A.wtxy
+    r = size(Awt, 2)
     rr = B.refs
     scr = B.scratch
     vscr = vec(scr)
@@ -452,8 +455,8 @@ end
 rowlengths(A::ReMat{T,1}) where {T} = vec(abs.(A.λ.data))
 
 function rowlengths(A::ReMat)
-    ld = A.λ.data
-    [norm(view(ld, i, 1:i)) for i in 1:size(ld, 1)]
+    ld = A.λ
+    isa(ld, Diagonal) ? abs.(ld.diag) : [norm(view(ld, i, 1:i)) for i in 1:size(ld, 1)]
 end
 
 """
@@ -539,15 +542,24 @@ function ρ(i, λ::AbstractMatrix{T}, im::Matrix{Bool}, indpairs, σs, sc::T)::T
     end
 end
 
-function σρs(A::ReMat{T}, sc::T) where {T}
-    λ = A.λ.data
+function _σρs(λ::LowerTriangular{T}, sc::T, im::Matrix{Bool}, cnms::Vector{Symbol}) where {T}
+    λ = λ.data
     k = size(λ, 1)
-    im = indmat(A)
     indpairs = checkindprsk(k)
-    σs = NamedTuple{(Symbol.(A.cnames)...,)}(ntuple(i -> sc*norm(view(λ,i,1:i)), k))
+    σs = NamedTuple{(cnms...,)}(ntuple(i -> sc*norm(view(λ,i,1:i)), k))
     NamedTuple{(:σ,:ρ)}((σs, ntuple(i -> ρ(i,λ,im,indpairs,σs,sc), (k * (k - 1)) >> 1)))
 end
 
+function _σρs(λ::Diagonal{T}, sc::T, im::Matrix{Bool}, cnms::Vector{Symbol}) where {T}
+    dsc = sc .* λ.diag
+    k = length(dsc)
+    σs = NamedTuple{(cnms...,)}(NTuple{k, T}(dsc))
+    NamedTuple{(:σ,:ρ)}((σs, ntuple(i -> -zero(T), (k * (k - 1)) >> 1)))
+end
+
+function σρs(A::ReMat{T}, sc::T) where {T}
+    _σρs(A.λ, sc, indmat(A), Symbol.(A.cnames))
+end
 """
     corrmat(A::ReMat)
 
@@ -590,9 +602,7 @@ end
 vsize(A::ReMat{T,S}) where {T,S} = S
 
 function zerocorr!(A::ReMat{T}) where {T}
-    λ = A.λ
-    # zero out all entries not on the diagonal
-    λ[setdiff(A.inds, diagind(λ))] .= 0
+    λ = A.λ = Diagonal(A.λ)
     A.inds = intersect(A.inds, diagind(λ))
     A
 end

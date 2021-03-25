@@ -23,7 +23,9 @@ function aligncompact(v, digits=_printdigits(v))
     Base.Ryu.writefixed.(v, Ref(digits))
 end
 
-function Base.show(io::IO, vc::VarCorr)
+Base.show(io::IO, vc::VarCorr) = Base.show(io, MIME"text/plain"(), vc)
+
+function Base.show(io::IO, ::MIME"text/plain", vc::VarCorr)
     σρ = vc.σρ
     nmvec = string.([keys(σρ)...])
     cnmvec = string.(foldl(vcat, [keys(sig)...] for sig in getproperty.(values(σρ), :σ)))

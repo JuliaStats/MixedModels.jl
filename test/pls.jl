@@ -1,4 +1,3 @@
-using BlockArrays
 using LinearAlgebra
 using MixedModels
 using PooledArrays
@@ -9,16 +8,26 @@ using StatsModels
 using Tables
 using Test
 
-using MixedModels: dataset, likelihoodratiotest
+using MixedModels: likelihoodratiotest
 
 const io = IOBuffer()
 
 include("modelcache.jl")
 
+@testset "offset" begin
+    let off = repeat([1], 180),
+        slp = MixedModels.dataset(:sleepstudy),
+        frm = @formula(reaction ~ 1 + (1|subj))
+
+        @test_throws ArgumentError fit(MixedModel, frm, slp; offset=off)
+        @test_throws ArgumentError fit(MixedModel, frm, slp, Normal(), IdentityLink(); offset=off)
+    end
+end
+
 @testset "Dyestuff" begin
     fm1 = only(models(:dyestuff))
 
-    @test length(fm1.allterms) == 3
+    @test length(fm1.A) == 3
     @test size(fm1.reterms) == (1, )
     @test lowerbd(fm1) == zeros(1)
     @test fm1.lowerbd == zeros(1)
@@ -32,7 +41,6 @@ include("modelcache.jl")
     @test_logs (:warn, "Model has not been fit") show(fm1)
 
     @test objective(updateL!(setθ!(fm1, [0.713]))) ≈ 327.34216280955366
-    @test_deprecated MixedModels.describeblocks(IOBuffer(), fm1)
 
     show(io, BlockDescription(fm1))
     @test countlines(seekstart(io)) == 3
@@ -93,7 +101,7 @@ include("modelcache.jl")
 
     @test logdet(fm1) ≈ 8.06014522999825 atol=0.001
     @test varest(fm1) ≈ 2451.2501089607676 atol=0.001
-    @test pwrss(fm1) ≈ 73537.49947885796 atol=0.001
+    @test pwrss(fm1) ≈ 73537.50152584909 atol=0.01 # this quantity is not precisely estimated
     @test stderror(fm1) ≈ [17.69455188898009] atol=0.0001
 
     vc = VarCorr(fm1)
@@ -150,7 +158,7 @@ end
     @test objective(fm) ≈ 332.18834867227616 atol=0.001
     @test coef(fm) ≈ [22.97222222222222] atol=0.001
     @test fixef(fm) ≈ [22.97222222222222] atol=0.001
-    @test coef(fm)[1] ≈ mean(dataset(:penicillin).diameter)
+    @test coef(fm)[1] ≈ mean(MixedModels.dataset(:penicillin).diameter)
     @test stderror(fm) ≈ [0.7445960346851368] atol=0.0001
     @test fm.θ ≈ [1.5375772376554968, 3.219751321180035] atol=0.001
     @test first(std(fm)) ≈ [0.8455645948223015] atol=0.0001
@@ -245,17 +253,17 @@ end
 @testset "sleep" begin
     fm = last(models(:sleepstudy))
     @test lowerbd(fm) == [0.0, -Inf, 0.0]
-    A11 = getblock(fm.A, 1,1)
+    A11 = first(fm.A)
     @test isa(A11, UniformBlockDiagonal{Float64})
-    @test isa(getblock(fm.L, 1, 1), UniformBlockDiagonal{Float64})
+    @test isa(first(fm.L), UniformBlockDiagonal{Float64})
     @test size(A11) == (36, 36)
     a11 = view(A11.data, :, :, 1)
     @test a11 == [10. 45.; 45. 285.]
     @test size(A11.data, 3) == 18
     λ = first(fm.λ)
-    b11 = LowerTriangular(view(getblock(fm.L, 1, 1).data, :, :, 1))
+    b11 = LowerTriangular(view(first(fm.L).data, :, :, 1))
     @test b11 * b11' ≈ λ'a11*λ + I rtol=1e-5
-    @test count(!iszero, Matrix(getblock(fm.L, 1, 1))) == 18 * 4
+    @test count(!iszero, Matrix(first(fm.L))) == 18 * 4
     @test rank(fm) == 2
 
     @test objective(fm) ≈ 1751.9393444647046
@@ -374,6 +382,16 @@ end
     # amalgamate should set these to -0.0 to indicate structural zeros
     @test all(ρs_intercept .=== -0.0)
 
+    @testset "diagonal λ in zerocorr" begin
+        # explicit zerocorr
+        fmzc = models(:sleepstudy)[2]
+        λ = first(fmzc.reterms).λ
+        @test λ isa Diagonal{Float64, Vector{Float64}}
+        # implicit zerocorr via almagation
+        fmnc = models(:sleepstudy)[3]
+        λ = first(fmnc.reterms).λ
+        @test λ isa Diagonal{Float64, Vector{Float64}}
+    end
 
     show(io, BlockDescription(first(models(:sleepstudy))))
     @test countlines(seekstart(io)) == 3
@@ -409,8 +427,21 @@ end
 
 @testset "oxide" begin
     # this model has an interesting structure with two diagonal blocks
-    m = only(models(:oxide))
-    @test all(isapprox.(m.θ, [1.689182746, 2.98504262]; atol=1e-4))
+    m = first(models(:oxide))
+    @test isapprox(m.θ, [1.689182746, 2.98504262]; atol=1e-3)
+    m = last(models(:oxide))
+    # NB: this is a poorly defined fit
+    # lme4 gives all sorts of convergence warnings for the different
+    # optimizers and even quite different values
+    # the overall estimates of the standard deviations are similar-ish
+    # but the correlation structure seems particular unstable
+    θneldermead = [1.6454, 8.6373e-02, 8.2128e-05, 8.9552e-01, 1.2014, 2.9286]
+    # two different BOBYQA implementations
+    θnlopt = [1.645, -0.221, 0.986, 0.895, 2.511, 1.169]
+    θminqa = [1.6455, -0.2430, 1.0160, 0.8955, 2.7054, 0.0898]
+    # very loose tolerance for unstable fit
+    # but this is a convenient test of rankUpdate!(::UniformBlockDiagonal)
+    @test isapprox(m.θ, θnlopt; atol=5e-2)
 end
 
 @testset "Rank deficient" begin
@@ -425,8 +456,8 @@ end
     @test ct.rownms ==  ["(Intercept)", "x", "x2"]
     @test length(fixefnames(model)) == 2
     @test coefnames(model) == ["(Intercept)", "x", "x2"]
-    piv = first(model.feterms).piv
-    r = first(model.feterms).rank
+    piv = model.feterm.piv
+    r = model.feterm.rank
     @test coefnames(model)[piv][1:r] == fixefnames(model)
 end
 
@@ -459,7 +490,7 @@ end
 end
 
 @testset "unifying ReMat eltypes" begin
-    sleepstudy = dataset(:sleepstudy)
+    sleepstudy = MixedModels.dataset(:sleepstudy)
 
     re = LinearMixedModel(@formula(reaction ~ 1 + days + (1|subj) + (days|subj)), sleepstudy).reterms
     # make sure that the eltypes are still correct

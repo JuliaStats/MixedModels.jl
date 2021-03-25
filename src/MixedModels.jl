@@ -1,14 +1,14 @@
 module MixedModels
 
 using Arrow
-using BlockArrays
 using DataAPI
 using Distributions
 using GLM
+using LazyArtifacts
 using LinearAlgebra
+using Markdown
 using NLopt
 using Random
-using Pkg.Artifacts
 using PooledArrays
 using ProgressMeter
 using SparseArrays
@@ -17,14 +17,6 @@ using Statistics
 using StatsBase
 using StatsModels
 using Tables
-
-# When we move to 1.6 as the support lower minimum, we should change Artifact.toml to be lazy
-# and add LazyArtifacts to our dependencies
-# @static if VERSION > v"1.6.0-DEV.1588" # the actual bound may be lower
-#     @warn """Loading LazyArtifacts
-#              This will generate a dependency warning until compatibility with Julia 1.4+1.5 is removed"""
-#     using LazyArtifacts
-# end
 
 using LinearAlgebra: BlasFloat, BlasReal, HermOrSym, PosDefException, copytri!
 using Base: Ryu
@@ -42,7 +34,6 @@ export @formula,
        AbstractReMat,
        Bernoulli,
        Binomial,
-       Block,
        BlockDescription,
        BlockedSparse,
        DummyCoding,
@@ -147,14 +138,13 @@ so the simpler, equivalent `LinearMixedModel` will be fit instead.
 """
 abstract type MixedModel{T} <: StatsModels.RegressionModel end # model with fixed and random effects
 
-function __init__()
-    global TestData = artifact"TestData"
-end
-
 include("utilities.jl")
+include("blocks.jl")
+include("pca.jl")
+include("datasets.jl")
 include("arraytypes.jl")
 include("varcorr.jl")
-include("femat.jl")
+include("Xymat.jl")
 include("remat.jl")
 include("optsummary.jl")
 include("schema.jl")
@@ -173,5 +163,6 @@ include("simulate.jl")
 include("bootstrap.jl")
 include("blockdescription.jl")
 include("grouping.jl")
+include("mimeshow.jl")
 
 end # module

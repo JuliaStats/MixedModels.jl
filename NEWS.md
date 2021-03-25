@@ -1,3 +1,88 @@
+MixedModels v4.0.0 Release Notes
+========================
+* Drop dependency on `BlockArrays` and use a `Vector` of matrices to represent
+  the lower triangle in packed, row-major order. The non-exported function `block`
+  can be used for finding the corresponding `Vector` index of a block. [#456]
+* `simulate!` now marks the modified model as being unfitted.
+* Deprecated and unused `named` argument removed from `ranef` [#469]
+* Introduce an abstract type for collections of fits `MixedModelFitCollection`,
+  and make `MixedModelBootstrap` a subtype of it. Accordingly, rename the `bstr`
+  field to `fits`. [#465]
+* The response (dependent variable) is now stored internally as part of the
+  the renamed `FeMat` field, now called `Xymat` [#464]
+* Replace internal `statscholesky` and `statsqr` functions for determining the
+  rank of `X` by `statsrank`. [#479]
+* Artifacts are now loaded lazily: the test data loaded via `dataset` is
+  downloaded on first use [#486]
+* `ReMat` and `PCA` now support covariance factors (`λ`) that are `LowerTriangular`
+  or `Diagonal`. This representation is both more memory efficient and
+  enables additional computational optimizations for particular covariance
+  structures.[#489]
+* `GeneralizedLinearMixedModel` now includes the response distribution as one
+  of its type parameters. This will allow dispatching on the model family and may allow
+  additional specialization in the future.[#490]
+
+Run-time formula syntax
+-----------------------
+
+* It is now possible to construct `RandomEffectsTerm`s at run-time from `Term`s
+  (methods for `Base.|(::AbstractTerm, ::AbstractTerm)` added) [#470]
+* `RandomEffectsTerm`s can have left- and right-hand side terms that are
+  "non-concrete", and `apply_schema(::RandomEffectsTerm, ...)` works more like
+  other StatsModels.jl `AbstractTerm`s [#470]
+* Methods for `Base./(::AbstractTerm, ::AbstractTerm)` are added, allowing
+  nesting syntax to be used with `Term`s at run-time as well [#470]
+
+
+MixedModels v3.4.1 Release Notes
+========================
+* The value of a named `offset` argument to `GeneralizedLinearMixedModel`,
+  which previously was ignored [#453], is now handled properly. [#482]
+
+MixedModels v3.4.0 Release Notes
+========================
+* `shortestcovint` method for `MixedModelsBootstrap` [#484]
+
+MixedModels v3.3.0 Release Notes
+========================
+* HTML and LaTeX `show` methods for `MixedModel`, `BlockDescription`,
+  `LikelihoodRatioTest`, `OptSummary` and `VarCorr`. Note that the interface for
+  these is not yet completely stable. In particular, rounding behavior may
+  change. [#480]
+
+MixedModels v3.2.0 Release Notes
+========================
+* Markdown `show` methods for `MixedModel`, `BlockDescription`,
+  `LikelihoodRatioTest`, `OptSummary` and `VarCorr`. Note that the interface for
+  these is not yet completely stable. In particular, rounding behavior may
+  change. White-space padding within Markdown may also change, although this
+  should not impact rendering of the Markdown into HTML or LaTeX.  The
+  Markdown presentation of a `MixedModel` is much more compact than the
+  REPL summary. If the REPL-style presentation is desired, then this can
+  be assembled from the Markdown output from `VarCorr` and `coeftable` [#474].
+
+MixedModels v3.1.4 Release Notes
+========================
+* [experimental] Additional convenience constructors for `LinearMixedModel` [#449]
+
+MixedModels v3.1.3 Release Notes
+========================
+* Compatibility updates
+* `rankUpdate!` method for `UniformBlockDiagonal` by `Dense` [#447]
+
+MixedModels v3.1.2 Release Notes
+========================
+* Compatibility updates
+* `rankUpdate!` method for `Diagonal` by `Dense` [#446]
+* use eager (install-time) downloading of `TestData` artifact to avoid compatibility
+  issues with `LazyArtifacts` in Julia 1.6 [#444]
+
+MixedModels v3.1.1 Release Notes
+========================
+* Compatibility updates
+* Better `loglikelihood(::GeneralizedLinearMixedModel)` which will work for models with
+  dispersion parameters [#419]. Note that fitting such models is still problematic.
+
 MixedModels v3.1 Release Notes
 ========================
 
@@ -98,3 +183,22 @@ Package dependencies
 [#390]: https://github.com/JuliaStats/MixedModels.jl/issues/390
 [#395]: https://github.com/JuliaStats/MixedModels.jl/issues/395
 [#418]: https://github.com/JuliaStats/MixedModels.jl/issues/418
+[#419]: https://github.com/JuliaStats/MixedModels.jl/issues/419
+[#444]: https://github.com/JuliaStats/MixedModels.jl/issues/444
+[#446]: https://github.com/JuliaStats/MixedModels.jl/issues/446
+[#447]: https://github.com/JuliaStats/MixedModels.jl/issues/447
+[#449]: https://github.com/JuliaStats/MixedModels.jl/issues/449
+[#453]: https://github.com/JuliaStats/MixedModels.jl/issues/453
+[#456]: https://github.com/JuliaStats/MixedModels.jl/issues/456
+[#464]: https://github.com/JuliaStats/MixedModels.jl/issues/464
+[#465]: https://github.com/JuliaStats/MixedModels.jl/issues/465
+[#469]: https://github.com/JuliaStats/MixedModels.jl/issues/469
+[#470]: https://github.com/JuliaStats/MixedModels.jl/issues/470
+[#474]: https://github.com/JuliaStats/MixedModels.jl/issues/474
+[#479]: https://github.com/JuliaStats/MixedModels.jl/issues/479
+[#480]: https://github.com/JuliaStats/MixedModels.jl/issues/480
+[#482]: https://github.com/JuliaStats/MixedModels.jl/issues/482
+[#484]: https://github.com/JuliaStats/MixedModels.jl/issues/484
+[#486]: https://github.com/JuliaStats/MixedModels.jl/issues/486
+[#489]: https://github.com/JuliaStats/MixedModels.jl/issues/489
+[#490]: https://github.com/JuliaStats/MixedModels.jl/issues/490

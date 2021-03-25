@@ -24,6 +24,10 @@ parameter, `θ`, that defines the variance-covariance matrices of the random eff
 For example, a simple linear mixed-effects model for the `Dyestuff` data in the [`lme4`](http://github.com/lme4/lme4)
 package for [`R`](https://www.r-project.org) is fit by
 
+```@setup Main
+using DisplayAs
+```
+
 ```@example Main
 using DataFrames
 using DataFramesMeta  # dplyr-like operations
@@ -35,13 +39,14 @@ using Random
 ```@example Main
 dyestuff = MixedModels.dataset(:dyestuff)
 m1 = fit(MixedModel, @formula(yield ~ 1 + (1 | batch)), dyestuff)
+DisplayAs.Text(ans) # hide
 ```
 
 To bootstrap the model parameters, first initialize a random number generator then create a bootstrap sample
 
 ```@example Main
 const rng = MersenneTwister(1234321);
-samp = parametricbootstrap(rng, 10_000, m1, use_threads=true);
+samp = parametricbootstrap(rng, 10_000, m1);
 df = DataFrame(samp.allpars);
 first(df, 10)
 ```
@@ -89,6 +94,11 @@ We generate these for all random and fixed effects:
 combine(groupby(df, [:type, :group, :names]), :value => shortestcovint => :interval)
 ```
 
+We can also generate this directly from the original bootstrap object:
+```@example Main
+DataFrame(shortestcovint(samp))
+```
+
 A value of zero for the standard deviation of the random effects is an example of a *singular* covariance.
 It is easy to detect the singularity in the case of a scalar random-effects term.
 However, it is not as straightforward to detect singularity in vector-valued random-effects terms.
@@ -101,6 +111,7 @@ m2 = fit(
     @formula(reaction ~ 1+days+(1+days|subj)),
     sleepstudy,
 )
+DisplayAs.Text(ans) # hide
 ```
 ```@example Main
 samp2 = parametricbootstrap(rng, 10_000, m2, use_threads=true);
@@ -110,7 +121,7 @@ first(df2, 10)
 the singularity can be exhibited as a standard deviation of zero or as a correlation of $\pm1$.
 
 ```@example Main
-combine(groupby(df2, [:type, :group, :names]), :value => shortestcovint => :interval)
+DataFrame(shortestcovint(samp2))
 ```
 
 A histogram of the estimated correlations from the bootstrap sample has a spike at `+1`.

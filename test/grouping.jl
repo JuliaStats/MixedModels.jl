@@ -1,6 +1,11 @@
 using Test
 using StatsModels
 
+@testset "Grouping" begin
+    g = Grouping()
+    @test isnothing(g.levels)
+end
+
 @testset "Grouping pseudo-contrasts" begin
     d = (y = rand(2_000_000), grp=string.([1:1_000_000; 1:1_000_000]))
     ## OOM seems to result in the process being killed on Mac so this messes up CI
@@ -10,6 +15,7 @@ using StatsModels
     @test t isa CategoricalTerm{Grouping}
     @test size(t.contrasts.matrix) == (0,0)
     @test length(t.contrasts.levels) == 1_000_000
+    @test_throws ErrorException StatsModels.modelcols(t, (a = 1.,))
 
     levs = sort(string.(1:1_000_000))
 
