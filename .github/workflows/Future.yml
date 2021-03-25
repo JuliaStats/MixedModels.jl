@@ -2,7 +2,7 @@ name: Future
 on:
   # pull_request:
   #   branches:
-  #     - master
+  #     - main
   #     - v3.x
   #   paths-ignore:
   #     - 'LICENSE.md'
