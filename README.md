@@ -13,8 +13,8 @@
 [docs-stable-img]: https://img.shields.io/badge/docs-stable-blue.svg
 [docs-stable-url]: https://juliastats.github.io/MixedModels.jl/stable
 
-[codecov-img]: https://codecov.io/github/JuliaStats/MixedModels.jl/badge.svg?branch=master
-[codecov-url]: https://codecov.io/github/JuliaStats/MixedModels.jl?branch=master
+[codecov-img]: https://codecov.io/github/JuliaStats/MixedModels.jl/badge.svg?branch=main
+[codecov-url]: https://codecov.io/github/JuliaStats/MixedModels.jl?branch=main
 
 [T1-img]: https://github.com/JuliaStats/MixedModels.jl/workflows/Tier1/badge.svg
 [T1-url]: https://github.com/JuliaStats/MixedModels.jl/actions?workflow=Tier1
