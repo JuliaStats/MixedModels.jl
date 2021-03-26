@@ -1,3 +1,9 @@
+MixedModels v3.5.0 Release Notes
+========================
+* The Progressbar for `parametricbootstrap` and `replicate` is not displayed
+  when in a non-interactive (i.e. logging) context. The progressbar can also
+  be manually disabled with `hide_progress=true`.[#495]
+
 MixedModels v3.4.1 Release Notes
 ========================
 * The value of a named `offset` argument to `GeneralizedLinearMixedModel`,
@@ -157,3 +163,7 @@ Package dependencies
 [#480]: https://github.com/JuliaStats/MixedModels.jl/issues/480
 [#482]: https://github.com/JuliaStats/MixedModels.jl/issues/482
 [#484]: https://github.com/JuliaStats/MixedModels.jl/issues/484
+[#486]: https://github.com/JuliaStats/MixedModels.jl/issues/486
+[#489]: https://github.com/JuliaStats/MixedModels.jl/issues/489
+[#490]: https://github.com/JuliaStats/MixedModels.jl/issues/490
+[#495]: https://github.com/JuliaStats/MixedModels.jl/issues/495
