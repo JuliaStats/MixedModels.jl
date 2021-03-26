@@ -3,6 +3,11 @@ MixedModels v3.5.0 Release Notes
 * The Progressbar for `parametricbootstrap` and `replicate` is not displayed
   when in a non-interactive (i.e. logging) context. The progressbar can also
   be manually disabled with `hide_progress=true`.[#495]
+* Threading in `parametricbootstrap` now uses a `SpinLock` instead of a `ReentrantLock`.
+  This improves performance, but care should be taken when nesting spin locks. [#493]
+* Single-threaded use of `paramatricbootstrap` now works when nested within a larger
+  multi-threaded context (e.g. `Threads.@threads for`). (Multi-threaded `parametricbootstrap`
+  worked and continues to work within a nested threading context.) [#493]
 
 MixedModels v3.4.1 Release Notes
 ========================
@@ -166,4 +171,5 @@ Package dependencies
 [#486]: https://github.com/JuliaStats/MixedModels.jl/issues/486
 [#489]: https://github.com/JuliaStats/MixedModels.jl/issues/489
 [#490]: https://github.com/JuliaStats/MixedModels.jl/issues/490
+[#493]: https://github.com/JuliaStats/MixedModels.jl/issues/493
 [#495]: https://github.com/JuliaStats/MixedModels.jl/issues/495
