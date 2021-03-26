@@ -39,7 +39,7 @@ end
     parametricbootstrap(rng::AbstractRNG, nsamp::Integer, m::MixedModel;
         β = coef(m), σ = m.σ, θ = m.θ, use_threads=false)
     parametricbootstrap(nsamp::Integer, m::MixedModel;
-        β = coef(m), σ = m.σ, θ = m.θ, use_threads=false)
+        β = coef(m), σ = m.σ, θ = m.θ, use_threads=false, hide_progress=false)
 
 Perform `nsamp` parametric bootstrap replication fits of `m`, returning a `MixedModelBootstrap`.
 
@@ -51,6 +51,8 @@ The default random number generator is `Random.GLOBAL_RNG`.
 `σ` is only valid for `LinearMixedModel` and `GeneralizedLinearMixedModel` for
 families with a dispersion parameter.
 `use_threads` determines whether or not to use thread-based parallelism.
+`hide_progress` can be used to disable the progress bar. Note that the progress
+bar is automatically disabled for non-interactive (i.e. logging) contexts.
 
 !!! note
     Note that `use_threads=true` may not offer a performance boost and may even
@@ -71,6 +73,7 @@ function parametricbootstrap(
     σ=morig.σ,
     θ::AbstractVector=morig.θ,
     use_threads::Bool=false,
+    hide_progress::Bool=false
 ) where {T}
     if σ !== missing
         σ = T(σ)
@@ -95,7 +98,7 @@ function parametricbootstrap(
     # see https://docs.julialang.org/en/v1.3/manual/parallel-computing/#Side-effects-and-mutable-function-arguments-1
     # see https://docs.julialang.org/en/v1/stdlib/Future/index.html
     rnglock = Threads.SpinLock()
-    samp = replicate(n, use_threads=use_threads) do
+    samp = replicate(n; use_threads=use_threads, hide_progress=hide_progress) do
         tidx = use_threads ? Threads.threadid() : 1
         mod = m_threads[tidx]
         local βsc = βsc_threads[tidx]
