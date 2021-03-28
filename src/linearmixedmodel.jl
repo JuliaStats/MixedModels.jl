@@ -287,7 +287,13 @@ diagonal blocks from the conditional variance-covariance matrix,
 function condVar(m::LinearMixedModel{T}) where {T}
     L = m.L
     s = sdest(m)
-    spL = LowerTriangular(sparseL(m))
+    # when https://github.com/JuliaLang/julia/pull/40174 lands,
+    # we can update the version bound
+    @static if VERSION < v"2"
+        spL = LowerTriangular(SparseMatrixCSC{T, Int}(sparseL(m)))
+    else 
+        spL = LowerTriangular(sparseL(m))
+    end
     nre = size(spL, 1)
     val = Array{T,3}[]
     offset = 0
