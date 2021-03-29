@@ -67,7 +67,7 @@ end
     fm1 = fit(MixedModel,@formula(reaction ~ 1 + days + (1+days|subj)),slp, REML=true);
 
     @test_throws ArgumentError likelihoodratiotest(fm0,fm1)
-
+@static if VERSION < v"1.7.0-DEV.700"
     contra = MixedModels.dataset(:contra);
     gm0 = fit(MixedModel, @formula(use ~ 1+age+urban+livch+(1|urban&dist)), contra, Bernoulli(), fast=true);
     gm1 = fit(MixedModel, @formula(use ~ 1+age+abs2(age)+urban+livch+(1|urban&dist)), contra, Bernoulli(), fast=true);
@@ -87,4 +87,5 @@ end
     # mismatched families
     gm_poisson = fit(MixedModel, @formula(use ~ 1+age+urban+livch+(1|urban&dist)), contra, Poisson(), fast=true);
     @test_throws ArgumentError MixedModels.likelihoodratiotest(gm0,gm_poisson)
+end
 end

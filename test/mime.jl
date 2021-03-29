@@ -6,13 +6,13 @@ using MixedModels: pirls!, setβθ!, setθ!, updateL!
 
 include("modelcache.jl")
 
-
+@static if VERSION < v"1.7.0-DEV.700"
 # explicitly setting theta for these to so that we can do exact textual comparisons
 βθ = [0.1955554704948119,  0.05755412761885973, 0.3207843518569843, -1.0582595252774376,
      -2.1047524824609853, -1.0549789653925743,  1.339766125847893,  0.4953047709862237]
 gm3 = GeneralizedLinearMixedModel(only(gfms[:verbagg]), dataset(:verbagg), Bernoulli())
 pirls!(setβθ!(gm3, βθ))
-
+end
 fm0θ = [ 1.1656121258575225]
 fm0 = updateL!(setθ!(first(models(:sleepstudy)), fm0θ))
 
@@ -23,9 +23,10 @@ lrt = likelihoodratiotest(fm0, fm1)
 
 @testset "markdown" begin
     mime = MIME"text/markdown"()
+@static if VERSION < v"1.7.0-DEV.700"
     @test_logs (:warn, "Model has not been fit: results will be nonsense") sprint(show, mime, gm3)
     gm3.optsum.feval = 1
-
+end
     @testset "lmm" begin
         @test sprint(show, mime, fm0) == """
 |             |     Est. |     SE |     z |      p |  σ_subj |
@@ -43,6 +44,7 @@ lrt = likelihoodratiotest(fm0, fm1)
 """
     end
 
+@static if VERSION < v"1.7.0-DEV.700"
     @testset "glmm" begin
         @test sprint(show, mime, gm3) in ("""
 |              |    Est. |     SE |     z |      p | σ_subj | σ_item |
@@ -64,6 +66,7 @@ lrt = likelihoodratiotest(fm0, fm1)
 | situ: self   | -1.0550 | 0.2103 | -5.02 |  <1e-6 |        |        |
 """)
     end
+end
 
     @testset "lrt" begin
 
@@ -134,16 +137,18 @@ end
 @testset "html" begin
     # this is minimal since we're mostly testing that dispatch works
     # the stdlib actually handles most of the conversion
-
+@static if VERSION < v"1.7.0-DEV.700"
     @test sprint(show, MIME("text/html"), BlockDescription(gm3)) == """
 <table><tr><th align="left">rows</th><th align="left">subj</th><th align="left">item</th><th align="left">fixed</th></tr><tr><td align="left">316</td><td align="left">Diagonal</td><td align="left"></td><td align="left"></td></tr><tr><td align="left">24</td><td align="left">Dense</td><td align="left">Diag/Dense</td><td align="left"></td></tr><tr><td align="left">7</td><td align="left">Dense</td><td align="left">Dense</td><td align="left">Dense</td></tr></table>
 """
+end
     optsum = sprint(show, MIME("text/html"), fm0.optsum)
 
     @test occursin("<b>Initialization</b>", optsum)
     @test occursin("<code>LN_BOBYQA</code>", optsum)
 end
 
+@static if VERSION < v"1.7.0-DEV.700"
 @testset "latex" begin
     # this is minimal since we're mostly testing that dispatch works
     # the stdlib actually handles most of the conversion
@@ -180,6 +185,7 @@ rows & subj & item & fixed \\\\
 
     @test occursin(raw"\textbf{Initialization}", optsum)
     @test occursin(raw"\texttt{LN\_BOBYQA}", optsum)
+end
 end
 
 # return these models to their fitted state for the cache
