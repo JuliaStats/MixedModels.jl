@@ -166,9 +166,12 @@ function _iscomparable(m::LinearMixedModel...)
     true
 end
 
+_samefamily(::GeneralizedLinearMixedModel{T,S}...) where {T, S<:Distribution} = true
+_samefamily(::GeneralizedLinearMixedModel{T, <:Distribution}...) where {T} = false
+
 function _iscomparable(m::GeneralizedLinearMixedModel...)
         # TODO: test that all models are fit with same fast/nAGQ option?
-        allequal(Distribution.(m)) ||
+        _samefamily(m...) ||
             throw(ArgumentError("Models must be fit to the same distribution"))
 
         allequal(string.(Link.(m))) ||
