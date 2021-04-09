@@ -1,3 +1,7 @@
+MixedModels v3.5.1 Release Notes
+========================
+* Fix MIME show methods for models with random-effects not corresponding to a fixed effect [#501].
+
 MixedModels v3.5.0 Release Notes
 ========================
 * The Progressbar for `parametricbootstrap` and `replicate` is not displayed
@@ -170,3 +174,4 @@ Package dependencies
 [#484]: https://github.com/JuliaStats/MixedModels.jl/issues/484
 [#493]: https://github.com/JuliaStats/MixedModels.jl/issues/493
 [#495]: https://github.com/JuliaStats/MixedModels.jl/issues/495
+[#501]: https://github.com/JuliaStats/MixedModels.jl/issues/501
