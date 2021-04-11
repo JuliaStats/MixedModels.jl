@@ -110,3 +110,6 @@ function NLopt.Opt(optsum::OptSummary)
     end
     opt
 end
+
+StructTypes.StructType(::Type{<:OptSummary}) = StructTypes.Mutable()
+StructTypes.excludes(::Type{<:OptSummary}) = (:lowerbd, )
