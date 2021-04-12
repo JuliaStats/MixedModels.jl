@@ -689,14 +689,19 @@ end
 ranef!(v::Vector, m::LinearMixedModel, uscale::Bool) = ranef!(v, m, fixef(m), uscale)
 
 """
-    ranef(m::LinearMixedModel; uscale=false, named=false)
+    ranef(m::MixedModel; uscale=false)
 
 Return, as a `Vector{Matrix{T}}`, the conditional modes of the random effects in model `m`.
 
 If `uscale` is `true` the random effects are on the spherical (i.e. `u`) scale, otherwise on
 the original scale.
+
+For a named variant, see [`@raneftables`](@ref).
 """
-function ranef(m::LinearMixedModel{T}; uscale = false, named = false) where {T}
+function ranef(m::LinearMixedModel{T}; uscale = false, named=nothing) where {T}
+    if named !== nothing
+        Base.depwarn("the `named` keyword argument is deprecated; it has no effect. Use `raneftables` instead.", :ranef)
+    end
     reterms = m.reterms
     v = [Matrix{T}(undef, size(t.z, 1), nlevs(t)) for t in reterms]
     ranef!(v, m, uscale)
