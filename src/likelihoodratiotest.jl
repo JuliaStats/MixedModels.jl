@@ -166,8 +166,8 @@ function _iscomparable(m::LinearMixedModel...)
     true
 end
 
-_samefamily(::GeneralizedLinearMixedModel{<:AbstractFloat, S}...) where {S<:Distribution} = true
-_samefamily(::GeneralizedLinearMixedModel{<:AbstractFloat, <:Distribution}...) = false
+_samefamily(::GeneralizedLinearMixedModel{T, S}...) where {T, S} = true
+_samefamily(::GeneralizedLinearMixedModel...) = false
 
 function _iscomparable(m::GeneralizedLinearMixedModel...)
         # TODO: test that all models are fit with same fast/nAGQ option?
