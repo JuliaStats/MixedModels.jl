@@ -46,12 +46,24 @@ Base.getindex(lrt::LikelihoodRatioTest, s::Symbol) = getfield(lrt,s)
 
 """
     likelihoodratiotest(m::MixedModel...)
+    likelihoodratiotest(m0::LinearModel, m::MixedModel...)
+    likelihoodratiotest(m0::GeneralizedLinearModel, m::MixedModel...)
+    likelihoodratiotest(m0::TableRegressionModel{LinearModel}, m::MixedModel...)
+    likelihoodratiotest(m0::TableRegressionModel{GeneralizedLinearModel}, m::MixedModel...)
+
 
 Likeihood ratio test applied to a set of nested models.
 
-Note that nesting of the models is not checked.  It is incumbent on the user
-to check this. This differs from [`StatsModels.lrtest`](@ref) as nesting in
-mixed models, especially in the random effects specification, may be non obvious.
+!!! note
+    The nesting of the models is not checked.  It is incumbent on the user
+    to check this. This differs from [`StatsModels.lrtest`](@ref) as nesting in
+    mixed models, especially in the random effects specification, may be non obvious.
+
+!!! note
+    For comparisons between mixed and non-mixed models, the deviance for the non-mixed
+    model is taken to be -2 log likelihood, i.e. omitting the additive constant for the
+    fully saturated model. This is in line with the computation of the deviance for mixed
+    models.
 
 This functionality may be deprecated in the future in favor of [`StatsModels.lrtest`](@ref).
 """
@@ -77,6 +89,35 @@ function likelihoodratiotest(m::MixedModel...)
             NaN
         end
     end
+
+    LikelihoodRatioTest(
+        formulas,
+        (dof = dofs, deviance = devs),
+        (dofdiff = dofdiffs, deviancediff = devdiffs, pvalues = pvals)
+    )
+end
+
+_formula(::Union{LinearModel, GeneralizedLinearModel}) = "NA"
+_formula(x::TableRegressionModel{<:Union{LinearModel, GeneralizedLinearModel}}) = String(Symbol(x.mf.f))
+
+function likelihoodratiotest(m0::Union{TableRegressionModel{<:Union{LinearModel, GeneralizedLinearModel}},
+                                       LinearModel, GeneralizedLinearModel},
+                             m::MixedModel...)
+    StatsModels.isnested(m0, first(m)) ||
+        throw(ArgumentError("""Models are not comparable: are the objectives, data
+                               and, where appropriate, the link and family the same?
+                            """))
+    lrt = likelihoodratiotest(m...)
+    devs = pushfirst!(lrt.deviance, -2 * loglikelihood(m0))
+    formulas = pushfirst!(lrt.formulas, _formula(m0))
+    dofs = pushfirst!(lrt.models.dof, dof(m0))
+    devdiffs = pushfirst!(lrt.tests.deviancediff, devs[1] - devs[2])
+    dofdiffs = pushfirst!(lrt.tests.dofdiff, dofs[2] - dofs[1])
+
+    df, dev = first(dofdiffs), first(devdiffs)
+    p = dev > 0 ? ccdf(Chisq(df), dev) : NaN
+    pvals = pushfirst!(lrt.tests.pvalues, p)
+
 
     LikelihoodRatioTest(
         formulas,
@@ -214,4 +255,50 @@ function StatsModels.isnested(m1::MixedModel, m2::MixedModel; atol::Real=0.0)
     all(all(in.(val, Ref(re2[key]))) for (key, val) in re1) || return false
 
     true
+end
+
+
+"""
+    isnested(m1::LinearModel, m2::LinearMixedModel; atol::Real=0.0)
+    isnested(m1::TableRegressioLinearModel{LinearModel}, m2::LinearMixedModel; atol::Real=0.0)
+    isnested(m1::GeneralizedLinearModel, m2::GeneralizedLinearMixedModel; atol::Real=0.0)
+    isnested(m1::TableRegressioLinearModel{GeneralizedLinearModel}, m2::GeneralizedLinearMixedModel; atol::Real=0.0)
+
+Indicate whether model `m1` is nested in model `m2`, i.e. whether
+`m1` can be obtained by constraining some parameters in `m2`.
+Both models must have been fitted on the same data. The mixed model must be
+fitted with maximum likelihood (i.e. **not** REML).
+"""
+function StatsModels.isnested(m1::TableRegressionModel{<:Union{LinearModel, GeneralizedLinearModel}},
+                              m2::MixedModel; atol::Real=0.0)
+    StatsModels.isnested(m1.model, m2) || return false
+
+    # check that the nested fixef are a subset of the outer
+    all(in.(coefnames(m1),  Ref(coefnames(m2)))) || return false
+
+    return true
+end
+
+# GLM isn't nested with in LMM and LM isn't nested within GLMM
+StatsModels.isnested(m1::Union{LinearModel, GeneralizedLinearModel}, m2::MixedModel; atol::Real=0.0) = false
+
+function StatsModels.isnested(m1::LinearModel, m2::LinearMixedModel; atol::Real=0.0)
+    nobs(m1) == nobs(m2) || return false
+
+    !m2.optsum.REML ||
+        throw(ArgumentError("REML-fitted models cannot be compared to linear models"))
+
+    return true
+end
+
+function StatsModels.isnested(m1::GeneralizedLinearModel, m2::GeneralizedLinearMixedModel; atol::Real=0.0)
+    nobs(m1) == nobs(m2) || return false
+
+    Distribution(m1) == Distribution(m2) ||
+        throw(ArgumentError("Models must be fit to the same distribution"))
+
+    Link(m1) == Link(m2) ||
+        throw(ArgumentError("Models must have the same link function"))
+
+    return true
 end

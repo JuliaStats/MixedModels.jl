@@ -1,3 +1,4 @@
+using GLM
 using MixedModels
 using Test
 
@@ -45,8 +46,11 @@ end
 
     fm0 = fit(MixedModel,@formula(reaction ~ 1 + (1+days|subj)),slp);
     fm1 = fit(MixedModel,@formula(reaction ~ 1 + days + (1+days|subj)),slp);
+    lm0 = lm(@formula(reaction ~ 1), slp)
+    lm1 = lm(@formula(reaction ~ 1 + days), slp)
 
-    lrt = likelihoodratiotest(fm0,fm1);
+    lrt = likelihoodratiotest(fm0,fm1)
+
 
     @test [deviance(fm0), deviance(fm1)] == lrt.deviance
     @test deviance(fm0) - deviance(fm1) == only(lrt.tests.deviancediff)
@@ -58,10 +62,18 @@ end
     show(IOBuffer(),lrt);
     @test :pvalues in propertynames(lrt)
 
+    lrt = likelihoodratiotest(lm1,fm1)
+    @test lrt.deviance ≈ likelihoodratiotest(lm1.model,fm1).deviance
+    @test lrt.dof == [3, 6]
+    @test lrt.deviance ≈ -2 * loglikelihood.([lm1, fm1])
+
+    # non nested FE between non-mixed and mixed
+    @test_throws ArgumentError likelihoodratiotest(lm1, fm0)
 
     # mix of REML and ML
     fm0 = fit(MixedModel,@formula(reaction ~ 1 + (1+days|subj)),slp, REML=true);
     @test_throws ArgumentError likelihoodratiotest(fm0,fm1)
+    @test_throws ArgumentError likelihoodratiotest(lm0,fm0)
 
     # differing FE with REML
     fm1 = fit(MixedModel,@formula(reaction ~ 1 + days + (1+days|subj)),slp, REML=true);
@@ -69,8 +81,18 @@ end
     @test_throws ArgumentError likelihoodratiotest(fm0,fm1)
 
     contra = MixedModels.dataset(:contra);
+    # glm doesn't like categorical responses, so we convert it to numeric ourselves
+    # TODO: upstream fix
+    cc = DataFrame(contra);
+    cc.usenum = ifelse.(cc.use .== "Y", 1 , 0)
+    gmf = glm(@formula(usenum ~ 1+age+urban+livch), cc, Bernoulli());
     gm0 = fit(MixedModel, @formula(use ~ 1+age+urban+livch+(1|urban&dist)), contra, Bernoulli(), fast=true);
     gm1 = fit(MixedModel, @formula(use ~ 1+age+abs2(age)+urban+livch+(1|urban&dist)), contra, Bernoulli(), fast=true);
+
+    lrt = likelihoodratiotest(gmf, gm1)
+    @test [-2 * loglikelihood(gmf), deviance(gm1)] ≈ lrt.deviance
+    @test -2 * loglikelihood(gmf) - deviance(gm1) ≈ only(lrt.tests.deviancediff)
+
     lrt = likelihoodratiotest(gm0,gm1);
     @test [deviance(gm0), deviance(gm1)] == lrt.deviance
     @test deviance(gm0) - deviance(gm1) == only(lrt.tests.deviancediff)
@@ -82,9 +104,11 @@ end
 
     # mismatched links
     gm_probit = fit(MixedModel, @formula(use ~ 1+age+urban+livch+(1|urban&dist)), contra, Bernoulli(), ProbitLink(), fast=true);
-    @test_throws ArgumentError likelihoodratiotest(gm0,gm_probit)
+    @test_throws ArgumentError likelihoodratiotest(gmf, gm_probit)
+    @test_throws ArgumentError likelihoodratiotest(gm0, gm_probit)
 
     # mismatched families
     gm_poisson = fit(MixedModel, @formula(use ~ 1+age+urban+livch+(1|urban&dist)), contra, Poisson(), fast=true);
-    @test_throws ArgumentError MixedModels.likelihoodratiotest(gm0,gm_poisson)
+    @test_throws ArgumentError likelihoodratiotest(gmf, gm_poisson)
+    @test_throws ArgumentError likelihoodratiotest(gm0, gm_poisson)
 end
