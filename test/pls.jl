@@ -412,7 +412,7 @@ end
         @test bic(fm) ≈ bic(m)
         @test coef(fm) ≈ coef(m)
             # using a temporary file for saving JSON
-        fnm = mktemp()
+        fnm = first(mktemp())
         saveoptsum(fnm, fm)
         restoreoptsum!(m, fnm)
         @test loglikelihood(fm) ≈ loglikelihood(m)
