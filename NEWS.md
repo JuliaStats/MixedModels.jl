@@ -1,3 +1,7 @@
+MixedModels v3.5.2 Release Notes
+========================
+* Explicitly deprecate non-functional `named` kwarg in `ranef` in favor of `raneftables` [#507].
+
 MixedModels v3.5.1 Release Notes
 ========================
 * Fix MIME show methods for models with random-effects not corresponding to a fixed effect [#501].
