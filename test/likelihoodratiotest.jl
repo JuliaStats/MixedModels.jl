@@ -111,4 +111,7 @@ end
     gm_poisson = fit(MixedModel, @formula(use ~ 1+age+urban+livch+(1|urban&dist)), contra, Poisson(), fast=true);
     @test_throws ArgumentError likelihoodratiotest(gmf, gm_poisson)
     @test_throws ArgumentError likelihoodratiotest(gm0, gm_poisson)
+
+    @test !isnested(lm0, gm0)
+    @test !isnested(gmf, fm1)
 end

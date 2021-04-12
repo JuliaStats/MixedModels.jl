@@ -118,7 +118,6 @@ function likelihoodratiotest(m0::Union{TableRegressionModel{<:Union{LinearModel,
     p = dev > 0 ? ccdf(Chisq(df), dev) : NaN
     pvals = pushfirst!(lrt.tests.pvalues, p)
 
-
     LikelihoodRatioTest(
         formulas,
         (dof = dofs, deviance = devs),
