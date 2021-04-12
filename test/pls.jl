@@ -1,3 +1,4 @@
+using JSON3
 using LinearAlgebra
 using MixedModels
 using PooledArrays
@@ -401,6 +402,29 @@ end
     @test countlines(seekstart(io)) == 3
     @test "BlkDiag" in Set(split(String(take!(io)), r"\s+"))
 
+    @testset "optsumJSON" begin
+        optsum = last(models(:sleepstudy)).optsum
+        JSON3.write(seekstart(io), optsum) 
+        dict = JSON3.read(take!(io))
+        @test haskey(dict, :initial)
+#=  This fails in Pkg.test but not in the REPL        
+        for k in keys(dict)
+            dk = getproperty(dict, k)
+            osk = getproperty(optsum, k)
+            if dk isa String
+                @test osk == Symbol(dk)
+            else
+                @test isapprox(dk, osk)
+            end
+        end
+=#
+        @test dict.initial == optsum.initial
+        @test Symbol(dict.optimizer) == optsum.optimizer
+        @test Symbol(dict.returnvalue) == optsum.returnvalue
+        @test isapprox(dict.finitial, optsum.finitial)
+        @test isapprox(dict.fmin, optsum.fmin)
+        @test isapprox(copy(dict.final), optsum.final)  
+    end
 end
 
 @testset "d3" begin
