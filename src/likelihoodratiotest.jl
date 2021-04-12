@@ -170,17 +170,17 @@ _samefamily(::GeneralizedLinearMixedModel{T, S}...) where {T, S} = true
 _samefamily(::GeneralizedLinearMixedModel...) = false
 
 function _iscomparable(m::GeneralizedLinearMixedModel...)
-        # TODO: test that all models are fit with same fast/nAGQ option?
-        _samefamily(m...) ||
-            throw(ArgumentError("Models must be fit to the same distribution"))
+    # TODO: test that all models are fit with same fast/nAGQ option?
+    _samefamily(m...) ||
+        throw(ArgumentError("Models must be fit to the same distribution"))
 
-        allequal(string.(Link.(m))) ||
-            throw(ArgumentError("Models must have the same link function"))
+    allequal(string.(Link.(m))) ||
+        throw(ArgumentError("Models must have the same link function"))
 
-        allequal(nobs.(m)) ||
-            throw(ArgumentError("Models must have the same number of observations"))
+    allequal(nobs.(m)) ||
+        throw(ArgumentError("Models must have the same number of observations"))
 
-        true
+    return true
 end
 
 """
