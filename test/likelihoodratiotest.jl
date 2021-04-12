@@ -1,3 +1,4 @@
+using DataFrames
 using GLM
 using MixedModels
 using Test
@@ -50,7 +51,6 @@ end
     lm1 = lm(@formula(reaction ~ 1 + days), slp)
 
     lrt = likelihoodratiotest(fm0,fm1)
-
 
     @test [deviance(fm0), deviance(fm1)] == lrt.deviance
     @test deviance(fm0) - deviance(fm1) == only(lrt.tests.deviancediff)
