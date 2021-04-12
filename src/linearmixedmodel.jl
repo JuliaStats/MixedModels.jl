@@ -782,12 +782,67 @@ StatsBase.residuals(m::LinearMixedModel) = response(m) .- fitted(m)
 
 StatsBase.response(m::LinearMixedModel) = m.y
 
+"""
+    restoreoptsum!(m::LinearMixedModel, io::IO)
+    restoreoptsum!(m::LinearMixedModel, fnm::AbstractString)
+
+Read, check, and restore the `optsum` field from a JSON stream or filename.
+"""
+function restoreoptsum!(m::LinearMixedModel, io::IO)
+    dict = JSON3.read(io)
+    ops = m.optsum
+    okay = (setdiff(propertynames(ops), keys(dict)) == [:lowerbd]) &&
+        isapprox(ops.initial, copy(dict.initial)) &&
+        isapprox(ops.xtol_abs, copy(dict.xtol_abs)) &&
+        ops.ftol_rel == dict.ftol_rel &&
+        ops.xtol_rel == dict.xtol_rel &&
+        ops.ftol_abs == dict.ftol_abs &&
+        ops.maxfeval == dict.maxfeval &&
+        all(ops.lowerbd .≤ dict.final)
+    if !okay
+        throw(ArgumentError("io is not a JSON-formatted optsum for model m"))
+    end
+    ops.finitial = dict.finitial
+    copyto!(ops.final, dict.final)
+    ops.initial_step = copy(dict.initial_step)
+    ops.fmin = dict.fmin
+    ops.feval = dict.feval
+    ops.optimizer = Symbol(dict.optimizer)
+    ops.returnvalue = Symbol(dict.returnvalue)
+    ops.nAGQ = dict.nAGQ
+    ops.REML = dict.REML
+    updateL!(setθ!(m, ops.final))
+    m
+end
+
+function restoreoptsum!(m::LinearMixedModel, fnm::AbstractString)
+    open(fnm, "r") do io
+        restoreoptsum!(m, io)
+    end
+end
+
 function reweight!(m::LinearMixedModel, weights)
     sqrtwts = map!(sqrt, m.sqrtwts, weights)
     reweight!.(m.reterms, Ref(sqrtwts))
     reweight!(m.Xymat, sqrtwts)
     updateA!(m)
     updateL!(m)
+end
+
+"""
+    saveoptsum(io::IO, m::LinearMixedModel)
+    saveoptsum(fnm::AbstractString, m::LinearMixedModel)
+
+Save `m.optsum` (w/o the `lowerbd` field) in JSON format to an IO stream or a file
+
+The reason for omitting the `lowerbd` field is because it often contains `-Inf`
+values that are not allowed in JSON.
+"""
+saveoptsum(io::IO, m::LinearMixedModel) = JSON3.write(io, m.optsum)
+function saveoptsum(fnm::AbstractString, m::LinearMixedModel)
+    open(fnm, "w") do io
+        saveoptsum(io, m)
+    end
 end
 
 """

@@ -403,27 +403,21 @@ end
     @test "BlkDiag" in Set(split(String(take!(io)), r"\s+"))
 
     @testset "optsumJSON" begin
-        optsum = last(models(:sleepstudy)).optsum
-        JSON3.write(seekstart(io), optsum) 
-        dict = JSON3.read(take!(io))
-        @test haskey(dict, :initial)
-#=  This fails in Pkg.test but not in the REPL        
-        for k in keys(dict)
-            dk = getproperty(dict, k)
-            osk = getproperty(optsum, k)
-            if dk isa String
-                @test osk == Symbol(dk)
-            else
-                @test isapprox(dk, osk)
-            end
-        end
-=#
-        @test dict.initial == optsum.initial
-        @test Symbol(dict.optimizer) == optsum.optimizer
-        @test Symbol(dict.returnvalue) == optsum.returnvalue
-        @test isapprox(dict.finitial, optsum.finitial)
-        @test isapprox(dict.fmin, optsum.fmin)
-        @test isapprox(copy(dict.final), optsum.final)  
+        fm = last(models(:sleepstudy))
+            # using a IOBuffer for saving JSON
+        saveoptsum(seekstart(io), fm)
+        m = LinearMixedModel(fm.formula, MixedModels.dataset(:sleepstudy))
+        restoreoptsum!(m, seekstart(io))
+        @test loglikelihood(fm) ≈ loglikelihood(m)
+        @test bic(fm) ≈ bic(m)
+        @test coef(fm) ≈ coef(m)
+            # using a temporary file for saving JSON
+        fnm = mktemp()
+        saveoptsum(fnm, fm)
+        restoreoptsum!(m, fnm)
+        @test loglikelihood(fm) ≈ loglikelihood(m)
+        @test bic(fm) ≈ bic(m)
+        @test coef(fm) ≈ coef(m)
     end
 end
 
