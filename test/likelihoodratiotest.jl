@@ -50,6 +50,9 @@ end
     lm0 = lm(@formula(reaction ~ 1), slp)
     lm1 = lm(@formula(reaction ~ 1 + days), slp)
 
+    @test MixedModels._iscomparable(lm0, fm1)
+    @test !MixedModels._iscomparable(lm1, fm0)
+
     lrt = likelihoodratiotest(fm0,fm1)
 
     @test [deviance(fm0), deviance(fm1)] == lrt.deviance
@@ -86,6 +89,7 @@ end
     cc = DataFrame(contra);
     cc.usenum = ifelse.(cc.use .== "Y", 1 , 0)
     gmf = glm(@formula(usenum ~ 1+age+urban+livch), cc, Bernoulli());
+    gmf2 = glm(@formula(usenum ~ 1+age+abs2(age)+urban+livch), cc, Bernoulli());
     gm0 = fit(MixedModel, @formula(use ~ 1+age+urban+livch+(1|urban&dist)), contra, Bernoulli(), fast=true);
     gm1 = fit(MixedModel, @formula(use ~ 1+age+abs2(age)+urban+livch+(1|urban&dist)), contra, Bernoulli(), fast=true);
 
@@ -114,4 +118,7 @@ end
 
     @test !MixedModels._iscomparable(lm0, gm0)
     @test !MixedModels._iscomparable(gmf, fm1)
+
+    @test MixedModels._iscomparable(gmf, gm0)
+    @test !MixedModels._iscomparable(gmf2, gm0)
 end

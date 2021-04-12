@@ -273,6 +273,9 @@ _iscomparable(m1::Union{LinearModel, GeneralizedLinearModel}, m2::MixedModel) = 
 function _iscomparable(m1::LinearModel, m2::LinearMixedModel)
     nobs(m1) == nobs(m2) || return false
 
+    # XXX This reaches into the internal structure of GLM
+    size(m1.pp.X, 2) <= size(m2.X, 2) || return false
+
     !m2.optsum.REML ||
         throw(ArgumentError("REML-fitted models cannot be compared to linear models"))
 
@@ -281,6 +284,9 @@ end
 
 function _iscomparable(m1::GeneralizedLinearModel, m2::GeneralizedLinearMixedModel)
     nobs(m1) == nobs(m2) || return false
+
+    # XXX This reaches into the internal structure of GLM
+    size(m1.pp.X, 2) <= size(m2.X, 2) || return false
 
     Distribution(m1) == Distribution(m2) ||
         throw(ArgumentError("Models must be fit to the same distribution"))
