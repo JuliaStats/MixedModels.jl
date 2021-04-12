@@ -33,6 +33,14 @@ Run-time formula syntax
 * Methods for `Base./(::AbstractTerm, ::AbstractTerm)` are added, allowing
   nesting syntax to be used with `Term`s at run-time as well [#470]
 
+MixedModels v3.6.0 Release Notes
+========================
+* Add `likelihoodratiotest` method for comparing non-mixed (generalized) linear models to (generalized) linear mixed models [#508].
+
+MixedModels v3.5.2 Release Notes
+========================
+* Explicitly deprecate non-functional `named` kwarg in `ranef` in favor of `raneftables` [#507].
+
 MixedModels v3.5.1 Release Notes
 ========================
 * Fix MIME show methods for models with random-effects not corresponding to a fixed effect [#501].
@@ -219,3 +227,5 @@ Package dependencies
 [#493]: https://github.com/JuliaStats/MixedModels.jl/issues/493
 [#495]: https://github.com/JuliaStats/MixedModels.jl/issues/495
 [#501]: https://github.com/JuliaStats/MixedModels.jl/issues/501
+[#507]: https://github.com/JuliaStats/MixedModels.jl/issues/507
+[#508]: https://github.com/JuliaStats/MixedModels.jl/issues/508
