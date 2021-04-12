@@ -103,7 +103,7 @@ _formula(x::TableRegressionModel{<:Union{LinearModel, GeneralizedLinearModel}}) 
 function likelihoodratiotest(m0::Union{TableRegressionModel{<:Union{LinearModel, GeneralizedLinearModel}},
                                        LinearModel, GeneralizedLinearModel},
                              m::MixedModel...)
-    StatsModels.isnested(m0, first(m)) ||
+    _iscomparable(m0, first(m)) ||
         throw(ArgumentError("""Models are not comparable: are the objectives, data
                                and, where appropriate, the link and family the same?
                             """))
@@ -257,20 +257,9 @@ function StatsModels.isnested(m1::MixedModel, m2::MixedModel; atol::Real=0.0)
 end
 
 
-"""
-    isnested(m1::LinearModel, m2::LinearMixedModel; atol::Real=0.0)
-    isnested(m1::TableRegressioLinearModel{LinearModel}, m2::LinearMixedModel; atol::Real=0.0)
-    isnested(m1::GeneralizedLinearModel, m2::GeneralizedLinearMixedModel; atol::Real=0.0)
-    isnested(m1::TableRegressioLinearModel{GeneralizedLinearModel}, m2::GeneralizedLinearMixedModel; atol::Real=0.0)
-
-Indicate whether model `m1` is nested in model `m2`, i.e. whether
-`m1` can be obtained by constraining some parameters in `m2`.
-Both models must have been fitted on the same data. The mixed model must be
-fitted with maximum likelihood (i.e. **not** REML).
-"""
-function StatsModels.isnested(m1::TableRegressionModel{<:Union{LinearModel, GeneralizedLinearModel}},
-                              m2::MixedModel; atol::Real=0.0)
-    StatsModels.isnested(m1.model, m2) || return false
+function _iscomparable(m1::TableRegressionModel{<:Union{LinearModel, GeneralizedLinearModel}},
+                       m2::MixedModel)
+     _iscomparable(m1.model, m2) || return false
 
     # check that the nested fixef are a subset of the outer
     all(in.(coefnames(m1),  Ref(coefnames(m2)))) || return false
@@ -279,9 +268,9 @@ function StatsModels.isnested(m1::TableRegressionModel{<:Union{LinearModel, Gene
 end
 
 # GLM isn't nested with in LMM and LM isn't nested within GLMM
-StatsModels.isnested(m1::Union{LinearModel, GeneralizedLinearModel}, m2::MixedModel; atol::Real=0.0) = false
+_iscomparable(m1::Union{LinearModel, GeneralizedLinearModel}, m2::MixedModel) = false
 
-function StatsModels.isnested(m1::LinearModel, m2::LinearMixedModel; atol::Real=0.0)
+function _iscomparable(m1::LinearModel, m2::LinearMixedModel)
     nobs(m1) == nobs(m2) || return false
 
     !m2.optsum.REML ||
@@ -290,7 +279,7 @@ function StatsModels.isnested(m1::LinearModel, m2::LinearMixedModel; atol::Real=
     return true
 end
 
-function StatsModels.isnested(m1::GeneralizedLinearModel, m2::GeneralizedLinearMixedModel; atol::Real=0.0)
+function _iscomparable(m1::GeneralizedLinearModel, m2::GeneralizedLinearMixedModel)
     nobs(m1) == nobs(m2) || return false
 
     Distribution(m1) == Distribution(m2) ||

@@ -112,6 +112,6 @@ end
     @test_throws ArgumentError likelihoodratiotest(gmf, gm_poisson)
     @test_throws ArgumentError likelihoodratiotest(gm0, gm_poisson)
 
-    @test !isnested(lm0, gm0)
-    @test !isnested(gmf, fm1)
+    @test !MixedModels._iscomparable(lm0, gm0)
+    @test !MixedModels._iscomparable(gmf, fm1)
 end
