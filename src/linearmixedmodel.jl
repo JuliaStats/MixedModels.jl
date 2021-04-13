@@ -792,26 +792,25 @@ function restoreoptsum!(m::LinearMixedModel, io::IO)
     dict = JSON3.read(io)
     ops = m.optsum
     okay = (setdiff(propertynames(ops), keys(dict)) == [:lowerbd]) &&
-        isapprox(ops.initial, copy(dict.initial)) &&
-        isapprox(ops.xtol_abs, copy(dict.xtol_abs)) &&
-        ops.ftol_rel == dict.ftol_rel &&
-        ops.xtol_rel == dict.xtol_rel &&
-        ops.ftol_abs == dict.ftol_abs &&
-        ops.maxfeval == dict.maxfeval &&
+        all(ops.lowerbd .≤ dict.initial) &&
         all(ops.lowerbd .≤ dict.final)
     if !okay
-        throw(ArgumentError("io is not a JSON-formatted optsum for model m"))
+        throw(ArgumentError("initial or final parameters in io do not satify lowerbd"))
     end
-    ops.finitial = dict.finitial
-    copyto!(ops.final, dict.final)
+    for fld in (:feval, :finitial, :fmin, :ftol_rel, :ftol_abs, :maxfeval, :nAGQ, :REML)
+        setproperty!(ops, fld, getproperty(dict, fld))
+    end
     ops.initial_step = copy(dict.initial_step)
-    ops.fmin = dict.fmin
-    ops.feval = dict.feval
+    ops.xtol_rel = copy(dict.xtol_rel)
+    copyto!(ops.initial, dict.initial)
+    copyto!(ops.final, dict.final)
+    for (v, f) in (:initial => :finitial, :final => :fmin)
+        if !isapprox(objective(updateL!(setθ!(m, getfield(ops, v)))), getfield(ops, f))
+            throw(ArgumentError("model m at $v does not give stored $f"))
+        end
+    end
     ops.optimizer = Symbol(dict.optimizer)
     ops.returnvalue = Symbol(dict.returnvalue)
-    ops.nAGQ = dict.nAGQ
-    ops.REML = dict.REML
-    updateL!(setθ!(m, ops.final))
     m
 end
 
@@ -857,7 +856,7 @@ sdest(m::LinearMixedModel) = √varest(m)
 
 Install `v` as the θ parameters in `m`.
 """
-function setθ!(m::LinearMixedModel{T}, θ::Vector{T}) where {T}
+function setθ!(m::LinearMixedModel{T}, θ::AbstractVector) where {T}
     parmap, reterms = m.parmap, m.reterms
     length(θ) == length(parmap) || throw(DimensionMismatch())
     reind = 1
