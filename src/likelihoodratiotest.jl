@@ -339,7 +339,7 @@ function _isnested(x::AbstractMatrix, y::AbstractMatrix; rtol=1e-8, ranktol=1e-8
 
     nested = map(eachcol(p)) do col
         # if set Julia 1.6 as the minimum, we can use last(col, r)
-        top = @view col[begin:(end-r-1)]
+        top = @view col[firstindex(col):(end-r-1)]
         tail = @view col[(end-r):end]
         return norm(tail) / norm(top) < rtol
     end
