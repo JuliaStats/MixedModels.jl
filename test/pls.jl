@@ -413,6 +413,7 @@ end
             # using a temporary file for saving JSON
         fnm = first(mktemp())
         saveoptsum(fnm, fm)
+        m = LinearMixedModel(fm.formula, MixedModels.dataset(:sleepstudy))
         restoreoptsum!(m, fnm)
         @test loglikelihood(fm) ≈ loglikelihood(m)
         @test bic(fm) ≈ bic(m)
