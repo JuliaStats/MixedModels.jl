@@ -279,6 +279,8 @@ function _iscomparable(m1::LinearModel, m2::LinearMixedModel)
     # XXX This reaches into the internal structure of GLM
     size(m1.pp.X, 2) <= size(m2.X, 2) || return false
 
+    _isnested(m1.pp.X, m2.X) || return false
+
     !m2.optsum.REML ||
         throw(ArgumentError("REML-fitted models cannot be compared to linear models"))
 
@@ -291,6 +293,8 @@ function _iscomparable(m1::GeneralizedLinearModel, m2::GeneralizedLinearMixedMod
     # XXX This reaches into the internal structure of GLM
     size(m1.pp.X, 2) <= size(m2.X, 2) || return false
 
+    _isnested(m1.pp.X, m2.X) || return false
+
     Distribution(m1) == Distribution(m2) ||
         throw(ArgumentError("Models must be fit to the same distribution"))
 
@@ -298,4 +302,47 @@ function _iscomparable(m1::GeneralizedLinearModel, m2::GeneralizedLinearMixedMod
         throw(ArgumentError("Models must have the same link function"))
 
     return true
+end
+
+"""
+    _isnested(x::AbstractMatrix, y::AbstractMatrix; atol::Real=0.0)
+
+Test whether the column span of `x` is a subspace of (nested within)
+the column span of y.
+
+The nesting of the column span of the fixed-effects model matrices is a necessary,
+but not sufficient condition for a linear model (whether mixed-effects or not)
+to be nested within a linear mixed-effects model.
+
+!!! note
+    The `rtol` argument is an internal threshold and not currently
+    compatible with the `atol` argument of `StatsModels.isnested`.
+"""
+function _isnested(x::AbstractMatrix, y::AbstractMatrix; rtol=1e-8, ranktol=1e-8)
+
+    # technically this can return false positives if x or y
+    # are rank deficient, but either they're rank deficient
+    # in the same way (b/c same data) and we don't care OR
+    # it's not the same data/fixef specification and we're
+    # extra conservative
+    # size(x, 2) <= size(y, 2) || return false
+
+    qy = qr(y).Q
+
+    qrx = qr(x, Val(true))
+    dvec = abs.(diag(qrx.R))
+    fdv = first(dvec)
+    cmp = fdv * ranktol
+    r = searchsortedlast(dvec, cmp, rev=true)
+
+    p = qy' * x
+
+    nested = map(eachcol(p)) do col
+        # if set Julia 1.6 as the minimum, we can use last(col, r)
+        top = @view col[begin:(end-r-1)]
+        tail = @view col[(end-r):end]
+        return norm(tail) / norm(top) < rtol
+    end
+
+    return all(nested)
 end

@@ -88,8 +88,8 @@ end
     # TODO: upstream fix
     cc = DataFrame(contra);
     cc.usenum = ifelse.(cc.use .== "Y", 1 , 0)
-    gmf = glm(@formula(usenum ~ 1+age+urban+livch), cc, Bernoulli());
     gmf2 = glm(@formula(usenum ~ 1+age+abs2(age)+urban+livch), cc, Bernoulli());
+    gmfalt = glm(@formula(usenum ~ 1+abs2(age)+urban+livch), cc, Bernoulli());
     gm0 = fit(MixedModel, @formula(use ~ 1+age+urban+livch+(1|urban&dist)), contra, Bernoulli(), fast=true);
     gm1 = fit(MixedModel, @formula(use ~ 1+age+abs2(age)+urban+livch+(1|urban&dist)), contra, Bernoulli(), fast=true);
 
@@ -121,4 +121,10 @@ end
 
     @test MixedModels._iscomparable(gmf, gm0)
     @test !MixedModels._iscomparable(gmf2, gm0)
+
+    @test MixedModels._isnested(gmf.mm.m, gm0.X)
+    @test !MixedModels._isnested(gmf2.mm.m, gm0.X)
+    # this skips the linear term so that the model matrices
+    # have the same column rank
+    @test !MixedModels._isnested(gmf2.mm.m[:,Not(2)], gm0.X)
 end
