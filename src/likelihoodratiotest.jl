@@ -6,10 +6,12 @@ Results of MixedModels.likelihoodratiotest
 ## Fields
 * `formulas`: Vector of model formulae
 * `models`: NamedTuple of the `dof` and `deviance` of the models
-* `tests`: NamedTuple of the sequential `dofdiff`, `deviancediff`, and resulting `pvalues`
+* `tests`: NamedTuple of the sequential `dofdiff`, `deviancediff`,
+           and resulting `pvalues`
 
 ## Properties
-* `deviance`
+* `deviance` : note that this is actually -2 log likelihood for linear models
+               (i.e. without the additive constant for a saturated model)
 * `pvalues`
 
 """
@@ -17,6 +19,7 @@ struct LikelihoodRatioTest
     formulas::AbstractVector{String}
     models::NamedTuple{(:dof,:deviance)}
     tests::NamedTuple{(:dofdiff,:deviancediff,:pvalues)}
+    linear::Bool
 end
 
 Base.propertynames(lrt::LikelihoodRatioTest, private::Bool = false) = (
@@ -93,7 +96,8 @@ function likelihoodratiotest(m::MixedModel...)
     LikelihoodRatioTest(
         formulas,
         (dof = dofs, deviance = devs),
-        (dofdiff = dofdiffs, deviancediff = devdiffs, pvalues = pvals)
+        (dofdiff = dofdiffs, deviancediff = devdiffs, pvalues = pvals),
+        first(m) isa LinearMixedModel
     )
 end
 
@@ -121,7 +125,8 @@ function likelihoodratiotest(m0::Union{TableRegressionModel{<:Union{LinearModel,
     LikelihoodRatioTest(
         formulas,
         (dof = dofs, deviance = devs),
-        (dofdiff = dofdiffs, deviancediff = devdiffs, pvalues = pvals)
+        (dofdiff = dofdiffs, deviancediff = devdiffs, pvalues = pvals),
+        lrt.linear
     )
 end
 
@@ -143,7 +148,7 @@ function Base.show(io::IO, ::MIME"text/plain", lrt::LikelihoodRatioTest)
 
     outrows[1, :] = ["",
                     "model-dof",
-                    "deviance",
+                    lrt.linear ? "-2 logLik" : "deviance",
                     "χ²",
                     "χ²-dof",
                     "P(>χ²)"] # colnms
