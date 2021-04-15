@@ -70,8 +70,8 @@ end
     @test lrt.dof == [3, 6]
     @test lrt.deviance ≈ -2 * loglikelihood.([lm1, fm1])
     shown = sprint(show, lrt)
-    @test contains(shown,  "-2 logLik")
-    @test !contains(shown,  "deviance")
+    @test occursin("-2 logLik", shown)
+    @test !occursin("deviance", shown)
 
     # non nested FE between non-mixed and mixed
     @test_throws ArgumentError likelihoodratiotest(lm1, fm0)
@@ -100,8 +100,8 @@ end
     @test [-2 * loglikelihood(gmf), deviance(gm1)] ≈ lrt.deviance
     @test -2 * loglikelihood(gmf) - deviance(gm1) ≈ only(lrt.tests.deviancediff)
     shown = sprint(show, lrt)
-    @test !contains(shown,  "-2 logLik")
-    @test contains(shown,  "deviance")
+    @test occursin("-2 logLik", shown)
+    @test !occursin("deviance", shown)
 
     lrt = likelihoodratiotest(gm0,gm1);
     @test [deviance(gm0), deviance(gm1)] == lrt.deviance
