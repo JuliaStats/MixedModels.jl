@@ -104,6 +104,13 @@ end
 _formula(::Union{LinearModel, GeneralizedLinearModel}) = "NA"
 _formula(x::TableRegressionModel{<:Union{LinearModel, GeneralizedLinearModel}}) = String(Symbol(x.mf.f))
 
+# for GLMMs we're actually looking at the deviance and additive constants are comparable
+# (because GLM deviance is actually part of the GLMM deviance computation)
+# for LMMs, we're always looking at the "deviance scale" but without the additive constant
+# for the fully saturated model
+_criterion(x::Union{GeneralizedLinearModel, TableRegressionModel{<:GeneralizedLinearModel}}) = deviance(x)
+_criterion(x::Union{LinearModel, TableRegressionModel{<:LinearModel}}) = -2 * loglikelihood(x)
+
 function likelihoodratiotest(m0::Union{TableRegressionModel{<:Union{LinearModel, GeneralizedLinearModel}},
                                        LinearModel, GeneralizedLinearModel},
                              m::MixedModel...)
@@ -112,7 +119,7 @@ function likelihoodratiotest(m0::Union{TableRegressionModel{<:Union{LinearModel,
                                and, where appropriate, the link and family the same?
                             """))
     lrt = likelihoodratiotest(m...)
-    devs = pushfirst!(lrt.deviance, -2 * loglikelihood(m0))
+    devs = pushfirst!(lrt.deviance, _criterion(m0))
     formulas = pushfirst!(lrt.formulas, _formula(m0))
     dofs = pushfirst!(lrt.models.dof, dof(m0))
     devdiffs = pushfirst!(lrt.tests.deviancediff, devs[1] - devs[2])
