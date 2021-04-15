@@ -1,6 +1,7 @@
 MixedModels v3.6.0 Release Notes
 ========================
 * Add `likelihoodratiotest` method for comparing non-mixed (generalized) linear models to (generalized) linear mixed models [#508].
+* added `Distributions.Distribution` and `GLM.Link` methods for `GeneralizedLinearMixedModel` [#510]
 
 MixedModels v3.5.2 Release Notes
 ========================
@@ -185,3 +186,4 @@ Package dependencies
 [#501]: https://github.com/JuliaStats/MixedModels.jl/issues/501
 [#507]: https://github.com/JuliaStats/MixedModels.jl/issues/507
 [#508]: https://github.com/JuliaStats/MixedModels.jl/issues/508
+[#510]: https://github.com/JuliaStats/MixedModels.jl/issues/510
