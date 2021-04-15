@@ -302,10 +302,9 @@ end
 function _iscomparable(m1::GeneralizedLinearModel, m2::GeneralizedLinearMixedModel)
     nobs(m1) == nobs(m2) || return false
 
-    # XXX This reaches into the internal structure of GLM
-    size(m1.pp.X, 2) <= size(m2.X, 2) || return false
+    size(modelmatrix(m1), 2) <= size(modelmatrix(m2), 2) || return false
 
-    _isnested(m1.pp.X, m2.X) || return false
+    _isnested(modelmatrix(m1), modelmatrix(m2)) || return false
 
     Distribution(m1) == Distribution(m2) ||
         throw(ArgumentError("Models must be fit to the same distribution"))
