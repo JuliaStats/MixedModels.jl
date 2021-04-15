@@ -336,7 +336,7 @@ function _isnested(x::AbstractMatrix, y::AbstractMatrix; rtol=1e-8, ranktol=1e-8
     # in the same way (b/c same data) and we don't care OR
     # it's not the same data/fixef specification and we're
     # extra conservative
-    # size(x, 2) <= size(y, 2) || return false
+    size(x, 2) <= size(y, 2) || return false
 
     qy = qr(y).Q
 
