@@ -4,6 +4,7 @@ using Arrow
 using DataAPI
 using Distributions
 using GLM
+using JSON3
 using LazyArtifacts
 using LinearAlgebra
 using Markdown
@@ -16,6 +17,7 @@ using StaticArrays
 using Statistics
 using StatsBase
 using StatsModels
+using StructTypes
 using Tables
 
 using LinearAlgebra: BlasFloat, BlasReal, HermOrSym, PosDefException, copytri!
@@ -109,6 +111,8 @@ export @formula,
        replicate,
        residuals,
        response,
+       restoreoptsum!,
+       saveoptsum,
        shortestcovint,
        sdest,
        setθ!,

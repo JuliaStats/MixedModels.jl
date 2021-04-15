@@ -401,6 +401,24 @@ end
     @test countlines(seekstart(io)) == 3
     @test "BlkDiag" in Set(split(String(take!(io)), r"\s+"))
 
+    @testset "optsumJSON" begin
+        fm = last(models(:sleepstudy))
+            # using a IOBuffer for saving JSON
+        saveoptsum(seekstart(io), fm)
+        m = LinearMixedModel(fm.formula, MixedModels.dataset(:sleepstudy))
+        restoreoptsum!(m, seekstart(io))
+        @test loglikelihood(fm) ≈ loglikelihood(m)
+        @test bic(fm) ≈ bic(m)
+        @test coef(fm) ≈ coef(m)
+            # using a temporary file for saving JSON
+        fnm = first(mktemp())
+        saveoptsum(fnm, fm)
+        m = LinearMixedModel(fm.formula, MixedModels.dataset(:sleepstudy))
+        restoreoptsum!(m, fnm)
+        @test loglikelihood(fm) ≈ loglikelihood(m)
+        @test bic(fm) ≈ bic(m)
+        @test coef(fm) ≈ coef(m)
+    end
 end
 
 @testset "d3" begin
