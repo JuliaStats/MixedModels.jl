@@ -11,7 +11,7 @@ Results of MixedModels.likelihoodratiotest
 
 ## Properties
 * `deviance` : note that this is actually -2 log likelihood for linear models
-               (i.e. without the additive constant for a saturated model)
+               (i.e. without subtracting the constant for a saturated model)
 * `pvalues`
 
 """
