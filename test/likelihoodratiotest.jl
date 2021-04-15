@@ -100,8 +100,8 @@ end
     @test [-2 * loglikelihood(gmf), deviance(gm1)] ≈ lrt.deviance
     @test -2 * loglikelihood(gmf) - deviance(gm1) ≈ only(lrt.tests.deviancediff)
     shown = sprint(show, lrt)
-    @test occursin("-2 logLik", shown)
-    @test !occursin("deviance", shown)
+    @test !occursin("-2 logLik", shown)
+    @test occursin("deviance", shown)
 
     lrt = likelihoodratiotest(gm0,gm1);
     @test [deviance(gm0), deviance(gm1)] == lrt.deviance
