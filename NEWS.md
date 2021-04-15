@@ -42,7 +42,7 @@ MixedModels v3.6.0 Release Notes
 
 MixedModels v3.5.2 Release Notes
 ========================
-* Explicitly deprecate non-functional `named` kwarg in `ranef` in favor of `raneftables` [#507].
+* Explicitly deprecate vestigial `named` kwarg in `ranef` in favor of `raneftables` [#507].
 
 MixedModels v3.5.1 Release Notes
 ========================
