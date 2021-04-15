@@ -21,6 +21,9 @@ MixedModels v4.0.0 Release Notes
 * `GeneralizedLinearMixedModel` now includes the response distribution as one
   of its type parameters. This will allow dispatching on the model family and may allow
   additional specialization in the future.[#490]
+* `saveoptsum` and `restoreoptsum!` provide for saving and restoring the `optsum`
+  field of a `LinearMixedModel` as a JSON file, allowing for recreating a model fit
+  that may take a long time for parameter optimization. [#506]
 
 Run-time formula syntax
 -----------------------
@@ -219,3 +222,4 @@ Package dependencies
 [#493]: https://github.com/JuliaStats/MixedModels.jl/issues/493
 [#495]: https://github.com/JuliaStats/MixedModels.jl/issues/495
 [#501]: https://github.com/JuliaStats/MixedModels.jl/issues/501
+[#506]: https://github.com/JuliaStats/MixedModels.jl/issues/506
