@@ -22,6 +22,7 @@ using Tables
 using LinearAlgebra: BlasFloat, BlasReal, HermOrSym, PosDefException, copytri!
 using Base: Ryu
 using GLM: Link, canonicallink
+using StatsModels: TableRegressionModel
 
 using StatsFuns: log2π, normccdf
 
