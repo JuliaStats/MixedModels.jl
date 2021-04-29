@@ -62,7 +62,7 @@ bar is automatically disabled for non-interactive (i.e. logging) contexts.
     Julia- and BLAS-level threads in the future.
 
 !!! warning
-    The PRNG shared between threads is locked using [`Threads.SpinLock`](@ref), which
+    The PRNG shared between threads is locked using `Threads.SpinLock`, which
     should not be used recursively. Do not wrap `parametricbootstrap` in an outer `SpinLock`.
 """
 function parametricbootstrap(
@@ -261,7 +261,7 @@ end
 """
     shortestcovint(bsamp::MixedModelBootstrap, level = 0.95)
 
-Return the shortest interval containing `level` proportion for each parameter from [`bsamp.allpars`](@ref)
+Return the shortest interval containing `level` proportion for each parameter from `bsamp.allpars`
 """
 function shortestcovint(bsamp::MixedModelBootstrap{T}, level = 0.95) where {T}
     allpars = bsamp.allpars
