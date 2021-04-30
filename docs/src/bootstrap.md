@@ -30,7 +30,6 @@ using DisplayAs
 
 ```@example Main
 using DataFrames
-using DataFramesMeta  # dplyr-like operations
 using Gadfly          # plotting package
 using MixedModels
 using Random
@@ -54,21 +53,26 @@ first(df, 10)
 Especially for those with a background in [`R`](https://www.R-project.org/) or [`pandas`](https://pandas.pydata.org),
 the simplest way of accessing the parameter estimates in the parametric bootstrap object is to create a `DataFrame` from the `allpars` property as shown above.
 
-The [`DataFramesMeta`](https://github.com/JuliaData/DataFramesMeta.jl) package provides macros for extracting rows or columns of a dataframe.
+We can use `filter` to filter out relevant rows of a dataframe.
 A density plot of the estimates of `σ`, the residual standard deviation, can be created as
 ```@example Main
-σres = @where(df, :type .== "σ", :group .== "residual").value
-plot(x = σres, Geom.density, Guide.xlabel("Parametric bootstrap estimates of σ"))
+σres = filter(df) do row # create a thunk that operates on rows
+    row.type == "σ" && row.group == "residual" # our filtering rule
+end
+
+plot(x = σres.value, Geom.density, Guide.xlabel("Parametric bootstrap estimates of σ"))
 ```
 For the estimates of the intercept parameter, the `getproperty` extractor must be used
 ```@example Main
-plot(@where(df, :type .== "β"), x = :value, Geom.density, Guide.xlabel("Parametric bootstrap estimates of β₁"))
+plot(filter(:type => ==("β"),  df), x = :value, Geom.density, Guide.xlabel("Parametric bootstrap estimates of β₁"))
 ```
 
 A density plot of the estimates of the standard deviation of the random effects is obtained as
 ```@example Main
-σbatch = @where(df, :type .== "σ", :group .== "batch").value
-plot(x = σbatch, Geom.density,
+σbatch = filter(df) do row # create a thunk that operates on rows
+    row.type == "σ" && row.group == "batch" # our filtering rule
+end
+plot(x = σbatch.value, Geom.density,
     Guide.xlabel("Parametric bootstrap estimates of σ₁"))
 ```
 
@@ -77,7 +81,7 @@ Although this mode appears to be diffuse, this is an artifact of the way that de
 In fact, it is a pulse, as can be seen from a histogram.
 
 ```@example Main
-plot(x = σbatch, Geom.histogram,
+plot(x = σbatch.value, Geom.histogram,
     Guide.xlabel("Parametric bootstrap estimates of σ₁"))
 ```
 
@@ -126,24 +130,28 @@ DataFrame(shortestcovint(samp2))
 
 A histogram of the estimated correlations from the bootstrap sample has a spike at `+1`.
 ```@example Main
-ρs = @where(df2, :type .== "ρ", :group .== "subj").value
-plot(x = ρs, Geom.histogram,
+ρs = filter(df2) do row
+    row.type == "ρ" && row.group == "subj"
+end
+plot(x = ρs.value, Geom.histogram,
     Guide.xlabel("Parametric bootstrap samples of correlation of random effects"))
 ```
 or, as a count,
 ```@example Main
-sum(ρs .≈ 1)
+count(ρs.value .≈ 1)
 ```
 
 Close examination of the histogram shows a few values of `-1`.
 ```@example Main
-sum(ρs .≈ -1)
+count(ρs.value .≈ -1)
 ```
 
 Furthermore there are even a few cases where the estimate of the standard deviation of the random effect for the intercept is zero.
 ```@example Main
-σs = @where(df2, :type .== "σ", :group .== "subj", :names .== "(Intercept)").value
-sum(σs .≈ 0)
+σs = filter(df2) do row
+    row.type == "σ" && row.group == "subj" && row.names == "(Intercept)"
+end
+count(σs.value .≈ 0)
 ```
 
 There is a general condition to check for singularity of an estimated covariance matrix or matrices in a bootstrap sample.
@@ -154,5 +162,5 @@ The `issingular` method for a `MixedModel` object that tests if a parameter vect
 
 This operation is encapsulated in a method for the `issingular` function.
 ```@example Main
-sum(issingular(samp2))
+count(issingular(samp2))
 ```
