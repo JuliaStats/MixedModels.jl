@@ -85,7 +85,6 @@ end
     fm1 = fit(MixedModel,@formula(reaction ~ 1 + days + (1+days|subj)),slp, REML=true);
 
     @test_throws ArgumentError likelihoodratiotest(fm0,fm1)
-@static if VERSION < v"1.7.0-DEV.700"
     contra = MixedModels.dataset(:contra);
     # glm doesn't like categorical responses, so we convert it to numeric ourselves
     # TODO: upstream fix
@@ -133,5 +132,4 @@ end
     # this skips the linear term so that the model matrices
     # have the same column rank
     @test !MixedModels._isnested(gmf2.mm.m[:,Not(2)], gm0.X)
-end
 end

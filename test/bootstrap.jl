@@ -35,7 +35,6 @@ include("modelcache.jl")
         # restore the original state
         refit!(fm, vec(float.(ds.yield)))
     end
-@static if VERSION < v"1.7.0-DEV.700"
     @testset "Poisson" begin
         center(v::AbstractVector) = v .- (sum(v) / length(v))
         grouseticks = DataFrame(dataset(:grouseticks))
@@ -51,7 +50,6 @@ include("modelcache.jl")
         gm2sim = refit!(simulate!(StableRNG(42), deepcopy(gm2)), fast=true)
         @test isapprox(gm2.β, gm2sim.β; atol=norm(stderror(gm2)))
     end
-end
     @testset "_rand with dispersion" begin
         @test_throws ArgumentError MixedModels._rand(StableRNG(42), Normal(), 1, 1, 1)
         @test_throws ArgumentError MixedModels._rand(StableRNG(42), Gamma(), 1, 1, 1)
@@ -100,7 +98,6 @@ end
         @test sum(issingular(bsamp)) == sum(issingular(bsamp_threaded))
     end
 
-@static if VERSION < v"1.7.0-DEV.700"
     @testset "Bernoulli simulate! and GLMM boostrap" begin
         contra = dataset(:contra)
         gm0 = fit(MixedModel, only(gfms[:contra]), contra, Bernoulli(), fast=true)
@@ -125,5 +122,4 @@ end
         @test_throws ArgumentError parametricbootstrap(StableRNG(42), 100, gm0; σ=2)
         @test sum(issingular(bs)) == 0
     end
-end
 end

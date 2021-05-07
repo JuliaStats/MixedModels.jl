@@ -20,15 +20,11 @@ include("linalg.jl")
 include("matrixterm.jl")
 include("FactorReTerm.jl")
 include("pls.jl")
-@static if VERSION < v"1.7.0-DEV.700"
-    include("pirls.jl")
-end
+include("pirls.jl")
 include("gausshermite.jl")
 include("fit.jl")
 include("missing.jl")
 include("likelihoodratiotest.jl")
 include("grouping.jl")
 include("bootstrap.jl")
-@static if VERSION < v"1.7.0-DEV.700"
-    include("mime.jl")
-end
+include("mime.jl")

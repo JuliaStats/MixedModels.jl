@@ -5,12 +5,10 @@ using MixedModels, Test
     @test first(m1.θ) ≈ 0.7525806757718846 rtol=1.0e-5
 end
 
-@static if VERSION < v"1.7.0-DEV.700"
 @testset "generalized" begin
     gm1 = fit(MixedModel, @formula(use ~ 1 + urban + livch + age + abs2(age) + (1|dist)),
               MixedModels.dataset(:contra), Bernoulli())
     @test deviance(gm1) ≈ 2372.7286 atol=1.0e-3
-end
 end
 
 @testset "Normal-IdentityLink" begin
@@ -22,10 +20,8 @@ end
                      MixedModels.dataset(:dyestuff)))
 end
 
-@static if VERSION < v"1.7.0-DEV.700"
 @testset "Normal Distribution GLMM" begin
     @test isa(fit(MixedModel, @formula(yield ~ 1 + (1|batch)), MixedModels.dataset(:dyestuff),
                          Normal(), SqrtLink()),
                      GeneralizedLinearMixedModel)
-end
 end
