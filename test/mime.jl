@@ -6,27 +6,31 @@ using MixedModels: pirls!, setβθ!, setθ!, updateL!
 
 include("modelcache.jl")
 
-@static if VERSION < v"1.7.0-DEV.700"
 # explicitly setting theta for these to so that we can do exact textual comparisons
 βθ = [0.1955554704948119,  0.05755412761885973, 0.3207843518569843, -1.0582595252774376,
      -2.1047524824609853, -1.0549789653925743,  1.339766125847893,  0.4953047709862237]
 gm3 = GeneralizedLinearMixedModel(only(gfms[:verbagg]), dataset(:verbagg), Bernoulli())
 pirls!(setβθ!(gm3, βθ))
-end
-fm0θ = [ 1.1656121258575225]
+
+fm0θ = [1.1656121258575225]
 fm0 = updateL!(setθ!(first(models(:sleepstudy)), fm0θ))
 
 fm1θ = [0.9292213288149662, 0.018168393450877257, 0.22264486671069741]
 fm1 = updateL!(setθ!(last(models(:sleepstudy)), fm1θ))
 
+fmreθ = [0.32352483854887326, 0.4715395478019364, 0.0,
+         0.43705610601403755, 0.016565641868150047, 0.17732248078617097]
+# this is a junk model, but it stresses parts of the display code
+fmre = LinearMixedModel(@formula(rt_trunc ~ 1+(0+spkr|subj)+(1+load|item)), MixedModels.dataset(:kb07))
+updateL!(setθ!(fmre, fmreθ))
+fmre.optsum.feval = 1
+
 lrt = likelihoodratiotest(fm0, fm1)
 
 @testset "markdown" begin
     mime = MIME"text/markdown"()
-@static if VERSION < v"1.7.0-DEV.700"
     @test_logs (:warn, "Model has not been fit: results will be nonsense") sprint(show, mime, gm3)
     gm3.optsum.feval = 1
-end
     @testset "lmm" begin
         @test sprint(show, mime, fm0) == """
 |             |     Est. |     SE |     z |      p |  σ_subj |
@@ -44,7 +48,18 @@ end
 """
     end
 
-@static if VERSION < v"1.7.0-DEV.700"
+    @testset "re without fe" begin
+        @test sprint(show, mime, fmre) == """
+|             |      Est. |      SE |     z |      p |   σ_subj |   σ_item |
+|:----------- | ---------:| -------:| -----:| ------:| --------:| --------:|
+| (Intercept) | 2092.3713 | 76.9426 | 27.19 | <1e-99 |          | 349.7858 |
+| spkr: old   |           |         |       |        | 377.3837 |          |
+| spkr: new   |           |         |       |        | 258.9242 |          |
+| load: yes   |           |         |       |        |          | 142.5331 |
+| Residual    |  800.3224 |         |       |        |          |          |
+"""
+    end
+
     @testset "glmm" begin
         @test sprint(show, mime, gm3) in ("""
 |              |    Est. |     SE |     z |      p | σ_subj | σ_item |
@@ -66,7 +81,6 @@ end
 | situ: self   | -1.0550 | 0.2103 | -5.02 |  <1e-6 |        |        |
 """)
     end
-end
 
     @testset "lrt" begin
 
@@ -137,18 +151,15 @@ end
 @testset "html" begin
     # this is minimal since we're mostly testing that dispatch works
     # the stdlib actually handles most of the conversion
-@static if VERSION < v"1.7.0-DEV.700"
     @test sprint(show, MIME("text/html"), BlockDescription(gm3)) == """
 <table><tr><th align="left">rows</th><th align="left">subj</th><th align="left">item</th><th align="left">fixed</th></tr><tr><td align="left">316</td><td align="left">Diagonal</td><td align="left"></td><td align="left"></td></tr><tr><td align="left">24</td><td align="left">Dense</td><td align="left">Diag/Dense</td><td align="left"></td></tr><tr><td align="left">7</td><td align="left">Dense</td><td align="left">Dense</td><td align="left">Dense</td></tr></table>
 """
-end
     optsum = sprint(show, MIME("text/html"), fm0.optsum)
 
     @test occursin("<b>Initialization</b>", optsum)
     @test occursin("<code>LN_BOBYQA</code>", optsum)
 end
 
-@static if VERSION < v"1.7.0-DEV.700"
 @testset "latex" begin
     # this is minimal since we're mostly testing that dispatch works
     # the stdlib actually handles most of the conversion
@@ -185,7 +196,6 @@ rows & subj & item & fixed \\\\
 
     @test occursin(raw"\textbf{Initialization}", optsum)
     @test occursin(raw"\texttt{LN\_BOBYQA}", optsum)
-end
 end
 
 # return these models to their fitted state for the cache

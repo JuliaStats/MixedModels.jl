@@ -1,7 +1,6 @@
 [deps]
 BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
-DataFramesMeta = "1313f7d8-7da2-5740-9ea0-a2ca25f37964"
 DisplayAs = "0b91fe84-8a4c-11e9-3e1d-67c38462b6d6"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 FreqTables = "da1fdf0e-e0ff-5433-a45f-9bb5ff651cb1"

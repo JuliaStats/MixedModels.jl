@@ -141,6 +141,22 @@ function _markdown(m::MixedModel)
         push!(rows, newrow)
     end
 
+    re_without_fe = setdiff(mapfoldl(x -> Set(getproperty(x, :cnames)), ∪ , m.reterms), coefnames(m))
+
+    for bname in re_without_fe
+        newrow = [bname, "", "", "", ""]
+        bname = Symbol(bname)
+
+        for (j, sig) in enumerate(m.σs)
+            if bname in keys(sig)
+                push!(newrow, Ryu.writefixed(getproperty(sig, bname),digits))
+            else
+                push!(newrow, " ")
+            end
+        end
+        push!(rows, newrow)
+    end
+
     if dispersion_parameter(m)
         newrow = [_dname(m), Ryu.writefixed(dispersion(m),digits), "", "", ""]
         for rr in fnames(m)

@@ -39,7 +39,7 @@ end
     parametricbootstrap(rng::AbstractRNG, nsamp::Integer, m::MixedModel;
         β = coef(m), σ = m.σ, θ = m.θ, use_threads=false)
     parametricbootstrap(nsamp::Integer, m::MixedModel;
-        β = coef(m), σ = m.σ, θ = m.θ, use_threads=false)
+        β = coef(m), σ = m.σ, θ = m.θ, use_threads=false, hide_progress=false)
 
 Perform `nsamp` parametric bootstrap replication fits of `m`, returning a `MixedModelBootstrap`.
 
@@ -51,12 +51,19 @@ The default random number generator is `Random.GLOBAL_RNG`.
 `σ` is only valid for `LinearMixedModel` and `GeneralizedLinearMixedModel` for
 families with a dispersion parameter.
 `use_threads` determines whether or not to use thread-based parallelism.
+`hide_progress` can be used to disable the progress bar. Note that the progress
+bar is automatically disabled for non-interactive (i.e. logging) contexts.
 
-Note that `use_threads=true` may not offer a performance boost and may even
-decrease peformance if multithreaded linear algebra (BLAS) routines are available.
-In this case, threads at the level of the linear algebra may already occupy all
-processors/processor cores. There are plans to provide better support in coordinating
-Julia- and BLAS-level threads in the future.
+!!! note
+    Note that `use_threads=true` may not offer a performance boost and may even
+    decrease peformance if multithreaded linear algebra (BLAS) routines are available.
+    In this case, threads at the level of the linear algebra may already occupy all
+    processors/processor cores. There are plans to provide better support in coordinating
+    Julia- and BLAS-level threads in the future.
+
+!!! warning
+    The PRNG shared between threads is locked using `Threads.SpinLock`, which
+    should not be used recursively. Do not wrap `parametricbootstrap` in an outer `SpinLock`.
 """
 function parametricbootstrap(
     rng::AbstractRNG,
@@ -66,6 +73,7 @@ function parametricbootstrap(
     σ=morig.σ,
     θ::AbstractVector=morig.θ,
     use_threads::Bool=false,
+    hide_progress::Bool=false
 ) where {T}
     if σ !== missing
         σ = T(σ)
@@ -89,11 +97,12 @@ function parametricbootstrap(
     # we use locks to guarantee thread-safety, but there might be better ways to do this for some RNGs
     # see https://docs.julialang.org/en/v1.3/manual/parallel-computing/#Side-effects-and-mutable-function-arguments-1
     # see https://docs.julialang.org/en/v1/stdlib/Future/index.html
-    rnglock = ReentrantLock()
-    samp = replicate(n, use_threads=use_threads) do
-        mod = m_threads[Threads.threadid()]
-        local βsc = βsc_threads[Threads.threadid()]
-        local θsc = θsc_threads[Threads.threadid()]
+    rnglock = Threads.SpinLock()
+    samp = replicate(n; use_threads=use_threads, hide_progress=hide_progress) do
+        tidx = use_threads ? Threads.threadid() : 1
+        mod = m_threads[tidx]
+        local βsc = βsc_threads[tidx]
+        local θsc = θsc_threads[tidx]
         lock(rnglock)
         mod = simulate!(rng, mod, β = β, σ = σ, θ = θ)
         unlock(rnglock)
@@ -252,7 +261,7 @@ end
 """
     shortestcovint(bsamp::MixedModelBootstrap, level = 0.95)
 
-Return the shortest interval containing `level` proportion for each parameter from [`bsamp.allpars`](@ref)
+Return the shortest interval containing `level` proportion for each parameter from `bsamp.allpars`
 """
 function shortestcovint(bsamp::MixedModelBootstrap{T}, level = 0.95) where {T}
     allpars = bsamp.allpars

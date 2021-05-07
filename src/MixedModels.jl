@@ -4,6 +4,7 @@ using Arrow
 using DataAPI
 using Distributions
 using GLM
+using JSON3
 using LazyArtifacts
 using LinearAlgebra
 using Markdown
@@ -16,11 +17,13 @@ using StaticArrays
 using Statistics
 using StatsBase
 using StatsModels
+using StructTypes
 using Tables
 
 using LinearAlgebra: BlasFloat, BlasReal, HermOrSym, PosDefException, copytri!
 using Base: Ryu
 using GLM: Link, canonicallink
+using StatsModels: TableRegressionModel
 
 using StatsFuns: log2π, normccdf
 
@@ -109,6 +112,8 @@ export @formula,
        replicate,
        residuals,
        response,
+       restoreoptsum!,
+       saveoptsum,
        shortestcovint,
        sdest,
        setθ!,

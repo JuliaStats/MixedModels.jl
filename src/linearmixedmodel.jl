@@ -815,12 +815,66 @@ StatsBase.residuals(m::LinearMixedModel) = response(m) .- fitted(m)
 
 StatsBase.response(m::LinearMixedModel) = m.y
 
+"""
+    restoreoptsum!(m::LinearMixedModel, io::IO)
+    restoreoptsum!(m::LinearMixedModel, fnm::AbstractString)
+
+Read, check, and restore the `optsum` field from a JSON stream or filename.
+"""
+function restoreoptsum!(m::LinearMixedModel, io::IO)
+    dict = JSON3.read(io)
+    ops = m.optsum
+    okay = (setdiff(propertynames(ops), keys(dict)) == [:lowerbd]) &&
+        all(ops.lowerbd .≤ dict.initial) &&
+        all(ops.lowerbd .≤ dict.final)
+    if !okay
+        throw(ArgumentError("initial or final parameters in io do not satify lowerbd"))
+    end
+    for fld in (:feval, :finitial, :fmin, :ftol_rel, :ftol_abs, :maxfeval, :nAGQ, :REML)
+        setproperty!(ops, fld, getproperty(dict, fld))
+    end
+    ops.initial_step = copy(dict.initial_step)
+    ops.xtol_rel = copy(dict.xtol_rel)
+    copyto!(ops.initial, dict.initial)
+    copyto!(ops.final, dict.final)
+    for (v, f) in (:initial => :finitial, :final => :fmin)
+        if !isapprox(objective(updateL!(setθ!(m, getfield(ops, v)))), getfield(ops, f))
+            throw(ArgumentError("model m at $v does not give stored $f"))
+        end
+    end
+    ops.optimizer = Symbol(dict.optimizer)
+    ops.returnvalue = Symbol(dict.returnvalue)
+    m
+end
+
+function restoreoptsum!(m::LinearMixedModel, fnm::AbstractString)
+    open(fnm, "r") do io
+        restoreoptsum!(m, io)
+    end
+end
+
 function reweight!(m::LinearMixedModel, weights)
     sqrtwts = map!(sqrt, m.sqrtwts, weights)
     reweight!.(m.reterms, Ref(sqrtwts))
     reweight!(m.Xymat, sqrtwts)
     updateA!(m)
     updateL!(m)
+end
+
+"""
+    saveoptsum(io::IO, m::LinearMixedModel)
+    saveoptsum(fnm::AbstractString, m::LinearMixedModel)
+
+Save `m.optsum` (w/o the `lowerbd` field) in JSON format to an IO stream or a file
+
+The reason for omitting the `lowerbd` field is because it often contains `-Inf`
+values that are not allowed in JSON.
+"""
+saveoptsum(io::IO, m::LinearMixedModel) = JSON3.write(io, m.optsum)
+function saveoptsum(fnm::AbstractString, m::LinearMixedModel)
+    open(fnm, "w") do io
+        saveoptsum(io, m)
+    end
 end
 
 """
@@ -835,7 +889,7 @@ sdest(m::LinearMixedModel) = √varest(m)
 
 Install `v` as the θ parameters in `m`.
 """
-function setθ!(m::LinearMixedModel{T}, θ::Vector{T}) where {T}
+function setθ!(m::LinearMixedModel{T}, θ::AbstractVector) where {T}
     parmap, reterms = m.parmap, m.reterms
     length(θ) == length(parmap) || throw(DimensionMismatch())
     reind = 1

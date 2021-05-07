@@ -29,4 +29,6 @@ include("missing.jl")
 include("likelihoodratiotest.jl")
 include("grouping.jl")
 include("bootstrap.jl")
-include("mime.jl")
+@static if VERSION < v"1.7.0-DEV.700"
+    include("mime.jl")
+end
