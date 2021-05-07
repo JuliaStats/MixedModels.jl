@@ -313,7 +313,7 @@ function condVar(m::LinearMixedModel{T}) where {T}
     val
 end
 
-function cvtbl(arr::Array{T,3}, trm) where {T}
+function _cvtbl(arr::Array{T,3}, trm) where {T}
     merge(
         NamedTuple{(fname(trm),)}((trm.levels,)),
         columntable([NamedTuple{(:σ, :ρ)}(sdcorr(view(arr, :, :, i))) for i in axes(arr, 3)]),
@@ -326,7 +326,7 @@ end
 Return the conditional covariance matrices of the random effects as a `NamedTuple` of columntables
 """
 function condVartables(m::MixedModel{T}) where {T}
-    NamedTuple{fnames(m)}((map(cvtbl, condVar(m), m.reterms)...,))
+    NamedTuple{fnames(m)}((map(_cvtbl, condVar(m), m.reterms)...,))
 end
 
 function pushALblock!(A, L, blk)
