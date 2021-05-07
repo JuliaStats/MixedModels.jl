@@ -953,7 +953,7 @@ function _coord(A::Diagonal)
     (i = Int32.(axes(A,1)), j = Int32.(axes(A,2)), v = A.diag)
 end
 
-function _coord(A::UniformBlockDiagonal{T}) where {T}
+function _coord(A::UniformBlockDiagonal)
     dat = A.data
     r, c, k = size(dat)
     blk = repeat(r .* (0:k-1), inner=r*c)
@@ -973,7 +973,7 @@ function _coord(A::SparseMatrixCSC{T,Int32}) where {T}
     (i = rv, j = cv, v = nonzeros(A), )
 end
 
-function _coord(A::Matrix{T}) where {T}
+function _coord(A::Matrix)
     m, n = size(A)
     (
         i = Int32.(repeat(axes(A, 1), outer=n)),
@@ -992,7 +992,7 @@ are to be included.
 """
 function sparseL(m::LinearMixedModel{T}; full::Bool=false) where {T}
     L, reterms = m.L, m.reterms
-    nt = length(reterms) + (full ? 1 : 0)
+    nt = length(reterms) + full
     rowoffset, coloffset = 0, 0
     val = (i = Int32[], j = Int32[], v = T[])
     for i in 1:nt, j in 1:i
