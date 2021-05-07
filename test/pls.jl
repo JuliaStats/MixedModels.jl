@@ -314,6 +314,22 @@ end
     @test last(last(cv)) ≈ 5.157750215432247 rtol=1.e-4
     @test first(cv)[2] ≈ -20.60428045516186 rtol=1.e-4
 
+    cvt = condVartables(fm)
+    @test length(cvt) == 1
+    @test only(keys(cvt)) == :subj
+    cvtsubj = cvt.subj
+    @test only(cvt) === cvtsubj
+    @test keys(cvtsubj) == (:subj, :σ, :ρ)
+    @test Tables.istable(cvtsubj)
+    @test first(cvtsubj.subj) == "S308"
+    cvtsubjσ1 = first(cvtsubj.σ)
+    @test all(==(cvtsubjσ1), cvtsubj.σ)
+    @test first(cvtsubjσ1) ≈ 11.87291549750297 atol=1.0e-4
+    @test last(cvtsubjσ1) ≈ 2.271068078114843 atol=1.0e-4
+    cvtsubjρ = first(cvtsubj.ρ)
+    @test all(==(cvtsubjρ), cvtsubj.ρ)
+    @test only(cvtsubjρ) ≈ -0.7641347018831385 atol=1.0e-4
+
     b3 = ranef(fm)
     @test length(b3) == 1
     @test size(first(b3)) == (2, 18)
