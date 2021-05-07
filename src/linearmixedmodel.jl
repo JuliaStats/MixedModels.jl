@@ -287,9 +287,9 @@ diagonal blocks from the conditional variance-covariance matrix,
 function condVar(m::LinearMixedModel{T}) where {T}
     L = m.L
     s = sdest(m)
-    @static if VERSION < v"1.7.0-DEV.761"
+    @static if VERSION < v"1.6.1"
         spL = LowerTriangular(SparseMatrixCSC{T, Int}(sparseL(m)))
-    else 
+    else
         spL = LowerTriangular(sparseL(m))
     end
     nre = size(spL, 1)
@@ -967,7 +967,7 @@ end
 function _coord(A::SparseMatrixCSC{T,Int32}) where {T}
     rv = rowvals(A)
     cv = similar(rv)
-    for j in axes(A, 2), k in nzrange(A, j) 
+    for j in axes(A, 2), k in nzrange(A, j)
         cv[k] = j
     end
     (i = rv, j = cv, v = nonzeros(A), )
