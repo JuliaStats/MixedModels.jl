@@ -3,6 +3,7 @@ using LinearAlgebra
 using MixedModels
 using Random
 using StableRNGs
+using Statistics
 using Tables
 using Test
 
@@ -34,7 +35,6 @@ include("modelcache.jl")
         # restore the original state
         refit!(fm, vec(float.(ds.yield)))
     end
-
     @testset "Poisson" begin
         center(v::AbstractVector) = v .- (sum(v) / length(v))
         grouseticks = DataFrame(dataset(:grouseticks))
@@ -50,7 +50,6 @@ include("modelcache.jl")
         gm2sim = refit!(simulate!(StableRNG(42), deepcopy(gm2)), fast=true)
         @test isapprox(gm2.β, gm2sim.β; atol=norm(stderror(gm2)))
     end
-
     @testset "_rand with dispersion" begin
         @test_throws ArgumentError MixedModels._rand(StableRNG(42), Normal(), 1, 1, 1)
         @test_throws ArgumentError MixedModels._rand(StableRNG(42), Gamma(), 1, 1, 1)
@@ -98,7 +97,6 @@ end
         @test sort(columntable(bsamp_threaded.β).β) == sort(columntable(bsamp.β).β)
         @test sum(issingular(bsamp)) == sum(issingular(bsamp_threaded))
     end
-
 
     @testset "Bernoulli simulate! and GLMM boostrap" begin
         contra = dataset(:contra)

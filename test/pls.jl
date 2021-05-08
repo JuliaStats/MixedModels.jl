@@ -166,7 +166,12 @@ end
     @test varest(fm) ≈ 0.3024263987592062 atol=0.0001
     @test logdet(fm) ≈ 95.74614821367786 atol=0.001
 
-    @test_throws ArgumentError condVar(fm)
+    cv = condVar(fm)
+    @test length(cv) == 2
+    @test size(first(cv)) == (1, 1, 24)
+    @test size(last(cv)) == (1, 1, 6)
+    @test first(first(cv)) ≈ 0.07331320237988301 rtol=1.e-4
+    @test last(last(cv)) ≈ 0.04051547211287544 rtol=1.e-4
 
     rfu = ranef(fm, uscale=true)
     @test length(rfu) == 2
@@ -200,6 +205,13 @@ end
     @test varest(fm) ≈ 0.6780020742644107 atol=0.0001
     @test logdet(fm) ≈ 101.0381339953986 atol=0.001
 
+    cv = condVar(fm)
+    @test length(cv) == 2
+    @test size(first(cv)) == (1, 1, 30)
+    @test first(first(cv)) ≈ 1.111873335663485 rtol=1.e-4
+    @test size(last(cv)) == (1, 1, 10)
+    @test last(last(cv)) ≈ 0.850428770978789 rtol=1.e-4
+
     show(io, BlockDescription(fm))
     @test countlines(seekstart(io)) == 4
     tokens = Set(split(String(take!(io)), r"\s+"))
@@ -216,6 +228,10 @@ end
     @test size(fm1) == (73421, 2, 4114, 3)
     @test fm1.optsum.initial == ones(3)
     @test lowerbd(fm1) == zeros(3)
+
+    spL = sparseL(fm1)
+    @test size(spL) == (4114, 4114)
+    @test 733090 < nnz(spL) < 733100
 
     @test objective(fm1) ≈ 237721.7687745563 atol=0.001
     ftd1 = fitted(fm1);
@@ -290,6 +306,29 @@ end
     @test length(u3) == 1
     @test size(first(u3)) == (2, 18)
     @test first(u3)[1, 1] ≈ 3.030300122575336 atol=0.001
+
+    cv = condVar(fm)
+    @test length(cv) == 1
+    @test size(first(cv)) == (2, 2, 18)
+    @test first(first(cv)) ≈ 140.96612241084617 rtol=1.e-4
+    @test last(last(cv)) ≈ 5.157750215432247 rtol=1.e-4
+    @test first(cv)[2] ≈ -20.60428045516186 rtol=1.e-4
+
+    cvt = condVartables(fm)
+    @test length(cvt) == 1
+    @test only(keys(cvt)) == :subj
+    cvtsubj = cvt.subj
+    @test only(cvt) === cvtsubj
+    @test keys(cvtsubj) == (:subj, :σ, :ρ)
+    @test Tables.istable(cvtsubj)
+    @test first(cvtsubj.subj) == "S308"
+    cvtsubjσ1 = first(cvtsubj.σ)
+    @test all(==(cvtsubjσ1), cvtsubj.σ)
+    @test first(cvtsubjσ1) ≈ 11.87291549750297 atol=1.0e-4
+    @test last(cvtsubjσ1) ≈ 2.271068078114843 atol=1.0e-4
+    cvtsubjρ = first(cvtsubj.ρ)
+    @test all(==(cvtsubjρ), cvtsubj.ρ)
+    @test only(cvtsubjρ) ≈ -0.7641347018831385 atol=1.0e-4
 
     b3 = ranef(fm)
     @test length(b3) == 1

@@ -85,7 +85,6 @@ end
     fm1 = fit(MixedModel,@formula(reaction ~ 1 + days + (1+days|subj)),slp, REML=true);
 
     @test_throws ArgumentError likelihoodratiotest(fm0,fm1)
-
     contra = MixedModels.dataset(:contra);
     # glm doesn't like categorical responses, so we convert it to numeric ourselves
     # TODO: upstream fix

@@ -25,7 +25,7 @@ end
 
 Return the average of `a` and `b`
 """
-average(a::T, b::T) where {T<:AbstractFloat} = (a + b) / 2
+average(a::T, b::T) where {T<:AbstractFloat} = (a + b) / T(2)
 
 """
     cpad(s::AbstractString, n::Integer)
@@ -136,4 +136,28 @@ function replicate(f::Function, n::Integer;
         end
     end
     results
+end
+
+"""
+    sdcorr(A::AbstractMatrix{T}) where {T}
+
+Transform a square matrix `A` with positive diagonals into an `NTuple{size(A,1), T}` of
+standard deviations and a tuple of correlations.
+
+`A` is assumed to be symmetric and only the lower triangle is used.  The order of the
+correlations is row-major ordering of the lower triangle (or, equivalently, column-major
+in the upper triangle).
+"""
+function sdcorr(A::AbstractMatrix{T}) where {T}
+    m,n = size(A)
+    m == n || throw(ArgumentError("matrix A must be square"))
+    indpairs = checkindprsk(m)
+    rtdiag = sqrt.(NTuple{m,T}(diag(A)))
+    (
+        rtdiag,
+        ntuple(kchoose2(m)) do k
+            i,j = indpairs[k]
+            A[i,j]/(rtdiag[i] * rtdiag[j])
+        end,
+    )
 end
