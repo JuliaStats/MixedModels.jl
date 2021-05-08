@@ -6,7 +6,6 @@ using MixedModels: pirls!, setβθ!, setθ!, updateL!
 
 include("modelcache.jl")
 
-
 # explicitly setting theta for these to so that we can do exact textual comparisons
 βθ = [0.1955554704948119,  0.05755412761885973, 0.3207843518569843, -1.0582595252774376,
      -2.1047524824609853, -1.0549789653925743,  1.339766125847893,  0.4953047709862237]
@@ -32,7 +31,6 @@ lrt = likelihoodratiotest(fm0, fm1)
     mime = MIME"text/markdown"()
     @test_logs (:warn, "Model has not been fit: results will be nonsense") sprint(show, mime, gm3)
     gm3.optsum.feval = 1
-
     @testset "lmm" begin
         @test sprint(show, mime, fm0) == """
 |             |     Est. |     SE |     z |      p |  σ_subj |
@@ -153,7 +151,6 @@ end
 @testset "html" begin
     # this is minimal since we're mostly testing that dispatch works
     # the stdlib actually handles most of the conversion
-
     @test sprint(show, MIME("text/html"), BlockDescription(gm3)) == """
 <table><tr><th align="left">rows</th><th align="left">subj</th><th align="left">item</th><th align="left">fixed</th></tr><tr><td align="left">316</td><td align="left">Diagonal</td><td align="left"></td><td align="left"></td></tr><tr><td align="left">24</td><td align="left">Dense</td><td align="left">Diag/Dense</td><td align="left"></td></tr><tr><td align="left">6</td><td align="left">Dense</td><td align="left">Dense</td><td align="left">Dense</td></tr></table>
 """
