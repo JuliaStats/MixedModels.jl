@@ -119,7 +119,7 @@ function parametricbootstrap(
         samp,
         deepcopy(morig.λ),
         getfield.(morig.reterms, :inds),
-        copy(morig.optsum.lowerbd),
+        morig.optsum.lowerbd[1:length(first(samp).θ)],
         NamedTuple{Symbol.(fnames(morig))}(map(t -> (t.cnames...,), morig.reterms)),
     )
 end
