@@ -15,6 +15,13 @@ Equality comparisons are used b/c small non-negative θ values are replaced by 0
 """
 issingular(m::MixedModel, θ=m.θ) = any(lowerbd(m) .== θ)
 
+# FIXME: better to base this on m.optsum.returnvalue
+StatsBase.isfitted(m::MixedModel) = m.optsum.feval > 0
+
+StatsBase.model_response(m::MixedModel) = m.y
+
+StatsBase.nobs(m::MixedModel) = length(m.y)
+
 function retbl(mat, trm)
     merge(
         NamedTuple{(fname(trm),)}((trm.levels,)),

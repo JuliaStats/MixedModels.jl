@@ -51,7 +51,12 @@ include("modelcache.jl")
     @test isapprox(deviance(gm1), 2360.8760, atol=0.001)
     @test gm1.β == gm1.beta
     @test gm1.θ == gm1.theta
-    @test length(gm1.y) == size(gm1.X, 1)
+    gm1y = gm1.y
+    @test length(gm1y) == size(gm1.X, 1)
+    @test eltype(gm1y) == eltype(gm1.X)
+    @test gm1y == (MixedModels.dataset(:contra).use .== "Y")
+    @test model_response(gm1) == gm1y
+    @test !islinear(gm1)
     @test :θ in propertynames(gm0)
 
     @testset "GLMM rePCA" begin
@@ -139,7 +144,10 @@ end
             ],
         )
     gform = @formula(y ~ 1 + (1|group))
-    m1 = fit(MixedModel, gform, goldstein, Poisson())
+    m1 = GeneralizedLinearMixedModel(gform, goldstein, Poisson())
+    @test !isfitted(m1)
+    fit!(m1)
+    @test isfitted(m1)
     @test deviance(m1) ≈ 193.5587302384811 rtol=1.e-5
     @test only(m1.β) ≈ 4.192196439077657 atol=1.e-5
     @test only(m1.θ) ≈ 1.838245201739852 atol=1.e-5

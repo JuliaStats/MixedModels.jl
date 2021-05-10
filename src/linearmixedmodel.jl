@@ -580,6 +580,8 @@ function Base.getproperty(m::LinearMixedModel{T}, s::Symbol) where {T}
     end
 end
 
+StatsBase.islinear(m::LinearMixedModel) = true
+
 function StatsBase.leverage(m::LinearMixedModel{T}) where {T}
     # This can be done more efficiently but reusing existing tools is easier.
     # The i'th leverage value is obtained by replacing the response with the i'th
@@ -632,8 +634,6 @@ end
 StatsBase.modelmatrix(m::LinearMixedModel) = m.feterm.x
 
 nθ(m::LinearMixedModel) = length(m.parmap)
-
-StatsBase.nobs(m::LinearMixedModel) = m.dims.n
 
 """
     objective(m::LinearMixedModel)

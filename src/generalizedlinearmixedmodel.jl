@@ -445,6 +445,8 @@ end
 getθ(m::GeneralizedLinearMixedModel)  = copy(m.θ)
 getθ!(v::AbstractVector{T}, m::GeneralizedLinearMixedModel{T}) where {T} = copyto!(v, m.θ)
 
+StatsBase.islinear(m::GeneralizedLinearMixedModel) = isa(GLM.Link, GLM.IdentityLink)
+
 GLM.Link(m::GeneralizedLinearMixedModel) = GLM.Link(m.resp)
 
 function StatsBase.loglikelihood(m::GeneralizedLinearMixedModel{T}) where {T}
@@ -470,8 +472,6 @@ function StatsBase.loglikelihood(m::GeneralizedLinearMixedModel{T}) where {T}
     end
     accum  - (mapreduce(u -> sum(abs2, u), +, m.u) + logdet(m)) / 2
 end
-
-StatsBase.nobs(m::GeneralizedLinearMixedModel) = length(m.η)
 
 StatsBase.predict(m::GeneralizedLinearMixedModel) = fitted(m)
 
