@@ -3,6 +3,7 @@ using LinearAlgebra
 using MixedModels
 using Random
 using StableRNGs
+using Statistics
 using Tables
 using Test
 
@@ -34,7 +35,6 @@ include("modelcache.jl")
         # restore the original state
         refit!(fm, vec(float.(ds.yield)))
     end
-
     @testset "Poisson" begin
         center(v::AbstractVector) = v .- (sum(v) / length(v))
         grouseticks = DataFrame(dataset(:grouseticks))
@@ -50,7 +50,6 @@ include("modelcache.jl")
         gm2sim = refit!(simulate!(StableRNG(42), deepcopy(gm2)), fast=true)
         @test isapprox(gm2.β, gm2sim.β; atol=norm(stderror(gm2)))
     end
-
     @testset "_rand with dispersion" begin
         @test_throws ArgumentError MixedModels._rand(StableRNG(42), Normal(), 1, 1, 1)
         @test_throws ArgumentError MixedModels._rand(StableRNG(42), Gamma(), 1, 1, 1)
@@ -99,11 +98,14 @@ end
         @test sum(issingular(bsamp)) == sum(issingular(bsamp_threaded))
     end
 
-
     @testset "Bernoulli simulate! and GLMM boostrap" begin
         contra = dataset(:contra)
-        gm0 = fit(MixedModel, only(gfms[:contra]), contra, Bernoulli(), fast=true)
+        # need a model with fast=false to test that we only
+        # copy the optimizer constraints for θ and not β
+        gm0 = fit(MixedModel, only(gfms[:contra]), contra, Bernoulli(), fast=false)
         bs = parametricbootstrap(StableRNG(42), 100, gm0)
+        # make sure we're not copying
+        @test length(bs.lowerbd) == length(gm0.θ)
         bsci = filter!(:type => ==("β"), DataFrame(shortestcovint(bs)))
         ciwidth = 2 .* stderror(gm0)
         waldci = DataFrame(coef=fixefnames(gm0),
