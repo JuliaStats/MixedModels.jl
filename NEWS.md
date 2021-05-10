@@ -36,6 +36,11 @@ Run-time formula syntax
 * Methods for `Base./(::AbstractTerm, ::AbstractTerm)` are added, allowing
   nesting syntax to be used with `Term`s at run-time as well [#470]
 
+MixedModels v3.7.0 Release Notes
+========================
+* Add `condVar` and `condVartables` for computing the conditional variance on the random effects [#492]
+* Bugfix: store the correct lower bound for GLMM bootstrap, when the original model was fit with `fast=false` [#518]
+
 MixedModels v3.6.0 Release Notes
 ========================
 * Add `likelihoodratiotest` method for comparing non-mixed (generalized) linear models to (generalized) linear mixed models [#508].
@@ -227,9 +232,11 @@ Package dependencies
 [#486]: https://github.com/JuliaStats/MixedModels.jl/issues/486
 [#489]: https://github.com/JuliaStats/MixedModels.jl/issues/489
 [#490]: https://github.com/JuliaStats/MixedModels.jl/issues/490
+[#492]: https://github.com/JuliaStats/MixedModels.jl/issues/492
 [#493]: https://github.com/JuliaStats/MixedModels.jl/issues/493
 [#495]: https://github.com/JuliaStats/MixedModels.jl/issues/495
 [#501]: https://github.com/JuliaStats/MixedModels.jl/issues/501
 [#506]: https://github.com/JuliaStats/MixedModels.jl/issues/506
 [#507]: https://github.com/JuliaStats/MixedModels.jl/issues/507
 [#508]: https://github.com/JuliaStats/MixedModels.jl/issues/508
+[#518]: https://github.com/JuliaStats/MixedModels.jl/issues/518
