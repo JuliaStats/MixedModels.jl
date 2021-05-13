@@ -41,6 +41,8 @@ StatsBase.model_response(m::MixedModel) = m.y
 
 StatsBase.nobs(m::MixedModel) = length(m.y)
 
+StatsBase.predict(m::MixedModel) = fitted(m)
+
 function retbl(mat, trm)
     merge(
         NamedTuple{(fname(trm),)}((trm.levels,)),
@@ -49,7 +51,7 @@ function retbl(mat, trm)
 end
 
 """
-    raneftables(m::LinearMixedModel; uscale = false)
+    raneftables(m::MixedModel; uscale = false)
 
 Return the conditional means of the random effects as a NamedTuple of columntables
 """

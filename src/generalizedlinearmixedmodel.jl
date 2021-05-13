@@ -465,8 +465,6 @@ function StatsBase.loglikelihood(m::GeneralizedLinearMixedModel{T}) where {T}
     accum  - (mapreduce(u -> sum(abs2, u), +, m.u) + logdet(m)) / 2
 end
 
-StatsBase.predict(m::GeneralizedLinearMixedModel) = fitted(m)
-
 Base.propertynames(m::GeneralizedLinearMixedModel, private::Bool = false) = (
     :A,
     :L,
