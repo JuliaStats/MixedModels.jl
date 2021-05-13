@@ -159,14 +159,6 @@ GLM.dispersion_parameter(m::GeneralizedLinearMixedModel) = dispersion_parameter(
 
 Distributions.Distribution(m::GeneralizedLinearMixedModel{T,D}) where {T,D} = D
 
-function StatsBase.dof(m::GeneralizedLinearMixedModel)::Int
-    length(m.β) + length(m.θ) + GLM.dispersion_parameter(m.resp.d)
-end
-
-function StatsBase.dof_residual(m::GeneralizedLinearMixedModel)::Int
-    nobs(m) - dof(m)
-end
-
 fit(
     ::Type{GeneralizedLinearMixedModel},
     f::FormulaTerm,
@@ -428,7 +420,7 @@ function Base.getproperty(m::GeneralizedLinearMixedModel, s::Symbol)
         σs(m)
     elseif s == :σρs
         σρs(m)
-    elseif s ∈ (:A, :L, :optsum, :reterms, :Xymat, :feterm, :formula)
+    elseif s ∈ (:A, :L, :optsum, :reterms, :Xymat, :feterm, :formula, :parmap)
         getfield(m.LMM, s)
     elseif s ∈ (:dims, :λ, :lowerbd, :corr, :PCA, :rePCA, :X,)
         getproperty(m.LMM, s)
@@ -481,9 +473,7 @@ Base.propertynames(m::GeneralizedLinearMixedModel, private::Bool = false) = (
     :theta,
     :beta,
     :coef,
-    :fixef,
     :λ,
-    :lambda,
     :σ,
     :sigma,
     :X,
@@ -496,7 +486,7 @@ Base.propertynames(m::GeneralizedLinearMixedModel, private::Bool = false) = (
     :vcov,
     :PCA,
     :rePCA,
-    fieldnames(typeof(m))...,
+    fieldnames(GeneralizedLinearMixedModel)...,
 )
 
 """
@@ -661,7 +651,6 @@ function Base.show(io::IO, ::MIME"text/plain", m::GeneralizedLinearMixedModel{T,
     println(io, "  ", m.LMM.formula)
     println(io, "  Distribution: ", D)
     println(io, "  Link: ", Link(m), "\n")
-    println(io)
     nums = Ryu.writefixed.([loglikelihood(m), deviance(m), aic(m), aicc(m), bic(m)], 4)
     fieldwd = max(maximum(textwidth.(nums)) + 1, 11)
     for label in [" logLik", " deviance", "AIC", "AICc", "BIC"]
@@ -669,6 +658,7 @@ function Base.show(io::IO, ::MIME"text/plain", m::GeneralizedLinearMixedModel{T,
     end
     println(io)
     print.(Ref(io), lpad.(nums, fieldwd))
+    println(io)
     println(io)
 
     show(io, VarCorr(m))
@@ -758,8 +748,6 @@ for f in (
     :lowerbd,
     :PCA,
     :rePCA,
-    :(StatsBase.coefnames),
-    :(StatsModels.modelmatrix),
 )
     @eval begin
         $f(m::GeneralizedLinearMixedModel) = $f(m.LMM)

@@ -370,18 +370,6 @@ GLM.dispersion(m::LinearMixedModel, sqr::Bool = false) = sqr ? varest(m) : sdest
 
 GLM.dispersion_parameter(m::LinearMixedModel) = true
 
-StatsBase.dof(m::LinearMixedModel) = m.dims.p + nθ(m) + 1
-
-function StatsBase.dof_residual(m::LinearMixedModel)::Int
-    # nobs - rank(FE) - 1 (dispersion)
-    # this differs from lme4 by not including nθ
-    # a better estimate would be a number somewhere between the number of
-    # variance components and the number of conditional modes
-    # nobs, rank FE, num conditional modes, num grouping vars
-    dd = m.dims
-    dd.n - dd.p - 1
-end
-
 """
     feL(m::LinearMixedModel)
 
@@ -631,8 +619,6 @@ function mkparmap(reterms::Vector{AbstractReMat{T}}) where {T}
     parmap
 end
 
-StatsBase.modelmatrix(m::LinearMixedModel) = m.feterm.x
-
 nθ(m::LinearMixedModel) = length(m.parmap)
 
 """
@@ -650,15 +636,13 @@ end
 StatsBase.predict(m::LinearMixedModel) = fitted(m)
 
 Base.propertynames(m::LinearMixedModel, private::Bool = false) = (
-    :formula,
-    :sqrtwts,
-    :A,
-    :L,
-    :optsum,
+    fieldnames(LinearMixedModel)...,
     :θ,
     :theta,
     :β,
     :beta,
+    :βs,
+    :betas,
     :λ,
     :lambda,
     :stderror,
@@ -666,6 +650,8 @@ Base.propertynames(m::LinearMixedModel, private::Bool = false) = (
     :sigma,
     :σs,
     :sigmas,
+    :σρs,
+    :sigmarhos,
     :b,
     :u,
     :lowerbd,
@@ -675,9 +661,6 @@ Base.propertynames(m::LinearMixedModel, private::Bool = false) = (
     :vcov,
     :PCA,
     :rePCA,
-    :reterms,
-    :feterm,
-    :Xymat,
     :objective,
     :pvalues,
 )

@@ -1,3 +1,7 @@
+function StatsBase.coefnames(m::MixedModel)
+    Xtrm = m.feterm
+    invpermute!(copy(Xtrm.cnames), Xtrm.piv)
+end
 
 """
 cond(m::MixedModel)
@@ -5,6 +9,17 @@ cond(m::MixedModel)
 Return a vector of condition numbers of the λ matrices for the random-effects terms
 """
 LinearAlgebra.cond(m::MixedModel) = cond.(m.λ)
+
+function StatsBase.dof(m::MixedModel)
+    m.feterm.rank + length(m.parmap) + dispersion_parameter(m)
+end
+
+function StatsBase.dof_residual(m::MixedModel)
+    # a better estimate might be nobs(m) - sum(leverage(m))
+    # this version subtracts the number of variance parameters which isn't really a dimensional
+    # and doesn't even agree with the definition for linear models
+    nobs(m) - dof(m)
+end
 
 """
     issingular(m::MixedModel, θ=m.θ)
@@ -17,6 +32,10 @@ issingular(m::MixedModel, θ=m.θ) = any(lowerbd(m) .== θ)
 
 # FIXME: better to base this on m.optsum.returnvalue
 StatsBase.isfitted(m::MixedModel) = m.optsum.feval > 0
+
+StatsBase.meanresponse(m::MixedModel) = mean(m.y)
+
+StatsBase.modelmatrix(m::MixedModel) = m.feterm.x
 
 StatsBase.model_response(m::MixedModel) = m.y
 
@@ -37,6 +56,8 @@ Return the conditional means of the random effects as a NamedTuple of columntabl
 function raneftables(m::MixedModel{T}; uscale = false) where {T}
     NamedTuple{fnames(m)}((map(retbl, ranef(m, uscale=uscale), m.reterms)...,))
 end
+
+StatsBase.responsename(m::MixedModel) = m.formula.lhs.sym
 
 function σs(m::MixedModel)
     σ = dispersion(m)
