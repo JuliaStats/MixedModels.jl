@@ -484,7 +484,7 @@ Base.propertynames(m::GeneralizedLinearMixedModel, private::Bool = false) = (
     :vcov,
     :PCA,
     :rePCA,
-    fieldnames(GeneralizedLinearMixedModel)...,
+    (private ? fieldnames(GeneralizedLinearMixedModel) : (:LMM, :β, :θ, :b, :u, :resp, :wt))...,
 )
 
 """
