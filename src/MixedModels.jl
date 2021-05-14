@@ -131,6 +131,7 @@ export @formula,
        updateL!,
        varest,
        vcov,
+       weights,
        zerocorr
 
 import Base: ==, *

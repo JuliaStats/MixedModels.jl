@@ -35,9 +35,10 @@ end
     fm1.θ = ones(1)
     @test fm1.θ == ones(1)
     @test islinear(fm1)
-    @test responsename(fm1) == :yield
+    @test responsename(fm1) == "yield"
     @test meanresponse(fm1) ≈ 1527.5
     @test modelmatrix(fm1) == ones(30, 1)
+    @test weights(fm1) == ones(30)
 
     @test_throws ArgumentError fit!(fm1)
 

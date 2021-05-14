@@ -792,10 +792,6 @@ function refit!(m::LinearMixedModel, y; REML=m.optsum.REML)
     refit!(m; REML=REML)
 end
 
-StatsBase.residuals(m::LinearMixedModel) = response(m) .- fitted(m)
-
-StatsBase.response(m::LinearMixedModel) = m.y
-
 """
     restoreoptsum!(m::LinearMixedModel, io::IO)
     restoreoptsum!(m::LinearMixedModel, fnm::AbstractString)
@@ -1135,6 +1131,11 @@ end
 Returns the estimate of σ², the variance of the conditional distribution of Y given B.
 """
 varest(m::LinearMixedModel) = pwrss(m) / ssqdenom(m)
+
+function StatsBase.weights(m::LinearMixedModel)
+    rtwts = m.sqrtwts
+    isempty(rtwts) ? ones(eltype(rtwts), nobs(m)) : abs2(rtwts)
+end
 
 """
     _zerocorr!(m::LinearMixedModel[, trmnms::Vector{Symbol}])

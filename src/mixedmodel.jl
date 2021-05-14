@@ -59,7 +59,14 @@ function raneftables(m::MixedModel{T}; uscale = false) where {T}
     NamedTuple{fnames(m)}((map(retbl, ranef(m, uscale=uscale), m.reterms)...,))
 end
 
-StatsBase.responsename(m::MixedModel) = m.formula.lhs.sym
+StatsBase.residuals(m::MixedModel) = response(m) .- fitted(m)
+
+StatsBase.response(m::MixedModel) = m.y
+
+function StatsBase.responsename(m::MixedModel)
+    cnm = coefnames(m.formula.lhs)
+    isa(cnm, Vector{String}) ? first(cnm) : cnm
+end
 
 function σs(m::MixedModel)
     σ = dispersion(m)
