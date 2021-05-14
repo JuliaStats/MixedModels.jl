@@ -79,8 +79,8 @@ Return the deviance of `m` evaluated by the Laplace approximation (`nAGQ=1`)
 or `nAGQ`-point adaptive Gauss-Hermite quadrature.
 
 If the distribution `D` does not have a scale parameter the Laplace approximation
-is the squared length of the conditional modes, `u`, plus the determinant
-of `Λ'Z'WZΛ + I`, plus the sum of the squared deviance residuals.
+is the squared length of the conditional modes, ``u``, plus the determinant
+of ``Λ'Z'WZΛ + I``, plus the sum of the squared deviance residuals.
 """
 function StatsBase.deviance(m::GeneralizedLinearMixedModel{T}, nAGQ = 1) where {T}
     nAGQ == 1 && return T(sum(m.resp.devresid) + logdet(m) + sum(u -> sum(abs2, u), m.u))
@@ -134,7 +134,7 @@ end
     deviance!(m::GeneralizedLinearMixedModel, nAGQ=1)
 
 Update `m.η`, `m.μ`, etc., install the working response and working weights in
-`m.LMM`, update `m.LMM.A` and `m.LMM.R`, then evaluate the [`deviance`](@ref).
+`m.LMM`, update `m.LMM.A` and `m.LMM.R`, then evaluate the [`deviance`](@ref StatsBase.deviance).
 """
 function deviance!(m::GeneralizedLinearMixedModel, nAGQ = 1)
     updateη!(m)

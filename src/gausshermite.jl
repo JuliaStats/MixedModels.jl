@@ -29,7 +29,7 @@ sum(@. abs2(σ*gn5.z + μ)*gn5.w) # E[X^2] where X ∼ N(μ, σ)
 For evaluation of the log-likelihood of a GLMM the integral to evaluate for each level of
 the grouping factor is approximately Gaussian shaped.
 """
-GaussHermiteQuadrature
+
 """
     GaussHermiteNormalized{K}
 
