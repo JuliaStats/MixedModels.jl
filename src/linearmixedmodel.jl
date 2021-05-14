@@ -973,6 +973,8 @@ function _coord(A::SparseMatrixCSC{T,Int32}) where {T}
     (i = rv, j = cv, v = nonzeros(A), )
 end
 
+_coord(A::BlockedSparse) = _coord(A.cscmat)
+
 function _coord(A::Matrix)
     m, n = size(A)
     (
