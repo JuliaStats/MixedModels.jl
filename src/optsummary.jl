@@ -120,3 +120,13 @@ end
 
 StructTypes.StructType(::Type{<:OptSummary}) = StructTypes.Mutable()
 StructTypes.excludes(::Type{<:OptSummary}) = (:lowerbd, )
+
+const _NLOPT_FAILURE_MODES = [:FAILURE, :INVALID_ARGS, :OUT_OF_MEMORY, 
+                              :FORCED_STOP, :MAXEVAL_REACHED, :MAXTIME_REACHED]
+
+function _check_nlopt_return(ret)
+    ret == :ROUNDOFF_LIMITED && @warn("NLopt was roundoff limited")
+    if ret ∈ _NLOPT_FAILURE_MODES
+        @warn("NLopt optimization failure: $ret")
+    end
+end                              

@@ -118,11 +118,6 @@ end
     print(io, fm1)
     @test startswith(String(take!(io)), "Linear mixed model fit by REML")
 
-    fm1.optsum.maxfeval = 5
-    fm1.optsum.feval = -1
-    @test_logs (:warn, "NLopt optimization failure: MAXEVAL_REACHED") fit!(fm1)
-    fm1.optsum.maxfeval = -1
-
     vc = fm1.vcov
     @test isa(vc, Matrix{Float64})
     @test only(vc) ≈ 409.79495436473167 rtol=1.e-6
