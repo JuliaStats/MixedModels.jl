@@ -36,6 +36,10 @@ Run-time formula syntax
 * Methods for `Base./(::AbstractTerm, ::AbstractTerm)` are added, allowing
   nesting syntax to be used with `Term`s at run-time as well [#470]
 
+MixedModels v3.8.0 Release Notes
+========================
+* Add support for NLopt `maxtime` option to `OptSummary` [#524]
+
 MixedModels v3.7.1 Release Notes
 ========================
 * Add support for `condVar` for models with a BlockedSparse structure [#523]
@@ -245,3 +249,4 @@ Package dependencies
 [#508]: https://github.com/JuliaStats/MixedModels.jl/issues/508
 [#518]: https://github.com/JuliaStats/MixedModels.jl/issues/518
 [#523]: https://github.com/JuliaStats/MixedModels.jl/issues/523
+[#524]: https://github.com/JuliaStats/MixedModels.jl/issues/524
