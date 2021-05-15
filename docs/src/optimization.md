@@ -234,7 +234,9 @@ DisplayAs.Text(ans) # hide
 
 The parameter estimates are quite similar to those using `:LN_BOBYQA` but at the expense of 140 functions evaluations for `:LN_NELDERMEAD` versus 57 for `:LN_BOBYQA`.
 
-See the documentation for the [`NLopt`](https://github.com/JuliaOpt/NLopt.jl) package for details about the various settings.
+Run time can be constrained with  `maxfeval` and `maxtime`.
+
+See the documentation for the [`NLopt`](https://github.com/JuliaOpt/NLopt.jl) package for details about the various settings. 
 
 ### Convergence to singular covariance matrices
 
