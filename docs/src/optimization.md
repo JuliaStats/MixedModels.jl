@@ -113,9 +113,6 @@ the only random effects term in the formula is `(1|batch)`, a simple, scalar ran
 t1 = first(fm1.reterms);
 Int.(t1)  # convert to integers for more compact display
 ```
-```@docs
-ReMat
-```
 
 This `RandomEffectsTerm` contributes a block of columns to the model matrix $\bf Z$ and a diagonal block to $\Lambda_\theta$.
 In this case the diagonal block of $\Lambda_\theta$ (which is also the only block) is a multiple of the $6\times6$
@@ -180,10 +177,7 @@ Note that the first `ReMat` in `fm4.reterms` corresponds to grouping factor `pla
 
 An optional named argument, `verbose=true`, in the call to `fit` for a `LinearMixedModel` causes printing of the objective and the $\theta$ parameter at each evaluation during the optimization.  (Not illustrated here.)
 
-A shorter summary of the optimization process is always available as an
-```@docs
-OptSummary
-```
+A shorter summary of the optimization process is always available as an `OptSummary`
 object, which is the `optsum` member of the `LinearMixedModel`.
 ```@example Main
 fm2.optsum
@@ -193,11 +187,9 @@ DisplayAs.Text(ans) # hide
 ## A blocked Cholesky factor
 
 A `LinearMixedModel` object contains two blocked matrices; a symmetric matrix `A` (only the lower triangle is stored) and a lower-triangular `L` which is the lower Cholesky factor of the updated and inflated `A`.
-In versions 4.0.0 and later of `MixedModels` only the blocks in the lower triangle are stored in `A` and `L`, as a `Vector{AbstractMatrix{T}}`
-```@docs
-BlockDescription
-```
-shows the structure of the blocks
+In versions 4.0.0 and later of `MixedModels` only the blocks in the lower triangle are stored in `A` and `L`, as a `Vector{AbstractMatrix{T}}`.
+
+`BlockDescription` shows the structure of the blocks
 ```@example Main
 BlockDescription(fm2)
 DisplayAs.Text(ans) # hide
@@ -213,9 +205,7 @@ updateL!
 is the central step in evaluating the objective (negative twice the log-likelihood).
 
 Typically, the (1,1) block is the largest block in `A` and `L` and it has a special form, either `Diagonal` or
-```@docs
-UniformBlockDiagonal
-```
+`UniformBlockDiagonal`
 providing a compact representation and fast matrix multiplication or solutions of linear systems of equations.
 
 ### Modifying the optimization process
