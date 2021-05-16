@@ -110,9 +110,15 @@ DisplayAs.Text(ans) # hide
 ```
 the only random effects term in the formula is `(1|batch)`, a simple, scalar random-effects term.
 ```@example Main
-t1 = first(fm1.reterms);
+t1 = only(fm1.reterms);
 Int.(t1)  # convert to integers for more compact display
 ```
+
+The matrix `t1` is a sparse matrix, meaning that most of the elements are zero, and its transpose is stored in a sparse form.
+```@example Main
+sparse(t1)'
+```
+provides a compact representation of the positions of the non-zeros in this matrix.
 
 This `RandomEffectsTerm` contributes a block of columns to the model matrix $\bf Z$ and a diagonal block to $\Lambda_\theta$.
 In this case the diagonal block of $\Lambda_\theta$ (which is also the only block) is a multiple of the $6\times6$
@@ -133,8 +139,8 @@ DisplayAs.Text(ans) # hide
 ```
 the model matrix $\bf Z$ is of the form
 ```@example Main
-t21 = first(fm2.reterms);
-Int.(t21) # convert to integers for more compact display
+t21 = only(fm2.reterms);
+sparse(t21)'
 ```
 and $\Lambda_\theta$ is a $36\times36$ block diagonal matrix with $18$ diagonal blocks, all of the form
 ```@example Main
@@ -148,8 +154,8 @@ MixedModels.getθ(t21)
 Random-effects terms in the model formula that have the same grouping factor are amalgamated into a single `ReMat` object.
 ```@example Main
 fm3 = fit(MixedModel, @formula(reaction ~ 1+days+(1|subj) + (0+days|subj)), sleepstudy)
-t31 = first(fm3.reterms);
-Int.(t31)
+t31 = only(fm3.reterms);
+sparse(t31)'
 ```
 
 For this model the matrix $\bf Z$ is the same as that of model `fm2` but the diagonal blocks of $\Lambda_\theta$ are themselves diagonal.
@@ -166,10 +172,10 @@ penicillin = MixedModels.dataset(:penicillin)
 fm4 = fit(MixedModel,
     @formula(diameter ~ 1 + (1|sample) + (1|plate)),
     penicillin)
-Int.(first(fm4.reterms))
+sparse(first(fm4.reterms))'
 ```
 ```@example Main
-Int.(last(fm4.reterms))
+sparse(last(fm4.reterms))'
 ```
 Note that the first `ReMat` in `fm4.reterms` corresponds to grouping factor `plate` even though the term `(1|plate)` occurs in the formula after `(1|sample)`.
 
