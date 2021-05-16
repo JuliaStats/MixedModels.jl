@@ -185,6 +185,7 @@ function _markdown(s::OptSummary)
             ["`xtol_abs`", string(s.xtol_abs)],
             ["`initial_step`", string(s.initial_step)],
             ["`maxfeval`", string(s.maxfeval)],
+            ["`maxtime`", string(s.maxtime)],
 
             ["**Result**",""],
             ["Function evaluations", string(s.feval)],
