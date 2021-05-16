@@ -1134,7 +1134,7 @@ varest(m::LinearMixedModel) = pwrss(m) / ssqdenom(m)
 
 function StatsBase.weights(m::LinearMixedModel)
     rtwts = m.sqrtwts
-    isempty(rtwts) ? ones(eltype(rtwts), nobs(m)) : abs2(rtwts)
+    isempty(rtwts) ? ones(eltype(rtwts), nobs(m)) : abs2.(rtwts)
 end
 
 """
