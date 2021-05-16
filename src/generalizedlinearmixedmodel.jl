@@ -296,10 +296,7 @@ function fit!(
     optsum.final = xmin
     optsum.fmin = fmin
     optsum.returnvalue = ret
-    ret == :ROUNDOFF_LIMITED && @warn("NLopt was roundoff limited")
-    if ret ∈ [:FAILURE, :INVALID_ARGS, :OUT_OF_MEMORY, :FORCED_STOP, :MAXEVAL_REACHED]
-        @warn("NLopt optimization failure: $ret")
-    end
+    _check_nlopt_return(ret)
     m
 end
 

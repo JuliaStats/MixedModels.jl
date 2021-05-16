@@ -1,3 +1,7 @@
+MixedModels v3.8.0 Release Notes
+========================
+* Add support for NLopt `maxtime` option to `OptSummary` [#524]
+
 MixedModels v3.7.1 Release Notes
 ========================
 * Add support for `condVar` for models with a BlockedSparse structure [#523]
@@ -199,3 +203,4 @@ Package dependencies
 [#510]: https://github.com/JuliaStats/MixedModels.jl/issues/510
 [#518]: https://github.com/JuliaStats/MixedModels.jl/issues/518
 [#523]: https://github.com/JuliaStats/MixedModels.jl/issues/523
+[#524]: https://github.com/JuliaStats/MixedModels.jl/issues/524
