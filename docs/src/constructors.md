@@ -72,13 +72,13 @@ fm1reml = fit(MixedModel, fm, dyestuff, REML=true)
 DisplayAs.Text(ans) # hide
 ```
 
-### Float-point type in the model
+### Floating-point type in the model
 
 The type of `fm1`
 ```@example Main
 typeof(fm1)
 ```
-includes the floating point type used internally for the various matrices, vectors, etc. that represent the model.
+includes the floating point type used internally for the various matrices, vectors, and scalars that represent the model.
 At present, this will always be `Float64` because the parameter estimates are optimized using the [`NLopt` package](https://github.com/JuliaOpt/NLopt.jl) which calls compiled C code that only allows for optimization with respect to a `Float64` parameter vector.
 
 So in theory other floating point types, such as `BigFloat` or `Float32`, can be used to define a model but in practice only `Float64` works at present.
@@ -89,7 +89,7 @@ So in theory other floating point types, such as `BigFloat` or `Float32`, can be
 
 A simple, scalar random effects term in a mixed-effects model formula is of the form `(1|G)`.
 All random effects terms end with `|G` where `G` is the *grouping factor* for the random effect.
-The name or, more generally, the expression `G` should evaluate to a categorical array that has a distinct set of *levels*.
+The name or, more generally the expression, `G`, should evaluate to a categorical array that has a distinct set of *levels*.
 The random effects are associated with the levels of the grouping factor.
 
 A *scalar* random effect is, as the name implies, one scalar value for each level of the grouping factor.
@@ -234,7 +234,11 @@ These fits may suffice for model comparisons.
 ```@example Main
 gm1a = fit(MixedModel, verbaggform, verbagg, Bernoulli(), fast = true)
 deviance(gm1a) - deviance(gm1)
+```
+```@example Main
 @benchmark fit(MixedModel, $verbaggform, $verbagg, Bernoulli())
+```
+```@example Main
 @benchmark fit(MixedModel, $verbaggform, $verbagg, Bernoulli(), fast = true)
 ```
 
@@ -429,7 +433,7 @@ fm1.b
 ```
 returns the *conditional modes* of the random effects given the observed data.
 That is, these are the values that maximize the conditional density of the random effects given the observed data.
-For a `LinearMixedModel` these are also the conditional mean values.
+For a `LinearMixedModel` these are also the conditional means.
 
 These are sometimes called the *best linear unbiased predictors* or [`BLUPs`](https://en.wikipedia.org/wiki/Best_linear_unbiased_prediction) but that name is not particularly meaningful.
 

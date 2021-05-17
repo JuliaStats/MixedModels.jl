@@ -183,8 +183,7 @@ Note that the first `ReMat` in `fm4.reterms` corresponds to grouping factor `pla
 
 An optional named argument, `verbose=true`, in the call to `fit` for a `LinearMixedModel` causes printing of the objective and the $\theta$ parameter at each evaluation during the optimization.  (Not illustrated here.)
 
-A shorter summary of the optimization process is always available as an `OptSummary`
-object, which is the `optsum` member of the `LinearMixedModel`.
+A shorter summary of the optimization process is always available as the `optsum` member of the `LinearMixedModel`, which is of type `OptSummary`.
 ```@example Main
 fm2.optsum
 DisplayAs.Text(ans) # hide
