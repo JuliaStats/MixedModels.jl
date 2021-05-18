@@ -209,8 +209,7 @@ DisplayAs.Text(ans) # hide
 
 ## Fitting generalized linear mixed models
 
-To create a GLMM representation
-the distribution family for the response, and possibly the link function, must be specified.
+To create a GLMM representation, the distribution family for the response, and possibly the link function, must be specified.
 
 ```@example Main
 verbagg = MixedModels.dataset(:verbagg)

@@ -57,8 +57,6 @@ StatsBase.meanresponse(m::MixedModel) = mean(m.y)
 
 StatsBase.modelmatrix(m::MixedModel) = m.feterm.x
 
-StatsBase.model_response(m::MixedModel) = m.y
-
 StatsBase.nobs(m::MixedModel) = length(m.y)
 
 StatsBase.predict(m::MixedModel) = fitted(m)
