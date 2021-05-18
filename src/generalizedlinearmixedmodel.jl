@@ -737,9 +737,9 @@ For Gaussian models, this parameter is often called σ².
 """
 varest(m::GeneralizedLinearMixedModel{T}) where {T} = dispersion_parameter(m) ? dispersion(m, true) : missing
 
-function StatsBase.weights(m::GeneralizedLinearMixedModel)
+function StatsBase.weights(m::GeneralizedLinearMixedMode{T}) where {T}
     wts = m.wt
-    isempty(wts) ? ones(eltype(wts), nobs(m)) : wts
+    isempty(wts) ? ones(T, nobs(m)) : wts
 end
 
 # delegate GLMM method to LMM field
