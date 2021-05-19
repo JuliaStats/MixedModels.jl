@@ -62,6 +62,7 @@ function LinearMixedModel(
         if isa(e, OutOfMemoryError)
             @warn "Random effects grouping variables with many levels can cause out-of-memory errors.  Try manually specifying `Grouping()` contrasts for those variables."
         end
+        rethrow(e)
     end
     form = apply_schema(f, sch, LinearMixedModel)
     # tbl, _ = StatsModels.missing_omit(tbl, form)
