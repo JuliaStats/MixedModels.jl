@@ -41,11 +41,11 @@ include("modelcache.jl")
         @test simulate!(StableRNG(42), y, m) ≈ mc.y
         @test y ≈ mc.y
 
-        contratop = first(contra, 90)
-        @test simulate(StableRNG(42), m, contra) ≈ y
-        ytop = simulate(StableRNG(42), m, contratop)
-        @test ytop ≈ simulate(StableRNG(42), m, contratop; β=m.β, θ=m.θ, σ=m.σ)
-        @test length(ytop) == 90
+        # contratop = first(contra, 90)
+        # #@test simulate(StableRNG(42), m, contra) ≈ y
+        # ytop = simulate(StableRNG(42), m, contratop)
+        # @test ytop ≈ simulate(StableRNG(42), m, contratop; β=m.β, θ=m.θ, σ=m.σ)
+        # @test length(ytop) == 90
     end
 end
 
