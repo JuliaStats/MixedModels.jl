@@ -279,9 +279,7 @@ function StatsBase.predict(m::GeneralizedLinearMixedModel{T}, newdata::Tables.Co
 
     type == :linpred && return y
 
-    @inbounds for (idx, val) in enumerate(y)
-        y[idx] = linkinv(Link(m.resp), val)
-    end
+    y .= linkinv.(Link(m.resp), y)
 
     y
 end

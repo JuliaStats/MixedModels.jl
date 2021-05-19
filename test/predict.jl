@@ -37,6 +37,8 @@ end
 
         @test_throws ArgumentError predict(gm0; type=:doh)
 
+        # we can skip a lot of testing if the broad strokes work because
+        # internally this is punted off to the LMM machinery
         @test predict(gm0) ≈ fitted(gm0)
         @test predict(gm0; type=:linpred) ≈ gm0.resp.eta
         gm0pop = gm0.X * gm0.β
