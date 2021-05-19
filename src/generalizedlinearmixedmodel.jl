@@ -574,7 +574,7 @@ LinearAlgebra.rank(m::GeneralizedLinearMixedModel) = m.LMM.feterm.rank
 """
     refit!(m::GeneralizedLinearMixedModel[, y::Vector];
           fast::Bool = (length(m.θ) == length(m.optsum.final)),
-          nAGQ::Integer = m.optsum.nAGQ))
+          nAGQ::Integer = m.optsum.nAGQ), verbose = false)
 
 Refit the model `m` after installing response `y`.
 
@@ -585,18 +585,18 @@ If not specified, the `fast` and `nAGQ` options from the previous fit are used.
 """
 function refit!(m::GeneralizedLinearMixedModel{T};
                 fast::Bool = (length(m.θ) == length(m.optsum.final)),
-                nAGQ::Integer = m.optsum.nAGQ)  where T
+                nAGQ::Integer = m.optsum.nAGQ, verbose=false)  where T
 
-    fit!(unfit!(m); fast=fast, nAGQ=nAGQ)
+    fit!(unfit!(m); fast, nAGQ, verbose)
 end
 
 function refit!(m::GeneralizedLinearMixedModel{T}, y;
                 fast::Bool = (length(m.θ) == length(m.optsum.final)),
-                nAGQ::Integer = m.optsum.nAGQ) where T
+                nAGQ::Integer = m.optsum.nAGQ, verbose=false) where T
     m_resp_y = m.resp.y
     length(y) == size(m_resp_y, 1) || throw(DimensionMismatch(""))
     copyto!(m_resp_y, y)
-    refit!(m)
+    refit!(m; fast, nAGQ, verbose)
 end
 
 
