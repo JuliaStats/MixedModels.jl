@@ -11,14 +11,6 @@ This simulation includes sampling new values for the random effects.
     (besides the RNG) and `simulate` methods return the simulated response. This is
     in contrast to `simulate!` methods with a `m::MixedModel` as the first argument,
     which modify the model's response and return the entire modified model.
-
-!!! warning
-    The modified model is currently not marked as being unfitted.
-    More precisely, its internal `OptSum` structure is not modified.
-    As such, displaying the model will show the previous fit, even though
-    this no longer corresponds to the new, modified response.
-
-    This behavior may change in a future release
 """
 function simulate!(
     rng::AbstractRNG,
