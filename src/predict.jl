@@ -176,7 +176,8 @@ function StatsBase.predict(m::LinearMixedModel{T}, newdata::Tables.ColumnTable;
 
     newdata = merge(newdata, NamedTuple{(m.formula.lhs.sym,)}((y,)))
 
-    mnew = LinearMixedModel(m.formula, newdata)
+    f, contr = _abstractify_grouping(m.formula)
+    mnew = LinearMixedModel(f, newdata; contrasts=contr)
 
     grps = getproperty.(m.reterms, :trm)
     y = predict!(y, m, mnew.X; use_re=false)

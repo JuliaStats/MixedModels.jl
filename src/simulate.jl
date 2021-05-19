@@ -273,7 +273,9 @@ function simulate!(rng::AbstractRNG, y::AbstractVector, m::LinearMixedModel, new
     # (for one thing, this still allocates for the model's response)
     # note that the contrasts get copied over with the formula
     # (as part of the applied schema)
-    mnew = LinearMixedModel(m.formula, newdata)
+    # contr here are the fast Grouping contrasts
+    f, contr = _abstractify_grouping(m.formula)
+    mnew = LinearMixedModel(f, newdata; contrasts=contr)
 
     simulate!(rng, y, mnew; β, σ, θ)
     y
@@ -287,7 +289,9 @@ function simulate!(rng::AbstractRNG, y::AbstractVector, m::GeneralizedLinearMixe
     # (for one thing, this still allocates for the model's response)
     # note that the contrasts get copied over with the formula
     # (as part of the applied schema)
-    mnew = GeneralizedLinearMixedModel(m.formula, newdata, m.resp.d, Link(m.resp))
+    # contr here are the fast Grouping contrasts
+    f, contr = _abstractify_grouping(m.formula)
+    mnew = GeneralizedLinearMixedModel(f, newdata, m.resp.d, Link(m.resp); contrasts=contr)
     simulate!(rng, y, mnew; β, σ, θ)
 end
 

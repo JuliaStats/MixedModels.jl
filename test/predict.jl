@@ -26,6 +26,7 @@ include("modelcache.jl")
         slptop = first(slp, 90)
         @test simulate(StableRNG(42), m, slp) ≈ y
         @test simulate(StableRNG(42), m, slptop) ≈ simulate(StableRNG(42), m, slptop; β=m.β, θ=m.θ, σ=m.σ)
+        # XXX something in the random step leads to simulate(StableRNG(42), m, slp)[1:90] ≠ simulate(StableRNG(42), m, slp[1:90, !])
     end
 
     @testset "GLMM" begin
@@ -49,7 +50,9 @@ include("modelcache.jl")
 end
 
 @testset "predict" begin
-   @testset "LMM" for m in models(:sleepstudy)[[begin,end]]
+    slp = DataFrame(dataset(:sleepstudy))
+    slp2 = transform(slp, :subj => ByRow(x -> (x == "S308" ? "NEW" : x)) => :subj)
+    @testset "LMM" for m in models(:sleepstudy)[[begin,end]]
         # these currently use approximate equality
         # because of floating point, but realistically
         # this should be exactly equal in most cases
@@ -57,11 +60,17 @@ end
         @test predict(m; use_re=false) ≈ m.X * m.β
         @test predict(m, m.X) ≈ fitted(m)
 
-        slp = DataFrame(dataset(:sleepstudy))
-
         @test predict(m, slp; new_re_levels=:error) ≈ fitted(m)
         @test predict(m, slp; new_re_levels=:population) ≈ fitted(m)
         @test predict(m, slp; new_re_levels=:missing) ≈ fitted(m)
+
+        @test_throws KeyError predict(m, slp2; new_re_levels=:error)
+        ymissing = predict(m, slp2; new_re_levels=:missing)
+        @test count(ismissing, ymissing) == 10
+        @test ymissing[11:end] ≈ fitted(m)[11:end]
+        ypop = predict(m, slp2; new_re_levels=:population)
+        @test ypop[1:10] ≈ view(m.X, 1:10, :) * m.β
+        @test ypop[11:end] ≈ fitted(m)[11:end]
     end
 
     @testset "GLMM" begin
