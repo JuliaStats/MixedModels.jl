@@ -1,13 +1,12 @@
 """
-
-StatsBase.predict!(y::AbstractVector{T}, m::LinearMixedModel{T},
-                  newX::AbstractMatrix{T}=m.X; use_re=true)
-StatsBase.predict(m::LinearMixedModel{T},
-                  newX::AbstractMatrix{T}=m.X; use_re=true)
-StatsBase.predict!(y::AbstractVector{T}, m::GeneralizedLinearMixedModel{T},
-                  newX::AbstractMatrix{T}=m.X; use_re=true, type=:response)
-StatsBase.predict(m::GeneralizedLinearMixedModel{T},
-                  newX::AbstractMatrix{T}=m.X; use_re=true, type=:response)
+    StatsBase.predict!(y::AbstractVector{T}, m::LinearMixedModel{T},
+                    newX::AbstractMatrix{T}=m.X; use_re=true)
+    StatsBase.predict(m::LinearMixedModel{T},
+                    newX::AbstractMatrix{T}=m.X; use_re=true)
+    StatsBase.predict!(y::AbstractVector{T}, m::GeneralizedLinearMixedModel{T},
+                    newX::AbstractMatrix{T}=m.X; use_re=true, type=:response)
+    StatsBase.predict(m::GeneralizedLinearMixedModel{T},
+                    newX::AbstractMatrix{T}=m.X; use_re=true, type=:response)
 
 Predict response for new values of the fixed-effects matrix X.
 
@@ -101,11 +100,10 @@ function StatsBase.predict(m::GeneralizedLinearMixedModel{T}, newX::AbstractMatr
 end
 
 """
-
-StatsBase.predict(m::LinearMixedModel{T}, newdata;
-                  new_re_levels=:missing)
-StatsBase.predict(m::GeneralizedLinearMixedModel{T}, newdata;
-                  new_re_levels=:missing, type=:response)
+    StatsBase.predict(m::LinearMixedModel{T}, newdata;
+                    new_re_levels=:missing)
+    StatsBase.predict(m::GeneralizedLinearMixedModel{T}, newdata;
+                    new_re_levels=:missing, type=:response)
 
 Predict response for new values of the fixed-effects matrix X.
 
