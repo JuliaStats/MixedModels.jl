@@ -13,9 +13,11 @@ function _abstractify_grouping(f::FormulaTerm)
     re = map(re) do trm
         if trm.rhs isa InteractionTerm
             rhs = mapreduce(&, trm.rhs.terms) do tt
+                contr[tt.sym] = Grouping()
                 return Term(tt.sym)
             end
         else
+            contr[trm.rhs.sym] = Grouping()
             rhs = Term(trm.rhs.sym)
         end
         return trm.lhs | rhs
