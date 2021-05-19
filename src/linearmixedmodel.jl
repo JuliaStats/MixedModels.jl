@@ -409,13 +409,23 @@ function fit!(m::LinearMixedModel{T}; verbose::Bool = false, REML::Bool = false)
     end
     opt = Opt(optsum)
     optsum.REML = REML
+    if optsum.maxfeval > 0
+        prog = Progress(optsum.maxfeval; dt=0, desc="Iteration:", enabled=verbose, showspeed=true)
+    else
+        prog = ProgressUnknown(; dt=0, desc="Iteration:", enabled=verbose, showspeed=true)
+    end
+    # we need this null update to initialize things or
+    # the progress meter won't be displayed in the obj
+    ProgressMeter.update!(prog, 0)
     function obj(x, g)
         isempty(g) || throw(ArgumentError("g should be empty for this objective"))
         val = objective(updateL!(setθ!(m, x)))
-        verbose && println(round(val, digits = 5), " ", x)
+        ProgressMeter.next!(prog; showvalues=[(:obj, round(val; digits=5)),
+                                              (:θ, x)])
         val
     end
     NLopt.min_objective!(opt, obj)
+    ProgressMeter.finish!(prog)
     optsum.finitial = obj(optsum.initial, T[])
     fmin, xmin, ret = NLopt.optimize!(opt, copyto!(optsum.final, optsum.initial))
     ## check if small non-negative parameter values can be set to zero
