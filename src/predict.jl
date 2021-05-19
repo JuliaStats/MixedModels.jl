@@ -155,7 +155,8 @@ Similarly, offset are also not support for `GeneralizedLinearMixedModel`.
 function StatsBase.predict(m::LinearMixedModel{T}, newdata::Tables.ColumnTable;
                            new_re_levels=:population) where T
 
-    new_re_levels in (:population, :missing, :)
+    new_re_levels in (:population, :missing, :error, :simulate) ||
+        throw(ArgumentError("Invalid value for new_re_levels: $(new_re_levels)"))
     # the easiest thing here is to just assemble a new model and
     # pass that to the other predict methods....
     # this can probably be made much more efficient
@@ -164,8 +165,8 @@ function StatsBase.predict(m::LinearMixedModel{T}, newdata::Tables.ColumnTable;
     # (at least for the response)
 
     # add a response column
-    # we use the Union here so that we have type stability
-    y = ones(Union{T, Missing}, length(first(newdata)))
+    # we get type stability via constant propogation on `new_re_levels`
+    y = ones(T, length(first(newdata)))
     newdata = merge(newdata, NamedTuple{(m.formula.lhs.sym,)}((y,)))
 
     mnew = LinearMixedModel(m.formula, newdata)
@@ -215,6 +216,7 @@ function StatsBase.predict(m::LinearMixedModel{T}, newdata::Tables.ColumnTable;
     elseif new_re_levels == :missing
         # we can't quite use ranef! because we need
         # Union{T, Missing} and not just T
+        y = convert(Vector{Union{T, Missing}}, y)
         blups = Vector{Matrix{Union{T,Missing}}}(undef, length(m.reterms))
         copyto!(blups, ranef(mnew)[newreperm])
         blupsold = ranef(m)[oldreperm]
