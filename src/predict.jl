@@ -125,10 +125,9 @@ The keyword argument `new_re_levels` specifies how previously unobserved
 values of the grouping variable are handled. Possible values are
 `:population` (return population values, i.e. fixed-effects only),
 `:missing` (return `missing`), `:error` (error on this condition;
-the error type is an implementation detail), `:simulate` (simulate new values).
-For `:simulate`, the values are determined by solving for their values by
-using the existing model's estimates for the new data. (These are in general
-*not* the same values as the estimates computed on the new data.)
+the error type is an implementation detail). If you want simulated values
+for unobserved levels of the grouping variable, consider the
+[`simulate!`](@ref) and [`simulate`](@ref) methods.
 
 Predictions based purely on the fixed effects can be obtained by
 specifying previously unobserved levels of the random effects and setting
@@ -141,9 +140,8 @@ whether the predictions should be returned on the scale of linear predictor
 (`:linpred`) or on the response scale (`:response`). If you don't know the
 difference between these terms, then you probably want `type=:response`.
 
-Regression weights are not yet supported in prediction. As a consequence of this,
-`new_re_levels=:simulate` is also not yet available for `GeneralizedLinearMixedModel`.
-Similarly, offset are also not support for `GeneralizedLinearMixedModel`.
+Regression weights are not yet supported in prediction.
+Similarly, offsets are also not supported for `GeneralizedLinearMixedModel`.
 
 !!! note
     The `predict` and `predict!` methods with `newX` as a fixed effects matrix
@@ -155,8 +153,16 @@ Similarly, offset are also not support for `GeneralizedLinearMixedModel`.
 function StatsBase.predict(m::LinearMixedModel{T}, newdata::Tables.ColumnTable;
                            new_re_levels=:population) where T
 
-    new_re_levels in (:population, :missing, :error, :simulate) ||
+    new_re_levels in (:population, :missing, :error) ||
         throw(ArgumentError("Invalid value for new_re_levels: $(new_re_levels)"))
+
+    # if we ever support simulation, here some old bits from the docstrings
+    # `new_re_levels=:simulate` is also not yet available for `GeneralizedLinearMixedModel`.
+    # , `:simulate` (simulate new values).
+    # For `:simulate`, the values are determined by solving for their values by
+    # using the existing model's estimates for the new data. (These are in general
+    # *not* the same values as the estimates computed on the new data.)
+
     # the easiest thing here is to just assemble a new model and
     # pass that to the other predict methods....
     # this can probably be made much more efficient
@@ -234,21 +240,22 @@ function StatsBase.predict(m::LinearMixedModel{T}, newdata::Tables.ColumnTable;
                 end
             end
         end
-    elseif new_re_levels == :simulate
-        updateL!(setθ!(mnew, m.θ))
-        blups = ranef(mnew)[newreperm]
-        blupsold = ranef(m)[oldreperm]
-        for (idx, B) in enumerate(blups)
-            oldlevels = levels(oldre[idx])
-            for (lidx, ll) in enumerate(levels(newre[idx]))
-                oldloc = findfirst(isequal(ll), oldlevels)
-                if oldloc === nothing
-                    # keep the new value
-                else
-                    B[:, lidx] = @view blupsold[idx][:, oldloc]
-                end
-            end
-        end
+    # elseif new_re_levels == :simulate
+    #     @show m.θ
+    #     updateL!(setθ!(mnew, m.θ))
+    #     blups = ranef(mnew)[newreperm]
+    #     blupsold = ranef(m)[oldreperm]
+    #     for (idx, B) in enumerate(blups)
+    #         oldlevels = levels(oldre[idx])
+    #         for (lidx, ll) in enumerate(levels(newre[idx]))
+    #             oldloc = findfirst(isequal(ll), oldlevels)
+    #             if oldloc === nothing
+    #                 # keep the new value
+    #             else
+    #                 B[:, lidx] = @view blupsold[idx][:, oldloc]
+    #             end
+    #         end
+    #     end
     else
         throw(ErrorException("Impossible branch reached. Please report an issue on GitHub"))
     end
@@ -264,10 +271,10 @@ function StatsBase.predict(m::GeneralizedLinearMixedModel{T}, newdata::Tables.Co
                            new_re_levels=:population, type=:response) where T
     type in (:linpred, :response) || throw(ArgumentError("Invalid value for type: $(type)"))
 
-    # the trick we use to simulate in LMM will give probably give garbage for GLMM
-    # because the weights aren't passed
-    new_re_levels == :simulate &&
-        throw(ArgumentError("Simulation of new RE levels not available for GeneralizedLinearMixedModel"))
+    # # the trick we use to simulate in LMM will give probably give garbage for GLMM
+    # # because the weights aren't passed
+    # new_re_levels == :simulate &&
+    #     throw(ArgumentError("Simulation of new RE levels not available for GeneralizedLinearMixedModel"))
     y = predict(m.LMM, newdata; new_re_levels=new_re_levels)
 
     type == :linpred && return y
@@ -483,6 +490,12 @@ function simulate!(y::AbstractVector, m::MixedModel, newdata;
     simulate!(Random.GLOBAL_RNG, y, m, Tables.columntable(newdata);
               kwargs...)
 end
+
+"""
+    See [`simulate!`](@ref)
+
+"""
+function simulate end
 
 function simulate(rng::AbstractRNG, m::MixedModel, X::AbstractMatrix = m.X;
                   kwargs...)
