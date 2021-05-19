@@ -737,7 +737,7 @@ For Gaussian models, this parameter is often called σ².
 """
 varest(m::GeneralizedLinearMixedModel{T}) where {T} = dispersion_parameter(m) ? dispersion(m, true) : missing
 
-function StatsBase.weights(m::GeneralizedLinearMixedMode{T}) where {T}
+function StatsBase.weights(m::GeneralizedLinearMixedModel{T}) where {T}
     wts = m.wt
     isempty(wts) ? ones(T, nobs(m)) : wts
 end
