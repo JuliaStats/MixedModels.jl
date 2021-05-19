@@ -277,10 +277,17 @@ function fit!(
         optsum.final = copy(optsum.initial)
     end
     setpar! = fast ? setθ! : setβθ!
+    vecname = fast ? :θ : :βθ
+    if optsum.maxfeval > 0
+        prog = Progress(optsum.maxfeval; dt=0, desc="Iteration:", enabled=verbose, showspeed=true)
+    else
+        prog = ProgressUnknown(; dt=0, desc="Iteration:", enabled=verbose, showspeed=true)
+    end
     function obj(x, g)
         isempty(g) || throw(ArgumentError("g should be empty for this objective"))
         val = deviance(pirls!(setpar!(m, x), fast, verbose), nAGQ)
-        verbose && println(round(val, digits = 5), " ", x)
+        ProgressMeter.next!(prog; showvalues=[(:obj, round(val; digits=5)),
+                                               (vecname, x)])
         val
     end
     opt = Opt(optsum)
@@ -529,18 +536,18 @@ function pirls!(
     end
     obj₀ = deviance!(m) * 1.0001
     if verbose
-        print("varyβ = ", varyβ, ", obj₀ = ", obj₀)
+        print(stderr, "varyβ = ", varyβ, ", obj₀ = ", obj₀)
         if varyβ
-            print(", β = ")
+            print(stderr, ", β = ")
             show(β)
         end
-        println()
+        println(stderr)
     end
     for iter = 1:maxiter
         varyβ && ldiv!(adjoint(feL(m)), copyto!(β, Ltru))
         ranef!(u, m.LMM, β, true) # solve for new values of u
         obj = deviance!(m)        # update GLM vecs and evaluate Laplace approx
-        verbose && println(lpad(iter, 4), ": ", obj)
+        verbose && println(stderr, lpad(iter, 4), ": ", obj)
         nhalf = 0
         while obj > obj₀
             nhalf += 1
@@ -555,7 +562,7 @@ function pirls!(
             end
             varyβ && map!(average, β, β, β₀)
             obj = deviance!(m)
-            verbose && println(lpad(nhalf, 8), ", ", obj)
+            verbose && println(stderr, lpad(nhalf, 8), ", ", obj)
         end
         if isapprox(obj, obj₀; atol = 0.00001)
             break
