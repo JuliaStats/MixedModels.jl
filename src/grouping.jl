@@ -17,6 +17,7 @@ julia> schema((; grp = string.(1:100_000)))
 # out-of-memory error
 
 julia> schema((; grp = string.(1:100_000)), Dict(:grp => Grouping()))
+```
 """
 struct Grouping <: StatsModels.AbstractContrasts
 end

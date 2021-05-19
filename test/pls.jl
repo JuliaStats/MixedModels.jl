@@ -1,4 +1,3 @@
-using BlockArrays
 using LinearAlgebra
 using MixedModels
 using PooledArrays
@@ -9,16 +8,26 @@ using StatsModels
 using Tables
 using Test
 
-using MixedModels: dataset, likelihoodratiotest
+using MixedModels: likelihoodratiotest
 
 @isdefined(io) || const global io = IOBuffer()
 
 include("modelcache.jl")
 
+@testset "offset" begin
+    let off = repeat([1], 180),
+        slp = MixedModels.dataset(:sleepstudy),
+        frm = @formula(reaction ~ 1 + (1|subj))
+
+        @test_throws ArgumentError fit(MixedModel, frm, slp; offset=off)
+        @test_throws ArgumentError fit(MixedModel, frm, slp, Normal(), IdentityLink(); offset=off)
+    end
+end
+
 @testset "Dyestuff" begin
     fm1 = only(models(:dyestuff))
 
-    @test length(fm1.allterms) == 3
+    @test length(fm1.A) == 3
     @test size(fm1.reterms) == (1, )
     @test lowerbd(fm1) == zeros(1)
     @test fm1.lowerbd == zeros(1)
@@ -32,7 +41,6 @@ include("modelcache.jl")
     @test_logs (:warn, "Model has not been fit") show(fm1)
 
     @test objective(updateL!(setθ!(fm1, [0.713]))) ≈ 327.34216280955366
-    @test_deprecated MixedModels.describeblocks(IOBuffer(), fm1)
 
     show(io, BlockDescription(fm1))
     @test countlines(seekstart(io)) == 3
@@ -93,7 +101,7 @@ include("modelcache.jl")
 
     @test logdet(fm1) ≈ 8.06014522999825 atol=0.001
     @test varest(fm1) ≈ 2451.2501089607676 atol=0.001
-    @test pwrss(fm1) ≈ 73537.49947885796 atol=0.001
+    @test pwrss(fm1) ≈ 73537.50152584909 atol=0.01 # this quantity is not precisely estimated
     @test stderror(fm1) ≈ [17.69455188898009] atol=0.0001
 
     vc = VarCorr(fm1)
@@ -110,16 +118,11 @@ include("modelcache.jl")
     print(io, fm1)
     @test startswith(String(take!(io)), "Linear mixed model fit by REML")
 
-    fm1.optsum.maxfeval = 5
-    fm1.optsum.feval = -1
-    @test_logs (:warn, "NLopt optimization failure: MAXEVAL_REACHED") fit!(fm1)
-    fm1.optsum.maxfeval = -1
-
     vc = fm1.vcov
     @test isa(vc, Matrix{Float64})
-    @test only(vc) ≈ 409.79495436473167 rtol=1.e-6
+    @test only(vc) ≈ 375.7167775 rtol=1.e-6
     # since we're caching the fits, we should get it back to being correctly fitted
-    refit!(fm1)
+    refit!(fm1; REML=false)
 end
 
 @testset "Dyestuff2" begin
@@ -150,7 +153,7 @@ end
     @test objective(fm) ≈ 332.18834867227616 atol=0.001
     @test coef(fm) ≈ [22.97222222222222] atol=0.001
     @test fixef(fm) ≈ [22.97222222222222] atol=0.001
-    @test coef(fm)[1] ≈ mean(dataset(:penicillin).diameter)
+    @test coef(fm)[1] ≈ mean(MixedModels.dataset(:penicillin).diameter)
     @test stderror(fm) ≈ [0.7445960346851368] atol=0.0001
     @test fm.θ ≈ [1.5375772376554968, 3.219751321180035] atol=0.001
     @test first(std(fm)) ≈ [0.8455645948223015] atol=0.0001
@@ -158,7 +161,12 @@ end
     @test varest(fm) ≈ 0.3024263987592062 atol=0.0001
     @test logdet(fm) ≈ 95.74614821367786 atol=0.001
 
-    @test_throws ArgumentError condVar(fm)
+    cv = condVar(fm)
+    @test length(cv) == 2
+    @test size(first(cv)) == (1, 1, 24)
+    @test size(last(cv)) == (1, 1, 6)
+    @test first(first(cv)) ≈ 0.07331320237988301 rtol=1.e-4
+    @test last(last(cv)) ≈ 0.04051547211287544 rtol=1.e-4
 
     rfu = ranef(fm, uscale=true)
     @test length(rfu) == 2
@@ -192,6 +200,13 @@ end
     @test varest(fm) ≈ 0.6780020742644107 atol=0.0001
     @test logdet(fm) ≈ 101.0381339953986 atol=0.001
 
+    cv = condVar(fm)
+    @test length(cv) == 2
+    @test size(first(cv)) == (1, 1, 30)
+    @test first(first(cv)) ≈ 1.111873335663485 rtol=1.e-4
+    @test size(last(cv)) == (1, 1, 10)
+    @test last(last(cv)) ≈ 0.850428770978789 rtol=1.e-4
+
     show(io, BlockDescription(fm))
     @test countlines(seekstart(io)) == 4
     tokens = Set(split(String(take!(io)), r"\s+"))
@@ -208,6 +223,10 @@ end
     @test size(fm1) == (73421, 2, 4114, 3)
     @test fm1.optsum.initial == ones(3)
     @test lowerbd(fm1) == zeros(3)
+
+    spL = sparseL(fm1)
+    @test size(spL) == (4114, 4114)
+    @test 733090 < nnz(spL) < 733100
 
     @test objective(fm1) ≈ 237721.7687745563 atol=0.001
     ftd1 = fitted(fm1);
@@ -245,17 +264,17 @@ end
 @testset "sleep" begin
     fm = last(models(:sleepstudy))
     @test lowerbd(fm) == [0.0, -Inf, 0.0]
-    A11 = getblock(fm.A, 1,1)
+    A11 = first(fm.A)
     @test isa(A11, UniformBlockDiagonal{Float64})
-    @test isa(getblock(fm.L, 1, 1), UniformBlockDiagonal{Float64})
+    @test isa(first(fm.L), UniformBlockDiagonal{Float64})
     @test size(A11) == (36, 36)
     a11 = view(A11.data, :, :, 1)
     @test a11 == [10. 45.; 45. 285.]
     @test size(A11.data, 3) == 18
     λ = first(fm.λ)
-    b11 = LowerTriangular(view(getblock(fm.L, 1, 1).data, :, :, 1))
+    b11 = LowerTriangular(view(first(fm.L).data, :, :, 1))
     @test b11 * b11' ≈ λ'a11*λ + I rtol=1e-5
-    @test count(!iszero, Matrix(getblock(fm.L, 1, 1))) == 18 * 4
+    @test count(!iszero, Matrix(first(fm.L))) == 18 * 4
     @test rank(fm) == 2
 
     @test objective(fm) ≈ 1751.9393444647046
@@ -282,6 +301,29 @@ end
     @test length(u3) == 1
     @test size(first(u3)) == (2, 18)
     @test first(u3)[1, 1] ≈ 3.030300122575336 atol=0.001
+
+    cv = condVar(fm)
+    @test length(cv) == 1
+    @test size(first(cv)) == (2, 2, 18)
+    @test first(first(cv)) ≈ 140.96612241084617 rtol=1.e-4
+    @test last(last(cv)) ≈ 5.157750215432247 rtol=1.e-4
+    @test first(cv)[2] ≈ -20.60428045516186 rtol=1.e-4
+
+    cvt = condVartables(fm)
+    @test length(cvt) == 1
+    @test only(keys(cvt)) == :subj
+    cvtsubj = cvt.subj
+    @test only(cvt) === cvtsubj
+    @test keys(cvtsubj) == (:subj, :σ, :ρ)
+    @test Tables.istable(cvtsubj)
+    @test first(cvtsubj.subj) == "S308"
+    cvtsubjσ1 = first(cvtsubj.σ)
+    @test all(==(cvtsubjσ1), cvtsubj.σ)
+    @test first(cvtsubjσ1) ≈ 11.87291549750297 atol=1.0e-4
+    @test last(cvtsubjσ1) ≈ 2.271068078114843 atol=1.0e-4
+    cvtsubjρ = first(cvtsubj.ρ)
+    @test all(==(cvtsubjρ), cvtsubj.ρ)
+    @test only(cvtsubjρ) ≈ -0.7641347018831385 atol=1.0e-4
 
     b3 = ranef(fm)
     @test length(b3) == 1
@@ -374,6 +416,16 @@ end
     # amalgamate should set these to -0.0 to indicate structural zeros
     @test all(ρs_intercept .=== -0.0)
 
+    @testset "diagonal λ in zerocorr" begin
+        # explicit zerocorr
+        fmzc = models(:sleepstudy)[2]
+        λ = first(fmzc.reterms).λ
+        @test λ isa Diagonal{Float64, Vector{Float64}}
+        # implicit zerocorr via almagation
+        fmnc = models(:sleepstudy)[3]
+        λ = first(fmnc.reterms).λ
+        @test λ isa Diagonal{Float64, Vector{Float64}}
+    end
 
     show(io, BlockDescription(first(models(:sleepstudy))))
     @test countlines(seekstart(io)) == 3
@@ -383,6 +435,24 @@ end
     @test countlines(seekstart(io)) == 3
     @test "BlkDiag" in Set(split(String(take!(io)), r"\s+"))
 
+    @testset "optsumJSON" begin
+        fm = last(models(:sleepstudy))
+            # using a IOBuffer for saving JSON
+        saveoptsum(seekstart(io), fm)
+        m = LinearMixedModel(fm.formula, MixedModels.dataset(:sleepstudy))
+        restoreoptsum!(m, seekstart(io))
+        @test loglikelihood(fm) ≈ loglikelihood(m)
+        @test bic(fm) ≈ bic(m)
+        @test coef(fm) ≈ coef(m)
+            # using a temporary file for saving JSON
+        fnm = first(mktemp())
+        saveoptsum(fnm, fm)
+        m = LinearMixedModel(fm.formula, MixedModels.dataset(:sleepstudy))
+        restoreoptsum!(m, fnm)
+        @test loglikelihood(fm) ≈ loglikelihood(m)
+        @test bic(fm) ≈ bic(m)
+        @test coef(fm) ≈ coef(m)
+    end
 end
 
 @testset "d3" begin
@@ -410,7 +480,7 @@ end
 @testset "oxide" begin
     # this model has an interesting structure with two diagonal blocks
     m = first(models(:oxide))
-    @test all(isapprox.(m.θ, [1.689182746, 2.98504262]; atol=1e-4))
+    @test isapprox(m.θ, [1.689182746, 2.98504262]; atol=1e-3)
     m = last(models(:oxide))
     # NB: this is a poorly defined fit
     # lme4 gives all sorts of convergence warnings for the different
@@ -423,7 +493,7 @@ end
     θminqa = [1.6455, -0.2430, 1.0160, 0.8955, 2.7054, 0.0898]
     # very loose tolerance for unstable fit
     # but this is a convenient test of rankUpdate!(::UniformBlockDiagonal)
-    @test all(isapprox.(m.θ, θnlopt; atol=1e-2))
+    @test isapprox(m.θ, θnlopt; atol=5e-2)
 end
 
 @testset "Rank deficient" begin
@@ -438,8 +508,8 @@ end
     @test ct.rownms ==  ["(Intercept)", "x", "x2"]
     @test length(fixefnames(model)) == 2
     @test coefnames(model) == ["(Intercept)", "x", "x2"]
-    piv = first(model.feterms).piv
-    r = first(model.feterms).rank
+    piv = model.feterm.piv
+    r = model.feterm.rank
     @test coefnames(model)[piv][1:r] == fixefnames(model)
 end
 
@@ -472,7 +542,7 @@ end
 end
 
 @testset "unifying ReMat eltypes" begin
-    sleepstudy = dataset(:sleepstudy)
+    sleepstudy = MixedModels.dataset(:sleepstudy)
 
     re = LinearMixedModel(@formula(reaction ~ 1 + days + (1|subj) + (days|subj)), sleepstudy).reterms
     # make sure that the eltypes are still correct

@@ -12,7 +12,8 @@ Summary of an `NLopt` optimization
 * `xtol_rel`: as in NLopt
 * `xtol_abs`: as in NLopt
 * `initial_step`: as in NLopt
-* `maxfeval`: as in NLopt
+* `maxfeval`: as in NLopt (`maxeval`)
+* `maxtime`: as in NLopt
 * `final`: a copy of the final parameter values from the optimization
 * `fmin`: the final value of the objective
 * `feval`: the number of function evaluations
@@ -33,6 +34,7 @@ mutable struct OptSummary{T<:AbstractFloat}
     xtol_abs::Vector{T}
     initial_step::Vector{T}
     maxfeval::Int
+    maxtime::T
     final::Vector{T}
     fmin::T
     feval::Int
@@ -49,6 +51,8 @@ function OptSummary(
     ftol_abs::T = zero(T),
     xtol_rel::T = zero(T),
     initial_step::Vector{T} = T[],
+    maxfeval = -1,
+    maxtime = T(-1)
 ) where {T<:AbstractFloat}
     OptSummary(
         initial,
@@ -59,7 +63,8 @@ function OptSummary(
         xtol_rel,
         zero(initial),
         initial_step,
-        -1,
+        maxfeval,
+        maxtime,
         copy(initial),
         T(Inf),
         -1,
@@ -70,7 +75,7 @@ function OptSummary(
     )
 end
 
-function Base.show(io::IO, s::OptSummary)
+function Base.show(io::IO, ::MIME"text/plain", s::OptSummary)
     println(io, "Initial parameter vector: ", s.initial)
     println(io, "Initial objective value:  ", s.finitial)
     println(io)
@@ -82,12 +87,15 @@ function Base.show(io::IO, s::OptSummary)
     println(io, "xtol_abs:                 ", s.xtol_abs)
     println(io, "initial_step:             ", s.initial_step)
     println(io, "maxfeval:                 ", s.maxfeval)
+    println(io, "maxtime:                  ", s.maxtime)
     println(io)
     println(io, "Function evaluations:     ", s.feval)
     println(io, "Final parameter vector:   ", s.final)
     println(io, "Final objective value:    ", s.fmin)
     println(io, "Return code:              ", s.returnvalue)
 end
+
+Base.show(io::IO, s::OptSummary) = Base.show(io, MIME"text/plain"(), s)
 
 function NLopt.Opt(optsum::OptSummary)
     lb = optsum.lowerbd
@@ -101,10 +109,24 @@ function NLopt.Opt(optsum::OptSummary)
     end
     NLopt.lower_bounds!(opt, lb)
     NLopt.maxeval!(opt, optsum.maxfeval)
+    NLopt.maxtime!(opt, optsum.maxtime)
     if isempty(optsum.initial_step)
         optsum.initial_step = NLopt.initial_step(opt, optsum.initial, similar(lb))
     else
         NLopt.initial_step!(opt, optsum.initial_step)
     end
     opt
+end
+
+StructTypes.StructType(::Type{<:OptSummary}) = StructTypes.Mutable()
+StructTypes.excludes(::Type{<:OptSummary}) = (:lowerbd, )
+
+const _NLOPT_FAILURE_MODES = [:FAILURE, :INVALID_ARGS, :OUT_OF_MEMORY,
+                              :FORCED_STOP, :MAXEVAL_REACHED, :MAXTIME_REACHED]
+
+function _check_nlopt_return(ret)
+    ret == :ROUNDOFF_LIMITED && @warn("NLopt was roundoff limited")
+    if ret ∈ _NLOPT_FAILURE_MODES
+        @warn("NLopt optimization failure: $ret")
+    end
 end

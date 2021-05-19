@@ -28,7 +28,7 @@ function simulate!(
     θ = T[],
 ) where {T}
     simulate!(rng, m.y, m; β=β, σ=σ, θ=θ)
-    m
+    unfit!(m)
 end
 
 function simulate!(
@@ -40,12 +40,16 @@ function simulate!(
 ) where {T}
     # note that these m.resp.y and m.LMM.y will later be sychronized in (re)fit!()
     # but for now we use them as distinct scratch buffers to avoid allocations
-    η = fill!(m.LMM.y, zero(T))
+
+    # the noise term is actually in the GLM and not the LMM part so no noise
+    # at the LMM level
+    η = fill!(copy(m.LMM.y), zero(T))  # ensure that η is a vector - needed for GLM.updateμ! below
+                                       # A better approach is to change the signature for updateμ!
     y = m.resp.y
 
     _simulate!(rng, y, η, m.resp, m, m.X, β, σ, θ, m.resp.wts)
 
-    m
+    unfit!(m)
 end
 
 """

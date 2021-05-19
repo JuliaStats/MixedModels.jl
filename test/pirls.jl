@@ -1,10 +1,12 @@
 using DataFrames
+using Distributions
 using MixedModels
 using PooledArrays
 using StableRNGs
 using Tables
 using Test
 
+using GLM: Link
 using MixedModels: dataset
 
 include("modelcache.jl")
@@ -32,6 +34,8 @@ include("modelcache.jl")
     @test sdest(gm0) === missing
     @test varest(gm0) === missing
     @test gm0.σ === missing
+    @test Distribution(gm0) == Distribution(gm0.resp)
+    @test Link(gm0) == Link(gm0.resp)
 
     gm1 = fit(MixedModel, only(gfms[:contra]), contra, Bernoulli());
     @test isapprox(gm1.θ, [0.573054], atol=0.005)
@@ -61,7 +65,6 @@ include("modelcache.jl")
     #@test isapprox(sum(gm1.resp.devresid), 2237.349, atol=0.1)
     show(IOBuffer(), gm1)
     show(IOBuffer(), BlockDescription(gm0))
-
 end
 
 @testset "cbpp" begin
@@ -162,4 +165,16 @@ end
     # @test sdest(gm) == dispersion(gm, false) == gm.σ
     # @test varest(gm) == dispersion(gm, true)
 
+end
+
+@testset "mmec" begin
+    # Data on "Malignant melanoma in the European community" from the mlmRev package for R
+    # The offset of log.(expected) is to examine the ratio of observed to expected, based on population
+    mmec = dataset(:mmec)
+    mmform = @formula(deaths ~ 1 + uvb + (1|region))
+    gm5 = fit(MixedModel, mmform, mmec, Poisson(); offset=log.(mmec.expected), nAGQ=11)
+    @test isapprox(deviance(gm5), 655.2533533016059, atol=5.e-3)
+    @test isapprox(first(gm5.θ), 0.4121684550775567, atol=1.e-3)
+    @test isapprox(first(gm5.β), -0.13860166843315044, atol=1.e-3)
+    @test isapprox(last(gm5.β), -0.034414458364713504, atol=1.e-3)
 end

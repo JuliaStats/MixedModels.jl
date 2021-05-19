@@ -111,5 +111,5 @@ function LinearAlgebra.mul!(
     α,
     β
     ) where {T,P,Ti}
-    mul!(C.cscmat, A, adjB.parent.cscmat', α, β)
+    mul!(C.cscmat, A, adjoint(adjB.parent.cscmat), α, β)
 end

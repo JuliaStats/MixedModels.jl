@@ -1,14 +1,18 @@
+
+abstract type MixedModelFitCollection{T<:AbstractFloat} end # model with fixed and random effects
+
+
 """
-    MixedModelBootstrap{T<:AbstractFloat}
+    MixedModelBootstrap{T<:AbstractFloat} <: MixedModelFitCollection{T}
 
 Object returned by `parametericbootstrap` with fields
-- `bstr`: the parameter estimates from the bootstrap replicates as a vector of named tuples.
+- `fits`: the parameter estimates from the bootstrap replicates as a vector of named tuples.
 - `λ`: `Vector{LowerTriangular{T,Matrix{T}}}` containing copies of the λ field from `ReMat` model terms
 - `inds`: `Vector{Vector{Int}}` containing copies of the `inds` field from `ReMat` model terms
 - `lowerbd`: `Vector{T}` containing the vector of lower bounds (corresponds to the identically named field of [`OptSummary`](@ref))
 - `fcnames`: NamedTuple whose keys are the grouping factor names and whose values are the column names
 
-The schema of `bstr` is, by default,
+The schema of `fits` is, by default,
 ```
 Tables.Schema:
  :objective  T
@@ -23,8 +27,8 @@ Characteristics of the bootstrap replicates can be extracted as properties.  The
 `σρs` properties unravel the `σ` and `θ` estimates into estimates of the standard deviations
 and correlations of the random-effects terms.
 """
-struct MixedModelBootstrap{T<:AbstractFloat}
-    bstr::Vector
+struct MixedModelBootstrap{T<:AbstractFloat} <: MixedModelFitCollection{T}
+    fits::Vector
     λ::Vector{LowerTriangular{T,Matrix{T}}}
     inds::Vector{Vector{Int}}
     lowerbd::Vector{T}
@@ -35,7 +39,7 @@ end
     parametricbootstrap(rng::AbstractRNG, nsamp::Integer, m::MixedModel;
         β = coef(m), σ = m.σ, θ = m.θ, use_threads=false)
     parametricbootstrap(nsamp::Integer, m::MixedModel;
-        β = coef(m), σ = m.σ, θ = m.θ, use_threads=false)
+        β = coef(m), σ = m.σ, θ = m.θ, use_threads=false, hide_progress=false)
 
 Perform `nsamp` parametric bootstrap replication fits of `m`, returning a `MixedModelBootstrap`.
 
@@ -47,12 +51,19 @@ The default random number generator is `Random.GLOBAL_RNG`.
 `σ` is only valid for `LinearMixedModel` and `GeneralizedLinearMixedModel` for
 families with a dispersion parameter.
 `use_threads` determines whether or not to use thread-based parallelism.
+`hide_progress` can be used to disable the progress bar. Note that the progress
+bar is automatically disabled for non-interactive (i.e. logging) contexts.
 
-Note that `use_threads=true` may not offer a performance boost and may even
-decrease peformance if multithreaded linear algebra (BLAS) routines are available.
-In this case, threads at the level of the linear algebra may already occupy all
-processors/processor cores. There are plans to provide better support in coordinating
-Julia- and BLAS-level threads in the future.
+!!! note
+    Note that `use_threads=true` may not offer a performance boost and may even
+    decrease peformance if multithreaded linear algebra (BLAS) routines are available.
+    In this case, threads at the level of the linear algebra may already occupy all
+    processors/processor cores. There are plans to provide better support in coordinating
+    Julia- and BLAS-level threads in the future.
+
+!!! warning
+    The PRNG shared between threads is locked using `Threads.SpinLock`, which
+    should not be used recursively. Do not wrap `parametricbootstrap` in an outer `SpinLock`.
 """
 function parametricbootstrap(
     rng::AbstractRNG,
@@ -62,6 +73,7 @@ function parametricbootstrap(
     σ=morig.σ,
     θ::AbstractVector=morig.θ,
     use_threads::Bool=false,
+    hide_progress::Bool=false
 ) where {T}
     if σ !== missing
         σ = T(σ)
@@ -85,11 +97,12 @@ function parametricbootstrap(
     # we use locks to guarantee thread-safety, but there might be better ways to do this for some RNGs
     # see https://docs.julialang.org/en/v1.3/manual/parallel-computing/#Side-effects-and-mutable-function-arguments-1
     # see https://docs.julialang.org/en/v1/stdlib/Future/index.html
-    rnglock = ReentrantLock()
-    samp = replicate(n, use_threads=use_threads) do
-        mod = m_threads[Threads.threadid()]
-        local βsc = βsc_threads[Threads.threadid()]
-        local θsc = θsc_threads[Threads.threadid()]
+    rnglock = Threads.SpinLock()
+    samp = replicate(n; use_threads=use_threads, hide_progress=hide_progress) do
+        tidx = use_threads ? Threads.threadid() : 1
+        mod = m_threads[tidx]
+        local βsc = βsc_threads[tidx]
+        local θsc = θsc_threads[tidx]
         lock(rnglock)
         mod = simulate!(rng, mod, β = β, σ = σ, θ = θ)
         unlock(rnglock)
@@ -106,7 +119,7 @@ function parametricbootstrap(
         samp,
         deepcopy(morig.λ),
         getfield.(morig.reterms, :inds),
-        copy(morig.optsum.lowerbd),
+        morig.optsum.lowerbd[1:length(first(samp).θ)],
         NamedTuple{Symbol.(fnames(morig))}(map(t -> (t.cnames...,), morig.reterms)),
     )
 end
@@ -123,15 +136,15 @@ function parametricbootstrap(
 end
 
 """
-    allpars(bsamp::MixedModelBootstrap)
+    allpars(bsamp::MixedModelFitCollection)
 
-Return a tidy (row)table with the parameter estimates spread into columns
+Return a tidy (column)table with the parameter estimates spread into columns
 of `iter`, `type`, `group`, `name` and `value`.
 """
-function allpars(bsamp::MixedModelBootstrap{T}) where {T}
-    bstr, λ, fcnames = bsamp.bstr, bsamp.λ, bsamp.fcnames
-    npars = 2 + length(first(bstr).β) + sum(map(k -> (k * (k + 1)) >> 1, size.(bsamp.λ, 2)))
-    nresrow = length(bstr) * npars
+function allpars(bsamp::MixedModelFitCollection{T}) where {T}
+    fits, λ, fcnames = bsamp.fits, bsamp.λ, bsamp.fcnames
+    npars = 2 + length(first(fits).β) + sum(map(k -> (k * (k + 1)) >> 1, size.(bsamp.λ, 2)))
+    nresrow = length(fits) * npars
     cols = (
         sizehint!(Int[], nresrow),
         sizehint!(String[], nresrow),
@@ -140,7 +153,7 @@ function allpars(bsamp::MixedModelBootstrap{T}) where {T}
         sizehint!(T[], nresrow),
     )
     nrmdr = Vector{T}[]  # normalized rows of λ
-    for (i, r) in enumerate(bstr)
+    for (i, r) in enumerate(fits)
         σ = coalesce(r.σ, one(T))
         for (nm, v) in pairs(r.β)
             push!.(cols, (i, "β", missing, String(nm), v))
@@ -175,9 +188,9 @@ function allpars(bsamp::MixedModelBootstrap{T}) where {T}
     )
 end
 
-function Base.getproperty(bsamp::MixedModelBootstrap, s::Symbol)
+function Base.getproperty(bsamp::MixedModelFitCollection, s::Symbol)
     if s ∈ [:objective, :σ, :θ, :se]
-        getproperty.(getfield(bsamp, :bstr), s)
+        getproperty.(getfield(bsamp, :fits), s)
     elseif s == :β
         tidyβ(bsamp)
     elseif s == :coefpvalues
@@ -192,7 +205,7 @@ function Base.getproperty(bsamp::MixedModelBootstrap, s::Symbol)
 end
 
 """
-    issingular(bsamp::MixedModelBootstrap)
+    issingular(bsamp::MixedModelFitCollection)
 
 Test each bootstrap sample for singularity of the corresponding fit.
 
@@ -200,19 +213,19 @@ Equality comparisons are used b/c small non-negative θ values are replaced by 0
 
 See also [`issingular(::MixedModel)`](@ref).
 """
-issingular(bsamp::MixedModelBootstrap) = map(θ -> any(θ .== bsamp.lowerbd), bsamp.θ)
+issingular(bsamp::MixedModelFitCollection) = map(θ -> any(θ .== bsamp.lowerbd), bsamp.θ)
 
-function Base.propertynames(bsamp::MixedModelBootstrap)
-    [:allpars, :objective, :σ, :β, :se, :coefpvalues, :θ, :σs, :λ, :inds, :lowerbd, :bstr, :fcnames]
+function Base.propertynames(bsamp::MixedModelFitCollection)
+    [:allpars, :objective, :σ, :β, :se, :coefpvalues, :θ, :σs, :λ, :inds, :lowerbd, :fits, :fcnames]
 end
 
 """
-    setθ!(bsamp::MixedModelsBootstrap, i::Integer)
+    setθ!(bsamp::MixedModelFitCollection, i::Integer)
 
-Install the values of the i'th θ value of `bsamp.bstr` in `bsamp.λ`
+Install the values of the i'th θ value of `bsamp.fits` in `bsamp.λ`
 """
-function setθ!(bsamp::MixedModelBootstrap, i::Integer)
-    θ = bsamp.bstr[i].θ
+function setθ!(bsamp::MixedModelFitCollection, i::Integer)
+    θ = bsamp.fits[i].θ
     offset = 0
     for (λ, inds) in zip(bsamp.λ, bsamp.inds)
         λdat = λ.data
@@ -246,18 +259,60 @@ function shortestcovint(v, level = 0.95)
 end
 
 """
-    tidyβ(bsamp::MixedModelBootstrap)
+    shortestcovint(bsamp::MixedModelBootstrap, level = 0.95)
+
+Return the shortest interval containing `level` proportion for each parameter from `bsamp.allpars`
+"""
+function shortestcovint(bsamp::MixedModelBootstrap{T}, level = 0.95) where {T}
+    allpars = bsamp.allpars
+    pars = unique(zip(allpars.type, allpars.group, allpars.names))
+
+    colnms = (:type, :group, :names, :lower, :upper)
+    coltypes = Tuple{String, Union{Missing,String}, Union{Missing,String}, T, T}
+    # not specifying the full eltype (NamedTuple{colnms,coltypes}) leads to prettier printing
+    result = NamedTuple{colnms}[]
+    sizehint!(result, length(pars))
+
+
+    for (t, g, n) in pars
+        gidx = if ismissing(g)
+            ismissing.(allpars.group)
+        else
+            .!ismissing.(allpars.group) .& (allpars.group .== g)
+        end
+
+        nidx = if ismissing(n)
+            ismissing.(allpars.names)
+        else
+            .!ismissing.(allpars.names) .& (allpars.names .== n)
+        end
+
+        tidx = allpars.type .== t # no missings allowed here
+
+        idx = tidx .& gidx .& nidx
+
+        vv = view(allpars.value, idx)
+
+        lower, upper = shortestcovint(vv, level)
+        push!(result, (; type=t, group=g, names=n, lower=lower, upper=upper))
+    end
+
+    return result
+end
+
+"""
+    tidyβ(bsamp::MixedModelFitCollection)
 Return a tidy (row)table with the parameter estimates spread into columns
 of `iter`, `coefname` and `β`
 """
-function tidyβ(bsamp::MixedModelBootstrap{T}) where {T}
-    bstr = bsamp.bstr
+function tidyβ(bsamp::MixedModelFitCollection{T}) where {T}
+    fits = bsamp.fits
     colnms = (:iter, :coefname, :β)
     result = sizehint!(
         NamedTuple{colnms,Tuple{Int,Symbol,T}}[],
-        length(bstr) * length(first(bstr).β),
+        length(fits) * length(first(fits).β),
     )
-    for (i, r) in enumerate(bstr)
+    for (i, r) in enumerate(fits)
         for (k, v) in pairs(r.β)
             push!(result, NamedTuple{colnms}((i, k, v)))
         end
@@ -266,18 +321,18 @@ function tidyβ(bsamp::MixedModelBootstrap{T}) where {T}
 end
 
 """
-    coefpvalues(bsamp::MixedModelBootstrap)
+    coefpvalues(bsamp::MixedModelFitCollection)
 
 Return a rowtable with columns `(:iter, :coefname, :β, :se, :z, :p)`
 """
-function coefpvalues(bsamp::MixedModelBootstrap{T}) where {T}
-    bstr = bsamp.bstr
+function coefpvalues(bsamp::MixedModelFitCollection{T}) where {T}
+    fits = bsamp.fits
     colnms = (:iter, :coefname, :β, :se, :z, :p)
     result = sizehint!(
         NamedTuple{colnms,Tuple{Int,Symbol,T,T,T,T}}[],
-        length(bstr) * length(first(bstr).β),
+        length(fits) * length(first(fits).β),
     )
-    for (i, r) in enumerate(bstr)
+    for (i, r) in enumerate(fits)
         for (p, s) in zip(pairs(r.β), r.se)
             β = last(p)
             z = β / s
@@ -289,20 +344,20 @@ function coefpvalues(bsamp::MixedModelBootstrap{T}) where {T}
 end
 
 """
-    tidyσs(bsamp::MixedModelBootstrap)
+    tidyσs(bsamp::MixedModelFitCollection)
 Return a tidy (row)table with the estimates of the variance components (on the standard deviation scale) spread into columns
 of `iter`, `group`, `column` and `σ`.
 """
-function tidyσs(bsamp::MixedModelBootstrap{T}) where {T}
-    bstr = bsamp.bstr
+function tidyσs(bsamp::MixedModelFitCollection{T}) where {T}
+    fits = bsamp.fits
     fcnames = bsamp.fcnames
     λ = bsamp.λ
     colnms = (:iter, :group, :column, :σ)
     result = sizehint!(
         NamedTuple{colnms,Tuple{Int,Symbol,Symbol,T}}[],
-        length(bstr) * sum(length, fcnames),
+        length(fits) * sum(length, fcnames),
     )
-    for (iter, r) in enumerate(bstr)
+    for (iter, r) in enumerate(fits)
         setθ!(bsamp, iter)    # install r.θ in λ
         σ = coalesce(r.σ, one(T))
         for (grp, ll) in zip(keys(fcnames), λ)

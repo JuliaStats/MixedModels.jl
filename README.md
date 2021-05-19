@@ -13,8 +13,8 @@
 [docs-stable-img]: https://img.shields.io/badge/docs-stable-blue.svg
 [docs-stable-url]: https://juliastats.github.io/MixedModels.jl/stable
 
-[codecov-img]: https://codecov.io/github/JuliaStats/MixedModels.jl/badge.svg?branch=master
-[codecov-url]: https://codecov.io/github/JuliaStats/MixedModels.jl?branch=master
+[codecov-img]: https://codecov.io/github/JuliaStats/MixedModels.jl/badge.svg?branch=main
+[codecov-url]: https://codecov.io/github/JuliaStats/MixedModels.jl?branch=main
 
 [T1-img]: https://github.com/JuliaStats/MixedModels.jl/workflows/Tier1/badge.svg
 [T1-url]: https://github.com/JuliaStats/MixedModels.jl/actions?workflow=Tier1
@@ -49,9 +49,9 @@ Typical distribution forms are _Bernoulli_ for binary data or _Poisson_ for coun
 
 |OS|OS Version|Arch|Julia|Tier|
 |:-:|:-:|:-:|:-:|:-:|
-|Linux|Ubuntu 18.04|x64|v1.4, 1.5|1|
-|macOS|Catalina 10.15|x64|v1.4, 1.5|1|
-|Windows|Server 2019|x64|v1.4, 1.5 |1|
+|Linux|Ubuntu 18.04|x64|v1.4, 1.5, 1.6|1|
+|macOS|Catalina 10.15|x64|v1.4, 1.5, 1.6|1|
+|Windows|Server 2019|x64|v1.4, 1.5, 1.6|1|
 
 Upon release of the next Julia LTS, Tier 1 will become Tier 2 and Julia LTS will become Tier 1.
 
@@ -105,7 +105,7 @@ julia> propertynames(bs)
  :λ
  :inds
  :lowerbd
- :bstr
+ :fits
  :fcnames
 
 julia> bs.coefpvalues # returns a row table

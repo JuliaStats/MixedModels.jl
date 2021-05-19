@@ -36,7 +36,7 @@ In addition to the fieldnames, the following names are also accessible through t
 - `y`: response vector
 
 """
-struct GeneralizedLinearMixedModel{T<:AbstractFloat} <: MixedModel{T}
+struct GeneralizedLinearMixedModel{T<:AbstractFloat, D<:Distribution} <: MixedModel{T}
     LMM::LinearMixedModel{T}
     β::Vector{T}
     β₀::Vector{T}
@@ -54,7 +54,7 @@ struct GeneralizedLinearMixedModel{T<:AbstractFloat} <: MixedModel{T}
 end
 
 function StatsBase.coef(m::GeneralizedLinearMixedModel{T}) where {T}
-    piv = first(m.LMM.feterms).piv
+    piv = m.LMM.feterm.piv
     invpermute!(copyto!(fill(T(-0.0), length(piv)), m.β), piv)
 end
 
@@ -87,9 +87,9 @@ function StatsBase.deviance(m::GeneralizedLinearMixedModel{T}, nAGQ = 1) where {
     u = vec(first(m.u))
     u₀ = vec(first(m.u₀))
     copyto!(u₀, u)
-    ra = RaggedArray(m.resp.devresid, first(m.LMM.allterms).refs)
+    ra = RaggedArray(m.resp.devresid, first(m.LMM.reterms).refs)
     devc0 = sum!(map!(abs2, m.devc0, u), ra)  # the deviance components at z = 0
-    sd = map!(inv, m.sd, getblock(m.LMM.L, 1, 1).diag)
+    sd = map!(inv, m.sd, first(m.LMM.L).diag)
     mult = fill!(m.mult, 0)
     devc = m.devc
     for (z, w) in GHnorm(nAGQ)
@@ -120,7 +120,18 @@ end
 objective(m::GeneralizedLinearMixedModel) = deviance(m)
 
 """
-deviance!(m::GeneralizedLinearMixedModel, nAGQ=1)
+    GLM.wrkresp!(v::AbstractVector{T}, resp::GLM.GlmResp{AbstractVector{T}})
+
+A copy of a method from GLM that generalizes the types in the signature
+"""
+function GLM.wrkresp!(v::AbstractVector{T}, r::GLM.GlmResp{Vector{T}}) where {T<:AbstractFloat}
+    v .= r.eta .+ r.wrkresid
+    isempty(r.offset) && return v
+    v .-= r.offset
+end
+
+"""
+    deviance!(m::GeneralizedLinearMixedModel, nAGQ=1)
 
 Update `m.η`, `m.μ`, etc., install the working response and working weights in
 `m.LMM`, update `m.LMM.A` and `m.LMM.R`, then evaluate the [`deviance`](@ref).
@@ -145,6 +156,8 @@ function GLM.dispersion(m::GeneralizedLinearMixedModel{T}, sqr::Bool = false) wh
 end
 
 GLM.dispersion_parameter(m::GeneralizedLinearMixedModel) = dispersion_parameter(m.resp.d)
+
+Distributions.Distribution(m::GeneralizedLinearMixedModel{T,D}) where {T,D} = D
 
 function StatsBase.dof(m::GeneralizedLinearMixedModel)::Int
     length(m.β) + length(m.θ) + GLM.dispersion_parameter(m.resp.d)
@@ -294,10 +307,7 @@ function fit!(
     optsum.final = xmin
     optsum.fmin = fmin
     optsum.returnvalue = ret
-    ret == :ROUNDOFF_LIMITED && @warn("NLopt was roundoff limited")
-    if ret ∈ [:FAILURE, :INVALID_ARGS, :OUT_OF_MEMORY, :FORCED_STOP, :MAXEVAL_REACHED]
-        @warn("NLopt optimization failure: $ret")
-    end
+    _check_nlopt_return(ret)
     m
 end
 
@@ -359,9 +369,9 @@ function GeneralizedLinearMixedModel(
     if isempty(wts)
         LMM = LinearMixedModel(
             LMM.formula,
-            LMM.allterms,
             LMM.reterms,
-            LMM.feterms,
+            LMM.Xymat,
+            LMM.feterm,
             fill!(similar(y), 1),
             LMM.parmap,
             LMM.dims,
@@ -371,15 +381,16 @@ function GeneralizedLinearMixedModel(
         )
     end
     updateL!(LMM)
-        # fit a glm to the fixed-effects only - awkward syntax is to by-pass a test
-    gl = isempty(wts) ? glm(LMM.X, y, d, l) : glm(LMM.X, y, d, l, wts = wts)
+        # fit a glm to the fixed-effects only
+    T = eltype(LMM.Xymat)
+    gl = glm(LMM.X, y, d, l, wts=convert(Vector{T}, wts), offset=convert(Vector{T}, offset))
     β = coef(gl)
     u = [fill(zero(eltype(y)), vsize(t), nlevs(t)) for t in LMM.reterms]
         # vv is a template vector used to initialize fields for AGQ
         # it is empty unless there is a single random-effects term
     vv = length(u) == 1 ? vec(first(u)) : similar(y, 0)
 
-    res = GeneralizedLinearMixedModel(
+    res = GeneralizedLinearMixedModel{T, typeof(d)}(
         LMM,
         β,
         copy(β),
@@ -414,9 +425,9 @@ function Base.getproperty(m::GeneralizedLinearMixedModel, s::Symbol)
         σs(m)
     elseif s == :σρs
         σρs(m)
-    elseif s ∈ (:A, :L, :optsum, :allterms, :reterms, :feterms, :formula)
+    elseif s ∈ (:A, :L, :optsum, :reterms, :Xymat, :feterm, :formula)
         getfield(m.LMM, s)
-    elseif s ∈ (:λ, :lowerbd, :corr, :PCA, :rePCA, :X,)
+    elseif s ∈ (:dims, :λ, :lowerbd, :corr, :PCA, :rePCA, :X,)
         getproperty(m.LMM, s)
     elseif s == :y
         m.resp.y
@@ -430,6 +441,8 @@ end
 # which returns a reference to the same array
 getθ(m::GeneralizedLinearMixedModel)  = copy(m.θ)
 getθ!(v::AbstractVector{T}, m::GeneralizedLinearMixedModel{T}) where {T} = copyto!(v, m.θ)
+
+GLM.Link(m::GeneralizedLinearMixedModel) = GLM.Link(m.resp)
 
 function StatsBase.loglikelihood(m::GeneralizedLinearMixedModel{T}) where {T}
     accum = zero(T)
@@ -506,7 +519,12 @@ function pirls!(
     for j in eachindex(u)         # start from u all zeros
         copyto!(u₀[j], fill!(u[j], 0))
     end
-    varyβ && copyto!(β₀, β)
+    if varyβ
+        copyto!(β₀, β)
+        Llast = last(lm.L)
+        pp1 = size(Llast, 1)
+        Ltru = view(Llast, pp1, 1:(pp1 - 1)) # name read as L'u
+    end
     obj₀ = deviance!(m) * 1.0001
     if verbose
         print("varyβ = ", varyβ, ", obj₀ = ", obj₀)
@@ -517,7 +535,7 @@ function pirls!(
         println()
     end
     for iter = 1:maxiter
-        varyβ && ldiv!(adjoint(feL(m)), copyto!(β, lm.L.blocks[end, end-1]))
+        varyβ && ldiv!(adjoint(feL(m)), copyto!(β, Ltru))
         ranef!(u, m.LMM, β, true) # solve for new values of u
         obj = deviance!(m)        # update GLM vecs and evaluate Laplace approx
         verbose && println(lpad(iter, 4), ": ", obj)
@@ -549,7 +567,7 @@ end
 
 ranef(m::GeneralizedLinearMixedModel; uscale::Bool=false) = ranef(m.LMM, uscale=uscale)
 
-LinearAlgebra.rank(m::GeneralizedLinearMixedModel) = first(m.LMM.feterms).rank
+LinearAlgebra.rank(m::GeneralizedLinearMixedModel) = m.LMM.feterm.rank
 
 """
     refit!(m::GeneralizedLinearMixedModel[, y::Vector];
@@ -567,21 +585,7 @@ function refit!(m::GeneralizedLinearMixedModel{T};
                 fast::Bool = (length(m.θ) == length(m.optsum.final)),
                 nAGQ::Integer = m.optsum.nAGQ)  where T
 
-    deviance!(m, 1)
-    reevaluateAend!(m.LMM)
-
-    reterms = m.LMM.reterms
-    optsum = m.LMM.optsum
-    # we need to reset optsum so that it
-    # plays nice with the modifications fit!() does
-    optsum.lowerbd = mapfoldl(lowerbd, vcat, reterms)
-    optsum.initial = mapfoldl(getθ, vcat, reterms)
-    optsum.final = copy(optsum.initial)
-    optsum.xtol_abs = fill!(copy(optsum.initial), 1.0e-10)
-    optsum.initial_step = T[]
-    optsum.feval = -1
-
-    fit!(m; fast=fast, nAGQ=nAGQ)
+    fit!(unfit!(m); fast=fast, nAGQ=nAGQ)
 end
 
 function refit!(m::GeneralizedLinearMixedModel{T}, y;
@@ -642,7 +646,7 @@ For Gaussian models, this parameter is often called σ.
 """
 sdest(m::GeneralizedLinearMixedModel{T}) where {T} =  dispersion_parameter(m) ? dispersion(m, false) : missing
 
-function Base.show(io::IO, m::GeneralizedLinearMixedModel)
+function Base.show(io::IO, ::MIME"text/plain", m::GeneralizedLinearMixedModel{T,D}) where {T,D}
     if m.optsum.feval < 0
         @warn("Model has not been fit")
         return nothing
@@ -650,8 +654,8 @@ function Base.show(io::IO, m::GeneralizedLinearMixedModel)
     nAGQ = m.LMM.optsum.nAGQ
     println(io, "Generalized Linear Mixed Model fit by maximum likelihood (nAGQ = $nAGQ)")
     println(io, "  ", m.LMM.formula)
-    println(io, "  Distribution: ", Distribution(m.resp))
-    println(io, "  Link: ", GLM.Link(m.resp), "\n")
+    println(io, "  Distribution: ", D)
+    println(io, "  Link: ", Link(m), "\n")
     println(io)
     nums = Ryu.writefixed.([loglikelihood(m), deviance(m), aic(m), aicc(m), bic(m)], 4)
     fieldwd = max(maximum(textwidth.(nums)) + 1, 11)
@@ -672,6 +676,8 @@ function Base.show(io::IO, m::GeneralizedLinearMixedModel)
     show(io, coeftable(m))
 end
 
+Base.show(io::IO,  m::GeneralizedLinearMixedModel) = show(io, MIME"text/plain"(), m)
+
 function stderror!(v::AbstractVector{T}, m::GeneralizedLinearMixedModel{T}) where {T}
     # initialize to appropriate NaN for rank-deficient case
     fill!(v, zero(T) / zero(T))
@@ -687,6 +693,24 @@ function stderror!(v::AbstractVector{T}, m::GeneralizedLinearMixedModel{T}) wher
     end
 
     v
+end
+
+function unfit!(model::GeneralizedLinearMixedModel{T}) where {T}
+    deviance!(model, 1)
+    reevaluateAend!(model.LMM)
+
+    reterms = model.LMM.reterms
+    optsum = model.LMM.optsum
+    # we need to reset optsum so that it
+    # plays nice with the modifications fit!() does
+    optsum.lowerbd = mapfoldl(lowerbd, vcat, reterms)
+    optsum.initial = mapfoldl(getθ, vcat, reterms)
+    optsum.final = copy(optsum.initial)
+    optsum.xtol_abs = fill!(copy(optsum.initial), 1.0e-10)
+    optsum.initial_step = T[]
+    optsum.feval = -1
+
+    return model
 end
 
 """

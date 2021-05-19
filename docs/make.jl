@@ -14,6 +14,7 @@ makedocs(
         "prediction.md",
         "bootstrap.md",
         "rankdeficiency.md",
+        "mime.md",
         # "SimpleLMM.md",
         # "MultipleTerms.md",
         # "SingularCovariance.md",

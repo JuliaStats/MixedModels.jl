@@ -4,8 +4,9 @@ using MixedModels: dataset
 const SUITE = BenchmarkGroup()
 
 const global contrasts = Dict(
-    :mrk17_exp1 => merge(Dict(n => HelmertCoding() for n in (:F, :P, :Q, :lQ, :lT)),
-     Dict(n => Grouping() for n in (:item, :subj))),
+    :mrk17_exp1 => merge(Dict(n => HelmertCoding() for n in (:F, :P, :Q, :lQ, :lT)), Dict(n => Grouping() for n in (:item, :subj))),
+    :kb07 => merge(Dict(n => HelmertCoding() for n in (:spkr, :prec, :load)), Dict(n => Grouping() for n in (:item, :subj))),
+    :insteval => Dict(n => Grouping() for n in (:s, :d)),
 )
 const global fms = Dict(
     :dyestuff => [
