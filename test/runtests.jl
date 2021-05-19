@@ -13,7 +13,6 @@ else
     end
 end
 
-include("predict.jl")
 include("utilities.jl")
 include("pivot.jl")
 include("UniformBlockDiagonal.jl")
@@ -30,3 +29,4 @@ include("grouping.jl")
 include("bootstrap.jl")
 include("mime.jl")
 include("optsummary.jl")
+include("predict.jl")
