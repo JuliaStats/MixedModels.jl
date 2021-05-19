@@ -94,7 +94,7 @@ vector is generated as `randn(rng, size(M, 2))`
 """
 function unscaledre! end
 
-function unscaledre!(y::AbstractVector{T}, A::ReMat{T,1}, b::AbstractVector{T}) where {T}
+function unscaledre!(y::AbstractVector{<:Union{T, Missing}}, A::ReMat{T,1}, b::AbstractVector{<:Union{T, Missing}}) where {T}
     m, n = size(A)
     length(y) == m && length(b) == n || throw(DimensionMismatch(""))
     z = A.z
@@ -104,14 +104,13 @@ function unscaledre!(y::AbstractVector{T}, A::ReMat{T,1}, b::AbstractVector{T}) 
     y
 end
 
-unscaledre!(y::AbstractVector{T}, A::ReMat{T,1}, B::AbstractMatrix{T}) where {T} =
+unscaledre!(y::AbstractVector{<:Union{T, Missing}}, A::ReMat{T,1}, B::AbstractMatrix{<:Union{T, Missing}}) where {T} =
     unscaledre!(y, A, vec(B))
 
 # the compiler will actually create distinct methods for each of the types in
 # the outer Union
-function unscaledre!(y::AbstractVector{T}, A::ReMat{T,S},
-                     b::Union{AbstractMatrix{T},
-                              AbstractMatrix{Union{T, Missing}} }) where {T,S}
+function unscaledre!(y::AbstractVector{<:Union{T, Missing}}, A::ReMat{T,S},
+                     b::AbstractMatrix{<:Union{T, Missing}}) where {T,S}
     Z = A.z
     k, n = size(Z)
     l = nlevs(A)

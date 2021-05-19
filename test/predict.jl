@@ -16,8 +16,7 @@ include("modelcache.jl")
 end
 
 @testset "predict" begin
-   @testset "LMM" begin
-        m = last(models(:sleepstudy))
+   @testset "LMM" for m in models(:sleepstudy)[[begin,end]]
         # these currently use approximate equality
         # because of floating point, but realistically
         # this should be exactly equal in most cases
@@ -28,10 +27,8 @@ end
         slp = DataFrame(dataset(:sleepstudy))
 
         @test predict(m, slp; new_re_levels=:error) ≈ fitted(m)
-        # @test predict(m, slp; new_re_levels=:population) ≈ fitted(m)
-        # @test predict(m, slp; new_re_levels=:missing) ≈ fitted(m)
-        # @test predict(m, slp; new_re_levels=:simulate) ≈ fitted(m)
-
+        @test predict(m, slp; new_re_levels=:population) ≈ fitted(m)
+        @test predict(m, slp; new_re_levels=:missing) ≈ fitted(m)
     end
 
     @testset "GLMM" begin

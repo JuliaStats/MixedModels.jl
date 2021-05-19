@@ -31,7 +31,7 @@ difference between these terms, then you probably want `type=:response`.
     can accomodate new values of the grouping variable(s), but the matrix methods
     cannot.
 """
-function StatsBase.predict!(y::AbstractVector{T}, m::LinearMixedModel{T}, newX::AbstractMatrix{T}=m.X;
+function StatsBase.predict!(y::AbstractVector{<:Union{T, Missing}}, m::LinearMixedModel{T}, newX::AbstractMatrix{T}=m.X;
                            use_re=true) where T
     # this is called `use_re` in case we later decide to support prediction
     # with only a subset of the RE
@@ -49,7 +49,7 @@ function StatsBase.predict!(y::AbstractVector{T}, m::LinearMixedModel{T}, newX::
     y
 end
 
-function StatsBase.predict!(y::AbstractVector{T}, m::GeneralizedLinearMixedModel{T}, newX::AbstractMatrix{T}=m.X;
+function StatsBase.predict!(y::AbstractVector{<:Union{T, Missing}}, m::GeneralizedLinearMixedModel{T}, newX::AbstractMatrix{T}=m.X;
                             use_re=true, type=:response) where T
     # this is called `use_re` in case we later decide to support prediction
     # with only a subset of the RE
@@ -166,7 +166,10 @@ function StatsBase.predict(m::LinearMixedModel{T}, newdata::Tables.ColumnTable;
 
     # add a response column
     # we get type stability via constant propogation on `new_re_levels`
-    y = ones(T, length(first(newdata)))
+    y = let ytemp = ones(T, length(first(newdata)))
+        new_re_levels == :missing ? convert(Vector{Union{T, Missing}}, ytemp) : ytemp
+    end
+
     newdata = merge(newdata, NamedTuple{(m.formula.lhs.sym,)}((y,)))
 
     mnew = LinearMixedModel(m.formula, newdata)
@@ -207,16 +210,15 @@ function StatsBase.predict(m::LinearMixedModel{T}, newdata::Tables.ColumnTable;
                 oldloc = findfirst(isequal(ll), oldlevels)
                 if oldloc === nothing
                     # setting a BLUP to zero gives you the population value
-                    B[lidx] = zero(T)
+                    B[:, lidx] .= zero(T)
                 else
-                    B[lidx] = blupsold[idx][oldloc]
+                    B[:, lidx] .= @view blupsold[idx][:, oldloc]
                 end
             end
         end
     elseif new_re_levels == :missing
         # we can't quite use ranef! because we need
         # Union{T, Missing} and not just T
-        y = convert(Vector{Union{T, Missing}}, y)
         blups = Vector{Matrix{Union{T,Missing}}}(undef, length(m.reterms))
         copyto!(blups, ranef(mnew)[newreperm])
         blupsold = ranef(m)[oldreperm]
@@ -226,14 +228,15 @@ function StatsBase.predict(m::LinearMixedModel{T}, newdata::Tables.ColumnTable;
                 oldloc = findfirst(isequal(ll), oldlevels)
                 if oldloc === nothing
                     # missing is poisonous so propogates
-                    B[lidx] = missing
+                    B[:, lidx] .= missing
                 else
-                    B[lidx] = blupsold[idx][oldloc]
+                    B[:, lidx] .= @view blupsold[idx][:, oldloc]
                 end
             end
         end
     elseif new_re_levels == :simulate
         updateL!(setθ!(mnew, m.θ))
+        blups = ranef(mnew)[newreperm]
         blupsold = ranef(m)[oldreperm]
         for (idx, B) in enumerate(blups)
             oldlevels = levels(oldre[idx])
@@ -242,7 +245,7 @@ function StatsBase.predict(m::LinearMixedModel{T}, newdata::Tables.ColumnTable;
                 if oldloc === nothing
                     # keep the new value
                 else
-                    B[lidx] = blupsold[idx][oldloc]
+                    B[:, lidx] = @view blupsold[idx][:, oldloc]
                 end
             end
         end
