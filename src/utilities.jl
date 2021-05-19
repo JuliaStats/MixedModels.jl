@@ -11,7 +11,14 @@ function _abstractify_grouping(f::FormulaTerm)
     re = filter(x -> isa(x, AbstractReTerm), f.rhs)
     contr = Dict{Symbol, AbstractContrasts}()
     re = map(re) do trm
-        trm.lhs | Term(trm.rhs.sym)
+        if trm.rhs isa InteractionTerm
+            rhs = mapreduce(&, trm.rhs.terms) do tt
+                return Term(tt.sym)
+            end
+        else
+            rhs = Term(trm.rhs.sym)
+        end
+        return trm.lhs | rhs
     end
     return (f.lhs ~ sum(fe) + sum(re)), contr
 end
