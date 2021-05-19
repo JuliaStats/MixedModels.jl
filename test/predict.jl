@@ -12,7 +12,40 @@ using MixedModels: dataset
 include("modelcache.jl")
 
 @testset "simulate[!](::AbstractVector)" begin
+    @testset "LMM" begin
+        slp = DataFrame(dataset(:sleepstudy))
+        m = first(models(:sleepstudy))
+        mc = deepcopy(m)
+        fit!(simulate!(StableRNG(42), mc))
+        @test simulate(StableRNG(42), m) ≈ mc.y
+        @test simulate(StableRNG(42), m, mc.X) ≈ mc.y
+        y = similar(mc.y)
+        @test simulate!(StableRNG(42), y, m) ≈ mc.y
+        @test y ≈ mc.y
 
+        slptop = first(slp, 90)
+        @test simulate(StableRNG(42), m, slp) ≈ y
+        @test simulate(StableRNG(42), m, slptop) ≈ simulate(StableRNG(42), m, slptop; β=m.β, θ=m.θ, σ=m.σ)
+    end
+
+    @testset "GLMM" begin
+        contra = DataFrame(dataset(:contra))
+        m = fit(MixedModel, only(gfms[:contra]), contra, Bernoulli(), fast=true;
+                contrasts=Dict(:urban => EffectsCoding()))
+        mc = deepcopy(m)
+        fit!(simulate!(StableRNG(42), mc))
+        @test simulate(StableRNG(42), m) ≈ mc.y
+        @test simulate(StableRNG(42), m, mc.X) ≈ mc.y
+        y = similar(mc.y)
+        @test simulate!(StableRNG(42), y, m) ≈ mc.y
+        @test y ≈ mc.y
+
+        contratop = first(contra, 90)
+        @test simulate(StableRNG(42), m, contra) ≈ y
+        ytop = simulate(StableRNG(42), m, contratop)
+        @test ytop ≈ simulate(StableRNG(42), m, contratop; β=m.β, θ=m.θ, σ=m.σ)
+        @test length(ytop) == 90
+    end
 end
 
 @testset "predict" begin

@@ -1,4 +1,34 @@
 """
+See [`simulate!`](@ref)
+"""
+function simulate end
+
+function simulate(rng::AbstractRNG, m::MixedModel{T}, newX::AbstractMatrix = m.X;
+                  kwargs...) where {T}
+    size(newX, 1) == nobs(m) ||
+        throw(DimensionMismatch("New fixed-effect model matrix must have the same number of observations as the original."))
+    size(newX, 2) == size(m.X, 2) ||
+    throw(DimensionMismatch("New fixed-effect model matrix must have the same predictors as the original."))
+    y = zeros(T, nobs(m))
+    simulate!(rng, y, m, newX; kwargs...)
+    y
+end
+
+function simulate(m::MixedModel, newX::AbstractMatrix = m.X; kwargs...)
+    simulate(Random.GLOBAL_RNG, m, newX; kwargs...)
+end
+
+function simulate(rng::AbstractRNG, m::MixedModel{T}, newdata; kwargs...) where {T}
+    dat = Tables.columntable(newdata)
+    y = zeros(T, length(first(dat)))
+    simulate!(rng, y, m, newdata; kwargs...)
+end
+
+function simulate(m::MixedModel, newdata; kwargs...)
+    simulate(Random.GLOBAL_RNG, m, newdata; kwargs...)
+end
+
+"""
     simulate!(rng::AbstractRNG, m::MixedModel{T}; β=m.β, σ=m.σ, θ=T[])
     simulate!(m::MixedModel; β=m.β, σ=m.σ, θ=m.θ)
 
@@ -75,6 +105,202 @@ end
 
 function simulate!(m::MixedModel{T}; β = coef(m), σ = m.σ, θ = T[]) where {T}
     simulate!(Random.GLOBAL_RNG, m, β = β, σ = σ, θ = θ)
+end
+
+"""
+    simulate!([rng::AbstractRNG,] y::AbstractVector, m::MixedModel{T},
+                    newX::AbstractArray{T} = m.X;
+                    β = coef(m), σ = m.σ, θ = T[], wts=m.wts)
+    simulate!([rng::AbstractRNG,] y::AbstractVector, m::MixedModel{T},
+                    newdata;
+                    β = coef(m), σ = m.σ, θ = T[], wts=m.wts)
+    simulate([rng::AbstractRNG,] m::MixedModel{T},
+                    newX::AbstractArray{T} = m.X;
+                    β = coef(m), σ = m.σ, θ = T[], wts=m.wts)
+    simulate([rng::AbstractRNG,] m::MixedModel{T},
+                    newdata;
+                    β = coef(m), σ = m.σ, θ = T[], wts=m.wts)
+
+Simulate a new response vector, optionally overwriting a pre-allocated vector.
+
+New data can be optionally provided, either as a fixed-effects model matrix or
+in tabular format. Currently, the tabular format is the only way to specify
+different observations for the random effects than in the original model.
+
+This simulation includes sampling new values for the random effects. Thus in
+contrast to [`predict`](`@ref`), there is no distinction in between "new" and
+"old" / previously observed random-effects levels.
+
+Unlike [`predict`](`@ref`), there is no `type` parameter for [`GeneralizedLinearMixedModel`](@ref)
+because the noise term in the model and simulation is always on the response
+scale.
+
+The `wts` argument is currently ignored except for `GeneralizedLinearMixedModel`
+models with a `Binomial` distribution.
+
+!!! warning
+    Models are assumed to be full rank.
+
+!!! note
+    Note that `simulate!` methods with a `y::AbstractVector` as the first argument
+    (besides the RNG) and `simulate` methods return the simulated response. This is
+    in contrast to `simulate!` methods with a `m::MixedModel` as the first argument,
+    which modify the model's response and return the entire modified model.
+"""
+function simulate!(rng::AbstractRNG,
+                   y::AbstractVector,
+                   m::LinearMixedModel{T},
+                   newX::AbstractArray{T} = m.X;
+                   β = coef(m),
+                   σ = m.σ,
+                   θ = T[],
+                   wts = m.sqrtwts .^ 2
+               ) where {T}
+
+    length(β) == length(fixef(m)) ||
+        length(β) == length(coef(m)) ||
+            throw(ArgumentError("You must specify all (non-singular) βs"))
+
+    β = convert(Vector{T},β)
+    σ = T(σ)
+    θ = convert(Vector{T},θ)
+    isempty(θ) || setθ!(m, θ)
+
+    if length(β) ≠ length(coef(m))
+        padding = length(coef(m)) - length(β)
+        for ii in 1:padding
+            push!(β, -0.0)
+        end
+    end
+
+    # initialize y to standard normal
+    randn!(rng, y)
+
+    # add the unscaled random effects
+    for trm in m.reterms
+        unscaledre!(rng, y, trm)
+    end
+
+    # scale by σ and add fixed-effects contribution
+    mul!(y, m.X, β, one(T), σ)
+
+    y
+end
+
+function simulate!(rng::AbstractRNG,
+    y::AbstractVector,
+    m::GeneralizedLinearMixedModel{T},
+    newX::AbstractMatrix{T} = m.X;
+    β = coef(m),
+    σ = m.σ,
+    θ = T[],
+    wts = m.resp.wts) where {T}
+
+    resp = deepcopy(m.resp)
+    η = fill!(similar(m.LMM.y), zero(T))
+    _simulate!(rng, y, η, resp, m, newX, β, σ, θ, wts)
+end
+
+
+function _simulate!(rng::AbstractRNG,
+    y::AbstractVector, # modified
+    η::AbstractVector, # modified
+    resp::GLM.GlmResp, # modified
+    m::GeneralizedLinearMixedModel{T},
+    newX::AbstractArray{T},
+    β, σ, θ, wts # note that these are not kwargs for the internal method!
+) where {T}
+    length(β) == length(fixef(m)) ||
+        length(β) == length(coef(m)) ||
+            throw(ArgumentError("You must specify all (non-singular) βs"))
+
+    dispersion_parameter(m) || ismissing(σ) ||
+        throw(ArgumentError("You must not specify a dispersion parameter for model families without a dispersion parameter"))
+
+    β = convert(Vector{T},β)
+    if σ !== missing
+        σ = T(σ)
+    end
+    θ = convert(Vector{T},θ)
+
+    d = m.resp.d
+
+    if length(β) ≠ length(coef(m))
+        padding = length(coef(m)) - length(β)
+        for ii in 1:padding
+            push!(β, -0.0)
+        end
+    end
+
+    fast = (length(m.θ) == length(m.optsum.final))
+    setpar! = fast ? setθ! : setβθ!
+    params = fast ? θ : vcat(β, θ)
+    setpar!(m, params)
+
+    lm = m.LMM
+
+    # assemble the linear predictor
+
+    # add the unscaled random effects
+    # note that unit scaling may not be correct for
+    # families with a dispersion parameter
+    @inbounds for trm in m.reterms
+        unscaledre!(rng, η, trm)
+    end
+
+    # add fixed-effects contribution
+    # note that unit scaling may not be correct for
+    # families with a dispersion parameter
+    mul!(η, lm.X, β, one(T), one(T))
+
+    # from η to μ
+    GLM.updateμ!(resp, η)
+
+    # convert to the distribution / add in noise
+    @inbounds for (idx, val) in enumerate(resp.mu)
+        n = isempty(m.wt) ? 1 : m.wt[idx]
+        y[idx] = _rand(rng, d, val, σ, n)
+    end
+
+    y
+end
+
+function simulate!(rng::AbstractRNG, y::AbstractVector, m::LinearMixedModel, newdata::Tables.ColumnTable;
+                   β=m.β, σ=m.σ, θ=m.θ)
+    # the easiest thing here is to just assemble a new model and
+    # pass that to the other simulate methods....
+    # this can probably be made much more efficient
+    # (for one thing, this still allocates for the model's response)
+    # note that the contrasts get copied over with the formula
+    # (as part of the applied schema)
+    mnew = LinearMixedModel(m.formula, newdata)
+
+    simulate!(rng, y, mnew; β, σ, θ)
+    y
+end
+
+function simulate!(rng::AbstractRNG, y::AbstractVector, m::GeneralizedLinearMixedModel, newdata::Tables.ColumnTable;
+                   β=m.β, σ=m.σ, θ=m.θ)
+    # the easiest thing here is to just assemble a new model and
+    # pass that to the other simulate methods....
+    # this can probably be made much more efficient
+    # (for one thing, this still allocates for the model's response)
+    # note that the contrasts get copied over with the formula
+    # (as part of the applied schema)
+    mnew = GeneralizedLinearMixedModel(m.formula, newdata, m.resp.d, Link(m.resp))
+    simulate!(rng, y, mnew; β, σ, θ)
+end
+
+function simulate!(rng::AbstractRNG, y::AbstractVector, m::MixedModel, newdata;
+                   kwargs...)
+
+    simulate!(rng, y, m, Tables.columntable(newdata); kwargs...)
+end
+
+function simulate!(y::AbstractVector, m::MixedModel, newdata;
+                   kwargs...)
+    simulate!(Random.GLOBAL_RNG, y, m, Tables.columntable(newdata);
+              kwargs...)
 end
 
 """
