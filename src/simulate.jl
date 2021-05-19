@@ -277,7 +277,7 @@ function simulate!(rng::AbstractRNG, y::AbstractVector, m::LinearMixedModel, new
     f, contr = _abstractify_grouping(m.formula)
     mnew = LinearMixedModel(f, newdata; contrasts=contr)
 
-    simulate!(rng, y, mnew; β, σ, θ)
+    simulate!(rng, y, mnew; β=β, σ=σ, θ=θ)
     y
 end
 
@@ -292,7 +292,7 @@ function simulate!(rng::AbstractRNG, y::AbstractVector, m::GeneralizedLinearMixe
     # contr here are the fast Grouping contrasts
     f, contr = _abstractify_grouping(m.formula)
     mnew = GeneralizedLinearMixedModel(f, newdata, m.resp.d, Link(m.resp); contrasts=contr)
-    simulate!(rng, y, mnew; β, σ, θ)
+    simulate!(rng, y, mnew; β=β, σ=σ, θ=θ)
 end
 
 function simulate!(rng::AbstractRNG, y::AbstractVector, m::MixedModel, newdata;
