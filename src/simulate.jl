@@ -128,10 +128,10 @@ in tabular format. Currently, the tabular format is the only way to specify
 different observations for the random effects than in the original model.
 
 This simulation includes sampling new values for the random effects. Thus in
-contrast to [`predict`](`@ref`), there is no distinction in between "new" and
+contrast to [`predict`](@ref), there is no distinction in between "new" and
 "old" / previously observed random-effects levels.
 
-Unlike [`predict`](`@ref`), there is no `type` parameter for [`GeneralizedLinearMixedModel`](@ref)
+Unlike [`predict`](@ref), there is no `type` parameter for `GeneralizedLinearMixedModel`
 because the noise term in the model and simulation is always on the response
 scale.
 
@@ -172,6 +172,8 @@ function simulate!(rng::AbstractRNG,
             push!(β, -0.0)
         end
     end
+
+    @show σ,  β, θ
 
     # initialize y to standard normal
     randn!(rng, y)

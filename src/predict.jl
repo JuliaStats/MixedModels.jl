@@ -15,7 +15,7 @@ allocate a new `y`. Predictions based purely on the fixed effects can be
 obtained with `use_re=false`. In the future, it may be possible to specify
 a subset of the grouping variables to use, but not at this time.
 
-For [`GeneralizedLinearMixedModel`](@ref), the `type` parameter specifies
+For `GeneralizedLinearMixedModel`, the `type` parameter specifies
 whether the predictions should be returned on the scale of linear predictor
 (`:linpred`) or on the response scale (`:response`). If you don't know the
 difference between these terms, then you probably want `type=:response`.
@@ -125,7 +125,7 @@ values of the grouping variable are handled. Possible values are
 `:missing` (return `missing`), `:error` (error on this condition;
 the error type is an implementation detail). If you want simulated values
 for unobserved levels of the grouping variable, consider the
-[`simulate!`](@ref) and [`simulate`](@ref) methods.
+[`simulate!`](@ref) and `simulate` methods.
 
 Predictions based purely on the fixed effects can be obtained by
 specifying previously unobserved levels of the random effects and setting
@@ -133,7 +133,7 @@ specifying previously unobserved levels of the random effects and setting
 a subset of the grouping variables or overall random-effects structure to use,
 but not at this time.
 
-For [`GeneralizedLinearMixedModel`](@ref), the `type` parameter specifies
+For `GeneralizedLinearMixedModel`, the `type` parameter specifies
 whether the predictions should be returned on the scale of linear predictor
 (`:linpred`) or on the response scale (`:response`). If you don't know the
 difference between these terms, then you probably want `type=:response`.
