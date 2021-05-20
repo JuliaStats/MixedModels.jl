@@ -276,9 +276,16 @@ function simulate!(rng::AbstractRNG, y::AbstractVector, m::LinearMixedModel, new
     # contr here are the fast Grouping contrasts
     f, contr = _abstractify_grouping(m.formula)
     mnew = LinearMixedModel(f, newdata; contrasts=contr)
-
-    simulate!(rng, y, mnew; β=β, σ=σ, θ=θ)
-    y
+    # XXX why not do simulate!(rng, y, mnew; β=β, σ=σ, θ=θ)
+    # instead of simulating the model and then copying?
+    # Well, it turns out that the call to randn!(rng, y)
+    # gives different results at the tail end of the array
+    # for y <: view(::Matrix{Float64}, :, 3) than y <: Vector{Float64}
+    # I don't know why, but this doesn't actually incur an
+    # extra computation and gives consistent results at the price
+    # of an allocationless copy
+    simulate!(rng, mnew; β=β, σ=σ, θ=θ)
+    copy!(y, mnew.y)
 end
 
 function simulate!(rng::AbstractRNG, y::AbstractVector, m::GeneralizedLinearMixedModel, newdata::Tables.ColumnTable;
@@ -292,7 +299,16 @@ function simulate!(rng::AbstractRNG, y::AbstractVector, m::GeneralizedLinearMixe
     # contr here are the fast Grouping contrasts
     f, contr = _abstractify_grouping(m.formula)
     mnew = GeneralizedLinearMixedModel(f, newdata, m.resp.d, Link(m.resp); contrasts=contr)
-    simulate!(rng, y, mnew; β=β, σ=σ, θ=θ)
+    # XXX why not do simulate!(rng, y, mnew; β=β, σ=σ, θ=θ)
+    # instead of simulating the model and then copying?
+    # Well, it turns out that the call to randn!(rng, y)
+    # gives different results at the tail end of the array
+    # for y <: view(::Matrix{Float64}, :, 3) than y <: Vector{Float64}
+    # I don't know why, but this doesn't actually incur an
+    # extra computation and gives consistent results at the price
+    # of an allocationless copy
+    simulate!(rng, mnew; β=β, σ=σ, θ=θ)
+    copy!(y, mnew.y)
 end
 
 function simulate!(rng::AbstractRNG, y::AbstractVector, m::MixedModel, newdata;
