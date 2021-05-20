@@ -198,7 +198,7 @@ function StatsBase.predict(m::LinearMixedModel{T}, newdata::Tables.ColumnTable;
                                                     levels.(m.reterms),
                                                     levels.(mnew.reterms))
             if sort!(known_levels) != sort!(data_levels)
-                throw(KeyError("New level enountered in $grp"))
+                throw(ArgumentError("New level enountered in $grp"))
             end
         end
 

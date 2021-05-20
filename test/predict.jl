@@ -64,7 +64,7 @@ end
         @test predict(m, slp; new_re_levels=:population) ≈ fitted(m)
         @test predict(m, slp; new_re_levels=:missing) ≈ fitted(m)
 
-        @test_throws KeyError predict(m, slp2; new_re_levels=:error)
+        @test_throws ArgumentError predict(m, slp2; new_re_levels=:error)
         ymissing = predict(m, slp2; new_re_levels=:missing)
         @test count(ismissing, ymissing) == 10
         @test ymissing[11:end] ≈ fitted(m)[11:end]
