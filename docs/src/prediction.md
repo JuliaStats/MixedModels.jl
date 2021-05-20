@@ -33,7 +33,7 @@ MixedModels.jl provides three options:
 
 1. `:error`: error on encountering unobserved levels
 2. `:population`: use population values (i.e. only the fixed effects) for observations with unobserved levels
-3.`:missing`: return `missing` for observations with unobserved levels.
+3. `:missing`: return `missing` for observations with unobserved levels.
 
 Providing either no prediction (`:error`, `:missing`) or providing the population-level values seem to be the most reasonable ways for *predicting* new values.
 For *simulating* new values based on previous estimates of the variance components, use `simulate`.
