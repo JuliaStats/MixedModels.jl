@@ -173,8 +173,6 @@ function simulate!(rng::AbstractRNG,
         end
     end
 
-    @show σ,  β, θ
-
     # initialize y to standard normal
     randn!(rng, y)
 
