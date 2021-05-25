@@ -385,6 +385,63 @@ function LinearAlgebra.mul!(C::Matrix{T}, adjA::Adjoint{T,ReMat{T,S}},
     C
 end
 
+function LinearAlgebra.mul!(
+    y::AbstractVector{<:Union{T, Missing}},
+    A::ReMat{T,1},
+    b::AbstractVector{<:Union{T, Missing}},
+    alpha::Number,
+    beta::Number,
+    ) where {T}
+    m, n = size(A)
+    length(y) == m && length(b) == n || throw(DimensionMismatch(""))
+    isone(beta) || mul!(beta, y)
+    z = A.z
+    @inbounds for (i, r) in enumerate(A.refs)
+        y[i] += alpha * b[r] * z[i]
+    end
+    y
+end
+
+function LinearAlgebra.mul!(
+    y::AbstractVector{<:Union{T, Missing}},
+    A::ReMat{T,1},
+    B::AbstractMatrix{<:Union{T, Missing}},
+    alpha::Number,
+    beta::Number) where {T}
+    mul!(y, A, vec(B), alpha, beta)
+end
+
+function LinearAlgebra.mul!(
+    y::AbstractVector{<:Union{T, Missing}},
+    A::ReMat{T,S},
+    b::AbstractVector{<:Union{T, Missing}},
+    alpha::Number,
+    beta::Number,
+    ) where {T,S}
+    Z = A.z
+    k, n = size(Z)
+    l = nlevs(A)
+    length(y) == n && length(b) == k * l || throw(DimensionMismatch(""))
+    isone(beta) || mul!(beta, y)
+    @inbounds for (i, ii) in enumerate(A.refs)
+        offset = (ii - 1) * k
+        for j = 1:k
+            y[i] += alpha * Z[j, i] * b[offset + j]
+        end
+    end
+    y
+end
+
+function LinearAlgebra.mul!(
+    y::AbstractVector{<:Union{T, Missing}},
+    A::ReMat{T,S},
+    B::AbstractMatrix{<:Union{T, Missing}},
+    alpha::Number,
+    beta::Number,
+    ) where {T,S}
+    mul!(y, A, vec(B), alpha, beta)
+end
+
 function *(adjA::Adjoint{T,<:ReMat{T,S}}, B::ReMat{T,P}) where {T,S,P}
     A = adjA.parent
     if A === B

@@ -448,7 +448,7 @@ function fitted!(v::AbstractArray{T}, m::LinearMixedModel{T}) where {T}
     Xtrm = m.feterm
     vv = mul!(vec(v), Xtrm.x, fixef!(similar(Xtrm.piv, T), m))
     for (rt, bb) in zip(m.reterms, ranef(m))
-        unscaledre!(vv, rt, bb)
+        mul!(vv, rt, bb, one(T), one(T))
     end
     v
 end

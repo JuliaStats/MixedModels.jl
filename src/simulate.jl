@@ -324,53 +324,22 @@ function simulate!(y::AbstractVector, m::MixedModel, newdata;
 end
 
 """
-    unscaledre!(y::AbstractVector{T}, M::ReMat{T}, b) where {T}
+    unscaledre!(y::AbstractVector{T}, M::ReMat{T}) where {T}
     unscaledre!(rng::AbstractRNG, y::AbstractVector{T}, M::ReMat{T}) where {T}
 
-Add unscaled random effects defined by `M` and `b` to `y`.  When `rng` is present the `b`
-vector is generated as `randn(rng, size(M, 2))`
+Add unscaled random effects simulated from `M` to `y`.
+
+These are unscaled random effects (i.e. they incorporate λ but not σ) because
+the scaling is done after the per-observation noise is added as a standard normal.
 """
 function unscaledre! end
 
-function unscaledre!(y::AbstractVector{<:Union{T, Missing}}, A::ReMat{T,1}, b::AbstractVector{<:Union{T, Missing}}) where {T}
-    m, n = size(A)
-    length(y) == m && length(b) == n || throw(DimensionMismatch(""))
-    z = A.z
-    @inbounds for (i, r) in enumerate(A.refs)
-        y[i] += b[r] * z[i]
-    end
-    y
-end
-
-unscaledre!(y::AbstractVector{<:Union{T, Missing}}, A::ReMat{T,1}, B::AbstractMatrix{<:Union{T, Missing}}) where {T} =
-    unscaledre!(y, A, vec(B))
-
-# the compiler will actually create distinct methods for each of the types in
-# the outer Union
-function unscaledre!(y::AbstractVector{<:Union{T, Missing}}, A::ReMat{T,S},
-                     b::AbstractMatrix{<:Union{T, Missing}}) where {T,S}
-    Z = A.z
-    k, n = size(Z)
-    l = nlevs(A)
-    length(y) == n && size(b) == (k, l) || throw(DimensionMismatch(""))
-    @inbounds for (i, ii) in enumerate(A.refs)
-        for j = 1:k
-            y[i] += Z[j, i] * b[j, ii]
-        end
-    end
-    y
-end
-
 function unscaledre!(rng::AbstractRNG, y::AbstractVector{T}, A::ReMat{T,S}) where {T,S}
-    rng_nums = randn(rng, S, nlevs(A))
-
-    unscaledre!(y, A, lmul!(A.λ, rng_nums))
+    mul!(y, A, vec(lmul!(A.λ, randn(rng, S, nlevs(A)))), one(T), one(T))
 end
 
 function unscaledre!(rng::AbstractRNG, y::AbstractVector{T}, A::ReMat{T,1}) where {T}
-    rng_nums = randn(rng, 1, nlevs(A))
-
-    unscaledre!(y, A, lmul!(first(A.λ), rng_nums))
+    mul!(y, A, lmul!(first(A.λ), randn(rng, nlevs(A))), one(T), one(T))
 end
 
 unscaledre!(y::AbstractVector, A::ReMat) = unscaledre!(Random.GLOBAL_RNG, y, A)
