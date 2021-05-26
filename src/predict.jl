@@ -37,12 +37,10 @@ function StatsBase.predict!(y::AbstractVector{<:Union{T, Missing}}, m::LinearMix
 
     mul!(y, newX, m.β)
 
-    use_re || return y
-
-    # because we're using ranef(), this actually
-    # adds the *scaled* random effects
-    for (rt, bb) in zip(m.reterms, ranef(m))
-        mul!(y, rt, vec(bb), one(T), one(T))
+    if use_re
+        for (rt, bb) in zip(m.reterms, ranef(m))
+            mul!(y, rt, bb, one(T), one(T))
+        end
     end
 
     y
@@ -58,8 +56,6 @@ function StatsBase.predict!(y::AbstractVector{<:Union{T, Missing}}, m::Generaliz
     mul!(y, newX, m.β)
 
     if use_re
-        # because we're using ranef(), this actually
-        # adds the *scaled* random effects
         for (rt, bb) in zip(m.reterms, ranef(m))
             mul!(y, rt, bb, one(T), one(T))
         end
@@ -92,8 +88,7 @@ function StatsBase.predict(m::GeneralizedLinearMixedModel{T}, newX::AbstractMatr
 
     if use_re && newX === m.X
         # should we add a kwarg to fitted to allow returning eta?
-        type == :response && return fitted(m)
-        return m.resp.eta
+        return type == :response ? fitted(m) : m.resp.eta
     end
     y = zeros(T, nobs(m))
     predict!(y, m, newX; use_re=use_re, type=type)
