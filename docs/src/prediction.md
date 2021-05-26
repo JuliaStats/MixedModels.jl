@@ -152,7 +152,7 @@ For simulating from generalized linear mixed models, there is no `type` option b
 ## API Reference
 
 Note all the methods that take new data as a table construct an additional `MixedModel` behind the scenes, even when the new data is exactly the same as the data that the model was fitted to.
-For the simulation methods in particular, these thus from a convenience wrapper for constructing a new model and
+For the simulation methods in particular, these thus form a convenience wrapper for constructing a new model and
 calling `simulate` without new data on that model with the parameters from the original model.
 
 ```@docs
