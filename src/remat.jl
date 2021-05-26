@@ -394,7 +394,7 @@ function LinearAlgebra.mul!(
     ) where {T}
     m, n = size(A)
     length(y) == m && length(b) == n || throw(DimensionMismatch(""))
-    isone(beta) || mul!(beta, y)
+    isone(beta) || rmul!(y, beta)
     z = A.z
     @inbounds for (i, r) in enumerate(A.refs)
         y[i] += alpha * b[r] * z[i]
@@ -422,10 +422,10 @@ function LinearAlgebra.mul!(
     k, n = size(Z)
     l = nlevs(A)
     length(y) == n && length(b) == k * l || throw(DimensionMismatch(""))
-    isone(beta) || mul!(beta, y)
+    isone(beta) || rmul!(y, beta)
     @inbounds for (i, ii) in enumerate(A.refs)
         offset = (ii - 1) * k
-        for j = 1:k
+        for j in 1:k
             y[i] += alpha * Z[j, i] * b[offset + j]
         end
     end
@@ -439,7 +439,17 @@ function LinearAlgebra.mul!(
     alpha::Number,
     beta::Number,
     ) where {T,S}
-    mul!(y, A, vec(B), alpha, beta)
+    Z = A.z
+    k, n = size(Z)
+    l = nlevs(A)
+    length(y) == n &&  size(B) == (k, l) || throw(DimensionMismatch(""))
+    isone(beta) || rmul!(y, beta)
+    @inbounds for (i, ii) in enumerate(refarray(A))
+        for j in 1:k
+            y[i] += alpha * Z[j, i] * B[j, ii]
+        end
+    end
+    y
 end
 
 function *(adjA::Adjoint{T,<:ReMat{T,S}}, B::ReMat{T,P}) where {T,S,P}
