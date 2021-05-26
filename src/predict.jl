@@ -42,7 +42,7 @@ function StatsBase.predict!(y::AbstractVector{<:Union{T, Missing}}, m::LinearMix
     # because we're using ranef(), this actually
     # adds the *scaled* random effects
     for (rt, bb) in zip(m.reterms, ranef(m))
-        unscaledre!(y, rt, bb)
+        mul!(y, rt, vec(bb), one(T), one(T))
     end
 
     y
@@ -61,7 +61,7 @@ function StatsBase.predict!(y::AbstractVector{<:Union{T, Missing}}, m::Generaliz
         # because we're using ranef(), this actually
         # adds the *scaled* random effects
         for (rt, bb) in zip(m.reterms, ranef(m))
-            unscaledre!(y, rt, bb)
+            mul!(y, rt, bb, one(T), one(T))
         end
     end
 
@@ -260,7 +260,7 @@ function StatsBase.predict(m::LinearMixedModel{T}, newdata::Tables.ColumnTable;
     end
 
     for (rt, bb) in zip(newre, blups)
-        unscaledre!(y, rt, bb)
+        mul!(y, rt, bb, one(T), one(T))
     end
 
     y
