@@ -55,6 +55,14 @@ StatsBase.isfitted(m::MixedModel) = m.optsum.feval > 0
 
 StatsBase.meanresponse(m::MixedModel) = mean(m.y)
 
+"""
+    modelmatrix(m::MixedModel)
+
+Returns the model matrix `X` for the fixed-effects parameters, as returned by [`coef`](@ref).
+
+This is always the full model matrix in the original column order and from a field in the model
+struct.  It should be copied if it is to be modified.
+"""
 StatsBase.modelmatrix(m::MixedModel) = m.feterm.x
 
 StatsBase.nobs(m::MixedModel) = length(m.y)
@@ -71,7 +79,7 @@ end
 """
     raneftables(m::MixedModel; uscale = false)
 
-Return the conditional means of the random effects as a NamedTuple of columntables
+Return the conditional means of the random effects as a `NamedTuple` of columntables
 """
 function raneftables(m::MixedModel{T}; uscale = false) where {T}
     NamedTuple{fnames(m)}((map(retbl, ranef(m, uscale=uscale), m.reterms)...,))
@@ -79,6 +87,15 @@ end
 
 StatsBase.residuals(m::MixedModel) = response(m) .- fitted(m)
 
+"""
+    response(m::MixedModel)
+
+Return the response vector for the model.
+
+For a linear mixed model this is a `view` of the last column of the `XyMat` field.
+For a generalized linear mixed model this is the `m.resp.y` field.
+In either case it should be copied if it is to be modified.
+""" 
 StatsBase.response(m::MixedModel) = m.y
 
 function StatsBase.responsename(m::MixedModel)
