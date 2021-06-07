@@ -79,8 +79,8 @@ Return the deviance of `m` evaluated by the Laplace approximation (`nAGQ=1`)
 or `nAGQ`-point adaptive Gauss-Hermite quadrature.
 
 If the distribution `D` does not have a scale parameter the Laplace approximation
-is the squared length of the conditional modes, `u`, plus the determinant
-of `Λ'Z'WZΛ + I`, plus the sum of the squared deviance residuals.
+is the squared length of the conditional modes, ``u``, plus the determinant
+of ``Λ'Z'WZΛ + I``, plus the sum of the squared deviance residuals.
 """
 function StatsBase.deviance(m::GeneralizedLinearMixedModel{T}, nAGQ = 1) where {T}
     nAGQ == 1 && return T(sum(m.resp.devresid) + logdet(m) + sum(u -> sum(abs2, u), m.u))
@@ -134,7 +134,7 @@ end
     deviance!(m::GeneralizedLinearMixedModel, nAGQ=1)
 
 Update `m.η`, `m.μ`, etc., install the working response and working weights in
-`m.LMM`, update `m.LMM.A` and `m.LMM.R`, then evaluate the [`deviance`](@ref).
+`m.LMM`, update `m.LMM.A` and `m.LMM.R`, then evaluate the [`deviance`](@ref StatsBase.deviance).
 """
 function deviance!(m::GeneralizedLinearMixedModel, nAGQ = 1)
     updateη!(m)
@@ -158,14 +158,6 @@ end
 GLM.dispersion_parameter(m::GeneralizedLinearMixedModel) = dispersion_parameter(m.resp.d)
 
 Distributions.Distribution(m::GeneralizedLinearMixedModel{T,D}) where {T,D} = D
-
-function StatsBase.dof(m::GeneralizedLinearMixedModel)::Int
-    length(m.β) + length(m.θ) + GLM.dispersion_parameter(m.resp.d)
-end
-
-function StatsBase.dof_residual(m::GeneralizedLinearMixedModel)::Int
-    nobs(m) - dof(m)
-end
 
 fit(
     ::Type{GeneralizedLinearMixedModel},
@@ -425,7 +417,7 @@ function Base.getproperty(m::GeneralizedLinearMixedModel, s::Symbol)
         σs(m)
     elseif s == :σρs
         σρs(m)
-    elseif s ∈ (:A, :L, :optsum, :reterms, :Xymat, :feterm, :formula)
+    elseif s ∈ (:A, :L, :optsum, :reterms, :Xymat, :feterm, :formula, :parmap)
         getfield(m.LMM, s)
     elseif s ∈ (:dims, :λ, :lowerbd, :corr, :PCA, :rePCA, :X,)
         getproperty(m.LMM, s)
@@ -441,6 +433,8 @@ end
 # which returns a reference to the same array
 getθ(m::GeneralizedLinearMixedModel)  = copy(m.θ)
 getθ!(v::AbstractVector{T}, m::GeneralizedLinearMixedModel{T}) where {T} = copyto!(v, m.θ)
+
+StatsBase.islinear(m::GeneralizedLinearMixedModel) = isa(GLM.Link, GLM.IdentityLink)
 
 GLM.Link(m::GeneralizedLinearMixedModel) = GLM.Link(m.resp)
 
@@ -468,19 +462,13 @@ function StatsBase.loglikelihood(m::GeneralizedLinearMixedModel{T}) where {T}
     accum  - (mapreduce(u -> sum(abs2, u), +, m.u) + logdet(m)) / 2
 end
 
-StatsBase.nobs(m::GeneralizedLinearMixedModel) = length(m.η)
-
-StatsBase.predict(m::GeneralizedLinearMixedModel) = fitted(m)
-
 Base.propertynames(m::GeneralizedLinearMixedModel, private::Bool = false) = (
     :A,
     :L,
     :theta,
     :beta,
     :coef,
-    :fixef,
     :λ,
-    :lambda,
     :σ,
     :sigma,
     :X,
@@ -493,7 +481,7 @@ Base.propertynames(m::GeneralizedLinearMixedModel, private::Bool = false) = (
     :vcov,
     :PCA,
     :rePCA,
-    fieldnames(typeof(m))...,
+    (private ? fieldnames(GeneralizedLinearMixedModel) : (:LMM, :β, :θ, :b, :u, :resp, :wt))...,
 )
 
 """
@@ -658,7 +646,6 @@ function Base.show(io::IO, ::MIME"text/plain", m::GeneralizedLinearMixedModel{T,
     println(io, "  ", m.LMM.formula)
     println(io, "  Distribution: ", D)
     println(io, "  Link: ", Link(m), "\n")
-    println(io)
     nums = Ryu.writefixed.([loglikelihood(m), deviance(m), aic(m), aicc(m), bic(m)], 4)
     fieldwd = max(maximum(textwidth.(nums)) + 1, 11)
     for label in [" logLik", " deviance", "AIC", "AICc", "BIC"]
@@ -666,6 +653,7 @@ function Base.show(io::IO, ::MIME"text/plain", m::GeneralizedLinearMixedModel{T,
     end
     println(io)
     print.(Ref(io), lpad.(nums, fieldwd))
+    println(io)
     println(io)
 
     show(io, VarCorr(m))
@@ -746,6 +734,11 @@ For Gaussian models, this parameter is often called σ².
 """
 varest(m::GeneralizedLinearMixedModel{T}) where {T} = dispersion_parameter(m) ? dispersion(m, true) : missing
 
+function StatsBase.weights(m::GeneralizedLinearMixedModel{T}) where {T}
+    wts = m.wt
+    isempty(wts) ? ones(T, nobs(m)) : wts
+end
+
 # delegate GLMM method to LMM field
 for f in (
     :feL,
@@ -755,8 +748,6 @@ for f in (
     :lowerbd,
     :PCA,
     :rePCA,
-    :(StatsBase.coefnames),
-    :(StatsModels.modelmatrix),
 )
     @eval begin
         $f(m::GeneralizedLinearMixedModel) = $f(m.LMM)

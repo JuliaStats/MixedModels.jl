@@ -34,11 +34,17 @@ end
     @test fm1.optsum.initial == ones(1)
     fm1.θ = ones(1)
     @test fm1.θ == ones(1)
+    @test islinear(fm1)
+    @test responsename(fm1) == "yield"
+    @test meanresponse(fm1) ≈ 1527.5
+    @test modelmatrix(fm1) == ones(30, 1)
+    @test weights(fm1) == ones(30)
 
     @test_throws ArgumentError fit!(fm1)
 
     fm1.optsum.feval = -1
     @test_logs (:warn, "Model has not been fit") show(fm1)
+    @test !isfitted(fm1)
 
     @test objective(updateL!(setθ!(fm1, [0.713]))) ≈ 327.34216280955366
 
@@ -49,6 +55,7 @@ end
 
     refit!(fm1)
 
+    @test isfitted(fm1)
     @test :θ in propertynames(fm1)
     @test objective(fm1) ≈ 327.3270598811428 atol=0.001
     @test fm1.θ ≈ [0.752580] atol=1.e-5
@@ -83,6 +90,7 @@ end
     @test fm1.X == ones(30,1)
     ds = MixedModels.dataset(:dyestuff)
     @test fm1.y == ds[:yield]
+    @test model_response(fm1) == ds.yield
     @test cond(fm1) == ones(1)
     @test first(leverage(fm1)) ≈ 0.15650534392640486 rtol=1.e-5
     @test sum(leverage(fm1)) ≈ 4.695160317792145 rtol=1.e-5

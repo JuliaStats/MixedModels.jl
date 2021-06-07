@@ -14,6 +14,7 @@ makedocs(
         "bootstrap.md",
         "rankdeficiency.md",
         "mime.md",
+        "api.md",
         # "SimpleLMM.md",
         # "MultipleTerms.md",
         # "SingularCovariance.md",

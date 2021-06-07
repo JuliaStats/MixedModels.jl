@@ -59,7 +59,7 @@ Likeihood ratio test applied to a set of nested models.
 
 !!! note
     The nesting of the models is not checked.  It is incumbent on the user
-    to check this. This differs from [`StatsModels.lrtest`](@ref) as nesting in
+    to check this. This differs from `StatsModels.lrtest` as nesting in
     mixed models, especially in the random effects specification, may be non obvious.
 
 !!! note
@@ -68,7 +68,7 @@ Likeihood ratio test applied to a set of nested models.
     fully saturated model. This is in line with the computation of the deviance for mixed
     models.
 
-This functionality may be deprecated in the future in favor of [`StatsModels.lrtest`](@ref).
+This functionality may be deprecated in the future in favor of `StatsModels.lrtest`.
 """
 function likelihoodratiotest(m::MixedModel...)
     _iscomparable(m...) || throw(

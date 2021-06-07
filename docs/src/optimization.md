@@ -110,12 +110,15 @@ DisplayAs.Text(ans) # hide
 ```
 the only random effects term in the formula is `(1|batch)`, a simple, scalar random-effects term.
 ```@example Main
-t1 = first(fm1.reterms);
+t1 = only(fm1.reterms);
 Int.(t1)  # convert to integers for more compact display
 ```
-```@docs
-ReMat
+
+The matrix `t1` is a sparse matrix, meaning that most of the elements are zero, and its transpose is stored in a sparse form.
+```@example Main
+sparse(t1)'
 ```
+provides a compact representation of the positions of the non-zeros in this matrix.
 
 This `RandomEffectsTerm` contributes a block of columns to the model matrix $\bf Z$ and a diagonal block to $\Lambda_\theta$.
 In this case the diagonal block of $\Lambda_\theta$ (which is also the only block) is a multiple of the $6\times6$
@@ -136,8 +139,8 @@ DisplayAs.Text(ans) # hide
 ```
 the model matrix $\bf Z$ is of the form
 ```@example Main
-t21 = first(fm2.reterms);
-Int.(t21) # convert to integers for more compact display
+t21 = only(fm2.reterms);
+sparse(t21)'
 ```
 and $\Lambda_\theta$ is a $36\times36$ block diagonal matrix with $18$ diagonal blocks, all of the form
 ```@example Main
@@ -151,8 +154,8 @@ MixedModels.getθ(t21)
 Random-effects terms in the model formula that have the same grouping factor are amalgamated into a single `ReMat` object.
 ```@example Main
 fm3 = fit(MixedModel, @formula(reaction ~ 1+days+(1|subj) + (0+days|subj)), sleepstudy)
-t31 = first(fm3.reterms);
-Int.(t31)
+t31 = only(fm3.reterms);
+sparse(t31)'
 ```
 
 For this model the matrix $\bf Z$ is the same as that of model `fm2` but the diagonal blocks of $\Lambda_\theta$ are themselves diagonal.
@@ -169,10 +172,10 @@ penicillin = MixedModels.dataset(:penicillin)
 fm4 = fit(MixedModel,
     @formula(diameter ~ 1 + (1|sample) + (1|plate)),
     penicillin)
-Int.(first(fm4.reterms))
+sparse(first(fm4.reterms))'
 ```
 ```@example Main
-Int.(last(fm4.reterms))
+sparse(last(fm4.reterms))'
 ```
 Note that the first `ReMat` in `fm4.reterms` corresponds to grouping factor `plate` even though the term `(1|plate)` occurs in the formula after `(1|sample)`.
 
@@ -180,11 +183,7 @@ Note that the first `ReMat` in `fm4.reterms` corresponds to grouping factor `pla
 
 An optional named argument, `verbose=true`, in the call to `fit` for a `LinearMixedModel` causes printing of the objective and the $\theta$ parameter at each evaluation during the optimization.  (Not illustrated here.)
 
-A shorter summary of the optimization process is always available as an
-```@docs
-OptSummary
-```
-object, which is the `optsum` member of the `LinearMixedModel`.
+A shorter summary of the optimization process is always available as the `optsum` member of the `LinearMixedModel`, which is of type `OptSummary`.
 ```@example Main
 fm2.optsum
 DisplayAs.Text(ans) # hide
@@ -193,11 +192,9 @@ DisplayAs.Text(ans) # hide
 ## A blocked Cholesky factor
 
 A `LinearMixedModel` object contains two blocked matrices; a symmetric matrix `A` (only the lower triangle is stored) and a lower-triangular `L` which is the lower Cholesky factor of the updated and inflated `A`.
-In versions 4.0.0 and later of `MixedModels` only the blocks in the lower triangle are stored in `A` and `L`, as a `Vector{AbstractMatrix{T}}`
-```@docs
-BlockDescription
-```
-shows the structure of the blocks
+In versions 4.0.0 and later of `MixedModels` only the blocks in the lower triangle are stored in `A` and `L`, as a `Vector{AbstractMatrix{T}}`.
+
+`BlockDescription` shows the structure of the blocks
 ```@example Main
 BlockDescription(fm2)
 DisplayAs.Text(ans) # hide
@@ -213,9 +210,7 @@ updateL!
 is the central step in evaluating the objective (negative twice the log-likelihood).
 
 Typically, the (1,1) block is the largest block in `A` and `L` and it has a special form, either `Diagonal` or
-```@docs
-UniformBlockDiagonal
-```
+`UniformBlockDiagonal`
 providing a compact representation and fast matrix multiplication or solutions of linear systems of equations.
 
 ### Modifying the optimization process

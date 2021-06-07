@@ -370,18 +370,6 @@ GLM.dispersion(m::LinearMixedModel, sqr::Bool = false) = sqr ? varest(m) : sdest
 
 GLM.dispersion_parameter(m::LinearMixedModel) = true
 
-StatsBase.dof(m::LinearMixedModel) = m.dims.p + nθ(m) + 1
-
-function StatsBase.dof_residual(m::LinearMixedModel)::Int
-    # nobs - rank(FE) - 1 (dispersion)
-    # this differs from lme4 by not including nθ
-    # a better estimate would be a number somewhere between the number of
-    # variance components and the number of conditional modes
-    # nobs, rank FE, num conditional modes, num grouping vars
-    dd = m.dims
-    dd.n - dd.p - 1
-end
-
 """
     feL(m::LinearMixedModel)
 
@@ -577,6 +565,8 @@ function Base.getproperty(m::LinearMixedModel{T}, s::Symbol) where {T}
     end
 end
 
+StatsBase.islinear(m::LinearMixedModel) = true
+
 function StatsBase.leverage(m::LinearMixedModel{T}) where {T}
     # This can be done more efficiently but reusing existing tools is easier.
     # The i'th leverage value is obtained by replacing the response with the i'th
@@ -626,11 +616,7 @@ function mkparmap(reterms::Vector{AbstractReMat{T}}) where {T}
     parmap
 end
 
-StatsBase.modelmatrix(m::LinearMixedModel) = m.feterm.x
-
 nθ(m::LinearMixedModel) = length(m.parmap)
-
-StatsBase.nobs(m::LinearMixedModel) = m.dims.n
 
 """
     objective(m::LinearMixedModel)
@@ -644,18 +630,14 @@ function objective(m::LinearMixedModel{T}) where {T}
     isempty(wts) ? val : val - T(2.0) * sum(log, wts)
 end
 
-StatsBase.predict(m::LinearMixedModel) = fitted(m)
-
 Base.propertynames(m::LinearMixedModel, private::Bool = false) = (
-    :formula,
-    :sqrtwts,
-    :A,
-    :L,
-    :optsum,
+    fieldnames(LinearMixedModel)...,
     :θ,
     :theta,
     :β,
     :beta,
+    :βs,
+    :betas,
     :λ,
     :lambda,
     :stderror,
@@ -663,6 +645,8 @@ Base.propertynames(m::LinearMixedModel, private::Bool = false) = (
     :sigma,
     :σs,
     :sigmas,
+    :σρs,
+    :sigmarhos,
     :b,
     :u,
     :lowerbd,
@@ -672,9 +656,6 @@ Base.propertynames(m::LinearMixedModel, private::Bool = false) = (
     :vcov,
     :PCA,
     :rePCA,
-    :reterms,
-    :feterm,
-    :Xymat,
     :objective,
     :pvalues,
 )
@@ -807,10 +788,6 @@ function refit!(m::LinearMixedModel, y; REML=m.optsum.REML)
     copyto!(resp, y)
     refit!(m; REML=REML)
 end
-
-StatsBase.residuals(m::LinearMixedModel) = response(m) .- fitted(m)
-
-StatsBase.response(m::LinearMixedModel) = m.y
 
 """
     restoreoptsum!(m::LinearMixedModel, io::IO)
@@ -1153,6 +1130,11 @@ end
 Returns the estimate of σ², the variance of the conditional distribution of Y given B.
 """
 varest(m::LinearMixedModel) = pwrss(m) / ssqdenom(m)
+
+function StatsBase.weights(m::LinearMixedModel)
+    rtwts = m.sqrtwts
+    isempty(rtwts) ? ones(eltype(rtwts), nobs(m)) : abs2.(rtwts)
+end
 
 """
     _zerocorr!(m::LinearMixedModel[, trmnms::Vector{Symbol}])
