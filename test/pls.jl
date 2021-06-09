@@ -355,6 +355,9 @@ end
     @test size(fmnc) == (180,2,36,1)
     @test fmnc.optsum.initial == ones(2)
     @test lowerbd(fmnc) == zeros(2)
+    sigmas = fmnc.σs
+    @test length(only(sigmas)) == 2
+    @test first(only(sigmas)) ≈ 24.171449484676224 atol=1e-4
 
     @testset "zerocorr PCA" begin
         @test length(fmnc.rePCA) == 1
