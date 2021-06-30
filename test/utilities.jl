@@ -5,6 +5,7 @@ using SparseArrays
 using Test
 
 using MixedModels: allequal, average, densify, dataset
+using StatsModels: FormulaTerm
 
 include("modelcache.jl")
 
@@ -70,4 +71,9 @@ end
 	str = String(take!(io))
 	@test !isempty(findall("PC1", str))
 	@test !isempty(findall("load: yes", str))
+end
+
+@testset "formula" begin
+	@test formula(first(models(:sleepstudy))) isa FormulaTerm
+	@test formula(first(models(:contra))) isa FormulaTerm
 end

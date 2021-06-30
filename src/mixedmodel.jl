@@ -79,3 +79,5 @@ function StatsBase.vcov(m::MixedModel; corr=false)
 
     corr ?  StatsBase.cov2cor!(vv, stderror(m)) : vv
 end
+
+StatsModels.formula(m::MixedModel) = m.formula
