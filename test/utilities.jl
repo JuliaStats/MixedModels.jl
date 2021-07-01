@@ -30,9 +30,9 @@ end
 	@test isconstant([false, false, false])
 	@test isconstant(ones(3))
 	@test isconstant(1, 1, 1)
-						# equality of arrays with broadcasting
+	# equality of arrays with broadcasting
 	@test isconstant(["(Intercept)", "days"], ["(Intercept)", "days"])
-						# arrays or tuples with missing values
+	# arrays or tuples with missing values
 	@test !isconstant([missing, 1])
 	@test isconstant(Int[])
 	@test isconstant(Union{Int,Missing}[missing, missing, missing])
