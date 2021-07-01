@@ -39,6 +39,7 @@ Run-time formula syntax
 MixedModels v3.9.0 Release Notes
 ========================
 * Add support for `StatsModels.formula` [#536]
+* Internal method `allequal` renamed to `isconstant` [#537]
 
 MixedModels v3.8.0 Release Notes
 ========================
@@ -255,3 +256,4 @@ Package dependencies
 [#523]: https://github.com/JuliaStats/MixedModels.jl/issues/523
 [#524]: https://github.com/JuliaStats/MixedModels.jl/issues/524
 [#536]: https://github.com/JuliaStats/MixedModels.jl/issues/536
+[#537]: https://github.com/JuliaStats/MixedModels.jl/issues/537
