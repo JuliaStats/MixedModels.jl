@@ -204,15 +204,15 @@ end
 Base.show(io::IO, lrt::LikelihoodRatioTest) = Base.show(io, MIME"text/plain"(), lrt)
 
 function _iscomparable(m::LinearMixedModel...)
-    allequal(getproperty.(getproperty.(m,:optsum),:REML)) ||
+    isconstant(getproperty.(getproperty.(m,:optsum),:REML)) ||
         throw(ArgumentError("Models must all be fit with the same objective (i.e. all ML or all REML)"))
 
     if any(getproperty.(getproperty.(m,:optsum),:REML))
-        allequal(coefnames.(m))  ||
+        isconstant(coefnames.(m))  ||
                 throw(ArgumentError("Likelihood-ratio tests for REML-fitted models are only valid when the fixed-effects specifications are identical"))
     end
 
-    allequal(nobs.(m)) ||
+    isconstant(nobs.(m)) ||
         throw(ArgumentError("Models must have the same number of observations"))
 
     true
@@ -226,10 +226,10 @@ function _iscomparable(m::GeneralizedLinearMixedModel...)
     _samefamily(m...) ||
         throw(ArgumentError("Models must be fit to the same distribution"))
 
-    allequal(string.(Link.(m))) ||
+    isconstant(string.(Link.(m))) ||
         throw(ArgumentError("Models must have the same link function"))
 
-    allequal(nobs.(m)) ||
+    isconstant(nobs.(m)) ||
         throw(ArgumentError("Models must have the same number of observations"))
 
     return true
