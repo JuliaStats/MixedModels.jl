@@ -29,12 +29,18 @@ Run-time formula syntax
 -----------------------
 
 * It is now possible to construct `RandomEffectsTerm`s at run-time from `Term`s
-  (methods for `Base.|(::AbstractTerm, ::AbstractTerm)` added) [#470]
+  (methods for `|(::AbstractTerm, ::AbstractTerm)` added) [#470]
 * `RandomEffectsTerm`s can have left- and right-hand side terms that are
   "non-concrete", and `apply_schema(::RandomEffectsTerm, ...)` works more like
   other StatsModels.jl `AbstractTerm`s [#470]
-* Methods for `Base./(::AbstractTerm, ::AbstractTerm)` are added, allowing
+* Methods for `/(::AbstractTerm, ::AbstractTerm)` are added, allowing
   nesting syntax to be used with `Term`s at run-time as well [#470]
+* For both `|` and `/`, it is necessary to import these functions explicitly with
+  `using MixedModels: |` when using them for runtime construction
+  of `RandomEffectsTerm`s. Although slightly less convenient than simply
+  providing methods for `Base.|` and `Base./`, this avoids type piracy and potential
+  conflicts with customized use of these operations in other modelling packages. [#XXX]
+
 
 MixedModels v3.9.0 Release Notes
 ========================

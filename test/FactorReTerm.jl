@@ -6,7 +6,7 @@ using SparseArrays
 using StatsModels
 using Test
 
-using MixedModels: dataset, levels, modelcols, nlevs
+using MixedModels: dataset, levels, modelcols, nlevs, :|
 
 const LMM = LinearMixedModel
 
@@ -105,7 +105,7 @@ end
         @test term(:a) | term(:b) isa RandomEffectsTerm
         @test term(1) + term(:a) | term(:b) isa RandomEffectsTerm
         @test term(1) + term(:a) + term(:a) & term(:c) | term(:b) isa RandomEffectsTerm
-        
+
         # sleep study data:
         r, d, s, one = term.((:reaction, :days, :subj, 1))
 
@@ -116,7 +116,7 @@ end
         ff2 = apply_schema(f2, schema(slp), LMM)
         # equality of RE terms not defined so check that they generate same modelcols
         @test modelcols(ff1.rhs[end], slp) == modelcols(ff2.rhs[end], slp)
-        
+
         m1 = fit(LMM, f1, slp)
         m2 = fit(LMM, f2, slp)
         @test all(m1.λ .== m2.λ)
@@ -139,7 +139,7 @@ end
 
         # test that zerocorr actually worked
         @test mc1.inds == mc2.inds == [1, 4]
-        
+
         m1 = fit(LMM, f1, slp)
         m2 = fit(LMM, f2, slp)
         @test all(m1.λ .== m2.λ)
@@ -147,7 +147,7 @@ end
         @test StatsModels.terms(f2.rhs[end]) == [one, d, s]
         @test StatsModels.termvars(f2.rhs[end]) == [d.sym, s.sym]
     end
-    
+
 end
 
 @testset "Categorical Blocking Variable" begin

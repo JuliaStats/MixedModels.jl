@@ -5,11 +5,9 @@ struct RandomEffectsTerm <: AbstractReTerm
     rhs::StatsModels.TermOrTerms
 end
 
-# TODO: consider overwriting | with our own function that can be
-# imported with (a la FilePathsBase.:/)
-# using MixedModels: |
-# to avoid conflicts with definitions in other packages...
-Base.:|(a::StatsModels.TermOrTerms, b::StatsModels.TermOrTerms) = RandomEffectsTerm(a, b)
+# fallback methods if people explicitly import our methods
+|(args...) = Base.:|(args...)
+|(a::StatsModels.TermOrTerms, b::StatsModels.TermOrTerms) = RandomEffectsTerm(a, b)
 
 # expand (lhs | a + b) to (lhs | a) + (lhs | b)
 RandomEffectsTerm(lhs::StatsModels.TermOrTerms, rhs::NTuple{2,AbstractTerm}) =
@@ -28,7 +26,7 @@ StatsModels.terms(t::RandomEffectsTerm) = union(StatsModels.terms(t.lhs), StatsM
 
 # | in MixedModel formula -> RandomEffectsTerm
 function StatsModels.apply_schema(
-    t::FunctionTerm{typeof(|)},
+    t::FunctionTerm{typeof(MixedModels.:|)},
     schema::MultiSchema{StatsModels.FullRank},
     Mod::Type{<:MixedModel}
 )
@@ -122,8 +120,10 @@ function _ranef_refs(
     refs, uniques
 end
 
+# fallback methods if people explicitly import our methods
+/(args...) = Base.:/(args...)
 # TODO: split this off into a RegressionFormula packge?
-Base.:/(a::AbstractTerm, b::AbstractTerm) = a + a & b
+/(a::AbstractTerm, b::AbstractTerm) = a + a & b
 function StatsModels.apply_schema(
     t::FunctionTerm{typeof(/)},
     sch::StatsModels.FullRank,
