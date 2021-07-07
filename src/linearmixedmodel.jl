@@ -398,15 +398,13 @@ function fit!(m::LinearMixedModel{T}; verbose::Bool = false, REML::Bool = false)
     opt = Opt(optsum)
     optsum.REML = REML
     prog = ProgressUnknown(; showspeed=true)
-    iter = 1
     function obj(x, g)
         isempty(g) || throw(ArgumentError("g should be empty for this objective"))
         val = objective(updateL!(setθ!(m, x)))
         ProgressMeter.next!(prog; showvalues = [(:objective, val),])
-        iter += 1
         verbose && println(round(val, digits = 5), " ", x)
         val
-    end    
+    end
     NLopt.min_objective!(opt, obj)
     optsum.finitial = obj(optsum.initial, T[])
     fmin, xmin, ret = NLopt.optimize!(opt, copyto!(optsum.final, optsum.initial))
