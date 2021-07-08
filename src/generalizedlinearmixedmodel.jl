@@ -241,7 +241,7 @@ fit(
 )
 
 """
-    fit!(m::GeneralizedLinearMixedModel[, verbose = false, fast = false, nAGQ = 1])
+    fit!(m::GeneralizedLinearMixedModel[, verbose=false, fast=false, nAGQ=1, progress=true])
 
 Optimize the objective function for `m`.
 
@@ -254,6 +254,7 @@ function fit!(
     verbose::Bool = false,
     fast::Bool = false,
     nAGQ::Integer = 1,
+    progress::Bool = true,
 ) where {T}
     β = m.β
     lm = m.LMM
@@ -269,16 +270,19 @@ function fit!(
         optsum.final = copy(optsum.initial)
     end
     setpar! = fast ? setθ! : setβθ!
+    prog = ProgressUnknown("Minimizing"; showspeed=true)
     function obj(x, g)
         isempty(g) || throw(ArgumentError("g should be empty for this objective"))
         val = deviance(pirls!(setpar!(m, x), fast, verbose), nAGQ)
         verbose && println(round(val, digits = 5), " ", x)
+        progress && ProgressMeter.next!(prog; showvalues = [(:objective, val),])
         val
     end
     opt = Opt(optsum)
     NLopt.min_objective!(opt, obj)
     optsum.finitial = obj(optsum.initial, T[])
     fmin, xmin, ret = NLopt.optimize(opt, copyto!(optsum.final, optsum.initial))
+    ProgressMeter.finish!(prog)
     ## check if very small parameter values bounded below by zero can be set to zero
     xmin_ = copy(xmin)
     for i in eachindex(xmin_)
