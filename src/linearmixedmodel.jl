@@ -386,7 +386,7 @@ end
 """
     fit!(m::LinearMixedModel[; progress::Bool=true, REML::Bool=false])
 
-Optimize the objective of a `LinearMixedModel`.  When `progress` is `true` a 
+Optimize the objective of a `LinearMixedModel`.  When `progress` is `true` a
 `ProgressMeter.ProgressUnknown` display is shown during the optimization of the
 objective, if the optimization takes more than one second or so.
 """
@@ -775,22 +775,22 @@ function reevaluateAend!(m::LinearMixedModel)
 end
 
 """
-    refit!(m::LinearMixedModel[, y::Vector]; REML=m.optsum.REML, progress::Bool=false)
+    refit!(m::LinearMixedModel[, y::Vector]; REML=m.optsum.REML, kwargs...)
 
 Refit the model `m` after installing response `y`.
 
-If `y` is omitted the current response vector is used.  Note that the default for
-`progress` is `false` on refits (whereas it is `true` in the `fit!` methods.)
+If `y` is omitted the current response vector is used.
+`kwargs` are the same as [`fit!`](@ref).
 """
-function refit!(m::LinearMixedModel; REML=m.optsum.REML, progress::Bool=false)
-    fit!(unfit!(m); REML=REML, progress=progress)
+function refit!(m::LinearMixedModel; REML=m.optsum.REML, kwargs...)
+    fit!(unfit!(m); REML=REML, kwargs...)
 end
 
-function refit!(m::LinearMixedModel, y; REML=m.optsum.REML, progress::Bool=false)
+function refit!(m::LinearMixedModel, y; REML=m.optsum.REML, kwargs...)
     resp = m.y
     length(y) == length(resp) || throw(DimensionMismatch(""))
     copyto!(resp, y)
-    refit!(m; REML=REML, progress=progress)
+    refit!(m; REML=REML, kwargs...)
 end
 
 """

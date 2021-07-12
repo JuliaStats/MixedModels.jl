@@ -577,30 +577,31 @@ LinearAlgebra.rank(m::GeneralizedLinearMixedModel) = m.LMM.feterm.rank
 
 """
     refit!(m::GeneralizedLinearMixedModel[, y::Vector];
-          fast::Bool = (length(m.θ) == length(m.optsum.final)),
-          nAGQ::Integer = m.optsum.nAGQ))
+           fast::Bool = (length(m.θ) == length(m.optsum.final)),
+           nAGQ::Integer = m.optsum.nAGQ,
+           kwargs...)
 
 Refit the model `m` after installing response `y`.
 
 If `y` is omitted the current response vector is used.
 
 If not specified, the `fast` and `nAGQ` options from the previous fit are used.
-
+`kwargs` are the same as [`fit!`](@ref)
 """
-function refit!(m::GeneralizedLinearMixedModel{T};
+function refit!(m::GeneralizedLinearMixedModel;
                 fast::Bool = (length(m.θ) == length(m.optsum.final)),
-                nAGQ::Integer = m.optsum.nAGQ, progress::Bool=false)  where T
+                nAGQ::Integer = m.optsum.nAGQ, kwargs...)
 
-    fit!(unfit!(m); fast=fast, nAGQ=nAGQ, progress=progress)
+    fit!(unfit!(m); fast, nAGQ, kwargs...)
 end
 
-function refit!(m::GeneralizedLinearMixedModel{T}, y;
+function refit!(m::GeneralizedLinearMixedModel, y;
                 fast::Bool = (length(m.θ) == length(m.optsum.final)),
-                nAGQ::Integer = m.optsum.nAGQ, progress::Bool=false) where T
+                nAGQ::Integer = m.optsum.nAGQ, kwargs...)
     m_resp_y = m.resp.y
     length(y) == size(m_resp_y, 1) || throw(DimensionMismatch(""))
     copyto!(m_resp_y, y)
-    refit!(m; progress=progress)
+    refit!(m; fast, nAGQ, kwargs...)
 end
 
 """
