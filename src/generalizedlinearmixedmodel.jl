@@ -249,7 +249,7 @@ When `fast` is `true` a potentially much faster but slightly less accurate algor
 which `pirls!` optimizes both the random effects and the fixed-effects parameters,
 is used.
 
-if `progress` is `true`, the default, a `ProgressMeter.ProgressUnknown` counter is displayed
+If `progress` is `true`, the default, a `ProgressMeter.ProgressUnknown` counter is displayed.
 during the iterations to minimize the deviance.  There is a delay before this display is initialized
 and it may not be shown at all for models that are optimized quickly.
 """
