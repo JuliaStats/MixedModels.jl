@@ -591,8 +591,6 @@ If not specified, the `fast` and `nAGQ` options from the previous fit are used.
 function refit!(m::GeneralizedLinearMixedModel;
                 fast::Bool = (length(m.θ) == length(m.optsum.final)),
                 nAGQ::Integer = m.optsum.nAGQ, kwargs...)
-    @show fast
-    @show nAGQ
     fit!(unfit!(m); fast=fast, nAGQ=nAGQ, kwargs...)
 end
 
