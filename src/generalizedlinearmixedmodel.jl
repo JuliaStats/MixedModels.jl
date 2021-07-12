@@ -252,6 +252,8 @@ is used.
 If `progress` is `true`, the default, a `ProgressMeter.ProgressUnknown` counter is displayed.
 during the iterations to minimize the deviance.  There is a delay before this display is initialized
 and it may not be shown at all for models that are optimized quickly.
+
+If `verbose` is `true`, then both the intermediate results of both the nonlinear optimization and PIRLS are also displayed on standard output.
 """
 function fit!(
     m::GeneralizedLinearMixedModel{T};
