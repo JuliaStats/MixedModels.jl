@@ -147,7 +147,7 @@ end
     gform = @formula(y ~ 1 + (1|group))
     m1 = GeneralizedLinearMixedModel(gform, goldstein, Poisson())
     @test !isfitted(m1)
-    fit!(m1)
+    fit!(m1; progress=false)
     @test isfitted(m1)
     @test deviance(m1) ≈ 193.5587302384811 rtol=1.e-5
     @test only(m1.β) ≈ 4.192196439077657 atol=1.e-5
