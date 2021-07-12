@@ -171,6 +171,7 @@ fit(
     verbose::Bool = false,
     fast::Bool = false,
     nAGQ::Integer = 1,
+    progress::Bool = true,
 ) = fit(
     GeneralizedLinearMixedModel,
     f,
@@ -183,6 +184,7 @@ fit(
     verbose = verbose,
     fast = fast,
     nAGQ = nAGQ,
+    progress = progress,
 )
 
 fit(
@@ -197,6 +199,7 @@ fit(
     verbose::Bool = false,
     fast::Bool = false,
     nAGQ::Integer = 1,
+    progress::Bool = true,
 ) = fit!(
     GeneralizedLinearMixedModel(
         f,
@@ -210,6 +213,7 @@ fit(
     verbose = verbose,
     fast = fast,
     nAGQ = nAGQ,
+    progress = progress,
 )
 
 
@@ -226,6 +230,7 @@ fit(
     REML::Bool = false,
     fast::Bool = false,
     nAGQ::Integer = 1,
+    progress::Bool = true,
 ) = fit(
     GeneralizedLinearMixedModel,
     f,
@@ -238,6 +243,7 @@ fit(
     verbose = verbose,
     fast = fast,
     nAGQ = nAGQ,
+    progress = progress,
 )
 
 """
@@ -583,20 +589,19 @@ If not specified, the `fast` and `nAGQ` options from the previous fit are used.
 """
 function refit!(m::GeneralizedLinearMixedModel{T};
                 fast::Bool = (length(m.θ) == length(m.optsum.final)),
-                nAGQ::Integer = m.optsum.nAGQ)  where T
+                nAGQ::Integer = m.optsum.nAGQ, progress::Bool=false)  where T
 
-    fit!(unfit!(m); fast=fast, nAGQ=nAGQ)
+    fit!(unfit!(m); fast=fast, nAGQ=nAGQ, progress=progress)
 end
 
 function refit!(m::GeneralizedLinearMixedModel{T}, y;
                 fast::Bool = (length(m.θ) == length(m.optsum.final)),
-                nAGQ::Integer = m.optsum.nAGQ) where T
+                nAGQ::Integer = m.optsum.nAGQ, progress::Bool=false) where T
     m_resp_y = m.resp.y
     length(y) == size(m_resp_y, 1) || throw(DimensionMismatch(""))
     copyto!(m_resp_y, y)
-    refit!(m)
+    refit!(m; progress=progress)
 end
-
 
 """
     setβθ!(m::GeneralizedLinearMixedModel, v)

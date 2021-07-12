@@ -775,21 +775,22 @@ function reevaluateAend!(m::LinearMixedModel)
 end
 
 """
-    refit!(m::LinearMixedModel[, y::Vector]; REML=m.optsum.REML)
+    refit!(m::LinearMixedModel[, y::Vector]; REML=m.optsum.REML, progress::Bool=false)
 
 Refit the model `m` after installing response `y`.
 
-If `y` is omitted the current response vector is used.
+If `y` is omitted the current response vector is used.  Note that the default for
+`progress` is `false` on refits (whereas it is `true` in the `fit!` methods.)
 """
-function refit!(m::LinearMixedModel; REML=m.optsum.REML)
-    fit!(unfit!(m); REML=REML)
+function refit!(m::LinearMixedModel; REML=m.optsum.REML, progress::Bool=false)
+    fit!(unfit!(m); REML=REML, progress=progress)
 end
 
-function refit!(m::LinearMixedModel, y; REML=m.optsum.REML)
+function refit!(m::LinearMixedModel, y; REML=m.optsum.REML, progress::Bool=false)
     resp = m.y
     length(y) == length(resp) || throw(DimensionMismatch(""))
     copyto!(resp, y)
-    refit!(m; REML=REML)
+    refit!(m; REML=REML, progress=progress)
 end
 
 """
