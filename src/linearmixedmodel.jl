@@ -786,11 +786,11 @@ function refit!(m::LinearMixedModel; REML=m.optsum.REML, kwargs...)
     fit!(unfit!(m); REML=REML, kwargs...)
 end
 
-function refit!(m::LinearMixedModel, y; REML=m.optsum.REML, kwargs...)
+function refit!(m::LinearMixedModel, y; kwargs...)
     resp = m.y
     length(y) == length(resp) || throw(DimensionMismatch(""))
     copyto!(resp, y)
-    refit!(m; REML=REML, kwargs...)
+    refit!(m; kwargs...)
 end
 
 """

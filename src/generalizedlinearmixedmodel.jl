@@ -595,13 +595,11 @@ function refit!(m::GeneralizedLinearMixedModel;
     fit!(unfit!(m); fast, nAGQ, kwargs...)
 end
 
-function refit!(m::GeneralizedLinearMixedModel, y;
-                fast::Bool = (length(m.θ) == length(m.optsum.final)),
-                nAGQ::Integer = m.optsum.nAGQ, kwargs...)
+function refit!(m::GeneralizedLinearMixedModel, y; kwargs...)
     m_resp_y = m.resp.y
     length(y) == size(m_resp_y, 1) || throw(DimensionMismatch(""))
     copyto!(m_resp_y, y)
-    refit!(m; fast, nAGQ, kwargs...)
+    refit!(m; kwargs...)
 end
 
 """
