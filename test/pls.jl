@@ -90,7 +90,7 @@ end
     @test fm1.X == ones(30,1)
     ds = MixedModels.dataset(:dyestuff)
     @test fm1.y == ds[:yield]
-    @test model_response(fm1) == ds.yield
+    @test response(fm1) == ds.yield
     @test cond(fm1) == ones(1)
     @test first(leverage(fm1)) ≈ 0.15650534392640486 rtol=1.e-5
     @test sum(leverage(fm1)) ≈ 4.695160317792145 rtol=1.e-5
@@ -379,7 +379,7 @@ end
     @test ρ === -0.0   # test that systematic zero correlations are returned as -0.0
 
     MixedModels.likelihoodratiotest(fm, fmnc)
-    fmrs = fit(MixedModel, @formula(reaction ~ 1+days + (0+days|subj)), slp);
+    fmrs = fit(MixedModel, @formula(reaction ~ 1+days + (0+days|subj)), slp; progress=false);
     @test objective(fmrs) ≈ 1774.080315280528 rtol=0.00001
     @test fmrs.θ ≈ [0.24353985679033105] rtol=0.00001
 
@@ -394,7 +394,7 @@ end
 
     # combining [ReMat{T,S1}, ReMat{T,S2}] for S1 ≠ S2
     slpcat = (subj = slp.subj, days = PooledArray(string.(slp.days)), reaction = slp.reaction)
-    fm_cat = fit(MixedModel, @formula(reaction ~ 1+days+(1|subj)+(0+days|subj)),slpcat)
+    fm_cat = fit(MixedModel, @formula(reaction ~ 1+days+(1|subj)+(0+days|subj)),slpcat; progress=false)
     @test fm_cat isa LinearMixedModel
     σρ = fm_cat.σρs
     @test σρ isa NamedTuple
@@ -411,7 +411,7 @@ end
     @test all(ρs_intercept .=== -0.0)
 
     # also works without explicitly dropped intercept
-    fm_cat2 = fit(MixedModel, @formula(reaction ~ 1+days+(1|subj)+(days|subj)),slpcat)
+    fm_cat2 = fit(MixedModel, @formula(reaction ~ 1+days+(1|subj)+(days|subj)),slpcat; progress=false)
     @test fm_cat2 isa LinearMixedModel
     σρ = fm_cat2.σρs
     @test σρ isa NamedTuple
@@ -511,7 +511,7 @@ end
     rng = MersenneTwister(0);
     x = rand(rng, 100);
     data = (x = x, x2 = 1.5 .* x, y = rand(rng, 100), z = repeat('A':'T', 5))
-    model = fit(MixedModel, @formula(y ~ x + x2 + (1|z)), data)
+    model = fit(MixedModel, @formula(y ~ x + x2 + (1|z)), data; progress=false)
     @test length(fixef(model)) == 2
     @test rank(model) == 2
     @test length(coef(model)) == 3
@@ -546,7 +546,7 @@ end
     @test vcov(m1) ≈ [1.177035 -4.802598; -4.802598 24.664497] atol = 1.e-4
     =#
 
-    m2 = fit(MixedModel, @formula(a ~ 1 + b + (1|c)), data, wts = data.w1)
+    m2 = fit(MixedModel, @formula(a ~ 1 + b + (1|c)), data, wts = data.w1, progress=false)
     @test m2.θ ≈ [0.295181729258352]  atol = 1.e-4
     @test stderror(m2) ≈  [0.9640167, 3.6309696] atol = 1.e-4
     @test vcov(m2) ≈ [0.9293282 -2.557527; -2.5575267 13.183940] atol = 1.e-4

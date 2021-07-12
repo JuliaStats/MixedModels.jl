@@ -13,7 +13,7 @@ include("modelcache.jl")
 
 @testset "contra" begin
     contra = dataset(:contra)
-    gm0 = fit(MixedModel, only(gfms[:contra]), contra, Bernoulli(), fast=true)
+    gm0 = fit(MixedModel, only(gfms[:contra]), contra, Bernoulli(), fast=true, progress=false)
     @test gm0.lowerbd == zeros(1)
     @test isapprox(gm0.θ, [0.5720734451352923], atol=0.001)
     @test !issingular(gm0)
@@ -37,7 +37,7 @@ include("modelcache.jl")
     @test Distribution(gm0) == Distribution(gm0.resp)
     @test Link(gm0) == Link(gm0.resp)
 
-    gm1 = fit(MixedModel, only(gfms[:contra]), contra, Bernoulli());
+    gm1 = fit(MixedModel, only(gfms[:contra]), contra, Bernoulli(); progress=false);
     @test isapprox(gm1.θ, [0.573054], atol=0.005)
     @test lowerbd(gm1) == vcat(fill(-Inf, 7), 0.)
     @test isapprox(deviance(gm1), 2361.54575, rtol=0.00001)
@@ -47,7 +47,7 @@ include("modelcache.jl")
     @test nobs(gm0) == 1934
     refit!(gm0, fast=true, nAGQ=7)
     @test isapprox(deviance(gm0), 2360.9838, atol=0.001)
-    gm1 = fit(MixedModel, only(gfms[:contra]), contra, Bernoulli(), nAGQ=7)
+    gm1 = fit(MixedModel, only(gfms[:contra]), contra, Bernoulli(), nAGQ=7, progress=false)
     @test isapprox(deviance(gm1), 2360.8760, atol=0.001)
     @test gm1.β == gm1.beta
     @test gm1.θ == gm1.theta
@@ -55,7 +55,7 @@ include("modelcache.jl")
     @test length(gm1y) == size(gm1.X, 1)
     @test eltype(gm1y) == eltype(gm1.X)
     @test gm1y == (MixedModels.dataset(:contra).use .== "Y")
-    @test model_response(gm1) == gm1y
+    @test response(gm1) == gm1y
     @test !islinear(gm1)
     @test :θ in propertynames(gm0)
 
@@ -74,7 +74,7 @@ end
 
 @testset "cbpp" begin
     cbpp = dataset(:cbpp)
-    gm2 = fit(MixedModel, first(gfms[:cbpp]), cbpp, Binomial(), wts=float(cbpp.hsz))
+    gm2 = fit(MixedModel, first(gfms[:cbpp]), cbpp, Binomial(), wts=float(cbpp.hsz), progress=false)
     @test weights(gm2) == cbpp.hsz
     @test deviance(gm2,true) ≈ 100.09585619892968 atol=0.0001
     @test sum(abs2, gm2.u[1]) ≈ 9.723054788538546 atol=0.0001
@@ -102,7 +102,7 @@ end
 end
 
 @testset "verbagg" begin
-    gm3 = fit(MixedModel, only(gfms[:verbagg]), dataset(:verbagg), Bernoulli())
+    gm3 = fit(MixedModel, only(gfms[:verbagg]), dataset(:verbagg), Bernoulli(), progress=false)
     @test deviance(gm3) ≈ 8151.40 rtol=1e-5
     @test lowerbd(gm3) == vcat(fill(-Inf, 6), zeros(2))
     @test fitted(gm3) == predict(gm3)
@@ -115,7 +115,7 @@ end
     center(v::AbstractVector) = v .- (sum(v) / length(v))
     grouseticks = DataFrame(dataset(:grouseticks))
     grouseticks.ch = center(grouseticks.height)
-    gm4 = fit(MixedModel, only(gfms[:grouseticks]), grouseticks, Poisson(), fast=true)  # fails in pirls! with fast=false
+    gm4 = fit(MixedModel, only(gfms[:grouseticks]), grouseticks, Poisson(), fast=true, progress=false)  # fails in pirls! with fast=false
     @test isapprox(deviance(gm4), 851.4046, atol=0.001)
     # these two values are not well defined at the optimum
     #@test isapprox(sum(x -> sum(abs2, x), gm4.u), 196.8695297987013, atol=0.1)
@@ -152,7 +152,7 @@ end
     @test deviance(m1) ≈ 193.5587302384811 rtol=1.e-5
     @test only(m1.β) ≈ 4.192196439077657 atol=1.e-5
     @test only(m1.θ) ≈ 1.838245201739852 atol=1.e-5
-    m11 = fit(MixedModel, gform, goldstein, Poisson(), nAGQ=11)
+    m11 = fit(MixedModel, gform, goldstein, Poisson(), nAGQ=11, progress=false)
     @test deviance(m11) ≈ 193.51028088736842 rtol=1.e-5
     @test only(m11.β) ≈ 4.192196439077657 atol=1.e-5
     @test only(m11.θ) ≈ 1.838245201739852 atol=1.e-5
@@ -181,7 +181,7 @@ end
     # The offset of log.(expected) is to examine the ratio of observed to expected, based on population
     mmec = dataset(:mmec)
     mmform = @formula(deaths ~ 1 + uvb + (1|region))
-    gm5 = fit(MixedModel, mmform, mmec, Poisson(); offset=log.(mmec.expected), nAGQ=11)
+    gm5 = fit(MixedModel, mmform, mmec, Poisson(); offset=log.(mmec.expected), nAGQ=11, progress=false)
     @test isapprox(deviance(gm5), 655.2533533016059, atol=5.e-3)
     @test isapprox(first(gm5.θ), 0.4121684550775567, atol=1.e-3)
     @test isapprox(first(gm5.β), -0.13860166843315044, atol=1.e-3)

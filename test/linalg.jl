@@ -45,8 +45,8 @@ end
         G = repeat(PooledArray(string.('A':'T')), inner = 2, outer=10),
         H = repeat(PooledArray(string.('a':'j')), inner=40),
         )
-    m1 = fit(MixedModel, @formula(Y ~ 1 + A + (1+A|G) + (1+A|H)), df)
-    wm1 = fit(MixedModel, @formula(Y ~ 1+A+(1+A|G)+(1+A|H)), df, wts  = ones(400))
+    m1 = fit(MixedModel, @formula(Y ~ 1 + A + (1+A|G) + (1+A|H)), df; progress=false)
+    wm1 = fit(MixedModel, @formula(Y ~ 1+A+(1+A|G)+(1+A|H)), df, wts=ones(400), progress=false)
     @test loglikelihood(wm1) ≈ loglikelihood(m1)
     MixedModels.reweight!(wm1, ones(400))
     @test loglikelihood(refit!(wm1)) ≈ loglikelihood(m1)
@@ -93,7 +93,7 @@ end
         # an example in MixedModels.jl#123
         df = gendata(10000, 500)
         f = @formula(Y ~ (1 + X|H) + (1|G))
-        m500 = fit!(LinearMixedModel(f, df))
+        m500 = fit!(LinearMixedModel(f, df), progress=false)
         # the real test here isn't in the theta comparison but in that the fit
         # completes successfully
         @test length(m500.u) == 2
