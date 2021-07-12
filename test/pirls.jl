@@ -74,7 +74,7 @@ end
 
 @testset "cbpp" begin
     cbpp = dataset(:cbpp)
-    gm2 = fit(MixedModel, first(gfms[:cbpp]), cbpp, Binomial(), wts=float(cbpp.hsz), progress=false)
+    gm2 = fit(MixedModel, first(gfms[:cbpp]), cbpp, Binomial(); wts=float(cbpp.hsz), progress=false)
     @test weights(gm2) == cbpp.hsz
     @test deviance(gm2,true) ≈ 100.09585619892968 atol=0.0001
     @test sum(abs2, gm2.u[1]) ≈ 9.723054788538546 atol=0.0001
@@ -91,11 +91,18 @@ end
     @testset "GLMM refit" begin
         gm2r = deepcopy(gm2)
         @test_throws ArgumentError fit!(gm2r)
-        refit!(gm2r, 1 .- gm2.y; fast=true)
-        @test gm2r.β ≈ -gm2.β atol=1e-3
+
+        refit!(gm2r; fast=true, progress=false)
+        @test length(gm2r.optsum.final) == 1
         @test gm2r.θ ≈ gm2.θ atol=1e-3
 
-        refit!(gm2r, 1 .- gm2.y; fast=false)
+        # swapping successes and failures to give us the same model
+        # but with opposite signs. healthy ≈ 1 - response(gm2r)
+        # but defining it in terms of the original values avoids some
+        # nasty floating point issues
+        healthy = @. (cbpp.hsz - cbpp.incid) / cbpp.hsz
+        refit!(gm2r, healthy; fast=false, progress=false)
+        @test length(gm2r.optsum.final) == 5
         @test gm2r.β ≈ -gm2.β atol=1e-3
         @test gm2r.θ ≈ gm2.θ atol=1e-3
     end
