@@ -20,34 +20,34 @@ include("modelcache.jl")
         resp₀ = copy(response(fm))
         # type conversion of ints to floats
         simulate!(StableRNG(1234321), fm, β=[1], σ=1)
-        refit!(fm,resp₀)
-        refit!(simulate!(StableRNG(1234321), fm))
+        refit!(fm, resp₀; progress=false)
+        refit!(simulate!(StableRNG(1234321), fm); progress=false)
         @test deviance(fm) ≈ 322.6582 atol=0.001
-        refit!(fm, float(ds.yield))
+        refit!(fm, float(ds.yield), progress=false)
         # Global/implicit RNG method
         Random.seed!(1234321)
-        refit!(simulate!(fm))
+        refit!(simulate!(fm); progress=false)
         # just make sure this worked, don't check fit
         # (because the RNG can change between Julia versions)
         @test response(fm) ≠ resp₀
         simulate!(fm, θ = fm.θ)
-        @test_throws DimensionMismatch refit!(fm, zeros(29))
+        @test_throws DimensionMismatch refit!(fm, zeros(29); progress=false)
         # restore the original state
-        refit!(fm, vec(float.(ds.yield)))
+        refit!(fm, vec(float.(ds.yield)); progress=false)
     end
     @testset "Poisson" begin
         center(v::AbstractVector) = v .- (sum(v) / length(v))
         grouseticks = DataFrame(dataset(:grouseticks))
         grouseticks.ch = center(grouseticks.height)
-        gm4 = fit(MixedModel, only(gfms[:grouseticks]), grouseticks, Poisson(), fast=true)  # fails in pirls! with fast=false
-        gm4sim = refit!(simulate!(StableRNG(42), deepcopy(gm4)))
+        gm4 = fit(MixedModel, only(gfms[:grouseticks]), grouseticks, Poisson(), fast=true, progress=false)  # fails in pirls! with fast=false
+        gm4sim = refit!(simulate!(StableRNG(42), deepcopy(gm4)); progress=false)
         @test isapprox(gm4.β, gm4sim.β; atol=norm(stderror(gm4)))
     end
 
     @testset "Binomial" begin
         cbpp = dataset(:cbpp)
-        gm2 = fit(MixedModel, first(gfms[:cbpp]), cbpp, Binomial(), wts=float(cbpp.hsz))
-        gm2sim = refit!(simulate!(StableRNG(42), deepcopy(gm2)), fast=true)
+        gm2 = fit(MixedModel, first(gfms[:cbpp]), cbpp, Binomial(), wts=float(cbpp.hsz), progress=false)
+        gm2sim = refit!(simulate!(StableRNG(42), deepcopy(gm2)); fast=true, progress=false)
         @test isapprox(gm2.β, gm2sim.β; atol=norm(stderror(gm2)))
     end
     @testset "_rand with dispersion" begin
@@ -102,7 +102,7 @@ end
         contra = dataset(:contra)
         # need a model with fast=false to test that we only
         # copy the optimizer constraints for θ and not β
-        gm0 = fit(MixedModel, only(gfms[:contra]), contra, Bernoulli(), fast=false)
+        gm0 = fit(MixedModel, only(gfms[:contra]), contra, Bernoulli(), fast=false, progress=false)
         bs = parametricbootstrap(StableRNG(42), 100, gm0)
         # make sure we're not copying
         @test length(bs.lowerbd) == length(gm0.θ)

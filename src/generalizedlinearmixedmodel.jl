@@ -171,6 +171,7 @@ fit(
     verbose::Bool = false,
     fast::Bool = false,
     nAGQ::Integer = 1,
+    progress::Bool = true,
 ) = fit(
     GeneralizedLinearMixedModel,
     f,
@@ -183,6 +184,7 @@ fit(
     verbose = verbose,
     fast = fast,
     nAGQ = nAGQ,
+    progress = progress,
 )
 
 fit(
@@ -197,6 +199,7 @@ fit(
     verbose::Bool = false,
     fast::Bool = false,
     nAGQ::Integer = 1,
+    progress::Bool = true,
 ) = fit!(
     GeneralizedLinearMixedModel(
         f,
@@ -210,6 +213,7 @@ fit(
     verbose = verbose,
     fast = fast,
     nAGQ = nAGQ,
+    progress = progress,
 )
 
 
@@ -226,6 +230,7 @@ fit(
     REML::Bool = false,
     fast::Bool = false,
     nAGQ::Integer = 1,
+    progress::Bool = true,
 ) = fit(
     GeneralizedLinearMixedModel,
     f,
@@ -238,22 +243,30 @@ fit(
     verbose = verbose,
     fast = fast,
     nAGQ = nAGQ,
+    progress = progress,
 )
 
 """
-    fit!(m::GeneralizedLinearMixedModel[, verbose = false, fast = false, nAGQ = 1])
+    fit!(m::GeneralizedLinearMixedModel[, verbose=false, fast=false, nAGQ=1, progress=true])
 
 Optimize the objective function for `m`.
 
 When `fast` is `true` a potentially much faster but slightly less accurate algorithm, in
 which `pirls!` optimizes both the random effects and the fixed-effects parameters,
 is used.
+
+If `progress` is `true`, the default, a `ProgressMeter.ProgressUnknown` counter is displayed.
+during the iterations to minimize the deviance.  There is a delay before this display is initialized
+and it may not be shown at all for models that are optimized quickly.
+
+If `verbose` is `true`, then both the intermediate results of both the nonlinear optimization and PIRLS are also displayed on standard output.
 """
 function fit!(
     m::GeneralizedLinearMixedModel{T};
     verbose::Bool = false,
     fast::Bool = false,
     nAGQ::Integer = 1,
+    progress::Bool = true,
 ) where {T}
     β = m.β
     lm = m.LMM
@@ -269,16 +282,19 @@ function fit!(
         optsum.final = copy(optsum.initial)
     end
     setpar! = fast ? setθ! : setβθ!
+    prog = ProgressUnknown("Minimizing"; showspeed=true)
     function obj(x, g)
         isempty(g) || throw(ArgumentError("g should be empty for this objective"))
         val = deviance(pirls!(setpar!(m, x), fast, verbose), nAGQ)
         verbose && println(round(val, digits = 5), " ", x)
+        progress && ProgressMeter.next!(prog; showvalues = [(:objective, val),])
         val
     end
     opt = Opt(optsum)
     NLopt.min_objective!(opt, obj)
     optsum.finitial = obj(optsum.initial, T[])
     fmin, xmin, ret = NLopt.optimize(opt, copyto!(optsum.final, optsum.initial))
+    ProgressMeter.finish!(prog)
     ## check if very small parameter values bounded below by zero can be set to zero
     xmin_ = copy(xmin)
     for i in eachindex(xmin_)
@@ -561,32 +577,29 @@ LinearAlgebra.rank(m::GeneralizedLinearMixedModel) = m.LMM.feterm.rank
 
 """
     refit!(m::GeneralizedLinearMixedModel[, y::Vector];
-          fast::Bool = (length(m.θ) == length(m.optsum.final)),
-          nAGQ::Integer = m.optsum.nAGQ))
+           fast::Bool = (length(m.θ) == length(m.optsum.final)),
+           nAGQ::Integer = m.optsum.nAGQ,
+           kwargs...)
 
 Refit the model `m` after installing response `y`.
 
 If `y` is omitted the current response vector is used.
 
 If not specified, the `fast` and `nAGQ` options from the previous fit are used.
-
+`kwargs` are the same as [`fit!`](@ref)
 """
-function refit!(m::GeneralizedLinearMixedModel{T};
+function refit!(m::GeneralizedLinearMixedModel;
                 fast::Bool = (length(m.θ) == length(m.optsum.final)),
-                nAGQ::Integer = m.optsum.nAGQ)  where T
-
-    fit!(unfit!(m); fast=fast, nAGQ=nAGQ)
+                nAGQ::Integer = m.optsum.nAGQ, kwargs...)
+    fit!(unfit!(m); fast=fast, nAGQ=nAGQ, kwargs...)
 end
 
-function refit!(m::GeneralizedLinearMixedModel{T}, y;
-                fast::Bool = (length(m.θ) == length(m.optsum.final)),
-                nAGQ::Integer = m.optsum.nAGQ) where T
+function refit!(m::GeneralizedLinearMixedModel, y; kwargs...)
     m_resp_y = m.resp.y
     length(y) == size(m_resp_y, 1) || throw(DimensionMismatch(""))
     copyto!(m_resp_y, y)
-    refit!(m)
+    refit!(m; kwargs...)
 end
-
 
 """
     setβθ!(m::GeneralizedLinearMixedModel, v)

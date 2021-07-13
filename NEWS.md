@@ -24,6 +24,10 @@ MixedModels v4.0.0 Release Notes
 * `saveoptsum` and `restoreoptsum!` provide for saving and restoring the `optsum`
   field of a `LinearMixedModel` as a JSON file, allowing for recreating a model fit
   that may take a long time for parameter optimization. [#506]
+* Verbose output now uses `ProgressMeter`, which gives useful information about the timing
+  of each iteration and does not flood stdio. The `verbose` argument has been renamed `progress`
+  and the default changed to `true`. [#539]
+* Support for Julia < 1.6 has been dropped. [#539]
 
 Run-time formula syntax
 -----------------------
@@ -257,3 +261,4 @@ Package dependencies
 [#524]: https://github.com/JuliaStats/MixedModels.jl/issues/524
 [#536]: https://github.com/JuliaStats/MixedModels.jl/issues/536
 [#537]: https://github.com/JuliaStats/MixedModels.jl/issues/537
+[#539]: https://github.com/JuliaStats/MixedModels.jl/issues/539

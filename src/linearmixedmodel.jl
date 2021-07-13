@@ -166,7 +166,7 @@ fit(
     tbl;
     wts = [],
     contrasts = Dict{Symbol,Any}(),
-    verbose::Bool = false,
+    progress::Bool = true,
     REML::Bool = false,
 ) = fit(
     LinearMixedModel,
@@ -174,7 +174,7 @@ fit(
     Tables.columntable(tbl),
     wts = wts,
     contrasts = contrasts,
-    verbose = verbose,
+    progress = progress,
     REML = REML,
 )
 
@@ -184,11 +184,11 @@ fit(
     tbl::Tables.ColumnTable;
     wts = wts,
     contrasts = contrasts,
-    verbose = verbose,
+    progress = progress,
     REML = REML,
 ) = fit!(
     LinearMixedModel(f, tbl, contrasts = contrasts, wts = wts),
-    verbose = verbose,
+    progress = progress,
     REML = REML,
 )
 
@@ -201,7 +201,7 @@ fit(
     tbl;
     wts = [],
     contrasts = Dict{Symbol,Any}(),
-    verbose::Bool = false,
+    progress::Bool = true,
     REML::Bool = false,
     offset = [],
 ) = !isempty(offset) ? _offseterr() : fit(
@@ -210,7 +210,7 @@ fit(
     tbl,
     wts = wts,
     contrasts = contrasts,
-    verbose = verbose,
+    progress = progress,
     REML = REML,
 )
 
@@ -222,7 +222,7 @@ fit(
     l::IdentityLink;
     wts = [],
     contrasts = Dict{Symbol,Any}(),
-    verbose::Bool = false,
+    progress::Bool = true,
     REML::Bool = false,
     offset = [],
     fast::Bool = false,
@@ -233,7 +233,7 @@ fit(
     tbl,
     wts = wts,
     contrasts = contrasts,
-    verbose = verbose,
+    progress = progress,
     REML = REML,
 )
 
@@ -384,12 +384,13 @@ function feL(m::LinearMixedModel)
 end
 
 """
-    fit!(m::LinearMixedModel[; verbose::Bool=false, REML::Bool=false])
+    fit!(m::LinearMixedModel[; progress::Bool=true, REML::Bool=false])
 
-Optimize the objective of a `LinearMixedModel`.  When `verbose` is `true` the values of the
-objective and the parameters are printed on stdout at each function evaluation.
+Optimize the objective of a `LinearMixedModel`.  When `progress` is `true` a
+`ProgressMeter.ProgressUnknown` display is shown during the optimization of the
+objective, if the optimization takes more than one second or so.
 """
-function fit!(m::LinearMixedModel{T}; verbose::Bool = false, REML::Bool = false) where {T}
+function fit!(m::LinearMixedModel{T}; progress::Bool=true, REML::Bool=false) where {T}
     optsum = m.optsum
     # this doesn't matter for LMM, but it does for GLMM, so let's be consistent
     if optsum.feval > 0
@@ -397,15 +398,17 @@ function fit!(m::LinearMixedModel{T}; verbose::Bool = false, REML::Bool = false)
     end
     opt = Opt(optsum)
     optsum.REML = REML
+    prog = ProgressUnknown("Minimizing"; showspeed=true)
     function obj(x, g)
         isempty(g) || throw(ArgumentError("g should be empty for this objective"))
         val = objective(updateL!(setθ!(m, x)))
-        verbose && println(round(val, digits = 5), " ", x)
+        progress && ProgressMeter.next!(prog; showvalues = [(:objective, val),])
         val
     end
     NLopt.min_objective!(opt, obj)
     optsum.finitial = obj(optsum.initial, T[])
     fmin, xmin, ret = NLopt.optimize!(opt, copyto!(optsum.final, optsum.initial))
+    ProgressMeter.finish!(prog)
     ## check if small non-negative parameter values can be set to zero
     xmin_ = copy(xmin)
     lb = optsum.lowerbd
@@ -772,21 +775,22 @@ function reevaluateAend!(m::LinearMixedModel)
 end
 
 """
-    refit!(m::LinearMixedModel[, y::Vector]; REML=m.optsum.REML)
+    refit!(m::LinearMixedModel[, y::Vector]; REML=m.optsum.REML, kwargs...)
 
 Refit the model `m` after installing response `y`.
 
 If `y` is omitted the current response vector is used.
+`kwargs` are the same as [`fit!`](@ref).
 """
-function refit!(m::LinearMixedModel; REML=m.optsum.REML)
-    fit!(unfit!(m); REML=REML)
+function refit!(m::LinearMixedModel; REML=m.optsum.REML, kwargs...)
+    fit!(unfit!(m); REML=REML, kwargs...)
 end
 
-function refit!(m::LinearMixedModel, y; REML=m.optsum.REML)
+function refit!(m::LinearMixedModel, y; kwargs...)
     resp = m.y
     length(y) == length(resp) || throw(DimensionMismatch(""))
     copyto!(resp, y)
-    refit!(m; REML=REML)
+    refit!(m; kwargs...)
 end
 
 """

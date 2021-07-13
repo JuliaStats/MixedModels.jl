@@ -53,7 +53,7 @@ end
     output = String(take!(io))
     @test startswith(output, "rows:")
 
-    refit!(fm1)
+    refit!(fm1; progress=false)
 
     @test isfitted(fm1)
     @test :θ in propertynames(fm1)
@@ -90,7 +90,7 @@ end
     @test fm1.X == ones(30,1)
     ds = MixedModels.dataset(:dyestuff)
     @test fm1.y == ds[:yield]
-    @test model_response(fm1) == ds.yield
+    @test response(fm1) == ds.yield
     @test cond(fm1) == ones(1)
     @test first(leverage(fm1)) ≈ 0.15650534392640486 rtol=1.e-5
     @test sum(leverage(fm1)) ≈ 4.695160317792145 rtol=1.e-5
@@ -118,7 +118,7 @@ end
     @test startswith(str, "Variance components:")
     @test vc.s == sdest(fm1)
 
-    refit!(fm1, REML=true)
+    refit!(fm1; REML=true, progress=false)
     @test objective(fm1) ≈ 319.65427684225216 atol=0.0001
     @test_throws ArgumentError loglikelihood(fm1)
     @test dof_residual(fm1) ≥ 0
@@ -130,7 +130,7 @@ end
     @test isa(vc, Matrix{Float64})
     @test only(vc) ≈ 375.7167775 rtol=1.e-6
     # since we're caching the fits, we should get it back to being correctly fitted
-    refit!(fm1; REML=false)
+    refit!(fm1; REML=false, progress=false)
 end
 
 @testset "Dyestuff2" begin
@@ -147,9 +147,9 @@ end
     @test logdet(fm) ≈ 0.0
     @test issingular(fm)
     #### modifies the model
-    refit!(fm, float(MixedModels.dataset(:dyestuff)[:yield]))
+    refit!(fm, float(MixedModels.dataset(:dyestuff)[:yield]); progress=false)
     @test objective(fm) ≈ 327.3270598811428 atol=0.001
-    refit!(fm, float(MixedModels.dataset(:dyestuff2)[:yield])) # restore the model in the cache
+    refit!(fm, float(MixedModels.dataset(:dyestuff2)[:yield]); progress=false) # restore the model in the cache
 end
 
 @testset "penicillin" begin
@@ -379,7 +379,7 @@ end
     @test ρ === -0.0   # test that systematic zero correlations are returned as -0.0
 
     MixedModels.likelihoodratiotest(fm, fmnc)
-    fmrs = fit(MixedModel, @formula(reaction ~ 1+days + (0+days|subj)), slp);
+    fmrs = fit(MixedModel, @formula(reaction ~ 1+days + (0+days|subj)), slp; progress=false);
     @test objective(fmrs) ≈ 1774.080315280528 rtol=0.00001
     @test fmrs.θ ≈ [0.24353985679033105] rtol=0.00001
 
@@ -394,7 +394,7 @@ end
 
     # combining [ReMat{T,S1}, ReMat{T,S2}] for S1 ≠ S2
     slpcat = (subj = slp.subj, days = PooledArray(string.(slp.days)), reaction = slp.reaction)
-    fm_cat = fit(MixedModel, @formula(reaction ~ 1+days+(1|subj)+(0+days|subj)),slpcat)
+    fm_cat = fit(MixedModel, @formula(reaction ~ 1+days+(1|subj)+(0+days|subj)),slpcat; progress=false)
     @test fm_cat isa LinearMixedModel
     σρ = fm_cat.σρs
     @test σρ isa NamedTuple
@@ -411,7 +411,7 @@ end
     @test all(ρs_intercept .=== -0.0)
 
     # also works without explicitly dropped intercept
-    fm_cat2 = fit(MixedModel, @formula(reaction ~ 1+days+(1|subj)+(days|subj)),slpcat)
+    fm_cat2 = fit(MixedModel, @formula(reaction ~ 1+days+(1|subj)+(days|subj)),slpcat; progress=false)
     @test fm_cat2 isa LinearMixedModel
     σρ = fm_cat2.σρs
     @test σρ isa NamedTuple
@@ -511,7 +511,7 @@ end
     rng = MersenneTwister(0);
     x = rand(rng, 100);
     data = (x = x, x2 = 1.5 .* x, y = rand(rng, 100), z = repeat('A':'T', 5))
-    model = fit(MixedModel, @formula(y ~ x + x2 + (1|z)), data)
+    model = fit(MixedModel, @formula(y ~ x + x2 + (1|z)), data; progress=false)
     @test length(fixef(model)) == 2
     @test rank(model) == 2
     @test length(coef(model)) == 3
@@ -540,13 +540,13 @@ end
     )
 
     #= no need to fit yet another model without weights, but here are the reference values from lme4
-    m1 = fit(MixedModel, @formula(a ~ 1 + b + (1|c)), data)
+    m1 = fit(MixedModel, @formula(a ~ 1 + b + (1|c)), data; progress=false)
     @test m1.θ ≈ [0.0]
     @test stderror(m1) ≈  [1.084912, 4.966336] atol = 1.e-4
     @test vcov(m1) ≈ [1.177035 -4.802598; -4.802598 24.664497] atol = 1.e-4
     =#
 
-    m2 = fit(MixedModel, @formula(a ~ 1 + b + (1|c)), data, wts = data.w1)
+    m2 = fit(MixedModel, @formula(a ~ 1 + b + (1|c)), data; wts = data.w1, progress=false)
     @test m2.θ ≈ [0.295181729258352]  atol = 1.e-4
     @test stderror(m2) ≈  [0.9640167, 3.6309696] atol = 1.e-4
     @test vcov(m2) ≈ [0.9293282 -2.557527; -2.5575267 13.183940] atol = 1.e-4
