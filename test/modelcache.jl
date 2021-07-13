@@ -45,6 +45,6 @@ using MixedModels: dataset
 
 function models(nm::Symbol)
     get!(fittedmodels, nm) do
-        [fit(MixedModel, f, dataset(nm), progress=false) for f in allfms[nm]]
+        [fit(MixedModel, f, dataset(nm); progress=false) for f in allfms[nm]]
     end
 end

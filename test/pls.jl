@@ -540,13 +540,13 @@ end
     )
 
     #= no need to fit yet another model without weights, but here are the reference values from lme4
-    m1 = fit(MixedModel, @formula(a ~ 1 + b + (1|c)), data)
+    m1 = fit(MixedModel, @formula(a ~ 1 + b + (1|c)), data; progress=false)
     @test m1.θ ≈ [0.0]
     @test stderror(m1) ≈  [1.084912, 4.966336] atol = 1.e-4
     @test vcov(m1) ≈ [1.177035 -4.802598; -4.802598 24.664497] atol = 1.e-4
     =#
 
-    m2 = fit(MixedModel, @formula(a ~ 1 + b + (1|c)), data, wts = data.w1, progress=false)
+    m2 = fit(MixedModel, @formula(a ~ 1 + b + (1|c)), data; wts = data.w1, progress=false)
     @test m2.θ ≈ [0.295181729258352]  atol = 1.e-4
     @test stderror(m2) ≈  [0.9640167, 3.6309696] atol = 1.e-4
     @test vcov(m2) ≈ [0.9293282 -2.557527; -2.5575267 13.183940] atol = 1.e-4

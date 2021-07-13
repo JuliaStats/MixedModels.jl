@@ -19,7 +19,7 @@ include("modelcache.jl")
         fm1 = LinearMixedModel(last(fms[:kb07]), dataset(:kb07))
         maxtime = 1e-6
         fm1.optsum.maxtime = maxtime
-        @test_logs (:warn, "NLopt optimization failure: MAXTIME_REACHED") fit!(fm1)
+        @test_logs (:warn, "NLopt optimization failure: MAXTIME_REACHED") fit!(fm1; progress=false)
         @test fm1.optsum.returnvalue == :MAXTIME_REACHED
         @test fm1.optsum.maxtime == maxtime
     end

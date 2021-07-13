@@ -93,7 +93,7 @@ end
         # an example in MixedModels.jl#123
         df = gendata(10000, 500)
         f = @formula(Y ~ (1 + X|H) + (1|G))
-        m500 = fit!(LinearMixedModel(f, df), progress=false)
+        m500 = fit!(LinearMixedModel(f, df); progress=false)
         # the real test here isn't in the theta comparison but in that the fit
         # completes successfully
         @test length(m500.u) == 2

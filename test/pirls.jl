@@ -13,7 +13,7 @@ include("modelcache.jl")
 
 @testset "contra" begin
     contra = dataset(:contra)
-    gm0 = fit(MixedModel, only(gfms[:contra]), contra, Bernoulli(), fast=true, progress=false)
+    gm0 = fit(MixedModel, only(gfms[:contra]), contra, Bernoulli(); fast=true, progress=false)
     @test gm0.lowerbd == zeros(1)
     @test isapprox(gm0.θ, [0.5720734451352923], atol=0.001)
     @test !issingular(gm0)
@@ -45,9 +45,9 @@ include("modelcache.jl")
 
     @test dof(gm0) == length(gm0.β) + length(gm0.θ)
     @test nobs(gm0) == 1934
-    refit!(gm0, fast=true, nAGQ=7, progress=false)
+    refit!(gm0; fast=true, nAGQ=7, progress=false)
     @test isapprox(deviance(gm0), 2360.9838, atol=0.001)
-    gm1 = fit(MixedModel, only(gfms[:contra]), contra, Bernoulli(), nAGQ=7, progress=false)
+    gm1 = fit(MixedModel, only(gfms[:contra]), contra, Bernoulli(); nAGQ=7, progress=false)
     @test isapprox(deviance(gm1), 2360.8760, atol=0.001)
     @test gm1.β == gm1.beta
     @test gm1.θ == gm1.theta
@@ -90,7 +90,7 @@ end
 
     @testset "GLMM refit" begin
         gm2r = deepcopy(gm2)
-        @test_throws ArgumentError fit!(gm2r)
+        @test_throws ArgumentError fit!(gm2r; progress=false)
 
         refit!(gm2r; fast=true, progress=false)
         @test length(gm2r.optsum.final) == 1
@@ -109,7 +109,7 @@ end
 end
 
 @testset "verbagg" begin
-    gm3 = fit(MixedModel, only(gfms[:verbagg]), dataset(:verbagg), Bernoulli(), progress=false)
+    gm3 = fit(MixedModel, only(gfms[:verbagg]), dataset(:verbagg), Bernoulli(); progress=false)
     @test deviance(gm3) ≈ 8151.40 rtol=1e-5
     @test lowerbd(gm3) == vcat(fill(-Inf, 6), zeros(2))
     @test fitted(gm3) == predict(gm3)
@@ -122,7 +122,7 @@ end
     center(v::AbstractVector) = v .- (sum(v) / length(v))
     grouseticks = DataFrame(dataset(:grouseticks))
     grouseticks.ch = center(grouseticks.height)
-    gm4 = fit(MixedModel, only(gfms[:grouseticks]), grouseticks, Poisson(), fast=true, progress=false)  # fails in pirls! with fast=false
+    gm4 = fit(MixedModel, only(gfms[:grouseticks]), grouseticks, Poisson(); fast=true, progress=false)  # fails in pirls! with fast=false
     @test isapprox(deviance(gm4), 851.4046, atol=0.001)
     # these two values are not well defined at the optimum
     #@test isapprox(sum(x -> sum(abs2, x), gm4.u), 196.8695297987013, atol=0.1)
@@ -159,7 +159,7 @@ end
     @test deviance(m1) ≈ 193.5587302384811 rtol=1.e-5
     @test only(m1.β) ≈ 4.192196439077657 atol=1.e-5
     @test only(m1.θ) ≈ 1.838245201739852 atol=1.e-5
-    m11 = fit(MixedModel, gform, goldstein, Poisson(), nAGQ=11, progress=false)
+    m11 = fit(MixedModel, gform, goldstein, Poisson(); nAGQ=11, progress=false)
     @test deviance(m11) ≈ 193.51028088736842 rtol=1.e-5
     @test only(m11.β) ≈ 4.192196439077657 atol=1.e-5
     @test only(m11.θ) ≈ 1.838245201739852 atol=1.e-5
