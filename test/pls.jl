@@ -53,7 +53,7 @@ end
     output = String(take!(io))
     @test startswith(output, "rows:")
 
-    refit!(fm1)
+    refit!(fm1; progress=false)
 
     @test isfitted(fm1)
     @test :θ in propertynames(fm1)
@@ -118,7 +118,7 @@ end
     @test startswith(str, "Variance components:")
     @test vc.s == sdest(fm1)
 
-    refit!(fm1, REML=true)
+    refit!(fm1; REML=true, progress=false)
     @test objective(fm1) ≈ 319.65427684225216 atol=0.0001
     @test_throws ArgumentError loglikelihood(fm1)
     @test dof_residual(fm1) ≥ 0
@@ -130,7 +130,7 @@ end
     @test isa(vc, Matrix{Float64})
     @test only(vc) ≈ 375.7167775 rtol=1.e-6
     # since we're caching the fits, we should get it back to being correctly fitted
-    refit!(fm1; REML=false)
+    refit!(fm1; REML=false, progress=false)
 end
 
 @testset "Dyestuff2" begin
@@ -147,9 +147,9 @@ end
     @test logdet(fm) ≈ 0.0
     @test issingular(fm)
     #### modifies the model
-    refit!(fm, float(MixedModels.dataset(:dyestuff)[:yield]))
+    refit!(fm, float(MixedModels.dataset(:dyestuff)[:yield]); progress=false)
     @test objective(fm) ≈ 327.3270598811428 atol=0.001
-    refit!(fm, float(MixedModels.dataset(:dyestuff2)[:yield])) # restore the model in the cache
+    refit!(fm, float(MixedModels.dataset(:dyestuff2)[:yield]); progress=false) # restore the model in the cache
 end
 
 @testset "penicillin" begin

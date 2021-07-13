@@ -8,7 +8,7 @@ include("modelcache.jl")
     @testset "maxfeval" begin
         fm1 = LinearMixedModel(first(fms[:sleepstudy]), dataset(:sleepstudy))
         fm1.optsum.maxfeval = 1
-        @test_logs (:warn, "NLopt optimization failure: MAXEVAL_REACHED") refit!(fm1)
+        @test_logs (:warn, "NLopt optimization failure: MAXEVAL_REACHED") refit!(fm1; progress=false)
         @test fm1.optsum.returnvalue == :MAXEVAL_REACHED
         @test fm1.optsum.feval == 1
     end
