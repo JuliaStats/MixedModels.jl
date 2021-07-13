@@ -17,7 +17,7 @@ end
     @test_throws(ArgumentError("use LinearMixedModel for Normal distribution with IdentityLink"),
                  fit(GeneralizedLinearMixedModel,
                      @formula(yield ~ 1 + (1|batch)),
-                     MixedModels.dataset(:dyestuff)))
+                     MixedModels.dataset(:dyestuff); progress=false))
 end
 
 @testset "Normal Distribution GLMM" begin
