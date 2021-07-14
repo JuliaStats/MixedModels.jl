@@ -3,29 +3,16 @@ See [`simulate!`](@ref)
 """
 function simulate end
 
-function simulate(rng::AbstractRNG, m::MixedModel{T}, newX::AbstractMatrix = m.X;
-                  kwargs...) where {T}
-    size(newX, 1) == nobs(m) ||
-        throw(DimensionMismatch("New fixed-effect model matrix must have the same number of observations as the original."))
-    size(newX, 2) == size(m.X, 2) ||
-    throw(DimensionMismatch("New fixed-effect model matrix must have the same predictors as the original."))
-    y = zeros(T, nobs(m))
-    simulate!(rng, y, m, newX; kwargs...)
-end
-
-function simulate(m::MixedModel, newX::AbstractMatrix = m.X; kwargs...)
-    simulate(Random.GLOBAL_RNG, m, newX; kwargs...)
-end
-
 function simulate(rng::AbstractRNG, m::MixedModel{T}, newdata; kwargs...) where {T}
     dat = Tables.columntable(newdata)
     y = zeros(T, length(first(dat)))
     simulate!(rng, y, m, newdata; kwargs...)
 end
 
-function simulate(m::MixedModel, newdata; kwargs...)
-    simulate(Random.GLOBAL_RNG, m, newdata; kwargs...)
-end
+simulate(rng::AbstractRNG, m::MixedModel; kwargs...) = simulate!(rng, similar(response(m)), m; kwargs...)
+
+simulate(m::MixedModel, args...; kwargs...) = simulate(Random.GLOBAL_RNG, m, args...; kwargs...)
+
 
 """
     simulate!(rng::AbstractRNG, m::MixedModel{T}; β=m.β, σ=m.σ, θ=T[])
@@ -48,8 +35,9 @@ function simulate!(
     σ = m.σ,
     θ = T[],
 ) where {T}
-    simulate!(rng, m.y, m; β=β, σ=σ, θ=θ)
-    unfit!(m)
+    # XXX should we add support for doing something with weights?
+    simulate!(rng, m.y, m; β, σ, θ)
+    return unfit!(m)
 end
 
 function simulate!(
@@ -68,7 +56,7 @@ function simulate!(
                                        # A better approach is to change the signature for updateμ!
     y = m.resp.y
 
-    _simulate!(rng, y, η, m.resp, m, m.X, β, σ, θ, m.resp.wts)
+    _simulate!(rng, y, η, m, β, σ, θ, m.resp)
 
     unfit!(m)
 end
@@ -103,28 +91,18 @@ function _rand(rng::AbstractRNG, d::Distribution, location, scale=NaN, n=1)
 end
 
 function simulate!(m::MixedModel{T}; β = coef(m), σ = m.σ, θ = T[]) where {T}
-    simulate!(Random.GLOBAL_RNG, m, β = β, σ = σ, θ = θ)
+    simulate!(Random.GLOBAL_RNG, m; β, σ, θ)
 end
 
 """
-    simulate!([rng::AbstractRNG,] y::AbstractVector, m::MixedModel{T},
-                    newX::AbstractArray{T} = m.X;
+    simulate!([rng::AbstractRNG,] y::AbstractVector, m::MixedModel{T}[, newdata];
                     β = coef(m), σ = m.σ, θ = T[], wts=m.wts)
-    simulate!([rng::AbstractRNG,] y::AbstractVector, m::MixedModel{T},
-                    newdata;
-                    β = coef(m), σ = m.σ, θ = T[], wts=m.wts)
-    simulate([rng::AbstractRNG,] m::MixedModel{T},
-                    newX::AbstractArray{T} = m.X;
-                    β = coef(m), σ = m.σ, θ = T[], wts=m.wts)
-    simulate([rng::AbstractRNG,] m::MixedModel{T},
-                    newdata;
+    simulate([rng::AbstractRNG,] m::MixedModel{T}[, newdata];
                     β = coef(m), σ = m.σ, θ = T[], wts=m.wts)
 
 Simulate a new response vector, optionally overwriting a pre-allocated vector.
 
-New data can be optionally provided, either as a fixed-effects model matrix or
-in tabular format. Currently, the tabular format is the only way to specify
-different observations for the random effects than in the original model.
+New data can be optionally provided in tabular format.
 
 This simulation includes sampling new values for the random effects. Thus in
 contrast to [`predict`](@ref), there is no distinction in between "new" and
@@ -146,16 +124,30 @@ models with a `Binomial` distribution.
     in contrast to `simulate!` methods with a `m::MixedModel` as the first argument,
     which modify the model's response and return the entire modified model.
 """
-function simulate!(rng::AbstractRNG,
-                   y::AbstractVector,
-                   m::LinearMixedModel{T},
-                   newX::AbstractArray{T} = m.X;
-                   β = coef(m),
-                   σ = m.σ,
-                   θ = T[],
-                   wts = m.sqrtwts .^ 2
-               ) where {T}
+function simulate!(rng::AbstractRNG, y::AbstractVector, m::LinearMixedModel, newdata::Tables.ColumnTable;
+                   β=m.β, σ=m.σ, θ=m.θ)
+    # the easiest thing here is to just assemble a new model and
+    # pass that to the other simulate methods....
+    # this can probably be made much more efficient
+    # (for one thing, this still allocates for the model's response)
+    # note that the contrasts get copied over with the formula
+    # (as part of the applied schema)
+    # contr here are the fast Grouping contrasts
+    f, contr = _abstractify_grouping(m.formula)
+    mnew = LinearMixedModel(f, newdata; contrasts=contr)
+    # XXX why not do simulate!(rng, y, mnew; β=β, σ=σ, θ=θ)
+    # instead of simulating the model and then copying?
+    # Well, it turns out that the call to randn!(rng, y)
+    # gives different results at the tail end of the array
+    # for y <: view(::Matrix{Float64}, :, 3) than y <: Vector{Float64}
+    # I don't know why, but this doesn't actually incur an
+    # extra computation and gives consistent results at the price
+    # of an allocationless copy
+    simulate!(rng, mnew; β, σ, θ)
+    copy!(y, mnew.y)
+end
 
+function simulate!(rng::AbstractRNG, y::AbstractVector, m::LinearMixedModel{T}; β=m.β, σ=m.σ, θ=m.θ) where {T}
     length(β) == length(fixef(m)) ||
         length(β) == length(coef(m)) ||
             throw(ArgumentError("You must specify all (non-singular) βs"))
@@ -182,33 +174,39 @@ function simulate!(rng::AbstractRNG,
 
     # scale by σ and add fixed-effects contribution
     mul!(y, m.X, β, one(T), σ)
-
-    y
 end
 
-function simulate!(rng::AbstractRNG,
-    y::AbstractVector,
-    m::GeneralizedLinearMixedModel{T},
-    newX::AbstractMatrix{T} = m.X;
-    β = coef(m),
-    σ = m.σ,
-    θ = T[],
-    wts = m.resp.wts) where {T}
-
-    resp = deepcopy(m.resp)
-    η = fill!(similar(m.LMM.y), zero(T))
-    _simulate!(rng, y, η, resp, m, newX, β, σ, θ, wts)
+function simulate!(rng::AbstractRNG, y::AbstractVector, m::GeneralizedLinearMixedModel, newdata::Tables.ColumnTable;
+                   β=m.β, σ=m.σ, θ=m.θ)
+    # the easiest thing here is to just assemble a new model and
+    # pass that to the other simulate methods....
+    # this can probably be made much more efficient
+    # (for one thing, this still allocates for the model's response)
+    # note that the contrasts get copied over with the formula
+    # (as part of the applied schema)
+    # contr here are the fast Grouping contrasts
+    f, contr = _abstractify_grouping(m.formula)
+    mnew = GeneralizedLinearMixedModel(f, newdata, m.resp.d, Link(m.resp); contrasts=contr)
+    # XXX why not do simulate!(rng, y, mnew; β, σ, θ)
+    # instead of simulating the model and then copying?
+    # Well, it turns out that the call to randn!(rng, y)
+    # gives different results at the tail end of the array
+    # for y <: view(::Matrix{Float64}, :, 3) than y <: Vector{Float64}
+    # I don't know why, but this doesn't actually incur an
+    # extra computation and gives consistent results at the price
+    # of an allocationless copy
+    simulate!(rng, mnew; β, σ, θ)
+    copy!(y, mnew.y)
 end
 
+function simulate!(rng::AbstractRNG, y::AbstractVector, m::GeneralizedLinearMixedModel{T}; β=m.β, σ=m.σ, θ=m.θ) where {T}
+    # make sure both scratch arrays are init'd to zero
+    η = zeros(T, size(y))
+    copyto!(y, η)
+    _simulate!(rng, y, η, m, β, σ, θ)
+end
 
-function _simulate!(rng::AbstractRNG,
-    y::AbstractVector, # modified
-    η::AbstractVector, # modified
-    resp::GLM.GlmResp, # modified
-    m::GeneralizedLinearMixedModel{T},
-    newX::AbstractArray{T},
-    β, σ, θ, wts # note that these are not kwargs for the internal method!
-) where {T}
+function _simulate!(rng::AbstractRNG, y::AbstractVector, η::AbstractVector, m::GeneralizedLinearMixedModel{T}, β, σ, θ, resp=nothing) where {T}
     length(β) == length(fixef(m)) ||
         length(β) == length(coef(m)) ||
             throw(ArgumentError("You must specify all (non-singular) βs"))
@@ -252,75 +250,21 @@ function _simulate!(rng::AbstractRNG,
     # families with a dispersion parameter
     mul!(η, lm.X, β, one(T), one(T))
 
-    # from η to μ
-    GLM.updateμ!(resp, η)
+    μ = resp === nothing ? linkinv.(Link(m), η) : GLM.updateμ!(resp, η).mu
 
     # convert to the distribution / add in noise
-    @inbounds for (idx, val) in enumerate(resp.mu)
+    @inbounds for (idx, val) in enumerate(μ)
         n = isempty(m.wt) ? 1 : m.wt[idx]
         y[idx] = _rand(rng, d, val, σ, n)
     end
 
-    y
+    return y
 end
 
-function simulate!(rng::AbstractRNG, y::AbstractVector, m::LinearMixedModel, newdata::Tables.ColumnTable;
-                   β=m.β, σ=m.σ, θ=m.θ)
-    # the easiest thing here is to just assemble a new model and
-    # pass that to the other simulate methods....
-    # this can probably be made much more efficient
-    # (for one thing, this still allocates for the model's response)
-    # note that the contrasts get copied over with the formula
-    # (as part of the applied schema)
-    # contr here are the fast Grouping contrasts
-    f, contr = _abstractify_grouping(m.formula)
-    mnew = LinearMixedModel(f, newdata; contrasts=contr)
-    # XXX why not do simulate!(rng, y, mnew; β=β, σ=σ, θ=θ)
-    # instead of simulating the model and then copying?
-    # Well, it turns out that the call to randn!(rng, y)
-    # gives different results at the tail end of the array
-    # for y <: view(::Matrix{Float64}, :, 3) than y <: Vector{Float64}
-    # I don't know why, but this doesn't actually incur an
-    # extra computation and gives consistent results at the price
-    # of an allocationless copy
-    simulate!(rng, mnew; β=β, σ=σ, θ=θ)
-    copy!(y, mnew.y)
-end
-
-function simulate!(rng::AbstractRNG, y::AbstractVector, m::GeneralizedLinearMixedModel, newdata::Tables.ColumnTable;
-                   β=m.β, σ=m.σ, θ=m.θ)
-    # the easiest thing here is to just assemble a new model and
-    # pass that to the other simulate methods....
-    # this can probably be made much more efficient
-    # (for one thing, this still allocates for the model's response)
-    # note that the contrasts get copied over with the formula
-    # (as part of the applied schema)
-    # contr here are the fast Grouping contrasts
-    f, contr = _abstractify_grouping(m.formula)
-    mnew = GeneralizedLinearMixedModel(f, newdata, m.resp.d, Link(m.resp); contrasts=contr)
-    # XXX why not do simulate!(rng, y, mnew; β=β, σ=σ, θ=θ)
-    # instead of simulating the model and then copying?
-    # Well, it turns out that the call to randn!(rng, y)
-    # gives different results at the tail end of the array
-    # for y <: view(::Matrix{Float64}, :, 3) than y <: Vector{Float64}
-    # I don't know why, but this doesn't actually incur an
-    # extra computation and gives consistent results at the price
-    # of an allocationless copy
-    simulate!(rng, mnew; β=β, σ=σ, θ=θ)
-    copy!(y, mnew.y)
-end
-
-function simulate!(rng::AbstractRNG, y::AbstractVector, m::MixedModel, newdata;
-                   kwargs...)
-
+simulate!(rng::AbstractRNG, y::AbstractVector, m::MixedModel, newdata; kwargs...) =
     simulate!(rng, y, m, Tables.columntable(newdata); kwargs...)
-end
-
-function simulate!(y::AbstractVector, m::MixedModel, newdata;
-                   kwargs...)
-    simulate!(Random.GLOBAL_RNG, y, m, Tables.columntable(newdata);
-              kwargs...)
-end
+simulate!(y::AbstractVector, m::MixedModel, newdata; kwargs...) =
+    simulate!(Random.GLOBAL_RNG, y, m, Tables.columntable(newdata); kwargs...)
 
 """
     unscaledre!(y::AbstractVector{T}, M::ReMat{T}) where {T}
