@@ -69,12 +69,12 @@ predict(slpm, slp2; new_re_levels=:population)
 ```
 
 !!! note
-  Currently, we do not support predicting based on a subset of the random effects.
+    Currently, we do not support predicting based on a subset of the random effects.
 
 
 !!! note
-  `predict` is deterministic (within the constraints of floating point) and never adds noise to the result.
-  If you want to construct prediction intervals, then `simulate` will generate new data with noise (including new values of the random effects).
+    `predict` is deterministic (within the constraints of floating point) and never adds noise to the result.
+    If you want to construct prediction intervals, then `simulate` will generate new data with noise (including new values of the random effects).
 
 For generalized linear mixed models, there is an additional keyword argument to `predict`: `type` specifies whether the predictions are returned on the scale of the linear predictor (`:linpred`) or a the level of the response `(:response)` (i.e. the level at which the values were originally observed).
 
@@ -151,9 +151,9 @@ DisplayAs.Text(ans) # hide
 For simulating from generalized linear mixed models, there is no `type` option because the observation-level always occurs at the level of the response and not of the linear predictor.
 
 !!! warning
-  Simulating the model response in place may not yield the same result as simulating into a pre-allocated or new vector, depending on choice of pseudorandom number generator.
-  Random number generation in Julia allows optimization based on type, and the internal storage type of the model response (currently a view into a matrix storing the concatenated fixed-effects model matrix and the response) may not match the type of a pre-allocated or new vector.
-  See also [discussion here](https://discourse.julialang.org/t/weird-prng-behavior/63186).
+    Simulating the model response in place may not yield the same result as simulating into a pre-allocated or new vector, depending on choice of pseudorandom number generator.
+    Random number generation in Julia allows optimization based on type, and the internal storage type of the model response (currently a view into a matrix storing the concatenated fixed-effects model matrix and the response) may not match the type of a pre-allocated or new vector.
+    See also [discussion here](https://discourse.julialang.org/t/weird-prng-behavior/63186).
 
 ## API Reference
 
