@@ -25,18 +25,24 @@ include("modelcache.jl")
         @test simulate(StableRNG(42), m, slp) ≈ y
         slptop = first(slp, 90)
         @test simulate(StableRNG(42), m, slptop) ≈ simulate(StableRNG(42), m, slptop; β=m.β, θ=m.θ, σ=m.σ)
+
+        # test of methods using default RNG
+        rng = deepcopy(Random.GLOBAL_RNG)
+        @test length(simulate(m, slptop)) == nrow(slptop)
+        @test length(simulate!(y, m, slptop)) == nrow(slptop)
     end
 
     @testset "GLMM" begin
         contra = DataFrame(dataset(:contra))
-        m = fit(MixedModel, only(gfms[:contra]), contra, Bernoulli(), fast=true;
-                contrasts=Dict(:urban => EffectsCoding()))
+        m = fit(MixedModel, only(gfms[:contra]), contra, Bernoulli(); fast=true,
+                contrasts=Dict(:urban => EffectsCoding()), progress=false)
         mc = deepcopy(m)
-        fit!(simulate!(StableRNG(42), mc))
+        fit!(simulate!(StableRNG(42), mc); progress=false)
         @test simulate(StableRNG(42), m) ≈ mc.y
         y = similar(mc.y)
         @test simulate!(StableRNG(42), y, m) ≈ mc.y
         @test y ≈ mc.y
+        @test length(simulate!(StableRNG(42), y, m, contra)) == length(mc.y)
     end
 end
 
