@@ -93,7 +93,7 @@ predict(gm, cbpp; type=:linpred) ≈ logit.(fitted(gm))
 
 In contrast to `predict`, `simulate` and `simulate!` introduce randomness.
 This randomness occurs both at the level of the observation-level (residual) variance and at the level of the random effects, where new conditional modes are sampled based on the specified covariance parameter (θ; see [Details of the parameter estimation](@ref)), which defaults to the estimated value of the model.
-For reproducibility, we specify a pseudorandom generator here; if non is provided, the global PRNG is taken as the default.
+For reproducibility, we specify a pseudorandom generator here; if none is provided, the global PRNG is taken as the default.
 
 The simplest example of `simulate` takes a fitted model and generates a new response vector based on the existing model matrices combined with noise.
 
