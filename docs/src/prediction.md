@@ -76,7 +76,7 @@ predict(slpm, slp2; new_re_levels=:population)
     `predict` is deterministic (within the constraints of floating point) and never adds noise to the result.
     If you want to construct prediction intervals, then `simulate` will generate new data with noise (including new values of the random effects).
 
-For generalized linear mixed models, there is an additional keyword argument to `predict`: `type` specifies whether the predictions are returned on the scale of the linear predictor (`:linpred`) or a the level of the response `(:response)` (i.e. the level at which the values were originally observed).
+For generalized linear mixed models, there is an additional keyword argument to `predict`: `type` specifies whether the predictions are returned on the scale of the linear predictor (`:linpred`) or on the level of the response `(:response)` (i.e. the level at which the values were originally observed).
 
 ```@example Main
 cbpp = MixedModels.dataset(:cbpp)
@@ -93,7 +93,7 @@ predict(gm, cbpp; type=:linpred) ≈ logit.(fitted(gm))
 
 In contrast to `predict`, `simulate` and `simulate!` introduce randomness.
 This randomness occurs both at the level of the observation-level (residual) variance and at the level of the random effects, where new conditional modes are sampled based on the specified covariance parameter (θ; see [Details of the parameter estimation](@ref)), which defaults to the estimated value of the model.
-For reproducibility, we specify a psuedorandom generator here; if non is provided, the global PRNG is taken as the default.
+For reproducibility, we specify a pseudorandom generator here; if non is provided, the global PRNG is taken as the default.
 
 The simplest example of `simulate` takes a fitted model and generates a new response vector based on the existing model matrices combined with noise.
 
@@ -102,7 +102,7 @@ using Random
 ynew = simulate(MersenneTwister(42), slpm)
 ```
 
-The simulated response can also placed in a pre-allocated vector:
+The simulated response can also be placed in a pre-allocated vector:
 
 ```@example Main
 ynew2 = zeros(nrow(slp))
