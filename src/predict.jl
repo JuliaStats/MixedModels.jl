@@ -4,7 +4,7 @@
     StatsBase.predict(m::GeneralizedLinearMixedModel{T}, newdata;
                     new_re_levels=:missing, type=:response)
 
-Predict response for new values of the fixed-effects matrix X.
+Predict response for new data.
 
 !!! note
     Currently, no in-place methods are provided because these methods

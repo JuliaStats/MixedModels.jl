@@ -105,10 +105,10 @@ Simulate a new response vector, optionally overwriting a pre-allocated vector.
 New data can be optionally provided in tabular format.
 
 This simulation includes sampling new values for the random effects. Thus in
-contrast to [`predict`](@ref), there is no distinction in between "new" and
+contrast to `predict`, there is no distinction in between "new" and
 "old" / previously observed random-effects levels.
 
-Unlike [`predict`](@ref), there is no `type` parameter for `GeneralizedLinearMixedModel`
+Unlike `predict`, there is no `type` parameter for `GeneralizedLinearMixedModel`
 because the noise term in the model and simulation is always on the response
 scale.
 

@@ -53,7 +53,11 @@ DisplayAs.Text(ans)
 ```
 
 ```@example Main
-predict(slpm, slp2; new_re_levels=:error)
+try
+  predict(slpm, slp2; new_re_levels=:error)
+catch e
+  show(e)
+end
 ```
 
 ```@example Main
