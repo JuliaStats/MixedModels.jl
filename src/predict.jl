@@ -40,14 +40,14 @@ difference between these terms, then you probably want `type=:response`.
 Regression weights are not yet supported in prediction.
 Similarly, offsets are also not supported for `GeneralizedLinearMixedModel`.
 """
-function StatsBase.predict(m::LinearMixedModel{T}, newdata::Tables.ColumnTable;
-                           new_re_levels=:population) where T
+function StatsBase.predict(m::LinearMixedModel, newdata::Tables.ColumnTable;
+                           new_re_levels=:population)
 
     _predict(m, newdata, m.β; new_re_levels)
 end
 
-function StatsBase.predict(m::GeneralizedLinearMixedModel{T}, newdata::Tables.ColumnTable;
-                           new_re_levels=:population, type=:response) where T
+function StatsBase.predict(m::GeneralizedLinearMixedModel, newdata::Tables.ColumnTable;
+                           new_re_levels=:population, type=:response)
     type in (:linpred, :response) || throw(ArgumentError("Invalid value for type: $(type)"))
 
     y = _predict(m.LMM, newdata, m.β; new_re_levels)
@@ -55,7 +55,7 @@ function StatsBase.predict(m::GeneralizedLinearMixedModel{T}, newdata::Tables.Co
     type == :linpred ? y : broadcast!(Base.Fix1(linkinv, Link(m)), y, y)
 end
 
-
+# β is separated out here because m.β != m.LMM.β depending on how β is estimated for GLMM
 function _predict(m::MixedModel{T}, newdata, β; new_re_levels) where {T}
     new_re_levels in (:population, :missing, :error) ||
         throw(ArgumentError("Invalid value for new_re_levels: $(new_re_levels)"))
