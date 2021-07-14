@@ -69,9 +69,8 @@ end
         @test_throws ArgumentError predict(gm0, contra; type=:doh)
 
         # we can skip a lot of testing if the broad strokes work because
-        # internally this is punted off to the LMM machinery
+        # internally this is punted off to the same machinery as LMM
         @test predict(gm0) ≈ fitted(gm0)
-        # XXX something isn't right here
-        # @test predict(gm0, contra; type=:linpred) ≈ gm0.resp.eta
+        @test predict(gm0, contra; type=:linpred) ≈ gm0.resp.eta
     end
 end

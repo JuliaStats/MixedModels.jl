@@ -43,6 +43,20 @@ Similarly, offsets are also not supported for `GeneralizedLinearMixedModel`.
 function StatsBase.predict(m::LinearMixedModel{T}, newdata::Tables.ColumnTable;
                            new_re_levels=:population) where T
 
+    _predict(m, newdata, m.β; new_re_levels)
+end
+
+function StatsBase.predict(m::GeneralizedLinearMixedModel{T}, newdata::Tables.ColumnTable;
+                           new_re_levels=:population, type=:response) where T
+    type in (:linpred, :response) || throw(ArgumentError("Invalid value for type: $(type)"))
+
+    y = _predict(m.LMM, newdata, m.β; new_re_levels)
+
+    type == :linpred ? y : broadcast!(Base.Fix1(linkinv, Link(m)), y, y)
+end
+
+
+function _predict(m::MixedModel{T}, newdata, β; new_re_levels) where {T}
     new_re_levels in (:population, :missing, :error) ||
         throw(ArgumentError("Invalid value for new_re_levels: $(new_re_levels)"))
 
@@ -64,18 +78,14 @@ function StatsBase.predict(m::LinearMixedModel{T}, newdata::Tables.ColumnTable;
     # we get type stability via constant propogation on `new_re_levels`
     y, mnew = let ytemp = ones(T, length(first(newdata)))
         f, contr = _abstractify_grouping(m.formula)
-        sch = schema(f, newdata, contr)
-        form = apply_schema(f, sch, LinearMixedModel)
-        mnewXs = modelcols(form.rhs, newdata)
-        lmm = LinearMixedModel(ytemp, mnewXs, form)
-
+        lmm = LinearMixedModel(f, newdata; contrasts=contr)
         ytemp = new_re_levels == :missing ? convert(Vector{Union{T, Missing}}, ytemp) : ytemp
 
         ytemp, lmm
     end
 
     grps = fnames(m)
-    mul!(y, mnew.X, m.β)
+    mul!(y, mnew.X, β)
     # mnew.reterms for the correct Z matrices
     # ranef(m) for the BLUPs from the original fit
 
@@ -158,16 +168,7 @@ function StatsBase.predict(m::LinearMixedModel{T}, newdata::Tables.ColumnTable;
         mul!(y, rt, bb, one(T), one(T))
     end
 
-    y
-end
-
-function StatsBase.predict(m::GeneralizedLinearMixedModel{T}, newdata::Tables.ColumnTable;
-                           new_re_levels=:population, type=:response) where T
-    type in (:linpred, :response) || throw(ArgumentError("Invalid value for type: $(type)"))
-
-    y = predict(m.LMM, newdata; new_re_levels)
-
-    type == :linpred ? y : broadcast!(Base.Fix1(linkinv, Link(m)), y, y)
+    return y
 end
 
 # yup, I got lazy on this one -- let the dispatched method handle kwarg checking
