@@ -1,7 +1,7 @@
 """
-    StatsBase.predict(m::LinearMixedModel{T}, newdata;
+    StatsBase.predict(m::LinearMixedModel, newdata;
                     new_re_levels=:missing)
-    StatsBase.predict(m::GeneralizedLinearMixedModel{T}, newdata;
+    StatsBase.predict(m::GeneralizedLinearMixedModel, newdata;
                     new_re_levels=:missing, type=:response)
 
 Predict response for new data.

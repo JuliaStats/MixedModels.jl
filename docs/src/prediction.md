@@ -155,18 +155,6 @@ For simulating from generalized linear mixed models, there is no `type` option b
     Random number generation in Julia allows optimization based on type, and the internal storage type of the model response (currently a view into a matrix storing the concatenated fixed-effects model matrix and the response) may not match the type of a pre-allocated or new vector.
     See also [discussion here](https://discourse.julialang.org/t/weird-prng-behavior/63186).
 
-## API Reference
-
-Note all the methods that take new data as a table construct an additional `MixedModel` behind the scenes, even when the new data is exactly the same as the data that the model was fitted to.
-For the simulation methods in particular, these thus form a convenience wrapper for constructing a new model and calling `simulate` without new data on that model with the parameters from the original model.
-
-```@docs
-predict(::LinearMixedModel)
-predict!(::LinearMixedModel)
-predict(::GeneralizedLinearMixedModel)
-predict!(::GeneralizedLinearMixedModel)
-```
-
-```@docs
-simulate!
-```
+!!! note
+    All the methods that take new data as a table construct an additional `MixedModel` behind the scenes, even when the new data is exactly the same as the data that the model was fitted to.
+    For the simulation methods in particular, these thus form a convenience wrapper for constructing a new model and calling `simulate` without new data on that model with the parameters from the original model.
