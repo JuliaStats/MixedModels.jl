@@ -10,7 +10,7 @@
 
 Predict response for new values of the fixed-effects matrix X.
 
-The modifying methods overwrite `y` in place, while the non modifying methods
+The mutating methods overwrite `y` in place, while the non mutating methods
 allocate a new `y`. Predictions based purely on the fixed effects can be
 obtained with `use_re=false`. In the future, it may be possible to specify
 a subset of the grouping variables to use, but not at this time.
