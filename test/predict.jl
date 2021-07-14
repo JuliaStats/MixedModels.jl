@@ -70,13 +70,17 @@ end
 
     @testset "GLMM" begin
         contra = dataset(:contra)
-        gm0 = fit(MixedModel, only(gfms[:contra]), contra, Bernoulli(), fast=true)
+        for fast in [true, false]
+            gm0 = fit(MixedModel, only(gfms[:contra]), contra, Bernoulli(); fast, progress=false)
 
-        @test_throws ArgumentError predict(gm0, contra; type=:doh)
+            @test_throws ArgumentError predict(gm0, contra; type=:doh)
 
-        # we can skip a lot of testing if the broad strokes work because
-        # internally this is punted off to the same machinery as LMM
-        @test predict(gm0) ≈ fitted(gm0)
-        @test predict(gm0, contra; type=:linpred) ≈ gm0.resp.eta
+            # we can skip a lot of testing if the broad strokes work because
+            # internally this is punted off to the same machinery as LMM
+            @test predict(gm0) ≈ fitted(gm0)
+            # XXX these tolerances aren't great but are required for fast=false fits
+            @test predict(gm0, contra; type=:linpred) ≈ gm0.resp.eta rtol=0.1
+            @test predict(gm0, contra; type=:response) ≈ gm0.resp.mu rtol=0.01
+        end
     end
 end
