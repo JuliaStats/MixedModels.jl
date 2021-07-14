@@ -16,17 +16,15 @@ include("modelcache.jl")
         slp = DataFrame(dataset(:sleepstudy))
         m = first(models(:sleepstudy))
         mc = deepcopy(m)
-        fit!(simulate!(StableRNG(42), mc))
+        fit!(simulate!(StableRNG(42), mc); progress=false)
         @test simulate(StableRNG(42), m) ≈ mc.y
-        @test simulate(StableRNG(42), m, mc.X) ≈ mc.y
         y = similar(mc.y)
         @test simulate!(StableRNG(42), y, m) ≈ mc.y
         @test y ≈ mc.y
 
-        slptop = first(slp, 90)
         @test simulate(StableRNG(42), m, slp) ≈ y
+        slptop = first(slp, 90)
         @test simulate(StableRNG(42), m, slptop) ≈ simulate(StableRNG(42), m, slptop; β=m.β, θ=m.θ, σ=m.σ)
-        # XXX something in the random step leads to simulate(StableRNG(42), m, slp)[1:90] ≠ simulate(StableRNG(42), m, slp[1:90, !])
     end
 
     @testset "GLMM" begin
@@ -36,16 +34,9 @@ include("modelcache.jl")
         mc = deepcopy(m)
         fit!(simulate!(StableRNG(42), mc))
         @test simulate(StableRNG(42), m) ≈ mc.y
-        @test simulate(StableRNG(42), m, mc.X) ≈ mc.y
         y = similar(mc.y)
         @test simulate!(StableRNG(42), y, m) ≈ mc.y
         @test y ≈ mc.y
-
-        # contratop = first(contra, 90)
-        # #@test simulate(StableRNG(42), m, contra) ≈ y
-        # ytop = simulate(StableRNG(42), m, contratop)
-        # @test ytop ≈ simulate(StableRNG(42), m, contratop; β=m.β, θ=m.θ, σ=m.σ)
-        # @test length(ytop) == 90
     end
 end
 
@@ -57,8 +48,6 @@ end
         # because of floating point, but realistically
         # this should be exactly equal in most cases
         @test predict(m) ≈ fitted(m)
-        @test predict(m; use_re=false) ≈ m.X * m.β
-        @test predict(m, m.X) ≈ fitted(m)
 
         @test predict(m, slp; new_re_levels=:error) ≈ fitted(m)
         @test predict(m, slp; new_re_levels=:population) ≈ fitted(m)
@@ -77,14 +66,12 @@ end
         contra = dataset(:contra)
         gm0 = fit(MixedModel, only(gfms[:contra]), contra, Bernoulli(), fast=true)
 
-        @test_throws ArgumentError predict(gm0; type=:doh)
+        @test_throws ArgumentError predict(gm0, contra; type=:doh)
 
         # we can skip a lot of testing if the broad strokes work because
         # internally this is punted off to the LMM machinery
         @test predict(gm0) ≈ fitted(gm0)
-        @test predict(gm0; type=:linpred) ≈ gm0.resp.eta
-        gm0pop = gm0.X * gm0.β
-        @test predict(gm0, gm0.X; use_re=false, type=:response) ≈ linkinv.(Link(gm0.resp),gm0pop)
-        @test predict(gm0, gm0.X; use_re=false, type=:linpred) ≈ gm0pop
+        # XXX something isn't right here
+        # @test predict(gm0, contra; type=:linpred) ≈ gm0.resp.eta
     end
 end

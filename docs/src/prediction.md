@@ -20,14 +20,6 @@ The simplest form of prediction are the fitted values from the model: they are i
 predict(slpm) ≈ fitted(slpm)
 ```
 
-We can also predict based only on the fixed-effects estimates and omitting the contribution of the random effects:
-
-```@example Main
-predict(slpm; use_re=false) ≈ modelmatrix(slpm) * coef(slpm)
-```
-
-Currently, we do not support predicting based on a subset of the random effects.
-
 When generalizing to new data, we need to consider what happens if there are new, previously unobserved levels of the grouping variable(s).
 MixedModels.jl provides three options:
 
@@ -72,20 +64,25 @@ predict(slpm, slp2; new_re_levels=:missing)
 predict(slpm, slp2; new_re_levels=:population)
 ```
 
-Note that `predict` is deterministic (within the constraints of floating point) and never adds noise to the result.
-If you want to construct prediction intervals, then `simulate` will generate new data with noise (including new values of the random effects).
+!!! note
+  Currently, we do not support predicting based on a subset of the random effects.
+
+
+!!! note
+  `predict` is deterministic (within the constraints of floating point) and never adds noise to the result.
+  If you want to construct prediction intervals, then `simulate` will generate new data with noise (including new values of the random effects).
 
 For generalized linear mixed models, there is an additional keyword argument to `predict`: `type` specifies whether the predictions are returned on the scale of the linear predictor (`:linpred`) or a the level of the response `(:response)` (i.e. the level at which the values were originally observed).
 
 ```@example Main
 cbpp = MixedModels.dataset(:cbpp)
 gm = fit(MixedModel, @formula((incid/hsz) ~ 1 + period + (1|herd)), cbpp, Binomial(), wts=float(cbpp.hsz))
-predict(gm; type=:response) ≈ fitted(gm)
+predict(gm, cbpp; type=:response) ≈ fitted(gm)
 ```
 
 ```@example Main
 logit(x) = log(x / (1 - x))
-predict(gm; type=:linpred) ≈ logit.(fitted(gm))
+predict(gm, cbpp; type=:linpred) ≈ logit.(fitted(gm))
 ```
 
 ## Simulation
@@ -149,11 +146,15 @@ DisplayAs.Text(ans) # hide
 
 For simulating from generalized linear mixed models, there is no `type` option because the observation-level always occurs at the level of the response and not of the linear predictor.
 
+!!! warning
+  Simulating the model response in place may not yield the same result as simulating into a pre-allocated or new vector, depending on choice of pseudorandom number generator.
+  Random number generation in Julia allows optimization based on type, and the internal storage type of the model response (currently a view into a matrix storing the concatenated fixed-effects model matrix and the response) may not match the type of a pre-allocated or new vector.
+  See also [discussion here](https://discourse.julialang.org/t/weird-prng-behavior/63186).
+
 ## API Reference
 
 Note all the methods that take new data as a table construct an additional `MixedModel` behind the scenes, even when the new data is exactly the same as the data that the model was fitted to.
-For the simulation methods in particular, these thus form a convenience wrapper for constructing a new model and
-calling `simulate` without new data on that model with the parameters from the original model.
+For the simulation methods in particular, these thus form a convenience wrapper for constructing a new model and calling `simulate` without new data on that model with the parameters from the original model.
 
 ```@docs
 predict(::LinearMixedModel)

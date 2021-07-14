@@ -1,99 +1,4 @@
 """
-    StatsBase.predict!(y::AbstractVector{T}, m::LinearMixedModel{T},
-                    newX::AbstractMatrix{T}=m.X; use_re=true)
-    StatsBase.predict(m::LinearMixedModel{T},
-                    newX::AbstractMatrix{T}=m.X; use_re=true)
-    StatsBase.predict!(y::AbstractVector{T}, m::GeneralizedLinearMixedModel{T},
-                    newX::AbstractMatrix{T}=m.X; use_re=true, type=:response)
-    StatsBase.predict(m::GeneralizedLinearMixedModel{T},
-                    newX::AbstractMatrix{T}=m.X; use_re=true, type=:response)
-
-Predict response for new values of the fixed-effects matrix X.
-
-The mutating methods overwrite `y` in place, while the non mutating methods
-allocate a new `y`. Predictions based purely on the fixed effects can be
-obtained with `use_re=false`. In the future, it may be possible to specify
-a subset of the grouping variables to use, but not at this time.
-
-For `GeneralizedLinearMixedModel`, the `type` parameter specifies
-whether the predictions should be returned on the scale of linear predictor
-(`:linpred`) or on the response scale (`:response`). If you don't know the
-difference between these terms, then you probably want `type=:response`.
-
-!!! warning
-    Models are assumed to be full rank.
-
-!!! note
-    The `predict` and `predict!` methods with `newX` as a fixed effects matrix
-    differ from the methods with `newdata` in tabular format. The matrix
-    methods are more efficient than the tabular methods. The tabular methods
-    can accommodate new values of the grouping variable(s), but the matrix methods
-    cannot.
-"""
-function StatsBase.predict!(y::AbstractVector{<:Union{T, Missing}}, m::LinearMixedModel{T}, newX::AbstractMatrix{T}=m.X;
-                           use_re=true) where T
-    # this is called `use_re` in case we later decide to support prediction
-    # with only a subset of the RE
-
-    mul!(y, newX, m.β)
-
-    if use_re
-        for (rt, bb) in zip(m.reterms, ranef(m))
-            mul!(y, rt, bb, one(T), one(T))
-        end
-    end
-
-    y
-end
-
-function StatsBase.predict!(y::AbstractVector{<:Union{T, Missing}}, m::GeneralizedLinearMixedModel{T}, newX::AbstractMatrix{T}=m.X;
-                            use_re=true, type=:response) where T
-    # this is called `use_re` in case we later decide to support prediction
-    # with only a subset of the RE
-
-    type in (:linpred, :response) || throw(ArgumentError("Invalid value for `type`: $(type)"))
-
-    mul!(y, newX, m.β)
-
-    if use_re
-        for (rt, bb) in zip(m.reterms, ranef(m))
-            mul!(y, rt, bb, one(T), one(T))
-        end
-    end
-
-    type == :linpred && return y
-
-    @inbounds for (idx, val) in enumerate(y)
-        y[idx] = linkinv(Link(m.resp), val)
-    end
-
-    y
-end
-
-function StatsBase.predict(m::LinearMixedModel{T}, newX::AbstractMatrix{T}=m.X;
-                          use_re=true) where T
-    # this is called `use_re` in case we later decide to support prediction
-    # with only a subset of the RE
-
-    y = zeros(T, nobs(m))
-    predict!(y, m, newX; use_re=use_re)
-end
-
-function StatsBase.predict(m::GeneralizedLinearMixedModel{T}, newX::AbstractMatrix{T}=m.X;
-                           use_re=true, type=:response) where T
-    # this is called `use_re` in case we later decide to support prediction
-    # with only a subset of the RE
-
-    type in (:linpred, :response) || throw(ArgumentError("Invalid value for type: $(type)"))
-
-    if use_re && newX === m.X
-        return type == :response ? fitted(m) : m.resp.eta
-    end
-    y = zeros(T, nobs(m))
-    predict!(y, m, newX; use_re=use_re, type=type)
-end
-
-"""
     StatsBase.predict(m::LinearMixedModel{T}, newdata;
                     new_re_levels=:missing)
     StatsBase.predict(m::GeneralizedLinearMixedModel{T}, newdata;
@@ -134,13 +39,6 @@ difference between these terms, then you probably want `type=:response`.
 
 Regression weights are not yet supported in prediction.
 Similarly, offsets are also not supported for `GeneralizedLinearMixedModel`.
-
-!!! note
-    The `predict` and `predict!` methods with `newX` as a fixed effects matrix
-    differ from the methods with `newdata` in tabular format. The matrix
-    methods are more efficient than the tabular methods. The tabular methods
-    can accommodate new values of the grouping variable(s), but the matrix methods
-    cannot.
 """
 function StatsBase.predict(m::LinearMixedModel{T}, newdata::Tables.ColumnTable;
                            new_re_levels=:population) where T
@@ -269,11 +167,7 @@ function StatsBase.predict(m::GeneralizedLinearMixedModel{T}, newdata::Tables.Co
 
     y = predict(m.LMM, newdata; new_re_levels)
 
-    type == :linpred && return y
-
-    y .= linkinv.(Link(m.resp), y)
-
-    y
+    type == :linpred ? y : broadcast!(Base.Fix1(linkinv, Link(m)), y, y)
 end
 
 # yup, I got lazy on this one -- let the dispatched method handle kwarg checking
