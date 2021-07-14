@@ -11,7 +11,6 @@ function simulate(rng::AbstractRNG, m::MixedModel{T}, newX::AbstractMatrix = m.X
     throw(DimensionMismatch("New fixed-effect model matrix must have the same predictors as the original."))
     y = zeros(T, nobs(m))
     simulate!(rng, y, m, newX; kwargs...)
-    y
 end
 
 function simulate(m::MixedModel, newX::AbstractMatrix = m.X; kwargs...)

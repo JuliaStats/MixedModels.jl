@@ -27,7 +27,7 @@ difference between these terms, then you probably want `type=:response`.
     The `predict` and `predict!` methods with `newX` as a fixed effects matrix
     differ from the methods with `newdata` in tabular format. The matrix
     methods are more efficient than the tabular methods. The tabular methods
-    can accomodate new values of the grouping variable(s), but the matrix methods
+    can accommodate new values of the grouping variable(s), but the matrix methods
     cannot.
 """
 function StatsBase.predict!(y::AbstractVector{<:Union{T, Missing}}, m::LinearMixedModel{T}, newX::AbstractMatrix{T}=m.X;
@@ -87,7 +87,6 @@ function StatsBase.predict(m::GeneralizedLinearMixedModel{T}, newX::AbstractMatr
     type in (:linpred, :response) || throw(ArgumentError("Invalid value for type: $(type)"))
 
     if use_re && newX === m.X
-        # should we add a kwarg to fitted to allow returning eta?
         return type == :response ? fitted(m) : m.resp.eta
     end
     y = zeros(T, nobs(m))
@@ -140,7 +139,7 @@ Similarly, offsets are also not supported for `GeneralizedLinearMixedModel`.
     The `predict` and `predict!` methods with `newX` as a fixed effects matrix
     differ from the methods with `newdata` in tabular format. The matrix
     methods are more efficient than the tabular methods. The tabular methods
-    can accomodate new values of the grouping variable(s), but the matrix methods
+    can accommodate new values of the grouping variable(s), but the matrix methods
     cannot.
 """
 function StatsBase.predict(m::LinearMixedModel{T}, newdata::Tables.ColumnTable;
