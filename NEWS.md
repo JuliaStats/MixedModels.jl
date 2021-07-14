@@ -24,6 +24,10 @@ MixedModels v4.0.0 Release Notes
 * `saveoptsum` and `restoreoptsum!` provide for saving and restoring the `optsum`
   field of a `LinearMixedModel` as a JSON file, allowing for recreating a model fit
   that may take a long time for parameter optimization. [#506]
+* Verbose output now uses `ProgressMeter`, which gives useful information about the timing
+  of each iteration and does not flood stdio. The `verbose` argument has been renamed `progress`
+  and the default changed to `true`. [#539]
+* Support for Julia < 1.6 has been dropped. [#539]
 
 Run-time formula syntax
 -----------------------
@@ -35,6 +39,11 @@ Run-time formula syntax
   other StatsModels.jl `AbstractTerm`s [#470]
 * Methods for `Base./(::AbstractTerm, ::AbstractTerm)` are added, allowing
   nesting syntax to be used with `Term`s at run-time as well [#470]
+
+MixedModels v3.9.0 Release Notes
+========================
+* Add support for `StatsModels.formula` [#536]
+* Internal method `allequal` renamed to `isconstant` [#537]
 
 MixedModels v3.8.0 Release Notes
 ========================
@@ -250,3 +259,6 @@ Package dependencies
 [#518]: https://github.com/JuliaStats/MixedModels.jl/issues/518
 [#523]: https://github.com/JuliaStats/MixedModels.jl/issues/523
 [#524]: https://github.com/JuliaStats/MixedModels.jl/issues/524
+[#536]: https://github.com/JuliaStats/MixedModels.jl/issues/536
+[#537]: https://github.com/JuliaStats/MixedModels.jl/issues/537
+[#539]: https://github.com/JuliaStats/MixedModels.jl/issues/539

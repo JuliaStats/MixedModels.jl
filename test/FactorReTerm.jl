@@ -117,8 +117,8 @@ end
         # equality of RE terms not defined so check that they generate same modelcols
         @test modelcols(ff1.rhs[end], slp) == modelcols(ff2.rhs[end], slp)
         
-        m1 = fit(LMM, f1, slp)
-        m2 = fit(LMM, f2, slp)
+        m1 = fit(LMM, f1, slp; progress=false)
+        m2 = fit(LMM, f2, slp; progress=false)
         @test all(m1.λ .== m2.λ)
 
         @test StatsModels.terms(f2.rhs[end]) == [one, d, s]
@@ -140,8 +140,8 @@ end
         # test that zerocorr actually worked
         @test mc1.inds == mc2.inds == [1, 4]
         
-        m1 = fit(LMM, f1, slp)
-        m2 = fit(LMM, f2, slp)
+        m1 = fit(LMM, f1, slp; progress=false)
+        m2 = fit(LMM, f2, slp; progress=false)
         @test all(m1.λ .== m2.λ)
 
         @test StatsModels.terms(f2.rhs[end]) == [one, d, s]
@@ -263,10 +263,10 @@ end
 
         # fitted model to test amalgamate and fnames, and equivalence with other formulations
         psts = dataset("pastes")
-        m = fit(MixedModel, @formula(strength ~ 1 + (1|batch/cask)), psts)
-        m2 = fit(MixedModel, @formula(strength ~ 1 + (1|batch) + (1|batch&cask)), psts)
-        mr = fit(MixedModel, term(:strength) ~ term(1) + (term(1)|term(:batch)/term(:cask)), psts)
-        m2r = fit(MixedModel, term(:strength) ~ term(1) + (term(1)|term(:batch)) + (term(1)|term(:batch)&term(:cask)), psts)
+        m = fit(MixedModel, @formula(strength ~ 1 + (1|batch/cask)), psts; progress=false)
+        m2 = fit(MixedModel, @formula(strength ~ 1 + (1|batch) + (1|batch&cask)), psts; progress=false)
+        mr = fit(MixedModel, term(:strength) ~ term(1) + (term(1)|term(:batch)/term(:cask)), psts; progress=false)
+        m2r = fit(MixedModel, term(:strength) ~ term(1) + (term(1)|term(:batch)) + (term(1)|term(:batch)&term(:cask)), psts; progress=false)
 
         @test fnames(m) == fnames(m2) == fnames(mr) == fnames(m2r) == (Symbol("batch & cask"), :batch)
         @test m.λ == m2.λ == mr.λ == m2r.λ

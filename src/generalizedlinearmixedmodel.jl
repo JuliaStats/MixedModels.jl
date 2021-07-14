@@ -79,8 +79,8 @@ Return the deviance of `m` evaluated by the Laplace approximation (`nAGQ=1`)
 or `nAGQ`-point adaptive Gauss-Hermite quadrature.
 
 If the distribution `D` does not have a scale parameter the Laplace approximation
-is the squared length of the conditional modes, `u`, plus the determinant
-of `Λ'Z'WZΛ + I`, plus the sum of the squared deviance residuals.
+is the squared length of the conditional modes, ``u``, plus the determinant
+of ``Λ'Z'WZΛ + I``, plus the sum of the squared deviance residuals.
 """
 function StatsBase.deviance(m::GeneralizedLinearMixedModel{T}, nAGQ = 1) where {T}
     nAGQ == 1 && return T(sum(m.resp.devresid) + logdet(m) + sum(u -> sum(abs2, u), m.u))
@@ -134,7 +134,7 @@ end
     deviance!(m::GeneralizedLinearMixedModel, nAGQ=1)
 
 Update `m.η`, `m.μ`, etc., install the working response and working weights in
-`m.LMM`, update `m.LMM.A` and `m.LMM.R`, then evaluate the [`deviance`](@ref).
+`m.LMM`, update `m.LMM.A` and `m.LMM.R`, then evaluate the [`deviance`](@ref StatsBase.deviance).
 """
 function deviance!(m::GeneralizedLinearMixedModel, nAGQ = 1)
     updateη!(m)
@@ -159,14 +159,6 @@ GLM.dispersion_parameter(m::GeneralizedLinearMixedModel) = dispersion_parameter(
 
 Distributions.Distribution(m::GeneralizedLinearMixedModel{T,D}) where {T,D} = D
 
-function StatsBase.dof(m::GeneralizedLinearMixedModel)::Int
-    length(m.β) + length(m.θ) + GLM.dispersion_parameter(m.resp.d)
-end
-
-function StatsBase.dof_residual(m::GeneralizedLinearMixedModel)::Int
-    nobs(m) - dof(m)
-end
-
 fit(
     ::Type{GeneralizedLinearMixedModel},
     f::FormulaTerm,
@@ -179,6 +171,7 @@ fit(
     verbose::Bool = false,
     fast::Bool = false,
     nAGQ::Integer = 1,
+    progress::Bool = true,
 ) = fit(
     GeneralizedLinearMixedModel,
     f,
@@ -191,6 +184,7 @@ fit(
     verbose = verbose,
     fast = fast,
     nAGQ = nAGQ,
+    progress = progress,
 )
 
 fit(
@@ -205,6 +199,7 @@ fit(
     verbose::Bool = false,
     fast::Bool = false,
     nAGQ::Integer = 1,
+    progress::Bool = true,
 ) = fit!(
     GeneralizedLinearMixedModel(
         f,
@@ -218,6 +213,7 @@ fit(
     verbose = verbose,
     fast = fast,
     nAGQ = nAGQ,
+    progress = progress,
 )
 
 
@@ -234,6 +230,7 @@ fit(
     REML::Bool = false,
     fast::Bool = false,
     nAGQ::Integer = 1,
+    progress::Bool = true,
 ) = fit(
     GeneralizedLinearMixedModel,
     f,
@@ -246,22 +243,30 @@ fit(
     verbose = verbose,
     fast = fast,
     nAGQ = nAGQ,
+    progress = progress,
 )
 
 """
-    fit!(m::GeneralizedLinearMixedModel[, verbose = false, fast = false, nAGQ = 1])
+    fit!(m::GeneralizedLinearMixedModel[, verbose=false, fast=false, nAGQ=1, progress=true])
 
 Optimize the objective function for `m`.
 
 When `fast` is `true` a potentially much faster but slightly less accurate algorithm, in
 which `pirls!` optimizes both the random effects and the fixed-effects parameters,
 is used.
+
+If `progress` is `true`, the default, a `ProgressMeter.ProgressUnknown` counter is displayed.
+during the iterations to minimize the deviance.  There is a delay before this display is initialized
+and it may not be shown at all for models that are optimized quickly.
+
+If `verbose` is `true`, then both the intermediate results of both the nonlinear optimization and PIRLS are also displayed on standard output.
 """
 function fit!(
     m::GeneralizedLinearMixedModel{T};
     verbose::Bool = false,
     fast::Bool = false,
     nAGQ::Integer = 1,
+    progress::Bool = true,
 ) where {T}
     β = m.β
     lm = m.LMM
@@ -277,16 +282,19 @@ function fit!(
         optsum.final = copy(optsum.initial)
     end
     setpar! = fast ? setθ! : setβθ!
+    prog = ProgressUnknown("Minimizing"; showspeed=true)
     function obj(x, g)
         isempty(g) || throw(ArgumentError("g should be empty for this objective"))
         val = deviance(pirls!(setpar!(m, x), fast, verbose), nAGQ)
         verbose && println(round(val, digits = 5), " ", x)
+        progress && ProgressMeter.next!(prog; showvalues = [(:objective, val),])
         val
     end
     opt = Opt(optsum)
     NLopt.min_objective!(opt, obj)
     optsum.finitial = obj(optsum.initial, T[])
     fmin, xmin, ret = NLopt.optimize(opt, copyto!(optsum.final, optsum.initial))
+    ProgressMeter.finish!(prog)
     ## check if very small parameter values bounded below by zero can be set to zero
     xmin_ = copy(xmin)
     for i in eachindex(xmin_)
@@ -425,7 +433,7 @@ function Base.getproperty(m::GeneralizedLinearMixedModel, s::Symbol)
         σs(m)
     elseif s == :σρs
         σρs(m)
-    elseif s ∈ (:A, :L, :optsum, :reterms, :Xymat, :feterm, :formula)
+    elseif s ∈ (:A, :L, :optsum, :reterms, :Xymat, :feterm, :formula, :parmap)
         getfield(m.LMM, s)
     elseif s ∈ (:dims, :λ, :lowerbd, :corr, :PCA, :rePCA, :X,)
         getproperty(m.LMM, s)
@@ -441,6 +449,8 @@ end
 # which returns a reference to the same array
 getθ(m::GeneralizedLinearMixedModel)  = copy(m.θ)
 getθ!(v::AbstractVector{T}, m::GeneralizedLinearMixedModel{T}) where {T} = copyto!(v, m.θ)
+
+StatsBase.islinear(m::GeneralizedLinearMixedModel) = isa(GLM.Link, GLM.IdentityLink)
 
 GLM.Link(m::GeneralizedLinearMixedModel) = GLM.Link(m.resp)
 
@@ -468,17 +478,13 @@ function StatsBase.loglikelihood(m::GeneralizedLinearMixedModel{T}) where {T}
     accum  - (mapreduce(u -> sum(abs2, u), +, m.u) + logdet(m)) / 2
 end
 
-StatsBase.nobs(m::GeneralizedLinearMixedModel) = length(m.η)
-
 Base.propertynames(m::GeneralizedLinearMixedModel, private::Bool = false) = (
     :A,
     :L,
     :theta,
     :beta,
     :coef,
-    :fixef,
     :λ,
-    :lambda,
     :σ,
     :sigma,
     :X,
@@ -491,7 +497,7 @@ Base.propertynames(m::GeneralizedLinearMixedModel, private::Bool = false) = (
     :vcov,
     :PCA,
     :rePCA,
-    fieldnames(typeof(m))...,
+    (private ? fieldnames(GeneralizedLinearMixedModel) : (:LMM, :β, :θ, :b, :u, :resp, :wt))...,
 )
 
 """
@@ -571,32 +577,29 @@ LinearAlgebra.rank(m::GeneralizedLinearMixedModel) = m.LMM.feterm.rank
 
 """
     refit!(m::GeneralizedLinearMixedModel[, y::Vector];
-          fast::Bool = (length(m.θ) == length(m.optsum.final)),
-          nAGQ::Integer = m.optsum.nAGQ))
+           fast::Bool = (length(m.θ) == length(m.optsum.final)),
+           nAGQ::Integer = m.optsum.nAGQ,
+           kwargs...)
 
 Refit the model `m` after installing response `y`.
 
 If `y` is omitted the current response vector is used.
 
 If not specified, the `fast` and `nAGQ` options from the previous fit are used.
-
+`kwargs` are the same as [`fit!`](@ref)
 """
-function refit!(m::GeneralizedLinearMixedModel{T};
+function refit!(m::GeneralizedLinearMixedModel;
                 fast::Bool = (length(m.θ) == length(m.optsum.final)),
-                nAGQ::Integer = m.optsum.nAGQ)  where T
-
-    fit!(unfit!(m); fast=fast, nAGQ=nAGQ)
+                nAGQ::Integer = m.optsum.nAGQ, kwargs...)
+    fit!(unfit!(m); fast=fast, nAGQ=nAGQ, kwargs...)
 end
 
-function refit!(m::GeneralizedLinearMixedModel{T}, y;
-                fast::Bool = (length(m.θ) == length(m.optsum.final)),
-                nAGQ::Integer = m.optsum.nAGQ) where T
+function refit!(m::GeneralizedLinearMixedModel, y; kwargs...)
     m_resp_y = m.resp.y
     length(y) == size(m_resp_y, 1) || throw(DimensionMismatch(""))
     copyto!(m_resp_y, y)
-    refit!(m)
+    refit!(m; kwargs...)
 end
-
 
 """
     setβθ!(m::GeneralizedLinearMixedModel, v)
@@ -656,7 +659,6 @@ function Base.show(io::IO, ::MIME"text/plain", m::GeneralizedLinearMixedModel{T,
     println(io, "  ", m.LMM.formula)
     println(io, "  Distribution: ", D)
     println(io, "  Link: ", Link(m), "\n")
-    println(io)
     nums = Ryu.writefixed.([loglikelihood(m), deviance(m), aic(m), aicc(m), bic(m)], 4)
     fieldwd = max(maximum(textwidth.(nums)) + 1, 11)
     for label in [" logLik", " deviance", "AIC", "AICc", "BIC"]
@@ -664,6 +666,7 @@ function Base.show(io::IO, ::MIME"text/plain", m::GeneralizedLinearMixedModel{T,
     end
     println(io)
     print.(Ref(io), lpad.(nums, fieldwd))
+    println(io)
     println(io)
 
     show(io, VarCorr(m))
@@ -744,6 +747,11 @@ For Gaussian models, this parameter is often called σ².
 """
 varest(m::GeneralizedLinearMixedModel{T}) where {T} = dispersion_parameter(m) ? dispersion(m, true) : missing
 
+function StatsBase.weights(m::GeneralizedLinearMixedModel{T}) where {T}
+    wts = m.wt
+    isempty(wts) ? ones(T, nobs(m)) : wts
+end
+
 # delegate GLMM method to LMM field
 for f in (
     :feL,
@@ -753,8 +761,6 @@ for f in (
     :lowerbd,
     :PCA,
     :rePCA,
-    :(StatsBase.coefnames),
-    :(StatsModels.modelmatrix),
 )
     @eval begin
         $f(m::GeneralizedLinearMixedModel) = $f(m.LMM)

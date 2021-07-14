@@ -199,5 +199,5 @@ rows & subj & item & fixed \\\\
 end
 
 # return these models to their fitted state for the cache
-refit!(fm1)
-refit!(fm0)
+refit!(fm1; progress=false)
+refit!(fm0; progress=false)

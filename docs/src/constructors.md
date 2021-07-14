@@ -2,9 +2,6 @@
 
 The `LinearMixedModel` type represents a linear mixed-effects model.
 Typically it is constructed from a `Formula` and an appropriate `Table` type, usually a `DataFrame`.
-```@docs
-LinearMixedModel
-```
 
 ## Examples of linear mixed-effects model fits
 
@@ -12,19 +9,17 @@ For illustration, several data sets from the *lme4* package for *R* are made ava
 Often, for convenience, we will convert these to `DataFrame`s.
 These data sets include the `dyestuff` and `dyestuff2` data sets.
 
-```@docs
-MixedModels.dataset
-```
-
 ```@setup Main
-using Test
 using DisplayAs
 ```
 
 ```@example Main
 using DataFrames, MixedModels, StatsModels
-dyestuff = DataFrame(MixedModels.dataset(:dyestuff))
-describe(dyestuff)
+dyestuff = MixedModels.dataset(:dyestuff)
+```
+
+```@example Main
+describe(DataFrame(dyestuff))
 ```
 
 ### The `@formula` language in Julia
@@ -63,14 +58,6 @@ fm1 = fit(MixedModel, fm, dyestuff)
 DisplayAs.Text(ans) # hide
 ```
 
-```@setup Main
-@testset "fm1" begin
-    @test isapprox(deviance(fm1), 327.32706, atol=1.e-3)
-    @test isapprox(varest(fm1), 2451.250, atol=1.e-3)
-    @test isapprox(VarCorr(fm1).σρ.batch.σ[1], 37.260, atol=1.e-3)
-end
-```
-
 (If you are new to Julia you may find that this first fit takes an unexpectedly long time, due to Just-In-Time (JIT) compilation of the code. The subsequent calls to such functions are much faster.)
 
 ```@example Main
@@ -84,20 +71,14 @@ By default, the model is fit by maximum likelihood. To use the `REML` criterion 
 fm1reml = fit(MixedModel, fm, dyestuff, REML=true)
 DisplayAs.Text(ans) # hide
 ```
-```@setup Main
-@testset "fm1reml" begin
-    @test deviance(fm1reml) ≈ 319.6542768422538 atol=0.001
-    @test varest(fm1reml) ≈ 2451.2499 atol=0.001
-    @test VarCorr(fm1reml).σρ.batch.σ[1] ≈ 42.000602 atol=0.001
-end
-```
-### Float-point type in the model
+
+### Floating-point type in the model
 
 The type of `fm1`
 ```@example Main
 typeof(fm1)
 ```
-includes the floating point type used internally for the various matrices, vectors, etc. that represent the model.
+includes the floating point type used internally for the various matrices, vectors, and scalars that represent the model.
 At present, this will always be `Float64` because the parameter estimates are optimized using the [`NLopt` package](https://github.com/JuliaOpt/NLopt.jl) which calls compiled C code that only allows for optimization with respect to a `Float64` parameter vector.
 
 So in theory other floating point types, such as `BigFloat` or `Float32`, can be used to define a model but in practice only `Float64` works at present.
@@ -108,7 +89,7 @@ So in theory other floating point types, such as `BigFloat` or `Float32`, can be
 
 A simple, scalar random effects term in a mixed-effects model formula is of the form `(1|G)`.
 All random effects terms end with `|G` where `G` is the *grouping factor* for the random effect.
-The name or, more generally, the expression `G` should evaluate to a categorical array that has a distinct set of *levels*.
+The name or, more generally the expression, `G`, should evaluate to a categorical array that has a distinct set of *levels*.
 The random effects are associated with the levels of the grouping factor.
 
 A *scalar* random effect is, as the name implies, one scalar value for each level of the grouping factor.
@@ -124,14 +105,6 @@ sleepstudy = MixedModels.dataset(:sleepstudy)
 fm2 = fit(MixedModel, @formula(reaction ~ 1 + days + (1 + days|subj)), sleepstudy)
 DisplayAs.Text(ans) # hide
 ```
-```@setup Main
-@testset "fm2" begin
-    @test deviance(fm2) ≈ 1751.93934
-    @test varest(fm2) ≈ 654.94145
-    @test collect(VarCorr(fm2).σρ.subj.σ) ≈ collect(((Intercept) = 23.780469, days = 5.716828)) rtol = 6
-    @test VarCorr(fm2).σρ.subj.ρ[1] ≈ 0.08 rtol = 2
-end
-```
 
 ### Models with multiple, scalar random-effects terms
 
@@ -141,14 +114,6 @@ As every sample is used on every plate these two factors are *crossed*.
 penicillin = MixedModels.dataset(:penicillin)
 fm3 = fit(MixedModel, @formula(diameter ~ 1 + (1|plate) + (1|sample)), penicillin)
 DisplayAs.Text(ans) # hide
-```
-```@setup Main
-@testset "fm3" begin
-    @test deviance(fm3) ≈ 332.18835
-    @test varest(fm3) ≈ 0.30242640
-    @test VarCorr(fm3).σρ.plate.σ[1] ≈ 0.8455646  rtol = 6
-    @test VarCorr(fm3).σρ.sample.σ[1] ≈ 1.7706478 rtol = 6
-end
 ```
 
 In contrast, the `cask` grouping factor is *nested* within the `batch` grouping factor in the *Pastes* data.
@@ -168,13 +133,6 @@ pastes.sample = (string.(pastes.cask, "&",  pastes.batch))
 fm4b = fit(MixedModel, @formula(strength ~ 1 + (1|sample) + (1|batch)), pastes)
 DisplayAs.Text(ans) # hide
 ```
-```@setup Main
-@testset "implicit and explicit nesting" begin
-    @test deviance(fm4a) ≈ deviance(fm4b) atol = 1e-5
-    @test varest(fm4a) ≈ varest(fm4b) atol = 1e-5
-    @test fm4a.θ ≈ fm4b.θ atol = 1e-5
-end
-```
 
 In observational studies it is common to encounter *partially crossed* grouping factors.
 For example, the *InstEval* data are course evaluations by students, `s`, of instructors, `d`.
@@ -183,14 +141,6 @@ Additional covariates include the academic department, `dept`, in which the cour
 insteval = MixedModels.dataset(:insteval)
 fm5 = fit(MixedModel, @formula(y ~ 1 + service * dept + (1|s) + (1|d)), insteval)
 DisplayAs.Text(ans) # hide
-```
-```@setup Main
-@testset "fm5" begin
-    @test deviance(fm5) ≈ 2.37585553e5
-    @test varest(fm5) ≈ 1.38472777 atol = 1e-6
-    @test VarCorr(fm5).σρ.s.σ[1] ≈ 0.32468136 rtol = 6
-    @test VarCorr(fm5).σρ.d.σ[1] ≈ 0.50834669 rtol = 6
-end
 ```
 
 ### Simplifying the random effect correlation structure
@@ -259,11 +209,7 @@ DisplayAs.Text(ans) # hide
 
 ## Fitting generalized linear mixed models
 
-To create a GLMM representation
-```@docs
-GeneralizedLinearMixedModel
-```
-the distribution family for the response, and possibly the link function, must be specified.
+To create a GLMM representation, the distribution family for the response, and possibly the link function, must be specified.
 
 ```@example Main
 verbagg = MixedModels.dataset(:verbagg)
@@ -287,7 +233,11 @@ These fits may suffice for model comparisons.
 ```@example Main
 gm1a = fit(MixedModel, verbaggform, verbagg, Bernoulli(), fast = true)
 deviance(gm1a) - deviance(gm1)
+```
+```@example Main
 @benchmark fit(MixedModel, $verbaggform, $verbagg, Bernoulli())
+```
+```@example Main
 @benchmark fit(MixedModel, $verbaggform, $verbagg, Bernoulli(), fast = true)
 ```
 
@@ -444,9 +394,6 @@ DisplayAs.Text(ans) # hide
 ## Covariance parameter estimates
 
 The covariance parameters estimates, in the form shown in the model summary, are a `VarCorr` object
-```@docs
-VarCorr
-```
 ```@example Main
 VarCorr(fm2)
 DisplayAs.Text(ans) # hide
@@ -485,7 +432,7 @@ fm1.b
 ```
 returns the *conditional modes* of the random effects given the observed data.
 That is, these are the values that maximize the conditional density of the random effects given the observed data.
-For a `LinearMixedModel` these are also the conditional mean values.
+For a `LinearMixedModel` these are also the conditional means.
 
 These are sometimes called the *best linear unbiased predictors* or [`BLUPs`](https://en.wikipedia.org/wiki/Best_linear_unbiased_prediction) but that name is not particularly meaningful.
 

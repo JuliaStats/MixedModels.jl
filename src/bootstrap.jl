@@ -106,7 +106,7 @@ function parametricbootstrap(
         lock(rnglock)
         mod = simulate!(rng, mod, β = β, σ = σ, θ = θ)
         unlock(rnglock)
-        refit!(mod)
+        refit!(mod; progress=false)
         (
          objective = mod.objective,
          σ = mod.σ,

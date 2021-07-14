@@ -166,7 +166,7 @@ fit(
     tbl;
     wts = [],
     contrasts = Dict{Symbol,Any}(),
-    verbose::Bool = false,
+    progress::Bool = true,
     REML::Bool = false,
 ) = fit(
     LinearMixedModel,
@@ -174,7 +174,7 @@ fit(
     Tables.columntable(tbl),
     wts = wts,
     contrasts = contrasts,
-    verbose = verbose,
+    progress = progress,
     REML = REML,
 )
 
@@ -184,11 +184,11 @@ fit(
     tbl::Tables.ColumnTable;
     wts = wts,
     contrasts = contrasts,
-    verbose = verbose,
+    progress = progress,
     REML = REML,
 ) = fit!(
     LinearMixedModel(f, tbl, contrasts = contrasts, wts = wts),
-    verbose = verbose,
+    progress = progress,
     REML = REML,
 )
 
@@ -201,7 +201,7 @@ fit(
     tbl;
     wts = [],
     contrasts = Dict{Symbol,Any}(),
-    verbose::Bool = false,
+    progress::Bool = true,
     REML::Bool = false,
     offset = [],
 ) = !isempty(offset) ? _offseterr() : fit(
@@ -210,7 +210,7 @@ fit(
     tbl,
     wts = wts,
     contrasts = contrasts,
-    verbose = verbose,
+    progress = progress,
     REML = REML,
 )
 
@@ -222,7 +222,7 @@ fit(
     l::IdentityLink;
     wts = [],
     contrasts = Dict{Symbol,Any}(),
-    verbose::Bool = false,
+    progress::Bool = true,
     REML::Bool = false,
     offset = [],
     fast::Bool = false,
@@ -233,7 +233,7 @@ fit(
     tbl,
     wts = wts,
     contrasts = contrasts,
-    verbose = verbose,
+    progress = progress,
     REML = REML,
 )
 
@@ -370,18 +370,6 @@ GLM.dispersion(m::LinearMixedModel, sqr::Bool = false) = sqr ? varest(m) : sdest
 
 GLM.dispersion_parameter(m::LinearMixedModel) = true
 
-StatsBase.dof(m::LinearMixedModel) = m.dims.p + nθ(m) + 1
-
-function StatsBase.dof_residual(m::LinearMixedModel)::Int
-    # nobs - rank(FE) - 1 (dispersion)
-    # this differs from lme4 by not including nθ
-    # a better estimate would be a number somewhere between the number of
-    # variance components and the number of conditional modes
-    # nobs, rank FE, num conditional modes, num grouping vars
-    dd = m.dims
-    dd.n - dd.p - 1
-end
-
 """
     feL(m::LinearMixedModel)
 
@@ -396,12 +384,13 @@ function feL(m::LinearMixedModel)
 end
 
 """
-    fit!(m::LinearMixedModel[; verbose::Bool=false, REML::Bool=false])
+    fit!(m::LinearMixedModel[; progress::Bool=true, REML::Bool=false])
 
-Optimize the objective of a `LinearMixedModel`.  When `verbose` is `true` the values of the
-objective and the parameters are printed on stdout at each function evaluation.
+Optimize the objective of a `LinearMixedModel`.  When `progress` is `true` a
+`ProgressMeter.ProgressUnknown` display is shown during the optimization of the
+objective, if the optimization takes more than one second or so.
 """
-function fit!(m::LinearMixedModel{T}; verbose::Bool = false, REML::Bool = false) where {T}
+function fit!(m::LinearMixedModel{T}; progress::Bool=true, REML::Bool=false) where {T}
     optsum = m.optsum
     # this doesn't matter for LMM, but it does for GLMM, so let's be consistent
     if optsum.feval > 0
@@ -409,15 +398,17 @@ function fit!(m::LinearMixedModel{T}; verbose::Bool = false, REML::Bool = false)
     end
     opt = Opt(optsum)
     optsum.REML = REML
+    prog = ProgressUnknown("Minimizing"; showspeed=true)
     function obj(x, g)
         isempty(g) || throw(ArgumentError("g should be empty for this objective"))
         val = objective(updateL!(setθ!(m, x)))
-        verbose && println(round(val, digits = 5), " ", x)
+        progress && ProgressMeter.next!(prog; showvalues = [(:objective, val),])
         val
     end
     NLopt.min_objective!(opt, obj)
     optsum.finitial = obj(optsum.initial, T[])
     fmin, xmin, ret = NLopt.optimize!(opt, copyto!(optsum.final, optsum.initial))
+    ProgressMeter.finish!(prog)
     ## check if small non-negative parameter values can be set to zero
     xmin_ = copy(xmin)
     lb = optsum.lowerbd
@@ -577,6 +568,8 @@ function Base.getproperty(m::LinearMixedModel{T}, s::Symbol) where {T}
     end
 end
 
+StatsBase.islinear(m::LinearMixedModel) = true
+
 function StatsBase.leverage(m::LinearMixedModel{T}) where {T}
     # This can be done more efficiently but reusing existing tools is easier.
     # The i'th leverage value is obtained by replacing the response with the i'th
@@ -626,11 +619,7 @@ function mkparmap(reterms::Vector{AbstractReMat{T}}) where {T}
     parmap
 end
 
-StatsBase.modelmatrix(m::LinearMixedModel) = m.feterm.x
-
 nθ(m::LinearMixedModel) = length(m.parmap)
-
-StatsBase.nobs(m::LinearMixedModel) = m.dims.n
 
 """
     objective(m::LinearMixedModel)
@@ -645,15 +634,13 @@ function objective(m::LinearMixedModel{T}) where {T}
 end
 
 Base.propertynames(m::LinearMixedModel, private::Bool = false) = (
-    :formula,
-    :sqrtwts,
-    :A,
-    :L,
-    :optsum,
+    fieldnames(LinearMixedModel)...,
     :θ,
     :theta,
     :β,
     :beta,
+    :βs,
+    :betas,
     :λ,
     :lambda,
     :stderror,
@@ -661,6 +648,8 @@ Base.propertynames(m::LinearMixedModel, private::Bool = false) = (
     :sigma,
     :σs,
     :sigmas,
+    :σρs,
+    :sigmarhos,
     :b,
     :u,
     :lowerbd,
@@ -670,9 +659,6 @@ Base.propertynames(m::LinearMixedModel, private::Bool = false) = (
     :vcov,
     :PCA,
     :rePCA,
-    :reterms,
-    :feterm,
-    :Xymat,
     :objective,
     :pvalues,
 )
@@ -789,26 +775,23 @@ function reevaluateAend!(m::LinearMixedModel)
 end
 
 """
-    refit!(m::LinearMixedModel[, y::Vector]; REML=m.optsum.REML)
+    refit!(m::LinearMixedModel[, y::Vector]; REML=m.optsum.REML, kwargs...)
 
 Refit the model `m` after installing response `y`.
 
 If `y` is omitted the current response vector is used.
+`kwargs` are the same as [`fit!`](@ref).
 """
-function refit!(m::LinearMixedModel; REML=m.optsum.REML)
-    fit!(unfit!(m); REML=REML)
+function refit!(m::LinearMixedModel; REML=m.optsum.REML, kwargs...)
+    fit!(unfit!(m); REML=REML, kwargs...)
 end
 
-function refit!(m::LinearMixedModel, y; REML=m.optsum.REML)
+function refit!(m::LinearMixedModel, y; kwargs...)
     resp = m.y
     length(y) == length(resp) || throw(DimensionMismatch(""))
     copyto!(resp, y)
-    refit!(m; REML=REML)
+    refit!(m; kwargs...)
 end
-
-StatsBase.residuals(m::LinearMixedModel) = response(m) .- fitted(m)
-
-StatsBase.response(m::LinearMixedModel) = m.y
 
 """
     restoreoptsum!(m::LinearMixedModel, io::IO)
@@ -1151,6 +1134,11 @@ end
 Returns the estimate of σ², the variance of the conditional distribution of Y given B.
 """
 varest(m::LinearMixedModel) = pwrss(m) / ssqdenom(m)
+
+function StatsBase.weights(m::LinearMixedModel)
+    rtwts = m.sqrtwts
+    isempty(rtwts) ? ones(eltype(rtwts), nobs(m)) : abs2.(rtwts)
+end
 
 """
     _zerocorr!(m::LinearMixedModel[, trmnms::Vector{Symbol}])

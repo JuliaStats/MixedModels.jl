@@ -26,26 +26,19 @@ function _abstractify_grouping(f::FormulaTerm)
 end
 
 """
-    allequal(x::Array)
-    allequal(x::Tuple)
-Return the equality of all elements of the array
+    isconstant(x::Array)
+    isconstant(x::Tuple)
+
+Are all elements of the iterator the same?  That is, is it constant?
 """
-function allequal(x::Array; comparison=isequal)::Bool
+function isconstant(x; comparison=isequal)::Bool
     # the ref is necessary in case the elements of x are themselves arrays
-    all(comparison.(x,  Ref(first(x))))
+    isempty(x) || all(ismissing, x) || coalesce(all(comparison.(x,  Ref(first(x)))), false)
 end
 
-allequal(x::Vector{Bool})::Bool = !any(x) || all(x)
+isconstant(x::Vector{Bool})::Bool = !any(x) || all(x)
 
-allequal(x::NTuple{N,Bool}) where {N} = !any(x) || all(x)
-
-function allequal(x::Tuple; comparison=isequal)::Bool
-    all(comparison.(x,  Ref(first(x))))
-end
-
-function allequal(x...; comparison=isequal)::Bool
-    all(comparison.(x,  Ref(first(x))))
-end
+isconstant(x...; comparison=isequal) = isconstant(x; comparison=comparison)
 
 """
     average(a::T, b::T) where {T<:AbstractFloat}

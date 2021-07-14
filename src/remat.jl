@@ -589,10 +589,16 @@ function σs(A::ReMat{T,1}, sc::T) where {T}
     NamedTuple{(Symbol(only(A.cnames)),)}(sc*abs(only(A.λ.data)),)
 end
 
-function σs(A::ReMat{T}, sc::T) where {T}
-    λ = A.λ.data
-    NamedTuple{(Symbol.(A.cnames)...,)}(ntuple(i -> sc*norm(view(λ,i,1:i)), size(λ, 1)))
+function _σs(λ::LowerTriangular{T}, sc::T, cnames) where {T}
+    λ = λ.data
+    NamedTuple{(Symbol.(cnames)...,)}(ntuple(i -> sc*norm(view(λ,i,1:i)), size(λ, 1)))
 end
+
+function _σs(λ::Diagonal{T}, sc::T, cnames) where {T}
+    NamedTuple{(Symbol.(cnames)...,)}(((sc .* λ.diag)...,))
+end
+
+σs(A::ReMat{T}, sc::T) where {T} = _σs(A.λ, sc, A.cnames)
 
 function σρs(A::ReMat{T,1}, sc::T) where {T}
     NamedTuple{(:σ,:ρ)}(
