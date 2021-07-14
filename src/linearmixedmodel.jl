@@ -86,8 +86,8 @@ Everything else in the structure can be derived from these quantities.
     a future release without being considered a breaking change.
 """
 function LinearMixedModel(y::AbstractArray,
-                        Xs::Tuple, # can't be more specific here without stressing the compiler
-                        form::FormulaTerm, wts = [])
+                          Xs::Tuple, # can't be more specific here without stressing the compiler
+                          form::FormulaTerm, wts = [])
     T = promote_type(Float64, float(eltype(y)))  # ensure eltype of model matrices is at least Float64
 
     reterms = AbstractReMat{T}[]

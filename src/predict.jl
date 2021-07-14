@@ -164,17 +164,20 @@ function StatsBase.predict(m::LinearMixedModel{T}, newdata::Tables.ColumnTable;
 
     # add a response column
     # we get type stability via constant propogation on `new_re_levels`
-    y = let ytemp = ones(T, length(first(newdata)))
-        new_re_levels == :missing ? convert(Vector{Union{T, Missing}}, ytemp) : ytemp
+    y, mnew = let ytemp = ones(T, length(first(newdata)))
+        f, contr = _abstractify_grouping(m.formula)
+        sch = schema(f, newdata, contr)
+        form = apply_schema(f, sch, LinearMixedModel)
+        mnewXs = modelcols(form.rhs, newdata)
+        lmm = LinearMixedModel(ytemp, mnewXs, form)
+
+        ytemp = new_re_levels == :missing ? convert(Vector{Union{T, Missing}}, ytemp) : ytemp
+
+        ytemp, lmm
     end
 
-    newdata = merge(newdata, NamedTuple{(m.formula.lhs.sym,)}((y,)))
-
-    f, contr = _abstractify_grouping(m.formula)
-    mnew = LinearMixedModel(f, newdata; contrasts=contr)
-
-    grps = getproperty.(m.reterms, :trm)
-    y = predict!(y, m, mnew.X; use_re=false)
+    grps = fnames(m)
+    mul!(y, mnew.X, m.β)
     # mnew.reterms for the correct Z matrices
     # ranef(m) for the BLUPs from the original fit
 
@@ -264,11 +267,7 @@ function StatsBase.predict(m::GeneralizedLinearMixedModel{T}, newdata::Tables.Co
                            new_re_levels=:population, type=:response) where T
     type in (:linpred, :response) || throw(ArgumentError("Invalid value for type: $(type)"))
 
-    # # the trick we use to simulate in LMM will give probably give garbage for GLMM
-    # # because the weights aren't passed
-    # new_re_levels == :simulate &&
-    #     throw(ArgumentError("Simulation of new RE levels not available for GeneralizedLinearMixedModel"))
-    y = predict(m.LMM, newdata; new_re_levels=new_re_levels)
+    y = predict(m.LMM, newdata; new_re_levels)
 
     type == :linpred && return y
 
