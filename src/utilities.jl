@@ -1,4 +1,32 @@
 """
+    _abstractify_grouping(f::FormulaTerm)
+
+Remove concrete levels associated with a schematized FormulaTerm.
+
+Returns the formula with the grouping variables made abstract again
+and a Dictionary of `Grouping()` contrasts.
+"""
+function _abstractify_grouping(f::FormulaTerm)
+    fe = filter(x -> !isa(x, AbstractReTerm), f.rhs)
+    re = filter(x -> isa(x, AbstractReTerm), f.rhs)
+    contr = Dict{Symbol, AbstractContrasts}()
+    re = map(re) do trm
+        if trm.rhs isa InteractionTerm
+            rhs = mapreduce(&, trm.rhs.terms) do tt
+                # how to define Grouping() for interactions on the RHS?
+                # contr[tt.sym] = Grouping()
+                return Term(tt.sym)
+            end
+        else
+            contr[trm.rhs.sym] = Grouping()
+            rhs = Term(trm.rhs.sym)
+        end
+        return trm.lhs | rhs
+    end
+    return (f.lhs ~ sum(fe) + sum(re)), contr
+end
+
+"""
     isconstant(x::Array)
     isconstant(x::Tuple)
 

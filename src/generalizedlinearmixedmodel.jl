@@ -134,7 +134,7 @@ end
     deviance!(m::GeneralizedLinearMixedModel, nAGQ=1)
 
 Update `m.η`, `m.μ`, etc., install the working response and working weights in
-`m.LMM`, update `m.LMM.A` and `m.LMM.R`, then evaluate the [`deviance`](@ref StatsBase.deviance).
+`m.LMM`, update `m.LMM.A` and `m.LMM.R`, then evaluate the `deviance`.
 """
 function deviance!(m::GeneralizedLinearMixedModel, nAGQ = 1)
     updateη!(m)
@@ -721,14 +721,14 @@ end
 
 Update the linear predictor, `m.η`, from the offset and the `B`-scale random effects.
 """
-function updateη!(m::GeneralizedLinearMixedModel)
+function updateη!(m::GeneralizedLinearMixedModel{T}) where {T}
     η = m.η
     b = m.b
     u = m.u
     reterms = m.LMM.reterms
     mul!(η, modelmatrix(m), m.β)
     for i in eachindex(b)
-        unscaledre!(η, reterms[i], mul!(b[i], reterms[i].λ, u[i]))
+        mul!(η, reterms[i], vec(mul!(b[i], reterms[i].λ, u[i])), one(T), one(T))
     end
     GLM.updateμ!(m.resp, η)
     m

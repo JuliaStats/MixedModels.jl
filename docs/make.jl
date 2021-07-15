@@ -11,15 +11,11 @@ makedocs(
         "constructors.md",
         "optimization.md",
         "GaussHermite.md",
+        "prediction.md",
         "bootstrap.md",
         "rankdeficiency.md",
         "mime.md",
         "api.md",
-        # "SimpleLMM.md",
-        # "MultipleTerms.md",
-        # "SingularCovariance.md",
-        # "SubjectItem.md",
-        # "benchmarks.md"
     ],
 )
 

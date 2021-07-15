@@ -86,8 +86,8 @@ Everything else in the structure can be derived from these quantities.
     a future release without being considered a breaking change.
 """
 function LinearMixedModel(y::AbstractArray,
-                        Xs::Tuple, # can't be more specific here without stressing the compiler
-                        form::FormulaTerm, wts = [])
+                          Xs::Tuple, # can't be more specific here without stressing the compiler
+                          form::FormulaTerm, wts = [])
     T = promote_type(Float64, float(eltype(y)))  # ensure eltype of model matrices is at least Float64
 
     reterms = AbstractReMat{T}[]
@@ -439,7 +439,7 @@ function fitted!(v::AbstractArray{T}, m::LinearMixedModel{T}) where {T}
     Xtrm = m.feterm
     vv = mul!(vec(v), Xtrm.x, fixef!(similar(Xtrm.piv, T), m))
     for (rt, bb) in zip(m.reterms, ranef(m))
-        unscaledre!(vv, rt, bb)
+        mul!(vv, rt, bb, one(T), one(T))
     end
     v
 end

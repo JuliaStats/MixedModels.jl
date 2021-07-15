@@ -2,6 +2,7 @@ using DataFrames
 using LinearAlgebra
 using MixedModels
 using Random
+using Statistics
 using StableRNGs
 using Statistics
 using Tables
@@ -11,7 +12,7 @@ using MixedModels: dataset
 
 include("modelcache.jl")
 
-@testset "simulate!" begin
+@testset "simulate!(::MixedModel)" begin
     @testset "LMM" begin
         ds = dataset(:dyestuff)
         fm = only(models(:dyestuff))

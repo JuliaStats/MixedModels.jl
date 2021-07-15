@@ -10,7 +10,7 @@ using Test
 
 using MixedModels: likelihoodratiotest
 
-const io = IOBuffer()
+@isdefined(io) || const global io = IOBuffer()
 
 include("modelcache.jl")
 

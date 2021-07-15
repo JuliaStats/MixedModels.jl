@@ -1,8 +1,32 @@
 """
+See [`simulate!`](@ref)
+"""
+function simulate end
+
+function simulate(rng::AbstractRNG, m::MixedModel{T}, newdata; kwargs...) where {T}
+    dat = Tables.columntable(newdata)
+    y = zeros(T, length(first(dat)))
+    simulate!(rng, y, m, newdata; kwargs...)
+end
+
+simulate(rng::AbstractRNG, m::MixedModel; kwargs...) = simulate!(rng, similar(response(m)), m; kwargs...)
+
+simulate(m::MixedModel, args...; kwargs...) = simulate(Random.GLOBAL_RNG, m, args...; kwargs...)
+
+
+"""
     simulate!(rng::AbstractRNG, m::MixedModel{T}; β=m.β, σ=m.σ, θ=T[])
     simulate!(m::MixedModel; β=m.β, σ=m.σ, θ=m.θ)
 
 Overwrite the response (i.e. `m.trms[end]`) with a simulated response vector from model `m`.
+
+This simulation includes sampling new values for the random effects.
+
+!!! note
+    Note that `simulate!` methods with a `y::AbstractVector` as the first argument
+    (besides the RNG) and `simulate` methods return the simulated response. This is
+    in contrast to `simulate!` methods with a `m::MixedModel` as the first argument,
+    which modify the model's response and return the entire modified model.
 """
 function simulate!(
     rng::AbstractRNG,
@@ -11,31 +35,9 @@ function simulate!(
     σ = m.σ,
     θ = T[],
 ) where {T}
-    length(β) == length(fixef(m)) ||
-        length(β) == length(coef(m)) ||
-            throw(ArgumentError("You must specify all (non-singular) βs"))
-
-    β = convert(Vector{T},β)
-    σ = T(σ)
-    θ = convert(Vector{T},θ)
-    isempty(θ) || setθ!(m, θ)
-
-    if length(β) ≠ length(coef(m))
-        padding = length(coef(m)) - length(β)
-        for ii in 1:padding
-            push!(β, -0.0)
-        end
-    end
-
-    y = randn!(rng, response(m))      # initialize y to standard normal
-
-    for trm in m.reterms              # add the unscaled random effects
-        unscaledre!(rng, y, trm)
-    end
-                    # scale by σ and add fixed-effects contribution
-    mul!(y, m.X, β, one(T), σ)
-
-    unfit!(m)
+    # XXX should we add support for doing something with weights?
+    simulate!(rng, m.y, m; β, σ, θ)
+    return unfit!(m)
 end
 
 function simulate!(
@@ -45,35 +47,6 @@ function simulate!(
     σ = m.σ,
     θ = T[],
 ) where {T}
-    length(β) == length(fixef(m)) ||
-        length(β) == length(coef(m)) ||
-            throw(ArgumentError("You must specify all (non-singular) βs"))
-
-    dispersion_parameter(m) || ismissing(σ) ||
-        throw(ArgumentError("You must not specify a dispersion parameter for model families without a dispersion parameter"))
-
-    β = convert(Vector{T},β)
-    if σ !== missing
-        σ = T(σ)
-    end
-    θ = convert(Vector{T},θ)
-
-    d = m.resp.d
-
-    if length(β) ≠ length(coef(m))
-        padding = length(coef(m)) - length(β)
-        for ii in 1:padding
-            push!(β, -0.0)
-        end
-    end
-
-    fast = (length(m.θ) == length(m.optsum.final))
-    setpar! = fast ? setθ! : setβθ!
-    params = fast ? θ : vcat(β, θ)
-    setpar!(m, params)
-
-    lm = m.LMM
-
     # note that these m.resp.y and m.LMM.y will later be sychronized in (re)fit!()
     # but for now we use them as distinct scratch buffers to avoid allocations
 
@@ -83,28 +56,7 @@ function simulate!(
                                        # A better approach is to change the signature for updateμ!
     y = m.resp.y
 
-    # assemble the linear predictor
-
-    # add the unscaled random effects
-    # note that unit scaling may not be correct for
-    # families with a dispersion parameter
-    @inbounds for trm in m.reterms
-        unscaledre!(rng, η, trm)
-    end
-
-    # add fixed-effects contribution
-    # note that unit scaling may not be correct for
-    # families with a dispersion parameter
-    mul!(η, lm.X, β, one(T), one(T))
-
-    # from η to μ
-    GLM.updateμ!(m.resp, η)
-
-    # convert to the distribution / add in noise
-    @inbounds for (idx, val) in enumerate(m.resp.mu)
-        n = isempty(m.wt) ? 1 : m.wt[idx]
-        y[idx] = _rand(rng, d, val, σ, n)
-    end
+    _simulate!(rng, y, η, m, β, σ, θ, m.resp)
 
     unfit!(m)
 end
@@ -139,54 +91,198 @@ function _rand(rng::AbstractRNG, d::Distribution, location, scale=NaN, n=1)
 end
 
 function simulate!(m::MixedModel{T}; β = coef(m), σ = m.σ, θ = T[]) where {T}
-    simulate!(Random.GLOBAL_RNG, m, β = β, σ = σ, θ = θ)
+    simulate!(Random.GLOBAL_RNG, m; β, σ, θ)
 end
 
 """
-    unscaledre!(y::AbstractVector{T}, M::ReMat{T}, b) where {T}
+    simulate!([rng::AbstractRNG,] y::AbstractVector, m::MixedModel{T}[, newdata];
+                    β = coef(m), σ = m.σ, θ = T[], wts=m.wts)
+    simulate([rng::AbstractRNG,] m::MixedModel{T}[, newdata];
+                    β = coef(m), σ = m.σ, θ = T[], wts=m.wts)
+
+Simulate a new response vector, optionally overwriting a pre-allocated vector.
+
+New data can be optionally provided in tabular format.
+
+This simulation includes sampling new values for the random effects. Thus in
+contrast to `predict`, there is no distinction in between "new" and
+"old" / previously observed random-effects levels.
+
+Unlike `predict`, there is no `type` parameter for `GeneralizedLinearMixedModel`
+because the noise term in the model and simulation is always on the response
+scale.
+
+The `wts` argument is currently ignored except for `GeneralizedLinearMixedModel`
+models with a `Binomial` distribution.
+
+!!! warning
+    Models are assumed to be full rank.
+
+!!! note
+    Note that `simulate!` methods with a `y::AbstractVector` as the first argument
+    (besides the RNG) and `simulate` methods return the simulated response. This is
+    in contrast to `simulate!` methods with a `m::MixedModel` as the first argument,
+    which modify the model's response and return the entire modified model.
+"""
+function simulate!(rng::AbstractRNG, y::AbstractVector, m::LinearMixedModel, newdata::Tables.ColumnTable;
+                   β=m.β, σ=m.σ, θ=m.θ)
+    # the easiest thing here is to just assemble a new model and
+    # pass that to the other simulate methods....
+    # this can probably be made much more efficient
+    # (for one thing, this still allocates for the model's response)
+    # note that the contrasts get copied over with the formula
+    # (as part of the applied schema)
+    # contr here are the fast Grouping contrasts
+    f, contr = _abstractify_grouping(m.formula)
+    mnew = LinearMixedModel(f, newdata; contrasts=contr)
+    # XXX why not do simulate!(rng, y, mnew; β=β, σ=σ, θ=θ)
+    # instead of simulating the model and then copying?
+    # Well, it turns out that the call to randn!(rng, y)
+    # gives different results at the tail end of the array
+    # for y <: view(::Matrix{Float64}, :, 3) than y <: Vector{Float64}
+    # I don't know why, but this doesn't actually incur an
+    # extra computation and gives consistent results at the price
+    # of an allocationless copy
+    simulate!(rng, mnew; β, σ, θ)
+    copy!(y, mnew.y)
+end
+
+function simulate!(rng::AbstractRNG, y::AbstractVector, m::LinearMixedModel{T}; β=m.β, σ=m.σ, θ=m.θ) where {T}
+    length(β) == length(fixef(m)) ||
+        length(β) == length(coef(m)) ||
+            throw(ArgumentError("You must specify all (non-singular) βs"))
+
+    β = convert(Vector{T},β)
+    σ = T(σ)
+    θ = convert(Vector{T},θ)
+    isempty(θ) || setθ!(m, θ)
+
+    if length(β) ≠ length(coef(m))
+        padding = length(coef(m)) - length(β)
+        for ii in 1:padding
+            push!(β, -0.0)
+        end
+    end
+
+    # initialize y to standard normal
+    randn!(rng, y)
+
+    # add the unscaled random effects
+    for trm in m.reterms
+        unscaledre!(rng, y, trm)
+    end
+
+    # scale by σ and add fixed-effects contribution
+    mul!(y, m.X, β, one(T), σ)
+end
+
+function simulate!(rng::AbstractRNG, y::AbstractVector, m::GeneralizedLinearMixedModel, newdata::Tables.ColumnTable;
+                   β=m.β, σ=m.σ, θ=m.θ)
+    # the easiest thing here is to just assemble a new model and
+    # pass that to the other simulate methods....
+    # this can probably be made much more efficient
+    # (for one thing, this still allocates for the model's response)
+    # note that the contrasts get copied over with the formula
+    # (as part of the applied schema)
+    # contr here are the fast Grouping contrasts
+    f, contr = _abstractify_grouping(m.formula)
+    mnew = GeneralizedLinearMixedModel(f, newdata, m.resp.d, Link(m.resp); contrasts=contr)
+    # XXX why not do simulate!(rng, y, mnew; β, σ, θ)
+    # instead of simulating the model and then copying?
+    # Well, it turns out that the call to randn!(rng, y)
+    # gives different results at the tail end of the array
+    # for y <: view(::Matrix{Float64}, :, 3) than y <: Vector{Float64}
+    # I don't know why, but this doesn't actually incur an
+    # extra computation and gives consistent results at the price
+    # of an allocationless copy
+    simulate!(rng, mnew; β, σ, θ)
+    copy!(y, mnew.y)
+end
+
+function simulate!(rng::AbstractRNG, y::AbstractVector, m::GeneralizedLinearMixedModel{T}; β=m.β, σ=m.σ, θ=m.θ) where {T}
+    # make sure both scratch arrays are init'd to zero
+    η = zeros(T, size(y))
+    copyto!(y, η)
+    _simulate!(rng, y, η, m, β, σ, θ)
+end
+
+function _simulate!(rng::AbstractRNG, y::AbstractVector, η::AbstractVector, m::GeneralizedLinearMixedModel{T}, β, σ, θ, resp=nothing) where {T}
+    length(β) == length(fixef(m)) ||
+        length(β) == length(coef(m)) ||
+            throw(ArgumentError("You must specify all (non-singular) βs"))
+
+    dispersion_parameter(m) || ismissing(σ) ||
+        throw(ArgumentError("You must not specify a dispersion parameter for model families without a dispersion parameter"))
+
+    β = convert(Vector{T},β)
+    if σ !== missing
+        σ = T(σ)
+    end
+    θ = convert(Vector{T},θ)
+
+    d = m.resp.d
+
+    if length(β) ≠ length(coef(m))
+        padding = length(coef(m)) - length(β)
+        for ii in 1:padding
+            push!(β, -0.0)
+        end
+    end
+
+    fast = (length(m.θ) == length(m.optsum.final))
+    setpar! = fast ? setθ! : setβθ!
+    params = fast ? θ : vcat(β, θ)
+    setpar!(m, params)
+
+    lm = m.LMM
+
+    # assemble the linear predictor
+
+    # add the unscaled random effects
+    # note that unit scaling may not be correct for
+    # families with a dispersion parameter
+    @inbounds for trm in m.reterms
+        unscaledre!(rng, η, trm)
+    end
+
+    # add fixed-effects contribution
+    # note that unit scaling may not be correct for
+    # families with a dispersion parameter
+    mul!(η, lm.X, β, one(T), one(T))
+
+    μ = resp === nothing ? linkinv.(Link(m), η) : GLM.updateμ!(resp, η).mu
+
+    # convert to the distribution / add in noise
+    @inbounds for (idx, val) in enumerate(μ)
+        n = isempty(m.wt) ? 1 : m.wt[idx]
+        y[idx] = _rand(rng, d, val, σ, n)
+    end
+
+    return y
+end
+
+simulate!(rng::AbstractRNG, y::AbstractVector, m::MixedModel, newdata; kwargs...) =
+    simulate!(rng, y, m, Tables.columntable(newdata); kwargs...)
+simulate!(y::AbstractVector, m::MixedModel, newdata; kwargs...) =
+    simulate!(Random.GLOBAL_RNG, y, m, Tables.columntable(newdata); kwargs...)
+
+"""
+    unscaledre!(y::AbstractVector{T}, M::ReMat{T}) where {T}
     unscaledre!(rng::AbstractRNG, y::AbstractVector{T}, M::ReMat{T}) where {T}
 
-Add unscaled random effects defined by `M` and `b` to `y`.  When `rng` is present the `b`
-vector is generated as `randn(rng, size(M, 2))`
+Add unscaled random effects simulated from `M` to `y`.
+
+These are unscaled random effects (i.e. they incorporate λ but not σ) because
+the scaling is done after the per-observation noise is added as a standard normal.
 """
 function unscaledre! end
 
-function unscaledre!(y::AbstractVector{T}, A::ReMat{T,1}, b::AbstractVector{T}) where {T}
-    m, n = size(A)
-    length(y) == m && length(b) == n || throw(DimensionMismatch(""))
-    z = A.z
-    @inbounds for (i, r) in enumerate(A.refs)
-        y[i] += b[r] * z[i]
-    end
-    y
-end
-
-unscaledre!(y::AbstractVector{T}, A::ReMat{T,1}, B::AbstractMatrix{T}) where {T} =
-    unscaledre!(y, A, vec(B))
-
-function unscaledre!(y::AbstractVector{T}, A::ReMat{T,S}, b::AbstractMatrix{T}) where {T,S}
-    Z = A.z
-    k, n = size(Z)
-    l = nlevs(A)
-    length(y) == n && size(b) == (k, l) || throw(DimensionMismatch(""))
-    @inbounds for (i, ii) in enumerate(A.refs)
-        for j = 1:k
-            y[i] += Z[j, i] * b[j, ii]
-        end
-    end
-    y
-end
-
 function unscaledre!(rng::AbstractRNG, y::AbstractVector{T}, A::ReMat{T,S}) where {T,S}
-    rng_nums = randn(rng, S, nlevs(A))
-
-    unscaledre!(y, A, lmul!(A.λ, rng_nums))
+    mul!(y, A, vec(lmul!(A.λ, randn(rng, S, nlevs(A)))), one(T), one(T))
 end
 
 function unscaledre!(rng::AbstractRNG, y::AbstractVector{T}, A::ReMat{T,1}) where {T}
-    rng_nums = randn(rng, 1, nlevs(A))
-
-    unscaledre!(y, A, lmul!(first(A.λ), rng_nums))
+    mul!(y, A, lmul!(first(A.λ), randn(rng, nlevs(A))), one(T), one(T))
 end
 
 unscaledre!(y::AbstractVector, A::ReMat) = unscaledre!(Random.GLOBAL_RNG, y, A)

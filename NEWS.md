@@ -28,6 +28,8 @@ MixedModels v4.0.0 Release Notes
   of each iteration and does not flood stdio. The `verbose` argument has been renamed `progress`
   and the default changed to `true`. [#539]
 * Support for Julia < 1.6 has been dropped. [#539]
+* New `simulate`, `simulate!` and `predict` methods for simulating and
+  predicting responses to new data. [#427]
 
 Run-time formula syntax
 -----------------------
@@ -231,6 +233,7 @@ Package dependencies
 [#395]: https://github.com/JuliaStats/MixedModels.jl/issues/395
 [#418]: https://github.com/JuliaStats/MixedModels.jl/issues/418
 [#419]: https://github.com/JuliaStats/MixedModels.jl/issues/419
+[#427]: https://github.com/JuliaStats/MixedModels.jl/issues/427
 [#444]: https://github.com/JuliaStats/MixedModels.jl/issues/444
 [#446]: https://github.com/JuliaStats/MixedModels.jl/issues/446
 [#447]: https://github.com/JuliaStats/MixedModels.jl/issues/447

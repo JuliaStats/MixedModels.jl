@@ -7,6 +7,7 @@ using Test
 using MixedModels: isconstant, average, densify, dataset
 using StatsModels: FormulaTerm
 
+@isdefined(io) || const global io = IOBuffer()
 include("modelcache.jl")
 
 @testset "average" begin
