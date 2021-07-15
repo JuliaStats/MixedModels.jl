@@ -1,7 +1,6 @@
 _testdata() = artifact"TestData"
 
-
-cacheddatasets = Dict{String, Arrow.Table}()
+cacheddatasets = Dict{String,Arrow.Table}()
 """
     dataset(nm)
 
@@ -11,8 +10,11 @@ function dataset(nm::AbstractString)
     get!(cacheddatasets, nm) do
         path = joinpath(_testdata(), nm * ".arrow")
         if !isfile(path)
-            throw(ArgumentError(
-                "Dataset \"$nm\" is not available.\nUse MixedModels.datasets() for available names."))
+            throw(
+                ArgumentError(
+                    "Dataset \"$nm\" is not available.\nUse MixedModels.datasets() for available names.",
+                ),
+            )
         end
         Arrow.Table(path)
     end
@@ -24,4 +26,8 @@ dataset(nm::Symbol) = dataset(string(nm))
 
 Return a vector of names of the available test data sets
 """
-datasets() = first.(Base.Filesystem.splitext.(filter(endswith(".arrow"), readdir(_testdata()))))
+function datasets()
+    return first.(
+        Base.Filesystem.splitext.(filter(endswith(".arrow"), readdir(_testdata())))
+    )
+end

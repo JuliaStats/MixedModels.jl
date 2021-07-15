@@ -47,14 +47,14 @@ function OptSummary(
     initial::Vector{T},
     lowerbd::Vector{T},
     optimizer::Symbol;
-    ftol_rel::T = zero(T),
-    ftol_abs::T = zero(T),
-    xtol_rel::T = zero(T),
-    initial_step::Vector{T} = T[],
-    maxfeval = -1,
-    maxtime = T(-1)
+    ftol_rel::T=zero(T),
+    ftol_abs::T=zero(T),
+    xtol_rel::T=zero(T),
+    initial_step::Vector{T}=T[],
+    maxfeval=-1,
+    maxtime=T(-1),
 ) where {T<:AbstractFloat}
-    OptSummary(
+    return OptSummary(
         initial,
         lowerbd,
         T(Inf),
@@ -92,7 +92,7 @@ function Base.show(io::IO, ::MIME"text/plain", s::OptSummary)
     println(io, "Function evaluations:     ", s.feval)
     println(io, "Final parameter vector:   ", s.final)
     println(io, "Final objective value:    ", s.fmin)
-    println(io, "Return code:              ", s.returnvalue)
+    return println(io, "Return code:              ", s.returnvalue)
 end
 
 Base.show(io::IO, s::OptSummary) = Base.show(io, MIME"text/plain"(), s)
@@ -115,14 +115,20 @@ function NLopt.Opt(optsum::OptSummary)
     else
         NLopt.initial_step!(opt, optsum.initial_step)
     end
-    opt
+    return opt
 end
 
 StructTypes.StructType(::Type{<:OptSummary}) = StructTypes.Mutable()
-StructTypes.excludes(::Type{<:OptSummary}) = (:lowerbd, )
+StructTypes.excludes(::Type{<:OptSummary}) = (:lowerbd,)
 
-const _NLOPT_FAILURE_MODES = [:FAILURE, :INVALID_ARGS, :OUT_OF_MEMORY,
-                              :FORCED_STOP, :MAXEVAL_REACHED, :MAXTIME_REACHED]
+const _NLOPT_FAILURE_MODES = [
+    :FAILURE,
+    :INVALID_ARGS,
+    :OUT_OF_MEMORY,
+    :FORCED_STOP,
+    :MAXEVAL_REACHED,
+    :MAXTIME_REACHED,
+]
 
 function _check_nlopt_return(ret)
     ret == :ROUNDOFF_LIMITED && @warn("NLopt was roundoff limited")

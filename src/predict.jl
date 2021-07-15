@@ -40,19 +40,23 @@ difference between these terms, then you probably want `type=:response`.
 Regression weights are not yet supported in prediction.
 Similarly, offsets are also not supported for `GeneralizedLinearMixedModel`.
 """
-function StatsBase.predict(m::LinearMixedModel, newdata::Tables.ColumnTable;
-                           new_re_levels=:population)
-
-    _predict(m, newdata, m.β; new_re_levels)
+function StatsBase.predict(
+    m::LinearMixedModel, newdata::Tables.ColumnTable; new_re_levels=:population
+)
+    return _predict(m, newdata, m.β; new_re_levels)
 end
 
-function StatsBase.predict(m::GeneralizedLinearMixedModel, newdata::Tables.ColumnTable;
-                           new_re_levels=:population, type=:response)
+function StatsBase.predict(
+    m::GeneralizedLinearMixedModel,
+    newdata::Tables.ColumnTable;
+    new_re_levels=:population,
+    type=:response,
+)
     type in (:linpred, :response) || throw(ArgumentError("Invalid value for type: $(type)"))
 
     y = _predict(m.LMM, newdata, m.β; new_re_levels)
 
-    type == :linpred ? y : broadcast!(Base.Fix1(linkinv, Link(m)), y, y)
+    return type == :linpred ? y : broadcast!(Base.Fix1(linkinv, Link(m)), y, y)
 end
 
 # β is separated out here because m.β != m.LMM.β depending on how β is estimated for GLMM
@@ -79,7 +83,8 @@ function _predict(m::MixedModel{T}, newdata, β; new_re_levels) where {T}
     y, mnew = let ytemp = ones(T, length(first(newdata)))
         f, contr = _abstractify_grouping(m.formula)
         lmm = LinearMixedModel(f, newdata; contrasts=contr)
-        ytemp = new_re_levels == :missing ? convert(Vector{Union{T, Missing}}, ytemp) : ytemp
+        ytemp =
+            new_re_levels == :missing ? convert(Vector{Union{T,Missing}}, ytemp) : ytemp
 
         ytemp, lmm
     end
@@ -93,15 +98,14 @@ function _predict(m::MixedModel{T}, newdata, β; new_re_levels) where {T}
     # number of levels and that number may not be the same for the
     # new data, we need to permute the reterms from both models to be
     # in the same order
-    newreperm = sort(1:length(mnew.reterms), by=x -> string(mnew.reterms[x].trm))
-    oldreperm = sort(1:length(m.reterms), by=x -> string(m.reterms[x].trm))
+    newreperm = sort(1:length(mnew.reterms); by=x -> string(mnew.reterms[x].trm))
+    oldreperm = sort(1:length(m.reterms); by=x -> string(m.reterms[x].trm))
     newre = mnew.reterms[newreperm]
     oldre = m.reterms[oldreperm]
 
     if new_re_levels == :error
-        for (grp, known_levels, data_levels) in zip(grps,
-                                                    levels.(m.reterms),
-                                                    levels.(mnew.reterms))
+        for (grp, known_levels, data_levels) in
+            zip(grps, levels.(m.reterms), levels.(mnew.reterms))
             if sort!(known_levels) != sort!(data_levels)
                 throw(ArgumentError("New level enountered in $grp"))
             end
@@ -144,22 +148,22 @@ function _predict(m::MixedModel{T}, newdata, β; new_re_levels) where {T}
                 end
             end
         end
-    # elseif new_re_levels == :simulate
-    #     @show m.θ
-    #     updateL!(setθ!(mnew, m.θ))
-    #     blups = ranef(mnew)[newreperm]
-    #     blupsold = ranef(m)[oldreperm]
-    #     for (idx, B) in enumerate(blups)
-    #         oldlevels = levels(oldre[idx])
-    #         for (lidx, ll) in enumerate(levels(newre[idx]))
-    #             oldloc = findfirst(isequal(ll), oldlevels)
-    #             if oldloc === nothing
-    #                 # keep the new value
-    #             else
-    #                 B[:, lidx] = @view blupsold[idx][:, oldloc]
-    #             end
-    #         end
-    #     end
+        # elseif new_re_levels == :simulate
+        #     @show m.θ
+        #     updateL!(setθ!(mnew, m.θ))
+        #     blups = ranef(mnew)[newreperm]
+        #     blupsold = ranef(m)[oldreperm]
+        #     for (idx, B) in enumerate(blups)
+        #         oldlevels = levels(oldre[idx])
+        #         for (lidx, ll) in enumerate(levels(newre[idx]))
+        #             oldloc = findfirst(isequal(ll), oldlevels)
+        #             if oldloc === nothing
+        #                 # keep the new value
+        #             else
+        #                 B[:, lidx] = @view blupsold[idx][:, oldloc]
+        #             end
+        #         end
+        #     end
     else
         throw(ErrorException("Impossible branch reached. Please report an issue on GitHub"))
     end
@@ -172,8 +176,9 @@ function _predict(m::MixedModel{T}, newdata, β; new_re_levels) where {T}
 end
 
 # yup, I got lazy on this one -- let the dispatched method handle kwarg checking
-StatsBase.predict(m::MixedModel, newdata; kwargs...) =
-    predict(m, columntable(newdata); kwargs...)
+function StatsBase.predict(m::MixedModel, newdata; kwargs...)
+    return predict(m, columntable(newdata); kwargs...)
+end
 
 ## should we add in code for prediction intervals?
 # we don't directly implement (Wald) confidence intervals, so directly

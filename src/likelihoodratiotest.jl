@@ -17,18 +17,14 @@ Results of MixedModels.likelihoodratiotest
 """
 struct LikelihoodRatioTest
     formulas::AbstractVector{String}
-    models::NamedTuple{(:dof,:deviance)}
-    tests::NamedTuple{(:dofdiff,:deviancediff,:pvalues)}
+    models::NamedTuple{(:dof, :deviance)}
+    tests::NamedTuple{(:dofdiff, :deviancediff, :pvalues)}
     linear::Bool
 end
 
-Base.propertynames(lrt::LikelihoodRatioTest, private::Bool = false) = (
-    :deviance,
-    :formulas,
-    :models,
-    :pvalues,
-    :tests,
-)
+function Base.propertynames(lrt::LikelihoodRatioTest, private::Bool=false)
+    return (:deviance, :formulas, :models, :pvalues, :tests)
+end
 
 function Base.getproperty(lrt::LikelihoodRatioTest, s::Symbol)
     if s == :dof
@@ -45,7 +41,7 @@ function Base.getproperty(lrt::LikelihoodRatioTest, s::Symbol)
 end
 
 # backward syntactic but not type compatibility
-Base.getindex(lrt::LikelihoodRatioTest, s::Symbol) = getfield(lrt,s)
+Base.getindex(lrt::LikelihoodRatioTest, s::Symbol) = getfield(lrt, s)
 
 """
     likelihoodratiotest(m::MixedModel...)
@@ -71,14 +67,14 @@ Likeihood ratio test applied to a set of nested models.
 This functionality may be deprecated in the future in favor of `StatsModels.lrtest`.
 """
 function likelihoodratiotest(m::MixedModel...)
-    _iscomparable(m...) || throw(
-            ArgumentError("""Models are not comparable: are the objectives, data
-                             and, where appropriate, the link and family the same?
-            """))
+    _iscomparable(m...) ||
+        throw(ArgumentError("""Models are not comparable: are the objectives, data
+                               and, where appropriate, the link and family the same?
+              """))
 
     m = collect(m)   # change the tuple to an array
     dofs = dof.(m)
-    formulas = String.(Symbol.(getproperty.(m,:formula)))
+    formulas = String.(Symbol.(getproperty.(m, :formula)))
     ord = sortperm(dofs)
     dofs = dofs[ord]
     formulas = formulas[ord]
@@ -93,27 +89,40 @@ function likelihoodratiotest(m::MixedModel...)
         end
     end
 
-    LikelihoodRatioTest(
+    return LikelihoodRatioTest(
         formulas,
-        (dof = dofs, deviance = devs),
-        (dofdiff = dofdiffs, deviancediff = devdiffs, pvalues = pvals),
-        first(m) isa LinearMixedModel
+        (dof=dofs, deviance=devs),
+        (dofdiff=dofdiffs, deviancediff=devdiffs, pvalues=pvals),
+        first(m) isa LinearMixedModel,
     )
 end
 
-_formula(::Union{LinearModel, GeneralizedLinearModel}) = "NA"
-_formula(x::TableRegressionModel{<:Union{LinearModel, GeneralizedLinearModel}}) = String(Symbol(x.mf.f))
+_formula(::Union{LinearModel,GeneralizedLinearModel}) = "NA"
+function _formula(x::TableRegressionModel{<:Union{LinearModel,GeneralizedLinearModel}})
+    return String(Symbol(x.mf.f))
+end
 
 # for GLMMs we're actually looking at the deviance and additive constants are comparable
 # (because GLM deviance is actually part of the GLMM deviance computation)
 # for LMMs, we're always looking at the "deviance scale" but without the additive constant
 # for the fully saturated model
-_criterion(x::Union{GeneralizedLinearModel, TableRegressionModel{<:GeneralizedLinearModel}}) = deviance(x)
-_criterion(x::Union{LinearModel, TableRegressionModel{<:LinearModel}}) = -2 * loglikelihood(x)
+function _criterion(
+    x::Union{GeneralizedLinearModel,TableRegressionModel{<:GeneralizedLinearModel}}
+)
+    return deviance(x)
+end
+function _criterion(x::Union{LinearModel,TableRegressionModel{<:LinearModel}})
+    return -2 * loglikelihood(x)
+end
 
-function likelihoodratiotest(m0::Union{TableRegressionModel{<:Union{LinearModel, GeneralizedLinearModel}},
-                                       LinearModel, GeneralizedLinearModel},
-                             m::MixedModel...)
+function likelihoodratiotest(
+    m0::Union{
+        TableRegressionModel{<:Union{LinearModel,GeneralizedLinearModel}},
+        LinearModel,
+        GeneralizedLinearModel,
+    },
+    m::MixedModel...,
+)
     _iscomparable(m0, first(m)) ||
         throw(ArgumentError("""Models are not comparable: are the objectives, data
                                and, where appropriate, the link and family the same?
@@ -129,11 +138,11 @@ function likelihoodratiotest(m0::Union{TableRegressionModel{<:Union{LinearModel,
     p = dev > 0 ? ccdf(Chisq(df), dev) : NaN
     pvals = pushfirst!(lrt.tests.pvalues, p)
 
-    LikelihoodRatioTest(
+    return LikelihoodRatioTest(
         formulas,
-        (dof = dofs, deviance = devs),
-        (dofdiff = dofdiffs, deviancediff = devdiffs, pvalues = pvals),
-        lrt.linear
+        (dof=dofs, deviance=devs),
+        (dofdiff=dofdiffs, deviancediff=devdiffs, pvalues=pvals),
+        lrt.linear,
     )
 end
 
@@ -151,43 +160,40 @@ function Base.show(io::IO, ::MIME"text/plain", lrt::LikelihoodRatioTest)
 
     nc = 6
     nr = length(lrt.formulas)
-    outrows = Matrix{String}(undef, nr+1, nc)
+    outrows = Matrix{String}(undef, nr + 1, nc)
 
-    outrows[1, :] = ["",
-                    "model-dof",
-                    lrt.linear ? "-2 logLik" : "deviance",
-                    "χ²",
-                    "χ²-dof",
-                    "P(>χ²)"] # colnms
+    outrows[1, :] = [
+        "", "model-dof", lrt.linear ? "-2 logLik" : "deviance", "χ²", "χ²-dof", "P(>χ²)"
+    ] # colnms
 
-
-    outrows[2, :] = ["[1]",
-                    string(lrt.dof[1]),
-                    Ryu.writefixed(lrt.deviance[1], 4),
-                    " "," ", " "]
+    outrows[2, :] = [
+        "[1]", string(lrt.dof[1]), Ryu.writefixed(lrt.deviance[1], 4), " ", " ", " "
+    ]
 
     for i in 2:nr
-        outrows[i+1, :] = ["[$i]",
-                           string(lrt.dof[i]),
-                           Ryu.writefixed(lrt.deviance[i], 4),
-                           Ryu.writefixed(Δdev[i-1], 4),
-                           string(Δdf[i-1]),
-                           string(StatsBase.PValue(lrt.pvalues[i-1]))]
+        outrows[i + 1, :] = [
+            "[$i]",
+            string(lrt.dof[i]),
+            Ryu.writefixed(lrt.deviance[i], 4),
+            Ryu.writefixed(Δdev[i - 1], 4),
+            string(Δdf[i - 1]),
+            string(StatsBase.PValue(lrt.pvalues[i - 1])),
+        ]
     end
     colwidths = length.(outrows)
     max_colwidths = [maximum(view(colwidths, :, i)) for i in 1:nc]
-    totwidth = sum(max_colwidths) + 2*5
+    totwidth = sum(max_colwidths) + 2 * 5
 
     println(io, '─'^totwidth)
 
-    for r in 1:nr+1
+    for r in 1:(nr + 1)
         for c in 1:nc
             cur_cell = outrows[r, c]
             cur_cell_len = length(cur_cell)
 
-            padding = " "^(max_colwidths[c]-cur_cell_len)
+            padding = " "^(max_colwidths[c] - cur_cell_len)
             if c > 1
-                padding = "  "*padding
+                padding = "  " * padding
             end
 
             print(io, padding)
@@ -198,33 +204,42 @@ function Base.show(io::IO, ::MIME"text/plain", lrt::LikelihoodRatioTest)
     end
     print(io, '─'^totwidth)
 
-    nothing
+    return nothing
 end
 
 Base.show(io::IO, lrt::LikelihoodRatioTest) = Base.show(io, MIME"text/plain"(), lrt)
 
 function _iscomparable(m::LinearMixedModel...)
-    isconstant(getproperty.(getproperty.(m,:optsum),:REML)) ||
-        throw(ArgumentError("Models must all be fit with the same objective (i.e. all ML or all REML)"))
+    isconstant(getproperty.(getproperty.(m, :optsum), :REML)) || throw(
+        ArgumentError(
+            "Models must all be fit with the same objective (i.e. all ML or all REML)"
+        ),
+    )
 
-    if any(getproperty.(getproperty.(m,:optsum),:REML))
-        isconstant(coefnames.(m))  ||
-                throw(ArgumentError("Likelihood-ratio tests for REML-fitted models are only valid when the fixed-effects specifications are identical"))
+    if any(getproperty.(getproperty.(m, :optsum), :REML))
+        isconstant(coefnames.(m)) || throw(
+            ArgumentError(
+                "Likelihood-ratio tests for REML-fitted models are only valid when the fixed-effects specifications are identical",
+            ),
+        )
     end
 
     isconstant(nobs.(m)) ||
         throw(ArgumentError("Models must have the same number of observations"))
 
-    true
+    return true
 end
 
-_samefamily(::GeneralizedLinearMixedModel{<:AbstractFloat, S}...) where {S<:Distribution} = true
+function _samefamily(
+    ::GeneralizedLinearMixedModel{<:AbstractFloat,S}...
+) where {S<:Distribution}
+    return true
+end
 _samefamily(::GeneralizedLinearMixedModel...) = false
 
 function _iscomparable(m::GeneralizedLinearMixedModel...)
     # TODO: test that all models are fit with same fast/nAGQ option?
-    _samefamily(m...) ||
-        throw(ArgumentError("Models must be fit to the same distribution"))
+    _samefamily(m...) || throw(ArgumentError("Models must be fit to the same distribution"))
 
     isconstant(string.(Link.(m))) ||
         throw(ArgumentError("Models must have the same link function"))
@@ -252,8 +267,7 @@ function StatsModels.isnested(m1::MixedModel, m2::MixedModel; atol::Real=0.0)
     end || return false
 
     # check that the nested fixef are a subset of the outer
-    all(in.(coefnames(m1),  Ref(coefnames(m2)))) || return false
-
+    all(in.(coefnames(m1), Ref(coefnames(m2)))) || return false
 
     # check that the same grouping vars occur in the outer model
     grpng1 = fname.(m1.reterms)
@@ -268,22 +282,22 @@ function StatsModels.isnested(m1::MixedModel, m2::MixedModel; atol::Real=0.0)
 
     all(all(in.(val, Ref(re2[key]))) for (key, val) in re1) || return false
 
-    true
+    return true
 end
 
-
-function _iscomparable(m1::TableRegressionModel{<:Union{LinearModel, GeneralizedLinearModel}},
-                       m2::MixedModel)
-     _iscomparable(m1.model, m2) || return false
+function _iscomparable(
+    m1::TableRegressionModel{<:Union{LinearModel,GeneralizedLinearModel}}, m2::MixedModel
+)
+    _iscomparable(m1.model, m2) || return false
 
     # check that the nested fixef are a subset of the outer
-    all(in.(coefnames(m1),  Ref(coefnames(m2)))) || return false
+    all(in.(coefnames(m1), Ref(coefnames(m2)))) || return false
 
     return true
 end
 
 # GLM isn't nested with in LMM and LM isn't nested within GLMM
-_iscomparable(m1::Union{LinearModel, GeneralizedLinearModel}, m2::MixedModel) = false
+_iscomparable(m1::Union{LinearModel,GeneralizedLinearModel}, m2::MixedModel) = false
 
 function _iscomparable(m1::LinearModel, m2::LinearMixedModel)
     nobs(m1) == nobs(m2) || return false
@@ -309,8 +323,7 @@ function _iscomparable(m1::GeneralizedLinearModel, m2::GeneralizedLinearMixedMod
     Distribution(m1) == Distribution(m2) ||
         throw(ArgumentError("Models must be fit to the same distribution"))
 
-    Link(m1) == Link(m2) ||
-        throw(ArgumentError("Models must have the same link function"))
+    Link(m1) == Link(m2) || throw(ArgumentError("Models must have the same link function"))
 
     return true
 end
@@ -344,14 +357,14 @@ function _isnested(x::AbstractMatrix, y::AbstractMatrix; rtol=1e-8, ranktol=1e-8
     dvec = abs.(diag(qrx.R))
     fdv = first(dvec)
     cmp = fdv * ranktol
-    r = searchsortedlast(dvec, cmp, rev=true)
+    r = searchsortedlast(dvec, cmp; rev=true)
 
     p = qy' * x
 
     nested = map(eachcol(p)) do col
         # if set Julia 1.6 as the minimum, we can use last(col, r)
-        top = @view col[firstindex(col):(end-r-1)]
-        tail = @view col[(end-r):end]
+        top = @view col[firstindex(col):(end - r - 1)]
+        tail = @view col[(end - r):end]
         return norm(tail) / norm(top) < rtol
     end
 

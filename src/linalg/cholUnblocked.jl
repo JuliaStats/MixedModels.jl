@@ -10,7 +10,7 @@ function cholUnblocked! end
 
 function cholUnblocked!(D::Diagonal{T}, ::Type{Val{:L}}) where {T<:AbstractFloat}
     map!(sqrt, D.diag, D.diag)
-    D
+    return D
 end
 
 function cholUnblocked!(A::StridedMatrix{T}, ::Type{Val{:L}}) where {T<:BlasFloat}
@@ -28,7 +28,7 @@ function cholUnblocked!(A::StridedMatrix{T}, ::Type{Val{:L}}) where {T<:BlasFloa
         _, info = LAPACK.potrf!('L', A)
         iszero(info) || throw(PosDefException(info))
     end
-    A
+    return A
 end
 
 function cholUnblocked!(D::UniformBlockDiagonal, ::Type{Val{:L}})
@@ -36,5 +36,5 @@ function cholUnblocked!(D::UniformBlockDiagonal, ::Type{Val{:L}})
     for k in axes(Ddat, 3)
         cholUnblocked!(view(Ddat, :, :, k), Val{:L})
     end
-    D
+    return D
 end

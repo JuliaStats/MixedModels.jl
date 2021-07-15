@@ -11,18 +11,20 @@ The name `rankUpdate!` is borrowed from [https://github.com/andreasnoack/LinearA
 function rankUpdate! end
 
 function rankUpdate!(C::AbstractMatrix, a::AbstractArray, α, β)
-    error("We haven't implemented a method for $(typeof(C)), $(typeof(a)). Please file an issue on GitHub.")
+    return error(
+        "We haven't implemented a method for $(typeof(C)), $(typeof(a)). Please file an issue on GitHub.",
+    )
 end
 
 function rankUpdate!(C::HermOrSym{T,S}, a::StridedVector{T}, α, β) where {T,S}
     isone(β) || throw(ArgumentError("isone(β) is false"))
     BLAS.syr!(C.uplo, T(α), a, C.data)
-    C  ## to ensure that the return value is HermOrSym
+    return C  ## to ensure that the return value is HermOrSym
 end
 
 function rankUpdate!(C::HermOrSym{T,S}, A::StridedMatrix{T}, α, β) where {T,S}
     BLAS.syrk!(C.uplo, 'N', T(α), A, T(β), C.data)
-    C
+    return C
 end
 
 function rankUpdate!(C::HermOrSym{T,S}, A::SparseMatrixCSC{T}, α, β) where {T,S}
@@ -30,7 +32,7 @@ function rankUpdate!(C::HermOrSym{T,S}, A::SparseMatrixCSC{T}, α, β) where {T,
     C.uplo == 'L' || throw(ArgumentError("C.uplo must be 'L'"))
     Cd, rv, nz = C.data, rowvals(A), nonzeros(A)
     isone(β) || rmul!(LowerTriangular(Cd), β)
-    @inbounds for jj in 1:A.n
+    @inbounds for jj in 1:(A.n)
         rangejj = nzrange(A, jj)
         lenrngjj = length(rangejj)
         for (k, j) in enumerate(rangejj)
@@ -42,14 +44,16 @@ function rankUpdate!(C::HermOrSym{T,S}, A::SparseMatrixCSC{T}, α, β) where {T,
             end
         end
     end
-    C
+    return C
 end
 
 function rankUpdate!(C::HermOrSym, A::BlockedSparse, α, β)
-    rankUpdate!(C, sparse(A), α, β)
+    return rankUpdate!(C, sparse(A), α, β)
 end
 
-function rankUpdate!(C::HermOrSym{T,Diagonal{T,Vector{T}}}, A::StridedMatrix{T}, α, β) where {T,S}
+function rankUpdate!(
+    C::HermOrSym{T,Diagonal{T,Vector{T}}}, A::StridedMatrix{T}, α, β
+) where {T,S}
     Cdiag = C.data.diag
     @. Cdiag = β * Cdiag
 
@@ -58,10 +62,12 @@ function rankUpdate!(C::HermOrSym{T,Diagonal{T,Vector{T}}}, A::StridedMatrix{T},
         Cdiag[i] = Cdiag[i] + α * Arow'Arow
     end
 
-    C
+    return C
 end
 
-function rankUpdate!(C::HermOrSym{T,UniformBlockDiagonal{T}}, A::StridedMatrix{T}, α, β) where {T,S}
+function rankUpdate!(
+    C::HermOrSym{T,UniformBlockDiagonal{T}}, A::StridedMatrix{T}, α, β
+) where {T,S}
     Cdat = C.data.data
     isone(β) || (Cdat .*= β)
     blksize = size(Cdat, 1)
@@ -75,55 +81,51 @@ function rankUpdate!(C::HermOrSym{T,UniformBlockDiagonal{T}}, A::StridedMatrix{T
             AtAij = 0
             for idx in axes(A, 2)
                 # because the second is actually A', we swap index orders
-                AtAij += A[iind,idx] * A[jind,idx]
+                AtAij += A[iind, idx] * A[jind, idx]
             end
-            Cdat[i,j,k] += α * AtAij
+            Cdat[i, j, k] += α * AtAij
         end
     end
 
-    C
+    return C
 end
 
 function rankUpdate!(
-    C::HermOrSym{T,Diagonal{T,Vector{T}}},
-    A::SparseMatrixCSC{T},
-    α,
-    β,
+    C::HermOrSym{T,Diagonal{T,Vector{T}}}, A::SparseMatrixCSC{T}, α, β
 ) where {T}
     dd = C.data.diag
     A.m == length(dd) || throw(DimensionMismatch())
     isone(β) || rmul!(dd, β)
-    all(isone.(diff(A.colptr))) || throw(ArgumentError("Columns of A must have exactly 1 nonzero"))
+    all(isone.(diff(A.colptr))) ||
+        throw(ArgumentError("Columns of A must have exactly 1 nonzero"))
     for (r, nz) in zip(rowvals(A), nonzeros(A))
         dd[r] += α * abs2(nz)
     end
-    C
+    return C
 end
 
 function rankUpdate!(C::HermOrSym{T,Diagonal{T}}, A::BlockedSparse{T}, α, β) where {T}
-    rankUpdate!(C, sparse(A), α, β)
+    return rankUpdate!(C, sparse(A), α, β)
 end
 
 function rankUpdate!(
-    C::HermOrSym{T,UniformBlockDiagonal{T}},
-    A::BlockedSparse{T,S},
-    α,
-    β,
+    C::HermOrSym{T,UniformBlockDiagonal{T}}, A::BlockedSparse{T,S}, α, β
 ) where {T,S}
     Ac = A.cscmat
     cp = Ac.colptr
-    all(diff(cp) .== S) || throw(ArgumentError("Columns of A must have exactly $S nonzeros"))
+    all(diff(cp) .== S) ||
+        throw(ArgumentError("Columns of A must have exactly $S nonzeros"))
     Cdat = C.data.data
     j, k, l = size(Cdat)
     S == j == k && div(Ac.m, S) == l ||
-    throw(DimensionMismatch("div(A.cscmat.m, S) ≠ size(C.data.data, 3)"))
+        throw(DimensionMismatch("div(A.cscmat.m, S) ≠ size(C.data.data, 3)"))
     nz = Ac.nzval
     rv = Ac.rowval
-    for j = 1:Ac.n
+    for j in 1:(Ac.n)
         nzr = nzrange(Ac, j)
         BLAS.syr!('L', α, view(nz, nzr), view(Cdat, :, :, div(rv[last(nzr)], S)))
     end
-    C
+    return C
 end
 #=  I don't think Diagonal A can occur after the terms with the same grouping factor have been amalgamated.
 function rankUpdate!(C::HermOrSym{T,Diagonal{T}}, A::Diagonal{T}, α, β) where {T}

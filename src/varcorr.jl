@@ -16,11 +16,11 @@ end
 VarCorr(m::MixedModel) = VarCorr(σρs(m), dispersion_parameter(m) ? dispersion(m) : nothing)
 
 function _printdigits(v)
-    maximum(last.(Base.alignment.(Ref(IOContext(stdout, :compact=>true)), v))) - 1
+    return maximum(last.(Base.alignment.(Ref(IOContext(stdout, :compact => true)), v))) - 1
 end
 
 function aligncompact(v, digits=_printdigits(v))
-    Base.Ryu.writefixed.(v, Ref(digits))
+    return Base.Ryu.writefixed.(v, Ref(digits))
 end
 
 Base.show(io::IO, vc::VarCorr) = Base.show(io, MIME"text/plain"(), vc)
@@ -57,15 +57,19 @@ function Base.show(io::IO, ::MIME"text/plain", vc::VarCorr)
         k = length(v.σ)   # number of columns in grp factor k
         ρ = v.ρ
         ρind = 0
-        for j = 1:k
+        for j in 1:k
             !firstrow && write(io, " "^nmwd)
             write(io, rpad(cnmvec[ind], cnmwd))
             write(io, lpad(showvarvec[ind], varwd))
             write(io, lpad(showσvec[ind], stdwd))
-            for l = 1:(j-1)
+            for l in 1:(j - 1)
                 ρind += 1
                 ρval = ρ[ρind]
-                ρval === -0.0 ? write(io, "   .  ") : write(io, lpad(Ryu.writefixed(ρval, 2, true), 6))
+                if ρval === -0.0
+                    write(io, "   .  ")
+                else
+                    write(io, lpad(Ryu.writefixed(ρval, 2, true), 6))
+                end
             end
             println(io)
             firstrow = false
@@ -78,5 +82,5 @@ function Base.show(io::IO, ::MIME"text/plain", vc::VarCorr)
         write(io, lpad(showvarvec[ind], varwd))
         write(io, lpad(showσvec[ind], stdwd))
     end
-    println(io)
+    return println(io)
 end

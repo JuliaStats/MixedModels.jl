@@ -13,15 +13,15 @@ function statsrank(x::AbstractMatrix{T}; ranktol=1e-8) where {T<:AbstractFloat}
     m, n = size(x)
     piv = collect(axes(x, 2))
 
-    iszero(n) && return (rank = n, piv = piv)
+    iszero(n) && return (rank=n, piv=piv)
 
     qrpiv = qr(x, Val(true))
     dvec = abs.(diag(qrpiv.R))
     fdv = first(dvec)
     cmp = fdv * ranktol
-    (last(dvec) > cmp) && return (rank = n, piv = piv)
+    (last(dvec) > cmp) && return (rank=n, piv=piv)
 
-    rank = searchsortedlast(dvec, cmp, rev=true)
+    rank = searchsortedlast(dvec, cmp; rev=true)
     @assert rank < n
     piv = qrpiv.p
     v1 = first(eachcol(x))
@@ -35,5 +35,5 @@ function statsrank(x::AbstractMatrix{T}; ranktol=1e-8) where {T<:AbstractFloat}
 
     # maintain original column order for the linearly independent columns
     sort!(view(piv, 1:rank))
-    (rank = rank, piv = piv)
+    return (rank=rank, piv=piv)
 end

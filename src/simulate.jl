@@ -6,13 +6,16 @@ function simulate end
 function simulate(rng::AbstractRNG, m::MixedModel{T}, newdata; kwargs...) where {T}
     dat = Tables.columntable(newdata)
     y = zeros(T, length(first(dat)))
-    simulate!(rng, y, m, newdata; kwargs...)
+    return simulate!(rng, y, m, newdata; kwargs...)
 end
 
-simulate(rng::AbstractRNG, m::MixedModel; kwargs...) = simulate!(rng, similar(response(m)), m; kwargs...)
+function simulate(rng::AbstractRNG, m::MixedModel; kwargs...)
+    return simulate!(rng, similar(response(m)), m; kwargs...)
+end
 
-simulate(m::MixedModel, args...; kwargs...) = simulate(Random.GLOBAL_RNG, m, args...; kwargs...)
-
+function simulate(m::MixedModel, args...; kwargs...)
+    return simulate(Random.GLOBAL_RNG, m, args...; kwargs...)
+end
 
 """
     simulate!(rng::AbstractRNG, m::MixedModel{T}; β=m.β, σ=m.σ, θ=T[])
@@ -29,11 +32,7 @@ This simulation includes sampling new values for the random effects.
     which modify the model's response and return the entire modified model.
 """
 function simulate!(
-    rng::AbstractRNG,
-    m::LinearMixedModel{T};
-    β = coef(m),
-    σ = m.σ,
-    θ = T[],
+    rng::AbstractRNG, m::LinearMixedModel{T}; β=coef(m), σ=m.σ, θ=T[]
 ) where {T}
     # XXX should we add support for doing something with weights?
     simulate!(rng, m.y, m; β, σ, θ)
@@ -41,11 +40,7 @@ function simulate!(
 end
 
 function simulate!(
-    rng::AbstractRNG,
-    m::GeneralizedLinearMixedModel{T};
-    β = coef(m),
-    σ = m.σ,
-    θ = T[],
+    rng::AbstractRNG, m::GeneralizedLinearMixedModel{T}; β=coef(m), σ=m.σ, θ=T[]
 ) where {T}
     # note that these m.resp.y and m.LMM.y will later be sychronized in (re)fit!()
     # but for now we use them as distinct scratch buffers to avoid allocations
@@ -53,12 +48,12 @@ function simulate!(
     # the noise term is actually in the GLM and not the LMM part so no noise
     # at the LMM level
     η = fill!(copy(m.LMM.y), zero(T))  # ensure that η is a vector - needed for GLM.updateμ! below
-                                       # A better approach is to change the signature for updateμ!
+    # A better approach is to change the signature for updateμ!
     y = m.resp.y
 
     _simulate!(rng, y, η, m, β, σ, θ, m.resp)
 
-    unfit!(m)
+    return unfit!(m)
 end
 
 """
@@ -87,11 +82,11 @@ function _rand(rng::AbstractRNG, d::Distribution, location, scale=NaN, n=1)
         dist = typeof(d)(location)
     end
 
-    rand(rng, dist) / n
+    return rand(rng, dist) / n
 end
 
-function simulate!(m::MixedModel{T}; β = coef(m), σ = m.σ, θ = T[]) where {T}
-    simulate!(Random.GLOBAL_RNG, m; β, σ, θ)
+function simulate!(m::MixedModel{T}; β=coef(m), σ=m.σ, θ=T[]) where {T}
+    return simulate!(Random.GLOBAL_RNG, m; β, σ, θ)
 end
 
 """
@@ -124,8 +119,15 @@ models with a `Binomial` distribution.
     in contrast to `simulate!` methods with a `m::MixedModel` as the first argument,
     which modify the model's response and return the entire modified model.
 """
-function simulate!(rng::AbstractRNG, y::AbstractVector, m::LinearMixedModel, newdata::Tables.ColumnTable;
-                   β=m.β, σ=m.σ, θ=m.θ)
+function simulate!(
+    rng::AbstractRNG,
+    y::AbstractVector,
+    m::LinearMixedModel,
+    newdata::Tables.ColumnTable;
+    β=m.β,
+    σ=m.σ,
+    θ=m.θ,
+)
     # the easiest thing here is to just assemble a new model and
     # pass that to the other simulate methods....
     # this can probably be made much more efficient
@@ -144,17 +146,19 @@ function simulate!(rng::AbstractRNG, y::AbstractVector, m::LinearMixedModel, new
     # extra computation and gives consistent results at the price
     # of an allocationless copy
     simulate!(rng, mnew; β, σ, θ)
-    copy!(y, mnew.y)
+    return copy!(y, mnew.y)
 end
 
-function simulate!(rng::AbstractRNG, y::AbstractVector, m::LinearMixedModel{T}; β=m.β, σ=m.σ, θ=m.θ) where {T}
+function simulate!(
+    rng::AbstractRNG, y::AbstractVector, m::LinearMixedModel{T}; β=m.β, σ=m.σ, θ=m.θ
+) where {T}
     length(β) == length(fixef(m)) ||
         length(β) == length(coef(m)) ||
-            throw(ArgumentError("You must specify all (non-singular) βs"))
+        throw(ArgumentError("You must specify all (non-singular) βs"))
 
-    β = convert(Vector{T},β)
+    β = convert(Vector{T}, β)
     σ = T(σ)
-    θ = convert(Vector{T},θ)
+    θ = convert(Vector{T}, θ)
     isempty(θ) || setθ!(m, θ)
 
     if length(β) ≠ length(coef(m))
@@ -173,11 +177,18 @@ function simulate!(rng::AbstractRNG, y::AbstractVector, m::LinearMixedModel{T}; 
     end
 
     # scale by σ and add fixed-effects contribution
-    mul!(y, m.X, β, one(T), σ)
+    return mul!(y, m.X, β, one(T), σ)
 end
 
-function simulate!(rng::AbstractRNG, y::AbstractVector, m::GeneralizedLinearMixedModel, newdata::Tables.ColumnTable;
-                   β=m.β, σ=m.σ, θ=m.θ)
+function simulate!(
+    rng::AbstractRNG,
+    y::AbstractVector,
+    m::GeneralizedLinearMixedModel,
+    newdata::Tables.ColumnTable;
+    β=m.β,
+    σ=m.σ,
+    θ=m.θ,
+)
     # the easiest thing here is to just assemble a new model and
     # pass that to the other simulate methods....
     # this can probably be made much more efficient
@@ -196,29 +207,50 @@ function simulate!(rng::AbstractRNG, y::AbstractVector, m::GeneralizedLinearMixe
     # extra computation and gives consistent results at the price
     # of an allocationless copy
     simulate!(rng, mnew; β, σ, θ)
-    copy!(y, mnew.y)
+    return copy!(y, mnew.y)
 end
 
-function simulate!(rng::AbstractRNG, y::AbstractVector, m::GeneralizedLinearMixedModel{T}; β=m.β, σ=m.σ, θ=m.θ) where {T}
+function simulate!(
+    rng::AbstractRNG,
+    y::AbstractVector,
+    m::GeneralizedLinearMixedModel{T};
+    β=m.β,
+    σ=m.σ,
+    θ=m.θ,
+) where {T}
     # make sure both scratch arrays are init'd to zero
     η = zeros(T, size(y))
     copyto!(y, η)
-    _simulate!(rng, y, η, m, β, σ, θ)
+    return _simulate!(rng, y, η, m, β, σ, θ)
 end
 
-function _simulate!(rng::AbstractRNG, y::AbstractVector, η::AbstractVector, m::GeneralizedLinearMixedModel{T}, β, σ, θ, resp=nothing) where {T}
+function _simulate!(
+    rng::AbstractRNG,
+    y::AbstractVector,
+    η::AbstractVector,
+    m::GeneralizedLinearMixedModel{T},
+    β,
+    σ,
+    θ,
+    resp=nothing,
+) where {T}
     length(β) == length(fixef(m)) ||
         length(β) == length(coef(m)) ||
-            throw(ArgumentError("You must specify all (non-singular) βs"))
+        throw(ArgumentError("You must specify all (non-singular) βs"))
 
-    dispersion_parameter(m) || ismissing(σ) ||
-        throw(ArgumentError("You must not specify a dispersion parameter for model families without a dispersion parameter"))
+    dispersion_parameter(m) ||
+        ismissing(σ) ||
+        throw(
+            ArgumentError(
+                "You must not specify a dispersion parameter for model families without a dispersion parameter",
+            ),
+        )
 
-    β = convert(Vector{T},β)
+    β = convert(Vector{T}, β)
     if σ !== missing
         σ = T(σ)
     end
-    θ = convert(Vector{T},θ)
+    θ = convert(Vector{T}, θ)
 
     d = m.resp.d
 
@@ -261,10 +293,12 @@ function _simulate!(rng::AbstractRNG, y::AbstractVector, η::AbstractVector, m::
     return y
 end
 
-simulate!(rng::AbstractRNG, y::AbstractVector, m::MixedModel, newdata; kwargs...) =
-    simulate!(rng, y, m, Tables.columntable(newdata); kwargs...)
-simulate!(y::AbstractVector, m::MixedModel, newdata; kwargs...) =
-    simulate!(Random.GLOBAL_RNG, y, m, Tables.columntable(newdata); kwargs...)
+function simulate!(rng::AbstractRNG, y::AbstractVector, m::MixedModel, newdata; kwargs...)
+    return simulate!(rng, y, m, Tables.columntable(newdata); kwargs...)
+end
+function simulate!(y::AbstractVector, m::MixedModel, newdata; kwargs...)
+    return simulate!(Random.GLOBAL_RNG, y, m, Tables.columntable(newdata); kwargs...)
+end
 
 """
     unscaledre!(y::AbstractVector{T}, M::ReMat{T}) where {T}
@@ -278,11 +312,11 @@ the scaling is done after the per-observation noise is added as a standard norma
 function unscaledre! end
 
 function unscaledre!(rng::AbstractRNG, y::AbstractVector{T}, A::ReMat{T,S}) where {T,S}
-    mul!(y, A, vec(lmul!(A.λ, randn(rng, S, nlevs(A)))), one(T), one(T))
+    return mul!(y, A, vec(lmul!(A.λ, randn(rng, S, nlevs(A)))), one(T), one(T))
 end
 
 function unscaledre!(rng::AbstractRNG, y::AbstractVector{T}, A::ReMat{T,1}) where {T}
-    mul!(y, A, lmul!(first(A.λ), randn(rng, nlevs(A))), one(T), one(T))
+    return mul!(y, A, lmul!(first(A.λ), randn(rng, nlevs(A))), one(T), one(T))
 end
 
 unscaledre!(y::AbstractVector, A::ReMat) = unscaledre!(Random.GLOBAL_RNG, y, A)

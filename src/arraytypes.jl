@@ -9,7 +9,7 @@ end
 
 function Base.axes(A::UniformBlockDiagonal)
     m, n, l = size(A.data)
-    (Base.OneTo(m * l), Base.OneTo(n * l))
+    return (Base.OneTo(m * l), Base.OneTo(n * l))
 end
 
 function Base.copyto!(dest::UniformBlockDiagonal{T}, src::UniformBlockDiagonal{T}) where {T}
@@ -17,7 +17,7 @@ function Base.copyto!(dest::UniformBlockDiagonal{T}, src::UniformBlockDiagonal{T
     ddat = dest.data
     size(ddat) == size(sdat) || throw(DimensionMismatch(""))
     copyto!(ddat, sdat)
-    dest
+    return dest
 end
 
 function Base.copyto!(dest::Matrix{T}, src::UniformBlockDiagonal{T}) where {T}
@@ -31,11 +31,11 @@ function Base.copyto!(dest::Matrix{T}, src::UniformBlockDiagonal{T}) where {T}
         for j in axes(sdat, 2)
             jind = joffset + j
             for i in axes(sdat, 1)
-                dest[ioffset+i, jind] = sdat[i, j, k]
+                dest[ioffset + i, jind] = sdat[i, j, k]
             end
         end
     end
-    dest
+    return dest
 end
 
 function Base.getindex(A::UniformBlockDiagonal{T}, i::Int, j::Int) where {T}
@@ -44,16 +44,16 @@ function Base.getindex(A::UniformBlockDiagonal{T}, i::Int, j::Int) where {T}
     m, n, l = size(Ad)
     iblk, ioffset = divrem(i - 1, m)
     jblk, joffset = divrem(j - 1, n)
-    iblk == jblk ? Ad[ioffset+1, joffset+1, iblk+1] : zero(T)
+    return iblk == jblk ? Ad[ioffset + 1, joffset + 1, iblk + 1] : zero(T)
 end
 
 function LinearAlgebra.Matrix(A::UniformBlockDiagonal{T}) where {T}
-    copyto!(Matrix{T}(undef, size(A)), A)
+    return copyto!(Matrix{T}(undef, size(A)), A)
 end
 
 function Base.size(A::UniformBlockDiagonal)
     m, n, l = size(A.data)
-    (l * m, l * n)
+    return (l * m, l * n)
 end
 
 """
@@ -74,7 +74,7 @@ mutable struct BlockedSparse{T,S,P} <: AbstractMatrix{T}
     colblkptr::Vector{Int32}
 end
 
-function densify(A::BlockedSparse, threshold::Real = 0.1)
+function densify(A::BlockedSparse, threshold::Real=0.1)
     m, n = size(A)
     if nnz(A) / (m * n) ≤ threshold
         A
@@ -97,9 +97,9 @@ SparseArrays.nnz(A::BlockedSparse) = nnz(A.cscmat)
 
 function Base.copyto!(L::BlockedSparse{T}, A::SparseMatrixCSC{T}) where {T}
     size(L) == size(A) && nnz(L) == nnz(A) ||
-    throw(DimensionMismatch("size(L) ≠ size(A) or nnz(L) ≠ nnz(A"))
+        throw(DimensionMismatch("size(L) ≠ size(A) or nnz(L) ≠ nnz(A"))
     copyto!(nonzeros(L.cscmat), nonzeros(A))
-    L
+    return L
 end
 
 LinearAlgebra.rdiv!(A::BlockedSparse, B::Diagonal) = rdiv!(A.cscmat, B)
@@ -109,7 +109,7 @@ function LinearAlgebra.mul!(
     A::SparseMatrixCSC{T,Ti},
     adjB::Adjoint{T,BlockedSparse{T,P,1}},
     α,
-    β
-    ) where {T,P,Ti}
-    mul!(C.cscmat, A, adjoint(adjB.parent.cscmat), α, β)
+    β,
+) where {T,P,Ti}
+    return mul!(C.cscmat, A, adjoint(adjB.parent.cscmat), α, β)
 end

@@ -12,45 +12,50 @@ end
 Base.:|(a::StatsModels.TermOrTerms, b::StatsModels.TermOrTerms) = RandomEffectsTerm(a, b)
 
 # expand (lhs | a + b) to (lhs | a) + (lhs | b)
-RandomEffectsTerm(lhs::StatsModels.TermOrTerms, rhs::NTuple{2,AbstractTerm}) =
-    (RandomEffectsTerm(lhs, rhs[1]), RandomEffectsTerm(lhs, rhs[2]))
+function RandomEffectsTerm(lhs::StatsModels.TermOrTerms, rhs::NTuple{2,AbstractTerm})
+    return (RandomEffectsTerm(lhs, rhs[1]), RandomEffectsTerm(lhs, rhs[2]))
+end
 
 Base.show(io::IO, t::RandomEffectsTerm) = Base.show(io, MIME"text/plain"(), t)
 
-Base.show(io::IO, ::MIME"text/plain", t::RandomEffectsTerm) = print(io, "($(t.lhs) | $(t.rhs))")
+function Base.show(io::IO, ::MIME"text/plain", t::RandomEffectsTerm)
+    return print(io, "($(t.lhs) | $(t.rhs))")
+end
 StatsModels.is_matrix_term(::Type{RandomEffectsTerm}) = false
 
 function StatsModels.termvars(t::RandomEffectsTerm)
-    vcat(StatsModels.termvars(t.lhs), StatsModels.termvars(t.rhs))
+    return vcat(StatsModels.termvars(t.lhs), StatsModels.termvars(t.rhs))
 end
 
-StatsModels.terms(t::RandomEffectsTerm) = union(StatsModels.terms(t.lhs), StatsModels.terms(t.rhs))
+function StatsModels.terms(t::RandomEffectsTerm)
+    return union(StatsModels.terms(t.lhs), StatsModels.terms(t.rhs))
+end
 
 # | in MixedModel formula -> RandomEffectsTerm
 function StatsModels.apply_schema(
     t::FunctionTerm{typeof(|)},
     schema::MultiSchema{StatsModels.FullRank},
-    Mod::Type{<:MixedModel}
+    Mod::Type{<:MixedModel},
 )
     lhs, rhs = t.args_parsed
 
     isempty(intersect(StatsModels.termvars(lhs), StatsModels.termvars(rhs))) ||
         throw(ArgumentError("Same variable appears on both sides of |"))
 
-    apply_schema(RandomEffectsTerm(lhs, rhs), schema, Mod)
+    return apply_schema(RandomEffectsTerm(lhs, rhs), schema, Mod)
 end
 
 # allowed types (or tuple thereof) for blocking variables (RHS of |):
-const GROUPING_TYPE = Union{<:CategoricalTerm, <:InteractionTerm{<:NTuple{N,CategoricalTerm} where {N}}}
+const GROUPING_TYPE = Union{
+    <:CategoricalTerm,<:InteractionTerm{<:NTuple{N,CategoricalTerm} where {N}}
+}
 check_re_group_type(term::GROUPING_TYPE) = true
 check_re_group_type(terms::Tuple{Vararg{<:GROUPING_TYPE}}) = true
 check_re_group_type(x) = false
 
 # make a potentially untyped RandomEffectsTerm concrete
 function StatsModels.apply_schema(
-    t::RandomEffectsTerm,
-    schema::MultiSchema{StatsModels.FullRank},
-    Mod::Type{<:MixedModel}
+    t::RandomEffectsTerm, schema::MultiSchema{StatsModels.FullRank}, Mod::Type{<:MixedModel}
 )
     lhs, rhs = t.lhs, t.rhs
 
@@ -70,10 +75,13 @@ function StatsModels.apply_schema(
     lhs, rhs = apply_schema.((lhs, rhs), Ref(schema), Mod)
 
     # check whether grouping terms are categorical or interaction of categorical
-    check_re_group_type(rhs) ||
-        throw(ArgumentError("blocking variables (those behind |) must be Categorical ($(rhs) is not)"))
+    check_re_group_type(rhs) || throw(
+        ArgumentError(
+            "blocking variables (those behind |) must be Categorical ($(rhs) is not)"
+        ),
+    )
 
-    RandomEffectsTerm(MatrixTerm(lhs), rhs)
+    return RandomEffectsTerm(MatrixTerm(lhs), rhs)
 end
 
 function StatsModels.modelcols(t::RandomEffectsTerm, d::NamedTuple)
@@ -85,12 +93,12 @@ function StatsModels.modelcols(t::RandomEffectsTerm, d::NamedTuple)
     grp = t.rhs
     m = reshape(1:abs2(S), (S, S))
     inds = sizehint!(Int[], (S * (S + 1)) >> 1)
-    for j = 1:S, i = j:S
+    for j in 1:S, i in j:S
         push!(inds, m[i, j])
     end
     refs, levels = _ranef_refs(grp, d)
 
-    ReMat{T,S}(
+    return ReMat{T,S}(
         grp,
         refs,
         levels,
@@ -108,26 +116,23 @@ end
 function _ranef_refs(grp::CategoricalTerm, d::NamedTuple)
     invindex = grp.contrasts.invindex
     refs = convert(Vector{Int32}, getindex.(Ref(invindex), d[grp.sym]))
-    refs, grp.contrasts.levels
+    return refs, grp.contrasts.levels
 end
 
 function _ranef_refs(
-    grp::InteractionTerm{<:NTuple{N,CategoricalTerm}},
-    d::NamedTuple,
+    grp::InteractionTerm{<:NTuple{N,CategoricalTerm}}, d::NamedTuple
 ) where {N}
     combos = zip(getproperty.(Ref(d), [g.sym for g in grp.terms])...)
     uniques = unique(combos)
     invindex = Dict(x => i for (i, x) in enumerate(uniques))
     refs = convert(Vector{Int32}, getindex.(Ref(invindex), combos))
-    refs, uniques
+    return refs, uniques
 end
 
 # TODO: split this off into a RegressionFormula packge?
 Base.:/(a::AbstractTerm, b::AbstractTerm) = a + a & b
 function StatsModels.apply_schema(
-    t::FunctionTerm{typeof(/)},
-    sch::StatsModels.FullRank,
-    Mod::Type{<:MixedModel},
+    t::FunctionTerm{typeof(/)}, sch::StatsModels.FullRank, Mod::Type{<:MixedModel}
 )
     if length(t.args_parsed) ≠ 2
         throw(ArgumentError("malformed nesting term: $t (Exactly two arguments required"))
@@ -136,16 +141,25 @@ function StatsModels.apply_schema(
     first, second = apply_schema.(t.args_parsed, Ref(sch), Mod)
 
     if !(typeof(first) <: CategoricalTerm)
-        throw(ArgumentError("nesting terms requires categorical grouping term, got $first.  Manually specify $first as `CategoricalTerm` in hints/contrasts"))
+        throw(
+            ArgumentError(
+                "nesting terms requires categorical grouping term, got $first.  Manually specify $first as `CategoricalTerm` in hints/contrasts",
+            ),
+        )
     end
 
     return first + fulldummy(first) & second
 end
 
 # add some syntax to manually promote to full dummy coding
-fulldummy(t::AbstractTerm) =
-    throw(ArgumentError("can't promote $t (of type $(typeof(t))) to full dummy " *
-                        "coding (only CategoricalTerms)"))
+function fulldummy(t::AbstractTerm)
+    return throw(
+        ArgumentError(
+            "can't promote $t (of type $(typeof(t))) to full dummy " *
+            "coding (only CategoricalTerms)",
+        ),
+    )
+end
 
 """
     fulldummy(term::CategoricalTerm)
@@ -162,23 +176,20 @@ working as you expected. If it is not, please report a use case on GitHub.
 """
 function fulldummy(t::CategoricalTerm)
     new_contrasts = StatsModels.ContrastsMatrix(
-        StatsModels.FullDummyCoding(),
-        t.contrasts.levels,
+        StatsModels.FullDummyCoding(), t.contrasts.levels
     )
-    t = CategoricalTerm(t.sym, new_contrasts)
+    return t = CategoricalTerm(t.sym, new_contrasts)
 end
 
-fulldummy(x) =
-    throw(ArgumentError("fulldummy isn't supported outside of a MixedModel formula"))
+function fulldummy(x)
+    return throw(ArgumentError("fulldummy isn't supported outside of a MixedModel formula"))
+end
 
 function StatsModels.apply_schema(
-    t::FunctionTerm{typeof(fulldummy)},
-    sch::StatsModels.FullRank,
-    Mod::Type{<:MixedModel},
+    t::FunctionTerm{typeof(fulldummy)}, sch::StatsModels.FullRank, Mod::Type{<:MixedModel}
 )
-    fulldummy(apply_schema.(t.args_parsed, Ref(sch), Mod)...)
+    return fulldummy(apply_schema.(t.args_parsed, Ref(sch), Mod)...)
 end
-
 
 # specify zero correlation
 struct ZeroCorr <: AbstractReTerm
@@ -198,19 +209,13 @@ StatsModels.terms(t::ZeroCorr) = StatsModels.terms(t.term)
 StatsModels.termvars(t::ZeroCorr) = StatsModels.termvars(t.term)
 
 function StatsModels.apply_schema(
-    t::FunctionTerm{typeof(zerocorr)},
-    sch::MultiSchema,
-    Mod::Type{<:MixedModel},
+    t::FunctionTerm{typeof(zerocorr)}, sch::MultiSchema, Mod::Type{<:MixedModel}
 )
-    ZeroCorr(apply_schema(t.args_parsed..., sch, Mod))
+    return ZeroCorr(apply_schema(t.args_parsed..., sch, Mod))
 end
 
-function StatsModels.apply_schema(
-    t::ZeroCorr,
-    sch::MultiSchema,
-    Mod::Type{<:MixedModel},
-)
-    ZeroCorr(apply_schema(t.term, sch, Mod))
+function StatsModels.apply_schema(t::ZeroCorr, sch::MultiSchema, Mod::Type{<:MixedModel})
+    return ZeroCorr(apply_schema(t.term, sch, Mod))
 end
 
 StatsModels.modelcols(t::ZeroCorr, d::NamedTuple) = zerocorr!(modelcols(t.term, d))

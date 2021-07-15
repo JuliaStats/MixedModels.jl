@@ -1,6 +1,6 @@
 function StatsBase.coefnames(m::MixedModel)
     Xtrm = m.feterm
-    invpermute!(copy(Xtrm.cnames), Xtrm.piv)
+    return invpermute!(copy(Xtrm.cnames), Xtrm.piv)
 end
 
 """
@@ -11,7 +11,7 @@ Return a vector of condition numbers of the λ matrices for the random-effects t
 LinearAlgebra.cond(m::MixedModel) = cond.(m.λ)
 
 function StatsBase.dof(m::MixedModel)
-    m.feterm.rank + length(m.parmap) + dispersion_parameter(m)
+    return m.feterm.rank + length(m.parmap) + dispersion_parameter(m)
 end
 
 """
@@ -38,7 +38,7 @@ function StatsBase.dof_residual(m::MixedModel)
     # a better estimate might be nobs(m) - sum(leverage(m))
     # this version subtracts the number of variance parameters which isn't really a dimensional
     # and doesn't even agree with the definition for linear models
-    nobs(m) - dof(m)
+    return nobs(m) - dof(m)
 end
 
 """
@@ -70,10 +70,10 @@ StatsBase.nobs(m::MixedModel) = length(m.y)
 StatsBase.predict(m::MixedModel) = fitted(m)
 
 function retbl(mat, trm)
-    merge(
+    return merge(
         NamedTuple{(fname(trm),)}((trm.levels,)),
-        columntable(Tables.table(transpose(mat), header=Symbol.(trm.cnames))),
-        )
+        columntable(Tables.table(transpose(mat); header=Symbol.(trm.cnames))),
+    )
 end
 
 """
@@ -81,8 +81,8 @@ end
 
 Return the conditional means of the random effects as a `NamedTuple` of columntables
 """
-function raneftables(m::MixedModel{T}; uscale = false) where {T}
-    NamedTuple{fnames(m)}((map(retbl, ranef(m, uscale=uscale), m.reterms)...,))
+function raneftables(m::MixedModel{T}; uscale=false) where {T}
+    return NamedTuple{fnames(m)}((map(retbl, ranef(m; uscale=uscale), m.reterms)...,))
 end
 
 StatsBase.residuals(m::MixedModel) = response(m) .- fitted(m)
@@ -100,17 +100,17 @@ StatsBase.response(m::MixedModel) = m.y
 
 function StatsBase.responsename(m::MixedModel)
     cnm = coefnames(m.formula.lhs)
-    isa(cnm, Vector{String}) ? first(cnm) : cnm
+    return isa(cnm, Vector{String}) ? first(cnm) : cnm
 end
 
 function σs(m::MixedModel)
     σ = dispersion(m)
-    NamedTuple{fnames(m)}(((σs(t, σ) for t in m.reterms)...,))
+    return NamedTuple{fnames(m)}(((σs(t, σ) for t in m.reterms)...,))
 end
 
 function σρs(m::MixedModel)
     σ = dispersion(m)
-    NamedTuple{fnames(m)}(((σρs(t, σ) for t in m.reterms)...,))
+    return NamedTuple{fnames(m)}(((σρs(t, σ) for t in m.reterms)...,))
 end
 
 """
@@ -122,7 +122,7 @@ the number of conditional modes (random effects), the number of grouping variabl
 """
 function Base.size(m::MixedModel)
     dd = m.dims
-    dd.n, dd.p, sum(size.(m.reterms, 2)), dd.nretrms
+    return dd.n, dd.p, sum(size.(m.reterms, 2)), dd.nretrms
 end
 
 """
@@ -143,13 +143,13 @@ function StatsBase.vcov(m::MixedModel; corr=false)
         vv = permvcov[iperm, iperm]
     else
         covmat = fill(zero(T) / zero(T), (p, p))
-        for j = 1:r, i = 1:r
+        for j in 1:r, i in 1:r
             covmat[i, j] = permvcov[i, j]
         end
         vv = covmat[iperm, iperm]
     end
 
-    corr ?  StatsBase.cov2cor!(vv, stderror(m)) : vv
+    return corr ? StatsBase.cov2cor!(vv, stderror(m)) : vv
 end
 
 StatsModels.formula(m::MixedModel) = m.formula
