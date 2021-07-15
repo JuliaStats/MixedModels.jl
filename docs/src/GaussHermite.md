@@ -23,7 +23,7 @@ Thus, the expected value of $f(z)$, where $\mathcal{Z}\sim\mathscr{N}(0,1)$, is 
 ```
 
 Naturally, there is a caveat. For the approximation to be accurate the function $f(z)$ must behave like a low-order polynomial over the range of interest.
-More formally, a `k`th order rule is exact when `f` is a `k-1` order polynomial.
+More formally, a `k`th order rule is exact when `f` is a polynomial of order `2k-1` or less (https://en.wikipedia.org/wiki/Gaussian_quadrature).
 
 ## Evaluating the weights and abscissae
 
