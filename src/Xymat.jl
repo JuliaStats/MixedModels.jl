@@ -34,13 +34,13 @@ function FeTerm(X::AbstractMatrix{T}, cnms) where {T}
         return FeTerm{T,typeof(X)}(X, Int[], 0, cnms)
     end
     rank, pivot = statsrank(X)
-        # single-column rank deficiency is the result of a constant column vector
-        # this generally happens when constructing a dummy response, so we don't
-        # warn.
-    if rank < length(pivot) && size(X,2) > 1
+    # single-column rank deficiency is the result of a constant column vector
+    # this generally happens when constructing a dummy response, so we don't
+    # warn.
+    if rank < length(pivot) && size(X, 2) > 1
         @warn "Fixed-effects matrix is rank deficient"
     end
-    FeTerm{T,typeof(X)}(X[:, pivot], pivot, rank, cnms[pivot])
+    return FeTerm{T,typeof(X)}(X[:, pivot], pivot, rank, cnms[pivot])
 end
 
 """
@@ -53,8 +53,8 @@ the vignette "[Rank deficiency in mixed-effects models](@ref)" for general `FeTe
 """
 function FeTerm(X::SparseMatrixCSC, cnms::AbstractVector{String})
     @debug "Full rank is assumed for sparse fixed-effect matrices."
-    rank = size(X,2)
-    FeTerm{eltype(X),typeof(X)}(X, collect(1:rank), rank, collect(cnms))
+    rank = size(X, 2)
+    return FeTerm{eltype(X),typeof(X)}(X, collect(1:rank), rank, collect(cnms))
 end
 
 Base.copyto!(A::FeTerm{T}, src::AbstractVecOrMat{T}) where {T} = copyto!(A.x, src)
@@ -63,7 +63,7 @@ Base.eltype(::FeTerm{T}) where {T} = T
 
 function fullrankx(A::FeTerm)
     x, rnk = A.x, A.rank
-    rnk == size(x, 2) ? x : view(x, :, 1:rnk)  # this handles the zero-columns case
+    return rnk == size(x, 2) ? x : view(x, :, 1:rnk)  # this handles the zero-columns case
 end
 
 LinearAlgebra.rank(A::FeTerm) = A.rank
@@ -99,7 +99,7 @@ end
 
 function FeMat(A::FeTerm{T}, y::AbstractVector{T}) where {T}
     xy = hcat(fullrankx(A), y)
-    FeMat{T,typeof(xy)}(xy, xy)
+    return FeMat{T,typeof(xy)}(xy, xy)
 end
 
 Base.adjoint(A::FeMat) = Adjoint(A)
@@ -111,15 +111,17 @@ Base.getindex(A::FeMat, i, j) = getindex(A.xy, i, j)
 Base.length(A::FeMat) = length(A.xy)
 
 function *(adjA::Adjoint{T,<:FeMat{T}}, B::FeMat{T}) where {T}
-    adjoint(adjA.parent.wtxy) * B.wtxy
+    return adjoint(adjA.parent.wtxy) * B.wtxy
 end
 
-function LinearAlgebra.mul!(R::StridedVecOrMat{T}, A::FeMat{T}, B::StridedVecOrMat{T}) where {T}
-    mul!(R, A.wtxy, B)
+function LinearAlgebra.mul!(
+    R::StridedVecOrMat{T}, A::FeMat{T}, B::StridedVecOrMat{T}
+) where {T}
+    return mul!(R, A.wtxy, B)
 end
 
 function LinearAlgebra.mul!(C, adjA::Adjoint{T,<:FeMat{T}}, B::FeMat{T}) where {T}
-    mul!(C, adjoint(adjA.parent.wtxy), B.wtxy)
+    return mul!(C, adjoint(adjA.parent.wtxy), B.wtxy)
 end
 
 function reweight!(A::FeMat{T}, sqrtwts::Vector{T}) where {T}
@@ -129,7 +131,7 @@ function reweight!(A::FeMat{T}, sqrtwts::Vector{T}) where {T}
         end
         mul!(A.wtxy, Diagonal(sqrtwts), A.xy)
     end
-    A
+    return A
 end
 
 Base.size(A::FeMat) = size(A.xy)

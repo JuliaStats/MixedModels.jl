@@ -3,7 +3,7 @@ using StatsBase
 using MixedModels
 
 makedocs(
-    root = joinpath(dirname(pathof(MixedModels)), "..", "docs"),
+#    root = joinpath(dirname(pathof(MixedModels)), "..", "docs"),
     sitename = "MixedModels",
     doctest = true,
     pages = [

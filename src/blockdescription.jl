@@ -25,26 +25,21 @@ function BlockDescription(m::LinearMixedModel)
     ALtypes = fill("", k, k)
     Ltypes = fill(Nothing, k, k)
     for i in 1:k, j in 1:i
-        ALtypes[i, j] = shorttype(A[block(i,j)], L[block(i, j)])
+        ALtypes[i, j] = shorttype(A[block(i, j)], L[block(i, j)])
     end
-    BlockDescription(
-        blknms,
-        [size(A[kp1choose2(i)], 1) for i in 1:k],
-        ALtypes,
-     )
+    return BlockDescription(blknms, [size(A[kp1choose2(i)], 1) for i in 1:k], ALtypes)
 end
 
 BlockDescription(m::GeneralizedLinearMixedModel) = BlockDescription(m.LMM)
 
-shorttype(::UniformBlockDiagonal,::UniformBlockDiagonal) = "BlkDiag"
-shorttype(::UniformBlockDiagonal,::Matrix) = "BlkDiag/Dense"
-shorttype(::SparseMatrixCSC,::BlockedSparse) = "Sparse"
-shorttype(::Diagonal,::Diagonal) = "Diagonal"
-shorttype(::Diagonal,::Matrix) = "Diag/Dense"
-shorttype(::Matrix,::Matrix) = "Dense"
-shorttype(::SparseMatrixCSC,::SparseMatrixCSC) = "Sparse"
-shorttype(::SparseMatrixCSC,::Matrix) = "Sparse/Dense"
-
+shorttype(::UniformBlockDiagonal, ::UniformBlockDiagonal) = "BlkDiag"
+shorttype(::UniformBlockDiagonal, ::Matrix) = "BlkDiag/Dense"
+shorttype(::SparseMatrixCSC, ::BlockedSparse) = "Sparse"
+shorttype(::Diagonal, ::Diagonal) = "Diagonal"
+shorttype(::Diagonal, ::Matrix) = "Diag/Dense"
+shorttype(::Matrix, ::Matrix) = "Dense"
+shorttype(::SparseMatrixCSC, ::SparseMatrixCSC) = "Sparse"
+shorttype(::SparseMatrixCSC, ::Matrix) = "Sparse/Dense"
 
 function Base.show(io::IO, ::MIME"text/plain", b::BlockDescription)
     rowwidth = max(maximum(ndigits, b.blkrows) + 1, 5)

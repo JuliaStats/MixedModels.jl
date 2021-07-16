@@ -181,9 +181,9 @@ Note that the first `ReMat` in `fm4.reterms` corresponds to grouping factor `pla
 
 ### Progress of the optimization
 
-An optional named argument, `verbose=true`, in the call to `fit` for a `LinearMixedModel` causes printing of the objective and the $\theta$ parameter at each evaluation during the optimization.  (Not illustrated here.)
+By default a progress display is shown when fitting a model that takes a second or more to fit. (The optional named argument, `progress=false`, can be used to suppress this display.) The number of iterations performed, the average time per iteration and the current value of the objective are shown in this display.
 
-A shorter summary of the optimization process is always available as the `optsum` member of the `LinearMixedModel`, which is of type `OptSummary`.
+After the model has been fit, a summary of the optimization process is available as the `optsum` property of the `LinearMixedModel`.
 ```@example Main
 fm2.optsum
 DisplayAs.Text(ans) # hide
