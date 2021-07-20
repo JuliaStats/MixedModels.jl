@@ -50,7 +50,7 @@ Typical distribution forms are _Bernoulli_ for binary data or _Poisson_ for coun
 |OS|OS Version|Arch|Julia|Tier|
 |:-:|:-:|:-:|:-:|:-:|
 |Linux|Ubuntu 18.04|x64|v1.6|1|
-|macOS|Catalina 10.15|x64v1.6|1|
+|macOS|Catalina 10.15|x64|v1.6|1|
 |Windows|Server 2019|x64|v1.6|1|
 
 Note that previous releases still support older Julia versions.
