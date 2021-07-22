@@ -312,7 +312,7 @@ diagonal blocks from the conditional variance-covariance matrix,
     s² Λ(Λ'Z'ZΛ + I)⁻¹Λ'
 """
 function condVar(m::LinearMixedModel{T}) where {T}
-    L = m.L
+    return [condVar(m, fnm) for fnm in fnames(m)]
     s = sdest(m)
     @static if VERSION < v"1.6.1"
         spL = LowerTriangular(SparseMatrixCSC{T,Int}(sparseL(m)))
@@ -340,6 +340,23 @@ function condVar(m::LinearMixedModel{T}) where {T}
     return val
 end
 
+function condVar(m::LinearMixedModel{T}, fname) where {T}
+    Lblk = LowerTriangular(densify(sparseL(m; fname=fname)))
+    blk = findfirst(isequal(fname), fnames(m))
+    λt = Array(m.λ[blk]') .* sdest(m)
+    vsz =  size(λt, 2)
+    ℓ = length(m.reterms[blk].levels)
+    val = Array{T}(undef, (vsz, vsz, ℓ))
+    scratch = Matrix{T}(undef, (size(Lblk, 1), vsz))
+    for b in 1:ℓ
+        fill!(scratch, zero(T))
+        copyto!(view(scratch, (b - 1) * vsz .+ (1:vsz), :), λt)
+        ldiv!(Lblk, scratch)
+        mul!(view(val, :, :, b), scratch', scratch)
+    end
+    val
+end
+    
 function _cvtbl(arr::Array{T,3}, trm) where {T}
     return merge(
         NamedTuple{(fname(trm),)}((trm.levels,)),
@@ -1002,19 +1019,30 @@ function _coord(A::Matrix)
 end
 
 """
-    sparseL(m::LinearMixedModel{T}; full::Bool=false) where {T}
+    sparseL(m::LinearMixedModel; fname::Symbol=first(fnames(m)), full::Bool=false)
 
 Return the lower Cholesky factor `L` as a `SparseMatrix{T,Int32}`.
 
 `full` indicates whether the parts of `L` associated with the fixed-effects and response
 are to be included.
+
+When `fname` is the name of a grouping factor the blocks to the left of that block are
+dropped.
 """
-function sparseL(m::LinearMixedModel{T}; full::Bool=false) where {T}
+function sparseL(
+    m::LinearMixedModel{T};
+    fname::Symbol=first(fnames(m)),
+    full::Bool=false,
+) where {T}
     L, reterms = m.L, m.reterms
-    nt = length(reterms) + full
+    sblk = findfirst(isequal(fname), fnames(m))
+    if isnothing(sblk)
+        throw(ArgumentError("fname = $fname is not the name of a grouping factor"))
+    end
+    blks = sblk:(length(reterms) + full)
     rowoffset, coloffset = 0, 0
     val = (i=Int32[], j=Int32[], v=T[])
-    for i in 1:nt, j in 1:i
+    for i in blks, j in first(blks):i
         Lblk = L[block(i, j)]
         cblk = _coord(Lblk)
         append!(val.i, cblk.i .+ Int32(rowoffset))
