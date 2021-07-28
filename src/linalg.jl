@@ -45,104 +45,52 @@ function LinearAlgebra.mul!(
     return mul!(C, adjoint(adjA.parent.cscmat), B, α, β)
 end
 
-@static if VERSION < v"1.6.0-DEV.1468"
-    function LinearAlgebra.ldiv!(
-        adjA::Adjoint{T,<:LowerTriangular{T,UniformBlockDiagonal{T}}}, B::StridedVector{T}
-    ) where {T}
-        A = adjA.parent
-        length(B) == size(A, 2) || throw(DimensionMismatch(""))
-        Adat = A.data.data
-        m, n, k = size(Adat)
-        bb = reshape(B, (n, k))
-        for j in axes(Adat, 3)
-            ldiv!(adjoint(LowerTriangular(view(Adat, :, :, j))), view(bb, :, j))
-        end
-        return B
+function LinearAlgebra.ldiv!(
+    A::UpperTriangular{T,<:Adjoint{T,UniformBlockDiagonal{T}}}, B::StridedVector{T}
+) where {T}
+    adjA = A.data
+    length(B) == size(A, 2) || throw(DimensionMismatch(""))
+    Adat = adjA.parent.data
+    m, n, k = size(Adat)
+    bb = reshape(B, (n, k))
+    for j in axes(Adat, 3)
+        ldiv!(UpperTriangular(adjoint(view(Adat, :, :, j))), view(bb, :, j))
     end
+    return B
+end
 
-    function LinearAlgebra.rdiv!(
-        A::Matrix{T}, adjB::Adjoint{T,<:LowerTriangular{T,UniformBlockDiagonal{T}}}
-    ) where {T}
-        m, n = size(A)
-        Bd = adjB.parent.data
-        Bdd = Bd.data
-        r, s, blk = size(Bdd)
-        n == size(Bd, 1) && r == s || throw(DimensionMismatch())
-        for b in axes(Bd.data, 3)
-            coloffset = (b - 1) * s
-            rdiv!(
-                view(A, :, (coloffset + 1):(coloffset + s)),
-                adjoint(LowerTriangular(view(Bdd, :, :, b))),
-            )
-        end
-        return A
+function LinearAlgebra.rdiv!(
+    A::Matrix{T}, B::UpperTriangular{T,<:Adjoint{T,UniformBlockDiagonal{T}}}
+) where {T}
+    m, n = size(A)
+    Bd = B.data.parent
+    Bdd = Bd.data
+    r, s, blk = size(Bdd)
+    n == size(Bd, 1) && r == s || throw(DimensionMismatch())
+    for b in axes(Bd.data, 3)
+        coloffset = (b - 1) * s
+        rdiv!(
+            view(A, :, (coloffset + 1):(coloffset + s)),
+            UpperTriangular(adjoint(view(Bdd, :, :, b))),
+        )
     end
+    return A
+end
 
-    function LinearAlgebra.rdiv!(
-        A::BlockedSparse{T,S,P}, B::Adjoint{T,<:LowerTriangular{T,UniformBlockDiagonal{T}}}
-    ) where {T,S,P}
-        Bpd = B.parent.data
-        Bdat = Bpd.data
-        j, k, l = size(Bdat)
-        cbpt = A.colblkptr
-        nzv = A.cscmat.nzval
-        P == j == k && length(cbpt) == (l + 1) || throw(DimensionMismatch(""))
-        for j in axes(Bdat, 3)
-            rdiv!(
-                reshape(view(nzv, cbpt[j]:(cbpt[j + 1] - 1)), :, P),
-                adjoint(LowerTriangular(view(Bdat, :, :, j))),
-            )
-        end
-        return A
+function LinearAlgebra.rdiv!(
+    A::BlockedSparse{T,S,P}, B::UpperTriangular{T,<:Adjoint{T,UniformBlockDiagonal{T}}}
+) where {T,S,P}
+    Bpd = B.data.parent
+    Bdat = Bpd.data
+    j, k, l = size(Bdat)
+    cbpt = A.colblkptr
+    nzv = A.cscmat.nzval
+    P == j == k && length(cbpt) == (l + 1) || throw(DimensionMismatch(""))
+    for j in axes(Bdat, 3)
+        rdiv!(
+            reshape(view(nzv, cbpt[j]:(cbpt[j + 1] - 1)), :, P),
+            UpperTriangular(adjoint(view(Bdat, :, :, j))),
+        )
     end
-else
-    function LinearAlgebra.ldiv!(
-        A::UpperTriangular{T,<:Adjoint{T,UniformBlockDiagonal{T}}}, B::StridedVector{T}
-    ) where {T}
-        adjA = A.data
-        length(B) == size(A, 2) || throw(DimensionMismatch(""))
-        Adat = adjA.parent.data
-        m, n, k = size(Adat)
-        bb = reshape(B, (n, k))
-        for j in axes(Adat, 3)
-            ldiv!(UpperTriangular(adjoint(view(Adat, :, :, j))), view(bb, :, j))
-        end
-        return B
-    end
-
-    function LinearAlgebra.rdiv!(
-        A::Matrix{T}, B::UpperTriangular{T,<:Adjoint{T,UniformBlockDiagonal{T}}}
-    ) where {T}
-        m, n = size(A)
-        Bd = B.data.parent
-        Bdd = Bd.data
-        r, s, blk = size(Bdd)
-        n == size(Bd, 1) && r == s || throw(DimensionMismatch())
-        for b in axes(Bd.data, 3)
-            coloffset = (b - 1) * s
-            rdiv!(
-                view(A, :, (coloffset + 1):(coloffset + s)),
-                UpperTriangular(adjoint(view(Bdd, :, :, b))),
-            )
-        end
-        return A
-    end
-
-    function LinearAlgebra.rdiv!(
-        A::BlockedSparse{T,S,P}, B::UpperTriangular{T,<:Adjoint{T,UniformBlockDiagonal{T}}}
-    ) where {T,S,P}
-        Bpd = B.data.parent
-        Bdat = Bpd.data
-        j, k, l = size(Bdat)
-        cbpt = A.colblkptr
-        nzv = A.cscmat.nzval
-        P == j == k && length(cbpt) == (l + 1) || throw(DimensionMismatch(""))
-        for j in axes(Bdat, 3)
-            rdiv!(
-                reshape(view(nzv, cbpt[j]:(cbpt[j + 1] - 1)), :, P),
-                UpperTriangular(adjoint(view(Bdat, :, :, j))),
-            )
-        end
-        return A
-    end
+    return A
 end
