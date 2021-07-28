@@ -94,3 +94,9 @@ function LinearAlgebra.rdiv!(
     end
     return A
 end
+
+@static if VERSION < v"1.7.0-DEV.1188" # julialang sha e0ecc557a24eb3338b8dc672d02c98e8b31111fa
+    pivoted_qr(A; kwargs...) = qr(A, Val(true); kwargs...)
+else
+    pivoted_qr(A; kwargs...) = qr(A, ColumnNorm(); kwargs...)
+end

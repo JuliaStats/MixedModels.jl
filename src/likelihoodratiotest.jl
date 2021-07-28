@@ -353,7 +353,7 @@ function _isnested(x::AbstractMatrix, y::AbstractMatrix; rtol=1e-8, ranktol=1e-8
 
     qy = qr(y).Q
 
-    qrx = qr(x, Val(true))
+    qrx = pivoted_qr(x)
     dvec = abs.(diag(qrx.R))
     fdv = first(dvec)
     cmp = fdv * ranktol
