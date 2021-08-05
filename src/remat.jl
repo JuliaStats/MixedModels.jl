@@ -1,5 +1,7 @@
 abstract type AbstractReMat{T} <: AbstractMatrix{T} end
 
+abstract type DimmedReMat{T,S} <: AbstractReMat{T} end
+
 """
     ReMat{T,S} <: AbstractMatrix{T}
 
@@ -33,15 +35,16 @@ end
 
 Combine multiple ReMat with the same grouping variable into a single object.
 """
-amalgamate(reterms::Vector{AbstractReMat{T}}) where {T} = _amalgamate(reterms, T)
+amalgamate(reterms::Vector{<:AbstractReMat{T}}) where {T} = _amalgamate(reterms, T)
 
-function _amalgamate(reterms::Vector, T::Type)
+# XXX this won't work for general AbstractReMat
+function _amalgamate(reterms::Vector{<:AbstractReMat}, T::Type)
     factordict = Dict{Symbol,Vector{Int}}()
     for (i, rt) in enumerate(reterms)
         push!(get!(factordict, fname(rt), Int[]), i)
     end
     length(factordict) == length(reterms) && return reterms
-    value = AbstractReMat{T}[]
+    value = ReMat{T}[]
     for (f, inds) in factordict
         if isone(length(inds))
             push!(value, reterms[only(inds)])
@@ -260,7 +263,7 @@ function *(adjA::Adjoint{T,<:ReMat{T,1}}, B::ReMat{T,1}) where {T}
     end
 end
 
-*(adjA::Adjoint{T,<:ReMat{T}}, B::ReMat{T}) where {T} = adjA.parent.adjA * sparse(B)
+*(adjA::Adjoint{T, ReMat{T}}, B::ReMat{T}) where {T} = adjA.parent.adjA * sparse(B)
 function *(adjA::Adjoint{T,<:FeMat{T}}, B::ReMat{T}) where {T}
     return mul!(Matrix{T}(undef, size(adjA.parent, 2), size(B, 2)), adjA, B)
 end
