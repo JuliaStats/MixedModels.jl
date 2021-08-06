@@ -120,7 +120,7 @@ function LinearMixedModel(
 end
 
 """
-    LinearMixedModel(feterm, reterms, form, wts=[])
+    LinearMixedModel(y, feterm, reterms, form, wts=[])
 
 Private constructor for a `LinearMixedModel` given already assembled fixed and random effects.
 
@@ -134,9 +134,9 @@ can be derived from these quantities.
     a future release without being considered a breaking change.
 """
 function LinearMixedModel(
-    y::Array{T},
+    y::AbstractArray,
     feterm::FeTerm{T},
-    reterms::Vector{AbstractReMat{T}},
+    reterms::AbstractVector{<:AbstractReMat{T}},
     form::FormulaTerm,
     wts=[],
 ) where {T}
