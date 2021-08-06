@@ -1,11 +1,9 @@
 """
-    rankUpdate!(C, A)
-    rankUpdate!(C, A, α)
     rankUpdate!(C, A, α, β)
 
 A rank-k update, C := β*C + α*A'A, of a Hermitian (Symmetric) matrix.
 
-`α` and `β` both default to 1.0.  When `α` is -1.0 this is a downdate operation.
+When `α` is -1.0 this is a downdate operation.
 The name `rankUpdate!` is borrowed from [https://github.com/andreasnoack/LinearAlgebra.jl]
 """
 function rankUpdate! end
