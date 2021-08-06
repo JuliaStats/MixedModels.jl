@@ -38,9 +38,3 @@ function cholUnblocked!(D::UniformBlockDiagonal, ::Type{Val{:L}})
     end
     return D
 end
-
-# function cholUnblocked!(A::Matrix, ::Type{Val{:L}})
-#     _, info = LAPACK.potrf!('L', A)
-#     iszero(info) || throw(PosDefException(info))
-#     return A
-# end

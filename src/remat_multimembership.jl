@@ -51,17 +51,17 @@ function getθ!(v::AbstractVector{T}, A::MultimembershipReMat{T}) where {T}
     return v
 end
 
-function DataAPI.levels(A::MultimembershipReMat)
-    # These checks are for cases where unused levels are present.
-    # Such cases may never occur b/c of the way an ReMat is constructed.
-    pool = A.levels
-    present = falses(size(pool))
-    @inbounds for i in A.refs
-        present[i] = true
-        all(present) && return pool
-    end
-    return pool[present]
-end
+# function DataAPI.levels(A::MultimembershipReMat)
+#     # These checks are for cases where unused levels are present.
+#     # Such cases may never occur b/c of the way an ReMat is constructed.
+#     pool = A.levels
+#     present = falses(size(pool))
+#     @inbounds for i in A.refs
+#         present[i] = true
+#         all(present) && return pool
+#     end
+#     return pool[present]
+# end
 
 indmat(rt::MultimembershipReMat{T,1}) where {T} = ones(Bool, 1, 1)
 indmat(rt::MultimembershipReMat{T,S}) where {T,S} = reshape([i in rt.inds for i in 1:abs2(S)], S, S)
@@ -88,281 +88,36 @@ end
     # return true
 # end
 
-function lmulΛ!(adjA::Adjoint{T,MultimembershipReMat{T,1}}, B::Matrix{T}) where {T}
-    return lmul!(only(adjA.parent.λ.data), B)
-end
+# function lmulΛ!(adjA::Adjoint{T,MultimembershipReMat{T,1}}, B::SparseMatrixCSC{T}) where {T}
+#     lmul!(only(adjA.parent.λ.data), nonzeros(B))
+#     return B
+# end
 
-function lmulΛ!(adjA::Adjoint{T,MultimembershipReMat{T,1}}, B::SparseMatrixCSC{T}) where {T}
-    lmul!(only(adjA.parent.λ.data), nonzeros(B))
-    return B
-end
+# function lmulΛ!(adjA::Adjoint{T,MultimembershipReMat{T,1}}, B::M) where {M<:AbstractMatrix{T}} where {T}
+#     return lmul!(only(adjA.parent.λ.data), B)
+# end
 
-function lmulΛ!(adjA::Adjoint{T,MultimembershipReMat{T,1}}, B::M) where {M<:AbstractMatrix{T}} where {T}
-    return lmul!(only(adjA.parent.λ.data), B)
-end
+# function lmulΛ!(adjA::Adjoint{T,MultimembershipReMat{T,S}}, B::VecOrMat{T}) where {T,S}
+#     lmul!(adjoint(adjA.parent.λ), reshape(B, S, :))
+#     return B
+# end
 
-function lmulΛ!(adjA::Adjoint{T,MultimembershipReMat{T,S}}, B::VecOrMat{T}) where {T,S}
-    lmul!(adjoint(adjA.parent.λ), reshape(B, S, :))
-    return B
-end
+# function lmulΛ!(adjA::Adjoint{T,MultimembershipReMat{T,S}}, B::BlockedSparse{T}) where {T,S}
+#     lmulΛ!(adjA, nonzeros(B.cscmat))
+#     return B
+# end
 
-function lmulΛ!(adjA::Adjoint{T,MultimembershipReMat{T,S}}, B::BlockedSparse{T}) where {T,S}
-    lmulΛ!(adjA, nonzeros(B.cscmat))
-    return B
-end
+# function lmulΛ!(adjA::Adjoint{T,MultimembershipReMat{T,1}}, B::BlockedSparse{T,1,P}) where {T,P}
+#     lmul!(only(adjA.parent.λ.data), nonzeros(B.cscmat))
+#     return B
+# end
 
-function lmulΛ!(adjA::Adjoint{T,MultimembershipReMat{T,1}}, B::BlockedSparse{T,1,P}) where {T,P}
-    lmul!(only(adjA.parent.λ.data), nonzeros(B.cscmat))
-    return B
-end
-
-function lmulΛ!(adjA::Adjoint{T,MultimembershipReMat{T,S}}, B::SparseMatrixCSC{T}) where {T,S}
-    lmulΛ!(adjA, nonzeros(B))
-    return B
-end
+# function lmulΛ!(adjA::Adjoint{T,MultimembershipReMat{T,S}}, B::SparseMatrixCSC{T}) where {T,S}
+#     lmulΛ!(adjA, nonzeros(B))
+#     return B
+# end
 
 LinearAlgebra.Matrix(A::MultimembershipReMat) = Matrix(sparse(A))
-
-# function LinearAlgebra.mul!(
-#     C::Diagonal{T}, adjA::Adjoint{T,<:ReMat{T,1}}, B::ReMat{T,1}
-# ) where {T}
-#     A = adjA.parent
-#     @assert A === B
-#     d = C.diag
-#     fill!(d, zero(T))
-#     @inbounds for (ri, Azi) in zip(A.refs, A.wtz)
-#         d[ri] += abs2(Azi)
-#     end
-#     return C
-# end
-
-function *(adjA::Adjoint{T,DimmedReMat{T,1}}, B::DimmedReMat{T,1}) where {T}
-    A = parent(adjA)
-    return sparse(Int32.(A.refs), Int32.(B.refs), vec(A.wtz .* B.wtz))
-end
-
-*(adjA::Adjoint{T,<:AbstractReMat{T}}, B::AbstractReMat{T}) where {T} = adjA.parent.adjA * sparse(B)
-
-function *(adjA::Adjoint{T,FeMat{T}}, B::AbstractReMat{T}) where {T}
-    return mul!(Matrix{T}(undef, size(adjA.parent, 2), size(B, 2)), adjA, B)
-end
-
-# function LinearAlgebra.mul!(
-#     C::Matrix{T}, adjA::Adjoint{T,<:FeMat{T}}, B::ReMat{T,1}, α::Number, β::Number
-# ) where {T}
-#     return mul!(C, adjA.parent.wtxy, B, α, β)
-#     # A = adjA.parent
-#     # Awt = A.wtxy
-#     # n, p = size(Awt)
-#     # m, q = size(B)
-#     # size(C) == (p, q) && m == n || throw(DimensionMismatch())
-#     # isone(β) || rmul!(C, β)
-#     # zz = B.wtz
-#     # @inbounds for (j, rrj) in enumerate(B.refs)
-#     #     αzj = α * zz[j]
-#     #     for i in 1:p
-#     #         C[i, rrj] += αzj * Awt[j, i]
-#     #     end
-#     # end
-#     # return C
-# end
-
-# function LinearAlgebra.mul!(
-#     C::Matrix{T}, adjA::Adjoint{T,<:FeMat{T}}, B::ReMat{T,S}, α::Number, β::Number
-# ) where {T,S}
-#     A = adjA.parent
-#     Awt = A.wtxy
-#     r = size(Awt, 2)
-#     rr = B.refs
-#     scr = B.scratch
-#     vscr = vec(scr)
-#     Bwt = B.wtz
-#     n = length(rr)
-#     q = length(scr)
-#     size(C) == (r, q) && size(Awt, 1) == n || throw(DimensionMismatch(""))
-#     isone(β) || rmul!(C, β)
-#     @inbounds for i in 1:r
-#         fill!(scr, 0)
-#         for k in 1:n
-#             aki = α * Awt[k, i]
-#             kk = Int(rr[k])
-#             for ii in 1:S
-#                 scr[ii, kk] += aki * Bwt[ii, k]
-#             end
-#         end
-#         for j in 1:q
-#             C[i, j] += vscr[j]
-#         end
-#     end
-#     return C
-# end
-
-# function LinearAlgebra.mul!(
-#     C::SparseMatrixCSC{T}, adjA::Adjoint{T,<:ReMat{T,1}}, B::ReMat{T,1}
-# ) where {T}
-#     A = adjA.parent
-#     m, n = size(B)
-#     size(C, 1) == size(A, 2) && n == size(C, 2) && size(A, 1) == m ||
-#         throw(DimensionMismatch)
-#     Ar = A.refs
-#     Br = B.refs
-#     Az = A.wtz
-#     Bz = B.wtz
-#     nz = nonzeros(C)
-#     rv = rowvals(C)
-#     fill!(nz, zero(T))
-#     for k in 1:m       # iterate over rows of A and B
-#         i = Ar[k]      # [i,j] are Cartesian indices in C - find and verify corresponding position K in rv and nz
-#         j = Br[k]
-#         coljlast = Int(C.colptr[j + 1] - 1)
-#         K = searchsortedfirst(rv, i, Int(C.colptr[j]), coljlast, Base.Order.Forward)
-#         if K ≤ coljlast && rv[K] == i
-#             nz[K] += Az[k] * Bz[k]
-#         else
-#             throw(ArgumentError("C does not have the nonzero pattern of A'B"))
-#         end
-#     end
-#     return C
-# end
-
-# function LinearAlgebra.mul!(
-#     C::UniformBlockDiagonal{T}, adjA::Adjoint{T,ReMat{T,S}}, B::ReMat{T,S}
-# ) where {T,S}
-#     A = adjA.parent
-#     @assert A === B
-#     Cd = C.data
-#     size(Cd) == (S, S, nlevs(B)) || throw(DimensionMismatch(""))
-#     fill!(Cd, zero(T))
-#     Awtz = A.wtz
-#     for (j, r) in enumerate(A.refs)
-#         @inbounds for i in 1:S
-#             zij = Awtz[i, j]
-#             for k in 1:S
-#                 Cd[k, i, r] += zij * Awtz[k, j]
-#             end
-#         end
-#     end
-#     return C
-# end
-
-# function LinearAlgebra.mul!(
-#     C::Matrix{T}, adjA::Adjoint{T,ReMat{T,S}}, B::ReMat{T,P}
-# ) where {T,S,P}
-#     A = adjA.parent
-#     m, n = size(A)
-#     p, q = size(B)
-#     m == p && size(C, 1) == n && size(C, 2) == q || throw(DimensionMismatch(""))
-#     fill!(C, zero(T))
-
-#     Ar = A.refs
-#     Br = B.refs
-#     if isone(S) && isone(P)
-#         for (ar, az, br, bz) in zip(Ar, vec(A.wtz), Br, vec(B.wtz))
-#             C[ar, br] += az * bz
-#         end
-#         return C
-#     end
-#     ab = S * P
-#     Az = A.wtz
-#     Bz = B.wtz
-#     for i in 1:m
-#         Ari = Ar[i]
-#         Bri = Br[i]
-#         ioffset = (Ari - 1) * S
-#         joffset = (Bri - 1) * P
-#         for jj in 1:P
-#             jjo = jj + joffset
-#             Bzijj = Bz[jj, i]
-#             for ii in 1:S
-#                 C[ii + ioffset, jjo] += Az[ii, i] * Bzijj
-#             end
-#         end
-#     end
-#     return C
-# end
-
-# function LinearAlgebra.mul!(
-#     y::AbstractVector{<:Union{T,Missing}},
-#     A::ReMat{T,1},
-#     b::AbstractVector{<:Union{T,Missing}},
-#     alpha::Number,
-#     beta::Number,
-# ) where {T}
-#     m, n = size(A)
-#     length(y) == m && length(b) == n || throw(DimensionMismatch(""))
-#     isone(beta) || rmul!(y, beta)
-#     z = A.z
-#     @inbounds for (i, r) in enumerate(A.refs)
-#         y[i] += alpha * b[r] * z[i]
-#     end
-#     return y
-# end
-
-function LinearAlgebra.mul!(
-    y::AbstractVector{<:Union{T,Missing}},
-    A::DimmedReMat{T,1},
-    B::AbstractMatrix{<:Union{T,Missing}},
-    alpha::Number,
-    beta::Number,
-) where {T}
-    return mul!(y, A, vec(B), alpha, beta)
-end
-
-# function LinearAlgebra.mul!(
-#     y::AbstractVector{<:Union{T,Missing}},
-#     A::ReMat{T,S},
-#     b::AbstractVector{<:Union{T,Missing}},
-#     alpha::Number,
-#     beta::Number,
-# ) where {T,S}
-#     Z = A.z
-#     k, n = size(Z)
-#     l = nlevs(A)
-#     length(y) == n && length(b) == k * l || throw(DimensionMismatch(""))
-#     isone(beta) || rmul!(y, beta)
-#     @inbounds for (i, ii) in enumerate(A.refs)
-#         offset = (ii - 1) * k
-#         for j in 1:k
-#             y[i] += alpha * Z[j, i] * b[offset + j]
-#         end
-#     end
-#     return y
-# end
-
-# function LinearAlgebra.mul!(
-#     y::AbstractVector{<:Union{T,Missing}},
-#     A::ReMat{T,S},
-#     B::AbstractMatrix{<:Union{T,Missing}},
-#     alpha::Number,
-#     beta::Number,
-# ) where {T,S}
-#     Z = A.z
-#     k, n = size(Z)
-#     l = nlevs(A)
-#     length(y) == n && size(B) == (k, l) || throw(DimensionMismatch(""))
-#     isone(beta) || rmul!(y, beta)
-#     @inbounds for (i, ii) in enumerate(refarray(A))
-#         for j in 1:k
-#             y[i] += alpha * Z[j, i] * B[j, ii]
-#         end
-#     end
-#     return y
-# end
-
-# function *(adjA::Adjoint{T,<:ReMat{T,S}}, B::ReMat{T,P}) where {T,S,P}
-#     A = adjA.parent
-#     if A === B
-#         return mul!(UniformBlockDiagonal(Array{T}(undef, S, S, nlevs(A))), adjA, A)
-#     end
-#     cscmat = A.adjA * adjoint(B.adjA)
-#     if nnz(cscmat) > *(0.25, size(cscmat)...)
-#         return Matrix(cscmat)
-#     end
-
-#     return BlockedSparse{T,S,P}(
-#         cscmat, reshape(cscmat.nzval, S, :), cscmat.colptr[1:P:(cscmat.n + 1)]
-#     )
-# end
 
 function PCA(A::MultimembershipReMat{T,1}; corr::Bool=true) where {T}
     val = ones(T, 1, 1)
@@ -389,34 +144,40 @@ function reweight!(A::MultimembershipReMat, sqrtwts::Vector)
     return A
 end
 
-rmulΛ!(A::Matrix{T}, B::MultimembershipReMat{T,1}) where {T} = rmul!(A, only(B.λ.data))
-
-function rmulΛ!(A::SparseMatrixCSC{T}, B::MultimembershipReMat{T,1}) where {T}
-    rmul!(nonzeros(A), only(B.λ.data))
-    return A
+function lmulΛ!(adjA::Adjoint{T,MultimembershipReMat{T,1}}, B::Matrix{T}) where {T}
+    return lmul!(parent(adjA).λ, B)
 end
 
-function rmulΛ!(A::Matrix{T}, B::MultimembershipReMat{T,S}) where {T,S}
-    m, n = size(A)
-    q, r = divrem(n, S)
-    iszero(r) || throw(DimensionMismatch("size(A, 2) is not a multiple of block size"))
-    λ = B.λ
-    for k in 1:q
-        coloffset = (k - 1) * S
-        rmul!(view(A, :, (coloffset + 1):(coloffset + S)), λ)
-    end
-    return A
+function rmulΛ!(A::Matrix{T}, B::MultimembershipReMat{T,1}) where {T}
+    return rmul!(A, only(B.λ.data))
 end
 
-function rmulΛ!(A::BlockedSparse{T,S,P}, B::MultimembershipReMat{T,P}) where {T,S,P}
-    cbpt = A.colblkptr
-    csc = A.cscmat
-    nzv = csc.nzval
-    for j in 1:div(csc.n, P)
-        rmul!(reshape(view(nzv, cbpt[j]:(cbpt[j + 1] - 1)), :, P), B.λ)
-    end
-    return A
-end
+# function rmulΛ!(A::SparseMatrixCSC{T}, B::MultimembershipReMat{T,1}) where {T}
+#     rmul!(nonzeros(A), only(B.λ.data))
+#     return A
+# end
+
+# function rmulΛ!(A::Matrix{T}, B::MultimembershipReMat{T,S}) where {T,S}
+#     m, n = size(A)
+#     q, r = divrem(n, S)
+#     iszero(r) || throw(DimensionMismatch("size(A, 2) is not a multiple of block size"))
+#     λ = B.λ
+#     for k in 1:q
+#         coloffset = (k - 1) * S
+#         rmul!(view(A, :, (coloffset + 1):(coloffset + S)), λ)
+#     end
+#     return A
+# end
+
+# function rmulΛ!(A::BlockedSparse{T,S,P}, B::MultimembershipReMat{T,P}) where {T,S,P}
+#     cbpt = A.colblkptr
+#     csc = A.cscmat
+#     nzv = csc.nzval
+#     for j in 1:div(csc.n, P)
+#         rmul!(reshape(view(nzv, cbpt[j]:(cbpt[j + 1] - 1)), :, P), B.λ)
+#     end
+#     return A
+# end
 
 rowlengths(A::MultimembershipReMat{T,1}) where {T} = vec(abs.(A.λ.data))
 
@@ -429,52 +190,56 @@ function rowlengths(A::MultimembershipReMat)
     end
 end
 
-function scaleinflate!(Ljj::Diagonal{T}, Λj::MultimembershipReMat{T,1}) where {T}
-    Ljjd = Ljj.diag
-    broadcast!((x, λsqr) -> x * λsqr + 1, Ljjd, Ljjd, abs2(only(Λj.λ.data)))
-    return Ljj
-end
+# function scaleinflate!(Ljj::Diagonal{T}, Λj::MultimembershipReMat{T,1}) where {T}
+#     Ljjd = Ljj.diag
+#     broadcast!((x, λsqr) -> x * λsqr + 1, Ljjd, Ljjd, abs2(only(Λj.λ.data)))
+#     return Ljj
+# end
 
+# XXX This isn't quite right
 function scaleinflate!(Ljj::Matrix{T}, Λj::MultimembershipReMat{T,1}) where {T}
     lambsq = abs2(only(Λj.λ.data))
-    @inbounds for i in diagind(Ljj)
+    @inbounds for i in axes(Ljj)
         Ljj[i] *= lambsq
+    end
+    @inbounds for i in diagind(Ljj)
         Ljj[i] += one(T)
     end
     return Ljj
+
 end
 
-function scaleinflate!(Ljj::UniformBlockDiagonal{T}, Λj::MultimembershipReMat{T,S}) where {T,S}
-    λ = Λj.λ
-    dind = diagind(S, S)
-    Ldat = Ljj.data
-    for k in axes(Ldat, 3)
-        f = view(Ldat, :, :, k)
-        lmul!(λ', rmul!(f, λ))
-        for i in dind
-            f[i] += one(T)  # inflate diagonal
-        end
-    end
-    return Ljj
-end
+# function scaleinflate!(Ljj::UniformBlockDiagonal{T}, Λj::MultimembershipReMat{T,S}) where {T,S}
+#     λ = Λj.λ
+#     dind = diagind(S, S)
+#     Ldat = Ljj.data
+#     for k in axes(Ldat, 3)
+#         f = view(Ldat, :, :, k)
+#         lmul!(λ', rmul!(f, λ))
+#         for i in dind
+#             f[i] += one(T)  # inflate diagonal
+#         end
+#     end
+#     return Ljj
+# end
 
-function scaleinflate!(Ljj::Matrix{T}, Λj::MultimembershipReMat{T,S}) where {T,S}
-    n = LinearAlgebra.checksquare(Ljj)
-    q, r = divrem(n, S)
-    iszero(r) || throw(DimensionMismatch("size(Ljj, 1) is not a multiple of S"))
-    λ = Λj.λ
-    offset = 0
-    @inbounds for k in 1:q
-        inds = (offset + 1):(offset + S)
-        tmp = view(Ljj, inds, inds)
-        lmul!(adjoint(λ), rmul!(tmp, λ))
-        offset += S
-    end
-    for k in diagind(Ljj)
-        Ljj[k] += 1
-    end
-    return Ljj
-end
+# function scaleinflate!(Ljj::Matrix{T}, Λj::MultimembershipReMat{T,S}) where {T,S}
+#     n = LinearAlgebra.checksquare(Ljj)
+#     q, r = divrem(n, S)
+#     iszero(r) || throw(DimensionMismatch("size(Ljj, 1) is not a multiple of S"))
+#     λ = Λj.λ
+#     offset = 0
+#     @inbounds for k in 1:q
+#         inds = (offset + 1):(offset + S)
+#         tmp = view(Ljj, inds, inds)
+#         lmul!(adjoint(λ), rmul!(tmp, λ))
+#         offset += S
+#     end
+#     for k in diagind(Ljj)
+#         Ljj[k] += 1
+#     end
+#     return Ljj
+# end
 
 function setθ!(A::MultimembershipReMat{T}, v::AbstractVector{T}) where {T}
     A.λ.data[A.inds] = v
