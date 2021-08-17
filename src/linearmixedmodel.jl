@@ -39,8 +39,8 @@ struct LinearMixedModel{T<:AbstractFloat} <: MixedModel{T}
     A::Vector{AbstractMatrix{T}}            # cross-product blocks
     L::Vector{AbstractMatrix{T}}
     optsum::OptSummary{T}
-    σ::Union{T,Nothing}
 end
+
 function LinearMixedModel(f::FormulaTerm, tbl; contrasts=Dict{Symbol,Any}(), wts=[], σ=nothing)
     return LinearMixedModel(f::FormulaTerm, Tables.columntable(tbl); contrasts, wts, σ)
 end
@@ -145,6 +145,7 @@ function LinearMixedModel(y::AbstractArray, feterm::FeTerm{T},
     lbd = foldl(vcat, lowerbd(c) for c in reterms)
     θ = foldl(vcat, getθ(c) for c in reterms)
     optsum = OptSummary(θ, lbd, :LN_BOBYQA; ftol_rel=T(1.0e-12), ftol_abs=T(1.0e-8))
+    optsum.sigma = isnothing(σ) ? nothing : T(σ)
     fill!(optsum.xtol_abs, 1.0e-10)
     return LinearMixedModel(
         form,
@@ -157,7 +158,6 @@ function LinearMixedModel(y::AbstractArray, feterm::FeTerm{T},
         A,
         L,
         optsum,
-        isnothing(σ) ? nothing : T(σ),
     )
 end
 
@@ -618,7 +618,7 @@ Return negative twice the log-likelihood of model `m`
 function objective(m::LinearMixedModel{T}) where {T}
     wts = m.sqrtwts
     denomdf = T(ssqdenom(m))
-    σ = getfield(m, :σ)
+    σ = m.optsum.sigma
     val = if σ === nothing
         logdet(m) + denomdf * (one(T) + log2π + log(pwrss(m) / denomdf))
     else
@@ -821,6 +821,8 @@ function restoreoptsum!(m::LinearMixedModel, io::IO)
     end
     ops.optimizer = Symbol(dict.optimizer)
     ops.returnvalue = Symbol(dict.returnvalue)
+    # provides compatibility with fits saved before the introduction of fixed sigma
+    ops.sigma = get(dict.sigma, :sigma, nothing)
     return m
 end
 
@@ -859,7 +861,7 @@ end
 
 Return the estimate of σ, the standard deviation of the per-observation noise.
 """
-sdest(m::LinearMixedModel) = something(getfield(m, :σ),  √varest(m))
+sdest(m::LinearMixedModel) = something(m.optsum.sigma,  √varest(m))
 
 """
     setθ!(m::LinearMixedModel, v)
@@ -1132,7 +1134,7 @@ end
 
 Returns the estimate of σ², the variance of the conditional distribution of Y given B.
 """
-varest(m::LinearMixedModel) = isnothing(getfield(m, :σ)) ?  pwrss(m) / ssqdenom(m) : getfield(m, :σ)
+varest(m::LinearMixedModel) = isnothing(m.optsum.sigma) ?  pwrss(m) / ssqdenom(m) : m.optsum.sigma
 
 function StatsBase.weights(m::LinearMixedModel)
     rtwts = m.sqrtwts

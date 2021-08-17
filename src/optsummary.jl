@@ -21,8 +21,9 @@ Summary of an `NLopt` optimization
 * `returnvalue`: the return value, as a `Symbol`
 * `nAGQ`: number of adaptive Gauss-Hermite quadrature points in deviance evaluation for GLMMs
 * `REML`: use the REML criterion for LMM fits
+* `sigma`: a priori value for the residual variation for LMM
 
-The latter two fields are model characteristics and not related directly to the `NLopt` package or algorithms.
+The latter rheww fields are model characteristics and not related directly to the `NLopt` package or algorithms.
 """
 mutable struct OptSummary{T<:AbstractFloat}
     initial::Vector{T}
@@ -42,6 +43,7 @@ mutable struct OptSummary{T<:AbstractFloat}
     returnvalue::Symbol
     nAGQ::Integer           # don't really belong here but I needed a place to store them
     REML::Bool
+    sigma::Union{T, Nothing}
 end
 function OptSummary(
     initial::Vector{T},
@@ -72,6 +74,7 @@ function OptSummary(
         :FAILURE,
         1,
         false,
+        nothing,
     )
 end
 

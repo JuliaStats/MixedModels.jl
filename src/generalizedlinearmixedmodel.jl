@@ -389,7 +389,6 @@ function GeneralizedLinearMixedModel(
             LMM.A,
             LMM.L,
             LMM.optsum,
-            nothing,
         )
     end
     updateL!(LMM)
