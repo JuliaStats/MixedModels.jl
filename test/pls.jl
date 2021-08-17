@@ -135,7 +135,7 @@ end
         fitlog = Tuple[]
         thin = 2
         refit!(fm1; REML=false, progress=false, fitlog, thin)
-        @test length(fitlog) == div(fm1.optsum.feval, thin) + 1 # for the initial value
+        @test length(fitlog) == (div(fm1.optsum.feval, thin) + 1) # for the initial value
         @test first(fitlog) == (fm1.optsum.initial, fm1.optsum.finitial)
     end
 end
