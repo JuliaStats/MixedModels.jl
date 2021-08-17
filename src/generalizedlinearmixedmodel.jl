@@ -337,7 +337,7 @@ function fit!(
             copyto!(xmin, xmin_)
         else
             # remove unused zero'ing step
-            pop!(fitlog)
+            !isnothing(fitlog) && pop!(fitlog)
         end
     end
     ## ensure that the parameter values saved in m are xmin
