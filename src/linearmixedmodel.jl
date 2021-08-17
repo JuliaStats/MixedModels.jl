@@ -41,12 +41,15 @@ struct LinearMixedModel{T<:AbstractFloat} <: MixedModel{T}
     optsum::OptSummary{T}
 end
 
-function LinearMixedModel(f::FormulaTerm, tbl; contrasts=Dict{Symbol,Any}(), wts=[], σ=nothing)
+function LinearMixedModel(
+    f::FormulaTerm, tbl; contrasts=Dict{Symbol,Any}(), wts=[], σ=nothing
+)
     return LinearMixedModel(f::FormulaTerm, Tables.columntable(tbl); contrasts, wts, σ)
 end
 
-function LinearMixedModel(f::FormulaTerm, tbl::Tables.ColumnTable;
-                          contrasts=Dict{Symbol,Any}(), wts=[], σ=nothing)
+function LinearMixedModel(
+    f::FormulaTerm, tbl::Tables.ColumnTable; contrasts=Dict{Symbol,Any}(), wts=[], σ=nothing
+)
     # TODO: perform missing_omit() after apply_schema() when improved
     # missing support is in a StatsModels release
     tbl, _ = StatsModels.missing_omit(tbl, f)
@@ -79,8 +82,13 @@ Everything else in the structure can be derived from these quantities.
     This method is internal and experimental and so may change or disappear in
     a future release without being considered a breaking change.
 """
-function LinearMixedModel(y::AbstractArray, Xs::Tuple, # can't be more specific here without stressing the compiler
-                          form::FormulaTerm, wts=[], σ=nothing)
+function LinearMixedModel(
+    y::AbstractArray,
+    Xs::Tuple, # can't be more specific here without stressing the compiler
+    form::FormulaTerm,
+    wts=[],
+    σ=nothing,
+)
     T = promote_type(Float64, float(eltype(y)))  # ensure eltype of model matrices is at least Float64
 
     reterms = AbstractReMat{T}[]
@@ -128,9 +136,14 @@ can be derived from these quantities.
     This method is internal and experimental and so may change or disappear in
     a future release without being considered a breaking change.
 """
-function LinearMixedModel(y::AbstractArray, feterm::FeTerm{T},
-                          reterms::AbstractVector{<:AbstractReMat{T}},
-                          form::FormulaTerm, wts=[], σ=nothing) where {T}
+function LinearMixedModel(
+    y::AbstractArray,
+    feterm::FeTerm{T},
+    reterms::AbstractVector{<:AbstractReMat{T}},
+    form::FormulaTerm,
+    wts=[],
+    σ=nothing,
+) where {T}
     # detect and combine RE terms with the same grouping var
     if length(reterms) > 1
         reterms = amalgamate(reterms)
@@ -161,15 +174,31 @@ function LinearMixedModel(y::AbstractArray, feterm::FeTerm{T},
     )
 end
 
-function fit(::Type{LinearMixedModel}, f::FormulaTerm, tbl;
-             wts=[], contrasts=Dict{Symbol,Any}(), progress::Bool=true,
-             REML::Bool=false, σ=nothing)
-    return fit(LinearMixedModel, f, Tables.columntable(tbl);
-               wts, contrasts, progress, REML, σ)
+function fit(
+    ::Type{LinearMixedModel},
+    f::FormulaTerm,
+    tbl;
+    wts=[],
+    contrasts=Dict{Symbol,Any}(),
+    progress::Bool=true,
+    REML::Bool=false,
+    σ=nothing,
+)
+    return fit(
+        LinearMixedModel, f, Tables.columntable(tbl); wts, contrasts, progress, REML, σ
+    )
 end
 
-function fit(::Type{LinearMixedModel}, f::FormulaTerm, tbl::Tables.ColumnTable;
-             wts=[], contrasts=Dict{Symbol,Any}(), progress=true, REML=false, σ=nothing)
+function fit(
+    ::Type{LinearMixedModel},
+    f::FormulaTerm,
+    tbl::Tables.ColumnTable;
+    wts=[],
+    contrasts=Dict{Symbol,Any}(),
+    progress=true,
+    REML=false,
+    σ=nothing,
+)
     return fit!(LinearMixedModel(f, tbl; contrasts, wts, σ); progress, REML)
 end
 
@@ -861,7 +890,7 @@ end
 
 Return the estimate of σ, the standard deviation of the per-observation noise.
 """
-sdest(m::LinearMixedModel) = something(m.optsum.sigma,  √varest(m))
+sdest(m::LinearMixedModel) = something(m.optsum.sigma, √varest(m))
 
 """
     setθ!(m::LinearMixedModel, v)
@@ -1134,7 +1163,9 @@ end
 
 Returns the estimate of σ², the variance of the conditional distribution of Y given B.
 """
-varest(m::LinearMixedModel) = isnothing(m.optsum.sigma) ?  pwrss(m) / ssqdenom(m) : m.optsum.sigma
+function varest(m::LinearMixedModel)
+    return isnothing(m.optsum.sigma) ? pwrss(m) / ssqdenom(m) : m.optsum.sigma
+end
 
 function StatsBase.weights(m::LinearMixedModel)
     rtwts = m.sqrtwts

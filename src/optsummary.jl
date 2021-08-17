@@ -43,7 +43,7 @@ mutable struct OptSummary{T<:AbstractFloat}
     returnvalue::Symbol
     nAGQ::Integer           # don't really belong here but I needed a place to store them
     REML::Bool
-    sigma::Union{T, Nothing}
+    sigma::Union{T,Nothing}
 end
 function OptSummary(
     initial::Vector{T},
