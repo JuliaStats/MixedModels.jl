@@ -23,7 +23,7 @@ Summary of an `NLopt` optimization
 * `REML`: use the REML criterion for LMM fits
 * `sigma`: a priori value for the residual standard deviation for LMM
 
-The latter rheww fields are model characteristics and not related directly to the `NLopt` package or algorithms.
+The latter three fields are model characteristics and not related directly to the `NLopt` package or algorithms.
 """
 mutable struct OptSummary{T<:AbstractFloat}
     initial::Vector{T}
