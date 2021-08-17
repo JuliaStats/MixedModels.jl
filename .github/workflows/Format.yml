@@ -1,12 +1,13 @@
 
 name: "Format Check"
 on:
-  push:
-    branches:
-      - 'main'
-    tags: '*'
   pull_request:
-
+    branches:
+      - main
+    paths-ignore:
+      - 'LICENSE.md'
+      - 'README.md'
+  workflow_dispatch:
 jobs:
   build:
     runs-on: ${{ matrix.os }}
@@ -19,20 +20,14 @@ jobs:
       - uses: julia-actions/setup-julia@latest
         with:
           version: ${{ matrix.julia-version }}
-
       - uses: actions/checkout@v1
-      - name: Install and run JuliaFormatter
-        run: |
+      - run: |
           julia  -e 'using Pkg; Pkg.add(PackageSpec(name="JuliaFormatter"))'
-          julia  -e 'using JuliaFormatter; format(".", verbose=true)'
-      - name: Format check
-        run: |
-          julia -e '
-          out = readchomp(`git diff --name-only`)
-          if out == ""
-              exit(0)
-          else
-              @error "Some files have not been formatted !!!"
-              write(stdout, out)
-              exit(1)
-          end'
+          julia  -e 'using JuliaFormatter
+                     if format("src", verbose=true)
+                      exit(0)
+                     else
+                       @error "The following files have not been formatted:"
+                       write(stdout, readchomp(`git diff --name-only`))
+                       exit(1)
+                      end'
