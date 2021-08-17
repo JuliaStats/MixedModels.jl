@@ -1,12 +1,11 @@
 name: Future
 on:
-  # pull_request:
-  #   branches:
-  #     - main
-  #     - v3.x
-  #   paths-ignore:
-  #     - 'LICENSE.md'
-  #     - 'README.md'
+  pull_request:
+    branches:
+      - main
+    paths-ignore:
+      - 'LICENSE.md'
+      - 'README.md'
   workflow_dispatch:
 jobs:
   ci:
