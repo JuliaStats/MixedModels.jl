@@ -2,7 +2,7 @@ MixedModels v4.1.0 Release Notes
 ========================
 * Add support for specifying a fixed value of `σ`, the residual standard deviation,
   in `LinearMixedModel`. `fit` takes a keyword-argument `σ`. For models constructed
-  separately, `σ` can be specified by setting the corresponding field in the `optsum`
+  separately, `σ` can be specified by setting `optsum.sigma`. [#551]
   struct. [#551]
 
 
