@@ -21,7 +21,7 @@ Summary of an `NLopt` optimization
 * `returnvalue`: the return value, as a `Symbol`
 * `nAGQ`: number of adaptive Gauss-Hermite quadrature points in deviance evaluation for GLMMs
 * `REML`: use the REML criterion for LMM fits
-* `sigma`: a priori value for the residual variation for LMM
+* `sigma`: a priori value for the residual standard deviation for LMM
 
 The latter rheww fields are model characteristics and not related directly to the `NLopt` package or algorithms.
 """

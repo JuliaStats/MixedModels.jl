@@ -1,3 +1,12 @@
+MixedModels v4.1.0 Release Notes
+========================
+* Add support for specifying a fixed value of `σ`, the residual standard deviation,
+  in `LinearMixedModel`. `fit` takes a keyword-argument `σ`. For models constructed
+  separately, `σ` can be specified by setting the corresponding field in the `optsum`
+  struct. [#551]
+
+
+
 MixedModels v4.0.0 Release Notes
 ========================
 * Drop dependency on `BlockArrays` and use a `Vector` of matrices to represent
@@ -265,3 +274,4 @@ Package dependencies
 [#536]: https://github.com/JuliaStats/MixedModels.jl/issues/536
 [#537]: https://github.com/JuliaStats/MixedModels.jl/issues/537
 [#539]: https://github.com/JuliaStats/MixedModels.jl/issues/539
+[#551]: https://github.com/JuliaStats/MixedModels.jl/issues/551
