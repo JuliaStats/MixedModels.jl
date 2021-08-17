@@ -619,7 +619,7 @@ function objective(m::LinearMixedModel{T}) where {T}
     wts = m.sqrtwts
     denomdf = T(ssqdenom(m))
     σ = m.optsum.sigma
-    val = if σ === nothing
+    val = if isnothing(σ)
         logdet(m) + denomdf * (one(T) + log2π + log(pwrss(m) / denomdf))
     else
         denomdf * (log2π + 2 * log(σ)) + logdet(m) + pwrss(m) / σ^2
