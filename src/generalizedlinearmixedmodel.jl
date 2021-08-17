@@ -174,7 +174,7 @@ function fit(
     fast::Bool=false,
     nAGQ::Integer=1,
     progress::Bool=true,
-    fitlog::Union{Nothing, AbstractVector}=nothing,
+    fitlog::Union{Nothing,AbstractVector}=nothing,
     thin::Int=1,
 )
     return fit(
@@ -191,7 +191,7 @@ function fit(
         nAGQ,
         progress,
         fitlog,
-        thin
+        thin,
     )
 end
 
@@ -208,7 +208,7 @@ function fit(
     fast::Bool=false,
     nAGQ::Integer=1,
     progress::Bool=true,
-    fitlog::Union{Nothing, AbstractVector}=nothing,
+    fitlog::Union{Nothing,AbstractVector}=nothing,
     thin::Int=1,
 )
     return fit!(
@@ -238,11 +238,24 @@ function fit(
     fast::Bool=false,
     nAGQ::Integer=1,
     progress::Bool=true,
-    fitlog::Union{Nothing, AbstractVector}=nothing,
+    fitlog::Union{Nothing,AbstractVector}=nothing,
     thin::Int=1,
 )
     return fit(
-        GeneralizedLinearMixedModel, f, tbl, d, l; wts, contrasts, offset, verbose, fast, nAGQ, progress, fitlog, thin
+        GeneralizedLinearMixedModel,
+        f,
+        tbl,
+        d,
+        l;
+        wts,
+        contrasts,
+        offset,
+        verbose,
+        fast,
+        nAGQ,
+        progress,
+        fitlog,
+        thin,
     )
 end
 
@@ -276,7 +289,7 @@ function fit!(
     fast::Bool=false,
     nAGQ::Integer=1,
     progress::Bool=true,
-    fitlog::Union{Nothing, AbstractVector}=nothing,
+    fitlog::Union{Nothing,AbstractVector}=nothing,
     thin::Int=1,
 ) where {T}
     β = m.β

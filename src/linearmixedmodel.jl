@@ -187,7 +187,16 @@ function fit(
     thin=1,
 )
     return fit(
-        LinearMixedModel, f, Tables.columntable(tbl); wts, contrasts, progress, REML, σ, fitlog, thin
+        LinearMixedModel,
+        f,
+        Tables.columntable(tbl);
+        wts,
+        contrasts,
+        progress,
+        REML,
+        σ,
+        fitlog,
+        thin,
     )
 end
 
@@ -425,9 +434,14 @@ iteration  is recorded in `fitlog`.
     `fitlog` is emptied at the start of fitting and subsequently further
     modified to keep a log of the fitting process.
 """
-function fit!(m::LinearMixedModel{T}; progress::Bool=true, REML::Bool=false,
-              σ::Union{Real, Nothing}=nothing, fitlog::Union{AbstractVector, Nothing}=nothing,
-              thin::Int=1) where {T}
+function fit!(
+    m::LinearMixedModel{T};
+    progress::Bool=true,
+    REML::Bool=false,
+    σ::Union{Real,Nothing}=nothing,
+    fitlog::Union{AbstractVector,Nothing}=nothing,
+    thin::Int=1,
+) where {T}
     optsum = m.optsum
     # this doesn't matter for LMM, but it does for GLMM, so let's be consistent
     if optsum.feval > 0
