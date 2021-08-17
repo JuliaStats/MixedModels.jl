@@ -39,15 +39,14 @@ struct LinearMixedModel{T<:AbstractFloat} <: MixedModel{T}
     A::Vector{AbstractMatrix{T}}            # cross-product blocks
     L::Vector{AbstractMatrix{T}}
     optsum::OptSummary{T}
+    σ::Union{T,Nothing}
 end
-function LinearMixedModel(f::FormulaTerm, tbl; contrasts=Dict{Symbol,Any}(), wts=[])
-    return LinearMixedModel(
-        f::FormulaTerm, Tables.columntable(tbl); contrasts=contrasts, wts=wts
-    )
+function LinearMixedModel(f::FormulaTerm, tbl; contrasts=Dict{Symbol,Any}(), wts=[], σ=nothing)
+    return LinearMixedModel(f::FormulaTerm, Tables.columntable(tbl); contrasts, wts, σ)
 end
-function LinearMixedModel(
-    f::FormulaTerm, tbl::Tables.ColumnTable; contrasts=Dict{Symbol,Any}(), wts=[]
-)
+
+function LinearMixedModel(f::FormulaTerm, tbl::Tables.ColumnTable;
+                          contrasts=Dict{Symbol,Any}(), wts=[], σ=nothing)
     # TODO: perform missing_omit() after apply_schema() when improved
     # missing support is in a StatsModels release
     tbl, _ = StatsModels.missing_omit(tbl, f)
@@ -64,11 +63,11 @@ function LinearMixedModel(
 
     y, Xs = modelcols(form, tbl)
 
-    return LinearMixedModel(y, Xs, form, wts)
+    return LinearMixedModel(y, Xs, form, wts, σ)
 end
 
 """
-    LinearMixedModel(y, Xs, form)
+    LinearMixedModel(y, Xs, form, wts=[], σ=nothing)
 
 Private constructor for a LinearMixedModel.
 
@@ -80,12 +79,8 @@ Everything else in the structure can be derived from these quantities.
     This method is internal and experimental and so may change or disappear in
     a future release without being considered a breaking change.
 """
-function LinearMixedModel(
-    y::AbstractArray,
-    Xs::Tuple, # can't be more specific here without stressing the compiler
-    form::FormulaTerm,
-    wts=[],
-)
+function LinearMixedModel(y::AbstractArray, Xs::Tuple, # can't be more specific here without stressing the compiler
+                          form::FormulaTerm, wts=[], σ=nothing)
     T = promote_type(Float64, float(eltype(y)))  # ensure eltype of model matrices is at least Float64
 
     reterms = AbstractReMat{T}[]
@@ -116,11 +111,11 @@ function LinearMixedModel(
             push!(feterms, FeTerm(x, isa(cnames, String) ? [cnames] : collect(cnames)))
         end
     end
-    return LinearMixedModel(convert(Array{T}, y), only(feterms), reterms, form, wts)
+    return LinearMixedModel(convert(Array{T}, y), only(feterms), reterms, form, wts, σ)
 end
 
 """
-    LinearMixedModel(y, feterm, reterms, form, wts=[])
+    LinearMixedModel(y, feterm, reterms, form, wts=[], σ=nothing)
 
 Private constructor for a `LinearMixedModel` given already assembled fixed and random effects.
 
@@ -133,13 +128,9 @@ can be derived from these quantities.
     This method is internal and experimental and so may change or disappear in
     a future release without being considered a breaking change.
 """
-function LinearMixedModel(
-    y::AbstractArray,
-    feterm::FeTerm{T},
-    reterms::AbstractVector{<:AbstractReMat{T}},
-    form::FormulaTerm,
-    wts=[],
-) where {T}
+function LinearMixedModel(y::AbstractArray, feterm::FeTerm{T},
+                          reterms::AbstractVector{<:AbstractReMat{T}},
+                          form::FormulaTerm, wts=[], σ=nothing) where {T}
     # detect and combine RE terms with the same grouping var
     if length(reterms) > 1
         reterms = amalgamate(reterms)
@@ -166,41 +157,20 @@ function LinearMixedModel(
         A,
         L,
         optsum,
+        isnothing(σ) ? nothing : T(σ),
     )
 end
 
-function fit(
-    ::Type{LinearMixedModel},
-    f::FormulaTerm,
-    tbl;
-    wts=[],
-    contrasts=Dict{Symbol,Any}(),
-    progress::Bool=true,
-    REML::Bool=false,
-)
-    return fit(
-        LinearMixedModel,
-        f,
-        Tables.columntable(tbl);
-        wts=wts,
-        contrasts=contrasts,
-        progress=progress,
-        REML=REML,
-    )
+function fit(::Type{LinearMixedModel}, f::FormulaTerm, tbl;
+             wts=[], contrasts=Dict{Symbol,Any}(), progress::Bool=true,
+             REML::Bool=false, σ=nothing)
+    return fit(LinearMixedModel, f, Tables.columntable(tbl);
+               wts, contrasts, progress, REML, σ)
 end
 
-function fit(
-    ::Type{LinearMixedModel},
-    f::FormulaTerm,
-    tbl::Tables.ColumnTable;
-    wts=wts,
-    contrasts=contrasts,
-    progress=progress,
-    REML=REML,
-)
-    return fit!(
-        LinearMixedModel(f, tbl; contrasts=contrasts, wts=wts); progress=progress, REML=REML
-    )
+function fit(::Type{LinearMixedModel}, f::FormulaTerm, tbl::Tables.ColumnTable;
+             wts=[], contrasts=Dict{Symbol,Any}(), progress=true, REML=false, σ=nothing)
+    return fit!(LinearMixedModel(f, tbl; contrasts, wts, σ); progress, REML)
 end
 
 function _offseterr()
@@ -220,19 +190,12 @@ function fit(
     progress::Bool=true,
     REML::Bool=false,
     offset=[],
+    σ=nothing,
 )
     return if !isempty(offset)
         _offseterr()
     else
-        fit(
-            LinearMixedModel,
-            f,
-            tbl;
-            wts=wts,
-            contrasts=contrasts,
-            progress=progress,
-            REML=REML,
-        )
+        fit(LinearMixedModel, f, tbl; wts, contrasts, progress, REML, σ)
     end
 end
 
@@ -247,21 +210,14 @@ function fit(
     progress::Bool=true,
     REML::Bool=false,
     offset=[],
+    σ=nothing,
     fast::Bool=false,
     nAGQ::Integer=1,
 )
     return if !isempty(offset)
         _offseterr()
     else
-        fit(
-            LinearMixedModel,
-            f,
-            tbl;
-            wts=wts,
-            contrasts=contrasts,
-            progress=progress,
-            REML=REML,
-        )
+        fit(LinearMixedModel, f, tbl; wts, contrasts, progress, REML, σ)
     end
 end
 
@@ -662,7 +618,12 @@ Return negative twice the log-likelihood of model `m`
 function objective(m::LinearMixedModel{T}) where {T}
     wts = m.sqrtwts
     denomdf = T(ssqdenom(m))
-    val = logdet(m) + denomdf * (one(T) + log2π + log(pwrss(m) / denomdf))
+    σ = getfield(m, :σ)
+    val = if σ === nothing
+        logdet(m) + denomdf * (one(T) + log2π + log(pwrss(m) / denomdf))
+    else
+        denomdf * (log2π + 2 * log(σ)) + logdet(m) + pwrss(m) / σ^2
+    end
     return isempty(wts) ? val : val - T(2.0) * sum(log, wts)
 end
 
@@ -898,7 +859,7 @@ end
 
 Return the estimate of σ, the standard deviation of the per-observation noise.
 """
-sdest(m::LinearMixedModel) = √varest(m)
+sdest(m::LinearMixedModel) = something(getfield(m, :σ),  √varest(m))
 
 """
     setθ!(m::LinearMixedModel, v)
@@ -1171,7 +1132,7 @@ end
 
 Returns the estimate of σ², the variance of the conditional distribution of Y given B.
 """
-varest(m::LinearMixedModel) = pwrss(m) / ssqdenom(m)
+varest(m::LinearMixedModel) = isnothing(getfield(m, :σ)) ?  pwrss(m) / ssqdenom(m) : getfield(m, :σ)
 
 function StatsBase.weights(m::LinearMixedModel)
     rtwts = m.sqrtwts
