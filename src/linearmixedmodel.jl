@@ -822,7 +822,7 @@ function restoreoptsum!(m::LinearMixedModel, io::IO)
     ops.optimizer = Symbol(dict.optimizer)
     ops.returnvalue = Symbol(dict.returnvalue)
     # provides compatibility with fits saved before the introduction of fixed sigma
-    ops.sigma = get(dict.sigma, :sigma, nothing)
+    ops.sigma = get(dict, :sigma, nothing)
     return m
 end
 
