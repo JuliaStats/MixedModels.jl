@@ -473,13 +473,14 @@ function fit!(
             xmin_[i] = zero(T)
         end
     end
-    if xmin_ ≠ xmin
+    !isnothing(fitlog) && (loglength = length(fitlog))
+    if xmin ≠ xmin_
         if (zeroobj = obj(xmin_, T[])) ≤ (fmin + 1.e-5)
             fmin = zeroobj
             copyto!(xmin, xmin_)
-        else
-            # remove unused zero'ing step
-            !isnothing(fitlog) && pop!(fitlog)
+        elseif !isnothing(fitlog) && (length(fitlog) > loglength)
+            # remove unused extra log entry
+            pop!(fitlog)
         end
     end
     ## ensure that the parameter values saved in m are xmin
