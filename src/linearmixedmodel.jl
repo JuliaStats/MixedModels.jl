@@ -183,9 +183,11 @@ function fit(
     progress::Bool=true,
     REML::Bool=false,
     σ=nothing,
+    fitlog=nothing,
+    thin=1,
 )
     return fit(
-        LinearMixedModel, f, Tables.columntable(tbl); wts, contrasts, progress, REML, σ
+        LinearMixedModel, f, Tables.columntable(tbl); wts, contrasts, progress, REML, σ, fitlog, thin
     )
 end
 
@@ -198,8 +200,10 @@ function fit(
     progress=true,
     REML=false,
     σ=nothing,
+    fitlog=nothing,
+    thin=1,
 )
-    return fit!(LinearMixedModel(f, tbl; contrasts, wts, σ); progress, REML)
+    return fit!(LinearMixedModel(f, tbl; contrasts, wts, σ); progress, REML, fitlog, thin)
 end
 
 function _offseterr()
@@ -220,11 +224,13 @@ function fit(
     REML::Bool=false,
     offset=[],
     σ=nothing,
+    thin=1,
+    fitlog=nothing,
 )
     return if !isempty(offset)
         _offseterr()
     else
-        fit(LinearMixedModel, f, tbl; wts, contrasts, progress, REML, σ)
+        fit(LinearMixedModel, f, tbl; wts, contrasts, progress, REML, σ, fitlog, thin)
     end
 end
 
@@ -240,13 +246,18 @@ function fit(
     REML::Bool=false,
     offset=[],
     σ=nothing,
-    fast::Bool=false,
-    nAGQ::Integer=1,
+    fitlog=nothing,
+    thin=1,
+    fast=nothing,
+    nAGQ=nothing,
 )
     return if !isempty(offset)
         _offseterr()
     else
-        fit(LinearMixedModel, f, tbl; wts, contrasts, progress, REML, σ)
+        if !isnothing(fast) || !isnothing(nAGQ)
+            @warn "fast and nAGQ arguments are ignored when fitting a LinearMixedModel"
+        end
+        fit(LinearMixedModel, f, tbl; wts, contrasts, progress, REML, σ, thin)
     end
 end
 
@@ -398,13 +409,28 @@ function feL(m::LinearMixedModel)
 end
 
 """
-    fit!(m::LinearMixedModel[; progress::Bool=true, REML::Bool=false])
+    fit!(m::LinearMixedModel; progress::Bool=true, REML::Bool=false,
+                              σ::Union{Real, Nothing}=nothing,
+                              fitlog::Union{AbstractVector, Nothing}=nothing,
+                              thin::Int=1)
 
 Optimize the objective of a `LinearMixedModel`.  When `progress` is `true` a
 `ProgressMeter.ProgressUnknown` display is shown during the optimization of the
 objective, if the optimization takes more than one second or so.
+
+Specifying `σ` will update the corresponding `optsum.sigma` field and constrain
+the residual standard deviation accordingly.
+
+If `fitlog` is specified, then tuple a `(θ, objective)` at every `thin`th
+iteration  is recorded in `fitlog`.
+
+!!! warning
+    `fitlog` is emptied at the start of fitting and subsequently further
+    modified to keep a log of the fitting process.
 """
-function fit!(m::LinearMixedModel{T}; progress::Bool=true, REML::Bool=false) where {T}
+function fit!(m::LinearMixedModel{T}; progress::Bool=true, REML::Bool=false,
+              σ::Union{Real, Nothing}=nothing, fitlog::Union{AbstractVector, Nothing}=nothing,
+              thin::Int=1) where {T}
     optsum = m.optsum
     # this doesn't matter for LMM, but it does for GLMM, so let's be consistent
     if optsum.feval > 0
@@ -412,15 +438,21 @@ function fit!(m::LinearMixedModel{T}; progress::Bool=true, REML::Bool=false) whe
     end
     opt = Opt(optsum)
     optsum.REML = REML
+    optsum.sigma = isnothing(σ) ? σ : T(σ)
     prog = ProgressUnknown("Minimizing"; showspeed=true)
+    !isnothing(fitlog) && empty!(fitlog)
+    iter = 1
     function obj(x, g)
         isempty(g) || throw(ArgumentError("g should be empty for this objective"))
         val = objective(updateL!(setθ!(m, x)))
+        !isnothing(fitlog) && iszero(rem(iter, thin)) && push!(fitlog, (copy(x), val))
+        iter += 1
         progress && ProgressMeter.next!(prog; showvalues=[(:objective, val)])
         return val
     end
     NLopt.min_objective!(opt, obj)
     optsum.finitial = obj(optsum.initial, T[])
+    !isnothing(fitlog) && push!(fitlog, (copy(optsum.initial), optsum.finitial))
     fmin, xmin, ret = NLopt.optimize!(opt, copyto!(optsum.final, optsum.initial))
     ProgressMeter.finish!(prog)
     ## check if small non-negative parameter values can be set to zero

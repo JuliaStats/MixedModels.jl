@@ -174,6 +174,8 @@ function fit(
     fast::Bool=false,
     nAGQ::Integer=1,
     progress::Bool=true,
+    fitlog::Union{Nothing, AbstractVector}=nothing,
+    thin::Int=1,
 )
     return fit(
         GeneralizedLinearMixedModel,
@@ -181,13 +183,15 @@ function fit(
         columntable(tbl),
         d,
         l;
-        wts=wts,
-        offset=offset,
-        contrasts=contrasts,
-        verbose=verbose,
-        fast=fast,
-        nAGQ=nAGQ,
-        progress=progress,
+        wts,
+        offset,
+        contrasts,
+        verbose,
+        fast,
+        nAGQ,
+        progress,
+        fitlog,
+        thin
     )
 end
 
@@ -204,15 +208,19 @@ function fit(
     fast::Bool=false,
     nAGQ::Integer=1,
     progress::Bool=true,
+    fitlog::Union{Nothing, AbstractVector}=nothing,
+    thin::Int=1,
 )
     return fit!(
         GeneralizedLinearMixedModel(
             f, tbl, d, l; wts=wts, offset=offset, contrasts=contrasts
         );
-        verbose=verbose,
-        fast=fast,
-        nAGQ=nAGQ,
-        progress=progress,
+        verbose,
+        fast,
+        nAGQ,
+        progress,
+        fitlog,
+        thin,
     )
 end
 
@@ -230,25 +238,18 @@ function fit(
     fast::Bool=false,
     nAGQ::Integer=1,
     progress::Bool=true,
+    fitlog::Union{Nothing, AbstractVector}=nothing,
+    thin::Int=1,
 )
     return fit(
-        GeneralizedLinearMixedModel,
-        f,
-        tbl,
-        d,
-        l;
-        wts=wts,
-        contrasts=contrasts,
-        offset=offset,
-        verbose=verbose,
-        fast=fast,
-        nAGQ=nAGQ,
-        progress=progress,
+        GeneralizedLinearMixedModel, f, tbl, d, l; wts, contrasts, offset, verbose, fast, nAGQ, progress, fitlog, thin
     )
 end
 
 """
-    fit!(m::GeneralizedLinearMixedModel[, verbose=false, fast=false, nAGQ=1, progress=true])
+    fit!(m::GeneralizedLinearMixedModel; fast=false, nAGQ=1,
+                                         verbose=false, progress=true
+                                         fitlog=nothing, thin::Int=1)
 
 Optimize the objective function for `m`.
 
@@ -261,6 +262,13 @@ during the iterations to minimize the deviance.  There is a delay before this di
 and it may not be shown at all for models that are optimized quickly.
 
 If `verbose` is `true`, then both the intermediate results of both the nonlinear optimization and PIRLS are also displayed on standard output.
+
+If `fitlog` is specified, then tuple a `(θ, objective)` at every `thin`th
+iteration  is recorded in `fitlog`.
+
+!!! warning
+    `fitlog` is emptied at the start of fitting and subsequently further
+    modified to keep a log of the fitting process
 """
 function fit!(
     m::GeneralizedLinearMixedModel{T};
@@ -268,6 +276,8 @@ function fit!(
     fast::Bool=false,
     nAGQ::Integer=1,
     progress::Bool=true,
+    fitlog::Union{Nothing, AbstractVector}=nothing,
+    thin::Int=1,
 ) where {T}
     β = m.β
     lm = m.LMM
@@ -284,9 +294,13 @@ function fit!(
     end
     setpar! = fast ? setθ! : setβθ!
     prog = ProgressUnknown("Minimizing"; showspeed=true)
+    !isnothing(fitlog) && empty!(fitlog)
+    iter = 1
     function obj(x, g)
         isempty(g) || throw(ArgumentError("g should be empty for this objective"))
         val = deviance(pirls!(setpar!(m, x), fast, verbose), nAGQ)
+        !isnothing(fitlog) && iszero(rem(iter, thin)) && push!(fitlog, (copy(x), val))
+        iter += 1
         verbose && println(round(val; digits=5), " ", x)
         progress && ProgressMeter.next!(prog; showvalues=[(:objective, val)])
         return val
@@ -294,6 +308,7 @@ function fit!(
     opt = Opt(optsum)
     NLopt.min_objective!(opt, obj)
     optsum.finitial = obj(optsum.initial, T[])
+    !isnothing(fitlog) && push!(fitlog, (copy(optsum.initial), optsum.finitial))
     fmin, xmin, ret = NLopt.optimize(opt, copyto!(optsum.final, optsum.initial))
     ProgressMeter.finish!(prog)
     ## check if very small parameter values bounded below by zero can be set to zero
