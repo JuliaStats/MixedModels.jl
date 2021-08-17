@@ -335,6 +335,9 @@ function fit!(
         if (zeroobj = obj(xmin_, T[])) ≤ (fmin + 1.e-5)
             fmin = zeroobj
             copyto!(xmin, xmin_)
+        else
+            # remove unused zero'ing step
+            pop!(fitlog)
         end
     end
     ## ensure that the parameter values saved in m are xmin
