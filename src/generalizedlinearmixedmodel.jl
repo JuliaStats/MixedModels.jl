@@ -307,21 +307,24 @@ function fit!(
     end
     setpar! = fast ? setθ! : setβθ!
     prog = ProgressUnknown("Minimizing"; showspeed=true)
-    !isnothing(fitlog) && empty!(fitlog)
-    iter = 1
+    # start from zero for the initial call to obj before optimization
+    iter = 0
     function obj(x, g)
         isempty(g) || throw(ArgumentError("g should be empty for this objective"))
         val = deviance(pirls!(setpar!(m, x), fast, verbose), nAGQ)
         !isnothing(fitlog) && iszero(rem(iter, thin)) && push!(fitlog, (copy(x), val))
-        iter += 1
         verbose && println(round(val; digits=5), " ", x)
         progress && ProgressMeter.next!(prog; showvalues=[(:objective, val)])
+        iter += 1
         return val
     end
     opt = Opt(optsum)
     NLopt.min_objective!(opt, obj)
     optsum.finitial = obj(optsum.initial, T[])
-    !isnothing(fitlog) && push!(fitlog, (copy(optsum.initial), optsum.finitial))
+    if !isnothing(fitlog)
+        empty!(fitlog)
+        push!(fitlog, (copy(optsum.initial), optsum.finitial))
+    end
     fmin, xmin, ret = NLopt.optimize(opt, copyto!(optsum.final, optsum.initial))
     ProgressMeter.finish!(prog)
     ## check if very small parameter values bounded below by zero can be set to zero
