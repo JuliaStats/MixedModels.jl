@@ -418,9 +418,6 @@ Optimize the objective of a `LinearMixedModel`.  When `progress` is `true` a
 `ProgressMeter.ProgressUnknown` display is shown during the optimization of the
 objective, if the optimization takes more than one second or so.
 
-Specifying `σ` will update the corresponding `optsum.sigma` field and constrain
-the residual standard deviation accordingly.
-
 If `fitlog` is specified, then tuple a `(θ, objective)` at every `thin`th
 iteration  is recorded in `fitlog`.
 
@@ -438,7 +435,6 @@ function fit!(m::LinearMixedModel{T}; progress::Bool=true, REML::Bool=false,
     end
     opt = Opt(optsum)
     optsum.REML = REML
-    optsum.sigma = isnothing(σ) ? σ : T(σ)
     prog = ProgressUnknown("Minimizing"; showspeed=true)
     !isnothing(fitlog) && empty!(fitlog)
     iter = 1
