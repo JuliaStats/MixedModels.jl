@@ -90,36 +90,6 @@ function OptSummary(
     )
 end
 
-# function Base.getproperty(opt::OptSummary, s::Symbol)
-#     if s == :fmin
-#         last(last(opt.fitlog))
-#     elseif s == :finitial
-#         last(first(opt.fitlog))
-#     elseif s == :final
-#         first(last(opt.fitlog))
-#     elseif s == :initial
-#         first(first(opt.fitlog))
-#     else
-#         getfield(opt, s)
-#     end
-# end
-
-# function Base.setproperty!(opt::OptSummary, s::Symbol, x)
-#     if s == :fmin
-#         opt.fitlog[end] = (first(opt.fitlog[end]), x)
-#     elseif s == :finitial
-#         opt.fitlog[begin] = (first(opt.fitlog[begin]), x)
-#     elseif s == :final
-#         copyto!(first(last(opt.fitlog)), x)
-#     elseif s == :initial
-#         copyto!(first(first(opt.fitlog)), x)
-#     elseif s ∈ (:maxfeval, :feval)
-#         setfield!(opt, s, Int(x))
-#     else
-#         setfield!(opt, s, x)
-#     end
-# end
-
 function Base.show(io::IO, ::MIME"text/plain", s::OptSummary)
     println(io, "Initial parameter vector: ", s.initial)
     println(io, "Initial objective value:  ", s.finitial)
