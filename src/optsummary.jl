@@ -25,6 +25,11 @@ Summary of an `NLopt` optimization
 * `fitlog`: A vector of tuples of parameter and objectives values from steps in the optimization
 
 The latter four fields are MixedModels functionality and not related directly to the `NLopt` package or algorithms.
+
+!!! note
+    The internal storage of the parameter values within `fitlog` may change in
+    the future to use a different subtype of `AbstractVector` (e.g., `StaticArrays.SVector`)
+    for each snapshot without being considered a breaking change.
 """
 mutable struct OptSummary{T<:AbstractFloat}
     initial::Vector{T}
