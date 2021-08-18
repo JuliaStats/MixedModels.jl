@@ -50,7 +50,7 @@ mutable struct OptSummary{T<:AbstractFloat}
     nAGQ::Integer           # don't really belong here but I needed a place to store them
     REML::Bool
     sigma::Union{T,Nothing}
-    fitlog::Vector{Tuple{Vector{T}, T}} # not SVector because we would need to parameterize on size (which breaks GLMM)
+    fitlog::Vector{Tuple{Vector{T},T}} # not SVector because we would need to parameterize on size (which breaks GLMM)
 end
 
 function OptSummary(

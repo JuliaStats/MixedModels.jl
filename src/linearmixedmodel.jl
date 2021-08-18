@@ -894,7 +894,7 @@ function restoreoptsum!(m::LinearMixedModel{T}, io::IO) where {T}
         # compat with fits saved before fitlog
         [(ops.initial, ops.finitial, ops.final, ops.fmin)]
     else
-        [(convert(Vector{T}, first(entry)), T(last(entry))) for entry in fitlog ]
+        [(convert(Vector{T}, first(entry)), T(last(entry))) for entry in fitlog]
     end
     return m
 end
