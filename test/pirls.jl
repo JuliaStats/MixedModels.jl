@@ -13,9 +13,9 @@ include("modelcache.jl")
 
 @testset "contra" begin
     contra = dataset(:contra)
-    fitlog = []
     thin = 5
-    gm0 = fit(MixedModel, only(gfms[:contra]), contra, Bernoulli(); fast=true, progress=false, fitlog, thin)
+    gm0 = fit(MixedModel, only(gfms[:contra]), contra, Bernoulli(); fast=true, progress=false, thin)
+    fitlog = gm0.optsum.fitlog
     @test length(fitlog) == (div(gm0.optsum.feval, thin) + 1) # for the initial value
     @test first(fitlog) == (gm0.optsum.initial, gm0.optsum.finitial)
     @test gm0.lowerbd == zeros(1)

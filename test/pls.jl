@@ -132,9 +132,9 @@ end
     # since we're caching the fits, we should get it back to being correctly fitted
     # we also take this opportunity to test fitlog
     @testset "fitlog" begin
-        fitlog = Tuple[]
+        fitlog = fm1.optsum.fitlog
         thin = 2
-        refit!(fm1; REML=false, progress=false, fitlog, thin)
+        refit!(fm1; REML=false, progress=false, thin)
         @test length(fitlog) == (div(fm1.optsum.feval, thin) + 1) # for the initial value
         @test first(fitlog) == (fm1.optsum.initial, fm1.optsum.finitial)
     end

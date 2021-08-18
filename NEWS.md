@@ -3,8 +3,11 @@ MixedModels v4.1.0 Release Notes
 * Add support for specifying a fixed value of `σ`, the residual standard deviation,
   in `LinearMixedModel`. `fit` takes a keyword-argument `σ`. `fit!` does not expose `σ`,
   but `σ` can be changed after model construction by setting `optsum.sigma`. [#551]
-* Add support for logging the non-linear optimizer's steps via a `fitlog`
-  keyword-argument for `fit` and `fit!`. [#552]
+* Add support for logging the non-linear optimizer's steps via a `thin`
+  keyword-argument for `fit` and `fit!`. The default behavior is 'maximal' thinning,
+  such that only the initial and final values are stored. `OptSummary` has a new field
+  `fitlog` that contains the aforementioned log as a  vector of tuples of parameter and
+  objective values.[#552]
 
 MixedModels v4.0.0 Release Notes
 ========================

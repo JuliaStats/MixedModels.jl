@@ -174,8 +174,7 @@ function fit(
     fast::Bool=false,
     nAGQ::Integer=1,
     progress::Bool=true,
-    fitlog::Union{Nothing,AbstractVector}=nothing,
-    thin::Int=1,
+    thin::Int=typemax(Int),
 )
     return fit(
         GeneralizedLinearMixedModel,
@@ -190,7 +189,6 @@ function fit(
         fast,
         nAGQ,
         progress,
-        fitlog,
         thin,
     )
 end
@@ -208,8 +206,7 @@ function fit(
     fast::Bool=false,
     nAGQ::Integer=1,
     progress::Bool=true,
-    fitlog::Union{Nothing,AbstractVector}=nothing,
-    thin::Int=1,
+    thin::Int=typemax(Int),
 )
     return fit!(
         GeneralizedLinearMixedModel(
@@ -219,7 +216,6 @@ function fit(
         fast,
         nAGQ,
         progress,
-        fitlog,
         thin,
     )
 end
@@ -238,8 +234,7 @@ function fit(
     fast::Bool=false,
     nAGQ::Integer=1,
     progress::Bool=true,
-    fitlog::Union{Nothing,AbstractVector}=nothing,
-    thin::Int=1,
+    thin::Int=typemax(Int),
 )
     return fit(
         GeneralizedLinearMixedModel,
@@ -254,15 +249,14 @@ function fit(
         fast,
         nAGQ,
         progress,
-        fitlog,
         thin,
     )
 end
 
 """
     fit!(m::GeneralizedLinearMixedModel; fast=false, nAGQ=1,
-                                         verbose=false, progress=true
-                                         fitlog=nothing, thin::Int=1)
+                                         verbose=false, progress=true,
+                                         thin::Int=1)
 
 Optimize the objective function for `m`.
 
@@ -276,12 +270,7 @@ and it may not be shown at all for models that are optimized quickly.
 
 If `verbose` is `true`, then both the intermediate results of both the nonlinear optimization and PIRLS are also displayed on standard output.
 
-If `fitlog` is specified, then tuple a `(θ, objective)` at every `thin`th
-iteration  is recorded in `fitlog`.
-
-!!! warning
-    `fitlog` is emptied at the start of fitting and subsequently further
-    modified to keep a log of the fitting process
+At every `thin`th iteration  is recorded in `fitlog`, optimization progress is saved in `m.optsum.fitlog`.
 """
 function fit!(
     m::GeneralizedLinearMixedModel{T};
@@ -289,8 +278,7 @@ function fit!(
     fast::Bool=false,
     nAGQ::Integer=1,
     progress::Bool=true,
-    fitlog::Union{Nothing,AbstractVector}=nothing,
-    thin::Int=1,
+    thin::Int=typemax(Int),
 ) where {T}
     β = m.β
     lm = m.LMM
@@ -309,10 +297,11 @@ function fit!(
     prog = ProgressUnknown("Minimizing"; showspeed=true)
     # start from zero for the initial call to obj before optimization
     iter = 0
+    fitlog = optsum.fitlog
     function obj(x, g)
         isempty(g) || throw(ArgumentError("g should be empty for this objective"))
         val = deviance(pirls!(setpar!(m, x), fast, verbose), nAGQ)
-        !isnothing(fitlog) && iszero(rem(iter, thin)) && push!(fitlog, (copy(x), val))
+        iszero(rem(iter, thin)) && push!(fitlog, (copy(x), val))
         verbose && println(round(val; digits=5), " ", x)
         progress && ProgressMeter.next!(prog; showvalues=[(:objective, val)])
         iter += 1
@@ -321,10 +310,8 @@ function fit!(
     opt = Opt(optsum)
     NLopt.min_objective!(opt, obj)
     optsum.finitial = obj(optsum.initial, T[])
-    if !isnothing(fitlog)
-        empty!(fitlog)
-        push!(fitlog, (copy(optsum.initial), optsum.finitial))
-    end
+    empty!(fitlog)
+    push!(fitlog, (copy(optsum.initial), optsum.finitial))
     fmin, xmin, ret = NLopt.optimize(opt, copyto!(optsum.final, optsum.initial))
     ProgressMeter.finish!(prog)
     ## check if very small parameter values bounded below by zero can be set to zero
@@ -334,12 +321,12 @@ function fit!(
             xmin_[i] = zero(T)
         end
     end
-    !isnothing(fitlog) && (loglength = length(fitlog))
+    loglength = length(fitlog)
     if xmin ≠ xmin_
         if (zeroobj = obj(xmin_, T[])) ≤ (fmin + 1.e-5)
             fmin = zeroobj
             copyto!(xmin, xmin_)
-        elseif !isnothing(fitlog) && (length(fitlog) > loglength)
+        elseif length(fitlog) > loglength
             # remove unused extra log entry
             pop!(fitlog)
         end
