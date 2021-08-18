@@ -589,30 +589,40 @@ end
 StatsBase.islinear(m::LinearMixedModel) = true
 
 function StatsBase.leverage(m::LinearMixedModel{T}) where {T}
-    # This can be done more efficiently but reusing existing tools is easier.
-    # The i'th leverage value is obtained by replacing the response with the i'th
-    # basis vector, updating A and L, then taking the sum of squared values of the
-    # last row of L, excluding the last position.
-    yview = m.y
-    yorig = copy(yview)
-    kp1 = length(m.reterms) + 1
+    # The leverage is the diagonal of the "hat" matrix.  For a linear model, the sum of
+    # the leverage values is the degrees of freedom for the model in the sense that this
+    # sum is the dimension of the span of columns of the model matrix.  With a bit of hand
+    # waving a similar argument could be made for linear mixed-effects models.  The hat
+    # matrix is of the form [ZΛ X][L L']⁻¹[ZΛ X]'  To obtain the diagonal elements solve
+    # L⁻¹[ZΛ X]'eⱼ where eⱼ is the j'th basis vector in Rⁿ and evaluate the squared length
+    # of the solution.  The fact that the [1,1] block of L is always UniformBlockDiagonal
+    # or Diagonal makes the first part easy.  To make the bookkeeping easier the last row
+    # in the last row of blocks, which corresponds to the response, is retained in the
+    # calculations up to the accumulation of the squared length.
+    retrms = m.reterms
     L = m.L
-    lastL = last(L)
-    pp1 = size(lastL, 1)
-    p = pp1 - 1
-    value = map(eachindex(yorig)) do i
-        fill!(yview, zero(T))
-        yview[i] = one(T)
-        updateL!(reevaluateAend!(m))
-        s = sum(abs2, view(lastL, pp1, Base.OneTo(p)))
-        for j in eachindex(m.reterms)
-            Lblock = m.L[block(kp1, j)]
-            s += sum(abs2, view(Lblock, pp1, :))
-        end
-        s
+    Xy = m.Xymat
+    nblks = length(retrms) + 1
+    re1 = first(retrms)
+    r1sz = size(re1.z, 1)
+    rhs = [Vector{T}(undef, r1sz)]
+    for i in 2:nblks
+        push!(rhs, Vector{T}(undef, size(L[block(i, 1)], 1)))
     end
-    copyto!(m.y, yorig)
-    updateL!(reevaluateAend!(m))
+    value = sizehint!(T[], size(Xy, 1))
+    for i in axes(Xy, 1)
+        copyto!(first(rhs), view(re1.z, :, i))
+        ldiv!(
+            LowerTriangular(view(first(L).data, :, :, re1.refs[i])),
+            lmul!(adjoint(re1.λ), first(rhs)),
+        )
+        copyto!(last(rhs), view(Xy, i, :))
+        off = (re1.refs[i] - 1) * r1sz 
+        mul!(last(rhs), view(L[block(nblks, 1)], :, (off+1):(off+r1sz)), first(rhs), 1, -1)
+        ldiv!(LowerTriangular(last(L)), last(rhs))
+        last(rhs)[end] = 0
+        push!(value, sum(v -> sum(abs2, v), rhs))
+    end
     return value
 end
 
