@@ -174,6 +174,7 @@ function fit(
     fast::Bool=false,
     nAGQ::Integer=1,
     progress::Bool=true,
+    thin::Int=typemax(Int),
 )
     return fit(
         GeneralizedLinearMixedModel,
@@ -181,13 +182,14 @@ function fit(
         columntable(tbl),
         d,
         l;
-        wts=wts,
-        offset=offset,
-        contrasts=contrasts,
-        verbose=verbose,
-        fast=fast,
-        nAGQ=nAGQ,
-        progress=progress,
+        wts,
+        offset,
+        contrasts,
+        verbose,
+        fast,
+        nAGQ,
+        progress,
+        thin,
     )
 end
 
@@ -204,15 +206,17 @@ function fit(
     fast::Bool=false,
     nAGQ::Integer=1,
     progress::Bool=true,
+    thin::Int=typemax(Int),
 )
     return fit!(
         GeneralizedLinearMixedModel(
             f, tbl, d, l; wts=wts, offset=offset, contrasts=contrasts
         );
-        verbose=verbose,
-        fast=fast,
-        nAGQ=nAGQ,
-        progress=progress,
+        verbose,
+        fast,
+        nAGQ,
+        progress,
+        thin,
     )
 end
 
@@ -230,6 +234,7 @@ function fit(
     fast::Bool=false,
     nAGQ::Integer=1,
     progress::Bool=true,
+    thin::Int=typemax(Int),
 )
     return fit(
         GeneralizedLinearMixedModel,
@@ -237,18 +242,21 @@ function fit(
         tbl,
         d,
         l;
-        wts=wts,
-        contrasts=contrasts,
-        offset=offset,
-        verbose=verbose,
-        fast=fast,
-        nAGQ=nAGQ,
-        progress=progress,
+        wts,
+        contrasts,
+        offset,
+        verbose,
+        fast,
+        nAGQ,
+        progress,
+        thin,
     )
 end
 
 """
-    fit!(m::GeneralizedLinearMixedModel[, verbose=false, fast=false, nAGQ=1, progress=true])
+    fit!(m::GeneralizedLinearMixedModel; fast=false, nAGQ=1,
+                                         verbose=false, progress=true,
+                                         thin::Int=1)
 
 Optimize the objective function for `m`.
 
@@ -261,6 +269,8 @@ during the iterations to minimize the deviance.  There is a delay before this di
 and it may not be shown at all for models that are optimized quickly.
 
 If `verbose` is `true`, then both the intermediate results of both the nonlinear optimization and PIRLS are also displayed on standard output.
+
+At every `thin`th iteration  is recorded in `fitlog`, optimization progress is saved in `m.optsum.fitlog`.
 """
 function fit!(
     m::GeneralizedLinearMixedModel{T};
@@ -268,6 +278,7 @@ function fit!(
     fast::Bool=false,
     nAGQ::Integer=1,
     progress::Bool=true,
+    thin::Int=typemax(Int),
 ) where {T}
     β = m.β
     lm = m.LMM
@@ -284,16 +295,23 @@ function fit!(
     end
     setpar! = fast ? setθ! : setβθ!
     prog = ProgressUnknown("Minimizing"; showspeed=true)
+    # start from zero for the initial call to obj before optimization
+    iter = 0
+    fitlog = optsum.fitlog
     function obj(x, g)
         isempty(g) || throw(ArgumentError("g should be empty for this objective"))
         val = deviance(pirls!(setpar!(m, x), fast, verbose), nAGQ)
+        iszero(rem(iter, thin)) && push!(fitlog, (copy(x), val))
         verbose && println(round(val; digits=5), " ", x)
         progress && ProgressMeter.next!(prog; showvalues=[(:objective, val)])
+        iter += 1
         return val
     end
     opt = Opt(optsum)
     NLopt.min_objective!(opt, obj)
     optsum.finitial = obj(optsum.initial, T[])
+    empty!(fitlog)
+    push!(fitlog, (copy(optsum.initial), optsum.finitial))
     fmin, xmin, ret = NLopt.optimize(opt, copyto!(optsum.final, optsum.initial))
     ProgressMeter.finish!(prog)
     ## check if very small parameter values bounded below by zero can be set to zero
@@ -303,10 +321,14 @@ function fit!(
             xmin_[i] = zero(T)
         end
     end
+    loglength = length(fitlog)
     if xmin ≠ xmin_
         if (zeroobj = obj(xmin_, T[])) ≤ (fmin + 1.e-5)
             fmin = zeroobj
             copyto!(xmin, xmin_)
+        elseif length(fitlog) > loglength
+            # remove unused extra log entry
+            pop!(fitlog)
         end
     end
     ## ensure that the parameter values saved in m are xmin
