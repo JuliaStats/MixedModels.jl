@@ -593,8 +593,8 @@ StatsBase.islinear(m::LinearMixedModel) = true
     
 returns L in 3-block form: 
 - a Diagonal or UniformBlockDiagonal block
--  a dense rectangular block
--  and a dense lowertriangular block
+- a dense rectangular block
+- and a dense lowertriangular block
 """
 function _3blockL(m::LinearMixedModel{T}) where {T}
     L = m.L
