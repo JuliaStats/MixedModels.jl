@@ -593,7 +593,8 @@ StatsBase.islinear(m::LinearMixedModel) = true
 function _3blockL(m::LinearMixedModel{T}) where {T}
     L = m.L
     reterms = m.reterms
-    isone(length(reterms)) && return first(L), L[block(2,1)], LowerTriangular(L[block(2,2)])
+    isone(length(reterms)) &&
+        return first(L), L[block(2, 1)], LowerTriangular(L[block(2, 2)])
     rows = sum(k -> size(L[kp1choose2(k + 1)], 1), axes(reterms, 1))
     cols = size(first(L), 2)
     B2 = Matrix{T}(undef, (rows, cols))
@@ -630,25 +631,37 @@ function StatsBase.leverage(m::LinearMixedModel{T}) where {T}
     # of the solution.  The fact that the [1,1] block of L is always UniformBlockDiagonal
     # or Diagonal makes it easy to obtain the first chunk of the solution.
     B1, B2, B3 = _3blockL(m)
-    re1 = first(m.reterms)
+    reterms = m.reterms
+    re1 = first(reterms)
     re1z = re1.z
     r1sz = size(re1z, 1)
     re1λ = re1.λ
     re1refs = re1.refs
     Xy = m.Xymat
-    rhs = (
-        zeros(T, size(re1z, 1)),   # for the first block only the nonzeros are stored
-        zeros(T, size(B2, 1)),
-    )
+    rhs1 = zeros(T, size(re1z, 1))   # for the first block only the nonzeros are stored
+    rhs2 = zeros(T, size(B2, 1))
     value = similar(m.y)
     for i in eachindex(value)
         re1ind = re1refs[i]
-        _ldivB1!(B1, mul!(first(rhs), adjoint(re1λ), view(re1z, :, i)), re1ind)
+        _ldivB1!(B1, mul!(rhs1, adjoint(re1λ), view(re1z, :, i)), re1ind)
         off = (re1ind - 1) * r1sz
-        copyto!(last(rhs), view(Xy, i, :))
-        ldiv!(B3, mul!(last(rhs), view(B2, :, off .+ Base.OneTo(r1sz)), first(rhs), 1, -1))
-        last(rhs)[end] = 0
-        value[i] = sum(v -> sum(abs2, v), rhs)
+        fill!(rhs2, 0)
+        rhsoffset = 0
+        for j in 2:length(reterms)
+            trm = reterms[j]
+            z = trm.z
+            stride = size(z, 1)
+            mul!(
+                view(rhs2, (rhsoffset + (trm.refs[i] - 1) * stride) .+ Base.OneTo(stride)),
+                adjoint(trm.λ),
+                view(z, :, i),
+            )
+            rhsoffset += length(trm.levels) * stride
+        end
+        copyto!(view(rhs2, rhsoffset .+ Base.OneTo(size(Xy, 2))), view(Xy, i, :))
+        ldiv!(B3, mul!(rhs2, view(B2, :, off .+ Base.OneTo(r1sz)), rhs1, 1, -1))
+        rhs2[end] = 0
+        value[i] = sum(abs2, rhs1) + sum(abs2, rhs2)
     end
     return value
 end
