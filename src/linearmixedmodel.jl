@@ -588,8 +588,14 @@ end
 
 StatsBase.islinear(m::LinearMixedModel) = true
 
-# _3blockL returns L in 3-block form: 
-# a Diagonal or UniformBlockDiagonal block, a dense rectangular block, and a dense lowertriangular block
+"""
+    _3blockL(::LinearMixedModel)
+    
+returns L in 3-block form: 
+- a Diagonal or UniformBlockDiagonal block
+-  a dense rectangular block
+-  and a dense lowertriangular block
+"""
 function _3blockL(m::LinearMixedModel{T}) where {T}
     L = m.L
     reterms = m.reterms
@@ -621,14 +627,20 @@ function _ldivB1!(B1::UniformBlockDiagonal{T}, rhs::AbstractVector{T}, ind) wher
     return ldiv!(LowerTriangular(view(B1.data, :, :, ind)), rhs)
 end
 
+"""
+    leverage(::LinearMixedModel)
+
+Return the diagonal of the hat matrix of the model.
+
+For a linear model, the sum of the leverage values is the degrees of freedom
+for the model in the sense that this sum is the dimension of the span of columns
+of the model matrix.  With a bit of hand waving a similar argument could be made
+for linear mixed-effects models. The hat matrix is of the form ``[ZΛ X][L L']⁻¹[ZΛ X]'``.
+"""
 function StatsBase.leverage(m::LinearMixedModel{T}) where {T}
-    # The leverage is the diagonal of the "hat" matrix.  For a linear model, the sum of
-    # the leverage values is the degrees of freedom for the model in the sense that this
-    # sum is the dimension of the span of columns of the model matrix.  With a bit of hand
-    # waving a similar argument could be made for linear mixed-effects models.  The hat
-    # matrix is of the form [ZΛ X][L L']⁻¹[ZΛ X]'  To obtain the diagonal elements solve
-    # L⁻¹[ZΛ X]'eⱼ where eⱼ is the j'th basis vector in Rⁿ and evaluate the squared length
-    # of the solution.  The fact that the [1,1] block of L is always UniformBlockDiagonal
+    # To obtain the diagonal elements solve L⁻¹[ZΛ X]'eⱼ
+    # where eⱼ is the j'th basis vector in Rⁿ and evaluate the squared length of the solution.
+    # The fact that the [1,1] block of L is always UniformBlockDiagonal
     # or Diagonal makes it easy to obtain the first chunk of the solution.
     B1, B2, B3 = _3blockL(m)
     reterms = m.reterms
