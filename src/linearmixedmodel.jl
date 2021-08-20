@@ -588,6 +588,38 @@ end
 
 StatsBase.islinear(m::LinearMixedModel) = true
 
+# _3blockL returns L in 3-block form: 
+# a Diagonal or UniformBlockDiagonal block, a dense rectangular block, and a dense lowertriangular block
+function _3blockL(m::LinearMixedModel{T}) where {T}
+    L = m.L
+    reterms = m.reterms
+    isone(length(reterms)) && return first(L), L[block(2,1)], LowerTriangular(L[block(2,2)])
+    rows = sum(k -> size(L[kp1choose2(k + 1)], 1), axes(reterms, 1))
+    cols = size(first(L), 2)
+    B2 = Matrix{T}(undef, (rows, cols))
+    B3 = Matrix{T}(undef, (rows, rows))
+    rowoffset = 0
+    for i in 1 .+ axes(reterms, 1)
+        Li1 = L[block(i, 1)]
+        rows = rowoffset .+ axes(Li1, 1)
+        copyto!(view(B2, rows, :), Li1)
+        coloffset = 0
+        for j in 2:i
+            Lij = L[block(i, j)]
+            copyto!(view(B3, rows, coloffset .+ axes(Lij, 2)), Lij)
+            coloffset += size(Lij, 2)
+        end
+        rowoffset += size(Li1, 1)
+    end
+    return first(L), B2, LowerTriangular(B3)
+end
+
+# use dispatch to distinguish Diagonal and UniformBlockDiagonal in first(L)
+_ldivB1!(B1::Diagonal{T}, rhs::AbstractVector{T}, ind) where {T} = rhs ./= B1.diag[ind]
+function _ldivB1!(B1::UniformBlockDiagonal{T}, rhs::AbstractVector{T}, ind) where {T}
+    return ldiv!(LowerTriangular(view(B1.data, :, :, ind)), rhs)
+end
+
 function StatsBase.leverage(m::LinearMixedModel{T}) where {T}
     # The leverage is the diagonal of the "hat" matrix.  For a linear model, the sum of
     # the leverage values is the degrees of freedom for the model in the sense that this
@@ -596,32 +628,27 @@ function StatsBase.leverage(m::LinearMixedModel{T}) where {T}
     # matrix is of the form [ZΛ X][L L']⁻¹[ZΛ X]'  To obtain the diagonal elements solve
     # L⁻¹[ZΛ X]'eⱼ where eⱼ is the j'th basis vector in Rⁿ and evaluate the squared length
     # of the solution.  The fact that the [1,1] block of L is always UniformBlockDiagonal
-    # or Diagonal makes the first part easy.  To make the bookkeeping easier the last row
-    # in the last row of blocks, which corresponds to the response, is retained in the
-    # calculations up to the accumulation of the squared length.
-    retrms = m.reterms
-    L = m.L
+    # or Diagonal makes it easy to obtain the first chunk of the solution.
+    B1, B2, B3 = _3blockL(m)
+    re1 = first(m.reterms)
+    re1z = re1.z
+    r1sz = size(re1z, 1)
+    re1λ = re1.λ
+    re1refs = re1.refs
     Xy = m.Xymat
-    nblks = length(retrms) + 1
-    re1 = first(retrms)
-    r1sz = size(re1.z, 1)
-    rhs = [Vector{T}(undef, r1sz)]
-    for i in 2:nblks
-        push!(rhs, Vector{T}(undef, size(L[block(i, 1)], 1)))
-    end
-    value = sizehint!(T[], size(Xy, 1))
-    for i in axes(Xy, 1)
-        copyto!(first(rhs), view(re1.z, :, i))
-        ldiv!(
-            LowerTriangular(view(first(L).data, :, :, re1.refs[i])),
-            lmul!(adjoint(re1.λ), first(rhs)),
-        )
+    rhs = (
+        zeros(T, size(re1z, 1)),   # for the first block only the nonzeros are stored
+        zeros(T, size(B2, 1)),
+    )
+    value = similar(m.y)
+    for i in eachindex(value)
+        re1ind = re1refs[i]
+        _ldivB1!(B1, mul!(first(rhs), adjoint(re1λ), view(re1z, :, i)), re1ind)
+        off = (re1ind - 1) * r1sz
         copyto!(last(rhs), view(Xy, i, :))
-        off = (re1.refs[i] - 1) * r1sz 
-        mul!(last(rhs), view(L[block(nblks, 1)], :, (off+1):(off+r1sz)), first(rhs), 1, -1)
-        ldiv!(LowerTriangular(last(L)), last(rhs))
+        ldiv!(B3, mul!(last(rhs), view(B2, :, off .+ Base.OneTo(r1sz)), first(rhs), 1, -1))
         last(rhs)[end] = 0
-        push!(value, sum(v -> sum(abs2, v), rhs))
+        value[i] = sum(v -> sum(abs2, v), rhs)
     end
     return value
 end
