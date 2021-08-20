@@ -484,7 +484,7 @@ end
     pca = last(models(:kb07)).PCA
     @test keys(pca) == (:subj, :item)
     show(io, models(:kb07)[2])
-    @test sum(leverage(last(models(:kb07)))) ≈ 131.28414754217545 rtol = 1.e-3
+    @test sum(leverage(last(models(:kb07)))) ≈ 131.28414754217545 rtol = 7.e-3
     tokens = Set(split(String(take!(io)), r"\s+"))
     @test "Corr." in tokens
     @test "-0.89" in tokens
