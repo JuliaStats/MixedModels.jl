@@ -6,7 +6,7 @@ MixedModels v4.1.0 Release Notes
   struct. [#551]
 * Faster version of `leverage` for `LinearMixedModel` allowing for experimentation
   using the sum of the leverage values as an empirical degrees of freedom for the
-  model. [#535]
+  model. [#553], see also [#535]
 
 
 MixedModels v4.0.0 Release Notes
@@ -278,3 +278,4 @@ Package dependencies
 [#537]: https://github.com/JuliaStats/MixedModels.jl/issues/537
 [#539]: https://github.com/JuliaStats/MixedModels.jl/issues/539
 [#551]: https://github.com/JuliaStats/MixedModels.jl/issues/551
+[#553]: https://github.com/JuliaStats/MixedModels.jl/issues/553
