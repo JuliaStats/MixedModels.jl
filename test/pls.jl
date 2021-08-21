@@ -130,7 +130,14 @@ end
     @test isa(vc, Matrix{Float64})
     @test only(vc) ≈ 375.7167775 rtol=1.e-6
     # since we're caching the fits, we should get it back to being correctly fitted
-    refit!(fm1; REML=false, progress=false)
+    # we also take this opportunity to test fitlog
+    @testset "fitlog" begin
+        fitlog = fm1.optsum.fitlog
+        thin = 2
+        refit!(fm1; REML=false, progress=false, thin)
+        @test length(fitlog) == (div(fm1.optsum.feval, thin) + 1) # for the initial value
+        @test first(fitlog) == (fm1.optsum.initial, fm1.optsum.finitial)
+    end
 end
 
 @testset "Dyestuff2" begin

@@ -183,9 +183,18 @@ function fit(
     progress::Bool=true,
     REML::Bool=false,
     σ=nothing,
+    thin=typemax(Int),
 )
     return fit(
-        LinearMixedModel, f, Tables.columntable(tbl); wts, contrasts, progress, REML, σ
+        LinearMixedModel,
+        f,
+        Tables.columntable(tbl);
+        wts,
+        contrasts,
+        progress,
+        REML,
+        σ,
+        thin,
     )
 end
 
@@ -198,8 +207,9 @@ function fit(
     progress=true,
     REML=false,
     σ=nothing,
+    thin=typemax(Int),
 )
-    return fit!(LinearMixedModel(f, tbl; contrasts, wts, σ); progress, REML)
+    return fit!(LinearMixedModel(f, tbl; contrasts, wts, σ); progress, REML, thin)
 end
 
 function _offseterr()
@@ -220,11 +230,12 @@ function fit(
     REML::Bool=false,
     offset=[],
     σ=nothing,
+    thin=typemax(Int),
 )
     return if !isempty(offset)
         _offseterr()
     else
-        fit(LinearMixedModel, f, tbl; wts, contrasts, progress, REML, σ)
+        fit(LinearMixedModel, f, tbl; wts, contrasts, progress, REML, σ, thin)
     end
 end
 
@@ -240,13 +251,17 @@ function fit(
     REML::Bool=false,
     offset=[],
     σ=nothing,
-    fast::Bool=false,
-    nAGQ::Integer=1,
+    thin=typemax(Int),
+    fast=nothing,
+    nAGQ=nothing,
 )
     return if !isempty(offset)
         _offseterr()
     else
-        fit(LinearMixedModel, f, tbl; wts, contrasts, progress, REML, σ)
+        if !isnothing(fast) || !isnothing(nAGQ)
+            @warn "fast and nAGQ arguments are ignored when fitting a LinearMixedModel"
+        end
+        fit(LinearMixedModel, f, tbl; wts, contrasts, progress, REML, σ, thin)
     end
 end
 
@@ -398,13 +413,24 @@ function feL(m::LinearMixedModel)
 end
 
 """
-    fit!(m::LinearMixedModel[; progress::Bool=true, REML::Bool=false])
+    fit!(m::LinearMixedModel; progress::Bool=true, REML::Bool=false,
+                              σ::Union{Real, Nothing}=nothing,
+                              thin::Int=typemax(Int))
 
 Optimize the objective of a `LinearMixedModel`.  When `progress` is `true` a
 `ProgressMeter.ProgressUnknown` display is shown during the optimization of the
 objective, if the optimization takes more than one second or so.
+
+At every `thin`th iteration  is recorded in `fitlog`, optimization progress is
+saved in `m.optsum.fitlog`.
 """
-function fit!(m::LinearMixedModel{T}; progress::Bool=true, REML::Bool=false) where {T}
+function fit!(
+    m::LinearMixedModel{T};
+    progress::Bool=true,
+    REML::Bool=false,
+    σ::Union{Real,Nothing}=nothing,
+    thin::Int=typemax(Int),
+) where {T}
     optsum = m.optsum
     # this doesn't matter for LMM, but it does for GLMM, so let's be consistent
     if optsum.feval > 0
@@ -413,14 +439,21 @@ function fit!(m::LinearMixedModel{T}; progress::Bool=true, REML::Bool=false) whe
     opt = Opt(optsum)
     optsum.REML = REML
     prog = ProgressUnknown("Minimizing"; showspeed=true)
+    # start from zero for the initial call to obj before optimization
+    iter = 0
+    fitlog = optsum.fitlog
     function obj(x, g)
         isempty(g) || throw(ArgumentError("g should be empty for this objective"))
         val = objective(updateL!(setθ!(m, x)))
+        iszero(rem(iter, thin)) && push!(fitlog, (copy(x), val))
         progress && ProgressMeter.next!(prog; showvalues=[(:objective, val)])
+        iter += 1
         return val
     end
     NLopt.min_objective!(opt, obj)
     optsum.finitial = obj(optsum.initial, T[])
+    empty!(fitlog)
+    push!(fitlog, (copy(optsum.initial), optsum.finitial))
     fmin, xmin, ret = NLopt.optimize!(opt, copyto!(optsum.final, optsum.initial))
     ProgressMeter.finish!(prog)
     ## check if small non-negative parameter values can be set to zero
@@ -431,10 +464,14 @@ function fit!(m::LinearMixedModel{T}; progress::Bool=true, REML::Bool=false) whe
             xmin_[i] = zero(T)
         end
     end
-    if xmin_ ≠ xmin
+    loglength = length(fitlog)
+    if xmin ≠ xmin_
         if (zeroobj = obj(xmin_, T[])) ≤ (fmin + 1.e-5)
             fmin = zeroobj
             copyto!(xmin, xmin_)
+        elseif length(fitlog) > loglength
+            # remove unused extra log entry
+            pop!(fitlog)
         end
     end
     ## ensure that the parameter values saved in m are xmin
@@ -888,7 +925,7 @@ end
 
 Read, check, and restore the `optsum` field from a JSON stream or filename.
 """
-function restoreoptsum!(m::LinearMixedModel, io::IO)
+function restoreoptsum!(m::LinearMixedModel{T}, io::IO) where {T}
     dict = JSON3.read(io)
     ops = m.optsum
     okay =
@@ -914,6 +951,13 @@ function restoreoptsum!(m::LinearMixedModel, io::IO)
     ops.returnvalue = Symbol(dict.returnvalue)
     # provides compatibility with fits saved before the introduction of fixed sigma
     ops.sigma = get(dict, :sigma, nothing)
+    fitlog = get(dict, :fitlog, nothing)
+    ops.fitlog = if isnothing(fitlog)
+        # compat with fits saved before fitlog
+        [(ops.initial, ops.finitial, ops.final, ops.fmin)]
+    else
+        [(convert(Vector{T}, first(entry)), T(last(entry))) for entry in fitlog]
+    end
     return m
 end
 

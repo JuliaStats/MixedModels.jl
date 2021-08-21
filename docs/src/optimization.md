@@ -189,6 +189,15 @@ fm2.optsum
 DisplayAs.Text(ans) # hide
 ```
 
+More detailed information about the intermediate steps of the nonlinear optimizer can be obtained the `fitlog` field.
+By default, `fitlog` contains entries for only the initial and final steps, but additional information about every nth step can be obtained with the `thin` keyword-argument to `fit`, `fit!` and `refit!`:
+
+```@example Main
+refit!(fm2; thin=1)
+fm2.optsum.fitlog[1:10]
+DisplayAs.Text(ans) # hide
+```
+
 ## A blocked Cholesky factor
 
 A `LinearMixedModel` object contains two blocked matrices; a symmetric matrix `A` (only the lower triangle is stored) and a lower-triangular `L` which is the lower Cholesky factor of the updated and inflated `A`.
@@ -220,18 +229,30 @@ To modify the optimization process the input fields can be changed after constru
 
 Suppose, for example, that the user wishes to try a [Nelder-Mead](https://en.wikipedia.org/wiki/Nelder%E2%80%93Mead_method) optimization method instead of the default [`BOBYQA`](https://en.wikipedia.org/wiki/BOBYQA) (Bounded Optimization BY Quadratic Approximation) method.
 ```@example Main
-fm2 = LinearMixedModel(@formula(reaction ~ 1+days+(1+days|subj)), sleepstudy);
-fm2.optsum.optimizer = :LN_NELDERMEAD;
-fit!(fm2)
-fm2.optsum
+fm2nm = LinearMixedModel(@formula(reaction ~ 1+days+(1+days|subj)), sleepstudy);
+fm2nm.optsum.optimizer = :LN_NELDERMEAD;
+fit!(fm2nm; thin=1)
+fm2nm.optsum
 DisplayAs.Text(ans) # hide
 ```
 
 The parameter estimates are quite similar to those using `:LN_BOBYQA` but at the expense of 140 functions evaluations for `:LN_NELDERMEAD` versus 57 for `:LN_BOBYQA`.
+When plotting the progress of the individual fits, it becomes obvious that `:LN_BOBYQA` has fully converged by the time `:LN_NELDERMEAD` begins to approach the optimum.
+
+```@example Main
+using Gadfly
+nm = fm2nm.optsum.fitlog
+bob = fm2.optsum.fitlog
+convdf = DataFrame(algorithm=[repeat(["NelderMead"], length(nm));
+                           repeat(["BOBYQA"], length(bob))],
+                   objective=[last.(nm); last.(bob)],
+                   step=[1:length(nm); 1:length(bob)])
+plot(convdf, x=:step, y=:objective, color=:algorithm, Geom.line)
+```
 
 Run time can be constrained with  `maxfeval` and `maxtime`.
 
-See the documentation for the [`NLopt`](https://github.com/JuliaOpt/NLopt.jl) package for details about the various settings. 
+See the documentation for the [`NLopt`](https://github.com/JuliaOpt/NLopt.jl) package for details about the various settings.
 
 ### Convergence to singular covariance matrices
 

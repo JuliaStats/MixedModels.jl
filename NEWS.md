@@ -1,13 +1,16 @@
 MixedModels v4.1.0 Release Notes
 ========================
 * Add support for specifying a fixed value of `σ`, the residual standard deviation,
-  in `LinearMixedModel`. `fit` takes a keyword-argument `σ`. For models constructed
-  separately, `σ` can be specified by setting `optsum.sigma`. [#551]
-  struct. [#551]
+  in `LinearMixedModel`. `fit` takes a keyword-argument `σ`. `fit!` does not expose `σ`,
+  but `σ` can be changed after model construction by setting `optsum.sigma`. [#551]
+* Add support for logging the non-linear optimizer's steps via a `thin`
+  keyword-argument for `fit` and `fit!`. The default behavior is 'maximal' thinning,
+  such that only the initial and final values are stored. `OptSummary` has a new field
+  `fitlog` that contains the aforementioned log as a  vector of tuples of parameter and
+  objective values.[#552]
 * Faster version of `leverage` for `LinearMixedModel` allowing for experimentation
   using the sum of the leverage values as an empirical degrees of freedom for the
   model. [#553], see also [#535]
-
 
 MixedModels v4.0.0 Release Notes
 ========================
@@ -278,4 +281,5 @@ Package dependencies
 [#537]: https://github.com/JuliaStats/MixedModels.jl/issues/537
 [#539]: https://github.com/JuliaStats/MixedModels.jl/issues/539
 [#551]: https://github.com/JuliaStats/MixedModels.jl/issues/551
+[#552]: https://github.com/JuliaStats/MixedModels.jl/issues/552
 [#553]: https://github.com/JuliaStats/MixedModels.jl/issues/553
