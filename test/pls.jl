@@ -479,6 +479,7 @@ end
     @test objective(fm) ≈ 884957.5540213 rtol = 1e-4
     @test coef(fm) ≈ [0.4991229873, 0.31130780953] atol = 1.e-4
     @test length(ranef(fm)) == 3
+    @test sum(leverage(fm)) ≈ 8808.00706143011 rtol = 1.e-4
 
     show(io, BlockDescription(fm))
     tokens = Set(split(String(take!(io)), r"\s+"))
@@ -490,6 +491,7 @@ end
     pca = last(models(:kb07)).PCA
     @test keys(pca) == (:subj, :item)
     show(io, models(:kb07)[2])
+    @test sum(leverage(last(models(:kb07)))) ≈ 131.28414754217545 rtol = 7.e-3
     tokens = Set(split(String(take!(io)), r"\s+"))
     @test "Corr." in tokens
     @test "-0.89" in tokens

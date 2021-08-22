@@ -625,31 +625,93 @@ end
 
 StatsBase.islinear(m::LinearMixedModel) = true
 
-function StatsBase.leverage(m::LinearMixedModel{T}) where {T}
-    # This can be done more efficiently but reusing existing tools is easier.
-    # The i'th leverage value is obtained by replacing the response with the i'th
-    # basis vector, updating A and L, then taking the sum of squared values of the
-    # last row of L, excluding the last position.
-    yview = m.y
-    yorig = copy(yview)
-    kp1 = length(m.reterms) + 1
+"""
+    _3blockL(::LinearMixedModel)
+    
+returns L in 3-block form: 
+- a Diagonal or UniformBlockDiagonal block
+- a dense rectangular block
+- and a dense lowertriangular block
+"""
+function _3blockL(m::LinearMixedModel{T}) where {T}
     L = m.L
-    lastL = last(L)
-    pp1 = size(lastL, 1)
-    p = pp1 - 1
-    value = map(eachindex(yorig)) do i
-        fill!(yview, zero(T))
-        yview[i] = one(T)
-        updateL!(reevaluateAend!(m))
-        s = sum(abs2, view(lastL, pp1, Base.OneTo(p)))
-        for j in eachindex(m.reterms)
-            Lblock = m.L[block(kp1, j)]
-            s += sum(abs2, view(Lblock, pp1, :))
+    reterms = m.reterms
+    isone(length(reterms)) &&
+        return first(L), L[block(2, 1)], LowerTriangular(L[block(2, 2)])
+    rows = sum(k -> size(L[kp1choose2(k + 1)], 1), axes(reterms, 1))
+    cols = size(first(L), 2)
+    B2 = Matrix{T}(undef, (rows, cols))
+    B3 = Matrix{T}(undef, (rows, rows))
+    rowoffset = 0
+    for i in 1 .+ axes(reterms, 1)
+        Li1 = L[block(i, 1)]
+        rows = rowoffset .+ axes(Li1, 1)
+        copyto!(view(B2, rows, :), Li1)
+        coloffset = 0
+        for j in 2:i
+            Lij = L[block(i, j)]
+            copyto!(view(B3, rows, coloffset .+ axes(Lij, 2)), Lij)
+            coloffset += size(Lij, 2)
         end
-        s
+        rowoffset += size(Li1, 1)
     end
-    copyto!(m.y, yorig)
-    updateL!(reevaluateAend!(m))
+    return first(L), B2, LowerTriangular(B3)
+end
+
+# use dispatch to distinguish Diagonal and UniformBlockDiagonal in first(L)
+_ldivB1!(B1::Diagonal{T}, rhs::AbstractVector{T}, ind) where {T} = rhs ./= B1.diag[ind]
+function _ldivB1!(B1::UniformBlockDiagonal{T}, rhs::AbstractVector{T}, ind) where {T}
+    return ldiv!(LowerTriangular(view(B1.data, :, :, ind)), rhs)
+end
+
+"""
+    leverage(::LinearMixedModel)
+
+Return the diagonal of the hat matrix of the model.
+
+For a linear model, the sum of the leverage values is the degrees of freedom
+for the model in the sense that this sum is the dimension of the span of columns
+of the model matrix.  With a bit of hand waving a similar argument could be made
+for linear mixed-effects models. The hat matrix is of the form ``[ZΛ X][L L']⁻¹[ZΛ X]'``.
+"""
+function StatsBase.leverage(m::LinearMixedModel{T}) where {T}
+    # To obtain the diagonal elements solve L⁻¹[ZΛ X]'eⱼ
+    # where eⱼ is the j'th basis vector in Rⁿ and evaluate the squared length of the solution.
+    # The fact that the [1,1] block of L is always UniformBlockDiagonal
+    # or Diagonal makes it easy to obtain the first chunk of the solution.
+    B1, B2, B3 = _3blockL(m)
+    reterms = m.reterms
+    re1 = first(reterms)
+    re1z = re1.z
+    r1sz = size(re1z, 1)
+    re1λ = re1.λ
+    re1refs = re1.refs
+    Xy = m.Xymat
+    rhs1 = zeros(T, size(re1z, 1))   # for the first block only the nonzeros are stored
+    rhs2 = zeros(T, size(B2, 1))
+    value = similar(m.y)
+    for i in eachindex(value)
+        re1ind = re1refs[i]
+        _ldivB1!(B1, mul!(rhs1, adjoint(re1λ), view(re1z, :, i)), re1ind)
+        off = (re1ind - 1) * r1sz
+        fill!(rhs2, 0)
+        rhsoffset = 0
+        for j in 2:length(reterms)
+            trm = reterms[j]
+            z = trm.z
+            stride = size(z, 1)
+            mul!(
+                view(rhs2, (rhsoffset + (trm.refs[i] - 1) * stride) .+ Base.OneTo(stride)),
+                adjoint(trm.λ),
+                view(z, :, i),
+            )
+            rhsoffset += length(trm.levels) * stride
+        end
+        copyto!(view(rhs2, rhsoffset .+ Base.OneTo(size(Xy, 2))), view(Xy, i, :))
+        ldiv!(B3, mul!(rhs2, view(B2, :, off .+ Base.OneTo(r1sz)), rhs1, 1, -1))
+        rhs2[end] = 0
+        value[i] = sum(abs2, rhs1) + sum(abs2, rhs2)
+    end
     return value
 end
 

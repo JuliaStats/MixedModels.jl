@@ -8,6 +8,9 @@ MixedModels v4.1.0 Release Notes
   such that only the initial and final values are stored. `OptSummary` has a new field
   `fitlog` that contains the aforementioned log as a  vector of tuples of parameter and
   objective values.[#552]
+* Faster version of `leverage` for `LinearMixedModel` allowing for experimentation
+  using the sum of the leverage values as an empirical degrees of freedom for the
+  model. [#553], see also [#535]
 
 MixedModels v4.0.0 Release Notes
 ========================
@@ -273,8 +276,10 @@ Package dependencies
 [#518]: https://github.com/JuliaStats/MixedModels.jl/issues/518
 [#523]: https://github.com/JuliaStats/MixedModels.jl/issues/523
 [#524]: https://github.com/JuliaStats/MixedModels.jl/issues/524
+[#535]: https://github.com/JuliaStats/MixedModels.jl/issues/535
 [#536]: https://github.com/JuliaStats/MixedModels.jl/issues/536
 [#537]: https://github.com/JuliaStats/MixedModels.jl/issues/537
 [#539]: https://github.com/JuliaStats/MixedModels.jl/issues/539
 [#551]: https://github.com/JuliaStats/MixedModels.jl/issues/551
 [#552]: https://github.com/JuliaStats/MixedModels.jl/issues/552
+[#553]: https://github.com/JuliaStats/MixedModels.jl/issues/553
