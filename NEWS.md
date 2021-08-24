@@ -11,6 +11,8 @@ MixedModels v4.1.0 Release Notes
 * Faster version of `leverage` for `LinearMixedModel` allowing for experimentation
   using the sum of the leverage values as an empirical degrees of freedom for the
   model. [#553], see also [#535]
+* Optimized version of `condVar` with an additional method for extracting only the
+  conditional variances associated with a single grouping factor. [#545]
 
 MixedModels v4.0.0 Release Notes
 ========================
@@ -280,6 +282,7 @@ Package dependencies
 [#536]: https://github.com/JuliaStats/MixedModels.jl/issues/536
 [#537]: https://github.com/JuliaStats/MixedModels.jl/issues/537
 [#539]: https://github.com/JuliaStats/MixedModels.jl/issues/539
+[#545]: https://github.com/JuliaStats/MixedModels.jl/issues/545
 [#551]: https://github.com/JuliaStats/MixedModels.jl/issues/551
 [#552]: https://github.com/JuliaStats/MixedModels.jl/issues/552
 [#553]: https://github.com/JuliaStats/MixedModels.jl/issues/553
