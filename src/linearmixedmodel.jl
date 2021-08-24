@@ -312,30 +312,22 @@ diagonal blocks from the conditional variance-covariance matrix,
     s² Λ(Λ'Z'ZΛ + I)⁻¹Λ'
 """
 function condVar(m::LinearMixedModel{T}) where {T}
-    L = m.L
-    s = sdest(m)
-    @static if VERSION < v"1.6.1"
-        spL = LowerTriangular(SparseMatrixCSC{T,Int}(sparseL(m)))
-    else
-        spL = LowerTriangular(sparseL(m))
-    end
-    nre = size(spL, 1)
-    val = Array{T,3}[]
-    offset = 0
-    for (i, re) in enumerate(m.reterms)
-        λt = s * transpose(re.λ)
-        vi = size(λt, 2)
-        ℓi = length(re.levels)
-        vali = Array{T}(undef, (vi, vi, ℓi))
-        scratch = Matrix{T}(undef, (size(spL, 1), vi))
-        for b in 1:ℓi
-            fill!(scratch, zero(T))
-            copyto!(view(scratch, (offset + (b - 1) * vi) .+ (1:vi), :), λt)
-            ldiv!(spL, scratch)
-            mul!(view(vali, :, :, b), scratch', scratch)
-        end
-        push!(val, vali)
-        offset += vi * ℓi
+    return [condVar(m, fnm) for fnm in fnames(m)]
+end
+
+function condVar(m::LinearMixedModel{T}, fname) where {T}
+    Lblk = LowerTriangular(densify(sparseL(m; fname=fname)))
+    blk = findfirst(isequal(fname), fnames(m))
+    λt = Array(m.λ[blk]') .* sdest(m)
+    vsz = size(λt, 2)
+    ℓ = length(m.reterms[blk].levels)
+    val = Array{T}(undef, (vsz, vsz, ℓ))
+    scratch = Matrix{T}(undef, (size(Lblk, 1), vsz))
+    for b in 1:ℓ
+        fill!(scratch, zero(T))
+        copyto!(view(scratch, (b - 1) * vsz .+ (1:vsz), :), λt)
+        ldiv!(Lblk, scratch)
+        mul!(view(val, :, :, b), scratch', scratch)
     end
     return val
 end
@@ -358,7 +350,7 @@ function condVartables(m::MixedModel{T}) where {T}
     return NamedTuple{fnames(m)}((map(_cvtbl, condVar(m), m.reterms)...,))
 end
 
-function pushALblock!(A, L, blk)
+function _pushALblock!(A, L, blk)
     push!(L, blk)
     return push!(A, deepcopy(isa(blk, BlockedSparse) ? blk.cscmat : blk))
 end
@@ -370,13 +362,13 @@ function createAL(reterms::Vector{AbstractReMat{T}}, Xy::FeMat{T}) where {T}
     L = sizehint!(AbstractMatrix{T}[], vlen)
     for i in eachindex(reterms)
         for j in 1:i
-            pushALblock!(A, L, densify(reterms[i]' * reterms[j]))
+            _pushALblock!(A, L, densify(reterms[i]' * reterms[j]))
         end
     end
     for j in eachindex(reterms)   # can't fold this into the previous loop b/c block order
-        pushALblock!(A, L, densify(Xy' * reterms[j]))
+        _pushALblock!(A, L, densify(Xy' * reterms[j]))
     end
-    pushALblock!(A, L, densify(Xy'Xy))
+    _pushALblock!(A, L, densify(Xy'Xy))
     for i in 2:k      # check for fill-in due to non-nested grouping factors
         ci = reterms[i]
         for j in 1:(i - 1)
@@ -1100,19 +1092,28 @@ function _coord(A::Matrix)
 end
 
 """
-    sparseL(m::LinearMixedModel{T}; full::Bool=false) where {T}
+    sparseL(m::LinearMixedModel; fname::Symbol=first(fnames(m)), full::Bool=false)
 
 Return the lower Cholesky factor `L` as a `SparseMatrix{T,Int32}`.
 
 `full` indicates whether the parts of `L` associated with the fixed-effects and response
 are to be included.
+
+`fname` specifies the first grouping factor to include. Blocks to the left of the block corresponding
+ to `fname` are dropped. The default is the first, i.e., leftmost block and hence all blocks.
 """
-function sparseL(m::LinearMixedModel{T}; full::Bool=false) where {T}
+function sparseL(
+    m::LinearMixedModel{T}; fname::Symbol=first(fnames(m)), full::Bool=false
+) where {T}
     L, reterms = m.L, m.reterms
-    nt = length(reterms) + full
+    sblk = findfirst(isequal(fname), fnames(m))
+    if isnothing(sblk)
+        throw(ArgumentError("fname = $fname is not the name of a grouping factor"))
+    end
+    blks = sblk:(length(reterms) + full)
     rowoffset, coloffset = 0, 0
     val = (i=Int32[], j=Int32[], v=T[])
-    for i in 1:nt, j in 1:i
+    for i in blks, j in first(blks):i
         Lblk = L[block(i, j)]
         cblk = _coord(Lblk)
         append!(val.i, cblk.i .+ Int32(rowoffset))
