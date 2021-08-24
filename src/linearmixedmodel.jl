@@ -319,7 +319,7 @@ function condVar(m::LinearMixedModel{T}, fname) where {T}
     Lblk = LowerTriangular(densify(sparseL(m; fname=fname)))
     blk = findfirst(isequal(fname), fnames(m))
     λt = Array(m.λ[blk]') .* sdest(m)
-    vsz =  size(λt, 2)
+    vsz = size(λt, 2)
     ℓ = length(m.reterms[blk].levels)
     val = Array{T}(undef, (vsz, vsz, ℓ))
     scratch = Matrix{T}(undef, (size(Lblk, 1), vsz))
@@ -329,9 +329,9 @@ function condVar(m::LinearMixedModel{T}, fname) where {T}
         ldiv!(Lblk, scratch)
         mul!(view(val, :, :, b), scratch', scratch)
     end
-    val
+    return val
 end
-    
+
 function _cvtbl(arr::Array{T,3}, trm) where {T}
     return merge(
         NamedTuple{(fname(trm),)}((trm.levels,)),
@@ -1005,9 +1005,7 @@ are to be included.
  to `fname` are dropped. The default is the first, i.e., leftmost block and hence all blocks.
 """
 function sparseL(
-    m::LinearMixedModel{T};
-    fname::Symbol=first(fnames(m)),
-    full::Bool=false,
+    m::LinearMixedModel{T}; fname::Symbol=first(fnames(m)), full::Bool=false
 ) where {T}
     L, reterms = m.L, m.reterms
     sblk = findfirst(isequal(fname), fnames(m))
