@@ -176,6 +176,8 @@ end
     @test first(first(cv)) ≈ 0.07331320237988301 rtol=1.e-4
     @test last(last(cv)) ≈ 0.04051547211287544 rtol=1.e-4
 
+    cv2 = condVar(fm, :sample)
+    @test cv2 ≈ last(cv)
     rfu = ranef(fm, uscale=true)
     @test length(rfu) == 2
     @test first(first(rfu)) ≈ 0.523162392717432 rtol=1.e-4

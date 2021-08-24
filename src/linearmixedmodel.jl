@@ -313,31 +313,6 @@ diagonal blocks from the conditional variance-covariance matrix,
 """
 function condVar(m::LinearMixedModel{T}) where {T}
     return [condVar(m, fnm) for fnm in fnames(m)]
-    s = sdest(m)
-    @static if VERSION < v"1.6.1"
-        spL = LowerTriangular(SparseMatrixCSC{T,Int}(sparseL(m)))
-    else
-        spL = LowerTriangular(sparseL(m))
-    end
-    nre = size(spL, 1)
-    val = Array{T,3}[]
-    offset = 0
-    for (i, re) in enumerate(m.reterms)
-        λt = s * transpose(re.λ)
-        vi = size(λt, 2)
-        ℓi = length(re.levels)
-        vali = Array{T}(undef, (vi, vi, ℓi))
-        scratch = Matrix{T}(undef, (size(spL, 1), vi))
-        for b in 1:ℓi
-            fill!(scratch, zero(T))
-            copyto!(view(scratch, (offset + (b - 1) * vi) .+ (1:vi), :), λt)
-            ldiv!(spL, scratch)
-            mul!(view(vali, :, :, b), scratch', scratch)
-        end
-        push!(val, vali)
-        offset += vi * ℓi
-    end
-    return val
 end
 
 function condVar(m::LinearMixedModel{T}, fname) where {T}
@@ -375,7 +350,7 @@ function condVartables(m::MixedModel{T}) where {T}
     return NamedTuple{fnames(m)}((map(_cvtbl, condVar(m), m.reterms)...,))
 end
 
-function pushALblock!(A, L, blk)
+function _pushALblock!(A, L, blk)
     push!(L, blk)
     return push!(A, deepcopy(isa(blk, BlockedSparse) ? blk.cscmat : blk))
 end
@@ -387,13 +362,13 @@ function createAL(reterms::Vector{AbstractReMat{T}}, Xy::FeMat{T}) where {T}
     L = sizehint!(AbstractMatrix{T}[], vlen)
     for i in eachindex(reterms)
         for j in 1:i
-            pushALblock!(A, L, densify(reterms[i]' * reterms[j]))
+            _pushALblock!(A, L, densify(reterms[i]' * reterms[j]))
         end
     end
     for j in eachindex(reterms)   # can't fold this into the previous loop b/c block order
-        pushALblock!(A, L, densify(Xy' * reterms[j]))
+        _pushALblock!(A, L, densify(Xy' * reterms[j]))
     end
-    pushALblock!(A, L, densify(Xy'Xy))
+    _pushALblock!(A, L, densify(Xy'Xy))
     for i in 2:k      # check for fill-in due to non-nested grouping factors
         ci = reterms[i]
         for j in 1:(i - 1)
