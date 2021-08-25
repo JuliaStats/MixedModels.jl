@@ -220,4 +220,6 @@ end
 
 StatsModels.modelcols(t::ZeroCorr, d::NamedTuple) = zerocorr!(modelcols(t.term, d))
 
-Base.getproperty(x::ZeroCorr, s::Symbol)  =  s == :term ? getfield(x, s) : getproperty(x.term, s)
+function Base.getproperty(x::ZeroCorr, s::Symbol)
+    return s == :term ? getfield(x, s) : getproperty(x.term, s)
+end
