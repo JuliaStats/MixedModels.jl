@@ -12,6 +12,13 @@ Predict response for new data.
     response vector but also many other matrices.
 
 !!! warning
+    `newdata` should contain a column for the response (dependent variable)
+    initialized to some numerical value (not `missing`), because this is
+    used to construct the new model used in computing the predictions.
+    `missing` is not valid because `missing` data are dropped before
+    constructing the model matrices.
+
+!!! warning
     Models are assumed to be full rank.
 
 !!! warning
@@ -82,6 +89,7 @@ function _predict(m::MixedModel{T}, newdata, β; new_re_levels) where {T}
     # we get type stability via constant propogation on `new_re_levels`
     y, mnew = let ytemp = ones(T, length(first(newdata)))
         f, contr = _abstractify_grouping(m.formula)
+        f.lhs.sym in Tables.columnnames(newdata) && !any(ismissing, newdata[f.lhs.sym]) || throw(ArgumentError("Response column must be initialized to a non-missing numeric value."))
         lmm = LinearMixedModel(f, newdata; contrasts=contr)
         ytemp =
             new_re_levels == :missing ? convert(Vector{Union{T,Missing}}, ytemp) : ytemp
