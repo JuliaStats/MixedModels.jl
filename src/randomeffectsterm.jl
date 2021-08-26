@@ -219,3 +219,7 @@ function StatsModels.apply_schema(t::ZeroCorr, sch::MultiSchema, Mod::Type{<:Mix
 end
 
 StatsModels.modelcols(t::ZeroCorr, d::NamedTuple) = zerocorr!(modelcols(t.term, d))
+
+function Base.getproperty(x::ZeroCorr, s::Symbol)
+    return s == :term ? getfield(x, s) : getproperty(x.term, s)
+end
