@@ -22,6 +22,7 @@ using Tables
 
 using LinearAlgebra: BlasFloat, BlasReal, HermOrSym, PosDefException, copytri!
 using Base: Ryu
+using Future: randjump
 using GLM: Link, canonicallink, linkfun, linkinv
 using StatsModels: TableRegressionModel
 

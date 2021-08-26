@@ -376,3 +376,75 @@ function tidyσs(bsamp::MixedModelFitCollection{T}) where {T}
     end
     return result
 end
+
+nrand(A::ReMat{T,S}) where {T,S} = nlevs(A) * S
+
+const JUMPABLERNGS = Union{MersenneTwister}
+
+function parametricbootstrap(
+    rng::JUMPABLERNGS,
+    n::Integer,
+    morig::MixedModel{T};
+    β::AbstractVector=coef(morig),
+    σ=morig.σ,
+    θ::AbstractVector=morig.θ,
+    use_threads::Bool=false,
+    hide_progress::Bool=false,
+) where {T}
+    if σ !== missing
+        σ = T(σ)
+    end
+    β, θ = convert(Vector{T}, β), convert(Vector{T}, θ)
+    βsc, θsc, p, k, m = similar(β), similar(θ), length(β), length(θ), deepcopy(morig)
+
+    β_names = (Symbol.(fixefnames(morig))...,)
+    rank = length(β_names)
+
+    nrands = sum(nrand, m.reterms) + nobs(m)
+
+    # we need arrays of these for in-place operations to work across threads
+    m_threads = [m]
+    βsc_threads = [βsc]
+    θsc_threads = [θsc]
+
+    if use_threads
+        Threads.resize_nthreads!(m_threads)
+        Threads.resize_nthreads!(βsc_threads)
+        Threads.resize_nthreads!(θsc_threads)
+    end
+
+    rngs = Vector{typeof(rng)}(undef, n)
+    Threads.@threads for idx in 1:n
+        rngs[idx] = randjump(rng, idx * ceil(Int, nrands / 2))
+    end
+
+    rngsidx = 1
+    rnglock = Threads.SpinLock()
+    samp = replicate(n; use_threads, hide_progress) do
+        tidx = use_threads ? Threads.threadid() : 1
+        mod = m_threads[tidx]
+        local βsc = βsc_threads[tidx]
+        local θsc = θsc_threads[tidx]
+        lock(rnglock)
+        simrng = rngs[rngsidx]
+        rngsidx += 1
+        unlock(rnglock)
+        mod = simulate!(simrng, mod; β=β, σ=σ, θ=θ)
+        refit!(mod; progress=false)
+        (
+            objective=mod.objective,
+            σ=mod.σ,
+            β=NamedTuple{β_names}(fixef!(βsc, mod)),
+            se=SVector{p,T}(stderror!(βsc, mod)),
+            θ=SVector{k,T}(getθ!(θsc, mod)),
+        )
+    end
+
+    return MixedModelBootstrap(
+        samp,
+        deepcopy(morig.λ),
+        getfield.(morig.reterms, :inds),
+        morig.optsum.lowerbd[1:length(first(samp).θ)],
+        NamedTuple{Symbol.(fnames(morig))}(map(t -> (t.cnames...,), morig.reterms)),
+    )
+end
