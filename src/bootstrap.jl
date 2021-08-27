@@ -102,9 +102,9 @@ function parametricbootstrap(
         mod = m_threads[tidx]
         local βsc = βsc_threads[tidx]
         local θsc = θsc_threads[tidx]
-        lock(rnglock)
+        use_threads && lock(rnglock)
         mod = simulate!(rng, mod; β=β, σ=σ, θ=θ)
-        unlock(rnglock)
+        use_threads && unlock(rnglock)
         refit!(mod; progress=false)
         (
             objective=mod.objective,
