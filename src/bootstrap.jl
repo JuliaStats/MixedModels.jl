@@ -418,17 +418,13 @@ function parametricbootstrap(
         rngs[idx] = randjump(rng, idx * ceil(Int, nrands / 2))
     end
 
-    rngsidx = 1
-    rnglock = Threads.SpinLock()
+    rngsidx = Threads.Atomic{Int}(1)
     samp = replicate(n; use_threads, hide_progress) do
         tidx = use_threads ? Threads.threadid() : 1
         mod = m_threads[tidx]
         local βsc = βsc_threads[tidx]
         local θsc = θsc_threads[tidx]
-        lock(rnglock)
-        simrng = rngs[rngsidx]
-        rngsidx += 1
-        unlock(rnglock)
+        simrng = rngs[Threads.atomic_add!(rngsidx, 1)]
         mod = simulate!(simrng, mod; β=β, σ=σ, θ=θ)
         refit!(mod; progress=false)
         (
