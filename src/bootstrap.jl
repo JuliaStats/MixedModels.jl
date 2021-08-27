@@ -413,18 +413,19 @@ function parametricbootstrap(
         Threads.resize_nthreads!(θsc_threads)
     end
 
-    rngs = Vector{typeof(rng)}(undef, n)
-    Threads.@threads for idx in 1:n
-        rngs[idx] = randjump(rng, idx * ceil(Int, nrands / 2))
+    nt = Threads.nthreads()
+    rngs = Vector{typeof(rng)}(undef, nt)
+    Threads.@threads for idx in 1:nt
+        rngs[idx] = randjump(rng, idx * ceil(Int, nrands * n / nt / 2)) # divide by 2 because each step yields two floats
     end
 
-    rngsidx = Threads.Atomic{Int}(1)
+    rngsidx = Threads.Atomic{Int}(0)
     samp = replicate(n; use_threads, hide_progress) do
         tidx = use_threads ? Threads.threadid() : 1
         mod = m_threads[tidx]
         local βsc = βsc_threads[tidx]
         local θsc = θsc_threads[tidx]
-        simrng = rngs[Threads.atomic_add!(rngsidx, 1)]
+        simrng = rngs[rem(Threads.atomic_add!(rngsidx, 1), nt) + 1]
         mod = simulate!(simrng, mod; β=β, σ=σ, θ=θ)
         refit!(mod; progress=false)
         (
