@@ -104,7 +104,7 @@ end
         @test sum(issingular(bsamp)) == sum(issingular(bsamp_threaded))
     end
 
-    @testset "zerocorr + Base.length" let
+    @testset "zerocorr + Base.length" begin
         fmzc = models(:sleepstudy)[2]
         pbzc = parametricbootstrap(MersenneTwister(42), 5, fmzc)
         @test length(pbzc) == 5
