@@ -35,6 +35,11 @@ include("modelcache.jl")
         @test_throws DimensionMismatch refit!(fm, zeros(29); progress=false)
         # restore the original state
         refit!(fm, vec(float.(ds.yield)); progress=false)
+
+        @testset "zerocorr" begin
+            fmzc = models(:sleepstudy)[2]
+            @test length(simulate(fmzc)) == length(response(fmzc))
+        end
     end
     @testset "Poisson" begin
         center(v::AbstractVector) = v .- (sum(v) / length(v))
@@ -97,6 +102,12 @@ end
         @test sort(bsamp_threaded.θ) == sort(bsamp.θ)
         @test sort(columntable(bsamp_threaded.β).β) == sort(columntable(bsamp.β).β)
         @test sum(issingular(bsamp)) == sum(issingular(bsamp_threaded))
+    end
+
+    @testset "zerocorr + Base.length" let
+        fmzc = models(:sleepstudy)[2]
+        pbzc = parametricbootstrap(MersenneTwister(42), 5, fmzc)
+        @test length(pbzc) == 5
     end
 
     @testset "Bernoulli simulate! and GLMM boostrap" begin
