@@ -1,3 +1,8 @@
+MixedModels v4.2.0 Release Notes
+========================
+* Add support for zerocorr models to the bootstrap [#561]
+* Add a `Base.length(::MixedModelsFitCollection)` method  [#561]
+
 MixedModels v4.1.0 Release Notes
 ========================
 * Add support for specifying a fixed value of `σ`, the residual standard deviation,
@@ -286,3 +291,4 @@ Package dependencies
 [#551]: https://github.com/JuliaStats/MixedModels.jl/issues/551
 [#552]: https://github.com/JuliaStats/MixedModels.jl/issues/552
 [#553]: https://github.com/JuliaStats/MixedModels.jl/issues/553
+[#561]: https://github.com/JuliaStats/MixedModels.jl/issues/561

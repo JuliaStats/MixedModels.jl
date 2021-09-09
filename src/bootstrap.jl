@@ -28,7 +28,7 @@ and correlations of the random-effects terms.
 """
 struct MixedModelBootstrap{T<:AbstractFloat} <: MixedModelFitCollection{T}
     fits::Vector
-    λ::Vector{LowerTriangular{T,Matrix{T}}}
+    λ::Vector{<:Union{LowerTriangular{T,Matrix{T}},Diagonal{T,Vector{T}}}}
     inds::Vector{Vector{Int}}
     lowerbd::Vector{T}
     fcnames::NamedTuple
@@ -213,6 +213,8 @@ Equality comparisons are used b/c small non-negative θ values are replaced by 0
 See also [`issingular(::MixedModel)`](@ref).
 """
 issingular(bsamp::MixedModelFitCollection) = map(θ -> any(θ .== bsamp.lowerbd), bsamp.θ)
+
+Base.length(x::MixedModelFitCollection) = length(x.fits)
 
 function Base.propertynames(bsamp::MixedModelFitCollection)
     return [
