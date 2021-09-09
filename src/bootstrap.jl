@@ -214,6 +214,8 @@ See also [`issingular(::MixedModel)`](@ref).
 """
 issingular(bsamp::MixedModelFitCollection) = map(θ -> any(θ .== bsamp.lowerbd), bsamp.θ)
 
+Base.length(x::MixedModelFitCollection) = length(x.fits)
+
 function Base.propertynames(bsamp::MixedModelFitCollection)
     return [
         :allpars,
