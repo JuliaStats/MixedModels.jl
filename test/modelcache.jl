@@ -3,7 +3,8 @@ using MixedModels: dataset
 
 @isdefined(gfms) || const global gfms = Dict(
     :cbpp => [@formula((incid/hsz) ~ 1 + period + (1|herd))],
-    :contra => [@formula(use ~ 1+age+abs2(age)+urban+livch+(1|urban&dist))],
+    :contra => [@formula(use ~ 1+age+abs2(age)+urban+livch+(1|urban&dist)),
+                @formula(use ~ 1+urban+(1+urban|dist))], # see #563
     :grouseticks => [@formula(ticks ~ 1+year+ch+ (1|index) + (1|brood) + (1|location))],
     :verbagg => [@formula(r2 ~ 1+anger+gender+btype+situ+(1|subj)+(1|item))],
 )
