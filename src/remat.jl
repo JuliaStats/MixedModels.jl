@@ -114,6 +114,8 @@ Return the number of random effects represented by `A`.  Zero unless `A` is an `
 """
 nranef(A::ReMat) = size(A.adjA, 1)
 
+StatsBase.coefnames(re::MixedModels.AbstractReMat) = re.cnames
+
 LinearAlgebra.cond(A::ReMat) = cond(A.λ)
 
 """
