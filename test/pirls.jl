@@ -14,7 +14,7 @@ include("modelcache.jl")
 @testset "contra" begin
     contra = dataset(:contra)
     thin = 5
-    gm0 = fit(MixedModel, only(gfms[:contra]), contra, Bernoulli(); fast=true, progress=false, thin)
+    gm0 = fit(MixedModel, first(gfms[:contra]), contra, Bernoulli(); fast=true, progress=false, thin)
     fitlog = gm0.optsum.fitlog
     @test length(fitlog) == (div(gm0.optsum.feval, thin) + 1) # for the initial value
     @test first(fitlog) == (gm0.optsum.initial, gm0.optsum.finitial)
@@ -41,7 +41,7 @@ include("modelcache.jl")
     @test Distribution(gm0) == Distribution(gm0.resp)
     @test Link(gm0) == Link(gm0.resp)
 
-    gm1 = fit(MixedModel, only(gfms[:contra]), contra, Bernoulli(); progress=false);
+    gm1 = fit(MixedModel, first(gfms[:contra]), contra, Bernoulli(); progress=false);
     @test isapprox(gm1.θ, [0.573054], atol=0.005)
     @test lowerbd(gm1) == vcat(fill(-Inf, 7), 0.)
     @test isapprox(deviance(gm1), 2361.54575, rtol=0.00001)
@@ -51,7 +51,7 @@ include("modelcache.jl")
     @test nobs(gm0) == 1934
     refit!(gm0; fast=true, nAGQ=7, progress=false)
     @test isapprox(deviance(gm0), 2360.9838, atol=0.001)
-    gm1 = fit(MixedModel, only(gfms[:contra]), contra, Bernoulli(); nAGQ=7, progress=false)
+    gm1 = fit(MixedModel, first(gfms[:contra]), contra, Bernoulli(); nAGQ=7, progress=false)
     @test isapprox(deviance(gm1), 2360.8760, atol=0.001)
     @test gm1.β == gm1.beta
     @test gm1.θ == gm1.theta
@@ -74,6 +74,11 @@ include("modelcache.jl")
     #@test isapprox(sum(gm1.resp.devresid), 2237.349, atol=0.1)
     show(IOBuffer(), gm1)
     show(IOBuffer(), BlockDescription(gm0))
+
+    gm_slope = fit(MixedModel, gfms[:contra][2], contra, Bernoulli(); progress=false);
+    @test !issingular(gm_slope)
+    @test issingular(gm_slope, zeros(5))
+
 end
 
 @testset "cbpp" begin

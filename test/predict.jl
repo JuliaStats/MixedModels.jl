@@ -34,7 +34,7 @@ include("modelcache.jl")
 
     @testset "GLMM" begin
         contra = DataFrame(dataset(:contra))
-        m = fit(MixedModel, only(gfms[:contra]), contra, Bernoulli(); fast=true,
+        m = fit(MixedModel, first(gfms[:contra]), contra, Bernoulli(); fast=true,
                 contrasts=Dict(:urban => EffectsCoding()), progress=false)
         mc = deepcopy(m)
         fit!(simulate!(StableRNG(42), mc); progress=false)
@@ -79,7 +79,7 @@ end
     @testset "GLMM" begin
         contra = dataset(:contra)
         for fast in [true, false]
-            gm0 = fit(MixedModel, only(gfms[:contra]), contra, Bernoulli(); fast, progress=false)
+            gm0 = fit(MixedModel, first(gfms[:contra]), contra, Bernoulli(); fast, progress=false)
 
             @test_throws ArgumentError predict(gm0, contra; type=:doh)
 
