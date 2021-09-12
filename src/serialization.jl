@@ -63,3 +63,20 @@ function saveoptsum(fnm::AbstractString, m::LinearMixedModel)
         saveoptsum(io, m)
     end
 end
+
+# λ::Vector{<:Union{LowerTriangular{T,Matrix{T}},Diagonal{T,Vector{T}}}}
+# inds::Vector{Vector{Int}}
+# lowerbd::Vector{T}
+# fcnames::NamedTuple
+
+function savefitcollection(fnm::AbstractString, bs::MixedModelFitCollection; ftype=Float32)
+    # idea:
+    # 1. write the fits field as an arrow table
+    # - need to convert to column table
+    # - need to deal with static arrays
+    # - need to convert floats to ftype (maybe do this before column table to avoid allocations?)
+    # 2. write fcnames as metadata ? needs to be Dict{String, String}
+    # 3. write λ, inds, lowerbd, as the first row in their own columns, with the rest of the values missing
+    #    and see if comrpession/runlength encoding helps (compare size of table from step 1 to size of table after 3)
+
+end
