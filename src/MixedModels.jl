@@ -181,5 +181,6 @@ include("bootstrap.jl")
 include("blockdescription.jl")
 include("grouping.jl")
 include("mimeshow.jl")
+include("serialization.jl")
 
 end # module
