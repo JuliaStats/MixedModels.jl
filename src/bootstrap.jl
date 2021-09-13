@@ -71,7 +71,7 @@ function parametricbootstrap(
     rng::AbstractRNG,
     n::Integer,
     morig::MixedModel{T},
-    ftype=T;
+    ftype::Type{<:AbstractFloat}=T;
     β::AbstractVector=coef(morig),
     σ=morig.σ,
     θ::AbstractVector=morig.θ,
