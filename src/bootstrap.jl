@@ -35,22 +35,25 @@ struct MixedModelBootstrap{T<:AbstractFloat} <: MixedModelFitCollection{T}
 end
 
 """
-    parametricbootstrap(rng::AbstractRNG, nsamp::Integer, m::MixedModel;
-        β = coef(m), σ = m.σ, θ = m.θ, use_threads=false)
-    parametricbootstrap(nsamp::Integer, m::MixedModel;
+    parametricbootstrap([rng::AbstractRNG], nsamp::Integer, m::MixedModel{T}, ftype=T;
         β = coef(m), σ = m.σ, θ = m.θ, use_threads=false, hide_progress=false)
 
 Perform `nsamp` parametric bootstrap replication fits of `m`, returning a `MixedModelBootstrap`.
 
 The default random number generator is `Random.GLOBAL_RNG`.
 
+`ftype` can be used to store the computed bootstrap values in a lower precision. `ftype` is
+not a named argument because named arguments are not used in method dispatch and thus
+specialization. In other words, having `ftype` as a positional argument has some potential
+performance benefits.
+
 # Named Arguments
 
-`β`, `σ`, and `θ` are the values of `m`'s parameters for simulating the responses.
-`σ` is only valid for `LinearMixedModel` and `GeneralizedLinearMixedModel` for
+- `β`, `σ`, and `θ` are the values of `m`'s parameters for simulating the responses.
+- `σ` is only valid for `LinearMixedModel` and `GeneralizedLinearMixedModel` for
 families with a dispersion parameter.
-`use_threads` determines whether or not to use thread-based parallelism.
-`hide_progress` can be used to disable the progress bar. Note that the progress
+- `use_threads` determines whether or not to use thread-based parallelism.
+- `hide_progress` can be used to disable the progress bar. Note that the progress
 bar is automatically disabled for non-interactive (i.e. logging) contexts.
 
 !!! note
@@ -67,7 +70,8 @@ bar is automatically disabled for non-interactive (i.e. logging) contexts.
 function parametricbootstrap(
     rng::AbstractRNG,
     n::Integer,
-    morig::MixedModel{T};
+    morig::MixedModel{T},
+    ftype::Type{<:AbstractFloat}=T;
     β::AbstractVector=coef(morig),
     σ=morig.σ,
     θ::AbstractVector=morig.θ,
@@ -78,10 +82,11 @@ function parametricbootstrap(
         σ = T(σ)
     end
     β, θ = convert(Vector{T}, β), convert(Vector{T}, θ)
-    βsc, θsc, p, k, m = similar(β), similar(θ), length(β), length(θ), deepcopy(morig)
+    βsc, θsc = similar(ftype.(β)), similar(ftype.(θ))
+    p, k = length(β), length(θ)
+    m = deepcopy(morig)
 
     β_names = (Symbol.(fixefnames(morig))...,)
-    rank = length(β_names)
 
     # we need arrays of these for in-place operations to work across threads
     m_threads = [m]
@@ -107,28 +112,24 @@ function parametricbootstrap(
         unlock(rnglock)
         refit!(mod; progress=false)
         (
-            objective=mod.objective,
-            σ=mod.σ,
+            objective=ftype.(mod.objective),
+            σ=ismissing(mod.σ) ? missing : ftype(mod.σ),
             β=NamedTuple{β_names}(fixef!(βsc, mod)),
-            se=SVector{p,T}(stderror!(βsc, mod)),
-            θ=SVector{k,T}(getθ!(θsc, mod)),
+            se=SVector{p,ftype}(stderror!(βsc, mod)),
+            θ=SVector{k,ftype}(getθ!(θsc, mod)),
         )
     end
-    return MixedModelBootstrap(
+    return MixedModelBootstrap{ftype}(
         samp,
-        deepcopy(morig.λ),
+        map(vv -> ftype.(vv), morig.λ), # also does a deepcopy if no type conversion is necessary
         getfield.(morig.reterms, :inds),
-        morig.optsum.lowerbd[1:length(first(samp).θ)],
+        ftype.(morig.optsum.lowerbd[1:length(first(samp).θ)]),
         NamedTuple{Symbol.(fnames(morig))}(map(t -> (t.cnames...,), morig.reterms)),
     )
 end
 
-function parametricbootstrap(
-    nsamp::Integer, m::MixedModel; β=m.β, σ=m.σ, θ=m.θ, use_threads=false
-)
-    return parametricbootstrap(
-        Random.GLOBAL_RNG, nsamp, m; β=β, σ=σ, θ=θ, use_threads=use_threads
-    )
+function parametricbootstrap(nsamp::Integer, m::MixedModel, args...; kwargs...)
+    return parametricbootstrap(Random.GLOBAL_RNG, nsamp, m, args...; kwargs...)
 end
 
 """

@@ -498,9 +498,9 @@ For full-rank models the length of `v` must be the rank of `X`.  For rank-defici
 the length of `v` can be the rank of `X` or the number of columns of `X`.  In the latter
 case the calculated coefficients are padded with -0.0 out to the number of columns.
 """
-function fixef!(v::AbstractVector{T}, m::LinearMixedModel{T}) where {T}
+function fixef!(v::AbstractVector{Tv}, m::LinearMixedModel{T}) where {Tv,T}
     Xtrm = m.feterm
-    fill!(v, -zero(T))
+    fill!(v, -zero(Tv))
     XyL = m.L[end]
     L = feL(m)
     k = size(XyL, 1)
@@ -547,7 +547,7 @@ Return the current covariance parameter vector.
 """
 getθ(m::LinearMixedModel{T}) where {T} = getθ!(Vector{T}(undef, length(m.parmap)), m)
 
-function getθ!(v::AbstractVector{T}, m::LinearMixedModel{T}) where {T}
+function getθ!(v::AbstractVector{Tv}, m::LinearMixedModel{T}) where {Tv,T}
     pmap = m.parmap
     if length(v) ≠ length(pmap)
         throw(
@@ -619,8 +619,8 @@ StatsBase.islinear(m::LinearMixedModel) = true
 
 """
     _3blockL(::LinearMixedModel)
-    
-returns L in 3-block form: 
+
+returns L in 3-block form:
 - a Diagonal or UniformBlockDiagonal block
 - a dense rectangular block
 - and a dense lowertriangular block
@@ -911,76 +911,12 @@ function refit!(m::LinearMixedModel, y; kwargs...)
     return refit!(m; kwargs...)
 end
 
-"""
-    restoreoptsum!(m::LinearMixedModel, io::IO)
-    restoreoptsum!(m::LinearMixedModel, fnm::AbstractString)
-
-Read, check, and restore the `optsum` field from a JSON stream or filename.
-"""
-function restoreoptsum!(m::LinearMixedModel{T}, io::IO) where {T}
-    dict = JSON3.read(io)
-    ops = m.optsum
-    okay =
-        (setdiff(propertynames(ops), keys(dict)) == [:lowerbd]) &&
-        all(ops.lowerbd .≤ dict.initial) &&
-        all(ops.lowerbd .≤ dict.final)
-    if !okay
-        throw(ArgumentError("initial or final parameters in io do not satify lowerbd"))
-    end
-    for fld in (:feval, :finitial, :fmin, :ftol_rel, :ftol_abs, :maxfeval, :nAGQ, :REML)
-        setproperty!(ops, fld, getproperty(dict, fld))
-    end
-    ops.initial_step = copy(dict.initial_step)
-    ops.xtol_rel = copy(dict.xtol_rel)
-    copyto!(ops.initial, dict.initial)
-    copyto!(ops.final, dict.final)
-    for (v, f) in (:initial => :finitial, :final => :fmin)
-        if !isapprox(objective(updateL!(setθ!(m, getfield(ops, v)))), getfield(ops, f))
-            throw(ArgumentError("model m at $v does not give stored $f"))
-        end
-    end
-    ops.optimizer = Symbol(dict.optimizer)
-    ops.returnvalue = Symbol(dict.returnvalue)
-    # provides compatibility with fits saved before the introduction of fixed sigma
-    ops.sigma = get(dict, :sigma, nothing)
-    fitlog = get(dict, :fitlog, nothing)
-    ops.fitlog = if isnothing(fitlog)
-        # compat with fits saved before fitlog
-        [(ops.initial, ops.finitial, ops.final, ops.fmin)]
-    else
-        [(convert(Vector{T}, first(entry)), T(last(entry))) for entry in fitlog]
-    end
-    return m
-end
-
-function restoreoptsum!(m::LinearMixedModel, fnm::AbstractString)
-    open(fnm, "r") do io
-        restoreoptsum!(m, io)
-    end
-end
-
 function reweight!(m::LinearMixedModel, weights)
     sqrtwts = map!(sqrt, m.sqrtwts, weights)
     reweight!.(m.reterms, Ref(sqrtwts))
     reweight!(m.Xymat, sqrtwts)
     updateA!(m)
     return updateL!(m)
-end
-
-"""
-    saveoptsum(io::IO, m::LinearMixedModel)
-    saveoptsum(fnm::AbstractString, m::LinearMixedModel)
-
-Save `m.optsum` (w/o the `lowerbd` field) in JSON format to an IO stream or a file
-
-The reason for omitting the `lowerbd` field is because it often contains `-Inf`
-values that are not allowed in JSON.
-"""
-saveoptsum(io::IO, m::LinearMixedModel) = JSON3.write(io, m.optsum)
-function saveoptsum(fnm::AbstractString, m::LinearMixedModel)
-    open(fnm, "w") do io
-        saveoptsum(io, m)
-    end
 end
 
 """
@@ -1166,11 +1102,11 @@ The length of `v` should be the total number of coefficients (i.e. `length(coef(
 When the model matrix is rank-deficient the coefficients forced to `-0.0` have an
 undefined (i.e. `NaN`) standard error.
 """
-function stderror!(v::AbstractVector{T}, m::LinearMixedModel{T}) where {T}
+function stderror!(v::AbstractVector{Tv}, m::LinearMixedModel{T}) where {Tv,T}
     L = feL(m)
     scr = Vector{T}(undef, size(L, 2))
     s = sdest(m)
-    fill!(v, zero(T) / zero(T))  # initialize to appropriate NaN for rank-deficient case
+    fill!(v, zero(Tv) / zero(Tv))  # initialize to appropriate NaN for rank-deficient case
     for i in eachindex(scr)
         fill!(scr, false)
         scr[i] = true

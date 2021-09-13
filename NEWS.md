@@ -1,3 +1,7 @@
+MixedModels v4.3.0 Release Notes
+========================
+* Add support for storing bootstrap results with lower precision [#566]
+
 MixedModels v4.2.0 Release Notes
 ========================
 * Add support for zerocorr models to the bootstrap [#561]
@@ -292,3 +296,4 @@ Package dependencies
 [#552]: https://github.com/JuliaStats/MixedModels.jl/issues/552
 [#553]: https://github.com/JuliaStats/MixedModels.jl/issues/553
 [#561]: https://github.com/JuliaStats/MixedModels.jl/issues/561
+[#566]: https://github.com/JuliaStats/MixedModels.jl/issues/566
