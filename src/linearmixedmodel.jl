@@ -498,7 +498,7 @@ For full-rank models the length of `v` must be the rank of `X`.  For rank-defici
 the length of `v` can be the rank of `X` or the number of columns of `X`.  In the latter
 case the calculated coefficients are padded with -0.0 out to the number of columns.
 """
-function fixef!(v::AbstractVector{Tv}, m::LinearMixedModel{T}) where {Tv, T}
+function fixef!(v::AbstractVector{Tv}, m::LinearMixedModel{T}) where {Tv,T}
     Xtrm = m.feterm
     fill!(v, -zero(Tv))
     XyL = m.L[end]
@@ -547,7 +547,7 @@ Return the current covariance parameter vector.
 """
 getθ(m::LinearMixedModel{T}) where {T} = getθ!(Vector{T}(undef, length(m.parmap)), m)
 
-function getθ!(v::AbstractVector{Tv}, m::LinearMixedModel{T}) where {Tv, T}
+function getθ!(v::AbstractVector{Tv}, m::LinearMixedModel{T}) where {Tv,T}
     pmap = m.parmap
     if length(v) ≠ length(pmap)
         throw(
@@ -1102,7 +1102,7 @@ The length of `v` should be the total number of coefficients (i.e. `length(coef(
 When the model matrix is rank-deficient the coefficients forced to `-0.0` have an
 undefined (i.e. `NaN`) standard error.
 """
-function stderror!(v::AbstractVector{Tv}, m::LinearMixedModel{T}) where {Tv, T}
+function stderror!(v::AbstractVector{Tv}, m::LinearMixedModel{T}) where {Tv,T}
     L = feL(m)
     scr = Vector{T}(undef, size(L, 2))
     s = sdest(m)

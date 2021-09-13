@@ -82,7 +82,9 @@ function parametricbootstrap(
         σ = T(σ)
     end
     β, θ = convert(Vector{T}, β), convert(Vector{T}, θ)
-    βsc, θsc, p, k, m = similar(ftype.(β)), similar(ftype.(θ)), length(β), length(θ), deepcopy(morig)
+    βsc, θsc = similar(ftype.(β)), similar(ftype.(θ))
+    p, k = length(β), length(θ)
+    m = deepcopy(morig)
 
     β_names = (Symbol.(fixefnames(morig))...,)
 
