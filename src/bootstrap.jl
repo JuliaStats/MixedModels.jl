@@ -35,13 +35,17 @@ struct MixedModelBootstrap{T<:AbstractFloat} <: MixedModelFitCollection{T}
 end
 
 """
-    parametricbootstrap([rng::AbstractRNG], nsamp::Integer, m::MixedModel{T};
-        β = coef(m), σ = m.σ, θ = m.θ, use_threads=false, hide_progress=false,
-        ftype=T)
+    parametricbootstrap([rng::AbstractRNG], nsamp::Integer, m::MixedModel{T}, ftype=T;
+        β = coef(m), σ = m.σ, θ = m.θ, use_threads=false, hide_progress=false)
 
 Perform `nsamp` parametric bootstrap replication fits of `m`, returning a `MixedModelBootstrap`.
 
 The default random number generator is `Random.GLOBAL_RNG`.
+
+`ftype` can be used to store the computed bootstrap values in a lower precision. `ftype` is
+not a named argument because named arguments are not used in method dispatch and thus
+specialization. In other words, having `ftype` as a positional argument has some potential
+performance benefits.
 
 # Named Arguments
 
@@ -51,7 +55,6 @@ families with a dispersion parameter.
 - `use_threads` determines whether or not to use thread-based parallelism.
 - `hide_progress` can be used to disable the progress bar. Note that the progress
 bar is automatically disabled for non-interactive (i.e. logging) contexts.
-- `ftype` can be used to store the computed bootstrap values in a lower precision.
 
 !!! note
     Note that `use_threads=true` may not offer a performance boost and may even
@@ -67,13 +70,13 @@ bar is automatically disabled for non-interactive (i.e. logging) contexts.
 function parametricbootstrap(
     rng::AbstractRNG,
     n::Integer,
-    morig::MixedModel{T};
+    morig::MixedModel{T},
+    ftype=T;
     β::AbstractVector=coef(morig),
     σ=morig.σ,
     θ::AbstractVector=morig.θ,
     use_threads::Bool=false,
     hide_progress::Bool=false,
-    ftype=T,
 ) where {T}
     if σ !== missing
         σ = T(σ)
@@ -123,12 +126,8 @@ function parametricbootstrap(
     )
 end
 
-function parametricbootstrap(
-    nsamp::Integer, m::MixedModel; β=m.β, σ=m.σ, θ=m.θ, use_threads=false
-)
-    return parametricbootstrap(
-        Random.GLOBAL_RNG, nsamp, m; β=β, σ=σ, θ=θ, use_threads=use_threads
-    )
+function parametricbootstrap(nsamp::Integer, m::MixedModel, args...; kwargs...)
+    return parametricbootstrap(Random.GLOBAL_RNG, nsamp, m, args...; kwargs...)
 end
 
 """

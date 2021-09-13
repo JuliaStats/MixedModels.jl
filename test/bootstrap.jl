@@ -8,7 +8,7 @@ using Statistics
 using Tables
 using Test
 
-using MixedModels: dataset
+using MixedModels: dataset, MixedModelBootstrap
 
 include("modelcache.jl")
 
@@ -104,10 +104,11 @@ end
         @test sum(issingular(bsamp)) == sum(issingular(bsamp_threaded))
     end
 
-    @testset "zerocorr + Base.length" begin
+    @testset "zerocorr + Base.length + ftype" begin
         fmzc = models(:sleepstudy)[2]
-        pbzc = parametricbootstrap(MersenneTwister(42), 5, fmzc)
+        pbzc = parametricbootstrap(MersenneTwister(42), 5, fmzc, Float16)
         @test length(pbzc) == 5
+        @test typeof(pbzc) == MixedModelBootstrap{Float16}
     end
 
     @testset "Bernoulli simulate! and GLMM boostrap" begin
