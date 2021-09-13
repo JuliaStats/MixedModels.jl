@@ -46,8 +46,6 @@ function restoreoptsum!(m::LinearMixedModel, fnm::AbstractString)
     end
 end
 
-
-
 """
     saveoptsum(io::IO, m::LinearMixedModel)
     saveoptsum(fnm::AbstractString, m::LinearMixedModel)
