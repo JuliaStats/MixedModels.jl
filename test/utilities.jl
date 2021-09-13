@@ -64,7 +64,8 @@ end
 end
 
 @testset "PCA" begin
-	io = IOBuffer()
+	@isdefined(io) || const global io = IOBuffer()
+	take!(io)
 	pca = models(:kb07)[3].PCA.item
 
 	show(io, pca, covcor=true, loadings=false)
