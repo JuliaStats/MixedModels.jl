@@ -108,7 +108,7 @@ function parametricbootstrap(
         refit!(mod; progress=false)
         (
             objective=ftype.(mod.objective),
-            σ=ftype(mod.σ),
+            σ=ismissing(mod.σ) ? missing : ftype(mod.σ),
             β=NamedTuple{β_names}(fixef!(βsc, mod)),
             se=SVector{p,ftype}(stderror!(βsc, mod)),
             θ=SVector{k,ftype}(getθ!(θsc, mod)),
