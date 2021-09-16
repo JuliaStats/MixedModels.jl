@@ -132,7 +132,21 @@ end
     # since we're caching the fits, we should get it back to being correctly fitted
     # we also take this opportunity to test fitlog
     @testset "fitlog" begin
+        thin = 1
+        refit!(fm1; REML=false, progress=false, thin)
         fitlog = fm1.optsum.fitlog
+        fitlogtbl = columntable(fm1.optsum)
+        @test length(fitlogtbl) == 3
+        @test keys(fitlogtbl) == (:iter, :objective, :θ)
+        @test length(first(fitlogtbl)) > 15   # can't be sure of exact length
+        @test first(fitlogtbl)[1:3] == 1:3
+        @test last(fitlogtbl.objective) == fm1.optsum.fmin
+        fitlogstackedtbl = columntable(fm1.optsum; stack=true)
+        @test length(fitlogstackedtbl) == 4
+        @test keys(fitlogstackedtbl) == (:iter, :objective, :par, :value)
+        d, r = divrem(length(first(fitlogstackedtbl)), length(first(fitlogtbl)))
+        @test iszero(r)
+        @test d == length(first(fitlogtbl.θ))
         thin = 2
         refit!(fm1; REML=false, progress=false, thin)
         @test length(fitlog) == (div(fm1.optsum.feval, thin) + 1) # for the initial value
