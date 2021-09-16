@@ -90,6 +90,37 @@ function OptSummary(
     )
 end
 
+"""
+    columntable(s::OptSummary, [stack::Bool=false])
+
+Return `s.fitlog` as a `Tables.columntable`.
+
+When `stack` is false (the default), there will be 3 columns in the result:
+- `iter`: the sample number
+- `objective`: the value of the objective at that sample
+- `θ`: the parameter vector at that sample
+
+(The term `sample` here refers to the fact that when the `thin` argument to the `fit` or
+`refit!` call is greater than 1 only a subset of the iterations have results recorded.)
+
+When `stack` is true, there will be 4 columns: `iter`, `objective`, `par`, and `value`
+where `value` is the stacked contents of the `θ` vectors (the equivalent of `vcat(θ...)`)
+and `par` is a vector of parameter numbers.
+"""
+function Tables.columntable(s::OptSummary; stack::Bool=false)
+    fitlog = s.fitlog
+    val = (; iter=axes(fitlog, 1), objective=last.(fitlog), θ=first.(fitlog))
+    stack || return val
+    θ1 = first(val.θ)
+    k = length(θ1)
+    return (;
+        iter=repeat(val.iter; inner=k),
+        objective=repeat(val.objective; inner=k),
+        par=repeat(1:k; outer=length(fitlog)),
+        value=foldl(vcat, val.θ; init=(eltype(θ1))[]),
+    )
+end
+
 function Base.show(io::IO, ::MIME"text/plain", s::OptSummary)
     println(io, "Initial parameter vector: ", s.initial)
     println(io, "Initial objective value:  ", s.finitial)
