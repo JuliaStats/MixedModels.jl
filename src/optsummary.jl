@@ -96,9 +96,12 @@ end
 Return `s.fitlog` as a `Tables.columntable`.
 
 When `stack` is false (the default), there will be 3 columns in the result:
-- `iter`: the iteration number
-- `objective`: the value of the objective at that iteration
-- `θ`: the parameter vector at that iteration
+- `iter`: the sample number
+- `objective`: the value of the objective at that sample
+- `θ`: the parameter vector at that sample
+
+(The term `sample` here refers to the fact that when the `thin` argument to the `fit` or
+`refit!` call is greater than 1 only a subset of the iterations have results recorded.)
 
 When `stack` is true, there will be 4 columns: `iter`, `objective`, `par`, and `value`
 where `value` is the stacked contents of the `θ` vectors (the equivalent of `vcat(θ...)`)
@@ -110,10 +113,10 @@ function Tables.columntable(s::OptSummary; stack::Bool=false)
     stack || return val
     θ1 = first(val.θ)
     k = length(θ1)
-    (; 
+    return (;
         iter=repeat(val.iter; inner=k),
         objective=repeat(val.objective; inner=k),
-        par=repeat(1:k, outer=length(fitlog)),
+        par=repeat(1:k; outer=length(fitlog)),
         value=foldl(vcat, val.θ; init=(eltype(θ1))[]),
     )
 end
