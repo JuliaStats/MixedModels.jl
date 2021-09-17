@@ -1,3 +1,7 @@
+MixedModels v4.4.0 Release Notes
+========================
+* Add a constructor for the abstract type `MixedModels` that delegates to `LinearMixedModel` or `GeneralizedLinearMixedModel`.
+
 MixedModels v4.3.0 Release Notes
 ========================
 * Add support for storing bootstrap results with lower precision [#566]
