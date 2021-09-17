@@ -1,7 +1,7 @@
 MixedModels v4.3.0 Release Notes
 ========================
 * Add support for storing bootstrap results with lower precision [#566]
-* Improved support for zerocorr models to the bootstrap [#570]
+* Improved support for zerocorr models in the bootstrap [#570]
 
 MixedModels v4.2.0 Release Notes
 ========================
