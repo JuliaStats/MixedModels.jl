@@ -14,6 +14,14 @@ using MixedModels: likelihoodratiotest
 
 include("modelcache.jl")
 
+@testset "LMM from MixedModel" begin
+    f = @formula(reaction ~ 1 + days + (1|subj))
+    d = MixedModels.dataset(:sleepstudy)
+    @test MixedModel(f, d) isa LinearMixedModel
+    @test MixedModel(f, d, Normal()) isa LinearMixedModel
+    @test MixedModel(f, d, Normal(), IdentityLink()) isa LinearMixedModel
+end
+
 @testset "offset" begin
     let off = repeat([1], 180),
         slp = MixedModels.dataset(:sleepstudy),

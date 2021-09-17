@@ -1,3 +1,19 @@
+function MixedModel(f::FormulaTerm, tbl; kwargs...)
+    return LinearMixedModel(f::FormulaTerm, tbl; kwargs...)
+end
+
+function MixedModel(
+    f::FormulaTerm, tbl, d::Distribution, l::Link=canonicallink(d); kwargs...
+)
+    return GeneralizedLinearMixedModel(f, tbl, d, l; kwargs...)
+end
+
+function MixedModel(
+    f::FormulaTerm, tbl, d::Normal, l::IdentityLink=IdentityLink(); kwargs...
+)
+    return LinearMixedModel(f, tbl; kwargs...)
+end
+
 function StatsBase.coefnames(m::MixedModel)
     Xtrm = m.feterm
     return invpermute!(copy(Xtrm.cnames), Xtrm.piv)

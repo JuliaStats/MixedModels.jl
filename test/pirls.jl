@@ -11,6 +11,13 @@ using MixedModels: dataset
 
 include("modelcache.jl")
 
+@testset "GLMM from MixedModel" begin
+    f = first(gfms[:contra])
+    d = dataset(:contra)
+    @test MixedModel(f, d, Bernoulli()) isa GeneralizedLinearMixedModel
+    @test MixedModel(f, d, Bernoulli(), ProbitLink()) isa GeneralizedLinearMixedModel
+end
+
 @testset "contra" begin
     contra = dataset(:contra)
     thin = 5
