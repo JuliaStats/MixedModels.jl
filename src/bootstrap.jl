@@ -137,6 +137,11 @@ end
 
 Return a tidy (column)table with the parameter estimates spread into columns
 of `iter`, `type`, `group`, `name` and `value`.
+
+!!! warning
+    Currently, correlations that are systematically zero are included in the
+    the result. This may change in a future release without being considered
+    a breaking change.
 """
 function allpars(bsamp::MixedModelFitCollection{T}) where {T}
     fits, λ, fcnames = bsamp.fits, bsamp.λ, bsamp.fcnames
@@ -244,7 +249,7 @@ function setθ!(bsamp::MixedModelFitCollection, i::Integer)
     θ = bsamp.fits[i].θ
     offset = 0
     for (λ, inds) in zip(bsamp.λ, bsamp.inds)
-        λdat = λ.data
+        λdat = _getdata(λ)
         fill!(λdat, false)
         for j in eachindex(inds)
             λdat[inds[j]] = θ[j + offset]
@@ -253,6 +258,9 @@ function setθ!(bsamp::MixedModelFitCollection, i::Integer)
     end
     return bsamp
 end
+
+_getdata(x::Diagonal) = x
+_getdata(x::LowerTriangular) = x.data
 
 """
     shortestcovint(v, level = 0.95)
@@ -277,7 +285,12 @@ end
 """
     shortestcovint(bsamp::MixedModelBootstrap, level = 0.95)
 
-Return the shortest interval containing `level` proportion for each parameter from `bsamp.allpars`
+Return the shortest interval containing `level` proportion for each parameter from `bsamp.allpars`.
+
+!!! warning
+    Currently, correlations that are systematically zero are included in the
+    the result. This may change in a future release without being considered
+    a breaking change.
 """
 function shortestcovint(bsamp::MixedModelBootstrap{T}, level=0.95) where {T}
     allpars = bsamp.allpars

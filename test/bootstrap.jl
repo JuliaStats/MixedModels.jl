@@ -108,6 +108,7 @@ end
         fmzc = models(:sleepstudy)[2]
         pbzc = parametricbootstrap(MersenneTwister(42), 5, fmzc, Float16)
         @test length(pbzc) == 5
+        @test Tables.istable(shortestcovint(pbzc))
         @test typeof(pbzc) == MixedModelBootstrap{Float16}
     end
 

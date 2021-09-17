@@ -12,6 +12,7 @@ slp = DataFrame(MixedModels.dataset(:sleepstudy))
 slpm = fit(MixedModel, @formula(reaction ~ 1 + days + (1|subj)), slp)
 DisplayAs.Text(slpm) # hide
 ```
+
 ## Prediction
 
 The simplest form of prediction are the fitted values from the model: they are indeed the model's predictions for the observed data.
@@ -79,8 +80,9 @@ predict(slpm, slp2; new_re_levels=:population)
 For generalized linear mixed models, there is an additional keyword argument to `predict`: `type` specifies whether the predictions are returned on the scale of the linear predictor (`:linpred`) or on the level of the response `(:response)` (i.e. the level at which the values were originally observed).
 
 ```@example Main
-cbpp = MixedModels.dataset(:cbpp)
-gm = fit(MixedModel, @formula((incid/hsz) ~ 1 + period + (1|herd)), cbpp, Binomial(), wts=float(cbpp.hsz))
+cbpp = DataFrame(MixedModels.dataset(:cbpp))
+cbpp.rate = cbpp.incid ./ cbpp.hsz
+gm = fit(MixedModel, @formula(rate ~ 1 + period + (1|herd)), cbpp, Binomial(), wts=float(cbpp.hsz))
 predict(gm, cbpp; type=:response) ≈ fitted(gm)
 ```
 
