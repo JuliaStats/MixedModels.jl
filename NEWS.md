@@ -1,6 +1,6 @@
 MixedModels v4.4.0 Release Notes
 ========================
-* Add a constructor for the abstract type `MixedModels` that delegates to `LinearMixedModel` or `GeneralizedLinearMixedModel`.
+* Add a constructor for the abstract type `MixedModels` that delegates to `LinearMixedModel` or `GeneralizedLinearMixedModel`. [#572]
 
 MixedModels v4.3.0 Release Notes
 ========================
@@ -303,3 +303,4 @@ Package dependencies
 [#561]: https://github.com/JuliaStats/MixedModels.jl/issues/561
 [#566]: https://github.com/JuliaStats/MixedModels.jl/issues/566
 [#570]: https://github.com/JuliaStats/MixedModels.jl/issues/570
+[#572]: https://github.com/JuliaStats/MixedModels.jl/issues/572
