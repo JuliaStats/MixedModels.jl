@@ -1,6 +1,6 @@
 MixedModels v4.4.0 Release Notes
 ========================
-* Add a constructor for the abstract type `MixedModels` that delegates to `LinearMixedModel` or `GeneralizedLinearMixedModel`. [#572]
+* Add a constructor for the abstract type `MixedModel` that delegates to `LinearMixedModel` or `GeneralizedLinearMixedModel`. [#572]
 * Compat for Arrow.jl 2.0 [#573]
 
 MixedModels v4.3.0 Release Notes
