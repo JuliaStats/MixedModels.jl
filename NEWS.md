@@ -1,5 +1,9 @@
 MixedModels v4.4.0 Release Notes
 ========================
+* Fix type parameterization in MixedModelsBootstrap to support models with a mixture of correlation structures (i.e. `zerocorr` in some but not all RE terms) [#577]
+
+MixedModels v4.4.0 Release Notes
+========================
 * Add a constructor for the abstract type `MixedModel` that delegates to `LinearMixedModel` or `GeneralizedLinearMixedModel`. [#572]
 * Compat for Arrow.jl 2.0 [#573]
 
@@ -306,3 +310,4 @@ Package dependencies
 [#570]: https://github.com/JuliaStats/MixedModels.jl/issues/570
 [#572]: https://github.com/JuliaStats/MixedModels.jl/issues/572
 [#573]: https://github.com/JuliaStats/MixedModels.jl/issues/573
+[#577]: https://github.com/JuliaStats/MixedModels.jl/issues/577
