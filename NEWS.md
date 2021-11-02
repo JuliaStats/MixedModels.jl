@@ -1,4 +1,4 @@
-MixedModels v4.4.0 Release Notes
+MixedModels v4.4.1 Release Notes
 ========================
 * Fix type parameterization in MixedModelsBootstrap to support models with a mixture of correlation structures (i.e. `zerocorr` in some but not all RE terms) [#577]
 
