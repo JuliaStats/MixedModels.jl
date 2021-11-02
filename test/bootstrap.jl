@@ -112,6 +112,14 @@ end
         @test typeof(pbzc) == MixedModelBootstrap{Float16}
     end
 
+    @testset "zerocorr + not zerocorr" begin
+        form_zc_not = @formula(rt_trunc ~ 1 + spkr * prec * load +
+                                         (1 + spkr + prec + load | subj) +
+                                 zerocorr(1 + spkr + prec + load | item))
+        fmzcnot = fit(MixedModel, form_zc_not, dataset(:kb07))
+        pbzcnot = parametricbootstrap(MersenneTwister(42), 2, fmzcnot, Float16)
+    end
+
     @testset "Bernoulli simulate! and GLMM boostrap" begin
         contra = dataset(:contra)
         # need a model with fast=false to test that we only

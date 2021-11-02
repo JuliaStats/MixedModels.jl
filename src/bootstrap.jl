@@ -28,7 +28,7 @@ and correlations of the random-effects terms.
 """
 struct MixedModelBootstrap{T<:AbstractFloat} <: MixedModelFitCollection{T}
     fits::Vector
-    λ::Vector{<:Union{LowerTriangular{T,Matrix{T}},Diagonal{T,Vector{T}}}}
+    λ::Vector{Union{LowerTriangular{T},Diagonal{T}}}
     inds::Vector{Vector{Int}}
     lowerbd::Vector{T}
     fcnames::NamedTuple
