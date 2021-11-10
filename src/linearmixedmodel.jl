@@ -443,7 +443,15 @@ function fit!(
         return val
     end
     NLopt.min_objective!(opt, obj)
-    optsum.finitial = obj(optsum.initial, T[])
+    try
+        optsum.finitial = obj(optsum.initial, T[])
+    catch PosDefException
+        if all(==(first(m.y)), m.y)
+            throw(ArgumentError("The response is constant and thus model fitting has failed"))
+        else
+            rethrow()
+        end
+    end
     empty!(fitlog)
     push!(fitlog, (copy(optsum.initial), optsum.finitial))
     fmin, xmin, ret = NLopt.optimize!(opt, copyto!(optsum.final, optsum.initial))

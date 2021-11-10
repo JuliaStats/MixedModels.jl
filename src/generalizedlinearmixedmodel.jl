@@ -332,7 +332,15 @@ function fit!(
         end
     end
     ## ensure that the parameter values saved in m are xmin
-    pirls!(setpar!(m, xmin), fast, verbose)
+    try
+        pirls!(setpar!(m, xmin), fast, verbose)
+    catch PosDefException
+        if all(==(first(m.y)), m.y)
+            throw(ArgumentError("The response is constant and thus model fitting has failed"))
+        else
+            rethrow()
+        end
+    end
     optsum.nAGQ = nAGQ
     optsum.feval = opt.numevals
     optsum.final = xmin
@@ -396,6 +404,7 @@ function GeneralizedLinearMixedModel(
 
     LMM = LinearMixedModel(f, tbl; contrasts=contrasts, wts=wts)
     y = copy(LMM.y)
+    constresponse = all(==(first(y)), y)
     # the sqrtwts field must be the correct length and type but we don't know those
     # until after the model is constructed if wt is empty.  Because a LinearMixedModel
     # type is immutable, another one must be created.
@@ -413,7 +422,11 @@ function GeneralizedLinearMixedModel(
             LMM.optsum,
         )
     end
-    updateL!(LMM)
+    # if the response is constant, there's no point (and this may even fail)
+    # we allow this instead of simply failing so that a constant response can
+    # be used as the starting point to simulation where the response will be
+    # overwritten before fitting
+    constresponse || updateL!(LMM)
     # fit a glm to the fixed-effects only
     T = eltype(LMM.Xymat)
     gl = glm(LMM.X, y, d, l; wts=convert(Vector{T}, wts), offset=convert(Vector{T}, offset))
@@ -439,7 +452,10 @@ function GeneralizedLinearMixedModel(
         similar(vv),
         similar(vv),
     )
-    deviance!(res, 1)
+
+    # if the response is constant, there's no point (and this may even fail)
+    constresponse || deviance!(res, 1)
+
     return res
 end
 

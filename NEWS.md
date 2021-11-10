@@ -1,3 +1,8 @@
+MixedModels v4.5.0 Release Notes
+========================
+* Allow constructing a `GeneralizedLinearMixedModel` with constant response, but don't update the ``L`` matrix nor initialize its deviance. This allows for the model to still be used for simulation where the response will be changed before fitting. [#578]
+* Catch `PosDefException` during the first optimization step and throw a more informative `ArgumentError` if the response is constant. [#578]
+
 MixedModels v4.4.1 Release Notes
 ========================
 * Fix type parameterization in MixedModelsBootstrap to support models with a mixture of correlation structures (i.e. `zerocorr` in some but not all RE terms) [#577]
@@ -311,3 +316,4 @@ Package dependencies
 [#572]: https://github.com/JuliaStats/MixedModels.jl/issues/572
 [#573]: https://github.com/JuliaStats/MixedModels.jl/issues/573
 [#577]: https://github.com/JuliaStats/MixedModels.jl/issues/577
+[#578]: https://github.com/JuliaStats/MixedModels.jl/issues/578

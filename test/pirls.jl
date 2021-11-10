@@ -122,6 +122,16 @@ end
         @test gm2r.β ≈ -gm2.β atol=1e-3
         @test gm2r.θ ≈ gm2.θ atol=1e-3
     end
+
+    @testset "constant response" begin
+        cbconst = DataFrame(cbpp)
+        cbconst.incid = zero(cbconst.incid)
+        # we do construction and fitting in two separate steps to make sure
+        # that construction succeeds and that the ArgumentError occurs in fitting.
+        mcbconst = GeneralizedLinearMixedModel(first(gfms[:cbpp]), cbconst, Binomial(); wts=float(cbpp.hsz))
+        @test mcbconst isa GeneralizedLinearMixedModel
+        @test_throws ArgumentError("The response is constant and thus model fitting has failed") fit!(mcbconst; progress=false)
+    end
 end
 
 @testset "verbagg" begin
