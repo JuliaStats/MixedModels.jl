@@ -181,7 +181,6 @@ end
     refit!(fm, float(MixedModels.dataset(:dyestuff2)[:yield]); progress=false) # restore the model in the cache
 end
 
-
 @testset "penicillin" begin
     fm = only(models(:penicillin))
     @test size(fm) == (144, 1, 30, 2)
