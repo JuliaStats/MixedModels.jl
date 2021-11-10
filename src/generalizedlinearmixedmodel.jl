@@ -336,7 +336,9 @@ function fit!(
         pirls!(setpar!(m, xmin), fast, verbose)
     catch PosDefException
         if all(==(first(m.y)), m.y)
-            throw(ArgumentError("The response is constant and thus model fitting has failed"))
+            throw(
+                ArgumentError("The response is constant and thus model fitting has failed")
+            )
         else
             rethrow()
         end
