@@ -288,6 +288,10 @@ function fit!(
         throw(ArgumentError("This model has already been fitted. Use refit!() instead."))
     end
 
+    if all(==(first(m.y)), m.y)
+        throw(ArgumentError("The response is constant and thus model fitting has failed"))
+    end
+
     if !fast
         optsum.lowerbd = vcat(fill!(similar(β), T(-Inf)), optsum.lowerbd)
         optsum.initial = vcat(β, m.θ)
@@ -332,17 +336,7 @@ function fit!(
         end
     end
     ## ensure that the parameter values saved in m are xmin
-    try
-        pirls!(setpar!(m, xmin), fast, verbose)
-    catch PosDefException
-        if all(==(first(m.y)), m.y)
-            throw(
-                ArgumentError("The response is constant and thus model fitting has failed")
-            )
-        else
-            rethrow()
-        end
-    end
+    pirls!(setpar!(m, xmin), fast, verbose)
     optsum.nAGQ = nAGQ
     optsum.feval = opt.numevals
     optsum.final = xmin
