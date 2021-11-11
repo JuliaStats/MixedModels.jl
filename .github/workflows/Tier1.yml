@@ -32,4 +32,3 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: julia-actions/julia-uploadcodecov@v0.1
-        if:  ${{ startsWith(matrix.os, 'Ubuntu') && startsWith(matrix.julia-version, '1.6') }}

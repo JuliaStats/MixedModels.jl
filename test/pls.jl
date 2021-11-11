@@ -375,6 +375,12 @@ end
     @test isa(b3tbl, NamedTuple)
     @test Tables.istable(only(b3tbl))
 
+    @testset "PosDefException from constant response" begin
+        slp = MixedModels.dataset(:sleepstudy)
+        @test_throws ArgumentError("The response is constant and thus model fitting has failed") refit!(fm, zero(slp.reaction); progress=false)
+        refit!(fm, slp.reaction; progress=false)
+    end
+
     simulate!(fm)  # to test one of the unscaledre methods
     # must restore state of fm as it is cached in the global fittedmodels
     slp = MixedModels.dataset(:sleepstudy)
