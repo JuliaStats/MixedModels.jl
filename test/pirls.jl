@@ -213,7 +213,7 @@ end
     end
 
     ## simulate some data ##
-    rng = MersenneTwister(42);
+    rng = StableRNG(42);
     ng = 25
     ns = 500
     # random effect
@@ -223,16 +223,15 @@ end
     x = rand(rng, ns*ng);
 
     @testset "inverse gaussian" begin
-        rng = MersenneTwister(42);
-        y =  map(d ->  rand(rng, d), InverseGaussian.(1. ./ sqrt.(1. .+ u + x)));
-        dat = (u=u, id=id, x=x, y=y)
+        rng = StableRNG(42);
+        l = GLM.canonicallink(InverseGaussian())
         invgauss = GeneralizedLinearMixedModel(@formula(y ~ 1 + x + (1|id)), dat, InverseGaussian());
         #invgauss.optsum.optimizer = :LN_NELDERMEAD;
         # fit!(invgauss)
     end
 
     @testset "gamma" begin
-        rng = MersenneTwister(42);
+        rng = StableRNG(42);
         y =  map(d ->  rand(rng, d), Gamma.(1. ./ (1. .+ u + x)));
         dat = (u=u, id=id, x=x, y=y)
         gamma = GeneralizedLinearMixedModel(@formula(y ~ 1 + x + (1|id)), dat, Gamma());
