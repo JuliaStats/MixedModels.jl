@@ -167,16 +167,9 @@ function fit(
     tbl,
     d::Distribution=Normal(),
     l::Link=canonicallink(d);
-    kwargs...
+    kwargs...,
 )
-    return fit(
-        GeneralizedLinearMixedModel,
-        f,
-        columntable(tbl),
-        d,
-        l;
-        kwargs...
-    )
+    return fit(GeneralizedLinearMixedModel, f, columntable(tbl), d, l; kwargs...)
 end
 
 function fit(
@@ -188,13 +181,10 @@ function fit(
     wts=[],
     contrasts=Dict{Symbol,Any}(),
     offset=[],
-    kwargs...
+    kwargs...,
 )
     return fit!(
-        GeneralizedLinearMixedModel(
-            f, tbl, d, l; wts, offset, contrasts
-        );
-        kwargs...
+        GeneralizedLinearMixedModel(f, tbl, d, l; wts, offset, contrasts); kwargs...
     )
 end
 
@@ -204,16 +194,9 @@ function fit(
     tbl,
     d::Distribution,
     l::Link=canonicallink(d);
-    kwargs...
+    kwargs...,
 )
-    return fit(
-        GeneralizedLinearMixedModel,
-        f,
-        tbl,
-        d,
-        l;
-        kwargs...
-    )
+    return fit(GeneralizedLinearMixedModel, f, tbl, d, l; kwargs...)
 end
 
 """
@@ -249,7 +232,8 @@ function fit!(
     lm = m.LMM
     optsum = lm.optsum
 
-    issubset(lmminit, [:θ, :β]) || throw(ArgumentError("Invalid parameter selection for lmminit"))
+    issubset(lmminit, [:θ, :β]) ||
+        throw(ArgumentError("Invalid parameter selection for lmminit"))
 
     if optsum.feval > 0
         throw(ArgumentError("This model has already been fitted. Use refit!() instead."))
