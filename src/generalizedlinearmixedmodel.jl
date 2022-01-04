@@ -259,7 +259,7 @@ function fit!(
         throw(ArgumentError("The response is constant and thus model fitting has failed"))
     end
 
-    if !isnothing(lmminit)
+    if !isempty(lmminit)
         fit!(lm)
         :θ in lmminit && copyto!(θ, lm.θ)
         :β in lmminit && copyto!(β, lm.β)
