@@ -90,11 +90,11 @@ end
 
 @testset "cbpp" begin
     cbpp = dataset(:cbpp)
-    gm2 = fit(MixedModel, first(gfms[:cbpp]), cbpp, Binomial(); wts=float(cbpp.hsz), progress=false)
+    gm2 = fit(MixedModel, first(gfms[:cbpp]), cbpp, Binomial(); wts=float(cbpp.hsz), progress=false, lmminit=[:β, :θ])
     @test weights(gm2) == cbpp.hsz
     @test deviance(gm2,true) ≈ 100.09585619892968 atol=0.0001
     @test sum(abs2, gm2.u[1]) ≈ 9.723054788538546 atol=0.0001
-    @test logdet(gm2) ≈ 16.90105378801136 atol=0.0001
+    @test logdet(gm2) ≈ 16.90105378801136 atol=0.001
     @test isapprox(sum(gm2.resp.devresid), 73.47174762237978, atol=0.001)
     @test isapprox(loglikelihood(gm2), -92.02628186840045, atol=0.001)
     @test !dispersion_parameter(gm2)
