@@ -167,14 +167,7 @@ function fit(
     tbl,
     d::Distribution=Normal(),
     l::Link=canonicallink(d);
-    wts=[],
-    contrasts=Dict{Symbol,Any}(),
-    offset=[],
-    verbose::Bool=false,
-    fast::Bool=false,
-    nAGQ::Integer=1,
-    progress::Bool=true,
-    thin::Int=typemax(Int),
+    kwargs...
 )
     return fit(
         GeneralizedLinearMixedModel,
@@ -182,14 +175,7 @@ function fit(
         columntable(tbl),
         d,
         l;
-        wts,
-        offset,
-        contrasts,
-        verbose,
-        fast,
-        nAGQ,
-        progress,
-        thin,
+        kwargs...
     )
 end
 
@@ -202,21 +188,13 @@ function fit(
     wts=[],
     contrasts=Dict{Symbol,Any}(),
     offset=[],
-    verbose::Bool=false,
-    fast::Bool=false,
-    nAGQ::Integer=1,
-    progress::Bool=true,
-    thin::Int=typemax(Int),
+    kwargs...
 )
     return fit!(
         GeneralizedLinearMixedModel(
-            f, tbl, d, l; wts=wts, offset=offset, contrasts=contrasts
+            f, tbl, d, l; wts, offset, contrasts
         );
-        verbose,
-        fast,
-        nAGQ,
-        progress,
-        thin,
+        kwargs...
     )
 end
 
@@ -226,15 +204,7 @@ function fit(
     tbl,
     d::Distribution,
     l::Link=canonicallink(d);
-    wts=[],
-    contrasts=Dict{Symbol,Any}(),
-    offset=[],
-    verbose::Bool=false,
-    REML::Bool=false,
-    fast::Bool=false,
-    nAGQ::Integer=1,
-    progress::Bool=true,
-    thin::Int=typemax(Int),
+    kwargs...
 )
     return fit(
         GeneralizedLinearMixedModel,
@@ -242,14 +212,7 @@ function fit(
         tbl,
         d,
         l;
-        wts,
-        contrasts,
-        offset,
-        verbose,
-        fast,
-        nAGQ,
-        progress,
-        thin,
+        kwargs...
     )
 end
 
