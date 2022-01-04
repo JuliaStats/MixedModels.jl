@@ -242,10 +242,14 @@ function fit!(
     nAGQ::Integer=1,
     progress::Bool=true,
     thin::Int=typemax(Int),
+    lmminit=Set(),
 ) where {T}
-    β = m.β
+    β = copy(m.β)
+    θ = copy(m.θ)
     lm = m.LMM
     optsum = lm.optsum
+
+    issubset(lmminit, [:θ, :β]) || throw(ArgumentError("Invalid parameter selection for lmminit"))
 
     if optsum.feval > 0
         throw(ArgumentError("This model has already been fitted. Use refit!() instead."))
@@ -255,9 +259,16 @@ function fit!(
         throw(ArgumentError("The response is constant and thus model fitting has failed"))
     end
 
+    if !isnothing(lmminit)
+        fit!(lm)
+        :θ in lmminit && copyto!(θ, lm.θ)
+        :β in lmminit && copyto!(β, lm.β)
+        unfit!(lm)
+    end
+
     if !fast
         optsum.lowerbd = vcat(fill!(similar(β), T(-Inf)), optsum.lowerbd)
-        optsum.initial = vcat(β, m.θ)
+        optsum.initial = vcat(β, lm.optsum.final)
         optsum.final = copy(optsum.initial)
     end
     setpar! = fast ? setθ! : setβθ!
