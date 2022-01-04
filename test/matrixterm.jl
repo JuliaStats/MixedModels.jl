@@ -42,15 +42,16 @@ end
         @test typeof(X.x) <: SparseMatrixCSC
         @test X.rank == 28
         @test X.cnames == fe.cnames
-        m1 = fit!(LinearMixedModel(collect(m.y), X, deepcopy(m.reterms), m.formula))
+        m1 = fit!(LinearMixedModel(collect(m.y), X, deepcopy(m.reterms), m.formula); progress=false)
         @test isapprox(m1.θ, m.θ, rtol = 1.0e-5)
     end
 
-    @testset "rank defiency in sparse FeTerm" begin
+    @testset "rank deficiency in sparse FeTerm" begin
         trm = MixedModels.FeTerm(SparseMatrixCSC(hcat(ones(30), 
                                                      repeat(0:9, outer = 3), 
                                                      2repeat(0:9, outer = 3))), 
                                 ["(Intercept)", "U", "V"])
+        # at present there is no attempt to evaluate the rank of a SparseMatrixCSC
         piv = trm.piv
         ipiv = invperm(piv)
         @test_broken rank(trm) == 2

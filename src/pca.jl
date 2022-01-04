@@ -13,7 +13,7 @@ Principal Components Analysis
 struct PCA{T<:AbstractFloat}
     covcor::Symmetric{T,<:AbstractMatrix{T}}
     sv::SVD{T,T,<:AbstractMatrix{T}}
-    rnames::Union{Vector{String}, Missing}
+    rnames::Union{Vector{String},Missing}
     corr::Bool
 end
 
@@ -31,7 +31,7 @@ If `corr=true`, then the covariance is first standardized to the correlation sca
 
 function PCA(covfac::AbstractMatrix, rnames=missing; corr::Bool=true)
     covf = corr ? rownormalize(covfac) : covfac
-    PCA(Symmetric(covf*covf', :L), svd(covf), rnames, corr)
+    return PCA(Symmetric(covf * covf', :L), svd(covf), rnames, corr)
 end
 
 function Base.getproperty(pca::PCA, s::Symbol)
@@ -45,37 +45,50 @@ function Base.getproperty(pca::PCA, s::Symbol)
     end
 end
 
-Base.propertynames(pca::PCA, private::Bool = false) = (
-    :covcor,
-    :sv,
-    :corr,
-    :cumvar,
-    :loadings,
-#    :rotation,
-)
+function Base.propertynames(pca::PCA, private::Bool=false)
+    return (
+        :covcor,
+        :sv,
+        :corr,
+        :cumvar,
+        :loadings,
+        #    :rotation,
+    )
+end
 
 Base.show(io::IO, pca::PCA; kwargs...) = Base.show(io, MIME"text/plain"(), pca; kwargs...)
 
-function Base.show(io::IO, ::MIME"text/plain", pca::PCA;
-        ndigitsmat=2, ndigitsvec=2, ndigitscum=4,
-        covcor=true, loadings=true, variances=false, stddevs=false)
+function Base.show(
+    io::IO,
+    ::MIME"text/plain",
+    pca::PCA;
+    ndigitsmat=2,
+    ndigitsvec=2,
+    ndigitscum=4,
+    covcor=true,
+    loadings=true,
+    variances=false,
+    stddevs=false,
+)
     println(io)
     if covcor
-        println(io,
-                "Principal components based on ",
-                pca.corr ? "correlation" : "(relative) covariance",
-                " matrix")
+        println(
+            io,
+            "Principal components based on ",
+            pca.corr ? "correlation" : "(relative) covariance",
+            " matrix",
+        )
         # only display the lower triangle of symmetric matrix
         if pca.rnames !== missing
             n = length(pca.rnames)
             cv = string.(round.(pca.covcor, digits=ndigitsmat))
-            dotpad = lpad(".", div(maximum(length, cv),2))
-            for i = 1:n, j = (i+1):n
+            dotpad = lpad(".", div(maximum(length, cv), 2))
+            for i in 1:n, j in (i + 1):n
                 cv[i, j] = dotpad
             end
             neg = startswith.(cv, "-")
             if any(neg)
-                cv[.!neg] .= " ".* cv[.!neg]
+                cv[.!neg] .= " " .* cv[.!neg]
             end
             # this hurts type stability,
             # but this show method shouldn't be a bottleneck
@@ -109,7 +122,7 @@ function Base.show(io::IO, ::MIME"text/plain", pca::PCA;
         println(io, "\nComponent loadings")
         printmat = round.(pca.loadings, digits=ndigitsmat)
         if pca.rnames !== missing
-            pclabs = [Text(""); Text.( "PC$i" for i in 1:length(pca.rnames))]
+            pclabs = [Text(""); Text.("PC$i" for i in 1:length(pca.rnames))]
             pclabs = reshape(pclabs, 1, :)
             # this hurts type stability,
             # but this show method shouldn't be a bottleneck
@@ -119,5 +132,5 @@ function Base.show(io::IO, ::MIME"text/plain", pca::PCA;
         Base.print_matrix(io, printmat)
     end
 
-    nothing
+    return nothing
 end

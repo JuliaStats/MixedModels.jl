@@ -3,7 +3,8 @@ using MixedModels: dataset
 
 @isdefined(gfms) || const global gfms = Dict(
     :cbpp => [@formula((incid/hsz) ~ 1 + period + (1|herd))],
-    :contra => [@formula(use ~ 1+age+abs2(age)+urban+livch+(1|urban&dist))],
+    :contra => [@formula(use ~ 1+age+abs2(age)+urban+livch+(1|urban&dist)),
+                @formula(use ~ 1+urban+(1+urban|dist))], # see #563
     :grouseticks => [@formula(ticks ~ 1+year+ch+ (1|index) + (1|brood) + (1|location))],
     :verbagg => [@formula(r2 ~ 1+anger+gender+btype+situ+(1|subj)+(1|item))],
 )
@@ -37,12 +38,14 @@ using MixedModels: dataset
 )
 
 # for some reason it seems necessary to prime the pump in julia-1.6.0-DEV
-@isdefined(fittedmodels) || const global fittedmodels = Dict{Symbol,Vector{LinearMixedModel}}(
-    :dyestuff => [fit(MixedModel, only(fms[:dyestuff]), dataset(:dyestuff))]
+@isdefined(fittedmodels) || const global fittedmodels = Dict{Symbol,Vector{MixedModel}}(
+    :dyestuff => [fit(MixedModel, only(fms[:dyestuff]), dataset(:dyestuff); progress=false)]
 );
+
+@isdefined(allfms) || const global allfms = merge(fms, gfms)
 
 function models(nm::Symbol)
     get!(fittedmodels, nm) do
-        [fit(MixedModel, f, dataset(nm)) for f in fms[nm]]
+        [fit(MixedModel, f, dataset(nm); progress=false) for f in allfms[nm]]
     end
 end

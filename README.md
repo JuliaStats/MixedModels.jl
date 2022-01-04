@@ -49,19 +49,24 @@ Typical distribution forms are _Bernoulli_ for binary data or _Poisson_ for coun
 
 |OS|OS Version|Arch|Julia|Tier|
 |:-:|:-:|:-:|:-:|:-:|
-|Linux|Ubuntu 18.04|x64|v1.4, 1.5|1|
-|macOS|Catalina 10.15|x64|v1.4, 1.5|1|
-|Windows|Server 2019|x64|v1.4, 1.5 |1|
+|Linux|Ubuntu 18.04|x64|v1.6|1|
+|macOS|Catalina 10.15|x64|v1.6|1|
+|Windows|Server 2019|x64|v1.6|1|
 
-Upon release of the next Julia LTS, Tier 1 will become Tier 2 and Julia LTS will become Tier 1.
+Note that previous releases still support older Julia versions.
 
-## Version 3.0.0
+## Version 4.0.0
 
-Version 3.0.0 contains some user-visible changes and many changes in the underlying code.
+Version 4.0.0 contains some user-visible changes and many changes in the underlying code.
 
-Please see [NEWS](NEWS.md) for a complete overview.
-The most dramatic user-facing change is a re-working of `parametricbootstrap` for speed and convenience.
-Additionally, several formula features have been added and [the handling of rank deficiency has changed](https://juliastats.org/MixedModels.jl/dev/rankdeficiency/).
+Please see [NEWS](NEWS.md) for a complete overview, but a few key points are:
+
+- The internal storage of the model matrices in `LinearMixedModel` has changed and been optimized. This change should be transparent to users who are not manipulating the fields of the model `struct` directly.
+- The [handling of rank deficiency](https://juliastats.org/MixedModels.jl/v4.0/rankdeficiency/) continues to evolve.
+- Additional [`predict` and `simulate`](https://juliastats.org/MixedModels.jl/v4.0/prediction/) methods have been added for generalizing to new data.
+- `saveoptsum` and `restoreoptsum!` provide for saving and restoring the `optsum` and thus offer a way to serialize a model fit.
+- There is improved support for the runtime construction of model formula, especially `RandomEffectsTerm`s and nested terms (methods for `Base.|(::AbstractTerm, ::AbstractTerm)` and `Base./(::AbstractTerm, ::AbstractTerm)`).
+- A progress display is shown by default for models taking more than a few hundred milliseconds to fit. This can be disabled with the keyword argument `progress=false`.
 
 ## Quick Start
 ```julia-repl
@@ -70,13 +75,13 @@ julia> using MixedModels
 julia> m1 = fit(MixedModel, @formula(yield ~ 1 + (1|batch)), MixedModels.dataset(:dyestuff))
 Linear mixed model fit by maximum likelihood
  yield ~ 1 + (1 | batch)
-   logLik   -2 logLik     AIC        BIC
-  -163.6635   327.3271   333.3271   337.5307
+   logLik   -2 logLik     AIC       AICc        BIC
+  -163.6635   327.3271   333.3271   334.2501   337.5307
 
 Variance components:
-            Column   VarianceStd.Dev.
-batch    (Intercept)  1388.33 37.2603
-Residual              2451.25 49.5101
+            Column    Variance Std.Dev.
+batch    (Intercept)  1388.3332 37.2603
+Residual              2451.2501 49.5101
  Number of obs: 30; levels of grouping factors: 6
 
   Fixed-effects parameters:
@@ -85,7 +90,6 @@ Residual              2451.25 49.5101
 ────────────────────────────────────────────────
 (Intercept)  1527.5     17.6946  86.33    <1e-99
 ────────────────────────────────────────────────
-
 
 julia> using Random
 

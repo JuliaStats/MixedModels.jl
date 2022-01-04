@@ -3,7 +3,7 @@ using StatsBase
 using MixedModels
 
 makedocs(
-    root = joinpath(dirname(pathof(MixedModels)), "..", "docs"),
+#    root = joinpath(dirname(pathof(MixedModels)), "..", "docs"),
     sitename = "MixedModels",
     doctest = true,
     pages = [
@@ -11,15 +11,12 @@ makedocs(
         "constructors.md",
         "optimization.md",
         "GaussHermite.md",
+        "prediction.md",
         "bootstrap.md",
         "rankdeficiency.md",
         "mime.md",
-        # "SimpleLMM.md",
-        # "MultipleTerms.md",
-        # "SingularCovariance.md",
-        # "SubjectItem.md",
-        # "benchmarks.md"
+        "api.md",
     ],
 )
 
-deploydocs(repo = "github.com/JuliaStats/MixedModels.jl.git", push_preview = true)
+deploydocs(;repo = "github.com/JuliaStats/MixedModels.jl.git", push_preview = true, devbranch = "main")

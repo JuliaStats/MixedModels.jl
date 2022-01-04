@@ -9,7 +9,7 @@ LD(d::Diagonal{T}) where {T<:Number} = sum(log, d.diag)
 
 function LD(d::UniformBlockDiagonal{T}) where {T}
     dat = d.data
-    sum(log, dat[j, j, k] for j in axes(dat, 2), k in axes(dat, 3))
+    return sum(log, dat[j, j, k] for j in axes(dat, 2), k in axes(dat, 3))
 end
 
 LD(d::DenseMatrix{T}) where {T} = sum(log, d[k] for k in diagind(d))
@@ -35,5 +35,5 @@ function LinearAlgebra.logdet(m::LinearMixedModel{T}) where {T}
         s += LD(lastL)  # this adds the log of sqrtpwrss
         s -= log(last(lastL))
     end
-    s + s
+    return s + s
 end

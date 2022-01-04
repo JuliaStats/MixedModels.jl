@@ -4,8 +4,10 @@ using StableRNGs
 using SparseArrays
 using Test
 
-using MixedModels: allequal, average, densify, dataset
+using MixedModels: isconstant, average, densify, dataset
+using StatsModels: FormulaTerm
 
+@isdefined(io) || const global io = IOBuffer()
 include("modelcache.jl")
 
 @testset "average" begin
@@ -19,19 +21,22 @@ end
 	@test densify(Diagonal(rsparsev)) == Diagonal(Vector(rsparsev))
 end
 
-@testset "allequal" begin
-	@test allequal((true, true, true))
-	@test allequal([true, true, true])
-	@test !allequal((true, false, true))
-	@test !allequal([true, false, true])
-	@test !allequal(collect(1:4))
-	@test allequal((false, false, false))
-	@test allequal([false, false, false])
-	@test allequal(ones(3))
-	@test allequal(1, 1, 1)
-
+@testset "isconstant" begin
+	@test isconstant((true, true, true))
+	@test isconstant([true, true, true])
+	@test !isconstant((true, false, true))
+	@test !isconstant([true, false, true])
+	@test !isconstant(collect(1:4))
+	@test isconstant((false, false, false))
+	@test isconstant([false, false, false])
+	@test isconstant(ones(3))
+	@test isconstant(1, 1, 1)
 	# equality of arrays with broadcasting
-	@test allequal(["(Intercept)", "days"], ["(Intercept)", "days"])
+	@test isconstant(["(Intercept)", "days"], ["(Intercept)", "days"])
+	# arrays or tuples with missing values
+	@test !isconstant([missing, 1])
+	@test isconstant(Int[])
+	@test isconstant(Union{Int,Missing}[missing, missing, missing])
 end
 
 @testset "threaded_replicate" begin
@@ -70,4 +75,9 @@ end
 	str = String(take!(io))
 	@test !isempty(findall("PC1", str))
 	@test !isempty(findall("load: yes", str))
+end
+
+@testset "formula" begin
+	@test formula(first(models(:sleepstudy))) isa FormulaTerm
+	@test formula(first(models(:contra))) isa FormulaTerm
 end

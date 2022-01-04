@@ -6,18 +6,24 @@ using MixedModels: pirls!, setβθ!, setθ!, updateL!
 
 include("modelcache.jl")
 
-
 # explicitly setting theta for these to so that we can do exact textual comparisons
 βθ = [0.1955554704948119,  0.05755412761885973, 0.3207843518569843, -1.0582595252774376,
      -2.1047524824609853, -1.0549789653925743,  1.339766125847893,  0.4953047709862237]
 gm3 = GeneralizedLinearMixedModel(only(gfms[:verbagg]), dataset(:verbagg), Bernoulli())
 pirls!(setβθ!(gm3, βθ))
 
-fm0θ = [ 1.1656121258575225]
+fm0θ = [1.1656121258575225]
 fm0 = updateL!(setθ!(first(models(:sleepstudy)), fm0θ))
 
 fm1θ = [0.9292213288149662, 0.018168393450877257, 0.22264486671069741]
 fm1 = updateL!(setθ!(last(models(:sleepstudy)), fm1θ))
+
+fmreθ = [0.32352483854887326, 0.4715395478019364, 0.0,
+         0.43705610601403755, 0.016565641868150047, 0.17732248078617097]
+# this is a junk model, but it stresses parts of the display code
+fmre = LinearMixedModel(@formula(rt_trunc ~ 1+(0+spkr|subj)+(1+load|item)), MixedModels.dataset(:kb07))
+updateL!(setθ!(fmre, fmreθ))
+fmre.optsum.feval = 1
 
 lrt = likelihoodratiotest(fm0, fm1)
 
@@ -25,7 +31,6 @@ lrt = likelihoodratiotest(fm0, fm1)
     mime = MIME"text/markdown"()
     @test_logs (:warn, "Model has not been fit: results will be nonsense") sprint(show, mime, gm3)
     gm3.optsum.feval = 1
-
     @testset "lmm" begin
         @test sprint(show, mime, fm0) == """
 |             |     Est. |     SE |     z |      p |  σ_subj |
@@ -40,6 +45,18 @@ lrt = likelihoodratiotest(fm0, fm1)
 | (Intercept) | 251.4051 | 6.6323 | 37.91 | <1e-99 | 23.7805 |
 | days        |  10.4673 | 1.5022 |  6.97 | <1e-11 |  5.7168 |
 | Residual    |  25.5918 |        |       |        |         |
+"""
+    end
+
+    @testset "re without fe" begin
+        @test sprint(show, mime, fmre) == """
+|             |      Est. |      SE |     z |      p |   σ_subj |   σ_item |
+|:----------- | ---------:| -------:| -----:| ------:| --------:| --------:|
+| (Intercept) | 2092.3713 | 76.9426 | 27.19 | <1e-99 |          | 349.7858 |
+| spkr: old   |           |         |       |        | 377.3837 |          |
+| spkr: new   |           |         |       |        | 258.9242 |          |
+| load: yes   |           |         |       |        |          | 142.5331 |
+| Residual    |  800.3224 |         |       |        |          |          |
 """
     end
 
@@ -134,7 +151,6 @@ end
 @testset "html" begin
     # this is minimal since we're mostly testing that dispatch works
     # the stdlib actually handles most of the conversion
-
     @test sprint(show, MIME("text/html"), BlockDescription(gm3)) == """
 <table><tr><th align="left">rows</th><th align="left">subj</th><th align="left">item</th><th align="left">fixed</th></tr><tr><td align="left">316</td><td align="left">Diagonal</td><td align="left"></td><td align="left"></td></tr><tr><td align="left">24</td><td align="left">Dense</td><td align="left">Diag/Dense</td><td align="left"></td></tr><tr><td align="left">7</td><td align="left">Dense</td><td align="left">Dense</td><td align="left">Dense</td></tr></table>
 """
@@ -183,5 +199,5 @@ rows & subj & item & fixed \\\\
 end
 
 # return these models to their fitted state for the cache
-refit!(fm1)
-refit!(fm0)
+refit!(fm1; progress=false)
+refit!(fm0; progress=false)

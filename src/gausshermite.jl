@@ -29,7 +29,7 @@ sum(@. abs2(σ*gn5.z + μ)*gn5.w) # E[X^2] where X ∼ N(μ, σ)
 For evaluation of the log-likelihood of a GLMM the integral to evaluate for each level of
 the grouping factor is approximately Gaussian shaped.
 """
-GaussHermiteQuadrature
+
 """
     GaussHermiteNormalized{K}
 
@@ -42,16 +42,17 @@ struct GaussHermiteNormalized{K}
     w::SVector{K,Float64}
 end
 function GaussHermiteNormalized(k::Integer)
-    ev = eigen(SymTridiagonal(zeros(k), sqrt.(1:k-1)))
+    ev = eigen(SymTridiagonal(zeros(k), sqrt.(1:(k - 1))))
     w = abs2.(ev.vectors[1, :])
-    GaussHermiteNormalized(
+    return GaussHermiteNormalized(
         SVector{k}((ev.values .- reverse(ev.values)) ./ 2),
         SVector{k}(LinearAlgebra.normalize((w .+ reverse(w)) ./ 2, 1)),
     )
 end
 
-Base.iterate(g::GaussHermiteNormalized{K}, i = 1) where {K} =
-    (K < i ? nothing : ((z = g.z[i], w = g.w[i]), i + 1))
+function Base.iterate(g::GaussHermiteNormalized{K}, i=1) where {K}
+    return (K < i ? nothing : ((z=g.z[i], w=g.w[i]), i + 1))
+end
 
 Base.length(g::GaussHermiteNormalized{K}) where {K} = K
 
@@ -64,8 +65,7 @@ const GHnormd = Dict{Int,GaussHermiteNormalized}(
     1 => GaussHermiteNormalized(SVector{1}(0.0), SVector{1}(1.0)),
     2 => GaussHermiteNormalized(SVector{2}(-1.0, 1.0), SVector{2}(0.5, 0.5)),
     3 => GaussHermiteNormalized(
-        SVector{3}(-sqrt(3), 0.0, sqrt(3)),
-        SVector{3}(1 / 6, 2 / 3, 1 / 6),
+        SVector{3}(-sqrt(3), 0.0, sqrt(3)), SVector{3}(1 / 6, 2 / 3, 1 / 6)
     ),
 )
 
