@@ -202,7 +202,8 @@ end
 """
     fit!(m::GeneralizedLinearMixedModel; fast=false, nAGQ=1,
                                          verbose=false, progress=true,
-                                         thin::Int=1)
+                                         thin::Int=1,
+                                         init_from_lmm=Set())
 
 Optimize the objective function for `m`.
 
@@ -217,6 +218,25 @@ and it may not be shown at all for models that are optimized quickly.
 If `verbose` is `true`, then both the intermediate results of both the nonlinear optimization and PIRLS are also displayed on standard output.
 
 At every `thin`th iteration  is recorded in `fitlog`, optimization progress is saved in `m.optsum.fitlog`.
+
+By default, the starting values for model fitting are taken from a (non mixed,
+i.e. marginal ) GLM fit. Experience with larger datasets (many thousands of
+observations and/or hundreds of levels of the grouping variables) has suggested
+that fittinga (Gaussian) linear mixed model on the untransformed data may
+provide better starting values and thus overall faster fits even though an
+entire LMM must be fit before the GLMM can be fit. `init_from_lmm` can be used
+to specify which starting values from an LMM with. Valid options are any
+collection (array, set, etc.) containing one or more of `:β` and `:θ`, the
+default is the empty set.
+
+!!! note
+    Initializing from an LMM requires fitting the entire LMM first, so when
+    `progress=true`, there will be two progress bars: first for the LMM, then
+    for the GLMM.
+
+!!! warning
+    The `init_from_lmm` functionality is experimental and may change or be removed entirely
+    without being considered a breaking change.
 """
 function fit!(
     m::GeneralizedLinearMixedModel{T};
@@ -225,15 +245,15 @@ function fit!(
     nAGQ::Integer=1,
     progress::Bool=true,
     thin::Int=typemax(Int),
-    lmminit=Set(),
+    init_from_lmm=Set(),
 ) where {T}
     β = copy(m.β)
     θ = copy(m.θ)
     lm = m.LMM
     optsum = lm.optsum
 
-    issubset(lmminit, [:θ, :β]) ||
-        throw(ArgumentError("Invalid parameter selection for lmminit"))
+    issubset(init_from_lmm, [:θ, :β]) ||
+        throw(ArgumentError("Invalid parameter selection for init_from_lmm"))
 
     if optsum.feval > 0
         throw(ArgumentError("This model has already been fitted. Use refit!() instead."))
@@ -243,10 +263,10 @@ function fit!(
         throw(ArgumentError("The response is constant and thus model fitting has failed"))
     end
 
-    if !isempty(lmminit)
-        fit!(lm)
-        :θ in lmminit && copyto!(θ, lm.θ)
-        :β in lmminit && copyto!(β, lm.β)
+    if !isempty(init_from_lmm)
+        fit!(lm; progress)
+        :θ in init_from_lmm && copyto!(θ, lm.θ)
+        :β in init_from_lmm && copyto!(β, lm.β)
         unfit!(lm)
     end
 

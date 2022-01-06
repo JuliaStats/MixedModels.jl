@@ -90,7 +90,7 @@ end
 
 @testset "cbpp" begin
     cbpp = dataset(:cbpp)
-    gm2 = fit(MixedModel, first(gfms[:cbpp]), cbpp, Binomial(); wts=float(cbpp.hsz), progress=false, lmminit=[:β, :θ])
+    gm2 = fit(MixedModel, first(gfms[:cbpp]), cbpp, Binomial(); wts=float(cbpp.hsz), progress=false, init_from_lmm=[:β, :θ])
     @test weights(gm2) == cbpp.hsz
     @test deviance(gm2,true) ≈ 100.09585619892968 atol=0.0001
     @test sum(abs2, gm2.u[1]) ≈ 9.723054788538546 atol=0.0001
