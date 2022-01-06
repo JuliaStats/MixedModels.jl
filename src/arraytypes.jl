@@ -113,3 +113,39 @@ function LinearAlgebra.mul!(
 ) where {T,P,Ti}
     return mul!(C.cscmat, A, adjoint(adjB.parent.cscmat), α, β)
 end
+
+function nzsas3darr(A::BlockedSparse{T,S,P}) where {T,S,P}
+    (; cscmat, colblkptr) = A
+    (; n, rowval, nzval) = cscmat
+    nblks, r = divrem(n, P)
+    iszero(r) || throw("number of columns of A, $n, is not divisible by P = $P")
+    nzs =[reshape(view(nzval, colblkptr[i]:(colblkptr[i + 1] - 1)), (S, :, P)) for i in 1:nblks]
+    Ti = eltype(rowval)
+    rowblks = sizehint!(Vector{UnitRange{eltype(rowval)}}[], nblks)
+    for i in axes(nzs, 1)
+        rv = reshape(view(rowval, colblkptr[i]:(colblkptr[i + 1] - 1)), size(nzs[i]))
+        push!(rowblks, [
+            let c = rv[:, j, 1]
+                first(c):last(c)
+            end for j in axes(rv, 2)]
+        )
+    end
+    nzs, rowblks
+end
+
+function rankUpdate!(C::Symmetric{T}, nzs, rowblks, α, β) where {T}
+    (; data, uplo) = C
+    uplo == 'L' || throw(ArgumentError("C must be stored in the lower triangle"))
+    isone(β) || rmul!(LowerTriangular(data), β)
+    for (nz, rb) in zip(nzs, rowblks)
+        rng = axes(nz, 2)
+        k = last(rng)
+        for j in rng
+            blkj = view(nz, :, j, :)
+            for i in j:k
+                mul!(view(data, rb[i], rb[j]), blkj, transpose(view(nz, :, i, :)), α, one(T))
+            end
+        end
+    end
+    return C
+end
