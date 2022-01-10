@@ -1,3 +1,7 @@
+MixedModels v4.6.0 Release Notes
+========================
+* Experimental support for initializing `GeneralizedLinearMixedModel` fits from a linear mixed model instead of a marginal (non-mixed) generalized linear model. [#588]
+
 MixedModels v4.5.0 Release Notes
 ========================
 * Allow constructing a `GeneralizedLinearMixedModel` with constant response, but don't update the ``L`` matrix nor initialize its deviance. This allows for the model to still be used for simulation where the response will be changed before fitting. [#578]
@@ -317,3 +321,4 @@ Package dependencies
 [#573]: https://github.com/JuliaStats/MixedModels.jl/issues/573
 [#577]: https://github.com/JuliaStats/MixedModels.jl/issues/577
 [#578]: https://github.com/JuliaStats/MixedModels.jl/issues/578
+[#588]: https://github.com/JuliaStats/MixedModels.jl/issues/588
