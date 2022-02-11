@@ -1,0 +1,29 @@
+name: Run benchmarks
+
+on:
+  worfklw_dispatch:
+  pull_request:
+    types: [labeled, opened, synchronize, reopened]
+
+# Only trigger the benchmark job when you add `run benchmark` label to the PR
+jobs:
+  Benchmark:
+    runs-on: ubuntu-latest
+    if: contains(github.event.pull_request.labels.*.name, 'run benchmark')
+    steps:
+      - uses: actions/checkout@v2
+      - uses: julia-actions/setup-julia@latest
+        with:
+          version: 1
+      - name: Install registered dependencies
+        uses: julia-actions/julia-buildpkg@latest
+      - name: Install dependencies
+        run: julia --project=. -e 'using Pkg; pkg"add PkgBenchmark BenchmarkCI@0.1"'
+      - name: Run benchmarks
+        run: julia --project=. -e 'using BenchmarkCI; BenchmarkCI.judge(baseline="origin/main")'
+      - name: check git
+        run: julia --project=. -e 'read(run(`git status`))'
+      - name: Post results
+        run: julia --project=. -e 'using BenchmarkCI; BenchmarkCI.postjudge()'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
