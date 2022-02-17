@@ -3,10 +3,16 @@ on:
   push:
     branches: [main]
     tags: [v*]
+    paths-ignore:
+      - 'LICENSE.md'
+      - 'README.md'
   pull_request:
     branches:
       - main
       - v3.x
+    paths-ignore:
+      - 'LICENSE.md'
+      - 'README.md'
 jobs:
   Documenter:
     name: Documentation
