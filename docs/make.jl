@@ -2,10 +2,10 @@ using Documenter
 using StatsBase
 using MixedModels
 
-makedocs(
-    sitename = "MixedModels",
-    doctest = true,
-    pages = [
+makedocs(;
+    sitename="MixedModels",
+    doctest=true,
+    pages=[
         "index.md",
         "constructors.md",
         "optimization.md",
