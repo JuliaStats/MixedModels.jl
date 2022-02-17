@@ -1,28 +1,27 @@
-name: Tier 1
+name: nightly
 on:
-  push:
-    branches:
-      - main
-      - v3.x
-    paths-ignore:
-      - 'LICENSE.md'
-      - 'README.md'
   pull_request:
     branches:
       - main
-      - v3.x
     paths-ignore:
       - 'LICENSE.md'
       - 'README.md'
+  workflow_dispatch:
 jobs:
   ci:
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
-        julia-version: [1.6]
+        julia-version: [nightly]
         julia-arch: [x64]
-        os: [ubuntu-18.04, macos-10.15, windows-2019]
+        os: [ubuntu-18.04]
     steps:
+    - name: Cancel Previous Runs
+        uses: styfle/cancel-workflow-action@0.9.1
+        with:
+          all_but_latest: true
+          access_token: ${{ github.token }}
       - uses: actions/checkout@v2
       - uses: julia-actions/setup-julia@v1
         with:
@@ -31,4 +30,4 @@ jobs:
       - uses: julia-actions/julia-runtest@v0.1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - uses: julia-actions/julia-uploadcodecov@v0.1
+          # OPENBLAS_CORETYPE: haswell
