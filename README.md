@@ -1,7 +1,7 @@
 # Mixed-effects models in Julia
 
 |**Documentation**|**Citation**|**Build Status**|**Code Coverage**|
-|:-:|:-:|:-:|:-:|:-:|
+|:---------------:|:----------:|:--------------:|:---------------:|
 |[![Stable Docs][docs-stable-img]][docs-stable-url] [![Dev Docs][docs-dev-img]][docs-dev-url] | [![DOI][doi-img]][doi-url] | [![Julia Current][current-img]][current-url] [![Julia 1.6 (LTS)][lts-img]][lts-url] [![Julia Nightly][nightly-img]][nightly-url] [![PkgEval][pkgeval-img]][pkgeval-url] | [![CodeCov][codecov-img]][codecov-url] | [![Code Style: Blue](https://img.shields.io/badge/code%20style-blue-4495d1.svg)](https://github.com/invenia/BlueStyle) |
 
 [doi-img]: https://zenodo.org/badge/9106942.svg
