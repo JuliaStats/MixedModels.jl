@@ -52,13 +52,13 @@ Typical distribution forms are _Bernoulli_ for binary data or _Poisson_ for coun
 
 ## Currently Tested Platforms
 
-|OS|OS Version|Arch|Julia|
-|:-:|:-:|:-:|:-:|:-:|
-|Linux|Ubuntu 18.04|x64|v1.6 (LTS)|
-|Linux|Ubuntu 18.04|x64|current release|
-|Linux|Ubuntu 18.04|x64|nightly|
-|macOS|Catalina 10.15|x64|v1.6 (LTS)|
-|Windows|Server 2019|x64|v1.6 (LTS)|
+|OS      | OS Version    |Arch |Julia           |
+|:------:|:-------------:|:---:|:--------------:|
+|Linux   | Ubuntu 18.04  | x64 |v1.6 (LTS)      |
+|Linux   | Ubuntu 18.04  | x64 |current release |
+|Linux   | Ubuntu 18.04  | x64 |nightly         |
+|macOS   | Catalina 10.15| x64 |v1.6 (LTS)      |
+|Windows | Server 2019   | x64 |v1.6 (LTS)      |
 
 Note that previous releases still support older Julia versions.
 
