@@ -1,0 +1,35 @@
+name: Style-Enforcer
+on:
+  push:
+    branches:
+      - 'main'
+    tags: '*'
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    # note: keep in sync with `format/run.jl`
+    paths-ignore:
+      - 'README.md'
+      - '.gitignore'
+jobs:
+  format-check:
+    name: Style Enforcement (Julia ${{ matrix.julia-version }} - ${{ github.event_name }})
+    # Run on push's or non-draft PRs
+    if: (github.event_name == 'push') || (github.event.pull_request.draft == false)
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        julia-version: [1.6]
+    steps:
+      - uses: julia-actions/setup-julia@latest
+        with:
+          version: ${{ matrix.julia-version }}
+      - uses: actions/checkout@v1
+      - name: Instantiate `format` environment and format
+        run: |
+          julia --project=format -e 'using Pkg; Pkg.instantiate()'
+          julia --project=format 'format/run.jl'
+      - uses: reviewdog/action-suggester@v1
+        if: github.event_name == 'pull_request'
+        with:
+          tool_name: JuliaFormatter
+          fail_on_error: true
