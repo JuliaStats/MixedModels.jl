@@ -12,18 +12,16 @@ on:
     paths-ignore:
       - 'LICENSE.md'
       - 'README.md'
-  workflow_dispatch:
 jobs:
   ci:
     runs-on: ${{ matrix.os }}
     strategy:
-      fail-fast: false
       matrix:
         julia-version: [nightly]
         julia-arch: [x64]
         os: [ubuntu-18.04]
     steps:
-    - name: Cancel Previous Runs
+      - name: Cancel Previous Runs
         uses: styfle/cancel-workflow-action@0.9.1
         with:
           all_but_latest: true
@@ -36,4 +34,4 @@ jobs:
       - uses: julia-actions/julia-runtest@v0.1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # OPENBLAS_CORETYPE: haswell
+      - uses: julia-actions/julia-uploadcodecov@v0.1
