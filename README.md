@@ -1,8 +1,8 @@
 # Mixed-effects models in Julia
 
 |**Documentation**|**Citation**|**Build Status**|**Code Coverage**|
-|:-:|:-:|:-:|:-:|
-|[![Stable Docs][docs-stable-img]][docs-stable-url] [![Dev Docs][docs-dev-img]][docs-dev-url] | [![DOI][doi-img]][doi-url] | [![Tier 1][T1-img]][T1-url] [![Tier 2][T2-img]][T2-url] [![PkgEval][pkgeval-img]][pkgeval-url] | [![CodeCov][codecov-img]][codecov-url] |
+|:-:|:-:|:-:|:-:|:-:|
+|[![Stable Docs][docs-stable-img]][docs-stable-url] [![Dev Docs][docs-dev-img]][docs-dev-url] | [![DOI][doi-img]][doi-url] | [![Tier 1][T1-img]][T1-url] [![PkgEval][pkgeval-img]][pkgeval-url] | [![CodeCov][codecov-img]][codecov-url] | [![Code Style: Blue](https://img.shields.io/badge/code%20style-blue-4495d1.svg)](https://github.com/invenia/BlueStyle) |
 
 [doi-img]: https://zenodo.org/badge/9106942.svg
 [doi-url]: https://zenodo.org/badge/latestdoi/9106942
