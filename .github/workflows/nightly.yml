@@ -1,5 +1,11 @@
 name: nightly
 on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - 'LICENSE.md'
+      - 'README.md'
   pull_request:
     branches:
       - main
