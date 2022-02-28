@@ -1,3 +1,5 @@
+* Simplify printing of BLAS configuration in tests.
+
 MixedModels v4.6.0 Release Notes
 ========================
 * Experimental support for initializing `GeneralizedLinearMixedModel` fits from a linear mixed model instead of a marginal (non-mixed) generalized linear model. [#588]
