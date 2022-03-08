@@ -283,7 +283,7 @@ function shortestcovint(v, level=0.95)
 end
 
 """
-    shortestcovint(bsamp::MixedModelBootstrap, level = 0.95)
+    shortestcovint(bsamp::MixedModelFitCollection, level = 0.95)
 
 Return the shortest interval containing `level` proportion for each parameter from `bsamp.allpars`.
 
@@ -292,7 +292,7 @@ Return the shortest interval containing `level` proportion for each parameter fr
     the result. This may change in a future release without being considered
     a breaking change.
 """
-function shortestcovint(bsamp::MixedModelBootstrap{T}, level=0.95) where {T}
+function shortestcovint(bsamp::MixedModelFitCollection{T}, level=0.95) where {T}
     allpars = bsamp.allpars
     pars = unique(zip(allpars.type, allpars.group, allpars.names))
 
