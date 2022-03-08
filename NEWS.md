@@ -1,3 +1,7 @@
+MixedModels v4.6.1 Release Notes
+========================
+* Loosen type restriction on `shortestcovint(::MixedModelBootstrap)` to `shortestcovint(::MixedModelFitCollection)`. [#598]
+
 MixedModels v4.6.0 Release Notes
 ========================
 * Experimental support for initializing `GeneralizedLinearMixedModel` fits from a linear mixed model instead of a marginal (non-mixed) generalized linear model. [#588]
@@ -322,3 +326,4 @@ Package dependencies
 [#577]: https://github.com/JuliaStats/MixedModels.jl/issues/577
 [#578]: https://github.com/JuliaStats/MixedModels.jl/issues/578
 [#588]: https://github.com/JuliaStats/MixedModels.jl/issues/588
+[#598]: https://github.com/JuliaStats/MixedModels.jl/issues/598
