@@ -28,23 +28,24 @@ Predict response for new data.
 The keyword argument `new_re_levels` specifies how previously unobserved
 values of the grouping variable are handled. Possible values are:
 
-- `:population`: return population values for the relevant grouping varible.
+- `:population`: return population values for the relevant grouping variable.
+   In other words, treat the associated random effect as 0.
    If all grouping variables have new levels, then this is equivalent to the
    just the fixed effects.
 - `:missing`: return `missing`.
 - `:error`: error on this condition. The error type is an implementation detail:
-   you should rely on a particular type of error being returned.
+   you should not rely on a particular type of error being returned.
 
 If you want simulated values for unobserved levels of the grouping variable,
 consider the [`simulate!`](@ref) and `simulate` methods.
 
 Predictions based purely on the fixed effects can be obtained by
 specifying previously unobserved levels of the random effects and setting
-`new_re_levels=:population`. Similarly, the contribution of a particular
+`new_re_levels=:population`. Similarly, the contribution of any
 grouping variable can be excluded by specifying previously unobserved levels,
 while including previously observed levels of the other grouping variables.
 In the future, it may be possible to specify a subset of the grouping variables
-or overall random-effects structure to use,but not at this time.
+or overall random-effects structure to use, but not at this time.
 
 For `GeneralizedLinearMixedModel`, the `type` parameter specifies
 whether the predictions should be returned on the scale of linear predictor
