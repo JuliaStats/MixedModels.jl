@@ -56,7 +56,7 @@ Regression weights are not yet supported in prediction.
 Similarly, offsets are also not supported for `GeneralizedLinearMixedModel`.
 """
 function StatsBase.predict(
-    m::LinearMixedModel, newdata::Tables.ColumnTable; new_re_levels=:population
+    m::LinearMixedModel, newdata::Tables.ColumnTable; new_re_levels=:missing
 )
     return _predict(m, newdata, m.β; new_re_levels)
 end
