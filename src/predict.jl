@@ -130,7 +130,9 @@ function _predict(m::MixedModel{T}, newdata, β; new_re_levels) where {T}
         # grouping variable because we are in the :error branch
         blups = ranef(m)[oldreperm]
     elseif new_re_levels == :population
-        blups = [Matrix{T}(undef, size(t.z, 1), nlevs(t)) for t in view(mnew.reterms, newreperm)]
+        blups = [
+            Matrix{T}(undef, size(t.z, 1), nlevs(t)) for t in view(mnew.reterms, newreperm)
+        ]
         blupsold = ranef(m)[oldreperm]
 
         for (idx, B) in enumerate(blups)
@@ -146,7 +148,10 @@ function _predict(m::MixedModel{T}, newdata, β; new_re_levels) where {T}
             end
         end
     elseif new_re_levels == :missing
-        blups = [Matrix{Union{T, Missing}}(undef, size(t.z, 1), nlevs(t)) for t in view(mnew.reterms, newreperm)]
+        blups = [
+            Matrix{Union{T,Missing}}(undef, size(t.z, 1), nlevs(t)) for
+            t in view(mnew.reterms, newreperm)
+        ]
         blupsold = ranef(m)[oldreperm]
         for (idx, B) in enumerate(blups)
             oldlevels = levels(oldre[idx])
