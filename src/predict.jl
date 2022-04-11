@@ -30,11 +30,11 @@ values of the grouping variable are handled. Possible values are:
 
 - `:population`: return population values for the relevant grouping variable.
    In other words, treat the associated random effect as 0.
-   If all grouping variables have new levels, then this is equivalent to the
+   If all grouping variables have new levels, then this is equivalent to
    just the fixed effects.
 - `:missing`: return `missing`.
 - `:error`: error on this condition. The error type is an implementation detail:
-   you should not rely on a particular type of error being returned.
+   you should not rely on a particular type of error being thrown.
 
 If you want simulated values for unobserved levels of the grouping variable,
 consider the [`simulate!`](@ref) and `simulate` methods.
