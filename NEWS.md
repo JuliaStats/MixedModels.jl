@@ -1,3 +1,8 @@
+MixedModels v4.6.2 Release Notes
+========================
+* Changed the explanation of `predict`'s keyword argument `new_re_levels` in a way that is clearer about the behavior when there are multiple grouping variables. [#603]
+* Fix the default behavior of `new_re_levels=:missing` to match the docstring. Previously, the default was `:population`, in disagreement with the docstring. [#603]
+
 MixedModels v4.6.1 Release Notes
 ========================
 * Loosen type restriction on `shortestcovint(::MixedModelBootstrap)` to `shortestcovint(::MixedModelFitCollection)`. [#598]
@@ -327,3 +332,4 @@ Package dependencies
 [#578]: https://github.com/JuliaStats/MixedModels.jl/issues/578
 [#588]: https://github.com/JuliaStats/MixedModels.jl/issues/588
 [#598]: https://github.com/JuliaStats/MixedModels.jl/issues/598
+[#603]: https://github.com/JuliaStats/MixedModels.jl/issues/603
