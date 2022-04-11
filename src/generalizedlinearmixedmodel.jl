@@ -225,7 +225,7 @@ observations and/or hundreds of levels of the grouping variables) has suggested
 that fitting a (Gaussian) linear mixed model on the untransformed data may
 provide better starting values and thus overall faster fits even though an
 entire LMM must be fit before the GLMM can be fit. `init_from_lmm` can be used
-to specify which starting values from an LMM with. Valid options are any
+to specify which starting values from an LMM to use. Valid options are any
 collection (array, set, etc.) containing one or more of `:β` and `:θ`, the
 default is the empty set.
 
