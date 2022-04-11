@@ -126,10 +126,10 @@ function _predict(m::MixedModel{T}, newdata, β; new_re_levels) where {T}
     # number of levels and that number may not be the same for the
     # new data, we need to permute the reterms from both models to be
     # in the same order
-    newreperm = sort(1:length(mnew.reterms); by=x -> string(mnew.reterms[x].trm))
-    oldreperm = sort(1:length(m.reterms); by=x -> string(m.reterms[x].trm))
-    newre = mnew.reterms[newreperm]
-    oldre = m.reterms[oldreperm]
+    newreperm = sortperm(mnew.reterms; by=x -> string(x.trm))
+    oldreperm = sortperm(m.reterms; by=x -> string(x.trm))
+    newre = view(mnew.reterms, newreperm)
+    oldre = view(m.reterms, oldreperm)
 
     if new_re_levels == :error
         for (grp, known_levels, data_levels) in
@@ -143,7 +143,9 @@ function _predict(m::MixedModel{T}, newdata, β; new_re_levels) where {T}
         # grouping variable because we are in the :error branch
         blups = ranef(m)[oldreperm]
     elseif new_re_levels == :population
-        blups = ranef(mnew)[newreperm]
+        blups = [
+            Matrix{T}(undef, size(t.z, 1), nlevs(t)) for t in view(mnew.reterms, newreperm)
+        ]
         blupsold = ranef(m)[oldreperm]
 
         for (idx, B) in enumerate(blups)
@@ -159,10 +161,10 @@ function _predict(m::MixedModel{T}, newdata, β; new_re_levels) where {T}
             end
         end
     elseif new_re_levels == :missing
-        # we can't quite use ranef! because we need
-        # Union{T, Missing} and not just T
-        blups = Vector{Matrix{Union{T,Missing}}}(undef, length(m.reterms))
-        copyto!(blups, ranef(mnew)[newreperm])
+        blups = [
+            Matrix{Union{T,Missing}}(undef, size(t.z, 1), nlevs(t)) for
+            t in view(mnew.reterms, newreperm)
+        ]
         blupsold = ranef(m)[oldreperm]
         for (idx, B) in enumerate(blups)
             oldlevels = levels(oldre[idx])
