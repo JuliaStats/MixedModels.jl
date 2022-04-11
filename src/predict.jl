@@ -47,6 +47,11 @@ while including previously observed levels of the other grouping variables.
 In the future, it may be possible to specify a subset of the grouping variables
 or overall random-effects structure to use, but not at this time.
 
+!!! note
+    `new_re_levels` impacts only the behavior for previously unobserved random
+    effects levels, i.e. new RE levels. For previously observed random effects
+    levels, predictions take both the fixed and random effects into account.
+
 For `GeneralizedLinearMixedModel`, the `type` parameter specifies
 whether the predictions should be returned on the scale of linear predictor
 (`:linpred`) or on the response scale (`:response`). If you don't know the
