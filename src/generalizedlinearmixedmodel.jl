@@ -222,7 +222,7 @@ At every `thin`th iteration  is recorded in `fitlog`, optimization progress is s
 By default, the starting values for model fitting are taken from a (non mixed,
 i.e. marginal ) GLM fit. Experience with larger datasets (many thousands of
 observations and/or hundreds of levels of the grouping variables) has suggested
-that fittinga (Gaussian) linear mixed model on the untransformed data may
+that fitting a (Gaussian) linear mixed model on the untransformed data may
 provide better starting values and thus overall faster fits even though an
 entire LMM must be fit before the GLMM can be fit. `init_from_lmm` can be used
 to specify which starting values from an LMM with. Valid options are any
