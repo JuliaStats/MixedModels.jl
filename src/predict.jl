@@ -26,18 +26,31 @@ Predict response for new data.
     as such may use a large amount of memory when `newdata` is large.
 
 The keyword argument `new_re_levels` specifies how previously unobserved
-values of the grouping variable are handled. Possible values are
-`:population` (return population values, i.e. fixed-effects only),
-`:missing` (return `missing`), `:error` (error on this condition;
-the error type is an implementation detail). If you want simulated values
-for unobserved levels of the grouping variable, consider the
-[`simulate!`](@ref) and `simulate` methods.
+values of the grouping variable are handled. Possible values are:
+
+- `:population`: return population values for the relevant grouping variable.
+   In other words, treat the associated random effect as 0.
+   If all grouping variables have new levels, then this is equivalent to
+   just the fixed effects.
+- `:missing`: return `missing`.
+- `:error`: error on this condition. The error type is an implementation detail:
+   you should not rely on a particular type of error being thrown.
+
+If you want simulated values for unobserved levels of the grouping variable,
+consider the [`simulate!`](@ref) and `simulate` methods.
 
 Predictions based purely on the fixed effects can be obtained by
 specifying previously unobserved levels of the random effects and setting
-`new_re_levels=:population`. In the future, it may be possible to specify
-a subset of the grouping variables or overall random-effects structure to use,
-but not at this time.
+`new_re_levels=:population`. Similarly, the contribution of any
+grouping variable can be excluded by specifying previously unobserved levels,
+while including previously observed levels of the other grouping variables.
+In the future, it may be possible to specify a subset of the grouping variables
+or overall random-effects structure to use, but not at this time.
+
+!!! note
+    `new_re_levels` impacts only the behavior for previously unobserved random
+    effects levels, i.e. new RE levels. For previously observed random effects
+    levels, predictions take both the fixed and random effects into account.
 
 For `GeneralizedLinearMixedModel`, the `type` parameter specifies
 whether the predictions should be returned on the scale of linear predictor
@@ -48,7 +61,7 @@ Regression weights are not yet supported in prediction.
 Similarly, offsets are also not supported for `GeneralizedLinearMixedModel`.
 """
 function StatsBase.predict(
-    m::LinearMixedModel, newdata::Tables.ColumnTable; new_re_levels=:population
+    m::LinearMixedModel, newdata::Tables.ColumnTable; new_re_levels=:missing
 )
     return _predict(m, newdata, m.β; new_re_levels)
 end

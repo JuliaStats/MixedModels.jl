@@ -50,7 +50,7 @@ In the case where there are new levels of the grouping variable, these methods d
 ```@example Main
 # create a new level
 slp2 = transform(slp, :subj => ByRow(x -> (x == "S308" ? "NEW" : x)) => :subj)
-DisplayAs.Text(ans)
+DisplayAs.Text(ans) # hide
 ```
 
 ```@example Main
