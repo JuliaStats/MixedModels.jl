@@ -184,4 +184,6 @@ include("grouping.jl")
 include("mimeshow.jl")
 include("serialization.jl")
 
+include("precompile_MixedModels.jl")
+_precompile_()
 end # module
