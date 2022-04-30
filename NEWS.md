@@ -1,3 +1,7 @@
+MixedModels v4.6.3 Release Notes
+========================
+* Add precompile statements to speed up first `LinearMixedModel` fit [#608]
+
 MixedModels v4.6.2 Release Notes
 ========================
 * Efficiency improvements in `predict`, both in memory and computation [#604]
@@ -335,3 +339,4 @@ Package dependencies
 [#598]: https://github.com/JuliaStats/MixedModels.jl/issues/598
 [#603]: https://github.com/JuliaStats/MixedModels.jl/issues/603
 [#604]: https://github.com/JuliaStats/MixedModels.jl/issues/604
+[#608]: https://github.com/JuliaStats/MixedModels.jl/issues/608
