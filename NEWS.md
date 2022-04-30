@@ -1,6 +1,6 @@
 MixedModels v4.6.3 Release Notes
 ========================
-* Add precompile statements to speed up first `LinearMixedModel` fit [#608]
+* Add precompile statements to speed up first `LinearMixedModel` and Bernoulli `GeneralizedLinearModel` fit [#608]
 
 MixedModels v4.6.2 Release Notes
 ========================
