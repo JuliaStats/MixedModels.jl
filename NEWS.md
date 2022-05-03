@@ -1,3 +1,21 @@
+MixedModels v4.6.3 Release Notes
+========================
+* Add precompile statements to speed up first `LinearMixedModel` and Bernoulli `GeneralizedLinearModel` fit [#608]
+
+MixedModels v4.6.2 Release Notes
+========================
+* Efficiency improvements in `predict`, both in memory and computation [#604]
+* Changed the explanation of `predict`'s keyword argument `new_re_levels` in a way that is clearer about the behavior when there are multiple grouping variables. [#603]
+* Fix the default behavior of `new_re_levels=:missing` to match the docstring. Previously, the default was `:population`, in disagreement with the docstring. [#603]
+
+MixedModels v4.6.1 Release Notes
+========================
+* Loosen type restriction on `shortestcovint(::MixedModelBootstrap)` to `shortestcovint(::MixedModelFitCollection)`. [#598]
+
+MixedModels v4.6.0 Release Notes
+========================
+* Experimental support for initializing `GeneralizedLinearMixedModel` fits from a linear mixed model instead of a marginal (non-mixed) generalized linear model. [#588]
+
 MixedModels v4.5.0 Release Notes
 ========================
 * Allow constructing a `GeneralizedLinearMixedModel` with constant response, but don't update the ``L`` matrix nor initialize its deviance. This allows for the model to still be used for simulation where the response will be changed before fitting. [#578]
@@ -317,3 +335,8 @@ Package dependencies
 [#573]: https://github.com/JuliaStats/MixedModels.jl/issues/573
 [#577]: https://github.com/JuliaStats/MixedModels.jl/issues/577
 [#578]: https://github.com/JuliaStats/MixedModels.jl/issues/578
+[#588]: https://github.com/JuliaStats/MixedModels.jl/issues/588
+[#598]: https://github.com/JuliaStats/MixedModels.jl/issues/598
+[#603]: https://github.com/JuliaStats/MixedModels.jl/issues/603
+[#604]: https://github.com/JuliaStats/MixedModels.jl/issues/604
+[#608]: https://github.com/JuliaStats/MixedModels.jl/issues/608

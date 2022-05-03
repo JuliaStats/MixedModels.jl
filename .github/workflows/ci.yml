@@ -1,16 +1,14 @@
-name: Tier 1
+name: current release
 on:
   push:
     branches:
       - main
-      - v3.x
     paths-ignore:
       - 'LICENSE.md'
       - 'README.md'
   pull_request:
     branches:
       - main
-      - v3.x
     paths-ignore:
       - 'LICENSE.md'
       - 'README.md'
@@ -19,10 +17,15 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        julia-version: [1.6]
+        julia-version: [1]
         julia-arch: [x64]
-        os: [ubuntu-18.04, macos-10.15, windows-2019]
+        os: [ubuntu-18.04]
     steps:
+      - name: Cancel Previous Runs
+        uses: styfle/cancel-workflow-action@0.9.1
+        with:
+          all_but_latest: true
+          access_token: ${{ github.token }}
       - uses: actions/checkout@v2
       - uses: julia-actions/setup-julia@v1
         with:
