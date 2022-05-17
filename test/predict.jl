@@ -81,16 +81,25 @@ end
         # this model probably doesn't make much sense, but it has two
         # variables on the left hand side in a FunctionTerm
         m = fit(MixedModel, @formula(reaction / days ~ 1 + (1|subj)), slp1)
+        # make sure that we're getting the transformation
         @test response(m) ≈ slp1.reaction ./ slp1.days
         @test_throws ArgumentError predict(m, slp[:, Not(:reaction)])
         # these currently use approximate equality
         # because of floating point, but realistically
         # this should be exactly equal in most cases
         @test predict(m) ≈ fitted(m)
+        @test predict(m, slp1) ≈ fitted(m)
 
-        @test predict(m, slp1; new_re_levels=:error) ≈ fitted(m)
-        @test predict(m, slp1; new_re_levels=:population) ≈ fitted(m)
-        @test predict(m, slp1; new_re_levels=:missing) ≈ fitted(m)
+
+        m = fit(MixedModel, @formula(log10(reaction) ~ 1 + days + (1|subj)), slp1)
+        # make sure that we're getting the transformation
+        @test response(m) ≈ log10.(slp1.reaction)
+        @test_throws ArgumentError predict(m, slp[:, Not(:reaction)])
+        # these currently use approximate equality
+        # because of floating point, but realistically
+        # this should be exactly equal in most cases
+        @test predict(m) ≈ fitted(m)
+        @test predict(m, slp1) ≈ fitted(m)
     end
 
     @testset "GLMM" begin
