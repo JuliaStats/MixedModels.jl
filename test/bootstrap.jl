@@ -70,7 +70,8 @@ end
     # 2. test method for default RNG
     parametricbootstrap(1, fm, β=[1], σ=1)
 
-    bsamp = parametricbootstrap(MersenneTwister(1234321), 100, fm, use_threads=false)
+    bsamp = parametricbootstrap(MersenneTwister(1234321), 100, fm;
+                                use_threads=false, hide_progress=true)
     @test isa(propertynames(bsamp), Vector{Symbol})
     @test length(bsamp.objective) == 100
     @test keys(first(bsamp.fits)) == (:objective, :σ, :β, :se, :θ)
@@ -93,7 +94,8 @@ end
     @test propertynames(coefp) == [:iter, :coefname, :β, :se, :z, :p]
 
     @testset "threaded bootstrap" begin
-        bsamp_threaded = parametricbootstrap(MersenneTwister(1234321), 100, fm, use_threads=true)
+        bsamp_threaded = parametricbootstrap(MersenneTwister(1234321), 100, fm;
+                                             use_threads=true, hide_progress=true)
         # even though it's bad practice with floating point, exact equality should
         # be a valid test here -- if everything is working right, then it's the exact
         # same operations occuring within each bootstrap sample, which IEEE 754
@@ -106,7 +108,8 @@ end
 
     @testset "zerocorr + Base.length + ftype" begin
         fmzc = models(:sleepstudy)[2]
-        pbzc = parametricbootstrap(MersenneTwister(42), 5, fmzc, Float16)
+        pbzc = parametricbootstrap(MersenneTwister(42), 5, fmzc, Float16;
+                                   hide_progress=true)
         @test length(pbzc) == 5
         @test Tables.istable(shortestcovint(pbzc))
         @test typeof(pbzc) == MixedModelBootstrap{Float16}
@@ -116,8 +119,9 @@ end
         form_zc_not = @formula(rt_trunc ~ 1 + spkr * prec * load +
                                          (1 + spkr + prec + load | subj) +
                                  zerocorr(1 + spkr + prec + load | item))
-        fmzcnot = fit(MixedModel, form_zc_not, dataset(:kb07))
-        pbzcnot = parametricbootstrap(MersenneTwister(42), 2, fmzcnot, Float16)
+        fmzcnot = fit(MixedModel, form_zc_not, dataset(:kb07); progress=false)
+        pbzcnot = parametricbootstrap(MersenneTwister(42), 2, fmzcnot, Float16;
+                                      hide_progress=true)
     end
 
     @testset "Bernoulli simulate! and GLMM boostrap" begin
@@ -125,7 +129,7 @@ end
         # need a model with fast=false to test that we only
         # copy the optimizer constraints for θ and not β
         gm0 = fit(MixedModel, first(gfms[:contra]), contra, Bernoulli(), fast=false, progress=false)
-        bs = parametricbootstrap(StableRNG(42), 100, gm0)
+        bs = parametricbootstrap(StableRNG(42), 100, gm0; hide_progress=true)
         # make sure we're not copying
         @test length(bs.lowerbd) == length(gm0.θ)
         bsci = filter!(:type => ==("β"), DataFrame(shortestcovint(bs)))
@@ -145,7 +149,8 @@ end
         @test mean(apar.value) ≈ σbar
 
         # can't specify dispersion for families without that parameter
-        @test_throws ArgumentError parametricbootstrap(StableRNG(42), 100, gm0; σ=2)
+        @test_throws ArgumentError parametricbootstrap(StableRNG(42), 100, gm0;
+                                                       σ=2, hide_progress=true)
         @test sum(issingular(bs)) == 0
     end
 end
