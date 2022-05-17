@@ -1,5 +1,6 @@
 MixedModels v4.6.4 Release Notes
 ========================
+* Support transformed responses in `predict` [#614]
 * Simplify printing of BLAS configuration in tests. [#597]
 
 MixedModels v4.6.3 Release Notes
@@ -345,3 +346,4 @@ Package dependencies
 [#603]: https://github.com/JuliaStats/MixedModels.jl/issues/603
 [#604]: https://github.com/JuliaStats/MixedModels.jl/issues/604
 [#608]: https://github.com/JuliaStats/MixedModels.jl/issues/608
+[#614]: https://github.com/JuliaStats/MixedModels.jl/issues/614

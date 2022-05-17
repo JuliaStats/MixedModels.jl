@@ -102,8 +102,9 @@ function _predict(m::MixedModel{T}, newdata, β; new_re_levels) where {T}
     # we get type stability via constant propogation on `new_re_levels`
     y, mnew = let ytemp = ones(T, length(first(newdata)))
         f, contr = _abstractify_grouping(m.formula)
-        respname = Symbol(f.lhs)
-        if !(respname in Tables.columnnames(newdata)) || any(ismissing, newdata[respname])
+        respvars = StatsModels.termvars(f.lhs)
+        if !issubset(respvars, Tables.columnnames(newdata)) ||
+            any(any(ismissing, Tables.getcolumn(newdata, col)) for col in respvars)
             throw(
                 ArgumentError(
                     "Response column must be initialized to a non-missing numeric value.",
