@@ -1,3 +1,7 @@
+MixedModels v4.6.4 Release Notes
+========================
+* Support transformed responses in `predict` [#614]
+
 MixedModels v4.6.3 Release Notes
 ========================
 * Add precompile statements to speed up first `LinearMixedModel` and Bernoulli `GeneralizedLinearModel` fit [#608]
@@ -340,3 +344,4 @@ Package dependencies
 [#603]: https://github.com/JuliaStats/MixedModels.jl/issues/603
 [#604]: https://github.com/JuliaStats/MixedModels.jl/issues/604
 [#608]: https://github.com/JuliaStats/MixedModels.jl/issues/608
+[#614]: https://github.com/JuliaStats/MixedModels.jl/issues/614
