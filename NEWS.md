@@ -1,4 +1,4 @@
-MixedModels v4.6.3 Release Notes
+MixedModels v4.6.4 Release Notes
 ========================
 * Simplify printing of BLAS configuration in tests. [#597]
 
