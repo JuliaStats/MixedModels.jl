@@ -287,7 +287,7 @@ function fit!(
         catch ex
             # this allows us to recover from models where e.g. the link isn't
             # as constraining as it should be
-            ex isa Union{PosDefException, DomainError} || rethrow()
+            ex isa Union{PosDefException,DomainError} || rethrow()
             iter == 1 && rethrow()
             m.optsum.finitial
         end
