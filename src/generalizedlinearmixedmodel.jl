@@ -284,7 +284,11 @@ function fit!(
         isempty(g) || throw(ArgumentError("g should be empty for this objective"))
         val = try
             deviance(pirls!(setpar!(m, x), fast, verbose), nAGQ)
-        catch PosDefException
+        catch ex
+            # should this be Union{PosDefException, DomainError} ?
+            # then we could maybe recover from models where e.g. the link isn't
+            # as constraining as it should be
+            ex isa PosDefException || rethrow()
             iter == 1 && rethrow()
             m.optsum.finitial
         end
