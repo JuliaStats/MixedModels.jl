@@ -285,10 +285,9 @@ function fit!(
         val = try
             deviance(pirls!(setpar!(m, x), fast, verbose), nAGQ)
         catch ex
-            # should this be Union{PosDefException, DomainError} ?
-            # then we could maybe recover from models where e.g. the link isn't
+            # this allows us to recover from models where e.g. the link isn't
             # as constraining as it should be
-            ex isa PosDefException || rethrow()
+            ex isa Union{PosDefException, DomainError} || rethrow()
             iter == 1 && rethrow()
             m.optsum.finitial
         end
