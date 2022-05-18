@@ -445,7 +445,8 @@ function fit!(
     NLopt.min_objective!(opt, obj)
     try
         optsum.finitial = obj(optsum.initial, T[])
-    catch PosDefException
+    catch ex
+        ex isa PosDefException || rethrow()
         if all(==(first(m.y)), m.y)
             throw(
                 ArgumentError("The response is constant and thus model fitting has failed")
