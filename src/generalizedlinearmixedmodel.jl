@@ -282,7 +282,12 @@ function fit!(
     fitlog = optsum.fitlog
     function obj(x, g)
         isempty(g) || throw(ArgumentError("g should be empty for this objective"))
-        val = deviance(pirls!(setpar!(m, x), fast, verbose), nAGQ)
+        val = try
+            deviance(pirls!(setpar!(m, x), fast, verbose), nAGQ)
+        catch PosDefException
+            iter == 1 && rethrow()
+            m.optsum.finitial
+        end
         iszero(rem(iter, thin)) && push!(fitlog, (copy(x), val))
         verbose && println(round(val; digits=5), " ", x)
         progress && ProgressMeter.next!(prog; showvalues=[(:objective, val)])

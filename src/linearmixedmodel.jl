@@ -451,13 +451,7 @@ function fit!(
                 ArgumentError("The response is constant and thus model fitting has failed")
             )
         else
-            # give it one more try with a massive change in scaling
-            @info "Initial step failed, rescaling initial guess and trying again."
-            @warn """Failure of the initial step is often indicative of a model specification
-                     that is not well supported by the data and/or a poorly scaled model.
-                  """
-            optsum.initial ./= maximum(m.sqrtwts)^2 * maximum(response(m))
-            optsum.finitial = obj(optsum.initial, T[])
+            rethrow()
         end
     end
     empty!(fitlog)

@@ -148,7 +148,7 @@ end
     center(v::AbstractVector) = v .- (sum(v) / length(v))
     grouseticks = DataFrame(dataset(:grouseticks))
     grouseticks.ch = center(grouseticks.height)
-    gm4 = fit(MixedModel, only(gfms[:grouseticks]), grouseticks, Poisson(); fast=true, progress=false)  # fails in pirls! with fast=false
+    gm4 = fit(MixedModel, only(gfms[:grouseticks]), grouseticks, Poisson(); fast=true, progress=false)
     @test isapprox(deviance(gm4), 851.4046, atol=0.001)
     # these two values are not well defined at the optimum
     #@test isapprox(sum(x -> sum(abs2, x), gm4.u), 196.8695297987013, atol=0.1)
@@ -159,6 +159,10 @@ end
     @test sdest(gm4) === missing
     @test varest(gm4) === missing
     @test gm4.σ === missing
+    gm4slow = fit(MixedModel, only(gfms[:grouseticks]), grouseticks, Poisson(); fast=false, progress=false)
+    # this tolerance isn't great, but then again the optimum isn't well defined
+    @test gm4.θ ≈ gm4slow.θ atol=0.05
+    @test gm4.β[2:end] ≈ gm4slow.β[2:end] atol=0.1
 end
 
 @testset "goldstein" begin # from a 2020-04-22 msg by Ben Goldstein to R-SIG-Mixed-Models
