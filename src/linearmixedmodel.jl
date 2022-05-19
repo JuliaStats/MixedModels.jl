@@ -436,7 +436,13 @@ function fit!(
     fitlog = optsum.fitlog
     function obj(x, g)
         isempty(g) || throw(ArgumentError("g should be empty for this objective"))
-        val = objective(updateL!(setθ!(m, x)))
+        val = try
+            objective(updateL!(setθ!(m, x)))
+        catch ex
+            ex isa PosDefException || rethrow()
+            iter == 1 && rethrow()
+            m.optsum.finitial
+        end
         iszero(rem(iter, thin)) && push!(fitlog, (copy(x), val))
         progress && ProgressMeter.next!(prog; showvalues=[(:objective, val)])
         iter += 1
