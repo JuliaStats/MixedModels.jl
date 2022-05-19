@@ -608,7 +608,7 @@ end
 
 @testset "recovery from misscaling" begin
     fm1 = MixedModels.unfit!(deepcopy(last(models(:insteval))))
-    fm1.optsum.initial .*= 1e9
+    fm1.optsum.initial .*= 1.5e6
     @test_logs (:info, r"Initial step failed") (:warn, r"Failure of the initial step") fit!(fm1; progress=false)
     @test objective(fm1) ≈ objective(last(models(:insteval)))
     # it would be great to test the handling of PosDefException after the first iteration
