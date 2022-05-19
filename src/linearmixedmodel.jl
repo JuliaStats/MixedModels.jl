@@ -428,6 +428,11 @@ function fit!(
     if optsum.feval > 0
         throw(ArgumentError("This model has already been fitted. Use refit!() instead."))
     end
+    if all(==(first(m.y)), m.y)
+        throw(
+            ArgumentError("The response is constant and thus model fitting has failed")
+        )
+    end
     opt = Opt(optsum)
     optsum.REML = REML
     prog = ProgressUnknown("Minimizing"; showspeed=true)
@@ -440,7 +445,7 @@ function fit!(
             objective(updateL!(setθ!(m, x)))
         catch ex
             ex isa PosDefException || rethrow()
-            iter == 1 && rethrow()
+            iter == 0 && rethrow()
             m.optsum.finitial
         end
         iszero(rem(iter, thin)) && push!(fitlog, (copy(x), val))
@@ -453,19 +458,13 @@ function fit!(
         optsum.finitial = obj(optsum.initial, T[])
     catch ex
         ex isa PosDefException || rethrow()
-        if all(==(first(m.y)), m.y)
-            throw(
-                ArgumentError("The response is constant and thus model fitting has failed")
-            )
-        else
-            # give it one more try with a massive change in scaling
-            @info "Initial step failed, rescaling initial guess and trying again."
-            @warn """Failure of the initial step is often indicative of a model specification
-                     that is not well supported by the data and/or a poorly scaled model.
-                  """
-            optsum.initial ./= maximum(m.sqrtwts)^2 * maximum(response(m))
-            optsum.finitial = obj(optsum.initial, T[])
-        end
+        # give it one more try with a massive change in scaling
+        @info "Initial step failed, rescaling initial guess and trying again."
+        @warn """Failure of the initial step is often indicative of a model specification
+                    that is not well supported by the data and/or a poorly scaled model.
+                """
+        optsum.initial ./= maximum(m.sqrtwts)^2 * maximum(response(m))
+        optsum.finitial = obj(optsum.initial, T[])
     end
     empty!(fitlog)
     push!(fitlog, (copy(optsum.initial), optsum.finitial))
