@@ -607,10 +607,15 @@ end
 end
 
 @testset "recovery from misscaling" begin
-    fm1 = MixedModels.unfit!(deepcopy(last(models(:insteval))))
-    fm1.optsum.initial .*= 1.5e6
+    model = fit(MixedModel,
+                @formula(reaction ~ 1 + days + zerocorr(1+fulldummy(days)|subj)),
+                MixedModels.dataset(:sleepstudy);
+                contrasts=Dict(:days => HelmertCoding(),
+                               :subj => Grouping()))
+    fm1 = MixedModels.unfit!(deepcopy(model))
+    fm1.optsum.initial .*= 1e7
     @test_logs (:info, r"Initial step failed") (:warn, r"Failure of the initial step") fit!(fm1; progress=false)
-    @test objective(fm1) ≈ objective(last(models(:insteval)))
+    @test objective(fm1) ≈ objective(model) atol=0.1
     # it would be great to test the handling of PosDefException after the first iteration
     # but this is surprisingly hard to trigger in a reliable way across platforms
     # just because of the vagaries of floating point.
