@@ -463,7 +463,6 @@ function fit!(
         @warn """Failure of the initial step is often indicative of a model specification
                     that is not well supported by the data and/or a poorly scaled model.
                 """
-
         optsum.initial ./=
             (isempty(m.sqrtwts) ? 1.0 : maximum(m.sqrtwts)^2) *
             maximum(response(m))
