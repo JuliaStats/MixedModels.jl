@@ -611,4 +611,7 @@ end
     fm1.optsum.initial .*= 1e6
     @test_logs (:info, r"Initial step failed") (:warn, r"Failure of the initial step") fit!(fm1; progress=false)
     @test objective(fm1) ≈ objective(last(models(:insteval)))
+    # it would be great to test the handling of PosDefException after the first iteration
+    # but this is surprisingly hard to trigger in a reliable way across platforms
+    # just because of the vagaries of floating point.
 end
