@@ -464,7 +464,8 @@ function fit!(
                     that is not well supported by the data and/or a poorly scaled model.
                 """
 
-        optsum.initial ./= (isempty(m.sqrtwts) ? 1.0 : maximum(m.sqrtwts)^2) *
+        optsum.initial ./=
+            (isempty(m.sqrtwts) ? 1.0 : maximum(m.sqrtwts)^2) *
             maximum(response(m))
         optsum.finitial = obj(optsum.initial, T[])
     end
