@@ -1,3 +1,9 @@
+MixedModels v4.6.5 Release Notes
+========================
+* Attempt recovery when the initial parameter values lead to an invalid covariance matrix by rescaling [#615]
+* Return `finitial` when the optimizer drifts into a portion of the parameter space that yields a (numerically) invalid covariance matrix [#615]
+
+
 MixedModels v4.6.4 Release Notes
 ========================
 * Support transformed responses in `predict` [#614]
@@ -347,3 +353,4 @@ Package dependencies
 [#604]: https://github.com/JuliaStats/MixedModels.jl/issues/604
 [#608]: https://github.com/JuliaStats/MixedModels.jl/issues/608
 [#614]: https://github.com/JuliaStats/MixedModels.jl/issues/614
+[#615]: https://github.com/JuliaStats/MixedModels.jl/issues/615

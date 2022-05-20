@@ -428,6 +428,11 @@ function fit!(
     if optsum.feval > 0
         throw(ArgumentError("This model has already been fitted. Use refit!() instead."))
     end
+    if all(==(first(m.y)), m.y)
+        throw(
+            ArgumentError("The response is constant and thus model fitting has failed")
+        )
+    end
     opt = Opt(optsum)
     optsum.REML = REML
     prog = ProgressUnknown("Minimizing"; showspeed=true)
@@ -436,7 +441,18 @@ function fit!(
     fitlog = optsum.fitlog
     function obj(x, g)
         isempty(g) || throw(ArgumentError("g should be empty for this objective"))
-        val = objective(updateL!(setθ!(m, x)))
+        val = try
+            objective(updateL!(setθ!(m, x)))
+        catch ex
+            # This can happen when the optimizer drifts into an area where
+            # there isn't enough shrinkage. Why finitial? Generally, it will
+            # be the (near) worst case scenario value, so the optimizer won't
+            # view it as an optimum. Using Inf messes up the quadratic
+            # approximation in BOBYQA.
+            ex isa PosDefException || rethrow()
+            iter == 0 && rethrow()
+            m.optsum.finitial
+        end
         iszero(rem(iter, thin)) && push!(fitlog, (copy(x), val))
         progress && ProgressMeter.next!(prog; showvalues=[(:objective, val)])
         iter += 1
@@ -445,14 +461,17 @@ function fit!(
     NLopt.min_objective!(opt, obj)
     try
         optsum.finitial = obj(optsum.initial, T[])
-    catch PosDefException
-        if all(==(first(m.y)), m.y)
-            throw(
-                ArgumentError("The response is constant and thus model fitting has failed")
-            )
-        else
-            rethrow()
-        end
+    catch ex
+        ex isa PosDefException || rethrow()
+        # give it one more try with a massive change in scaling
+        @info "Initial step failed, rescaling initial guess and trying again."
+        @warn """Failure of the initial step is often indicative of a model specification
+                 that is not well supported by the data and/or a poorly scaled model.
+              """
+        optsum.initial ./=
+            (isempty(m.sqrtwts) ? 1.0 : maximum(m.sqrtwts)^2) *
+            maximum(response(m))
+        optsum.finitial = obj(optsum.initial, T[])
     end
     empty!(fitlog)
     push!(fitlog, (copy(optsum.initial), optsum.finitial))
