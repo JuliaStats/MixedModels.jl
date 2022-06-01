@@ -32,9 +32,14 @@ end
 @testset "dependentcolumn" begin
     mm = modelmatrix(@formula(Y ~ 1 + U + V + Z), simdat)
     r, pivot = statsrank(mm)
-    perm = [1,2,4,3]
+    # V is just mean-centered U
+    # so either V or U gets pivoted out
+    # perm1 = [1,2,4,3] # x86-64 OpenBLAS
+    # perm2 = [1,3,4,2] # Apple M1
     @test r == 3
-    @test pivot == perm
+    @test pivot[1] == 1 # intercept remains
+    @test pivot[3] == 4 # z doesn't get pivoted
+    @test pivot[4] in [2, 3]
 end
 
 @testset "qr missing cells" begin
