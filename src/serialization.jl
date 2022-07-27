@@ -40,7 +40,7 @@ function restoreoptsum!(m::LinearMixedModel{T}, io::IO) where {T}
     return m
 end
 
-function restoreoptsum!(m::LinearMixedModel, filename)
+function restoreoptsum!(m::LinearMixedModel{T}, filename) where {T}
     open(filename, "r") do io
         restoreoptsum!(m, io)
     end
