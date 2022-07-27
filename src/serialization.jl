@@ -1,6 +1,6 @@
 """
     restoreoptsum!(m::LinearMixedModel, io::IO)
-    restoreoptsum!(m::LinearMixedModel, fnm::AbstractString)
+    restoreoptsum!(m::LinearMixedModel, filename)
 
 Read, check, and restore the `optsum` field from a JSON stream or filename.
 """
@@ -40,15 +40,15 @@ function restoreoptsum!(m::LinearMixedModel{T}, io::IO) where {T}
     return m
 end
 
-function restoreoptsum!(m::LinearMixedModel, fnm::AbstractString)
-    open(fnm, "r") do io
+function restoreoptsum!(m::LinearMixedModel, filename)
+    open(filename, "r") do io
         restoreoptsum!(m, io)
     end
 end
 
 """
     saveoptsum(io::IO, m::LinearMixedModel)
-    saveoptsum(fnm::AbstractString, m::LinearMixedModel)
+    saveoptsum(filename, m::LinearMixedModel)
 
 Save `m.optsum` (w/o the `lowerbd` field) in JSON format to an IO stream or a file
 
@@ -56,8 +56,8 @@ The reason for omitting the `lowerbd` field is because it often contains `-Inf`
 values that are not allowed in JSON.
 """
 saveoptsum(io::IO, m::LinearMixedModel) = JSON3.write(io, m.optsum)
-function saveoptsum(fnm::AbstractString, m::LinearMixedModel)
-    open(fnm, "w") do io
+function saveoptsum(filename, m::LinearMixedModel)
+    open(filename, "w") do io
         saveoptsum(io, m)
     end
 end
