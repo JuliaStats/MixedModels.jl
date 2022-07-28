@@ -1,3 +1,7 @@
+MixedModels v4.7.0 Release Notes
+==============================
+* Relax type restriction for filename in `saveoptsum` and `restoreoptsum!`. Users can now pass any type with an appropriate `open` method, e.g. `<:AbstractPath`. [#628]
+
 MixedModels v4.6.5 Release Notes
 ========================
 * Attempt recovery when the initial parameter values lead to an invalid covariance matrix by rescaling [#615]
@@ -354,3 +358,4 @@ Package dependencies
 [#608]: https://github.com/JuliaStats/MixedModels.jl/issues/608
 [#614]: https://github.com/JuliaStats/MixedModels.jl/issues/614
 [#615]: https://github.com/JuliaStats/MixedModels.jl/issues/615
+[#628]: https://github.com/JuliaStats/MixedModels.jl/issues/628
