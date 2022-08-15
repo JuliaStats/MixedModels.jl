@@ -27,21 +27,59 @@ function rankUpdate!(C::HermOrSym{T,S}, A::StridedMatrix{T}, α, β) where {T,S}
     return C
 end
 
+"""
+    _columndot(rv, nz, rngi, rngj)
+
+Return the dot product of columns `i` and `j` of the sparse matrix `A`
+"""
+function _columndot(rv, nz, rngi, rngj)
+    accum = zero(eltype(nz))
+    (isempty(rngi) || isempty(rngj)) && return accum
+    ni, nj = length(rngi), length(rngj)
+    i = j = 1
+    while i ≤ ni && j ≤ nj
+        @inbounds ri, rj = rv[rngi[i]], rv[rngj[j]]
+        if ri == rj
+            @inbounds accum += nz[rngi[i]] * nz[rngj[j]]
+            i += 1
+            j += 1
+        elseif ri < rj
+            i += 1
+        else
+            j += 1
+        end
+    end
+    return accum
+end
+
 function rankUpdate!(C::HermOrSym{T,S}, A::SparseMatrixCSC{T}, α, β) where {T,S}
-    A.m == size(C, 2) || throw(DimensionMismatch())
-    C.uplo == 'L' || throw(ArgumentError("C.uplo must be 'L'"))
-    Cd, rv, nz = C.data, rowvals(A), nonzeros(A)
-    isone(β) || rmul!(LowerTriangular(Cd), β)
-    @inbounds for jj in 1:(A.n)
-        rangejj = nzrange(A, jj)
-        lenrngjj = length(rangejj)
-        for (k, j) in enumerate(rangejj)
-            anzj = α * nz[j]
-            colj = view(Cd, :, rv[j])
-            for i in k:lenrngjj
-                kk = rangejj[i]
-                colj[rv[kk]] += nz[kk] * anzj
+    Base.require_one_based_indexing(C, A)
+    m, n = size(A)
+    Cd, rv, nz = C.data, A.rowval, A.nzval
+    lower = C.uplo == 'L'
+    (lower ? m : n) == size(C, 2) || throw(DimensionMismatch())
+    if lower
+        isone(β) || rmul!(LowerTriangular(Cd), β)
+        @inbounds for jj in axes(A, 2)
+            rangejj = nzrange(A, jj)
+            lenrngjj = length(rangejj)
+            for (k, j) in enumerate(rangejj)
+                anzj = α * nz[j]
+                rvj = rv[j]
+                for i in k:lenrngjj
+                    kk = rangejj[i]
+                    Cd[rv[kk], rvj] += nz[kk] * anzj
+                end
             end
+        end
+    else
+        isone(β) || rmul!(UpperTriangular(Cd), β)
+        @inbounds for j in axes(C, 2)
+            rngj = nzrange(A, j)
+            for i in 1:(j - 1)
+                Cd[i, j] += α * _columndot(rv, nz, nzrange(A, i), rngj)
+            end
+            Cd[j, j] += α * sum(i -> abs2(nz[i]), rngj)
         end
     end
     return C
