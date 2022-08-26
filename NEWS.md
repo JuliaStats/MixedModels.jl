@@ -1,7 +1,7 @@
 MixedModels v4.7.1 Release Notes
 ==============================
 * Avoid repeating initial objective evaluation in `fit!` method for `LinearMixedModel`
-* Ensure that the number of function evaluations from NLopt corresponds to `length(m.optsum.fitlog) when `isone(thin)`.
+* Ensure that the number of function evaluations from NLopt corresponds to `length(m.optsum.fitlog) when `isone(thin)`. [#637]
 
 MixedModels v4.7.0 Release Notes
 ==============================
@@ -364,3 +364,4 @@ Package dependencies
 [#614]: https://github.com/JuliaStats/MixedModels.jl/issues/614
 [#615]: https://github.com/JuliaStats/MixedModels.jl/issues/615
 [#628]: https://github.com/JuliaStats/MixedModels.jl/issues/628
+[#637]: https://github.com/JuliaStats/MixedModels.jl/issues/637
