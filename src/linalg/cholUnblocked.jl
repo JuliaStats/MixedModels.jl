@@ -9,24 +9,29 @@ because these are part of the inner calculations in a blocked Cholesky factoriza
 function cholUnblocked! end
 
 function cholUnblocked!(D::Diagonal{T}, ::Type{Val{:L}}) where {T<:AbstractFloat}
-    map!(sqrt, D.diag, D.diag)
+    Ddiag = D.diag
+    @inbounds for i in eachindex(Ddiag)
+        (ddi = Ddiag[i]) ≤ zero(T) && throw(LinearAlgebra.PosDefException(i))
+        Ddiag[i] = sqrt(ddi)
+    end
+
     return D
 end
 
 function cholUnblocked!(A::StridedMatrix{T}, ::Type{Val{:L}}) where {T<:BlasFloat}
     n = LinearAlgebra.checksquare(A)
     if n == 1
-        A[1] < zero(T) && throw(PosDefException(1))
+        A[1] < zero(T) && throw(LinearAlgebra.PosDefException(1))
         A[1] = sqrt(A[1])
     elseif n == 2
-        A[1] < zero(T) && throw(PosDefException(1))
+        A[1] < zero(T) && throw(LinearAlgebra.PosDefException(1))
         A[1] = sqrt(A[1])
         A[2] /= A[1]
-        (A[4] -= abs2(A[2])) < zero(T) && throw(PosDefException(2))
+        (A[4] -= abs2(A[2])) < zero(T) && throw(LinearAlgebra.PosDefException(2))
         A[4] = sqrt(A[4])
     else
         _, info = LAPACK.potrf!('L', A)
-        iszero(info) || throw(PosDefException(info))
+        iszero(info) || throw(LinearAlgebra.PosDefException(info))
     end
     return A
 end

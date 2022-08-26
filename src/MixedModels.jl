@@ -21,7 +21,7 @@ using StructTypes
 using Tables
 
 using LinearAlgebra: BlasFloat, BlasReal, HermOrSym, PosDefException, copytri!
-using Base: Ryu
+using Base: Ryu, require_one_based_indexing
 using GLM: Link, canonicallink, linkfun, linkinv
 using StatsModels: TableRegressionModel
 
