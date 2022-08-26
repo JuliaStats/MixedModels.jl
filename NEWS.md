@@ -1,3 +1,8 @@
+MixedModels v4.7.1 Release Notes
+==============================
+* Avoid repeating initial objective evaluation in `fit!` method for `LinearMixedModel`
+* Ensure that the number of function evaluations from NLopt corresponds to `length(m.optsum.fitlog) when `isone(thin)`.
+
 MixedModels v4.7.0 Release Notes
 ==============================
 * Relax type restriction for filename in `saveoptsum` and `restoreoptsum!`. Users can now pass any type with an appropriate `open` method, e.g. `<:AbstractPath`. [#628]
