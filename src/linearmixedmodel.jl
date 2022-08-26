@@ -448,11 +448,11 @@ function fit!(
             try
                 objective(updateL!(setθ!(m, x)))
             catch ex
-            # This can happen when the optimizer drifts into an area where
-            # there isn't enough shrinkage. Why finitial? Generally, it will
-            # be the (near) worst case scenario value, so the optimizer won't
-            # view it as an optimum. Using Inf messes up the quadratic
-            # approximation in BOBYQA.
+                # This can happen when the optimizer drifts into an area where
+                # there isn't enough shrinkage. Why finitial? Generally, it will
+                # be the (near) worst case scenario value, so the optimizer won't
+                # view it as an optimum. Using Inf messes up the quadratic
+                # approximation in BOBYQA.
                 ex isa PosDefException || rethrow()
                 optsum.finitial
             end
