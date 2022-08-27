@@ -58,7 +58,7 @@ end
     # in < 1.6, typeof(x) == Array{Int64, 2}
     err = ErrorException("We haven't implemented a method for $(typeof(x)), $(typeof(x)). Please file an issue on GitHub.");
     @test_throws ErrorException rankUpdate!(x, x, 1, 1);
-    L21 = sprand(Xoshiro(42), 100, 1000, 0.05)
+    L21 = sprand(MersenneTwister(42), 100, 1000, 0.05)
     L22L = rankUpdate!(Symmetric(zeros(100, 100), :L), L21, 1.0, 1.0)
     @test L22L ≈ rankUpdate!(Symmetric(zeros(100, 100), :U), sparse(transpose(L21)), 1.0, 1.0)
 end
