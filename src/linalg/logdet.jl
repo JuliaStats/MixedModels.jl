@@ -12,7 +12,7 @@ function LD(d::UniformBlockDiagonal{T}) where {T}
     return sum(log, dat[j, j, k] for j in axes(dat, 2), k in axes(dat, 3))
 end
 
-LD(d::DenseMatrix{T}) where {T} = sum(log, d[k] for k in diagind(d))
+LD(d::DenseMatrix{T}) where {T} = @inbounds sum(log, d[k] for k in diagind(d))
 
 """
     logdet(m::LinearMixedModel)
@@ -25,15 +25,11 @@ lower Cholesky factor.
 """
 function LinearAlgebra.logdet(m::LinearMixedModel{T}) where {T}
     L = m.L
-    nre = m.dims.nretrms
-    s = LD(first(L))
-    for j in 2:nre
-        s += LD(L[kp1choose2(j)])
-    end
+    @inbounds s = sum(j -> LD(L[kp1choose2(j)]), axes(m.reterms, 1))
     if m.optsum.REML
         lastL = last(L)
-        s += LD(lastL)  # this adds the log of sqrtpwrss
-        s -= log(last(lastL))
+        s += LD(lastL)        # this includes the log of sqrtpwrss
+        s -= log(last(lastL)) # so we need to subtract it from the sum
     end
-    return s + s
+    return s + s  # multiply by 2 b/c the desired det is of the symmetric mat, not the factor
 end
