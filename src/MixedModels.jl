@@ -19,6 +19,7 @@ using StatsBase
 using StatsModels
 using StructTypes
 using Tables
+using TypedTables
 
 using LinearAlgebra: BlasFloat, BlasReal, HermOrSym, PosDefException, copytri!
 using Base: Ryu, require_one_based_indexing
@@ -54,6 +55,7 @@ export @formula,
     LogLink,
     MixedModel,
     MixedModelBootstrap,
+    Not,
     Normal,
     OptSummary,
     Poisson,
@@ -107,6 +109,7 @@ export @formula,
     parametricbootstrap,
     pirls!,
     predict,
+    profileβ,
     pwrss,
     ranef,
     raneftables,
@@ -182,6 +185,7 @@ include("blockdescription.jl")
 include("grouping.jl")
 include("mimeshow.jl")
 include("serialization.jl")
+include("profile.jl")
 
 include("precompile_MixedModels.jl")
 _precompile_()
