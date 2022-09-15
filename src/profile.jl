@@ -13,12 +13,10 @@ function FeProfile(m::LinearMixedModel, j::Integer)
     xⱼ = Xy[:, j]
     notj = deleteat!(xcols, j)   # indirectly checks range of j
     feterm = FeTerm(Xy[:, notj], m.feterm.cnames[notj])
-    return FeProfile(
-        fit!(LinearMixedModel(y₀ - xⱼ * m.β[j], feterm, m.reterms, m.formula)),
-        y₀,
-        xⱼ,
-        j,
-    )
+    reterms = [ret.λ = copy(ret.λ) for ret in m.reterms]
+    m = fit!(LinearMixedModel(y₀ - xⱼ * m.β[j], feterm, m.reterms, m.formula))
+    @. m.optsum.initial = max(m.optsum.initial, m.lowerbd + 0.05)
+    return FeProfile(m, y₀, xⱼ, j)
 end
 
 function refit!(pr::FeProfile{T}, βⱼ) where {T}
