@@ -14,7 +14,7 @@ function FeProfile(m::LinearMixedModel, j::Integer)
     notj = deleteat!(xcols, j)   # indirectly checks range of j
     feterm = FeTerm(Xy[:, notj], m.feterm.cnames[notj])
     return FeProfile(
-        fit!(LinearMixedModel(y₀ - xⱼ*m.β[j], feterm, m.reterms, m.formula)),
+        fit!(LinearMixedModel(y₀ - xⱼ * m.β[j], feterm, m.reterms, m.formula)),
         y₀,
         xⱼ,
         j,
@@ -26,12 +26,11 @@ function refit!(pr::FeProfile{T}, βⱼ) where {T}
 end
 
 function profileβ(m::LinearMixedModel{T}, steps=-5:5) where {T}
-    refit!(m)
     β, θ, σ, std, obj = m.β, m.θ, m.σ, m.stderror, objective(m)
     k = length(θ)
     p = length(β)
     prlen = length(steps) * p
-    i = sizehint!(Int8[], prlen)
+    i = sizehint!((p ≤ typemax(Int8) ? Int8 : Int16)[], prlen)
     zeta = sizehint!(T[], prlen)
     sigma = sizehint!(T[], prlen)
     beta = sizehint!(SVector{p,T}[], prlen)
