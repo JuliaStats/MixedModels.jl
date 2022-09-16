@@ -13,7 +13,7 @@ Return a shallow copy of ReMat.
 A shallow copy shares as much internal storage as possible with the original ReMat.
 Only the vector `λ` and the `scratch` matrix are copied.
 """
-function Base.copy(ReMat{T,S})
+function Base.copy(ret::ReMat{T,S}) where {T, S}
     return ReMat{T,S}(ret.trm,
                       ret.refs,
                       ret.levels,
@@ -40,8 +40,6 @@ function FeProfile(m::LinearMixedModel, j::Integer)
     @. m.optsum.initial = max(m.optsum.initial, m.lowerbd + 0.05)
     return FeProfile(m, y₀, xⱼ, j)
 end
-
-function compac
 
 function refit!(pr::FeProfile{T}, βⱼ) where {T}
     return refit!(pr.m, mul!(copyto!(pr.m.y, pr.y₀), pr.xⱼ, βⱼ, -1, 1); progress=false)

@@ -35,7 +35,7 @@ end
 
 Combine multiple ReMat with the same grouping variable into a single object.
 """
-amalgamate(reterms::Vector{AbstractReMat{T}}) where {T} = _amalgamate(reterms, T)
+amalgamate(reterms::Vector{<:AbstractReMat{T}}) where {T} = _amalgamate(reterms, T)
 
 function _amalgamate(reterms::Vector, T::Type)
     factordict = Dict{Symbol,Vector{Int}}()
