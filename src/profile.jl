@@ -30,19 +30,26 @@ function FeProfile(m::LinearMixedModel, j::Integer)
     Xy = m.Xymat.xy
     xcols = collect(axes(Xy, 2))
     ycol = pop!(xcols)
-    j ∈ xcols || throw(ArgumentError("j = $j must be in $xcols"))
+    notj = deleteat!(xcols, j) # indirectly check that j ∈ xcols
     y₀ = Xy[:, ycol]
     xⱼ = Xy[:, j]
-    notj = deleteat!(xcols, j)   # indirectly checks range of j
     feterm = FeTerm(Xy[:, notj], m.feterm.cnames[notj])
     reterms = [copy(ret) for ret in m.reterms]
-    m = fit!(LinearMixedModel(y₀ - xⱼ * m.β[j], feterm, reterms, m.formula))
+    m = fit!(LinearMixedModel(y₀ - xⱼ * m.β[j], feterm, reterms, m.formula); progress=false)
     @. m.optsum.initial = max(m.optsum.initial, m.lowerbd + 0.05)
     return FeProfile(m, y₀, xⱼ, j)
 end
 
 function refit!(pr::FeProfile{T}, βⱼ) where {T}
     return refit!(pr.m, mul!(copyto!(pr.m.y, pr.y₀), pr.xⱼ, βⱼ, -1, 1); progress=false)
+end
+
+struct MixedModelProfile
+    prtbl::Table
+    fecnames::Vector{String}
+    facnames::Vector{Symbol}
+    recnames::Vector{Vector{String}}
+    parmap::Vector{NTuple{3,Int}}
 end
 
 function profileβ(m::LinearMixedModel{T}, steps=-5:5) where {T}
@@ -79,5 +86,11 @@ function profileβ(m::LinearMixedModel{T}, steps=-5:5) where {T}
         end
     end
     updateL!(setθ!(m, θ))
-    return Table(i = i, ζ = zeta, σ = sigma, β = beta, θ = theta)
+    return MixedModelProfile(
+        Table(i = i, ζ = zeta, σ = sigma, β = beta, θ = theta),
+        copy(coefnames(m)),
+        [fname(t) for t in m.reterms],
+        [t.cnames for t in m.reterms],
+        copy(m.parmap),
+    )
 end

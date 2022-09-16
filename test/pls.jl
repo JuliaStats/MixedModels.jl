@@ -501,6 +501,19 @@ end
         @test bic(fm) ≈ bic(m)
         @test coef(fm) ≈ coef(m)
     end
+    @testset "profileβ" begin
+        pr = profileβ(last(models(:sleepstudy)), -4:4)
+        tbl = pr.prtbl
+        @test length(tbl) == 18
+        @test isone(first(tbl.i))
+        @test last(tbl.i) == 2
+        @test length(pr.fecnames) == 2
+        @test isone(length(pr.facnames))
+        recnms = pr.recnames
+        @test isone(length(recnms))
+        @test length(only(recnms)) == 2
+        @test pr.fecnames == only(recnms)
+    end
 end
 
 @testset "d3" begin
