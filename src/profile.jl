@@ -4,6 +4,28 @@ struct FeProfile{T<:AbstractFloat}
     xⱼ::Vector{T}
     j::Integer
 end
+
+"""
+    Base.copy(ReMat{T,S})
+
+Return a shallow copy of ReMat.
+
+A shallow copy shares as much internal storage as possible with the original ReMat.
+Only the vector `λ` and the `scratch` matrix are copied.
+"""
+function Base.copy(ReMat{T,S})
+    return ReMat{T,S}(ret.trm,
+                      ret.refs,
+                      ret.levels,
+                      ret.cnames,
+                      ret.z,
+                      ret.wtz,
+                      copy(ret.λ),
+                      ret.inds,
+                      ret.adjA,
+                      copy(ret.scratch))
+end
+
 function FeProfile(m::LinearMixedModel, j::Integer)
     Xy = m.Xymat.xy
     xcols = collect(axes(Xy, 2))
@@ -13,11 +35,13 @@ function FeProfile(m::LinearMixedModel, j::Integer)
     xⱼ = Xy[:, j]
     notj = deleteat!(xcols, j)   # indirectly checks range of j
     feterm = FeTerm(Xy[:, notj], m.feterm.cnames[notj])
-    reterms = [ret.λ = copy(ret.λ) for ret in m.reterms]
-    m = fit!(LinearMixedModel(y₀ - xⱼ * m.β[j], feterm, m.reterms, m.formula))
+    reterms = [copy(ret) for ret in m.reterms]
+    m = fit!(LinearMixedModel(y₀ - xⱼ * m.β[j], feterm, reterms, m.formula))
     @. m.optsum.initial = max(m.optsum.initial, m.lowerbd + 0.05)
     return FeProfile(m, y₀, xⱼ, j)
 end
+
+function compac
 
 function refit!(pr::FeProfile{T}, βⱼ) where {T}
     return refit!(pr.m, mul!(copyto!(pr.m.y, pr.y₀), pr.xⱼ, βⱼ, -1, 1); progress=false)
@@ -53,7 +77,7 @@ function profileβ(m::LinearMixedModel{T}, steps=-5:5) where {T}
                 push!(zeta, sign(s) * sqrt(prm.objective - obj))
                 push!(sigma, prm.σ)
                 push!(theta, prm.θ)
-            end                
+            end
         end
     end
     updateL!(setθ!(m, θ))
