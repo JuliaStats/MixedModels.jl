@@ -350,6 +350,16 @@ function condVartables(m::MixedModel{T}) where {T}
     return NamedTuple{fnames(m)}((map(_cvtbl, condVar(m), m.reterms)...,))
 end
 
+function StatsBase.confint(m::MixedModel{T}; level=0.95) where {T}
+    cutoff = sqrt.(quantile(Chisq(1), level))
+    β, std = m.β, m.stderror
+    return DictTable(
+        coef = coefnames(m),
+        lower = β .- cutoff .* std,
+        upper = β .+ cutoff .* std,
+    )
+end
+
 function _pushALblock!(A, L, blk)
     push!(L, blk)
     return push!(A, deepcopy(isa(blk, BlockedSparse) ? blk.cscmat : blk))

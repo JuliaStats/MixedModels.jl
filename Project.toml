@@ -5,6 +5,7 @@ version = "4.7.1"
 
 [deps]
 Arrow = "69666777-d1a9-59fb-9406-91d4454c9d45"
+BSplineKit = "093aae92-e908-43d7-9660-e50ee39d5a0a"
 DataAPI = "9a962f9c-6df0-11e9-0e5d-c546b8b5ee8a"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
 GLM = "38e38edf-8417-5370-95a0-9cbb8c7f171a"

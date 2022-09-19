@@ -44,30 +44,27 @@ function refit!(pr::FeProfile{T}, βⱼ) where {T}
     return refit!(pr.m, mul!(copyto!(pr.m.y, pr.y₀), pr.xⱼ, βⱼ, -1, 1); progress=false)
 end
 
-struct MixedModelProfile
+struct MixedModelProfile{T}
     prtbl::Table
+    δ::AbstractVector{T}
     fecnames::Vector{String}
     facnames::Vector{Symbol}
     recnames::Vector{Vector{String}}
     parmap::Vector{NTuple{3,Int}}
 end
 
-function profileβ(m::LinearMixedModel{T}, steps=-5:5) where {T}
+function profileβ(m::LinearMixedModel{T}, δ=(-8:8) / 2) where {T}
     β, θ, σ, std, obj = m.β, m.θ, m.σ, m.stderror, objective(m)
-    k = length(θ)
-    p = length(β)
-    prlen = length(steps) * p
-    i = sizehint!((p ≤ typemax(Int8) ? Int8 : Int16)[], prlen)
-    zeta = sizehint!(T[], prlen)
-    sigma = sizehint!(T[], prlen)
-    beta = sizehint!(SVector{p,T}[], prlen)
-    theta = sizehint!(SVector{k,T}[], prlen)
-    for j in eachindex(β)
+    zsz = length(δ) * length(β)
+    zeta = sizehint!(T[], zsz)
+    sigma = sizehint!(T[], zsz)
+    beta = sizehint!(SVector{length(β),T}[], zsz)
+    theta = sizehint!(SVector{length(θ),T}[], zsz)
+    @inbounds for j in only(axes(β))
         prj = FeProfile(m, j)
         prm = prj.m
         estj, stdj = β[j], std[j]
-        for s in steps
-            push!(i, j)
+        for (i, s) in enumerate(δ)
             if iszero(s)
                 push!(zeta, zero(T))
                 push!(sigma, σ)
@@ -87,10 +84,27 @@ function profileβ(m::LinearMixedModel{T}, steps=-5:5) where {T}
     end
     updateL!(setθ!(m, θ))
     return MixedModelProfile(
-        Table(i = i, ζ = zeta, σ = sigma, β = beta, θ = theta),
+        Table(ζ = zeta, σ = sigma, β = beta, θ = theta),
+        δ,
         copy(coefnames(m)),
         [fname(t) for t in m.reterms],
         [t.cnames for t in m.reterms],
         copy(m.parmap),
     )
+end
+
+function StatsBase.confint(pr::MixedModelProfile{T}; level=0.95) where {T}
+    cutoff = sqrt.(quantile(Chisq(1), level))
+    (; prtbl, fecnames) = pr
+    p = length(fecnames)
+    zetamat = reshape(prtbl.ζ, length(pr.δ), p)
+    betamat = reshape(prtbl.β, size(zetamat))
+    lower = sizehint!(T[], p)
+    upper = sizehint!(T[], p)
+    for j in axes(zetamat, 2)
+        invspl = interpolate(view(zetamat, :, j), getindex.(view(betamat, :, j), j), BSplineOrder(4))
+        push!(lower, invspl(-cutoff))
+        push!(upper, invspl(cutoff))
+    end
+    return DictTable(coef = fecnames, lower = lower, upper = upper)
 end

@@ -1,6 +1,7 @@
 module MixedModels
 
 using Arrow
+using BSplineKit
 using DataAPI
 using Distributions
 using GLM
@@ -79,6 +80,7 @@ export @formula,
     cond,
     condVar,
     condVartables,
+    confint,
     deviance,
     dispersion,
     dispersion_parameter,
