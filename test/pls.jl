@@ -7,6 +7,7 @@ using Statistics
 using StatsModels
 using Tables
 using Test
+using TypedTables
 
 using MixedModels: likelihoodratiotest
 
@@ -505,14 +506,21 @@ end
         pr = profileβ(last(models(:sleepstudy)), -4:4)
         tbl = pr.prtbl
         @test length(tbl) == 18
-        @test isone(first(tbl.i))
-        @test last(tbl.i) == 2
         @test length(pr.fecnames) == 2
         @test isone(length(pr.facnames))
         recnms = pr.recnames
         @test isone(length(recnms))
         @test length(only(recnms)) == 2
         @test pr.fecnames == only(recnms)
+        ci = confint(pr)
+        @test isa(ci, TypedTables.DictTable)
+        @test propertynames(ci) == (:coef, :lower, :upper)
+        @test isapprox(ci.lower.values, [237.68100178648464, 7.358722574219274]; atol=1.e-3)
+    end
+    @testset "confint" begin
+        ci = confint(last(models(:sleepstudy)))
+        @test isa(ci, TypedTables.DictTable)
+        @test isapprox(ci.lower.values, [238.4061184564825, 7.52295850741417]; atol=1.e-3)
     end
 end
 

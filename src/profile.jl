@@ -93,14 +93,14 @@ function profileβ(m::LinearMixedModel{T}, δ=(-8:8) / 2) where {T}
     )
 end
 
-function StatsBase.confint(pr::MixedModelProfile{T}; level=0.95) where {T}
+function StatsBase.confint(pr::MixedModelProfile; level=0.95)
     cutoff = sqrt.(quantile(Chisq(1), level))
     (; prtbl, fecnames) = pr
     p = length(fecnames)
     zetamat = reshape(prtbl.ζ, length(pr.δ), p)
     betamat = reshape(prtbl.β, size(zetamat))
-    lower = sizehint!(T[], p)
-    upper = sizehint!(T[], p)
+    lower = sizehint!(similar(zetamat, 0), p)
+    upper = sizehint!(similar(zetamat, 0), p)
     for j in axes(zetamat, 2)
         invspl = interpolate(view(zetamat, :, j), getindex.(view(betamat, :, j), j), BSplineOrder(4))
         push!(lower, invspl(-cutoff))
