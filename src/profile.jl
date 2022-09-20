@@ -1,7 +1,7 @@
-struct FeProfile{T<:AbstractFloat}
-    m::LinearMixedModel{T}
-    y₀::Vector{T}
-    xⱼ::Vector{T}
+struct FeProfile{T<:AbstractFloat}  # derived model with the j'th fixed-effects coefficient held constant
+    m::LinearMixedModel{T}          # copy of original model after removing the j'th column from X
+    y₀::Vector{T}                   # original response vector
+    xⱼ::Vector{T}                   # the column that was removed from X
     j::Integer
 end
 
@@ -45,16 +45,24 @@ function refit!(pr::FeProfile{T}, βⱼ) where {T}
 end
 
 struct MixedModelProfile{T}
-    prtbl::Table
-    δ::AbstractVector{T}
-    fecnames::Vector{String}
-    facnames::Vector{Symbol}
-    recnames::Vector{Vector{String}}
-    parmap::Vector{NTuple{3,Int}}
-    fwd::Vector
-    rev::Vector
+    prtbl::Table          # Table containing ζ, σ, β, and θ from each conditional fit
+    δ::AbstractVector{T}  # values of fixed coefficient are `β[j] .+ δ .* stderror[j]`
+    fecnames::Vector{String}  # Fixed-effects coefficient names
+    facnames::Vector{Symbol}  # Names of grouping factors
+    recnames::Vector{Vector{String}} # Vector of vectors of column names for random effects
+    parmap::Vector{NTuple{3,Int}} # parmap from the model (used to construct λ from θ)
+    fwd::Vector   # Interpolation splines for ζ as a function of β
+    rev::Vector   # Interpolation splines for β as a function of ζ
 end
 
+"""
+    profileβ(m::LinearMixedModel, δ=(-8:8) / 2)
+
+Return a `MixedModelProfile` for the objective of `m` with respect to the fixed-effects coefficients.
+
+`δ` is a vector of standardized steps at which values of each coefficient are fixed.
+When β[i] is being profiled the values are fixed at `m.β[i] .+ δ .* m.stderror[i]`.
+""" 
 function profileβ(m::LinearMixedModel{T}, δ=(-8:8) / 2) where {T}
     β, θ, σ, std, obj = m.β, m.θ, m.σ, m.stderror, objective(m)
     betamat = (std * δ' .+ β)'
