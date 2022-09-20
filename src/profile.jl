@@ -51,38 +51,45 @@ struct MixedModelProfile{T}
     facnames::Vector{Symbol}
     recnames::Vector{Vector{String}}
     parmap::Vector{NTuple{3,Int}}
+    fwd::Vector
+    rev::Vector
 end
 
 function profileβ(m::LinearMixedModel{T}, δ=(-8:8) / 2) where {T}
     β, θ, σ, std, obj = m.β, m.θ, m.σ, m.stderror, objective(m)
-    zsz = length(δ) * length(β)
+    betamat = (std * δ' .+ β)'
+    zsz = length(betamat)
     zeta = sizehint!(T[], zsz)
     sigma = sizehint!(T[], zsz)
     beta = sizehint!(SVector{length(β),T}[], zsz)
     theta = sizehint!(SVector{length(θ),T}[], zsz)
-    @inbounds for j in only(axes(β))
+    @inbounds for (j, c) in enumerate(eachcol(betamat))
         prj = FeProfile(m, j)
         prm = prj.m
-        estj, stdj = β[j], std[j]
-        for (i, s) in enumerate(δ)
-            if iszero(s)
+        j2jm1 = j:j-1
+        for βj in c
+            dev = βj - β[j]
+            if dev ≈ 0
                 push!(zeta, zero(T))
                 push!(sigma, σ)
                 push!(beta, β)
                 push!(theta, θ)
             else
-                βj = estj + s * stdj
                 refit!(prj, βj)
                 βcopy = prm.β
-                splice!(βcopy, j:j-1, βj)
+                splice!(βcopy, j2jm1, βj)
                 push!(beta, βcopy)
-                push!(zeta, sign(s) * sqrt(prm.objective - obj))
+                push!(zeta, sign(dev) * sqrt(prm.objective - obj))
                 push!(sigma, prm.σ)
                 push!(theta, prm.θ)
             end
         end
     end
     updateL!(setθ!(m, θ))
+    zetamat = reshape(zeta, length(δ), :)
+    interp(x, y) = interpolate(x, y, BSplineOrder(4), Natural())
+    fwdspl = [interp(b, z) for (b, z) in zip(eachcol(betamat), eachcol(zetamat))]
+    revspl = [interp(z, b) for (b, z) in zip(eachcol(betamat), eachcol(zetamat))]
     return MixedModelProfile(
         Table(ζ = zeta, σ = sigma, β = beta, θ = theta),
         δ,
@@ -90,21 +97,15 @@ function profileβ(m::LinearMixedModel{T}, δ=(-8:8) / 2) where {T}
         [fname(t) for t in m.reterms],
         [t.cnames for t in m.reterms],
         copy(m.parmap),
+        fwdspl,
+        revspl,
     )
 end
 
 function StatsBase.confint(pr::MixedModelProfile; level=0.95)
     cutoff = sqrt.(quantile(Chisq(1), level))
-    (; prtbl, fecnames) = pr
-    p = length(fecnames)
-    zetamat = reshape(prtbl.ζ, length(pr.δ), p)
-    betamat = reshape(prtbl.β, size(zetamat))
-    lower = sizehint!(similar(zetamat, 0), p)
-    upper = sizehint!(similar(zetamat, 0), p)
-    for j in axes(zetamat, 2)
-        invspl = interpolate(view(zetamat, :, j), getindex.(view(betamat, :, j), j), BSplineOrder(4))
-        push!(lower, invspl(-cutoff))
-        push!(upper, invspl(cutoff))
-    end
+    (; fecnames, rev) = pr
+    lower = [s(-cutoff) for s in rev]
+    upper = [s(cutoff) for s in rev]
     return DictTable(coef = fecnames, lower = lower, upper = upper)
 end

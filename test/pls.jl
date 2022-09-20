@@ -515,7 +515,7 @@ end
         ci = confint(pr)
         @test isa(ci, TypedTables.DictTable)
         @test propertynames(ci) == (:coef, :lower, :upper)
-        @test isapprox(ci.lower.values, [237.68100178648464, 7.358722574219274]; atol=1.e-3)
+        @test isapprox(ci.lower.values, [237.68380717307167, 7.359357960468046]; atol=1.e-3)
     end
     @testset "confint" begin
         ci = confint(last(models(:sleepstudy)))
