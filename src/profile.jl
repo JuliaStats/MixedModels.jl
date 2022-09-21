@@ -51,8 +51,8 @@ struct MixedModelProfile{T}
     facnames::Vector{Symbol}  # Names of grouping factors
     recnames::Vector{Vector{String}} # Vector of vectors of column names for random effects
     parmap::Vector{NTuple{3,Int}} # parmap from the model (used to construct λ from θ)
-    fwd::Vector   # Interpolation splines for ζ as a function of β
-    rev::Vector   # Interpolation splines for β as a function of ζ
+    fwd::Vector           # Interpolation splines for ζ as a function of β
+    rev::Vector           # Interpolation splines for β as a function of ζ
 end
 
 """
@@ -64,8 +64,8 @@ Return a `MixedModelProfile` for the objective of `m` with respect to the fixed-
 When β[i] is being profiled the values are fixed at `m.β[i] .+ δ .* m.stderror[i]`.
 """ 
 function profileβ(m::LinearMixedModel{T}, δ=(-8:8) / 2) where {T}
-    β, θ, σ, std, obj = m.β, m.θ, m.σ, m.stderror, objective(m)
-    betamat = (std * δ' .+ β)'
+    (; β, θ, σ, stderror, objective) = m
+    betamat = (stderror * δ' .+ β)'
     zsz = length(betamat)
     zeta = sizehint!(T[], zsz)
     sigma = sizehint!(T[], zsz)
@@ -87,7 +87,7 @@ function profileβ(m::LinearMixedModel{T}, δ=(-8:8) / 2) where {T}
                 βcopy = prm.β
                 splice!(βcopy, j2jm1, βj)
                 push!(beta, βcopy)
-                push!(zeta, sign(dev) * sqrt(prm.objective - obj))
+                push!(zeta, sign(dev) * sqrt(prm.objective - objective))
                 push!(sigma, prm.σ)
                 push!(theta, prm.θ)
             end
@@ -116,4 +116,35 @@ function StatsBase.confint(pr::MixedModelProfile; level=0.95)
     lower = [s(-cutoff) for s in rev]
     upper = [s(cutoff) for s in rev]
     return DictTable(coef = fecnames, lower = lower, upper = upper)
+end
+
+function refitlogσ!(m::LinearMixedModel{T}, stepsz::Ref{T}, obj, logσ, zeta, beta, theta) where {T}
+    push!(logσ, last(logσ) + stepsz[])
+    m.optsum.sigma = exp(last(logσ))
+    refit!(m)
+    push!(zeta, sign(stepsz[]) * sqrt(m.objective - obj))
+    push!(beta, m.β)
+    push!(theta, m.θ)
+    return m.objective
+end
+
+function profilelogσ(m::LinearMixedModel{T}) where {T}
+    isnothing(m.optsum.sigma) || throw(ArgumentError("Can't profile σ, which is fixed at $(m.optsum.sigma)"))
+    (; β, σ, θ, objective) = m
+    logσ = [log(σ)]
+    beta = [SVector{length(β)}(β)]
+    theta = [SVector{length(θ)}(θ)]
+    zeta = [zero(T)]
+    stepsz = Ref(-inv(64))
+    while abs(last(zeta)) < 4
+        refitlogσ!(m, stepsz, objective, logσ, zeta, beta, theta)
+    end
+    reverse!(logσ); reverse!(zeta); reverse!(beta); reverse!(theta)
+    stepsz[] = -stepsz[]
+    while abs(last(zeta)) < 4
+        refitlogσ!(m, stepsz, objective, logσ, zeta, beta, theta)
+    end
+    m.optsum.sigma = nothing
+    refit!(m)
+    return Table(logσ = logσ, ζ = zeta, β = beta, θ = theta)
 end
