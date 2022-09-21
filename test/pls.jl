@@ -517,6 +517,14 @@ end
         @test propertynames(ci) == (:coef, :lower, :upper)
         @test isapprox(ci.lower.values, [237.68380717307167, 7.359357960468046]; atol=1.e-3)
     end
+    @testset "profilelogσ" begin
+        m = last(models(:sleepstudy))
+        pr = profilelogσ(m)
+        @test isa(pr, TypedTables.Table)
+        @test propertynames(pr) == (:logσ, :ζ, :β, :θ)
+        @test length(pr) == 10
+        @test only(filter(r -> iszero(r.ζ), pr)).logσ == log(m.σ)
+    end
     @testset "confint" begin
         ci = confint(last(models(:sleepstudy)))
         @test isa(ci, TypedTables.DictTable)

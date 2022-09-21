@@ -118,14 +118,20 @@ function StatsBase.confint(pr::MixedModelProfile; level=0.95)
     return DictTable(coef = fecnames, lower = lower, upper = upper)
 end
 
-function refitlogσ!(m::LinearMixedModel{T}, stepsz::Ref{T}, obj, logσ, zeta, beta, theta) where {T}
-    push!(logσ, last(logσ) + stepsz[])
+function refitlogσ!(m::LinearMixedModel{T}, stepsz, obj, logσ, zeta, beta, theta) where {T}
+    push!(logσ, last(logσ) + stepsz)
     m.optsum.sigma = exp(last(logσ))
     refit!(m)
     push!(zeta, sign(stepsz[]) * sqrt(m.objective - obj))
     push!(beta, m.β)
     push!(theta, m.θ)
     return m.objective
+end
+
+function _logσstepsz(m::LinearMixedModel, σ, objective)
+    i64 = inv(64)
+    m.optsum.sigma = exp(log(σ) + i64)
+    return i64 / sqrt(refit!(m).objective - objective)
 end
 
 function profilelogσ(m::LinearMixedModel{T}) where {T}
@@ -135,12 +141,12 @@ function profilelogσ(m::LinearMixedModel{T}) where {T}
     beta = [SVector{length(β)}(β)]
     theta = [SVector{length(θ)}(θ)]
     zeta = [zero(T)]
-    stepsz = Ref(-inv(64))
+    stepsz = -_logσstepsz(m, σ, objective)
     while abs(last(zeta)) < 4
         refitlogσ!(m, stepsz, objective, logσ, zeta, beta, theta)
     end
     reverse!(logσ); reverse!(zeta); reverse!(beta); reverse!(theta)
-    stepsz[] = -stepsz[]
+    stepsz = -stepsz
     while abs(last(zeta)) < 4
         refitlogσ!(m, stepsz, objective, logσ, zeta, beta, theta)
     end
