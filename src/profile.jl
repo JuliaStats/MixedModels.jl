@@ -13,17 +13,17 @@ Return a shallow copy of ReMat.
 A shallow copy shares as much internal storage as possible with the original ReMat.
 Only the vector `λ` and the `scratch` matrix are copied.
 """
-function Base.copy(ret::ReMat{T,S}) where {T, S}
+function Base.copy(ret::ReMat{T,S}) where {T,S}
     return ReMat{T,S}(ret.trm,
-                      ret.refs,
-                      ret.levels,
-                      ret.cnames,
-                      ret.z,
-                      ret.wtz,
-                      copy(ret.λ),
-                      ret.inds,
-                      ret.adjA,
-                      copy(ret.scratch))
+        ret.refs,
+        ret.levels,
+        ret.cnames,
+        ret.z,
+        ret.wtz,
+        copy(ret.λ),
+        ret.inds,
+        ret.adjA,
+        copy(ret.scratch))
 end
 
 function FeProfile(m::LinearMixedModel, j::Integer)
@@ -62,7 +62,7 @@ Return a `MixedModelProfile` for the objective of `m` with respect to the fixed-
 
 `δ` is a vector of standardized steps at which values of each coefficient are fixed.
 When β[i] is being profiled the values are fixed at `m.β[i] .+ δ .* m.stderror[i]`.
-""" 
+"""
 function profileβ(m::LinearMixedModel{T}, δ=(-8:8) / 2) where {T}
     (; β, θ, σ, stderror, objective) = m
     betamat = (stderror * δ' .+ β)'
@@ -74,7 +74,7 @@ function profileβ(m::LinearMixedModel{T}, δ=(-8:8) / 2) where {T}
     @inbounds for (j, c) in enumerate(eachcol(betamat))
         prj = FeProfile(m, j)
         prm = prj.m
-        j2jm1 = j:j-1
+        j2jm1 = j:(j - 1)
         for βj in c
             dev = βj - β[j]
             if dev ≈ 0
@@ -99,7 +99,7 @@ function profileβ(m::LinearMixedModel{T}, δ=(-8:8) / 2) where {T}
     fwdspl = [interp(b, z) for (b, z) in zip(eachcol(betamat), eachcol(zetamat))]
     revspl = [interp(z, b) for (b, z) in zip(eachcol(betamat), eachcol(zetamat))]
     return MixedModelProfile(
-        Table(ζ = zeta, σ = sigma, β = beta, θ = theta),
+        Table(; ζ=zeta, σ=sigma, β=beta, θ=theta),
         δ,
         copy(coefnames(m)),
         [fname(t) for t in m.reterms],
@@ -115,7 +115,7 @@ function StatsBase.confint(pr::MixedModelProfile; level=0.95)
     (; fecnames, rev) = pr
     lower = [s(-cutoff) for s in rev]
     upper = [s(cutoff) for s in rev]
-    return DictTable(coef = fecnames, lower = lower, upper = upper)
+    return DictTable(; coef=fecnames, lower=lower, upper=upper)
 end
 
 function refitlogσ!(m::LinearMixedModel{T}, stepsz, obj, logσ, zeta, beta, theta) where {T}
@@ -135,7 +135,8 @@ function _logσstepsz(m::LinearMixedModel, σ, objective)
 end
 
 function profilelogσ(m::LinearMixedModel{T}) where {T}
-    isnothing(m.optsum.sigma) || throw(ArgumentError("Can't profile σ, which is fixed at $(m.optsum.sigma)"))
+    isnothing(m.optsum.sigma) ||
+        throw(ArgumentError("Can't profile σ, which is fixed at $(m.optsum.sigma)"))
     (; β, σ, θ, objective) = m
     logσ = [log(σ)]
     beta = [SVector{length(β)}(β)]
@@ -145,12 +146,15 @@ function profilelogσ(m::LinearMixedModel{T}) where {T}
     while abs(last(zeta)) < 4
         refitlogσ!(m, stepsz, objective, logσ, zeta, beta, theta)
     end
-    reverse!(logσ); reverse!(zeta); reverse!(beta); reverse!(theta)
+    reverse!(logσ)
+    reverse!(zeta)
+    reverse!(beta)
+    reverse!(theta)
     stepsz = -stepsz
     while abs(last(zeta)) < 4
         refitlogσ!(m, stepsz, objective, logσ, zeta, beta, theta)
     end
     m.optsum.sigma = nothing
     refit!(m)
-    return Table(logσ = logσ, ζ = zeta, β = beta, θ = theta)
+    return Table(; logσ=logσ, ζ=zeta, β=beta, θ=theta)
 end

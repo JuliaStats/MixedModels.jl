@@ -353,10 +353,10 @@ end
 function StatsBase.confint(m::MixedModel{T}; level=0.95) where {T}
     cutoff = sqrt.(quantile(Chisq(1), level))
     β, std = m.β, m.stderror
-    return DictTable(
-        coef = coefnames(m),
-        lower = β .- cutoff .* std,
-        upper = β .+ cutoff .* std,
+    return DictTable(;
+        coef=coefnames(m),
+        lower=β .- cutoff .* std,
+        upper=β .+ cutoff .* std
     )
 end
 
