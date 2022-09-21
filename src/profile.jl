@@ -121,7 +121,7 @@ end
 function refitlogσ!(m::LinearMixedModel{T}, stepsz, obj, logσ, zeta, beta, theta) where {T}
     push!(logσ, last(logσ) + stepsz)
     m.optsum.sigma = exp(last(logσ))
-    refit!(m)
+    refit!(m; progress=false)
     push!(zeta, sign(stepsz[]) * sqrt(m.objective - obj))
     push!(beta, m.β)
     push!(theta, m.θ)
@@ -131,7 +131,7 @@ end
 function _logσstepsz(m::LinearMixedModel, σ, objective)
     i64 = inv(64)
     m.optsum.sigma = exp(log(σ) + i64)
-    return i64 / sqrt(refit!(m).objective - objective)
+    return i64 / sqrt(refit!(m; progress=false).objective - objective)
 end
 
 function profilelogσ(m::LinearMixedModel{T}) where {T}
