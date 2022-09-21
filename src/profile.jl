@@ -64,7 +64,11 @@ Return a `MixedModelProfile` for the objective of `m` with respect to the fixed-
 When β[i] is being profiled the values are fixed at `m.β[i] .+ δ .* m.stderror[i]`.
 """
 function profileβ(m::LinearMixedModel{T}, δ=(-8:8) / 2) where {T}
+@static if VERSION < v"1.7.0"
+    β, θ, σ, stderror, objective = m.β, m.θ, m.σ, m.stderror, m.objective
+else
     (; β, θ, σ, stderror, objective) = m
+end
     betamat = (stderror * δ' .+ β)'
     zsz = length(betamat)
     zeta = sizehint!(T[], zsz)
@@ -112,7 +116,7 @@ end
 
 function StatsBase.confint(pr::MixedModelProfile; level=0.95)
     cutoff = sqrt.(quantile(Chisq(1), level))
-    (; fecnames, rev) = pr
+    fecnames, rev = pr.fecnames, pr.rev
     lower = [s(-cutoff) for s in rev]
     upper = [s(cutoff) for s in rev]
     return DictTable(; coef=fecnames, lower=lower, upper=upper)
@@ -137,7 +141,11 @@ end
 function profilelogσ(m::LinearMixedModel{T}) where {T}
     isnothing(m.optsum.sigma) ||
         throw(ArgumentError("Can't profile σ, which is fixed at $(m.optsum.sigma)"))
+@static if VERSION < v"1.7.0"
+    β, σ, θ, objective = m.β, m.σ, m.θ, m.objective
+else
     (; β, σ, θ, objective) = m
+end
     logσ = [log(σ)]
     beta = [SVector{length(β)}(β)]
     theta = [SVector{length(θ)}(θ)]
