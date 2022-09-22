@@ -2,6 +2,7 @@ module MixedModels
 
 using Arrow
 using BSplineKit
+using Compat
 using DataAPI
 using Distributions
 using GLM
