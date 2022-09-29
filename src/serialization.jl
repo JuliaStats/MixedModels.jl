@@ -22,7 +22,7 @@ function restoreoptsum!(m::LinearMixedModel{T}, io::IO) where {T}
     copyto!(ops.initial, dict.initial)
     copyto!(ops.final, dict.final)
     for (v, f) in (:initial => :finitial, :final => :fmin)
-        if !isapprox(objective(updateL!(setθ!(m, getfield(ops, v)))), getfield(ops, f))
+        if !isapprox(objective(updateL!(setθ!(m, getfield(ops, v)))), getfield(ops, f); rtol=0.001)
             throw(ArgumentError("model m at $v does not give stored $f"))
         end
     end
