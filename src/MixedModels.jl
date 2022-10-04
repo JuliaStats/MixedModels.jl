@@ -29,7 +29,6 @@ using NLopt: Opt
 using StatsModels: TableRegressionModel
 using StatsFuns: log2π, normccdf
 
-
 export @formula,
     AbstractReMat,
     Bernoulli,
