@@ -53,12 +53,12 @@ struct GeneralizedLinearMixedModel{T<:AbstractFloat,D<:Distribution} <: MixedMod
     mult::Vector{T}
 end
 
-function StatsBase.coef(m::GeneralizedLinearMixedModel{T}) where {T}
+function StatsAPI.coef(m::GeneralizedLinearMixedModel{T}) where {T}
     piv = m.LMM.feterm.piv
     return invpermute!(copyto!(fill(T(-0.0), length(piv)), m.β), piv)
 end
 
-function StatsBase.coeftable(m::GeneralizedLinearMixedModel)
+function StatsAPI.coeftable(m::GeneralizedLinearMixedModel)
     co = coef(m)
     se = stderror(m)
     z = co ./ se
@@ -82,7 +82,7 @@ If the distribution `D` does not have a scale parameter the Laplace approximatio
 is the squared length of the conditional modes, ``u``, plus the determinant
 of ``Λ'Z'WZΛ + I``, plus the sum of the squared deviance residuals.
 """
-function StatsBase.deviance(m::GeneralizedLinearMixedModel{T}, nAGQ=1) where {T}
+function StatsAPI.deviance(m::GeneralizedLinearMixedModel{T}, nAGQ=1) where {T}
     nAGQ == 1 && return T(sum(m.resp.devresid) + logdet(m) + sum(u -> sum(abs2, u), m.u))
     u = vec(first(m.u))
     u₀ = vec(first(m.u₀))
@@ -109,7 +109,7 @@ function StatsBase.deviance(m::GeneralizedLinearMixedModel{T}, nAGQ=1) where {T}
     return sum(devc0) - 2 * (sum(log, mult) + sum(log, sd))
 end
 
-StatsBase.deviance(m::GeneralizedLinearMixedModel) = deviance(m, m.optsum.nAGQ)
+StatsAPI.deviance(m::GeneralizedLinearMixedModel) = deviance(m, m.optsum.nAGQ)
 
 fixef(m::GeneralizedLinearMixedModel) = m.β
 
@@ -161,7 +161,7 @@ GLM.dispersion_parameter(m::GeneralizedLinearMixedModel) = dispersion_parameter(
 
 Distributions.Distribution(m::GeneralizedLinearMixedModel{T,D}) where {T,D} = D
 
-function fit(
+function StatsAPI.fit(
     ::Type{GeneralizedLinearMixedModel},
     f::FormulaTerm,
     tbl,
@@ -172,7 +172,7 @@ function fit(
     return fit(GeneralizedLinearMixedModel, f, columntable(tbl), d, l; kwargs...)
 end
 
-function fit(
+function StatsAPI.fit(
     ::Type{GeneralizedLinearMixedModel},
     f::FormulaTerm,
     tbl::Tables.ColumnTable,
@@ -188,7 +188,7 @@ function fit(
     )
 end
 
-function fit(
+function StatsAPI.fit(
     ::Type{MixedModel},
     f::FormulaTerm,
     tbl,
@@ -238,7 +238,7 @@ default is the empty set.
     The `init_from_lmm` functionality is experimental and may change or be removed entirely
     without being considered a breaking change.
 """
-function fit!(
+function StatsAPI.fit!(
     m::GeneralizedLinearMixedModel{T};
     verbose::Bool=false,
     fast::Bool=false,
@@ -324,7 +324,7 @@ function fit!(
     return m
 end
 
-StatsBase.fitted(m::GeneralizedLinearMixedModel) = m.resp.mu
+StatsAPI.fitted(m::GeneralizedLinearMixedModel) = m.resp.mu
 
 function GeneralizedLinearMixedModel(
     f::FormulaTerm,
@@ -465,11 +465,11 @@ end
 getθ(m::GeneralizedLinearMixedModel) = copy(m.θ)
 getθ!(v::AbstractVector{T}, m::GeneralizedLinearMixedModel{T}) where {T} = copyto!(v, m.θ)
 
-StatsBase.islinear(m::GeneralizedLinearMixedModel) = isa(GLM.Link, GLM.IdentityLink)
+StatsAPI.islinear(m::GeneralizedLinearMixedModel) = isa(GLM.Link, GLM.IdentityLink)
 
 GLM.Link(m::GeneralizedLinearMixedModel) = GLM.Link(m.resp)
 
-function StatsBase.loglikelihood(m::GeneralizedLinearMixedModel{T}) where {T}
+function StatsAPI.loglikelihood(m::GeneralizedLinearMixedModel{T}) where {T}
     accum = zero(T)
     # adapted from GLM.jl
     # note the use of loglik_obs to handle the different parameterizations
@@ -776,7 +776,7 @@ function varest(m::GeneralizedLinearMixedModel{T}) where {T}
     return dispersion_parameter(m) ? dispersion(m, true) : missing
 end
 
-function StatsBase.weights(m::GeneralizedLinearMixedModel{T}) where {T}
+function StatsAPI.weights(m::GeneralizedLinearMixedModel{T}) where {T}
     wts = m.wt
     return isempty(wts) ? ones(T, nobs(m)) : wts
 end
