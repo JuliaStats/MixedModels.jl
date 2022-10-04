@@ -16,7 +16,7 @@ Private = false
 Order   = [:function]
 ```
 
-## Methods from `StatsAPI`, `StatsModels.jl` and `GLM.jl`
+## Methods from `StatsAPI.jl`, `StatsBase.jl`, `StatsModels.jl` and `GLM.jl`
 
 ```julia
 aic
@@ -24,7 +24,6 @@ aicc
 bic
 coef
 coefnames
-coefpvalues
 coeftable
 deviance
 dispersion
@@ -59,13 +58,14 @@ weights
 The following are MixedModels.jl-specific functions and not simply methods for functions defined in StatsAPI and GLM.jl.
 
 ```julia
-pwrss
+coefpvalues
 condVar
 condVarTables
 fitted!
 fixef
 fixefnames
 likelihoodratiotest # not exported
+pwrss
 ranef
 raneftables
 refit!
