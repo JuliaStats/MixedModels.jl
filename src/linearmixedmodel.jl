@@ -374,7 +374,9 @@ function createAL(reterms::Vector{AbstractReMat{T}}, Xy::FeMat{T}) where {T}
         for j in 1:(i - 1)
             cj = reterms[j]
             if !isnested(cj, ci)
-                for l in i:k
+                ind = kp1choose2(i)      # location of i'th diagonal block
+                L[ind] = TriangularRFP(L[ind], :Lj)
+                for l in (i + 1):k
                     ind = block(l, i)
                     L[ind] = Matrix(L[ind])
                 end

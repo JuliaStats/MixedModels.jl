@@ -95,6 +95,24 @@ function LinearAlgebra.rdiv!(
     return A
 end
 
+function RectangularFullPacked.TriangularRFP(d::Diagonal{T}, uplo::Symbol=:U; transr::Symbol=:N) where {T}
+    ul = first(string(uplo))
+    if ul ∉ "UL"
+        throw(ArgumentError("uplo = $uplo should be :U or :L"))
+    end
+    tr = first(string(transr))
+    if tr ∉ (T <: Complex ? "NC" : "NT")
+        throw(ArgumentError("transr = $transr should be :N or :(T <: Complex ? :C : :T)"))
+    end
+    ddiag = d.diag
+    rfdims = RectangularFullPacked._parentsize(length(ddiag), tr ≠ 'N')
+    val = TriangularRFP(zeros(T, first(rfdims), last(rfdims)), tr, ul)
+    for (i, d) in enumerate(ddiag)
+        val[i, i] = d
+    end
+    return val
+end
+
 @static if VERSION < v"1.7.0-DEV.1188" # julialang sha e0ecc557a24eb3338b8dc672d02c98e8b31111fa
     pivoted_qr(A; kwargs...) = qr(A, Val(true); kwargs...)
 else

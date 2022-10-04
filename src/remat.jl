@@ -570,6 +570,15 @@ function scaleinflate!(Ljj::Matrix{T}, Λj::ReMat{T,1}) where {T}
     return Ljj
 end
 
+function scaleinflate!(Ljj::TriangularRFP{T}, Λj::ReMat{T,1}) where {T}
+    lambsq = abs2(only(Λj.λ.data))
+    @inbounds for i in axes(Ljj, 1)
+        Ljj[i, i] *= lambsq
+        Ljj[i, i] += one(T)
+    end
+    return Ljj
+end
+
 function scaleinflate!(Ljj::UniformBlockDiagonal{T}, Λj::ReMat{T,S}) where {T,S}
     λ = Λj.λ
     dind = diagind(S, S)

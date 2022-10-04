@@ -6,7 +6,7 @@
 A rank-k update, C := α*A'A + β*C, of a Hermitian (Symmetric) matrix.
 
 `α` and `β` both default to 1.0.  When `α` is -1.0 this is a downdate operation.
-The name `rankUpdate!` is borrowed from [https://github.com/andreasnoack/LinearAlgebra.jl]
+The name `rankUpdate!` is from [https://github.com/andreasnoack/LinearAlgebra.jl]
 """
 function rankUpdate! end
 
@@ -91,7 +91,7 @@ end
 
 function rankUpdate!(
     C::HermOrSym{T,Diagonal{T,Vector{T}}}, A::StridedMatrix{T}, α, β
-) where {T,S}
+) where {T}
     Cdiag = C.data.diag
     require_one_based_indexing(Cdiag, A)
     length(Cdiag) == size(A, 1) || throw(DimensionMismatch())
@@ -106,7 +106,7 @@ end
 
 function rankUpdate!(
     C::HermOrSym{T,UniformBlockDiagonal{T}}, A::StridedMatrix{T}, α, β
-) where {T,S}
+) where {T}
     Cdat = C.data.data
     require_one_based_indexing(Cdat, A)
     isone(β) || rmul!(Cdat, β)
@@ -173,4 +173,36 @@ function rankUpdate!(
     end
 
     return C
+end
+
+function rankUpdate!(C::HermitianRFP{T}, A::SparseMatrixCSC{T}, α, β) where {T}
+    require_one_based_indexing(C, A)
+    m, n = size(A)
+    rv, nz = A.rowval, A.nzval
+    @assert C.uplo == 'L'
+    Ct = TriangularRFP(C.data, C.transr, C.uplo)
+    m == size(Ct, 2) || throw(DimensionMismatch())
+    isone(β) || rmul!(Ct, β)
+#    @inbounds 
+    for jj in axes(A, 2)
+        rangejj = nzrange(A, jj)
+        lenrngjj = length(rangejj)
+        for (k, j) in enumerate(rangejj)
+            anzj = α * nz[j]
+            rvj = rv[j]
+            for i in k:lenrngjj
+                kk = rangejj[i]
+                Ct[rv[kk], rvj] += nz[kk] * anzj
+            end
+        end
+    end
+    return C
+end
+
+function rankUpdate!(C::HermitianRFP{T}, A::StridedMatrix{T}, α, β) where {T}
+    return HermitianRFP(
+        RectangularFullPacked.LAPACK_RFP.sfrk!(C.transr, C.uplo, 'N', α, A, β, C.data),
+        C.transr,
+        C.uplo,
+    )
 end

@@ -38,6 +38,33 @@ function Base.copyto!(dest::Matrix{T}, src::UniformBlockDiagonal{T}) where {T}
     return dest
 end
 
+function Base.copyto!(dest::TriangularRFP{T}, src::Diagonal{T}) where {T}
+    size(dest) == size(src) || throw(DimensionMismatch())
+    fill!(dest.data, zero(T))
+    for (i, d) in enumerate(src.diag)
+        dest[i, i] = d
+    end
+    return dest
+end
+
+function Base.copyto!(dest::TriangularRFP{T}, src::UniformBlockDiagonal{T}) where {T}
+    size(dest) == size(src) || throw(DimensionMismatch(""))
+    fill!(dest.data, zero(T))
+    sdat = src.data
+    m, n, l = size(sdat)
+    @inbounds for k in axes(sdat, 3)
+        ioffset = (k - 1) * m
+        joffset = (k - 1) * n
+        for j in axes(sdat, 2)
+            jind = joffset + j
+            for i in axes(sdat, 1)
+                dest[ioffset + i, jind] = sdat[i, j, k]
+            end
+        end
+    end
+    return dest
+end
+
 function Base.getindex(A::UniformBlockDiagonal{T}, i::Int, j::Int) where {T}
     @boundscheck checkbounds(A, i, j)
     Ad = A.data

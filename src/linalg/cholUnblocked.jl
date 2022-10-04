@@ -18,6 +18,11 @@ function cholUnblocked!(D::Diagonal{T}, ::Type{Val{:L}}) where {T<:AbstractFloat
     return D
 end
 
+function cholUnblocked!(A::TriangularRFP, ::Type{Val{:L}})
+    cholesky!(Hermitian(A, :L))
+    return A
+end
+
 function cholUnblocked!(A::StridedMatrix{T}, ::Type{Val{:L}}) where {T<:BlasFloat}
     n = LinearAlgebra.checksquare(A)
     if n == 1

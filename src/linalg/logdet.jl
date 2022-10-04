@@ -14,6 +14,11 @@ end
 
 LD(d::DenseMatrix{T}) where {T} = @inbounds sum(log, d[k] for k in diagind(d))
 
+function LD(d::TriangularRFP{T}) where {T}
+    return @inbounds sum(log, d[i,i] for i in axes(d, 1))
+end
+
+
 """
     logdet(m::LinearMixedModel)
 
