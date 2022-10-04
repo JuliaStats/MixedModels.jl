@@ -26,3 +26,64 @@ Public  = false
 Order   = [:function]
 Filter = f -> !startswith(string(f), "_")
 ```
+
+## Methods from `StatsAPI`, `StatsModels.jl` and `GLM.jl`
+
+```julia
+aic
+aicc
+bic
+coef
+coefnames
+coefpvalues
+coeftable
+deviance
+dispersion
+dispersion_parameter
+dof
+dof_residual
+fit
+fit!
+fitted
+formula
+isfitted
+islinear
+leverage
+loglikelihood
+meanresponse
+modelmatrix
+model_response
+nobs
+predict
+residuals
+response
+responsename
+StatsModels.lrtest # not exported
+std
+stderror
+vcov
+weights
+```
+
+### MixedModels.jl "alternatives" and extensions to StatsAPI and GLM functions
+
+The following are MixedModels.jl-specific functions and not simply methods for functions defined in StatsAPI and GLM.jl.
+
+```julia
+pwrss
+condVar
+condVarTables
+fitted!
+fixef
+fixefnames
+likelihoodratiotest # not exported
+ranef
+raneftables
+refit!
+shortestcovint
+sdest
+simulate
+simulate!
+stderrror!
+varest
+```

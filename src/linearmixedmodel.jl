@@ -510,6 +510,13 @@ function StatsAPI.fit!(
     return m
 end
 
+"""
+    fitted!(v::AbstractArray{T}, m::LinearMixedModel{T})
+
+Overwrite `v` with the fitted values from `m`.
+
+See also `fitted`.
+"""
 function fitted!(v::AbstractArray{T}, m::LinearMixedModel{T}) where {T}
     ## FIXME: Create and use `effects(m) -> β, b` w/o calculating β twice
     Xtrm = m.feterm
