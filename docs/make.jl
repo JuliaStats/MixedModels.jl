@@ -1,6 +1,7 @@
 using Documenter
-using StatsBase
 using MixedModels
+using StatsAPI
+using StatsBase
 
 makedocs(;
     sitename="MixedModels",
