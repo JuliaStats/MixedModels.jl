@@ -16,17 +16,6 @@ Private = false
 Order   = [:function]
 ```
 
-## Non-Exported Functions
-
-Note that unless discussed elsewhere in the online documentation, non-exported functions should be considered implementation details.
-
-```@autodocs
-Modules = [MixedModels]
-Public  = false
-Order   = [:function]
-Filter = f -> !startswith(string(f), "_")
-```
-
 ## Methods from `StatsAPI`, `StatsModels.jl` and `GLM.jl`
 
 ```julia
@@ -86,4 +75,15 @@ simulate
 simulate!
 stderrror!
 varest
+```
+
+## Non-Exported Functions
+
+Note that unless discussed elsewhere in the online documentation, non-exported functions should be considered implementation details.
+
+```@autodocs
+Modules = [MixedModels]
+Public  = false
+Order   = [:function]
+Filter = f -> !startswith(string(f), "_")
 ```
