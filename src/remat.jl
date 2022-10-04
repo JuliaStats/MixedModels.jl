@@ -160,7 +160,7 @@ Return a `Bool` indicator matrix of the potential non-zeros in `A.λ`
 """
 function indmat end
 
-indmat(rt::ReMat{T,1}) where {T} = ones(Bool, 1, 1)
+indmat(::ReMat{T,1}) where {T} = ones(Bool, 1, 1)
 indmat(rt::ReMat{T,S}) where {T,S} = reshape([i in rt.inds for i in 1:abs2(S)], S, S)
 
 nlevs(A::ReMat) = length(A.levels)
@@ -253,7 +253,7 @@ function LinearAlgebra.mul!(
     return C
 end
 
-function *(adjA::Adjoint{T,<:ReMat{T,1}}, B::ReMat{T,1}) where {T}
+function Base.:(*)(adjA::Adjoint{T,<:ReMat{T,1}}, B::ReMat{T,1}) where {T}
     A = adjA.parent
     return if A === B
         mul!(Diagonal(Vector{T}(undef, size(B, 2))), adjA, B)
@@ -262,8 +262,9 @@ function *(adjA::Adjoint{T,<:ReMat{T,1}}, B::ReMat{T,1}) where {T}
     end
 end
 
-*(adjA::Adjoint{T,<:ReMat{T}}, B::ReMat{T}) where {T} = adjA.parent.adjA * sparse(B)
-function *(adjA::Adjoint{T,<:FeMat{T}}, B::ReMat{T}) where {T}
+Base.:(*)(adjA::Adjoint{T,<:ReMat{T}}, B::ReMat{T}) where {T} = adjA.parent.adjA * sparse(B)
+
+function Base.:(*)(adjA::Adjoint{T,<:FeMat{T}}, B::ReMat{T}) where {T}
     return mul!(Matrix{T}(undef, size(adjA.parent, 2), size(B, 2)), adjA, B)
 end
 
@@ -468,7 +469,7 @@ function LinearAlgebra.mul!(
     return y
 end
 
-function *(adjA::Adjoint{T,<:ReMat{T,S}}, B::ReMat{T,P}) where {T,S,P}
+function Base.:(*)(adjA::Adjoint{T,<:ReMat{T,S}}, B::ReMat{T,P}) where {T,S,P}
     A = adjA.parent
     if A === B
         return mul!(UniformBlockDiagonal(Array{T}(undef, S, S, nlevs(A))), adjA, A)
@@ -492,11 +493,11 @@ end
 # TODO: use DataAPI
 PCA(A::ReMat{T,S}; corr::Bool=true) where {T,S} = PCA(A.λ, A.cnames; corr=corr)
 
-refarray(A::ReMat) = A.refs
+DataAPI.refarray(A::ReMat) = A.refs
 
-refpool(A::ReMat) = A.levels
+DataAPI.refpool(A::ReMat) = A.levels
 
-refvalue(A::ReMat, i::Integer) = A.levels[i]
+DataAPI.refvalue(A::ReMat, i::Integer) = A.levels[i]
 
 function reweight!(A::ReMat, sqrtwts::Vector)
     if length(sqrtwts) > 0
@@ -700,7 +701,7 @@ function corrmat(A::ReMat{T}) where {T}
     return Symmetric(λnorm * λnorm', :L)
 end
 
-vsize(A::ReMat{T,S}) where {T,S} = S
+vsize(::ReMat{T,S}) where {T,S} = S
 
 function zerocorr!(A::ReMat{T}) where {T}
     λ = A.λ = Diagonal(A.λ)

@@ -1,6 +1,6 @@
 # API
 
-In addition to its own functionality, MixedModels.jl also implements extensive support for the `StatsBase.StatisticalModel` and `StatsBase.RegressionModel` API.
+In addition to its own functionality, MixedModels.jl also implements extensive support for the [`StatsAPI.StatisticalModel`](https://github.com/JuliaStats/StatsAPI.jl/blob/main/src/statisticalmodel.jl) and [`StatsAPI.RegressionModel`](https://github.com/JuliaStats/StatsAPI.jl/blob/main/src/regressionmodel.jl) API.
 
 ## Types
 

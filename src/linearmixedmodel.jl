@@ -174,7 +174,7 @@ function LinearMixedModel(
     )
 end
 
-function fit(
+function StatsAPI.fit(
     ::Type{LinearMixedModel},
     f::FormulaTerm,
     tbl;
@@ -198,7 +198,7 @@ function fit(
     )
 end
 
-function fit(
+function StatsAPI.fit(
     ::Type{LinearMixedModel},
     f::FormulaTerm,
     tbl::Tables.ColumnTable;
@@ -220,7 +220,7 @@ function _offseterr()
     )
 end
 
-function fit(
+function StatsAPI.fit(
     ::Type{MixedModel},
     f::FormulaTerm,
     tbl;
@@ -239,7 +239,7 @@ function fit(
     end
 end
 
-function fit(
+function StatsAPI.fit(
     ::Type{MixedModel},
     f::FormulaTerm,
     tbl,
@@ -265,19 +265,19 @@ function fit(
     end
 end
 
-function StatsBase.coef(m::LinearMixedModel{T}) where {T}
+function StatsAPI.coef(m::LinearMixedModel{T}) where {T}
     piv = m.feterm.piv
     return invpermute!(fixef!(similar(piv, T), m), piv)
 end
 
 βs(m::LinearMixedModel) = NamedTuple{(Symbol.(coefnames(m))...,)}(coef(m))
 
-function StatsBase.coefnames(m::LinearMixedModel)
+function StatsAPI.coefnames(m::LinearMixedModel)
     Xtrm = m.feterm
     return invpermute!(copy(Xtrm.cnames), Xtrm.piv)
 end
 
-function StatsBase.coeftable(m::LinearMixedModel)
+function StatsAPI.coeftable(m::LinearMixedModel)
     co = coef(m)
     se = stderror!(similar(co), m)
     z = co ./ se
@@ -385,7 +385,7 @@ function createAL(reterms::Vector{AbstractReMat{T}}, Xy::FeMat{T}) where {T}
     return A, L
 end
 
-StatsBase.deviance(m::LinearMixedModel) = objective(m)
+StatsAPI.deviance(m::LinearMixedModel) = objective(m)
 
 GLM.dispersion(m::LinearMixedModel, sqr::Bool=false) = sqr ? varest(m) : sdest(m)
 
@@ -416,7 +416,7 @@ objective, if the optimization takes more than one second or so.
 At every `thin`th iteration  is recorded in `fitlog`, optimization progress is
 saved in `m.optsum.fitlog`.
 """
-function fit!(
+function StatsAPI.fit!(
     m::LinearMixedModel{T};
     progress::Bool=true,
     REML::Bool=false,
@@ -520,7 +520,7 @@ function fitted!(v::AbstractArray{T}, m::LinearMixedModel{T}) where {T}
     return v
 end
 
-StatsBase.fitted(m::LinearMixedModel{T}) where {T} = fitted!(Vector{T}(undef, nobs(m)), m)
+StatsAPI.fitted(m::LinearMixedModel{T}) where {T} = fitted!(Vector{T}(undef, nobs(m)), m)
 
 """
     fixef!(v::Vector{T}, m::MixedModel{T})
@@ -648,7 +648,7 @@ function Base.getproperty(m::LinearMixedModel{T}, s::Symbol) where {T}
     end
 end
 
-StatsBase.islinear(m::LinearMixedModel) = true
+StatsAPI.islinear(m::LinearMixedModel) = true
 
 """
     _3blockL(::LinearMixedModel)
@@ -699,7 +699,7 @@ for the model in the sense that this sum is the dimension of the span of columns
 of the model matrix.  With a bit of hand waving a similar argument could be made
 for linear mixed-effects models. The hat matrix is of the form ``[ZΛ X][L L']⁻¹[ZΛ X]'``.
 """
-function StatsBase.leverage(m::LinearMixedModel{T}) where {T}
+function StatsAPI.leverage(m::LinearMixedModel{T}) where {T}
     # To obtain the diagonal elements solve L⁻¹[ZΛ X]'eⱼ
     # where eⱼ is the j'th basis vector in Rⁿ and evaluate the squared length of the solution.
     # The fact that the [1,1] block of L is always UniformBlockDiagonal
@@ -740,7 +740,7 @@ function StatsBase.leverage(m::LinearMixedModel{T}) where {T}
     return value
 end
 
-function StatsBase.loglikelihood(m::LinearMixedModel)
+function StatsAPI.loglikelihood(m::LinearMixedModel)
     if m.optsum.REML
         throw(ArgumentError("loglikelihood not available for models fit by REML"))
     end
@@ -1149,7 +1149,7 @@ function stderror!(v::AbstractVector{Tv}, m::LinearMixedModel{T}) where {Tv,T}
     return v
 end
 
-function StatsBase.stderror(m::LinearMixedModel{T}) where {T}
+function StatsAPI.stderror(m::LinearMixedModel{T}) where {T}
     return stderror!(similar(m.feterm.piv, T), m)
 end
 
@@ -1243,7 +1243,7 @@ function varest(m::LinearMixedModel)
     return isnothing(m.optsum.sigma) ? pwrss(m) / ssqdenom(m) : m.optsum.sigma
 end
 
-function StatsBase.weights(m::LinearMixedModel)
+function StatsAPI.weights(m::LinearMixedModel)
     rtwts = m.sqrtwts
     return isempty(rtwts) ? ones(eltype(rtwts), nobs(m)) : abs2.(rtwts)
 end

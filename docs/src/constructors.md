@@ -262,7 +262,7 @@ sort(deviances)
 
 # Extractor functions
 
-`LinearMixedModel` and `GeneralizedLinearMixedModel` are subtypes of `StatsBase.RegressionModel` which, in turn, is a subtype of `StatsBase.StatisticalModel`.
+`LinearMixedModel` and `GeneralizedLinearMixedModel` are subtypes of `StatsAPI.RegressionModel` which, in turn, is a subtype of `StatsAPI.StatisticalModel`.
 Many of the generic extractors defined in the `StatsBase` package have methods for these models.
 
 ## Model-fit statistics
