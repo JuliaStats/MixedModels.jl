@@ -91,7 +91,7 @@ end
 
 function rankUpdate!(
     C::HermOrSym{T,Diagonal{T,Vector{T}}}, A::StridedMatrix{T}, α, β
-) where {T,S}
+) where {T}
     Cdiag = C.data.diag
     require_one_based_indexing(Cdiag, A)
     length(Cdiag) == size(A, 1) || throw(DimensionMismatch())
@@ -106,7 +106,7 @@ end
 
 function rankUpdate!(
     C::HermOrSym{T,UniformBlockDiagonal{T}}, A::StridedMatrix{T}, α, β
-) where {T,S}
+) where {T}
     Cdat = C.data.data
     require_one_based_indexing(Cdat, A)
     isone(β) || rmul!(Cdat, β)
