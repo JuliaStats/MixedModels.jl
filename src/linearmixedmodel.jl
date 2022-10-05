@@ -355,7 +355,7 @@ function _pushALblock!(A, L, blk)
     return push!(A, deepcopy(isa(blk, BlockedSparse) ? blk.cscmat : blk))
 end
 
-function createAL(reterms::Vector{AbstractReMat{T}}, Xy::FeMat{T}) where {T}
+function createAL(reterms::Vector{<:AbstractReMat{T}}, Xy::FeMat{T}) where {T}
     k = length(reterms)
     vlen = kchoose2(k + 1)
     A = sizehint!(AbstractMatrix{T}[], vlen)
@@ -756,7 +756,7 @@ end
 
 lowerbd(m::LinearMixedModel) = m.optsum.lowerbd
 
-function mkparmap(reterms::Vector{AbstractReMat{T}}) where {T}
+function mkparmap(reterms::Vector{<:AbstractReMat{T}}) where {T}
     parmap = NTuple{3,Int}[]
     for (k, trm) in enumerate(reterms)
         n = LinearAlgebra.checksquare(trm.λ)
