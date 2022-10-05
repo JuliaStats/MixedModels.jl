@@ -12,14 +12,6 @@ function Base.axes(A::UniformBlockDiagonal)
     return (Base.OneTo(m * l), Base.OneTo(n * l))
 end
 
-function Base.copyto!(dest::UniformBlockDiagonal{T}, src::UniformBlockDiagonal{T}) where {T}
-    sdat = src.data
-    ddat = dest.data
-    size(ddat) == size(sdat) || throw(DimensionMismatch(""))
-    copyto!(ddat, sdat)
-    return dest
-end
-
 function Base.copyto!(dest::Matrix{T}, src::UniformBlockDiagonal{T}) where {T}
     size(dest) == size(src) || throw(DimensionMismatch(""))
     fill!(dest, zero(T))
