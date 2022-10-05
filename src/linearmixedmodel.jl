@@ -62,6 +62,11 @@ function LinearMixedModel(
         rethrow(e)
     end
     form = apply_schema(f, sch, LinearMixedModel)
+
+    if form.rhs isa MatrixTerm || !any(x -> isa(x, RandomEffectsTerm), form.rhs)
+        throw(ArgumentError("Formula contains no random effects; this isn't a mixed model. Perhaps you want to use GLM.jl?"))
+    end
+
     # tbl, _ = StatsModels.missing_omit(tbl, form)
 
     y, Xs = modelcols(form, tbl)
