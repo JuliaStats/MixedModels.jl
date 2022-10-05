@@ -24,7 +24,7 @@ end   # time: 2.1690955
     Base.precompile(Tuple{typeof(adjA),Vector{Int32},Matrix{Float64}})   # time: 0.11642844
     Base.precompile(Tuple{typeof(apply_schema),Term,MultiSchema{FullRank},UnionAll})   # time: 0.0992202
     Base.precompile(Tuple{typeof(fit),Type{GeneralizedLinearMixedModel},FormulaTerm,NamedTuple,Bernoulli,LogitLink})   # time: 0.09839547
-    Base.precompile(Tuple{typeof(scaleinflate!),UniformBlockDiagonal{Float64},ReMat{Float64, 2}})   # time: 0.07856259
+    Base.precompile(Tuple{typeof(copyscaleinflate!),UniformBlockDiagonal{Float64},UniformBlockDiagonal{Float64},ReMat{Float64, 2}})   # time: 0.07856259
     Base.precompile(Tuple{typeof(*),Adjoint{Float64, ReMat{Float64, 2}},ReMat{Float64, 2}})   # time: 0.064247385
     let fbody = try Base.bodyfunction(which(fit, (Type{LinearMixedModel},FormulaTerm,NamedTuple,))) catch missing end
     if !ismissing(fbody)
@@ -38,7 +38,7 @@ end   # time: 0.0641711
     Base.precompile(Tuple{typeof(LD),UniformBlockDiagonal{Float64}})   # time: 0.029826526
     Base.precompile(Tuple{typeof(*),Adjoint{Float64, ReMat{Float64, 1}},ReMat{Float64, 1}})   # time: 0.02977296
     Base.precompile(Tuple{typeof(GLM.wrkresp!),SubArray{Float64, 1, Matrix{Float64}, Tuple{Base.Slice{Base.OneTo{Int64}}, Int64}, true},GLM.GlmResp{Vector{Float64}, Bernoulli{Float64}, LogitLink}})   # time: 0.022571307
-    Base.precompile(Tuple{typeof(scaleinflate!),Diagonal{Float64, Vector{Float64}},ReMat{Float64, 1}})   # time: 0.014116756
+    Base.precompile(Tuple{typeof(copyscaleinflate!),Diagonal{Float64, Vector{Float64}},Diagonal{Float64, Vector{Float64}},ReMat{Float64, 1}})   # time: 0.014116756
     Base.precompile(Tuple{typeof(cholUnblocked!),UniformBlockDiagonal{Float64},Type{Val{:L}}})   # time: 0.011265205
     Base.precompile(Tuple{Core.Type{MixedModels.GeneralizedLinearMixedModel{Float64, Distributions.Bernoulli}},LinearMixedModel,Any,Any,Vector,Any,Any,Any,Any,Any,Any,Any,Any,Any,Any})   # time: 0.010291444
     Base.precompile(Tuple{typeof(apply_schema),RandomEffectsTerm,MultiSchema{FullRank},Type{LinearMixedModel}})   # time: 0.009160354
