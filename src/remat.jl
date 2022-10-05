@@ -550,31 +550,35 @@ function rowlengths(A::ReMat)
 end
 
 """
-    scaleinflate!(L::AbstractMatrix, Λ::ReMat)
+    copyscaleinflate!(L::AbstractMatrix, A::AbstractMatrix, Λ::ReMat)
 
-Overwrite L with `Λ'LΛ + I`
+Overwrite L with `Λ'AΛ + I`
 """
-function scaleinflate! end
+function copyscaleinflate! end
 
-function scaleinflate!(Ljj::Diagonal{T}, Λj::ReMat{T,1}) where {T}
-    Ljjd = Ljj.diag
-    broadcast!((x, λsqr) -> x * λsqr + 1, Ljjd, Ljjd, abs2(only(Λj.λ.data)))
+function copyscaleinflate!(Ljj::Diagonal{T}, Ajj::Diagonal{T}, Λj::ReMat{T,1}) where {T}
+    Ldiag, Adiag = Ljj.diag, Ajj.diag
+    broadcast!((x, λsqr) -> x * λsqr + one(T), Ldiag, Adiag, abs2(only(Λj.λ.data)))
     return Ljj
 end
 
-function scaleinflate!(Ljj::Matrix{T}, Λj::ReMat{T,1}) where {T}
+function copyscaleinflate!(Ljj::Matrix{T}, Ajj::Diagonal{T}, Λj::ReMat{T,1}) where {T}
+    fill!(Ljj, zero(T))
     lambsq = abs2(only(Λj.λ.data))
-    @inbounds for i in diagind(Ljj)
-        Ljj[i] *= lambsq
-        Ljj[i] += one(T)
+    @inbounds for (i, a) in enumerate(Ajj.diag)
+        Ljj[i, i] = lambsq * a + one(T)
     end
     return Ljj
 end
 
-function scaleinflate!(Ljj::UniformBlockDiagonal{T}, Λj::ReMat{T,S}) where {T,S}
+function copyscaleinflate!(
+    Ljj::UniformBlockDiagonal{T},
+    Ajj::UniformBlockDiagonal{T},
+    Λj::ReMat{T,S}
+) where {T,S}
     λ = Λj.λ
     dind = diagind(S, S)
-    Ldat = Ljj.data
+    Ldat = copyto!(Ljj.data, Ajj.data)
     for k in axes(Ldat, 3)
         f = view(Ldat, :, :, k)
         lmul!(λ', rmul!(f, λ))
@@ -585,7 +589,12 @@ function scaleinflate!(Ljj::UniformBlockDiagonal{T}, Λj::ReMat{T,S}) where {T,S
     return Ljj
 end
 
-function scaleinflate!(Ljj::Matrix{T}, Λj::ReMat{T,S}) where {T,S}
+function copyscaleinflate!(
+    Ljj::Matrix{T},
+    Ajj::UniformBlockDiagonal{T},
+    Λj::ReMat{T,S}
+) where {T,S}
+    copyto!(Ljj, Ajj)
     n = LinearAlgebra.checksquare(Ljj)
     q, r = divrem(n, S)
     iszero(r) || throw(DimensionMismatch("size(Ljj, 1) is not a multiple of S"))

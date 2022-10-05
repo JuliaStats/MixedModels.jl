@@ -1210,14 +1210,14 @@ This is the crucial step in evaluating the objective, given a new parameter valu
 function updateL!(m::LinearMixedModel{T}) where {T}
     A, L, reterms = m.A, m.L, m.reterms
     k = length(reterms)
-    for (l, a) in zip(L, A) # copy each element of A to corresponding element of L
-        copyto!(l, a)       # For some reason copyto!.(L, A) allocates a lot of memory
-    end
+    copyto!(last(m.L), last(m.A))  # ensure the fixed-effects:response block is copied
     for j in eachindex(reterms) # pre- and post-multiply by Λ, add I to diagonal
         cj = reterms[j]
-        scaleinflate!(L[kp1choose2(j)], cj)
+        diagind = kp1choose2(j)
+        copyscaleinflate!(L[diagind], A[diagind], cj)
         for i in (j + 1):(k + 1)     # postmultiply column by Λ
-            rmulΛ!(L[block(i, j)], cj)
+            bij = block(i, j)
+            rmulΛ!(copyto!(L[bij], A[bij]), cj)
         end
         for jj in 1:(j - 1)        # premultiply row by Λ'
             lmulΛ!(cj', L[block(j, jj)])
