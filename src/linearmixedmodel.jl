@@ -46,8 +46,9 @@ function LinearMixedModel(
 )
     return LinearMixedModel(f::FormulaTerm, Tables.columntable(tbl); contrasts, wts, σ)
 end
-const _MISSING_RE_ERROR =
-    ArgumentError("Formula contains no random effects; this isn't a mixed model. Perhaps you want to use GLM.jl?")
+const _MISSING_RE_ERROR = ArgumentError(
+    "Formula contains no random effects; this isn't a mixed model. Perhaps you want to use GLM.jl?",
+)
 
 function LinearMixedModel(
     f::FormulaTerm, tbl::Tables.ColumnTable; contrasts=Dict{Symbol,Any}(), wts=[], σ=nothing
