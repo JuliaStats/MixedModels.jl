@@ -572,9 +572,9 @@ function copyscaleinflate!(Ljj::Matrix{T}, Ajj::Diagonal{T}, Λj::ReMat{T,1}) wh
 end
 
 function copyscaleinflate!(
-    Ljj::UniformBlockDiagonal{T}, 
+    Ljj::UniformBlockDiagonal{T},
     Ajj::UniformBlockDiagonal{T},
-    Λj::ReMat{T,S},
+    Λj::ReMat{T,S}
 ) where {T,S}
     λ = Λj.λ
     dind = diagind(S, S)
@@ -592,7 +592,7 @@ end
 function copyscaleinflate!(
     Ljj::Matrix{T},
     Ajj::UniformBlockDiagonal{T},
-    Λj::ReMat{T,S},
+    Λj::ReMat{T,S}
 ) where {T,S}
     copyto!(Ljj, Ajj)
     n = LinearAlgebra.checksquare(Ljj)
