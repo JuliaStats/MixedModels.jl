@@ -63,7 +63,7 @@ function LinearMixedModel(
     end
     form = apply_schema(f, sch, LinearMixedModel)
 
-    if form.rhs isa MatrixTerm || !any(x -> isa(x, RandomEffectsTerm), form.rhs)
+    if form.rhs isa MatrixTerm || !any(x -> isa(x, AbstractReTerm), form.rhs)
         throw(ArgumentError("Formula contains no random effects; this isn't a mixed model. Perhaps you want to use GLM.jl?"))
     end
 
