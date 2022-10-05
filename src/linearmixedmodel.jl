@@ -30,14 +30,14 @@ Linear mixed-effects model representation
 """
 struct LinearMixedModel{T<:AbstractFloat} <: MixedModel{T}
     formula::FormulaTerm
-    reterms::Vector{AbstractReMat{T}}
+    reterms::Vector{<:AbstractReMat{T}}
     Xymat::FeMat{T}
     feterm::FeTerm{T}
     sqrtwts::Vector{T}
     parmap::Vector{NTuple{3,Int}}
     dims::NamedTuple{(:n, :p, :nretrms),NTuple{3,Int}}
-    A::Vector{AbstractMatrix{T}}            # cross-product blocks
-    L::Vector{AbstractMatrix{T}}
+    A::Vector{<:AbstractMatrix{T}}            # cross-product blocks
+    L::Vector{<:AbstractMatrix{T}}
     optsum::OptSummary{T}
 end
 
