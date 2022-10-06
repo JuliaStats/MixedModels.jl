@@ -46,6 +46,9 @@ function LinearMixedModel(
 )
     return LinearMixedModel(f::FormulaTerm, Tables.columntable(tbl); contrasts, wts, σ)
 end
+const _MISSING_RE_ERROR = ArgumentError(
+    "Formula contains no random effects; this isn't a mixed model. Perhaps you want to use GLM.jl?",
+)
 
 function LinearMixedModel(
     f::FormulaTerm, tbl::Tables.ColumnTable; contrasts=Dict{Symbol,Any}(), wts=[], σ=nothing
@@ -62,6 +65,11 @@ function LinearMixedModel(
         rethrow(e)
     end
     form = apply_schema(f, sch, LinearMixedModel)
+
+    if form.rhs isa MatrixTerm || !any(x -> isa(x, AbstractReTerm), form.rhs)
+        throw(_MISSING_RE_ERROR)
+    end
+
     # tbl, _ = StatsModels.missing_omit(tbl, form)
 
     y, Xs = modelcols(form, tbl)
@@ -119,6 +127,7 @@ function LinearMixedModel(
             push!(feterms, FeTerm(x, isa(cnames, String) ? [cnames] : collect(cnames)))
         end
     end
+    isempty(reterms) && throw(_MISSING_RE_ERROR)
     return LinearMixedModel(convert(Array{T}, y), only(feterms), reterms, form, wts, σ)
 end
 
