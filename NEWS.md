@@ -1,7 +1,10 @@
+MixedModels v4.7.3 Release Notes
+==============================
+* More informative error message for formulae lacking random effects [#651]
+
 MixedModels v4.7.2 Release Notes
 ==============================
 * Replace separate calls to `copyto!` and `scaleinflate!` in `updateL!` with `copyscaleinflate!` [#648]
-* More informative error message for formulae lacking random effects [#651]
 
 MixedModels v4.7.1 Release Notes
 ==============================
