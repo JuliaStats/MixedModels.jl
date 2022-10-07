@@ -3,7 +3,7 @@
 
 Term with an explicit, constant matrix representation
 
-Typically, an `FeTerm` represents the model matrix for the fixed effects. 
+Typically, an `FeTerm` represents the model matrix for the fixed effects.
 
 !!! note
     `FeTerm` is not the same as [`FeMat`](@ref)!
@@ -23,10 +23,10 @@ end
 
 """
     FeTerm(X::AbstractMatrix, cnms)
-    
+
 Convenience constructor for [`FeTerm`](@ref) that computes the rank and pivot with unit weights.
 
-See the vignette "[Rank deficiency in mixed-effects models](@ref)" for more information on the 
+See the vignette "[Rank deficiency in mixed-effects models](@ref)" for more information on the
 computation of the rank and pivot.
 """
 function FeTerm(X::AbstractMatrix{T}, cnms) where {T}
@@ -45,7 +45,7 @@ end
 
 """
     FeTerm(X::SparseMatrixCSC, cnms)
-    
+
 Convenience constructor for a sparse [`FeTerm`](@ref) assuming full rank, identity pivot and unit weights.
 
 Note: automatic rank deficiency handling may be added to this method in the future, as discused in
@@ -110,7 +110,7 @@ Base.getindex(A::FeMat, i, j) = getindex(A.xy, i, j)
 
 Base.length(A::FeMat) = length(A.xy)
 
-function *(adjA::Adjoint{T,<:FeMat{T}}, B::FeMat{T}) where {T}
+function Base.:(*)(adjA::Adjoint{T,<:FeMat{T}}, B::FeMat{T}) where {T}
     return adjoint(adjA.parent.wtxy) * B.wtxy
 end
 

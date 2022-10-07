@@ -1,3 +1,11 @@
+MixedModels v4.7.3 Release Notes
+==============================
+* More informative error message for formulae lacking random effects [#651]
+
+MixedModels v4.7.2 Release Notes
+==============================
+* Replace separate calls to `copyto!` and `scaleinflate!` in `updateL!` with `copyscaleinflate!` [#648]
+
 MixedModels v4.7.1 Release Notes
 ==============================
 * Avoid repeating initial objective evaluation in `fit!` method for `LinearMixedModel`
@@ -365,3 +373,5 @@ Package dependencies
 [#615]: https://github.com/JuliaStats/MixedModels.jl/issues/615
 [#628]: https://github.com/JuliaStats/MixedModels.jl/issues/628
 [#637]: https://github.com/JuliaStats/MixedModels.jl/issues/637
+[#648]: https://github.com/JuliaStats/MixedModels.jl/issues/648
+[#651]: https://github.com/JuliaStats/MixedModels.jl/issues/651
