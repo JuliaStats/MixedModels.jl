@@ -175,14 +175,20 @@ function rankUpdate!(
     return C
 end
 
+function rankUpdate!(C::HermitianRFP{T}, A::BlockedSparse{T}, α, β) where {T}
+    return rankUpdate!(C, SparseMatrixCSC(A), α, β)
+end
+
 function rankUpdate!(C::HermitianRFP{T}, A::SparseMatrixCSC{T}, α, β) where {T}
     require_one_based_indexing(C, A)
     m, n = size(A)
     rv, nz = A.rowval, A.nzval
     @assert C.uplo == 'L'
-    Ct = TriangularRFP(C.data, C.transr, C.uplo)
-    m == size(Ct, 2) || throw(DimensionMismatch())
-    isone(β) || rmul!(Ct, β)
+    Cd = C.data
+    k, l = size(Cd)
+    evenn = 2l < k
+    m == k - evenn || throw(DimensionMismatch())
+    isone(β) || rmul!(Cd, β)
 #    @inbounds 
     for jj in axes(A, 2)
         rangejj = nzrange(A, jj)
@@ -192,7 +198,13 @@ function rankUpdate!(C::HermitianRFP{T}, A::SparseMatrixCSC{T}, α, β) where {T
             rvj = rv[j]
             for i in k:lenrngjj
                 kk = rangejj[i]
-                Ct[rv[kk], rvj] += nz[kk] * anzj
+                rvkk = rv[kk]
+                summand = nz[kk] * anzj
+                if rvj ≤ l
+                    Cd[rv[kk] + evenn, rvj] += summand
+                else
+                    Cd[rvj - l, rv[kk] - l + !evenn] += summand
+                end
             end
         end
     end

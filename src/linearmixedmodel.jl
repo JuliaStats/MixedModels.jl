@@ -1069,12 +1069,12 @@ end
 
 _coord(A::BlockedSparse) = _coord(A.cscmat)
 
-function _coord(A::Matrix)
+function _coord(A::Union{Matrix, TriangularRFP})
     m, n = size(A)
     return (
         i=Int32.(repeat(axes(A, 1); outer=n)),
         j=Int32.(repeat(axes(A, 2); inner=m)),
-        v=vec(A),
+        v=vec(Array(A)),
     )
 end
 

@@ -113,6 +113,33 @@ function RectangularFullPacked.TriangularRFP(d::Diagonal{T}, uplo::Symbol=:U; tr
     return val
 end
 
+function RectangularFullPacked.TriangularRFP(A::UniformBlockDiagonal{T}, uplo::Symbol=:U; transr::Symbol=:N) where {T}
+    ul = uppercase(first(string(uplo)))
+    if ul ≠ 'L'
+        throw(ArgumentError("uplo = $uplo should be :L"))
+    end
+    tr = first(string(transr))
+    if tr ∉ (T <: Complex ? "NC" : "NT")
+        throw(ArgumentError("transr = $transr should be :N or :(T <: Complex ? :C : :T)"))
+    end
+    Ad = A.data
+    n = LinearAlgebra.checksquare(A)
+    neven = iseven(n)
+    k, l = RectangularFullPacked._parentsize(n, tr ≠ 'N')
+    Cd = zeros(T, k, l)
+    val = TriangularRFP(Cd, tr, ul)
+    r = size(Ad, 1)
+    for kk in axes(Ad, 3)
+        offset = (kk - 1) * r 
+        for j in axes(Ad, 2)
+            for i in j:r
+                Cd[_packedinds(i+offset, j+offset, neven, l)...] = Ad[i, j, kk]
+            end
+        end
+    end
+    return val
+end
+
 @static if VERSION < v"1.7.0-DEV.1188" # julialang sha e0ecc557a24eb3338b8dc672d02c98e8b31111fa
     pivoted_qr(A; kwargs...) = qr(A, Val(true); kwargs...)
 else

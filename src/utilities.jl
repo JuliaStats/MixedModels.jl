@@ -83,6 +83,15 @@ function densify(A::Diagonal{T,SparseVector{T,Ti}}, threshold::Real=0.1) where {
 end
 
 """
+    _packedinds(i::Integer, j::Integer, neven::Bool, l::Integer)
+
+A stripped-down version of `RectangularFullPacked._packedinds` that assumes `uplo == 'L'` and `transr == 'N'`
+"""
+function _packedinds(i::Integer, j::Integer, neven::Bool, l::Integer)
+    return l < j ? (j - l, i + !neven - l) : (i + neven, j)
+end
+
+"""
     RaggedArray{T,I}
 
 A "ragged" array structure consisting of values and indices

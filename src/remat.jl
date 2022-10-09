@@ -571,6 +571,40 @@ function copyscaleinflate!(Ljj::Matrix{T}, Ajj::Diagonal{T}, Λj::ReMat{T,1}) wh
     return Ljj
 end
 
+function copyscaleinflate!(Ljj::TriangularRFP{T}, Ajj::Diagonal{T}, Λj::ReMat{T,1}) where {T}
+    Ld = fill!(Ljj.data, zero(T))
+    fill!(Ljj.data, zero(T))
+    lambsq = abs2(only(Λj.λ.data))
+    Ad = Ajj.diag
+    neven = iseven(length(Ad))
+    l = size(Ld, 2)
+    @inbounds for (i, a) in enumerate(Ajj.diag)
+        Ld[_packedinds(i, i, neven, l)...] = lambsq * a + one(T)
+    end
+    return Ljj
+end
+
+function copyscaleinflate!(Ljj::TriangularRFP{T}, Ajj::UniformBlockDiagonal{T}, Λj::ReMat{T,S}) where {T,S}
+    λ = Λj.λ
+    Ad = Ajj.data
+    Ld = fill!(Ljj.data, zero(T))
+    @assert S == size(Ad, 1) == size(Ad, 2)
+    scr = view(Λj.scratch, axes(Ad, 1), axes(Ad, 2))
+    neven = iseven(LinearAlgebra.checksquare(Ajj))
+    l = size(Ld, 2)
+    for k in axes(Ad, 3)
+        lmul!(λ', rmul!(copyto!(scr, Ad[:, :, k]), λ))
+        offset = (k - 1) * S
+        for j in 1:S
+            for i in j:S
+                inds = _packedinds(offset + i, offset + j, neven, l)
+                Ld[inds...] = scr[i, j] + (i == j)
+            end
+        end
+    end
+    return Ljj
+end
+
 function copyscaleinflate!(
     Ljj::UniformBlockDiagonal{T},
     Ajj::UniformBlockDiagonal{T},

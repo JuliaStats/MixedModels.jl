@@ -218,7 +218,7 @@ end
     show(io, BlockDescription(fm))
     @test countlines(seekstart(io)) == 4
     tokens = Set(split(String(take!(io)), r"\s+"))
-    @test "Diag/Dense" in tokens
+    @test "Diag/RFP" in tokens
     @test "Diagonal" in tokens
 end
 
@@ -293,7 +293,7 @@ end
     tokens = Set(split(String(take!(io)), r"\s+"))
     @test "Sparse" in tokens
     @test "Sparse/Dense" in tokens
-    @test "Diag/Dense" in tokens
+    @test "Diag/RFP" in tokens
 
     fm2 = last(models(:insteval))
     @test objective(fm2) ≈ 237585.5534151694 atol=0.001
@@ -513,7 +513,7 @@ end
 
     show(io, BlockDescription(fm))
     tokens = Set(split(String(take!(io)), r"\s+"))
-    @test "BlkDiag/Dense" in tokens
+    @test "BlkDiag/RFP" in tokens
 end
 
 @testset "kb07" begin

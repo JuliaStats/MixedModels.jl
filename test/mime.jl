@@ -101,11 +101,11 @@ lrt = likelihoodratiotest(fm0, fm1)
     @testset "blockdescription" begin
 
         @test sprint(show, mime, BlockDescription(gm3)) == """
-| rows | subj     | item       | fixed |
-|:---- |:-------- |:---------- |:----- |
-| 316  | Diagonal |            |       |
-| 24   | Dense    | Diag/Dense |       |
-| 7    | Dense    | Dense      | Dense |
+| rows | subj     | item     | fixed |
+|:---- |:-------- |:-------- |:----- |
+| 316  | Diagonal |          |       |
+| 24   | Dense    | Diag/RFP |       |
+| 7    | Dense    | Dense    | Dense |
 """
     end
 
@@ -152,7 +152,7 @@ end
     # this is minimal since we're mostly testing that dispatch works
     # the stdlib actually handles most of the conversion
     @test sprint(show, MIME("text/html"), BlockDescription(gm3)) == """
-<table><tr><th align="left">rows</th><th align="left">subj</th><th align="left">item</th><th align="left">fixed</th></tr><tr><td align="left">316</td><td align="left">Diagonal</td><td align="left"></td><td align="left"></td></tr><tr><td align="left">24</td><td align="left">Dense</td><td align="left">Diag/Dense</td><td align="left"></td></tr><tr><td align="left">7</td><td align="left">Dense</td><td align="left">Dense</td><td align="left">Dense</td></tr></table>
+<table><tr><th align="left">rows</th><th align="left">subj</th><th align="left">item</th><th align="left">fixed</th></tr><tr><td align="left">316</td><td align="left">Diagonal</td><td align="left"></td><td align="left"></td></tr><tr><td align="left">24</td><td align="left">Dense</td><td align="left">Diag/RFP</td><td align="left"></td></tr><tr><td align="left">7</td><td align="left">Dense</td><td align="left">Dense</td><td align="left">Dense</td></tr></table>
 """
     optsum = sprint(show, MIME("text/html"), fm0.optsum)
 
@@ -172,7 +172,7 @@ end
 rows & subj & item & fixed \\\\
 \\hline
 316 & Diagonal &  &  \\\\
-24 & Dense & Diag/Dense &  \\\\
+24 & Dense & Diag/RFP &  \\\\
 7 & Dense & Dense & Dense \\\\
 \\end{tabular}
 """
