@@ -189,8 +189,7 @@ function rankUpdate!(C::HermitianRFP{T}, A::SparseMatrixCSC{T}, α, β) where {T
     evenn = 2l < k
     m == k - evenn || throw(DimensionMismatch())
     isone(β) || rmul!(Cd, β)
-#    @inbounds 
-    for jj in axes(A, 2)
+    @inbounds for jj in axes(A, 2)
         rangejj = nzrange(A, jj)
         lenrngjj = length(rangejj)
         for (k, j) in enumerate(rangejj)

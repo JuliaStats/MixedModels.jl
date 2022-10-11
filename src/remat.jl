@@ -573,7 +573,6 @@ end
 
 function copyscaleinflate!(Ljj::TriangularRFP{T}, Ajj::Diagonal{T}, Λj::ReMat{T,1}) where {T}
     Ld = fill!(Ljj.data, zero(T))
-    fill!(Ljj.data, zero(T))
     lambsq = abs2(only(Λj.λ.data))
     Ad = Ajj.diag
     neven = iseven(length(Ad))
