@@ -195,14 +195,15 @@ function rankUpdate!(C::HermitianRFP{T}, A::SparseMatrixCSC{T}, α, β) where {T
         for (k, j) in enumerate(rangejj)
             anzj = α * nz[j]
             rvj = rv[j]
+            leftblock = rvj ≤ l
             for i in k:lenrngjj
                 kk = rangejj[i]
                 rvkk = rv[kk]
                 summand = nz[kk] * anzj
-                if rvj ≤ l
-                    Cd[rv[kk] + evenn, rvj] += summand
+                if leftblock
+                    Cd[rvkk + evenn, rvj] += summand
                 else
-                    Cd[rvj - l, rv[kk] - l + !evenn] += summand
+                    Cd[rvj - l, rvkk - l + !evenn] += summand
                 end
             end
         end
