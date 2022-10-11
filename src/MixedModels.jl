@@ -17,6 +17,7 @@ using ProgressMeter
 using SparseArrays
 using StaticArrays
 using Statistics
+using StatsAPI
 using StatsBase
 using StatsModels
 using StructTypes
@@ -25,16 +26,11 @@ using TypedTables
 
 using LinearAlgebra: BlasFloat, BlasReal, HermOrSym, PosDefException, copytri!
 using Base: Ryu, require_one_based_indexing
-using GLM: Link, canonicallink, linkfun, linkinv
+using DataAPI: levels, refpool, refarray, refvalue
+using GLM: Link, canonicallink, linkfun, linkinv, dispersion, dispersion_parameter
+using NLopt: Opt
 using StatsModels: TableRegressionModel
-
 using StatsFuns: log2π, normccdf
-
-import Base: *
-import DataAPI: levels, refpool, refarray, refvalue
-import GLM: dispersion, dispersion_parameter
-import NLopt: Opt
-import StatsBase: fit, fit!
 
 export @formula,
     AbstractReMat,
@@ -138,13 +134,12 @@ export @formula,
     sparseL,
     std,
     stderror,
+    stderror!,
     updateL!,
     varest,
     vcov,
     weights,
     zerocorr
-
-import Base: ==, *
 
 """
     MixedModel

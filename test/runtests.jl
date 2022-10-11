@@ -14,6 +14,7 @@ else
 end
 
 include("utilities.jl")
+include("misc.jl")
 include("pivot.jl")
 include("UniformBlockDiagonal.jl")
 include("linalg.jl")
