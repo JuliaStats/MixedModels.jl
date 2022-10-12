@@ -34,7 +34,9 @@ function StatsModels.modelcols(::CategoricalTerm{Grouping}, d::NamedTuple)
 end
 
 # copied from StatsModels@463eb0a
-function StatsModels.ContrastsMatrix(contrasts::Grouping, levels::AbstractVector{T}) where {T}
+function StatsModels.ContrastsMatrix(
+    contrasts::Grouping, levels::AbstractVector{T}
+) where {T}
 
     # if levels are defined on contrasts, use those, validating that they line up.
     # what does that mean? either:
@@ -48,18 +50,19 @@ function StatsModels.ContrastsMatrix(contrasts::Grouping, levels::AbstractVector
 
     mismatched_levels = symdiff(c_levels, levels)
     if !isempty(mismatched_levels)
-        throw(ArgumentError("contrasts levels not found in data or vice-versa: " *
-                            "$mismatched_levels." *
-                            "\n  Data levels ($(eltype(levels))): $levels." *
-                            "\n  Contrast levels ($(eltype(c_levels))): $c_levels"))
+        throw(
+            ArgumentError(
+                "contrasts levels not found in data or vice-versa: " *
+                "$mismatched_levels." *
+                "\n  Data levels ($(eltype(levels))): $levels." *
+                "\n  Contrast levels ($(eltype(c_levels))): $c_levels",
+            ),
+        )
     end
-
 
     # do conversion AFTER checking for levels so users get a nice error message
     # when they've made a mistake with the level types
     c_levels = convert(Vector{T}, c_levels)
-
-
 
     n = length(c_levels)
     # not validating this allows for prediction of only a single level of the grouping factor
@@ -85,5 +88,5 @@ function StatsModels.ContrastsMatrix(contrasts::Grouping, levels::AbstractVector
 
     tnames = StatsModels.termnames(contrasts, c_levels, baseind)
     mat = StatsModels.contrasts_matrix(contrasts, baseind, n)
-    StatsModels.ContrastsMatrix(mat, tnames, c_levels, contrasts)
+    return StatsModels.ContrastsMatrix(mat, tnames, c_levels, contrasts)
 end
