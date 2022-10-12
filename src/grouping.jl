@@ -29,8 +29,9 @@ struct Grouping <: StatsModels.AbstractContrasts end
 Base.getproperty(g::Grouping, prop::Symbol) = prop == :levels ? nothing : getfield(g, prop)
 
 # special-case categorical terms with Grouping contrasts.
-StatsModels.modelcols(::CategoricalTerm{Grouping}, d::NamedTuple) =
-    error("can't create model columns directly from a Grouping term")
+function StatsModels.modelcols(::CategoricalTerm{Grouping}, d::NamedTuple)
+    return error("can't create model columns directly from a Grouping term")
+end
 
 function StatsModels.ContrastsMatrix(
     contrasts::Grouping, levels::AbstractVector{T}
