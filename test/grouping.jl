@@ -25,5 +25,5 @@ end
     # without auto-grouping, this OOM on most reasonable hardware because it default dummy coding
     # would mean constructing 1M x 1M matrix
 
-    @test LinearMixedModel(@formula(y ~ 1 + (1 | grp)), d; progress=false) isa LinearMixedModel
+    @test LinearMixedModel(@formula(y ~ 1 + (1 | grp)), d) isa LinearMixedModel
 end
