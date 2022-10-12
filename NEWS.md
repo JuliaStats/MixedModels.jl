@@ -1,3 +1,7 @@
+MixedModels v4.8.0 Release Notes
+==============================
+* Auto apply `Grouping()` to grouping variables, so long as the grouping variable is a single term and not an interaction term or sum of multiple terms. As a side effect, in [the rare cases](https://www.muscardinus.be/2017/08/fixed-and-random/#discrete-variable) where it makes sense for a variable to appear as both a fixed effect and a grouping variable, an explicit contrast hint must be passed. [#652]
+
 MixedModels v4.7.3 Release Notes
 ==============================
 * More informative error message for formulae lacking random effects [#651]
@@ -375,3 +379,4 @@ Package dependencies
 [#637]: https://github.com/JuliaStats/MixedModels.jl/issues/637
 [#648]: https://github.com/JuliaStats/MixedModels.jl/issues/648
 [#651]: https://github.com/JuliaStats/MixedModels.jl/issues/651
+[#652]: https://github.com/JuliaStats/MixedModels.jl/issues/652
