@@ -33,7 +33,7 @@ function StatsModels.modelcols(::CategoricalTerm{Grouping}, d::NamedTuple)
     return error("can't create model columns directly from a Grouping term")
 end
 
-# copied from StatsModels@463eb0a
+# copied and then adapted from StatsModels@463eb0a
 function StatsModels.ContrastsMatrix(
     contrasts::Grouping, levels::AbstractVector{T}
 ) where {T}
@@ -66,26 +66,8 @@ function StatsModels.ContrastsMatrix(
 
     n = length(c_levels)
     # not validating this allows for prediction of only a single level of the grouping factor
-    # if n == 0
-    #     throw(ArgumentError("empty set of levels found (need at least two to compute " *
-    #                         "contrasts)."))
-    # elseif n == 1
-    #     throw(ArgumentError("only one level found: $(c_levels[1]) (need at least two to " *
-    #                         "compute contrasts)."))
-    # end
-    # find index of base level. use baselevel(contrasts), then default (1).
-    # base_level = baselevel(contrasts)
-    # baseind = base_level === nothing ?
-    #           1 :
-    #           findfirst(isequal(base_level), c_levels)
-    # if baseind === nothing
-    #     throw(ArgumentError("base level $(base_level) not found in levels " *
-    #                         "$c_levels."))
-    # end
 
-    base_level = nothing
     baseind = 1
-
     tnames = StatsModels.termnames(contrasts, c_levels, baseind)
     mat = StatsModels.contrasts_matrix(contrasts, baseind, n)
     return StatsModels.ContrastsMatrix(mat, tnames, c_levels, contrasts)
