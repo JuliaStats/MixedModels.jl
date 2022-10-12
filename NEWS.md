@@ -1,3 +1,7 @@
+MixedModels v4.7.4 Release Notes
+==============================
+* Allow predicting from a single observation [#653]
+
 MixedModels v4.7.3 Release Notes
 ==============================
 * More informative error message for formulae lacking random effects [#651]
@@ -375,3 +379,4 @@ Package dependencies
 [#637]: https://github.com/JuliaStats/MixedModels.jl/issues/637
 [#648]: https://github.com/JuliaStats/MixedModels.jl/issues/648
 [#651]: https://github.com/JuliaStats/MixedModels.jl/issues/651
+[#653]: https://github.com/JuliaStats/MixedModels.jl/issues/653
