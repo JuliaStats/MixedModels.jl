@@ -1,6 +1,6 @@
-MixedModels v4.7.4 Release Notes
+MixedModels v4.8.0 Release Notes
 ==============================
-* Allow predicting from a single observation [#653]
+* Allow predicting from a single observation, as long as `Grouping()` is used for the grouping variables. The simplified implementation of `Grouping()` also removes several now unnecessary `StatsModels` methods that should not have been called directly by the user. [#653]
 
 MixedModels v4.7.3 Release Notes
 ==============================
