@@ -1,5 +1,11 @@
 abstract type AbstractReTerm <: AbstractTerm end
 
+# stub so that the const definitions work
+function zerocorr end
+
+const _RE_FORMULA_FUNCTIONS = Union{typeof(|), typeof(zerocorr)}
+const RE_FUNCTION_TERM = FunctionTerm{<:_RE_FORMULA_FUNCTIONS}
+
 struct RandomEffectsTerm <: AbstractReTerm
     lhs::StatsModels.TermOrTerms
     rhs::StatsModels.TermOrTerms

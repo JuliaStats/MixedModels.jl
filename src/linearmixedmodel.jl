@@ -56,15 +56,31 @@ function LinearMixedModel(
     # TODO: perform missing_omit() after apply_schema() when improved
     # missing support is in a StatsModels release
     tbl, _ = StatsModels.missing_omit(tbl, f)
+    # if there is only one term on the RHS, then you don't have an iterator
+    rhs = f.rhs isa AbstractTerm ? [] : f.rhs
+    re = filter(x -> x isa RE_FUNCTION_TERM, rhs)
+    grping = unique!(mapreduce(x -> x.args_parsed[2:end], vcat, re; init=[]))
+    # XXX how to handle interaction terms in Grouping?
+    # for now, we just don't.
+    grping = filter!(x -> hasproperty(x, :sym), grping)
+
+    # XXX how to handle the same variable in FE and RE?
+    # prefer user-specified contrasts if they override this: if something in the FE and RE,
+    # then it will work as long as you specify the contrasts
+    contrasts = merge(Dict{Symbol, Any}(g.sym => Grouping() for g in grping), contrasts)
     sch = try
         schema(f, tbl, contrasts)
     catch e
+        # this codepath remains in case somebody passes some WonkyTerm that doesn't have `sym` defined.
         if isa(e, OutOfMemoryError)
             @warn "Random effects grouping variables with many levels can cause out-of-memory errors.  Try manually specifying `Grouping()` contrasts for those variables."
         end
         rethrow(e)
     end
     form = apply_schema(f, sch, LinearMixedModel)
+    # I kinda feel like the better way to handle this would be to have an intermediate stage
+    # where we get the schema for response, fixed effects and the random intercepts and slopes
+    # and then fuse that with something for the grouping variables
 
     if form.rhs isa MatrixTerm || !any(x -> isa(x, AbstractReTerm), form.rhs)
         throw(_MISSING_RE_ERROR)

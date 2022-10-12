@@ -1,4 +1,3 @@
-
 """
     struct Grouping <: StatsModels.AbstractContrasts end
 
