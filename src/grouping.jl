@@ -22,23 +22,18 @@ julia> schema((; grp = string.(1:100_000)), Dict(:grp => Grouping()))
 struct Grouping <: StatsModels.AbstractContrasts end
 
 # return an empty matrix
-StatsModels.contrasts_matrix(::Grouping, baseind, n) = zeros(0, 0)
-StatsModels.termnames(::Grouping, levels::AbstractVector, baseind::Integer) = levels
+# StatsModels.contrasts_matrix(::Grouping, baseind, n) = error("Grouping terms don't have associated contrasts")
+# StatsModels.termnames(::Grouping, levels::AbstractVector, baseind::Integer) = levels
 
 # this is needed until StatsModels stops assuming all contrasts have a .levels field
 Base.getproperty(g::Grouping, prop::Symbol) = prop == :levels ? nothing : getfield(g, prop)
 
 # special-case categorical terms with Grouping contrasts.
-function StatsModels.modelcols(::CategoricalTerm{Grouping}, d::NamedTuple)
-    return error("can't create model columns directly from a Grouping term")
-end
+StatsModels.modelcols(::CategoricalTerm{Grouping}, d::NamedTuple) =
+    error("can't create model columns directly from a Grouping term")
 
-# copied and then adapted from StatsModels@463eb0a
 function StatsModels.ContrastsMatrix(
     contrasts::Grouping, levels::AbstractVector{T}
 ) where {T}
-    baseind = 1
-    tnames = StatsModels.termnames(contrasts, c_levels, baseind)
-    mat = StatsModels.contrasts_matrix(contrasts, baseind, 0)
-    return StatsModels.ContrastsMatrix(mat, tnames, c_levels, contrasts)
+    return StatsModels.ContrastsMatrix(zeros(0, 0), levels, levels, contrasts)
 end
