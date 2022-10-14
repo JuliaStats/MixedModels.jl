@@ -47,6 +47,13 @@ include("modelcache.jl")
 end
 
 @testset "predict" begin
+
+    @testset "single obs" begin
+        kb07 = DataFrame(dataset(:kb07))
+        m = models(:kb07)[1]
+        only(predict(m, kb07[1:1, :])) ≈ first(fitted(m))
+    end
+
     slp = DataFrame(dataset(:sleepstudy))
     slp2 = transform(slp, :subj => ByRow(x -> (x == "S308" ? "NEW" : x)) => :subj)
     slpm = allowmissing(slp, :reaction)
