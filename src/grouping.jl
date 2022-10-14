@@ -21,10 +21,6 @@ julia> schema((; grp = string.(1:100_000)), Dict(:grp => Grouping()))
 """
 struct Grouping <: StatsModels.AbstractContrasts end
 
-# return an empty matrix
-# StatsModels.contrasts_matrix(::Grouping, baseind, n) = error("Grouping terms don't have associated contrasts")
-# StatsModels.termnames(::Grouping, levels::AbstractVector, baseind::Integer) = levels
-
 # this is needed until StatsModels stops assuming all contrasts have a .levels field
 Base.getproperty(g::Grouping, prop::Symbol) = prop == :levels ? nothing : getfield(g, prop)
 
