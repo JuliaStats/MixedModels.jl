@@ -34,7 +34,7 @@ function StatsModels.modelcols(::CategoricalTerm{Grouping}, d::NamedTuple)
 end
 
 function StatsModels.ContrastsMatrix(
-    contrasts::Grouping, levels::AbstractVector{T}
-) where {T}
+    contrasts::Grouping, levels::AbstractVector
+)
     return StatsModels.ContrastsMatrix(zeros(0, 0), levels, levels, contrasts)
 end
