@@ -1222,11 +1222,11 @@ function updateL!(m::LinearMixedModel{T}) where {T}
     A, L, reterms = m.A, m.L, m.reterms
     k = length(reterms)
     copyto!(last(m.L), last(m.A))  # ensure the fixed-effects:response block is copied
-    for j in eachindex(reterms) # pre- and post-multiply by Λ, add I to diagonal
+    for j in eachindex(reterms)    # pre- and post-multiply by Λ, add I to diagonal
         cj = reterms[j]
         diagind = kp1choose2(j)
         copyscaleinflate!(L[diagind], A[diagind], cj)
-        for i in (j + 1):(k + 1)     # postmultiply column by Λ
+        for i in (j + 1):(k + 1)   # postmultiply column by Λ
             bij = block(i, j)
             rmulΛ!(copyto!(L[bij], A[bij]), cj)
         end
