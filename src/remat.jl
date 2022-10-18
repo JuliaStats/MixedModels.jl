@@ -229,7 +229,7 @@ function lmulΛ!(adjA::Adjoint{T,<:ReMat{T,S}}, B::BlockedSparse{T}) where {T,S}
 end
 
 function lmulΛ!(adjA::Adjoint{T,ReMat{T,1}}, B::BlockedSparse{T,1,P}) where {T,P}
-    lmul!(only(adjA.parent.λ.data), nonzeros(B.cscmat))
+    lmul!(only(adjA.parent.λ), nonzeros(B.cscmat))
     return B
 end
 
@@ -504,15 +504,15 @@ function reweight!(A::ReMat, sqrtwts::Vector)
         if A.z === A.wtz
             A.wtz = similar(A.z)
         end
-        rmul!(copyto!(A.wtz, A.z), Diagonal(sqrtwts))
+        mul!(A.wtz, A.z, Diagonal(sqrtwts))
     end
     return A
 end
 
-rmulΛ!(A::Matrix{T}, B::ReMat{T,1}) where {T} = rmul!(A, only(B.λ.data))
+rmulΛ!(A::Matrix{T}, B::ReMat{T,1}) where {T} = rmul!(A, only(B.λ))
 
 function rmulΛ!(A::SparseMatrixCSC{T}, B::ReMat{T,1}) where {T}
-    rmul!(nonzeros(A), only(B.λ.data))
+    rmul!(nonzeros(A), only(B.λ))
     return A
 end
 
@@ -558,7 +558,7 @@ function copyscaleinflate! end
 
 function copyscaleinflate!(Ljj::Diagonal{T}, Ajj::Diagonal{T}, Λj::ReMat{T,1}) where {T}
     Ldiag, Adiag = Ljj.diag, Ajj.diag
-    broadcast!((x, λsqr) -> x * λsqr + one(T), Ldiag, Adiag, abs2(only(Λj.λ.data)))
+    broadcast!((x, λsqr) -> x * λsqr + one(T), Ldiag, Adiag, abs2(only(Λj.λ)))
     return Ljj
 end
 
@@ -636,7 +636,7 @@ end
 
 function σρs(A::ReMat{T,1}, sc::T) where {T}
     return NamedTuple{(:σ, :ρ)}((
-        NamedTuple{(Symbol(only(A.cnames)),)}((sc * abs(only(A.λ.data)),)), ()
+        NamedTuple{(Symbol(only(A.cnames)),)}((sc * abs(only(A.λ)),)), ()
     ))
 end
 

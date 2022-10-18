@@ -129,3 +129,29 @@ slopes_form = @formula(y ~ 0 + v1 + v2 + v3 + v4 + v5 +
                       ((0 + v5) | pl5))
 
 fm2 = LinearMixedModel(slopes_form, data; wts, contrasts)
+
+# but this does work
+# fails with zero corr but otherwise gives similar estimates to lme
+let f = @formula(y ~ v1 + v2 + v3 + v4 + v5 +
+                     zerocorr(1 + v1 | pl3) +
+                     (1 + v2 + v3 + v4 + v5 | pl5))
+
+    fit(MixedModel, f, data; wts, contrasts)
+end
+
+let f = @formula(y ~ v1 + v2 + v3 + v4 + v5 +
+                     (0 + v1 | pl3) +
+                     zerocorr(1 + v2 + v3 + v4 + v5 | pl5))
+
+    fit(MixedModel, model_form_alt, data; wts, contrasts)
+end
+
+# let f = @formula(y ~ v1 + v2 + v3 + v4 + v5 +
+#                          zerocorr(1 + v1 | pl3) +
+#                          zerocorr(1 + v2 + v3 + v4 + v5 | pl5))
+#     fit(MixedModel, f, data; wts, contrasts)
+# end
+
+using MixedModelsMakie
+using CairoMakie
+splom!(Figure(), select(data, Not([:pl3, :pl5, :w, :y])))
