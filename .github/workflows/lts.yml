@@ -1,4 +1,7 @@
 name: LTS
+concurrency:
+  group: ${{ github.head_ref }}.lts
+  cancel-in-progress: true
 on:
   push:
     branches:
@@ -21,11 +24,6 @@ jobs:
         julia-arch: [x64]
         os: [ubuntu-18.04, macos-10.15, windows-2019]
     steps:
-      - name: Cancel Previous Runs
-        uses: styfle/cancel-workflow-action@0.9.1
-        with:
-          all_but_latest: true
-          access_token: ${{ github.token }}
       - uses: actions/checkout@v2
       - uses: julia-actions/setup-julia@v1
         with:

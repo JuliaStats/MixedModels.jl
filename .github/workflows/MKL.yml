@@ -1,4 +1,7 @@
 name: MKL
+concurrency:
+  group: ${{ github.head_ref }}.mkl
+  cancel-in-progress: true
 on:
   workflow_dispatch:
 jobs:
