@@ -1,6 +1,6 @@
 name: LTS
 concurrency:
-  group: ${{ github.head_ref }}.lts
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
 on:
   push:
