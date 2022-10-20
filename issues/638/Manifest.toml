@@ -760,7 +760,7 @@ version = "1.0.2"
 
 [[MixedModels]]
 deps = ["Arrow", "DataAPI", "Distributions", "GLM", "JSON3", "LazyArtifacts", "LinearAlgebra", "Markdown", "NLopt", "PooledArrays", "ProgressMeter", "Random", "SparseArrays", "StaticArrays", "Statistics", "StatsAPI", "StatsBase", "StatsFuns", "StatsModels", "StructTypes", "Tables"]
-path = "../.."
+git-tree-sha1 = "31538466936a03a860d192d8db7bd1edb2179a91"
 uuid = "ff71e718-51f3-5ec2-a782-8ffcbfa3c316"
 version = "4.8.0"
 

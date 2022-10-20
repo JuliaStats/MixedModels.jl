@@ -132,18 +132,18 @@ fm2 = LinearMixedModel(slopes_form, data; wts, contrasts)
 
 # but this does work
 # fails with zero corr but otherwise gives similar estimates to lme
-let f = @formula(y ~ v1 + v2 + v3 + v4 + v5 +
+m_zc_pl3 = let f = @formula(y ~ v1 + v2 + v3 + v4 + v5 +
                      zerocorr(1 + v1 | pl3) +
                      (1 + v2 + v3 + v4 + v5 | pl5))
 
     fit(MixedModel, f, data; wts, contrasts)
 end
 
-let f = @formula(y ~ v1 + v2 + v3 + v4 + v5 +
+m_no_int_pl3 = let f = @formula(y ~ v1 + v2 + v3 + v4 + v5 +
                      (0 + v1 | pl3) +
-                     zerocorr(1 + v2 + v3 + v4 + v5 | pl5))
+                     (1 + v2 + v3 + v4 + v5 | pl5))
 
-    fit(MixedModel, model_form_alt, data; wts, contrasts)
+    fit(MixedModel, f, data; wts, contrasts)
 end
 
 # let f = @formula(y ~ v1 + v2 + v3 + v4 + v5 +
@@ -154,4 +154,40 @@ end
 
 using MixedModelsMakie
 using CairoMakie
+# ugh this covariance structure
 splom!(Figure(), select(data, Not([:pl3, :pl5, :w, :y])))
+
+select!(data, :,
+        :pl3 => :pl3a,
+        :pl3 => :pl3b,
+        :pl5 => :pl5a,
+        :pl5 => :pl5b,
+        :pl5 => :pl5c,
+        :pl5 => :pl5d,
+        :pl5 => :pl5e)
+
+contrasts = merge(contrasts, Dict(:pl3a => Grouping(),
+                                  :pl3b => Grouping(),
+                                  :pl5a => Grouping(),
+                                  :pl5b => Grouping(),
+                                  :pl5c => Grouping(),
+                                  :pl5d => Grouping(),
+                                  :pl5e => Grouping()))
+
+
+using LinearAlgebra
+MixedModels.rmulΛ!(A::Diagonal{T}, B::ReMat{T,1}) where {T} = rmul!(A, only(B.λ))
+function MixedModels.rankUpdate!(C::Hermitian{T, Diagonal{T, Vector{T}}}, A::Diagonal{T, Vector{T}}, α, β) where {T}
+    size(C) == size(A) || throw(DimensionMismatch("Diagonal matrices unequal size"))
+    C.data.diag .*= β
+    C.data.diag .+= α .* abs2.(A.diag)
+    return C
+end
+
+m_form_split = let f = @formula(y ~ v1 + v2 + v3 + v4 + v5 +
+                                (1 | pl3a) + ((0 + v1) | pl3b) +
+                                (1 | pl5a) + ((0 + v2) | pl5b) +
+                                ((0 + v3) | pl5c) + ((0 + v4) | pl5d) +
+                                ((0 + v5) | pl5e))
+    fit(MixedModel, f, data; wts, contrasts)
+end
