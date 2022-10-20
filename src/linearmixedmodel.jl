@@ -41,18 +41,15 @@ struct LinearMixedModel{T<:AbstractFloat} <: MixedModel{T}
     optsum::OptSummary{T}
 end
 
-function LinearMixedModel(
-    f::FormulaTerm, tbl; contrasts=Dict{Symbol,Any}(), wts=[], σ=nothing
-)
-    return LinearMixedModel(f::FormulaTerm, Tables.columntable(tbl); contrasts, wts, σ)
-end
+LinearMixedModel(f::FormulaTerm, tbl; kwargs...) =
+    LinearMixedModel(f::FormulaTerm, Tables.columntable(tbl); kwargs...)
+
 const _MISSING_RE_ERROR = ArgumentError(
     "Formula contains no random effects; this isn't a mixed model. Perhaps you want to use GLM.jl?",
 )
 
 function LinearMixedModel(
-    f::FormulaTerm, tbl::Tables.ColumnTable; contrasts=Dict{Symbol,Any}(), wts=[], σ=nothing
-)
+    f::FormulaTerm, tbl::Tables.ColumnTable; contrasts=Dict{Symbol,Any}(), wts=[], σ=nothing, kwargs...)
     # TODO: perform missing_omit() after apply_schema() when improved
     # missing support is in a StatsModels release
     tbl, _ = StatsModels.missing_omit(tbl, f)
@@ -74,7 +71,7 @@ function LinearMixedModel(
 
     y, Xs = modelcols(form, tbl)
 
-    return LinearMixedModel(y, Xs, form, wts, σ)
+    return LinearMixedModel(y, Xs, form, wts, σ; kwargs...)
 end
 
 """
@@ -95,7 +92,8 @@ function LinearMixedModel(
     Xs::Tuple, # can't be more specific here without stressing the compiler
     form::FormulaTerm,
     wts=[],
-    σ=nothing,
+    σ=nothing;
+    kwargs...
 )
     T = promote_type(Float64, float(eltype(y)))  # ensure eltype of model matrices is at least Float64
 
@@ -128,11 +126,11 @@ function LinearMixedModel(
         end
     end
     isempty(reterms) && throw(_MISSING_RE_ERROR)
-    return LinearMixedModel(convert(Array{T}, y), only(feterms), reterms, form, wts, σ)
+    return LinearMixedModel(convert(Array{T}, y), only(feterms), reterms, form, wts, σ; kwargs...)
 end
 
 """
-    LinearMixedModel(y, feterm, reterms, form, wts=[], σ=nothing)
+    LinearMixedModel(y, feterm, reterms, form, wts=[], σ=nothing; amalgamate=true)
 
 Private constructor for a `LinearMixedModel` given already assembled fixed and random effects.
 
@@ -151,11 +149,13 @@ function LinearMixedModel(
     reterms::AbstractVector{<:AbstractReMat{T}},
     form::FormulaTerm,
     wts=[],
-    σ=nothing,
+    σ=nothing;
+    amalgamate=false
 ) where {T}
     # detect and combine RE terms with the same grouping var
-    if length(reterms) > 1
-        reterms = amalgamate(reterms)
+    if amalgamate && length(reterms) > 1
+        # have to make sure we grab the function and not the local variable
+        reterms = MixedModels.amalgamate(reterms)
     end
 
     sort!(reterms; by=nranef, rev=true)
@@ -193,6 +193,7 @@ function StatsAPI.fit(
     REML::Bool=false,
     σ=nothing,
     thin=typemax(Int),
+    amalgamate=true,
 )
     return fit(
         LinearMixedModel,
@@ -204,6 +205,7 @@ function StatsAPI.fit(
         REML,
         σ,
         thin,
+        amalgamate,
     )
 end
 
@@ -217,8 +219,9 @@ function StatsAPI.fit(
     REML=false,
     σ=nothing,
     thin=typemax(Int),
+    amalgamate=true,
 )
-    return fit!(LinearMixedModel(f, tbl; contrasts, wts, σ); progress, REML, thin)
+    return fit!(LinearMixedModel(f, tbl; contrasts, wts, σ, amalgamate); progress, REML, thin)
 end
 
 function _offseterr()
@@ -240,11 +243,12 @@ function StatsAPI.fit(
     offset=[],
     σ=nothing,
     thin=typemax(Int),
+    amalgamate=true,
 )
     return if !isempty(offset)
         _offseterr()
     else
-        fit(LinearMixedModel, f, tbl; wts, contrasts, progress, REML, σ, thin)
+        fit(LinearMixedModel, f, tbl; wts, contrasts, progress, REML, σ, thin, amalgamate)
     end
 end
 
@@ -263,6 +267,7 @@ function StatsAPI.fit(
     thin=typemax(Int),
     fast=nothing,
     nAGQ=nothing,
+    amalgamate=true,
 )
     return if !isempty(offset)
         _offseterr()
@@ -270,7 +275,7 @@ function StatsAPI.fit(
         if !isnothing(fast) || !isnothing(nAGQ)
             @warn "fast and nAGQ arguments are ignored when fitting a LinearMixedModel"
         end
-        fit(LinearMixedModel, f, tbl; wts, contrasts, progress, REML, σ, thin)
+        fit(LinearMixedModel, f, tbl; wts, contrasts, progress, REML, σ, thin, amalgamate)
     end
 end
 
@@ -356,7 +361,7 @@ end
 Return the conditional covariance matrices of the random effects as a `NamedTuple` of columntables
 """
 function condVartables(m::MixedModel{T}) where {T}
-    return NamedTuple{fnames(m)}((map(_cvtbl, condVar(m), m.reterms)...,))
+    return NamedTuple{_unique_fnames(m)}((map(_cvtbl, condVar(m), m.reterms)...,))
 end
 
 function _pushALblock!(A, L, blk)
@@ -589,6 +594,19 @@ Return the names of the grouping factors for the random-effects terms.
 """
 fnames(m::MixedModel) = (fname.(m.reterms)...,)
 
+function _unique_fnames(m::MixedModel)
+    fn = fnames(m)
+    ufn = unique(fn)
+    length(fn) == length(ufn) && return fn
+    fn = collect(fn)
+    d = Dict(ufn .=> 0)
+    for i in eachindex(fn)
+        (d[fn[i]] += 1) == 1 && continue
+        fn[i] = Symbol(string(fn[i], ".", d[fn[i]]))
+    end
+    return Tuple(fn)
+end
+
 """
     getθ(m::LinearMixedModel)
 
@@ -642,7 +660,7 @@ function Base.getproperty(m::LinearMixedModel{T}, s::Symbol) where {T}
     elseif s == :vcov
         vcov(m; corr=false)
     elseif s == :PCA
-        NamedTuple{fnames(m)}(PCA.(m.reterms))
+        PCA(m)
     elseif s == :pvalues
         ccdf.(Chisq(1), abs2.(coef(m) ./ stderror(m)))
     elseif s == :stderror
@@ -907,7 +925,7 @@ always 1.0 representing the complete proportion of the variance.
 """
 function rePCA(m::LinearMixedModel; corr::Bool=true)
     pca = PCA.(m.reterms, corr=corr)
-    return NamedTuple{fnames(m)}(getproperty.(pca, :cumvar))
+    return NamedTuple{_unique_fnames(m)}(getproperty.(pca, :cumvar))
 end
 
 """
@@ -918,7 +936,7 @@ covariance matrices or correlation matrices when `corr` is `true`.
 """
 
 function PCA(m::LinearMixedModel; corr::Bool=true)
-    return NamedTuple{fnames(m)}(PCA.(m.reterms, corr=corr))
+    return NamedTuple{_unique_fnames(m)}(PCA.(m.reterms, corr=corr))
 end
 
 """

@@ -191,3 +191,7 @@ m_form_split = let f = @formula(y ~ v1 + v2 + v3 + v4 + v5 +
                                 ((0 + v5) | pl5e))
     fit(MixedModel, f, data; wts, contrasts)
 end
+
+# test new kwarg
+
+fit(MixedModel, model_form, data; wts, contrasts, amalgamate=false)
