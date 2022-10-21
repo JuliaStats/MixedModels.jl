@@ -46,6 +46,9 @@ function LinearMixedModel(
 )
     return LinearMixedModel(f::FormulaTerm, Tables.columntable(tbl); contrasts, wts, σ)
 end
+const _MISSING_RE_ERROR = ArgumentError(
+    "Formula contains no random effects; this isn't a mixed model. Perhaps you want to use GLM.jl?",
+)
 
 function LinearMixedModel(
     f::FormulaTerm, tbl::Tables.ColumnTable; contrasts=Dict{Symbol,Any}(), wts=[], σ=nothing
@@ -62,6 +65,11 @@ function LinearMixedModel(
         rethrow(e)
     end
     form = apply_schema(f, sch, LinearMixedModel)
+
+    if form.rhs isa MatrixTerm || !any(x -> isa(x, AbstractReTerm), form.rhs)
+        throw(_MISSING_RE_ERROR)
+    end
+
     # tbl, _ = StatsModels.missing_omit(tbl, form)
 
     y, Xs = modelcols(form, tbl)
@@ -119,6 +127,7 @@ function LinearMixedModel(
             push!(feterms, FeTerm(x, isa(cnames, String) ? [cnames] : collect(cnames)))
         end
     end
+    isempty(reterms) && throw(_MISSING_RE_ERROR)
     return LinearMixedModel(convert(Array{T}, y), only(feterms), reterms, form, wts, σ)
 end
 
@@ -151,7 +160,7 @@ function LinearMixedModel(
 
     sort!(reterms; by=nranef, rev=true)
     Xy = FeMat(feterm, vec(y))
-    sqrtwts = sqrt.(convert(Vector{T}, wts))
+    sqrtwts = map!(sqrt, Vector{T}(undef, length(wts)), wts)
     reweight!.(reterms, Ref(sqrtwts))
     reweight!(Xy, sqrtwts)
     A, L = createAL(reterms, Xy)
@@ -174,7 +183,7 @@ function LinearMixedModel(
     )
 end
 
-function fit(
+function StatsAPI.fit(
     ::Type{LinearMixedModel},
     f::FormulaTerm,
     tbl;
@@ -198,7 +207,7 @@ function fit(
     )
 end
 
-function fit(
+function StatsAPI.fit(
     ::Type{LinearMixedModel},
     f::FormulaTerm,
     tbl::Tables.ColumnTable;
@@ -220,7 +229,7 @@ function _offseterr()
     )
 end
 
-function fit(
+function StatsAPI.fit(
     ::Type{MixedModel},
     f::FormulaTerm,
     tbl;
@@ -239,7 +248,7 @@ function fit(
     end
 end
 
-function fit(
+function StatsAPI.fit(
     ::Type{MixedModel},
     f::FormulaTerm,
     tbl,
@@ -265,19 +274,19 @@ function fit(
     end
 end
 
-function StatsBase.coef(m::LinearMixedModel{T}) where {T}
+function StatsAPI.coef(m::LinearMixedModel{T}) where {T}
     piv = m.feterm.piv
     return invpermute!(fixef!(similar(piv, T), m), piv)
 end
 
 βs(m::LinearMixedModel) = NamedTuple{(Symbol.(coefnames(m))...,)}(coef(m))
 
-function StatsBase.coefnames(m::LinearMixedModel)
+function StatsAPI.coefnames(m::LinearMixedModel)
     Xtrm = m.feterm
     return invpermute!(copy(Xtrm.cnames), Xtrm.piv)
 end
 
-function StatsBase.coeftable(m::LinearMixedModel)
+function StatsAPI.coeftable(m::LinearMixedModel)
     co = coef(m)
     se = stderror!(similar(co), m)
     z = co ./ se
@@ -385,7 +394,7 @@ function createAL(reterms::Vector{AbstractReMat{T}}, Xy::FeMat{T}) where {T}
     return A, L
 end
 
-StatsBase.deviance(m::LinearMixedModel) = objective(m)
+StatsAPI.deviance(m::LinearMixedModel) = objective(m)
 
 GLM.dispersion(m::LinearMixedModel, sqr::Bool=false) = sqr ? varest(m) : sdest(m)
 
@@ -416,7 +425,7 @@ objective, if the optimization takes more than one second or so.
 At every `thin`th iteration  is recorded in `fitlog`, optimization progress is
 saved in `m.optsum.fitlog`.
 """
-function fit!(
+function StatsAPI.fit!(
     m::LinearMixedModel{T};
     progress::Bool=true,
     REML::Bool=false,
@@ -441,37 +450,41 @@ function fit!(
     fitlog = optsum.fitlog
     function obj(x, g)
         isempty(g) || throw(ArgumentError("g should be empty for this objective"))
-        val = try
-            objective(updateL!(setθ!(m, x)))
-        catch ex
-            # This can happen when the optimizer drifts into an area where
-            # there isn't enough shrinkage. Why finitial? Generally, it will
-            # be the (near) worst case scenario value, so the optimizer won't
-            # view it as an optimum. Using Inf messes up the quadratic
-            # approximation in BOBYQA.
-            ex isa PosDefException || rethrow()
-            iter == 0 && rethrow()
-            m.optsum.finitial
-        end
-        iszero(rem(iter, thin)) && push!(fitlog, (copy(x), val))
-        progress && ProgressMeter.next!(prog; showvalues=[(:objective, val)])
         iter += 1
+        val = if isone(iter) && x == optsum.initial
+            optsum.finitial
+        else
+            try
+                objective(updateL!(setθ!(m, x)))
+            catch ex
+                # This can happen when the optimizer drifts into an area where
+                # there isn't enough shrinkage. Why finitial? Generally, it will
+                # be the (near) worst case scenario value, so the optimizer won't
+                # view it as an optimum. Using Inf messes up the quadratic
+                # approximation in BOBYQA.
+                ex isa PosDefException || rethrow()
+                optsum.finitial
+            end
+        end
+        progress && ProgressMeter.next!(prog; showvalues=[(:objective, val)])
+        !isone(iter) && iszero(rem(iter, thin)) && push!(fitlog, (copy(x), val))
         return val
     end
     NLopt.min_objective!(opt, obj)
     try
-        optsum.finitial = obj(optsum.initial, T[])
+        # use explicit evaluation w/o calling opt to avoid confusing iteration count
+        optsum.finitial = objective(updateL!(setθ!(m, optsum.initial)))
     catch ex
         ex isa PosDefException || rethrow()
         # give it one more try with a massive change in scaling
-        @info "Initial step failed, rescaling initial guess and trying again."
-        @warn """Failure of the initial step is often indicative of a model specification
+        @info "Initial objective evaluation failed, rescaling initial guess and trying again."
+        @warn """Failure of the initial evaluation is often indicative of a model specification
                  that is not well supported by the data and/or a poorly scaled model.
               """
         optsum.initial ./=
             (isempty(m.sqrtwts) ? 1.0 : maximum(m.sqrtwts)^2) *
             maximum(response(m))
-        optsum.finitial = obj(optsum.initial, T[])
+        optsum.finitial = objective(updateL!(setθ!(m, optsum.initial)))
     end
     empty!(fitlog)
     push!(fitlog, (copy(optsum.initial), optsum.finitial))
@@ -506,6 +519,13 @@ function fit!(
     return m
 end
 
+"""
+    fitted!(v::AbstractArray{T}, m::LinearMixedModel{T})
+
+Overwrite `v` with the fitted values from `m`.
+
+See also `fitted`.
+"""
 function fitted!(v::AbstractArray{T}, m::LinearMixedModel{T}) where {T}
     ## FIXME: Create and use `effects(m) -> β, b` w/o calculating β twice
     Xtrm = m.feterm
@@ -516,7 +536,7 @@ function fitted!(v::AbstractArray{T}, m::LinearMixedModel{T}) where {T}
     return v
 end
 
-StatsBase.fitted(m::LinearMixedModel{T}) where {T} = fitted!(Vector{T}(undef, nobs(m)), m)
+StatsAPI.fitted(m::LinearMixedModel{T}) where {T} = fitted!(Vector{T}(undef, nobs(m)), m)
 
 """
     fixef!(v::Vector{T}, m::MixedModel{T})
@@ -537,7 +557,7 @@ function fixef!(v::AbstractVector{Tv}, m::LinearMixedModel{T}) where {Tv,T}
     for j in 1:r
         v[j] = XyL[k, j]
     end
-    ldiv!(feL(m)', length(v) == r ? v : view(v, 1:r))
+    ldiv!(L', length(v) == r ? v : view(v, 1:r))
     return v
 end
 
@@ -644,7 +664,7 @@ function Base.getproperty(m::LinearMixedModel{T}, s::Symbol) where {T}
     end
 end
 
-StatsBase.islinear(m::LinearMixedModel) = true
+StatsAPI.islinear(m::LinearMixedModel) = true
 
 """
     _3blockL(::LinearMixedModel)
@@ -695,7 +715,7 @@ for the model in the sense that this sum is the dimension of the span of columns
 of the model matrix.  With a bit of hand waving a similar argument could be made
 for linear mixed-effects models. The hat matrix is of the form ``[ZΛ X][L L']⁻¹[ZΛ X]'``.
 """
-function StatsBase.leverage(m::LinearMixedModel{T}) where {T}
+function StatsAPI.leverage(m::LinearMixedModel{T}) where {T}
     # To obtain the diagonal elements solve L⁻¹[ZΛ X]'eⱼ
     # where eⱼ is the j'th basis vector in Rⁿ and evaluate the squared length of the solution.
     # The fact that the [1,1] block of L is always UniformBlockDiagonal
@@ -736,7 +756,7 @@ function StatsBase.leverage(m::LinearMixedModel{T}) where {T}
     return value
 end
 
-function StatsBase.loglikelihood(m::LinearMixedModel)
+function StatsAPI.loglikelihood(m::LinearMixedModel)
     if m.optsum.REML
         throw(ArgumentError("loglikelihood not available for models fit by REML"))
     end
@@ -1145,7 +1165,7 @@ function stderror!(v::AbstractVector{Tv}, m::LinearMixedModel{T}) where {Tv,T}
     return v
 end
 
-function StatsBase.stderror(m::LinearMixedModel{T}) where {T}
+function StatsAPI.stderror(m::LinearMixedModel{T}) where {T}
     return stderror!(similar(m.feterm.piv, T), m)
 end
 
@@ -1199,14 +1219,14 @@ This is the crucial step in evaluating the objective, given a new parameter valu
 function updateL!(m::LinearMixedModel{T}) where {T}
     A, L, reterms = m.A, m.L, m.reterms
     k = length(reterms)
-    for (l, a) in zip(L, A) # copy each element of A to corresponding element of L
-        copyto!(l, a)       # For some reason copyto!.(L, A) allocates a lot of memory
-    end
+    copyto!(last(m.L), last(m.A))  # ensure the fixed-effects:response block is copied
     for j in eachindex(reterms) # pre- and post-multiply by Λ, add I to diagonal
         cj = reterms[j]
-        scaleinflate!(L[kp1choose2(j)], cj)
+        diagind = kp1choose2(j)
+        copyscaleinflate!(L[diagind], A[diagind], cj)
         for i in (j + 1):(k + 1)     # postmultiply column by Λ
-            rmulΛ!(L[block(i, j)], cj)
+            bij = block(i, j)
+            rmulΛ!(copyto!(L[bij], A[bij]), cj)
         end
         for jj in 1:(j - 1)        # premultiply row by Λ'
             lmulΛ!(cj', L[block(j, jj)])
@@ -1239,7 +1259,7 @@ function varest(m::LinearMixedModel)
     return isnothing(m.optsum.sigma) ? pwrss(m) / ssqdenom(m) : m.optsum.sigma
 end
 
-function StatsBase.weights(m::LinearMixedModel)
+function StatsAPI.weights(m::LinearMixedModel)
     rtwts = m.sqrtwts
     return isempty(rtwts) ? ones(eltype(rtwts), nobs(m)) : abs2.(rtwts)
 end

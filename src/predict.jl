@@ -1,7 +1,7 @@
 """
-    StatsBase.predict(m::LinearMixedModel, newdata;
+    StatsAPI.predict(m::LinearMixedModel, newdata;
                     new_re_levels=:missing)
-    StatsBase.predict(m::GeneralizedLinearMixedModel, newdata;
+    StatsAPI.predict(m::GeneralizedLinearMixedModel, newdata;
                     new_re_levels=:missing, type=:response)
 
 Predict response for new data.
@@ -60,13 +60,13 @@ difference between these terms, then you probably want `type=:response`.
 Regression weights are not yet supported in prediction.
 Similarly, offsets are also not supported for `GeneralizedLinearMixedModel`.
 """
-function StatsBase.predict(
+function StatsAPI.predict(
     m::LinearMixedModel, newdata::Tables.ColumnTable; new_re_levels=:missing
 )
     return _predict(m, newdata, m.β; new_re_levels)
 end
 
-function StatsBase.predict(
+function StatsAPI.predict(
     m::GeneralizedLinearMixedModel,
     newdata::Tables.ColumnTable;
     new_re_levels=:population,
@@ -207,7 +207,7 @@ function _predict(m::MixedModel{T}, newdata, β; new_re_levels) where {T}
 end
 
 # yup, I got lazy on this one -- let the dispatched method handle kwarg checking
-function StatsBase.predict(m::MixedModel, newdata; kwargs...)
+function StatsAPI.predict(m::MixedModel, newdata; kwargs...)
     return predict(m, columntable(newdata); kwargs...)
 end
 

@@ -1,3 +1,24 @@
+MixedModels v4.8.0 Release Notes
+==============================
+* Allow predicting from a single observation, as long as `Grouping()` is used for the grouping variables. The simplified implementation of `Grouping()` also removes several now unnecessary `StatsModels` methods that should not have been called directly by the user. [#653]
+
+MixedModels v4.7.3 Release Notes
+==============================
+* More informative error message for formulae lacking random effects [#651]
+
+MixedModels v4.7.2 Release Notes
+==============================
+* Replace separate calls to `copyto!` and `scaleinflate!` in `updateL!` with `copyscaleinflate!` [#648]
+
+MixedModels v4.7.1 Release Notes
+==============================
+* Avoid repeating initial objective evaluation in `fit!` method for `LinearMixedModel`
+* Ensure that the number of function evaluations from NLopt corresponds to `length(m.optsum.fitlog) when `isone(thin)`. [#637]
+
+MixedModels v4.7.0 Release Notes
+==============================
+* Relax type restriction for filename in `saveoptsum` and `restoreoptsum!`. Users can now pass any type with an appropriate `open` method, e.g. `<:AbstractPath`. [#628]
+
 MixedModels v4.6.5 Release Notes
 ========================
 * Attempt recovery when the initial parameter values lead to an invalid covariance matrix by rescaling [#615]
@@ -354,3 +375,8 @@ Package dependencies
 [#608]: https://github.com/JuliaStats/MixedModels.jl/issues/608
 [#614]: https://github.com/JuliaStats/MixedModels.jl/issues/614
 [#615]: https://github.com/JuliaStats/MixedModels.jl/issues/615
+[#628]: https://github.com/JuliaStats/MixedModels.jl/issues/628
+[#637]: https://github.com/JuliaStats/MixedModels.jl/issues/637
+[#648]: https://github.com/JuliaStats/MixedModels.jl/issues/648
+[#651]: https://github.com/JuliaStats/MixedModels.jl/issues/651
+[#653]: https://github.com/JuliaStats/MixedModels.jl/issues/653
