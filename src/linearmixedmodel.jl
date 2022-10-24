@@ -46,9 +46,22 @@ function LinearMixedModel(
 )
     return LinearMixedModel(f::FormulaTerm, Tables.columntable(tbl); contrasts, wts, σ)
 end
+
 const _MISSING_RE_ERROR = ArgumentError(
     "Formula contains no random effects; this isn't a mixed model. Perhaps you want to use GLM.jl?",
 )
+
+# this his hoisted out so that we can test it in isolation
+# without constructing a full model
+function _schematize(f, tbl, contrasts)
+    # XXX how to handle the same variable in FE and RE?
+    # prefer user-specified contrasts if they override this: if something in the FE and RE,
+    # then it will work as long as you specify the contrasts
+    contrasts = merge(Dict{Symbol, Any}(g => Grouping() for g in _grouping_vars(f)),
+                      contrasts)
+    sch = schema(f, tbl, contrasts)
+    return apply_schema(f, sch, LinearMixedModel)
+end
 
 function LinearMixedModel(
     f::FormulaTerm, tbl::Tables.ColumnTable; contrasts=Dict{Symbol,Any}(), wts=[], σ=nothing
@@ -56,24 +69,8 @@ function LinearMixedModel(
     # TODO: perform missing_omit() after apply_schema() when improved
     # missing support is in a StatsModels release
     tbl, _ = StatsModels.missing_omit(tbl, f)
-    # XXX how to handle the same variable in FE and RE?
-    # prefer user-specified contrasts if they override this: if something in the FE and RE,
-    # then it will work as long as you specify the contrasts
-    contrasts = merge(Dict{Symbol, Any}(g => Grouping() for g in _grouping_vars(f)),
-                      contrasts)
-    sch = try
-        schema(f, tbl, contrasts)
-    catch e
-        # this codepath remains in case somebody passes some WonkyTerm that doesn't have `sym` defined.
-        if isa(e, OutOfMemoryError)
-            @warn "Random effects grouping variables with many levels can cause out-of-memory errors.  Try manually specifying `Grouping()` contrasts for those variables."
-        end
-        rethrow(e)
-    end
-    form = apply_schema(f, sch, LinearMixedModel)
-    # I kinda feel like the better way to handle this would be to have an intermediate stage
-    # where we get the schema for response, fixed effects and the random intercepts and slopes
-    # and then fuse that with something for the grouping variables
+
+    form = _schematize(f, sch, LinearMixedModel)
 
     if form.rhs isa MatrixTerm || !any(x -> isa(x, AbstractReTerm), form.rhs)
         throw(_MISSING_RE_ERROR)

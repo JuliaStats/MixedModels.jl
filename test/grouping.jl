@@ -9,7 +9,7 @@ end
 
 @testset "Grouping pseudo-contrasts" begin
     d = (; y=rand(2_000_000),
-         grp=[1:1_000_000; 1:1_000_000],
+         grp=string.([1:1_000_000; 1:1_000_000]),
          outer=rand('A':'z', 2_000_000))
     ## OOM seems to result in the process being killed on Mac so this messes up CI
     # @test_throws OutOfMemoryError schema(d)
@@ -25,16 +25,17 @@ end
     @test all(t.contrasts.invindex[lev] == i for (i,lev) in enumerate(levs))
     @test all(t.contrasts.levels[i] == lev for (i,lev) in enumerate(levs))
 
+    @test MixedModels._grouping_vars(@formula(y ~ 1 + (1 | outer / grp))) == [:outer, :grp]
+    @test MixedModels._grouping_vars(@formula(y ~ 1 + (1 | outer & grp))) == [:outer, :grp]
+
     # without auto-grouping, this OOM on most reasonable hardware because it default dummy coding
     # would mean constructing 1M x 1M matrix
-
-    @test LinearMixedModel(@formula(y ~ 1 + (1 | grp)), d) isa LinearMixedModel
     # nesting still inserts a full dummy
     # outer(Grouping:58→58)
     # outer(StatsModels.FullDummyCoding:58→58) & grp(Grouping:1000000→1000000)
-    # can construct this model
-    @test MixedModels._grouping_vars(@formula(y ~ 1 + (1 | outer / grp))) == [:outer, :grp]
-    # but not this one even though it's a sub model!?
-    @test MixedModels._grouping_vars(@formula(y ~ 1 + (1 | outer & grp))) == [:outer, :grp]
-
+    for f in [@formula(y ~ 0 + (1 | grp)),
+              @formula(y ~ 0 + (1 | outer / grp)),
+              @formula(y ~ 0 + (1 | outer & grp))]
+        @test MixedModels._schematize(f, d, Dict{Symbol, Any}()) isa FormulaTerm
+    end
 end
