@@ -1,5 +1,6 @@
-using Test
+using MixedModels
 using StatsModels
+using Test
 
 @testset "Grouping" begin
     g = Grouping()
@@ -7,7 +8,9 @@ using StatsModels
 end
 
 @testset "Grouping pseudo-contrasts" begin
-    d = (y = rand(2_000_000), grp=string.([1:1_000_000; 1:1_000_000]))
+    d = (; y=rand(2_000_000),
+         grp=[1:1_000_000; 1:1_000_000],
+         outer=rand('A':'z', 2_000_000))
     ## OOM seems to result in the process being killed on Mac so this messes up CI
     # @test_throws OutOfMemoryError schema(d)
     sch = schema(d, Dict(:grp => Grouping()))
@@ -26,4 +29,12 @@ end
     # would mean constructing 1M x 1M matrix
 
     @test LinearMixedModel(@formula(y ~ 1 + (1 | grp)), d) isa LinearMixedModel
+    # nesting still inserts a full dummy
+    # outer(Grouping:58→58)
+    # outer(StatsModels.FullDummyCoding:58→58) & grp(Grouping:1000000→1000000)
+    # can construct this model
+    @test MixedModels._grouping_vars(@formula(y ~ 1 + (1 | outer / grp))) == [:outer, :grp]
+    # but not this one even though it's a sub model!?
+    @test MixedModels._grouping_vars(@formula(y ~ 1 + (1 | outer & grp))) == [:outer, :grp]
+
 end

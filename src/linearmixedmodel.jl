@@ -56,19 +56,11 @@ function LinearMixedModel(
     # TODO: perform missing_omit() after apply_schema() when improved
     # missing support is in a StatsModels release
     tbl, _ = StatsModels.missing_omit(tbl, f)
-    # if there is only one term on the RHS, then you don't have an iterator
-    rhs = f.rhs isa AbstractTerm ? (f.rhs,) : f.rhs
-    re = filter(x -> x isa RE_FUNCTION_TERM, rhs)
-    grping = unique!(mapreduce(x -> x.args_parsed[2:end], vcat, re; init=[]))
-    # XXX how to handle interaction terms in Grouping?
-    # for now, we just don't.
-    grping = filter!(x -> hasproperty(x, :sym), grping)
-
-
     # XXX how to handle the same variable in FE and RE?
     # prefer user-specified contrasts if they override this: if something in the FE and RE,
     # then it will work as long as you specify the contrasts
-    contrasts = merge(Dict{Symbol, Any}(g.sym => Grouping() for g in grping), contrasts)
+    contrasts = merge(Dict{Symbol, Any}(g => Grouping() for g in _grouping_vars(f)),
+                      contrasts)
     sch = try
         schema(f, tbl, contrasts)
     catch e

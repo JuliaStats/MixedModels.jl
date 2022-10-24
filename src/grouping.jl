@@ -33,3 +33,16 @@ function StatsModels.ContrastsMatrix(
 )
     return StatsModels.ContrastsMatrix(zeros(0, 0), levels, levels, contrasts)
 end
+
+function _grouping_vars(f::FormulaTerm)
+    # if there is only one term on the RHS, then you don't have an iterator
+    rhs = f.rhs isa AbstractTerm ? (f.rhs,) : f.rhs
+    re = filter(x -> x isa RE_FUNCTION_TERM, rhs)
+    grping = unique!(mapreduce(x -> x.args_parsed[end], vcat, re; init=[]))
+    # XXX how to handle interaction terms in Grouping?
+    # for now, we just don't.
+    return grping = mapreduce(vcat, grping; init=Symbol[]) do g
+        hasproperty(g, :sym) && return [g.sym]
+        return collect(getproperty.(terms(grping[1]), :sym))
+    end
+end
