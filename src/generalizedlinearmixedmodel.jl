@@ -411,9 +411,9 @@ function GeneralizedLinearMixedModel(
     # TODO: extend this so that we never fit a GLM when initializing from LMM
     dofit = size(LMM.X, 2) != 0
     gl = glm(LMM.X, y, d, l;
-             wts=convert(Vector{T}, wts),
-             dofit,
-             offset=convert(Vector{T}, offset))
+        wts=convert(Vector{T}, wts),
+        dofit,
+        offset=convert(Vector{T}, offset))
     β = dofit ? coef(gl) : T[]
     u = [fill(zero(eltype(y)), vsize(t), nlevs(t)) for t in LMM.reterms]
     # vv is a template vector used to initialize fields for AGQ
