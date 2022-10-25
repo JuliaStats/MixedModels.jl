@@ -502,10 +502,10 @@ end
         @test bic(fm) ≈ bic(m)
         @test coef(fm) ≈ coef(m)
     end
-    @testset "profileβ" begin
-        pr = profileβ(last(models(:sleepstudy)), -4:4)
-        tbl = pr.prtbl
-        @test length(tbl) == 18
+    @testset "profile" begin
+        pr = profile(last(models(:sleepstudy)))
+        tbl = pr.tbl
+        @test length(tbl) == 64
         @test length(pr.fecnames) == 2
         @test isone(length(pr.facnames))
         recnms = pr.recnames
@@ -515,15 +515,8 @@ end
         ci = confint(pr)
         @test isa(ci, TypedTables.DictTable)
         @test propertynames(ci) == (:coef, :lower, :upper)
-        @test isapprox(ci.lower.values, [237.68380717307167, 7.359357960468046]; atol=1.e-3)
-    end
-    @testset "profilelogσ" begin
-        m = last(models(:sleepstudy))
-        pr = profilelogσ(m)
-        @test isa(pr, TypedTables.Table)
-        @test propertynames(pr) == (:logσ, :ζ, :β, :θ)
-        @test length(pr) == 10
-        @test only(filter(r -> iszero(r.ζ), pr)).logσ == log(m.σ)
+        @test isapprox(ci.lower.values, [237.68069384330914, 7.35865293099439, 22.898262145457064]; atol=1.e-3)
+        @test only(filter(r -> r.par == :σ && iszero(r.ζ), pr.tbl)).σ == last(models(:sleepstudy)).σ
     end
     @testset "confint" begin
         ci = confint(last(models(:sleepstudy)))

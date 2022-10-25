@@ -23,7 +23,7 @@ function Base.copy(ret::ReMat{T,S}) where {T,S}
         copy(ret.λ),
         ret.inds,
         ret.adjA,
-        copy(ret.scratch)) # likely don't need to copy scratch, as it is temporary storage.
+        copy(ret.scratch))
 end
 
 function FeProfile(m::LinearMixedModel, j::Integer)
