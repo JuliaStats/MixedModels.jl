@@ -23,7 +23,7 @@ function Base.copy(ret::ReMat{T,S}) where {T,S}
         copy(ret.λ),
         ret.inds,
         ret.adjA,
-        copy(ret.scratch))
+        copy(ret.scratch)) # likely don't need to copy scratch, as it is temporary storage.
 end
 
 function FeProfile(m::LinearMixedModel, j::Integer)
@@ -40,121 +40,131 @@ function FeProfile(m::LinearMixedModel, j::Integer)
     return FeProfile(m, y₀, xⱼ, j)
 end
 
-function refit!(pr::FeProfile{T}, βⱼ) where {T}
-    return refit!(pr.m, mul!(copyto!(pr.m.y, pr.y₀), pr.xⱼ, βⱼ, -1, 1); progress=false)
+function betaprofile!(pr::FeProfile{T}, val, βⱼ::T, j::Integer, obj::T) where {T}
+    prm = pr.m
+    refit!(prm, mul!(copyto!(pr.m.y, pr.y₀), pr.xⱼ, βⱼ, -1, 1); progress=false)
+    ζ = sqrt(prm.objective - obj)
+    push!(val.ζ, ζ)
+    push!(val.θ, prm.θ)
+    push!(val.σ, prm.σ)
+    β = prm.β
+    splice!(β, j:(j - 1), βⱼ)
+    push!(val.β, β)
+    return ζ
 end
 
-struct MixedModelProfile{T}
-    prtbl::Table          # Table containing ζ, σ, β, and θ from each conditional fit
-    δ::AbstractVector{T}  # values of fixed coefficient are `β[j] .+ δ .* stderror[j]`
-    fecnames::Vector{String}  # Fixed-effects coefficient names
-    facnames::Vector{Symbol}  # Names of grouping factors
+function profileβj(m::LinearMixedModel{T}, j::Integer; threshold=4) where {T}
+    @compat (; β, θ, σ, stderror, objective) = m
+    val = (; ζ = -T[0], β = [SVector{length(β)}(β)], σ = [σ], θ = [SVector{length(θ)}(θ)])
+    prj = FeProfile(m, j)
+    st = stderror[j] * 0.5
+    bb = β[j] - st
+    while true
+        betaprofile!(prj, val, bb, j, objective) < threshold || break
+        bb -= st
+    end
+    rmul!(val.ζ, -1)
+    bb = β[j] + st
+    while true
+        betaprofile!(prj, val, bb, j, objective) < threshold || break
+        bb += st
+    end
+    return sort!(Table(merge((; par = fill(Symbol("β$j"), length(val.σ))), val)), by = r -> r.ζ)
+end
+
+struct MixedModelProfile
+    tbl::Table                       # Table containing ζ, σ, β, and θ from each conditional fit
+    fecnames::Vector{String}         # Fixed-effects coefficient names
+    facnames::Vector{Symbol}         # Names of grouping factors
     recnames::Vector{Vector{String}} # Vector of vectors of column names for random effects
-    parmap::Vector{NTuple{3,Int}} # parmap from the model (used to construct λ from θ)
-    fwd::Vector           # Interpolation splines for ζ as a function of β
-    rev::Vector           # Interpolation splines for β as a function of ζ
+    parmap::Vector{NTuple{3,Int}}    # parmap from the model (used to construct λ from θ)
+    fwd::Dict{Symbol}                # Interpolation splines for ζ as a function of β
+    rev::Dict{Symbol}                # Interpolation splines for β as a function of ζ
 end
 
 """
-    profileβ(m::LinearMixedModel, δ=(-8:8) / 2)
+    profile(m::LinearMixedModel)
 
 Return a `MixedModelProfile` for the objective of `m` with respect to the fixed-effects coefficients.
-
-`δ` is a vector of standardized steps at which values of each coefficient are fixed.
-When β[i] is being profiled the values are fixed at `m.β[i] .+ δ .* m.stderror[i]`.
 """
-function profileβ(m::LinearMixedModel{T}, δ=(-8:8) / 2) where {T}
-    @compat (; β, θ, σ, stderror, objective) = m
-    betamat = (stderror * δ' .+ β)'
-    zsz = length(betamat)
-    zeta = sizehint!(T[], zsz)
-    sigma = sizehint!(T[], zsz)
-    beta = sizehint!(SVector{length(β),T}[], zsz)
-    theta = sizehint!(SVector{length(θ),T}[], zsz)
-    @inbounds for (j, c) in enumerate(eachcol(betamat))
-        prj = FeProfile(m, j)
-        prm = prj.m
-        j2jm1 = j:(j - 1)
-        for βj in c
-            dev = βj - β[j]
-            if dev ≈ 0
-                push!(zeta, zero(T))
-                push!(sigma, σ)
-                push!(beta, β)
-                push!(theta, θ)
-            else
-                refit!(prj, βj)
-                βcopy = prm.β
-                splice!(βcopy, j2jm1, βj)
-                push!(beta, βcopy)
-                push!(zeta, sign(dev) * sqrt(prm.objective - objective))
-                push!(sigma, prm.σ)
-                push!(theta, prm.θ)
-            end
-        end
+function profile(m::LinearMixedModel{T}; threshold = 4) where {T}
+    ord, nat = BSplineOrder(4), Natural()
+    tbl = profileσ(m; threshold)
+    rev = Dict(:σ => interpolate(tbl.ζ, tbl.σ, ord, nat))
+    fwd = Dict(:σ => interpolate(tbl.σ, tbl.ζ, ord, nat))
+    for j in axes(m.β, 1)
+        prbj = profileβj(m, j; threshold)
+        betaj = getindex.(prbj.β, j)
+        rev[Symbol("β$j")] = interpolate(prbj.ζ, betaj, ord, nat)
+        fwd[Symbol("β$j")] = interpolate(betaj, prbj.ζ, ord, nat)
+        append!(tbl, prbj)
     end
-    updateL!(setθ!(m, θ))
-    zetamat = reshape(zeta, length(δ), :)
-    interp(x, y) = interpolate(x, y, BSplineOrder(4), Natural())
-    fwdspl = [interp(b, z) for (b, z) in zip(eachcol(betamat), eachcol(zetamat))]
-    revspl = [interp(z, b) for (b, z) in zip(eachcol(betamat), eachcol(zetamat))]
     return MixedModelProfile(
-        Table(; ζ=zeta, σ=sigma, β=beta, θ=theta),
-        δ,
-        copy(coefnames(m)),
-        [fname(t) for t in m.reterms],
-        [t.cnames for t in m.reterms],
-        copy(m.parmap),
-        fwdspl,
-        revspl,
+        tbl,
+        m.feterm.cnames,
+        fname.(m.reterms),
+        getproperty.(m.reterms, :cnames),
+        m.parmap,
+        fwd,
+        rev,
     )
 end
 
-function StatsBase.confint(pr::MixedModelProfile; level=0.95)
+function StatsBase.confint(pr::MixedModelProfile; level::Real=0.95)
     cutoff = sqrt.(quantile(Chisq(1), level))
-    @compat (; fecnames, rev) = pr
-    lower = [s(-cutoff) for s in rev]
-    upper = [s(cutoff) for s in rev]
-    return DictTable(; coef=fecnames, lower=lower, upper=upper)
+    syms = circshift(unique(pr.tbl.par), -1)   # put σ last
+    rev = pr.rev
+    return DictTable(; 
+        coef=syms,
+        lower=[rev[s](-cutoff) for s in syms],
+        upper=[rev[s](cutoff) for s in syms],
+    )
 end
 
-function refitlogσ!(m::LinearMixedModel{T}, stepsz, obj, logσ, zeta, beta, theta) where {T}
-    push!(logσ, last(logσ) + stepsz)
-    m.optsum.sigma = exp(last(logσ))
+function refitσ!(m::LinearMixedModel{T}, val::NamedTuple, obj::T, neg::Bool) where {T}
+    m.optsum.sigma = last(val.σ)
     refit!(m; progress=false)
-    push!(zeta, sign(stepsz[]) * sqrt(m.objective - obj))
-    push!(beta, m.β)
-    push!(theta, m.θ)
+    push!(val.ζ, (neg ? -1. : 1) * sqrt(m.objective - obj))
+    push!(val.β, m.β)
+    push!(val.θ, m.θ)
     return m.objective
 end
 
-function _logσstepsz(m::LinearMixedModel, σ, objective)
+"""
+    _facsz(m, σ, objective)
+
+Return a factor so that refitting `m` with `σ` at its current value times this factor gives `ζ ≈ 0.5`
+"""
+function _facsz(m::LinearMixedModel, σ, objective)
     i64 = inv(64)
-    m.optsum.sigma = exp(log(σ) + i64)
-    return i64 / sqrt(refit!(m; progress=false).objective - objective)
+    m.optsum.sigma = σ * exp(i64)
+    return exp(i64 / (2*sqrt(refit!(m; progress=false).objective - objective)))
 end
 
-function profilelogσ(m::LinearMixedModel{T}) where {T}
+"""
+    profileσ(m; threshold=3)
+
+Return a Table of the profile of `σ` for model `m`.  The profile extends to where the magnitude of ζ exceeds `threshold`.
+"""
+function profileσ(m::LinearMixedModel{T}; threshold = 4) where {T}
     isnothing(m.optsum.sigma) ||
         throw(ArgumentError("Can't profile σ, which is fixed at $(m.optsum.sigma)"))
     @compat (; β, σ, θ, objective) = m
-    logσ = [log(σ)]
-    beta = [SVector{length(β)}(β)]
-    theta = [SVector{length(θ)}(θ)]
-    zeta = [zero(T)]
-    stepsz = -_logσstepsz(m, σ, objective)
-    while abs(last(zeta)) < 4
-        refitlogσ!(m, stepsz, objective, logσ, zeta, beta, theta)
+    val = (; ζ = T[0], β = [SVector{length(β)}(β)], σ = [σ], θ = [SVector{length(θ)}(θ)])
+    facsz = _facsz(m, σ, objective)
+    push!(val.σ, σ / facsz)
+    while true
+        refitσ!(m, val, objective, true)
+        last(val.ζ) > -threshold || break
+        push!(val.σ, last(val.σ) / facsz)
     end
-    reverse!(logσ)
-    reverse!(zeta)
-    reverse!(beta)
-    reverse!(theta)
-    stepsz = -stepsz
-    while abs(last(zeta)) < 4
-        refitlogσ!(m, stepsz, objective, logσ, zeta, beta, theta)
+    push!(val.σ, σ * facsz)
+    while true
+        refitσ!(m, val, objective, false)
+        last(val.ζ) < threshold || break
+        push!(val.σ, last(val.σ) * facsz)
     end
     m.optsum.sigma = nothing
     refit!(m)
-    return Table(; logσ=logσ, ζ=zeta, β=beta, θ=theta)
+    return sort!(Table(merge((; par = fill(:σ, length(val.ζ))), val)); by = r -> r.ζ)
 end
