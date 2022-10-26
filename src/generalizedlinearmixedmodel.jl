@@ -409,7 +409,7 @@ function GeneralizedLinearMixedModel(
     # XXX unfortunately, this means we have double-rank defiency detection
     # TODO: construct GLM by hand so that we skip collinearity checks
     # TODO: extend this so that we never fit a GLM when initializing from LMM
-    dofit = size(LMM.X, 2) != 0
+    dofit = size(LMM.X, 2) != 0 # GLM.jl kwarg
     gl = glm(LMM.X, y, d, l;
         wts=convert(Vector{T}, wts),
         dofit,
