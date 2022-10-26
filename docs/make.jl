@@ -19,4 +19,6 @@ makedocs(;
     ],
 )
 
-deploydocs(;repo = "github.com/JuliaStats/MixedModels.jl.git", push_preview = true, devbranch = "main")
+deploydocs(;
+    repo="github.com/JuliaStats/MixedModels.jl.git", push_preview=true, devbranch="main"
+)

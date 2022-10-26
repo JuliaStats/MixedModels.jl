@@ -1,3 +1,8 @@
+
+
+* Don't fit a GLM internally during construction of GLMM when the fixed effects are empty (better compatibility with
+  `dropcollinear` kwarg in newer GLM.jl) [#657]
+
 MixedModels v4.8.0 Release Notes
 ==============================
 * Allow predicting from a single observation, as long as `Grouping()` is used for the grouping variables. The simplified implementation of `Grouping()` also removes several now unnecessary `StatsModels` methods that should not have been called directly by the user. [#653]
@@ -380,3 +385,4 @@ Package dependencies
 [#648]: https://github.com/JuliaStats/MixedModels.jl/issues/648
 [#651]: https://github.com/JuliaStats/MixedModels.jl/issues/651
 [#653]: https://github.com/JuliaStats/MixedModels.jl/issues/653
+[#657]: https://github.com/JuliaStats/MixedModels.jl/issues/657
