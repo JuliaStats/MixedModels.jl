@@ -150,7 +150,7 @@ function profileσ(m::LinearMixedModel{T}; threshold = 4) where {T}
     isnothing(m.optsum.sigma) ||
         throw(ArgumentError("Can't profile σ, which is fixed at $(m.optsum.sigma)"))
     @compat (; β, σ, θ, objective, optsum) = m
-    θinitial = optsum.initial
+    θinitial = copy(optsum.initial)
         # copy optsum.final to optsum.initial with elements on the boundary set to 0.01
     map!((b, x) -> iszero(b) ? max(0.01, x) : x, optsum.initial, optsum.lowerbd, optsum.final)
     val = (; ζ = T[0], β = [SVector{length(β)}(β)], σ = [σ], θ = [SVector{length(θ)}(θ)])
