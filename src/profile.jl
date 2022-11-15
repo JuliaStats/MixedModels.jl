@@ -26,6 +26,18 @@ function Base.copy(ret::ReMat{T,S}) where {T,S}
         copy(ret.scratch))
 end
 
+"""
+    _copy_away_from_lowerbd!(sink, source, bd; incr=0.01)
+
+Replace `sink[i]` by `max(source[i], bd[i] + incr)`.  When `bd[i] == -Inf` this simply copies `source[i]`.
+"""
+function _copy_away_from_lowerbd!(sink, source, bd; incr=0.01)
+    for i in eachindex(sink, source, bd)
+        @inbounds sink[i] = max(source[i], bd[i] + incr)
+    end
+    return sink
+end
+
 function FeProfile(m::LinearMixedModel, j::Integer)
     Xy = m.Xymat.xy
     xcols = collect(axes(Xy, 2))
@@ -35,9 +47,10 @@ function FeProfile(m::LinearMixedModel, j::Integer)
     xⱼ = Xy[:, j]
     feterm = FeTerm(Xy[:, notj], m.feterm.cnames[notj])
     reterms = [copy(ret) for ret in m.reterms]
-    m = fit!(LinearMixedModel(y₀ - xⱼ * m.β[j], feterm, reterms, m.formula); progress=false)
-    @. m.optsum.initial = max(m.optsum.initial, m.lowerbd + 0.05)
-    return FeProfile(m, y₀, xⱼ, j)
+    mnew = fit!(LinearMixedModel(y₀ - xⱼ * m.β[j], feterm, reterms, m.formula); progress=false)
+       # not sure this next call makes sense - should the second argument be m.optsum.final?
+    _copy_away_from_lowerbd!(mnew.optsum.initial, mnew.optsum.final, mnew.lowerbd; incr=0.05)
+    return FeProfile(mnew, y₀, xⱼ, j)
 end
 
 function betaprofile!(pr::FeProfile{T}, val, βⱼ::T, j::Integer, obj::T) where {T}
@@ -69,7 +82,8 @@ function profileβj(m::LinearMixedModel{T}, j::Integer; threshold=4) where {T}
         betaprofile!(prj, val, bb, j, objective) < threshold || break
         bb += st
     end
-    return sort!(Table(merge((; par = fill(Symbol("β$j"), length(val.σ))), val)), by = r -> r.ζ)
+    m = length(val.ζ)
+    return sort!(Table(merge((; p = fill(:β, m), j = fill(Int8(j), m)), val)), by = r -> r.ζ)
 end
 
 struct MixedModelProfile
@@ -88,15 +102,27 @@ end
 Return a `MixedModelProfile` for the objective of `m` with respect to the fixed-effects coefficients.
 """
 function profile(m::LinearMixedModel{T}; threshold = 4) where {T}
+    final = copy(refit!(m).optsum.final)
     ord, nat = BSplineOrder(4), Natural()
     tbl = profileσ(m; threshold)
     rev = Dict(:σ => interpolate(tbl.ζ, tbl.σ, ord, nat))
     fwd = Dict(:σ => interpolate(tbl.σ, tbl.ζ, ord, nat))
+    updateL!(setθ!(m, final))
     for j in axes(m.β, 1)
         prbj = profileβj(m, j; threshold)
         betaj = getindex.(prbj.β, j)
         rev[Symbol("β$j")] = interpolate(prbj.ζ, betaj, ord, nat)
         fwd[Symbol("β$j")] = interpolate(betaj, prbj.ζ, ord, nat)
+        append!(tbl, prbj)
+    end
+    updateL!(setθ!(m, final))
+    copyto!(m.optsum.final, final)
+    m.optsum.fmin = objective(m)
+    for j in axes(final, 1)
+        prbj = profileθj(m, j; threshold)
+        thetaj = getindex.(prbj.θ, j)
+        rev[Symbol("θ$j")] = interpolate(prbj.ζ, thetaj, ord, nat)
+        fwd[Symbol("θ$j")] = interpolate(thetaj, prbj.ζ, ord, nat)
         append!(tbl, prbj)
     end
     return MixedModelProfile(
@@ -142,7 +168,7 @@ function _facsz(m::LinearMixedModel, σ, objective)
 end
 
 """
-    profileσ(m; threshold=3)
+    profileσ(m; threshold=4)
 
 Return a Table of the profile of `σ` for model `m`.  The profile extends to where the magnitude of ζ exceeds `threshold`.
 """
@@ -151,8 +177,7 @@ function profileσ(m::LinearMixedModel{T}; threshold = 4) where {T}
         throw(ArgumentError("Can't profile σ, which is fixed at $(m.optsum.sigma)"))
     @compat (; β, σ, θ, objective, optsum) = m
     θinitial = copy(optsum.initial)
-        # copy optsum.final to optsum.initial with elements on the boundary set to 0.01
-    map!((b, x) -> iszero(b) ? max(0.01, x) : x, optsum.initial, optsum.lowerbd, optsum.final)
+    _copy_away_from_lowerbd!(optsum.initial, optsum.final, optsum.lowerbd)
     val = (; ζ = T[0], β = [SVector{length(β)}(β)], σ = [σ], θ = [SVector{length(θ)}(θ)])
     facsz = _facsz(m, σ, objective)
     push!(val.σ, σ / facsz)
@@ -170,7 +195,8 @@ function profileσ(m::LinearMixedModel{T}; threshold = 4) where {T}
     optsum.sigma = nothing
     optsum.initial = θinitial
     updateL!(setθ!(m, θ))
-    return sort!(Table(merge((; par = fill(:σ, length(val.ζ))), val)); by = r -> r.σ)
+    m = length(val.ζ)
+    return sort!(Table(merge((; p = fill(:σ, m), j = fill(zero(Int8), m)), val)); by = r -> r.σ)
 end
 
 """
@@ -188,107 +214,93 @@ function optsumj(os::OptSummary, j::Integer)
     )
 end
 
-function profileobjθj(m::LinearMixedModel{T}, j::Integer, θj::T) where {T}
-    @compat (; θ, optsum) = m
-    θ[j] = θj
-    isone(length(θ)) && return objective(updateL!(setθ!(m, θ))), T[]
-    inds = deleteat!(collect(axes(θ, 1)), j)
+function profileobjθj(m::LinearMixedModel{T}, θ::AbstractVector{T}, opt::Opt, osj::OptSummary) where {T}
+    isone(length(θ)) && return objective(updateL!(setθ!(m, θ)))
+    fmin, xmin, ret = NLopt.optimize!(opt, copyto!(osj.final, osj.initial))
+    _check_nlopt_return(ret)
+    return fmin
+end
+
+function profileθj(m::LinearMixedModel{T}, j::Integer; threshold=4) where {T}
+    @compat (; β, σ, optsum) = m
+    @compat (; final, fmin, lowerbd) = optsum
+    updateL!(setθ!(m, final))
+    θ = copy(final)
+    θj = final[j]
+    lbj = lowerbd[j]
+    notj = deleteat!(collect(axes(final, 1)), j)
+    osj = optsumj(optsum, j)
+    opt = Opt(osj)
     function obj(x, g)
         isempty(g) || throw(ArgumentError("gradients are not evaluated by this objective"))
-        for (i, xi) in zip(inds, x)
-            θ[i] = xi
+        for i in eachindex(notj, x)
+            @inbounds θ[notj[i]] = x[i]
         end
         return objective(updateL!(setθ!(m, θ)))
     end
-    osj = optsumj(optsum, j)
-    opt = Opt(osj)
     NLopt.min_objective!(opt, obj)
-    fmin, xmin, ret = NLopt.optimize!(opt, copyto!(osj.final, osj.initial))
-    _check_nlopt_return(ret)
-    return fmin, xmin
-end
-
-"""
-    _stepszθj(m, j, θj, objective)
-
-Return a step size for θ[j] to give `ζ ≈ 0.5`
-"""
-function _stepszθj(m::LinearMixedModel, j::Integer, θj, objective)
-    step = min(inv(64), θj)
-    return step / (2*sqrt(profileobjθj(m, j, θj + step) - objective))
-end
-
-
-function profileθj(m::LinearMixedModel{T}, j::Integer) where {T}
-    @compat (; β, σ, θ, objective, optsum) = m
-    θorig = copy(θ)
-    θopt = θ[j]
-    θjvals = if iszero(optsum.lowerbd[j])
-        iszero(θopt) ? range(zero(T), T(2), 33) : range(zero(T), 3θopt, 33)
-    else
-        aθopt = abs(θopt)
-        range(-5*aθopt, 5*aθopt, 33)
+    val = (; ζ = [zero(T)], β = [SVector{length(β)}(β)], σ = [σ], θ = [SVector{length(θ)}(θ)])
+    ζold = zero(T)
+    δj = inv(T(32))
+    while (abs(ζold) < threshold) && length(val.ζ) < 100  # increasing values of θ[j]
+        θ[j] += δj
+        ζ = sign(θ[j] - θj) * sqrt(profileobjθj(m, θ, opt, osj) - fmin)
+        push!(val.ζ, ζ)
+        push!(val.β, m.β)
+        push!(val.σ, m.σ)
+        push!(val.θ, θ)
+        δj /= 2(ζ - ζold)
+        ζold = ζ
     end
-    nrow = size(θjvals, 1)   # should always be 33 at present
-    val = Table(
-        (;
-            par = repeat([Symbol("θ$j")], nrow),
-            ζ = collect(θjvals),
-            β = repeat([SVector{size(β, 1)}(β)], nrow),
-            σ = similar(θjvals),
-            θ = repeat([SVector{size(θ, 1)}(θ)], nrow),
-        ),
-    )
-    @inbounds for (i, th) in enumerate(θjvals)
-        if th ≈ θopt
-            val.ζ[i] = zero(T)
-            val.σ[i] = σ
-            val.β[i] = β
-            val.θ[i] = θ
-        else
-            obj, xmin = profileobjθj(m, j, th)
-            val.ζ[i] = sign(th - θopt) * sqrt(obj - objective)
-            val.σ[i] = m.σ
-            val.β[i] = m.β
-            splice!(xmin, j:(j-1), th)
-            val.θ[i] = xmin
-        end
+    copyto!(θ, final)
+    δj = -inv(T(32))
+    ζold = zero(T)
+    while (abs(ζold) < threshold) && (length(val.ζ) < 120) && (θ[j] > lbj)
+        θ[j] += δj
+        θ[j] = max(lbj, θ[j])
+        ζ = sign(θ[j] - θj) * sqrt(profileobjθj(m, θ, opt, osj) - fmin)
+        push!(val.ζ, ζ)
+        push!(val.β, m.β)
+        push!(val.σ, m.σ)
+        push!(val.θ, θ)
+        δj /= (2 * abs(ζ - ζold))
+        ζold = ζ
     end
-    updateL!(setθ!(m, θorig))
-    return val
+    updateL!(setθ!(m, final))
+    m = length(val.ζ)
+    return sort!(Table(merge((; p = fill(:θ, m), j = fill(Int8(j), m)), val)); by = r -> r.ζ)
 end
 
-function profilevcij(m::LinearMixedModel{T}, opt::Opt, val::T, i, j) where {T}
-        # Right now just punt on fixed sigma. This can probably be patched later
-    @compat (; optsum, reterms, θ) = m
-    isnothing(optsum.sigma) || throw(ArgumentError("Cannot profile vc on model with fixed σ"))
-    rowj = view(reterms[i].λ.data, j, 1:j)
-    sigma() = val / norm(rowj)
+function profilevc(m::LinearMixedModel{T}, val, rowj::AbstractVector{T}, gopt) where {T}
+    optsum = m.optsum
+    sigma() = val / norm(rowj)   # a function to be re-evaluated when values in rowj change
     function obj(x, g)
         isempty(g) || throw(ArgumentError("g must be empty"))
         updateL!(setθ!(m, x))
         optsum.sigma = sigma()
         return objective(m)
     end
+    opt = Opt(optsum)
     NLopt.min_objective!(opt, obj)
     fmin, xmin, ret = NLopt.optimize!(opt, copyto!(optsum.final, optsum.initial))
     _check_nlopt_return(ret)
-    optsum.sigma = nothing
-    copyto!(optsum.final, θ)
-    return fmin
+    return sqrt(fmin - gopt)
 end
 
 function profileσs(m::LinearMixedModel{T}) where {T}
     isnothing(m.optsum.sigma) || throw(ArgumentError("Can't profile vc's when σ is fixed"))
-    @compat (; λ, θ, σ, objective, optsum, parmap) = m
-    opt = Opt(optsum)
+    @compat (; λ, θ, σ, β, objective, optsum, parmap) = m
+    inital = optsum.initial
+    copyto!(optsum.initial, optsum.final)
+    lenσ = count([j == k for (i, j, k) in parmap])
+    val = (; ζ = T[0], β = [SVector{length(β)}(β)], σ = [σ], θ = [SVector{length(θ)}(θ)])
     for (i, j, k) in parmap
         if j == k
             rowj = view(λ[i].data, j, 1:j)
             σij = σ * norm(rowj)
             δ = (iszero(σij) ? one(T) : σij) * T(inv(32))
-            obj = profilevcij(m, opt, σij + δ, i, j)
-            stepsz = (obj - objective) / 2δ
+            obj = profilevcij(m, σij + δ, i, j)
+            stepsz = δ / (2 * (obj - objective))
             @info i, j, k, σij, δ, obj, stepsz
         end
     end
