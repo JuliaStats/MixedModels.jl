@@ -138,8 +138,8 @@ end
 
 function StatsBase.confint(pr::MixedModelProfile; level::Real=0.95)
     cutoff = sqrt.(quantile(Chisq(1), level))
-    syms = circshift(unique(pr.tbl.par), -1)   # put σ last
     rev = pr.rev
+    syms = sort!(collect(keys(rev)))
     return DictTable(; 
         coef=syms,
         lower=[rev[s](-cutoff) for s in syms],

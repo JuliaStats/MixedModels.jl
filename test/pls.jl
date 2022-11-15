@@ -505,7 +505,7 @@ end
     @testset "profile" begin
         pr = profile(last(models(:sleepstudy)))
         tbl = pr.tbl
-        @test length(tbl) == 64
+        @test length(tbl) == 121
         @test length(pr.fecnames) == 2
         @test isone(length(pr.facnames))
         recnms = pr.recnames
@@ -515,8 +515,11 @@ end
         ci = confint(pr)
         @test isa(ci, TypedTables.DictTable)
         @test propertynames(ci) == (:coef, :lower, :upper)
-        @test isapprox(ci.lower.values, [237.68069384330914, 7.35865293099439, 22.898262145457064]; atol=1.e-3)
-        @test only(filter(r -> r.par == :σ && iszero(r.ζ), pr.tbl)).σ == last(models(:sleepstudy)).σ
+        @test isapprox(
+            ci.lower.values,
+            [237.68069406557657, 7.3586529384660375, 0.5413630480965158, -0.13854853868801975, 0.11978197717507284, 22.898262163628825];
+            atol=1.e-3)
+        @test only(filter(r -> r.p == :σ && iszero(r.ζ), pr.tbl)).σ == last(models(:sleepstudy)).σ
     end
     @testset "confint" begin
         ci = confint(last(models(:sleepstudy)))
