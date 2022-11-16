@@ -142,6 +142,7 @@ function StatsBase.confint(pr::MixedModelProfile; level::Real=0.95)
     syms = sort!(collect(keys(rev)))
     return DictTable(; 
         coef=syms,
+        estimate=[rev[s](false) for s in syms],
         lower=[rev[s](-cutoff) for s in syms],
         upper=[rev[s](cutoff) for s in syms],
     )
@@ -241,7 +242,7 @@ function profileθj(m::LinearMixedModel{T}, j::Integer; threshold=4) where {T}
     NLopt.min_objective!(opt, obj)
     val = (; ζ = [zero(T)], β = [SVector{length(β)}(β)], σ = [σ], θ = [SVector{length(θ)}(θ)])
     ζold = zero(T)
-    δj = inv(T(32))
+    δj = inv(T(64))
     while (abs(ζold) < threshold) && length(val.ζ) < 100  # increasing values of θ[j]
         θ[j] += δj
         ζ = sign(θ[j] - θj) * sqrt(profileobjθj(m, θ, opt, osj) - fmin)
