@@ -506,12 +506,6 @@ end
         pr = profile(last(models(:sleepstudy)))
         tbl = pr.tbl
         @test length(tbl) == 123
-        @test length(pr.fecnames) == 2
-        @test isone(length(pr.facnames))
-        recnms = pr.recnames
-        @test isone(length(recnms))
-        @test length(only(recnms)) == 2
-        @test pr.fecnames == only(recnms)
         ci = confint(pr)
         @test isa(ci, TypedTables.DictTable)
         @test propertynames(ci) == (:coef, :estimate, :lower, :upper)
@@ -519,7 +513,7 @@ end
             ci.lower.values,
             [237.68069406557657, 7.3586529384660375, 0.5413630480965158, -0.13854853868801975, 0.11978197717507284, 22.898262163628825];
             atol=1.e-3)
-        @test only(filter(r -> r.p == :σ && iszero(r.ζ), pr.tbl)).σ == last(models(:sleepstudy)).σ
+        @test first(only(filter(r -> r.p == :σ && iszero(r.ζ), pr.tbl)).σ) == last(models(:sleepstudy)).σ
     end
     @testset "confint" begin
         ci = confint(last(models(:sleepstudy)))

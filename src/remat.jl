@@ -617,22 +617,32 @@ function setθ!(A::ReMat{T}, v::AbstractVector{T}) where {T}
     return A
 end
 
-function σs(A::ReMat{T,1}, sc::T) where {T}
-    return NamedTuple{(Symbol(only(A.cnames)),)}(sc * abs(only(A.λ.data)))
+σvals(A::ReMat{T, 1}, sc::Number) where {T} = (sc * abs(only(A.λ.data)), )
+
+σs(A::ReMat{T,1}, sc::Number) where {T} = NamedTuple{(Symbol(only(A.cnames)),)}(σvals(A, sc))
+
+function σvals(λ::LowerTriangular{T}, sc::Number) where {T}
+    return ntuple(size(λ, 1)) do i
+        s = zero(T)
+        for j in Base.OneTo(i)
+            @inbounds s += abs2(λ[i, j])
+        end
+        sc * sqrt(s)
+    end
 end
 
-function _σs(λ::LowerTriangular{T}, sc::T, cnames) where {T}
-    λ = λ.data
-    return NamedTuple{(Symbol.(cnames)...,)}(
-        ntuple(i -> sc * norm(view(λ, i, 1:i)), size(λ, 1))
-    )
+function σvals(λ::Diagonal, sc::Number)
+    v = λ.diag
+    return ntuple(length(v)) do i
+        @inbounds sc * v[i]
+    end
 end
 
-function _σs(λ::Diagonal{T}, sc::T, cnames) where {T}
-    return NamedTuple{(Symbol.(cnames)...,)}(((sc .* λ.diag)...,))
-end
+σvals(A::ReMat, sc::Number) = σvals(A.λ, sc)
 
-σs(A::ReMat{T}, sc::T) where {T} = _σs(A.λ, sc, A.cnames)
+function σs(A::ReMat{T}, sc::Number) where {T}
+    return NamedTuple{(Symbol.(A.cnames)...,)}(σvals(A.λ, sc))
+end
 
 function σρs(A::ReMat{T,1}, sc::T) where {T}
     return NamedTuple{(:σ, :ρ)}((
@@ -671,6 +681,7 @@ end
 function σρs(A::ReMat{T}, sc::T) where {T}
     return _σρs(A.λ, sc, indmat(A), Symbol.(A.cnames))
 end
+
 """
     corrmat(A::ReMat)
 
