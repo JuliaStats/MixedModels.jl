@@ -294,12 +294,7 @@ function profileσs(m::LinearMixedModel{T}; threshold::Number=4) where {T}
     @compat (; initial, final, fmin) = optsum
     saveinitial = copy(initial)
     copyto!(initial, final)
-    val = (;
-        ζ = T[0],
-        β = [(β...,)],
-        σ = [(σ, σvals(m)...)],
-        θ = [(final...,)],
-    )
+    val = (; ζ = T[0], β = [(β...,)], σ = [(σ, σvals(m)...)], θ = [(final...,)])
     for t in reterms
         for r in eachrow(t.λ.data)
             σij = σ * norm(r)
