@@ -806,6 +806,30 @@ function objective(m::LinearMixedModel{T}) where {T}
     return isempty(wts) ? val : val - T(2.0) * sum(log, wts)
 end
 
+
+"""
+    objective!(m::LinearMixedModel, θ)
+
+Equivalent to `objective(updateL!(setθ!(m, θ)))`.
+
+When `m` has a single, scalar random-effects term, `θ`` can be a scalar
+
+Note that these methods modify `m`.
+The calling function is responsible for restoring the optimal `θ`.
+"""
+function objective! end
+
+function objective!(m::LinearMixedModel{T}, θ::AbstractVector{T}) where {T}
+    return objective(updateL!(setθ!(m, θ)))
+end
+
+function objective!(m::LinearMixedModel{T}, x::Number) where {T}
+    retrm = only(m.reterms)
+    isa(retrm, ReMat{T, 1}) || throw(DimensionMismatch("length(m.θ) = $(length(m.θ)), should be 1"))
+    copyto!(retrm.λ.data, x)
+    return objective(updateL!(m))
+end
+
 function Base.propertynames(m::LinearMixedModel, private::Bool=false)
     return (
         fieldnames(LinearMixedModel)...,
