@@ -1,4 +1,7 @@
+using Aqua
 using MixedModels
+using Test
+
 import InteractiveUtils: versioninfo
 import LinearAlgebra: BLAS
 
@@ -11,6 +14,10 @@ else
     if startswith(string(BLAS.vendor()), "openblas")
         println(BLAS.openblas_get_config())
     end
+end
+
+@testset "Aqua" begin
+    Aqua.test_all(MixedModels; ambiguities=false)
 end
 
 include("utilities.jl")

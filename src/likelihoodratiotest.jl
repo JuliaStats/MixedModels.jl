@@ -231,8 +231,8 @@ function _iscomparable(m::LinearMixedModel...)
 end
 
 function _samefamily(
-    ::GeneralizedLinearMixedModel{<:AbstractFloat,S}...
-) where {S<:Distribution}
+    ::GeneralizedLinearMixedModel{<:AbstractFloat,<:Distribution}...
+)
     return true
 end
 _samefamily(::GeneralizedLinearMixedModel...) = false
