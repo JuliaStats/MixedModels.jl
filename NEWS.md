@@ -1,5 +1,6 @@
 
-
+MixedModels v4.8.1 Release Notes
+==============================
 * Don't fit a GLM internally during construction of GLMM when the fixed effects are empty (better compatibility with
   `dropcollinear` kwarg in newer GLM.jl) [#657]
 
