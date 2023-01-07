@@ -812,14 +812,18 @@ end
 
 Equivalent to `objective(updateL!(setθ!(m, θ)))`.
 
-When `m` has a single, scalar random-effects term, `θ`` can be a scalar
+When `m` has a single, scalar random-effects term, `θ` can be a scalar
 
 Note that these methods modify `m`.
 The calling function is responsible for restoring the optimal `θ`.
 """
 function objective! end
 
-function objective!(m::LinearMixedModel{T}, θ::AbstractVector{T}) where {T}
+function objective!(m::LinearMixedModel)
+    return Base.Fix1(objective!, m)
+end
+
+function objective!(m::LinearMixedModel{T}, θ) where {T}
     return objective(updateL!(setθ!(m, θ)))
 end
 
@@ -1017,6 +1021,24 @@ Install `v` as the θ parameters in `m`.
 function setθ!(m::LinearMixedModel{T}, θ::AbstractVector) where {T}
     parmap, reterms = m.parmap, m.reterms
     length(θ) == length(parmap) || throw(DimensionMismatch())
+    reind = 1
+    λ = first(reterms).λ
+    for (tv, tr) in zip(θ, parmap)
+        tr1 = first(tr)
+        if reind ≠ tr1
+            reind = tr1
+            λ = reterms[tr1].λ
+        end
+        λ[tr[2], tr[3]] = tv
+    end
+    return m
+end
+
+# This method is nearly identical to the previous one but determining a common signature
+# to collapse these to a single definition would be tricky, so we repeat ourselves.
+function setθ!(m::LinearMixedModel{T}, θ::NTuple{N,T}) where {T,N}
+    parmap, reterms = m.parmap, m.reterms
+    N == length(parmap) || throw(DimensionMismatch())
     reind = 1
     λ = first(reterms).λ
     for (tv, tr) in zip(θ, parmap)

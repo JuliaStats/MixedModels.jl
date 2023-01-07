@@ -185,8 +185,7 @@ include("blockdescription.jl")
 include("grouping.jl")
 include("mimeshow.jl")
 include("serialization.jl")
-include("profile.jl")
-
+include("profile/profile.jl")
 include("precompile_MixedModels.jl")
 _precompile_()
 end # module
