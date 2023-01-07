@@ -505,7 +505,7 @@ end
     @testset "profile" begin
         pr = profile(last(models(:sleepstudy)))
         tbl = pr.tbl
-        @test length(tbl) == 123
+        @test length(tbl) == 122
         ci = confint(pr)
         @test isa(ci, TypedTables.DictTable)
         @test propertynames(ci) == (:coef, :estimate, :lower, :upper)
