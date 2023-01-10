@@ -230,9 +230,11 @@ function _iscomparable(m::LinearMixedModel...)
     return true
 end
 
+# XXX we need the where clause to distinguish from the general method
+# but static analysis complains if we don't use the type parameter
 function _samefamily(
-    ::GeneralizedLinearMixedModel{<:AbstractFloat,<:Distribution}...
-)
+    ::GeneralizedLinearMixedModel{<:AbstractFloat,S}...
+) where {S<:Distribution}
     return true
 end
 _samefamily(::GeneralizedLinearMixedModel...) = false

@@ -17,7 +17,9 @@ else
 end
 
 @testset "Aqua" begin
-    Aqua.test_all(MixedModels; ambiguities=false)
+    # we can't check for unbound type parameters
+    # because we actually need one at one point for _same_family()
+    Aqua.test_all(MixedModels; ambiguities=false, unbound_args=false)
 end
 
 include("utilities.jl")
