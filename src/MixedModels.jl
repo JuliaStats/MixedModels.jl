@@ -178,6 +178,28 @@ include("grouping.jl")
 include("mimeshow.jl")
 include("serialization.jl")
 
-include("precompile_MixedModels.jl")
-_precompile_()
+using SnoopPrecompile
+
+@precompile_setup begin
+    # Putting some things in `setup` can reduce the size of the
+    # precompile file and potentially make loading faster.
+    sleepstudy = MixedModels.dataset(:sleepstudy)
+    contra =  MixedModels.dataset(:contra)
+    @precompile_all_calls begin
+        # all calls in this block will be precompiled, regardless of whether
+        # they belong to your package or not (on Julia 1.8 and higher)
+
+        # these are relatively small models and so shouldn't increase precompile times all that much
+        # while still massively boosting load and TTFX times
+        fit(MixedModel,
+            @formula(reaction ~ 1 + days + (1 + days | subj)),
+            sleepstudy)
+        fit(MixedModel,
+            @formula(use ~ 1 + age + abs2(age) + urban + livch + (1 | urban&dist)),
+            contra,
+            Bernoulli())
+    end
+end
+
+
 end # module
