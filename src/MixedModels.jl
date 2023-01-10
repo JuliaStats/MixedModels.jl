@@ -184,7 +184,7 @@ using SnoopPrecompile
     # Putting some things in `setup` can reduce the size of the
     # precompile file and potentially make loading faster.
     sleepstudy = MixedModels.dataset(:sleepstudy)
-    contra =  MixedModels.dataset(:contra)
+    contra = MixedModels.dataset(:contra)
     @precompile_all_calls begin
         # all calls in this block will be precompiled, regardless of whether
         # they belong to your package or not (on Julia 1.8 and higher)
@@ -195,11 +195,10 @@ using SnoopPrecompile
             @formula(reaction ~ 1 + days + (1 + days | subj)),
             sleepstudy)
         fit(MixedModel,
-            @formula(use ~ 1 + age + abs2(age) + urban + livch + (1 | urban&dist)),
+            @formula(use ~ 1 + age + abs2(age) + urban + livch + (1 | urban & dist)),
             contra,
             Bernoulli())
     end
 end
-
 
 end # module
