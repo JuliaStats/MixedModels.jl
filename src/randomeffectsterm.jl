@@ -37,7 +37,7 @@ function StatsModels.apply_schema(
     schema::MultiSchema{StatsModels.FullRank},
     Mod::Type{<:MixedModel},
 )
-    lhs, rhs = t.args_parsed
+    lhs, rhs = t.args
 
     isempty(intersect(StatsModels.termvars(lhs), StatsModels.termvars(rhs))) ||
         throw(ArgumentError("Same variable appears on both sides of |"))
@@ -134,11 +134,11 @@ Base.:/(a::AbstractTerm, b::AbstractTerm) = a + a & b
 function StatsModels.apply_schema(
     t::FunctionTerm{typeof(/)}, sch::StatsModels.FullRank, Mod::Type{<:MixedModel}
 )
-    if length(t.args_parsed) ≠ 2
+    if length(t.args) ≠ 2
         throw(ArgumentError("malformed nesting term: $t (Exactly two arguments required"))
     end
 
-    first, second = apply_schema.(t.args_parsed, Ref(sch), Mod)
+    first, second = apply_schema.(t.args, Ref(sch), Mod)
 
     if !(typeof(first) <: CategoricalTerm)
         throw(
@@ -188,7 +188,7 @@ end
 function StatsModels.apply_schema(
     t::FunctionTerm{typeof(fulldummy)}, sch::StatsModels.FullRank, Mod::Type{<:MixedModel}
 )
-    return fulldummy(apply_schema.(t.args_parsed, Ref(sch), Mod)...)
+    return fulldummy(apply_schema.(t.args, Ref(sch), Mod)...)
 end
 
 # specify zero correlation
@@ -211,7 +211,7 @@ StatsModels.termvars(t::ZeroCorr) = StatsModels.termvars(t.term)
 function StatsModels.apply_schema(
     t::FunctionTerm{typeof(zerocorr)}, sch::MultiSchema, Mod::Type{<:MixedModel}
 )
-    return ZeroCorr(apply_schema(t.args_parsed..., sch, Mod))
+    return ZeroCorr(apply_schema(only(t.args), sch, Mod))
 end
 
 function StatsModels.apply_schema(t::ZeroCorr, sch::MultiSchema, Mod::Type{<:MixedModel})
