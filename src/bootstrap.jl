@@ -204,6 +204,8 @@ function Base.getproperty(bsamp::MixedModelFitCollection, s::Symbol)
         tidyσs(bsamp)
     elseif s == :allpars
         allpars(bsamp)
+    elseif s == :tbl
+        pbstrtbl(bsamp)
     else
         getfield(bsamp, s)
     end
@@ -237,6 +239,7 @@ function Base.propertynames(bsamp::MixedModelFitCollection)
         :lowerbd,
         :fits,
         :fcnames,
+        :tbl,
     ]
 end
 
@@ -391,4 +394,42 @@ function tidyσs(bsamp::MixedModelFitCollection{T}) where {T}
         end
     end
     return result
+end
+
+function pbstrtbl(bsamp::MixedModelFitCollection{T}) where {T}
+    @compat (; fits, λ, inds) = bsamp
+    row1 = first(fits)
+    cnms = [:obj, :σ]
+    pos = Dict{Symbol, UnitRange{Int}}(:obj => 1:1, :σ => 2:2)
+    βsz = length(row1.β)
+    append!(cnms, _generatesyms('β', βsz))
+    lastpos = 2 + βsz
+    pos[:β] = 3:lastpos
+    σsz = sum(m -> size(m, 1), bsamp.λ)
+    append!(cnms, _generatesyms('σ', σsz))
+    pos[:σs] = (lastpos + 1):(lastpos + σsz)
+    lastpos += σsz
+    θsz = length(row1.θ)
+    append!(cnms, _generatesyms('θ', θsz))
+    pos[:θ] = (lastpos + 1):(lastpos + θsz)
+    tblrowtyp = NamedTuple{(cnms...,),NTuple{length(cnms),T}}
+    val = sizehint!(tblrowtyp[], length(bsamp.fits))
+    v = Vector{T}(undef, length(cnms))
+    for (i, r) in enumerate(bsamp.fits)
+        v[1] = r.objective
+        v[2] = coalesce(r.σ, one(T))
+        copyto!(view(v, pos[:β]), r.β)
+        fill!(view(v, pos[:σs]), zero(T))
+        copyto!(view(v, pos[:θ]), r.θ)
+        setθ!(bsamp, i)
+        vpos = first(pos[:σs])
+        for l in λ
+            for λr in eachrow(l)
+                v[vpos] = r.σ * norm(λr)
+                vpos += 1
+            end
+        end
+        push!(val, tblrowtyp(v))
+    end
+    return val
 end
