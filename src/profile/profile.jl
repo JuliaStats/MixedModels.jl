@@ -19,7 +19,7 @@ Return a `MixedModelProfile` for the objective of `m` with respect to the fixed-
 function profile(m::LinearMixedModel{T}; threshold = 4) where {T}
     final = copy(refit!(m).optsum.final)
     tc = TableColumns(m)
-    val = profileσ(m, tc; threshold)
+    val = profileσ(m, tc; threshold) # FIXME: defer creating the splines until the whole table is constructed
     copyto!(m.optsum.final, final)
     m.optsum.fmin = objective!(m, final)
     for s in filter(s -> startswith(string(s), 'θ'), keys(first(val.tbl)))
@@ -29,26 +29,13 @@ function profile(m::LinearMixedModel{T}; threshold = 4) where {T}
     for s in filter(s -> startswith(string(s), 'β'), keys(first(val.tbl)))
         profileβj!(val, tc, s; threshold)
     end
+    profileσs!(val, tc)
     objective!(m, final)   # restore the parameter estimates
-    return val
-    for j in axes(m.β, 1)
-        prbj = profileβj(m, j; threshold)
-        betaj = getindex.(prbj.β, j)
-        rev[Symbol("β$j")] = interpolate(prbj.ζ, betaj, ord, nat)
-        fwd[Symbol("β$j")] = interpolate(betaj, prbj.ζ, ord, nat)
-        append!(tbl, prbj)
-    end
     updateL!(setθ!(m, final))
     copyto!(m.optsum.final, final)
     m.optsum.fmin = objective(m)
-    for j in axes(final, 1)
-        prbj = profileθj(m, j; threshold)
-        thetaj = getindex.(prbj.θ, j)
-        rev[Symbol("θ$j")] = interpolate(prbj.ζ, thetaj, ord, nat)
-        fwd[Symbol("θ$j")] = interpolate(thetaj, prbj.ζ, ord, nat)
-        append!(tbl, prbj)
-    end
-    return MixedModelProfile(m, tbl, fwd, rev)
+    m.optsum.sigma = nothing
+    return val
 end
 
 function StatsBase.confint(pr::MixedModelProfile; level::Real=0.95)

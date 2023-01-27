@@ -46,7 +46,7 @@ function profileθj!(pr::MixedModelProfile{T}, sym::Symbol, tc::TableColumns{T};
     pnm = (; p = sym)
     ζold = zero(T)
     tbl = [merge(pnm, mkrow!(tc, m, ζold))]    # start with the row for ζ = 0
-    δj = inv(T(32))
+    δj = inv(T(64))
     θj = final[j]
     θ[j] = θj - δj
     while (abs(ζold) < threshold) && θ[j] ≥ lbj && length(tbl) < 100  # decreasing values of θ[j]
@@ -57,15 +57,25 @@ function profileθj!(pr::MixedModelProfile{T}, sym::Symbol, tc::TableColumns{T};
         ζold = ζ
         θ[j] = max(lbj, (θ[j] -= δj))
     end
-    reverse!(tbl)                      # reorder the new part of the table by increasing ζ
+    reverse!(tbl)               # reorder the new part of the table by increasing ζ
     sv = getproperty(sym).(tbl)
-    slope = (Derivative(1) * interpolate(sv, getproperty(:ζ).(tbl), BSplineOrder(4), Natural()))(last(sv))
-    δj = inv(T(2) * slope)  # approximate step for increase of 0.5
+    δj = if length(sv) > 3      # need to handle the case of convergence on the boundary
+        slope = (Derivative(1) * interpolate(sv, getproperty(:ζ).(tbl), BSplineOrder(4), Natural()))(last(sv))
+        δj = inv(T(2) * slope)  # approximate step for increase of 0.5
+    else
+        inv(T(32))
+    end
     ζold = zero(T)
     copyto!(θ, final)
     θ[j] += δj
     while (ζold < threshold) && (length(tbl) < 120)
-        ζ = sqrt(profileobj!(m, θ, opt, osj) - fmin)
+        fval = profileobj!(m, θ, opt, osj)
+        if fval < fmin
+            @warn "Negative difference ", fval - fmin, " for ", sym, " at ", θ[j]
+            ζ = zero(T)
+        else
+            ζ = sqrt(profileobj!(m, θ, opt, osj) - fmin)
+        end
         push!(tbl, merge(pnm, mkrow!(tc, m, ζ)))
         δj /= (2 * abs(ζ - ζold))
         ζold = ζ

@@ -10,6 +10,7 @@ struct TableColumns{T<:AbstractFloat}
     cnames::Tuple
     positions::Dict{Symbol,UnitRange{Int}}
     v::Vector{T}
+    corrpos::Vector{NTuple{3,Int}}
 end
 
 """
@@ -38,36 +39,92 @@ function TableColumns(m::LinearMixedModel{T}) where {T}
     append!(nmvec, _generatesyms('σ', sz))
     positions[:σs] = (lastpos + 1):(lastpos + sz)
     lastpos += sz
+    corrpos = NTuple{3,Int}[]
+    for (i, re) in enumerate(m.reterms)
+        (isa(re.λ, Diagonal) || isa(re, ReMat{T, 1})) && continue
+        indm = indmat(re)
+        for j in axes(indm, 1)
+            rowj = view(indm, j, :)
+            for k in (j + 1):size(indm, 1)
+                if !iszero(dot(rowj, view(indm, k, :)))
+                    push!(corrpos, (i, j, k))
+                end
+            end
+        end
+    end
+    sz = length(corrpos)
+    if sz > 0
+        append!(nmvec, _generatesyms('ρ', sz))
+        positions[:ρs] = (lastpos + 1):(lastpos + sz)
+        lastpos += sz
+    end
     sz = length(m.θ)
     append!(nmvec, _generatesyms('θ', sz))
     positions[:θ] = (lastpos + 1):(lastpos + sz)
-    return TableColumns((nmvec...,), positions, Vector{T}(undef, length(nmvec)))
+    return TableColumns((nmvec...,), positions, zeros(T, length(nmvec)), corrpos)
 end
 
 function mkrow!(tc::TableColumns{T}, m::LinearMixedModel{T}, ζ::T) where {T}
-    @compat (; cnames, positions, v) = tc
+    @compat (; cnames, positions, v, corrpos) = tc
     v[1] = ζ
     MixedModels.fixef!(view(v, positions[:β]), m)
     v[first(positions[:σ])] = m.σ
-    copyto!(view(v, positions[:σs]), σvals(m))  # re-write this by defining σvals!
-    MixedModels.getθ!(view(v, positions[:θ]), m)
+    σvals!(view(v, positions[:σs]), m)
+    MixedModels.getθ!(view(v, positions[:θ]), m)  # must do this first to preserve a copy
+    if length(corrpos) > 0
+        ρvals!(view(v, positions[:ρs]), corrpos, m)
+        setθ!(m, view(v, positions[:θ]))
+    end
     return NamedTuple{cnames, NTuple{length(cnames), T}}((v...,))
 end
 
 function parsej(sym::Symbol) # return the index from symbol names like :θ1, :θ01, etc.
-    symstr = string(sym)
+    symstr = string(sym)                                     # convert Symbol to a String
     return parse(Int, SubString(symstr, nextind(symstr, 1))) # drop first Unicode character and parse as Int
 end
 
 """
     σvals(m::LinearMixedModel)
 
-Return a Tuple of the standard deviation (random effects and per-observation) estimates
+Return a Tuple of the standard deviation estimates of the random effects
 """
 function σvals(m::LinearMixedModel{T}) where {T}
     @compat (; σ, reterms) = m
     isone(length(reterms)) && return σvals(only(reterms), σ)
     return (collect(Iterators.flatten(σvals.(reterms, σ)))...,)
+end
+
+function σvals!(v::AbstractVector{T}, m::LinearMixedModel{T}) where {T}
+    @compat (; σ, reterms) = m
+    isone(length(reterms)) && return σvals!(v, only(reterms), σ)
+    ind = firstindex(v)
+    for t in m.reterms
+        S = size(t.λ, 1)
+        σvals!(view(v, ind:(ind + S - 1)), t, σ)
+        ind += S
+    end
+    return v
+end
+
+function ρvals!(v::AbstractVector{T}, corrpos::Vector{NTuple{3,Int}}, m::LinearMixedModel{T}) where {T}
+    reterms = m.reterms
+    lasti = 1
+    λ = first(reterms).λ
+    for r in eachrow(λ)
+        normalize!(r)
+    end
+    for (ii, pos) in enumerate(corrpos)
+        i, j, k = pos
+        if lasti ≠ i
+            λ = reterms[i].λ
+            for r in eachrow(λ)
+                normalize!(r)
+            end
+            lasti = i
+        end
+        v[ii] = dot(view(λ, j, :), view(λ, k, :))
+    end
+    return v
 end
 
 """
@@ -82,13 +139,17 @@ function _copy_away_from_lowerbd!(sink, source, bd; incr=0.01)
     return sink
 end
 
-function collectvals!(v::Vector{T}, m::LinearMixedModel{T}, ζ::T) where {T}
-    σ = m.σ
-    push!(empty!(v), ζ)
-    append!(v, m.β)
-    push!(v, σ)
-    for t in m.reterms
-        append!(v, σvals(t, σ))
-    end
-    return append!(v, m.θ)
+"""
+    stepsize(tbl::Vector{NamedTuple}, resp::Symbol, pred::Symbol; rev::Bool=false)
+
+Return the stepsize from the last value of `tbl.pred` to increase `resp` by approximately 0.5
+"""
+function stepsize(tbl::Vector{<:NamedTuple}, resp::Symbol, pred::Symbol; rev::Bool=false)
+    ntbl = length(tbl)
+    lm1tbl = tbl[ntbl - 1]
+    x1 = getproperty(lm1tbl, pred)
+    y1 = getproperty(lm1tbl, resp)
+    x2 = getproperty(last(tbl), pred)
+    y2 = getproperty(last(tbl), resp)
+    return (x2 - x1) / (2 * (y2 - y1))
 end
