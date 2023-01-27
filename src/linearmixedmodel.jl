@@ -558,7 +558,6 @@ the length of `v` can be the rank of `X` or the number of columns of `X`.  In th
 case the calculated coefficients are padded with -0.0 out to the number of columns.
 """
 function fixef!(v::AbstractVector{Tv}, m::LinearMixedModel{T}) where {Tv,T}
-    Xtrm = m.feterm
     fill!(v, -zero(Tv))
     XyL = m.L[end]
     L = feL(m)
