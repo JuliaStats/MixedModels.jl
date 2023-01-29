@@ -1,4 +1,7 @@
+using Aqua
 using MixedModels
+using Test
+
 import InteractiveUtils: versioninfo
 import LinearAlgebra: BLAS
 
@@ -11,6 +14,12 @@ else
     if startswith(string(BLAS.vendor()), "openblas")
         println(BLAS.openblas_get_config())
     end
+end
+
+@testset "Aqua" begin
+    # we can't check for unbound type parameters
+    # because we actually need one at one point for _same_family()
+    Aqua.test_all(MixedModels; ambiguities=false, unbound_args=false)
 end
 
 include("utilities.jl")
