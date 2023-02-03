@@ -508,7 +508,7 @@ end
         @test length(tbl) >= 122
         ci = confint(pr)
         @test isa(ci, TypedTables.DictTable)
-        @test propertynames(ci) == (:coef, :estimate, :lower, :upper)
+        @test propertynames(ci) == (:par, :estimate, :lower, :upper)
 #        @test isapprox(   # these values are not reproducible
 #            ci.lower.values,
 #            [237.68069406557657, 7.3586529384660375, 0.5413630480965158, -0.13854853868801975, 0.11978197717507284, 22.898262163628825];
