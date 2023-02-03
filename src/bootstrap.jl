@@ -193,6 +193,22 @@ function allpars(bsamp::MixedModelFitCollection{T}) where {T}
     )
 end
 
+function StatsBase.confint(bsamp::MixedModelBootstrap{T}; level::Real=0.95) where {T}
+    cutoff = sqrt(quantile(Chisq(1), level))
+    # Creating the table is somewhat wasteful because columns are created then immediately skipped.
+    tbl = Table(bsamp.tbl)
+    lower = T[]
+    upper = T[]
+    v = similar(tbl.σ)
+    par = sort!(collect(filter(k -> !(startswith(string(k), 'θ') || string(k) == "obj"), propertynames(tbl))))
+    for p in par
+        l, u = shortestcovint(sort!(copyto!(v, getproperty(tbl, p))), level)
+        push!(lower, l)
+        push!(upper, u)
+    end
+    return DictTable(; par, lower, upper)
+end
+
 function Base.getproperty(bsamp::MixedModelFitCollection, s::Symbol)
     if s ∈ [:objective, :σ, :θ, :se]
         getproperty.(getfield(bsamp, :fits), s)

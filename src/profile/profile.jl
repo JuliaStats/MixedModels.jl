@@ -42,11 +42,11 @@ function profile(m::LinearMixedModel{T}; threshold = 4) where {T}
 end
 
 function StatsBase.confint(pr::MixedModelProfile; level::Real=0.95)
-    cutoff = sqrt.(quantile(Chisq(1), level))
+    cutoff = sqrt(quantile(Chisq(1), level))
     rev = pr.rev
-    syms = sort!(collect(keys(rev)))
+    syms = sort!(collect(filter(k -> !startswith(string(k), 'θ'), keys(rev))))
     return DictTable(; 
-        coef=syms,
+        par=syms,
         estimate=[rev[s](false) for s in syms],
         lower=[rev[s](-cutoff) for s in syms],
         upper=[rev[s](cutoff) for s in syms],
