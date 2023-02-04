@@ -53,11 +53,21 @@ check_re_group_type(term::GROUPING_TYPE) = true
 check_re_group_type(terms::Tuple{Vararg{<:GROUPING_TYPE}}) = true
 check_re_group_type(x) = false
 
+_unprotect(x) = x
+for op in StatsModels.SPECIALS
+    @eval _unprotect(t::FunctionTerm{typeof($op)}) = t.f(_unprotect.(t.args)...)
+end
+
 # make a potentially untyped RandomEffectsTerm concrete
 function StatsModels.apply_schema(
     t::RandomEffectsTerm, schema::MultiSchema{StatsModels.FullRank}, Mod::Type{<:MixedModel}
 )
-    lhs, rhs = t.lhs, t.rhs
+    # we need to do this here because the implicit intercept dance has to happen
+    # _before_ we apply_schema, which is where :+ et al. are normally
+    # unprotected.  I tried to finagle a way around this (using yet another
+    # schema wrapper type) but it ends up creating way too many potential/actual
+    # method ambiguities to be a good idea.
+    lhs, rhs = _unprotect(t.lhs), t.rhs
 
     # get a schema that's specific for the grouping (RHS), creating one if needed
     schema = get!(schema.subs, rhs, StatsModels.FullRank(schema.base.schema))
