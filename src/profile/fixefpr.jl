@@ -53,7 +53,7 @@ function betaprofile!(pr::FeProfile{T}, tc::TableColumns{T}, βⱼ::T, j::Intege
     v[1] = (-1)^neg * sqrt(prm.objective - obj)
     getθ!(view(v, positions[:θ]), prm)
     v[first(positions[:σ])] = prm.σ
-    copyto!(view(v, positions[:σs]), σvals(prm))  # re-write this by defining σvals!
+    σvals!(view(v, positions[:σs]), prm)
     β = prm.β
     bpos = 0
     for (i, p) in enumerate(positions[:β])

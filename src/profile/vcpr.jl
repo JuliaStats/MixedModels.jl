@@ -27,7 +27,7 @@ function profileσs!(pr::MixedModelProfile{T}, tc::TableColumns{T}; nzlb=1.0e-8)
     vcnms = filter(sym -> (str = string(sym); startswith(str, 'σ') && length(str) > 1), keys(first(pr.tbl)))
     ind = 0
     for t in reterms
-        for r in eachrow(t.λ.data)
+        for r in eachrow(t.λ)
             optsum.sigma = nothing            # re-initialize the model
             objective!(m, final)
             ind += 1
