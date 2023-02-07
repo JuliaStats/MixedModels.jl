@@ -83,6 +83,7 @@ function parsej(sym::Symbol) # return the index from symbol names like :θ1, :θ
     return parse(Int, SubString(symstr, nextind(symstr, 1))) # drop first Unicode character and parse as Int
 end
 
+#=  # It appears that this method is not used
 """
     σvals(m::LinearMixedModel)
 
@@ -93,6 +94,7 @@ function σvals(m::LinearMixedModel{T}) where {T}
     isone(length(reterms)) && return σvals(only(reterms), σ)
     return (collect(Iterators.flatten(σvals.(reterms, σ)))...,)
 end
+=#
 
 function σvals!(v::AbstractVector{T}, m::LinearMixedModel{T}) where {T}
     @compat (; σ, reterms) = m
@@ -139,12 +141,13 @@ function _copy_away_from_lowerbd!(sink, source, bd; incr=0.01)
     return sink
 end
 
+#=  # It appears that this method is not used
 """
     stepsize(tbl::Vector{NamedTuple}, resp::Symbol, pred::Symbol; rev::Bool=false)
 
 Return the stepsize from the last value of `tbl.pred` to increase `resp` by approximately 0.5
 """
-function stepsize(tbl::Vector{<:NamedTuple}, resp::Symbol, pred::Symbol; rev::Bool=false)
+function stepsize(tbl::Vector{<:NamedTuple}, resp::Symbol, pred::Symbol)
     ntbl = length(tbl)
     lm1tbl = tbl[ntbl - 1]
     x1 = getproperty(lm1tbl, pred)
@@ -152,4 +155,9 @@ function stepsize(tbl::Vector{<:NamedTuple}, resp::Symbol, pred::Symbol; rev::Bo
     x2 = getproperty(last(tbl), pred)
     y2 = getproperty(last(tbl), resp)
     return (x2 - x1) / (2 * (y2 - y1))
+end
+=#
+
+function isnondecreasing(spl::SplineInterpolation)
+    return all(≥(0), (Derivative(1) * spl).(spl.x))
 end

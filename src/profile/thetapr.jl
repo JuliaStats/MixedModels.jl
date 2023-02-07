@@ -53,7 +53,7 @@ function profileθj!(pr::MixedModelProfile{T}, sym::Symbol, tc::TableColumns{T};
         ζ = sign(θ[j] - θj) * sqrt(profileobj!(m, θ, opt, osj) - fmin)
         push!(tbl, merge(pnm, mkrow!(tc, m, ζ)))
         θ[j] == lbj && break
-        δj /= (2 * abs(ζ - ζold))
+        δj /= (4 * abs(ζ - ζold))   # take smaller steps when evaluating negative zeta
         ζold = ζ
         θ[j] = max(lbj, (θ[j] -= δj))
     end
@@ -86,6 +86,8 @@ function profileθj!(pr::MixedModelProfile{T}, sym::Symbol, tc::TableColumns{T};
     sv = getproperty(sym).(tbl)
     ζv = getproperty(:ζ).(tbl)
     pr.fwd[sym] = interpolate(sv, ζv, BSplineOrder(4), Natural())
+    isnondecreasing(pr.fwd[sym]) || @warn "Forward spline for ", sym, " is not monotone."
     pr.rev[sym] = interpolate(ζv, sv, BSplineOrder(4), Natural())
+    isnondecreasing(pr.rev[sym]) || @warn "Reverse spline for ", sym, " is not monotone."
     return pr
 end
