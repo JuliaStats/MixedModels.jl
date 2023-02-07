@@ -52,9 +52,9 @@ Typical distribution forms are _Bernoulli_ for binary data or _Poisson_ for coun
 
 |OS      | OS Version    |Arch |Julia           |
 |:------:|:-------------:|:---:|:--------------:|
-|Linux   | Ubuntu 18.04  | x64 |v1.8            |
-|Linux   | Ubuntu 18.04  | x64 |current release |
-|Linux   | Ubuntu 18.04  | x64 |nightly         |
+|Linux   | Ubuntu 20.04  | x64 |v1.8            |
+|Linux   | Ubuntu 20.04  | x64 |current release |
+|Linux   | Ubuntu 20.04  | x64 |nightly         |
 |macOS   | Catalina 10.15| x64 |v1.8            |
 |Windows | Server 2019   | x64 |v1.8            |
 
