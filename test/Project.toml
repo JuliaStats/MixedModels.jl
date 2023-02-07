@@ -16,5 +16,5 @@ Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 TypedTables = "9d95f2ec-7b3d-5a63-8d20-e2491e220bb9"
 
 [compat]
-Aqua = "0.5"
+Aqua = "0.5, 0.6"
 StableRNGs = "0.1, 1"
