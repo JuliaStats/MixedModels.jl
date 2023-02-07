@@ -1,4 +1,4 @@
-name: LTS
+name: "minimum compat"
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
@@ -20,7 +20,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        julia-version: [1.6]
+        julia-version: [1.8]
         julia-arch: [x64]
         os: [ubuntu-18.04, macos-11, windows-2019]
     steps:

@@ -22,8 +22,8 @@
 [nightly-img]: https://github.com/JuliaStats/MixedModels.jl/actions/workflows/nightly.yml/badge.svg
 [nightly-url]: https://github.com/JuliaStats/MixedModels.jl/actions?workflow=nightly
 
-[lts-img]: https://github.com/JuliaStats/MixedModels.jl/actions/workflows/lts.yml/badge.svg
-[lts-url]: https://github.com/JuliaStats/MixedModels.jl/actions?workflow=lts
+[minimum-img]: https://github.com/JuliaStats/MixedModels.jl/actions/workflows/minimum.yml/badge.svg
+[minimum-url]: https://github.com/JuliaStats/MixedModels.jl/actions?workflow=minimum
 
 [pkgeval-img]: https://juliaci.github.io/NanosoldierReports/pkgeval_badges/M/MixedModels.svg
 [pkgeval-url]: https://juliaci.github.io/NanosoldierReports/pkgeval_badges/report.html
@@ -52,11 +52,11 @@ Typical distribution forms are _Bernoulli_ for binary data or _Poisson_ for coun
 
 |OS      | OS Version    |Arch |Julia           |
 |:------:|:-------------:|:---:|:--------------:|
-|Linux   | Ubuntu 18.04  | x64 |v1.6 (LTS)      |
+|Linux   | Ubuntu 18.04  | x64 |v1.8            |
 |Linux   | Ubuntu 18.04  | x64 |current release |
 |Linux   | Ubuntu 18.04  | x64 |nightly         |
-|macOS   | Catalina 10.15| x64 |v1.6 (LTS)      |
-|Windows | Server 2019   | x64 |v1.6 (LTS)      |
+|macOS   | Catalina 10.15| x64 |v1.8            |
+|Windows | Server 2019   | x64 |v1.8            |
 
 Note that previous releases still support older Julia versions.
 

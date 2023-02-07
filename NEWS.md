@@ -1,3 +1,7 @@
+MixedModels v4.9.0 Release Notes
+==============================
+* Julia minimum compat version raised to 1.8 because of BSplineKit
+
 MixedModels v4.8.2 Release Notes
 ==============================
 * Use `SnoopPrecompile` for better precompilation performance. This can dramatically increase TTFX, especially on Julia 1.9. [#663]
