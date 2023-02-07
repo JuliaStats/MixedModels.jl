@@ -16,8 +16,8 @@
 [codecov-img]: https://codecov.io/github/JuliaStats/MixedModels.jl/badge.svg?branch=main
 [codecov-url]: https://codecov.io/github/JuliaStats/MixedModels.jl?branch=main
 
-[current-img]: https://github.com/JuliaStats/MixedModels.jl/actions/workflows/ci.yml/badge.svg
-[current-url]: https://github.com/JuliaStats/MixedModels.jl/actions?workflow=ci
+[current-img]: https://github.com/JuliaStats/MixedModels.jl/actions/workflows/current.yml/badge.svg
+[current-url]: https://github.com/JuliaStats/MixedModels.jl/actions?workflow=current
 
 [nightly-img]: https://github.com/JuliaStats/MixedModels.jl/actions/workflows/nightly.yml/badge.svg
 [nightly-url]: https://github.com/JuliaStats/MixedModels.jl/actions?workflow=nightly
