@@ -59,10 +59,7 @@ function profileσ(m::LinearMixedModel{T}, tc::TableColumns{T}; threshold = 4) w
     updateL!(setθ!(m, θ))
     σv = [r.σ for r in tbl]
     ζv = [r.ζ for r in tbl]
-    return MixedModelProfile(
-        m,
-        tbl,   # perhaps defer creation of the interpolation splines until the end of `profile` 
-        Dict(:σ => interpolate(σv, ζv, BSplineOrder(4), Natural())),
-        Dict(:σ => interpolate(ζv, σv, BSplineOrder(4), Natural())),
-    )
+    fwd = Dict(:σ => interpolate(σv, ζv, BSplineOrder(4), Natural()))
+    rev = Dict(:σ => interpolate(ζv, σv, BSplineOrder(4), Natural()))
+    return (; m, tbl, fwd, rev)
  end

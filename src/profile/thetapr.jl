@@ -21,8 +21,8 @@ function profileobj!(m::LinearMixedModel{T}, θ::AbstractVector{T}, opt::Opt, os
     return fmin
 end
 
-function profileθj!(pr::MixedModelProfile{T}, sym::Symbol, tc::TableColumns{T}; threshold=4) where {T}
-    @compat (; m, fwd, rev) = pr
+function profileθj!(val::NamedTuple, sym::Symbol, tc::TableColumns{T}; threshold=4) where {T}
+    @compat (; m, fwd, rev) = val
     optsum = m.optsum
     @compat (; final, fmin, lowerbd) = optsum
     j = parsej(sym)
@@ -81,13 +81,13 @@ function profileθj!(pr::MixedModelProfile{T}, sym::Symbol, tc::TableColumns{T};
         ζold = ζ
         θ[j] += δj
     end
-    append!(pr.tbl, tbl)
+    append!(val.tbl, tbl)
     updateL!(setθ!(m, final))
     sv = getproperty(sym).(tbl)
     ζv = getproperty(:ζ).(tbl)
-    pr.fwd[sym] = interpolate(sv, ζv, BSplineOrder(4), Natural())
-    isnondecreasing(pr.fwd[sym]) || @warn "Forward spline for ", sym, " is not monotone."
-    pr.rev[sym] = interpolate(ζv, sv, BSplineOrder(4), Natural())
-    isnondecreasing(pr.rev[sym]) || @warn "Reverse spline for ", sym, " is not monotone."
-    return pr
+    fwd[sym] = interpolate(sv, ζv, BSplineOrder(4), Natural())
+    isnondecreasing(fwd[sym]) || @warn "Forward spline for ", sym, " is not monotone."
+    rev[sym] = interpolate(ζv, sv, BSplineOrder(4), Natural())
+    isnondecreasing(rev[sym]) || @warn "Reverse spline for ", sym, " is not monotone."
+    return val
 end

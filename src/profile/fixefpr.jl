@@ -62,8 +62,8 @@ function betaprofile!(pr::FeProfile{T}, tc::TableColumns{T}, βⱼ::T, j::Intege
     return first(v)
 end
 
-function profileβj!(pr::MixedModelProfile{T}, tc::TableColumns{T}, sym::Symbol; threshold=4) where {T}
-    m = pr.m
+function profileβj!(val::NamedTuple, tc::TableColumns{T}, sym::Symbol; threshold=4) where {T}
+    m = val.m
     @compat (; β, θ, σ, stderror, objective) = m
     @compat (; cnames, v) = tc
     pnm = (; p = sym,)
@@ -90,10 +90,10 @@ function profileβj!(pr::MixedModelProfile{T}, tc::TableColumns{T}, sym::Symbol;
         end
         bb += st
     end
-    append!(pr.tbl, tbl)
+    append!(val.tbl, tbl)
     ζv = getproperty.(tbl, :ζ)
     βv = getproperty.(tbl, sym)
-    pr.fwd[sym] = interpolate(βv, ζv, BSplineOrder(4), Natural())
-    pr.rev[sym] = interpolate(ζv, βv, BSplineOrder(4), Natural())
-    return pr
+    val.fwd[sym] = interpolate(βv, ζv, BSplineOrder(4), Natural())
+    val.rev[sym] = interpolate(ζv, βv, BSplineOrder(4), Natural())
+    return val
 end
