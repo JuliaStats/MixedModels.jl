@@ -1,4 +1,4 @@
-struct MixedModelProfile{T<:AbstractFloat} 
+struct MixedModelProfile{T<:AbstractFloat}
     m::LinearMixedModel{T}    # Model that has been profiled
     tbl::Table                # Table containing ζ, σ, β, and θ from each conditional fit
     fwd::Dict{Symbol}         # Interpolation splines for ζ as a function of a parameter
@@ -19,7 +19,7 @@ Return a `MixedModelProfile` for the objective of `m` with respect to the fixed-
 Profiling starts at the parameter estimate and continues until reaching a parameter bound or the absolute
 value of ζ exceeds `threshold`.
 """
-function profile(m::LinearMixedModel{T}; threshold = 4) where {T}
+function profile(m::LinearMixedModel{T}; threshold=4) where {T}
     final = copy(refit!(m).optsum.final)
     tc = TableColumns(m)
     val = profileσ(m, tc; threshold) # FIXME: defer creating the splines until the whole table is constructed
@@ -45,7 +45,7 @@ function StatsBase.confint(pr::MixedModelProfile; level::Real=0.95)
     cutoff = sqrt(quantile(Chisq(1), level))
     rev = pr.rev
     syms = sort!(collect(filter(k -> !startswith(string(k), 'θ'), keys(rev))))
-    return DictTable(; 
+    return DictTable(;
         par=syms,
         estimate=[rev[s](false) for s in syms],
         lower=[rev[s](-cutoff) for s in syms],

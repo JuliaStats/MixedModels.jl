@@ -25,12 +25,12 @@ function _generatesyms(tag::Char, len::Integer)
 end
 
 function TableColumns(m::LinearMixedModel{T}) where {T}
-    nmvec = [:ζ,]
+    nmvec = [:ζ]
     positions = Dict(:ζ => 1:1)
     lastpos = 1
     sz = m.feterm.rank
     append!(nmvec, _generatesyms('β', sz))
-    positions[:β] = (lastpos+1):(lastpos + sz)
+    positions[:β] = (lastpos + 1):(lastpos + sz)
     lastpos += sz
     push!(nmvec, :σ)
     lastpos += 1
@@ -41,7 +41,7 @@ function TableColumns(m::LinearMixedModel{T}) where {T}
     lastpos += sz
     corrpos = NTuple{3,Int}[]
     for (i, re) in enumerate(m.reterms)
-        (isa(re.λ, Diagonal) || isa(re, ReMat{T, 1})) && continue
+        (isa(re.λ, Diagonal) || isa(re, ReMat{T,1})) && continue
         indm = indmat(re)
         for j in axes(indm, 1)
             rowj = view(indm, j, :)
@@ -75,7 +75,7 @@ function mkrow!(tc::TableColumns{T}, m::LinearMixedModel{T}, ζ::T) where {T}
         ρvals!(view(v, positions[:ρs]), corrpos, m)
         setθ!(m, view(v, positions[:θ]))
     end
-    return NamedTuple{cnames, NTuple{length(cnames), T}}((v...,))
+    return NamedTuple{cnames,NTuple{length(cnames),T}}((v...,))
 end
 
 function parsej(sym::Symbol) # return the index from symbol names like :θ1, :θ01, etc.
@@ -108,7 +108,9 @@ function σvals!(v::AbstractVector{T}, m::LinearMixedModel{T}) where {T}
     return v
 end
 
-function ρvals!(v::AbstractVector{T}, corrpos::Vector{NTuple{3,Int}}, m::LinearMixedModel{T}) where {T}
+function ρvals!(
+    v::AbstractVector{T}, corrpos::Vector{NTuple{3,Int}}, m::LinearMixedModel{T}
+) where {T}
     reterms = m.reterms
     lasti = 1
     λ = first(reterms).λ

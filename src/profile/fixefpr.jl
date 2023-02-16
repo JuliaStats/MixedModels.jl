@@ -46,7 +46,9 @@ function FeProfile(m::LinearMixedModel, tc::TableColumns, j::Integer)
     return FeProfile(mnew, tc, y₀, xⱼ, j)
 end
 
-function betaprofile!(pr::FeProfile{T}, tc::TableColumns{T}, βⱼ::T, j::Integer, obj::T, neg::Bool) where {T}
+function betaprofile!(
+    pr::FeProfile{T}, tc::TableColumns{T}, βⱼ::T, j::Integer, obj::T, neg::Bool
+) where {T}
     prm = pr.m
     refit!(prm, mul!(copyto!(pr.m.y, pr.y₀), pr.xⱼ, βⱼ, -1, 1); progress=false)
     @compat (; positions, v) = tc
@@ -62,11 +64,13 @@ function betaprofile!(pr::FeProfile{T}, tc::TableColumns{T}, βⱼ::T, j::Intege
     return first(v)
 end
 
-function profileβj!(val::NamedTuple, tc::TableColumns{T}, sym::Symbol; threshold=4) where {T}
+function profileβj!(
+    val::NamedTuple, tc::TableColumns{T}, sym::Symbol; threshold=4
+) where {T}
     m = val.m
     @compat (; β, θ, σ, stderror, objective) = m
     @compat (; cnames, v) = tc
-    pnm = (; p = sym,)
+    pnm = (; p=sym)
     j = parsej(sym)
     prj = FeProfile(m, tc, j)
     st = stderror[j] * 0.5
@@ -74,7 +78,7 @@ function profileβj!(val::NamedTuple, tc::TableColumns{T}, sym::Symbol; threshol
     tbl = [merge(pnm, mkrow!(tc, m, zero(T)))]
     while true
         ζ = betaprofile!(prj, tc, bb, j, objective, true)
-        push!(tbl, merge(pnm, NamedTuple{cnames, NTuple{length(cnames), T}}((v...,))))
+        push!(tbl, merge(pnm, NamedTuple{cnames,NTuple{length(cnames),T}}((v...,))))
         if abs(ζ) > threshold
             break
         end
@@ -84,7 +88,7 @@ function profileβj!(val::NamedTuple, tc::TableColumns{T}, sym::Symbol; threshol
     bb = β[j] + st
     while true
         ζ = betaprofile!(prj, tc, bb, j, objective, false)
-        push!(tbl, merge(pnm, NamedTuple{cnames, NTuple{length(cnames), T}}((v...,))))
+        push!(tbl, merge(pnm, NamedTuple{cnames,NTuple{length(cnames),T}}((v...,))))
         if abs(ζ) > threshold
             break
         end

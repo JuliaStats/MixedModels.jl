@@ -805,7 +805,6 @@ function objective(m::LinearMixedModel{T}) where {T}
     return isempty(wts) ? val : val - T(2.0) * sum(log, wts)
 end
 
-
 """
     objective!(m::LinearMixedModel, θ)
 
@@ -828,7 +827,8 @@ end
 
 function objective!(m::LinearMixedModel{T}, x::Number) where {T}
     retrm = only(m.reterms)
-    isa(retrm, ReMat{T, 1}) || throw(DimensionMismatch("length(m.θ) = $(length(m.θ)), should be 1"))
+    isa(retrm, ReMat{T,1}) ||
+        throw(DimensionMismatch("length(m.θ) = $(length(m.θ)), should be 1"))
     copyto!(retrm.λ.data, x)
     return objective(updateL!(m))
 end

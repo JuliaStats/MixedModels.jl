@@ -5,7 +5,7 @@
 Return an `OptSummary` with the `j`'th component of the parameter omitted.
 
 `os.final` with its j'th component omitted is used as the initial parameter.
-""" 
+"""
 function optsumj(os::OptSummary, j::Integer)
     return OptSummary(
         deleteat!(copy(os.final), j),
@@ -14,14 +14,18 @@ function optsumj(os::OptSummary, j::Integer)
     )
 end
 
-function profileobj!(m::LinearMixedModel{T}, θ::AbstractVector{T}, opt::Opt, osj::OptSummary) where {T}
+function profileobj!(
+    m::LinearMixedModel{T}, θ::AbstractVector{T}, opt::Opt, osj::OptSummary
+) where {T}
     isone(length(θ)) && return objective!(m, θ)
     fmin, xmin, ret = NLopt.optimize(opt, copyto!(osj.final, osj.initial))
     _check_nlopt_return(ret)
     return fmin
 end
 
-function profileθj!(val::NamedTuple, sym::Symbol, tc::TableColumns{T}; threshold=4) where {T}
+function profileθj!(
+    val::NamedTuple, sym::Symbol, tc::TableColumns{T}; threshold=4
+) where {T}
     @compat (; m, fwd, rev) = val
     optsum = m.optsum
     @compat (; final, fmin, lowerbd) = optsum
@@ -35,7 +39,8 @@ function profileθj!(val::NamedTuple, sym::Symbol, tc::TableColumns{T}; threshol
         osj = optsumj(optsum, j)
         opt = Opt(osj)               # create an NLopt optimizer object for the reduced problem
         function obj(x, g)
-            isempty(g) || throw(ArgumentError("gradients are not evaluated by this objective"))
+            isempty(g) ||
+                throw(ArgumentError("gradients are not evaluated by this objective"))
             for i in eachindex(notj, x)
                 @inbounds θ[notj[i]] = x[i]
             end
@@ -43,7 +48,7 @@ function profileθj!(val::NamedTuple, sym::Symbol, tc::TableColumns{T}; threshol
         end
         NLopt.min_objective!(opt, obj)
     end
-    pnm = (; p = sym)
+    pnm = (; p=sym)
     ζold = zero(T)
     tbl = [merge(pnm, mkrow!(tc, m, ζold))]    # start with the row for ζ = 0
     δj = inv(T(64))
@@ -60,7 +65,12 @@ function profileθj!(val::NamedTuple, sym::Symbol, tc::TableColumns{T}; threshol
     reverse!(tbl)               # reorder the new part of the table by increasing ζ
     sv = getproperty(sym).(tbl)
     δj = if length(sv) > 3      # need to handle the case of convergence on the boundary
-        slope = (Derivative(1) * interpolate(sv, getproperty(:ζ).(tbl), BSplineOrder(4), Natural()))(last(sv))
+        slope = (
+            Derivative(1) *
+            interpolate(sv, getproperty(:ζ).(tbl), BSplineOrder(4), Natural())
+        )(
+            last(sv)
+        )
         δj = inv(T(2) * slope)  # approximate step for increase of 0.5
     else
         inv(T(32))

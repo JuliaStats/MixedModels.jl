@@ -416,7 +416,7 @@ function pbstrtbl(bsamp::MixedModelFitCollection{T}) where {T}
     @compat (; fits, λ, inds) = bsamp
     row1 = first(fits)
     cnms = [:obj, :σ]
-    pos = Dict{Symbol, UnitRange{Int}}(:obj => 1:1, :σ => 2:2)
+    pos = Dict{Symbol,UnitRange{Int}}(:obj => 1:1, :σ => 2:2)
     βsz = length(row1.β)
     append!(cnms, _generatesyms('β', βsz))
     lastpos = 2 + βsz
