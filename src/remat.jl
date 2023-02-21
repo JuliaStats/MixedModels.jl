@@ -617,7 +617,7 @@ function setθ!(A::ReMat{T}, v::AbstractVector{T}) where {T}
     return A
 end
 
-σvals(A::ReMat{T, 1}, sc::Number) where {T} = (sc * abs(only(A.λ.data)), )
+σvals(A::ReMat{T,1}, sc::Number) where {T} = (sc * abs(only(A.λ.data)),)
 
 """
     σvals!(v::AbstractVector, A::ReMat, sc::Number)
@@ -626,7 +626,7 @@ Overwrite v with the standard deviations of the random effects associated with `
 """
 σvals!(v::AbstractVector, A::ReMat, sc::Number) = σvals!(v, A.λ, sc)
 
-function σvals!(v::AbstractVector{T}, A::ReMat{T, 1}, sc::Number) where {T}
+function σvals!(v::AbstractVector{T}, A::ReMat{T,1}, sc::Number) where {T}
     isone(length(v)) || throw(DimensionMismatch("length(v) = $(length(v)), should be 1"))
     @inbounds v[1] = sc * abs(only(A.λ.data))
     return v
@@ -636,7 +636,7 @@ function σvals!(v::AbstractVector{T}, λ::LowerTriangular{T}, sc::Number) where
     fill!(v, zero(T))
     for j in axes(λ, 2)
         for i in j:size(λ, 1)
-            @inbounds v[i] += abs2(λ[i,j])
+            @inbounds v[i] += abs2(λ[i, j])
         end
     end
     for i in axes(λ, 1)
@@ -645,11 +645,13 @@ function σvals!(v::AbstractVector{T}, λ::LowerTriangular{T}, sc::Number) where
     return v
 end
 
-function σvals!(v::AbstractVector{T}, λ::Diagonal{T}, sc::Number) where T
+function σvals!(v::AbstractVector{T}, λ::Diagonal{T}, sc::Number) where {T}
     return rmul!(copyto!(v, λ.diag), sc)
 end
 
-σs(A::ReMat{T,1}, sc::Number) where {T} = NamedTuple{(Symbol(only(A.cnames)),)}(σvals(A, sc))
+function σs(A::ReMat{T,1}, sc::Number) where {T}
+    return NamedTuple{(Symbol(only(A.cnames)),)}(σvals(A, sc))
+end
 
 function σvals(λ::LowerTriangular{T}, sc::Number) where {T}
     return ntuple(size(λ, 1)) do i

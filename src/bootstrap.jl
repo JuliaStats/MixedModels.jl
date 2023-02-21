@@ -200,7 +200,13 @@ function StatsBase.confint(bsamp::MixedModelBootstrap{T}; level::Real=0.95) wher
     lower = T[]
     upper = T[]
     v = similar(tbl.σ)
-    par = sort!(collect(filter(k -> !(startswith(string(k), 'θ') || string(k) == "obj"), propertynames(tbl))))
+    par = sort!(
+        collect(
+            filter(
+                k -> !(startswith(string(k), 'θ') || string(k) == "obj"), propertynames(tbl)
+            ),
+        ),
+    )
     for p in par
         l, u = shortestcovint(sort!(copyto!(v, getproperty(tbl, p))), level)
         push!(lower, l)

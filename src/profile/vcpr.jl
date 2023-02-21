@@ -37,7 +37,7 @@ function profileσs!(val::NamedTuple, tc::TableColumns{T}; nzlb=1.0e-8) where {T
             sym = vcnms[ind]
             gpsym = getproperty(sym)          # extractor function
             estimate = gpsym(zetazero)
-            pnm = (; p = sym,)
+            pnm = (; p=sym)
             tbl = [merge(pnm, zetazero)]
             xtrms = extrema(gpsym, val.tbl)
             lub = log(last(xtrms))
@@ -51,16 +51,18 @@ function profileσs!(val::NamedTuple, tc::TableColumns{T}; nzlb=1.0e-8) where {T
             end
             if iszero(first(xtrms)) && !iszero(estimate) # handle the case of lower bound of zero
                 zrows = filter(iszero ∘ gpsym, val.tbl)
-                isone(length(zrows)) || filter!(r -> iszero(getproperty(r, first(r))), zrows)
+                isone(length(zrows)) ||
+                    filter!(r -> iszero(getproperty(r, first(r))), zrows)
                 rr = only(zrows)              # will error if zeros in sym column occur in unexpected places
                 push!(tbl, merge(pnm, rr[(collect(keys(rr))[2:end]...,)]))
             end
-            sort!(tbl; by = gpsym)
+            sort!(tbl; by=gpsym)
             append!(val.tbl, tbl)
             ζcol = getproperty(:ζ).(tbl)
             symcol = gpsym.(tbl)
             val.fwd[sym] = interpolate(symcol, ζcol, BSplineOrder(4), Natural())
-            issorted(ζcol) && (val.rev[sym] = interpolate(ζcol, symcol, BSplineOrder(4), Natural()))
+            issorted(ζcol) &&
+                (val.rev[sym] = interpolate(ζcol, symcol, BSplineOrder(4), Natural()))
         end
     end
     copyto!(final, initial)
