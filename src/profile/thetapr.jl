@@ -96,8 +96,8 @@ function profileθj!(
     sv = getproperty(sym).(tbl)
     ζv = getproperty(:ζ).(tbl)
     fwd[sym] = interpolate(sv, ζv, BSplineOrder(4), Natural())
-    isnondecreasing(fwd[sym]) || @warn "Forward spline for ", sym, " is not monotone."
+    isnondecreasing(fwd[sym]) || @warn "Forward spline for $sym is not monotone."
     rev[sym] = interpolate(ζv, sv, BSplineOrder(4), Natural())
-    isnondecreasing(rev[sym]) || @warn "Reverse spline for ", sym, " is not monotone."
+    isnondecreasing(rev[sym]) || @warn "Reverse spline for $sym is not monotone."
     return val
 end
