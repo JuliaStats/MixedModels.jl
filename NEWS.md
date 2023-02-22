@@ -1,9 +1,6 @@
-MixedModels v4.9.1 Release Notes
-==============================
-* Revise code in benchmarks to work with recent Julia and PkgBenchmark.jl [#667]
-
 MixedModels v4.9.0 Release Notes
 ==============================
+* Revise code in benchmarks to work with recent Julia and PkgBenchmark.jl [#667]
 * Julia minimum compat version raised to 1.8 because of BSplineKit [#665]
 
 MixedModels v4.8.2 Release Notes
