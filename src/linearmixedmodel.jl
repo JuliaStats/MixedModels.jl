@@ -1121,7 +1121,7 @@ Return the denominator for penalized sums-of-squares.
 
 For MLE, this value is the number of observations. For REML, this
 value is the number of observations minus the rank of the fixed-effects matrix.
-The difference is analagous to the use of n or n-1 in the denominator when
+The difference is analogous to the use of n or n-1 in the denominator when
 calculating the variance.
 """
 function ssqdenom(m::LinearMixedModel)::Int

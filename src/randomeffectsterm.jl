@@ -129,7 +129,7 @@ function _ranef_refs(
     return refs, uniques
 end
 
-# TODO: split this off into a RegressionFormula packge?
+# TODO: split this off into a RegressionFormula package?
 Base.:/(a::AbstractTerm, b::AbstractTerm) = a + a & b
 function StatsModels.apply_schema(
     t::FunctionTerm{typeof(/)}, sch::StatsModels.FullRank, Mod::Type{<:MixedModel}

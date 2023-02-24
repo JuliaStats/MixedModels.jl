@@ -406,7 +406,7 @@ function GeneralizedLinearMixedModel(
     # newer versions of GLM (>1.8.0) have a kwarg dropcollinear=true
     # which creates problems for the empty fixed-effects case during fitting
     # so just don't allow fitting
-    # XXX unfortunately, this means we have double-rank defiency detection
+    # XXX unfortunately, this means we have double-rank deficiency detection
     # TODO: construct GLM by hand so that we skip collinearity checks
     # TODO: extend this so that we never fit a GLM when initializing from LMM
     dofit = size(LMM.X, 2) != 0 # GLM.jl kwarg
