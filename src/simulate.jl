@@ -42,7 +42,7 @@ end
 function simulate!(
     rng::AbstractRNG, m::GeneralizedLinearMixedModel{T}; β=coef(m), σ=m.σ, θ=T[]
 ) where {T}
-    # note that these m.resp.y and m.LMM.y will later be sychronized in (re)fit!()
+    # note that these m.resp.y and m.LMM.y will later be synchronized in (re)fit!()
     # but for now we use them as distinct scratch buffers to avoid allocations
 
     # the noise term is actually in the GLM and not the LMM part so no noise
@@ -59,7 +59,7 @@ end
 """
     _rand(rng::AbstractRNG, d::Distribution, location, scale=missing, n=1)
 
-A convenience function taking a draw from a distrbution.
+A convenience function taking a draw from a distribution.
 
 Note that `d` is specified as an existing distribution, such as
 from the `GlmResp.d` field. This isn't vectorized nicely because

@@ -99,7 +99,7 @@ function _predict(m::MixedModel{T}, newdata, β; new_re_levels) where {T}
     # (at least for the response)
 
     # add a response column
-    # we get type stability via constant propogation on `new_re_levels`
+    # we get type stability via constant propagation on `new_re_levels`
     y, mnew = let ytemp = ones(T, length(first(newdata)))
         f, contr = _abstractify_grouping(m.formula)
         respvars = StatsModels.termvars(f.lhs)
@@ -136,7 +136,7 @@ function _predict(m::MixedModel{T}, newdata, β; new_re_levels) where {T}
         for (grp, known_levels, data_levels) in
             zip(grps, levels.(m.reterms), levels.(mnew.reterms))
             if sort!(known_levels) != sort!(data_levels)
-                throw(ArgumentError("New level enountered in $grp"))
+                throw(ArgumentError("New level encountered in $grp"))
             end
         end
 
@@ -172,7 +172,7 @@ function _predict(m::MixedModel{T}, newdata, β; new_re_levels) where {T}
             for (lidx, ll) in enumerate(levels(newre[idx]))
                 oldloc = findfirst(isequal(ll), oldlevels)
                 if oldloc === nothing
-                    # missing is poisonous so propogates
+                    # missing is poisonous so propagates
                     B[:, lidx] .= missing
                 else
                     B[:, lidx] .= @view blupsold[idx][:, oldloc]
