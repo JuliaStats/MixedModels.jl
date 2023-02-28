@@ -1,3 +1,34 @@
+MixedModels v4.9.0 Release Notes
+==============================
+* Revise code in benchmarks to work with recent Julia and PkgBenchmark.jl [#667]
+* Julia minimum compat version raised to 1.8 because of BSplineKit [#665]
+
+MixedModels v4.8.2 Release Notes
+==============================
+* Use `SnoopPrecompile` for better precompilation performance. This can dramatically increase TTFX, especially on Julia 1.9. [#663]
+
+MixedModels v4.8.1 Release Notes
+==============================
+* Don't fit a GLM internally during construction of GLMM when the fixed effects are empty (better compatibility with
+  `dropcollinear` kwarg in newer GLM.jl) [#657]
+
+MixedModels v4.8.0 Release Notes
+==============================
+* Allow predicting from a single observation, as long as `Grouping()` is used for the grouping variables. The simplified implementation of `Grouping()` also removes several now unnecessary `StatsModels` methods that should not have been called directly by the user. [#653]
+
+MixedModels v4.7.3 Release Notes
+==============================
+* More informative error message for formulae lacking random effects [#651]
+
+MixedModels v4.7.2 Release Notes
+==============================
+* Replace separate calls to `copyto!` and `scaleinflate!` in `updateL!` with `copyscaleinflate!` [#648]
+
+MixedModels v4.7.1 Release Notes
+==============================
+* Avoid repeating initial objective evaluation in `fit!` method for `LinearMixedModel`
+* Ensure that the number of function evaluations from NLopt corresponds to `length(m.optsum.fitlog) when `isone(thin)`. [#637]
+
 MixedModels v4.7.0 Release Notes
 ==============================
 * Relax type restriction for filename in `saveoptsum` and `restoreoptsum!`. Users can now pass any type with an appropriate `open` method, e.g. `<:AbstractPath`. [#628]
@@ -263,7 +294,7 @@ Principal components
 
 * An `AbstractReMat` type has now been introduced to support [#380] work on constrained
   random-effects structures and random-effects structures appropriate for applications
-  in GLM-based decovolution as used in fMRI and EEG (see e.g. [unfold.jl](https://github.com/unfoldtoolbox/unfold.jl).)
+  in GLM-based deconvolution as used in fMRI and EEG (see e.g. [unfold.jl](https://github.com/unfoldtoolbox/unfold.jl).)
 * Similarly, a constructor for `FeMat{::SparseMatrixCSC,S}` has been introduced [#309].
   Currently, this constructor assumes a full-rank matrix, but the work on rank
   deficiency may be extended to this constructor as well.
@@ -359,3 +390,11 @@ Package dependencies
 [#614]: https://github.com/JuliaStats/MixedModels.jl/issues/614
 [#615]: https://github.com/JuliaStats/MixedModels.jl/issues/615
 [#628]: https://github.com/JuliaStats/MixedModels.jl/issues/628
+[#637]: https://github.com/JuliaStats/MixedModels.jl/issues/637
+[#648]: https://github.com/JuliaStats/MixedModels.jl/issues/648
+[#651]: https://github.com/JuliaStats/MixedModels.jl/issues/651
+[#653]: https://github.com/JuliaStats/MixedModels.jl/issues/653
+[#657]: https://github.com/JuliaStats/MixedModels.jl/issues/657
+[#663]: https://github.com/JuliaStats/MixedModels.jl/issues/663
+[#665]: https://github.com/JuliaStats/MixedModels.jl/issues/665
+[#667]: https://github.com/JuliaStats/MixedModels.jl/issues/667

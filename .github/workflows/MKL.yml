@@ -1,4 +1,7 @@
 name: MKL
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
 on:
   workflow_dispatch:
 jobs:
@@ -9,7 +12,7 @@ jobs:
       matrix:
         julia-version: [nightly]
         julia-arch: [x64]
-        os: [ubuntu-18.04]
+        os: [ubuntu-20.04]
     steps:
       - uses: actions/checkout@v2
       - uses: julia-actions/setup-julia@v1

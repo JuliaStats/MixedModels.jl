@@ -469,7 +469,7 @@ end
         fmzc = models(:sleepstudy)[2]
         λ = first(fmzc.reterms).λ
         @test λ isa Diagonal{Float64, Vector{Float64}}
-        # implicit zerocorr via almagation
+        # implicit zerocorr via amalgamation
         fmnc = models(:sleepstudy)[3]
         λ = first(fmnc.reterms).λ
         @test λ isa Diagonal{Float64, Vector{Float64}}
@@ -615,7 +615,7 @@ end
                                :subj => Grouping()))
     fm1 = MixedModels.unfit!(deepcopy(model))
     fm1.optsum.initial .*= 1e8
-    @test_logs (:info, r"Initial step failed") (:warn, r"Failure of the initial step") fit!(fm1; progress=false)
+    @test_logs (:info, r"Initial objective evaluation failed") (:warn, r"Failure of the initial ") fit!(fm1; progress=false)
     @test objective(fm1) ≈ objective(model) rtol=0.1
     # it would be great to test the handling of PosDefException after the first iteration
     # but this is surprisingly hard to trigger in a reliable way across platforms

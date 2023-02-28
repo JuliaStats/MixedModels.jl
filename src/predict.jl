@@ -1,7 +1,7 @@
 """
-    StatsBase.predict(m::LinearMixedModel, newdata;
+    StatsAPI.predict(m::LinearMixedModel, newdata;
                     new_re_levels=:missing)
-    StatsBase.predict(m::GeneralizedLinearMixedModel, newdata;
+    StatsAPI.predict(m::GeneralizedLinearMixedModel, newdata;
                     new_re_levels=:missing, type=:response)
 
 Predict response for new data.
@@ -60,13 +60,13 @@ difference between these terms, then you probably want `type=:response`.
 Regression weights are not yet supported in prediction.
 Similarly, offsets are also not supported for `GeneralizedLinearMixedModel`.
 """
-function StatsBase.predict(
+function StatsAPI.predict(
     m::LinearMixedModel, newdata::Tables.ColumnTable; new_re_levels=:missing
 )
     return _predict(m, newdata, m.β; new_re_levels)
 end
 
-function StatsBase.predict(
+function StatsAPI.predict(
     m::GeneralizedLinearMixedModel,
     newdata::Tables.ColumnTable;
     new_re_levels=:population,
@@ -99,7 +99,7 @@ function _predict(m::MixedModel{T}, newdata, β; new_re_levels) where {T}
     # (at least for the response)
 
     # add a response column
-    # we get type stability via constant propogation on `new_re_levels`
+    # we get type stability via constant propagation on `new_re_levels`
     y, mnew = let ytemp = ones(T, length(first(newdata)))
         f, contr = _abstractify_grouping(m.formula)
         respvars = StatsModels.termvars(f.lhs)
@@ -136,7 +136,7 @@ function _predict(m::MixedModel{T}, newdata, β; new_re_levels) where {T}
         for (grp, known_levels, data_levels) in
             zip(grps, levels.(m.reterms), levels.(mnew.reterms))
             if sort!(known_levels) != sort!(data_levels)
-                throw(ArgumentError("New level enountered in $grp"))
+                throw(ArgumentError("New level encountered in $grp"))
             end
         end
 
@@ -172,7 +172,7 @@ function _predict(m::MixedModel{T}, newdata, β; new_re_levels) where {T}
             for (lidx, ll) in enumerate(levels(newre[idx]))
                 oldloc = findfirst(isequal(ll), oldlevels)
                 if oldloc === nothing
-                    # missing is poisonous so propogates
+                    # missing is poisonous so propagates
                     B[:, lidx] .= missing
                 else
                     B[:, lidx] .= @view blupsold[idx][:, oldloc]
@@ -207,7 +207,7 @@ function _predict(m::MixedModel{T}, newdata, β; new_re_levels) where {T}
 end
 
 # yup, I got lazy on this one -- let the dispatched method handle kwarg checking
-function StatsBase.predict(m::MixedModel, newdata; kwargs...)
+function StatsAPI.predict(m::MixedModel, newdata; kwargs...)
     return predict(m, columntable(newdata); kwargs...)
 end
 

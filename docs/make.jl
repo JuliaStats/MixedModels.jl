@@ -1,6 +1,7 @@
 using Documenter
-using StatsBase
 using MixedModels
+using StatsAPI
+using StatsBase
 
 makedocs(;
     sitename="MixedModels",
@@ -18,4 +19,6 @@ makedocs(;
     ],
 )
 
-deploydocs(;repo = "github.com/JuliaStats/MixedModels.jl.git", push_preview = true, devbranch = "main")
+deploydocs(;
+    repo="github.com/JuliaStats/MixedModels.jl.git", push_preview=true, devbranch="main"
+)

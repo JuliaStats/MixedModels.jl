@@ -1,4 +1,7 @@
+using Aqua
 using MixedModels
+using Test
+
 import InteractiveUtils: versioninfo
 import LinearAlgebra: BLAS
 
@@ -13,7 +16,14 @@ else
     end
 end
 
+@testset "Aqua" begin
+    # we can't check for unbound type parameters
+    # because we actually need one at one point for _same_family()
+    Aqua.test_all(MixedModels; ambiguities=false, unbound_args=false)
+end
+
 include("utilities.jl")
+include("misc.jl")
 include("pivot.jl")
 include("UniformBlockDiagonal.jl")
 include("linalg.jl")

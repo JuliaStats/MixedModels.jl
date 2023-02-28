@@ -58,7 +58,7 @@ bar is automatically disabled for non-interactive (i.e. logging) contexts.
 
 !!! note
     Note that `use_threads=true` may not offer a performance boost and may even
-    decrease peformance if multithreaded linear algebra (BLAS) routines are available.
+    decrease performance if multithreaded linear algebra (BLAS) routines are available.
     In this case, threads at the level of the linear algebra may already occupy all
     processors/processor cores. There are plans to provide better support in coordinating
     Julia- and BLAS-level threads in the future.

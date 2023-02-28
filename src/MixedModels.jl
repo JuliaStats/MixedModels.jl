@@ -15,6 +15,7 @@ using ProgressMeter
 using SparseArrays
 using StaticArrays
 using Statistics
+using StatsAPI
 using StatsBase
 using StatsModels
 using StructTypes
@@ -22,17 +23,12 @@ using Tables
 using TypedTables
 
 using LinearAlgebra: BlasFloat, BlasReal, HermOrSym, PosDefException, copytri!
-using Base: Ryu
-using GLM: Link, canonicallink, linkfun, linkinv
+using Base: Ryu, require_one_based_indexing
+using DataAPI: levels, refpool, refarray, refvalue
+using GLM: Link, canonicallink, linkfun, linkinv, dispersion, dispersion_parameter
+using NLopt: Opt
 using StatsModels: TableRegressionModel
-
 using StatsFuns: log2π, normccdf
-
-import Base: *
-import DataAPI: levels, refpool, refarray, refvalue
-import GLM: dispersion, dispersion_parameter
-import NLopt: Opt
-import StatsBase: fit, fit!
 
 export @formula,
     AbstractReMat,
@@ -131,13 +127,12 @@ export @formula,
     sparseL,
     std,
     stderror,
+    stderror!,
     updateL!,
     varest,
     vcov,
     weights,
     zerocorr
-
-import Base: ==, *
 
 """
     MixedModel
@@ -184,6 +179,27 @@ include("grouping.jl")
 include("mimeshow.jl")
 include("serialization.jl")
 
-include("precompile_MixedModels.jl")
-_precompile_()
+using SnoopPrecompile
+
+@precompile_setup begin
+    # Putting some things in `setup` can reduce the size of the
+    # precompile file and potentially make loading faster.
+    sleepstudy = MixedModels.dataset(:sleepstudy)
+    contra = MixedModels.dataset(:contra)
+    @precompile_all_calls begin
+        # all calls in this block will be precompiled, regardless of whether
+        # they belong to your package or not (on Julia 1.8 and higher)
+
+        # these are relatively small models and so shouldn't increase precompile times all that much
+        # while still massively boosting load and TTFX times
+        fit(MixedModel,
+            @formula(reaction ~ 1 + days + (1 + days | subj)),
+            sleepstudy)
+        fit(MixedModel,
+            @formula(use ~ 1 + age + abs2(age) + urban + livch + (1 | urban & dist)),
+            contra,
+            Bernoulli())
+    end
+end
+
 end # module

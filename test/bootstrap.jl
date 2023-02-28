@@ -98,7 +98,7 @@ end
                                              use_threads=true, hide_progress=true)
         # even though it's bad practice with floating point, exact equality should
         # be a valid test here -- if everything is working right, then it's the exact
-        # same operations occuring within each bootstrap sample, which IEEE 754
+        # same operations occurring within each bootstrap sample, which IEEE 754
         # guarantees will yield the same result
         @test sort(bsamp_threaded.σ) == sort(bsamp.σ)
         @test sort(bsamp_threaded.θ) == sort(bsamp.θ)
@@ -124,7 +124,7 @@ end
                                       hide_progress=true)
     end
 
-    @testset "Bernoulli simulate! and GLMM boostrap" begin
+    @testset "Bernoulli simulate! and GLMM bootstrap" begin
         contra = dataset(:contra)
         # need a model with fast=false to test that we only
         # copy the optimizer constraints for θ and not β

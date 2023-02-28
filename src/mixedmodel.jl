@@ -14,7 +14,7 @@ function MixedModel(
     return LinearMixedModel(f, tbl; kwargs...)
 end
 
-function StatsBase.coefnames(m::MixedModel)
+function StatsAPI.coefnames(m::MixedModel)
     Xtrm = m.feterm
     return invpermute!(copy(Xtrm.cnames), Xtrm.piv)
 end
@@ -26,7 +26,7 @@ Return a vector of condition numbers of the λ matrices for the random-effects t
 """
 LinearAlgebra.cond(m::MixedModel) = cond.(m.λ)
 
-function StatsBase.dof(m::MixedModel)
+function StatsAPI.dof(m::MixedModel)
     return m.feterm.rank + length(m.parmap) + dispersion_parameter(m)
 end
 
@@ -36,21 +36,21 @@ end
   Return the residual degrees of freedom of the model.
 
 !!! note
-  The residual degrees of freedom for mixed-effects models is not clearly defined due to partial pooling.
-  The classical `nobs(m) - dof(m)` fails to capture the extra freedom granted by the random effects, but
-  `nobs(m) - nranef(m)` would overestimate the freedom granted by the random effects. `nobs(m) - sum(leverage(m))`
-  provides a nice balance based on the relative influence of each observation, but is computationally
-  expensive for large models. This problem is also fundamentally related to [long-standing debates](https://bbolker.github.io/mixedmodels-misc/glmmFAQ.html#why-doesnt-lme4-display-denominator-degrees-of-freedomp-values-what-other-options-do-i-have)
-  about the appropriate treatment of the denominator degrees of freedom for ``F``-tests.
-  In the future, MixedModels.jl may provide additional methods allowing the user to choose the computation
-  to use.
+    The residual degrees of freedom for mixed-effects models is not clearly defined due to partial pooling.
+    The classical `nobs(m) - dof(m)` fails to capture the extra freedom granted by the random effects, but
+    `nobs(m) - nranef(m)` would overestimate the freedom granted by the random effects. `nobs(m) - sum(leverage(m))`
+    provides a nice balance based on the relative influence of each observation, but is computationally
+    expensive for large models. This problem is also fundamentally related to [long-standing debates](https://bbolker.github.io/mixedmodels-misc/glmmFAQ.html#why-doesnt-lme4-display-denominator-degrees-of-freedomp-values-what-other-options-do-i-have)
+    about the appropriate treatment of the denominator degrees of freedom for ``F``-tests.
+    In the future, MixedModels.jl may provide additional methods allowing the user to choose the computation
+    to use.
 
 !!! warning
-   Currently, the residual degrees of freedom is computed as `nobs(m) - dof(m)`, but this may change in
-   the future without being considered a breaking change because there is no canonical definition of the
-   residual degrees of freedom in a mixed-effects model.
+    Currently, the residual degrees of freedom is computed as `nobs(m) - dof(m)`, but this may change in
+    the future without being considered a breaking change because there is no canonical definition of the
+    residual degrees of freedom in a mixed-effects model.
 """
-function StatsBase.dof_residual(m::MixedModel)
+function StatsAPI.dof_residual(m::MixedModel)
     # a better estimate might be nobs(m) - sum(leverage(m))
     # this version subtracts the number of variance parameters which isn't really a dimensional
     # and doesn't even agree with the definition for linear models
@@ -72,9 +72,9 @@ issingular(m::MixedModel, θ=m.θ) = any(lowerbd(m) .== θ)
 issingular(m::GeneralizedLinearMixedModel, θ=m.optsum.final) = any(lowerbd(m) .== θ)
 
 # FIXME: better to base this on m.optsum.returnvalue
-StatsBase.isfitted(m::MixedModel) = m.optsum.feval > 0
+StatsAPI.isfitted(m::MixedModel) = m.optsum.feval > 0
 
-StatsBase.meanresponse(m::MixedModel) = mean(m.y)
+StatsAPI.meanresponse(m::MixedModel) = mean(m.y)
 
 """
     modelmatrix(m::MixedModel)
@@ -84,11 +84,11 @@ Returns the model matrix `X` for the fixed-effects parameters, as returned by [`
 This is always the full model matrix in the original column order and from a field in the model
 struct.  It should be copied if it is to be modified.
 """
-StatsBase.modelmatrix(m::MixedModel) = m.feterm.x
+StatsAPI.modelmatrix(m::MixedModel) = m.feterm.x
 
-StatsBase.nobs(m::MixedModel) = length(m.y)
+StatsAPI.nobs(m::MixedModel) = length(m.y)
 
-StatsBase.predict(m::MixedModel) = fitted(m)
+StatsAPI.predict(m::MixedModel) = fitted(m)
 
 function retbl(mat, trm)
     nms = (fname(trm), Symbol.(trm.cnames)...)
@@ -106,7 +106,7 @@ function raneftables(m::MixedModel{T}; uscale=false) where {T}
     return NamedTuple{fnames(m)}((map(retbl, ranef(m; uscale=uscale), m.reterms)...,))
 end
 
-StatsBase.residuals(m::MixedModel) = response(m) .- fitted(m)
+StatsAPI.residuals(m::MixedModel) = response(m) .- fitted(m)
 
 """
     response(m::MixedModel)
@@ -117,9 +117,9 @@ For a linear mixed model this is a `view` of the last column of the `XyMat` fiel
 For a generalized linear mixed model this is the `m.resp.y` field.
 In either case it should be copied if it is to be modified.
 """
-StatsBase.response(m::MixedModel) = m.y
+StatsAPI.response(m::MixedModel) = m.y
 
-function StatsBase.responsename(m::MixedModel)
+function StatsAPI.responsename(m::MixedModel)
     cnm = coefnames(m.formula.lhs)
     return isa(cnm, Vector{String}) ? first(cnm) : cnm
 end
@@ -152,7 +152,7 @@ end
 Returns the variance-covariance matrix of the fixed effects.
 If `corr` is `true`, the correlation of the fixed effects is returned instead.
 """
-function StatsBase.vcov(m::MixedModel; corr=false)
+function StatsAPI.vcov(m::MixedModel; corr=false)
     Xtrm = m isa GeneralizedLinearMixedModel ? m.LMM.feterm : m.feterm
     iperm = invperm(Xtrm.piv)
     p = length(iperm)

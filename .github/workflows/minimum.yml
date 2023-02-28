@@ -1,4 +1,7 @@
-name: current release
+name: "minimum compat"
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
 on:
   push:
     branches:
@@ -17,15 +20,10 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        julia-version: [1]
+        julia-version: [1.8]
         julia-arch: [x64]
-        os: [ubuntu-18.04]
+        os: [ubuntu-20.04, macos-11, windows-2019]
     steps:
-      - name: Cancel Previous Runs
-        uses: styfle/cancel-workflow-action@0.9.1
-        with:
-          all_but_latest: true
-          access_token: ${{ github.token }}
       - uses: actions/checkout@v2
       - uses: julia-actions/setup-julia@v1
         with:
