@@ -2,7 +2,7 @@
 
 |**Documentation**|**Citation**|**Build Status**|**Code Coverage**| **Style Guide** |
 |:---------------:|:----------:|:--------------:|:---------------:|:----------------|
-|[![Stable Docs][docs-stable-img]][docs-stable-url] [![Dev Docs][docs-dev-img]][docs-dev-url] | [![DOI][doi-img]][doi-url] | [![Julia Current][current-img]][current-url] [![Julia 1.6 (LTS)][lts-img]][lts-url] [![Julia Nightly][nightly-img]][nightly-url] [![PkgEval][pkgeval-img]][pkgeval-url] | [![CodeCov][codecov-img]][codecov-url] | [![Code Style: Blue](https://img.shields.io/badge/code%20style-Blue-4495d1.svg)](https://github.com/invenia/BlueStyle) |
+|[![Stable Docs][docs-stable-img]][docs-stable-url] [![Dev Docs][docs-dev-img]][docs-dev-url] | [![DOI][doi-img]][doi-url] | [![Julia Current][current-img]][current-url] [![Julia Minimum Supported Version][minimum-img]][minimum-url] [![Julia Nightly][nightly-img]][nightly-url] [![PkgEval][pkgeval-img]][pkgeval-url] | [![CodeCov][codecov-img]][codecov-url] | [![Code Style: Blue](https://img.shields.io/badge/code%20style-Blue-4495d1.svg)](https://github.com/invenia/BlueStyle) |
 
 [doi-img]: https://zenodo.org/badge/9106942.svg
 [doi-url]: https://zenodo.org/badge/latestdoi/9106942

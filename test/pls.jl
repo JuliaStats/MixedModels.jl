@@ -483,7 +483,7 @@ end
         fmzc = models(:sleepstudy)[2]
         λ = first(fmzc.reterms).λ
         @test λ isa Diagonal{Float64, Vector{Float64}}
-        # implicit zerocorr via almagation
+        # implicit zerocorr via amalgamation
         fmnc = models(:sleepstudy)[3]
         λ = first(fmnc.reterms).λ
         @test λ isa Diagonal{Float64, Vector{Float64}}
