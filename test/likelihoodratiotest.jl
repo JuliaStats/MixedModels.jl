@@ -127,9 +127,9 @@ end
     @test MixedModels._iscomparable(gmf, gm0)
     @test !MixedModels._iscomparable(gmf2, gm0)
 
-    @test MixedModels._isnested(gmf.mm.m, gm0.X)
-    @test !MixedModels._isnested(gmf2.mm.m, gm0.X)
+    @test MixedModels._isnested(gmf.pp.X, gm0.X)
+    @test !MixedModels._isnested(gmf2.pp.X, gm0.X)
     # this skips the linear term so that the model matrices
     # have the same column rank
-    @test !MixedModels._isnested(gmf2.mm.m[:,Not(2)], gm0.X)
+    @test !MixedModels._isnested(gmf2.pp.X[:,Not(2)], gm0.X)
 end
