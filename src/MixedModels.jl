@@ -185,6 +185,7 @@ using SnoopPrecompile
     # precompile file and potentially make loading faster.
     sleepstudy = MixedModels.dataset(:sleepstudy)
     contra = MixedModels.dataset(:contra)
+    progress = false
     @precompile_all_calls begin
         # all calls in this block will be precompiled, regardless of whether
         # they belong to your package or not (on Julia 1.8 and higher)
@@ -193,11 +194,11 @@ using SnoopPrecompile
         # while still massively boosting load and TTFX times
         fit(MixedModel,
             @formula(reaction ~ 1 + days + (1 + days | subj)),
-            sleepstudy)
+            sleepstudy; progress)
         fit(MixedModel,
             @formula(use ~ 1 + age + abs2(age) + urban + livch + (1 | urban & dist)),
             contra,
-            Bernoulli())
+            Bernoulli(); progress)
     end
 end
 
