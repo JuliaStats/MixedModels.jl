@@ -65,7 +65,7 @@ function TableColumns(m::LinearMixedModel{T}) where {T}
 end
 
 function mkrow!(tc::TableColumns{T}, m::LinearMixedModel{T}, ζ::T) where {T}
-    @compat (; cnames, positions, v, corrpos) = tc
+    (; cnames, positions, v, corrpos) = tc
     v[1] = ζ
     MixedModels.fixef!(view(v, positions[:β]), m)
     v[first(positions[:σ])] = m.σ
@@ -90,14 +90,14 @@ end
 Return a Tuple of the standard deviation estimates of the random effects
 """
 function σvals(m::LinearMixedModel{T}) where {T}
-    @compat (; σ, reterms) = m
+    (; σ, reterms) = m
     isone(length(reterms)) && return σvals(only(reterms), σ)
     return (collect(Iterators.flatten(σvals.(reterms, σ)))...,)
 end
 =#
 
 function σvals!(v::AbstractVector{T}, m::LinearMixedModel{T}) where {T}
-    @compat (; σ, reterms) = m
+    (; σ, reterms) = m
     isone(length(reterms)) && return σvals!(v, only(reterms), σ)
     ind = firstindex(v)
     for t in m.reterms

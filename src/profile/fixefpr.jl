@@ -55,7 +55,7 @@ function betaprofile!(
 ) where {T}
     prm = pr.m
     refit!(prm, mul!(copyto!(pr.m.y, pr.y₀), pr.xⱼ, βⱼ, -1, 1); progress=false)
-    @compat (; positions, v) = tc
+    (; positions, v) = tc
     v[1] = (-1)^neg * sqrt(prm.objective - obj)
     getθ!(view(v, positions[:θ]), prm)
     v[first(positions[:σ])] = prm.σ
@@ -72,8 +72,8 @@ function profileβj!(
     val::NamedTuple, tc::TableColumns{T}, sym::Symbol; threshold=4
 ) where {T}
     m = val.m
-    @compat (; β, θ, σ, stderror, objective) = m
-    @compat (; cnames, v) = tc
+    (; β, θ, σ, stderror, objective) = m
+    (; cnames, v) = tc
     pnm = (; p=sym)
     j = parsej(sym)
     prj = FeProfile(m, tc, j)

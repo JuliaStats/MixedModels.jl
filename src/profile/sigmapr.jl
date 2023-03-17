@@ -1,7 +1,7 @@
 """
     refitσ!(m::LinearMixedModel{T}, σ::T, tc::TableColumns{T}, obj::T, neg::Bool)
 
-Refit the model `m` with the given value of `σ` and return a NamedTuple of information about the fit. 
+Refit the model `m` with the given value of `σ` and return a NamedTuple of information about the fit.
 
 `obj` and `neg` allow for conversion of the objective to the `ζ` scale and `tc` is used to return a NamedTuple
 """
@@ -30,7 +30,7 @@ end
 Return a Table of the profile of `σ` for model `m`.  The profile extends to where the magnitude of ζ exceeds `threshold`.
 """
 function profileσ(m::LinearMixedModel{T}, tc::TableColumns{T}; threshold=4) where {T}
-    @compat (; σ, optsum) = m
+    (; σ, optsum) = m
     isnothing(optsum.sigma) ||
         throw(ArgumentError("Can't profile σ, which is fixed at $(m.optsum.sigma)"))
     θ = copy(optsum.final)

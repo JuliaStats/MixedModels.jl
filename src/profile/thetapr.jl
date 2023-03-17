@@ -26,9 +26,9 @@ end
 function profileθj!(
     val::NamedTuple, sym::Symbol, tc::TableColumns{T}; threshold=4
 ) where {T}
-    @compat (; m, fwd, rev) = val
+    (; m, fwd, rev) = val
     optsum = m.optsum
-    @compat (; final, fmin, lowerbd) = optsum
+    (; final, fmin, lowerbd) = optsum
     j = parsej(sym)
     θ = copy(final)
     lbj = lowerbd[j]

@@ -17,9 +17,9 @@ end
 
 function profileσs!(val::NamedTuple, tc::TableColumns{T}; nzlb=1.0e-8) where {T}
     m = val.m
-    @compat (; λ, σ, β, optsum, parmap, reterms) = m
+    (; λ, σ, β, optsum, parmap, reterms) = m
     isnothing(optsum.sigma) || throw(ArgumentError("Can't profile vc's when σ is fixed"))
-    @compat (; initial, final, fmin, lowerbd) = optsum
+    (; initial, final, fmin, lowerbd) = optsum
     lowerbd .+= T(nzlb)                       # lower bounds must be > 0 b/c θ's occur in denominators
     saveinitial = copy(initial)
     copyto!(initial, max.(final, lowerbd))
