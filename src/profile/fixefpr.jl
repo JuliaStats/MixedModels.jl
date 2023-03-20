@@ -69,8 +69,8 @@ function betaprofile!(
 end
 
 function profileβj!(
-    val::NamedTuple, tc::TableColumns{T}, sym::Symbol; threshold=4
-) where {T}
+    val::NamedTuple, tc::TableColumns{T,N}, sym::Symbol; threshold=4
+) where {T,N}
     m = val.m
     (; β, θ, σ, stderror, objective) = m
     (; cnames, v) = tc
@@ -82,7 +82,7 @@ function profileβj!(
     tbl = [merge(pnm, mkrow!(tc, m, zero(T)))]
     while true
         ζ = betaprofile!(prj, tc, bb, j, objective, true)
-        push!(tbl, merge(pnm, NamedTuple{cnames,NTuple{length(cnames),T}}(tuple(v))))
+        push!(tbl, merge(pnm, NamedTuple{cnames,NTuple{N,T}}((v...,))))
         if abs(ζ) > threshold
             break
         end
@@ -92,7 +92,7 @@ function profileβj!(
     bb = β[j] + st
     while true
         ζ = betaprofile!(prj, tc, bb, j, objective, false)
-        push!(tbl, merge(pnm, NamedTuple{cnames,NTuple{length(cnames),T}}((v...,))))
+        push!(tbl, merge(pnm, NamedTuple{cnames,NTuple{N,T}}((v...,))))
         if abs(ζ) > threshold
             break
         end

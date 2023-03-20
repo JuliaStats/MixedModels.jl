@@ -6,8 +6,8 @@ A structure containing the column names for the numeric part of the profile tabl
 The struct also contains a Dict giving the column ranges for Symbols like `:σ` and `:β`.
 Finally it contains a scratch vector used to accumulate to values in a row of the profile table.
 """
-struct TableColumns{T<:AbstractFloat}
-    cnames::Vector{Symbol}
+struct TableColumns{T<:AbstractFloat,N}
+    cnames::NTuple{N,Symbol}
     positions::Dict{Symbol,UnitRange{Int}}
     v::Vector{T}
     corrpos::Vector{NTuple{3,Int}}
@@ -64,7 +64,7 @@ function TableColumns(m::LinearMixedModel{T}) where {T}
     return TableColumns((nmvec...,), positions, zeros(T, length(nmvec)), corrpos)
 end
 
-function mkrow!(tc::TableColumns{T}, m::LinearMixedModel{T}, ζ::T) where {T}
+function mkrow!(tc::TableColumns{T,N}, m::LinearMixedModel{T}, ζ::T) where {T,N}
     (; cnames, positions, v, corrpos) = tc
     v[1] = ζ
     MixedModels.fixef!(view(v, positions[:β]), m)
@@ -75,7 +75,7 @@ function mkrow!(tc::TableColumns{T}, m::LinearMixedModel{T}, ζ::T) where {T}
         ρvals!(view(v, positions[:ρs]), corrpos, m)
         setθ!(m, view(v, positions[:θ]))
     end
-    return NamedTuple{cnames,NTuple{length(cnames),T}}((v...,))
+    return NamedTuple{cnames,NTuple{N,T}}((v...,))
 end
 
 function parsej(sym::Symbol) # return the index from symbol names like :θ1, :θ01, etc.
