@@ -7,7 +7,7 @@ The struct also contains a Dict giving the column ranges for Symbols like `:σ` 
 Finally it contains a scratch vector used to accumulate to values in a row of the profile table.
 """
 struct TableColumns{T<:AbstractFloat}
-    cnames::Tuple
+    cnames::Vector{Symbol}
     positions::Dict{Symbol,UnitRange{Int}}
     v::Vector{T}
     corrpos::Vector{NTuple{3,Int}}
