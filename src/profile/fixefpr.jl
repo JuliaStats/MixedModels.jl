@@ -82,7 +82,7 @@ function profileβj!(
     tbl = [merge(pnm, mkrow!(tc, m, zero(T)))]
     while true
         ζ = betaprofile!(prj, tc, bb, j, objective, true)
-        push!(tbl, merge(pnm, NamedTuple{cnames,NTuple{length(cnames),T}}((v...,))))
+        push!(tbl, merge(pnm, NamedTuple{cnames,NTuple{length(cnames),T}}(tuple(v))))
         if abs(ζ) > threshold
             break
         end
