@@ -54,7 +54,7 @@ function betaprofile!(
     pr::FeProfile{T}, tc::TableColumns{T}, βⱼ::T, j::Integer, obj::T, neg::Bool
 ) where {T}
     prm = pr.m
-    refit!(prm, mul!(copyto!(pr.m.y, pr.y₀), pr.xⱼ, βⱼ, -1, 1); progress=false)
+    refit!(prm, mul!(copyto!(prm.y, pr.y₀), pr.xⱼ, βⱼ, -1, 1); progress=false)
     (; positions, v) = tc
     v[1] = (-1)^neg * sqrt(prm.objective - obj)
     getθ!(view(v, positions[:θ]), prm)
@@ -69,8 +69,8 @@ function betaprofile!(
 end
 
 function profileβj!(
-    val::NamedTuple, tc::TableColumns{T}, sym::Symbol; threshold=4
-) where {T}
+    val::NamedTuple, tc::TableColumns{T,N}, sym::Symbol; threshold=4
+) where {T,N}
     m = val.m
     (; β, θ, σ, stderror, objective) = m
     (; cnames, v) = tc
@@ -82,7 +82,7 @@ function profileβj!(
     tbl = [merge(pnm, mkrow!(tc, m, zero(T)))]
     while true
         ζ = betaprofile!(prj, tc, bb, j, objective, true)
-        push!(tbl, merge(pnm, NamedTuple{cnames,NTuple{length(cnames),T}}((v...,))))
+        push!(tbl, merge(pnm, NamedTuple{cnames,NTuple{N,T}}((v...,))))
         if abs(ζ) > threshold
             break
         end
@@ -92,7 +92,7 @@ function profileβj!(
     bb = β[j] + st
     while true
         ζ = betaprofile!(prj, tc, bb, j, objective, false)
-        push!(tbl, merge(pnm, NamedTuple{cnames,NTuple{length(cnames),T}}((v...,))))
+        push!(tbl, merge(pnm, NamedTuple{cnames,NTuple{N,T}}((v...,))))
         if abs(ζ) > threshold
             break
         end

@@ -32,7 +32,7 @@ Return a Table of the profile of `σ` for model `m`.  The profile extends to whe
 function profileσ(m::LinearMixedModel{T}, tc::TableColumns{T}; threshold=4) where {T}
     (; σ, optsum) = m
     isnothing(optsum.sigma) ||
-        throw(ArgumentError("Can't profile σ, which is fixed at $(m.optsum.sigma)"))
+        throw(ArgumentError("Can't profile σ, which is fixed at $(optsum.sigma)"))
     θ = copy(optsum.final)
     θinitial = copy(optsum.initial)
     _copy_away_from_lowerbd!(optsum.initial, optsum.final, optsum.lowerbd)
