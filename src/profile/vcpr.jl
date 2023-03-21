@@ -24,10 +24,10 @@ function profileσs!(val::NamedTuple, tc::TableColumns{T}; nzlb=1.0e-8) where {T
     saveinitial = copy(initial)
     copyto!(initial, max.(final, lowerbd))
     zetazero = mkrow!(tc, m, zero(T))         # parameter estimates
-    vcnms = filter(
-        sym -> (str = string(sym); startswith(str, 'σ') && length(str) > 1),
-        keys(first(val.tbl)),
-    )
+    vcnms = filter(keys(first(val.tbl)) do sym
+        str = string(sym)
+        return startswith(str, 'σ') && length(str) > 1
+    end
     ind = 0
     for t in reterms
         for r in eachrow(t.λ)
