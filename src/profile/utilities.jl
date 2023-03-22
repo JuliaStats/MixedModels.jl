@@ -67,10 +67,10 @@ end
 function mkrow!(tc::TableColumns{T,N}, m::LinearMixedModel{T}, ζ::T) where {T,N}
     (; cnames, positions, v, corrpos) = tc
     v[1] = ζ
-    MixedModels.fixef!(view(v, positions[:β]), m)
+    fixef!(view(v, positions[:β]), m)
     v[first(positions[:σ])] = m.σ
     σvals!(view(v, positions[:σs]), m)
-    MixedModels.getθ!(view(v, positions[:θ]), m)  # must do this first to preserve a copy
+    getθ!(view(v, positions[:θ]), m)  # must do this first to preserve a copy
     if length(corrpos) > 0
         ρvals!(view(v, positions[:ρs]), corrpos, m)
         setθ!(m, view(v, positions[:θ]))
