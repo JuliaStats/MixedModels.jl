@@ -2,7 +2,7 @@ MixedModels v4.9.0 Release Notes
 ==============================
 * Revise code in benchmarks to work with recent Julia and PkgBenchmark.jl [#667]
 * Julia minimum compat version raised to 1.8 because of BSplineKit [#665]
-* New kwarg `amalgamate` can be used to disable amalgation of random0effects terms sharing a single grouping variable. Generally, `amalgamate=false` will result in a slower fit, but may improve convergence in some pathological cases.  
+* New kwarg `amalgamate` can be used to disable amalgation of random0effects terms sharing a single grouping variable. Generally, `amalgamate=false` will result in a slower fit, but may improve convergence in some pathological cases. [#673]  
 
 MixedModels v4.8.2 Release Notes
 ==============================
@@ -399,3 +399,4 @@ Package dependencies
 [#663]: https://github.com/JuliaStats/MixedModels.jl/issues/663
 [#665]: https://github.com/JuliaStats/MixedModels.jl/issues/665
 [#667]: https://github.com/JuliaStats/MixedModels.jl/issues/667
+[#673]: https://github.com/JuliaStats/MixedModels.jl/issues/673
