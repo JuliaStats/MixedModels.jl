@@ -17,6 +17,7 @@ model_form = @formula(y ~ v1 + v2 + v3 + v4 + v5 +
 wts = data[!, :w]
 contrasts = Dict(:pl3 => Grouping(), :pl5 => Grouping());
 # contrasts = Dict(:pl3 => DummyCoding(), :pl5 => DummyCoding());
+fit(MixedModel, model_form, data; wts, contrasts, amalgamate=false)
 
 lm(@formula(y ~ v1 + v2 + v3 + v4 + v5), data; wts)
 # y ~ 1 + v1 + v2 + v3 + v4 + v5
