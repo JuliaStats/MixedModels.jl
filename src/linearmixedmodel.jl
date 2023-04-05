@@ -192,23 +192,13 @@ function StatsAPI.fit(
     ::Type{LinearMixedModel},
     f::FormulaTerm,
     tbl;
-    wts=[],
-    contrasts=Dict{Symbol,Any}(),
-    progress::Bool=true,
-    REML::Bool=false,
-    σ=nothing,
-    thin=typemax(Int),
+    kwargs...
 )
     return fit(
         LinearMixedModel,
         f,
         Tables.columntable(tbl);
-        wts,
-        contrasts,
-        progress,
-        REML,
-        σ,
-        thin,
+        kwargs...
     )
 end
 
@@ -222,8 +212,9 @@ function StatsAPI.fit(
     REML=false,
     σ=nothing,
     thin=typemax(Int),
+    amalgamate=true,
 )
-    return fit!(LinearMixedModel(f, tbl; contrasts, wts, σ); progress, REML, thin)
+    return fit!(LinearMixedModel(f, tbl; contrasts, wts, σ, amalgamate); progress, REML, thin)
 end
 
 function _offseterr()
@@ -238,18 +229,13 @@ function StatsAPI.fit(
     ::Type{MixedModel},
     f::FormulaTerm,
     tbl;
-    wts=[],
-    contrasts=Dict{Symbol,Any}(),
-    progress::Bool=true,
-    REML::Bool=false,
     offset=[],
-    σ=nothing,
-    thin=typemax(Int),
+    kwargs...,
 )
     return if !isempty(offset)
         _offseterr()
     else
-        fit(LinearMixedModel, f, tbl; wts, contrasts, progress, REML, σ, thin)
+        fit(LinearMixedModel, f, tbl; kwargs...)
     end
 end
 
@@ -259,15 +245,10 @@ function StatsAPI.fit(
     tbl,
     d::Normal,
     l::IdentityLink;
-    wts=[],
-    contrasts=Dict{Symbol,Any}(),
-    progress::Bool=true,
-    REML::Bool=false,
     offset=[],
-    σ=nothing,
-    thin=typemax(Int),
     fast=nothing,
     nAGQ=nothing,
+    kwargs...,
 )
     return if !isempty(offset)
         _offseterr()
@@ -275,7 +256,7 @@ function StatsAPI.fit(
         if !isnothing(fast) || !isnothing(nAGQ)
             @warn "fast and nAGQ arguments are ignored when fitting a LinearMixedModel"
         end
-        fit(LinearMixedModel, f, tbl; wts, contrasts, progress, REML, σ, thin)
+        fit(LinearMixedModel, f, tbl; kwargs...)
     end
 end
 
