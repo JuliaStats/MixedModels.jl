@@ -134,7 +134,7 @@ function LinearMixedModel(
 end
 
 """
-    LinearMixedModel(y, feterm, reterms, form, wts=[], σ=nothing)
+    LinearMixedModel(y, feterm, reterms, form, wts=[], σ=nothing; amalgamate=true)
 
 Private constructor for a `LinearMixedModel` given already assembled fixed and random effects.
 
@@ -342,7 +342,7 @@ end
 Return the conditional covariance matrices of the random effects as a `NamedTuple` of columntables
 """
 function condVartables(m::MixedModel{T}) where {T}
-    return NamedTuple{fnames(m)}((map(_cvtbl, condVar(m), m.reterms)...,))
+    return NamedTuple{_unique_fnames(m)}((map(_cvtbl, condVar(m), m.reterms)...,))
 end
 
 function _pushALblock!(A, L, blk)
@@ -575,6 +575,19 @@ Return the names of the grouping factors for the random-effects terms.
 """
 fnames(m::MixedModel) = (fname.(m.reterms)...,)
 
+function _unique_fnames(m::MixedModel)
+    fn = fnames(m)
+    ufn = unique(fn)
+    length(fn) == length(ufn) && return fn
+    fn = collect(fn)
+    d = Dict(ufn .=> 0)
+    for i in eachindex(fn)
+        (d[fn[i]] += 1) == 1 && continue
+        fn[i] = Symbol(string(fn[i], ".", d[fn[i]]))
+    end
+    return Tuple(fn)
+end
+
 """
     getθ(m::LinearMixedModel)
 
@@ -628,7 +641,7 @@ function Base.getproperty(m::LinearMixedModel{T}, s::Symbol) where {T}
     elseif s == :vcov
         vcov(m; corr=false)
     elseif s == :PCA
-        NamedTuple{fnames(m)}(PCA.(m.reterms))
+        PCA(m)
     elseif s == :pvalues
         ccdf.(Chisq(1), abs2.(coef(m) ./ stderror(m)))
     elseif s == :stderror
@@ -893,7 +906,7 @@ always 1.0 representing the complete proportion of the variance.
 """
 function rePCA(m::LinearMixedModel; corr::Bool=true)
     pca = PCA.(m.reterms, corr=corr)
-    return NamedTuple{fnames(m)}(getproperty.(pca, :cumvar))
+    return NamedTuple{_unique_fnames(m)}(getproperty.(pca, :cumvar))
 end
 
 """
@@ -904,7 +917,7 @@ covariance matrices or correlation matrices when `corr` is `true`.
 """
 
 function PCA(m::LinearMixedModel; corr::Bool=true)
-    return NamedTuple{fnames(m)}(PCA.(m.reterms, corr=corr))
+    return NamedTuple{_unique_fnames(m)}(PCA.(m.reterms, corr=corr))
 end
 
 """
