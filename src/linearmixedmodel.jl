@@ -42,16 +42,17 @@ struct LinearMixedModel{T<:AbstractFloat} <: MixedModel{T}
 end
 
 function LinearMixedModel(
-    f::FormulaTerm, tbl; contrasts=Dict{Symbol,Any}(), wts=[], σ=nothing
+    f::FormulaTerm, tbl; contrasts=Dict{Symbol,Any}(), wts=[], σ=nothing, amalgamate=true,
 )
-    return LinearMixedModel(f::FormulaTerm, Tables.columntable(tbl); contrasts, wts, σ)
+    return LinearMixedModel(f::FormulaTerm, Tables.columntable(tbl); contrasts, wts, σ, amalgamate)
 end
+
 const _MISSING_RE_ERROR = ArgumentError(
     "Formula contains no random effects; this isn't a mixed model. Perhaps you want to use GLM.jl?",
 )
 
 function LinearMixedModel(
-    f::FormulaTerm, tbl::Tables.ColumnTable; contrasts=Dict{Symbol,Any}(), wts=[], σ=nothing
+    f::FormulaTerm, tbl::Tables.ColumnTable; contrasts=Dict{Symbol,Any}(), wts=[], σ=nothing, amalgamate=true,
 )
     # TODO: perform missing_omit() after apply_schema() when improved
     # missing support is in a StatsModels release
@@ -74,11 +75,11 @@ function LinearMixedModel(
 
     y, Xs = modelcols(form, tbl)
 
-    return LinearMixedModel(y, Xs, form, wts, σ)
+    return LinearMixedModel(y, Xs, form, wts, σ, amalgamate)
 end
 
 """
-    LinearMixedModel(y, Xs, form, wts=[], σ=nothing)
+    LinearMixedModel(y, Xs, form, wts=[], σ=nothing, amalgamate=true)
 
 Private constructor for a LinearMixedModel.
 
@@ -96,6 +97,7 @@ function LinearMixedModel(
     form::FormulaTerm,
     wts=[],
     σ=nothing,
+    amalgamate=true,
 )
     T = promote_type(Float64, float(eltype(y)))  # ensure eltype of model matrices is at least Float64
 
@@ -128,7 +130,7 @@ function LinearMixedModel(
         end
     end
     isempty(reterms) && throw(_MISSING_RE_ERROR)
-    return LinearMixedModel(convert(Array{T}, y), only(feterms), reterms, form, wts, σ)
+    return LinearMixedModel(convert(Array{T}, y), only(feterms), reterms, form, wts, σ, amalgamate)
 end
 
 """
@@ -152,10 +154,13 @@ function LinearMixedModel(
     form::FormulaTerm,
     wts=[],
     σ=nothing,
+    amalgamate=true,
 ) where {T}
     # detect and combine RE terms with the same grouping var
-    if length(reterms) > 1
-        reterms = amalgamate(reterms)
+    if length(reterms) > 1 && amalgamate
+        # okay, this looks weird, but it allows us to have the kwarg with the same name
+        # as the internal function
+        reterms = MixedModels.amalgamate(reterms)
     end
 
     sort!(reterms; by=nranef, rev=true)
