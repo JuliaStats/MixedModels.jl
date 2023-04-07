@@ -222,6 +222,12 @@ StatsModels.degree(t::ZeroCorr) = StatsModels.degree(t.term)
 # cf https://github.com/JuliaStats/StatsModels.jl/blob/41b025409af03c0e019591ac6e817b22efbb4e17/src/terms.jl#L421-L422
 StatsModels.degree(t::FunctionTerm{typeof(zerocorr)}) = StatsModels.degree(only(t.args))
 
+Base.show(io::IO, t::ZeroCorr) = Base.show(io, MIME"text/plain"(), t)
+function Base.show(io::IO, ::MIME"text/plain", t::ZeroCorr)
+    # ranefterms already show with parens
+    return print(io, "zerocorr", t.term)
+end
+
 function StatsModels.apply_schema(
     t::FunctionTerm{typeof(zerocorr)}, sch::MultiSchema, Mod::Type{<:MixedModel}
 )
