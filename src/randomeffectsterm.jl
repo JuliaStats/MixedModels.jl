@@ -217,6 +217,11 @@ zerocorr(x) = ZeroCorr(x)
 # for schema extraction (from runtime-created zerocorr)
 StatsModels.terms(t::ZeroCorr) = StatsModels.terms(t.term)
 StatsModels.termvars(t::ZeroCorr) = StatsModels.termvars(t.term)
+StatsModels.degree(t::ZeroCorr) = StatsModels.degree(t.term)
+# dirty rotten no good ugly hack: make sure zerocorr ranef terms sort appropriately
+# cf https://github.com/JuliaStats/StatsModels.jl/blob/41b025409af03c0e019591ac6e817b22efbb4e17/src/terms.jl#L421-L422
+StatsModels.degree(t::FunctionTerm{typeof(zerocorr)}) = StatsModels.degree(only(t.args))
+
 
 function StatsModels.apply_schema(
     t::FunctionTerm{typeof(zerocorr)}, sch::MultiSchema, Mod::Type{<:MixedModel}
