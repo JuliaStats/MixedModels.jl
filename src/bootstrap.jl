@@ -54,10 +54,6 @@ performance benefits.
 families with a dispersion parameter.
 - `hide_progress` can be used to disable the progress bar. Note that the progress
 bar is automatically disabled for non-interactive (i.e. logging) contexts.
-
-!!! warning
-    The PRNG shared between threads is locked using `Threads.SpinLock`, which
-    should not be used recursively. Do not wrap `parametricbootstrap` in an outer `SpinLock`.
 """
 function parametricbootstrap(
     rng::AbstractRNG,
