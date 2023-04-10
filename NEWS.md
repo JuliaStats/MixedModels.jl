@@ -1,6 +1,8 @@
 MixedModels v4.9.0 Release Notes
 ==============================
 * Support `StatsModels` 0.7, drop support for `StatsModels` 0.6. [#664]
+* Revise code in benchmarks to work with recent Julia and PkgBenchmark.jl [#667]
+* Julia minimum compat version raised to 1.8 because of BSplineKit [#665]
 
 MixedModels v4.8.2 Release Notes
 ==============================
@@ -293,7 +295,7 @@ Principal components
 
 * An `AbstractReMat` type has now been introduced to support [#380] work on constrained
   random-effects structures and random-effects structures appropriate for applications
-  in GLM-based decovolution as used in fMRI and EEG (see e.g. [unfold.jl](https://github.com/unfoldtoolbox/unfold.jl).)
+  in GLM-based deconvolution as used in fMRI and EEG (see e.g. [unfold.jl](https://github.com/unfoldtoolbox/unfold.jl).)
 * Similarly, a constructor for `FeMat{::SparseMatrixCSC,S}` has been introduced [#309].
   Currently, this constructor assumes a full-rank matrix, but the work on rank
   deficiency may be extended to this constructor as well.
@@ -396,3 +398,5 @@ Package dependencies
 [#657]: https://github.com/JuliaStats/MixedModels.jl/issues/657
 [#663]: https://github.com/JuliaStats/MixedModels.jl/issues/663
 [#664]: https://github.com/JuliaStats/MixedModels.jl/issues/664
+[#665]: https://github.com/JuliaStats/MixedModels.jl/issues/665
+[#667]: https://github.com/JuliaStats/MixedModels.jl/issues/667
