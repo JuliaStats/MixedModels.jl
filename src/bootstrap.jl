@@ -76,7 +76,10 @@ function parametricbootstrap(
 
     β_names = (Symbol.(fixefnames(morig))...,)
 
-    use_threads && Base.depwarn("use_threads is deprecated and will be removed in a future release", :parametricbootstrap)
+    use_threads && Base.depwarn(
+        "use_threads is deprecated and will be removed in a future release",
+        :parametricbootstrap,
+    )
     samp = replicate(n; hide_progress=hide_progress) do
         simulate!(rng, m; β, σ, θ)
         refit!(m; progress=false)
