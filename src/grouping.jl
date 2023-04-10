@@ -38,7 +38,7 @@ function _grouping_vars(f::FormulaTerm)
     # if there is only one term on the RHS, then you don't have an iterator
     rhs = f.rhs isa AbstractTerm ? (f.rhs,) : f.rhs
     re = filter(x -> x isa RE_FUNCTION_TERM, rhs)
-    grping = unique!(mapreduce(x -> x.args_parsed[end], vcat, re; init=[]))
+    grping = unique!(mapreduce(x -> x.args[end], vcat, re; init=[]))
     # XXX how to handle interaction terms in Grouping?
     # for now, we just don't.
     return grping = mapreduce(vcat, grping; init=Symbol[]) do g
