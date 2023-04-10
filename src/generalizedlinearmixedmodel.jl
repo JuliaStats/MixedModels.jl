@@ -403,8 +403,18 @@ function GeneralizedLinearMixedModel(
     constresponse || updateL!(LMM)
     # fit a glm to the fixed-effects only
     T = eltype(LMM.Xymat)
-    gl = glm(LMM.X, y, d, l; wts=convert(Vector{T}, wts), offset=convert(Vector{T}, offset))
-    β = coef(gl)
+    # newer versions of GLM (>1.8.0) have a kwarg dropcollinear=true
+    # which creates problems for the empty fixed-effects case during fitting
+    # so just don't allow fitting
+    # XXX unfortunately, this means we have double-rank deficiency detection
+    # TODO: construct GLM by hand so that we skip collinearity checks
+    # TODO: extend this so that we never fit a GLM when initializing from LMM
+    dofit = size(LMM.X, 2) != 0 # GLM.jl kwarg
+    gl = glm(LMM.X, y, d, l;
+        wts=convert(Vector{T}, wts),
+        dofit,
+        offset=convert(Vector{T}, offset))
+    β = dofit ? coef(gl) : T[]
     u = [fill(zero(eltype(y)), vsize(t), nlevs(t)) for t in LMM.reterms]
     # vv is a template vector used to initialize fields for AGQ
     # it is empty unless there is a single random-effects term

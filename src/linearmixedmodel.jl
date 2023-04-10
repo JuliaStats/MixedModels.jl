@@ -166,7 +166,7 @@ function LinearMixedModel(
 
     sort!(reterms; by=nranef, rev=true)
     Xy = FeMat(feterm, vec(y))
-    sqrtwts = sqrt.(convert(Vector{T}, wts))
+    sqrtwts = map!(sqrt, Vector{T}(undef, length(wts)), wts)
     reweight!.(reterms, Ref(sqrtwts))
     reweight!(Xy, sqrtwts)
     A, L = createAL(reterms, Xy)
@@ -563,7 +563,7 @@ function fixef!(v::AbstractVector{Tv}, m::LinearMixedModel{T}) where {Tv,T}
     for j in 1:r
         v[j] = XyL[k, j]
     end
-    ldiv!(feL(m)', length(v) == r ? v : view(v, 1:r))
+    ldiv!(L', length(v) == r ? v : view(v, 1:r))
     return v
 end
 
@@ -1127,7 +1127,7 @@ Return the denominator for penalized sums-of-squares.
 
 For MLE, this value is the number of observations. For REML, this
 value is the number of observations minus the rank of the fixed-effects matrix.
-The difference is analagous to the use of n or n-1 in the denominator when
+The difference is analogous to the use of n or n-1 in the denominator when
 calculating the variance.
 """
 function ssqdenom(m::LinearMixedModel)::Int

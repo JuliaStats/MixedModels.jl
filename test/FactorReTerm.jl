@@ -157,6 +157,12 @@ end
         @test zc.rhs.sym == :subj
     end
 
+    @testset "Amalgamation of ZeroCorr with other terms" begin
+        f = @formula(reaction ~ 1 + days + (1|subj) + zerocorr(days|subj))
+        m = LMM(f, dataset(:sleepstudy), contrasts = Dict(:days => DummyCoding()))
+        re = only(m.reterms)
+        @test length(re.cnames) == length(unique(re.cnames)) == 10
+    end
 end
 
 # FIXME: need to replace these will explicit calls to the various StatsModels functions
