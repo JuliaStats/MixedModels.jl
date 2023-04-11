@@ -124,21 +124,18 @@ end
 _is_logging(io) = isa(io, Base.TTY) == false || (get(ENV, "CI", nothing) == "true")
 
 """
-    replicate(f::Function, n::Integer; use_threads=false)
+    replicate(f::Function, n::Integer; hide_progress=false)
 
 Return a vector of the values of `n` calls to `f()` - used in simulations where the value of `f` is stochastic.
 
 `hide_progress` can be used to disable the progress bar. Note that the progress
 bar is automatically disabled for non-interactive (i.e. logging) contexts.
-
-!!! warning
-    If `f()` is not thread-safe or depends on a non thread-safe RNG,
-    then you must set `use_threads=false`. Also note that ordering of replications
-    is not guaranteed when `use_threads=true`, although the replications are not
-    otherwise affected for thread-safe `f()`.
 """
 function replicate(f::Function, n::Integer; use_threads=false, hide_progress=false)
-    # no macro version yet: https://github.com/timholy/ProgressMeter.jl/issues/143
+    use_threads && Base.depwarn(
+        "use_threads is deprecated and will be removed in a future release",
+        :parametricbootstrap,
+    )
     # and we want some advanced options
     p = Progress(n; output=Base.stderr, enabled=!hide_progress && !_is_logging(stderr))
     # get the type
@@ -146,17 +143,11 @@ function replicate(f::Function, n::Integer; use_threads=false, hide_progress=fal
     next!(p)
     # pre-allocate
     results = [rr for _ in Base.OneTo(n)]
-    if use_threads
-        Threads.@threads for idx in 2:n
-            results[idx] = f()
-            next!(p)
-        end
-    else
-        for idx in 2:n
-            results[idx] = f()
-            next!(p)
-        end
+    for idx in 2:n
+        results[idx] = f()
+        next!(p)
     end
+    finish!(p)
     return results
 end
 
