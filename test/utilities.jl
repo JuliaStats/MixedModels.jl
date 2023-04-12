@@ -40,17 +40,7 @@ end
 end
 
 @testset "threaded_replicate" begin
-	rng = StableRNG(42);
-	single_thread = replicate(10;use_threads=false) do; only(randn(rng, 1)) ; end
-	rng = StableRNG(42);
-	multi_thread = replicate(10;use_threads=true) do
-		if Threads.threadid() % 2 == 0
-			sleep(0.001)
-		end
-		r = only(randn(rng, 1));
-	end
-
-	@test all(sort!(single_thread) .≈ sort!(multi_thread))
+	@test_logs (:warn, r"use_threads is deprecated") replicate(string, 1; use_threads=true)
 end
 
 @testset "datasets" begin

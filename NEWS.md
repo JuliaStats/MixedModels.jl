@@ -1,5 +1,10 @@
+MixedModels v4.10.0 Release Notes
+==============================
+* Multithreading in `parametricbootstrap` with `use_threads` is now deprecated and a noop. With improvements in BLAS threading, multithreading at the Julia level did not help performance and sometimes hurt it. [#674]
+
 MixedModels v4.9.0 Release Notes
 ==============================
+* Support `StatsModels` 0.7, drop support for `StatsModels` 0.6. [#664]
 * Revise code in benchmarks to work with recent Julia and PkgBenchmark.jl [#667]
 * Julia minimum compat version raised to 1.8 because of BSplineKit [#665]
 
@@ -396,5 +401,7 @@ Package dependencies
 [#653]: https://github.com/JuliaStats/MixedModels.jl/issues/653
 [#657]: https://github.com/JuliaStats/MixedModels.jl/issues/657
 [#663]: https://github.com/JuliaStats/MixedModels.jl/issues/663
+[#664]: https://github.com/JuliaStats/MixedModels.jl/issues/664
 [#665]: https://github.com/JuliaStats/MixedModels.jl/issues/665
 [#667]: https://github.com/JuliaStats/MixedModels.jl/issues/667
+[#674]: https://github.com/JuliaStats/MixedModels.jl/issues/674

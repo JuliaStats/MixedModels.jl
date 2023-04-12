@@ -118,7 +118,7 @@ m2 = fit(
 DisplayAs.Text(ans) # hide
 ```
 ```@example Main
-samp2 = parametricbootstrap(rng, 10_000, m2, use_threads=true);
+samp2 = parametricbootstrap(rng, 10_000, m2);
 df2 = DataFrame(samp2.allpars);
 first(df2, 10)
 ```

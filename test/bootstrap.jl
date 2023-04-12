@@ -94,16 +94,8 @@ end
     @test propertynames(coefp) == [:iter, :coefname, :β, :se, :z, :p]
 
     @testset "threaded bootstrap" begin
-        bsamp_threaded = parametricbootstrap(MersenneTwister(1234321), 100, fm;
-                                             use_threads=true, hide_progress=true)
-        # even though it's bad practice with floating point, exact equality should
-        # be a valid test here -- if everything is working right, then it's the exact
-        # same operations occurring within each bootstrap sample, which IEEE 754
-        # guarantees will yield the same result
-        @test sort(bsamp_threaded.σ) == sort(bsamp.σ)
-        @test sort(bsamp_threaded.θ) == sort(bsamp.θ)
-        @test sort(columntable(bsamp_threaded.β).β) == sort(columntable(bsamp.β).β)
-        @test sum(issingular(bsamp)) == sum(issingular(bsamp_threaded))
+        @test_logs (:warn, r"use_threads is deprecated") parametricbootstrap(MersenneTwister(1234321), 1, fm;
+                                                                             use_threads=true, hide_progress=true)
     end
 
     @testset "zerocorr + Base.length + ftype" begin
