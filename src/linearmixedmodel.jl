@@ -57,8 +57,8 @@ function _schematize(f, tbl, contrasts)
     # XXX how to handle the same variable in FE and RE?
     # prefer user-specified contrasts if they override this: if something in the FE and RE,
     # then it will work as long as you specify the contrasts
-    contrasts = merge(Dict{Symbol, Any}(g => Grouping() for g in _grouping_vars(f)),
-                      contrasts)
+    contrasts = merge(Dict{Symbol,Any}(g => Grouping() for g in _grouping_vars(f)),
+        contrasts)
     sch = schema(f, tbl, contrasts)
     return apply_schema(f, sch, LinearMixedModel)
 end

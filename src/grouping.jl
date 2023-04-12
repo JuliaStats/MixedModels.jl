@@ -56,7 +56,12 @@ end
 # this arises when there's an interaction as a grouping variable without a corresponding
 # non-interaction grouping, e.g.urban&dist in the contra dataset
 # adapted from https://github.com/JuliaStats/StatsModels.jl/blob/463eb0acb49bc5428374d749c4da90ea2a6c74c4/src/schema.jl#L355-L372
-function StatsModels.apply_schema(t::CategoricalTerm{Grouping}, schema::FullRank, Mod::Type{<:MixedModel}, context::AbstractTerm)
+function StatsModels.apply_schema(
+    t::CategoricalTerm{Grouping},
+    schema::FullRank,
+    Mod::Type{<:MixedModel},
+    context::AbstractTerm,
+)
     aliased = drop_term(context, t)
     @debug "$t in context of $context: aliases $aliased\n  seen already: $(schema.already)"
     for seen in schema.already
@@ -72,5 +77,5 @@ function StatsModels.apply_schema(t::CategoricalTerm{Grouping}, schema::FullRank
     new_contrasts = StatsModels.ContrastsMatrix(Grouping(), t.contrasts.levels)
     t = CategoricalTerm(t.sym, new_contrasts)
     @debug "  aliased term absent, repairing: $t"
-    t
+    return t
 end
