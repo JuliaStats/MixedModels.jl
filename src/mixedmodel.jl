@@ -92,7 +92,7 @@ StatsAPI.predict(m::MixedModel) = fitted(m)
 
 function retbl(mat, trm)
     nms = (fname(trm), Symbol.(trm.cnames)...)
-    return Table(
+    return DictTable(
     [NamedTuple{nms}((l, view(mat, :, i)...),) for (i, l) in enumerate(trm.levels)]
 )
 end
@@ -100,7 +100,10 @@ end
 """
     raneftables(m::MixedModel; uscale = false)
 
-Return the conditional means of the random effects as a `NamedTuple` of `DictTable`s
+Return the conditional means of the random effects as a `NamedTuple` of Tables.jl-compliant tables.
+	
+!!! note
+    The API guarantee is only that the NamedTuple contains Tables.jl tables and not on the particular concrete type of each table.
 """
 function raneftables(m::MixedModel{T}; uscale=false) where {T}
     return NamedTuple{fnames(m)}((map(retbl, ranef(m; uscale=uscale), m.reterms)...,))

@@ -19,11 +19,18 @@ Predict response for new data.
     constructing the model matrices.
 
 !!! warning
-    Models are assumed to be full rank.
-
-!!! warning
     These methods construct an entire MixedModel behind the scenes and
     as such may use a large amount of memory when `newdata` is large.
+
+!!! warning
+    Rank-deficiency can lead to surprising but consistent behavior.
+    For example, if there are two perfectly collinear predictors `A`
+    and `B` (e.g. constant multiples of each other), then it is possible
+    that `A` will be pivoted out in the fitted model and thus the
+    associated coefficient is set to zero. If predictions are then
+    generated on new data where `B` has been set to zero but `A` has
+    not, then there will no contribution from neither `A` nor `B`
+    in the resulting predictions.
 
 The keyword argument `new_re_levels` specifies how previously unobserved
 values of the grouping variable are handled. Possible values are:
@@ -63,7 +70,7 @@ Similarly, offsets are also not supported for `GeneralizedLinearMixedModel`.
 function StatsAPI.predict(
     m::LinearMixedModel, newdata::Tables.ColumnTable; new_re_levels=:missing
 )
-    return _predict(m, newdata, m.β; new_re_levels)
+    return _predict(m, newdata, coef(m)[m.feterm.piv]; new_re_levels)
 end
 
 function StatsAPI.predict(
@@ -73,13 +80,14 @@ function StatsAPI.predict(
     type=:response,
 )
     type in (:linpred, :response) || throw(ArgumentError("Invalid value for type: $(type)"))
-
-    y = _predict(m.LMM, newdata, m.β; new_re_levels)
+    # want pivoted but not truncated
+    y = _predict(m.LMM, newdata, coef(m)[m.feterm.piv]; new_re_levels)
 
     return type == :linpred ? y : broadcast!(Base.Fix1(linkinv, Link(m)), y, y)
 end
 
 # β is separated out here because m.β != m.LMM.β depending on how β is estimated for GLMM
+# also β should already be pivoted but NOT truncated in the rank deficient case
 function _predict(m::MixedModel{T}, newdata, β; new_re_levels) where {T}
     new_re_levels in (:population, :missing, :error) ||
         throw(ArgumentError("Invalid value for new_re_levels: $(new_re_levels)"))
@@ -118,8 +126,9 @@ function _predict(m::MixedModel{T}, newdata, β; new_re_levels) where {T}
         ytemp, lmm
     end
 
+    pivotmatch = mnew.feterm.piv[m.feterm.piv]
     grps = fnames(m)
-    mul!(y, mnew.X, β)
+    mul!(y, view(mnew.X, :, pivotmatch), β)
     # mnew.reterms for the correct Z matrices
     # ranef(m) for the BLUPs from the original fit
 
