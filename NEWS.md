@@ -1,3 +1,7 @@
+MixedModels v4.11.0 Release Notes
+==============================
+* `raneftables` returns a `NamedTuple` where the names are the grouping factor names and the values are some `Tables.jl`-compatible type.  Currently this type is a `DictTable` from `TypedTables.jl`. [#634]
+
 MixedModels v4.10.0 Release Notes
 ==============================
 * Rank deficiency in prediction is now supported, both when the original model was fit to rank-deficient data and when the new data are rank deficient. The behavior is consistent but may be surprising when both old and new data are rank deficient. See the `predict` docstring for an example. [#676]
@@ -396,6 +400,7 @@ Package dependencies
 [#614]: https://github.com/JuliaStats/MixedModels.jl/issues/614
 [#615]: https://github.com/JuliaStats/MixedModels.jl/issues/615
 [#628]: https://github.com/JuliaStats/MixedModels.jl/issues/628
+[#634]: https://github.com/JuliaStats/MixedModels.jl/issues/634
 [#637]: https://github.com/JuliaStats/MixedModels.jl/issues/637
 [#648]: https://github.com/JuliaStats/MixedModels.jl/issues/648
 [#651]: https://github.com/JuliaStats/MixedModels.jl/issues/651
