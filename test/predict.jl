@@ -81,6 +81,61 @@ end
         @test_throws ArgumentError predict(m, slpm)
         fill!(slpm.reaction, missing)
         @test_throws ArgumentError predict(m, slpm)
+
+    end
+
+    @testset "rank deficiency" begin
+        @testset "in original fit" begin
+            refvals = predict(first(models(:sleepstudy)), slp)
+
+            slprd = transform(slp, :days => ByRow(x -> 2x) => :days2)
+            m = fit(MixedModel, @formula(reaction ~ 1 + days + days2 + (1|subj)), slprd; progress=false)
+            # predict assumes that X is the correct length and stored pivoted
+            # so these first two tests will fail if we change that storage detail
+            @test size(m.X) == (180, 3)
+            @test all(2 .* view(m.X, :, m.feterm.piv[2]) .== view(m.X, :, m.feterm.piv[3]))
+            @test predict(m, slprd) == refvals
+
+            slprd0 = transform(slp, :days => zero => :days0)
+            m = fit(MixedModel, @formula(reaction ~ 1 + days0 + days + (1|subj)), slprd0; progress=false)
+            @test predict(m, slprd0) == refvals
+            # change the formula order slightly so that the original ordering and hence the
+            # permutation vector for pivoting isn't identical
+            m = fit(MixedModel, @formula(reaction ~ 1 + days + days0 + (1|subj)), slprd0; progress=false)
+            @test predict(m, slprd0) == refvals
+        end
+
+        @testset "in newdata" begin
+            mref = first(models(:sleepstudy))
+            # remove days
+            refvals = fitted(mref) .- view(mref.X, :, 2) * mref.β[2]
+            slp0 = transform(slp, :days => zero => :days)
+            vals = predict(mref, slp0)
+            @test all(refvals .≈ vals)
+        end
+
+        @testset "in both" begin
+            # now what happens when old and new are rank deficient
+            mref = first(models(:sleepstudy))
+            # remove days
+            refvals = fitted(mref) .- view(mref.X, :, 2) * mref.β[2]
+            # days gets pivoted out
+            slprd = transform(slp, :days => ByRow(x -> 2x) => :days2)
+            m = fit(MixedModel, @formula(reaction ~ 1 + days + days2 + (1|subj)), slprd; progress=false)
+            # days2 gets pivoted out
+            slp0 = transform(slp, :days => zero => :days2)
+            vals = predict(m, slp0)
+            # but in the original fit, days gets pivoted out, so its coef is zero
+            # and now we have a column of zeros for days2
+            # leaving us with only the intercept
+            # this is consistent behavior
+            @test all(refvals .≈ vals)
+
+            slp1 = transform(slp, :days => ByRow(one) => :days2)
+            vals = predict(m, slp1)
+            refvals = fitted(mref) .- view(mref.X, :, 2) * mref.β[2] .+ last(fixef(m))
+            @test all(refvals .≈ vals)
+        end
     end
 
     @testset "transformed response" begin
@@ -124,4 +179,5 @@ end
             @test predict(gm0, contra; type=:response) ≈ gm0.resp.mu rtol=0.01
         end
     end
+
 end
