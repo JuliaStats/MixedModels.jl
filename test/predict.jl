@@ -111,8 +111,9 @@ end
 
     @testset "GLMM" begin
         contra = dataset(:contra)
+        contrasts = CONTRASTS[:contra]
         for fast in [true, false]
-            gm0 = fit(MixedModel, first(gfms[:contra]), contra, Bernoulli(); fast, progress=false)
+            gm0 = fit(MixedModel, first(gfms[:contra]), contra, Bernoulli(); fast, progress=false, contrasts)
 
             @test_throws ArgumentError predict(gm0, contra; type=:doh)
 

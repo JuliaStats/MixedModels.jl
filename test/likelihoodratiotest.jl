@@ -92,8 +92,9 @@ end
     cc.usenum = ifelse.(cc.use .== "Y", 1 , 0)
     gmf = glm(@formula(usenum ~ 1+age+urban+livch), cc, Bernoulli());
     gmf2 = glm(@formula(usenum ~ 1+age+abs2(age)+urban+livch), cc, Bernoulli());
-    gm0 = fit(MixedModel, @formula(use ~ 1+age+urban+livch+(1|urban&dist)), contra, Bernoulli(), fast=true, progress=false);
-    gm1 = fit(MixedModel, @formula(use ~ 1+age+abs2(age)+urban+livch+(1|urban&dist)), contra, Bernoulli(), fast=true, progress=false);
+    contrasts = CONTRASTS[:contra]
+    gm0 = fit(MixedModel, @formula(use ~ 1+age+urban+livch+(1|urban&dist)), contra, Bernoulli(); fast=true, progress=false, contrasts)
+    gm1 = fit(MixedModel, @formula(use ~ 1+age+abs2(age)+urban+livch+(1|urban&dist)), contra, Bernoulli(); fast=true, progress=false, contrasts)
 
     lrt = likelihoodratiotest(gmf, gm1)
     @test [-2 * loglikelihood(gmf), deviance(gm1)] ≈ lrt.deviance
@@ -112,12 +113,12 @@ end
     @test length(lrt.formulae) == 2
 
     # mismatched links
-    gm_probit = fit(MixedModel, @formula(use ~ 1+age+urban+livch+(1|urban&dist)), contra, Bernoulli(), ProbitLink(), fast=true, progress=false);
+    gm_probit = fit(MixedModel, @formula(use ~ 1+age+urban+livch+(1|urban&dist)), contra, Bernoulli(), ProbitLink(); fast=true, progress=false, contrasts);
     @test_throws ArgumentError likelihoodratiotest(gmf, gm_probit)
     @test_throws ArgumentError likelihoodratiotest(gm0, gm_probit)
 
     # mismatched families
-    gm_poisson = fit(MixedModel, @formula(use ~ 1+age+urban+livch+(1|urban&dist)), contra, Poisson(), fast=true, progress=false);
+    gm_poisson = fit(MixedModel, @formula(use ~ 1+age+urban+livch+(1|urban&dist)), contra, Poisson(); fast=true, progress=false, contrasts);
     @test_throws ArgumentError likelihoodratiotest(gmf, gm_poisson)
     @test_throws ArgumentError likelihoodratiotest(gm0, gm_poisson)
 
