@@ -1,6 +1,10 @@
 using MixedModels
 using MixedModels: dataset
 
+@isdefined(CONTRASTS) || const global CONTRASTS = Dict(
+    :contra => Dict(:urban => DummyCoding())
+)
+
 @isdefined(gfms) || const global gfms = Dict(
     :cbpp => [@formula((incid/hsz) ~ 1 + period + (1|herd))],
     :contra => [@formula(use ~ 1+age+abs2(age)+urban+livch+(1|urban&dist)),
@@ -45,7 +49,8 @@ using MixedModels: dataset
 @isdefined(allfms) || const global allfms = merge(fms, gfms)
 
 function models(nm::Symbol)
+    contrasts = get(CONTRASTS, nm, Dict{Symbol, Any}())
     get!(fittedmodels, nm) do
-        [fit(MixedModel, f, dataset(nm); progress=false) for f in allfms[nm]]
+        [fit(MixedModel, f, dataset(nm); progress=false, contrasts) for f in allfms[nm]]
     end
 end

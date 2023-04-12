@@ -198,7 +198,10 @@ using SnoopPrecompile
         fit(MixedModel,
             @formula(use ~ 1 + age + abs2(age) + urban + livch + (1 | urban & dist)),
             contra,
-            Bernoulli(); progress)
+            Bernoulli(); 
+            progress,
+            # appears in both positions!
+            contrasts=Dict(:urban => DummyCoding()))
     end
 end
 
