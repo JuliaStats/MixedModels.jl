@@ -120,6 +120,7 @@ end
             # remove days
             refvals = fitted(mref) .- view(mref.X, :, 2) * mref.β[2]
             # days gets pivoted out
+            slprd = transform(slp, :days => ByRow(x -> 2x) => :days2)
             m = fit(MixedModel, @formula(reaction ~ 1 + days + days2 + (1|subj)), slprd; progress=false)
             # days2 gets pivoted out
             slp0 = transform(slp, :days => zero => :days2)
