@@ -134,7 +134,7 @@ bar is automatically disabled for non-interactive (i.e. logging) contexts.
 function replicate(f::Function, n::Integer; use_threads=false, hide_progress=false)
     use_threads && Base.depwarn(
         "use_threads is deprecated and will be removed in a future release",
-        :replicate,
+        :replicate
     )
     # and we want some advanced options
     p = Progress(n; output=Base.stderr, enabled=!hide_progress && !_is_logging(stderr))
