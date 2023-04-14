@@ -139,8 +139,10 @@ function _ranef_refs(
     return refs, uniques
 end
 
-# TODO: split this off into a RegressionFormula package?
-Base.:/(a::AbstractTerm, b::AbstractTerm) = a + a & b
+# TODO: remove all of this and either
+# - require users to use RegressionFormulae.jl
+# - add a dependency on RegressionFormulae.jl
+
 function StatsModels.apply_schema(
     t::FunctionTerm{typeof(/)}, sch::StatsModels.FullRank, Mod::Type{<:MixedModel}
 )

@@ -1,3 +1,7 @@
+MixedModels v4.12.0 Release Notes
+==============================
+* The pirated method `Base.:/(a::AbstractTerm, b::AbstractTerm)` is no longer defined. This does not impact the use of `/` as a nesting term in `@formula` within MixedModels, only the programmatic runtime construction of formula, e.g. `term(:a) / term(:b)`. If you require `Base.:/`, then [`RegressionFormulae.jl`](https://github.com/kleinschmidt/RegressionFormulae.jl) provides this method. (Avoiding method redefinition when using `RegressionFormulae.jl` is the motivating reason for this change.)
+
 MixedModels v4.11.0 Release Notes
 ==============================
 * `raneftables` returns a `NamedTuple` where the names are the grouping factor names and the values are some `Tables.jl`-compatible type.  Currently this type is a `DictTable` from `TypedTables.jl`. [#634]
