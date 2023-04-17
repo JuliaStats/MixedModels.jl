@@ -35,14 +35,15 @@ function StatsModels.ContrastsMatrix(
 end
 
 # this arises when there's an interaction as a grouping variable without a corresponding
-# non-interaction grouping, e.g.urban&dist in the contra dataset
+# non-interaction grouping, e.g. urban&dist in the contra dataset
 # adapted from https://github.com/JuliaStats/StatsModels.jl/blob/463eb0acb49bc5428374d749c4da90ea2a6c74c4/src/schema.jl#L355-L372
 function StatsModels.apply_schema(
     t::CategoricalTerm{Grouping},
     schema::FullRank,
-    Mod::Type{<:MixedModel},
+    ::Type{<:MixedModel},
     context::AbstractTerm,
 )
+    @info "" t
     aliased = drop_term(context, t)
     @debug "$t in context of $context: aliases $aliased\n  seen already: $(schema.already)"
     for seen in schema.already
