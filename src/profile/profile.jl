@@ -16,11 +16,14 @@ include("vcpr.jl")
 
 Return a `MixedModelProfile` for the objective of `m` with respect to the fixed-effects coefficients.
 
+`m` is `refit!` if `!isfitted(m)`.
+
 Profiling starts at the parameter estimate and continues until reaching a parameter bound or the absolute
 value of ζ exceeds `threshold`.
 """
 function profile(m::LinearMixedModel{T}; threshold=4) where {T}
-    final = copy(refit!(m).optsum.final)
+    isfitted(m) || refit!(m)
+    final = copy(m.optsum.final)
     tc = TableColumns(m)
     val = profileσ(m, tc; threshold) # FIXME: defer creating the splines until the whole table is constructed
     objective!(m, final)   # restore the parameter estimates
@@ -34,7 +37,6 @@ function profile(m::LinearMixedModel{T}; threshold=4) where {T}
     end
     profileσs!(val, tc)
     objective!(m, final)   # restore the parameter estimates
-    updateL!(setθ!(m, final))
     copyto!(m.optsum.final, final)
     m.optsum.fmin = objective(m)
     m.optsum.sigma = nothing

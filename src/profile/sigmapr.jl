@@ -19,8 +19,9 @@ end
 Return a factor such that refitting `m` with `σ` at its current value times this factor gives `ζ ≈ 0.5`
 """
 function _facsz(m::LinearMixedModel{T}, σ::T, obj::T) where {T}
-    i64 = inv(64)
-    m.optsum.sigma = σ * exp(i64)
+    i64 = T(inv(64))
+    expi64 = exp(i64)     # help the compiler infer it is a constant
+    m.optsum.sigma = σ * expi64
     return exp(i64 / (2 * sqrt(refit!(m; progress=false).objective - obj)))
 end
 
