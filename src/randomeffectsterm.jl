@@ -37,6 +37,13 @@ function StatsModels.terms(t::RandomEffectsTerm)
     return union(StatsModels.terms(t.lhs), StatsModels.terms(t.rhs))
 end
 
+function StatsModels.schema(t::FunctionTerm{typeof(|)}, data, hints::Dict{Symbol})
+    sch = schema(t.args[1], data, hints)
+    syms = StatsModels.termsyms.(t.args[2])
+    grp_hints = Dict(rr => Grouping() for rr in syms)
+    return merge(schema(t.args[2], data, grp_hints), sch)
+end
+
 # | in MixedModel formula -> RandomEffectsTerm
 function StatsModels.apply_schema(
     t::FunctionTerm{typeof(|)},
@@ -231,6 +238,10 @@ Base.show(io::IO, t::ZeroCorr) = Base.show(io, MIME"text/plain"(), t)
 function Base.show(io::IO, ::MIME"text/plain", t::ZeroCorr)
     # ranefterms already show with parens
     return print(io, "zerocorr", t.term)
+end
+
+function StatsModels.schema(t::FunctionTerm{typeof(zerocorr)}, data, hints::Dict{Symbol})
+    return schema(only(t.args), data, hints)
 end
 
 function StatsModels.apply_schema(

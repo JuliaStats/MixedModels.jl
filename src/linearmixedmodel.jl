@@ -70,8 +70,16 @@ function LinearMixedModel(
     # missing support is in a StatsModels release
     tbl, _ = StatsModels.missing_omit(tbl, f)
 
-    form = _schematize(f, tbl, contrasts)
-
+    # @info "" typeof.(f.rhs)
+    # form = _schematize(f, tbl, contrasts)
+    sch = schema(f.lhs, tbl, contrasts)
+    for tt in f.rhs
+        sch = merge(schema(tt, tbl, contrasts), sch)
+    end
+    # @info "" typeof(f.rhs[end].args[end])
+    # @info "" sch[term(:subj)]
+    form = apply_schema(f, sch, LinearMixedModel)
+    # @info "" form.rhs[end].rhs
     if form.rhs isa MatrixTerm || !any(x -> isa(x, AbstractReTerm), form.rhs)
         throw(_MISSING_RE_ERROR)
     end
