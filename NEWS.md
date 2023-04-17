@@ -1,6 +1,6 @@
 MixedModels v4.11.0 Release Notes
 ==============================
-* Auto apply `Grouping()` to grouping variables that do already have an explicit contrast, so long as the grouping variable is a single term and not an interaction term or sum of multiple terms. As a side effect, in [the rare cases](https://www.muscardinus.be/2017/08/fixed-and-random/#discrete-variable) where it makes sense for a variable to appear as both a fixed effect and a grouping variable, an explicit contrast hint must be passed. [#652]
+* Auto apply `Grouping()` to grouping variables that don't already have an explicit contrast. As a side effect, in [the rare cases](https://www.muscardinus.be/2017/08/fixed-and-random/#discrete-variable) where it makes sense for a variable to appear as both a fixed effect and a grouping variable, an explicit contrast hint must be passed. [#652]
 
 MixedModels v4.10.0 Release Notes
 ==============================
