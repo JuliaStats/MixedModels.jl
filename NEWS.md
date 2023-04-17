@@ -1,6 +1,14 @@
-MixedModels v4.11.0 Release Notes
+MixedModels v4.13.0 Release Notes
 ==============================
 * Auto apply `Grouping()` to grouping variables that don't already have an explicit contrast. As a side effect, in [the rare cases](https://www.muscardinus.be/2017/08/fixed-and-random/#discrete-variable) where it makes sense for a variable to appear as both a fixed effect and a grouping variable, an explicit contrast hint must be passed. [#652]
+
+MixedModels v4.12.0 Release Notes
+==============================
+* The pirated method `Base.:/(a::AbstractTerm, b::AbstractTerm)` is no longer defined. This does not impact the use of `/` as a nesting term in `@formula` within MixedModels, only the programmatic runtime construction of formula, e.g. `term(:a) / term(:b)`. If you require `Base.:/`, then [`RegressionFormulae.jl`](https://github.com/kleinschmidt/RegressionFormulae.jl) provides this method. (Avoiding method redefinition when using `RegressionFormulae.jl` is the motivating reason for this change.) [#677]
+
+MixedModels v4.11.0 Release Notes
+==============================
+* `raneftables` returns a `NamedTuple` where the names are the grouping factor names and the values are some `Tables.jl`-compatible type.  Currently this type is a `DictTable` from `TypedTables.jl`. [#634]
 
 MixedModels v4.10.0 Release Notes
 ==============================
@@ -400,6 +408,7 @@ Package dependencies
 [#614]: https://github.com/JuliaStats/MixedModels.jl/issues/614
 [#615]: https://github.com/JuliaStats/MixedModels.jl/issues/615
 [#628]: https://github.com/JuliaStats/MixedModels.jl/issues/628
+[#634]: https://github.com/JuliaStats/MixedModels.jl/issues/634
 [#637]: https://github.com/JuliaStats/MixedModels.jl/issues/637
 [#648]: https://github.com/JuliaStats/MixedModels.jl/issues/648
 [#651]: https://github.com/JuliaStats/MixedModels.jl/issues/651
@@ -412,3 +421,4 @@ Package dependencies
 [#667]: https://github.com/JuliaStats/MixedModels.jl/issues/667
 [#674]: https://github.com/JuliaStats/MixedModels.jl/issues/674
 [#676]: https://github.com/JuliaStats/MixedModels.jl/issues/676
+[#677]: https://github.com/JuliaStats/MixedModels.jl/issues/677
