@@ -43,7 +43,6 @@ function StatsModels.apply_schema(
     ::Type{<:MixedModel},
     context::AbstractTerm,
 )
-    @info "" t
     aliased = drop_term(context, t)
     @debug "$t in context of $context: aliases $aliased\n  seen already: $(schema.already)"
     for seen in schema.already

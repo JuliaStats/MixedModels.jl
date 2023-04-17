@@ -1,11 +1,5 @@
 abstract type AbstractReTerm <: AbstractTerm end
 
-# stub so that the const definitions work
-function zerocorr end
-
-const _RE_FORMULA_FUNCTIONS = Union{typeof(|),typeof(zerocorr)}
-const RE_FUNCTION_TERM = FunctionTerm{<:_RE_FORMULA_FUNCTIONS}
-
 struct RandomEffectsTerm <: AbstractReTerm
     lhs::StatsModels.TermOrTerms
     rhs::StatsModels.TermOrTerms
@@ -53,10 +47,6 @@ function is_randomeffectsterm(tt)
            isa(tt, FunctionTerm) && # potentially RE
            (isa(tt, FunctionTerm{typeof(|)}) || # RE with free covariance structure
             isa(tt.args[1], FunctionTerm{typeof(|)})) # not zerocorr() or the like
-end
-
-function schema(t::FunctionTerm{typeof(zerocorr)}, data, hints::Dict{Symbol})
-    return schema(only(t.args), data, hints)
 end
 
 # | in MixedModel formula -> RandomEffectsTerm
@@ -255,6 +245,10 @@ Base.show(io::IO, t::ZeroCorr) = Base.show(io, MIME"text/plain"(), t)
 function Base.show(io::IO, ::MIME"text/plain", t::ZeroCorr)
     # ranefterms already show with parens
     return print(io, "zerocorr", t.term)
+end
+
+function schema(t::FunctionTerm{typeof(zerocorr)}, data, hints::Dict{Symbol})
+    return schema(only(t.args), data, hints)
 end
 
 function StatsModels.apply_schema(

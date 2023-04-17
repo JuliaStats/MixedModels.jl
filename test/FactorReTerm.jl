@@ -165,25 +165,6 @@ end
     end
 end
 
-# FIXME: need to replace these will explicit calls to the various StatsModels functions
-# instead of going through the formula interface
-# @testset "Categorical Blocking Variable" begin
-#     # deepcopy because we're going to modify it.  Don't need the copy if dataset returns an Arrow.Table
-#     #slp = deepcopy(DataFrame(dataset("sleepstudy")))
-#     slp = DataFrame(dataset("sleepstudy"))
-#     contrasts =  Dict{Symbol,Any}()
-#     f = @formula(reaction ~ 1 + (1|subj))
-
-#     # String blocking-variables work fine because StatsModels is smart enough to
-#     # treat strings as Categorical. Note however that this is a
-#     # far less efficient to store the original dataframe, although it doesn't
-#     # matter for the contrast matrix
-#     slp[!,:subj] = convert.(String, slp[!, :subj])
-#     # @test_throws ArgumentError LinearMixedModel(f, slp)
-#     slp.subj = parse.(Int, getindex.(slp.subj, Ref(2:4)))
-#     @test_throws ArgumentError LinearMixedModel(f, slp)
-# end
-
 @testset "random effects term syntax" begin
 
     dat = (y = rand(18),
