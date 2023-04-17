@@ -73,7 +73,11 @@ function LinearMixedModel(
     # @info "" typeof.(f.rhs)
     # form = _schematize(f, tbl, contrasts)
     sch = schema(f.lhs, tbl, contrasts)
-    for tt in f.rhs
+    # if there is only one term on the RHS, then you don't have an iterator
+    rhs = f.rhs isa AbstractTerm ? (f.rhs,) : f.rhs
+    for tt in rhs
+        # this allows us to control dispatch on a more subtle level
+        # and force things to use the schema
         sch = merge(schema(tt, tbl, contrasts), sch)
     end
     # @info "" typeof(f.rhs[end].args[end])
