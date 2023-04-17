@@ -76,7 +76,7 @@ function _schematize(f, tbl, contrasts)
     # XXX could we take advantage of MultiSchema here?
     sch_re = Schema(k => sch_re[k] for k in keys(sch_re) if !in(k, keys(sch.schema)))
     sch = merge(sch, sch_re)
-    
+
     return apply_schema(f, sch, LinearMixedModel)
 end
 

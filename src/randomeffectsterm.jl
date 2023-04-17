@@ -49,10 +49,9 @@ function schema(t::FunctionTerm{typeof(|)}, data, hints::Dict{Symbol})
 end
 
 function is_randomeffectsterm(tt)
-
     return tt isa AbstractReTerm || # definitely RE
-            isa(tt, FunctionTerm) && # potentially RE
-            (isa(tt, FunctionTerm{typeof(|)}) || # RE with free covariance structure
+           isa(tt, FunctionTerm) && # potentially RE
+           (isa(tt, FunctionTerm{typeof(|)}) || # RE with free covariance structure
             isa(tt.args[1], FunctionTerm{typeof(|)})) # not zerocorr() or the like
 end
 
