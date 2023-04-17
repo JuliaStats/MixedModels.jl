@@ -120,8 +120,7 @@ end
         contra = dataset(:contra)
         # need a model with fast=false to test that we only
         # copy the optimizer constraints for θ and not β
-        gm0 = fit(MixedModel, first(gfms[:contra]), contra, Bernoulli();
-                 fast=false, progress=false, contrasts=CONTRASTS[:contra])
+        gm0 = fit(MixedModel, first(gfms[:contra]), contra, Bernoulli(), fast=false, progress=false)
         bs = parametricbootstrap(StableRNG(42), 100, gm0; hide_progress=true)
         # make sure we're not copying
         @test length(bs.lowerbd) == length(gm0.θ)
