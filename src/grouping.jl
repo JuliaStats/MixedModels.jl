@@ -34,25 +34,6 @@ function StatsModels.ContrastsMatrix(
     return StatsModels.ContrastsMatrix(zeros(0, 0), levels, levels, contrasts)
 end
 
-function _grouping_vars(f::FormulaTerm)
-    # if there is only one term on the RHS, then you don't have an iterator
-    rhs = f.rhs isa AbstractTerm ? (f.rhs,) : f.rhs
-    re = filter(x -> x isa RE_FUNCTION_TERM, rhs)
-    grping = mapreduce(vcat, re; init=[]) do x
-        # XXX should make this more extensible so that we don't need to special case everything
-        x isa FunctionTerm{typeof(zerocorr)} && return x.args[end].args[end]
-        return x.args[end]
-    end
-    # XXX how to handle interaction terms in Grouping?
-    # for now, we just don't.
-    return mapreduce(vcat, grping; init=Symbol[]) do g
-        hasproperty(g, :sym) && return [g.sym]
-        # interaction terms!
-        # we haven't yet applied schema, so they're still FunctionTerm{typeof(&)}
-        return collect(getproperty.(g.args, :sym))
-    end
-end
-
 # this arises when there's an interaction as a grouping variable without a corresponding
 # non-interaction grouping, e.g.urban&dist in the contra dataset
 # adapted from https://github.com/JuliaStats/StatsModels.jl/blob/463eb0acb49bc5428374d749c4da90ea2a6c74c4/src/schema.jl#L355-L372

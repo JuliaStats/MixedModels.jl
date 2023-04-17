@@ -54,12 +54,29 @@ const _MISSING_RE_ERROR = ArgumentError(
 # this his hoisted out so that we can test it in isolation
 # without constructing a full model
 function _schematize(f, tbl, contrasts)
-    # XXX how to handle the same variable in FE and RE?
-    # prefer user-specified contrasts if they override this: if something in the FE and RE,
-    # then it will work as long as you specify the contrasts
-    contrasts = merge(Dict{Symbol,Any}(g => Grouping() for g in _grouping_vars(f)),
-        contrasts)
-    sch = schema(f, tbl, contrasts)
+    sch = schema(f.lhs, tbl, contrasts)
+    # if there is only one term on the RHS, then you don't have an iterator
+    # also we want this to be a vector so we can sort later
+    rhs = f.rhs isa AbstractTerm ? [f.rhs] : collect(f.rhs)
+    fe = filter(!is_randomeffectsterm, rhs)
+    # init with `sch` so we don't need an extra merge later
+    # and so that things work even when we have empty fixed effects
+    sch = mapfoldl(merge, fe; init=sch) do tt
+        return schema(tt, tbl, contrasts)
+    end
+    re = filter(is_randomeffectsterm, rhs)
+    isempty(re) && throw(_MISSING_RE_ERROR)
+    sch_re = mapfoldl(merge, re) do tt
+        # this allows us to control dispatch on a more subtle level
+        # and force things to use the schema
+        return schema(tt, tbl, contrasts)
+    end
+    # why this big dance? well we want to make sure we don't overwrite any schema
+    # determined on the basis of the fixed effects
+    # XXX could we take advantage of MultiSchema here?
+    sch_re = Schema(k => sch_re[k] for k in keys(sch_re) if !in(k, keys(sch.schema)))
+    sch = merge(sch, sch_re)
+    
     return apply_schema(f, sch, LinearMixedModel)
 end
 
@@ -70,25 +87,10 @@ function LinearMixedModel(
     # missing support is in a StatsModels release
     tbl, _ = StatsModels.missing_omit(tbl, f)
 
-    # @info "" typeof.(f.rhs)
-    # form = _schematize(f, tbl, contrasts)
-    sch = schema(f.lhs, tbl, contrasts)
-    # if there is only one term on the RHS, then you don't have an iterator
-    rhs = f.rhs isa AbstractTerm ? (f.rhs,) : f.rhs
-    for tt in rhs
-        # this allows us to control dispatch on a more subtle level
-        # and force things to use the schema
-        sch = merge(schema(tt, tbl, contrasts), sch)
-    end
-    # @info "" typeof(f.rhs[end].args[end])
-    # @info "" sch[term(:subj)]
-    form = apply_schema(f, sch, LinearMixedModel)
-    # @info "" form.rhs[end].rhs
+    form = _schematize(f, tbl, contrasts)
     if form.rhs isa MatrixTerm || !any(x -> isa(x, AbstractReTerm), form.rhs)
         throw(_MISSING_RE_ERROR)
     end
-
-    # tbl, _ = StatsModels.missing_omit(tbl, form)
 
     y, Xs = modelcols(form, tbl)
 

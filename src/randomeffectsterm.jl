@@ -42,8 +42,18 @@ schema(t, data, hints) = StatsModels.schema(t, data, hints)
 function schema(t::FunctionTerm{typeof(|)}, data, hints::Dict{Symbol})
     sch = schema(t.args[1], data, hints)
     vars = StatsModels.termvars.(t.args[2])
+    # XXX this will break if somebody has something like ~ (days|days)
+    # but that would have broken previously as well
     grp_hints = Dict(rr => Grouping() for rr in vars)
     return merge(schema(t.args[2], data, grp_hints), sch)
+end
+
+function is_randomeffectsterm(tt)
+
+    return tt isa AbstractReTerm || # definitely RE
+            isa(tt, FunctionTerm) && # potentially RE
+            (isa(tt, FunctionTerm{typeof(|)}) || # RE with free covariance structure
+            isa(tt.args[1], FunctionTerm{typeof(|)})) # not zerocorr() or the like
 end
 
 function schema(t::FunctionTerm{typeof(zerocorr)}, data, hints::Dict{Symbol})

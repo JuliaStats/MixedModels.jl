@@ -25,9 +25,6 @@ end
     @test all(t.contrasts.invindex[lev] == i for (i,lev) in enumerate(levs))
     @test all(t.contrasts.levels[i] == lev for (i,lev) in enumerate(levs))
 
-    @test MixedModels._grouping_vars(@formula(y ~ 1 + (1 | outer / grp))) == [:outer, :grp]
-    @test MixedModels._grouping_vars(@formula(y ~ 1 + (1 | outer & grp))) == [:outer, :grp]
-
     # without auto-grouping, this OOM on most reasonable hardware because it default dummy coding
     # would mean constructing 1M x 1M matrix
     # nesting still inserts a full dummy
