@@ -20,6 +20,7 @@ using StatsBase
 using StatsModels
 using StructTypes
 using Tables
+using TypedTables
 
 using LinearAlgebra: BlasFloat, BlasReal, HermOrSym, PosDefException, copytri!
 using Base: Ryu, require_one_based_indexing

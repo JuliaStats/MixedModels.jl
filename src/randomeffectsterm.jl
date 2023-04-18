@@ -37,7 +37,7 @@ function StatsModels.apply_schema(
     schema::MultiSchema{StatsModels.FullRank},
     Mod::Type{<:MixedModel},
 )
-    lhs, rhs = t.args_parsed
+    lhs, rhs = t.args
 
     isempty(intersect(StatsModels.termvars(lhs), StatsModels.termvars(rhs))) ||
         throw(ArgumentError("Same variable appears on both sides of |"))
@@ -53,11 +53,21 @@ check_re_group_type(term::GROUPING_TYPE) = true
 check_re_group_type(terms::Tuple{Vararg{<:GROUPING_TYPE}}) = true
 check_re_group_type(x) = false
 
+_unprotect(x) = x
+for op in StatsModels.SPECIALS
+    @eval _unprotect(t::FunctionTerm{typeof($op)}) = t.f(_unprotect.(t.args)...)
+end
+
 # make a potentially untyped RandomEffectsTerm concrete
 function StatsModels.apply_schema(
     t::RandomEffectsTerm, schema::MultiSchema{StatsModels.FullRank}, Mod::Type{<:MixedModel}
 )
-    lhs, rhs = t.lhs, t.rhs
+    # we need to do this here because the implicit intercept dance has to happen
+    # _before_ we apply_schema, which is where :+ et al. are normally
+    # unprotected.  I tried to finagle a way around this (using yet another
+    # schema wrapper type) but it ends up creating way too many potential/actual
+    # method ambiguities to be a good idea.
+    lhs, rhs = _unprotect(t.lhs), t.rhs
 
     # get a schema that's specific for the grouping (RHS), creating one if needed
     schema = get!(schema.subs, rhs, StatsModels.FullRank(schema.base.schema))
@@ -129,16 +139,18 @@ function _ranef_refs(
     return refs, uniques
 end
 
-# TODO: split this off into a RegressionFormula package?
-Base.:/(a::AbstractTerm, b::AbstractTerm) = a + a & b
+# TODO: remove all of this and either
+# - require users to use RegressionFormulae.jl
+# - add a dependency on RegressionFormulae.jl
+
 function StatsModels.apply_schema(
     t::FunctionTerm{typeof(/)}, sch::StatsModels.FullRank, Mod::Type{<:MixedModel}
 )
-    if length(t.args_parsed) ≠ 2
+    if length(t.args) ≠ 2
         throw(ArgumentError("malformed nesting term: $t (Exactly two arguments required"))
     end
 
-    first, second = apply_schema.(t.args_parsed, Ref(sch), Mod)
+    first, second = apply_schema.(t.args, Ref(sch), Mod)
 
     if !(typeof(first) <: CategoricalTerm)
         throw(
@@ -188,7 +200,7 @@ end
 function StatsModels.apply_schema(
     t::FunctionTerm{typeof(fulldummy)}, sch::StatsModels.FullRank, Mod::Type{<:MixedModel}
 )
-    return fulldummy(apply_schema.(t.args_parsed, Ref(sch), Mod)...)
+    return fulldummy(apply_schema.(t.args, Ref(sch), Mod)...)
 end
 
 # specify zero correlation
@@ -207,11 +219,21 @@ zerocorr(x) = ZeroCorr(x)
 # for schema extraction (from runtime-created zerocorr)
 StatsModels.terms(t::ZeroCorr) = StatsModels.terms(t.term)
 StatsModels.termvars(t::ZeroCorr) = StatsModels.termvars(t.term)
+StatsModels.degree(t::ZeroCorr) = StatsModels.degree(t.term)
+# dirty rotten no good ugly hack: make sure zerocorr ranef terms sort appropriately
+# cf https://github.com/JuliaStats/StatsModels.jl/blob/41b025409af03c0e019591ac6e817b22efbb4e17/src/terms.jl#L421-L422
+StatsModels.degree(t::FunctionTerm{typeof(zerocorr)}) = StatsModels.degree(only(t.args))
+
+Base.show(io::IO, t::ZeroCorr) = Base.show(io, MIME"text/plain"(), t)
+function Base.show(io::IO, ::MIME"text/plain", t::ZeroCorr)
+    # ranefterms already show with parens
+    return print(io, "zerocorr", t.term)
+end
 
 function StatsModels.apply_schema(
     t::FunctionTerm{typeof(zerocorr)}, sch::MultiSchema, Mod::Type{<:MixedModel}
 )
-    return ZeroCorr(apply_schema(t.args_parsed..., sch, Mod))
+    return ZeroCorr(apply_schema(only(t.args), sch, Mod))
 end
 
 function StatsModels.apply_schema(t::ZeroCorr, sch::MultiSchema, Mod::Type{<:MixedModel})

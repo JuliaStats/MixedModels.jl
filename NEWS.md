@@ -1,5 +1,19 @@
+MixedModels v4.12.0 Release Notes
+==============================
+* The pirated method `Base.:/(a::AbstractTerm, b::AbstractTerm)` is no longer defined. This does not impact the use of `/` as a nesting term in `@formula` within MixedModels, only the programmatic runtime construction of formula, e.g. `term(:a) / term(:b)`. If you require `Base.:/`, then [`RegressionFormulae.jl`](https://github.com/kleinschmidt/RegressionFormulae.jl) provides this method. (Avoiding method redefinition when using `RegressionFormulae.jl` is the motivating reason for this change.) [#677]
+
+MixedModels v4.11.0 Release Notes
+==============================
+* `raneftables` returns a `NamedTuple` where the names are the grouping factor names and the values are some `Tables.jl`-compatible type.  Currently this type is a `DictTable` from `TypedTables.jl`. [#634]
+
+MixedModels v4.10.0 Release Notes
+==============================
+* Rank deficiency in prediction is now supported, both when the original model was fit to rank-deficient data and when the new data are rank deficient. The behavior is consistent but may be surprising when both old and new data are rank deficient. See the `predict` docstring for an example. [#676]
+* Multithreading in `parametricbootstrap` with `use_threads` is now deprecated and a noop. With improvements in BLAS threading, multithreading at the Julia level did not help performance and sometimes hurt it. [#674]
+
 MixedModels v4.9.0 Release Notes
 ==============================
+* Support `StatsModels` 0.7, drop support for `StatsModels` 0.6. [#664]
 * Revise code in benchmarks to work with recent Julia and PkgBenchmark.jl [#667]
 * Julia minimum compat version raised to 1.8 because of BSplineKit [#665]
 * New kwarg `amalgamate` can be used to disable amalgation of random0effects terms sharing a single grouping variable. Generally, `amalgamate=false` will result in a slower fit, but may improve convergence in some pathological cases. [#673]  
@@ -391,12 +405,17 @@ Package dependencies
 [#614]: https://github.com/JuliaStats/MixedModels.jl/issues/614
 [#615]: https://github.com/JuliaStats/MixedModels.jl/issues/615
 [#628]: https://github.com/JuliaStats/MixedModels.jl/issues/628
+[#634]: https://github.com/JuliaStats/MixedModels.jl/issues/634
 [#637]: https://github.com/JuliaStats/MixedModels.jl/issues/637
 [#648]: https://github.com/JuliaStats/MixedModels.jl/issues/648
 [#651]: https://github.com/JuliaStats/MixedModels.jl/issues/651
 [#653]: https://github.com/JuliaStats/MixedModels.jl/issues/653
 [#657]: https://github.com/JuliaStats/MixedModels.jl/issues/657
 [#663]: https://github.com/JuliaStats/MixedModels.jl/issues/663
+[#664]: https://github.com/JuliaStats/MixedModels.jl/issues/664
 [#665]: https://github.com/JuliaStats/MixedModels.jl/issues/665
 [#667]: https://github.com/JuliaStats/MixedModels.jl/issues/667
 [#673]: https://github.com/JuliaStats/MixedModels.jl/issues/673
+[#674]: https://github.com/JuliaStats/MixedModels.jl/issues/674
+[#676]: https://github.com/JuliaStats/MixedModels.jl/issues/676
+[#677]: https://github.com/JuliaStats/MixedModels.jl/issues/677
