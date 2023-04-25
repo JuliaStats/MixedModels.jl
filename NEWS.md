@@ -1,5 +1,6 @@
 MixedModels v4.12.1 Release Notes
 ==============================
+* Precompilation is now handled with `PrecompileTools` instead of `SnoopPrecompile`. [#681]
 * An unnecessary explicit `Vararg` in an internal method has been removed. This removal eliminates a compiler warning about the deprecated `Vararg` pattern. [#680]
 
 MixedModels v4.12.0 Release Notes
@@ -422,3 +423,4 @@ Package dependencies
 [#676]: https://github.com/JuliaStats/MixedModels.jl/issues/676
 [#677]: https://github.com/JuliaStats/MixedModels.jl/issues/677
 [#680]: https://github.com/JuliaStats/MixedModels.jl/issues/680
+[#681]: https://github.com/JuliaStats/MixedModels.jl/issues/681
