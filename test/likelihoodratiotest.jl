@@ -1,6 +1,7 @@
 using DataFrames
 using GLM
 using MixedModels
+using Suppressor
 using Test
 
 using MixedModels: dataset, likelihoodratiotest
@@ -38,8 +39,7 @@ include("modelcache.jl")
     m2 = fit(MixedModel, @formula(rt_trunc ~ 1 + prec + (1+prec|subj)), kb07, REML=true, progress=false)
     @test isnested(m1, m2)
     m2 = fit(MixedModel, @formula(rt_trunc ~ 1 + (1+prec|subj)), kb07, REML=true, progress=false)
-    @test !isnested(m1, m2)
-
+    @test @suppress !isnested(m1, m2)
 end
 
 @testset "likelihoodratio test" begin

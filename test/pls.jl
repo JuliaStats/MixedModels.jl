@@ -3,6 +3,7 @@ using MixedModels
 using PooledArrays
 using Random
 using SparseArrays
+using Suppressor
 using Statistics
 using StatsModels
 using Tables
@@ -550,7 +551,7 @@ end
     rng = MersenneTwister(0);
     x = rand(rng, 100);
     data = (x = x, x2 = 1.5 .* x, y = rand(rng, 100), z = repeat('A':'T', 5))
-    model = fit(MixedModel, @formula(y ~ x + x2 + (1|z)), data; progress=false)
+    model = @suppress fit(MixedModel, @formula(y ~ x + x2 + (1|z)), data; progress=false)
     @test length(fixef(model)) == 2
     @test rank(model) == 2
     @test length(coef(model)) == 3
