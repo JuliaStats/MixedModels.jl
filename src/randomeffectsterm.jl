@@ -50,7 +50,7 @@ const GROUPING_TYPE = Union{
     <:CategoricalTerm,<:InteractionTerm{<:NTuple{N,CategoricalTerm} where {N}}
 }
 check_re_group_type(term::GROUPING_TYPE) = true
-check_re_group_type(terms::Tuple{Vararg{<:GROUPING_TYPE}}) = true
+check_re_group_type(term::Tuple) = all(check_re_group_type, term)
 check_re_group_type(x) = false
 
 _unprotect(x) = x

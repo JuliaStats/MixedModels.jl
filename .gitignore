@@ -6,3 +6,5 @@ tune.json
 Manifest.toml
 settings.json
 docs/jmd
+LocalPreferences.toml
+
