@@ -1,3 +1,7 @@
+MixedModels v4.13.0 Release Notes
+==============================
+* `raneftables` returns a `NamedTuple` where the names are the grouping factor names and the values are some `Tables.jl`-compatible type.  This type has been changed to a `Table` from `TypedTables.jl`. [#682]
+
 MixedModels v4.12.1 Release Notes
 ==============================
 * Precompilation is now handled with `PrecompileTools` instead of `SnoopPrecompile`. [#681]
@@ -424,3 +428,4 @@ Package dependencies
 [#677]: https://github.com/JuliaStats/MixedModels.jl/issues/677
 [#680]: https://github.com/JuliaStats/MixedModels.jl/issues/680
 [#681]: https://github.com/JuliaStats/MixedModels.jl/issues/681
+[#682]: https://github.com/JuliaStats/MixedModels.jl/issues/682
