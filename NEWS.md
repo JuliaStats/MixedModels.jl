@@ -1,3 +1,12 @@
+MixedModels v4.13.0 Release Notes
+==============================
+* `raneftables` returns a `NamedTuple` where the names are the grouping factor names and the values are some `Tables.jl`-compatible type.  This type has been changed to a `Table` from `TypedTables.jl`. [#682]
+
+MixedModels v4.12.1 Release Notes
+==============================
+* Precompilation is now handled with `PrecompileTools` instead of `SnoopPrecompile`. [#681]
+* An unnecessary explicit `Vararg` in an internal method has been removed. This removal eliminates a compiler warning about the deprecated `Vararg` pattern. [#680]
+
 MixedModels v4.12.0 Release Notes
 ==============================
 * The pirated method `Base.:/(a::AbstractTerm, b::AbstractTerm)` is no longer defined. This does not impact the use of `/` as a nesting term in `@formula` within MixedModels, only the programmatic runtime construction of formula, e.g. `term(:a) / term(:b)`. If you require `Base.:/`, then [`RegressionFormulae.jl`](https://github.com/kleinschmidt/RegressionFormulae.jl) provides this method. (Avoiding method redefinition when using `RegressionFormulae.jl` is the motivating reason for this change.) [#677]
@@ -417,3 +426,6 @@ Package dependencies
 [#674]: https://github.com/JuliaStats/MixedModels.jl/issues/674
 [#676]: https://github.com/JuliaStats/MixedModels.jl/issues/676
 [#677]: https://github.com/JuliaStats/MixedModels.jl/issues/677
+[#680]: https://github.com/JuliaStats/MixedModels.jl/issues/680
+[#681]: https://github.com/JuliaStats/MixedModels.jl/issues/681
+[#682]: https://github.com/JuliaStats/MixedModels.jl/issues/682

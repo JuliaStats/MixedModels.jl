@@ -92,7 +92,7 @@ StatsAPI.predict(m::MixedModel) = fitted(m)
 
 function retbl(mat, trm)
     nms = (fname(trm), Symbol.(trm.cnames)...)
-    return DictTable(
+    return Table(
     [NamedTuple{nms}((l, view(mat, :, i)...),) for (i, l) in enumerate(trm.levels)]
 )
 end
