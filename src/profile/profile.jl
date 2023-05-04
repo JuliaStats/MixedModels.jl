@@ -1,13 +1,13 @@
 """
      MixedModelProfile{T<:AbstractFloat}
-     
+
 Type representing a likelihood profile of a [`LinearMixedModel`](@ref), including associated interpolation splines.
 
 The function [`profile`](@ref) is used for computing profiles, while [`confint`](@ref) provides a useful method for constructing confidence intervals from a `MixedModelProfile`.
 
 !!! note
-   The exact fields and their representation are considered implementation details and are 
-   **not** part of the public API.
+    The exact fields and their representation are considered implementation details and are
+    **not** part of the public API.
 """
 struct MixedModelProfile{T<:AbstractFloat}
     m::LinearMixedModel{T}    # Model that has been profiled
@@ -56,18 +56,18 @@ end
 
 """
     confint(pr::MixedModelProfile; level::Real=0.95)
-    
+
 Compute profile confidence intervals for coefficients and variance components, with confidence level level (by default 95%).
 
 !!! note
-    The API guarantee is for a Tables.jl compatible table. The exact return type is an 
+    The API guarantee is for a Tables.jl compatible table. The exact return type is an
     implementation detail and may change in a future minor release without being considered
     breaking.
-    
-!!! note 
-   The "row names" indicating the associated parameter name are guaranteed to be unambiguous,
-   but their precise naming scheme is not yet stable and may change in a future release
-   without being considered breaking.
+
+!!! note
+    The "row names" indicating the associated parameter name are guaranteed to be unambiguous,
+    but their precise naming scheme is not yet stable and may change in a future release
+    without being considered breaking.
 """
 function StatsAPI.confint(pr::MixedModelProfile; level::Real=0.95)
     cutoff = sqrt(quantile(Chisq(1), level))

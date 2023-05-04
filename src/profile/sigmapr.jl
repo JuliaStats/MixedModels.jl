@@ -4,10 +4,10 @@
 Refit the model `m` with the given value of `σ` and return a NamedTuple of information about the fit.
 
 `obj` and `neg` allow for conversion of the objective to the `ζ` scale and `tc` is used to return a NamedTuple
-!!! note
-   This method is internal and may change or disappear in a future release
-   without being considered breaking.
 
+!!! note
+    This method is internal and may change or disappear in a future release
+    without being considered breaking.
 """
 function refitσ!(
     m::LinearMixedModel{T}, σ, tc::TableColumns{T}, obj::T, neg::Bool
@@ -34,9 +34,8 @@ end
 
 Return a Table of the profile of `σ` for model `m`.  The profile extends to where the magnitude of ζ exceeds `threshold`.
 !!! note
-   This method is called by `profile` and currently considered internal.
-   As such, it may change or disappear in a future release without being considered breaking.
-   
+    This method is called by `profile` and currently considered internal.
+    As such, it may change or disappear in a future release without being considered breaking.
 """
 function profileσ(m::LinearMixedModel{T}, tc::TableColumns{T}; threshold=4) where {T}
     (; σ, optsum) = m

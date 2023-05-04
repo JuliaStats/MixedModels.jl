@@ -7,9 +7,8 @@ The struct also contains a Dict giving the column ranges for Symbols like `:σ` 
 Finally it contains a scratch vector used to accumulate to values in a row of the profile table.
 
 !!! note
-   This is an internal structure used in [`MixedModelProfile`](@ref).
-   As such, it may change or disappear in a future release without being considered breaking.
-
+    This is an internal structure used in [`MixedModelProfile`](@ref).
+    As such, it may change or disappear in a future release without being considered breaking.
 """
 struct TableColumns{T<:AbstractFloat,N}
     cnames::NTuple{N,Symbol}
