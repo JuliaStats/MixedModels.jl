@@ -535,7 +535,7 @@ end
     end
     @testset "confint" begin
         ci = confint(last(models(:sleepstudy)))
-        @test isa(ci, TypedTables.DictTable)
+        @test Tables.istable(ci)
         @test isapprox(ci.lower.values, [238.4061184564825, 7.52295850741417]; atol=1.e-3)
     end
 end
