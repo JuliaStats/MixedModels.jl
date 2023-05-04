@@ -21,7 +21,7 @@ Return a `MixedModelProfile` for the objective of `m` with respect to the fixed-
 Profiling starts at the parameter estimate and continues until reaching a parameter bound or the absolute
 value of ζ exceeds `threshold`.
 """
-function profile(m::LinearMixedModel{T}; threshold=4) where {T}
+function profile(m::LinearMixedModel; threshold=4)
     isfitted(m) || refit!(m)
     final = copy(m.optsum.final)
     tc = TableColumns(m)
