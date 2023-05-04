@@ -359,6 +359,17 @@ function condVartables(m::MixedModel{T}) where {T}
     return NamedTuple{fnames(m)}((map(_cvtbl, condVar(m), m.reterms)...,))
 end
 
+"""
+    confint(pr::MixedModelProfile; level::Real=0.95)
+    
+Compute profile confidence intervals for (fixed effects) coefficients, with confidence level `level` (by default 95%).
+
+!!! note
+    The API guarantee is for a Tables.jl compatible table. The exact return type is an 
+    implementation detail and may change in a future minor release without being considered
+    breaking.
+  
+"""
 function StatsBase.confint(m::MixedModel{T}; level=0.95) where {T}
     cutoff = sqrt.(quantile(Chisq(1), level))
     β, std = m.β, m.stderror
