@@ -54,7 +54,22 @@ function profile(m::LinearMixedModel; threshold=4)
     return MixedModelProfile(m, Table(val.tbl), val.fwd, val.rev)
 end
 
-function StatsBase.confint(pr::MixedModelProfile; level::Real=0.95)
+"""
+    confint(pr::MixedModelProfile; level::Real=0.95)
+    
+Compute profile confidence intervals for coefficients and variance components, with confidence level level (by default 95%).
+
+!!! note
+    The API guarantee is for a Tables.jl compatible table. The exact return type is an 
+    implementation detail and may change in a future minor release without being considered
+    breaking.
+    
+!!! note 
+   The "row names" indicating the associated parameter name are guaranteed to be unambiguous,
+   but their precise naming scheme is not yet stable and may change in a future release
+   without being considered breaking.
+"""
+function StatsAPI.confint(pr::MixedModelProfile; level::Real=0.95)
     cutoff = sqrt(quantile(Chisq(1), level))
     rev = pr.rev
     syms = sort!(collect(filter(k -> !startswith(string(k), 'θ'), keys(rev))))
