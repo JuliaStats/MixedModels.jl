@@ -566,7 +566,7 @@ end
         contrasts = Dict(:item => Grouping(), :subj => Grouping(), :prec => EffectsCoding(; base="maintain"),
         :spkr => EffectsCoding(), :load => EffectsCoding())
         kbf03 = @formula rt_trunc ~ 1+prec+spkr+load+(1+prec|item)+(1|subj)
-        kbpr03 = profile(fit(MixedModel, kbf03, MixedModels.dataset(:kb07); contrasts, thin=1))
+        kbpr03 = profile(fit(MixedModel, kbf03, MixedModels.dataset(:kb07); contrasts, thin=1, progress=false))
         prtbl = Table(kbpr03.tbl)
         @test length(propertynames(prtbl)) == 15
         @test length(kbpr03.tbl) > 200
