@@ -4,6 +4,10 @@
 Refit the model `m` with the given value of `σ` and return a NamedTuple of information about the fit.
 
 `obj` and `neg` allow for conversion of the objective to the `ζ` scale and `tc` is used to return a NamedTuple
+!!! note
+   This method is internal and may change or disappear in a future release
+   without being considered breaking.
+
 """
 function refitσ!(
     m::LinearMixedModel{T}, σ, tc::TableColumns{T}, obj::T, neg::Bool
