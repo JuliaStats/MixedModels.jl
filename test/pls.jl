@@ -529,7 +529,7 @@ end
             atol=1.e-3)
         @test isapprox(
             ci.upper.values,
-            [265.130, 13.576, 28.858, 37.718. 8.753];
+            [265.130, 13.576, 28.858, 37.718, 8.753];
             atol=1.e-3)
         @test first(only(filter(r -> r.p == :σ && iszero(r.ζ), pr.tbl)).σ) == last(models(:sleepstudy)).σ
     end
