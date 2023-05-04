@@ -24,6 +24,15 @@ function profilevc(m::LinearMixedModel{T}, val::T, rowj::AbstractVector{T}) wher
     return fmin, xmin
 end
 
+"""
+     profileσs!(val::NamedTuple, tc::TableColumns{T}; nzlb=1.0e-8) where {T}
+     
+Profile the variance components.
+
+!!! note
+   This method is called by `profile` and currently considered internal.
+   As such, it may change or disappear in a future release without being considered breaking.
+"""
 function profileσs!(val::NamedTuple, tc::TableColumns{T}; nzlb=1.0e-8) where {T}
     m = val.m
     (; λ, σ, β, optsum, parmap, reterms) = m
