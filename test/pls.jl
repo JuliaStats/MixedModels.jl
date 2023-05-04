@@ -520,7 +520,7 @@ end
         tbl = pr.tbl
         @test length(tbl) >= 122
         ci = confint(pr)
-        @test isa(ci, TypedTables.DictTable)
+        @test Tables.istable(ci)
         @test propertynames(ci) == (:par, :estimate, :lower, :upper)
         @test collect(ci.par) == [:β1, :β2, :σ, :σ1, :σ2]
         @test isapprox(
