@@ -83,7 +83,15 @@ function mkrow!(tc::TableColumns{T,N}, m::LinearMixedModel{T}, ζ::T) where {T,N
     return NamedTuple{cnames,NTuple{N,T}}((v...,))
 end
 
-function parsej(sym::Symbol) # return the index from symbol names like :θ1, :θ01, etc.
+"""
+    parsej(sym::Symbol)
+
+Return the index from symbol names like `:θ1`, `:θ01`, etc.
+
+!!! note
+    This method is internal.
+"""
+function parsej(sym::Symbol)
     symstr = string(sym)                                     # convert Symbol to a String
     return parse(Int, SubString(symstr, nextind(symstr, 1))) # drop first Unicode character and parse as Int
 end
