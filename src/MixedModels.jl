@@ -1,6 +1,7 @@
 module MixedModels
 
 using Arrow
+using BSplineKit
 using DataAPI
 using Distributions
 using GLM
@@ -51,6 +52,7 @@ export @formula,
     LogLink,
     MixedModel,
     MixedModelBootstrap,
+    MixedModelProfile,
     Normal,
     OptSummary,
     Poisson,
@@ -60,6 +62,7 @@ export @formula,
     ReMat,
     SeqDiffCoding,
     SqrtLink,
+    Table,
     UniformBlockDiagonal,
     VarCorr,
     aic,
@@ -73,6 +76,7 @@ export @formula,
     cond,
     condVar,
     condVartables,
+    confint,
     deviance,
     dispersion,
     dispersion_parameter,
@@ -101,9 +105,13 @@ export @formula,
     model_response,
     nobs,
     objective,
+    objective!,
     parametricbootstrap,
     pirls!,
     predict,
+    profile,
+    profileσ,
+    profilevc,
     pwrss,
     ranef,
     raneftables,
@@ -178,6 +186,7 @@ include("blockdescription.jl")
 include("grouping.jl")
 include("mimeshow.jl")
 include("serialization.jl")
+include("profile/profile.jl")
 
 using PrecompileTools
 

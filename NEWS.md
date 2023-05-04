@@ -1,3 +1,8 @@
+MixedModels v4.14.0 Release Notes
+==============================
+* New function `profile` for computing likelihood profiles for `LinearMixedModel`. The resultant `MixedModelProfile` can be then be used for computing confidence intervals with `confint`. Note that this API is still somewhat experimental and as such the internal storage details of `MixedModelProfile` may change in a future release without being considered breaking. [#639]
+* A `confint(::LinearMixedModel)` method has been defined that returns Wald confidence intervals based on the z-statistic, i.e. treating the denominator degrees of freedom as infinite. [#639]
+
 MixedModels v4.13.0 Release Notes
 ==============================
 * `raneftables` returns a `NamedTuple` where the names are the grouping factor names and the values are some `Tables.jl`-compatible type.  This type has been changed to a `Table` from `TypedTables.jl`. [#682]
@@ -415,6 +420,7 @@ Package dependencies
 [#628]: https://github.com/JuliaStats/MixedModels.jl/issues/628
 [#634]: https://github.com/JuliaStats/MixedModels.jl/issues/634
 [#637]: https://github.com/JuliaStats/MixedModels.jl/issues/637
+[#639]: https://github.com/JuliaStats/MixedModels.jl/issues/639
 [#648]: https://github.com/JuliaStats/MixedModels.jl/issues/648
 [#651]: https://github.com/JuliaStats/MixedModels.jl/issues/651
 [#653]: https://github.com/JuliaStats/MixedModels.jl/issues/653

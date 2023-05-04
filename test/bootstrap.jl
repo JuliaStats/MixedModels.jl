@@ -146,3 +146,15 @@ end
         @test sum(issingular(bs)) == 0
     end
 end
+
+@testset "CI method comparison" begin
+    fmzc = models(:sleepstudy)[2]
+    level = 0.68
+    pb = parametricbootstrap(MersenneTwister(42), 500, fmzc; hide_progress=true)
+    pr = profile(fmzc)
+    ci_boot = confint(pb; level)
+    ci_wald = confint(fmzc; level)
+    ci_prof = confint(pr; level)
+    @test first(ci_boot.lower, 2) ≈ first(ci_prof.lower, 2) atol=0.5
+    @test first(ci_prof.lower, 2) ≈ first(ci_wald.lower, 2) atol=0.1
+end

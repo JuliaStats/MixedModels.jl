@@ -30,7 +30,7 @@ Linear mixed-effects model representation
 """
 struct LinearMixedModel{T<:AbstractFloat} <: MixedModel{T}
     formula::FormulaTerm
-    reterms::Vector{AbstractReMat{T}}
+    reterms::Vector{<:AbstractReMat{T}}
     Xymat::FeMat{T}
     feterm::FeTerm{T}
     sqrtwts::Vector{T}
@@ -359,12 +359,33 @@ function condVartables(m::MixedModel{T}) where {T}
     return NamedTuple{fnames(m)}((map(_cvtbl, condVar(m), m.reterms)...,))
 end
 
+"""
+    confint(pr::MixedModelProfile; level::Real=0.95)
+    
+Compute profile confidence intervals for (fixed effects) coefficients, with confidence level `level` (by default 95%).
+
+!!! note
+    The API guarantee is for a Tables.jl compatible table. The exact return type is an 
+    implementation detail and may change in a future minor release without being considered
+    breaking.
+  
+"""
+function StatsBase.confint(m::MixedModel{T}; level=0.95) where {T}
+    cutoff = sqrt.(quantile(Chisq(1), level))
+    β, std = m.β, m.stderror
+    return DictTable(;
+        coef=coefnames(m),
+        lower=β .- cutoff .* std,
+        upper=β .+ cutoff .* std
+    )
+end
+
 function _pushALblock!(A, L, blk)
     push!(L, blk)
     return push!(A, deepcopy(isa(blk, BlockedSparse) ? blk.cscmat : blk))
 end
 
-function createAL(reterms::Vector{AbstractReMat{T}}, Xy::FeMat{T}) where {T}
+function createAL(reterms::Vector{<:AbstractReMat{T}}, Xy::FeMat{T}) where {T}
     k = length(reterms)
     vlen = kchoose2(k + 1)
     A = sizehint!(AbstractMatrix{T}[], vlen)
@@ -548,7 +569,6 @@ the length of `v` can be the rank of `X` or the number of columns of `X`.  In th
 case the calculated coefficients are padded with -0.0 out to the number of columns.
 """
 function fixef!(v::AbstractVector{Tv}, m::LinearMixedModel{T}) where {Tv,T}
-    Xtrm = m.feterm
     fill!(v, -zero(Tv))
     XyL = m.L[end]
     L = feL(m)
@@ -765,7 +785,7 @@ end
 
 lowerbd(m::LinearMixedModel) = m.optsum.lowerbd
 
-function mkparmap(reterms::Vector{AbstractReMat{T}}) where {T}
+function mkparmap(reterms::Vector{<:AbstractReMat{T}}) where {T}
     parmap = NTuple{3,Int}[]
     for (k, trm) in enumerate(reterms)
         n = LinearAlgebra.checksquare(trm.λ)
@@ -794,6 +814,37 @@ function objective(m::LinearMixedModel{T}) where {T}
         denomdf * (log2π + 2 * log(σ)) + logdet(m) + pwrss(m) / σ^2
     end
     return isempty(wts) ? val : val - T(2.0) * sum(log, wts)
+end
+
+"""
+    objective!(m::LinearMixedModel, θ)
+    objective!(m::LinearMixedModel)
+
+Equivalent to `objective(updateL!(setθ!(m, θ)))`.
+
+When `m` has a single, scalar random-effects term, `θ` can be a scalar.
+
+The one-argument method curries and returns a single-argument function of `θ`.
+
+Note that these methods modify `m`.
+The calling function is responsible for restoring the optimal `θ`.
+"""
+function objective! end
+
+function objective!(m::LinearMixedModel)
+    return Base.Fix1(objective!, m)
+end
+
+function objective!(m::LinearMixedModel{T}, θ) where {T}
+    return objective(updateL!(setθ!(m, θ)))
+end
+
+function objective!(m::LinearMixedModel{T}, x::Number) where {T}
+    retrm = only(m.reterms)
+    isa(retrm, ReMat{T,1}) ||
+        throw(DimensionMismatch("length(m.θ) = $(length(m.θ)), should be 1"))
+    copyto!(retrm.λ.data, x)
+    return objective(updateL!(m))
 end
 
 function Base.propertynames(m::LinearMixedModel, private::Bool=false)
@@ -983,6 +1034,24 @@ Install `v` as the θ parameters in `m`.
 function setθ!(m::LinearMixedModel{T}, θ::AbstractVector) where {T}
     parmap, reterms = m.parmap, m.reterms
     length(θ) == length(parmap) || throw(DimensionMismatch())
+    reind = 1
+    λ = first(reterms).λ
+    for (tv, tr) in zip(θ, parmap)
+        tr1 = first(tr)
+        if reind ≠ tr1
+            reind = tr1
+            λ = reterms[tr1].λ
+        end
+        λ[tr[2], tr[3]] = tv
+    end
+    return m
+end
+
+# This method is nearly identical to the previous one but determining a common signature
+# to collapse these to a single definition would be tricky, so we repeat ourselves.
+function setθ!(m::LinearMixedModel{T}, θ::NTuple{N,T}) where {T,N}
+    parmap, reterms = m.parmap, m.reterms
+    N == length(parmap) || throw(DimensionMismatch())
     reind = 1
     λ = first(reterms).λ
     for (tv, tr) in zip(θ, parmap)
