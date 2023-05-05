@@ -165,6 +165,45 @@ function allpars(bsamp::MixedModelFitCollection{T}) where {T}
     )
 end
 
+"""
+    confint(pr::MixedModelBootstrap; level::Real=0.95)
+
+Compute bootstrap confidence intervals for coefficients and variance components, with confidence level level (by default 95%).
+
+!!! note
+    The API guarantee is for a Tables.jl compatible table. The exact return type is an
+    implementation detail and may change in a future minor release without being considered
+    breaking.
+
+!!! note
+    The "row names" indicating the associated parameter name are guaranteed to be unambiguous,
+    but their precise naming scheme is not yet stable and may change in a future release
+    without being considered breaking.
+
+See also [`shortestcovint`](@ref).
+"""
+function StatsBase.confint(bsamp::MixedModelBootstrap{T}; level::Real=0.95) where {T}
+    cutoff = sqrt(quantile(Chisq(1), level))
+    # Creating the table is somewhat wasteful because columns are created then immediately skipped.
+    tbl = Table(bsamp.tbl)
+    lower = T[]
+    upper = T[]
+    v = similar(tbl.σ)
+    par = sort!(
+        collect(
+            filter(
+                k -> !(startswith(string(k), 'θ') || string(k) == "obj"), propertynames(tbl)
+            ),
+        ),
+    )
+    for p in par
+        l, u = shortestcovint(sort!(copyto!(v, getproperty(tbl, p))), level)
+        push!(lower, l)
+        push!(upper, u)
+    end
+    return DictTable(; par, lower, upper)
+end
+
 function Base.getproperty(bsamp::MixedModelFitCollection, s::Symbol)
     if s ∈ [:objective, :σ, :θ, :se]
         getproperty.(getfield(bsamp, :fits), s)
@@ -176,6 +215,8 @@ function Base.getproperty(bsamp::MixedModelFitCollection, s::Symbol)
         tidyσs(bsamp)
     elseif s == :allpars
         allpars(bsamp)
+    elseif s == :tbl
+        pbstrtbl(bsamp)
     else
         getfield(bsamp, s)
     end
@@ -209,6 +250,7 @@ function Base.propertynames(bsamp::MixedModelFitCollection)
         :lowerbd,
         :fits,
         :fcnames,
+        :tbl,
     ]
 end
 
@@ -363,4 +405,42 @@ function tidyσs(bsamp::MixedModelFitCollection{T}) where {T}
         end
     end
     return result
+end
+
+function pbstrtbl(bsamp::MixedModelFitCollection{T}) where {T}
+    (; fits, λ, inds) = bsamp
+    row1 = first(fits)
+    cnms = [:obj, :σ]
+    pos = Dict{Symbol,UnitRange{Int}}(:obj => 1:1, :σ => 2:2)
+    βsz = length(row1.β)
+    append!(cnms, _generatesyms('β', βsz))
+    lastpos = 2 + βsz
+    pos[:β] = 3:lastpos
+    σsz = sum(m -> size(m, 1), bsamp.λ)
+    append!(cnms, _generatesyms('σ', σsz))
+    pos[:σs] = (lastpos + 1):(lastpos + σsz)
+    lastpos += σsz
+    θsz = length(row1.θ)
+    append!(cnms, _generatesyms('θ', θsz))
+    pos[:θ] = (lastpos + 1):(lastpos + θsz)
+    tblrowtyp = NamedTuple{(cnms...,),NTuple{length(cnms),T}}
+    val = sizehint!(tblrowtyp[], length(bsamp.fits))
+    v = Vector{T}(undef, length(cnms))
+    for (i, r) in enumerate(bsamp.fits)
+        v[1] = r.objective
+        v[2] = coalesce(r.σ, one(T))
+        copyto!(view(v, pos[:β]), r.β)
+        fill!(view(v, pos[:σs]), zero(T))
+        copyto!(view(v, pos[:θ]), r.θ)
+        setθ!(bsamp, i)
+        vpos = first(pos[:σs])
+        for l in λ
+            for λr in eachrow(l)
+                v[vpos] = r.σ * norm(λr)
+                vpos += 1
+            end
+        end
+        push!(val, tblrowtyp(v))
+    end
+    return val
 end

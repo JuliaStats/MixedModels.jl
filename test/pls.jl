@@ -8,6 +8,7 @@ using Statistics
 using StatsModels
 using Tables
 using Test
+using TypedTables
 
 using MixedModels: likelihoodratiotest
 
@@ -161,10 +162,16 @@ end
         @test length(fitlog) == (div(fm1.optsum.feval, thin) + 1) # for the initial value
         @test first(fitlog) == (fm1.optsum.initial, fm1.optsum.finitial)
     end
+    @testset "profile" begin
+        dspr01 = profile(only(models(:dyestuff)))
+        sigma0row = only(filter(r -> r.p == :σ && iszero(r.ζ), dspr01.tbl))
+        @test sigma0row.σ ≈ dspr01.m.σ
+        @test sigma0row.β1 ≈ only(dspr01.m.β)
+        @test sigma0row.θ1 ≈ only(dspr01.m.θ)        
+    end
 end
 
 @testset "Dyestuff2" begin
-    ds2 = MixedModels.dataset(:dyestuff2)
     fm = only(models(:dyestuff2))
     @test lowerbd(fm) == zeros(1)
     show(IOBuffer(), fm)
@@ -180,6 +187,13 @@ end
     refit!(fm, float(MixedModels.dataset(:dyestuff)[:yield]); progress=false)
     @test objective(fm) ≈ 327.3270598811428 atol=0.001
     refit!(fm, float(MixedModels.dataset(:dyestuff2)[:yield]); progress=false) # restore the model in the cache
+    @testset "profile" begin   # tests a branch in profileσs! for σ estimate of zero
+        dspr02 = profile(only(models(:dyestuff2)))
+        sigma10row = only(filter(r -> r.p == :σ1 && iszero(r.ζ), dspr02.tbl))
+        @test iszero(sigma10row.σ1)
+        sigma1tbl = Table(filter(r -> r.p == :σ1, dspr02.tbl))
+        @test all(≥(0), sigma1tbl.σ1)
+    end
 end
 
 @testset "penicillin" begin
@@ -502,6 +516,29 @@ end
         @test bic(fm) ≈ bic(m)
         @test coef(fm) ≈ coef(m)
     end
+    @testset "profile" begin
+        pr = profile(last(models(:sleepstudy)))
+        tbl = pr.tbl
+        @test length(tbl) >= 122
+        ci = confint(pr)
+        @test Tables.istable(ci)
+        @test propertynames(ci) == (:par, :estimate, :lower, :upper)
+        @test collect(ci.par) == [:β1, :β2, :σ, :σ1, :σ2]
+        @test isapprox(
+            ci.lower.values,
+            [237.681, 7.359, 22.898, 14.381, 0.0];
+            atol=1.e-3)
+        @test isapprox(
+            ci.upper.values,
+            [265.130, 13.576, 28.858, 37.718, 8.753];
+            atol=1.e-3)
+        @test first(only(filter(r -> r.p == :σ && iszero(r.ζ), pr.tbl)).σ) == last(models(:sleepstudy)).σ
+    end
+    @testset "confint" begin
+        ci = confint(last(models(:sleepstudy)))
+        @test Tables.istable(ci)
+        @test isapprox(ci.lower.values, [238.4061184564825, 7.52295850741417]; atol=1.e-3)
+    end
 end
 
 @testset "d3" begin
@@ -526,6 +563,14 @@ end
     tokens = Set(split(String(take!(io)), r"\s+"))
     @test "Corr." in tokens
     @test "-0.89" in tokens
+    @testset "profile" begin
+        contrasts = Dict(:item => Grouping(), :subj => Grouping(), :prec => EffectsCoding(; base="maintain"),
+        :spkr => EffectsCoding(), :load => EffectsCoding())
+        kbf03 = @formula rt_trunc ~ 1+prec+spkr+load+(1+prec|item)+(1|subj)
+        kbpr03 = profile(fit(MixedModel, kbf03, MixedModels.dataset(:kb07); contrasts, thin=1, progress=false))
+        @test length(Tables.columnnames(kbpr03.tbl)) == 15
+        @test length(Tables.rows(kbpr03.tbl)) > 200
+    end
 end
 
 @testset "oxide" begin
