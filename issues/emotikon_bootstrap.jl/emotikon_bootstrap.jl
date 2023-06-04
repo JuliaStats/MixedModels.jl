@@ -73,10 +73,10 @@ end
 # but you shouldn't use all of your cores because nested within this
 # is the multithreading of the linear algebra
 # 5 RNGS and 10 replicates from each
-pb = @time @showprogress pmap(MersenneTwister.(40:45)) do rng
+pb_map = @time @showprogress pmap(MersenneTwister.(41:45)) do rng
     parametricbootstrap(rng, 10, m07; optsum_overrides)
 end;
-@time confint(reduce(vcat, pb))
+@time confint(reduce(vcat, pb_map))
 
 
 
@@ -104,7 +104,3 @@ f1 = @formula(zScore ~ 1 + age * Test * Sex +
                       (1 + Test | Child) +
               zerocorr(1 + Test | Cohort))
 m1 = fit(MixedModel, f1, df; contrasts, progress=true, thin=1)
-    # not sure this next call makes sense - should the second argument be m.optsum.final?
-    _copy_away_from_lowerbd!(
-        mnew.optsum.initial, mnew.optsum.final, mnew.lowerbd; incr=0.05
-    )
