@@ -34,6 +34,35 @@ struct MixedModelBootstrap{T<:AbstractFloat} <: MixedModelFitCollection{T}
     fcnames::NamedTuple
 end
 
+# XXX for now we only define these methods for a common eltype
+
+function Base.vcat(b1::MixedModelBootstrap{T}, b2::MixedModelBootstrap{T}) where {T}
+    for field in [:λ, :inds, :lowerbd, :fcnames]
+        getfield(b1, field) == getfield(b2, field) ||
+            throw(ArgumentError("b1 and b2 must originate from the same model fit"))
+    end
+    return MixedModelBootstrap{T}(vcat(b1.fits, b2.fits),
+                                  deepcopy(b1.λ),
+                                  deepcopy(b1.inds),
+                                  deepcopy(b1.lowerbd),
+                                  deepcopy(b1.fcnames))
+end
+
+function Base.reduce(::typeof(vcat), v::AbstractVector{MixedModelBootstrap{T}}) where {T}
+    for field in [:λ, :inds, :lowerbd, :fcnames]
+        all(==(getfield(first(v), field)), getfield.(v, field)) ||
+            throw(ArgumentError("All bootstraps must originate from the same model fit"))
+    end
+
+    b1 = first(v)
+    fits = reduce(vcat, getfield.(v, :fits))
+    return MixedModelBootstrap{T}(fits,
+                                  deepcopy(b1.λ),
+                                  deepcopy(b1.inds),
+                                  deepcopy(b1.lowerbd),
+                                  deepcopy(b1.fcnames))
+end
+
 """
     parametricbootstrap([rng::AbstractRNG], nsamp::Integer, m::MixedModel{T}, ftype=T;
         β = coef(m), σ = m.σ, θ = m.θ, hide_progress=false)
@@ -65,6 +94,7 @@ function parametricbootstrap(
     θ::AbstractVector=morig.θ,
     use_threads::Bool=false,
     hide_progress::Bool=false,
+    optsum_overrides=(;)
 ) where {T}
     if σ !== missing
         σ = T(σ)
@@ -73,8 +103,15 @@ function parametricbootstrap(
     βsc, θsc = similar(ftype.(β)), similar(ftype.(θ))
     p, k = length(β), length(θ)
     m = deepcopy(morig)
+    # useful for capping maxfeval at say
+    # round(Int, 0.9 * morig.optsum.feval)
+    for (key, val) in pairs(optsum_overrides)
+        setfield!(m.optsum, key, val)
+    end
+    # this seemed to slow things down?!
+    # _copy_away_from_lowerbd!(m.optsum.initial, morig.optsum.final, m.lowerbd; incr=0.05)
 
-    β_names = (Symbol.(fixefnames(morig))...,)
+    β_names = Tuple(Symbol.(fixefnames(morig)))
 
     use_threads && Base.depwarn(
         "use_threads is deprecated and will be removed in a future release",
@@ -83,6 +120,7 @@ function parametricbootstrap(
     samp = replicate(n; hide_progress=hide_progress) do
         simulate!(rng, m; β, σ, θ)
         refit!(m; progress=false)
+        # @info "" m.optsum.feval
         (
             objective=ftype.(m.objective),
             σ=ismissing(m.σ) ? missing : ftype(m.σ),
@@ -96,7 +134,7 @@ function parametricbootstrap(
         map(vv -> ftype.(vv), morig.λ), # also does a deepcopy if no type conversion is necessary
         getfield.(morig.reterms, :inds),
         ftype.(morig.optsum.lowerbd[1:length(first(samp).θ)]),
-        NamedTuple{Symbol.(fnames(morig))}(map(t -> (t.cnames...,), morig.reterms)),
+        NamedTuple{Symbol.(fnames(morig))}(map(t -> Tuple(t.cnames), morig.reterms)),
     )
 end
 
