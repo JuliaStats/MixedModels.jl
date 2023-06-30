@@ -1,5 +1,10 @@
 MixedModels v4.14.0 Release Notes
 ==============================
+* Support for different optimization criteria during the bootstrap.
+* Support for combining bootstrap results with `vcat`.
+
+MixedModels v4.14.0 Release Notes
+==============================
 * New function `profile` for computing likelihood profiles for `LinearMixedModel`. The resultant `MixedModelProfile` can be then be used for computing confidence intervals with `confint`. Note that this API is still somewhat experimental and as such the internal storage details of `MixedModelProfile` may change in a future release without being considered breaking. [#639]
 * A `confint(::LinearMixedModel)` method has been defined that returns Wald confidence intervals based on the z-statistic, i.e. treating the denominator degrees of freedom as infinite. [#639]
 
