@@ -164,3 +164,38 @@ This operation is encapsulated in a method for the `issingular` function.
 ```@example Main
 count(issingular(samp2))
 ```
+
+## Distributed Computing and the Bootstrap
+
+Earlier versions of mixed models supported a multi-threaded bootstrap via the `use_threads` kwarg.
+However, with improved BLAS multithreading, the Julia-level threads often wound up competing with the BLAS threads, leading to no improvement or even a worsening of performance when `use_threads=true`.
+Nonetheless, the bootstrap is a classic example of an [embarrassingly parallel](https://en.wikipedia.org/wiki/Embarrassingly_parallel) problem and so we provide a few convenience methods for combining results computed separately.
+In particular, there are `vcat` and an optimized `reduce(::typeof(vcat))` methods for `MixedModelBootstrap` objects.
+For computers with many processors (and not a few cores in a single processor) or computing clusters, these provide a convenient way to split the computation across nodes.
+
+```@example Main
+using Distributed
+using ProgressMeter
+# you already have 1 proc by default, so add the number of additional cores
+# you want to use, but see below
+addprocs(3)
+@info "Currently using $(nprocs()) processors total and $(nworkers()) for work"
+@info "Currently using $(nprocs()) processors total and $(nworkers()) for work"
+# copy everything to workers
+
+@showprogress for w in workers()
+    remotecall_fetch(() -> coefnames(m2), w)
+end
+
+# you need at least as many RNGs as cores you want to use in parallel
+# but you shouldn't use all of your cores because nested within this
+# is the multithreading of the linear algebra
+# 5 RNGS and 10 replicates from each
+pb_map = @time @showprogress pmap(MersenneTwister.(41:45)) do rng
+    parametricbootstrap(rng, 10, m2; optsum_overrides)
+end;
+confint(reduce(vcat, pb_map))
+
+# get rid of all the workers
+rmprocs(workers())
+```
