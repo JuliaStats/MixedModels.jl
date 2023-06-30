@@ -79,6 +79,17 @@ end
     @test length(bsamp.σs) == 100
     allpars = DataFrame(bsamp.allpars)
     @test isa(allpars, DataFrame)
+
+    bsamp2 = parametricbootstrap(MersenneTwister(1234321), 100, fm;
+                                 use_threads=false, hide_progress=true,
+                                 optsum_overrides=(;ftol_rel=1e-8))
+    # for such a simple, small model setting the floating point
+    # toelerance has little effectu until we do something extreme
+    @test bsamp.objective ≈ bsamp2.objective
+    bsamp2 = parametricbootstrap(MersenneTwister(1234321), 100, fm;
+                                 use_threads=false, hide_progress=true,
+                                 optsum_overrides=(;ftol_rel=1.0))
+    @test !(bsamp.objective ≈ bsamp2.objective)
     cov = shortestcovint(shuffle(1.:100.))
     # there is no unique shortest coverage interval here, but the left-most one
     # is currently returned, so we take that. If this behavior changes, then
