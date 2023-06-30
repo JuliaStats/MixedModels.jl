@@ -165,6 +165,8 @@ This operation is encapsulated in a method for the `issingular` function.
 count(issingular(samp2))
 ```
 
+## Reduced Precision Bootstrap
+
 ## Distributed Computing and the Bootstrap
 
 Earlier versions of mixed models supported a multi-threaded bootstrap via the `use_threads` kwarg.
