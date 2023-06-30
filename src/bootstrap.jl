@@ -65,7 +65,7 @@ end
 
 """
     parametricbootstrap([rng::AbstractRNG], nsamp::Integer, m::MixedModel{T}, ftype=T;
-        β = coef(m), σ = m.σ, θ = m.θ, hide_progress=false)
+        β = coef(m), σ = m.σ, θ = m.θ, hide_progress=false, optsum_overrides=(;))
 
 Perform `nsamp` parametric bootstrap replication fits of `m`, returning a `MixedModelBootstrap`.
 
@@ -76,13 +76,18 @@ not a named argument because named arguments are not used in method dispatch and
 specialization. In other words, having `ftype` as a positional argument has some potential
 performance benefits.
 
-# Named Arguments
+# Keyword Arguments
 
 - `β`, `σ`, and `θ` are the values of `m`'s parameters for simulating the responses.
 - `σ` is only valid for `LinearMixedModel` and `GeneralizedLinearMixedModel` for
 families with a dispersion parameter.
 - `hide_progress` can be used to disable the progress bar. Note that the progress
 bar is automatically disabled for non-interactive (i.e. logging) contexts.
+- `optsum_overrides` is used to override values of [OptSummary](@ref) in the models
+fit during the bootstrapping process. For example, `optsum_overrides=(;ftol_rel=1e08)`
+reduces the convergence criterion, which can greatly speed up the bootstrap fits.
+Taking advantage of this speed up to increase `n` can often lead to better estimates
+of coverage intervals.
 """
 function parametricbootstrap(
     rng::AbstractRNG,
@@ -103,8 +108,6 @@ function parametricbootstrap(
     βsc, θsc = similar(ftype.(β)), similar(ftype.(θ))
     p, k = length(β), length(θ)
     m = deepcopy(morig)
-    # useful for capping maxfeval at say
-    # round(Int, 0.9 * morig.optsum.feval)
     for (key, val) in pairs(optsum_overrides)
         setfield!(m.optsum, key, val)
     end
