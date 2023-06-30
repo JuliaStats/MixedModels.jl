@@ -35,7 +35,6 @@ struct MixedModelBootstrap{T<:AbstractFloat} <: MixedModelFitCollection{T}
 end
 
 # XXX for now we only define these methods for a common eltype
-
 function Base.vcat(b1::MixedModelBootstrap{T}, b2::MixedModelBootstrap{T}) where {T}
     for field in [:λ, :inds, :lowerbd, :fcnames]
         getfield(b1, field) == getfield(b2, field) ||
