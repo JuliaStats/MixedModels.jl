@@ -1,7 +1,8 @@
-MixedModels v4.14.0 Release Notes
+MixedModels v4.15.0 Release Notes
 ==============================
 * Support for different optimization criteria during the bootstrap.
 * Support for combining bootstrap results with `vcat`.
+* Support for saving and restoring bootstrap replicates with `savereplicates` and `restorereplicates`. [#694]
 
 MixedModels v4.14.0 Release Notes
 ==============================
@@ -440,3 +441,4 @@ Package dependencies
 [#680]: https://github.com/JuliaStats/MixedModels.jl/issues/680
 [#681]: https://github.com/JuliaStats/MixedModels.jl/issues/681
 [#682]: https://github.com/JuliaStats/MixedModels.jl/issues/682
+[#694]: https://github.com/JuliaStats/MixedModels.jl/issues/694
