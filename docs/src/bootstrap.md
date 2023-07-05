@@ -173,12 +173,14 @@ The resultant loss in precision will generally be smaller than the variation tha
 More directly, lowering the fit quality for each replicate will reduce the quality of each replicate, but this may be more than compensated for by the ability to fit a much larger number of replicates in the same time.
 
 ```@example Main
-@time parametricbootstrap(MersenneTwister(42), 1000, m2; hide_progress=true)
+t = @timed parametricbootstrap(MersenneTwister(42), 1000, m2; hide_progress=true)
+t.time
 ```
 
 ```@example Main
 optsum_overrides = (; ftol_rel=1e-8)
-@time parametricbootstrap(MersenneTwister(42), 1000, m2; optsum_overrides, hide_progress=true)
+t = @timed parametricbootstrap(MersenneTwister(42), 1000, m2; optsum_overrides, hide_progress=true)
+t.time
 ```
 
 ## Distributed Computing and the Bootstrap
@@ -209,8 +211,9 @@ n_rep_per_worker = n_replicates ÷ nworkers()
 pb_map = @showprogress pmap(MersenneTwister.(42 .+ 1:nworkers())) do rng
     parametricbootstrap(rng, n_rep_per_worker, m2; optsum_overrides)
 end;
-confint(reduce(vcat, pb_map))
 
 # get rid of all the workers
 # rmprocs(workers())
+
+confint(reduce(vcat, pb_map))
 ```
