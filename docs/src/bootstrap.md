@@ -208,7 +208,7 @@ end
 # 10 replicates computed on each work
 n_replicates = 1000
 n_rep_per_worker = n_replicates ÷ nworkers()
-pb_map = @showprogress pmap(MersenneTwister.(42 .+ 1:nworkers())) do rng
+pb_map = @showprogress pmap(MersenneTwister.(1:nworkers())) do rng
     parametricbootstrap(rng, n_rep_per_worker, m2; optsum_overrides)
 end;
 
