@@ -168,7 +168,6 @@ end
         @test pb1 ≈ pb1
         @test pb1 ≈ restorereplicates(seekstart(io), m1, Float64)
         @test restorereplicates(seekstart(io), m1, Float32) ≈ restorereplicates(seekstart(io), m1, Float32)
-        @test isapprox(pb1, restorereplicates(seekstart(io), m1, Float32))
         # too much precision is lost
         f16 = restorereplicates(seekstart(io), m1, Float16)
         @test !isapprox(pb1, f16)

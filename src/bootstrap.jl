@@ -36,32 +36,31 @@ end
 
 Base.:(==)(a::MixedModelFitCollection{T}, b::MixedModelFitCollection{S}) where {T,S} = false
 
-function Base.:(==)(a::MixedModelFitCollection{T}, b::MixedModelFitCollection{T}) where {T} 
+function Base.:(==)(a::MixedModelFitCollection{T}, b::MixedModelFitCollection{T}) where {T}
     return a.fits == b.fits &&
-        a.λ == b.λ && 
-        a.inds == b.inds && 
-        a.lowerbd == b.lowerbd && 
-        a.fcnames == b.fcnames
+           a.λ == b.λ &&
+           a.inds == b.inds &&
+           a.lowerbd == b.lowerbd &&
+           a.fcnames == b.fcnames
 end
 
 function Base.isapprox(a::MixedModelFitCollection, b::MixedModelFitCollection;
-                       atol::Real=0, rtol::Real=atol>0 ? 0 : √eps())
-    
+    atol::Real=0, rtol::Real=atol > 0 ? 0 : √eps())
     fits = all(zip(a.fits, b.fits)) do (x, y)
         return isapprox(x.objective, y.objective; atol, rtol) &&
-            isapprox(x.θ, y.θ; atol, rtol) && 
-            isapprox(x.σ, y.σ; atol, rtol) && 
-            all(isapprox(a, b; atol, rtol) for (a, b) in zip(x.β, y.β))
+               isapprox(x.θ, y.θ; atol, rtol) &&
+               isapprox(x.σ, y.σ; atol, rtol) &&
+               all(isapprox(a, b; atol, rtol) for (a, b) in zip(x.β, y.β))
     end
 
-   λ = all(zip(a.λ, b.λ)) do (x, y)
+    λ = all(zip(a.λ, b.λ)) do (x, y)
         return isapprox(x, y; atol, rtol)
-   end
-    
-    return fits && λ 
+    end
+
+    return fits && λ &&
         # Vector{Vector{Int}} so no need for isapprox
-        a.inds == b.inds && 
-        isapprox(a.lowerbd, b.lowerbd; atol, rtol) && 
+        a.inds == b.inds &&
+        isapprox(a.lowerbd, b.lowerbd; atol, rtol) &&
         a.fcnames == b.fcnames
 end
 
