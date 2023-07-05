@@ -51,7 +51,7 @@ is the return type.
 
 See also [`savereplicates`](@ref), [`restoreoptsum`](@ref).
 """
-function restorereplicates(f, m::MixedModel{T}, ftype::Type{<:AbstractFloat}=T) where{T} 
+function restorereplicates(f, m::MixedModel{T}, ftype::Type{<:AbstractFloat}=T) where {T}
     return restorereplicates(f, m, MixedModelBootstrap{ftype})
 end
 
@@ -60,18 +60,21 @@ end
 # in MixedModelsSim and then overload this method to get a convenient object. 
 # Also, this allows us to write `restorereplicateS(f, m, ::Type{<:MixedModelNonparametricBoostrap})` for
 # entities in MixedModels bootstrap
-function restorereplicates(f, m::MixedModel, ctype::Type{<:MixedModelFitCollection{T}}) where {T} 
+function restorereplicates(
+    f, m::MixedModel, ctype::Type{<:MixedModelFitCollection{T}}
+) where {T}
     tbl = Arrow.Table(f)
     # use a lazy iterator to get the first element for checks
     # before doing a conversion of the entire Arrow column table to row table
-    rep = first(Tables.rows(tbl))    
-    allgood = length(rep.θ) == length(m.θ) &&
-        string.(propertynames(rep.β)) == Tuple(coefnames(m))   
-    allgood || 
+    rep = first(Tables.rows(tbl))
+    allgood =
+        length(rep.θ) == length(m.θ) &&
+        string.(propertynames(rep.β)) == Tuple(coefnames(m))
+    allgood ||
         throw(ArgumentError("Model is not compatible with saved replicates."))
 
     samp = Tables.rowtable(tbl)
-    ctype(
+    return ctype(
         samp,
         map(vv -> T.(vv), m.λ), # also does a deepcopy if no type conversion is necessary
         getfield.(m.reterms, :inds),
@@ -94,7 +97,6 @@ See also [`restorereplicates`](@ref), [`saveoptsum`](@ref)
 """
 savereplicates(f, b::MixedModelFitCollection) = Arrow.write(f, b.fits)
 
-
 # TODO: write methods for GLMM
 function Base.vcat(b1::MixedModelBootstrap{T}, b2::MixedModelBootstrap{T}) where {T}
     for field in [:λ, :inds, :lowerbd, :fcnames]
@@ -102,10 +104,10 @@ function Base.vcat(b1::MixedModelBootstrap{T}, b2::MixedModelBootstrap{T}) where
             throw(ArgumentError("b1 and b2 must originate from the same model fit"))
     end
     return MixedModelBootstrap{T}(vcat(b1.fits, b2.fits),
-                                  deepcopy(b1.λ),
-                                  deepcopy(b1.inds),
-                                  deepcopy(b1.lowerbd),
-                                  deepcopy(b1.fcnames))
+        deepcopy(b1.λ),
+        deepcopy(b1.inds),
+        deepcopy(b1.lowerbd),
+        deepcopy(b1.fcnames))
 end
 
 function Base.reduce(::typeof(vcat), v::AbstractVector{MixedModelBootstrap{T}}) where {T}
@@ -117,10 +119,10 @@ function Base.reduce(::typeof(vcat), v::AbstractVector{MixedModelBootstrap{T}}) 
     b1 = first(v)
     fits = reduce(vcat, getfield.(v, :fits))
     return MixedModelBootstrap{T}(fits,
-                                  deepcopy(b1.λ),
-                                  deepcopy(b1.inds),
-                                  deepcopy(b1.lowerbd),
-                                  deepcopy(b1.fcnames))
+        deepcopy(b1.λ),
+        deepcopy(b1.inds),
+        deepcopy(b1.lowerbd),
+        deepcopy(b1.fcnames))
 end
 
 """
@@ -159,7 +161,7 @@ function parametricbootstrap(
     θ::AbstractVector=morig.θ,
     use_threads::Bool=false,
     hide_progress::Bool=false,
-    optsum_overrides=(;)
+    optsum_overrides=(;),
 ) where {T}
     if σ !== missing
         σ = T(σ)
