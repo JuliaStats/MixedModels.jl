@@ -205,7 +205,9 @@ using ProgressMeter
     remotecall_fetch(() -> coefnames(m2), w)
 end
 
-# 10 replicates computed on each work
+# split the replicates across the workers
+# this rounds down, so if the number of workers doesn't divide the
+# number of replicates, you'll be a few replicates short!
 n_replicates = 1000
 n_rep_per_worker = n_replicates ÷ nworkers()
 pb_map = @showprogress pmap(MersenneTwister.(1:nworkers())) do rng
