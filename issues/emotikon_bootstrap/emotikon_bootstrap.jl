@@ -33,7 +33,6 @@ pb_restricted2 = @time parametricbootstrap(
 );
 confint(pbref)
 confint(pb_restricted)
-confint(pbref)
 confint(pb_restricted2)
 
 using .Cache
