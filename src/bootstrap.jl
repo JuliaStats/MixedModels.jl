@@ -1,4 +1,8 @@
+"""
+    MixedModelFitCollection{T<:AbstractFloat}
 
+Abstract supertype for [`MixedModelBootstrap`](@ref) and related functionality in other packages.
+"""
 abstract type MixedModelFitCollection{T<:AbstractFloat} end
 
 """
@@ -79,7 +83,7 @@ If an eltype is specified as the third argument, then a `MixedModelBootstrap` is
 If a subtype of `MixedModelFitCollection` is specified as the third argument, then that 
 is the return type.
 
-See also [`savereplicates`](@ref), [`restoreoptsum`](@ref).
+See also [`savereplicates`](@ref), [`restoreoptsum!`](@ref).
 """
 function restorereplicates(f, m::MixedModel{T}, ftype::Type{<:AbstractFloat}=T) where {T}
     return restorereplicates(f, m, MixedModelBootstrap{ftype})
