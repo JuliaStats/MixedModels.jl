@@ -62,10 +62,10 @@ function Base.isapprox(a::MixedModelFitCollection, b::MixedModelFitCollection;
     end
 
     return fits && λ &&
-        # Vector{Vector{Int}} so no need for isapprox
-        a.inds == b.inds &&
-        isapprox(a.lowerbd, b.lowerbd; atol, rtol) &&
-        a.fcnames == b.fcnames
+           # Vector{Vector{Int}} so no need for isapprox
+           a.inds == b.inds &&
+           isapprox(a.lowerbd, b.lowerbd; atol, rtol) &&
+           a.fcnames == b.fcnames
 end
 
 """
