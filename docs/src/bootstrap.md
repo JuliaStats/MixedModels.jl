@@ -210,6 +210,8 @@ end
 # number of replicates, you'll be a few replicates short!
 n_replicates = 1000
 n_rep_per_worker = n_replicates ÷ nworkers()
+# NB: You need a different seed/RNG for each worker otherwise you will
+# have copies of the same replicates and not independent replicates!
 pb_map = @showprogress pmap(MersenneTwister.(1:nworkers())) do rng
     parametricbootstrap(rng, n_rep_per_worker, m2; optsum_overrides)
 end;
