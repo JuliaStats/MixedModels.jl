@@ -149,6 +149,46 @@ end
         @test length(reduce(vcat, [zc1, zc2])) == 4
     end
 
+    @testset "save and restore replicates" begin
+        io = IOBuffer()
+        m0 = first(models(:sleepstudy))
+        m1 = last(models(:sleepstudy))
+        pb0 = quickboot(m0)
+        pb1 = quickboot(m1)
+        savereplicates(io, pb1)
+        # wrong model``
+        @test_throws ArgumentError restorereplicates(seekstart(io), m0)
+        # need to specify an eltype!
+        @test_throws MethodError restorereplicates(seekstart(io), m1, MixedModelBootstrap)
+
+        # make sure exact and approximate equality work
+        @test pb1 == pb1
+        @test pb1 == restorereplicates(seekstart(io), m1)
+        @test pb1 ≈ restorereplicates(seekstart(io), m1)
+        @test pb1 ≈ pb1
+        @test pb1 ≈ restorereplicates(seekstart(io), m1, Float64)
+        @test restorereplicates(seekstart(io), m1, Float32) ≈ restorereplicates(seekstart(io), m1, Float32)
+        @test isapprox(pb1, restorereplicates(seekstart(io), m1, Float32))
+        # too much precision is lost
+        f16 = restorereplicates(seekstart(io), m1, Float16)
+        @test !isapprox(pb1, f16)
+        @test isapprox(pb1, f16; atol=eps(Float16))
+        @test isapprox(pb1, f16; rtol=0.0001)
+        
+
+        # two paths, one destination
+        @test restorereplicates(seekstart(io), m1, MixedModelBootstrap{Float16}) == restorereplicates(seekstart(io), m1, Float16)
+        # changing eltype breaks exact equality
+        @test pb1 != restorereplicates(seekstart(io), m1, Float32)
+        
+        # test that we don't need the model to be fit when restoring
+        @test pb1 == restorereplicates(seekstart(io), MixedModels.unfit!(deepcopy(m1)))
+
+        @test pb1 ≈ restorereplicates(seekstart(io), m1, Float16) rtol=1
+        
+        restorereplicates(seekstart(io), m1)
+    end
+
     @testset "Bernoulli simulate! and GLMM bootstrap" begin
         contra = dataset(:contra)
         # need a model with fast=false to test that we only
