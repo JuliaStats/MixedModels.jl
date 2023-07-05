@@ -142,6 +142,9 @@ export @formula,
     weights,
     zerocorr
 
+# TODO: move this to the correct spot in list once we've decided on name
+export savereplicates, restorereplicates
+
 """
     MixedModel
 

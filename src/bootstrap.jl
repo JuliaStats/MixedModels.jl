@@ -1,5 +1,5 @@
 
-abstract type MixedModelFitCollection{T<:AbstractFloat} end # model with fixed and random effects
+abstract type MixedModelFitCollection{T<:AbstractFloat} end
 
 """
     MixedModelBootstrap{T<:AbstractFloat} <: MixedModelFitCollection{T}
@@ -34,13 +34,68 @@ struct MixedModelBootstrap{T<:AbstractFloat} <: MixedModelFitCollection{T}
     fcnames::NamedTuple
 end
 
-# XXX for now we only define these methods for a common eltype
-# Base.length
-# Base.get_index::MixedModelBootstrap
-# Base.get_index::MixedModel
-# Base.set_index!(::MixedModelBootstrap, idx::Integer, ::MixedModel)
-# save_replicates saving just the rowtable `fits`
-# load_replicates(::IO, ::MixedModel)
+"""
+    restorereplicates(f, m::MixedModel{T})
+    restorereplicates(f, m::MixedModel{T}, ftype::Type{<:AbstractFloat})
+    restorereplicates(f, m::MixedModel{T}, ctype::Type{<:MixedModelFitCollection{S}})
+
+Restore replicates from `f`, using `m` to create the desired subtype of [`MixedModelFitCollection`](@ref).
+
+`f` can be any entity suppored by `Arrow.Table`. `m` does not have to be fitted, but it must have
+been constructed with the same structure as the source of the saved replicates.
+
+The two-argument method constructs a [`MixedModelBootstrap`](@ref) with the same eltype as `m`.
+If an eltype is specified as the third argument, then a `MixedModelBootstrap` is returned.
+If a subtype of `MixedModelFitCollection` is specified as the third argument, then that 
+is the return type.
+
+See also [`savereplicates`](@ref), [`restoreoptsum`](@ref).
+"""
+function restorereplicates(f, m::MixedModel{T}, ftype::Type{<:AbstractFloat}=T) where{T} 
+    return restorereplicates(f, m, MixedModelBootstrap{ftype})
+end
+
+# why this weird second method? it allows us to define custom types and write methods
+# to load into those types directly. For example, we could define a `PowerAnalysis <: MixedModelFitCollection`
+# in MixedModelsSim and then overload this method to get a convenient object. 
+# Also, this allows us to write `restorereplicateS(f, m, ::Type{<:MixedModelNonparametricBoostrap})` for
+# entities in MixedModels bootstrap
+function restorereplicates(f, m::MixedModel, ctype::Type{<:MixedModelFitCollection{T}}) where {T} 
+    tbl = Arrow.Table(f)
+    # use a lazy iterator to get the first element for checks
+    # before doing a conversion of the entire Arrow column table to row table
+    rep = first(Tables.rows(tbl))    
+    allgood = length(rep.θ) == length(m.θ) &&
+        string.(propertynames(rep.β)) == Tuple(coefnames(m))   
+    allgood || 
+        throw(ArgumentError("Model is not compatible with saved replicates."))
+
+    samp = Tables.rowtable(tbl)
+    ctype(
+        samp,
+        map(vv -> T.(vv), m.λ), # also does a deepcopy if no type conversion is necessary
+        getfield.(m.reterms, :inds),
+        T.(m.optsum.lowerbd[1:length(first(samp).θ)]),
+        NamedTuple{Symbol.(fnames(m))}(map(t -> Tuple(t.cnames), m.reterms)),
+    )
+end
+
+"""
+    savereplicates(f, b::MixedModelFitCollection)
+
+Save the replicates associated with a [`MixedModelFitCollection`](@ref), 
+e.g. [`MixedModelBootstrap`](@ref) as an Arrow file. 
+
+See also [`restorereplicates`](@ref), [`saveoptsum`](@ref)
+
+!!! note
+    **Only** the replicates are saved, not the entire contents of the `MixedModelFitCollection`.
+    `restorereplicates` requires a model compatible with the bootstrap to restore the full object. 
+"""
+savereplicates(f, b::MixedModelFitCollection) = Arrow.write(f, b.fits)
+
+
+# TODO: write methods for GLMM
 function Base.vcat(b1::MixedModelBootstrap{T}, b2::MixedModelBootstrap{T}) where {T}
     for field in [:λ, :inds, :lowerbd, :fcnames]
         getfield(b1, field) == getfield(b2, field) ||
