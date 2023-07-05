@@ -167,6 +167,20 @@ count(issingular(samp2))
 
 ## Reduced Precision Bootstrap
 
+`parametricbootstrap` accepts an optional keyword argument `optsum_overrides`, which can be used to override the convergence criteria for bootstrap replicates. One possibility is setting `ftol_rel=1e-8`, i.e., considering the model converged when the relative change in the objective between optimizer iterations is smaller than 0.00000001. 
+This threshold corresponds approximately to the precision from treating the value of the objective as a single precision (`Float32`) number, while not changing the precision of the intermediate computations. 
+The resultant loss in precision will generally be smaller than the variation that the bootstrap captures, but can greatly speed up the fitting process for each replicates, especially for large models.
+More directly, lowering the fit quality for each replicate will reduce the quality of each replicate, but this may be more than compensated for by the ability to fit a much larger number of replicates in the same time.
+
+```@example Main
+@time parametricbootstrap(MersenneTwister(42), 1000, m2; hide_progress=true)
+```
+
+```@example Main
+optsum_overrides = (; ftol_rel=1e-8)
+@time parametricbootstrap(MersenneTwister(42), 1000, m2; optsum_overrides, hide_progress=true)
+```
+
 ## Distributed Computing and the Bootstrap
 
 Earlier versions of mixed models supported a multi-threaded bootstrap via the `use_threads` kwarg.
@@ -178,26 +192,25 @@ For computers with many processors (and not a few cores in a single processor) o
 ```@example Main
 using Distributed
 using ProgressMeter
-# you already have 1 proc by default, so add the number of additional cores
-# you want to use, but see below
-addprocs(3)
+# you already have 1 proc by default, so add the number of additional cores with `addprocs`
+# you need at least as many RNGs as cores you want to use in parallel
+# but you shouldn't use all of your cores because nested within this
+# is the multithreading of the linear algebra
 @info "Currently using $(nprocs()) processors total and $(nworkers()) for work"
-@info "Currently using $(nprocs()) processors total and $(nworkers()) for work"
-# copy everything to workers
 
+# copy everything to workers
 @showprogress for w in workers()
     remotecall_fetch(() -> coefnames(m2), w)
 end
 
-# you need at least as many RNGs as cores you want to use in parallel
-# but you shouldn't use all of your cores because nested within this
-# is the multithreading of the linear algebra
-# 5 RNGS and 10 replicates from each
-pb_map = @time @showprogress pmap(MersenneTwister.(41:45)) do rng
-    parametricbootstrap(rng, 10, m2; optsum_overrides)
+# 10 replicates computed on each work
+n_replicates = 1000
+n_rep_per_worker = n_replicates ÷ nworkers()
+pb_map = @showprogress pmap(MersenneTwister.(42 .+ 1:nworkers())) do rng
+    parametricbootstrap(rng, n_rep_per_worker, m2; optsum_overrides)
 end;
 confint(reduce(vcat, pb_map))
 
 # get rid of all the workers
-rmprocs(workers())
+# rmprocs(workers())
 ```
