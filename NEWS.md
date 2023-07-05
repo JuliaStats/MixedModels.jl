@@ -1,7 +1,7 @@
 MixedModels v4.15.0 Release Notes
 ==============================
-* Support for different optimization criteria during the bootstrap.
-* Support for combining bootstrap results with `vcat`.
+* Support for different optimization criteria during the bootstrap. [#694]
+* Support for combining bootstrap results with `vcat`. [#694]
 * Support for saving and restoring bootstrap replicates with `savereplicates` and `restorereplicates`. [#694]
 
 MixedModels v4.14.0 Release Notes
