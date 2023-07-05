@@ -173,19 +173,17 @@ end
         @test !isapprox(pb1, f16)
         @test isapprox(pb1, f16; atol=eps(Float16))
         @test isapprox(pb1, f16; rtol=0.0001)
-        
+
 
         # two paths, one destination
         @test restorereplicates(seekstart(io), m1, MixedModelBootstrap{Float16}) == restorereplicates(seekstart(io), m1, Float16)
         # changing eltype breaks exact equality
         @test pb1 != restorereplicates(seekstart(io), m1, Float32)
-        
+
         # test that we don't need the model to be fit when restoring
         @test pb1 == restorereplicates(seekstart(io), MixedModels.unfit!(deepcopy(m1)))
 
         @test pb1 ≈ restorereplicates(seekstart(io), m1, Float16) rtol=1
-        
-        restorereplicates(seekstart(io), m1)
     end
 
     @testset "Bernoulli simulate! and GLMM bootstrap" begin
