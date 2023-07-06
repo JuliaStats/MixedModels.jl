@@ -12,6 +12,13 @@ using MixedModels: dataset, MixedModelBootstrap
 
 include("modelcache.jl")
 
+function quickboot(m, n=2)
+    return parametricbootstrap(MersenneTwister(42), n, m;
+                               hide_progress=true, use_threads=false,
+                               optsum_overrides=(;ftol_rel=1e-8))
+end
+
+
 @testset "simulate!(::MixedModel)" begin
     @testset "LMM" begin
         ds = dataset(:dyestuff)
@@ -79,6 +86,19 @@ end
     @test length(bsamp.σs) == 100
     allpars = DataFrame(bsamp.allpars)
     @test isa(allpars, DataFrame)
+
+    @testset "optsum_overrides" begin
+        bsamp2 = parametricbootstrap(MersenneTwister(1234321), 100, fm;
+                                    use_threads=false, hide_progress=true,
+                                    optsum_overrides=(;ftol_rel=1e-8))
+        # for such a simple, small model setting the function value
+        # tolerance has little effect until we do something extreme
+        @test bsamp.objective ≈ bsamp2.objective
+        bsamp2 = parametricbootstrap(MersenneTwister(1234321), 100, fm;
+                                    use_threads=false, hide_progress=true,
+                                    optsum_overrides=(;ftol_rel=1.0))
+        @test !(bsamp.objective ≈ bsamp2.objective)
+    end
     cov = shortestcovint(shuffle(1.:100.))
     # there is no unique shortest coverage interval here, but the left-most one
     # is currently returned, so we take that. If this behavior changes, then
@@ -114,6 +134,56 @@ end
         fmzcnot = fit(MixedModel, form_zc_not, dataset(:kb07); progress=false)
         pbzcnot = parametricbootstrap(MersenneTwister(42), 2, fmzcnot, Float16;
                                       hide_progress=true)
+    end
+
+    @testset "vcat" begin
+        sleep = quickboot(last(models(:sleepstudy)))
+        zc1 = quickboot(models(:sleepstudy)[2])
+        zc2 = quickboot(models(:sleepstudy)[3])
+
+        @test_throws ArgumentError vcat(sleep, zc1)
+        @test_throws ArgumentError reduce(vcat, [sleep, zc1])
+        # these are the same model even if the formulae
+        # are expressed differently
+        @test length(vcat(zc1, zc2)) == 4
+        @test length(reduce(vcat, [zc1, zc2])) == 4
+    end
+
+    @testset "save and restore replicates" begin
+        io = IOBuffer()
+        m0 = first(models(:sleepstudy))
+        m1 = last(models(:sleepstudy))
+        pb0 = quickboot(m0)
+        pb1 = quickboot(m1)
+        savereplicates(io, pb1)
+        # wrong model``
+        @test_throws ArgumentError restorereplicates(seekstart(io), m0)
+        # need to specify an eltype!
+        @test_throws MethodError restorereplicates(seekstart(io), m1, MixedModelBootstrap)
+
+        # make sure exact and approximate equality work
+        @test pb1 == pb1
+        @test pb1 == restorereplicates(seekstart(io), m1)
+        @test pb1 ≈ restorereplicates(seekstart(io), m1)
+        @test pb1 ≈ pb1
+        @test pb1 ≈ restorereplicates(seekstart(io), m1, Float64)
+        @test restorereplicates(seekstart(io), m1, Float32) ≈ restorereplicates(seekstart(io), m1, Float32)
+        # too much precision is lost
+        f16 = restorereplicates(seekstart(io), m1, Float16)
+        @test !isapprox(pb1, f16)
+        @test isapprox(pb1, f16; atol=eps(Float16))
+        @test isapprox(pb1, f16; rtol=0.0001)
+
+
+        # two paths, one destination
+        @test restorereplicates(seekstart(io), m1, MixedModelBootstrap{Float16}) == restorereplicates(seekstart(io), m1, Float16)
+        # changing eltype breaks exact equality
+        @test pb1 != restorereplicates(seekstart(io), m1, Float32)
+
+        # test that we don't need the model to be fit when restoring
+        @test pb1 == restorereplicates(seekstart(io), MixedModels.unfit!(deepcopy(m1)))
+
+        @test pb1 ≈ restorereplicates(seekstart(io), m1, Float16) rtol=1
     end
 
     @testset "Bernoulli simulate! and GLMM bootstrap" begin

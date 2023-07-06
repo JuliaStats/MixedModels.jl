@@ -1,3 +1,9 @@
+MixedModels v4.15.0 Release Notes
+==============================
+* Support for different optimization criteria during the bootstrap. [#694]
+* Support for combining bootstrap results with `vcat`. [#694]
+* Support for saving and restoring bootstrap replicates with `savereplicates` and `restorereplicates`. [#694]
+
 MixedModels v4.14.0 Release Notes
 ==============================
 * New function `profile` for computing likelihood profiles for `LinearMixedModel`. The resultant `MixedModelProfile` can be then be used for computing confidence intervals with `confint`. Note that this API is still somewhat experimental and as such the internal storage details of `MixedModelProfile` may change in a future release without being considered breaking. [#639]
@@ -435,3 +441,4 @@ Package dependencies
 [#680]: https://github.com/JuliaStats/MixedModels.jl/issues/680
 [#681]: https://github.com/JuliaStats/MixedModels.jl/issues/681
 [#682]: https://github.com/JuliaStats/MixedModels.jl/issues/682
+[#694]: https://github.com/JuliaStats/MixedModels.jl/issues/694

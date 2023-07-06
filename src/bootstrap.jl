@@ -1,5 +1,9 @@
+"""
+    MixedModelFitCollection{T<:AbstractFloat}
 
-abstract type MixedModelFitCollection{T<:AbstractFloat} end # model with fixed and random effects
+Abstract supertype for [`MixedModelBootstrap`](@ref) and related functionality in other packages.
+"""
+abstract type MixedModelFitCollection{T<:AbstractFloat} end
 
 """
     MixedModelBootstrap{T<:AbstractFloat} <: MixedModelFitCollection{T}
@@ -34,9 +38,130 @@ struct MixedModelBootstrap{T<:AbstractFloat} <: MixedModelFitCollection{T}
     fcnames::NamedTuple
 end
 
+Base.:(==)(a::MixedModelFitCollection{T}, b::MixedModelFitCollection{S}) where {T,S} = false
+
+function Base.:(==)(a::MixedModelFitCollection{T}, b::MixedModelFitCollection{T}) where {T}
+    return a.fits == b.fits &&
+           a.λ == b.λ &&
+           a.inds == b.inds &&
+           a.lowerbd == b.lowerbd &&
+           a.fcnames == b.fcnames
+end
+
+function Base.isapprox(a::MixedModelFitCollection, b::MixedModelFitCollection;
+    atol::Real=0, rtol::Real=atol > 0 ? 0 : √eps())
+    fits = all(zip(a.fits, b.fits)) do (x, y)
+        return isapprox(x.objective, y.objective; atol, rtol) &&
+               isapprox(x.θ, y.θ; atol, rtol) &&
+               isapprox(x.σ, y.σ; atol, rtol) &&
+               all(isapprox(a, b; atol, rtol) for (a, b) in zip(x.β, y.β))
+    end
+
+    λ = all(zip(a.λ, b.λ)) do (x, y)
+        return isapprox(x, y; atol, rtol)
+    end
+
+    return fits && λ &&
+           # Vector{Vector{Int}} so no need for isapprox
+           a.inds == b.inds &&
+           isapprox(a.lowerbd, b.lowerbd; atol, rtol) &&
+           a.fcnames == b.fcnames
+end
+
+"""
+    restorereplicates(f, m::MixedModel{T})
+    restorereplicates(f, m::MixedModel{T}, ftype::Type{<:AbstractFloat})
+    restorereplicates(f, m::MixedModel{T}, ctype::Type{<:MixedModelFitCollection{S}})
+
+Restore replicates from `f`, using `m` to create the desired subtype of [`MixedModelFitCollection`](@ref).
+
+`f` can be any entity suppored by `Arrow.Table`. `m` does not have to be fitted, but it must have
+been constructed with the same structure as the source of the saved replicates.
+
+The two-argument method constructs a [`MixedModelBootstrap`](@ref) with the same eltype as `m`.
+If an eltype is specified as the third argument, then a `MixedModelBootstrap` is returned.
+If a subtype of `MixedModelFitCollection` is specified as the third argument, then that 
+is the return type.
+
+See also [`savereplicates`](@ref), [`restoreoptsum!`](@ref).
+"""
+function restorereplicates(f, m::MixedModel{T}, ftype::Type{<:AbstractFloat}=T) where {T}
+    return restorereplicates(f, m, MixedModelBootstrap{ftype})
+end
+
+# why this weird second method? it allows us to define custom types and write methods
+# to load into those types directly. For example, we could define a `PowerAnalysis <: MixedModelFitCollection`
+# in MixedModelsSim and then overload this method to get a convenient object. 
+# Also, this allows us to write `restorereplicateS(f, m, ::Type{<:MixedModelNonparametricBoostrap})` for
+# entities in MixedModels bootstrap
+function restorereplicates(
+    f, m::MixedModel, ctype::Type{<:MixedModelFitCollection{T}}
+) where {T}
+    tbl = Arrow.Table(f)
+    # use a lazy iterator to get the first element for checks
+    # before doing a conversion of the entire Arrow column table to row table
+    rep = first(Tables.rows(tbl))
+    allgood =
+        length(rep.θ) == length(m.θ) &&
+        string.(propertynames(rep.β)) == Tuple(coefnames(m))
+    allgood ||
+        throw(ArgumentError("Model is not compatible with saved replicates."))
+
+    samp = Tables.rowtable(tbl)
+    return ctype(
+        samp,
+        map(vv -> T.(vv), m.λ), # also does a deepcopy if no type conversion is necessary
+        getfield.(m.reterms, :inds),
+        T.(m.optsum.lowerbd[1:length(first(samp).θ)]),
+        NamedTuple{Symbol.(fnames(m))}(map(t -> Tuple(t.cnames), m.reterms)),
+    )
+end
+
+"""
+    savereplicates(f, b::MixedModelFitCollection)
+
+Save the replicates associated with a [`MixedModelFitCollection`](@ref), 
+e.g. [`MixedModelBootstrap`](@ref) as an Arrow file. 
+
+See also [`restorereplicates`](@ref), [`saveoptsum`](@ref)
+
+!!! note
+    **Only** the replicates are saved, not the entire contents of the `MixedModelFitCollection`.
+    `restorereplicates` requires a model compatible with the bootstrap to restore the full object. 
+"""
+savereplicates(f, b::MixedModelFitCollection) = Arrow.write(f, b.fits)
+
+# TODO: write methods for GLMM
+function Base.vcat(b1::MixedModelBootstrap{T}, b2::MixedModelBootstrap{T}) where {T}
+    for field in [:λ, :inds, :lowerbd, :fcnames]
+        getfield(b1, field) == getfield(b2, field) ||
+            throw(ArgumentError("b1 and b2 must originate from the same model fit"))
+    end
+    return MixedModelBootstrap{T}(vcat(b1.fits, b2.fits),
+        deepcopy(b1.λ),
+        deepcopy(b1.inds),
+        deepcopy(b1.lowerbd),
+        deepcopy(b1.fcnames))
+end
+
+function Base.reduce(::typeof(vcat), v::AbstractVector{MixedModelBootstrap{T}}) where {T}
+    for field in [:λ, :inds, :lowerbd, :fcnames]
+        all(==(getfield(first(v), field)), getfield.(v, field)) ||
+            throw(ArgumentError("All bootstraps must originate from the same model fit"))
+    end
+
+    b1 = first(v)
+    fits = reduce(vcat, getfield.(v, :fits))
+    return MixedModelBootstrap{T}(fits,
+        deepcopy(b1.λ),
+        deepcopy(b1.inds),
+        deepcopy(b1.lowerbd),
+        deepcopy(b1.fcnames))
+end
+
 """
     parametricbootstrap([rng::AbstractRNG], nsamp::Integer, m::MixedModel{T}, ftype=T;
-        β = coef(m), σ = m.σ, θ = m.θ, hide_progress=false)
+        β = coef(m), σ = m.σ, θ = m.θ, hide_progress=false, optsum_overrides=(;))
 
 Perform `nsamp` parametric bootstrap replication fits of `m`, returning a `MixedModelBootstrap`.
 
@@ -47,13 +172,18 @@ not a named argument because named arguments are not used in method dispatch and
 specialization. In other words, having `ftype` as a positional argument has some potential
 performance benefits.
 
-# Named Arguments
+# Keyword Arguments
 
 - `β`, `σ`, and `θ` are the values of `m`'s parameters for simulating the responses.
 - `σ` is only valid for `LinearMixedModel` and `GeneralizedLinearMixedModel` for
 families with a dispersion parameter.
 - `hide_progress` can be used to disable the progress bar. Note that the progress
 bar is automatically disabled for non-interactive (i.e. logging) contexts.
+- `optsum_overrides` is used to override values of [OptSummary](@ref) in the models
+fit during the bootstrapping process. For example, `optsum_overrides=(;ftol_rel=1e08)`
+reduces the convergence criterion, which can greatly speed up the bootstrap fits.
+Taking advantage of this speed up to increase `n` can often lead to better estimates
+of coverage intervals.
 """
 function parametricbootstrap(
     rng::AbstractRNG,
@@ -65,6 +195,7 @@ function parametricbootstrap(
     θ::AbstractVector=morig.θ,
     use_threads::Bool=false,
     hide_progress::Bool=false,
+    optsum_overrides=(;),
 ) where {T}
     if σ !== missing
         σ = T(σ)
@@ -73,8 +204,13 @@ function parametricbootstrap(
     βsc, θsc = similar(ftype.(β)), similar(ftype.(θ))
     p, k = length(β), length(θ)
     m = deepcopy(morig)
+    for (key, val) in pairs(optsum_overrides)
+        setfield!(m.optsum, key, val)
+    end
+    # this seemed to slow things down?!
+    # _copy_away_from_lowerbd!(m.optsum.initial, morig.optsum.final, m.lowerbd; incr=0.05)
 
-    β_names = (Symbol.(fixefnames(morig))...,)
+    β_names = Tuple(Symbol.(fixefnames(morig)))
 
     use_threads && Base.depwarn(
         "use_threads is deprecated and will be removed in a future release",
@@ -83,6 +219,7 @@ function parametricbootstrap(
     samp = replicate(n; hide_progress=hide_progress) do
         simulate!(rng, m; β, σ, θ)
         refit!(m; progress=false)
+        # @info "" m.optsum.feval
         (
             objective=ftype.(m.objective),
             σ=ismissing(m.σ) ? missing : ftype(m.σ),
@@ -96,7 +233,7 @@ function parametricbootstrap(
         map(vv -> ftype.(vv), morig.λ), # also does a deepcopy if no type conversion is necessary
         getfield.(morig.reterms, :inds),
         ftype.(morig.optsum.lowerbd[1:length(first(samp).θ)]),
-        NamedTuple{Symbol.(fnames(morig))}(map(t -> (t.cnames...,), morig.reterms)),
+        NamedTuple{Symbol.(fnames(morig))}(map(t -> Tuple(t.cnames), morig.reterms)),
     )
 end
 
