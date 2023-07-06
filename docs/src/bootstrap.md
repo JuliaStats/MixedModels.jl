@@ -189,7 +189,7 @@ Earlier versions of MixedModels.jl supported a multi-threaded bootstrap via the 
 However, with improved BLAS multithreading, the Julia-level threads often wound up competing with the BLAS threads, leading to no improvement or even a worsening of performance when `use_threads=true`.
 Nonetheless, the bootstrap is a classic example of an [embarrassingly parallel](https://en.wikipedia.org/wiki/Embarrassingly_parallel) problem and so we provide a few convenience methods for combining results computed separately.
 In particular, there are `vcat` and an optimized `reduce(::typeof(vcat))` methods for `MixedModelBootstrap` objects.
-For computers with many processors (and not a few cores in a single processor) or computing clusters, these provide a convenient way to split the computation across nodes.
+For computers with many processors (as opposed to a single processor with several codes) or for computing clusters, these provide a convenient way to split the computation across nodes.
 
 ```@example Main
 using Distributed

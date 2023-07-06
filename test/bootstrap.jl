@@ -91,8 +91,8 @@ end
         bsamp2 = parametricbootstrap(MersenneTwister(1234321), 100, fm;
                                     use_threads=false, hide_progress=true,
                                     optsum_overrides=(;ftol_rel=1e-8))
-        # for such a simple, small model setting the floating point
-        # toelerance has little effectu until we do something extreme
+        # for such a simple, small model setting the function value
+        # tolerance has little effect until we do something extreme
         @test bsamp.objective ≈ bsamp2.objective
         bsamp2 = parametricbootstrap(MersenneTwister(1234321), 100, fm;
                                     use_threads=false, hide_progress=true,
