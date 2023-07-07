@@ -341,11 +341,10 @@ function GeneralizedLinearMixedModel(
     tbl,
     d::Distribution,
     l::Type;
-    kwargs...,
+    kwargs...
 )
     throw(ArgumentError("Expected a Link instance (`$l()`), got a type (`$l`)."))
 end
-
 
 function GeneralizedLinearMixedModel(
     f::FormulaTerm,
