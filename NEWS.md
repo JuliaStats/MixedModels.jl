@@ -1,3 +1,8 @@
+MixedModels v4.16.0 Release Notes
+==============================
+* More informative error messages when passing a `Distribution` or `Link` type instead of the desired instance.
+* More informative error message on the intentional decision not to define methods for the coefficient of determination.
+
 MixedModels v4.15.0 Release Notes
 ==============================
 * Support for different optimization criteria during the bootstrap. [#694]
