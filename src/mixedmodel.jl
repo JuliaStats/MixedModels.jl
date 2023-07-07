@@ -119,6 +119,22 @@ function retbl(mat, trm)
 )
 end
 
+StatsAPI.adjr2(m::MixedModel) = r2(m)
+
+function StatsAPI.r2(m::MixedModel)
+    @error ("""There is no uniquely defined coefficient of determination for mixed models
+             that has all the properties of the corresponding value for classical 
+             linear models. The GLMM FAQ provides more detail:
+             
+             https://bbolker.github.io/mixedmodels-misc/glmmFAQ.html#how-do-i-compute-a-coefficient-of-determination-r2-or-an-analogue-for-glmms
+
+
+             Alternatively, MixedModelsExtras provides a naive implementation, but 
+             the warnings there and in the FAQ should be taken seriously!
+             """)
+    throw(MethodError(r2, (m,)))
+end
+
 """
     raneftables(m::MixedModel; uscale = false)
 
