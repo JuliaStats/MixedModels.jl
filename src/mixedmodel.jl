@@ -74,6 +74,28 @@ issingular(m::GeneralizedLinearMixedModel, θ=m.optsum.final) = any(lowerbd(m) .
 # FIXME: better to base this on m.optsum.returnvalue
 StatsAPI.isfitted(m::MixedModel) = m.optsum.feval > 0
 
+function StatsAPI.fit(
+    ::Type{<:MixedModel},
+    f::FormulaTerm,
+    tbl,
+    d::Type,
+    args...;
+    kwargs...,
+)
+    throw(ArgumentError("Expected a Distribution instance (`$d()`), got a type (`$d`)."))
+end
+
+function StatsAPI.fit(
+    ::Type{<:MixedModel},
+    f::FormulaTerm,
+    tbl,
+    d::Distribution,
+    l::Type;
+    kwargs...,
+)
+    throw(ArgumentError("Expected a Link instance (`$l()`), got a type (`$l`)."))
+end
+
 StatsAPI.meanresponse(m::MixedModel) = mean(m.y)
 
 """
