@@ -1,3 +1,4 @@
+using GLM # bring r2 into scope
 using LinearAlgebra
 using MixedModels
 using PooledArrays
@@ -5,7 +6,6 @@ using Random
 using SparseArrays
 using Suppressor
 using Statistics
-using StatsBase
 using StatsModels
 using Tables
 using Test
@@ -671,7 +671,7 @@ end
 
 @testset "methods we don't define" begin
     m = first(models(:sleepstudy))
-    for f in [StatsBase.r2, StatsBase.adjr2]
+    for f in [r2, adjr2]
         @test_logs (:error,) begin
             try
                 f(m)
