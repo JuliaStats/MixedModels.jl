@@ -549,7 +549,12 @@ _size1(m) = (first ∘ size)(m)
 
 _nrho(m) = (kchoose2 ∘ _size1)(m)
 
-function _appendsym!(syms::AbstractVector{Symbol}, dict::Dict{Symbol,UnitRange{Int}}, sym::Symbol, len::Integer)
+function _appendsym!(
+    syms::AbstractVector{Symbol},
+    dict::Dict{Symbol,UnitRange{Int}},
+    sym::Symbol,
+    len::Integer,
+)
     lenp1 = length(syms) + 1
     append!(syms, _generatesyms(first(string(sym)), len))
     dict[sym] = lenp1:(length(syms))
@@ -568,7 +573,12 @@ function _prototypevec(bsamp::MixedModelBootstrap)
     return Tuple(syms), dict
 end
 
-function _allpars!(v::AbstractVector{T}, bsamp::MixedModelBootstrap{T}, i::Integer, d::Dict{Symbol,UnitRange{Int}}) where {T}
+function _allpars!(
+    v::AbstractVector{T},
+    bsamp::MixedModelBootstrap{T},
+    i::Integer,
+    d::Dict{Symbol,UnitRange{Int}},
+) where {T}
     fiti = bsamp.fits[i]
     λ = bsamp.λ
     v[1] = fiti.objective
@@ -577,10 +587,17 @@ function _allpars!(v::AbstractVector{T}, bsamp::MixedModelBootstrap{T}, i::Integ
     copyto!(view(v, d[:θ]), fiti.θ)
     k = first(d[:σs])
     setθ!(bsamp, i)
-    for l in λ
-        for λr in eachrow(l.data)
-            v[k] = σ * norm(λr)
+    if isa(λ, Diagonal)
+        for d in λ.diag
+            v[k] = σ * d
             k += 1
+        end
+    elseif isa(λ, LowerTriangular)
+        for l in λ
+            for λr in eachrow(l.data)
+                v[k] = σ * norm(λr)
+                k += 1
+            end
         end
     end
     drho = d[:ρ]
@@ -588,12 +605,10 @@ function _allpars!(v::AbstractVector{T}, bsamp::MixedModelBootstrap{T}, i::Integ
         fill!(view(v, drho), zero(T))
         k = first(drho)
         for ll in λ
-            lam = ll.data
-            ii = _size1(lam)
-            isone(ii) && continue
-            if isa(lam, Diagonal)
-                k += _nrho(lam)
-            else
+            if isa(ll, LowerTriangular{T})
+                lam = ll.data
+                ii = _size1(lam)
+                isone(ii) && continue
                 for i in 1:ii
                     ri = normalize!(view(lam, i, :))
                     for j in 1:(i - 1)
@@ -611,10 +626,10 @@ function pbstrtbl(bsamp::MixedModelFitCollection{T}) where {T}
     (; fits, λ) = bsamp
     syms, d = _prototypevec(bsamp)
     nsym = length(syms)
-    val = NamedTuple{syms, NTuple{nsym, T}}[]
+    val = NamedTuple{syms,NTuple{nsym,T}}[]
     v = Vector{T}(undef, nsym)
     for i in axes(fits, 1)
-        push!(val, NamedTuple{syms, NTuple{nsym, T}}(_allpars!(v, bsamp, i, d)))
+        push!(val, NamedTuple{syms,NTuple{nsym,T}}(_allpars!(v, bsamp, i, d)))
     end
     return val
 end
@@ -668,7 +683,6 @@ function _rowdotprods(v::AbstractVector{T}, λ::LowerTriangular{T}) where {T}
             v[l] = accum
             l += 1
         end
-    end 
+    end
     return v
 end
-
