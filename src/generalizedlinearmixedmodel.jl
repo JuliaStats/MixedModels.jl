@@ -185,7 +185,8 @@ function StatsAPI.fit(
     kwargs...,
 )
     return fit!(
-        GeneralizedLinearMixedModel(f, tbl, d, l; wts, offset, contrasts, amalgamate); kwargs...
+        GeneralizedLinearMixedModel(f, tbl, d, l; wts, offset, contrasts, amalgamate);
+        kwargs...,
     )
 end
 
@@ -338,7 +339,7 @@ function GeneralizedLinearMixedModel(
     amalgamate=true,
 )
     return GeneralizedLinearMixedModel(
-        f, Tables.columntable(tbl), d, l; wts, offset, contrasts, amalgamate,
+        f, Tables.columntable(tbl), d, l; wts, offset, contrasts, amalgamate
     )
 end
 
