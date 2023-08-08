@@ -42,9 +42,11 @@ struct LinearMixedModel{T<:AbstractFloat} <: MixedModel{T}
 end
 
 function LinearMixedModel(
-    f::FormulaTerm, tbl; contrasts=Dict{Symbol,Any}(), wts=[], σ=nothing, amalgamate=true,
+    f::FormulaTerm, tbl; contrasts=Dict{Symbol,Any}(), wts=[], σ=nothing, amalgamate=true
 )
-    return LinearMixedModel(f::FormulaTerm, Tables.columntable(tbl); contrasts, wts, σ, amalgamate)
+    return LinearMixedModel(
+        f::FormulaTerm, Tables.columntable(tbl); contrasts, wts, σ, amalgamate
+    )
 end
 
 const _MISSING_RE_ERROR = ArgumentError(
@@ -52,7 +54,8 @@ const _MISSING_RE_ERROR = ArgumentError(
 )
 
 function LinearMixedModel(
-    f::FormulaTerm, tbl::Tables.ColumnTable; contrasts=Dict{Symbol,Any}(), wts=[], σ=nothing, amalgamate=true,
+    f::FormulaTerm, tbl::Tables.ColumnTable; contrasts=Dict{Symbol,Any}(), wts=[],
+    σ=nothing, amalgamate=true,
 )
     # TODO: perform missing_omit() after apply_schema() when improved
     # missing support is in a StatsModels release
@@ -130,7 +133,9 @@ function LinearMixedModel(
         end
     end
     isempty(reterms) && throw(_MISSING_RE_ERROR)
-    return LinearMixedModel(convert(Array{T}, y), only(feterms), reterms, form, wts, σ, amalgamate)
+    return LinearMixedModel(
+        convert(Array{T}, y), only(feterms), reterms, form, wts, σ, amalgamate
+    )
 end
 
 """
@@ -192,13 +197,13 @@ function StatsAPI.fit(
     ::Type{LinearMixedModel},
     f::FormulaTerm,
     tbl;
-    kwargs...
+    kwargs...,
 )
     return fit(
         LinearMixedModel,
         f,
         Tables.columntable(tbl);
-        kwargs...
+        kwargs...,
     )
 end
 
@@ -214,7 +219,9 @@ function StatsAPI.fit(
     thin=typemax(Int),
     amalgamate=true,
 )
-    return fit!(LinearMixedModel(f, tbl; contrasts, wts, σ, amalgamate); progress, REML, thin)
+    return fit!(
+        LinearMixedModel(f, tbl; contrasts, wts, σ, amalgamate); progress, REML, thin
+    )
 end
 
 function _offseterr()
