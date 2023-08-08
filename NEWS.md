@@ -1,3 +1,7 @@
+MixedModels v4.16.0 Release Notes
+==============================
+* Support for check tolerances in deserialization. [#703]
+
 MixedModels v4.15.0 Release Notes
 ==============================
 * Support for different optimization criteria during the bootstrap. [#694]
@@ -442,3 +446,4 @@ Package dependencies
 [#681]: https://github.com/JuliaStats/MixedModels.jl/issues/681
 [#682]: https://github.com/JuliaStats/MixedModels.jl/issues/682
 [#694]: https://github.com/JuliaStats/MixedModels.jl/issues/694
+[#703]: https://github.com/JuliaStats/MixedModels.jl/issues/703
