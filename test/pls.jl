@@ -490,6 +490,17 @@ end
         @test λ isa Diagonal{Float64, Vector{Float64}}
     end
 
+    @testset "disable amalgamation" begin
+        fm_chunky = fit(MixedModel,
+                        @formula(reaction ~ 1 + days + (1 | subj) + (0 + days | subj)),
+                        dataset(:sleepstudy); amalgamate=false, progress=false)
+
+        @test loglikelihood(fm_chunky) ≈ loglikelihood(models(:sleepstudy)[2])
+        @test length(fm_chunky.reterms) == 2
+        vc = sprint(show, VarCorr(fm_chunky))
+        @test all(occursin(vc), ["subj", "subj.2"])
+    end
+
     show(io, BlockDescription(first(models(:sleepstudy))))
     @test countlines(seekstart(io)) == 3
     @test "Diagonal" in Set(split(String(take!(io)), r"\s+"))
