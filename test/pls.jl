@@ -167,7 +167,7 @@ end
         sigma0row = only(filter(r -> r.p == :σ && iszero(r.ζ), dspr01.tbl))
         @test sigma0row.σ ≈ dspr01.m.σ
         @test sigma0row.β1 ≈ only(dspr01.m.β)
-        @test sigma0row.θ1 ≈ only(dspr01.m.θ)        
+        @test sigma0row.θ1 ≈ only(dspr01.m.θ)
     end
 end
 
@@ -500,14 +500,23 @@ end
 
     @testset "optsumJSON" begin
         fm = last(models(:sleepstudy))
-            # using a IOBuffer for saving JSON
+        # using a IOBuffer for saving JSON
         saveoptsum(seekstart(io), fm)
         m = LinearMixedModel(fm.formula, MixedModels.dataset(:sleepstudy))
         restoreoptsum!(m, seekstart(io))
         @test loglikelihood(fm) ≈ loglikelihood(m)
         @test bic(fm) ≈ bic(m)
         @test coef(fm) ≈ coef(m)
-            # using a temporary file for saving JSON
+
+        fm_mod = deepcopy(fm)
+        fm_mod.optsum.fmin += 1
+        saveoptsum(seekstart(io), fm_mod)
+        @test_throws(ArgumentError("model m at final does not give stored fmin"),
+                     restoreoptsum!(m, seekstart(io)))
+        restoreoptsum!(m, seekstart(io); atol=1)
+        @test m.optsum.fmin - fm.optsum.fmin ≈ 1
+
+        # using a temporary file for saving JSON
         fnm = first(mktemp())
         saveoptsum(fnm, fm)
         m = LinearMixedModel(fm.formula, MixedModels.dataset(:sleepstudy))
@@ -516,6 +525,7 @@ end
         @test bic(fm) ≈ bic(m)
         @test coef(fm) ≈ coef(m)
     end
+
     @testset "profile" begin
         pr = profile(last(models(:sleepstudy)))
         tbl = pr.tbl
