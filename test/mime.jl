@@ -1,4 +1,5 @@
 using MixedModels
+using Suppressor
 using Test
 
 using MixedModels: dataset, likelihoodratiotest
@@ -14,9 +15,11 @@ pirls!(setβθ!(gm3, βθ))
 
 fm0θ = [1.1656121258575225]
 fm0 = updateL!(setθ!(first(models(:sleepstudy)), fm0θ))
+fm0.optsum.feval = 1
 
 fm1θ = [0.9292213288149662, 0.018168393450877257, 0.22264486671069741]
 fm1 = updateL!(setθ!(last(models(:sleepstudy)), fm1θ))
+fm1.optsum.feval = 1
 
 fmreθ = [0.32352483854887326, 0.4715395478019364, 0.0,
          0.43705610601403755, 0.016565641868150047, 0.17732248078617097]
@@ -29,6 +32,7 @@ lrt = likelihoodratiotest(fm0, fm1)
 
 @testset "markdown" begin
     mime = MIME"text/markdown"()
+    gm3.optsum.feval = -1
     @test_logs (:warn, "Model has not been fit: results will be nonsense") sprint(show, mime, gm3)
     gm3.optsum.feval = 1
     @testset "lmm" begin

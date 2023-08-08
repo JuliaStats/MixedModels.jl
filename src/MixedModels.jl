@@ -1,6 +1,7 @@
 module MixedModels
 
 using Arrow
+using BSplineKit
 using DataAPI
 using Distributions
 using GLM
@@ -51,6 +52,7 @@ export @formula,
     LogLink,
     MixedModel,
     MixedModelBootstrap,
+    MixedModelProfile,
     Normal,
     OptSummary,
     Poisson,
@@ -60,6 +62,7 @@ export @formula,
     ReMat,
     SeqDiffCoding,
     SqrtLink,
+    Table,
     UniformBlockDiagonal,
     VarCorr,
     aic,
@@ -73,6 +76,7 @@ export @formula,
     cond,
     condVar,
     condVartables,
+    confint,
     deviance,
     dispersion,
     dispersion_parameter,
@@ -101,9 +105,13 @@ export @formula,
     model_response,
     nobs,
     objective,
+    objective!,
     parametricbootstrap,
     pirls!,
     predict,
+    profile,
+    profileσ,
+    profilevc,
     pwrss,
     ranef,
     raneftables,
@@ -133,6 +141,9 @@ export @formula,
     vcov,
     weights,
     zerocorr
+
+# TODO: move this to the correct spot in list once we've decided on name
+export savereplicates, restorereplicates
 
 """
     MixedModel
@@ -178,16 +189,17 @@ include("blockdescription.jl")
 include("grouping.jl")
 include("mimeshow.jl")
 include("serialization.jl")
+include("profile/profile.jl")
 
-using SnoopPrecompile
+using PrecompileTools
 
-@precompile_setup begin
+@setup_workload begin
     # Putting some things in `setup` can reduce the size of the
     # precompile file and potentially make loading faster.
     sleepstudy = MixedModels.dataset(:sleepstudy)
     contra = MixedModels.dataset(:contra)
     progress = false
-    @precompile_all_calls begin
+    @compile_workload begin
         # all calls in this block will be precompiled, regardless of whether
         # they belong to your package or not (on Julia 1.8 and higher)
 
