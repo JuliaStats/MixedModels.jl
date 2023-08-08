@@ -1,3 +1,5 @@
+* New kwarg `amalgamate` can be used to disable amalgation of random0effects terms sharing a single grouping variable. Generally, `amalgamate=false` will result in a slower fit, but may improve convergence in some pathological cases. [#673]
+
 MixedModels v4.16.0 Release Notes
 ==============================
 * Support for check tolerances in deserialization. [#703]
@@ -40,7 +42,6 @@ MixedModels v4.9.0 Release Notes
 * Support `StatsModels` 0.7, drop support for `StatsModels` 0.6. [#664]
 * Revise code in benchmarks to work with recent Julia and PkgBenchmark.jl [#667]
 * Julia minimum compat version raised to 1.8 because of BSplineKit [#665]
-* New kwarg `amalgamate` can be used to disable amalgation of random0effects terms sharing a single grouping variable. Generally, `amalgamate=false` will result in a slower fit, but may improve convergence in some pathological cases. [#673]  
 
 MixedModels v4.8.2 Release Notes
 ==============================
