@@ -4,7 +4,9 @@
 
 Read, check, and restore the `optsum` field from a JSON stream or filename.
 """
-function restoreoptsum!(m::LinearMixedModel{T}, io::IO; atol::Real=0, rtol::Real=atol>0 ? 0 : √eps(T)) where {T}
+function restoreoptsum!(
+    m::LinearMixedModel{T}, io::IO; atol::Real=0, rtol::Real=atol > 0 ? 0 : √eps(T)
+) where {T}
     dict = JSON3.read(io)
     ops = m.optsum
     okay =
@@ -22,7 +24,9 @@ function restoreoptsum!(m::LinearMixedModel{T}, io::IO; atol::Real=0, rtol::Real
     copyto!(ops.initial, dict.initial)
     copyto!(ops.final, dict.final)
     for (v, f) in (:initial => :finitial, :final => :fmin)
-        if !isapprox(objective(updateL!(setθ!(m, getfield(ops, v)))), getfield(ops, f); rtol, atol)
+        if !isapprox(
+            objective(updateL!(setθ!(m, getfield(ops, v)))), getfield(ops, f); rtol, atol
+        )
             throw(ArgumentError("model m at $v does not give stored $f"))
         end
     end
