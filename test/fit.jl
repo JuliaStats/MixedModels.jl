@@ -1,4 +1,6 @@
-using MixedModels, Test
+using MixedModels
+using Suppressor
+using Test
 
 @testset "linear" begin
     m1 = fit(MixedModel, @formula(yield ~ 1 + (1|batch)), MixedModels.dataset(:dyestuff); progress=false)
@@ -21,7 +23,7 @@ end
 end
 
 @testset "Normal Distribution GLMM" begin
-    @test isa(fit(MixedModel, @formula(yield ~ 1 + (1|batch)), MixedModels.dataset(:dyestuff),
+    @test @suppress isa(fit(MixedModel, @formula(yield ~ 1 + (1|batch)), MixedModels.dataset(:dyestuff),
                          Normal(), SqrtLink(); progress=false),
-                     GeneralizedLinearMixedModel)
+                        GeneralizedLinearMixedModel)
 end

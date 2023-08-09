@@ -181,10 +181,12 @@ function StatsAPI.fit(
     wts=[],
     contrasts=Dict{Symbol,Any}(),
     offset=[],
+    amalgamate=true,
     kwargs...,
 )
     return fit!(
-        GeneralizedLinearMixedModel(f, tbl, d, l; wts, offset, contrasts); kwargs...
+        GeneralizedLinearMixedModel(f, tbl, d, l; wts, offset, contrasts, amalgamate);
+        kwargs...,
     )
 end
 
@@ -337,14 +339,35 @@ StatsAPI.fitted(m::GeneralizedLinearMixedModel) = m.resp.mu
 function GeneralizedLinearMixedModel(
     f::FormulaTerm,
     tbl,
+    d::Type,
+    args...;
+    kwargs...,
+)
+    throw(ArgumentError("Expected a Distribution instance (`$d()`), got a type (`$d`)."))
+end
+
+function GeneralizedLinearMixedModel(
+    f::FormulaTerm,
+    tbl,
+    d::Distribution,
+    l::Type;
+    kwargs...
+)
+    throw(ArgumentError("Expected a Link instance (`$l()`), got a type (`$l`)."))
+end
+
+function GeneralizedLinearMixedModel(
+    f::FormulaTerm,
+    tbl,
     d::Distribution,
     l::Link=canonicallink(d);
     wts=[],
     offset=[],
     contrasts=Dict{Symbol,Any}(),
+    amalgamate=true,
 )
     return GeneralizedLinearMixedModel(
-        f, Tables.columntable(tbl), d, l; wts=wts, offset=offset, contrasts=contrasts
+        f, Tables.columntable(tbl), d, l; wts, offset, contrasts, amalgamate
     )
 end
 
@@ -353,9 +376,7 @@ function GeneralizedLinearMixedModel(
     tbl::Tables.ColumnTable,
     d::Normal,
     l::IdentityLink;
-    wts=[],
-    offset=[],
-    contrasts=Dict{Symbol,Any}(),
+    kwargs...
 )
     return throw(
         ArgumentError("use LinearMixedModel for Normal distribution with IdentityLink")
@@ -370,6 +391,7 @@ function GeneralizedLinearMixedModel(
     wts=[],
     offset=[],
     contrasts=Dict{Symbol,Any}(),
+    amalgamate=true,
 )
     if isa(d, Binomial) && isempty(wts)
         d = Bernoulli()
@@ -384,7 +406,7 @@ function GeneralizedLinearMixedModel(
                  the authors gain a better understanding of those cases."""
     end
 
-    LMM = LinearMixedModel(f, tbl; contrasts=contrasts, wts=wts)
+    LMM = LinearMixedModel(f, tbl; contrasts, wts, amalgamate)
     y = copy(LMM.y)
     constresponse = all(==(first(y)), y)
     # the sqrtwts field must be the correct length and type but we don't know those
@@ -411,8 +433,18 @@ function GeneralizedLinearMixedModel(
     constresponse || updateL!(LMM)
     # fit a glm to the fixed-effects only
     T = eltype(LMM.Xymat)
-    gl = glm(LMM.X, y, d, l; wts=convert(Vector{T}, wts), offset=convert(Vector{T}, offset))
-    β = coef(gl)
+    # newer versions of GLM (>1.8.0) have a kwarg dropcollinear=true
+    # which creates problems for the empty fixed-effects case during fitting
+    # so just don't allow fitting
+    # XXX unfortunately, this means we have double-rank deficiency detection
+    # TODO: construct GLM by hand so that we skip collinearity checks
+    # TODO: extend this so that we never fit a GLM when initializing from LMM
+    dofit = size(LMM.X, 2) != 0 # GLM.jl kwarg
+    gl = glm(LMM.X, y, d, l;
+        wts=convert(Vector{T}, wts),
+        dofit,
+        offset=convert(Vector{T}, offset))
+    β = dofit ? coef(gl) : T[]
     u = [fill(zero(eltype(y)), vsize(t), nlevs(t)) for t in LMM.reterms]
     # vv is a template vector used to initialize fields for AGQ
     # it is empty unless there is a single random-effects term

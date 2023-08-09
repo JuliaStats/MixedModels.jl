@@ -176,9 +176,9 @@ const _NLOPT_FAILURE_MODES = [
     :MAXTIME_REACHED,
 ]
 
-function _check_nlopt_return(ret)
+function _check_nlopt_return(ret, failure_modes=_NLOPT_FAILURE_MODES)
     ret == :ROUNDOFF_LIMITED && @warn("NLopt was roundoff limited")
-    if ret ∈ _NLOPT_FAILURE_MODES
+    if ret ∈ failure_modes
         @warn("NLopt optimization failure: $ret")
     end
 end

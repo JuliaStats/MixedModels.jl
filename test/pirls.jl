@@ -18,6 +18,20 @@ include("modelcache.jl")
     @test MixedModel(f, d, Bernoulli(), ProbitLink()) isa GeneralizedLinearMixedModel
 end
 
+@testset "Type for instance" begin
+    vaform = @formula(r2 ~ 1 + anger + gender + btype + situ + (1|subj) + (1|item))
+    verbagg = dataset(:verbagg)
+    @test_throws ArgumentError fit(MixedModel, vaform, verbagg, Bernoulli, LogitLink)
+    @test_throws ArgumentError fit(MixedModel, vaform, verbagg, Bernoulli(), LogitLink)
+    @test_throws ArgumentError fit(MixedModel, vaform, verbagg, Bernoulli, LogitLink())
+    @test_throws ArgumentError fit(GeneralizedLinearMixedModel, vaform, verbagg, Bernoulli, LogitLink)
+    @test_throws ArgumentError fit(GeneralizedLinearMixedModel, vaform, verbagg, Bernoulli(), LogitLink)
+    @test_throws ArgumentError fit(GeneralizedLinearMixedModel, vaform, verbagg, Bernoulli, LogitLink())
+    @test_throws ArgumentError GeneralizedLinearMixedModel(vaform, verbagg, Bernoulli, LogitLink)
+    @test_throws ArgumentError GeneralizedLinearMixedModel(vaform, verbagg, Bernoulli(), LogitLink)
+    @test_throws ArgumentError GeneralizedLinearMixedModel(vaform, verbagg, Bernoulli, LogitLink())
+end
+
 @testset "contra" begin
     contra = dataset(:contra)
     thin = 5

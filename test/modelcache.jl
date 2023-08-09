@@ -44,8 +44,11 @@ using MixedModels: dataset
 
 @isdefined(allfms) || const global allfms = merge(fms, gfms)
 
-function models(nm::Symbol)
-    get!(fittedmodels, nm) do
-        [fit(MixedModel, f, dataset(nm); progress=false) for f in allfms[nm]]
+
+if !@isdefined(models)
+    function models(nm::Symbol)
+        get!(fittedmodels, nm) do
+            [fit(MixedModel, f, dataset(nm); progress=false) for f in allfms[nm]]
+        end
     end
 end
