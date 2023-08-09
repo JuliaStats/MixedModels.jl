@@ -1,6 +1,9 @@
+MixedModels v4.17.0 Release Notes
+==============================
 * New kwarg `amalgamate` can be used to disable amalgation of random0effects terms sharing a single grouping variable. Generally, `amalgamate=false` will result in a slower fit, but may improve convergence in some pathological cases. Note that this feature is experimental and changes to it are **not** considered breakin. [#673]
 * More informative error messages when passing a `Distribution` or `Link` type instead of the desired instance. [#698]
 * More informative error message on the intentional decision not to define methods for the coefficient of determination. [#698]
+* **EXPERIMENTAL** Return `finitial` when PIRLS drifts into a portion of the parameter space that yields a (numerically) invalid covariance matrix. This recovery strategy may be removed in a future release. [#616]
 
 MixedModels v4.16.0 Release Notes
 ==============================
@@ -79,7 +82,6 @@ MixedModels v4.6.5 Release Notes
 ========================
 * Attempt recovery when the initial parameter values lead to an invalid covariance matrix by rescaling [#615]
 * Return `finitial` when the optimizer drifts into a portion of the parameter space that yields a (numerically) invalid covariance matrix [#615]
-
 
 MixedModels v4.6.4 Release Notes
 ========================
@@ -431,6 +433,7 @@ Package dependencies
 [#608]: https://github.com/JuliaStats/MixedModels.jl/issues/608
 [#614]: https://github.com/JuliaStats/MixedModels.jl/issues/614
 [#615]: https://github.com/JuliaStats/MixedModels.jl/issues/615
+[#616]: https://github.com/JuliaStats/MixedModels.jl/issues/616
 [#628]: https://github.com/JuliaStats/MixedModels.jl/issues/628
 [#634]: https://github.com/JuliaStats/MixedModels.jl/issues/634
 [#637]: https://github.com/JuliaStats/MixedModels.jl/issues/637
