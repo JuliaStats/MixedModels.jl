@@ -181,10 +181,12 @@ function StatsAPI.fit(
     wts=[],
     contrasts=Dict{Symbol,Any}(),
     offset=[],
+    amalgamate=true,
     kwargs...,
 )
     return fit!(
-        GeneralizedLinearMixedModel(f, tbl, d, l; wts, offset, contrasts); kwargs...
+        GeneralizedLinearMixedModel(f, tbl, d, l; wts, offset, contrasts, amalgamate);
+        kwargs...,
     )
 end
 
@@ -334,9 +336,10 @@ function GeneralizedLinearMixedModel(
     wts=[],
     offset=[],
     contrasts=Dict{Symbol,Any}(),
+    amalgamate=true,
 )
     return GeneralizedLinearMixedModel(
-        f, Tables.columntable(tbl), d, l; wts=wts, offset=offset, contrasts=contrasts
+        f, Tables.columntable(tbl), d, l; wts, offset, contrasts, amalgamate
     )
 end
 
@@ -345,9 +348,7 @@ function GeneralizedLinearMixedModel(
     tbl::Tables.ColumnTable,
     d::Normal,
     l::IdentityLink;
-    wts=[],
-    offset=[],
-    contrasts=Dict{Symbol,Any}(),
+    kwargs...
 )
     return throw(
         ArgumentError("use LinearMixedModel for Normal distribution with IdentityLink")
@@ -362,6 +363,7 @@ function GeneralizedLinearMixedModel(
     wts=[],
     offset=[],
     contrasts=Dict{Symbol,Any}(),
+    amalgamate=true,
 )
     if isa(d, Binomial) && isempty(wts)
         d = Bernoulli()
@@ -376,7 +378,7 @@ function GeneralizedLinearMixedModel(
                  the authors gain a better understanding of those cases."""
     end
 
-    LMM = LinearMixedModel(f, tbl; contrasts=contrasts, wts=wts)
+    LMM = LinearMixedModel(f, tbl; contrasts, wts, amalgamate)
     y = copy(LMM.y)
     constresponse = all(==(first(y)), y)
     # the sqrtwts field must be the correct length and type but we don't know those
