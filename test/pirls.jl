@@ -18,6 +18,20 @@ include("modelcache.jl")
     @test MixedModel(f, d, Bernoulli(), ProbitLink()) isa GeneralizedLinearMixedModel
 end
 
+@testset "Type for instance" begin
+    vaform = @formula(r2 ~ 1 + anger + gender + btype + situ + (1|subj) + (1|item))
+    verbagg = dataset(:verbagg)
+    @test_throws ArgumentError fit(MixedModel, vaform, verbagg, Bernoulli, LogitLink)
+    @test_throws ArgumentError fit(MixedModel, vaform, verbagg, Bernoulli(), LogitLink)
+    @test_throws ArgumentError fit(MixedModel, vaform, verbagg, Bernoulli, LogitLink())
+    @test_throws ArgumentError fit(GeneralizedLinearMixedModel, vaform, verbagg, Bernoulli, LogitLink)
+    @test_throws ArgumentError fit(GeneralizedLinearMixedModel, vaform, verbagg, Bernoulli(), LogitLink)
+    @test_throws ArgumentError fit(GeneralizedLinearMixedModel, vaform, verbagg, Bernoulli, LogitLink())
+    @test_throws ArgumentError GeneralizedLinearMixedModel(vaform, verbagg, Bernoulli, LogitLink)
+    @test_throws ArgumentError GeneralizedLinearMixedModel(vaform, verbagg, Bernoulli(), LogitLink)
+    @test_throws ArgumentError GeneralizedLinearMixedModel(vaform, verbagg, Bernoulli, LogitLink())
+end
+
 @testset "contra" begin
     contra = dataset(:contra)
     thin = 5
@@ -148,7 +162,7 @@ end
     center(v::AbstractVector) = v .- (sum(v) / length(v))
     grouseticks = DataFrame(dataset(:grouseticks))
     grouseticks.ch = center(grouseticks.height)
-    gm4 = fit(MixedModel, only(gfms[:grouseticks]), grouseticks, Poisson(); fast=true, progress=false)  # fails in pirls! with fast=false
+    gm4 = fit(MixedModel, only(gfms[:grouseticks]), grouseticks, Poisson(); fast=true, progress=false)
     @test isapprox(deviance(gm4), 851.4046, atol=0.001)
     # these two values are not well defined at the optimum
     #@test isapprox(sum(x -> sum(abs2, x), gm4.u), 196.8695297987013, atol=0.1)
@@ -159,6 +173,11 @@ end
     @test sdest(gm4) === missing
     @test varest(gm4) === missing
     @test gm4.σ === missing
+    gm4slow = fit(MixedModel, only(gfms[:grouseticks]), grouseticks, Poisson(); fast=false, progress=false)
+    # this tolerance isn't great, but then again the optimum isn't well defined
+    # @test gm4.θ ≈ gm4slow.θ rtol=0.05
+    # @test gm4.β[2:end] ≈ gm4slow.β[2:end] atol=0.1
+    @test isapprox(deviance(gm4), deviance(gm4slow); rtol=0.1)
 end
 
 @testset "goldstein" begin # from a 2020-04-22 msg by Ben Goldstein to R-SIG-Mixed-Models

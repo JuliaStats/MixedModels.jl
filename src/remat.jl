@@ -509,14 +509,17 @@ function reweight!(A::ReMat, sqrtwts::Vector)
     return A
 end
 
-rmulΛ!(A::Matrix{T}, B::ReMat{T,1}) where {T} = rmul!(A, only(B.λ))
+# why nested where? force specialization to eliminate dynamic dispatch
+function rmulΛ!(A::M, B::ReMat{T,1}) where {M<:Union{Diagonal{T},Matrix{T}}} where {T}
+    return rmul!(A, only(B.λ))
+end
 
 function rmulΛ!(A::SparseMatrixCSC{T}, B::ReMat{T,1}) where {T}
     rmul!(nonzeros(A), only(B.λ))
     return A
 end
 
-function rmulΛ!(A::Matrix{T}, B::ReMat{T,S}) where {T,S}
+function rmulΛ!(A::M, B::ReMat{T,S}) where {M<:Union{Diagonal{T},Matrix{T}}} where {T,S}
     m, n = size(A)
     q, r = divrem(n, S)
     iszero(r) || throw(DimensionMismatch("size(A, 2) is not a multiple of block size"))

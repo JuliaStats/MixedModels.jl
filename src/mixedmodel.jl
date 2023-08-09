@@ -74,6 +74,28 @@ issingular(m::GeneralizedLinearMixedModel, θ=m.optsum.final) = any(lowerbd(m) .
 # FIXME: better to base this on m.optsum.returnvalue
 StatsAPI.isfitted(m::MixedModel) = m.optsum.feval > 0
 
+function StatsAPI.fit(
+    ::Type{<:MixedModel},
+    f::FormulaTerm,
+    tbl,
+    d::Type,
+    args...;
+    kwargs...
+)
+    throw(ArgumentError("Expected a Distribution instance (`$d()`), got a type (`$d`)."))
+end
+
+function StatsAPI.fit(
+    ::Type{<:MixedModel},
+    f::FormulaTerm,
+    tbl,
+    d::Distribution,
+    l::Type;
+    kwargs...
+)
+    throw(ArgumentError("Expected a Link instance (`$l()`), got a type (`$l`)."))
+end
+
 StatsAPI.meanresponse(m::MixedModel) = mean(m.y)
 
 """
@@ -97,6 +119,24 @@ function retbl(mat, trm)
 )
 end
 
+StatsAPI.adjr2(m::MixedModel) = r2(m)
+
+function StatsAPI.r2(m::MixedModel)
+    @error (
+        """There is no uniquely defined coefficient of determination for mixed models
+         that has all the properties of the corresponding value for classical 
+         linear models. The GLMM FAQ provides more detail:
+         
+         https://bbolker.github.io/mixedmodels-misc/glmmFAQ.html#how-do-i-compute-a-coefficient-of-determination-r2-or-an-analogue-for-glmms
+
+
+         Alternatively, MixedModelsExtras provides a naive implementation, but 
+         the warnings there and in the FAQ should be taken seriously!
+         """
+    )
+    throw(MethodError(r2, (m,)))
+end
+
 """
     raneftables(m::MixedModel; uscale = false)
 
@@ -106,7 +146,9 @@ Return the conditional means of the random effects as a `NamedTuple` of Tables.j
     The API guarantee is only that the NamedTuple contains Tables.jl tables and not on the particular concrete type of each table.
 """
 function raneftables(m::MixedModel{T}; uscale=false) where {T}
-    return NamedTuple{fnames(m)}((map(retbl, ranef(m; uscale=uscale), m.reterms)...,))
+    return NamedTuple{_unique_fnames(m)}((
+        map(retbl, ranef(m; uscale=uscale), m.reterms)...,
+    ))
 end
 
 StatsAPI.residuals(m::MixedModel) = response(m) .- fitted(m)
@@ -129,12 +171,14 @@ end
 
 function σs(m::MixedModel)
     σ = dispersion(m)
-    return NamedTuple{fnames(m)}(((σs(t, σ) for t in m.reterms)...,))
+    fn = _unique_fnames(m)
+    return NamedTuple{fn}(((σs(t, σ) for t in m.reterms)...,))
 end
 
 function σρs(m::MixedModel)
     σ = dispersion(m)
-    return NamedTuple{fnames(m)}(((σρs(t, σ) for t in m.reterms)...,))
+    fn = _unique_fnames(m)
+    return NamedTuple{fn}(((σρs(t, σ) for t in m.reterms)...,))
 end
 
 """

@@ -181,10 +181,12 @@ function StatsAPI.fit(
     wts=[],
     contrasts=Dict{Symbol,Any}(),
     offset=[],
+    amalgamate=true,
     kwargs...,
 )
     return fit!(
-        GeneralizedLinearMixedModel(f, tbl, d, l; wts, offset, contrasts); kwargs...
+        GeneralizedLinearMixedModel(f, tbl, d, l; wts, offset, contrasts, amalgamate);
+        kwargs...,
     )
 end
 
@@ -282,7 +284,15 @@ function StatsAPI.fit!(
     fitlog = optsum.fitlog
     function obj(x, g)
         isempty(g) || throw(ArgumentError("g should be empty for this objective"))
-        val = deviance(pirls!(setpar!(m, x), fast, verbose), nAGQ)
+        val = try
+            deviance(pirls!(setpar!(m, x), fast, verbose), nAGQ)
+        catch ex
+            # this allows us to recover from models where e.g. the link isn't
+            # as constraining as it should be
+            ex isa Union{PosDefException,DomainError} || rethrow()
+            iter == 1 && rethrow()
+            m.optsum.finitial
+        end
         iszero(rem(iter, thin)) && push!(fitlog, (copy(x), val))
         verbose && println(round(val; digits=5), " ", x)
         progress && ProgressMeter.next!(prog; showvalues=[(:objective, val)])
@@ -329,14 +339,35 @@ StatsAPI.fitted(m::GeneralizedLinearMixedModel) = m.resp.mu
 function GeneralizedLinearMixedModel(
     f::FormulaTerm,
     tbl,
+    d::Type,
+    args...;
+    kwargs...,
+)
+    throw(ArgumentError("Expected a Distribution instance (`$d()`), got a type (`$d`)."))
+end
+
+function GeneralizedLinearMixedModel(
+    f::FormulaTerm,
+    tbl,
+    d::Distribution,
+    l::Type;
+    kwargs...
+)
+    throw(ArgumentError("Expected a Link instance (`$l()`), got a type (`$l`)."))
+end
+
+function GeneralizedLinearMixedModel(
+    f::FormulaTerm,
+    tbl,
     d::Distribution,
     l::Link=canonicallink(d);
     wts=[],
     offset=[],
     contrasts=Dict{Symbol,Any}(),
+    amalgamate=true,
 )
     return GeneralizedLinearMixedModel(
-        f, Tables.columntable(tbl), d, l; wts=wts, offset=offset, contrasts=contrasts
+        f, Tables.columntable(tbl), d, l; wts, offset, contrasts, amalgamate
     )
 end
 
@@ -345,9 +376,7 @@ function GeneralizedLinearMixedModel(
     tbl::Tables.ColumnTable,
     d::Normal,
     l::IdentityLink;
-    wts=[],
-    offset=[],
-    contrasts=Dict{Symbol,Any}(),
+    kwargs...
 )
     return throw(
         ArgumentError("use LinearMixedModel for Normal distribution with IdentityLink")
@@ -362,6 +391,7 @@ function GeneralizedLinearMixedModel(
     wts=[],
     offset=[],
     contrasts=Dict{Symbol,Any}(),
+    amalgamate=true,
 )
     if isa(d, Binomial) && isempty(wts)
         d = Bernoulli()
@@ -376,7 +406,7 @@ function GeneralizedLinearMixedModel(
                  the authors gain a better understanding of those cases."""
     end
 
-    LMM = LinearMixedModel(f, tbl; contrasts=contrasts, wts=wts)
+    LMM = LinearMixedModel(f, tbl; contrasts, wts, amalgamate)
     y = copy(LMM.y)
     constresponse = all(==(first(y)), y)
     # the sqrtwts field must be the correct length and type but we don't know those
