@@ -146,7 +146,9 @@ Return the conditional means of the random effects as a `NamedTuple` of Tables.j
     The API guarantee is only that the NamedTuple contains Tables.jl tables and not on the particular concrete type of each table.
 """
 function raneftables(m::MixedModel{T}; uscale=false) where {T}
-    return NamedTuple{fnames(m)}((map(retbl, ranef(m; uscale=uscale), m.reterms)...,))
+    return NamedTuple{_unique_fnames(m)}((
+        map(retbl, ranef(m; uscale=uscale), m.reterms)...,
+    ))
 end
 
 StatsAPI.residuals(m::MixedModel) = response(m) .- fitted(m)
@@ -169,12 +171,14 @@ end
 
 function σs(m::MixedModel)
     σ = dispersion(m)
-    return NamedTuple{fnames(m)}(((σs(t, σ) for t in m.reterms)...,))
+    fn = _unique_fnames(m)
+    return NamedTuple{fn}(((σs(t, σ) for t in m.reterms)...,))
 end
 
 function σρs(m::MixedModel)
     σ = dispersion(m)
-    return NamedTuple{fnames(m)}(((σρs(t, σ) for t in m.reterms)...,))
+    fn = _unique_fnames(m)
+    return NamedTuple{fn}(((σρs(t, σ) for t in m.reterms)...,))
 end
 
 """

@@ -1,7 +1,10 @@
-MixedModels v4.16.0 Release Notes
-==============================
+* New kwarg `amalgamate` can be used to disable amalgation of random0effects terms sharing a single grouping variable. Generally, `amalgamate=false` will result in a slower fit, but may improve convergence in some pathological cases. Note that this feature is experimental and changes to it are **not** considered breakin. [#673]
 * More informative error messages when passing a `Distribution` or `Link` type instead of the desired instance. [#698]
 * More informative error message on the intentional decision not to define methods for the coefficient of determination. [#698]
+
+MixedModels v4.16.0 Release Notes
+==============================
+* Support for check tolerances in deserialization. [#703]
 
 MixedModels v4.15.0 Release Notes
 ==============================
@@ -440,6 +443,7 @@ Package dependencies
 [#664]: https://github.com/JuliaStats/MixedModels.jl/issues/664
 [#665]: https://github.com/JuliaStats/MixedModels.jl/issues/665
 [#667]: https://github.com/JuliaStats/MixedModels.jl/issues/667
+[#673]: https://github.com/JuliaStats/MixedModels.jl/issues/673
 [#674]: https://github.com/JuliaStats/MixedModels.jl/issues/674
 [#676]: https://github.com/JuliaStats/MixedModels.jl/issues/676
 [#677]: https://github.com/JuliaStats/MixedModels.jl/issues/677
@@ -448,3 +452,4 @@ Package dependencies
 [#682]: https://github.com/JuliaStats/MixedModels.jl/issues/682
 [#694]: https://github.com/JuliaStats/MixedModels.jl/issues/694
 [#698]: https://github.com/JuliaStats/MixedModels.jl/issues/698
+[#703]: https://github.com/JuliaStats/MixedModels.jl/issues/703
