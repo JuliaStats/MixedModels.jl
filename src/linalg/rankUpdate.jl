@@ -16,6 +16,17 @@ function rankUpdate!(C::AbstractMatrix, a::AbstractArray, α, β)
     )
 end
 
+function MixedModels.rankUpdate!(
+    C::Hermitian{T,Diagonal{T,Vector{T}}}, A::Diagonal{T,Vector{T}}, α, β
+) where {T}
+    Cdiag = C.data.diag
+    Adiag = A.diag
+    @inbounds for idx in eachindex(Cdiag, Adiag)
+        Cdiag[idx] = β * Cdiag[idx] + α * abs2(Adiag[idx])
+    end
+    return C
+end
+
 function rankUpdate!(C::HermOrSym{T,S}, a::StridedVector{T}, α, β) where {T,S}
     Cd = C.data
     isone(β) || rmul!(C.uplo == 'L' ? LowerTriangular(Cd) : UpperTriangular(Cd), β)

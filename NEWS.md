@@ -1,6 +1,35 @@
+* Auto apply `Grouping()` to grouping variables that don't already have an explicit contrast. As a side effect, in [the rare cases](https://www.muscardinus.be/2017/08/fixed-and-random/#discrete-variable) where it makes sense for a variable to appear as both a fixed effect and a grouping variable, an explicit contrast hint must be passed. [#652]
+
+MixedModels v4.17.0 Release Notes
+==============================
+* New kwarg `amalgamate` can be used to disable amalgation of random0effects terms sharing a single grouping variable. Generally, `amalgamate=false` will result in a slower fit, but may improve convergence in some pathological cases. Note that this feature is experimental and changes to it are **not** considered breakin. [#673]
+* More informative error messages when passing a `Distribution` or `Link` type instead of the desired instance. [#698]
+* More informative error message on the intentional decision not to define methods for the coefficient of determination. [#698]
+* **EXPERIMENTAL** Return `finitial` when PIRLS drifts into a portion of the parameter space that yields a (numerically) invalid covariance matrix. This recovery strategy may be removed in a future release. [#616]
+
+MixedModels v4.16.0 Release Notes
+==============================
+* Support for check tolerances in deserialization. [#703]
+
+MixedModels v4.15.0 Release Notes
+==============================
+* Support for different optimization criteria during the bootstrap. [#694]
+* Support for combining bootstrap results with `vcat`. [#694]
+* Support for saving and restoring bootstrap replicates with `savereplicates` and `restorereplicates`. [#694]
+
+MixedModels v4.14.0 Release Notes
+==============================
+* New function `profile` for computing likelihood profiles for `LinearMixedModel`. The resultant `MixedModelProfile` can be then be used for computing confidence intervals with `confint`. Note that this API is still somewhat experimental and as such the internal storage details of `MixedModelProfile` may change in a future release without being considered breaking. [#639]
+* A `confint(::LinearMixedModel)` method has been defined that returns Wald confidence intervals based on the z-statistic, i.e. treating the denominator degrees of freedom as infinite. [#639]
+
 MixedModels v4.13.0 Release Notes
 ==============================
-* Auto apply `Grouping()` to grouping variables that don't already have an explicit contrast. As a side effect, in [the rare cases](https://www.muscardinus.be/2017/08/fixed-and-random/#discrete-variable) where it makes sense for a variable to appear as both a fixed effect and a grouping variable, an explicit contrast hint must be passed. [#652]
+* `raneftables` returns a `NamedTuple` where the names are the grouping factor names and the values are some `Tables.jl`-compatible type.  This type has been changed to a `Table` from `TypedTables.jl`. [#682]
+
+MixedModels v4.12.1 Release Notes
+==============================
+* Precompilation is now handled with `PrecompileTools` instead of `SnoopPrecompile`. [#681]
+* An unnecessary explicit `Vararg` in an internal method has been removed. This removal eliminates a compiler warning about the deprecated `Vararg` pattern. [#680]
 
 MixedModels v4.12.0 Release Notes
 ==============================
@@ -55,7 +84,6 @@ MixedModels v4.6.5 Release Notes
 ========================
 * Attempt recovery when the initial parameter values lead to an invalid covariance matrix by rescaling [#615]
 * Return `finitial` when the optimizer drifts into a portion of the parameter space that yields a (numerically) invalid covariance matrix [#615]
-
 
 MixedModels v4.6.4 Release Notes
 ========================
@@ -407,9 +435,11 @@ Package dependencies
 [#608]: https://github.com/JuliaStats/MixedModels.jl/issues/608
 [#614]: https://github.com/JuliaStats/MixedModels.jl/issues/614
 [#615]: https://github.com/JuliaStats/MixedModels.jl/issues/615
+[#616]: https://github.com/JuliaStats/MixedModels.jl/issues/616
 [#628]: https://github.com/JuliaStats/MixedModels.jl/issues/628
 [#634]: https://github.com/JuliaStats/MixedModels.jl/issues/634
 [#637]: https://github.com/JuliaStats/MixedModels.jl/issues/637
+[#639]: https://github.com/JuliaStats/MixedModels.jl/issues/639
 [#648]: https://github.com/JuliaStats/MixedModels.jl/issues/648
 [#651]: https://github.com/JuliaStats/MixedModels.jl/issues/651
 [#652]: https://github.com/JuliaStats/MixedModels.jl/issues/652
@@ -419,6 +449,13 @@ Package dependencies
 [#664]: https://github.com/JuliaStats/MixedModels.jl/issues/664
 [#665]: https://github.com/JuliaStats/MixedModels.jl/issues/665
 [#667]: https://github.com/JuliaStats/MixedModels.jl/issues/667
+[#673]: https://github.com/JuliaStats/MixedModels.jl/issues/673
 [#674]: https://github.com/JuliaStats/MixedModels.jl/issues/674
 [#676]: https://github.com/JuliaStats/MixedModels.jl/issues/676
 [#677]: https://github.com/JuliaStats/MixedModels.jl/issues/677
+[#680]: https://github.com/JuliaStats/MixedModels.jl/issues/680
+[#681]: https://github.com/JuliaStats/MixedModels.jl/issues/681
+[#682]: https://github.com/JuliaStats/MixedModels.jl/issues/682
+[#694]: https://github.com/JuliaStats/MixedModels.jl/issues/694
+[#698]: https://github.com/JuliaStats/MixedModels.jl/issues/698
+[#703]: https://github.com/JuliaStats/MixedModels.jl/issues/703

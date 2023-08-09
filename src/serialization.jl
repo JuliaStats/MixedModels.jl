@@ -1,10 +1,13 @@
 """
-    restoreoptsum!(m::LinearMixedModel, io::IO)
-    restoreoptsum!(m::LinearMixedModel, filename)
+    restoreoptsum!(m::LinearMixedModel, io::IO; atol::Real=0, rtol::Real=atol>0 ? 0 : √eps)
+    restoreoptsum!(m::LinearMixedModel, filename; atol::Real=0, rtol::Real=atol>0 ? 0 : √eps)
 
 Read, check, and restore the `optsum` field from a JSON stream or filename.
 """
-function restoreoptsum!(m::LinearMixedModel{T}, io::IO) where {T}
+function restoreoptsum!(
+    m::LinearMixedModel{T}, io::IO; atol::Real=zero(T),
+    rtol::Real=atol > 0 ? zero(T) : √eps(T),
+) where {T}
     dict = JSON3.read(io)
     ops = m.optsum
     okay =
@@ -22,7 +25,9 @@ function restoreoptsum!(m::LinearMixedModel{T}, io::IO) where {T}
     copyto!(ops.initial, dict.initial)
     copyto!(ops.final, dict.final)
     for (v, f) in (:initial => :finitial, :final => :fmin)
-        if !isapprox(objective(updateL!(setθ!(m, getfield(ops, v)))), getfield(ops, f))
+        if !isapprox(
+            objective(updateL!(setθ!(m, getfield(ops, v)))), getfield(ops, f); rtol, atol
+        )
             throw(ArgumentError("model m at $v does not give stored $f"))
         end
     end
@@ -40,9 +45,9 @@ function restoreoptsum!(m::LinearMixedModel{T}, io::IO) where {T}
     return m
 end
 
-function restoreoptsum!(m::LinearMixedModel{T}, filename) where {T}
+function restoreoptsum!(m::LinearMixedModel{T}, filename; kwargs...) where {T}
     open(filename, "r") do io
-        restoreoptsum!(m, io)
+        restoreoptsum!(m, io; kwargs...)
     end
 end
 
