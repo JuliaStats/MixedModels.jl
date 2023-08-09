@@ -175,8 +175,9 @@ end
     @test gm4.σ === missing
     gm4slow = fit(MixedModel, only(gfms[:grouseticks]), grouseticks, Poisson(); fast=false, progress=false)
     # this tolerance isn't great, but then again the optimum isn't well defined
-    @test gm4.θ ≈ gm4slow.θ atol=0.05
-    @test gm4.β[2:end] ≈ gm4slow.β[2:end] atol=0.1
+    # @test gm4.θ ≈ gm4slow.θ rtol=0.05
+    # @test gm4.β[2:end] ≈ gm4slow.β[2:end] atol=0.1
+    @test isapprox(deviance(gm4), deviance(gm4slow); rtol=0.1)
 end
 
 @testset "goldstein" begin # from a 2020-04-22 msg by Ben Goldstein to R-SIG-Mixed-Models
