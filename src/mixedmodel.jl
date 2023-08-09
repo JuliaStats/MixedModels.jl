@@ -74,6 +74,28 @@ issingular(m::GeneralizedLinearMixedModel, θ=m.optsum.final) = any(lowerbd(m) .
 # FIXME: better to base this on m.optsum.returnvalue
 StatsAPI.isfitted(m::MixedModel) = m.optsum.feval > 0
 
+function StatsAPI.fit(
+    ::Type{<:MixedModel},
+    f::FormulaTerm,
+    tbl,
+    d::Type,
+    args...;
+    kwargs...
+)
+    throw(ArgumentError("Expected a Distribution instance (`$d()`), got a type (`$d`)."))
+end
+
+function StatsAPI.fit(
+    ::Type{<:MixedModel},
+    f::FormulaTerm,
+    tbl,
+    d::Distribution,
+    l::Type;
+    kwargs...
+)
+    throw(ArgumentError("Expected a Link instance (`$l()`), got a type (`$l`)."))
+end
+
 StatsAPI.meanresponse(m::MixedModel) = mean(m.y)
 
 """
@@ -95,6 +117,24 @@ function retbl(mat, trm)
     return Table(
     [NamedTuple{nms}((l, view(mat, :, i)...),) for (i, l) in enumerate(trm.levels)]
 )
+end
+
+StatsAPI.adjr2(m::MixedModel) = r2(m)
+
+function StatsAPI.r2(m::MixedModel)
+    @error (
+        """There is no uniquely defined coefficient of determination for mixed models
+         that has all the properties of the corresponding value for classical 
+         linear models. The GLMM FAQ provides more detail:
+         
+         https://bbolker.github.io/mixedmodels-misc/glmmFAQ.html#how-do-i-compute-a-coefficient-of-determination-r2-or-an-analogue-for-glmms
+
+
+         Alternatively, MixedModelsExtras provides a naive implementation, but 
+         the warnings there and in the FAQ should be taken seriously!
+         """
+    )
+    throw(MethodError(r2, (m,)))
 end
 
 """

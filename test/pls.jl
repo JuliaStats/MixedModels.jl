@@ -1,3 +1,4 @@
+using GLM # bring r2 into scope
 using LinearAlgebra
 using MixedModels
 using PooledArrays
@@ -687,4 +688,18 @@ end
     # it would be great to test the handling of PosDefException after the first iteration
     # but this is surprisingly hard to trigger in a reliable way across platforms
     # just because of the vagaries of floating point.
+end
+
+@testset "methods we don't define" begin
+    m = first(models(:sleepstudy))
+    for f in [r2, adjr2]
+        @test_logs (:error,) begin
+            try
+                f(m)
+            catch
+                # capture the error, do nothing
+            end
+        end
+        @test_throws MethodError @suppress f(m)
+    end
 end

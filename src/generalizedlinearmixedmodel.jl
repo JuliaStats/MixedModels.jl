@@ -331,6 +331,26 @@ StatsAPI.fitted(m::GeneralizedLinearMixedModel) = m.resp.mu
 function GeneralizedLinearMixedModel(
     f::FormulaTerm,
     tbl,
+    d::Type,
+    args...;
+    kwargs...,
+)
+    throw(ArgumentError("Expected a Distribution instance (`$d()`), got a type (`$d`)."))
+end
+
+function GeneralizedLinearMixedModel(
+    f::FormulaTerm,
+    tbl,
+    d::Distribution,
+    l::Type;
+    kwargs...
+)
+    throw(ArgumentError("Expected a Link instance (`$l()`), got a type (`$l`)."))
+end
+
+function GeneralizedLinearMixedModel(
+    f::FormulaTerm,
+    tbl,
     d::Distribution,
     l::Link=canonicallink(d);
     wts=[],
