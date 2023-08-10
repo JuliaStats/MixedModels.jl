@@ -1,6 +1,6 @@
 MixedModels v4.17.0 Release Notes
 ==============================
-* New kwarg `amalgamate` can be used to disable amalgation of random0effects terms sharing a single grouping variable. Generally, `amalgamate=false` will result in a slower fit, but may improve convergence in some pathological cases. Note that this feature is experimental and changes to it are **not** considered breakin. [#673]
+* New kwarg `amalgamate` can be used to disable amalgation of random effects terms sharing a single grouping variable. Generally, `amalgamate=false` will result in a slower fit, but may improve convergence in some pathological cases. Note that this feature is experimental and changes to it are **not** considered breakings. [#673]
 * More informative error messages when passing a `Distribution` or `Link` type instead of the desired instance. [#698]
 * More informative error message on the intentional decision not to define methods for the coefficient of determination. [#698]
 * **EXPERIMENTAL** Return `finitial` when PIRLS drifts into a portion of the parameter space that yields a (numerically) invalid covariance matrix. This recovery strategy may be removed in a future release. [#616]
