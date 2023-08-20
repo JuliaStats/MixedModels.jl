@@ -1,11 +1,14 @@
+using Aqua
 using MixedModels
+using Test
+
 import InteractiveUtils: versioninfo
 import LinearAlgebra: BLAS
 
 # there seem to be processor-specific issues and knowing this is helpful
 println(versioninfo())
 @static if VERSION ≥ v"1.7.0-DEV.620"
-    @show getproperty.(BLAS.get_config().loaded_libs, :libname)
+    println(BLAS.get_config())
 else
     @show BLAS.vendor()
     if startswith(string(BLAS.vendor()), "openblas")
@@ -13,7 +16,14 @@ else
     end
 end
 
+@testset "Aqua" begin
+    # we can't check for unbound type parameters
+    # because we actually need one at one point for _same_family()
+    Aqua.test_all(MixedModels; ambiguities=false, unbound_args=false)
+end
+
 include("utilities.jl")
+include("misc.jl")
 include("pivot.jl")
 include("UniformBlockDiagonal.jl")
 include("linalg.jl")

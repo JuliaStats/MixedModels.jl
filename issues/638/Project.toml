@@ -1,0 +1,11 @@
+[deps]
+CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
+CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
+DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+Downloads = "f43a241f-c20a-4ad4-852c-f6b1247861c6"
+GLM = "38e38edf-8417-5370-95a0-9cbb8c7f171a"
+MixedModels = "ff71e718-51f3-5ec2-a782-8ffcbfa3c316"
+MixedModelsMakie = "b12ae82c-6730-437f-aff9-d2c38332a376"
+
+[compat]
+MixedModels = "4"

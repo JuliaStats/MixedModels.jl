@@ -9,7 +9,12 @@ because these are part of the inner calculations in a blocked Cholesky factoriza
 function cholUnblocked! end
 
 function cholUnblocked!(D::Diagonal{T}, ::Type{Val{:L}}) where {T<:AbstractFloat}
-    map!(sqrt, D.diag, D.diag)
+    Ddiag = D.diag
+    @inbounds for i in eachindex(Ddiag)
+        (ddi = Ddiag[i]) ≤ zero(T) && throw(PosDefException(i))
+        Ddiag[i] = sqrt(ddi)
+    end
+
     return D
 end
 

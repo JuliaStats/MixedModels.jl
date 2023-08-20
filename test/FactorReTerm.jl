@@ -157,6 +157,12 @@ end
         @test zc.rhs.sym == :subj
     end
 
+    @testset "Amalgamation of ZeroCorr with other terms" begin
+        f = @formula(reaction ~ 1 + days + (1|subj) + zerocorr(days|subj))
+        m = LMM(f, dataset(:sleepstudy), contrasts = Dict(:days => DummyCoding()))
+        re = only(m.reterms)
+        @test length(re.cnames) == length(unique(re.cnames)) == 10
+    end
 end
 
 @testset "Categorical Blocking Variable" begin
@@ -239,30 +245,10 @@ end
         @test modelcols(f2.rhs, d2) == [ones(20) d2.b .== :Y (d2.b .== :X).*d2.a (d2.b .== :Y).*d2.a]
         @test coefnames(f2.rhs) == ["(Intercept)", "b: Y", "b: X & a", "b: Y & a"]
 
-        # runtime
-        fr2 = term(1) + term(:b) / term(:a)
-        @test length(fr2) == 3
-        @test fr2[1] isa ConstantTerm
-        @test fr2[2] isa Term
-        @test fr2[3] isa InteractionTerm
-        frf2 = apply_schema(term(0) ~ fr2, schema(d2), MixedModel)
-        @test modelcols(frf2.rhs, d2) == [ones(20) d2.b .== :Y (d2.b .== :X).*d2.a (d2.b .== :Y).*d2.a]
-        @test coefnames(frf2.rhs) == ["(Intercept)", "b: Y", "b: X & a", "b: Y & a"]
-
         # check promotion
         f3 = apply_schema(@formula(0 ~ 0 + b/a), schema(d2), MixedModel)
         @test modelcols(f3.rhs, d2) == [d2.b .== :X d2.b .== :Y (d2.b .== :X).*d2.a (d2.b .== :Y).*d2.a]
         @test coefnames(f3.rhs) == ["b: X", "b: Y", "b: X & a", "b: Y & a"]
-
-        # runtime:
-        fr3 = term(0) + term(:b) / term(:a)
-        @test length(fr3) == 3
-        @test fr3[1] isa ConstantTerm
-        @test fr3[2] isa Term
-        @test fr3[3] isa InteractionTerm
-        ffr3 = apply_schema(term(0) ~ fr3, schema(d2), MixedModel)
-        @test modelcols(ffr3.rhs, d2) == [d2.b .== :X d2.b .== :Y (d2.b .== :X).*d2.a (d2.b .== :Y).*d2.a]
-        @test coefnames(ffr3.rhs) == ["b: X", "b: Y", "b: X & a", "b: Y & a"]
 
         # errors for continuous grouping
         @test_throws ArgumentError apply_schema(@formula(0 ~ 1 + a/b), schema(d2), MixedModel)
@@ -274,12 +260,12 @@ end
         psts = dataset("pastes")
         m = fit(MixedModel, @formula(strength ~ 1 + (1|batch/cask)), psts; progress=false)
         m2 = fit(MixedModel, @formula(strength ~ 1 + (1|batch) + (1|batch&cask)), psts; progress=false)
-        mr = fit(MixedModel, term(:strength) ~ term(1) + (term(1)|term(:batch)/term(:cask)), psts; progress=false)
         m2r = fit(MixedModel, term(:strength) ~ term(1) + (term(1)|term(:batch)) + (term(1)|term(:batch)&term(:cask)), psts; progress=false)
 
-        @test fnames(m) == fnames(m2) == fnames(mr) == fnames(m2r) == (Symbol("batch & cask"), :batch)
-        @test m.λ == m2.λ == mr.λ == m2r.λ
-        @test deviance(m) == deviance(m2) == deviance(mr) == deviance(m2r)
+        @test fnames(m) == fnames(m2) == fnames(m2r) == (Symbol("batch & cask"), :batch)
+        @test coefnames(first(m.reterms)) == ["(Intercept)"]
+        @test m.λ == m2.λ == m2r.λ
+        @test deviance(m) == deviance(m2) == deviance(m2r)
     end
 
     @testset "multiple terms with same grouping" begin

@@ -12,6 +12,13 @@ using MixedModels: dataset, MixedModelBootstrap
 
 include("modelcache.jl")
 
+function quickboot(m, n=2)
+    return parametricbootstrap(MersenneTwister(42), n, m;
+                               hide_progress=true, use_threads=false,
+                               optsum_overrides=(;ftol_rel=1e-8))
+end
+
+
 @testset "simulate!(::MixedModel)" begin
     @testset "LMM" begin
         ds = dataset(:dyestuff)
@@ -70,7 +77,8 @@ end
     # 2. test method for default RNG
     parametricbootstrap(1, fm, β=[1], σ=1)
 
-    bsamp = parametricbootstrap(MersenneTwister(1234321), 100, fm, use_threads=false)
+    bsamp = parametricbootstrap(MersenneTwister(1234321), 100, fm;
+                                use_threads=false, hide_progress=true)
     @test isa(propertynames(bsamp), Vector{Symbol})
     @test length(bsamp.objective) == 100
     @test keys(first(bsamp.fits)) == (:objective, :σ, :β, :se, :θ)
@@ -78,6 +86,19 @@ end
     @test length(bsamp.σs) == 100
     allpars = DataFrame(bsamp.allpars)
     @test isa(allpars, DataFrame)
+
+    @testset "optsum_overrides" begin
+        bsamp2 = parametricbootstrap(MersenneTwister(1234321), 100, fm;
+                                    use_threads=false, hide_progress=true,
+                                    optsum_overrides=(;ftol_rel=1e-8))
+        # for such a simple, small model setting the function value
+        # tolerance has little effect until we do something extreme
+        @test bsamp.objective ≈ bsamp2.objective
+        bsamp2 = parametricbootstrap(MersenneTwister(1234321), 100, fm;
+                                    use_threads=false, hide_progress=true,
+                                    optsum_overrides=(;ftol_rel=1.0))
+        @test !(bsamp.objective ≈ bsamp2.objective)
+    end
     cov = shortestcovint(shuffle(1.:100.))
     # there is no unique shortest coverage interval here, but the left-most one
     # is currently returned, so we take that. If this behavior changes, then
@@ -93,20 +114,14 @@ end
     @test propertynames(coefp) == [:iter, :coefname, :β, :se, :z, :p]
 
     @testset "threaded bootstrap" begin
-        bsamp_threaded = parametricbootstrap(MersenneTwister(1234321), 100, fm, use_threads=true)
-        # even though it's bad practice with floating point, exact equality should
-        # be a valid test here -- if everything is working right, then it's the exact
-        # same operations occuring within each bootstrap sample, which IEEE 754
-        # guarantees will yield the same result
-        @test sort(bsamp_threaded.σ) == sort(bsamp.σ)
-        @test sort(bsamp_threaded.θ) == sort(bsamp.θ)
-        @test sort(columntable(bsamp_threaded.β).β) == sort(columntable(bsamp.β).β)
-        @test sum(issingular(bsamp)) == sum(issingular(bsamp_threaded))
+        @test_logs (:warn, r"use_threads is deprecated") parametricbootstrap(MersenneTwister(1234321), 1, fm;
+                                                                             use_threads=true, hide_progress=true)
     end
 
     @testset "zerocorr + Base.length + ftype" begin
         fmzc = models(:sleepstudy)[2]
-        pbzc = parametricbootstrap(MersenneTwister(42), 5, fmzc, Float16)
+        pbzc = parametricbootstrap(MersenneTwister(42), 5, fmzc, Float16;
+                                   hide_progress=true)
         @test length(pbzc) == 5
         @test Tables.istable(shortestcovint(pbzc))
         @test typeof(pbzc) == MixedModelBootstrap{Float16}
@@ -116,16 +131,67 @@ end
         form_zc_not = @formula(rt_trunc ~ 1 + spkr * prec * load +
                                          (1 + spkr + prec + load | subj) +
                                  zerocorr(1 + spkr + prec + load | item))
-        fmzcnot = fit(MixedModel, form_zc_not, dataset(:kb07))
-        pbzcnot = parametricbootstrap(MersenneTwister(42), 2, fmzcnot, Float16)
+        fmzcnot = fit(MixedModel, form_zc_not, dataset(:kb07); progress=false)
+        pbzcnot = parametricbootstrap(MersenneTwister(42), 2, fmzcnot, Float16;
+                                      hide_progress=true)
     end
 
-    @testset "Bernoulli simulate! and GLMM boostrap" begin
+    @testset "vcat" begin
+        sleep = quickboot(last(models(:sleepstudy)))
+        zc1 = quickboot(models(:sleepstudy)[2])
+        zc2 = quickboot(models(:sleepstudy)[3])
+
+        @test_throws ArgumentError vcat(sleep, zc1)
+        @test_throws ArgumentError reduce(vcat, [sleep, zc1])
+        # these are the same model even if the formulae
+        # are expressed differently
+        @test length(vcat(zc1, zc2)) == 4
+        @test length(reduce(vcat, [zc1, zc2])) == 4
+    end
+
+    @testset "save and restore replicates" begin
+        io = IOBuffer()
+        m0 = first(models(:sleepstudy))
+        m1 = last(models(:sleepstudy))
+        pb0 = quickboot(m0)
+        pb1 = quickboot(m1)
+        savereplicates(io, pb1)
+        # wrong model``
+        @test_throws ArgumentError restorereplicates(seekstart(io), m0)
+        # need to specify an eltype!
+        @test_throws MethodError restorereplicates(seekstart(io), m1, MixedModelBootstrap)
+
+        # make sure exact and approximate equality work
+        @test pb1 == pb1
+        @test pb1 == restorereplicates(seekstart(io), m1)
+        @test pb1 ≈ restorereplicates(seekstart(io), m1)
+        @test pb1 ≈ pb1
+        @test pb1 ≈ restorereplicates(seekstart(io), m1, Float64)
+        @test restorereplicates(seekstart(io), m1, Float32) ≈ restorereplicates(seekstart(io), m1, Float32)
+        # too much precision is lost
+        f16 = restorereplicates(seekstart(io), m1, Float16)
+        @test !isapprox(pb1, f16)
+        @test isapprox(pb1, f16; atol=eps(Float16))
+        @test isapprox(pb1, f16; rtol=0.0001)
+
+
+        # two paths, one destination
+        @test restorereplicates(seekstart(io), m1, MixedModelBootstrap{Float16}) == restorereplicates(seekstart(io), m1, Float16)
+        # changing eltype breaks exact equality
+        @test pb1 != restorereplicates(seekstart(io), m1, Float32)
+
+        # test that we don't need the model to be fit when restoring
+        @test pb1 == restorereplicates(seekstart(io), MixedModels.unfit!(deepcopy(m1)))
+
+        @test pb1 ≈ restorereplicates(seekstart(io), m1, Float16) rtol=1
+    end
+
+    @testset "Bernoulli simulate! and GLMM bootstrap" begin
         contra = dataset(:contra)
         # need a model with fast=false to test that we only
         # copy the optimizer constraints for θ and not β
         gm0 = fit(MixedModel, first(gfms[:contra]), contra, Bernoulli(), fast=false, progress=false)
-        bs = parametricbootstrap(StableRNG(42), 100, gm0)
+        bs = parametricbootstrap(StableRNG(42), 100, gm0; hide_progress=true)
         # make sure we're not copying
         @test length(bs.lowerbd) == length(gm0.θ)
         bsci = filter!(:type => ==("β"), DataFrame(shortestcovint(bs)))
@@ -145,7 +211,20 @@ end
         @test mean(apar.value) ≈ σbar
 
         # can't specify dispersion for families without that parameter
-        @test_throws ArgumentError parametricbootstrap(StableRNG(42), 100, gm0; σ=2)
+        @test_throws ArgumentError parametricbootstrap(StableRNG(42), 100, gm0;
+                                                       σ=2, hide_progress=true)
         @test sum(issingular(bs)) == 0
     end
+end
+
+@testset "CI method comparison" begin
+    fmzc = models(:sleepstudy)[2]
+    level = 0.68
+    pb = parametricbootstrap(MersenneTwister(42), 500, fmzc; hide_progress=true)
+    pr = profile(fmzc)
+    ci_boot = confint(pb; level)
+    ci_wald = confint(fmzc; level)
+    ci_prof = confint(pr; level)
+    @test first(ci_boot.lower, 2) ≈ first(ci_prof.lower, 2) atol=0.5
+    @test first(ci_prof.lower, 2) ≈ first(ci_wald.lower, 2) atol=0.1
 end

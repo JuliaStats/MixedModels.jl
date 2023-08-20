@@ -2,7 +2,7 @@
 
 |**Documentation**|**Citation**|**Build Status**|**Code Coverage**| **Style Guide** |
 |:---------------:|:----------:|:--------------:|:---------------:|:----------------|
-|[![Stable Docs][docs-stable-img]][docs-stable-url] [![Dev Docs][docs-dev-img]][docs-dev-url] | [![DOI][doi-img]][doi-url] | [![Julia Current][current-img]][current-url] [![Julia 1.6 (LTS)][lts-img]][lts-url] [![Julia Nightly][nightly-img]][nightly-url] [![PkgEval][pkgeval-img]][pkgeval-url] | [![CodeCov][codecov-img]][codecov-url] | [![Code Style: Blue](https://img.shields.io/badge/code%20style-Blue-4495d1.svg)](https://github.com/invenia/BlueStyle) |
+|[![Stable Docs][docs-stable-img]][docs-stable-url] [![Dev Docs][docs-dev-img]][docs-dev-url] | [![DOI][doi-img]][doi-url] | [![Julia Current][current-img]][current-url] [![Julia Minimum Supported Version][minimum-img]][minimum-url] [![Julia Nightly][nightly-img]][nightly-url] [![PkgEval][pkgeval-img]][pkgeval-url] | [![CodeCov][codecov-img]][codecov-url] | [![Code Style: Blue](https://img.shields.io/badge/code%20style-Blue-4495d1.svg)](https://github.com/invenia/BlueStyle) |
 
 [doi-img]: https://zenodo.org/badge/9106942.svg
 [doi-url]: https://zenodo.org/badge/latestdoi/9106942
@@ -16,14 +16,14 @@
 [codecov-img]: https://codecov.io/github/JuliaStats/MixedModels.jl/badge.svg?branch=main
 [codecov-url]: https://codecov.io/github/JuliaStats/MixedModels.jl?branch=main
 
-[current-img]: https://github.com/JuliaStats/MixedModels.jl/actions/workflows/ci.yml/badge.svg
-[current-url]: https://github.com/JuliaStats/MixedModels.jl/actions?workflow=ci
+[current-img]: https://github.com/JuliaStats/MixedModels.jl/actions/workflows/current.yml/badge.svg
+[current-url]: https://github.com/JuliaStats/MixedModels.jl/actions?workflow=current
 
 [nightly-img]: https://github.com/JuliaStats/MixedModels.jl/actions/workflows/nightly.yml/badge.svg
 [nightly-url]: https://github.com/JuliaStats/MixedModels.jl/actions?workflow=nightly
 
-[lts-img]: https://github.com/JuliaStats/MixedModels.jl/actions/workflows/lts.yml/badge.svg
-[lts-url]: https://github.com/JuliaStats/MixedModels.jl/actions?workflow=lts
+[minimum-img]: https://github.com/JuliaStats/MixedModels.jl/actions/workflows/minimum.yml/badge.svg
+[minimum-url]: https://github.com/JuliaStats/MixedModels.jl/actions?workflow=minimum
 
 [pkgeval-img]: https://juliaci.github.io/NanosoldierReports/pkgeval_badges/M/MixedModels.svg
 [pkgeval-url]: https://juliaci.github.io/NanosoldierReports/pkgeval_badges/report.html
@@ -52,11 +52,11 @@ Typical distribution forms are _Bernoulli_ for binary data or _Poisson_ for coun
 
 |OS      | OS Version    |Arch |Julia           |
 |:------:|:-------------:|:---:|:--------------:|
-|Linux   | Ubuntu 18.04  | x64 |v1.6 (LTS)      |
-|Linux   | Ubuntu 18.04  | x64 |current release |
-|Linux   | Ubuntu 18.04  | x64 |nightly         |
-|macOS   | Catalina 10.15| x64 |v1.6 (LTS)      |
-|Windows | Server 2019   | x64 |v1.6 (LTS)      |
+|Linux   | Ubuntu 20.04  | x64 |v1.8            |
+|Linux   | Ubuntu 20.04  | x64 |current release |
+|Linux   | Ubuntu 20.04  | x64 |nightly         |
+|macOS   | Catalina 10.15| x64 |v1.8            |
+|Windows | Server 2019   | x64 |v1.8            |
 
 Note that previous releases still support older Julia versions.
 

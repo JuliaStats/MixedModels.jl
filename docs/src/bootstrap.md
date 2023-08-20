@@ -118,7 +118,7 @@ m2 = fit(
 DisplayAs.Text(ans) # hide
 ```
 ```@example Main
-samp2 = parametricbootstrap(rng, 10_000, m2, use_threads=true);
+samp2 = parametricbootstrap(rng, 10_000, m2);
 df2 = DataFrame(samp2.allpars);
 first(df2, 10)
 ```
@@ -163,4 +163,61 @@ The `issingular` method for a `MixedModel` object that tests if a parameter vect
 This operation is encapsulated in a method for the `issingular` function.
 ```@example Main
 count(issingular(samp2))
+```
+
+## Reduced Precision Bootstrap
+
+`parametricbootstrap` accepts an optional keyword argument `optsum_overrides`, which can be used to override the convergence criteria for bootstrap replicates. One possibility is setting `ftol_rel=1e-8`, i.e., considering the model converged when the relative change in the objective between optimizer iterations is smaller than 0.00000001.
+This threshold corresponds approximately to the precision from treating the value of the objective as a single precision (`Float32`) number, while not changing the precision of the intermediate computations.
+The resultant loss in precision will generally be smaller than the variation that the bootstrap captures, but can greatly speed up the fitting process for each replicates, especially for large models.
+More directly, lowering the fit quality for each replicate will reduce the quality of each replicate, but this may be more than compensated for by the ability to fit a much larger number of replicates in the same time.
+
+```@example Main
+t = @timed parametricbootstrap(MersenneTwister(42), 1000, m2; hide_progress=true)
+t.time
+```
+
+```@example Main
+optsum_overrides = (; ftol_rel=1e-8)
+t = @timed parametricbootstrap(MersenneTwister(42), 1000, m2; optsum_overrides, hide_progress=true)
+t.time
+```
+
+## Distributed Computing and the Bootstrap
+
+Earlier versions of MixedModels.jl supported a multi-threaded bootstrap via the `use_threads` keyword argument.
+However, with improved BLAS multithreading, the Julia-level threads often wound up competing with the BLAS threads, leading to no improvement or even a worsening of performance when `use_threads=true`.
+Nonetheless, the bootstrap is a classic example of an [embarrassingly parallel](https://en.wikipedia.org/wiki/Embarrassingly_parallel) problem and so we provide a few convenience methods for combining results computed separately.
+In particular, there are `vcat` and an optimized `reduce(::typeof(vcat))` methods for `MixedModelBootstrap` objects.
+For computers with many processors (as opposed to a single processor with several cores) or for computing clusters, these provide a convenient way to split the computation across nodes.
+
+```@example Main
+using Distributed
+using ProgressMeter
+# you already have 1 proc by default, so add the number of additional cores with `addprocs`
+# you need at least as many RNGs as cores you want to use in parallel
+# but you shouldn't use all of your cores because nested within this
+# is the multithreading of the linear algebra
+@info "Currently using $(nprocs()) processors total and $(nworkers()) for work"
+
+# copy everything to workers
+@showprogress for w in workers()
+    remotecall_fetch(() -> coefnames(m2), w)
+end
+
+# split the replicates across the workers
+# this rounds down, so if the number of workers doesn't divide the
+# number of replicates, you'll be a few replicates short!
+n_replicates = 1000
+n_rep_per_worker = n_replicates ÷ nworkers()
+# NB: You need a different seed/RNG for each worker otherwise you will
+# have copies of the same replicates and not independent replicates!
+pb_map = @showprogress pmap(MersenneTwister.(1:nworkers())) do rng
+    parametricbootstrap(rng, n_rep_per_worker, m2; optsum_overrides)
+end;
+
+# get rid of all the workers
+# rmprocs(workers())
+
+confint(reduce(vcat, pb_map))
 ```
