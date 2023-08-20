@@ -116,6 +116,8 @@ nranef(A::ReMat) = size(A.adjA, 1)
 
 LinearAlgebra.cond(A::ReMat) = cond(A.λ)
 
+StatsAPI.coefnames(re::MixedModels.AbstractReMat) = re.cnames
+
 """
     fname(A::ReMat)
 
