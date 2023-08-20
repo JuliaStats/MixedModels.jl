@@ -599,7 +599,7 @@ fixef(m::LinearMixedModel{T}) where {T} = fixef!(Vector{T}(undef, m.feterm.rank)
 
 Return a (permuted and truncated in the rank-deficient case) vector of coefficient names.
 """
-function fixefnames(m::LinearMixedModel{T}) where {T}
+function fixefnames(m::LinearMixedModel)
     Xtrm = m.feterm
     return Xtrm.cnames[1:(Xtrm.rank)]
 end
