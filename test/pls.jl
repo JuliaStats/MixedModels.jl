@@ -271,6 +271,13 @@ end
     lrt = likelihoodratiotest(models(:pastes)...)
     @test length(lrt.deviance) == length(lrt.formulas) == length(lrt.models )== 2
     @test first(lrt.tests.pvalues) ≈ 0.5233767966395597 atol=0.0001
+
+    @testset "missing variables in formula" begin
+        ae = ArgumentError("The following formula variables are not present in the table: [:reaction, :joy, :subj]")
+        @test_throws(ae,
+                     fit(MixedModel, @formula(reaction ~ 1 + joy + (1|subj)), dataset(:pastes)))
+
+    end
 end
 
 @testset "InstEval" begin
