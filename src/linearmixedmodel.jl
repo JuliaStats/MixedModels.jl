@@ -86,6 +86,15 @@ function LinearMixedModel(
     f::FormulaTerm, tbl::Tables.ColumnTable; contrasts=Dict{Symbol,Any}(), wts=[],
     σ=nothing, amalgamate=true,
 )
+    fvars = StatsModels.termvars(f)
+    tvars = Tables.columnnames(tbl)
+    fvars ⊆ tvars ||
+        throw(
+            ArgumentError(
+                "The following formula variables are not present in the table: $(setdiff(fvars, tvars))",
+            ),
+        )
+
     # TODO: perform missing_omit() after apply_schema() when improved
     # missing support is in a StatsModels release
     tbl, _ = StatsModels.missing_omit(tbl, f)
@@ -373,14 +382,14 @@ end
 
 """
     confint(pr::MixedModelProfile; level::Real=0.95)
-    
+
 Compute profile confidence intervals for (fixed effects) coefficients, with confidence level `level` (by default 95%).
 
 !!! note
-    The API guarantee is for a Tables.jl compatible table. The exact return type is an 
+    The API guarantee is for a Tables.jl compatible table. The exact return type is an
     implementation detail and may change in a future minor release without being considered
     breaking.
-  
+
 """
 function StatsBase.confint(m::MixedModel{T}; level=0.95) where {T}
     cutoff = sqrt.(quantile(Chisq(1), level))
@@ -609,7 +618,7 @@ fixef(m::LinearMixedModel{T}) where {T} = fixef!(Vector{T}(undef, m.feterm.rank)
 
 Return a (permuted and truncated in the rank-deficient case) vector of coefficient names.
 """
-function fixefnames(m::LinearMixedModel{T}) where {T}
+function fixefnames(m::LinearMixedModel)
     Xtrm = m.feterm
     return Xtrm.cnames[1:(Xtrm.rank)]
 end

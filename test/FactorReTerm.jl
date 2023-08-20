@@ -246,6 +246,7 @@ end
         m2r = fit(MixedModel, term(:strength) ~ term(1) + (term(1)|term(:batch)) + (term(1)|term(:batch)&term(:cask)), psts; progress=false)
 
         @test fnames(m) == fnames(m2) == fnames(m2r) == (Symbol("batch & cask"), :batch)
+        @test coefnames(first(m.reterms)) == ["(Intercept)"]
         @test m.λ == m2.λ == m2r.λ
         @test deviance(m) == deviance(m2) == deviance(m2r)
     end
