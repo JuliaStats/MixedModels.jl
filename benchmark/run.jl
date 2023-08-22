@@ -1,5 +1,5 @@
 using Pkg
-Pkg.develop(PackageSpec(path=pwd()))
+Pkg.develop(PackageSpec(path=dirname(@__DIR__)))
 Pkg.instantiate()
 using PkgBenchmark, MixedModels
 # explicit `Pkg.add` is a crutch until we've got a good base on main
