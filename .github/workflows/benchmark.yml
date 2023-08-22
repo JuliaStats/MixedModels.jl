@@ -27,11 +27,11 @@ jobs:
           - uses: julia-actions/julia-buildpkg@v1
           - name: Benchmark run
             run: |
-              git fetch origin +:refs/remotes/origin/HEAD
+              git fetch origin +:refs/remotes/origin/HEAD --depth=1
               julia --project=benchmark/ -e '
-                using Pkg
-                Pkg.develop(PackageSpec(path=pwd()))
-                Pkg.instantiate()'
+                  using Pkg
+                  Pkg.develop(PackageSpec(path=pwd()))
+                  Pkg.instantiate()'
               # Pkg.update() allows us to benchmark even when dependencies/compat requirements change
               julia --project=benchmark/ -e '
                   using PkgBenchmark, MixedModels
