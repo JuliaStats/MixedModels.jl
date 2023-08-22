@@ -85,15 +85,15 @@ function fitbobyqa(dsnm::Symbol, i::Integer)
     return fit(MixedModel, fms[dsnm][i], dataset(dsnm); contrasts, progress=false)
 end
 
-SUITE["simplescalar"] = BenchmarkGroup(["single", "simple", "scalar"])
-for (ds, i) in [
-    (:dyestuff, 1),
-    (:dyestuff2, 1),
-    (:pastes, 1),
-    (:sleepstudy, 1),
-]
-    SUITE["simplescalar"][string(ds, ':', i)] = @benchmarkable fitbobyqa($ds, $i)
-end
+# SUITE["simplescalar"] = BenchmarkGroup(["single", "simple", "scalar"])
+# for (ds, i) in [
+#     (:dyestuff, 1),
+#     (:dyestuff2, 1),
+#     (:pastes, 1),
+#     (:sleepstudy, 1),
+# ]
+#     SUITE["simplescalar"][string(ds, ':', i)] = @benchmarkable fitbobyqa($ds, $i)
+# end
 
 SUITE["singlevector"] = BenchmarkGroup(["single", "vector"])
 for (ds, i) in [
