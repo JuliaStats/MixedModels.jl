@@ -28,16 +28,7 @@ jobs:
           - name: Benchmark run
             run: |
               git fetch origin +:refs/remotes/origin/HEAD --depth=1
-              julia --project=benchmark/ -e '
-                  using Pkg
-                  Pkg.develop(PackageSpec(path=pwd()))
-                  Pkg.instantiate()
-                  using PkgBenchmark, MixedModels
-                  # explicit `Pkgadd` is a crutch until we've got a good base on main
-                  # Pkg.update() allows us to benchmark even when dependencies/compat requirements change
-                  juliacmd = `$(Base.julia_cmd()) -O3` # -e "using Pkg; Pkg.update(); Pkg.add([\"BenchmarkTools\", \"StatsModels\"])"`
-                  config = BenchmarkConfig(; id="origin/HEAD", juliacmd)
-                  export_markdown("benchmark.md", judge(MixedModels, config; verbose=true))'
+              julia --project=benchmark benchmark/run.jl
           - name: Comment PR
             uses: thollander/actions-comment-pull-request@v2
             with:
