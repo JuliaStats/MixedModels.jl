@@ -25,7 +25,8 @@ jobs:
               version: "1"
           - uses: julia-actions/cache@v1
           - uses: julia-actions/julia-buildpkg@v1
-          - run: |
+          - name: Benchmark run
+            run: |
               git fetch origin +:refs/remotes/origin/HEAD
               julia --project=benchmark/ -e 'using Pkg; Pkg.instantiate(); Pkg.develop(PackageSpec(path=pwd()))'
               # adding BenchmarkTools is a crutch until we've got a good base on main
