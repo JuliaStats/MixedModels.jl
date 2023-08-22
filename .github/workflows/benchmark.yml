@@ -28,4 +28,4 @@ jobs:
           - run: |
               git fetch origin +:refs/remotes/origin/HEAD
               julia --project=benchmark/ -e 'using Pkg; Pkg.instantiate(); Pkg.develop(PackageSpec(path=pwd()))'
-              julia --project=benchmark/ -e 'using PkgBenchmark, MixedModels; export_markdown(stdout, judge(MixedModels, BenchmarkConfig(;id="origin/HEAD", juliacmd=`julia -O3 -e'using Pkg; Pkg.update()'`); verbose=true))'
+              julia --project=benchmark/ -e 'using PkgBenchmark, MixedModels; export_markdown(stdout, judge(MixedModels, BenchmarkConfig(;id="origin/HEAD", juliacmd=`julia -O3 -e"using Pkg; Pkg.update()"`); verbose=true))'
