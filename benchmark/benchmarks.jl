@@ -85,6 +85,8 @@ function fitbobyqa(dsnm::Symbol, i::Integer)
     return fit(MixedModel, fms[dsnm][i], dataset(dsnm); contrasts, progress=false)
 end
 
+# these tests are so fast that they can be very noisy because the denominator is so small, 
+# so we disable them by default for auto-benchmarking
 # SUITE["simplescalar"] = BenchmarkGroup(["single", "simple", "scalar"])
 # for (ds, i) in [
 #     (:dyestuff, 1),
