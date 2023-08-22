@@ -29,5 +29,5 @@ jobs:
             run: |
               git fetch origin +:refs/remotes/origin/HEAD
               julia --project=benchmark/ -e 'using Pkg; Pkg.instantiate(); Pkg.develop(PackageSpec(path=pwd()))'
-              # adding BenchmarkTools is a crutch until we've got a good base on main
-              julia --project=benchmark/ -e 'using PkgBenchmark, MixedModels; export_markdown(stdout, judge(MixedModels, BenchmarkConfig(;id="origin/HEAD", juliacmd=`julia -O3 -e"using Pkg; Pkg.update(); Pkg.add(\"BenchmarkTools\")"`); verbose=true))'
+              # explicit `Pkgadd` is a crutch until we've got a good base on main
+              julia --project=benchmark/ -e 'using PkgBenchmark, MixedModels; export_markdown(stdout, judge(MixedModels, BenchmarkConfig(;id="origin/HEAD", juliacmd=`julia -O3 -e"using Pkg; Pkg.update(); Pkg.add([\"BenchmarkTools\", \"StatsModels\"])"`); verbose=true))'
