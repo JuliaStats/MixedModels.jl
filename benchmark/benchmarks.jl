@@ -1,9 +1,9 @@
-using BenchmarkTools, MixedModels, StatsModels
+using BenchmarkTools, MixedModels
 using MixedModels: dataset
 
 const SUITE = BenchmarkGroup()
 
-const global contrasts = Dict{Symbol,Any}(
+const contrasts = Dict{Symbol,Any}(
     :batch => Grouping(),     # dyestuff, dyestuff2, pastes
     :cask => Grouping(),      # pastes
     :d => Grouping(),         # insteval
