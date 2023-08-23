@@ -1,6 +1,6 @@
 using Pkg
 Pkg.develop(PackageSpec(path=dirname(@__DIR__)))
-Pkg.instantiate()
+Pkg.update()
 using PkgBenchmark, MixedModels
 # Pkg.update() allows us to benchmark even when dependencies/compat requirements change
 juliacmd = `$(Base.julia_cmd()) -O3 -e "using Pkg; Pkg.update()"`
