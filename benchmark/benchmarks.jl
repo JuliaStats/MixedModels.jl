@@ -29,7 +29,7 @@ const contrasts = Dict{Symbol,Any}(
     :spkr => HelmertCoding(),    # kb07
 )
 
-const global fms = Dict(
+const fms = Dict(
     :dyestuff => [
         @formula(yield ~ 1 + (1 | batch))
     ],
@@ -81,8 +81,8 @@ const global fms = Dict(
     ],
 )
 
-function fitbobyqa(dsnm::Symbol, i::Integer)
-    return fit(MixedModel, fms[dsnm][i], dataset(dsnm); contrasts, progress=false)
+function fitbobyqa(dsnm::Symbol, i::Integer, ds=dataset(dsnm))
+    return fit(MixedModel, fms[dsnm][i], ds; contrasts, progress=false)
 end
 
 # these tests are so fast that they can be very noisy because the denominator is so small,
@@ -103,14 +103,14 @@ for (ds, i) in [
     (:sleepstudy, 3),
     (:sleepstudy, 4),
 ]
-    SUITE["singlevector"][string(ds, ':', i)] = @benchmarkable fitbobyqa($ds, $i)
+    SUITE["singlevector"][string(ds, ':', i)] = @benchmarkable fitbobyqa($ds, $i, $(dataset(ds)))
 end
 
 SUITE["nested"] = BenchmarkGroup(["multiple", "nested", "scalar"])
 for (ds, i) in [
 (:pastes, 2)
 ]
-    SUITE["nested"][string(ds, ':', i)] = @benchmarkable fitbobyqa($ds, $i)
+    SUITE["nested"][string(ds, ':', i)] = @benchmarkable fitbobyqa($ds, $i, $(dataset(ds)))
 end
 
 SUITE["crossed"] = BenchmarkGroup(["multiple", "crossed", "scalar"])
@@ -120,10 +120,10 @@ for (ds, i) in [
     (:kb07, 1),
     (:machines, 1),
     (:ml1m, 1),
-    (:mrk17_exp1, 1),
+    # (:mrk17_exp1, 1),
     (:penicillin, 1),
 ]
-    SUITE["crossed"][string(ds, ':', i)] = @benchmarkable fitbobyqa($ds, $i)
+    SUITE["crossed"][string(ds, ':', i)] = @benchmarkable fitbobyqa($ds, $i, $(dataset(ds)))
 end
 
 SUITE["crossedvector"] = BenchmarkGroup(["multiple", "crossed", "vector"])
@@ -133,5 +133,5 @@ for (ds, i) in [
     (:kb07, 3),
     (:mrk17_exp1, 2),
 ]
-    SUITE["crossedvector"][string(ds, ':', i)] = @benchmarkable fitbobyqa($ds, $i)
+    SUITE["crossedvector"][string(ds, ':', i)] = @benchmarkable fitbobyqa($ds, $i, $(dataset(ds)))
 end
