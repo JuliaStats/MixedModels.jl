@@ -83,7 +83,7 @@ const global fms = Dict(
 
 function fitbobyqa(dsnm::Symbol, i::Integer)
     model = LinearMixedModel(fms[dsnm][i], dataset(dsnm); contrasts)
-    return @benchmarkable fit!(model; progress=false)
+    return @benchmarkable fit!($(deepcopy(model)); progress=false)
 end
 
 # these tests are so fast that they can be very noisy because the denominator is so small,
