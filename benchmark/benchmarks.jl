@@ -102,14 +102,14 @@ for (ds, i) in [
     (:sleepstudy, 3),
     (:sleepstudy, 4),
 ]
-    SUITE["singlevector"][string(ds, ':', i)] = @benchmarkable fit!(get_model(ds, i); progress=false)
+    SUITE["singlevector"][string(ds, ':', i)] = @benchmarkable fit!($(get_model(ds, i)); progress=false)
 end
 
 SUITE["nested"] = BenchmarkGroup(["multiple", "nested", "scalar"])
 for (ds, i) in [
 (:pastes, 2)
 ]
-    SUITE["nested"][string(ds, ':', i)] =  @benchmarkable fit!(get_model(ds, i); progress=false)
+    SUITE["nested"][string(ds, ':', i)] =  @benchmarkable ffit!($(get_model(ds, i)); progress=false)
 end
 
 SUITE["crossed"] = BenchmarkGroup(["multiple", "crossed", "scalar"])
@@ -122,7 +122,7 @@ for (ds, i) in [
     (:mrk17_exp1, 1),
     (:penicillin, 1),
 ]
-    SUITE["crossed"][string(ds, ':', i)] =  @benchmarkable fit!(get_model(ds, i); progress=false)
+    SUITE["crossed"][string(ds, ':', i)] =  @benchmarkable fit!($(get_model(ds, i)); progress=false)
 end
 
 SUITE["crossedvector"] = BenchmarkGroup(["multiple", "crossed", "vector"])
@@ -132,5 +132,5 @@ for (ds, i) in [
     (:kb07, 3),
     (:mrk17_exp1, 2),
 ]
-    SUITE["crossedvector"][string(ds, ':', i)] =  @benchmarkable fit!(get_model(ds, i); progress=false)
+    SUITE["crossedvector"][string(ds, ':', i)] =  @benchmarkable fit!($(get_model(ds, i)); progress=false)
 end
