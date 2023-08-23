@@ -81,11 +81,9 @@ const global fms = Dict(
     ],
 )
 
-function fitbobyqa(dsnm::Symbol, i::Integer)
-    model = LinearMixedModel(fms[dsnm][i], dataset(dsnm); contrasts)
-    return @benchmarkable fit!(deepcopy(model); progress=false)
+function get_model(dsnm::Symbol, i::Integer)
+    return  LinearMixedModel(fms[dsnm][i], dataset(dsnm); contrasts)
 end
-
 # these tests are so fast that they can be very noisy because the denominator is so small,
 # so we disable them by default for auto-benchmarking
 # SUITE["simplescalar"] = BenchmarkGroup(["single", "simple", "scalar"])
@@ -104,14 +102,14 @@ for (ds, i) in [
     (:sleepstudy, 3),
     (:sleepstudy, 4),
 ]
-    SUITE["singlevector"][string(ds, ':', i)] = fitbobyqa(ds, i)
+    SUITE["singlevector"][string(ds, ':', i)] = @benchmarkable fit!(get_model(ds, i); progress=false)
 end
 
 SUITE["nested"] = BenchmarkGroup(["multiple", "nested", "scalar"])
 for (ds, i) in [
 (:pastes, 2)
 ]
-    SUITE["nested"][string(ds, ':', i)] = fitbobyqa(ds, i)
+    SUITE["nested"][string(ds, ':', i)] =  @benchmarkable fit!(get_model(ds, i); progress=false)
 end
 
 SUITE["crossed"] = BenchmarkGroup(["multiple", "crossed", "scalar"])
@@ -124,7 +122,7 @@ for (ds, i) in [
     (:mrk17_exp1, 1),
     (:penicillin, 1),
 ]
-    SUITE["crossed"][string(ds, ':', i)] = fitbobyqa(ds, i)
+    SUITE["crossed"][string(ds, ':', i)] =  @benchmarkable fit!(get_model(ds, i); progress=false)
 end
 
 SUITE["crossedvector"] = BenchmarkGroup(["multiple", "crossed", "vector"])
@@ -134,5 +132,5 @@ for (ds, i) in [
     (:kb07, 3),
     (:mrk17_exp1, 2),
 ]
-    SUITE["crossedvector"][string(ds, ':', i)] = fitbobyqa(ds, i)
+    SUITE["crossedvector"][string(ds, ':', i)] =  @benchmarkable fit!(get_model(ds, i); progress=false)
 end
