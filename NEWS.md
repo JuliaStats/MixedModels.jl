@@ -1,6 +1,14 @@
+MixedModels v4.19.0 Release Notes
+==============================
+* New method `StatsAPI.coefnames(::ReMat)` returns the coefficient names associated with each grouping factor. [#709]
+
+MixedModels v4.18.0 Release Notes
+==============================
+* More user-friendly error messages when a formula contains variables not in the data. [#707]
+
 MixedModels v4.17.0 Release Notes
 ==============================
-* New kwarg `amalgamate` can be used to disable amalgation of random effects terms sharing a single grouping variable. Generally, `amalgamate=false` will result in a slower fit, but may improve convergence in some pathological cases. Note that this feature is experimental and changes to it are **not** considered breakings. [#673]
+* **EXPERIMENTAL** New kwarg `amalgamate` can be used to disable amalgation of random effects terms sharing a single grouping variable. Generally, `amalgamate=false` will result in a slower fit, but may improve convergence in some pathological cases. Note that this feature is experimental and changes to it are **not** considered breakings. [#673]
 * More informative error messages when passing a `Distribution` or `Link` type instead of the desired instance. [#698]
 * More informative error message on the intentional decision not to define methods for the coefficient of determination. [#698]
 * **EXPERIMENTAL** Return `finitial` when PIRLS drifts into a portion of the parameter space that yields a (numerically) invalid covariance matrix. This recovery strategy may be removed in a future release. [#616]
@@ -456,3 +464,5 @@ Package dependencies
 [#694]: https://github.com/JuliaStats/MixedModels.jl/issues/694
 [#698]: https://github.com/JuliaStats/MixedModels.jl/issues/698
 [#703]: https://github.com/JuliaStats/MixedModels.jl/issues/703
+[#707]: https://github.com/JuliaStats/MixedModels.jl/issues/707
+[#709]: https://github.com/JuliaStats/MixedModels.jl/issues/709
