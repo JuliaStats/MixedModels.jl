@@ -604,7 +604,7 @@ function σρ!(v::AbstractVector{T}, off::Integer, t::LowerTriangular{T}, σ::T)
         v[off += 1] = σ * len
         if len > 0
             for j in 1:i
-               dat[i, j] /= len
+                dat[i, j] /= len
             end
         end
     end
@@ -624,7 +624,7 @@ function _allpars!(
     v::AbstractVector{T},
     bsamp::MixedModelBootstrap{T},
     i::Integer,
-    offsets::NTuple{4,Int},
+    offsets::NTuple{4,Int}
 ) where {T}
     fiti = bsamp.fits[i]
     setθ!(bsamp, i)
@@ -635,7 +635,7 @@ function _allpars!(
     for b in fiti.β
         v[off += 1] = b
     end
-#    copyto!(v, 3, fiti.β)
+    #    copyto!(v, 3, fiti.β)
     off = offsets[2]
     for lam in λ
         σρ!(v, off, lam, σ)
@@ -645,7 +645,7 @@ function _allpars!(
     for t in fiti.θ
         v[off += 1] = t
     end
-#    copyto!(v, offsets[3] + 1, fiti.θ)
+    #    copyto!(v, offsets[3] + 1, fiti.θ)
     return v
 end
 
