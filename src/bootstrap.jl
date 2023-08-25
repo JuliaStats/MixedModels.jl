@@ -567,33 +567,21 @@ function σρnms(λ)
     return val
 end
 
-"""
-    _offsets(bsamp::MixedModelBootstrap)
-
-Return a Tuple{4,Int} of offsets for β, σρ, and θ values in the table columns
-
-The initial `2` is for the `:obj` and `:σ` columns. The last element is the total number of columns.
-"""
-function _offsets(bsamp::MixedModelBootstrap)
+function _syms(bsamp::MixedModelBootstrap)
     (; fits, λ) = bsamp
     (; β, θ) = first(fits)
-    σρ = σρnms(λ)
-    lβ = length(β)
-    lθ = length(θ)
-    syms = [:obj, :σ]
-    append!(syms, _generatesyms('β', lβ))
+    syms = [:obj]
+    append!(syms, _generatesyms('β', length(β)))
+    push!(syms, :σ)
     append!(syms, σρnms(λ))
-    append!(syms, _generatesyms('θ', lθ))
-    return Tuple(syms), cumsum((2, lβ, length(σρ), lθ))
+    return append!(syms, _generatesyms('θ', length(θ)))
 end
 
-function σρ!(v::AbstractVector, off::Integer, d::Diagonal, σ)
-    diag = d.diag
-    diag *= σ
-    return copyto!(v, off + 1, d.diag)
+function σρ!(v::AbstractVector, d::Diagonal, σ)
+    return append!(v, σ .* d.diag)
 end
 
-function σρ!(v::AbstractVector{T}, off::Integer, t::LowerTriangular{T}, σ::T) where {T}
+function σρ!(v::AbstractVector{T}, t::LowerTriangular{T}, σ::T) where {T}
     dat = t.data
     for i in axes(dat, 1)
         ssqr = zero(T)
@@ -601,7 +589,7 @@ function σρ!(v::AbstractVector{T}, off::Integer, t::LowerTriangular{T}, σ::T)
             ssqr += abs2(dat[i, j])
         end
         len = sqrt(ssqr)
-        v[off += 1] = σ * len
+        push!(v, σ * len)
         if len > 0
             for j in 1:i
                 dat[i, j] /= len
@@ -614,49 +602,29 @@ function σρ!(v::AbstractVector{T}, off::Integer, t::LowerTriangular{T}, σ::T)
             for k in 1:i
                 s += dat[i, k] * dat[j, k]
             end
-            v[off += 1] = s
+            push!(v, s)
         end
     end
     return v
 end
 
-function _allpars!(
-    v::AbstractVector{T},
-    bsamp::MixedModelBootstrap{T},
-    i::Integer,
-    offsets::NTuple{4,Int}
-) where {T}
-    fiti = bsamp.fits[i]
-    setθ!(bsamp, i)
-    λ = bsamp.λ
-    v[1] = fiti.objective
-    v[2] = σ = coalesce(fiti.σ, one(T))
-    off = 2
-    for b in fiti.β
-        v[off += 1] = b
-    end
-    #    copyto!(v, 3, fiti.β)
-    off = offsets[2]
-    for lam in λ
-        σρ!(v, off, lam, σ)
-        off += size(lam, 1) + _nρ(lam)
-    end
-    off = offsets[3]
-    for t in fiti.θ
-        v[off += 1] = t
-    end
-    #    copyto!(v, offsets[3] + 1, fiti.θ)
-    return v
-end
-
 function pbstrtbl(bsamp::MixedModelFitCollection{T}) where {T}
-    fits = bsamp.fits
-    syms, offsets = _offsets(bsamp)
-    nsym = length(syms)
-    val = NamedTuple{syms,NTuple{nsym,T}}[]
-    v = sizehint!(Vector{T}(undef, nsym), size(fits, 1))
-    for i in axes(fits, 1)
-        push!(val, NamedTuple{syms,NTuple{nsym,T}}(_allpars!(v, bsamp, i, offsets)))
+    (; fits, λ) = bsamp
+    syms = _syms(bsamp)
+    m = length(syms)
+    n = length(fits)
+    v = sizehint!(T[], m * n)
+    for f in fits
+        (; β, θ, σ) = f
+        push!(v, f.objective)
+        append!(v, β)
+        push!(v, σ)
+        setθ!(bsamp, θ)
+        for l in λ
+            σρ!(v, l, σ)
+        end
+        append!(v, θ)
     end
-    return val
+    m = collect(transpose(reshape(v, (m, n))))
+    return Table(Tables.table(m; header = syms))
 end
