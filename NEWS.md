@@ -1,3 +1,7 @@
+MixedModels v4.19.0 Release Notes
+==============================
+* New method `StatsAPI.coefnames(::ReMat)` returns the coefficient names associated with each grouping factor. [#709]
+
 MixedModels v4.18.0 Release Notes
 ==============================
 * More user-friendly error messages when a formula contains variables not in the data. [#707]
@@ -461,3 +465,4 @@ Package dependencies
 [#698]: https://github.com/JuliaStats/MixedModels.jl/issues/698
 [#703]: https://github.com/JuliaStats/MixedModels.jl/issues/703
 [#707]: https://github.com/JuliaStats/MixedModels.jl/issues/707
+[#709]: https://github.com/JuliaStats/MixedModels.jl/issues/709
