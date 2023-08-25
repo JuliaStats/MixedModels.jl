@@ -253,7 +253,7 @@ of `iter`, `type`, `group`, `name` and `value`.
     a breaking change.
 """
 function allpars(bsamp::MixedModelFitCollection{T}) where {T}
-    fits, λ, fcnames = bsamp.fits, bsamp.λ, bsamp.fcnames
+    (; fits, λ, fcnames) = bsamp
     npars = 2 + length(first(fits).β) + sum(map(k -> (k * (k + 1)) >> 1, size.(bsamp.λ, 2)))
     nresrow = length(fits) * npars
     cols = (
@@ -392,12 +392,12 @@ function Base.propertynames(bsamp::MixedModelFitCollection)
 end
 
 """
+    setθ!(bsamp::MixedModelFitCollection, θ::AbstractVector)
     setθ!(bsamp::MixedModelFitCollection, i::Integer)
 
 Install the values of the i'th θ value of `bsamp.fits` in `bsamp.λ`
 """
-function setθ!(bsamp::MixedModelFitCollection, i::Integer)
-    θ = bsamp.fits[i].θ
+function setθ!(bsamp::MixedModelFitCollection{T}, θ::AbstractVector{T}) where {T}
     offset = 0
     for (λ, inds) in zip(bsamp.λ, bsamp.inds)
         λdat = _getdata(λ)
@@ -408,6 +408,10 @@ function setθ!(bsamp::MixedModelFitCollection, i::Integer)
         offset += length(inds)
     end
     return bsamp
+end
+
+function setθ!(bsamp::MixedModelFitCollection, i::Integer)
+    return setθ!(bsamp, bsamp.θ[i])
 end
 
 _getdata(x::Diagonal) = x
@@ -545,144 +549,114 @@ function tidyσs(bsamp::MixedModelFitCollection{T}) where {T}
     return result
 end
 
-_size1(m) = (first ∘ size)(m)
+_nρ(d::Diagonal) = 0
+_nρ(t::LowerTriangular) = kchoose2(size(t.data, 1))
 
-_nrho(m) = (kchoose2 ∘ _size1)(m)
-
-function _appendsym!(
-    syms::AbstractVector{Symbol},
-    dict::Dict{Symbol,UnitRange{Int}},
-    sym::Symbol,
-    len::Integer,
-)
-    lenp1 = length(syms) + 1
-    append!(syms, _generatesyms(first(string(sym)), len))
-    dict[sym] = lenp1:(length(syms))
-    return syms
+function σρnms(λ)
+    σsyms = _generatesyms('σ', sum(first ∘ size, λ))
+    ρsyms = _generatesyms('ρ', sum(_nρ, λ))
+    val = Symbol[]
+    for l in λ
+        for _ in axes(l, 1)
+            push!(val, popfirst!(σsyms))
+        end
+        for _ in 1:_nρ(l)
+            push!(val, popfirst!(ρsyms))
+        end
+    end
+    return val
 end
 
-function _prototypevec(bsamp::MixedModelBootstrap)
+"""
+    _offsets(bsamp::MixedModelBootstrap)
+
+Return a Tuple{4,Int} of offsets for β, σρ, and θ values in the table columns
+
+The initial `2` is for the `:obj` and `:σ` columns. The last element is the total number of columns.
+"""
+function _offsets(bsamp::MixedModelBootstrap)
     (; fits, λ) = bsamp
     (; β, θ) = first(fits)
-    dict = Dict{Symbol,UnitRange{Int}}(:obj => 1:1, :σ => 2:2)
+    σρ = σρnms(λ)
+    lβ = length(β)
+    lθ = length(θ)
     syms = [:obj, :σ]
-    _appendsym!(syms, dict, :β, length(β))
-    _appendsym!(syms, dict, :σs, sum(_size1, λ))
-    _appendsym!(syms, dict, :ρ, sum(_nrho, λ))
-    _appendsym!(syms, dict, :θ, length(θ))
-    return Tuple(syms), dict
+    append!(syms, _generatesyms('β', lβ))
+    append!(syms, σρnms(λ))
+    append!(syms, _generatesyms('θ', lθ))
+    return Tuple(syms), cumsum((2, lβ, length(σρ), lθ))
+end
+
+function σρ!(v::AbstractVector, off::Integer, d::Diagonal, σ)
+    diag = d.diag
+    diag *= σ
+    return copyto!(v, off + 1, d.diag)
+end
+
+function σρ!(v::AbstractVector{T}, off::Integer, t::LowerTriangular{T}, σ::T) where {T}
+    dat = t.data
+    for i in axes(dat, 1)
+        ssqr = zero(T)
+        for j in 1:i
+            ssqr += abs2(dat[i, j])
+        end
+        len = sqrt(ssqr)
+        v[off += 1] = σ * len
+        if len > 0
+            for j in 1:i
+               dat[i, j] /= len
+            end
+        end
+    end
+    for i in axes(dat, 1)
+        for j in 1:(i - 1)
+            s = zero(T)
+            for k in 1:i
+                s += dat[i, k] * dat[j, k]
+            end
+            v[off += 1] = s
+        end
+    end
+    return v
 end
 
 function _allpars!(
     v::AbstractVector{T},
     bsamp::MixedModelBootstrap{T},
     i::Integer,
-    d::Dict{Symbol,UnitRange{Int}},
+    offsets::NTuple{4,Int},
 ) where {T}
     fiti = bsamp.fits[i]
+    setθ!(bsamp, i)
     λ = bsamp.λ
     v[1] = fiti.objective
     v[2] = σ = coalesce(fiti.σ, one(T))
-    copyto!(view(v, d[:β]), fiti.β)
-    copyto!(view(v, d[:θ]), fiti.θ)
-    k = first(d[:σs])
-    setθ!(bsamp, i)
-    if isa(λ, Diagonal)
-        for d in λ.diag
-            v[k] = σ * d
-            k += 1
-        end
-    elseif isa(λ, LowerTriangular)
-        for l in λ
-            for λr in eachrow(l.data)
-                v[k] = σ * norm(λr)
-                k += 1
-            end
-        end
+    off = 2
+    for b in fiti.β
+        v[off += 1] = b
     end
-    drho = d[:ρ]
-    if !isempty(drho)
-        fill!(view(v, drho), zero(T))
-        k = first(drho)
-        for ll in λ
-            if isa(ll, LowerTriangular{T})
-                lam = ll.data
-                ii = _size1(lam)
-                isone(ii) && continue
-                for i in 1:ii
-                    ri = normalize!(view(lam, i, :))
-                    for j in 1:(i - 1)
-                        v[k] = dot(ri, view(lam, j, :))
-                        k += 1
-                    end
-                end
-            end
-        end
+#    copyto!(v, 3, fiti.β)
+    off = offsets[2]
+    for lam in λ
+        σρ!(v, off, lam, σ)
+        off += size(lam, 1) + _nρ(lam)
     end
+    off = offsets[3]
+    for t in fiti.θ
+        v[off += 1] = t
+    end
+#    copyto!(v, offsets[3] + 1, fiti.θ)
     return v
 end
 
 function pbstrtbl(bsamp::MixedModelFitCollection{T}) where {T}
-    (; fits, λ) = bsamp
-    syms, d = _prototypevec(bsamp)
+    fits = bsamp.fits
+    syms, offsets = _offsets(bsamp)
     nsym = length(syms)
     val = NamedTuple{syms,NTuple{nsym,T}}[]
-    v = Vector{T}(undef, nsym)
+    v = sizehint!(Vector{T}(undef, nsym), size(fits, 1))
     for i in axes(fits, 1)
-        push!(val, NamedTuple{syms,NTuple{nsym,T}}(_allpars!(v, bsamp, i, d)))
+        push!(val, NamedTuple{syms,NTuple{nsym,T}}(_allpars!(v, bsamp, i, offsets)))
     end
     return val
-end
-
-"""
-    _rowlengths(v::AbstractVector, λ::Diagonal)
-
-Copy the row lengths (absolute value of the diagonal elements) of `λ`` into `v`
-"""
-function _rowlengths(v::AbstractVector{T}, λ::Diagonal{T}) where {T}
-    v .= abs.(λ.diag)
-    return v
-end
-
-function _rowlengths(v::AbstractVector{T}, λ::LowerTriangular{T}) where {T}
-    dat = λ.data
-    k = size(dat, 1)
-    fill!(v, zero(T))
-    v[1] = abs(first(dat))
-    for i in 2:k
-        accum = zero(T)
-        for j in 1:i
-            accum += abs2(dat[i, j])
-        end
-        v[i] = sqrt(accum)
-    end
-    return v
-end
-
-"""
-    _rowdotprods(v::AbstractVector{T}, λ)
-
-Evaluate the dot products of rows of `λ` into v.  The dot products are stored in column-major order of the upper triangle.
-"""
-function _rowdotprods(v::AbstractVector{T}, λ::Diagonal{T}) where {T}
-    fill!(v, zero(T))
-    return v
-end
-
-function _rowdotprods(v::AbstractVector{T}, λ::LowerTriangular{T}) where {T}
-    fill!(v, zero(T))
-    dat = λ.data
-    k = size(dat, 1)
-    l = 1
-    for i in 2:k
-        for j in 1:(i - 1)
-            accum = zero(T)
-            for ii in 1:j
-                accum += dat[i, ii] * dat[j, ii]
-            end
-            v[l] = accum
-            l += 1
-        end
-    end
-    return v
 end
