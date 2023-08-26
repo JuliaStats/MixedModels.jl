@@ -626,5 +626,5 @@ function pbstrtbl(bsamp::MixedModelFitCollection{T}) where {T}
         append!(v, θ)
     end
     m = collect(transpose(reshape(v, (m, n))))
-    return Table(Tables.table(m; header = syms))
+    return Table(Tables.table(m; header=syms))
 end
