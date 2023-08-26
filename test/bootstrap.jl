@@ -184,7 +184,12 @@ end
         @test pb1 == restorereplicates(seekstart(io), MixedModels.unfit!(deepcopy(m1)))
 
         @test pb1 ≈ restorereplicates(seekstart(io), m1, Float16) rtol=1
-    end
+        # these tests must be last because the tbl extractor changes the λ field in the sample
+        # Some day when we have a lot of energy we may want to omit the λ field from the equality comparisons
+        @test isa(pb0.tbl, Table)
+        @test isa(pb1.tbl, Table)
+        @test ncol(DataFrame(pb1.β)) == 3
+end
 
     @testset "Bernoulli simulate! and GLMM bootstrap" begin
         contra = dataset(:contra)

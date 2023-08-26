@@ -578,7 +578,10 @@ function _syms(bsamp::MixedModelBootstrap)
 end
 
 function σρ!(v::AbstractVector, d::Diagonal, σ)
-    return append!(v, σ .* d.diag)
+    for dd in d.diag
+        push!(v, σ * dd)
+    end
+    return v
 end
 
 function σρ!(v::AbstractVector{T}, t::LowerTriangular{T}, σ::T) where {T}
