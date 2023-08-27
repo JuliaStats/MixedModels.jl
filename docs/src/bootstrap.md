@@ -24,10 +24,6 @@ parameter, `θ`, that defines the variance-covariance matrices of the random eff
 For example, a simple linear mixed-effects model for the `Dyestuff` data in the [`lme4`](http://github.com/lme4/lme4)
 package for [`R`](https://www.r-project.org) is fit by
 
-```@setup Main
-using DisplayAs
-```
-
 ```@example Main
 using DataFrames
 using Gadfly          # plotting package
@@ -38,41 +34,29 @@ using Random
 ```@example Main
 dyestuff = MixedModels.dataset(:dyestuff)
 m1 = fit(MixedModel, @formula(yield ~ 1 + (1 | batch)), dyestuff)
-DisplayAs.Text(ans) # hide
 ```
 
-To bootstrap the model parameters, first initialize a random number generator then create a bootstrap sample
+To bootstrap the model parameters, first initialize a random number generator then create a bootstrap sample and extract the `tbl` property, which is a `Table` - a lightweight type of dataframe.
 
 ```@example Main
 const rng = MersenneTwister(1234321);
 samp = parametricbootstrap(rng, 10_000, m1);
-df = DataFrame(samp.allpars);
-first(df, 10)
+tbl = samp.tbl
 ```
 
-Especially for those with a background in [`R`](https://www.R-project.org/) or [`pandas`](https://pandas.pydata.org),
-the simplest way of accessing the parameter estimates in the parametric bootstrap object is to create a `DataFrame` from the `allpars` property as shown above.
-
-We can use `filter` to filter out relevant rows of a dataframe.
 A density plot of the estimates of `σ`, the residual standard deviation, can be created as
 ```@example Main
-σres = filter(df) do row # create a thunk that operates on rows
-    row.type == "σ" && row.group == "residual" # our filtering rule
-end
-
-plot(x = σres.value, Geom.density, Guide.xlabel("Parametric bootstrap estimates of σ"))
+plot(x = tbl.σ, Geom.density, Guide.xlabel("Parametric bootstrap estimates of σ"))
 ```
-For the estimates of the intercept parameter, the `getproperty` extractor must be used
+
+or, for the intercept parameter
 ```@example Main
-plot(filter(:type => ==("β"),  df), x = :value, Geom.density, Guide.xlabel("Parametric bootstrap estimates of β₁"))
+plot(x = tbl.β1, Geom.density, Guide.xlabel("Parametric bootstrap estimates of β₁"))
 ```
 
 A density plot of the estimates of the standard deviation of the random effects is obtained as
 ```@example Main
-σbatch = filter(df) do row # create a thunk that operates on rows
-    row.type == "σ" && row.group == "batch" # our filtering rule
-end
-plot(x = σbatch.value, Geom.density,
+plot(x = tbl.σ1, Geom.density,
     Guide.xlabel("Parametric bootstrap estimates of σ₁"))
 ```
 
@@ -81,7 +65,7 @@ Although this mode appears to be diffuse, this is an artifact of the way that de
 In fact, it is a pulse, as can be seen from a histogram.
 
 ```@example Main
-plot(x = σbatch.value, Geom.histogram,
+plot(x = tbl.σ1, Geom.histogram,
     Guide.xlabel("Parametric bootstrap estimates of σ₁"))
 ```
 
@@ -93,14 +77,9 @@ The shortest such intervals, obtained with the `shortestcovint` extractor, corre
 shortestcovint
 ```
 
-We generate these for all random and fixed effects:
+We generate these directly from the original bootstrap object:
 ```@example Main
-combine(groupby(df, [:type, :group, :names]), :value => shortestcovint => :interval)
-```
-
-We can also generate this directly from the original bootstrap object:
-```@example Main
-DataFrame(shortestcovint(samp))
+Table(shortestcovint(samp))
 ```
 
 A value of zero for the standard deviation of the random effects is an example of a *singular* covariance.
@@ -110,48 +89,39 @@ However, it is not as straightforward to detect singularity in vector-valued ran
 For example, if we bootstrap a model fit to the `sleepstudy` data
 ```@example Main
 sleepstudy = MixedModels.dataset(:sleepstudy)
-m2 = fit(
-    MixedModel,
-    @formula(reaction ~ 1+days+(1+days|subj)),
-    sleepstudy,
-)
-DisplayAs.Text(ans) # hide
+contrasts = Dict(:subj => Grouping())
+m2 = let f = @formula reaction ~ 1+days+(1+days|subj)
+    fit(MixedModel, f, sleepstudy; contrasts)
+end
 ```
 ```@example Main
 samp2 = parametricbootstrap(rng, 10_000, m2);
-df2 = DataFrame(samp2.allpars);
-first(df2, 10)
+tbl2 = samp2.tbl
 ```
 the singularity can be exhibited as a standard deviation of zero or as a correlation of $\pm1$.
 
 ```@example Main
-DataFrame(shortestcovint(samp2))
+shortestcovint(samp2)
 ```
 
 A histogram of the estimated correlations from the bootstrap sample has a spike at `+1`.
 ```@example Main
-ρs = filter(df2) do row
-    row.type == "ρ" && row.group == "subj"
-end
-plot(x = ρs.value, Geom.histogram,
+plot(x = tbl2.ρ1, Geom.histogram,
     Guide.xlabel("Parametric bootstrap samples of correlation of random effects"))
 ```
 or, as a count,
 ```@example Main
-count(ρs.value .≈ 1)
+count(tbl2.ρ1 .≈ 1)
 ```
 
 Close examination of the histogram shows a few values of `-1`.
 ```@example Main
-count(ρs.value .≈ -1)
+count(tbl2.ρ1 .≈ -1)
 ```
 
 Furthermore there are even a few cases where the estimate of the standard deviation of the random effect for the intercept is zero.
 ```@example Main
-σs = filter(df2) do row
-    row.type == "σ" && row.group == "subj" && row.names == "(Intercept)"
-end
-count(σs.value .≈ 0)
+count(tbl2.σ1 .≈ 0)
 ```
 
 There is a general condition to check for singularity of an estimated covariance matrix or matrices in a bootstrap sample.
