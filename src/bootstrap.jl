@@ -448,7 +448,7 @@ Return the shortest interval containing `level` proportion for each parameter fr
     a breaking change.
 """
 function shortestcovint(bsamp::MixedModelFitCollection{T}, level=0.95) where {T}
-    allpars = bsamp.allpars
+    allpars = bsamp.allpars  # probably simpler to use .tbl instead of .allpars
     pars = unique(zip(allpars.type, allpars.group, allpars.names))
 
     colnms = (:type, :group, :names, :lower, :upper)
@@ -613,6 +613,7 @@ end
 
 function pbstrtbl(bsamp::MixedModelFitCollection{T}) where {T}
     (; fits, λ) = bsamp
+    λcp = copy.(λ)
     syms = _syms(bsamp)
     m = length(syms)
     n = length(fits)
@@ -629,5 +630,8 @@ function pbstrtbl(bsamp::MixedModelFitCollection{T}) where {T}
         append!(v, θ)
     end
     m = collect(transpose(reshape(v, (m, n))))
+    for k in eachindex(λ, λcp)   # restore original contents of λ
+        copyto!(λ[k], λcp[k])
+    end
     return Table(Tables.table(m; header=syms))
 end
