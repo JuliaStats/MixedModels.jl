@@ -36,7 +36,7 @@ dyestuff = MixedModels.dataset(:dyestuff)
 m1 = fit(MixedModel, @formula(yield ~ 1 + (1 | batch)), dyestuff)
 ```
 
-To bootstrap the model parameters, first initialize a random number generator then create a bootstrap sample and extract the `tbl` property, which is a `Table` - a lightweight type of dataframe.
+To bootstrap the model parameters, first initialize a random number generator then create a bootstrap sample and extract the `tbl` property, which is a `Table` - a lightweight dataframe-like object.
 
 ```@example Main
 const rng = MersenneTwister(1234321);

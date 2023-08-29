@@ -448,7 +448,7 @@ Return the shortest interval containing `level` proportion for each parameter fr
     a breaking change.
 """
 function shortestcovint(bsamp::MixedModelFitCollection{T}, level=0.95) where {T}
-    allpars = bsamp.allpars  # probably simpler to use .tbl instead of .allpars
+    allpars = bsamp.allpars  # TODO probably simpler to use .tbl instead of .allpars
     pars = unique(zip(allpars.type, allpars.group, allpars.names))
 
     colnms = (:type, :group, :names, :lower, :upper)
@@ -555,7 +555,7 @@ _nρ(t::LowerTriangular) = kchoose2(size(t.data, 1))
 function σρnms(λ)
     σsyms = _generatesyms('σ', sum(first ∘ size, λ))
     ρsyms = _generatesyms('ρ', sum(_nρ, λ))
-    val = Symbol[]
+    val = sizehint!(Symbol[], length(σsyms) + length(ρsyms))
     for l in λ
         for _ in axes(l, 1)
             push!(val, popfirst!(σsyms))
@@ -578,13 +578,15 @@ function _syms(bsamp::MixedModelBootstrap)
 end
 
 function σρ!(v::AbstractVector, d::Diagonal, σ)
-    for dd in d.diag
-        push!(v, σ * dd)
-    end
-    return v
+    return append!(v, σ .* d.diag)
 end
 
 function σρ!(v::AbstractVector{T}, t::LowerTriangular{T}, σ::T) where {T}
+    """
+        σρ!(v, t, σ)
+    
+    push! `σ` times the row lengths (σs) and the inner products of normalized rows (ρs) of `t` onto `v` 
+    """
     dat = t.data
     for i in axes(dat, 1)
         ssqr = zero(T)
@@ -629,7 +631,7 @@ function pbstrtbl(bsamp::MixedModelFitCollection{T}) where {T}
         end
         append!(v, θ)
     end
-    m = collect(transpose(reshape(v, (m, n))))
+    m = permutedims(reshape(v, (m, n)), (2, 1)) # equivalent to collect(transpose(...))
     for k in eachindex(λ, λcp)   # restore original contents of λ
         copyto!(λ[k], λcp[k])
     end
