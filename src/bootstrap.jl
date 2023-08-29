@@ -584,7 +584,6 @@ end
 function σρ!(v::AbstractVector{T}, t::LowerTriangular{T}, σ::T) where {T}
     """
         σρ!(v, t, σ)
-    
     push! `σ` times the row lengths (σs) and the inner products of normalized rows (ρs) of `t` onto `v` 
     """
     dat = t.data
