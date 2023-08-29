@@ -156,7 +156,11 @@ end
         pb0 = quickboot(m0)
         pb1 = quickboot(m1)
         savereplicates(io, pb1)
-        # wrong model``
+        @test isa(pb0.tbl, Table)
+        @test isa(pb1.tbl, Table)  # create tbl here to check it doesn't modify pb1
+        @test ncol(DataFrame(pb1.β)) == 3
+
+        # wrong model
         @test_throws ArgumentError restorereplicates(seekstart(io), m0)
         # need to specify an eltype!
         @test_throws MethodError restorereplicates(seekstart(io), m1, MixedModelBootstrap)
@@ -184,7 +188,7 @@ end
         @test pb1 == restorereplicates(seekstart(io), MixedModels.unfit!(deepcopy(m1)))
 
         @test pb1 ≈ restorereplicates(seekstart(io), m1, Float16) rtol=1
-    end
+end
 
     @testset "Bernoulli simulate! and GLMM bootstrap" begin
         contra = dataset(:contra)

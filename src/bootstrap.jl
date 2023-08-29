@@ -253,7 +253,7 @@ of `iter`, `type`, `group`, `name` and `value`.
     a breaking change.
 """
 function allpars(bsamp::MixedModelFitCollection{T}) where {T}
-    fits, λ, fcnames = bsamp.fits, bsamp.λ, bsamp.fcnames
+    (; fits, λ, fcnames) = bsamp
     npars = 2 + length(first(fits).β) + sum(map(k -> (k * (k + 1)) >> 1, size.(bsamp.λ, 2)))
     nresrow = length(fits) * npars
     cols = (
@@ -392,12 +392,12 @@ function Base.propertynames(bsamp::MixedModelFitCollection)
 end
 
 """
+    setθ!(bsamp::MixedModelFitCollection, θ::AbstractVector)
     setθ!(bsamp::MixedModelFitCollection, i::Integer)
 
 Install the values of the i'th θ value of `bsamp.fits` in `bsamp.λ`
 """
-function setθ!(bsamp::MixedModelFitCollection, i::Integer)
-    θ = bsamp.fits[i].θ
+function setθ!(bsamp::MixedModelFitCollection{T}, θ::AbstractVector{T}) where {T}
     offset = 0
     for (λ, inds) in zip(bsamp.λ, bsamp.inds)
         λdat = _getdata(λ)
@@ -408,6 +408,10 @@ function setθ!(bsamp::MixedModelFitCollection, i::Integer)
         offset += length(inds)
     end
     return bsamp
+end
+
+function setθ!(bsamp::MixedModelFitCollection, i::Integer)
+    return setθ!(bsamp, bsamp.θ[i])
 end
 
 _getdata(x::Diagonal) = x
@@ -444,7 +448,7 @@ Return the shortest interval containing `level` proportion for each parameter fr
     a breaking change.
 """
 function shortestcovint(bsamp::MixedModelFitCollection{T}, level=0.95) where {T}
-    allpars = bsamp.allpars
+    allpars = bsamp.allpars  # TODO probably simpler to use .tbl instead of .allpars
     pars = unique(zip(allpars.type, allpars.group, allpars.names))
 
     colnms = (:type, :group, :names, :lower, :upper)
@@ -521,6 +525,7 @@ end
 
 """
     tidyσs(bsamp::MixedModelFitCollection)
+
 Return a tidy (row)table with the estimates of the variance components (on the standard deviation scale) spread into columns
 of `iter`, `group`, `column` and `σ`.
 """
@@ -544,40 +549,90 @@ function tidyσs(bsamp::MixedModelFitCollection{T}) where {T}
     return result
 end
 
-function pbstrtbl(bsamp::MixedModelFitCollection{T}) where {T}
-    (; fits, λ, inds) = bsamp
-    row1 = first(fits)
-    cnms = [:obj, :σ]
-    pos = Dict{Symbol,UnitRange{Int}}(:obj => 1:1, :σ => 2:2)
-    βsz = length(row1.β)
-    append!(cnms, _generatesyms('β', βsz))
-    lastpos = 2 + βsz
-    pos[:β] = 3:lastpos
-    σsz = sum(m -> size(m, 1), bsamp.λ)
-    append!(cnms, _generatesyms('σ', σsz))
-    pos[:σs] = (lastpos + 1):(lastpos + σsz)
-    lastpos += σsz
-    θsz = length(row1.θ)
-    append!(cnms, _generatesyms('θ', θsz))
-    pos[:θ] = (lastpos + 1):(lastpos + θsz)
-    tblrowtyp = NamedTuple{(cnms...,),NTuple{length(cnms),T}}
-    val = sizehint!(tblrowtyp[], length(bsamp.fits))
-    v = Vector{T}(undef, length(cnms))
-    for (i, r) in enumerate(bsamp.fits)
-        v[1] = r.objective
-        v[2] = coalesce(r.σ, one(T))
-        copyto!(view(v, pos[:β]), r.β)
-        fill!(view(v, pos[:σs]), zero(T))
-        copyto!(view(v, pos[:θ]), r.θ)
-        setθ!(bsamp, i)
-        vpos = first(pos[:σs])
-        for l in λ
-            for λr in eachrow(l)
-                v[vpos] = r.σ * norm(λr)
-                vpos += 1
-            end
+_nρ(d::Diagonal) = 0
+_nρ(t::LowerTriangular) = kchoose2(size(t.data, 1))
+
+function σρnms(λ)
+    σsyms = _generatesyms('σ', sum(first ∘ size, λ))
+    ρsyms = _generatesyms('ρ', sum(_nρ, λ))
+    val = sizehint!(Symbol[], length(σsyms) + length(ρsyms))
+    for l in λ
+        for _ in axes(l, 1)
+            push!(val, popfirst!(σsyms))
         end
-        push!(val, tblrowtyp(v))
+        for _ in 1:_nρ(l)
+            push!(val, popfirst!(ρsyms))
+        end
     end
     return val
+end
+
+function _syms(bsamp::MixedModelBootstrap)
+    (; fits, λ) = bsamp
+    (; β, θ) = first(fits)
+    syms = [:obj]
+    append!(syms, _generatesyms('β', length(β)))
+    push!(syms, :σ)
+    append!(syms, σρnms(λ))
+    return append!(syms, _generatesyms('θ', length(θ)))
+end
+
+function σρ!(v::AbstractVector, d::Diagonal, σ)
+    return append!(v, σ .* d.diag)
+end
+
+function σρ!(v::AbstractVector{T}, t::LowerTriangular{T}, σ::T) where {T}
+    """
+        σρ!(v, t, σ)
+    push! `σ` times the row lengths (σs) and the inner products of normalized rows (ρs) of `t` onto `v` 
+    """
+    dat = t.data
+    for i in axes(dat, 1)
+        ssqr = zero(T)
+        for j in 1:i
+            ssqr += abs2(dat[i, j])
+        end
+        len = sqrt(ssqr)
+        push!(v, σ * len)
+        if len > 0
+            for j in 1:i
+                dat[i, j] /= len
+            end
+        end
+    end
+    for i in axes(dat, 1)
+        for j in 1:(i - 1)
+            s = zero(T)
+            for k in 1:i
+                s += dat[i, k] * dat[j, k]
+            end
+            push!(v, s)
+        end
+    end
+    return v
+end
+
+function pbstrtbl(bsamp::MixedModelFitCollection{T}) where {T}
+    (; fits, λ) = bsamp
+    λcp = copy.(λ)
+    syms = _syms(bsamp)
+    m = length(syms)
+    n = length(fits)
+    v = sizehint!(T[], m * n)
+    for f in fits
+        (; β, θ, σ) = f
+        push!(v, f.objective)
+        append!(v, β)
+        push!(v, σ)
+        setθ!(bsamp, θ)
+        for l in λ
+            σρ!(v, l, σ)
+        end
+        append!(v, θ)
+    end
+    m = permutedims(reshape(v, (m, n)), (2, 1)) # equivalent to collect(transpose(...))
+    for k in eachindex(λ, λcp)   # restore original contents of λ
+        copyto!(λ[k], λcp[k])
+    end
+    return Table(Tables.table(m; header=syms))
 end
