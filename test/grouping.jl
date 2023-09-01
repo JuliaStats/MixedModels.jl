@@ -99,4 +99,7 @@ end
         grp = re.rhs.terms[2]
         @test grp.contrasts isa ContrastsMatrix{Grouping}
     end
+
+    @test_throws(ArgumentError("Same variable appears on both sides of |"),
+                 schematize(@formula(y ~ 1 + (x|x)), d, contrasts))
 end

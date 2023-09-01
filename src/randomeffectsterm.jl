@@ -36,8 +36,10 @@ schema(t, data, hints) = StatsModels.schema(t, data, hints)
 function schema(t::FunctionTerm{typeof(|)}, data, hints::Dict{Symbol})
     sch = schema(t.args[1], data, hints)
     vars = StatsModels.termvars.(t.args[2])
-    # XXX this will break if somebody has something like ~ (days|days)
-    # but that would have broken previously as well
+    # in the event that someone has x|x, then the Grouping()
+    # gets overwrriten by the broader schema BUT
+    # that doesn't matter because we detect and throw an error
+    # for that in apply_schema
     grp_hints = Dict(rr => Grouping() for rr in vars)
     return merge(schema(t.args[2], data, grp_hints), sch)
 end
