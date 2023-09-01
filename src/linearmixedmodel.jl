@@ -69,21 +69,11 @@ function LinearMixedModel(
     # TODO: perform missing_omit() after apply_schema() when improved
     # missing support is in a StatsModels release
     tbl, _ = StatsModels.missing_omit(tbl, f)
-    sch = try
-        schema(f, tbl, contrasts)
-    catch e
-        if isa(e, OutOfMemoryError)
-            @warn "Random effects grouping variables with many levels can cause out-of-memory errors.  Try manually specifying `Grouping()` contrasts for those variables."
-        end
-        rethrow(e)
-    end
-    form = apply_schema(f, sch, LinearMixedModel)
 
+    form = schematize(f, tbl, contrasts)
     if form.rhs isa MatrixTerm || !any(x -> isa(x, AbstractReTerm), form.rhs)
         throw(_MISSING_RE_ERROR)
     end
-
-    # tbl, _ = StatsModels.missing_omit(tbl, form)
 
     y, Xs = modelcols(form, tbl)
 

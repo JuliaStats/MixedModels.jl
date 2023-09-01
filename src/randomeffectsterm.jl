@@ -31,6 +31,26 @@ function StatsModels.terms(t::RandomEffectsTerm)
     return union(StatsModels.terms(t.lhs), StatsModels.terms(t.rhs))
 end
 
+schema(t, data, hints) = StatsModels.schema(t, data, hints)
+
+function schema(t::FunctionTerm{typeof(|)}, data, hints::Dict{Symbol})
+    sch = schema(t.args[1], data, hints)
+    vars = StatsModels.termvars.(t.args[2])
+    # in the event that someone has x|x, then the Grouping()
+    # gets overwrriten by the broader schema BUT
+    # that doesn't matter because we detect and throw an error
+    # for that in apply_schema
+    grp_hints = Dict(rr => Grouping() for rr in vars)
+    return merge(schema(t.args[2], data, grp_hints), sch)
+end
+
+is_randomeffectsterm(::Any) = false
+is_randomeffectsterm(::AbstractReTerm) = true
+# RE with free covariance structure
+is_randomeffectsterm(::FunctionTerm{typeof(|)}) = true
+# not zerocorr() or the like
+is_randomeffectsterm(tt::FunctionTerm) = is_randomeffectsterm(tt.args[1])
+
 # | in MixedModel formula -> RandomEffectsTerm
 function StatsModels.apply_schema(
     t::FunctionTerm{typeof(|)},
@@ -81,7 +101,6 @@ function StatsModels.apply_schema(
     )
         lhs = InterceptTerm{true}() + lhs
     end
-
     lhs, rhs = apply_schema.((lhs, rhs), Ref(schema), Mod)
 
     # check whether grouping terms are categorical or interaction of categorical
@@ -228,6 +247,10 @@ Base.show(io::IO, t::ZeroCorr) = Base.show(io, MIME"text/plain"(), t)
 function Base.show(io::IO, ::MIME"text/plain", t::ZeroCorr)
     # ranefterms already show with parens
     return print(io, "zerocorr", t.term)
+end
+
+function schema(t::FunctionTerm{typeof(zerocorr)}, data, hints::Dict{Symbol})
+    return schema(only(t.args), data, hints)
 end
 
 function StatsModels.apply_schema(

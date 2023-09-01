@@ -1,3 +1,7 @@
+MixedModels v4.21.0 Release Notes
+==============================
+* Auto apply `Grouping()` to grouping variables that don't already have an explicit contrast. [#652]
+
 MixedModels v4.20.0 Release Notes
 ==============================
 * The `.tbl` property of a `MixedModelBootstrap` now includes the correlation parameters for lower triangular elements of the `λ` field. [#702]
@@ -452,6 +456,7 @@ Package dependencies
 [#639]: https://github.com/JuliaStats/MixedModels.jl/issues/639
 [#648]: https://github.com/JuliaStats/MixedModels.jl/issues/648
 [#651]: https://github.com/JuliaStats/MixedModels.jl/issues/651
+[#652]: https://github.com/JuliaStats/MixedModels.jl/issues/652
 [#653]: https://github.com/JuliaStats/MixedModels.jl/issues/653
 [#657]: https://github.com/JuliaStats/MixedModels.jl/issues/657
 [#663]: https://github.com/JuliaStats/MixedModels.jl/issues/663
