@@ -44,12 +44,12 @@ function schema(t::FunctionTerm{typeof(|)}, data, hints::Dict{Symbol})
     return merge(schema(t.args[2], data, grp_hints), sch)
 end
 
-function is_randomeffectsterm(tt)
-    return tt isa AbstractReTerm || # definitely RE
-           isa(tt, FunctionTerm) && # potentially RE
-           (isa(tt, FunctionTerm{typeof(|)}) || # RE with free covariance structure
-            isa(tt.args[1], FunctionTerm{typeof(|)})) # not zerocorr() or the like
-end
+is_randomeffectsterm(::Any) = false
+is_randomeffectsterm(::AbstractReTerm) = true
+# RE with free covariance structure
+is_randomeffectsterm(::FunctionTerm{typeof(|)}) = true
+# not zerocorr() or the like
+is_randomeffectsterm(tt::FunctionTerm) = is_randomeffectsterm(tt.args[1])
 
 # | in MixedModel formula -> RandomEffectsTerm
 function StatsModels.apply_schema(
