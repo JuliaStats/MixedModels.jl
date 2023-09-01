@@ -56,14 +56,13 @@ const _MISSING_RE_ERROR = ArgumentError(
 # this his hoisted out so that we can test it in isolation
 # without constructing a full model
 function _schematize(f, tbl, contrasts)
-    sch = schema(f.lhs, tbl, contrasts)
     # if there is only one term on the RHS, then you don't have an iterator
     # also we want this to be a vector so we can sort later
     rhs = f.rhs isa AbstractTerm ? [f.rhs] : collect(f.rhs)
     fe = filter(!is_randomeffectsterm, rhs)
-    # init with `sch` so we don't need an extra merge later
+    # init with lhs so we don't need an extra merge later
     # and so that things work even when we have empty fixed effects
-    sch = mapfoldl(merge, fe; init=sch) do tt
+    sch_fe = mapfoldl(merge, fe; init=schema(f.lhs, tbl, contrasts)) do tt
         return schema(tt, tbl, contrasts)
     end
     re = filter(is_randomeffectsterm, rhs)
@@ -73,11 +72,11 @@ function _schematize(f, tbl, contrasts)
         # and force things to use the schema
         return schema(tt, tbl, contrasts)
     end
-    # why this big dance? well we want to make sure we don't overwrite any schema
+    # we want to make sure we don't overwrite any schema
     # determined on the basis of the fixed effects
+    # recall: merge prefers the entry in the second argument when there's a duplicate key
     # XXX could we take advantage of MultiSchema here?
-    sch_re = Schema(k => sch_re[k] for k in keys(sch_re) if !in(k, keys(sch.schema)))
-    sch = merge(sch, sch_re)
+    sch = merge(sch_re, sch_fe)
 
     return apply_schema(f, sch, LinearMixedModel)
 end
