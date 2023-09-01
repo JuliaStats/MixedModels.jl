@@ -1,5 +1,9 @@
 * Auto apply `Grouping()` to grouping variables that don't already have an explicit contrast. As a side effect, in [the rare cases](https://www.muscardinus.be/2017/08/fixed-and-random/#discrete-variable) where it makes sense for a variable to appear as both a fixed effect and a grouping variable, an explicit contrast hint must be passed. [#652]
 
+MixedModels v4.20.0 Release Notes
+==============================
+* The `.tbl` property of a `MixedModelBootstrap` now includes the correlation parameters for lower triangular elements of the `λ` field. [#702]
+
 MixedModels v4.19.0 Release Notes
 ==============================
 * New method `StatsAPI.coefnames(::ReMat)` returns the coefficient names associated with each grouping factor. [#709]
@@ -466,6 +470,7 @@ Package dependencies
 [#682]: https://github.com/JuliaStats/MixedModels.jl/issues/682
 [#694]: https://github.com/JuliaStats/MixedModels.jl/issues/694
 [#698]: https://github.com/JuliaStats/MixedModels.jl/issues/698
+[#702]: https://github.com/JuliaStats/MixedModels.jl/issues/702
 [#703]: https://github.com/JuliaStats/MixedModels.jl/issues/703
 [#707]: https://github.com/JuliaStats/MixedModels.jl/issues/707
 [#709]: https://github.com/JuliaStats/MixedModels.jl/issues/709

@@ -7,4 +7,5 @@ Manifest.toml
 settings.json
 docs/jmd
 LocalPreferences.toml
+benchmark.md
 

@@ -24,9 +24,11 @@ Utility to generate a vector of Symbols of the form :<tag><index> from a tag and
 
 The indices are left-padded with zeros to allow lexicographic sorting.
 """
-function _generatesyms(tag::Char, len::Integer)
+function _generatesyms(tag::AbstractString, len::Integer)
     return Symbol.(string.(tag, lpad.(Base.OneTo(len), ndigits(len), '0')))
 end
+
+_generatesyms(tag::Char, len::Integer) = _generatesyms(string(tag), len)
 
 function TableColumns(m::LinearMixedModel{T}) where {T}
     nmvec = [:ζ]
