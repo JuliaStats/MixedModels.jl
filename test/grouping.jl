@@ -37,8 +37,9 @@ end
         grp=rand('a':'z', 100))
     contrasts = Dict{Symbol, Any}()
 
-    @testset "blocking variables are grouping" begin
-        fsch = schematize(@formula(y ~ 1 + x + (1|grp)), d, contrasts)
+    @testset "blocking variables are grouping" for f in [@formula(y ~ 1 + x + (1|grp)),
+                                                         @formula(y ~ 1 + x + zerocorr(1|grp))]
+        fsch = schematize(f, d, contrasts)
         fe = fsch.rhs[1]
         x = last(fe.terms)
         @test x.contrasts isa ContrastsMatrix{DummyCoding}
@@ -47,8 +48,9 @@ end
         @test grp.contrasts isa ContrastsMatrix{Grouping}
     end
 
-    @testset "FE contrasts take priority" begin
-        fsch = schematize(@formula(y ~ 1 + x + (1|x)), d, contrasts)
+    @testset "FE contrasts take priority" for f in [@formula(y ~ 1 + x + (1|x)),
+                                                    @formula(y ~ 1 + x + zerocorr(1|x))]
+        fsch = schematize(f, d, contrasts)
         fe = fsch.rhs[1]
         x = last(fe.terms)
         @test x.contrasts isa ContrastsMatrix{DummyCoding}
@@ -65,8 +67,9 @@ end
         @test grp.contrasts isa ContrastsMatrix{EffectsCoding}
     end
 
-    @testset "Nesting and interactions" begin
-        fsch = schematize(@formula(y ~ 1 + x + (1|grp/z)), d, contrasts)
+    @testset "Nesting and interactions" for f in [@formula(y ~ 1 + x + (1|grp/z))]
+        # XXX zerocorr(1|grp/z) doesn't work!
+        fsch = schematize(f, d, contrasts)
         fe = fsch.rhs[1]
         x = last(fe.terms)
         @test x.contrasts isa ContrastsMatrix{DummyCoding}
@@ -81,10 +84,11 @@ end
         @test interaction.terms[2].contrasts isa ContrastsMatrix{Grouping}
     end
 
-    @testset "Interactions where one component is FE" begin
+    @testset "Interactions where one component is FE" for f in [@formula(y ~ 1 + x + (1|x&grp)),
+                                                                @formula(y ~ 1 + x + zerocorr(1|x&grp))]
         # occurs in e.g. the contra models
         # @formula(use ~ 1+age+abs2(age)+urban+livch+(1|urban&dist)
-        fsch = schematize(@formula(y ~ 1 + x + (1|x&grp)), d, contrasts)
+        fsch = schematize(f, d, contrasts)
         fe = fsch.rhs[1]
         x = last(fe.terms)
         @test x.contrasts isa ContrastsMatrix{DummyCoding}
