@@ -1,3 +1,5 @@
+MixedModels v4.21.0 Release Notes
+==============================
 * Auto apply `Grouping()` to grouping variables that don't already have an explicit contrast. [#652]
 
 MixedModels v4.20.0 Release Notes
