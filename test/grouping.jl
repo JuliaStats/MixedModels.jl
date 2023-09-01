@@ -2,6 +2,9 @@ using MixedModels
 using StatsModels
 using Test
 
+using MixedModels: schematize
+using StatsModels: ContrastsMatrix, FullDummyCoding
+
 @testset "Grouping" begin
     g = Grouping()
     @test isnothing(g.levels)
@@ -24,15 +27,76 @@ end
 
     @test all(t.contrasts.invindex[lev] == i for (i,lev) in enumerate(levs))
     @test all(t.contrasts.levels[i] == lev for (i,lev) in enumerate(levs))
+end
 
-    # without auto-grouping, this OOM on most reasonable hardware because it default dummy coding
-    # would mean constructing 1M x 1M matrix
-    # nesting still inserts a full dummy
-    # outer(Grouping:58→58)
-    # outer(StatsModels.FullDummyCoding:58→58) & grp(Grouping:1000000→1000000)
-    for f in [@formula(y ~ 0 + (1 | grp)),
-              @formula(y ~ 0 + (1 | outer / grp)),
-              @formula(y ~ 0 + (1 | outer & grp))]
-        @test MixedModels._schematize(f, d, Dict{Symbol, Any}()) isa FormulaTerm
+@testset "Auto application of Grouping()" begin
+
+    d = (; y=rand(100),
+        x=rand('A':'Z', 100),
+        z=rand('A':'Z', 100),
+        grp=rand('a':'z', 100))
+    contrasts = Dict{Symbol, Any}()
+
+    @testset "blocking variables are grouping" begin
+        fsch = schematize(@formula(y ~ 1 + x + (1|grp)), d, contrasts)
+        fe = fsch.rhs[1]
+        x = last(fe.terms)
+        @test x.contrasts isa ContrastsMatrix{DummyCoding}
+        re = fsch.rhs[2]
+        grp = re.rhs
+        @test grp.contrasts isa ContrastsMatrix{Grouping}
+    end
+
+    @testset "FE contrasts take priority" begin
+        fsch = schematize(@formula(y ~ 1 + x + (1|x)), d, contrasts)
+        fe = fsch.rhs[1]
+        x = last(fe.terms)
+        @test x.contrasts isa ContrastsMatrix{DummyCoding}
+        re = fsch.rhs[2]
+        grp = re.rhs
+        @test grp.contrasts isa ContrastsMatrix{DummyCoding}
+
+        fsch = schematize(@formula(y ~ 1 + x + (1|x)), d, Dict(:x => EffectsCoding()))
+        fe = fsch.rhs[1]
+        x = last(fe.terms)
+        @test x.contrasts isa ContrastsMatrix{EffectsCoding}
+        re = fsch.rhs[2]
+        grp = re.rhs
+        @test grp.contrasts isa ContrastsMatrix{EffectsCoding}
+    end
+
+    @testset "Nesting and interactions" begin
+        fsch = schematize(@formula(y ~ 1 + x + (1|grp/z)), d, contrasts)
+        fe = fsch.rhs[1]
+        x = last(fe.terms)
+        @test x.contrasts isa ContrastsMatrix{DummyCoding}
+        re = fsch.rhs[2:end]
+        grp = re[1].rhs
+        @test grp.contrasts isa ContrastsMatrix{Grouping}
+        interaction = re[2].rhs
+        # this is less than ideal but we need it for now to get the nesting logic to work
+        @test interaction.terms[1].contrasts isa ContrastsMatrix{FullDummyCoding}
+        # this is the desired behavior
+        @test_broken interaction.terms[1].contrasts isa ContrastsMatrix{Grouping}
+        @test interaction.terms[2].contrasts isa ContrastsMatrix{Grouping}
+    end
+
+    @testset "Interactions where one component is FE" begin
+        # occurs in e.g. the contra models
+        # @formula(use ~ 1+age+abs2(age)+urban+livch+(1|urban&dist)
+        fsch = schematize(@formula(y ~ 1 + x + (1|x&grp)), d, contrasts)
+        fe = fsch.rhs[1]
+        x = last(fe.terms)
+        @test x.contrasts isa ContrastsMatrix{DummyCoding}
+        re = fsch.rhs[2]
+        x_re = re.rhs.terms[1]
+        # this is less than ideal but it relates to the way interactions are computed in RE
+        @test x_re.contrasts isa ContrastsMatrix{DummyCoding}
+        # this is the desired behavior:
+        # even if the contrast matrix has to be small enough to invert,
+        # it's silly to store it and invert it again when we don't need it here
+        @test_broken x_rex.contrasts isa ContrastsMatrix{Grouping}
+        grp = re.rhs.terms[2]
+        @test grp.contrasts isa ContrastsMatrix{Grouping}
     end
 end

@@ -49,3 +49,38 @@ function StatsModels.apply_schema(t::FormulaTerm, schema::Schema, Mod::Type{<:Mi
         collect_matrix_terms(apply_schema(t.rhs, MultiSchema(schema), Mod)),
     )
 end
+
+"""
+    schematize(f, tbl, contrasts::Dict{Symbol}, Mod=LinearMixedModel)
+
+Find and apply the schema for f in a way that automatically uses `Grouping()`
+contrasts when appropriate.
+
+!!! warn
+    This is an internal method.
+"""
+function schematize(f, tbl, contrasts::Dict{Symbol}, Mod=LinearMixedModel)
+    # if there is only one term on the RHS, then you don't have an iterator
+    # also we want this to be a vector so we can sort later
+    rhs = f.rhs isa AbstractTerm ? [f.rhs] : collect(f.rhs)
+    fe = filter(!is_randomeffectsterm, rhs)
+    # init with lhs so we don't need an extra merge later
+    # and so that things work even when we have empty fixed effects
+    init = schema(f.lhs, tbl, contrasts)
+    sch_fe = mapfoldl(merge, fe; init) do tt
+        return schema(tt, tbl, contrasts)
+    end
+    re = filter(is_randomeffectsterm, rhs)
+    sch_re = mapfoldl(merge, re; init) do tt
+        # this allows us to control dispatch on a more subtle level
+        # and force things to use the schema
+        return schema(tt, tbl, contrasts)
+    end
+    # we want to make sure we don't overwrite any schema
+    # determined on the basis of the fixed effects
+    # recall: merge prefers the entry in the second argument when there's a duplicate key
+    # XXX could we take advantage of MultiSchema here?
+    sch = merge(sch_re, sch_fe)
+
+    return apply_schema(f, sch, Mod)
+end

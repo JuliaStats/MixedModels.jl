@@ -53,34 +53,6 @@ const _MISSING_RE_ERROR = ArgumentError(
     "Formula contains no random effects; this isn't a mixed model. Perhaps you want to use GLM.jl?",
 )
 
-# this his hoisted out so that we can test it in isolation
-# without constructing a full model
-function _schematize(f, tbl, contrasts)
-    # if there is only one term on the RHS, then you don't have an iterator
-    # also we want this to be a vector so we can sort later
-    rhs = f.rhs isa AbstractTerm ? [f.rhs] : collect(f.rhs)
-    fe = filter(!is_randomeffectsterm, rhs)
-    # init with lhs so we don't need an extra merge later
-    # and so that things work even when we have empty fixed effects
-    sch_fe = mapfoldl(merge, fe; init=schema(f.lhs, tbl, contrasts)) do tt
-        return schema(tt, tbl, contrasts)
-    end
-    re = filter(is_randomeffectsterm, rhs)
-    isempty(re) && throw(_MISSING_RE_ERROR)
-    sch_re = mapfoldl(merge, re) do tt
-        # this allows us to control dispatch on a more subtle level
-        # and force things to use the schema
-        return schema(tt, tbl, contrasts)
-    end
-    # we want to make sure we don't overwrite any schema
-    # determined on the basis of the fixed effects
-    # recall: merge prefers the entry in the second argument when there's a duplicate key
-    # XXX could we take advantage of MultiSchema here?
-    sch = merge(sch_re, sch_fe)
-
-    return apply_schema(f, sch, LinearMixedModel)
-end
-
 function LinearMixedModel(
     f::FormulaTerm, tbl::Tables.ColumnTable; contrasts=Dict{Symbol,Any}(), wts=[],
     σ=nothing, amalgamate=true,
@@ -98,7 +70,7 @@ function LinearMixedModel(
     # missing support is in a StatsModels release
     tbl, _ = StatsModels.missing_omit(tbl, f)
 
-    form = _schematize(f, tbl, contrasts)
+    form = schematize(f, tbl, contrasts)
     if form.rhs isa MatrixTerm || !any(x -> isa(x, AbstractReTerm), form.rhs)
         throw(_MISSING_RE_ERROR)
     end
