@@ -106,4 +106,8 @@ end
 
     @test_throws(ArgumentError("Same variable appears on both sides of |"),
                  schematize(@formula(y ~ 1 + (x|x)), d, contrasts))
+    f1 = schematize(@formula(y ~ 1 + x + z), d, contrasts)
+    f2 = apply_schema(@formula(y ~ 1 + x + z), schema(d, contrasts))
+    # skip intercept term
+    @test all(a.contrasts == b.contrasts for (a, b) in zip(f1.rhs.terms[2:end], f2.rhs.terms[2:end]))
 end
