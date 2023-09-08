@@ -180,7 +180,7 @@ families with a dispersion parameter.
 - `hide_progress` can be used to disable the progress bar. Note that the progress
 bar is automatically disabled for non-interactive (i.e. logging) contexts.
 - `optsum_overrides` is used to override values of [OptSummary](@ref) in the models
-fit during the bootstrapping process. For example, `optsum_overrides=(;ftol_rel=1e08)`
+fit during the bootstrapping process. For example, `optsum_overrides=(;ftol_rel=1e-08)`
 reduces the convergence criterion, which can greatly speed up the bootstrap fits.
 Taking advantage of this speed up to increase `n` can often lead to better estimates
 of coverage intervals.
