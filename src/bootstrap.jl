@@ -159,6 +159,21 @@ function Base.reduce(::typeof(vcat), v::AbstractVector{MixedModelBootstrap{T}}) 
         deepcopy(b1.fcnames))
 end
 
+function Base.show(io::IO, x::MixedModelBootstrap)
+    tbl = x.tbl
+    println(io, "MixedModelBootstrap with $(length(x)) samples")
+    out = []
+    for col in Tables.columnnames(tbl)
+       s = summarystats(Tables.getcolumn(tbl, col))
+       push!(out, (; s.min, s.q25, s.median, s.mean, s.q75, s.max))
+    end
+    cols = collect(Tables.columntable(out))
+    ct = CoefTable(cols, ["min", "25%", "median", "mean", "75%", "max"], 
+                    collect(string.(Tables.columnnames(tbl))))
+    show(io, ct)
+    return nothing
+end
+
 """
     parametricbootstrap([rng::AbstractRNG], nsamp::Integer, m::MixedModel{T}, ftype=T;
         β = coef(m), σ = m.σ, θ = m.θ, hide_progress=false, optsum_overrides=(;))
