@@ -80,3 +80,9 @@ function StatsAPI.confint(pr::MixedModelProfile; level::Real=0.95)
         upper=[rev[s](cutoff) for s in syms],
     )
 end
+
+function Base.show(io::IO, mime::MIME"text/plain",pr::MixedModelProfile)
+   print(io, "MixedModelProfile: ")
+   show(io, mime, pr.tbl)
+   return nothing
+end
