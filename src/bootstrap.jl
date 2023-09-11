@@ -159,18 +159,19 @@ function Base.reduce(::typeof(vcat), v::AbstractVector{MixedModelBootstrap{T}}) 
         deepcopy(b1.fcnames))
 end
 
-function Base.show(io::IO, x::MixedModelBootstrap)
+function Base.show(io::IO,  mime::MIME"text/plain", x::MixedModelBootstrap)
     tbl = x.tbl
     println(io, "MixedModelBootstrap with $(length(x)) samples")
-    out = []
+    out = NamedTuple[]
     for col in Tables.columnnames(tbl)
-       s = summarystats(Tables.getcolumn(tbl, col))
-       push!(out, (; s.min, s.q25, s.median, s.mean, s.q75, s.max))
+        col == :obj && continue
+        s = summarystats(Tables.getcolumn(tbl, col))
+        push!(out, (; parameter=col, s.min, s.q25, s.median, s.mean, s.q75, s.max))
     end
-    cols = collect(Tables.columntable(out))
-    ct = CoefTable(cols, ["min", "25%", "median", "mean", "75%", "max"], 
-                    collect(string.(Tables.columnnames(tbl))))
-    show(io, ct)
+    tt = FlexTable(out)
+    # trim out the FlexTable header
+    str = last(split(sprint(show, mime, tt), "\n", limit=2))
+    println(io, str)
     return nothing
 end
 

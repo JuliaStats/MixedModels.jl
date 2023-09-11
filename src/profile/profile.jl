@@ -82,7 +82,11 @@ function StatsAPI.confint(pr::MixedModelProfile; level::Real=0.95)
 end
 
 function Base.show(io::IO, mime::MIME"text/plain",pr::MixedModelProfile)
-   print(io, "MixedModelProfile: ")
+   print(io, "MixedModelProfile -- ")
    show(io, mime, pr.tbl)
    return nothing
 end
+
+Tables.columntable(pr::MixedModelProfile) = Tables.columntable(pr.tbl)
+Tables.rowtable(pr::MixedModelProfile) = Tables.rowtable(pr.tbl)
+Tables.columns(pr::MixedModelProfile) = Tables.columns(pr.tbl)
