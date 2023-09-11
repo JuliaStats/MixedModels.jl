@@ -318,7 +318,7 @@ function allpars(bsamp::MixedModelFitCollection{T}) where {T}
 end
 
 """
-    confint(pr::MixedModelBootstrap; level::Real=0.95)
+    confint(pr::MixedModelBootstrap; level::Real=0.95, method=:shortest)
 
 Compute bootstrap confidence intervals for coefficients and variance components, with confidence level level (by default 95%).
 
@@ -334,7 +334,9 @@ Compute bootstrap confidence intervals for coefficients and variance components,
 
 See also [`shortestcovint`](@ref).
 """
-function StatsBase.confint(bsamp::MixedModelBootstrap{T}; level::Real=0.95) where {T}
+function StatsBase.confint(bsamp::MixedModelBootstrap{T}; level::Real=0.95, method=:shortest) where {T}
+    method in [:shortest, :equaltail] ||
+        throw(ArgumentError("`method` must be either :shortest or :equaltail.")) 
     cutoff = sqrt(quantile(Chisq(1), level))
     # Creating the table is somewhat wasteful because columns are created then immediately skipped.
     tbl = Table(bsamp.tbl)
@@ -348,8 +350,13 @@ function StatsBase.confint(bsamp::MixedModelBootstrap{T}; level::Real=0.95) wher
             ),
         ),
     )
+    tails = [(1 - level) / 2, (1 + level) / 2]
     for p in par
-        l, u = shortestcovint(sort!(copyto!(v, getproperty(tbl, p))), level)
+        if method === :shortest
+            l, u = shortestcovint(sort!(copyto!(v, getproperty(tbl, p))), level)
+        else
+          l, u = quantile(getproperty(tbl, p), tails)
+        end
         push!(lower, l)
         push!(upper, u)
     end
