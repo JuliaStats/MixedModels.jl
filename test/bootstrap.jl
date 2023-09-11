@@ -226,9 +226,12 @@ end
     level = 0.68
     pb = parametricbootstrap(MersenneTwister(42), 500, fmzc; hide_progress=true)
     pr = profile(fmzc)
-    ci_boot = confint(pb; level)
+    ci_boot_equaltail = confint(pb; level, method=:equaltail)
+    ci_boot_shortest = confint(pb; level, method=:shortest)
+    @test_throws ArgumentError confint(pb; level, method=:other)
     ci_wald = confint(fmzc; level)
     ci_prof = confint(pr; level)
-    @test first(ci_boot.lower, 2) ≈ first(ci_prof.lower, 2) atol=0.5
+    @test first(ci_boot_shortest.lower, 2) ≈ first(ci_prof.lower, 2) atol=0.5
+    @test first(ci_boot_equaltail.lower, 2) ≈ first(ci_prof.lower, 2) atol=0.5
     @test first(ci_prof.lower, 2) ≈ first(ci_wald.lower, 2) atol=0.1
 end
