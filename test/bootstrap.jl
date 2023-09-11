@@ -232,9 +232,8 @@ end
 
     df = DataFrame(pr)
     @test nrow(df) == 151
-    @test propertynames(df)
     @test propertynames(df) == collect(propertynames(pr.tbl))
-    
+
     @testset "CI method comparison" begin    
         level = 0.68
         ci_boot_equaltail = confint(pb; level, method=:equaltail)
