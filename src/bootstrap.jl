@@ -159,7 +159,7 @@ function Base.reduce(::typeof(vcat), v::AbstractVector{MixedModelBootstrap{T}}) 
         deepcopy(b1.fcnames))
 end
 
-function Base.show(io::IO,  mime::MIME"text/plain", x::MixedModelBootstrap)
+function Base.show(io::IO, mime::MIME"text/plain", x::MixedModelBootstrap)
     tbl = x.tbl
     println(io, "MixedModelBootstrap with $(length(x)) samples")
     out = NamedTuple[]
@@ -170,7 +170,7 @@ function Base.show(io::IO,  mime::MIME"text/plain", x::MixedModelBootstrap)
     end
     tt = FlexTable(out)
     # trim out the FlexTable header
-    str = last(split(sprint(show, mime, tt), "\n", limit=2))
+    str = last(split(sprint(show, mime, tt), "\n"; limit=2))
     println(io, str)
     return nothing
 end
@@ -335,9 +335,11 @@ Compute bootstrap confidence intervals for coefficients and variance components,
 
 See also [`shortestcovint`](@ref).
 """
-function StatsBase.confint(bsamp::MixedModelBootstrap{T}; level::Real=0.95, method=:shortest) where {T}
+function StatsBase.confint(
+    bsamp::MixedModelBootstrap{T}; level::Real=0.95, method=:shortest
+) where {T}
     method in [:shortest, :equaltail] ||
-        throw(ArgumentError("`method` must be either :shortest or :equaltail.")) 
+        throw(ArgumentError("`method` must be either :shortest or :equaltail."))
     cutoff = sqrt(quantile(Chisq(1), level))
     # Creating the table is somewhat wasteful because columns are created then immediately skipped.
     tbl = Table(bsamp.tbl)
@@ -356,7 +358,7 @@ function StatsBase.confint(bsamp::MixedModelBootstrap{T}; level::Real=0.95, meth
         if method === :shortest
             l, u = shortestcovint(sort!(copyto!(v, getproperty(tbl, p))), level)
         else
-          l, u = quantile(getproperty(tbl, p), tails)
+            l, u = quantile(getproperty(tbl, p), tails)
         end
         push!(lower, l)
         push!(upper, u)
