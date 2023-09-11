@@ -221,17 +221,24 @@ end
     end
 end
 
-@testset "CI method comparison" begin
+@testset "show and summary" begin
     fmzc = models(:sleepstudy)[2]
-    level = 0.68
     pb = parametricbootstrap(MersenneTwister(42), 500, fmzc; hide_progress=true)
     pr = profile(fmzc)
-    ci_boot_equaltail = confint(pb; level, method=:equaltail)
-    ci_boot_shortest = confint(pb; level, method=:shortest)
-    @test_throws ArgumentError confint(pb; level, method=:other)
-    ci_wald = confint(fmzc; level)
-    ci_prof = confint(pr; level)
-    @test first(ci_boot_shortest.lower, 2) ≈ first(ci_prof.lower, 2) atol=0.5
-    @test first(ci_boot_equaltail.lower, 2) ≈ first(ci_prof.lower, 2) atol=0.5
-    @test first(ci_prof.lower, 2) ≈ first(ci_wald.lower, 2) atol=0.1
+    @test startswith(sprint(show, MIME("text/plain"), pr),
+                     "MixedModelProfile -- Table with 9 columns and 151 rows:")
+    @test startswith(sprint(show, MIME("text/plain"), pb),
+                     "MixedModelBootstrap with 500 samples\n     parameter  min        q25       median    mean      q75       max\n  ")
+
+    @testset "CI method comparison" begin    
+        level = 0.68
+        ci_boot_equaltail = confint(pb; level, method=:equaltail)
+        ci_boot_shortest = confint(pb; level, method=:shortest)
+        @test_throws ArgumentError confint(pb; level, method=:other)
+        ci_wald = confint(fmzc; level)
+        ci_prof = confint(pr; level)
+        @test first(ci_boot_shortest.lower, 2) ≈ first(ci_prof.lower, 2) atol=0.5
+        @test first(ci_boot_equaltail.lower, 2) ≈ first(ci_prof.lower, 2) atol=0.5
+        @test first(ci_prof.lower, 2) ≈ first(ci_wald.lower, 2) atol=0.1
+    end
 end
