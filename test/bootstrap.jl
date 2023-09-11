@@ -230,6 +230,11 @@ end
     @test startswith(sprint(show, MIME("text/plain"), pb),
                      "MixedModelBootstrap with 500 samples\n     parameter  min        q25       median    mean      q75       max\n  ")
 
+    df = DataFrame(pr)
+    @test nrow(df) == 151
+    @test propertynames(df)
+    @test propertynames(df) == collect(propertynames(pr.tbl))
+    
     @testset "CI method comparison" begin    
         level = 0.68
         ci_boot_equaltail = confint(pb; level, method=:equaltail)
