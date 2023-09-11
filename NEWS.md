@@ -1,4 +1,4 @@
-* The `hide_progress` keyword argument to `parametricbootstrap` is now deprecated. Users should isntead use `progress` (which is consistent with e.g. `fit`). 
+* The `hide_progress` keyword argument to `parametricbootstrap` is now deprecated. Users should isntead use `progress` (which is consistent with e.g. `fit`). [#717]
 
 MixedModels v4.21.0 Release Notes
 ==============================
@@ -478,3 +478,4 @@ Package dependencies
 [#703]: https://github.com/JuliaStats/MixedModels.jl/issues/703
 [#707]: https://github.com/JuliaStats/MixedModels.jl/issues/707
 [#709]: https://github.com/JuliaStats/MixedModels.jl/issues/709
+[#717]: https://github.com/JuliaStats/MixedModels.jl/issues/717
