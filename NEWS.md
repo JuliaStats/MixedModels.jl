@@ -1,4 +1,4 @@
-MixedModels v4.21.0 Release Notes
+MixedModels v4.22.0 Release Notes
 ==============================
 * Support for equal-tail confidence intervals for `MixedModelBootstrap`. [#715]
 * Basic `show` methods for `MixedModelBootstrap` and `MixedModelProfile`. [#715]
