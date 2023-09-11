@@ -39,8 +39,9 @@ end
 	@test isconstant(Union{Int,Missing}[missing, missing, missing])
 end
 
-@testset "threaded_replicate" begin
+@testset "replicate" begin
 	@test_logs (:warn, r"use_threads is deprecated") replicate(string, 1; use_threads=true)
+	@test_logs (:warn, r"hide_progress") replicate(string, 1; hide_progress=true)
 end
 
 @testset "datasets" begin

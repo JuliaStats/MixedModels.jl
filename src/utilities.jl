@@ -124,20 +124,26 @@ end
 _is_logging(io) = isa(io, Base.TTY) == false || (get(ENV, "CI", nothing) == "true")
 
 """
-    replicate(f::Function, n::Integer; hide_progress=false)
+    replicate(f::Function, n::Integer; progress=true)
 
 Return a vector of the values of `n` calls to `f()` - used in simulations where the value of `f` is stochastic.
 
-`hide_progress` can be used to disable the progress bar. Note that the progress
+`progress` controls whether the progress bar is shown. Note that the progress
 bar is automatically disabled for non-interactive (i.e. logging) contexts.
 """
-function replicate(f::Function, n::Integer; use_threads=false, hide_progress=false)
+function replicate(f::Function, n::Integer; use_threads=false, hide_progress=nothing, progress=true)
     use_threads && Base.depwarn(
         "use_threads is deprecated and will be removed in a future release",
         :replicate
     )
+    if !isnothing(hide_progress)
+        Base.depwarn("`hide_progress` is deprecated, please use `progress` instead." *
+                     "NB: `progress` is a positive action, i.e. `progress=true` means show the progress bar.",
+                     :parametricbootstrap; force=true)
+        progress = !hide_progress
+    end
     # and we want some advanced options
-    p = Progress(n; output=Base.stderr, enabled=!hide_progress && !_is_logging(stderr))
+    p = Progress(n; output=Base.stderr, enabled=progress && !_is_logging(stderr))
     # get the type
     rr = f()
     next!(p)

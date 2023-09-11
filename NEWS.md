@@ -1,3 +1,5 @@
+* The `hide_progress` keyword argument to `parametricbootstrap` is now deprecated. Users should isntead use `progress` (which is consistent with e.g. `fit`). 
+
 MixedModels v4.21.0 Release Notes
 ==============================
 * Auto apply `Grouping()` to grouping variables that don't already have an explicit contrast. [#652]
