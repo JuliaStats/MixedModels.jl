@@ -199,9 +199,10 @@ function parametricbootstrap(
     optsum_overrides=(;),
 ) where {T}
     if !isnothing(hide_progress)
-        Base.depwarn("`hide_progress` is deprecated, please use `progress` instead." *
-                     "NB: `progress` is a positive action, i.e. `progress=true` means show the progress bar.",
-                     :parametricbootstrap; force=true)
+        Base.depwarn(
+            "`hide_progress` is deprecated, please use `progress` instead." *
+            "NB: `progress` is a positive action, i.e. `progress=true` means show the progress bar.",
+            :parametricbootstrap; force=true)
         progress = !hide_progress
     end
     if σ !== missing
