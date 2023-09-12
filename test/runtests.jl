@@ -1,4 +1,5 @@
 using Aqua
+using GLM
 using MixedModels
 using Test
 
@@ -12,7 +13,9 @@ import LinearAlgebra: BLAS
 @testset "Aqua" begin
     # we can't check for unbound type parameters
     # because we actually need one at one point for _same_family()
-    Aqua.test_all(MixedModels; ambiguities=false, unbound_args=false)
+    Aqua.test_all(MixedModels; ambiguities=false, unbound_args=false,
+                  # XXX TODO: upstream this piracy
+                  piracy=(;treat_as_own=[GLM.wrkresp!, Base.:|]))
 end
 
 include("utilities.jl")

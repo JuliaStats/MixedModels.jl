@@ -1,3 +1,7 @@
+MixedModels v4.22.0 Release Notes
+==============================
+* Support for equal-tail confidence intervals for `MixedModelBootstrap`. [#715]
+* Basic `show` methods for `MixedModelBootstrap` and `MixedModelProfile`. [#715]
 * The `hide_progress` keyword argument to `parametricbootstrap` is now deprecated. Users should isntead use `progress` (which is consistent with e.g. `fit`). [#717]
 
 MixedModels v4.21.0 Release Notes
@@ -478,4 +482,5 @@ Package dependencies
 [#703]: https://github.com/JuliaStats/MixedModels.jl/issues/703
 [#707]: https://github.com/JuliaStats/MixedModels.jl/issues/707
 [#709]: https://github.com/JuliaStats/MixedModels.jl/issues/709
+[#715]: https://github.com/JuliaStats/MixedModels.jl/issues/715
 [#717]: https://github.com/JuliaStats/MixedModels.jl/issues/717

@@ -159,6 +159,22 @@ function Base.reduce(::typeof(vcat), v::AbstractVector{MixedModelBootstrap{T}}) 
         deepcopy(b1.fcnames))
 end
 
+function Base.show(io::IO, mime::MIME"text/plain", x::MixedModelBootstrap)
+    tbl = x.tbl
+    println(io, "MixedModelBootstrap with $(length(x)) samples")
+    out = NamedTuple[]
+    for col in Tables.columnnames(tbl)
+        col == :obj && continue
+        s = summarystats(Tables.getcolumn(tbl, col))
+        push!(out, (; parameter=col, s.min, s.q25, s.median, s.mean, s.q75, s.max))
+    end
+    tt = FlexTable(out)
+    # trim out the FlexTable header
+    str = last(split(sprint(show, mime, tt), "\n"; limit=2))
+    println(io, str)
+    return nothing
+end
+
 """
     parametricbootstrap([rng::AbstractRNG], nsamp::Integer, m::MixedModel{T}, ftype=T;
         β = coef(m), σ = m.σ, θ = m.θ, progress=true, optsum_overrides=(;))
@@ -311,9 +327,13 @@ function allpars(bsamp::MixedModelFitCollection{T}) where {T}
 end
 
 """
-    confint(pr::MixedModelBootstrap; level::Real=0.95)
+    confint(pr::MixedModelBootstrap; level::Real=0.95, method=:shortest)
 
 Compute bootstrap confidence intervals for coefficients and variance components, with confidence level level (by default 95%).
+
+The keyword argument `method` determines whether the `:shortest`, i.e. highest density, interval is used 
+or the `:equaltail`, i.e. quantile-based, interval is used. For historical reasons, the default is `:shortest`, 
+but `:equaltail` gives the interval that is most comparable to the profile and Wald confidence intervals.
 
 !!! note
     The API guarantee is for a Tables.jl compatible table. The exact return type is an
@@ -327,7 +347,11 @@ Compute bootstrap confidence intervals for coefficients and variance components,
 
 See also [`shortestcovint`](@ref).
 """
-function StatsBase.confint(bsamp::MixedModelBootstrap{T}; level::Real=0.95) where {T}
+function StatsBase.confint(
+    bsamp::MixedModelBootstrap{T}; level::Real=0.95, method=:shortest
+) where {T}
+    method in [:shortest, :equaltail] ||
+        throw(ArgumentError("`method` must be either :shortest or :equaltail."))
     cutoff = sqrt(quantile(Chisq(1), level))
     # Creating the table is somewhat wasteful because columns are created then immediately skipped.
     tbl = Table(bsamp.tbl)
@@ -341,8 +365,13 @@ function StatsBase.confint(bsamp::MixedModelBootstrap{T}; level::Real=0.95) wher
             ),
         ),
     )
+    tails = [(1 - level) / 2, (1 + level) / 2]
     for p in par
-        l, u = shortestcovint(sort!(copyto!(v, getproperty(tbl, p))), level)
+        if method === :shortest
+            l, u = shortestcovint(sort!(copyto!(v, getproperty(tbl, p))), level)
+        else
+            l, u = quantile(getproperty(tbl, p), tails)
+        end
         push!(lower, l)
         push!(upper, u)
     end
