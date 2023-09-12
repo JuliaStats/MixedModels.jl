@@ -177,7 +177,7 @@ performance benefits.
 - `β`, `σ`, and `θ` are the values of `m`'s parameters for simulating the responses.
 - `σ` is only valid for `LinearMixedModel` and `GeneralizedLinearMixedModel` for
 families with a dispersion parameter.
-- `hide_progress` can be used to disable the progress bar. Note that the progress
+- `progress` controls whehter the progress bar is shown. Note that the progress
 bar is automatically disabled for non-interactive (i.e. logging) contexts.
 - `optsum_overrides` is used to override values of [OptSummary](@ref) in the models
 fit during the bootstrapping process. For example, `optsum_overrides=(;ftol_rel=1e-08)`
