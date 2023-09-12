@@ -143,13 +143,13 @@ The resultant loss in precision will generally be smaller than the variation tha
 More directly, lowering the fit quality for each replicate will reduce the quality of each replicate, but this may be more than compensated for by the ability to fit a much larger number of replicates in the same time.
 
 ```@example Main
-t = @timed parametricbootstrap(MersenneTwister(42), 1000, m2; hide_progress=true)
+t = @timed parametricbootstrap(MersenneTwister(42), 1000, m2; progress=false)
 t.time
 ```
 
 ```@example Main
 optsum_overrides = (; ftol_rel=1e-8)
-t = @timed parametricbootstrap(MersenneTwister(42), 1000, m2; optsum_overrides, hide_progress=true)
+t = @timed parametricbootstrap(MersenneTwister(42), 1000, m2; optsum_overrides, progress=false)
 t.time
 ```
 

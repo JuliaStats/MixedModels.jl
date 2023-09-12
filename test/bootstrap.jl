@@ -14,7 +14,7 @@ include("modelcache.jl")
 
 function quickboot(m, n=2)
     return parametricbootstrap(MersenneTwister(42), n, m;
-                               hide_progress=true, use_threads=false,
+                               progress=false, use_threads=false,
                                optsum_overrides=(;ftol_rel=1e-8))
 end
 
@@ -75,10 +75,11 @@ end
     # two implicit tests
     # 1. type conversion of ints to floats
     # 2. test method for default RNG
-    parametricbootstrap(1, fm, β=[1], σ=1)
+    @test_logs((:warn, r"hide_progress"),
+                parametricbootstrap(1, fm, β=[1], σ=1, hide_progress=true))
 
     bsamp = parametricbootstrap(MersenneTwister(1234321), 100, fm;
-                                use_threads=false, hide_progress=true)
+                                use_threads=false, progress=false)
     @test isa(propertynames(bsamp), Vector{Symbol})
     @test length(bsamp.objective) == 100
     @test keys(first(bsamp.fits)) == (:objective, :σ, :β, :se, :θ)
@@ -89,13 +90,13 @@ end
 
     @testset "optsum_overrides" begin
         bsamp2 = parametricbootstrap(MersenneTwister(1234321), 100, fm;
-                                    use_threads=false, hide_progress=true,
+                                    use_threads=false, progress=false,
                                     optsum_overrides=(;ftol_rel=1e-8))
         # for such a simple, small model setting the function value
         # tolerance has little effect until we do something extreme
         @test bsamp.objective ≈ bsamp2.objective
         bsamp2 = parametricbootstrap(MersenneTwister(1234321), 100, fm;
-                                    use_threads=false, hide_progress=true,
+                                    use_threads=false, progress=false,
                                     optsum_overrides=(;ftol_rel=1.0))
         @test !(bsamp.objective ≈ bsamp2.objective)
     end
@@ -115,13 +116,13 @@ end
 
     @testset "threaded bootstrap" begin
         @test_logs (:warn, r"use_threads is deprecated") parametricbootstrap(MersenneTwister(1234321), 1, fm;
-                                                                             use_threads=true, hide_progress=true)
+                                                                             use_threads=true, progress=false)
     end
 
     @testset "zerocorr + Base.length + ftype" begin
         fmzc = models(:sleepstudy)[2]
         pbzc = parametricbootstrap(MersenneTwister(42), 5, fmzc, Float16;
-                                   hide_progress=true)
+                                   progress=false)
         @test length(pbzc) == 5
         @test Tables.istable(shortestcovint(pbzc))
         @test typeof(pbzc) == MixedModelBootstrap{Float16}
@@ -133,7 +134,7 @@ end
                                  zerocorr(1 + spkr + prec + load | item))
         fmzcnot = fit(MixedModel, form_zc_not, dataset(:kb07); progress=false)
         pbzcnot = parametricbootstrap(MersenneTwister(42), 2, fmzcnot, Float16;
-                                      hide_progress=true)
+                                      progress=false)
     end
 
     @testset "vcat" begin
@@ -195,7 +196,7 @@ end
         # need a model with fast=false to test that we only
         # copy the optimizer constraints for θ and not β
         gm0 = fit(MixedModel, first(gfms[:contra]), contra, Bernoulli(), fast=false, progress=false)
-        bs = parametricbootstrap(StableRNG(42), 100, gm0; hide_progress=true)
+        bs = parametricbootstrap(StableRNG(42), 100, gm0; progress=false)
         # make sure we're not copying
         @test length(bs.lowerbd) == length(gm0.θ)
         bsci = filter!(:type => ==("β"), DataFrame(shortestcovint(bs)))
@@ -216,14 +217,15 @@ end
 
         # can't specify dispersion for families without that parameter
         @test_throws ArgumentError parametricbootstrap(StableRNG(42), 100, gm0;
-                                                       σ=2, hide_progress=true)
+                                                       σ=2, progress=false)
         @test sum(issingular(bs)) == 0
     end
 end
 
 @testset "show and summary" begin
     fmzc = models(:sleepstudy)[2]
-    pb = parametricbootstrap(MersenneTwister(42), 500, fmzc; hide_progress=true)
+    level = 0.68
+    pb = parametricbootstrap(MersenneTwister(42), 500, fmzc; progress=false)
     pr = profile(fmzc)
     @test startswith(sprint(show, MIME("text/plain"), pr),
                      "MixedModelProfile -- Table with 9 columns and 151 rows:")
