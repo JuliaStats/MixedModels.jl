@@ -1,3 +1,8 @@
+MixedModels v4.22.0 Release Notes
+==============================
+* Support for equal-tail confidence intervals for `MixedModelBootstrap`. [#715]
+* Basic `show` methods for `MixedModelBootstrap` and `MixedModelProfile`. [#715]
+
 MixedModels v4.21.0 Release Notes
 ==============================
 * Auto apply `Grouping()` to grouping variables that don't already have an explicit contrast. [#652]
@@ -476,3 +481,4 @@ Package dependencies
 [#703]: https://github.com/JuliaStats/MixedModels.jl/issues/703
 [#707]: https://github.com/JuliaStats/MixedModels.jl/issues/707
 [#709]: https://github.com/JuliaStats/MixedModels.jl/issues/709
+[#715]: https://github.com/JuliaStats/MixedModels.jl/issues/715
