@@ -21,6 +21,7 @@ include("fixefpr.jl")
 include("sigmapr.jl")
 include("thetapr.jl")
 include("vcpr.jl")
+include("rhoprofile.jl")
 
 """
     profile(m::LinearMixedModel; threshold = 4)
