@@ -278,7 +278,7 @@ function StatsAPI.fit!(
         optsum.final = copy(optsum.initial)
     end
     setpar! = fast ? setθ! : setβθ!
-    prog = ProgressUnknown("Minimizing"; showspeed=true)
+    prog = ProgressUnknown(;desc = "Minimizing", showspeed=true)
     # start from zero for the initial call to obj before optimization
     iter = 0
     fitlog = optsum.fitlog

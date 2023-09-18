@@ -457,7 +457,7 @@ function StatsAPI.fit!(
     end
     opt = Opt(optsum)
     optsum.REML = REML
-    prog = ProgressUnknown("Minimizing"; showspeed=true)
+    prog = ProgressUnknown(;desc = "Minimizing", showspeed=true)
     # start from zero for the initial call to obj before optimization
     iter = 0
     fitlog = optsum.fitlog
