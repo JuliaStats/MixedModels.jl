@@ -1,3 +1,17 @@
+MixedModels v4.22.0 Release Notes
+==============================
+* Support for equal-tail confidence intervals for `MixedModelBootstrap`. [#715]
+* Basic `show` methods for `MixedModelBootstrap` and `MixedModelProfile`. [#715]
+* The `hide_progress` keyword argument to `parametricbootstrap` is now deprecated. Users should isntead use `progress` (which is consistent with e.g. `fit`). [#717]
+
+MixedModels v4.21.0 Release Notes
+==============================
+* Auto apply `Grouping()` to grouping variables that don't already have an explicit contrast. [#652]
+
+MixedModels v4.20.0 Release Notes
+==============================
+* The `.tbl` property of a `MixedModelBootstrap` now includes the correlation parameters for lower triangular elements of the `λ` field. [#702]
+
 MixedModels v4.19.0 Release Notes
 ==============================
 * New method `StatsAPI.coefnames(::ReMat)` returns the coefficient names associated with each grouping factor. [#709]
@@ -448,6 +462,7 @@ Package dependencies
 [#639]: https://github.com/JuliaStats/MixedModels.jl/issues/639
 [#648]: https://github.com/JuliaStats/MixedModels.jl/issues/648
 [#651]: https://github.com/JuliaStats/MixedModels.jl/issues/651
+[#652]: https://github.com/JuliaStats/MixedModels.jl/issues/652
 [#653]: https://github.com/JuliaStats/MixedModels.jl/issues/653
 [#657]: https://github.com/JuliaStats/MixedModels.jl/issues/657
 [#663]: https://github.com/JuliaStats/MixedModels.jl/issues/663
@@ -463,6 +478,9 @@ Package dependencies
 [#682]: https://github.com/JuliaStats/MixedModels.jl/issues/682
 [#694]: https://github.com/JuliaStats/MixedModels.jl/issues/694
 [#698]: https://github.com/JuliaStats/MixedModels.jl/issues/698
+[#702]: https://github.com/JuliaStats/MixedModels.jl/issues/702
 [#703]: https://github.com/JuliaStats/MixedModels.jl/issues/703
 [#707]: https://github.com/JuliaStats/MixedModels.jl/issues/707
 [#709]: https://github.com/JuliaStats/MixedModels.jl/issues/709
+[#715]: https://github.com/JuliaStats/MixedModels.jl/issues/715
+[#717]: https://github.com/JuliaStats/MixedModels.jl/issues/717

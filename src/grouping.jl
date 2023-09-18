@@ -1,4 +1,3 @@
-
 """
     struct Grouping <: StatsModels.AbstractContrasts end
 
@@ -33,4 +32,31 @@ function StatsModels.ContrastsMatrix(
     contrasts::Grouping, levels::AbstractVector
 )
     return StatsModels.ContrastsMatrix(zeros(0, 0), levels, levels, contrasts)
+end
+
+# this arises when there's an interaction as a grouping variable without a corresponding
+# non-interaction grouping, e.g. urban&dist in the contra dataset
+# adapted from https://github.com/JuliaStats/StatsModels.jl/blob/463eb0acb49bc5428374d749c4da90ea2a6c74c4/src/schema.jl#L355-L372
+function StatsModels.apply_schema(
+    t::CategoricalTerm{Grouping},
+    schema::FullRank,
+    ::Type{<:MixedModel},
+    context::AbstractTerm,
+)
+    aliased = drop_term(context, t)
+    @debug "$t in context of $context: aliases $aliased\n  seen already: $(schema.already)"
+    for seen in schema.already
+        if StatsModels.symequal(aliased, seen)
+            @debug "  aliased term already present: $seen"
+            return t
+        end
+    end
+    # aliased term not seen already:
+    # add aliased term to already seen:
+    push!(schema.already, aliased)
+    # repair:
+    new_contrasts = StatsModels.ContrastsMatrix(Grouping(), t.contrasts.levels)
+    t = CategoricalTerm(t.sym, new_contrasts)
+    @debug "  aliased term absent, repairing: $t"
+    return t
 end
