@@ -6,7 +6,6 @@ using DataAPI
 using Distributions
 using GLM
 using JSON3
-using LazyArtifacts
 using LinearAlgebra
 using Markdown
 using NLopt
@@ -27,6 +26,7 @@ using LinearAlgebra: BlasFloat, BlasReal, HermOrSym, PosDefException, copytri!
 using Base: Ryu, require_one_based_indexing
 using DataAPI: levels, refpool, refarray, refvalue
 using GLM: Link, canonicallink, linkfun, linkinv, dispersion, dispersion_parameter
+using MixedModelsDatasets: dataset, datasets
 using NLopt: Opt
 using StatsModels: TableRegressionModel
 using StatsFuns: log2π, normccdf
@@ -164,7 +164,6 @@ abstract type MixedModel{T} <: StatsModels.RegressionModel end # model with fixe
 include("utilities.jl")
 include("blocks.jl")
 include("pca.jl")
-include("datasets.jl")
 include("arraytypes.jl")
 include("varcorr.jl")
 include("Xymat.jl")
