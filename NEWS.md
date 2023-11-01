@@ -2,7 +2,7 @@ MixedModels v4.22.0 Release Notes
 ==============================
 * Support for equal-tail confidence intervals for `MixedModelBootstrap`. [#715]
 * Basic `show` methods for `MixedModelBootstrap` and `MixedModelProfile`. [#715]
-* The `hide_progress` keyword argument to `parametricbootstrap` is now deprecated. Users should isntead use `progress` (which is consistent with e.g. `fit`). [#717]
+* The `hide_progress` keyword argument to `parametricbootstrap` is now deprecated. Users should instead use `progress` (which is consistent with e.g. `fit`). [#717]
 
 MixedModels v4.21.0 Release Notes
 ==============================
