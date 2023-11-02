@@ -185,7 +185,7 @@ end
                                                  1 0 1 0
                                                  1 0 0 1]
 
-        # implict intercept
+        # implicit intercept
         ff = apply_schema(@formula(y ~ 1 + (f | g)), schema(dat), MixedModel)
         rem = modelcols(last(ff.rhs), dat)
         @test size(rem) == (18, 18)

@@ -1,0 +1,21 @@
+# adapted from https://github.com/JuliaDocs/Documenter.jl/blob/master/.github/workflows/SpellCheck.yml
+# see docs at https://github.com/crate-ci/typos
+name: Spell Check
+on: [pull_request]
+
+jobs:
+  typos-check:
+    name: Spell Check with Typos
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Actions Repository
+        uses: actions/checkout@v4
+      - name: Check spelling
+        uses: crate-ci/typos@master
+        with:
+            config: _typos.toml
+            write_changes: true
+      - uses: reviewdog/action-suggester@v1
+        with:
+          tool_name: Typos
+          fail_on_error: true

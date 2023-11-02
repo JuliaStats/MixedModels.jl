@@ -15,7 +15,7 @@ function restoreoptsum!(
         all(ops.lowerbd .≤ dict.initial) &&
         all(ops.lowerbd .≤ dict.final)
     if !okay
-        throw(ArgumentError("initial or final parameters in io do not satify lowerbd"))
+        throw(ArgumentError("initial or final parameters in io do not satisfy lowerbd"))
     end
     for fld in (:feval, :finitial, :fmin, :ftol_rel, :ftol_abs, :maxfeval, :nAGQ, :REML)
         setproperty!(ops, fld, getproperty(dict, fld))

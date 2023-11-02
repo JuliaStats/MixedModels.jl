@@ -75,7 +75,7 @@ end
 
 Restore replicates from `f`, using `m` to create the desired subtype of [`MixedModelFitCollection`](@ref).
 
-`f` can be any entity suppored by `Arrow.Table`. `m` does not have to be fitted, but it must have
+`f` can be any entity supported by `Arrow.Table`. `m` does not have to be fitted, but it must have
 been constructed with the same structure as the source of the saved replicates.
 
 The two-argument method constructs a [`MixedModelBootstrap`](@ref) with the same eltype as `m`.
@@ -92,7 +92,7 @@ end
 # why this weird second method? it allows us to define custom types and write methods
 # to load into those types directly. For example, we could define a `PowerAnalysis <: MixedModelFitCollection`
 # in MixedModelsSim and then overload this method to get a convenient object. 
-# Also, this allows us to write `restorereplicateS(f, m, ::Type{<:MixedModelNonparametricBoostrap})` for
+# Also, this allows us to write `restorereplicateS(f, m, ::Type{<:MixedModelNonparametricBootstrap})` for
 # entities in MixedModels bootstrap
 function restorereplicates(
     f, m::MixedModel, ctype::Type{<:MixedModelFitCollection{T}}
@@ -193,7 +193,7 @@ performance benefits.
 - `β`, `σ`, and `θ` are the values of `m`'s parameters for simulating the responses.
 - `σ` is only valid for `LinearMixedModel` and `GeneralizedLinearMixedModel` for
 families with a dispersion parameter.
-- `progress` controls whehter the progress bar is shown. Note that the progress
+- `progress` controls whether the progress bar is shown. Note that the progress
 bar is automatically disabled for non-interactive (i.e. logging) contexts.
 - `optsum_overrides` is used to override values of [OptSummary](@ref) in the models
 fit during the bootstrapping process. For example, `optsum_overrides=(;ftol_rel=1e-08)`
