@@ -32,7 +32,7 @@ TypedTables = "9d95f2ec-7b3d-5a63-8d20-e2491e220bb9"
 [compat]
 Aqua = "0.7"
 Arrow = "1, 2"
-BSplineKit = "0.14, 0.15, 0.16"
+BSplineKit = "0.14, 0.15, 0.16, 0.17"
 DataAPI = "1"
 Distributions = "0.21, 0.22, 0.23, 0.24, 0.25"
 GLM = "1.8.2"
