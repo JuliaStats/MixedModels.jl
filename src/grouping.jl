@@ -44,10 +44,10 @@ function StatsModels.apply_schema(
     context::AbstractTerm,
 )
     aliased = drop_term(context, t)
-    @debug "$t in context of $context: aliases $aliased\n  seen already: $(schema.already)"
+    #@debug "$t in context of $context: aliases $aliased\n  seen already: $(schema.already)"
     for seen in schema.already
         if StatsModels.symequal(aliased, seen)
-            @debug "  aliased term already present: $seen"
+            #@debug "  aliased term already present: $seen"
             return t
         end
     end
@@ -57,6 +57,6 @@ function StatsModels.apply_schema(
     # repair:
     new_contrasts = StatsModels.ContrastsMatrix(Grouping(), t.contrasts.levels)
     t = CategoricalTerm(t.sym, new_contrasts)
-    @debug "  aliased term absent, repairing: $t"
+    #@debug "  aliased term absent, repairing: $t"
     return t
 end
