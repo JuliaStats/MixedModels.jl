@@ -15,7 +15,7 @@ import LinearAlgebra: BLAS
     # because we actually need one at one point for _same_family()
     Aqua.test_all(MixedModels; ambiguities=false, unbound_args=false,
                   # XXX TODO: upstream this piracy
-                  piracy=(;treat_as_own=[GLM.wrkresp!, Base.:|]))
+                  piracies=(;treat_as_own=[GLM.wrkresp!, Base.:|]))
 end
 
 include("utilities.jl")
