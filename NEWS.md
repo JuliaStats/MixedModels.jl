@@ -1,3 +1,8 @@
+MixedModels v4.22.3 Release Notes
+==============================
+* Comment out calls to `@debug`
+* Update package versions in compat and change `Aqua.test_all` argument name.
+
 MixedModels v4.22.0 Release Notes
 ==============================
 * Support for equal-tail confidence intervals for `MixedModelBootstrap`. [#715]
