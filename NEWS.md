@@ -1,7 +1,7 @@
 MixedModels v4.22.3 Release Notes
 ==============================
-* Comment out calls to `@debug`
-* Update package versions in compat and change `Aqua.test_all` argument name.
+* Comment out calls to `@debug` [#733]
+* Update package versions in compat and change `Aqua.test_all` argument name [#733]
 
 MixedModels v4.22.0 Release Notes
 ==============================
@@ -489,3 +489,4 @@ Package dependencies
 [#709]: https://github.com/JuliaStats/MixedModels.jl/issues/709
 [#715]: https://github.com/JuliaStats/MixedModels.jl/issues/715
 [#717]: https://github.com/JuliaStats/MixedModels.jl/issues/717
+[#733]: https://github.com/JuliaStats/MixedModels.jl/issues/733
