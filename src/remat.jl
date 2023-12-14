@@ -184,7 +184,7 @@ Diagonals have a lower bound of `0`.  Off-diagonals have a lower-bound of `-Inf`
 """
 function lowerbd(A::ReMat{T}) where {T}
     k = size(A.λ, 1)  # construct diagind(A.λ) by hand following #52115
-    return T[x ∈ range(1, step=k + 1, length=k) ? zero(T) : T(-Inf) for x in A.inds]
+    return T[x ∈ range(1; step=k + 1, length=k) ? zero(T) : T(-Inf) for x in A.inds]
 end
 
 """
