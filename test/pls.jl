@@ -700,13 +700,6 @@ end
 @testset "methods we don't define" begin
     m = first(models(:sleepstudy))
     for f in [r2, adjr2]
-        @test_logs (:error,) begin
-            try
-                f(m)
-            catch
-                # capture the error, do nothing
-            end
-        end
-        @test_throws MethodError @suppress f(m)
+        @test_logs (:error,) @test_throws MethodError f(m)
     end
 end
