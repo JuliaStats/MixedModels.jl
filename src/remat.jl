@@ -183,7 +183,8 @@ These are the elements in the lower triangle of `A.λ` in column-major ordering.
 Diagonals have a lower bound of `0`.  Off-diagonals have a lower-bound of `-Inf`.
 """
 function lowerbd(A::ReMat{T}) where {T}
-    return T[x ∈ diagind(A.λ) ? zero(T) : T(-Inf) for x in A.inds]
+    k = size(A.λ, 1)  # construct diagind(A.λ) by hand following #52115
+    return T[x ∈ range(1, step=k + 1, length=k) ? zero(T) : T(-Inf) for x in A.inds]
 end
 
 """
@@ -762,6 +763,7 @@ vsize(::ReMat{T,S}) where {T,S} = S
 
 function zerocorr!(A::ReMat{T}) where {T}
     λ = A.λ = Diagonal(A.λ)
-    A.inds = intersect(A.inds, diagind(λ))
+    k = size(λ, 1)
+    A.inds = intersect(A.inds, range(1, step=k + 1, length=k))
     return A
 end
