@@ -764,6 +764,6 @@ vsize(::ReMat{T,S}) where {T,S} = S
 function zerocorr!(A::ReMat{T}) where {T}
     λ = A.λ = Diagonal(A.λ)
     k = size(λ, 1)
-    A.inds = intersect(A.inds, range(1, step=k + 1, length=k))
+    A.inds = intersect(A.inds, range(1; step=k + 1, length=k))
     return A
 end
