@@ -532,6 +532,9 @@ function StatsAPI.fit!(
     return m
 end
 
+function prfit!(m::LinearMixedModel)
+    return bobyqa(objective!(m), copy(m.optsum.initial); xl=m.optsum.lowerbd)
+end
 """
     fitted!(v::AbstractArray{T}, m::LinearMixedModel{T})
 

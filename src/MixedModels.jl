@@ -12,6 +12,7 @@ using NLopt
 using Random
 using PooledArrays
 using ProgressMeter
+using PRIMA
 using SparseArrays
 using StaticArrays
 using Statistics
