@@ -18,7 +18,7 @@ function LinearAlgebra.mul!(
             αbnz = α * bnz[ib]
             jj = brv[ib]
             for ia in nzrange(A, j)
-                C[arv[ia], jj] += anz[ia] * αbnz
+                C[arv[ia], jj] = fma(anz[ia], αbnz,  C[arv[ia], jj])
             end
         end
     end

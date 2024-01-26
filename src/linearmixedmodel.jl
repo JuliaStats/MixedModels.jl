@@ -767,7 +767,7 @@ function StatsAPI.leverage(m::LinearMixedModel{T}) where {T}
             z = trm.z
             stride = size(z, 1)
             mul!(
-                view(rhs2, (rhsoffset + (trm.refs[i] - 1) * stride) .+ Base.OneTo(stride)),
+                view(rhs2, fma((trm.refs[i] - 1), stride, rhsoffset) .+ Base.OneTo(stride)),
                 adjoint(trm.λ),
                 view(z, :, i),
             )
@@ -816,7 +816,7 @@ function objective(m::LinearMixedModel{T}) where {T}
     val = if isnothing(σ)
         logdet(m) + denomdf * (one(T) + log2π + log(pwrss(m) / denomdf))
     else
-        denomdf * (log2π + 2 * log(σ)) + logdet(m) + pwrss(m) / σ^2
+        fma(denomdf, fma(2, log(σ), log2π), (logdet(m) + pwrss(m) / σ^2))
     end
     return isempty(wts) ? val : val - T(2.0) * sum(log, wts)
 end
