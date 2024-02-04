@@ -1,5 +1,6 @@
 # This test file is not run with the package tests.
-# It simply defines a function that can be used to compare the PRIMA and NLopt implementations of BOBYQA.
+# Compare the PRIMA and NLopt implementations of BOBYQA.
+
 using MixedModels, PRIMA
 
 include("modelcache.jl")
@@ -29,6 +30,6 @@ function comparePRIMA(dsnm)
             )
         end
     end
-    return res
+    return 
 end
 
