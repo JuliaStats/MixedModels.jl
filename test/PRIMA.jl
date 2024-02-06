@@ -12,17 +12,20 @@ contrasts[:service] = HelmertCoding()
 
 
 function comparePRIMA(dsnm)
-    res = @NamedTuple{ds::Symbol, frm::Int, Pfinal::Float64, fdiff::Float64, Peval::Int, ediff::Int}[]
+    res = @NamedTuple{ds::Symbol, frm::Int, k::Int, knn::Int, Pfinal::Float64, fdiff::Float64, Peval::Int, ediff::Int}[]
     if haskey(fms, dsnm)
         for (i, f) in enumerate(fms[dsnm])
             m = LinearMixedModel(f, dataset(dsnm); contrasts)
-            x, info = bobyqa(objective!(m), m.optsum.initial; xl=m.optsum.lowerbd)
+            xl = m.optsum.lowerbd
+            x, info = bobyqa(objective!(m), m.optsum.initial; xl)
             fit!(m; progress=false)
             push!(
                 res,
                 (;
                     ds=dsnm,
                     frm=i,
+                    k = length(xl),
+                    knn = count(iszero, xl),
                     Pfinal=info.fx,
                     fdiff=m.optsum.fmin - info.fx,
                     Peval=info.nf,
