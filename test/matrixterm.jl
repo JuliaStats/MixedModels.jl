@@ -42,7 +42,11 @@ end
         @test typeof(X.x) <: SparseMatrixCSC
         @test X.rank == 28
         @test X.cnames == fe.cnames
-        m1 = fit!(LinearMixedModel(collect(m.y), X, deepcopy(m.reterms), m.formula); progress=false)
+        m1 = LinearMixedModel(collect(m.y), X, deepcopy(m.reterms), m.formula)
+        # because of the way the initial values are calculated
+        # m1.optsum.initial == m.optsum.final at this point
+        copyto!(m1.optsum.initial, m.optsum.initial)
+        m1 = fit!(m1; progress=false)
         @test isapprox(m1.θ, m.θ, rtol = 1.0e-5)
     end
 
