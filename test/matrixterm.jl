@@ -46,7 +46,7 @@ end
         # because of the way the initial values are calculated
         # m1.optsum.initial == m.optsum.final at this point
         copyto!(m1.optsum.initial, m.optsum.initial)
-        m1 = fit!(m1; progress=false)
+        fit!(m1; progress=false)
         @test isapprox(m1.θ, m.θ, rtol = 1.0e-5)
     end
 
