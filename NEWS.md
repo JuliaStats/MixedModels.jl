@@ -1,3 +1,8 @@
+MixedModels v4.22.4 Release Notes
+==============================
+* Switch to explicit imports from all included packages (i.e. replace `using Foo` by `using Foo: Foo, bar, baz`) [#748]
+* Reset parameter values before a `deepcopy` in an test (doesn't change test result) [#744]
+
 MixedModels v4.22.3 Release Notes
 ==============================
 * Comment out calls to `@debug` [#733]
@@ -490,3 +495,5 @@ Package dependencies
 [#715]: https://github.com/JuliaStats/MixedModels.jl/issues/715
 [#717]: https://github.com/JuliaStats/MixedModels.jl/issues/717
 [#733]: https://github.com/JuliaStats/MixedModels.jl/issues/733
+[#744]: https://github.com/JuliaStats/MixedModels.jl/issues/744
+[#748]: https://github.com/JuliaStats/MixedModels.jl/issues/748
