@@ -20,8 +20,8 @@ import LinearAlgebra: BLAS
 end
 
 @testset "ExplicitImports" begin
-    check_no_implicit_imports(MixedModels)
-    check_no_stale_explicit_imports(MixedModels)
+    @test check_no_implicit_imports(MixedModels) === nothing
+    @test check_no_stale_explicit_imports(MixedModels) === nothing
 end
 
 include("utilities.jl")
