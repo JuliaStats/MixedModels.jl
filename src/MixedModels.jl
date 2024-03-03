@@ -24,7 +24,7 @@ using Markdown: Markdown
 using MixedModelsDatasets: dataset, datasets
 using NLopt: NLopt, Opt, ftol_abs, ftol_rel, initial_step, maxtime, xtol_abs, xtol_rel
 using PooledArrays: PooledArrays, PooledArray
-using PrecompileTools: PrecompileTools
+using PrecompileTools: PrecompileTools, @setup_workload, @compile_workload
 using ProgressMeter: ProgressMeter, Progress, ProgressUnknown, finish!, next!
 using Random: Random, AbstractRNG, randn!
 using SparseArrays: SparseArrays, SparseMatrixCSC, SparseVector, dropzeros!, nnz
@@ -207,8 +207,6 @@ include("grouping.jl")
 include("mimeshow.jl")
 include("serialization.jl")
 include("profile/profile.jl")
-
-using PrecompileTools
 
 @setup_workload begin
     # Putting some things in `setup` can reduce the size of the
