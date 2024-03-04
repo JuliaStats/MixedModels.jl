@@ -1,4 +1,5 @@
 using Aqua
+using ExplicitImports
 using GLM
 using MixedModels
 using Test
@@ -16,6 +17,11 @@ import LinearAlgebra: BLAS
     Aqua.test_all(MixedModels; ambiguities=false, unbound_args=false,
                   # XXX TODO: upstream this piracy
                   piracies=(;treat_as_own=[GLM.wrkresp!, Base.:|]))
+end
+
+@testset "ExplicitImports" begin
+    @test check_no_implicit_imports(MixedModels) === nothing
+    @test check_no_stale_explicit_imports(MixedModels) === nothing
 end
 
 include("utilities.jl")
