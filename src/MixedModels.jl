@@ -2,11 +2,8 @@ module MixedModels
 
 using Arrow: Arrow
 using Base: Ryu, require_one_based_indexing
-using BSplineKit: BSplineKit
-using BSplineKit.BSplines: BSplineOrder
-using BSplineKit.BoundaryConditions: Natural
-using BSplineKit.DifferentialOps: Derivative
-using BSplineKit.SplineInterpolations: SplineInterpolation, interpolate
+using BSplineKit: BSplineKit, BSplineOrder, Natural, Derivative, SplineInterpolation
+using BSplineKit: interpolate
 using DataAPI: DataAPI, levels, refpool, refarray, refvalue
 using Distributions: Distributions, Bernoulli, Binomial, Chisq, Distribution, Gamma
 using Distributions: InverseGaussian, Normal, Poisson, ccdf, estimate
@@ -29,8 +26,7 @@ using ProgressMeter: ProgressMeter, Progress, ProgressUnknown, finish!, next!
 using Random: Random, AbstractRNG, randn!
 using SparseArrays: SparseArrays, SparseMatrixCSC, SparseVector, dropzeros!, nnz
 using SparseArrays: nonzeros, nzrange, rowvals, sparse
-using StaticArrays: StaticArrays
-using StaticArraysCore: SVector
+using StaticArrays: StaticArrays, SVector
 using Statistics: Statistics, mean, quantile, std
 using StatsAPI: StatsAPI, aic, aicc, bic, coef, coefnames, coeftable, confint, deviance
 using StatsAPI: dof, dof_residual, fit, fit!, fitted, isfitted, islinear, leverage
