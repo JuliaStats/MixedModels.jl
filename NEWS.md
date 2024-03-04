@@ -1,7 +1,7 @@
 MixedModels v4.22.4 Release Notes
 ==============================
 * Switch to explicit imports from all included packages (i.e. replace `using Foo` by `using Foo: Foo, bar, baz`) [#748]
-* Reset parameter values before a `deepcopy` in an test (doesn't change test result) [#744]
+* Reset parameter values before a `deepcopy` in a test (doesn't change test result) [#744]
 
 MixedModels v4.22.3 Release Notes
 ==============================
