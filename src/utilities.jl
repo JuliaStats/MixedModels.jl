@@ -58,7 +58,7 @@ Return a string of length `n` containing `s` in the center (more-or-less).
 cpad(s::String, n::Integer) = rpad(lpad(s, (n + textwidth(s)) >> 1), n)
 
 """
-densify(S::SparseMatrix, threshold=0.1)
+    densify(S::SparseMatrix, threshold=0.1)
 
 Convert sparse `S` to `Diagonal` if `S` is diagonal or to `Array(S)` if
 the proportion of nonzeros exceeds `threshold`.
