@@ -22,7 +22,7 @@ function MixedModels.rankUpdate!(
     Cdiag = C.data.diag
     Adiag = A.diag
     @inbounds for idx in eachindex(Cdiag, Adiag)
-        Cdiag[idx] = β * Cdiag[idx] + α * abs2(Adiag[idx])
+        Cdiag[idx] = muladd(β, Cdiag[idx], α * abs2(Adiag[idx]))
     end
     return C
 end
@@ -52,7 +52,7 @@ function _columndot(rv, nz, rngi, rngj)
     while i ≤ ni && j ≤ nj
         @inbounds ri, rj = rv[rngi[i]], rv[rngj[j]]
         if ri == rj
-            @inbounds accum += nz[rngi[i]] * nz[rngj[j]]
+            @inbounds accum = muladd(nz[rngi[i]], nz[rngj[j]], accum)
             i += 1
             j += 1
         elseif ri < rj
@@ -80,7 +80,7 @@ function rankUpdate!(C::HermOrSym{T,S}, A::SparseMatrixCSC{T}, α, β) where {T,
                 rvj = rv[j]
                 for i in k:lenrngjj
                     kk = rangejj[i]
-                    Cd[rv[kk], rvj] += nz[kk] * anzj
+                    Cd[rv[kk], rvj] = muladd(nz[kk], anzj, Cd[rv[kk], rvj])
                 end
             end
         end
@@ -88,9 +88,9 @@ function rankUpdate!(C::HermOrSym{T,S}, A::SparseMatrixCSC{T}, α, β) where {T,
         @inbounds for j in axes(C, 2)
             rngj = nzrange(A, j)
             for i in 1:(j - 1)
-                Cd[i, j] += α * _columndot(rv, nz, nzrange(A, i), rngj)
+                Cd[i, j] = muladd(α, _columndot(rv, nz, nzrange(A, i), rngj), Cd[i, j])
             end
-            Cd[j, j] += α * sum(i -> abs2(nz[i]), rngj)
+            Cd[j, j] = muladd(α, sum(i -> abs2(nz[i]), rngj), Cd[j, j])
         end
     end
     return C
@@ -109,7 +109,7 @@ function rankUpdate!(
     isone(β) || rmul!(Cdiag, β)
 
     @inbounds for i in eachindex(Cdiag)
-        Cdiag[i] += α * sum(abs2, view(A, i, :))
+        Cdiag[i] = muladd(α, sum(abs2, view(A, i, :)), Cdiag[i])
     end
 
     return C
@@ -132,9 +132,9 @@ function rankUpdate!(
             AtAij = 0
             for idx in axes(A, 2)
                 # because the second multiplicant is from A', swap index order
-                AtAij += A[iind, idx] * A[jind, idx]
+                AtAij = muladd(A[iind, idx], A[jind, idx], AtAij)
             end
-            Cdat[i, j, k] += α * AtAij
+            Cdat[i, j, k] = muladd(α, AtAij, Cdat[i, j, k])
         end
     end
 
@@ -152,7 +152,7 @@ function rankUpdate!(
         throw(ArgumentError("Columns of A must have exactly 1 nonzero"))
 
     for (r, nz) in zip(rowvals(A), nonzeros(A))
-        dd[r] += α * abs2(nz)
+        dd[r] = muladd(α, abs2(nz), dd[r])
     end
 
     return C
