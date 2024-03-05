@@ -22,7 +22,7 @@ function MixedModels.rankUpdate!(
     Cdiag = C.data.diag
     Adiag = A.diag
     @inbounds for idx in eachindex(Cdiag, Adiag)
-        Cdiag[idx] = muladd(β,Cdiag[idx], α * abs2(Adiag[idx]))
+        Cdiag[idx] = muladd(β, Cdiag[idx], α * abs2(Adiag[idx]))
     end
     return C
 end

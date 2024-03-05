@@ -767,7 +767,9 @@ function StatsAPI.leverage(m::LinearMixedModel{T}) where {T}
             z = trm.z
             stride = size(z, 1)
             mul!(
-                view(rhs2, muladd((trm.refs[i] - 1), stride, rhsoffset) .+ Base.OneTo(stride)),
+                view(
+                    rhs2, muladd((trm.refs[i] - 1), stride, rhsoffset) .+ Base.OneTo(stride)
+                ),
                 adjoint(trm.λ),
                 view(z, :, i),
             )
