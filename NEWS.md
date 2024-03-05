@@ -499,5 +499,6 @@ Package dependencies
 [#715]: https://github.com/JuliaStats/MixedModels.jl/issues/715
 [#717]: https://github.com/JuliaStats/MixedModels.jl/issues/717
 [#733]: https://github.com/JuliaStats/MixedModels.jl/issues/733
+[#738]: https://github.com/JuliaStats/MixedModels.jl/issues/738
 [#744]: https://github.com/JuliaStats/MixedModels.jl/issues/744
 [#748]: https://github.com/JuliaStats/MixedModels.jl/issues/748
