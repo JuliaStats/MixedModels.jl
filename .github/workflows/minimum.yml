@@ -40,3 +40,5 @@ jobs:
         with:
           flags: minimum
           files: lcov.info
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
