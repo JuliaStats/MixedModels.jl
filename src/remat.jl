@@ -564,7 +564,10 @@ function copyscaleinflate! end
 
 function copyscaleinflate!(Ljj::Diagonal{T}, Ajj::Diagonal{T}, Λj::ReMat{T,1}) where {T}
     Ldiag, Adiag = Ljj.diag, Ajj.diag
-    broadcast!((x, λsqr) -> x * λsqr + one(T), Ldiag, Adiag, abs2(only(Λj.λ)))
+    lambsq = abs2(only(Λj.λ.data))
+    @inbounds for i in eachindex(Ldiag, Adiag)
+        Ldiag[i] = lambsq * Adiag[i] + one(T)
+    end
     return Ljj
 end
 
@@ -606,14 +609,14 @@ function copyscaleinflate!(
     iszero(r) || throw(DimensionMismatch("size(Ljj, 1) is not a multiple of S"))
     λ = Λj.λ
     offset = 0
-    @inbounds for k in 1:q
+    @inbounds for _ in 1:q
         inds = (offset + 1):(offset + S)
         tmp = view(Ljj, inds, inds)
         lmul!(adjoint(λ), rmul!(tmp, λ))
         offset += S
     end
     for k in diagind(Ljj)
-        Ljj[k] += 1
+        Ljj[k] += one(T)
     end
     return Ljj
 end

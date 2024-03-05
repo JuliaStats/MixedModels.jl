@@ -1,35 +1,47 @@
 module MixedModels
 
-using Arrow
-using BSplineKit
-using DataAPI
-using Distributions
-using GLM
-using JSON3
-using LinearAlgebra
-using Markdown
-using NLopt
-using Random
-using PooledArrays
-using ProgressMeter
-using SparseArrays
-using StaticArrays
-using Statistics
-using StatsAPI
-using StatsBase
-using StatsModels
-using StructTypes
-using Tables
-using TypedTables
-
-using LinearAlgebra: BlasFloat, BlasReal, HermOrSym, PosDefException, copytri!
+using Arrow: Arrow
 using Base: Ryu, require_one_based_indexing
-using DataAPI: levels, refpool, refarray, refvalue
-using GLM: Link, canonicallink, linkfun, linkinv, dispersion, dispersion_parameter
+using BSplineKit: BSplineKit, BSplineOrder, Natural, Derivative, SplineInterpolation
+using BSplineKit: interpolate
+using DataAPI: DataAPI, levels, refpool, refarray, refvalue
+using Distributions: Distributions, Bernoulli, Binomial, Chisq, Distribution, Gamma
+using Distributions: InverseGaussian, Normal, Poisson, ccdf, estimate
+using GLM: GLM, GeneralizedLinearModel, IdentityLink, InverseLink, LinearModel
+using GLM: Link, LogLink, LogitLink, ProbitLink, SqrtLink
+using GLM: canonicallink, glm, linkinv, dispersion, dispersion_parameter
+using JSON3: JSON3
+using LinearAlgebra: LinearAlgebra, Adjoint, BLAS, BlasFloat, ColumnNorm
+using LinearAlgebra: Diagonal, Hermitian, HermOrSym, I, LAPACK, LowerTriangular
+using LinearAlgebra: PosDefException, SVD, SymTridiagonal, Symmetric
+using LinearAlgebra: UpperTriangular, cond, diag, diagind, dot, eigen, isdiag
+using LinearAlgebra: ldiv!, lmul!, logdet, mul!, norm, normalize, normalize!, qr
+using LinearAlgebra: rank, rdiv!, rmul!, svd, tr, tril!
+using Markdown: Markdown
 using MixedModelsDatasets: dataset, datasets
-using NLopt: Opt
-using StatsModels: TableRegressionModel
+using NLopt: NLopt, Opt, ftol_abs, ftol_rel, initial_step, maxtime, xtol_abs, xtol_rel
+using PooledArrays: PooledArrays, PooledArray
+using PrecompileTools: PrecompileTools, @setup_workload, @compile_workload
+using ProgressMeter: ProgressMeter, Progress, ProgressUnknown, finish!, next!
+using Random: Random, AbstractRNG, randn!
+using SparseArrays: SparseArrays, SparseMatrixCSC, SparseVector, dropzeros!, nnz
+using SparseArrays: nonzeros, nzrange, rowvals, sparse
+using StaticArrays: StaticArrays, SVector
+using Statistics: Statistics, mean, quantile, std
+using StatsAPI: StatsAPI, aic, aicc, bic, coef, coefnames, coeftable, confint, deviance
+using StatsAPI: dof, dof_residual, fit, fit!, fitted, isfitted, islinear, leverage
+using StatsAPI: loglikelihood, meanresponse, modelmatrix, nobs, predict, r2, residuals
+using StatsAPI: response, responsename, stderror, vcov, weights
+using StatsBase: StatsBase, CoefTable, model_response, summarystats
 using StatsFuns: log2π, normccdf
+using StatsModels: StatsModels, AbstractContrasts, AbstractTerm, CategoricalTerm
+using StatsModels: ConstantTerm, DummyCoding, EffectsCoding, FormulaTerm, FunctionTerm
+using StatsModels: HelmertCoding, HypothesisCoding, InteractionTerm, InterceptTerm
+using StatsModels: MatrixTerm, SeqDiffCoding, TableRegressionModel, Term
+using StatsModels: apply_schema, drop_term, formula, modelcols, term, @formula
+using StructTypes: StructTypes
+using Tables: Tables, columntable, rows
+using TypedTables: TypedTables, DictTable, FlexTable, Table
 
 export @formula,
     AbstractReMat,
@@ -77,6 +89,8 @@ export @formula,
     condVar,
     condVartables,
     confint,
+    dataset,
+    datasets,
     deviance,
     dispersion,
     dispersion_parameter,
@@ -189,8 +203,6 @@ include("grouping.jl")
 include("mimeshow.jl")
 include("serialization.jl")
 include("profile/profile.jl")
-
-using PrecompileTools
 
 @setup_workload begin
     # Putting some things in `setup` can reduce the size of the
