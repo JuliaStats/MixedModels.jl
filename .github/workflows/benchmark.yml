@@ -3,16 +3,17 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
 on:
-  pull_request:
-    branches:
-      - main
-    paths-ignore:
-      - 'LICENSE.md'
-      - 'README.md'
-      - 'docs/**'
-      - 'issues/**'
-      - 'format/**'
-      - 'test/**'
+    workflow_dispatch:
+#   pull_request:
+#     branches:
+#       - main
+#     paths-ignore:
+#       - 'LICENSE.md'
+#       - 'README.md'
+#       - 'docs/**'
+#       - 'issues/**'
+#       - 'format/**'
+#       - 'test/**'
 jobs:
     benchmarks:
         runs-on: ubuntu-latest
