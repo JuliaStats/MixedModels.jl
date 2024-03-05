@@ -48,11 +48,11 @@ end
 
 Convenience constructor for a sparse [`FeTerm`](@ref) assuming full rank, identity pivot and unit weights.
 
-Note: automatic rank deficiency handling may be added to this method in the future, as discused in
+Note: automatic rank deficiency handling may be added to this method in the future, as discussed in
 the vignette "[Rank deficiency in mixed-effects models](@ref)" for general `FeTerm`.
 """
 function FeTerm(X::SparseMatrixCSC, cnms::AbstractVector{String})
-    @debug "Full rank is assumed for sparse fixed-effect matrices."
+    #@debug "Full rank is assumed for sparse fixed-effect matrices."
     rank = size(X, 2)
     return FeTerm{eltype(X),typeof(X)}(X, collect(1:rank), rank, collect(cnms))
 end

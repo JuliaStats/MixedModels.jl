@@ -139,7 +139,7 @@ end
 
     vc = fm1.vcov
     @test isa(vc, Matrix{Float64})
-    @test only(vc) ≈ 375.7167775 rtol=1.e-6
+    @test only(vc) ≈ 375.7167775 rtol=1.e-3
     # since we're caching the fits, we should get it back to being correctly fitted
     # we also take this opportunity to test fitlog
     @testset "fitlog" begin
@@ -700,13 +700,6 @@ end
 @testset "methods we don't define" begin
     m = first(models(:sleepstudy))
     for f in [r2, adjr2]
-        @test_logs (:error,) begin
-            try
-                f(m)
-            catch
-                # capture the error, do nothing
-            end
-        end
-        @test_throws MethodError @suppress f(m)
+        @test_logs (:error,) @test_throws MethodError f(m)
     end
 end

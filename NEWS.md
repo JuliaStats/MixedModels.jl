@@ -1,8 +1,23 @@
+MixedModels v4.22.5 Release Notes
+==============================
+* Use `muladd` where possible to enable fused multiply-add (FMA) on architectures with hardware support. FMA will generally improve computational speed and gives more accurate rounding. [#740]
+* Replace broadcasted lambda with explicit loop and use `one`. This may result in a small performance improvement. [#738]
+
+MixedModels v4.22.4 Release Notes
+==============================
+* Switch to explicit imports from all included packages (i.e. replace `using Foo` by `using Foo: Foo, bar, baz`) [#748]
+* Reset parameter values before a `deepcopy` in a test (doesn't change test result) [#744]
+
+MixedModels v4.22.3 Release Notes
+==============================
+* Comment out calls to `@debug` [#733]
+* Update package versions in compat and change `Aqua.test_all` argument name [#733]
+
 MixedModels v4.22.0 Release Notes
 ==============================
 * Support for equal-tail confidence intervals for `MixedModelBootstrap`. [#715]
 * Basic `show` methods for `MixedModelBootstrap` and `MixedModelProfile`. [#715]
-* The `hide_progress` keyword argument to `parametricbootstrap` is now deprecated. Users should isntead use `progress` (which is consistent with e.g. `fit`). [#717]
+* The `hide_progress` keyword argument to `parametricbootstrap` is now deprecated. Users should instead use `progress` (which is consistent with e.g. `fit`). [#717]
 
 MixedModels v4.21.0 Release Notes
 ==============================
@@ -484,3 +499,8 @@ Package dependencies
 [#709]: https://github.com/JuliaStats/MixedModels.jl/issues/709
 [#715]: https://github.com/JuliaStats/MixedModels.jl/issues/715
 [#717]: https://github.com/JuliaStats/MixedModels.jl/issues/717
+[#733]: https://github.com/JuliaStats/MixedModels.jl/issues/733
+[#738]: https://github.com/JuliaStats/MixedModels.jl/issues/738
+[#740]: https://github.com/JuliaStats/MixedModels.jl/issues/740
+[#744]: https://github.com/JuliaStats/MixedModels.jl/issues/744
+[#748]: https://github.com/JuliaStats/MixedModels.jl/issues/748
