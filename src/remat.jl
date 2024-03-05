@@ -284,7 +284,7 @@ function LinearAlgebra.mul!(
     @inbounds for (j, rrj) in enumerate(B.refs)
         αzj = α * zz[j]
         for i in 1:p
-            C[i, rrj] = fma(αzj, Awt[j, i], C[i, rrj])
+            C[i, rrj] = muladd(αzj, Awt[j, i], C[i, rrj])
         end
     end
     return C
@@ -310,7 +310,7 @@ function LinearAlgebra.mul!(
             aki = α * Awt[k, i]
             kk = Int(rr[k])
             for ii in 1:S
-                scr[ii, kk] = fma(aki, Bwt[ii, k], scr[ii, kk])
+                scr[ii, kk] = muladd(aki, Bwt[ii, k], scr[ii, kk])
             end
         end
         for j in 1:q
@@ -340,7 +340,7 @@ function LinearAlgebra.mul!(
         coljlast = Int(C.colptr[j + 1] - 1)
         K = searchsortedfirst(rv, i, Int(C.colptr[j]), coljlast, Base.Order.Forward)
         if K ≤ coljlast && rv[K] == i
-            nz[K] = fma(Az[k], Bz[k], nz[K])
+            nz[K] = muladd(Az[k], Bz[k], nz[K])
         else
             throw(ArgumentError("C does not have the nonzero pattern of A'B"))
         end
@@ -361,7 +361,7 @@ function LinearAlgebra.mul!(
         @inbounds for i in 1:S
             zij = Awtz[i, j]
             for k in 1:S
-                Cd[k, i, r] = fma(zij, Awtz[k, j], Cd[k, i, r])
+                Cd[k, i, r] = muladd(zij, Awtz[k, j], Cd[k, i, r])
             end
         end
     end
@@ -397,7 +397,7 @@ function LinearAlgebra.mul!(
             jjo = jj + joffset
             Bzijj = Bz[jj, i]
             for ii in 1:S
-                C[ii + ioffset, jjo] = fma(Az[ii, i], Bzijj, C[ii + ioffset, jjo])
+                C[ii + ioffset, jjo] = muladd(Az[ii, i], Bzijj, C[ii + ioffset, jjo])
             end
         end
     end
@@ -416,7 +416,7 @@ function LinearAlgebra.mul!(
     isone(beta) || rmul!(y, beta)
     z = A.z
     @inbounds for (i, r) in enumerate(A.refs)
-        # muladd because explicit fma doesn't work with missings
+        # must be muladd and not fma because of potential missings
         y[i] = muladd(alpha * b[r], z[i], y[i])
     end
     return y
@@ -447,7 +447,7 @@ function LinearAlgebra.mul!(
     @inbounds for (i, ii) in enumerate(A.refs)
         offset = (ii - 1) * k
         for j in 1:k
-            # muladd because explicit fma doesn't work with missings
+            # must be muladd and not fma because of potential missings
             y[i] = muladd(alpha * Z[j, i], b[offset + j], y[i])
         end
     end
@@ -468,7 +468,7 @@ function LinearAlgebra.mul!(
     isone(beta) || rmul!(y, beta)
     @inbounds for (i, ii) in enumerate(refarray(A))
         for j in 1:k
-            # muladd because explicit fma doesn't work with missings
+            # must be muladd and not fma because of potential missings
             y[i] = muladd(alpha * Z[j, i], B[j, ii], y[i])
         end
     end
@@ -569,7 +569,7 @@ function copyscaleinflate!(Ljj::Diagonal{T}, Ajj::Diagonal{T}, Λj::ReMat{T,1}) 
     Ldiag, Adiag = Ljj.diag, Ajj.diag
     lambsq = abs2(only(Λj.λ.data))
     @inbounds for i in eachindex(Ldiag, Adiag)
-        Ldiag[i] = fma(lambsq, Adiag[i], one(T))
+        Ldiag[i] = muladd(lambsq, Adiag[i], one(T))
     end
     return Ljj
 end
@@ -578,7 +578,7 @@ function copyscaleinflate!(Ljj::Matrix{T}, Ajj::Diagonal{T}, Λj::ReMat{T,1}) wh
     fill!(Ljj, zero(T))
     lambsq = abs2(only(Λj.λ.data))
     @inbounds for (i, a) in enumerate(Ajj.diag)
-        Ljj[i, i] = fma(lambsq, a, one(T))
+        Ljj[i, i] = muladd(lambsq, a, one(T))
     end
     return Ljj
 end
