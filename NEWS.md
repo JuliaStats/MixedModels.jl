@@ -1,3 +1,7 @@
+MixedModels v4.22.5 Release Notes
+==============================
+* Replace broadcasted lambda with explicit loop and use `one`. This may result in a small performance improvement. [#738]
+
 MixedModels v4.22.4 Release Notes
 ==============================
 * Switch to explicit imports from all included packages (i.e. replace `using Foo` by `using Foo: Foo, bar, baz`) [#748]
