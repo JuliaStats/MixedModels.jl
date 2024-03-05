@@ -1,5 +1,6 @@
 MixedModels v4.22.5 Release Notes
 ==============================
+* Use `muladd` where possible to enable fused multiply-add (FMA) on architectures with hardware support. FMA will generally improve computational speed and gives more accurate rounding. [#740]
 * Replace broadcasted lambda with explicit loop and use `one`. This may result in a small performance improvement. [#738]
 
 MixedModels v4.22.4 Release Notes
@@ -500,5 +501,6 @@ Package dependencies
 [#717]: https://github.com/JuliaStats/MixedModels.jl/issues/717
 [#733]: https://github.com/JuliaStats/MixedModels.jl/issues/733
 [#738]: https://github.com/JuliaStats/MixedModels.jl/issues/738
+[#740]: https://github.com/JuliaStats/MixedModels.jl/issues/740
 [#744]: https://github.com/JuliaStats/MixedModels.jl/issues/744
 [#748]: https://github.com/JuliaStats/MixedModels.jl/issues/748

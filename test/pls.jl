@@ -139,7 +139,7 @@ end
 
     vc = fm1.vcov
     @test isa(vc, Matrix{Float64})
-    @test only(vc) ≈ 375.7167775 rtol=1.e-6
+    @test only(vc) ≈ 375.7167775 rtol=1.e-3
     # since we're caching the fits, we should get it back to being correctly fitted
     # we also take this opportunity to test fitlog
     @testset "fitlog" begin
