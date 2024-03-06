@@ -218,8 +218,8 @@ include("profile/profile.jl")
         # these are relatively small models and so shouldn't increase precompile times all that much
         # while still massively boosting load and TTFX times
         m = fit(MixedModel,
-                @formula(reaction ~ 1 + days + (1 + days | subj)),
-                sleepstudy; progress)
+            @formula(reaction ~ 1 + days + (1 + days | subj)),
+            sleepstudy; progress)
         show(io, m)
         show(io, m.PCA.subj)
         show(io, m.rePCA)
