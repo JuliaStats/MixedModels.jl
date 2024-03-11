@@ -33,6 +33,7 @@ TypedTables = "9d95f2ec-7b3d-5a63-8d20-e2491e220bb9"
 Aqua = "0.8"
 Arrow = "1, 2"
 BSplineKit = "0.14, 0.15, 0.16, 0.17"
+Chairmarks = "1"
 DataAPI = "1"
 DataFrames = "1"
 Distributions = "0.21, 0.22, 0.23, 0.24, 0.25"
@@ -65,6 +66,7 @@ julia = "1.8"
 
 [extras]
 Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
+Chairmarks = "0ca39b1e-fe0b-4e98-acfc-b1656634c4de"
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 ExplicitImports = "7d51a73a-1435-4ff3-83d9-f097790105c7"
 InteractiveUtils = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
@@ -73,4 +75,4 @@ Suppressor = "fd094767-a336-5f1f-9728-57cf17d0bbfb"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Aqua", "DataFrames", "ExplicitImports", "InteractiveUtils", "StableRNGs", "Suppressor", "Test"]
+test = ["Aqua", "Chairmarks", "DataFrames", "ExplicitImports", "InteractiveUtils", "StableRNGs", "Suppressor", "Test"]
