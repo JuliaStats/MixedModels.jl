@@ -266,9 +266,11 @@ function StatsAPI.fit(
     end
 end
 
-function StatsAPI.coef(m::LinearMixedModel{T}) where {T}
+StatsAPI.coef(m::LinearMixedModel{T}) where {T} = coef!(Vector{T}(undef, length(m.feterm.piv)), m)
+
+function coef!(v::Vector{T}, m::LinearMixedModel{T}) where {T}
     piv = m.feterm.piv
-    return invpermute!(fixef!(similar(piv, T), m), piv)
+    return invpermute!(fixef!(v, m), piv)
 end
 
 βs(m::LinearMixedModel) = NamedTuple{(Symbol.(coefnames(m))...,)}(coef(m))
