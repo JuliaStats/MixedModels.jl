@@ -206,7 +206,7 @@ of coverage intervals.
     All coefficients are bootstrapped. In the rank deficient case, the inestimatable coefficients are
     treated as -0.0 in the simulations underlying the bootstrap, which will generally result
     in their estimate from the simulated data also being being inestimable and thus set to -0.0.
-    **However this behavior behavior may change in future releases to explicitly drop the
+    **However this behavior may change in future releases to explicitly drop the
     extraneous columns before simulation and thus not include their estimates in the bootstrap result.**
 """
 function parametricbootstrap(
