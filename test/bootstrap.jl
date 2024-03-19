@@ -189,7 +189,7 @@ end
         @test pb1 == restorereplicates(seekstart(io), MixedModels.unfit!(deepcopy(m1)))
 
         @test pb1 ≈ restorereplicates(seekstart(io), m1, Float16) rtol=1
-end
+    end
 
     @testset "Bernoulli simulate! and GLMM bootstrap" begin
         contra = dataset(:contra)
@@ -220,6 +220,22 @@ end
                                                        σ=2, progress=false)
         @test sum(issingular(bs)) == 0
     end
+
+    @testset "Rank deficient" begin
+        rng = MersenneTwister(0);
+        x = rand(rng, 100);
+        data = (x = x, x2 = 1.5 .* x, y = rand(rng, 100), z = repeat('A':'T', 5))
+        model = @suppress fit(MixedModel, @formula(y ~ x + x2 + (1|z)), data; progress=false)
+        boot = quickboot(model, 10)
+
+        dropped_idx = model.feterm.piv[end]
+        dropped_coef = coefnames(model)[dropped_idx]
+        @test all(boot.β) do nt
+            # if we're the dropped coef, then we must be -0.0
+            # need isequal because of -0.0
+           return nt.coefname != dropped_coef || isequal(nt.β, -0.0)
+        end
+    end
 end
 
 @testset "show and summary" begin
@@ -236,7 +252,7 @@ end
     @test nrow(df) == 151
     @test propertynames(df) == collect(propertynames(pr.tbl))
 
-    @testset "CI method comparison" begin    
+    @testset "CI method comparison" begin
         level = 0.68
         ci_boot_equaltail = confint(pb; level, method=:equaltail)
         ci_boot_shortest = confint(pb; level, method=:shortest)
