@@ -266,7 +266,9 @@ function StatsAPI.fit(
     end
 end
 
-StatsAPI.coef(m::LinearMixedModel{T}) where {T} = coef!(Vector{T}(undef, length(m.feterm.piv)), m)
+function StatsAPI.coef(m::LinearMixedModel{T}) where {T}
+    return coef!(Vector{T}(undef, length(m.feterm.piv)), m)
+end
 
 function coef!(v::AbstractVector{Tv}, m::MixedModel{T}) where {Tv,T}
     piv = m.feterm.piv
