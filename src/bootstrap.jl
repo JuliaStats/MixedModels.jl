@@ -103,7 +103,7 @@ function restorereplicates(
     rep = first(Tables.rows(tbl))
     allgood =
         length(rep.θ) == length(m.θ) &&
-        string.(propertynames(rep.β)) == Tuple(fixefnames(m))
+        string.(propertynames(rep.β)) == Tuple(coefnames(m))
     allgood ||
         throw(ArgumentError("Model is not compatible with saved replicates."))
 
