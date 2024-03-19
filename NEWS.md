@@ -1,3 +1,7 @@
+MixedModels v4.23.0 Release Notes
+==============================
+* Support for rank deficiency in the parametric bootstrap. [#755]
+
 MixedModels v4.22.5 Release Notes
 ==============================
 * Use `muladd` where possible to enable fused multiply-add (FMA) on architectures with hardware support. FMA will generally improve computational speed and gives more accurate rounding. [#740]
@@ -504,3 +508,4 @@ Package dependencies
 [#740]: https://github.com/JuliaStats/MixedModels.jl/issues/740
 [#744]: https://github.com/JuliaStats/MixedModels.jl/issues/744
 [#748]: https://github.com/JuliaStats/MixedModels.jl/issues/748
+[#755]: https://github.com/JuliaStats/MixedModels.jl/issues/755
