@@ -268,7 +268,7 @@ end
 
 StatsAPI.coef(m::LinearMixedModel{T}) where {T} = coef!(Vector{T}(undef, length(m.feterm.piv)), m)
 
-function coef!(v::Vector{T}, m::LinearMixedModel{T}) where {T}
+function coef!(v::AbstractVector{Tv}, m::MixedModel{T}) where {Tv,T}
     piv = m.feterm.piv
     return invpermute!(fixef!(v, m), piv)
 end
