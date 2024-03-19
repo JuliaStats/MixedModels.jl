@@ -110,9 +110,6 @@ scale.
 The `wts` argument is currently ignored except for `GeneralizedLinearMixedModel`
 models with a `Binomial` distribution.
 
-!!! warning
-    Models are assumed to be full rank.
-
 !!! note
     Note that `simulate!` methods with a `y::AbstractVector` as the first argument
     (besides the RNG) and `simulate` methods return the simulated response. This is
@@ -152,8 +149,7 @@ end
 function simulate!(
     rng::AbstractRNG, y::AbstractVector, m::LinearMixedModel{T}; β=m.β, σ=m.σ, θ=m.θ
 ) where {T}
-    length(β) == length(fixef(m)) ||
-        length(β) == length(coef(m)) ||
+    length(β) == length(m.feterm.piv) || length(β) == m.feterm.rank ||
         throw(ArgumentError("You must specify all (non-singular) βs"))
 
     β = convert(Vector{T}, β)
@@ -161,8 +157,8 @@ function simulate!(
     θ = convert(Vector{T}, θ)
     isempty(θ) || setθ!(m, θ)
 
-    if length(β) ≠ length(coef(m))
-        padding = length(coef(m)) - length(β)
+    if length(β) ≠ length(m.feterm.piv)
+        padding = length(model.feterm.piv) - m.feterm.rank
         append!(β, fill(-0.0, padding))
     end
 
@@ -232,8 +228,7 @@ function _simulate!(
     θ,
     resp=nothing,
 ) where {T}
-    length(β) == length(fixef(m)) ||
-        length(β) == length(coef(m)) ||
+    length(β) == length(m.feterm.piv) || length(β) == m.feterm.rank ||
         throw(ArgumentError("You must specify all (non-singular) βs"))
 
     dispersion_parameter(m) ||
@@ -252,8 +247,8 @@ function _simulate!(
 
     d = m.resp.d
 
-    if length(β) ≠ length(coef(m))
-        padding = length(coef(m)) - length(β)
+    if length(β) ≠ length(m.feterm.piv)
+        padding = length(model.feterm.piv) - m.feterm.rank
         append!(β, fill(-0.0, padding))
     end
 
