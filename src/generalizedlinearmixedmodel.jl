@@ -113,8 +113,8 @@ StatsAPI.deviance(m::GeneralizedLinearMixedModel) = deviance(m, m.optsum.nAGQ)
 
 fixef(m::GeneralizedLinearMixedModel) = m.β
 
-function fixef!(v::AbstractVector{T}, m::GeneralizedLinearMixedModel{T}) where {T}
-    return copyto!(fill!(v, -zero(T)), m.β)
+function fixef!(v::AbstractVector{Tv}, m::GeneralizedLinearMixedModel{T}) where {Tv, T}
+    return copyto!(fill!(v, -zero(Tv)), m.β)
 end
 
 objective(m::GeneralizedLinearMixedModel) = deviance(m)
