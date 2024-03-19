@@ -163,9 +163,7 @@ function simulate!(
 
     if length(β) ≠ length(coef(m))
         padding = length(coef(m)) - length(β)
-        for ii in 1:padding
-            push!(β, -0.0)
-        end
+        append!(β, fill(-0.0, padding))
     end
 
     # initialize y to standard normal
@@ -256,9 +254,7 @@ function _simulate!(
 
     if length(β) ≠ length(coef(m))
         padding = length(coef(m)) - length(β)
-        for ii in 1:padding
-            push!(β, -0.0)
-        end
+        append!(β, fill(-0.0, padding))
     end
 
     fast = (length(m.θ) == length(m.optsum.final))
