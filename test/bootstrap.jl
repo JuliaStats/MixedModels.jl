@@ -227,7 +227,7 @@ end
         x = rand(rng, 100);
         data = (x = x, x2 = 1.5 .* x, y = rand(rng, [0,1], 100), z = repeat('A':'T', 5))
         @testset "$family" for family in [Normal(), Bernoulli()] 
-            model = @suppress fit(MixedModel, @formula(y ~ x + x2 + (1|z)), data; progress=false)
+            model = @suppress fit(MixedModel, @formula(y ~ x + x2 + (1|z)), data, family; progress=false)
             boot = quickboot(model, 10)
 
             dropped_idx = model.feterm.piv[end]
