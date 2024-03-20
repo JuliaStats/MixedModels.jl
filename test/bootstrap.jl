@@ -235,6 +235,8 @@ end
             # need isequal because of -0.0
            return nt.coefname != dropped_coef || isequal(nt.β, -0.0)
         end
+
+        simulate(model; β=fixef(model))
     end
 end
 

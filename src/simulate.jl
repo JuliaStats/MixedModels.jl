@@ -157,10 +157,10 @@ function simulate!(
     θ = convert(Vector{T}, θ)
     isempty(θ) || setθ!(m, θ)
 
-    if length(β) ≠ length(m.feterm.piv)
-        padding = length(model.feterm.piv) - m.feterm.rank
-        append!(β, fill(-0.0, padding))
-    end
+    # if length(β) ≠ length(m.feterm.piv)
+    #     padding = length(model.feterm.piv) - m.feterm.rank
+    #     append!(β, fill(-0.0, padding))
+    # end
 
     # initialize y to standard normal
     randn!(rng, y)
@@ -247,10 +247,10 @@ function _simulate!(
 
     d = m.resp.d
 
-    if length(β) ≠ length(m.feterm.piv)
-        padding = length(model.feterm.piv) - m.feterm.rank
-        append!(β, fill(-0.0, padding))
-    end
+    # if length(β) ≠ length(m.feterm.piv)
+    #     padding = length(model.feterm.piv) - m.feterm.rank
+    #     append!(β, fill(-0.0, padding))
+    # end
 
     fast = (length(m.θ) == length(m.optsum.final))
     setpar! = fast ? setθ! : setβθ!
