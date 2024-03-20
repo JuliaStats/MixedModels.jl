@@ -1,6 +1,8 @@
 MixedModels v4.23.1 Release Notes
 ==============================
 * Fix for `simulate!` when only the estimable coefficients for a rank-deficient model are provided. [#756]
+* Improve handling of rank deficiency in GLMM. [#756]
+* Fix display of GLMM bootstrap without a dispersion parameter.
 
 MixedModels v4.23.0 Release Notes
 ==============================
