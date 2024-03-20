@@ -904,6 +904,8 @@ Overwrite `v` with the conditional modes of the random effects for `m`.
 
 If `uscale` is `true` the random effects are on the spherical (i.e. `u`) scale, otherwise
 on the original scale
+
+`β` is the truncated, pivoted coefficient vector.
 """
 function ranef!(
     v::Vector, m::LinearMixedModel{T}, β::AbstractArray{T}, uscale::Bool

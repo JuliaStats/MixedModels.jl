@@ -626,11 +626,12 @@ function σρ!(v::AbstractVector, d::Diagonal, σ)
     return append!(v, σ .* d.diag)
 end
 
-function σρ!(v::AbstractVector{T}, t::LowerTriangular{T}, σ::T) where {T}
-    """
-        σρ!(v, t, σ)
-    push! `σ` times the row lengths (σs) and the inner products of normalized rows (ρs) of `t` onto `v`
-    """
+"""
+    σρ!(v, t, σ)
+
+push! `σ` times the row lengths (σs) and the inner products of normalized rows (ρs) of `t` onto `v`
+"""
+function σρ!(v::AbstractVector{<:Union{T,Missing}}, t::LowerTriangular, σ) where {T}
     dat = t.data
     for i in axes(dat, 1)
         ssqr = zero(T)
@@ -659,11 +660,12 @@ end
 
 function pbstrtbl(bsamp::MixedModelFitCollection{T}) where {T}
     (; fits, λ) = bsamp
+    Tfull = ismissing(first(bsamp.fits).σ) ? Union{T,Missing} : T
     λcp = copy.(λ)
     syms = _syms(bsamp)
     m = length(syms)
     n = length(fits)
-    v = sizehint!(T[], m * n)
+    v = sizehint!(Tfull[], m * n)
     for f in fits
         (; β, θ, σ) = f
         push!(v, f.objective)

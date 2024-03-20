@@ -247,9 +247,9 @@ function _simulate!(
 
     d = m.resp.d
 
-    if length(β) ≠ length(m.feterm.piv)
-        β = invpermute!(copyto!(fill(-0.0, length(m.feterm.piv)), β),
-            m.feterm.piv)
+    if length(β) == length(m.feterm.piv)
+        # unlike LMM, GLMM stores the truncated, pivoted vector directly
+        β = β[view(m.feterm.piv, 1:m.feterm.rank)]
     end
     fast = (length(m.θ) == length(m.optsum.final))
     setpar! = fast ? setθ! : setβθ!
@@ -270,7 +270,7 @@ function _simulate!(
     # add fixed-effects contribution
     # note that unit scaling may not be correct for
     # families with a dispersion parameter
-    mul!(η, lm.X, β, one(T), one(T))
+    mul!(η, view(lm.X, :, 1:lm.feterm.rank), β, one(T), one(T))
 
     μ = resp === nothing ? linkinv.(Link(m), η) : GLM.updateμ!(resp, η).mu
 
