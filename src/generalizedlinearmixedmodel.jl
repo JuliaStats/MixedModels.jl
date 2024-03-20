@@ -426,7 +426,7 @@ function GeneralizedLinearMixedModel(
             LMM.optsum,
         )
     end
-    X = view(LMM.X, :, 1:LMM.feterm.rank)
+    X = view(LMM.X, :, 1:(LMM.feterm.rank))
     # if the response is constant, there's no point (and this may even fail)
     # we allow this instead of simply failing so that a constant response can
     # be used as the starting point to simulation where the response will be
@@ -442,9 +442,9 @@ function GeneralizedLinearMixedModel(
     # TODO: extend this so that we never fit a GLM when initializing from LMM
     dofit = size(X, 2) != 0 # GLM.jl kwarg
     gl = glm(X, y, d, l;
-             wts=convert(Vector{T}, wts),
-             dofit,
-             offset=convert(Vector{T}, offset))
+        wts=convert(Vector{T}, wts),
+        dofit,
+        offset=convert(Vector{T}, offset))
     β = dofit ? coef(gl) : T[]
     u = [fill(zero(eltype(y)), vsize(t), nlevs(t)) for t in LMM.reterms]
     # vv is a template vector used to initialize fields for AGQ
@@ -794,7 +794,7 @@ function updateη!(m::GeneralizedLinearMixedModel{T}) where {T}
     b = m.b
     u = m.u
     reterms = m.LMM.reterms
-    mul!(η, view(modelmatrix(m), :, 1:m.LMM.feterm.rank), m.β)
+    mul!(η, view(modelmatrix(m), :, 1:(m.LMM.feterm.rank)), m.β)
     for i in eachindex(b)
         mul!(η, reterms[i], vec(mul!(b[i], reterms[i].λ, u[i])), one(T), one(T))
     end
