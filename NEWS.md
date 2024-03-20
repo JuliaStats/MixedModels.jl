@@ -1,3 +1,7 @@
+MixedModels v4.23.1 Release Notes
+==============================
+* Fix for `simulate!` when only the estimable coefficients for a rank-deficient model are provided. [#756]
+
 MixedModels v4.23.0 Release Notes
 ==============================
 * Support for rank deficiency in the parametric bootstrap. [#755]
@@ -509,3 +513,4 @@ Package dependencies
 [#744]: https://github.com/JuliaStats/MixedModels.jl/issues/744
 [#748]: https://github.com/JuliaStats/MixedModels.jl/issues/748
 [#755]: https://github.com/JuliaStats/MixedModels.jl/issues/755
+[#756]: https://github.com/JuliaStats/MixedModels.jl/issues/756
