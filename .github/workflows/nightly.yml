@@ -23,6 +23,12 @@ jobs:
         julia-version: [nightly]
         julia-arch: [x64]
         os: [ubuntu-latest]
+    env:
+      # Set x86_64 targets for improved compatibility
+      # https://docs.julialang.org/en/v1/devdocs/sysimg/#Specifying-multiple-system-image-targets
+      # see https://github.com/julia-actions/cache/issues/114
+      JULIA_CPU_TARGET: "generic;sandybridge,-xsaveopt,clone_all;haswell,-rdrnd,base(1)"
+      JULIA_NUM_THREADS: 1
     steps:
       - uses: actions/checkout@v4
       - uses: julia-actions/setup-julia@v1
