@@ -235,7 +235,7 @@ end
             @test all(boot.β) do nt
                 # if we're the dropped coef, then we must be -0.0
                 # need isequal because of -0.0
-               return nt.coefname != dropped_coef || isequal(nt.β, -0.0)
+                return nt.coefname != dropped_coef || isequal(nt.β, -0.0)
             end
 
             yc = simulate(StableRNG(1), model; β=coef(model))
