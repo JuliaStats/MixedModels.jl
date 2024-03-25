@@ -149,7 +149,7 @@ end
 function simulate!(
     rng::AbstractRNG, y::AbstractVector, m::LinearMixedModel{T}; β=m.β, σ=m.σ, θ=m.θ
 ) where {T}
-    length(β) == length(m.feterm.piv) || length(β) == m.feterm.rank ||
+    length(β) == length(pivot(m)) || length(β) == m.feterm.rank ||
         throw(ArgumentError("You must specify all (non-singular) βs"))
 
     β = convert(Vector{T}, β)
@@ -157,9 +157,10 @@ function simulate!(
     θ = convert(Vector{T}, θ)
     isempty(θ) || setθ!(m, θ)
 
-    if length(β) ≠ length(m.feterm.piv)
-        padding = length(model.feterm.piv) - m.feterm.rank
+    if length(β) ≠ length(pivot(m))
+        padding = length(pivot(m)) - rank(m)
         append!(β, fill(-0.0, padding))
+        invpermute!(β, pivot(m))
     end
 
     # initialize y to standard normal
@@ -228,7 +229,7 @@ function _simulate!(
     θ,
     resp=nothing,
 ) where {T}
-    length(β) == length(m.feterm.piv) || length(β) == m.feterm.rank ||
+    length(β) == length(pivot(m)) || length(β) == m.feterm.rank ||
         throw(ArgumentError("You must specify all (non-singular) βs"))
 
     dispersion_parameter(m) ||
@@ -247,11 +248,10 @@ function _simulate!(
 
     d = m.resp.d
 
-    if length(β) ≠ length(m.feterm.piv)
-        padding = length(model.feterm.piv) - m.feterm.rank
-        append!(β, fill(-0.0, padding))
+    if length(β) == length(pivot(m))
+        # unlike LMM, GLMM stores the truncated, pivoted vector directly
+        β = view(β, view(pivot(m), 1:(rank(m))))
     end
-
     fast = (length(m.θ) == length(m.optsum.final))
     setpar! = fast ? setθ! : setβθ!
     params = fast ? θ : vcat(β, θ)
@@ -271,7 +271,7 @@ function _simulate!(
     # add fixed-effects contribution
     # note that unit scaling may not be correct for
     # families with a dispersion parameter
-    mul!(η, lm.X, β, one(T), one(T))
+    mul!(η, fullrankx(lm), β, one(T), one(T))
 
     μ = resp === nothing ? linkinv.(Link(m), η) : GLM.updateμ!(resp, η).mu
 
