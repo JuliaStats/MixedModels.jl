@@ -60,7 +60,7 @@ A `SparseMatrixCSC` whose nonzeros form blocks of rows or columns or both.
 
 The only time these are created are as products of `ReMat`s.
 """
-mutable struct BlockedSparse{T,S,P} <: AbstractMatrix{T}
+struct BlockedSparse{T,S,P} <: AbstractMatrix{T}
     cscmat::SparseMatrixCSC{T,Int32}
     nzsasmat::Matrix{T}
     colblkptr::Vector{Int32}
