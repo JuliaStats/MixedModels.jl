@@ -54,7 +54,7 @@ struct GeneralizedLinearMixedModel{T<:AbstractFloat,D<:Distribution} <: MixedMod
 end
 
 function StatsAPI.coef(m::GeneralizedLinearMixedModel{T}) where {T}
-    piv = m.LMM.feterm.piv
+    piv = pivot(m)
     return invpermute!(copyto!(fill(T(-0.0), length(piv)), m.β), piv)
 end
 
@@ -426,6 +426,7 @@ function GeneralizedLinearMixedModel(
             LMM.optsum,
         )
     end
+    X = fullrankx(LMM.feterm)
     # if the response is constant, there's no point (and this may even fail)
     # we allow this instead of simply failing so that a constant response can
     # be used as the starting point to simulation where the response will be
@@ -439,8 +440,8 @@ function GeneralizedLinearMixedModel(
     # XXX unfortunately, this means we have double-rank deficiency detection
     # TODO: construct GLM by hand so that we skip collinearity checks
     # TODO: extend this so that we never fit a GLM when initializing from LMM
-    dofit = size(LMM.X, 2) != 0 # GLM.jl kwarg
-    gl = glm(LMM.X, y, d, l;
+    dofit = size(X, 2) != 0 # GLM.jl kwarg
+    gl = glm(X, y, d, l;
         wts=convert(Vector{T}, wts),
         dofit,
         offset=convert(Vector{T}, offset))
@@ -793,7 +794,7 @@ function updateη!(m::GeneralizedLinearMixedModel{T}) where {T}
     b = m.b
     u = m.u
     reterms = m.LMM.reterms
-    mul!(η, modelmatrix(m), m.β)
+    mul!(η, fullrankx(m), m.β)
     for i in eachindex(b)
         mul!(η, reterms[i], vec(mul!(b[i], reterms[i].λ, u[i])), one(T), one(T))
     end

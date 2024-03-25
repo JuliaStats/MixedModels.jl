@@ -5,6 +5,7 @@ using Random
 using Statistics
 using StableRNGs
 using Statistics
+using Suppressor
 using Tables
 using Test
 
@@ -224,16 +225,22 @@ end
     @testset "Rank deficient" begin
         rng = MersenneTwister(0);
         x = rand(rng, 100);
-        data = (x = x, x2 = 1.5 .* x, y = rand(rng, 100), z = repeat('A':'T', 5))
-        model = @suppress fit(MixedModel, @formula(y ~ x + x2 + (1|z)), data; progress=false)
-        boot = quickboot(model, 10)
+        data = (x = x, x2 = 1.5 .* x, y = rand(rng, [0,1], 100), z = repeat('A':'T', 5))
+        @testset "$family" for family in [Normal(), Bernoulli()] 
+            model = @suppress fit(MixedModel, @formula(y ~ x + x2 + (1|z)), data, family; progress=false)
+            boot = quickboot(model, 10)
 
-        dropped_idx = model.feterm.piv[end]
-        dropped_coef = coefnames(model)[dropped_idx]
-        @test all(boot.β) do nt
-            # if we're the dropped coef, then we must be -0.0
-            # need isequal because of -0.0
-           return nt.coefname != dropped_coef || isequal(nt.β, -0.0)
+            dropped_idx = model.feterm.piv[end]
+            dropped_coef = coefnames(model)[dropped_idx]
+            @test all(boot.β) do nt
+                # if we're the dropped coef, then we must be -0.0
+                # need isequal because of -0.0
+                return nt.coefname != dropped_coef || isequal(nt.β, -0.0)
+            end
+
+            yc = simulate(StableRNG(1), model; β=coef(model))
+            yf = simulate(StableRNG(1), model; β=fixef(model))
+            @test all(x -> isapprox(x...), zip(yc, yf))
         end
     end
 end

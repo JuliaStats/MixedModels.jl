@@ -61,10 +61,21 @@ Base.copyto!(A::FeTerm{T}, src::AbstractVecOrMat{T}) where {T} = copyto!(A.x, sr
 
 Base.eltype(::FeTerm{T}) where {T} = T
 
+"""
+    pivot(m::MixedModel)
+    pivot(A::FeTerm)
+
+Return the pivot associated with the FeTerm.
+"""
+@inline pivot(m::MixedModel) = pivot(m.feterm)
+@inline pivot(A::FeTerm) = A.piv
+
 function fullrankx(A::FeTerm)
     x, rnk = A.x, A.rank
     return rnk == size(x, 2) ? x : view(x, :, 1:rnk)  # this handles the zero-columns case
 end
+
+fullrankx(m::MixedModel) = fullrankx(m.feterm)
 
 LinearAlgebra.rank(A::FeTerm) = A.rank
 
