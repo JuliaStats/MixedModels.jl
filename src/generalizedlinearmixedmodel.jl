@@ -794,7 +794,7 @@ function updateη!(m::GeneralizedLinearMixedModel{T}) where {T}
     b = m.b
     u = m.u
     reterms = m.LMM.reterms
-    mul!(η, view(modelmatrix(m), :, 1:rank(m)), m.β)
+    mul!(η, fullrankx(m), m.β)
     for i in eachindex(b)
         mul!(η, reterms[i], vec(mul!(b[i], reterms[i].λ, u[i])), one(T), one(T))
     end

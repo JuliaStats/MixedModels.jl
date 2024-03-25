@@ -75,6 +75,8 @@ function fullrankx(A::FeTerm)
     return rnk == size(x, 2) ? x : view(x, :, 1:rnk)  # this handles the zero-columns case
 end
 
+fullrankx(m::MixedModel) = fullrankx(m.feterm)
+
 LinearAlgebra.rank(A::FeTerm) = A.rank
 
 """

@@ -271,7 +271,7 @@ function _simulate!(
     # add fixed-effects contribution
     # note that unit scaling may not be correct for
     # families with a dispersion parameter
-    mul!(η, view(lm.X, :, 1:(lm.feterm.rank)), β, one(T), one(T))
+    mul!(η, fullrankx(lm), β, one(T), one(T))
 
     μ = resp === nothing ? linkinv.(Link(m), η) : GLM.updateμ!(resp, η).mu
 
