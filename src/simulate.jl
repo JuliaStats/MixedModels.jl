@@ -248,9 +248,9 @@ function _simulate!(
 
     d = m.resp.d
 
-    if length(β) == length(m.feterm.piv)
+    if length(β) == length(pivot(m))
         # unlike LMM, GLMM stores the truncated, pivoted vector directly
-        β = β[view(pivot(m), 1:(m.feterm.rank))]
+        β = view(β, view(pivot(m), 1:(rank(m))))
     end
     fast = (length(m.θ) == length(m.optsum.final))
     setpar! = fast ? setθ! : setβθ!
