@@ -158,8 +158,9 @@ function simulate!(
     isempty(θ) || setθ!(m, θ)
 
     if length(β) ≠ length(pivot(m))
-        β = invpermute!(copyto!(fill(-0.0, length(pivot(m))), β),
-            m.feterm.piv)
+        padding = length(pivot(m)) - rank(m)
+        append!(β, fill(-0.0, padding))
+        invpermute!(β, pivot(m))
     end
 
     # initialize y to standard normal
