@@ -21,8 +21,8 @@ jobs:
     strategy:
       matrix:
         julia-version: [1]
-        julia-arch: [x64]
-        os: 
+        # julia-arch: [x64]
+        os:
          - ubuntu-22.04
          - macOS-14 # apple silicon!
     steps:
