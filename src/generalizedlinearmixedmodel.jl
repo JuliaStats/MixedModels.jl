@@ -54,7 +54,7 @@ struct GeneralizedLinearMixedModel{T<:AbstractFloat,D<:Distribution} <: MixedMod
 end
 
 function StatsAPI.coef(m::GeneralizedLinearMixedModel{T}) where {T}
-    piv = m.LMM.feterm.piv
+    piv = pivot(m)
     return invpermute!(copyto!(fill(T(-0.0), length(piv)), m.β), piv)
 end
 

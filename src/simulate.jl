@@ -149,7 +149,7 @@ end
 function simulate!(
     rng::AbstractRNG, y::AbstractVector, m::LinearMixedModel{T}; β=m.β, σ=m.σ, θ=m.θ
 ) where {T}
-    length(β) == length(m.feterm.piv) || length(β) == m.feterm.rank ||
+    length(β) == length(pivot(m)) || length(β) == m.feterm.rank ||
         throw(ArgumentError("You must specify all (non-singular) βs"))
 
     β = convert(Vector{T}, β)
@@ -157,8 +157,8 @@ function simulate!(
     θ = convert(Vector{T}, θ)
     isempty(θ) || setθ!(m, θ)
 
-    if length(β) ≠ length(m.feterm.piv)
-        β = invpermute!(copyto!(fill(-0.0, length(m.feterm.piv)), β),
+    if length(β) ≠ length(pivot(m))
+        β = invpermute!(copyto!(fill(-0.0, length(pivot(m))), β),
             m.feterm.piv)
     end
 
@@ -228,7 +228,7 @@ function _simulate!(
     θ,
     resp=nothing,
 ) where {T}
-    length(β) == length(m.feterm.piv) || length(β) == m.feterm.rank ||
+    length(β) == length(pivot(m)) || length(β) == m.feterm.rank ||
         throw(ArgumentError("You must specify all (non-singular) βs"))
 
     dispersion_parameter(m) ||
@@ -249,7 +249,7 @@ function _simulate!(
 
     if length(β) == length(m.feterm.piv)
         # unlike LMM, GLMM stores the truncated, pivoted vector directly
-        β = β[view(m.feterm.piv, 1:(m.feterm.rank))]
+        β = β[view(pivot(m), 1:(m.feterm.rank))]
     end
     fast = (length(m.θ) == length(m.optsum.final))
     setpar! = fast ? setθ! : setβθ!
