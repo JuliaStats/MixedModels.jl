@@ -1,3 +1,13 @@
+MixedModels v4.23.1 Release Notes
+==============================
+* Fix for `simulate!` when only the estimable coefficients for a rank-deficient model are provided. [#756]
+* Improve handling of rank deficiency in GLMM. [#756]
+* Fix display of GLMM bootstrap without a dispersion parameter. [#756]
+
+MixedModels v4.23.0 Release Notes
+==============================
+* Support for rank deficiency in the parametric bootstrap. [#755]
+
 MixedModels v4.22.5 Release Notes
 ==============================
 * Use `muladd` where possible to enable fused multiply-add (FMA) on architectures with hardware support. FMA will generally improve computational speed and gives more accurate rounding. [#740]
@@ -504,3 +514,5 @@ Package dependencies
 [#740]: https://github.com/JuliaStats/MixedModels.jl/issues/740
 [#744]: https://github.com/JuliaStats/MixedModels.jl/issues/744
 [#748]: https://github.com/JuliaStats/MixedModels.jl/issues/748
+[#755]: https://github.com/JuliaStats/MixedModels.jl/issues/755
+[#756]: https://github.com/JuliaStats/MixedModels.jl/issues/756

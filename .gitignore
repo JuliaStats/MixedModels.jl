@@ -4,6 +4,7 @@ docs/src/assets/*.svg
 test/scratch.jl
 tune.json
 Manifest.toml
+Manifest-v1.*.toml
 settings.json
 docs/jmd
 LocalPreferences.toml

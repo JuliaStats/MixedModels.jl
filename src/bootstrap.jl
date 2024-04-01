@@ -80,7 +80,7 @@ been constructed with the same structure as the source of the saved replicates.
 
 The two-argument method constructs a [`MixedModelBootstrap`](@ref) with the same eltype as `m`.
 If an eltype is specified as the third argument, then a `MixedModelBootstrap` is returned.
-If a subtype of `MixedModelFitCollection` is specified as the third argument, then that 
+If a subtype of `MixedModelFitCollection` is specified as the third argument, then that
 is the return type.
 
 See also [`savereplicates`](@ref), [`restoreoptsum!`](@ref).
@@ -91,7 +91,7 @@ end
 
 # why this weird second method? it allows us to define custom types and write methods
 # to load into those types directly. For example, we could define a `PowerAnalysis <: MixedModelFitCollection`
-# in MixedModelsSim and then overload this method to get a convenient object. 
+# in MixedModelsSim and then overload this method to get a convenient object.
 # Also, this allows us to write `restorereplicateS(f, m, ::Type{<:MixedModelNonparametricBootstrap})` for
 # entities in MixedModels bootstrap
 function restorereplicates(
@@ -120,14 +120,14 @@ end
 """
     savereplicates(f, b::MixedModelFitCollection)
 
-Save the replicates associated with a [`MixedModelFitCollection`](@ref), 
-e.g. [`MixedModelBootstrap`](@ref) as an Arrow file. 
+Save the replicates associated with a [`MixedModelFitCollection`](@ref),
+e.g. [`MixedModelBootstrap`](@ref) as an Arrow file.
 
 See also [`restorereplicates`](@ref), [`saveoptsum`](@ref)
 
 !!! note
     **Only** the replicates are saved, not the entire contents of the `MixedModelFitCollection`.
-    `restorereplicates` requires a model compatible with the bootstrap to restore the full object. 
+    `restorereplicates` requires a model compatible with the bootstrap to restore the full object.
 """
 savereplicates(f, b::MixedModelFitCollection) = Arrow.write(f, b.fits)
 
@@ -200,6 +200,14 @@ fit during the bootstrapping process. For example, `optsum_overrides=(;ftol_rel=
 reduces the convergence criterion, which can greatly speed up the bootstrap fits.
 Taking advantage of this speed up to increase `n` can often lead to better estimates
 of coverage intervals.
+
+
+!!! note
+    All coefficients are bootstrapped. In the rank deficient case, the inestimatable coefficients are
+    treated as -0.0 in the simulations underlying the bootstrap, which will generally result
+    in their estimate from the simulated data also being being inestimable and thus set to -0.0.
+    **However this behavior may change in future releases to explicitly drop the
+    extraneous columns before simulation and thus not include their estimates in the bootstrap result.**
 """
 function parametricbootstrap(
     rng::AbstractRNG,
@@ -234,7 +242,7 @@ function parametricbootstrap(
     # this seemed to slow things down?!
     # _copy_away_from_lowerbd!(m.optsum.initial, morig.optsum.final, m.lowerbd; incr=0.05)
 
-    β_names = Tuple(Symbol.(fixefnames(morig)))
+    β_names = Tuple(Symbol.(coefnames(morig)))
 
     use_threads && Base.depwarn(
         "use_threads is deprecated and will be removed in a future release",
@@ -247,7 +255,7 @@ function parametricbootstrap(
         (
             objective=ftype.(m.objective),
             σ=ismissing(m.σ) ? missing : ftype(m.σ),
-            β=NamedTuple{β_names}(fixef!(βsc, m)),
+            β=NamedTuple{β_names}(coef!(βsc, m)),
             se=SVector{p,ftype}(stderror!(βsc, m)),
             θ=SVector{k,ftype}(getθ!(θsc, m)),
         )
@@ -331,8 +339,8 @@ end
 
 Compute bootstrap confidence intervals for coefficients and variance components, with confidence level level (by default 95%).
 
-The keyword argument `method` determines whether the `:shortest`, i.e. highest density, interval is used 
-or the `:equaltail`, i.e. quantile-based, interval is used. For historical reasons, the default is `:shortest`, 
+The keyword argument `method` determines whether the `:shortest`, i.e. highest density, interval is used
+or the `:equaltail`, i.e. quantile-based, interval is used. For historical reasons, the default is `:shortest`,
 but `:equaltail` gives the interval that is most comparable to the profile and Wald confidence intervals.
 
 !!! note
@@ -618,11 +626,12 @@ function σρ!(v::AbstractVector, d::Diagonal, σ)
     return append!(v, σ .* d.diag)
 end
 
-function σρ!(v::AbstractVector{T}, t::LowerTriangular{T}, σ::T) where {T}
-    """
-        σρ!(v, t, σ)
-    push! `σ` times the row lengths (σs) and the inner products of normalized rows (ρs) of `t` onto `v` 
-    """
+"""
+    σρ!(v, t, σ)
+
+push! `σ` times the row lengths (σs) and the inner products of normalized rows (ρs) of `t` onto `v`
+"""
+function σρ!(v::AbstractVector{<:Union{T,Missing}}, t::LowerTriangular, σ) where {T}
     dat = t.data
     for i in axes(dat, 1)
         ssqr = zero(T)
@@ -651,11 +660,12 @@ end
 
 function pbstrtbl(bsamp::MixedModelFitCollection{T}) where {T}
     (; fits, λ) = bsamp
+    Tfull = ismissing(first(bsamp.fits).σ) ? Union{T,Missing} : T
     λcp = copy.(λ)
     syms = _syms(bsamp)
     m = length(syms)
     n = length(fits)
-    v = sizehint!(T[], m * n)
+    v = sizehint!(Tfull[], m * n)
     for f in fits
         (; β, θ, σ) = f
         push!(v, f.objective)

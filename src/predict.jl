@@ -70,7 +70,7 @@ Similarly, offsets are also not supported for `GeneralizedLinearMixedModel`.
 function StatsAPI.predict(
     m::LinearMixedModel, newdata::Tables.ColumnTable; new_re_levels=:missing
 )
-    return _predict(m, newdata, coef(m)[m.feterm.piv]; new_re_levels)
+    return _predict(m, newdata, coef(m)[pivot(m)]; new_re_levels)
 end
 
 function StatsAPI.predict(
@@ -81,7 +81,7 @@ function StatsAPI.predict(
 )
     type in (:linpred, :response) || throw(ArgumentError("Invalid value for type: $(type)"))
     # want pivoted but not truncated
-    y = _predict(m.LMM, newdata, coef(m)[m.feterm.piv]; new_re_levels)
+    y = _predict(m.LMM, newdata, coef(m)[pivot(m)]; new_re_levels)
 
     return type == :linpred ? y : broadcast!(Base.Fix1(linkinv, Link(m)), y, y)
 end
@@ -126,7 +126,7 @@ function _predict(m::MixedModel{T}, newdata, β; new_re_levels) where {T}
         ytemp, lmm
     end
 
-    pivotmatch = mnew.feterm.piv[m.feterm.piv]
+    pivotmatch = pivot(mnew)[pivot(m)]
     grps = fnames(m)
     mul!(y, view(mnew.X, :, pivotmatch), β)
     # mnew.reterms for the correct Z matrices
