@@ -267,8 +267,12 @@ function StatsAPI.fit(
 end
 
 function StatsAPI.coef(m::LinearMixedModel{T}) where {T}
-    piv = m.feterm.piv
-    return invpermute!(fixef!(similar(piv, T), m), piv)
+    return coef!(Vector{T}(undef, length(pivot(m))), m)
+end
+
+function coef!(v::AbstractVector{Tv}, m::MixedModel{T}) where {Tv,T}
+    piv = pivot(m)
+    return invpermute!(fixef!(v, m), piv)
 end
 
 βs(m::LinearMixedModel) = NamedTuple{(Symbol.(coefnames(m))...,)}(coef(m))
@@ -900,6 +904,8 @@ Overwrite `v` with the conditional modes of the random effects for `m`.
 
 If `uscale` is `true` the random effects are on the spherical (i.e. `u`) scale, otherwise
 on the original scale
+
+`β` is the truncated, pivoted coefficient vector.
 """
 function ranef!(
     v::Vector, m::LinearMixedModel{T}, β::AbstractArray{T}, uscale::Bool
@@ -1237,12 +1243,12 @@ function stderror!(v::AbstractVector{Tv}, m::LinearMixedModel{T}) where {Tv,T}
         scr[i] = true
         v[i] = s * norm(ldiv!(L, scr))
     end
-    invpermute!(v, m.feterm.piv)
+    invpermute!(v, pivot(m))
     return v
 end
 
 function StatsAPI.stderror(m::LinearMixedModel{T}) where {T}
-    return stderror!(similar(m.feterm.piv, T), m)
+    return stderror!(similar(pivot(m), T), m)
 end
 
 """
