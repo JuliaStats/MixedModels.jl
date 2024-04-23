@@ -163,13 +163,20 @@ For computers with many processors (as opposed to a single processor with severa
 
 ```@example Main
 using Distributed
-using ProgressMeter
 # you already have 1 proc by default, so add the number of additional cores with `addprocs`
 # you need at least as many RNGs as cores you want to use in parallel
 # but you shouldn't use all of your cores because nested within this
 # is the multithreading of the linear algebra
+# addprocs(1)
 @info "Currently using $(nprocs()) processors total and $(nworkers()) for work"
 
+# Load the necessary packages on all workers
+# For clusters, you will also need to make sure that the Julia
+# environment (Project.toml) is set up and activated on each worker.
+@everywhere begin
+    using ProgressMeter
+    using MixedModels
+end
 # copy everything to workers
 @showprogress for w in workers()
     remotecall_fetch(() -> coefnames(m2), w)
