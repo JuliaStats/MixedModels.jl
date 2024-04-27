@@ -6,7 +6,7 @@ using BSplineKit: BSplineKit, BSplineOrder, Natural, Derivative, SplineInterpola
 using BSplineKit: interpolate
 using DataAPI: DataAPI, levels, refpool, refarray, refvalue
 using Distributions: Distributions, Bernoulli, Binomial, Chisq, Distribution, Gamma
-using Distributions: InverseGaussian, Normal, Poisson, ccdf, estimate
+using Distributions: InverseGaussian, Normal, Poisson, ccdf
 using GLM: GLM, GeneralizedLinearModel, IdentityLink, InverseLink, LinearModel
 using GLM: Link, LogLink, LogitLink, ProbitLink, SqrtLink
 using GLM: canonicallink, glm, linkinv, dispersion, dispersion_parameter
@@ -16,10 +16,10 @@ using LinearAlgebra: Diagonal, Hermitian, HermOrSym, I, LAPACK, LowerTriangular
 using LinearAlgebra: PosDefException, SVD, SymTridiagonal, Symmetric
 using LinearAlgebra: UpperTriangular, cond, diag, diagind, dot, eigen, isdiag
 using LinearAlgebra: ldiv!, lmul!, logdet, mul!, norm, normalize, normalize!, qr
-using LinearAlgebra: rank, rdiv!, rmul!, svd, tr, tril!
+using LinearAlgebra: rank, rdiv!, rmul!, svd, tril!
 using Markdown: Markdown
 using MixedModelsDatasets: dataset, datasets
-using NLopt: NLopt, Opt, ftol_abs, ftol_rel, initial_step, maxtime, xtol_abs, xtol_rel
+using NLopt: NLopt, Opt, ftol_abs, ftol_rel, initial_step, xtol_abs, xtol_rel
 using PooledArrays: PooledArrays, PooledArray
 using PrecompileTools: PrecompileTools, @setup_workload, @compile_workload
 using ProgressMeter: ProgressMeter, Progress, ProgressUnknown, finish!, next!
@@ -40,7 +40,7 @@ using StatsModels: HelmertCoding, HypothesisCoding, InteractionTerm, InterceptTe
 using StatsModels: MatrixTerm, SeqDiffCoding, TableRegressionModel, Term
 using StatsModels: apply_schema, drop_term, formula, modelcols, term, @formula
 using StructTypes: StructTypes
-using Tables: Tables, columntable, rows
+using Tables: Tables, columntable
 using TypedTables: TypedTables, DictTable, FlexTable, Table
 
 export @formula,
