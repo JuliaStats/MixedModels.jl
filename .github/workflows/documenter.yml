@@ -25,7 +25,7 @@ jobs:
       - uses: julia-actions/setup-julia@v2
         with:
           version: 1.8
-      - uses: julia-actions/cache@v1
+      - uses: julia-actions/cache@v2
         with:
             cache-compiled: "true"
       - uses: julia-actions/julia-buildpkg@latest
