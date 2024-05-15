@@ -489,12 +489,12 @@ function Base.getproperty(m::GeneralizedLinearMixedModel, s::Symbol)
         σs(m)
     elseif s == :σρs
         σρs(m)
-    elseif s ∈ (:A, :L, :optsum, :reterms, :Xymat, :feterm, :formula, :parmap)
-        getfield(m.LMM, s)
-    elseif s ∈ (:dims, :λ, :lowerbd, :corr, :PCA, :rePCA, :X)
-        getproperty(m.LMM, s)
     elseif s == :y
         m.resp.y
+    elseif !hasfield(GeneralizedLinearMixedModel, s) && s ∈ propertynames(m.LMM, true)
+        # automatically delegate as much as possible to the internal local linear approximation
+        # NB: the !hasfield call has to be first since we're calling getproperty() with m.LMM...
+        getproperty(m.LMM, s)
     else
         getfield(m, s)
     end
