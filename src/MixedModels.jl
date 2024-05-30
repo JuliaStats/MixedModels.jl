@@ -38,7 +38,7 @@ using StatsModels: StatsModels, AbstractContrasts, AbstractTerm, CategoricalTerm
 using StatsModels: ConstantTerm, DummyCoding, EffectsCoding, FormulaTerm, FunctionTerm
 using StatsModels: HelmertCoding, HypothesisCoding, InteractionTerm, InterceptTerm
 using StatsModels: MatrixTerm, SeqDiffCoding, TableRegressionModel, Term
-using StatsModels: apply_schema, drop_term, formula, modelcols, term, @formula
+using StatsModels: apply_schema, drop_term, formula, lrtest, modelcols, term, @formula
 using StructTypes: StructTypes
 using Tables: Tables, columntable
 using TypedTables: TypedTables, DictTable, FlexTable, Table
@@ -114,6 +114,7 @@ export @formula,
     logdet,
     loglikelihood,
     lowerbd,
+    lrtest,
     meanresponse,
     modelmatrix,
     model_response,
