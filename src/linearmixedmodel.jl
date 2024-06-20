@@ -50,7 +50,7 @@ function LinearMixedModel(
 end
 
 const _MISSING_RE_ERROR = ArgumentError(
-    "Formula contains no random effects; this isn't a mixed model. Perhaps you want to use GLM.jl?",
+    "Formula contains no random effects; this isn't a mixed model. Perhaps you want to use GLM.jl?"
 )
 
 function LinearMixedModel(
@@ -62,7 +62,7 @@ function LinearMixedModel(
     fvars ⊆ tvars ||
         throw(
             ArgumentError(
-                "The following formula variables are not present in the table: $(setdiff(fvars, tvars))",
+                "The following formula variables are not present in the table: $(setdiff(fvars, tvars))"
             ),
         )
 
@@ -226,7 +226,7 @@ end
 function _offseterr()
     return throw(
         ArgumentError(
-            "Offsets are not supported in linear models. You can simply shift the response by the offset.",
+            "Offsets are not supported in linear models. You can simply shift the response by the offset."
         ),
     )
 end
@@ -372,7 +372,7 @@ function StatsBase.confint(m::MixedModel{T}; level=0.95) where {T}
     return DictTable(;
         coef=coefnames(m),
         lower=β .- cutoff .* std,
-        upper=β .+ cutoff .* std
+        upper=β .+ cutoff .* std,
     )
 end
 
@@ -895,7 +895,7 @@ end
 
 The penalized, weighted residual sum-of-squares.
 """
-pwrss(m::LinearMixedModel) = abs2(last(last(m.L)))
+pwrss(m::LinearMixedModel{T}) where {T} = abs2(last(last(m.L)))::T
 
 """
     ranef!(v::Vector{Matrix{T}}, m::MixedModel{T}, β, uscale::Bool) where {T}
