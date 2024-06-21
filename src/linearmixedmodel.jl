@@ -432,7 +432,6 @@ end
 
 """
     fit!(m::LinearMixedModel; progress::Bool=true, REML::Bool=false,
-                              σ::Union{Real, Nothing}=nothing,
                               thin::Int=typemax(Int))
 
 Optimize the objective of a `LinearMixedModel`.  When `progress` is `true` a
@@ -446,7 +445,6 @@ function StatsAPI.fit!(
     m::LinearMixedModel{T};
     progress::Bool=true,
     REML::Bool=false,
-    σ::Union{Real,Nothing}=nothing,
     thin::Int=typemax(Int),
 ) where {T}
     optsum = m.optsum
