@@ -36,8 +36,8 @@ struct LinearMixedModel{T<:AbstractFloat} <: MixedModel{T}
     sqrtwts::Vector{T}
     parmap::Vector{NTuple{3,Int}}
     dims::NamedTuple{(:n, :p, :nretrms),NTuple{3,Int}}
-    A::Vector{AbstractMatrix{T}}            # cross-product blocks
-    L::Vector{AbstractMatrix{T}}
+    A::Vector{<:AbstractMatrix{T}}            # cross-product blocks
+    L::Vector{<:AbstractMatrix{T}}
     optsum::OptSummary{T}
 end
 
@@ -408,7 +408,7 @@ function createAL(reterms::Vector{<:AbstractReMat{T}}, Xy::FeMat{T}) where {T}
             end
         end
     end
-    return A, L
+    return identity.(A), identity.(L)
 end
 
 StatsAPI.deviance(m::LinearMixedModel) = objective(m)
