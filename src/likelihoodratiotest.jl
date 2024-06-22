@@ -219,7 +219,7 @@ function _iscomparable(m::LinearMixedModel...)
     if any(getproperty.(getproperty.(m, :optsum), :REML))
         isconstant(coefnames.(m)) || throw(
             ArgumentError(
-                "Likelihood-ratio tests for REML-fitted models are only valid when the fixed-effects specifications are identical",
+                "Likelihood-ratio tests for REML-fitted models are only valid when the fixed-effects specifications are identical"
             ),
         )
     end

@@ -174,7 +174,7 @@ function StatsModels.apply_schema(
     if !(typeof(first) <: CategoricalTerm)
         throw(
             ArgumentError(
-                "nesting terms requires categorical grouping term, got $first.  Manually specify $first as `CategoricalTerm` in hints/contrasts",
+                "nesting terms requires categorical grouping term, got $first.  Manually specify $first as `CategoricalTerm` in hints/contrasts"
             ),
         )
     end

@@ -25,10 +25,10 @@ jobs:
         os: [ubuntu-latest]
     steps:
       - uses: actions/checkout@v4
-      - uses: julia-actions/setup-julia@v1
+      - uses: julia-actions/setup-julia@v2
         with:
           version: ${{ matrix.julia-version }}
-      - uses: julia-actions/cache@v1
+      - uses: julia-actions/cache@v2
         with:
             cache-compiled: true
       - uses: julia-actions/julia-runtest@v1

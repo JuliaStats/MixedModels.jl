@@ -12,7 +12,7 @@ function rankUpdate! end
 
 function rankUpdate!(C::AbstractMatrix, a::AbstractArray, α, β)
     return error(
-        "We haven't implemented a method for $(typeof(C)), $(typeof(a)). Please file an issue on GitHub.",
+        "We haven't implemented a method for $(typeof(C)), $(typeof(a)). Please file an issue on GitHub."
     )
 end
 

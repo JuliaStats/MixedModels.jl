@@ -80,7 +80,7 @@ function StatsAPI.fit(
     tbl,
     d::Type,
     args...;
-    kwargs...
+    kwargs...,
 )
     throw(ArgumentError("Expected a Distribution instance (`$d()`), got a type (`$d`)."))
 end
@@ -91,7 +91,7 @@ function StatsAPI.fit(
     tbl,
     d::Distribution,
     l::Type;
-    kwargs...
+    kwargs...,
 )
     throw(ArgumentError("Expected a Link instance (`$l()`), got a type (`$l`)."))
 end
