@@ -351,7 +351,7 @@ function GeneralizedLinearMixedModel(
     tbl,
     d::Distribution,
     l::Type;
-    kwargs...
+    kwargs...,
 )
     throw(ArgumentError("Expected a Link instance (`$l()`), got a type (`$l`)."))
 end
@@ -376,7 +376,7 @@ function GeneralizedLinearMixedModel(
     tbl::Tables.ColumnTable,
     d::Normal,
     l::IdentityLink;
-    kwargs...
+    kwargs...,
 )
     return throw(
         ArgumentError("use LinearMixedModel for Normal distribution with IdentityLink")

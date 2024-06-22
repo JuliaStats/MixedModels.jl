@@ -25,9 +25,9 @@ lower Cholesky factor.
 """
 function LinearAlgebra.logdet(m::LinearMixedModel{T}) where {T}
     L = m.L
-    @inbounds s = sum(j -> LD(L[kp1choose2(j)]), axes(m.reterms, 1))::T
+    @inbounds s = sum(j -> LD(L[kp1choose2(j)])::T, axes(m.reterms, 1))
     if m.optsum.REML
-        lastL = last(L)
+        lastL = last(L)::Matrix{T}
         s += LD(lastL)        # this includes the log of sqrtpwrss
         s -= log(last(lastL)) # so we need to subtract it from the sum
     end

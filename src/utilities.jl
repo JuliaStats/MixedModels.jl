@@ -136,7 +136,7 @@ function replicate(
 )
     use_threads && Base.depwarn(
         "use_threads is deprecated and will be removed in a future release",
-        :replicate
+        :replicate,
     )
     if !isnothing(hide_progress)
         Base.depwarn(

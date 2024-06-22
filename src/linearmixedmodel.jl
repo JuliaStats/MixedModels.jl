@@ -895,7 +895,7 @@ end
 
 The penalized, weighted residual sum-of-squares.
 """
-pwrss(m::LinearMixedModel{T}) where {T} = abs2(last(last(m.L)))::T
+pwrss(m::LinearMixedModel{T}) where {T} = abs2(last(last(m.L)::Matrix{T}))
 
 """
     ranef!(v::Vector{Matrix{T}}, m::MixedModel{T}, β, uscale::Bool) where {T}

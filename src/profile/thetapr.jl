@@ -10,7 +10,7 @@ function optsumj(os::OptSummary, j::Integer)
     return OptSummary(
         deleteat!(copy(os.final), j),
         deleteat!(copy(os.lowerbd), j),
-        os.optimizer
+        os.optimizer,
     )
 end
 

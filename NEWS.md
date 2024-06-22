@@ -1,3 +1,7 @@
+MixedModels v4.24.1 Release Notes
+==============================
+Add type notations in `pwrss(::LinearMixedModel)` and `logdet(::LinearMixedModel)` to enhance type inference. [#773]
+
 MixedModels v4.24.0 Release Notes
 ==============================
 * Properties for `GeneralizedLinearMixedModel` now default to delegation to the internal weighted `LinearMixedModel` when that property is not explicitly handled by `GeneralizedLinearMixedModel`. Previously, properties were delegated on an explicit basis, which meant that they had to be added manually as use cases were discovered. The downside to the new approach is that it is now possible to access properties whose definition in the LMM case doesn't match the GLMM definition when the GLMM definition hasn't been explicitly been implemented. [#767]
@@ -521,3 +525,4 @@ Package dependencies
 [#755]: https://github.com/JuliaStats/MixedModels.jl/issues/755
 [#756]: https://github.com/JuliaStats/MixedModels.jl/issues/756
 [#767]: https://github.com/JuliaStats/MixedModels.jl/issues/767
+[#773]: https://github.com/JuliaStats/MixedModels.jl/issues/773
