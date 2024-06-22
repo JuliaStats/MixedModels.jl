@@ -236,7 +236,7 @@ function _simulate!(
         ismissing(σ) ||
         throw(
             ArgumentError(
-                "You must not specify a dispersion parameter for model families without a dispersion parameter",
+                "You must not specify a dispersion parameter for model families without a dispersion parameter"
             ),
         )
 
