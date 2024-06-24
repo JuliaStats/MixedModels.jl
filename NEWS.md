@@ -1,4 +1,4 @@
-MixedModels v4.24.2 Release Notes
+MixedModels v4.25 Release Notes
 ==============================
 - Add type notations in `pwrss(::LinearMixedModel)` and `logdet(::LinearMixedModel)` to enhance type inference. [#773]
 - Take advantage of type parameter for `StatsAPI.weights(::LinearMixedModel{T})`. [#772]
