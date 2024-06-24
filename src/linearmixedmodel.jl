@@ -431,8 +431,8 @@ function feL(m::LinearMixedModel)
 end
 
 """
-    fit!(m::LinearMixedModel; progress::Bool=true, REML::Bool=false,
-                              σ::Union{Real, Nothing}=nothing,
+    fit!(m::LinearMixedModel; progress::Bool=true, REML::Bool=m.optsum.REML,
+                              σ::Union{Real, Nothing}=m.optsum.sigma,
                               thin::Int=typemax(Int))
 
 Optimize the objective of a `LinearMixedModel`.  When `progress` is `true` a
@@ -445,8 +445,8 @@ saved in `m.optsum.fitlog`.
 function StatsAPI.fit!(
     m::LinearMixedModel{T};
     progress::Bool=true,
-    REML::Bool=false,
-    σ::Union{Real,Nothing}=nothing,
+    REML::Bool=m.optsum.REML,
+    σ::Union{Real,Nothing}=m.optsum.sigma,
     thin::Int=typemax(Int),
 ) where {T}
     optsum = m.optsum
@@ -461,6 +461,7 @@ function StatsAPI.fit!(
     end
     opt = Opt(optsum)
     optsum.REML = REML
+    optsum.sigma = σ
     prog = ProgressUnknown(; desc="Minimizing", showspeed=true)
     # start from zero for the initial call to obj before optimization
     iter = 0
@@ -1341,7 +1342,7 @@ function varest(m::LinearMixedModel)
     return isnothing(m.optsum.sigma) ? pwrss(m) / ssqdenom(m) : m.optsum.sigma
 end
 
-function StatsAPI.weights(m::LinearMixedModel{T}) where {T}
+function StatsAPI.weights(m::LinearMixedModel)
     rtwts = m.sqrtwts
-    return isempty(rtwts) ? ones(T, nobs(m)) : abs2.(rtwts)
+    return isempty(rtwts) ? ones(eltype(rtwts), nobs(m)) : abs2.(rtwts)
 end

@@ -1,6 +1,10 @@
 MixedModels v4.24.2 Release Notes
 ==============================
 - Add type notations in `pwrss(::LinearMixedModel)` and `logdet(::LinearMixedModel)` to enhance type inference. [#773]
+- Take advantage of type parameter for `StatsAPI.weights(::LinearMixedModel{T})`. [#772]
+- Fix use of kwargs in `fit!((::LinearMixedModel)`: [#772]
+    - user-specified `σ` is actually used, defaulting to existing value
+    - `REML` defaults to model's already specified REML value.
 
 MixedModels v4.24.1 Release Notes
 ==============================
