@@ -1,6 +1,10 @@
+MixedModels v4.24.2 Release Notes
+==============================
+- Add type notations in `pwrss(::LinearMixedModel)` and `logdet(::LinearMixedModel)` to enhance type inference. [#773]
+
 MixedModels v4.24.1 Release Notes
 ==============================
-Add type notations in `pwrss(::LinearMixedModel)` and `logdet(::LinearMixedModel)` to enhance type inference. [#773]
+- Re-export accidentally dropped export `lrtest`. [#769]
 
 MixedModels v4.24.0 Release Notes
 ==============================
@@ -525,4 +529,5 @@ Package dependencies
 [#755]: https://github.com/JuliaStats/MixedModels.jl/issues/755
 [#756]: https://github.com/JuliaStats/MixedModels.jl/issues/756
 [#767]: https://github.com/JuliaStats/MixedModels.jl/issues/767
+[#769]: https://github.com/JuliaStats/MixedModels.jl/issues/769
 [#773]: https://github.com/JuliaStats/MixedModels.jl/issues/773
