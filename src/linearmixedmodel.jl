@@ -1339,7 +1339,7 @@ function varest(m::LinearMixedModel)
     return isnothing(m.optsum.sigma) ? pwrss(m) / ssqdenom(m) : m.optsum.sigma
 end
 
-function StatsAPI.weights(m::LinearMixedModel)
+function StatsAPI.weights(m::LinearMixedModel{T}) where {T}
     rtwts = m.sqrtwts
-    return isempty(rtwts) ? ones(eltype(rtwts), nobs(m)) : abs2.(rtwts)
+    return isempty(rtwts) ? ones(T, nobs(m)) : abs2.(rtwts)
 end
