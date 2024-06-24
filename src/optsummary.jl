@@ -31,63 +31,37 @@ The latter four fields are MixedModels functionality and not related directly to
     the future to use a different subtype of `AbstractVector` (e.g., `StaticArrays.SVector`)
     for each snapshot without being considered a breaking change.
 """
-mutable struct OptSummary{T<:AbstractFloat}
+Base.@kwdef mutable struct OptSummary{T<:AbstractFloat}
     initial::Vector{T}
     lowerbd::Vector{T}
-    finitial::T
-    ftol_rel::T
-    ftol_abs::T
-    xtol_rel::T
-    xtol_abs::Vector{T}
-    initial_step::Vector{T}
-    maxfeval::Int
-    maxtime::T
-    feval::Int
-    final::Vector{T}
-    fmin::T
-    optimizer::Symbol
-    returnvalue::Symbol
-    nAGQ::Integer           # don't really belong here but I needed a place to store them
-    REML::Bool
-    sigma::Union{T,Nothing}
-    fitlog::Vector{Tuple{Vector{T},T}} # not SVector because we would need to parameterize on size (which breaks GLMM)
+    finitial::T = T(Inf)
+    ftol_rel::T = zero(T)
+    ftol_abs::T = zero(T)
+    xtol_rel::T = zero(T)
+    xtol_abs::Vector{T} = zero(initial) .+ 1e-10
+    initial_step::Vector{T} = T[]
+    maxfeval::Int = -1
+    maxtime::T = T(-1)
+    feval::Int = -1
+    final::Vector{T} = copy(initial)
+    fmin::T = T(Inf)
+    optimizer::Symbol = :LN_BOBYQA
+    returnvalue::Symbol = :FAILURE
+    ftol_zero_abs::T = T(0.001)
+    # not SVector because we would need to parameterize on size (which breaks GLMM)
+    fitlog::Vector{Tuple{Vector{T},T}} = [(initial, T(Inf))]
+    # don't really belong here but I needed a place to store them
+    nAGQ::Integer = 1
+    REML::Bool = false
+    sigma::Union{T,Nothing} = nothing
 end
 
 function OptSummary(
     initial::Vector{T},
     lowerbd::Vector{T},
-    optimizer::Symbol;
-    ftol_rel::T=zero(T),
-    ftol_abs::T=zero(T),
-    xtol_rel::T=zero(T),
-    xtol_abs::Vector{T}=zero(initial) .+ 1e-10,
-    initial_step::Vector{T}=T[],
-    maxfeval=-1,
-    maxtime=T(-1),
+    optimizer::Symbol=:LN_BOBYQA; kwargs...
 ) where {T<:AbstractFloat}
-    fitlog = [(initial, T(Inf))]
-
-    return OptSummary(
-        initial,
-        lowerbd,
-        T(Inf),
-        ftol_rel,
-        ftol_abs,
-        xtol_rel,
-        xtol_abs,
-        initial_step,
-        maxfeval,
-        maxtime,
-        -1,
-        copy(initial),
-        T(Inf),
-        optimizer,
-        :FAILURE,
-        1,
-        false,
-        nothing,
-        fitlog,
-    )
+    return OptSummary( ; initial, lowerbd, optimizer, kwargs...)
 end
 
 """
