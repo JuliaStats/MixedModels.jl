@@ -5,6 +5,7 @@ MixedModels v4.24.2 Release Notes
 - Fix use of kwargs in `fit!((::LinearMixedModel)`: [#772]
     - user-specified `σ` is actually used, defaulting to existing value
     - `REML` defaults to model's already specified REML value.
+- Clean up code of keyword convenience constructor for `OptSummary`. [#772]
 
 MixedModels v4.24.1 Release Notes
 ==============================

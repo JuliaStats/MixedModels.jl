@@ -34,34 +34,37 @@ The latter four fields are MixedModels functionality and not related directly to
 Base.@kwdef mutable struct OptSummary{T<:AbstractFloat}
     initial::Vector{T}
     lowerbd::Vector{T}
-    finitial::T = T(Inf)
-    ftol_rel::T = zero(T)
-    ftol_abs::T = zero(T)
-    xtol_rel::T = zero(T)
+    # the @kwdef macro isn't quite smart enough for us to use the type parameter
+    # for the default values, but we can fake it
+    finitial::T = Inf * one(eltype(initial))
+    ftol_rel::T = zero(eltype(initial))
+    ftol_abs::T = zero(eltype(initial))
+    xtol_rel::T = zero(eltype(initial))
     xtol_abs::Vector{T} = zero(initial) .+ 1e-10
-    initial_step::Vector{T} = T[]
+    initial_step::Vector{T} = empty(initial)
     maxfeval::Int = -1
-    maxtime::T = T(-1)
+    maxtime::T = -one(eltype(initial))
     feval::Int = -1
     final::Vector{T} = copy(initial)
-    fmin::T = T(Inf)
+    fmin::T = Inf * one(eltype(initial))
     optimizer::Symbol = :LN_BOBYQA
     returnvalue::Symbol = :FAILURE
-    ftol_zero_abs::T = T(0.001)
+    ftol_zero_abs::T = one(eltype(initial)) / 1000
     # not SVector because we would need to parameterize on size (which breaks GLMM)
-    fitlog::Vector{Tuple{Vector{T},T}} = [(initial, T(Inf))]
+    fitlog::Vector{Tuple{Vector{T},T}} = [(initial, fmin)]
     # don't really belong here but I needed a place to store them
-    nAGQ::Integer = 1
+    nAGQ::Int = 1
     REML::Bool = false
     sigma::Union{T,Nothing} = nothing
 end
 
 function OptSummary(
     initial::Vector{T},
-    lowerbd::Vector{T},
+    lowerbd::Vector{S},
     optimizer::Symbol=:LN_BOBYQA; kwargs...
-) where {T<:AbstractFloat}
-    return OptSummary( ; initial, lowerbd, optimizer, kwargs...)
+) where {T<:AbstractFloat, S<:AbstractFloat}
+    TS = promote_type(T, S)
+    return OptSummary{TS}( ; initial, lowerbd, optimizer, kwargs...)
 end
 
 """
