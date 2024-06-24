@@ -6,6 +6,7 @@ MixedModels v4.24.2 Release Notes
     - user-specified `σ` is actually used, defaulting to existing value
     - `REML` defaults to model's already specified REML value.
 - Clean up code of keyword convenience constructor for `OptSummary`. [#772]
+- Refactor thresholding parameters for forcing near-zero parameter values into `OptSummary`. [#772]
 
 MixedModels v4.24.1 Release Notes
 ==============================

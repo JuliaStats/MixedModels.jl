@@ -512,13 +512,13 @@ function StatsAPI.fit!(
     xmin_ = copy(xmin)
     lb = optsum.lowerbd
     for i in eachindex(xmin_)
-        if iszero(lb[i]) && zero(T) < xmin_[i] < T(0.001)
+        if iszero(lb[i]) && zero(T) < xmin_[i] < optsum.xtol_zero_abs
             xmin_[i] = zero(T)
         end
     end
     loglength = length(fitlog)
     if xmin ≠ xmin_
-        if (zeroobj = obj(xmin_, T[])) ≤ (fmin + 1.e-5)
+        if (zeroobj = obj(xmin_, T[])) ≤ (fmin + optsum.ftol_zero_abs)
             fmin = zeroobj
             copyto!(xmin, xmin_)
         elseif length(fitlog) > loglength

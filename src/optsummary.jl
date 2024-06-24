@@ -19,6 +19,7 @@ Summary of an `NLopt` optimization
 * `feval`: the number of function evaluations
 * `optimizer`: the name of the optimizer used, as a `Symbol`
 * `returnvalue`: the return value, as a `Symbol`
+* `xtol_zero_abs`: the tolerance for a near zero parameter to be considered practically zero
 * `ftol_zero_abs`: the tolerance for change in the objective for setting a near zero parameter to zero
 * `fitlog`: A vector of tuples of parameter and objectives values from steps in the optimization
 * `nAGQ`: number of adaptive Gauss-Hermite quadrature points in deviance evaluation for GLMMs
@@ -50,7 +51,8 @@ Base.@kwdef mutable struct OptSummary{T<:AbstractFloat}
     fmin::T = Inf * one(eltype(initial))
     optimizer::Symbol = :LN_BOBYQA
     returnvalue::Symbol = :FAILURE
-    ftol_zero_abs::T = one(eltype(initial)) / 1000
+    xtol_zero_abs::T = eltype(initial)(0.001)
+    ftol_zero_abs::T = eltype(initial)(1.e-5)
     # not SVector because we would need to parameterize on size (which breaks GLMM)
     fitlog::Vector{Tuple{Vector{T},T}} = [(initial, fmin)]
     # don't really belong here but I needed a place to store them
