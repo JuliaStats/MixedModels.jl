@@ -175,7 +175,7 @@ function LinearMixedModel(
     A, L = createAL(reterms, Xy)
     lbd = foldl(vcat, lowerbd(c) for c in reterms)
     θ = foldl(vcat, getθ(c) for c in reterms)
-    optsum = OptSummary(θ, lbd, :LN_BOBYQA; ftol_rel=T(1.0e-12), ftol_abs=T(1.0e-8))
+    optsum = OptSummary(θ, lbd)
     optsum.sigma = isnothing(σ) ? nothing : T(σ)
     fill!(optsum.xtol_abs, 1.0e-10)
     return LinearMixedModel(

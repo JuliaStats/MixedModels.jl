@@ -19,12 +19,13 @@ Summary of an `NLopt` optimization
 * `feval`: the number of function evaluations
 * `optimizer`: the name of the optimizer used, as a `Symbol`
 * `returnvalue`: the return value, as a `Symbol`
+* `ftol_zero_abs`: the tolerance for change in the objective for setting a near zero parameter to zero
+* `fitlog`: A vector of tuples of parameter and objectives values from steps in the optimization
 * `nAGQ`: number of adaptive Gauss-Hermite quadrature points in deviance evaluation for GLMMs
 * `REML`: use the REML criterion for LMM fits
 * `sigma`: a priori value for the residual standard deviation for LMM
-* `fitlog`: A vector of tuples of parameter and objectives values from steps in the optimization
 
-The latter four fields are MixedModels functionality and not related directly to the `NLopt` package or algorithms.
+The last three fields are MixedModels functionality and not related directly to the `NLopt` package or algorithms.
 
 !!! note
     The internal storage of the parameter values within `fitlog` may change in
@@ -37,8 +38,8 @@ Base.@kwdef mutable struct OptSummary{T<:AbstractFloat}
     # the @kwdef macro isn't quite smart enough for us to use the type parameter
     # for the default values, but we can fake it
     finitial::T = Inf * one(eltype(initial))
-    ftol_rel::T = zero(eltype(initial))
-    ftol_abs::T = zero(eltype(initial))
+    ftol_rel::T = eltype(initial)(1.0e-12)
+    ftol_abs::T = eltype(initial)(1.0e-8)
     xtol_rel::T = zero(eltype(initial))
     xtol_abs::Vector{T} = zero(initial) .+ 1e-10
     initial_step::Vector{T} = empty(initial)
