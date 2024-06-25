@@ -1,6 +1,16 @@
+MixedModels v4.25 Release Notes
+==============================
+- Add type notations in `pwrss(::LinearMixedModel)` and `logdet(::LinearMixedModel)` to enhance type inference. [#773]
+- Take advantage of type parameter for `StatsAPI.weights(::LinearMixedModel{T})`. [#772]
+- Fix use of kwargs in `fit!((::LinearMixedModel)`: [#772]
+    - user-specified `σ` is actually used, defaulting to existing value
+    - `REML` defaults to model's already specified REML value.
+- Clean up code of keyword convenience constructor for `OptSummary`. [#772]
+- Refactor thresholding parameters for forcing near-zero parameter values into `OptSummary`. [#772]
+
 MixedModels v4.24.1 Release Notes
 ==============================
-Add type notations in `pwrss(::LinearMixedModel)` and `logdet(::LinearMixedModel)` to enhance type inference. [#773]
+- Re-export accidentally dropped export `lrtest`. [#769]
 
 MixedModels v4.24.0 Release Notes
 ==============================
@@ -525,4 +535,6 @@ Package dependencies
 [#755]: https://github.com/JuliaStats/MixedModels.jl/issues/755
 [#756]: https://github.com/JuliaStats/MixedModels.jl/issues/756
 [#767]: https://github.com/JuliaStats/MixedModels.jl/issues/767
+[#769]: https://github.com/JuliaStats/MixedModels.jl/issues/769
+[#772]: https://github.com/JuliaStats/MixedModels.jl/issues/772
 [#773]: https://github.com/JuliaStats/MixedModels.jl/issues/773
