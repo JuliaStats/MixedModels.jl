@@ -36,8 +36,8 @@ struct LinearMixedModel{T<:AbstractFloat} <: MixedModel{T}
     sqrtwts::Vector{T}
     parmap::Vector{NTuple{3,Int}}
     dims::NamedTuple{(:n, :p, :nretrms),NTuple{3,Int}}
-    A::Vector{AbstractMatrix{T}}            # cross-product blocks
-    L::Vector{AbstractMatrix{T}}
+    A::Vector{<:AbstractMatrix{T}}            # cross-product blocks
+    L::Vector{<:AbstractMatrix{T}}
     optsum::OptSummary{T}
 end
 
@@ -175,7 +175,7 @@ function LinearMixedModel(
     A, L = createAL(reterms, Xy)
     lbd = foldl(vcat, lowerbd(c) for c in reterms)
     θ = foldl(vcat, getθ(c) for c in reterms)
-    optsum = OptSummary(θ, lbd, :LN_BOBYQA; ftol_rel=T(1.0e-12), ftol_abs=T(1.0e-8))
+    optsum = OptSummary(θ, lbd)
     optsum.sigma = isnothing(σ) ? nothing : T(σ)
     fill!(optsum.xtol_abs, 1.0e-10)
     return LinearMixedModel(
@@ -408,7 +408,7 @@ function createAL(reterms::Vector{<:AbstractReMat{T}}, Xy::FeMat{T}) where {T}
             end
         end
     end
-    return A, L
+    return identity.(A), identity.(L)
 end
 
 StatsAPI.deviance(m::LinearMixedModel) = objective(m)
@@ -431,8 +431,8 @@ function feL(m::LinearMixedModel)
 end
 
 """
-    fit!(m::LinearMixedModel; progress::Bool=true, REML::Bool=false,
-                              σ::Union{Real, Nothing}=nothing,
+    fit!(m::LinearMixedModel; progress::Bool=true, REML::Bool=m.optsum.REML,
+                              σ::Union{Real, Nothing}=m.optsum.sigma,
                               thin::Int=typemax(Int))
 
 Optimize the objective of a `LinearMixedModel`.  When `progress` is `true` a
@@ -445,8 +445,8 @@ saved in `m.optsum.fitlog`.
 function StatsAPI.fit!(
     m::LinearMixedModel{T};
     progress::Bool=true,
-    REML::Bool=false,
-    σ::Union{Real,Nothing}=nothing,
+    REML::Bool=m.optsum.REML,
+    σ::Union{Real,Nothing}=m.optsum.sigma,
     thin::Int=typemax(Int),
 ) where {T}
     optsum = m.optsum
@@ -461,6 +461,7 @@ function StatsAPI.fit!(
     end
     opt = Opt(optsum)
     optsum.REML = REML
+    optsum.sigma = σ
     prog = ProgressUnknown(; desc="Minimizing", showspeed=true)
     # start from zero for the initial call to obj before optimization
     iter = 0
@@ -511,13 +512,13 @@ function StatsAPI.fit!(
     xmin_ = copy(xmin)
     lb = optsum.lowerbd
     for i in eachindex(xmin_)
-        if iszero(lb[i]) && zero(T) < xmin_[i] < T(0.001)
+        if iszero(lb[i]) && zero(T) < xmin_[i] < optsum.xtol_zero_abs
             xmin_[i] = zero(T)
         end
     end
     loglength = length(fitlog)
     if xmin ≠ xmin_
-        if (zeroobj = obj(xmin_, T[])) ≤ (fmin + 1.e-5)
+        if (zeroobj = obj(xmin_, T[])) ≤ (fmin + optsum.ftol_zero_abs)
             fmin = zeroobj
             copyto!(xmin, xmin_)
         elseif length(fitlog) > loglength

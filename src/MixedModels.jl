@@ -19,7 +19,7 @@ using LinearAlgebra: ldiv!, lmul!, logdet, mul!, norm, normalize, normalize!, qr
 using LinearAlgebra: rank, rdiv!, rmul!, svd, tril!
 using Markdown: Markdown
 using MixedModelsDatasets: dataset, datasets
-using NLopt: NLopt, Opt, ftol_abs, ftol_rel, initial_step, xtol_abs, xtol_rel
+using NLopt: NLopt, Opt
 using PooledArrays: PooledArrays, PooledArray
 using PrecompileTools: PrecompileTools, @setup_workload, @compile_workload
 using ProgressMeter: ProgressMeter, Progress, ProgressUnknown, finish!, next!
