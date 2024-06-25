@@ -51,6 +51,7 @@ ProgressMeter = "1.7"
 Random = "1"
 SparseArrays = "1"
 StableRNGs = "0.1, 1"
+StandardizedPredictors = "1"
 StaticArrays = "0.11, 0.12, 1"
 Statistics = "1"
 StatsAPI = "1.5"
@@ -71,8 +72,18 @@ DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 ExplicitImports = "7d51a73a-1435-4ff3-83d9-f097790105c7"
 InteractiveUtils = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
 StableRNGs = "860ef19b-820b-49d6-a774-d7a799459cd3"
+StandardizedPredictors = "5064a6a7-f8c2-40e2-8bdc-797ec6f1ae18"
 Suppressor = "fd094767-a336-5f1f-9728-57cf17d0bbfb"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Aqua", "Chairmarks", "DataFrames", "ExplicitImports", "InteractiveUtils", "StableRNGs", "Suppressor", "Test"]
+test = [
+    "Aqua",
+    "Chairmarks",
+    "DataFrames",
+    "ExplicitImports",
+    "InteractiveUtils",
+    "StableRNGs",
+    "StandardizedPredictors",
+    "Suppressor",
+    "Test"]

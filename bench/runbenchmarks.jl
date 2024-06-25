@@ -1,5 +1,5 @@
-using Chairmarks, MixedModels, StandardizedPredictors, StatsModels, TypedTables
-using MixedModels: dataset
+using Chairmarks, MixedModels, StandardizedPredictors
+using MixedModels: dataset, FormulaTerm, Table
 
 @isdefined(contrasts) || const contrasts = Dict{Symbol, Any}()
 
@@ -16,8 +16,8 @@ contrasts[:spkr] = HelmertCoding()    # kb07
 contrasts[:height] = Center()         # grouseticks
 contrasts[:gender] = HelmertCoding()  # verbagg
 contrasts[:btype] = EffectsCoding()   # verbagg
-contrasts[:situ] = HelmertCoding()  # verbagg
-contrasts[:mode] = HelmertCoding()  # verbagg
+contrasts[:situ] = HelmertCoding()    # verbagg
+contrasts[:mode] = HelmertCoding()    # verbagg
 
 tbl = Table(
     dsnm = [
@@ -31,7 +31,7 @@ tbl = Table(
         fill(5.0f0, 2),
         fill(25.0f0, 4)
     ),
-    frm = StatsModels.FormulaTerm[
+    frm = FormulaTerm[
         @formula(yield ~ 1 + (1|batch)),
         @formula(yield ~ 1 + (1|batch)),
         @formula(strength ~ 1 + (1 | batch & cask)),
@@ -62,26 +62,34 @@ tbl = Table(
     ]
 )
 
-linmark(f, d, t) = @b fit(MixedModel, f, dataset(d); contrasts, progress=false) seconds=t
+# linmark(f, d, t) = @b fit(MixedModel, f, dataset(d); contrasts, progress=false) seconds=t
 
-function runbmrk(tbl)
-    return Table([(; bmk=linmark(f, d, t), dsnm = d, frm=f) for (d, t, f) in tbl])
-end
+@track (@b (first(tbl.frm), dataset(first(tbl.dsnm))) fit(MixedModel, first(_), last(_); progress=false)).time
+@track (@b (tbl.frm[2], dataset(tbl.dsnm[2])) fit(MixedModel, first(_), last(_); progress=false)).time
+@track (@b (tbl.frm[3], dataset(tbl.dsnm[3])) fit(MixedModel, first(_), last(_); progress=false)).time
+@track (@b (tbl.frm[4], dataset(tbl.dsnm[4])) fit(MixedModel, first(_), last(_); progress=false)).time
+@track (@b (tbl.frm[5], dataset(tbl.dsnm[5])) fit(MixedModel, first(_), last(_); progress=false)).time
+@track (@b (tbl.frm[6], dataset(tbl.dsnm[6])) fit(MixedModel, first(_), last(_); progress=false)).time
+@track (@b (tbl.frm[7], dataset(tbl.dsnm[7])) fit(MixedModel, first(_), last(_); progress=false)).time
 
-gltbl = Table(
-    dsnm = [:contra, :contra, :verbagg, :grouseticks],
-    secs = [2.0, 2.0, 15.0, 15.0],
-    dist = [Bernoulli(), Bernoulli(), Bernoulli(), Poisson()],
-    frm = StatsModels.FormulaTerm[
-        @formula(use ~ 1+age+abs2(age)+urban+livch+(1|urban&dist)),
-        @formula(use ~ 1+age+abs2(age)+urban+(≠("0"))(livch)+(1+urban|dist)),
-        @formula(r2 ~ 1+anger+gender+btype+situ+(1|subj)+(1|item)),
-        @formula(ticks ~ 1+year+height+(1|index)+(1|brood)+(1|location)),
-    ]
-)
+# function runbmrk(tbl)
+#     return Table([(; bmk=linmark(f, d, t), dsnm = d, frm=f) for (d, t, f) in tbl])
+# end
 
-glmark(f, d, r, t; init_from_lmm=()) = @b fit(MixedModel, f, dataset(d), r; init_from_lmm, contrasts, progress=false) seconds=t
+# gltbl = Table(
+#     dsnm = [:contra, :contra, :verbagg, :grouseticks],
+#     secs = [2.0, 2.0, 15.0, 15.0],
+#     dist = [Bernoulli(), Bernoulli(), Bernoulli(), Poisson()],
+#     frm = FormulaTerm[
+#         @formula(use ~ 1+age+abs2(age)+urban+livch+(1|urban&dist)),
+#         @formula(use ~ 1+age+abs2(age)+urban+(≠("0"))(livch)+(1+urban|dist)),
+#         @formula(r2 ~ 1+anger+gender+btype+situ+(1|subj)+(1|item)),
+#         @formula(ticks ~ 1+year+height+(1|index)+(1|brood)+(1|location)),
+#     ]
+# )
 
-function runglbmk(tbl; init_from_lmm=())
-    return Table((; bmk=glmark(f, d, r, t; init_from_lmm), dsnm=d, dist=r, frm=f) for (d, t, r, f) in tbl)
-end
+# glmark(f, d, r, t; init_from_lmm=()) = @b fit(MixedModel, f, dataset(d), r; init_from_lmm, contrasts, progress=false) seconds=t
+
+# function runglbmk(tbl; init_from_lmm=())
+#     return Table((; bmk=glmark(f, d, r, t; init_from_lmm), dsnm=d, dist=r, frm=f) for (d, t, r, f) in tbl)
+# end
