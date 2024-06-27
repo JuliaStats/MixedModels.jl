@@ -205,6 +205,7 @@ include("mimeshow.jl")
 include("serialization.jl")
 include("profile/profile.jl")
 
+# COV_EXCL_START
 @setup_workload begin
     # Putting some things in `setup` can reduce the size of the
     # precompile file and potentially make loading faster.
@@ -227,5 +228,6 @@ include("profile/profile.jl")
             progress)
     end
 end
+# COV_EXCL_STOP
 
 end # module
