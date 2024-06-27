@@ -544,7 +544,7 @@ end
         @test bic(fm) ≈ bic(m)
         @test coef(fm) ≈ coef(m)
 
-        # check restoreoptsum from v4.23.1
+        # check restoreoptsum from older versions
         m = LinearMixedModel(
             @formula(reaction ~ 1 + days + (1 + days | subj)),
             MixedModels.dataset(:sleepstudy),
@@ -567,9 +567,7 @@ end
     "optimizer":"LN_BOBYQA",
     "returnvalue":"FTOL_REACHED",
     "nAGQ":1,
-    "REML":false,
-    "sigma":null,
-    "fitlog":[[[1.0,0.0,1.0],1784.642296192436]]
+    "REML":false
 }
 """
         )
@@ -600,7 +598,8 @@ end
 }
 """
         )
-        @test_throws ArgumentError restoreoptsum!(m, seekstart(iob))
+        @test_throws(ArgumentError("optsum names: [:ftol_abs] not found in io"),
+                     restoreoptsum!(m, seekstart(iob)))
 
         iob = IOBuffer(
 """
@@ -626,7 +625,8 @@ end
 }
 """
         )
-        @test_throws ArgumentError restoreoptsum!(m, seekstart(iob))
+        @test_throws(ArgumentError("initial or final parameters in io do not satisfy lowerbd"),
+                     restoreoptsum!(m, seekstart(iob)))
     end
 
     @testset "profile" begin

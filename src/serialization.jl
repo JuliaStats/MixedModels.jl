@@ -18,11 +18,13 @@ function restoreoptsum!(
                 :lowerbd,       # never saved, -Inf not allowed in JSON
                 :xtol_zero_abs, # added in v4.25.0
                 :ftol_zero_abs, # added in v4.25.0
+                :sigma, # added in v4.1.0
+                :fitlog,# added in v4.1.0
             ),
         ),
     )
     if !isempty(nmdiff)
-        throw(ArgumentError(string("optsum names:", nmdiff, " not found in io")))
+        throw(ArgumentError(string("optsum names: ", nmdiff, " not found in io")))
     end
     if any(ops.lowerbd .> dict.initial) || any(ops.lowerbd .> dict.final)
         throw(ArgumentError("initial or final parameters in io do not satisfy lowerbd"))
@@ -43,12 +45,16 @@ function restoreoptsum!(
     end
     ops.optimizer = Symbol(dict.optimizer)
     ops.returnvalue = Symbol(dict.returnvalue)
-    # provides compatibility with fits saved before the introduction of fixed sigma
+    # compatibility with fits saved before the introduction of various extensions
+    for prop in [:xtol_zero_abs, :ftol_zero_abs]
+        fallback = getproperty(ops, prop)
+        setproperty!(ops, prop, get(dict, prop, fallback))
+    end
     ops.sigma = get(dict, :sigma, nothing)
     fitlog = get(dict, :fitlog, nothing)
     ops.fitlog = if isnothing(fitlog)
         # compat with fits saved before fitlog
-        [(ops.initial, ops.finitial, ops.final, ops.fmin)]
+        [(ops.initial, ops.finitial), (ops.final, ops.fmin)]
     else
         [(convert(Vector{T}, first(entry)), T(last(entry))) for entry in fitlog]
     end
