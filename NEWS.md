@@ -1,6 +1,6 @@
 MixedModels v4.25.1 Release Notes
 ==============================
-- Use more sophisticated checks on property names in `restoreoptsum` to allow for optsums saved by pre-v4.25 versions to be used with this version and later. 
+- Use more sophisticated checks on property names in `restoreoptsum` to allow for optsums saved by pre-v4.25 versions to be used with this version and later. [#775] 
 
 MixedModels v4.25 Release Notes
 ==============================
@@ -542,4 +542,4 @@ Package dependencies
 [#769]: https://github.com/JuliaStats/MixedModels.jl/issues/769
 [#772]: https://github.com/JuliaStats/MixedModels.jl/issues/772
 [#773]: https://github.com/JuliaStats/MixedModels.jl/issues/773
-[#774]: https://github.com/JuliaStats/MixedModels.jl/issues/774
+[#775]: https://github.com/JuliaStats/MixedModels.jl/issues/775
