@@ -626,9 +626,9 @@ end
 }
 """
         )
-        @test_throws ArgumentError restoreoptsum!(m, seekstart(iob))    
+        @test_throws ArgumentError restoreoptsum!(m, seekstart(iob))
     end
-    
+
     @testset "profile" begin
         pr = profile(last(models(:sleepstudy)))
         tbl = pr.tbl
