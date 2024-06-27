@@ -10,21 +10,22 @@ function restoreoptsum!(
 ) where {T}
     dict = JSON3.read(io)
     ops = m.optsum
+    allowed_missing = (
+        :lowerbd,       # never saved, -Inf not allowed in JSON
+        :xtol_zero_abs, # added in v4.25.0
+        :ftol_zero_abs, # added in v4.25.0
+        :sigma,         # added in v4.1.0
+        :fitlog,        # added in v4.1.0
+    )
     nmdiff = setdiff(
         propertynames(ops),  # names in freshly created optsum
-        union!(              # names in saved optsum plus those we allow to be missing
-            Set(keys(dict)),
-            (
-                :lowerbd,       # never saved, -Inf not allowed in JSON
-                :xtol_zero_abs, # added in v4.25.0
-                :ftol_zero_abs, # added in v4.25.0
-                :sigma, # added in v4.1.0
-                :fitlog,# added in v4.1.0
-            ),
-        ),
+        union!(Set(keys(dict)), allowed_missing), # names in saved optsum plus those we allow to be missing
     )
     if !isempty(nmdiff)
         throw(ArgumentError(string("optsum names: ", nmdiff, " not found in io")))
+    end
+    if length(setdiff(allowed_missing, keys(dict))) > 1 # 1 because :lowerbd
+        @warn "optsum was saved with an older version of MixedModels.jl: consider resaving."
     end
     if any(ops.lowerbd .> dict.initial) || any(ops.lowerbd .> dict.final)
         throw(ArgumentError("initial or final parameters in io do not satisfy lowerbd"))

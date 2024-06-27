@@ -571,7 +571,9 @@ end
 }
 """
         )
-        restoreoptsum!(m, seekstart(iob))
+        @test_logs((:warn,
+                    r"optsum was saved with an older version of MixedModels.jl: consider resaving"),
+                    restoreoptsum!(m, seekstart(iob)))
         @test loglikelihood(fm) ≈ loglikelihood(m)
         @test bic(fm) ≈ bic(m)
         @test coef(fm) ≈ coef(m)
@@ -630,7 +632,7 @@ end
 
         # make sure new fields are correctly restored
         mktemp() do path, io
-            m = refit!(deepcopy(last(models(:sleepstudy))))
+            m = deepcopy(last(models(:sleepstudy)))
             m.optsum.xtol_zero_abs = 0.5
             m.optsum.ftol_zero_abs = 0.5
             saveoptsum(io, m)
