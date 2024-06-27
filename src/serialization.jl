@@ -22,7 +22,7 @@ function restoreoptsum!(
         ),
     )
     if !isempty(nmdiff)
-        throw(ArgumentError("optsum names:", nmdiff, " not found in io"))
+        throw(ArgumentError(string("optsum names:", nmdiff, " not found in io")))
     end
     if any(ops.lowerbd .> dict.initial) || any(ops.lowerbd .> dict.final)
         throw(ArgumentError("initial or final parameters in io do not satisfy lowerbd"))

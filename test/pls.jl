@@ -543,8 +543,92 @@ end
         @test loglikelihood(fm) ≈ loglikelihood(m)
         @test bic(fm) ≈ bic(m)
         @test coef(fm) ≈ coef(m)
-    end
 
+        # check restoreoptsum from v4.23.1
+        m = LinearMixedModel(
+            @formula(reaction ~ 1 + days + (1 + days | subj)),
+            MixedModels.dataset(:sleepstudy),
+        )
+        iob = IOBuffer(
+"""
+{
+    "initial":[1.0,0.0,1.0],
+    "finitial":1784.642296192436,
+    "ftol_rel":1.0e-12,
+    "ftol_abs":1.0e-8,
+    "xtol_rel":0.0,
+    "xtol_abs":[1.0e-10,1.0e-10,1.0e-10],
+    "initial_step":[0.75,1.0,0.75],
+    "maxfeval":-1,
+    "maxtime":-1.0,
+    "feval":57,
+    "final":[0.9292213195402981,0.01816837807519162,0.22264487477788353],
+    "fmin":1751.9393444646712,
+    "optimizer":"LN_BOBYQA",
+    "returnvalue":"FTOL_REACHED",
+    "nAGQ":1,
+    "REML":false,
+    "sigma":null,
+    "fitlog":[[[1.0,0.0,1.0],1784.642296192436]]
+}
+"""
+        )
+        restoreoptsum!(m, seekstart(iob))
+        @test loglikelihood(fm) ≈ loglikelihood(m)
+        @test bic(fm) ≈ bic(m)
+        @test coef(fm) ≈ coef(m)
+        iob = IOBuffer(
+"""
+{
+    "initial":[1.0,0.0,1.0],
+    "finitial":1784.642296192436,
+    "ftol_rel":1.0e-12,
+    "xtol_rel":0.0,
+    "xtol_abs":[1.0e-10,1.0e-10,1.0e-10],
+    "initial_step":[0.75,1.0,0.75],
+    "maxfeval":-1,
+    "maxtime":-1.0,
+    "feval":57,
+    "final":[0.9292213195402981,0.01816837807519162,0.22264487477788353],
+    "fmin":1751.9393444646712,
+    "optimizer":"LN_BOBYQA",
+    "returnvalue":"FTOL_REACHED",
+    "nAGQ":1,
+    "REML":false,
+    "sigma":null,
+    "fitlog":[[[1.0,0.0,1.0],1784.642296192436]]
+}
+"""
+        )
+        @test_throws ArgumentError restoreoptsum!(m, seekstart(iob))
+
+        iob = IOBuffer(
+"""
+{
+    "initial":[1.0,0.0,1.0],
+    "finitial":1784.642296192436,
+    "ftol_rel":1.0e-12,
+    "ftol_abs":1.0e-8,
+    "xtol_rel":0.0,
+    "xtol_abs":[1.0e-10,1.0e-10,1.0e-10],
+    "initial_step":[0.75,1.0,0.75],
+    "maxfeval":-1,
+    "maxtime":-1.0,
+    "feval":57,
+    "final":[-0.9292213195402981,0.01816837807519162,0.22264487477788353],
+    "fmin":1751.9393444646712,
+    "optimizer":"LN_BOBYQA",
+    "returnvalue":"FTOL_REACHED",
+    "nAGQ":1,
+    "REML":false,
+    "sigma":null,
+    "fitlog":[[[1.0,0.0,1.0],1784.642296192436]]
+}
+"""
+        )
+        @test_throws ArgumentError restoreoptsum!(m, seekstart(iob))    
+    end
+    
     @testset "profile" begin
         pr = profile(last(models(:sleepstudy)))
         tbl = pr.tbl
