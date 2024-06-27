@@ -10,11 +10,21 @@ function restoreoptsum!(
 ) where {T}
     dict = JSON3.read(io)
     ops = m.optsum
-    okay =
-        (setdiff(propertynames(ops), keys(dict)) == [:lowerbd]) &&
-        all(ops.lowerbd .≤ dict.initial) &&
-        all(ops.lowerbd .≤ dict.final)
-    if !okay
+    nmdiff = setdiff(
+        propertynames(ops),  # names in freshly created optsum
+        union!(              # names in saved optsum plus those we allow to be missing
+            Set(keys(dict)),
+            (
+                :lowerbd,       # never saved, -Inf not allowed in JSON
+                :xtol_zero_abs, # added in v4.25.0
+                :ftol_zero_abs, # added in v4.25.0
+            )                
+        )
+    )
+    if !isempty(nmdiff)
+        throw(ArgumentError("optsum names:", nmdiff, " not found in io"))
+    end
+    if any(ops.lowerbd .> dict.initial) || any(ops.lowerbd .> dict.final)
         throw(ArgumentError("initial or final parameters in io do not satisfy lowerbd"))
     end
     for fld in (:feval, :finitial, :fmin, :ftol_rel, :ftol_abs, :maxfeval, :nAGQ, :REML)
