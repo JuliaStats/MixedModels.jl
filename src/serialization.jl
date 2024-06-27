@@ -18,8 +18,8 @@ function restoreoptsum!(
                 :lowerbd,       # never saved, -Inf not allowed in JSON
                 :xtol_zero_abs, # added in v4.25.0
                 :ftol_zero_abs, # added in v4.25.0
-            )                
-        )
+            ),
+        ),
     )
     if !isempty(nmdiff)
         throw(ArgumentError("optsum names:", nmdiff, " not found in io"))
