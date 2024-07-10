@@ -4,6 +4,7 @@ using Arrow: Arrow
 using Base: Ryu, require_one_based_indexing
 using BSplineKit: BSplineKit, BSplineOrder, Natural, Derivative, SplineInterpolation
 using BSplineKit: interpolate
+using Compat: @compat
 using DataAPI: DataAPI, levels, refpool, refarray, refvalue
 using Distributions: Distributions, Bernoulli, Binomial, Chisq, Distribution, Gamma
 using Distributions: InverseGaussian, Normal, Poisson, ccdf
@@ -159,6 +160,9 @@ export @formula,
 
 # TODO: move this to the correct spot in list once we've decided on name
 export savereplicates, restorereplicates
+
+@compat public rePCA, PCA
+
 
 """
     MixedModel
