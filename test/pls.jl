@@ -628,7 +628,7 @@ end
 """
         )
         @test_throws(ArgumentError("initial or final parameters in io do not satisfy lowerbd"),
-                     restoreoptsum!(m, seekstart(iob)))
+                     @suppress restoreoptsum!(m, seekstart(iob)))
 
         # make sure new fields are correctly restored
         mktemp() do path, io
@@ -638,7 +638,7 @@ end
             saveoptsum(io, m)
             m.optsum.xtol_zero_abs = 1.0
             m.optsum.ftol_zero_abs = 1.0
-            restoreoptsum!(m, seekstart(io))
+            @suppress restoreoptsum!(m, seekstart(io))
             @test m.optsum.xtol_zero_abs == 0.5
             @test m.optsum.ftol_zero_abs == 0.5
         end
@@ -646,7 +646,7 @@ end
     end
 
     @testset "profile" begin
-        pr = profile(last(models(:sleepstudy)))
+        pr = @suppress profile(last(models(:sleepstudy)))
         tbl = pr.tbl
         @test length(tbl) >= 122
         ci = confint(pr)
