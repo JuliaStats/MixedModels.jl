@@ -211,8 +211,8 @@ include("profile/profile.jl")
 @setup_workload begin
     # Putting some things in `setup` can reduce the size of the
     # precompile file and potentially make loading faster.
-    sleepstudy = MixedModels.dataset(:sleepstudy)
-    contra = MixedModels.dataset(:contra)
+    sleepstudy = dataset(:sleepstudy)
+    contra = dataset(:contra)
     progress = false
     @compile_workload begin
         # all calls in this block will be precompiled, regardless of whether
