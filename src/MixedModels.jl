@@ -90,8 +90,6 @@ export @formula,
     condVar,
     condVartables,
     confint,
-    dataset,
-    datasets,
     deviance,
     dispersion,
     dispersion_parameter,
@@ -161,7 +159,7 @@ export @formula,
 # TODO: move this to the correct spot in list once we've decided on name
 export savereplicates, restorereplicates
 
-@compat public rePCA, PCA
+@compat public rePCA, PCA, dataset, datasets
 
 
 """
