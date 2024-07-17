@@ -1,3 +1,8 @@
+MixedModels v4.25.2 Release Notes
+==============================
+- Use `public` keyword so that users don't see unnecessary docstring warnings on 1.11+. [#776]
+- Fix accidental export of `dataset` and `datasets` and make them `public` instead. [#776]
+
 MixedModels v4.25.1 Release Notes
 ==============================
 - Use more sophisticated checks on property names in `restoreoptsum` to allow for optsums saved by pre-v4.25 versions to be used with this version and later. [#775] 
@@ -543,3 +548,4 @@ Package dependencies
 [#772]: https://github.com/JuliaStats/MixedModels.jl/issues/772
 [#773]: https://github.com/JuliaStats/MixedModels.jl/issues/773
 [#775]: https://github.com/JuliaStats/MixedModels.jl/issues/775
+[#776]: https://github.com/JuliaStats/MixedModels.jl/issues/776

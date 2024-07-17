@@ -4,6 +4,7 @@ using Arrow: Arrow
 using Base: Ryu, require_one_based_indexing
 using BSplineKit: BSplineKit, BSplineOrder, Natural, Derivative, SplineInterpolation
 using BSplineKit: interpolate
+using Compat: @compat
 using DataAPI: DataAPI, levels, refpool, refarray, refvalue
 using Distributions: Distributions, Bernoulli, Binomial, Chisq, Distribution, Gamma
 using Distributions: InverseGaussian, Normal, Poisson, ccdf
@@ -89,8 +90,6 @@ export @formula,
     condVar,
     condVartables,
     confint,
-    dataset,
-    datasets,
     deviance,
     dispersion,
     dispersion_parameter,
@@ -160,6 +159,8 @@ export @formula,
 # TODO: move this to the correct spot in list once we've decided on name
 export savereplicates, restorereplicates
 
+@compat public rePCA, PCA, dataset, datasets
+
 """
     MixedModel
 
@@ -209,8 +210,8 @@ include("profile/profile.jl")
 @setup_workload begin
     # Putting some things in `setup` can reduce the size of the
     # precompile file and potentially make loading faster.
-    sleepstudy = MixedModels.dataset(:sleepstudy)
-    contra = MixedModels.dataset(:contra)
+    sleepstudy = dataset(:sleepstudy)
+    contra = dataset(:contra)
     progress = false
     @compile_workload begin
         # all calls in this block will be precompiled, regardless of whether
