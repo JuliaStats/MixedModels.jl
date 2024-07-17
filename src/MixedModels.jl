@@ -161,7 +161,6 @@ export savereplicates, restorereplicates
 
 @compat public rePCA, PCA, dataset, datasets
 
-
 """
     MixedModel
 
