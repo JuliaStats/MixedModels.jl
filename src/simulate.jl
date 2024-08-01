@@ -158,7 +158,7 @@ function simulate!(
     isempty(θ) || setθ!(m, θ)
 
     if length(β) == length(pivot(m))
-        β = view(view(β,  pivot(m)), 1:rank(m))
+        β = view(view(β, pivot(m)), 1:rank(m))
     end
 
     # initialize y to standard normal

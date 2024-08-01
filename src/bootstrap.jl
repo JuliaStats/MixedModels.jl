@@ -233,11 +233,11 @@ function parametricbootstrap(
         σ = T(σ)
     end
     β = convert(Vector{T}, β)
-    θ =  convert(Vector{T}, θ)
+    θ = convert(Vector{T}, θ)
     # scratch -- note that this is the length of the unpivoted coef vector 
     βsc = coef(morig)
     θsc = zeros(ftype, length(θ))
-    p =  length(βsc)
+    p = length(βsc)
     k = length(θsc)
     m = deepcopy(morig)
     for (key, val) in pairs(optsum_overrides)
