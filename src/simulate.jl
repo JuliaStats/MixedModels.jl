@@ -18,8 +18,8 @@ function simulate(m::MixedModel, args...; kwargs...)
 end
 
 """
-    simulate!(rng::AbstractRNG, m::MixedModel{T}; β=m.β, σ=m.σ, θ=T[])
-    simulate!(m::MixedModel; β=m.β, σ=m.σ, θ=m.θ)
+    simulate!(rng::AbstractRNG, m::MixedModel{T}; β=fixef(m), σ=m.σ, θ=T[])
+    simulate!(m::MixedModel; β=fixef(m), σ=m.σ, θ=m.θ)
 
 Overwrite the response (i.e. `m.trms[end]`) with a simulated response vector from model `m`.
 
@@ -32,7 +32,7 @@ This simulation includes sampling new values for the random effects.
     which modify the model's response and return the entire modified model.
 """
 function simulate!(
-    rng::AbstractRNG, m::LinearMixedModel{T}; β=coef(m), σ=m.σ, θ=T[]
+    rng::AbstractRNG, m::LinearMixedModel{T}; β=fixef(m), σ=m.σ, θ=T[]
 ) where {T}
     # XXX should we add support for doing something with weights?
     simulate!(rng, m.y, m; β, σ, θ)
@@ -40,7 +40,7 @@ function simulate!(
 end
 
 function simulate!(
-    rng::AbstractRNG, m::GeneralizedLinearMixedModel{T}; β=coef(m), σ=m.σ, θ=T[]
+    rng::AbstractRNG, m::GeneralizedLinearMixedModel{T}; β=fixef(m), σ=m.σ, θ=T[]
 ) where {T}
     # note that these m.resp.y and m.LMM.y will later be synchronized in (re)fit!()
     # but for now we use them as distinct scratch buffers to avoid allocations
@@ -85,7 +85,7 @@ function _rand(rng::AbstractRNG, d::Distribution, location, scale=NaN, n=1)
     return rand(rng, dist) / n
 end
 
-function simulate!(m::MixedModel{T}; β=coef(m), σ=m.σ, θ=T[]) where {T}
+function simulate!(m::MixedModel{T}; β=fixef(m), σ=m.σ, θ=T[]) where {T}
     return simulate!(Random.GLOBAL_RNG, m; β, σ, θ)
 end
 
@@ -121,7 +121,7 @@ function simulate!(
     y::AbstractVector,
     m::LinearMixedModel,
     newdata::Tables.ColumnTable;
-    β=m.β,
+    β=fixef(m),
     σ=m.σ,
     θ=m.θ,
 )
@@ -147,9 +147,9 @@ function simulate!(
 end
 
 function simulate!(
-    rng::AbstractRNG, y::AbstractVector, m::LinearMixedModel{T}; β=m.β, σ=m.σ, θ=m.θ
+    rng::AbstractRNG, y::AbstractVector, m::LinearMixedModel{T}; β=fixef(m), σ=m.σ, θ=m.θ
 ) where {T}
-    length(β) == length(pivot(m)) || length(β) == m.feterm.rank ||
+    length(β) == length(pivot(m)) || length(β) == rank(m) ||
         throw(ArgumentError("You must specify all (non-singular) βs"))
 
     β = convert(Vector{T}, β)
@@ -157,10 +157,8 @@ function simulate!(
     θ = convert(Vector{T}, θ)
     isempty(θ) || setθ!(m, θ)
 
-    if length(β) ≠ length(pivot(m))
-        padding = length(pivot(m)) - rank(m)
-        append!(β, fill(-0.0, padding))
-        invpermute!(β, pivot(m))
+    if length(β) == length(pivot(m))
+        β = view(view(β,  pivot(m)), 1:rank(m))
     end
 
     # initialize y to standard normal
@@ -172,7 +170,7 @@ function simulate!(
     end
 
     # scale by σ and add fixed-effects contribution
-    return mul!(y, m.X, β, one(T), σ)
+    return mul!(y, fullrankx(m), β, one(T), σ)
 end
 
 function simulate!(
@@ -180,7 +178,7 @@ function simulate!(
     y::AbstractVector,
     m::GeneralizedLinearMixedModel,
     newdata::Tables.ColumnTable;
-    β=m.β,
+    β=fixef(m),
     σ=m.σ,
     θ=m.θ,
 )
@@ -209,7 +207,7 @@ function simulate!(
     rng::AbstractRNG,
     y::AbstractVector,
     m::GeneralizedLinearMixedModel{T};
-    β=m.β,
+    β=fixef(m),
     σ=m.σ,
     θ=m.θ,
 ) where {T}
@@ -250,7 +248,7 @@ function _simulate!(
 
     if length(β) == length(pivot(m))
         # unlike LMM, GLMM stores the truncated, pivoted vector directly
-        β = view(β, view(pivot(m), 1:(rank(m))))
+        β = view(view(β, pivot(m)), 1:rank(m))
     end
     fast = (length(m.θ) == length(m.optsum.final))
     setpar! = fast ? setθ! : setβθ!

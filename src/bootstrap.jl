@@ -177,7 +177,7 @@ end
 
 """
     parametricbootstrap([rng::AbstractRNG], nsamp::Integer, m::MixedModel{T}, ftype=T;
-        β = coef(m), σ = m.σ, θ = m.θ, progress=true, optsum_overrides=(;))
+        β = fixef(m), σ = m.σ, θ = m.θ, progress=true, optsum_overrides=(;))
 
 Perform `nsamp` parametric bootstrap replication fits of `m`, returning a `MixedModelBootstrap`.
 
@@ -214,7 +214,7 @@ function parametricbootstrap(
     n::Integer,
     morig::MixedModel{T},
     ftype::Type{<:AbstractFloat}=T;
-    β::AbstractVector=coef(morig),
+    β::AbstractVector=fixef(morig),
     σ=morig.σ,
     θ::AbstractVector=morig.θ,
     use_threads::Bool=false,
@@ -232,9 +232,13 @@ function parametricbootstrap(
     if σ !== missing
         σ = T(σ)
     end
-    β, θ = convert(Vector{T}, β), convert(Vector{T}, θ)
-    βsc, θsc = similar(ftype.(β)), similar(ftype.(θ))
-    p, k = length(β), length(θ)
+    β = convert(Vector{T}, β)
+    θ =  convert(Vector{T}, θ)
+    # scratch -- note that this is the length of the unpivoted coef vector 
+    βsc = coef(morig)
+    θsc = zeros(ftype, length(θ))
+    p =  length(βsc)
+    k = length(θsc)
     m = deepcopy(morig)
     for (key, val) in pairs(optsum_overrides)
         setfield!(m.optsum, key, val)
@@ -251,7 +255,6 @@ function parametricbootstrap(
     samp = replicate(n; progress) do
         simulate!(rng, m; β, σ, θ)
         refit!(m; progress=false)
-        # @info "" m.optsum.feval
         (
             objective=ftype.(m.objective),
             σ=ismissing(m.σ) ? missing : ftype(m.σ),
