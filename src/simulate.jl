@@ -26,7 +26,7 @@ Overwrite the response (i.e. `m.trms[end]`) with a simulated response vector fro
 This simulation includes sampling new values for the random effects.
 
 `β` can be specified either as a pivoted, full rank coefficient vector (cf. [`fixef`](@ref))
-or as an unpivoted full dimension coefficient vector (cf [`coef`](@ref)), where the entries
+or as an unpivoted full dimension coefficient vector (cf. [`coef`](@ref)), where the entries
 corresponding to redundant columns will be ignored.
 
 !!! note
