@@ -93,25 +93,25 @@ predict(gm, cbpp; type=:response) ≈ fitted(gm)</code></pre><pre class="documen
 predict(gm, cbpp; type=:linpred) ≈ logit.(fitted(gm))</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">false</code></pre><h2 id="Simulation"><a class="docs-heading-anchor" href="#Simulation">Simulation</a><a id="Simulation-1"></a><a class="docs-heading-anchor-permalink" href="#Simulation" title="Permalink"></a></h2><p>In contrast to <code>predict</code>, <code>simulate</code> and <code>simulate!</code> introduce randomness. This randomness occurs both at the level of the observation-level (residual) variance and at the level of the random effects, where new conditional modes are sampled based on the specified covariance parameter (θ; see <a href="../optimization/#Details-of-the-parameter-estimation">Details of the parameter estimation</a>), which defaults to the estimated value of the model. For reproducibility, we specify a pseudorandom generator here; if none is provided, the global PRNG is taken as the default.</p><p>The simplest example of <code>simulate</code> takes a fitted model and generates a new response vector based on the existing model matrices combined with noise.</p><pre><code class="language-julia hljs">using Random
 ynew = simulate(MersenneTwister(42), slpm)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">180-element Vector{Float64}:
  283.00861574005904
- 296.925176780076
- 321.96085582295774
+ 296.92517678007596
+ 321.9608558229577
  322.3364745700326
- 396.98424367510955
- 317.1515069205002
+ 396.9842436751096
+ 317.15150692050014
  348.5132411307083
- 378.2824298353153
+ 378.2824298353154
  302.3001342626326
  425.3905773601467
    ⋮
- 314.68558444344035
- 350.0319264778644
+ 314.6855844434403
+ 350.0319264778643
  293.6498076642398
- 375.401943144958
+ 375.40194314495807
  324.582361638989
  311.1027683741317
- 338.7622209411591
+ 338.76222094115917
  345.35559219294737
- 301.2871791464195</code></pre><p>The simulated response can also be placed in a pre-allocated vector:</p><pre><code class="language-julia hljs">ynew2 = zeros(nrow(slp))
+ 301.28717914641953</code></pre><p>The simulated response can also be placed in a pre-allocated vector:</p><pre><code class="language-julia hljs">ynew2 = zeros(nrow(slp))
 simulate!(MersenneTwister(42), ynew2, slpm)
 ynew2 ≈ ynew</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">true</code></pre><p>Or even directly replace the previous response vector in a model, at which point the model must be refit to the new values:</p><pre><code class="language-julia hljs">slpm2 = deepcopy(slpm)
 refit!(simulate!(MersenneTwister(42), slpm2))</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Linear mixed model fit by maximum likelihood
@@ -156,21 +156,21 @@ df</code></pre><pre class="documenter-example-output"><code class="nohighlight h
  200 │    10  S20            0
 <span class="sgr36">               185 rows omitted</span></code></pre><pre><code class="language-julia hljs">ysim = simulate(MersenneTwister(42), slpm, df)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">200-element Vector{Float64}:
  262.9357707048248
- 276.85233174484176
+ 276.8523317448417
  301.8880107877235
  302.2636295347983
  376.91139863987536
- 297.07866188526594
+ 297.0786618852659
  328.44039609547406
- 358.2095848000811
- 282.22728922739833
- 405.3177323249125
+ 358.20958480008113
+ 282.2272892273984
+ 405.31773232491247
    ⋮
  336.4096634873374
- 274.0198081937981
- 232.79273026239144
+ 274.01980819379816
+ 232.79273026239147
  281.7738595392708
- 296.8405280467084
+ 296.84052804670836
  379.1660196692867
  305.03738411734776
  358.384456848015
@@ -183,8 +183,8 @@ response(msim) ≈ ysim</code></pre><pre class="documenter-example-output"><code
 
 Variance components:
             Column    Variance Std.Dev.
-subj     (Intercept)   663.5400 25.7593
-Residual              1012.9883 31.8275
+subj     (Intercept)   663.5397 25.7593
+Residual              1012.9884 31.8275
  Number of obs: 200; levels of grouping factors: 20
 
   Fixed-effects parameters:
@@ -193,4 +193,4 @@ Residual              1012.9883 31.8275
 ───────────────────────────────────────────────────
 (Intercept)  259.607      7.53747   34.44    &lt;1e-99
 days           9.46755    0.783538  12.08    &lt;1e-32
-───────────────────────────────────────────────────</code></pre><p>For simulating from generalized linear mixed models, there is no <code>type</code> option because the observation-level always occurs at the level of the response and not of the linear predictor.</p><div class="admonition is-warning"><header class="admonition-header">Warning</header><div class="admonition-body"><p>Simulating the model response in place may not yield the same result as simulating into a pre-allocated or new vector, depending on choice of pseudorandom number generator. Random number generation in Julia allows optimization based on type, and the internal storage type of the model response (currently a view into a matrix storing the concatenated fixed-effects model matrix and the response) may not match the type of a pre-allocated or new vector. See also <a href="https://discourse.julialang.org/t/weird-prng-behavior/63186">discussion here</a>.</p></div></div><div class="admonition is-info"><header class="admonition-header">Note</header><div class="admonition-body"><p>All the methods that take new data as a table construct an additional <code>MixedModel</code> behind the scenes, even when the new data is exactly the same as the data that the model was fitted to. For the simulation methods in particular, these thus form a convenience wrapper for constructing a new model and calling <code>simulate</code> without new data on that model with the parameters from the original model.</p></div></div></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../GaussHermite/">« Normalized Gauss-Hermite Quadrature</a><a class="docs-footer-nextpage" href="../bootstrap/">Parametric bootstrap for mixed-effects models »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.5.0 on <span class="colophon-date" title="Friday 2 August 2024 15:17">Friday 2 August 2024</span>. Using Julia version 1.8.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+───────────────────────────────────────────────────</code></pre><p>For simulating from generalized linear mixed models, there is no <code>type</code> option because the observation-level always occurs at the level of the response and not of the linear predictor.</p><div class="admonition is-warning"><header class="admonition-header">Warning</header><div class="admonition-body"><p>Simulating the model response in place may not yield the same result as simulating into a pre-allocated or new vector, depending on choice of pseudorandom number generator. Random number generation in Julia allows optimization based on type, and the internal storage type of the model response (currently a view into a matrix storing the concatenated fixed-effects model matrix and the response) may not match the type of a pre-allocated or new vector. See also <a href="https://discourse.julialang.org/t/weird-prng-behavior/63186">discussion here</a>.</p></div></div><div class="admonition is-info"><header class="admonition-header">Note</header><div class="admonition-body"><p>All the methods that take new data as a table construct an additional <code>MixedModel</code> behind the scenes, even when the new data is exactly the same as the data that the model was fitted to. For the simulation methods in particular, these thus form a convenience wrapper for constructing a new model and calling <code>simulate</code> without new data on that model with the parameters from the original model.</p></div></div></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../GaussHermite/">« Normalized Gauss-Hermite Quadrature</a><a class="docs-footer-nextpage" href="../bootstrap/">Parametric bootstrap for mixed-effects models »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.5.0 on <span class="colophon-date" title="Friday 2 August 2024 17:42">Friday 2 August 2024</span>. Using Julia version 1.8.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
