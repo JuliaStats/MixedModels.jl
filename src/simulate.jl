@@ -25,6 +25,10 @@ Overwrite the response (i.e. `m.trms[end]`) with a simulated response vector fro
 
 This simulation includes sampling new values for the random effects.
 
+`β` can be specified either as a pivoted, full rank coefficient vector (cf. [`fixef`](@ref))
+or as an unpivoted full dimension coefficient vector (cf [`coef`](ref)), where the entries
+corresponding to redundant columns will be ignored.
+
 !!! note
     Note that `simulate!` methods with a `y::AbstractVector` as the first argument
     (besides the RNG) and `simulate` methods return the simulated response. This is
