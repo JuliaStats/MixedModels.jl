@@ -59,3 +59,12 @@ model = fit(MixedModel, m0form, data, Bernoulli();
             fast=false,
             progress=true,
             verbose=false)
+
+# works        
+model = fit(MixedModel, m0form, data, Bernoulli();
+            wts=float.(data.weights),
+            contrasts= Dict(:Analysisclass => DummyCoding(; base="aRice_Wet_day")),
+            init_from_lmm=[:θ],
+            fast=false,
+            progress=true,
+            verbose=false)
