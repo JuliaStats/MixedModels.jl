@@ -58,7 +58,7 @@ model = fit(MixedModel, m0form, data, Bernoulli();
             progress=true,
             verbose=false)
 
-# works, non singular, FE look okay
+# works on amd64, non singular, FE look okay
 model = fit(MixedModel, m0form, data, Bernoulli();
             wts=float.(data.weights),
             contrasts= Dict(:Analysisclass => DummyCoding(; base="aRice_Wet_day")),
@@ -67,7 +67,7 @@ model = fit(MixedModel, m0form, data, Bernoulli();
             progress=true,
             verbose=false)
 
-# works, singular and has questionable FE
+# works on m1, singular and has questionable FE
 m0fast = fit(MixedModel, m0form, data, Bernoulli();
              wts=float.(data.weights),
              contrasts= Dict(:Analysisclass => DummyCoding(; base="aRice_Wet_day")),
