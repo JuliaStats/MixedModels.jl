@@ -25,10 +25,18 @@ module IssueData
         data = open(Downloads.download(URL), "r") do io
             zipfile = ZipFile.Reader(io)
             @info "extracting..."
-            return extract_csv(zipfile, "testdataforjulia_bothcase.csv")
+            return extract_csv(
+                zipfile,
+                "testdataforjulia_bothcase.csv";
+                missingstring=["NA"],
+                downcast=true,
+                types=Dict(
+                    :case => Bool,
+                    :individual_local_identifier => String15,
+                )
+            )
         end
 
-        transform!(data, :individual_local_identifier => ByRow(string); renamecols=false),
         Arrow.write(path, data)
         return data
     end
@@ -48,6 +56,33 @@ using MixedModels
 using Statistics
 
 data = get_data()
+
+# check for complete separation of response within levels of columns used as predictors
+
+println(
+    unstack(
+        combine(groupby(data, [:Analysisclass, :case]), nrow => :n),
+        :case,
+        :n
+    ),
+)
+
+println(
+    unstack(
+        combine(groupby(data, [:individual_local_identifier, :case]), nrow => :n),
+        :case,
+        :n,
+    ),
+)
+
+println(
+    unstack(
+        combine(groupby(data, [:cropyear, :case]), nrow => :n),
+        :case,
+        :n,
+    ),
+)
+
 m0form = @formula(case ~ 0 + Analysisclass + (1|cropyear/individual_local_identifier))
 
 # fails
