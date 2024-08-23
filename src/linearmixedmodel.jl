@@ -1253,6 +1253,53 @@ function StatsAPI.stderror(m::LinearMixedModel{T}) where {T}
 end
 
 """
+    threeblockAL!(::LinearMixedModel)
+
+modifies the model to store A and L in 3-block form:
+- a Diagonal or UniformBlockDiagonal block
+- a dense rectangular block
+- and a dense lowertriangular block
+"""
+function threeblockAL!(m::LinearMixedModel{T}) where {T}
+    L = m.L
+    A = m.A
+    reterms = m.reterms
+    isone(length(reterms)) &&
+        return first(L), L[block(2, 1)], LowerTriangular(L[block(2, 2)])
+    rows = sum(k -> size(L[kp1choose2(k + 1)], 1), axes(reterms, 1))
+    cols = size(first(L), 2)
+    L2 = Matrix{T}(undef, (rows, cols))
+    L3 = Matrix{T}(undef, (rows, rows))
+    A2 = Matrix{T}(undef, (rows, cols))
+    A3 = Matrix{T}(undef, (rows, rows))
+    rowoffset = 0
+    for i in 1 .+ axes(reterms, 1)
+        Li1 = L[block(i, 1)]
+        Ai1 = A[block(i, 1)]
+        rows = rowoffset .+ axes(Li1, 1)
+
+        copyto!(view(L2, rows, :), Li1)
+        copyto!(view(A2, rows, :), Ai1)
+
+        coloffset = 0
+        for j in 2:i
+            Lij = L[block(i, j)]
+            Aij = A[block(i, j)]
+            copyto!(view(L3, rows, coloffset .+ axes(Lij, 2)), Lij)
+            copyto!(view(A3, rows, coloffset .+ axes(Aij, 2)), Aij)
+            coloffset += size(Lij, 2)
+        end
+        rowoffset += size(Li1, 1)
+    end
+    L[2] = L2
+    L[3] = LowerTriangular(L3)
+    A[2] = A2
+    A[3] = LowerTriangular(A3)
+    resize!(L, 3)
+    return m
+end
+
+"""
     updateA!(m::LinearMixedModel)
 
 Update the cross-product array, `m.A`, from `m.reterms` and `m.Xymat`
