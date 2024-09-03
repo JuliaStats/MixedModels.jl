@@ -1,3 +1,7 @@
+MixedModels v4.25.4 Release Notes
+==============================
+- Added additional precompilation for rePCA. [#749]
+
 MixedModels v4.25.3 Release Notes
 ==============================
 - Fix a bug in the handling of rank deficiency in the `simulate[!]` code. This has important correctness implications for bootstrapping models with rank-deficient fixed effects (as can happen in the case of partial crossing of the fixed effects / missing cells). [#778]
@@ -545,6 +549,7 @@ Package dependencies
 [#740]: https://github.com/JuliaStats/MixedModels.jl/issues/740
 [#744]: https://github.com/JuliaStats/MixedModels.jl/issues/744
 [#748]: https://github.com/JuliaStats/MixedModels.jl/issues/748
+[#749]: https://github.com/JuliaStats/MixedModels.jl/issues/749
 [#755]: https://github.com/JuliaStats/MixedModels.jl/issues/755
 [#756]: https://github.com/JuliaStats/MixedModels.jl/issues/756
 [#767]: https://github.com/JuliaStats/MixedModels.jl/issues/767
