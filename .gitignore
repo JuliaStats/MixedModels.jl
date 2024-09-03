@@ -4,11 +4,10 @@ docs/src/assets/*.svg
 test/scratch.jl
 tune.json
 Manifest.toml
-Manifest-v1.*.toml
+Manifest-v*.toml
 settings.json
 docs/jmd
 LocalPreferences.toml
 benchmark.md
-
 lcov.info
 coverage/

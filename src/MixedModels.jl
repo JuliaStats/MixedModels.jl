@@ -213,15 +213,19 @@ include("profile/profile.jl")
     sleepstudy = dataset(:sleepstudy)
     contra = dataset(:contra)
     progress = false
+    io = IOBuffer()
     @compile_workload begin
         # all calls in this block will be precompiled, regardless of whether
         # they belong to your package or not (on Julia 1.8 and higher)
 
         # these are relatively small models and so shouldn't increase precompile times all that much
         # while still massively boosting load and TTFX times
-        fit(MixedModel,
+        m = fit(MixedModel,
             @formula(reaction ~ 1 + days + (1 + days | subj)),
             sleepstudy; progress)
+        show(io, m)
+        show(io, m.PCA.subj)
+        show(io, m.rePCA)
         fit(MixedModel,
             @formula(use ~ 1 + age + abs2(age) + urban + livch + (1 | urban & dist)),
             contra,
