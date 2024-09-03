@@ -22,13 +22,13 @@ jobs:
       matrix:
         julia-version: [1.8]
         julia-arch: [x64]
-        os: [ubuntu-22.04, macos-11, windows-2019]
+        os: [ubuntu-22.04, macos-12, windows-2019]
     steps:
       - uses: actions/checkout@v4
       - uses: julia-actions/setup-julia@v2
         with:
           version: ${{ matrix.julia-version }}
-      - uses: julia-actions/cache@v1
+      - uses: julia-actions/cache@v2
         with:
           cache-compiled: "true"
       - uses: julia-actions/julia-buildpkg@v1

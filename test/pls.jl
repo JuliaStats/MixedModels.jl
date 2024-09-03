@@ -543,10 +543,110 @@ end
         @test loglikelihood(fm) ≈ loglikelihood(m)
         @test bic(fm) ≈ bic(m)
         @test coef(fm) ≈ coef(m)
+
+        # check restoreoptsum from older versions
+        m = LinearMixedModel(
+            @formula(reaction ~ 1 + days + (1 + days | subj)),
+            MixedModels.dataset(:sleepstudy),
+        )
+        iob = IOBuffer(
+"""
+{
+    "initial":[1.0,0.0,1.0],
+    "finitial":1784.642296192436,
+    "ftol_rel":1.0e-12,
+    "ftol_abs":1.0e-8,
+    "xtol_rel":0.0,
+    "xtol_abs":[1.0e-10,1.0e-10,1.0e-10],
+    "initial_step":[0.75,1.0,0.75],
+    "maxfeval":-1,
+    "maxtime":-1.0,
+    "feval":57,
+    "final":[0.9292213195402981,0.01816837807519162,0.22264487477788353],
+    "fmin":1751.9393444646712,
+    "optimizer":"LN_BOBYQA",
+    "returnvalue":"FTOL_REACHED",
+    "nAGQ":1,
+    "REML":false
+}
+"""
+        )
+        @test_logs((:warn,
+                    r"optsum was saved with an older version of MixedModels.jl: consider resaving"),
+                    restoreoptsum!(m, seekstart(iob)))
+        @test loglikelihood(fm) ≈ loglikelihood(m)
+        @test bic(fm) ≈ bic(m)
+        @test coef(fm) ≈ coef(m)
+        iob = IOBuffer(
+"""
+{
+    "initial":[1.0,0.0,1.0],
+    "finitial":1784.642296192436,
+    "ftol_rel":1.0e-12,
+    "xtol_rel":0.0,
+    "xtol_abs":[1.0e-10,1.0e-10,1.0e-10],
+    "initial_step":[0.75,1.0,0.75],
+    "maxfeval":-1,
+    "maxtime":-1.0,
+    "feval":57,
+    "final":[0.9292213195402981,0.01816837807519162,0.22264487477788353],
+    "fmin":1751.9393444646712,
+    "optimizer":"LN_BOBYQA",
+    "returnvalue":"FTOL_REACHED",
+    "nAGQ":1,
+    "REML":false,
+    "sigma":null,
+    "fitlog":[[[1.0,0.0,1.0],1784.642296192436]]
+}
+"""
+        )
+        @test_throws(ArgumentError("optsum names: [:ftol_abs] not found in io"),
+                     restoreoptsum!(m, seekstart(iob)))
+
+        iob = IOBuffer(
+"""
+{
+    "initial":[1.0,0.0,1.0],
+    "finitial":1784.642296192436,
+    "ftol_rel":1.0e-12,
+    "ftol_abs":1.0e-8,
+    "xtol_rel":0.0,
+    "xtol_abs":[1.0e-10,1.0e-10,1.0e-10],
+    "initial_step":[0.75,1.0,0.75],
+    "maxfeval":-1,
+    "maxtime":-1.0,
+    "feval":57,
+    "final":[-0.9292213195402981,0.01816837807519162,0.22264487477788353],
+    "fmin":1751.9393444646712,
+    "optimizer":"LN_BOBYQA",
+    "returnvalue":"FTOL_REACHED",
+    "nAGQ":1,
+    "REML":false,
+    "sigma":null,
+    "fitlog":[[[1.0,0.0,1.0],1784.642296192436]]
+}
+"""
+        )
+        @test_throws(ArgumentError("initial or final parameters in io do not satisfy lowerbd"),
+                     @suppress restoreoptsum!(m, seekstart(iob)))
+
+        # make sure new fields are correctly restored
+        mktemp() do path, io
+            m = deepcopy(last(models(:sleepstudy)))
+            m.optsum.xtol_zero_abs = 0.5
+            m.optsum.ftol_zero_abs = 0.5
+            saveoptsum(io, m)
+            m.optsum.xtol_zero_abs = 1.0
+            m.optsum.ftol_zero_abs = 1.0
+            @suppress restoreoptsum!(m, seekstart(io))
+            @test m.optsum.xtol_zero_abs == 0.5
+            @test m.optsum.ftol_zero_abs == 0.5
+        end
+
     end
 
     @testset "profile" begin
-        pr = profile(last(models(:sleepstudy)))
+        pr = @suppress profile(last(models(:sleepstudy)))
         tbl = pr.tbl
         @test length(tbl) >= 122
         ci = confint(pr)

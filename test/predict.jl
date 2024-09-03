@@ -143,7 +143,7 @@ end
         slp1 = subset(slp, :days => ByRow(>(0)))
         # this model probably doesn't make much sense, but it has two
         # variables on the left hand side in a FunctionTerm
-        m = fit(MixedModel, @formula(reaction / days ~ 1 + (1|subj)), slp1)
+        m = @suppress fit(MixedModel, @formula(reaction / days ~ 1 + (1|subj)), slp1)
         # make sure that we're getting the transformation
         @test response(m) ≈ slp1.reaction ./ slp1.days
         @test_throws ArgumentError predict(m, slp[:, Not(:reaction)])
@@ -154,7 +154,7 @@ end
         @test predict(m, slp1) ≈ fitted(m)
 
 
-        m = fit(MixedModel, @formula(log10(reaction) ~ 1 + days + (1|subj)), slp1)
+        m = @suppress fit(MixedModel, @formula(log10(reaction) ~ 1 + days + (1|subj)), slp1)
         # make sure that we're getting the transformation
         @test response(m) ≈ log10.(slp1.reaction)
         @test_throws ArgumentError predict(m, slp[:, Not(:reaction)])

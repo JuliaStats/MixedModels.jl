@@ -226,7 +226,7 @@ end
         rng = MersenneTwister(0);
         x = rand(rng, 100);
         data = (x = x, x2 = 1.5 .* x, y = rand(rng, [0,1], 100), z = repeat('A':'T', 5))
-        @testset "$family" for family in [Normal(), Bernoulli()] 
+        @testset "$family" for family in [Normal(), Bernoulli()]
             model = @suppress fit(MixedModel, @formula(y ~ x + x2 + (1|z)), data, family; progress=false)
             boot = quickboot(model, 10)
 
@@ -241,6 +241,33 @@ end
             yc = simulate(StableRNG(1), model; β=coef(model))
             yf = simulate(StableRNG(1), model; β=fixef(model))
             @test all(x -> isapprox(x...), zip(yc, yf))
+        end
+
+        @testset "partial crossing" begin
+            id = lpad.(string.(1:40), 2, "0")
+            B = ["b0", "b1", "b2"]
+            C = ["c0", "c1", "c2", "c3", "c4"]
+            df = DataFrame(reshape(collect(Iterators.product(B, C, id)), :), [:b, :c, :id])
+            df[!, :y] .= 0
+            filter!(df) do row
+                b = last(row.b)
+                c = last(row.c)
+                return b != c
+            end
+
+            m = LinearMixedModel(@formula(y ~ 1 + b * c + (1|id)), df)
+            β = 1:rank(m)
+            σ = 1
+            simulate!(StableRNG(628), m; β, σ)
+            fit!(m)
+
+            boot = parametricbootstrap(StableRNG(271828), 1000,  m);
+            bootci = DataFrame(shortestcovint(boot))
+            filter!(:group => ismissing, bootci)
+            select!(bootci, :names => disallowmissing => :coef, :lower, :upper)
+            transform!(bootci, [:lower, :upper] => ByRow(middle) => :mean)
+
+            @test all(x -> isapprox(x[1], x[2]; atol=0.1),  zip(coef(m), bootci.mean))
         end
     end
 end

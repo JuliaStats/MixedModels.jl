@@ -4,9 +4,10 @@ using Arrow: Arrow
 using Base: Ryu, require_one_based_indexing
 using BSplineKit: BSplineKit, BSplineOrder, Natural, Derivative, SplineInterpolation
 using BSplineKit: interpolate
+using Compat: @compat
 using DataAPI: DataAPI, levels, refpool, refarray, refvalue
 using Distributions: Distributions, Bernoulli, Binomial, Chisq, Distribution, Gamma
-using Distributions: InverseGaussian, Normal, Poisson, ccdf, estimate
+using Distributions: InverseGaussian, Normal, Poisson, ccdf
 using GLM: GLM, GeneralizedLinearModel, IdentityLink, InverseLink, LinearModel
 using GLM: Link, LogLink, LogitLink, ProbitLink, SqrtLink
 using GLM: canonicallink, glm, linkinv, dispersion, dispersion_parameter
@@ -16,10 +17,10 @@ using LinearAlgebra: Diagonal, Hermitian, HermOrSym, I, LAPACK, LowerTriangular
 using LinearAlgebra: PosDefException, SVD, SymTridiagonal, Symmetric
 using LinearAlgebra: UpperTriangular, cond, diag, diagind, dot, eigen, isdiag
 using LinearAlgebra: ldiv!, lmul!, logdet, mul!, norm, normalize, normalize!, qr
-using LinearAlgebra: rank, rdiv!, rmul!, svd, tr, tril!
+using LinearAlgebra: rank, rdiv!, rmul!, svd, tril!
 using Markdown: Markdown
 using MixedModelsDatasets: dataset, datasets
-using NLopt: NLopt, Opt, ftol_abs, ftol_rel, initial_step, maxtime, xtol_abs, xtol_rel
+using NLopt: NLopt, Opt
 using PooledArrays: PooledArrays, PooledArray
 using PrecompileTools: PrecompileTools, @setup_workload, @compile_workload
 using ProgressMeter: ProgressMeter, Progress, ProgressUnknown, finish!, next!
@@ -38,9 +39,9 @@ using StatsModels: StatsModels, AbstractContrasts, AbstractTerm, CategoricalTerm
 using StatsModels: ConstantTerm, DummyCoding, EffectsCoding, FormulaTerm, FunctionTerm
 using StatsModels: HelmertCoding, HypothesisCoding, InteractionTerm, InterceptTerm
 using StatsModels: MatrixTerm, SeqDiffCoding, TableRegressionModel, Term
-using StatsModels: apply_schema, drop_term, formula, modelcols, term, @formula
+using StatsModels: apply_schema, drop_term, formula, lrtest, modelcols, term, @formula
 using StructTypes: StructTypes
-using Tables: Tables, columntable, rows
+using Tables: Tables, columntable
 using TypedTables: TypedTables, DictTable, FlexTable, Table
 
 export @formula,
@@ -89,8 +90,6 @@ export @formula,
     condVar,
     condVartables,
     confint,
-    dataset,
-    datasets,
     deviance,
     dispersion,
     dispersion_parameter,
@@ -114,6 +113,7 @@ export @formula,
     logdet,
     loglikelihood,
     lowerbd,
+    lrtest,
     meanresponse,
     modelmatrix,
     model_response,
@@ -158,6 +158,8 @@ export @formula,
 
 # TODO: move this to the correct spot in list once we've decided on name
 export savereplicates, restorereplicates
+
+@compat public rePCA, PCA, dataset, datasets
 
 """
     MixedModel
@@ -204,11 +206,12 @@ include("mimeshow.jl")
 include("serialization.jl")
 include("profile/profile.jl")
 
+# COV_EXCL_START
 @setup_workload begin
     # Putting some things in `setup` can reduce the size of the
     # precompile file and potentially make loading faster.
-    sleepstudy = MixedModels.dataset(:sleepstudy)
-    contra = MixedModels.dataset(:contra)
+    sleepstudy = dataset(:sleepstudy)
+    contra = dataset(:contra)
     progress = false
     io = IOBuffer()
     @compile_workload begin
@@ -230,5 +233,6 @@ include("profile/profile.jl")
             progress)
     end
 end
+# COV_EXCL_STOP
 
 end # module

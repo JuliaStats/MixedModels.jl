@@ -1,3 +1,34 @@
+MixedModels v4.25.3 Release Notes
+==============================
+- Fix a bug in the handling of rank deficiency in the `simulate[!]` code. This has important correctness implications for bootstrapping models with rank-deficient fixed effects (as can happen in the case of partial crossing of the fixed effects / missing cells). [#778]
+
+MixedModels v4.25.2 Release Notes
+==============================
+- Use `public` keyword so that users don't see unnecessary docstring warnings on 1.11+. [#776]
+- Fix accidental export of `dataset` and `datasets` and make them `public` instead. [#776]
+
+MixedModels v4.25.1 Release Notes
+==============================
+- Use more sophisticated checks on property names in `restoreoptsum` to allow for optsums saved by pre-v4.25 versions to be used with this version and later. [#775]
+
+MixedModels v4.25 Release Notes
+==============================
+- Add type notations in `pwrss(::LinearMixedModel)` and `logdet(::LinearMixedModel)` to enhance type inference. [#773]
+- Take advantage of type parameter for `StatsAPI.weights(::LinearMixedModel{T})`. [#772]
+- Fix use of kwargs in `fit!((::LinearMixedModel)`: [#772]
+    - user-specified `σ` is actually used, defaulting to existing value
+    - `REML` defaults to model's already specified REML value.
+- Clean up code of keyword convenience constructor for `OptSummary`. [#772]
+- Refactor thresholding parameters for forcing near-zero parameter values into `OptSummary`. [#772]
+
+MixedModels v4.24.1 Release Notes
+==============================
+- Re-export accidentally dropped export `lrtest`. [#769]
+
+MixedModels v4.24.0 Release Notes
+==============================
+* Properties for `GeneralizedLinearMixedModel` now default to delegation to the internal weighted `LinearMixedModel` when that property is not explicitly handled by `GeneralizedLinearMixedModel`. Previously, properties were delegated on an explicit basis, which meant that they had to be added manually as use cases were discovered. The downside to the new approach is that it is now possible to access properties whose definition in the LMM case doesn't match the GLMM definition when the GLMM definition hasn't been explicitly been implemented. [#767]
+
 MixedModels v4.23.1 Release Notes
 ==============================
 * Fix for `simulate!` when only the estimable coefficients for a rank-deficient model are provided. [#756]
@@ -516,3 +547,10 @@ Package dependencies
 [#748]: https://github.com/JuliaStats/MixedModels.jl/issues/748
 [#755]: https://github.com/JuliaStats/MixedModels.jl/issues/755
 [#756]: https://github.com/JuliaStats/MixedModels.jl/issues/756
+[#767]: https://github.com/JuliaStats/MixedModels.jl/issues/767
+[#769]: https://github.com/JuliaStats/MixedModels.jl/issues/769
+[#772]: https://github.com/JuliaStats/MixedModels.jl/issues/772
+[#773]: https://github.com/JuliaStats/MixedModels.jl/issues/773
+[#775]: https://github.com/JuliaStats/MixedModels.jl/issues/775
+[#776]: https://github.com/JuliaStats/MixedModels.jl/issues/776
+[#778]: https://github.com/JuliaStats/MixedModels.jl/issues/778

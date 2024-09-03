@@ -1,11 +1,12 @@
 name = "MixedModels"
 uuid = "ff71e718-51f3-5ec2-a782-8ffcbfa3c316"
 author = ["Phillip Alday <me@phillipalday.com>", "Douglas Bates <dmbates@gmail.com>", "Jose Bayoan Santiago Calderon <jbs3hp@virginia.edu>"]
-version = "4.23.1"
+version = "4.25.3"
 
 [deps]
 Arrow = "69666777-d1a9-59fb-9406-91d4454c9d45"
 BSplineKit = "093aae92-e908-43d7-9660-e50ee39d5a0a"
+Compat = "34da2185-b29b-5c13-b0c7-acf172513d20"
 DataAPI = "9a962f9c-6df0-11e9-0e5d-c546b8b5ee8a"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
 GLM = "38e38edf-8417-5370-95a0-9cbb8c7f171a"
@@ -33,6 +34,7 @@ TypedTables = "9d95f2ec-7b3d-5a63-8d20-e2491e220bb9"
 Aqua = "0.8"
 Arrow = "1, 2"
 BSplineKit = "0.14, 0.15, 0.16, 0.17"
+Compat = "4.10"
 DataAPI = "1"
 DataFrames = "1"
 Distributions = "0.21, 0.22, 0.23, 0.24, 0.25"

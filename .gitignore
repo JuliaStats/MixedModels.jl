@@ -9,3 +9,5 @@ settings.json
 docs/jmd
 LocalPreferences.toml
 benchmark.md
+lcov.info
+coverage/
