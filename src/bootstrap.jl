@@ -408,7 +408,8 @@ function Base.getproperty(bsamp::MixedModelFitCollection, s::Symbol)
 end
 
 """
-    issingular(bsamp::MixedModelFitCollection)
+    issingular(bsamp::MixedModelFitCollection;
+               atol::Real=0, rtol::Real=atol>0 ? 0 : √eps))
 
 Test each bootstrap sample for singularity of the corresponding fit.
 
@@ -416,7 +417,11 @@ Equality comparisons are used b/c small non-negative θ values are replaced by 0
 
 See also [`issingular(::MixedModel)`](@ref).
 """
-issingular(bsamp::MixedModelFitCollection) = map(θ -> any(θ .== bsamp.lowerbd), bsamp.θ)
+function issingular(bsamp::MixedModelFitCollection; atol::Real=0, rtol::Real=atol>0 ? 0 : √eps())
+    return map(bsamp.θ) do θ
+        return _issingular(bsamp.lowerbd, θ; atol, rtol)
+    end
+end
 
 Base.length(x::MixedModelFitCollection) = length(x.fits)
 
