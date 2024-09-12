@@ -1,3 +1,8 @@
+MixedModels v4.26.0 Release Notes
+==============================
+- `issingular` now accepts comparison tolerances through the keyword arguments `atol` and `rtol`. [#783]
+
+
 MixedModels v4.25.4 Release Notes
 ==============================
 - Added additional precompilation for rePCA. [#749]
@@ -559,3 +564,4 @@ Package dependencies
 [#775]: https://github.com/JuliaStats/MixedModels.jl/issues/775
 [#776]: https://github.com/JuliaStats/MixedModels.jl/issues/776
 [#778]: https://github.com/JuliaStats/MixedModels.jl/issues/778
+[#783]: https://github.com/JuliaStats/MixedModels.jl/issues/783
