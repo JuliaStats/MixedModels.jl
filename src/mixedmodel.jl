@@ -75,7 +75,7 @@ end
 function _issingular(v, w; atol, rtol)
     return any(zip(v, w)) do (x, y)
         return isapprox(x, y; atol, rtol)
-     end
+    end
 end
 
 # FIXME: better to base this on m.optsum.returnvalue

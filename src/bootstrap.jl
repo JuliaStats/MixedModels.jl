@@ -417,7 +417,9 @@ Equality comparisons are used b/c small non-negative θ values are replaced by 0
 
 See also [`issingular(::MixedModel)`](@ref).
 """
-function issingular(bsamp::MixedModelFitCollection; atol::Real=0, rtol::Real=atol>0 ? 0 : √eps())
+function issingular(
+    bsamp::MixedModelFitCollection; atol::Real=0, rtol::Real=atol > 0 ? 0 : √eps()
+)
     return map(bsamp.θ) do θ
         return _issingular(bsamp.lowerbd, θ; atol, rtol)
     end
