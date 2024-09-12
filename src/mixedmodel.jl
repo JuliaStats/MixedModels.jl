@@ -69,7 +69,7 @@ Equality comparisons are used b/c small non-negative θ values are replaced by 0
     β in the case `fast=false`) must be specified if the default is not used.
 """
 function issingular(m::MixedModel, θ=m.θ; atol::Real=0, rtol::Real=atol>0 ? 0 : √eps())
-     return _singular(m.lowerbound, θ; atol, rtol)
+     return _issingular(m.lowerbound, θ; atol, rtol)
 end
 
 function _issingular(v, w; atol, rtol)
