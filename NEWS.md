@@ -568,3 +568,4 @@ Package dependencies
 [#776]: https://github.com/JuliaStats/MixedModels.jl/issues/776
 [#778]: https://github.com/JuliaStats/MixedModels.jl/issues/778
 [#783]: https://github.com/JuliaStats/MixedModels.jl/issues/783
+[#785]: https://github.com/JuliaStats/MixedModels.jl/issues/785
