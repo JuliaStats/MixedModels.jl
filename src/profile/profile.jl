@@ -90,7 +90,6 @@ function StatsAPI.confint(pr::MixedModelProfile; level::Real=0.95)
     end
 
     return dt
-
 end
 
 function Base.show(io::IO, mime::MIME"text/plain", pr::MixedModelProfile)
