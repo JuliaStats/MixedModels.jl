@@ -664,6 +664,7 @@ end
         @test first(only(filter(r -> r.p == :σ && iszero(r.ζ), pr.tbl)).σ) == last(models(:sleepstudy)).σ
 
         @testset "REML" begin
+            m = refit!(deepcopy(last(models(:sleepstudy))); progress=false, REML=true)
             ci = @suppress confint(profile(m))
             @test all(splat(<), zip(ci.lower, ci.upper))
         end
