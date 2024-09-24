@@ -1,3 +1,7 @@
+MixedModels v4.26.1 Release Notes
+==============================
+- lower and upper edges of profile confidence intervals for REML-fitted models are no longer flipped [#785]
+
 MixedModels v4.26.0 Release Notes
 ==============================
 - `issingular` now accepts comparison tolerances through the keyword arguments `atol` and `rtol`. [#783]

@@ -73,12 +73,24 @@ function StatsAPI.confint(pr::MixedModelProfile; level::Real=0.95)
     cutoff = sqrt(quantile(Chisq(1), level))
     rev = pr.rev
     syms = sort!(collect(filter(k -> !startswith(string(k), 'θ'), keys(rev))))
-    return DictTable(;
+    dt = DictTable(;
         par=syms,
-        estimate=[rev[s](false) for s in syms],
+        estimate=[rev[s](0) for s in syms],
         lower=[rev[s](-cutoff) for s in syms],
         upper=[rev[s](cutoff) for s in syms],
     )
+
+    # XXX for reasons I don't understand, the reverse spline for REML-models
+    # is flipped for the fixed effects, even though the table of interpolation
+    # points isn't.
+    for i in keys(dt.lower)
+        if dt.lower[i] > dt.upper[i]
+            dt.lower[i], dt.upper[i] = dt.upper[i], dt.lower[i]
+        end
+    end
+
+    return dt
+
 end
 
 function Base.show(io::IO, mime::MIME"text/plain", pr::MixedModelProfile)

@@ -102,6 +102,10 @@ function profileβj!(
     ζv = getproperty.(tbl, :ζ)
     βv = getproperty.(tbl, sym)
     val.fwd[sym] = interpolate(βv, ζv, BSplineOrder(4), Natural())
+    if sym == :β1
+        @debug "" sym
+        @debug "" collect(zip(ζv, βv))
+    end
     val.rev[sym] = interpolate(ζv, βv, BSplineOrder(4), Natural())
     return val
 end

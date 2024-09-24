@@ -662,6 +662,11 @@ end
             [265.130, 13.576, 28.858, 37.718, 8.753];
             atol=1.e-3)
         @test first(only(filter(r -> r.p == :σ && iszero(r.ζ), pr.tbl)).σ) == last(models(:sleepstudy)).σ
+
+        @testset "REML" begin
+            ci = @suppress confint(profile(m))
+            @test all(splat(<), zip(ci.lower, ci.upper))
+        end
     end
     @testset "confint" begin
         ci = confint(last(models(:sleepstudy)))
