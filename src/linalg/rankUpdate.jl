@@ -16,9 +16,8 @@ function rankUpdate!(C::AbstractMatrix, a::AbstractArray, α, β)
     )
 end
 
-function MixedModels.rankUpdate!(
-    C::Hermitian{T,Diagonal{T,Vector{T}}}, A::Diagonal{T,Vector{T}}, α, β
-) where {T}
+function rankUpdate!( C::Hermitian{T,Diagonal{T,Vector{T}}}, A::Diagonal{T,Vector{T}}, α, β) where {T}
+
     Cdiag = C.data.diag
     Adiag = A.diag
     @inbounds for idx in eachindex(Cdiag, Adiag)
@@ -148,7 +147,7 @@ function rankUpdate!(
     require_one_based_indexing(dd, A)
     A.m == length(dd) || throw(DimensionMismatch())
     isone(β) || rmul!(dd, β)
-    all(isone.(diff(A.colptr))) ||
+    all(isone, diff(A.colptr)) ||
         throw(ArgumentError("Columns of A must have exactly 1 nonzero"))
 
     for (r, nz) in zip(rowvals(A), nonzeros(A))
