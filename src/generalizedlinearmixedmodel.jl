@@ -383,6 +383,20 @@ function GeneralizedLinearMixedModel(
     )
 end
 
+_distwarn(::T) where T <: Union{Bernoulli,Binomial,Poisson} = nothing
+function _distwarn(::T) where T <: Union{Gamma,InverseGaussian,Normal}
+    @warn """Results for families with a dispersion parameter are not reliable.
+             It is best to avoid trying to fit such models in MixedModels until
+             the authors gain a better understanding of those cases."""
+    return nothing
+end
+
+function _distwarn(::Geometric)
+    @warn "The results for geometric family models have not been confirmed to be reliable."
+end
+
+_distwarn(::T) where {T <: Distribution} = error("$(nameof(T)) distribution is not supported")
+
 function GeneralizedLinearMixedModel(
     f::FormulaTerm,
     tbl::Tables.ColumnTable,
@@ -400,11 +414,7 @@ function GeneralizedLinearMixedModel(
         ArgumentError("use LinearMixedModel for Normal distribution with IdentityLink")
     )
 
-    if !any(isa(d, dist) for dist in (Bernoulli, Binomial, Poisson))
-        @warn """Results for families with a dispersion parameter are not reliable.
-                 It is best to avoid trying to fit such models in MixedModels until
-                 the authors gain a better understanding of those cases."""
-    end
+    _distwarn(d)
 
     LMM = LinearMixedModel(f, tbl; contrasts, wts, amalgamate)
     y = copy(LMM.y)
