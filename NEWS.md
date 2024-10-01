@@ -1,3 +1,7 @@
+MixedModels v4.26.1 Release Notes
+==============================
+- lower and upper edges of profile confidence intervals for REML-fitted models are no longer flipped [#785]
+
 MixedModels v4.26.0 Release Notes
 ==============================
 - `issingular` now accepts comparison tolerances through the keyword arguments `atol` and `rtol`. [#783]
@@ -564,3 +568,4 @@ Package dependencies
 [#776]: https://github.com/JuliaStats/MixedModels.jl/issues/776
 [#778]: https://github.com/JuliaStats/MixedModels.jl/issues/778
 [#783]: https://github.com/JuliaStats/MixedModels.jl/issues/783
+[#785]: https://github.com/JuliaStats/MixedModels.jl/issues/785
