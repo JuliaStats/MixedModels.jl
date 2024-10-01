@@ -91,7 +91,7 @@ function _rand(rng::AbstractRNG, ::Normal, location, scale=missing, n=1)
 end
 
 function _rand(::AbstractRNG, ::T, ::Any, scale=missing, n=1) where T <: Distribution
-    throw(ArgumentError("Families with a dispersion parameter not yet supported"))
+    throw(ArgumentError("$(nameof(T)) distribution is not currently supported"))
 end
 
 function simulate!(m::MixedModel{T}; β=fixef(m), σ=m.σ, θ=T[]) where {T}
