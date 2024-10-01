@@ -87,8 +87,7 @@ end
 
 function _rand(rng::AbstractRNG, ::Normal, location, scale=missing, n=1)
     # skip constructing a distribution
-    # return scale * randn(rng) + location
-    throw(ArgumentError("Families with a dispersion parameter not yet supported"))
+    return scale * randn(rng) + location
 end
 
 function _rand(::AbstractRNG, ::T, ::Any, scale=missing, n=1) where T <: Distribution

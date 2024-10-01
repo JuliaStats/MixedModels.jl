@@ -65,9 +65,14 @@ end
         @test isapprox(gm2.β, gm2sim.β; atol=norm(stderror(gm2)))
     end
     @testset "_rand with dispersion" begin
-        @test_throws ArgumentError MixedModels._rand(StableRNG(42), Normal(), 1, 1, 1)
-        @test_throws ArgumentError MixedModels._rand(StableRNG(42), Gamma(), 1, 1, 1)
-        @test_throws ArgumentError MixedModels._rand(StableRNG(42), InverseGaussian(), 1, 1, 1)
+        @test_throws ArgumentError MixedModels._rand(StableRNG(42), Gamma(), 1)
+        @test_throws ArgumentError MixedModels._rand(StableRNG(42), InverseGaussian(), 1)
+
+        data = (; y=fill(1, 1000), g=rand('A':'G', 1000))
+        m = @suppress MixedModel(@formula(y ~ 1 + (1|g)), data, Normal(), LogLink())
+        simulate!(m; β=[1], θ=[0], σ=1)
+        v = response(m)
+        @test mean(v) ≈ exp(1) atol=0.05
     end
 end
 
