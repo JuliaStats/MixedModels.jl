@@ -75,18 +75,24 @@ Note that `n` is the `n` parameter for the Binomial distribution,
 *not* the number of draws from the RNG. It is then used to change the
 random draw (an integer in [0, n]) into a probability (a float in [0,1]).
 """
-function _rand(rng::AbstractRNG, d::Distribution, location, scale=NaN, n=1)
-    if !ismissing(scale)
-        throw(ArgumentError("Families with a dispersion parameter not yet supported"))
-    end
-
-    if d isa Binomial
-        dist = Binomial(Int(n), location)
-    else
-        dist = typeof(d)(location)
-    end
-
+function _rand(rng::AbstractRNG, ::Binomial, location, scale=missing, n=1)
+    dist = Binomial(Int(n), location) 
     return rand(rng, dist) / n
+end
+
+function _rand(rng::AbstractRNG, ::T, location, scale=missing, n=1) where T <: Union{Bernoulli,Poisson}
+    dist = T(location)
+    return rand(rng, dist)
+end    
+
+function _rand(rng::AbstractRNG, ::Normal, location, scale=missing, n=1)
+    # skip constructing a distribution
+    # return scale * randn(rng) + location
+    throw(ArgumentError("Families with a dispersion parameter not yet supported"))
+end
+
+function _rand(::AbstractRNG, ::T, ::Any, scale=missing, n=1) where T <: Distribution
+    throw(ArgumentError("Families with a dispersion parameter not yet supported"))
 end
 
 function simulate!(m::MixedModel{T}; β=fixef(m), σ=m.σ, θ=T[]) where {T}
