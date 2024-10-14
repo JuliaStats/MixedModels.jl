@@ -31,7 +31,7 @@ jobs:
               git fetch origin +:refs/remotes/origin/HEAD --depth=1
               julia --project=benchmark benchmark/run.jl
           - name: Comment PR
-            uses: thollander/actions-comment-pull-request@v2
+            uses: thollander/actions-comment-pull-request@v3
             with:
               filePath: "benchmark.md"
               comment_tag: benchmark
