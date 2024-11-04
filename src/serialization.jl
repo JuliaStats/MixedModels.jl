@@ -27,7 +27,21 @@ function restoreoptsum!(
     if length(setdiff(allowed_missing, keys(dict))) > 1 # 1 because :lowerbd
         @warn "optsum was saved with an older version of MixedModels.jl: consider resaving."
     end
+
+    # GLMM case with fast=slow
+    theta_beta_len = length(m.θ) + length(m.β)
+    if length(dict.initial) == theta_beta_len
+        resize!(ops.initial, theta_beta_len)
+        resize!(ops.final, theta_beta_len)
+        if length(ops.lowerbd) == length(m.θ)
+            prepend!(ops.lowerbd, fill(-Inf, length(m.β)))
+        end
+    end
+
     if any(ops.lowerbd .> dict.initial) || any(ops.lowerbd .> dict.final)
+        @debug "" ops.lowerbd
+        @debug "" dict.initial
+        @debug "" dict.final
         throw(ArgumentError("initial or final parameters in io do not satisfy lowerbd"))
     end
     for fld in (:feval, :finitial, :fmin, :ftol_rel, :ftol_abs, :maxfeval, :nAGQ, :REML)
@@ -68,6 +82,12 @@ function restoreoptsum!(m::LinearMixedModel{T}, filename; kwargs...) where {T}
     end
 end
 
+function restoreoptsum!(m::GeneralizedLinearMixedModel, fname; kwargs...)
+    restoreoptsum!(m.LMM, fname; kwargs...)
+    deviance!(m)
+    return m
+end
+
 """
     saveoptsum(io::IO, m::LinearMixedModel)
     saveoptsum(filename, m::LinearMixedModel)
@@ -84,5 +104,7 @@ function saveoptsum(filename, m::LinearMixedModel)
     end
 end
 
-# TODO: write methods for GLMM
+function saveoptsum(io, m::GeneralizedLinearMixedModel)
+    return saveoptsum(io, m.LMM)
+end
 # TODO, maybe: something nice for the MixedModelBootstrap
