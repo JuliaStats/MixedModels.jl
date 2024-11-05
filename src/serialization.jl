@@ -18,11 +18,11 @@ function restoreoptsum!(m::LinearMixedModel{T}, io::IO;
     for (par, obj_at_par) in (:initial => :finitial, :final => :fmin)
         if !isapprox(
             objective(updateL!(setθ!(m, getfield(ops, par)))), getfield(ops, obj_at_par);
-            rtol, atol
+            rtol, atol,
         )
             throw(
                 ArgumentError(
-                    "model m at $par does not give stored $obj_at_par within given tolerances",
+                    "model m at $par does not give stored $obj_at_par within given tolerances"
                 ),
             )
         end
@@ -58,11 +58,11 @@ function restoreoptsum!(m::GeneralizedLinearMixedModel{T}, io::IO;
     for (par, obj_at_par) in (:initial => :finitial, :final => :fmin)
         if !isapprox(
             deviance(pirls!(setpar!(m, getfield(ops, par)), varyβ), dict.nAGQ),
-            getfield(ops, obj_at_par); rtol, atol
+            getfield(ops, obj_at_par); rtol, atol,
         )
             throw(
                 ArgumentError(
-                    "model m at $par does not give stored $obj_at_par within given tolerances",
+                    "model m at $par does not give stored $obj_at_par within given tolerances"
                 ),
             )
         end
