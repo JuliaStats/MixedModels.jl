@@ -11,23 +11,28 @@ function restoreoptsum!(m::MixedModel, filename; kwargs...)
 end
 
 function restoreoptsum!(m::LinearMixedModel{T}, io::IO;
-                        atol::Real=zero(T),
-                        rtol::Real=atol > 0 ? zero(T) : √eps(T)) where {T}
+    atol::Real=zero(T),
+    rtol::Real=atol > 0 ? zero(T) : √eps(T)) where {T}
     dict = JSON3.read(io)
     ops = restoreoptsum!(m.optsum, dict)
     for (par, obj_at_par) in (:initial => :finitial, :final => :fmin)
         if !isapprox(
-            objective(updateL!(setθ!(m, getfield(ops, par)))), getfield(ops, obj_at_par); rtol, atol
+            objective(updateL!(setθ!(m, getfield(ops, par)))), getfield(ops, obj_at_par);
+            rtol, atol
         )
-            throw(ArgumentError("model m at $par does not give stored $obj_at_par within given tolerances"))
+            throw(
+                ArgumentError(
+                    "model m at $par does not give stored $obj_at_par within given tolerances",
+                ),
+            )
         end
     end
     return m
 end
 
 function restoreoptsum!(m::GeneralizedLinearMixedModel{T}, io::IO;
-                        atol::Real=zero(T),
-                        rtol::Real=atol > 0 ? zero(T) : √eps(T)) where {T}
+    atol::Real=zero(T),
+    rtol::Real=atol > 0 ? zero(T) : √eps(T)) where {T}
     dict = JSON3.read(io)
     ops = m.optsum
 
@@ -52,9 +57,14 @@ function restoreoptsum!(m::GeneralizedLinearMixedModel{T}, io::IO;
     restoreoptsum!(ops, dict)
     for (par, obj_at_par) in (:initial => :finitial, :final => :fmin)
         if !isapprox(
-            deviance(pirls!(setpar!(m, getfield(ops, par)), varyβ), dict.nAGQ), getfield(ops, obj_at_par); rtol, atol
+            deviance(pirls!(setpar!(m, getfield(ops, par)), varyβ), dict.nAGQ),
+            getfield(ops, obj_at_par); rtol, atol
         )
-            throw(ArgumentError("model m at $par does not give stored $obj_at_par within given tolerances"))
+            throw(
+                ArgumentError(
+                    "model m at $par does not give stored $obj_at_par within given tolerances",
+                ),
+            )
         end
     end
     return m
