@@ -1,7 +1,7 @@
 MixedModels v4.27.0 Release Notes
 ==============================
 - `saveoptsum` and `restoreoptsum!` now support `GeneralizedLinearMixedModel`s [#791]
-- `unfit!` (called internally by `refit!`) now does a better job of fully resetting the model state [#791]
+- `unfit!(::GeneralizedLinearMixedModel)` (called internally by `refit!`) now does a better job of fully resetting the model state [#791]
 
 MixedModels v4.26.1 Release Notes
 ==============================
