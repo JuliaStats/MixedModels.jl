@@ -244,13 +244,24 @@ end
     cbpp = dataset(:cbpp)
     gm_original = GeneralizedLinearMixedModel(first(gfms[:cbpp]), cbpp, Binomial(); wts=cbpp.hsz)
     gm_restored = GeneralizedLinearMixedModel(first(gfms[:cbpp]), cbpp, Binomial(); wts=cbpp.hsz)
+    fit!(gm_original; progress=false, nAGQ=1)
+
     io = IOBuffer()
 
-    fit!(gm_original; progress=false, nAGQ=1)
-    saveoptsum(io, gm_original)
-
+    saveoptsum(seekstart(io), gm_original)
     restoreoptsum!(gm_restored, seekstart(io))
-    # println(read(seekstart(io), String))
+    @test gm_original.optsum == gm_restored.optsum
+    @test deviance(gm_original) ≈ deviance(gm_restored)
 
-    save
+    refit!(gm_original; progress=false, nAGQ=3)
+    saveoptsum(seekstart(io), gm_original)
+    restoreoptsum!(gm_restored, seekstart(io))
+    @test gm_original.optsum == gm_restored.optsum
+    @test deviance(gm_original) ≈ deviance(gm_restored)
+
+    refit!(gm_original; progress=false, fast=true)
+    saveoptsum(seekstart(io), gm_original)
+    restoreoptsum!(gm_restored, seekstart(io))
+    @test gm_original.optsum == gm_restored.optsum
+    @test deviance(gm_original) ≈ deviance(gm_restored)
 end

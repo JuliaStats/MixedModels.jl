@@ -530,7 +530,7 @@ end
         fm_mod = deepcopy(fm)
         fm_mod.optsum.fmin += 1
         saveoptsum(seekstart(io), fm_mod)
-        @test_throws(ArgumentError("model m at final does not give stored fmin"),
+        @test_throws(ArgumentError("model m at final does not give stored fmin within given tolerances"),
                      restoreoptsum!(m, seekstart(io)))
         restoreoptsum!(m, seekstart(io); atol=1)
         @test m.optsum.fmin - fm.optsum.fmin ≈ 1
