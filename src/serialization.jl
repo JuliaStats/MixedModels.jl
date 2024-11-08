@@ -10,9 +10,10 @@ function restoreoptsum!(m::MixedModel, filename; kwargs...)
     end
 end
 
-function restoreoptsum!(m::LinearMixedModel{T}, io::IO;
-    atol::Real=zero(T),
-    rtol::Real=atol > 0 ? zero(T) : √eps(T)) where {T}
+function restoreoptsum!(
+    m::LinearMixedModel{T}, io::IO; atol::Real=zero(T),
+    rtol::Real=atol > 0 ? zero(T) : √eps(T)
+) where {T}
     dict = JSON3.read(io)
     ops = restoreoptsum!(m.optsum, dict)
     for (par, obj_at_par) in (:initial => :finitial, :final => :fmin)
