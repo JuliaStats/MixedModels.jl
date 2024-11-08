@@ -23,7 +23,7 @@ function restoreoptsum!(
         )
             throw(
                 ArgumentError(
-                    "model m at $par does not give stored $obj_at_par within given tolerances"
+                    "model at $par does not match stored $obj_at_par within atol=$atol, rtol=$rtol"
                 ),
             )
         end
@@ -64,7 +64,7 @@ function restoreoptsum!(
         )
             throw(
                 ArgumentError(
-                    "model m at $par does not give stored $obj_at_par within given tolerances"
+                    "model at $par does not match stored $obj_at_par within atol=$atol, rtol=$rtol"
                 ),
             )
         end
@@ -92,9 +92,7 @@ function restoreoptsum!(ops::OptSummary{T}, dict::AbstractDict) where {T}
     end
 
     if any(ops.lowerbd .> dict.initial) || any(ops.lowerbd .> dict.final)
-        @debug "" ops.lowerbd
-        @debug "" dict.initial
-        @debug "" dict.final
+        @debug "" ops.lowerbd dict.initial dict.final
         throw(ArgumentError("initial or final parameters in io do not satisfy lowerbd"))
     end
     for fld in (:feval, :finitial, :fmin, :ftol_rel, :ftol_abs, :maxfeval, :nAGQ, :REML)
