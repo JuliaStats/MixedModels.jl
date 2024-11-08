@@ -162,3 +162,9 @@ function _check_nlopt_return(ret, failure_modes=_NLOPT_FAILURE_MODES)
         @warn("NLopt optimization failure: $ret")
     end
 end
+
+function Base.:(==)(o1::OptSummary{T}, o2::OptSummary{T}) where {T}
+    return all(fieldnames(OptSummary)) do fn
+        return getfield(o1, fn) == getfield(o2, fn)
+    end
+end

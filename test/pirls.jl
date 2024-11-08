@@ -239,3 +239,29 @@ end
     @test isapprox(first(gm5.β), -0.13860166843315044, atol=1.e-3)
     @test isapprox(last(gm5.β), -0.034414458364713504, atol=1.e-3)
 end
+
+@testset "GLMM saveoptsum" begin
+    cbpp = dataset(:cbpp)
+    gm_original = GeneralizedLinearMixedModel(first(gfms[:cbpp]), cbpp, Binomial(); wts=cbpp.hsz)
+    gm_restored = GeneralizedLinearMixedModel(first(gfms[:cbpp]), cbpp, Binomial(); wts=cbpp.hsz)
+    fit!(gm_original; progress=false, nAGQ=1)
+
+    io = IOBuffer()
+
+    saveoptsum(seekstart(io), gm_original)
+    restoreoptsum!(gm_restored, seekstart(io))
+    @test gm_original.optsum == gm_restored.optsum
+    @test deviance(gm_original) ≈ deviance(gm_restored)
+
+    refit!(gm_original; progress=false, nAGQ=3)
+    saveoptsum(seekstart(io), gm_original)
+    restoreoptsum!(gm_restored, seekstart(io))
+    @test gm_original.optsum == gm_restored.optsum
+    @test deviance(gm_original) ≈ deviance(gm_restored)
+
+    refit!(gm_original; progress=false, fast=true)
+    saveoptsum(seekstart(io), gm_original)
+    restoreoptsum!(gm_restored, seekstart(io))
+    @test gm_original.optsum == gm_restored.optsum
+    @test deviance(gm_original) ≈ deviance(gm_restored)
+end

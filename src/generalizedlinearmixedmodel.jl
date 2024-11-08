@@ -767,7 +767,6 @@ function stderror!(v::AbstractVector{T}, m::GeneralizedLinearMixedModel{T}) wher
 end
 
 function unfit!(model::GeneralizedLinearMixedModel{T}) where {T}
-    deviance!(model, 1)
     reevaluateAend!(model.LMM)
 
     reterms = model.LMM.reterms
@@ -775,11 +774,14 @@ function unfit!(model::GeneralizedLinearMixedModel{T}) where {T}
     # we need to reset optsum so that it
     # plays nice with the modifications fit!() does
     optsum.lowerbd = mapfoldl(lowerbd, vcat, reterms)
-    optsum.initial = mapfoldl(getθ, vcat, reterms)
+    # for variances (bounded at zero), we have ones, while
+    # for everything else (bounded at -Inf), we have zeros
+    optsum.initial = map(T ∘ iszero, optsum.lowerbd)
     optsum.final = copy(optsum.initial)
     optsum.xtol_abs = fill!(copy(optsum.initial), 1.0e-10)
     optsum.initial_step = T[]
     optsum.feval = -1
+    deviance!(model, 1)
 
     return model
 end

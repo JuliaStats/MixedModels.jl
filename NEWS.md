@@ -1,3 +1,8 @@
+MixedModels v4.27.0 Release Notes
+==============================
+- `saveoptsum` and `restoreoptsum!` now support `GeneralizedLinearMixedModel`s [#791]
+- `unfit!(::GeneralizedLinearMixedModel)` (called internally by `refit!`) now does a better job of fully resetting the model state [#791]
+
 MixedModels v4.26.1 Release Notes
 ==============================
 - lower and upper edges of profile confidence intervals for REML-fitted models are no longer flipped [#785]
@@ -569,3 +574,4 @@ Package dependencies
 [#778]: https://github.com/JuliaStats/MixedModels.jl/issues/778
 [#783]: https://github.com/JuliaStats/MixedModels.jl/issues/783
 [#785]: https://github.com/JuliaStats/MixedModels.jl/issues/785
+[#791]: https://github.com/JuliaStats/MixedModels.jl/issues/791
