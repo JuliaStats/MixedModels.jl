@@ -12,7 +12,7 @@ end
 
 function restoreoptsum!(
     m::LinearMixedModel{T}, io::IO; atol::Real=zero(T),
-    rtol::Real=atol > 0 ? zero(T) : √eps(T)
+    rtol::Real=atol > 0 ? zero(T) : √eps(T),
 ) where {T}
     dict = JSON3.read(io)
     ops = restoreoptsum!(m.optsum, dict)
@@ -33,7 +33,7 @@ end
 
 function restoreoptsum!(
     m::GeneralizedLinearMixedModel{T}, io::IO; atol::Real=zero(T),
-    rtol::Real=atol > 0 ? zero(T) : √eps(T)
+    rtol::Real=atol > 0 ? zero(T) : √eps(T),
 ) where {T}
     dict = JSON3.read(io)
     ops = m.optsum
