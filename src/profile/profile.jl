@@ -35,7 +35,7 @@ value of ζ exceeds `threshold`.
 function profile(m::LinearMixedModel; threshold=4)
     isfitted(m) || refit!(m)
     final = copy(m.optsum.final)
-    try
+    profile = try
         tc = TableColumns(m)
         val = profileσ(m, tc; threshold) # FIXME: defer creating the splines until the whole table is constructed
         objective!(m, final)   # restore the parameter estimates
@@ -48,6 +48,7 @@ function profile(m::LinearMixedModel; threshold=4)
             profileθj!(val, s, tc; threshold)
         end
         profileσs!(val, tc)
+        MixedModelProfile(m, Table(val.tbl), val.fwd, val.rev)
     catch ex
         @error "Exception occurred in profiling; aborting..."
         rethrow(ex)
@@ -57,7 +58,7 @@ function profile(m::LinearMixedModel; threshold=4)
         m.optsum.fmin = objective(m)
         m.optsum.sigma = nothing
     end
-    return MixedModelProfile(m, Table(val.tbl), val.fwd, val.rev)
+    return profile
 end
 
 """
