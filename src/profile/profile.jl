@@ -51,7 +51,7 @@ function profile(m::LinearMixedModel; threshold=4)
         MixedModelProfile(m, Table(val.tbl), val.fwd, val.rev)
     catch ex
         @error "Exception occurred in profiling; aborting..."
-        rethrow(ex)
+        rethrow()
     finally
         objective!(m, final)   # restore the parameter estimates
         copyto!(m.optsum.final, final)
