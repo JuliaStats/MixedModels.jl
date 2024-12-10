@@ -361,13 +361,10 @@ function GeneralizedLinearMixedModel(
     tbl,
     d::Distribution,
     l::Link=canonicallink(d);
-    wts=[],
-    offset=[],
-    contrasts=Dict{Symbol,Any}(),
-    amalgamate=true,
+    kwargs...,
 )
     return GeneralizedLinearMixedModel(
-        f, Tables.columntable(tbl), d, l; wts, offset, contrasts, amalgamate
+        f, Tables.columntable(tbl), d, l; kwargs...
     )
 end
 
@@ -469,7 +466,16 @@ function GeneralizedLinearMixedModel(
     )
 
     # if the response is constant, there's no point (and this may even fail)
-    constresponse || deviance!(res, 1)
+    constresponse || try
+        deviance!(res, 1)
+    catch ex
+        ex isa PosDefException || rethrow()
+        @warn "Evaluation at default initial parameter vector failed, " *
+            "initializing to very small variances. This may result in long " *
+            "model fitting times. You will probably also need to use " *
+            "`init_from_lmm=[:β, :θ]` in order to fit the model."
+        res.optsum.initial[res.optsum.initial .!= 0] .= 1e-8
+    end
 
     return res
 end
