@@ -1,6 +1,6 @@
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.11.1"
+julia_version = "1.11.2"
 manifest_format = "2.0"
 project_hash = "c4309ccc6a27d70f68104254c44bddd49b144b44"
 
@@ -416,9 +416,9 @@ version = "1.2.0"
 
 [[deps.MixedModels]]
 deps = ["Arrow", "BSplineKit", "Compat", "DataAPI", "Distributions", "GLM", "JSON3", "LinearAlgebra", "Markdown", "MixedModelsDatasets", "NLopt", "PooledArrays", "PrecompileTools", "ProgressMeter", "Random", "SparseArrays", "StaticArrays", "Statistics", "StatsAPI", "StatsBase", "StatsFuns", "StatsModels", "StructTypes", "Tables", "TypedTables"]
-git-tree-sha1 = "0465c5abfba171982193407d1d0c051d6d0fb48c"
+path = "../.."
 uuid = "ff71e718-51f3-5ec2-a782-8ffcbfa3c316"
-version = "4.27.0"
+version = "4.27.1"
 
 [[deps.MixedModelsDatasets]]
 deps = ["Arrow", "Artifacts", "LazyArtifacts"]
