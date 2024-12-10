@@ -1,3 +1,7 @@
+MixedModels v4.27.1 Release Notes
+==============================
+- `profile` now includes a `finally` block to restore the original model even if an error occurs before profiling is complete [#795]
+
 MixedModels v4.27.0 Release Notes
 ==============================
 - `saveoptsum` and `restoreoptsum!` now support `GeneralizedLinearMixedModel`s [#791]
@@ -575,3 +579,4 @@ Package dependencies
 [#783]: https://github.com/JuliaStats/MixedModels.jl/issues/783
 [#785]: https://github.com/JuliaStats/MixedModels.jl/issues/785
 [#791]: https://github.com/JuliaStats/MixedModels.jl/issues/791
+[#795]: https://github.com/JuliaStats/MixedModels.jl/issues/795
