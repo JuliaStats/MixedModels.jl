@@ -725,6 +725,13 @@ end
     # very loose tolerance for unstable fit
     # but this is a convenient test of rankUpdate!(::UniformBlockDiagonal)
     @test isapprox(m.θ, θnlopt; atol=5e-2)
+
+    @testset "profile" begin
+        # TODO: actually handle the case here so that it doesn't error and
+        # create a separate test of the error handling code
+        @test_logs((:error, "Exception occurred in profiling; aborting..."),
+                    @test_throws Exception profile(last(models(:oxide))))
+    end
 end
 
 @testset "Rank deficient" begin

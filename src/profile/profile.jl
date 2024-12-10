@@ -35,23 +35,30 @@ value of ζ exceeds `threshold`.
 function profile(m::LinearMixedModel; threshold=4)
     isfitted(m) || refit!(m)
     final = copy(m.optsum.final)
-    tc = TableColumns(m)
-    val = profileσ(m, tc; threshold) # FIXME: defer creating the splines until the whole table is constructed
-    objective!(m, final)   # restore the parameter estimates
-    for s in filter(s -> startswith(string(s), 'β'), keys(first(val.tbl)))
-        profileβj!(val, tc, s; threshold)
+    profile = try
+        tc = TableColumns(m)
+        val = profileσ(m, tc; threshold) # FIXME: defer creating the splines until the whole table is constructed
+        objective!(m, final)   # restore the parameter estimates
+        for s in filter(s -> startswith(string(s), 'β'), keys(first(val.tbl)))
+            profileβj!(val, tc, s; threshold)
+        end
+        copyto!(m.optsum.final, final)
+        m.optsum.fmin = objective!(m, final)
+        for s in filter(s -> startswith(string(s), 'θ'), keys(first(val.tbl)))
+            profileθj!(val, s, tc; threshold)
+        end
+        profileσs!(val, tc)
+        MixedModelProfile(m, Table(val.tbl), val.fwd, val.rev)
+    catch ex
+        @error "Exception occurred in profiling; aborting..."
+        rethrow()
+    finally
+        objective!(m, final)   # restore the parameter estimates
+        copyto!(m.optsum.final, final)
+        m.optsum.fmin = objective(m)
+        m.optsum.sigma = nothing
     end
-    copyto!(m.optsum.final, final)
-    m.optsum.fmin = objective!(m, final)
-    for s in filter(s -> startswith(string(s), 'θ'), keys(first(val.tbl)))
-        profileθj!(val, s, tc; threshold)
-    end
-    profileσs!(val, tc)
-    objective!(m, final)   # restore the parameter estimates
-    copyto!(m.optsum.final, final)
-    m.optsum.fmin = objective(m)
-    m.optsum.sigma = nothing
-    return MixedModelProfile(m, Table(val.tbl), val.fwd, val.rev)
+    return profile
 end
 
 """
