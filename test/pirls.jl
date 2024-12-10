@@ -265,3 +265,19 @@ end
     @test gm_original.optsum == gm_restored.optsum
     @test deviance(gm_original) ≈ deviance(gm_restored)
 end
+
+@testset "Bad initial value" begin
+    rng = StableRNG(0)
+    df = allcombinations(DataFrame,
+                         "subject" => 1:10,
+                         "session" => 1:6,
+                         "serialpos" => 1:12)
+    df[!, :recalled] = rand(rng, [0, 1], nrow(df))
+
+    form = @formula(recalled ~ serialpos + zerocorr(serialpos | subject) + (1 | subject & session))
+    glmm = @test_logs((:warn, r"Evaluation at default initial parameter vector failed"),
+                      GeneralizedLinearMixedModel(form, df, Bernoulli()));
+    glmm.optsum.ftol_rel = 1e-7
+    fit!(glmm; init_from_lmm=[:β, :θ], fast=true, progress=false)
+    @test deviance(glmm) ≈ 996.0402 atol=0.01
+end
