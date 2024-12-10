@@ -2,7 +2,7 @@
 
 julia_version = "1.11.2"
 manifest_format = "2.0"
-project_hash = "c4309ccc6a27d70f68104254c44bddd49b144b44"
+project_hash = "7cf494c25244ee9b105ec6fba722abd8778b90c5"
 
 [[deps.Adapt]]
 deps = ["LinearAlgebra", "Requires"]
@@ -652,6 +652,12 @@ deps = ["Dictionaries", "Indexing"]
 git-tree-sha1 = "c06d695d51cfb2187e6848e98d6252df9101c588"
 uuid = "03a91e81-4c3e-53e1-a0a4-9c0c8f19dd66"
 version = "1.2.3"
+
+[[deps.StableRNGs]]
+deps = ["Random"]
+git-tree-sha1 = "83e6cce8324d49dfaf9ef059227f91ed4441a8e5"
+uuid = "860ef19b-820b-49d6-a774-d7a799459cd3"
+version = "1.0.2"
 
 [[deps.Static]]
 deps = ["CommonWorldInvalidations", "IfElse", "PrecompileTools"]
