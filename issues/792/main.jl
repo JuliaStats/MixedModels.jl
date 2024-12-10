@@ -3,7 +3,6 @@ Random.seed!(0)
 df = allcombinations(DataFrame,
                      "subject" => 1:10,
                      "session" => 1:6,
-                     "list" => 1:25,
                      "serialpos" => 1:12)
 df[!, :recalled] = rand(nrow(df)) .> .5
 serialpos_contrasts = Dict(:serialpos => DummyCoding())
