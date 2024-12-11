@@ -1,0 +1,19 @@
+{
+    "access_right": "open",
+    "license": "MIT",
+    "title": "MixedModels.jl",
+    "description": "A Julia package for fitting (statistical) mixed-effects models",
+    "upload_type": "software",
+    "creators": [
+        {
+            "affiliation": "Beacon Biosignals",
+            "name": "Alday, Phillip M.",
+            "orcid": "0000-0002-9984-5745"
+        },
+        {
+            "affiliation": "University of Wisconsin - Madison",
+            "name": "Bates, Douglas",
+            "orcid": "0000-0001-8316-9503"
+        }
+    ]
+}

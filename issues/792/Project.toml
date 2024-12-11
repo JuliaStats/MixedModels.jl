@@ -1,0 +1,4 @@
+[deps]
+DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+MixedModels = "ff71e718-51f3-5ec2-a782-8ffcbfa3c316"
+StableRNGs = "860ef19b-820b-49d6-a774-d7a799459cd3"
