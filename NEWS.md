@@ -1,6 +1,6 @@
 MixedModels v4.29.1 Release Notes
 ==============================
-- Populate `optsum` in `prfit!` call. [#800]
+- Populate `optsum` in `prfit!` call. [#801]
 
 MixedModels v4.29.0 Release Notes
 ==============================
@@ -594,4 +594,4 @@ Package dependencies
 [#792]: https://github.com/JuliaStats/MixedModels.jl/issues/792
 [#795]: https://github.com/JuliaStats/MixedModels.jl/issues/795
 [#799]: https://github.com/JuliaStats/MixedModels.jl/issues/799
-[#800]: https://github.com/JuliaStats/MixedModels.jl/issues/800
+[#801]: https://github.com/JuliaStats/MixedModels.jl/issues/801
