@@ -37,7 +37,9 @@ function MixedModels.prfit!(m::LinearMixedModel;
             end
         end
         progress && ProgressMeter.next!(prog; showvalues=[(:objective, val)])
-        !isone(iter) && iszero(rem(iter, thin)) && push!(fitlog, (copy(x), val))
+        if isone(iter) || iszero(rem(iter, thin))
+            push!(fitlog, (copy(x), val))
+        end
         return val
     end
 
