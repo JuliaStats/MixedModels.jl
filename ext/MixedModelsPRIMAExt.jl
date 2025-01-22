@@ -41,6 +41,7 @@ function MixedModels.prfit!(m::LinearMixedModel;
         return val
     end
 
+    ProgressMeter.finish!(prog)
     info = PRIMA.bobyqa!(obj, optsum.final; xl=m.optsum.lowerbd)
     optsum.feval = info.nf
     optsum.fmin = info.fx
