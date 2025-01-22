@@ -1,6 +1,6 @@
 MixedModels v4.29.0 Release Notes
 ==============================
-- Testbed for experimental support for using PRIMA as an optimization backend introduced via the experimental `prfit!` function.
+- Testbed for experimental support for using PRIMA as an optimization backend introduced via the experimental `prfit!` function. [#799]
 
 MixedModels v4.28.0 Release Notes
 ==============================
@@ -589,3 +589,4 @@ Package dependencies
 [#791]: https://github.com/JuliaStats/MixedModels.jl/issues/791
 [#792]: https://github.com/JuliaStats/MixedModels.jl/issues/792
 [#795]: https://github.com/JuliaStats/MixedModels.jl/issues/795
+[#799]: https://github.com/JuliaStats/MixedModels.jl/issues/799
