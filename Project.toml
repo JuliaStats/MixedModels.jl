@@ -30,6 +30,12 @@ StructTypes = "856f2bd8-1eba-4b0a-8007-ebc267875bd4"
 Tables = "bd369af6-aec1-5ad0-b16a-f7cc5008161c"
 TypedTables = "9d95f2ec-7b3d-5a63-8d20-e2491e220bb9"
 
+[weakdeps]
+PRIMA = "0a7d04aa-8ac2-47b3-b7a7-9dbd6ad661ed"
+
+[extensions]
+MixedModelsPRIMAExt = ["PRIMA"]
+
 [compat]
 Aqua = "0.8"
 Arrow = "1, 2"
@@ -46,6 +52,7 @@ LinearAlgebra = "1"
 Markdown = "1"
 MixedModelsDatasets = "0.1"
 NLopt = "0.6, 1"
+PRIMA = "0.2"
 PooledArrays = "0.5, 1"
 PrecompileTools = "1"
 ProgressMeter = "1.7"
@@ -63,16 +70,17 @@ Suppressor = "0.2"
 Tables = "1"
 Test = "1"
 TypedTables = "1"
-julia = "1.8"
+julia = "1.10"
 
 [extras]
 Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 ExplicitImports = "7d51a73a-1435-4ff3-83d9-f097790105c7"
 InteractiveUtils = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
+PRIMA = "0a7d04aa-8ac2-47b3-b7a7-9dbd6ad661ed"
 StableRNGs = "860ef19b-820b-49d6-a774-d7a799459cd3"
 Suppressor = "fd094767-a336-5f1f-9728-57cf17d0bbfb"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Aqua", "DataFrames", "ExplicitImports", "InteractiveUtils", "StableRNGs", "Suppressor", "Test"]
+test = ["Aqua", "DataFrames", "ExplicitImports", "InteractiveUtils", "PRIMA", "StableRNGs", "Suppressor", "Test"]

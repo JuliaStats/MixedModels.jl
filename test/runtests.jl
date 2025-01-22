@@ -7,8 +7,6 @@ using Test
 import InteractiveUtils: versioninfo
 import LinearAlgebra: BLAS
 
-using Base: splat # necessary for Julia 1.8 compat
-
 # there seem to be processor-specific issues and knowing this is helpful
 @info sprint(versioninfo)
 @info BLAS.get_config()
@@ -45,3 +43,5 @@ include("mime.jl")
 include("optsummary.jl")
 include("predict.jl")
 include("sigma.jl")
+
+@testset "PRIMA" include("prima.jl")
