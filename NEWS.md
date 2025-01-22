@@ -1,3 +1,7 @@
+MixedModels v4.29.0 Release Notes
+==============================
+- Testbed for experimental support for using PRIMA as an optimization backend introduced via the experimental `prfit!` function.
+
 MixedModels v4.28.0 Release Notes
 ==============================
 - `GeneralizedLinearMixedModel` now attempts to fall back to very constrained variance values when the default initial values result in a non positive semidefinite covariance matrix. [#792]
