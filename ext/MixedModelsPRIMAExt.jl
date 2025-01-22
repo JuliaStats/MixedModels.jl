@@ -44,6 +44,7 @@ function MixedModels.prfit!(m::LinearMixedModel;
     optsum.feval = info.nf
     optsum.fmin = info.fx
     optsum.returnvalue = Symbol(info.status)
+    optsum.optimizer = :PRIMA_BOBYQA
     return m
 end
 
