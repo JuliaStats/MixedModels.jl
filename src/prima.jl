@@ -25,7 +25,7 @@ of the BOBYQA optimizer.
 
     The following fields have a different meaning when used with PRIMA:
 
-    -  `returnvalue` is populated with a symbol representing the PRIMA
+    - `returnvalue` is populated with a symbol representing the PRIMA
         return value, which PRIMA represents as an enum.
     - `optimizer` is populated with a dummy value, indicating that a model was
        fit with PRIMA. If you wish to refit the model with the NLOpt backend,
