@@ -1,3 +1,7 @@
+MixedModels v4.29.1 Release Notes
+==============================
+- Populate `optsum` in `prfit!` call. [#800]
+
 MixedModels v4.29.0 Release Notes
 ==============================
 - Testbed for experimental support for using PRIMA as an optimization backend introduced via the experimental `prfit!` function. [#799]
@@ -590,3 +594,4 @@ Package dependencies
 [#792]: https://github.com/JuliaStats/MixedModels.jl/issues/792
 [#795]: https://github.com/JuliaStats/MixedModels.jl/issues/795
 [#799]: https://github.com/JuliaStats/MixedModels.jl/issues/799
+[#800]: https://github.com/JuliaStats/MixedModels.jl/issues/800
