@@ -13,6 +13,7 @@ function MixedModels.prfit!(m::LinearMixedModel;
     copyto!(optsum.final, optsum.initial)
     optsum.REML = REML
     optsum.sigma = σ
+    optsum.finitial = objective!(m, optsum.initial)
 
     prog = ProgressUnknown(; desc="Minimizing", showspeed=true)
     # start from zero for the initial call to obj before optimization
