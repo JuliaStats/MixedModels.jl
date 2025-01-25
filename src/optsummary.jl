@@ -32,7 +32,7 @@ Summary of an optimization
 * `rhobeg`: as in PRIMA, not used in NLopt
 * `rhoend`: as in PRIMA, not used in NLopt
 
-## MixedModels-spcific fields, unrelated to the optimizer
+## MixedModels-specific fields, unrelated to the optimizer
 * `fitlog`: A vector of tuples of parameter and objectives values from steps in the optimization
 * `nAGQ`: number of adaptive Gauss-Hermite quadrature points in deviance evaluation for GLMMs
 * `REML`: use the REML criterion for LMM fits
