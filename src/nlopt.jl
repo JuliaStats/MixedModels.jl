@@ -6,6 +6,7 @@ function optimize!(m::LinearMixedModel, ::NLoptBackend; progress::Bool=true, thi
     optsum = m.optsum
     opt = Opt(optsum)
 
+    prog = ProgressUnknown(; desc="Minimizing", showspeed=true)
     function obj(x, g)
         isempty(g) || throw(ArgumentError("g should be empty for this objective"))
         iter += 1
@@ -29,7 +30,6 @@ function optimize!(m::LinearMixedModel, ::NLoptBackend; progress::Bool=true, thi
         return val
     end
     NLopt.min_objective!(opt, obj)
-    prog = ProgressUnknown(; desc="Minimizing", showspeed=true)
     # start from zero for the initial call to obj before optimization
     iter = 0
     fitlog = optsum.fitlog

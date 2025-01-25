@@ -10,4 +10,6 @@ include("modelcache.jl")
     prmodel = prfit!(LinearMixedModel(formula(model), dataset(:sleepstudy)); progress=false)
 
     @test isapprox(loglikelihood(model), loglikelihood(prmodel))
+    @test prmodel.optsum.optimizer == :bobyqa
+    @test prmodel.optsum.backend == :prima
 end
