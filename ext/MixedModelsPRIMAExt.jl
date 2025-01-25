@@ -15,8 +15,8 @@ function MixedModels.prfit!(m::LinearMixedModel;
 end
 
 prima_optimizer!(::Val{:bobyqa}, args...; kwargs...) = PRIMA.bobyqa!(args...; kwargs...)
-prima_optimizer!(::Val{:cobyla}, args...; kwargs...) = PRIMA.cobyla(args...; kwargs...)
-prima_optimizer!(::Val{:lincoa}, args...; kwargs...) = PRIMA.lincoa(args...; kwargs...)
+prima_optimizer!(::Val{:cobyla}, args...; kwargs...) = PRIMA.cobyla!(args...; kwargs...)
+prima_optimizer!(::Val{:lincoa}, args...; kwargs...) = PRIMA.lincoa!(args...; kwargs...)
 
 push!(MixedModels.OPTIMIZATION_BACKENDS, :prima)
 
@@ -61,6 +61,7 @@ function MixedModels.optimize!(m::LinearMixedModel, ::PRIMABackend; progress::Bo
     optsum.feval = info.nf
     optsum.fmin = info.fx
     optsum.returnvalue = Symbol(info.status)
+    _check_prima_return(info)
 
     return optsum.final, optsum.fmin
 end
