@@ -1,3 +1,7 @@
+MixedModels v4.30.0 Release Notes
+==============================
+- Refactor calls to backend optimizer to make it easier to add and use different optimization backends. [#802]
+
 MixedModels v4.29.1 Release Notes
 ==============================
 - Populate `optsum` in `prfit!` call. [#801]
@@ -595,3 +599,4 @@ Package dependencies
 [#795]: https://github.com/JuliaStats/MixedModels.jl/issues/795
 [#799]: https://github.com/JuliaStats/MixedModels.jl/issues/799
 [#801]: https://github.com/JuliaStats/MixedModels.jl/issues/801
+[#802]: https://github.com/JuliaStats/MixedModels.jl/issues/802
