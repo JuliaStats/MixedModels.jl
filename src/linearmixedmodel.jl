@@ -177,7 +177,6 @@ function LinearMixedModel(
     θ = foldl(vcat, getθ(c) for c in reterms)
     optsum = OptSummary(θ, lbd)
     optsum.sigma = isnothing(σ) ? nothing : T(σ)
-    fill!(optsum.xtol_abs, 1.0e-10)
     return LinearMixedModel(
         form,
         reterms,
@@ -459,55 +458,10 @@ function StatsAPI.fit!(
             ArgumentError("The response is constant and thus model fitting has failed")
         )
     end
-    opt = Opt(optsum)
     optsum.REML = REML
     optsum.sigma = σ
-    prog = ProgressUnknown(; desc="Minimizing", showspeed=true)
-    # start from zero for the initial call to obj before optimization
-    iter = 0
+    xmin, fmin = optimize!(m; progress, thin)
     fitlog = optsum.fitlog
-    function obj(x, g)
-        isempty(g) || throw(ArgumentError("g should be empty for this objective"))
-        iter += 1
-        val = if isone(iter) && x == optsum.initial
-            optsum.finitial
-        else
-            try
-                objective(updateL!(setθ!(m, x)))
-            catch ex
-                # This can happen when the optimizer drifts into an area where
-                # there isn't enough shrinkage. Why finitial? Generally, it will
-                # be the (near) worst case scenario value, so the optimizer won't
-                # view it as an optimum. Using Inf messes up the quadratic
-                # approximation in BOBYQA.
-                ex isa PosDefException || rethrow()
-                optsum.finitial
-            end
-        end
-        progress && ProgressMeter.next!(prog; showvalues=[(:objective, val)])
-        !isone(iter) && iszero(rem(iter, thin)) && push!(fitlog, (copy(x), val))
-        return val
-    end
-    NLopt.min_objective!(opt, obj)
-    try
-        # use explicit evaluation w/o calling opt to avoid confusing iteration count
-        optsum.finitial = objective(updateL!(setθ!(m, optsum.initial)))
-    catch ex
-        ex isa PosDefException || rethrow()
-        # give it one more try with a massive change in scaling
-        @info "Initial objective evaluation failed, rescaling initial guess and trying again."
-        @warn """Failure of the initial evaluation is often indicative of a model specification
-                 that is not well supported by the data and/or a poorly scaled model.
-              """
-        optsum.initial ./=
-            (isempty(m.sqrtwts) ? 1.0 : maximum(m.sqrtwts)^2) *
-            maximum(response(m))
-        optsum.finitial = objective(updateL!(setθ!(m, optsum.initial)))
-    end
-    empty!(fitlog)
-    push!(fitlog, (copy(optsum.initial), optsum.finitial))
-    fmin, xmin, ret = NLopt.optimize!(opt, copyto!(optsum.final, optsum.initial))
-    ProgressMeter.finish!(prog)
     ## check if small non-negative parameter values can be set to zero
     xmin_ = copy(xmin)
     lb = optsum.lowerbd
@@ -518,7 +472,7 @@ function StatsAPI.fit!(
     end
     loglength = length(fitlog)
     if xmin ≠ xmin_
-        if (zeroobj = obj(xmin_, T[])) ≤ (fmin + optsum.ftol_zero_abs)
+        if (zeroobj = objective!(m, xmin_)) ≤ (fmin + optsum.ftol_zero_abs)
             fmin = zeroobj
             copyto!(xmin, xmin_)
         elseif length(fitlog) > loglength
@@ -529,11 +483,8 @@ function StatsAPI.fit!(
     ## ensure that the parameter values saved in m are xmin
     updateL!(setθ!(m, xmin))
 
-    optsum.feval = opt.numevals
     optsum.final = xmin
     optsum.fmin = fmin
-    optsum.returnvalue = ret
-    _check_nlopt_return(ret)
     return m
 end
 
@@ -826,25 +777,6 @@ function objective(m::LinearMixedModel{T}) where {T}
         muladd(denomdf, muladd(2, log(σ), log2π), (logdet(m) + pwrss(m) / σ^2))
     end
     return isempty(wts) ? val : val - T(2.0) * sum(log, wts)
-end
-
-"""
-    objective!(m::LinearMixedModel, θ)
-    objective!(m::LinearMixedModel)
-
-Equivalent to `objective(updateL!(setθ!(m, θ)))`.
-
-When `m` has a single, scalar random-effects term, `θ` can be a scalar.
-
-The one-argument method curries and returns a single-argument function of `θ`.
-
-Note that these methods modify `m`.
-The calling function is responsible for restoring the optimal `θ`.
-"""
-function objective! end
-
-function objective!(m::LinearMixedModel)
-    return Base.Fix1(objective!, m)
 end
 
 function objective!(m::LinearMixedModel{T}, θ) where {T}

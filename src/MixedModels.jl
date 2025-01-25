@@ -205,6 +205,7 @@ include("grouping.jl")
 include("mimeshow.jl")
 include("serialization.jl")
 include("profile/profile.jl")
+include("nlopt.jl")
 include("prima.jl")
 
 # COV_EXCL_START

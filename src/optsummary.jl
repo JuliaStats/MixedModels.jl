@@ -1,61 +1,83 @@
 """
     OptSummary
 
-Summary of an `NLopt` optimization
+Summary of an optimization
 
 # Fields
+
+## Tolerances, initial and final values
 * `initial`: a copy of the initial parameter values in the optimization
 * `finitial`: the initial value of the objective
 * `lowerbd`: lower bounds on the parameter values
-* `ftol_rel`: as in NLopt
-* `ftol_abs`: as in NLopt
-* `xtol_rel`: as in NLopt
-* `xtol_abs`: as in NLopt
-* `initial_step`: as in NLopt
-* `maxfeval`: as in NLopt (`maxeval`)
-* `maxtime`: as in NLopt
 * `final`: a copy of the final parameter values from the optimization
 * `fmin`: the final value of the objective
 * `feval`: the number of function evaluations
-* `optimizer`: the name of the optimizer used, as a `Symbol`
-* `returnvalue`: the return value, as a `Symbol`
+   Available backends can be examined via [`OPTIMIZATION_BACKENDS`](@ref).
+* `returnvalue`: the return value, as a `Symbol`. The available return values will differ between backends.
 * `xtol_zero_abs`: the tolerance for a near zero parameter to be considered practically zero
 * `ftol_zero_abs`: the tolerance for change in the objective for setting a near zero parameter to zero
+* `maxfeval`: as in NLopt (`maxeval`) and PRIMA (`maxfun`)
+
+## Choice of optimizer and backend
+* `optimizer`: the name of the optimizer used, as a `Symbol`
+* `backend`: the optimization library providing the optimizer, default is `NLoptBackend`.
+
+## Backend-specific fields
+* `ftol_rel`: as in NLopt, not used in PRIMA
+* `ftol_abs`: as in NLopt, not used in PRIMA
+* `xtol_rel`: as in NLopt, not used in PRIMA
+* `xtol_abs`: as in NLopt, not used in PRIMA
+* `initial_step`: as in NLopt, not used in PRIMA
+* `maxtime`: as in NLopt, not used in PRIMA
+* `rhobeg`: as in PRIMA, not used in NLopt
+* `rhoend`: as in PRIMA, not used in NLopt
+
+## MixedModels-spcific fields, unrelated to the optimizer
 * `fitlog`: A vector of tuples of parameter and objectives values from steps in the optimization
 * `nAGQ`: number of adaptive Gauss-Hermite quadrature points in deviance evaluation for GLMMs
 * `REML`: use the REML criterion for LMM fits
 * `sigma`: a priori value for the residual standard deviation for LMM
 
-The last three fields are MixedModels functionality and not related directly to the `NLopt` package or algorithms.
-
 !!! note
     The internal storage of the parameter values within `fitlog` may change in
     the future to use a different subtype of `AbstractVector` (e.g., `StaticArrays.SVector`)
     for each snapshot without being considered a breaking change.
+
+!!! note
+    The exact order and number of fields may change as support for additional backends and features
+    thereof are added. In other words: use the keyword constructor and do **not** use the positional
+    constructor.
 """
 Base.@kwdef mutable struct OptSummary{T<:AbstractFloat}
     initial::Vector{T}
+    finitial::T = Inf * one(eltype(initial))
     lowerbd::Vector{T}
+    final::Vector{T} = copy(initial)
+    fmin::T = Inf * one(eltype(initial))
+    feval::Int = -1
+    returnvalue::Symbol = :FAILURE
+    xtol_zero_abs::T = eltype(initial)(0.001)
+    ftol_zero_abs::T = eltype(initial)(1.e-5)
+    maxfeval::Int = -1
+
+
+    optimizer::Symbol = :LN_BOBYQA
+    backend::Symbol = :nlopt
+
     # the @kwdef macro isn't quite smart enough for us to use the type parameter
     # for the default values, but we can fake it
-    finitial::T = Inf * one(eltype(initial))
     ftol_rel::T = eltype(initial)(1.0e-12)
     ftol_abs::T = eltype(initial)(1.0e-8)
     xtol_rel::T = zero(eltype(initial))
     xtol_abs::Vector{T} = zero(initial) .+ 1e-10
     initial_step::Vector{T} = empty(initial)
-    maxfeval::Int = -1
     maxtime::T = -one(eltype(initial))
-    feval::Int = -1
-    final::Vector{T} = copy(initial)
-    fmin::T = Inf * one(eltype(initial))
-    optimizer::Symbol = :LN_BOBYQA
-    returnvalue::Symbol = :FAILURE
-    xtol_zero_abs::T = eltype(initial)(0.001)
-    ftol_zero_abs::T = eltype(initial)(1.e-5)
+
+    rhobeg::T = one(T)
+    rhoend::T = rhobeg / 1_000_000
+
     # not SVector because we would need to parameterize on size (which breaks GLMM)
     fitlog::Vector{Tuple{Vector{T},T}} = [(initial, fmin)]
-    # don't really belong here but I needed a place to store them
     nAGQ::Int = 1
     REML::Bool = false
     sigma::Union{T,Nothing} = nothing
@@ -121,50 +143,18 @@ function Base.show(io::IO, ::MIME"text/plain", s::OptSummary)
     return println(io, "Return code:              ", s.returnvalue)
 end
 
-Base.show(io::IO, s::OptSummary) = Base.show(io, MIME"text/plain"(), s)
-
-function NLopt.Opt(optsum::OptSummary)
-    lb = optsum.lowerbd
-
-    opt = NLopt.Opt(optsum.optimizer, length(lb))
-    NLopt.ftol_rel!(opt, optsum.ftol_rel) # relative criterion on objective
-    NLopt.ftol_abs!(opt, optsum.ftol_abs) # absolute criterion on objective
-    NLopt.xtol_rel!(opt, optsum.xtol_rel) # relative criterion on parameter values
-    if length(optsum.xtol_abs) == length(lb)  # not true for fast=false optimization in GLMM
-        NLopt.xtol_abs!(opt, optsum.xtol_abs) # absolute criterion on parameter values
-    end
-    NLopt.lower_bounds!(opt, lb)
-    NLopt.maxeval!(opt, optsum.maxfeval)
-    NLopt.maxtime!(opt, optsum.maxtime)
-    if isempty(optsum.initial_step)
-        optsum.initial_step = NLopt.initial_step(opt, optsum.initial, similar(lb))
-    else
-        NLopt.initial_step!(opt, optsum.initial_step)
-    end
-    return opt
-end
-
-StructTypes.StructType(::Type{<:OptSummary}) = StructTypes.Mutable()
-StructTypes.excludes(::Type{<:OptSummary}) = (:lowerbd,)
-
-const _NLOPT_FAILURE_MODES = [
-    :FAILURE,
-    :INVALID_ARGS,
-    :OUT_OF_MEMORY,
-    :FORCED_STOP,
-    :MAXEVAL_REACHED,
-    :MAXTIME_REACHED,
-]
-
-function _check_nlopt_return(ret, failure_modes=_NLOPT_FAILURE_MODES)
-    ret == :ROUNDOFF_LIMITED && @warn("NLopt was roundoff limited")
-    if ret ∈ failure_modes
-        @warn("NLopt optimization failure: $ret")
-    end
-end
+Base.show(io::IO, s::OptSummary) = Base.show(io, MIME("text/plain"), s)
 
 function Base.:(==)(o1::OptSummary{T}, o2::OptSummary{T}) where {T}
     return all(fieldnames(OptSummary)) do fn
         return getfield(o1, fn) == getfield(o2, fn)
     end
 end
+
+"""
+    OPTIMIZATION_BACKENDS
+
+A list of currently available optimization backends.
+"""
+const OPTIMIZATION_BACKENDS = Symbol[]
+optimize!(m::MixedModel; kwargs...) = optimize!(m, Val(m.optsum.backend); kwargs...)

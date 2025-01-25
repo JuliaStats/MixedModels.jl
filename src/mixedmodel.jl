@@ -117,6 +117,25 @@ StatsAPI.modelmatrix(m::MixedModel) = m.feterm.x
 
 StatsAPI.nobs(m::MixedModel) = length(m.y)
 
+"""
+    objective!(m::MixedModel, θ)
+    objective!(m::MixedModel)
+
+Equivalent to `objective(updateL!(setθ!(m, θ)))`.
+
+When `m` has a single, scalar random-effects term, `θ` can be a scalar.
+
+The one-argument method curries and returns a single-argument function of `θ`.
+
+Note that these methods modify `m`.
+The calling function is responsible for restoring the optimal `θ`.
+"""
+function objective! end
+
+function objective!(m::MixedModel)
+    return Base.Fix1(objective!, m)
+end
+
 StatsAPI.predict(m::MixedModel) = fitted(m)
 
 function retbl(mat, trm)
@@ -131,13 +150,13 @@ StatsAPI.adjr2(m::MixedModel) = r2(m)
 function StatsAPI.r2(m::MixedModel)
     @error (
         """There is no uniquely defined coefficient of determination for mixed models
-         that has all the properties of the corresponding value for classical 
+         that has all the properties of the corresponding value for classical
          linear models. The GLMM FAQ provides more detail:
-         
+
          https://bbolker.github.io/mixedmodels-misc/glmmFAQ.html#how-do-i-compute-a-coefficient-of-determination-r2-or-an-analogue-for-glmms
 
 
-         Alternatively, MixedModelsExtras provides a naive implementation, but 
+         Alternatively, MixedModelsExtras provides a naive implementation, but
          the warnings there and in the FAQ should be taken seriously!
          """
     )
@@ -148,7 +167,7 @@ end
     raneftables(m::MixedModel; uscale = false)
 
 Return the conditional means of the random effects as a `NamedTuple` of Tables.jl-compliant tables.
-	
+
 !!! note
     The API guarantee is only that the NamedTuple contains Tables.jl tables and not on the particular concrete type of each table.
 """

@@ -79,6 +79,9 @@ function restoreoptsum!(ops::OptSummary{T}, dict::AbstractDict) where {T}
         :ftol_zero_abs, # added in v4.25.0
         :sigma,         # added in v4.1.0
         :fitlog,        # added in v4.1.0
+        :backend,       # added in v4.30.0
+        :rhobeg,        # added in v4.30.0
+        :rhoend,        # added in v4.30.0
     )
     nmdiff = setdiff(
         propertynames(ops),  # names in freshly created optsum
@@ -119,6 +122,10 @@ function restoreoptsum!(ops::OptSummary{T}, dict::AbstractDict) where {T}
     end
     return ops
 end
+
+
+StructTypes.StructType(::Type{<:OptSummary}) = StructTypes.Mutable()
+StructTypes.excludes(::Type{<:OptSummary}) = (:lowerbd,)
 
 """
     saveoptsum(io::IO, m::MixedModel)
