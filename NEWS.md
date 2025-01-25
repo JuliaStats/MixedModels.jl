@@ -1,6 +1,7 @@
 MixedModels v4.30.0 Release Notes
 ==============================
-- Refactor calls to backend optimizer to make it easier to add and use different optimization backends. [#802]
+- Refactor calls to backend optimizer to make it easier to add and use different optimization backends.
+  The structure of `OptSummary` has been expanded and `prfit!` has been updated to use this new structure. [#802]
 
 MixedModels v4.29.1 Release Notes
 ==============================

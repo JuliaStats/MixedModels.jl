@@ -1,13 +1,13 @@
 module MixedModelsPRIMAExt
 
-using MixedModels: MixedModels, LinearMixedModel, objective!
-using MixedModels: ProgressMeter, ProgressUnknown
+using MixedModels
+using MixedModels: ProgressMeter, ProgressUnknown, objective!
 using PRIMA: PRIMA
 
 function MixedModels.prfit!(m::LinearMixedModel;
                             kwargs...)
 
-    unfit!(m)
+    MixedModels.unfit!(m)
     m.optsum.optimizer = :bobyqa
     m.optsum.backend = :prima
 
@@ -69,7 +69,9 @@ function MixedModels.optimize!(m::LinearMixedModel, ::PRIMABackend; progress::Bo
     end
     empty!(fitlog)
     push!(fitlog, (copy(optsum.initial), optsum.finitial))
-    info = prima_optimizer!(Val(optsum.optimizer), obj, optsum.final; xl=m.optsum.lowerbd)
+    info = prima_optimizer!(Val(optsum.optimizer), obj, optsum.final;
+                            xl=optsum.lowerbd, maxfun=optsum.maxfeval,
+                            optsum.rhoend, optsumrhobeg)
     ProgressMeter.finish!(prog)
     optsum.feval = info.nf
     optsum.fmin = info.fx
@@ -87,6 +89,6 @@ function _check_prima_return(info::PRIMA.Info)
     return nothing
 end
 
-MixedModels.opt_params(::PRIMABackend) = (:rhobeg, :rhoend)
+MixedModels.opt_params(::PRIMABackend) = (:rhobeg, :rhoend, :maxfeval)
 
 end # module
