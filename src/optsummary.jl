@@ -171,7 +171,7 @@ model's `optsum` field. It then calls that optimizer and returns `xmin, fmin`.
 Providing support for a new backend involves defining appropriate `optimize!` methods
 with the second argument of type `::Val{:backend_name}` and adding `:backend_name` to
 `OPTIMIZATION_BACKENDS`. Similarly, a method `opt_params(::Val{:backend_name})` should
-be defined, which returns the optimization paramers (e.g. `xtol_abs` or `rho_end`) used
+be defined, which returns the optimization parameters (e.g. `xtol_abs` or `rho_end`) used
 by the backend.
 
 Common keyword arguments are `progress` to show a progress meter and `thin` to control thinning
