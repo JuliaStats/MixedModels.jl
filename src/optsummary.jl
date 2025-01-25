@@ -12,7 +12,7 @@ Summary of an optimization
 * `final`: a copy of the final parameter values from the optimization
 * `fmin`: the final value of the objective
 * `feval`: the number of function evaluations
-   Available backends can be examined via [`OPTIMIZATION_BACKENDS`](@ref).
+   Available backends can be examined via `OPTIMIZATION_BACKENDS`.
 * `returnvalue`: the return value, as a `Symbol`. The available return values will differ between backends.
 * `xtol_zero_abs`: the tolerance for a near zero parameter to be considered practically zero
 * `ftol_zero_abs`: the tolerance for change in the objective for setting a near zero parameter to zero
