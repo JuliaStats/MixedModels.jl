@@ -60,7 +60,6 @@ Base.@kwdef mutable struct OptSummary{T<:AbstractFloat}
     ftol_zero_abs::T = eltype(initial)(1.e-5)
     maxfeval::Int = -1
 
-
     optimizer::Symbol = :LN_BOBYQA
     backend::Symbol = :nlopt
 
@@ -127,20 +126,22 @@ function Base.show(io::IO, ::MIME"text/plain", s::OptSummary)
     println(io, "Initial parameter vector: ", s.initial)
     println(io, "Initial objective value:  ", s.finitial)
     println(io)
-    println(io, "Optimizer (from NLopt):   ", s.optimizer)
+    println(io, "Backend:                  ", s.backend)
+    println(io, "Optimizer:                ", s.optimizer)
     println(io, "Lower bounds:             ", s.lowerbd)
-    println(io, "ftol_rel:                 ", s.ftol_rel)
-    println(io, "ftol_abs:                 ", s.ftol_abs)
-    println(io, "xtol_rel:                 ", s.xtol_rel)
-    println(io, "xtol_abs:                 ", s.xtol_abs)
-    println(io, "initial_step:             ", s.initial_step)
-    println(io, "maxfeval:                 ", s.maxfeval)
-    println(io, "maxtime:                  ", s.maxtime)
+
+    for param in opt_params(Val(s.backend))
+        println(io, rpad(string(param, ":"), length("Initial parameter vector: ")),
+                getfield(s, param))
+    end
     println(io)
     println(io, "Function evaluations:     ", s.feval)
+    println(io, "xtol_zero_abs:            ", s.xtol_zero_abs)
+    println(io, "ftol_zero_abs:            ", s.ftol_zero_abs)
     println(io, "Final parameter vector:   ", s.final)
     println(io, "Final objective value:    ", s.fmin)
-    return println(io, "Return code:              ", s.returnvalue)
+    println(io, "Return code:              ", s.returnvalue)
+    return nothing
 end
 
 Base.show(io::IO, s::OptSummary) = Base.show(io, MIME("text/plain"), s)
@@ -158,3 +159,33 @@ A list of currently available optimization backends.
 """
 const OPTIMIZATION_BACKENDS = Symbol[]
 optimize!(m::MixedModel; kwargs...) = optimize!(m, Val(m.optsum.backend); kwargs...)
+
+"""
+    optimize!(::LinearMixedModel, ::Val{backend}; kwargs...)
+    optimize!(::GeneralizedLinearMixedModel, ::Val{backend}; kwargs...)
+
+Perform optimization on a mixed model, minimizing the objective.
+
+`optimize!` set ups the call to the backend optimizer using the options contained in the
+model's `optsum` field. It then calls that optimizer and returns `xmin, fmin`.
+Providing support for a new backend involves defining appropriate `optimize!` methods
+with the second argument of type `::Val{:backend_name}` and adding `:backend_name` to
+`OPTIMIZATION_BACKENDS`. Similarly, a method `opt_params(::Val{:backend_name})` should
+be defined, which returns the optimization paramers (e.g. `xtol_abs` or `rho_end`) used
+by the backend.
+
+Common keyword arguments are `progress` to show a progress meter and `thin` to control thinning
+of the fitlog.
+"""
+function optimize! end
+
+
+"""
+    opt_params(::Val{backend})
+
+Return a collection of the fields of [`OptSummary`](@ref) used by backend.
+
+`:xtol_zero_abs`, `:ftol_zero_abs` do not need to be specified because
+they are used _after_ optimization and are thus shared across backends.
+"""
+function opt_params end

@@ -96,3 +96,5 @@ function _check_nlopt_return(ret, failure_modes=_NLOPT_FAILURE_MODES)
         @warn("NLopt optimization failure: $ret")
     end
 end
+
+opt_params(::NLoptBackend) = (:ftol_rel, :ftol_abs, :xtol_rel, :xtol_abs, :initial_step, :maxfeval, :maxtime)
