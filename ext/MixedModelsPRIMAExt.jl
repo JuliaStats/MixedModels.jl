@@ -30,7 +30,6 @@ function MixedModels.optimize!(m::LinearMixedModel, ::PRIMABackend; progress::Bo
     fitlog = optsum.fitlog
 
     function obj(x)
-        isempty(g) || throw(ArgumentError("g should be empty for this objective"))
         iter += 1
         val = if isone(iter) && x == optsum.initial
             optsum.finitial
@@ -52,25 +51,11 @@ function MixedModels.optimize!(m::LinearMixedModel, ::PRIMABackend; progress::Bo
         return val
     end
 
-    try
-        # use explicit evaluation w/o calling opt to avoid confusing iteration count
-        optsum.finitial = objective!(m, optsum.initial)
-    catch ex
-        ex isa PosDefException || rethrow()
-        # give it one more try with a massive change in scaling
-        @info "Initial objective evaluation failed, rescaling initial guess and trying again."
-        @warn """Failure of the initial evaluation is often indicative of a model specification
-                that is not well supported by the data and/or a poorly scaled model.
-            """
-        optsum.initial ./=
-            (isempty(m.sqrtwts) ? 1.0 : maximum(m.sqrtwts)^2) *
-            maximum(response(m))
-        optsum.finitial = objective!(m, optsum.initial)
-    end
     empty!(fitlog)
     push!(fitlog, (copy(optsum.initial), optsum.finitial))
+    maxfun = optsum.maxfeval > 0 ? optsum.maxfeval : 500 * length(optsum.initial)
     info = prima_optimizer!(Val(optsum.optimizer), obj, optsum.final;
-                            xl=optsum.lowerbd, maxfun=optsum.maxfeval,
+                            xl=optsum.lowerbd, maxfun,
                             optsum.rhoend, optsum.rhobeg)
     ProgressMeter.finish!(prog)
     optsum.feval = info.nf

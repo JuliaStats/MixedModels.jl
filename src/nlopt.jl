@@ -34,21 +34,6 @@ function optimize!(m::LinearMixedModel, ::NLoptBackend; progress::Bool=true, thi
     iter = 0
     fitlog = optsum.fitlog
 
-    try
-        # use explicit evaluation w/o calling opt to avoid confusing iteration count
-        optsum.finitial = objective!(m, optsum.initial)
-    catch ex
-        ex isa PosDefException || rethrow()
-        # give it one more try with a massive change in scaling
-        @info "Initial objective evaluation failed, rescaling initial guess and trying again."
-        @warn """Failure of the initial evaluation is often indicative of a model specification
-                that is not well supported by the data and/or a poorly scaled model.
-            """
-        optsum.initial ./=
-            (isempty(m.sqrtwts) ? 1.0 : maximum(m.sqrtwts)^2) *
-            maximum(response(m))
-        optsum.finitial = objective!(m, optsum.initial)
-    end
     empty!(fitlog)
     push!(fitlog, (copy(optsum.initial), optsum.finitial))
     fmin, xmin, ret = NLopt.optimize!(opt, copyto!(optsum.final, optsum.initial))
