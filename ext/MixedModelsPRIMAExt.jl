@@ -71,7 +71,7 @@ function MixedModels.optimize!(m::LinearMixedModel, ::PRIMABackend; progress::Bo
     push!(fitlog, (copy(optsum.initial), optsum.finitial))
     info = prima_optimizer!(Val(optsum.optimizer), obj, optsum.final;
                             xl=optsum.lowerbd, maxfun=optsum.maxfeval,
-                            optsum.rhoend, optsumrhobeg)
+                            optsum.rhoend, optsum.rhobeg)
     ProgressMeter.finish!(prog)
     optsum.feval = info.nf
     optsum.fmin = info.fx
