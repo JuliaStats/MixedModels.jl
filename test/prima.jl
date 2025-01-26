@@ -18,8 +18,16 @@ prmodel.optsum.backend = :prima
 @testset "$optimizer" for optimizer in (:cobyla, :lincoa)
     MixedModels.unfit!(prmodel)
     prmodel.optsum.optimizer = optimizer
-    fit!(prmodel)
+    fit!(prmodel; progress=false, fitlog=false)
     @test isapprox(loglikelihood(model), loglikelihood(prmodel))
+end
+
+@testset "failure" begin
+    MixedModels.unfit!(prmodel)
+    prmodel.optsum.optimizer = :bobyqa
+    prmodel.optsum.maxfeval = 5
+    @test_logs((:warn, r"PRIMA optimization failure"),
+               fit!(prmodel; progress=false, fitlog=false))
 end
 
 @testset "GLMM + optsum show" begin

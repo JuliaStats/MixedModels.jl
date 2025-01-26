@@ -120,7 +120,7 @@ end
 
 function _check_prima_return(info::PRIMA.Info)
     if !PRIMA.issuccess(info)
-        @warn "PRIMA optimization failure: $(ret)\n$(PRIMA.reason(info))"
+        @warn "PRIMA optimization failure: $(info.status)\n$(PRIMA.reason(info))"
     end
 
     return nothing
