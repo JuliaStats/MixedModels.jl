@@ -6,6 +6,13 @@ using MixedModels: ProgressMeter, ProgressUnknown, objective!, _objective!
 using LinearAlgebra: PosDefException
 using PRIMA: PRIMA
 
+function __init__()
+    push!(MixedModels.OPTIMIZATION_BACKENDS, :prima)
+    return nothing
+end
+
+const PRIMABackend = Val{:prima}
+
 function MixedModels.prfit!(m::LinearMixedModel;
                             kwargs...)
 
@@ -19,10 +26,6 @@ end
 prima_optimizer!(::Val{:bobyqa}, args...; kwargs...) = PRIMA.bobyqa!(args...; kwargs...)
 prima_optimizer!(::Val{:cobyla}, args...; kwargs...) = PRIMA.cobyla!(args...; kwargs...)
 prima_optimizer!(::Val{:lincoa}, args...; kwargs...) = PRIMA.lincoa!(args...; kwargs...)
-
-push!(MixedModels.OPTIMIZATION_BACKENDS, :prima)
-
-const PRIMABackend = Val{:prima}
 
 function MixedModels.optimize!(m::LinearMixedModel, ::PRIMABackend;
                                progress::Bool=true, fitlog::Bool=false, kwargs...)
