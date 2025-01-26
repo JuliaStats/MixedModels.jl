@@ -527,7 +527,7 @@ function objective!(m::GeneralizedLinearMixedModel{T}, x; fast=false, kwargs...)
 end
 
 # normally, it doesn't make sense to move a simple branch to dispatch
-# HOWEVER, this wins up getting called in optimization a lot and
+# HOWEVER, this winds up getting called in optimization a lot and
 # moving this to a realization here allows us to avoid dynamic dispatch on setθ! / setθβ!
 function _objective!(
     m::GeneralizedLinearMixedModel{T}, x, ::Val{true}; nAGQ=1, verbose=false
