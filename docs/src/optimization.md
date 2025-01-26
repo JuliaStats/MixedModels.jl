@@ -190,11 +190,11 @@ DisplayAs.Text(ans) # hide
 ```
 
 More detailed information about the intermediate steps of the nonlinear optimizer can be obtained the `fitlog` field.
-By default, `fitlog` contains entries for only the initial and final steps, but additional information about every nth step can be obtained with the `thin` keyword-argument to `fit`, `fit!` and `refit!`:
+By default, `fitlog` is not populated, but passing the keyword argument `fitlog=true` to `fit!` and `refit!` will result in it being populated with the values obtained at each step of optimization:
 
 ```@example Main
-refit!(fm2; thin=1)
-fm2.optsum.fitlog[1:10]
+refit!(fm2; fitlog=true)
+first(fm2.optsum.fitlog, 5)
 DisplayAs.Text(ans) # hide
 ```
 

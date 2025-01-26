@@ -120,18 +120,33 @@ lrt = likelihoodratiotest(fm0, fm1)
         fm1.optsum.finitial = 1784.642296192471
         fm1.optsum.final = [0.9292, 0.0182, 0.2226]
         fm1.optsum.fmin =1751.9393444647023
-        out =  sprint(show, mime, fm1.optsum)
+        out = sprint(show, mime, fm1.optsum)
         @test startswith(out,"""
-|                          |                             |
-|:------------------------ |:--------------------------- |
-| **Initialization**       |                             |
-| Initial parameter vector | [1.0, 0.0, 1.0]             |
-| Initial objective value  | 1784.642296192471           |
-| **Optimizer settings**   |                             |
-| Optimizer (from NLopt)   | `LN_BOBYQA`                 |
-| Lower bounds             | [0.0, -Inf, 0.0]            |""")
+                         |                          |                             |
+                         |:------------------------ |:--------------------------- |
+                         | **Initialization**       |                             |
+                         | Initial parameter vector | [1.0, 0.0, 1.0]             |
+                         | Initial objective value  | 1784.642296192471           |
+                         | **Optimizer settings**   |                             |
+                         | Optimizer                | `LN_BOBYQA`                 |
+                         | Backend                  | `nlopt`                     |
+                         | Lower bounds             | [0.0, -Inf, 0.0]            |
+                         | ftol_rel                 | 1.0e-12                     |
+                         | ftol_abs                 | 1.0e-8                      |
+                         | xtol_rel                 | 0.0                         |
+                         | xtol_abs                 | [1.0e-10, 1.0e-10, 1.0e-10] |
+                         | initial_step             | [0.75, 1.0, 0.75]           |
+                         | maxfeval                 | -1                          |
+                         | maxtime                  | -1.0                        |
+                         | xtol_zero_abs            | 0.001                       |
+                         | ftol_zero_abs            | 1.0e-5                      |
+                         | **Result**               |                             |
+                         | Function evaluations     | 1                           |
+                         | Final parameter vector   | [0.9292, 0.0182, 0.2226]    |
+                         | Final objective value    | 1751.9393                   |
+                         | Return code              | `FTOL_REACHED`              |
+                         """)
     end
-
 
     @testset "varcorr" begin
 

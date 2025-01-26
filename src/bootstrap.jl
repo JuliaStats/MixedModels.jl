@@ -234,7 +234,7 @@ function parametricbootstrap(
     end
     β = convert(Vector{T}, β)
     θ = convert(Vector{T}, θ)
-    # scratch -- note that this is the length of the unpivoted coef vector 
+    # scratch -- note that this is the length of the unpivoted coef vector
     βsc = coef(morig)
     θsc = zeros(ftype, length(θ))
     p = length(βsc)
@@ -254,7 +254,7 @@ function parametricbootstrap(
     )
     samp = replicate(n; progress) do
         simulate!(rng, m; β, σ, θ)
-        refit!(m; progress=false)
+        refit!(m; progress=false, fitlog=false)
         (
             objective=ftype.(m.objective),
             σ=ismissing(m.σ) ? missing : ftype(m.σ),
