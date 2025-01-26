@@ -25,16 +25,14 @@ push!(MixedModels.OPTIMIZATION_BACKENDS, :prima)
 const PRIMABackend = Val{:prima}
 
 function MixedModels.optimize!(m::LinearMixedModel, ::PRIMABackend;
-                               progress::Bool=true, thin::Int=tyepmax(Int))
+                               progress::Bool=true, fitlog::Bool=false, kwargs...)
     optsum = m.optsum
     prog = ProgressUnknown(; desc="Minimizing", showspeed=true)
-    # start from zero for the initial call to obj before optimization
-    iter = 0
-    fitlog = optsum.fitlog
+    fitlog && empty!(optsum.fitlog)
 
     function obj(x)
-        iter += 1
-        val = if isone(iter) && x == optsum.initial
+        val = if x == optsum.initial
+            # fast path since we've already evaluated the initial value
             optsum.finitial
         else
             try
@@ -50,12 +48,10 @@ function MixedModels.optimize!(m::LinearMixedModel, ::PRIMABackend;
             end
         end
         progress && ProgressMeter.next!(prog; showvalues=[(:objective, val)])
-        !isone(iter) && iszero(rem(iter, thin)) && push!(fitlog, (copy(x), val))
+        fitlog && push!(optsum.fitlog, (copy(x), val))
         return val
     end
 
-    empty!(fitlog)
-    push!(fitlog, (copy(optsum.initial), optsum.finitial))
     maxfun = optsum.maxfeval > 0 ? optsum.maxfeval : 500 * length(optsum.initial)
     info = prima_optimizer!(Val(optsum.optimizer), obj, optsum.final;
                             xl=optsum.lowerbd, maxfun,
@@ -69,15 +65,13 @@ function MixedModels.optimize!(m::LinearMixedModel, ::PRIMABackend;
 end
 
 function MixedModels.optimize!(m::GeneralizedLinearMixedModel, ::PRIMABackend;
-                               progress::Bool=true, thin::Int=tyepmax(Int),
+                               progress::Bool=true, fitlog::Bool=false,
                                fast::Bool=false, verbose::Bool=false, nAGQ=1,
                                kwargs...)
     optsum = m.optsum
-    fitlog = optsum.fitlog
     prog = ProgressUnknown(; desc="Minimizing", showspeed=true)
-    # start from zero for the initial call to obj before optimization
-    iter = 0
-    fitlog = optsum.fitlog
+    fitlog && empty!(opstum.fitlog)
+
     function obj(x)
         val = try
             _objective!(m, x, Val(fast); verbose, nAGQ)
@@ -85,18 +79,16 @@ function MixedModels.optimize!(m::GeneralizedLinearMixedModel, ::PRIMABackend;
             # this allows us to recover from models where e.g. the link isn't
             # as constraining as it should be
             ex isa Union{PosDefException,DomainError} || rethrow()
-            iter == 1 && rethrow()
+            x == optsum.initial && rethrow()
             m.optsum.finitial
         end
-        iszero(rem(iter, thin)) && push!(fitlog, (copy(x), val))
+        fitlog && push!(optsum.fitlog, (copy(x), val))
         verbose && println(round(val; digits=5), " ", x)
         progress && ProgressMeter.next!(prog; showvalues=[(:objective, val)])
-        iter += 1
         return val
     end
 
     optsum.finitial = _objective!(m, optsum.initial, Val(fast); verbose, nAGQ)
-    empty!(fitlog)
     maxfun = optsum.maxfeval > 0 ? optsum.maxfeval : 500 * length(optsum.initial)
     scale = if fast
         nothing

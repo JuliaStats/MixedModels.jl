@@ -76,7 +76,7 @@ Base.@kwdef mutable struct OptSummary{T<:AbstractFloat}
     rhoend::T = rhobeg / 1_000_000
 
     # not SVector because we would need to parameterize on size (which breaks GLMM)
-    fitlog::Vector{Tuple{Vector{T},T}} = [(initial, fmin)]
+    fitlog::Vector{Tuple{Vector{T},T}} = Vector{Tuple{Vector{T},T}}()
     nAGQ::Int = 1
     REML::Bool = false
     sigma::Union{T,Nothing} = nothing
@@ -97,12 +97,9 @@ end
 Return `s.fitlog` as a `Tables.columntable`.
 
 When `stack` is false (the default), there will be 3 columns in the result:
-- `iter`: the sample number
+- `iter`: the iteration number
 - `objective`: the value of the objective at that sample
 - `θ`: the parameter vector at that sample
-
-(The term `sample` here refers to the fact that when the `thin` argument to the `fit` or
-`refit!` call is greater than 1 only a subset of the iterations have results recorded.)
 
 When `stack` is true, there will be 4 columns: `iter`, `objective`, `par`, and `value`
 where `value` is the stacked contents of the `θ` vectors (the equivalent of `vcat(θ...)`)
@@ -174,8 +171,8 @@ with the second argument of type `::Val{:backend_name}` and adding `:backend_nam
 be defined, which returns the optimization parameters (e.g. `xtol_abs` or `rho_end`) used
 by the backend.
 
-Common keyword arguments are `progress` to show a progress meter and `thin` to control thinning
-of the fitlog.
+Common keyword arguments are `progress` to show a progress meter as well as
+`nAQG` and `fast` for GLMMs.
 """
 function optimize! end
 

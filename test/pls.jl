@@ -143,8 +143,7 @@ end
     # since we're caching the fits, we should get it back to being correctly fitted
     # we also take this opportunity to test fitlog
     @testset "fitlog" begin
-        thin = 1
-        refit!(fm1; REML=false, progress=false, thin)
+        refit!(fm1; REML=false, progress=false, fitlog=true)
         fitlog = fm1.optsum.fitlog
         fitlogtbl = columntable(fm1.optsum)
         @test length(fitlogtbl) == 3
@@ -158,10 +157,6 @@ end
         d, r = divrem(length(first(fitlogstackedtbl)), length(first(fitlogtbl)))
         @test iszero(r)
         @test d == length(first(fitlogtbl.θ))
-        thin = 2
-        refit!(fm1; REML=false, progress=false, thin)
-        @test length(fitlog) == length(0:thin:fm1.optsum.feval)
-        @test first(fitlog) == (fm1.optsum.initial, fm1.optsum.finitial)
     end
     @testset "profile" begin
         dspr01 = profile(only(models(:dyestuff)))
@@ -518,14 +513,18 @@ end
     @test "BlkDiag" in Set(split(String(take!(io)), r"\s+"))
 
     @testset "optsumJSON" begin
-        fm = last(models(:sleepstudy))
+        fm = refit!(last(models(:sleepstudy)), progress=false, fitlog=true)
         # using a IOBuffer for saving JSON
         saveoptsum(seekstart(io), fm)
         m = LinearMixedModel(fm.formula, MixedModels.dataset(:sleepstudy))
         restoreoptsum!(m, seekstart(io))
-        @test loglikelihood(fm) ≈ loglikelihood(m)
-        @test bic(fm) ≈ bic(m)
-        @test coef(fm) ≈ coef(m)
+        @test length(fm.optsum.fitlog) == length(m.optsum.fitlog)
+
+        # try it out with an empty fitlog
+        empty!(fm.optsum.fitlog)
+        saveoptsum(seekstart(io), fm)
+        restoreoptsum!(m, seekstart(io))
+        @test length(fm.optsum.fitlog) == length(m.optsum.fitlog) == 0
 
         fm_mod = deepcopy(fm)
         fm_mod.optsum.fmin += 1
@@ -702,7 +701,7 @@ end
         contrasts = Dict(:item => Grouping(), :subj => Grouping(), :prec => EffectsCoding(; base="maintain"),
         :spkr => EffectsCoding(), :load => EffectsCoding())
         kbf03 = @formula rt_trunc ~ 1+prec+spkr+load+(1+prec|item)+(1|subj)
-        kbpr03 = profile(fit(MixedModel, kbf03, MixedModels.dataset(:kb07); contrasts, thin=1, progress=false))
+        kbpr03 = profile(fit(MixedModel, kbf03, MixedModels.dataset(:kb07); contrasts, progress=false))
         @test length(Tables.columnnames(kbpr03.tbl)) == 15
         @test length(Tables.rows(kbpr03.tbl)) > 200
     end

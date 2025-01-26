@@ -219,7 +219,8 @@ and it may not be shown at all for models that are optimized quickly.
 
 If `verbose` is `true`, then both the intermediate results of both the nonlinear optimization and PIRLS are also displayed on standard output.
 
-At every `thin`th iteration  is recorded in `fitlog`, optimization progress is saved in `m.optsum.fitlog`.
+The `thin` argument is ignored: it had no impact on the final model fit and the logic around
+thinning the `fitlog` was needlessly complicated for a trivial performance gain.
 
 By default, the starting values for model fitting are taken from a (non mixed,
 i.e. marginal ) GLM fit. Experience with larger datasets (many thousands of
@@ -247,6 +248,7 @@ function StatsAPI.fit!(
     nAGQ::Integer=1,
     progress::Bool=true,
     thin::Int=typemax(Int),
+    fitlog::Bool=false,
     init_from_lmm=Set(),
     backend::Symbol=m.optsum.backend,
     optimizer::Symbol=m.optsum.optimizer,
@@ -283,8 +285,7 @@ function StatsAPI.fit!(
     optsum.backend = backend
     optsum.optimizer = optimizer
 
-    xmin, fmin = optimize!(m; progress, thin, fast, verbose, nAGQ)
-    fitlog = optsum.fitlog
+    xmin, fmin = optimize!(m; progress, fitlog, fast, verbose, nAGQ)
 
     ## check if very small parameter values bounded below by zero can be set to zero
     xmin_ = copy(xmin)
@@ -293,16 +294,14 @@ function StatsAPI.fit!(
             xmin_[i] = zero(T)
         end
     end
-    loglength = length(fitlog)
     if xmin ≠ xmin_
         if (zeroobj = objective!(m, xmin_; nAGQ, fast, verbose)) ≤ (fmin + optsum.ftol_zero_abs)
             fmin = zeroobj
             copyto!(xmin, xmin_)
-        elseif length(fitlog) > loglength
-            # remove unused extra log entry
-            pop!(fitlog)
+            fitlog && push!(optsum.fitlog, (copy(xmin), fmin))
         end
     end
+
     ## ensure that the parameter values saved in m are xmin
     objective!(m, xmin; fast, verbose, nAGQ)
     optsum.final = xmin

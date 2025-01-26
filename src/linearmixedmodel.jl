@@ -427,14 +427,15 @@ end
 """
     fit!(m::LinearMixedModel; progress::Bool=true, REML::Bool=m.optsum.REML,
                               σ::Union{Real, Nothing}=m.optsum.sigma,
-                              thin::Int=typemax(Int))
+                              thin::Int=typemax(Int),
+                              fitlog::Bool=true)
 
 Optimize the objective of a `LinearMixedModel`.  When `progress` is `true` a
 `ProgressMeter.ProgressUnknown` display is shown during the optimization of the
 objective, if the optimization takes more than one second or so.
 
-At every `thin`th iteration  is recorded in `fitlog`, optimization progress is
-saved in `m.optsum.fitlog`.
+The `thin` argument is ignored: it had no impact on the final model fit and the logic around
+thinning the `fitlog` was needlessly complicated for a trivial performance gain.
 """
 function StatsAPI.fit!(
     m::LinearMixedModel{T};
@@ -442,6 +443,7 @@ function StatsAPI.fit!(
     REML::Bool=m.optsum.REML,
     σ::Union{Real,Nothing}=m.optsum.sigma,
     thin::Int=typemax(Int),
+    fitlog::Bool=false,
     backend::Symbol=m.optsum.backend,
     optimizer::Symbol=m.optsum.optimizer,
 ) where {T}
@@ -476,8 +478,8 @@ function StatsAPI.fit!(
         optsum.finitial = objective!(m, optsum.initial)
     end
 
-    xmin, fmin = optimize!(m; progress, thin)
-    fitlog = optsum.fitlog
+    xmin, fmin = optimize!(m; progress, fitlog)
+
     ## check if small non-negative parameter values can be set to zero
     xmin_ = copy(xmin)
     lb = optsum.lowerbd
@@ -486,18 +488,19 @@ function StatsAPI.fit!(
             xmin_[i] = zero(T)
         end
     end
-    loglength = length(fitlog)
     if xmin ≠ xmin_
         if (zeroobj = objective!(m, xmin_)) ≤ (fmin + optsum.ftol_zero_abs)
             fmin = zeroobj
             copyto!(xmin, xmin_)
-        elseif length(fitlog) > loglength
-            # remove unused extra log entry
-            pop!(fitlog)
+            fitlog && push!(optsum.fitlog, (copy(xmin), fmin))
         end
     end
+
+    # unlike GLMM we don't need to populate optsum.finitial here
+    # because we do that during the initial guess and rescale check
+
     ## ensure that the parameter values saved in m are xmin
-    updateL!(setθ!(m, xmin))
+    objective!(m)(xmin)
 
     optsum.final = xmin
     optsum.fmin = fmin
