@@ -277,35 +277,10 @@ function StatsAPI.fit!(
         optsum.initial = vcat(β, lm.optsum.final)
         optsum.final = copy(optsum.initial)
     end
-    setpar! = fast ? setθ! : setβθ!
-    prog = ProgressUnknown(; desc="Minimizing", showspeed=true)
-    # start from zero for the initial call to obj before optimization
-    iter = 0
+
+    xmin, fmin = optimize!(m; progress, thin, fast, verbose)
     fitlog = optsum.fitlog
-    function obj(x, g)
-        isempty(g) || throw(ArgumentError("g should be empty for this objective"))
-        val = try
-            deviance(pirls!(setpar!(m, x), fast, verbose), nAGQ)
-        catch ex
-            # this allows us to recover from models where e.g. the link isn't
-            # as constraining as it should be
-            ex isa Union{PosDefException,DomainError} || rethrow()
-            iter == 1 && rethrow()
-            m.optsum.finitial
-        end
-        iszero(rem(iter, thin)) && push!(fitlog, (copy(x), val))
-        verbose && println(round(val; digits=5), " ", x)
-        progress && ProgressMeter.next!(prog; showvalues=[(:objective, val)])
-        iter += 1
-        return val
-    end
-    opt = Opt(optsum)
-    NLopt.min_objective!(opt, obj)
-    optsum.finitial = obj(optsum.initial, T[])
-    empty!(fitlog)
-    push!(fitlog, (copy(optsum.initial), optsum.finitial))
-    fmin, xmin, ret = NLopt.optimize(opt, copyto!(optsum.final, optsum.initial))
-    ProgressMeter.finish!(prog)
+
     ## check if very small parameter values bounded below by zero can be set to zero
     xmin_ = copy(xmin)
     for i in eachindex(xmin_)
@@ -324,13 +299,10 @@ function StatsAPI.fit!(
         end
     end
     ## ensure that the parameter values saved in m are xmin
-    pirls!(setpar!(m, xmin), fast, verbose)
-    optsum.nAGQ = nAGQ
-    optsum.feval = opt.numevals
+    objective!(m, xmin; fast, verbose, nAGQ)
     optsum.final = xmin
     optsum.fmin = fmin
-    optsum.returnvalue = ret
-    _check_nlopt_return(ret)
+    optsum.nAGQ = nAGQ
     return m
 end
 
@@ -538,6 +510,24 @@ function StatsAPI.loglikelihood(m::GeneralizedLinearMixedModel{T}) where {T}
         end
     end
     return accum - (mapreduce(u -> sum(abs2, u), +, m.u) + logdet(m)) / 2
+end
+
+# Base.Fix1 doesn't forward kwargs
+objective!(m::GeneralizedLinearMixedModel; fast=false, kwargs...) = x -> _objective!(m, x, Val(fast); kwargs...)
+
+function objective!(m::GeneralizedLinearMixedModel{T}, x; fast=false, kwargs...) where {T}
+    return _objective!(m, x, Val(fast); kwargs...)
+end
+
+# normally, it doesn't make sense to move a simple branch to dispatch
+# HOWEVER, this wins up getting called in optimization a lot and
+# moving this to a realization here allows us to avoid dynamic dispatch on setθ! / setθβ!
+function _objective!(m::GeneralizedLinearMixedModel{T}, x, ::Val{true}; nAGQ=1, verbose=false) where {T}
+    deviance(pirls!(setθ!(m, x), true, verbose), nAGQ)
+end
+
+function _objective!(m::GeneralizedLinearMixedModel{T}, x, ::Val{false}; nAGQ=1, verbose=false) where {T}
+    deviance(pirls!(setβθ!(m, x), false, verbose), nAGQ)
 end
 
 function Base.propertynames(m::GeneralizedLinearMixedModel, private::Bool=false)
