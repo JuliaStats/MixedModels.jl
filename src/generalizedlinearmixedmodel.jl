@@ -248,6 +248,8 @@ function StatsAPI.fit!(
     progress::Bool=true,
     thin::Int=typemax(Int),
     init_from_lmm=Set(),
+    backend::Symbol=m.optsum.backend,
+    optimizer::Symbol=m.optsum.optimizer,
 ) where {T}
     β = copy(m.β)
     θ = copy(m.θ)
@@ -278,7 +280,10 @@ function StatsAPI.fit!(
         optsum.final = copy(optsum.initial)
     end
 
-    xmin, fmin = optimize!(m; progress, thin, fast, verbose)
+    optsum.backend = backend
+    optsum.optimizer = optimizer
+
+    xmin, fmin = optimize!(m; progress, thin, fast, verbose, nAGQ)
     fitlog = optsum.fitlog
 
     ## check if very small parameter values bounded below by zero can be set to zero

@@ -86,7 +86,6 @@ function optimize!(m::GeneralizedLinearMixedModel, ::NLoptBackend;
     _check_nlopt_return(ret)
 
     return xmin, fmin
-
 end
 
 function NLopt.Opt(optsum::OptSummary)

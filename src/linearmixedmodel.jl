@@ -205,21 +205,16 @@ function StatsAPI.fit(
     )
 end
 
-function StatsAPI.fit(
-    ::Type{LinearMixedModel},
-    f::FormulaTerm,
-    tbl::Tables.ColumnTable;
-    wts=[],
-    contrasts=Dict{Symbol,Any}(),
-    progress=true,
-    REML=false,
-    σ=nothing,
-    thin=typemax(Int),
-    amalgamate=true,
-)
-    return fit!(
-        LinearMixedModel(f, tbl; contrasts, wts, σ, amalgamate); progress, REML, thin
-    )
+function StatsAPI.fit(::Type{LinearMixedModel},
+                      f::FormulaTerm,
+                      tbl::Tables.ColumnTable;
+                      wts=[],
+                      contrasts=Dict{Symbol,Any}(),
+                      σ=nothing,
+                      amalgamate=true,
+                      kwargs...)
+    lmm = LinearMixedModel(f, tbl; contrasts, wts, σ, amalgamate)
+    return fit!(lmm; kwargs...)
 end
 
 function _offseterr()
@@ -447,6 +442,8 @@ function StatsAPI.fit!(
     REML::Bool=m.optsum.REML,
     σ::Union{Real,Nothing}=m.optsum.sigma,
     thin::Int=typemax(Int),
+    backend::Symbol=m.optsum.backend,
+    optimizer::Symbol=m.optsum.optimizer,
 ) where {T}
     optsum = m.optsum
     # this doesn't matter for LMM, but it does for GLMM, so let's be consistent
@@ -460,6 +457,8 @@ function StatsAPI.fit!(
     end
     optsum.REML = REML
     optsum.sigma = σ
+    optsum.backend = backend
+    optsum.optimizer = optimizer
 
     try
         # use explicit evaluation w/o calling opt to avoid confusing iteration count
