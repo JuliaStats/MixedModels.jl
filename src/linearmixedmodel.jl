@@ -206,13 +206,13 @@ function StatsAPI.fit(
 end
 
 function StatsAPI.fit(::Type{LinearMixedModel},
-                      f::FormulaTerm,
-                      tbl::Tables.ColumnTable;
-                      wts=[],
-                      contrasts=Dict{Symbol,Any}(),
-                      σ=nothing,
-                      amalgamate=true,
-                      kwargs...)
+    f::FormulaTerm,
+    tbl::Tables.ColumnTable;
+    wts=[],
+    contrasts=Dict{Symbol,Any}(),
+    σ=nothing,
+    amalgamate=true,
+    kwargs...)
     lmm = LinearMixedModel(f, tbl; contrasts, wts, σ, amalgamate)
     return fit!(lmm; kwargs...)
 end

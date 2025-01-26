@@ -295,7 +295,8 @@ function StatsAPI.fit!(
         end
     end
     if xmin ≠ xmin_
-        if (zeroobj = objective!(m, xmin_; nAGQ, fast, verbose)) ≤ (fmin + optsum.ftol_zero_abs)
+        if (zeroobj = objective!(m, xmin_; nAGQ, fast, verbose)) ≤
+            (fmin + optsum.ftol_zero_abs)
             fmin = zeroobj
             copyto!(xmin, xmin_)
             fitlog && push!(optsum.fitlog, (copy(xmin), fmin))
@@ -517,7 +518,9 @@ function StatsAPI.loglikelihood(m::GeneralizedLinearMixedModel{T}) where {T}
 end
 
 # Base.Fix1 doesn't forward kwargs
-objective!(m::GeneralizedLinearMixedModel; fast=false, kwargs...) = x -> _objective!(m, x, Val(fast); kwargs...)
+function objective!(m::GeneralizedLinearMixedModel; fast=false, kwargs...)
+    return x -> _objective!(m, x, Val(fast); kwargs...)
+end
 
 function objective!(m::GeneralizedLinearMixedModel{T}, x; fast=false, kwargs...) where {T}
     return _objective!(m, x, Val(fast); kwargs...)
@@ -526,12 +529,16 @@ end
 # normally, it doesn't make sense to move a simple branch to dispatch
 # HOWEVER, this wins up getting called in optimization a lot and
 # moving this to a realization here allows us to avoid dynamic dispatch on setθ! / setθβ!
-function _objective!(m::GeneralizedLinearMixedModel{T}, x, ::Val{true}; nAGQ=1, verbose=false) where {T}
-    deviance(pirls!(setθ!(m, x), true, verbose), nAGQ)
+function _objective!(
+    m::GeneralizedLinearMixedModel{T}, x, ::Val{true}; nAGQ=1, verbose=false
+) where {T}
+    return deviance(pirls!(setθ!(m, x), true, verbose), nAGQ)
 end
 
-function _objective!(m::GeneralizedLinearMixedModel{T}, x, ::Val{false}; nAGQ=1, verbose=false) where {T}
-    deviance(pirls!(setβθ!(m, x), false, verbose), nAGQ)
+function _objective!(
+    m::GeneralizedLinearMixedModel{T}, x, ::Val{false}; nAGQ=1, verbose=false
+) where {T}
+    return deviance(pirls!(setβθ!(m, x), false, verbose), nAGQ)
 end
 
 function Base.propertynames(m::GeneralizedLinearMixedModel, private::Bool=false)

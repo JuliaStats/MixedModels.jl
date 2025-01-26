@@ -129,7 +129,7 @@ function Base.show(io::IO, ::MIME"text/plain", s::OptSummary)
 
     for param in opt_params(Val(s.backend))
         println(io, rpad(string(param, ":"), length("Initial parameter vector: ")),
-                getfield(s, param))
+            getfield(s, param))
     end
     println(io)
     println(io, "Function evaluations:     ", s.feval)
@@ -175,7 +175,6 @@ Common keyword arguments are `progress` to show a progress meter as well as
 `nAQG` and `fast` for GLMMs.
 """
 function optimize! end
-
 
 """
     opt_params(::Val{backend})

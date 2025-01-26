@@ -123,7 +123,6 @@ function restoreoptsum!(ops::OptSummary{T}, dict::AbstractDict) where {T}
     return ops
 end
 
-
 StructTypes.StructType(::Type{<:OptSummary}) = StructTypes.Mutable()
 StructTypes.excludes(::Type{<:OptSummary}) = (:lowerbd,)
 

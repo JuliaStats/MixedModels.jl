@@ -3,8 +3,8 @@ push!(OPTIMIZATION_BACKENDS, :nlopt)
 const NLoptBackend = Val{:nlopt}
 
 function optimize!(m::LinearMixedModel, ::NLoptBackend;
-                   progress::Bool=true, fitlog::Bool=false,
-                   kwargs...)
+    progress::Bool=true, fitlog::Bool=false,
+    kwargs...)
     optsum = m.optsum
     prog = ProgressUnknown(; desc="Minimizing", showspeed=true)
     fitlog && empty!(optsum.fitlog)
@@ -43,9 +43,9 @@ function optimize!(m::LinearMixedModel, ::NLoptBackend;
 end
 
 function optimize!(m::GeneralizedLinearMixedModel, ::NLoptBackend;
-                   progress::Bool=true, fitlog::Bool=false,
-                   fast::Bool=false, verbose::Bool=false, nAGQ=1,
-                   kwargs...)
+    progress::Bool=true, fitlog::Bool=false,
+    fast::Bool=false, verbose::Bool=false, nAGQ=1,
+    kwargs...)
     optsum = m.optsum
     prog = ProgressUnknown(; desc="Minimizing", showspeed=true)
     fitlog && empty!(optsum.fitlog)
@@ -101,7 +101,6 @@ function NLopt.Opt(optsum::OptSummary)
     return opt
 end
 
-
 const _NLOPT_FAILURE_MODES = [
     :FAILURE,
     :INVALID_ARGS,
@@ -118,4 +117,6 @@ function _check_nlopt_return(ret, failure_modes=_NLOPT_FAILURE_MODES)
     end
 end
 
-opt_params(::NLoptBackend) = (:ftol_rel, :ftol_abs, :xtol_rel, :xtol_abs, :initial_step, :maxfeval, :maxtime)
+function opt_params(::NLoptBackend)
+    return (:ftol_rel, :ftol_abs, :xtol_rel, :xtol_abs, :initial_step, :maxfeval, :maxtime)
+end
