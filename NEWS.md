@@ -4,7 +4,6 @@ MixedModels v4.30.0 Release Notes
   The structure of `OptSummary` has been accordingly expanded and `prfit!` has been updated to use this new structure. [#802]
 - Make the `thin` argument to `fit!` a no-op. It complicated several bits of logic without having any real performance benefit in the majority of cases. This argument has been replaced with a `fitlog::Bool=false` that determines whether a log is kept.[#802]
 
-
 MixedModels v4.29.1 Release Notes
 ==============================
 - Populate `optsum` in `prfit!` call. [#801]
