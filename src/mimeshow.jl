@@ -179,21 +179,23 @@ function _markdown(m::MixedModel)
 end
 
 function _markdown(s::OptSummary)
+    optimizer_settings = [["Optimizer", "`$(s.optimizer)`"],
+                          ["Backend", "`$(s.backend)`"],
+                          ["Lower bounds", string(s.lowerbd)]]
+
+    for param in opt_params(Val(s.backend))
+        push!(optimizer_settings, [string(param), string(getfield(s, param))])
+    end
+
     rows = [
         ["", ""],
         ["**Initialization**", ""],
         ["Initial parameter vector", string(s.initial)],
         ["Initial objective value", string(s.finitial)],
         ["**Optimizer settings** ", ""],
-        ["Optimizer (from NLopt)", "`$(s.optimizer)`"],
-        ["Lower bounds", string(s.lowerbd)],
-        ["`ftol_rel`", string(s.ftol_rel)],
-        ["`ftol_abs`", string(s.ftol_abs)],
-        ["`xtol_rel`", string(s.xtol_rel)],
-        ["`xtol_abs`", string(s.xtol_abs)],
-        ["`initial_step`", string(s.initial_step)],
-        ["`maxfeval`", string(s.maxfeval)],
-        ["`maxtime`", string(s.maxtime)],
+        optimizer_settings...,
+        ["xtol_zero_abs", string(s.xtol_zero_abs)],
+        ["ftol_zero_abs", string(s.ftol_zero_abs)],
         ["**Result**", ""],
         ["Function evaluations", string(s.feval)],
         ["Final parameter vector", "$(round.(s.final; digits=4))"],
