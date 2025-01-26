@@ -160,7 +160,7 @@ end
         @test d == length(first(fitlogtbl.θ))
         thin = 2
         refit!(fm1; REML=false, progress=false, thin)
-        @test length(fitlog) == (div(fm1.optsum.feval, thin) + 1) # for the initial value
+        @test length(fitlog) == length(0:thin:fm1.optsum.feval, thin)
         @test first(fitlog) == (fm1.optsum.initial, fm1.optsum.finitial)
     end
     @testset "profile" begin

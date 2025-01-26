@@ -37,7 +37,7 @@ end
     thin = 5
     gm0 = fit(MixedModel, first(gfms[:contra]), contra, Bernoulli(); fast=true, progress=false, thin)
     fitlog = gm0.optsum.fitlog
-    @test length(fitlog) == (div(gm0.optsum.feval, thin) + 1) # for the initial value
+    @test length(fitlog) == length(0:thin:gm0.optsum.feval)
     @test first(fitlog) == (gm0.optsum.initial, gm0.optsum.finitial)
     @test gm0.lowerbd == zeros(1)
     @test isapprox(gm0.θ, [0.5720734451352923], atol=0.001)
