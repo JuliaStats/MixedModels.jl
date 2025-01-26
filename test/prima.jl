@@ -1,10 +1,7 @@
 using PRIMA
-using MixedModels: prfit!
-using MixedModels: dataset
+using MixedModels: prfit!, unfit!, dataset
 
 include("modelcache.jl")
-
-# model = first(models(:sleepstudy))
 
 @testset "formula($model)" for model in models(:sleepstudy)
     prmodel = prfit!(LinearMixedModel(formula(model), dataset(:sleepstudy)); progress=false)
@@ -25,10 +22,14 @@ prmodel.optsum.backend = :prima
     @test isapprox(loglikelihood(model), loglikelihood(prmodel))
 end
 
-@testset "optsum show" begin
-    model = first(models(:contra))
+@testset "GLMM + optsum show" begin
+    model = fit(MixedModel, @formula(use ~ 1+age+abs2(age)+urban+livch+(1|urban&dist)),
+                dataset(:contra), Binomial(); progress=false)
     prmodel = unfit!(deepcopy(model))
-    fit!(prmodel; optimizer=:bobyqa, backend=:prima)
+    fit!(prmodel; optimizer=:bobyqa, backend=:prima, progress=false)
+    @test isapprox(loglikelihood(model), loglikelihood(prmodel))
+    refit!(prmodel; fast=true, progress=false)
+    refit!(model; fast=true, progress=false)
     @test isapprox(loglikelihood(model), loglikelihood(prmodel))
 
     optsum = deepcopy(prmodel.optsum)
