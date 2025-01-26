@@ -77,7 +77,6 @@ function optimize!(m::GeneralizedLinearMixedModel, ::NLoptBackend;
     NLopt.min_objective!(opt, obj)
     optsum.finitial = _objective!(m, optsum.initial, Val(fast); verbose, nAGQ)
     empty!(fitlog)
-    push!(fitlog, (copy(optsum.initial), optsum.finitial))
     fmin, xmin, ret = NLopt.optimize(opt, copyto!(optsum.final, optsum.initial))
     ProgressMeter.finish!(prog)
 

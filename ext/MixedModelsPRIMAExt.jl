@@ -97,7 +97,6 @@ function MixedModels.optimize!(m::GeneralizedLinearMixedModel, ::PRIMABackend;
 
     optsum.finitial = _objective!(m, optsum.initial, Val(fast); verbose, nAGQ)
     empty!(fitlog)
-    push!(fitlog, (copy(optsum.initial), optsum.finitial))
     maxfun = optsum.maxfeval > 0 ? optsum.maxfeval : 500 * length(optsum.initial)
     scale = if fast
         nothing

@@ -295,7 +295,7 @@ function StatsAPI.fit!(
     end
     loglength = length(fitlog)
     if xmin ≠ xmin_
-        if (zeroobj = obj(xmin_, T[])) ≤ (fmin + optsum.ftol_zero_abs)
+        if (zeroobj = objective!(m, xmin_; nAGQ, fast, verbose)) ≤ (fmin + optsum.ftol_zero_abs)
             fmin = zeroobj
             copyto!(xmin, xmin_)
         elseif length(fitlog) > loglength
