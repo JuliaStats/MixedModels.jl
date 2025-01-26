@@ -1,7 +1,9 @@
 module MixedModelsPRIMAExt
 
 using MixedModels
-using MixedModels: ProgressMeter, ProgressUnknown, objective!
+using MixedModels: Statistics
+using MixedModels: ProgressMeter, ProgressUnknown, objective!, _objective!
+using LinearAlgebra: PosDefException
 using PRIMA: PRIMA
 
 function MixedModels.prfit!(m::LinearMixedModel;
@@ -63,14 +65,13 @@ function MixedModels.optimize!(m::LinearMixedModel, ::PRIMABackend;
     optsum.fmin = info.fx
     optsum.returnvalue = Symbol(info.status)
     _check_prima_return(info)
-
     return optsum.final, optsum.fmin
 end
 
-function optimize!(m::GeneralizedLinearMixedModel, ::PRIMABackend;
-                  progress::Bool=true, thin::Int=tyepmax(Int),
-                  fast::Bool=false, verbose::Bool=false, nAGQ=1,
-                  kwargs...)
+function MixedModels.optimize!(m::GeneralizedLinearMixedModel, ::PRIMABackend;
+                               progress::Bool=true, thin::Int=tyepmax(Int),
+                               fast::Bool=false, verbose::Bool=false, nAGQ=1,
+                               kwargs...)
     optsum = m.optsum
     fitlog = optsum.fitlog
     prog = ProgressUnknown(; desc="Minimizing", showspeed=true)
@@ -98,9 +99,24 @@ function optimize!(m::GeneralizedLinearMixedModel, ::PRIMABackend;
     empty!(fitlog)
     push!(fitlog, (copy(optsum.initial), optsum.finitial))
     maxfun = optsum.maxfeval > 0 ? optsum.maxfeval : 500 * length(optsum.initial)
+    scale = if fast
+        nothing
+    else
+        # scale by the standard deviation of the columns of the fixef model matrix
+        # when including the fixef in the nonlinear opt
+        sc = [map(std, eachcol(modelmatrix(m))); fill(1, length(m.θ))]
+        for (i, x) in enumerate(sc)
+            # for nearly constant things, e.g. intercept, we don't want to scale to zero...
+            # also, since we're scaling the _parameters_ and not the data,
+            # we need to invert the scale
+            sc[i] = ifelse(iszero(x), one(x), inv(x))
+        end
+        sc
+    end
     info = prima_optimizer!(Val(optsum.optimizer), obj, optsum.final;
                             xl=optsum.lowerbd, maxfun,
-                            optsum.rhoend, optsum.rhobeg)
+                            optsum.rhoend, optsum.rhobeg,
+                            scale)
     ProgressMeter.finish!(prog)
 
     optsum.feval = info.nf
@@ -108,7 +124,7 @@ function optimize!(m::GeneralizedLinearMixedModel, ::PRIMABackend;
     optsum.returnvalue = Symbol(info.status)
     _check_prima_return(info)
 
-    return xmin, fmin
+    return optsum.final, optsum.fmin
 end
 
 function _check_prima_return(info::PRIMA.Info)
