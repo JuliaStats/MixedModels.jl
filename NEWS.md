@@ -11,6 +11,7 @@ MixedModels v4.29.1 Release Notes
 MixedModels v4.29.0 Release Notes
 ==============================
 - Testbed for experimental support for using PRIMA as an optimization backend introduced via the experimental `prfit!` function. [#799]
+- Julia compat bound raised to current 1.10, i.e. current LTS. [#799] 
 
 MixedModels v4.28.0 Release Notes
 ==============================
