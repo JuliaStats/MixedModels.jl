@@ -39,7 +39,7 @@ MixedModelsPRIMAExt = ["PRIMA"]
 [compat]
 Aqua = "0.8"
 Arrow = "1, 2"
-BSplineKit = "0.14, 0.15, 0.16, 0.17"
+BSplineKit = "0.14, 0.15, 0.16, 0.17, 0.18"
 Compat = "4.10"
 DataAPI = "1"
 DataFrames = "1"
