@@ -89,7 +89,7 @@ For example, $\mathbb{E}[\mathcal{X}^2]$ where $\mathcal{X}\sim\mathcal{N}(2, 3^
 sum(@. ghn3.w * abs2(μ + σ * ghn3.z))  # should be μ² + σ² = 13
 ```
 
-(In general a dot, '`.`', after the function name in a function call, as in `abs2.(...)`, or before an operator creates a [*fused vectorized*](https://docs.julialang.org/en/stable/manual/performance-tips/#More-dots:-Fuse-vectorized-operations-1) evaluation in Julia.
+(In general a dot, '`.`', after the function name in a function call, as in `abs2.(...)`, or before an operator creates a [*fused vectorized*](https://docs.julialang.org/en/v1/manual/performance-tips/#More-dots:-Fuse-vectorized-operations-1) evaluation in Julia.
 The macro `@.` has the effect of vectorizing all operations in the subsequent expression.)
 
 ## Application to a model for contraception use
