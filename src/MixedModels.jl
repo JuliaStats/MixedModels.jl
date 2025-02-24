@@ -125,6 +125,7 @@ export @formula,
     predict,
     profile,
     profileσ,
+    profilesigma,
     profilevc,
     pwrss,
     ranef,
@@ -143,6 +144,7 @@ export @formula,
     shortestcovint,
     sdest,
     setθ!,
+    settheta!,
     simulate,
     simulate!,
     sparse,
@@ -207,6 +209,11 @@ include("serialization.jl")
 include("profile/profile.jl")
 include("nlopt.jl")
 include("prima.jl")
+
+
+# aliases with non-unicode function names
+settheta! = setθ!
+profilesigma = profileσ
 
 # COV_EXCL_START
 @setup_workload begin
