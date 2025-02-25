@@ -212,8 +212,8 @@ include("prima.jl")
 
 
 # aliases with non-unicode function names
-settheta! = setθ!
-profilesigma = profileσ
+const settheta! = setθ!
+const profilesigma = profileσ
 
 # COV_EXCL_START
 @setup_workload begin
