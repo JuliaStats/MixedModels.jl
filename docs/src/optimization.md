@@ -92,7 +92,7 @@ are sometimes called the *best linear unbiased predictors* or BLUPs of the rando
 Although BLUPs an appealing acronym, I don’t find the term particularly instructive (what is a “linear unbiased predictor” and in what sense are these the “best”?) and prefer the term “conditional modes”, because these are the values of $\bf b$ that maximize the density of the conditional distribution $\mathcal{B} | \mathcal{Y} = {\bf y}$.
 For a linear mixed model, where all the conditional and unconditional distributions are Gaussian, these values are also the *conditional means*.
 
-## Internal structure of $\Lambda_\theta$ and $\bf Z$
+## [Internal structure of $\Lambda_\theta$ and $\bf Z$](@id internal-struct)
 
 In the types of `LinearMixedModel` available through the `MixedModels` package, groups of random effects and the corresponding columns of the model matrix, $\bf Z$, are associated with *random-effects terms* in the model formula.
 
