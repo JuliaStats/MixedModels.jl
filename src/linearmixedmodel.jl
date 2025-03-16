@@ -227,7 +227,7 @@ end
     Aliases for the fit(LinearMixedModel, ...) functions
 """
 
-lmm(f::FormulaTerm, tbl; kwargs...) = fit(LinearMixedModel, f, tbl; kwargs...)
+lmm(f::FormulaTerm, tbl; kwargs...,) = fit(LinearMixedModel, f, tbl; kwargs...)
 lmm(
     f::FormulaTerm, tbl;
     wts=[], contrasts=Dict{Symbol,Any}(), σ=nothing, amalgamate=true,
