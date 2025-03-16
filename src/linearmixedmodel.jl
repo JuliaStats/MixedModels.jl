@@ -213,9 +213,25 @@ function StatsAPI.fit(::Type{LinearMixedModel},
     σ=nothing,
     amalgamate=true,
     kwargs...)
-    lmm = LinearMixedModel(f, tbl; contrasts, wts, σ, amalgamate)
-    return fit!(lmm; kwargs...)
+    lmod = LinearMixedModel(f, tbl; contrasts, wts, σ, amalgamate)
+    return fit!(lmod; kwargs...)
 end
+
+"""
+    lmm(f::FormulaTerm, tbl; kwargs...)
+    lmm(
+        f::FormulaTerm, tbl;
+        wts=[], contrasts=Dict{Symbol,Any}(), σ=nothing, amalgamate=true,
+        kwargs...)
+
+    Aliases for the fit(LinearMixedModel, ...) functions
+"""
+
+lmm(f::FormulaTerm, tbl; kwargs...) = fit(LinearMixedModel, f, tbl; kwargs...)
+lmm(
+    f::FormulaTerm, tbl;
+    wts=[], contrasts=Dict{Symbol,Any}(), σ=nothing, amalgamate=true,
+    kwargs...) = fit(LinearMixedModel, f, tbl; wts, contrasts, σ, amalgamate, kwargs...)
 
 function _offseterr()
     return throw(
