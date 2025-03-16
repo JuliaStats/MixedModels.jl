@@ -16,3 +16,8 @@ using MixedModels: dataset
     @test_throws MixedModels._MISSING_RE_ERROR  MixedModel(@formula(yield ~ 0 + batch), dyestuff, Poisson())
     @test_throws MixedModels._MISSING_RE_ERROR  MixedModel(@formula(yield ~ 1), dyestuff, Poisson())
 end
+
+@testset "non-unicode function aliases for exports" begin
+    @test settheta! === setθ!
+    @test profilesigma === profileσ
+end

@@ -1,3 +1,7 @@
+MixedModels v4.31.0 Release Notes
+==============================
+- Added aliases `settheta!` and `profilesigma` for the functions `setθ!` and `profileσ` respectively
+
 MixedModels v4.30.0 Release Notes
 ==============================
 - Refactor calls to backend optimizer to make it easier to add and use different optimization backends.
