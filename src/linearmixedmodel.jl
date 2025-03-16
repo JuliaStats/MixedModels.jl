@@ -229,7 +229,7 @@ end
 
 lmm(f::FormulaTerm, tbl; kwargs...,) = fit(LinearMixedModel, f, tbl; kwargs...)
 lmm(
-    f::FormulaTerm, tbl;
+    f::FormulaTerm, tbl::Tables.ColumnTable;
     wts=[], contrasts=Dict{Symbol,Any}(), σ=nothing, amalgamate=true,
     kwargs...) = fit(LinearMixedModel, f, tbl; wts, contrasts, σ, amalgamate, kwargs...)
 
