@@ -2,9 +2,13 @@ using MixedModels
 using Suppressor
 using Test
 
-@testset "linear" begin
+@testset "linear, and lmm wrapper" begin
     m1 = fit(MixedModel, @formula(yield ~ 1 + (1|batch)), MixedModels.dataset(:dyestuff); progress=false)
     @test first(m1.θ) ≈ 0.7525806757718846 rtol=1.0e-5
+    m2 = lmm(@formula(yield ~ 1 + (1|batch)), MixedModels.dataset(:dyestuff); progress=false)
+    @test isa(m2, LinearMixedModel)
+    @test first(m2.θ) ≈ 0.7525806757718846 rtol=1.0e-5
+    @test deviance(m1) ≈ deviance(m2)
 end
 
 @testset "generalized" begin
