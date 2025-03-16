@@ -226,12 +226,7 @@ end
 
     Aliases for the fit(LinearMixedModel, ...) functions
 """
-
-lmm(f::FormulaTerm, tbl; kwargs...,) = fit(LinearMixedModel, f, tbl; kwargs...)
-lmm(
-    f::FormulaTerm, tbl::Tables.ColumnTable;
-    wts=[], contrasts=Dict{Symbol,Any}(), σ=nothing, amalgamate=true,
-    kwargs...) = fit(LinearMixedModel, f, tbl; wts, contrasts, σ, amalgamate, kwargs...)
+lmm(args...; kwargs...) = fit(LinearMixedModel, args...; kwargs...)
 
 function _offseterr()
     return throw(
