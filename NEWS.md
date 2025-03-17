@@ -1,3 +1,7 @@
+MixedModels v4.32.0 Release Notes
+==============================
+- Added `lmm` and `glmm` as convenience wrappers for `fit(LinearMixedModel, ...)` and `fit(GeneralizedLinearMixedModel, ...)` respectively
+
 MixedModels v4.31.0 Release Notes
 ==============================
 - Added aliases `settheta!` and `profilesigma` for the functions `setθ!` and `profileσ` respectively
