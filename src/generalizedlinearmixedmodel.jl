@@ -190,6 +190,15 @@ function StatsAPI.fit(
     )
 end
 
+"""
+    glmm(args...; kwargs...)
+
+Convenience wrapper for `fit(GenarlizedLinearMixedModel, args...; kwargs...)`.
+
+See [`fit`](@ref) for more information.
+"""
+glmm(args...; kwargs...) = fit(GeneralizedLinearMixedModel, args...; kwargs...)
+
 function StatsAPI.fit(
     ::Type{MixedModel},
     f::FormulaTerm,

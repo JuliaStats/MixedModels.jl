@@ -34,6 +34,7 @@ fit
 fit!
 fitted
 formula
+glmm
 isfitted
 islinear
 leverage

@@ -8,7 +8,7 @@ using Test
     m2 = lmm(@formula(yield ~ 1 + (1|batch)), MixedModels.dataset(:dyestuff); progress=false)
     @test isa(m2, LinearMixedModel)
     @test first(m2.θ) ≈ 0.7525806757718846 rtol=1.0e-5
-    @test deviance(m1) ≈ deviance(m2) #TODO: maybe add an `rtol`?
+    @test deviance(m1) ≈ deviance(m2)
     @test isa(lmm(@formula(yield ~ 1 + (1|batch)), MixedModels.dataset(:dyestuff); progress=false, REML = true), LinearMixedModel)
 
     # example from https://github.com/JuliaStats/MixedModels.jl/issues/194
@@ -30,6 +30,10 @@ end
     gm1 = fit(MixedModel, @formula(use ~ 1 + urban + livch + age + abs2(age) + (1|dist)),
               MixedModels.dataset(:contra), Bernoulli(); progress=false)
     @test deviance(gm1) ≈ 2372.7286 atol=1.0e-3
+
+    gm2 = glmm(@formula(use ~ 1 + urban + livch + age + abs2(age) + (1|dist)),
+    MixedModels.dataset(:contra), Bernoulli(); progress=false)
+    @test deviance(gm2) ≈ 2372.7286 atol=1.0e-3
 end
 
 @testset "Normal-IdentityLink" begin
