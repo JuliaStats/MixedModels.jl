@@ -37,6 +37,7 @@ formula
 isfitted
 islinear
 leverage
+lmm
 loglikelihood
 meanresponse
 modelmatrix
