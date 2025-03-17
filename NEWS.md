@@ -1,6 +1,6 @@
 MixedModels v4.32.0 Release Notes
 ==============================
-- Added `lmm` and `glmm` as convenience wrappers for `fit(LinearMixedModel, ...)` and `fit(GeneralizedLinearMixedModel, ...)` respectively
+- Added `lmm` and `glmm` as convenience wrappers for `fit(LinearMixedModel, ...)` and `fit(GeneralizedLinearMixedModel, ...)` respectively [#810]
 
 MixedModels v4.31.0 Release Notes
 ==============================
@@ -611,3 +611,4 @@ Package dependencies
 [#799]: https://github.com/JuliaStats/MixedModels.jl/issues/799
 [#801]: https://github.com/JuliaStats/MixedModels.jl/issues/801
 [#802]: https://github.com/JuliaStats/MixedModels.jl/issues/802
+[#810]: https://github.com/JuliaStats/MixedModels.jl/issues/810
