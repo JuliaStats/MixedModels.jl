@@ -1,7 +1,7 @@
 # Model constructors
 
 The `LinearMixedModel` type represents a linear mixed-effects model.
-Typically it is constructed from a `Formula` and an appropriate `Table` type, usually a `DataFrame`.
+Typically, it is constructed from a `Formula` and an appropriate `Table` type, usually a `DataFrame`.
 
 ## Examples of linear mixed-effects model fits
 
@@ -57,6 +57,15 @@ fm = @formula(yield ~ 1 + (1|batch))
 fm1 = fit(MixedModel, fm, dyestuff)
 DisplayAs.Text(ans) # hide
 ```
+
+You can also use the convenience function `lmm` to fit the model as follows:
+
+```@example Main
+fm = @formula(yield ~ 1 + (1|batch))
+fm2 = lmm(fm, dyestuff)
+DisplayAs.Text(ans) # hide
+```
+Notice that both are equivalent.
 
 (If you are new to Julia you may find that this first fit takes an unexpectedly long time, due to Just-In-Time (JIT) compilation of the code. The subsequent calls to such functions are much faster.)
 
@@ -210,6 +219,7 @@ DisplayAs.Text(ans) # hide
 ## Fitting generalized linear mixed models
 
 To create a GLMM representation, the distribution family for the response, and possibly the link function, must be specified.
+You can either use `fit(MixedModel, ...)` or `glmm(...)` to fit the model. For instance:
 
 ```@example Main
 verbagg = MixedModels.dataset(:verbagg)
@@ -217,7 +227,10 @@ verbaggform = @formula(r2 ~ 1 + anger + gender + btype + situ + mode + (1|subj) 
 gm1 = fit(MixedModel, verbaggform, verbagg, Bernoulli())
 DisplayAs.Text(ans) # hide
 ```
-
+The model can also be fit as
+```@example Main
+gm1 = glmm(verbaggform, verbagg, Bernoulli())
+```
 The canonical link, which is `LogitLink` for the `Bernoulli` distribution, is used if no explicit link is specified.
 
 Note that, in keeping with convention in the [`GLM` package](https://github.com/JuliaStats/GLM.jl), the distribution family for a binary (i.e. 0/1) response is the `Bernoulli` distribution.
