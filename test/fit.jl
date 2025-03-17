@@ -8,7 +8,7 @@ using Test
     m2 = lmm(@formula(yield ~ 1 + (1|batch)), MixedModels.dataset(:dyestuff); progress=false)
     @test isa(m2, LinearMixedModel)
     @test first(m2.θ) ≈ 0.7525806757718846 rtol=1.0e-5
-    @test deviance(m1) ≈ deviance(m2)
+    @test deviance(m1) ≈ deviance(m2) #TODO: maybe add an `rtol`?
 end
 
 @testset "generalized" begin
