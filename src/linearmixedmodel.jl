@@ -218,13 +218,11 @@ function StatsAPI.fit(::Type{LinearMixedModel},
 end
 
 """
-    lmm(f::FormulaTerm, tbl; kwargs...)
-    lmm(
-        f::FormulaTerm, tbl;
-        wts=[], contrasts=Dict{Symbol,Any}(), σ=nothing, amalgamate=true,
-        kwargs...)
+    lmm(args...; kwargs...)
 
-    Aliases for the fit(LinearMixedModel, ...) functions
+Convenience wrapper for `fit(LinearMixedModel, args...; kwargs...)`.
+
+See [`fit`](@ref) for more information.
 """
 lmm(args...; kwargs...) = fit(LinearMixedModel, args...; kwargs...)
 
