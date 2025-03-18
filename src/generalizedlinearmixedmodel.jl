@@ -193,7 +193,7 @@ end
 """
     glmm(args...; kwargs...)
 
-Convenience wrapper for `fit(GenarlizedLinearMixedModel, args...; kwargs...)`.
+Convenience wrapper for `fit(GeneralizedLinearMixedModel, args...; kwargs...)`.
 
 See [`fit!`](@ref) for more information.
 """
