@@ -35,6 +35,8 @@ bernmod = glmm(frm, verbagg, Bernoulli())   # fit the model!
 DisplayAs.Text(ans) # hide
 ```
 
+# Contents
+
 ```@contents
 Pages = [
         "constructors.md",
