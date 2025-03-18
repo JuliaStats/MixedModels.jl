@@ -287,6 +287,20 @@ function StatsModels.isnested(m1::MixedModel, m2::MixedModel; atol::Real=0.0)
     return true
 end
 
+function StatsModels.isnested(m::MixedModel...)::Bool
+    m  = collect(m)
+
+    for i in eachindex(m)[begin:end-1]
+        StatsModels.isnested(m[i], m[i+1]) || return false
+    end
+    return true
+end
+
+function StatsModels.lrtest(m::MixedModel...)
+    StatsModels.isnested(m...) || throw(ArgumentError("Models are not nested"))
+    likelihoodratiotest(m...)
+end
+
 function _iscomparable(
     m1::TableRegressionModel{<:Union{LinearModel,GeneralizedLinearModel}}, m2::MixedModel
 )
