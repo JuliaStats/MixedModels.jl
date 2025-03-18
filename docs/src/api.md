@@ -34,9 +34,11 @@ fit
 fit!
 fitted
 formula
+glmm
 isfitted
 islinear
 leverage
+lmm
 loglikelihood
 meanresponse
 modelmatrix
