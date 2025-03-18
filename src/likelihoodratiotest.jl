@@ -39,7 +39,11 @@ To get p-values for multiple tests, use `lrt.pvalues`.
 function StatsAPI.pvalue(lrt::LikelihoodRatioTest)
     pvalues = lrt.pvalues
     if length(pvalues) > 1
-        throw(ArgumentError("Cannot extract **only one** p-value from a multiple test result."))
+        throw(
+            ArgumentError(
+                "Cannot extract **only one** p-value from a multiple test result."
+            ),
+        )
     end
 
     return only(lrt.pvalues)
