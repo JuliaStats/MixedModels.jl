@@ -24,7 +24,7 @@ describe(DataFrame(dyestuff))
 
 ### The `@formula` language in Julia
 
-MixedModels.jl builds on the the *Julia* formula language provided by [StatsModels.jl](https://juliastats.org/StatsModels.jl/stable/formula/), which is similar to the formula language in *R* and is also based on the notation from Wilkinson and Rogers ([1973](https://dx.doi.org/10.2307/2346786)). There are two ways to construct a formula in Julia.  The first way is to enclose the formula expression in the `@formula` macro:
+`MixedModels.jl` builds on the *Julia* formula language provided by [StatsModels.jl](https://juliastats.org/StatsModels.jl/stable/formula/), which is similar to the formula language in *R* and is also based on the notation from Wilkinson and Rogers ([1973](https://dx.doi.org/10.2307/2346786)). There are two ways to construct a formula in Julia.  The first way is to enclose the formula expression in the `@formula` macro:
 ```@docs
 @formula
 ```
@@ -35,7 +35,7 @@ The second way is to combine `Term`s with operators like `+`, `&`, `~`, and othe
 @formula(y ~ 1 + a + b + a & b) == (term(:y) ~ term(1) + term(:a) + term(:b) + term(:a) & term(:b))
 ```
 
-MixedModels.jl provides additional formula syntax for representing *random-effects terms*.  Most importantly, `|` separates random effects and their grouping factors (as in the formula extension used by the *R* package [`lme4`](https://cran.r-project.org/web/packages/lme4/index.html).  Much like with the base formula language, `|` can be used within the `@formula` macro and to construct a formula programmatically:
+`MixedModels.jl` provides additional formula syntax for representing *random-effects terms*.  Most importantly, `|` separates random effects and their grouping factors (as in the formula extension used by the *R* package [`lme4`](https://cran.r-project.org/web/packages/lme4/index.html)).  Much like with the base formula language, `|` can be used within the `@formula` macro and to construct a formula programmatically:
 
 ```@example Main
 @formula(y ~ 1 + a + b + (1 + a + b | g))
@@ -154,7 +154,7 @@ DisplayAs.Text(ans) # hide
 
 ### Simplifying the random effect correlation structure
 
-MixedModels.jl estimates not only the *variance* of the effects for each random effect level, but also the *correlation* between the random effects for different predictors.
+`MixedModels.jl` estimates not only the *variance* of the effects for each random effect level, but also the *correlation* between the random effects for different predictors.
 So, for the model of the *sleepstudy* data above, one of the parameters that is estimated is the correlation between each subject's random intercept (i.e., their baseline reaction time) and slope (i.e., their particular change in reaction time per day of sleep deprivation).
 In some cases, you may wish to simplify the random effects structure by removing these correlation parameters.
 This often arises when there are many random effects you want to estimate (as is common in psychological experiments with many conditions and covariates), since the number of random effects parameters increases as the square of the number of predictors, making these models difficult to estimate from limited data.
@@ -171,7 +171,7 @@ fit(MixedModel, @formula(reaction ~ 1 + days + (1|subj) + (days|subj)), sleepstu
 DisplayAs.Text(ans) # hide
 ```
 
-Finally, for predictors that are categorical, MixedModels.jl will estimate correlations between each level.
+Finally, for predictors that are categorical, `MixedModels.jl` will estimate correlations between each level.
 Notice the large number of correlation parameters if we treat `days` as a categorical variable by giving it contrasts:
 ```@example Main
 fit(MixedModel, @formula(reaction ~ 1 + days + (1 + days|subj)), sleepstudy,

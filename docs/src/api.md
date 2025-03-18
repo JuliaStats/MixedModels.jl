@@ -1,6 +1,6 @@
 # API
 
-In addition to its own functionality, MixedModels.jl also implements extensive support for the [`StatsAPI.StatisticalModel`](https://github.com/JuliaStats/StatsAPI.jl/blob/main/src/statisticalmodel.jl) and [`StatsAPI.RegressionModel`](https://github.com/JuliaStats/StatsAPI.jl/blob/main/src/regressionmodel.jl) API.
+In addition to its own functionality, `MixedModels.jl` also implements extensive support for the [`StatsAPI.StatisticalModel`](https://github.com/JuliaStats/StatsAPI.jl/blob/main/src/statisticalmodel.jl) and [`StatsAPI.RegressionModel`](https://github.com/JuliaStats/StatsAPI.jl/blob/main/src/regressionmodel.jl) API.
 
 ## Types
 
@@ -55,9 +55,9 @@ vcov
 weights
 ```
 
-### MixedModels.jl "alternatives" and extensions to StatsAPI and GLM functions
+### `MixedModels.jl` "alternatives" and extensions to StatsAPI and GLM functions
 
-The following are MixedModels.jl-specific functions and not simply methods for functions defined in StatsAPI and GLM.jl.
+The following are `MixedModels.jl`-specific functions and not simply methods for functions defined in `StatsAPI` and `GLM.jl`.
 
 ```julia
 coefpvalues
