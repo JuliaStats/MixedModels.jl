@@ -195,7 +195,7 @@ end
 
 Convenience wrapper for `fit(GeneralizedLinearMixedModel, args...; kwargs...)`.
 
-See [`fit!`](@ref) for more information.
+See [`GeneralizedLinearMixedModel`](@ref) and [`fit!`](@ref) for more information.
 """
 glmm(args...; kwargs...) = fit(GeneralizedLinearMixedModel, args...; kwargs...)
 

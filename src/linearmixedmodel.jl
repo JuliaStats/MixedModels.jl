@@ -222,7 +222,7 @@ end
 
 Convenience wrapper for `fit(LinearMixedModel, args...; kwargs...)`.
 
-See [`fit!`](@ref) for more information.
+See [`LinearMixedModel`](@ref) and [`fit!`](@ref) for more information.
 """
 lmm(args...; kwargs...) = fit(LinearMixedModel, args...; kwargs...)
 
