@@ -31,7 +31,7 @@ using StaticArrays: StaticArrays, SVector
 using Statistics: Statistics, mean, quantile, std
 using StatsAPI: StatsAPI, aic, aicc, bic, coef, coefnames, coeftable, confint, deviance
 using StatsAPI: dof, dof_residual, fit, fit!, fitted, isfitted, islinear, leverage
-using StatsAPI: loglikelihood, meanresponse, modelmatrix, nobs, predict, r2, residuals
+using StatsAPI: loglikelihood, meanresponse, modelmatrix, nobs, pvalue, predict, r2, residuals
 using StatsAPI: response, responsename, stderror, vcov, weights
 using StatsBase: StatsBase, CoefTable, model_response, summarystats
 using StatsFuns: log2π, normccdf
@@ -129,6 +129,7 @@ export @formula,
     profileσ,
     profilesigma,
     profilevc,
+    pvalue,
     pwrss,
     ranef,
     raneftables,

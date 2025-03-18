@@ -15,7 +15,7 @@ Results of MixedModels.likelihoodratiotest
 * `pvalues`
 
 """
-struct LikelihoodRatioTest
+struct LikelihoodRatioTest <: StatsAPI.HypothesisTest
     formulas::AbstractVector{String}
     models::NamedTuple{(:dof, :deviance)}
     tests::NamedTuple{(:dofdiff, :deviancediff, :pvalues)}
@@ -24,6 +24,25 @@ end
 
 function Base.propertynames(lrt::LikelihoodRatioTest, private::Bool=false)
     return (:deviance, :formulas, :models, :pvalues, :tests)
+end
+
+"""
+    StatsAPI.pvalue(lrt::LikelihoodRatioTest)
+
+Extract the p-value associated with the a likelihood ratio test.
+
+For `LikelihoodRatioTest`s containing more one model comparison, i.e. more than two models,
+this throws an error because it is unclear which p-value is desired.
+
+To get p-values for multiple tests, use `lrt.pvalues`.
+"""
+function StatsAPI.pvalue(lrt::LikelihoodRatioTest)
+    pvalues = lrt.pvalues
+    if length(pvalues) > 1
+        throw(ArgumentError("Cannot extract **only one** p-value from a multiple test result."))
+    end
+
+    return only(lrt.pvalues)
 end
 
 function Base.getproperty(lrt::LikelihoodRatioTest, s::Symbol)
