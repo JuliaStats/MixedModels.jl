@@ -119,11 +119,11 @@ function _predict(m::MixedModel{T}, newdata, β; new_re_levels) where {T}
                 ),
             )
         end
-        lmm = LinearMixedModel(f, newdata; contrasts=contr)
+        lmod = LinearMixedModel(f, newdata; contrasts=contr)
         ytemp =
             new_re_levels == :missing ? convert(Vector{Union{T,Missing}}, ytemp) : ytemp
 
-        ytemp, lmm
+        ytemp, lmod
     end
 
     pivotmatch = pivot(mnew)[pivot(m)]
