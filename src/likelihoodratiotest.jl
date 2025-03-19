@@ -27,11 +27,11 @@ function Base.propertynames(lrt::LikelihoodRatioTest, private::Bool=false)
 end
 
 """
-    StatsAPI.pvalue(lrt::LikelihoodRatioTest)
+    pvalue(lrt::LikelihoodRatioTest)
 
-Extract the p-value associated with the a likelihood ratio test.
+Extract the p-value associated with a likelihood ratio test.
 
-For `LikelihoodRatioTest`s containing more one model comparison, i.e. more than two models,
+For `LikelihoodRatioTest`s containing more than one model comparison, i.e. more than two models,
 this throws an error because it is unclear which p-value is desired.
 
 To get p-values for multiple tests, use `lrt.pvalues`.
@@ -46,7 +46,7 @@ function StatsAPI.pvalue(lrt::LikelihoodRatioTest)
         )
     end
 
-    return only(lrt.pvalues)
+    return only(pvalues)
 end
 
 function Base.getproperty(lrt::LikelihoodRatioTest, s::Symbol)
