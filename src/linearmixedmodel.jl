@@ -384,7 +384,11 @@ function _pushALblock!(A, L, blk)
     return push!(A, deepcopy(isa(blk, BlockedSparse) ? blk.cscmat : blk))
 end
 
-function createAL(reterms::Vector{<:AbstractReMat{T}}, Xy::FeMat{T}) where {T}
+function createAL(
+    reterms::Vector{<:AbstractReMat{T}},
+    Xy::FeMat{T};
+    RFPthreshold::Int=typemax(Int),
+    ) where {T}
     k = length(reterms)
     vlen = kchoose2(k + 1)
     A = sizehint!(AbstractMatrix{T}[], vlen)
@@ -403,7 +407,14 @@ function createAL(reterms::Vector{<:AbstractReMat{T}}, Xy::FeMat{T}) where {T}
         for j in 1:(i - 1)
             cj = reterms[j]
             if !isnested(cj, ci)
-                for l in i:k
+                ind = kp1choose2(i)      # location of i'th diagonal block
+                Li = Matrix(L[ind])
+                L[ind] = if size(Li, 2) > RFPthreshold
+                    TriangularRFP(Li, :L)
+                else
+                    Matrix(Li)
+                end
+                for l in (i + 1):k
                     ind = block(l, i)
                     L[ind] = Matrix(L[ind])
                 end
@@ -1263,11 +1274,11 @@ function updateL!(m::LinearMixedModel{T}) where {T}
     A, L, reterms = m.A, m.L, m.reterms
     k = length(reterms)
     copyto!(last(m.L), last(m.A))  # ensure the fixed-effects:response block is copied
-    for j in eachindex(reterms) # pre- and post-multiply by Λ, add I to diagonal
+    for j in eachindex(reterms)    # pre- and post-multiply by Λ, add I to diagonal
         cj = reterms[j]
         diagind = kp1choose2(j)
         copyscaleinflate!(L[diagind], A[diagind], cj)
-        for i in (j + 1):(k + 1)     # postmultiply column by Λ
+        for i in (j + 1):(k + 1)   # postmultiply column by Λ
             bij = block(i, j)
             rmulΛ!(copyto!(L[bij], A[bij]), cj)
         end
@@ -1277,17 +1288,18 @@ function updateL!(m::LinearMixedModel{T}) where {T}
     end
     for j in 1:(k + 1)             # blocked Cholesky
         Ljj = L[kp1choose2(j)]
+        LjjT = isa(Ljj, Matrix) ? LowerTriangular(Ljj)' : Ljj'
         for jj in 1:(j - 1)
             rankUpdate!(Hermitian(Ljj, :L), L[block(j, jj)], -one(T), one(T))
         end
         cholUnblocked!(Ljj, Val{:L})
-        LjjT = isa(Ljj, Diagonal) ? Ljj : LowerTriangular(Ljj)
+#        LjjT = isa(Ljj, Diagonal) ? Ljj : LowerTriangular(Ljj)
         for i in (j + 1):(k + 1)
             Lij = L[block(i, j)]
             for jj in 1:(j - 1)
                 mul!(Lij, L[block(i, jj)], L[block(j, jj)]', -one(T), one(T))
             end
-            rdiv!(Lij, LjjT')
+            rdiv!(Lij, LjjT)
         end
     end
     return m
