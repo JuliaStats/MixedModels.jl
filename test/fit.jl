@@ -11,6 +11,8 @@ using Test
     @test deviance(m1) ≈ deviance(m2)
     @test isa(lmm(@formula(yield ~ 1 + (1|batch)), MixedModels.dataset(:dyestuff); progress=false, REML = true), LinearMixedModel)
 
+    @test_broken mss(m1) ≈ 30780.69
+
     # example from https://github.com/JuliaStats/MixedModels.jl/issues/194
     # copied from tetst/pls.jl
     data = (

@@ -1212,6 +1212,8 @@ function StatsAPI.stderror(m::LinearMixedModel{T}) where {T}
     return stderror!(similar(pivot(m), T), m)
 end
 
+StatsAPI.mss(m::LinearMixedModel) = sum(abs.(mean(m.y) - fitted(m)))
+
 """
     updateA!(m::LinearMixedModel)
 
