@@ -21,12 +21,12 @@ makedocs(;
         "api.md"
     ],
     format = DocumenterVitepress.MarkdownVitepress(
-        repo = "https://github.com/ajinkya-k/MixedModels.jl",
+        repo = "https://github.com/JuliaStats/MixedModels.jl",
     ),
     clean = true
 )
 
 deploydocs(;
     target = "build",
-    repo="github.com/ajinkya-k/MixedModels.jl.git", push_preview=true, devbranch="ahk/doc-vite"
+    repo="github.com/JuliaStats/MixedModels.jl.git", push_preview=true, devbranch="ahk/doc-vite"
 )
