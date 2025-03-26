@@ -58,12 +58,13 @@ end
     @test [deviance(fm0), deviance(fm1)] == lrt.deviance
     @test deviance(fm0) - deviance(fm1) == only(lrt.tests.deviancediff)
     @test only(lrt.tests.dofdiff) == 1
-    @test sum(map(length,lrt.tests)) == 3
-    @test sum(map(length,lrt.pvalues)) == 1
-    @test sum(map(length,lrt.models)) == 4
+    @test sum(length,lrt.tests) == 3
+    @test sum(length,lrt.pvalues) == 1
+    @test sum(length,lrt.models) == 4
     @test length(lrt.formulae) == 2
     show(IOBuffer(),lrt);
     @test :pvalues in propertynames(lrt)
+    @test only(lrt.pvalues) == pvalue(lrt)
 
     lrt = likelihoodratiotest(lm1,fm1)
     @test lrt.deviance ≈ likelihoodratiotest(lm1.model,fm1).deviance
@@ -72,6 +73,9 @@ end
     shown = sprint(show, lrt)
     @test occursin("-2 logLik", shown)
     @test !occursin("deviance", shown)
+
+    lrt = likelihoodratiotest(lm0, fm0, fm1)
+    @test_throws ArgumentError pvalue(lrt)
 
     # non nested FE between non-mixed and mixed
     @test_throws ArgumentError likelihoodratiotest(lm1, fm0)

@@ -1,3 +1,7 @@
+MixedModels v4.33.0 Release Notes
+==============================
+- `LikelihoodRatioTest` now extends `StatsAPI.HypothesisTest` and provides a method for `StatsAPI.pvalue`. [#814]
+
 MixedModels v4.32.0 Release Notes
 ==============================
 - Added `lmm` and `glmm` as convenience wrappers for `fit(LinearMixedModel, ...)` and `fit(GeneralizedLinearMixedModel, ...)` respectively [#810]
@@ -19,7 +23,7 @@ MixedModels v4.29.1 Release Notes
 MixedModels v4.29.0 Release Notes
 ==============================
 - Testbed for experimental support for using PRIMA as an optimization backend introduced via the experimental `prfit!` function. [#799]
-- Julia compat bound raised to current 1.10, i.e. current LTS. [#799] 
+- Julia compat bound raised to current 1.10, i.e. current LTS. [#799]
 
 MixedModels v4.28.0 Release Notes
 ==============================
@@ -612,3 +616,4 @@ Package dependencies
 [#801]: https://github.com/JuliaStats/MixedModels.jl/issues/801
 [#802]: https://github.com/JuliaStats/MixedModels.jl/issues/802
 [#810]: https://github.com/JuliaStats/MixedModels.jl/issues/810
+[#814]: https://github.com/JuliaStats/MixedModels.jl/issues/814
