@@ -1,3 +1,7 @@
+MixedModels v4.34.0 Release Notes
+==============================
+- `BlockedSparse` is now immutable. [#815]
+
 MixedModels v4.33.0 Release Notes
 ==============================
 - `LikelihoodRatioTest` now extends `StatsAPI.HypothesisTest` and provides a method for `StatsAPI.pvalue`. [#814]
@@ -617,3 +621,4 @@ Package dependencies
 [#802]: https://github.com/JuliaStats/MixedModels.jl/issues/802
 [#810]: https://github.com/JuliaStats/MixedModels.jl/issues/810
 [#814]: https://github.com/JuliaStats/MixedModels.jl/issues/814
+[#815]: https://github.com/JuliaStats/MixedModels.jl/issues/815

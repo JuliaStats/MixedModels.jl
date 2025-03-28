@@ -104,6 +104,9 @@ Typically, an `FeMat` represents the fixed-effects model matrix with the respons
 Upon construction the `xy` and `wtxy` fields refer to the same matrix
 """
 mutable struct FeMat{T,S<:AbstractMatrix} <: AbstractMatrix{T}
+    # XXX This struct must be mutable, because in the unweighted
+    # case wtxy === xy and we allow users to reweight posthoc,
+    # at which point wtxy is replaced by a new matrix
     xy::S
     wtxy::S
 end
