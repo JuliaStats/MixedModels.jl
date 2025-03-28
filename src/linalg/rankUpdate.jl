@@ -39,6 +39,16 @@ function rankUpdate!(C::HermOrSym{T,S}, A::StridedMatrix{T}, α, β) where {T,S}
     return C
 end
 
+function rankUpdate!(C::HermOrSym{T,S}, A::StridedMatrix{T}, α, β) where {T,S<:LowerTriangular}
+    BLAS.syrk!(C.uplo, 'N', T(α), A, T(β), C.data.data)
+    return C
+end
+
+function rankUpdate!(C::HermitianRFP{T}, A::StridedMatrix{T}, α, β) where {T}
+    BLAS.syrk!('N', T(α), A, T(β), C)
+    return C
+end
+
 """
     _columndot(rv, nz, rngi, rngj)
 
@@ -64,12 +74,17 @@ function _columndot(rv, nz, rngi, rngj)
     return accum
 end
 
-function rankUpdate!(C::HermOrSym{T,S}, A::SparseMatrixCSC{T}, α, β) where {T,S}
+function rankUpdate!(
+    C::HermOrSym{T,S}, 
+    A::SparseMatrixCSC{T},
+    α,
+    β,
+    ) where {T,S}
     require_one_based_indexing(C, A)
     m, n = size(A)
     Cd, rv, nz = C.data, A.rowval, A.nzval
     lower = C.uplo == 'L'
-    (lower ? m : n) == size(C, 2) || throw(DimensionMismatch())
+#    (lower ? m : n) == size(C, 2) || throw(DimensionMismatch())  # Doesn't make sense with lower.  
     isone(β) || rmul!(lower ? LowerTriangular(Cd) : UpperTriangular(Cd), β)
     if lower
         @inbounds for jj in axes(A, 2)
@@ -92,6 +107,38 @@ function rankUpdate!(C::HermOrSym{T,S}, A::SparseMatrixCSC{T}, α, β) where {T,
             end
             Cd[j, j] = muladd(α, sum(i -> abs2(nz[i]), rngj), Cd[j, j])
         end
+    end
+    return C
+end
+
+function rankUpdate!(
+    C::HermitianRFP{T}, 
+    A::SparseMatrixCSC{T},
+    α,
+    β,
+    ) where {T}
+    require_one_based_indexing(C, A)
+    Ctr = TriangularRFP(C.data, C.transr, C.uplo)  # need TriangularRFP for write access
+    rv, nz = A.rowval, A.nzval
+    if size(A, 1) ≠ size(C, 1)
+        throw(DimensionMismatch("size(A, 1) == $(size(A,1)) ≠ $(size(C, 1)) = size(C, 1)"))
+    end
+    isone(β) || rmul!(Ctr, β)
+    if C.uplo == 'L'
+        @inbounds for jj in axes(A, 2)
+            rangejj = nzrange(A, jj)
+            lenrngjj = length(rangejj)
+            for (k, j) in enumerate(rangejj)
+                anzj = α * nz[j]
+                rvj = rv[j]
+                for i in k:lenrngjj
+                    kk = rangejj[i]
+                    Ctr[rv[kk], rvj] = muladd(nz[kk], anzj, Ctr[rv[kk], rvj])
+                end
+            end
+        end
+    else
+        throw(ArgumentError("rankUpdate! requires C be stored in the lower triangle"))
     end
     return C
 end

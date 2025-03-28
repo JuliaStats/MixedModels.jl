@@ -42,10 +42,22 @@ struct LinearMixedModel{T<:AbstractFloat} <: MixedModel{T}
 end
 
 function LinearMixedModel(
-    f::FormulaTerm, tbl; contrasts=Dict{Symbol,Any}(), wts=[], σ=nothing, amalgamate=true
+    f::FormulaTerm,
+    tbl;
+    contrasts=Dict{Symbol,Any}(),
+    wts=[],
+    σ=nothing,
+    amalgamate=true,
+    RFPthreshold=1000, 
 )
     return LinearMixedModel(
-        f::FormulaTerm, Tables.columntable(tbl); contrasts, wts, σ, amalgamate
+        f::FormulaTerm,
+        Tables.columntable(tbl);
+        contrasts,
+        wts,
+        σ,
+        amalgamate,
+        RFPthreshold,
     )
 end
 
@@ -55,7 +67,7 @@ const _MISSING_RE_ERROR = ArgumentError(
 
 function LinearMixedModel(
     f::FormulaTerm, tbl::Tables.ColumnTable; contrasts=Dict{Symbol,Any}(), wts=[],
-    σ=nothing, amalgamate=true,
+    σ=nothing, amalgamate=true, RFPthreshold=1000,
 )
     fvars = StatsModels.termvars(f)
     tvars = Tables.columnnames(tbl)
@@ -77,7 +89,7 @@ function LinearMixedModel(
 
     y, Xs = modelcols(form, tbl)
 
-    return LinearMixedModel(y, Xs, form, wts, σ, amalgamate)
+    return LinearMixedModel(y, Xs, form, wts, σ, amalgamate, RFPthreshold)
 end
 
 """
@@ -100,6 +112,7 @@ function LinearMixedModel(
     wts=[],
     σ=nothing,
     amalgamate=true,
+    RFPthreshold=1000,
 )
     T = promote_type(Float64, float(eltype(y)))  # ensure eltype of model matrices is at least Float64
 
@@ -133,12 +146,12 @@ function LinearMixedModel(
     end
     isempty(reterms) && throw(_MISSING_RE_ERROR)
     return LinearMixedModel(
-        convert(Array{T}, y), only(feterms), reterms, form, wts, σ, amalgamate
+        convert(Array{T}, y), only(feterms), reterms, form, wts, σ, amalgamate, RFPthreshold,
     )
 end
 
 """
-    LinearMixedModel(y, feterm, reterms, form, wts=[], σ=nothing; amalgamate=true)
+    LinearMixedModel(y, feterm, reterms, form, wts=[], σ=nothing; amalgamate=true, RFPthreshold=1000)
 
 Private constructor for a `LinearMixedModel` given already assembled fixed and random effects.
 
@@ -159,6 +172,7 @@ function LinearMixedModel(
     wts=[],
     σ=nothing,
     amalgamate=true,
+    RFPthreshold=1000,
 ) where {T}
     # detect and combine RE terms with the same grouping var
     if length(reterms) > 1 && amalgamate
@@ -172,7 +186,7 @@ function LinearMixedModel(
     sqrtwts = map!(sqrt, Vector{T}(undef, length(wts)), wts)
     reweight!.(reterms, Ref(sqrtwts))
     reweight!(Xy, sqrtwts)
-    A, L = createAL(reterms, Xy)
+    A, L = createAL(reterms, Xy; RFPthreshold)
     lbd = foldl(vcat, lowerbd(c) for c in reterms)
     θ = foldl(vcat, getθ(c) for c in reterms)
     optsum = OptSummary(θ, lbd)
@@ -387,7 +401,7 @@ end
 function createAL(
     reterms::Vector{<:AbstractReMat{T}},
     Xy::FeMat{T};
-    RFPthreshold::Int=typemax(Int),
+    RFPthreshold::Int=1000,
     ) where {T}
     k = length(reterms)
     vlen = kchoose2(k + 1)
@@ -408,11 +422,11 @@ function createAL(
             cj = reterms[j]
             if !isnested(cj, ci)
                 ind = kp1choose2(i)      # location of i'th diagonal block
-                Li = Matrix(L[ind])
+                Li = collect(L[ind])
                 L[ind] = if size(Li, 2) > RFPthreshold
                     TriangularRFP(Li, :L)
                 else
-                    Matrix(Li)
+                    LowerTriangular(Li)
                 end
                 for l in (i + 1):k
                     ind = block(l, i)
@@ -1271,13 +1285,15 @@ Update the blocked lower Cholesky factor, `m.L`, from `m.A` and `m.reterms` (use
 This is the crucial step in evaluating the objective, given a new parameter value.
 """
 function updateL!(m::LinearMixedModel{T}) where {T}
-    A, L, reterms = m.A, m.L, m.reterms
+    (; A, L, reterms) = m
     k = length(reterms)
     copyto!(last(m.L), last(m.A))  # ensure the fixed-effects:response block is copied
     for j in eachindex(reterms)    # pre- and post-multiply by Λ, add I to diagonal
         cj = reterms[j]
         diagind = kp1choose2(j)
-        copyscaleinflate!(L[diagind], A[diagind], cj)
+        LdH = L[diagind]
+        LdH = isa(LdH, LowerTriangular) ? Hermitian(LdH.data, :L) : Hermitian(LdH, :L)
+        copyscaleinflate!(LdH, A[diagind], cj)
         for i in (j + 1):(k + 1)   # postmultiply column by Λ
             bij = block(i, j)
             rmulΛ!(copyto!(L[bij], A[bij]), cj)
@@ -1288,18 +1304,17 @@ function updateL!(m::LinearMixedModel{T}) where {T}
     end
     for j in 1:(k + 1)             # blocked Cholesky
         Ljj = L[kp1choose2(j)]
-        LjjT = isa(Ljj, Matrix) ? LowerTriangular(Ljj)' : Ljj'
+        LjjH = isa(Ljj, LowerTriangular) ? Hermitian(Ljj.data, :L) : Hermitian(Ljj, :L)
         for jj in 1:(j - 1)
-            rankUpdate!(Hermitian(Ljj, :L), L[block(j, jj)], -one(T), one(T))
+            rankUpdate!(LjjH, L[block(j, jj)], -one(T), one(T))
         end
-        cholUnblocked!(Ljj, Val{:L})
-#        LjjT = isa(Ljj, Diagonal) ? Ljj : LowerTriangular(Ljj)
+        cholUnblocked!(LjjH)
         for i in (j + 1):(k + 1)
             Lij = L[block(i, j)]
             for jj in 1:(j - 1)
                 mul!(Lij, L[block(i, jj)], L[block(j, jj)]', -one(T), one(T))
             end
-            rdiv!(Lij, LjjT)
+            rdiv!(Lij, Ljj')
         end
     end
     return m

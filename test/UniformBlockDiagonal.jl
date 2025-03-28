@@ -43,11 +43,11 @@ const LMM = LinearMixedModel
     end
 
     @testset "copyscaleinflate" begin
-        MixedModels.copyscaleinflate!(Lblk, ex22, vf1)
+        MixedModels.copyscaleinflate!(Hermitian(Lblk, :L), ex22, vf1)
         @test view(Lblk.data, :, :, 1) == [2. 3.; 2. 5.]
         setθ!(vf1, [1.,1.,1.])
         Λ = vf1.λ
-        MixedModels.copyscaleinflate!(Lblk, ex22, vf1)
+        MixedModels.copyscaleinflate!(Hermitian(Lblk, :L), ex22, vf1)
         target = Λ'view(ex22.data, :, :, 1)*Λ + I
         @test view(Lblk.data, :, :, 1) == target
     end

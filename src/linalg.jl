@@ -59,11 +59,10 @@ function LinearAlgebra.ldiv!(
     return B
 end
 
-function LinearAlgebra.rdiv!(
-    A::Matrix{T}, B::UpperTriangular{T,<:Adjoint{T,UniformBlockDiagonal{T}}}
-) where {T}
+
+function LinearAlgebra.rdiv!(A::Matrix{T}, B::Adjoint{T,UniformBlockDiagonal{T}}) where {T}
     m, n = size(A)
-    Bd = B.data.parent
+    Bd = B.parent
     Bdd = Bd.data
     r, s, blk = size(Bdd)
     n == size(Bd, 1) && r == s || throw(DimensionMismatch())

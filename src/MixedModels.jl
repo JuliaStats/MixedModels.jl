@@ -25,7 +25,7 @@ using PooledArrays: PooledArrays, PooledArray
 using PrecompileTools: PrecompileTools, @setup_workload, @compile_workload
 using ProgressMeter: ProgressMeter, Progress, ProgressUnknown, finish!, next!
 using Random: Random, AbstractRNG, randn!
-using RectangularFullPacked: TriangularRFP
+using RectangularFullPacked: HermitianRFP, TriangularRFP
 using SparseArrays: SparseArrays, SparseMatrixCSC, SparseVector, dropzeros!, nnz
 using SparseArrays: nonzeros, nzrange, rowvals, sparse
 using StaticArrays: StaticArrays, SVector

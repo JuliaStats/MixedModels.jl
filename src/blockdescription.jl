@@ -33,10 +33,12 @@ end
 BlockDescription(m::GeneralizedLinearMixedModel) = BlockDescription(m.LMM)
 
 shorttype(::UniformBlockDiagonal, ::UniformBlockDiagonal) = "BlkDiag"
-shorttype(::UniformBlockDiagonal, ::Matrix) = "BlkDiag/Dense"
+shorttype(::UniformBlockDiagonal, ::LowerTriangular) = "BlkDiag/Dense"
 shorttype(::SparseMatrixCSC, ::BlockedSparse) = "Sparse"
 shorttype(::Diagonal, ::Diagonal) = "Diagonal"
 shorttype(::Diagonal, ::Matrix) = "Diag/Dense"
+shorttype(::Diagonal, ::LowerTriangular) = "Diag/Dense"
+shorttype(::Diagonal, ::TriangularRFP) = "Diag/TrRFP"
 shorttype(::Matrix, ::Matrix) = "Dense"
 shorttype(::SparseMatrixCSC, ::SparseMatrixCSC) = "Sparse"
 shorttype(::SparseMatrixCSC, ::Matrix) = "Sparse/Dense"
