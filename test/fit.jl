@@ -11,7 +11,7 @@ using Test
     @test deviance(m1) ≈ deviance(m2)
     @test isa(lmm(@formula(yield ~ 1 + (1|batch)), MixedModels.dataset(:dyestuff); progress=false, REML = true), LinearMixedModel)
 
-    @test mss(m1) ≈ 30780.69 atol=0.005
+    @test mss(m1) ≈ 30780.69 rtol=0.005
     m0 = fit(MixedModel, @formula(yield ~ 0 + (1|batch)), MixedModels.dataset(:dyestuff); progress=false)
     @test_throws ArgumentError("Mean sum of squares is defined only for models with an intercept term.") mss(m0)
 
