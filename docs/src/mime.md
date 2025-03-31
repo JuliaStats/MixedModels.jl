@@ -1,9 +1,9 @@
 # Alternative display and output formats
 
-In the documentation, we have presented the output from MixedModels.jl in the same format you will see when working in the REPL.
+In the documentation, we have presented the output from `MixedModels.jl` in the same format you will see when working in the REPL.
 You may have noticed, however, that output from other packages received pretty printing.
-For example, DataFrames are converted into nice HTML tables.
-In MixedModels, we recently (v3.2.0) introduced limited support for such pretty printing.
+For example, `DataFrame`s are converted into nice HTML tables.
+In `MixedModels.jl`, we recently (v3.2.0) introduced limited support for such pretty printing.
 (For more details on how the print and display system in Julia works, check out [this NextJournal post](https://nextjournal.com/sdanisch/julias-display-system).)
 
 In particular, we have defined Markdown, HTML and LaTeX output, i.e. `show` methods, for our types.
