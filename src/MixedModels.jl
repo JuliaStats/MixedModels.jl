@@ -30,10 +30,9 @@ using SparseArrays: nonzeros, nzrange, rowvals, sparse
 using StaticArrays: StaticArrays, SVector
 using Statistics: Statistics, mean, quantile, std
 using StatsAPI: StatsAPI, aic, aicc, bic, coef, coefnames, coeftable, confint, deviance
-using StatsAPI: dof, dof_residual, fit, fit!, fitted, isfitted, islinear, leverage
-using StatsAPI:
-    loglikelihood, meanresponse, modelmatrix, nobs, pvalue, predict, r2, residuals
-using StatsAPI: response, responsename, stderror, vcov, weights
+using StatsAPI: dof, dof_residual, fit, fit!, fitted, isfitted, islinear, leverage, mss
+using StatsAPI: loglikelihood, meanresponse, modelmatrix, nobs, pvalue, predict, r2
+using StatsAPI: residuals, response, responsename, stderror, vcov, weights
 using StatsBase: StatsBase, CoefTable, model_response, summarystats
 using StatsFuns: log2π, normccdf
 using StatsModels: StatsModels, AbstractContrasts, AbstractTerm, CategoricalTerm
@@ -41,6 +40,7 @@ using StatsModels: ConstantTerm, DummyCoding, EffectsCoding, FormulaTerm, Functi
 using StatsModels: HelmertCoding, HypothesisCoding, InteractionTerm, InterceptTerm
 using StatsModels: MatrixTerm, SeqDiffCoding, TableRegressionModel, Term
 using StatsModels: apply_schema, drop_term, formula, lrtest, modelcols, term, @formula
+using StatsModels: hasintercept
 using StructTypes: StructTypes
 using Tables: Tables, columntable
 using TypedTables: TypedTables, DictTable, FlexTable, Table
@@ -107,6 +107,7 @@ export @formula,
     fnames,
     GHnorm,
     glmm,
+    hasintercept,
     isfitted,
     islinear,
     issingular,
@@ -118,6 +119,7 @@ export @formula,
     lowerbd,
     lrtest,
     meanresponse,
+    mss,
     modelmatrix,
     model_response,
     nobs,
@@ -213,7 +215,6 @@ include("serialization.jl")
 include("profile/profile.jl")
 include("nlopt.jl")
 include("prima.jl")
-
 
 # aliases with non-unicode function names
 const settheta! = setθ!

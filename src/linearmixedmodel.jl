@@ -1212,7 +1212,14 @@ function StatsAPI.stderror(m::LinearMixedModel{T}) where {T}
     return stderror!(similar(pivot(m), T), m)
 end
 
-StatsAPI.mss(m::LinearMixedModel) = sum(abs2.(mean(m.y) .- fitted(m)))
+function StatsAPI.mss(m::LinearMixedModel)
+    hasintercept(m) && return sum(abs2, meanresponse(m) .- fitted(m))
+    throw(
+        ArgumentError(
+            "Mean sum of squares is defined only for models with an intercept term."
+        ),
+    )
+end
 
 """
     updateA!(m::LinearMixedModel)

@@ -57,6 +57,8 @@ function StatsAPI.dof_residual(m::MixedModel)
     return nobs(m) - dof(m)
 end
 
+StatsModels.hasintercept(m::MixedModel) = hasintercept(formula(m))
+
 """
     issingular(m::MixedModel, θ=m.θ; atol::Real=0, rtol::Real=atol>0 ? 0 : √eps)
 
