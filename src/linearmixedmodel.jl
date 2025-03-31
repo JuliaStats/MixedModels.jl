@@ -1216,7 +1216,7 @@ function StatsAPI.mss(m::LinearMixedModel)
     hasintercept(m) && return sum(abs2, meanresponse(m) .- fitted(m))
     throw(
         ArgumentError(
-            "Mean sum of squares is defined only for models with an intercept term."
+            "Model sum of squares (MSS) is defined only for models with an intercept term."
         ),
     )
 end
