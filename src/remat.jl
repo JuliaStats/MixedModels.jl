@@ -569,10 +569,10 @@ Overwrite L with `Λ'AΛ + I`
 function copyscaleinflate! end
 
 function copyscaleinflate!(
-    Ljj::Hermitian{T, Diagonal{T, Vector{T}}}, 
-    Ajj::Diagonal{T, Vector{T}},
+    Ljj::Hermitian{T,Diagonal{T,Vector{T}}},
+    Ajj::Diagonal{T,Vector{T}},
     Λj::ReMat{T,1},
-    ) where {T}
+) where {T}
     Ldiag, Adiag = Ljj.data.diag, Ajj.diag
     lambsq = abs2(only(Λj.λ.data))
     @inbounds for i in eachindex(Ldiag, Adiag)
@@ -582,10 +582,10 @@ function copyscaleinflate!(
 end
 
 function copyscaleinflate!(
-    Ljj::Hermitian{T, Matrix{T}},
+    Ljj::Hermitian{T,Matrix{T}},
     Ajj::Diagonal{T},
     Λj::ReMat{T,1},
-    ) where {T}
+) where {T}
     Ld = Ljj.data
     fill!(Ld, zero(T))
     lambsq = abs2(only(Λj.λ.data))
@@ -606,7 +606,7 @@ function copyscaleinflate!(Ljj::HermitianRFP{T}, Ajj::Diagonal{T}, Λj::ReMat{T,
 end
 
 function copyscaleinflate!(
-    Ljj::Hermitian{T, UniformBlockDiagonal{T}},
+    Ljj::Hermitian{T,UniformBlockDiagonal{T}},
     Ajj::UniformBlockDiagonal{T},
     Λj::ReMat{T,S},
 ) where {T,S}
@@ -628,7 +628,7 @@ function copyscaleinflate!(
     Ljj::HermitianRFP{T},
     Ajj::UniformBlockDiagonal{T},
     Λj::ReMat{T,S},
-    ) where {T,S}    # S is an integer - the size of the diagonal blocks
+) where {T,S}    # S is an integer - the size of the diagonal blocks
     LjjT = TriangularRFP(Ljj.data, Ljj.transr, Ljj.uplo)
     q, r = divrem(size(Ljj, 1), S)
     iszero(r) || throw(DimensionMismatch("size(Ljj, 1) is not a multiple of S"))
@@ -639,11 +639,11 @@ function copyscaleinflate!(
         copyto!(tmp, Ajj.data[:, :, k])
         lmul!(adjoint(λ), rmul!(tmp, λ))
         for j in 1:S
-            tmp[j,j] += one(T)
+            tmp[j, j] += one(T)
         end
         for j in 1:S
             for i in j:S
-                LjjT[offset + i, offset + j] = tmp[i,j]
+                LjjT[offset + i, offset + j] = tmp[i, j]
             end
         end
         offset += S
@@ -652,7 +652,7 @@ function copyscaleinflate!(
 end
 
 function copyscaleinflate!(
-    Ljj::Hermitian{T, Matrix{T}},
+    Ljj::Hermitian{T,Matrix{T}},
     Ajj::UniformBlockDiagonal{T},
     Λj::ReMat{T,S},
 ) where {T,S}
