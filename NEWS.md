@@ -1,3 +1,7 @@
+MixedModels v4.34.1 Release Notes
+==============================
+- Allow v0.19.0 of `BSplineKit.jl` to avoid warnings in `beta` and `nightly` versions of julia. (#823)
+
 MixedModels v4.34.0 Release Notes
 ==============================
 - `BlockedSparse` is now immutable. [#815]
@@ -622,3 +626,4 @@ Package dependencies
 [#810]: https://github.com/JuliaStats/MixedModels.jl/issues/810
 [#814]: https://github.com/JuliaStats/MixedModels.jl/issues/814
 [#815]: https://github.com/JuliaStats/MixedModels.jl/issues/815
+[#823]: https://github.com/JuliaStats/MixedModels.jl/issues/823
