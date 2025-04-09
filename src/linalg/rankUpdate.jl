@@ -39,7 +39,9 @@ function rankUpdate!(C::HermOrSym{T,S}, A::StridedMatrix{T}, α, β) where {T,S}
     return C
 end
 
-function rankUpdate!(C::HermOrSym{T,S}, A::StridedMatrix{T}, α, β) where {T,S<:LowerTriangular}
+function rankUpdate!(
+    C::HermOrSym{T,S}, A::StridedMatrix{T}, α, β
+) where {T,S<:LowerTriangular}
     BLAS.syrk!(C.uplo, 'N', T(α), A, T(β), C.data.data)
     return C
 end
@@ -75,16 +77,16 @@ function _columndot(rv, nz, rngi, rngj)
 end
 
 function rankUpdate!(
-    C::HermOrSym{T,S}, 
+    C::HermOrSym{T,S},
     A::SparseMatrixCSC{T},
     α,
     β,
-    ) where {T,S}
+) where {T,S}
     require_one_based_indexing(C, A)
     m, n = size(A)
     Cd, rv, nz = C.data, A.rowval, A.nzval
     lower = C.uplo == 'L'
-#    (lower ? m : n) == size(C, 2) || throw(DimensionMismatch())  # Doesn't make sense with lower.  
+    #    (lower ? m : n) == size(C, 2) || throw(DimensionMismatch())  # Doesn't make sense with lower.  
     isone(β) || rmul!(lower ? LowerTriangular(Cd) : UpperTriangular(Cd), β)
     if lower
         @inbounds for jj in axes(A, 2)
@@ -112,11 +114,11 @@ function rankUpdate!(
 end
 
 function rankUpdate!(
-    C::HermitianRFP{T}, 
+    C::HermitianRFP{T},
     A::SparseMatrixCSC{T},
     α,
     β,
-    ) where {T}
+) where {T}
     require_one_based_indexing(C, A)
     Ctr = TriangularRFP(C.data, C.transr, C.uplo)  # need TriangularRFP for write access
     rv, nz = A.rowval, A.nzval
@@ -227,7 +229,7 @@ function rankUpdate!(
 
     @inbounds for j in axes(Ac, 2)
         nzr = nzrange(Ac, j)
-        BLAS.syr!('L', α, view(nz, nzr), view(Cdat, :, :, div(rv[last(nzr)], S)))
+        BLAS.syr!('L', α, view(nz, nzr), view(Cdat,:,:,div(rv[last(nzr)], S)))
     end
 
     return C

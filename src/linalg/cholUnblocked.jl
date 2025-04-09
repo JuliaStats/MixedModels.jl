@@ -8,7 +8,7 @@ because these are part of the inner calculations in a blocked Cholesky factoriza
 """
 function cholUnblocked! end
 
-function cholUnblocked!(D::Hermitian{T, Diagonal{T, Vector{T}}}) where {T}
+function cholUnblocked!(D::Hermitian{T,Diagonal{T,Vector{T}}}) where {T}
     Ddiag = D.data.diag
     @inbounds for i in eachindex(Ddiag)
         (ddi = Ddiag[i]) ≤ zero(T) && throw(PosDefException(i))
@@ -17,7 +17,7 @@ function cholUnblocked!(D::Hermitian{T, Diagonal{T, Vector{T}}}) where {T}
     return D
 end
 
-function cholUnblocked!(A::Hermitian{T, Matrix{T}}) where {T}
+function cholUnblocked!(A::Hermitian{T,Matrix{T}}) where {T}
     A.uplo == 'L' || throw(ArgumentError("A.uplo should be 'L'"))
     return cholUnblocked!(A.data)
 end
@@ -40,10 +40,10 @@ function cholUnblocked!(A::StridedMatrix{T}) where {T<:BlasFloat}
     return A
 end
 
-function cholUnblocked!(D::Hermitian{T, UniformBlockDiagonal{T}}) where {T}
+function cholUnblocked!(D::Hermitian{T,UniformBlockDiagonal{T}}) where {T}
     Ddat = D.data.data
     for k in axes(Ddat, 3)
-        cholUnblocked!(view(Ddat, :, :, k))
+        cholUnblocked!(view(Ddat,:,:,k))
     end
     return D
 end

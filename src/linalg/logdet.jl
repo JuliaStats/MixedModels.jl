@@ -7,17 +7,17 @@ Return `log(det(tril(A)))` evaluated in place.
 """
 LD(d::Diagonal{T}) where {T<:Number} = sum(log, d.diag)
 
-function LD(d::UniformBlockDiagonal{T}) where {T}
+function LD(d::LowerTriangular{T,UniformBlockDiagonal{T}}) where {T}
     dat = d.data
     return sum(log, dat[j, j, k] for j in axes(dat, 2), k in axes(dat, 3))
 end
 
 LD(d::DenseMatrix{T}) where {T} = @inbounds sum(log, d[k] for k in diagind(d))
 
-LD(d::LowerTriangular{T, Matrix{T}}) where {T} = LD(d.data)
+LD(d::LowerTriangular{T,Matrix{T}}) where {T} = LD(d.data)
 
 function LD(d::TriangularRFP{T}) where {T}
-    return sum(log, d[j,j] for j in axes(d, 2))
+    return sum(log, d[j, j] for j in axes(d, 2))
 end
 
 """

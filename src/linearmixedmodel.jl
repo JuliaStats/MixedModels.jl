@@ -48,7 +48,7 @@ function LinearMixedModel(
     wts=[],
     σ=nothing,
     amalgamate=true,
-    RFPthreshold=1000, 
+    RFPthreshold=1000,
 )
     return LinearMixedModel(
         f::FormulaTerm,
@@ -146,7 +146,7 @@ function LinearMixedModel(
     end
     isempty(reterms) && throw(_MISSING_RE_ERROR)
     return LinearMixedModel(
-        convert(Array{T}, y), only(feterms), reterms, form, wts, σ, amalgamate, RFPthreshold,
+        convert(Array{T}, y), only(feterms), reterms, form, wts, σ, amalgamate, RFPthreshold
     )
 end
 
@@ -349,7 +349,7 @@ function condVar(m::LinearMixedModel{T}, fname) where {T}
         fill!(scratch, zero(T))
         copyto!(view(scratch, (b - 1) * vsz .+ (1:vsz), :), λt)
         ldiv!(Lblk, scratch)
-        mul!(view(val, :, :, b), scratch', scratch)
+        mul!(view(val,:,:,b), scratch', scratch)
     end
     return val
 end
@@ -358,7 +358,7 @@ function _cvtbl(arr::Array{T,3}, trm) where {T}
     return merge(
         NamedTuple{(fname(trm),)}((trm.levels,)),
         columntable([
-            NamedTuple{(:σ, :ρ)}(sdcorr(view(arr, :, :, i))) for i in axes(arr, 3)
+            NamedTuple{(:σ, :ρ)}(sdcorr(view(arr,:,:,i))) for i in axes(arr, 3)
         ]),
     )
 end
@@ -402,9 +402,9 @@ function createAL(
     reterms::Vector{<:AbstractReMat{T}},
     Xy::FeMat{T};
     RFPthreshold::Int=1000,
-    ) where {T}
+) where {T}
     k = length(reterms)
-    vlen = kchoose2(k + 1)
+    vlen = kp1choose2(k + 1)
     A = sizehint!(AbstractMatrix{T}[], vlen)
     L = sizehint!(AbstractMatrix{T}[], vlen)
     for i in eachindex(reterms)
@@ -412,16 +412,16 @@ function createAL(
             _pushALblock!(A, L, densify(reterms[i]' * reterms[j]))
         end
     end
-    for j in eachindex(reterms)   # can't fold this into the previous loop b/c block order
+    for j in eachindex(reterms)     # can't fold this into the previous loop b/c block order
         _pushALblock!(A, L, densify(Xy' * reterms[j]))
     end
     _pushALblock!(A, L, densify(Xy'Xy))
-    for i in 2:k      # check for fill-in due to non-nested grouping factors
+    for i in 2:k                    # check for fill-in due to non-nested grouping factors
         ci = reterms[i]
         for j in 1:(i - 1)
             cj = reterms[j]
             if !isnested(cj, ci)
-                ind = kp1choose2(i)      # location of i'th diagonal block
+                ind = kp1choose2(i) # location of i'th diagonal block
                 Li = collect(L[ind])
                 L[ind] = if size(Li, 2) > RFPthreshold
                     TriangularRFP(Li, :L)
@@ -436,7 +436,14 @@ function createAL(
             end
         end
     end
-    return identity.(A), identity.(L)
+    for k in axes(reterms, 1)    # patch up the UniformBlockDiagonal in L for nested factors
+        diagind = kp1choose2(k)
+        Ldi = L[diagind]
+        if isa(Ldi, UniformBlockDiagonal)
+            L[diagind] = LowerTriangular(Ldi)
+        end
+    end
+    return identity.(A), identity.(L)  # does anyone remember what the `identity` is for?`
 end
 
 StatsAPI.deviance(m::LinearMixedModel) = objective(m)
@@ -735,8 +742,12 @@ end
 
 # use dispatch to distinguish Diagonal and UniformBlockDiagonal in first(L)
 _ldivB1!(B1::Diagonal{T}, rhs::AbstractVector{T}, ind) where {T} = rhs ./= B1.diag[ind]
-function _ldivB1!(B1::UniformBlockDiagonal{T}, rhs::AbstractVector{T}, ind) where {T}
-    return ldiv!(LowerTriangular(view(B1.data, :, :, ind)), rhs)
+function _ldivB1!(
+    B1::LowerTriangular{T,UniformBlockDiagonal{T}},
+    rhs::AbstractVector{T},
+    ind,
+) where {T}
+    return ldiv!(LowerTriangular(view(B1.data.data,:,:,ind)), rhs)
 end
 
 """
@@ -956,7 +967,7 @@ principal component, the first two principal components, etc.  The last element 
 always 1.0 representing the complete proportion of the variance.
 """
 function rePCA(m::LinearMixedModel; corr::Bool=true)
-    pca = PCA.(m.reterms, corr=corr)
+    pca = PCA.(m.reterms; corr=corr)
     return NamedTuple{_unique_fnames(m)}(getproperty.(pca, :cumvar))
 end
 
@@ -968,7 +979,7 @@ covariance matrices or correlation matrices when `corr` is `true`.
 """
 
 function PCA(m::LinearMixedModel; corr::Bool=true)
-    return NamedTuple{_unique_fnames(m)}(PCA.(m.reterms, corr=corr))
+    return NamedTuple{_unique_fnames(m)}(PCA.(m.reterms; corr=corr))
 end
 
 """
@@ -1106,18 +1117,17 @@ Base.show(io::IO, m::LinearMixedModel) = Base.show(io, MIME"text/plain"(), m)
 """
     _coord(A::AbstractMatrix)
 
-Return the positions and values of the nonzeros in `A` as a
-`NamedTuple{(:i, :j, :v), Tuple{Vector{Int32}, Vector{Int32}, Vector{Float64}}}`
+Return the positions and values of the nonzeros in `A` as a `TypedTables.Table` with columns `i`, `j`, and `v`
 """
 function _coord(A::Diagonal)
-    return (i=Int32.(axes(A, 1)), j=Int32.(axes(A, 2)), v=A.diag)
+    return Table(; i=Int32.(axes(A, 1)), j=Int32.(axes(A, 2)), v=A.diag)
 end
 
-function _coord(A::UniformBlockDiagonal)
-    dat = A.data
+function _coord(A::LowerTriangular{T,UniformBlockDiagonal{T}}) where {T}
+    dat = A.data.data
     r, c, k = size(dat)
     blk = repeat(r .* (0:(k - 1)); inner=r * c)
-    return (
+    return Table(;
         i=Int32.(repeat(1:r; outer=c * k) .+ blk),
         j=Int32.(repeat(1:c; inner=r, outer=k) .+ blk),
         v=vec(dat),
@@ -1130,18 +1140,41 @@ function _coord(A::SparseMatrixCSC{T,Int32}) where {T}
     for j in axes(A, 2), k in nzrange(A, j)
         cv[k] = j
     end
-    return (i=rv, j=cv, v=nonzeros(A))
+    return Table(; i=rv, j=cv, v=nonzeros(A))
 end
 
 _coord(A::BlockedSparse) = _coord(A.cscmat)
 
 function _coord(A::Matrix)
     m, n = size(A)
-    return (
+    return Table(;
         i=Int32.(repeat(axes(A, 1); outer=n)),
         j=Int32.(repeat(axes(A, 2); inner=m)),
         v=vec(A),
     )
+end
+
+function _triinds(n::Integer, uplo::Symbol)
+    inds = sizehint!(@NamedTuple{i::Int32, j::Int32}[], kp1choose2(n))
+    ul = uplo == :U
+    for j in Int32.(1:n)
+        for i in Int32.(ul ? (1:j) : (j:n))
+            push!(inds, (; i, j))
+        end
+    end
+    return Table(inds)
+end
+
+function _coord(A::LowerTriangular{T,Matrix{T}}) where {T}
+    tbl = _triinds(size(A, 2), :L)
+    v = [A[i, j] for (i, j) in tbl]
+    return Table(tbl; v)
+end
+
+function _coord(A::TriangularRFP{T}) where {T}
+    tbl = _triinds(size(A, 2), Symbol(A.uplo))
+    v = [A[i, j] for (i, j) in tbl]
+    return Table(tbl; v)
 end
 
 """
