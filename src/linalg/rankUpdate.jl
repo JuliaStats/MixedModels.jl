@@ -39,17 +39,17 @@ function rankUpdate!(C::HermOrSym{T,S}, A::StridedMatrix{T}, α, β) where {T,S}
     return C
 end
 
-function rankUpdate!(
-    C::HermOrSym{T,S}, A::StridedMatrix{T}, α, β
-) where {T,S<:LowerTriangular}
-    BLAS.syrk!(C.uplo, 'N', T(α), A, T(β), C.data.data)
-    return C
-end
+# function rankUpdate!(
+#     C::HermOrSym{T,S}, A::StridedMatrix{T}, α, β
+# ) where {T,S<:LowerTriangular}
+#     BLAS.syrk!(C.uplo, 'N', T(α), A, T(β), C.data.data)
+#     return C
+# end
 
-function rankUpdate!(C::HermitianRFP{T}, A::StridedMatrix{T}, α, β) where {T}
-    BLAS.syrk!('N', T(α), A, T(β), C)
-    return C
-end
+# function rankUpdate!(C::HermitianRFP{T}, A::StridedMatrix{T}, α, β) where {T}
+#     BLAS.syrk!('N', T(α), A, T(β), C)
+#     return C
+# end
 
 """
     _columndot(rv, nz, rngi, rngj)

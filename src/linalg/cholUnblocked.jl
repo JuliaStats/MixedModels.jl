@@ -48,9 +48,5 @@ function cholUnblocked!(D::Hermitian{T,UniformBlockDiagonal{T}}) where {T}
     return D
 end
 
-function cholUnblocked!(D::HermitianRFP)
-    if D.uplo ≠ 'L'
-        throw(ArgumentError("D must be stored in lower triangle"))
-    end
-    return LinearAlgebra.cholesky!(D)
-end
+cholUnblocked!(D::HermitianRFP) = LinearAlgebra.cholesky!(D)
+
