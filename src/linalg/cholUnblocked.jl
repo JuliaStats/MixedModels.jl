@@ -43,10 +43,9 @@ end
 function cholUnblocked!(D::Hermitian{T,UniformBlockDiagonal{T}}) where {T}
     Ddat = D.data.data
     for k in axes(Ddat, 3)
-        cholUnblocked!(view(Ddat,:,:,k))
+        cholUnblocked!(view(Ddat, :, :, k))
     end
     return D
 end
 
 cholUnblocked!(D::HermitianRFP) = LinearAlgebra.cholesky!(D)
-

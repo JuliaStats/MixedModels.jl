@@ -615,7 +615,7 @@ function copyscaleinflate!(
     dind = diagind(S, S)
     Ldat = copyto!(Ljj.data.data, Ajj.data)
     for k in axes(Ldat, 3)
-        f = view(Ldat,:,:,k)
+        f = view(Ldat, :, :, k)
         lmul!(λ', rmul!(f, λ))
         for i in dind
             f[i] += one(T)  # inflate diagonal
