@@ -568,8 +568,12 @@ Overwrite L with `Λ'AΛ + I`
 """
 function copyscaleinflate! end
 
-function copyscaleinflate!(Ljj::Diagonal{T}, Ajj::Diagonal{T}, Λj::ReMat{T,1}) where {T}
-    Ldiag, Adiag = Ljj.diag, Ajj.diag
+function copyscaleinflate!(
+    Ljj::Hermitian{T,Diagonal{T,Vector{T}}},
+    Ajj::Diagonal{T,Vector{T}},
+    Λj::ReMat{T,1},
+) where {T}
+    Ldiag, Adiag = Ljj.data.diag, Ajj.diag
     lambsq = abs2(only(Λj.λ.data))
     @inbounds for i in eachindex(Ldiag, Adiag)
         Ldiag[i] = muladd(lambsq, Adiag[i], one(T))
@@ -577,23 +581,39 @@ function copyscaleinflate!(Ljj::Diagonal{T}, Ajj::Diagonal{T}, Λj::ReMat{T,1}) 
     return Ljj
 end
 
-function copyscaleinflate!(Ljj::Matrix{T}, Ajj::Diagonal{T}, Λj::ReMat{T,1}) where {T}
-    fill!(Ljj, zero(T))
+function copyscaleinflate!(
+    Ljj::Hermitian{T,Matrix{T}},
+    Ajj::Diagonal{T},
+    Λj::ReMat{T,1},
+) where {T}
+    Ld = Ljj.data
+    fill!(Ld, zero(T))
     lambsq = abs2(only(Λj.λ.data))
     @inbounds for (i, a) in enumerate(Ajj.diag)
-        Ljj[i, i] = muladd(lambsq, a, one(T))
+        Ld[i, i] = muladd(lambsq, a, one(T))
+    end
+    return Ljj
+end
+
+function copyscaleinflate!(Ljj::HermitianRFP{T}, Ajj::Diagonal{T}, Λj::ReMat{T,1}) where {T}
+    fill!(Ljj.data, zero(T))
+    lambsq = abs2(only(Λj.λ.data))
+    LjjT = TriangularRFP(Ljj.data, Ljj.transr, Ljj.uplo)
+    @inbounds for (i, a) in enumerate(Ajj.diag)
+        LjjT[i, i] = muladd(lambsq, a, one(T))
     end
     return Ljj
 end
 
 function copyscaleinflate!(
-    Ljj::UniformBlockDiagonal{T},
+    Ljj::Hermitian{T,UniformBlockDiagonal{T}},
     Ajj::UniformBlockDiagonal{T},
     Λj::ReMat{T,S},
 ) where {T,S}
+    Ljj.uplo == 'L' || throw(ArgumentError("Ljj.uplo should be 'L'"))
     λ = Λj.λ
     dind = diagind(S, S)
-    Ldat = copyto!(Ljj.data, Ajj.data)
+    Ldat = copyto!(Ljj.data.data, Ajj.data)
     for k in axes(Ldat, 3)
         f = view(Ldat, :, :, k)
         lmul!(λ', rmul!(f, λ))
@@ -605,24 +625,52 @@ function copyscaleinflate!(
 end
 
 function copyscaleinflate!(
-    Ljj::Matrix{T},
+    Ljj::HermitianRFP{T},
+    Ajj::UniformBlockDiagonal{T},
+    Λj::ReMat{T,S},
+) where {T,S}    # S is an integer - the size of the diagonal blocks
+    LjjT = TriangularRFP(Ljj.data, Ljj.transr, Ljj.uplo)
+    q, r = divrem(size(Ljj, 1), S)
+    iszero(r) || throw(DimensionMismatch("size(Ljj, 1) is not a multiple of S"))
+    λ = Λj.λ
+    tmp = Array{T}(undef, S, S)
+    offset = 0
+    @inbounds for k in 1:q
+        copyto!(tmp, Ajj.data[:, :, k])
+        lmul!(adjoint(λ), rmul!(tmp, λ))
+        for j in 1:S
+            tmp[j, j] += one(T)
+        end
+        for j in 1:S
+            for i in j:S
+                LjjT[offset + i, offset + j] = tmp[i, j]
+            end
+        end
+        offset += S
+    end
+    return Ljj
+end
+
+function copyscaleinflate!(
+    Ljj::Hermitian{T,Matrix{T}},
     Ajj::UniformBlockDiagonal{T},
     Λj::ReMat{T,S},
 ) where {T,S}
-    copyto!(Ljj, Ajj)
-    n = LinearAlgebra.checksquare(Ljj)
+    LjjM = Ljj.data
+    copyto!(LjjM, Ajj)
+    n = LinearAlgebra.checksquare(LjjM)
     q, r = divrem(n, S)
     iszero(r) || throw(DimensionMismatch("size(Ljj, 1) is not a multiple of S"))
     λ = Λj.λ
     offset = 0
     @inbounds for _ in 1:q
         inds = (offset + 1):(offset + S)
-        tmp = view(Ljj, inds, inds)
+        tmp = view(LjjM, inds, inds)
         lmul!(adjoint(λ), rmul!(tmp, λ))
         offset += S
     end
-    for k in diagind(Ljj)
-        Ljj[k] += one(T)
+    for k in diagind(LjjM)
+        LjjM[k] += one(T)
     end
     return Ljj
 end

@@ -43,11 +43,11 @@ const LMM = LinearMixedModel
     end
 
     @testset "copyscaleinflate" begin
-        MixedModels.copyscaleinflate!(Lblk, ex22, vf1)
+        MixedModels.copyscaleinflate!(Hermitian(Lblk, :L), ex22, vf1)
         @test view(Lblk.data, :, :, 1) == [2. 3.; 2. 5.]
         setθ!(vf1, [1.,1.,1.])
         Λ = vf1.λ
-        MixedModels.copyscaleinflate!(Lblk, ex22, vf1)
+        MixedModels.copyscaleinflate!(Hermitian(Lblk, :L), ex22, vf1)
         target = Λ'view(ex22.data, :, :, 1)*Λ + I
         @test view(Lblk.data, :, :, 1) == target
     end
@@ -61,7 +61,7 @@ const LMM = LinearMixedModel
         @test vf1.λ == LowerTriangular(Matrix(I, 2, 2))
         setθ!(vf2, [1.75, 0.0, 1.0])
         A11 = vf1'vf1
-        L11 = MixedModels.cholUnblocked!(MixedModels.copyscaleinflate!(UniformBlockDiagonal(fill(0., size(A11.data))), A11, vf1), Val{:L})
+        L11 = MixedModels.cholUnblocked!(MixedModels.copyscaleinflate!(Hermitian(UniformBlockDiagonal(fill(0., size(A11.data))),:L), A11, vf1))
         L21 = vf2'vf1
         @test isa(L21, BlockedSparse)
         @test L21[1,1] == 30.0
@@ -74,6 +74,6 @@ const LMM = LinearMixedModel
 #        rdiv!(L21, adjoint(LowerTriangular(L11)))
 #        @test_broken L21.colblocks[1] == rdiv!(L21cb1, adjoint(LowerTriangular(L11.facevec[1])))
          A22 = vf2'vf2
-         L22 = MixedModels.copyscaleinflate!(UniformBlockDiagonal(fill(0., size(A22.data))), A22, vf2)
+         L22 = MixedModels.copyscaleinflate!(Hermitian(UniformBlockDiagonal(fill(0., size(A22.data))), :L), A22, vf2)
     end
 end
