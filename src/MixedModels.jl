@@ -29,7 +29,8 @@ using SparseArrays: SparseArrays, SparseMatrixCSC, SparseVector, dropzeros!, nnz
 using SparseArrays: nonzeros, nzrange, rowvals, sparse
 using StaticArrays: StaticArrays, SVector
 using Statistics: Statistics, mean, quantile, std
-using StatsAPI: StatsAPI, aic, aicc, bic, coef, coefnames, coeftable, confint, deviance
+using StatsAPI: StatsAPI, aic, aicc, bic, coef, coefnames, coeftable, confint
+using StatsAPI: cooksdistance, deviance
 using StatsAPI: dof, dof_residual, fit, fit!, fitted, isfitted, islinear, leverage
 using StatsAPI:
     loglikelihood, meanresponse, modelmatrix, nobs, pvalue, predict, r2, residuals
@@ -91,6 +92,7 @@ export @formula,
     condVar,
     condVartables,
     confint,
+    cooksdistance,
     deviance,
     dispersion,
     dispersion_parameter,
