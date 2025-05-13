@@ -416,12 +416,10 @@ end
 
 function StatsAPI.cooksdistance(model::LinearMixedModel)
     r = residuals(model)
-    n, p, _, _ = size(model)
-    mse = pwrss(model) / (n * p)
+    _, p, _, _ = size(model)
+    mse = dispersion(model, true)
     hii = leverage(model)
-    # scaled squared residual * normalized leverage
-    D = @. (r^2 / (p * mse)) * (hii / (1 - hii)^2)
-    return D
+    return @. (r / (1 - hii))^2 * hii / (mse * p)
 end
 
 StatsAPI.deviance(m::LinearMixedModel) = objective(m)
