@@ -414,6 +414,16 @@ function createAL(reterms::Vector{<:AbstractReMat{T}}, Xy::FeMat{T}) where {T}
     return identity.(A), identity.(L)
 end
 
+function StatsAPI.cooksdistance(model::LinearMixedModel)
+    r = residuals(model)
+    n, p, _, _ = size(model)
+    mse = pwrss(model) / (n * p)
+    hii = leverage(model)
+    # scaled squared residual * normalized leverage
+    D = @. (r^2 / (p * mse)) * (hii / (1 - hii)^2)
+    return D
+end
+
 StatsAPI.deviance(m::LinearMixedModel) = objective(m)
 
 GLM.dispersion(m::LinearMixedModel, sqr::Bool=false) = sqr ? varest(m) : sdest(m)

@@ -1,6 +1,11 @@
+MixedModels v4.35.0 Release Notes
+==============================
+- `StatsAPI.cooksdistance(::LinearMixedModel)` is now defined and exported. []
+
+
 MixedModels v4.34.1 Release Notes
 ==============================
-- Allow v0.19.0 of `BSplineKit.jl` to avoid warnings in `beta` and `nightly` versions of julia. (#823)
+- Allow v0.19.0 of `BSplineKit.jl` to avoid warnings in `beta` and `nightly` versions of julia. [#823]
 
 MixedModels v4.34.0 Release Notes
 ==============================
