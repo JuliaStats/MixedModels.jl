@@ -1,6 +1,6 @@
 MixedModels v4.35.0 Release Notes
 ==============================
-- `StatsAPI.cooksdistance(::LinearMixedModel)` is now defined and exported. []
+- `StatsAPI.cooksdistance(::LinearMixedModel)` is now defined and exported. [#825]
 
 
 MixedModels v4.34.1 Release Notes
@@ -632,3 +632,4 @@ Package dependencies
 [#814]: https://github.com/JuliaStats/MixedModels.jl/issues/814
 [#815]: https://github.com/JuliaStats/MixedModels.jl/issues/815
 [#823]: https://github.com/JuliaStats/MixedModels.jl/issues/823
+[#825]: https://github.com/JuliaStats/MixedModels.jl/issues/825
