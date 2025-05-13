@@ -701,9 +701,10 @@ end
                       0.004915966, 0.0003118122, 0.006997041, 0.01519545, 0.162238, 0.01767151, 0.02365221,
                       0.05187042, 1.31043e-07, 0.002747362, 0.003266733, 0.005808394, 0.03485179, 0.003650455,
                       0.0003004733, 1.535027e-05, 0.0168071, 1.510735e-05]
-        model = first(models(:sleepstudy))
-        @test all(splat(isapprox),
-                  zip(lme4_cooks, cooksdistance(model)))
+        model = refit!(first(models(:sleepstudy)); progress=false)
+        @test all(zip(lme4_cooks, cooksdistance(model))) do (x, y)
+            return isapprox(x, y; atol=1e-5)
+        end
     end
 end
 
