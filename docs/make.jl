@@ -2,23 +2,31 @@ using Documenter
 using MixedModels
 using StatsAPI
 using StatsBase
+using DocumenterVitepress
 
 makedocs(;
     sitename="MixedModels",
     doctest=true,
     pages=[
         "index.md",
-        "constructors.md",
-        "optimization.md",
-        "GaussHermite.md",
-        "prediction.md",
-        "bootstrap.md",
-        "rankdeficiency.md",
-        "mime.md",
-        "api.md",
+        "Articles" => [
+            "constructors.md",
+            "optimization.md",
+            "GaussHermite.md",
+            "prediction.md",
+            "bootstrap.md",
+            "rankdeficiency.md",
+            "mime.md"
+        ],
+        "api.md"
     ],
+    format = DocumenterVitepress.MarkdownVitepress(
+        repo = "https://github.com/JuliaStats/MixedModels.jl",
+    ),
+    clean = true
 )
 
 deploydocs(;
-    repo="github.com/JuliaStats/MixedModels.jl.git", push_preview=true, devbranch="main"
+    target = "build",
+    repo="github.com/JuliaStats/MixedModels.jl.git", push_preview=true, devbranch="ahk/doc-vite"
 )
