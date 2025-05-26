@@ -83,10 +83,13 @@ function rankUpdate!(
     β,
 ) where {T,S}
     require_one_based_indexing(C, A)
-    m, n = size(A)
-    Cd, rv, nz = C.data, A.rowval, A.nzval
     lower = C.uplo == 'L'
-    #    (lower ? m : n) == size(C, 2) || throw(DimensionMismatch())  # Doesn't make sense with lower.  
+    adim = lower ? 1 : 2
+    if size(C, 1) ≠ size(A, adim)
+        throw(DimensionMismatch("size(C,1) = $(size(C, 1)) does not match size(A,$adim) = $(size(A, adim))"))
+    end
+
+    Cd, rv, nz = C.data, A.rowval, A.nzval
     isone(β) || rmul!(lower ? LowerTriangular(Cd) : UpperTriangular(Cd), β)
     if lower
         @inbounds for jj in axes(A, 2)
