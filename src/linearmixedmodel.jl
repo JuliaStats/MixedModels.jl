@@ -1255,11 +1255,6 @@ Mark a model as unfitted.
 function unfit!(model::LinearMixedModel{T}) where {T}
     model.optsum.feval = -1
     model.optsum.initial_step = T[]
-    if length(model.optsum.final) == length(model.optsum.initial)
-        copyto!(model.optsum.final, model.optsum.initial)
-    else
-        model.optsum.final = copy(model.optsum.initial)
-    end
     reevaluateAend!(model)
 
     return model
