@@ -151,7 +151,7 @@ function _markdown(m::MixedModel)
     re_without_fe = setdiff!(
         # why not use `Set`? because ordering can change between releases, while
         # unique preserves the original order
-        unique(mapfoldl(x -> getproperty(x, :cnames), vcat, m.reterms)), coefnames(m)
+        unique!(mapfoldl(x -> getproperty(x, :cnames), append!, m.reterms; init=String[])), coefnames(m)
     )
 
     for bname in re_without_fe
