@@ -792,8 +792,8 @@ function unfit!(model::GeneralizedLinearMixedModel{T}) where {T}
     optsum.lowerbd = mapfoldl(lowerbd, vcat, reterms)
     # for variances (bounded at zero), we have ones, while
     # for everything else (bounded at -Inf), we have zeros
-    optsum.initial = map(T ∘ iszero, optsum.lowerbd)
-    optsum.final = copy(optsum.initial)
+    map!(T ∘ iszero, optsum.initial, optsum.lowerbd)
+    copyto!(optsum.final, optsum.initial)
     optsum.xtol_abs = fill!(copy(optsum.initial), 1.0e-10)
     optsum.initial_step = T[]
     optsum.feval = -1

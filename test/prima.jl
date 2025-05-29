@@ -16,14 +16,19 @@ prmodel = LinearMixedModel(formula(model), dataset(:sleepstudy))
 prmodel.optsum.backend = :prima
 
 @testset "$optimizer" for optimizer in (:cobyla, :lincoa)
-    MixedModels.unfit!(prmodel)
+    unfit!(prmodel)
     prmodel.optsum.optimizer = optimizer
     fit!(prmodel; progress=false, fitlog=false)
     @test isapprox(loglikelihood(model), loglikelihood(prmodel))
 end
 
+@testset "refit!" begin
+    refit!(prmodel; progress=false, fitlog=true)
+    @test prmodel.optsum.fitlog[1][1] = [1.0]
+end
+
 @testset "failure" begin
-    MixedModels.unfit!(prmodel)
+    unfit!(prmodel)
     prmodel.optsum.optimizer = :bobyqa
     prmodel.optsum.maxfeval = 5
     @test_logs((:warn, r"PRIMA optimization failure"),

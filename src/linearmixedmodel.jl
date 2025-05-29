@@ -1253,8 +1253,13 @@ end
 Mark a model as unfitted.
 """
 function unfit!(model::LinearMixedModel{T}) where {T}
-    model.optsum.feval = -1
-    model.optsum.initial_step = T[]
+    optsum = model.optsum
+    optsum.feval = -1
+    optsum.initial_step = T[]
+    # for variances (bounded at zero), we have ones, while
+    # for everything else (bounded at -Inf), we have zeros
+    map!(T ∘ iszero, optsum.initial, optsum.lowerbd)
+    copyto!(optsum.final, optsum.initial)
     reevaluateAend!(model)
 
     return model
