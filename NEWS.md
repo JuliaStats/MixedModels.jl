@@ -1,6 +1,6 @@
 MixedModels v4.36.0 Release Notes
 ==============================
-- The final parameter vector `optsum.final` is now reset in calls to `unfit!`. This has the secondary effect of correctly starting the fit for `prfit!` at the initial parameter vector instead of the final parameter vector of any previous optimization.
+- The final parameter vector `optsum.final` is now reset in calls to `unfit!`. This has the secondary effect of correctly starting the fit for `prfit!` at the initial parameter vector instead of the final parameter vector of any previous optimization. [#828]
 
 MixedModels v4.35.0 Release Notes
 ==============================
@@ -636,3 +636,4 @@ Package dependencies
 [#815]: https://github.com/JuliaStats/MixedModels.jl/issues/815
 [#823]: https://github.com/JuliaStats/MixedModels.jl/issues/823
 [#825]: https://github.com/JuliaStats/MixedModels.jl/issues/825
+[#828]: https://github.com/JuliaStats/MixedModels.jl/issues/828
