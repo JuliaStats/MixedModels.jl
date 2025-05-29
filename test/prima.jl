@@ -24,7 +24,7 @@ end
 
 @testset "refit!" begin
     refit!(prmodel; progress=false, fitlog=true)
-    @test prmodel.optsum.fitlog[1][1] = [1.0]
+    @test prmodel.optsum.fitlog[1][1] == [1.0]
 end
 
 @testset "failure" begin
