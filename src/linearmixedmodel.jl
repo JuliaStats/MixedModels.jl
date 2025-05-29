@@ -1084,7 +1084,7 @@ function Base.show(io::IO, ::MIME"text/plain", m::LinearMixedModel)
     return show(io, coeftable(m))
 end
 
-Base.show(io::IO, m::LinearMixedModel) = Base.show(io, MIME"text/plain"(), m)
+Base.show(io::IO, m::LinearMixedModel) = Base.show(io, MIME("text/plain"), m)
 
 """
     _coord(A::AbstractMatrix)

@@ -3,7 +3,10 @@ using LinearAlgebra, StableRNGs, StatsModels, Test
 import MixedModels: statsrank
 
 xtx(X) = Symmetric(X'X, :U)  # creat the symmetric matrix X'X from X
-LinearAlgebra.rank(F::LinearAlgebra.QRPivoted; tol=1e-8) = searchsortedlast(abs.(diag(F.R)), tol, rev=true);
+# this is defined in Julia 1.13
+@static if VERSION < v"1.13.0-DEV.655"
+    LinearAlgebra.rank(F::LinearAlgebra.QRPivoted; tol=1e-8) = searchsortedlast(abs.(diag(F.R)), tol, rev=true)
+end
 
 const rng = StableRNG(4321234)
 
