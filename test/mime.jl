@@ -31,7 +31,7 @@ fmre.optsum.feval = 1
 lrt = likelihoodratiotest(fm0, fm1)
 
 @testset "markdown" begin
-    mime = MIME"text/markdown"()
+    mime = MIME("text/markdown")
     gm3.optsum.feval = -1
     @test_logs (:warn, "Model has not been fit: results will be nonsense") sprint(show, mime, gm3)
     gm3.optsum.feval = 1

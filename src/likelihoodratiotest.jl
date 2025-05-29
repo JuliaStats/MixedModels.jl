@@ -230,7 +230,7 @@ function Base.show(io::IO, ::MIME"text/plain", lrt::LikelihoodRatioTest)
     return nothing
 end
 
-Base.show(io::IO, lrt::LikelihoodRatioTest) = Base.show(io, MIME"text/plain"(), lrt)
+Base.show(io::IO, lrt::LikelihoodRatioTest) = Base.show(io, MIME("text/plain"), lrt)
 
 function _iscomparable(m::LinearMixedModel...)
     isconstant(getproperty.(getproperty.(m, :optsum), :REML)) || throw(

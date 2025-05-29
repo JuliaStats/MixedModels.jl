@@ -763,7 +763,7 @@ function Base.show(
     return show(io, coeftable(m))
 end
 
-Base.show(io::IO, m::GeneralizedLinearMixedModel) = show(io, MIME"text/plain"(), m)
+Base.show(io::IO, m::GeneralizedLinearMixedModel) = show(io, MIME("text/plain"), m)
 
 function stderror!(v::AbstractVector{T}, m::GeneralizedLinearMixedModel{T}) where {T}
     # initialize to appropriate NaN for rank-deficient case
