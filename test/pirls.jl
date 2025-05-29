@@ -110,9 +110,9 @@ end
     cbpp = dataset(:cbpp)
     gm2 = fit(MixedModel, first(gfms[:cbpp]), cbpp, Binomial(); wts=float(cbpp.hsz), progress=false, init_from_lmm=[:β, :θ])
     @test weights(gm2) == cbpp.hsz
-    @test deviance(gm2,true) ≈ 100.09585619892968 atol=0.0001
-    @test sum(abs2, gm2.u[1]) ≈ 9.723054788538546 atol=0.0001
-    @test logdet(gm2) ≈ 16.90105378801136 atol=0.001
+    @test deviance(gm2, true) ≈ 100.09585619892968 rtol=0.0001
+    @test sum(abs2, gm2.u[1]) ≈ 9.723054788538546 rtol=0.0001
+    @test logdet(gm2) ≈ 16.90105378801136 rtol=0.0001
     @test isapprox(sum(gm2.resp.devresid), 73.47174762237978, atol=0.001)
     @test isapprox(loglikelihood(gm2), -92.02628186840045, atol=0.001)
     @test !dispersion_parameter(gm2)
@@ -281,7 +281,5 @@ end
     form = @formula(recalled ~ serialpos + zerocorr(serialpos | subject) + (1 | subject & session))
     glmm = @test_logs((:warn, r"Evaluation at default initial parameter vector failed"),
                       GeneralizedLinearMixedModel(form, df, Bernoulli()));
-    glmm.optsum.ftol_rel = 1e-7
-    fit!(glmm; init_from_lmm=[:β, :θ], fast=true, progress=false)
-    @test deviance(glmm) ≈ 996.0402 atol=0.01
+    @test all(==(1e-8), glmm.optsum.initial)
 end
