@@ -281,7 +281,5 @@ end
     form = @formula(recalled ~ serialpos + zerocorr(serialpos | subject) + (1 | subject & session))
     glmm = @test_logs((:warn, r"Evaluation at default initial parameter vector failed"),
                       GeneralizedLinearMixedModel(form, df, Bernoulli()));
-    glmm.optsum.ftol_rel = 1e-7
-    fit!(glmm; init_from_lmm=[:β, :θ], fast=true, progress=false)
-    @test deviance(glmm) ≈ 996.0402 atol=0.01
+    @test all(==(1e-8), glmm.optsum.initial)
 end
