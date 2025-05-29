@@ -152,7 +152,7 @@ function _markdown(m::MixedModel)
         # why not use `Set`? because ordering can change between releases, while
         # unique preserves the original order
         unique!(mapfoldl(x -> getproperty(x, :cnames), append!, m.reterms; init=String[])),
-        coefnames(m)
+        coefnames(m),
     )
 
     for bname in re_without_fe
