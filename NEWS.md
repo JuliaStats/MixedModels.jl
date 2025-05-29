@@ -1,4 +1,4 @@
-MixedModels v4.36.0 Release Notes
+MixedModels v4.35.1 Release Notes
 ==============================
 - The final parameter vector `optsum.final` is now reset in calls to `unfit!`. This has the secondary effect of correctly starting the fit for `prfit!` at the initial parameter vector instead of the final parameter vector of any previous optimization. [#828]
 
