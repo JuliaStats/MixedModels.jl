@@ -98,3 +98,17 @@ end
 
     @test startswith(out, expected)
 end
+
+@testset "instvalfits" begin   # repeat the fits from the Blocked Cholesky paper
+    dat = dataset(:insteval)
+    f1 = @formula(y ~ 1 + service + (1|s) + (1|d) + (1|dept) + (0 + service|dept))
+    progress = false
+    m1 = fit(MixedModel, f1, dat; progress)
+    println(m1)
+    println(m1.optsum)
+    @test isapprox(objective(m1), 237648.6016)
+    prfit!(m1; progress)
+    println(m1)
+    println(m1.optsum)
+    @test isapprox(objective(m1), 237648.6016)
+end
