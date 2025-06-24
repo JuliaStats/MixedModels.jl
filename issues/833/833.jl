@@ -12,6 +12,6 @@ _lmm.optsum.optimizer = :LN_COBYLA
 
 fit!(_lmm; REML = true, fitlog=true)
 
-θ = _lmm.θ    # keep a copy of the optimal θ
-lines(0.4:0.01:1.0, x -> objective(updateL!(setθ!(_lmm, (x,)))))
-setθ!(_lmm, θ)
+θ = copy(_lmm.θ)                      # keep a copy of the optimal θ
+lines(0.4:0.01:1.0, objective!(_lmm)) # I wrote the method for objective! then forgot it 
+objective!(_lmm, θ)
