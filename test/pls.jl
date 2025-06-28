@@ -323,15 +323,15 @@ end
     @test lowerbd(fm) == [0.0, -Inf, 0.0]
     A11 = first(fm.A)
     @test isa(A11, UniformBlockDiagonal{Float64})
-    @test isa(first(fm.L), UniformBlockDiagonal{Float64})
+    @test isa(first(fm.L), LowerTriangular{Float64, UniformBlockDiagonal{Float64}})
     @test size(A11) == (36, 36)
     a11 = view(A11.data, :, :, 1)
     @test a11 == [10. 45.; 45. 285.]
     @test size(A11.data, 3) == 18
     λ = first(fm.λ)
-    b11 = LowerTriangular(view(first(fm.L).data, :, :, 1))
+    b11 = LowerTriangular(view(first(fm.L).data.data, :, :, 1))
     @test b11 * b11' ≈ λ'a11*λ + I rtol=1e-5
-    @test count(!iszero, Matrix(first(fm.L))) == 18 * 4
+    @test count(!iszero, Matrix(first(fm.L).data)) == 18 * 4
     @test rank(fm) == 2
 
     @test objective(fm) ≈ 1751.9393444647046

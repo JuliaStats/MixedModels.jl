@@ -46,7 +46,7 @@ function LinearAlgebra.mul!(
 end
 
 function LinearAlgebra.ldiv!(
-    A::UpperTriangular{T,<:Adjoint{T,UniformBlockDiagonal{T}}}, B::StridedVector{T}
+    A::UpperTriangular{T,Adjoint{T,UniformBlockDiagonal{T}}}, B::StridedVector{T}
 ) where {T}
     adjA = A.data
     length(B) == size(A, 2) || throw(DimensionMismatch(""))
@@ -60,7 +60,8 @@ function LinearAlgebra.ldiv!(
 end
 
 function LinearAlgebra.rdiv!(
-    A::Matrix{T}, B::UpperTriangular{T,<:Adjoint{T,UniformBlockDiagonal{T}}}
+    A::Matrix{T},
+    B::UpperTriangular{T,Adjoint{T,UniformBlockDiagonal{T}}},
 ) where {T}
     m, n = size(A)
     Bd = B.data.parent
@@ -78,7 +79,8 @@ function LinearAlgebra.rdiv!(
 end
 
 function LinearAlgebra.rdiv!(
-    A::BlockedSparse{T,S,P}, B::UpperTriangular{T,<:Adjoint{T,UniformBlockDiagonal{T}}}
+    A::BlockedSparse{T,S,P},
+    B::UpperTriangular{T,Adjoint{T,UniformBlockDiagonal{T}}},
 ) where {T,S,P}
     Bpd = B.data.parent
     Bdat = Bpd.data

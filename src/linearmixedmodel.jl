@@ -42,10 +42,22 @@ struct LinearMixedModel{T<:AbstractFloat} <: MixedModel{T}
 end
 
 function LinearMixedModel(
-    f::FormulaTerm, tbl; contrasts=Dict{Symbol,Any}(), wts=[], σ=nothing, amalgamate=true
+    f::FormulaTerm,
+    tbl;
+    contrasts=Dict{Symbol,Any}(),
+    wts=[],
+    σ=nothing,
+    amalgamate=true,
+    RFPthreshold=1000,
 )
     return LinearMixedModel(
-        f::FormulaTerm, Tables.columntable(tbl); contrasts, wts, σ, amalgamate
+        f::FormulaTerm,
+        Tables.columntable(tbl);
+        contrasts,
+        wts,
+        σ,
+        amalgamate,
+        RFPthreshold,
     )
 end
 
@@ -55,7 +67,7 @@ const _MISSING_RE_ERROR = ArgumentError(
 
 function LinearMixedModel(
     f::FormulaTerm, tbl::Tables.ColumnTable; contrasts=Dict{Symbol,Any}(), wts=[],
-    σ=nothing, amalgamate=true,
+    σ=nothing, amalgamate=true, RFPthreshold=1000,
 )
     fvars = StatsModels.termvars(f)
     tvars = Tables.columnnames(tbl)
@@ -77,7 +89,7 @@ function LinearMixedModel(
 
     y, Xs = modelcols(form, tbl)
 
-    return LinearMixedModel(y, Xs, form, wts, σ, amalgamate)
+    return LinearMixedModel(y, Xs, form, wts, σ, amalgamate, RFPthreshold)
 end
 
 """
@@ -100,6 +112,7 @@ function LinearMixedModel(
     wts=[],
     σ=nothing,
     amalgamate=true,
+    RFPthreshold=1000,
 )
     T = promote_type(Float64, float(eltype(y)))  # ensure eltype of model matrices is at least Float64
 
@@ -133,12 +146,12 @@ function LinearMixedModel(
     end
     isempty(reterms) && throw(_MISSING_RE_ERROR)
     return LinearMixedModel(
-        convert(Array{T}, y), only(feterms), reterms, form, wts, σ, amalgamate
+        convert(Array{T}, y), only(feterms), reterms, form, wts, σ, amalgamate, RFPthreshold
     )
 end
 
 """
-    LinearMixedModel(y, feterm, reterms, form, wts=[], σ=nothing; amalgamate=true)
+    LinearMixedModel(y, feterm, reterms, form, wts=[], σ=nothing; amalgamate=true, RFPthreshold=1000)
 
 Private constructor for a `LinearMixedModel` given already assembled fixed and random effects.
 
@@ -159,6 +172,7 @@ function LinearMixedModel(
     wts=[],
     σ=nothing,
     amalgamate=true,
+    RFPthreshold=1000,
 ) where {T}
     # detect and combine RE terms with the same grouping var
     if length(reterms) > 1 && amalgamate
@@ -172,7 +186,7 @@ function LinearMixedModel(
     sqrtwts = map!(sqrt, Vector{T}(undef, length(wts)), wts)
     reweight!.(reterms, Ref(sqrtwts))
     reweight!(Xy, sqrtwts)
-    A, L = createAL(reterms, Xy)
+    A, L = createAL(reterms, Xy; RFPthreshold)
     lbd = foldl(vcat, lowerbd(c) for c in reterms)
     θ = foldl(vcat, getθ(c) for c in reterms)
     optsum = OptSummary(θ, lbd)
@@ -384,9 +398,13 @@ function _pushALblock!(A, L, blk)
     return push!(A, deepcopy(isa(blk, BlockedSparse) ? blk.cscmat : blk))
 end
 
-function createAL(reterms::Vector{<:AbstractReMat{T}}, Xy::FeMat{T}) where {T}
+function createAL(
+    reterms::Vector{<:AbstractReMat{T}},
+    Xy::FeMat{T};
+    RFPthreshold::Int=1000,
+) where {T}
     k = length(reterms)
-    vlen = kchoose2(k + 1)
+    vlen = kp1choose2(k + 1)
     A = sizehint!(AbstractMatrix{T}[], vlen)
     L = sizehint!(AbstractMatrix{T}[], vlen)
     for i in eachindex(reterms)
@@ -394,16 +412,23 @@ function createAL(reterms::Vector{<:AbstractReMat{T}}, Xy::FeMat{T}) where {T}
             _pushALblock!(A, L, densify(reterms[i]' * reterms[j]))
         end
     end
-    for j in eachindex(reterms)   # can't fold this into the previous loop b/c block order
+    for j in eachindex(reterms)     # can't fold this into the previous loop b/c block order
         _pushALblock!(A, L, densify(Xy' * reterms[j]))
     end
     _pushALblock!(A, L, densify(Xy'Xy))
-    for i in 2:k      # check for fill-in due to non-nested grouping factors
+    for i in 2:k                    # check for fill-in due to non-nested grouping factors
         ci = reterms[i]
         for j in 1:(i - 1)
             cj = reterms[j]
             if !isnested(cj, ci)
-                for l in i:k
+                ind = kp1choose2(i) # location of i'th diagonal block
+                Li = collect(L[ind])
+                L[ind] = if size(Li, 2) > RFPthreshold
+                    TriangularRFP(Li, :L)
+                else
+                    LowerTriangular(Li)
+                end
+                for l in (i + 1):k
                     ind = block(l, i)
                     L[ind] = Matrix(L[ind])
                 end
@@ -411,7 +436,14 @@ function createAL(reterms::Vector{<:AbstractReMat{T}}, Xy::FeMat{T}) where {T}
             end
         end
     end
-    return identity.(A), identity.(L)
+    for k in axes(reterms, 1)    # patch up the UniformBlockDiagonal in L for nested factors
+        diagind = kp1choose2(k)
+        Ldi = L[diagind]
+        if isa(Ldi, UniformBlockDiagonal)
+            L[diagind] = LowerTriangular(Ldi)
+        end
+    end
+    return identity.(A), identity.(L)  # does anyone remember what the `identity` is for?`
 end
 
 function StatsAPI.cooksdistance(model::LinearMixedModel)
@@ -718,8 +750,12 @@ end
 
 # use dispatch to distinguish Diagonal and UniformBlockDiagonal in first(L)
 _ldivB1!(B1::Diagonal{T}, rhs::AbstractVector{T}, ind) where {T} = rhs ./= B1.diag[ind]
-function _ldivB1!(B1::UniformBlockDiagonal{T}, rhs::AbstractVector{T}, ind) where {T}
-    return ldiv!(LowerTriangular(view(B1.data, :, :, ind)), rhs)
+function _ldivB1!(
+    B1::LowerTriangular{T,UniformBlockDiagonal{T}},
+    rhs::AbstractVector{T},
+    ind,
+) where {T}
+    return ldiv!(LowerTriangular(view(B1.data.data, :, :, ind)), rhs)
 end
 
 """
@@ -939,7 +975,7 @@ principal component, the first two principal components, etc.  The last element 
 always 1.0 representing the complete proportion of the variance.
 """
 function rePCA(m::LinearMixedModel; corr::Bool=true)
-    pca = PCA.(m.reterms, corr=corr)
+    pca = PCA.(m.reterms; corr=corr)
     return NamedTuple{_unique_fnames(m)}(getproperty.(pca, :cumvar))
 end
 
@@ -951,7 +987,7 @@ covariance matrices or correlation matrices when `corr` is `true`.
 """
 
 function PCA(m::LinearMixedModel; corr::Bool=true)
-    return NamedTuple{_unique_fnames(m)}(PCA.(m.reterms, corr=corr))
+    return NamedTuple{_unique_fnames(m)}(PCA.(m.reterms; corr=corr))
 end
 
 """
@@ -1089,18 +1125,17 @@ Base.show(io::IO, m::LinearMixedModel) = Base.show(io, MIME("text/plain"), m)
 """
     _coord(A::AbstractMatrix)
 
-Return the positions and values of the nonzeros in `A` as a
-`NamedTuple{(:i, :j, :v), Tuple{Vector{Int32}, Vector{Int32}, Vector{Float64}}}`
+Return the positions and values of the nonzeros in `A` as a `TypedTables.Table` with columns `i`, `j`, and `v`
 """
 function _coord(A::Diagonal)
-    return (i=Int32.(axes(A, 1)), j=Int32.(axes(A, 2)), v=A.diag)
+    return Table(; i=Int32.(axes(A, 1)), j=Int32.(axes(A, 2)), v=A.diag)
 end
 
-function _coord(A::UniformBlockDiagonal)
-    dat = A.data
+function _coord(A::LowerTriangular{T,UniformBlockDiagonal{T}}) where {T}
+    dat = A.data.data
     r, c, k = size(dat)
     blk = repeat(r .* (0:(k - 1)); inner=r * c)
-    return (
+    return Table(;
         i=Int32.(repeat(1:r; outer=c * k) .+ blk),
         j=Int32.(repeat(1:c; inner=r, outer=k) .+ blk),
         v=vec(dat),
@@ -1113,18 +1148,41 @@ function _coord(A::SparseMatrixCSC{T,Int32}) where {T}
     for j in axes(A, 2), k in nzrange(A, j)
         cv[k] = j
     end
-    return (i=rv, j=cv, v=nonzeros(A))
+    return Table(; i=rv, j=cv, v=nonzeros(A))
 end
 
 _coord(A::BlockedSparse) = _coord(A.cscmat)
 
 function _coord(A::Matrix)
     m, n = size(A)
-    return (
+    return Table(;
         i=Int32.(repeat(axes(A, 1); outer=n)),
         j=Int32.(repeat(axes(A, 2); inner=m)),
         v=vec(A),
     )
+end
+
+function _triinds(n::Integer, uplo::Symbol)
+    inds = sizehint!(@NamedTuple{i::Int32, j::Int32}[], kp1choose2(n))
+    ul = uplo == :U
+    for j in Int32.(1:n)
+        for i in Int32.(ul ? (1:j) : (j:n))
+            push!(inds, (; i, j))
+        end
+    end
+    return Table(inds)
+end
+
+function _coord(A::LowerTriangular{T,Matrix{T}}) where {T}
+    tbl = _triinds(size(A, 2), :L)
+    v = [A[i, j] for (i, j) in tbl]
+    return Table(tbl; v)
+end
+
+function _coord(A::TriangularRFP{T}) where {T}
+    tbl = _triinds(size(A, 2), Symbol(A.uplo))
+    v = [A[i, j] for (i, j) in tbl]
+    return Table(tbl; v)
 end
 
 """
@@ -1273,14 +1331,16 @@ Update the blocked lower Cholesky factor, `m.L`, from `m.A` and `m.reterms` (use
 This is the crucial step in evaluating the objective, given a new parameter value.
 """
 function updateL!(m::LinearMixedModel{T}) where {T}
-    A, L, reterms = m.A, m.L, m.reterms
+    (; A, L, reterms) = m
     k = length(reterms)
     copyto!(last(m.L), last(m.A))  # ensure the fixed-effects:response block is copied
-    for j in eachindex(reterms) # pre- and post-multiply by Λ, add I to diagonal
+    for j in eachindex(reterms)    # pre- and post-multiply by Λ, add I to diagonal
         cj = reterms[j]
         diagind = kp1choose2(j)
-        copyscaleinflate!(L[diagind], A[diagind], cj)
-        for i in (j + 1):(k + 1)     # postmultiply column by Λ
+        LdH = L[diagind]
+        LdH = isa(LdH, LowerTriangular) ? Hermitian(LdH.data, :L) : Hermitian(LdH, :L)
+        copyscaleinflate!(LdH, A[diagind], cj)
+        for i in (j + 1):(k + 1)   # postmultiply column by Λ
             bij = block(i, j)
             rmulΛ!(copyto!(L[bij], A[bij]), cj)
         end
@@ -1290,17 +1350,17 @@ function updateL!(m::LinearMixedModel{T}) where {T}
     end
     for j in 1:(k + 1)             # blocked Cholesky
         Ljj = L[kp1choose2(j)]
+        LjjH = isa(Ljj, LowerTriangular) ? Hermitian(Ljj.data, :L) : Hermitian(Ljj, :L)
         for jj in 1:(j - 1)
-            rankUpdate!(Hermitian(Ljj, :L), L[block(j, jj)], -one(T), one(T))
+            rankUpdate!(LjjH, L[block(j, jj)], -one(T), one(T))
         end
-        cholUnblocked!(Ljj, Val{:L})
-        LjjT = isa(Ljj, Diagonal) ? Ljj : LowerTriangular(Ljj)
+        cholUnblocked!(LjjH)
         for i in (j + 1):(k + 1)
             Lij = L[block(i, j)]
             for jj in 1:(j - 1)
                 mul!(Lij, L[block(i, jj)], L[block(j, jj)]', -one(T), one(T))
             end
-            rdiv!(Lij, LjjT')
+            rdiv!(Lij, Ljj')
         end
     end
     return m
