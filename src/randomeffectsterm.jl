@@ -33,15 +33,20 @@ end
 
 schema(t, data, hints) = StatsModels.schema(t, data, hints)
 
-function schema(t::FunctionTerm{typeof(|)}, data, hints::Dict{Symbol})
-    sch = schema(t.args[1], data, hints)
-    vars = StatsModels.termvars.(t.args[2])
+function schema(t::RandomEffectsTerm, data, hints::Dict{Symbol})
+    sch = schema(t.lhs, data, hints)
+    vars = StatsModels.termvars.(t.rhs)
     # in the event that someone has x|x, then the Grouping()
-    # gets overwrriten by the broader schema BUT
+    # gets overwritten by the broader schema BUT
     # that doesn't matter because we detect and throw an error
     # for that in apply_schema
     grp_hints = Dict(rr => Grouping() for rr in vars)
-    return merge(schema(t.args[2], data, grp_hints), sch)
+    return merge(schema(t.rhs, data, grp_hints), sch)
+end
+
+function schema(t::FunctionTerm{typeof(|)}, data, hints::Dict{Symbol})
+    re = RandomEffectsTerm(t.args[1], t.args[2])
+    return schema(re, data, hints)
 end
 
 is_randomeffectsterm(::Any) = false
@@ -101,7 +106,9 @@ function StatsModels.apply_schema(
     )
         lhs = InterceptTerm{true}() + lhs
     end
-    lhs, rhs = apply_schema.((lhs, rhs), Ref(schema), Mod)
+    lhs = apply_schema(lhs, schema, Mod)
+    rhs = apply_schema(rhs, schema, Mod)
+
 
     # check whether grouping terms are categorical or interaction of categorical
     check_re_group_type(rhs) || throw(
