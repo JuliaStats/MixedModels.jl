@@ -34,7 +34,7 @@ end
     d = (; y=rand(100),
         x=rand('A':'Z', 100),
         z=rand('A':'Z', 100),
-        grp=rand(1:26, 100))
+        grp=rand(1:26, 100)) # we want this to be numeric so that we don't get past categorical checks by default
     contrasts = Dict{Symbol, Any}()
 
     @testset "blocking variables are grouping" for f in [@formula(y ~ 1 + x + (1|grp)),
