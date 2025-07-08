@@ -1,38 +1,40 @@
 name: Style-Enforcer
 concurrency:
-  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 on:
   push:
     branches:
       - 'main'
-    tags: '*'
+    tags:
+      - '*'
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
-    # note: keep in sync with `format/run.jl`
     paths-ignore:
       - 'README.md'
       - '.gitignore'
 jobs:
   format-check:
-    name: Style Enforcement (Julia ${{ matrix.julia-version }} - ${{ github.event_name }})
-    # Run on push's or non-draft PRs
-    if: (github.event_name == 'push') || (github.event.pull_request.draft == false)
+    name: Julia
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        julia-version: [1.6]
     steps:
-      - uses: julia-actions/setup-julia@latest
-        with:
-          version: ${{ matrix.julia-version }}
       - uses: actions/checkout@v4
-      - name: Instantiate `format` environment and format
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: "1"
+      - uses: julia-actions/cache@v2
+      - name: Install JuliaFormatter
+        shell: julia --project=@format --color=yes {0}
         run: |
-          julia --project=format -e 'using Pkg; Pkg.instantiate()'
-          julia --project=format 'format/run.jl'
+          using Pkg
+          Pkg.add(PackageSpec(; name="JuliaFormatter", version="1"))
+      - name: Check formatting
+        shell: julia --project=@format --color=yes {0}
+        run: |
+          using JuliaFormatter
+          format("."; verbose=true) || exit(1)
+      # Add formatting suggestions to non-draft PRs when "Check formatting" fails
       - uses: reviewdog/action-suggester@v1
-        if: github.event_name == 'pull_request'
+        if: ${{ !cancelled() && github.event_name == 'pull_request' && github.event.pull_request.draft == false }}
         with:
           tool_name: JuliaFormatter
-          fail_on_error: true
