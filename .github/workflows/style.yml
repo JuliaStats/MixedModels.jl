@@ -32,7 +32,9 @@ jobs:
         shell: julia --project=@format --color=yes {0}
         run: |
           using JuliaFormatter
-          format("."; verbose=true) || exit(1)
+          paths = ["src", "test"]
+          isdir("ext") && push!(paths, "ext")
+          format(paths; verbose=true) || exit(1)
       # Add formatting suggestions to non-draft PRs when "Check formatting" fails
       - uses: reviewdog/action-suggester@v1
         if: ${{ !cancelled() && github.event_name == 'pull_request' && github.event.pull_request.draft == false }}
