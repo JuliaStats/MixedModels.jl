@@ -14,8 +14,7 @@ end
 const PRIMABackend = Val{:prima}
 
 function MixedModels.prfit!(m::LinearMixedModel;
-                            kwargs...)
-
+    kwargs...)
     MixedModels.unfit!(m)
     m.optsum.optimizer = :bobyqa
     m.optsum.backend = :prima
@@ -28,7 +27,7 @@ prima_optimizer!(::Val{:cobyla}, args...; kwargs...) = PRIMA.cobyla!(args...; kw
 prima_optimizer!(::Val{:lincoa}, args...; kwargs...) = PRIMA.lincoa!(args...; kwargs...)
 
 function MixedModels.optimize!(m::LinearMixedModel, ::PRIMABackend;
-                               progress::Bool=true, fitlog::Bool=false, kwargs...)
+    progress::Bool=true, fitlog::Bool=false, kwargs...)
     optsum = m.optsum
     prog = ProgressUnknown(; desc="Minimizing", showspeed=true)
     fitlog && empty!(optsum.fitlog)
@@ -57,8 +56,8 @@ function MixedModels.optimize!(m::LinearMixedModel, ::PRIMABackend;
 
     maxfun = optsum.maxfeval > 0 ? optsum.maxfeval : 500 * length(optsum.initial)
     info = prima_optimizer!(Val(optsum.optimizer), obj, optsum.final;
-                            xl=optsum.lowerbd, maxfun,
-                            optsum.rhoend, optsum.rhobeg)
+        xl=optsum.lowerbd, maxfun,
+        optsum.rhoend, optsum.rhobeg)
     ProgressMeter.finish!(prog)
     optsum.feval = info.nf
     optsum.fmin = info.fx
@@ -68,9 +67,9 @@ function MixedModels.optimize!(m::LinearMixedModel, ::PRIMABackend;
 end
 
 function MixedModels.optimize!(m::GeneralizedLinearMixedModel, ::PRIMABackend;
-                               progress::Bool=true, fitlog::Bool=false,
-                               fast::Bool=false, verbose::Bool=false, nAGQ=1,
-                               kwargs...)
+    progress::Bool=true, fitlog::Bool=false,
+    fast::Bool=false, verbose::Bool=false, nAGQ=1,
+    kwargs...)
     optsum = m.optsum
     prog = ProgressUnknown(; desc="Minimizing", showspeed=true)
     fitlog && empty!(opstum.fitlog)
@@ -108,9 +107,9 @@ function MixedModels.optimize!(m::GeneralizedLinearMixedModel, ::PRIMABackend;
         sc
     end
     info = prima_optimizer!(Val(optsum.optimizer), obj, optsum.final;
-                            xl=optsum.lowerbd, maxfun,
-                            optsum.rhoend, optsum.rhobeg,
-                            scale)
+        xl=optsum.lowerbd, maxfun,
+        optsum.rhoend, optsum.rhobeg,
+        scale)
     ProgressMeter.finish!(prog)
 
     optsum.feval = info.nf
