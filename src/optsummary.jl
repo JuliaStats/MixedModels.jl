@@ -60,8 +60,8 @@ Base.@kwdef mutable struct OptSummary{T<:AbstractFloat}
     ftol_zero_abs::T = eltype(initial)(1.e-5)
     maxfeval::Int = -1
 
-    optimizer::Symbol = :LN_BOBYQA
-    backend::Symbol = :nlopt
+    optimizer::Symbol = :newuoa
+    backend::Symbol = :prima
 
     # the @kwdef macro isn't quite smart enough for us to use the type parameter
     # for the default values, but we can fake it
@@ -85,7 +85,7 @@ end
 function OptSummary(
     initial::Vector{T},
     lowerbd::Vector{S},
-    optimizer::Symbol=:LN_BOBYQA; kwargs...,
+    optimizer::Symbol=:newuoa; kwargs...,
 ) where {T<:AbstractFloat,S<:AbstractFloat}
     TS = promote_type(T, S)
     return OptSummary{TS}(; initial, lowerbd, optimizer, kwargs...)

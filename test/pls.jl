@@ -158,13 +158,13 @@ end
         @test iszero(r)
         @test d == length(first(fitlogtbl.θ))
     end
-    @testset "profile" begin
-        dspr01 = profile(only(models(:dyestuff)))
-        sigma0row = only(filter(r -> r.p == :σ && iszero(r.ζ), dspr01.tbl))
-        @test sigma0row.σ ≈ dspr01.m.σ
-        @test sigma0row.β1 ≈ only(dspr01.m.β)
-        @test sigma0row.θ1 ≈ only(dspr01.m.θ)
-    end
+    # @testset "profile" begin
+    #     dspr01 = profile(only(models(:dyestuff)))
+    #     sigma0row = only(filter(r -> r.p == :σ && iszero(r.ζ), dspr01.tbl))
+    #     @test sigma0row.σ ≈ dspr01.m.σ
+    #     @test sigma0row.β1 ≈ only(dspr01.m.β)
+    #     @test sigma0row.θ1 ≈ only(dspr01.m.θ)
+    # end
 end
 
 @testset "Dyestuff2" begin

@@ -20,8 +20,8 @@ using LinearAlgebra: ldiv!, lmul!, logdet, mul!, norm, normalize, normalize!, qr
 using LinearAlgebra: rank, rdiv!, rmul!, svd, tril!
 using Markdown: Markdown
 using MixedModelsDatasets: dataset, datasets
-using NLopt: NLopt, Opt
 using PooledArrays: PooledArrays, PooledArray
+using PRIMA
 using PrecompileTools: PrecompileTools, @setup_workload, @compile_workload
 using ProgressMeter: ProgressMeter, Progress, ProgressUnknown, finish!, next!
 using Random: Random, AbstractRNG, randn!
@@ -128,10 +128,10 @@ export @formula,
     parametricbootstrap,
     pirls!,
     predict,
-    profile,
-    profileσ,
-    profilesigma,
-    profilevc,
+#    profile,
+#    profileσ,
+#    profilesigma,
+#    profilevc,
     pvalue,
     pwrss,
     ranef,
@@ -212,14 +212,13 @@ include("blockdescription.jl")
 include("grouping.jl")
 include("mimeshow.jl")
 include("serialization.jl")
-include("profile/profile.jl")
-include("nlopt.jl")
+#include("profile/profile.jl")
 include("prima.jl")
 
 
 # aliases with non-unicode function names
 const settheta! = setθ!
-const profilesigma = profileσ
+# const profilesigma = profileσ
 
 # COV_EXCL_START
 @setup_workload begin

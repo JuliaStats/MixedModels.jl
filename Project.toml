@@ -1,7 +1,7 @@
 name = "MixedModels"
 uuid = "ff71e718-51f3-5ec2-a782-8ffcbfa3c316"
 author = ["Phillip Alday <me@phillipalday.com>", "Douglas Bates <dmbates@gmail.com>"]
-version = "4.35.2"
+version = "4.36.0"
 
 [deps]
 Arrow = "69666777-d1a9-59fb-9406-91d4454c9d45"
@@ -14,11 +14,11 @@ JSON3 = "0f8b85d8-7281-11e9-16c2-39a750bddbf1"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 Markdown = "d6f4376e-aef5-505a-96c1-9c027394607a"
 MixedModelsDatasets = "7e9fb7ac-9f67-43bf-b2c8-96ba0796cbb6"
-NLopt = "76087f3c-5699-56af-9a33-bf431cd00edd"
 PooledArrays = "2dfb63ee-cc39-5dd5-95bd-886bf059d720"
 PrecompileTools = "aea7be01-6a6a-4083-8856-8a6e6704d82a"
 ProgressMeter = "92933f4c-e287-5a05-a399-4b506db050ca"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+PRIMA = "0a7d04aa-8ac2-47b3-b7a7-9dbd6ad661ed"
 SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
@@ -29,12 +29,6 @@ StatsModels = "3eaba693-59b7-5ba5-a881-562e759f1c8d"
 StructTypes = "856f2bd8-1eba-4b0a-8007-ebc267875bd4"
 Tables = "bd369af6-aec1-5ad0-b16a-f7cc5008161c"
 TypedTables = "9d95f2ec-7b3d-5a63-8d20-e2491e220bb9"
-
-[weakdeps]
-PRIMA = "0a7d04aa-8ac2-47b3-b7a7-9dbd6ad661ed"
-
-[extensions]
-MixedModelsPRIMAExt = ["PRIMA"]
 
 [compat]
 Aqua = "0.8"
@@ -51,7 +45,6 @@ JSON3 = "1"
 LinearAlgebra = "1"
 Markdown = "1"
 MixedModelsDatasets = "0.1"
-NLopt = "0.6, 1"
 PRIMA = "0.2"
 PooledArrays = "0.5, 1"
 PrecompileTools = "1"
@@ -77,10 +70,9 @@ Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 ExplicitImports = "7d51a73a-1435-4ff3-83d9-f097790105c7"
 InteractiveUtils = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
-PRIMA = "0a7d04aa-8ac2-47b3-b7a7-9dbd6ad661ed"
 StableRNGs = "860ef19b-820b-49d6-a774-d7a799459cd3"
 Suppressor = "fd094767-a336-5f1f-9728-57cf17d0bbfb"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Aqua", "DataFrames", "ExplicitImports", "InteractiveUtils", "PRIMA", "StableRNGs", "Suppressor", "Test"]
+test = ["Aqua", "DataFrames", "ExplicitImports", "InteractiveUtils", "StableRNGs", "Suppressor", "Test"]
