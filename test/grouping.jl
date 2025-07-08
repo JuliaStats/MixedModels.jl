@@ -37,9 +37,9 @@ end
         grp=rand(1:26, 100)) # we want this to be numeric so that we don't get past categorical checks by default
     contrasts = Dict{Symbol, Any}()
 
-    @testset "blocking variables are grouping" for f in [@formula(y ~ 1 + x + (1|grp)),
+    @testset "blocking variables are grouping: $f" for f in [@formula(y ~ 1 + x + (1|grp)),
                                                          @formula(y ~ 1 + x + zerocorr(1|grp)),
-                                                        # term(:y) ~ term(:x) + (term(1)|(term(:grp))),
+                                                         term(:y) ~ term(:x) + (term(1)|(term(:grp))),
                                                         #  term(:y) ~ term(:x) + zerocorr(term(1)|(term(:grp)))
                                                         ]
         fsch = schematize(f, d, contrasts)
@@ -53,7 +53,7 @@ end
 
     @testset "FE contrasts take priority" for f in [@formula(y ~ 1 + x + (1|x)),
                                                     @formula(y ~ 1 + x + zerocorr(1|x)),
-                                                    # term(:y) ~ term(:x) + (term(1)|(term(:x))),
+                                                    term(:y) ~ term(:x) + (term(1)|(term(:x))),
                                                     # term(:y) ~ term(:x) + zerocorr(term(1)|(term(:x)))
                                                     ]
         fsch = schematize(f, d, contrasts)
