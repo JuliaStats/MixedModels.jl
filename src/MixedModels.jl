@@ -215,7 +215,6 @@ include("serialization.jl")
 #include("profile/profile.jl")
 include("prima.jl")
 
-
 # aliases with non-unicode function names
 const settheta! = setθ!
 # const profilesigma = profileσ
