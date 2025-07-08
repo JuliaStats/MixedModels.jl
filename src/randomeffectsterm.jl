@@ -33,7 +33,7 @@ end
 
 schema(t, data, hints) = StatsModels.schema(t, data, hints)
 
-function schema(t::RandomEffectsTerm, data, hints::Dict{Symbol})
+function schema(t::AbstractReTerm, data, hints::Dict{Symbol})
     sch = schema(t.lhs, data, hints)
     vars = StatsModels.termvars.(t.rhs)
     # in the event that someone has x|x, then the Grouping()
