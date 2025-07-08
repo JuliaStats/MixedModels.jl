@@ -57,6 +57,7 @@ PooledArrays = "0.5, 1"
 PrecompileTools = "1"
 ProgressMeter = "1.7"
 Random = "1"
+RegressionFormulae = "0.1.3"
 SparseArrays = "1"
 StableRNGs = "0.1, 1"
 StaticArrays = "0.11, 0.12, 1"
@@ -78,9 +79,10 @@ DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 ExplicitImports = "7d51a73a-1435-4ff3-83d9-f097790105c7"
 InteractiveUtils = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
 PRIMA = "0a7d04aa-8ac2-47b3-b7a7-9dbd6ad661ed"
+RegressionFormulae = "545c379f-4ec2-4339-9aea-38f2fb6a8ba2"
 StableRNGs = "860ef19b-820b-49d6-a774-d7a799459cd3"
 Suppressor = "fd094767-a336-5f1f-9728-57cf17d0bbfb"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Aqua", "DataFrames", "ExplicitImports", "InteractiveUtils", "PRIMA", "StableRNGs", "Suppressor", "Test"]
+test = ["Aqua", "DataFrames", "ExplicitImports", "InteractiveUtils", "PRIMA", "RegressionFormulae", "StableRNGs", "Suppressor", "Test"]
