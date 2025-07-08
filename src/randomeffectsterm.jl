@@ -109,7 +109,6 @@ function StatsModels.apply_schema(
     lhs = apply_schema(lhs, schema, Mod)
     rhs = apply_schema(rhs, schema, Mod)
 
-
     # check whether grouping terms are categorical or interaction of categorical
     check_re_group_type(rhs) || throw(
         ArgumentError(
