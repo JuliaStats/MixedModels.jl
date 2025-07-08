@@ -32,7 +32,7 @@ jobs:
         shell: julia --project=@format --color=yes {0}
         run: |
           using JuliaFormatter
-          paths = ["src", "test"]
+          paths = ["docs", "src"]
           isdir("ext") && push!(paths, "ext")
           format(paths; verbose=true) || exit(1)
       # Add formatting suggestions to non-draft PRs when "Check formatting" fails
