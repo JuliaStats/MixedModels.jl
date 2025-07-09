@@ -2,6 +2,10 @@ using Aqua
 using ExplicitImports
 using GLM
 using MixedModels
+# we don't actually use RegressionFormulae
+# but we want to make sure we're not at odds with each other
+# in our term privateering
+using RegressionFormulae
 using Test
 
 import InteractiveUtils: versioninfo
