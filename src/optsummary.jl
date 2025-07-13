@@ -33,7 +33,7 @@ Summary of an optimization
 * `rhoend`: as in PRIMA, not used in NLopt
 
 ## MixedModels-specific fields, unrelated to the optimizer
-* `fitlog`: A vector of tuples of parameter and objectives values from steps in the optimization
+* `fitlog`: a `Vector{T}` recording the objective values and parameter vectors from the optimization
 * `nAGQ`: number of adaptive Gauss-Hermite quadrature points in deviance evaluation for GLMMs
 * `REML`: use the REML criterion for LMM fits
 * `sigma`: a priori value for the residual standard deviation for LMM
@@ -76,7 +76,7 @@ Base.@kwdef mutable struct OptSummary{T<:AbstractFloat}
     rhoend::T = rhobeg / 1_000_000
 
     # not SVector because we would need to parameterize on size (which breaks GLMM)
-    fitlog::Vector{Tuple{Vector{T},T}} = Vector{Tuple{Vector{T},T}}()
+    fitlog::Vector{T} = T[]
     nAGQ::Int = 1
     REML::Bool = false
     sigma::Union{T,Nothing} = nothing
@@ -89,34 +89,6 @@ function OptSummary(
 ) where {T<:AbstractFloat,S<:AbstractFloat}
     TS = promote_type(T, S)
     return OptSummary{TS}(; initial, lowerbd, optimizer, kwargs...)
-end
-
-"""
-    columntable(s::OptSummary, [stack::Bool=false])
-
-Return `s.fitlog` as a `Tables.columntable`.
-
-When `stack` is false (the default), there will be 3 columns in the result:
-- `iter`: the iteration number
-- `objective`: the value of the objective at that sample
-- `θ`: the parameter vector at that sample
-
-When `stack` is true, there will be 4 columns: `iter`, `objective`, `par`, and `value`
-where `value` is the stacked contents of the `θ` vectors (the equivalent of `vcat(θ...)`)
-and `par` is a vector of parameter numbers.
-"""
-function Tables.columntable(s::OptSummary; stack::Bool=false)
-    fitlog = s.fitlog
-    val = (; iter=axes(fitlog, 1), objective=last.(fitlog), θ=first.(fitlog))
-    stack || return val
-    θ1 = first(val.θ)
-    k = length(θ1)
-    return (;
-        iter=repeat(val.iter; inner=k),
-        objective=repeat(val.objective; inner=k),
-        par=repeat(1:k; outer=length(fitlog)),
-        value=foldl(vcat, val.θ; init=(eltype(θ1))[]),
-    )
 end
 
 function Base.show(io::IO, ::MIME"text/plain", s::OptSummary)

@@ -528,6 +528,19 @@ function StatsAPI.fit!(
 end
 
 """
+    fitlog(m::LinearMixedModel{T})
+
+Extract `m.optsum.fitlog` as a `Tables.MatrixTable`
+"""
+function fitlog(m::LinearMixedModel)
+    header = append!([:objective], Symbol.("p_", join.(m.parmap, "_")))
+    return Tables.table(
+        collect(transpose(reshape(m.optsum.fitlog, length(m.optsum.initial) + 1, :)));
+        header,
+    )
+end
+
+"""
     fitted!(v::AbstractArray{T}, m::LinearMixedModel{T})
 
 Overwrite `v` with the fitted values from `m`.
@@ -966,9 +979,7 @@ This provides a canonical converged value of θ.  We use unconstrained optimizat
 hassle of constrained optimization.
 """
 function rectify!(m::LinearMixedModel)
-    foreach(m.λ) do λ
-        rectify!(λ)
-    end
+    rectify!.(m.λ)
     return m
 end
 

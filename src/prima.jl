@@ -33,7 +33,7 @@ prima_optimizer!(::Val{:lincoa}, args...; kwargs...) = PRIMA.lincoa!(args...; kw
 prima_optimizer!(::Val{:newuoa}, args...; kwargs...) = PRIMA.newuoa!(args...; kwargs...)
 
 function MixedModels.optimize!(m::LinearMixedModel, ::PRIMABackend;
-                               progress::Bool=true, fitlog::Bool=false, kwargs...)
+                               progress::Bool=true, fitlog::Bool=true, kwargs...)
     optsum = m.optsum
     prog = ProgressUnknown(; desc="Minimizing", showspeed=true)
     fitlog && empty!(optsum.fitlog)
@@ -56,7 +56,7 @@ function MixedModels.optimize!(m::LinearMixedModel, ::PRIMABackend;
             end
         end
         progress && ProgressMeter.next!(prog; showvalues=[(:objective, val)])
-        fitlog && push!(optsum.fitlog, (copy(x), val))
+        fitlog && append!(push!(optsum.fitlog, val), x)
         return val
     end
 

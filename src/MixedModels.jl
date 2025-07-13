@@ -239,11 +239,11 @@ const settheta! = setθ!
         show(io, m)
         show(io, m.PCA.subj)
         show(io, m.rePCA)
-        fit(MixedModel,
-            @formula(use ~ 1 + age + abs2(age) + urban + livch + (1 | urban & dist)),
-            contra,
-            Bernoulli();
-            progress)
+        # fit(MixedModel,
+        #     @formula(use ~ 1 + age + abs2(age) + urban + livch + (1 | urban & dist)),
+        #     contra,
+        #     Bernoulli();
+        #     progress)
     end
 end
 # COV_EXCL_STOP
