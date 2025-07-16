@@ -1,5 +1,6 @@
 using MixedModels
 using MixedModels: dataset
+using Arrow
 
 @isdefined(gfms) || const global gfms = Dict(
     :cbpp => [@formula((incid/hsz) ~ 1 + period + (1|herd))],
@@ -39,7 +40,7 @@ using MixedModels: dataset
 
 # for some reason it seems necessary to prime the pump in julia-1.6.0-DEV
 @isdefined(fittedmodels) || const global fittedmodels = Dict{Symbol,Vector{MixedModel}}(
-    :dyestuff => [fit(MixedModel, only(fms[:dyestuff]), dataset(:dyestuff); progress=false)]
+    :dyestuff => [fit(MixedModel, only(fms[:dyestuff]), dataset(:dyestuff); progress=false, fitlog=true)]
 );
 
 @isdefined(allfms) || const global allfms = merge(fms, gfms)
@@ -48,7 +49,15 @@ using MixedModels: dataset
 if !@isdefined(models)
     function models(nm::Symbol)
         get!(fittedmodels, nm) do
-            [fit(MixedModel, f, dataset(nm); progress=false) for f in allfms[nm]]
+            [fit(MixedModel, f, dataset(nm); progress=false, fitlog=true) for f in allfms[nm]]
+        end
+    end
+end
+
+if !@isdefined(archive_fitlogs)
+    function archive_fitlogs(nm::Symbol; dir="./fitlogs/Apple_M_series/AppleAccelerate")
+        for (j, m) in enumerate(models(nm))
+            Arrow.write(joinpath(dir, string(nm, "_", j, ".arrow")), MixedModels.fitlog(m))
         end
     end
 end

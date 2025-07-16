@@ -512,7 +512,7 @@ function StatsAPI.fit!(
         if (zeroobj = objective!(m, xmin_)) ≤ (fmin + optsum.ftol_zero_abs)
             fmin = zeroobj
             copyto!(xmin, xmin_)
-            fitlog && push!(optsum.fitlog, (copy(xmin), fmin))
+            fitlog && append!(push!(optsum.fitlog, fmin), xmin)
         end
     end
 
