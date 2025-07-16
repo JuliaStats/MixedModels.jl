@@ -496,10 +496,13 @@ function StatsAPI.fit!(
     end
 
     xmin, fmin = optimize!(m; progress, fitlog)
+    setθ!(m, xmin)                   # ensure that the parameters saved in m are xmin
+    rectify!(m)                      # flip signs of columns of m.λ elements with negative diagonal els
+    getθ!(xmin, m)                   # use the rectified values as xmin
 
     ## check if small non-negative parameter values can be set to zero
     xmin_ = copy(xmin)
-    lb = optsum.lowerbd
+    lb = optsum.lowerbd              # FIXME: this will not exist in the future.  Check for on diagonal instead
     for i in eachindex(xmin_)
         if iszero(lb[i]) && zero(T) < xmin_[i] < optsum.xtol_zero_abs
             xmin_[i] = zero(T)
@@ -509,7 +512,7 @@ function StatsAPI.fit!(
         if (zeroobj = objective!(m, xmin_)) ≤ (fmin + optsum.ftol_zero_abs)
             fmin = zeroobj
             copyto!(xmin, xmin_)
-            fitlog && push!(optsum.fitlog, (copy(xmin), fmin))
+            fitlog && append!(push!(optsum.fitlog, fmin), xmin)
         end
     end
 
@@ -517,11 +520,24 @@ function StatsAPI.fit!(
     # because we do that during the initial guess and rescale check
 
     ## ensure that the parameter values saved in m are xmin
-    objective!(m)(xmin)
+    objective!(m, xmin)
 
     optsum.final = xmin
     optsum.fmin = fmin
     return m
+end
+
+"""
+    fitlog(m::LinearMixedModel{T})
+
+Extract `m.optsum.fitlog` as a `Tables.MatrixTable`
+"""
+function fitlog(m::LinearMixedModel)
+    header = append!([:objective], Symbol.("p_", join.(m.parmap, "_")))
+    return Tables.table(
+        collect(transpose(reshape(m.optsum.fitlog, length(m.optsum.initial) + 1, :)));
+        header,
+    )
 end
 
 """
@@ -952,6 +968,34 @@ covariance matrices or correlation matrices when `corr` is `true`.
 
 function PCA(m::LinearMixedModel; corr::Bool=true)
     return NamedTuple{_unique_fnames(m)}(PCA.(m.reterms, corr=corr))
+end
+
+"""
+    rectify!(m::LinearMixedModel)
+
+For each element of m.λ check for negative values on the diagonal and flip the signs of the entire column when any are present.
+
+This provides a canonical converged value of θ.  We use unconstrained optimization followed by this reassignment to avoid the
+hassle of constrained optimization.
+"""
+function rectify!(m::LinearMixedModel)
+    rectify!.(m.λ)
+    return m
+end
+
+function rectify!(λ::LowerTriangular)
+    for (j,c) in enumerate(eachcol(λ.data))
+        if c[j] < 0
+            c .*= -1
+        end
+    end
+    return λ
+end
+
+function rectify!(λ::Diagonal)
+    d = λ.diag
+    map!(abs, d, d)
+    return λ
 end
 
 """
