@@ -130,7 +130,7 @@ lrt = likelihoodratiotest(fm0, fm1)
                          | **Optimizer settings**   |                             |
                          | Optimizer                | `LN_BOBYQA`                 |
                          | Backend                  | `nlopt`                     |
-                         | Lower bounds             | [0.0, -Inf, 0.0]            |
+                         | Lower bounds             | [-Inf, -Inf, -Inf]          |
                          | ftol_rel                 | 1.0e-12                     |
                          | ftol_abs                 | 1.0e-8                      |
                          | xtol_rel                 | 0.0                         |

@@ -296,6 +296,10 @@ function StatsAPI.fit!(
 
     xmin, fmin = optimize!(m; progress, fitlog, fast, verbose, nAGQ)
 
+    θopt = length(xmin) == length(θ) ? xmin : view(xmin, (length(β) + 1):lastindex(xmin))
+    rectify!(m.LMM)                  # flip signs of columns of m.λ elements with negative diagonal els
+    getθ!(θopt, m)                   # use the rectified values in xmin
+
     ## check if very small parameter values bounded below by zero can be set to zero
     xmin_ = copy(xmin)
     for i in eachindex(xmin_)
