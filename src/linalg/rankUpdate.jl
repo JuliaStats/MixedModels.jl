@@ -180,7 +180,7 @@ function rankUpdate!(
 
     @inbounds for j in axes(Ac, 2)
         nzr = nzrange(Ac, j)
-        BLAS.syr!('L', α, view(nz, nzr), view(Cdat, :, :, div(rv[last(nzr)], S)))
+        BLAS.syr!('L', α, view(nz, nzr), view(Cdat,:,:,div(rv[last(nzr)], S)))
     end
 
     return C

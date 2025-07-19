@@ -54,7 +54,7 @@ function LinearAlgebra.ldiv!(
     m, n, k = size(Adat)
     bb = reshape(B, (n, k))
     for j in axes(Adat, 3)
-        ldiv!(UpperTriangular(adjoint(view(Adat, :, :, j))), view(bb, :, j))
+        ldiv!(UpperTriangular(adjoint(view(Adat,:,:,j))), view(bb, :, j))
     end
     return B
 end
@@ -71,7 +71,7 @@ function LinearAlgebra.rdiv!(
         coloffset = (b - 1) * s
         rdiv!(
             view(A, :, (coloffset + 1):(coloffset + s)),
-            UpperTriangular(adjoint(view(Bdd, :, :, b))),
+            UpperTriangular(adjoint(view(Bdd,:,:,b))),
         )
     end
     return A
@@ -89,7 +89,7 @@ function LinearAlgebra.rdiv!(
     for j in axes(Bdat, 3)
         rdiv!(
             reshape(view(nzv, cbpt[j]:(cbpt[j + 1] - 1)), :, P),
-            UpperTriangular(adjoint(view(Bdat, :, :, j))),
+            UpperTriangular(adjoint(view(Bdat,:,:,j))),
         )
     end
     return A

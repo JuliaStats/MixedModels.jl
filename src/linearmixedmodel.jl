@@ -335,7 +335,7 @@ function condVar(m::LinearMixedModel{T}, fname) where {T}
         fill!(scratch, zero(T))
         copyto!(view(scratch, (b - 1) * vsz .+ (1:vsz), :), λt)
         ldiv!(Lblk, scratch)
-        mul!(view(val, :, :, b), scratch', scratch)
+        mul!(view(val,:,:,b), scratch', scratch)
     end
     return val
 end
@@ -344,7 +344,7 @@ function _cvtbl(arr::Array{T,3}, trm) where {T}
     return merge(
         NamedTuple{(fname(trm),)}((trm.levels,)),
         columntable([
-            NamedTuple{(:σ, :ρ)}(sdcorr(view(arr, :, :, i))) for i in axes(arr, 3)
+            NamedTuple{(:σ, :ρ)}(sdcorr(view(arr,:,:,i))) for i in axes(arr, 3)
         ]),
     )
 end
@@ -504,7 +504,7 @@ function StatsAPI.fit!(
     ## check if small non-negative parameter values can be set to zero
     xmin_ = copy(xmin)
     for (i, pm) in enumerate(m.parmap)
-        if  pm[2] == pm[3] && zero(T) < xmin_[i] < optsum.xtol_zero_abs
+        if pm[2] == pm[3] && zero(T) < xmin_[i] < optsum.xtol_zero_abs
             xmin_[i] = zero(T)
         end
     end
@@ -696,7 +696,7 @@ function _set_init!(m::LinearMixedModel)
     end
     return m
 end
- 
+
 StatsAPI.islinear(m::LinearMixedModel) = true
 
 """
@@ -735,7 +735,7 @@ end
 # use dispatch to distinguish Diagonal and UniformBlockDiagonal in first(L)
 _ldivB1!(B1::Diagonal{T}, rhs::AbstractVector{T}, ind) where {T} = rhs ./= B1.diag[ind]
 function _ldivB1!(B1::UniformBlockDiagonal{T}, rhs::AbstractVector{T}, ind) where {T}
-    return ldiv!(LowerTriangular(view(B1.data, :, :, ind)), rhs)
+    return ldiv!(LowerTriangular(view(B1.data,:,:,ind)), rhs)
 end
 
 """
@@ -952,7 +952,6 @@ end
 
 LinearAlgebra.rank(m::LinearMixedModel) = m.feterm.rank
 
-
 """
     rectify!(m::LinearMixedModel)
 
@@ -967,7 +966,7 @@ function rectify!(m::LinearMixedModel)
 end
 
 function rectify!(λ::LowerTriangular)
-    for (j,c) in enumerate(eachcol(λ.data))
+    for (j, c) in enumerate(eachcol(λ.data))
         if c[j] < 0
             c .*= -1
         end
@@ -993,7 +992,7 @@ principal component, the first two principal components, etc.  The last element 
 always 1.0 representing the complete proportion of the variance.
 """
 function rePCA(m::LinearMixedModel; corr::Bool=true)
-    pca = PCA.(m.reterms, corr=corr)
+    pca = PCA.(m.reterms; corr=corr)
     return NamedTuple{_unique_fnames(m)}(getproperty.(pca, :cumvar))
 end
 
@@ -1005,7 +1004,7 @@ covariance matrices or correlation matrices when `corr` is `true`.
 """
 
 function PCA(m::LinearMixedModel; corr::Bool=true)
-    return NamedTuple{_unique_fnames(m)}(PCA.(m.reterms, corr=corr))
+    return NamedTuple{_unique_fnames(m)}(PCA.(m.reterms; corr=corr))
 end
 
 """
