@@ -13,13 +13,10 @@ function _abstractify_grouping(f::FormulaTerm)
     re = map(re) do trm
         if trm.rhs isa InteractionTerm
             rhs = mapreduce(&, trm.rhs.terms) do tt
-                # how to define Grouping() for interactions on the RHS?
-                # contr[tt.sym] = Grouping()
-                return Term(tt.sym)
+                return StatsModels.term(tt.sym)
             end
         else
-            contr[trm.rhs.sym] = Grouping()
-            rhs = Term(trm.rhs.sym)
+            rhs = StatsModels.term(trm.rhs.sym)
         end
         return trm.lhs | rhs
     end

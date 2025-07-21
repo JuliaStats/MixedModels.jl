@@ -1,3 +1,7 @@
+MixedModels v4.36.0 Release Notes
+==============================
+- Automatic application of grouping contrasts now works for `RandomEffectsTerm`s constructed programmatically, e.g. with `(term(1) | term(:g))`. [#836]
+
 MixedModels v4.35.2 Release Notes
 ==============================
 - Update to the `show(::IO, ::MIME, x)` methods for consistent ordering across Julia versions of variance components without associated fixed effects. This may result in change of ordering on existing Julia versions, but ordering will now match the ordering in the default REPL display (and reflect the model internal ordering), [#829]
@@ -642,3 +646,4 @@ Package dependencies
 [#825]: https://github.com/JuliaStats/MixedModels.jl/issues/825
 [#828]: https://github.com/JuliaStats/MixedModels.jl/issues/828
 [#829]: https://github.com/JuliaStats/MixedModels.jl/issues/829
+[#836]: https://github.com/JuliaStats/MixedModels.jl/issues/836
