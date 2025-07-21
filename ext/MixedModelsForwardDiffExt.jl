@@ -57,9 +57,9 @@ values.
 $(FORWARDDIFF)
 """
 function ForwardDiff.gradient(
-    model::LinearMixedModel{T}, θσ::Vector{T}=[model.θ; model.σ]
+    model::LinearMixedModel{T}, θ::Vector{T}=model.θ,
 ) where {T}
-    return ForwardDiff.gradient(fd_deviance(model), θσ)
+    return ForwardDiff.gradient(fd_deviance(model), θ)
 end
 
 """
@@ -71,9 +71,9 @@ values.
 $(FORWARDDIFF)
 """
 function ForwardDiff.hessian(
-    model::LinearMixedModel{T}, θσ::Vector{T}=[model.θ; model.σ]
+    model::LinearMixedModel{T}, θ::Vector{T}=model.θ,
 ) where {T}
-    return ForwardDiff.hessian(fd_deviance(model), θσ)
+    return ForwardDiff.hessian(fd_deviance(model), θ)
 end
 
 #####
@@ -82,9 +82,10 @@ end
 
 MixedModels.fd_deviance(model) = Base.Fix1(fd_deviance, model)
 
-function MixedModels.fd_deviance(model::LinearMixedModel, θσ::AbstractVector{T}) where {T}
-    σ² = θσ[end]^2
-    θ = θσ[1:(end - 1)]
+function MixedModels.fd_deviance(model::LinearMixedModel, θ::AbstractVector{T}) where {T}
+    # σ² = θσ[end]^2
+    # θ = θσ[1:(end - 1)]
+    σ² = model.σ^2
     dof = ssqdenom(model)
 
     # Extract and promote
