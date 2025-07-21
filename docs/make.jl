@@ -15,6 +15,7 @@ makedocs(;
         "bootstrap.md",
         "rankdeficiency.md",
         "mime.md",
+        "forwarddiff.md",
         "api.md",
     ],
 )

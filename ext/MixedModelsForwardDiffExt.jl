@@ -12,28 +12,69 @@ using MixedModels: AbstractReMat,
     rmulΛ!,
     ssqdenom,
     UniformBlockDiagonal
-using LinearAlgebra
-using LinearAlgebra: PosDefException, copy_oftype
-using SparseArrays
-using Statistics
+using LinearAlgebra: LinearAlgebra,
+    /, # why ExplicitImports?!
+    Diagonal,
+    Hermitian,
+    HermOrSym,
+    LowerTriangular,
+    # PosDefException,
+    cholesky!,
+    copyto!,
+    copy_oftype,
+    mul!,
+    rdiv!,
+    rmul!
 
-using ForwardDiff
+using SparseArrays: SparseArrays, nzrange
 
-function ForwardDiff.hessian(model::LinearMixedModel{T}, θσ::Vector{T}=[model.θ; model.σ]) where {T}
-    return ForwardDiff.hessian(fd_deviance(model), θσ)
+using ForwardDiff: ForwardDiff
+
+const FORWARDDIFF = """
+!!! warning "ForwardDiff.jl support is experimental."
+    Compatibility with ForwardDiff.jl is experimental. The precise structure,
+    including function names and method definitions, is subject to
+    change without being considered a breaking change. In particular,
+    the exact set of parameters included is subject to change. The
+    θ parameter is always included, but whether σ and/or the fixed effects
+    should be included is currently still being decided.
+"""
+
+"""
+    gradient(model::LinearMixedModel)
+
+Evaluate the Hessian of the objective function at the currently fitted parameter
+values.
+
+$(FORWARDDIFF)
+"""
+function ForwardDiff.gradient(
+    model::LinearMixedModel{T}, θσ::Vector{T}=[model.θ; model.σ]
+) where {T}
+    return ForwardDiff.gradient(fd_deviance(model), θσ)
 end
 
-function ForwardDiff.gradient(model::LinearMixedModel{T}, θσ::Vector{T}=[model.θ; model.σ]) where {T}
-    return ForwardDiff.gradient(fd_deviance(model), θσ)
+"""
+    hessian(model::LinearMixedModel)
+
+Evaluate the Hessian of the objective function at the currently fitted parameter
+values.
+
+$(FORWARDDIFF)
+"""
+function ForwardDiff.hessian(
+    model::LinearMixedModel{T}, θσ::Vector{T}=[model.θ; model.σ]
+) where {T}
+    return ForwardDiff.hessian(fd_deviance(model), θσ)
 end
 
 #####
 ##### Evaluation of objective
 #####
 
-fd_deviance(model) = Base.Fix1(fd_deviance, model)
+MixedModels.fd_deviance(model) = Base.Fix1(fd_deviance, model)
 
-function fd_deviance(model::LinearMixedModel, θσ::AbstractVector{T}) where {T}
+function MixedModels.fd_deviance(model::LinearMixedModel, θσ::AbstractVector{T}) where {T}
     σ² = θσ[end]^2
     θ = θσ[1:(end - 1)]
     dof = ssqdenom(model)
@@ -54,7 +95,7 @@ function fd_deviance(model::LinearMixedModel, θσ::AbstractVector{T}) where {T}
     return dof * log(2 * π * σ²) + ld + r² / σ²
 end
 
-function fd_setθ!(
+function MixedModels.fd_setθ!(
     reterms::Vector{<:AbstractReMat},
     parmap::Vector{<:NTuple},
     θ::AbstractVector,
@@ -73,7 +114,7 @@ function fd_setθ!(
     return reterms
 end
 
-function fd_updateL!(A::Vector, L::Vector, reterms::Vector)
+function MixedModels.fd_updateL!(A::Vector, L::Vector, reterms::Vector)
     k = length(reterms)
     copyto!(last(L), last(A))  # ensure the fixed-effects:response block is copied
     for j in eachindex(reterms) # pre- and post-multiply by Λ, add I to diagonal
@@ -117,9 +158,9 @@ function fd_updateL!(A::Vector, L::Vector, reterms::Vector)
     return nothing
 end
 
-fd_pwrss(L::Vector) = abs2(last(last(L)))
+MixedModels.fd_pwrss(L::Vector) = abs2(last(last(L)))
 
-function fd_logdet(L::Vector, reterms::Vector{<:AbstractReMat}, REML::Bool)
+function MixedModels.fd_logdet(L::Vector, reterms::Vector{<:AbstractReMat}, REML::Bool)
     @inbounds s = sum(j -> LD(L[kp1choose2(j)]), axes(reterms, 1))
     if REML
         lastL = last(L)
@@ -133,29 +174,32 @@ end
 ##### Cholesky factorization
 #####
 
-function fd_cholUnblocked!(A::StridedMatrix, ::Type{Val{:L}})
+function MixedModels.fd_cholUnblocked!(A::StridedMatrix, ::Type{Val{:L}})
     cholesky!(Hermitian(A, :L))
     return A
 end
-function fd_cholUnblocked!(D::UniformBlockDiagonal, ::Type{T}) where {T}
+
+function MixedModels.fd_cholUnblocked!(D::UniformBlockDiagonal, ::Type{T}) where {T}
     Ddat = D.data
     for k in axes(Ddat, 3)
-        fd_cholUnblocked!(view(Ddat,:,:,k), T)
+        fd_cholUnblocked!(view(Ddat, :, :, k), T)
     end
     return D
 end
-function fd_cholUnblocked!(A::Diagonal, ::Type{T}) where {T}
+
+function MixedModels.fd_cholUnblocked!(A::Diagonal, ::Type{T}) where {T}
     A.diag .= sqrt.(A.diag)
     return A
 end
-fd_cholUnblocked!(A::AbstractMatrix, ::Type{T}) where {T} = cholUnblocked!(A, T)
+
+MixedModels.fd_cholUnblocked!(A::AbstractMatrix, ::Type{T}) where {T} = cholUnblocked!(A, T)
 
 #####
 ##### Rank update
 #####
 
-function fd_rankUpdate!(
-    C::LinearAlgebra.HermOrSym{T,UniformBlockDiagonal{T}},
+function MixedModels.fd_rankUpdate!(
+    C::HermOrSym{T,UniformBlockDiagonal{T}},
     A::StridedMatrix{T},
     α,
     β,
@@ -183,8 +227,8 @@ function fd_rankUpdate!(
     return C
 end
 
-function fd_rankUpdate!(
-    C::LinearAlgebra.HermOrSym{T,UniformBlockDiagonal{T}},
+function MixedModels.fd_rankUpdate!(
+    C::HermOrSym{T,UniformBlockDiagonal{T}},
     A::BlockedSparse{T,S},
     α,
     β,
@@ -207,14 +251,14 @@ function fd_rankUpdate!(
         nzr = nzrange(Ac, j)
         # BLAS.syr!('L', α, view(nz, nzr), view(Cdat, :, :, div(rv[last(nzr)], S)))
         _x = view(nz, nzr)
-        view(Cdat,:,:,div(rv[last(nzr)], S)) .+= α .* _x .* _x'
+        view(Cdat, :, :, div(rv[last(nzr)], S)) .+= α .* _x .* _x'
     end
 
     return C
 end
 
-function fd_rankUpdate!(
-    C::LinearAlgebra.HermOrSym{T,S},
+function MixedModels.fd_rankUpdate!(
+    C::HermOrSym{T,S},
     A::StridedMatrix{T},
     α,
     β,
@@ -225,6 +269,8 @@ function fd_rankUpdate!(
     return C
 end
 
-fd_rankUpdate!(C::AbstractMatrix, A::AbstractMatrix, α, β) = rankUpdate!(C, A, α, β)
+function MixedModels.fd_rankUpdate!(C::AbstractMatrix, A::AbstractMatrix, α, β)
+    return rankUpdate!(C, A, α, β)
+end
 
 end # module
