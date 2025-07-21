@@ -30,6 +30,9 @@ function Base.copyto!(dest::Matrix{T}, src::UniformBlockDiagonal{T}) where {T}
     return dest
 end
 
+LinearAlgebra.copy_oftype(A::UniformBlockDiagonal, ::Type{T}) where {T} =
+  UniformBlockDiagonal(LinearAlgebra.copy_oftype(A.data, T))
+
 function Base.getindex(A::UniformBlockDiagonal{T}, i::Int, j::Int) where {T}
     @boundscheck checkbounds(A, i, j)
     Ad = A.data
@@ -104,4 +107,13 @@ function LinearAlgebra.mul!(
     β,
 ) where {T,P,Ti}
     return mul!(C.cscmat, A, adjoint(adjB.parent.cscmat), α, β)
+end
+
+function LinearAlgebra.copy_oftype(
+  A::BlockedSparse{<:Any,S,P},
+  ::Type{T},
+) where {T,S,P}
+  cscmat = LinearAlgebra.copy_oftype(A.cscmat, T)
+  nzsasmat = LinearAlgebra.copy_oftype(A.nzsasmat, T)
+  BlockedSparse{T,S,P}(cscmat, nzsasmat, A.colblkptr)
 end
