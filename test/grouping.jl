@@ -34,11 +34,14 @@ end
     d = (; y=rand(100),
         x=rand('A':'Z', 100),
         z=rand('A':'Z', 100),
-        grp=rand('a':'z', 100))
+        grp=rand(1:26, 100)) # we want this to be numeric so that we don't get past categorical checks by default
     contrasts = Dict{Symbol, Any}()
 
     @testset "blocking variables are grouping" for f in [@formula(y ~ 1 + x + (1|grp)),
-                                                         @formula(y ~ 1 + x + zerocorr(1|grp))]
+                                                         @formula(y ~ 1 + x + zerocorr(1|grp)),
+                                                         term(:y) ~ term(:x) + (term(1)|(term(:grp))),
+                                                         term(:y) ~ term(:x) + zerocorr(term(1)|(term(:grp)))
+                                                        ]
         fsch = schematize(f, d, contrasts)
         fe = fsch.rhs[1]
         x = last(fe.terms)
@@ -49,7 +52,10 @@ end
     end
 
     @testset "FE contrasts take priority" for f in [@formula(y ~ 1 + x + (1|x)),
-                                                    @formula(y ~ 1 + x + zerocorr(1|x))]
+                                                    @formula(y ~ 1 + x + zerocorr(1|x)),
+                                                    term(:y) ~ term(:x) + (term(1)|(term(:x))),
+                                                    term(:y) ~ term(:x) + zerocorr(term(1)|(term(:x)))
+                                                    ]
         fsch = schematize(f, d, contrasts)
         fe = fsch.rhs[1]
         x = last(fe.terms)
@@ -67,8 +73,11 @@ end
         @test grp.contrasts isa ContrastsMatrix{EffectsCoding}
     end
 
-    @testset "Nesting and interactions" for f in [@formula(y ~ 1 + x + (1|grp/z))]
+    @testset "Nesting and interactions" for f in [@formula(y ~ 1 + x + (1 | grp/z))]
         # XXX zerocorr(1|grp/z) doesn't work!
+        # XXX programmatic form doesn't work: term(:y) ~ term(:x) + (1 | term(:grp) / term(:z))
+        #  - we don't define ~pirate~ define the relevant methods here
+        #  - and RegressionFormulae.jl errors here as well
         fsch = schematize(f, d, contrasts)
         fe = fsch.rhs[1]
         x = last(fe.terms)

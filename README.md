@@ -56,7 +56,7 @@ Typical distribution forms are _Bernoulli_ for binary data or _Poisson_ for coun
 |Linux   | Ubuntu 22.04  | x64    |current release |
 |Linux   | Ubuntu 22.04  | x64    |nightly         |
 |macOS   | Sonoma 14     | aarm64 |v1.10           |
-|Windows | Server 2019   | x64    |v1.10           |
+|Windows | Server 2022   | x64    |v1.10           |
 
 Note that previous releases still support older Julia versions.
 
