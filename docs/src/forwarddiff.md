@@ -1,1 +1,1 @@
-# Gradient and Hessian via FowardDiff.jl
+# Gradient and Hessian via ForwardDiff.jl
