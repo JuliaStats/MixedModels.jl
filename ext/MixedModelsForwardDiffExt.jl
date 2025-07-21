@@ -28,7 +28,15 @@ using LinearAlgebra: LinearAlgebra,
 
 using SparseArrays: SparseArrays, nzrange
 
+# Stuff we're defining in this file
 using ForwardDiff: ForwardDiff
+using MixedModels: fd_cholUnblocked!,
+    fd_deviance,
+    fd_logdet,
+    fd_pwrss,
+    fd_rankUpdate!,
+    fd_setθ!,
+    fd_updateL!
 
 const FORWARDDIFF = """
 !!! warning "ForwardDiff.jl support is experimental."

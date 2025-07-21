@@ -628,18 +628,18 @@ function copyscaleinflate!(
 end
 
 function LinearAlgebra.copy_oftype(A::ReMat{<:Any,S}, ::Type{T}) where {T,S}
-  ReMat{T,S}(
-      A.trm,
-      A.refs,
-      A.levels,
-      A.cnames,
-      LinearAlgebra.copy_oftype(A.z, T),
-      LinearAlgebra.copy_oftype(A.wtz, T),
-      LinearAlgebra.copy_oftype(A.λ, T),
-      A.inds,
-      LinearAlgebra.copy_oftype(A.adjA, T),
-      LinearAlgebra.copy_oftype(A.scratch, T),
-  )
+    return ReMat{T,S}(
+        A.trm,
+        A.refs,
+        A.levels,
+        A.cnames,
+        LinearAlgebra.copy_oftype(A.z, T),
+        LinearAlgebra.copy_oftype(A.wtz, T),
+        LinearAlgebra.copy_oftype(A.λ, T),
+        A.inds,
+        LinearAlgebra.copy_oftype(A.adjA, T),
+        LinearAlgebra.copy_oftype(A.scratch, T),
+    )
 end
 
 function setθ!(A::ReMat{T}, v::AbstractVector{T}) where {T}
