@@ -40,7 +40,7 @@ using StatsFuns: log2π, normccdf
 using StatsModels: StatsModels, AbstractContrasts, AbstractTerm, CategoricalTerm
 using StatsModels: ConstantTerm, DummyCoding, EffectsCoding, FormulaTerm, FunctionTerm
 using StatsModels: HelmertCoding, HypothesisCoding, InteractionTerm, InterceptTerm
-using StatsModels: MatrixTerm, SeqDiffCoding, TableRegressionModel, Term
+using StatsModels: MatrixTerm, SeqDiffCoding, TableRegressionModel
 using StatsModels: apply_schema, drop_term, formula, lrtest, modelcols, @formula
 using StructTypes: StructTypes
 using Tables: Tables, columntable
