@@ -61,7 +61,7 @@ const FORWARDDIFF = """
 """
     ForwardDiff.gradient(model::LinearMixedModel)
 
-Evaluate the Hessian of the objective function at the currently fitted parameter
+Evaluate the gradient of the objective function at the currently fitted parameter
 values.
 
 $(FORWARDDIFF)
