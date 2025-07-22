@@ -28,7 +28,6 @@ end
     @test check_no_stale_explicit_imports(MixedModels) === nothing
 end
 
-@testset "ForwardDiff" include("forwarddiff.jl")
 include("utilities.jl")
 include("misc.jl")
 include("pivot.jl")
@@ -50,3 +49,4 @@ include("predict.jl")
 include("sigma.jl")
 
 @testset "PRIMA" include("prima.jl")
+@testset "ForwardDiff" include("forwarddiff.jl")
