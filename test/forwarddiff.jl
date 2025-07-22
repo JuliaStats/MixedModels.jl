@@ -11,3 +11,12 @@ fm2 = last(models(:sleepstudy))
 @test ForwardDiff.hessian(fm2) ≈ [45.4126 35.9366 6.3549
                                   35.9366 465.7398 203.9920
                                    6.3549 203.9920 963.9520] rtol=1e-6
+
+# REML and zerocorr
+fm3 = lmm(@formula(reaction ~ 1 + days + zerocorr(1+days|subj)), MixedModels.dataset(:sleepstudy); REML=true)
+@test ForwardDiff.gradient(fm3) ≈ [0.0,0.0] atol=0.001
+
+# crossed random effects
+fm4 = last(models(:kb07))
+g = ForwardDiff.gradient(fm4)
+@test g ≈ zero(g) atol=0.1
