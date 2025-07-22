@@ -61,13 +61,13 @@ const FORWARDDIFF = """
 """
     ForwardDiff.gradient(model::LinearMixedModel)
 
-Evaluate the Hessian of the objective function at the currently fitted parameter
+Evaluate the gradient of the objective function at the currently fitted parameter
 values.
 
 $(FORWARDDIFF)
 """
 function ForwardDiff.gradient(
-    model::LinearMixedModel{T}, θ::Vector{T}=model.θ,
+    model::LinearMixedModel{T}, θ::Vector{T}=model.θ
 ) where {T}
     return ForwardDiff.gradient(fd_deviance(model), θ)
 end
@@ -81,7 +81,7 @@ values.
 $(FORWARDDIFF)
 """
 function ForwardDiff.hessian(
-    model::LinearMixedModel{T}, θ::Vector{T}=model.θ,
+    model::LinearMixedModel{T}, θ::Vector{T}=model.θ
 ) where {T}
     return ForwardDiff.hessian(fd_deviance(model), θ)
 end
