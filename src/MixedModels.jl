@@ -215,7 +215,7 @@ include("serialization.jl")
 include("profile/profile.jl")
 include("nlopt.jl")
 include("prima.jl")
-include("autodiff.jl")
+include("derivatives.jl")
 
 # aliases with non-unicode function names
 const settheta! = setθ!

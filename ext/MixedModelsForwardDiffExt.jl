@@ -39,6 +39,16 @@ using MixedModels: fd_cholUnblocked!,
     fd_updateL!
 
 const FORWARDDIFF = """
+!!! warning "Large allocations"
+    Most of MixedModels.jl relies strongly on in-place methods in order to minimize
+    the amount of memory allocated. In addition to reducing the memory burden
+    (especially for large models), this practice generally speeds up evaluation
+    of the objective. In-place methods, however, generally do not play well with
+    automatic differentiation. For the automatic differentiation support provided
+    here, the developers instead implemented alternative, out-of-place methods.
+    These will generally be slower and much more memory intensive, so use of this
+    functionality is **not** recommended for large models.
+
 !!! warning "ForwardDiff.jl support is experimental."
     Compatibility with ForwardDiff.jl is experimental. The precise structure,
     including function names and method definitions, is subject to
@@ -49,7 +59,7 @@ const FORWARDDIFF = """
 """
 
 """
-    gradient(model::LinearMixedModel)
+    ForwardDiff.gradient(model::LinearMixedModel)
 
 Evaluate the Hessian of the objective function at the currently fitted parameter
 values.
@@ -63,7 +73,7 @@ function ForwardDiff.gradient(
 end
 
 """
-    hessian(model::LinearMixedModel)
+    ForwardDiff.hessian(model::LinearMixedModel)
 
 Evaluate the Hessian of the objective function at the currently fitted parameter
 values.

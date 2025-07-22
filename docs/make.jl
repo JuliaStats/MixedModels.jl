@@ -1,5 +1,6 @@
 using Documenter
 using MixedModels
+using ForwardDiff
 using StatsAPI
 using StatsBase
 
@@ -16,7 +17,7 @@ makedocs(;
         "bootstrap.md",
         "rankdeficiency.md",
         "mime.md",
-        "forwarddiff.md",
+        "derivatives.md",
         "api.md",
     ],
 )
