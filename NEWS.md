@@ -1,3 +1,7 @@
+MixedModels v4.37.0 Release Notes
+==============================
+- Experimental support for evaluating `ForwardDiff.gradient` and `ForwardDiff.hessian` of the objective of a fitted `LinearMixedModel`. [#841]
+
 MixedModels v4.36.0 Release Notes
 ==============================
 - Automatic application of grouping contrasts now works for `RandomEffectsTerm`s constructed programmatically, e.g. with `(term(1) | term(:g))`. [#836]
@@ -647,3 +651,4 @@ Package dependencies
 [#828]: https://github.com/JuliaStats/MixedModels.jl/issues/828
 [#829]: https://github.com/JuliaStats/MixedModels.jl/issues/829
 [#836]: https://github.com/JuliaStats/MixedModels.jl/issues/836
+[#841]: https://github.com/JuliaStats/MixedModels.jl/issues/841
