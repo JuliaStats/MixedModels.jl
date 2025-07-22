@@ -67,7 +67,7 @@ values.
 $(FORWARDDIFF)
 """
 function ForwardDiff.gradient(
-    model::LinearMixedModel{T}, θ::Vector{T}=model.θ,
+    model::LinearMixedModel{T}, θ::Vector{T}=model.θ
 ) where {T}
     return ForwardDiff.gradient(fd_deviance(model), θ)
 end
@@ -81,7 +81,7 @@ values.
 $(FORWARDDIFF)
 """
 function ForwardDiff.hessian(
-    model::LinearMixedModel{T}, θ::Vector{T}=model.θ,
+    model::LinearMixedModel{T}, θ::Vector{T}=model.θ
 ) where {T}
     return ForwardDiff.hessian(fd_deviance(model), θ)
 end
