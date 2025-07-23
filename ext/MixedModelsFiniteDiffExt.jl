@@ -55,5 +55,4 @@ function FiniteDiff.finite_difference_hessian(
     return hess
 end
 
-
 end # module
