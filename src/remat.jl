@@ -180,14 +180,12 @@ nθ(A::ReMat) = length(A.inds)
 """
     lowerbd{T}(A::ReMat{T})
 
-Return the vector of lower bounds on the parameters, `θ` associated with `A`
-
-These are the elements in the lower triangle of `A.λ` in column-major ordering.
-Diagonals have a lower bound of `0`.  Off-diagonals have a lower-bound of `-Inf`.
+Return the vector of lower bounds on the parameters, `θ` associated with `A`.  For unconstrained optimization these are all T(-Inf)
 """
 function lowerbd(A::ReMat{T}) where {T}
-    k = size(A.λ, 1)  # construct diagind(A.λ) by hand following #52115
-    return T[x ∈ range(1; step=k + 1, length=k) ? zero(T) : T(-Inf) for x in A.inds]
+    return fill!(similar(A.inds, T), -Inf)
+    #    k = size(A.λ, 1)  # construct diagind(A.λ) by hand following #52115
+    #    return T[x ∈ range(1; step=k + 1, length=k) ? T(-) : T(-Inf) for x in A.inds]
 end
 
 """
@@ -595,7 +593,7 @@ function copyscaleinflate!(
     dind = diagind(S, S)
     Ldat = copyto!(Ljj.data, Ajj.data)
     for k in axes(Ldat, 3)
-        f = view(Ldat, :, :, k)
+        f = view(Ldat,:,:,k)
         lmul!(λ', rmul!(f, λ))
         for i in dind
             f[i] += one(T)  # inflate diagonal

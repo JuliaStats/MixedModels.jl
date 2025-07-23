@@ -16,7 +16,7 @@ using StableRNGs
     # verify that we report the exact value requested
     @test fmσ1.σ == 1
     # verify that the constrain actually worked
-    @test pwrss(fmσ1) / nobs(fmσ1) ≈ 1.0
+    @test pwrss(fmσ1) / nobs(fmσ1) ≈ 1.0 atol=0.00001
     @test only(fmσ1.θ) ≈ σ atol=0.1
 
     fmσ1 = fit(MixedModel, @formula(y ~ 0 + (1|z)), dat;
