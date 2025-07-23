@@ -656,3 +656,4 @@ Package dependencies
 [#829]: https://github.com/JuliaStats/MixedModels.jl/issues/829
 [#836]: https://github.com/JuliaStats/MixedModels.jl/issues/836
 [#841]: https://github.com/JuliaStats/MixedModels.jl/issues/841
+[#842]: https://github.com/JuliaStats/MixedModels.jl/issues/842
