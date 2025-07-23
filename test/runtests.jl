@@ -48,4 +48,5 @@ include("optsummary.jl")
 include("predict.jl")
 include("sigma.jl")
 
-# @testset "PRIMA" include("prima.jl")
+@testset "PRIMA" include("prima.jl")
+@testset "ForwardDiff" include("forwarddiff.jl")

@@ -1,10 +1,12 @@
 using Documenter
 using MixedModels
+using ForwardDiff
 using StatsAPI
 using StatsBase
 
 makedocs(;
     sitename="MixedModels",
+    format=Documenter.HTML(; size_threshold=500_000, size_threshold_warn=250_000),
     doctest=true,
     pages=[
         "index.md",
@@ -15,6 +17,7 @@ makedocs(;
         "bootstrap.md",
         "rankdeficiency.md",
         "mime.md",
+        "derivatives.md",
         "api.md",
     ],
 )
