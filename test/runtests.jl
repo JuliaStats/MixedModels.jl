@@ -50,3 +50,4 @@ include("sigma.jl")
 
 @testset "PRIMA" include("prima.jl")
 @testset "ForwardDiff" include("forwarddiff.jl")
+@testset "FiniteDiff" include("finitediff.jl")
