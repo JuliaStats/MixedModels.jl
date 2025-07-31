@@ -57,7 +57,7 @@ end
     @test_logs (:warn, "Model has not been fit") show(fm1)
     @test !isfitted(fm1)
 
-    @test objective(updateL!(setθ!(fm1, [0.713]))) ≈ 327.34216280955366
+    @test objective!(fm1, 0.713) ≈ 327.34216280954615
 
     show(io, BlockDescription(fm1))
     @test countlines(seekstart(io)) == 3
@@ -68,15 +68,15 @@ end
 
     @test isfitted(fm1)
     @test :θ in propertynames(fm1)
-    @test objective(fm1) ≈ 327.3270598811428 atol=0.001
-    @test fm1.θ ≈ [0.752580] atol=1.e-5
-    @test fm1.λ ≈ [LowerTriangular(reshape(fm1.θ, (1,1)))] atol=1.e-5
-    @test deviance(fm1) ≈ 327.32705988 atol=0.001
-    @test aic(fm1) ≈ 333.3270598811394 atol=0.001
-    @test bic(fm1) ≈ 337.5306520261259 atol=0.001
+    @test objective(fm1) ≈ 327.32705988112673 atol=0.001
+    @test fm1.θ ≈ [0.7525806540074477] atol=1.e-5
+    @test fm1.λ ≈ [LowerTriangular(reshape(fm1.θ, 1, :))]
+    @test deviance(fm1) ≈ 327.32705988112673 atol=0.001
+    @test aic(fm1) ≈ 333.32705988112673 atol=0.001
+    @test bic(fm1) ≈ 337.5306520261132 atol=0.001
     @test fixef(fm1) ≈ [1527.5]
     @test dispersion_parameter(fm1)
-    @test first(first(fm1.σs)) ≈ 37.26034462135931 atol=0.0001
+    @test first(first(fm1.σs)) ≈ 37.260343703061764 atol=0.0001
     @test fm1.β ≈ [1527.5]
     @test dof(fm1) == 3
     @test nobs(fm1) == 30
@@ -97,14 +97,14 @@ end
     @test fm1.stderror == stderror(fm1)
     @test isone(length(fm1.pvalues))
     @test fm1.objective == objective(fm1)
-    @test fm1.σ ≈ 49.510099986291145 atol=1.e-5
+    @test fm1.σ ≈ 49.51010035223816 atol=1.e-5
     @test fm1.X == ones(30,1)
     ds = MixedModels.dataset(:dyestuff)
     @test fm1.y == ds[:yield]
     @test response(fm1) == ds.yield
     @test cond(fm1) == ones(1)
-    @test first(leverage(fm1)) ≈ 0.15650534392640486 rtol=1.e-5
-    @test sum(leverage(fm1)) ≈ 4.695160317792145 rtol=1.e-5
+    @test first(leverage(fm1)) ≈ 0.1565053420672158 rtol=1.e-5
+    @test sum(leverage(fm1)) ≈ 4.695160262016474 rtol=1.e-5
     cm = coeftable(fm1)
     @test length(cm.rownms) == 1
     @test length(cm.colnms) == 4
@@ -112,16 +112,16 @@ end
     @test response(fm1) == ds[:yield]
     rfu = ranef(fm1, uscale = true)
     rfb = ranef(fm1)
-    @test abs(sum(rfu[1])) < 1.e-5
+    @test abs(sum(only(rfu))) < 1.e-5
     cv = condVar(fm1)
     @test length(cv) == 1
     @test size(first(cv)) == (1, 1, 6)
     show(IOBuffer(), fm1.optsum)
 
-    @test logdet(fm1) ≈ 8.06014522999825 atol=0.001
-    @test varest(fm1) ≈ 2451.2501089607676 atol=0.001
-    @test pwrss(fm1) ≈ 73537.50152584909 atol=0.01 # this quantity is not precisely estimated
-    @test stderror(fm1) ≈ [17.69455188898009] atol=0.0001
+    @test logdet(fm1) ≈ 8.06014611206176 atol=0.001
+    @test varest(fm1) ≈ 2451.2500368886936 atol=0.001
+    @test pwrss(fm1) ≈ 73537.5011066608 atol=0.01 # this quantity is not precisely estimated
+    @test stderror(fm1) ≈ [17.694552929494222] atol=0.0001
 
     vc = VarCorr(fm1)
     show(io, vc)
@@ -130,7 +130,7 @@ end
     @test vc.s == sdest(fm1)
 
     refit!(fm1; REML=true, progress=false)
-    @test objective(fm1) ≈ 319.65427684225216 atol=0.0001
+    @test objective(fm1) ≈ 319.6542768422576 atol=0.0001
     @test_throws ArgumentError loglikelihood(fm1)
     @test dof_residual(fm1) ≥ 0
 
@@ -139,7 +139,7 @@ end
 
     vc = fm1.vcov
     @test isa(vc, Matrix{Float64})
-    @test only(vc) ≈ 375.7167775 rtol=1.e-3
+    @test only(vc) ≈ 375.7167103872769 rtol=1.e-3
     # since we're caching the fits, we should get it back to being correctly fitted
     # we also take this opportunity to test fitlog
     @testset "fitlog" begin
@@ -169,19 +169,19 @@ end
 
 @testset "Dyestuff2" begin
     fm = only(models(:dyestuff2))
-#    @test lowerbd(fm) == zeros(1)
+    @test lowerbd(fm) == [-Inf]
     show(IOBuffer(), fm)
     @test fm.θ ≈ zeros(1)
     @test objective(fm) ≈ 162.87303665382575
-    @test abs(std(fm)[1][1]) < 1.0e-9
-    @test std(fm)[2] ≈ [3.653231351374652]
-    @test stderror(fm) ≈ [0.6669857396443261]
+    @test abs(only(first(std(fm)))) < 1.0e-9
+    @test std(fm)[2] ≈ [3.6532313513746537]
+    @test stderror(fm) ≈ [0.6669857396443264]
     @test coef(fm) ≈ [5.6656]
     @test logdet(fm) ≈ 0.0
     @test issingular(fm)
     #### modifies the model
     refit!(fm, float(MixedModels.dataset(:dyestuff)[:yield]); progress=false)
-    @test objective(fm) ≈ 327.3270598811428 atol=0.001
+    @test objective(fm) ≈ 327.32705988112673 atol=0.001
     refit!(fm, float(MixedModels.dataset(:dyestuff2)[:yield]); progress=false) # restore the model in the cache
     @testset "profile" begin   # tests a branch in profileσs! for σ estimate of zero
         dspr02 = profile(only(models(:dyestuff2)))
@@ -198,33 +198,35 @@ end
     @test fm.optsum.initial == ones(2)
     @test lowerbd(fm) == fill(-Inf, 2)
 
-    @test objective(fm) ≈ 332.18834867227616 atol=0.001
+    @test objective(fm) ≈ 332.1883486700085 atol=0.001
     @test coef(fm) ≈ [22.97222222222222] atol=0.001
     @test fixef(fm) ≈ [22.97222222222222] atol=0.001
     @test coef(fm)[1] ≈ mean(MixedModels.dataset(:penicillin).diameter)
-    @test stderror(fm) ≈ [0.7445960346851368] atol=0.0001
-    @test fm.θ ≈ [1.5375772376554968, 3.219751321180035] atol=0.001
-    @test first(std(fm)) ≈ [0.8455645948223015] atol=0.0001
-    @test std(fm)[2] ≈ [1.770647779277388] atol=0.0001
-    @test varest(fm) ≈ 0.3024263987592062 atol=0.0001
-    @test logdet(fm) ≈ 95.74614821367786 atol=0.001
+    @test stderror(fm) ≈ [0.7446037806555799] atol=0.0001
+    @test fm.θ ≈ [1.5375939045981573, 3.219792193110907] atol=0.001
+    stdd = std(fm)
+    @test only(first(stdd)) ≈ 0.845571948075415 atol=0.0001
+    @test only(stdd[2]) ≈ 1.770666460750787 atol=0.0001
+    @test only(last(stdd)) ≈ 0.549931906953287 atol=0.0001
+    @test varest(fm) ≈ 0.30242510228527864 atol=0.0001
+    @test logdet(fm) ≈ 95.74676552743833 atol=0.001
 
     cv = condVar(fm)
     @test length(cv) == 2
     @test size(first(cv)) == (1, 1, 24)
     @test size(last(cv)) == (1, 1, 6)
-    @test first(first(cv)) ≈ 0.07331320237988301 rtol=1.e-4
-    @test last(last(cv)) ≈ 0.04051547211287544 rtol=1.e-4
+    @test first(first(cv)) ≈ 0.07331356908917808 rtol=1.e-4
+    @test last(last(cv)) ≈ 0.04051591717427688 rtol=1.e-4
 
     cv2 = condVar(fm, :sample)
     @test cv2 ≈ last(cv)
     rfu = ranef(fm, uscale=true)
     @test length(rfu) == 2
-    @test first(first(rfu)) ≈ 0.523162392717432 rtol=1.e-4
+    @test first(first(rfu)) ≈ 0.5231574704291094 rtol=1.e-4
 
     rfb = ranef(fm)
     @test length(rfb) == 2
-    @test last(last(rfb)) ≈ -3.001823834230942 rtol=1.e-4
+    @test last(last(rfb)) ≈ -3.0018241391465703 rtol=1.e-4
 
     show(io, BlockDescription(fm))
     @test countlines(seekstart(io)) == 4
@@ -239,23 +241,24 @@ end
     @test fm.optsum.initial == ones(2)
     @test lowerbd(fm) == fill(-Inf, 2)
 
-    @test objective(fm) ≈ 247.99446586289676 atol=0.001
-    @test coef(fm) ≈ [60.05333333333329] atol=0.001
-    @test fixef(fm) ≈ [60.05333333333329] atol=0.001
-    @test stderror(fm) ≈ [0.6421359883527029] atol=0.0001
-    @test fm.θ ≈ [3.5268858714382905, 1.3299230213750168] atol=0.001
-    @test first(std(fm)) ≈ [2.904069002535747] atol=0.001
-    @test std(fm)[2] ≈ [1.095070371687089] atol=0.0001
-    @test std(fm)[3] ≈ [0.8234088395243269] atol=0.0001
-    @test varest(fm) ≈ 0.6780020742644107 atol=0.0001
-    @test logdet(fm) ≈ 101.0381339953986 atol=0.001
+    @test objective(fm) ≈ 247.9944658624955 atol=0.001
+    @test coef(fm) ≈ [60.0533333333333] atol=0.001
+    @test fixef(fm) ≈ [60.0533333333333] atol=0.001
+    @test stderror(fm) ≈ [0.6421355774401101] atol=0.0001
+    @test fm.θ ≈ [3.5269029347766856, 1.3299137410046242] atol=0.001
+    stdd = std(fm)
+    @test only(first(stdd)) ≈ 2.90407793598792 atol=0.001
+    @test only(stdd[2]) ≈ 1.0950608007768226 atol=0.0001
+    @test only(last(stdd)) ≈ 0.8234073887751603 atol=0.0001
+    @test varest(fm) ≈ 0.677999727889528 atol=0.0001
+    @test logdet(fm) ≈ 101.03834542101686 atol=0.001
 
     cv = condVar(fm)
     @test length(cv) == 2
     @test size(first(cv)) == (1, 1, 30)
-    @test first(first(cv)) ≈ 1.111873335663485 rtol=1.e-4
+    @test first(first(cv)) ≈ 1.1118647819999143 rtol=1.e-4
     @test size(last(cv)) == (1, 1, 10)
-    @test last(last(cv)) ≈ 0.850428770978789 rtol=1.e-4
+    @test last(last(cv)) ≈ 0.850420001234007 rtol=1.e-4
 
     show(io, BlockDescription(fm))
     @test countlines(seekstart(io)) == 4
@@ -265,7 +268,7 @@ end
 
     lrt = likelihoodratiotest(models(:pastes)...)
     @test length(lrt.deviance) == length(lrt.formulas) == length(lrt.models )== 2
-    @test first(lrt.tests.pvalues) ≈ 0.5233767966395597 atol=0.0001
+    @test only(lrt.tests.pvalues) ≈ 0.5233767965780878 atol=0.0001
 
     @testset "missing variables in formula" begin
         ae = ArgumentError("The following formula variables are not present in the table: [:reaction, :joy, :subj]")
@@ -285,14 +288,14 @@ end
     @test size(spL) == (4114, 4114)
     @test 733090 < nnz(spL) < 733100
 
-    @test objective(fm1) ≈ 237721.7687745563 atol=0.001
+    @test objective(fm1) ≈ 237721.76877450474 atol=0.001
     ftd1 = fitted(fm1);
     @test size(ftd1) == (73421, )
     @test ftd1 == predict(fm1)
-    @test first(ftd1) ≈ 3.17876 atol=0.0001
+    @test first(ftd1) ≈ 3.1787619026604945 atol=0.0001
     resid1 = residuals(fm1);
     @test size(resid1) == (73421, )
-    @test first(resid1) ≈ 1.82124 atol=0.00001
+    @test first(resid1) ≈ 1.8212380973395055 atol=0.00001
 
     @testset "PCA" begin
         @test length(fm1.rePCA) == 3
@@ -314,7 +317,7 @@ end
     @test "Diag/Dense" in tokens
 
     fm2 = last(models(:insteval))
-    @test objective(fm2) ≈ 237585.5534151694 atol=0.001
+    @test objective(fm2) ≈ 237585.5534151695 atol=0.001
     @test size(fm2) == (73421, 28, 4100, 2)
 end
 
@@ -328,43 +331,43 @@ end
     a11 = view(A11.data, :, :, 1)
     @test a11 == [10. 45.; 45. 285.]
     @test size(A11.data, 3) == 18
-    λ = first(fm.λ)
+    λ = only(fm.λ)
     b11 = LowerTriangular(view(first(fm.L).data, :, :, 1))
     @test b11 * b11' ≈ λ'a11*λ + I rtol=1e-5
     @test count(!iszero, Matrix(first(fm.L))) == 18 * 4
     @test rank(fm) == 2
 
-    @test objective(fm) ≈ 1751.9393444647046
-    @test fm.θ ≈ [0.929221307, 0.01816838, 0.22264487096] atol=1.e-5
-    @test pwrss(fm) ≈ 117889.27368626732
-    @test logdet(fm) ≈ 73.90322021999222 atol=0.001
-    @test stderror(fm) ≈ [6.632257721914501, 1.5022354739749826] atol=0.0001
-    @test coef(fm) ≈ [251.40510484848477,10.4672859595959]
-    @test fixef(fm) ≈  [251.40510484848477,10.4672859595959]
-    @test std(fm)[1] ≈ [23.780468100188497, 5.716827903196682] atol=0.01
-    @test logdet(fm) ≈ 73.90337187545992 atol=0.001
-    @test cond(fm) ≈ [4.175251] atol=0.0001
-    @test loglikelihood(fm) ≈ -875.9696722323523
-    @test sum(leverage(fm)) ≈ 28.611525700136877 rtol=1.e-5
+    @test objective(fm) ≈ 1751.9393444636682
+    @test fm.θ ≈ [0.9292297167514472, 0.01816466496782548, 0.22264601131030412] atol=1.e-5
+    @test pwrss(fm) ≈ 117889.27379003687 rtol=1.e-5     # consider changing to log(pwrss) - this is too dependent even on AppleAccelerate vs OpenBLAS
+    @test logdet(fm) ≈ 73.90350673367566 atol=0.001
+    @test stderror(fm) ≈ [6.632295312722272, 1.5022387911441102] atol=0.0001
+    @test coef(fm) ≈ [251.40510484848454, 10.467285959596126] atol=1.e-5
+    @test fixef(fm) ≈  [251.40510484848454, 10.467285959596126] atol=1.e-5
+    @test first(std(fm)) ≈ [23.78066438213187, 5.7168446983832775] atol=0.01
+    @test only(cond(fm)) ≈ 4.175266438717022 atol=0.0001
+    @test loglikelihood(fm) ≈ -875.9696722318341 atol=1.e-5
+    @test sum(leverage(fm)) ≈ 28.611653305323234 rtol=1.e-5
     σs = fm.σs
     @test length(σs) == 1
     @test keys(σs) == (:subj,)
     @test length(σs.subj) == 2
-    @test first(values(σs.subj)) ≈ 23.780664378396114 atol=0.0001
-    @test last(values(first(σs))) ≈ 5.7168278 atol=0.0001
-    @test fm.corr ≈ [1.0 -0.1375451787621904; -0.1375451787621904 1.0] atol=0.0001
+    @test first(values(σs.subj)) ≈ 23.78066438213187 atol=0.0001
+    @test last(values(first(σs))) ≈ 5.7168446983832775 atol=0.0001
+    @test fm.corr ≈ [1.0 -0.13755599049585931; -0.13755599049585931 1.0] atol=0.0001
 
     u3 = ranef(fm, uscale=true)
     @test length(u3) == 1
     @test size(first(u3)) == (2, 18)
-    @test first(u3)[1, 1] ≈ 3.030300122575336 atol=0.001
+    @test first(only(u3)) ≈ 3.030047743065841 atol=0.001
 
     cv = condVar(fm)
     @test length(cv) == 1
-    @test size(first(cv)) == (2, 2, 18)
-    @test first(first(cv)) ≈ 140.96612241084617 rtol=1.e-4
-    @test last(last(cv)) ≈ 5.157750215432247 rtol=1.e-4
-    @test first(cv)[2] ≈ -20.60428045516186 rtol=1.e-4
+    cv1 = only(cv)
+    @test size(cv1) == (2, 2, 18)
+    @test first(cv1) ≈ 140.96755256125914 rtol=1.e-4
+    @test last(cv1) ≈ 5.157794803497628 rtol=1.e-4
+    @test cv1[2] ≈ -20.604544204749537 rtol=1.e-4
 
     cvt = condVartables(fm)
     @test length(cvt) == 1
@@ -376,16 +379,16 @@ end
     @test first(cvtsubj.subj) == "S308"
     cvtsubjσ1 = first(cvtsubj.σ)
     @test all(==(cvtsubjσ1), cvtsubj.σ)
-    @test first(cvtsubjσ1) ≈ 11.87291549750297 atol=1.0e-4
-    @test last(cvtsubjσ1) ≈ 2.271068078114843 atol=1.0e-4
+    @test first(cvtsubjσ1) ≈ 11.872975724781853 atol=1.0e-4
+    @test last(cvtsubjσ1) ≈ 2.271077894634534 atol=1.0e-4
     cvtsubjρ = first(cvtsubj.ρ)
     @test all(==(cvtsubjρ), cvtsubj.ρ)
-    @test only(cvtsubjρ) ≈ -0.7641347018831385 atol=1.0e-4
+    @test only(cvtsubjρ) ≈ -0.7641373042040389 atol=1.0e-4
 
     b3 = ranef(fm)
     @test length(b3) == 1
-    @test size(first(b3)) == (2, 18)
-    @test first(first(b3)) ≈ 2.815819441982976 atol=0.001
+    @test size(only(b3)) == (2, 18)
+    @test first(only(b3)) ≈ 2.8156104060324334 atol=0.001
 
     b3tbl = raneftables(fm)
     @test length(b3tbl) == 1
@@ -404,7 +407,7 @@ end
     slp = MixedModels.dataset(:sleepstudy)
     copyto!(fm.y, slp.reaction)
     updateL!(MixedModels.reevaluateAend!(fm))
-    @test objective(fm) ≈ 1751.9393444647046 # check the model is properly restored
+    @test objective(fm) ≈ 1751.9393444636682 # check the model is properly restored
 
     fmnc = models(:sleepstudy)[2]
     @test size(fmnc) == (180,2,36,1)
@@ -412,7 +415,7 @@ end
     @test lowerbd(fmnc) == fill(-Inf, 2)
     sigmas = fmnc.σs
     @test length(only(sigmas)) == 2
-    @test first(only(sigmas)) ≈ 24.171121773548613 atol=1e-4
+    @test first(only(sigmas)) ≈ 24.171121762582683 atol=1e-4
 
     @testset "zerocorr PCA" begin
         @test length(fmnc.rePCA) == 1
@@ -421,22 +424,22 @@ end
         @test show(IOBuffer(), MixedModels.PCA(fmnc)) === nothing
     end
 
-    @test deviance(fmnc) ≈ 1752.0032551398835 atol=0.001
-    @test objective(fmnc) ≈ 1752.0032551398835 atol=0.001
-    @test coef(fmnc) ≈ [251.40510484848585, 10.467285959595715]
-    @test fixef(fmnc) ≈ [251.40510484848477, 10.467285959595715]
-    @test stderror(fmnc) ≈ [6.707710260366577, 1.5193083237479683] atol=0.001
-    @test fmnc.θ ≈ [0.9458106880922268, 0.22692826607677266] atol=0.0001
-    @test first(std(fmnc)) ≈ [24.171121773548613, 5.799392155141794]
-    @test last(std(fmnc)) ≈ [25.556155440682243]
-    @test logdet(fmnc) ≈ 74.46952585564611 atol=0.001
+    @test deviance(fmnc) ≈ 1752.003255140962 atol=0.001
+    @test objective(fmnc) ≈ 1752.003255140962 atol=0.001
+    @test coef(fmnc) ≈ [251.4051048484854, 10.467285959595674]
+    @test fixef(fmnc) ≈ [251.4051048484854, 10.467285959595674]
+    @test stderror(fmnc) ≈ [6.707646513654387, 1.5193112497954953] atol=0.001
+    @test fmnc.θ ≈ [0.9458043022417869, 0.22692740996014607] atol=0.0001
+    @test first(std(fmnc)) ≈ [24.171121762582683, 5.79939216221919]
+    @test last(std(fmnc)) ≈ [25.556155438594672]
+    @test logdet(fmnc) ≈ 74.46922938885899 atol=0.001
     ρ = first(fmnc.σρs.subj.ρ)
     @test ρ === -0.0   # test that systematic zero correlations are returned as -0.0
 
-    MixedModels.likelihoodratiotest(fm, fmnc)
+    MixedModels.likelihoodratiotest(fm, fmnc)   # why is this stand-alone
     fmrs = fit(MixedModel, @formula(reaction ~ 1+days + (0+days|subj)), slp; progress=false);
-    @test objective(fmrs) ≈ 1774.080315280528 rtol=0.00001
-    @test fmrs.θ ≈ [0.24353985679033105] rtol=0.00001
+    @test objective(fmrs) ≈ 1774.080315280526 rtol=0.00001
+    @test fmrs.θ ≈ [0.24353985601485326] rtol=0.00001
 
     fm_ind = models(:sleepstudy)[3]
     @test objective(fm_ind) ≈ objective(fmnc)
@@ -710,11 +713,11 @@ end
 
 @testset "d3" begin
     fm = only(models(:d3))
-    @test pwrss(fm) ≈ 5.30480294295329e6 rtol=1.e-4
-    @test objective(fm) ≈ 884957.5540213 rtol = 1e-4
-    @test coef(fm) ≈ [0.4991229873, 0.31130780953] atol = 1.e-4
+    @test pwrss(fm) ≈ 5.3047961973685445e6 rtol=1.e-4
+    @test objective(fm) ≈ 884957.5539373319 rtol = 1e-4
+    @test coef(fm) ≈ [0.49912367745838365, 0.31130769168177186] atol = 1.e-4
     @test length(ranef(fm)) == 3
-    @test sum(leverage(fm)) ≈ 8808.00706143011 rtol = 1.e-4
+    @test sum(leverage(fm)) ≈ 8808.020656781464 rtol = 1.e-4
 
     show(io, BlockDescription(fm))
     tokens = Set(split(String(take!(io)), r"\s+"))
@@ -743,17 +746,17 @@ end
 @testset "oxide" begin
     # this model has an interesting structure with two diagonal blocks
     m = first(models(:oxide))
-    @test isapprox(m.θ, [1.689182746, 2.98504262]; atol=1e-3)
-    m = last(models(:oxide))
+    @test isapprox(m.θ, [1.6892072390381156, 2.98500065754288]; atol=1e-3)
+    # m = last(models(:oxide))
     # NB: this is a poorly defined fit
     # lme4 gives all sorts of convergence warnings for the different
     # optimizers and even quite different values
     # the overall estimates of the standard deviations are similar-ish
     # but the correlation structure seems particular unstable
-    θneldermead = [1.6454, 8.6373e-02, 8.2128e-05, 8.9552e-01, 1.2014, 2.9286]
+    #θneldermead = [1.6454, 8.6373e-02, 8.2128e-05, 8.9552e-01, 1.2014, 2.9286]
     # two different BOBYQA implementations
-    θnlopt = [1.645, -0.221, 0.986, 0.895, 2.511, 1.169]
-    θminqa = [1.6455, -0.2430, 1.0160, 0.8955, 2.7054, 0.0898]
+    #θnlopt = [1.645, -0.221, 0.986, 0.895, 2.511, 1.169]
+    #θminqa = [1.6455, -0.2430, 1.0160, 0.8955, 2.7054, 0.0898]
     # very loose tolerance for unstable fit
     # but this is a convenient test of rankUpdate!(::UniformBlockDiagonal)
 #    @test isapprox(m.θ, θnlopt; atol=5e-2)   # model doesn't make sense
@@ -801,14 +804,14 @@ end
     #= no need to fit yet another model without weights, but here are the reference values from lme4
     m1 = fit(MixedModel, @formula(a ~ 1 + b + (1|c)), data; progress=false)
     @test m1.θ ≈ [0.0]
-    @test stderror(m1) ≈  [1.084912, 4.966336] atol = 1.e-4
-    @test vcov(m1) ≈ [1.177035 -4.802598; -4.802598 24.664497] atol = 1.e-4
+    @test stderror(m1) ≈  [1.084912299335946, 4.966336338239706] atol = 1.e-4
+    @test vcov(m1) ≈ [1.177034697250409 -4.80259802739442; -4.80259802739442 24.66449662452017] atol = 1.e-4
     =#
 
     m2 = fit(MixedModel, @formula(a ~ 1 + b + (1|c)), data; wts = data.w1, progress=false)
-    @test m2.θ ≈ [0.295181729258352]  atol = 1.e-4
-    @test stderror(m2) ≈  [0.9640167, 3.6309696] atol = 1.e-4
-    @test vcov(m2) ≈ [0.9293282 -2.557527; -2.5575267 13.183940] atol = 1.e-4
+    @test m2.θ ≈ [0.2951818091809752]  atol = 1.e-4
+    @test stderror(m2) ≈  [0.964016663994572, 3.6309691484830533] atol = 1.e-4
+    @test vcov(m2) ≈ [0.9293281284592235 -2.5575260810649962; -2.5575260810649962 13.18393695723575] atol = 1.e-4
 end
 
 @testset "unifying ReMat eltypes" begin
