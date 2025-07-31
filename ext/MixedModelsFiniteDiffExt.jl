@@ -26,7 +26,7 @@ function FiniteDiff.finite_difference_gradient(
 ) where {T}
     local grad
     try
-        grad = finite_difference_gradient(x -> objective!(model, x), θ, args...; kwargs...)
+        grad = finite_difference_gradient(objective!(model), θ, args...; kwargs...)
     finally
         updateL!(setθ!(model, θ))
     end
@@ -47,7 +47,7 @@ function FiniteDiff.finite_difference_hessian(
 ) where {T}
     local hess
     try
-        hess = finite_difference_hessian(x -> objective!(model, x), θ, args...; kwargs...)
+        hess = finite_difference_hessian(objective!(model), θ, args...; kwargs...)
     finally
         updateL!(setθ!(model, θ))
     end
