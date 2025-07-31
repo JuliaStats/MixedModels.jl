@@ -1,3 +1,7 @@
+MixedModels v4.38.0 Release Notes
+==============================
+- Experimental support for evaluating `FiniteDiff.finite_difference_gradient` and `FiniteDiff.finite_difference_hessian of the objective of a fitted `LinearMixedModel`. [#842]
+
 MixedModels v4.37.0 Release Notes
 ==============================
 - Experimental support for evaluating `ForwardDiff.gradient` and `ForwardDiff.hessian` of the objective of a fitted `LinearMixedModel`. [#841]
@@ -652,3 +656,4 @@ Package dependencies
 [#829]: https://github.com/JuliaStats/MixedModels.jl/issues/829
 [#836]: https://github.com/JuliaStats/MixedModels.jl/issues/836
 [#841]: https://github.com/JuliaStats/MixedModels.jl/issues/841
+[#842]: https://github.com/JuliaStats/MixedModels.jl/issues/842
