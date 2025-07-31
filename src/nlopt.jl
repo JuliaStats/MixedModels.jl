@@ -90,7 +90,7 @@ function NLopt.Opt(optsum::OptSummary)
     if length(optsum.xtol_abs) == length(lb)  # not true for fast=false optimization in GLMM
         NLopt.xtol_abs!(opt, optsum.xtol_abs) # absolute criterion on parameter values
     end
-    NLopt.lower_bounds!(opt, lb)
+#    NLopt.lower_bounds!(opt, lb)
     NLopt.maxeval!(opt, optsum.maxfeval)
     NLopt.maxtime!(opt, optsum.maxtime)
     if isempty(optsum.initial_step)
