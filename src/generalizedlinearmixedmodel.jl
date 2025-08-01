@@ -793,10 +793,10 @@ function unfit!(model::GeneralizedLinearMixedModel{T}) where {T}
     optsum = model.LMM.optsum
     # we need to reset optsum so that it
     # plays nice with the modifications fit!() does
-    optsum.lowerbd = mapfoldl(lowerbd, vcat, reterms)
+    optsum.lowerbd = mapfoldl(lowerbd, vcat, reterms)      # probably don't need this anymore - now trivial with all elements = -Inf
     # for variances (bounded at zero), we have ones, while
     # for everything else (bounded at -Inf), we have zeros
-    optsum.initial = map(T ∘ iszero, optsum.lowerbd)
+    optsum.initial = map(x -> T(x[2] == x[3]), model.LMM.parmap)
     optsum.final = copy(optsum.initial)
     optsum.xtol_abs = fill!(copy(optsum.initial), 1.0e-10)
     optsum.initial_step = T[]

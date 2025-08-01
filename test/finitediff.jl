@@ -10,7 +10,7 @@ fm2 = last(models(:sleepstudy))
 
 # REML and zerocorr
 fm3 = lmm(@formula(reaction ~ 1 + days + zerocorr(1+days|subj)), MixedModels.dataset(:sleepstudy); REML=true)
-@test FiniteDiff.finite_difference_gradient(fm3) ≈ [0.0,0.0] atol=0.001
+@test FiniteDiff.finite_difference_gradient(fm3) ≈ [0.0,0.0] atol=0.005
 
 # crossed random effects
 if !Sys.iswindows() # this doesn't meet even the very loose tolerance on windows

@@ -83,7 +83,7 @@ end
     | **Optimizer settings**   |                   |
     | Optimizer                | `bobyqa`          |
     | Backend                  | `prima`           |
-    | Lower bounds             | [-Inf]             |
+    | Lower bounds             | [-Inf]            |
     | rhobeg                   | 1.0               |
     | rhoend                   | 1.0e-6            |
     | maxfeval                 | -1                |

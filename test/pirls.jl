@@ -44,10 +44,10 @@ end
     @test last(fitlog)[1] ≈ gm0.optsum.final
     @test last(fitlog)[2] ≈ gm0.optsum.fmin
     @test gm0.lowerbd == [-Inf]
-    @test isapprox(gm0.θ, [0.5720734451352923], atol=0.001)
+    @test isapprox(gm0.θ, [0.5720746212924732], atol=0.001)
     @test !issingular(gm0)
     @test issingular(gm0, [0])
-    @test isapprox(deviance(gm0), 2361.657188518064, atol=0.001)
+    @test isapprox(deviance(gm0), 2361.657202855648, atol=0.001)
     # the first 9 BLUPs -- I don't think there's much point in testing all 102
     blups = [-0.5853637711570235, -0.9546542393824562, -0.034754249031292345, # values are the same but in different order
               0.2894692928724314, 0.6381376605845264, -0.2513134928312374,
@@ -67,17 +67,17 @@ end
     @test Link(gm0) == Link(gm0.resp)
 
     gm1 = fit(MixedModel, first(gfms[:contra]), contra, Bernoulli(); progress=false);
-    @test isapprox(gm1.θ, [0.573054], atol=0.005)
+    @test isapprox(gm1.θ, [0.5730523416716424], atol=0.005)
     @test lowerbd(gm1) == fill(-Inf, 8)
-    @test isapprox(deviance(gm1), 2361.54575, rtol=0.00001)
-    @test isapprox(loglikelihood(gm1), -1180.77288, rtol=0.00001)
+    @test isapprox(deviance(gm1), 2361.545768866505, rtol=0.00001)
+    @test isapprox(loglikelihood(gm1), -1180.772884433253, rtol=0.00001)
 
     @test dof(gm0) == length(gm0.β) + length(gm0.θ)
     @test nobs(gm0) == 1934
-    refit!(gm0; fast=true, nAGQ=7, progress=false)
-    @test isapprox(deviance(gm0), 2360.9838, atol=0.001)
+    refit!(gm0; fast=false, nAGQ=7, progress=false)  # changed to fast=false; fast=true and nAGQ > 0 contradict
+    @test deviance(gm0) ≈ 2360.8760880739255 atol=0.001
     gm1 = fit(MixedModel, first(gfms[:contra]), contra, Bernoulli(); nAGQ=7, progress=false)
-    @test isapprox(deviance(gm1), 2360.8760, atol=0.001)
+    @test deviance(gm1) ≈ 2360.8760880739255 atol=0.001
     @test gm1.β == gm1.beta
     @test gm1.θ == gm1.theta
     gm1y = gm1.y
@@ -110,11 +110,11 @@ end
     cbpp = dataset(:cbpp)
     gm2 = fit(MixedModel, first(gfms[:cbpp]), cbpp, Binomial(); wts=float(cbpp.hsz), progress=false, init_from_lmm=[:β, :θ])
     @test weights(gm2) == cbpp.hsz
-    @test deviance(gm2, true) ≈ 100.09585619892968 rtol=0.0001
-    @test sum(abs2, gm2.u[1]) ≈ 9.723054788538546 rtol=0.0001
-    @test logdet(gm2) ≈ 16.90105378801136 rtol=0.0001
-    @test isapprox(sum(gm2.resp.devresid), 73.47174762237978, atol=0.001)
-    @test isapprox(loglikelihood(gm2), -92.02628186840045, atol=0.001)
+    @test deviance(gm2, true) ≈ 100.09585620707632 rtol=0.0001
+    @test sum(abs2, gm2.u[1]) ≈ 9.72301224524056 rtol=0.0001
+    @test logdet(gm2) ≈ 16.901127982275217 rtol=0.0001
+    @test isapprox(sum(gm2.resp.devresid), 73.47171597956056, atol=0.001)
+    @test isapprox(loglikelihood(gm2), -92.02628187247377, atol=0.001)
     @test !dispersion_parameter(gm2)
     @test dispersion(gm2, false) == 1
     @test dispersion(gm2, true) == 1
