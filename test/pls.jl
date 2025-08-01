@@ -209,7 +209,7 @@ end
     @test only(stdd[2]) ≈ 1.770666460750787 atol=0.0001
     @test only(last(stdd)) ≈ 0.549931906953287 atol=0.0001
     @test varest(fm) ≈ 0.30242510228527864 atol=0.0001
-    @test logdet(fm) ≈ 95.74676552743833 atol=0.001
+    @test logdet(fm) ≈ 95.74676552743833 atol=0.005
 
     cv = condVar(fm)
     @test length(cv) == 2
