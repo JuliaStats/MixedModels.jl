@@ -335,7 +335,7 @@ function condVar(m::LinearMixedModel{T}, fname) where {T}
         fill!(scratch, zero(T))
         copyto!(view(scratch, (b - 1) * vsz .+ (1:vsz), :), λt)
         ldiv!(Lblk, scratch)
-        mul!(view(val, :, :, b), scratch', scratch)
+        mul!(view(val,:,:,b), scratch', scratch)
     end
     return val
 end
@@ -344,7 +344,7 @@ function _cvtbl(arr::Array{T,3}, trm) where {T}
     return merge(
         NamedTuple{(fname(trm),)}((trm.levels,)),
         columntable([
-            NamedTuple{(:σ, :ρ)}(sdcorr(view(arr, :, :, i))) for i in axes(arr, 3)
+            NamedTuple{(:σ, :ρ)}(sdcorr(view(arr,:,:,i))) for i in axes(arr, 3)
         ]),
     )
 end
@@ -497,11 +497,14 @@ function StatsAPI.fit!(
 
     xmin, fmin = optimize!(m; progress, fitlog)
 
+    setθ!(m, xmin)                   # ensure that the parameters saved in m are xmin
+    rectify!(m)                      # flip signs of columns of m.λ elements with negative diagonal els
+    getθ!(xmin, m)                   # use the rectified values as xmin
+
     ## check if small non-negative parameter values can be set to zero
     xmin_ = copy(xmin)
-    lb = optsum.lowerbd
-    for i in eachindex(xmin_)
-        if iszero(lb[i]) && zero(T) < xmin_[i] < optsum.xtol_zero_abs
+    for (i, pm) in enumerate(m.parmap)
+        if pm[2] == pm[3] && zero(T) < xmin_[i] < optsum.xtol_zero_abs
             xmin_[i] = zero(T)
         end
     end
@@ -681,6 +684,19 @@ function Base.getproperty(m::LinearMixedModel{T}, s::Symbol) where {T}
     end
 end
 
+"""
+    _set_init(m::LinearMixedModel)
+
+Set each element of m.optsum.initial to 1.0 for diagonal and 0.0 for off-diagonal
+"""
+function _set_init!(m::LinearMixedModel)
+    init = m.optsum.initial
+    for (i, pm) in enumerate(m.parmap)
+        init[i] = pm[2] == pm[3]
+    end
+    return m
+end
+
 StatsAPI.islinear(m::LinearMixedModel) = true
 
 """
@@ -719,7 +735,7 @@ end
 # use dispatch to distinguish Diagonal and UniformBlockDiagonal in first(L)
 _ldivB1!(B1::Diagonal{T}, rhs::AbstractVector{T}, ind) where {T} = rhs ./= B1.diag[ind]
 function _ldivB1!(B1::UniformBlockDiagonal{T}, rhs::AbstractVector{T}, ind) where {T}
-    return ldiv!(LowerTriangular(view(B1.data, :, :, ind)), rhs)
+    return ldiv!(LowerTriangular(view(B1.data,:,:,ind)), rhs)
 end
 
 """
@@ -827,6 +843,15 @@ function objective!(m::LinearMixedModel{T}, x::Number) where {T}
     return objective(updateL!(m))
 end
 
+"""
+    _pmdiag(m::LinearMixedModel)
+
+Return a logical vector of diagonal positions in `m.pmap`
+"""
+function _pmdiag(m::LinearMixedModel)
+    return [pm[2] == pm[3] for pm in m.parmap]
+end
+
 function Base.propertynames(m::LinearMixedModel, private::Bool=false)
     return (
         fieldnames(LinearMixedModel)...,
@@ -928,6 +953,34 @@ end
 LinearAlgebra.rank(m::LinearMixedModel) = m.feterm.rank
 
 """
+    rectify!(m::LinearMixedModel)
+
+For each element of m.λ check for negative values on the diagonal and flip the signs of the entire column when any are present.
+
+This provides a canonical converged value of θ.  We use unconstrained optimization followed by this reassignment to avoid the
+hassle of constrained optimization.
+"""
+function rectify!(m::LinearMixedModel)
+    rectify!.(m.λ)
+    return m
+end
+
+function rectify!(λ::LowerTriangular)
+    for (j, c) in enumerate(eachcol(λ.data))
+        if c[j] < 0
+            c .*= -1
+        end
+    end
+    return λ
+end
+
+function rectify!(λ::Diagonal)
+    d = λ.diag
+    map!(abs, d, d)
+    return λ
+end
+
+"""
     rePCA(m::LinearMixedModel; corr::Bool=true)
 
 Return a named tuple of the normalized cumulative variance of a principal components
@@ -939,7 +992,7 @@ principal component, the first two principal components, etc.  The last element 
 always 1.0 representing the complete proportion of the variance.
 """
 function rePCA(m::LinearMixedModel; corr::Bool=true)
-    pca = PCA.(m.reterms, corr=corr)
+    pca = PCA.(m.reterms; corr=corr)
     return NamedTuple{_unique_fnames(m)}(getproperty.(pca, :cumvar))
 end
 
@@ -951,7 +1004,7 @@ covariance matrices or correlation matrices when `corr` is `true`.
 """
 
 function PCA(m::LinearMixedModel; corr::Bool=true)
-    return NamedTuple{_unique_fnames(m)}(PCA.(m.reterms, corr=corr))
+    return NamedTuple{_unique_fnames(m)}(PCA.(m.reterms; corr=corr))
 end
 
 """
@@ -1256,9 +1309,8 @@ function unfit!(model::LinearMixedModel{T}) where {T}
     optsum = model.optsum
     optsum.feval = -1
     optsum.initial_step = T[]
-    # for variances (bounded at zero), we have ones, while
-    # for everything else (bounded at -Inf), we have zeros
-    map!(T ∘ iszero, optsum.initial, optsum.lowerbd)
+    # initialize elements on the diagonal of Λ to one(T), off-diagonals to zero(T)
+    _set_init!(model)
     copyto!(optsum.final, optsum.initial)
     reevaluateAend!(model)
 

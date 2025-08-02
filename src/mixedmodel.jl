@@ -68,8 +68,11 @@ Equality comparisons are used b/c small non-negative θ values are replaced by 0
     For `GeneralizedLinearMixedModel`, the entire parameter vector (including
     β in the case `fast=false`) must be specified if the default is not used.
 """
-function issingular(m::MixedModel, θ=m.θ; atol::Real=0, rtol::Real=atol > 0 ? 0 : √eps())
-    return _issingular(m.lowerbd, θ; atol, rtol)
+function issingular(
+    m::MixedModel{T}, θ=m.θ; atol::Real=0, rtol::Real=atol > 0 ? 0 : √eps()
+) where {T}
+    lb = [(pm[2] == pm[3]) ? zero(T) : T(-Inf) for pm in m.parmap]
+    return _issingular(lb, θ; atol, rtol)
 end
 
 function _issingular(v, w; atol, rtol)
@@ -141,8 +144,8 @@ StatsAPI.predict(m::MixedModel) = fitted(m)
 function retbl(mat, trm)
     nms = (fname(trm), Symbol.(trm.cnames)...)
     return Table(
-    [NamedTuple{nms}((l, view(mat, :, i)...),) for (i, l) in enumerate(trm.levels)]
-)
+        [NamedTuple{nms}((l, view(mat, :, i)...),) for (i, l) in enumerate(trm.levels)]
+    )
 end
 
 StatsAPI.adjr2(m::MixedModel) = r2(m)
