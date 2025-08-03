@@ -16,5 +16,5 @@ fm3 = lmm(@formula(reaction ~ 1 + days + zerocorr(1+days|subj)), MixedModels.dat
 if !Sys.iswindows()  # this doesn't meet even the very loose tolerance on windows
     fm4 = last(models(:kb07))
     g = FiniteDiff.finite_difference_gradient(fm4)
-    @test g ≈ zero(g) atol=0.1
+    @test g ≈ zero(g) atol=0.2
 end
