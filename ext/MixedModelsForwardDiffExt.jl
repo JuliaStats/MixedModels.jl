@@ -201,7 +201,7 @@ end
 function MixedModels.fd_cholUnblocked!(D::UniformBlockDiagonal, ::Type{T}) where {T}
     Ddat = D.data
     for k in axes(Ddat, 3)
-        fd_cholUnblocked!(view(Ddat, :, :, k), T)
+        fd_cholUnblocked!(view(Ddat,:,:,k), T)
     end
     return D
 end
@@ -270,7 +270,7 @@ function MixedModels.fd_rankUpdate!(
         nzr = nzrange(Ac, j)
         # BLAS.syr!('L', α, view(nz, nzr), view(Cdat, :, :, div(rv[last(nzr)], S)))
         _x = view(nz, nzr)
-        view(Cdat, :, :, div(rv[last(nzr)], S)) .+= α .* _x .* _x'
+        view(Cdat,:,:,div(rv[last(nzr)], S)) .+= α .* _x .* _x'
     end
 
     return C

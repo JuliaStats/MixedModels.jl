@@ -15,7 +15,7 @@ model = first(models(:sleepstudy))
 prmodel = LinearMixedModel(formula(model), dataset(:sleepstudy))
 prmodel.optsum.backend = :prima
 
-@testset "$optimizer" for optimizer in (:cobyla, :lincoa)
+@testset "$optimizer" for optimizer in (:cobyla, :lincoa, :newuoa)
     unfit!(prmodel)
     prmodel.optsum.optimizer = optimizer
     fit!(prmodel; progress=false, fitlog=false)
