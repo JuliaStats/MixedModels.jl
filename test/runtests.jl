@@ -15,20 +15,12 @@ import LinearAlgebra: BLAS
 @info sprint(versioninfo)
 @info BLAS.get_config()
 
-# FIXME https://github.com/JuliaTesting/Aqua.jl/issues/343
-piracies = if hasfield(Core.TypeName, :mt)
-    (;treat_as_own=[GLM.wrkresp!, Base.:|])
-else
-    @warn "Piracy testing disabled until Aqua.jl#343 is resolved"
-    false
-end
-
 @testset "Aqua" begin
     # we can't check for unbound type parameters
     # because we actually need one at one point for _same_family()
     Aqua.test_all(MixedModels; ambiguities=false, unbound_args=false,
                   # XXX TODO: upstream this piracy
-                  piracies)
+                  piracies=(;treat_as_own=[GLM.wrkresp!, Base.:|]))
 end
 
 @testset "ExplicitImports" begin
