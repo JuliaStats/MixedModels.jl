@@ -144,8 +144,8 @@ StatsAPI.predict(m::MixedModel) = fitted(m)
 function retbl(mat, trm)
     nms = (fname(trm), Symbol.(trm.cnames)...)
     return Table(
-        [NamedTuple{nms}((l, view(mat, :, i)...),) for (i, l) in enumerate(trm.levels)]
-    )
+    [NamedTuple{nms}((l, view(mat, :, i)...),) for (i, l) in enumerate(trm.levels)]
+)
 end
 
 StatsAPI.adjr2(m::MixedModel) = r2(m)

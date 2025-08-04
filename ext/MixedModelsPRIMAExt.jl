@@ -57,7 +57,7 @@ function MixedModels.optimize!(m::LinearMixedModel, ::PRIMABackend;
 
     maxfun = optsum.maxfeval > 0 ? optsum.maxfeval : 500 * length(optsum.initial)
     info = prima_optimizer!(Val(optsum.optimizer), obj, optsum.final;
-#        xl=optsum.lowerbd, 
+        #        xl=optsum.lowerbd, 
         maxfun,
         optsum.rhoend, optsum.rhobeg)
     ProgressMeter.finish!(prog)
