@@ -39,7 +39,7 @@ end
 function cholUnblocked!(D::UniformBlockDiagonal, ::Type{Val{:L}})
     Ddat = D.data
     for k in axes(Ddat, 3)
-        cholUnblocked!(view(Ddat,:,:,k), Val{:L})
+        cholUnblocked!(view(Ddat, :, :, k), Val{:L})
     end
     return D
 end
