@@ -32,12 +32,13 @@ end
     prmodel.optsum.optimizer = :bobyqa
     prmodel.optsum.maxfeval = 5
     @test_logs((:warn, r"PRIMA optimization failure"),
-               fit!(prmodel; progress=false, fitlog=false))
+        fit!(prmodel; progress=false, fitlog=false))
 end
 
 @testset "GLMM + optsum show" begin
-    model = fit(MixedModel, @formula(use ~ 1+age+abs2(age)+urban+livch+(1|urban&dist)),
-                dataset(:contra), Binomial(); progress=false)
+    model = fit(MixedModel,
+        @formula(use ~ 1 + age + abs2(age) + urban + livch + (1 | urban & dist)),
+        dataset(:contra), Binomial(); progress=false)
     prmodel = unfit!(deepcopy(model))
     fit!(prmodel; optimizer=:bobyqa, backend=:prima, progress=false)
     @test isapprox(loglikelihood(model), loglikelihood(prmodel))
