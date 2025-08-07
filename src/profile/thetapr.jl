@@ -28,12 +28,13 @@ function profileθj!(
 ) where {T}
     (; m, fwd, rev) = val
     optsum = m.optsum
-    (; final, fmin, lowerbd) = optsum
+    (; final, fmin) = optsum
     j = parsej(sym)
     θ = copy(final)
-    lbj = lowerbd[j]
     osj = optsum
     opt = Opt(osj)
+    pmj = m.parmap[j]
+    lbj = pmj[2] == pmj[3] ? zero(T) : T(-Inf)
     if length(θ) > 1      # set up the conditional optimization problem
         notj = deleteat!(collect(axes(final, 1)), j)
         osj = optsumj(optsum, j)

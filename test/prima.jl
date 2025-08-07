@@ -15,7 +15,7 @@ model = first(models(:sleepstudy))
 prmodel = LinearMixedModel(formula(model), dataset(:sleepstudy))
 prmodel.optsum.backend = :prima
 
-@testset "$optimizer" for optimizer in (:cobyla, :lincoa)
+@testset "$optimizer" for optimizer in (:cobyla, :lincoa, :newuoa)
     unfit!(prmodel)
     prmodel.optsum.optimizer = optimizer
     fit!(prmodel; progress=false, fitlog=false)
@@ -32,12 +32,13 @@ end
     prmodel.optsum.optimizer = :bobyqa
     prmodel.optsum.maxfeval = 5
     @test_logs((:warn, r"PRIMA optimization failure"),
-               fit!(prmodel; progress=false, fitlog=false))
+        fit!(prmodel; progress=false, fitlog=false))
 end
 
 @testset "GLMM + optsum show" begin
-    model = fit(MixedModel, @formula(use ~ 1+age+abs2(age)+urban+livch+(1|urban&dist)),
-                dataset(:contra), Binomial(); progress=false)
+    model = fit(MixedModel,
+        @formula(use ~ 1 + age + abs2(age) + urban + livch + (1 | urban & dist)),
+        dataset(:contra), Binomial(); progress=false)
     prmodel = unfit!(deepcopy(model))
     fit!(prmodel; optimizer=:bobyqa, backend=:prima, progress=false)
     @test isapprox(loglikelihood(model), loglikelihood(prmodel))
@@ -58,7 +59,7 @@ end
 
     Backend:                  prima
     Optimizer:                bobyqa
-    Lower bounds:             [0.0]
+    Lower bounds:             [-Inf]
     rhobeg:                   1.0
     rhoend:                   1.0e-6
     maxfeval:                 -1
@@ -83,7 +84,7 @@ end
     | **Optimizer settings**   |                   |
     | Optimizer                | `bobyqa`          |
     | Backend                  | `prima`           |
-    | Lower bounds             | [0.0]             |
+    | Lower bounds             | [-Inf]            |
     | rhobeg                   | 1.0               |
     | rhoend                   | 1.0e-6            |
     | maxfeval                 | -1                |

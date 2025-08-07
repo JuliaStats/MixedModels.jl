@@ -19,8 +19,8 @@ import LinearAlgebra: BLAS
     # we can't check for unbound type parameters
     # because we actually need one at one point for _same_family()
     Aqua.test_all(MixedModels; ambiguities=false, unbound_args=false,
-                  # XXX TODO: upstream this piracy
-                  piracies=(;treat_as_own=[GLM.wrkresp!, Base.:|]))
+        # XXX TODO: upstream this piracy
+        piracies=(; treat_as_own=[GLM.wrkresp!, Base.:|]))
 end
 
 @testset "ExplicitImports" begin
