@@ -282,7 +282,7 @@ end
 end
 
 @testset "InstEval" begin
-    fm1 = first(models(:insteval))
+    fm1 = models(:insteval)[2]              # at one time this was the fist of the :insteval models
     @test size(fm1) == (73421, 2, 4114, 3)
     @test fm1.optsum.initial == ones(3)
     @test lowerbd(fm1) == fill(-Inf, 3)
@@ -319,7 +319,7 @@ end
     @test "Sparse/Dense" in tokens
     @test "Diag/Dense" in tokens
 
-    fm2 = last(models(:insteval))
+    fm2 = first(models(:insteval))
     @test objective(fm2) ≈ 237585.5534151695 atol = 0.001
     @test size(fm2) == (73421, 28, 4100, 2)
 end

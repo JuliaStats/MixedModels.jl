@@ -31,7 +31,7 @@ end
 @testset "XymatSparse" begin
     @testset "sparse and dense yield same fit" begin
         # deepcopy because we're going to modify
-        m = last(models(:insteval))
+        m = first(models(:insteval))
         # this is kinda sparse: 
         # julia> mean(first(m.feterm).x)
         # 0.10040140325753434
