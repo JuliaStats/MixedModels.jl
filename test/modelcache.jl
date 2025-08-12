@@ -1,4 +1,5 @@
-using MixedModels
+using Chairmarks, PRIMA                     # for dotable()
+using MixedModels, TypedTables
 using MixedModels: dataset
 
 @isdefined(gfms) || const global gfms = Dict(
@@ -19,8 +20,10 @@ using MixedModels: dataset
     :dyestuff2 => [@formula(yield ~ 1 + (1 | batch))],
     :d3 => [@formula(y ~ 1 + u + (1 + u | g) + (1 + u | h) + (1 + u | i))],
     :insteval => [
-        @formula(y ~ 1 + service + (1 | s) + (1 | d) + (1 | dept)),
         @formula(y ~ 1 + service * dept + (1 | s) + (1 | d)),
+        @formula(y ~ 1 + service + (1 | s) + (1 | d) + (1 | dept)),
+        @formula(y ~ 1 + service + (1 | s) + (1 | d) + zerocorr(1 + service | dept)),
+        @formula(y ~ 1 + service + (1 | s) + (1 | d) + (1 + service | dept)),
     ],
     :kb07 => [
         @formula(rt_trunc ~ 1 + spkr + prec + load + (1 | subj) + (1 | item)),
@@ -58,4 +61,35 @@ if !@isdefined(models)
             [fit(MixedModel, f, dataset(nm); progress=false) for f in allfms[nm]]
         end
     end
+end
+
+@isdefined(timingtable) || function timingtable(
+    dsname::Symbol=:insteval,
+    optimizers::Vector{NTuple{2,Symbol}}=
+    [
+        (:nlopt, :LN_NEWUOA),
+        (:nlopt, :LN_BOBYQA),
+        (:prima, :newuoa),
+        (:prima, :bobyqa),
+    ],
+    seconds::Integer = 1;
+)
+    rowtype = @NamedTuple{
+        modnum::Int,
+        bkend::Symbol,
+        optmzr::Symbol,
+        feval::Int,
+        objtiv::Float64,
+        time::Float64,
+    }
+    val = rowtype[]
+    mods = models(dsname)
+
+    for (j, m) in enumerate(mods)
+        for (bk, opt) in optimizers
+            bmk = @b refit!(m; progress=false, backend=bk, optimizer=opt) seconds=seconds
+            push!(val, rowtype((j, bk, opt, m.optsum.feval, m.optsum.fmin, bmk.time)))
+        end
+    end
+    return Table(val)
 end

@@ -82,12 +82,16 @@ end
 
 function NLopt.Opt(optsum::OptSummary)
     lb = optsum.lowerbd
+    n = length(lb)
 
-    opt = NLopt.Opt(optsum.optimizer, length(lb))
+    if optsum.optimizer == :LN_NEWUOA && isone(n) # :LN_NEWUOA doesn't allow n == 1
+        optsum.optimizer = :LN_BOBYQA
+    end
+    opt = NLopt.Opt(optsum.optimizer, n)
     NLopt.ftol_rel!(opt, optsum.ftol_rel) # relative criterion on objective
     NLopt.ftol_abs!(opt, optsum.ftol_abs) # absolute criterion on objective
     NLopt.xtol_rel!(opt, optsum.xtol_rel) # relative criterion on parameter values
-    if length(optsum.xtol_abs) == length(lb)  # not true for fast=false optimization in GLMM
+    if length(optsum.xtol_abs) == n  # not true for fast=false optimization in GLMM
         NLopt.xtol_abs!(opt, optsum.xtol_abs) # absolute criterion on parameter values
     end
     #    NLopt.lower_bounds!(opt, lb)   # use unconstrained optimization even for :LN_BOBYQA
