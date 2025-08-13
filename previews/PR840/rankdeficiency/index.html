@@ -8,19 +8,19 @@ fit(MixedModel, @formula(rt_raw ~ spkr * prec * load + (1|subj) + (1+prec|item))
 
 Variance components:
              Column      Variance  Std.Dev.  Corr.
-item     (Intercept)     158693.734 398.364
-         prec: maintain   93634.361 305.997 -0.81
-subj     (Intercept)     105908.022 325.435
-Residual                 842823.280 918.054
+item     (Intercept)     158694.582 398.365
+         prec: maintain   93638.594 306.004 -0.81
+subj     (Intercept)     105910.580 325.439
+Residual                 842822.539 918.054
  Number of obs: 1789; levels of grouping factors: 32, 56
 
   Fixed-effects parameters:
 ──────────────────────────────────────────────────────────────────────────────
                                             Coef.  Std. Error      z  Pr(&gt;|z|)
 ──────────────────────────────────────────────────────────────────────────────
-(Intercept)                             2225.71       85.5661  26.01    &lt;1e-99
+(Intercept)                             2225.71       85.5665  26.01    &lt;1e-99
 spkr: old                                 74.1916     21.7062   3.42    0.0006
-prec: maintain                          -377.212      58.2858  -6.47    &lt;1e-10
+prec: maintain                          -377.212      58.2869  -6.47    &lt;1e-10
 load: yes                                101.958      21.7062   4.70    &lt;1e-05
 spkr: old &amp; prec: maintain               -28.0275     21.7062  -1.29    0.1966
 spkr: old &amp; load: yes                     26.8642     21.7062   1.24    0.2159
@@ -33,23 +33,23 @@ spkr: old &amp; prec: maintain &amp; load: yes    15.4985     21.7062   0.71    
 
 Variance components:
              Column      Variance  Std.Dev.  Corr.
-item     (Intercept)       9373.523  96.817
-         prec: break     407411.353 638.288 +0.27
-         prec: maintain   62452.240 249.904 -0.36 +0.30
-subj     (Intercept)     105910.732 325.439
-Residual                 842822.368 918.054
+item     (Intercept)      78463.353 280.113
+         prec: break     692691.107 832.281 -0.69
+         prec: maintain  164037.589 405.016 -0.83 +0.72
+subj     (Intercept)     105941.096 325.486
+Residual                 842817.509 918.051
  Number of obs: 1789; levels of grouping factors: 32, 56
 
   Fixed-effects parameters:
 ──────────────────────────────────────────────────────────────────────────────
                                             Coef.  Std. Error      z  Pr(&gt;|z|)
 ──────────────────────────────────────────────────────────────────────────────
-(Intercept)                             2225.71       85.5666  26.01    &lt;1e-99
-spkr: old                                 74.1916     21.7062   3.42    0.0006
-prec: maintain                          -377.212      58.2872  -6.47    &lt;1e-10
-load: yes                                101.958      21.7062   4.70    &lt;1e-05
-spkr: old &amp; prec: maintain               -28.0275     21.7062  -1.29    0.1966
-spkr: old &amp; load: yes                     26.8642     21.7062   1.24    0.2159
-prec: maintain &amp; load: yes               -18.6514     21.7062  -0.86    0.3902
-spkr: old &amp; prec: maintain &amp; load: yes    15.4985     21.7062   0.71    0.4752
-──────────────────────────────────────────────────────────────────────────────</code></pre><p>This may be useful when the <code>PCA</code> property suggests a random effects structure larger than only main effects but smaller than all interaction terms. This is also similar to the functionality provided by <code>dummy</code> in <code>lme4</code>, but as in the difference between <code>zerocorr</code> in Julia and <code>||</code> in R, there are subtle differences in how this expansion interacts with other terms in the random effects.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../bootstrap/">« Parametric bootstrap for mixed-effects models</a><a class="docs-footer-nextpage" href="../mime/">Alternative display and output formats »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.14.1 on <span class="colophon-date" title="Tuesday 12 August 2025 17:08">Tuesday 12 August 2025</span>. Using Julia version 1.10.0.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+(Intercept)                             2225.71       85.5646  26.01    &lt;1e-99
+spkr: old                                 74.1915     21.7061   3.42    0.0006
+prec: maintain                          -377.212      58.2722  -6.47    &lt;1e-10
+load: yes                                101.958      21.7061   4.70    &lt;1e-05
+spkr: old &amp; prec: maintain               -28.0276     21.7061  -1.29    0.1966
+spkr: old &amp; load: yes                     26.8643     21.7061   1.24    0.2159
+prec: maintain &amp; load: yes               -18.6514     21.7061  -0.86    0.3902
+spkr: old &amp; prec: maintain &amp; load: yes    15.4986     21.7061   0.71    0.4752
+──────────────────────────────────────────────────────────────────────────────</code></pre><p>This may be useful when the <code>PCA</code> property suggests a random effects structure larger than only main effects but smaller than all interaction terms. This is also similar to the functionality provided by <code>dummy</code> in <code>lme4</code>, but as in the difference between <code>zerocorr</code> in Julia and <code>||</code> in R, there are subtle differences in how this expansion interacts with other terms in the random effects.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../bootstrap/">« Parametric bootstrap for mixed-effects models</a><a class="docs-footer-nextpage" href="../mime/">Alternative display and output formats »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.14.1 on <span class="colophon-date" title="Wednesday 13 August 2025 16:23">Wednesday 13 August 2025</span>. Using Julia version 1.10.0.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
