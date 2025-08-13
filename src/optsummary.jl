@@ -85,7 +85,7 @@ end
 function OptSummary(
     initial::Vector{T},
     lowerbd::Vector{S},
-    optimizer::Symbol=:LN_BOBYQA; kwargs...,
+    optimizer::Symbol=:LN_NEWUOA; kwargs...,
 ) where {T<:AbstractFloat,S<:AbstractFloat}
     TS = promote_type(T, S)
     return OptSummary{TS}(; initial, lowerbd, optimizer, kwargs...)

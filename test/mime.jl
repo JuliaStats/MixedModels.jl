@@ -131,7 +131,7 @@ lrt = likelihoodratiotest(fm0, fm1)
         | Initial parameter vector | [1.0, 0.0, 1.0]             |
         | Initial objective value  | 1784.642296192471           |
         | **Optimizer settings**   |                             |
-        | Optimizer                | `LN_BOBYQA`                 |
+        | Optimizer                | `LN_NEWUOA`                 |
         | Backend                  | `nlopt`                     |
         | Lower bounds             | [-Inf, -Inf, -Inf]          |
         | ftol_rel                 | 1.0e-12                     |

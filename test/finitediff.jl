@@ -20,5 +20,5 @@ fm3 = lmm(
 if !Sys.iswindows()  # this doesn't meet even the very loose tolerance on windows
     fm4 = last(models(:kb07))
     g = FiniteDiff.finite_difference_gradient(fm4)
-    @test g ≈ zero(g) atol = 0.2
+    @test g ≈ zero(g) atol = 0.5
 end

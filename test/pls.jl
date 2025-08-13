@@ -122,7 +122,7 @@ end
 
     @test logdet(fm1) ≈ 8.06014611206176 atol = 0.001
     @test varest(fm1) ≈ 2451.2500368886936 atol = 0.001
-    @test pwrss(fm1) ≈ 73537.5011066608 atol = 0.01 # this quantity is not precisely estimated
+    @test pwrss(fm1) ≈ 73537.50110666081 atol = 0.01 # this quantity is not precisely estimated
     @test stderror(fm1) ≈ [17.694552929494222] atol = 0.0001
 
     vc = VarCorr(fm1)
@@ -420,7 +420,7 @@ end
     @test lowerbd(fmnc) == fill(-Inf, 2)
     sigmas = fmnc.σs
     @test length(only(sigmas)) == 2
-    @test first(only(sigmas)) ≈ 24.171121762582683 atol = 1e-4
+    @test first(only(sigmas)) ≈ 24.171361283849798 atol = 1e-4
 
     @testset "zerocorr PCA" begin
         @test length(fmnc.rePCA) == 1
@@ -435,8 +435,8 @@ end
     @test fixef(fmnc) ≈ [251.4051048484854, 10.467285959595674]
     @test stderror(fmnc) ≈ [6.707646513654387, 1.5193112497954953] atol = 0.001
     @test fmnc.θ ≈ [0.9458043022417869, 0.22692740996014607] atol = 0.0001
-    @test first(std(fmnc)) ≈ [24.171121762582683, 5.79939216221919]
-    @test last(std(fmnc)) ≈ [25.556155438594672]
+    @test first(std(fmnc)) ≈ [24.171361283849798, 5.799400590001371]
+    @test last(std(fmnc)) ≈ [25.55612914633409] atol=0.0001
     @test logdet(fmnc) ≈ 74.46922938885899 atol = 0.001
     ρ = first(fmnc.σρs.subj.ρ)
     @test ρ === -0.0   # test that systematic zero correlations are returned as -0.0

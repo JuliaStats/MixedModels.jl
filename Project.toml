@@ -44,7 +44,6 @@ MixedModelsPRIMAExt = ["PRIMA"]
 Aqua = "0.8"
 Arrow = "1, 2"
 BSplineKit = "0.17, 0.18, 0.19"
-Chairmarks = "1.3"
 Compat = "4.10"
 DataAPI = "1"
 DataFrames = "1"
@@ -82,7 +81,6 @@ julia = "1.10"
 
 [extras]
 Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
-Chairmarks = "0ca39b1e-fe0b-4e98-acfc-b1656634c4de"
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 ExplicitImports = "7d51a73a-1435-4ff3-83d9-f097790105c7"
 FiniteDiff = "6a86dc24-6348-571c-b903-95158fe2bd41"
@@ -95,4 +93,4 @@ Suppressor = "fd094767-a336-5f1f-9728-57cf17d0bbfb"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Aqua", "Chairmarks", "DataFrames", "ExplicitImports", "FiniteDiff", "ForwardDiff", "InteractiveUtils", "PRIMA", "RegressionFormulae", "StableRNGs", "Suppressor", "Test"]
+test = ["Aqua", "DataFrames", "ExplicitImports", "FiniteDiff", "ForwardDiff", "InteractiveUtils", "PRIMA", "RegressionFormulae", "StableRNGs", "Suppressor", "Test"]
