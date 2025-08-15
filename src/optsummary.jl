@@ -60,7 +60,7 @@ Base.@kwdef mutable struct OptSummary{T<:AbstractFloat}
     ftol_zero_abs::T = eltype(initial)(1.e-5)
     maxfeval::Int = -1
 
-    optimizer::Symbol = :LN_BOBYQA
+    optimizer::Symbol = :LN_NEWUOA    # switched to :LN_BOBYQA for one-dimensional optimizations
     backend::Symbol = :nlopt
 
     # the @kwdef macro isn't quite smart enough for us to use the type parameter
@@ -85,7 +85,7 @@ end
 function OptSummary(
     initial::Vector{T},
     lowerbd::Vector{S},
-    optimizer::Symbol=:LN_BOBYQA; kwargs...,
+    optimizer::Symbol=:LN_NEWUOA; kwargs...,
 ) where {T<:AbstractFloat,S<:AbstractFloat}
     TS = promote_type(T, S)
     return OptSummary{TS}(; initial, lowerbd, optimizer, kwargs...)

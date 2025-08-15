@@ -9,6 +9,7 @@ using MixedModels: AbstractReMat,
     kp1choose2,
     LD,
     lmulΛ!,
+    rankUpdate!,
     rmulΛ!,
     ssqdenom,
     UniformBlockDiagonal

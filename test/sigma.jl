@@ -5,30 +5,30 @@ using StableRNGs
 @testset "fixed sigma" begin
     σ = 3
     n = 100
-    dat = (; x = ones(n),
-            z = collect(1:n),
-            y = σ*randn(StableRNG(42), n))
+    dat = (; x=ones(n),
+        z=collect(1:n),
+        y=σ * randn(StableRNG(42), n))
 
-    fmσ1 = fit(MixedModel, @formula(y ~ 0 + (1|z)), dat;
-               contrasts=Dict(:z => Grouping()),
-               σ=1)
+    fmσ1 = fit(MixedModel, @formula(y ~ 0 + (1 | z)), dat;
+        contrasts=Dict(:z => Grouping()),
+        σ=1)
     @test isempty(fixef(fmσ1))
     # verify that we report the exact value requested
     @test fmσ1.σ == 1
     # verify that the constrain actually worked
-    @test pwrss(fmσ1) / nobs(fmσ1) ≈ 1.0
-    @test only(fmσ1.θ) ≈ σ atol=0.1
+    @test pwrss(fmσ1) / nobs(fmσ1) ≈ 1.0 atol = 0.00001
+    @test only(fmσ1.θ) ≈ σ atol = 0.1
 
-    fmσ1 = fit(MixedModel, @formula(y ~ 0 + (1|z)), dat;
-               contrasts=Dict(:z => Grouping()),
-               σ=3.14)
+    fmσ1 = fit(MixedModel, @formula(y ~ 0 + (1 | z)), dat;
+        contrasts=Dict(:z => Grouping()),
+        σ=3.14)
     @test isempty(fixef(fmσ1))
     # verify that we report the exact value requested
     @test fmσ1.σ == 3.14
     # verify that the constrain actually worked
-    @test pwrss(fmσ1) / nobs(fmσ1) ≈ 3.14^2 atol=0.5
+    @test pwrss(fmσ1) / nobs(fmσ1) ≈ 3.14^2 atol = 0.5
     # the shrinkage forces things to zero because 3.14/3 is very close to 0
-    @test only(fmσ1.θ) ≈ 0 atol=0.1
+    @test only(fmσ1.θ) ≈ 0 atol = 0.1
 end
 
 # specifying sigma was done to allow for doing meta-analytic models
