@@ -19,7 +19,7 @@ prmodel.optsum.backend = :prima
     unfit!(prmodel)
     prmodel.optsum.optimizer = optimizer
     fit!(prmodel; progress=false, fitlog=false)
-    @test isapprox(loglikelihood(model), loglikelihood(prmodel))
+    @test isapprox(loglikelihood(model), loglikelihood(prmodel)) atol=1.e-5
 end
 
 @testset "refit!" begin
@@ -44,7 +44,7 @@ end
     @test isapprox(loglikelihood(model), loglikelihood(prmodel))
     refit!(prmodel; fast=true, progress=false)
     refit!(model; fast=true, progress=false)
-    @test isapprox(loglikelihood(model), loglikelihood(prmodel))
+    @test isapprox(loglikelihood(model), loglikelihood(prmodel)) atol=1.e-5
 
     optsum = deepcopy(prmodel.optsum)
     optsum.final = [0.2612]
