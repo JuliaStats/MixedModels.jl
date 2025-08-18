@@ -214,15 +214,53 @@ end
     @test only(m11.θ) ≈ 1.838245201739852 atol=1.e-5
 end
 
-@testset "dispersion" begin
+@testset "dispersion parameter" begin
+    @testset "gaussian with non identity link" begin
+        dyestuff = MixedModels.dataset(:dyestuff)
 
-    form = @formula(reaction ~ 1 + days + (1+days|subj))
-    dat = dataset(:sleepstudy)
+        gauss = fit(MixedModel, only(fms[:dyestuff]), dyestuff, Normal(), SqrtLink(), fast=true)
+        @test only(gauss.θ) ≈ 0.5528913 atol=0.001 # value from lme4
+        # this corresponds to the deviance(gauss)  from lme4
+        # NB: "deviance" is complicated in lme4
+        # this is the way deviance(glmm) is computed in lme4
+        # but there are several "deviances" defined:
+        # https://github.com/lme4/lme4/issues/375#issuecomment-214494445
+        @test sum(gauss.resp.devresid) ≈ 58830. atol=0.001 # value from lme4
 
-    @test_logs (:warn, r"dispersion parameter") GeneralizedLinearMixedModel(form, dat, Gamma())
-    @test_logs (:warn, r"dispersion parameter") GeneralizedLinearMixedModel(form, dat, InverseGaussian())
-    @test_logs (:warn, r"dispersion parameter") GeneralizedLinearMixedModel(form, dat, Normal(), SqrtLink())
+        # bobyqa fails here
+        neldermead = GeneralizedLinearMixedModel(only(fms[:dyestuff]), dyestuff, Normal(), SqrtLink());
+        neldermead.optsum.optimizer = :LN_NELDERMEAD;
+        fit!(neldermead)
+        @test only(neldermead.θ) ≈ 0.5528913 atol=0.001 # value from lme4
+        @test sum(neldermead.resp.devresid) ≈ 58830. atol=0.001 # value from lme4
+    end
 
+    ## simulate some data ##
+    rng = StableRNG(42);
+    ng = 25
+    ns = 500
+    # random effect
+    u = repeat(randn(rng, ns) .* 0.1, ng);
+    id = PooledArray(string.(repeat(1:ns, ng)));
+    # fixed effect
+    x = rand(rng, ns*ng);
+
+    @testset "inverse gaussian" begin
+        rng = StableRNG(42);
+        l = GLM.canonicallink(InverseGaussian())
+        invgauss = GeneralizedLinearMixedModel(@formula(y ~ 1 + x + (1|id)), dat, InverseGaussian());
+        #invgauss.optsum.optimizer = :LN_NELDERMEAD;
+        # fit!(invgauss)
+    end
+
+    @testset "gamma" begin
+        rng = StableRNG(42);
+        y =  map(d ->  rand(rng, d), Gamma.(1. ./ (1. .+ u + x)));
+        dat = (u=u, id=id, x=x, y=y)
+        gamma = GeneralizedLinearMixedModel(@formula(y ~ 1 + x + (1|id)), dat, Gamma());
+        #gamma.optsum.optimizer = :LN_NELDERMEAD;
+        # fit!(gamma)
+    end
     # notes for future tests when GLMM with dispersion works
     # @test dispersion_parameter(gm)
     # @test dispersion(gm, false) == val
