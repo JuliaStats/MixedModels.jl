@@ -7,7 +7,7 @@ using BSplineKit: interpolate
 using Compat: @compat
 using DataAPI: DataAPI, levels, refpool, refarray, refvalue
 using Distributions: Distributions, Bernoulli, Binomial, Chisq, Distribution, Gamma
-using Distributions: InverseGaussian, Normal, Poisson, ccdf
+using Distributions: Geometric, InverseGaussian, Normal, Poisson, ccdf
 using GLM: GLM, GeneralizedLinearModel, IdentityLink, InverseLink, LinearModel
 using GLM: Link, LogLink, LogitLink, ProbitLink, SqrtLink
 using GLM: canonicallink, glm, linkinv, dispersion, dispersion_parameter
@@ -57,6 +57,7 @@ export @formula,
     Grouping,
     Gamma,
     GeneralizedLinearMixedModel,
+    Geometric,
     HelmertCoding,
     HypothesisCoding,
     IdentityLink,

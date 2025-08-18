@@ -64,10 +64,51 @@ end
         gm2sim = refit!(simulate!(StableRNG(42), deepcopy(gm2)); fast=true, progress=false)
         @test isapprox(gm2.β, gm2sim.β; atol=norm(stderror(gm2)))
     end
+
+    @testset "Geometric" begin
+        n = 1000
+        data = (; y=fill(1, n), g=rand('A':'G', n))
+        data = (; y=rand(StableRNG(42), Geometric(0.5), n),
+                  g=rand('A':'G', n))
+        @test_logs (:warn, r"geometric") MixedModel(@formula(y ~ 1 + (1|g)), data, Geometric())
+        m = @suppress MixedModel(@formula(y ~ 1 + (1|g)), data, Geometric())
+        v = simulate(StableRNG(42), m; β=[exp(0.5)], θ=[0])
+        gmean = mean(rand(StableRNG(42), Geometric(), n))
+        @test mean(v) ≈ gmean atol=0.005
+
+        simulate!(StableRNG(42), m; β=[exp(0.5)], θ=[0])
+        v = response(m)
+        @test mean(v) ≈ gmean atol=0.005
+    end
+
     @testset "_rand with dispersion" begin
-        @test_throws ArgumentError MixedModels._rand(StableRNG(42), Normal(), 1, 1, 1)
-        @test_throws ArgumentError MixedModels._rand(StableRNG(42), Gamma(), 1, 1, 1)
-        @test_throws ArgumentError MixedModels._rand(StableRNG(42), InverseGaussian(), 1, 1, 1)
+        @test_throws ArgumentError MixedModels._rand(StableRNG(42), NegativeBinomial(), 1, 1)
+
+        n = 1000
+        data = (; y=fill(1, n), g=rand('A':'G', n))
+        m = @suppress MixedModel(@formula(y ~ 1 + (1|g)), data, Normal(), LogLink())
+        simulate!(StableRNG(42), m; β=[1], θ=[0], σ=1)
+        v = response(m)
+        # inverse link is exp
+        @test mean(v) ≈ exp(1) atol=0.05
+
+        m = @suppress MixedModel(@formula(y ~ 1 + (1|g)), data, Gamma())
+        # with StableRNG(42) we actually get a few negative values?!?
+        simulate!(StableRNG(43), m; β=[1], θ=[0], σ=1)
+        v = response(m)
+        # inverse link of the reciprocal link is the reciprocal, which is just 1 here
+        @test mean(v) ≈ 1 atol=0.05
+        # m0 = glm(fill(1, n, 1), v, Gamma())
+        # @test only(coef(m0)) ≈ 1 atol=0.05
+
+        m = @suppress MixedModel(@formula(y ~ 1 + (1|g)), data, InverseGaussian())
+        # with StableRNG(42) we actually get a few negative values?!?
+        simulate!(StableRNG(43), m; β=[1], θ=[0], σ=1)
+        v = response(m)
+        # canonical link is InverseSquareLink(), but 1 is a fixed point under that link
+        @test mean(v) ≈ 1 atol=0.05
+        # m0 = glm(fill(1, n, 1), v, InverseGaussian())
+        # @test only(coef(m0)) ≈ 1 atol=0.05
     end
 end
 
