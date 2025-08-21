@@ -6,7 +6,6 @@ using ..MixedModels: objective!, _objective!
 # of the extension's dependencies
 using ..MixedModels.ProgressMeter: ProgressMeter, ProgressUnknown
 
-
 # stdlib
 using LinearAlgebra: PosDefException
 # will be a weakdep when this is moved to an extension
