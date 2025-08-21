@@ -626,7 +626,41 @@ end
         )
         @test_throws(ArgumentError("optsum names: [:ftol_abs] not found in io"),
             restoreoptsum!(m, seekstart(iob)))
-
+        # note that this contains a fitlog from an older version!
+        iob = IOBuffer(
+            """
+            {
+                "initial":[1.0,0.0,1.0],
+                "finitial":1784.642296192436,
+                "ftol_rel":1.0e-12,
+                "ftol_abs":1.0e-8,
+                "xtol_rel":0.0,
+                "xtol_abs":[1.0e-10,1.0e-10,1.0e-10],
+                "rhobeg":1.0,
+                "rhoend":1.0e-6,
+                "xtol_zero_abs":0.001,
+                "ftol_zero_abs":1.0e-5,
+                "backend": "nlopt",
+                "initial_step":[0.75,1.0,0.75],
+                "maxfeval":-1,
+                "maxtime":-1.0,
+                "feval":57,
+                "final":[0.9292213195402981,0.01816837807519162,0.22264487477788353],
+                "fmin":1751.9393444646712,
+                "optimizer":"LN_BOBYQA",
+                "returnvalue":"FTOL_REACHED",
+                "nAGQ":1,
+                "REML":false,
+                "sigma":null,
+                "fitlog":[[[1.0,0.0,1.0],1784.642296192436]]
+            }
+            """,
+        )
+        @test_logs(
+            (:warn,
+                r"optsum was saved with an older version of MixedModels.jl: consider resaving",
+            ),
+            restoreoptsum!(m, seekstart(iob)))
         #         iob = IOBuffer(
         # """
         # {

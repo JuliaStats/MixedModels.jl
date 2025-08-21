@@ -73,6 +73,7 @@ function restoreoptsum!(
 end
 
 function restoreoptsum!(ops::OptSummary{T}, dict::AbstractDict) where {T}
+    warn_old_version = true
     allowed_missing = (
         :lowerbd,       # never saved, -Inf not allowed in JSON
         :xtol_zero_abs, # added in v4.25.0
@@ -91,7 +92,9 @@ function restoreoptsum!(ops::OptSummary{T}, dict::AbstractDict) where {T}
         throw(ArgumentError(string("optsum names: ", nmdiff, " not found in io")))
     end
     if length(setdiff(allowed_missing, keys(dict))) > 1 # 1 because :lowerbd
-        @warn "optsum was saved with an older version of MixedModels.jl: consider resaving."
+        @debug "" setdiff(allowed_missing, keys(dict))
+        warn_old_version && @warn "optsum was saved with an older version of MixedModels.jl: consider resaving."
+        warn_old_version = false
     end
 
     if any(ops.lowerbd .> dict.initial) || any(ops.lowerbd .> dict.final)
@@ -116,11 +119,24 @@ function restoreoptsum!(ops::OptSummary{T}, dict::AbstractDict) where {T}
     fitlog = get(dict, :fitlog, nothing)
     ops.fitlog = if isnothing(fitlog)
         # compat with fits saved before fitlog
-        [(ops.initial, ops.finitial), (ops.final, ops.fmin)]
+        Table(; θ=(ops.initial, ops.finitial), objective=(ops.final, ops.fmin))
     else
-        [(convert(Vector{T}, first(entry)), T(last(entry))) for entry in fitlog]
+        _deserialize_fitlog(fitlog, T, warn_old_version)
     end
     return ops
+end
+
+# fitlog structure in MixedModels 4.x
+function _deserialize_fitlog(fitlog, T, warn_old_version::Bool)
+    warn_old_version && @warn "optsum was saved with an older version of MixedModels.jl: consider resaving."
+    warn_old_version = false
+    return Table(( (; θ=convert(Vector{T}, first(entry)),
+                      objective=T(last(entry))) for entry in fitlog))
+end
+
+function _deserialize_fitlog(fitlog::JSON3.Array{JSON3.Object}, T, ::Bool)
+    return Table(( (; θ=convert(Vector{T}, entry.θ),
+                      objective=T(entry.objective)) for entry in fitlog))
 end
 
 StructTypes.StructType(::Type{<:OptSummary}) = StructTypes.Mutable()
