@@ -74,7 +74,7 @@ function MixedModels.optimize!(m::GeneralizedLinearMixedModel, ::PRIMABackend;
     kwargs...)
     optsum = m.optsum
     prog = ProgressUnknown(; desc="Minimizing", showspeed=true)
-    empty!(opstum.fitlog)
+    empty!(optsum.fitlog)
 
     function obj(x)
         val = try
