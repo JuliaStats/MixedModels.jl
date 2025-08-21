@@ -229,7 +229,7 @@ Suppose, for example, that the user wishes to try a [Nelder-Mead](https://en.wik
 ```@example Main
 fm2nm = LinearMixedModel(@formula(reaction ~ 1+days+(1+days|subj)), sleepstudy);
 fm2nm.optsum.optimizer = :LN_NELDERMEAD;
-fit!(fm2nm; thin=1)
+fit!(fm2nm)
 fm2nm.optsum
 DisplayAs.Text(ans) # hide
 ```
