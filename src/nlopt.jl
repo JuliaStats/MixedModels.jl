@@ -1,8 +1,25 @@
-push!(OPTIMIZATION_BACKENDS, :nlopt)
+module MixedModelsNLoptExt # not actually an extension at the moment
+
+using ..MixedModels
+using ..MixedModels: objective!, _objective!
+# are part of the package's dependencies and will not be part
+# of the extension's dependencies
+using ..MixedModels.ProgressMeter: ProgressMeter, ProgressUnknown
+
+
+# stdlib
+using LinearAlgebra: PosDefException
+# will be a weakdep when this is moved to an extension
+using NLopt: NLopt, Opt
+
+function __init__()
+    push!(MixedModels.OPTIMIZATION_BACKENDS, :nlopt)
+    return nothing
+end
 
 const NLoptBackend = Val{:nlopt}
 
-function optimize!(m::LinearMixedModel, ::NLoptBackend;
+function MixedModels.optimize!(m::LinearMixedModel, ::NLoptBackend;
     progress::Bool=true, fitlog::Bool=false,
     kwargs...)
     optsum = m.optsum
@@ -42,7 +59,7 @@ function optimize!(m::LinearMixedModel, ::NLoptBackend;
     return xmin, fmin
 end
 
-function optimize!(m::GeneralizedLinearMixedModel, ::NLoptBackend;
+function MixedModels.optimize!(m::GeneralizedLinearMixedModel, ::NLoptBackend;
     progress::Bool=true, fitlog::Bool=false,
     fast::Bool=false, verbose::Bool=false, nAGQ=1,
     kwargs...)
@@ -121,6 +138,13 @@ function _check_nlopt_return(ret, failure_modes=_NLOPT_FAILURE_MODES)
     end
 end
 
-function opt_params(::NLoptBackend)
-    return (:ftol_rel, :ftol_abs, :xtol_rel, :xtol_abs, :initial_step, :maxfeval, :maxtime)
+function MixedModels.opt_params(::NLoptBackend)
+    return [:ftol_rel, :ftol_abs, :xtol_rel, :xtol_abs, :initial_step, :maxfeval, :maxtime]
 end
+
+function MixedModels.optimizers(::NLoptBackend)
+    return [:LN_NEWUOA, :LN_BOBYQA, :LN_COBYLA, :LN_NELDERMEAD, :LN_PRAXIS]
+end
+
+
+end # module

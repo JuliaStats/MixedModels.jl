@@ -17,10 +17,10 @@ function profilevc(m::LinearMixedModel{T}, val::T, rowj::AbstractVector{T}) wher
         objctv = objective(m)
         return objctv
     end
-    opt = Opt(optsum)
+    opt = NLopt.Opt(optsum)
     NLopt.min_objective!(opt, obj)
     fmin, xmin, ret = NLopt.optimize!(opt, copyto!(optsum.final, optsum.initial))
-    _check_nlopt_return(ret)
+    MixedModelsNLoptExt._check_nlopt_return(ret)
     return fmin, xmin
 end
 

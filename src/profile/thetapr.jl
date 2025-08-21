@@ -15,11 +15,12 @@ function optsumj(os::OptSummary, j::Integer)
 end
 
 function profileobj!(
-    m::LinearMixedModel{T}, θ::AbstractVector{T}, opt::Opt, osj::OptSummary
+    m::LinearMixedModel{T}, θ::AbstractVector{T}, opt::NLopt.Opt, osj::OptSummary
 ) where {T}
     isone(length(θ)) && return objective!(m, θ)
+    # XXX NLopt assumption
     fmin, xmin, ret = NLopt.optimize(opt, copyto!(osj.final, osj.initial))
-    _check_nlopt_return(ret)
+    MixedModelsNLoptExt._check_nlopt_return(ret)
     return fmin
 end
 
@@ -32,13 +33,13 @@ function profileθj!(
     j = parsej(sym)
     θ = copy(final)
     osj = optsum
-    opt = Opt(osj)
+    opt = NLopt.Opt(osj)
     pmj = m.parmap[j]
     lbj = pmj[2] == pmj[3] ? zero(T) : T(-Inf)
     if length(θ) > 1      # set up the conditional optimization problem
         notj = deleteat!(collect(axes(final, 1)), j)
         osj = optsumj(optsum, j)
-        opt = Opt(osj)               # create an NLopt optimizer object for the reduced problem
+        opt = NLopt.Opt(osj)               # create an NLopt optimizer object for the reduced problem
         function obj(x, g)
             isempty(g) ||
                 throw(ArgumentError("gradients are not evaluated by this objective"))

@@ -185,3 +185,16 @@ Return a collection of the fields of [`OptSummary`](@ref) used by backend.
 they are used _after_ optimization and are thus shared across backends.
 """
 function opt_params end
+
+"""
+    optimizers(::Val{backend})
+
+Return a collection of the algorithms supported by the backend.
+
+!!! note
+    The names of the algorithms are not necessarily consistent across backends.
+    For example, NLopt has `:LN_BOBYQA` and PRIMA has `:bobyqa` for Powell's
+    BOBYQA algorithm. In other words, we have not yet abstracted over the
+    backends' differing naming conventions for algorithms.
+"""
+function optimizers end
