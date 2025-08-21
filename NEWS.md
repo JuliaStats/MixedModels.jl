@@ -1,3 +1,10 @@
+MixedModels v5.0.0 Release Notes
+==============================
+- Optimization is now performed _without constraints_. In a post-fitting step, the the Cholesky factor is canonicalized to have non-negative diagonal elements. [#840]
+- The default optimizer has changed to NLopt's implementation of NEWUOA where possible. NLopt's implementation fails on 1-dimensional problems, so in the case A single, scalar random effect, BOBYQA is used instead. In the future, the default optimizer backend will likely change to PRIMA and NLopt support will be moved to an extension. Blocking this change in backend is an issue with PRIMA.jl when running in VSCode's built-in REPL on Linux. [#840]
+- [BREAKING] Support for constrained optimization has been completely removed, i.e. the field `lowerbd` has been removed from `OptSummary`.
+
+
 MixedModels v4.38.0 Release Notes
 ==============================
 - Experimental support for evaluating `FiniteDiff.finite_difference_gradient` and `FiniteDiff.finite_difference_hessian of the objective of a fitted `LinearMixedModel`. [#842]
@@ -655,5 +662,6 @@ Package dependencies
 [#828]: https://github.com/JuliaStats/MixedModels.jl/issues/828
 [#829]: https://github.com/JuliaStats/MixedModels.jl/issues/829
 [#836]: https://github.com/JuliaStats/MixedModels.jl/issues/836
+[#840]: https://github.com/JuliaStats/MixedModels.jl/issues/840
 [#841]: https://github.com/JuliaStats/MixedModels.jl/issues/841
 [#842]: https://github.com/JuliaStats/MixedModels.jl/issues/842
