@@ -5,8 +5,8 @@ include("modelcache.jl")
 
 @testset "formula($model)" for model in models(:sleepstudy)
     prmodel = LinearMixedModel(formula(model), dataset(:sleepstudy))
-    prmodel.backend = :prima
-    prmodel.optimizer = :bobyqa
+    prmodel.optsum.backend = :prima
+    prmodel.optsum.optimizer = :bobyqa
     fit!(prmodel; progress=false)
 
     @test isapprox(loglikelihood(model), loglikelihood(prmodel))
