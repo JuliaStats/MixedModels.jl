@@ -217,18 +217,9 @@ function parametricbootstrap(
     β::AbstractVector=fixef(morig),
     σ=morig.σ,
     θ::AbstractVector=morig.θ,
-    use_threads::Bool=false,
     progress::Bool=true,
-    hide_progress::Union{Bool,Nothing}=nothing,
     optsum_overrides=(;),
 ) where {T}
-    if !isnothing(hide_progress)
-        Base.depwarn(
-            "`hide_progress` is deprecated, please use `progress` instead." *
-            "NB: `progress` is a positive action, i.e. `progress=true` means show the progress bar.",
-            :parametricbootstrap; force=true)
-        progress = !hide_progress
-    end
     if σ !== missing
         σ = T(σ)
     end
@@ -248,10 +239,6 @@ function parametricbootstrap(
 
     β_names = Tuple(Symbol.(coefnames(morig)))
 
-    use_threads && Base.depwarn(
-        "use_threads is deprecated and will be removed in a future release",
-        :parametricbootstrap,
-    )
     samp = replicate(n; progress) do
         simulate!(rng, m; β, σ, θ)
         refit!(m; progress=false, fitlog=false)
