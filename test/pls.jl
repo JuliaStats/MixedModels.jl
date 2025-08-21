@@ -544,7 +544,8 @@ end
         empty!(fm.optsum.fitlog)
         saveoptsum(seekstart(io), fm)
         restoreoptsum!(m, seekstart(io))
-        @test length(fm.optsum.fitlog) == length(m.optsum.fitlog) == 0
+        # the restored fitlog always contains the initial and final values
+        @test length(m.optsum.fitlog) == 2
 
         fm_mod = deepcopy(fm)
         fm_mod.optsum.fmin += 1
@@ -661,34 +662,6 @@ end
                 r"optsum was saved with an older version of MixedModels.jl: consider resaving",
             ),
             restoreoptsum!(m, seekstart(iob)))
-        #         iob = IOBuffer(
-        # """
-        # {
-        #     "initial":[1.0,0.0,1.0],
-        #     "finitial":1784.642296192436,
-        #     "ftol_rel":1.0e-12,
-        #     "ftol_abs":1.0e-8,
-        #     "xtol_rel":0.0,
-        #     "xtol_abs":[1.0e-10,1.0e-10,1.0e-10],
-        #     "initial_step":[0.75,1.0,0.75],
-        #     "maxfeval":-1,
-        #     "maxtime":-1.0,
-        #     "feval":57,
-        #     "final":[-0.9292213195402981,0.01816837807519162,0.22264487477788353],
-        #     "fmin":1751.9393444646712,
-        #     "optimizer":"LN_BOBYQA",
-        #     "returnvalue":"FTOL_REACHED",
-        #     "nAGQ":1,
-        #     "REML":false,
-        #     "sigma":null,
-        #     "fitlog":[[[1.0,0.0,1.0],1784.642296192436]]
-        # }
-        # """
-        #         )
-        #         # @test_throws(ArgumentError("initial or final parameters in io do not satisfy lowerbd"),  # test is no longer meaningful
-        #         #              @suppress restoreoptsum!(m, seekstart(iob)))
-        #         restoreoptsum!(m, seekstart(iob))
-        # make sure new fields are correctly restored
         mktemp() do path, io
             m = deepcopy(last(models(:sleepstudy)))
             m.optsum.xtol_zero_abs = 0.5
