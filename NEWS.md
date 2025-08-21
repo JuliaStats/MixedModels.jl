@@ -2,7 +2,7 @@ MixedModels v5.0.0 Release Notes
 ==============================
 - Optimization is now performed _without constraints_. In a post-fitting step, the the Cholesky factor is canonicalized to have non-negative diagonal elements. [#840]
 - The default optimizer has changed to NLopt's implementation of NEWUOA where possible. NLopt's implementation fails on 1-dimensional problems, so in the case A single, scalar random effect, BOBYQA is used instead. In the future, the default optimizer backend will likely change to PRIMA and NLopt support will be moved to an extension. Blocking this change in backend is an issue with PRIMA.jl when running in VSCode's built-in REPL on Linux. [#840]
-- [BREAKING] Support for constrained optimization has been completely removed, i.e. the field `lowerbd` has been removed from `OptSummary`.
+- [BREAKING] Support for constrained optimization has been completely removed, i.e. the field `lowerbd` has been removed from `OptSummary`. [#849]
 
 
 MixedModels v4.38.0 Release Notes
