@@ -61,7 +61,7 @@ end
     # XXX this should be exact equality and it is indeed when stepping through manually
     # but not when run via Pkg.test(). I have no idea why.
     @test fitlog.θ[end] ≈ gm0.optsum.final
-    @test fitlog.θ[end] ≈ gm0.optsum.fmin
+    @test fitlog.objective[end] ≈ gm0.optsum.fmin
     @test gm0.lowerbd == [-Inf]
     @test isapprox(gm0.θ, [0.5720746212924732], atol=0.001)
     @test !issingular(gm0)
