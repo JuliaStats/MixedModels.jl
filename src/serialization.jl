@@ -141,7 +141,9 @@ function _deserialize_fitlog(fitlog, ops::OptSummary{T}, warn_old_version::Bool)
     ))
 end
 
-function _deserialize_fitlog(fitlog::JSON3.Array{JSON3.Object}, ops::OptSummary{T}, ::Bool) where {T}
+function _deserialize_fitlog(
+    fitlog::JSON3.Array{JSON3.Object}, ops::OptSummary{T}, ::Bool
+) where {T}
     isempty(fitlog) &&
         return _deserialize_fitlog(nothing, ops, warn_old_version)
     return Table((
