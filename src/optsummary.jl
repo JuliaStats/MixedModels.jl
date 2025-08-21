@@ -8,7 +8,6 @@ Summary of an optimization
 ## Tolerances, initial and final values
 * `initial`: a copy of the initial parameter values in the optimization
 * `finitial`: the initial value of the objective
-* `lowerbd`: lower bounds on the parameter values
 * `final`: a copy of the final parameter values from the optimization
 * `fmin`: the final value of the objective
 * `feval`: the number of function evaluations
@@ -51,7 +50,6 @@ Summary of an optimization
 Base.@kwdef mutable struct OptSummary{T<:AbstractFloat}
     initial::Vector{T}
     finitial::T = Inf * one(eltype(initial))
-    lowerbd::Vector{T}
     final::Vector{T} = copy(initial)
     fmin::T = Inf * one(eltype(initial))
     feval::Int = -1
@@ -84,11 +82,9 @@ end
 
 function OptSummary(
     initial::Vector{T},
-    lowerbd::Vector{S},
     optimizer::Symbol=:LN_NEWUOA; kwargs...,
-) where {T<:AbstractFloat,S<:AbstractFloat}
-    TS = promote_type(T, S)
-    return OptSummary{TS}(; initial, lowerbd, optimizer, kwargs...)
+) where {T<:AbstractFloat}
+    return OptSummary{T}(; initial, optimizer, kwargs...)
 end
 
 """
@@ -125,7 +121,6 @@ function Base.show(io::IO, ::MIME"text/plain", s::OptSummary)
     println(io)
     println(io, "Backend:                  ", s.backend)
     println(io, "Optimizer:                ", s.optimizer)
-    println(io, "Lower bounds:             ", s.lowerbd)
 
     for param in opt_params(Val(s.backend))
         println(io, rpad(string(param, ":"), length("Initial parameter vector: ")),

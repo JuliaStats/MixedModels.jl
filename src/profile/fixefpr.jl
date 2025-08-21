@@ -44,9 +44,7 @@ function FeProfile(m::LinearMixedModel, tc::TableColumns, j::Integer)
         LinearMixedModel(y₀ - xⱼ * m.β[j], feterm, reterms, m.formula); progress=false
     )
     # not sure this next call makes sense - should the second argument be m.optsum.final?
-    _copy_away_from_lowerbd!(
-        mnew.optsum.initial, mnew.optsum.final, mnew.lowerbd; incr=0.05
-    )
+    copyto!(mnew.optsum.initial, mnew.optsum.final)
     return FeProfile(mnew, tc, y₀, xⱼ, j)
 end
 

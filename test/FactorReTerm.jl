@@ -46,7 +46,6 @@ const LMM = LinearMixedModel
         @test MixedModels.nθ(sf) == 1
         @test MixedModels.getθ(sf) == ones(1)
         @test MixedModels.getθ!(Vector{Float64}(undef, 1), sf) == ones(1)
-        @test lowerbd(sf) == [-Inf]
         @test MixedModels.getθ(setθ!(sf, [0.5])) == [0.5]
         MixedModels.unscaledre!(Vector{Float64}(undef, 30), sf)
         @test_throws DimensionMismatch MixedModels.getθ!(Float64[], sf)

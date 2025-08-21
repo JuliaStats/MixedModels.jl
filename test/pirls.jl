@@ -63,7 +63,6 @@ end
     # but not when run via Pkg.test(). I have no idea why.
     @test last(fitlog)[1] ≈ gm0.optsum.final
     @test last(fitlog)[2] ≈ gm0.optsum.fmin
-    @test gm0.lowerbd == [-Inf]
     @test isapprox(gm0.θ, [0.5720746212924732], atol=0.001)
     @test !issingular(gm0)
     @test issingular(gm0, [0])
@@ -88,7 +87,6 @@ end
 
     gm1 = fit(MixedModel, first(gfms[:contra]), contra, Bernoulli(); progress=false)
     @test isapprox(gm1.θ, [0.5730523416716424], atol=0.005)
-    @test lowerbd(gm1) == fill(-Inf, 8)
     @test isapprox(deviance(gm1), 2361.545768866505, rtol=0.00001)
     @test isapprox(loglikelihood(gm1), -1180.772884433253, rtol=0.00001)
 
@@ -188,7 +186,6 @@ end
         MixedModel, only(gfms[:verbagg]), dataset(:verbagg), Bernoulli(); progress=false
     )
     @test deviance(gm3) ≈ 8151.40 rtol = 1e-5
-    @test lowerbd(gm3) == fill(-Inf, 8)
     @test fitted(gm3) == predict(gm3)
     # these two values are not well defined at the optimum
     @test isapprox(sum(x -> sum(abs2, x), gm3.u), 273.29646346940785, rtol=1e-3)

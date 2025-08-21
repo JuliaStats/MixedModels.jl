@@ -37,10 +37,11 @@ function profileσs!(val::NamedTuple, tc::TableColumns{T}; nzlb=1.0e-8) where {T
     m = val.m
     (; λ, σ, β, optsum, parmap, reterms) = m
     isnothing(optsum.sigma) || throw(ArgumentError("Can't profile vc's when σ is fixed"))
-    (; initial, final, fmin, lowerbd) = optsum
-    lowerbd .+= T(nzlb)                       # lower bounds must be > 0 b/c θ's occur in denominators
+    (; initial, final, fmin) = optsum
+    # lowerbd .+= T(nzlb)                       # lower bounds must be > 0 b/c θ's occur in denominators
     saveinitial = copy(initial)
-    copyto!(initial, max.(final, lowerbd))
+    # copyto!(initial, max.(final, lowerbd))
+    copyto!(initial, final)
     zetazero = mkrow!(tc, m, zero(T))         # parameter estimates
     vcnms = filter(keys(first(val.tbl))) do sym
         str = string(sym)
@@ -85,7 +86,6 @@ function profileσs!(val::NamedTuple, tc::TableColumns{T}; nzlb=1.0e-8) where {T
     end
     copyto!(final, initial)
     copyto!(initial, saveinitial)
-    lowerbd .-= T(nzlb)
     optsum.sigma = nothing
     updateL!(setθ!(m, final))
     return val

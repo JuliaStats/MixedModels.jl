@@ -30,7 +30,6 @@ In addition to the fieldnames, the following names are also accessible through t
 - `theta`: synonym for `θ`
 - `beta`: synonym for `β`
 - `σ` or `sigma`: common scale parameter (value is `NaN` for distributions without a scale parameter)
-- `lowerbd`: vector of lower bounds on the combined elements of `β` and `θ`
 - `formula`, `trms`, `A`, `L`, and `optsum`: fields of the `LMM` field
 - `X`: fixed-effects model matrix
 - `y`: response vector
@@ -286,7 +285,6 @@ function StatsAPI.fit!(
     end
 
     if !fast
-        optsum.lowerbd = vcat(fill!(similar(β), T(-Inf)), optsum.lowerbd)
         optsum.initial = vcat(β, lm.optsum.final)
         optsum.final = copy(optsum.initial)
     end
@@ -302,8 +300,9 @@ function StatsAPI.fit!(
 
     ## check if very small parameter values bounded below by zero can be set to zero
     xmin_ = copy(xmin)
+    lb = fast ? lowerbd(m) : vcat(zero(β), lowerbd(m))
     for i in eachindex(xmin_)
-        if iszero(optsum.lowerbd[i]) && zero(T) < xmin_[i] < optsum.xtol_zero_abs
+        if iszero(lb[i]) && zero(T) < xmin_[i] < optsum.xtol_zero_abs
             xmin_[i] = zero(T)
         end
     end
@@ -530,6 +529,8 @@ function StatsAPI.loglikelihood(m::GeneralizedLinearMixedModel{T}) where {T}
     return accum - (mapreduce(u -> sum(abs2, u), +, m.u) + logdet(m)) / 2
 end
 
+lowerbd(m::GeneralizedLinearMixedModel) = lowerbd(m.LMM)
+
 # Base.Fix1 doesn't forward kwargs
 function objective!(m::GeneralizedLinearMixedModel; fast=false, kwargs...)
     return x -> _objective!(m, x, Val(fast); kwargs...)
@@ -566,7 +567,6 @@ function Base.propertynames(m::GeneralizedLinearMixedModel, private::Bool=false)
         :sigma,
         :X,
         :y,
-        :lowerbd,
         :objective,
         :σρs,
         :σs,
@@ -791,11 +791,6 @@ function unfit!(model::GeneralizedLinearMixedModel{T}) where {T}
 
     reterms = model.LMM.reterms
     optsum = model.LMM.optsum
-    # we need to reset optsum so that it
-    # plays nice with the modifications fit!() does
-    optsum.lowerbd = mapfoldl(lowerbd, vcat, reterms)      # probably don't need this anymore - now trivial with all elements = -Inf
-    # for variances (bounded at zero), we have ones, while
-    # for everything else (bounded at -Inf), we have zeros
     optsum.initial = map(x -> T(x[2] == x[3]), model.LMM.parmap)
     optsum.final = copy(optsum.initial)
     optsum.xtol_abs = fill!(copy(optsum.initial), 1.0e-10)
@@ -845,7 +840,7 @@ function StatsAPI.weights(m::GeneralizedLinearMixedModel{T}) where {T}
 end
 
 # delegate GLMM method to LMM field
-for f in (:feL, :fetrm, :fixefnames, :(LinearAlgebra.logdet), :lowerbd, :PCA, :rePCA)
+for f in (:feL, :fetrm, :fixefnames, :(LinearAlgebra.logdet), :PCA, :rePCA)
     @eval begin
         $f(m::GeneralizedLinearMixedModel) = $f(m.LMM)
     end

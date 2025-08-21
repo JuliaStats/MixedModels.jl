@@ -43,7 +43,7 @@ function profileσ(m::LinearMixedModel{T}, tc::TableColumns{T}; threshold=4) whe
         throw(ArgumentError("Can't profile σ, which is fixed at $(optsum.sigma)"))
     θ = copy(optsum.final)
     θinitial = copy(optsum.initial)
-    _copy_away_from_lowerbd!(optsum.initial, optsum.final, optsum.lowerbd)
+    copyto!(optsum.initial, optsum.final)
     obj = optsum.fmin
     σ = m.σ
     pnm = (p=:σ,)

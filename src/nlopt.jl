@@ -81,8 +81,7 @@ function optimize!(m::GeneralizedLinearMixedModel, ::NLoptBackend;
 end
 
 function NLopt.Opt(optsum::OptSummary)
-    lb = optsum.lowerbd
-    n = length(lb)
+    n = length(optsum.initial)
 
     if optsum.optimizer == :LN_NEWUOA && isone(n) # :LN_NEWUOA doesn't allow n == 1
         optsum.optimizer = :LN_BOBYQA

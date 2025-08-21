@@ -9,7 +9,6 @@ Return an `OptSummary` with the `j`'th component of the parameter omitted.
 function optsumj(os::OptSummary, j::Integer)
     return OptSummary(
         deleteat!(copy(os.final), j),
-        deleteat!(copy(os.lowerbd), j),
         os.optimizer,
     )
 end
