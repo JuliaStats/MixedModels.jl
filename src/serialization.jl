@@ -130,11 +130,13 @@ end
 function _deserialize_fitlog(fitlog, T, warn_old_version::Bool)
     warn_old_version && @warn "optsum was saved with an older version of MixedModels.jl: consider resaving."
     warn_old_version = false
+    isempty(fitlog) && return Table(; θ=Vector{Vector{T}}(), objective=T[])
     return Table(( (; θ=convert(Vector{T}, first(entry)),
                       objective=T(last(entry))) for entry in fitlog))
 end
 
 function _deserialize_fitlog(fitlog::JSON3.Array{JSON3.Object}, T, ::Bool)
+    isempty(fitlog) && return Table(; θ=Vector{Vector{T}}(), objective=T[])
     return Table(( (; θ=convert(Vector{T}, entry.θ),
                       objective=T(entry.objective)) for entry in fitlog))
 end
