@@ -93,7 +93,8 @@ function restoreoptsum!(ops::OptSummary{T}, dict::AbstractDict) where {T}
     end
     if length(setdiff(allowed_missing, keys(dict))) > 1 # 1 because :lowerbd
         @debug "" setdiff(allowed_missing, keys(dict))
-        warn_old_version && @warn "optsum was saved with an older version of MixedModels.jl: consider resaving."
+        warn_old_version &&
+            @warn "optsum was saved with an older version of MixedModels.jl: consider resaving."
         warn_old_version = false
     end
 
@@ -128,15 +129,20 @@ end
 
 # fitlog structure in MixedModels 4.x
 function _deserialize_fitlog(fitlog, T, warn_old_version::Bool)
-    warn_old_version && @warn "optsum was saved with an older version of MixedModels.jl: consider resaving."
+    warn_old_version &&
+        @warn "optsum was saved with an older version of MixedModels.jl: consider resaving."
     warn_old_version = false
-    return Table(( (; θ=convert(Vector{T}, first(entry)),
-                      objective=T(last(entry))) for entry in fitlog))
+    return Table((
+        (; θ=convert(Vector{T}, first(entry)),
+            objective=T(last(entry))) for entry in fitlog
+    ))
 end
 
 function _deserialize_fitlog(fitlog::JSON3.Array{JSON3.Object}, T, ::Bool)
-    return Table(( (; θ=convert(Vector{T}, entry.θ),
-                      objective=T(entry.objective)) for entry in fitlog))
+    return Table((
+        (; θ=convert(Vector{T}, entry.θ),
+            objective=T(entry.objective)) for entry in fitlog
+    ))
 end
 
 StructTypes.StructType(::Type{<:OptSummary}) = StructTypes.Mutable()
