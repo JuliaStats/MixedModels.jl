@@ -145,5 +145,4 @@ function MixedModels.optimizers(::NLoptBackend)
     return [:LN_NEWUOA, :LN_BOBYQA, :LN_COBYLA, :LN_NELDERMEAD, :LN_PRAXIS]
 end
 
-
 end # module
