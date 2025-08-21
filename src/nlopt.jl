@@ -93,11 +93,10 @@ function NLopt.Opt(optsum::OptSummary)
     if length(optsum.xtol_abs) == n  # not true for fast=false optimization in GLMM
         NLopt.xtol_abs!(opt, optsum.xtol_abs) # absolute criterion on parameter values
     end
-    #    NLopt.lower_bounds!(opt, lb)   # use unconstrained optimization even for :LN_BOBYQA
     NLopt.maxeval!(opt, optsum.maxfeval)
     NLopt.maxtime!(opt, optsum.maxtime)
     if isempty(optsum.initial_step)
-        optsum.initial_step = NLopt.initial_step(opt, optsum.initial, similar(lb))
+        optsum.initial_step = NLopt.initial_step(opt, optsum.initial)
     else
         NLopt.initial_step!(opt, optsum.initial_step)
     end
