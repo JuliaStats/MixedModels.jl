@@ -533,7 +533,7 @@ end
     @test "BlkDiag" in Set(split(String(take!(io)), r"\s+"))
 
     @testset "optsumJSON" begin
-        fm = refit!(last(models(:sleepstudy)); progress=false, fitlog=true)
+        fm = refit!(last(models(:sleepstudy)); progress=false)
         # using a IOBuffer for saving JSON
         saveoptsum(seekstart(io), fm)
         m = LinearMixedModel(fm.formula, MixedModels.dataset(:sleepstudy))

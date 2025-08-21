@@ -53,16 +53,15 @@ end
         Bernoulli();
         fast=true,
         progress=false,
-        fitlog=true,
     )
     fitlog = gm0.optsum.fitlog
     @test length(fitlog) == gm0.optsum.feval
-    @test first(fitlog)[1] == gm0.optsum.initial
-    @test first(fitlog)[2] ≈ gm0.optsum.finitial
+    @test fitlog.θ[begin] == gm0.optsum.initial
+    @test fitlog.objective[begin] ≈ gm0.optsum.finitial
     # XXX this should be exact equality and it is indeed when stepping through manually
     # but not when run via Pkg.test(). I have no idea why.
-    @test last(fitlog)[1] ≈ gm0.optsum.final
-    @test last(fitlog)[2] ≈ gm0.optsum.fmin
+    @test fitlog.θ[end] ≈ gm0.optsum.final
+    @test fitlog.θ[end] ≈ gm0.optsum.fmin
     @test gm0.lowerbd == [-Inf]
     @test isapprox(gm0.θ, [0.5720746212924732], atol=0.001)
     @test !issingular(gm0)
