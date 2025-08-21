@@ -81,7 +81,7 @@ function Base.show(
         # only display the lower triangle of symmetric matrix
         if pca.rnames !== missing
             n = length(pca.rnames)
-            cv = string.(round.(pca.covcor, digits=ndigitsmat))
+            cv = string.(round.(pca.covcor; digits=ndigitsmat))
             dotpad = lpad(".", div(maximum(length, cv), 2))
             for i in 1:n, j in (i + 1):n
                 cv[i, j] = dotpad
@@ -97,7 +97,7 @@ function Base.show(
             # if there are no names, then we cheat and use the print method
             # for LowerTriangular, which automatically covers the . in the
             # upper triangle
-            printmat = round.(LowerTriangular(pca.covcor), digits=ndigitsmat)
+            printmat = round.(LowerTriangular(pca.covcor); digits=ndigitsmat)
         end
 
         Base.print_matrix(io, printmat)
@@ -106,21 +106,21 @@ function Base.show(
     if stddevs
         println(io, "\nStandard deviations:")
         sv = pca.sv
-        show(io, round.(sv.S, digits=ndigitsvec))
+        show(io, round.(sv.S; digits=ndigitsvec))
         println(io)
     end
     if variances
         println(io, "\nVariances:")
         vv = abs2.(sv.S)
-        show(io, round.(vv, digits=ndigitsvec))
+        show(io, round.(vv; digits=ndigitsvec))
         println(io)
     end
     println(io, "\nNormalized cumulative variances:")
-    show(io, round.(pca.cumvar, digits=ndigitscum))
+    show(io, round.(pca.cumvar; digits=ndigitscum))
     println(io)
     if loadings
         println(io, "\nComponent loadings")
-        printmat = round.(pca.loadings, digits=ndigitsmat)
+        printmat = round.(pca.loadings; digits=ndigitsmat)
         if pca.rnames !== missing
             pclabs = [Text(""); Text.("PC$i" for i in 1:length(pca.rnames))]
             pclabs = reshape(pclabs, 1, :)
