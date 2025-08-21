@@ -145,7 +145,7 @@ end
     # since we're caching the fits, we should get it back to being correctly fitted
     # we also take this opportunity to test fitlog
     @testset "fitlog" begin
-        refit!(fm1; REML=false, progress=false, fitlog=true)
+        refit!(fm1; REML=false, progress=false)
         fitlog = fm1.optsum.fitlog
         fitlogtbl = columntable(fm1.optsum)
         @test length(fitlogtbl) == 3
