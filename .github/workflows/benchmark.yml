@@ -20,7 +20,7 @@ jobs:
         strategy:
           fail-fast: false
         steps:
-          - uses: actions/checkout@v4
+          - uses: actions/checkout@v5
           - uses: julia-actions/setup-julia@v2
             with:
               version: "1"

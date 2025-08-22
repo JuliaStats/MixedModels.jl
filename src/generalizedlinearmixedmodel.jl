@@ -213,7 +213,6 @@ end
 """
     fit!(m::GeneralizedLinearMixedModel; fast=false, nAGQ=1,
                                          verbose=false, progress=true,
-                                         thin::Int=1,
                                          init_from_lmm=Set())
 
 Optimize the objective function for `m`.
@@ -227,9 +226,6 @@ during the iterations to minimize the deviance.  There is a delay before this di
 and it may not be shown at all for models that are optimized quickly.
 
 If `verbose` is `true`, then both the intermediate results of both the nonlinear optimization and PIRLS are also displayed on standard output.
-
-The `thin` argument is ignored: it had no impact on the final model fit and the logic around
-thinning the `fitlog` was needlessly complicated for a trivial performance gain.
 
 By default, the starting values for model fitting are taken from a (non mixed,
 i.e. marginal ) GLM fit. Experience with larger datasets (many thousands of
@@ -256,8 +252,6 @@ function StatsAPI.fit!(
     fast::Bool=false,
     nAGQ::Integer=1,
     progress::Bool=true,
-    thin::Int=typemax(Int),
-    fitlog::Bool=false,
     init_from_lmm=Set(),
     backend::Symbol=m.optsum.backend,
     optimizer::Symbol=m.optsum.optimizer,
@@ -294,7 +288,11 @@ function StatsAPI.fit!(
     optsum.backend = backend
     optsum.optimizer = optimizer
 
-    xmin, fmin = optimize!(m; progress, fitlog, fast, verbose, nAGQ)
+    xmin, fmin = optimize!(m; progress, fast, verbose, nAGQ)
+
+    θopt = length(xmin) == length(θ) ? xmin : view(xmin, (length(β) + 1):lastindex(xmin))
+    rectify!(m.LMM)                  # flip signs of columns of m.λ elements with negative diagonal els
+    getθ!(θopt, m)                   # use the rectified values in xmin
 
     ## check if very small parameter values bounded below by zero can be set to zero
     xmin_ = copy(xmin)
@@ -308,7 +306,7 @@ function StatsAPI.fit!(
             (fmin + optsum.ftol_zero_abs)
             fmin = zeroobj
             copyto!(xmin, xmin_)
-            fitlog && push!(optsum.fitlog, (copy(xmin), fmin))
+            push!(optsum.fitlog, (; θ=copy(xmin), objective=fmin))
         end
     end
 
@@ -789,10 +787,10 @@ function unfit!(model::GeneralizedLinearMixedModel{T}) where {T}
     optsum = model.LMM.optsum
     # we need to reset optsum so that it
     # plays nice with the modifications fit!() does
-    optsum.lowerbd = mapfoldl(lowerbd, vcat, reterms)
+    optsum.lowerbd = mapfoldl(lowerbd, vcat, reterms)      # probably don't need this anymore - now trivial with all elements = -Inf
     # for variances (bounded at zero), we have ones, while
     # for everything else (bounded at -Inf), we have zeros
-    optsum.initial = map(T ∘ iszero, optsum.lowerbd)
+    optsum.initial = map(x -> T(x[2] == x[3]), model.LMM.parmap)
     optsum.final = copy(optsum.initial)
     optsum.xtol_abs = fill!(copy(optsum.initial), 1.0e-10)
     optsum.initial_step = T[]

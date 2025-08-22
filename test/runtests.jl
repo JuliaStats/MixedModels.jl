@@ -2,6 +2,10 @@ using Aqua
 using ExplicitImports
 using GLM
 using MixedModels
+# we don't actually use RegressionFormulae
+# but we want to make sure we're not at odds with each other
+# in our term privateering
+using RegressionFormulae
 using Test
 
 import InteractiveUtils: versioninfo
@@ -15,8 +19,8 @@ import LinearAlgebra: BLAS
     # we can't check for unbound type parameters
     # because we actually need one at one point for _same_family()
     Aqua.test_all(MixedModels; ambiguities=false, unbound_args=false,
-                  # XXX TODO: upstream this piracy
-                  piracies=(;treat_as_own=[GLM.wrkresp!, Base.:|]))
+        # XXX TODO: upstream this piracy
+        piracies=(; treat_as_own=[GLM.wrkresp!, Base.:|]))
 end
 
 @testset "ExplicitImports" begin
@@ -45,3 +49,5 @@ include("predict.jl")
 include("sigma.jl")
 
 @testset "PRIMA" include("prima.jl")
+@testset "ForwardDiff" include("forwarddiff.jl")
+@testset "FiniteDiff" include("finitediff.jl")

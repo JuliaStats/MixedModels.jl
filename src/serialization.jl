@@ -73,6 +73,7 @@ function restoreoptsum!(
 end
 
 function restoreoptsum!(ops::OptSummary{T}, dict::AbstractDict) where {T}
+    warn_old_version = true
     allowed_missing = (
         :lowerbd,       # never saved, -Inf not allowed in JSON
         :xtol_zero_abs, # added in v4.25.0
@@ -91,7 +92,10 @@ function restoreoptsum!(ops::OptSummary{T}, dict::AbstractDict) where {T}
         throw(ArgumentError(string("optsum names: ", nmdiff, " not found in io")))
     end
     if length(setdiff(allowed_missing, keys(dict))) > 1 # 1 because :lowerbd
-        @warn "optsum was saved with an older version of MixedModels.jl: consider resaving."
+        @debug "" setdiff(allowed_missing, keys(dict))
+        warn_old_version &&
+            @warn "optsum was saved with an older version of MixedModels.jl: consider resaving."
+        warn_old_version = false
     end
 
     if any(ops.lowerbd .> dict.initial) || any(ops.lowerbd .> dict.final)
@@ -114,13 +118,38 @@ function restoreoptsum!(ops::OptSummary{T}, dict::AbstractDict) where {T}
     end
     ops.sigma = get(dict, :sigma, nothing)
     fitlog = get(dict, :fitlog, nothing)
-    ops.fitlog = if isnothing(fitlog)
-        # compat with fits saved before fitlog
-        [(ops.initial, ops.finitial), (ops.final, ops.fmin)]
-    else
-        [(convert(Vector{T}, first(entry)), T(last(entry))) for entry in fitlog]
-    end
+    ops.fitlog = _deserialize_fitlog(fitlog, ops, warn_old_version)
     return ops
+end
+
+# before there was a fitlog....
+function _deserialize_fitlog(::Nothing, ops::OptSummary{T}, ::Bool) where {T}
+    # no need to warn here because we already warned with the missing field
+    return Table(; θ=Vector{T}[ops.initial, ops.final], objective=T[ops.finitial, ops.fmin])
+end
+
+# fitlog structure in MixedModels 4.x
+function _deserialize_fitlog(fitlog, ops::OptSummary{T}, warn_old_version::Bool) where {T}
+    warn_old_version &&
+        @warn "optsum was saved with an older version of MixedModels.jl: consider resaving."
+    warn_old_version = false
+    isempty(fitlog) &&
+        return _deserialize_fitlog(nothing, ops, warn_old_version)
+    return Table((
+        (; θ=convert(Vector{T}, first(entry)),
+            objective=T(last(entry))) for entry in fitlog
+    ))
+end
+
+function _deserialize_fitlog(
+    fitlog::JSON3.Array{JSON3.Object}, ops::OptSummary{T}, ::Bool
+) where {T}
+    isempty(fitlog) &&
+        return _deserialize_fitlog(nothing, ops, warn_old_version)
+    return Table((
+        (; θ=convert(Vector{T}, entry.θ),
+            objective=T(entry.objective)) for entry in fitlog
+    ))
 end
 
 StructTypes.StructType(::Type{<:OptSummary}) = StructTypes.Mutable()

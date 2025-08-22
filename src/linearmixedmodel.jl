@@ -443,24 +443,17 @@ end
 
 """
     fit!(m::LinearMixedModel; progress::Bool=true, REML::Bool=m.optsum.REML,
-                              σ::Union{Real, Nothing}=m.optsum.sigma,
-                              thin::Int=typemax(Int),
-                              fitlog::Bool=true)
+                              σ::Union{Real, Nothing}=m.optsum.sigma)
 
 Optimize the objective of a `LinearMixedModel`.  When `progress` is `true` a
 `ProgressMeter.ProgressUnknown` display is shown during the optimization of the
 objective, if the optimization takes more than one second or so.
-
-The `thin` argument is ignored: it had no impact on the final model fit and the logic around
-thinning the `fitlog` was needlessly complicated for a trivial performance gain.
 """
 function StatsAPI.fit!(
     m::LinearMixedModel{T};
     progress::Bool=true,
     REML::Bool=m.optsum.REML,
     σ::Union{Real,Nothing}=m.optsum.sigma,
-    thin::Int=typemax(Int),
-    fitlog::Bool=false,
     backend::Symbol=m.optsum.backend,
     optimizer::Symbol=m.optsum.optimizer,
 ) where {T}
@@ -495,13 +488,16 @@ function StatsAPI.fit!(
         optsum.finitial = objective!(m, optsum.initial)
     end
 
-    xmin, fmin = optimize!(m; progress, fitlog)
+    xmin, fmin = optimize!(m; progress)
+
+    setθ!(m, xmin)                   # ensure that the parameters saved in m are xmin
+    rectify!(m)                      # flip signs of columns of m.λ elements with negative diagonal els
+    getθ!(xmin, m)                   # use the rectified values as xmin
 
     ## check if small non-negative parameter values can be set to zero
     xmin_ = copy(xmin)
-    lb = optsum.lowerbd
-    for i in eachindex(xmin_)
-        if iszero(lb[i]) && zero(T) < xmin_[i] < optsum.xtol_zero_abs
+    for (i, pm) in enumerate(m.parmap)
+        if pm[2] == pm[3] && zero(T) < xmin_[i] < optsum.xtol_zero_abs
             xmin_[i] = zero(T)
         end
     end
@@ -509,7 +505,7 @@ function StatsAPI.fit!(
         if (zeroobj = objective!(m, xmin_)) ≤ (fmin + optsum.ftol_zero_abs)
             fmin = zeroobj
             copyto!(xmin, xmin_)
-            fitlog && push!(optsum.fitlog, (copy(xmin), fmin))
+            push!(optsum.fitlog, (; θ=copy(xmin), objective=fmin))
         end
     end
 
@@ -679,6 +675,19 @@ function Base.getproperty(m::LinearMixedModel{T}, s::Symbol) where {T}
     else
         getfield(m, s)
     end
+end
+
+"""
+    _set_init(m::LinearMixedModel)
+
+Set each element of m.optsum.initial to 1.0 for diagonal and 0.0 for off-diagonal
+"""
+function _set_init!(m::LinearMixedModel)
+    init = m.optsum.initial
+    for (i, pm) in enumerate(m.parmap)
+        init[i] = pm[2] == pm[3]
+    end
+    return m
 end
 
 StatsAPI.islinear(m::LinearMixedModel) = true
@@ -928,6 +937,34 @@ end
 LinearAlgebra.rank(m::LinearMixedModel) = m.feterm.rank
 
 """
+    rectify!(m::LinearMixedModel)
+
+For each element of m.λ check for negative values on the diagonal and flip the signs of the entire column when any are present.
+
+This provides a canonical converged value of θ.  We use unconstrained optimization followed by this reassignment to avoid the
+hassle of constrained optimization.
+"""
+function rectify!(m::LinearMixedModel)
+    rectify!.(m.λ)
+    return m
+end
+
+function rectify!(λ::LowerTriangular)
+    for (j, c) in enumerate(eachcol(λ.data))
+        if c[j] < 0
+            c .*= -1
+        end
+    end
+    return λ
+end
+
+function rectify!(λ::Diagonal)
+    d = λ.diag
+    map!(abs, d, d)
+    return λ
+end
+
+"""
     rePCA(m::LinearMixedModel; corr::Bool=true)
 
 Return a named tuple of the normalized cumulative variance of a principal components
@@ -939,7 +976,7 @@ principal component, the first two principal components, etc.  The last element 
 always 1.0 representing the complete proportion of the variance.
 """
 function rePCA(m::LinearMixedModel; corr::Bool=true)
-    pca = PCA.(m.reterms, corr=corr)
+    pca = PCA.(m.reterms; corr=corr)
     return NamedTuple{_unique_fnames(m)}(getproperty.(pca, :cumvar))
 end
 
@@ -951,7 +988,7 @@ covariance matrices or correlation matrices when `corr` is `true`.
 """
 
 function PCA(m::LinearMixedModel; corr::Bool=true)
-    return NamedTuple{_unique_fnames(m)}(PCA.(m.reterms, corr=corr))
+    return NamedTuple{_unique_fnames(m)}(PCA.(m.reterms; corr=corr))
 end
 
 """
@@ -1256,9 +1293,8 @@ function unfit!(model::LinearMixedModel{T}) where {T}
     optsum = model.optsum
     optsum.feval = -1
     optsum.initial_step = T[]
-    # for variances (bounded at zero), we have ones, while
-    # for everything else (bounded at -Inf), we have zeros
-    map!(T ∘ iszero, optsum.initial, optsum.lowerbd)
+    # initialize elements on the diagonal of Λ to one(T), off-diagonals to zero(T)
+    _set_init!(model)
     copyto!(optsum.final, optsum.initial)
     reevaluateAend!(model)
 

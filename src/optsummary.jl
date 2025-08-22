@@ -20,7 +20,21 @@ Summary of an optimization
 
 ## Choice of optimizer and backend
 * `optimizer`: the name of the optimizer used, as a `Symbol`
-* `backend`: the optimization library providing the optimizer, default is `NLoptBackend`.
+* `backend`: the optimization library providing the optimizer, stored as a symbol.
+   The current default is `:nlopt`.
+
+The current default backend is NLopt, which is a direct dependency of MixedModels.jl.
+A PRIMA backend is also provided as a package extension and thus only
+available when the library PRIMA is loaded.
+The list of currently loaded backends is available as [`MixedModels.OPTIMIZATION_BACKENDS`](@ref).
+For each individual backend, the list of available optimizers can be inspected with the function [`MixedModels.optimizers`](@ref).
+Similarly, the list of applicable optimization parameters can be inspected with the function [`MixedModels.opt_params`](@ref).
+
+!!! note "Optimizer defaults subject to change"
+    The choice of backend and optimizer is subject to change without being considered a breaking
+    change. If you want to guarantee a particular backend and optimizer, then you should
+    explicitly load the associated backend's package (e.g. NLopt or PRIMA) and manually
+    set the `optimizer` and `backend` fields.
 
 ## Backend-specific fields
 * `ftol_rel`: as in NLopt, not used in PRIMA
@@ -33,7 +47,7 @@ Summary of an optimization
 * `rhoend`: as in PRIMA, not used in NLopt
 
 ## MixedModels-specific fields, unrelated to the optimizer
-* `fitlog`: A vector of tuples of parameter and objectives values from steps in the optimization
+* `fitlog`: A Tables.jl-compatible table with columns `θ` and `objective`. The precise type is an implementation detail
 * `nAGQ`: number of adaptive Gauss-Hermite quadrature points in deviance evaluation for GLMMs
 * `REML`: use the REML criterion for LMM fits
 * `sigma`: a priori value for the residual standard deviation for LMM
@@ -60,7 +74,7 @@ Base.@kwdef mutable struct OptSummary{T<:AbstractFloat}
     ftol_zero_abs::T = eltype(initial)(1.e-5)
     maxfeval::Int = -1
 
-    optimizer::Symbol = :LN_BOBYQA
+    optimizer::Symbol = :LN_NEWUOA    # switched to :LN_BOBYQA for one-dimensional optimizations
     backend::Symbol = :nlopt
 
     # the @kwdef macro isn't quite smart enough for us to use the type parameter
@@ -76,7 +90,9 @@ Base.@kwdef mutable struct OptSummary{T<:AbstractFloat}
     rhoend::T = rhobeg / 1_000_000
 
     # not SVector because we would need to parameterize on size (which breaks GLMM)
-    fitlog::Vector{Tuple{Vector{T},T}} = Vector{Tuple{Vector{T},T}}()
+    # we could parameterize more strictly, but this is already a mutable struct
+    # and not isbits, so I don't think we're going to see any real advantage
+    fitlog::Table = Table(; θ=Vector{Vector{T}}(), objective=T[])
     nAGQ::Int = 1
     REML::Bool = false
     sigma::Union{T,Nothing} = nothing
@@ -85,7 +101,7 @@ end
 function OptSummary(
     initial::Vector{T},
     lowerbd::Vector{S},
-    optimizer::Symbol=:LN_BOBYQA; kwargs...,
+    optimizer::Symbol=:LN_NEWUOA; kwargs...,
 ) where {T<:AbstractFloat,S<:AbstractFloat}
     TS = promote_type(T, S)
     return OptSummary{TS}(; initial, lowerbd, optimizer, kwargs...)
@@ -107,7 +123,7 @@ and `par` is a vector of parameter numbers.
 """
 function Tables.columntable(s::OptSummary; stack::Bool=false)
     fitlog = s.fitlog
-    val = (; iter=axes(fitlog, 1), objective=last.(fitlog), θ=first.(fitlog))
+    val = (; iter=axes(fitlog, 1), objective=fitlog.objective, θ=fitlog.θ)
     stack || return val
     θ1 = first(val.θ)
     k = length(θ1)
@@ -185,3 +201,20 @@ Return a collection of the fields of [`OptSummary`](@ref) used by backend.
 they are used _after_ optimization and are thus shared across backends.
 """
 function opt_params end
+
+opt_params(s::Symbol) = opt_params(Val(s))
+
+"""
+    optimizers(::Val{backend})
+
+Return a collection of the algorithms supported by the backend.
+
+!!! note
+    The names of the algorithms are not necessarily consistent across backends.
+    For example, NLopt has `:LN_BOBYQA` and PRIMA has `:bobyqa` for Powell's
+    BOBYQA algorithm. In other words, we have not yet abstracted over the
+    backends' differing naming conventions for algorithms.
+"""
+function optimizers end
+
+optimizers(s::Symbol) = optimizers(Val(s))

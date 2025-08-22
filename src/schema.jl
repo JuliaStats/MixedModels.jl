@@ -56,7 +56,7 @@ end
 Find and apply the schema for f in a way that automatically uses `Grouping()`
 contrasts when appropriate.
 
-!!! warn
+!!! warning
     This is an internal method.
 """
 function schematize(f, tbl, contrasts::Dict{Symbol}, Mod=LinearMixedModel)
@@ -64,11 +64,21 @@ function schematize(f, tbl, contrasts::Dict{Symbol}, Mod=LinearMixedModel)
     # also we want this to be a vector so we can sort later
     rhs = f.rhs isa AbstractTerm ? [f.rhs] : collect(f.rhs)
     fe = filter(!is_randomeffectsterm, rhs)
+    # flatten any MatrixTerms
+    fe = mapreduce(StatsModels.terms, vcat, fe; init=AbstractTerm[])
     # init with lhs so we don't need an extra merge later
     # and so that things work even when we have empty fixed effects
     init = schema(f.lhs, tbl, contrasts)
     sch_fe = mapfoldl(merge, fe; init) do tt
-        return schema(tt, tbl, contrasts)
+        sch = schema(tt, tbl, contrasts)
+        # this happens when the term is already concrete
+        # we want to force the schema to populated so that it's not overridden
+        # by any associated RE below
+        if isempty(sch.schema)
+            sch = StatsModels.Schema(StatsModels.term(string(tt)) => tt)
+        end
+
+        return sch
     end
     re = filter(is_randomeffectsterm, rhs)
     sch_re = mapfoldl(merge, re; init) do tt

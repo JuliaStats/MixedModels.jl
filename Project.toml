@@ -1,7 +1,7 @@
 name = "MixedModels"
 uuid = "ff71e718-51f3-5ec2-a782-8ffcbfa3c316"
 author = ["Phillip Alday <me@phillipalday.com>", "Douglas Bates <dmbates@gmail.com>"]
-version = "4.35.2"
+version = "5.0.0-DEV"
 
 [deps]
 Arrow = "69666777-d1a9-59fb-9406-91d4454c9d45"
@@ -31,9 +31,13 @@ Tables = "bd369af6-aec1-5ad0-b16a-f7cc5008161c"
 TypedTables = "9d95f2ec-7b3d-5a63-8d20-e2491e220bb9"
 
 [weakdeps]
+FiniteDiff = "6a86dc24-6348-571c-b903-95158fe2bd41"
+ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
 PRIMA = "0a7d04aa-8ac2-47b3-b7a7-9dbd6ad661ed"
 
 [extensions]
+MixedModelsFiniteDiffExt = ["FiniteDiff"]
+MixedModelsForwardDiffExt = ["ForwardDiff"]
 MixedModelsPRIMAExt = ["PRIMA"]
 
 [compat]
@@ -45,6 +49,8 @@ DataAPI = "1"
 DataFrames = "1"
 Distributions = "0.21, 0.22, 0.23, 0.24, 0.25"
 ExplicitImports = "1.3"
+FiniteDiff = "2.27"
+ForwardDiff = "1"
 GLM = "1.8.2"
 InteractiveUtils = "1"
 JSON3 = "1"
@@ -57,6 +63,7 @@ PooledArrays = "0.5, 1"
 PrecompileTools = "1"
 ProgressMeter = "1.7"
 Random = "1"
+RegressionFormulae = "0.1.3"
 SparseArrays = "1"
 StableRNGs = "0.1, 1"
 StaticArrays = "0.11, 0.12, 1"
@@ -76,11 +83,14 @@ julia = "1.10"
 Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 ExplicitImports = "7d51a73a-1435-4ff3-83d9-f097790105c7"
+FiniteDiff = "6a86dc24-6348-571c-b903-95158fe2bd41"
+ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
 InteractiveUtils = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
 PRIMA = "0a7d04aa-8ac2-47b3-b7a7-9dbd6ad661ed"
+RegressionFormulae = "545c379f-4ec2-4339-9aea-38f2fb6a8ba2"
 StableRNGs = "860ef19b-820b-49d6-a774-d7a799459cd3"
 Suppressor = "fd094767-a336-5f1f-9728-57cf17d0bbfb"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Aqua", "DataFrames", "ExplicitImports", "InteractiveUtils", "PRIMA", "StableRNGs", "Suppressor", "Test"]
+test = ["Aqua", "DataFrames", "ExplicitImports", "FiniteDiff", "ForwardDiff", "InteractiveUtils", "PRIMA", "RegressionFormulae", "StableRNGs", "Suppressor", "Test"]
