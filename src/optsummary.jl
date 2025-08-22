@@ -202,7 +202,6 @@ function opt_params end
 
 opt_params(s::Symbol) = opt_params(Val(s))
 
-
 """
     optimizers(::Val{backend})
 
