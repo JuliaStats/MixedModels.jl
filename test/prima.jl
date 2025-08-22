@@ -3,7 +3,7 @@ using MixedModels: unfit!, dataset
 
 include("modelcache.jl")
 
-@testset "formula($model)" for model in models(:sleepstudy)
+@testset "$(formula(model))" for model in models(:sleepstudy)
     prmodel = LinearMixedModel(formula(model), dataset(:sleepstudy))
     prmodel.optsum.backend = :prima
     prmodel.optsum.optimizer = :bobyqa
@@ -12,6 +12,12 @@ include("modelcache.jl")
     @test isapprox(loglikelihood(model), loglikelihood(prmodel))
     @test prmodel.optsum.optimizer == :bobyqa
     @test prmodel.optsum.backend == :prima
+
+    @testset "profile" begin
+        profile_prima = profile(prmodel)
+        profile_nlopt = profile(model)
+        @test isapprox(profile_prima.tbl.ζ, profile_nlopt.tbl.ζ; rtol=0.0001)
+    end
 end
 
 model = first(models(:sleepstudy))

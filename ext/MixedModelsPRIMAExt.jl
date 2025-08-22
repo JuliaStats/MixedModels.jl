@@ -3,8 +3,8 @@ module MixedModelsPRIMAExt
 using MixedModels
 using MixedModels: Statistics
 using MixedModels.ProgressMeter: ProgressMeter, ProgressUnknown
-using MixedModels: objective!, _objective!
-using LinearAlgebra: PosDefException
+using MixedModels: objective!, _objective!, rectify!
+using LinearAlgebra: PosDefException, norm
 using PRIMA: PRIMA
 
 function __init__()
@@ -13,6 +13,12 @@ function __init__()
 end
 
 const PRIMABackend = Val{:prima}
+
+function _optimizer(o::Val{O}, f, x0::Vector, args...; kwargs...) where {O}
+    x0 = copy(x0)
+    info = _optimizer!(o, f, x0, args...; kwargs...)
+    return x0, info
+end
 
 _optimizer!(::Val{:bobyqa}, args...; kwargs...) = PRIMA.bobyqa!(args...; kwargs...)
 _optimizer!(::Val{:cobyla}, args...; kwargs...) = PRIMA.cobyla!(args...; kwargs...)
@@ -49,7 +55,6 @@ function MixedModels.optimize!(m::LinearMixedModel, ::PRIMABackend;
 
     maxfun = optsum.maxfeval > 0 ? optsum.maxfeval : 500 * length(optsum.initial)
     info = _optimizer!(Val(optsum.optimizer), obj, optsum.final;
-        #        xl=optsum.lowerbd,
         maxfun,
         optsum.rhoend, optsum.rhobeg)
     ProgressMeter.finish!(prog)
@@ -124,5 +129,32 @@ end
 
 MixedModels.opt_params(::PRIMABackend) = [:rhobeg, :rhoend, :maxfeval]
 MixedModels.optimizers(::PRIMABackend) = [:bobyqa, :cobyla, :lincoa, :newuoa]
+
+function MixedModels.profilevc(obj, optsum::OptSummary, ::PRIMABackend; kwargs...)
+    maxfun = optsum.maxfeval > 0 ? optsum.maxfeval : 500 * length(optsum.initial)
+    xmin, info = _optimizer(Val(optsum.optimizer), obj, copyto!(optsum.final, optsum.initial);
+        maxfun,
+        optsum.rhoend, optsum.rhobeg,
+        scale=nothing) # will need to scale for GLMM
+    _check_prima_return(info)
+    fmin = info.fx
+    return fmin, xmin
+end
+
+function MixedModels.profileobj!(obj,
+    m::LinearMixedModel{T}, θ::AbstractVector{T}, osj::OptSummary, ::PRIMABackend;
+    kwargs...) where {T}
+
+    maxfun = osj.maxfeval > 0 ? osj.maxfeval : 500 * length(osj.initial)
+    xmin = copyto!(osj.final, osj.initial)
+    info = _optimizer!(Val(osj.optimizer), obj, xmin;
+        maxfun,
+        osj.rhoend, osj.rhobeg,
+        scale=nothing) # will need to scale for GLMM
+    fmin = info.fx
+    _check_prima_return(info)
+    rectify!(m)
+    return fmin
+end
 
 end # module

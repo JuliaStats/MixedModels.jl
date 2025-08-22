@@ -1,13 +1,13 @@
 module MixedModelsNLoptExt # not actually an extension at the moment
 
 using ..MixedModels
-using ..MixedModels: objective!, _objective!
+using ..MixedModels: objective!, _objective!, rectify!
 # are part of the package's dependencies and will not be part
 # of the extension's dependencies
 using ..MixedModels.ProgressMeter: ProgressMeter, ProgressUnknown
 
 # stdlib
-using LinearAlgebra: PosDefException
+using LinearAlgebra: PosDefException, norm
 # will be a weakdep when this is moved to an extension
 using NLopt: NLopt, Opt
 
@@ -143,6 +143,27 @@ end
 
 function MixedModels.optimizers(::NLoptBackend)
     return [:LN_NEWUOA, :LN_BOBYQA, :LN_COBYLA, :LN_NELDERMEAD, :LN_PRAXIS]
+end
+
+function MixedModels.profilevc(obj, optsum::OptSummary, ::NLoptBackend; kwargs...)
+    opt = NLopt.Opt(optsum)
+    NLopt.min_objective!(opt, obj)
+    fmin, xmin, ret = NLopt.optimize!(opt, copyto!(optsum.final, optsum.initial))
+    _check_nlopt_return(ret)
+
+    return fmin, xmin
+end
+
+function MixedModels.profileobj!(obj,
+    m::LinearMixedModel{T}, θ::AbstractVector{T}, osj::OptSummary, ::NLoptBackend;
+    kwargs...) where {T}
+
+    opt = NLopt.Opt(osj)
+    NLopt.min_objective!(opt, obj)
+    fmin, xmin, ret = NLopt.optimize(opt, copyto!(osj.final, osj.initial))
+    _check_nlopt_return(ret)
+    rectify!(m)
+    return fmin
 end
 
 end # module
