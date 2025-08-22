@@ -4,7 +4,7 @@ using MixedModels
 using MixedModels: Statistics
 using MixedModels.ProgressMeter: ProgressMeter, ProgressUnknown
 using MixedModels: objective!, _objective!, rectify!
-using LinearAlgebra: PosDefException, norm
+using LinearAlgebra: PosDefException
 using PRIMA: PRIMA
 
 function __init__()

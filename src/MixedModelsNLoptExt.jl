@@ -7,7 +7,7 @@ using ..MixedModels: objective!, _objective!, rectify!
 using ..MixedModels.ProgressMeter: ProgressMeter, ProgressUnknown
 
 # stdlib
-using LinearAlgebra: PosDefException, norm
+using LinearAlgebra: PosDefException
 # will be a weakdep when this is moved to an extension
 using NLopt: NLopt, Opt
 
