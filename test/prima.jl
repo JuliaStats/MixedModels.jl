@@ -15,8 +15,8 @@ include("modelcache.jl")
     @test prmodel.optsum.backend == :prima
 
     @testset "profile" begin
-        @suppress profile_prima = profile(prmodel)
-        @suppress profile_nlopt = profile(model)
+        profile_prima = @suppress profile(prmodel)
+        profile_nlopt = @suppress profile(model)
         @test isapprox(profile_prima.tbl.ζ, profile_nlopt.tbl.ζ; rtol=0.0001)
     end
 end
