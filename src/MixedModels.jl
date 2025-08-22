@@ -213,7 +213,7 @@ include("grouping.jl")
 include("mimeshow.jl")
 include("serialization.jl")
 include("profile/profile.jl")
-include("nlopt.jl")
+include("MixedModelsNLoptExt.jl")
 using .MixedModelsNLoptExt
 
 include("derivatives.jl")
