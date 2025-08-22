@@ -19,11 +19,11 @@ end
 const NLoptBackend = Val{:nlopt}
 
 function MixedModels.optimize!(m::LinearMixedModel, ::NLoptBackend;
-    progress::Bool=true, fitlog::Bool=false,
+    progress::Bool=true,
     kwargs...)
     optsum = m.optsum
     prog = ProgressUnknown(; desc="Minimizing", showspeed=true)
-    fitlog && empty!(optsum.fitlog)
+    empty!(optsum.fitlog)
 
     function obj(x, g)
         isempty(g) || throw(ArgumentError("g should be empty for this objective"))
@@ -44,7 +44,7 @@ function MixedModels.optimize!(m::LinearMixedModel, ::NLoptBackend;
             end
         end
         progress && ProgressMeter.next!(prog; showvalues=[(:objective, val)])
-        fitlog && push!(optsum.fitlog, (copy(x), val))
+        push!(optsum.fitlog, (; θ=copy(x), objective=val))
         return val
     end
 
@@ -59,12 +59,12 @@ function MixedModels.optimize!(m::LinearMixedModel, ::NLoptBackend;
 end
 
 function MixedModels.optimize!(m::GeneralizedLinearMixedModel, ::NLoptBackend;
-    progress::Bool=true, fitlog::Bool=false,
+    progress::Bool=true,
     fast::Bool=false, verbose::Bool=false, nAGQ=1,
     kwargs...)
     optsum = m.optsum
     prog = ProgressUnknown(; desc="Minimizing", showspeed=true)
-    fitlog && empty!(optsum.fitlog)
+    empty!(optsum.fitlog)
 
     function obj(x, g)
         isempty(g) || throw(ArgumentError("g should be empty for this objective"))
@@ -77,7 +77,7 @@ function MixedModels.optimize!(m::GeneralizedLinearMixedModel, ::NLoptBackend;
             x == optsum.initial && rethrow()
             optsum.finitial
         end
-        fitlog && push!(optsum.fitlog, (copy(x), val))
+        push!(optsum.fitlog, (; θ=copy(x), objective=val))
         verbose && println(round(val; digits=5), " ", x)
         progress && ProgressMeter.next!(prog; showvalues=[(:objective, val)])
         return val

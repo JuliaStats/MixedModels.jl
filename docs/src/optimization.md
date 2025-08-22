@@ -190,10 +190,8 @@ DisplayAs.Text(ans) # hide
 ```
 
 More detailed information about the intermediate steps of the nonlinear optimizer can be obtained the `fitlog` field.
-By default, `fitlog` is not populated, but passing the keyword argument `fitlog=true` to `fit!` and `refit!` will result in it being populated with the values obtained at each step of optimization:
 
 ```@example Main
-refit!(fm2; fitlog=true)
 first(fm2.optsum.fitlog, 5)
 DisplayAs.Text(ans) # hide
 ```
@@ -250,7 +248,7 @@ Suppose, for example, that the user wishes to try a [Nelder-Mead](https://en.wik
 ```@example Main
 fm2nm = LinearMixedModel(@formula(reaction ~ 1+days+(1+days|subj)), sleepstudy);
 fm2nm.optsum.optimizer = :LN_NELDERMEAD;
-fit!(fm2nm; fitlog=true)
+fit!(fm2nm)
 fm2nm.optsum
 DisplayAs.Text(ans) # hide
 ```
