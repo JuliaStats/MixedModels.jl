@@ -20,7 +20,21 @@ Summary of an optimization
 
 ## Choice of optimizer and backend
 * `optimizer`: the name of the optimizer used, as a `Symbol`
-* `backend`: the optimization library providing the optimizer, default is `NLoptBackend`.
+* `backend`: the optimization library providing the optimizer, stored as a symbol.
+   The current default is `:nlopt`.
+
+The current default backend is NLopt, which is a direct dependency of MixedModels.jl.
+A PRIMA backend is also provided as a package extension and thus only
+available when the library PRIMA is loaded.
+The list of currently loaded backends is available as [`MixedModels.OPTIMIZATION_BACKENDS`](@ref).
+For each individual backend, the list of available optimizers can be inspected with the function [`MixedModels.optimizers`](@ref).
+Similarly, the list of applicable optimization parameters can be inspected with the function [`MixedModels.opt_params`](@ref).
+
+!!! note "Optimizer defaults subject to change"
+    The choice of backend and optimizer is subject to change without being considered a breaking
+    change. If you want to guarantee a particular backend and optimizer, then you should
+    explicitly load the associated backend's package (e.g. NLopt or PRIMA) and manually
+    set the `optimizer` and `backend` fields.
 
 ## Backend-specific fields
 * `ftol_rel`: as in NLopt, not used in PRIMA
@@ -186,6 +200,9 @@ they are used _after_ optimization and are thus shared across backends.
 """
 function opt_params end
 
+opt_params(s::Symbol) = opt_params(Val(s))
+
+
 """
     optimizers(::Val{backend})
 
@@ -198,3 +215,5 @@ Return a collection of the algorithms supported by the backend.
     backends' differing naming conventions for algorithms.
 """
 function optimizers end
+
+optimizers(s::Symbol) = optimizers(Val(s))
