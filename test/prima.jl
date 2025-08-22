@@ -1,5 +1,6 @@
 using PRIMA
 using MixedModels: unfit!, dataset
+using Suppressor
 
 include("modelcache.jl")
 
@@ -14,8 +15,8 @@ include("modelcache.jl")
     @test prmodel.optsum.backend == :prima
 
     @testset "profile" begin
-        profile_prima = profile(prmodel)
-        profile_nlopt = profile(model)
+        @suppress profile_prima = profile(prmodel)
+        @suppress profile_nlopt = profile(model)
         @test isapprox(profile_prima.tbl.ζ, profile_nlopt.tbl.ζ; rtol=0.0001)
     end
 end
