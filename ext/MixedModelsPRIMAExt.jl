@@ -132,7 +132,8 @@ MixedModels.optimizers(::PRIMABackend) = [:bobyqa, :cobyla, :lincoa, :newuoa]
 
 function MixedModels.profilevc(obj, optsum::OptSummary, ::PRIMABackend; kwargs...)
     maxfun = optsum.maxfeval > 0 ? optsum.maxfeval : 500 * length(optsum.initial)
-    xmin, info = _optimizer(Val(optsum.optimizer), obj, copyto!(optsum.final, optsum.initial);
+    xmin, info = _optimizer(Val(optsum.optimizer), obj,
+        copyto!(optsum.final, optsum.initial);
         maxfun,
         optsum.rhoend, optsum.rhobeg,
         scale=nothing) # will need to scale for GLMM
@@ -144,7 +145,6 @@ end
 function MixedModels.profileobj!(obj,
     m::LinearMixedModel{T}, θ::AbstractVector{T}, osj::OptSummary, ::PRIMABackend;
     kwargs...) where {T}
-
     maxfun = osj.maxfeval > 0 ? osj.maxfeval : 500 * length(osj.initial)
     xmin = copyto!(osj.final, osj.initial)
     info = _optimizer!(Val(osj.optimizer), obj, xmin;
