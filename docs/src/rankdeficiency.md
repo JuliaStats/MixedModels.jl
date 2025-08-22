@@ -2,6 +2,7 @@
 
 ```@setup Main
 using MixedModels
+using MixedModelsDatasets
 using DisplayAs
 ```
 
@@ -85,7 +86,7 @@ In addition to handling naturally occurring rank deficiency in the random effect
 For example, we can use `fulldummy` to fit both an intercept term and $n$ indicator variables in the random effects for a categorical variable with $n$ levels instead of the usual $n-1$ contrasts.
 
 ```@example Main
-kb07 = MixedModels.dataset(:kb07)
+kb07 = MixedModelsDatasets.dataset(:kb07)
 contrasts = Dict(var => HelmertCoding() for var in (:spkr, :prec, :load))
 fit(MixedModel, @formula(rt_raw ~ spkr * prec * load + (1|subj) + (1+prec|item)), kb07; contrasts=contrasts)
 DisplayAs.Text(ans) # hide

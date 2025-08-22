@@ -5,10 +5,11 @@ We recommend the [MixedModelsSim.jl](https://github.com/RePsychLing/MixedModelsS
 ```@example Main
 using DataFrames
 using MixedModels
+using MixedModelsDatasets
 using StatsBase
 using DisplayAs # hide
 # use a DataFrame to make it easier to change things later
-slp = DataFrame(MixedModels.dataset(:sleepstudy))
+slp = DataFrame(MixedModelsDatasets.dataset(:sleepstudy))
 slpm = fit(MixedModel, @formula(reaction ~ 1 + days + (1|subj)), slp)
 DisplayAs.Text(slpm) # hide
 ```
@@ -80,7 +81,7 @@ predict(slpm, slp2; new_re_levels=:population)
 For generalized linear mixed models, there is an additional keyword argument to `predict`: `type` specifies whether the predictions are returned on the scale of the linear predictor (`:linpred`) or on the level of the response `(:response)` (i.e. the level at which the values were originally observed).
 
 ```@example Main
-cbpp = DataFrame(MixedModels.dataset(:cbpp))
+cbpp = DataFrame(MixedModelsDatasets.dataset(:cbpp))
 cbpp.rate = cbpp.incid ./ cbpp.hsz
 gm = fit(MixedModel, @formula(rate ~ 1 + period + (1|herd)), cbpp, Binomial(), wts=float(cbpp.hsz))
 predict(gm, cbpp; type=:response) ≈ fitted(gm)

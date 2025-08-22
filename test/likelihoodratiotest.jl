@@ -4,7 +4,8 @@ using MixedModels
 using Suppressor
 using Test
 
-using MixedModels: dataset, likelihoodratiotest
+using MixedModels: likelihoodratiotest
+using MixedModelsDatasets: dataset
 using GLM: ProbitLink
 using StatsModels: lrtest, isnested
 

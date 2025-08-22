@@ -14,8 +14,8 @@ using DisplayAs
 ```
 
 ```@example Main
-using DataFrames, MixedModels, StatsModels
-dyestuff = MixedModels.dataset(:dyestuff)
+using DataFrames, MixedModels, MixedModelsDatasets, StatsModels
+dyestuff = MixedModelsDatasets.dataset(:dyestuff)
 ```
 
 ```@example Main
@@ -71,7 +71,7 @@ Notice that both are equivalent.
 
 ```@example Main
 using BenchmarkTools
-dyestuff2 = MixedModels.dataset(:dyestuff2)
+dyestuff2 = MixedModelsDatasets.dataset(:dyestuff2)
 @benchmark fit(MixedModel, $fm, $dyestuff2)
 ```
 
@@ -110,7 +110,7 @@ It corresponds to a shift in the intercept for each level of the grouping factor
 The *sleepstudy* data are observations of reaction time, `reaction`, on several subjects, `subj`, after 0 to 9 days of sleep deprivation, `days`.
 A model with random intercepts and random slopes for each subject, allowing for within-subject correlation of the slope and intercept, is fit as
 ```@example Main
-sleepstudy = MixedModels.dataset(:sleepstudy)
+sleepstudy = MixedModelsDatasets.dataset(:sleepstudy)
 fm2 = fit(MixedModel, @formula(reaction ~ 1 + days + (1 + days|subj)), sleepstudy)
 DisplayAs.Text(ans) # hide
 ```
@@ -120,14 +120,14 @@ DisplayAs.Text(ans) # hide
 A model for the *Penicillin* data incorporates random effects for the plate, and for the sample.
 As every sample is used on every plate these two factors are *crossed*.
 ```@example Main
-penicillin = MixedModels.dataset(:penicillin)
+penicillin = MixedModelsDatasets.dataset(:penicillin)
 fm3 = fit(MixedModel, @formula(diameter ~ 1 + (1|plate) + (1|sample)), penicillin)
 DisplayAs.Text(ans) # hide
 ```
 
 In contrast, the `cask` grouping factor is *nested* within the `batch` grouping factor in the *Pastes* data.
 ```@example Main
-pastes = DataFrame(MixedModels.dataset(:pastes))
+pastes = DataFrame(MixedModelsDatasets.dataset(:pastes))
 describe(pastes)
 ```
 This can be expressed using the solidus (the "`/`" character) to separate grouping factors, read "`cask` nested within `batch`":
@@ -147,7 +147,7 @@ In observational studies it is common to encounter *partially crossed* grouping 
 For example, the *InstEval* data are course evaluations by students, `s`, of instructors, `d`.
 Additional covariates include the academic department, `dept`, in which the course was given and `service`, whether or not it was a service course.
 ```@example Main
-insteval = MixedModels.dataset(:insteval)
+insteval = MixedModelsDatasets.dataset(:insteval)
 fm5 = fit(MixedModel, @formula(y ~ 1 + service * dept + (1|s) + (1|d)), insteval)
 DisplayAs.Text(ans) # hide
 ```
@@ -222,7 +222,7 @@ To create a GLMM representation, the distribution family for the response, and p
 You can either use `fit(MixedModel, ...)` or `glmm(...)` to fit the model. For instance:
 
 ```@example Main
-verbagg = MixedModels.dataset(:verbagg)
+verbagg = MixedModelsDatasets.dataset(:verbagg)
 verbaggform = @formula(r2 ~ 1 + anger + gender + btype + situ + mode + (1|subj) + (1|item));
 gm1 = fit(MixedModel, verbaggform, verbagg, Bernoulli())
 DisplayAs.Text(ans) # hide
@@ -258,7 +258,7 @@ The optional argument `nAGQ=k` causes evaluation of the deviance function to use
 adaptive Gauss-Hermite quadrature rule.
 This method only applies to models with a single, simple, scalar random-effects term, such as
 ```@example Main
-contraception = MixedModels.dataset(:contra)
+contraception = MixedModelsDatasets.dataset(:contra)
 contraform = @formula(use ~ 1 + age + abs2(age) + livch + urban + (1|dist));
 bernoulli = Bernoulli()
 deviances = Dict{Symbol,Float64}()
@@ -511,7 +511,7 @@ sum(leverage(fm2))
 
 When a model converges to a singular covariance, such as
 ```@example Main
-fm3 = fit(MixedModel, @formula(yield ~ 1+(1|batch)), MixedModels.dataset(:dyestuff2))
+fm3 = fit(MixedModel, @formula(yield ~ 1+(1|batch)), MixedModelsDatasets.dataset(:dyestuff2))
 DisplayAs.Text(ans) # hide
 ```
 the effective degrees of freedom is the lower bound.
@@ -522,7 +522,7 @@ sum(leverage(fm3))
 Models for which the estimates of the variances of the random effects are large relative to the residual variance have effective degrees of freedom close to the upper bound.
 ```@example Main
 fm4 = fit(MixedModel, @formula(diameter ~ 1+(1|plate)+(1|sample)),
-    MixedModels.dataset(:penicillin))
+    MixedModelsDatasets.dataset(:penicillin))
 DisplayAs.Text(ans) # hide
 ```
 ```@example Main
@@ -532,7 +532,7 @@ sum(leverage(fm4))
 Also, a model fit by the REML criterion generally has larger estimates of the variance components and hence a larger effective degrees of freedom.
 ```@example Main
 fm4r = fit(MixedModel, @formula(diameter ~ 1+(1|plate)+(1|sample)),
-    MixedModels.dataset(:penicillin), REML=true)
+    MixedModelsDatasets.dataset(:penicillin), REML=true)
 DisplayAs.Text(ans) # hide
 ```
 ```@example Main
