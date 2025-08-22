@@ -8,6 +8,7 @@ MixedModels v5.0.0 Release Notes
 - Internal code around the default optimizer has been restructured. In particular, the NLopt backend has been moved to a submodule, which will make it easier to move it to an extension if we promote another backend to the default. [#853]
 - Internal code around optimization in profiling has been restructuring so that fitting done during calls to `profile` respect the `backend` and `optimizer` settings. [#853]
 - The `prfit!` convenience function has been removed. [#853]
+- The local implementation of `fulldummy` and the nesting syntax has been removed and a dependency on RegressionFormulae.jl for their implementation has been added. [#855]
 
 MixedModels v4.38.0 Release Notes
 ==============================
