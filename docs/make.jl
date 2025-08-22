@@ -11,6 +11,7 @@ makedocs(;
     doctest=true,
     # pagesonly=true,
     # warnonly=true,
+    # warnonly=[:cross_references],
     pages=[
         "index.md",
         "constructors.md",

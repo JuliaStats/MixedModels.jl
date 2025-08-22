@@ -33,7 +33,8 @@ Profiling starts at the parameter estimate and continues until reaching a parame
 value of ζ exceeds `threshold`.
 """
 function profile(m::LinearMixedModel; threshold=4)
-    isfitted(m) || refit!(m; progress=false, fitlog=false)
+    isfitted(m) || refit!(m; progress=false)
+    fitlog = copy(m.optsum.fitlog)
     final = copy(m.optsum.final)
     profile = try
         tc = TableColumns(m)
@@ -57,6 +58,7 @@ function profile(m::LinearMixedModel; threshold=4)
         copyto!(m.optsum.final, final)
         m.optsum.fmin = objective(m)
         m.optsum.sigma = nothing
+        m.optsum.fitlog = fitlog
     end
     return profile
 end

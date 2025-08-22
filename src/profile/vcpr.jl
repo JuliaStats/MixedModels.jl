@@ -10,18 +10,17 @@ Profile an element of the variance components.
 """
 function profilevc(m::LinearMixedModel{T}, val::T, rowj::AbstractVector{T}) where {T}
     optsum = m.optsum
-    function obj(x, g)
+    # by giving g a default we can also
+    # work with backends which don't have a gradient slot
+    function obj(x, g=T[])
         isempty(g) || throw(ArgumentError("g must be empty"))
         updateL!(setθ!(m, x))
         optsum.sigma = val / norm(rowj)
         objctv = objective(m)
         return objctv
     end
-    opt = Opt(optsum)
-    NLopt.min_objective!(opt, obj)
-    fmin, xmin, ret = NLopt.optimize!(opt, copyto!(optsum.final, optsum.initial))
-    _check_nlopt_return(ret)
-    return fmin, xmin
+
+    return profilevc(obj, optsum, Val(m.optsum.backend))
 end
 
 """

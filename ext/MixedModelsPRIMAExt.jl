@@ -2,7 +2,8 @@ module MixedModelsPRIMAExt
 
 using MixedModels
 using MixedModels: Statistics
-using MixedModels: ProgressMeter, ProgressUnknown, objective!, _objective!
+using MixedModels.ProgressMeter: ProgressMeter, ProgressUnknown
+using MixedModels: objective!, _objective!, rectify!
 using LinearAlgebra: PosDefException
 using PRIMA: PRIMA
 
@@ -13,25 +14,22 @@ end
 
 const PRIMABackend = Val{:prima}
 
-function MixedModels.prfit!(m::LinearMixedModel;
-    kwargs...)
-    MixedModels.unfit!(m)
-    m.optsum.optimizer = :bobyqa
-    m.optsum.backend = :prima
-
-    return fit!(m; kwargs...)
+function _optimizer(o::Val{O}, f, x0::Vector, args...; kwargs...) where {O}
+    x0 = copy(x0)
+    info = _optimizer!(o, f, x0, args...; kwargs...)
+    return x0, info
 end
 
-prima_optimizer!(::Val{:bobyqa}, args...; kwargs...) = PRIMA.bobyqa!(args...; kwargs...)
-prima_optimizer!(::Val{:cobyla}, args...; kwargs...) = PRIMA.cobyla!(args...; kwargs...)
-prima_optimizer!(::Val{:lincoa}, args...; kwargs...) = PRIMA.lincoa!(args...; kwargs...)
-prima_optimizer!(::Val{:newuoa}, args...; kwargs...) = PRIMA.newuoa!(args...; kwargs...)
+_optimizer!(::Val{:bobyqa}, args...; kwargs...) = PRIMA.bobyqa!(args...; kwargs...)
+_optimizer!(::Val{:cobyla}, args...; kwargs...) = PRIMA.cobyla!(args...; kwargs...)
+_optimizer!(::Val{:lincoa}, args...; kwargs...) = PRIMA.lincoa!(args...; kwargs...)
+_optimizer!(::Val{:newuoa}, args...; kwargs...) = PRIMA.newuoa!(args...; kwargs...)
 
 function MixedModels.optimize!(m::LinearMixedModel, ::PRIMABackend;
-    progress::Bool=true, fitlog::Bool=false, kwargs...)
+    progress::Bool=true, kwargs...)
     optsum = m.optsum
     prog = ProgressUnknown(; desc="Minimizing", showspeed=true)
-    fitlog && empty!(optsum.fitlog)
+    empty!(optsum.fitlog)
 
     function obj(x)
         val = if x == optsum.initial
@@ -51,15 +49,14 @@ function MixedModels.optimize!(m::LinearMixedModel, ::PRIMABackend;
             end
         end
         progress && ProgressMeter.next!(prog; showvalues=[(:objective, val)])
-        fitlog && push!(optsum.fitlog, (copy(x), val))
+        push!(optsum.fitlog, (; θ=copy(x), objective=val))
         return val
     end
 
     maxfun = optsum.maxfeval > 0 ? optsum.maxfeval : 500 * length(optsum.initial)
-    info = prima_optimizer!(Val(optsum.optimizer), obj, optsum.final;
+    info = _optimizer!(Val(optsum.optimizer), obj, optsum.final;
         maxfun,
         optsum.rhoend, optsum.rhobeg)
-    ProgressMeter.finish!(prog)
     optsum.feval = info.nf
     optsum.fmin = info.fx
     optsum.returnvalue = Symbol(info.status)
@@ -68,12 +65,12 @@ function MixedModels.optimize!(m::LinearMixedModel, ::PRIMABackend;
 end
 
 function MixedModels.optimize!(m::GeneralizedLinearMixedModel, ::PRIMABackend;
-    progress::Bool=true, fitlog::Bool=false,
+    progress::Bool=true,
     fast::Bool=false, verbose::Bool=false, nAGQ=1,
     kwargs...)
     optsum = m.optsum
     prog = ProgressUnknown(; desc="Minimizing", showspeed=true)
-    fitlog && empty!(opstum.fitlog)
+    empty!(optsum.fitlog)
 
     function obj(x)
         val = try
@@ -85,7 +82,7 @@ function MixedModels.optimize!(m::GeneralizedLinearMixedModel, ::PRIMABackend;
             x == optsum.initial && rethrow()
             m.optsum.finitial
         end
-        fitlog && push!(optsum.fitlog, (copy(x), val))
+        push!(optsum.fitlog, (; θ=copy(x), objective=val))
         verbose && println(round(val; digits=5), " ", x)
         progress && ProgressMeter.next!(prog; showvalues=[(:objective, val)])
         return val
@@ -107,7 +104,7 @@ function MixedModels.optimize!(m::GeneralizedLinearMixedModel, ::PRIMABackend;
         end
         sc
     end
-    info = prima_optimizer!(Val(optsum.optimizer), obj, optsum.final;
+    info = _optimizer!(Val(optsum.optimizer), obj, optsum.final;
         maxfun,
         optsum.rhoend, optsum.rhobeg,
         scale)
@@ -129,6 +126,34 @@ function _check_prima_return(info::PRIMA.Info)
     return nothing
 end
 
-MixedModels.opt_params(::PRIMABackend) = (:rhobeg, :rhoend, :maxfeval)
+MixedModels.opt_params(::PRIMABackend) = [:rhobeg, :rhoend, :maxfeval]
+MixedModels.optimizers(::PRIMABackend) = [:bobyqa, :cobyla, :lincoa, :newuoa]
+
+function MixedModels.profilevc(obj, optsum::OptSummary, ::PRIMABackend; kwargs...)
+    maxfun = optsum.maxfeval > 0 ? optsum.maxfeval : 500 * length(optsum.initial)
+    xmin, info = _optimizer(Val(optsum.optimizer), obj,
+        copyto!(optsum.final, optsum.initial);
+        maxfun,
+        optsum.rhoend, optsum.rhobeg,
+        scale=nothing) # will need to scale for GLMM
+    _check_prima_return(info)
+    fmin = info.fx
+    return fmin, xmin
+end
+
+function MixedModels.profileobj!(obj,
+    m::LinearMixedModel{T}, θ::AbstractVector{T}, osj::OptSummary, ::PRIMABackend;
+    kwargs...) where {T}
+    maxfun = osj.maxfeval > 0 ? osj.maxfeval : 500 * length(osj.initial)
+    xmin = copyto!(osj.final, osj.initial)
+    info = _optimizer!(Val(osj.optimizer), obj, xmin;
+        maxfun,
+        osj.rhoend, osj.rhobeg,
+        scale=nothing) # will need to scale for GLMM
+    fmin = info.fx
+    _check_prima_return(info)
+    rectify!(m)
+    return fmin
+end
 
 end # module

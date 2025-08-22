@@ -13,7 +13,7 @@ function refitσ!(
     m::LinearMixedModel{T}, σ, tc::TableColumns{T}, obj::T, neg::Bool
 ) where {T}
     m.optsum.sigma = σ
-    refit!(m; progress=false, fitlog=false)
+    refit!(m; progress=false)
     return mkrow!(tc, m, (neg ? -one(T) : one(T)) * sqrt(m.objective - obj))
 end
 
@@ -26,7 +26,7 @@ function _facsz(m::LinearMixedModel{T}, σ::T, obj::T) where {T}
     i64 = T(inv(64))
     expi64 = exp(i64)     # help the compiler infer it is a constant
     m.optsum.sigma = σ * expi64
-    return exp(i64 / (2 * sqrt(refit!(m; progress=false, fitlog=false).objective - obj)))
+    return exp(i64 / (2 * sqrt(refit!(m; progress=false).objective - obj)))
 end
 
 """

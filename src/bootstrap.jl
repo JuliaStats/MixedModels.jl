@@ -254,7 +254,7 @@ function parametricbootstrap(
     )
     samp = replicate(n; progress) do
         simulate!(rng, m; β, σ, θ)
-        refit!(m; progress=false, fitlog=false)
+        refit!(m; progress=false)
         (
             objective=ftype.(m.objective),
             σ=ismissing(m.σ) ? missing : ftype(m.σ),
