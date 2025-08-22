@@ -7,7 +7,7 @@ using Tables
 using Test
 
 using GLM: Link
-using MixedModels: dataset
+using MixedModelsDatasets: dataset
 
 include("modelcache.jl")
 

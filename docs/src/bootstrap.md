@@ -27,12 +27,12 @@ package for [`R`](https://www.r-project.org) is fit by
 ```@example Main
 using DataFrames
 using Gadfly          # plotting package
-using MixedModels
+using MixedModels, MixedModelsDatasets
 using Random
 ```
 
 ```@example Main
-dyestuff = MixedModels.dataset(:dyestuff)
+dyestuff = MixedModelsDatasets.dataset(:dyestuff)
 m1 = fit(MixedModel, @formula(yield ~ 1 + (1 | batch)), dyestuff)
 ```
 
@@ -88,7 +88,7 @@ However, it is not as straightforward to detect singularity in vector-valued ran
 
 For example, if we bootstrap a model fit to the `sleepstudy` data
 ```@example Main
-sleepstudy = MixedModels.dataset(:sleepstudy)
+sleepstudy = MixedModelsDatasets.dataset(:sleepstudy)
 contrasts = Dict(:subj => Grouping())
 m2 = let f = @formula reaction ~ 1+days+(1+days|subj)
     fit(MixedModel, f, sleepstudy; contrasts)

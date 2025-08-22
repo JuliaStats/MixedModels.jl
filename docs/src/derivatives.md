@@ -15,9 +15,9 @@ ForwardDiff.hessian(::LinearMixedModel{T}, ::Vector{T}) where {T}
 ### Exact zero at optimum for trivial models
 
 ```@example Derivatives
-using MixedModels, ForwardDiff
+using MixedModels, MixedModelsDatasets, ForwardDiff
 using DisplayAs # hide
-fm1 = lmm(@formula(yield ~ 1 + (1|batch)), MixedModels.dataset(:dyestuff2))
+fm1 = lmm(@formula(yield ~ 1 + (1|batch)), MixedModelsDatasets.dataset(:dyestuff2))
 DisplayAs.Text(ans) # hide
 ```
 
@@ -32,7 +32,7 @@ ForwardDiff.hessian(fm1)
 ### Approximate zero at optimum for non trivial models
 
 ```@example Derivatives
-fm2 = lmm(@formula(reaction ~ 1 + days + (1+days|subj)), MixedModels.dataset(:sleepstudy))
+fm2 = lmm(@formula(reaction ~ 1 + days + (1+days|subj)), MixedModelsDatasets.dataset(:sleepstudy))
 DisplayAs.Text(ans) # hide
 ```
 
