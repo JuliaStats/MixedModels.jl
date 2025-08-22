@@ -230,7 +230,7 @@ In addition to various tolerances, which we will not discuss further here, users
 
 The current default backend is [NLopt](https://github.com/JuliaOpt/NLopt.jl), which is a direct dependency of MixedModels.jl.
 A [PRIMA](https://github.com/libprima/PRIMA.jl/) backend is also provided as a package extension and thus only
-available when the library PRIMA is loaded.
+available when the PRIMA package is loaded.
 The list of currently loaded backends is available as [`MixedModels.OPTIMIZATION_BACKENDS`](@ref).
 For each individual backend, the list of available optimizers can be inspected with the function [`MixedModels.optimizers`](@ref).
 ```@example Main
