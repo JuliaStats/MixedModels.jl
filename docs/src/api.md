@@ -79,13 +79,17 @@ stderrror!
 varest
 ```
 
-## Non-Exported Functions
+## Non-Exported Functions and Constants
 
-Note that unless discussed elsewhere in the online documentation, non-exported functions should be considered implementation details.
+Note that unless discussed elsewhere in the online documentation, non-exported functions and constants should be considered implementation details.
 
 ```@autodocs
 Modules = [MixedModels]
 Public  = false
 Order   = [:function]
 Filter = f -> !startswith(string(f), "_")
+```
+
+```@docs
+MixedModels.OPTIMIZATION_BACKENDS
 ```

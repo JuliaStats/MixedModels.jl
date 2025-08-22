@@ -1,8 +1,24 @@
-push!(OPTIMIZATION_BACKENDS, :nlopt)
+module MixedModelsNLoptExt # not actually an extension at the moment
+
+using ..MixedModels
+using ..MixedModels: objective!, _objective!, rectify!
+# are part of the package's dependencies and will not be part
+# of the extension's dependencies
+using ..MixedModels.ProgressMeter: ProgressMeter, ProgressUnknown
+
+# stdlib
+using LinearAlgebra: PosDefException
+# will be a weakdep when this is moved to an extension
+using NLopt: NLopt, Opt
+
+function __init__()
+    push!(MixedModels.OPTIMIZATION_BACKENDS, :nlopt)
+    return nothing
+end
 
 const NLoptBackend = Val{:nlopt}
 
-function optimize!(m::LinearMixedModel, ::NLoptBackend;
+function MixedModels.optimize!(m::LinearMixedModel, ::NLoptBackend;
     progress::Bool=true,
     kwargs...)
     optsum = m.optsum
@@ -42,7 +58,7 @@ function optimize!(m::LinearMixedModel, ::NLoptBackend;
     return xmin, fmin
 end
 
-function optimize!(m::GeneralizedLinearMixedModel, ::NLoptBackend;
+function MixedModels.optimize!(m::GeneralizedLinearMixedModel, ::NLoptBackend;
     progress::Bool=true,
     fast::Bool=false, verbose::Bool=false, nAGQ=1,
     kwargs...)
@@ -121,6 +137,32 @@ function _check_nlopt_return(ret, failure_modes=_NLOPT_FAILURE_MODES)
     end
 end
 
-function opt_params(::NLoptBackend)
-    return (:ftol_rel, :ftol_abs, :xtol_rel, :xtol_abs, :initial_step, :maxfeval, :maxtime)
+function MixedModels.opt_params(::NLoptBackend)
+    return [:ftol_rel, :ftol_abs, :xtol_rel, :xtol_abs, :initial_step, :maxfeval, :maxtime]
 end
+
+function MixedModels.optimizers(::NLoptBackend)
+    return [:LN_NEWUOA, :LN_BOBYQA, :LN_COBYLA, :LN_NELDERMEAD, :LN_PRAXIS]
+end
+
+function MixedModels.profilevc(obj, optsum::OptSummary, ::NLoptBackend; kwargs...)
+    opt = NLopt.Opt(optsum)
+    NLopt.min_objective!(opt, obj)
+    fmin, xmin, ret = NLopt.optimize!(opt, copyto!(optsum.final, optsum.initial))
+    _check_nlopt_return(ret)
+
+    return fmin, xmin
+end
+
+function MixedModels.profileobj!(obj,
+    m::LinearMixedModel{T}, θ::AbstractVector{T}, osj::OptSummary, ::NLoptBackend;
+    kwargs...) where {T}
+    opt = NLopt.Opt(osj)
+    NLopt.min_objective!(opt, obj)
+    fmin, xmin, ret = NLopt.optimize(opt, copyto!(osj.final, osj.initial))
+    _check_nlopt_return(ret)
+    rectify!(m)
+    return fmin
+end
+
+end # module

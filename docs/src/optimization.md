@@ -220,10 +220,29 @@ Typically, the (1,1) block is the largest block in `A` and `L` and it has a spec
 `UniformBlockDiagonal`
 providing a compact representation and fast matrix multiplication or solutions of linear systems of equations.
 
-### Modifying the optimization process
+## Modifying the optimization process
 
-The `OptSummary` object contains both input and output fields for the optimizer.
+The [`OptSummary`](@ref) object contains both input and output fields for the optimizer.
 To modify the optimization process the input fields can be changed after constructing the model but before fitting it.
+In addition to various tolerances, which we will not discuss further here, users can specify the choice of `backend` (i.e., the non-linear optimization library used) and `optimizer` (i.e., the implementation of an algorithm provided by the backend).
+
+The current default backend is [NLopt](https://github.com/JuliaOpt/NLopt.jl), which is a direct dependency of MixedModels.jl.
+A [PRIMA](https://github.com/libprima/PRIMA.jl/) backend is also provided as a package extension and thus only
+available when the PRIMA package is loaded.
+The list of currently loaded backends is available as [`MixedModels.OPTIMIZATION_BACKENDS`](@ref).
+For each individual backend, the list of available optimizers can be inspected with the function [`MixedModels.optimizers`](@ref).
+```@example Main
+MixedModels.optimizers(:nlopt)
+```
+Similarly, the list of applicable optimization parameters can be inspected with the function [`MixedModels.opt_params`](@ref).
+```@example Main
+MixedModels.opt_params(:nlopt)
+```
+
+!!! note "Optimizer defaults subject to change"
+    The choice of default backend and optimizer is subject to change without being considered a breaking change.
+    If you want to guarantee a particular backend and optimizer, then you should
+    explicitly load the associated backend's package (e.g. NLopt or PRIMA) and manually set the `optimizer` and `backend` fields.
 
 Suppose, for example, that the user wishes to try a [Nelder-Mead](https://en.wikipedia.org/wiki/Nelder%E2%80%93Mead_method) optimization method instead of the default [`BOBYQA`](https://en.wikipedia.org/wiki/BOBYQA) (Bounded Optimization BY Quadratic Approximation) method.
 ```@example Main
@@ -249,8 +268,6 @@ plot(convdf, x=:step, y=:objective, color=:algorithm, Geom.line)
 ```
 
 Run time can be constrained with  `maxfeval` and `maxtime`.
-
-See the documentation for the [`NLopt`](https://github.com/JuliaOpt/NLopt.jl) package for details about the various settings.
 
 ### Convergence to singular covariance matrices
 

@@ -1,14 +1,24 @@
 using PRIMA
-using MixedModels: prfit!, unfit!, dataset
+using MixedModels: unfit!, dataset
+using Suppressor
 
 include("modelcache.jl")
 
-@testset "formula($model)" for model in models(:sleepstudy)
-    prmodel = prfit!(LinearMixedModel(formula(model), dataset(:sleepstudy)); progress=false)
+@testset "$(formula(model))" for model in models(:sleepstudy)
+    prmodel = LinearMixedModel(formula(model), dataset(:sleepstudy))
+    prmodel.optsum.backend = :prima
+    prmodel.optsum.optimizer = :bobyqa
+    fit!(prmodel; progress=false)
 
     @test isapprox(loglikelihood(model), loglikelihood(prmodel))
     @test prmodel.optsum.optimizer == :bobyqa
     @test prmodel.optsum.backend == :prima
+
+    @testset "profile" begin
+        profile_prima = @suppress profile(prmodel)
+        profile_nlopt = @suppress profile(model)
+        @test isapprox(profile_prima.tbl.ζ, profile_nlopt.tbl.ζ; rtol=0.0001)
+    end
 end
 
 model = first(models(:sleepstudy))

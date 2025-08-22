@@ -20,10 +20,10 @@ using LinearAlgebra: ldiv!, lmul!, logdet, mul!, norm, normalize, normalize!, qr
 using LinearAlgebra: rank, rdiv!, rmul!, svd, tril!
 using Markdown: Markdown
 using MixedModelsDatasets: dataset, datasets
-using NLopt: NLopt, Opt
 using PooledArrays: PooledArrays, PooledArray
+using NLopt: NLopt
 using PrecompileTools: PrecompileTools, @setup_workload, @compile_workload
-using ProgressMeter: ProgressMeter, Progress, ProgressUnknown, finish!, next!
+using ProgressMeter: ProgressMeter, Progress, finish!, next!
 using Random: Random, AbstractRNG, randn!
 using SparseArrays: SparseArrays, SparseMatrixCSC, SparseVector, dropzeros!, nnz
 using SparseArrays: nonzeros, nzrange, rowvals, sparse
@@ -213,8 +213,9 @@ include("grouping.jl")
 include("mimeshow.jl")
 include("serialization.jl")
 include("profile/profile.jl")
-include("nlopt.jl")
-include("prima.jl")
+include("MixedModelsNLoptExt.jl")
+using .MixedModelsNLoptExt
+
 include("derivatives.jl")
 
 # aliases with non-unicode function names
