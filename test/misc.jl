@@ -1,7 +1,7 @@
 using MixedModels
 using Test
 
-using MixedModels: dataset
+using MixedModelsDatasets: dataset
 
 @testset "formula misspecification" begin
     dyestuff = dataset(:dyestuff)

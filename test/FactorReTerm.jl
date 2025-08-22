@@ -6,7 +6,8 @@ using SparseArrays
 using StatsModels
 using Test
 
-using MixedModels: dataset, levels, modelcols, nlevs
+using MixedModels: levels, modelcols, nlevs
+using MixedModelsDatasets: dataset
 
 const LMM = LinearMixedModel
 

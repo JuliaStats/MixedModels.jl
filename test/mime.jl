@@ -2,8 +2,9 @@ using MixedModels
 using Suppressor
 using Test
 
-using MixedModels: dataset, likelihoodratiotest
+using MixedModels: likelihoodratiotest
 using MixedModels: pirls!, setβθ!, setθ!, updateL!
+using MixedModelsDatasets: dataset
 
 include("modelcache.jl")
 

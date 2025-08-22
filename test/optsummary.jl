@@ -1,5 +1,5 @@
 using MixedModels
-using MixedModels: dataset
+using MixedModelsDatasets: dataset
 using Test
 
 include("modelcache.jl")
