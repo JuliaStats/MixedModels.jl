@@ -25,6 +25,7 @@ using NLopt: NLopt
 using PrecompileTools: PrecompileTools, @setup_workload, @compile_workload
 using ProgressMeter: ProgressMeter, Progress, finish!, next!
 using Random: Random, AbstractRNG, randn!
+using RegressionFormulae: fulldummy
 using SparseArrays: SparseArrays, SparseMatrixCSC, SparseVector, dropzeros!, nnz
 using SparseArrays: nonzeros, nzrange, rowvals, sparse
 using StaticArrays: StaticArrays, SVector
