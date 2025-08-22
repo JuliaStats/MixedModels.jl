@@ -157,7 +157,6 @@ end
 function MixedModels.profileobj!(obj,
     m::LinearMixedModel{T}, θ::AbstractVector{T}, osj::OptSummary, ::NLoptBackend;
     kwargs...) where {T}
-
     opt = NLopt.Opt(osj)
     NLopt.min_objective!(opt, obj)
     fmin, xmin, ret = NLopt.optimize(opt, copyto!(osj.final, osj.initial))

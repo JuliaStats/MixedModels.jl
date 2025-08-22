@@ -11,7 +11,7 @@ function optsumj(os::OptSummary, j::Integer)
         deleteat!(copy(os.final), j),
         deleteat!(copy(os.lowerbd), j),
         os.optimizer;
-        os.backend
+        os.backend,
     )
 end
 
