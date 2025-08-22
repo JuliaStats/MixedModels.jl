@@ -16,8 +16,8 @@ You can fit a model using a `lmer`-style model formula using `@formula` and a da
 Here is a short example of how to fit a linear mixed-effects modeling using the `dyestuff` dataset:
 
 ```@example Main
-using DataFrames, MixedModels           # load packages
-dyestuff = MixedModels.dataset(:dyestuff);              # load dataset
+using DataFrames, MixedModels, MixedModelsDatasets  # load packages
+dyestuff = MixedModelsDatasets.dataset(:dyestuff);   # load dataset
 
 lmod = lmm(@formula(yield ~ 1 + (1|batch)), dyestuff)   # fit the model!
 DisplayAs.Text(ans) # hide
@@ -28,7 +28,7 @@ A quick example of generalized linear model using the `verbagg` dataset:
 
 ```@example Main
 using DataFrames, MixedModels               # load packages
-verbagg = MixedModels.dataset(:verbagg);    # load dataset
+verbagg = MixedModelsDatasets.dataset(:verbagg);    # load dataset
 
 frm = @formula(r2 ~ 1 + anger + gender + btype + situ + mode + (1|subj) + (1|item));
 bernmod = glmm(frm, verbagg, Bernoulli())   # fit the model!

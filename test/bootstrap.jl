@@ -9,7 +9,8 @@ using Suppressor
 using Tables
 using Test
 
-using MixedModels: dataset, MixedModelBootstrap
+using MixedModels: MixedModelBootstrap
+using MixedModelsDatasets: dataset
 
 include("modelcache.jl")
 
