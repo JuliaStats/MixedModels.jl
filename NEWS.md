@@ -1,11 +1,15 @@
 MixedModels v5.0.0 Release Notes
 ==============================
-- Optimization is now performed _without constraints_. In a post-fitting step, the the Cholesky factor is canonicalized to have non-negative diagonal elements. [#840]
-- The default optimizer has changed to NLopt's implementation of NEWUOA where possible. NLopt's implementation fails on 1-dimensional problems, so in the case A single, scalar random effect, BOBYQA is used instead. In the future, the default optimizer backend will likely change to PRIMA and NLopt support will be moved to an extension. Blocking this change in backend is an issue with PRIMA.jl when running in VSCode's built-in REPL on Linux. [#840]
+- Optimization is now performed _without constraints_. In a post-fitting step, the Cholesky factor is canonicalized to have non-negative diagonal elements. [#840]
+- The default optimizer has changed to NLopt's implementation of NEWUOA where possible. NLopt's implementation fails on 1-dimensional problems, so in the case of a single, scalar random effect, BOBYQA is used instead. In the future, the default optimizer backend will likely change to PRIMA and NLopt support will be moved to an extension. Blocking this change in backend is an issue with PRIMA.jl when running in VSCode's built-in REPL on Linux. [#840]
 - [BREAKING] Support for constrained optimization has been completely removed, i.e. the field `lowerbd` has been removed from `OptSummary`.
 - [BREAKING] The deprecated `use_threads` kwarg has been dropped from `parametricbootstrap`. It had been a no-op since v4.10.0. [#841]
 - [BREAKING] The deprecated `hide_progress` kwarg has been dropped from `parametricbootstrap`. It had been replaced by `progress` since v4.22.0. [#841]
-
+- [BREAKING] A fitlog is always kept -- the deprecated keyword argument `thin` has been removed as has the `fitlog` keyword argument. [#850]
+- The fitlog is now stored as Tables.jl-compatible column table. [#850]
+- Internal code around the default optimizer has been restructured. In particular, the NLopt backend has been moved to a submodule, which will make it easier to move it to an extension if we promote another backend to the default. [#853]
+- Internal code around optimization in profiling has been restructuring so that fitting done during calls to `profile` respect the `backend` and `optimizer` settings. [#853]
+- The `prfit!` convenience function has been removed. [#853]
 
 MixedModels v4.38.0 Release Notes
 ==============================

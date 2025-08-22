@@ -10,17 +10,15 @@ function optsumj(os::OptSummary, j::Integer)
     return OptSummary(
         deleteat!(copy(os.final), j),
         deleteat!(copy(os.lowerbd), j),
-        os.optimizer,
+        os.optimizer;
+        os.backend,
     )
 end
 
-function profileobj!(
-    m::LinearMixedModel{T}, θ::AbstractVector{T}, opt::Opt, osj::OptSummary
-) where {T}
+function profileobj!(obj,
+    m::LinearMixedModel{T}, θ::AbstractVector{T}, osj::OptSummary) where {T}
     isone(length(θ)) && return objective!(m, θ)
-    fmin, xmin, ret = NLopt.optimize(opt, copyto!(osj.final, osj.initial))
-    _check_nlopt_return(ret)
-    return fmin
+    return profileobj!(obj, m, θ, osj, Val(osj.backend))
 end
 
 function profileθj!(
@@ -32,14 +30,12 @@ function profileθj!(
     j = parsej(sym)
     θ = copy(final)
     osj = optsum
-    opt = Opt(osj)
     pmj = m.parmap[j]
     lbj = pmj[2] == pmj[3] ? zero(T) : T(-Inf)
     if length(θ) > 1      # set up the conditional optimization problem
         notj = deleteat!(collect(axes(final, 1)), j)
         osj = optsumj(optsum, j)
-        opt = Opt(osj)               # create an NLopt optimizer object for the reduced problem
-        function obj(x, g)
+        function obj(x, g=T[])
             isempty(g) ||
                 throw(ArgumentError("gradients are not evaluated by this objective"))
             for i in eachindex(notj, x)
@@ -47,7 +43,8 @@ function profileθj!(
             end
             return objective!(m, θ)
         end
-        NLopt.min_objective!(opt, obj)
+    else
+        obj = nothing
     end
     pnm = (; p=sym)
     ζold = zero(T)
@@ -56,7 +53,7 @@ function profileθj!(
     θj = final[j]
     θ[j] = θj - δj
     while (abs(ζold) < threshold) && θ[j] ≥ lbj && length(tbl) < 100  # decreasing values of θ[j]
-        ζ = sign(θ[j] - θj) * sqrt(profileobj!(m, θ, opt, osj) - fmin)
+        ζ = sign(θ[j] - θj) * sqrt(profileobj!(obj, m, θ, osj) - fmin)
         push!(tbl, merge(pnm, mkrow!(tc, m, ζ)))
         θ[j] == lbj && break
         δj /= (4 * abs(ζ - ζold))   # take smaller steps when evaluating negative zeta
@@ -80,12 +77,12 @@ function profileθj!(
     copyto!(θ, final)
     θ[j] += δj
     while (ζold < threshold) && (length(tbl) < 120)
-        fval = profileobj!(m, θ, opt, osj)
+        fval = profileobj!(obj, m, θ, osj)
         if fval < fmin
             @warn "Negative difference ", fval - fmin, " for ", sym, " at ", θ[j]
             ζ = zero(T)
         else
-            ζ = sqrt(profileobj!(m, θ, opt, osj) - fmin)
+            ζ = sqrt(profileobj!(obj, m, θ, osj) - fmin)
         end
         push!(tbl, merge(pnm, mkrow!(tc, m, ζ)))
         δj /= (2 * abs(ζ - ζold))

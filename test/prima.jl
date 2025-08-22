@@ -1,14 +1,24 @@
 using PRIMA
-using MixedModels: prfit!, unfit!, dataset
+using MixedModels: unfit!, dataset
+using Suppressor
 
 include("modelcache.jl")
 
-@testset "formula($model)" for model in models(:sleepstudy)
-    prmodel = prfit!(LinearMixedModel(formula(model), dataset(:sleepstudy)); progress=false)
+@testset "$(formula(model))" for model in models(:sleepstudy)
+    prmodel = LinearMixedModel(formula(model), dataset(:sleepstudy))
+    prmodel.optsum.backend = :prima
+    prmodel.optsum.optimizer = :bobyqa
+    fit!(prmodel; progress=false)
 
     @test isapprox(loglikelihood(model), loglikelihood(prmodel))
     @test prmodel.optsum.optimizer == :bobyqa
     @test prmodel.optsum.backend == :prima
+
+    @testset "profile" begin
+        profile_prima = @suppress profile(prmodel)
+        profile_nlopt = @suppress profile(model)
+        @test isapprox(profile_prima.tbl.ζ, profile_nlopt.tbl.ζ; rtol=0.0001)
+    end
 end
 
 model = first(models(:sleepstudy))
@@ -18,13 +28,13 @@ prmodel.optsum.backend = :prima
 @testset "$optimizer" for optimizer in (:cobyla, :lincoa, :newuoa)
     unfit!(prmodel)
     prmodel.optsum.optimizer = optimizer
-    fit!(prmodel; progress=false, fitlog=false)
+    fit!(prmodel; progress=false)
     @test isapprox(loglikelihood(model), loglikelihood(prmodel)) atol=1.e-5
 end
 
 @testset "refit!" begin
-    refit!(prmodel; progress=false, fitlog=true)
-    @test prmodel.optsum.fitlog[1][1] == [1.0]
+    refit!(prmodel; progress=false)
+    @test prmodel.optsum.fitlog.θ[begin] == [1.0]
 end
 
 @testset "failure" begin
@@ -32,7 +42,7 @@ end
     prmodel.optsum.optimizer = :bobyqa
     prmodel.optsum.maxfeval = 5
     @test_logs((:warn, r"PRIMA optimization failure"),
-        fit!(prmodel; progress=false, fitlog=false))
+        fit!(prmodel; progress=false))
 end
 
 @testset "GLMM + optsum show" begin
