@@ -88,8 +88,7 @@ end
 
 function StatsAPI.predict(m::GeneralizedLinearMixedModel; type=:response)
     type in (:linpred, :response) || throw(ArgumentError("Invalid value for type: $(type)"))
-    y = fitted(m)
-    type == :response ? y : broadcast!(Base.Fix1(linkfun, Link(m)), y, y)
+    type == :response ? fitted(m) : m.resp.eta
     return y
 end
 
