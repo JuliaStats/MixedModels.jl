@@ -9,6 +9,7 @@ MixedModels v5.0.0 Release Notes
 - Internal code around optimization in profiling has been restructuring so that fitting done during calls to `profile` respect the `backend` and `optimizer` settings. [#853]
 - The `prfit!` convenience function has been removed. [#853]
 - The `dataset` and `datasets` functions have been removed. They are now housed in `MixedModelsDatasets`.[#854]
+- One argument `predict(::GeneralizedLinearMixedModel)`, i.e. prediction on the original data, now supports the `type` keyword argument. [#856]
 
 MixedModels v4.38.0 Release Notes
 ==============================
