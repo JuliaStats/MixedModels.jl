@@ -184,7 +184,7 @@ end
 function _markdown(s::OptSummary)
     optimizer_settings = [["Optimizer", "`$(s.optimizer)`"],
         ["Backend", "`$(s.backend)`"],
-        ["Lower bounds", string(s.lowerbd)]]
+    ]
 
     for param in opt_params(Val(s.backend))
         push!(optimizer_settings, [string(param), string(getfield(s, param))])

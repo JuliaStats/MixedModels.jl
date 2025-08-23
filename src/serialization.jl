@@ -44,17 +44,11 @@ function restoreoptsum!(
 
     theta_beta_len = length(m.θ) + length(m.β)
     if length(dict.initial) == theta_beta_len # fast=false
-        if length(ops.lowerbd) == length(m.θ)
-            prepend!(ops.lowerbd, fill(-Inf, length(m.β)))
-        end
         setpar! = setβθ!
         varyβ = false
     else # fast=true
         setpar! = setθ!
         varyβ = true
-        if length(ops.lowerbd) != length(m.θ)
-            deleteat!(ops.lowerbd, 1:length(m.β))
-        end
     end
     restoreoptsum!(ops, dict)
     for (par, obj_at_par) in (:initial => :finitial, :final => :fmin)
@@ -75,7 +69,7 @@ end
 function restoreoptsum!(ops::OptSummary{T}, dict::AbstractDict) where {T}
     warn_old_version = true
     allowed_missing = (
-        :lowerbd,       # never saved, -Inf not allowed in JSON
+        :lowerbd,       # never saved, -Inf not allowed in JSON, not used in v5
         :xtol_zero_abs, # added in v4.25.0
         :ftol_zero_abs, # added in v4.25.0
         :sigma,         # added in v4.1.0
@@ -98,10 +92,6 @@ function restoreoptsum!(ops::OptSummary{T}, dict::AbstractDict) where {T}
         warn_old_version = false
     end
 
-    if any(ops.lowerbd .> dict.initial) || any(ops.lowerbd .> dict.final)
-        @debug "" ops.lowerbd dict.initial dict.final
-        throw(ArgumentError("initial or final parameters in io do not satisfy lowerbd"))
-    end
     for fld in (:feval, :finitial, :fmin, :ftol_rel, :ftol_abs, :maxfeval, :nAGQ, :REML)
         setproperty!(ops, fld, getproperty(dict, fld))
     end
@@ -153,16 +143,12 @@ function _deserialize_fitlog(
 end
 
 StructTypes.StructType(::Type{<:OptSummary}) = StructTypes.Mutable()
-StructTypes.excludes(::Type{<:OptSummary}) = (:lowerbd,)
 
 """
     saveoptsum(io::IO, m::MixedModel)
     saveoptsum(filename, m::MixedModel)
 
-Save `m.optsum` (w/o the `lowerbd` field) in JSON format to an IO stream or a file
-
-The reason for omitting the `lowerbd` field is because it often contains `-Inf`
-values that are not allowed in JSON.
+Save `m.optsum` in JSON format to an IO stream or a file
 """
 saveoptsum(io::IO, m::MixedModel) = JSON3.write(io, m.optsum)
 function saveoptsum(filename, m::MixedModel)
