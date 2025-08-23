@@ -88,8 +88,7 @@ end
 
 function StatsAPI.predict(m::GeneralizedLinearMixedModel; type=:response)
     type in (:linpred, :response) || throw(ArgumentError("Invalid value for type: $(type)"))
-    type == :response ? fitted(m) : m.resp.eta
-    return y
+    return type == :response ? fitted(m) : m.resp.eta
 end
 
 # β is separated out here because m.β != m.LMM.β depending on how β is estimated for GLMM
