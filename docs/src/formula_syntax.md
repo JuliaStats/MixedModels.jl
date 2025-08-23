@@ -55,17 +55,19 @@ Under these assumptions, the model specification
 
 corresponds to the statistical model
 
+```math
 \begin{align*}
 \left(Y |\mathcal{B}=b\right) &\sim N\left(X\beta + Zb, \sigma^2 I \right) \\
 \mathcal{B} &\sim N\left(0, G\right)
 \end{align*}
+```
 
-for which we wish to obtain the maximum-likelihood estimates for $G$ and thus the fixed-effects $\beta$.
+for which we wish to obtain the maximum-likelihood estimates for ``G`` and thus the fixed-effects ``\beta``.
 
-- The model contains no restrictions on $G$, except that it is positive semidefinite.
-- The response Y is the value of a given response.
-- The fixed-effects design matrix X consists of columns for
+- The model contains no restrictions on ``G``, except that it is positive semidefinite.
+- The response ``Y`` is the value of a given response.
+- The fixed-effects design matrix ``X`` consists of columns for
   - the intercept, age, sex, education, and number of children (contrast coded as appropriate)
   - the interaction of all lower order terms, excluding interactions between age and sex
-- The random-effects design matrix Z includes a column for
+- The random-effects design matrix ``Z`` includes a column for
   - the intercept for each subject
