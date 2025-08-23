@@ -105,7 +105,7 @@ function MixedModels.optimize!(m::GeneralizedLinearMixedModel, ::PRIMABackend;
         sc
     end
     info = _optimizer!(Val(optsum.optimizer), obj, optsum.final;
-        xl=optsum.lowerbd, maxfun,
+        maxfun,
         optsum.rhoend, optsum.rhobeg,
         scale)
     ProgressMeter.finish!(prog)

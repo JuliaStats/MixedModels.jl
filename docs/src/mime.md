@@ -12,7 +12,7 @@ Packages like `IJulia` and `Documenter` can often detect the presence of these d
 
 
 ```@example Main
-using MixedModels
+using MixedModels, MixedModelsDatasets
 form = @formula(rt_trunc ~ 1 + spkr * prec * load +
                           (1 + load | item) +
                           (1 + spkr + prec + load | subj))
@@ -21,7 +21,7 @@ contr = Dict(:spkr => EffectsCoding(),
              :load => EffectsCoding(),
              :item => Grouping(),
              :subj => Grouping())
-kbm = fit(MixedModel, form, MixedModels.dataset(:kb07); contrasts=contr)
+kbm = fit(MixedModel, form, MixedModelsDatasets.dataset(:kb07); contrasts=contr)
 ```
 
 Note that the display here is more succinct than the standard REPL display:
@@ -52,8 +52,8 @@ kbm.optsum
 ```
 
 ```@example Main
-m0 = fit(MixedModel, @formula(reaction ~ 1 + (1|subj)), MixedModels.dataset(:sleepstudy))
-m1 = fit(MixedModel, @formula(reaction ~ 1 + days + (1+days|subj)), MixedModels.dataset(:sleepstudy))
+m0 = fit(MixedModel, @formula(reaction ~ 1 + (1|subj)), MixedModelsDatasets.dataset(:sleepstudy))
+m1 = fit(MixedModel, @formula(reaction ~ 1 + days + (1+days|subj)), MixedModelsDatasets.dataset(:sleepstudy))
 MixedModels.likelihoodratiotest(m0,m1)
 ```
 

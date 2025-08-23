@@ -1,5 +1,5 @@
 using MixedModels
-using MixedModels: dataset
+using MixedModelsDatasets: dataset
 
 @isdefined(gfms) || const global gfms = Dict(
     :cbpp => [@formula((incid / hsz) ~ 1 + period + (1 | herd))],

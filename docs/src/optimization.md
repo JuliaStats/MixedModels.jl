@@ -101,10 +101,10 @@ For the simple example
 using DisplayAs
 ```
 ```@example Main
-using BenchmarkTools, DataFrames, MixedModels
+using BenchmarkTools, DataFrames, MixedModels, MixedModelsDatasets
 ```
 ```@example Main
-dyestuff = MixedModels.dataset(:dyestuff)
+dyestuff = MixedModelsDatasets.dataset(:dyestuff)
 fm1 = fit(MixedModel, @formula(yield ~ 1 + (1|batch)), dyestuff)
 DisplayAs.Text(ans) # hide
 ```
@@ -133,7 +133,7 @@ Furthermore, there is only one block in $\Lambda_\theta$.
 
 For a vector-valued random-effects term, as in
 ```@example Main
-sleepstudy = MixedModels.dataset(:sleepstudy)
+sleepstudy = MixedModelsDatasets.dataset(:sleepstudy)
 fm2 = fit(MixedModel, @formula(reaction ~ 1+days+(1+days|subj)), sleepstudy)
 DisplayAs.Text(ans) # hide
 ```
@@ -168,7 +168,7 @@ MixedModels.getθ(t31)
 Random-effects terms with distinct grouping factors generate distinct elements of the `reterms` field of the `LinearMixedModel` object.
 Multiple `ReMat` objects are sorted by decreasing numbers of random effects.
 ```@example Main
-penicillin = MixedModels.dataset(:penicillin)
+penicillin = MixedModelsDatasets.dataset(:penicillin)
 fm4 = fit(MixedModel,
     @formula(diameter ~ 1 + (1|sample) + (1|plate)),
     penicillin)
@@ -314,7 +314,7 @@ Poisson
 A `GeneralizedLinearMixedModel` object is generated from a formula, data frame and distribution family.
 
 ```@example Main
-verbagg = MixedModels.dataset(:verbagg)
+verbagg = MixedModelsDatasets.dataset(:verbagg)
 const vaform = @formula(r2 ~ 1 + anger + gender + btype + situ + (1|subj) + (1|item));
 mdl = GeneralizedLinearMixedModel(vaform, verbagg, Bernoulli());
 typeof(mdl)

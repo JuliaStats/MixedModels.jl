@@ -8,7 +8,7 @@ using Tables
 using Test
 
 using GLM: Link, linkfun, linkinv
-using MixedModels: dataset
+using MixedModelsDatasets: dataset
 
 include("modelcache.jl")
 
