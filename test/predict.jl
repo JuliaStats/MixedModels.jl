@@ -198,7 +198,7 @@ end
             # internally this is punted off to the same machinery as LMM
             @test predict(gm0) ≈ fitted(gm0)
             @test predict(gm0; type=:response) ≈ fitted(gm0)
-            @test predict(gm0; type=:linpred) ≈ predict(gm0, contra; type=:linpred)
+            @test predict(gm0; type=:linpred) ≈ GLM.linkfun.(Ref(Link(gm0)), fitted(gm0))
             # XXX these tolerances aren't great but are required for fast=false fits
             @test predict(gm0, contra; type=:linpred) ≈ gm0.resp.eta rtol = 0.1
             @test predict(gm0, contra; type=:response) ≈ gm0.resp.mu rtol = 0.01
