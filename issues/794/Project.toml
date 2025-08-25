@@ -1,0 +1,5 @@
+[deps]
+BSplineKit = "093aae92-e908-43d7-9660-e50ee39d5a0a"
+CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
+MixedModels = "ff71e718-51f3-5ec2-a782-8ffcbfa3c316"
+MixedModelsDatasets = "7e9fb7ac-9f67-43bf-b2c8-96ba0796cbb6"

@@ -78,9 +78,14 @@ function profileσs!(val::NamedTuple, tc::TableColumns{T}; nzlb=1.0e-8) where {T
             append!(val.tbl, tbl)
             ζcol = getproperty(:ζ).(tbl)
             symcol = gpsym.(tbl)
-            val.fwd[sym] = interpolate(symcol, ζcol, BSplineOrder(4), Natural())
-            issorted(ζcol) &&
-                (val.rev[sym] = interpolate(ζcol, symcol, BSplineOrder(4), Natural()))
+            try
+                val.fwd[sym] = interpolate(symcol, ζcol, BSplineOrder(4), Natural())
+                issorted(ζcol) &&
+                    (val.rev[sym] = interpolate(ζcol, symcol, BSplineOrder(4), Natural()))
+            catch
+                @error "An error occurred while fitting the profile splines for the variance components. Try adjusting the threshold."
+                rethrow()
+            end
         end
     end
     copyto!(final, initial)

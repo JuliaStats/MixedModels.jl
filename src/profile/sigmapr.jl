@@ -33,6 +33,7 @@ end
     profileσ(m::LinearMixedModel, tc::TableColumns; threshold=4)
 
 Return a Table of the profile of `σ` for model `m`.  The profile extends to where the magnitude of ζ exceeds `threshold`.
+
 !!! note
     This method is called by `profile` and currently considered internal.
     As such, it may change or disappear in a future release without being considered breaking.
@@ -69,7 +70,13 @@ function profileσ(m::LinearMixedModel{T}, tc::TableColumns{T}; threshold=4) whe
     updateL!(setθ!(m, θ))
     σv = [r.σ for r in tbl]
     ζv = [r.ζ for r in tbl]
-    fwd = Dict(:σ => interpolate(σv, ζv, BSplineOrder(4), Natural()))
-    rev = Dict(:σ => interpolate(ζv, σv, BSplineOrder(4), Natural()))
+    local fwd, rev
+    try
+        fwd = Dict(:σ => interpolate(σv, ζv, BSplineOrder(4), Natural()))
+        rev = Dict(:σ => interpolate(ζv, σv, BSplineOrder(4), Natural()))
+    catch
+        @error "An error occurred while fitting the profile splines for σ. Try adjusting the threshold."
+        rethrow()
+    end
     return (; m, tbl, fwd, rev)
 end
