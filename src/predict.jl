@@ -86,6 +86,11 @@ function StatsAPI.predict(
     return type == :linpred ? y : broadcast!(Base.Fix1(linkinv, Link(m)), y, y)
 end
 
+function StatsAPI.predict(m::GeneralizedLinearMixedModel; type=:response)
+    type in (:linpred, :response) || throw(ArgumentError("Invalid value for type: $(type)"))
+    return type == :response ? fitted(m) : m.resp.eta
+end
+
 # β is separated out here because m.β != m.LMM.β depending on how β is estimated for GLMM
 # also β should already be pivoted but NOT truncated in the rank deficient case
 function _predict(m::MixedModel{T}, newdata, β; new_re_levels) where {T}

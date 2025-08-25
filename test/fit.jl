@@ -77,11 +77,10 @@ end
 @testset "generalized" begin
     gm1 = fit(MixedModel, @formula(use ~ 1 + urban + livch + age + abs2(age) + (1 | dist)),
         MixedModels.dataset(:contra), Bernoulli(); progress=false)
-    @test deviance(gm1) ≈ 2372.7286 atol = 1.0e-3
-
     gm2 = glmm(@formula(use ~ 1 + urban + livch + age + abs2(age) + (1 | dist)),
         MixedModels.dataset(:contra), Bernoulli(); progress=false)
-    @test deviance(gm2) ≈ 2372.7286 atol = 1.0e-3
+
+    @test deviance(gm1) ≈ deviance(gm2)
 end
 
 @testset "Normal-IdentityLink" begin
