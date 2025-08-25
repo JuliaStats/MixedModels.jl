@@ -112,14 +112,13 @@ end
     dat = dataset(:insteval)
     f1 = @formula(y ~ 1 + service + (1|s) + (1|d) + (1|dept) + (0 + service|dept))
     progress = false
-    m1 = fit(MixedModel, f1, dat; progress)
-    println(m1)
-    println(m1.optsum)
-    @test isapprox(objective(m1), 237648.6016)
-    m1.optsum.backend = :prima
-    m1.optsum.optimizer = :bobyqa
-    refit!(m1; progress)
-    println(m1)
-    println(m1.optsum)
-    @test isapprox(objective(m1), 237648.6016)
+    m1 = LinearMixedModel(f1, dat)
+    methods = [(:nlopt, :LN_NEWUOA), (:nlopt, :LN_BOBYQA), (:prima, :bobyqa), (:prima, :newuoa)]
+    @testset "$backend-$optimizer" for (backend, optimizer) in methods
+        m1.optsum.backend = backend
+        m1.optsum.optimizer = optimizer
+        refit!(m1; progress)
+        @test isapprox(objective(m1), 237648.6016)
+        @test m1.θ ≈ [0.2757238458621397, 0.43528621279418084, 0.04315971015043779, 0.12997375328696648] atol=0.0001
+    end
 end
