@@ -84,6 +84,7 @@ end
 _formula(x::MixedModel) = string(formula(x))
 
 
+Base.show(io::IO, lrt::LikelihoodRatioTest) = show(io, MIME("text/plain"), lrt)
 function Base.show(io::IO, ::MIME"text/plain", lrt::LikelihoodRatioTest{N}) where {N}
     println(io, "Likelihood-ratio test: $N models fitted on $(lrt.nobs) observations")
     println(io, "Model Formulae")
@@ -103,20 +104,20 @@ function Base.show(io::IO, ::MIME"text/plain", lrt::LikelihoodRatioTest{N}) wher
 
     outrows[1, :] = ["",
                      "DoF",
-                     "logLik",
+                     "-2 logLik",
                      "χ²",
                      "χ²-dof", "P(>χ²)"]
     outrows[2, :] = ["[1]",
                      @sprintf("%.0d", lrt.dof[1]),
-                     @sprintf("%.4f", lrt.loglikelihood[1]),
-                     " ",
-                     " ",
-                     " "]
+                     @sprintf("%.4f", -2 * lrt.loglikelihood[1]),
+                     "",
+                     "",
+                     ""]
 
     for i in 2:nr
         outrows[i+1, :] = ["[$i]",
                            @sprintf("%.0d", lrt.dof[i]),
-                           @sprintf("%.4f", lrt.loglikelihood[i]),
+                           @sprintf("%.4f", -2 * lrt.loglikelihood[i]),
                            @sprintf("%.4f", chisq[i-1]),
                            @sprintf("%.0d", Δdf[i-1]),
                            string(StatsBase.PValue(lrt.pval[i]))]

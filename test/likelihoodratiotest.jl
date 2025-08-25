@@ -71,69 +71,69 @@ end
     lm0 = lm(@formula(reaction ~ 1), slp)
     lm1 = lm(@formula(reaction ~ 1 + days), slp)
 
-    # @test MixedModels._iscomparable(lm0, fm1)
-    @test !MixedModels._iscomparable(lm1, fm0)
+    @test MixedModels.isnested(lm0, fm1)
+    @test !MixedModels.isnested(lm1, fm0)
 
     lrt = likelihoodratiotest(fm0, fm1)
 
     @test (deviance(fm0), deviance(fm1)) == lrt.deviance
-    @test sprint(show, lrt) == "MixedModels.LikelihoodRatioTest{2}((\"reaction ~ 1 + (1 + days | subj)\", \"reaction ~ 1 + days + (1 + days | subj)\"), Likelihood-ratio test: 2 models fitted on 180 observations\n────────────────────────────────────────────────────────\n     DOF  ΔDOF     LogLik   Deviance    Chisq  p(>Chisq)\n────────────────────────────────────────────────────────\n[1]    5        -887.7379  1775.4759                    \n[2]    6     1  -875.9697  1751.9393  23.5365     <1e-05\n────────────────────────────────────────────────────────, true)"
+    @test sprint(show, lrt) == "Likelihood-ratio test: 2 models fitted on 180 observations\nModel Formulae\n1: reaction ~ 1 + (1 + days | subj)\n2: reaction ~ 1 + days + (1 + days | subj)\n────────────────────────────────────────────\n     DoF  -2 logLik       χ²  χ²-dof  P(>χ²)\n────────────────────────────────────────────\n[1]    5  1775.4759                         \n[2]    6  1751.9393  23.5365       1  <1e-05\n────────────────────────────────────────────"
     @test last(lrt.pvalues) == pvalue(lrt)
 
     lrt = likelihoodratiotest(lm1, fm1)
     @test pvalue(lrt) ≈ 5.9e-32 atol=1e-16
 
-    # shown = sprint(show, lrt)
-    # lrt = likelihoodratiotest(lm0, fm0, fm1)
-    # @test_throws ArgumentError pvalue(lrt)
+    lrt = likelihoodratiotest(lm0, fm0, fm1)
+    @test_throws ArgumentError pvalue(lrt)
 
-    # # non nested FE between non-mixed and mixed
-    # @test_throws ArgumentError likelihoodratiotest(lm1, fm0)
+    # non nested FE between non-mixed and mixed
+    @test_throws ArgumentError likelihoodratiotest(lm1, fm0)
 
-    # # mix of REML and ML
-    # fm0 = fit(
-    #     MixedModel,
-    #     @formula(reaction ~ 1 + (1 + days | subj)),
-    #     slp;
-    #     REML=true,
-    #     progress=false,
-    # )
-    # @test_throws ArgumentError likelihoodratiotest(fm0, fm1)
-    # @test_throws ArgumentError likelihoodratiotest(lm0, fm0)
+    # mix of REML and ML
+    fm0 = fit(
+        MixedModel,
+        @formula(reaction ~ 1 + (1 + days | subj)),
+        slp;
+        REML=true,
+        progress=false,
+    )
+    @test_throws ArgumentError likelihoodratiotest(fm0, fm1)
+    @test_throws ArgumentError likelihoodratiotest(lm0, fm0)
 
-    # # differing FE with REML
-    # fm1 = fit(
-    #     MixedModel,
-    #     @formula(reaction ~ 1 + days + (1 + days | subj)),
-    #     slp;
-    #     REML=true,
-    #     progress=false,
-    # )
+    # differing FE with REML
+    fm1 = fit(
+        MixedModel,
+        @formula(reaction ~ 1 + days + (1 + days | subj)),
+        slp;
+        REML=true,
+        progress=false,
+    )
 
-    # @test_throws ArgumentError likelihoodratiotest(fm0, fm1)
-    # contra = MixedModels.dataset(:contra)
-    # # glm doesn't like categorical responses, so we convert it to numeric ourselves
-    # # TODO: upstream fix
-    # cc = DataFrame(contra)
-    # cc.usenum = ifelse.(cc.use .== "Y", 1, 0)
-    # gmf = glm(@formula(usenum ~ 1 + age + urban + livch), cc, Bernoulli())
-    # gmf2 = glm(@formula(usenum ~ 1 + age + abs2(age) + urban + livch), cc, Bernoulli())
-    # gm0 = fit(
-    #     MixedModel,
-    #     @formula(use ~ 1 + age + urban + livch + (1 | urban & dist)),
-    #     contra,
-    #     Bernoulli();
-    #     fast=true,
-    #     progress=false,
-    # )
-    # gm1 = fit(
-    #     MixedModel,
-    #     @formula(use ~ 1 + age + abs2(age) + urban + livch + (1 | urban & dist)),
-    #     contra,
-    #     Bernoulli();
-    #     fast=true,
-    #     progress=false,
-    # )
+    @test_throws ArgumentError likelihoodratiotest(fm0, fm1)
+
+    contra = MixedModels.dataset(:contra)
+    # glm doesn't like categorical responses, so we convert it to numeric ourselves
+    # TODO: upstream fix
+    cc = DataFrame(dataset(:contra))
+    cc.usenum = ifelse.(cc.use .== "Y", 1, 0)
+    gmf = glm(@formula(usenum ~ 1 + age + urban + livch), cc, Bernoulli())
+    gmf2 = glm(@formula(usenum ~ 1 + age + abs2(age) + urban + livch), cc, Bernoulli())
+    gm0 = fit(
+        MixedModel,
+        @formula(use ~ 1 + age + urban + livch + (1 | urban & dist)),
+        dataset(:contra),
+        Bernoulli();
+        fast=true,
+        progress=false,
+    )
+    gm1 = fit(
+        MixedModel,
+        @formula(use ~ 1 + age + abs2(age) + urban + livch + (1 | urban & dist)),
+        dataset(:contra),
+        Bernoulli();
+        fast=true,
+        progress=false,
+    )
 
     # lrt = likelihoodratiotest(gmf, gm1)
     # @test [-2 * loglikelihood(gmf), deviance(gm1)] ≈ lrt.deviance
