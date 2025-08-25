@@ -12,7 +12,7 @@ Object returned by `parametericbootstrap` with fields
 - `fits`: the parameter estimates from the bootstrap replicates as a vector of named tuples.
 - `λ`: `Vector{LowerTriangular{T,Matrix{T}}}` containing copies of the λ field from `ReMat` model terms
 - `inds`: `Vector{Vector{Int}}` containing copies of the `inds` field from `ReMat` model terms
-- `lowerbd`: `Vector{T}` containing the vector of lower bounds (corresponds to the identically named field of [`OptSummary`](@ref))
+- `lowerbd`: `Vector{T}` containing the vector of lower bounds (corresponds to the `lowerbd(model)` of the original model)
 - `fcnames`: NamedTuple whose keys are the grouping factor names and whose values are the column names
 
 The schema of `fits` is, by default,
@@ -34,7 +34,7 @@ struct MixedModelBootstrap{T<:AbstractFloat} <: MixedModelFitCollection{T}
     fits::Vector
     λ::Vector{Union{LowerTriangular{T},Diagonal{T}}}
     inds::Vector{Vector{Int}}
-    lowerbd::Vector{T}
+    lowerbd::Vector{T} # we need to store this explicitly because we no longer have access to the ReMats
     fcnames::NamedTuple
 end
 
@@ -112,7 +112,7 @@ function restorereplicates(
         samp,
         map(vv -> T.(vv), m.λ), # also does a deepcopy if no type conversion is necessary
         getfield.(m.reterms, :inds),
-        T.(m.optsum.lowerbd[1:length(first(samp).θ)]),
+        T.(lowerbd(m)),
         NamedTuple{Symbol.(fnames(m))}(map(t -> Tuple(t.cnames), m.reterms)),
     )
 end
@@ -175,6 +175,8 @@ function Base.show(io::IO, mime::MIME"text/plain", x::MixedModelBootstrap)
     return nothing
 end
 
+lowerbd(x::MixedModelFitCollection) = x.lowerbd
+
 """
     parametricbootstrap([rng::AbstractRNG], nsamp::Integer, m::MixedModel{T}, ftype=T;
         β = fixef(m), σ = m.σ, θ = m.θ, progress=true, optsum_overrides=(;))
@@ -234,8 +236,6 @@ function parametricbootstrap(
     for (key, val) in pairs(optsum_overrides)
         setfield!(m.optsum, key, val)
     end
-    # this seemed to slow things down?!
-    # _copy_away_from_lowerbd!(m.optsum.initial, morig.optsum.final, m.lowerbd; incr=0.05)
 
     β_names = Tuple(Symbol.(coefnames(morig)))
 
@@ -254,7 +254,7 @@ function parametricbootstrap(
         samp,
         map(vv -> ftype.(vv), morig.λ), # also does a deepcopy if no type conversion is necessary
         getfield.(morig.reterms, :inds),
-        ftype.(morig.optsum.lowerbd[1:length(first(samp).θ)]),
+        ftype.(lowerbd(morig)),
         NamedTuple{Symbol.(fnames(morig))}(map(t -> Tuple(t.cnames), morig.reterms)),
     )
 end
@@ -408,7 +408,7 @@ function issingular(
     bsamp::MixedModelFitCollection; atol::Real=0, rtol::Real=atol > 0 ? 0 : √eps()
 )
     return map(bsamp.θ) do θ
-        return _issingular(bsamp.lowerbd, θ; atol, rtol)
+        return _issingular(lowerbd(bsamp), θ; atol, rtol)
     end
 end
 

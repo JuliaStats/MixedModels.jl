@@ -24,7 +24,6 @@ Linear mixed-effects model representation
 * `σ` or `sigma`: current value of the standard deviation of the per-observation noise
 * `b`: random effects on the original scale, as a vector of matrices
 * `u`: random effects on the orthogonal scale, as a vector of matrices
-* `lowerbd`: lower bounds on the elements of θ
 * `X`: the fixed-effects model matrix
 * `y`: the response vector
 """
@@ -173,9 +172,8 @@ function LinearMixedModel(
     reweight!.(reterms, Ref(sqrtwts))
     reweight!(Xy, sqrtwts)
     A, L = createAL(reterms, Xy)
-    lbd = foldl(vcat, lowerbd(c) for c in reterms)
     θ = foldl(vcat, getθ(c) for c in reterms)
-    optsum = OptSummary(θ, lbd)
+    optsum = OptSummary(θ)
     optsum.sigma = isnothing(σ) ? nothing : T(σ)
     return LinearMixedModel(
         form,
@@ -662,8 +660,6 @@ function Base.getproperty(m::LinearMixedModel{T}, s::Symbol) where {T}
         stderror(m)
     elseif s == :u
         ranef(m; uscale=true)
-    elseif s == :lowerbd
-        m.optsum.lowerbd
     elseif s == :X
         modelmatrix(m)
     elseif s == :y
@@ -791,7 +787,7 @@ function StatsAPI.loglikelihood(m::LinearMixedModel)
     return -objective(m) / 2
 end
 
-lowerbd(m::LinearMixedModel) = m.optsum.lowerbd
+lowerbd(m::LinearMixedModel) = foldl(vcat, lowerbd(c) for c in m.reterms)
 
 function mkparmap(reterms::Vector{<:AbstractReMat{T}}) where {T}
     parmap = NTuple{3,Int}[]
@@ -856,7 +852,6 @@ function Base.propertynames(m::LinearMixedModel, private::Bool=false)
         :sigmarhos,
         :b,
         :u,
-        :lowerbd,
         :X,
         :y,
         :corr,

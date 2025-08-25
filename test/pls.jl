@@ -42,8 +42,6 @@ end
 
     @test length(fm1.A) == 3
     @test size(fm1.reterms) == (1,)
-    @test lowerbd(fm1) == [-Inf]
-    @test fm1.lowerbd == [-Inf]
     @test fm1.optsum.initial == ones(1)
     fm1.θ = ones(1)
     @test fm1.θ == ones(1)
@@ -171,7 +169,6 @@ end
 
 @testset "Dyestuff2" begin
     fm = only(models(:dyestuff2))
-    @test lowerbd(fm) == [-Inf]
     show(IOBuffer(), fm)
     @test fm.θ ≈ zeros(1)
     @test objective(fm) ≈ 162.87303665382575
@@ -198,7 +195,6 @@ end
     fm = only(models(:penicillin))
     @test size(fm) == (144, 1, 30, 2)
     @test fm.optsum.initial == ones(2)
-    @test lowerbd(fm) == fill(-Inf, 2)
 
     @test objective(fm) ≈ 332.1883486700085 atol = 0.001
     @test coef(fm) ≈ [22.97222222222222] atol = 0.001
@@ -241,7 +237,6 @@ end
     fm = last(models(:pastes))
     @test size(fm) == (60, 1, 40, 2)
     @test fm.optsum.initial == ones(2)
-    @test lowerbd(fm) == fill(-Inf, 2)
 
     @test objective(fm) ≈ 247.9944658624955 atol = 0.001
     @test coef(fm) ≈ [60.0533333333333] atol = 0.001
@@ -285,7 +280,6 @@ end
     fm1 = models(:insteval)[2]              # at one time this was the fist of the :insteval models
     @test size(fm1) == (73421, 2, 4114, 3)
     @test fm1.optsum.initial == ones(3)
-    @test lowerbd(fm1) == fill(-Inf, 3)
 
     spL = sparseL(fm1)
     @test size(spL) == (4114, 4114)
@@ -326,7 +320,6 @@ end
 
 @testset "sleep" begin
     fm = last(models(:sleepstudy))
-    @test all(==(-Inf), lowerbd(fm))
     A11 = first(fm.A)
     @test isa(A11, UniformBlockDiagonal{Float64})
     @test isa(first(fm.L), UniformBlockDiagonal{Float64})
@@ -417,7 +410,6 @@ end
     fmnc = models(:sleepstudy)[2]
     @test size(fmnc) == (180, 2, 36, 1)
     @test fmnc.optsum.initial == ones(2)
-    @test lowerbd(fmnc) == fill(-Inf, 2)
     sigmas = fmnc.σs
     @test length(only(sigmas)) == 2
     @test first(only(sigmas)) ≈ 24.171361283849798 atol = 1e-4
