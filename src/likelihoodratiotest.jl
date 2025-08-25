@@ -251,22 +251,26 @@ function StatsModels.isnested(m1::Union{TableRegressionModel{<:LinearModel},Line
     return true
 end
 
-function StatsModels.isnested(m1::Union{TableRegressionModel{<:GeneralizedLinearModel},GeneralizedLinearModel}, m2::GeneralizedLinearMixedModel; atol::Real=0.0)
+function StatsModels.isnested(m1::GeneralizedLinearModel, m2::GeneralizedLinearMixedModel; atol::Real=0.0)
     nobs(m1) == nobs(m2) || return false
 
     size(modelmatrix(m1), 2) <= size(modelmatrix(m2), 2) || return false
 
     _isnested(modelmatrix(m1), modelmatrix(m2)) || return false
 
-    d1 = m1 isa TableRegressionModel ? Distribution(m1.model) : Distribution(m1)
-
-    d1 == Distribution(m2) ||
+    Distribution(m1) == Distribution(m2) ||
         throw(ArgumentError("Models must be fit to the same distribution"))
+
 
     Link(m1) == Link(m2) || throw(ArgumentError("Models must have the same link function"))
 
     return true
 end
+
+function StatsModels.isnested(m1::TableRegressionModel{<:GeneralizedLinearModel}, m2::GeneralizedLinearMixedModel; atol::Real=0.0)
+    return isnested(m1.model, m2; atol)
+end
+
 
 #####
 ##### Helper functions for isnested
