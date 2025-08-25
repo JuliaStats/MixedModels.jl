@@ -163,6 +163,8 @@ _diff(t::NTuple{N}) where {N} = ntuple(i -> t[i + 1] - t[i], N - 1)
 # adapted from StatsModels with the type check elided
 # https://github.com/JuliaStats/StatsModels.jl/blob/ad89c6755066511e99148f013e81437e29459ed2/src/lrtest.jl#L74-L128
 # we only accept one non mixed GLM so that we can require a MixedModel and avoid piracy
+# we always do forward selection for GLM/GLMM comparisons
+# because we need the GLM first for dispatch reasons
 function StatsModels.lrtest(m0::GLM_TYPES, m::MixedModel...; atol::Real=0.0)
     mods = (m0, m...)
     length(mods) >= 2 ||
@@ -190,16 +192,13 @@ function StatsModels.lrtest(m0::GLM_TYPES, m::MixedModel...; atol::Real=0.0)
     chisq = (NaN, 2 .* abs.(_diff(ll))...)
 
     for i in 2:length(ll)
-        if ((forward && ll[i - 1] > ll[i]) ||
-            (!forward && ll[i - 1] < ll[i])) &&
-            !isapprox(ll[i - 1], ll[i]; atol=atol)
+        ll[i - 1] > ll[i] && !isapprox(ll[i - 1], ll[i]; atol=atol) &&
             throw(
                 ArgumentError(
                     "Log-likelihood must not be lower " *
                     "in models with more degrees of freedom",
                 ),
             )
-        end
     end
 
     pval = chisqccdf.(abs.(Δdf), chisq)
@@ -241,11 +240,11 @@ function StatsModels.isnested(m1::MixedModel, m2::MixedModel; atol::Real=0.0)
 end
 
 function StatsModels.isnested(
-    m1::TableRegressionModel{Union{<:GeneralizedLinearModel,<:LinearModel}},
+    m1::TableRegressionModel{<:Union{<:GeneralizedLinearModel,<:LinearModel}},
     m2::MixedModel;
     atol::Real=0.0,
 )
-    return _iscomparable(m1.model, m2) && isnested(m1.model, m2; atol)
+    return _iscomparable(m1, m2) && isnested(m1.model, m2; atol)
 end
 
 function StatsModels.isnested(m1::LinearModel, m2::LinearMixedModel; atol::Real=0.0)
@@ -256,7 +255,7 @@ function StatsModels.isnested(m1::LinearModel, m2::LinearMixedModel; atol::Real=
     _isnested(modelmatrix(m1), modelmatrix(m2)) || return false
 
     !m2.optsum.REML ||
-        throw(ArgumentError("REML-fitted models cannot be compared to linear models"))
+        throw(ArgumentError("REML-fitted modMixedModels.isnested(lm0, fm1)els cannot be compared to linear models"))
 
     return true
 end
