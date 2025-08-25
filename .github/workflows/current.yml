@@ -19,12 +19,13 @@ jobs:
   ci:
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         julia-version: [1]
         # julia-arch: [x64]
         os:
-         - ubuntu-22.04
-         - macOS-14 # apple silicon!
+         - ubuntu-24.04
+         - macOS-15 # apple silicon!
     steps:
       - uses: actions/checkout@v5
       - uses: julia-actions/setup-julia@v2

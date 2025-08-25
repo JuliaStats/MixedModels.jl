@@ -2,8 +2,9 @@ using MixedModels
 using Suppressor
 using Test
 
-using MixedModels: dataset, likelihoodratiotest
+using MixedModels: likelihoodratiotest
 using MixedModels: pirls!, setβθ!, setθ!, updateL!
+using MixedModelsDatasets: dataset
 
 include("modelcache.jl")
 
@@ -133,7 +134,6 @@ lrt = likelihoodratiotest(fm0, fm1)
         | **Optimizer settings**   |                             |
         | Optimizer                | `LN_NEWUOA`                 |
         | Backend                  | `nlopt`                     |
-        | Lower bounds             | [-Inf, -Inf, -Inf]          |
         | ftol_rel                 | 1.0e-12                     |
         | ftol_abs                 | 1.0e-8                      |
         | xtol_rel                 | 0.0                         |

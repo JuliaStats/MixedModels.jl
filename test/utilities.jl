@@ -44,16 +44,6 @@ end
     @test_logs (:warn, r"hide_progress") replicate(string, 1; hide_progress=true)
 end
 
-@testset "datasets" begin
-    @test isa(MixedModels.datasets(), Vector{String})
-    @test length(MixedModels.dataset(:dyestuff)) == 2
-    @test length(MixedModels.dataset("dyestuff")) == 2
-    dyestuff = MixedModels.dataset(:dyestuff)
-    @test keys(dyestuff) == [:batch, :yield]
-    @test length(dyestuff.batch) == 30
-    @test_throws ArgumentError MixedModels.dataset(:foo)
-end
-
 @testset "PCA" begin
     io = IOBuffer()
     pca = models(:kb07)[3].PCA.item

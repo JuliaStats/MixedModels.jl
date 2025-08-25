@@ -145,35 +145,6 @@ function ρvals!(
     return v
 end
 
-"""
-    _copy_away_from_lowerbd!(sink, source, bd; incr=0.01)
-
-Replace `sink[i]` by `max(source[i], bd[i] + incr)`.  When `bd[i] == -Inf` this simply copies `source[i]`.
-"""
-function _copy_away_from_lowerbd!(sink, source, bd; incr=0.01)
-    for i in eachindex(sink, source, bd)
-        @inbounds sink[i] = max(source[i], bd[i] + incr)
-    end
-    return sink
-end
-
-#=  # It appears that this method is not used
-"""
-    stepsize(tbl::Vector{NamedTuple}, resp::Symbol, pred::Symbol; rev::Bool=false)
-
-Return the stepsize from the last value of `tbl.pred` to increase `resp` by approximately 0.5
-"""
-function stepsize(tbl::Vector{<:NamedTuple}, resp::Symbol, pred::Symbol)
-    ntbl = length(tbl)
-    lm1tbl = tbl[ntbl - 1]
-    x1 = getproperty(lm1tbl, pred)
-    y1 = getproperty(lm1tbl, resp)
-    x2 = getproperty(last(tbl), pred)
-    y2 = getproperty(last(tbl), resp)
-    return (x2 - x1) / (2 * (y2 - y1))
-end
-=#
-
 function isnondecreasing(spl::SplineInterpolation)
     return all(≥(0), (Derivative(1) * spl).(spl.x))
 end
