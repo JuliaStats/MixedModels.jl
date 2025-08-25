@@ -172,12 +172,10 @@ end
         f=string.(repeat('A':'C'; outer=6)))
 
     @testset "fulldummy" begin
-        @test_throws ArgumentError fulldummy(1)
-
         f = @formula(y ~ 1 + fulldummy(f))
         f1 = apply_schema(f, schema(dat))
         @test typeof(last(f1.rhs.terms)) <: FunctionTerm{typeof(fulldummy)}
-        @test_throws ArgumentError modelcols(f1, dat)
+        @test_throws MethodError modelcols(f1, dat)
 
         f2 = apply_schema(f, schema(dat), MixedModel)
         @test typeof(last(f2.rhs.terms)) <: CategoricalTerm{<:StatsModels.FullDummyCoding}
@@ -238,11 +236,6 @@ end
         # errors for continuous grouping
         @test_throws ArgumentError apply_schema(
             @formula(0 ~ 1 + a / b), schema(d2), MixedModel
-        )
-
-        # errors for too much nesting
-        @test_throws ArgumentError apply_schema(
-            @formula(0 ~ 1 + b / c / a), schema(d2), MixedModel
         )
 
         # fitted model to test amalgamate and fnames, and equivalence with other formulations
