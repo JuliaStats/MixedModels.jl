@@ -3,7 +3,7 @@
 
 Result of `MixedModels.likelihoodratiotest`.
 
-This struct wraps [`StatsModels.LRTestResult`](@ref) with a bit more metadata
+This struct wraps `StatsModels.LRTestResult` with a bit more metadata
 to enable a few additional `show` methods.
 
 # Fields
