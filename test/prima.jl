@@ -116,7 +116,9 @@ end
     println(m1)
     println(m1.optsum)
     @test isapprox(objective(m1), 237648.6016)
-    prfit!(m1; progress)
+    m1.optsum.backend = :prima
+    m1.optsum.optimizer = :bobyqa
+    refit!(m1; progress)
     println(m1)
     println(m1.optsum)
     @test isapprox(objective(m1), 237648.6016)
