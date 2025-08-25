@@ -10,8 +10,8 @@ MixedModels v5.0.0 Release Notes
 - The `prfit!` convenience function has been removed. [#853]
 - The `dataset` and `datasets` functions have been removed. They are now housed in `MixedModelsDatasets`.[#854]
 - One argument `predict(::GeneralizedLinearMixedModel)`, i.e. prediction on the original data, now supports the `type` keyword argument. [#856]
-- `isnested(A::ReMat, B::ReMat)` is now a method of `StatsModels.isnested`
-- [BREAKING ]`likelihoodratiotest` has been reworked to be a thin wrapper around `StatsModels.lrtest`. The historical difference in behavior in terms of nesting checks created some confusion. Users advanced enough to create models with non-obvious nesting are assumed to be advanced enough to manually compute the likelihood ratio test. The function `likelihoodratiotest` and associated `LikelihoodRatioTest` type (now with a type parameter for number of models) has been kept to enable printing of test results with model formulae. Most users should not notice a difference in outputs, but the internal field structure has changed.
+- `isnested(A::ReMat, B::ReMat)` is now a method of `StatsModels.isnested`.[#858]
+- [BREAKING ]`likelihoodratiotest` has been reworked to be a thin wrapper around `StatsModels.lrtest`. The historical difference in behavior in terms of nesting checks created some confusion. Users advanced enough to create models with non-obvious nesting are assumed to be advanced enough to manually compute the likelihood ratio test. The function `likelihoodratiotest` and associated `LikelihoodRatioTest` type (now with a type parameter for number of models) has been kept to enable printing of test results with model formulae. Most users should not notice a difference in behavior, but the display has been slightly changed and the internal field structure has changed.[#858]
 
 MixedModels v4.38.0 Release Notes
 ==============================
