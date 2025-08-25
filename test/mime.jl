@@ -93,17 +93,12 @@ lrt = likelihoodratiotest(fm0, fm1)
     end
 
     @testset "lrt" begin
-        @test sprint(show, mime, lrt) in ("""
-|                                          | model-dof | deviance |  χ² | χ²-dof | P(>χ²) |
-|:---------------------------------------- | ---------:| --------:| ---:| ------:|:------ |
-| reaction ~ 1 + days + (1 \\| subj)        |         4 |     1794 |     |        |        |
-| reaction ~ 1 + days + (1 + days \\| subj) |         6 |     1752 |  42 |      2 | <1e-09 |
-""", """
- |                                          | model-dof | deviance |  χ² | χ²-dof | P(>χ²) |
- |:---------------------------------------- | ---------:| --------:| ---:| ------:|:------ |
- | reaction ~ 1 + days + (1 \\| subj)        |         4 |     1794 |     |        |        |
- | reaction ~ 1 + days + (1 + days \\| subj) |         6 |     1752 |  42 |      2 | <1e-9  |
- """)
+        @test sprint(show, mime, lrt) == """
+|                                          | model-dof | -2 logLik |  χ² | χ²-dof | P(>χ²) |
+|:---------------------------------------- | ---------:| ---------:| ---:| ------:|:------ |
+| reaction ~ 1 + days + (1 \\| subj)        |         4 |     -1794 |     |        |        |
+| reaction ~ 1 + days + (1 + days \\| subj) |         6 |     -1752 |  42 |      2 | <1e-09 |
+"""
     end
 
     @testset "blockdescription" begin
@@ -214,7 +209,7 @@ rows & subj & item & fixed \\\\
     # not doing the full comparison here because there's a zero-padded exponent
     # that will render differently on different platforms
     @test startswith(sprint(show, MIME("text/latex"), lrt),
-        "\\begin{tabular}\n{l | r | r | r | r | l}\n & model-dof & deviance & \$\\chi^2\$ & \$\\chi^2\$-dof & P(>\$\\chi^2\$) \\\\",
+        "\\begin{tabular}\n{l | r | r | r | r | l}\n & model-dof & -2 logLik & \$\\chi^2\$ & \$\\chi^2\$-dof & P(>\$\\chi^2\$) \\\\",
     )
 
     optsum = sprint(show, MIME("text/latex"), fm0.optsum)

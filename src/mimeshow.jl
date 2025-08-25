@@ -64,19 +64,23 @@ function _markdown(b::BlockDescription)
     return tbl
 end
 
-function _markdown(lrt::LikelihoodRatioTest)
-    Δdf = lrt.tests.dofdiff
-    Δdev = lrt.tests.deviancediff
+function _markdown(lrt::LikelihoodRatioTest{N}) where {N}
+    Δdf = _diff(lrt.dof)
+    chisq = abs.(2 .* _diff(lrt.loglikelihood))
+    linear = lrt.linear
 
-    nr = length(lrt.formulas)
+    nc = 6
+    nr = N
+
+    nr = N
     outrows = Vector{Vector{String}}(undef, nr + 1)
 
-    outrows[1] = ["", "model-dof", "deviance", "χ²", "χ²-dof", "P(>χ²)"] # colnms
+    outrows[1] = ["", "model-dof", "-2 logLik","χ²", "χ²-dof", "P(>χ²)"] # colnms
 
     outrows[2] = [
         string(lrt.formulas[1]),
         string(lrt.dof[1]),
-        string(round(Int, lrt.deviance[1])),
+        string(round(Int, 2 * lrt.loglikelihood[1])),
         " ",
         " ",
         " ",
@@ -86,10 +90,10 @@ function _markdown(lrt::LikelihoodRatioTest)
         outrows[i + 1] = [
             string(lrt.formulas[i]),
             string(lrt.dof[i]),
-            string(round(Int, lrt.deviance[i])),
-            string(round(Int, Δdev[i - 1])),
+            string(round(Int, 2 .* lrt.loglikelihood[i])),
+            string(round(Int, chisq[i - 1])),
             string(Δdf[i - 1]),
-            string(StatsBase.PValue(lrt.pvalues[i - 1])),
+            string(StatsBase.PValue(lrt.pvalues[i])),
         ]
     end
 
