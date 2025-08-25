@@ -77,7 +77,7 @@ end
     lrt = likelihoodratiotest(fm0, fm1)
 
     @test (deviance(fm0), deviance(fm1)) == lrt.deviance
-    @test sprint(show, lrt) = "MixedModels.LikelihoodRatioTest{2}((\"reaction ~ 1 + (1 + days | subj)\", \"reaction ~ 1 + days + (1 + days | subj)\"), Likelihood-ratio test: 2 models fitted on 180 observations\n────────────────────────────────────────────────────────\n     DOF  ΔDOF     LogLik   Deviance    Chisq  p(>Chisq)\n────────────────────────────────────────────────────────\n[1]    5        -887.7379  1775.4759                    \n[2]    6     1  -875.9697  1751.9393  23.5365     <1e-05\n────────────────────────────────────────────────────────, true)"
+    @test sprint(show, lrt) == "MixedModels.LikelihoodRatioTest{2}((\"reaction ~ 1 + (1 + days | subj)\", \"reaction ~ 1 + days + (1 + days | subj)\"), Likelihood-ratio test: 2 models fitted on 180 observations\n────────────────────────────────────────────────────────\n     DOF  ΔDOF     LogLik   Deviance    Chisq  p(>Chisq)\n────────────────────────────────────────────────────────\n[1]    5        -887.7379  1775.4759                    \n[2]    6     1  -875.9697  1751.9393  23.5365     <1e-05\n────────────────────────────────────────────────────────, true)"
     @test last(lrt.pvalues) == pvalue(lrt)
 
     lrt = likelihoodratiotest(lm1, fm1)
