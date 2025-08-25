@@ -75,7 +75,7 @@ function _markdown(lrt::LikelihoodRatioTest{N}) where {N}
     nr = N
     outrows = Vector{Vector{String}}(undef, nr + 1)
 
-    outrows[1] = ["", "model-dof", "-2 logLik","χ²", "χ²-dof", "P(>χ²)"] # colnms
+    outrows[1] = ["", "model-dof", "-2 logLik", "χ²", "χ²-dof", "P(>χ²)"] # colnms
 
     outrows[2] = [
         string(lrt.formulas[1]),

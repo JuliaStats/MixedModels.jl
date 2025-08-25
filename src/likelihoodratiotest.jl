@@ -12,7 +12,7 @@ to enable a few additional `show` methods.
 - `linear::Bool`
 """
 Base.@kwdef struct LikelihoodRatioTest{N} <: StatsAPI.HypothesisTest
-    formulas::NTuple{N, String}
+    formulas::NTuple{N,String}
     lrt::StatsModels.LRTestResult{N}
     linear::Bool
 end
@@ -52,7 +52,11 @@ function Base.getproperty(lrt::LikelihoodRatioTest, s::Symbol)
     end
 end
 
-const GLM_TYPES = Union{TableRegressionModel{<:Union{LinearModel,GeneralizedLinearModel}}, LinearModel, GeneralizedLinearModel}
+const GLM_TYPES = Union{
+    TableRegressionModel{<:Union{LinearModel,GeneralizedLinearModel}},
+    LinearModel,
+    GeneralizedLinearModel,
+}
 
 """
     likelihoodratiotest(m::MixedModel...)
@@ -71,10 +75,12 @@ may be incorrectly rejected as being non-negative. In such cases, it is incumben
 user to perform the likelihood ratio test manually and construct the resulting [`LikelihoodRatioTest`](@ref)
 object.
 """
-function likelihoodratiotest(m0::Union{GLM_TYPES, MixedModel},
+function likelihoodratiotest(m0::Union{GLM_TYPES,MixedModel},
     m::MixedModel...; kwargs...)
     formulas = (_formula(m0), _formula.(m)...)
-    return LikelihoodRatioTest(formulas, lrtest(m0, m...; kwargs...), first(m) isa LinearMixedModel)
+    return LikelihoodRatioTest(
+        formulas, lrtest(m0, m...; kwargs...), first(m) isa LinearMixedModel
+    )
 end
 
 _formula(::Union{LinearModel,GeneralizedLinearModel}) = "NA"
@@ -82,7 +88,6 @@ function _formula(x::TableRegressionModel{<:Union{LinearModel,GeneralizedLinearM
     return String(Symbol(x.mf.f))
 end
 _formula(x::MixedModel) = string(formula(x))
-
 
 Base.show(io::IO, lrt::LikelihoodRatioTest) = show(io, MIME("text/plain"), lrt)
 function Base.show(io::IO, ::MIME"text/plain", lrt::LikelihoodRatioTest{N}) where {N}
@@ -103,24 +108,24 @@ function Base.show(io::IO, ::MIME"text/plain", lrt::LikelihoodRatioTest{N}) wher
     outrows = Matrix{String}(undef, nr + 1, nc)
 
     outrows[1, :] = ["",
-                     "DoF",
-                     "-2 logLik",
-                     "χ²",
-                     "χ²-dof", "P(>χ²)"]
+        "DoF",
+        "-2 logLik",
+        "χ²",
+        "χ²-dof", "P(>χ²)"]
     outrows[2, :] = ["[1]",
-                     @sprintf("%.0d", lrt.dof[1]),
-                     @sprintf("%.4f", -2 * lrt.loglikelihood[1]),
-                     "",
-                     "",
-                     ""]
+        @sprintf("%.0d", lrt.dof[1]),
+        @sprintf("%.4f", -2 * lrt.loglikelihood[1]),
+        "",
+        "",
+        ""]
 
     for i in 2:nr
-        outrows[i+1, :] = ["[$i]",
-                           @sprintf("%.0d", lrt.dof[i]),
-                           @sprintf("%.4f", -2 * lrt.loglikelihood[i]),
-                           @sprintf("%.4f", chisq[i-1]),
-                           @sprintf("%.0d", Δdf[i-1]),
-                           string(StatsBase.PValue(lrt.pval[i]))]
+        outrows[i + 1, :] = ["[$i]",
+            @sprintf("%.0d", lrt.dof[i]),
+            @sprintf("%.4f", -2 * lrt.loglikelihood[i]),
+            @sprintf("%.4f", chisq[i - 1]),
+            @sprintf("%.0d", Δdf[i - 1]),
+            string(StatsBase.PValue(lrt.pval[i]))]
     end
     colwidths = length.(outrows)
     max_colwidths = [maximum(view(colwidths, :, i)) for i in 1:nc]
@@ -153,7 +158,7 @@ end
 ##### StatsModels methods for lrtest and isnested
 #####
 
-_diff(t::NTuple{N}) where {N} = ntuple(i->t[i+1]-t[i], N-1)
+_diff(t::NTuple{N}) where {N} = ntuple(i -> t[i + 1] - t[i], N - 1)
 
 # adapted from StatsModels with the type check elided
 # https://github.com/JuliaStats/StatsModels.jl/blob/ad89c6755066511e99148f013e81437e29459ed2/src/lrtest.jl#L74-L128
@@ -164,10 +169,14 @@ function StatsModels.lrtest(m0::GLM_TYPES, m::MixedModel...; atol::Real=0.0)
         throw(ArgumentError("At least two models are needed to perform LR test"))
     df = dof.(mods)
     all(==(nobs(mods[1])), nobs.(mods)) ||
-        throw(ArgumentError("LR test is only valid for models fitted on the same data, " *
-                            "but number of observations differ"))
+        throw(
+            ArgumentError(
+                "LR test is only valid for models fitted on the same data, " *
+                "but number of observations differ",
+            ),
+        )
     for i in 2:length(mods)
-        if df[i-1] >= df[i] || !isnested(mods[i-1], mods[i]; atol=atol)
+        if df[i - 1] >= df[i] || !isnested(mods[i - 1], mods[i]; atol=atol)
             throw(ArgumentError("LR test is only valid for nested models"))
         end
     end
@@ -181,11 +190,15 @@ function StatsModels.lrtest(m0::GLM_TYPES, m::MixedModel...; atol::Real=0.0)
     chisq = (NaN, 2 .* abs.(_diff(ll))...)
 
     for i in 2:length(ll)
-        if ((forward && ll[i-1] > ll[i]) ||
-            (!forward && ll[i-1] < ll[i])) &&
-           !isapprox(ll[i-1], ll[i], atol=atol)
-               throw(ArgumentError("Log-likelihood must not be lower " *
-                                   "in models with more degrees of freedom"))
+        if ((forward && ll[i - 1] > ll[i]) ||
+            (!forward && ll[i - 1] < ll[i])) &&
+            !isapprox(ll[i - 1], ll[i]; atol=atol)
+            throw(
+                ArgumentError(
+                    "Log-likelihood must not be lower " *
+                    "in models with more degrees of freedom",
+                ),
+            )
         end
     end
 
@@ -227,7 +240,11 @@ function StatsModels.isnested(m1::MixedModel, m2::MixedModel; atol::Real=0.0)
     return true
 end
 
-function StatsModels.isnested(m1::TableRegressionModel{Union{<:GeneralizedLinearModel,<:LinearModel}}, m2::MixedModel; atol::Real=0.0)
+function StatsModels.isnested(
+    m1::TableRegressionModel{Union{<:GeneralizedLinearModel,<:LinearModel}},
+    m2::MixedModel;
+    atol::Real=0.0,
+)
     return _iscomparable(m1.model, m2) && isnested(m1.model, m2; atol)
 end
 
@@ -244,7 +261,9 @@ function StatsModels.isnested(m1::LinearModel, m2::LinearMixedModel; atol::Real=
     return true
 end
 
-function StatsModels.isnested(m1::GeneralizedLinearModel, m2::GeneralizedLinearMixedModel; atol::Real=0.0)
+function StatsModels.isnested(
+    m1::GeneralizedLinearModel, m2::GeneralizedLinearMixedModel; atol::Real=0.0
+)
     nobs(m1) == nobs(m2) || return false
 
     size(modelmatrix(m1), 2) <= size(modelmatrix(m2), 2) || return false
@@ -254,12 +273,10 @@ function StatsModels.isnested(m1::GeneralizedLinearModel, m2::GeneralizedLinearM
     Distribution(m1) == Distribution(m2) ||
         throw(ArgumentError("Models must be fit to the same distribution"))
 
-
     Link(m1) == Link(m2) || throw(ArgumentError("Models must have the same link function"))
 
     return true
 end
-
 
 #####
 ##### Helper functions for isnested
@@ -293,7 +310,7 @@ end
     _iscomparable(m::GeneralizedLinearMixedModel...)
 
 
-Check whethere GLMMs are comparable in terms of their model families and links.
+Check whether GLMMs are comparable in terms of their model families and links.
 """
 function _iscomparable(m::GeneralizedLinearMixedModel...)
     # TODO: test that all models are fit with same fast/nAGQ option?
@@ -309,7 +326,7 @@ end
     _iscomparable(m1::TableRegressionModel, m2::MixedModel)_samefamily(
     ::GeneralizedLinearMixedModel
 
-Check whethere a TableRegressionModel and a MixedModel have coefficient names indicative of nesting.
+Check whether a TableRegressionModel and a MixedModel have coefficient names indicative of nesting.
 """
 function _iscomparable(
     m1::TableRegressionModel{<:Union{LinearModel,GeneralizedLinearModel}}, m2::MixedModel
@@ -333,7 +350,6 @@ function _samefamily(
     return true
 end
 _samefamily(::GeneralizedLinearMixedModel...) = false
-
 
 """
     _isnested(x::AbstractMatrix, y::AbstractMatrix; atol::Real=0.0)
