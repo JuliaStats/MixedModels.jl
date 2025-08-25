@@ -75,6 +75,7 @@ end
     @test !MixedModels.isnested(lm1, fm0)
 
     lrt = likelihoodratiotest(fm0, fm1)
+    @test lrtest(fm0, fm1) == lrtest(lrt)
 
     @test (deviance(fm0), deviance(fm1)) == lrt.deviance
     @test sprint(show, lrt) == "Likelihood-ratio test: 2 models fitted on 180 observations\nModel Formulae\n1: reaction ~ 1 + (1 + days | subj)\n2: reaction ~ 1 + days + (1 + days | subj)\n────────────────────────────────────────────\n     DoF  -2 logLik       χ²  χ²-dof  P(>χ²)\n────────────────────────────────────────────\n[1]    5  1775.4759                         \n[2]    6  1751.9393  23.5365       1  <1e-05\n────────────────────────────────────────────"
@@ -82,6 +83,10 @@ end
 
     lrt = likelihoodratiotest(lm1, fm1)
     @test pvalue(lrt) ≈ 5.9e-32 atol=1e-16
+
+    lrt2 = likelihoodratiotest(lm1.model, fm1)
+    @test first(lrt2.formulas) == "NA"
+    @test lrtest(lrt2) == lrtest(lrt)
 
     lrt = likelihoodratiotest(lm0, fm0, fm1)
     @suppress @test_throws ArgumentError pvalue(lrt)
@@ -165,6 +170,8 @@ end
     )
     @suppress @test_throws ArgumentError likelihoodratiotest(gmf, gm_poisson)
     @suppress @test_throws ArgumentError likelihoodratiotest(gm0, gm_poisson)
+
+    @test !MixedModels._samefamily(gm0, gm_poisson)
     # this skips the linear term so that the model matrices
     # have the same column rank
     @test !MixedModels._isnested(gmf2.mm.m[:, Not(2)], gm0.X)

@@ -160,26 +160,15 @@ _diff(t::NTuple{N}) where {N} = ntuple(i->t[i+1]-t[i], N-1)
 # we only accept one non mixed GLM so that we can require a MixedModel and avoid piracy
 function StatsModels.lrtest(m0::GLM_TYPES, m::MixedModel...; atol::Real=0.0)
     mods = (m0, m...)
-    if length(mods) < 2
+    length(mods) >= 2 ||
         throw(ArgumentError("At least two models are needed to perform LR test"))
-    end
     df = dof.(mods)
-    forward = df[1] <= df[2]
-    if !all(==(nobs(mods[1])), nobs.(mods))
+    all(==(nobs(mods[1])), nobs.(mods)) ||
         throw(ArgumentError("LR test is only valid for models fitted on the same data, " *
                             "but number of observations differ"))
-    end
-    if forward
-        for i in 2:length(mods)
-            if df[i-1] >= df[i] || !isnested(mods[i-1], mods[i]; atol=atol)
-                throw(ArgumentError("LR test is only valid for nested models"))
-            end
-        end
-    else
-        for i in 2:length(mods)
-            if df[i] >= df[i-1] || !isnested(mods[i], mods[i-1], atol=atol)
-                throw(ArgumentError("LR test is only valid for nested models"))
-            end
+    for i in 2:length(mods)
+        if df[i-1] >= df[i] || !isnested(mods[i-1], mods[i]; atol=atol)
+            throw(ArgumentError("LR test is only valid for nested models"))
         end
     end
 
@@ -238,7 +227,11 @@ function StatsModels.isnested(m1::MixedModel, m2::MixedModel; atol::Real=0.0)
     return true
 end
 
-function StatsModels.isnested(m1::Union{TableRegressionModel{<:LinearModel},LinearModel}, m2::LinearMixedModel; atol::Real=0.0)
+function StatsModels.isnested(m1::TableRegressionModel{Union{<:GeneralizedLinearModel,<:LinearModel}}, m2::MixedModel; atol::Real=0.0)
+    return _iscomparable(m1.model, m2) && isnested(m1.model, m2; atol)
+end
+
+function StatsModels.isnested(m1::LinearModel, m2::LinearMixedModel; atol::Real=0.0)
     nobs(m1) == nobs(m2) || return false
 
     size(modelmatrix(m1), 2) <= size(modelmatrix(m2), 2) || return false
@@ -267,15 +260,17 @@ function StatsModels.isnested(m1::GeneralizedLinearModel, m2::GeneralizedLinearM
     return true
 end
 
-function StatsModels.isnested(m1::TableRegressionModel{<:GeneralizedLinearModel}, m2::GeneralizedLinearMixedModel; atol::Real=0.0)
-    return isnested(m1.model, m2; atol)
-end
-
 
 #####
 ##### Helper functions for isnested
 #####
 
+"""
+    _iscomparable(m::LinearMixedModel...)
+
+
+Check whether LMMs are comparable on the basis of their REML criterion.
+"""
 function _iscomparable(m::LinearMixedModel...)
     isconstant(getproperty.(getproperty.(m, :optsum), :REML)) || throw(
         ArgumentError(
@@ -291,21 +286,15 @@ function _iscomparable(m::LinearMixedModel...)
         )
     end
 
-    isconstant(nobs.(m)) ||
-        throw(ArgumentError("Models must have the same number of observations"))
-
     return true
 end
 
-# XXX we need the where clause to distinguish from the general method
-# but static analysis complains if we don't use the type parameter
-function _samefamily(
-    ::GeneralizedLinearMixedModel{<:AbstractFloat,S}...
-) where {S<:Distribution}
-    return true
-end
-_samefamily(::GeneralizedLinearMixedModel...) = false
+"""
+    _iscomparable(m::GeneralizedLinearMixedModel...)
 
+
+Check whethere GLMMs are comparable in terms of their model families and links.
+"""
 function _iscomparable(m::GeneralizedLinearMixedModel...)
     # TODO: test that all models are fit with same fast/nAGQ option?
     _samefamily(m...) || throw(ArgumentError("Models must be fit to the same distribution"))
@@ -313,25 +302,37 @@ function _iscomparable(m::GeneralizedLinearMixedModel...)
     isconstant(string.(Link.(m))) ||
         throw(ArgumentError("Models must have the same link function"))
 
-    isconstant(nobs.(m)) ||
-        throw(ArgumentError("Models must have the same number of observations"))
-
     return true
 end
 
+"""
+    _iscomparable(m1::TableRegressionModel, m2::MixedModel)_samefamily(
+    ::GeneralizedLinearMixedModel
+
+Check whethere a TableRegressionModel and a MixedModel have coefficient names indicative of nesting.
+"""
 function _iscomparable(
     m1::TableRegressionModel{<:Union{LinearModel,GeneralizedLinearModel}}, m2::MixedModel
 )
-    _iscomparable(m1.model, m2) || return false
-
     # check that the nested fixef are a subset of the outer
     all(in.(coefnames(m1), Ref(coefnames(m2)))) || return false
 
     return true
 end
 
-# GLM isn't nested with in LMM and LM isn't nested within GLMM
-_iscomparable(m1::Union{LinearModel,GeneralizedLinearModel}, m2::MixedModel) = false
+"""
+    _samefamily(::GeneralizedLinearMixedModel...)
+
+Check whether all GLMMS come from the same model family.
+"""
+function _samefamily(
+    ::GeneralizedLinearMixedModel{<:AbstractFloat,S}...
+) where {S<:Distribution}
+    # XXX we need the where clause to distinguish from the general method
+    # but static analysis complains if we don't use the type parameter
+    return true
+end
+_samefamily(::GeneralizedLinearMixedModel...) = false
 
 
 """
