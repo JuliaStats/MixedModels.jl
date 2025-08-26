@@ -15,6 +15,7 @@ MixedModels v5.0.0 Release Notes
 - One argument `predict(::GeneralizedLinearMixedModel)`, i.e. prediction on the original data, now supports the `type` keyword argument. [#856]
 - `isnested(A::ReMat, B::ReMat)` is now a method of `StatsModels.isnested`.[#858]
 - [BREAKING ]`likelihoodratiotest` has been reworked to be a thin wrapper around `StatsModels.lrtest`. The historical difference in behavior in terms of nesting checks created some confusion. Users advanced enough to create models with non-obvious nesting are assumed to be advanced enough to manually compute the likelihood ratio test. The function `likelihoodratiotest` and associated `LikelihoodRatioTest` type (now with a type parameter for number of models) has been kept to enable printing of test results with model formulae. Most users should not notice a difference in behavior, but the display has been slightly changed and the internal field structure has changed.[#858]
+- Failures to fit a spline in profiling now generates a more helpful error message. [#857]
 
 MixedModels v4.38.0 Release Notes
 ==============================
@@ -682,4 +683,5 @@ Package dependencies
 [#854]: https://github.com/JuliaStats/MixedModels.jl/issues/854
 [#855]: https://github.com/JuliaStats/MixedModels.jl/issues/855
 [#856]: https://github.com/JuliaStats/MixedModels.jl/issues/856
+[#857]: https://github.com/JuliaStats/MixedModels.jl/issues/857
 [#858]: https://github.com/JuliaStats/MixedModels.jl/issues/858
