@@ -129,19 +129,8 @@ Return a vector of the values of `n` calls to `f()` - used in simulations where 
 bar is automatically disabled for non-interactive (i.e. logging) contexts.
 """
 function replicate(
-    f::Function, n::Integer; use_threads=false, hide_progress=nothing, progress=true
+    f::Function, n::Integer; progress=true
 )
-    use_threads && Base.depwarn(
-        "use_threads is deprecated and will be removed in a future release",
-        :replicate,
-    )
-    if !isnothing(hide_progress)
-        Base.depwarn(
-            "`hide_progress` is deprecated, please use `progress` instead." *
-            "NB: `progress` is a positive action, i.e. `progress=true` means show the progress bar.",
-            :replicate; force=true)
-        progress = !hide_progress
-    end
     # and we want some advanced options
     p = Progress(n; output=Base.stderr, enabled=progress && !_is_logging(stderr))
     # get the type
