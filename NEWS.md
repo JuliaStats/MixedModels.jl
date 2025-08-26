@@ -9,6 +9,7 @@ MixedModels v5.0.0 Release Notes
 - Internal code around optimization in profiling has been restructuring so that fitting done during calls to `profile` respect the `backend` and `optimizer` settings. [#853]
 - The `prfit!` convenience function has been removed. [#853]
 - The `dataset` and `datasets` functions have been removed. They are now housed in `MixedModelsDatasets`.[#854]
+- The local implementation of `fulldummy` and the nesting syntax has been removed and a dependency on RegressionFormulae.jl for their implementation has been added. [#855]
 - One argument `predict(::GeneralizedLinearMixedModel)`, i.e. prediction on the original data, now supports the `type` keyword argument. [#856]
 - `isnested(A::ReMat, B::ReMat)` is now a method of `StatsModels.isnested`.[#858]
 - [BREAKING ]`likelihoodratiotest` has been reworked to be a thin wrapper around `StatsModels.lrtest`. The historical difference in behavior in terms of nesting checks created some confusion. Users advanced enough to create models with non-obvious nesting are assumed to be advanced enough to manually compute the likelihood ratio test. The function `likelihoodratiotest` and associated `LikelihoodRatioTest` type (now with a type parameter for number of models) has been kept to enable printing of test results with model formulae. Most users should not notice a difference in behavior, but the display has been slightly changed and the internal field structure has changed.[#858]
@@ -677,5 +678,6 @@ Package dependencies
 [#850]: https://github.com/JuliaStats/MixedModels.jl/issues/850
 [#853]: https://github.com/JuliaStats/MixedModels.jl/issues/853
 [#854]: https://github.com/JuliaStats/MixedModels.jl/issues/854
+[#855]: https://github.com/JuliaStats/MixedModels.jl/issues/855
 [#856]: https://github.com/JuliaStats/MixedModels.jl/issues/856
 [#858]: https://github.com/JuliaStats/MixedModels.jl/issues/858
