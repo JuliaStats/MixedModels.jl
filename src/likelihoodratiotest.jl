@@ -257,7 +257,7 @@ function StatsModels.isnested(m1::LinearModel, m2::LinearMixedModel; atol::Real=
     !m2.optsum.REML ||
         throw(
             ArgumentError(
-                "REML-fitted modMixedModels.isnested(lm0, fm1)els cannot be compared to linear models",
+                "REML-fitted modMixedModels.isnested(lm0, fm1)els cannot be compared to linear models"
             ),
         )
 
