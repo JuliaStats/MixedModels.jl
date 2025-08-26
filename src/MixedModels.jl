@@ -23,6 +23,7 @@ using MixedModelsDatasets: dataset
 using PooledArrays: PooledArrays, PooledArray
 using NLopt: NLopt
 using PrecompileTools: PrecompileTools, @setup_workload, @compile_workload
+using Printf: @sprintf
 using ProgressMeter: ProgressMeter, Progress, finish!, next!
 using Random: Random, AbstractRNG, randn!
 using RegressionFormulae: fulldummy
@@ -37,12 +38,12 @@ using StatsAPI:
     loglikelihood, meanresponse, modelmatrix, nobs, pvalue, predict, r2, residuals
 using StatsAPI: response, responsename, stderror, vcov, weights
 using StatsBase: StatsBase, CoefTable, model_response, summarystats
-using StatsFuns: log2π, normccdf
+using StatsFuns: chisqccdf, log2π, normccdf
 using StatsModels: StatsModels, AbstractContrasts, AbstractTerm, CategoricalTerm
 using StatsModels: ConstantTerm, DummyCoding, EffectsCoding, FormulaTerm, FunctionTerm
 using StatsModels: HelmertCoding, HypothesisCoding, InteractionTerm, InterceptTerm
 using StatsModels: MatrixTerm, SeqDiffCoding, TableRegressionModel
-using StatsModels: apply_schema, drop_term, formula, lrtest, modelcols, @formula
+using StatsModels: apply_schema, drop_term, formula, lrtest, modelcols, isnested, @formula
 using StructTypes: StructTypes
 using Tables: Tables, columntable
 using TypedTables: TypedTables, DictTable, FlexTable, Table

@@ -71,35 +71,28 @@ end
     lm0 = lm(@formula(reaction ~ 1), slp)
     lm1 = lm(@formula(reaction ~ 1 + days), slp)
 
-    @test MixedModels._iscomparable(lm0, fm1)
-    @test !MixedModels._iscomparable(lm1, fm0)
+    @test MixedModels.isnested(lm0, fm1)
+    @test !MixedModels.isnested(lm1, fm0)
 
     lrt = likelihoodratiotest(fm0, fm1)
+    @test lrtest(fm0, fm1) == lrtest(lrt)
 
-    @test [deviance(fm0), deviance(fm1)] == lrt.deviance
-    @test deviance(fm0) - deviance(fm1) == only(lrt.tests.deviancediff)
-    @test only(lrt.tests.dofdiff) == 1
-    @test sum(length, lrt.tests) == 3
-    @test sum(length, lrt.pvalues) == 1
-    @test sum(length, lrt.models) == 4
-    @test length(lrt.formulae) == 2
-    show(IOBuffer(), lrt)
-    @test :pvalues in propertynames(lrt)
-    @test only(lrt.pvalues) == pvalue(lrt)
+    @test (deviance(fm0), deviance(fm1)) == lrt.deviance
+    @test sprint(show, lrt) == "Likelihood-ratio test: 2 models fitted on 180 observations\nModel Formulae\n1: reaction ~ 1 + (1 + days | subj)\n2: reaction ~ 1 + days + (1 + days | subj)\n────────────────────────────────────────────\n     DoF  -2 logLik       χ²  χ²-dof  P(>χ²)\n────────────────────────────────────────────\n[1]    5  1775.4759                         \n[2]    6  1751.9393  23.5365       1  <1e-05\n────────────────────────────────────────────"
+    @test last(lrt.pvalues) == pvalue(lrt)
 
     lrt = likelihoodratiotest(lm1, fm1)
-    @test lrt.deviance ≈ likelihoodratiotest(lm1.model, fm1).deviance
-    @test lrt.dof == [3, 6]
-    @test lrt.deviance ≈ -2 * loglikelihood.([lm1, fm1])
-    shown = sprint(show, lrt)
-    @test occursin("-2 logLik", shown)
-    @test !occursin("deviance", shown)
+    @test pvalue(lrt) ≈ 5.9e-32 atol=1e-16
+
+    lrt2 = likelihoodratiotest(lm1.model, fm1)
+    @test first(lrt2.formulas) == "NA"
+    @test lrtest(lrt2) == lrtest(lrt)
 
     lrt = likelihoodratiotest(lm0, fm0, fm1)
-    @test_throws ArgumentError pvalue(lrt)
+    @suppress @test_throws ArgumentError pvalue(lrt)
 
     # non nested FE between non-mixed and mixed
-    @test_throws ArgumentError likelihoodratiotest(lm1, fm0)
+    @suppress @test_throws ArgumentError likelihoodratiotest(lm1, fm0)
 
     # mix of REML and ML
     fm0 = fit(
@@ -109,8 +102,8 @@ end
         REML=true,
         progress=false,
     )
-    @test_throws ArgumentError likelihoodratiotest(fm0, fm1)
-    @test_throws ArgumentError likelihoodratiotest(lm0, fm0)
+    @suppress @test_throws ArgumentError likelihoodratiotest(fm0, fm1)
+    @suppress @test_throws ArgumentError likelihoodratiotest(lm0, fm0)
 
     # differing FE with REML
     fm1 = fit(
@@ -121,18 +114,19 @@ end
         progress=false,
     )
 
-    @test_throws ArgumentError likelihoodratiotest(fm0, fm1)
+    @suppress @test_throws ArgumentError likelihoodratiotest(fm0, fm1)
+
     contra = MixedModels.dataset(:contra)
     # glm doesn't like categorical responses, so we convert it to numeric ourselves
     # TODO: upstream fix
-    cc = DataFrame(contra)
+    cc = DataFrame(dataset(:contra))
     cc.usenum = ifelse.(cc.use .== "Y", 1, 0)
     gmf = glm(@formula(usenum ~ 1 + age + urban + livch), cc, Bernoulli())
     gmf2 = glm(@formula(usenum ~ 1 + age + abs2(age) + urban + livch), cc, Bernoulli())
     gm0 = fit(
         MixedModel,
         @formula(use ~ 1 + age + urban + livch + (1 | urban & dist)),
-        contra,
+        dataset(:contra),
         Bernoulli();
         fast=true,
         progress=false,
@@ -140,61 +134,44 @@ end
     gm1 = fit(
         MixedModel,
         @formula(use ~ 1 + age + abs2(age) + urban + livch + (1 | urban & dist)),
-        contra,
+        dataset(:contra),
         Bernoulli();
         fast=true,
         progress=false,
     )
 
     lrt = likelihoodratiotest(gmf, gm1)
-    @test [-2 * loglikelihood(gmf), deviance(gm1)] ≈ lrt.deviance
-    @test -2 * loglikelihood(gmf) - deviance(gm1) ≈ only(lrt.tests.deviancediff)
-    shown = sprint(show, lrt)
-    @test !occursin("-2 logLik", shown)
-    @test occursin("deviance", shown)
+    @test  2 * only(diff(collect(lrt.loglikelihood))) ≈ 95.0725 atol=0.0001
 
     lrt = likelihoodratiotest(gm0, gm1)
-    @test [deviance(gm0), deviance(gm1)] == lrt.deviance
-    @test deviance(gm0) - deviance(gm1) == only(lrt.tests.deviancediff)
-    @test first(lrt.tests.dofdiff) == 1
-    @test sum(length, lrt.tests) == 3
-    @test sum(length, lrt.pvalues) == 1
-    @test sum(length, lrt.models) == 4
-    @test length(lrt.formulae) == 2
+    @test  2 * only(diff(collect(lrt.loglikelihood))) ≈ 38.0713 atol=0.0001
 
     # mismatched links
     gm_probit = fit(
         MixedModel,
         @formula(use ~ 1 + age + urban + livch + (1 | urban & dist)),
-        contra,
+        dataset(:contra),
         Bernoulli(),
         ProbitLink();
         fast=true,
         progress=false,
     )
-    @test_throws ArgumentError likelihoodratiotest(gmf, gm_probit)
-    @test_throws ArgumentError likelihoodratiotest(gm0, gm_probit)
+    @suppress @test_throws ArgumentError likelihoodratiotest(gmf, gm_probit)
+    @suppress @test_throws ArgumentError likelihoodratiotest(gm0, gm_probit)
 
     # mismatched families
     gm_poisson = fit(
         MixedModel,
         @formula(use ~ 1 + age + urban + livch + (1 | urban & dist)),
-        contra,
+        dataset(:contra),
         Poisson();
         fast=true,
         progress=false,
     )
-    @test_throws ArgumentError likelihoodratiotest(gmf, gm_poisson)
-    @test_throws ArgumentError likelihoodratiotest(gm0, gm_poisson)
+    @suppress @test_throws ArgumentError likelihoodratiotest(gmf, gm_poisson)
+    @suppress @test_throws ArgumentError likelihoodratiotest(gm0, gm_poisson)
 
-    @test !MixedModels._iscomparable(lm0, gm0)
-    @test !MixedModels._iscomparable(gmf, fm1)
-
-    @test MixedModels._iscomparable(gmf, gm0)
-    @test !MixedModels._iscomparable(gmf2, gm0)
-
-    @test MixedModels._isnested(gmf.mm.m, gm0.X)
-    @test !MixedModels._isnested(gmf2.mm.m, gm0.X)
+    @test !MixedModels._samefamily(gm0, gm_poisson)
     # this skips the linear term so that the model matrices
     # have the same column rank
     @test !MixedModels._isnested(gmf2.mm.m[:, Not(2)], gm0.X)

@@ -264,8 +264,7 @@ end
     @test "Diagonal" in tokens
 
     lrt = likelihoodratiotest(models(:pastes)...)
-    @test length(lrt.deviance) == length(lrt.formulas) == length(lrt.models) == 2
-    @test only(lrt.tests.pvalues) ≈ 0.5233767965780878 atol = 0.0001
+    @test last(lrt.pvalues) ≈ 0.5233767965780878 atol = 0.0001
 
     @testset "missing variables in formula" begin
         ae = ArgumentError(
