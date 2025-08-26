@@ -195,7 +195,7 @@ Is the grouping factor for `A` nested in the grouping factor for `B`?
 
 That is, does each value of `A` occur with just one value of B?
 """
-function isnested(A::ReMat, B::ReMat)
+function StatsModels.isnested(A::ReMat, B::ReMat)
     size(A, 1) == size(B, 1) || throw(DimensionMismatch("must have size(A,1) == size(B,1)"))
     bins = zeros(Int32, nlevs(A))
     @inbounds for (a, b) in zip(A.refs, B.refs)

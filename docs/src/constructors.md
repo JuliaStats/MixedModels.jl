@@ -188,9 +188,6 @@ DisplayAs.Text(ans) # hide
 (Notice that the variance component for `days: 1` is estimated as zero, so the correlations for this component are undefined and expressed as `NaN`, not a number.)
 
 An alternative is to force all the levels of `days` as indicators using `fulldummy` encoding.
-```@docs
-fulldummy
-```
 ```@example Main
 fit(MixedModel, @formula(reaction ~ 1 + days + (1 + fulldummy(days)|subj)), sleepstudy,
     contrasts = Dict(:days => DummyCoding()))

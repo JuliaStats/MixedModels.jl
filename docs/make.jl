@@ -22,6 +22,7 @@ makedocs(;
         "rankdeficiency.md",
         "mime.md",
         "derivatives.md",
+        "formula_syntax.md",
         "api.md",
     ],
 )
