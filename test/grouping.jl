@@ -2,6 +2,7 @@ using MixedModels
 using StatsModels
 using Test
 
+using CategoricalArrays: categorical
 using MixedModels: schematize
 using StatsModels: ContrastsMatrix, FullDummyCoding
 
