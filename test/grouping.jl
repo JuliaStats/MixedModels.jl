@@ -14,8 +14,6 @@ end
     d = (; y=rand(2_000_000),
         grp=string.([1:1_000_000; 1:1_000_000]),
         outer=rand('A':'z', 2_000_000))
-    ## OOM seems to result in the process being killed on Mac so this messes up CI
-    # @test_throws OutOfMemoryError schema(d)
     sch = schema(d, Dict(:grp => Grouping()))
     t = sch[term(:grp)]
     @test t isa CategoricalTerm{Grouping}
@@ -27,6 +25,16 @@ end
 
     @test all(t.contrasts.invindex[lev] == i for (i, lev) in enumerate(levs))
     @test all(t.contrasts.levels[i] == lev for (i, lev) in enumerate(levs))
+
+    d = (; y=rand(20),
+         grp=categorical([1:10; 1:10]))
+    sch = schema(d, Dict(:grp => Grouping()))
+    t = sch[term(:grp)]
+    @test t isa CategoricalTerm{Grouping}
+    @test size(t.contrasts.matrix) == (0, 0)
+    @test length(t.contrasts.levels) == 10
+    @test_throws ErrorException StatsModels.modelcols(t, (a=1.0,))
+
 end
 
 @testset "Auto application of Grouping()" begin
