@@ -1,3 +1,7 @@
+MixedModels v5.0.1 Release Notes
+==============================
+- Fixes a method error with `Grouping()` contrasts when used with recent CategoricalArray releases. [#860]
+
 MixedModels v5.0.0 Release Notes
 ==============================
 - Optimization is now performed _without constraints_. In a post-fitting step, the Cholesky factor is canonicalized to have non-negative diagonal elements. [#840]
@@ -685,3 +689,4 @@ Package dependencies
 [#856]: https://github.com/JuliaStats/MixedModels.jl/issues/856
 [#857]: https://github.com/JuliaStats/MixedModels.jl/issues/857
 [#858]: https://github.com/JuliaStats/MixedModels.jl/issues/858
+[#860]: https://github.com/JuliaStats/MixedModels.jl/issues/860
