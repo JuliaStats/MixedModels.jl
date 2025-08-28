@@ -1,4 +1,4 @@
-MixedModels v5.1.0 Release Notes
+MixedModels v5.0.2 Release Notes
 ==============================
 - The default display and `confint` methods for bootstrap results from models without dispersion parameters has been fixed. [#861]
 
