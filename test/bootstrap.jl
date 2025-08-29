@@ -219,15 +219,13 @@ end
         bs = parametricbootstrap(StableRNG(42), 100, gm0; progress=false)
         # make sure we're not copying
         @test length(bs.lowerbd) == length(gm0.θ)
-        bsci = filter!(:type => ==("β"), DataFrame(shortestcovint(bs)))
-        ciwidth = 2 .* stderror(gm0)
-        waldci = DataFrame(; coef=fixefnames(gm0),
-            lower=fixef(gm0) .- ciwidth,
-            upper=fixef(gm0) .+ ciwidth)
+        bsci = confint(bs)
+        waldci = confint(gm0)
 
         # coarse tolerances because we're not doing many bootstrap samples
-        @test all(isapprox.(bsci.lower, waldci.lower; atol=0.5))
-        @test all(isapprox.(bsci.upper, waldci.upper; atol=0.5))
+        # end-1 because the bootstrap CIs include the variance component
+        @test all(isapprox.(collect(bsci.lower)[1:end-1], collect(waldci.lower); atol=0.5))
+        @test all(isapprox.(collect(bsci.upper)[1:end-1], collect(waldci.upper); atol=0.5))
 
         σbar = mean(MixedModels.tidyσs(bs)) do x
             x.σ

@@ -41,7 +41,7 @@ If you require specific functionality from RegressionFormulae.jl, it is best to 
   - `a / b` is read as "`b` is nested within `a`".
   - `a / b` expands to `a + fulldummy(a) & b`.
 - It is generally not necessary to specify nesting in the blocking variables, when the inner levels are unique across outer levels. In other words, in a study with children (`C1`, `C2`, etc. ) nested within schools (`S1`, `S2`, etc.),
-  - it is not necessary to specify the nesting when `C1` identifies a unique child across schools. In other words, intercept-only random effects terms can be written as `(1|C) + `(1|S)`.
+  - it is not necessary to specify the nesting when `C1` identifies a unique child across schools. In other words, intercept-only random effects terms can be written as `(1|C) + (1|S)`.
   - it is necessary to specify the nesting when chid identifiers are re-used across schools, e.g. `C1` refers to a child in `S1` and a different child in `S2`. In this case, the nested syntax `(1|S/C)` expands to `(1|S) + (1|S&C)`. The interaction term in the second blocking variable generates unique labels for each child across schools.
 
 
