@@ -12,7 +12,7 @@ on:
   pull_request:
     branches:
       - main
-      - v3.x
+      - v4.x
     paths-ignore:
       - 'LICENSE.md'
       - 'README.md'
