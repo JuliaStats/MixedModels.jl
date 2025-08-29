@@ -368,14 +368,16 @@ function StatsBase.confint(
     tbl = Table(bsamp.tbl)
     lower = T[]
     upper = T[]
-    v = similar(tbl.σ)
-    par = sort!(
-        collect(
-            filter(
-                k -> !(startswith(string(k), 'θ') || string(k) == "obj"), propertynames(tbl)
-            ),
-        ),
-    )
+    v = similar(tbl.σ, T)
+    par = filter(collect(propertynames(tbl))) do k
+        k = string(k)
+        # σ is missing in models without a dispersion parameter
+        if k == "σ" && Missing <: eltype(tbl.σ)
+            return false
+        end
+        return !startswith(k, 'θ') && k != "obj"
+    end
+    sort!(par)
     tails = [(1 - level) / 2, (1 + level) / 2]
     for p in par
         if method === :shortest
@@ -643,6 +645,8 @@ push! `σ` times the row lengths (σs) and the inner products of normalized rows
 """
 function σρ!(v::AbstractVector{<:Union{T,Missing}}, t::LowerTriangular, σ) where {T}
     dat = t.data
+    # for models without a dispersion parameter, σ is missing, but for the math below we can treat it as 1
+    σ = coalesce(σ, one(T))
     for i in axes(dat, 1)
         ssqr = zero(T)
         for j in 1:i
