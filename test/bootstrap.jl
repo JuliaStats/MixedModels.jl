@@ -16,7 +16,7 @@ include("modelcache.jl")
 
 function quickboot(m, n=2)
     return parametricbootstrap(MersenneTwister(42), n, m;
-        progress=false, use_threads=false,
+        progress=false,
         optsum_overrides=(; ftol_rel=1e-8))
 end
 
@@ -92,11 +92,8 @@ end
     # two implicit tests
     # 1. type conversion of ints to floats
     # 2. test method for default RNG
-    @test_logs((:warn, r"hide_progress"),
-        parametricbootstrap(1, fm, β=[1], σ=1, hide_progress=true))
-
     bsamp = parametricbootstrap(MersenneTwister(1234321), 100, fm;
-        use_threads=false, progress=false)
+        progress=false)
     @test isa(propertynames(bsamp), Vector{Symbol})
     @test length(bsamp.objective) == 100
     @test keys(first(bsamp.fits)) == (:objective, :σ, :β, :se, :θ)
@@ -107,13 +104,13 @@ end
 
     @testset "optsum_overrides" begin
         bsamp2 = parametricbootstrap(MersenneTwister(1234321), 100, fm;
-            use_threads=false, progress=false,
+            progress=false,
             optsum_overrides=(; ftol_rel=1e-8))
         # for such a simple, small model setting the function value
         # tolerance has little effect until we do something extreme
         @test bsamp.objective ≈ bsamp2.objective
         bsamp2 = parametricbootstrap(MersenneTwister(1234321), 100, fm;
-            use_threads=false, progress=false,
+            progress=false,
             optsum_overrides=(; ftol_rel=1.0))
         @test !(bsamp.objective ≈ bsamp2.objective)
     end
@@ -130,12 +127,6 @@ end
     @test coefp.iter == 1:100
     @test only(unique(coefp.coefname)) == Symbol("(Intercept)")
     @test propertynames(coefp) == [:iter, :coefname, :β, :se, :z, :p]
-
-    @testset "threaded bootstrap" begin
-        @test_logs (:warn, r"use_threads is deprecated") parametricbootstrap(
-            MersenneTwister(1234321), 1, fm;
-            use_threads=true, progress=false)
-    end
 
     @testset "zerocorr + Base.length + ftype" begin
         fmzc = models(:sleepstudy)[2]
@@ -228,15 +219,13 @@ end
         bs = parametricbootstrap(StableRNG(42), 100, gm0; progress=false)
         # make sure we're not copying
         @test length(bs.lowerbd) == length(gm0.θ)
-        bsci = filter!(:type => ==("β"), DataFrame(shortestcovint(bs)))
-        ciwidth = 2 .* stderror(gm0)
-        waldci = DataFrame(; coef=fixefnames(gm0),
-            lower=fixef(gm0) .- ciwidth,
-            upper=fixef(gm0) .+ ciwidth)
+        bsci = confint(bs)
+        waldci = confint(gm0)
 
         # coarse tolerances because we're not doing many bootstrap samples
-        @test all(isapprox.(bsci.lower, waldci.lower; atol=0.5))
-        @test all(isapprox.(bsci.upper, waldci.upper; atol=0.5))
+        # end-1 because the bootstrap CIs include the variance component
+        @test all(isapprox.(collect(bsci.lower)[1:end-1], collect(waldci.lower); atol=0.5))
+        @test all(isapprox.(collect(bsci.upper)[1:end-1], collect(waldci.upper); atol=0.5))
 
         σbar = mean(MixedModels.tidyσs(bs)) do x
             x.σ
