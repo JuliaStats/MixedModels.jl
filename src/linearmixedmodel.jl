@@ -795,7 +795,7 @@ Return the vector of _canonical_ lower bounds on the parameters, `θ`.
 Note that this method does not distinguish between constrained optimization and
 unconstrained optimization with post-fit canonicalization.
 """
-lowerbd(m::LinearMixedModel) = [(pm[2] == pm[3]) ? zero(T) : T(-Inf) for pm in m.parmap]
+lowerbd(m::LinearMixedModel{T}) where {T} = [(pm[2] == pm[3]) ? zero(T) : T(-Inf) for pm in m.parmap]
 
 function mkparmap(reterms::Vector{<:AbstractReMat{T}}) where {T}
     parmap = NTuple{3,Int}[]
