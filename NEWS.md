@@ -1,3 +1,7 @@
+MixedModels v5.0.3 Release Notes
+==============================
+- `lowerbd(::MixedModel)` returns the _canonical_ lower bounds of a model's parameters, i.e. the expected bounds after rectification in unconstrained optimization. [#864]
+
 MixedModels v5.0.2 Release Notes
 ==============================
 - The default display and `confint` methods for bootstrap results from models without dispersion parameters has been fixed. [#861]
@@ -695,3 +699,4 @@ Package dependencies
 [#858]: https://github.com/JuliaStats/MixedModels.jl/issues/858
 [#860]: https://github.com/JuliaStats/MixedModels.jl/issues/860
 [#861]: https://github.com/JuliaStats/MixedModels.jl/issues/861
+[#864]: https://github.com/JuliaStats/MixedModels.jl/issues/864
