@@ -523,6 +523,14 @@ function StatsAPI.loglikelihood(m::GeneralizedLinearMixedModel{T}) where {T}
     return accum - (mapreduce(u -> sum(abs2, u), +, m.u) + logdet(m)) / 2
 end
 
+"""
+    lowerbd(m::GeneralizedLinearMixedModel)
+
+Return the vector of _canonical_ lower bounds on the parameters, `θ`.
+
+Note that this method does not distinguish between constrained optimization and
+unconstrained optimization with post-fit canonicalization.
+"""
 lowerbd(m::GeneralizedLinearMixedModel) = lowerbd(m.LMM)
 
 # Base.Fix1 doesn't forward kwargs
