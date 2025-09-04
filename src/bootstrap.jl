@@ -359,7 +359,10 @@ function StatsBase.confint(
     par = filter(collect(propertynames(tbl))) do k
         k = string(k)
         # σ is missing in models without a dispersion parameter
-        if k == "σ" && Missing <: eltype(tbl.σ)
+        Tσ = eltype(tbl.σ)
+        # see https://github.com/JuliaStats/MixedModels.jl/pull/861#discussion_r2323094090
+        # for more info on why this logic is so convulated
+        if k == "σ" &&  ((Tσ === Any && any(ismissing, tbl.σ)) ||  Missing <: Tσ)
             return false
         end
         return !startswith(k, 'θ') && k != "obj"
