@@ -8,7 +8,7 @@ _lmm = LinearMixedModel(
     contrasts = Dict(:period => DummyCoding()),
 )
 
-#_lmm.optsum.optimizer = :LN_COBYLA  # use default of :LN_NEWUOA instead
+#_lmm.optsum.optimizer = :LN_COBYLA  # use default of :LN_BOBYQA (1-dim optimization) instead
 
 fit!(_lmm; REML = true)
 
