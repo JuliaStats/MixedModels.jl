@@ -8,9 +8,9 @@ _lmm = LinearMixedModel(
     contrasts = Dict(:period => DummyCoding()),
 )
 
-_lmm.optsum.optimizer = :LN_COBYLA
+#_lmm.optsum.optimizer = :LN_COBYLA  # use default of :LN_NEWUOA instead
 
-fit!(_lmm; REML = true, fitlog=true)
+fit!(_lmm; REML = true)
 
 θ = copy(_lmm.θ)                      # keep a copy of the optimal θ
 lines(0.4:0.01:1.0, objective!(_lmm)) # I wrote the method for objective! then forgot it 
