@@ -362,7 +362,7 @@ function StatsBase.confint(
         Tσ = eltype(tbl.σ)
         # see https://github.com/JuliaStats/MixedModels.jl/pull/861#discussion_r2323094090
         # for more info on why this logic is so convulated
-        if k == "σ" &&  ((Tσ === Any && any(ismissing, tbl.σ)) ||  Missing <: Tσ)
+        if k == "σ" && ((Tσ === Any && any(ismissing, tbl.σ)) || Missing <: Tσ)
             return false
         end
         return !startswith(k, 'θ') && k != "obj"
