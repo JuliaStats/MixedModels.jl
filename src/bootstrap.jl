@@ -360,8 +360,8 @@ function StatsBase.confint(
         k = string(k)
         # σ is missing in models without a dispersion parameter
         Tσ = eltype(tbl.σ)
-        # see https://github.com/JuliaStats/MixedModels.jl/pull/861#discussion_r2323094090
-        # for more info on why this logic is so convulated
+        # If inference failed when constructing `tbl.σ`, we can't rely on the element
+        # type to know whether missing values may be present
         if k == "σ" && ((Tσ === Any && any(ismissing, tbl.σ)) || Missing <: Tσ)
             return false
         end
