@@ -362,7 +362,8 @@ function StatsBase.confint(
         Tσ = eltype(tbl.σ)
         # If inference failed when constructing `tbl.σ`, we can't rely on the element
         # type to know whether missing values may be present
-        if k == "σ" && ((Tσ === Any && any(ismissing, tbl.σ)) || (Tσ !== Any && Missing <: Tσ))
+        if k == "σ" &&
+            ((Tσ === Any && any(ismissing, tbl.σ)) || (Tσ !== Any && Missing <: Tσ))
             return false
         end
         return !startswith(k, 'θ') && k != "obj"
