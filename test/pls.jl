@@ -43,6 +43,7 @@ end
     @test length(fm1.A) == 3
     @test size(fm1.reterms) == (1,)
     @test fm1.optsum.initial == ones(1)
+    @test lowerbd(fm1) == zeros(1)
     fm1.θ = ones(1)
     @test fm1.θ == ones(1)
     @test islinear(fm1)
