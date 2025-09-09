@@ -1,6 +1,10 @@
-MixedModels v5.0.3 Release Notes
+MixedModels v5.0.4 Release Notes
 ==============================
 - Small update in some code related to displaying dispersion parameters in cases where inference has failed. [#865]
+
+MixedModels v5.0.3 Release Notes
+==============================
+- `lowerbd(::MixedModel)` returns the _canonical_ lower bounds of a model's parameters, i.e. the expected bounds after rectification in unconstrained optimization. [#864]
 
 MixedModels v5.0.2 Release Notes
 ==============================
@@ -699,4 +703,5 @@ Package dependencies
 [#858]: https://github.com/JuliaStats/MixedModels.jl/issues/858
 [#860]: https://github.com/JuliaStats/MixedModels.jl/issues/860
 [#861]: https://github.com/JuliaStats/MixedModels.jl/issues/861
+[#864]: https://github.com/JuliaStats/MixedModels.jl/issues/864
 [#865]: https://github.com/JuliaStats/MixedModels.jl/issues/865
