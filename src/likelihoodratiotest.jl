@@ -237,8 +237,8 @@ function StatsModels.isnested(m1::MixedModel, m2::MixedModel; atol::Real=0.0)
     grpng2 = fname.(m2.reterms)
 
     if !isempty(setdiff(grpng1, grpng2))
-       @error "Inner models have grouping variables not present in outer models."
-       return false
+        @error "Inner models have grouping variables not present in outer models."
+        return false
     end
     # check that every intercept/slope for a grouping var occurs in the
     # same grouping
