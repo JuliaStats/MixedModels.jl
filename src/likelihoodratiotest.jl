@@ -221,20 +221,39 @@ function StatsModels.isnested(m1::MixedModel, m2::MixedModel; atol::Real=0.0)
     end || return false
 
     # check that the nested fixef are a subset of the outer
-    all(in.(coefnames(m1), Ref(coefnames(m2)))) || return false
+    # XXX: the simple coefficient name check is nice and fast, but fails
+    # if model uses a pre-computed centered value and another uses
+    # StandardizedPredictors (an example of which we have in EmbraceUncertainty,
+    # where we use StandardizedPredictors in the simpler model, but swap
+    # to pre-computation for a more complicated model with a quadratic term)
+    # all(in.(coefnames(m1), Ref(coefnames(m2)))) || return false
+    if !_isnested(modelmatrix(m1), modelmatrix(m2))
+        @error "Fixed effects are not nested."
+        return false
+    end
 
     # check that the same grouping vars occur in the outer model
     grpng1 = fname.(m1.reterms)
     grpng2 = fname.(m2.reterms)
 
-    all(in.(grpng1, Ref(grpng2))) || return false
-
+    if !isempty(setdiff(grpng1, grpng2))
+        @error "Inner models have grouping variables not present in outer models."
+        return false
+    end
     # check that every intercept/slope for a grouping var occurs in the
     # same grouping
-    re1 = Dict(fname(re) => re.cnames for re in m1.reterms)
-    re2 = Dict(fname(re) => re.cnames for re in m2.reterms)
+    # note that re.z is actually the transpose of what we want
+    re1 = Dict(fname(re) => re.z' for re in m1.reterms)
+    re2 = Dict(fname(re) => re.z' for re in m2.reterms)
 
-    all(all(in.(val, Ref(re2[key]))) for (key, val) in re1) || return false
+    # note that this will fail if amalgamation was not performed,
+    # whether through explicit disabling or by a grouping variable renaming
+    for key in keys(re1)
+        if !_isnested(re1[key], re2[key])
+            @error "Random effects are not nested."
+            return false
+        end
+    end
 
     return true
 end
@@ -244,7 +263,12 @@ function StatsModels.isnested(
     m2::MixedModel;
     atol::Real=0.0,
 )
-    return _iscomparable(m1, m2) && isnested(m1.model, m2; atol)
+    try
+        return _iscomparable(m1, m2) && isnested(m1.model, m2; atol)
+    catch e
+        @error e.msg
+        return false
+    end
 end
 
 function StatsModels.isnested(m1::LinearModel, m2::LinearMixedModel; atol::Real=0.0)
@@ -335,7 +359,13 @@ function _iscomparable(
     m1::TableRegressionModel{<:Union{LinearModel,GeneralizedLinearModel}}, m2::MixedModel
 )
     # check that the nested fixef are a subset of the outer
-    all(in.(coefnames(m1), Ref(coefnames(m2)))) || return false
+    # XXX: the simple coefficient name check is nice and fast, but fails
+    # if model uses a pre-computed centered value and another uses
+    # StandardizedPredictors (an example of which we have in EmbraceUncertainty,
+    # where we use StandardizedPredictors in the simpler model, but swap
+    # to pre-computation for a more complicated model with a quadratic term)
+    # all(in.(coefnames(m1), Ref(coefnames(m2)))) || return false
+    _isnested(modelmatrix(m1), modelmatrix(m2)) || return false
 
     return true
 end
