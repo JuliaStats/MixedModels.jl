@@ -249,7 +249,6 @@ function StatsModels.isnested(m1::MixedModel, m2::MixedModel; atol::Real=0.0)
     # note that this will fail if amalgamation was not performed,
     # whether through explicit disabling or by a grouping variable renaming
     for key in keys(re1)
-        # we only need to grab the first column because
         if !_isnested(re1[key], re2[key])
             @error "Random effects are not nested."
             return false
