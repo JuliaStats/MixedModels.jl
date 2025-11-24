@@ -244,7 +244,7 @@ fit(MixedModel,
 ```
 
 !!! tip
-StandardizedPredictors.jl will work with any package that supports the StatsModels.jl-based `@formula` and contrast machinery.
+    StandardizedPredictors.jl will work with any package that supports the StatsModels.jl-based `@formula` and contrast machinery.
 
 # RCall.jl and JellyMe4.jl
 
