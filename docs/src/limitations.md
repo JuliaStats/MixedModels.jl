@@ -44,3 +44,7 @@ Generalized additive models can be expressed a mixed model, so supporting this w
 ## No support for nonlinear mixed effects models
 
 [Pumas.jl (commercial)](https://pumas.ai/our-products/products-suite/pumas) provides this (not an endorsement).
+
+## No support for Satterthwaite nor Kenward-Roger degree of freedom approximations.
+
+There are some philosophical and practical [issues](https://bbolker.github.io/mixedmodels-misc/glmmFAQ.html#ddf) with these approaches, but an implementation can be found in [MixedModelsSmallSample.jl](https://arnostrouwen.github.io/MixedModelsSmallSample.jl/dev/) (not an endorsement).
