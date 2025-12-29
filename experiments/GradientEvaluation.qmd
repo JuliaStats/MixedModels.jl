@@ -1,0 +1,383 @@
+---
+title: "Evaluation of the Gradient of the Profiled log-likelihood"
+author:
+  - name: Douglas Bates
+    email: dmbates@gmail.com
+    orcid: 0000-0001-8316-9503
+    affiliation:
+      - name: University of Wisconsin - Madison
+        city: Madison
+        state: WI
+        url: https://www.wisc.edu
+        department: Statistics
+  - name: Phillip Alday
+    email: me@phillipalday.com
+    orcid: 0000-0002-9984-5745
+    affiliation:
+      - name: Beacon Biosignals
+        url: https://beacon.bio
+date: last-modified
+date-format: iso
+toc: true
+bibliography: bibliography.bib
+number-sections: true
+engine: julia
+julia:
+  exeflags:
+    - -tauto
+    - --project=@.
+format:
+  html:
+    toc: true
+    toc-location: right
+    embed-resources: true
+---
+
+## Introduction {#sec-intro}
+
+A comparison of algorithms for estimation of variance components given in the supplemental materials for @Zhou03042019 shows the Fisher scoring algorithm taking the fewest iterations to convergence compared to an EM algorithm and the minorization-maximization (MM) algorithm presented in that paper.
+The model being simulated in @Zhou03042019, sec 3.2 is relatively simple, with random effects for two factors and their interaction in a balanced crossed design.
+
+The approach in [lme4](https://github.com/lme4/lme4) (@bates.maechler.etal:2015) and [MixedModels.jl](https://github.com/JuliaStats/MixedModels.jl) (@bates2025mixed) has been to use a profiled log-likelihood expression, with fewer free parameters than the log-likelihood, and to streamline the evaluation of the profiled log-likelihood.
+The optimization itself is performed by a gradient-free optimizer, usually either BOBYQA or NEWUOA from Powell's collection of optimizers.
+
+Expressions for the gradient of the profiled log-likelihood were given in sec. 3.5 of @bates.maechler.etal:2015 but they haven't been implemented in either the `lme4` or the `MixedModels.jl` packages.
+
+The purpose of this note is to explore whether these expressions can be implemented effectively, even if just for the variance components model, which, for our purposes, is a model in which all the random effects terms are simple, scalar terms.
+
+### Expressions for the gradient terms
+
+The linear mixed-effects models we consider are defined by the unconditional distribution of the $q$-dimensional random-effects vector, $\mathbfcal{B}$, and the conditional distribution of the $n$-dimensional response vector, $\mathbfcal{Y}$, given $\mathbfcal{B}=\mathbf{b}$, as
+
+$$
+\begin{aligned}
+    (\mathbfcal{Y}|\mathbfcal{B}=\mathbf{b})&
+    \sim\mathbfcal{N}\left(\mathbf{X}\boldsymbol{\beta}+\mathbf{Z}\mathbf{b},\sigma^2\mathbf{I}\right)\\
+    \mathbfcal{B}&
+    \sim\mathbfcal{N}(\mathbf{0}, \boldsymbol{\Sigma})
+\end{aligned}
+$$ {#eq-dists}
+
+where $\mathbf{X}$ is an $n\times p$ model matrix for the fixed-effects parameter vector, $\boldsymbol{\beta}$, and $\mathbf{Z}$ is an $n\times q$ model matrix for the random effects, $\mathbf{b}$.
+Furthermore, $\boldsymbol{\Sigma}$, the covariance of $\mathbfcal{B}$, is positive semi-definite.
+We express it as
+
+$$
+\boldsymbol{\Sigma} = \sigma^2
+\boldsymbol{\Lambda_{\theta}}\boldsymbol{\Lambda^\top_{\theta}}
+$$ {#eq-Sigma}
+
+for a lower-triangular *relative covariance factor*, $\boldsymbol{\Lambda_\theta}$, that depends on a *relative covariance parameter vector*, $\boldsymbol{\theta}$.
+
+In `MixedModels.jl` the profiled log-likelihood, a function of $\boldsymbol{\theta}$ only, is evaluated from the blocked lower Cholesky factor, $\mathbf{L}_\theta$, of
+
+$$
+\boldsymbol{\Omega_\theta} =
+\begin{bmatrix}
+\boldsymbol{\Lambda_\theta}^\top\mathbf{Z^\top Z}\boldsymbol{\Lambda_\theta}+\mathbf{I}&
+\boldsymbol{\Lambda_\theta}^\top\mathbf{Z^\top X} &
+\boldsymbol{\Lambda_\theta}^\top\mathbf{Z^\top y}\\
+\mathbf{X^\top Z}\boldsymbol{\Lambda_\theta} &
+\mathbf{X^\top X} &
+\mathbf{X^\top y}\\
+\mathbf{y^\top Z}\boldsymbol{\Lambda_\theta} &
+\mathbf{y^\top X} &
+\mathbf{y^\top y}\\
+\end{bmatrix}
+$$ {#eq-blockedOmega}
+
+where $\mathbf{L}_\theta$ has a similar blocked structure
+
+$$
+\mathbf{L}_\boldsymbol{\theta} =
+\begin{bmatrix}
+\mathbf{L_{ZZ}} & \mathbf{0} & \mathbf{0} \\
+\mathbf{L_{XZ}} & \mathbf{L_{XX}} & \mathbf{0} \\
+\mathbf{l_{yZ}} & \mathbf{l_{yX}} & \ell_{\mathbf{yy}}
+\end{bmatrix}
+$$ {#eq-blockedL}
+
+(In the actual computational methods the blocked Cholesky factor has a slightly different pattern of blocks in which the "X rows" and the "y row" are amalgamated into dense blocks and the column associated with $\mathbf{Z}$ is split into one or more columns according to the grouping factors determining the random effects, as shown in the examples below.)
+
+The objective to be optimized is negative twice the profiled log-likelihood,
+
+$$
+-2\mathcal{L}(\boldsymbol{\theta}|\mathbf{y}) =
+\log\left|\mathbf{L_{ZZ}}\right|^2 + n \left[1 + \log\left(\frac{2\pi\ell^2_{\mathbf{yy}}}{n}\right)\right]
+$$ {#eq-objective}
+
+which is on the scale of the deviance (if we were able to define a deviance for these models).
+
+As shown in @bates.maechler.etal:2015, sec 3.5 the gradient of the first summand in @eq-objective is
+
+$$
+\begin{aligned}
+\nabla\log\left|\mathbf{L_ZZ}\right|^2 &= \nabla\log\left(\left|\mathbf{L_{ZZ}L_{ZZ}}^\top\right|\right)\\
+&=\nabla\log\left(\left|\boldsymbol{\Lambda}^\top\mathbf{Z^\top Z}\boldsymbol{\Lambda}+\mathbf{I}\right|\right)\\
+&=\operatorname{tr}\left[\nabla\left(\boldsymbol{\Lambda}^\top\mathbf{Z^\top Z}\boldsymbol{\Lambda}\right)
+\left(\boldsymbol{\Lambda}^\top\mathbf{Z^\top Z}\boldsymbol{\Lambda}+\mathbf{I}\right)^{-1}\right]\\
+&=\operatorname{tr}\left[\mathbf{L_{ZZ}}^{-1}
+\nabla\left(\boldsymbol{\Lambda}^\top\mathbf{Z^\top Z}\boldsymbol{\Lambda}\right)
+\mathbf{L_{ZZ}}^{-\top}
+\right]\\
+&=\operatorname{tr}\left[\mathbf{L_{ZZ}}^{-1}
+\left(\nabla\boldsymbol{\Lambda}^\top\mathbf{Z^\top Z}\boldsymbol{\Lambda}+
+\boldsymbol{\Lambda}^\top\mathbf{Z^\top Z}\nabla\boldsymbol{\Lambda}\right)
+\mathbf{L_{ZZ}}^{-\top}
+\right]
+\end{aligned}
+$$ {#eq-delterm1}
+
+For the models that we wish to consider the partial derivatives of $\boldsymbol{\Lambda_\theta}$ with respect to the components of $\boldsymbol{\theta}$ are particularly simple in that they are block diagonal with a single non-zero diagonal block, which is an identity matrix.
+
+## Examples
+
+To aid in understanding the structure of these equations we consider the structure of the various matrices and their blocks in some simple examples.
+
+Load the packages to be used
+
+```{julia}
+#| label: load_packages
+#| warning: false
+#| output: false
+using FiniteDiff
+using LinearAlgebra
+using MixedModels
+using MixedModelsDatasets: dataset
+using TypedTables: Table
+```
+
+### Penicillin - two completely crossed scalar random-effects terms
+
+The `penicillin` dataset in `MixedModelsDatasets.jl` contains 144 measurements of the `diameter` of the cleared area for each of six `sample`s of penicillin on each of 24 `plate`s.
+
+```{julia}
+#| label: penicillin_data
+const penicillin = Table(dataset(:penicillin))
+```
+
+We construct a `LinearMixedModel` struct with a single fixed-effect parameter, representing the average diameter in the balanced design, and random effects for each `plate` and each `sample`,
+
+```{julia}
+#| label: m02
+#| output: false
+#| warn: false
+m02 = LinearMixedModel(@formula(diameter ~ 1 + (1|plate) + (1|sample)), penicillin)
+```
+
+for which the concatenated matrix $\left[\mathbf{ZXy}\right]$ is
+
+```{julia}
+#| label: m02ZXy
+Int.(hcat(collect(first(m02.reterms)), collect(last(m02.reterms)), m02.X, m02.y))
+```
+
+in which the first 24 columns are the indicators for `plate`, the next 6 columns are the indicators for `sample`, the second-to-last column is the single column of the fixed-effects model matrix, $\mathbf{X}$, and the last column is $\mathbf{y}$.
+
+The Cholesky factor, $\mathbf{L}$, at the initial value $\boldsymbol\theta=\left[1,1\right]^\top$, can be expressed as a lower-triangular sparse matrix as
+
+```{julia}
+#| label: m02L
+Lsparse = LowerTriangular(sparseL(updateL!(m02); full=true))
+```
+
+In practice, the full $\mathbf{L}$ matrix is stored in a blocked form
+
+```{julia}
+#| label: m02_blocks
+BlockDescription(m02)
+```
+
+from which the profiled objective (negative twice the log-likelihood) can be evaluated as
+
+```{julia}
+#| label: m02L_initial_objective
+objective(m02)
+```
+
+#### Evaluating terms in the gradient
+
+For illustration of the gradient evaluation we create the lower-triangular sparse submatrix $\mathbf{L_{ZZ}}$ as
+
+```{julia}
+#| label: m02LZZ
+LZZsparse = LowerTriangular(sparseL(m02))
+```
+
+from which $\log\left|\mathbf{L_{ZZ}}\right|^2$ can be evaluated as
+
+```{julia}
+#| label: logdet_m02
+2. * sum(log, diag(LZZsparse))
+```
+
+In practice we use the `logdet` function
+
+```{julia}
+#| label: logdet__m02
+logdet(m02)
+```
+
+which evaluates this quantity from the blocked representation of $\mathbf{L}$.
+
+A finite-difference approximation to the gradient of the `logdet` at this value of $\boldsymbol{\theta}$ is
+
+```{julia}
+ldfun(x::Vector{Float64}) = logdet(updateL!(setθ!(m02, x)))
+FiniteDiff.finite_difference_gradient(ldfun, [1., 1.]) 
+```
+
+The matrix $\mathbf{A_{ZZ}}=\mathbf{Z}^\top\mathbf{Z}$ for this model, as a dense matrix, is
+
+```{julia}
+#| label: denseA
+A = Int.(hvcat(2, first(m02.A), m02.A[2]', m02.A[2], m02.A[3]))
+```
+
+and the first face of $\nabla{\boldsymbol{\Lambda}}$ is
+
+```{julia}
+#| label: nabla_Lambda
+nabla1 = Int.(Diagonal(vcat(ones(Int, 24), zeros(Int, 6))))
+```
+
+With $\boldsymbol{\Lambda(\theta)}$ being
+
+```{julia}
+Λ(θ) = Diagonal(vcat(fill(first(θ), 24), fill(last(θ), 6)))
+θ = ones(2)      # initial parameter vector
+Int.(Λ(θ))       # initial value of Λ
+```
+
+the first face of $\left(\nabla\boldsymbol{\Lambda}^\top\mathbf{Z^\top Z}\boldsymbol{\Lambda}+
+\boldsymbol{\Lambda}^\top\mathbf{Z^\top Z}\nabla\boldsymbol{\Lambda}\right)$ is
+
+```{julia}
+#| label: symprod
+symprod = nabla1 * A * Λ(θ) + Λ(θ) * A * nabla1
+Int.(symprod)
+```
+
+producing the matrix whose trace is desired as
+
+```{julia}
+rdiv!(ldiv!(LZZsparse, symprod), LZZsparse')  # overwrites the value of symprod
+```
+
+yielding the trace as
+
+```{julia}
+sum(diag(symprod))
+```
+
+One point to notice here is that the $[1,1]$ block of this matrix is diagonal, with elements of
+
+```{julia}
+((2 * first(θ)) .* first(m02.A).diag) ./ abs2.(first(m02.L).diag)
+```
+
+which can be used to simplify the evaluation of the first gradient term.
+In particular, the gradient of a model with a single, scalar random-effects term is, unsurprisingly, straightforward.
+
+For the second element of the gradient we define
+
+```{julia}
+nabla2 = Diagonal(vcat(zeros(24), ones(6)))
+Int.(nabla2)
+```
+
+and
+
+```{julia}
+symprod = nabla2 * A * Λ(ones(2)) + Λ(ones(2)) * A * nabla2
+```
+
+The matrix whose trace is required is
+
+```{julia}
+rdiv!(ldiv!(LZZsparse, symprod), LZZsparse')
+```
+
+producing the second element of the gradient of `ldfun` as
+
+```{julia}
+sum(diag(symprod))
+```
+
+Notice that the entire $[1,1]$ block of this matrix is zero and will not need to be evaluated explicitly.
+
+We evaluate $\boldsymbol{\hat{\theta}}$ using a derivative-free optimizer as
+
+```{julia}
+θ = refit!(m02).θ
+```
+
+after which the first face of `symprod` becomes
+
+```{julia}
+symprod = nabla1 * A * Λ(θ) + Λ(θ) * A * nabla1
+```
+
+`LZZsparse` becomes
+
+```{julia}
+LZZsparse = LowerTriangular(sparseL(m02))
+```
+
+and the matrix whose trace is required is
+
+```{julia}
+rdiv!(ldiv!(LZZsparse, symprod), LZZsparse')
+```
+
+yielding the gradient term
+
+```{julia}
+sum(diag(symprod))
+```
+
+which can be compared to the finite difference value
+
+```{julia}
+FiniteDiff.finite_difference_gradient(ldfun, θ) 
+```
+
+(Note, this is the first element of the gradient of the `logdet` term only, not the gradient of the objective which is near zero
+
+```{julia}
+FiniteDiff.finite_difference_gradient(objective!(m02), θ)
+```
+
+as it should be at the optimum.)
+
+For the second element of the gradient of `ldfun` we have
+
+```{julia}
+symprod = nabla2 * A * Λ(θ) + Λ(θ) * A * nabla2
+```
+
+After pre- and post-division by `LZZsparse`, this becomes
+
+```{julia}
+rdiv!(ldiv!(LZZsparse, symprod), LZZsparse')
+```
+
+yielding the second element of the gradient of `ldfun` as
+
+```{julia}
+sum(diag(symprod))
+```
+
+#### Factoring the symmetric matrix 
+
+The matrix $\left(\nabla\boldsymbol{\Lambda}^\top\mathbf{Z^\top Z}\boldsymbol{\Lambda}+
+\boldsymbol{\Lambda}^\top\mathbf{Z^\top Z}\nabla\boldsymbol{\Lambda}\right)$ is symmetric and has the same sparsity structure as $\mathbf{Z^\top Z}$, which is positive semi-definite.
+However, it is not clear that the non-zero blocks in $\left(\nabla\boldsymbol{\Lambda}^\top\mathbf{Z^\top Z}\boldsymbol{\Lambda}+
+\boldsymbol{\Lambda}^\top\mathbf{Z^\top Z}\nabla\boldsymbol{\Lambda}\right)$  will be positive semi-definite in the general case.
+In the case of a single variance component it will be positive definite when $\theta_1>0$ because it is $2\theta_1\mathbf{A}$.
+
+
+### References {.unnumbered}
+
+::: {#refs}
+:::

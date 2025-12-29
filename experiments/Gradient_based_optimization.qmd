@@ -1,0 +1,197 @@
+---
+title: "Gradient-based Optimization of the Profiled log-likelihood"
+author:
+  - name: Douglas Bates
+    email: dmbates@gmail.com
+    orcid: 0000-0001-8316-9503
+    affiliation:
+      - name: University of Wisconsin - Madison
+        city: Madison
+        state: WI
+        url: https://www.wisc.edu
+        department: Statistics
+  - name: Phillip Alday
+    email: me@phillipalday.com
+    orcid: 0000-0002-9984-5745
+    affiliation:
+      - name: Beacon Biosignals
+        url: https://beacon.bio
+date: last-modified
+date-format: iso
+toc: true
+bibliography: bibliography.bib
+number-sections: true
+engine: julia
+julia:
+  exeflags:
+    - -tauto
+    - --project=@.
+format:
+  html:
+    toc: true
+    toc-location: right
+    embed-resources: true
+---
+
+## Introduction {#sec-intro}
+
+Before devoting too much effort to efficient evaluation of the gradient of the profiled log-likelihood, we should check if using gradient-based optimization requires sufficiently fewer evaluations of the objective, and the gradient, than does derivative-free optimization.
+
+Here we fit a few models using automatic differentiation from [ForwardDiff.jl](https://github.com/JuliaDiff/ForwardDiff.jl) and the `ForwardDiff` extension to [MixedModels.jl](https://github.com/JuliaStats/MixedModels.jl) to optimize the profiled log-likelihood with the `LD_LBFGS` optimizer from [NLopt.jl](https://github.com/jump-dev/NLopt.jl), instead of the default `LN_NEWUOA` which does not use gradients.
+
+The results are more-or-less a toss-up when using `ForwardDiff` to evaluate the gradient.
+A more efficient evaluation of the gradient, taking advantage of the sparse-blocked structure of the Cholesky factorization to evaluate the profiled log-likelihood, may tip the balance in favor of gradient-based methods.
+
+## Preliminaries {#sec-prelim}
+
+Load the packages to be used
+
+```{julia}
+#| label: load_packages
+using BenchmarkTools
+using ForwardDiff
+using MixedModels
+using MixedModelsDatasets: dataset
+using NLopt
+using Tables: table
+using TypedTables: Table
+```
+
+## Examples {#sec-examples}
+
+### Penicillin data {#sec-penicillin}
+
+Load the `penicillin` dataset
+```{julia}
+penicillin = Table(dataset(:penicillin))
+```
+
+and define a model
+
+```{julia}
+#| label: const_defs
+#| output: false
+m = LinearMixedModel(@formula(diameter ~ 1 + (1|plate) + (1|sample)), penicillin)
+θ = copy(m.θ)
+k = length(θ)
+const fitlog = sizehint!(Vector{Float64}(undef, 0), 200)
+```
+
+with an NLopt-compatible objective function
+
+```{julia}
+#| label: obj_def
+function obj(θ::Vector{Float64}, grad::Vector{Float64})
+    val = objective(updateL!(setθ!(m, θ)))
+    push!(fitlog, val)
+    append!(fitlog, θ)
+    if !isempty(grad)
+        copyto!(grad, ForwardDiff.gradient(m, θ))
+        append!(fitlog, grad)
+    end
+    return val
+end
+```
+
+A benchmark of evaluating the objective only
+
+```{julia}
+#| label: benchmark_obj
+@benchmark objective(updateL!(setθ!($m, $θ))) seconds=1
+```
+
+compared to evaluating both the objective and its gradient
+
+```{julia}
+#| label: benchmark_obj_grad
+let gr = Vector{Float64}(undef, k)
+  @benchmark obj($θ, $gr)  seconds=1
+end
+```
+
+Notice that evaluating both the objective and the gradient, using `ForwardDiff.jl`, results in considerably more allocation of storage than does evaluating the objective alone.
+(In part this is a reflection of the fact that considerable work has gone into tuning the objective evaluation so that it doesn't allocate a lot of memory.)
+
+Fitting the model using a derivative-free optimizer gives
+
+```{julia}
+m.optsum.ftol_rel = 1.e-8         # for fair comparison with the gradient-based method
+print(refit!(m))
+```
+
+for which the optimization summary is
+
+```{julia}
+m.optsum
+```
+
+The objective at the estimate is
+
+```{julia}
+m.optsum.fmin
+```
+
+We set up and run the gradient-based optimizer L-BFGS as
+
+```{julia}
+opt = NLopt.Opt(:LD_LBFGS, 2)
+NLopt.ftol_rel!(opt, 1.e-8)
+NLopt.min_objective!(opt, obj)
+empty!(fitlog)
+min_f, min_x, ret = NLopt.optimize(opt, copy(θ))
+```
+
+where the fitlog is
+
+```{julia}
+header = [:obj, :θ₁, :θ₂, :g₁, :g₂]
+fltbl = Table(table(transpose(reshape(fitlog, length(header), :)); header))
+```
+
+```{julia}
+last(fltbl, 3)
+```
+
+### Sleepstudy {#sec-sleepstudy}
+
+```{julia}
+sleepstudy = Table(dataset(:sleepstudy))
+```
+
+```{julia}
+m = LinearMixedModel(@formula(reaction ~ 1 + days + (1 + days|subj)), sleepstudy)
+θ = copy(m.θ)
+@benchmark objective(updateL!(setθ!($m, $(m.θ)))) seconds=1
+```
+
+
+```{julia}
+@benchmark obj($θ, $(similar(θ))) seconds=1
+```
+
+```{julia}
+print(refit!(m))
+```
+
+```{julia}
+m.optsum
+```
+
+```{julia}
+opt = NLopt.Opt(:LD_LBFGS, 3)
+NLopt.ftol_rel!(opt, 1.e-8)
+NLopt.min_objective!(opt, obj)
+empty!(fitlog)
+min_f, min_x, ret = NLopt.optimize(opt, copy(θ))
+```
+
+
+```{julia}
+header = [:obj, :θ₁, :θ₂, :θ₃, :g₁, :g₂, :g₃]
+fltbl = Table(table(transpose(reshape(fitlog, length(header), :)); header))
+```
+
+
+```{julia}
+last(fltbl, 3)
+```
