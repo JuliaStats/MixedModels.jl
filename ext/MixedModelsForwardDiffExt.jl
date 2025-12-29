@@ -30,7 +30,7 @@ using LinearAlgebra: LinearAlgebra,
 using SparseArrays: SparseArrays, nzrange
 
 # Stuff we're defining in this file
-using ForwardDiff: ForwardDiff
+using ForwardDiff: ForwardDiff, DiffResult, GradientConfig, Chunk
 using MixedModels: fd_cholUnblocked!,
     fd_deviance,
     fd_logdet,
@@ -68,9 +68,24 @@ values.
 $(FORWARDDIFF)
 """
 function ForwardDiff.gradient(
-    model::LinearMixedModel{T}, θ::Vector{T}=model.θ
+    model::LinearMixedModel{T}, θ::Vector{T}=model.θ,
+    cfg::GradientConfig=GradientConfig(model, x)
 ) where {T}
-    return ForwardDiff.gradient(fd_deviance(model), θ)
+    return ForwardDiff.gradient(model, θ, cfg, check)
+end
+
+#  gradient!(::Union{AbstractArray, DiffResults.DiffResult}, ::F, ::Vector{T},
+#  ::ForwardDiff.GradientConfig{T}, ::Val{CHK}) where {T, T, CHK, F<:LinearMixedModel{T}}
+
+function ForwardDiff.gradient!(result::Union{AbstractArray,DiffResult},
+    model::LinearMixedModel{T}, θ::Vector{T}=model.θ,
+    cfg::GradientConfig=GradientConfig(model, x)
+) where {T}
+    return ForwardDiff.gradient!(result, fd_deviance(model), θ, cfg)
+end
+
+function ForwardDiff.GradientConfig(model::LinearMixedModel, x::AbstractArray, chunk::Chunk = Chunk(x))
+    return GradientConfig(fd_deviance(model), x, chunk)
 end
 
 """

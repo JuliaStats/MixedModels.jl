@@ -51,6 +51,7 @@ Load the packages to be used
 using BenchmarkTools
 using ForwardDiff
 using MixedModels
+using MixedModels: fd_deviance
 using MixedModelsDatasets: dataset
 using NLopt
 using Tables: table
@@ -81,12 +82,13 @@ with an NLopt-compatible objective function
 
 ```{julia}
 #| label: obj_def
+grad_config = ForwardDiff.GradientConfig(fd_deviance(m), θ)
 function obj(θ::Vector{Float64}, grad::Vector{Float64})
     val = objective(updateL!(setθ!(m, θ)))
     push!(fitlog, val)
     append!(fitlog, θ)
     if !isempty(grad)
-        copyto!(grad, ForwardDiff.gradient(m, θ))
+        copyto!(grad, ForwardDiff.gradient!(grad, m, θ, grad_config))
         append!(fitlog, grad)
     end
     return val
@@ -161,6 +163,7 @@ sleepstudy = Table(dataset(:sleepstudy))
 ```{julia}
 m = LinearMixedModel(@formula(reaction ~ 1 + days + (1 + days|subj)), sleepstudy)
 θ = copy(m.θ)
+grad_config = ForwardDiff.GradientConfig(fd_deviance(m), θ)
 @benchmark objective(updateL!(setθ!($m, $(m.θ)))) seconds=1
 ```
 
@@ -178,7 +181,7 @@ m.optsum
 ```
 
 ```{julia}
-opt = NLopt.Opt(:LD_LBFGS, 3)
+opt = NLopt.Opt(:LD_LBFGS, length(θ))
 NLopt.ftol_rel!(opt, 1.e-8)
 NLopt.min_objective!(opt, obj)
 empty!(fitlog)

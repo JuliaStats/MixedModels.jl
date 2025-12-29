@@ -8,3 +8,6 @@ MixedModelsDatasets = "7e9fb7ac-9f67-43bf-b2c8-96ba0796cbb6"
 NLopt = "76087f3c-5699-56af-9a33-bf431cd00edd"
 Tables = "bd369af6-aec1-5ad0-b16a-f7cc5008161c"
 TypedTables = "9d95f2ec-7b3d-5a63-8d20-e2491e220bb9"
+
+[sources]
+MixedModels = {path = ".."}
