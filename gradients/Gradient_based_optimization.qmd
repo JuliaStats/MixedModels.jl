@@ -88,7 +88,7 @@ function obj(θ::Vector{Float64}, grad::Vector{Float64})
     push!(fitlog, val)
     append!(fitlog, θ)
     if !isempty(grad)
-        copyto!(grad, ForwardDiff.gradient!(grad, m, θ, grad_config))
+        ForwardDiff.gradient!(grad, m, θ, grad_config)
         append!(fitlog, grad)
     end
     return val
@@ -197,4 +197,45 @@ fltbl = Table(table(transpose(reshape(fitlog, length(header), :)); header))
 
 ```{julia}
 last(fltbl, 3)
+```
+
+### Kronmueller-Barr 2007 {#sec-kb07}
+
+```{julia}
+kb07 = Table(dataset(:kb07))
+```
+
+```{julia}
+# this model is very overparameterized, but it's a test example
+m = LinearMixedModel(@formula(rt_trunc ~ 1 + spkr * prec * load + (1 + spkr * prec * load | subj) + (1 + spkr * prec * load | item)), kb07)
+θ = copy(m.θ)
+grad_config = ForwardDiff.GradientConfig(fd_deviance(m), θ)
+@benchmark objective(updateL!(setθ!($m, $(m.θ)))) seconds=1
+```
+
+
+```{julia}
+@benchmark obj($θ, $(similar(θ))) seconds=5
+```
+
+```{julia}
+print(refit!(m))
+```
+
+```{julia}
+m.optsum
+```
+
+```{julia}
+opt = NLopt.Opt(:LD_LBFGS, length(θ))
+NLopt.ftol_rel!(opt, 1.e-8)
+NLopt.min_objective!(opt, obj)
+empty!(fitlog)
+min_f, min_x, ret = NLopt.optimize(opt, copy(θ))
+```
+
+
+```{julia}
+header = [:obj, :θ₁, :θ₂, :θ₃, :g₁, :g₂, :g₃]
+fltbl = Table(table(transpose(reshape(fitlog, length(header), :)); header))
 ```
