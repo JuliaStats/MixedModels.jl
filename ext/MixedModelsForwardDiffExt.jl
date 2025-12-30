@@ -84,7 +84,7 @@ function ForwardDiff.gradient(
     model::LinearMixedModel{T}, θ::Vector{T}=model.θ,
     cfg::GradientConfig=GradientConfig(model, θ),
     check::Val{CHK}=Val(true),
-) where {T, CHK}
+) where {T,CHK}
     return ForwardDiff.gradient!(similar(model.θ), model, θ, cfg, check)
 end
 
@@ -92,7 +92,7 @@ function ForwardDiff.gradient!(result::AbstractArray,
     model::LinearMixedModel{T}, θ::Vector{T}=model.θ,
     cfg::GradientConfig=GradientConfig(model, θ),
     check::Val{CHK}=Val(true),
-) where {T, CHK}
+) where {T,CHK}
     return ForwardDiff.gradient!(result, fd_deviance(model), θ, cfg, check)
 end
 
@@ -118,7 +118,7 @@ function ForwardDiff.hessian(
     model::LinearMixedModel{T}, θ::Vector{T}=model.θ,
     cfg::HessianConfig=HessianConfig(model, θ),
     check::Val{CHK}=Val(true),
-) where {T, CHK}
+) where {T,CHK}
     return ForwardDiff.hessian!(similar(model.θ), model, θ, cfg, check)
 end
 
@@ -126,7 +126,7 @@ function ForwardDiff.hessian!(result::AbstractArray,
     model::LinearMixedModel{T}, θ::Vector{T}=model.θ,
     cfg::HessianConfig=HessianConfig(model, θ),
     check::Val{CHK}=Val(true),
-) where {T, CHK}
+) where {T,CHK}
     return ForwardDiff.hessian!(result, fd_deviance(model), θ, cfg, check)
 end
 
