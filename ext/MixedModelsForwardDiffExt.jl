@@ -71,7 +71,7 @@ function ForwardDiff.gradient(
     model::LinearMixedModel{T}, θ::Vector{T}=model.θ,
     cfg::GradientConfig=GradientConfig(model, θ)
 ) where {T}
-    return ForwardDiff.gradient(model, θ, cfg, check)
+    return ForwardDiff.gradient(model, θ, cfg)#, check)
 end
 
 #  gradient!(::Union{AbstractArray, DiffResults.DiffResult}, ::F, ::Vector{T},

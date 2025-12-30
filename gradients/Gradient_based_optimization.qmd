@@ -48,7 +48,6 @@ Load the packages to be used
 
 ```{julia}
 #| label: load_packages
-using BenchmarkTools
 using ForwardDiff
 using MixedModels
 using MixedModels: fd_deviance
@@ -56,186 +55,132 @@ using MixedModelsDatasets: dataset
 using NLopt
 using Tables: table
 using TypedTables: Table
+
+const progress = false
 ```
 
 ## Examples {#sec-examples}
 
-### Penicillin data {#sec-penicillin}
-
-Load the `penicillin` dataset
-```{julia}
-penicillin = Table(dataset(:penicillin))
-```
-
-and define a model
+We create a function to take a `LinearMixedModel` that has been fit and refit it using the `:LD_LBFGS` optimizer applied to an objective function that evaluates the gradient using `ForwardDiff`.
 
 ```{julia}
-#| label: const_defs
-#| output: false
-m = LinearMixedModel(@formula(diameter ~ 1 + (1|plate) + (1|sample)), penicillin)
-θ = copy(m.θ)
-k = length(θ)
-const fitlog = sizehint!(Vector{Float64}(undef, 0), 200)
-```
-
-with an NLopt-compatible objective function
-
-```{julia}
-#| label: obj_def
-grad_config = ForwardDiff.GradientConfig(fd_deviance(m), θ)
-function obj(θ::Vector{Float64}, grad::Vector{Float64})
+addinds(ch::Char, n::Integer) = Symbol.(lpad.(string.(ch, Base.OneTo(n)), ndigits(n), '0'))
+function gr_refit!(m::LinearMixedModel{T}) where {T}
+  θ = copy(m.optsum.initial)
+  k = length(θ)
+  fitlog = sizehint!(T[], 50 * k)
+  grad_config = ForwardDiff.GradientConfig(fd_deviance(m), θ)
+  function obj(θ::Vector{Float64}, grad::Vector{Float64})
     val = objective(updateL!(setθ!(m, θ)))
     push!(fitlog, val)
     append!(fitlog, θ)
     if !isempty(grad)
-        ForwardDiff.gradient!(grad, m, θ, grad_config)
-        append!(fitlog, grad)
+      ForwardDiff.gradient!(grad, m, θ, grad_config)
+      append!(fitlog, grad)
+    else
+      append!(fitlog, fill(NaN, k))  # never called with empty grad but just in case
     end
     return val
+  end
+  opt = NLopt.Opt(:LD_LBFGS, k)
+  NLopt.ftol_rel!(opt, 1.e-12)
+  NLopt.ftol_abs!(opt, 1.e-8)
+  NLopt.min_objective!(opt, obj)
+  min_f, min_x, ret = NLopt.optimize(opt, θ)
+  header = vcat([:obj], addinds('θ', k), addinds('g', k))
+  return Table(table(transpose(reshape(fitlog, 2k + 1, :)); header))
 end
 ```
 
-A benchmark of evaluating the objective only
+### Penicillin data {#sec-penicillin}
+
+Define a model for the `penicillin` data
 
 ```{julia}
-#| label: benchmark_obj
-@benchmark objective(updateL!(setθ!($m, $θ))) seconds=1
-```
-
-compared to evaluating both the objective and its gradient
-
-```{julia}
-#| label: benchmark_obj_grad
-let gr = Vector{Float64}(undef, k)
-  @benchmark obj($θ, $gr)  seconds=1
-end
-```
-
-Notice that evaluating both the objective and the gradient, using `ForwardDiff.jl`, results in considerably more allocation of storage than does evaluating the objective alone.
-(In part this is a reflection of the fact that considerable work has gone into tuning the objective evaluation so that it doesn't allocate a lot of memory.)
-
-Fitting the model using a derivative-free optimizer gives
-
-```{julia}
-m.optsum.ftol_rel = 1.e-8         # for fair comparison with the gradient-based method
-print(refit!(m))
+#| label: const_defs
+#| output: false
+m1 = fit(MixedModel, @formula(diameter ~ 1 + (1|plate) + (1|sample)), dataset(:penicillin); progress)
+print(m1)
 ```
 
 for which the optimization summary is
 
 ```{julia}
-m.optsum
+m1.optsum
 ```
 
-The objective at the estimate is
+and refit the model using ForwardDiff gradient evaluations.
 
 ```{julia}
-m.optsum.fmin
+fitlog = gr_refit!(m1)
 ```
 
-We set up and run the gradient-based optimizer L-BFGS as
+The objective at convergence is
 
 ```{julia}
-opt = NLopt.Opt(:LD_LBFGS, 2)
-NLopt.ftol_rel!(opt, 1.e-8)
-NLopt.min_objective!(opt, obj)
-empty!(fitlog)
-min_f, min_x, ret = NLopt.optimize(opt, copy(θ))
+last(fitlog.obj)
 ```
 
-where the fitlog is
+and the last few evaluations are
 
 ```{julia}
-header = [:obj, :θ₁, :θ₂, :g₁, :g₂]
-fltbl = Table(table(transpose(reshape(fitlog, length(header), :)); header))
-```
-
-```{julia}
-last(fltbl, 3)
+last(fitlog, 5)
 ```
 
 ### Sleepstudy {#sec-sleepstudy}
 
 ```{julia}
-sleepstudy = Table(dataset(:sleepstudy))
+m2 = fit(MixedModel, @formula(reaction ~ 1 + days + (1 + days|subj)), dataset(:sleepstudy); progress)
+print(m2)
 ```
 
 ```{julia}
-m = LinearMixedModel(@formula(reaction ~ 1 + days + (1 + days|subj)), sleepstudy)
-θ = copy(m.θ)
-grad_config = ForwardDiff.GradientConfig(fd_deviance(m), θ)
-@benchmark objective(updateL!(setθ!($m, $(m.θ)))) seconds=1
-```
-
-
-```{julia}
-@benchmark obj($θ, $(similar(θ))) seconds=1
+m2.optsum
 ```
 
 ```{julia}
-print(refit!(m))
+fitlog = gr_refit!(m2)
 ```
 
 ```{julia}
-m.optsum
+last(fitlog.obj)
 ```
 
 ```{julia}
-opt = NLopt.Opt(:LD_LBFGS, length(θ))
-NLopt.ftol_rel!(opt, 1.e-8)
-NLopt.min_objective!(opt, obj)
-empty!(fitlog)
-min_f, min_x, ret = NLopt.optimize(opt, copy(θ))
-```
-
-
-```{julia}
-header = [:obj, :θ₁, :θ₂, :θ₃, :g₁, :g₂, :g₃]
-fltbl = Table(table(transpose(reshape(fitlog, length(header), :)); header))
-```
-
-
-```{julia}
-last(fltbl, 3)
+last(fitlog, 5)
 ```
 
 ### Kronmueller-Barr 2007 {#sec-kb07}
 
 ```{julia}
-kb07 = Table(dataset(:kb07))
-```
-
-```{julia}
 # this model is very overparameterized, but it's a test example
-m = LinearMixedModel(@formula(rt_trunc ~ 1 + spkr * prec * load + (1 + spkr * prec * load | subj) + (1 + spkr * prec * load | item)), kb07)
-θ = copy(m.θ)
-grad_config = ForwardDiff.GradientConfig(fd_deviance(m), θ)
-@benchmark objective(updateL!(setθ!($m, $(m.θ)))) seconds=1
-```
-
-
-```{julia}
-@benchmark obj($θ, $(similar(θ))) seconds=5
-```
-
-```{julia}
-print(refit!(m))
+m3 = fit(
+  MixedModel,
+  @formula(rt_trunc ~ 1 + spkr * prec * load + (1 + spkr * prec * load | subj) + (1 + spkr * prec * load | item)),
+  dataset(:kb07);
+  progress,
+)
+print(m3)
 ```
 
 ```{julia}
-m.optsum
+m3.optsum
+```
+
+Several of the parameters on the diagonal of $\boldsymbol{\Lambda}$ are close to zero at convergence and are replaced by zero in the returned parameter vector
+
+```{julia}
+findall(iszero, m3.θ)
 ```
 
 ```{julia}
-opt = NLopt.Opt(:LD_LBFGS, length(θ))
-NLopt.ftol_rel!(opt, 1.e-8)
-NLopt.min_objective!(opt, obj)
-empty!(fitlog)
-min_f, min_x, ret = NLopt.optimize(opt, copy(θ))
+fitlog = gr_refit!(m3)
 ```
 
+```{julia}
+last(fitlog.obj)
+```
 
 ```{julia}
-header = [:obj, :θ₁, :θ₂, :θ₃, :g₁, :g₂, :g₃]
-fltbl = Table(table(transpose(reshape(fitlog, length(header), :)); header))
+last(fitlog, 5)
 ```
