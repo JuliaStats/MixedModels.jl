@@ -119,7 +119,8 @@ function ForwardDiff.hessian(
     cfg::HessianConfig=HessianConfig(model, θ),
     check::Val{CHK}=Val(true),
 ) where {T,CHK}
-    return ForwardDiff.hessian!(similar(model.θ), model, θ, cfg, check)
+    n = length(θ)
+    return ForwardDiff.hessian!(Matrix{T}(undef, n, n), model, θ, cfg, check)
 end
 
 function ForwardDiff.hessian!(result::AbstractArray,
