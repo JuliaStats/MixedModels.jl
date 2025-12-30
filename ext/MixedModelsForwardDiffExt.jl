@@ -69,7 +69,7 @@ $(FORWARDDIFF)
 """
 function ForwardDiff.gradient(
     model::LinearMixedModel{T}, θ::Vector{T}=model.θ,
-    cfg::GradientConfig=GradientConfig(model, x)
+    cfg::GradientConfig=GradientConfig(model, θ)
 ) where {T}
     return ForwardDiff.gradient(model, θ, cfg, check)
 end
@@ -79,7 +79,7 @@ end
 
 function ForwardDiff.gradient!(result::Union{AbstractArray,DiffResult},
     model::LinearMixedModel{T}, θ::Vector{T}=model.θ,
-    cfg::GradientConfig=GradientConfig(model, x)
+    cfg::GradientConfig=GradientConfig(model, θ)
 ) where {T}
     return ForwardDiff.gradient!(result, fd_deviance(model), θ, cfg)
 end
