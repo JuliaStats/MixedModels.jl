@@ -1,3 +1,5 @@
+- Additional methods for pre-allocated result arrays and `*Config` instances have been added to the ForwardDiff extension. [#871].
+
 MixedModels v5.1.0 Release Notes
 ==============================
 - Nesting checks for the likelihoodratio test have been slightly tweaked to be more robust, at the cost of being slightly slower. In particular, the comparison of models with pre-centered variables with those with variables centered via StandardizedPredictors.jl was previously incorrectly rejected as non-nested, but should be correctly accepted as nested now. Additionally, some further logging messages are emitted when a nesting check fails. [#867]
@@ -710,3 +712,4 @@ Package dependencies
 [#864]: https://github.com/JuliaStats/MixedModels.jl/issues/864
 [#865]: https://github.com/JuliaStats/MixedModels.jl/issues/865
 [#867]: https://github.com/JuliaStats/MixedModels.jl/issues/867
+[#871]: https://github.com/JuliaStats/MixedModels.jl/issues/871
