@@ -97,9 +97,13 @@ end
 Define a model for the `penicillin` data
 
 ```{julia}
-#| label: const_defs
-#| output: false
-m1 = fit(MixedModel, @formula(diameter ~ 1 + (1|plate) + (1|sample)), dataset(:penicillin); progress)
+#| label: m1
+m1 = fit(
+  MixedModel,
+  @formula(diameter ~ 1 + (1|plate) + (1|sample)),
+  dataset(:penicillin);
+  progress,
+)
 print(m1)
 ```
 
