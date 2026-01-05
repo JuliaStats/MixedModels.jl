@@ -449,7 +449,7 @@ function GeneralizedLinearMixedModel(
         zero.(u),
         gl.rr,
         similar(y),
-        oftype(y, wts),
+        oftype(y, weights),
         similar(vv),
         similar(vv),
         similar(vv),
