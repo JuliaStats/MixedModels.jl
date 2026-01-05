@@ -40,12 +40,8 @@ struct LinearMixedModel{T<:AbstractFloat} <: MixedModel{T}
     optsum::OptSummary{T}
 end
 
-function LinearMixedModel(
-    f::FormulaTerm, tbl; contrasts=Dict{Symbol,Any}(), wts=[], σ=nothing, amalgamate=true
-)
-    return LinearMixedModel(
-        f::FormulaTerm, Tables.columntable(tbl); contrasts, wts, σ, amalgamate
-    )
+function LinearMixedModel(f::FormulaTerm, tbl; kwargs...)
+    return LinearMixedModel(f::FormulaTerm, Tables.columntable(tbl); kwargs...)
 end
 
 const _MISSING_RE_ERROR = ArgumentError(
@@ -53,7 +49,7 @@ const _MISSING_RE_ERROR = ArgumentError(
 )
 
 function LinearMixedModel(
-    f::FormulaTerm, tbl::Tables.ColumnTable; contrasts=Dict{Symbol,Any}(), wts=[],
+    f::FormulaTerm, tbl::Tables.ColumnTable; contrasts=Dict{Symbol,Any}(), wts=nothing, weights=[],
     σ=nothing, amalgamate=true,
 )
     fvars = StatsModels.termvars(f)
@@ -64,6 +60,11 @@ function LinearMixedModel(
                 "The following formula variables are not present in the table: $(setdiff(fvars, tvars))"
             ),
         )
+
+    if wts !== nothing
+        Base.depwarn("`wts` keyword argument is deprecated, use `weights` instead", :LinearMixedModel)
+        weights = wts
+    end
 
     # TODO: perform missing_omit() after apply_schema() when improved
     # missing support is in a StatsModels release
@@ -76,11 +77,11 @@ function LinearMixedModel(
 
     y, Xs = modelcols(form, tbl)
 
-    return LinearMixedModel(y, Xs, form, wts, σ, amalgamate)
+    return LinearMixedModel(y, Xs, form, weights, σ, amalgamate)
 end
 
 """
-    LinearMixedModel(y, Xs, form, wts=[], σ=nothing, amalgamate=true)
+    LinearMixedModel(y, Xs, form, weights=[], σ=nothing, amalgamate=true)
 
 Private constructor for a LinearMixedModel.
 
@@ -96,7 +97,7 @@ function LinearMixedModel(
     y::AbstractArray,
     Xs::Tuple, # can't be more specific here without stressing the compiler
     form::FormulaTerm,
-    wts=[],
+    weights=[],
     σ=nothing,
     amalgamate=true,
 )
@@ -132,12 +133,12 @@ function LinearMixedModel(
     end
     isempty(reterms) && throw(_MISSING_RE_ERROR)
     return LinearMixedModel(
-        convert(Array{T}, y), only(feterms), reterms, form, wts, σ, amalgamate
+        convert(Array{T}, y), only(feterms), reterms, form, weights, σ, amalgamate
     )
 end
 
 """
-    LinearMixedModel(y, feterm, reterms, form, wts=[], σ=nothing; amalgamate=true)
+    LinearMixedModel(y, feterm, reterms, form, weights=[], σ=nothing; amalgamate=true)
 
 Private constructor for a `LinearMixedModel` given already assembled fixed and random effects.
 
@@ -155,7 +156,7 @@ function LinearMixedModel(
     feterm::FeTerm{T},
     reterms::AbstractVector{<:AbstractReMat{T}},
     form::FormulaTerm,
-    wts=[],
+    weights=[],
     σ=nothing,
     amalgamate=true,
 ) where {T}
@@ -168,7 +169,7 @@ function LinearMixedModel(
 
     sort!(reterms; by=nranef, rev=true)
     Xy = FeMat(feterm, vec(y))
-    sqrtwts = map!(sqrt, Vector{T}(undef, length(wts)), wts)
+    sqrtwts = map!(sqrt, Vector{T}(undef, length(weights)), weights)
     reweight!.(reterms, Ref(sqrtwts))
     reweight!(Xy, sqrtwts)
     A, L = createAL(reterms, Xy)
@@ -206,12 +207,13 @@ end
 function StatsAPI.fit(::Type{LinearMixedModel},
     f::FormulaTerm,
     tbl::Tables.ColumnTable;
-    wts=[],
+    weights=[],
+    wts=nothing,
     contrasts=Dict{Symbol,Any}(),
     σ=nothing,
     amalgamate=true,
     kwargs...)
-    lmod = LinearMixedModel(f, tbl; contrasts, wts, σ, amalgamate)
+    lmod = LinearMixedModel(f, tbl; contrasts, weights, wts, σ, amalgamate)
     return fit!(lmod; kwargs...)
 end
 

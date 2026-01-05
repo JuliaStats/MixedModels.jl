@@ -1,3 +1,7 @@
+MixedModels v5.2.0 Release Notes
+==============================
+- The use of the `wts` keyword argument has been deprecated in favor of the keyword argument `weights`, in line with the deprecation in GLM.jl v1.9.1. The usage (and subsequent interpretation) remains otherwise unchanged.
+
 MixedModels v5.1.0 Release Notes
 ==============================
 - Nesting checks for the likelihoodratio test have been slightly tweaked to be more robust, at the cost of being slightly slower. In particular, the comparison of models with pre-centered variables with those with variables centered via StandardizedPredictors.jl was previously incorrectly rejected as non-nested, but should be correctly accepted as nested now. Additionally, some further logging messages are emitted when a nesting check fails. [#867]
