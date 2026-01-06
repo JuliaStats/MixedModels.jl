@@ -377,7 +377,16 @@ function GeneralizedLinearMixedModel(
     contrasts=Dict{Symbol,Any}(),
     amalgamate=true,
 )
-    if isa(d, Binomial) && isempty(wts)
+
+    if wts !== nothing
+        Base.depwarn(
+            "`wts` keyword argument is deprecated, use `weights` instead",
+            :GeneralizedLinearMixedModel,
+        )
+        weights = wts
+    end
+
+    if isa(d, Binomial) && isempty(weights)
         d = Bernoulli()
     end
     (isa(d, Normal) && isa(l, IdentityLink)) && throw(
@@ -388,14 +397,6 @@ function GeneralizedLinearMixedModel(
         @warn """Results for families with a dispersion parameter are not reliable.
                  It is best to avoid trying to fit such models in MixedModels until
                  the authors gain a better understanding of those cases."""
-    end
-
-    if wts !== nothing
-        Base.depwarn(
-            "`wts` keyword argument is deprecated, use `weights` instead",
-            :GeneralizedLinearMixedModel,
-        )
-        weights = wts
     end
 
     LMM = LinearMixedModel(f, tbl; contrasts, weights, amalgamate)
