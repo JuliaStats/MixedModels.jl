@@ -429,8 +429,9 @@ function GeneralizedLinearMixedModel(
     # TODO: extend this so that we never fit a GLM when initializing from LMM
     dofit = size(X, 2) != 0 # GLM.jl kwarg
     wtkwarg = pkgversion(GLM) >= v"1.9.1" ? :weights : :wts
+    weights = convert(Vector{T}, weights)
     gl = glm(X, y, d, l;
-        wtkwarg => pkgversion(GLM) >= v"1.9.1" ? FrequencyWeights(weights) : convert(Vector{T}, weights),
+        wtkwarg => pkgversion(GLM) >= v"1.9.1" ? FrequencyWeights(weights) : weights,
         dofit,
         :offset => convert(Vector{T}, offset))
     β = dofit ? coef(gl) : T[]
@@ -449,7 +450,7 @@ function GeneralizedLinearMixedModel(
         zero.(u),
         gl.rr,
         similar(y),
-        oftype(y, weights),
+        weights,
         similar(vv),
         similar(vv),
         similar(vv),
