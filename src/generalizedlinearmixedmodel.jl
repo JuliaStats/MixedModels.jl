@@ -377,7 +377,6 @@ function GeneralizedLinearMixedModel(
     contrasts=Dict{Symbol,Any}(),
     amalgamate=true,
 )
-
     if wts !== nothing
         Base.depwarn(
             "`wts` keyword argument is deprecated, use `weights` instead",
