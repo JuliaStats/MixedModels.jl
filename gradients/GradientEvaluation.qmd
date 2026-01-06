@@ -43,18 +43,17 @@ The optimization itself is performed by a derivative-free optimizer, usually eit
 
 Expressions for the gradient of the profiled log-likelihood were given in sec. 3.5 of @bates.maechler.etal:2015 but they haven't been implemented in either the `lme4` or the `MixedModels.jl` packages.
 
-The purpose of this note is to explore whether these expressions can be implemented effectively, even if just for the variance components model, which, for our purposes, is a model in which all the random effects terms are simple, scalar terms.
+The purpose of this note is to provide an alternative derivation for the gradient of the profiled log-likelihood and of the REML criterion for linear mixed-effects models, along with concise algorithms for evaluation of these gradients.
 
-### Expressions for the gradient terms
+### Model definition and evaluation of the objective and gradient
 
 The linear mixed-effects models we consider are defined by the unconditional distribution of the $q$-dimensional random-effects vector, $\mathbfcal{B}$, and the conditional distribution of the $n$-dimensional response vector, $\mathbfcal{Y}$, given $\mathbfcal{B}=\mathbf{b}$, as
 
 $$
 \begin{aligned}
+    \mathbfcal{B}&\sim\mathbfcal{N}(\mathbf{0}, \boldsymbol{\Sigma})\\
     (\mathbfcal{Y}|\mathbfcal{B}=\mathbf{b})&
-    \sim\mathbfcal{N}\left(\mathbf{X}\boldsymbol{\beta}+\mathbf{Z}\mathbf{b},\sigma^2\mathbf{I}\right)\\
-    \mathbfcal{B}&
-    \sim\mathbfcal{N}(\mathbf{0}, \boldsymbol{\Sigma})
+    \sim\mathbfcal{N}\left(\mathbf{X}\boldsymbol{\beta}+\mathbf{Z}\mathbf{b},\sigma^2\mathbf{I}\right)
 \end{aligned}
 $$ {#eq-dists}
 
@@ -69,7 +68,7 @@ $$ {#eq-Sigma}
 
 for a lower-triangular *relative covariance factor*, $\boldsymbol{\Lambda_\theta}$, that depends on a *relative covariance parameter vector*, $\boldsymbol{\theta}$.
 
-In `MixedModels.jl` the profiled log-likelihood, a function of $\boldsymbol{\theta}$ only, is evaluated from the blocked lower Cholesky factor, $\mathbf{L}_\theta$, defined from the relationship
+In `MixedModels.jl` the profiled log-likelihood, a function of $\boldsymbol{\theta}$ only, is evaluated from the blocked lower-triangular Cholesky factor, $\mathbf{L}_\theta$, defined from the relationship
 
 $$
 \begin{aligned}
@@ -100,48 +99,43 @@ $$
 \end{aligned}
 $$ {#eq-blockedOmega}
 
-where the diagonal elements of $\mathbf{L}_\theta$ are positive.
+where the diagonal elements of $\mathbf{L}_\theta$ are chosen to be positive.
+(It is assumed that $\mathbf{X}$ has full column rank and that $\mathbf{y}$ is not in the column span of $\mathbf{X}$.)
 
-(In the `MixedModels.jl` implementation the blocked Cholesky factor has a slightly different pattern of blocks in which the "X rows" and the "y row" are amalgamated into dense blocks and the column associated with $\mathbf{Z}$ is split into one or more columns according to the grouping factors determining the random effects, as shown in the examples below.)
+(In `MixedModels.jl` the blocked Cholesky factor has a slightly different pattern of blocks in which the "X rows" and the "y row" are amalgamated into dense blocks and the column associated with $\mathbf{Z}$ is split into one or more columns according to the grouping factors determining the random effects, as shown in the examples below.)
 
-The objective to be optimized, on the scale of the deviance, is negative twice the profiled log-likelihood, 
+As shown in @bates2025mixed, the objective to be optimized, on the scale of the deviance, which is negative twice the profiled log-likelihood, can be expressed as
 
 $$
 \begin{aligned}
 -2\mathcal{L}(\boldsymbol{\theta}|\mathbf{y})&=
 \log\left|\mathbf{L_{ZZ}}\right|^2 + n \left[1 + \log\left(\frac{2\pi\ell^2_{\mathbf{yy}}}{n}\right)\right]\\
-&=\log\left|\mathbf{L_{ZZ}}\right|^2 + n\log\ell^2_{\mathbf{yy}} + c
+&=\log\left|\mathbf{L_{ZZ}}\right|^2 + n\log\ell^2_{\mathbf{yy}} + c_\ell\\
+&=2\sum_{j=1}^q\log L_{j,j} + 2n \log L_{q+p+1,q+p+1} + c_\ell
 \end{aligned}
 $$ {#eq-objective}
 
-where $c$ is a constant.
+where $c_\ell$ is a constant.
+That is, the objective is an affine function (a linear function plus a constant) of the logarithms of the diagonal elements of $\mathbf{L}_\boldsymbol{\theta}$.
+It happens that the gradient of the objective, as a function of $\boldsymbol{\theta}$, expressed in this form is straightforward to evaluate, as shown in @sec-Cholesky_derivative.
 
-As shown in @bates.maechler.etal:2015, sec 3.5 the gradient of the first summand in @eq-objective is
+As shown in @bates.maechler.etal:2015, sec 3.4 the REML criterion, which some prefer for parameter estimation, can be written as
 
 $$
 \begin{aligned}
-\nabla\log\left|\mathbf{L_ZZ}\right|^2 &= \nabla\log\left(\left|\mathbf{L_{ZZ}L_{ZZ}}^\top\right|\right)\\
-&=\nabla\log\left(\left|\boldsymbol{\Lambda}^\top\mathbf{Z^\top Z}\boldsymbol{\Lambda}+\mathbf{I}\right|\right)\\
-&=\operatorname{tr}\left[\nabla\left(\boldsymbol{\Lambda}^\top\mathbf{Z^\top Z}\boldsymbol{\Lambda}\right)
-\left(\boldsymbol{\Lambda}^\top\mathbf{Z^\top Z}\boldsymbol{\Lambda}+\mathbf{I}\right)^{-1}\right]\\
-&=\operatorname{tr}\left[\mathbf{L_{ZZ}}^{-1}
-\nabla\left(\boldsymbol{\Lambda}^\top\mathbf{Z^\top Z}\boldsymbol{\Lambda}\right)
-\mathbf{L_{ZZ}}^{-\top}
-\right]\\
-&=\operatorname{tr}\left[\mathbf{L_{ZZ}}^{-1}
-\left(\nabla\boldsymbol{\Lambda}^\top\mathbf{Z^\top Z}\boldsymbol{\Lambda}+
-\boldsymbol{\Lambda}^\top\mathbf{Z^\top Z}\nabla\boldsymbol{\Lambda}\right)
-\mathbf{L_{ZZ}}^{-\top}
-\right]
+-2\mathcal{L}_R(\boldsymbol{\theta}|\mathbf{y})&=
+\log\left(\left|\mathbf{L_{ZZ}}\right|^2\left|\mathbf{L_{XX}}\right|^2\right) + (n-p) \left[1 + \log\left(\frac{2\pi\ell^2_{\mathbf{yy}}}{n-p}\right)\right]\\
+&=\log\left|\mathbf{L_{ZZ}}\right|^2 + \log\left|\mathbf{L_{XX}}\right|^2 + (n-p)\log\ell^2_{\mathbf{yy}} + c_r\\
+&=2\sum_{j=1}^{q+p}\log L_{j,j} + 2(n-p)\log L_{q+p+1,q+p+1} + c_r
 \end{aligned}
-$$ {#eq-delterm1}
+$$ {#eq-objective}
 
-For the models that we wish to consider the partial derivatives of $\boldsymbol{\Lambda_\theta}$ with respect to the components of $\boldsymbol{\theta}$ are particularly simple.
-The partial derivatives are zeroes except for a single diagonal block, which is an identity matrix.
+where $c_r$ is likewise a constant.
+This is also an affine function of the logarithms of the diagonal elements of $\mathbf{L_{ZZ}}$.
 
-### General expressions for differentiating a Cholesky factor
+### General expressions for differentiating a Cholesky factor {#sec-Cholesky_derivative}
 
-@murray2016differentiation section 3.1 provides a general approach to differentiating the Cholesky factor by differentiating both sides of @eq-blockedOmega.
+@murray2016differentiation, section 3.1, provides a general approach to differentiating the Cholesky factor by differentiating both sides of @eq-blockedOmega.
 
 Repeating his derivation, with minor changes in notation, we express the relationship between the infinitesimals $d\boldsymbol{\Omega}$ and $d\mathbf{L}$ as
 
@@ -156,7 +150,12 @@ $$
 $$ {#eq-LOmegaLT}
 
 The first addend on the right-hand side of @eq-LOmegaLT is lower triangular and the second addend is the transpose of the first.
-We wish to isolate the first addend, $\mathbf{L}^{-1}d\mathbf{L}$, which we do with the $\Phi$ transformation applied to a symmetric matrix, which preserves the strict lower triangle, halves the diagonal elements, and zeros out the strict upper triangle.
+Thus, the diagonal of the left-hand side is exactly the result we wish to evaluate, twice the infinitesimal of the logarithms of the diagonal elements of $\mathbf{L}$.
+
+For completeness, we provide the conclusion of the derivation in @murray2016differentiation but we don't need the more general result of $d\mathbf{L}$ - we only need the particular result from the left-hand side of @eq-LOmegaLT.
+
+To evaluate $d\mathbf{L}$ we must isolate the first addend, $\mathbf{L}^{-1}d\mathbf{L}$, on the right-hand side of @eq-LOmegaLT, which we do with the $\Phi$ transformation applied to a symmetric matrix.
+This transformation preserves the strict lower triangle, halves the diagonal elements, and zeros out the strict upper triangle.
 Applied to the right-hand side of @eq-LOmegaLT, the $\Phi$ transformation isolates the first addend, providing
 
 $$
@@ -168,9 +167,6 @@ or
 $$
 d\mathbf{L}=\mathbf{L}\Phi\left(\mathbf{L}^{-1}d\boldsymbol{\Omega}\mathbf{L}^{-\top}\right)
 $$ {#eq-dL}
-
-As we shall see, because we only need the derivative of the logarithms of the diagonal elements of $d\mathbf{L}$ to obtain the gradient of the profiled log-likelihood, and because $\mathbf{L}$ is lower triangular, we can stop at @eq-LOmegaLT.
-Furthermore, several of the blocks in $\mathbf{L}^{-1}d\boldsymbol{\Omega}\mathbf{L}^{-\top}$ are either zero or exactly equal to the corresponding block of $\boldsymbol{\Omega_\theta}$.
 
 ## Examples
 
@@ -189,7 +185,7 @@ using MixedModels
 using MixedModelsDatasets: dataset
 using TypedTables: Table
 
-const progress = isinteractive()  # to suppress progress bars in non-interactive sessions
+const progress = isinteractive()  # suppress progress bars in non-interactive sessions
 CairoMakie.activate!(type="svg")  # use svg graphics output
 ```
 
@@ -230,15 +226,34 @@ Notice that the objective is well-defined for negative values of $\theta_1$ and 
 
 This means that $\theta_1=0$ will always be a critical value (have a derivative of zero) for this function.
 
-The maximum likelihood estimate (i.e. the minimizer of the objective) of $\boldsymbol{\theta}$ for this model is
+At the maximum likelihood estimate (i.e. the minimizer of the objective) of $\theta_1$
 
 ```{julia}
 #| label: dyestuff_theta
-updateL!(setθ!(m01, θ))    # restore the estimate of θ and the Cholesky factor
-θ
+only(θ)
+```
+
+the derivative should also be zero (in practice, close to zero).
+
+We can see from @fig-obj_graph that the derivative at $\theta_1=1.$ will be positive.
+
+To show the evaluation of the gradient at $\boldsymbol{\theta}=[1.]$ we reset the parameter in the model object to $[1.]$
+
+```{julia}
+#| output: false
+updateL!(setθ!(m01, ones(1)));
 ```
 
 #### Evaluating the gradient terms
+
+In `MixedModels.jl` the [Gram matrix](https://en.wikipedia.org/wiki/Gram_matrix) (i.e. the matrix of the form $\mathbf{X}^\top\mathbf{X}$ for any $\mathbf{X}$) of the columns of
+
+```{julia}
+ZXy = hcat(collect(only(m01.reterms)), m01.X, m01.y)
+Int.(ZXy)    # Int for more concise printing
+```
+
+is stored as the $\mathbf{A}$ property of the model object.
 
 Both $\mathbf{A}$ and $\mathbf{L}$ are stored as blocked matrices with blocks in the pattern
 
@@ -251,7 +266,7 @@ Here, for convenience, we extend it to an $8\times8$ matrix with a trailing diag
 
 ```{julia}
 Λ(θ) = Diagonal(vcat(fill(only(θ), 6), ones(eltype(θ), 2)))
-Λ(θ)
+Λ([1.])
 ```
 
 The derivative of $\Lambda$ with respect to the first (and only) element of $\boldsymbol\theta$ is
@@ -267,19 +282,7 @@ We assemble these into a sparse matrix as
 A = sparse(hvcat(2, first(m01.A), m01.A[2]', m01.A[2], last(m01.A)))
 ```
 
-which could be generated as the [Gram matrix](https://en.wikipedia.org/wiki/Gram_matrix) (i.e. the matrix of the form $\mathbf{X}^\top\mathbf{X}$ for any $\mathbf{X}$) of the columns of
-
-```{julia}
-ZXy = hcat(collect(only(m01.reterms)), m01.X, m01.y)
-Int.(ZXy)    # Int for more concise printing
-```
-
-::: {.callout-note collapse=true}
-#### Printing Int. of a matrix with integer entries
-
-When we know that all the entries in a floating point matrix, `X`, will be integers, we convert it to integer elements as `Int.(X)` to save space in the output.
-:::
-
+and check that these blocks are indeed the Gram matrix of the columns of $\mathbf{[ZXy]}$
 ```{julia}
 A == ZXy'ZXy
 ```
@@ -288,10 +291,10 @@ The matrix $\boldsymbol{\Omega_\theta}$ is
 
 ```{julia}
 Ω(θ) = Λ(θ) * A * Λ(θ)' + Diagonal(vcat(ones(6), zeros(2)))
-Ω(θ)
+Ω([1.])
 ```
 
-The lower Cholesky factor, $\mathbf{L}_\boldsymbol{\theta}$, which is stored in three blocks as described above, can be extracted as a sparse matrix with
+The lower Cholesky factor, $\mathbf{L}_\boldsymbol{\theta}$, which is stored in three blocks as described above, can be extracted as a sparse matrix as
 
 ```{julia}
 L = LowerTriangular(sparseL(m01; full=true))
@@ -300,115 +303,50 @@ L = LowerTriangular(sparseL(m01; full=true))
 We can check that it is indeed the lower Cholesky factor
 
 ```{julia}
-L * L' ≈ Ω(θ)
+L * L' ≈ Ω([1.])
 ```
 
 The derivative of $\boldsymbol{\Omega}$ with respect to $\theta$ is
 
 ```{julia}
 dΩdθ1(θ) = dΛdθ1 * A * Λ(θ)' + Λ(θ) * A * dΛdθ1
-dΩdθ1(θ)
+dΩdθ1([1.])
 ```
 
-Notice that this matrix, like $\mathbf{A}$ is symmetric and has the same block structure as $\mathbf{A}$.
+Notice that this matrix, like $\mathbf{A}$, is symmetric and has the same block structure as $\mathbf{A}$.
 In fact, the $[2,1]$ block of this matrix is the same as the $[2,1]$ block of $\mathbf{A}$.
 
 Premultiplying by $\mathbf{L}^{-1}$ and postmultiplying by $\mathbf{L}^{-\top}$ is equivalent to
 
 ```{julia}
-prePhi = rdiv!(ldiv!(L, dΩdθ1(θ)), L')
+prePhi = rdiv!(ldiv!(L, dΩdθ1([1.])), L')
 ```
 
-We note that @eq-delterm1 is the sum of the first 6 diagonal elements of `prePhi`,
+The derivative of the objective at $\theta_1=1$ is, therefore
 
 ```{julia}
-sum(prePhi[i,i] for i in 1:6)
+dot(vcat(ones(6), 0., size(dyestuff, 1)), diag(prePhi))
 ```
 
-which should equal
+which we can compare to the finite-difference evaluation
 
 ```{julia}
-ldfun(x::Float64) = logdet(updateL!(setθ!(m01, [x])))
-FiniteDiff.finite_difference_derivative(ldfun, only(θ))
+FiniteDiff.finite_difference_gradient(objective!(m01), [1.])
 ```
 
-Similarly the gradient of the other non-constant term in @eq-logdet is
-
-```{julia}
-size(m01.y, 1) * last(prePhi)
-```
-
-compared to 
-
-```{julia}
-n_log_lyy_sq(x::Float64) = length(m01.y) * log(abs2(last(last(updateL!(setθ!(m01, [x])).L))))
-n_log_lyy_sq(only(θ))
-```
-
-```{julia}
-FiniteDiff.finite_difference_derivative(n_log_lyy_sq, only(θ))
-```
-
+If we repeat these steps at the parameter estimate we have
 ```{julia}
 #| output: false
 updateL!(setθ!(m01, θ))   # reset the value of θ in the model
+L = LowerTriangular(sparseL(m01; full=true))
+prePhi = rdiv!(ldiv!(L, dΩdθ1(θ)), L')
 ```
 
-If we wish to continue the evaluation of all of the elements of $d\mathbf{L}/d\theta_1$ we would use
-the $\Phi$ transformation and premultiplication by $\mathbf{L}$
+with the derivative being evaluated as
 
 ```{julia}
-function Φ(S)
-  val = tril(S)    # extract the lower triangle
-  for i in diagind(val)
-    val[i] *= 0.5  # halve the diagonal elements
-  end
-  return LowerTriangular(val)
-end
-dLdθ1 = L * Φ(prePhi)
+dot(vcat(ones(6), 0., size(dyestuff, 1)), diag(prePhi))
 ```
-
-We can check these results against results from finite difference methods.
-First we check the $[1,1]$ entry of $\frac{d\mathbf{L}}{d\theta}$ and its derivative
-
-```{julia}
-l11(θ::T) where {T<:Real} = first(first(updateL!(setθ!(m01, [θ])).L))
-l11(only(θ))
-```
-
-and its finite-difference derivative
-
-```{julia}
-FiniteDiff.finite_difference_derivative(l11, only(θ))
-```
-
-which matches the leading diagonal elements of `dLdθ1`.
-
-Next we check the last diagonal element of $\mathbf{L}$, which is the square root of the penalized residual sum-of-squares.
-```{julia}
-rtprss(θ::T) where {T<:Real} = last(last(updateL!(setθ!(m01, [θ])).L))
-rtprss(only(θ))
-```
-
-```{julia}
-FiniteDiff.finite_difference_derivative(rtprss, only(θ))
-```
-
-These calculations verify the values of diagonal elements of $\frac{d\mathbf{L}}{d\theta}$ that will be used to evaluate the gradient of the profiled log-likelihood.
-
-The derivative of the objective is more easily obtained by rearranging the terms in the objective to isolate constants.
-First, because the determinant of a triangular matrix is the product of its diagonal elements, and hence the log of the determinant is the sum of the logs of its diagonal elements,
-
-$$
-\begin{aligned}
-\frac{\partial\log\left|\mathbf{L_{ZZ}}\right|^2}{\partial\theta_i}&=
-2\frac{\partial\sum_{j=1}^q \log\left(L_{jj}\right)}{\partial\theta_i}\\
-&=2\sum_{j=1}^q\frac{1}{L_{jj}}\frac{\partial{L_{jj}}}{\partial\theta_i}
-\end{aligned}
-$$ {#eq-logdet}
-
-Again, because $\mathbf{L}$ is lower triangular, the division by $L_{jj}$ in the summands of @eq-logdet exactly cancels the effect of multiplication on the left by $\mathbf{L}$ in @eq-dL in these diagonal terms.
-Also the multiplier of $2$ in @eq-logdet cancels the halving of the diagonal in @eq-Phi_dOmega, leaving only @eq-delterm1.
 
 ### Penicillin - two completely crossed scalar random-effects terms
 
@@ -416,7 +354,7 @@ The `penicillin` dataset in `MixedModelsDatasets.jl` contains 144 measurements o
 
 ```{julia}
 #| label: penicillin_data
-const penicillin = Table(dataset(:penicillin))
+penicillin = Table(dataset(:penicillin))
 ```
 
 We construct a `LinearMixedModel` struct with a single fixed-effect parameter, representing the average diameter in the balanced design, and random effects for each `plate` and each `sample`,
@@ -425,7 +363,9 @@ We construct a `LinearMixedModel` struct with a single fixed-effect parameter, r
 #| label: m02
 #| output: false
 #| warn: false
-m02 = LinearMixedModel(@formula(diameter ~ 1 + (1|plate) + (1|sample)), penicillin)
+m02 = fit(MixedModel, @formula(diameter ~ 1 + (1|plate) + (1|sample)), penicillin)
+θ = m02.θ
+print(m02)
 ```
 
 for which the concatenated matrix $\left[\mathbf{ZXy}\right]$ is
@@ -441,10 +381,10 @@ The Cholesky factor, $\mathbf{L}$, at the initial value $\boldsymbol\theta=\left
 
 ```{julia}
 #| label: m02L
-Lsparse = LowerTriangular(sparseL(updateL!(m02); full=true))
+Lsparse = LowerTriangular(sparseL(updateL!(setθ!(m02, ones(2))); full=true))
 ```
 
-In practice, the full $\mathbf{L}$ matrix is stored in a blocked form
+In practice, the $\mathbf{L}$ matrix is stored in a blocked form
 
 ```{julia}
 #| label: m02_blocks
@@ -460,185 +400,80 @@ objective(m02)
 
 #### Evaluating terms in the gradient
 
-For illustration of the gradient evaluation we create the lower-triangular sparse submatrix $\mathbf{L_{ZZ}}$ as
+Again, we create the full Gram matrix $\mathbf{A}$ from the blocks stored in the `A` property of the model
 
 ```{julia}
-#| label: m02LZZ
-LZZsparse = LowerTriangular(sparseL(m02))
+A2 = let blk = m02.A
+  hvcat(3, first(blk), blk[2]', blk[4]', blk[2], blk[3], blk[5]', blk[4], blk[5], blk[6])
+end
 ```
 
-from which $\log\left|\mathbf{L_{ZZ}}\right|^2$ can be evaluated as
+The $32\times32$ form of $\boldsymbol{\Lambda}(\boldsymbol(\theta))$ is
 
 ```{julia}
-#| label: logdet_m02
-2. * sum(log, diag(LZZsparse))
+function Λ2(θ::Vector{Float64})
+  length(θ) == 2 || throw(DimensionMismatch("length(θ) should be 2"))
+  return Diagonal(vcat(fill(first(θ), 24), fill(last(θ), 6), ones(2)))
+end
+Λ2([1.,1.])
 ```
 
-In practice we use the `logdet` function
+producing $\boldsymbol{\Omega}$ as
 
 ```{julia}
-#| label: logdet__m02
-logdet(m02)
+function Ω2(θ)
+  length(θ) == 2 || throw(DimensionMismatch("length(θ) should be 2"))
+  return Λ2(θ) * A2 * Λ2(θ)' + Diagonal(vcat(ones(30), zeros(2)))
+end
+Ω2([1.,1.])
 ```
 
-which evaluates this quantity from the blocked representation of $\mathbf{L}$.
-
-A finite-difference approximation to the gradient of the `logdet` at this value of $\boldsymbol{\theta}$ is
+The partial derivatives of `Ω2` are constants
 
 ```{julia}
-ldfun(x::Vector{Float64}) = logdet(updateL!(setθ!(m02, x)))
-FiniteDiff.finite_difference_gradient(ldfun, [1., 1.]) 
+#| output: false
+dΛ2dθ1 = Diagonal(vcat(ones(24), zeros(8)))
+dΛ2dθ2 = Diagonal(vcat(zeros(24), ones(6), zeros(2)))
 ```
 
-The matrix $\mathbf{A_{ZZ}}=\mathbf{Z}^\top\mathbf{Z}$ for this model, as a dense matrix, is
+For the ML objective (i.e. negative twice the log-likelihood) a finite difference gradient at the initial $\boldsymbol{\theta}=[1,1]^\top$ is
 
 ```{julia}
-#| label: denseA
-A = Int.(hvcat(2, first(m02.A), m02.A[2]', m02.A[2], m02.A[3]))
+FiniteDiff.finite_difference_gradient(objective!(m02), ones(2))
 ```
 
-and the first face of $\nabla{\boldsymbol{\Lambda}}$ is
+To evaluate this quantity from the formula we create
 
 ```{julia}
-#| label: nabla_Lambda
-nabla1 = Int.(Diagonal(vcat(ones(Int, 24), zeros(Int, 6))))
+dΩ2dθ1(θ) = dΛ2dθ1 * A2 * Λ2(θ)' + Λ2(θ) * A2 * dΛ2dθ1'
+Int.(dΩ2dθ1([1., 1.]))  # Int to save space when printing
 ```
 
-With $\boldsymbol{\Lambda(\theta)}$ being
 
 ```{julia}
-Λ(θ) = Diagonal(vcat(fill(first(θ), 24), fill(last(θ), 6)))
-θ = ones(2)      # initial parameter vector
-Int.(Λ(θ))       # initial value of Λ
+prePhi = rdiv!(ldiv!(Lsparse, dΩ2dθ1([1.,1.])), Lsparse')
 ```
 
-the first face of $\left(\nabla\boldsymbol{\Lambda}^\top\mathbf{Z^\top Z}\boldsymbol{\Lambda}+
-\boldsymbol{\Lambda}^\top\mathbf{Z^\top Z}\nabla\boldsymbol{\Lambda}\right)$ is
+yielding the first component of the gradient as 
 
 ```{julia}
-#| label: symprod
-symprod = nabla1 * A * Λ(θ) + Λ(θ) * A * nabla1
-Int.(symprod)
+dot(diag(prePhi), vcat(ones(30), 0., length(m02.y)))
 ```
 
-producing the matrix whose trace is desired as
+For the second component of the gradient
 
 ```{julia}
-rdiv!(ldiv!(LZZsparse, symprod), LZZsparse')  # overwrites the value of symprod
+dΩ2dθ2(θ) = dΛ2dθ2 * A2 * Λ2(θ)' + Λ2(θ) * A2 * dΛ2dθ2'
+Int.(dΩ2dθ2([1., 1.]))
 ```
-
-yielding the trace as
 
 ```{julia}
-sum(diag(symprod))
+prePhi = rdiv!(ldiv!(Lsparse, dΩ2dθ2([1.,1.])), Lsparse')
 ```
-
-One point to notice here is that the $[1,1]$ block of this matrix is diagonal, with elements of
 
 ```{julia}
-((2 * first(θ)) .* first(m02.A).diag) ./ abs2.(first(m02.L).diag)
+dot(diag(prePhi), vcat(ones(30), 0., length(m02.y)))
 ```
-
-which can be used to simplify the evaluation of the first gradient term.
-In particular, the gradient of a model with a single, scalar random-effects term is, unsurprisingly, straightforward.
-
-For the second element of the gradient we define
-
-```{julia}
-nabla2 = Diagonal(vcat(zeros(24), ones(6)))
-Int.(nabla2)
-```
-
-and
-
-```{julia}
-symprod = nabla2 * A * Λ(ones(2)) + Λ(ones(2)) * A * nabla2
-```
-
-The matrix whose trace is required is
-
-```{julia}
-rdiv!(ldiv!(LZZsparse, symprod), LZZsparse')
-```
-
-producing the second element of the gradient of `ldfun` as
-
-```{julia}
-sum(diag(symprod))
-```
-
-Notice that the entire $[1,1]$ block of this matrix is zero and will not need to be evaluated explicitly.
-
-We evaluate $\boldsymbol{\hat{\theta}}$ using a derivative-free optimizer as
-
-```{julia}
-θ = refit!(m02).θ
-```
-
-after which the first face of `symprod` becomes
-
-```{julia}
-symprod = nabla1 * A * Λ(θ) + Λ(θ) * A * nabla1
-```
-
-`LZZsparse` becomes
-
-```{julia}
-LZZsparse = LowerTriangular(sparseL(m02))
-```
-
-and the matrix whose trace is required is
-
-```{julia}
-rdiv!(ldiv!(LZZsparse, symprod), LZZsparse')
-```
-
-yielding the gradient term
-
-```{julia}
-sum(diag(symprod))
-```
-
-which can be compared to the finite difference value
-
-```{julia}
-FiniteDiff.finite_difference_gradient(ldfun, θ) 
-```
-
-(Note, this is the first element of the gradient of the `logdet` term only, not the gradient of the objective which is near zero
-
-```{julia}
-FiniteDiff.finite_difference_gradient(objective!(m02), θ)
-```
-
-as it should be at the optimum.)
-
-For the second element of the gradient of `ldfun` we have
-
-```{julia}
-symprod = nabla2 * A * Λ(θ) + Λ(θ) * A * nabla2
-```
-
-After pre- and post-division by `LZZsparse`, this becomes
-
-```{julia}
-rdiv!(ldiv!(LZZsparse, symprod), LZZsparse')
-```
-
-yielding the second element of the gradient of `ldfun` as
-
-```{julia}
-sum(diag(symprod))
-```
-
-#### Factoring the symmetric matrix 
-
-The matrix $\left(\nabla\boldsymbol{\Lambda}^\top\mathbf{Z^\top Z}\boldsymbol{\Lambda}+
-\boldsymbol{\Lambda}^\top\mathbf{Z^\top Z}\nabla\boldsymbol{\Lambda}\right)$ is symmetric and has the same sparsity structure as $\mathbf{Z^\top Z}$, which is positive semi-definite.
-However, it is not clear that the non-zero blocks in $\left(\nabla\boldsymbol{\Lambda}^\top\mathbf{Z^\top Z}\boldsymbol{\Lambda}+
-\boldsymbol{\Lambda}^\top\mathbf{Z^\top Z}\nabla\boldsymbol{\Lambda}\right)$  will be positive semi-definite in the general case.
-In the case of a single variance component it will be positive definite when $\theta_1>0$ because it is $2\theta_1\mathbf{A}$.
-
 
 ### References {.unnumbered}
 
