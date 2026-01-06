@@ -185,7 +185,9 @@ function StatsAPI.fit(
     kwargs...,
 )
     return fit!(
-        GeneralizedLinearMixedModel(f, tbl, d, l; weights, wts, offset, contrasts, amalgamate);
+        GeneralizedLinearMixedModel(
+            f, tbl, d, l; weights, wts, offset, contrasts, amalgamate
+        );
         kwargs...,
     )
 end
@@ -389,7 +391,10 @@ function GeneralizedLinearMixedModel(
     end
 
     if wts !== nothing
-        Base.depwarn("`wts` keyword argument is deprecated, use `weights` instead", :GeneralizedLinearMixedModel)
+        Base.depwarn(
+            "`wts` keyword argument is deprecated, use `weights` instead",
+            :GeneralizedLinearMixedModel,
+        )
         weights = wts
     end
 

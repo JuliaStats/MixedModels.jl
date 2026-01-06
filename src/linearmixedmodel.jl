@@ -49,7 +49,8 @@ const _MISSING_RE_ERROR = ArgumentError(
 )
 
 function LinearMixedModel(
-    f::FormulaTerm, tbl::Tables.ColumnTable; contrasts=Dict{Symbol,Any}(), wts=nothing, weights=[],
+    f::FormulaTerm, tbl::Tables.ColumnTable; contrasts=Dict{Symbol,Any}(), wts=nothing,
+    weights=[],
     σ=nothing, amalgamate=true,
 )
     fvars = StatsModels.termvars(f)
@@ -62,7 +63,9 @@ function LinearMixedModel(
         )
 
     if wts !== nothing
-        Base.depwarn("`wts` keyword argument is deprecated, use `weights` instead", :LinearMixedModel)
+        Base.depwarn(
+            "`wts` keyword argument is deprecated, use `weights` instead", :LinearMixedModel
+        )
         weights = wts
     end
 
