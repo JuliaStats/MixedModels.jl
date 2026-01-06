@@ -37,7 +37,7 @@ using StatsAPI: dof, dof_residual, fit, fit!, fitted, isfitted, islinear, levera
 using StatsAPI:
     loglikelihood, meanresponse, modelmatrix, nobs, pvalue, predict, r2, residuals
 using StatsAPI: response, responsename, stderror, vcov, weights
-using StatsBase: StatsBase, CoefTable, model_response, summarystats
+using StatsBase: StatsBase, CoefTable, model_response, summarystats, FrequencyWeights
 using StatsFuns: chisqccdf, log2π, normccdf
 using StatsModels: StatsModels, AbstractContrasts, AbstractTerm, CategoricalTerm
 using StatsModels: ConstantTerm, DummyCoding, EffectsCoding, FormulaTerm, FunctionTerm

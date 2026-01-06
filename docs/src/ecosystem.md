@@ -8,7 +8,7 @@ Several packages extend the functionality of MixedModels.jl, both in ways specif
 
 ```@example Ecosystem
 using MixedModels
-progress = false
+progress = isinteractive()
 ```
 
 ```@example Ecosystem
@@ -182,16 +182,16 @@ Effects are particularly nice for visualizing the model fit and its predictions.
 using AlgebraOfGraphics # like ggplot2, but an algebra instead of a grammar
 using CairoMakie
 
-plt1 = data(eff_logit) *
-      mapping(:age, :use; color=:anych) *
-      (visual(Lines) + mapping(; lower=:lower, upper=:upper) * visual(LinesFill))
+plt1 = data(eff_logit) * mapping(:age; color=:anych) *
+      (mapping(:use) * visual(Lines) +
+       mapping(:lower, :upper) * visual(Band; alpha=0.3))
 draw(plt1)
 ```
 
 ```@example Ecosystem
-plt2 = data(eff_prob) *
-      mapping(:age, :use; color=:anych => "children") *
-      (visual(Lines) + mapping(; lower=:lower, upper=:upper) * visual(LinesFill))
+plt2 = data(eff_prob) * mapping(:age; color=:anych) *
+      (mapping(:use) * visual(Lines) +
+       mapping(:lower, :upper) * visual(Band; alpha=0.3))
 draw(plt2)
 ```
 
