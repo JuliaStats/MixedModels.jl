@@ -1,3 +1,5 @@
+- Additional methods for pre-allocated result arrays and `*Config` instances have been added to the ForwardDiff extension. [#871].
+
 MixedModels v5.2.0 Release Notes
 ==============================
 - The use of the `wts` keyword argument has been deprecated in favor of the keyword argument `weights`, in line with the deprecation in GLM.jl v1.9.1. The usage (and subsequent interpretation) remains otherwise unchanged. [#873]
@@ -714,4 +716,5 @@ Package dependencies
 [#864]: https://github.com/JuliaStats/MixedModels.jl/issues/864
 [#865]: https://github.com/JuliaStats/MixedModels.jl/issues/865
 [#867]: https://github.com/JuliaStats/MixedModels.jl/issues/867
+[#871]: https://github.com/JuliaStats/MixedModels.jl/issues/871
 [#873]: https://github.com/JuliaStats/MixedModels.jl/issues/873
