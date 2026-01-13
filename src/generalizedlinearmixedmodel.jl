@@ -780,7 +780,7 @@ function Base.show(
     println(io)
 
     println(io, "\nFixed-effects parameters:")
-    return show(io, coeftable(m))
+    return show(io, MIME("text/plain"), coeftable(m))
 end
 
 Base.show(io::IO, m::GeneralizedLinearMixedModel) = show(io, MIME("text/plain"), m)
