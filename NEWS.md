@@ -1,6 +1,6 @@
 MixedModels v5.2.1 Release Notes
 ==============================
-- Use three-argument method for `show` for `CoefTables`. [#874]
+- Use three-argument method for `show` for `CoefTables`. [#875]
 
 MixedModels v5.2.0 Release Notes
 ==============================
@@ -719,4 +719,4 @@ Package dependencies
 [#865]: https://github.com/JuliaStats/MixedModels.jl/issues/865
 [#867]: https://github.com/JuliaStats/MixedModels.jl/issues/867
 [#873]: https://github.com/JuliaStats/MixedModels.jl/issues/873
-[#874]: https://github.com/JuliaStats/MixedModels.jl/issues/874
+[#875]: https://github.com/JuliaStats/MixedModels.jl/issues/875
