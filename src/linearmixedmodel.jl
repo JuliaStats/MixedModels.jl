@@ -1127,7 +1127,7 @@ function Base.show(io::IO, ::MIME"text/plain", m::LinearMixedModel)
     join(io, nlevs.(m.reterms), ", ")
     println(io)
     println(io, "\n  Fixed-effects parameters:")
-    return show(io, coeftable(m))
+    return show(io, MIME("text/plain"), coeftable(m))
 end
 
 Base.show(io::IO, m::LinearMixedModel) = Base.show(io, MIME("text/plain"), m)

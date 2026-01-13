@@ -1,3 +1,7 @@
+MixedModels v5.2.1 Release Notes
+==============================
+- Use three-argument method for `show` for `CoefTables`. [#875]
+
 MixedModels v5.2.0 Release Notes
 ==============================
 - The use of the `wts` keyword argument has been deprecated in favor of the keyword argument `weights`, in line with the deprecation in GLM.jl v1.9.1. The usage (and subsequent interpretation) remains otherwise unchanged. [#873]
@@ -715,3 +719,4 @@ Package dependencies
 [#865]: https://github.com/JuliaStats/MixedModels.jl/issues/865
 [#867]: https://github.com/JuliaStats/MixedModels.jl/issues/867
 [#873]: https://github.com/JuliaStats/MixedModels.jl/issues/873
+[#875]: https://github.com/JuliaStats/MixedModels.jl/issues/875
