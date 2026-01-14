@@ -48,6 +48,8 @@ Load the packages to be used
 
 ```{julia}
 #| label: load_packages
+#| output: false
+using BenchmarkTools
 using ForwardDiff
 using MixedModels
 using MixedModels: fd_deviance
@@ -56,7 +58,7 @@ using NLopt
 using Tables: table
 using TypedTables: Table
 
-const progress = false
+const progress = isinteractive()
 ```
 
 ## Examples {#sec-examples}
@@ -64,6 +66,7 @@ const progress = false
 We create a function to take a `LinearMixedModel` that has been fit and refit it using the `:LD_LBFGS` optimizer applied to an objective function that evaluates the gradient using `ForwardDiff`.
 
 ```{julia}
+#| output: false
 addinds(ch::Char, n::Integer) = Symbol.(lpad.(string.(ch, Base.OneTo(n)), ndigits(n), '0'))
 function gr_refit!(m::LinearMixedModel{T}) where {T}
   θ = copy(m.optsum.initial)
@@ -83,8 +86,9 @@ function gr_refit!(m::LinearMixedModel{T}) where {T}
     return val
   end
   opt = NLopt.Opt(:LD_LBFGS, k)
-  NLopt.ftol_rel!(opt, 1.e-12)
+  NLopt.ftol_rel!(opt, 1.e-10)
   NLopt.ftol_abs!(opt, 1.e-8)
+  NLopt.initial_step!(opt, fill(0.5, k))
   NLopt.min_objective!(opt, obj)
   min_f, min_x, ret = NLopt.optimize(opt, θ)
   header = vcat([:obj], addinds('θ', k), addinds('g', k))
@@ -98,31 +102,32 @@ Define a model for the `penicillin` data
 
 ```{julia}
 #| label: m1
-m1 = fit(
+pnm01 = fit(
   MixedModel,
   @formula(diameter ~ 1 + (1|plate) + (1|sample)),
   dataset(:penicillin);
   progress,
 )
-print(m1)
+pnm01_obj = objective(pnm01)
+print(pnm01)
 ```
 
 for which the optimization summary is
 
 ```{julia}
-m1.optsum
+pnm01.optsum
 ```
 
 and refit the model using ForwardDiff gradient evaluations.
 
 ```{julia}
-fitlog = gr_refit!(m1)
+fitlog = gr_refit!(pnm01)
 ```
 
-The objective at convergence is
+The objective at convergence, compared to the derivative-free optimum
 
 ```{julia}
-last(fitlog.obj)
+pnm01_obj - last(fitlog.obj)
 ```
 
 and the last few evaluations are
@@ -131,23 +136,89 @@ and the last few evaluations are
 last(fitlog, 5)
 ```
 
+### Pastes {#sec-pastes}
+
+```{julia}
+psm01 = fit(MixedModel, @formula(strength ~ 1 + (1|batch/cask)), dataset(:pastes); progress)
+psm01_obj = objective(psm01)
+print(psm01)
+```
+
+```{julia}
+psm01.optsum
+```
+
+```{julia}
+fitlog = gr_refit!(psm01)
+```
+
+```{julia}
+psm01_obj - last(fitlog.obj)
+```
+
+```{julia}
+last(fitlog, 5)
+```
+
+### Insteval {#sec-insteval}
+
+```{julia}
+insteval = dataset(:insteval)
+contrasts = Dict(:service => EffectsCoding())
+iem01 = fit(
+  MixedModel,
+  @formula(y ~ 1 + service + (1|s) + (1|d) + (1|dept)),
+  insteval;
+  progress, contrasts,
+)
+iem01_obj = objective(iem01)
+print(iem01)
+```
+
+```{julia}
+iem01.optsum
+```
+
+```{julia}
+fitlog = gr_refit!(iem01)
+```
+
+```{julia}
+iem01_obj - last(fitlog.obj)
+```
+
+```{julia}
+last(fitlog, 5)
+```
+
+This is an example where the number of evaluations to convergence is lower when using the gradient but the time to fit the model is much greater - primarily because the ForwardDiff gradient allocates so much memory.
+
+```{julia}
+@benchmark refit!($iem01; progress=false) seconds=10
+```
+
+```{julia}
+@benchmark gr_refit!($iem01)    seconds=30
+```
+
 ### Sleepstudy {#sec-sleepstudy}
 
 ```{julia}
-m2 = fit(MixedModel, @formula(reaction ~ 1 + days + (1 + days|subj)), dataset(:sleepstudy); progress)
-print(m2)
+slm01 = fit(MixedModel, @formula(reaction ~ 1 + days + (1 + days|subj)), dataset(:sleepstudy); progress)
+slm01_obj = objective(slm01)
+print(slm01)
 ```
 
 ```{julia}
-m2.optsum
+slm01.optsum
 ```
 
 ```{julia}
-fitlog = gr_refit!(m2)
+fitlog = gr_refit!(slm01)
 ```
 
 ```{julia}
-last(fitlog.obj)
+slm01_obj - last(fitlog.obj)
 ```
 
 ```{julia}
@@ -158,33 +229,47 @@ last(fitlog, 5)
 
 ```{julia}
 # this model is very overparameterized, but it's a test example
-m3 = fit(
+kbm01 = fit(
   MixedModel,
   @formula(rt_trunc ~ 1 + spkr * prec * load + (1 + spkr * prec * load | subj) + (1 + spkr * prec * load | item)),
   dataset(:kb07);
   progress,
 )
-print(m3)
+print(kbm01)
 ```
 
 ```{julia}
-m3.optsum
+kbm01.optsum
 ```
 
 Several of the parameters on the diagonal of $\boldsymbol{\Lambda}$ are close to zero at convergence and are replaced by zero in the returned parameter vector
 
 ```{julia}
-findall(iszero, m3.θ)
+findall(iszero, kbm01.θ)
+```
+
+Refitting with the gradient takes a very long time because ForwardDiff is poorly suited to optimization problems with many parameters.
+```{julia}
+#| eval: false
+fitlog = gr_refit!(kbm01)
 ```
 
 ```{julia}
-fitlog = gr_refit!(m3)
-```
-
-```{julia}
+#| eval: false
 last(fitlog.obj)
 ```
 
 ```{julia}
+#| eval: false
 last(fitlog, 5)
 ```
+
+## Conclusions {#sec-conclusions}
+
+Generally the gradient-based optimizers converge in fewer evaluations than the derivative-free optimizers (`psm01` in @sec-pastes is an exception).
+Although the `ftol_rel` criterion is looser for the gradient-based optimizer it usually achieves a lower optimum value, as shown by the differences like `pnm01_obj - last(fitlog.obj)` being positive.
+
+I think the most interesting result is for the `insteval` data where the three-parameter optimization takes 81 function evaluations for `LN_NEWUOA` but 34 evaluations for `LD_LBFGS`.
+However, the ForwardDiff gradient evaluation takes much longer because it allocates so much memory (and it may be using a non-BLAS Cholesky factorization of $1128\times1128$ symmetric matrix).
+
+I think this is a case where an analytic gradient could be useful.

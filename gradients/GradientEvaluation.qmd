@@ -220,6 +220,7 @@ using FiniteDiff
 using ForwardDiff
 using LinearAlgebra
 using MixedModels
+using MixedModels: Omega_dot_diag_block!
 using MixedModelsDatasets: dataset
 using TypedTables: Table
 
@@ -251,11 +252,13 @@ print(m01)
 
 ```{julia}
 #| label: fig-obj_graph
-#| fig-cap: "Graph of the objective for model m01 as a function of θ₁"
+#| fig-cap: "Graph of the objective for model m01 as a function of θ₁. The light blue horizontal line is at the minimum of the objective.  The vertical line is at the parameter estimate."
 #| code-fold: true
 let f = Figure()
   ax = Axis(f[1,1], xlabel="θ₁", ylabel="objective")
   lines!(ax, -0.25..1.5, objective!(m01))
+  hlines!(objective(updateL!(setθ!(m01, θ))); alpha=0.4)
+  vlines!(only(θ); alpha=0.4)
   f
 end
 ```
@@ -264,7 +267,7 @@ Notice that the objective is well-defined for negative values of $\theta_1$ and 
 
 This means that $\theta_1=0$ will always be a critical value (have a derivative of zero) for this function.
 
-At the maximum likelihood estimate (i.e. the minimizer of the objective) of $\theta_1$
+At the maximum likelihood estimate (i.e. the minimizer of the objective) of $\theta_1$, which is the ratio of the standard deviation of the random effects to the residual standard deviation, is
 
 ```{julia}
 #| label: dyestuff_theta
@@ -352,12 +355,16 @@ dΩdθ1([1.])
 ```
 
 Notice that this matrix, like $\mathbf{A}$, is symmetric and has the same block structure as $\mathbf{A}$.
-In fact, the $[2,1]$ block of this matrix is the same as the $[2,1]$ block of $\mathbf{A}$.
+In fact, the $[2,1]$ block of this matrix is exactly the same as the $[2,1]$ block of $\mathbf{A}$.
 
-Premultiplying by $\mathbf{L}^{-1}$ and postmultiplying by $\mathbf{L}^{-\top}$ is equivalent to
+We do the premultiplying by $\mathbf{L}^{-1}$ and postmultiplying by $\mathbf{L}^{-\top}$ in two stages, to check the form of the intermediate result
 
 ```{julia}
-prePhi = rdiv!(ldiv!(L, dΩdθ1([1.])), L')
+prePhi = ldiv!(L, dΩdθ1([1.]))
+```
+
+```{julia}
+rdiv!(prePhi, L')
 ```
 
 The derivative of the objective at $\theta_1=1$ is, therefore
@@ -385,6 +392,25 @@ with the derivative being evaluated as
 ```{julia}
 dot(vcat(ones(6), 0., size(dyestuff, 1)), diag(prePhi))
 ```
+
+#### Using blocked factors
+
+It would not be practical to create the `sparseL` matrix and a dense copy of $\mathbf{A}$, as is done here, for general cases.
+The whole point of using a blocked Cholesky factor for evaluating the objective is that the $[1,1]$ block is either diagonal or uniform-block-diagonal, which can result in considerable savings of object size and execution time when evaluating the objective.
+
+We would want to retain this time and memory savings when evaluating the gradient by creating a blocked computation for evaluation of the gradient.
+
+The blocked representations of both the $\mathbf{A}$ and $\mathbf{L}$ arrays store only the lower triangle.
+It appears that it will be necessary to store the upper triangle in addition to the lower triangle to be able to evaluate the gradient.
+There may be a clever way around this but right now I can't see one.
+
+To create the blocked representation of $\Omega$ we begin with the diagonal block in which the parameter component to be differentiated occurs.
+It is assumed that the block has already been allocated.
+
+```{julia}
+dΩdθ1_blk = Omega_dot_diag_block!(similar(first(m01.A)), m01, 1)
+```
+
 
 ### Penicillin - two completely crossed scalar random-effects terms
 
@@ -444,6 +470,7 @@ Again, we create the full Gram matrix $\mathbf{A}$ from the blocks stored in the
 A2 = let blk = m02.A
   hvcat(3, first(blk), blk[2]', blk[4]', blk[2], blk[3], blk[5]', blk[4], blk[5], blk[6])
 end
+Int.(A2)
 ```
 
 The $32\times32$ form of $\boldsymbol{\Lambda}(\boldsymbol\theta)$ is
@@ -453,7 +480,7 @@ function Λ2(θ::Vector{Float64})
   length(θ) == 2 || throw(DimensionMismatch("length(θ) should be 2"))
   return Diagonal(vcat(fill(first(θ), 24), fill(last(θ), 6), ones(2)))
 end
-Λ2([1.,1.])
+Int.(Λ2([1.,1.]))
 ```
 
 producing $\boldsymbol{\Omega}$ as
@@ -463,7 +490,7 @@ function Ω2(θ)
   length(θ) == 2 || throw(DimensionMismatch("length(θ) should be 2"))
   return Λ2(θ) * A2 * Λ2(θ)' + Diagonal(vcat(ones(30), zeros(2)))
 end
-Ω2([1.,1.])
+Int.(Ω2([1.,1.]))
 ```
 
 The partial derivatives of `Ω2` are constants
