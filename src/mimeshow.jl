@@ -17,7 +17,8 @@ end
 # FIXME: find out a way to get the stdlib to do this
 function Base.show(io::IO, ::MIME"text/html", x::OptSummary)
     out = Markdown.html(_markdown(x))
-    out = replace(out, r"&#96;([^[:space:]]*)&#96;" => s"<code>\1</code>")
+    # replace paired backticks and HTML escape code for it (&#96;) with <code> tag
+    out = replace(out, r"(?<delim>&#96;|`)(?<contents>[^[:space:]]*)\g<delim>" => s"<code>\g<contents></code>")
     out = replace(out, r"\*\*(.*?)\*\*" => s"<b>\1</b>")
     return println(io, out)
 end
