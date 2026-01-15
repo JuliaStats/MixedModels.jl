@@ -1,0 +1,275 @@
+---
+title: "Gradient-based Optimization of the Profiled log-likelihood"
+author:
+  - name: Douglas Bates
+    email: dmbates@gmail.com
+    orcid: 0000-0001-8316-9503
+    affiliation:
+      - name: University of Wisconsin - Madison
+        city: Madison
+        state: WI
+        url: https://www.wisc.edu
+        department: Statistics
+  - name: Phillip Alday
+    email: me@phillipalday.com
+    orcid: 0000-0002-9984-5745
+    affiliation:
+      - name: Beacon Biosignals
+        url: https://beacon.bio
+date: last-modified
+date-format: iso
+toc: true
+bibliography: bibliography.bib
+number-sections: true
+engine: julia
+julia:
+  exeflags:
+    - -tauto
+    - --project=@.
+format:
+  html:
+    toc: true
+    toc-location: right
+    embed-resources: true
+---
+
+## Introduction {#sec-intro}
+
+Before devoting too much effort to efficient evaluation of the gradient of the profiled log-likelihood, we should check if using gradient-based optimization requires sufficiently fewer evaluations of the objective, and the gradient, than does derivative-free optimization.
+
+Here we fit a few models using automatic differentiation from [ForwardDiff.jl](https://github.com/JuliaDiff/ForwardDiff.jl) and the `ForwardDiff` extension to [MixedModels.jl](https://github.com/JuliaStats/MixedModels.jl) to optimize the profiled log-likelihood with the `LD_LBFGS` optimizer from [NLopt.jl](https://github.com/jump-dev/NLopt.jl), instead of the default `LN_NEWUOA` which does not use gradients.
+
+The results are more-or-less a toss-up when using `ForwardDiff` to evaluate the gradient.
+A more efficient evaluation of the gradient, taking advantage of the sparse-blocked structure of the Cholesky factorization to evaluate the profiled log-likelihood, may tip the balance in favor of gradient-based methods.
+
+## Preliminaries {#sec-prelim}
+
+Load the packages to be used
+
+```{julia}
+#| label: load_packages
+#| output: false
+using BenchmarkTools
+using ForwardDiff
+using MixedModels
+using MixedModels: fd_deviance
+using MixedModelsDatasets: dataset
+using NLopt
+using Tables: table
+using TypedTables: Table
+
+const progress = isinteractive()
+```
+
+## Examples {#sec-examples}
+
+We create a function to take a `LinearMixedModel` that has been fit and refit it using the `:LD_LBFGS` optimizer applied to an objective function that evaluates the gradient using `ForwardDiff`.
+
+```{julia}
+#| output: false
+addinds(ch::Char, n::Integer) = Symbol.(lpad.(string.(ch, Base.OneTo(n)), ndigits(n), '0'))
+function gr_refit!(m::LinearMixedModel{T}) where {T}
+  θ = copy(m.optsum.initial)
+  k = length(θ)
+  fitlog = sizehint!(T[], 50 * k)
+  grad_config = ForwardDiff.GradientConfig(fd_deviance(m), θ)
+  function obj(θ::Vector{Float64}, grad::Vector{Float64})
+    val = objective(updateL!(setθ!(m, θ)))
+    push!(fitlog, val)
+    append!(fitlog, θ)
+    if !isempty(grad)
+      ForwardDiff.gradient!(grad, m, θ, grad_config)
+      append!(fitlog, grad)
+    else
+      append!(fitlog, fill(NaN, k))  # never called with empty grad but just in case
+    end
+    return val
+  end
+  opt = NLopt.Opt(:LD_LBFGS, k)
+  NLopt.ftol_rel!(opt, 1.e-10)
+  NLopt.ftol_abs!(opt, 1.e-8)
+  NLopt.initial_step!(opt, fill(0.5, k))
+  NLopt.min_objective!(opt, obj)
+  min_f, min_x, ret = NLopt.optimize(opt, θ)
+  header = vcat([:obj], addinds('θ', k), addinds('g', k))
+  return Table(table(transpose(reshape(fitlog, 2k + 1, :)); header))
+end
+```
+
+### Penicillin data {#sec-penicillin}
+
+Define a model for the `penicillin` data
+
+```{julia}
+#| label: m1
+pnm01 = fit(
+  MixedModel,
+  @formula(diameter ~ 1 + (1|plate) + (1|sample)),
+  dataset(:penicillin);
+  progress,
+)
+pnm01_obj = objective(pnm01)
+print(pnm01)
+```
+
+for which the optimization summary is
+
+```{julia}
+pnm01.optsum
+```
+
+and refit the model using ForwardDiff gradient evaluations.
+
+```{julia}
+fitlog = gr_refit!(pnm01)
+```
+
+The objective at convergence, compared to the derivative-free optimum
+
+```{julia}
+pnm01_obj - last(fitlog.obj)
+```
+
+and the last few evaluations are
+
+```{julia}
+last(fitlog, 5)
+```
+
+### Pastes {#sec-pastes}
+
+```{julia}
+psm01 = fit(MixedModel, @formula(strength ~ 1 + (1|batch/cask)), dataset(:pastes); progress)
+psm01_obj = objective(psm01)
+print(psm01)
+```
+
+```{julia}
+psm01.optsum
+```
+
+```{julia}
+fitlog = gr_refit!(psm01)
+```
+
+```{julia}
+psm01_obj - last(fitlog.obj)
+```
+
+```{julia}
+last(fitlog, 5)
+```
+
+### Insteval {#sec-insteval}
+
+```{julia}
+insteval = dataset(:insteval)
+contrasts = Dict(:service => EffectsCoding())
+iem01 = fit(
+  MixedModel,
+  @formula(y ~ 1 + service + (1|s) + (1|d) + (1|dept)),
+  insteval;
+  progress, contrasts,
+)
+iem01_obj = objective(iem01)
+print(iem01)
+```
+
+```{julia}
+iem01.optsum
+```
+
+```{julia}
+fitlog = gr_refit!(iem01)
+```
+
+```{julia}
+iem01_obj - last(fitlog.obj)
+```
+
+```{julia}
+last(fitlog, 5)
+```
+
+This is an example where the number of evaluations to convergence is lower when using the gradient but the time to fit the model is much greater - primarily because the ForwardDiff gradient allocates so much memory.
+
+```{julia}
+@benchmark refit!($iem01; progress=false) seconds=10
+```
+
+```{julia}
+@benchmark gr_refit!($iem01)    seconds=30
+```
+
+### Sleepstudy {#sec-sleepstudy}
+
+```{julia}
+slm01 = fit(MixedModel, @formula(reaction ~ 1 + days + (1 + days|subj)), dataset(:sleepstudy); progress)
+slm01_obj = objective(slm01)
+print(slm01)
+```
+
+```{julia}
+slm01.optsum
+```
+
+```{julia}
+fitlog = gr_refit!(slm01)
+```
+
+```{julia}
+slm01_obj - last(fitlog.obj)
+```
+
+```{julia}
+last(fitlog, 5)
+```
+
+### Kronmueller-Barr 2007 {#sec-kb07}
+
+```{julia}
+# this model is very overparameterized, but it's a test example
+kbm01 = fit(
+  MixedModel,
+  @formula(rt_trunc ~ 1 + spkr * prec * load + (1 + spkr * prec * load | subj) + (1 + spkr * prec * load | item)),
+  dataset(:kb07);
+  progress,
+)
+print(kbm01)
+```
+
+```{julia}
+kbm01.optsum
+```
+
+Several of the parameters on the diagonal of $\boldsymbol{\Lambda}$ are close to zero at convergence and are replaced by zero in the returned parameter vector
+
+```{julia}
+findall(iszero, kbm01.θ)
+```
+
+Refitting with the gradient takes a very long time because ForwardDiff is poorly suited to optimization problems with many parameters.
+```{julia}
+#| eval: false
+fitlog = gr_refit!(kbm01)
+```
+
+```{julia}
+#| eval: false
+last(fitlog.obj)
+```
+
+```{julia}
+#| eval: false
+last(fitlog, 5)
+```
+
+## Conclusions {#sec-conclusions}
+
+Generally the gradient-based optimizers converge in fewer evaluations than the derivative-free optimizers (`psm01` in @sec-pastes is an exception).
+Although the `ftol_rel` criterion is looser for the gradient-based optimizer it usually achieves a lower optimum value, as shown by the differences like `pnm01_obj - last(fitlog.obj)` being positive.
+
+I think the most interesting result is for the `insteval` data where the three-parameter optimization takes 81 function evaluations for `LN_NEWUOA` but 34 evaluations for `LD_LBFGS`.
+However, the ForwardDiff gradient evaluation takes much longer because it allocates so much memory (and it may be using a non-BLAS Cholesky factorization of $1128\times1128$ symmetric matrix).
+
+I think this is a case where an analytic gradient could be useful.

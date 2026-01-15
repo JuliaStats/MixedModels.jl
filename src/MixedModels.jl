@@ -214,6 +214,7 @@ include("blockdescription.jl")
 include("grouping.jl")
 include("mimeshow.jl")
 include("serialization.jl")
+include("gradient.jl")
 include("profile/profile.jl")
 include("MixedModelsNLoptExt.jl")
 using .MixedModelsNLoptExt
