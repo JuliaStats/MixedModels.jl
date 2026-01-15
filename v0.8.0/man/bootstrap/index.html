@@ -1,0 +1,565 @@
+
+<!DOCTYPE html>
+<html class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Fit and examine linear mixed-effects models">
+      
+      
+      
+        <meta name="author" content="Douglas M. Bates">
+      
+      
+        <link rel="shortcut icon" href="../../assets/images/favicon.png">
+      
+      <meta name="generator" content="mkdocs-0.16.3, mkdocs-material-1.5.4">
+    
+    
+      
+        <title>Bootstrap - MixedModels.jl</title>
+      
+    
+    
+      <script src="../../assets/javascripts/modernizr-56ade86843.js"></script>
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/application-b1a1975878.css">
+      
+        <link rel="stylesheet" href="../../assets/stylesheets/application-f78e5cb881.palette.css">
+      
+    
+    
+      
+        
+        
+        
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,400,400i,700|Roboto+Mono">
+        <style>body,input{font-family:"Roboto","Helvetica Neue",Helvetica,Arial,sans-serif}code,kbd,pre{font-family:"Roboto Mono","Courier New",Courier,monospace}</style>
+      
+      <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+    
+    
+      <link rel="stylesheet" href="../../assets/Documenter.css">
+    
+    
+  </head>
+  
+  
+  
+  
+    <body data-md-color-primary="indigo" data-md-color-accent="blue">
+  
+    <svg class="md-svg">
+      <defs>
+        
+        
+          <svg xmlns="http://www.w3.org/2000/svg" width="416" height="448" viewBox="0 0 416 448" id="github"><path fill="currentColor" d="M160 304q0 10-3.125 20.5t-10.75 19T128 352t-18.125-8.5-10.75-19T96 304t3.125-20.5 10.75-19T128 256t18.125 8.5 10.75 19T160 304zm160 0q0 10-3.125 20.5t-10.75 19T288 352t-18.125-8.5-10.75-19T256 304t3.125-20.5 10.75-19T288 256t18.125 8.5 10.75 19T320 304zm40 0q0-30-17.25-51T296 232q-10.25 0-48.75 5.25Q229.5 240 208 240t-39.25-2.75Q130.75 232 120 232q-29.5 0-46.75 21T56 304q0 22 8 38.375t20.25 25.75 30.5 15 35 7.375 37.25 1.75h42q20.5 0 37.25-1.75t35-7.375 30.5-15 20.25-25.75T360 304zm56-44q0 51.75-15.25 82.75-9.5 19.25-26.375 33.25t-35.25 21.5-42.5 11.875-42.875 5.5T212 416q-19.5 0-35.5-.75t-36.875-3.125-38.125-7.5-34.25-12.875T37 371.5t-21.5-28.75Q0 312 0 260q0-59.25 34-99-6.75-20.5-6.75-42.5 0-29 12.75-54.5 27 0 47.5 9.875t47.25 30.875Q171.5 96 212 96q37 0 70 8 26.25-20.5 46.75-30.25T376 64q12.75 25.5 12.75 54.5 0 21.75-6.75 42 34 40 34 99.5z"/></svg>
+        
+      </defs>
+    </svg>
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="drawer">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="search">
+    <label class="md-overlay" data-md-component="overlay" for="drawer"></label>
+    
+      <header class="md-header" data-md-component="header">
+  <nav class="md-header-nav md-grid">
+    <div class="md-flex">
+      <div class="md-flex__cell md-flex__cell--shrink">
+        
+          <a href="../.." title="MixedModels.jl" class="md-icon md-icon--home md-header-nav__button">
+          </a>
+        
+      </div>
+      <div class="md-flex__cell md-flex__cell--shrink">
+        <label class="md-icon md-icon--menu md-header-nav__button" for="drawer"></label>
+      </div>
+      <div class="md-flex__cell md-flex__cell--stretch">
+        <span class="md-flex__ellipsis md-header-nav__title">
+          
+            
+              
+                <span class="md-header-nav__parent">
+                  Manual
+                </span>
+              
+            
+            Bootstrap
+          
+        </span>
+      </div>
+      <div class="md-flex__cell md-flex__cell--shrink">
+        
+          <label class="md-icon md-icon--search md-header-nav__button" for="search"></label>
+          
+<div class="md-search" data-md-component="search">
+  <div class="md-search__overlay"></div>
+  <div class="md-search__inner">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" required placeholder="Search" accesskey="s" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="query">
+      <label class="md-icon md-search__icon" for="search"></label>
+      <button type="reset" class="md-icon md-search__icon" data-md-component="reset">close</button>
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="result">
+          <div class="md-search-result__meta" data-md-lang-result-none="No matching documents" data-md-lang-result-one="1 matching document" data-md-lang-result-other="# matching documents">
+            Type to start searching
+          </div>
+          <ol class="md-search-result__list"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+        
+      </div>
+      <div class="md-flex__cell md-flex__cell--shrink">
+        <div class="md-header-nav__source">
+          
+            
+
+
+  
+
+
+  <a href="https://github.com/dmbates/MixedModels.jl" title="Go to repository" class="md-source" data-md-source="github">
+    
+      <div class="md-source__icon">
+        <svg viewBox="0 0 24 24" width="24" height="24">
+          <use xlink:href="#github" width="24" height="24"></use>
+        </svg>
+      </div>
+    
+    <div class="md-source__repository">
+      GitHub
+    </div>
+  </a>
+
+          
+        </div>
+      </div>
+    </div>
+  </nav>
+</header>
+    
+    <div class="md-container">
+      
+      
+      <main class="md-main">
+        <div class="md-main__inner md-grid" data-md-component="container">
+          
+            
+              <div class="md-sidebar md-sidebar--primary" data-md-component="navigation">
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    <nav class="md-nav md-nav--primary" data-md-level="0">
+  <label class="md-nav__title md-nav__title--site" for="drawer">
+    
+      <i class="md-icon md-icon--home md-nav__button"></i>
+    
+    MixedModels.jl
+  </label>
+  
+    <div class="md-nav__source">
+      
+
+
+  
+
+
+  <a href="https://github.com/dmbates/MixedModels.jl" title="Go to repository" class="md-source" data-md-source="github">
+    
+      <div class="md-source__icon">
+        <svg viewBox="0 0 24 24" width="24" height="24">
+          <use xlink:href="#github" width="24" height="24"></use>
+        </svg>
+      </div>
+    
+    <div class="md-source__repository">
+      GitHub
+    </div>
+  </a>
+
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+      
+
+
+  <li class="md-nav__item">
+    <a href="../.." title="Home" class="md-nav__link">
+      Home
+    </a>
+  </li>
+
+    
+      
+      
+      
+
+  
+
+
+  <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-2" type="checkbox" id="nav-2" checked>
+    
+    <label class="md-nav__link" for="nav-2">
+      Manual
+    </label>
+    <nav class="md-nav" data-md-component="collapsible" data-md-level="1">
+      <label class="md-nav__title" for="nav-2">
+        Manual
+      </label>
+      <ul class="md-nav__list" data-md-scrollfix>
+        
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../fitting/" title="Fitting" class="md-nav__link">
+      Fitting
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+  
+
+
+  <li class="md-nav__item md-nav__item--active">
+    
+    <input class="md-toggle md-nav__toggle" data-md-toggle="toc" type="checkbox" id="toc">
+    
+      
+    
+    
+      <label class="md-nav__link md-nav__link--active" for="toc">
+        Bootstrap
+      </label>
+    
+    <a href="./" title="Bootstrap" class="md-nav__link md-nav__link--active">
+      Bootstrap
+    </a>
+    
+      
+<nav class="md-nav md-nav--secondary">
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="toc">Table of contents</label>
+    <ul class="md-nav__list" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#the-parametric-bootstrap" title="The parametric bootstrap" class="md-nav__link">
+    The parametric bootstrap
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#using-the-bootstrap-function" title="Using the bootstrap! function" class="md-nav__link">
+    Using the bootstrap! function
+  </a>
+  
+</li>
+      
+      
+      
+    </ul>
+  
+</nav>
+    
+  </li>
+
+        
+      </ul>
+    </nav>
+  </li>
+
+    
+      
+      
+      
+
+
+  <li class="md-nav__item md-nav__item--nested">
+    
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-3" type="checkbox" id="nav-3">
+    
+    <label class="md-nav__link" for="nav-3">
+      Library
+    </label>
+    <nav class="md-nav" data-md-component="collapsible" data-md-level="1">
+      <label class="md-nav__title" for="nav-3">
+        Library
+      </label>
+      <ul class="md-nav__list" data-md-scrollfix>
+        
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../lib/public/" title="Public" class="md-nav__link">
+      Public
+    </a>
+  </li>
+
+        
+      </ul>
+    </nav>
+  </li>
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="toc">
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+<nav class="md-nav md-nav--secondary">
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="toc">Table of contents</label>
+    <ul class="md-nav__list" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#the-parametric-bootstrap" title="The parametric bootstrap" class="md-nav__link">
+    The parametric bootstrap
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#using-the-bootstrap-function" title="Using the bootstrap! function" class="md-nav__link">
+    Using the bootstrap! function
+  </a>
+  
+</li>
+      
+      
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          <div class="md-content">
+            <article class="md-content__inner md-typeset">
+              
+                
+                  <a href="https://github.com/dmbates/MixedModels.jl/edit/master/docs/man/bootstrap.md" title="Edit this page" class="md-icon md-content__icon">edit</a>
+                
+                
+                <p><a id='Parametric-bootstrap-for-linear-mixed-effects-models-1'></a></p>
+<h1 id="parametric-bootstrap-for-linear-mixed-effects-models">Parametric bootstrap for linear mixed-effects models</h1>
+<p>Julia is well-suited to implementing bootstrapping and other simulation-based methods for statistical models. The <code>bootstrap!</code> function in the <a href="https://github.com/dmbates/MixedModels.jl">MixedModels package</a> provides an efficient parametric bootstrap for linear mixed-effects models, assuming that the results of interest from each simulated response vector can be incorporated into a vector of floating-point values.</p>
+<p><a id='The-parametric-bootstrap-1'></a></p>
+<h2 id="the-parametric-bootstrap">The parametric bootstrap</h2>
+<p><a href="https://en.wikipedia.org/wiki/Bootstrapping_(statistics)">Bootstrapping</a> is a family of procedures for generating sample values of a statistic, allowing for visualization of the distribution of the statistic or for inference from this sample of values.</p>
+<p>A <em>parametric bootstrap</em> is used with a parametric model, <code>m</code>, that has been fitted to data. The procedure is to simulate <code>n</code> response vectors from <code>m</code> using the estimated parameter values and refit <code>m</code> to these responses in turn, accumulating the statistics of interest at each iteration.</p>
+<p>The parameters of a linear mixed-effects model as fit by the <code>lmm</code> function are the fixed-effects parameters, <code>β</code>, the standard deviation, <code>σ</code>, of the per-observation noise, and the covariance parameter, <code>θ</code>, that defines the variance-covariance matrices of the random effects.</p>
+<p>For example, a simple linear mixed-effects model for the <code>Dyestuff</code> data in the <a href="http://github.com/lme4/lme4"><code>lme4</code></a> package for <a href="https://www.r-project.org"><code>R</code></a> is fit by</p>
+<div class="codehilite"><pre><span></span><span class="n">julia</span><span class="o">&gt;</span> <span class="k">using</span> <span class="n">DataFrames</span><span class="p">,</span> <span class="n">Gadfly</span><span class="p">,</span> <span class="n">MixedModels</span>
+</pre></div>
+
+
+<div class="codehilite"><pre><span></span><span class="n">julia</span><span class="o">&gt;</span> <span class="n">show</span><span class="p">(</span><span class="n">ds</span><span class="p">)</span>   <span class="c"># Dyestuff data set30×2 DataFrames.DataFrame</span>
+<span class="n">│</span> <span class="n">Row</span> <span class="n">│</span> <span class="n">Yield</span>  <span class="n">│</span> <span class="n">Batch</span> <span class="n">│</span>
+<span class="n">├─────┼────────┼───────┤</span>
+<span class="n">│</span> <span class="mi">1</span>   <span class="n">│</span> <span class="mf">1545.0</span> <span class="n">│</span> <span class="sc">&#39;A&#39;</span>   <span class="n">│</span>
+<span class="n">│</span> <span class="mi">2</span>   <span class="n">│</span> <span class="mf">1440.0</span> <span class="n">│</span> <span class="sc">&#39;A&#39;</span>   <span class="n">│</span>
+<span class="n">│</span> <span class="mi">3</span>   <span class="n">│</span> <span class="mf">1440.0</span> <span class="n">│</span> <span class="sc">&#39;A&#39;</span>   <span class="n">│</span>
+<span class="n">│</span> <span class="mi">4</span>   <span class="n">│</span> <span class="mf">1520.0</span> <span class="n">│</span> <span class="sc">&#39;A&#39;</span>   <span class="n">│</span>
+<span class="n">│</span> <span class="mi">5</span>   <span class="n">│</span> <span class="mf">1580.0</span> <span class="n">│</span> <span class="sc">&#39;A&#39;</span>   <span class="n">│</span>
+<span class="n">│</span> <span class="mi">6</span>   <span class="n">│</span> <span class="mf">1540.0</span> <span class="n">│</span> <span class="sc">&#39;B&#39;</span>   <span class="n">│</span>
+<span class="n">│</span> <span class="mi">7</span>   <span class="n">│</span> <span class="mf">1555.0</span> <span class="n">│</span> <span class="sc">&#39;B&#39;</span>   <span class="n">│</span>
+<span class="n">│</span> <span class="mi">8</span>   <span class="n">│</span> <span class="mf">1490.0</span> <span class="n">│</span> <span class="sc">&#39;B&#39;</span>   <span class="n">│</span>
+<span class="n">│</span> <span class="mi">9</span>   <span class="n">│</span> <span class="mf">1560.0</span> <span class="n">│</span> <span class="sc">&#39;B&#39;</span>   <span class="n">│</span>
+<span class="n">│</span> <span class="mi">10</span>  <span class="n">│</span> <span class="mf">1495.0</span> <span class="n">│</span> <span class="sc">&#39;B&#39;</span>   <span class="n">│</span>
+<span class="n">│</span> <span class="mi">11</span>  <span class="n">│</span> <span class="mf">1595.0</span> <span class="n">│</span> <span class="sc">&#39;C&#39;</span>   <span class="n">│</span>
+<span class="n">│</span> <span class="mi">12</span>  <span class="n">│</span> <span class="mf">1550.0</span> <span class="n">│</span> <span class="sc">&#39;C&#39;</span>   <span class="n">│</span>
+<span class="n">│</span> <span class="mi">13</span>  <span class="n">│</span> <span class="mf">1605.0</span> <span class="n">│</span> <span class="sc">&#39;C&#39;</span>   <span class="n">│</span>
+<span class="n">│</span> <span class="mi">14</span>  <span class="n">│</span> <span class="mf">1510.0</span> <span class="n">│</span> <span class="sc">&#39;C&#39;</span>   <span class="n">│</span>
+<span class="n">│</span> <span class="mi">15</span>  <span class="n">│</span> <span class="mf">1560.0</span> <span class="n">│</span> <span class="sc">&#39;C&#39;</span>   <span class="n">│</span>
+<span class="n">│</span> <span class="mi">16</span>  <span class="n">│</span> <span class="mf">1445.0</span> <span class="n">│</span> <span class="sc">&#39;D&#39;</span>   <span class="n">│</span>
+<span class="n">│</span> <span class="mi">17</span>  <span class="n">│</span> <span class="mf">1440.0</span> <span class="n">│</span> <span class="sc">&#39;D&#39;</span>   <span class="n">│</span>
+<span class="n">│</span> <span class="mi">18</span>  <span class="n">│</span> <span class="mf">1595.0</span> <span class="n">│</span> <span class="sc">&#39;D&#39;</span>   <span class="n">│</span>
+<span class="n">│</span> <span class="mi">19</span>  <span class="n">│</span> <span class="mf">1465.0</span> <span class="n">│</span> <span class="sc">&#39;D&#39;</span>   <span class="n">│</span>
+<span class="n">│</span> <span class="mi">20</span>  <span class="n">│</span> <span class="mf">1545.0</span> <span class="n">│</span> <span class="sc">&#39;D&#39;</span>   <span class="n">│</span>
+<span class="n">│</span> <span class="mi">21</span>  <span class="n">│</span> <span class="mf">1595.0</span> <span class="n">│</span> <span class="sc">&#39;E&#39;</span>   <span class="n">│</span>
+<span class="n">│</span> <span class="mi">22</span>  <span class="n">│</span> <span class="mf">1630.0</span> <span class="n">│</span> <span class="sc">&#39;E&#39;</span>   <span class="n">│</span>
+<span class="n">│</span> <span class="mi">23</span>  <span class="n">│</span> <span class="mf">1515.0</span> <span class="n">│</span> <span class="sc">&#39;E&#39;</span>   <span class="n">│</span>
+<span class="n">│</span> <span class="mi">24</span>  <span class="n">│</span> <span class="mf">1635.0</span> <span class="n">│</span> <span class="sc">&#39;E&#39;</span>   <span class="n">│</span>
+<span class="n">│</span> <span class="mi">25</span>  <span class="n">│</span> <span class="mf">1625.0</span> <span class="n">│</span> <span class="sc">&#39;E&#39;</span>   <span class="n">│</span>
+<span class="n">│</span> <span class="mi">26</span>  <span class="n">│</span> <span class="mf">1520.0</span> <span class="n">│</span> <span class="sc">&#39;F&#39;</span>   <span class="n">│</span>
+<span class="n">│</span> <span class="mi">27</span>  <span class="n">│</span> <span class="mf">1455.0</span> <span class="n">│</span> <span class="sc">&#39;F&#39;</span>   <span class="n">│</span>
+<span class="n">│</span> <span class="mi">28</span>  <span class="n">│</span> <span class="mf">1450.0</span> <span class="n">│</span> <span class="sc">&#39;F&#39;</span>   <span class="n">│</span>
+<span class="n">│</span> <span class="mi">29</span>  <span class="n">│</span> <span class="mf">1480.0</span> <span class="n">│</span> <span class="sc">&#39;F&#39;</span>   <span class="n">│</span>
+<span class="n">│</span> <span class="mi">30</span>  <span class="n">│</span> <span class="mf">1445.0</span> <span class="n">│</span> <span class="sc">&#39;F&#39;</span>   <span class="n">│</span>
+</pre></div>
+
+
+<div class="codehilite"><pre><span></span><span class="n">julia</span><span class="o">&gt;</span> <span class="n">m1</span> <span class="o">=</span> <span class="n">fit!</span><span class="p">(</span><span class="n">lmm</span><span class="p">(</span><span class="n">Yield</span> <span class="o">~</span> <span class="mi">1</span> <span class="o">+</span> <span class="p">(</span><span class="mi">1</span> <span class="o">|</span> <span class="n">Batch</span><span class="p">),</span> <span class="n">ds</span><span class="p">))</span>  
+<span class="n">Linear</span> <span class="n">mixed</span> <span class="n">model</span> <span class="n">fit</span> <span class="n">by</span> <span class="n">maximum</span> <span class="n">likelihood</span>
+ <span class="n">Formula</span><span class="o">:</span> <span class="n">Yield</span> <span class="o">~</span> <span class="mi">1</span> <span class="o">+</span> <span class="p">(</span><span class="mi">1</span> <span class="o">|</span> <span class="n">Batch</span><span class="p">)</span>
+  <span class="n">logLik</span>    <span class="o">-</span><span class="mi">2</span> <span class="n">logLik</span>     <span class="n">AIC</span>        <span class="n">BIC</span>    
+ <span class="o">-</span><span class="mf">163.66353</span>  <span class="mf">327.32706</span>  <span class="mf">333.32706</span>  <span class="mf">337.53065</span>
+
+<span class="n">Variance</span> <span class="n">components</span><span class="o">:</span>
+              <span class="n">Column</span>    <span class="n">Variance</span>  <span class="n">Std</span><span class="o">.</span><span class="n">Dev</span><span class="o">.</span> 
+ <span class="n">Batch</span>    <span class="p">(</span><span class="n">Intercept</span><span class="p">)</span>  <span class="mf">1388.3334</span> <span class="mf">37.260346</span>
+ <span class="n">Residual</span>              <span class="mf">2451.2500</span> <span class="mf">49.510100</span>
+ <span class="kt">Number</span> <span class="n">of</span> <span class="n">obs</span><span class="o">:</span> <span class="mi">30</span><span class="p">;</span> <span class="n">levels</span> <span class="n">of</span> <span class="n">grouping</span> <span class="n">factors</span><span class="o">:</span> <span class="mi">6</span>
+
+  <span class="n">Fixed</span><span class="o">-</span><span class="n">effects</span> <span class="n">parameters</span><span class="o">:</span>
+             <span class="n">Estimate</span> <span class="n">Std</span><span class="o">.</span><span class="n">Error</span> <span class="n">z</span> <span class="n">value</span> <span class="n">P</span><span class="p">(</span><span class="o">&gt;|</span><span class="n">z</span><span class="o">|</span><span class="p">)</span>
+<span class="p">(</span><span class="n">Intercept</span><span class="p">)</span>    <span class="mf">1527.5</span>   <span class="mf">17.6946</span>  <span class="mf">86.326</span>  <span class="o">&lt;</span><span class="mf">1e-99</span>
+</pre></div>
+
+
+<p><a id='Using-the-bootstrap!-function-1'></a></p>
+<h2 id="using-the-bootstrap-function">Using the <code>bootstrap!</code> function</h2>
+<p>This quick explanation is provided for those who only wish to use the <code>bootstrap!</code> method and do not need detailed explanations of how it works. The three arguments to <code>bootstrap!</code> are the matrix that will be overwritten with the results, the model to bootstrap, and a function that overwrites a vector with the results of interest from the model.</p>
+<p>Suppose the objective is to obtain 100,000 parametric bootstrap samples of the estimates of the "variance components", <code>σ²</code> and <code>σ₁²</code>, in this model.  In many implementations of mixed-effects models the estimate of <code>σ₁²</code>, the variance of the scalar random effects, is reported along with a standard error, as if the estimator could be assumed to have a Gaussian distribution. Is this a reasonable assumption?</p>
+<p>A suitable function to save the results is</p>
+<div class="codehilite"><pre><span></span><span class="n">julia</span><span class="o">&gt;</span> <span class="k">function</span> <span class="n">saveresults!</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">m</span><span class="p">)</span>
+    <span class="n">v</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">varest</span><span class="p">(</span><span class="n">m</span><span class="p">)</span>
+    <span class="n">v</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">abs2</span><span class="p">(</span><span class="n">getθ</span><span class="p">(</span><span class="n">m</span><span class="p">)[</span><span class="mi">1</span><span class="p">])</span> <span class="o">*</span> <span class="n">v</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+<span class="k">end</span>
+<span class="n">saveresults!</span> <span class="p">(</span><span class="n">generic</span> <span class="k">function</span> <span class="n">with</span> <span class="mi">1</span> <span class="n">method</span><span class="p">)</span>
+</pre></div>
+
+
+<p>The <code>varest</code> extractor function returns the estimate of <code>σ²</code>.  As seen above, the estimate of the <code>σ₁</code> is the product of <code>Θ</code> and the estimate of <code>σ</code>.  The expression <code>abs2(getΘ(m)[1])</code> evaluates to <code>Θ²</code>. The <code>[1]</code> is necessary because the value returned by <code>getθ</code> is a vector and a scalar is needed here.</p>
+<p>As with any simulation-based method, it is advisable to set the random number seed before calling <code>bootstrap!</code> for reproducibility.</p>
+<div class="codehilite"><pre><span></span><span class="n">julia</span><span class="o">&gt;</span> <span class="n">srand</span><span class="p">(</span><span class="mi">1234321</span><span class="p">);</span>
+<span class="kt">MersenneTwister</span><span class="p">(</span><span class="n">Base</span><span class="o">.</span><span class="n">dSFMT</span><span class="o">.</span><span class="n">DSFMT_state</span><span class="p">(</span><span class="kt">Int32</span><span class="p">[</span><span class="o">-</span><span class="mi">1066020669</span><span class="p">,</span><span class="mi">1073631810</span><span class="p">,</span><span class="mi">397127531</span><span class="p">,</span><span class="mi">1072701603</span><span class="p">,</span><span class="o">-</span><span class="mi">312796895</span><span class="p">,</span><span class="mi">1073626997</span><span class="p">,</span><span class="mi">1020815149</span><span class="p">,</span><span class="mi">1073320576</span><span class="p">,</span><span class="mi">650048908</span><span class="p">,</span><span class="mi">1073512247</span>  <span class="n">…</span>  <span class="o">-</span><span class="mi">352178910</span><span class="p">,</span><span class="mi">1073735534</span><span class="p">,</span><span class="mi">1816227101</span><span class="p">,</span><span class="mi">1072823316</span><span class="p">,</span><span class="o">-</span><span class="mi">1468787611</span><span class="p">,</span><span class="o">-</span><span class="mi">2121692099</span><span class="p">,</span><span class="mi">358864500</span><span class="p">,</span><span class="o">-</span><span class="mi">310934288</span><span class="p">,</span><span class="mi">382</span><span class="p">,</span><span class="mi">0</span><span class="p">]),[</span><span class="mf">2.11393e-315</span><span class="p">,</span><span class="mf">2.11394e-315</span><span class="p">,</span><span class="mf">2.11394e-315</span><span class="p">,</span><span class="mf">0.0</span><span class="p">,</span><span class="nb">NaN</span><span class="p">,</span><span class="mf">2.11399e-315</span><span class="p">,</span><span class="mf">2.11332e-315</span><span class="p">,</span><span class="mf">4.24399e-314</span><span class="p">,</span><span class="mf">2.11278e-315</span><span class="p">,</span><span class="mf">6.36599e-314</span>  <span class="n">…</span>  <span class="mf">3.95253e-323</span><span class="p">,</span><span class="mf">5.06417e-321</span><span class="p">,</span><span class="mf">0.0</span><span class="p">,</span><span class="mf">0.0</span><span class="p">,</span><span class="mf">2.11329e-315</span><span class="p">,</span><span class="mf">0.0</span><span class="p">,</span><span class="mf">7.90505e-323</span><span class="p">,</span><span class="mf">5.06911e-321</span><span class="p">,</span><span class="mf">0.0</span><span class="p">,</span><span class="mf">0.0</span><span class="p">],</span><span class="mi">382</span><span class="p">,</span><span class="kt">UInt32</span><span class="p">[</span><span class="mh">0x0012d591</span><span class="p">])</span>
+</pre></div>
+
+
+<div class="codehilite"><pre><span></span><span class="n">julia</span><span class="o">&gt;</span> <span class="n">results</span> <span class="o">=</span> <span class="n">bootstrap!</span><span class="p">(</span><span class="n">zeros</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">100000</span><span class="p">),</span> <span class="n">m1</span><span class="p">,</span> <span class="n">saveresults!</span><span class="p">);</span>
+<span class="mi">2</span><span class="n">x100000</span> <span class="kt">Array</span><span class="p">{</span><span class="kt">Float64</span><span class="p">,</span><span class="mi">2</span><span class="p">}</span><span class="o">:</span>
+ <span class="mf">4547.01</span>   <span class="mf">2302.38</span>   <span class="mf">2513.48</span>   <span class="mf">2832.77</span>  <span class="mf">2051.86</span>   <span class="n">…</span>  <span class="mf">2721.9</span>    <span class="mf">3735.86</span>  <span class="mf">1617.55</span>  <span class="mf">2624.33</span>   <span class="mf">1473.15</span>
+  <span class="mf">204.834</span>   <span class="mf">653.688</span>   <span class="mf">473.595</span>  <span class="mf">1685.59</span>   <span class="mf">367.881</span>      <span class="mf">564.686</span>     <span class="mf">0.0</span>   <span class="mf">1324.83</span>   <span class="mf">287.775</span>  <span class="mf">1826.86</span>
+</pre></div>
+
+
+<p>The results for each bootstrap replication are stored in the columns of the matrix passed in as the first argument.  A density plot of the first row using the <a href="https://github.com/dcjones/Gadfly.jl"><code>Gadfly</code></a> package is created as</p>
+<div class="codehilite"><pre><span></span><span class="n">plot</span><span class="p">(</span><span class="n">x</span> <span class="o">=</span> <span class="n">sub</span><span class="p">(</span><span class="n">results</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="o">:</span><span class="p">),</span> <span class="n">Geom</span><span class="o">.</span><span class="n">density</span><span class="p">(),</span> <span class="n">Guide</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s">&quot;Parametric bootstrap estimates of σ²&quot;</span><span class="p">))</span>
+</pre></div>
+
+
+<p><img alt="Density of parametric bootstrap estimates of σ² from model m1" src="../figures/bootstrap_9_1.png" /></p>
+<p><img alt="Density of parametric bootstrap estimates of σ₁² from model m1" src="../figures/bootstrap_10_1.png" /></p>
+<p>The distribution of the bootstrap samples of <code>σ²</code> is a bit skewed but not terribly so.  However, the distribution of the bootstrap samples of the estimate of <code>σ₁²</code> is highly skewed and has a spike at zero.</p>
+                
+                  
+                
+              
+              
+                
+              
+            </article>
+          </div>
+        </div>
+      </main>
+      
+        
+<footer class="md-footer">
+  
+    <div class="md-footer-nav">
+      <nav class="md-footer-nav__inner md-grid">
+        
+          <a href="../fitting/" title="Fitting" class="md-flex md-footer-nav__link md-footer-nav__link--prev" rel="prev">
+            <div class="md-flex__cell md-flex__cell--shrink">
+              <i class="md-icon md-icon--arrow-back md-footer-nav__button"></i>
+            </div>
+            <div class="md-flex__cell md-flex__cell--stretch md-footer-nav__title">
+              <span class="md-flex__ellipsis">
+                <span class="md-footer-nav__direction">
+                  Previous
+                </span>
+                Fitting
+              </span>
+            </div>
+          </a>
+        
+        
+          <a href="../../lib/public/" title="Public" class="md-flex md-footer-nav__link md-footer-nav__link--next" rel="next">
+            <div class="md-flex__cell md-flex__cell--stretch md-footer-nav__title">
+              <span class="md-flex__ellipsis">
+                <span class="md-footer-nav__direction">
+                  Next
+                </span>
+                Public
+              </span>
+            </div>
+            <div class="md-flex__cell md-flex__cell--shrink">
+              <i class="md-icon md-icon--arrow-forward md-footer-nav__button"></i>
+            </div>
+          </a>
+        
+      </nav>
+    </div>
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-footer-copyright">
+        
+        powered by
+        <a href="http://www.mkdocs.org" title="MkDocs">MkDocs</a>
+        and
+        <a href="http://squidfunk.github.io/mkdocs-material/" title="Material for MkDocs">
+          Material for MkDocs</a>
+      </div>
+      
+        
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    
+      <script src="../../assets/javascripts/application-0b7df094bf.js"></script>
+      <script>app.initialize({url:{base:"../.."}})</script>
+      
+        <script src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS_HTML"></script>
+      
+        <script src="../../assets/mathjaxhelper.js"></script>
+      
+    
+    
+      
+    
+  </body>
+</html>

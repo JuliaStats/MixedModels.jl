@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>- · MixedModels</title><link href="https://cdnjs.cloudflare.com/ajax/libs/normalize/4.2.0/normalize.min.css" rel="stylesheet" type="text/css"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.2.0/require.min.js" data-main="assets/documenter.js"></script><script src="siteinfo.js"></script><script src="../versions.js"></script><link href="assets/documenter.css" rel="stylesheet" type="text/css"/></head><body><nav class="toc"><a href="index.html"><img class="logo" src="assets/logo.png" alt="MixedModels logo"/></a><h1>MixedModels</h1><select id="version-selector" onChange="window.location.href=this.value" style="visibility: hidden"></select><form class="search" id="search-form" action="search.html"><input id="search-query" name="q" type="text" placeholder="Search docs"/></form><ul><li><a class="toctext" href="index.html">MixedModels.jl Documentation</a></li><li><a class="toctext" href="constructors.html">Model constructors</a></li><li><a class="toctext" href="optimization.html">Details of the parameter estimation</a></li><li><a class="toctext" href="GaussHermite.html">Normalized Gauss-Hermite Quadrature</a></li><li><a class="toctext" href="bootstrap.html">Parametric bootstrap for linear mixed-effects models</a></li><li><a class="toctext" href="SimpleLMM.html">A Simple, Linear, Mixed-effects Model</a></li><li><a class="toctext" href="MultipleTerms.html">Models With Multiple Random-effects Terms</a></li><li><a class="toctext" href="SingularCovariance.html">Singular covariance estimates in random regression models</a></li><li class="current"><a class="toctext" href="SubjectItem.html">-</a><ul class="internal"></ul></li><li><a class="toctext" href="benchmarks.html">Benchmark Report for <em>/home/bates/.julia/dev/MixedModels/src/MixedModels.jl</em></a></li></ul></nav><article id="docs"><header><nav><ul><li><a href="SubjectItem.html">-</a></li></ul><a class="edit-page" href="https://github.com/dmbates/MixedModels.jl/blob/master/docs/src/SubjectItem.md"><span class="fa"></span> Edit on GitHub</a></nav><hr/><div id="topbar"><span>-</span><a class="fa fa-bars" href="#"></a></div></header><pre><code class="language-julia">julia&gt; using DataFrames, MixedModels, RData
+
+julia&gt; const dat = Dict(Symbol(k)=&gt;v for (k,v) in 
+    load(joinpath(dirname(pathof(MixedModels)), &quot;..&quot;, &quot;test&quot;, &quot;dat.rda&quot;)));
+</code></pre><pre><code class="language-julia">julia&gt; mm1 = fit(LinearMixedModel, @formula(Y ~ 1+S+T+U+V+W+X+Z+(1+S+T+U+V+W+X+Z|G)+(1+S+T+U+V+W+X+Z|H)), dat[:kb07])
+Linear mixed model fit by maximum likelihood
+ Formula: Y ~ 1 + S + T + U + V + W + X + Z + ((1 + S + T + U + V + W + X + Z) | G) + ((1 + S + T + U + V + W + X + Z) | H)
+     logLik       -2 logLik         AIC            BIC      
+ -1.4293178×10⁴ 2.85863559×10⁴ 2.87483559×10⁴ 2.91930436×10⁴
+
+Variance components:
+              Column     Variance   Std.Dev.    Corr.
+ G        (Intercept)   90905.1677 301.504839
+          S              5176.2129  71.945903 -0.44
+          T              5548.8654  74.490707 -0.47  0.08
+          U              7590.6811  87.124515  0.21 -0.20  0.41
+          V              8846.2989  94.054766  0.20 -0.76 -0.54 -0.20
+          W              1821.1875  42.675373  0.47 -0.53 -0.10 -0.44  0.29
+          X              7433.4733  86.217593 -0.10  0.13 -0.05 -0.86 -0.06  0.70
+          Z              3800.9061  61.651489 -0.47  0.40 -0.39 -0.09  0.18 -0.78 -0.39
+ H        (Intercept)  129838.0069 360.330413
+          S              1839.5781  42.890303 -0.34
+          T             62459.7239 249.919435 -0.68 -0.45
+          U              2960.4106  54.409656  0.20 -0.04 -0.18
+          V              1031.2309  32.112783  0.57 -0.73  0.02  0.02
+          W              1624.8531  40.309466  0.28 -0.02 -0.27  0.44 -0.20
+          X              4662.7283  68.284173  0.08 -0.30  0.21 -0.14 -0.26  0.01
+          Z              4846.5670  69.617289  0.05 -0.45  0.32 -0.68  0.65 -0.67 -0.11
+ Residual              399590.2281 632.131496
+ Number of obs: 1790; levels of grouping factors: 56, 32
+
+  Fixed-effects parameters:
+             Estimate Std.Error  z value P(&gt;|z|)
+(Intercept)   2180.63   76.8376  28.3797  &lt;1e-99
+S            -66.9944    19.318 -3.46798  0.0005
+T            -333.877   47.6888 -7.00116  &lt;1e-11
+U             78.9884   21.2445  3.71807  0.0002
+V             22.1532   20.3338  1.08948  0.2759
+W            -18.9198    17.509 -1.08058  0.2799
+X             5.25739   22.3991 0.234715  0.8144
+Z            -23.9524   21.0379 -1.13853  0.2549
+
+</code></pre><pre><code class="language-julia">julia&gt; mm1.optsum
+Initial parameter vector: [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0  …  1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 1.0]
+Initial objective value:  30014.369768606262
+
+Optimizer (from NLopt):   LN_BOBYQA
+Lower bounds:             [0.0, -Inf, -Inf, -Inf, -Inf, -Inf, -Inf, -Inf, 0.0, -Inf  …  0.0, -Inf, -Inf, -Inf, 0.0, -Inf, -Inf, 0.0, -Inf, 0.0]
+ftol_rel:                 1.0e-12
+ftol_abs:                 1.0e-8
+xtol_rel:                 0.0
+xtol_abs:                 [1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10  …  1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10]
+initial_step:             [0.75, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.75, 1.0  …  0.75, 1.0, 1.0, 1.0, 0.75, 1.0, 1.0, 0.75, 1.0, 0.75]
+maxfeval:                 -1
+
+Function evaluations:     1773
+Final parameter vector:   [0.476965, -0.0497446, -0.0558713, 0.0294139, 0.0294741, 0.0318272, -0.013807, -0.0461928, 0.102368, -0.016568  …  0.0285379, -0.0347239, -0.0764401, 0.0585014, 0.042741, -0.0405408, -0.0155839, 0.0, 0.000131437, 0.0]
+Final objective value:    28586.355946953343
+Return code:              FTOL_REACHED
+
+</code></pre><pre><code class="language-julia">julia&gt; mm1.trms[1].Λ
+8×8 LinearAlgebra.LowerTriangular{Float64,Array{Float64,2}}:
+  0.476965     ⋅           ⋅         …    ⋅            ⋅            ⋅ 
+ -0.0497446   0.102368     ⋅              ⋅            ⋅            ⋅ 
+ -0.0558713  -0.016568    0.102422        ⋅            ⋅            ⋅ 
+  0.0294139  -0.0162974   0.0779749       ⋅            ⋅            ⋅ 
+  0.0294741  -0.111424   -0.0939468       ⋅            ⋅            ⋅ 
+  0.0318272  -0.0245599   0.0055057  …   0.0           ⋅            ⋅ 
+ -0.013807    0.0126449  -0.0131535      0.00013606   0.0           ⋅ 
+ -0.0461928   0.0214689  -0.0653532     -0.000205278  0.000203333  0.0
+</code></pre><pre><code class="language-julia">julia&gt; mm1.trms[2].Λ
+8×8 LinearAlgebra.LowerTriangular{Float64,Array{Float64,2}}:
+  0.570024      ⋅            ⋅          …    ⋅          ⋅            ⋅ 
+ -0.0233729    0.0636975     ⋅               ⋅          ⋅            ⋅ 
+ -0.26715     -0.289189     0.0361942        ⋅          ⋅            ⋅ 
+  0.0172393    0.00234112  -0.0263666        ⋅          ⋅            ⋅ 
+  0.0288915   -0.0291095   -0.00650732       ⋅          ⋅            ⋅ 
+  0.017794     0.00517501  -0.0157525   …   0.042741    ⋅            ⋅ 
+  0.0084663   -0.0311547    0.0560139      -0.0405408  0.0           ⋅ 
+  0.00515964  -0.0506167    0.019193       -0.0155839  0.000131437  0.0
+</code></pre><footer><hr/><a class="previous" href="SingularCovariance.html"><span class="direction">Previous</span><span class="title">Singular covariance estimates in random regression models</span></a><a class="next" href="benchmarks.html"><span class="direction">Next</span><span class="title">Benchmark Report for <em>/home/bates/.julia/dev/MixedModels/src/MixedModels.jl</em></span></a></footer></article></body></html>
