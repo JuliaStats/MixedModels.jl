@@ -1,3 +1,7 @@
+MixedModels v5.2.2 Release Notes
+==============================
+- Small update to `show` methods to accommodate coming changes in Julia Markdown stdlib. [#876]
+
 MixedModels v5.2.1 Release Notes
 ==============================
 - Use three-argument method for `show` for `CoefTables`. [#875]
@@ -720,3 +724,4 @@ Package dependencies
 [#867]: https://github.com/JuliaStats/MixedModels.jl/issues/867
 [#873]: https://github.com/JuliaStats/MixedModels.jl/issues/873
 [#875]: https://github.com/JuliaStats/MixedModels.jl/issues/875
+[#876]: https://github.com/JuliaStats/MixedModels.jl/issues/876
