@@ -1,5 +1,9 @@
 - Additional methods for pre-allocated result arrays and `*Config` instances have been added to the ForwardDiff extension. [#871].
 
+MixedModels v5.2.2 Release Notes
+==============================
+- Small update to `show` methods to accommodate coming changes in Julia Markdown stdlib. [#876]
+
 MixedModels v5.2.1 Release Notes
 ==============================
 - Use three-argument method for `show` for `CoefTables`. [#875]
@@ -723,3 +727,4 @@ Package dependencies
 [#871]: https://github.com/JuliaStats/MixedModels.jl/issues/871
 [#873]: https://github.com/JuliaStats/MixedModels.jl/issues/873
 [#875]: https://github.com/JuliaStats/MixedModels.jl/issues/875
+[#876]: https://github.com/JuliaStats/MixedModels.jl/issues/876
