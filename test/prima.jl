@@ -107,3 +107,18 @@ end
 
     @test startswith(out, expected)
 end
+
+@testset "instvalfits" begin   # repeat the fits from the Blocked Cholesky paper
+    dat = dataset(:insteval)
+    f1 = @formula(y ~ 1 + service + (1|s) + (1|d) + (1|dept) + (0 + service|dept))
+    progress = false
+    m1 = LinearMixedModel(f1, dat)
+    methods = [(:nlopt, :LN_NEWUOA), (:nlopt, :LN_BOBYQA), (:prima, :bobyqa), (:prima, :newuoa)]
+    @testset "$backend-$optimizer" for (backend, optimizer) in methods
+        m1.optsum.backend = backend
+        m1.optsum.optimizer = optimizer
+        refit!(m1; progress)
+        @test isapprox(objective(m1), 237648.6016)
+        @test m1.θ ≈ [0.2757238458621397, 0.43528621279418084, 0.04315971015043779, 0.12997375328696648] atol=0.0001
+    end
+end
