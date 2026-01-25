@@ -338,7 +338,7 @@ function condVar(m::LinearMixedModel{T}, fname) where {T}
         fill!(scratch, zero(T))
         copyto!(view(scratch, (b - 1) * vsz .+ (1:vsz), :), λt)
         ldiv!(Lblk, scratch)
-        mul!(view(val, :, :, b), scratch', scratch)
+        mul!(view(val,:,:,b), scratch', scratch)
     end
     return val
 end
@@ -347,7 +347,7 @@ function _cvtbl(arr::Array{T,3}, trm) where {T}
     return merge(
         NamedTuple{(fname(trm),)}((trm.levels,)),
         columntable([
-            NamedTuple{(:σ, :ρ)}(sdcorr(view(arr, :, :, i))) for i in axes(arr, 3)
+            NamedTuple{(:σ, :ρ)}(sdcorr(view(arr,:,:,i))) for i in axes(arr, 3)
         ]),
     )
 end
@@ -729,7 +729,7 @@ end
 # use dispatch to distinguish Diagonal and UniformBlockDiagonal in first(L)
 _ldivB1!(B1::Diagonal{T}, rhs::AbstractVector{T}, ind) where {T} = rhs ./= B1.diag[ind]
 function _ldivB1!(B1::UniformBlockDiagonal{T}, rhs::AbstractVector{T}, ind) where {T}
-    return ldiv!(LowerTriangular(view(B1.data, :, :, ind)), rhs)
+    return ldiv!(LowerTriangular(view(B1.data,:,:,ind)), rhs)
 end
 
 """
@@ -800,8 +800,9 @@ Return the vector of _canonical_ lower bounds on the parameters, `θ`.
 Note that this method does not distinguish between constrained optimization and
 unconstrained optimization with post-fit canonicalization.
 """
-lowerbd(m::LinearMixedModel{T}) where {T} =
+function lowerbd(m::LinearMixedModel{T}) where {T}
     [(pm[2] == pm[3]) ? zero(T) : T(-Inf) for pm in m.parmap]
+end
 
 function mkparmap(reterms::Vector{<:AbstractReMat{T}}) where {T}
     parmap = NTuple{3,Int}[]

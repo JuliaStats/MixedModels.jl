@@ -1,0 +1,604 @@
+---
+title: "Gradient of the Profiled log-likelihood"
+author:
+  - name: Douglas Bates
+    email: dmbates@gmail.com
+    orcid: 0000-0001-8316-9503
+    affiliation:
+      - name: University of Wisconsin - Madison
+        city: Madison
+        state: WI
+        url: https://www.wisc.edu
+        department: Statistics
+  - name: Phillip Alday
+    email: me@phillipalday.com
+    orcid: 0000-0002-9984-5745
+    affiliation:
+      - name: Beacon Biosignals
+        url: https://beacon.bio
+date: last-modified
+date-format: iso
+toc: true
+bibliography: bibliography.bib
+number-sections: true
+engine: julia
+julia:
+  exeflags:
+    - -tauto
+    - --project=@.
+format:
+  html:
+    toc: true
+    toc-location: right
+    embed-resources: true
+---
+
+## Introduction {#sec-intro}
+
+A comparison of algorithms for estimation of variance components given in the supplemental materials for @Zhou03042019 shows the Fisher scoring algorithm taking the fewest iterations to convergence compared to an EM algorithm and the minorization-maximization (MM) algorithm presented in that paper.
+The model being simulated in @Zhou03042019, sec 3.2 is relatively simple, with random effects for two factors and their interaction in a balanced crossed design.
+
+The approach in [lme4](https://github.com/lme4/lme4) (@bates.maechler.etal:2015) and in [MixedModels.jl](https://github.com/JuliaStats/MixedModels.jl) (@bates2025mixed) has been to use a profiled log-likelihood expression, with fewer free parameters than the log-likelihood, and to streamline the evaluation of the profiled log-likelihood.
+The optimization itself is performed by a derivative-free optimizer, usually either BOBYQA or NEWUOA from Powell's collection of optimizers.
+
+Expressions for the gradient of the profiled log-likelihood were given in sec. 3.5 of @bates.maechler.etal:2015 but they haven't been implemented in either the `lme4` or the `MixedModels.jl` packages.
+
+The purpose of this note is to provide an alternative derivation for the gradient of the profiled log-likelihood and of the REML criterion for linear mixed-effects models, along with concise algorithms for evaluation of these gradients.
+
+### Model definition and evaluation of the objective
+
+The linear mixed-effects models we consider are defined by the unconditional distribution of the $q$-dimensional random-effects vector, $\mathbfcal{B}$, and the conditional distribution of the $n$-dimensional response vector, $\mathbfcal{Y}$, given $\mathbfcal{B}=\mathbf{b}$, as
+
+$$
+\begin{aligned}
+    \mathbfcal{B}&\sim\mathbfcal{N}(\mathbf{0}, \boldsymbol{\Sigma})\\
+    (\mathbfcal{Y}|\mathbfcal{B}=\mathbf{b})&
+    \sim\mathbfcal{N}\left(\mathbf{X}\boldsymbol{\beta}+\mathbf{Z}\mathbf{b},\sigma^2\mathbf{I}\right)
+\end{aligned}
+$$ {#eq-dists}
+
+where $\mathbf{X}$ is an $n\times p$ model matrix for the fixed-effects parameter vector, $\boldsymbol{\beta}$, and $\mathbf{Z}$ is an $n\times q$ model matrix for the random effects, $\mathbf{b}$.
+Furthermore, $\boldsymbol{\Sigma}$, the covariance of $\mathbfcal{B}$, is symmetric and positive semi-definite.
+We express it as
+
+$$
+\boldsymbol{\Sigma} = \sigma^2\boldsymbol{\Lambda_{\theta}}\boldsymbol{\Lambda^\top_{\theta}}
+$$ {#eq-Sigma}
+
+for a lower-triangular *relative covariance factor*, $\boldsymbol{\Lambda_\theta}$, that depends on a *relative covariance parameter vector*, $\boldsymbol{\theta}$.
+
+In `MixedModels.jl` the profiled log-likelihood, a function of $\boldsymbol{\theta}$ only, is evaluated from the blocked lower-triangular Cholesky factor, $\mathbf{L}_\theta$, defined from the relationship
+
+
+$$
+\begin{aligned}
+\boldsymbol{\Omega_\theta}&=
+\begin{bmatrix}
+\boldsymbol{\Lambda_\theta}^\top\mathbf{Z^\top Z}\boldsymbol{\Lambda_\theta}+\mathbf{I}&
+\boldsymbol{\Lambda_\theta}^\top\mathbf{Z^\top X}&
+\boldsymbol{\Lambda_\theta}^\top\mathbf{Z^\top y}\\
+\mathbf{X^\top Z}\boldsymbol{\Lambda_\theta} & \mathbf{X^\top X} & \mathbf{X^\top y}\\
+\mathbf{y^\top Z}\boldsymbol{\Lambda_\theta} & \mathbf{y^\top X} & \mathbf{y^\top y}\\
+\end{bmatrix}\\
+&=\mathbf{L}_\boldsymbol{\theta} \mathbf{L}^\top_\boldsymbol{\theta}\\
+&=
+\begin{bmatrix}
+\mathbf{L_{ZZ}} & \mathbf{0} & \mathbf{0} \\
+\mathbf{L_{XZ}} & \mathbf{L_{XX}} & \mathbf{0} \\
+\mathbf{l_{yZ}} & \mathbf{l_{yX}} & \ell_{\mathbf{yy}}
+\end{bmatrix}
+\begin{bmatrix}
+\mathbf{L_{ZZ}} & \mathbf{0} & \mathbf{0} \\
+\mathbf{L_{XZ}} & \mathbf{L_{XX}} & \mathbf{0} \\
+\mathbf{l_{yZ}} & \mathbf{l_{yX}} & \ell_{\mathbf{yy}}
+\end{bmatrix}^\top
+\end{aligned}
+$$ {#eq-blockedOmega}
+
+where the diagonal elements of $\mathbf{L}_\theta$ are chosen to be positive.
+(We assume that $\mathbf{X}$ has full column rank and that $\mathbf{y}$ is not in the column span of $\mathbf{X}$.)
+
+As shown in @bates2025mixed, the objective to be optimized, on the scale of the deviance, which is negative twice the profiled log-likelihood, can be expressed as
+
+$$
+\begin{aligned}
+-2\mathcal{L}(\boldsymbol{\theta}|\mathbf{y})&=
+\log\left|\mathbf{L_{ZZ}}\right|^2 + n \left[1 + \log\left(\frac{2\pi\ell^2_{\mathbf{yy}}}{n}\right)\right]\\
+&=\log\left|\mathbf{L_{ZZ}}\right|^2 + n\log\ell^2_{\mathbf{yy}} + c_\ell\\
+&=2\sum_{j=1}^q\log L_{j,j} + 2n \log L_{q+p+1,q+p+1} + c_\ell
+\end{aligned}
+$$ {#eq-objective}
+
+where $c_\ell$ is a constant.
+That is, the objective is an affine function (a linear function plus a constant) of the logarithms of the diagonal elements of $\mathbf{L}_\boldsymbol{\theta}$.
+It happens that the gradient of the objective, as a function of $\boldsymbol{\theta}$, expressed in this form is straightforward to evaluate, as shown in @sec-Cholesky_derivative.
+
+As shown in @bates.maechler.etal:2015, sec 3.4 the REML criterion, which some prefer for parameter estimation, can be written as
+
+$$
+\begin{aligned}
+-2\mathcal{L}_R(\boldsymbol{\theta}|\mathbf{y})&=
+\log\left(\left|\mathbf{L_{ZZ}}\right|^2\left|\mathbf{L_{XX}}\right|^2\right) + (n-p) \left[1 + \log\left(\frac{2\pi\ell^2_{\mathbf{yy}}}{n-p}\right)\right]\\
+&=\log\left|\mathbf{L_{ZZ}}\right|^2 + \log\left|\mathbf{L_{XX}}\right|^2 + (n-p)\log\ell^2_{\mathbf{yy}} + c_r\\
+&=2\sum_{j=1}^{q+p}\log L_{j,j} + 2(n-p)\log L_{q+p+1,q+p+1} + c_r
+\end{aligned}
+$$ {#eq-objective}
+
+where $c_r$ is likewise a constant.
+This is also an affine function of the logarithms of the diagonal elements of $\mathbf{L_\boldsymbol{\theta}}$.
+
+### Reformulation for evaluation of derivatives
+
+When differentiating the ML or REML objective with respect to elements of $\boldsymbol{\theta}$, it is convenient to amalgamate the blocks of $\boldsymbol{\Omega_\theta}$ derived from $\mathbf{X}$ and $\mathbf{y}$ and to re-express @eq-blockedOmega as
+
+$$
+\begin{aligned}
+\boldsymbol{\Omega_\theta}&=
+\begin{bmatrix}
+\boldsymbol{\Lambda_\theta}^\top\mathbf{Z^\top Z}\boldsymbol{\Lambda_\theta}&
+\boldsymbol{\Lambda_\theta}^\top\mathbf{Z^\top[Xy]}\\
+\mathbf{[Xy]^\top Z}\boldsymbol{\Lambda_\theta} &
+\mathbf{[Xy]^\top[Xy]}
+\end{bmatrix} +
+\begin{bmatrix}
+\mathbf{I} & \mathbf{0}\\
+\mathbf{0} & \mathbf{0}
+\end{bmatrix}\\
+&=\mathbf{L}_\boldsymbol{\theta} \mathbf{L}^\top_\boldsymbol{\theta}\\
+&=
+\begin{bmatrix}
+\mathbf{L_{Z,Z}} & \mathbf{0}\\
+\mathbf{L_{Xy,Z}} & \mathbf{L_{Xy,Xy}}
+\end{bmatrix}
+\begin{bmatrix}
+\mathbf{L_{Z,Z}} & \mathbf{0} \\
+\mathbf{L_{Xy,Z}} & \mathbf{L_{Xy,Xy}}
+\end{bmatrix}^\top
+\end{aligned}
+$$ {#eq-blockedOmega_mod}
+
+where $\mathbf{[Xy]}$ represents the $n\times(p+1)$ matrix that is the horizontal concatenation of $\mathbf{X}$ and $\mathbf{y}$.
+The matrices $\mathbf{A_{11}}=\mathbf{Z^\top Z}$, $\mathbf{A_{21}}=\mathbf{[Xy]^\top Z}$ and $\mathbf{A_{22}}=\mathbf{[Xy]^\top[Xy]}$, assembled as
+
+$$
+\mathbf{A}=\begin{bmatrix}
+\mathbf{A_{11}} & \mathbf{A_{21}^\top}\\
+\mathbf{A_{21}} & \mathbf{A_{22}}
+\end{bmatrix} ,
+$$ {#eq-Amat}
+
+are precomputed and stored as the `A` property in a `LinearMixedModel` object when random effects are associated with a single grouping factor.
+
+### General expressions for differentiating a Cholesky factor {#sec-Cholesky_derivative}
+
+@murray2016differentiation, section 3.1, provides a general approach to differentiating the Cholesky factor by differentiating both sides of @eq-blockedOmega.
+
+Repeating his derivation, with minor changes in notation, we express the relationship between the infinitesimals $d\boldsymbol{\Omega}$ and $d\mathbf{L}$ as
+
+$$
+d\boldsymbol{\Omega}=d\mathbf{L}\mathbf{L}^\top + \mathbf{L} d\mathbf{L}^\top
+$$ {#eq-infinitesimal}
+
+Pre-multiplying @eq-infinitesimal by $\mathbf{L}^{-1}$ and post-multiplying by $\mathbf{L}^{-\top}$ gives
+
+$$
+\mathbf{L}^{-1}d\boldsymbol{\Omega}\mathbf{L}^{-\top}=\mathbf{L}^{-1}d\mathbf{L} + d\mathbf{L}^\top\mathbf{L}^{-\top}
+$$ {#eq-LOmegaLT}
+
+The first addend on the right-hand side of @eq-LOmegaLT is lower triangular and the second addend is the transpose of the first.
+Thus, the diagonal of the left-hand side is exactly the result we wish to evaluate, twice the infinitesimal of the logarithms of the diagonal elements of $\mathbf{L}$.
+
+For completeness, we provide the conclusion of the derivation in @murray2016differentiation but we don't need the more general result of $d\mathbf{L}$ - we only need the particular result from the left-hand side of @eq-LOmegaLT.
+
+To evaluate $d\mathbf{L}$ we must isolate the first addend, $\mathbf{L}^{-1}d\mathbf{L}$, on the right-hand side of @eq-LOmegaLT, which we do with the $\Phi$ transformation applied to a symmetric matrix.
+This transformation preserves the strict lower triangle, halves the diagonal elements, and zeros out the strict upper triangle.
+Applied to the right-hand side of @eq-LOmegaLT, the $\Phi$ transformation isolates the first addend, providing
+
+$$
+\Phi\left(\mathbf{L}^{-1}d\boldsymbol{\Omega}\mathbf{L}^{-\top}\right)=\mathbf{L}^{-1}d\mathbf{L}
+$$ {#eq-Phi_dOmega}
+
+or
+
+$$
+d\mathbf{L}=\mathbf{L}\Phi\left(\mathbf{L}^{-1}d\boldsymbol{\Omega}\mathbf{L}^{-\top}\right)
+$$ {#eq-dL}
+
+## Examples
+
+To aid in understanding the structure of these equations we consider the structure of the various matrices and their blocks in some simple examples.
+
+Load the packages to be used
+
+```{julia}
+#| label: load_packages
+#| warning: false
+#| output: false
+using BenchmarkTools
+using CairoMakie
+using FiniteDiff
+using ForwardDiff
+using LinearAlgebra
+using MixedModels
+using MixedModels: eval_grad_p!, grad_blocks, initialize_blocks!
+using MixedModelsDatasets: dataset
+using TypedTables: Table
+
+const progress = isinteractive()  # suppress progress bars in non-interactive sessions
+CairoMakie.activate!(type="svg")  # use svg graphics output
+```
+
+### Dyestuff - a single, scalar random-effects term
+
+The `dyestuff` data set provides the yield of dyestuff in each of 5 samples from each of 6 batches of an intermediate product in the process of producing a dye.
+
+```{julia}
+#| label: dyestuff_data
+dyestuff = Table(dataset(:dyestuff))
+```
+
+A mixed-effects model for these data includes an overall "intercept" term (whose estimate will be the sample mean because of the balanced design) and random effects for each level of `batch`.
+
+```{julia}
+#| label: dyestuff_model
+m01 = fit(MixedModel, @formula(yield ~ 1 + (1|batch)), dyestuff; progress)
+θ = m01.θ     # retain a copy of the estimate of θ
+print(m01)
+```
+
+#### The objective as a function of $\theta_1$
+
+@fig-obj_graph shows the objective (negative twice the log-likelihood) of this model as a function of $\theta_1$, the relative covariance parameter.
+
+```{julia}
+#| label: fig-obj_graph
+#| fig-cap: "Graph of the objective for model m01 as a function of θ₁. The light blue horizontal line is at the minimum of the objective.  The vertical line is at the parameter estimate."
+#| code-fold: true
+let f = Figure()
+  ax = Axis(f[1,1], xlabel="θ₁", ylabel="objective")
+  lines!(ax, -0.25..1.5, objective!(m01))
+  hlines!(objective(updateL!(setθ!(m01, θ))); alpha=0.4)
+  vlines!(only(θ); alpha=0.4)
+  f
+end
+```
+
+Notice that the objective is well-defined for negative values of $\theta_1$ and that it is an even function, in the sense that $f(-\theta_1)=f(\theta_1)\,\forall\theta_1$.
+
+This means that $\theta_1=0$ will always be a critical value (have a derivative of zero) for this function.
+
+At the maximum likelihood estimate (i.e. the minimizer of the objective) of $\theta_1$, which is the ratio of the standard deviation of the random effects to the residual standard deviation, is
+
+```{julia}
+#| label: dyestuff_theta
+only(θ)
+```
+
+the derivative should also be zero (in practice, close to zero).
+
+We can see from @fig-obj_graph that the derivative at $\theta_1=1.$ will be positive.
+
+To show the evaluation of the gradient at $\boldsymbol{\theta}=[1.]$ we reset the parameter in the model object to $[1.]$
+
+```{julia}
+#| output: false
+updateL!(setθ!(m01, ones(1)));
+```
+
+#### Evaluating the gradient terms
+
+In `MixedModels.jl` the [Gram matrix](https://en.wikipedia.org/wiki/Gram_matrix) (i.e. the matrix of the form $\mathbf{X}^\top\mathbf{X}$ for any $\mathbf{X}$) of the columns of
+
+```{julia}
+ZXy = hcat(collect(only(m01.reterms)), m01.X, m01.y)
+Int.(ZXy)    # Int for more concise printing
+```
+
+is stored as the $\mathbf{A}$ property of the model object.
+
+Both $\mathbf{A}$ and and the lower Cholesky factor $\mathbf{L}$ are stored as blocked matrices with blocks in the pattern
+
+```{julia}
+BlockDescription(m01)
+```
+
+The upper left diagonal block in $\mathbf{A}$ has diagonal
+
+```{julia}
+transpose(first(m01.A).diag)  # transpose for compact printing
+```
+
+To evaluate the gradient we create the blocked storage using `grad_blocks` and initialize these blocks for the `p`th parameter with `initialize_blocks!`
+
+```{julia}
+blks = initialize_blocks!(grad_blocks(m01), m01, 1)
+```
+
+In practice we evaluate $\mathbf{L}^{-1}\dot{\boldsymbol\Omega}\mathbf{L}^{-\top}$ in the blocked format but here, for illustration, we create $\dot{\boldsymbol{\Omega}}$ in full and use a sparse form of $\mathbf{L}$ to verify the results.
+
+```{julia}
+Ω_dot = hvcat(2, blks[1,1], blks[1,2], blks[2,1], blks[2,2])
+```
+
+```{julia}
+L = LowerTriangular(sparseL(m01; full=true))
+```
+
+```{julia}
+ldiv!(L, rdiv!(Ω_dot, L'))
+```
+
+The blocked form of this calculation is implemented in the `eval_grad_p!` function
+
+```{julia}
+eval_grad_p!(blks, m01, 1)
+```
+
+We can see that the $1,1$ block, which is diagonal
+
+```{julia}
+transpose(first(blks).diag)  # transpose to print more compactly
+```
+
+matches the diagonal in the full-scale calculation.
+
+Also, the $2,2$ block
+
+```{julia}
+last(blks)
+```
+
+matches that from the full-scale calculation.
+
+A finite-difference approximation to this gradient (it is just a scalar derivative in this case) is
+
+```{julia}
+FiniteDiff.finite_difference_gradient(m01, ones(1))
+```
+
+The gradient evaluation from the blocked representation is
+
+```{julia}
+sum(first(blks).diag) + length(m01.y) * last(last(blks)) 
+```
+
+If we repeat these steps at the parameter estimate we have
+
+```{julia}
+updateL!(setθ!(m01, θ))   # reset the value of θ in the model
+L = LowerTriangular(sparseL(m01; full=true))
+initialize_blocks!(blks, m01, 1)
+M = rdiv!(ldiv!(L, hvcat(2, blks[1,1], blks[1,2], blks[2,1], blks[2,2])), L')
+```
+
+with the derivative being evaluated as
+
+```{julia}
+dot(vcat(ones(6), 0., size(dyestuff, 1)), diag(M))
+```
+
+Or, using blocked factors,
+
+```{julia}
+eval_grad_p!(blks, m01, 1)
+```
+
+```{julia}
+sum(first(blks).diag) + length(m01.y) * last(last(blks))
+```
+
+Or, using a finite-difference approximation
+
+```{julia}
+FiniteDiff.finite_difference_gradient(m01, θ)
+```
+
+
+### Sleepstudy - a single vector-valued random-effects term
+
+```{julia}
+m03 = fit(MixedModel, @formula(reaction ~ 1 + days + (1+days|subj)), dataset(:sleepstudy); progress)
+θ03 = m03.θ
+print(m03)
+```
+
+Reset the parameters to the starting values, create the blocks for the gradient evaluation, and initialize the blocks for the evaluation of the first element of the gradient.
+
+```{julia}
+updateL!(setθ!(m03, m03.optsum.initial))
+blks = initialize_blocks!(grad_blocks(m03), m03, 1)
+view(first(blks), 1:4, 1:4) 
+```
+
+```{julia}
+L = LowerTriangular(sparseL(m03; full=true))
+```
+
+```{julia}
+M = ldiv!(L, rdiv!(hvcat(2, blks[1,1], blks[1,2], blks[2,1], blks[2,2]), L'))
+```
+
+```{julia}
+sum(M[i,i] for i in 1:36) + length(m03.y) * last(M)
+```
+
+```{julia}
+FiniteDiff.finite_difference_gradient(m03, m03.optsum.initial)
+```
+
+For the blocked evaluation
+
+```{julia}
+eval_grad_p!(blks, m03, 1)
+```
+
+the value of the gradient component is
+
+```{julia}
+dat = first(blks).data
+sum(k -> (dat[1, 1, k] + dat[2, 2, k]), axes(dat, 3)) + length(m03.y) * last(last(blks))
+```
+
+For the second component of the gradient
+
+```{julia}
+eval_grad_p!(blks, m03, 2)
+view(first(blks), 1:4, 1:4)
+```
+
+```{julia}
+last(blks)
+```
+
+```{julia}
+sum(k -> (dat[1, 1, k] + dat[2, 2, k]), axes(dat, 3)) + length(m03.y) * last(last(blks))
+```
+
+And, for the final component,
+
+```{julia}
+eval_grad_p!(blks, m03, 3)
+view(first(blks), 1:4, 1:4)
+```
+
+```{julia}
+last(blks)
+```
+
+```{julia}
+sum(k -> (dat[1, 1, k] + dat[2, 2, k]), axes(dat, 3)) + length(m03.y) * last(last(blks))
+```
+
+### Penicillin - two completely crossed scalar random-effects terms
+
+The `penicillin` dataset in `MixedModelsDatasets.jl` contains 144 measurements of the `diameter` of the cleared area for each of six `sample`s of penicillin on each of 24 `plate`s.
+
+```{julia}
+#| label: penicillin_data
+penicillin = Table(dataset(:penicillin))
+```
+
+We construct a `LinearMixedModel` struct with a single fixed-effect parameter, representing the average diameter in the balanced design, and random effects for each `plate` and each `sample`,
+
+```{julia}
+#| label: m02
+#| output: false
+#| warn: false
+m02 = fit(MixedModel, @formula(diameter ~ 1 + (1|plate) + (1|sample)), penicillin)
+θ = m02.θ
+print(m02)
+```
+
+for which the concatenated matrix $\left[\mathbf{ZXy}\right]$ is
+
+```{julia}
+#| label: m02ZXy
+Int.(hcat(collect(first(m02.reterms)), collect(last(m02.reterms)), m02.X, m02.y))
+```
+
+in which the first 24 columns are the indicators for `plate`, the next 6 columns are the indicators for `sample`, the second-to-last column is the single column of the fixed-effects model matrix, $\mathbf{X}$, and the last column is $\mathbf{y}$.
+
+The Cholesky factor, $\mathbf{L}$, at the initial value $\boldsymbol\theta=\left[1,1\right]^\top$, can be expressed as a lower-triangular sparse matrix as
+
+```{julia}
+#| label: m02L
+Lsparse = LowerTriangular(sparseL(updateL!(setθ!(m02, ones(2))); full=true))
+```
+
+In practice, the $\mathbf{L}$ matrix is stored in a blocked form
+
+```{julia}
+#| label: m02_blocks
+BlockDescription(m02)
+```
+
+from which the profiled objective (negative twice the log-likelihood) can be evaluated as
+
+```{julia}
+#| label: m02L_initial_objective
+objective(m02)
+```
+
+#### Evaluating terms in the gradient
+
+For the first gradient component, at the initial values
+
+```{julia}
+updateL!(setθ!(m02, m02.optsum.initial))
+blks = eval_grad_p!(grad_blocks(m02), m02, 1)
+```
+
+the value of the gradient component is
+
+```{julia}
+sum(first(blks).diag) + sum(diag(blks[2,2])) + length(m02.y) * last(last(blks))
+```
+
+and the second component is
+
+```{julia}
+eval_grad_p!(blks, m02, 2)
+```
+
+Notice that the $1,1$ block is zero.
+At present we evaluate it but in the future we can skip that calculation.
+
+
+```{julia}
+sum(diag(blks[2,2])) + length(m02.y) * last(last(blks))
+```
+
+These can be compared to the finite-difference approximations
+
+```{julia}
+FiniteDiff.finite_difference_gradient(m02, m02.optsum.initial)
+```
+
+In the full matrix representation
+
+```{julia}
+initialize_blocks!(blks, updateL!(setθ!(m02, m02.optsum.initial)), 2)
+Ω_dot = let b = blks
+  hvcat(3, b[1,1], b[1,2], b[1,3], b[2,1], b[2,2], b[2,3], b[3,1], b[3,2], b[3,3])
+end
+```
+
+```{julia}
+L = LowerTriangular(sparseL(m02; full=true))
+```
+
+```{julia}
+ldiv!(L, rdiv!(Ω_dot, L'))
+```
+
+```{julia}
+sum(Ω_dot[j,j] for j in 25:30) + length(m02.y) * last(Ω_dot)
+```
+
+```{julia}
+eval_grad_p!(blks, updateL!(setθ!(m02, m02.optsum.initial)), 2)
+```
+
+```{julia}
+view(Ω_dot, 25:30, 25:30)
+```
+
+```{julia}
+blks[2,2]
+```
+
+```{julia}
+last(blks)
+```
+
+```{julia}
+view(Ω_dot, 31:32, 31:32)
+```
+
+```{julia}
+sum(diag(blks[2,2])) + length(m02.y) * last(last(blks))
+```
+### References {.unnumbered}
+
+::: {#refs}
+:::
