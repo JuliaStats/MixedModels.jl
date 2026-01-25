@@ -221,24 +221,24 @@ function initialize_blocks!(
     (; parmap, A, reterms) = m
     b, i, j = parmap[p]
     k = size(reterms[b].λ, 1)
-    for ii in 1:(b - 1)
-        for jj in 1:(b - 1)
-            _zero_out(blks[ii, jj])
-        end
-    end
     Omega_dot_diag_block!(blks[b, b], m, p) # populate the b'th diagonal block
-    for c in (b + 1):size(blks, 2)          # zero out the blocks below and to the right of [b, b]
-        for r in (b + 1):size(blks, 1)
-            _zero_out(blks[r, c])
+    for r in axes(blks, 1)                  # iterate over the lower triangle, transpose-copying to upper triangle
+        if r ≠ b
+            for c in 1:r
+                if c ≠ b
+                    _zero_out(blks[r, c])
+                    _zero_out(blks[c, r])
+                else
+                    copyskip!(blks[r, c], A[block(r, c)], i, j, k)
+                    copyto!(blks[c, r], blks[r, c]')
+                end
+            end
+        else
+            for c in 1:(r - 1)
+                copyskip!(blks[r, c], A[block(r, c)], i, j, k)
+                copyto!(blks[c, r], blks[r, c]')
+            end
         end
-    end
-    for c in 1:(b - 1)
-        copyskip!(blks[b, c], A[block(b, c)], i, j, k)
-        copyto!(blks[c, b], blks[b, c]')
-    end
-    for r in (b + 1):size(blks, 1)
-        copyskip!(blks[r, b], A[block(r, b)], i, j, k)
-        copyto!(blks[b, r], blks[r, b]')
     end
     return blks
 end
