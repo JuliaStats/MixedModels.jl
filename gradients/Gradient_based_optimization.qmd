@@ -235,6 +235,7 @@ kbm01 = fit(
   dataset(:kb07);
   progress,
 )
+kbm01_obj = objective(kbm01)
 print(kbm01)
 ```
 
@@ -249,19 +250,21 @@ findall(iszero, kbm01.θ)
 ```
 
 Refitting with the gradient takes a very long time because ForwardDiff is poorly suited to optimization problems with many parameters.
+
 ```{julia}
-#| eval: false
 fitlog = gr_refit!(kbm01)
 ```
 
 ```{julia}
-#| eval: false
-last(fitlog.obj)
+kbm01_obj - last(fitlog.obj)
 ```
 
 ```{julia}
-#| eval: false
 last(fitlog, 5)
+```
+
+```{julia}
+findall(x -> abs(x) < 1.0e-5, kbm01.θ)
 ```
 
 ## Conclusions {#sec-conclusions}

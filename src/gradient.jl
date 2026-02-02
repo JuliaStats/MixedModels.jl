@@ -1,26 +1,28 @@
 # Evaluate analytic gradient of the objective for ML or REML fitting of a LinearMixedModel
 
 """
-  Omega_dot_diag_block!(blk, m::LinearMixedModel, p::Integer)
+  Omega_dot_diag_block!(blk, m::LinearMixedModel, b::Integer, i::Integer, j::Integer)
 
-Fill `blk` as the non-zero diagonal block of ∂Ω/∂θₚ for parameter number `p` of model `m`.
+Fill `blk` as the non-zero diagonal block of ∂Ω/∂θₚ for the parameter in block `b`, position `i, j` of model `m`.
 
 For any `p` only one diagonal block of ∂Ω/∂θₚ will be non-zero.
 """
 function Omega_dot_diag_block!(
     blk::Diagonal{T,Vector{T}},
     m::LinearMixedModel{T},
-    p::Integer,
+    b::Integer,
+    i::Integer,
+    j::Integer,
 ) where {T}
-    (; parmap, A, reterms) = m
-    b, i, j = parmap[p]
+    (; A, reterms) = m
     isone(i) && isone(j) ||
         throw(ArgumentError("parameter $p should be from a scalar r.e. term"))
     # It is common for 'b' to be one as well but nested models can result in diagonal blk for b > 1
     blk_diag = blk.diag
-    A_diag = A[kp1choose2(b)].diag        # will throw an error if the A[b,b] block is not Diagonal
-    length(blk_diag) == length(A_diag) ||
+    A_diag = A[kp1choose2(b)].diag   # will throw an error if the A[b,b] block is not Diagonal
+    if length(blk_diag) ≠ length(A_diag)
         throw(DimensionMismatch("A_diag and blk_diag have different lengths"))
+    end
     λ = only(reterms[b].λ)           # will throw an error if reterms[b] is not of size (1,1)
     for k in eachindex(blk_diag, A_diag)
         blk_diag[k] = T(2) * λ * A_diag[k]
@@ -31,10 +33,11 @@ end
 function Omega_dot_diag_block!(
     blk::Matrix{T},
     m::LinearMixedModel{T},
-    p::Integer,
+    b::Integer,
+    i::Integer,
+    j::Integer,
 ) where {T}
-    (; parmap, A, reterms) = m
-    b, i, j = parmap[p]
+    (; A, reterms) = m
     k = size(reterms[b].λ, 1)
     if isone(k)
         isone(i) && isone(j) ||
@@ -55,10 +58,11 @@ end
 function Omega_dot_diag_block!(
     blk::UniformBlockDiagonal{T},
     m::LinearMixedModel{T},
-    p::Integer,
+    b::Integer,
+    i::Integer,
+    j::Integer,
 ) where {T}
-    (; parmap, A, reterms) = m
-    b, i, j = parmap[p]
+    (; A, reterms) = m
     Ablk = A[kp1choose2(b)]
     if !isa(Ablk, UniformBlockDiagonal{T})
         throw(
@@ -225,19 +229,20 @@ function copyskip!(
 end
 
 """
-    initialize_blocks!(blks::Matrix{AbstractMatrix{T}}, m::LinearMixedModel{T}, p::Integer)
+    initialize_blocks!(blks::Matrix{AbstractMatrix{T}}, m::LinearMixedModel{T}, b, i, j, k)
 
-Initialize the grad evaluation blocks, `blks`, for model `m`, for parameter `p`
+Initialize the grad evaluation blocks, `blks`, for model `m`, for parameter in block `b`, position `(i,j)` of block size `k`
 """
 function initialize_blocks!(
     blks::Matrix{AbstractMatrix{T}},
     m::LinearMixedModel{T},
-    p::Integer,
+    b::Integer,
+    i::Integer,
+    j::Integer,
+    k::Integer,
 ) where {T}
-    (; parmap, A, reterms) = m
-    b, i, j = parmap[p]
-    k = size(reterms[b].λ, 1)
-    Omega_dot_diag_block!(blks[b, b], m, p) # populate the b'th diagonal block
+    A = m.A
+    Omega_dot_diag_block!(blks[b, b], m, b, i, j) # populate the b'th diagonal block
     for r in axes(blks, 1)                  # iterate over the lower triangle, transpose-copying to upper triangle
         if r ≠ b
             for c in 1:r
@@ -260,6 +265,30 @@ function initialize_blocks!(
 end
 
 """
+    diag_sum(A::AbstractMatrix)
+
+Return the sum of the diagonal elements of `A`
+"""
+function diag_sum(A::Matrix)
+    return sum(A[i] for i in diagind(A))
+end
+
+function diag_sum(A::UniformBlockDiagonal{T}) where T
+    dat = A.data
+    val = zero(T)
+    for k in axes(dat, 3)
+        for i in axes(dat, 1)
+            val += dat[i, i, k]
+        end
+    end
+    return val
+end
+
+function diag_sum(A::Diagonal)
+    return sum(A.diag)
+end
+
+"""
     eval_grad_p!(blks, m, p)
 
 Evaluate the gradient component for parameter `p` in model `m` using blocks in `blks` for storage
@@ -267,11 +296,12 @@ Evaluate the gradient component for parameter `p` in model `m` using blocks in `
 function eval_grad_p!(
     blks::Matrix{AbstractMatrix{T}}, m::LinearMixedModel{T}, p::Integer
 ) where {T}
-    L = m.L
-    #    b = first(parmap[p])                    # block, row and column for parameter p
-    initialize_blocks!(blks, m, p)    # change this to pass b, i, j, k separately
+    (; L, parmap, reterms) = m
+    (b, i, j) = parmap[p]                    # block, row and column for parameter p
+    k = size(reterms[b].λ, 1)
+    initialize_blocks!(blks, m, b, i, j, k)
     for kk in axes(blks, 2)                  # ldiv!(LowerTriangular(L), blks)
-        #        if jj ≥ b                     # maybe hold off on this at the expense of some multiplications by zero
+        #        if jj ≥ b                   # maybe hold off on this at the expense of some multiplications by zero
         L11 = L[block(1, 1)]
         isa(L11, Diagonal) || (L11 = LowerTriangular(L11))
         C1 = ldiv!(L11, blks[1, kk])
@@ -286,6 +316,7 @@ function eval_grad_p!(
             end
         end
     end
+                                    # code in LinearAlgebra on which this is patterned
     # for k in axes(B,2)
     #     a11 = A[1,1]
     #     iszero(a11) && throw(SingularException(1))
@@ -322,5 +353,24 @@ function eval_grad_p!(
     #         C[i,j] = Aij / (unit ? oB : tfun(B[j,j]))
     #     end
     # end                     
-    return blks
+    return sum(diag_sum(blks[i, i]) for i in 1:(size(blks, 1) - 1)) + length(m.y) * last(last(blks))
+end
+
+"""
+    gradient!(g::Vector{T}, m::LinearMixedModel{T}) where {T}
+
+Overwrite `g` with the gradient of the ML objective of the model `m` at its current parameter values
+"""
+function gradient!(g::Vector{T}, blks::Matrix{AbstractMatrix{T}}, m::LinearMixedModel{T}) where {T}
+    if length(g) ≠ length(m.parmap)
+        throw(DimensionMismatch("length(g) = $(length(g)) should be $(length(m.parmap)) for this model"))
+    end
+    for p in axes(g, 1)
+        g[p] = eval_grad_p!(blks, m, p)
+    end
+    return g
+end
+
+function gradient(blks::Matrix{AbstractMatrix{T}}, m::LinearMixedModel{T}) where {T}
+    return gradient!(similar(m.parmap, T), blks, m)
 end
