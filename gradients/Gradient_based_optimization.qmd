@@ -50,9 +50,10 @@ Load the packages to be used
 #| label: load_packages
 #| output: false
 using BenchmarkTools
+using FiniteDiff
 using ForwardDiff
 using MixedModels
-using MixedModels: fd_deviance
+using MixedModels: fd_deviance, grad_blocks, gradient, gradient!
 using MixedModelsDatasets: dataset
 using NLopt
 using Tables: table
@@ -61,7 +62,202 @@ using TypedTables: Table
 const progress = isinteractive()
 ```
 
+## Comparison of MixedModels.gradient! and ForwardDiff.gradient!
+
+With the [ForwardDiff package](https://github.com/JuliaDiff/ForwardDiff.jl) and the corresponding extension to the [MixedModels package](https://github.com/JuliaStats/MixedModels.jl) we can use forward-differencing automatic differentiation for the objective of a Linear Mixed Model, defined as `fd_deviance`.
+
+Forward differencing requires that the objective be evaluated using [dual numbers](https://en.wikipedia.org/wiki/Dual_number), which for large problems, either in terms of the number of random effects or the number of free parameters in the objective, makes for slow evaluation.
+
+The number of free parameters affects the speed because the evaluation of the objective must be repeated using dual numbers with respect to each parameter in order to evaluate the gradient.
+Thus if the relative covariance parameter, $\boldsymbol{\theta}$, is of length $k$ then the objective is evaluated $k + 1$ times for each objective, gradient calculation.
+
+The number of random effects becomes important in models with multiple grouping factors because the evaluation of the objective and the gradient often requires evaluating the Cholesky factor of a large, dense, symmetric positive-definite matrix [@bates2025mixed].
+The floating-point version of this calculation can use Lapack routines and their implementation in "accelerated BLAS".
+With dual numbers we must fall back on generic code which can be much slower.
+
+Recently we have coded up a formulation of the gradient of the objective as `MixedModels.gradient!` that uses the same, Lapack-based, calculations as the evaluation of the objective.
+There still may be areas for optimization of this calculation but probably there won't be order-of-magnitude increases in speed for this method.
+
 ## Examples {#sec-examples}
+
+We will introduce a number of models from our collection of examples and check the gradient using finite-differences, forward-differencing and our analytic approach at the starting estimates.
+The finite differencing methods will have lower accuracy than the other two methods.
+
+### A single, simple, scalar random-effects term {#sec-m1}
+
+The first model has a single, scalar random-effects term - about as simple as you can get.
+
+```{julia}
+#| label: m1
+m1 = LinearMixedModel(
+    @formula(yield ~ 1 + (1|batch)),
+    dataset(:dyestuff)
+);
+ff_gr_m1 = FiniteDiff.finite_difference_gradient(m1, m1.optsum.initial)
+```
+
+```{julia}
+fd_gr_m1 = ForwardDiff.gradient(m1, m1.optsum.initial)
+```
+
+```{julia}
+m1_blks = grad_blocks(m1)
+a_gr_m1 = gradient(m1_blks, updateL!(setθ!(m1, m1.optsum.initial)))
+```
+
+We don't bother benchmarking these evaluations because this model is so simple.
+
+### Two non-nested, simple, scalar random-effects terms {#sec-m2}
+
+The second model has two, non-nested, scalar random-effects terms.
+It happens that these terms are completely crossed, in the sense that every `sample` appears on every `plate`, but the important characteristic is that they are non-nested.
+
+```{julia}
+m2 = LinearMixedModel(
+    @formula(diameter ~ 1 + (1|plate) + (1|sample)),
+    dataset(:penicillin)
+)
+m2_blks = grad_blocks(m2)
+ff_gr_m2 = FiniteDiff.finite_difference_gradient(m2, m2.optsum.initial)
+```
+
+```{julia}
+fd_gr_m2 = ForwardDiff.gradient(m2, m2.optsum.initial)
+```
+
+```{julia}
+a_gr_m2 = MixedModels.gradient(m2_blks, updateL!(setθ!(m2, m2.optsum.initial)))
+```
+
+```{julia}
+#| label: fd_m2_benchmark
+@benchmark ForwardDiff.gradient!($fd_gr_m2, $m2, $(m2.optsum.initial)) seconds=1
+```
+
+```{julia}
+#| label: a_m2_benchmark
+@benchmark gradient!($a_gr_m2, $m2_blks, $m2) seconds=1
+```
+
+We see that the analytic gradient takes longer to evaluate but uses less memory than does the ForwardDiff gradient.
+
+### Two nested, simple, scalar random-effects terms {#sec-m3}
+
+The third example has two nested scalar random-effects terms
+
+```{julia}
+m3 = LinearMixedModel(
+    @formula(strength ~ 1 + (1|batch / cask)),
+    dataset(:pastes)
+)
+m3_blks = grad_blocks(m3)
+ff_gr_m3 = FiniteDiff.finite_difference_gradient(m3, m3.optsum.initial)
+```
+
+```{julia}
+fd_gr_m3 = ForwardDiff.gradient(m3, m3.optsum.initial)
+```
+
+```{julia}
+a_gr_m3 = MixedModels.gradient(m3_blks, updateL!(setθ!(m3, m3.optsum.initial)))
+```
+
+```{julia}
+#| label: fd_m3_benchmark
+@benchmark ForwardDiff.gradient!($fd_gr_m3, $m3, $(m3.optsum.initial)) seconds=1
+```
+
+```{julia}
+#| label: a_m3_benchmark
+@benchmark gradient!($a_gr_m3, $m3_blks, $m3) seconds=1
+```
+
+This is a curious result because the analytic gradient result is much slower on this model than on `m2`.
+It may be related to the structure of the blocks - in particular the $[2,2]$ block of $\mathbf{L}$ which is dense in `m2` and diagonal in `m3`.
+
+```{julia}
+BlockDescription(m2)
+```
+
+```{julia}
+BlockDescription(m3)
+```
+
+It may be that some of the evaluations of elements in the $[2,2]$ block must keep checking that the element being updated is indeed on the diagonal, producing a lot of indexing overhead.
+
+### Vector-valued random effects for a single grouping factor
+
+The fourth example has vector-valued random effects for each level of a single grouping factor, `subj`.
+
+```{julia}
+m4 = LinearMixedModel(
+    @formula(reaction ~ 1 + days + (1 + days|subj)),
+    dataset(:sleepstudy)
+)
+m4_blks = grad_blocks(m4)
+ff_gr_m4 = FiniteDiff.finite_difference_gradient(m4, m4.optsum.initial)
+```
+
+```{julia}
+fd_gr_m4 = ForwardDiff.gradient(m4, m4.optsum.initial)
+```
+
+```{julia}
+a_gr_m4 = MixedModels.gradient(m4_blks, updateL!(setθ!(m4, m4.optsum.initial)))
+```
+
+```{julia}
+#| label: fd_m4_benchmark
+@benchmark ForwardDiff.gradient!($fd_gr_m4, $m4, $(m4.optsum.initial)) seconds=1
+```
+
+```{julia}
+#| label: a_m4_benchmark
+@benchmark gradient!($a_gr_m4, $m4_blks, $m4) seconds=1
+```
+
+### Incompletely crossed grouping factors for scalar random effects {#sec-m5}
+
+
+```{julia}
+m5 = LinearMixedModel(
+    @formula(y ~ 1 + (1|s) + (1|d)),
+    dataset(:insteval)
+)
+m5_blks = grad_blocks(m5)
+BlockDescription(m5)
+```
+
+```{julia}
+ff_gr_m5 = FiniteDiff.finite_difference_gradient(m5, m5.optsum.initial)
+```
+
+```{julia}
+fd_gr_m5 = ForwardDiff.gradient(m5, m5.optsum.initial)
+```
+
+With the analytic gradient this evaluation takes a very long time.
+We should profile the calculation to see where it is spending its time.
+
+For now we will skip this evaluation.
+
+```{julia}
+#| eval: false
+a_gr_m5 = MixedModels.gradient(m5_blks, updateL!(setθ!(m5, m5.optsum.initial)))
+```
+
+```{julia}
+#| label: fd_m5_benchmark
+@benchmark ForwardDiff.gradient!($fd_gr_m5, $m5, $(m5.optsum.initial)) seconds=5
+```
+
+```{julia}
+#| label: a_m5_benchmark
+#| eval: false
+@benchmark gradient!($a_gr_m5, $m5_blks, $m5) seconds=1
+```
+
+## Optimizing the objective using LD_LBFGS and ForwardDiff {#sec-optimizing}
 
 We create a function to take a `LinearMixedModel` that has been fit and refit it using the `:LD_LBFGS` optimizer applied to an objective function that evaluates the gradient using `ForwardDiff`.
 
@@ -101,33 +297,28 @@ end
 Define a model for the `penicillin` data
 
 ```{julia}
-#| label: m1
-pnm01 = fit(
-  MixedModel,
-  @formula(diameter ~ 1 + (1|plate) + (1|sample)),
-  dataset(:penicillin);
-  progress,
-)
-pnm01_obj = objective(pnm01)
-print(pnm01)
+#| label: m02_fit
+refit!(m2; progress)
+m2_obj = objective(m2)
+print(m2)
 ```
 
 for which the optimization summary is
 
 ```{julia}
-pnm01.optsum
+m2.optsum
 ```
 
 and refit the model using ForwardDiff gradient evaluations.
 
 ```{julia}
-fitlog = gr_refit!(pnm01)
+fitlog = gr_refit!(m2)
 ```
 
-The objective at convergence, compared to the derivative-free optimum
+The objective at convergence is slightly less than the optimum from the derivative-free method
 
 ```{julia}
-pnm01_obj - last(fitlog.obj)
+m2_obj - last(fitlog.obj)
 ```
 
 and the last few evaluations are
@@ -139,21 +330,21 @@ last(fitlog, 5)
 ### Pastes {#sec-pastes}
 
 ```{julia}
-psm01 = fit(MixedModel, @formula(strength ~ 1 + (1|batch/cask)), dataset(:pastes); progress)
-psm01_obj = objective(psm01)
-print(psm01)
+refit!(m3; progress)
+m3_obj = objective(m3)
+print(m3)
 ```
 
 ```{julia}
-psm01.optsum
+m3.optsum
 ```
 
 ```{julia}
-fitlog = gr_refit!(psm01)
+fitlog = gr_refit!(m3)
 ```
 
 ```{julia}
-psm01_obj - last(fitlog.obj)
+m3_obj - last(fitlog.obj)
 ```
 
 ```{julia}
@@ -161,6 +352,8 @@ last(fitlog, 5)
 ```
 
 ### Insteval {#sec-insteval}
+
+We fit an alternative model to the `insteval` data with simple, scalar random effects for three partially crossed grouping factors.
 
 ```{julia}
 insteval = dataset(:insteval)
@@ -204,21 +397,21 @@ This is an example where the number of evaluations to convergence is lower when 
 ### Sleepstudy {#sec-sleepstudy}
 
 ```{julia}
-slm01 = fit(MixedModel, @formula(reaction ~ 1 + days + (1 + days|subj)), dataset(:sleepstudy); progress)
-slm01_obj = objective(slm01)
-print(slm01)
+refit!(m4; progress)
+m4_obj = objective(m4)
+print(m4)
 ```
 
 ```{julia}
-slm01.optsum
+m4.optsum
 ```
 
 ```{julia}
-fitlog = gr_refit!(slm01)
+fitlog = gr_refit!(m4)
 ```
 
 ```{julia}
-slm01_obj - last(fitlog.obj)
+m4_obj - last(fitlog.obj)
 ```
 
 ```{julia}
@@ -227,7 +420,10 @@ last(fitlog, 5)
 
 ### Kronmueller-Barr 2007 {#sec-kb07}
 
+This model has a 72 free parameters and takes a very long time to fit, so we suppress evaluation of these blocks for now.
+
 ```{julia}
+#| eval: false
 # this model is very overparameterized, but it's a test example
 kbm01 = fit(
   MixedModel,
@@ -240,37 +436,43 @@ print(kbm01)
 ```
 
 ```{julia}
+#| eval: false
 kbm01.optsum
 ```
 
 Several of the parameters on the diagonal of $\boldsymbol{\Lambda}$ are close to zero at convergence and are replaced by zero in the returned parameter vector
 
 ```{julia}
+#| eval: false
 findall(iszero, kbm01.θ)
 ```
 
 Refitting with the gradient takes a very long time because ForwardDiff is poorly suited to optimization problems with many parameters.
 
 ```{julia}
+#| eval: false
 fitlog = gr_refit!(kbm01)
 ```
 
 ```{julia}
+#| eval: false
 kbm01_obj - last(fitlog.obj)
 ```
 
 ```{julia}
+#| eval: false
 last(fitlog, 5)
 ```
 
 ```{julia}
+#| eval: false
 findall(x -> abs(x) < 1.0e-5, kbm01.θ)
 ```
 
 ## Conclusions {#sec-conclusions}
 
-Generally the gradient-based optimizers converge in fewer evaluations than the derivative-free optimizers (`psm01` in @sec-pastes is an exception).
-Although the `ftol_rel` criterion is looser for the gradient-based optimizer it usually achieves a lower optimum value, as shown by the differences like `pnm01_obj - last(fitlog.obj)` being positive.
+Generally the gradient-based optimizers converge in fewer evaluations than the derivative-free optimizers (`m3` in @sec-pastes is an exception).
+Although the `ftol_rel` criterion is looser for the gradient-based optimizer it usually achieves a lower optimum value, as shown by the differences like `m2_obj - last(fitlog.obj)` being positive.
 
 I think the most interesting result is for the `insteval` data where the three-parameter optimization takes 81 function evaluations for `LN_NEWUOA` but 34 evaluations for `LD_LBFGS`.
 However, the ForwardDiff gradient evaluation takes much longer because it allocates so much memory (and it may be using a non-BLAS Cholesky factorization of $1128\times1128$ symmetric matrix).
