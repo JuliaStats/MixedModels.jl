@@ -217,9 +217,10 @@ Load the packages to be used
 using BenchmarkTools
 using CairoMakie
 using FiniteDiff
+using ForwardDiff
 using LinearAlgebra
 using MixedModels
-using MixedModels: eval_grad_p!, grad_blocks, initialize_blocks!
+using MixedModels: eval_grad_p!, grad_blocks, initialize_blocks!, gradient!, blks2dense
 using MixedModelsDatasets: dataset
 using TypedTables: Table
 
@@ -241,7 +242,6 @@ A mixed-effects model for these data includes an overall "intercept" term (whose
 ```{julia}
 #| label: dyestuff_model
 m01 = fit(MixedModel, @formula(yield ~ 1 + (1|batch)), dyestuff; progress)
-θ = m01.θ     # retain a copy of the estimate of θ
 print(m01)
 ```
 
@@ -253,7 +253,7 @@ print(m01)
 #| label: fig-obj_graph
 #| fig-cap: "Graph of the objective for model m01 as a function of θ₁. The light blue horizontal line is at the minimum of the objective.  The vertical line is at the parameter estimate."
 #| code-fold: true
-let f = Figure()
+let f = Figure(), θ = m01.optsum.final
   ax = Axis(f[1,1], xlabel="θ₁", ylabel="objective")
   lines!(ax, -0.25..1.5, objective!(m01))
   hlines!(objective(updateL!(setθ!(m01, θ))); alpha=0.4)
@@ -270,7 +270,7 @@ At the maximum likelihood estimate (i.e. the minimizer of the objective), the va
 
 ```{julia}
 #| label: dyestuff_theta
-only(θ)
+only(m01.optsum.final)
 ```
 
 Here the derivative should be zero (in practice, close to zero).
@@ -318,7 +318,7 @@ blks = initialize_blocks!(grad_blocks(m01), m01, 1, 1, 1, 1)
 In practice we evaluate $\mathbf{L}^{-1}\dot{\boldsymbol\Omega}\mathbf{L}^{-\top}$ in the blocked format but here, for illustration, we create $\dot{\boldsymbol{\Omega}}$ in full and use a sparse form of $\mathbf{L}$ to verify the results.
 
 ```{julia}
-Ω_dot = hvcat(2, blks[1,1], blks[1,2], blks[2,1], blks[2,2])
+Ω_dot = blks2dense(blks)
 ```
 
 ```{julia}
@@ -357,6 +357,12 @@ A finite-difference approximation to this gradient (it is just a scalar derivati
 FiniteDiff.finite_difference_gradient(m01, ones(1))
 ```
 
+or using automatic differentiation with [ForwardDiff.jl](https://github.com/JuliaDiff/ForwardDiff.jl) and the `ForwardDiff` extension to [MixedModels.jl](https://github.com/JuliaStats/MixedModels.jl).
+
+```{julia}
+g01 = ForwardDiff.gradient!(zeros(1), m01)
+```
+
 The gradient evaluation from the blocked representation is
 
 ```{julia}
@@ -366,10 +372,10 @@ sum(first(blks).diag) + length(m01.y) * last(last(blks))
 If we repeat these steps at the parameter estimate we have
 
 ```{julia}
-updateL!(setθ!(m01, θ))   # reset the value of θ in the model
+updateL!(setθ!(m01, m01.optsum.final))   # reset the value of θ in the model
 L = LowerTriangular(sparseL(m01; full=true))
 initialize_blocks!(blks, m01, 1, 1, 1, 1)
-M = rdiv!(ldiv!(L, hvcat(2, blks[1,1], blks[1,2], blks[2,1], blks[2,2])), L')
+M = rdiv!(ldiv!(L, blks2dense(blks)), L')
 ```
 
 with the derivative being evaluated as
@@ -391,9 +397,12 @@ sum(first(blks).diag) + length(m01.y) * last(last(blks))
 Or, using a finite-difference approximation
 
 ```{julia}
-FiniteDiff.finite_difference_gradient(m01, θ)
+FiniteDiff.finite_difference_gradient(m01, m01.optsum.final)
 ```
 
+```{julia}
+ForwardDiff.gradient!(g01, m01)
+```
 
 ### Sleepstudy - a single vector-valued random-effects term
 
@@ -416,7 +425,7 @@ L = LowerTriangular(sparseL(m03; full=true))
 ```
 
 ```{julia}
-M = ldiv!(L, rdiv!(hvcat(2, blks[1,1], blks[1,2], blks[2,1], blks[2,2]), L'))
+M = ldiv!(L, rdiv!(blks2dense(blks), L'))
 ```
 
 ```{julia}
@@ -427,47 +436,33 @@ sum(M[i,i] for i in 1:36) + length(m03.y) * last(M)
 FiniteDiff.finite_difference_gradient(m03, m03.optsum.initial)
 ```
 
-For the blocked evaluation
+```{julia}
+g03 = ForwardDiff.gradient!(zeros(3), updateL!(setθ!(m03, m03.optsum.initial)))
+```
+
+The blocked evaluation
+
+```{julia}
+gradient!(g03, blks, m03)
+```
+
+gives the same value of the gradient at the initial parameter values.
+
+However, at the converged parameter estimates, the gradient values are different
+
+```{julia}
+ForwardDiff.gradient!(g03, updateL!(setθ!(m03, m03.optsum.final)))
+```
+
+```{julia}
+blks2dense(initialize_blocks!(blks, m03, 1, 1, 1, 2))
+```
 
 ```{julia}
 eval_grad_p!(blks, m03, 1)
 ```
-
-the value of the gradient component is
-
 ```{julia}
-dat = first(blks).data
-sum(k -> (dat[1, 1, k] + dat[2, 2, k]), axes(dat, 3)) + length(m03.y) * last(last(blks))
-```
-
-For the second component of the gradient
-
-```{julia}
-eval_grad_p!(blks, m03, 2)
-view(first(blks), 1:4, 1:4)
-```
-
-```{julia}
-last(blks)
-```
-
-```{julia}
-sum(k -> (dat[1, 1, k] + dat[2, 2, k]), axes(dat, 3)) + length(m03.y) * last(last(blks))
-```
-
-And, for the final component,
-
-```{julia}
-eval_grad_p!(blks, m03, 3)
-view(first(blks), 1:4, 1:4)
-```
-
-```{julia}
-last(blks)
-```
-
-```{julia}
-sum(k -> (dat[1, 1, k] + dat[2, 2, k]), axes(dat, 3)) + length(m03.y) * last(last(blks))
+gradient!(g03, blks, m03)
 ```
 
 ### Penicillin - two completely crossed scalar random-effects terms
@@ -526,7 +521,8 @@ For the first gradient component, at the initial values
 
 ```{julia}
 updateL!(setθ!(m02, m02.optsum.initial))
-blks = eval_grad_p!(grad_blocks(m02), m02, 1)
+blks = grad_blocks(m02)
+eval_grad_p!(blks, m02, 1)
 ```
 
 the value of the gradient component is
@@ -558,10 +554,8 @@ FiniteDiff.finite_difference_gradient(m02, m02.optsum.initial)
 In the full matrix representation
 
 ```{julia}
-initialize_blocks!(blks, updateL!(setθ!(m02, m02.optsum.initial)), 2, 1, 1, 1)
-Ω_dot = let b = blks
-  hvcat(3, b[1,1], b[1,2], b[1,3], b[2,1], b[2,2], b[2,3], b[3,1], b[3,2], b[3,3])
-end
+initialize_blocks!(blks, updateL!(setθ!(m02, m02.optsum.final)), 2, 1, 1, 1)
+Ω_dot = blks2dense(blks)
 ```
 
 ```{julia}

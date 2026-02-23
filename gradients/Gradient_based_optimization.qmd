@@ -423,7 +423,6 @@ last(fitlog, 5)
 This model has a 72 free parameters and takes a very long time to fit, so we suppress evaluation of these blocks for now.
 
 ```{julia}
-#| eval: false
 # this model is very overparameterized, but it's a test example
 kbm01 = fit(
   MixedModel,
@@ -436,14 +435,12 @@ print(kbm01)
 ```
 
 ```{julia}
-#| eval: false
 kbm01.optsum
 ```
 
 Several of the parameters on the diagonal of $\boldsymbol{\Lambda}$ are close to zero at convergence and are replaced by zero in the returned parameter vector
 
 ```{julia}
-#| eval: false
 findall(iszero, kbm01.θ)
 ```
 

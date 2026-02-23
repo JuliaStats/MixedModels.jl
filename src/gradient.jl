@@ -15,18 +15,16 @@ function Omega_dot_diag_block!(
     j::Integer,
 ) where {T}
     (; A, reterms) = m
-    isone(i) && isone(j) ||
+    if !(isone(i) && isone(j))
         throw(ArgumentError("parameter $p should be from a scalar r.e. term"))
+    end
     # It is common for 'b' to be one as well but nested models can result in diagonal blk for b > 1
     blk_diag = blk.diag
-    A_diag = A[kp1choose2(b)].diag   # will throw an error if the A[b,b] block is not Diagonal
+    A_diag = A[kp1choose2(b)].diag    # will throw an error if the A[b,b] block is not Diagonal
     if length(blk_diag) ≠ length(A_diag)
         throw(DimensionMismatch("A_diag and blk_diag have different lengths"))
     end
-    λ = only(reterms[b].λ)           # will throw an error if reterms[b] is not of size (1,1)
-    for k in eachindex(blk_diag, A_diag)
-        blk_diag[k] = T(2) * λ * A_diag[k]
-    end
+    blk_diag .= (T(2) * only(reterms[b].λ)) .* A_diag
     return blk
 end
 
@@ -66,7 +64,7 @@ function Omega_dot_diag_block!(
     Ablk = A[kp1choose2(b)]
     if !isa(Ablk, UniformBlockDiagonal{T})
         throw(
-            ArgumentError(
+            ArgumentError(   # this error message cannot be evaluated because p is no longer passed
                 "parmap[p] = $(parmap[p]) but A[$(kp1choose2(b))] is not UniformBlockDiagonal",
             ),
         )
@@ -300,19 +298,22 @@ function eval_grad_p!(
     (b, i, j) = parmap[p]                    # block, row and column for parameter p
     k = size(reterms[b].λ, 1)
     initialize_blocks!(blks, m, b, i, j, k)
+#    @info b, i, j, k
     for kk in axes(blks, 2)                  # ldiv!(LowerTriangular(L), blks)
         #        if jj ≥ b                   # maybe hold off on this at the expense of some multiplications by zero
         L11 = L[block(1, 1)]
+#        @info typeof(L11)
         isa(L11, Diagonal) || (L11 = LowerTriangular(L11))
         C1 = ldiv!(L11, blks[1, kk])
+#        @info typeof(C1)
         for ii in axes(blks, 1)[2:end]
-            mul!(blks[ii, kk], L[block(ii, 1)], C1, -one(T), one(T))
+            mm_mul!(blks[ii, kk], L[block(ii, 1)], C1, -one(T), one(T))
         end
         #        end
         for jj in axes(blks, 1)[2:end]
             Cj = ldiv!(LowerTriangular(L[block(jj, jj)]), blks[jj, kk])
             for ii in (jj + 1):lastindex(blks, 1)
-                mul!(blks[ii, kk], L[block(ii, jj)], Cj, -one(T), one(T))
+                mm_mul!(blks[ii, kk], L[block(ii, jj)], Cj, -one(T), one(T))
             end
         end
     end
@@ -340,7 +341,9 @@ function eval_grad_p!(
             for kk in 1:(jj - 1)
                 mul!(blkij, blks[ii, kk], transpose(L[block(jj, kk)]), -one(T), one(T))
             end
-            rdiv!(blkij, transpose(LowerTriangular(L[block(jj, jj)])))
+            Ljj = L[block(jj, jj)]
+            isa(Ljj, Diagonal) || (Ljj = LowerTriangular(Ljj))
+            rdiv!(blkij, transpose(Ljj))
         end
     end
     # for i in axes(A,1)
@@ -363,7 +366,7 @@ Overwrite `g` with the gradient of the ML objective of the model `m` at its curr
 """
 function gradient!(g::Vector{T}, blks::Matrix{AbstractMatrix{T}}, m::LinearMixedModel{T}) where {T}
     if length(g) ≠ length(m.parmap)
-        throw(DimensionMismatch("length(g) = $(length(g)) should be $(length(m.parmap)) for this model"))
+        throw(DimensionMismatch("length(g) = $(length(g)) should be $(length(m.parmap))"))
     end
     for p in axes(g, 1)
         g[p] = eval_grad_p!(blks, m, p)
@@ -373,4 +376,78 @@ end
 
 function gradient(blks::Matrix{AbstractMatrix{T}}, m::LinearMixedModel{T}) where {T}
     return gradient!(similar(m.parmap, T), blks, m)
+end
+
+function mm_mul!(               # exploit a fast path for mul! when C and A have the same sparsity pattern
+    C::SparseMatrixCSC{Tv,Ti},
+    A::SparseMatrixCSC{Tv,Ti},
+    B::Diagonal{Tv,Vector{Tv}},
+    α::Number,
+    β::Number
+) where {Tv, Ti}
+                                # check if fast path exists
+    Bdiag = B.diag
+    if C.m ≠ A.m || C.n ≠ A.n || C.n ≠ length(B.diag)
+        throw(DimensionMismatch("dimensions not compatible for mul!"))
+    end
+    if C.colptr == A.colptr && C.rowval == A.rowval
+        Cnz = C.nzval
+        if !isone(β)
+            Cnz .*= β
+        end
+        Anz = A.nzval
+        for (j, bd) in enumerate(Bdiag)
+            nzr = nzrange(A, j)
+            Cnz[nzr] .+= Anz[nzr] * bd * α
+        end
+        return C
+    end
+    LinearAlgebra.mul!(C, A, B, α, β)
+end
+
+function mm_mul!(C::AbstractMatrix{T}, A::AbstractMatrix{T}, B::AbstractMatrix{T}, α::Number, β::Number) where {T}
+    mul!(C, A, B, α, β)
+end
+
+function Lldiv!(m::LinearMixedModel{T}, blks::Matrix{AbstractMatrix{T}}) where {T}
+    L = m.L
+    for kk in axes(blks, 2)                  # ldiv!(LowerTriangular(L), blks)
+        L11 = first(L)
+        isa(L11, Diagonal) || (L11 = LowerTriangular(L11))
+        C1 = ldiv!(L11, blks[1, kk])
+        for ii in axes(blks, 1)[2:end]
+            mm_mul!(blks[ii, kk], L[block(ii, 1)], C1, -one(T), one(T))
+        end
+        for jj in axes(blks, 1)[2:end]
+            Cj = ldiv!(LowerTriangular(L[block(jj, jj)]), blks[jj, kk])
+            for ii in (jj + 1):lastindex(blks, 1)
+                mm_mul!(blks[ii, kk], L[block(ii, jj)], Cj, -one(T), one(T))
+            end
+        end
+    end
+    return blks
+end
+
+function blks2dense(blks)
+    ncol = size(blks, 2)
+    if ncol == 2
+        return hvcat(2, blks[1, 1], blks[1, 2], blks[2, 1], blks[2, 2])
+    elseif ncol == 3
+        return hvcat(
+            3, 
+            blks[1, 1], blks[1, 2], blks[1, 3],
+            blks[2, 1], blks[2, 2], blks[2, 3],
+            blks[3, 1], blks[3, 2], blks[3, 3],
+        )
+    elseif ncol == 4
+        return hvcat(
+            4,
+            blks[1, 1], blks[1, 2], blks[1, 3], blks[1, 4],
+            blks[2, 1], blks[2, 2], blks[2, 3], blks[2, 4],
+            blks[3, 1], blks[3, 2], blks[3, 3], blks[3, 4],
+            blks[4, 1], blks[4, 2], blks[4, 3], blks[4, 4],
+        )
+    else
+        throw(ArgumentError("size(blks, 2) == $ncol is too large"))
+    end
 end
