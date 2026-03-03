@@ -1171,17 +1171,6 @@ end
 
 SparseArrays.findnz(A::BlockedSparse) = findnz(A.cscmat)
 
-"""
-    sparseL(m::LinearMixedModel; fname::Symbol=first(fnames(m)), full::Bool=false)
-
-Return the lower Cholesky factor `L` as a `SparseMatrix{T,Int32}`.
-
-`full` indicates whether the parts of `L` associated with the fixed-effects and response
-are to be included.
-
-`fname` specifies the first grouping factor to include. Blocks to the left of the block corresponding
- to `fname` are dropped. The default is the first, i.e., leftmost block and hence all blocks.
-"""
 function sparsemat(
     typ::Symbol, m::LinearMixedModel{T}; fname::Symbol=first(fnames(m)), full::Bool=false
 ) where {T}
@@ -1215,8 +1204,31 @@ function sparsemat(
     return dropzeros!(tril!(sparse(I, J, V)))
 end
 
+"""
+    sparseL(m::LinearMixedModel; fname::Symbol=first(fnames(m)), full::Bool=false)
+
+Return the lower Cholesky factor `L` as a `SparseMatrix{T,Int32}`.
+
+`full` indicates whether the parts of `L` associated with the fixed-effects and response
+are to be included.
+
+`fname` specifies the first grouping factor to include. Blocks to the left of the block corresponding
+ to `fname` are dropped. The default is the first, i.e., leftmost block and hence all blocks.
+
+ The matrix that is returned is lower-triangular but has not been wrapped in `LowerTriangular`.
+"""
 function sparseL(m::LinearMixedModel; fname::Symbol=first(fnames(m)), full::Bool=false)
     return sparsemat(:L, m; fname, full)
+end
+
+"""
+    sparseA(m::LinearMixedModel; fname::Symbol=first(fnames(m)), full::Bool=false)
+
+Same as `sparseL` but returning the sparse lower triangle of the symmetric `A` matrix.
+Most of the time the result is wrapped as, e.g. `Symmetric(sparseM(m; full=true), :L)`
+"""
+function sparseA(m::LinearMixedModel; fname::Symbol=first(fnames(m)), full::Bool=false)
+    return sparsemat(:A, m; fname, full)
 end
 
 """
