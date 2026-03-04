@@ -1201,7 +1201,7 @@ function sparsemat(
             coloffset += size(Lblk, 2)
         end
     end
-    return dropzeros!(tril!(sparse(I, J, V)))
+    return tril!(sparse(I, J, V))
 end
 
 """
@@ -1218,7 +1218,7 @@ are to be included.
  The matrix that is returned is lower-triangular but has not been wrapped in `LowerTriangular`.
 """
 function sparseL(m::LinearMixedModel; fname::Symbol=first(fnames(m)), full::Bool=false)
-    return sparsemat(:L, m; fname, full)
+    return dropzeros!(sparsemat(:L, m; fname, full))
 end
 
 """

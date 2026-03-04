@@ -287,7 +287,7 @@ end
 
     spA = Symmetric(sparseA(fm1; full=true), :L)
     @test size(spA) == (4117, 4117)
-    @test nnz(spA.data) == 106810
+    @test 132600 < nnz(spA.data) < 132650
 
     @test objective(fm1) ≈ 237721.76877450474 atol = 0.001
     ftd1 = fitted(fm1)
