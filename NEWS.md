@@ -1,4 +1,4 @@
-MixedModels v5.2.3 Release Notes
+MixedModels v5.3.0 Release Notes
 ==============================
 - Implement `sparseL` as a specialization of `sparsemat`. Replace `_coord` utility with `_findnz` which, in most cases, falls through to `SparseArrays.findnz`. [#880]
 
