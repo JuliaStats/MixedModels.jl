@@ -1224,7 +1224,7 @@ end
 """
     sparseA(m::LinearMixedModel; fname::Symbol=first(fnames(m)), full::Bool=false)
 
-Same as `sparseL` but returning the sparse lower triangle of the symmetric `A` matrix.
+Same as [`sparseL`](@ref) but returning the sparse lower triangle of the symmetric `A` matrix.
 Most of the time the result is wrapped as, e.g. `Symmetric(sparseM(m; full=true), :L)`
 """
 function sparseA(m::LinearMixedModel; fname::Symbol=first(fnames(m)), full::Bool=false)
