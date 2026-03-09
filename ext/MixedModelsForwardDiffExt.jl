@@ -30,7 +30,10 @@ using LinearAlgebra: LinearAlgebra,
 using SparseArrays: SparseArrays, nzrange
 
 # Stuff we're defining in this file
-using ForwardDiff: ForwardDiff
+using ForwardDiff: ForwardDiff,
+    Chunk,
+    GradientConfig,
+    HessianConfig
 using MixedModels: fd_cholUnblocked!,
     fd_deviance,
     fd_logdet,
@@ -59,6 +62,16 @@ const FORWARDDIFF = """
     should be included is currently still being decided.
 """
 
+#####
+##### Gradients
+#####
+
+function ForwardDiff.GradientConfig(
+    model::LinearMixedModel{T}, x::AbstractVector{T}=model.θ, chunk::Chunk=Chunk(x)
+) where {T}
+    return GradientConfig(fd_deviance(model), x, chunk)
+end
+
 """
     ForwardDiff.gradient(model::LinearMixedModel)
 
@@ -68,9 +81,29 @@ values.
 $(FORWARDDIFF)
 """
 function ForwardDiff.gradient(
-    model::LinearMixedModel{T}, θ::Vector{T}=model.θ
+    model::LinearMixedModel{T}, θ::Vector{T}=model.θ,
+    cfg::GradientConfig=GradientConfig(model, θ),
+    check::Val{CHK}=Val(true),
+) where {T,CHK}
+    return ForwardDiff.gradient!(similar(model.θ), model, θ, cfg, check)
+end
+
+function ForwardDiff.gradient!(result::AbstractArray,
+    model::LinearMixedModel{T}, θ::Vector{T}=model.θ,
+    cfg::GradientConfig=GradientConfig(model, θ),
+    check::Val{CHK}=Val(true),
+) where {T,CHK}
+    return ForwardDiff.gradient!(result, fd_deviance(model), θ, cfg, check)
+end
+
+#####
+##### Hessians
+#####
+
+function ForwardDiff.HessianConfig(
+    model::LinearMixedModel{T}, x::AbstractVector{T}=model.θ, chunk::Chunk=Chunk(x)
 ) where {T}
-    return ForwardDiff.gradient(fd_deviance(model), θ)
+    return HessianConfig(fd_deviance(model), x, chunk)
 end
 
 """
@@ -82,9 +115,20 @@ values.
 $(FORWARDDIFF)
 """
 function ForwardDiff.hessian(
-    model::LinearMixedModel{T}, θ::Vector{T}=model.θ
-) where {T}
-    return ForwardDiff.hessian(fd_deviance(model), θ)
+    model::LinearMixedModel{T}, θ::Vector{T}=model.θ,
+    cfg::HessianConfig=HessianConfig(model, θ),
+    check::Val{CHK}=Val(true),
+) where {T,CHK}
+    n = length(θ)
+    return ForwardDiff.hessian!(Matrix{T}(undef, n, n), model, θ, cfg, check)
+end
+
+function ForwardDiff.hessian!(result::AbstractArray,
+    model::LinearMixedModel{T}, θ::Vector{T}=model.θ,
+    cfg::HessianConfig=HessianConfig(model, θ),
+    check::Val{CHK}=Val(true),
+) where {T,CHK}
+    return ForwardDiff.hessian!(result, fd_deviance(model), θ, cfg, check)
 end
 
 #####

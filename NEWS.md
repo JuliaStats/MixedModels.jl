@@ -1,3 +1,4 @@
+- Additional methods for pre-allocated result arrays and `*Config` instances have been added to the ForwardDiff extension. [#871].
 MixedModels v5.3.0 Release Notes
 ==============================
 - Implement `sparseL` as a specialization of `sparsemat`. Replace `_coord` utility with `_findnz` which, in most cases, falls through to `SparseArrays.findnz`. [#880]
@@ -726,6 +727,7 @@ Package dependencies
 [#864]: https://github.com/JuliaStats/MixedModels.jl/issues/864
 [#865]: https://github.com/JuliaStats/MixedModels.jl/issues/865
 [#867]: https://github.com/JuliaStats/MixedModels.jl/issues/867
+[#871]: https://github.com/JuliaStats/MixedModels.jl/issues/871
 [#873]: https://github.com/JuliaStats/MixedModels.jl/issues/873
 [#875]: https://github.com/JuliaStats/MixedModels.jl/issues/875
 [#876]: https://github.com/JuliaStats/MixedModels.jl/issues/876
