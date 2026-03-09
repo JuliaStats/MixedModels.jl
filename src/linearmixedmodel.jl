@@ -801,7 +801,7 @@ Note that this method does not distinguish between constrained optimization and
 unconstrained optimization with post-fit canonicalization.
 """
 function lowerbd(m::LinearMixedModel{T}) where {T}
-    [(pm[2] == pm[3]) ? zero(T) : T(-Inf) for pm in m.parmap]
+    return [(pm[2] == pm[3]) ? zero(T) : T(-Inf) for pm in m.parmap]
 end
 
 function mkparmap(reterms::Vector{<:AbstractReMat{T}}) where {T}
@@ -1134,44 +1134,74 @@ end
 Base.show(io::IO, m::LinearMixedModel) = Base.show(io, MIME("text/plain"), m)
 
 """
-    _coord(A::AbstractMatrix)
+    _findnz(A::AbstractMatrix)
 
-Return the positions and values of the nonzeros in `A` as a
-`NamedTuple{(:i, :j, :v), Tuple{Vector{Int32}, Vector{Int32}, Vector{Float64}}}`
+Return the positions and values of the nonzeros in `A` as an (I, J, V) tuple
+
+When possible, methods for this generic pass through to methods for `SparseArrays.findnz`.
+The exceptions are the `Matrix` and `LinearAlgebra.Diagonal` classes where our defining a
+`findnz` method would be type piracy.
 """
-function _coord(A::Diagonal)
-    return (i=Int32.(axes(A, 1)), j=Int32.(axes(A, 2)), v=A.diag)
+
+function _findnz(A::Matrix)
+    m, n = size(A)
+    return (
+        repeat(axes(A, 1); outer=n),
+        repeat(axes(A, 2); inner=m),
+        vec(A),
+    )
 end
 
-function _coord(A::UniformBlockDiagonal)
+function _findnz(A::Diagonal)
+    return (axes(A, 1), axes(A, 2), A.diag)
+end
+
+_findnz(x::AbstractMatrix) = findnz(x)
+
+function SparseArrays.findnz(A::UniformBlockDiagonal)
     dat = A.data
     r, c, k = size(dat)
     blk = repeat(r .* (0:(k - 1)); inner=r * c)
     return (
-        i=Int32.(repeat(1:r; outer=c * k) .+ blk),
-        j=Int32.(repeat(1:c; inner=r, outer=k) .+ blk),
-        v=vec(dat),
+        repeat(1:r; outer=c * k) .+ blk,
+        repeat(1:c; inner=r, outer=k) .+ blk,
+        vec(dat),
     )
 end
 
-function _coord(A::SparseMatrixCSC{T,Int32}) where {T}
-    rv = rowvals(A)
-    cv = similar(rv)
-    for j in axes(A, 2), k in nzrange(A, j)
-        cv[k] = j
+SparseArrays.findnz(A::BlockedSparse) = findnz(A.cscmat)
+
+function sparsemat(
+    typ::Symbol, m::LinearMixedModel{T}; fname::Symbol=first(fnames(m)), full::Bool=false
+) where {T}
+    reterms = m.reterms
+    if typ ∉ (:A, :L)
+        throw(ArgumentError("typ passed as $typ should be :A or :L"))
     end
-    return (i=rv, j=cv, v=nonzeros(A))
-end
-
-_coord(A::BlockedSparse) = _coord(A.cscmat)
-
-function _coord(A::Matrix)
-    m, n = size(A)
-    return (
-        i=Int32.(repeat(axes(A, 1); outer=n)),
-        j=Int32.(repeat(axes(A, 2); inner=m)),
-        v=vec(A),
-    )
+    bmat = getproperty(m, typ)
+    sblk = findfirst(isequal(fname), fnames(m))
+    if isnothing(sblk)
+        throw(ArgumentError("fname = $fname is not the name of a grouping factor"))
+    end
+    blks = sblk:(length(reterms) + full)
+    rowoffset, coloffset = 0, 0
+    I = Int32[]
+    J = Int32[]
+    V = T[]
+    for i in blks, j in first(blks):i
+        Lblk = bmat[block(i, j)]
+        cblk = _findnz(Lblk)
+        append!(I, first(cblk) .+ Int32(rowoffset))
+        append!(J, cblk[2] .+ Int32(coloffset))
+        append!(V, last(cblk))
+        if i == j
+            coloffset = 0
+            rowoffset += size(Lblk, 1)
+        else
+            coloffset += size(Lblk, 2)
+        end
+    end
+    return tril!(sparse(I, J, V))
 end
 
 """
@@ -1184,32 +1214,21 @@ are to be included.
 
 `fname` specifies the first grouping factor to include. Blocks to the left of the block corresponding
  to `fname` are dropped. The default is the first, i.e., leftmost block and hence all blocks.
+
+ The matrix that is returned is lower-triangular but has not been wrapped in `LowerTriangular`.
 """
-function sparseL(
-    m::LinearMixedModel{T}; fname::Symbol=first(fnames(m)), full::Bool=false
-) where {T}
-    L, reterms = m.L, m.reterms
-    sblk = findfirst(isequal(fname), fnames(m))
-    if isnothing(sblk)
-        throw(ArgumentError("fname = $fname is not the name of a grouping factor"))
-    end
-    blks = sblk:(length(reterms) + full)
-    rowoffset, coloffset = 0, 0
-    val = (i=Int32[], j=Int32[], v=T[])
-    for i in blks, j in first(blks):i
-        Lblk = L[block(i, j)]
-        cblk = _coord(Lblk)
-        append!(val.i, cblk.i .+ Int32(rowoffset))
-        append!(val.j, cblk.j .+ Int32(coloffset))
-        append!(val.v, cblk.v)
-        if i == j
-            coloffset = 0
-            rowoffset += size(Lblk, 1)
-        else
-            coloffset += size(Lblk, 2)
-        end
-    end
-    return dropzeros!(tril!(sparse(val...)))
+function sparseL(m::LinearMixedModel; fname::Symbol=first(fnames(m)), full::Bool=false)
+    return dropzeros!(sparsemat(:L, m; fname, full))
+end
+
+"""
+    sparseA(m::LinearMixedModel; fname::Symbol=first(fnames(m)), full::Bool=false)
+
+Same as [`sparseL`](@ref) but returning the sparse lower triangle of the symmetric `A` matrix.
+Most of the time the result is wrapped as, e.g. `Symmetric(sparseM(m; full=true), :L)`
+"""
+function sparseA(m::LinearMixedModel; fname::Symbol=first(fnames(m)), full::Bool=false)
+    return sparsemat(:A, m; fname, full)
 end
 
 """
