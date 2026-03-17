@@ -64,8 +64,8 @@ function Omega_dot_diag_block!(
     Ablk = A[kp1choose2(b)]
     if !isa(Ablk, UniformBlockDiagonal{T})
         throw(
-            ArgumentError(   # this error message cannot be evaluated because p is no longer passed
-                "parmap[p] = $(parmap[p]) but A[$(kp1choose2(b))] is not UniformBlockDiagonal",
+            ArgumentError(
+                "Diagonal block $b is UniformBlockDiagonal but A[$(kp1choose2(b))] is not",
             ),
         )
     end
@@ -73,10 +73,10 @@ function Omega_dot_diag_block!(
     Ablk_dat = Ablk.data
     λ = reterms[b].λ
     for k in axes(blk_dat, 3)
-        # right multiply by λ-dot-transpose, which is zeros except for a single 1 at the i'th column and j'th row
+        # right multiply by λ-dot, which is zeros except for a single 1 at the i'th row and j'th column
         # thus we copy the i'th column of the k'th face of Ablk_dat into the j'th column of the k'th face of blk_dat
-        copyto!(view(blk_dat, :, i, k), view(Ablk_dat, :, j, k))
-        lmul!(λ, view(blk_dat,:,:,k)) # left-multiply by λ
+        copyto!(view(blk_dat, :, j, k), view(Ablk_dat, :, i, k))
+        lmul!(λ', view(blk_dat,:,:,k))   # left-multiply by λ'
         for jj in axes(λ, 2)             # symmetrize the face while multiplying the diagonal by 2
             for ii in 1:(jj - 1)
                 val = blk_dat[ii, jj, k] + blk_dat[jj, ii, k]
@@ -146,7 +146,7 @@ end
 """
     grad_blocks(m::LinearMixedModel{T})
 
-Return Matrix{AbstractMatrix{T}} containing the gradient-evaluation blocks for model `m`.
+Return a `Matrix{AbstractMatrix{T}}` containing the gradient-evaluation blocks for model `m`.
 """
 function grad_blocks(m::LinearMixedModel{T}) where {T}
     (; L, reterms) = m
@@ -181,8 +181,12 @@ Create `A * Ω_dot` in `B` where `Ω_dot` is the indicator for the `i`'th row an
 """
 function copyskip!(B::Matrix{T}, A::Matrix{T}, i::Integer, j::Integer, k::Integer) where {T}
     m, n = size(A)
-    (m, n) == size(B) ||
+    if (m, n) ≠ size(B)
         throw(DimensionMismatch("size(A) = $(size(A)) ≠ $(size(B)) = size(B)"))
+    end
+    if i ≤ 0 || i > k || j ≤ 0 || j > k
+        throw(ArgumentError("i = $i, j = $j and k = $k do not satisfy 1 ≤ (i, j) ≤ k"))
+    end
     isone(k) && return copyto!(B, A)
 
     fill!(B, zero(T))
@@ -190,7 +194,7 @@ function copyskip!(B::Matrix{T}, A::Matrix{T}, i::Integer, j::Integer, k::Intege
     iszero(r) || throw(DimensionMismatch("n = $n is not a multiple of k = $k"))
     offset = 0
     for _ in 1:q
-        copyto!(view(B, :, offset + i), view(A, :, offset + j))
+        copyto!(view(B, :, offset + j), view(A, :, offset + i))
         offset += k
     end
     return B
@@ -199,8 +203,9 @@ end
 function copyskip!(
     B::SparseMatrixCSC{T}, A::SparseMatrixCSC{T}, i::Integer, j::Integer, k::Integer
 ) where {T}
-    (A.m == B.m && A.n == B.n) ||
+    if A.m ≠ B.m || A.n ≠ B.n
         throw(DimensionMismatch("size(A) = $(size(A)) ≠ $(size(B)) = size(B)"))
+    end
     if any(A.colptr .≠ B.colptr) || any(rowvals(A) .≠ rowvals(B))
         throw(ArgumentError("A and B must have the same sparsity pattern"))
     end
@@ -239,24 +244,35 @@ function initialize_blocks!(
     j::Integer,
     k::Integer,
 ) where {T}
-    A = m.A
+    (; A, reterms) = m
+    R = size(blks, 1)       # last row/column has no lmulΛ! (maybe define one to be a no-op?)
     Omega_dot_diag_block!(blks[b, b], m, b, i, j) # populate the b'th diagonal block
-    for r in axes(blks, 1)                  # iterate over the lower triangle, transpose-copying to upper triangle
+    for r in 1:(R - 1)      # iterate over the lower triangle, transpose-copying to upper triangle
+        trmrt = reterms[r]' # the first argument to lmulΛ! should be the transpose of an ReTerm 
         if r ≠ b
             for c in 1:r
                 if c ≠ b
                     _zero_out(blks[r, c])
                     _zero_out(blks[c, r])
                 else
-                    copyskip!(blks[r, c], A[block(r, c)], i, j, k)
+                    lmulΛ!(trmrt, copyskip!(blks[r, c], A[block(r, c)], i, j, k))
                     copyto!(blks[c, r], blks[r, c]')
                 end
             end
         else
             for c in 1:(r - 1)
-                copyskip!(blks[r, c], A[block(r, c)], i, j, k)
+                lmulΛ!(trmrt, copyskip!(blks[r, c], A[block(r, c)], i, j, k))
                 copyto!(blks[c, r], blks[r, c]')
             end
+        end
+    end
+    for c in axes(blks, 2)
+        if c ≠ b
+            _zero_out(blks[R, c])
+            _zero_out(blks[c, R])
+        else
+            copyskip!(blks[R, c], A[block(R, c)], i, j, k)
+            copyto!(blks[c, R], blks[R, c]')
         end
     end
     return blks

@@ -66,7 +66,6 @@ include("modelcache.jl")
         @test all(≈(20. * first(θ6)), view(blk_dat, 1, 1, :))
         @test all(iszero, view(blk_dat, 2, 2, :))
         @test all(view(blk_dat, 1, 2, :) .== view(blk_dat, 2, 1, :))
-        odiag = dot(view(λ6, 2, :), view(A11_dat, :, 1, 1))
         @test all(≈(odiag), view(blk_dat, 1, 2, :))
         ldiv!(LowerTriangular(first(fm6.L)), blks6[1,1])
 
