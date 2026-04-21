@@ -1,6 +1,6 @@
 MixedModels v5.3.1 Release Notes
 ==============================
-- `varest` and `dispersion(::LinearMixedModel, true)` previously incorrectly returned the estimated standard deviation instead of the variance for models with a fixed sigma parameter.
+- `varest` and `dispersion(::LinearMixedModel, true)` previously incorrectly returned the estimated standard deviation instead of the variance for models with a fixed sigma parameter. [#885]
 
 MixedModels v5.3.0 Release Notes
 ==============================
@@ -734,3 +734,4 @@ Package dependencies
 [#875]: https://github.com/JuliaStats/MixedModels.jl/issues/875
 [#876]: https://github.com/JuliaStats/MixedModels.jl/issues/876
 [#880]: https://github.com/JuliaStats/MixedModels.jl/issues/880
+[#885]: https://github.com/JuliaStats/MixedModels.jl/issues/885
