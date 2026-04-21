@@ -530,14 +530,34 @@ Overwrite `v` with the fitted values from `m`.
 
 See also `fitted`.
 """
-function fitted!(v::AbstractArray{T}, m::LinearMixedModel{T}) where {T}
-    ## FIXME: Create and use `effects(m) -> β, b` w/o calculating β twice
+function _allocate_ranef_buffers(m::LinearMixedModel{T}) where {T}
+    reterms = m.reterms
+    return [Matrix{T}(undef, size(t.z, 1), nlevs(t)) for t in reterms]
+end
+
+function _effects!(
+    β::AbstractVector{T}, b::Vector, m::LinearMixedModel{T}; uscale::Bool=false
+) where {T}
+    fixef!(β, m)
+    return ranef!(b, m, β, uscale)
+end
+
+function _fitted!(
+    v::AbstractArray{T}, m::LinearMixedModel{T}, β::AbstractVector{T}, b::Vector
+) where {T}
     Xtrm = m.feterm
-    vv = mul!(vec(v), Xtrm.x, fixef!(similar(Xtrm.piv, T), m))
-    for (rt, bb) in zip(m.reterms, ranef(m))
+    vv = mul!(vec(v), Xtrm.x, β)
+    for (rt, bb) in zip(m.reterms, b)
         mul!(vv, rt, bb, one(T), one(T))
     end
     return v
+end
+
+function fitted!(v::AbstractArray{T}, m::LinearMixedModel{T}) where {T}
+    β = Vector{T}(undef, m.feterm.rank)
+    b = _allocate_ranef_buffers(m)
+    _effects!(β, b, m)
+    return _fitted!(v, m, β, b)
 end
 
 StatsAPI.fitted(m::LinearMixedModel{T}) where {T} = fitted!(Vector{T}(undef, nobs(m)), m)
