@@ -535,11 +535,23 @@ function _allocate_ranef_buffers(m::LinearMixedModel{T}) where {T}
     return [Matrix{T}(undef, size(t.z, 1), nlevs(t)) for t in reterms]
 end
 
+_allocate_fixef_buffer(m::LinearMixedModel{T}) where {T} = Vector{T}(undef, m.feterm.rank)
+
+function _fixef_pivoted!(β::AbstractVector{T}, m::LinearMixedModel{T}) where {T}
+    return fixef!(β, m)
+end
+
+function _ranef_from_pivoted!(
+    b::Vector, m::LinearMixedModel{T}, β::AbstractVector{T}; uscale::Bool=false
+) where {T}
+    return ranef!(b, m, β, uscale)
+end
+
 function _effects!(
     β::AbstractVector{T}, b::Vector, m::LinearMixedModel{T}; uscale::Bool=false
 ) where {T}
-    fixef!(β, m)
-    return ranef!(b, m, β, uscale)
+    _fixef_pivoted!(β, m)
+    return _ranef_from_pivoted!(b, m, β; uscale)
 end
 
 function _fitted!(
@@ -554,7 +566,7 @@ function _fitted!(
 end
 
 function fitted!(v::AbstractArray{T}, m::LinearMixedModel{T}) where {T}
-    β = Vector{T}(undef, m.feterm.rank)
+    β = _allocate_fixef_buffer(m)
     b = _allocate_ranef_buffers(m)
     _effects!(β, b, m)
     return _fitted!(v, m, β, b)
@@ -946,7 +958,11 @@ function ranef!(
     return v
 end
 
-ranef!(v::Vector, m::LinearMixedModel, uscale::Bool) = ranef!(v, m, fixef(m), uscale)
+function ranef!(v::Vector, m::LinearMixedModel{T}, uscale::Bool) where {T}
+    β = _allocate_fixef_buffer(m)
+    _fixef_pivoted!(β, m)
+    return _ranef_from_pivoted!(v, m, β; uscale)
+end
 
 """
     ranef(m::LinearMixedModel; uscale=false)
