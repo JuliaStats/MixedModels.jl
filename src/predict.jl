@@ -91,6 +91,8 @@ function StatsAPI.predict(m::GeneralizedLinearMixedModel; type=:response)
     return type == :response ? fitted(m) : m.resp.eta
 end
 
+_level_index(levelsvec) = Dict(level => i for (i, level) in pairs(levelsvec))
+
 # β is separated out here because m.β != m.LMM.β depending on how β is estimated for GLMM
 # also β should already be pivoted but NOT truncated in the rank deficient case
 function _predict(m::MixedModel{T}, newdata, β; new_re_levels) where {T}
@@ -132,7 +134,6 @@ function _predict(m::MixedModel{T}, newdata, β; new_re_levels) where {T}
     end
 
     pivotmatch = pivot(mnew)[pivot(m)]
-    grps = fnames(m)
     mul!(y, view(mnew.X, :, pivotmatch), β)
     # mnew.reterms for the correct Z matrices
     # ranef(m) for the BLUPs from the original fit
@@ -145,28 +146,31 @@ function _predict(m::MixedModel{T}, newdata, β; new_re_levels) where {T}
     oldreperm = sortperm(m.reterms; by=x -> string(x.trm))
     newre = view(mnew.reterms, newreperm)
     oldre = view(m.reterms, oldreperm)
+    grps = fname.(oldre)
+    oldlevels = levels.(oldre)
+    newlevels = levels.(newre)
+    oldlevelidx = _level_index.(oldlevels)
+    blupsold = ranef(m)[oldreperm]
 
     if new_re_levels == :error
-        for (grp, known_levels, data_levels) in
-            zip(grps, levels.(m.reterms), levels.(mnew.reterms))
-            if sort!(known_levels) != sort!(data_levels)
+        for (grp, known_levels, data_levels) in zip(grps, oldlevelidx, newlevels)
+            if length(known_levels) != length(data_levels) ||
+                !all(ll -> haskey(known_levels, ll), data_levels)
                 throw(ArgumentError("New level encountered in $grp"))
             end
         end
 
         # we don't have to worry about the BLUP ordering within a given
         # grouping variable because we are in the :error branch
-        blups = ranef(m)[oldreperm]
+        blups = blupsold
     elseif new_re_levels == :population
         blups = [
             Matrix{T}(undef, size(t.z, 1), nlevs(t)) for t in view(mnew.reterms, newreperm)
         ]
-        blupsold = ranef(m)[oldreperm]
 
-        for (idx, B) in enumerate(blups)
-            oldlevels = levels(oldre[idx])
-            for (lidx, ll) in enumerate(levels(newre[idx]))
-                oldloc = findfirst(isequal(ll), oldlevels)
+        for (idx, (B, newlvls, oldidx)) in enumerate(zip(blups, newlevels, oldlevelidx))
+            for (lidx, ll) in enumerate(newlvls)
+                oldloc = get(oldidx, ll, nothing)
                 if oldloc === nothing
                     # setting a BLUP to zero gives you the population value
                     B[:, lidx] .= zero(T)
@@ -180,11 +184,9 @@ function _predict(m::MixedModel{T}, newdata, β; new_re_levels) where {T}
             Matrix{Union{T,Missing}}(undef, size(t.z, 1), nlevs(t)) for
             t in view(mnew.reterms, newreperm)
         ]
-        blupsold = ranef(m)[oldreperm]
-        for (idx, B) in enumerate(blups)
-            oldlevels = levels(oldre[idx])
-            for (lidx, ll) in enumerate(levels(newre[idx]))
-                oldloc = findfirst(isequal(ll), oldlevels)
+        for (idx, (B, newlvls, oldidx)) in enumerate(zip(blups, newlevels, oldlevelidx))
+            for (lidx, ll) in enumerate(newlvls)
+                oldloc = get(oldidx, ll, nothing)
                 if oldloc === nothing
                     # missing is poisonous so propagates
                     B[:, lidx] .= missing
