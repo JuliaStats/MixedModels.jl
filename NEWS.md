@@ -1,3 +1,7 @@
+MixedModels v5.3.1 Release Notes
+==============================
+- `varest` and `dispersion(::LinearMixedModel, true)` previously incorrectly returned the estimated standard deviation instead of the variance for models with a fixed sigma parameter.
+
 MixedModels v5.3.0 Release Notes
 ==============================
 - Implement `sparseL` as a specialization of `sparsemat`. Replace `_coord` utility with `_findnz` which, in most cases, falls through to `SparseArrays.findnz`. [#880]
