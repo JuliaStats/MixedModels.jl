@@ -1,3 +1,7 @@
+MixedModels v5.4.0 Release Notes
+==============================
+- Change `isnested(x, y)` for MixedModels to return `true` if `x` has no fixed-effects parameters [#886]
+
 MixedModels v5.3.0 Release Notes
 ==============================
 - Implement `sparseL` as a specialization of `sparsemat`. Replace `_coord` utility with `_findnz` which, in most cases, falls through to `SparseArrays.findnz`. [#880]
@@ -730,3 +734,4 @@ Package dependencies
 [#875]: https://github.com/JuliaStats/MixedModels.jl/issues/875
 [#876]: https://github.com/JuliaStats/MixedModels.jl/issues/876
 [#880]: https://github.com/JuliaStats/MixedModels.jl/issues/880
+[#886]: https://github.com/JuliaStats/MixedModels.jl/issues/886
