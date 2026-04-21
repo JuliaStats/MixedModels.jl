@@ -106,6 +106,14 @@ function LinearMixedModel(
 )
     T = promote_type(Float64, float(eltype(y)))  # ensure eltype of model matrices is at least Float64
 
+    reterms, feterms = _split_re_fe_terms(Xs, form, T)
+    isempty(reterms) && throw(_MISSING_RE_ERROR)
+    return LinearMixedModel(
+        convert(Array{T}, y), only(feterms), reterms, form, weights, σ, amalgamate
+    )
+end
+
+function _split_re_fe_terms(Xs::Tuple, form::FormulaTerm, ::Type{T}) where {T}
     reterms = AbstractReMat{T}[]
     feterms = FeTerm{T}[]
     for (i, x) in enumerate(Xs)
@@ -134,10 +142,7 @@ function LinearMixedModel(
             push!(feterms, FeTerm(x, isa(cnames, String) ? [cnames] : collect(cnames)))
         end
     end
-    isempty(reterms) && throw(_MISSING_RE_ERROR)
-    return LinearMixedModel(
-        convert(Array{T}, y), only(feterms), reterms, form, weights, σ, amalgamate
-    )
+    return reterms, feterms
 end
 
 """

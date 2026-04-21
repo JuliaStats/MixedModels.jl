@@ -8,8 +8,8 @@ Predict response for new data.
 
 !!! note
     Currently, no in-place methods are provided because these methods
-    internally construct a new model and therefore allocate not just a
-    response vector but also many other matrices.
+    internally construct new model matrices and therefore allocate not just a
+    response vector but also other working arrays.
 
 !!! warning
     `newdata` should contain a column for the response (dependent variable)
@@ -19,8 +19,9 @@ Predict response for new data.
     constructing the model matrices.
 
 !!! warning
-    These methods construct an entire MixedModel behind the scenes and
-    as such may use a large amount of memory when `newdata` is large.
+    These methods construct new fixed-effects and random-effects design
+    matrices behind the scenes and may still use a large amount of memory
+    when `newdata` is large.
 
 !!! warning
     Rank-deficiency can lead to surprising but consistent behavior.
@@ -93,6 +94,29 @@ end
 
 _level_index(levelsvec) = Dict(level => i for (i, level) in pairs(levelsvec))
 
+struct PredictionDesign{T}
+    feterm::FeTerm
+    reterms::Vector{<:AbstractReMat{T}}
+end
+
+function _prediction_design(m::MixedModel{T}, newdata) where {T}
+    f, contr = _abstractify_grouping(m.formula)
+    respvars = StatsModels.termvars(f.lhs)
+    if !issubset(respvars, Tables.columnnames(newdata)) ||
+        any(any(ismissing, Tables.getcolumn(newdata, col)) for col in respvars)
+        throw(
+            ArgumentError(
+                "Response column must be initialized to a non-missing numeric value."
+            ),
+        )
+    end
+
+    form = schematize(f, newdata, contr)
+    _, Xs = modelcols(form, newdata)
+    reterms, feterms = _split_re_fe_terms(Xs, form, T)
+    return PredictionDesign{T}(only(feterms), reterms)
+end
+
 # β is separated out here because m.β != m.LMM.β depending on how β is estimated for GLMM
 # also β should already be pivoted but NOT truncated in the rank deficient case
 function _predict(m::MixedModel{T}, newdata, β; new_re_levels) where {T}
@@ -106,45 +130,24 @@ function _predict(m::MixedModel{T}, newdata, β; new_re_levels) where {T}
     # using the existing model's estimates for the new data. (These are in general
     # *not* the same values as the estimates computed on the new data.)
 
-    # the easiest thing here is to just assemble a new model and
-    # pass that to the other predict methods....
-    # this can probably be made much more efficient
-
-    # note that the contrasts don't matter for prediction purposes
-    # (at least for the response)
-
-    # add a response column
+    pdesign = _prediction_design(m, newdata)
     # we get type stability via constant propagation on `new_re_levels`
-    y, mnew = let ytemp = ones(T, length(first(newdata)))
-        f, contr = _abstractify_grouping(m.formula)
-        respvars = StatsModels.termvars(f.lhs)
-        if !issubset(respvars, Tables.columnnames(newdata)) ||
-            any(any(ismissing, Tables.getcolumn(newdata, col)) for col in respvars)
-            throw(
-                ArgumentError(
-                    "Response column must be initialized to a non-missing numeric value."
-                ),
-            )
-        end
-        lmod = LinearMixedModel(f, newdata; contrasts=contr)
-        ytemp =
-            new_re_levels == :missing ? convert(Vector{Union{T,Missing}}, ytemp) : ytemp
-
-        ytemp, lmod
+    y = let ytemp = ones(T, length(first(newdata)))
+        new_re_levels == :missing ? convert(Vector{Union{T,Missing}}, ytemp) : ytemp
     end
 
-    pivotmatch = pivot(mnew)[pivot(m)]
-    mul!(y, view(mnew.X, :, pivotmatch), β)
-    # mnew.reterms for the correct Z matrices
+    pivotmatch = pivot(pdesign.feterm)[pivot(m)]
+    mul!(y, view(pdesign.feterm.x, :, pivotmatch), β)
+    # pdesign.reterms for the correct Z matrices
     # ranef(m) for the BLUPs from the original fit
 
     # because the reterms are sorted during model construction by
     # number of levels and that number may not be the same for the
     # new data, we need to permute the reterms from both models to be
     # in the same order
-    newreperm = sortperm(mnew.reterms; by=x -> string(x.trm))
+    newreperm = sortperm(pdesign.reterms; by=x -> string(x.trm))
     oldreperm = sortperm(m.reterms; by=x -> string(x.trm))
-    newre = view(mnew.reterms, newreperm)
+    newre = view(pdesign.reterms, newreperm)
     oldre = view(m.reterms, oldreperm)
     grps = fname.(oldre)
     oldlevels = levels.(oldre)
@@ -164,9 +167,7 @@ function _predict(m::MixedModel{T}, newdata, β; new_re_levels) where {T}
         # grouping variable because we are in the :error branch
         blups = blupsold
     elseif new_re_levels == :population
-        blups = [
-            Matrix{T}(undef, size(t.z, 1), nlevs(t)) for t in view(mnew.reterms, newreperm)
-        ]
+        blups = [Matrix{T}(undef, size(t.z, 1), nlevs(t)) for t in newre]
 
         for (idx, (B, newlvls, oldidx)) in enumerate(zip(blups, newlevels, oldlevelidx))
             for (lidx, ll) in enumerate(newlvls)
@@ -181,8 +182,7 @@ function _predict(m::MixedModel{T}, newdata, β; new_re_levels) where {T}
         end
     elseif new_re_levels == :missing
         blups = [
-            Matrix{Union{T,Missing}}(undef, size(t.z, 1), nlevs(t)) for
-            t in view(mnew.reterms, newreperm)
+            Matrix{Union{T,Missing}}(undef, size(t.z, 1), nlevs(t)) for t in newre
         ]
         for (idx, (B, newlvls, oldidx)) in enumerate(zip(blups, newlevels, oldlevelidx))
             for (lidx, ll) in enumerate(newlvls)
