@@ -292,6 +292,15 @@ end
     @test objective(fm1) ≈ 237721.76877450474 atol = 0.001
     ftd1 = fitted(fm1)
     @test size(ftd1) == (73421,)
+    ftd1buf = similar(ftd1)
+    @test fitted!(ftd1buf, fm1) === ftd1buf
+    @test ftd1buf == ftd1
+    # warm both paths before comparing allocation counts
+    fitted!(ftd1buf, fm1)
+    fitted(fm1)
+    inplace_alloc = @allocated fitted!(ftd1buf, fm1)
+    fitted_alloc = @allocated fitted(fm1)
+    @test inplace_alloc < fitted_alloc
     @test ftd1 == predict(fm1)
     @test first(ftd1) ≈ 3.1787619026604945 atol = 0.0001
     resid1 = residuals(fm1)
