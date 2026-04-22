@@ -1,3 +1,7 @@
+MixedModels v5.4.0 Release Notes
+==============================
+- Change `isnested(x, y)` for MixedModels to return `true` if `x` has no fixed-effects parameters [#886]
+
 MixedModels v5.3.1 Release Notes
 ==============================
 - `varest` and `dispersion(::LinearMixedModel, true)` previously incorrectly returned the estimated standard deviation instead of the variance for models with a fixed sigma parameter. [#885]
@@ -734,4 +738,5 @@ Package dependencies
 [#875]: https://github.com/JuliaStats/MixedModels.jl/issues/875
 [#876]: https://github.com/JuliaStats/MixedModels.jl/issues/876
 [#880]: https://github.com/JuliaStats/MixedModels.jl/issues/880
+[#886]: https://github.com/JuliaStats/MixedModels.jl/issues/886
 [#885]: https://github.com/JuliaStats/MixedModels.jl/issues/885
