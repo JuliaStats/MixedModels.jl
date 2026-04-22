@@ -15,6 +15,9 @@ using StableRNGs
     @test isempty(fixef(fmσ1))
     # verify that we report the exact value requested
     @test fmσ1.σ == 1
+    @test MixedModels.varest(fmσ1) == 1
+    @test GLM.dispersion(fmσ1, true) == 1
+    @test GLM.dispersion(fmσ1, false) == 1
     # verify that the constrain actually worked
     @test pwrss(fmσ1) / nobs(fmσ1) ≈ 1.0 atol = 0.00001
     @test only(fmσ1.θ) ≈ σ atol = 0.1
@@ -25,6 +28,9 @@ using StableRNGs
     @test isempty(fixef(fmσ1))
     # verify that we report the exact value requested
     @test fmσ1.σ == 3.14
+    @test MixedModels.varest(fmσ1) ≈ 3.14^2
+    @test GLM.dispersion(fmσ1, true) ≈ 3.14^2
+    @test GLM.dispersion(fmσ1, false) == 3.14
     # verify that the constrain actually worked
     @test pwrss(fmσ1) / nobs(fmσ1) ≈ 3.14^2 atol = 0.5
     # the shrinkage forces things to zero because 3.14/3 is very close to 0

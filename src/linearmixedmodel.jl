@@ -1418,7 +1418,7 @@ end
 Returns the estimate of σ², the variance of the conditional distribution of Y given B.
 """
 function varest(m::LinearMixedModel)
-    return isnothing(m.optsum.sigma) ? pwrss(m) / ssqdenom(m) : m.optsum.sigma
+    return isnothing(m.optsum.sigma) ? pwrss(m) / ssqdenom(m) : m.optsum.sigma^2
 end
 
 function StatsAPI.weights(m::LinearMixedModel)
