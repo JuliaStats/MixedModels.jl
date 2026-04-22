@@ -39,8 +39,10 @@ function run_script(dir::String, script_args::Vector{String})
     return JSON3.read(String(take!(io)))
 end
 
-metric_names(result) = filter(name -> getproperty(result, Symbol(name)) !== nothing,
-    ("fitted_inplace", "fitted", "predict_same", "predict_population_new_level"))
+function metric_names(result)
+    return filter(name -> getproperty(result, Symbol(name)) !== nothing,
+        ("fitted_inplace", "fitted", "predict_same", "predict_population_new_level"))
+end
 
 function pct_change(old, new)
     return old == 0 ? missing : (new - old) / old
@@ -66,29 +68,53 @@ function compare(lhs, rhs)
 end
 
 function render_text(rows, lhs_label, rhs_label)
-    println(rpad("benchmark", 30), lpad("$lhs_label alloc", 14), lpad("$rhs_label alloc", 14),
-        lpad("alloc %", 12), lpad("$lhs_label time", 16), lpad("$rhs_label time", 16), lpad("time %", 12))
+    println(rpad("benchmark", 30), lpad("$lhs_label alloc", 14),
+        lpad("$rhs_label alloc", 14),
+        lpad("alloc %", 12), lpad("$lhs_label time", 16), lpad("$rhs_label time", 16),
+        lpad("time %", 12))
     for row in rows
         println(
             rpad(row.benchmark, 30),
             lpad(string(row.lhs_alloc), 14),
             lpad(string(row.rhs_alloc), 14),
-            lpad(isnothing(row.alloc_pct) || ismissing(row.alloc_pct) ? "missing" : string(round(100 * row.alloc_pct; digits=2), "%"), 12),
+            lpad(
+                if isnothing(row.alloc_pct) || ismissing(row.alloc_pct)
+                    "missing"
+                else
+                    string(round(100 * row.alloc_pct; digits=2), "%")
+                end,
+                12,
+            ),
             lpad(string(row.lhs_time), 16),
             lpad(string(row.rhs_time), 16),
-            lpad(isnothing(row.time_pct) || ismissing(row.time_pct) ? "missing" : string(round(100 * row.time_pct; digits=2), "%"), 12),
+            lpad(
+                if isnothing(row.time_pct) || ismissing(row.time_pct)
+                    "missing"
+                else
+                    string(round(100 * row.time_pct; digits=2), "%")
+                end,
+                12,
+            ),
         )
     end
 end
 
 function render_markdown(rows, lhs_label, rhs_label)
-    println("| benchmark | $lhs_label alloc | $rhs_label alloc | alloc % | $lhs_label time | $rhs_label time | time % |")
+    println(
+        "| benchmark | $lhs_label alloc | $rhs_label alloc | alloc % | $lhs_label time | $rhs_label time | time % |",
+    )
     println("|---|---:|---:|---:|---:|---:|---:|")
     for row in rows
-        alloc_pct = isnothing(row.alloc_pct) || ismissing(row.alloc_pct) ? "missing" :
+        alloc_pct = if isnothing(row.alloc_pct) || ismissing(row.alloc_pct)
+            "missing"
+        else
             string(round(100 * row.alloc_pct; digits=2), "%")
-        time_pct = isnothing(row.time_pct) || ismissing(row.time_pct) ? "missing" :
+        end
+        time_pct = if isnothing(row.time_pct) || ismissing(row.time_pct)
+            "missing"
+        else
             string(round(100 * row.time_pct; digits=2), "%")
+        end
         println("| ", row.benchmark, " | ", row.lhs_alloc, " | ", row.rhs_alloc, " | ",
             alloc_pct, " | ", row.lhs_time, " | ", row.rhs_time, " | ", time_pct, " |")
     end

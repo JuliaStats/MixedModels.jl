@@ -128,9 +128,13 @@ function run_benchmarks(
         fitted_inplace=bench(() -> fitted!(fitted_buf, model), iterations),
         fitted=bench(() -> fitted(model), iterations),
         predict_same=bench(() -> predict(model, same_data), iterations),
-        predict_population_new_level=isnothing(group) ? nothing : bench(
+        predict_population_new_level=if isnothing(group)
+            nothing
+        else
+            bench(
             () -> predict(model, new_level_data; new_re_levels=:population), iterations
-        ),
+        )
+        end,
     )
 
     return results
@@ -148,7 +152,9 @@ function render_text(result)
     for name in (:fitted_inplace, :fitted, :predict_same, :predict_population_new_level)
         val = getproperty(result, name)
         isnothing(val) && continue
-        println(rpad(String(name), 30), lpad(string(val.alloc), 14), lpad(string(val.time), 16))
+        println(
+            rpad(String(name), 30), lpad(string(val.alloc), 14), lpad(string(val.time), 16)
+        )
     end
 end
 
