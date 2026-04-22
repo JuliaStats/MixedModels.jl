@@ -59,6 +59,14 @@ include("modelcache.jl")
         progress=false,
     )
     @test @suppress !isnested(m1, m2)
+
+    m1 = only(models(:dyestuff))
+    m2 = fit(
+        MixedModel,
+        @formula(yield - 1500 ~ 0 + (1 | batch)),
+        dataset(:dyestuff),
+    )
+    @test isnested(m2, m1)
 end
 
 @testset "likelihoodratio test" begin
