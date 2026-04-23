@@ -71,7 +71,7 @@ Equality comparisons are used b/c small non-negative θ values are replaced by 0
 function issingular(
     m::MixedModel{T}, θ=m.θ; atol::Real=0, rtol::Real=atol > 0 ? 0 : √eps()
 ) where {T}
-    lb = [(pm[2] == pm[3]) ? zero(T) : T(-Inf) for pm in m.parmap]
+    lb = lowerbd(m)
     return _issingular(lb, θ; atol, rtol)
 end
 

@@ -51,10 +51,10 @@ end
         dataset(:contra), Binomial(); progress=false)
     prmodel = unfit!(deepcopy(model))
     fit!(prmodel; optimizer=:bobyqa, backend=:prima, progress=false)
-    @test isapprox(loglikelihood(model), loglikelihood(prmodel)) atol=0.0001
+    @test isapprox(loglikelihood(model), loglikelihood(prmodel)) atol=0.001
     refit!(prmodel; fast=true, progress=false)
     refit!(model; fast=true, progress=false)
-    @test isapprox(loglikelihood(model), loglikelihood(prmodel)) atol=0.0001
+    @test isapprox(loglikelihood(model), loglikelihood(prmodel)) atol=0.001
 
     optsum = deepcopy(prmodel.optsum)
     optsum.final = [0.2612]

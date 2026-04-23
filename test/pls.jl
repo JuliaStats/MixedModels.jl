@@ -43,6 +43,7 @@ end
     @test length(fm1.A) == 3
     @test size(fm1.reterms) == (1,)
     @test fm1.optsum.initial == ones(1)
+    @test lowerbd(fm1) == zeros(1)
     fm1.θ = ones(1)
     @test fm1.θ == ones(1)
     @test islinear(fm1)
@@ -276,13 +277,17 @@ end
 end
 
 @testset "InstEval" begin
-    fm1 = models(:insteval)[2]              # at one time this was the fist of the :insteval models
+    fm1 = models(:insteval)[2]              # at one time this was the first of the :insteval models
     @test size(fm1) == (73421, 2, 4114, 3)
     @test fm1.optsum.initial == ones(3)
 
     spL = sparseL(fm1)
     @test size(spL) == (4114, 4114)
     @test 733090 < nnz(spL) < 733100
+
+    spA = Symmetric(sparseA(fm1; full=true), :L)
+    @test size(spA) == (4117, 4117)
+    @test 132600 < nnz(spA.data) < 132650
 
     @test objective(fm1) ≈ 237721.76877450474 atol = 0.001
     ftd1 = fitted(fm1)

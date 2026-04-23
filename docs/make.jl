@@ -1,9 +1,12 @@
 using Documenter
 using MixedModels
+
+using Distributions
 using FiniteDiff
 using ForwardDiff
 using StatsAPI
 using StatsBase
+using StatsModels
 
 makedocs(;
     sitename="MixedModels",
@@ -22,7 +25,9 @@ makedocs(;
         "rankdeficiency.md",
         "mime.md",
         "derivatives.md",
+        "limitations.md",
         "formula_syntax.md",
+        "ecosystem.md",
         "api.md",
     ],
 )

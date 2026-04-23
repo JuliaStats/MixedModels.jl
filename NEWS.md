@@ -1,3 +1,39 @@
+MixedModels v5.4.0 Release Notes
+==============================
+- Change `isnested(x, y)` for MixedModels to return `true` if `x` has no fixed-effects parameters [#886]
+
+MixedModels v5.3.1 Release Notes
+==============================
+- `varest` and `dispersion(::LinearMixedModel, true)` previously incorrectly returned the estimated standard deviation instead of the variance for models with a fixed sigma parameter. [#885]
+
+MixedModels v5.3.0 Release Notes
+==============================
+- Implement `sparseL` as a specialization of `sparsemat`. Replace `_coord` utility with `_findnz` which, in most cases, falls through to `SparseArrays.findnz`. [#880]
+
+MixedModels v5.2.2 Release Notes
+==============================
+- Small update to `show` methods to accommodate coming changes in Julia Markdown stdlib. [#876]
+
+MixedModels v5.2.1 Release Notes
+==============================
+- Use three-argument method for `show` for `CoefTables`. [#875]
+
+MixedModels v5.2.0 Release Notes
+==============================
+- The use of the `wts` keyword argument has been deprecated in favor of the keyword argument `weights`, in line with the deprecation in GLM.jl v1.9.1. The usage (and subsequent interpretation) remains otherwise unchanged. [#873]
+
+MixedModels v5.1.0 Release Notes
+==============================
+- Nesting checks for the likelihoodratio test have been slightly tweaked to be more robust, at the cost of being slightly slower. In particular, the comparison of models with pre-centered variables with those with variables centered via StandardizedPredictors.jl was previously incorrectly rejected as non-nested, but should be correctly accepted as nested now. Additionally, some further logging messages are emitted when a nesting check fails. [#867]
+
+MixedModels v5.0.4 Release Notes
+==============================
+- Small update in some code related to displaying dispersion parameters in cases where inference has failed. [#865]
+
+MixedModels v5.0.3 Release Notes
+==============================
+- `lowerbd(::MixedModel)` returns the _canonical_ lower bounds of a model's parameters, i.e. the expected bounds after rectification in unconstrained optimization. [#864]
+
 MixedModels v5.0.2 Release Notes
 ==============================
 - The default display and `confint` methods for bootstrap results from models without dispersion parameters has been fixed. [#861]
@@ -695,3 +731,12 @@ Package dependencies
 [#858]: https://github.com/JuliaStats/MixedModels.jl/issues/858
 [#860]: https://github.com/JuliaStats/MixedModels.jl/issues/860
 [#861]: https://github.com/JuliaStats/MixedModels.jl/issues/861
+[#864]: https://github.com/JuliaStats/MixedModels.jl/issues/864
+[#865]: https://github.com/JuliaStats/MixedModels.jl/issues/865
+[#867]: https://github.com/JuliaStats/MixedModels.jl/issues/867
+[#873]: https://github.com/JuliaStats/MixedModels.jl/issues/873
+[#875]: https://github.com/JuliaStats/MixedModels.jl/issues/875
+[#876]: https://github.com/JuliaStats/MixedModels.jl/issues/876
+[#880]: https://github.com/JuliaStats/MixedModels.jl/issues/880
+[#886]: https://github.com/JuliaStats/MixedModels.jl/issues/886
+[#885]: https://github.com/JuliaStats/MixedModels.jl/issues/885

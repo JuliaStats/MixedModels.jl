@@ -359,7 +359,11 @@ function StatsBase.confint(
     par = filter(collect(propertynames(tbl))) do k
         k = string(k)
         # σ is missing in models without a dispersion parameter
-        if k == "σ" && Missing <: eltype(tbl.σ)
+        Tσ = eltype(tbl.σ)
+        # If inference failed when constructing `tbl.σ`, we can't rely on the element
+        # type to know whether missing values may be present
+        if k == "σ" &&
+            ((Tσ === Any && any(ismissing, tbl.σ)) || (Tσ !== Any && Missing <: Tσ))
             return false
         end
         return !startswith(k, 'θ') && k != "obj"

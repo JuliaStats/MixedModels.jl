@@ -21,11 +21,11 @@ jobs:
     name: Documentation
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: julia-actions/setup-julia@v2
         with:
           version: 'min'
-      - uses: julia-actions/cache@v2
+      - uses: julia-actions/cache@v3
         with:
             cache-compiled: "true"
       - uses: julia-actions/julia-buildpkg@latest

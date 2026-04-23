@@ -27,8 +27,8 @@ using Printf: @sprintf
 using ProgressMeter: ProgressMeter, Progress, finish!, next!
 using Random: Random, AbstractRNG, randn!
 using RegressionFormulae: fulldummy
-using SparseArrays: SparseArrays, SparseMatrixCSC, SparseVector, dropzeros!, nnz
-using SparseArrays: nonzeros, nzrange, rowvals, sparse
+using SparseArrays: SparseArrays, SparseMatrixCSC, SparseVector, dropzeros!, findnz
+using SparseArrays: nnz, nonzeros, nzrange, rowvals, sparse
 using StaticArrays: StaticArrays, SVector
 using Statistics: Statistics, mean, quantile, std
 using StatsAPI: StatsAPI, aic, aicc, bic, coef, coefnames, coeftable, confint
@@ -37,7 +37,7 @@ using StatsAPI: dof, dof_residual, fit, fit!, fitted, isfitted, islinear, levera
 using StatsAPI:
     loglikelihood, meanresponse, modelmatrix, nobs, pvalue, predict, r2, residuals
 using StatsAPI: response, responsename, stderror, vcov, weights
-using StatsBase: StatsBase, CoefTable, model_response, summarystats
+using StatsBase: StatsBase, CoefTable, model_response, summarystats, FrequencyWeights
 using StatsFuns: chisqccdf, log2π, normccdf
 using StatsModels: StatsModels, AbstractContrasts, AbstractTerm, CategoricalTerm
 using StatsModels: ConstantTerm, DummyCoding, EffectsCoding, FormulaTerm, FunctionTerm
@@ -156,6 +156,7 @@ export @formula,
     simulate,
     simulate!,
     sparse,
+    sparseA,
     sparseL,
     std,
     stderror,
