@@ -1,0 +1,213 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg"
+     xmlns:xlink="http://www.w3.org/1999/xlink"
+     xmlns:gadfly="http://www.gadflyjl.org/ns"
+     version="1.2"
+     width="203.2mm" height="101.6mm" viewBox="0 0 203.2 101.6"
+     stroke="none"
+     fill="#000000"
+     stroke-width="0.3"
+     font-size="3.88"
+>
+<g class="plotroot xscalable yscalable" id="img-7352becb-1">
+  <g font-size="3.88" font-family="'PT Sans','Helvetica Neue','Helvetica',sans-serif" fill="#564A55" stroke="#000000" stroke-opacity="0.000" id="img-7352becb-2">
+    <text x="105.11" y="89.99" text-anchor="middle" dy="0.6em">ρ₁₂</text>
+  </g>
+  <g class="guide xlabels" font-size="2.82" font-family="'PT Sans Caption','Helvetica Neue','Helvetica',sans-serif" fill="#6C606B" id="img-7352becb-3">
+    <text x="14.02" y="83.32" text-anchor="middle" dy="0.6em">-1.0</text>
+    <text x="59.56" y="83.32" text-anchor="middle" dy="0.6em">-0.5</text>
+    <text x="105.11" y="83.32" text-anchor="middle" dy="0.6em">0.0</text>
+    <text x="150.66" y="83.32" text-anchor="middle" dy="0.6em">0.5</text>
+    <text x="196.2" y="83.32" text-anchor="middle" dy="0.6em">1.0</text>
+  </g>
+<g clip-path="url(#img-7352becb-4)">
+  <g id="img-7352becb-5">
+    <g pointer-events="visible" opacity="1" fill="#000000" fill-opacity="0.000" stroke="#000000" stroke-opacity="0.000" class="guide background" id="img-7352becb-6">
+      <rect x="12.02" y="5" width="186.18" height="77.32"/>
+    </g>
+    <g class="guide ygridlines xfixed" stroke-dasharray="0.5,0.5" stroke-width="0.2" stroke="#D0D0E0" id="img-7352becb-7">
+      <path fill="none" d="M12.02,80.32 L 198.2 80.32"/>
+      <path fill="none" d="M12.02,61.99 L 198.2 61.99"/>
+      <path fill="none" d="M12.02,43.66 L 198.2 43.66"/>
+      <path fill="none" d="M12.02,25.33 L 198.2 25.33"/>
+      <path fill="none" d="M12.02,7 L 198.2 7"/>
+    </g>
+    <g class="guide xgridlines yfixed" stroke-dasharray="0.5,0.5" stroke-width="0.2" stroke="#D0D0E0" id="img-7352becb-8">
+      <path fill="none" d="M14.02,5 L 14.02 82.32"/>
+      <path fill="none" d="M59.56,5 L 59.56 82.32"/>
+      <path fill="none" d="M105.11,5 L 105.11 82.32"/>
+      <path fill="none" d="M150.66,5 L 150.66 82.32"/>
+      <path fill="none" d="M196.2,5 L 196.2 82.32"/>
+    </g>
+    <g class="plotpanel" id="img-7352becb-9">
+      <g shape-rendering="crispEdges" stroke-width="0.3" id="img-7352becb-10">
+        <g stroke="#000000" stroke-opacity="0.000" class="geometry" fill="#00BFFF" id="img-7352becb-11">
+          <rect x="14" y="79.77" width="1.26" height="0.55"/>
+          <rect x="15.21" y="80.13" width="1.26" height="0.18"/>
+          <rect x="16.42" y="80.32" width="1.26" height="0.01"/>
+          <rect x="17.64" y="80.32" width="1.26" height="0.01"/>
+          <rect x="18.85" y="80.32" width="1.26" height="0.01"/>
+          <rect x="20.07" y="80.32" width="1.26" height="0.01"/>
+          <rect x="21.28" y="80.32" width="1.26" height="0.01"/>
+          <rect x="22.5" y="80.13" width="1.26" height="0.18"/>
+          <rect x="23.71" y="80.13" width="1.26" height="0.18"/>
+          <rect x="24.93" y="80.32" width="1.26" height="0.01"/>
+          <rect x="26.14" y="80.32" width="1.26" height="0.01"/>
+          <rect x="27.35" y="80.13" width="1.26" height="0.18"/>
+          <rect x="28.57" y="80.32" width="1.26" height="0.01"/>
+          <rect x="29.78" y="80.32" width="1.26" height="0.01"/>
+          <rect x="31" y="80.32" width="1.26" height="0.01"/>
+          <rect x="32.21" y="80.13" width="1.26" height="0.18"/>
+          <rect x="33.43" y="80.13" width="1.26" height="0.18"/>
+          <rect x="34.64" y="80.13" width="1.26" height="0.18"/>
+          <rect x="35.86" y="80.13" width="1.26" height="0.18"/>
+          <rect x="37.07" y="79.58" width="1.26" height="0.73"/>
+          <rect x="38.29" y="79.77" width="1.26" height="0.55"/>
+          <rect x="39.5" y="79.95" width="1.26" height="0.37"/>
+          <rect x="40.71" y="79.77" width="1.26" height="0.55"/>
+          <rect x="41.93" y="79.22" width="1.26" height="1.1"/>
+          <rect x="43.14" y="78.48" width="1.26" height="1.83"/>
+          <rect x="44.36" y="79.4" width="1.26" height="0.92"/>
+          <rect x="45.57" y="78.67" width="1.26" height="1.65"/>
+          <rect x="46.79" y="78.48" width="1.26" height="1.83"/>
+          <rect x="48" y="78.85" width="1.26" height="1.47"/>
+          <rect x="49.22" y="78.3" width="1.26" height="2.02"/>
+          <rect x="50.43" y="77.93" width="1.26" height="2.38"/>
+          <rect x="51.65" y="77.02" width="1.26" height="3.3"/>
+          <rect x="52.86" y="78.12" width="1.26" height="2.2"/>
+          <rect x="54.07" y="76.83" width="1.26" height="3.48"/>
+          <rect x="55.29" y="76.47" width="1.26" height="3.85"/>
+          <rect x="56.5" y="74.27" width="1.26" height="6.05"/>
+          <rect x="57.72" y="75.37" width="1.26" height="4.95"/>
+          <rect x="58.93" y="75.18" width="1.26" height="5.13"/>
+          <rect x="60.15" y="74.63" width="1.26" height="5.68"/>
+          <rect x="61.36" y="72.62" width="1.26" height="7.7"/>
+          <rect x="62.58" y="72.98" width="1.26" height="7.33"/>
+          <rect x="63.79" y="71.15" width="1.26" height="9.16"/>
+          <rect x="65.01" y="71.88" width="1.26" height="8.43"/>
+          <rect x="66.22" y="70.78" width="1.26" height="9.53"/>
+          <rect x="67.43" y="72.8" width="1.26" height="7.51"/>
+          <rect x="68.65" y="71.33" width="1.26" height="8.98"/>
+          <rect x="69.86" y="69.68" width="1.26" height="10.63"/>
+          <rect x="71.08" y="68.58" width="1.26" height="11.73"/>
+          <rect x="72.29" y="68.77" width="1.26" height="11.55"/>
+          <rect x="73.51" y="66.94" width="1.26" height="13.38"/>
+          <rect x="74.72" y="65.1" width="1.26" height="15.21"/>
+          <rect x="75.94" y="67.3" width="1.26" height="13.01"/>
+          <rect x="77.15" y="64.55" width="1.26" height="15.76"/>
+          <rect x="78.37" y="64.37" width="1.26" height="15.95"/>
+          <rect x="79.58" y="63.82" width="1.26" height="16.5"/>
+          <rect x="80.79" y="62.54" width="1.26" height="17.78"/>
+          <rect x="82.01" y="62.72" width="1.26" height="17.6"/>
+          <rect x="83.22" y="60.15" width="1.26" height="20.16"/>
+          <rect x="84.44" y="63.64" width="1.26" height="16.68"/>
+          <rect x="85.65" y="64.74" width="1.26" height="15.58"/>
+          <rect x="86.87" y="59.79" width="1.26" height="20.53"/>
+          <rect x="88.08" y="64.92" width="1.26" height="15.4"/>
+          <rect x="89.3" y="56.12" width="1.26" height="24.19"/>
+          <rect x="90.51" y="56.3" width="1.26" height="24.01"/>
+          <rect x="91.73" y="61.07" width="1.26" height="19.25"/>
+          <rect x="92.94" y="59.6" width="1.26" height="20.71"/>
+          <rect x="94.15" y="55.94" width="1.26" height="24.38"/>
+          <rect x="95.37" y="59.6" width="1.26" height="20.71"/>
+          <rect x="96.58" y="56.12" width="1.26" height="24.19"/>
+          <rect x="97.8" y="54.47" width="1.26" height="25.84"/>
+          <rect x="99.01" y="51.54" width="1.26" height="28.78"/>
+          <rect x="100.23" y="59.6" width="1.26" height="20.71"/>
+          <rect x="101.44" y="55.2" width="1.26" height="25.11"/>
+          <rect x="102.66" y="57.04" width="1.26" height="23.28"/>
+          <rect x="103.87" y="53.74" width="1.26" height="26.58"/>
+          <rect x="105.08" y="53.01" width="1.26" height="27.31"/>
+          <rect x="106.3" y="49.52" width="1.26" height="30.79"/>
+          <rect x="107.51" y="55.94" width="1.26" height="24.38"/>
+          <rect x="108.73" y="55.39" width="1.26" height="24.93"/>
+          <rect x="109.94" y="50.99" width="1.26" height="29.33"/>
+          <rect x="111.16" y="53.74" width="1.26" height="26.58"/>
+          <rect x="112.37" y="55.75" width="1.26" height="24.56"/>
+          <rect x="113.59" y="54.29" width="1.26" height="26.03"/>
+          <rect x="114.8" y="50.99" width="1.26" height="29.33"/>
+          <rect x="116.02" y="55.57" width="1.26" height="24.74"/>
+          <rect x="117.23" y="49.89" width="1.26" height="30.43"/>
+          <rect x="118.44" y="53.74" width="1.26" height="26.58"/>
+          <rect x="119.66" y="55.39" width="1.26" height="24.93"/>
+          <rect x="120.87" y="55.2" width="1.26" height="25.11"/>
+          <rect x="122.09" y="56.67" width="1.26" height="23.64"/>
+          <rect x="123.3" y="56.3" width="1.26" height="24.01"/>
+          <rect x="124.52" y="56.12" width="1.26" height="24.19"/>
+          <rect x="125.73" y="59.42" width="1.26" height="20.89"/>
+          <rect x="126.95" y="57.04" width="1.26" height="23.28"/>
+          <rect x="128.16" y="55.39" width="1.26" height="24.93"/>
+          <rect x="129.38" y="58.5" width="1.26" height="21.81"/>
+          <rect x="130.59" y="56.67" width="1.26" height="23.64"/>
+          <rect x="131.8" y="58.32" width="1.26" height="21.99"/>
+          <rect x="133.02" y="62.72" width="1.26" height="17.6"/>
+          <rect x="134.23" y="61.62" width="1.26" height="18.7"/>
+          <rect x="135.45" y="58.14" width="1.26" height="22.18"/>
+          <rect x="136.66" y="61.99" width="1.26" height="18.33"/>
+          <rect x="137.88" y="58.5" width="1.26" height="21.81"/>
+          <rect x="139.09" y="62.17" width="1.26" height="18.15"/>
+          <rect x="140.31" y="62.54" width="1.26" height="17.78"/>
+          <rect x="141.52" y="62.9" width="1.26" height="17.41"/>
+          <rect x="142.74" y="62.9" width="1.26" height="17.41"/>
+          <rect x="143.95" y="62.72" width="1.26" height="17.6"/>
+          <rect x="145.16" y="61.25" width="1.26" height="19.06"/>
+          <rect x="146.38" y="66.94" width="1.26" height="13.38"/>
+          <rect x="147.59" y="63.82" width="1.26" height="16.5"/>
+          <rect x="148.81" y="64.92" width="1.26" height="15.4"/>
+          <rect x="150.02" y="65.47" width="1.26" height="14.85"/>
+          <rect x="151.24" y="66.94" width="1.26" height="13.38"/>
+          <rect x="152.45" y="65.84" width="1.26" height="14.48"/>
+          <rect x="153.67" y="67.12" width="1.26" height="13.2"/>
+          <rect x="154.88" y="68.4" width="1.26" height="11.91"/>
+          <rect x="156.1" y="67.12" width="1.26" height="13.2"/>
+          <rect x="157.31" y="69.87" width="1.26" height="10.45"/>
+          <rect x="158.52" y="69.87" width="1.26" height="10.45"/>
+          <rect x="159.74" y="69.5" width="1.26" height="10.81"/>
+          <rect x="160.95" y="71.52" width="1.26" height="8.8"/>
+          <rect x="162.17" y="71.52" width="1.26" height="8.8"/>
+          <rect x="163.38" y="69.13" width="1.26" height="11.18"/>
+          <rect x="164.6" y="72.62" width="1.26" height="7.7"/>
+          <rect x="165.81" y="71.33" width="1.26" height="8.98"/>
+          <rect x="167.03" y="72.43" width="1.26" height="7.88"/>
+          <rect x="168.24" y="73.17" width="1.26" height="7.15"/>
+          <rect x="169.46" y="73.53" width="1.26" height="6.78"/>
+          <rect x="170.67" y="71.7" width="1.26" height="8.61"/>
+          <rect x="171.88" y="74.08" width="1.26" height="6.23"/>
+          <rect x="173.1" y="73.53" width="1.26" height="6.78"/>
+          <rect x="174.31" y="75" width="1.26" height="5.32"/>
+          <rect x="175.53" y="72.25" width="1.26" height="8.06"/>
+          <rect x="176.74" y="72.98" width="1.26" height="7.33"/>
+          <rect x="177.96" y="75.55" width="1.26" height="4.77"/>
+          <rect x="179.17" y="75.73" width="1.26" height="4.58"/>
+          <rect x="180.39" y="76.83" width="1.26" height="3.48"/>
+          <rect x="181.6" y="76.65" width="1.26" height="3.67"/>
+          <rect x="182.82" y="75.37" width="1.26" height="4.95"/>
+          <rect x="184.03" y="76.83" width="1.26" height="3.48"/>
+          <rect x="185.24" y="77.75" width="1.26" height="2.57"/>
+          <rect x="186.46" y="75.73" width="1.26" height="4.58"/>
+          <rect x="187.67" y="76.83" width="1.26" height="3.48"/>
+          <rect x="188.89" y="77.38" width="1.26" height="2.93"/>
+          <rect x="190.1" y="77.57" width="1.26" height="2.75"/>
+          <rect x="191.32" y="77.02" width="1.26" height="3.3"/>
+          <rect x="192.53" y="77.93" width="1.26" height="2.38"/>
+          <rect x="193.75" y="77.75" width="1.26" height="2.57"/>
+          <rect x="194.96" y="21.11" width="1.26" height="59.2"/>
+        </g>
+      </g>
+    </g>
+  </g>
+</g>
+  <g class="guide ylabels" font-size="2.82" font-family="'PT Sans Caption','Helvetica Neue','Helvetica',sans-serif" fill="#6C606B" id="img-7352becb-12">
+    <text x="11.02" y="80.32" text-anchor="end" dy="0.35em">0</text>
+    <text x="11.02" y="61.99" text-anchor="end" dy="0.35em">100</text>
+    <text x="11.02" y="43.66" text-anchor="end" dy="0.35em">200</text>
+    <text x="11.02" y="25.33" text-anchor="end" dy="0.35em">300</text>
+    <text x="11.02" y="7" text-anchor="end" dy="0.35em">400</text>
+  </g>
+</g>
+<defs>
+  <clipPath id="img-7352becb-4">
+  <path d="M12.02,5 L 198.2 5 198.2 82.32 12.02 82.32" />
+</clipPath>
+</defs>
+</svg>
