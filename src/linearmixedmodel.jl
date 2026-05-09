@@ -174,15 +174,14 @@ function LinearMixedModel(
     Xy = FeMat(feterm, vec(y))
     # Replace feterm's fullrankx field with a view into the shared Xymat storage,
     # eliminating the duplicate allocation for the full-rank X columns.
-    let rnk = feterm.rank, xview = view(Xy.xy, :, 1:rnk)
-        feterm = FeTerm{T,typeof(xview)}(
+    xview = view(Xy.xy, :, 1:feterm.rank)
+    feterm = FeTerm{T,typeof(xview)}(
             xview,
             getfield(feterm, :xrankdef),
             feterm.piv,
             feterm.rank,
             feterm.cnames,
-        )
-    end
+    )
     sqrtwts = map!(sqrt, Vector{T}(undef, length(weights)), weights)
     reweight!.(reterms, Ref(sqrtwts))
     reweight!(Xy, sqrtwts)

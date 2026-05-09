@@ -61,7 +61,7 @@ function FeTerm(X::AbstractMatrix{T}, cnms) where {T}
     if rank < length(pivot) && size(X, 2) > 1
         @warn "Fixed-effects matrix is rank deficient"
     end
-    x_piv = X[:, pivot]
+    x_piv = view(X, :, pivot)
     xfr = x_piv[:, 1:rank]
     xrd = x_piv[:, (rank + 1):end]
     return FeTerm{T,typeof(xfr)}(xfr, xrd, pivot, rank, cnms[pivot])
