@@ -87,7 +87,9 @@ function FeTerm(X::SparseMatrixCSC, cnms::AbstractVector{String})
     return FeTerm{eltype(X),typeof(X)}(X, empty_rd, collect(1:rank), rank, collect(cnms))
 end
 
-Base.copyto!(A::FeTerm{T}, src::AbstractVecOrMat{T}) where {T} = copyto!(getfield(A, :fullrankx), src)
+function Base.copyto!(A::FeTerm{T}, src::AbstractVecOrMat{T}) where {T}
+    return copyto!(getfield(A, :fullrankx), src)
+end
 
 Base.eltype(::FeTerm{T}) where {T} = T
 
