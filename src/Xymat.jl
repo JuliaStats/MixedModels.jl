@@ -8,6 +8,11 @@ Typically, an `FeTerm` represents the model matrix for the fixed effects.
 !!! note
     `FeTerm` is not the same as [`FeMat`](@ref)!
 
+!!! warning
+    In a [`LinearMixedModel`](@ref), `fullrankx` is a view into the first `rank` columns
+    of the model's `Xymat.xy` matrix. Writing to it (e.g. via `copyto!`) will propagate
+    into `Xymat.xy` and corrupt the model's internal state.
+
 # Fields
 * `fullrankx`: full-rank columns of the model matrix (a view into [`FeMat`](@ref) storage when part of a fitted [`LinearMixedModel`](@ref))
 * `xrankdef`: rank-deficient extra columns (n×(p-rank) `Matrix`; empty for full-rank models)
@@ -95,6 +100,16 @@ Return the pivot associated with the FeTerm.
 @inline pivot(m::MixedModel) = pivot(m.feterm)
 @inline pivot(A::FeTerm) = A.piv
 
+"""
+    fullrankx(m::MixedModel)
+    fullrankx(A::FeTerm)
+
+Return the full-rank portion of the fixed-effects model matrix.
+
+For a [`LinearMixedModel`](@ref) this is a non-allocating view into the first `rank`
+columns of `m.Xymat.xy`. See also [`modelmatrix`](@ref) for an allocating version that
+includes any rank-deficient columns.
+"""
 function fullrankx(A::FeTerm)
     return getfield(A, :fullrankx)
 end
@@ -119,7 +134,9 @@ A matrix and a (possibly) weighted copy of itself.
 Typically, an `FeMat` represents the fixed-effects model matrix with the response (`y`) concatenated as a final column.
 
 !!! note
-    `FeMat` is not the same as [`FeTerm`](@ref).
+    `FeMat` is not the same as [`FeTerm`](@ref). In a [`LinearMixedModel`](@ref), the
+    first `rank` columns of `xy` are aliased with the `fullrankx` field of the model's
+    [`FeTerm`](@ref); writes to either propagate to the other.
 
 # Fields
 - `xy`: original matrix, called `xy` b/c in practice this is `hcat(fullrank(X), y)`
