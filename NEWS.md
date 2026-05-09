@@ -1,3 +1,8 @@
+MixedModels v5.5.0 Release Notes
+==============================
+- The construction of `LinearMixedModel` has changed so that the storage of the full-rank fixed-effects model matrix is shared between `feterm` and `Xymat`. The function `modelmatrix` still returns the entire model matrix (including redundant columns), but now constructs it dynamically instead of returning a reference into internal storage. The precise storage details of `FeTerm` have changed. [#889]
+
+
 MixedModels v5.4.0 Release Notes
 ==============================
 - Change `isnested(x, y)` for MixedModels to return `true` if `x` has no fixed-effects parameters [#886]
@@ -738,5 +743,6 @@ Package dependencies
 [#875]: https://github.com/JuliaStats/MixedModels.jl/issues/875
 [#876]: https://github.com/JuliaStats/MixedModels.jl/issues/876
 [#880]: https://github.com/JuliaStats/MixedModels.jl/issues/880
-[#886]: https://github.com/JuliaStats/MixedModels.jl/issues/886
 [#885]: https://github.com/JuliaStats/MixedModels.jl/issues/885
+[#886]: https://github.com/JuliaStats/MixedModels.jl/issues/886
+[#889]: https://github.com/JuliaStats/MixedModels.jl/issues/889
