@@ -7,8 +7,8 @@ Linear mixed-effects model representation
 
 * `formula`: the formula for the model
 * `reterms`: a `Vector{AbstractReMat{T}}` of random-effects terms.
-* `Xymat`: horizontal concatenation of a full-rank fixed-effects model matrix `X` and response `y` as an `FeMat{T}`
-* `feterm`: the fixed-effects model matrix as an `FeTerm{T}`
+* `Xymat`: horizontal concatenation of the full-rank fixed-effects model matrix `X` and response `y` as an `FeMat{T}`
+* `feterm`: the fixed-effects model matrix as an `FeTerm{T}`. For full-rank models, `feterm`'s internal `fullrankx` field is a view into the first `p` columns of `Xymat.xy`, so both share the same backing allocation.
 * `sqrtwts`: vector of square roots of the case weights.  Can be empty.
 * `parmap` : Vector{NTuple{3,Int}} of (block, row, column) mapping of θ to λ
 * `dims` : NamedTuple{(:n, :p, :nretrms),NTuple{3,Int}} of dimensions.  `p` is the rank of `X`, which may be smaller than `size(X, 2)`.
@@ -172,6 +172,16 @@ function LinearMixedModel(
 
     sort!(reterms; by=nranef, rev=true)
     Xy = FeMat(feterm, vec(y))
+    # Replace feterm's fullrankx field with a view into the shared Xymat storage,
+    # eliminating the duplicate allocation for the full-rank X columns.
+    xview = view(Xy.xy, :, 1:(feterm.rank))
+    feterm = FeTerm{T,typeof(xview)}(
+        xview,
+        getfield(feterm, :xrankdef),
+        feterm.piv,
+        feterm.rank,
+        feterm.cnames,
+    )
     sqrtwts = map!(sqrt, Vector{T}(undef, length(weights)), weights)
     reweight!.(reterms, Ref(sqrtwts))
     reweight!(Xy, sqrtwts)
