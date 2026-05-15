@@ -257,14 +257,15 @@ The parameter estimates are quite similar to those using `:LN_BOBYQA` but at the
 When plotting the progress of the individual fits, it becomes obvious that `:LN_BOBYQA` has fully converged by the time `:LN_NELDERMEAD` begins to approach the optimum.
 
 ```@example Main
-using Gadfly
+using AlgebraOfGraphics, CairoMakie
+CairoMakie.activate!(type="svg")
 nm = fm2nm.optsum.fitlog
 bob = fm2.optsum.fitlog
 convdf = DataFrame(algorithm=[repeat(["NelderMead"], length(nm));
                            repeat(["BOBYQA"], length(bob))],
                    objective=[last.(nm); last.(bob)],
                    step=[1:length(nm); 1:length(bob)])
-plot(convdf, x=:step, y=:objective, color=:algorithm, Geom.line)
+draw(data(convdf) * mapping(:step, :objective; color=:algorithm) * visual(Lines))
 ```
 
 Run time can be constrained with  `maxfeval` and `maxtime`.

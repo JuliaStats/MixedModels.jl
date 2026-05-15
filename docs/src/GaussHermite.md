@@ -33,7 +33,8 @@ For a `k`th order normalized Gauss-Hermite rule the tridiagonal matrix has zeros
 using DisplayAs
 ```
 ```@example Main
-using DataFrames, LinearAlgebra, Gadfly
+using DataFrames, LinearAlgebra, CairoMakie, AlgebraOfGraphics
+CairoMakie.activate!(type="svg")
 sym3 = SymTridiagonal(zeros(3), sqrt.(1:2))
 ev = eigen(sym3);
 ev.values
@@ -46,7 +47,7 @@ As a function of `k` this can be written as
 function gausshermitenorm(k)
     ev = eigen(SymTridiagonal(zeros(k), sqrt.(1:k-1)))
     ev.values, abs2.(ev.vectors[1,:])
-end;
+end
 ```
 providing
 ```@example Main
@@ -57,15 +58,11 @@ The weights and positions are often shown as a *lollipop plot*.
 For the 9th order rule these are
 ```@example Main
 gh9=gausshermitenorm(9)
-plot(x=gh9[1], y=gh9[2], Geom.hair, Geom.point, Guide.ylabel("Weight"), Guide.xlabel(""))
+stem(gh9[1], gh9[2]; axis=(ylabel="Weight",))
 ```
 Notice that the magnitudes of the weights drop quite dramatically away from zero, even on a logarithmic scale
 ```@example Main
-plot(
-    x=gh9[1], y=gh9[2], Geom.hair, Geom.point,
-    Scale.y_log2, Guide.ylabel("Weight (log scale)"),
-    Guide.xlabel(""),
-)
+stem(gh9[1], gh9[2]; axis=(ylabel="Weight (log scale)", yscale=Makie.LogScale()))
 ```
 
 The definition of `MixedModels.GHnorm` is similar to the `gausshermitenorm` function with some extra provisions for ensuring symmetry of the abscissae and the weights and for caching values once they have been calculated.
@@ -106,8 +103,8 @@ describe(contra)
 
 A smoothed scatterplot of contraception use versus age
 ```@example Main
-plot(contra, x=:age, y=:use, Geom.smooth, Guide.xlabel("Centered age (yr)"),
-    Guide.ylabel("Contraception use"))
+draw(data(contra) * mapping(:age, :use => ==("Y")) * smooth();
+    axis=(; xlabel="Centered age (yr)", ylabel="Contraception use"))
 ```
 shows that the proportion of women using artificial contraception is approximately quadratic in age.
 
@@ -164,14 +161,12 @@ end
 ```
 A plot of the deviance contribution versus $u_1$
 ```@example Main
-plot(x=xvals, y=view(results, 1, :), Geom.line, Guide.xlabel("u₁"),
-    Guide.ylabel("Deviance contribution"))
+lines(xvals, view(results, 1, :); axis=(xlabel="u₁", ylabel="Deviance contribution"))
 ```
 shows that the deviance contribution is very close to a quadratic.
 This is also true for $u_3$
 ```@example Main
-plot(x=xvals, y=view(results, 3, :), Geom.line, Guide.xlabel("u₃"),
-    Guide.ylabel("Deviance contribution"))
+lines(xvals, view(results, 3, :); axis=(xlabel="u₃", ylabel="Deviance contribution"))
 ```
 
 The PIRLS algorithm provides the locations of the minima of these scalar functions, stored as
@@ -199,14 +194,10 @@ for (j, z) in enumerate(xvals)
 end
 ```
 ```@example Main
-plot(x=xvals, y=view(results, 1, :), Geom.line,
-    Guide.xlabel("Scaled and shifted u₁"),
-    Guide.ylabel("Shifted deviance contribution"))
+lines(xvals, view(results, 1, :); axis=(xlabel="Scaled and shifted u₁", ylabel="Shifted deviance contribution"))
 ```
 ```@example Main
-plot(x=xvals, y=view(results, 3, :), Geom.line,
-    Guide.xlabel("Scaled and shifted u₃"),
-    Guide.ylabel("Shifted deviance contribution"))
+lines(xvals, view(results, 3, :); axis=(xlabel="Scaled and shifted u₃", ylabel="Shifted deviance contribution"))
 ```
 
 On the original density scale these become
@@ -222,14 +213,10 @@ for (j, z) in enumerate(xvals)
 end
 ```
 ```@example Main
-plot(x=xvals, y=view(results, 1, :), Geom.line,
-    Guide.xlabel("Scaled and shifted u₁"),
-    Guide.ylabel("Conditional density"))
+lines(xvals, view(results, 1, :); axis=(xlabel="Scaled and shifted u₁", ylabel="Conditional density"))
 ```
 ```@example Main
-plot(x=xvals, y=view(results, 3, :), Geom.line,
-    Guide.xlabel("Scaled and shifted u₃"),
-    Guide.ylabel("Conditional density"))
+lines(xvals, view(results, 3, :); axis=(xlabel="Scaled and shifted u₃", ylabel="Conditional density"))
 ```
 and the function to be integrated with the normalized Gauss-Hermite rule is
 ```@example Main
@@ -244,12 +231,10 @@ for (j, z) in enumerate(xvals)
 end
 ```
 ```@example Main
-plot(x=xvals, y=view(results, 1, :), Geom.line,
-    Guide.xlabel("Scaled and shifted u₁"), Guide.ylabel("Kernel ratio"))
+lines(xvals, view(results, 1, :); axis=(xlabel="Scaled and shifted u₁", ylabel="Kernel ratio"))
 ```
 ```@example Main
-plot(x=xvals, y=view(results, 3, :), Geom.line,
-    Guide.xlabel("Scaled and shifted u₃"), Guide.ylabel("Kernel ratio"))
+lines(xvals, view(results, 3, :); axis=(xlabel="Scaled and shifted u₃", ylabel="Kernel ratio"))
 ```
 
 [^1]: https://en.wikipedia.org/wiki/Gaussian_quadrature
