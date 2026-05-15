@@ -1,3 +1,8 @@
+```@meta
+CurrentModule = MixedModels
+CollapsedDocStrings = true
+```
+
 # API
 
 In addition to its own functionality, `MixedModels.jl` also implements extensive support for the [`StatsAPI.StatisticalModel`](https://github.com/JuliaStats/StatsAPI.jl/blob/main/src/statisticalmodel.jl) and [`StatsAPI.RegressionModel`](https://github.com/JuliaStats/StatsAPI.jl/blob/main/src/regressionmodel.jl) API.
@@ -12,6 +17,7 @@ Order   = [:type]
 ## Exported Functions
 ```@autodocs
 Modules = [MixedModels]
+Public = true
 Private = false
 Order   = [:function]
 ```
@@ -34,11 +40,9 @@ fit
 fit!
 fitted
 formula
-glmm
 isfitted
 islinear
 leverage
-lmm
 loglikelihood
 meanresponse
 modelmatrix
@@ -48,7 +52,7 @@ predict
 residuals
 response
 responsename
-StatsModels.lrtest # not exported
+lrtest
 std
 stderror
 vcov
@@ -66,7 +70,9 @@ condVarTables
 fitted!
 fixef
 fixefnames
+glmm
 likelihoodratiotest # not exported
+lmm
 pwrss
 ranef
 raneftables
