@@ -26,7 +26,8 @@ package for [`R`](https://www.r-project.org) is fit by
 
 ```@example Main
 using DataFrames
-using Gadfly          # plotting package
+using CairoMakie
+CairoMakie.activate!(type="svg")
 using MixedModels, MixedModelsDatasets
 using Random
 ```
@@ -46,18 +47,17 @@ tbl = samp.tbl
 
 A density plot of the estimates of `σ`, the residual standard deviation, can be created as
 ```@example Main
-plot(x = tbl.σ, Geom.density, Guide.xlabel("Parametric bootstrap estimates of σ"))
+density(tbl.σ; axis=(xlabel="Parametric bootstrap estimates of σ",))
 ```
 
 or, for the intercept parameter
 ```@example Main
-plot(x = tbl.β1, Geom.density, Guide.xlabel("Parametric bootstrap estimates of β₁"))
+density(tbl.β1; axis=(xlabel="Parametric bootstrap estimates of β₁",))
 ```
 
 A density plot of the estimates of the standard deviation of the random effects is obtained as
 ```@example Main
-plot(x = tbl.σ1, Geom.density,
-    Guide.xlabel("Parametric bootstrap estimates of σ₁"))
+density(tbl.σ1; axis=(xlabel="Parametric bootstrap estimates of σ₁",))
 ```
 
 Notice that this density plot has a spike, or mode, at zero.
@@ -65,8 +65,7 @@ Although this mode appears to be diffuse, this is an artifact of the way that de
 In fact, it is a pulse, as can be seen from a histogram.
 
 ```@example Main
-plot(x = tbl.σ1, Geom.histogram,
-    Guide.xlabel("Parametric bootstrap estimates of σ₁"))
+hist(tbl.σ1; axis=(xlabel="Parametric bootstrap estimates of σ₁",))
 ```
 
 The bootstrap sample can be used to generate intervals that cover a certain percentage of the bootstrapped values.
@@ -106,8 +105,7 @@ shortestcovint(samp2)
 
 A histogram of the estimated correlations from the bootstrap sample has a spike at `+1`.
 ```@example Main
-plot(x = tbl2.ρ1, Geom.histogram,
-    Guide.xlabel("Parametric bootstrap samples of correlation of random effects"))
+hist(tbl2.ρ1; axis=(xlabel="Parametric bootstrap samples of correlation of random effects",))
 ```
 or, as a count,
 ```@example Main
