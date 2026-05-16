@@ -106,6 +106,14 @@ function LinearMixedModel(
 )
     T = promote_type(Float64, float(eltype(y)))  # ensure eltype of model matrices is at least Float64
 
+    reterms, feterms = _split_re_fe_terms(Xs, form, T)
+    isempty(reterms) && throw(_MISSING_RE_ERROR)
+    return LinearMixedModel(
+        convert(Array{T}, y), only(feterms), reterms, form, weights, σ, amalgamate
+    )
+end
+
+function _split_re_fe_terms(Xs::Tuple, form::FormulaTerm, ::Type{T}) where {T}
     reterms = AbstractReMat{T}[]
     feterms = FeTerm{T}[]
     for (i, x) in enumerate(Xs)
@@ -134,10 +142,7 @@ function LinearMixedModel(
             push!(feterms, FeTerm(x, isa(cnames, String) ? [cnames] : collect(cnames)))
         end
     end
-    isempty(reterms) && throw(_MISSING_RE_ERROR)
-    return LinearMixedModel(
-        convert(Array{T}, y), only(feterms), reterms, form, weights, σ, amalgamate
-    )
+    return reterms, feterms
 end
 
 """
@@ -540,14 +545,46 @@ Overwrite `v` with the fitted values from `m`.
 
 See also `fitted`.
 """
-function fitted!(v::AbstractArray{T}, m::LinearMixedModel{T}) where {T}
-    ## FIXME: Create and use `effects(m) -> β, b` w/o calculating β twice
+function _allocate_ranef_buffers(m::LinearMixedModel{T}) where {T}
+    reterms = m.reterms
+    return [Matrix{T}(undef, size(t.z, 1), nlevs(t)) for t in reterms]
+end
+
+_allocate_fixef_buffer(m::LinearMixedModel{T}) where {T} = Vector{T}(undef, m.feterm.rank)
+
+function _fixef_pivoted!(β::AbstractVector{T}, m::LinearMixedModel{T}) where {T}
+    return fixef!(β, m)
+end
+
+function _ranef_from_pivoted!(
+    b::Vector, m::LinearMixedModel{T}, β::AbstractVector{T}; uscale::Bool=false
+) where {T}
+    return ranef!(b, m, β, uscale)
+end
+
+function _effects!(
+    β::AbstractVector{T}, b::Vector, m::LinearMixedModel{T}; uscale::Bool=false
+) where {T}
+    _fixef_pivoted!(β, m)
+    return _ranef_from_pivoted!(b, m, β; uscale)
+end
+
+function _fitted!(
+    v::AbstractArray{T}, m::LinearMixedModel{T}, β::AbstractVector{T}, b::Vector
+) where {T}
     Xtrm = m.feterm
-    vv = mul!(vec(v), Xtrm.x, fixef!(similar(Xtrm.piv, T), m))
-    for (rt, bb) in zip(m.reterms, ranef(m))
+    vv = mul!(vec(v), Xtrm.x, β)
+    for (rt, bb) in zip(m.reterms, b)
         mul!(vv, rt, bb, one(T), one(T))
     end
     return v
+end
+
+function fitted!(v::AbstractArray{T}, m::LinearMixedModel{T}) where {T}
+    β = _allocate_fixef_buffer(m)
+    b = _allocate_ranef_buffers(m)
+    _effects!(β, b, m)
+    return _fitted!(v, m, β, b)
 end
 
 StatsAPI.fitted(m::LinearMixedModel{T}) where {T} = fitted!(Vector{T}(undef, nobs(m)), m)
@@ -936,7 +973,11 @@ function ranef!(
     return v
 end
 
-ranef!(v::Vector, m::LinearMixedModel, uscale::Bool) = ranef!(v, m, fixef(m), uscale)
+function ranef!(v::Vector, m::LinearMixedModel{T}, uscale::Bool) where {T}
+    β = _allocate_fixef_buffer(m)
+    _fixef_pivoted!(β, m)
+    return _ranef_from_pivoted!(v, m, β; uscale)
+end
 
 """
     ranef(m::LinearMixedModel; uscale=false)
