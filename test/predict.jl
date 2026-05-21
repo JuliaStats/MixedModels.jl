@@ -156,6 +156,30 @@ end
             refvals = fitted(mref) .- view(mref.X, :, 2) * mref.β[2] .+ last(fixef(m))
             @test all(refvals .≈ vals)
         end
+
+        @testset "non-involutive pivot" begin
+            # 3 FE columns (no intercept) where col 1 is the dependent column.
+            # a = 0.01*(b + c), so norm(a) << norm(b), norm(c).
+            # QR selects b and c as independent; statsrank sorts their indices → piv = [2, 3, 1].
+            # [2,3,1] is a 3-cycle: NOT an involution (piv[piv] = [3,1,2] ≠ invperm(piv)[piv] = [1,2,3]).
+            rng = StableRNG(42)
+            n = 20
+            b_data = randn(rng, n)
+            c_data = randn(rng, n)
+            a_data = 0.01 .* b_data .+ 0.01 .* c_data
+            grp = string.(repeat(1:4, div(n, 4)))
+            y_data = 1.5 .* b_data .+ 2.5 .* c_data .+ randn(rng, n) .* 0.5
+            df_nonpiv = DataFrame(; y=y_data, a=a_data, b=b_data, c=c_data, grp)
+            m_nonpiv = @suppress fit(
+                MixedModel,
+                @formula(y ~ 0 + a + b + c + (1 | grp)),
+                df_nonpiv;
+                progress=false,
+            )
+            @test m_nonpiv.feterm.rank == 2
+            @test m_nonpiv.feterm.piv == [2, 3, 1]
+            @test predict(m_nonpiv, df_nonpiv) ≈ fitted(m_nonpiv)
+        end
     end
 
     @testset "transformed response" begin
