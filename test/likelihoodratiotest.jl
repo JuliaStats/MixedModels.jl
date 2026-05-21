@@ -82,7 +82,7 @@ include("modelcache.jl")
 
         # x = e_3 is clearly outside span(e_1, e_2)
         # so is not nested in y.
-        x_outside = [0.0, 0.0, 1.0, 0.0, 0.0]'
+        x_outside = reshape([0.0, 0.0, 1.0, 0.0, 0.0], 5, 1)
         @test !MixedModels._isnested(x_outside, y)
 
         # Multi-column case where every column of x has its out-of-y mass in
@@ -105,7 +105,7 @@ include("modelcache.jl")
 
         # this is the sum of the first two basis vectors e_1, e_2 so clearly
         # within the column span
-        x_inside = [1.0, 1.0, 0.0, 0.0, 0.0]'
+        x_inside = reshape([1.0, 1.0, 0.0, 0.0, 0.0], 5, 1)
         @test MixedModels._isnested(x_inside, y)
 
         # y is nested in itself
