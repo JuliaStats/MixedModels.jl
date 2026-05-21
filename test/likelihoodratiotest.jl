@@ -67,6 +67,50 @@ include("modelcache.jl")
         dataset(:dyestuff),
     )
     @test isnested(m2, m1)
+
+    # _isnested(x, y) should return true iff column(x) ⊆ column(y). The
+    # implementation projects x onto qr(y).Q and checks that the projection
+    # has no mass outside column(y). The cutoff between "in column(y)" and
+    # "orthogonal complement" must be based on rank(y), not rank(x).
+    @testset "_isnested partitions at second arg" begin
+        # y has rank 2 in R^5, with column span = span(e_1, e_2).
+        y = [1.0 0.0
+             0.0 1.0
+             0.0 0.0
+             0.0 0.0
+             0.0 0.0]
+
+        # x = e_3 is clearly outside span(e_1, e_2)
+        # so is not nested in y.
+        x_outside = [0.0, 0.0, 1.0, 0.0, 0.0]'
+        @test !MixedModels._isnested(x_outside, y)
+
+        # Multi-column case where every column of x has its out-of-y mass in
+        # the interior of the orthogonal complement (rows rank(y)+1 : m-rank(x)-1).
+        y_big = [1.0 0.0 0.0
+                 0.0 1.0 0.0
+                 0.0 0.0 1.0
+                 0.0 0.0 0.0
+                 0.0 0.0 0.0
+                 0.0 0.0 0.0
+                 0.0 0.0 0.0
+                 0.0 0.0 0.0]
+        x_big = zeros(8, 2)
+        # non zeros occur at rows 4 and 5, but
+        # y doesn't have any non zeros in those rows and so this
+        # is out of the column span of y
+        x_big[4, 1] = 1.0
+        x_big[5, 2] = 1.0
+        @test !MixedModels._isnested(x_big, y_big)
+
+        # this is the sum of the first two basis vectors e_1, e_2 so clearly
+        # within the column span
+        x_inside = [1.0, 1.0, 0.0, 0.0, 0.0]'
+        @test MixedModels._isnested(x_inside, y)
+
+        # y is nested in itself
+        @test MixedModels._isnested(y, y)
+    end
 end
 
 @testset "likelihoodratio test" begin

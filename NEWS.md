@@ -1,3 +1,7 @@
+MixedModels v5.5.1 Release Notes
+==============================
+- Fixed a bug in testing the nesting of fixed effects.
+
 MixedModels v5.5.0 Release Notes
 ==============================
 - The construction of `LinearMixedModel` has changed so that the storage of the full-rank fixed-effects model matrix is shared between `feterm` and `Xymat`. The function `modelmatrix` still returns the entire model matrix (including redundant columns), but now constructs it dynamically instead of returning a reference into internal storage. The precise storage details of `FeTerm` have changed. [#889]
