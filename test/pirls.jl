@@ -261,23 +261,65 @@ end
     form = @formula(reaction ~ 1 + days + (1 + days | subj))
     dat = dataset(:sleepstudy)
 
-    @test_logs (:warn, r"dispersion parameter") GeneralizedLinearMixedModel(
-        form, dat, Gamma()
-    )
-    @test_logs (:warn, r"dispersion parameter") GeneralizedLinearMixedModel(
-        form, dat, InverseGaussian()
-    )
-    @test_logs (:warn, r"dispersion parameter") GeneralizedLinearMixedModel(
-        form, dat, Normal(), SqrtLink()
+    # The constructor no longer warns; the fit-time @info is gated on the
+    # dispersion family.
+    @test_logs GeneralizedLinearMixedModel(form, dat, Gamma())
+    @test_logs (:info, r"dispersion parameter") match_mode = :any fit(
+        MixedModel, form, dat, Gamma(), LogLink(); progress=false
     )
 
-    # notes for future tests when GLMM with dispersion works
-    # @test dispersion_parameter(gm)
-    # @test dispersion(gm, false) == val
-    # @test dispersion(gm, true) == val
-    # @test sdest(gm) == dispersion(gm, false) == gm.σ
-    # @test varest(gm) == dispersion(gm, true)
+    @testset "Gamma + LogLink" begin
+        gm = fit(MixedModel, form, dat, Gamma(), LogLink(); progress=false)
+        @test dispersion_parameter(gm)
+        # Self-consistency: deviance == -2 * loglikelihood (post-hoc Laplace
+        # with σ̂² = pwrss/n).
+        @test deviance(gm) ≈ -2 * loglikelihood(gm) atol = 1.0e-8
+        # σ accessors agree
+        @test sdest(gm) === gm.σ
+        @test sdest(gm) ≈ sqrt(varest(gm))
+        @test varest(gm) ≈ dispersion(gm, true)
+        @test sdest(gm) ≈ dispersion(gm, false)
+        # Regression: capture the converged values so future changes are
+        # caught. These match lme4's fixef/theta to ~3 digits and sigma to
+        # ~3%; -2*logLik differs from lme4's by ~3 units (different Laplace
+        # normalisation conventions).
+        @test deviance(gm) ≈ 1690.95 rtol = 1.0e-4
+        @test loglikelihood(gm) ≈ -845.476 rtol = 1.0e-4
+        @test gm.β ≈ [5.388841, 0.013603] rtol = 1.0e-3
+        @test gm.θ ≈ [0.944578, -0.060718, 0.143222] rtol = 1.0e-2
+        @test sdest(gm) ≈ 0.088526 rtol = 1.0e-3
+        # Loose lme4 cross-check (lme4 sigma() = 0.0910):
+        @test sdest(gm) ≈ 0.0910 rtol = 0.05
+    end
 
+    @testset "Normal + SqrtLink" begin
+        gm = fit(MixedModel, form, dat, Normal(), SqrtLink(); progress=false)
+        @test dispersion_parameter(gm)
+        @test deviance(gm) ≈ -2 * loglikelihood(gm) atol = 1.0e-8
+        @test sdest(gm) ≈ sqrt(varest(gm))
+        @test deviance(gm) ≈ 1981.14 rtol = 1.0e-4
+        @test gm.β ≈ [15.873028, 0.298318] rtol = 1.0e-3
+        @test sdest(gm) ≈ 22.8238 rtol = 1.0e-3
+    end
+
+    @testset "constructor no longer warns" begin
+        # Issue #786 - warning moved to fit-time and weakened
+        @test_logs GeneralizedLinearMixedModel(form, dat, InverseGaussian())
+        @test_logs GeneralizedLinearMixedModel(form, dat, Normal(), SqrtLink())
+    end
+
+    @testset "non-dispersion family unaffected" begin
+        # Bit-identical invariant: the optimisation objective for Bernoulli
+        # is unchanged from the pre-fix form `sum(devresid) + uss + logdet`.
+        gm = fit(MixedModel,
+                 @formula(use ~ 1 + urban + livch * age + (1 | dist)),
+                 dataset(:contra), Bernoulli(); progress=false)
+        @test !dispersion_parameter(gm)
+        @test dispersion(gm) == 1
+        @test sdest(gm) === missing
+        @test varest(gm) === missing
+        @test deviance(gm) ≈ 2403.4078 rtol = 1.0e-6
+    end
 end
 
 @testset "mmec" begin
