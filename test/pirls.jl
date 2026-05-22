@@ -320,6 +320,68 @@ end
         @test varest(gm) === missing
         @test deviance(gm) ≈ 2403.4078 rtol = 1.0e-6
     end
+
+    @testset "AGQ with nAGQ=1 == Laplace" begin
+        # The Laplace approximation is AGQ with n=1 by construction, so
+        # `_agq_deviance(m, 1)` and `_laplace_deviance(m)` must agree.
+        # Tests one dispersion and one non-dispersion family.
+        scalar_re = @formula(reaction ~ 1 + days + (1 | subj))
+
+        gm_d = fit(MixedModel, scalar_re, dat, Gamma(), LogLink(); progress=false)
+        @test MixedModels._agq_deviance(gm_d, 1) ≈ MixedModels._laplace_deviance(gm_d) atol =
+            1.0e-9
+
+        mmec = dataset(:mmec)
+        gm_p = fit(MixedModel,
+                   @formula(deaths ~ 1 + uvb + (1 | region)),
+                   mmec, Poisson(); offset=log.(mmec.expected), progress=false)
+        @test MixedModels._agq_deviance(gm_p, 1) ≈ MixedModels._laplace_deviance(gm_p) atol =
+            1.0e-9
+    end
+
+    @testset "Cϕ μ-invariance" begin
+        # `_agq_deviance` profiles Cϕ once at the mode, relying on the
+        # identity that -2·loglik_obs - devresid/ϕ depends only on (y, w, ϕ),
+        # not on μ. Smoke test by shifting β (which propagates to μ via
+        # updateη!) and checking that Cϕ is unchanged.
+        scalar_re = @formula(reaction ~ 1 + days + (1 | subj))
+        gm = fit(MixedModel, scalar_re, dat, Gamma(), LogLink(); progress=false)
+        r = gm.resp
+        ϕ = MixedModels.pwrss(gm) / nobs(gm)
+        Cϕ_at_mode = -2 * MixedModels._loglik_data(r, ϕ) - sum(r.devresid) / ϕ
+
+        β_orig = copy(gm.β)
+        gm.β[1] += 0.1
+        MixedModels.updateη!(gm)
+        Cϕ_perturbed = -2 * MixedModels._loglik_data(r, ϕ) - sum(r.devresid) / ϕ
+        @test Cϕ_perturbed ≈ Cϕ_at_mode atol = 1.0e-9
+
+        # Restore the model state so this test doesn't leak side effects.
+        copyto!(gm.β, β_orig)
+        MixedModels.updateη!(gm)
+    end
+
+    @testset "Gamma + LogLink, nAGQ > 1" begin
+        # Use scalar RE so AGQ is well-defined. NB: lme4 hits a singular fit
+        # (θ → 0) on this configuration; our optimiser finds a non-degenerate
+        # interior optimum, so no tight lme4 cross-check here.
+        scalar_re = @formula(reaction ~ 1 + days + (1 | subj))
+        gm = fit(MixedModel, scalar_re, dat, Gamma(), LogLink();
+                 nAGQ=5, progress=false)
+        @test dispersion_parameter(gm)
+        @test gm.optsum.nAGQ == 5
+
+        # Regression refs (captured from this fit). loglikelihood is Laplace-
+        # only, so it differs from deviance by the AGQ correction.
+        @test deviance(gm) ≈ 1765.36 rtol = 1.0e-4
+        @test gm.β ≈ [5.542550, 0.033891] rtol = 1.0e-3
+        @test only(gm.θ) ≈ 0.791312 rtol = 1.0e-2
+        @test sdest(gm) ≈ 0.103383 rtol = 1.0e-3
+
+        # Laplace logLik at the AGQ-converged params should agree with
+        # `_laplace_deviance` (which uses the same ϕ̂ = pwrss/n).
+        @test -2 * loglikelihood(gm) ≈ MixedModels._laplace_deviance(gm) atol = 1.0e-8
+    end
 end
 
 @testset "mmec" begin

@@ -117,15 +117,42 @@ end
     _agq_deviance(m::GeneralizedLinearMixedModel, nAGQ)
 
 Internal adaptive Gauss-Hermite quadrature deviance, used as the NLopt/PRIMA
-objective for `nAGQ > 1`. Currently assumes ϕ ≡ 1 — dispersion-aware AGQ is a
-follow-up.
+objective for `nAGQ > 1`.
+
+For dispersion families ϕ̂ = pwrss(m)/nobs(m) is profiled in at the converged
+PIRLS mode (same estimator as [`_laplace_deviance`](@ref)), and the
+μ-independent data normaliser `Cϕ = -2·Σ loglik_obs(d, yᵢ, μᵢ, wᵢ, ϕ̂) -
+sum(devresid)/ϕ̂` is computed once at the mode. The per-group integrand is
+then `D_g(u) = u² + (Σ_{i∈g} devresid_i(u))/ϕ̂` and the AGQ deviance is
+`sum(D_g(û)) - 2·(sum(log,mult) + sum(log,sd)) + Cϕ`. For non-dispersion
+families ϕ̂ ≡ 1 and Cϕ ≡ 0, reducing exactly to the prior formula.
+
+By construction `_agq_deviance(m, 1) == _laplace_deviance(m)` (the Laplace
+approximation *is* AGQ with n=1).
 """
 function _agq_deviance(m::GeneralizedLinearMixedModel{T}, nAGQ) where {T}
     u = vec(first(m.u))
     u₀ = vec(first(m.u₀))
     copyto!(u₀, u)
     ra = RaggedArray(m.resp.devresid, first(m.LMM.reterms).refs)
-    devc0 = sum!(map!(abs2, m.devc0, u), ra)
+
+    has_disp = dispersion_parameter(m.resp.d)
+    ϕ = has_disp ? max(pwrss(m) / nobs(m), eps(T)) : one(T)
+    # Cϕ is the μ-independent part of -2·Σ loglik_obs(d, y, μ, w, ϕ); the
+    # identity -2·loglik_obs = devresid/ϕ + c(y, w, ϕ) lets us evaluate it
+    # once at the mode and treat it as constant across quadrature nodes. For
+    # non-dispersion families we keep Cϕ = 0 so existing nAGQ>1 fits stay
+    # bit-identical (Binomial/Poisson would otherwise pick up a constant
+    # saturated-likelihood term that the historical formula dropped).
+    Cϕ = has_disp ?
+        T(-2 * _loglik_data(m.resp, ϕ) - sum(m.resp.devresid) / ϕ) :
+        zero(T)
+
+    # devc0_g = u_g² + (Σ_{i∈g} devresid_i)/ϕ̂  at u = û
+    sum!(fill!(m.devc0, 0), ra)
+    @. m.devc0 = abs2(u) + m.devc0 / ϕ
+    devc0 = m.devc0
+
     sd = map!(inv, m.sd, first(m.LMM.L).diag)
     mult = fill!(m.mult, 0)
     devc = m.devc
@@ -136,14 +163,15 @@ function _agq_deviance(m::GeneralizedLinearMixedModel{T}, nAGQ) where {T}
             else
                 @. u = u₀ + z * sd
                 updateη!(m)
-                sum!(map!(abs2, devc, u), ra)
+                sum!(fill!(devc, 0), ra)
+                @. devc = abs2(u) + devc / ϕ
                 @. mult += exp((abs2(z) + devc0 - devc) / 2) * w
             end
         end
     end
     copyto!(u, u₀)
     updateη!(m)
-    return sum(devc0) - 2 * (sum(log, mult) + sum(log, sd))
+    return sum(devc0) - 2 * (sum(log, mult) + sum(log, sd)) + Cϕ
 end
 
 fixef(m::GeneralizedLinearMixedModel) = m.β
