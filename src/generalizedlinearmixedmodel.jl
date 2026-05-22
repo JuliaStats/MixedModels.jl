@@ -612,7 +612,13 @@ optimized and `β` is held fixed.
 Passing `verbose = true` provides verbose output of the iterations.
 """
 function pirls!(
-    m::GeneralizedLinearMixedModel{T}, varyβ=false, verbose=false; maxiter::Integer=10
+    m::GeneralizedLinearMixedModel{T},
+    varyβ=false,
+    verbose=false;
+    maxiter::Integer=m.LMM.optsum.pirls_maxiter,
+    maxhalfstep::Integer=m.LMM.optsum.pirls_maxhalfstep,
+    ftol_rel::Real=m.LMM.optsum.pirls_ftol_rel,
+    ftol_abs::Real=m.LMM.optsum.pirls_ftol_abs,
 ) where {T}
     u₀ = m.u₀
     u = m.u
@@ -645,9 +651,9 @@ function pirls!(
         nhalf = 0
         while obj > obj₀
             nhalf += 1
-            if nhalf > 10
+            if nhalf > maxhalfstep
                 if iter < 2
-                    throw(ErrorException("number of averaging steps > 10"))
+                    throw(ErrorException("number of averaging steps > $maxhalfstep"))
                 end
                 break
             end
@@ -658,7 +664,7 @@ function pirls!(
             obj = deviance!(m)
             verbose && println(lpad(nhalf, 8), ", ", obj)
         end
-        if isapprox(obj, obj₀; atol=0.00001)
+        if isapprox(obj, obj₀; rtol=ftol_rel, atol=ftol_abs)
             break
         end
         copyto!.(u₀, u)
