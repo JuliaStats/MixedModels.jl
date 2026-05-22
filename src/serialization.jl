@@ -106,7 +106,14 @@ function restoreoptsum!(ops::OptSummary{T}, dict::AbstractDict) where {T}
     ops.optimizer = Symbol(dict.optimizer)
     ops.returnvalue = Symbol(dict.returnvalue)
     # compatibility with fits saved before the introduction of various extensions
-    for prop in (:xtol_zero_abs, :ftol_zero_abs, :pirls_maxiter, :pirls_ftol_rel, :pirls_ftol_abs, :pirls_maxhalfstep)
+    for prop in (
+        :xtol_zero_abs,
+        :ftol_zero_abs,
+        :pirls_maxiter,
+        :pirls_ftol_rel,
+        :pirls_ftol_abs,
+        :pirls_maxhalfstep,
+    )
         fallback = getproperty(ops, prop)
         setproperty!(ops, prop, get(dict, prop, fallback))
     end
