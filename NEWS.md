@@ -1,6 +1,7 @@
 MixedModels v5.5.1 Release Notes
 ==============================
 - Fixed a bug in testing the nesting of fixed effects. [#891]
+- Fixed an edge case in `predict` with rank deficient models. [#892]
 
 MixedModels v5.5.0 Release Notes
 ==============================
@@ -751,3 +752,4 @@ Package dependencies
 [#886]: https://github.com/JuliaStats/MixedModels.jl/issues/886
 [#889]: https://github.com/JuliaStats/MixedModels.jl/issues/889
 [#891]: https://github.com/JuliaStats/MixedModels.jl/issues/891
+[#892]: https://github.com/JuliaStats/MixedModels.jl/issues/892
