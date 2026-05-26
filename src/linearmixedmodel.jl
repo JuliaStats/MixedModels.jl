@@ -573,7 +573,7 @@ function _fitted!(
     v::AbstractArray{T}, m::LinearMixedModel{T}, β::AbstractVector{T}, b::Vector
 ) where {T}
     Xtrm = m.feterm
-    vv = mul!(vec(v), Xtrm.x, β)
+    vv = mul!(vec(v), Xtrm.fullrankx, β)
     for (rt, bb) in zip(m.reterms, b)
         mul!(vv, rt, bb, one(T), one(T))
     end

@@ -136,7 +136,7 @@ function _predict(m::MixedModel{T}, newdata, β; new_re_levels) where {T}
         new_re_levels == :missing ? convert(Vector{Union{T,Missing}}, ytemp) : ytemp
     end
 
-    pivotmatch = pivot(pdesign.feterm)[pivot(m)]
+    pivotmatch = invperm(pivot(pdesign.feterm))[pivot(m)]
     mul!(y, view(pdesign.feterm.x, :, pivotmatch), β)
     # pdesign.reterms for the correct Z matrices
     # ranef(m) for the BLUPs from the original fit
