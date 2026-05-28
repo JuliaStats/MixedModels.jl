@@ -1,4 +1,5 @@
 using JSON3
+using Markdown
 
 function parse_args(args)
     opts = Dict{String,String}()
@@ -67,57 +68,30 @@ function compare(lhs, rhs)
     end
 end
 
-function render_text(rows, lhs_label, rhs_label)
-    println(rpad("benchmark", 30), lpad("$lhs_label alloc", 14),
-        lpad("$rhs_label alloc", 14),
-        lpad("alloc %", 12), lpad("$lhs_label time", 16), lpad("$rhs_label time", 16),
-        lpad("time %", 12))
-    for row in rows
-        println(
-            rpad(row.benchmark, 30),
-            lpad(string(row.lhs_alloc), 14),
-            lpad(string(row.rhs_alloc), 14),
-            lpad(
-                if isnothing(row.alloc_pct) || ismissing(row.alloc_pct)
-                    "missing"
-                else
-                    string(round(100 * row.alloc_pct; digits=2), "%")
-                end,
-                12,
-            ),
-            lpad(string(row.lhs_time), 16),
-            lpad(string(row.rhs_time), 16),
-            lpad(
-                if isnothing(row.time_pct) || ismissing(row.time_pct)
-                    "missing"
-                else
-                    string(round(100 * row.time_pct; digits=2), "%")
-                end,
-                12,
-            ),
-        )
+function format_pct(pct)
+    return if isnothing(pct) || ismissing(pct)
+        "---"
+    else
+        string(round(100 * pct; digits=2), "%")
     end
 end
 
-function render_markdown(rows, lhs_label, rhs_label)
-    println(
-        "| benchmark | $lhs_label alloc | $rhs_label alloc | alloc % | $lhs_label time | $rhs_label time | time % |",
-    )
-    println("|---|---:|---:|---:|---:|---:|---:|")
-    for row in rows
-        alloc_pct = if isnothing(row.alloc_pct) || ismissing(row.alloc_pct)
-            "missing"
-        else
-            string(round(100 * row.alloc_pct; digits=2), "%")
-        end
-        time_pct = if isnothing(row.time_pct) || ismissing(row.time_pct)
-            "missing"
-        else
-            string(round(100 * row.time_pct; digits=2), "%")
-        end
-        println("| ", row.benchmark, " | ", row.lhs_alloc, " | ", row.rhs_alloc, " | ",
-            alloc_pct, " | ", row.lhs_time, " | ", row.rhs_time, " | ", time_pct, " |")
+function build_table(rows, lhs_label, rhs_label)
+    header = ["benchmark", "$lhs_label alloc", "$rhs_label alloc", "alloc %",
+              "$lhs_label time", "$rhs_label time", "time %"]
+    data_rows = map(rows) do row
+        return [row.benchmark, row.lhs_alloc, row.rhs_alloc, format_pct(row.alloc_pct),
+                row.lhs_time, row.rhs_time, format_pct(row.time_pct)]
     end
+    return Markdown.Table(vcat([header], data_rows), [:l, :r, :r, :r, :r, :r, :r])
+end
+
+function render_text(rows, lhs_label, rhs_label)
+    return show(stdout, MIME("text/plain"), Markdown.MD([build_table(rows, lhs_label, rhs_label)]))
+end
+
+function render_markdown(rows, lhs_label, rhs_label)
+    return show(stdout, MIME("text/markdown"), Markdown.MD([build_table(rows, lhs_label, rhs_label)]))
 end
 
 function main(args)

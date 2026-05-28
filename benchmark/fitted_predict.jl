@@ -1,4 +1,5 @@
 using JSON3
+using Markdown
 using MixedModels
 using Tables
 
@@ -140,32 +141,30 @@ function run_benchmarks(
     return results
 end
 
+function build_table(result)
+    header = ["benchmark", "alloc (B)", "time (s)"]
+    data_rows = [Any[String(name), val.alloc, round(val.time; sigdigits=2)]
+                 for name in (:fitted_inplace, :fitted, :predict_same, :predict_population_new_level)
+                 for val in (getproperty(result, name),)
+                 if !isnothing(val)]
+    return Markdown.Table(vcat([header], data_rows), [:l, :r, :r])
+end
+
 function render_text(result)
-    println("dataset: ", result.dataset)
-    println("formula: ", result.formula)
-    isnothing(result.family) || println("family: ", result.family)
-    isnothing(result.link) || println("link: ", result.link)
-    isnothing(result.group) || println("group: ", result.group)
-    println("iterations: ", result.iterations)
-    println()
-    println(rpad("benchmark", 30), lpad("alloc (B)", 14), lpad("time (s)", 16))
-    for name in (:fitted_inplace, :fitted, :predict_same, :predict_population_new_level)
-        val = getproperty(result, name)
-        isnothing(val) && continue
-        println(
-            rpad(String(name), 30), lpad(string(val.alloc), 14), lpad(string(val.time), 16)
-        )
-    end
+    items = [
+        [Markdown.Paragraph(["dataset: $(result.dataset)"])],
+        [Markdown.Paragraph(["formula: $(result.formula)"])],
+    ]
+    isnothing(result.family) || push!(items, [Markdown.Paragraph(["family: $(result.family)"])])
+    isnothing(result.link) || push!(items, [Markdown.Paragraph(["link: $(result.link)"])])
+    isnothing(result.group) || push!(items, [Markdown.Paragraph(["group: $(result.group)"])])
+    push!(items, [Markdown.Paragraph(["iterations: $(result.iterations)"])])
+    return show(stdout, MIME("text/plain"),
+        Markdown.MD([Markdown.List(items, -1, false), build_table(result)]))
 end
 
 function render_markdown(result)
-    println("| benchmark | alloc (B) | time (s) |")
-    println("|---|---:|---:|")
-    for name in (:fitted_inplace, :fitted, :predict_same, :predict_population_new_level)
-        val = getproperty(result, name)
-        isnothing(val) && continue
-        println("| ", name, " | ", val.alloc, " | ", val.time, " |")
-    end
+    return show(stdout, MIME("text/markdown"), Markdown.MD([build_table(result)]))
 end
 
 function main(args)
