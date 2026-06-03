@@ -1,7 +1,10 @@
 name = "MixedModels"
 uuid = "ff71e718-51f3-5ec2-a782-8ffcbfa3c316"
-author = ["Phillip Alday <me@phillipalday.com>", "Douglas Bates <dmbates@gmail.com>"]
 version = "5.5.1"
+author = ["Phillip Alday <me@phillipalday.com>", "Douglas Bates <dmbates@gmail.com>"]
+
+[workspace]
+projects = ["docs"]
 
 [deps]
 Arrow = "69666777-d1a9-59fb-9406-91d4454c9d45"
@@ -74,7 +77,7 @@ StaticArrays = "0.11, 0.12, 1"
 Statistics = "1"
 StatsAPI = "1.5"
 StatsBase = "0.34"
-StatsFuns = "0.8, 0.9, 1"
+StatsFuns = "0.8, 0.9, 1, 2"
 StatsModels = "0.7"
 StructTypes = "1"
 Suppressor = "0.2"
@@ -99,6 +102,3 @@ Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
 test = ["Aqua", "CategoricalArrays", "DataFrames", "ExplicitImports", "FiniteDiff", "ForwardDiff", "InteractiveUtils", "PRIMA", "StableRNGs", "Suppressor", "Test"]
-
-[workspace]
-projects = ["docs"]
