@@ -51,15 +51,13 @@ Operations that R users treat as "basic" -- reading CSV files, manipulating data
 This also means that even relatively simple analyses will typically start with several `using` statements.
 
 | Task                      | R                      | Julia                          |
-|:---------------------- ---|:-----------------------|:-------------------------------|
+|:--------------------------|:-----------------------|:-------------------------------|
 | Read CSV                  | `read.csv()` (base)    | `CSV.jl`                       |
 | Data frames               | `data.frame` (base)    | `DataFrames.jl`                |
-| Factors                   | `factor()` (base)      | `CategoricalArrays.jl`         |
 | Linear model              | `lm()` (stats)         | `GLM.jl`                       |
 | Mixed model               | `lme4`                 | `MixedModels.jl`               |
 | Effects / EMMs            | `effects`, `emmeans`   | `Effects.jl`                   |
 | Standardize predictors    | `scale()` (base)       | `StandardizedPredictors.jl`    |
-| R² / ICC                  | `MuMIn`, `performance` | `MixedModelsExtras.jl`         |
 | Box-Cox                   | `MASS::boxcox`         | `BoxCox.jl`                    |
 | Grammar-of-graphics plots | `ggplot2`              | `AlgebraOfGraphics.jl` + Makie |
 | Mixed-model plots         | `sjPlot`               | `MixedModelsMakie.jl`          |
