@@ -18,8 +18,9 @@ makedocs(;
     warnonly=[:cross_references],
     pages=[
         "index.md",
-        "constructors.md",
-        "optimization.md",
+        "for_r_users.md",
+        "constructors.md", #
+        "optimization.md", #
         "GaussHermite.md",
         "prediction.md",
         "bootstrap.md",
