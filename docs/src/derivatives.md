@@ -1,3 +1,8 @@
+```@meta
+CurrentModule = MixedModels
+CollapsedDocStrings = true
+```
+
 # Gradient and Hessian computation
 
 Experimental support for computing the gradient and the Hessian of the objective function (i.e. negative twice the profiled log likelihood) via ForwardDiff.jl and FiniteDiff.jl are provided as package extensions.

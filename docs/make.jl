@@ -12,9 +12,10 @@ makedocs(;
     sitename="MixedModels",
     format=Documenter.HTML(; size_threshold=500_000, size_threshold_warn=250_000),
     doctest=true,
-    # pagesonly=true,
+    pagesonly=true,
+    remotes=nothing,
     # warnonly=true,
-    # warnonly=[:cross_references],
+    warnonly=[:cross_references],
     pages=[
         "index.md",
         "constructors.md",
