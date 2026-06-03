@@ -409,20 +409,18 @@ function _isnested(x::AbstractMatrix, y::AbstractMatrix; rtol=1e-8, ranktol=1e-8
     iszero(xcols) && return true
     xcols <= size(y, 2) || return false
 
-    qy = qr(y).Q
-
-    qrx = pivoted_qr(x)
-    dvec = abs.(diag(qrx.R))
-    fdv = first(dvec)
-    cmp = fdv * ranktol
-    r = searchsortedlast(dvec, cmp; rev=true)
+    qry = pivoted_qr(y)
+    qy = qry.Q
+    dvec_y = abs.(diag(qry.R))
+    ry = searchsortedlast(dvec_y, first(dvec_y) * ranktol; rev=true)
 
     p = qy' * x
 
     nested = map(eachcol(p)) do col
-        # if set Julia 1.6 as the minimum, we can use last(col, r)
-        top = @view col[firstindex(col):(end - r - 1)]
-        tail = @view col[(end - r):end]
+        # rows 1:ry span column(y); rows ry+1:end are the orthogonal
+        # complement and must be ~0 for x to be nested in y
+        top = @view col[firstindex(col):ry]
+        tail = @view col[(ry + 1):end]
         return norm(tail) / norm(top) < rtol
     end
 

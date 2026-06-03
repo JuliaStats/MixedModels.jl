@@ -2,6 +2,11 @@ MixedModels v5.6.0 Release Notes
 ==============================
 - Several previously hardcoded parameters related to PIRLS are now exposed and can be set by modifying `optsum`.[#893]
 
+MixedModels v5.5.1 Release Notes
+==============================
+- Fixed a bug in testing the nesting of fixed effects. [#891]
+- Fixed an edge case in `predict` with rank deficient models. [#892]
+
 MixedModels v5.5.0 Release Notes
 ==============================
 - The construction of `LinearMixedModel` has changed so that the storage of the full-rank fixed-effects model matrix is shared between `feterm` and `Xymat`. The function `modelmatrix` still returns the entire model matrix (including redundant columns), but now constructs it dynamically instead of returning a reference into internal storage. The precise storage details of `FeTerm` have changed. [#889]
@@ -750,4 +755,6 @@ Package dependencies
 [#885]: https://github.com/JuliaStats/MixedModels.jl/issues/885
 [#886]: https://github.com/JuliaStats/MixedModels.jl/issues/886
 [#889]: https://github.com/JuliaStats/MixedModels.jl/issues/889
+[#891]: https://github.com/JuliaStats/MixedModels.jl/issues/891
+[#892]: https://github.com/JuliaStats/MixedModels.jl/issues/892
 [#893]: https://github.com/JuliaStats/MixedModels.jl/issues/893

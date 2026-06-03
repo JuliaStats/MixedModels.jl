@@ -131,7 +131,7 @@ function _predict(m::MixedModel{T}, newdata, β; new_re_levels) where {T}
         ytemp, lmod
     end
 
-    pivotmatch = pivot(mnew)[pivot(m)]
+    pivotmatch = invperm(pivot(mnew))[pivot(m)]
     grps = fnames(m)
     mul!(y, view(mnew.X, :, pivotmatch), β)
     # mnew.reterms for the correct Z matrices
