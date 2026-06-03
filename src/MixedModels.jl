@@ -11,7 +11,7 @@ using Distributions: InverseGaussian, Normal, Poisson, ccdf
 using GLM: GLM, GeneralizedLinearModel, IdentityLink, InverseLink, LinearModel
 using GLM: Link, LogLink, LogitLink, ProbitLink, SqrtLink
 using GLM: canonicallink, glm, linkinv, dispersion, dispersion_parameter
-using JSON3: JSON3
+using JSON: JSON
 using LinearAlgebra: LinearAlgebra, Adjoint, BLAS, BlasFloat, ColumnNorm
 using LinearAlgebra: Diagonal, Hermitian, HermOrSym, I, LAPACK, LowerTriangular
 using LinearAlgebra: PosDefException, SVD, SymTridiagonal, Symmetric
@@ -44,7 +44,6 @@ using StatsModels: ConstantTerm, DummyCoding, EffectsCoding, FormulaTerm, Functi
 using StatsModels: HelmertCoding, HypothesisCoding, InteractionTerm, InterceptTerm
 using StatsModels: MatrixTerm, SeqDiffCoding, TableRegressionModel
 using StatsModels: apply_schema, drop_term, formula, lrtest, modelcols, isnested, @formula
-using StructTypes: StructTypes
 using Tables: Tables, columntable
 using TypedTables: TypedTables, DictTable, FlexTable, Table
 
