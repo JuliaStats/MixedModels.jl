@@ -11,6 +11,7 @@ using Distributions: InverseGaussian, Normal, Poisson, ccdf
 using GLM: GLM, GeneralizedLinearModel, IdentityLink, InverseLink, LinearModel
 using GLM: Link, LogLink, LogitLink, ProbitLink, SqrtLink
 using GLM: canonicallink, glm, linkinv, dispersion, dispersion_parameter
+using IrrationalConstants: log2π
 using JSON3: JSON3
 using LinearAlgebra: LinearAlgebra, Adjoint, BLAS, BlasFloat, ColumnNorm
 using LinearAlgebra: Diagonal, Hermitian, HermOrSym, I, LAPACK, LowerTriangular
@@ -38,7 +39,7 @@ using StatsAPI:
     loglikelihood, meanresponse, modelmatrix, nobs, pvalue, predict, r2, residuals
 using StatsAPI: response, responsename, stderror, vcov, weights
 using StatsBase: StatsBase, CoefTable, model_response, summarystats, FrequencyWeights
-using StatsFuns: chisqccdf, log2π, normccdf
+using StatsFuns: chisqccdf, normccdf
 using StatsModels: StatsModels, AbstractContrasts, AbstractTerm, CategoricalTerm
 using StatsModels: ConstantTerm, DummyCoding, EffectsCoding, FormulaTerm, FunctionTerm
 using StatsModels: HelmertCoding, HypothesisCoding, InteractionTerm, InterceptTerm
