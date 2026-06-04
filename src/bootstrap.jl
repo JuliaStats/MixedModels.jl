@@ -565,7 +565,9 @@ function coefpvalues(bsamp::MixedModelFitCollection{T}) where {T}
         for (p, s) in zip(pairs(r.β), r.se)
             β = last(p)
             z = β / s
-            push!(result, NamedTuple{colnms}((i, first(p), β, s, z, 2ccdf(Normal(), abs(z)))))
+            push!(
+                result, NamedTuple{colnms}((i, first(p), β, s, z, 2ccdf(Normal(), abs(z))))
+            )
         end
     end
     return result
