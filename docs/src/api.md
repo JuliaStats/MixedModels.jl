@@ -73,6 +73,8 @@ fixefnames
 glmm
 likelihoodratiotest # not exported
 lmm
+parametricbootstrap
+profile
 pwrss
 ranef
 raneftables

@@ -1,3 +1,8 @@
+```@meta
+CurrentModule = MixedModels
+CollapsedDocStrings = true
+```
+
 # Normalized Gauss-Hermite Quadrature
 
 [*Gaussian Quadrature rules*](https://en.wikipedia.org/wiki/Gaussian_quadrature) provide sets of `x` values, called *abscissae*, and corresponding weights, `w`, to approximate an integral with respect to a *weight function*, $g(x)$.
@@ -29,39 +34,39 @@ More formally, a `k`th order rule is exact when `f` is a polynomial of order `2k
 
 In the [*Golub-Welsch algorithm*](https://en.wikipedia.org/wiki/Gaussian_quadrature#The_Golub-Welsch_algorithm) the abscissae for a particular Gaussian quadrature rule are determined as the eigenvalues of a symmetric tri-diagonal matrix and the weights are derived from the squares of the first row of the matrix of eigenvectors.
 For a `k`th order normalized Gauss-Hermite rule the tridiagonal matrix has zeros on the diagonal and the square roots of `1:k-1` on the super- and sub-diagonal, e.g.
-```@setup Main
+```@setup GaussHermite
 using DisplayAs
 ```
-```@example Main
+```@example GaussHermite
 using DataFrames, LinearAlgebra, CairoMakie, AlgebraOfGraphics
 CairoMakie.activate!(type="svg")
 sym3 = SymTridiagonal(zeros(3), sqrt.(1:2))
 ev = eigen(sym3);
 ev.values
 ```
-```@example Main
+```@example GaussHermite
 abs2.(ev.vectors[1,:])
 ```
 As a function of `k` this can be written as
-```@example Main
+```@example GaussHermite
 function gausshermitenorm(k)
     ev = eigen(SymTridiagonal(zeros(k), sqrt.(1:k-1)))
     ev.values, abs2.(ev.vectors[1,:])
 end
 ```
 providing
-```@example Main
+```@example GaussHermite
 gausshermitenorm(3)
 ```
 
 The weights and positions are often shown as a *lollipop plot*.
 For the 9th order rule these are
-```@example Main
+```@example GaussHermite
 gh9=gausshermitenorm(9)
 stem(gh9[1], gh9[2]; axis=(ylabel="Weight",))
 ```
 Notice that the magnitudes of the weights drop quite dramatically away from zero, even on a logarithmic scale
-```@example Main
+```@example GaussHermite
 stem(gh9[1], gh9[2]; axis=(ylabel="Weight (log scale)", yscale=Makie.LogScale()))
 ```
 
@@ -69,7 +74,7 @@ The definition of `MixedModels.GHnorm` is similar to the `gausshermitenorm` func
 ```@docs
 GHnorm
 ```
-```@example Main
+```@example GaussHermite
 using MixedModels, MixedModelsDatasets
 GHnorm(3)
 ```
@@ -81,7 +86,7 @@ By the properties of the normal distribution, when $\mathcal{X}\sim\mathscr{N}(\
 
 For example, $\mathbb{E}[\mathcal{X}^2]$ where $\mathcal{X}\sim\mathcal{N}(2, 3^2)$ is
 
-```@example Main
+```@example GaussHermite
 μ = 2; σ = 3; ghn3 = GHnorm(3);
 sum(@. ghn3.w * abs2(μ + σ * ghn3.z))  # should be μ² + σ² = 13
 ```
@@ -96,20 +101,20 @@ For example, in a 1989 fertility survey of women in Bangladesh (reported in [Huq
 Several covariates were recorded including the woman's age (centered at the mean), the number of live children the woman has had (in 4 categories: 0, 1, 2, and 3 or more), whether she lived in an urban setting, and the district in which she lived.
 The version of the data used here is that used in review of multilevel modeling software conducted by the Center for Multilevel Modelling, currently at University of Bristol (http://www.bristol.ac.uk/cmm/learning/mmsoftware/data-rev.html).
 These data are available as the `:contra` dataset.
-```@example Main
+```@example GaussHermite
 contra = DataFrame(MixedModelsDatasets.dataset(:contra))
 describe(contra)
 ```
 
 A smoothed scatterplot of contraception use versus age
-```@example Main
+```@example GaussHermite
 draw(data(contra) * mapping(:age, :use => ==("Y")) * smooth();
     axis=(; xlabel="Centered age (yr)", ylabel="Contraception use"))
 ```
 shows that the proportion of women using artificial contraception is approximately quadratic in age.
 
 A model with fixed-effects for age, age squared, number of live children and urban location and with random effects for district, is fit as
-```@example Main
+```@example GaussHermite
 const form1 = @formula use ~ 1 + age + abs2(age) + livch + urban + (1|dist);
 m1 = fit(MixedModel, form1, contra, Bernoulli(), fast=true)
 DisplayAs.Text(ans) # hide
@@ -124,7 +129,7 @@ D(\mathbf{u})=-2\sum_{i=1}^q \log(f_i(u_i))
 The objective, $D$, consists of two parts: the sum of the (squared) *deviance residuals*, measuring fidelity to the data, and the squared length of $\mathbf{u}$, which is the penalty.
 In the PIRLS algorithm, only the sum of these components is needed.
 To use Gauss-Hermite quadrature the contributions of each of the $u_i,\;i=1,\dots,q$ should be separately evaluated.
-```@example Main
+```@example GaussHermite
 const devc0 = map!(abs2, m1.devc0, m1.u[1]);  # start with uᵢ²
 const devresid = m1.resp.devresid;   # n-dimensional vector of deviance residuals
 const refs = only(m1.LMM.reterms).refs;  # n-dimensional vector of indices in 1:q
@@ -136,14 +141,14 @@ show(devc0)
 
 One thing to notice is that, even on the deviance scale, the contributions of different districts can be of different magnitudes.
 This is primarily due to different sample sizes in the different districts.
-```@example Main
+```@example GaussHermite
 using FreqTables
 freqtable(contra, :dist)'
 ```
 
 Because the first district has one of the largest sample sizes and the third district has the smallest sample size, these two will be used for illustration.
 For a range of $u$ values, evaluate the individual components of the deviance and store them in a matrix.
-```@example Main
+```@example GaussHermite
 const devc = m1.devc;
 const xvals = -5.0:2.0^(-4):5.0;
 const uv = vec(m1.u[1]);
@@ -160,29 +165,29 @@ for (j, u) in enumerate(xvals)
 end
 ```
 A plot of the deviance contribution versus $u_1$
-```@example Main
+```@example GaussHermite
 lines(xvals, view(results, 1, :); axis=(xlabel="u₁", ylabel="Deviance contribution"))
 ```
 shows that the deviance contribution is very close to a quadratic.
 This is also true for $u_3$
-```@example Main
+```@example GaussHermite
 lines(xvals, view(results, 3, :); axis=(xlabel="u₃", ylabel="Deviance contribution"))
 ```
 
 The PIRLS algorithm provides the locations of the minima of these scalar functions, stored as
-```@example Main
+```@example GaussHermite
 m1.u₀[1]
 ```
 the minima themselves, evaluated as `devc0` above, and a horizontal scale, which is the inverse of diagonal of the Cholesky factor.
 As shown below, this is an estimate of the conditional standard deviations of the components of $\mathcal{U}$.
-```@example Main
+```@example GaussHermite
 using MixedModels: block
 const s = inv.(m1.LMM.L[block(1,1)].diag);
 s'
 ```
 
 The curves can be put on a common scale, corresponding to the standard normal, as
-```@example Main
+```@example GaussHermite
 for (j, z) in enumerate(xvals)
     @. uv = u₀ + z * s
     MixedModels.updateη!(m1)
@@ -193,15 +198,15 @@ for (j, z) in enumerate(xvals)
     copyto!(view(results, :, j), devc)
 end
 ```
-```@example Main
+```@example GaussHermite
 lines(xvals, view(results, 1, :); axis=(xlabel="Scaled and shifted u₁", ylabel="Shifted deviance contribution"))
 ```
-```@example Main
+```@example GaussHermite
 lines(xvals, view(results, 3, :); axis=(xlabel="Scaled and shifted u₃", ylabel="Shifted deviance contribution"))
 ```
 
 On the original density scale these become
-```@example Main
+```@example GaussHermite
 for (j, z) in enumerate(xvals)
     @. uv = u₀ + z * s
     MixedModels.updateη!(m1)
@@ -212,14 +217,14 @@ for (j, z) in enumerate(xvals)
     copyto!(view(results, :, j), @. exp(-devc/2))
 end
 ```
-```@example Main
+```@example GaussHermite
 lines(xvals, view(results, 1, :); axis=(xlabel="Scaled and shifted u₁", ylabel="Conditional density"))
 ```
-```@example Main
+```@example GaussHermite
 lines(xvals, view(results, 3, :); axis=(xlabel="Scaled and shifted u₃", ylabel="Conditional density"))
 ```
 and the function to be integrated with the normalized Gauss-Hermite rule is
-```@example Main
+```@example GaussHermite
 for (j, z) in enumerate(xvals)
     @. uv = u₀ + z * s
     MixedModels.updateη!(m1)
@@ -230,10 +235,10 @@ for (j, z) in enumerate(xvals)
     copyto!(view(results, :, j), @. exp((abs2(z) - devc)/2))
 end
 ```
-```@example Main
+```@example GaussHermite
 lines(xvals, view(results, 1, :); axis=(xlabel="Scaled and shifted u₁", ylabel="Kernel ratio"))
 ```
-```@example Main
+```@example GaussHermite
 lines(xvals, view(results, 3, :); axis=(xlabel="Scaled and shifted u₃", ylabel="Kernel ratio"))
 ```
 
