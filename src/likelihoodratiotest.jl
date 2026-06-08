@@ -201,7 +201,7 @@ function StatsModels.lrtest(m0::GLM_TYPES, m::MixedModel...; atol::Real=0.0)
             )
     end
 
-    pval = chisqccdf.(abs.(Δdf), chisq)
+    pval = ccdf.(Chisq.(abs.(Δdf); check_args=false), chisq)
     return StatsModels.LRTestResult(Int(nobs(mods[1])), dev, ll, df, pval)
 end
 

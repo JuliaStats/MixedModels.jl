@@ -1,8 +1,13 @@
+```@meta
+CurrentModule = MixedModels
+CollapsedDocStrings = true
+```
+
 # Prediction and simulation in Mixed-Effects Models
 
 We recommend the [MixedModelsSim.jl](https://github.com/RePsychLing/MixedModelsSim.jl/) package and associated documentation for useful tools in constructing designs to simulate. For now, we'll use the sleep study data as a starting point.
 
-```@example Main
+```@example Predict
 using DataFrames
 using MixedModels
 using MixedModelsDatasets
@@ -18,7 +23,7 @@ DisplayAs.Text(slpm) # hide
 
 The simplest form of prediction are the fitted values from the model: they are indeed the model's predictions for the observed data.
 
-```@example Main
+```@example Predict
 predict(slpm) ≈ fitted(slpm)
 ```
 
@@ -34,27 +39,27 @@ For *simulating* new values based on previous estimates of the variance componen
 
 In the case where there are no new levels of the grouping variable, all three of these methods provide the same results:
 
-```@example Main
+```@example Predict
 predict(slpm, slp; new_re_levels=:population) ≈ fitted(slpm)
 ```
 
-```@example Main
+```@example Predict
 predict(slpm, slp; new_re_levels=:missing) ≈ fitted(slpm)
 ```
 
-```@example Main
+```@example Predict
 predict(slpm, slp; new_re_levels=:error) ≈ fitted(slpm)
 ```
 
 In the case where there are new levels of the grouping variable, these methods differ.
 
-```@example Main
+```@example Predict
 # create a new level
 slp2 = transform(slp, :subj => ByRow(x -> (x == "S308" ? "NEW" : x)) => :subj)
 DisplayAs.Text(ans) # hide
 ```
 
-```@example Main
+```@example Predict
 try
   predict(slpm, slp2; new_re_levels=:error)
 catch e
@@ -62,11 +67,11 @@ catch e
 end
 ```
 
-```@example Main
+```@example Predict
 predict(slpm, slp2; new_re_levels=:missing)
 ```
 
-```@example Main
+```@example Predict
 predict(slpm, slp2; new_re_levels=:population)
 ```
 
@@ -80,14 +85,14 @@ predict(slpm, slp2; new_re_levels=:population)
 
 For generalized linear mixed models, there is an additional keyword argument to `predict`: `type` specifies whether the predictions are returned on the scale of the linear predictor (`:linpred`) or on the level of the response `(:response)` (i.e. the level at which the values were originally observed).
 
-```@example Main
+```@example Predict
 cbpp = DataFrame(MixedModelsDatasets.dataset(:cbpp))
 cbpp.rate = cbpp.incid ./ cbpp.hsz
 gm = fit(MixedModel, @formula(rate ~ 1 + period + (1|herd)), cbpp, Binomial(), wts=float(cbpp.hsz))
 predict(gm, cbpp; type=:response) ≈ fitted(gm)
 ```
 
-```@example Main
+```@example Predict
 logit(x) = log(x / (1 - x))
 predict(gm, cbpp; type=:linpred) ≈ logit.(fitted(gm))
 ```
@@ -100,14 +105,14 @@ For reproducibility, we specify a pseudorandom generator here; if none is provid
 
 The simplest example of `simulate` takes a fitted model and generates a new response vector based on the existing model matrices combined with noise.
 
-```@example Main
+```@example Predict
 using Random
 ynew = simulate(MersenneTwister(42), slpm)
 ```
 
 The simulated response can also be placed in a pre-allocated vector:
 
-```@example Main
+```@example Predict
 ynew2 = zeros(nrow(slp))
 simulate!(MersenneTwister(42), ynew2, slpm)
 ynew2 ≈ ynew
@@ -115,7 +120,7 @@ ynew2 ≈ ynew
 
 Or even directly replace the previous response vector in a model, at which point the model must be refit to the new values:
 
-```@example Main
+```@example Predict
 slpm2 = deepcopy(slpm)
 refit!(simulate!(MersenneTwister(42), slpm2))
 DisplayAs.Text(ans) # hide
@@ -124,7 +129,7 @@ DisplayAs.Text(ans) # hide
 This inplace simulation actually forms the basis of [`parametricbootstrap`](@ref).
 
 Finally, we can also simulate the response from entirely new data.
-```@example Main
+```@example Predict
 df = DataFrame(days = repeat(1:10, outer=20), subj=repeat(1:20, inner=10))
 df[!, :subj] = string.("S", lpad.(df.subj, 2, "0"))
 df[!, :reaction] .= 0
@@ -132,7 +137,7 @@ df
 DisplayAs.Text(df) # hide
 ```
 
-```@example Main
+```@example Predict
 ysim = simulate(MersenneTwister(42), slpm, df)
 ```
 
@@ -140,13 +145,13 @@ Note that this is a convenience method for creating a new model and then using t
 In other words, this method incurs the cost of constructing a new model and then discarding it.
 If you could re-use that model (e.g., fitting that model as part of a simulation study), it often makes sense to do these steps to perform these steps explicitly and avoid the unnecessary construction and discarding of an intermediate model:
 
-```@example Main
+```@example Predict
 msim = LinearMixedModel(@formula(reaction ~ 1 + days + (1|subj)), df)
 simulate!(MersenneTwister(42), msim; θ=slpm.θ, β=slpm.β, σ=slpm.σ)
 response(msim) ≈ ysim
 ```
 
-```@example Main
+```@example Predict
 fit!(msim)
 DisplayAs.Text(ans) # hide
 ```
