@@ -662,12 +662,24 @@ end
             m = deepcopy(last(models(:sleepstudy)))
             m.optsum.xtol_zero_abs = 0.5
             m.optsum.ftol_zero_abs = 0.5
+            m.optsum.pirls_maxiter = 20
+            m.optsum.pirls_ftol_rel = 1.0e-6
+            m.optsum.pirls_ftol_abs = 1.0e-6
+            m.optsum.pirls_maxhalfstep = 5
             saveoptsum(io, m)
             m.optsum.xtol_zero_abs = 1.0
             m.optsum.ftol_zero_abs = 1.0
+            m.optsum.pirls_maxiter = 10
+            m.optsum.pirls_ftol_rel = 1.0e-8
+            m.optsum.pirls_ftol_abs = 1.0e-5
+            m.optsum.pirls_maxhalfstep = 10
             @suppress restoreoptsum!(m, seekstart(io))
             @test m.optsum.xtol_zero_abs == 0.5
             @test m.optsum.ftol_zero_abs == 0.5
+            @test m.optsum.pirls_maxiter == 20
+            @test m.optsum.pirls_ftol_rel ≈ 1.0e-6
+            @test m.optsum.pirls_ftol_abs ≈ 1.0e-6
+            @test m.optsum.pirls_maxhalfstep == 5
         end
     end
 
