@@ -1,3 +1,8 @@
+```@meta
+CurrentModule = MixedModels
+CollapsedDocStrings = true
+```
+
 # Alternative display and output formats
 
 In the documentation, we have presented the output from `MixedModels.jl` in the same format you will see when working in the REPL.
@@ -11,7 +16,7 @@ Note that the Markdown output can also be easily and more flexibly translated in
 Packages like `IJulia` and `Documenter` can often detect the presence of these display options and use them automatically.
 
 
-```@example Main
+```@example Mime
 using MixedModels, MixedModelsDatasets
 form = @formula(rt_trunc ~ 1 + spkr * prec * load +
                           (1 + load | item) +
@@ -26,7 +31,7 @@ kbm = fit(MixedModel, form, MixedModelsDatasets.dataset(:kb07); contrasts=contr)
 
 Note that the display here is more succinct than the standard REPL display:
 
-```@example Main
+```@example Mime
 using DisplayAs
 kbm |> DisplayAs.Text
 ```
@@ -37,21 +42,21 @@ In our experience, this leads to difficulties in typesetting the resulting table
 We nonetheless encourage users to report fit statistics such as the log likelihood or AIC as part of the caption of their table.
 If the correlation parameters in the random effects are of interest, then [`VarCorr`](@ref) can also be pretty printed:
 
-```@example Main
+```@example Mime
 VarCorr(kbm)
 ```
 
 Similarly for [`BlockDescription`](@ref), `OptSummary` and `MixedModels.likelihoodratiotest`:
 
-```@example Main
+```@example Mime
 BlockDescription(kbm)
 ```
 
-```@example Main
+```@example Mime
 kbm.optsum
 ```
 
-```@example Main
+```@example Mime
 m0 = fit(MixedModel, @formula(reaction ~ 1 + (1|subj)), MixedModelsDatasets.dataset(:sleepstudy))
 m1 = fit(MixedModel, @formula(reaction ~ 1 + days + (1+days|subj)), MixedModelsDatasets.dataset(:sleepstudy))
 MixedModels.likelihoodratiotest(m0,m1)
@@ -62,13 +67,13 @@ To explicitly invoke this behavior, we must specify the right `show` method.
 ```julia
 show(MIME("text/markdown"), m1)
 ```
-```@example Main
+```@example Mime
 println(sprint(show, MIME("text/markdown"), kbm)) # hide
 ```
 ```julia
 show(MIME("text/html"), m1)
 ```
-```@example Main
+```@example Mime
 println(sprint(show, MIME("text/html"), kbm)) # hide
 ```
 Note for that LaTeX, the column labels for the random effects are slightly changed: σ is placed into math mode and escaped and the grouping variable is turned into a subscript.
@@ -77,7 +82,7 @@ This transformation improves pdfLaTeX and journal compatibility, but also means 
 ```julia
 show(MIME("text/latex"), m1)
 ```
-```@example Main
+```@example Mime
 println(sprint(show, MIME("text/latex"), kbm)) # hide
 ```
 This escaping behavior can be disabled by specifying `"text/xelatex"` as the MIME type.
@@ -85,7 +90,7 @@ This escaping behavior can be disabled by specifying `"text/xelatex"` as the MIM
 ```julia
 show(MIME("text/xelatex"), m1)
 ```
-```@example Main
+```@example Mime
 println(sprint(show, MIME("text/xelatex"), kbm)) # hide
 ```
 

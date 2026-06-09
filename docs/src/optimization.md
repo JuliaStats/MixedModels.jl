@@ -1,3 +1,8 @@
+```@meta
+CurrentModule = MixedModels
+CollapsedDocStrings = true
+```
+
 # Details of the parameter estimation
 
 ## The probability model
@@ -97,25 +102,25 @@ For a linear mixed model, where all the conditional and unconditional distributi
 In the types of `LinearMixedModel` available through the `MixedModels` package, groups of random effects and the corresponding columns of the model matrix, $\bf Z$, are associated with *random-effects terms* in the model formula.
 
 For the simple example
-```@setup Main
+```@setup Optimization
 using DisplayAs
 ```
-```@example Main
+```@example Optimization
 using BenchmarkTools, DataFrames, MixedModels, MixedModelsDatasets
 ```
-```@example Main
+```@example Optimization
 dyestuff = MixedModelsDatasets.dataset(:dyestuff)
 fm1 = fit(MixedModel, @formula(yield ~ 1 + (1|batch)), dyestuff)
 DisplayAs.Text(ans) # hide
 ```
 the only random effects term in the formula is `(1|batch)`, a simple, scalar random-effects term.
-```@example Main
+```@example Optimization
 t1 = only(fm1.reterms);
 Int.(t1)  # convert to integers for more compact display
 ```
 
 The matrix `t1` is a sparse matrix, meaning that most of the elements are zero, and its transpose is stored in a sparse form.
-```@example Main
+```@example Optimization
 sparse(t1)'
 ```
 provides a compact representation of the positions of the non-zeros in this matrix.
@@ -123,7 +128,7 @@ provides a compact representation of the positions of the non-zeros in this matr
 This `RandomEffectsTerm` contributes a block of columns to the model matrix $\bf Z$ and a diagonal block to $\Lambda_\theta$.
 In this case the diagonal block of $\Lambda_\theta$ (which is also the only block) is a multiple of the $6\times6$
 identity matrix where the multiple is
-```@example Main
+```@example Optimization
 t1.λ
 ```
 
@@ -132,49 +137,49 @@ Furthermore, there is only one block in $\Lambda_\theta$.
 
 
 For a vector-valued random-effects term, as in
-```@example Main
+```@example Optimization
 sleepstudy = MixedModelsDatasets.dataset(:sleepstudy)
 fm2 = fit(MixedModel, @formula(reaction ~ 1+days+(1+days|subj)), sleepstudy)
 DisplayAs.Text(ans) # hide
 ```
 the model matrix $\bf Z$ is of the form
-```@example Main
+```@example Optimization
 t21 = only(fm2.reterms);
 sparse(t21)'
 ```
 and $\Lambda_\theta$ is a $36\times36$ block diagonal matrix with $18$ diagonal blocks, all of the form
-```@example Main
+```@example Optimization
 t21.λ
 ```
 The $\theta$ vector is
-```@example Main
+```@example Optimization
 MixedModels.getθ(t21)
 ```
 
 Random-effects terms in the model formula that have the same grouping factor are amalgamated into a single `ReMat` object.
-```@example Main
+```@example Optimization
 fm3 = fit(MixedModel, @formula(reaction ~ 1+days+(1|subj) + (0+days|subj)), sleepstudy)
 t31 = only(fm3.reterms);
 sparse(t31)'
 ```
 
 For this model the matrix $\bf Z$ is the same as that of model `fm2` but the diagonal blocks of $\Lambda_\theta$ are themselves diagonal.
-```@example Main
+```@example Optimization
 t31.λ
 ```
-```@example Main
+```@example Optimization
 MixedModels.getθ(t31)
 ```
 Random-effects terms with distinct grouping factors generate distinct elements of the `reterms` field of the `LinearMixedModel` object.
 Multiple `ReMat` objects are sorted by decreasing numbers of random effects.
-```@example Main
+```@example Optimization
 penicillin = MixedModelsDatasets.dataset(:penicillin)
 fm4 = fit(MixedModel,
     @formula(diameter ~ 1 + (1|sample) + (1|plate)),
     penicillin)
 sparse(first(fm4.reterms))'
 ```
-```@example Main
+```@example Optimization
 sparse(last(fm4.reterms))'
 ```
 Note that the first `ReMat` in `fm4.reterms` corresponds to grouping factor `plate` even though the term `(1|plate)` occurs in the formula after `(1|sample)`.
@@ -184,14 +189,14 @@ Note that the first `ReMat` in `fm4.reterms` corresponds to grouping factor `pla
 By default a progress display is shown when fitting a model that takes a second or more to fit. (The optional named argument, `progress=false`, can be used to suppress this display.) The number of iterations performed, the average time per iteration and the current value of the objective are shown in this display.
 
 After the model has been fit, a summary of the optimization process is available as the `optsum` property of the `LinearMixedModel`.
-```@example Main
+```@example Optimization
 fm2.optsum
 DisplayAs.Text(ans) # hide
 ```
 
 More detailed information about the intermediate steps of the nonlinear optimizer can be obtained the `fitlog` field.
 
-```@example Main
+```@example Optimization
 first(fm2.optsum.fitlog, 5)
 DisplayAs.Text(ans) # hide
 ```
@@ -202,7 +207,7 @@ A `LinearMixedModel` object contains two blocked matrices; a symmetric matrix `A
 In versions 4.0.0 and later of `MixedModels` only the blocks in the lower triangle are stored in `A` and `L`, as a `Vector{AbstractMatrix{T}}`.
 
 `BlockDescription` shows the structure of the blocks
-```@example Main
+```@example Optimization
 BlockDescription(fm2)
 DisplayAs.Text(ans) # hide
 ```
@@ -231,11 +236,11 @@ A [PRIMA](https://github.com/libprima/PRIMA.jl/) backend is also provided as a p
 available when the PRIMA package is loaded.
 The list of currently loaded backends is available as [`MixedModels.OPTIMIZATION_BACKENDS`](@ref).
 For each individual backend, the list of available optimizers can be inspected with the function [`MixedModels.optimizers`](@ref).
-```@example Main
+```@example Optimization
 MixedModels.optimizers(:nlopt)
 ```
 Similarly, the list of applicable optimization parameters can be inspected with the function [`MixedModels.opt_params`](@ref).
-```@example Main
+```@example Optimization
 MixedModels.opt_params(:nlopt)
 ```
 
@@ -245,7 +250,7 @@ MixedModels.opt_params(:nlopt)
     explicitly load the associated backend's package (e.g. NLopt or PRIMA) and manually set the `optimizer` and `backend` fields.
 
 Suppose, for example, that the user wishes to try a [Nelder-Mead](https://en.wikipedia.org/wiki/Nelder%E2%80%93Mead_method) optimization method instead of the default [`BOBYQA`](https://en.wikipedia.org/wiki/BOBYQA) (Bounded Optimization BY Quadratic Approximation) method.
-```@example Main
+```@example Optimization
 fm2nm = LinearMixedModel(@formula(reaction ~ 1+days+(1+days|subj)), sleepstudy);
 fm2nm.optsum.optimizer = :LN_NELDERMEAD;
 fit!(fm2nm)
@@ -256,7 +261,7 @@ DisplayAs.Text(ans) # hide
 The parameter estimates are quite similar to those using `:LN_BOBYQA` but at the expense of 140 functions evaluations for `:LN_NELDERMEAD` versus 57 for `:LN_BOBYQA`.
 When plotting the progress of the individual fits, it becomes obvious that `:LN_BOBYQA` has fully converged by the time `:LN_NELDERMEAD` begins to approach the optimum.
 
-```@example Main
+```@example Optimization
 using AlgebraOfGraphics, CairoMakie
 CairoMakie.activate!(type="svg")
 nm = fm2nm.optsum.fitlog
@@ -285,7 +290,7 @@ Singularity can be checked with the `issingular` predicate function.
 ```@docs
 issingular
 ```
-```@example Main
+```@example Optimization
 issingular(fm2)
 ```
 
@@ -314,7 +319,7 @@ Poisson
 
 A `GeneralizedLinearMixedModel` object is generated from a formula, data frame and distribution family.
 
-```@example Main
+```@example Optimization
 verbagg = MixedModelsDatasets.dataset(:verbagg)
 const vaform = @formula(r2 ~ 1 + anger + gender + btype + situ + (1|subj) + (1|item));
 mdl = GeneralizedLinearMixedModel(vaform, verbagg, Bernoulli());
@@ -325,13 +330,13 @@ A separate call to `fit!` can be used to fit the model.
 This involves optimizing an objective function, the Laplace approximation to the deviance, with respect to the parameters, which are $\beta$, the fixed-effects coefficients, and $\theta$, the covariance parameters.
 The starting estimate for $\beta$ is determined by fitting a GLM to the fixed-effects part of the formula
 
-```@example Main
+```@example Optimization
 mdl.β
 ```
 
 and the starting estimate for $\theta$, which is a vector of the two standard deviations of the random effects, is chosen to be
 
-```@example Main
+```@example Optimization
 mdl.θ
 ```
 
@@ -346,20 +351,20 @@ In a call to the `pirls!` function the first argument is a `GeneralizedLinearMix
 (By convention, the names of such *mutating functions* end in `!` as a warning to the user that they can modify an argument, usually the first argument.)
 The second and third arguments are optional logical values indicating if $\beta$ is to be varied and if verbose output is to be printed.
 
-```@example Main
+```@example Optimization
 pirls!(mdl, true, false)
 DisplayAs.Text(ans) # hide
 ```
 
-```@example Main
+```@example Optimization
 deviance(mdl)
 ```
 
-```@example Main
+```@example Optimization
 mdl.β
 ```
 
-```@example Main
+```@example Optimization
 mdl.θ # current values of the standard deviations of the random effects
 ```
 
@@ -367,31 +372,31 @@ If the optimization with respect to $\beta$ is performed within PIRLS then the n
 This is the "fast" algorithm.
 Given a value of $\theta$, PIRLS is used to determine the conditional estimate of $\beta$ and the conditional mode of the random effects, **b**.
 
-```@example Main
+```@example Optimization
 mdl.b # conditional modes of b
 ```
 
-```@example Main
+```@example Optimization
 fit!(mdl, fast=true);
 DisplayAs.Text(ans) # hide
 ```
 
 The optimization process is summarized by
 
-```@example Main
+```@example Optimization
 mdl.LMM.optsum
 DisplayAs.Text(ans) # hide
 ```
 
 As one would hope, given the name of the option, this fit is comparatively fast.
-```@example Main
+```@example Optimization
 @btime fit(MixedModel, vaform, verbagg, Bernoulli(), fast=true)
 DisplayAs.Text(ans) # hide
 ```
 
 The alternative algorithm is to use PIRLS to find the conditional mode of the random effects, given $\beta$ and $\theta$ and then use the general nonlinear optimizer to fit with respect to both $\beta$ and $\theta$.
 
-```@example Main
+```@example Optimization
 mdl1 = @btime fit(MixedModel, vaform, verbagg, Bernoulli())
 DisplayAs.Text(ans) # hide
 ```
