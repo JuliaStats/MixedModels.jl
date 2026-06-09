@@ -1,3 +1,7 @@
+MixedModels v5.7.0 Release Notes
+==============================
+- `fitted` and `predict` have been reworked to allocate less and avoid some unnecessary computation. [#887]
+
 MixedModels v5.6.0 Release Notes
 ==============================
 - Several previously hardcoded parameters related to PIRLS are now exposed and can be set by modifying `optsum`.[#893]
@@ -759,6 +763,7 @@ Package dependencies
 [#880]: https://github.com/JuliaStats/MixedModels.jl/issues/880
 [#885]: https://github.com/JuliaStats/MixedModels.jl/issues/885
 [#886]: https://github.com/JuliaStats/MixedModels.jl/issues/886
+[#887]: https://github.com/JuliaStats/MixedModels.jl/issues/887
 [#889]: https://github.com/JuliaStats/MixedModels.jl/issues/889
 [#891]: https://github.com/JuliaStats/MixedModels.jl/issues/891
 [#892]: https://github.com/JuliaStats/MixedModels.jl/issues/892
