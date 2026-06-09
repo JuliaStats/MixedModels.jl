@@ -94,6 +94,21 @@ end
 
 _level_index(levelsvec) = Dict(level => i for (i, level) in pairs(levelsvec))
 
+"""
+    PredictionDesign{T}
+
+Internal structure for representing the model components to make
+predictions on new data for an already fit model.
+
+!!! warning "Internal use only"
+    This structure is an internal implementation detail and optimization.
+    It can change or go away without being considered breaking.
+
+# Fields
+- `feterm::FeTerm`
+- `reterms::Vector{<:AbstractReMat{T}}`
+
+"""
 struct PredictionDesign{T}
     feterm::FeTerm
     reterms::Vector{<:AbstractReMat{T}}
