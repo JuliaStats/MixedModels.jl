@@ -117,6 +117,7 @@ lrt = likelihoodratiotest(fm0, fm1)
         fm1.optsum.finitial = 1784.642296192471
         fm1.optsum.final = [0.9292, 0.0182, 0.2226]
         fm1.optsum.fmin = 1751.9393444647023
+        fm1.optsum.pirls_ftol_rel = 1.0e-8
         out = sprint(show, mime, fm1.optsum)
         @test startswith(
             out,
@@ -138,6 +139,10 @@ lrt = likelihoodratiotest(fm0, fm1)
         | maxtime                  | -1.0                        |
         | xtol_zero_abs            | 0.001                       |
         | ftol_zero_abs            | 1.0e-5                      |
+        | pirls_maxiter            | 10                          |
+        | pirls_ftol_rel           | 1.0e-8                      |
+        | pirls_ftol_abs           | 1.0e-5                      |
+        | pirls_maxhalfstep        | 10                          |
         | **Result**               |                             |
         | Function evaluations     | 1                           |
         | Final parameter vector   | [0.9292, 0.0182, 0.2226]    |

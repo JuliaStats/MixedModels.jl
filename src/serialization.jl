@@ -69,14 +69,18 @@ end
 function restoreoptsum!(ops::OptSummary{T}, dict::AbstractDict) where {T}
     warn_old_version = true
     allowed_missing = (
-        :lowerbd,       # never saved, -Inf not allowed in JSON, not used in v5
-        :xtol_zero_abs, # added in v4.25.0
-        :ftol_zero_abs, # added in v4.25.0
-        :sigma,         # added in v4.1.0
-        :fitlog,        # added in v4.1.0
-        :backend,       # added in v4.30.0
-        :rhobeg,        # added in v4.30.0
-        :rhoend,        # added in v4.30.0
+        :lowerbd,           # never saved, -Inf not allowed in JSON, not used in v5
+        :xtol_zero_abs,     # added in v4.25.0
+        :ftol_zero_abs,     # added in v4.25.0
+        :sigma,             # added in v4.1.0
+        :fitlog,            # added in v4.1.0
+        :backend,           # added in v4.30.0
+        :rhobeg,            # added in v4.30.0
+        :rhoend,            # added in v4.30.0
+        :pirls_maxiter,     # added in v5.6.0
+        :pirls_ftol_rel,    # added in v5.6.0
+        :pirls_ftol_abs,    # added in v5.6.0
+        :pirls_maxhalfstep, # added in v5.6.0
     )
     dict_keys = Set(Symbol.(keys(dict)))
     nmdiff = setdiff(
@@ -103,7 +107,14 @@ function restoreoptsum!(ops::OptSummary{T}, dict::AbstractDict) where {T}
     ops.optimizer = Symbol(dict["optimizer"])
     ops.returnvalue = Symbol(dict["returnvalue"])
     # compatibility with fits saved before the introduction of various extensions
-    for prop in [:xtol_zero_abs, :ftol_zero_abs]
+    for prop in (
+        :xtol_zero_abs,
+        :ftol_zero_abs,
+        :pirls_maxiter,
+        :pirls_ftol_rel,
+        :pirls_ftol_abs,
+        :pirls_maxhalfstep,
+    )
         fallback = getproperty(ops, prop)
         setproperty!(ops, prop, get(dict, string(prop), fallback))
     end

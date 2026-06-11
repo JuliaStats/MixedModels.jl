@@ -292,6 +292,15 @@ end
     @test objective(fm1) ≈ 237721.76877450474 atol = 0.001
     ftd1 = fitted(fm1)
     @test size(ftd1) == (73421,)
+    ftd1buf = similar(ftd1)
+    @test fitted!(ftd1buf, fm1) === ftd1buf
+    @test ftd1buf == ftd1
+    # warm both paths before comparing allocation counts
+    fitted!(ftd1buf, fm1)
+    fitted(fm1)
+    inplace_alloc = @allocated fitted!(ftd1buf, fm1)
+    fitted_alloc = @allocated fitted(fm1)
+    @test inplace_alloc < fitted_alloc
     @test ftd1 == predict(fm1)
     @test first(ftd1) ≈ 3.1787619026604945 atol = 0.0001
     resid1 = residuals(fm1)
@@ -662,12 +671,24 @@ end
             m = deepcopy(last(models(:sleepstudy)))
             m.optsum.xtol_zero_abs = 0.5
             m.optsum.ftol_zero_abs = 0.5
+            m.optsum.pirls_maxiter = 20
+            m.optsum.pirls_ftol_rel = 1.0e-6
+            m.optsum.pirls_ftol_abs = 1.0e-6
+            m.optsum.pirls_maxhalfstep = 5
             saveoptsum(io, m)
             m.optsum.xtol_zero_abs = 1.0
             m.optsum.ftol_zero_abs = 1.0
+            m.optsum.pirls_maxiter = 10
+            m.optsum.pirls_ftol_rel = 1.0e-8
+            m.optsum.pirls_ftol_abs = 1.0e-5
+            m.optsum.pirls_maxhalfstep = 10
             @suppress restoreoptsum!(m, seekstart(io))
             @test m.optsum.xtol_zero_abs == 0.5
             @test m.optsum.ftol_zero_abs == 0.5
+            @test m.optsum.pirls_maxiter == 20
+            @test m.optsum.pirls_ftol_rel ≈ 1.0e-6
+            @test m.optsum.pirls_ftol_abs ≈ 1.0e-6
+            @test m.optsum.pirls_maxhalfstep == 5
         end
     end
 

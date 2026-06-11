@@ -1,3 +1,8 @@
+```@meta
+CurrentModule = MixedModels
+CollapsedDocStrings = true
+```
+
 # Additional Functionality in Other Packages
 
 ```@setup Ecosystem

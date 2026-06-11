@@ -1,3 +1,16 @@
+MixedModels v5.7.0 Release Notes
+==============================
+- `fitted` and `predict` have been reworked to allocate less and avoid some unnecessary computation. [#887]
+
+MixedModels v5.6.0 Release Notes
+==============================
+- Several previously hardcoded parameters related to PIRLS are now exposed and can be set by modifying `optsum`.[#893]
+
+MixedModels v5.5.2 Release Notes
+==============================
+- Import `log2π` directly from `IrrationalConstants` instead of via the `StatsFuns` re-export chain. `IrrationalConstants` is now a direct dependency, but it was already an indirect dependency of the package. [#898]
+- Replace the remaining `chisqccdf` and `normccdf` calls with the equivalent `ccdf(Chisq(…), …)` and `ccdf(Normal(), …)` from `Distributions`, and drop `StatsFuns` as a direct dependency. `StatsFuns` remains in the indirect dependency graph via `StatsModels` and `Distributions`. [#899]
+
 MixedModels v5.5.1 Release Notes
 ==============================
 - Fixed a bug in testing the nesting of fixed effects. [#891]
@@ -750,6 +763,10 @@ Package dependencies
 [#880]: https://github.com/JuliaStats/MixedModels.jl/issues/880
 [#885]: https://github.com/JuliaStats/MixedModels.jl/issues/885
 [#886]: https://github.com/JuliaStats/MixedModels.jl/issues/886
+[#887]: https://github.com/JuliaStats/MixedModels.jl/issues/887
 [#889]: https://github.com/JuliaStats/MixedModels.jl/issues/889
 [#891]: https://github.com/JuliaStats/MixedModels.jl/issues/891
 [#892]: https://github.com/JuliaStats/MixedModels.jl/issues/892
+[#893]: https://github.com/JuliaStats/MixedModels.jl/issues/893
+[#898]: https://github.com/JuliaStats/MixedModels.jl/issues/898
+[#899]: https://github.com/JuliaStats/MixedModels.jl/issues/899
