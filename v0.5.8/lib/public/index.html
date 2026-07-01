@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<!--[if lt IE 7 ]><html class="no-js ie6"><![endif]-->
+<!--[if IE 7 ]><html class="no-js ie7"><![endif]-->
+<!--[if IE 8 ]><html class="no-js ie8"><![endif]-->
+<!--[if IE 9 ]><html class="no-js ie9"><![endif]-->
+<!--[if (gt IE 9)|!(IE)]><!--> <html class="no-js"> <!--<![endif]-->
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,user-scalable=no,initial-scale=1,maximum-scale=1">
+    
+      
+        <title>Public - MixedModels.jl</title>
+      
+      
+      
+      
+        <meta name="author" content="Douglas M. Bates">
+      
+    
+    <meta property="og:url" content="None">
+    <meta property="og:title" content="MixedModels.jl">
+    <meta property="og:image" content="None/../../">
+    <meta name="apple-mobile-web-app-title" content="MixedModels.jl">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    
+    
+    <link rel="shortcut icon" type="image/x-icon" href="../../assets/images/favicon-e565ddfa3b.ico">
+    <link rel="icon" type="image/x-icon" href="../../assets/images/favicon-e565ddfa3b.ico">
+    <style>
+      @font-face {
+      	font-family: 'Icon';
+      	src: url('../../assets/fonts/icon.eot?52m981');
+      	src: url('../../assets/fonts/icon.eot?#iefix52m981')
+               format('embedded-opentype'),
+      		   url('../../assets/fonts/icon.woff?52m981')
+               format('woff'),
+      		   url('../../assets/fonts/icon.ttf?52m981')
+               format('truetype'),
+      		   url('../../assets/fonts/icon.svg?52m981#icon')
+               format('svg');
+      	font-weight: normal;
+      	font-style: normal;
+      }
+    </style>
+    <link rel="stylesheet" href="../../assets/stylesheets/application-a422ff04cc.css">
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/palettes-05ab2406df.css">
+    
+    
+      
+      
+      
+      <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Ubuntu:400,700|Ubuntu+Mono">
+      <style>
+        body, input {
+          font-family: 'Ubuntu', Helvetica, Arial, sans-serif;
+        }
+        pre, code {
+          font-family: 'Ubuntu Mono', 'Courier New', 'Courier', monospace;
+        }
+      </style>
+    
+    
+      <link rel="stylesheet" href="../../assets/Documenter.css">
+    
+    <script src="../../assets/javascripts/modernizr-4ab42b99fd.js"></script>
+    
+  </head>
+  
+  
+  
+  <body class="palette-primary-indigo palette-accent-blue">
+    
+      
+      
+    
+    <div class="backdrop">
+      <div class="backdrop-paper"></div>
+    </div>
+    <input class="toggle" type="checkbox" id="toggle-drawer">
+    <input class="toggle" type="checkbox" id="toggle-search">
+    <label class="toggle-button overlay" for="toggle-drawer"></label>
+    <header class="header">
+      <nav aria-label="Header">
+  <div class="bar default">
+    <div class="button button-menu" role="button" aria-label="Menu">
+      <label class="toggle-button icon icon-menu" for="toggle-drawer">
+        <span></span>
+      </label>
+    </div>
+    <div class="stretch">
+      <div class="title">
+        
+          <span class="path">
+            
+              
+                Library <i class="icon icon-link"></i>
+              
+            
+          </span>
+        
+        Public
+      </div>
+    </div>
+    
+    
+    <div class="button button-search" role="button" aria-label="Search">
+      <label class="toggle-button icon icon-search" title="Search" for="toggle-search"></label>
+    </div>
+  </div>
+  <div class="bar search">
+    <div class="button button-close" role="button" aria-label="Close">
+      <label class="toggle-button icon icon-back" for="toggle-search"></label>
+    </div>
+    <div class="stretch">
+      <div class="field">
+        <input class="query" type="text" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck>
+      </div>
+    </div>
+    <div class="button button-reset" role="button" aria-label="Search">
+      <button class="toggle-button icon icon-close" id="reset-search"></button>
+    </div>
+  </div>
+</nav>
+    </header>
+    <main class="main">
+      
+      <div class="drawer">
+        <nav aria-label="Navigation">
+  
+  <a href="https://github.com/dmbates/MixedModels.jl" class="project">
+    <div class="banner">
+      
+      <div class="name">
+        <strong>
+          MixedModels.jl
+          <span class="version">
+            
+          </span>
+        </strong>
+        
+          <br>
+          dmbates/MixedModels.jl
+        
+      </div>
+    </div>
+  </a>
+  <div class="scrollable">
+    <div class="wrapper">
+      
+        <ul class="repo">
+          <li class="repo-download">
+            
+            <a href="https://github.com/dmbates/MixedModels.jl/archive/master.zip" target="_blank" title="Download" data-action="download">
+              <i class="icon icon-download"></i> Download
+            </a>
+          </li>
+          <li class="repo-stars">
+            <a href="https://github.com/dmbates/MixedModels.jl/stargazers" target="_blank" title="Stargazers" data-action="star">
+              <i class="icon icon-star"></i> Stars
+              <span class="count">&ndash;</span>
+            </a>
+          </li>
+        </ul>
+        <hr>
+      
+      <div class="toc">
+        <ul>
+          
+            
+  <li>
+    <a class="" title="Home" href="../..">
+      Home
+    </a>
+    
+  </li>
+
+          
+            
+  <li>
+    <span class="section">Manual</span>
+    <ul>
+      
+        
+  <li>
+    <a class="" title="Fitting" href="../../man/fitting/">
+      Fitting
+    </a>
+    
+  </li>
+
+      
+        
+  <li>
+    <a class="" title="Bootstrap" href="../../man/bootstrap/">
+      Bootstrap
+    </a>
+    
+  </li>
+
+      
+    </ul>
+  </li>
+
+          
+            
+  <li>
+    <span class="section">Library</span>
+    <ul>
+      
+        
+  <li>
+    <a class="current" title="Public" href="./">
+      Public
+    </a>
+    
+      
+        
+      
+      
+        <ul>
+          
+            <li class="anchor">
+              <a title="MixedModels" href="#mixedmodels">
+                MixedModels
+              </a>
+            </li>
+          
+        </ul>
+      
+    
+  </li>
+
+      
+    </ul>
+  </li>
+
+          
+        </ul>
+        
+      </div>
+    </div>
+  </div>
+</nav>
+      </div>
+      <article class="article">
+        <div class="wrapper">
+          
+          <p><a id='Public-Documentation-1'></a></p>
+<h1 id="public-documentation">Public Documentation</h1>
+<p>Documentation for <code>MixedModels.jl</code>'s public interface.</p>
+<p><a id='MixedModels-1'></a></p>
+<h2 id="mixedmodels">MixedModels</h2>
+<p><a id='MixedModels.GeneralizedLinearMixedModel' href='#MixedModels.GeneralizedLinearMixedModel'>#</a>
+<strong><code>MixedModels.GeneralizedLinearMixedModel</code></strong> &mdash; <em>Type</em>.</p>
+<div class="codehilite"><pre><span></span>GeneralizedLinearMixedModel
+</pre></div>
+
+
+<p>Generalized linear mixed-effects model representation</p>
+<p>Members:</p>
+<ul>
+<li><code>LMM</code>: a <a href="./#MixedModels.LinearMixedModel"><code>LinearMixedModel</code></a> - used for the random effects only.</li>
+<li><code>dist</code>: a <code>UnivariateDistribution</code> - typically <code>Bernoulli()</code>, <code>Binomial()</code>, <code>Gamma()</code> or <code>Poisson()</code>.</li>
+<li><code>link</code>: a suitable <code>GLM.Link</code> object</li>
+<li><code>β</code>: the fixed-effects vector</li>
+<li><code>θ</code>: covariance parameter vector</li>
+<li><code>b</code>: similar to <code>u</code>, equivalent to <code>broadcast!(*, b, LMM.Λ, u)</code></li>
+<li><code>u</code>: a vector of matrices of random effects</li>
+<li><code>u₀</code>: similar to <code>u</code>.  Used in the PIRLS algorithm if step-halving is necessary.</li>
+<li><code>X</code>:</li>
+<li><code>y</code>: the response vector</li>
+<li><code>μ</code>: the mean vector</li>
+<li><code>η</code>: the linear predictor</li>
+<li><code>devresid</code>: vector of squared deviance residuals</li>
+<li><code>offset</code>: offset₀ + <code>X * β</code></li>
+<li><code>offset₀</code>: prior offset; <code>T[]</code> is allowed</li>
+<li><code>wrkresid</code>: vector of working residuals</li>
+<li><code>wrkwt</code>: vector of working weights</li>
+<li><code>wt</code>: vector of prior case weights, a value of <code>T[]</code> indicates equal weights.</li>
+</ul>
+<p><a id='MixedModels.LinearMixedModel' href='#MixedModels.LinearMixedModel'>#</a>
+<strong><code>MixedModels.LinearMixedModel</code></strong> &mdash; <em>Type</em>.</p>
+<div class="codehilite"><pre><span></span>LinearMixedModel
+</pre></div>
+
+
+<p>Linear mixed-effects model representation</p>
+<p><strong>Members</strong></p>
+<ul>
+<li><code>formula</code>: the formula for the model</li>
+<li><code>mf</code>: the model frame, mostly used to get the <code>terms</code> component for labelling fixed effects</li>
+<li><code>wttrms</code>: a length <code>nt</code> vector of weighted model matrices. The last two elements are <code>X</code> and <code>y</code>.</li>
+<li><code>trms</code>: a vector of unweighted model matrices.  If <code>isempty(sqrtwts)</code> the same object as <code>wttrms</code></li>
+<li><code>Λ</code>: a length <code>nt - 2</code> vector of lower triangular matrices</li>
+<li><code>sqrtwts</code>: the <code>Diagonal</code> matrix of the square roots of the case weights.  Allowed to be size 0</li>
+<li><code>A</code>: an <code>nt × nt</code> symmetric matrix of matrices representing <code>hcat(Z,X,y)'hcat(Z,X,y)</code></li>
+<li><code>R</code>: a <code>nt × nt</code> matrix of matrices - the upper Cholesky factor of <code>Λ'AΛ+I</code></li>
+<li><code>opt</code>: an <a href="./#MixedModels.OptSummary"><code>OptSummary</code></a> object</li>
+</ul>
+<p><a id='MixedModels.OptSummary' href='#MixedModels.OptSummary'>#</a>
+<strong><code>MixedModels.OptSummary</code></strong> &mdash; <em>Type</em>.</p>
+<div class="codehilite"><pre><span></span>OptSummary
+</pre></div>
+
+
+<p>Summary of an <code>NLopt</code> optimization</p>
+<p><strong>Members</strong></p>
+<ul>
+<li><code>initial</code>: a copy of the initial parameter values in the optimization</li>
+<li><code>final</code>: a copy of the final parameter values from the optimization</li>
+<li><code>fmin</code>: the final value of the objective</li>
+<li><code>feval</code>: the number of function evaluations</li>
+<li><code>optimizer</code>: the name of the optimizer used, as a <code>Symbol</code></li>
+</ul>
+<p><a id='MixedModels.ReMat' href='#MixedModels.ReMat'>#</a>
+<strong><code>MixedModels.ReMat</code></strong> &mdash; <em>Type</em>.</p>
+<div class="codehilite"><pre><span></span>ReMat
+</pre></div>
+
+
+<p>A representation of the model matrix for a random-effects term</p>
+<p><a id='MixedModels.ScalarReMat' href='#MixedModels.ScalarReMat'>#</a>
+<strong><code>MixedModels.ScalarReMat</code></strong> &mdash; <em>Type</em>.</p>
+<div class="codehilite"><pre><span></span>ScalarReMat
+</pre></div>
+
+
+<p>The representation of the model matrix for a scalar random-effects term</p>
+<p><strong>Members</strong></p>
+<ul>
+<li><code>f</code>: the grouping factor as a <code>PooledDataVector</code></li>
+<li><code>z</code>: the raw random-effects model matrix as a <code>Vector</code></li>
+<li><code>fnm</code>: the name of the grouping factor as a <code>Symbol</code></li>
+<li><code>cnms</code>: a <code>Vector</code> of column names</li>
+</ul>
+<p><a id='MixedModels.VarCorr' href='#MixedModels.VarCorr'>#</a>
+<strong><code>MixedModels.VarCorr</code></strong> &mdash; <em>Type</em>.</p>
+<div class="codehilite"><pre><span></span>VarCorr
+</pre></div>
+
+
+<p>An encapsulation of information on the fitted random-effects variance-covariance matrices.</p>
+<p><strong>Members</strong></p>
+<ul>
+<li><code>Λ</code>: the vector of lower triangular matrices from the <code>MixedModel</code></li>
+<li><code>fnms</code>: a <code>Vector{ASCIIString}</code> of grouping factor names</li>
+<li><code>cnms</code>: a <code>Vector{Vector{ASCIIString}}</code> of column names</li>
+<li><code>s</code>: the estimate of σ, the standard deviation of the per-observation noise</li>
+</ul>
+<p>The main purpose of defining this type is to isolate the logic in the show method.</p>
+<p><a id='MixedModels.VectorReMat' href='#MixedModels.VectorReMat'>#</a>
+<strong><code>MixedModels.VectorReMat</code></strong> &mdash; <em>Type</em>.</p>
+<div class="codehilite"><pre><span></span>VectorReMat
+</pre></div>
+
+
+<p>The representation of the model matrix for a vector-valued random-effects term</p>
+<p><strong>Members</strong></p>
+<ul>
+<li><code>f</code>: the grouping factor as a <code>PooledDataVector</code></li>
+<li><code>z</code>: the transposed raw random-effects model matrix</li>
+<li><code>fnm</code>: the name of the grouping factor as a <code>Symbol</code></li>
+<li><code>cnms</code>: a <code>Vector</code> of column names (row names after transposition) of <code>z</code></li>
+</ul>
+<p><a id='Base.LinAlg.cond-Tuple{MixedModels.MixedModel}' href='#Base.LinAlg.cond-Tuple{MixedModels.MixedModel}'>#</a>
+<strong><code>Base.LinAlg.cond</code></strong> &mdash; <em>Method</em>.</p>
+<div class="codehilite"><pre><span></span>cond(m::MixedModel)
+</pre></div>
+
+
+<p>Returns the vector of the condition numbers of the blocks of <code>m.Λ</code></p>
+<p><a id='Base.std-Tuple{MixedModels.MixedModel}' href='#Base.std-Tuple{MixedModels.MixedModel}'>#</a>
+<strong><code>Base.std</code></strong> &mdash; <em>Method</em>.</p>
+<div class="codehilite"><pre><span></span>std{T}(m::MixedModel{T})
+</pre></div>
+
+
+<p>The estimated standard deviations of the variance components as a <code>Vector{Vector{T}}</code>.</p>
+<p><a id='MixedModels.LaplaceDeviance-Tuple{MixedModels.GeneralizedLinearMixedModel{T,D<:Distributions.Distribution{Distributions.Univariate,S<:Distributions.ValueSupport},L<:GLM.Link}}' href='#MixedModels.LaplaceDeviance-Tuple{MixedModels.GeneralizedLinearMixedModel{T,D<:Distributions.Distribution{Distributions.Univariate,S<:Distributions.ValueSupport},L<:GLM.Link}}'>#</a>
+<strong><code>MixedModels.LaplaceDeviance</code></strong> &mdash; <em>Method</em>.</p>
+<div class="codehilite"><pre><span></span>LaplaceDeviance{T,D}(m::GeneralizedLinearMixedModel{T,D})
+</pre></div>
+
+
+<p>Return the Laplace approximation to the deviance of <code>m</code>.</p>
+<p>If the distribution <code>D</code> does not have a scale parameter the Laplace approximation is defined as the squared length of the conditional modes, <code>u</code>, plus the determinant of <code>Λ'Z'ZΛ + 1</code>, plus the sum of the squared deviance residuals.</p>
+<p><a id='MixedModels.bootstrap!-Tuple{Array{T,2},MixedModels.LinearMixedModel{T},Function}' href='#MixedModels.bootstrap!-Tuple{Array{T,2},MixedModels.LinearMixedModel{T},Function}'>#</a>
+<strong><code>MixedModels.bootstrap!</code></strong> &mdash; <em>Method</em>.</p>
+<div class="codehilite"><pre><span></span><span class="nt">bootstrap</span><span class="o">!</span><span class="p">{</span><span class="n">T</span><span class="p">}</span><span class="o">(</span><span class="nt">r</span><span class="o">:</span><span class="nd">:Matrix</span><span class="p">{</span><span class="n">T</span><span class="p">}</span><span class="o">,</span> <span class="nt">m</span><span class="o">:</span><span class="nd">:LinearMixedModel</span><span class="p">{</span><span class="n">T</span><span class="p">}</span><span class="o">,</span> <span class="nt">f</span><span class="o">!:</span><span class="nd">:Function</span><span class="o">;</span>
+    <span class="err">β</span><span class="o">=</span><span class="nt">fixef</span><span class="o">(</span><span class="nt">m</span><span class="o">),</span> <span class="err">σ</span><span class="o">=</span><span class="nt">sdest</span><span class="o">(</span><span class="nt">m</span><span class="o">),</span> <span class="err">θ</span><span class="o">=</span><span class="nt">get</span><span class="err">θ</span><span class="o">(</span><span class="nt">m</span><span class="o">))</span>
+</pre></div>
+
+
+<p>Overwrite columns of <code>r</code> with the results of applying the mutating extractor <code>f!</code> to parametric bootstrap replications of model <code>m</code>.</p>
+<p>The signature of <code>f!</code> should be     f!{T}(v::AbstractVector{T}, m::LinearMixedModel{T})</p>
+<p><strong>Named Arguments</strong></p>
+<p><code>β::Vector{T}</code>, <code>σ::T</code>, and <code>θ::Vector{T}</code> are the values of the parameters in <code>m</code> for simulation of the responses.</p>
+<p><a id='MixedModels.cfactor!-Tuple{AbstractArray{T,2}}' href='#MixedModels.cfactor!-Tuple{AbstractArray{T,2}}'>#</a>
+<strong><code>MixedModels.cfactor!</code></strong> &mdash; <em>Method</em>.</p>
+<div class="codehilite"><pre><span></span>cfactor!(A::AbstractMatrix)
+</pre></div>
+
+
+<p>A slightly modified version of <code>chol!</code> from <code>Base</code></p>
+<p>Uses <code>inject!</code> (as opposed to <code>copy!</code>), <code>downdate!</code> (as opposed to <code>syrk!</code> or <code>gemm!</code>) and recursive calls to <code>cfactor!</code>.</p>
+<p>Note: The <code>cfactor!</code> method for dense matrices calls <code>LAPACK.potrf!</code> directly to avoid errors being thrown when <code>A</code> is computationally singular</p>
+<p><a id='MixedModels.fixef-Tuple{MixedModels.LinearMixedModel{T}}' href='#MixedModels.fixef-Tuple{MixedModels.LinearMixedModel{T}}'>#</a>
+<strong><code>MixedModels.fixef</code></strong> &mdash; <em>Method</em>.</p>
+<div class="codehilite"><pre><span></span>fixef(m::MixedModel)
+</pre></div>
+
+
+<p>Returns the fixed-effects parameter vector estimate.</p>
+<p><a id='MixedModels.getθ-Tuple{LowerTriangular{T,Array{T,2}}}' href='#MixedModels.getθ-Tuple{LowerTriangular{T,Array{T,2}}}'>#</a>
+<strong><code>MixedModels.getθ</code></strong> &mdash; <em>Method</em>.</p>
+<div class="codehilite"><pre><span></span>getθ(A::LowerTriangular{T, Matrix{T}})
+</pre></div>
+
+
+<p>Return a vector of the elements of the lower triangle of <code>A</code> (column-major ordering)</p>
+<p><a id='MixedModels.glmm-Tuple{DataFrames.Formula,DataFrames.AbstractDataFrame,Distributions.Distribution{F<:Distributions.VariateForm,S<:Distributions.ValueSupport},GLM.Link}' href='#MixedModels.glmm-Tuple{DataFrames.Formula,DataFrames.AbstractDataFrame,Distributions.Distribution{F<:Distributions.VariateForm,S<:Distributions.ValueSupport},GLM.Link}'>#</a>
+<strong><code>MixedModels.glmm</code></strong> &mdash; <em>Method</em>.</p>
+<div class="codehilite"><pre><span></span>glmm(f::Formula, fr::ModelFrame, d::Distribution[, l::GLM.Link])
+</pre></div>
+
+
+<p>Return a <code>GeneralizedLinearMixedModel</code> object.</p>
+<p>The value is ready to be <code>fit!</code> but has not yet been fit.</p>
+<p><a id='MixedModels.lmm-Tuple{DataFrames.Formula,DataFrames.AbstractDataFrame}' href='#MixedModels.lmm-Tuple{DataFrames.Formula,DataFrames.AbstractDataFrame}'>#</a>
+<strong><code>MixedModels.lmm</code></strong> &mdash; <em>Method</em>.</p>
+<div class="codehilite"><pre><span></span><span class="nt">lmm</span><span class="o">(</span><span class="nt">f</span><span class="o">:</span><span class="nd">:DataFrames</span><span class="nc">.Formula</span><span class="o">,</span> <span class="nt">fr</span><span class="o">:</span><span class="nd">:DataFrames</span><span class="nc">.DataFrame</span><span class="o">;</span> <span class="nt">weights</span> <span class="o">=</span> <span class="cp">[]</span><span class="o">)</span>
+</pre></div>
+
+
+<p>Create a <a href="./#MixedModels.LinearMixedModel"><code>LinearMixedModel</code></a> from <code>f</code>, which contains both fixed-effects terms and random effects, and <code>fr</code>.</p>
+<p>The return value is ready to be <code>fit!</code> but has not yet been fit.</p>
+<p><a id='MixedModels.lmm-Tuple{MixedModels.LinearMixedModel{T<:AbstractFloat}}' href='#MixedModels.lmm-Tuple{MixedModels.LinearMixedModel{T<:AbstractFloat}}'>#</a>
+<strong><code>MixedModels.lmm</code></strong> &mdash; <em>Method</em>.</p>
+<div class="codehilite"><pre><span></span>lmm(m::MixedModel)
+</pre></div>
+
+
+<p>Extract the <code>LinearMixedModel</code> from a <code>MixedModel</code>.</p>
+<p>If <code>m</code> is a <code>LinearMixedModel</code> return <code>m</code>. If <code>m</code> is a <code>GeneralizedLinearMixedModel</code> return <code>m.LMM</code>.</p>
+<p><a id='MixedModels.lowerbd-Tuple{LowerTriangular{T,Array{T,2}}}' href='#MixedModels.lowerbd-Tuple{LowerTriangular{T,Array{T,2}}}'>#</a>
+<strong><code>MixedModels.lowerbd</code></strong> &mdash; <em>Method</em>.</p>
+<div class="codehilite"><pre><span></span>lowerbd{T}(A::LowerTriangular{T,Matrix{T}})
+</pre></div>
+
+
+<p>Return the vector of lower bounds on the parameters, <code>θ</code>.</p>
+<p>These are the elements in the lower triangle in column-major ordering. Diagonals have a lower bound of <code>0</code>.  Off-diagonals have a lower-bound of <code>-Inf</code>.</p>
+<p><a id='MixedModels.lowerbd-Tuple{MixedModels.LinearMixedModel{T<:AbstractFloat}}' href='#MixedModels.lowerbd-Tuple{MixedModels.LinearMixedModel{T<:AbstractFloat}}'>#</a>
+<strong><code>MixedModels.lowerbd</code></strong> &mdash; <em>Method</em>.</p>
+<div class="codehilite"><pre><span></span>lowerbd(m::LinearMixedModel)
+</pre></div>
+
+
+<p>Return the vector of lower bounds on the covariance parameter vector <code>θ</code></p>
+<p><a id='MixedModels.objective-Tuple{MixedModels.LinearMixedModel{T<:AbstractFloat}}' href='#MixedModels.objective-Tuple{MixedModels.LinearMixedModel{T<:AbstractFloat}}'>#</a>
+<strong><code>MixedModels.objective</code></strong> &mdash; <em>Method</em>.</p>
+<div class="codehilite"><pre><span></span>objective(m::LinearMixedModel)
+</pre></div>
+
+
+<p>Return negative twice the log-likelihood of model <code>m</code></p>
+<p><a id='MixedModels.pirls!-Tuple{MixedModels.GeneralizedLinearMixedModel{T,D<:Distributions.Distribution{Distributions.Univariate,S<:Distributions.ValueSupport},L<:GLM.Link}}' href='#MixedModels.pirls!-Tuple{MixedModels.GeneralizedLinearMixedModel{T,D<:Distributions.Distribution{Distributions.Univariate,S<:Distributions.ValueSupport},L<:GLM.Link}}'>#</a>
+<strong><code>MixedModels.pirls!</code></strong> &mdash; <em>Method</em>.</p>
+<div class="codehilite"><pre><span></span>pirls!(m::GeneralizedLinearMixedModel)
+</pre></div>
+
+
+<p>Use Penalized Iteratively Reweighted Least Squares (PIRLS) to determine the conditional modes of the random effects.</p>
+<p><a id='MixedModels.pwrss-Tuple{MixedModels.LinearMixedModel{T<:AbstractFloat}}' href='#MixedModels.pwrss-Tuple{MixedModels.LinearMixedModel{T<:AbstractFloat}}'>#</a>
+<strong><code>MixedModels.pwrss</code></strong> &mdash; <em>Method</em>.</p>
+<div class="codehilite"><pre><span></span>pwrss(m::LinearMixedModel)
+</pre></div>
+
+
+<p>The penalized residual sum-of-squares.</p>
+<p><a id='MixedModels.ranef' href='#MixedModels.ranef'>#</a>
+<strong><code>MixedModels.ranef</code></strong> &mdash; <em>Function</em>.</p>
+<div class="codehilite"><pre><span></span>ranef{T}(m::MixedModel{T}, uscale=false)
+</pre></div>
+
+
+<p>Returns, as a <code>Vector{Matrix{T}}</code>, the conditional modes of the random effects in model <code>m</code>.</p>
+<p>If <code>uscale</code> is <code>true</code> the random effects are on the spherical (i.e. <code>u</code>) scale, otherwise on the original scale.</p>
+<p><a id='MixedModels.refit!-Tuple{MixedModels.LinearMixedModel{T<:AbstractFloat}}' href='#MixedModels.refit!-Tuple{MixedModels.LinearMixedModel{T<:AbstractFloat}}'>#</a>
+<strong><code>MixedModels.refit!</code></strong> &mdash; <em>Method</em>.</p>
+<div class="codehilite"><pre><span></span>refit!{T}(m::LinearMixedModel{T}[, y::Vector{T}])
+</pre></div>
+
+
+<p>Refit the model <code>m</code> after installing response <code>y</code>.</p>
+<p>If <code>y</code> is omitted the current response vector is used.</p>
+<p><a id='MixedModels.remat-Tuple{Expr,DataFrames.DataFrame}' href='#MixedModels.remat-Tuple{Expr,DataFrames.DataFrame}'>#</a>
+<strong><code>MixedModels.remat</code></strong> &mdash; <em>Method</em>.</p>
+<div class="codehilite"><pre><span></span> remat(e::Expr, df::DataFrames.DataFrame)
+</pre></div>
+
+
+<p>A factory for <code>ReMat</code> objects.</p>
+<p><code>e</code> should be of the form <code>:(e1 | e2)</code> where <code>e1</code> is a valid rhs of a <code>Formula</code> and <code>pool(e2)</code> can be evaluated within <code>df</code>.  The result is a <a href="./#MixedModels.ScalarReMat"><code>ScalarReMat</code></a> or a <a href="./#MixedModels.VectorReMat"><code>VectorReMat</code></a>, as appropriate.</p>
+<p><a id='MixedModels.sdest-Tuple{MixedModels.LinearMixedModel{T}}' href='#MixedModels.sdest-Tuple{MixedModels.LinearMixedModel{T}}'>#</a>
+<strong><code>MixedModels.sdest</code></strong> &mdash; <em>Method</em>.</p>
+<div class="codehilite"><pre><span></span>sdest(m::LinearMixedModel)
+</pre></div>
+
+
+<p>Return the estimate of σ, the standard deviation of the per-observation noise.</p>
+<p><a id='MixedModels.setθ!-Tuple{MixedModels.LinearMixedModel{T},Array{T,1}}' href='#MixedModels.setθ!-Tuple{MixedModels.LinearMixedModel{T},Array{T,1}}'>#</a>
+<strong><code>MixedModels.setθ!</code></strong> &mdash; <em>Method</em>.</p>
+<div class="codehilite"><pre><span></span>setθ!{T}(m::LinearMixedModel{T}, v::Vector{T})
+</pre></div>
+
+
+<p>Install <code>v</code> as the θ parameters in <code>m</code>.  Changes <code>m.Λ</code> only.</p>
+<p><a id='MixedModels.simulate!-Tuple{MixedModels.LinearMixedModel{T}}' href='#MixedModels.simulate!-Tuple{MixedModels.LinearMixedModel{T}}'>#</a>
+<strong><code>MixedModels.simulate!</code></strong> &mdash; <em>Method</em>.</p>
+<div class="codehilite"><pre><span></span><span class="nt">simulate</span><span class="o">!(</span><span class="nt">m</span><span class="o">:</span><span class="nd">:LinearMixedModel</span><span class="o">;</span> <span class="err">β</span><span class="o">=</span><span class="nt">fixef</span><span class="o">(</span><span class="nt">m</span><span class="o">),</span> <span class="err">σ</span><span class="o">=</span><span class="nt">sdest</span><span class="o">(</span><span class="nt">m</span><span class="o">),</span> <span class="err">θ</span><span class="o">=</span><span class="nt">get</span><span class="err">Θ</span><span class="o">(</span><span class="nt">m</span><span class="o">))</span>
+</pre></div>
+
+
+<p>Overwrite the response (i.e. <code>m.trms[end]</code>) with a simulated response vector from model <code>m</code>.</p>
+<p><a id='MixedModels.varest-Tuple{MixedModels.LinearMixedModel{T}}' href='#MixedModels.varest-Tuple{MixedModels.LinearMixedModel{T}}'>#</a>
+<strong><code>MixedModels.varest</code></strong> &mdash; <em>Method</em>.</p>
+<div class="codehilite"><pre><span></span>varest(m::LinearMixedModel)
+</pre></div>
+
+
+<p>Returns the estimate of σ², the variance of the conditional distribution of Y given B.</p>
+<p><a id='StatsBase.fit!' href='#StatsBase.fit!'>#</a>
+<strong><code>StatsBase.fit!</code></strong> &mdash; <em>Function</em>.</p>
+<div class="codehilite"><pre><span></span>fit!(m::LinearMixedModel[, verbose::Bool=false[, optimizer::Symbol=:LN_BOBYQA]])
+</pre></div>
+
+
+<p>Optimize the objective of a <code>LinearMixedModel</code>.</p>
+<p>A value for <code>optimizer</code> should be the name of an <code>NLopt</code> derivative-free optimizer allowing for box constraints.</p>
+<p><a id='StatsBase.fit!' href='#StatsBase.fit!'>#</a>
+<strong><code>StatsBase.fit!</code></strong> &mdash; <em>Function</em>.</p>
+<div class="codehilite"><pre><span></span>fit!(m::GeneralizedLinearMixedModel[, verbose = false, optimizer=:LN_BOBYQA]])
+</pre></div>
+
+
+<p>Optimize the objective function for <code>m</code></p>
+<p><a id='StatsBase.vcov-Tuple{MixedModels.MixedModel}' href='#StatsBase.vcov-Tuple{MixedModels.MixedModel}'>#</a>
+<strong><code>StatsBase.vcov</code></strong> &mdash; <em>Method</em>.</p>
+<div class="codehilite"><pre><span></span> vcov(m::MixedModel)
+</pre></div>
+
+
+<p>Returns the estimated covariance matrix of the fixed-effects estimator.</p>
+          <aside class="copyright" role="note">
+            
+            Documentation built with
+            <a href="http://www.mkdocs.org" target="_blank">MkDocs</a>
+            using the
+            <a href="http://squidfunk.github.io/mkdocs-material/" target="_blank">
+              Material
+            </a>
+            theme.
+          </aside>
+          
+            <footer class="footer">
+              
+  <nav class="pagination" aria-label="Footer">
+    <div class="previous">
+      
+        <a href="../../man/bootstrap/" title="Bootstrap">
+          <span class="direction">
+            Previous
+          </span>
+          <div class="page">
+            <div class="button button-previous" role="button" aria-label="Previous">
+              <i class="icon icon-back"></i>
+            </div>
+            <div class="stretch">
+              <div class="title">
+                Bootstrap
+              </div>
+            </div>
+          </div>
+        </a>
+      
+    </div>
+    <div class="next">
+      
+    </div>
+  </nav>
+
+            </footer>
+          
+        </div>
+      </article>
+      <div class="results" role="status" aria-live="polite">
+        <div class="scrollable">
+          <div class="wrapper">
+            <div class="meta"></div>
+            <div class="list"></div>
+          </div>
+        </div>
+      </div>
+    </main>
+    <script>
+      var base_url = '../..';
+      var repo_id  = 'dmbates/MixedModels.jl';
+    </script>
+    <script src="../../assets/javascripts/application-997097ee0c.js"></script>
+    
+      <script src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS_HTML"></script>
+    
+      <script src="../../assets/mathjaxhelper.js"></script>
+    
+    
+  </body>
+</html>

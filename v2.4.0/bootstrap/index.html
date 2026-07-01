@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Parametric bootstrap for linear mixed-effects models · MixedModels</title><link href="https://cdnjs.cloudflare.com/ajax/libs/normalize/4.2.0/normalize.min.css" rel="stylesheet" type="text/css"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.2.0/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link href="../assets/documenter.css" rel="stylesheet" type="text/css"/></head><body><nav class="toc"><a href="../index.html"><img class="logo" src="../assets/logo.png" alt="MixedModels logo"/></a><h1>MixedModels</h1><select id="version-selector" onChange="window.location.href=this.value" style="visibility: hidden"></select><form class="search" id="search-form" action="../search/"><input id="search-query" name="q" type="text" placeholder="Search docs"/></form><ul><li><a class="toctext" href="../">MixedModels.jl Documentation</a></li><li><a class="toctext" href="../constructors/">Model constructors</a></li><li><a class="toctext" href="../optimization/">Details of the parameter estimation</a></li><li><a class="toctext" href="../GaussHermite/">Normalized Gauss-Hermite Quadrature</a></li><li class="current"><a class="toctext" href>Parametric bootstrap for linear mixed-effects models</a><ul class="internal"><li><a class="toctext" href="#The-parametric-bootstrap-1">The parametric bootstrap</a></li></ul></li></ul></nav><article id="docs"><header><nav><ul><li><a href>Parametric bootstrap for linear mixed-effects models</a></li></ul><a class="edit-page" href="https://github.com/JuliaStats/MixedModels.jl/blob/master/docs/src/bootstrap.md"><span class="fa"></span> Edit on GitHub</a></nav><hr/><div id="topbar"><span>Parametric bootstrap for linear mixed-effects models</span><a class="fa fa-bars" href="#"></a></div></header><h1><a class="nav-anchor" id="Parametric-bootstrap-for-linear-mixed-effects-models-1" href="#Parametric-bootstrap-for-linear-mixed-effects-models-1">Parametric bootstrap for linear mixed-effects models</a></h1><p>Julia is well-suited to implementing bootstrapping and other simulation-based methods for statistical models. The <code>parametricbootstrap</code> function in the <a href="https://github.com/JuliaStats/MixedModels.jl">MixedModels package</a> provides an efficient parametric bootstrap for linear mixed-effects models.</p><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="MixedModels.parametricbootstrap" href="#MixedModels.parametricbootstrap"><code>MixedModels.parametricbootstrap</code></a> — <span class="docstring-category">Function</span>.</div><div><div><pre><code class="language-none">parametricbootstrap(rng::AbstractRNG, nsamp::Integer, m::LinearMixedModel,
+    props=(:objective, :σ, :β, :θ); β = m.β, σ = m.σ, θ = m.θ)
+parametricbootstrap(nsamp::Integer, m::LinearMixedModel,
+    props=(:objective, :σ, :β, :θ); β = m.β, σ = m.σ, θ = m.θ)</code></pre><p>Perform <code>nsamp</code> parametric bootstrap replication fits of <code>m</code>, returning a <code>Tables.ColumnTable</code> of parameter estimates of the refit model.</p><p>The default random number generator is <code>Random.GLOBAL_RNG</code>.</p><p><strong>Named Arguments</strong></p><p><code>β</code>, <code>σ</code>, and <code>θ</code> are the values of <code>m</code>&#39;s parameters for simulating the responses.</p></div></div><a class="source-link" target="_blank" href="https://github.com/JuliaStats/MixedModels.jl/blob/72b45b94dbad221107768cd144914eda349ebde6/src/simulate.jl#L35-L49">source</a></section><h2><a class="nav-anchor" id="The-parametric-bootstrap-1" href="#The-parametric-bootstrap-1">The parametric bootstrap</a></h2><p><a href="https://en.wikipedia.org/wiki/Bootstrapping_(statistics)">Bootstrapping</a> is a family of procedures for generating sample values of a statistic, allowing for visualization of the distribution of the statistic or for inference from this sample of values.</p><p>A <em>parametric bootstrap</em> is used with a parametric model, <code>m</code>, that has been fit to data. The procedure is to simulate <code>n</code> response vectors from <code>m</code> using the estimated parameter values and refit <code>m</code> to these responses in turn, accumulating the statistics of interest at each iteration.</p><p>The parameters of a <code>LinearMixedModel</code> object are the fixed-effects parameters, <code>β</code>, the standard deviation, <code>σ</code>, of the per-observation noise, and the covariance parameter, <code>θ</code>, that defines the variance-covariance matrices of the random effects.</p><p>For example, a simple linear mixed-effects model for the <code>Dyestuff</code> data in the <a href="http://github.com/lme4/lme4"><code>lme4</code></a> package for <a href="https://www.r-project.org"><code>R</code></a> is fit by</p><pre><code class="language-julia">julia&gt; using DataFrames, Gadfly, MixedModels, Random, RData
+
+julia&gt; datf = joinpath(dirname(pathof(MixedModels)), &quot;..&quot;, &quot;test&quot;, &quot;dat.rda&quot;);
+
+julia&gt; const dat = Dict(Symbol(k)=&gt;v for (k,v) in load(datf));
+</code></pre><pre><code class="language-julia">julia&gt; ds = names!(dat[:Dyestuff], [:Batch, :Yield])  # the Dyestuff data
+30×2 DataFrame
+│ Row │ Batch │ Yield   │
+│     │ Cat…  │ Float64 │
+├─────┼───────┼─────────┤
+│ 1   │ A     │ 1545.0  │
+│ 2   │ A     │ 1440.0  │
+│ 3   │ A     │ 1440.0  │
+│ 4   │ A     │ 1520.0  │
+│ 5   │ A     │ 1580.0  │
+│ 6   │ B     │ 1540.0  │
+│ 7   │ B     │ 1555.0  │
+⋮
+│ 23  │ E     │ 1515.0  │
+│ 24  │ E     │ 1635.0  │
+│ 25  │ E     │ 1625.0  │
+│ 26  │ F     │ 1520.0  │
+│ 27  │ F     │ 1455.0  │
+│ 28  │ F     │ 1450.0  │
+│ 29  │ F     │ 1480.0  │
+│ 30  │ F     │ 1445.0  │
+
+julia&gt; m1 = fit(MixedModel, @formula(Yield ~ 1 + (1 | Batch)), ds)
+Linear mixed model fit by maximum likelihood
+ Yield ~ 1 + (1 | Batch)
+   logLik   -2 logLik     AIC        BIC    
+ -163.66353  327.32706  333.32706  337.53065
+
+Variance components:
+            Column    Variance  Std.Dev. 
+Batch    (Intercept)  1388.3333 37.260345
+Residual              2451.2500 49.510100
+ Number of obs: 30; levels of grouping factors: 6
+
+  Fixed-effects parameters:
+────────────────────────────────────────────────
+              Coef.  Std. Error      z  Pr(&gt;|z|)
+────────────────────────────────────────────────
+(Intercept)  1527.5     17.6946  86.33    &lt;1e-99
+────────────────────────────────────────────────
+</code></pre><p>To bootstrap the model parameters, first initialize a random number generator</p><pre><code class="language-julia">julia&gt; const rng = MersenneTwister(1234321);
+</code></pre><p>then create a bootstrap sample</p><pre><code class="language-julia">julia&gt; samp = parametricbootstrap(rng, 10_000, m1);
+
+julia&gt; propertynames(samp)
+7-element Array{Symbol,1}:
+ :model
+ :objective
+ :σ
+ :θ
+ :σs
+ :σρs
+ Symbol(&quot;(Intercept)&quot;)
+</code></pre><p>As shown above, the sample has several named properties, which allow for convenient extraction of information.  For example, a density plot of the estimates of <code>σ</code>, the residual standard deviation, can be created as</p><pre><code class="language-julia">
+plot(x=samp.σ, Geom.density, Guide.xlabel(&quot;Parametric bootstrap estimates of σ&quot;))</code></pre><p><img src="../assets/bootstrap_sigmadensity_1.svg" alt/></p><p>For the estimates of the intercept parameter, the <code>getproperty</code> extractor must be used</p><pre><code class="language-julia">
+plot(x = getproperty(samp, Symbol(&quot;(Intercept)&quot;)), Geom.density,
+    Guide.xlabel(&quot;Parametric bootstrap estimates of β₁&quot;))</code></pre><p><img src="../assets/bootstrap_betadensity_1.svg" alt/></p><p>The <code>σs</code> property contains the estimates of the standard deviation of the random effects in a hierarchical format.</p><pre><code class="language-julia">julia&gt; typeof(samp.σs)
+NamedTuple{(:Batch,),Tuple{Array{NamedTuple{(Symbol(&quot;(Intercept)&quot;),),Tuple{Float64}},1}}}
+</code></pre><p>This is to allow for random effects associated with more than one grouping factor. If we only have one grouping factor for random effects, which is the case here, we can use the <code>first</code> extractor, as in</p><pre><code class="language-julia">julia&gt; first(samp.σs)
+10000-element Array{NamedTuple{(Symbol(&quot;(Intercept)&quot;),),Tuple{Float64}},1}:
+ ((Intercept) = 14.31202440021031,)
+ ((Intercept) = 25.567322049075496,)
+ ((Intercept) = 21.76223553106598,)
+ ((Intercept) = 41.05589492574884,)
+ ((Intercept) = 19.18021885057642,)
+ ((Intercept) = 49.18319132233348,)
+ ((Intercept) = 46.711965099114124,)
+ ((Intercept) = 37.636680075523266,)
+ ((Intercept) = 40.82509046832459,)
+ ((Intercept) = 8.275638758695251,)
+ ⋮
+ ((Intercept) = 21.75681030928231,)
+ ((Intercept) = 32.16617998901714,)
+ ((Intercept) = 46.34118317967067,)
+ ((Intercept) = 59.3250404735361,)
+ ((Intercept) = 60.54370463189782,)
+ ((Intercept) = 27.77174340651976,)
+ ((Intercept) = 63.795148460946265,)
+ ((Intercept) = 26.086623847896156,)
+ ((Intercept) = 32.12567984789807,)
+</code></pre><p>or, to carry this one step further,</p><pre><code class="language-julia">
+plot(x=first.(first(samp.σs)), Geom.density,
+    Guide.xlabel(&quot;Parametric bootstrap estimates of σ₁&quot;))</code></pre><p><img src="../assets/bootstrap_sigma1density_1.svg" alt/></p><p>Notice that this density plot has a spike, or mode, at zero. Although this mode appears to be diffuse, this is an artifact of the way that density plots are created. In fact, it is a pulse, as can be seen from a histogram.</p><pre><code class="language-julia">
+plot(x=first.(first(samp.σs)), Geom.histogram,
+    Guide.xlabel(&quot;Parametric bootstrap estimates of σ₁&quot;))</code></pre><p><img src="../assets/bootstrap_sigma1histogram_1.svg" alt/></p><p>A value of zero for the standard deviation of the random effects is an example of a <em>singular</em> covariance. It is easy to detect the singularity in the case of a scalar random-effects term. However, it is not as straightforward to detect singularity in vector-valued random-effects terms.</p><p>For example, if we bootstrap a model fit to the <code>sleepstudy</code> data</p><pre><code class="language-julia">julia&gt; m2 = fit(MixedModel, @formula(Y ~ 1+U+(1+U|G)), dat[:sleepstudy])
+Linear mixed model fit by maximum likelihood
+ Y ~ 1 + U + (1 + U | G)
+   logLik   -2 logLik     AIC        BIC    
+ -875.96967 1751.93934 1763.93934 1783.09709
+
+Variance components:
+            Column    Variance   Std.Dev.    Corr.
+G        (Intercept)  565.510678 23.7804684
+         U             32.682124  5.7168282  0.08
+Residual              654.941447 25.5918238
+ Number of obs: 180; levels of grouping factors: 18
+
+  Fixed-effects parameters:
+──────────────────────────────────────────────────
+                Coef.  Std. Error      z  Pr(&gt;|z|)
+──────────────────────────────────────────────────
+(Intercept)  251.405      6.63226  37.91    &lt;1e-99
+U             10.4673     1.50224   6.97    &lt;1e-11
+──────────────────────────────────────────────────
+</code></pre><pre><code class="language-julia">julia&gt; samp2 = parametricbootstrap(rng, 10_000, m2);
+</code></pre><p>the singularity can be exhibited as a standard deviation of zero or as a correlation of <span>$\pm1$</span>. The <code>σρs</code> property of the sample is a vector of named tuples</p><pre><code class="language-julia">julia&gt; σρ = first(samp2.σρs);
+
+julia&gt; typeof(σρ)
+Array{NamedTuple{(:σ, :ρ),Tuple{NamedTuple{(Symbol(&quot;(Intercept)&quot;), :U),Tuple{Float64,Float64}},Tuple{Float64}}},1}
+</code></pre><p>where the first element of the tuple is itself a tuple of standard deviations and the second (also the last) element of the tuple is the correlation.</p><p>A histogram of the estimated correlations from the bootstrap sample has a spike at <code>+1</code>.</p><pre><code class="language-julia">
+ρs = first.(last.(σρ))
+plot(x = ρs, Geom.histogram,
+    Guide.xlabel(&quot;Parametric bootstrap samples of correlation of random effects&quot;))</code></pre><p><img src="../assets/bootstrap_rhohistogram_1.svg" alt/></p><p>or, as a count,</p><pre><code class="language-julia">julia&gt; sum(ρs .≈ 1)
+299
+</code></pre><p>Close examination of the histogram shows a few values of <code>-1</code>.</p><pre><code class="language-julia">julia&gt; sum(ρs .≈ -1)
+5
+</code></pre><p>Furthermore there are even a few cases where the estimate of the standard deviation of the random effect for the intercept is zero.</p><pre><code class="language-julia">julia&gt; sum(first.(first.(first.(σρ))) .≈ 0)
+6
+</code></pre><p>There is a general condition to check for singularity of an estimated covariance matrix or matrices in a bootstrap sample. The parameter optimized in the estimation is <code>θ</code>, the relative covariance parameter. Some of the elements of this parameter vector must be non-negative and, when one of these components is approximately zero, one of the covariance matrices will be singular.</p><p>The boundary values are available as</p><pre><code class="language-julia">julia&gt; samp2.model.optsum.lowerbd
+3-element Array{Float64,1}:
+   0.0
+ -Inf
+   0.0
+</code></pre><p>so the check on singularity becomes</p><pre><code class="language-julia">julia&gt; sum(θ -&gt; any(θ .≈ samp2.model.optsum.lowerbd), samp2.θ)
+310
+</code></pre><p>The <code>issingular</code> method for a <code>LinearMixedModel</code> object that tests if a parameter vector <code>θ</code> corresponds to a boundary or singular fit. The default value of <code>θ</code> is that from the model but another value can be given as the second argument.</p><p>Using this function the number of singular fits in the bootstrap sample can be counted as</p><pre><code class="language-julia">julia&gt; sum(issingular.(Ref(samp2.m), samp2.θ))
+310
+</code></pre><footer><hr/><a class="previous" href="../GaussHermite/"><span class="direction">Previous</span><span class="title">Normalized Gauss-Hermite Quadrature</span></a></footer></article></body></html>

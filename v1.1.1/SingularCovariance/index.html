@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Singular covariance estimates in random regression models · MixedModels</title><link href="https://cdnjs.cloudflare.com/ajax/libs/normalize/4.2.0/normalize.min.css" rel="stylesheet" type="text/css"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.2.0/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link href="../assets/documenter.css" rel="stylesheet" type="text/css"/></head><body><nav class="toc"><a href="../index.html"><img class="logo" src="../assets/logo.png" alt="MixedModels logo"/></a><h1>MixedModels</h1><select id="version-selector" onChange="window.location.href=this.value" style="visibility: hidden"></select><form class="search" id="search-form" action="../search/"><input id="search-query" name="q" type="text" placeholder="Search docs"/></form><ul><li><a class="toctext" href="../">MixedModels.jl Documentation</a></li><li><a class="toctext" href="../constructors/">Model constructors</a></li><li><a class="toctext" href="../optimization/">Details of the parameter estimation</a></li><li><a class="toctext" href="../GaussHermite/">Normalized Gauss-Hermite Quadrature</a></li><li><a class="toctext" href="../bootstrap/">Parametric bootstrap for linear mixed-effects models</a></li><li><a class="toctext" href="../SimpleLMM/">A Simple, Linear, Mixed-effects Model</a></li><li><a class="toctext" href="../MultipleTerms/">Models With Multiple Random-effects Terms</a></li><li class="current"><a class="toctext" href>Singular covariance estimates in random regression models</a><ul class="internal"><li><a class="toctext" href="#Fitting-a-linear-mixed-model-to-the-sleepstudy-data-1">Fitting a linear mixed-model to the sleepstudy data</a></li><li><a class="toctext" href="#The-bootstrap-function-1">The bootstrap function</a></li><li><a class="toctext" href="#The-Oxboys-data-1">The Oxboys data</a></li><li><a class="toctext" href="#The-Orthodont-data-1">The Orthodont data</a></li><li><a class="toctext" href="#Early-childhood-cognitive-study-1">Early childhood cognitive study</a></li></ul></li><li><a class="toctext" href="../SubjectItem/">-</a></li><li><a class="toctext" href="../benchmarks/">Benchmark Report for <em>/home/bates/.julia/packages/MixedModels/dn0WY/src/MixedModels.jl</em></a></li></ul></nav><article id="docs"><header><nav><ul><li><a href>Singular covariance estimates in random regression models</a></li></ul><a class="edit-page" href="https://github.com/dmbates/MixedModels.jl/blob/master/docs/src/SingularCovariance.md"><span class="fa"></span> Edit on GitHub</a></nav><hr/><div id="topbar"><span>Singular covariance estimates in random regression models</span><a class="fa fa-bars" href="#"></a></div></header><h1><a class="nav-anchor" id="Singular-covariance-estimates-in-random-regression-models-1" href="#Singular-covariance-estimates-in-random-regression-models-1">Singular covariance estimates in random regression models</a></h1><p>This notebook explores the occurrence of singularity in the estimated covariance matrix of random regression models. These are mixed-effects models with vector-valued random effects.</p><p>First, fit a model to the <code>sleepstudy</code> data from <a href="https://github.com/lme4/lme4"><code>lme4</code></a>.</p><h2><a class="nav-anchor" id="Fitting-a-linear-mixed-model-to-the-sleepstudy-data-1" href="#Fitting-a-linear-mixed-model-to-the-sleepstudy-data-1">Fitting a linear mixed-model to the sleepstudy data</a></h2><p>Load the required packages</p><pre><code class="language-julia">julia&gt; using DataFrames, FreqTables, LinearAlgebra, MixedModels, Random, RData
+
+julia&gt; using Gadfly
+
+julia&gt; using Gadfly.Geom: density, histogram, point
+
+julia&gt; using Gadfly.Guide: xlabel, ylabel
+
+julia&gt; const dat = Dict(Symbol(k)=&gt;v for (k,v) in 
+    load(joinpath(dirname(pathof(MixedModels)), &quot;..&quot;, &quot;test&quot;, &quot;dat.rda&quot;)));
+</code></pre><p>However, the <code>LinearMixedModel</code> constructor only creates a model structure but does not fit it. An explicit call to <code>fit!</code> is required to fit the model. As is customary (though not required) in Julia, a function whose name ends in <code>!</code> is a <em>mutating function</em> that modifies one or more of its arguments.</p><p>An optional second argument of <code>true</code> in the call to <code>fit!</code> produces verbose output from the optimization.</p><pre><code class="language-julia">julia&gt; sleepm = fit!(LinearMixedModel(@formula(Y ~ 1 + U + (1+U|G)), dat[:sleepstudy]), true)
+f_1: 1784.6423 [1.0, 0.0, 1.0]
+f_2: 1790.12564 [1.75, 0.0, 1.0]
+f_3: 1798.99962 [1.0, 1.0, 1.0]
+f_4: 1803.8532 [1.0, 0.0, 1.75]
+f_5: 1800.61398 [0.25, 0.0, 1.0]
+f_6: 1798.60463 [1.0, -1.0, 1.0]
+f_7: 1752.26074 [1.0, 0.0, 0.25]
+f_8: 1797.58769 [1.18326, -0.00866189, 0.0]
+f_9: 1754.95411 [1.075, 0.0, 0.325]
+f_10: 1753.69568 [0.816632, 0.0111673, 0.288238]
+f_11: 1754.817 [1.0, -0.0707107, 0.196967]
+f_12: 1753.10673 [0.943683, 0.0638354, 0.262696]
+f_13: 1752.93938 [0.980142, -0.0266568, 0.274743]
+f_14: 1752.25688 [0.984343, -0.0132347, 0.247191]
+f_15: 1752.05745 [0.97314, 0.00253785, 0.23791]
+f_16: 1752.02239 [0.954526, 0.00386421, 0.235892]
+f_17: 1752.02273 [0.935929, 0.0013318, 0.234445]
+f_18: 1751.97169 [0.954965, 0.00790664, 0.229046]
+f_19: 1751.9526 [0.953313, 0.0166274, 0.225768]
+f_20: 1751.94852 [0.946929, 0.0130761, 0.222871]
+f_21: 1751.98718 [0.933418, 0.00613767, 0.218951]
+f_22: 1751.98321 [0.951544, 0.005789, 0.220618]
+f_23: 1751.95197 [0.952809, 0.0190332, 0.224178]
+f_24: 1751.94628 [0.946322, 0.0153739, 0.225088]
+f_25: 1751.9467 [0.947124, 0.0148894, 0.224892]
+f_26: 1751.94757 [0.946497, 0.0154643, 0.225814]
+f_27: 1751.94531 [0.946086, 0.0157934, 0.224449]
+f_28: 1751.94418 [0.945304, 0.0166902, 0.223361]
+f_29: 1751.94353 [0.944072, 0.0172106, 0.222716]
+f_30: 1751.94244 [0.941271, 0.0163099, 0.222523]
+f_31: 1751.94217 [0.939, 0.015899, 0.222132]
+f_32: 1751.94237 [0.938979, 0.016548, 0.221562]
+f_33: 1751.94228 [0.938863, 0.0152466, 0.222683]
+f_34: 1751.9422 [0.938269, 0.015733, 0.222024]
+f_35: 1751.94131 [0.938839, 0.0166373, 0.222611]
+f_36: 1751.94093 [0.938397, 0.0173965, 0.222817]
+f_37: 1751.94057 [0.937006, 0.0180445, 0.222534]
+f_38: 1751.94018 [0.934109, 0.0187354, 0.22195]
+f_39: 1751.94008 [0.932642, 0.0189242, 0.221726]
+f_40: 1751.94027 [0.931357, 0.0190082, 0.221309]
+f_41: 1751.9415 [0.932821, 0.0206454, 0.221367]
+f_42: 1751.93949 [0.931867, 0.0179574, 0.222564]
+f_43: 1751.93939 [0.929167, 0.0177824, 0.222534]
+f_44: 1751.9394 [0.929659, 0.0177721, 0.222508]
+f_45: 1751.93943 [0.929193, 0.0187806, 0.22257]
+f_46: 1751.93935 [0.928986, 0.0182366, 0.222484]
+f_47: 1751.93949 [0.928697, 0.0182937, 0.223175]
+f_48: 1751.93936 [0.928243, 0.0182695, 0.222584]
+f_49: 1751.93934 [0.929113, 0.0181791, 0.222624]
+f_50: 1751.93934 [0.929191, 0.0181658, 0.222643]
+f_51: 1751.93935 [0.929254, 0.0182093, 0.222621]
+f_52: 1751.93935 [0.929189, 0.0181298, 0.222573]
+f_53: 1751.93934 [0.929254, 0.0181676, 0.22265]
+f_54: 1751.93934 [0.929215, 0.0181717, 0.222647]
+f_55: 1751.93934 [0.929208, 0.0181715, 0.222646]
+f_56: 1751.93934 [0.929209, 0.018173, 0.222652]
+f_57: 1751.93934 [0.929221, 0.0181684, 0.222645]
+Linear mixed model fit by maximum likelihood
+ Formula: Y ~ 1 + U + ((1 + U) | G)
+   logLik   -2 logLik     AIC        BIC    
+ -875.96967 1751.93934 1763.93934 1783.09709
+
+Variance components:
+              Column    Variance  Std.Dev.   Corr.
+ G        (Intercept)  565.51067 23.780468
+          U             32.68212  5.716828  0.08
+ Residual              654.94145 25.591824
+ Number of obs: 180; levels of grouping factors: 18
+
+  Fixed-effects parameters:
+             Estimate Std.Error z value P(&gt;|z|)
+(Intercept)   251.405   6.63226 37.9064  &lt;1e-99
+U             10.4673   1.50224 6.96781  &lt;1e-11
+
+</code></pre><p>The variables in the optimization are the elements of a lower triangular matrix, <span>$\Lambda$</span>, which is the relative covariance factor of the random effects. The corresponding parameter vector is called <span>$\theta$</span>.</p><pre><code class="language-julia">julia&gt; Λ = sleepm.λ[1]
+2×2 LowerTriangular{Float64,Array{Float64,2}}:
+ 0.929221    ⋅      
+ 0.0181684  0.222645
+</code></pre><p>The matrix <span>$\Lambda$</span> is the left (or lower) Cholesky factor of the covariance matrix of the unconditional distribution of the vector-valued random effects, relative to the variance, <span>$\sigma^2$</span>, of the per-observation noise. That is \begin{equation}     \Sigma = \sigma^2\Lambda\Lambda&#39; \end{equation}</p><p>In terms of the estimates,</p><pre><code class="language-julia">julia&gt; s² = varest(sleepm)    # estimate of the residual variance
+654.941450830681
+</code></pre><pre><code class="language-julia">julia&gt; s² * Λ * Λ&#39;   # unconditional covariance matrix of the random effects
+2×2 Array{Float64,2}:
+ 565.511  11.057 
+  11.057  32.6821
+</code></pre><p>The estimated correlation of the random effects can, of course, be evaluated from the covariance matrix. Writing out the expressions for the elements of the covariance matrix in terms of the elements of Λ shows that many terms cancel in the evaluation of the correlation, resulting in the simpler formula.</p><pre><code class="language-julia">julia&gt; Λ[2, 1] / sqrt(Λ[2, 1]^2 + Λ[2, 2]^2)
+0.08133214602351191
+</code></pre><p>For a <span>$2\times 2$</span> covariance matrix it is not terribly important to perform this calculation in an efficient and numerically stable way. However, it is a good idea to pay attention to stability and efficiency in a calculation that can be repeated tens of thousands of times in a simulation or a parametric bootstrap. The <code>norm</code> function evaluates the (geometric) length of a vector in a way that controls round-off better than the naive calculation. The <code>view</code> function provides access to a subarray, such as the second row of <span>$\Lambda$</span>, without generating a copy. Thus the estimated correlation can be written</p><pre><code class="language-julia">julia&gt; Λ[2, 1] / norm(view(Λ, 2, :))
+0.08133214602351191
+</code></pre><h3><a class="nav-anchor" id="Optimization-with-respect-to-θ-1" href="#Optimization-with-respect-to-θ-1">Optimization with respect to θ</a></h3><p>As described in section 3 of the 2015 <em>Journal of Statistical Software</em> <a href="https://www.jstatsoft.org/index.php/jss/article/view/v067i01/v67i01.pdf">paper</a> by Bates, Maechler, Bolker and Walker, using the relative covariance factor, <span>$\Lambda$</span>, in the formulation of mixed-effects models in the <a href="https://github.com/lme4/lme4"><code>lme4</code></a> and <a href="https://github.com/dmbates/MixedModels"><code>MixedModels</code></a> packages and using the vector <span>$\theta$</span> as the optimization variable was a conscious choice. Indeed, a great deal of effort went into creating this form so that the profiled log-likelihood can be easily evaluated and so that the constraints on the parameters, <span>$\theta$</span>, are simple &quot;box&quot; constraints. In fact, the constraints are simple lower bounds.</p><pre><code class="language-julia">julia&gt; show(sleepm.lowerbd)
+[0.0, -Inf, 0.0]</code></pre><p>In contrast, trying to optimize the log-likelihood with respect to standard deviations and correlations of the random effects would be quite difficult because the constraints on the correlations when the covariance matrix is larger than <span>$2\times 2$</span> are quite complicated. Also, the correlation itself can be unstable. Consider what happens to the expression for the correlation if both <span>$\Lambda_{2,1}$</span> and <span>$\Lambda_{2,2}$</span> are small in magnitude. Small perturbations in <span>$\Lambda_{2,1}$</span> that result in sign changes can move the correlation from near <span>$-1$</span> to near <span>$+1$</span> or vice-versa.</p><p>Some details on the optimization process are available in an <code>OptSummary</code> object stored as the <code>optsum</code> field of the model.</p><pre><code class="language-julia">julia&gt; sleepm.optsum
+Initial parameter vector: [1.0, 0.0, 1.0]
+Initial objective value:  1784.6422961924507
+
+Optimizer (from NLopt):   LN_BOBYQA
+Lower bounds:             [0.0, -Inf, 0.0]
+ftol_rel:                 1.0e-12
+ftol_abs:                 1.0e-8
+xtol_rel:                 0.0
+xtol_abs:                 [1.0e-10, 1.0e-10, 1.0e-10]
+initial_step:             [0.75, 1.0, 0.75]
+maxfeval:                 -1
+
+Function evaluations:     57
+Final parameter vector:   [0.929221, 0.0181684, 0.222645]
+Final objective value:    1751.9393444646757
+Return code:              FTOL_REACHED
+
+</code></pre><h3><a class="nav-anchor" id="Convergence-on-the-boundary-1" href="#Convergence-on-the-boundary-1">Convergence on the boundary</a></h3><p>Determining if an estimated covariance matrix is singular is easy when using the <span>$\theta$</span>  parameters because singularity corresponds to points on the boundary of the allowable parameter space. In other words, if the optimization converges to a vector in which either or both of <span>$\theta_1$</span> or <span>$\theta_3$</span> are zero, the covariance matrix is singular. Otherwise it is non-singular.</p><p>The <span>$\theta_1$</span> parameter is the estimated relative standard deviation of the random intercepts. If this is zero then the correlation is undefined and reported as <code>NaN</code>. If <span>$\theta_3$</span> is zero and <span>$\theta_2$</span> is non-zero then the estimated correlation is <span>$\pm 1$</span> with the sign determined by the sign of <span>$\theta_2$</span>. If both <span>$\theta_2$</span> and <span>$\theta_3$</span> are zero the correlation is <code>NaN</code> because the standard deviation of the random slopes will be zero.</p><p>Singular covariance matrices larger than <span>$2\times 2$</span> do not necessarily result in particular values, like ±1, for the correlations.</p><p>Users of <code>lmer</code> or <code>lmm</code> are sometimes taken aback by convergence on the boundary if this produces correlations of <code>NaN</code> or <span>$\pm 1$</span>. Some feel that this is a sign of model failure. Others consider such estimates as a sign that Bayesian methods with priors that pull singular covariance matrices away from the boundary should be used.</p><p>This type of value judgement seems peculiar. An important property of maximum likelihood estimates is that these estimates are well-defined once the probability model for the data has been specified. It may be difficult to determine numerical values of the estimates but the definition itself is straightforward. If there is a direct method of evaluating the log-likelihood at a particular value of the parameters, then, by definition, the mle&#39;s are the parameter values that maximize this log-likelihood. Bates et al. (2015) provide such a method of evaluating the log-likelihood for a linear mixed-effects model. Indeed they go further and describe how the fixed-effects parameters and one of the variance components can be profiled out of the log-likelihood evaluation, thereby reducing the dimension of the nonlinear, constrained optimization problem to be solved.</p><p>If the mle&#39;s correspond to a singular covariance matrix, this is a property of the model and the data. It is not a mistake in some way. It is just the way things are. It reflects the fact that often the distribution of the estimator of a covariance matrix is diffuse. It is difficult to estimate variances and covariances precisely. A search for papers or books on &quot;covariance estimation&quot; will produce many results, often describing ways of regularizing the estimating process because the data themselves do not provide precise estimates.</p><p>For the example at hand a parametric bootstrap is one way of evaluating the precision of the estimates.</p><h2><a class="nav-anchor" id="The-bootstrap-function-1" href="#The-bootstrap-function-1">The bootstrap function</a></h2><p>The <code>MixedModels</code> package provides a <code>bootstrap</code> method to create a parametric bootstrap sample from a fitted model.</p><p>For reproducibility, set the random number seed to some arbitrary value.</p><pre><code class="language-julia">julia&gt; Random.seed!(1234321);
+</code></pre><p>Arguments to the <code>bootstrap</code> function are the number of samples to generate and the model from which to generate them. By default the converged parameter estimates are those used to generate the samples. Addition, named arguments can be used to override these parameter values, allowing <code>bootstrap</code> to be used for simulation.</p><p><code>bootstrap</code> returns a <code>DataFrame</code> with columns:</p><ul><li><code>obj</code>: the objective (-2 loglikelihood)</li><li><code>σ</code>: the standard deviation of the per-observation noise</li><li><code>β₁</code> to <code>βₚ</code>: the fixed-effects coefficients</li><li><code>θ₁</code> to <code>θₖ</code>: the covariance parameter elements</li><li><code>σ₁</code> to <code>σₛ</code>: the estimates standard deviations of random effects.</li><li><code>ρ₁</code> to <code>ρₜ</code>: the estimated correlations of random effects</li></ul><p>The <code>ρᵢ</code> and <code>σᵢ</code> values are derived from the <code>θᵢ</code> and <code>σ</code> values.</p><pre><code class="language-julia">julia&gt; sleepmbstrp = bootstrap(10000, sleepm);
+
+julia&gt; show(names(sleepmbstrp))
+Symbol[:obj, :σ, :β₁, :β₂, :θ₁, :θ₂, :θ₃, :σ₁, :σ₂, :ρ₁]</code></pre><p>Recall that the constrained parameters are <span>$\theta_1$</span> and <span>$\theta_3$</span> which both must be non-negative. If either or both of these are zero (in practice the property to check is if they are &quot;very small&quot;, which here is arbitrarily defined as less than 0.00001) then the covariance matrix is singular.</p><pre><code class="language-julia">julia&gt; issmall(x) = x &lt; 0.00001   # defines a one-liner function in Julia
+issmall (generic function with 1 method)
+</code></pre><pre><code class="language-julia">julia&gt; freqtable(issmall.(sleepmbstrp[:θ₁]), issmall.(sleepmbstrp[:θ₃]))
+2×2 Named Array{Int64,2}
+Dim1 ╲ Dim2 │ false   true
+────────────┼─────────────
+false       │  9684    309
+true        │     7      0
+</code></pre><p>Here the covariance matrix estimate is non-singular in 9,686 of the 10,000 samples, has an zero estimated intercept variance in 6 samples and is otherwise singular (i.e. correlation estimate of <span>$\pm 1$</span>) in 308 samples.</p><p>Empirical densities of the θ components are:</p><p><img src="../assets/SingularCovariance_14_1.svg" alt/></p><p><img src="../assets/SingularCovariance_15_1.svg" alt/></p><p>A density plot is typically a good way to visualize such a large sample. However, when there is a spike such as the spike at zero here, a histogram provides a more informative plot.</p><p><img src="../assets/SingularCovariance_16_1.svg" alt/></p><p><img src="../assets/SingularCovariance_17_1.svg" alt/></p><h3><a class="nav-anchor" id="Reciprocal-condition-number-1" href="#Reciprocal-condition-number-1">Reciprocal condition number</a></h3><p>The definitve way to assess singularity of the estimated covariance matrix is by its <em>condition number</em> or, alternatively, its <em>reciprocal condition number</em>. In general the condition number, <span>$\kappa$</span>, of a matrix is the ratio of the largest singular value to the smallest. For singular matrices it is <span>$\infty$</span>, which is why it is often more convenient to evaluate and plot <span>$\kappa^{-1}$</span>. Because <span>$\kappa$</span> is a ratio of singular values it is unaffected by nonzero scale factors. Thus \begin{equation} \kappa^{-1}(s^2\Lambda\Lambda&#39;) = \kappa^{-1}(\Lambda\Lambda&#39;) = [\kappa^{-1}(\Lambda)]^2 \end{equation}</p><pre><code class="language-julia">function recipcond(bstrp::DataFrame)
+    T = eltype(bstrp[:θ₁])
+    val = sizehint!(T[], size(bstrp, 1))
+    d = Matrix{T}(undef, 2, 2)
+    for (t1, t2, t3) in zip(bstrp[:θ₁], bstrp[:θ₂], bstrp[:θ₃])
+        d[1, 1] = t1
+        d[1, 2] = t2
+        d[2, 2] = t3
+        v = svdvals!(d)
+        push!(val, v[2] / v[1])
+    end
+    val
+end
+rc = recipcond(sleepmbstrp)</code></pre><p><img src="../assets/SingularCovariance_19_1.svg" alt/></p><div>\[\kappa^{-1}\]</div><p>is small if either or both of <span>$\theta_1$</span> or <span>$\theta_3$</span> is small.</p><pre><code class="language-julia">julia&gt; sum(issmall, rc)
+316
+</code></pre><p>The density of the estimated correlation</p><p><img src="../assets/SingularCovariance_21_1.svg" alt/></p><pre><code class="language-julia">julia&gt; sum(isfinite, sleepmbstrp[:ρ₁])  # recall that ρ = NaN in 7 cases
+9993
+</code></pre><pre><code class="language-julia">julia&gt; sum(x -&gt; x == -1, sleepmbstrp[:ρ₁])  # number of cases of rho == -1
+1
+</code></pre><pre><code class="language-julia">julia&gt; sum(x -&gt; x == +1, sleepmbstrp[:ρ₁])  # number of cases of rho == +1
+308
+</code></pre><p>In this case the bootstrap simulations that resulted in <span>$\rho = -1$</span> were not close to being indeterminant with respect to sign. That is, the values of <span>$\theta_2$</span> were definitely negative.</p><pre><code class="language-julia">julia&gt; sleepmbstrp[:θ₂][findall(x -&gt; x == -1, sleepmbstrp[:ρ₁])]
+1-element Array{Float64,1}:
+ -0.2544952267491184
+</code></pre><h2><a class="nav-anchor" id="The-Oxboys-data-1" href="#The-Oxboys-data-1">The Oxboys data</a></h2><p>In the <code>nlme</code> package for R there are several data sets to which random regression models are fit. The <code>RCall</code> package for Julia provides the ability to run an embedded R process and communicate with it. The simplest form of writing R code within Julia is to use character strings prepended with <code>R</code>. In Julia strings are delimited by <code>&quot;</code> or by <code>&quot;&quot;&quot;</code>. With <code>&quot;&quot;&quot;</code> multi-line strings are allowed.</p><pre><code class="language-julia">julia&gt; using RCall
+
+julia&gt; R&quot;&quot;&quot;
+library(nlme)
+plot(Oxboys)
+&quot;&quot;&quot;
+RCall.RObject{RCall.VecSxp}
+
+</code></pre><pre><code class="language-julia">julia&gt; oxboys = rcopy(R&quot;Oxboys&quot;);
+
+julia&gt; show(names(oxboys))
+Symbol[:Subject, :age, :height, :Occasion]</code></pre><pre><code class="language-julia">julia&gt; oxboysm = fit(LinearMixedModel, @formula(height ~ 1 + age + (1+age | Subject)), oxboys)
+Linear mixed model fit by maximum likelihood
+ Formula: height ~ 1 + age + ((1 + age) | Subject)
+   logLik   -2 logLik     AIC        BIC    
+ -362.98384  725.96769  737.96769  758.69962
+
+Variance components:
+              Column    Variance   Std.Dev.   Corr.
+ Subject  (Intercept)  62.7908550 7.9240681
+          age           2.7117290 1.6467328  0.64
+ Residual               0.4354519 0.6598878
+ Number of obs: 234; levels of grouping factors: 26
+
+  Fixed-effects parameters:
+             Estimate Std.Error z value P(&gt;|z|)
+(Intercept)   149.372   1.55464 96.0814  &lt;1e-99
+age           6.52547  0.329771 19.7879  &lt;1e-86
+
+</code></pre><pre><code class="language-julia">julia&gt; show(getθ(oxboysm))
+[12.0082, 1.60163, 1.91368]</code></pre><p>As seen in the plot and by the estimate <span>$\widehat{\theta_1} = 12.0$</span>, the estimated standard deviation of the random intercepts is much greater than the residual standard deviation. It is unlikely that bootstrap samples will include singular covariance estimates.</p><pre><code class="language-julia">julia&gt; Random.seed!(4321234);
+
+julia&gt; oxboysmbtstrp = bootstrap(10000, oxboysm);
+</code></pre><p>In this bootstrap sample, there are no singular estimated covariance matrices for the random effects.</p><pre><code class="language-julia">julia&gt; freqtable(issmall.(oxboysmbtstrp[:θ₁]), issmall.(oxboysmbtstrp[:θ₃]))
+1×1 Named Array{Int64,2}
+Dim1 ╲ Dim2 │ false
+────────────┼──────
+false       │ 10000
+</code></pre><p>The empirical density of the correlation estimates shows that even in this case the correlation is not precisely estimated.</p><p><img src="../assets/SingularCovariance_32_1.svg" alt/></p><pre><code class="language-julia">julia&gt; extrema(oxboysmbtstrp[:ρ₁])
+(-0.04873653774573543, 0.9352883543004398)
+</code></pre><p>The reciprocal condition number</p><pre><code class="language-julia">julia&gt; rc = recipcond(oxboysmbtstrp);
+
+julia&gt; extrema(rc)
+(0.06152561361812922, 0.3686773336861937)
+</code></pre><p>does not get very close to zero.</p><p><img src="../assets/SingularCovariance_35_1.svg" alt/></p><h2><a class="nav-anchor" id="The-Orthodont-data-1" href="#The-Orthodont-data-1">The Orthodont data</a></h2><pre><code class="language-julia">julia&gt; R&quot;plot(Orthodont)&quot;
+RCall.RObject{RCall.VecSxp}
+
+</code></pre><p>The subject labels distinguish between the male and the female subjects.  Consider first the female subjects only.</p><pre><code class="language-julia">julia&gt; orthfemale = rcopy(R&quot;subset(Orthodont, Sex == &#39;Female&#39;, -Sex)&quot;);
+
+julia&gt; orthfm = fit!(LinearMixedModel(@formula(distance ~ 1 + age + (1 + age | Subject)), orthfemale))
+Linear mixed model fit by maximum likelihood
+ Formula: distance ~ 1 + age + ((1 + age) | Subject)
+   logLik   -2 logLik     AIC        BIC    
+  -67.25463  134.50927  146.50927  157.21441
+
+Variance components:
+              Column    Variance   Std.Dev.    Corr.
+ Subject  (Intercept)  2.97138401 1.72377029
+          age          0.02151328 0.14667406 -0.30
+ Residual              0.44659786 0.66827978
+ Number of obs: 44; levels of grouping factors: 27
+
+  Fixed-effects parameters:
+             Estimate Std.Error z value P(&gt;|z|)
+(Intercept)   17.3727  0.725193  23.956  &lt;1e-99
+age          0.479545 0.0631327 7.59583  &lt;1e-13
+
+</code></pre><pre><code class="language-julia">julia&gt; srand(1234123)
+Error: UndefVarError: srand not defined
+
+julia&gt; orthfmbtstrp = bootstrap(10000, orthfm);
+</code></pre><pre><code class="language-julia">julia&gt; freqtable(issmall.(orthfmbtstrp[:θ₁]), issmall.(orthfmbtstrp[:θ₃]))
+2×2 Named Array{Int64,2}
+Dim1 ╲ Dim2 │ false   true
+────────────┼─────────────
+false       │  6910   3064
+true        │    26      0
+</code></pre><p>For this model almost 1/3 of the bootstrap samples converge to singular covariance estimates for the vector-valued random effects. A histogram of the estimated correlations of the random effects is dominated by the boundary values.</p><p><img src="../assets/SingularCovariance_40_1.svg" alt/></p><p>Even though the estimated correlation in the model is -0.30, more of the boundary values are at +1 than at -1. This may be an artifact of the optimization routine used. In some cases there may be multiple optima on the boundary. It is difficult to determine the global optimum in these cases.</p><p>A histogram of the reciprocal condition number is also dominated by the boundary values.</p><h2><a class="nav-anchor" id="Early-childhood-cognitive-study-1" href="#Early-childhood-cognitive-study-1">Early childhood cognitive study</a></h2><p>This example from Singer and Willett (2003), <em>Applied Longitudinal Data Analysis</em> was the motivation for reformulating the estimation methods to allow for singular covariance matrices. Cognitive scores (<code>cog</code>) were recorded at <code>age</code> 1, 1.5 and 2 years on 103 infants, of whom 58 were in the treatment group and 45 in the control group.  The treatment began at age 6 months (0.5 years).  The data are available as the <code>Early</code> data set in the <code>mlmRev</code> package for R.  In the model, time on study (<code>tos</code>) is used instead of age because the zero point on the time scale should be when the treatment begins.</p><pre><code class="language-julia">julia&gt; R&quot;&quot;&quot;
+suppressMessages(library(mlmRev))
+library(lattice)
+Early$tos &lt;- Early$age - 0.5
+Early$trttos &lt;- Early$tos * (Early$trt == &quot;Y&quot;)
+xyplot(cog ~ tos | reorder(id, cog, min), Early, 
+    type = c(&quot;p&quot;,&quot;l&quot;,&quot;g&quot;), aspect=&quot;xy&quot;)
+&quot;&quot;&quot;
+RCall.RObject{RCall.VecSxp}
+
+</code></pre><p>Notice that most of these plots within subjects have a negative slope and that the scores at 1 year of age (<code>tos = 0.5</code>) are frequently greater than would be expected on an age-adjusted scale.</p><pre><code class="language-julia">julia&gt; R&quot;print(xtabs(cog ~ age + trt, Early) / xtabs(~ age + trt, Early))&quot;;
+     trt
+age           N         Y
+  1   108.53333 112.93103
+  1.5  95.88889 110.29310
+  2    87.40000  97.06897
+</code></pre><p>When the time origin is the beginning of the treatment there is not generally a &quot;main effect&quot; for the treatment but only an interaction of <code>trt</code> and <code>tos</code>.</p><pre><code class="language-julia">julia&gt; early = rcopy(R&quot;subset(Early, select = c(cog, tos, id, trt, trttos))&quot;);
+
+julia&gt; earlym = fit(LinearMixedModel, @formula(cog ~ 1 + tos + trttos + (1 + tos | id)), early)
+Linear mixed model fit by maximum likelihood
+ Formula: cog ~ 1 + tos + trttos + ((1 + tos) | id)
+   logLik   -2 logLik     AIC        BIC    
+ -1185.6369  2371.2738  2385.2738  2411.4072
+
+Variance components:
+              Column    Variance   Std.Dev.    Corr.
+ id       (Intercept)  165.476453 12.8637651
+          tos           10.744791  3.2779247 -1.00
+ Residual               74.946837  8.6571841
+ Number of obs: 309; levels of grouping factors: 103
+
+  Fixed-effects parameters:
+             Estimate Std.Error  z value P(&gt;|z|)
+(Intercept)   120.783    1.8178  66.4447  &lt;1e-99
+tos           -22.474    1.4878 -15.1055  &lt;1e-50
+trttos        7.65205   1.43609  5.32841   &lt;1e-7
+
+</code></pre><p>The model converges to a singular covariance matrix for the random effects.</p><pre><code class="language-julia">julia&gt; getθ(earlym)
+3-element Array{Float64,1}:
+  1.4859063765534406
+ -0.3786363648039024
+  0.0               
+</code></pre><p>The conditional (on the observed responses) means of the random effects fall along a line.</p><p><img src="../assets/SingularCovariance_46_1.svg" alt/></p><footer><hr/><a class="previous" href="../MultipleTerms/"><span class="direction">Previous</span><span class="title">Models With Multiple Random-effects Terms</span></a><a class="next" href="../SubjectItem/"><span class="direction">Next</span><span class="title">-</span></a></footer></article></body></html>

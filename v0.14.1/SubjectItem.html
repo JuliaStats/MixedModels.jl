@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>- · MixedModels</title><link href="https://cdnjs.cloudflare.com/ajax/libs/normalize/4.2.0/normalize.min.css" rel="stylesheet" type="text/css"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.2.0/require.min.js" data-main="assets/documenter.js"></script><script src="siteinfo.js"></script><script src="../versions.js"></script><link href="assets/documenter.css" rel="stylesheet" type="text/css"/></head><body><nav class="toc"><a href="index.html"><img class="logo" src="assets/logo.png" alt="MixedModels logo"/></a><h1>MixedModels</h1><select id="version-selector" onChange="window.location.href=this.value" style="visibility: hidden"></select><form class="search" id="search-form" action="search.html"><input id="search-query" name="q" type="text" placeholder="Search docs"/></form><ul><li><a class="toctext" href="index.html">MixedModels.jl Documentation</a></li><li><a class="toctext" href="constructors.html">Model constructors</a></li><li><a class="toctext" href="optimization.html">Details of the parameter estimation</a></li><li><a class="toctext" href="bootstrap.html">Parametric bootstrap for linear mixed-effects models</a></li><li><a class="toctext" href="SimpleLMM.html">A Simple, Linear, Mixed-effects Model</a></li><li><a class="toctext" href="MultipleTerms.html">Models With Multiple Random-effects Terms</a></li><li><a class="toctext" href="SingularCovariance.html">Singular covariance estimates in random regression models</a></li><li class="current"><a class="toctext" href="SubjectItem.html">-</a><ul class="internal"></ul></li></ul></nav><article id="docs"><header><nav><ul><li><a href="SubjectItem.html">-</a></li></ul><a class="edit-page" href="https://github.com/dmbates/MixedModels.jl/blob/master/docs/src/SubjectItem.md"><span class="fa"></span> Edit on GitHub</a></nav><hr/><div id="topbar"><span>-</span><a class="fa fa-bars" href="#"></a></div></header><pre><code class="language-julia">julia&gt; using DataFrames, MixedModels, RData
+
+julia&gt; const dat = convert(Dict{Symbol,DataFrame}, load(Pkg.dir(&quot;MixedModels&quot;, &quot;test&quot;, &quot;dat.rda&quot;)));
+</code></pre><pre><code class="language-julia">julia&gt; mm1 = fit!(lmm(@formula(Y ~ 1+S+T+U+V+W+X+Z+(1+S+T+U+V+W+X+Z|G)+(1+S+T+U+V+W+X+Z|H)), dat[:kb07]))
+Linear mixed model fit by maximum likelihood
+ Formula: Y ~ 1 + S + T + U + V + W + X + Z + ((1 + S + T + U + V + W + X + Z) | G) + ((1 + S + T + U + V + W + X + Z) | H)
+     logLik        -2 logLik          AIC             BIC       
+ -1.42931613×10⁴  2.85863226×10⁴  2.87483226×10⁴  2.91930103×10⁴
+
+Variance components:
+              Column     Variance   Std.Dev.    Corr.
+ G        (Intercept)   90791.6237 301.316484
+          S              5187.9402  72.027357 -0.43
+          T              5552.4111  74.514503 -0.47  0.07
+          U              7584.6653  87.089984  0.21 -0.20  0.41
+          V              8841.5313  94.029417  0.20 -0.76 -0.54 -0.20
+          W              1823.9330  42.707529  0.47 -0.53 -0.11 -0.44  0.29
+          X              7422.6234  86.154648 -0.10  0.13 -0.05 -0.86 -0.06  0.70
+          Z              3801.2195  61.654031 -0.48  0.41 -0.38 -0.09  0.18 -0.78 -0.39
+ H        (Intercept)  130031.4034 360.598674
+          S              1853.0405  43.046957 -0.34
+          T             62466.7444 249.933480 -0.68 -0.45
+          U              2941.3214  54.233950  0.20 -0.06 -0.18
+          V              1037.6157  32.212044  0.57 -0.75  0.02  0.02
+          W              1619.1082  40.238144  0.28 -0.04 -0.27  0.44 -0.21
+          X              4706.3361  68.602741  0.08 -0.24  0.21 -0.13 -0.26  0.01
+          Z              4837.5738  69.552669  0.04 -0.45  0.32 -0.69  0.65 -0.68 -0.10
+ Residual              399587.7869 632.129565
+ Number of obs: 1790; levels of grouping factors: 56, 32
+
+  Fixed-effects parameters:
+             Estimate Std.Error  z value P(&gt;|z|)
+(Intercept)   2180.63   76.8637  28.3701  &lt;1e-99
+S            -66.9899   19.3343 -3.46482  0.0005
+T            -333.881   47.6917 -7.00082  &lt;1e-11
+U             78.9861   21.2279  3.72087  0.0002
+V             22.1509   20.3366  1.08922  0.2761
+W            -18.9244   17.5052 -1.08107  0.2797
+X             5.26196   22.4251 0.234646  0.8145
+Z            -23.9501   21.0314 -1.13878  0.2548
+
+</code></pre><pre><code class="language-julia">julia&gt; mm1.optsum
+Initial parameter vector: [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 1.0]
+Initial objective value:  30014.36976860626
+
+Optimizer (from NLopt):   LN_BOBYQA
+Lower bounds:             [0.0, -Inf, -Inf, -Inf, -Inf, -Inf, -Inf, -Inf, 0.0, -Inf, -Inf, -Inf, -Inf, -Inf, -Inf, 0.0, -Inf, -Inf, -Inf, -Inf, -Inf, 0.0, -Inf, -Inf, -Inf, -Inf, 0.0, -Inf, -Inf, -Inf, 0.0, -Inf, -Inf, 0.0, -Inf, 0.0, 0.0, -Inf, -Inf, -Inf, -Inf, -Inf, -Inf, -Inf, 0.0, -Inf, -Inf, -Inf, -Inf, -Inf, -Inf, 0.0, -Inf, -Inf, -Inf, -Inf, -Inf, 0.0, -Inf, -Inf, -Inf, -Inf, 0.0, -Inf, -Inf, -Inf, 0.0, -Inf, -Inf, 0.0, -Inf, 0.0]
+ftol_rel:                 1.0e-12
+ftol_abs:                 1.0e-8
+xtol_rel:                 0.0
+xtol_abs:                 [1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10]
+initial_step:             [0.75, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.75, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.75, 1.0, 1.0, 1.0, 1.0, 1.0, 0.75, 1.0, 1.0, 1.0, 1.0, 0.75, 1.0, 1.0, 1.0, 0.75, 1.0, 1.0, 0.75, 1.0, 0.75, 0.75, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.75, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.75, 1.0, 1.0, 1.0, 1.0, 1.0, 0.75, 1.0, 1.0, 1.0, 1.0, 0.75, 1.0, 1.0, 1.0, 0.75, 1.0, 1.0, 0.75, 1.0, 0.75]
+maxfeval:                 -1
+
+Function evaluations:     2150
+Final parameter vector:   [0.476669, -0.0495603, -0.0559578, 0.0294869, 0.0291771, 0.0319766, -0.0139779, -0.0464195, 0.102601, -0.0172312, -0.0166362, -0.110942, -0.0244482, 0.0126322, 0.0219091, 0.102309, 0.0780709, -0.0945351, 0.00503189, -0.0133206, -0.0649625, 0.108351, 0.00551326, -0.0540187, -0.134323, 0.0515467, 0.0, 0.000989713, 0.00082312, -0.000902588, 0.0, 0.00013651, -0.000244137, 0.0, 6.27183e-9, 0.0, 0.570451, -0.0233509, -0.267494, 0.0174073, 0.0289346, 0.0178525, 0.00842305, 0.00494545, 0.0639696, -0.288241, 0.00128561, -0.0302377, 0.00360149, -0.0252118, -0.050996, 0.0411303, -0.0300041, -0.0137795, -0.0247621, 0.0957016, 0.0127431, 0.07846, -0.0102507, 0.0172816, 0.0193387, -0.0779396, 0.0234571, -0.0529219, -0.0391965, 0.0569404, 0.00277857, -0.00149982, -0.00147603, 0.0, -4.42426e-5, 0.0]
+Final objective value:    28586.322643859592
+Return code:              FTOL_REACHED
+
+</code></pre><pre><code class="language-julia">julia&gt; mm1.trms[1].Λ
+8×8 Array{Float64,2}:
+  0.476669    0.0         0.0          0.0          0.0           0.0          0.0         0.0
+ -0.0495603   0.102601    0.0          0.0          0.0           0.0          0.0         0.0
+ -0.0559578  -0.0172312   0.102309     0.0          0.0           0.0          0.0         0.0
+  0.0294869  -0.0166362   0.0780709    0.108351     0.0           0.0          0.0         0.0
+  0.0291771  -0.110942   -0.0945351    0.00551326   0.0           0.0          0.0         0.0
+  0.0319766  -0.0244482   0.00503189  -0.0540187    0.000989713   0.0          0.0         0.0
+ -0.0139779   0.0126322  -0.0133206   -0.134323     0.00082312    0.00013651   0.0         0.0
+ -0.0464195   0.0219091  -0.0649625    0.0515467   -0.000902588  -0.000244137  6.27183e-9  0.0
+</code></pre><pre><code class="language-julia">julia&gt; mm1.trms[2].Λ
+8×8 Array{Float64,2}:
+  0.570451     0.0          0.0         0.0         0.0         0.0          0.0         0.0
+ -0.0233509    0.0639696    0.0         0.0         0.0         0.0          0.0         0.0
+ -0.267494    -0.288241     0.0411303   0.0         0.0         0.0          0.0         0.0
+  0.0174073    0.00128561  -0.0300041   0.07846     0.0         0.0          0.0         0.0
+  0.0289346   -0.0302377   -0.0137795  -0.0102507   0.0234571   0.0          0.0         0.0
+  0.0178525    0.00360149  -0.0247621   0.0172816  -0.0529219   0.00277857   0.0         0.0
+  0.00842305  -0.0252118    0.0957016   0.0193387  -0.0391965  -0.00149982   0.0         0.0
+  0.00494545  -0.050996     0.0127431  -0.0779396   0.0569404  -0.00147603  -4.42426e-5  0.0
+</code></pre><footer><hr/><a class="previous" href="SingularCovariance.html"><span class="direction">Previous</span><span class="title">Singular covariance estimates in random regression models</span></a></footer></article></body></html>
