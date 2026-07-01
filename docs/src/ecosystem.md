@@ -59,7 +59,7 @@ gm1 = fit(MixedModel,
 
 ## MixedModelsExtras.jl
 
-https://palday.github.io/MixedModelsExtras.jl/v2
+[https://palday.github.io/MixedModelsExtras.jl/v2](https://palday.github.io/MixedModelsExtras.jl/v2)
 
 MixedModelsExtras.jl is a collection of odds-and-ends that may be useful when working with mixed effects models, but which we do not want to include in MixedModels.jl at this time.
 Some functions may one day migrate to MixedModels.jl, when we are happy with their performance and interface (e.g. `vif`), but some are intentionally omitted from MixedModels.jl (e.g. `r2`, `adjr2`).
@@ -102,7 +102,7 @@ DataFrame(; term=termnames(ie1)[2][2:end], GVIF=gvif(ie1))
 
 ## RegressionFormulae.jl
 
-https://github.com/kleinschmidt/RegressionFormulae.jl
+[https://github.com/kleinschmidt/RegressionFormulae.jl](https://github.com/kleinschmidt/RegressionFormulae.jl)
 
 RegressionFormulae.jl provides a few extensions to the somewhat more restricted variant of the Wilkinson-Roger notation found in Julia. In particular, it adds `/` for nested designs within the fixed effects and `^` for computing interactions only up to a certain order.
 
@@ -128,7 +128,7 @@ fit(MixedModel,
 
 ## BoxCox.jl
 
-https://palday.github.io/BoxCox.jl/v0.3/
+[https://palday.github.io/BoxCox.jl/v0.3/](https://palday.github.io/BoxCox.jl/v0.3/)
 
 BoxCox.jl implements a the Box-Cox transformation in an efficient way. Via package extensions, it supports specializations for MixedModels.jl and several plotting functions, but does not incur a dependency penalty for this functionality when MixedModels.jl or Makie.jl are not loaded.
 
@@ -157,7 +157,7 @@ fit(MixedModel, @formula(1000 / reaction ~ 1 + days + (1 + days|subj)), sleepstu
 
 ## Effects.jl
 
-https://beacon-biosignals.github.io/Effects.jl/v1.2/
+[https://beacon-biosignals.github.io/Effects.jl/v1.2/](https://beacon-biosignals.github.io/Effects.jl/v1.2/)
 
 Effects.jl provides a convenient method to compute *effects*, i.e. predictions and associated prediction intervals computed at points on a reference grid. For models with a nonlinear link function, Effects.jl will also compute appropriate errors on the response scale based on the difference method.
 
@@ -175,10 +175,14 @@ design = Dict(:age => -15:1:20,
               :anych => [true, false])
 
 eff_logit = effects(design, gm1; eff_col="use", level=0.95)
+
+first(eff_logit, 10)
 ```
 
 ```@example Ecosystem
 eff_prob = effects(design, gm1; eff_col="use", level=0.95, invlink=AutoInvLink())
+
+first(eff_prob, 10)
 ```
 
 Effects are particularly nice for visualizing the model fit and its predictions.
@@ -232,9 +236,11 @@ empairs(gm1; dof=Inf)
 !!! tip
     Effects.jl will work with any package that supports the StatsAPI.jl-based `RegressionModel` interface.
 
+## Margins.jl
+
 ## StandardizedPredictors.jl
 
-https://beacon-biosignals.github.io/StandardizedPredictors.jl/v1/
+[https://beacon-biosignals.github.io/StandardizedPredictors.jl/v1/](https://beacon-biosignals.github.io/StandardizedPredictors.jl/v1/)
 
 StandardizedPredictors.jl provides a convenient way to express centering, scaling, and z-standardization as a "contrast" via the pseudo-contrasts `Center`, `Scale`, `ZScore`.
 Because these use the usual contrast machinery, they work well with any packages that use that machinery correctly (e.g. Effects.jl). The default behavior is to empirically compute the center and scale, but these can also be explicitly provided, either as a number or as a function (e.g. `median` to use the median for centering.)
@@ -251,15 +257,62 @@ fit(MixedModel,
 !!! tip
     StandardizedPredictors.jl will work with any package that supports the StatsModels.jl-based `@formula` and contrast machinery.
 
-# RCall.jl and JellyMe4.jl
+## MixedModelsSmallSample.jl
 
-https://juliainterop.github.io/RCall.jl/stable/
+[https://arnostrouwen.github.io/MixedModelsSmallSample.jl/stable/](https://arnostrouwen.github.io/MixedModelsSmallSample.jl/stable/)
 
-https://github.com/palday/JellyMe4.jl/
+MixedModelsSmallSample.jl provides the Satterthwaite and Kenward-Roger approximations for denominator degrees of freedom.
+
+!!! tip
+    There is a reason why `MixedModelsSmallSample` has "small sample" in its name:
+
+    1. the underlying computations, especially in the Kenward-Roger case, do not scale well to large samples and may be **very** slow and memory intensive.
+    2. the correction has the biggest impact on small samples -- the ``t`` distribution rapidly converges to the normal distribution as the degrees of freedom gets large.
+
+```@example Ecosystem
+using MixedModelsSmallSample
+
+sw = small_sample_adjust(ss1, Satterthwaite())
+coeftable(ss1)
+DisplayAs.Text(ans) # hide
+```
+
+```@example Ecosystem
+coeftable(sw)
+DisplayAs.Text(ans) # hide
+```
+
+```@example Ecosystem
+# Kenward-Roger degrees of freedom requires REML fit
+
+ss1_reml = refit!(ss1; REML=true)
+kr = small_sample_adjust(ss1_reml, KenwardRoger())
+
+coeftable(ss1_reml)
+DisplayAs.Text(ans) # hide
+```
+
+```@example Ecosystem
+coeftable(kr)
+DisplayAs.Text(ans) # hide
+```
+
+## RCall.jl and JellyMe4.jl
+
+[https://juliainterop.github.io/RCall.jl/stable/](https://juliainterop.github.io/RCall.jl/stable/)
+
+[https://github.com/palday/JellyMe4.jl/](https://github.com/palday/JellyMe4.jl/)
 
 RCall.jl provides a convenient interface for interoperability with R from Julia. JellyMe4.jl extends the functionality of RCall so that MixedModels.jl-fitted models and lme4-fitted models can be translated to each other. In practical terms, this means that you can enjoy the speed of Julia for model fitting, but use all the extra packages you love from R's larger ecosystem.
 
-<!--
-MixedModelsSerializtion.jl
-MixedModelsSim.jl
--->
+## MixedModelsSerialization.jl
+
+[https://juliamixedmodels.github.io/MixedModelsSerialization.jl/stable/api/](https://juliamixedmodels.github.io/MixedModelsSerialization.jl/stable/api/)
+
+MixedModelsSerialization.jl provides a reduced-memory "summary" representation of a fitted model, `LinearMixedModelSummary`, that discards the model matrices and other data-sized fields while retaining the fixed- and random-effects estimates, θ, the log-likelihood, and other quantities needed to support many `StatsAPI` and `MixedModels` methods (e.g. `coef`, `vcov`, `VarCorr`, `coeftable`). This makes it practical to save and later reload models fit to very large datasets without also serializing the original data. The package is a proving ground for these ideas so that its API can evolve and have breaking releases independently of MixedModels.jl.
+
+## MixedModelsSim.jl
+
+[https://repsychling.github.io/MixedModelsSim.jl/stable/](https://repsychling.github.io/MixedModelsSim.jl/stable/)
+
+MixedModelsSim.jl provides utilities for generating experimental designs, especially designs with crossed grouping factors (e.g. "Subject" and "Item") and both within- and between-unit experimental factors. Combined with `simulate`/`parametricbootstrap` from MixedModels.jl, it is commonly used for power analysis: create a design, specify hypothesized effect sizes and variance components, simulate many datasets, and examine the distribution of the resulting test statistics.
