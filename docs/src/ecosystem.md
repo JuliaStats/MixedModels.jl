@@ -175,10 +175,14 @@ design = Dict(:age => -15:1:20,
               :anych => [true, false])
 
 eff_logit = effects(design, gm1; eff_col="use", level=0.95)
+
+first(eff_logit, 10)
 ```
 
 ```@example Ecosystem
 eff_prob = effects(design, gm1; eff_col="use", level=0.95, invlink=AutoInvLink())
+
+first(eff_prob, 10)
 ```
 
 Effects are particularly nice for visualizing the model fit and its predictions.
@@ -232,6 +236,8 @@ empairs(gm1; dof=Inf)
 !!! tip
     Effects.jl will work with any package that supports the StatsAPI.jl-based `RegressionModel` interface.
 
+## Margins.jl
+
 ## StandardizedPredictors.jl
 
 https://beacon-biosignals.github.io/StandardizedPredictors.jl/v1/
@@ -251,7 +257,46 @@ fit(MixedModel,
 !!! tip
     StandardizedPredictors.jl will work with any package that supports the StatsModels.jl-based `@formula` and contrast machinery.
 
-# RCall.jl and JellyMe4.jl
+## MixedModelsSmallSample.jl
+https://github.com/ArnoStrouwen/MixedModelsSmallSample.jl
+
+MixedModelsSmallSample.jl provides the Satterthwaite and Kenward-Roger approximations for denominator degrees of freedom.
+
+!!! tip
+    There is a reason why `MixedModelsSmallSample` has "small sample" in its name:
+
+    1. the underlying computations, especially in the Kenward-Roger case, do not scale well to large samples and may be **very** slow and memory intensive.
+    2. the correction has the biggest impact on small samples -- the ``t`` distribution rapidly converges to the normal distribution as the degrees of freedom gets large.
+
+```@example Ecosystem
+using MixedModelsSmallSample
+
+sw = small_sample_adjust(ss1, Satterthwaite())
+coeftable(ss1)
+DisplayAs.Text(ans) # hide
+```
+
+```@example Ecosystem
+coeftable(sw)
+DisplayAs.Text(ans) # hide
+```
+
+```@example Ecosystem
+# Kenward-Roger degrees of freedom requires REML fit
+
+ss1_reml = refit!(ss1; REML=true)
+kr = small_sample_adjust(ss1_reml, KenwardRoger())
+
+coeftable(ss1_reml)
+DisplayAs.Text(ans) # hide
+```
+
+```@example Ecosystem
+coeftable(kr)
+DisplayAs.Text(ans) # hide
+```
+
+## RCall.jl and JellyMe4.jl
 
 https://juliainterop.github.io/RCall.jl/stable/
 
