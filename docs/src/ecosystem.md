@@ -304,7 +304,14 @@ https://github.com/palday/JellyMe4.jl/
 
 RCall.jl provides a convenient interface for interoperability with R from Julia. JellyMe4.jl extends the functionality of RCall so that MixedModels.jl-fitted models and lme4-fitted models can be translated to each other. In practical terms, this means that you can enjoy the speed of Julia for model fitting, but use all the extra packages you love from R's larger ecosystem.
 
-<!--
-MixedModelsSerializtion.jl
-MixedModelsSim.jl
--->
+## MixedModelsSerialization.jl
+
+https://github.com/JuliaMixedModels/MixedModelsSerialization.jl
+
+MixedModelsSerialization.jl provides a reduced-memory "summary" representation of a fitted model, `LinearMixedModelSummary`, that discards the model matrices and other data-sized fields while retaining the fixed- and random-effects estimates, θ, the log-likelihood, and other quantities needed to support many `StatsAPI` and `MixedModels` methods (e.g. `coef`, `vcov`, `VarCorr`, `coeftable`). This makes it practical to save and later reload models fit to very large datasets without also serializing the original data. The package is a proving ground for these ideas so that its API can evolve and have breaking releases independently of MixedModels.jl.
+
+## MixedModelsSim.jl
+
+https://github.com/RePsychLing/MixedModelsSim.jl
+
+MixedModelsSim.jl provides utilities for generating experimental designs, especially designs with crossed grouping factors (e.g. "Subject" and "Item") and both within- and between-unit experimental factors. Combined with `simulate`/`parametricbootstrap` from MixedModels.jl, it is commonly used for power analysis: create a design, specify hypothesized effect sizes and variance components, simulate many datasets, and examine the distribution of the resulting test statistics.
