@@ -16,6 +16,10 @@ Summary of an optimization
 * `xtol_zero_abs`: the tolerance for a near zero parameter to be considered practically zero
 * `ftol_zero_abs`: the tolerance for change in the objective for setting a near zero parameter to zero
 * `maxfeval`: as in NLopt (`maxeval`) and PRIMA (`maxfun`)
+* `pirls_maxiter`: maximum number of PIRLS iterations for GLMM fits
+* `pirls_ftol_rel`: relative convergence tolerance for the PIRLS inner loop (compares successive deviance values)
+* `pirls_ftol_abs`: absolute convergence tolerance for the PIRLS inner loop (compares successive deviance values)
+* `pirls_maxhalfstep`: maximum number of step-halving iterations within each PIRLS step; exceeding this on iteration 1 is an error, on later iterations the step is accepted without halving
 
 ## Choice of optimizer and backend
 * `optimizer`: the name of the optimizer used, as a `Symbol`
@@ -63,26 +67,30 @@ Similarly, the list of applicable optimization parameters can be inspected with 
 """
 Base.@kwdef mutable struct OptSummary{T<:AbstractFloat}
     initial::Vector{T}
-    finitial::T = Inf * one(eltype(initial))
+    finitial::T = Inf * one(T)
     final::Vector{T} = copy(initial)
-    fmin::T = Inf * one(eltype(initial))
+    fmin::T = Inf * one(T)
     feval::Int = -1
     returnvalue::Symbol = :FAILURE
-    xtol_zero_abs::T = eltype(initial)(0.001)
-    ftol_zero_abs::T = eltype(initial)(1.e-5)
+    xtol_zero_abs::T = T(0.001)
+    ftol_zero_abs::T = T(1.e-5)
     maxfeval::Int = -1
+    pirls_maxiter::Int = 10
+    pirls_ftol_rel::T = T(√eps())
+    pirls_ftol_abs::T = T(0.00001)
+    pirls_maxhalfstep::Int = 10
 
     optimizer::Symbol = :LN_NEWUOA    # switched to :LN_BOBYQA for one-dimensional optimizations
     backend::Symbol = :nlopt
 
     # the @kwdef macro isn't quite smart enough for us to use the type parameter
     # for the default values, but we can fake it
-    ftol_rel::T = eltype(initial)(1.0e-12)
-    ftol_abs::T = eltype(initial)(1.0e-8)
-    xtol_rel::T = zero(eltype(initial))
+    ftol_rel::T = T(1.0e-12)
+    ftol_abs::T = T(1.0e-8)
+    xtol_rel::T = zero(T)
     xtol_abs::Vector{T} = zero(initial) .+ 1e-10
     initial_step::Vector{T} = empty(initial)
-    maxtime::T = -one(eltype(initial))
+    maxtime::T = -one(T)
 
     rhobeg::T = one(T)
     rhoend::T = rhobeg / 1_000_000
@@ -132,23 +140,27 @@ function Tables.columntable(s::OptSummary; stack::Bool=false)
 end
 
 function Base.show(io::IO, ::MIME"text/plain", s::OptSummary)
+    w = length("Initial parameter vector: ")
     println(io, "Initial parameter vector: ", s.initial)
-    println(io, "Initial objective value:  ", s.finitial)
+    println(io, rpad("Initial objective value:", w), s.finitial)
     println(io)
-    println(io, "Backend:                  ", s.backend)
-    println(io, "Optimizer:                ", s.optimizer)
+    println(io, rpad("Backend:", w), s.backend)
+    println(io, rpad("Optimizer:", w), s.optimizer)
 
     for param in opt_params(Val(s.backend))
-        println(io, rpad(string(param, ":"), length("Initial parameter vector: ")),
-            getfield(s, param))
+        println(io, rpad(string(param, ":"), w), getfield(s, param))
     end
     println(io)
-    println(io, "Function evaluations:     ", s.feval)
-    println(io, "xtol_zero_abs:            ", s.xtol_zero_abs)
-    println(io, "ftol_zero_abs:            ", s.ftol_zero_abs)
-    println(io, "Final parameter vector:   ", s.final)
-    println(io, "Final objective value:    ", s.fmin)
-    println(io, "Return code:              ", s.returnvalue)
+    println(io, rpad("Function evaluations:", w), s.feval)
+    println(io, rpad("xtol_zero_abs:", w), s.xtol_zero_abs)
+    println(io, rpad("ftol_zero_abs:", w), s.ftol_zero_abs)
+    println(io, rpad("pirls_maxiter:", w), s.pirls_maxiter)
+    println(io, rpad("pirls_ftol_rel:", w), s.pirls_ftol_rel)
+    println(io, rpad("pirls_ftol_abs:", w), s.pirls_ftol_abs)
+    println(io, rpad("pirls_maxhalfstep:", w), s.pirls_maxhalfstep)
+    println(io, rpad("Final parameter vector:", w), s.final)
+    println(io, rpad("Final objective value:", w), s.fmin)
+    println(io, rpad("Return code:", w), s.returnvalue)
     return nothing
 end
 
