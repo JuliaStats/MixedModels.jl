@@ -35,12 +35,17 @@ copies of off-diagonal `A` blocks premultiplied by `Λᵣᵀ` (`C1`) or postmult
 For blocks between two scalar terms where `A[r,b]` is sparse, only the entries of `S`
 matching the sparsity pattern are evaluated and no buffer is stored.
 """
+# column-panel width for the BLAS-3 evaluation of the cross term between two scalar
+# terms whose Cholesky fill block is dense (see `_crosspair_blas3!`)
+const GRAD_PANEL = 128
+
 struct GradientWorkspace{T<:AbstractFloat}
     X::Matrix{AbstractMatrix{T}}   # lower blocks of L⁻¹; upper cells are 0×0 placeholders
     S::Matrix{AbstractMatrix{T}}   # per-pair buffers for blocks of S = XᵀWX
     C1::Matrix{AbstractMatrix{T}}  # Λᵣᵀ A[r,b] for r > b (dense pairs only)
     C2::Matrix{AbstractMatrix{T}}  # A[r,b] Λ_b for r > b (dense pairs only)
     G::Vector{Matrix{T}}           # per-term gradient accumulators (k_b × k_b)
+    Ppanel::Matrix{T}              # q_r × GRAD_PANEL scratch for the BLAS-3 cross term
 end
 
 _kdim(rt::ReMat{T,S}) where {T,S} = S
@@ -62,6 +67,7 @@ function GradientWorkspace(m::LinearMixedModel{T}) where {T}
             X[r, c] = Matrix{T}(undef, size(L[block(r, c)]))
         end
     end
+    maxheavy = 0
     for b in 1:k
         Abb = A[kp1choose2(b)]
         if isa(Abb, Diagonal)
@@ -73,7 +79,11 @@ function GradientWorkspace(m::LinearMixedModel{T}) where {T}
         for r in (b + 1):k
             Arb = A[block(r, b)]
             if _sparsepair(Arb, reterms[r], reterms[b])
-                continue   # no buffer: selected entries accumulated directly
+                # scalar-scalar pair: entries of S accumulated directly, no S/C buffer.
+                # When the fill block L[r,r] is dense the cross term is evaluated with a
+                # BLAS-3 kernel needing a q_r × GRAD_PANEL scratch (see `_crosspair_blas3!`)
+                isa(L[kp1choose2(r)], Matrix) && (maxheavy = max(maxheavy, size(Arb, 1)))
+                continue
             end
             S[r, b] = Matrix{T}(undef, size(Arb))
             C1[r, b] = Matrix{T}(undef, size(Arb))
@@ -81,7 +91,8 @@ function GradientWorkspace(m::LinearMixedModel{T}) where {T}
         end
     end
     G = [Matrix{T}(undef, _kdim(rt), _kdim(rt)) for rt in reterms]
-    return GradientWorkspace{T}(X, S, C1, C2, G)
+    Ppanel = Matrix{T}(undef, maxheavy, iszero(maxheavy) ? 0 : GRAD_PANEL)
+    return GradientWorkspace{T}(X, S, C1, C2, G, Ppanel)
 end
 
 # sparse selected-entry path is available only between two scalar terms
@@ -375,6 +386,60 @@ function _sparsepair!(w::GradientWorkspace{T}, m::LinearMixedModel{T}, r::Int, b
     return w
 end
 
+# ⟨A, Xᵣᵣᵀ Xᵣᵦ⟩ over the nonzeros of A, evaluated a column-panel at a time.  The dense
+# fill block Xᵣᵦ (and the dense inverse block Xᵣᵣ) make the s = r term of the scalar-scalar
+# cross product the dominant cost; a BLAS-3 matrix product per panel replaces the many
+# BLAS-1 column dot products of `_sparseacc`, which is memory-bandwidth bound.  Only a
+# `q_r × GRAD_PANEL` slice of the product is materialized at a time.
+function _crossacc_blas3!(
+    Pp::Matrix{T}, A::SparseMatrixCSC{T}, Xrr::Matrix{T}, Xrb::Matrix{T}
+) where {T}
+    rv = rowvals(A)
+    nz = nonzeros(A)
+    qr = size(Xrr, 2)
+    qb = size(Xrb, 2)
+    acc = zero(T)
+    coloff = 0
+    while coloff < qb
+        width = min(size(Pp, 2), qb - coloff)
+        Pv = view(Pp, 1:qr, 1:width)
+        mul!(Pv, Xrr', view(Xrb, :, (coloff + 1):(coloff + width)))
+        @inbounds for j in 1:width
+            for idx in nzrange(A, coloff + j)
+                acc += nz[idx] * Pv[rv[idx], j]
+            end
+        end
+        coloff += width
+    end
+    return acc
+end
+
+# is the BLAS-3 cross-term path worthwhile for pair (r, b)?  It needs a dense fill block
+# and pays off only when A[r,b] is dense enough that the extra flops of the full product
+# are outweighed by BLAS-3 throughput (the crossover ratio ≈ rate_BLAS1 / rate_BLAS3)
+function _use_blas3_cross(w::GradientWorkspace, m::LinearMixedModel, r::Int, b::Int)
+    isempty(w.Ppanel) && return false
+    isa(w.X[r, r], Matrix) || return false
+    Arb = _cscmat(m.A[block(r, b)])
+    return nnz(Arb) > 0.03 * size(Arb, 1) * size(Arb, 2)
+end
+
+# same result as `_sparsepair!`, but the heavy s = r term uses the BLAS-3 kernel
+function _crosspair_blas3!(w::GradientWorkspace{T}, m::LinearMixedModel{T}, r::Int, b::Int,
+    wx::T, wy::T) where {T}
+    (; A, reterms) = m
+    kre = length(reterms)
+    Arb = _cscmat(A[block(r, b)])
+    acc = _crossacc_blas3!(w.Ppanel, Arb, w.X[r, r]::Matrix{T}, w.X[r, b]::Matrix{T})
+    for s in (r + 1):kre    # remaining (light) blocks stay on the sparse BLAS-1 path
+        acc += _sparseacc(Arb, w.X[s, r], w.X[s, b]::Matrix{T})
+    end
+    acc += _sparseaccxy(Arb, w.X[kre + 1, r]::Matrix{T}, w.X[kre + 1, b]::Matrix{T}, wx, wy)
+    w.G[b][1, 1] += T(only(reterms[r].λ)) * acc
+    w.G[r][1, 1] += T(only(reterms[b].λ)) * acc
+    return w
+end
+
 # off-diagonal pair (r, b), r > b, dense path: contract against C1 = Λᵣᵀ A[r,b]
 # (for G_b) and C2 = A[r,b] Λ_b (for G_r)
 function _densepair!(w::GradientWorkspace{T}, m::LinearMixedModel{T}, r::Int, b::Int,
@@ -448,7 +513,11 @@ function objective_gradient!(w::GradientWorkspace{T}, g::AbstractVector{T},
         _diagpair!(w, m, b, wx, wy)
         for r in (b + 1):kre
             if _sparsepair(m.A[block(r, b)], reterms[r], reterms[b])
-                _sparsepair!(w, m, r, b, wx, wy)
+                if _use_blas3_cross(w, m, r, b)
+                    _crosspair_blas3!(w, m, r, b, wx, wy)
+                else
+                    _sparsepair!(w, m, r, b, wx, wy)
+                end
             else
                 _densepair!(w, m, r, b, wx, wy)
             end
