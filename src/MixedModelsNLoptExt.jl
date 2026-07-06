@@ -1,7 +1,8 @@
 module MixedModelsNLoptExt # not actually an extension at the moment
 
 using ..MixedModels
-using ..MixedModels: objective!, _objective!, rectify!, GradientWorkspace, objective_gradient!
+using ..MixedModels: objective!, _objective!, rectify!, ssqdenom,
+    GradientWorkspace, objective_gradient!
 # are part of the package's dependencies and will not be part
 # of the extension's dependencies
 using ..MixedModels.ProgressMeter: ProgressMeter, ProgressUnknown
@@ -26,6 +27,12 @@ function MixedModels.optimize!(m::LinearMixedModel, ::NLoptBackend;
     empty!(optsum.fitlog)
     # workspace for the analytic gradient, created only for the LD_* optimizers
     gradws = startswith(string(optsum.optimizer), "LD") ? GradientWorkspace(m) : nothing
+    # The gradient-based optimizers see the per-observation objective: the objective
+    # and its gradient scale with the number of observations, so on that scale the
+    # identity is a poor initial inverse-Hessian estimate and the first line-search
+    # step of e.g. LBFGS overshoots wildly for large data sets.  fitlog, the progress
+    # display, and the returned fmin remain on the usual deviance scale.
+    scale = isnothing(gradws) ? 1.0 : Float64(ssqdenom(m))
 
     function obj(x, g)
         isnothing(gradws) && !isempty(g) &&
@@ -38,7 +45,9 @@ function MixedModels.optimize!(m::LinearMixedModel, ::NLoptBackend;
                 if isempty(g)
                     objective!(m, x)
                 else
-                    objective_gradient!(gradws, g, updateL!(setθ!(m, x)))
+                    val′ = objective_gradient!(gradws, g, updateL!(setθ!(m, x)))
+                    g ./= scale
+                    val′
                 end
             catch ex
                 # This can happen when the optimizer drifts into an area where
@@ -54,12 +63,15 @@ function MixedModels.optimize!(m::LinearMixedModel, ::NLoptBackend;
         end
         progress && ProgressMeter.next!(prog; showvalues=[(:objective, val)])
         push!(optsum.fitlog, (; θ=copy(x), objective=val))
-        return val
+        return val / scale
     end
 
+    # ftol_rel is invariant under the scaling; ftol_abs applies to the scaled
+    # objective, i.e. it acts as a per-observation absolute tolerance
     opt = Opt(optsum)
     NLopt.min_objective!(opt, obj)
     fmin, xmin, ret = NLopt.optimize!(opt, copyto!(optsum.final, optsum.initial))
+    fmin *= scale
     ProgressMeter.finish!(prog)
     optsum.feval = opt.numevals
     optsum.returnvalue = ret
