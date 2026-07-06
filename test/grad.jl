@@ -1,87 +1,112 @@
-# using FiniteDiff
-using LinearAlgebra
+using FiniteDiff
 using ForwardDiff
+using LinearAlgebra
 using MixedModels
 using Test
-using MixedModels: grad_blocks, eval_grad_p!, initialize_blocks!, gradient!
+
+using MixedModels: GradientWorkspace, dataset
 
 include("modelcache.jl")
 
-@testset "gradient" begin
-    @testset "single_scalar" begin
-        fm1 = only(models(:dyestuff))
-        θ = fm1.θ
-        blks1 = initialize_blocks!(grad_blocks(fm1), fm1, 1, 1, 1, 1)
-        dblk = blks1[1,1].diag
-        @test all(≈(10. * only(θ)), dblk)
-        ldiv_blk = ldiv!(first(fm1.L), dblk)
-        @test all(≈(10. * only(θ) / first(first(fm1.L))), dblk)
-        g1 = gradient!(similar(θ), blks1, fm1)
-        @test abs(only(g1)) < 1.e-6
-        updateL!(setθ!(fm1, θ))         # restore the estimated parameter values
+# maximum absolute difference between the analytic gradient and the ForwardDiff
+# gradient of the objective at θ; restores the model to its fitted state afterwards
+function grad_absdiff(m::LinearMixedModel{T}, θ::AbstractVector{T}) where {T}
+    g = similar(θ)
+    val = objective_gradient!(g, m, θ)
+    @test val ≈ objective!(m, θ)
+    gfd = ForwardDiff.gradient(m, θ)
+    updateL!(setθ!(m, m.optsum.final))
+    return maximum(abs, g .- gfd)
+end
 
-        fm2 = first(models(:pastes))
-        θ = fm2.θ
-        blks2 = initialize_blocks!(grad_blocks(fm2), fm2, 1, 1, 1, 1)
-        @test all(≈(4. * only(θ)), blks2[1, 1].diag)
-        g2 = gradient!(similar(θ), blks2, fm2)
-        @test abs(only(g2)) < 9.e-6
-        initialize_blocks!(blks2, updateL!(setθ!(fm2, ones(1))), 1, 1, 1, 1)
-        @test all(==(4.), blks2[1, 1].diag)
-        updateL!(setθ!(fm2, θ))
+# a deterministic, non-optimal parameter value in the interior of the parameter space
+perturb(θ::AbstractVector) = θ .* 0.75 .+ 0.125
 
-        fm3 = last(models(:pastes))     # first of two nested, scalar r.e. terms
-        θ = fm3.θ
-        blks3 = initialize_blocks!(grad_blocks(fm3), fm3, 1, 1, 1, 1)
-        @test all(≈(4. * first(θ)), blks3[1,1].diag)
-        g3_fd = ForwardDiff.gradient!(similar(θ), fm3)
-        @test norm(g3_fd) < 9.e-5
-        g3_an = gradient!(similar(θ), blks3, fm3)
+@testset "gradient vs ForwardDiff" begin
+    @testset "$(dsnm)[$i]" for dsnm in (:dyestuff, :pastes, :penicillin, :sleepstudy, :kb07),
+        (i, m) in enumerate(models(dsnm))
 
-        fm4 = only(models(:penicillin))
-        θ4 = fm4.θ
-        blks4 = initialize_blocks!(grad_blocks(fm4), fm4, 1, 1, 1, 1)
-        @test all(≈(12. * first(fm4.θ)), blks4[1,1].diag)
-        g4_fd = ForwardDiff.gradient!(similar(θ4), fm4)
-        g4_ad = gradient!(similar(g4_fd), blks4, fm4)     # not properly evaluated yet
-
-        fm5 = first(models(:sleepstudy))
-        θ5 = fm5.θ
-        blks5 = initialize_blocks!(grad_blocks(fm5), fm5, 1, 1, 1, 1)
-        @test all(≈(20. * only(θ5)), blks5[1, 1].diag)
-        g5_fd = ForwardDiff.gradient!(similar(θ5), fm5)
-        @test abs(only(g5_fd)) < 5.e-7
-        g5_ad = gradient!(similar(θ5), blks5, fm5)
-        @test abs(only(g5_ad)) < 5.e-7
-
+        θ = m.optsum.initial
+        tol = 1e-5 * max(1, norm(objective(m)))
+        @test grad_absdiff(m, θ) < tol
+        @test grad_absdiff(m, perturb(θ)) < tol
+        @test grad_absdiff(m, m.optsum.final) < tol
     end
 
-    @testset "single_vector" begin
-        fm6 = last(models(:sleepstudy))
-        λ6 = only(fm6.reterms).λ
-        θ6 = fm6.θ
-        blks6 = initialize_blocks!(grad_blocks(fm6), fm6, 1, 1, 1, 2)
-        blk_dat = blks6[1,1].data
-        A11_dat = first(fm6.A).data
-        @test all(≈(20. * first(θ6)), view(blk_dat, 1, 1, :))
-        @test all(iszero, view(blk_dat, 2, 2, :))
-        @test all(view(blk_dat, 1, 2, :) .== view(blk_dat, 2, 1, :))
-        odiag = dot(view(λ6, 2, :), view(A11_dat, :, 1, 1))
-        @test all(≈(odiag), view(blk_dat, 1, 2, :))
-        ldiv!(LowerTriangular(first(fm6.L)), blks6[1,1])
+    @testset "near-zero gradient at interior optimum" begin
+        for m in (only(models(:dyestuff)), last(models(:sleepstudy)))
+            g = similar(m.optsum.final)
+            objective_gradient!(g, m, m.optsum.final)
+            # the tolerance reflects how sharply the derivative-free fit converged,
+            # not the accuracy of the gradient
+            @test norm(g) < 5e-3
+            updateL!(setθ!(m, m.optsum.final))
+        end
+    end
 
-        initialize_blocks!(blks6, fm6, 1, 2, 2, 2)
-        @test all(iszero, view(blk_dat, 1, 1, :))
-        @test all(view(blk_dat, 1, 2, :) .== view(blk_dat, 2, 1, :))   # result should be symmetric
-        # @test all(==(10. * first(θ)), view(blk_dat, 1, 2, :))
-        # diag2 = 2. * dot(view(λ.data, 2, :), view(A11_dat, :, 1, 1))
-        # @test all(≈(diag2), view(blk_dat, 2, 2, :))
+    @testset "REML" begin
+        for (f, dsnm) in ((last(fms[:sleepstudy]), :sleepstudy),
+                          (only(fms[:penicillin]), :penicillin),
+                          (last(fms[:pastes]), :pastes))
+            m = fit(MixedModel, f, dataset(dsnm); REML=true, progress=false)
+            θ = perturb(m.optsum.initial)
+            g = similar(θ)
+            val = objective_gradient!(g, m, θ)
+            @test val ≈ objective!(m, θ)
+            gfd = ForwardDiff.gradient(m, θ)
+            @test g ≈ gfd rtol = 1e-6 atol = 1e-8
+        end
+    end
 
-        # Omega_dot_diag_block!(blk, fm6, 3)
-        # @test all(iszero, view(blk_dat, 1, 1, :))
-        # @test all(view(blk_dat, 1, 2, :) .== view(blk, 2, 1, :))   # faces of result should be symmetric
-        # @test all(≈(45. * first(θ)), view(blk_dat, 1, 2, :))
-        # diag2 = 2. * dot(view(λ.data, 2, :), view(A11_dat, :, 2, 1))
-        # @test all(≈(diag2), view(blk_dat, 2, 2, :))
+    @testset "fixed sigma" begin
+        for REML in (false, true)
+            m = fit(MixedModel, last(fms[:sleepstudy]), dataset(:sleepstudy);
+                σ=25.0, REML, progress=false)
+            θ = perturb(m.optsum.initial)
+            g = similar(θ)
+            val = objective_gradient!(g, m, θ)
+            @test val ≈ objective!(m, θ)
+            # the ForwardDiff extension differentiates at fixed σ = m.σ, which coincides
+            # with the profiled-σ gradient only when σ is actually fixed, as here
+            gfd = ForwardDiff.gradient(m, θ)
+            @test g ≈ gfd rtol = 1e-6 atol = 1e-8
+            gff = FiniteDiff.finite_difference_gradient(Base.Fix1(objective!, m), θ)
+            @test g ≈ gff rtol = 1e-4 atol = 1e-4
+        end
+    end
+
+    @testset "workspace reuse and argument checking" begin
+        m = last(models(:sleepstudy))
+        θ = perturb(m.optsum.initial)
+        w = GradientWorkspace(m)
+        g1 = similar(θ)
+        g2 = similar(θ)
+        objective_gradient!(w, g1, updateL!(setθ!(m, θ)))
+        objective_gradient!(w, g2, m)   # reusing the workspace must be idempotent
+        @test g1 == g2
+        @test_throws DimensionMismatch objective_gradient!(similar(θ, 2), m)
+        updateL!(setθ!(m, m.optsum.final))
+    end
+end
+
+@testset "gradient-based optimization" begin
+    @testset "LD_LBFGS $(dsnm)" for (dsnm, f) in
+        ((:sleepstudy, last(fms[:sleepstudy])), (:penicillin, only(fms[:penicillin])))
+        mref = fit(MixedModel, f, dataset(dsnm); progress=false)
+        m = fit(MixedModel, f, dataset(dsnm); optimizer=:LD_LBFGS, progress=false)
+        @test m.optsum.optimizer == :LD_LBFGS
+        @test m.optsum.returnvalue in (:SUCCESS, :FTOL_REACHED, :XTOL_REACHED)
+        @test m.optsum.fmin ≈ mref.optsum.fmin atol = 1e-6
+        @test m.θ ≈ mref.θ atol = 1e-3
+    end
+
+    @test :LD_LBFGS in MixedModels.optimizers(Val(:nlopt))
+
+    @testset "profile after gradient-based fit" begin
+        # the profiling objectives are derivative-free; profiling a model fitted
+        # with an LD optimizer must fall back to a derivative-free optimizer
+        m = fit(MixedModel, first(fms[:sleepstudy]), dataset(:sleepstudy);
+            optimizer=:LD_LBFGS, progress=false)
+        @test profile(m) isa MixedModelProfile
     end
 end

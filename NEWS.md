@@ -1,6 +1,8 @@
 MixedModels vX.Y.Z Release Notes
 ==============================
 - Additional methods for pre-allocated result arrays and `*Config` instances have been added to the ForwardDiff extension. [#871].
+- New exported function `objective_gradient!` evaluating the analytic gradient of the objective of a `LinearMixedModel` (ML and REML, including fixed `σ`) directly from the blocked Cholesky factor. It is much faster and allocates far less than automatic differentiation via the ForwardDiff extension, especially for models with many covariance parameters.
+- The NLopt backend now supports the gradient-based optimizers `:LD_LBFGS`, `:LD_MMA`, and `:LD_SLSQP` for `LinearMixedModel`, using `objective_gradient!`. The default optimizer remains derivative-free `:LN_NEWUOA`; select a gradient-based one with e.g. `fit(MixedModel, form, data; optimizer=:LD_LBFGS)`.
 
 MixedModels v5.7.0 Release Notes
 ==============================

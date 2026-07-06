@@ -1,116 +1,473 @@
 # Evaluate analytic gradient of the objective for ML or REML fitting of a LinearMixedModel
+#
+# The objective is an affine function of the logarithms of the diagonal elements of the
+# blocked lower Cholesky factor L,
+#
+#   obj = 2 Σⱼ wⱼ log Lⱼⱼ + constant,
+#
+# with weights wⱼ = 1 on the random-effects rows, wⱼ = 1 (REML) or 0 (ML) on the
+# fixed-effects rows, and w on the last row (the ℓ_yy element) equal to n (ML), n - p
+# (REML), or pwrss / σ² when σ is fixed.  Differentiating both sides of Ω = L Lᵀ
+# (Murray 2016, arXiv:1602.07527) gives diag(L⁻¹ Ω̇ L⁻ᵀ)ⱼⱼ = 2 ∂log Lⱼⱼ, so
+#
+#   ∂obj/∂θₚ = tr(W L⁻¹ Ω̇ₚ L⁻ᵀ) = ⟨S, Ω̇ₚ⟩,   S = L⁻ᵀ W L⁻¹,
+#
+# where W = diag(w).  S does not depend on p, so a single blocked computation of
+# X = L⁻¹ (lower blocks only) provides, through weighted Gram products S = Xᵀ W X,
+# every component of the gradient.  For the parameter θₚ ↦ λ_b[i,j] (`parmap[p] = (b,i,j)`)
+# the derivative Ω̇ₚ is supported on block row/column b and
+#
+#   ∂obj/∂θₚ = 2 G_b[i,j],   G_b = Σ_faces (Λᵀ A)[:, block-col b]ᵀ (S E_b)
+#
+# accumulated face-by-face over the levels of the grouping factor, which is evaluated
+# blockwise against the sparse structure of the A blocks without ever forming Ω̇ₚ.
 
 """
-  Omega_dot_diag_block!(blk, m::LinearMixedModel, b::Integer, i::Integer, j::Integer)
+    GradientWorkspace(m::LinearMixedModel)
 
-Fill `blk` as the non-zero diagonal block of ∂Ω/∂θₚ for the parameter in block `b`, position `i, j` of model `m`.
+Preallocated storage for evaluating the gradient of the objective of `m`.
 
-For any `p` only one diagonal block of ∂Ω/∂θₚ will be non-zero.
+The workspace holds the lower blocks of `X = L⁻¹` (`X[r,c]`, `r ≥ c`), buffers for the
+blocks of `S = XᵀWX` that are contracted against the corresponding `A` blocks, scratch
+copies of off-diagonal `A` blocks premultiplied by `Λᵣᵀ` (`C1`) or postmultiplied by
+`Λ_b` (`C2`), and one `k_b × k_b` accumulator `G_b` per random-effects term.
+
+For blocks between two scalar terms where `A[r,b]` is sparse, only the entries of `S`
+matching the sparsity pattern are evaluated and no buffer is stored.
 """
-function Omega_dot_diag_block!(
-    blk::Diagonal{T,Vector{T}},
-    m::LinearMixedModel{T},
-    b::Integer,
-    i::Integer,
-    j::Integer,
-) where {T}
-    (; A, reterms) = m
-    if !(isone(i) && isone(j))
-        throw(ArgumentError("parameter $p should be from a scalar r.e. term"))
-    end
-    # It is common for 'b' to be one as well but nested models can result in diagonal blk for b > 1
-    blk_diag = blk.diag
-    A_diag = A[kp1choose2(b)].diag    # will throw an error if the A[b,b] block is not Diagonal
-    if length(blk_diag) ≠ length(A_diag)
-        throw(DimensionMismatch("A_diag and blk_diag have different lengths"))
-    end
-    blk_diag .= (T(2) * only(reterms[b].λ)) .* A_diag
-    return blk
+struct GradientWorkspace{T<:AbstractFloat}
+    X::Matrix{AbstractMatrix{T}}   # lower blocks of L⁻¹; upper cells are 0×0 placeholders
+    S::Matrix{AbstractMatrix{T}}   # per-pair buffers for blocks of S = XᵀWX
+    C1::Matrix{AbstractMatrix{T}}  # Λᵣᵀ A[r,b] for r > b (dense pairs only)
+    C2::Matrix{AbstractMatrix{T}}  # A[r,b] Λ_b for r > b (dense pairs only)
+    G::Vector{Matrix{T}}           # per-term gradient accumulators (k_b × k_b)
 end
 
-function Omega_dot_diag_block!(
-    blk::Matrix{T},
-    m::LinearMixedModel{T},
-    b::Integer,
-    i::Integer,
-    j::Integer,
-) where {T}
-    (; A, reterms) = m
-    k = size(reterms[b].λ, 1)
-    if isone(k)
-        isone(i) && isone(j) ||
-            throw(ArgumentError("parameter $p should be from a scalar r.e. term"))
-        A_diag = A[kp1choose2(b)].diag      # will throw an error if the A[b,b] block is not Diagonal
-        size(blk, 1) == size(blk, 2) == length(A_diag) ||
-            throw(DimensionMismatch("A_diag and blk_diag have different lengths"))
-        λ = only(reterms[b].λ)              # will throw an error if reterms[b].λ is not of size (1,1)
-        _zero_out(blk)
-        for k in eachindex(A_diag)
-            blk[k, k] = T(2) * λ * A_diag[k]
+_kdim(rt::ReMat{T,S}) where {T,S} = S
+
+function GradientWorkspace(m::LinearMixedModel{T}) where {T}
+    (; A, L, reterms) = m
+    k = length(reterms)
+    nb = k + 1
+    placeholder = Matrix{T}(undef, 0, 0)
+    X = fill!(Matrix{AbstractMatrix{T}}(undef, nb, nb), placeholder)
+    S = fill!(Matrix{AbstractMatrix{T}}(undef, nb, k), placeholder)
+    C1 = fill!(Matrix{AbstractMatrix{T}}(undef, nb, k), placeholder)
+    C2 = fill!(Matrix{AbstractMatrix{T}}(undef, nb, k), placeholder)
+    for c in 1:nb
+        Lcc = L[kp1choose2(c)]
+        X[c, c] = isa(Lcc, Diagonal) ? Diagonal(Vector{T}(undef, size(Lcc, 1))) :
+                  Matrix{T}(undef, size(Lcc))
+        for r in (c + 1):nb
+            X[r, c] = Matrix{T}(undef, size(L[block(r, c)]))
         end
-        return blk
     end
-    throw(ArgumentError("Code not yet written for k > 1"))
-end
-
-function Omega_dot_diag_block!(
-    blk::UniformBlockDiagonal{T},
-    m::LinearMixedModel{T},
-    b::Integer,
-    i::Integer,
-    j::Integer,
-) where {T}
-    (; A, reterms) = m
-    Ablk = A[kp1choose2(b)]
-    if !isa(Ablk, UniformBlockDiagonal{T})
-        throw(
-            ArgumentError(   # this error message cannot be evaluated because p is no longer passed
-                "parmap[p] = $(parmap[p]) but A[$(kp1choose2(b))] is not UniformBlockDiagonal",
-            ),
-        )
-    end
-    blk_dat = fill!(blk.data, zero(T))
-    Ablk_dat = Ablk.data
-    λ = reterms[b].λ
-    for k in axes(blk_dat, 3)
-        # right multiply by λ-dot-transpose, which is zeros except for a single 1 at the i'th column and j'th row
-        # thus we copy the i'th column of the k'th face of Ablk_dat into the j'th column of the k'th face of blk_dat
-        copyto!(view(blk_dat, :, i, k), view(Ablk_dat, :, j, k))
-        lmul!(λ, view(blk_dat,:,:,k)) # left-multiply by λ
-        for jj in axes(λ, 2)             # symmetrize the face while multiplying the diagonal by 2
-            for ii in 1:(jj - 1)
-                val = blk_dat[ii, jj, k] + blk_dat[jj, ii, k]
-                blk_dat[ii, jj, k] = blk_dat[jj, ii, k] = val
+    for b in 1:k
+        Abb = A[kp1choose2(b)]
+        if isa(Abb, Diagonal)
+            S[b, b] = Diagonal(Vector{T}(undef, size(Abb, 1)))
+        else    # UniformBlockDiagonal
+            S[b, b] = UniformBlockDiagonal(Array{T,3}(undef, size(Abb.data)))
+        end
+        S[nb, b] = Matrix{T}(undef, size(A[block(nb, b)]))
+        for r in (b + 1):k
+            Arb = A[block(r, b)]
+            if _sparsepair(Arb, reterms[r], reterms[b])
+                continue   # no buffer: selected entries accumulated directly
             end
-            blk_dat[jj, jj, k] *= T(2)
+            S[r, b] = Matrix{T}(undef, size(Arb))
+            C1[r, b] = Matrix{T}(undef, size(Arb))
+            C2[r, b] = Matrix{T}(undef, size(Arb))
         end
     end
-    return blk
+    G = [Matrix{T}(undef, _kdim(rt), _kdim(rt)) for rt in reterms]
+    return GradientWorkspace{T}(X, S, C1, C2, G)
 end
 
-function LinearAlgebra.ldiv!(
-    A::LowerTriangular{T,UniformBlockDiagonal{T}},
-    B::UniformBlockDiagonal{T},
-) where {T}
-    A_dat = A.data.data
-    B_dat = B.data
-    if size(A_dat) ≠ size(B_dat)
-        throw(
-            DimensionMismatch("size(A_dat) = $(size(A_dat)) ≠ $(size(B_dat)) = size(B_dat)")
-        )
-    end
-    for k in axes(B_dat, 3)
-        ldiv!(LowerTriangular(view(A_dat,:,:,k)), view(B_dat,:,:,k))
-    end
-    return B
+# sparse selected-entry path is available only between two scalar terms
+function _sparsepair(A::AbstractMatrix, rtr::AbstractReMat, rtb::AbstractReMat)
+    return (isa(A, SparseMatrixCSC) || isa(A, BlockedSparse)) &&
+           isone(_kdim(rtr)) && isone(_kdim(rtb))
 end
 
+_cscmat(A::BlockedSparse) = A.cscmat
+_cscmat(A::SparseMatrixCSC) = A
+_densemat(A::AbstractMatrix) = A
+_densemat(A::BlockedSparse) = A.cscmat
+
+# mul!(C, A, B, -1, 1) with the block types that occur in L and X
+function _mulsub!(C::AbstractMatrix{T}, A::AbstractMatrix{T}, B::AbstractMatrix{T}) where {T}
+    return mul!(C, A, B, -one(T), one(T))
+end
+
+function _mulsub!(C::AbstractMatrix{T}, A::BlockedSparse{T}, B::AbstractMatrix{T}) where {T}
+    return _mulsub!(C, A.cscmat, B)
+end
+
+function _mulsub!(C::Matrix{T}, A::SparseMatrixCSC{T}, B::Diagonal{T}) where {T}
+    Bd = B.diag
+    rv = rowvals(A)
+    nz = nonzeros(A)
+    @inbounds for j in axes(A, 2)
+        d = Bd[j]
+        for idx in nzrange(A, j)
+            C[rv[idx], j] -= nz[idx] * d
+        end
+    end
+    return C
+end
+
+# in-place solve of Ljj \ B for the diagonal-block types of L
+_ldivL!(Ljj::Diagonal{T}, B::AbstractMatrix{T}) where {T} = ldiv!(Ljj, B)
+_ldivL!(Ljj::Matrix{T}, B::AbstractMatrix{T}) where {T} = ldiv!(LowerTriangular(Ljj), B)
+function _ldivL!(Ljj::UniformBlockDiagonal{T}, B::Matrix{T}) where {T}
+    return ldiv!(LowerTriangular(Ljj), B)
+end
+
+_identity!(D::Diagonal{T}) where {T} = (fill!(D.diag, one(T)); D)
+function _identity!(X::Matrix{T}) where {T}
+    fill!(X, zero(T))
+    @inbounds for i in diagind(X)
+        X[i] = one(T)
+    end
+    return X
+end
+
+"""
+    _invL!(w::GradientWorkspace{T}, m::LinearMixedModel{T})
+
+Overwrite the lower blocks of `w.X` with the corresponding blocks of `L⁻¹`.
+"""
+function _invL!(w::GradientWorkspace{T}, m::LinearMixedModel{T}) where {T}
+    L = m.L
+    X = w.X
+    nb = size(X, 1)
+    for c in 1:nb
+        Xcc = _identity!(X[c, c])
+        _ldivL!(L[kp1choose2(c)], Xcc)
+        for r in (c + 1):nb
+            Xrc = fill!(X[r, c], zero(T))
+            for s in c:(r - 1)
+                _mulsub!(Xrc, L[block(r, s)], X[s, c])
+            end
+            _ldivL!(L[kp1choose2(r)], Xrc)
+        end
+    end
+    return w
+end
+
+# weight on the last diagonal element of L (the ℓ_yy element)
+function _yweight(m::LinearMixedModel{T}) where {T}
+    σ = m.optsum.sigma
+    return isnothing(σ) ? T(ssqdenom(m)) : pwrss(m) / T(σ)^2
+end
+
+#####
+##### weighted Gram products: blocks of S = Xᵀ W X
+#####
+
+# accumulate the [Xy]-block-row correction Xkrᵀ W Xkb into S, where W has weight
+# wx on the first p rows and wy on the last row
+function _xycorrection!(S::Matrix{T}, Xkr::Matrix{T}, Xkb::Matrix{T}, wx::T, wy::T) where {T}
+    plast = size(Xkr, 1)
+    if !iszero(wx)
+        mul!(S, Xkr', Xkb, wx, one(T))
+        iszero(wy - wx) && return S
+        wy = wy - wx    # adjust the last-row weight for the part already added
+    end
+    xr = view(Xkr, plast, :)
+    xb = view(Xkb, plast, :)
+    return mul!(S, xr, xb', wy, one(T))
+end
+
+# dense S block for the pair (r, b), r > b or r == nb (the [Xy] row)
+function _gram!(S::Matrix{T}, w::GradientWorkspace{T}, r::Int, b::Int, kre::Int,
+    wx::T, wy::T) where {T}
+    X = w.X
+    fill!(S, zero(T))
+    for s in r:kre
+        mul!(S, X[s, r]', X[s, b], one(T), one(T))
+    end
+    return _xycorrection!(S, X[kre + 1, r], X[kre + 1, b], wx, wy)
+end
+
+# diagonal of S[b,b] (used when A[b,b] is Diagonal, i.e. a scalar term)
+_colsumabs2!(d::Vector{T}, X::Diagonal{T}) where {T} = (d .+= abs2.(X.diag); d)
+
+function _colsumabs2!(d::Vector{T}, X::Matrix{T}) where {T}
+    @inbounds for f in axes(X, 2)
+        acc = zero(T)
+        for i in axes(X, 1)
+            acc += abs2(X[i, f])
+        end
+        d[f] += acc
+    end
+    return d
+end
+
+function _gramdiag!(S::Diagonal{T}, w::GradientWorkspace{T}, b::Int, kre::Int,
+    wx::T, wy::T) where {T}
+    d = fill!(S.diag, zero(T))
+    for s in b:kre
+        _colsumabs2!(d, w.X[s, b])
+    end
+    Xkb = w.X[kre + 1, b]::Matrix{T}
+    plast = size(Xkb, 1)
+    @inbounds for f in axes(Xkb, 2)
+        acc = zero(T)
+        if !iszero(wx)
+            for i in 1:(plast - 1)
+                acc += wx * abs2(Xkb[i, f])
+            end
+        end
+        d[f] += acc + wy * abs2(Xkb[plast, f])
+    end
+    return S
+end
+
+# face-diagonal blocks of S[b,b] (used when A[b,b] is UniformBlockDiagonal)
+function _gramfaces!(S::UniformBlockDiagonal{T}, w::GradientWorkspace{T}, b::Int,
+    kre::Int, wx::T, wy::T) where {T}
+    dat = fill!(S.data, zero(T))
+    kb = size(dat, 1)
+    for s in b:kre
+        Xsb = w.X[s, b]::Matrix{T}
+        for f in axes(dat, 3)
+            cols = ((f - 1) * kb + 1):(f * kb)
+            Xv = view(Xsb, :, cols)
+            mul!(view(dat, :, :, f), Xv', Xv, one(T), one(T))
+        end
+    end
+    Xkb = w.X[kre + 1, b]::Matrix{T}
+    plast = size(Xkb, 1)
+    @inbounds for f in axes(dat, 3)
+        coloffset = (f - 1) * kb
+        for c in 1:kb, a in 1:kb
+            acc = zero(T)
+            if !iszero(wx)
+                for i in 1:(plast - 1)
+                    acc += wx * Xkb[i, coloffset + a] * Xkb[i, coloffset + c]
+                end
+            end
+            acc += wy * Xkb[plast, coloffset + a] * Xkb[plast, coloffset + c]
+            dat[a, c, f] += acc
+        end
+    end
+    return S
+end
+
+# Σ over the nonzeros (u, v) of A of A[u,v] * (Xrᵀ Xb)[u,v] for one block-row pair of X.
+# These methods are function barriers: the X blocks are stored with an abstract element
+# type and the entry loops must run with concretely typed arrays.
+function _sparseacc(A::SparseMatrixCSC{T}, Xr::Diagonal{T}, Xb::Matrix{T}) where {T}
+    rv = rowvals(A)
+    nz = nonzeros(A)
+    d = Xr.diag
+    acc = zero(T)
+    @inbounds for v in axes(A, 2)
+        for idx in nzrange(A, v)
+            u = rv[idx]
+            acc += nz[idx] * d[u] * Xb[u, v]
+        end
+    end
+    return acc
+end
+
+function _sparseacc(A::SparseMatrixCSC{T}, Xr::Matrix{T}, Xb::Matrix{T}) where {T}
+    rv = rowvals(A)
+    nz = nonzeros(A)
+    acc = zero(T)
+    @inbounds for v in axes(A, 2)
+        xbv = view(Xb, :, v)
+        for idx in nzrange(A, v)
+            acc += nz[idx] * dot(view(Xr, :, rv[idx]), xbv)
+        end
+    end
+    return acc
+end
+
+# ditto for the [Xy] block row with weight wx on the first p rows and wy on the last
+function _sparseaccxy(A::SparseMatrixCSC{T}, Xkr::Matrix{T}, Xkb::Matrix{T},
+    wx::T, wy::T) where {T}
+    rv = rowvals(A)
+    nz = nonzeros(A)
+    plast = size(Xkr, 1)
+    acc = zero(T)
+    @inbounds for v in axes(A, 2)
+        for idx in nzrange(A, v)
+            u = rv[idx]
+            s = wy * Xkr[plast, u] * Xkb[plast, v]
+            if !iszero(wx)
+                for i in 1:(plast - 1)
+                    s += wx * Xkr[i, u] * Xkb[i, v]
+                end
+            end
+            acc += nz[idx] * s
+        end
+    end
+    return acc
+end
+
+#####
+##### contraction of A blocks against S blocks into the per-term accumulators G
+#####
+
+# accumulate G += Σ_faces C[:, face]ᵀ S[:, face] where the faces are the
+# kb-column groups of the term-b block column
+function _facecontract!(G::Matrix{T}, C::Matrix{T}, S::Matrix{T}) where {T}
+    kb = size(G, 1)
+    for f in 1:(size(C, 2) ÷ kb)
+        cols = ((f - 1) * kb + 1):(f * kb)
+        mul!(G, view(C, :, cols)', view(S, :, cols), one(T), one(T))
+    end
+    return G
+end
+
+# accumulate G += Σ_faces C[face rows, :] S[face rows, :]ᵀ where the faces are the
+# kr-row groups of the term-r block row
+function _facecontract_rows!(G::Matrix{T}, C::Matrix{T}, S::Matrix{T}) where {T}
+    kr = size(G, 1)
+    for f in 1:(size(C, 1) ÷ kr)
+        rows = ((f - 1) * kr + 1):(f * kr)
+        mul!(G, view(C, rows, :), view(S, rows, :)', one(T), one(T))
+    end
+    return G
+end
+
+# diagonal pair (b, b)
+function _diagpair!(w::GradientWorkspace{T}, m::LinearMixedModel{T}, b::Int,
+    wx::T, wy::T) where {T}
+    (; A, reterms) = m
+    kre = length(reterms)
+    Abb = A[kp1choose2(b)]
+    G = w.G[b]
+    if isa(Abb, Diagonal)
+        S = _gramdiag!(w.S[b, b]::Diagonal{T}, w, b, kre, wx, wy)
+        G[1, 1] += T(only(reterms[b].λ)) * dot(Abb.diag, S.diag)
+    else
+        Abb = Abb::UniformBlockDiagonal{T}
+        S = _gramfaces!(w.S[b, b]::UniformBlockDiagonal{T}, w, b, kre, wx, wy)
+        λ = reterms[b].λ
+        kb = size(G, 1)
+        t = Matrix{T}(undef, kb, kb)
+        for f in axes(S.data, 3)
+            mul!(t, λ, view(S.data, :, :, f))
+            mul!(G, adjoint(view(Abb.data, :, :, f)), t, one(T), one(T))
+        end
+    end
+    return w
+end
+
+# off-diagonal pair (r, b) between two scalar terms with sparse A[r,b]:
+# only the entries of S on the sparsity pattern of A are evaluated
+function _sparsepair!(w::GradientWorkspace{T}, m::LinearMixedModel{T}, r::Int, b::Int,
+    wx::T, wy::T) where {T}
+    (; A, reterms) = m
+    kre = length(reterms)
+    Arb = _cscmat(A[block(r, b)])
+    acc = zero(T)
+    for s in r:kre
+        acc += _sparseacc(Arb, w.X[s, r], w.X[s, b]::Matrix{T})
+    end
+    acc += _sparseaccxy(Arb, w.X[kre + 1, r]::Matrix{T}, w.X[kre + 1, b]::Matrix{T}, wx, wy)
+    w.G[b][1, 1] += T(only(reterms[r].λ)) * acc
+    w.G[r][1, 1] += T(only(reterms[b].λ)) * acc
+    return w
+end
+
+# off-diagonal pair (r, b), r > b, dense path: contract against C1 = Λᵣᵀ A[r,b]
+# (for G_b) and C2 = A[r,b] Λ_b (for G_r)
+function _densepair!(w::GradientWorkspace{T}, m::LinearMixedModel{T}, r::Int, b::Int,
+    wx::T, wy::T) where {T}
+    (; A, reterms) = m
+    kre = length(reterms)
+    Arb = _densemat(A[block(r, b)])
+    S = _gram!(w.S[r, b]::Matrix{T}, w, r, b, kre, wx, wy)
+    C1 = copyto!(w.C1[r, b]::Matrix{T}, Arb)
+    lmulΛ!(reterms[r]', C1)
+    _facecontract!(w.G[b], C1, S)
+    C2 = copyto!(w.C2[r, b]::Matrix{T}, Arb)
+    rmulΛ!(C2, reterms[b])
+    _facecontract_rows!(w.G[r], C2, S)
+    return w
+end
+
+# the [Xy] block row (r = k + 1): no Λ factor
+function _xypair!(w::GradientWorkspace{T}, m::LinearMixedModel{T}, b::Int,
+    wx::T, wy::T) where {T}
+    kre = length(m.reterms)
+    nb = kre + 1
+    Akb = m.A[block(nb, b)]::Matrix{T}
+    S = _gram!(w.S[nb, b]::Matrix{T}, w, nb, b, kre, wx, wy)
+    return _facecontract!(w.G[b], Akb, S)
+end
+
+"""
+    objective_gradient!(g::AbstractVector{T}, m::LinearMixedModel{T})
+    objective_gradient!(g::AbstractVector{T}, m::LinearMixedModel{T}, θ::AbstractVector{T})
+
+Overwrite `g` with the gradient of the [`objective`](@ref) (negative twice the profiled
+log-likelihood, or the REML criterion when `m.optsum.REML` is set) with respect to the
+covariance parameters θ, and return the value of the objective.
+
+The three-argument method installs `θ` via [`setθ!`](@ref) and [`updateL!`](@ref) first;
+the two-argument method evaluates at the current parameter values of `m` (which must have
+an up-to-date `L`, e.g. from a previous call to `updateL!`).
+
+The gradient is evaluated analytically from the blocked Cholesky factor: the objective is
+an affine function of the logarithms of the diagonal elements of `L` and a single blocked
+computation of `L⁻¹` provides all components of the gradient (see Murray 2016,
+arXiv:1602.07527, and Bates et al. 2025, arXiv:2505.11674).  This is much faster and less
+allocation-heavy than automatic differentiation via the `ForwardDiff` extension,
+especially for models with many covariance parameters, but note that the storage for the
+blocks of `L⁻¹` can be substantial for models with thousands of random-effects levels.
+"""
+function objective_gradient!(g::AbstractVector{T}, m::LinearMixedModel{T}) where {T}
+    return objective_gradient!(GradientWorkspace(m), g, m)
+end
+
+function objective_gradient!(g::AbstractVector{T}, m::LinearMixedModel{T},
+    θ::AbstractVector{T}) where {T}
+    return objective_gradient!(g, updateL!(setθ!(m, θ)))
+end
+
+function objective_gradient!(w::GradientWorkspace{T}, g::AbstractVector{T},
+    m::LinearMixedModel{T}) where {T}
+    (; parmap, reterms, optsum) = m
+    if length(g) ≠ length(parmap)
+        throw(DimensionMismatch("length(g) = $(length(g)) should be $(length(parmap))"))
+    end
+    kre = length(reterms)
+    wx = optsum.REML ? one(T) : zero(T)
+    wy = _yweight(m)
+    _invL!(w, m)
+    for G in w.G
+        fill!(G, zero(T))
+    end
+    for b in 1:kre
+        _diagpair!(w, m, b, wx, wy)
+        for r in (b + 1):kre
+            if _sparsepair(m.A[block(r, b)], reterms[r], reterms[b])
+                _sparsepair!(w, m, r, b, wx, wy)
+            else
+                _densepair!(w, m, r, b, wx, wy)
+            end
+        end
+        _xypair!(w, m, b, wx, wy)
+    end
+    for (p, (b, i, j)) in enumerate(parmap)
+        g[p] = 2 * w.G[b][i, j]
+    end
+    return objective(m)
+end
+# in-place blocked solve of a UniformBlockDiagonal lower-triangular system with a
+# dense right-hand side, used by `_ldivL!`
 function LinearAlgebra.ldiv!(
     A::LowerTriangular{T,UniformBlockDiagonal{T}},
     B::Matrix{T},
 ) where {T}
     if size(A, 2) ≠ size(B, 1)
-        throw(DimensionMismatch("size(A,2) = $(size(A,2)) ≠ $(size(B,1)) = size(B,1"))
+        throw(DimensionMismatch("size(A,2) = $(size(A,2)) ≠ $(size(B,1)) = size(B,1)"))
     end
     A_dat = A.data.data
     axis1 = axes(A_dat, 1)
@@ -120,334 +477,4 @@ function LinearAlgebra.ldiv!(
         offset += length(axis1)
     end
     return B
-end
-
-function LinearAlgebra.rdiv!(
-    A::UniformBlockDiagonal{T},
-    B::UpperTriangular{T,LinearAlgebra.Transpose{T,UniformBlockDiagonal{T}}},
-) where {T}
-    A_dat = A.data
-    B_dat = B.data.parent.data
-    if size(A_dat) ≠ size(B_dat)
-        throw(
-            DimensionMismatch("size(A_dat) = $(size(A_dat)) ≠ $(size(B_dat)) = size(B_dat)")
-        )
-    end
-    for k in axes(A_dat, 3)
-        rdiv!(view(A_dat,:,:,k), LowerTriangular(view(B_dat,:,:,k))')
-    end
-    return B
-end
-
-function Base.similar(A::UniformBlockDiagonal)
-    return UniformBlockDiagonal(similar(A.data))
-end
-
-"""
-    grad_blocks(m::LinearMixedModel{T})
-
-Return Matrix{AbstractMatrix{T}} containing the gradient-evaluation blocks for model `m`.
-"""
-function grad_blocks(m::LinearMixedModel{T}) where {T}
-    (; L, reterms) = m
-    k = length(reterms) + 1
-    val = sizehint!(AbstractMatrix{T}[], abs2(k))
-    for j in 1:k
-        for i in 1:k
-            push!(val, similar(i ≥ j ? L[block(i, j)] : L[block(j, i)]'))
-        end
-    end
-    return reshape(val, (k, k))
-end
-
-function _zero_out(A::Matrix{T}) where {T}
-    return fill!(A, zero(T))
-end
-
-function _zero_out(A::Diagonal{T,Vector{T}}) where {T}
-    fill!(A.diag, zero(T))
-    return A
-end
-
-function _zero_out(A::UniformBlockDiagonal{T}) where {T}
-    fill!(A.data, zero(T))
-    return A
-end
-
-"""
-    copyskip!(B::Matrix{T}, A::Matrix{T}, i::Integer, j::Integer, k::Integer) where {T}
-
-Create `A * Ω_dot` in `B` where `Ω_dot` is the indicator for the `i`'th row and `j`'th column in a matrix of size `k`
-"""
-function copyskip!(B::Matrix{T}, A::Matrix{T}, i::Integer, j::Integer, k::Integer) where {T}
-    m, n = size(A)
-    (m, n) == size(B) ||
-        throw(DimensionMismatch("size(A) = $(size(A)) ≠ $(size(B)) = size(B)"))
-    isone(k) && return copyto!(B, A)
-
-    fill!(B, zero(T))
-    q, r = divrem(n, k)
-    iszero(r) || throw(DimensionMismatch("n = $n is not a multiple of k = $k"))
-    offset = 0
-    for _ in 1:q
-        copyto!(view(B, :, offset + i), view(A, :, offset + j))
-        offset += k
-    end
-    return B
-end
-
-function copyskip!(
-    B::SparseMatrixCSC{T}, A::SparseMatrixCSC{T}, i::Integer, j::Integer, k::Integer
-) where {T}
-    (A.m == B.m && A.n == B.n) ||
-        throw(DimensionMismatch("size(A) = $(size(A)) ≠ $(size(B)) = size(B)"))
-    if any(A.colptr .≠ B.colptr) || any(rowvals(A) .≠ rowvals(B))
-        throw(ArgumentError("A and B must have the same sparsity pattern"))
-    end
-    isone(k) && return copyto!(B, A)
-
-    fill!(B.nzval, zero(T))
-    q, r = divrem(A.n, k)
-    iszero(r) || throw(DimensionMismatch("n = $n is not a multiple of k = $k"))
-    rvB = rowvals(B)
-    rvA = rowvals(A)
-    nzB = nonzeros(B)
-    nzA = nonzeros(A)
-    offset = 0
-    for _ in 1:q
-        nzrB = nzrange(B, offset + i)
-        nzrA = nzrange(A, offset + j)
-        if !(view(rvB, nzrB) .== view(rvA, nzrA))
-            throw(ArgumentError("A and B must have same sparsity pattern after shifting"))
-        end
-        copyto!(view(nzB, nzrB), view(nzA, nzrA))
-        offset += k
-    end
-    return B
-end
-
-"""
-    initialize_blocks!(blks::Matrix{AbstractMatrix{T}}, m::LinearMixedModel{T}, b, i, j, k)
-
-Initialize the grad evaluation blocks, `blks`, for model `m`, for parameter in block `b`, position `(i,j)` of block size `k`
-"""
-function initialize_blocks!(
-    blks::Matrix{AbstractMatrix{T}},
-    m::LinearMixedModel{T},
-    b::Integer,
-    i::Integer,
-    j::Integer,
-    k::Integer,
-) where {T}
-    A = m.A
-    Omega_dot_diag_block!(blks[b, b], m, b, i, j) # populate the b'th diagonal block
-    for r in axes(blks, 1)                  # iterate over the lower triangle, transpose-copying to upper triangle
-        if r ≠ b
-            for c in 1:r
-                if c ≠ b
-                    _zero_out(blks[r, c])
-                    _zero_out(blks[c, r])
-                else
-                    copyskip!(blks[r, c], A[block(r, c)], i, j, k)
-                    copyto!(blks[c, r], blks[r, c]')
-                end
-            end
-        else
-            for c in 1:(r - 1)
-                copyskip!(blks[r, c], A[block(r, c)], i, j, k)
-                copyto!(blks[c, r], blks[r, c]')
-            end
-        end
-    end
-    return blks
-end
-
-"""
-    diag_sum(A::AbstractMatrix)
-
-Return the sum of the diagonal elements of `A`
-"""
-function diag_sum(A::Matrix)
-    return sum(A[i] for i in diagind(A))
-end
-
-function diag_sum(A::UniformBlockDiagonal{T}) where T
-    dat = A.data
-    val = zero(T)
-    for k in axes(dat, 3)
-        for i in axes(dat, 1)
-            val += dat[i, i, k]
-        end
-    end
-    return val
-end
-
-function diag_sum(A::Diagonal)
-    return sum(A.diag)
-end
-
-"""
-    eval_grad_p!(blks, m, p)
-
-Evaluate the gradient component for parameter `p` in model `m` using blocks in `blks` for storage
-"""
-function eval_grad_p!(
-    blks::Matrix{AbstractMatrix{T}}, m::LinearMixedModel{T}, p::Integer
-) where {T}
-    (; L, parmap, reterms) = m
-    (b, i, j) = parmap[p]                    # block, row and column for parameter p
-    k = size(reterms[b].λ, 1)
-    initialize_blocks!(blks, m, b, i, j, k)
-#    @info b, i, j, k
-    for kk in axes(blks, 2)                  # ldiv!(LowerTriangular(L), blks)
-        #        if jj ≥ b                   # maybe hold off on this at the expense of some multiplications by zero
-        L11 = L[block(1, 1)]
-#        @info typeof(L11)
-        isa(L11, Diagonal) || (L11 = LowerTriangular(L11))
-        C1 = ldiv!(L11, blks[1, kk])
-#        @info typeof(C1)
-        for ii in axes(blks, 1)[2:end]
-            mm_mul!(blks[ii, kk], L[block(ii, 1)], C1, -one(T), one(T))
-        end
-        #        end
-        for jj in axes(blks, 1)[2:end]
-            Cj = ldiv!(LowerTriangular(L[block(jj, jj)]), blks[jj, kk])
-            for ii in (jj + 1):lastindex(blks, 1)
-                mm_mul!(blks[ii, kk], L[block(ii, jj)], Cj, -one(T), one(T))
-            end
-        end
-    end
-                                    # code in LinearAlgebra on which this is patterned
-    # for k in axes(B,2)
-    #     a11 = A[1,1]
-    #     iszero(a11) && throw(SingularException(1))
-    #     C1 = C[1,k] = a11 \ B[1,k]
-    #     # fill C-column
-    #     for i in axes(B,1)[2:end]
-    #         C[i,k] = oA \ B[i,k] - _ustrip(A[i,1]) * C1
-    #     end
-    #     for j in axes(B,1)[2:end]
-    #         ajj = A[j,j]
-    #         iszero(ajj) && throw(SingularException(j))
-    #         Cj = C[j,k] = _ustrip(ajj) \ C[j,k]
-    #         for i in j+1:lastindex(A,1)
-    #             C[i,k] -= _ustrip(A[i,j]) * Cj
-    #         end
-    #     end
-    # end
-    for ii in axes(blks, 1)                  # rdiv!(blks, transpose(LowerTriangular(L)))
-        for jj in axes(blks, 2)
-            blkij = blks[ii, jj]
-            for kk in 1:(jj - 1)
-                mul!(blkij, blks[ii, kk], transpose(L[block(jj, kk)]), -one(T), one(T))
-            end
-            Ljj = L[block(jj, jj)]
-            isa(Ljj, Diagonal) || (Ljj = LowerTriangular(Ljj))
-            rdiv!(blkij, transpose(Ljj))
-        end
-    end
-    # for i in axes(A,1)
-    #     for j in axes(A,2)
-    #         Aij = A[i,j]
-    #         for k in firstindex(B,2):j - 1
-    #             Aij -= C[i,k]*tfun(B[j,k])
-    #         end
-    #         unit || (iszero(B[j,j]) && throw(SingularException(j)))
-    #         C[i,j] = Aij / (unit ? oB : tfun(B[j,j]))
-    #     end
-    # end                     
-    return sum(diag_sum(blks[i, i]) for i in 1:(size(blks, 1) - 1)) + length(m.y) * last(last(blks))
-end
-
-"""
-    gradient!(g::Vector{T}, m::LinearMixedModel{T}) where {T}
-
-Overwrite `g` with the gradient of the ML objective of the model `m` at its current parameter values
-"""
-function gradient!(g::Vector{T}, blks::Matrix{AbstractMatrix{T}}, m::LinearMixedModel{T}) where {T}
-    if length(g) ≠ length(m.parmap)
-        throw(DimensionMismatch("length(g) = $(length(g)) should be $(length(m.parmap))"))
-    end
-    for p in axes(g, 1)
-        g[p] = eval_grad_p!(blks, m, p)
-    end
-    return g
-end
-
-function gradient(blks::Matrix{AbstractMatrix{T}}, m::LinearMixedModel{T}) where {T}
-    return gradient!(similar(m.parmap, T), blks, m)
-end
-
-function mm_mul!(               # exploit a fast path for mul! when C and A have the same sparsity pattern
-    C::SparseMatrixCSC{Tv,Ti},
-    A::SparseMatrixCSC{Tv,Ti},
-    B::Diagonal{Tv,Vector{Tv}},
-    α::Number,
-    β::Number
-) where {Tv, Ti}
-                                # check if fast path exists
-    Bdiag = B.diag
-    if C.m ≠ A.m || C.n ≠ A.n || C.n ≠ length(B.diag)
-        throw(DimensionMismatch("dimensions not compatible for mul!"))
-    end
-    if C.colptr == A.colptr && C.rowval == A.rowval
-        Cnz = C.nzval
-        if !isone(β)
-            Cnz .*= β
-        end
-        Anz = A.nzval
-        for (j, bd) in enumerate(Bdiag)
-            nzr = nzrange(A, j)
-            Cnz[nzr] .+= Anz[nzr] * bd * α
-        end
-        return C
-    end
-    LinearAlgebra.mul!(C, A, B, α, β)
-end
-
-function mm_mul!(C::AbstractMatrix{T}, A::AbstractMatrix{T}, B::AbstractMatrix{T}, α::Number, β::Number) where {T}
-    mul!(C, A, B, α, β)
-end
-
-function Lldiv!(m::LinearMixedModel{T}, blks::Matrix{AbstractMatrix{T}}) where {T}
-    L = m.L
-    for kk in axes(blks, 2)                  # ldiv!(LowerTriangular(L), blks)
-        L11 = first(L)
-        isa(L11, Diagonal) || (L11 = LowerTriangular(L11))
-        C1 = ldiv!(L11, blks[1, kk])
-        for ii in axes(blks, 1)[2:end]
-            mm_mul!(blks[ii, kk], L[block(ii, 1)], C1, -one(T), one(T))
-        end
-        for jj in axes(blks, 1)[2:end]
-            Cj = ldiv!(LowerTriangular(L[block(jj, jj)]), blks[jj, kk])
-            for ii in (jj + 1):lastindex(blks, 1)
-                mm_mul!(blks[ii, kk], L[block(ii, jj)], Cj, -one(T), one(T))
-            end
-        end
-    end
-    return blks
-end
-
-function blks2dense(blks)
-    ncol = size(blks, 2)
-    if ncol == 2
-        return hvcat(2, blks[1, 1], blks[1, 2], blks[2, 1], blks[2, 2])
-    elseif ncol == 3
-        return hvcat(
-            3, 
-            blks[1, 1], blks[1, 2], blks[1, 3],
-            blks[2, 1], blks[2, 2], blks[2, 3],
-            blks[3, 1], blks[3, 2], blks[3, 3],
-        )
-    elseif ncol == 4
-        return hvcat(
-            4,
-            blks[1, 1], blks[1, 2], blks[1, 3], blks[1, 4],
-            blks[2, 1], blks[2, 2], blks[2, 3], blks[2, 4],
-            blks[3, 1], blks[3, 2], blks[3, 3], blks[3, 4],
-            blks[4, 1], blks[4, 2], blks[4, 3], blks[4, 4],
-        )
-    else
-        throw(ArgumentError("size(blks, 2) == $ncol is too large"))
-    end
 end

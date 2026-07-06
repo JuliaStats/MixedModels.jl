@@ -1,7 +1,7 @@
 module MixedModelsNLoptExt # not actually an extension at the moment
 
 using ..MixedModels
-using ..MixedModels: objective!, _objective!, rectify!
+using ..MixedModels: objective!, _objective!, rectify!, GradientWorkspace, objective_gradient!
 # are part of the package's dependencies and will not be part
 # of the extension's dependencies
 using ..MixedModels.ProgressMeter: ProgressMeter, ProgressUnknown
@@ -24,22 +24,31 @@ function MixedModels.optimize!(m::LinearMixedModel, ::NLoptBackend;
     optsum = m.optsum
     prog = ProgressUnknown(; desc="Minimizing", showspeed=true)
     empty!(optsum.fitlog)
+    # workspace for the analytic gradient, created only for the LD_* optimizers
+    gradws = startswith(string(optsum.optimizer), "LD") ? GradientWorkspace(m) : nothing
 
     function obj(x, g)
-        isempty(g) || throw(ArgumentError("g should be empty for this objective"))
-        val = if x == optsum.initial
+        isnothing(gradws) && !isempty(g) &&
+            throw(ArgumentError("g should be empty for this objective"))
+        val = if isempty(g) && x == optsum.initial
             # fast path since we've already evaluated the initial value
             optsum.finitial
         else
             try
-                objective!(m, x)
+                if isempty(g)
+                    objective!(m, x)
+                else
+                    objective_gradient!(gradws, g, updateL!(setθ!(m, x)))
+                end
             catch ex
                 # This can happen when the optimizer drifts into an area where
                 # there isn't enough shrinkage. Why finitial? Generally, it will
                 # be the (near) worst case scenario value, so the optimizer won't
                 # view it as an optimum. Using Inf messes up the quadratic
-                # approximation in BOBYQA.
+                # approximation in BOBYQA. A zero gradient is the least harmful
+                # signal we can hand a line search in that state.
                 ex isa PosDefException || rethrow()
+                isempty(g) || fill!(g, false)
                 optsum.finitial
             end
         end
@@ -96,13 +105,13 @@ function MixedModels.optimize!(m::GeneralizedLinearMixedModel, ::NLoptBackend;
     return xmin, fmin
 end
 
-function NLopt.Opt(optsum::OptSummary)
+function NLopt.Opt(optsum::OptSummary, optimizer::Symbol=optsum.optimizer)
     n = length(optsum.initial)
 
-    if optsum.optimizer == :LN_NEWUOA && isone(n) # :LN_NEWUOA doesn't allow n == 1
-        optsum.optimizer = :LN_BOBYQA
+    if optimizer == :LN_NEWUOA && isone(n) # :LN_NEWUOA doesn't allow n == 1
+        optimizer = optsum.optimizer = :LN_BOBYQA
     end
-    opt = NLopt.Opt(optsum.optimizer, n)
+    opt = NLopt.Opt(optimizer, n)
     NLopt.ftol_rel!(opt, optsum.ftol_rel) # relative criterion on objective
     NLopt.ftol_abs!(opt, optsum.ftol_abs) # absolute criterion on objective
     NLopt.xtol_rel!(opt, optsum.xtol_rel) # relative criterion on parameter values
@@ -140,11 +149,18 @@ function MixedModels.opt_params(::NLoptBackend)
 end
 
 function MixedModels.optimizers(::NLoptBackend)
-    return [:LN_NEWUOA, :LN_BOBYQA, :LN_COBYLA, :LN_NELDERMEAD, :LN_PRAXIS]
+    return [:LN_NEWUOA, :LN_BOBYQA, :LN_COBYLA, :LN_NELDERMEAD, :LN_PRAXIS,
+            :LD_LBFGS, :LD_MMA, :LD_SLSQP]
+end
+
+# the profiling objectives do not evaluate gradients, so profiling a model that was
+# fitted with a gradient-based optimizer falls back to a derivative-free one
+function _derivfree(optimizer::Symbol)
+    return startswith(string(optimizer), "LD") ? :LN_BOBYQA : optimizer
 end
 
 function MixedModels.profilevc(obj, optsum::OptSummary, ::NLoptBackend; kwargs...)
-    opt = NLopt.Opt(optsum)
+    opt = NLopt.Opt(optsum, _derivfree(optsum.optimizer))
     NLopt.min_objective!(opt, obj)
     fmin, xmin, ret = NLopt.optimize!(opt, copyto!(optsum.final, optsum.initial))
     _check_nlopt_return(ret)
@@ -155,7 +171,7 @@ end
 function MixedModels.profileobj!(obj,
     m::LinearMixedModel{T}, θ::AbstractVector{T}, osj::OptSummary, ::NLoptBackend;
     kwargs...) where {T}
-    opt = NLopt.Opt(osj)
+    opt = NLopt.Opt(osj, _derivfree(osj.optimizer))
     NLopt.min_objective!(opt, obj)
     fmin, xmin, ret = NLopt.optimize(opt, copyto!(osj.final, osj.initial))
     _check_nlopt_return(ret)
