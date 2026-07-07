@@ -1,3 +1,8 @@
+MixedModels v5.7.1 Release Notes
+==============================
+- Compat bump for MixedModelsDatasets. Note that some data values have changed in their least significant digits, which can change statistics computed from these.
+Additionally, MixedModelsDatasets now lazily downloads individual datasets instead of downloading all available datasets as a single bundle. [#904]
+
 MixedModels v5.7.0 Release Notes
 ==============================
 - `fitted` and `predict` have been reworked to allocate less and avoid some unnecessary computation. [#887]
@@ -770,3 +775,4 @@ Package dependencies
 [#893]: https://github.com/JuliaStats/MixedModels.jl/issues/893
 [#898]: https://github.com/JuliaStats/MixedModels.jl/issues/898
 [#899]: https://github.com/JuliaStats/MixedModels.jl/issues/899
+[#904]: https://github.com/JuliaStats/MixedModels.jl/issues/904
