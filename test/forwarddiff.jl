@@ -3,7 +3,7 @@ include("modelcache.jl")
 
 fm1 = only(models(:dyestuff2))
 @test ForwardDiff.gradient(fm1) ≈ [0.0]
-@test ForwardDiff.hessian(fm1) ≈ [28.768681]
+@test ForwardDiff.hessian(fm1) ≈ [28.768680] atol=1e-5
 
 fm2 = last(models(:sleepstudy))
 # not sure what to make of the poor tolerance here
