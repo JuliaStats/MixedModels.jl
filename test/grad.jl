@@ -1,10 +1,14 @@
+using CategoricalArrays
 using FiniteDiff
 using ForwardDiff
 using LinearAlgebra
+using SparseArrays
+using StableRNGs
 using MixedModels
 using Test
 
-using MixedModels: GradientWorkspace, dataset
+using MixedModels: GradientWorkspace, GRAD_PANEL, _crossacc_blas3!, _use_blas3_cross,
+    dataset
 
 include("modelcache.jl")
 
@@ -86,6 +90,44 @@ perturb(θ::AbstractVector) = θ .* 0.75 .+ 0.125
         @test g1 == g2
         @test_throws DimensionMismatch objective_gradient!(similar(θ, 2), m)
         updateL!(setθ!(m, m.optsum.final))
+    end
+
+    @testset "BLAS-3 cross-term kernel" begin
+        # the panelled kernel must equal the dense reference ⟨A, Xrr' Xrb⟩, and must
+        # span more than one panel to exercise the panel-boundary bookkeeping
+        rng = StableRNG(1234)
+        qr, qb = 40, 3 * GRAD_PANEL + 7
+        Xrr = randn(rng, qr, qr)
+        Xrb = randn(rng, qr, qb)
+        A = sprand(rng, qr, qb, 0.2)
+        Pp = Matrix{Float64}(undef, qr, GRAD_PANEL)
+        ref = sum(A[u, v] * dot(view(Xrr, :, u), view(Xrb, :, v)) for (u, v, _) in zip(findnz(A)...))
+        @test _crossacc_blas3!(Pp, A, Xrr, Xrb) ≈ ref
+    end
+
+    @testset "BLAS-3 cross path matches sparse path" begin
+        # a small, dense partially-crossed design: sparse A[2,1] but dense Cholesky fill,
+        # dense enough to take the gated BLAS-3 path
+        # sparse (density ≈ 0.06) so A[2,1] is not densified, yet above the BLAS-3 gate
+        rng = StableRNG(42)
+        n, ng, nh = 1200, 150, 120
+        tbl = (; y=randn(rng, n),
+            g=categorical(rand(rng, 1:ng, n)), h=categorical(rand(rng, 1:nh, n)))
+        gcontr = Dict(:g => Grouping(), :h => Grouping())
+        m = LinearMixedModel(@formula(y ~ 1 + (1 | g) + (1 | h)), tbl; contrasts=gcontr)
+        θ = [0.7, 1.3]
+        updateL!(setθ!(m, θ))
+        wb = GradientWorkspace(m)                 # gate active
+        ws = GradientWorkspace(m)
+        ws = GradientWorkspace(ws.X, ws.S, ws.C1, ws.C2, ws.G, Matrix{Float64}(undef, 0, 0))
+        @test _use_blas3_cross(wb, m, 2, 1)       # dense crossing → BLAS-3
+        @test !_use_blas3_cross(ws, m, 2, 1)
+        gb = zeros(2)
+        gs = zeros(2)
+        objective_gradient!(wb, gb, m)
+        objective_gradient!(ws, gs, m)
+        @test gb ≈ gs rtol = 1e-10                # same math up to BLAS-3 vs BLAS-1 reassociation
+        @test gb ≈ ForwardDiff.gradient(m, θ) rtol = 1e-7
     end
 end
 
