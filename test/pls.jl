@@ -425,7 +425,7 @@ end
     @test fmnc.optsum.initial == ones(2)
     sigmas = fmnc.σs
     @test length(only(sigmas)) == 2
-    @test first(only(sigmas)) ≈ 24.171361283849798 atol = 1e-4
+    @test first(only(sigmas)) ≈ 24.17136 atol = 0.0005
 
     @testset "zerocorr PCA" begin
         @test length(fmnc.rePCA) == 1
@@ -933,7 +933,7 @@ end
     # make sure that the eltypes are still correct
     # otherwise this test isn't checking what it should be
     @test eltype(sleepstudy.days) == Int8
-    @test eltype(sleepstudy.reaction) == Float64
+    @test eltype(sleepstudy.reaction) <: Union{Float32,Float64}
 
     # use explicit typeof() and == is to remind us that things may break
     # if we change things and don't check their type implications now

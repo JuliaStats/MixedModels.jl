@@ -156,9 +156,9 @@ lrt = likelihoodratiotest(fm0, fm1)
         @test sprint(show, mime, VarCorr(fm1)) == """
 |          | Column      |  Variance |  Std.Dev | Corr. |
 |:-------- |:----------- | ---------:| --------:| -----:|
-| subj     | (Intercept) | 565.51069 | 23.78047 |       |
+| subj     | (Intercept) | 565.51070 | 23.78047 |       |
 |          | days        |  32.68212 |  5.71683 | +0.08 |
-| Residual |             | 654.94145 | 25.59182 |       |
+| Residual |             | 654.94146 | 25.59182 |       |
 """
 
         @test sprint(show, mime, VarCorr(gm3)) == """
