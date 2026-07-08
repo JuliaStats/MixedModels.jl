@@ -497,6 +497,11 @@ function objective_gradient!(g::AbstractVector{T}, m::LinearMixedModel{T},
 end
 
 function objective_gradient!(w::GradientWorkspace{T}, g::AbstractVector{T},
+    m::LinearMixedModel{T}, θ::AbstractVector{T}) where {T}
+    return objective_gradient!(w, g, updateL!(setθ!(m, θ)))
+end
+
+function objective_gradient!(w::GradientWorkspace{T}, g::AbstractVector{T},
     m::LinearMixedModel{T}) where {T}
     (; parmap, reterms, optsum) = m
     if length(g) ≠ length(parmap)

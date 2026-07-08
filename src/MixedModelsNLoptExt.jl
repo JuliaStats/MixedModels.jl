@@ -45,7 +45,7 @@ function MixedModels.optimize!(m::LinearMixedModel, ::NLoptBackend;
                 if isempty(g)
                     objective!(m, x)
                 else
-                    val′ = objective_gradient!(gradws, g, updateL!(setθ!(m, x)))
+                    val′ = objective_gradient!(gradws, g, m, x)
                     g ./= scale
                     val′
                 end
