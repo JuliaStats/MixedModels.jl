@@ -1,7 +1,8 @@
 module MixedModelsNLoptExt # not actually an extension at the moment
 
 using ..MixedModels
-using ..MixedModels: objective!, _objective!, rectify!, ssqdenom,
+using ..MixedModels:
+    objective!, _objective!, rectify!, ssqdenom,
     GradientWorkspace, objective_gradient!
 # are part of the package's dependencies and will not be part
 # of the extension's dependencies
@@ -162,7 +163,7 @@ end
 
 function MixedModels.optimizers(::NLoptBackend)
     return [:LN_NEWUOA, :LN_BOBYQA, :LN_COBYLA, :LN_NELDERMEAD, :LN_PRAXIS,
-            :LD_LBFGS, :LD_MMA, :LD_SLSQP]
+        :LD_LBFGS, :LD_MMA, :LD_SLSQP]
 end
 
 # the profiling objectives do not evaluate gradients, so profiling a model that was

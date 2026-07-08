@@ -7,7 +7,8 @@ using StableRNGs
 using MixedModels
 using Test
 
-using MixedModels: GradientWorkspace, GRAD_PANEL, _crossacc_blas3!, _use_blas3_cross,
+using MixedModels:
+    GradientWorkspace, GRAD_PANEL, _crossacc_blas3!, _use_blas3_cross,
     dataset
 
 include("modelcache.jl")
@@ -27,7 +28,8 @@ end
 perturb(θ::AbstractVector) = θ .* 0.75 .+ 0.125
 
 @testset "gradient vs ForwardDiff" begin
-    @testset "$(dsnm)[$i]" for dsnm in (:dyestuff, :pastes, :penicillin, :sleepstudy, :kb07),
+    @testset "$(dsnm)[$i]" for dsnm in
+                               (:dyestuff, :pastes, :penicillin, :sleepstudy, :kb07),
         (i, m) in enumerate(models(dsnm))
 
         θ = m.optsum.initial
@@ -50,8 +52,8 @@ perturb(θ::AbstractVector) = θ .* 0.75 .+ 0.125
 
     @testset "REML" begin
         for (f, dsnm) in ((last(fms[:sleepstudy]), :sleepstudy),
-                          (only(fms[:penicillin]), :penicillin),
-                          (last(fms[:pastes]), :pastes))
+            (only(fms[:penicillin]), :penicillin),
+            (last(fms[:pastes]), :pastes))
             m = fit(MixedModel, f, dataset(dsnm); REML=true, progress=false)
             θ = perturb(m.optsum.initial)
             g = similar(θ)
@@ -101,7 +103,10 @@ perturb(θ::AbstractVector) = θ .* 0.75 .+ 0.125
         Xrb = randn(rng, qr, qb)
         A = sprand(rng, qr, qb, 0.2)
         Pp = Matrix{Float64}(undef, qr, GRAD_PANEL)
-        ref = sum(A[u, v] * dot(view(Xrr, :, u), view(Xrb, :, v)) for (u, v, _) in zip(findnz(A)...))
+        ref = sum(
+            A[u, v] * dot(view(Xrr, :, u), view(Xrb, :, v)) for
+            (u, v, _) in zip(findnz(A)...)
+        )
         @test _crossacc_blas3!(Pp, A, Xrr, Xrb) ≈ ref
     end
 
@@ -133,7 +138,9 @@ end
 
 @testset "gradient-based optimization" begin
     @testset "LD_LBFGS $(dsnm)" for (dsnm, f) in
-        ((:sleepstudy, last(fms[:sleepstudy])), (:penicillin, only(fms[:penicillin])))
+                                    (
+        (:sleepstudy, last(fms[:sleepstudy])), (:penicillin, only(fms[:penicillin]))
+    )
         mref = fit(MixedModel, f, dataset(dsnm); progress=false)
         m = fit(MixedModel, f, dataset(dsnm); optimizer=:LD_LBFGS, progress=false)
         @test m.optsum.optimizer == :LD_LBFGS

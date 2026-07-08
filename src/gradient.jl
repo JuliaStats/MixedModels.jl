@@ -61,8 +61,11 @@ function GradientWorkspace(m::LinearMixedModel{T}) where {T}
     C2 = fill!(Matrix{AbstractMatrix{T}}(undef, nb, k), placeholder)
     for c in 1:nb
         Lcc = L[kp1choose2(c)]
-        X[c, c] = isa(Lcc, Diagonal) ? Diagonal(Vector{T}(undef, size(Lcc, 1))) :
-                  Matrix{T}(undef, size(Lcc))
+        X[c, c] = if isa(Lcc, Diagonal)
+            Diagonal(Vector{T}(undef, size(Lcc, 1)))
+        else
+            Matrix{T}(undef, size(Lcc))
+        end
         for r in (c + 1):nb
             X[r, c] = Matrix{T}(undef, size(L[block(r, c)]))
         end
@@ -107,7 +110,9 @@ _densemat(A::AbstractMatrix) = A
 _densemat(A::BlockedSparse) = A.cscmat
 
 # mul!(C, A, B, -1, 1) with the block types that occur in L and X
-function _mulsub!(C::AbstractMatrix{T}, A::AbstractMatrix{T}, B::AbstractMatrix{T}) where {T}
+function _mulsub!(
+    C::AbstractMatrix{T}, A::AbstractMatrix{T}, B::AbstractMatrix{T}
+) where {T}
     return mul!(C, A, B, -one(T), one(T))
 end
 
@@ -179,7 +184,9 @@ end
 
 # accumulate the [Xy]-block-row correction Xkrᵀ W Xkb into S, where W has weight
 # wx on the first p rows and wy on the last row
-function _xycorrection!(S::Matrix{T}, Xkr::Matrix{T}, Xkb::Matrix{T}, wx::T, wy::T) where {T}
+function _xycorrection!(
+    S::Matrix{T}, Xkr::Matrix{T}, Xkb::Matrix{T}, wx::T, wy::T
+) where {T}
     plast = size(Xkr, 1)
     if !iszero(wx)
         mul!(S, Xkr', Xkb, wx, one(T))
@@ -547,7 +554,7 @@ function LinearAlgebra.ldiv!(
     axis1 = axes(A_dat, 1)
     offset = 0
     for k in axes(A_dat, 3)
-        ldiv!(LowerTriangular(view(A_dat,:,:,k)), view(B, offset .+ axis1, :))
+        ldiv!(LowerTriangular(view(A_dat, :, :, k)), view(B, offset .+ axis1, :))
         offset += length(axis1)
     end
     return B
