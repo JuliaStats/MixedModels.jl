@@ -223,7 +223,7 @@ Notable exceptions are documented in the table below.
 Unlike lme4, MixedModels.jl computes $p$-values for fixed effects by default by treating the $t$-value as $z$-values and thus avoiding challenges in defining [degrees of freedom](https://bbolker.github.io/mixedmodels-misc/glmmFAQ.html#why-doesnt-lme4-display-denominator-degrees-of-freedomp-values-what-other-options-do-i-have).
 As the degrees of freedom grows, the $t$ distribution converges to the $z$ distribution, so treating $t$ as $z$ is the same as treating the denominator degrees of freedom as "arbitrarily large".
 
-In addition to the Wald approximation, MixedModels.jl also supports the [parametric bootstrap](bootstrap.md) and [profiling](@ref `profile`)
+In addition to the Wald approximation, MixedModels.jl also supports the [parametric bootstrap](bootstrap.md) and [profiling](@ref profile)
 
 Likelihood ratio tests are available via `likelihoodratiotest` and `lrtest`.
 `lrtest` is the standard name used throughout the
