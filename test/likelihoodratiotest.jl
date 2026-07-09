@@ -114,7 +114,8 @@ include("modelcache.jl")
 end
 
 @testset "likelihoodratio test" begin
-    slp = dataset(:sleepstudy)
+    slp = DataFrame(dataset(:sleepstudy))
+    slp.reaction = Float64.(slp.reaction)
 
     fm0 = fit(MixedModel, @formula(reaction ~ 1 + (1 + days | subj)), slp; progress=false)
     fm1 = fit(
