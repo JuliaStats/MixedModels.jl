@@ -1,3 +1,8 @@
+```@meta
+CurrentModule = Main
+CollapsedDocStrings = true
+```
+
 # Model constructors
 
 The `LinearMixedModel` type represents a linear mixed-effects model.
@@ -9,39 +14,41 @@ For illustration, several data sets from the *lme4* package for *R* are made ava
 Often, for convenience, we will convert these to `DataFrame`s.
 These data sets include the `dyestuff` and `dyestuff2` data sets.
 
-```@setup Main
+```@setup Constructors
 using DisplayAs
 ```
 
-```@example Main
+```@example Constructors
 using DataFrames, MixedModels, MixedModelsDatasets, StatsModels
 dyestuff = MixedModelsDatasets.dataset(:dyestuff)
 ```
 
-```@example Main
+```@example Constructors
 describe(DataFrame(dyestuff))
 ```
 
 ### The `@formula` language in Julia
 
-`MixedModels.jl` builds on the *Julia* formula language provided by [StatsModels.jl](https://juliastats.org/StatsModels.jl/stable/formula/), which is similar to the formula language in *R* and is also based on the notation from Wilkinson and Rogers ([1973](https://dx.doi.org/10.2307/2346786)). There are two ways to construct a formula in Julia.  The first way is to enclose the formula expression in the `@formula` macro:
+`MixedModels.jl` builds on the *Julia* [formula language](formula_syntax.md) provided by [StatsModels.jl](https://juliastats.org/StatsModels.jl/stable/formula/), which is similar to the formula language in *R* and is also based on the notation from Wilkinson and Rogers ([1973](https://dx.doi.org/10.2307/2346786)). There are two ways to construct a formula in Julia.
+The first way is to enclose the formula expression in the `@formula` macro:
+
 ```@docs
 @formula
 ```
 
 The second way is to combine `Term`s with operators like `+`, `&`, `~`, and others at "run time".  This is especially useful if you wish to create a formula from a list a variable names.  For instance, the following are equivalent:
 
-```@example Main
+```@example Constructors
 @formula(y ~ 1 + a + b + a & b) == (term(:y) ~ term(1) + term(:a) + term(:b) + term(:a) & term(:b))
 ```
 
 `MixedModels.jl` provides additional formula syntax for representing *random-effects terms*.  Most importantly, `|` separates random effects and their grouping factors (as in the formula extension used by the *R* package [`lme4`](https://cran.r-project.org/web/packages/lme4/index.html)).  Much like with the base formula language, `|` can be used within the `@formula` macro and to construct a formula programmatically:
 
-```@example Main
+```@example Constructors
 @formula(y ~ 1 + a + b + (1 + a + b | g))
 ```
 
-```@example Main
+```@example Constructors
 terms = sum(term(t) for t in [1, :a, :b])
 group = term(:g)
 response = term(:y)
@@ -52,7 +59,7 @@ response ~ terms + (terms | group)
 
 A basic model with simple, scalar random effects for the levels of `batch` (the batch of an intermediate product, in this case) is declared and fit as
 
-```@example Main
+```@example Constructors
 fm = @formula(yield ~ 1 + (1|batch))
 fm1 = fit(MixedModel, fm, dyestuff)
 DisplayAs.Text(ans) # hide
@@ -60,7 +67,7 @@ DisplayAs.Text(ans) # hide
 
 You can also use the convenience function `lmm` to fit the model as follows:
 
-```@example Main
+```@example Constructors
 fm = @formula(yield ~ 1 + (1|batch))
 fm2 = lmm(fm, dyestuff)
 DisplayAs.Text(ans) # hide
@@ -69,14 +76,14 @@ Notice that both are equivalent.
 
 (If you are new to Julia you may find that this first fit takes an unexpectedly long time, due to Just-In-Time (JIT) compilation of the code. The subsequent calls to such functions are much faster.)
 
-```@example Main
+```@example Constructors
 using BenchmarkTools
 dyestuff2 = MixedModelsDatasets.dataset(:dyestuff2)
 @benchmark fit(MixedModel, $fm, $dyestuff2)
 ```
 
 By default, the model is fit by maximum likelihood. To use the `REML` criterion instead, add the optional named argument `REML=true` to the call to `fit`
-```@example Main
+```@example Constructors
 fm1reml = fit(MixedModel, fm, dyestuff, REML=true)
 DisplayAs.Text(ans) # hide
 ```
@@ -84,7 +91,7 @@ DisplayAs.Text(ans) # hide
 ### Floating-point type in the model
 
 The type of `fm1`
-```@example Main
+```@example Constructors
 typeof(fm1)
 ```
 includes the floating point type used internally for the various matrices, vectors, and scalars that represent the model.
@@ -109,7 +116,7 @@ It corresponds to a shift in the intercept for each level of the grouping factor
 
 The *sleepstudy* data are observations of reaction time, `reaction`, on several subjects, `subj`, after 0 to 9 days of sleep deprivation, `days`.
 A model with random intercepts and random slopes for each subject, allowing for within-subject correlation of the slope and intercept, is fit as
-```@example Main
+```@example Constructors
 sleepstudy = MixedModelsDatasets.dataset(:sleepstudy)
 fm2 = fit(MixedModel, @formula(reaction ~ 1 + days + (1 + days|subj)), sleepstudy)
 DisplayAs.Text(ans) # hide
@@ -119,25 +126,25 @@ DisplayAs.Text(ans) # hide
 
 A model for the *Penicillin* data incorporates random effects for the plate, and for the sample.
 As every sample is used on every plate these two factors are *crossed*.
-```@example Main
+```@example Constructors
 penicillin = MixedModelsDatasets.dataset(:penicillin)
 fm3 = fit(MixedModel, @formula(diameter ~ 1 + (1|plate) + (1|sample)), penicillin)
 DisplayAs.Text(ans) # hide
 ```
 
 In contrast, the `cask` grouping factor is *nested* within the `batch` grouping factor in the *Pastes* data.
-```@example Main
+```@example Constructors
 pastes = DataFrame(MixedModelsDatasets.dataset(:pastes))
 describe(pastes)
 ```
 This can be expressed using the solidus (the "`/`" character) to separate grouping factors, read "`cask` nested within `batch`":
-```@example Main
+```@example Constructors
 fm4a = fit(MixedModel, @formula(strength ~ 1 + (1|batch/cask)), pastes)
 DisplayAs.Text(ans) # hide
 ```
 
 If the levels of the inner grouping factor are unique across the levels of the outer grouping factor, then this nesting does not need to expressed explicitly in the model syntax. For example, defining `sample` to be the combination of `batch` and `cask`, yields a naming scheme where the nesting is apparent from the data even if not expressed in the formula. (That is, each level of `sample` occurs in conjunction with only one level of `batch`.) As such, this model is equivalent to the previous one.
-```@example Main
+```@example Constructors
 pastes.sample = (string.(pastes.cask, "&",  pastes.batch))
 fm4b = fit(MixedModel, @formula(strength ~ 1 + (1|sample) + (1|batch)), pastes)
 DisplayAs.Text(ans) # hide
@@ -146,7 +153,7 @@ DisplayAs.Text(ans) # hide
 In observational studies it is common to encounter *partially crossed* grouping factors.
 For example, the *InstEval* data are course evaluations by students, `s`, of instructors, `d`.
 Additional covariates include the academic department, `dept`, in which the course was given and `service`, whether or not it was a service course.
-```@example Main
+```@example Constructors
 insteval = MixedModelsDatasets.dataset(:insteval)
 fm5 = fit(MixedModel, @formula(y ~ 1 + service * dept + (1|s) + (1|d)), insteval)
 DisplayAs.Text(ans) # hide
@@ -160,27 +167,27 @@ In some cases, you may wish to simplify the random effects structure by removing
 This often arises when there are many random effects you want to estimate (as is common in psychological experiments with many conditions and covariates), since the number of random effects parameters increases as the square of the number of predictors, making these models difficult to estimate from limited data.
 
 The special syntax `zerocorr` can be applied to individual random effects terms inside the `@formula`:
-```@example Main
+```@example Constructors
 fm2zerocorr_fm = fit(MixedModel, @formula(reaction ~ 1 + days + zerocorr(1 + days|subj)), sleepstudy)
 DisplayAs.Text(ans) # hide
 ```
 
 Alternatively, correlations between parameters can be removed by including them as separate random effects terms:
-```@example Main
+```@example Constructors
 fit(MixedModel, @formula(reaction ~ 1 + days + (1|subj) + (days|subj)), sleepstudy)
 DisplayAs.Text(ans) # hide
 ```
 
 Finally, for predictors that are categorical, `MixedModels.jl` will estimate correlations between each level.
 Notice the large number of correlation parameters if we treat `days` as a categorical variable by giving it contrasts:
-```@example Main
+```@example Constructors
 fit(MixedModel, @formula(reaction ~ 1 + days + (1 + days|subj)), sleepstudy,
     contrasts = Dict(:days => DummyCoding()))
 DisplayAs.Text(ans) # hide
 ```
 
 Separating the `1` and `days` random effects into separate terms removes the correlations between the intercept and the levels of `days`, but not between the levels themselves:
-```@example Main
+```@example Constructors
 fit(MixedModel, @formula(reaction ~ 1 + days + (1|subj) + (days|subj)), sleepstudy,
     contrasts = Dict(:days => DummyCoding()))
 DisplayAs.Text(ans) # hide
@@ -188,7 +195,7 @@ DisplayAs.Text(ans) # hide
 (Notice that the variance component for `days: 1` is estimated as zero, so the correlations for this component are undefined and expressed as `NaN`, not a number.)
 
 An alternative is to force all the levels of `days` as indicators using `fulldummy` encoding.
-```@example Main
+```@example Constructors
 fit(MixedModel, @formula(reaction ~ 1 + days + (1 + fulldummy(days)|subj)), sleepstudy,
     contrasts = Dict(:days => DummyCoding()))
 DisplayAs.Text(ans) # hide
@@ -197,17 +204,17 @@ This fit produces a better fit as measured by the objective (negative twice the 
 As a result, model comparison criteria such, as `AIC` and `BIC`, are inflated.
 
 But using `zerocorr` on the individual terms does remove the correlations between the levels:
-```@example Main
+```@example Constructors
 fit(MixedModel, @formula(reaction ~ 1 + days + zerocorr(1 + days|subj)), sleepstudy,
     contrasts = Dict(:days => DummyCoding()))
 DisplayAs.Text(ans) # hide
 ```
-```@example Main
+```@example Constructors
 fit(MixedModel, @formula(reaction ~ 1 + days + (1|subj) + zerocorr(days|subj)), sleepstudy,
     contrasts = Dict(:days => DummyCoding()))
 DisplayAs.Text(ans) # hide
 ```
-```@example Main
+```@example Constructors
 fit(MixedModel, @formula(reaction ~ 1 + days + zerocorr(1 + fulldummy(days)|subj)), sleepstudy,
     contrasts = Dict(:days => DummyCoding()))
 DisplayAs.Text(ans) # hide
@@ -218,14 +225,14 @@ DisplayAs.Text(ans) # hide
 To create a GLMM representation, the distribution family for the response, and possibly the link function, must be specified.
 You can either use `fit(MixedModel, ...)` or `glmm(...)` to fit the model. For instance:
 
-```@example Main
+```@example Constructors
 verbagg = MixedModelsDatasets.dataset(:verbagg)
 verbaggform = @formula(r2 ~ 1 + anger + gender + btype + situ + mode + (1|subj) + (1|item));
 gm1 = fit(MixedModel, verbaggform, verbagg, Bernoulli())
 DisplayAs.Text(ans) # hide
 ```
 The model can also be fit as
-```@example Main
+```@example Constructors
 gm1 = glmm(verbaggform, verbagg, Bernoulli())
 ```
 The canonical link, which is `LogitLink` for the `Bernoulli` distribution, is used if no explicit link is specified.
@@ -240,21 +247,21 @@ The optional arguments `fast` and/or `nAGQ` can be passed to the optimization pr
 
 As the name implies, `fast=true`, provides a faster but somewhat less accurate fit.
 These fits may suffice for model comparisons.
-```@example Main
+```@example Constructors
 gm1a = fit(MixedModel, verbaggform, verbagg, Bernoulli(), fast = true)
 deviance(gm1a) - deviance(gm1)
 ```
-```@example Main
+```@example Constructors
 @benchmark fit(MixedModel, $verbaggform, $verbagg, Bernoulli())
 ```
-```@example Main
+```@example Constructors
 @benchmark fit(MixedModel, $verbaggform, $verbagg, Bernoulli(), fast = true)
 ```
 
 The optional argument `nAGQ=k` causes evaluation of the deviance function to use a `k` point
 adaptive Gauss-Hermite quadrature rule.
 This method only applies to models with a single, simple, scalar random-effects term, such as
-```@example Main
+```@example Constructors
 contraception = MixedModelsDatasets.dataset(:contra)
 contraform = @formula(use ~ 1 + age + abs2(age) + livch + urban + (1|dist));
 bernoulli = Bernoulli()
@@ -285,22 +292,22 @@ bic
 dof
 nobs
 ```
-```@example Main
+```@example Constructors
 loglikelihood(fm1)
 ```
-```@example Main
+```@example Constructors
 aic(fm1)
 ```
-```@example Main
+```@example Constructors
 bic(fm1)
 ```
-```@example Main
+```@example Constructors
 dof(fm1)   # 1 fixed effect, 2 variances
 ```
-```@example Main
+```@example Constructors
 nobs(fm1)  # 30 observations
 ```
-```@example Main
+```@example Constructors
 loglikelihood(gm1)
 ```
 
@@ -315,10 +322,10 @@ objective
 ```
 This value is also accessible as the `deviance` but the user should bear in mind that this doesn't have all the properties of a deviance which is corrected for the saturated model.
 For example, it is not necessarily non-negative.
-```@example Main
+```@example Constructors
 objective(fm1)
 ```
-```@example Main
+```@example Constructors
 deviance(fm1)
 ```
 
@@ -326,7 +333,7 @@ The value optimized when fitting a `GeneralizedLinearMixedModel` is the Laplace 
 ```@docs
 MixedModels.deviance!
 ```
-```@example Main
+```@example Constructors
 MixedModels.deviance!(gm1)
 ```
 
@@ -341,31 +348,31 @@ coefnames
 fixef
 fixefnames
 ```
-```@example Main
+```@example Constructors
 coef(fm1)
 coefnames(fm1)
 ```
-```@example Main
+```@example Constructors
 fixef(fm1)
 fixefnames(fm1)
 ```
 
 An alternative extractor for the fixed-effects coefficient is the `β` property.
 Properties whose names are Greek letters usually have an alternative spelling, which is the name of the Greek letter.
-```@example Main
+```@example Constructors
 fm1.β
 ```
-```@example Main
+```@example Constructors
 fm1.beta
 ```
-```@example Main
+```@example Constructors
 gm1.β
 ```
 A full list of property names is returned by `propertynames`
-```@example Main
+```@example Constructors
 propertynames(fm1)
 ```
-```@example Main
+```@example Constructors
 propertynames(gm1)
 ```
 
@@ -373,10 +380,10 @@ The variance-covariance matrix of the fixed-effects coefficients is returned by
 ```@docs
 vcov
 ```
-```@example Main
+```@example Constructors
 vcov(fm2)
 ```
-```@example Main
+```@example Constructors
 vcov(gm1)
 ```
 
@@ -384,10 +391,10 @@ The standard errors are the square roots of the diagonal elements of the estimat
 ```@docs
 stderror
 ```
-```@example Main
+```@example Constructors
 stderror(fm2)
 ```
-```@example Main
+```@example Constructors
 stderror(gm1)
 ```
 
@@ -396,7 +403,7 @@ The *p-values* quoted here should be regarded as approximations.
 ```@docs
 coeftable
 ```
-```@example Main
+```@example Constructors
 coeftable(fm2)
 DisplayAs.Text(ans) # hide
 ```
@@ -404,11 +411,11 @@ DisplayAs.Text(ans) # hide
 ## Covariance parameter estimates
 
 The covariance parameters estimates, in the form shown in the model summary, are a `VarCorr` object
-```@example Main
+```@example Constructors
 VarCorr(fm2)
 DisplayAs.Text(ans) # hide
 ```
-```@example Main
+```@example Constructors
 VarCorr(gm1)
 DisplayAs.Text(ans) # hide
 ```
@@ -418,13 +425,13 @@ Individual components are returned by other extractors
 varest
 sdest
 ```
-```@example Main
+```@example Constructors
 varest(fm2)
 ```
-```@example Main
+```@example Constructors
 sdest(fm2)
 ```
-```@example Main
+```@example Constructors
 fm2.σ
 ```
 
@@ -434,10 +441,10 @@ The `ranef` extractor
 ```@docs
 ranef
 ```
-```@example Main
+```@example Constructors
 ranef(fm1)
 ```
-```@example Main
+```@example Constructors
 fm1.b
 ```
 returns the *conditional modes* of the random effects given the observed data.
@@ -453,7 +460,7 @@ To obtain tables associating the values of the conditional modes with the levels
 raneftables
 ```
 as in
-```@example Main
+```@example Constructors
 DataFrame(only(raneftables(fm1)))
 ```
 
@@ -461,7 +468,7 @@ The corresponding conditional variances are returned by
 ```@docs
 condVar
 ```
-```@example Main
+```@example Constructors
 condVar(fm1)
 ```
 
@@ -471,7 +478,7 @@ The `leverage` values
 ```@docs
 leverage
 ```
-```@example Main
+```@example Constructors
 leverage(fm1)
 ```
 are used in diagnostics for linear regression models to determine cases that exert a strong influence on their own predicted response.
@@ -487,51 +494,51 @@ This number does not represent a dimension (or "degrees of freedom") of a linear
 Nevertheless, it is a reasonable measure of the effective degrees of freedom of the model and `n - sum(leverage(m))` can be considered the effective residual degrees of freedom.
 
 For model `fm1` the dimensions are
-```@example Main
+```@example Constructors
 n, p, q, k = size(fm1)
 ```
 which implies that the sum of the leverage values should be in the range [1, 7].
 The actual value is
-```@example Main
+```@example Constructors
 sum(leverage(fm1))
 ```
 
 For model `fm2` the dimensions are
-```@example Main
+```@example Constructors
 n, p, q, k = size(fm2)
 ```
 providing a range of [2, 38] for the effective degrees of freedom for the model.
 The observed value is
-```@example Main
+```@example Constructors
 sum(leverage(fm2))
 ```
 
 When a model converges to a singular covariance, such as
-```@example Main
+```@example Constructors
 fm3 = fit(MixedModel, @formula(yield ~ 1+(1|batch)), MixedModelsDatasets.dataset(:dyestuff2))
 DisplayAs.Text(ans) # hide
 ```
 the effective degrees of freedom is the lower bound.
-```@example Main
+```@example Constructors
 sum(leverage(fm3))
 ```
 
 Models for which the estimates of the variances of the random effects are large relative to the residual variance have effective degrees of freedom close to the upper bound.
-```@example Main
+```@example Constructors
 fm4 = fit(MixedModel, @formula(diameter ~ 1+(1|plate)+(1|sample)),
     MixedModelsDatasets.dataset(:penicillin))
 DisplayAs.Text(ans) # hide
 ```
-```@example Main
+```@example Constructors
 sum(leverage(fm4))
 ```
 
 Also, a model fit by the REML criterion generally has larger estimates of the variance components and hence a larger effective degrees of freedom.
-```@example Main
+```@example Constructors
 fm4r = fit(MixedModel, @formula(diameter ~ 1+(1|plate)+(1|sample)),
     MixedModelsDatasets.dataset(:penicillin), REML=true)
 DisplayAs.Text(ans) # hide
 ```
-```@example Main
+```@example Constructors
 sum(leverage(fm4r))
 ```

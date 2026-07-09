@@ -19,6 +19,25 @@ include("modelcache.jl")
     MixedModels.reweight!(mat, wts)
     @test mul!(prd, mat', mat)[ipiv[1], ipiv[1]] ≈ sum(abs2, wts)
 
+    # propertynames: public view hides internal fields
+    trm2 = MixedModels.FeTerm(hcat(ones(30), repeat(0:9; outer=3)), ["(Intercept)", "U"])
+    @test propertynames(trm2) == (:x, :piv, :rank, :cnames)
+    @test :fullrankx ∈ propertynames(trm2, true)
+    @test :xrankdef ∈ propertynames(trm2, true)
+
+    # copyto! writes into the fullrankx storage
+    src = zeros(30, 2)
+    copyto!(trm2, src)
+    @test all(iszero, getfield(trm2, :fullrankx))
+
+    # copyto! on a linked feterm (fullrankx is a view into Xymat.xy) writes through
+    m = first(models(:sleepstudy))
+    old_x = copy(getfield(m.feterm, :fullrankx))
+    src_m = zeros(size(old_x))
+    copyto!(m.feterm, src_m)
+    @test all(iszero, m.Xymat.xy[:, 1:(m.feterm.rank)])
+    copyto!(m.feterm, old_x)  # restore
+
     # empty fixed effects
     trm = MixedModels.FeTerm(ones(10, 0), String[])
     #@test size(trm) == (10, 0)  # There no longer are size and length methods for FeTerm
