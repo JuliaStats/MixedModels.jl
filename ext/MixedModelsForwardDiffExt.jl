@@ -11,6 +11,7 @@ using MixedModels: _logdet,
 using LinearAlgebra: copy_oftype
 using ForwardDiff: ForwardDiff,
     Chunk,
+    DiffResults,
     GradientConfig,
     HessianConfig
 
@@ -136,6 +137,47 @@ function _fd_objective(model::LinearMixedModel, AA::Vector, LL::Vector, RR::Vect
     end
     wts = model.sqrtwts
     return isempty(wts) ? val : val - 2 * sum(log, wts)
+end
+
+#####
+##### Reusable workspace for gradient-based optimization
+#####
+
+# callable evaluating the objective from cached promoted copies of the model's
+# numerical fields, so that repeated gradient evaluations (e.g. within a
+# gradient-based optimizer) do not reallocate the promoted copies
+struct FDCachedObjective{Md<:LinearMixedModel,VA<:Vector,VL<:Vector,VR<:Vector}
+    model::Md
+    AA::VA
+    LL::VL
+    RR::VR
+end
+
+(f::FDCachedObjective)(θ::AbstractVector) = _fd_objective(f.model, f.AA, f.LL, f.RR, θ)
+
+function MixedModels.fd_gradient_workspace(model::LinearMixedModel{T}) where {T}
+    x = Vector{T}(model.θ)
+    # the tag is constructed from the closure fd_deviance(model) rather than the
+    # FDCachedObjective, whose type mentions the dual type itself; the tag check
+    # is therefore disabled in fd_objective_gradient!
+    tag = ForwardDiff.Tag(fd_deviance(model), T)
+    cfg = GradientConfig(nothing, x, Chunk(x), tag)
+    D = eltype(cfg.duals)
+    f = FDCachedObjective(model,
+        [copy_oftype(Ai, D) for Ai in model.A],
+        [copy_oftype(Li, D) for Li in model.L],
+        [copy_oftype(Ri, D) for Ri in model.reterms])
+    return (; f, cfg, result=DiffResults.GradientResult(x))
+end
+
+function MixedModels.fd_objective_gradient!(
+    fdws::NamedTuple, g::AbstractVector, m::LinearMixedModel, θ::AbstractVector
+)
+    fdws.f.model === m ||
+        throw(ArgumentError("the workspace was created for a different model"))
+    ForwardDiff.gradient!(fdws.result, fdws.f, θ, fdws.cfg, Val(false))
+    copyto!(g, DiffResults.gradient(fdws.result))
+    return DiffResults.value(fdws.result)
 end
 
 end # module

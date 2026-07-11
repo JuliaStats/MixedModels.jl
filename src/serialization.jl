@@ -81,6 +81,7 @@ function restoreoptsum!(ops::OptSummary{T}, dict::AbstractDict) where {T}
         :pirls_ftol_rel,    # added in v5.6.0
         :pirls_ftol_abs,    # added in v5.6.0
         :pirls_maxhalfstep, # added in v5.6.0
+        :gradient,          # added in v5.8.0
     )
     nmdiff = setdiff(
         propertynames(ops),  # names in freshly created optsum
@@ -105,6 +106,7 @@ function restoreoptsum!(ops::OptSummary{T}, dict::AbstractDict) where {T}
     copyto!(ops.final, dict.final)
     ops.optimizer = Symbol(dict.optimizer)
     ops.returnvalue = Symbol(dict.returnvalue)
+    ops.gradient = Symbol(get(dict, :gradient, ops.gradient))
     # compatibility with fits saved before the introduction of various extensions
     for prop in (
         :xtol_zero_abs,

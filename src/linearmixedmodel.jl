@@ -461,11 +461,20 @@ end
 
 """
     fit!(m::LinearMixedModel; progress::Bool=true, REML::Bool=m.optsum.REML,
-                              σ::Union{Real, Nothing}=m.optsum.sigma)
+                              σ::Union{Real, Nothing}=m.optsum.sigma,
+                              backend::Symbol=m.optsum.backend,
+                              optimizer::Symbol=m.optsum.optimizer,
+                              gradient::Symbol=m.optsum.gradient)
 
 Optimize the objective of a `LinearMixedModel`.  When `progress` is `true` a
 `ProgressMeter.ProgressUnknown` display is shown during the optimization of the
 objective, if the optimization takes more than one second or so.
+
+`backend` and `optimizer` select the optimization library and algorithm;
+see [`OptSummary`](@ref). For gradient-based optimizers, `gradient` selects
+the gradient source: the default `:analytic` uses [`objective_gradient!`](@ref),
+while `:forwarddiff` uses forward-mode automatic differentiation and requires
+that ForwardDiff.jl be loaded. Derivative-free optimizers ignore `gradient`.
 """
 function StatsAPI.fit!(
     m::LinearMixedModel{T};
@@ -474,6 +483,7 @@ function StatsAPI.fit!(
     σ::Union{Real,Nothing}=m.optsum.sigma,
     backend::Symbol=m.optsum.backend,
     optimizer::Symbol=m.optsum.optimizer,
+    gradient::Symbol=m.optsum.gradient,
 ) where {T}
     optsum = m.optsum
     # this doesn't matter for LMM, but it does for GLMM, so let's be consistent
@@ -485,10 +495,14 @@ function StatsAPI.fit!(
             ArgumentError("The response is constant and thus model fitting has failed")
         )
     end
+    if gradient ∉ (:analytic, :forwarddiff)
+        throw(ArgumentError("gradient must be :analytic or :forwarddiff, got $gradient"))
+    end
     optsum.REML = REML
     optsum.sigma = σ
     optsum.backend = backend
     optsum.optimizer = optimizer
+    optsum.gradient = gradient
 
     try
         # use explicit evaluation w/o calling opt to avoid confusing iteration count

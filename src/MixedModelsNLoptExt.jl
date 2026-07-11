@@ -26,8 +26,25 @@ function MixedModels.optimize!(m::LinearMixedModel, ::NLoptBackend;
     optsum = m.optsum
     prog = ProgressUnknown(; desc="Minimizing", showspeed=true)
     empty!(optsum.fitlog)
-    # workspace for the analytic gradient, created only for the LD_* optimizers
-    gradws = startswith(string(optsum.optimizer), "LD") ? GradientWorkspace(m) : nothing
+    # gradient workspace, created only for the LD_* optimizers
+    gradws = if !startswith(string(optsum.optimizer), "LD")
+        nothing
+    elseif optsum.gradient == :analytic
+        GradientWorkspace(m)
+    elseif optsum.gradient == :forwarddiff
+        hasmethod(MixedModels.fd_gradient_workspace, Tuple{typeof(m)}) ||
+            throw(
+                ArgumentError(
+                    "gradient=:forwarddiff requires that ForwardDiff.jl be loaded, e.g. `using ForwardDiff`"
+                ),
+            )
+        MixedModels.fd_gradient_workspace(m)
+    else
+        throw(
+            ArgumentError(
+                "gradient must be :analytic or :forwarddiff, got $(optsum.gradient)"),
+        )
+    end
     # The gradient-based optimizers see the per-observation objective: the objective
     # and its gradient scale with the number of observations, so on that scale the
     # identity is a poor initial inverse-Hessian estimate and the first line-search
@@ -46,7 +63,7 @@ function MixedModels.optimize!(m::LinearMixedModel, ::NLoptBackend;
                 if isempty(g)
                     objective!(m, x)
                 else
-                    val′ = objective_gradient!(gradws, g, m, x)
+                    val′ = _objective_gradient!(gradws, g, m, x)
                     g ./= scale
                     val′
                 end
@@ -78,6 +95,15 @@ function MixedModels.optimize!(m::LinearMixedModel, ::NLoptBackend;
     optsum.returnvalue = ret
     _check_nlopt_return(ret)
     return xmin, fmin
+end
+
+# dispatch between the analytic gradient and a gradient source provided by an
+# extension (whose workspace type is not nameable here)
+function _objective_gradient!(w::GradientWorkspace, g, m::LinearMixedModel, x)
+    return objective_gradient!(w, g, m, x)
+end
+function _objective_gradient!(w, g, m::LinearMixedModel, x)
+    return MixedModels.fd_objective_gradient!(w, g, m, x)
 end
 
 function MixedModels.optimize!(m::GeneralizedLinearMixedModel, ::NLoptBackend;

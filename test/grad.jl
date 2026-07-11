@@ -151,6 +151,37 @@ end
 
     @test :LD_LBFGS in MixedModels.optimizers(Val(:nlopt))
 
+    @testset "gradient=:forwarddiff" begin
+        m = last(models(:sleepstudy))
+        θ = perturb(m.optsum.initial)
+        w = MixedModels.fd_gradient_workspace(m)
+        g_fd = similar(θ)
+        val_fd = MixedModels.fd_objective_gradient!(w, g_fd, m, θ)
+        g = similar(θ)
+        val = objective_gradient!(g, m, θ)
+        @test val_fd ≈ val
+        @test g_fd ≈ g rtol = 1e-8 atol = 1e-10
+        # repeated evaluation with the cached workspace is idempotent
+        g2 = similar(θ)
+        @test MixedModels.fd_objective_gradient!(w, g2, m, θ) == val_fd
+        @test g2 == g_fd
+        @test_throws ArgumentError MixedModels.fd_objective_gradient!(
+            w, g2, only(models(:penicillin)), θ)
+        updateL!(setθ!(m, m.optsum.final))
+
+        mref = fit(MixedModel, last(fms[:sleepstudy]), dataset(:sleepstudy);
+            optimizer=:LD_LBFGS, progress=false)
+        mfd = fit(MixedModel, last(fms[:sleepstudy]), dataset(:sleepstudy);
+            optimizer=:LD_LBFGS, gradient=:forwarddiff, progress=false)
+        @test mfd.optsum.gradient == :forwarddiff
+        @test mfd.optsum.returnvalue in (:SUCCESS, :FTOL_REACHED, :XTOL_REACHED)
+        @test mfd.optsum.fmin ≈ mref.optsum.fmin atol = 1e-6
+        @test mfd.θ ≈ mref.θ atol = 1e-3
+
+        @test_throws ArgumentError fit(MixedModel, last(fms[:sleepstudy]),
+            dataset(:sleepstudy); gradient=:badsource, progress=false)
+    end
+
     @testset "profile after gradient-based fit" begin
         # the profiling objectives are derivative-free; profiling a model fitted
         # with an LD optimizer must fall back to a derivative-free optimizer
