@@ -24,12 +24,15 @@ Here LX is the diagonal term corresponding to the fixed-effects in the blocked
 lower Cholesky factor.
 """
 function LinearAlgebra.logdet(m::LinearMixedModel{T}) where {T}
-    L = m.L
-    @inbounds s = sum(j -> LD(L[kp1choose2(j)])::T, axes(m.reterms, 1))
-    if m.optsum.REML
-        lastL = last(L)::Matrix{T}
+    return _logdet(m.L, m.reterms, m.optsum.REML)::T
+end
+
+function _logdet(L::Vector, reterms::Vector, REML::Bool)
+    @inbounds s = sum(j -> LD(L[kp1choose2(j)]), axes(reterms, 1))
+    if REML
+        lastL = last(L)
         s += LD(lastL)        # this includes the log of sqrtpwrss
         s -= log(last(lastL)) # so we need to subtract it from the sum
     end
-    return (s + s)::T  # multiply by 2 b/c the desired det is of the symmetric mat, not the factor
+    return s + s  # multiply by 2 b/c the desired det is of the symmetric mat, not the factor
 end

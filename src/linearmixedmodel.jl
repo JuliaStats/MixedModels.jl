@@ -930,7 +930,9 @@ end
 
 The penalized, weighted residual sum-of-squares.
 """
-pwrss(m::LinearMixedModel{T}) where {T} = abs2(last(last(m.L)::Matrix{T}))
+pwrss(m::LinearMixedModel{T}) where {T} = pwrss(m.L)::T
+
+pwrss(L::Vector) = abs2(last(last(L)))
 
 """
     ranef!(v::Vector{Matrix{T}}, m::MixedModel{T}, β, uscale::Bool) where {T}
@@ -1111,8 +1113,14 @@ sdest(m::LinearMixedModel) = something(m.optsum.sigma, √varest(m))
 
 Install `v` as the θ parameters in `m`.
 """
-function setθ!(m::LinearMixedModel{T}, θ::AbstractVector) where {T}
-    parmap, reterms = m.parmap, m.reterms
+function setθ!(m::LinearMixedModel, θ::AbstractVector)
+    setθ!(m.reterms, m.parmap, θ)
+    return m
+end
+
+function setθ!(
+    reterms::Vector{<:AbstractReMat}, parmap::Vector{<:NTuple}, θ::AbstractVector
+)
     length(θ) == length(parmap) || throw(DimensionMismatch())
     reind = 1
     λ = first(reterms).λ
@@ -1124,7 +1132,7 @@ function setθ!(m::LinearMixedModel{T}, θ::AbstractVector) where {T}
         end
         λ[tr[2], tr[3]] = tv
     end
-    return m
+    return reterms
 end
 
 # This method is nearly identical to the previous one but determining a common signature
@@ -1388,10 +1396,14 @@ Update the blocked lower Cholesky factor, `m.L`, from `m.A` and `m.reterms` (use
 
 This is the crucial step in evaluating the objective, given a new parameter value.
 """
-function updateL!(m::LinearMixedModel{T}) where {T}
-    A, L, reterms = m.A, m.L, m.reterms
+function updateL!(m::LinearMixedModel)
+    updateL!(m.A, m.L, m.reterms)
+    return m
+end
+
+function updateL!(A::Vector, L::Vector, reterms::Vector)
     k = length(reterms)
-    copyto!(last(m.L), last(m.A))  # ensure the fixed-effects:response block is copied
+    copyto!(last(L), last(A))  # ensure the fixed-effects:response block is copied
     for j in eachindex(reterms) # pre- and post-multiply by Λ, add I to diagonal
         cj = reterms[j]
         diagind = kp1choose2(j)
@@ -1406,6 +1418,7 @@ function updateL!(m::LinearMixedModel{T}) where {T}
     end
     for j in 1:(k + 1)             # blocked Cholesky
         Ljj = L[kp1choose2(j)]
+        T = eltype(Ljj)
         for jj in 1:(j - 1)
             rankUpdate!(Hermitian(Ljj, :L), L[block(j, jj)], -one(T), one(T))
         end
@@ -1419,7 +1432,7 @@ function updateL!(m::LinearMixedModel{T}) where {T}
             rdiv!(Lij, LjjT')
         end
     end
-    return m
+    return L
 end
 
 """

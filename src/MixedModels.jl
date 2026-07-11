@@ -16,7 +16,7 @@ using JSON3: JSON3
 using LinearAlgebra: LinearAlgebra, Adjoint, BLAS, BlasFloat, ColumnNorm
 using LinearAlgebra: Diagonal, Hermitian, HermOrSym, I, LAPACK, LowerTriangular
 using LinearAlgebra: PosDefException, SVD, SymTridiagonal, Symmetric
-using LinearAlgebra: UpperTriangular, cond, diag, diagind, dot, eigen, isdiag
+using LinearAlgebra: UpperTriangular, cholesky!, cond, diag, diagind, dot, eigen, isdiag
 using LinearAlgebra: ldiv!, lmul!, logdet, mul!, norm, normalize, normalize!, qr
 using LinearAlgebra: rank, rdiv!, rmul!, svd, tril!
 using Markdown: Markdown

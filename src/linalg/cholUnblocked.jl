@@ -8,7 +8,7 @@ because these are part of the inner calculations in a blocked Cholesky factoriza
 """
 function cholUnblocked! end
 
-function cholUnblocked!(D::Diagonal{T}, ::Type{Val{:L}}) where {T<:AbstractFloat}
+function cholUnblocked!(D::Diagonal{T}, ::Type{Val{:L}}) where {T<:Real}
     Ddiag = D.diag
     @inbounds for i in eachindex(Ddiag)
         (ddi = Ddiag[i]) ≤ zero(T) && throw(PosDefException(i))
@@ -33,6 +33,12 @@ function cholUnblocked!(A::StridedMatrix{T}, ::Type{Val{:L}}) where {T<:BlasFloa
         _, info = LAPACK.potrf!('L', A)
         iszero(info) || throw(PosDefException(info))
     end
+    return A
+end
+
+# generic fallback for eltypes without LAPACK support, e.g. ForwardDiff.Dual
+function cholUnblocked!(A::StridedMatrix, ::Type{Val{:L}})
+    cholesky!(Hermitian(A, :L))
     return A
 end
 

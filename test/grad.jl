@@ -72,8 +72,8 @@ perturb(θ::AbstractVector) = θ .* 0.75 .+ 0.125
             g = similar(θ)
             val = objective_gradient!(g, m, θ)
             @test val ≈ objective!(m, θ)
-            # the ForwardDiff extension differentiates at fixed σ = m.σ, which coincides
-            # with the profiled-σ gradient only when σ is actually fixed, as here
+            # the ForwardDiff extension holds σ at optsum.sigma when it is fixed,
+            # matching the analytic gradient
             gfd = ForwardDiff.gradient(m, θ)
             @test g ≈ gfd rtol = 1e-6 atol = 1e-8
             gff = FiniteDiff.finite_difference_gradient(Base.Fix1(objective!, m), θ)
