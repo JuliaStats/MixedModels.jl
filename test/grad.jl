@@ -64,6 +64,22 @@ perturb(θ::AbstractVector) = θ .* 0.75 .+ 0.125
         end
     end
 
+    @testset "crossed designs $(label) $(REML ? "REML" : "ML")" for
+        (label, f) in (("scalar-crossed", first(fms[:kb07])),
+            ("vector-crossed", last(fms[:kb07]))),
+        REML in (false, true)
+        # subject × item crossing exercises the sparse/BLAS-3 off-diagonal path
+        # (scalar terms) and the dense _densepair! path (vector terms); the REML
+        # cases are the capability the earlier ML-only prototype could not handle
+        m = fit(MixedModel, f, dataset(:kb07); REML, progress=false)
+        θ = perturb(m.optsum.initial)
+        g = similar(θ)
+        val = objective_gradient!(g, m, θ)
+        @test val ≈ objective!(m, θ)
+        gfd = ForwardDiff.gradient(m, θ)
+        @test g ≈ gfd rtol = 1e-6 atol = 1e-6
+    end
+
     @testset "fixed sigma" begin
         for REML in (false, true)
             m = fit(MixedModel, last(fms[:sleepstudy]), dataset(:sleepstudy);
