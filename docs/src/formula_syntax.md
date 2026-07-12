@@ -1,3 +1,7 @@
+```@meta
+CurrentModule = MixedModels
+CollapsedDocStrings = true
+```
 
 # Formula syntax
 
