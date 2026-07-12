@@ -13,13 +13,10 @@ function _abstractify_grouping(f::FormulaTerm)
     re = map(re) do trm
         if trm.rhs isa InteractionTerm
             rhs = mapreduce(&, trm.rhs.terms) do tt
-                # how to define Grouping() for interactions on the RHS?
-                # contr[tt.sym] = Grouping()
-                return Term(tt.sym)
+                return StatsModels.term(tt.sym)
             end
         else
-            contr[trm.rhs.sym] = Grouping()
-            rhs = Term(trm.rhs.sym)
+            rhs = StatsModels.term(trm.rhs.sym)
         end
         return trm.lhs | rhs
     end
@@ -58,7 +55,7 @@ Return a string of length `n` containing `s` in the center (more-or-less).
 cpad(s::String, n::Integer) = rpad(lpad(s, (n + textwidth(s)) >> 1), n)
 
 """
-densify(S::SparseMatrix, threshold=0.1)
+    densify(S::SparseMatrix, threshold=0.1)
 
 Convert sparse `S` to `Diagonal` if `S` is diagonal or to `Array(S)` if
 the proportion of nonzeros exceeds `threshold`.
@@ -124,39 +121,28 @@ end
 _is_logging(io) = isa(io, Base.TTY) == false || (get(ENV, "CI", nothing) == "true")
 
 """
-    replicate(f::Function, n::Integer; use_threads=false)
+    replicate(f::Function, n::Integer; progress=true)
 
 Return a vector of the values of `n` calls to `f()` - used in simulations where the value of `f` is stochastic.
 
-`hide_progress` can be used to disable the progress bar. Note that the progress
+`progress` controls whether the progress bar is shown. Note that the progress
 bar is automatically disabled for non-interactive (i.e. logging) contexts.
-
-!!! warning
-    If `f()` is not thread-safe or depends on a non thread-safe RNG,
-    then you must set `use_threads=false`. Also note that ordering of replications
-    is not guaranteed when `use_threads=true`, although the replications are not
-    otherwise affected for thread-safe `f()`.
 """
-function replicate(f::Function, n::Integer; use_threads=false, hide_progress=false)
-    # no macro version yet: https://github.com/timholy/ProgressMeter.jl/issues/143
+function replicate(
+    f::Function, n::Integer; progress=true
+)
     # and we want some advanced options
-    p = Progress(n; output=Base.stderr, enabled=!hide_progress && !_is_logging(stderr))
+    p = Progress(n; output=Base.stderr, enabled=progress && !_is_logging(stderr))
     # get the type
     rr = f()
     next!(p)
     # pre-allocate
     results = [rr for _ in Base.OneTo(n)]
-    if use_threads
-        Threads.@threads for idx in 2:n
-            results[idx] = f()
-            next!(p)
-        end
-    else
-        for idx in 2:n
-            results[idx] = f()
-            next!(p)
-        end
+    for idx in 2:n
+        results[idx] = f()
+        next!(p)
     end
+    finish!(p)
     return results
 end
 

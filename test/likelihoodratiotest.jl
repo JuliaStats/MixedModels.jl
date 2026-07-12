@@ -1,9 +1,11 @@
 using DataFrames
 using GLM
 using MixedModels
+using Suppressor
 using Test
 
-using MixedModels: dataset, likelihoodratiotest
+using MixedModels: likelihoodratiotest
+using MixedModelsDatasets: dataset
 using GLM: ProbitLink
 using StatsModels: lrtest, isnested
 
@@ -16,120 +18,214 @@ include("modelcache.jl")
     # so we just construct them
 
     # mismatched RE terms
-    m1 = LinearMixedModel(@formula(reaction ~ 1 + days + (1+days|subj)), slp)
-    m2 = LinearMixedModel(@formula(reaction ~ 1 + days + (0+days|subj)), slp)
+    m1 = LinearMixedModel(@formula(reaction ~ 1 + days + (1 + days | subj)), slp)
+    m2 = LinearMixedModel(@formula(reaction ~ 1 + days + (0 + days | subj)), slp)
     @test !isnested(m1, m2)
 
     # mismatched FE
-    m1 = LinearMixedModel(@formula(reaction ~ 1 + days + (1|subj)), slp)
-    m2 = LinearMixedModel(@formula(reaction ~ 0 + days + (1|subj)), slp)
+    m1 = LinearMixedModel(@formula(reaction ~ 1 + days + (1 | subj)), slp)
+    m2 = LinearMixedModel(@formula(reaction ~ 0 + days + (1 | subj)), slp)
     @test !isnested(m1, m2)
 
     # mismatched grouping vars
-    kb07  = dataset(:kb07)
-    m1 = LinearMixedModel(@formula(rt_trunc ~ 1 + (1|subj)), kb07)
-    m2 = LinearMixedModel(@formula(rt_trunc ~ 1 + (1|item)), kb07)
+    kb07 = dataset(:kb07)
+    m1 = LinearMixedModel(@formula(rt_trunc ~ 1 + (1 | subj)), kb07)
+    m2 = LinearMixedModel(@formula(rt_trunc ~ 1 + (1 | item)), kb07)
     @test !isnested(m1, m2)
 
     # fixed-effects specification in REML and
     # conversion of internal ArgumentError into @error for StatsModels.isnested
-    kb07  = dataset(:kb07)
-    m1 = fit(MixedModel, @formula(rt_trunc ~ 1 + prec + (1|subj)), kb07, REML=true, progress=false)
-    m2 = fit(MixedModel, @formula(rt_trunc ~ 1 + prec + (1+prec|subj)), kb07, REML=true, progress=false)
+    kb07 = dataset(:kb07)
+    m1 = fit(
+        MixedModel,
+        @formula(rt_trunc ~ 1 + prec + (1 | subj)),
+        kb07;
+        REML=true,
+        progress=false,
+    )
+    m2 = fit(
+        MixedModel,
+        @formula(rt_trunc ~ 1 + prec + (1 + prec | subj)),
+        kb07;
+        REML=true,
+        progress=false,
+    )
     @test isnested(m1, m2)
-    m2 = fit(MixedModel, @formula(rt_trunc ~ 1 + (1+prec|subj)), kb07, REML=true, progress=false)
-    @test !isnested(m1, m2)
+    m2 = fit(
+        MixedModel,
+        @formula(rt_trunc ~ 1 + (1 + prec | subj)),
+        kb07;
+        REML=true,
+        progress=false,
+    )
+    @test @suppress !isnested(m1, m2)
 
+    m1 = only(models(:dyestuff))
+    m2 = fit(
+        MixedModel,
+        @formula(yield - 1500 ~ 0 + (1 | batch)),
+        dataset(:dyestuff),
+    )
+    @test isnested(m2, m1)
+
+    # _isnested(x, y) should return true iff column(x) ⊆ column(y). The
+    # implementation projects x onto qr(y).Q and checks that the projection
+    # has no mass outside column(y). The cutoff between "in column(y)" and
+    # "orthogonal complement" must be based on rank(y), not rank(x).
+    @testset "_isnested partitions at second arg" begin
+        # y has rank 2 in R^5, with column span = span(e_1, e_2).
+        y = [1.0 0.0
+             0.0 1.0
+             0.0 0.0
+             0.0 0.0
+             0.0 0.0]
+
+        # x = e_3 is clearly outside span(e_1, e_2)
+        # so is not nested in y.
+        x_outside = reshape([0.0, 0.0, 1.0, 0.0, 0.0], 5, 1)
+        @test !MixedModels._isnested(x_outside, y)
+
+        # Multi-column case where every column of x has its out-of-y mass in
+        # the interior of the orthogonal complement (rows rank(y)+1 : m-rank(x)-1).
+        y_big = [1.0 0.0 0.0
+                 0.0 1.0 0.0
+                 0.0 0.0 1.0
+                 0.0 0.0 0.0
+                 0.0 0.0 0.0
+                 0.0 0.0 0.0
+                 0.0 0.0 0.0
+                 0.0 0.0 0.0]
+        x_big = zeros(8, 2)
+        # non zeros occur at rows 4 and 5, but
+        # y doesn't have any non zeros in those rows and so this
+        # is out of the column span of y
+        x_big[4, 1] = 1.0
+        x_big[5, 2] = 1.0
+        @test !MixedModels._isnested(x_big, y_big)
+
+        # this is the sum of the first two basis vectors e_1, e_2 so clearly
+        # within the column span
+        x_inside = reshape([1.0, 1.0, 0.0, 0.0, 0.0], 5, 1)
+        @test MixedModels._isnested(x_inside, y)
+
+        # y is nested in itself
+        @test MixedModels._isnested(y, y)
+    end
 end
 
 @testset "likelihoodratio test" begin
-    slp = dataset(:sleepstudy);
+    slp = DataFrame(dataset(:sleepstudy))
+    slp.reaction = Float64.(slp.reaction)
 
-    fm0 = fit(MixedModel,@formula(reaction ~ 1 + (1+days|subj)),slp, progress=false);
-    fm1 = fit(MixedModel,@formula(reaction ~ 1 + days + (1+days|subj)),slp, progress=false);
+    fm0 = fit(MixedModel, @formula(reaction ~ 1 + (1 + days | subj)), slp; progress=false)
+    fm1 = fit(
+        MixedModel, @formula(reaction ~ 1 + days + (1 + days | subj)), slp; progress=false
+    )
     lm0 = lm(@formula(reaction ~ 1), slp)
     lm1 = lm(@formula(reaction ~ 1 + days), slp)
 
-    @test MixedModels._iscomparable(lm0, fm1)
-    @test !MixedModels._iscomparable(lm1, fm0)
+    @test MixedModels.isnested(lm0, fm1)
+    @test !MixedModels.isnested(lm1, fm0)
 
-    lrt = likelihoodratiotest(fm0,fm1)
+    lrt = likelihoodratiotest(fm0, fm1)
+    @test lrtest(fm0, fm1) == lrtest(lrt)
 
-    @test [deviance(fm0), deviance(fm1)] == lrt.deviance
-    @test deviance(fm0) - deviance(fm1) == only(lrt.tests.deviancediff)
-    @test only(lrt.tests.dofdiff) == 1
-    @test sum(map(length,lrt.tests)) == 3
-    @test sum(map(length,lrt.pvalues)) == 1
-    @test sum(map(length,lrt.models)) == 4
-    @test length(lrt.formulae) == 2
-    show(IOBuffer(),lrt);
-    @test :pvalues in propertynames(lrt)
+    @test (deviance(fm0), deviance(fm1)) == lrt.deviance
+    @test sprint(show, lrt) == "Likelihood-ratio test: 2 models fitted on 180 observations\nModel Formulae\n1: reaction ~ 1 + (1 + days | subj)\n2: reaction ~ 1 + days + (1 + days | subj)\n────────────────────────────────────────────\n     DoF  -2 logLik       χ²  χ²-dof  P(>χ²)\n────────────────────────────────────────────\n[1]    5  1775.4759                         \n[2]    6  1751.9393  23.5365       1  <1e-05\n────────────────────────────────────────────"
+    @test last(lrt.pvalues) == pvalue(lrt)
 
-    lrt = likelihoodratiotest(lm1,fm1)
-    @test lrt.deviance ≈ likelihoodratiotest(lm1.model,fm1).deviance
-    @test lrt.dof == [3, 6]
-    @test lrt.deviance ≈ -2 * loglikelihood.([lm1, fm1])
-    shown = sprint(show, lrt)
-    @test occursin("-2 logLik", shown)
-    @test !occursin("deviance", shown)
+    lrt = likelihoodratiotest(lm1, fm1)
+    @test pvalue(lrt) ≈ 5.9e-32 atol=1e-16
+
+    lrt2 = likelihoodratiotest(lm1.model, fm1)
+    @test first(lrt2.formulas) == "NA"
+    @test lrtest(lrt2) == lrtest(lrt)
+
+    lrt = likelihoodratiotest(lm0, fm0, fm1)
+    @suppress @test_throws ArgumentError pvalue(lrt)
 
     # non nested FE between non-mixed and mixed
-    @test_throws ArgumentError likelihoodratiotest(lm1, fm0)
+    @suppress @test_throws ArgumentError likelihoodratiotest(lm1, fm0)
 
     # mix of REML and ML
-    fm0 = fit(MixedModel,@formula(reaction ~ 1 + (1+days|subj)),slp, REML=true, progress=false);
-    @test_throws ArgumentError likelihoodratiotest(fm0,fm1)
-    @test_throws ArgumentError likelihoodratiotest(lm0,fm0)
+    fm0 = fit(
+        MixedModel,
+        @formula(reaction ~ 1 + (1 + days | subj)),
+        slp;
+        REML=true,
+        progress=false,
+    )
+    @suppress @test_throws ArgumentError likelihoodratiotest(fm0, fm1)
+    @suppress @test_throws ArgumentError likelihoodratiotest(lm0, fm0)
 
     # differing FE with REML
-    fm1 = fit(MixedModel,@formula(reaction ~ 1 + days + (1+days|subj)),slp, REML=true, progress=false);
+    fm1 = fit(
+        MixedModel,
+        @formula(reaction ~ 1 + days + (1 + days | subj)),
+        slp;
+        REML=true,
+        progress=false,
+    )
 
-    @test_throws ArgumentError likelihoodratiotest(fm0,fm1)
-    contra = MixedModels.dataset(:contra);
+    @suppress @test_throws ArgumentError likelihoodratiotest(fm0, fm1)
+
+    contra = MixedModels.dataset(:contra)
     # glm doesn't like categorical responses, so we convert it to numeric ourselves
     # TODO: upstream fix
-    cc = DataFrame(contra);
-    cc.usenum = ifelse.(cc.use .== "Y", 1 , 0)
-    gmf = glm(@formula(usenum ~ 1+age+urban+livch), cc, Bernoulli());
-    gmf2 = glm(@formula(usenum ~ 1+age+abs2(age)+urban+livch), cc, Bernoulli());
-    gm0 = fit(MixedModel, @formula(use ~ 1+age+urban+livch+(1|urban&dist)), contra, Bernoulli(), fast=true, progress=false);
-    gm1 = fit(MixedModel, @formula(use ~ 1+age+abs2(age)+urban+livch+(1|urban&dist)), contra, Bernoulli(), fast=true, progress=false);
+    cc = DataFrame(dataset(:contra))
+    cc.usenum = ifelse.(cc.use .== "Y", 1, 0)
+    gmf = glm(@formula(usenum ~ 1 + age + urban + livch), cc, Bernoulli())
+    gmf2 = glm(@formula(usenum ~ 1 + age + abs2(age) + urban + livch), cc, Bernoulli())
+    gm0 = fit(
+        MixedModel,
+        @formula(use ~ 1 + age + urban + livch + (1 | urban & dist)),
+        dataset(:contra),
+        Bernoulli();
+        fast=true,
+        progress=false,
+    )
+    gm1 = fit(
+        MixedModel,
+        @formula(use ~ 1 + age + abs2(age) + urban + livch + (1 | urban & dist)),
+        dataset(:contra),
+        Bernoulli();
+        fast=true,
+        progress=false,
+    )
 
     lrt = likelihoodratiotest(gmf, gm1)
-    @test [-2 * loglikelihood(gmf), deviance(gm1)] ≈ lrt.deviance
-    @test -2 * loglikelihood(gmf) - deviance(gm1) ≈ only(lrt.tests.deviancediff)
-    shown = sprint(show, lrt)
-    @test !occursin("-2 logLik", shown)
-    @test occursin("deviance", shown)
+    @test  2 * only(diff(collect(lrt.loglikelihood))) ≈ 95.0725 atol=0.0001
 
-    lrt = likelihoodratiotest(gm0,gm1);
-    @test [deviance(gm0), deviance(gm1)] == lrt.deviance
-    @test deviance(gm0) - deviance(gm1) == only(lrt.tests.deviancediff)
-    @test first(lrt.tests.dofdiff) == 1
-    @test sum(length, lrt.tests) == 3
-    @test sum(length, lrt.pvalues) == 1
-    @test sum(length, lrt.models) == 4
-    @test length(lrt.formulae) == 2
+    lrt = likelihoodratiotest(gm0, gm1)
+    @test  2 * only(diff(collect(lrt.loglikelihood))) ≈ 38.0713 atol=0.0001
 
     # mismatched links
-    gm_probit = fit(MixedModel, @formula(use ~ 1+age+urban+livch+(1|urban&dist)), contra, Bernoulli(), ProbitLink(), fast=true, progress=false);
-    @test_throws ArgumentError likelihoodratiotest(gmf, gm_probit)
-    @test_throws ArgumentError likelihoodratiotest(gm0, gm_probit)
+    gm_probit = fit(
+        MixedModel,
+        @formula(use ~ 1 + age + urban + livch + (1 | urban & dist)),
+        dataset(:contra),
+        Bernoulli(),
+        ProbitLink();
+        fast=true,
+        progress=false,
+    )
+    @suppress @test_throws ArgumentError likelihoodratiotest(gmf, gm_probit)
+    @suppress @test_throws ArgumentError likelihoodratiotest(gm0, gm_probit)
 
     # mismatched families
-    gm_poisson = fit(MixedModel, @formula(use ~ 1+age+urban+livch+(1|urban&dist)), contra, Poisson(), fast=true, progress=false);
-    @test_throws ArgumentError likelihoodratiotest(gmf, gm_poisson)
-    @test_throws ArgumentError likelihoodratiotest(gm0, gm_poisson)
+    gm_poisson = fit(
+        MixedModel,
+        @formula(use ~ 1 + age + urban + livch + (1 | urban & dist)),
+        dataset(:contra),
+        Poisson();
+        fast=true,
+        progress=false,
+    )
+    @suppress @test_throws ArgumentError likelihoodratiotest(gmf, gm_poisson)
+    @suppress @test_throws ArgumentError likelihoodratiotest(gm0, gm_poisson)
 
-    @test !MixedModels._iscomparable(lm0, gm0)
-    @test !MixedModels._iscomparable(gmf, fm1)
-
-    @test MixedModels._iscomparable(gmf, gm0)
-    @test !MixedModels._iscomparable(gmf2, gm0)
-
-    @test MixedModels._isnested(gmf.mm.m, gm0.X)
-    @test !MixedModels._isnested(gmf2.mm.m, gm0.X)
+    @test !MixedModels._samefamily(gm0, gm_poisson)
     # this skips the linear term so that the model matrices
     # have the same column rank
-    @test !MixedModels._isnested(gmf2.mm.m[:,Not(2)], gm0.X)
+    @test !MixedModels._isnested(gmf2.mm.m[:, Not(2)], gm0.X)
 end

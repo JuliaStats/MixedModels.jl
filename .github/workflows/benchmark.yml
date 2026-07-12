@@ -1,0 +1,37 @@
+name: benchmarks
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+on:
+    workflow_dispatch:
+#   pull_request:
+#     branches:
+#       - main
+#     paths-ignore:
+#       - 'LICENSE.md'
+#       - 'README.md'
+#       - 'docs/**'
+#       - 'issues/**'
+#       - 'format/**'
+#       - 'test/**'
+jobs:
+    benchmarks:
+        runs-on: ubuntu-latest
+        strategy:
+          fail-fast: false
+        steps:
+          - uses: actions/checkout@v7
+          - uses: julia-actions/setup-julia@v3
+            with:
+              version: "1"
+          - uses: julia-actions/cache@v3
+          - uses: julia-actions/julia-buildpkg@v1
+          - name: Benchmark run
+            run: |
+              git fetch origin +:refs/remotes/origin/HEAD --depth=1
+              julia --project=benchmark benchmark/run.jl
+          - name: Comment PR
+            uses: thollander/actions-comment-pull-request@v3
+            with:
+              filePath: "benchmark.md"
+              comment_tag: benchmark

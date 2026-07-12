@@ -1,36 +1,64 @@
 """
-    StatsBase.predict(m::LinearMixedModel, newdata;
+    StatsAPI.predict(m::LinearMixedModel, newdata;
                     new_re_levels=:missing)
-    StatsBase.predict(m::GeneralizedLinearMixedModel, newdata;
+    StatsAPI.predict(m::GeneralizedLinearMixedModel, newdata;
                     new_re_levels=:missing, type=:response)
 
 Predict response for new data.
 
 !!! note
     Currently, no in-place methods are provided because these methods
-    internally construct a new model and therefore allocate not just a
-    response vector but also many other matrices.
+    internally construct new model matrices and therefore allocate not just a
+    response vector but also other working arrays.
 
 !!! warning
-    Models are assumed to be full rank.
+    `newdata` should contain a column for the response (dependent variable)
+    initialized to some numerical value (not `missing`), because this is
+    used to construct the new model used in computing the predictions.
+    `missing` is not valid because `missing` data are dropped before
+    constructing the model matrices.
 
 !!! warning
-    These methods construct an entire MixedModel behind the scenes and
-    as such may use a large amount of memory when `newdata` is large.
+    These methods construct new fixed-effects and random-effects design
+    matrices behind the scenes and may still use a large amount of memory
+    when `newdata` is large.
+
+!!! warning
+    Rank-deficiency can lead to surprising but consistent behavior.
+    For example, if there are two perfectly collinear predictors `A`
+    and `B` (e.g. constant multiples of each other), then it is possible
+    that `A` will be pivoted out in the fitted model and thus the
+    associated coefficient is set to zero. If predictions are then
+    generated on new data where `B` has been set to zero but `A` has
+    not, then there will no contribution from neither `A` nor `B`
+    in the resulting predictions.
 
 The keyword argument `new_re_levels` specifies how previously unobserved
-values of the grouping variable are handled. Possible values are
-`:population` (return population values, i.e. fixed-effects only),
-`:missing` (return `missing`), `:error` (error on this condition;
-the error type is an implementation detail). If you want simulated values
-for unobserved levels of the grouping variable, consider the
-[`simulate!`](@ref) and `simulate` methods.
+values of the grouping variable are handled. Possible values are:
+
+- `:population`: return population values for the relevant grouping variable.
+   In other words, treat the associated random effect as 0.
+   If all grouping variables have new levels, then this is equivalent to
+   just the fixed effects.
+- `:missing`: return `missing`.
+- `:error`: error on this condition. The error type is an implementation detail:
+   you should not rely on a particular type of error being thrown.
+
+If you want simulated values for unobserved levels of the grouping variable,
+consider the [`simulate!`](@ref) and `simulate` methods.
 
 Predictions based purely on the fixed effects can be obtained by
 specifying previously unobserved levels of the random effects and setting
-`new_re_levels=:population`. In the future, it may be possible to specify
-a subset of the grouping variables or overall random-effects structure to use,
-but not at this time.
+`new_re_levels=:population`. Similarly, the contribution of any
+grouping variable can be excluded by specifying previously unobserved levels,
+while including previously observed levels of the other grouping variables.
+In the future, it may be possible to specify a subset of the grouping variables
+or overall random-effects structure to use, but not at this time.
+
+!!! note
+    `new_re_levels` impacts only the behavior for previously unobserved random
+    effects levels, i.e. new RE levels. For previously observed random effects
+    levels, predictions take both the fixed and random effects into account.
 
 For `GeneralizedLinearMixedModel`, the `type` parameter specifies
 whether the predictions should be returned on the scale of linear predictor
@@ -40,26 +68,72 @@ difference between these terms, then you probably want `type=:response`.
 Regression weights are not yet supported in prediction.
 Similarly, offsets are also not supported for `GeneralizedLinearMixedModel`.
 """
-function StatsBase.predict(
-    m::LinearMixedModel, newdata::Tables.ColumnTable; new_re_levels=:population
+function StatsAPI.predict(
+    m::LinearMixedModel, newdata::Tables.ColumnTable; new_re_levels=:missing
 )
-    return _predict(m, newdata, m.β; new_re_levels)
+    return _predict(m, newdata, coef(m)[pivot(m)]; new_re_levels)
 end
 
-function StatsBase.predict(
+function StatsAPI.predict(
     m::GeneralizedLinearMixedModel,
     newdata::Tables.ColumnTable;
     new_re_levels=:population,
     type=:response,
 )
     type in (:linpred, :response) || throw(ArgumentError("Invalid value for type: $(type)"))
-
-    y = _predict(m.LMM, newdata, m.β; new_re_levels)
+    # want pivoted but not truncated
+    y = _predict(m.LMM, newdata, coef(m)[pivot(m)]; new_re_levels)
 
     return type == :linpred ? y : broadcast!(Base.Fix1(linkinv, Link(m)), y, y)
 end
 
+function StatsAPI.predict(m::GeneralizedLinearMixedModel; type=:response)
+    type in (:linpred, :response) || throw(ArgumentError("Invalid value for type: $(type)"))
+    return type == :response ? fitted(m) : m.resp.eta
+end
+
+_level_index(levelsvec) = Dict(level => i for (i, level) in pairs(levelsvec))
+
+"""
+    PredictionDesign{T}
+
+Internal structure for representing the model components to make
+predictions on new data for an already fit model.
+
+!!! warning "Internal use only"
+    This structure is an internal implementation detail and optimization.
+    It can change or go away without being considered breaking.
+
+# Fields
+- `feterm::FeTerm`
+- `reterms::Vector{<:AbstractReMat{T}}`
+
+"""
+struct PredictionDesign{T}
+    feterm::FeTerm
+    reterms::Vector{<:AbstractReMat{T}}
+end
+
+function _prediction_design(m::MixedModel{T}, newdata) where {T}
+    f, contr = _abstractify_grouping(m.formula)
+    respvars = StatsModels.termvars(f.lhs)
+    if !issubset(respvars, Tables.columnnames(newdata)) ||
+        any(any(ismissing, Tables.getcolumn(newdata, col)) for col in respvars)
+        throw(
+            ArgumentError(
+                "Response column must be initialized to a non-missing numeric value."
+            ),
+        )
+    end
+
+    form = schematize(f, newdata, contr)
+    _, Xs = modelcols(form, newdata)
+    reterms, feterms = _split_re_fe_terms(Xs, form, T)
+    return PredictionDesign{T}(only(feterms), reterms)
+end
+
 # β is separated out here because m.β != m.LMM.β depending on how β is estimated for GLMM
+# also β should already be pivoted but NOT truncated in the rank deficient case
 function _predict(m::MixedModel{T}, newdata, β; new_re_levels) where {T}
     new_re_levels in (:population, :missing, :error) ||
         throw(ArgumentError("Invalid value for new_re_levels: $(new_re_levels)"))
@@ -71,57 +145,48 @@ function _predict(m::MixedModel{T}, newdata, β; new_re_levels) where {T}
     # using the existing model's estimates for the new data. (These are in general
     # *not* the same values as the estimates computed on the new data.)
 
-    # the easiest thing here is to just assemble a new model and
-    # pass that to the other predict methods....
-    # this can probably be made much more efficient
-
-    # note that the contrasts don't matter for prediction purposes
-    # (at least for the response)
-
-    # add a response column
-    # we get type stability via constant propogation on `new_re_levels`
-    y, mnew = let ytemp = ones(T, length(first(newdata)))
-        f, contr = _abstractify_grouping(m.formula)
-        lmm = LinearMixedModel(f, newdata; contrasts=contr)
-        ytemp =
-            new_re_levels == :missing ? convert(Vector{Union{T,Missing}}, ytemp) : ytemp
-
-        ytemp, lmm
+    pdesign = _prediction_design(m, newdata)
+    # we get type stability via constant propagation on `new_re_levels`
+    y = let ytemp = ones(T, length(first(newdata)))
+        new_re_levels == :missing ? convert(Vector{Union{T,Missing}}, ytemp) : ytemp
     end
 
-    grps = fnames(m)
-    mul!(y, mnew.X, β)
-    # mnew.reterms for the correct Z matrices
+    pivotmatch = invperm(pivot(pdesign.feterm))[pivot(m)]
+    mul!(y, view(pdesign.feterm.x, :, pivotmatch), β)
+    # pdesign.reterms for the correct Z matrices
     # ranef(m) for the BLUPs from the original fit
 
     # because the reterms are sorted during model construction by
     # number of levels and that number may not be the same for the
     # new data, we need to permute the reterms from both models to be
     # in the same order
-    newreperm = sort(1:length(mnew.reterms); by=x -> string(mnew.reterms[x].trm))
-    oldreperm = sort(1:length(m.reterms); by=x -> string(m.reterms[x].trm))
-    newre = mnew.reterms[newreperm]
-    oldre = m.reterms[oldreperm]
+    newreperm = sortperm(pdesign.reterms; by=x -> string(x.trm))
+    oldreperm = sortperm(m.reterms; by=x -> string(x.trm))
+    newre = view(pdesign.reterms, newreperm)
+    oldre = view(m.reterms, oldreperm)
+    grps = fname.(oldre)
+    oldlevels = levels.(oldre)
+    newlevels = levels.(newre)
+    oldlevelidx = _level_index.(oldlevels)
+    blupsold = ranef(m)[oldreperm]
 
     if new_re_levels == :error
-        for (grp, known_levels, data_levels) in
-            zip(grps, levels.(m.reterms), levels.(mnew.reterms))
-            if sort!(known_levels) != sort!(data_levels)
-                throw(ArgumentError("New level enountered in $grp"))
+        for (grp, known_levels, data_levels) in zip(grps, oldlevelidx, newlevels)
+            if length(known_levels) != length(data_levels) ||
+                !all(ll -> haskey(known_levels, ll), data_levels)
+                throw(ArgumentError("New level encountered in $grp"))
             end
         end
 
         # we don't have to worry about the BLUP ordering within a given
         # grouping variable because we are in the :error branch
-        blups = ranef(m)[oldreperm]
+        blups = blupsold
     elseif new_re_levels == :population
-        blups = ranef(mnew)[newreperm]
-        blupsold = ranef(m)[oldreperm]
+        blups = [Matrix{T}(undef, size(t.z, 1), nlevs(t)) for t in newre]
 
-        for (idx, B) in enumerate(blups)
-            oldlevels = levels(oldre[idx])
-            for (lidx, ll) in enumerate(levels(newre[idx]))
-                oldloc = findfirst(isequal(ll), oldlevels)
+        for (idx, (B, newlvls, oldidx)) in enumerate(zip(blups, newlevels, oldlevelidx))
+            for (lidx, ll) in enumerate(newlvls)
+                oldloc = get(oldidx, ll, nothing)
                 if oldloc === nothing
                     # setting a BLUP to zero gives you the population value
                     B[:, lidx] .= zero(T)
@@ -131,17 +196,14 @@ function _predict(m::MixedModel{T}, newdata, β; new_re_levels) where {T}
             end
         end
     elseif new_re_levels == :missing
-        # we can't quite use ranef! because we need
-        # Union{T, Missing} and not just T
-        blups = Vector{Matrix{Union{T,Missing}}}(undef, length(m.reterms))
-        copyto!(blups, ranef(mnew)[newreperm])
-        blupsold = ranef(m)[oldreperm]
-        for (idx, B) in enumerate(blups)
-            oldlevels = levels(oldre[idx])
-            for (lidx, ll) in enumerate(levels(newre[idx]))
-                oldloc = findfirst(isequal(ll), oldlevels)
+        blups = [
+            Matrix{Union{T,Missing}}(undef, size(t.z, 1), nlevs(t)) for t in newre
+        ]
+        for (idx, (B, newlvls, oldidx)) in enumerate(zip(blups, newlevels, oldlevelidx))
+            for (lidx, ll) in enumerate(newlvls)
+                oldloc = get(oldidx, ll, nothing)
                 if oldloc === nothing
-                    # missing is poisonous so propogates
+                    # missing is poisonous so propagates
                     B[:, lidx] .= missing
                 else
                     B[:, lidx] .= @view blupsold[idx][:, oldloc]
@@ -176,7 +238,7 @@ function _predict(m::MixedModel{T}, newdata, β; new_re_levels) where {T}
 end
 
 # yup, I got lazy on this one -- let the dispatched method handle kwarg checking
-function StatsBase.predict(m::MixedModel, newdata; kwargs...)
+function StatsAPI.predict(m::MixedModel, newdata; kwargs...)
     return predict(m, columntable(newdata); kwargs...)
 end
 

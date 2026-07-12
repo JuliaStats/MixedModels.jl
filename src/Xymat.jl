@@ -3,35 +3,61 @@
 
 Term with an explicit, constant matrix representation
 
-Typically, an `FeTerm` represents the model matrix for the fixed effects. 
+Typically, an `FeTerm` represents the model matrix for the fixed effects.
 
 !!! note
     `FeTerm` is not the same as [`FeMat`](@ref)!
 
+!!! warning
+    In a [`LinearMixedModel`](@ref), `fullrankx` is a view into the first `rank` columns
+    of the model's `Xymat.xy` matrix. Writing to it (e.g. via `copyto!`) will propagate
+    into `Xymat.xy` and corrupt the model's internal state.
+
 # Fields
-* `x`: full model matrix
+* `fullrankx`: full-rank columns of the model matrix (a view into [`FeMat`](@ref) storage when part of a fitted [`LinearMixedModel`](@ref))
+* `xrankdef`: rank-deficient extra columns (n×(p-rank) `Matrix`; empty for full-rank models)
 * `piv`: pivot `Vector{Int}` for moving linearly dependent columns to the right
 * `rank`: computational rank of `x`
 * `cnames`: vector of column names
+
+# Properties
+* `x`: full model matrix (all columns, pivoted order); a non-allocating view for full-rank models,
+  or a freshly allocated `hcat` for rank-deficient models. See also [`modelmatrix`](@ref).
 """
 struct FeTerm{T,S<:AbstractMatrix}
-    x::S
+    fullrankx::S
+    xrankdef::Matrix{T}
     piv::Vector{Int}
     rank::Int
     cnames::Vector{String}
 end
 
+function Base.getproperty(A::FeTerm, sym::Symbol)
+    if sym === :x
+        fr = getfield(A, :fullrankx)
+        rd = getfield(A, :xrankdef)
+        return isempty(rd) ? fr : hcat(fr, rd)
+    end
+    return getfield(A, sym)
+end
+
+function Base.propertynames(::FeTerm, private::Bool=false)
+    public = (:x, :piv, :rank, :cnames)
+    return private ? (public..., :fullrankx, :xrankdef) : public
+end
+
 """
     FeTerm(X::AbstractMatrix, cnms)
-    
+
 Convenience constructor for [`FeTerm`](@ref) that computes the rank and pivot with unit weights.
 
-See the vignette "[Rank deficiency in mixed-effects models](@ref)" for more information on the 
+See the vignette "[Rank deficiency in mixed-effects models](@ref)" for more information on the
 computation of the rank and pivot.
 """
 function FeTerm(X::AbstractMatrix{T}, cnms) where {T}
+    n = size(X, 1)
     if iszero(size(X, 2))
-        return FeTerm{T,typeof(X)}(X, Int[], 0, cnms)
+        return FeTerm{T,typeof(X)}(X, Matrix{T}(undef, n, 0), Int[], 0, cnms)
     end
     rank, pivot = statsrank(X)
     # single-column rank deficiency is the result of a constant column vector
@@ -40,31 +66,57 @@ function FeTerm(X::AbstractMatrix{T}, cnms) where {T}
     if rank < length(pivot) && size(X, 2) > 1
         @warn "Fixed-effects matrix is rank deficient"
     end
-    return FeTerm{T,typeof(X)}(X[:, pivot], pivot, rank, cnms[pivot])
+    x_piv = view(X, :, pivot)
+    xfr = x_piv[:, 1:rank]
+    xrd = x_piv[:, (rank + 1):end]
+    return FeTerm{T,typeof(xfr)}(xfr, xrd, pivot, rank, cnms[pivot])
 end
 
 """
     FeTerm(X::SparseMatrixCSC, cnms)
-    
+
 Convenience constructor for a sparse [`FeTerm`](@ref) assuming full rank, identity pivot and unit weights.
 
-Note: automatic rank deficiency handling may be added to this method in the future, as discused in
+Note: automatic rank deficiency handling may be added to this method in the future, as discussed in
 the vignette "[Rank deficiency in mixed-effects models](@ref)" for general `FeTerm`.
 """
 function FeTerm(X::SparseMatrixCSC, cnms::AbstractVector{String})
-    @debug "Full rank is assumed for sparse fixed-effect matrices."
+    #@debug "Full rank is assumed for sparse fixed-effect matrices."
     rank = size(X, 2)
-    return FeTerm{eltype(X),typeof(X)}(X, collect(1:rank), rank, collect(cnms))
+    empty_rd = Matrix{eltype(X)}(undef, size(X, 1), 0)
+    return FeTerm{eltype(X),typeof(X)}(X, empty_rd, collect(1:rank), rank, collect(cnms))
 end
 
-Base.copyto!(A::FeTerm{T}, src::AbstractVecOrMat{T}) where {T} = copyto!(A.x, src)
+function Base.copyto!(A::FeTerm{T}, src::AbstractVecOrMat{T}) where {T}
+    return copyto!(getfield(A, :fullrankx), src)
+end
 
 Base.eltype(::FeTerm{T}) where {T} = T
 
+"""
+    pivot(m::MixedModel)
+    pivot(A::FeTerm)
+
+Return the pivot associated with the FeTerm.
+"""
+@inline pivot(m::MixedModel) = pivot(m.feterm)
+@inline pivot(A::FeTerm) = A.piv
+
+"""
+    fullrankx(m::MixedModel)
+    fullrankx(A::FeTerm)
+
+Return the full-rank portion of the fixed-effects model matrix.
+
+For a [`LinearMixedModel`](@ref) this is a non-allocating view into the first `rank`
+columns of `m.Xymat.xy`. See also [`modelmatrix`](@ref) for an allocating version that
+includes any rank-deficient columns.
+"""
 function fullrankx(A::FeTerm)
-    x, rnk = A.x, A.rank
-    return rnk == size(x, 2) ? x : view(x, :, 1:rnk)  # this handles the zero-columns case
+    return getfield(A, :fullrankx)
 end
+
+fullrankx(m::MixedModel) = fullrankx(m.feterm)
 
 LinearAlgebra.rank(A::FeTerm) = A.rank
 
@@ -84,7 +136,9 @@ A matrix and a (possibly) weighted copy of itself.
 Typically, an `FeMat` represents the fixed-effects model matrix with the response (`y`) concatenated as a final column.
 
 !!! note
-    `FeMat` is not the same as [`FeTerm`](@ref).
+    `FeMat` is not the same as [`FeTerm`](@ref). In a [`LinearMixedModel`](@ref), the
+    first `rank` columns of `xy` are aliased with the `fullrankx` field of the model's
+    [`FeTerm`](@ref); writes to either propagate to the other.
 
 # Fields
 - `xy`: original matrix, called `xy` b/c in practice this is `hcat(fullrank(X), y)`
@@ -93,6 +147,9 @@ Typically, an `FeMat` represents the fixed-effects model matrix with the respons
 Upon construction the `xy` and `wtxy` fields refer to the same matrix
 """
 mutable struct FeMat{T,S<:AbstractMatrix} <: AbstractMatrix{T}
+    # XXX This struct must be mutable, because in the unweighted
+    # case wtxy === xy and we allow users to reweight posthoc,
+    # at which point wtxy is replaced by a new matrix
     xy::S
     wtxy::S
 end
@@ -110,7 +167,7 @@ Base.getindex(A::FeMat, i, j) = getindex(A.xy, i, j)
 
 Base.length(A::FeMat) = length(A.xy)
 
-function *(adjA::Adjoint{T,<:FeMat{T}}, B::FeMat{T}) where {T}
+function Base.:(*)(adjA::Adjoint{T,<:FeMat{T}}, B::FeMat{T}) where {T}
     return adjoint(adjA.parent.wtxy) * B.wtxy
 end
 

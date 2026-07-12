@@ -55,4 +55,4 @@ function Base.show(io::IO, ::MIME"text/plain", b::BlockDescription)
     end
 end
 
-Base.show(io::IO, b::BlockDescription) = show(io, MIME"text/plain"(), b)
+Base.show(io::IO, b::BlockDescription) = show(io, MIME("text/plain"), b)

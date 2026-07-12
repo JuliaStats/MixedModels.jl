@@ -17,7 +17,12 @@ end
 # FIXME: find out a way to get the stdlib to do this
 function Base.show(io::IO, ::MIME"text/html", x::OptSummary)
     out = Markdown.html(_markdown(x))
-    out = replace(out, r"&#96;([^[:space:]]*)&#96;" => s"<code>\1</code>")
+    # replace paired backticks and HTML escape code for it (&#96;) with <code> tag
+    out = replace(
+        out,
+        r"(?<delim>&#96;|`)(?<contents>[^[:space:]]*)\g<delim>" =>
+            s"<code>\g<contents></code>",
+    )
     out = replace(out, r"\*\*(.*?)\*\*" => s"<b>\1</b>")
     return println(io, out)
 end
@@ -64,19 +69,23 @@ function _markdown(b::BlockDescription)
     return tbl
 end
 
-function _markdown(lrt::LikelihoodRatioTest)
-    Δdf = lrt.tests.dofdiff
-    Δdev = lrt.tests.deviancediff
+function _markdown(lrt::LikelihoodRatioTest{N}) where {N}
+    Δdf = _diff(lrt.dof)
+    chisq = abs.(2 .* _diff(lrt.loglikelihood))
+    linear = lrt.linear
 
-    nr = length(lrt.formulas)
+    nc = 6
+    nr = N
+
+    nr = N
     outrows = Vector{Vector{String}}(undef, nr + 1)
 
-    outrows[1] = ["", "model-dof", "deviance", "χ²", "χ²-dof", "P(>χ²)"] # colnms
+    outrows[1] = ["", "model-dof", "-2 logLik", "χ²", "χ²-dof", "P(>χ²)"] # colnms
 
     outrows[2] = [
         string(lrt.formulas[1]),
         string(lrt.dof[1]),
-        string(round(Int, lrt.deviance[1])),
+        string(round(Int, 2 * lrt.loglikelihood[1])),
         " ",
         " ",
         " ",
@@ -86,10 +95,10 @@ function _markdown(lrt::LikelihoodRatioTest)
         outrows[i + 1] = [
             string(lrt.formulas[i]),
             string(lrt.dof[i]),
-            string(round(Int, lrt.deviance[i])),
-            string(round(Int, Δdev[i - 1])),
+            string(round(Int, 2 .* lrt.loglikelihood[i])),
+            string(round(Int, chisq[i - 1])),
             string(Δdf[i - 1]),
-            string(StatsBase.PValue(lrt.pvalues[i - 1])),
+            string(StatsBase.PValue(lrt.pvalues[i])),
         ]
     end
 
@@ -148,8 +157,11 @@ function _markdown(m::MixedModel)
         push!(rows, newrow)
     end
 
-    re_without_fe = setdiff(
-        mapfoldl(x -> Set(getproperty(x, :cnames)), ∪, m.reterms), coefnames(m)
+    re_without_fe = setdiff!(
+        # why not use `Set`? because ordering can change between releases, while
+        # unique preserves the original order
+        unique!(mapfoldl(x -> getproperty(x, :cnames), append!, m.reterms; init=String[])),
+        coefnames(m),
     )
 
     for bname in re_without_fe
@@ -179,21 +191,27 @@ function _markdown(m::MixedModel)
 end
 
 function _markdown(s::OptSummary)
+    optimizer_settings = [["Optimizer", "`$(s.optimizer)`"],
+        ["Backend", "`$(s.backend)`"],
+    ]
+
+    for param in opt_params(Val(s.backend))
+        push!(optimizer_settings, [string(param), string(getfield(s, param))])
+    end
+
     rows = [
         ["", ""],
         ["**Initialization**", ""],
         ["Initial parameter vector", string(s.initial)],
         ["Initial objective value", string(s.finitial)],
         ["**Optimizer settings** ", ""],
-        ["Optimizer (from NLopt)", "`$(s.optimizer)`"],
-        ["Lower bounds", string(s.lowerbd)],
-        ["`ftol_rel`", string(s.ftol_rel)],
-        ["`ftol_abs`", string(s.ftol_abs)],
-        ["`xtol_rel`", string(s.xtol_rel)],
-        ["`xtol_abs`", string(s.xtol_abs)],
-        ["`initial_step`", string(s.initial_step)],
-        ["`maxfeval`", string(s.maxfeval)],
-        ["`maxtime`", string(s.maxtime)],
+        optimizer_settings...,
+        ["xtol_zero_abs", string(s.xtol_zero_abs)],
+        ["ftol_zero_abs", string(s.ftol_zero_abs)],
+        ["pirls_maxiter", string(s.pirls_maxiter)],
+        ["pirls_ftol_rel", string(s.pirls_ftol_rel)],
+        ["pirls_ftol_abs", string(s.pirls_ftol_abs)],
+        ["pirls_maxhalfstep", string(s.pirls_maxhalfstep)],
         ["**Result**", ""],
         ["Function evaluations", string(s.feval)],
         ["Final parameter vector", "$(round.(s.final; digits=4))"],

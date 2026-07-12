@@ -23,7 +23,7 @@ function aligncompact(v, digits=_printdigits(v))
     return Base.Ryu.writefixed.(v, Ref(digits))
 end
 
-Base.show(io::IO, vc::VarCorr) = Base.show(io, MIME"text/plain"(), vc)
+Base.show(io::IO, vc::VarCorr) = Base.show(io, MIME("text/plain"), vc)
 
 function Base.show(io::IO, ::MIME"text/plain", vc::VarCorr)
     σρ = vc.σρ

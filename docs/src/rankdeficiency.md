@@ -1,7 +1,13 @@
+```@meta
+CurrentModule = MixedModels
+CollapsedDocStrings = true
+```
+
 # Rank deficiency in mixed-effects models
 
-```@setup Main
+```@setup RankDeficient
 using MixedModels
+using MixedModelsDatasets
 using DisplayAs
 ```
 
@@ -12,7 +18,7 @@ The simplest case of rank deficiency is a duplicated predictor or a predictor th
 However, rank deficiency can also arise in more subtle ways, such as from missing cells in a two-factor experimental design.
 Rank deficiency can also arise as an extreme case of multicollinearity.
 In all cases, it is important to remember that we can only assess the numerical rank of a matrix, which may be less than its theoretical rank, and that evaluation of this numerical rank requires setting some numerical tolerance levels.
-These choices are not always well defined.
+These choices are not always well-defined.
 In other words, the rank of a matrix is well-defined in theory but in practice can be difficult to evaluate.
 
 Rank deficiency can occur in two ways in mixed-effects models: in the fixed effects and in the random effects.
@@ -24,7 +30,7 @@ The consequences of rank deficiency in the fixed effects are similar to those in
 If one or more predictors can be expressed as a linear combination of the other columns, then this column is redundant and the model matrix is rank deficient.
 Note however, that the redundant column is not defined uniquely.
 For example, in the case that of two columns `a` and `b` where `b = 2a`, then the rank deficiency can be handled by eliminating either `a` or `b`.
-While we defined `b` here in terms of `a`, it may be that `b` is actually the more 'fundamental' predictor and hence we may define  `a` in terms of `b` as `a = 0.5b`.
+While we defined `b` here in terms of `a`, it may be that `b` is actually the more 'fundamental' predictor and hence we may define `a` in terms of `b` as `a = 0.5b`.
 The user may of course possess this information, but the choice is not apparent to the modelling software.
 As such, the handling of rank deficiency in `MixedModels.jl` should not be taken as a replacement for thinking about the nature of the predictors in a given model.
 
@@ -35,12 +41,12 @@ move the surplus columns to the right side of the model matrix.
 In subsequent calculations, these columns are effectively ignored (as their estimates are zero and thus won't contribute to any other computations).
 For display purposes, this pivoting is unwound when the `coef` values are displayed.
 
-Both the pivoted and unpivoted coefficients are available in MixedModels.
-The [`fixef`](@ref) extractor returns the pivoted, truncated estimates (i.e. the non redundant terms), while the [`coef`](@ref) extractor returns the unpivoted estimates (i.e. all terms, included the redundant ones).
+Both the pivoted and unpivoted coefficients are available in `MixedModels.jl`.
+The [`fixef`](@ref) extractor returns the pivoted, truncated estimates (i.e. the non-redundant terms), while the [`coef`](@ref) extractor returns the unpivoted estimates (i.e. all terms, included the redundant ones).
 The same holds for the associated [`fixefnames`](@ref) and [`coefnames`](@ref).
 
 ### Pivoting is platform dependent
-In MixedModels.jl, we use standard numerical techniques to detect rank deficiency.
+In `MixedModels.jl`, we use standard numerical techniques to detect rank deficiency.
 We currently offer no guarantees as to which exactly of the standard techniques (pivoted QR decomposition, pivoted Cholesky decomposition, etc.) will be used.
 This choice should be viewed as an implementation detail.
 Similarly, we offer no guarantees as to which of columns will be treated as redundant.
@@ -84,14 +90,14 @@ The penalty term always provides a unique solution for the random-effects coeffi
 In addition to handling naturally occurring rank deficiency in the random effects, the regularization allows us to fit explicitly overparameterized random effects.
 For example, we can use `fulldummy` to fit both an intercept term and $n$ indicator variables in the random effects for a categorical variable with $n$ levels instead of the usual $n-1$ contrasts.
 
-```@example Main
-kb07 = MixedModels.dataset(:kb07)
+```@example RankDeficient
+kb07 = MixedModelsDatasets.dataset(:kb07)
 contrasts = Dict(var => HelmertCoding() for var in (:spkr, :prec, :load))
 fit(MixedModel, @formula(rt_raw ~ spkr * prec * load + (1|subj) + (1+prec|item)), kb07; contrasts=contrasts)
 DisplayAs.Text(ans) # hide
 ```
 
-```@example Main
+```@example RankDeficient
 fit(MixedModel, @formula(rt_raw ~ spkr * prec * load + (1|subj) + (1+fulldummy(prec)|item)), kb07; contrasts=contrasts)
 DisplayAs.Text(ans) # hide
 ```

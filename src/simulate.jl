@@ -18,12 +18,16 @@ function simulate(m::MixedModel, args...; kwargs...)
 end
 
 """
-    simulate!(rng::AbstractRNG, m::MixedModel{T}; β=m.β, σ=m.σ, θ=T[])
-    simulate!(m::MixedModel; β=m.β, σ=m.σ, θ=m.θ)
+    simulate!(rng::AbstractRNG, m::MixedModel{T}; β=fixef(m), σ=m.σ, θ=T[])
+    simulate!(m::MixedModel; β=fixef(m), σ=m.σ, θ=m.θ)
 
 Overwrite the response (i.e. `m.trms[end]`) with a simulated response vector from model `m`.
 
 This simulation includes sampling new values for the random effects.
+
+`β` can be specified either as a pivoted, full rank coefficient vector (cf. [`fixef`](@ref))
+or as an unpivoted full dimension coefficient vector (cf. [`coef`](@ref)), where the entries
+corresponding to redundant columns will be ignored.
 
 !!! note
     Note that `simulate!` methods with a `y::AbstractVector` as the first argument
@@ -32,7 +36,7 @@ This simulation includes sampling new values for the random effects.
     which modify the model's response and return the entire modified model.
 """
 function simulate!(
-    rng::AbstractRNG, m::LinearMixedModel{T}; β=coef(m), σ=m.σ, θ=T[]
+    rng::AbstractRNG, m::LinearMixedModel{T}; β=fixef(m), σ=m.σ, θ=T[]
 ) where {T}
     # XXX should we add support for doing something with weights?
     simulate!(rng, m.y, m; β, σ, θ)
@@ -40,9 +44,9 @@ function simulate!(
 end
 
 function simulate!(
-    rng::AbstractRNG, m::GeneralizedLinearMixedModel{T}; β=coef(m), σ=m.σ, θ=T[]
+    rng::AbstractRNG, m::GeneralizedLinearMixedModel{T}; β=fixef(m), σ=m.σ, θ=T[]
 ) where {T}
-    # note that these m.resp.y and m.LMM.y will later be sychronized in (re)fit!()
+    # note that these m.resp.y and m.LMM.y will later be synchronized in (re)fit!()
     # but for now we use them as distinct scratch buffers to avoid allocations
 
     # the noise term is actually in the GLM and not the LMM part so no noise
@@ -59,7 +63,7 @@ end
 """
     _rand(rng::AbstractRNG, d::Distribution, location, scale=missing, n=1)
 
-A convenience function taking a draw from a distrbution.
+A convenience function taking a draw from a distribution.
 
 Note that `d` is specified as an existing distribution, such as
 from the `GlmResp.d` field. This isn't vectorized nicely because
@@ -85,7 +89,7 @@ function _rand(rng::AbstractRNG, d::Distribution, location, scale=NaN, n=1)
     return rand(rng, dist) / n
 end
 
-function simulate!(m::MixedModel{T}; β=coef(m), σ=m.σ, θ=T[]) where {T}
+function simulate!(m::MixedModel{T}; β=fixef(m), σ=m.σ, θ=T[]) where {T}
     return simulate!(Random.GLOBAL_RNG, m; β, σ, θ)
 end
 
@@ -110,9 +114,6 @@ scale.
 The `wts` argument is currently ignored except for `GeneralizedLinearMixedModel`
 models with a `Binomial` distribution.
 
-!!! warning
-    Models are assumed to be full rank.
-
 !!! note
     Note that `simulate!` methods with a `y::AbstractVector` as the first argument
     (besides the RNG) and `simulate` methods return the simulated response. This is
@@ -124,7 +125,7 @@ function simulate!(
     y::AbstractVector,
     m::LinearMixedModel,
     newdata::Tables.ColumnTable;
-    β=m.β,
+    β=fixef(m),
     σ=m.σ,
     θ=m.θ,
 )
@@ -150,10 +151,9 @@ function simulate!(
 end
 
 function simulate!(
-    rng::AbstractRNG, y::AbstractVector, m::LinearMixedModel{T}; β=m.β, σ=m.σ, θ=m.θ
+    rng::AbstractRNG, y::AbstractVector, m::LinearMixedModel{T}; β=fixef(m), σ=m.σ, θ=m.θ
 ) where {T}
-    length(β) == length(fixef(m)) ||
-        length(β) == length(coef(m)) ||
+    length(β) == length(pivot(m)) || length(β) == rank(m) ||
         throw(ArgumentError("You must specify all (non-singular) βs"))
 
     β = convert(Vector{T}, β)
@@ -161,11 +161,8 @@ function simulate!(
     θ = convert(Vector{T}, θ)
     isempty(θ) || setθ!(m, θ)
 
-    if length(β) ≠ length(coef(m))
-        padding = length(coef(m)) - length(β)
-        for ii in 1:padding
-            push!(β, -0.0)
-        end
+    if length(β) == length(pivot(m))
+        β = view(view(β, pivot(m)), 1:rank(m))
     end
 
     # initialize y to standard normal
@@ -177,7 +174,7 @@ function simulate!(
     end
 
     # scale by σ and add fixed-effects contribution
-    return mul!(y, m.X, β, one(T), σ)
+    return mul!(y, fullrankx(m), β, one(T), σ)
 end
 
 function simulate!(
@@ -185,7 +182,7 @@ function simulate!(
     y::AbstractVector,
     m::GeneralizedLinearMixedModel,
     newdata::Tables.ColumnTable;
-    β=m.β,
+    β=fixef(m),
     σ=m.σ,
     θ=m.θ,
 )
@@ -214,7 +211,7 @@ function simulate!(
     rng::AbstractRNG,
     y::AbstractVector,
     m::GeneralizedLinearMixedModel{T};
-    β=m.β,
+    β=fixef(m),
     σ=m.σ,
     θ=m.θ,
 ) where {T}
@@ -234,15 +231,14 @@ function _simulate!(
     θ,
     resp=nothing,
 ) where {T}
-    length(β) == length(fixef(m)) ||
-        length(β) == length(coef(m)) ||
+    length(β) == length(pivot(m)) || length(β) == m.feterm.rank ||
         throw(ArgumentError("You must specify all (non-singular) βs"))
 
     dispersion_parameter(m) ||
         ismissing(σ) ||
         throw(
             ArgumentError(
-                "You must not specify a dispersion parameter for model families without a dispersion parameter",
+                "You must not specify a dispersion parameter for model families without a dispersion parameter"
             ),
         )
 
@@ -254,13 +250,10 @@ function _simulate!(
 
     d = m.resp.d
 
-    if length(β) ≠ length(coef(m))
-        padding = length(coef(m)) - length(β)
-        for ii in 1:padding
-            push!(β, -0.0)
-        end
+    if length(β) == length(pivot(m))
+        # unlike LMM, GLMM stores the truncated, pivoted vector directly
+        β = view(view(β, pivot(m)), 1:rank(m))
     end
-
     fast = (length(m.θ) == length(m.optsum.final))
     setpar! = fast ? setθ! : setβθ!
     params = fast ? θ : vcat(β, θ)
@@ -280,7 +273,7 @@ function _simulate!(
     # add fixed-effects contribution
     # note that unit scaling may not be correct for
     # families with a dispersion parameter
-    mul!(η, lm.X, β, one(T), one(T))
+    mul!(η, fullrankx(lm), β, one(T), one(T))
 
     μ = resp === nothing ? linkinv.(Link(m), η) : GLM.updateμ!(resp, η).mu
 

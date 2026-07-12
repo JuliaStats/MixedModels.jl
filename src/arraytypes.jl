@@ -12,14 +12,6 @@ function Base.axes(A::UniformBlockDiagonal)
     return (Base.OneTo(m * l), Base.OneTo(n * l))
 end
 
-function Base.copyto!(dest::UniformBlockDiagonal{T}, src::UniformBlockDiagonal{T}) where {T}
-    sdat = src.data
-    ddat = dest.data
-    size(ddat) == size(sdat) || throw(DimensionMismatch(""))
-    copyto!(ddat, sdat)
-    return dest
-end
-
 function Base.copyto!(dest::Matrix{T}, src::UniformBlockDiagonal{T}) where {T}
     size(dest) == size(src) || throw(DimensionMismatch(""))
     fill!(dest, zero(T))
@@ -36,6 +28,10 @@ function Base.copyto!(dest::Matrix{T}, src::UniformBlockDiagonal{T}) where {T}
         end
     end
     return dest
+end
+
+function LinearAlgebra.copy_oftype(A::UniformBlockDiagonal, ::Type{T}) where {T}
+    return UniformBlockDiagonal(LinearAlgebra.copy_oftype(A.data, T))
 end
 
 function Base.getindex(A::UniformBlockDiagonal{T}, i::Int, j::Int) where {T}
@@ -68,7 +64,7 @@ A `SparseMatrixCSC` whose nonzeros form blocks of rows or columns or both.
 
 The only time these are created are as products of `ReMat`s.
 """
-mutable struct BlockedSparse{T,S,P} <: AbstractMatrix{T}
+struct BlockedSparse{T,S,P} <: AbstractMatrix{T}
     cscmat::SparseMatrixCSC{T,Int32}
     nzsasmat::Matrix{T}
     colblkptr::Vector{Int32}
@@ -112,4 +108,13 @@ function LinearAlgebra.mul!(
     β,
 ) where {T,P,Ti}
     return mul!(C.cscmat, A, adjoint(adjB.parent.cscmat), α, β)
+end
+
+function LinearAlgebra.copy_oftype(
+    A::BlockedSparse{<:Any,S,P},
+    ::Type{T},
+) where {T,S,P}
+    cscmat = LinearAlgebra.copy_oftype(A.cscmat, T)
+    nzsasmat = LinearAlgebra.copy_oftype(A.nzsasmat, T)
+    return BlockedSparse{T,S,P}(cscmat, nzsasmat, A.colblkptr)
 end
