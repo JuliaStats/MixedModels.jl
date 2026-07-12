@@ -216,6 +216,45 @@ computation into **one dense Schur-complement downdate + one dense Cholesky**:
   3-block layout as a *specialization*, selected when the tail is small or a GPU is
   engaged — not the unconditional replacement layout.
 
+## Interaction with the analytic gradient (`pa/gradient-fable`, PR #903)
+
+The gradient work strengthens the GPU case in the dense regime — and splits along
+exactly the same fault line as the objective in the sparse regime.
+
+Per θ, `src/gradient.jl` (on that branch) does three things after `updateL!`:
+
+1. **`_invL!`** — lower blocks of `X = L⁻¹` by blocked forward substitution:
+   `_ldivL!` (trsm) against diagonal blocks + `_mulsub!` (gemm) propagation.
+2. **`_gram!` / `_gramfaces!`** — `S = XᵀWX` Gram products, mostly `mul!` BLAS3.
+3. Blockwise contraction of `S` against the constant `A` blocks per parameter.
+
+**Dense path (`:dense` pairs — crossed designs with dense fill): very GPU-friendly.**
+- `X[r,c]` blocks are dense `q_r × q_c`; forming them is trsm/gemm at sizes *larger*
+  than anything in `updateL!` itself.
+- `_crosspair_blas3!` (`GRAD_PANEL = 128`) is a hand-tiled panel gemm — the CPU code
+  is already shaped the way a GPU kernel wants to be.
+- Everything derives from `L` and `A` (device-resident under Variant B); the output
+  is `dim θ` scalars. The transfer story is unchanged.
+- A gradient evaluation costs a constant factor more BLAS3 flops than the objective,
+  which *helps* on GPU: better amortization of launch overhead per iteration, and
+  gradient-based fitting (LBFGS) means fewer iterations → fewer host↔device sync
+  points per fit.
+
+**Sparse/selected path: actively GPU-hostile.** The selected-inversion machinery
+that makes the branch fast on big nested models (`_sparseXok`, `_patternmirror`,
+`_blockaligned`, the `:scalar`/`:selected` paths evaluating `S` only on the pattern
+of `A`) is irregular scatter/gather over CSC structure with tiny `S×S` face
+operations — high porting effort, low arithmetic intensity, likely slower than CPU.
+The fallback (dense `X` blocks on device) explodes memory by exactly the factor the
+sparse mirrors exist to avoid.
+
+**Synergy with Variant B.** In the 3-block form, `X = L⁻¹` is `B1⁻¹` (block-diagonal,
+batched), `B3⁻¹` (dense tail), and `−B3⁻¹·B2·B1⁻¹` (dense `tail × q₁`) — the same
+three kernel types (batched trsm, dense trsm/gemm/syrk) the objective already needs,
+just more calls on data already resident. If LBFGS becomes the default fitting path,
+GPU planning should target **objective + gradient as a unit** in the 3-block form;
+planning for the objective alone undersells the win.
+
 ## Overall recommendation
 
 1. **Do not** pursue a general/full GPU backend over the current block structure —
@@ -260,7 +299,10 @@ This doc commits no code. To validate the claims before investing:
    already builds B1/B2/B3 from a fitted model, so a standalone function can
    evaluate the objective via the Schur-complement recipe (steps 1–5 above) and be
    checked against `objective!` at several θ. Timing that prototype — CPU vs a GPU
-   tail — measures Variant B's real ceiling without rewriting `updateL!`.
+   tail — measures Variant B's real ceiling without rewriting `updateL!`. Extend it
+   with the 3-block gradient (Gram products of `B1⁻¹`/`B3⁻¹`/`−B3⁻¹·B2·B1⁻¹`),
+   validated against the analytic gradient on `pa/gradient-fable`, to measure the
+   objective+gradient unit that LBFGS would actually drive.
 
 3. **Estimate end-to-end** by multiplying per-iteration kernel time by typical NLopt
    iteration counts (`m.optsum`) for the target models; compare to current CPU fit
