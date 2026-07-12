@@ -65,8 +65,8 @@ perturb(θ::AbstractVector) = θ .* 0.75 .+ 0.125
         end
     end
 
-    @testset "crossed designs $(label) $(REML ? "REML" : "ML")" for
-        (label, f) in (("scalar-crossed", first(fms[:kb07])),
+    @testset "crossed designs $(label) $(REML ? "REML" : "ML")" for (label, f) in (
+            ("scalar-crossed", first(fms[:kb07])),
             ("vector-crossed", last(fms[:kb07]))),
         REML in (false, true)
         # subject × item crossing exercises the sparse/BLAS-3 off-diagonal path
@@ -172,7 +172,7 @@ perturb(θ::AbstractVector) = θ .* 0.75 .+ 0.125
         end
 
         @testset "nested vector + crossed zerocorr (fggk21 structure) $(REML ? "REML" : "ML")" for REML in
-                                                                                                  (
+                                                                                                   (
             false, true
         )
             co = rand(rng, 1:4, n)

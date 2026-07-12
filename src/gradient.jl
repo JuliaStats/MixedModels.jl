@@ -164,9 +164,9 @@ function _pairpath(
     isa(Arb, Union{SparseMatrixCSC{T},BlockedSparse{T}}) || return :dense
     kre = length(reterms)
     if isone(_kdim(reterms[r])) &&
-       isone(_kdim(reterms[b])) &&
-       isa(X[r, b], Matrix{T}) &&
-       all(isa(X[s, r], Matrix{T}) && isa(X[s, b], Matrix{T}) for s in (r + 1):kre)
+        isone(_kdim(reterms[b])) &&
+        isa(X[r, b], Matrix{T}) &&
+        all(isa(X[s, r], Matrix{T}) && isa(X[s, b], Matrix{T}) for s in (r + 1):kre)
         return :scalar
     end
     if _blockaligned(_cscmat(Arb), _kdim(reterms[r]), _kdim(reterms[b]))
