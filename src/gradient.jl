@@ -61,6 +61,7 @@ struct GradientWorkspace{T<:AbstractFloat}
     C2::Matrix{AbstractMatrix{T}}  # A[r,b] Λ_b for r > b (dense pairs only)
     G::Vector{Matrix{T}}           # per-term gradient accumulators (k_b × k_b)
     Ppanel::Matrix{T}              # q_r × GRAD_PANEL scratch for the BLAS-3 cross term
+    path::Matrix{Symbol}           # `_pairpath` route per off-diagonal pair (r, b)
 end
 
 _kdim(rt::ReMat{T,S}) where {T,S} = S
@@ -201,6 +202,7 @@ function GradientWorkspace(m::LinearMixedModel{T}) where {T}
         end
     end
     maxheavy = 0
+    path = fill(:none, nb, k)
     for b in 1:k
         Abb = A[kp1choose2(b)]
         S[b, b] = if isa(Abb, Diagonal)
@@ -211,13 +213,13 @@ function GradientWorkspace(m::LinearMixedModel{T}) where {T}
         S[nb, b] = Matrix{T}(undef, size(A[block(nb, b)]))
         for r in (b + 1):k
             Arb = A[block(r, b)]
-            path = _pairpath(Arb, X, reterms, r, b)
-            if path === :scalar
+            path[r, b] = _pairpath(Arb, X, reterms, r, b)
+            if path[r, b] === :scalar
                 # entries of S accumulated directly, no buffer.  When the fill block
                 # L[r,r] is dense the cross term is evaluated with a BLAS-3 kernel
                 # needing a q_r × GRAD_PANEL scratch (see `_crosspair_blas3!`)
                 isa(L[kp1choose2(r)], Matrix) && (maxheavy = max(maxheavy, size(Arb, 1)))
-            elseif path === :selected
+            elseif path[r, b] === :selected
                 S[r, b] = _patternmirror(_cscmat(Arb))
             else
                 S[r, b] = Matrix{T}(undef, size(Arb))
@@ -228,7 +230,7 @@ function GradientWorkspace(m::LinearMixedModel{T}) where {T}
     end
     G = [Matrix{T}(undef, _kdim(rt), _kdim(rt)) for rt in reterms]
     Ppanel = Matrix{T}(undef, maxheavy, iszero(maxheavy) ? 0 : GRAD_PANEL)
-    return GradientWorkspace{T}(X, S, C1, C2, G, Ppanel)
+    return GradientWorkspace{T}(X, S, C1, C2, G, Ppanel, path)
 end
 
 #####
@@ -529,22 +531,6 @@ function _gramacc!(S::Matrix{T}, Xsr::Diagonal{T}, Xsb::SparseMatrixCSC{T}) wher
     return S
 end
 
-function _gramacc!(
-    S::Matrix{T}, Xsr::SparseMatrixCSC{T}, Xsb::SparseMatrixCSC{T}
-) where {T}
-    # sparse'sparse products between distinct nested terms are small; accept the
-    # allocation of the product rather than a custom kernel
-    P = adjoint(Xsr) * Xsb
-    rv = rowvals(P)
-    nz = nonzeros(P)
-    @inbounds for v in axes(P, 2)
-        for idx in nzrange(P, v)
-            S[rv[idx], v] += nz[idx]
-        end
-    end
-    return S
-end
-
 # dense S block for the pair (r, b), r > b or r == nb (the [Xy] row)
 function _gram!(S::Matrix{T}, w::GradientWorkspace{T}, r::Int, b::Int, kre::Int,
     wx::T, wy::T) where {T}
@@ -664,53 +650,67 @@ function _gramfaces!(S::UniformBlockDiagonal{T}, w::GradientWorkspace{T}, b::Int
     return S
 end
 
+# entry (u, v) of Xrᵀ Xb for the dense-Xb block types of X, shared by the
+# scalar path (`_sparseacc`) and the selected-entry path (`_selacc!`)
+function _xdot(Xr::Matrix{T}, Xb::Matrix{T}, u::Integer, v::Integer) where {T}
+    return dot(view(Xr, :, u), view(Xb, :, v))
+end
+
+function _xdot(Xr::Diagonal{T}, Xb::Matrix{T}, u::Integer, v::Integer) where {T}
+    return Xr.diag[u] * Xb[u, v]
+end
+
+function _xdot(Xr::UniformBlockDiagonal{T}, Xb::Matrix{T}, u::Integer, v::Integer) where {T}
+    dat = Xr.data
+    kr = size(dat, 1)
+    g, ul = divrem(Int(u) - 1, kr)
+    roff = g * kr
+    acc = zero(T)
+    @inbounds for i in 1:kr
+        acc += dat[i, ul + 1, g + 1] * Xb[roff + i, v]
+    end
+    return acc
+end
+
+# entry (u, v) of Xkrᵀ W Xkb for the [Xy] block row, with weight wx on the
+# first p rows and wy on the last
+function _xydot(Xkr::Matrix{T}, Xkb::Matrix{T}, u::Integer, v::Integer,
+    wx::T, wy::T) where {T}
+    plast = size(Xkr, 1)
+    s = wy * Xkr[plast, u] * Xkb[plast, v]
+    if !iszero(wx)
+        @inbounds for i in 1:(plast - 1)
+            s += wx * Xkr[i, u] * Xkb[i, v]
+        end
+    end
+    return s
+end
+
 # Σ over the nonzeros (u, v) of A of A[u,v] * (Xrᵀ Xb)[u,v] for one block-row pair of X.
-# These methods are function barriers: the X blocks are stored with an abstract element
+# This method is a function barrier: the X blocks are stored with an abstract element
 # type and the entry loops must run with concretely typed arrays.
-function _sparseacc(A::SparseMatrixCSC{T}, Xr::Diagonal{T}, Xb::Matrix{T}) where {T}
+function _sparseacc(A::SparseMatrixCSC{T}, Xr::Union{Diagonal{T},Matrix{T}},
+    Xb::Matrix{T}) where {T}
     rv = rowvals(A)
     nz = nonzeros(A)
-    d = Xr.diag
     acc = zero(T)
     @inbounds for v in axes(A, 2)
         for idx in nzrange(A, v)
-            u = rv[idx]
-            acc += nz[idx] * d[u] * Xb[u, v]
+            acc += nz[idx] * _xdot(Xr, Xb, rv[idx], v)
         end
     end
     return acc
 end
 
-function _sparseacc(A::SparseMatrixCSC{T}, Xr::Matrix{T}, Xb::Matrix{T}) where {T}
-    rv = rowvals(A)
-    nz = nonzeros(A)
-    acc = zero(T)
-    @inbounds for v in axes(A, 2)
-        xbv = view(Xb, :, v)
-        for idx in nzrange(A, v)
-            acc += nz[idx] * dot(view(Xr, :, rv[idx]), xbv)
-        end
-    end
-    return acc
-end
-
-# ditto for the [Xy] block row with weight wx on the first p rows and wy on the last
+# ditto for the [Xy] block row
 function _sparseaccxy(A::SparseMatrixCSC{T}, Xkr::Matrix{T}, Xkb::Matrix{T},
     wx::T, wy::T) where {T}
     rv = rowvals(A)
     nz = nonzeros(A)
-    plast = size(Xkr, 1)
     acc = zero(T)
     @inbounds for v in axes(A, 2)
         for idx in nzrange(A, v)
-            u = rv[idx]
-            s = wy * Xkr[plast, u] * Xkb[plast, v]
-            if !iszero(wx)
-                for i in 1:(plast - 1)
-                    s += wx * Xkr[i, u] * Xkb[i, v]
-                end
-            end
-            acc += nz[idx] * s
+            acc += nz[idx] * _xydot(Xkr, Xkb, rv[idx], v, wx, wy)
         end
     end
     return acc
@@ -722,26 +722,13 @@ end
 
 # accumulate Sp[u,v] += (Xsrᵀ Xsb)[u,v] over the nonzeros (u,v) of Sp for the block
 # types that occur in X; like `_sparseacc` these are function barriers
-function _selacc!(Sp::SparseMatrixCSC{T}, Xr::Matrix{T}, Xb::Matrix{T}) where {T}
-    rv = rowvals(Sp)
-    nz = nonzeros(Sp)
-    @inbounds for v in axes(Sp, 2)
-        xbv = view(Xb, :, v)
-        for idx in nzrange(Sp, v)
-            nz[idx] += dot(view(Xr, :, rv[idx]), xbv)
-        end
-    end
-    return Sp
-end
-
-function _selacc!(Sp::SparseMatrixCSC{T}, Xr::Diagonal{T}, Xb::Matrix{T}) where {T}
-    d = Xr.diag
+function _selacc!(Sp::SparseMatrixCSC{T},
+    Xr::Union{Diagonal{T},UniformBlockDiagonal{T},Matrix{T}}, Xb::Matrix{T}) where {T}
     rv = rowvals(Sp)
     nz = nonzeros(Sp)
     @inbounds for v in axes(Sp, 2)
         for idx in nzrange(Sp, v)
-            u = rv[idx]
-            nz[idx] += d[u] * Xb[u, v]
+            nz[idx] += _xdot(Xr, Xb, rv[idx], v)
         end
     end
     return Sp
@@ -765,27 +752,6 @@ function _selacc!(Sp::SparseMatrixCSC{T}, Xr::Diagonal{T}, Xb::SparseMatrixCSC{T
             if Brv[bi] == u
                 nz[idx] += d[u] * Bnz[bi]
             end
-        end
-    end
-    return Sp
-end
-
-function _selacc!(
-    Sp::SparseMatrixCSC{T}, Xr::UniformBlockDiagonal{T}, Xb::Matrix{T}
-) where {T}
-    dat = Xr.data
-    kr = size(dat, 1)
-    rv = rowvals(Sp)
-    nz = nonzeros(Sp)
-    @inbounds for v in axes(Sp, 2)
-        for idx in nzrange(Sp, v)
-            g, ul = divrem(Int(rv[idx]) - 1, kr)
-            roff = g * kr
-            acc = zero(T)
-            for i in 1:kr
-                acc += dat[i, ul + 1, g + 1] * Xb[roff + i, v]
-            end
-            nz[idx] += acc
         end
     end
     return Sp
@@ -901,17 +867,9 @@ function _selaccxy!(Sp::SparseMatrixCSC{T}, Xkr::Matrix{T}, Xkb::Matrix{T},
     wx::T, wy::T) where {T}
     rv = rowvals(Sp)
     nz = nonzeros(Sp)
-    plast = size(Xkr, 1)
     @inbounds for v in axes(Sp, 2)
         for idx in nzrange(Sp, v)
-            u = rv[idx]
-            s = wy * Xkr[plast, u] * Xkb[plast, v]
-            if !iszero(wx)
-                for i in 1:(plast - 1)
-                    s += wx * Xkr[i, u] * Xkb[i, v]
-                end
-            end
-            nz[idx] += s
+            nz[idx] += _xydot(Xkr, Xkb, rv[idx], v, wx, wy)
         end
     end
     return Sp
@@ -1168,10 +1126,10 @@ function objective_gradient!(w::GradientWorkspace{T}, g::AbstractVector{T},
     for b in 1:kre
         _diagpair!(w, m, b, wx, wy)
         for r in (b + 1):kre
-            Srb = w.S[r, b]
-            if isa(Srb, SparseMatrixCSC{T})
+            path = w.path[r, b]
+            if path === :selected
                 _selectedpair!(w, m, r, b, wx, wy)
-            elseif isempty(Srb)     # scalar-scalar pair, no buffer needed
+            elseif path === :scalar
                 if _use_blas3_cross(w, m, r, b)
                     _crosspair_blas3!(w, m, r, b, wx, wy)
                 else

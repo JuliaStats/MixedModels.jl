@@ -295,7 +295,9 @@ perturb(θ::AbstractVector) = θ .* 0.75 .+ 0.125
         updateL!(setθ!(m, θ))
         wb = GradientWorkspace(m)                 # gate active
         ws = GradientWorkspace(m)
-        ws = GradientWorkspace(ws.X, ws.S, ws.C1, ws.C2, ws.G, Matrix{Float64}(undef, 0, 0))
+        ws = GradientWorkspace(
+            ws.X, ws.S, ws.C1, ws.C2, ws.G, Matrix{Float64}(undef, 0, 0), ws.path
+        )
         @test _use_blas3_cross(wb, m, 2, 1)       # dense crossing → BLAS-3
         @test !_use_blas3_cross(ws, m, 2, 1)
         gb = zeros(2)
