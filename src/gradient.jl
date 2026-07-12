@@ -21,6 +21,14 @@
 #
 # accumulated face-by-face over the levels of the grouping factor, which is evaluated
 # blockwise against the sparse structure of the A blocks without ever forming Ω̇ₚ.
+#
+# The blocks of X mirror the structure of the corresponding blocks of L wherever the
+# inverse preserves that structure: block-diagonal (`Diagonal`, `UniformBlockDiagonal`)
+# diagonal blocks have block-diagonal inverses, and an off-diagonal `BlockedSparse` block
+# of L propagates its sparsity pattern to X when the diagonal blocks above it are
+# block-diagonal (the nested-grouping-factor case).  Only the entries of S matching the
+# sparsity of the A blocks are ever evaluated for such pairs, so the workspace memory is
+# of the same order as the storage for L itself.
 
 """
     GradientWorkspace(m::LinearMixedModel)
@@ -30,10 +38,17 @@ Preallocated storage for evaluating the gradient of the objective of `m`.
 The workspace holds the lower blocks of `X = L⁻¹` (`X[r,c]`, `r ≥ c`), buffers for the
 blocks of `S = XᵀWX` that are contracted against the corresponding `A` blocks, scratch
 copies of off-diagonal `A` blocks premultiplied by `Λᵣᵀ` (`C1`) or postmultiplied by
-`Λ_b` (`C2`), and one `k_b × k_b` accumulator `G_b` per random-effects term.
+`Λ_b` (`C2`, dense pairs only), and one `k_b × k_b` accumulator `G_b` per
+random-effects term.
 
-For blocks between two scalar terms where `A[r,b]` is sparse, only the entries of `S`
-matching the sparsity pattern are evaluated and no buffer is stored.
+The blocks of `X` mirror the structure of the corresponding blocks of `L`:
+block-diagonal diagonal blocks stay block-diagonal and `BlockedSparse` off-diagonal
+blocks (nested grouping factors) are stored as `SparseMatrixCSC` sharing the pattern of
+the `L` block.  For pairs whose `A` block is sparse, only the entries of `S` matching
+the sparsity pattern of `A` are evaluated: between two scalar terms they are accumulated
+directly without a buffer, otherwise into a `SparseMatrixCSC` buffer mirroring the
+pattern of `A`.  Dense `S`/`C1`/`C2` buffers are allocated only for pairs whose `A`
+block is dense.
 """
 # column-panel width for the BLAS-3 evaluation of the cross term between two scalar
 # terms whose Cholesky fill block is dense (see `_crosspair_blas3!`)
@@ -50,6 +65,115 @@ end
 
 _kdim(rt::ReMat{T,S}) where {T,S} = S
 
+_cscmat(A::BlockedSparse) = A.cscmat
+_cscmat(A::SparseMatrixCSC) = A
+_densemat(A::AbstractMatrix) = A
+_densemat(A::BlockedSparse) = A.cscmat
+
+# a SparseMatrixCSC sharing the pattern (colptr, rowval) of A, with its own nzval.
+# The pattern arrays are never mutated through either matrix.
+function _patternmirror(A::SparseMatrixCSC{T,Ti}) where {T,Ti}
+    m, n = size(A)
+    return SparseMatrixCSC{T,Ti}(m, n, A.colptr, A.rowval, Vector{T}(undef, nnz(A)))
+end
+
+# do the nonzeros of A form complete kr-row runs starting on kr-row boundaries, with
+# all kb columns of each kb-column block sharing the same row pattern?  This is the
+# layout produced by products of `ReMat`s (cf. the reshapes in `rmulΛ!` and `rdiv!`
+# for `BlockedSparse`) and is required by the blockwise kernels below.
+function _blockaligned(A::SparseMatrixCSC, kr::Integer, kb::Integer)
+    iszero(size(A, 2) % kb) || return false
+    rv = rowvals(A)
+    for jblk in 1:(size(A, 2) ÷ kb)
+        v1 = (jblk - 1) * kb + 1
+        rng1 = nzrange(A, v1)
+        iszero(length(rng1) % kr) || return false
+        for i in first(rng1):kr:last(rng1)
+            iszero((rv[i] - 1) % kr) || return false
+            for l in 1:(kr - 1)
+                rv[i + l] == rv[i] + l || return false
+            end
+        end
+        for j in (v1 + 1):(v1 + kb - 1)
+            rng = nzrange(A, j)
+            length(rng) == length(rng1) || return false
+            for (i, i1) in zip(rng, rng1)
+                rv[i] == rv[i1] || return false
+            end
+        end
+    end
+    return true
+end
+
+# is pattern(A * B) contained in pattern(C)?  (all matrices column-sorted CSC)
+function _productcontained(
+    A::SparseMatrixCSC, B::SparseMatrixCSC, C::SparseMatrixCSC
+)
+    Arv = rowvals(A)
+    Brv = rowvals(B)
+    Crv = rowvals(C)
+    for v in axes(B, 2)
+        crng = nzrange(C, v)
+        for bidx in nzrange(B, v)
+            w = Brv[bidx]
+            ci = first(crng)
+            for aidx in nzrange(A, w)
+                u = Arv[aidx]
+                while ci ≤ last(crng) && Crv[ci] < u
+                    ci += 1
+                end
+                (ci ≤ last(crng) && Crv[ci] == u) || return false
+            end
+        end
+    end
+    return true
+end
+
+# can X[r,c] be stored as a sparse mirror of L[r,c]?  Requires a block-diagonal
+# inverse of L[r,r] (so the row pattern is preserved), block-aligned columns, and,
+# for intermediate terms s, that the products L[r,s]·X[s,c] stay within the pattern.
+# Reads X[c,c] and X[s,c] for s < r, so the workspace constructor must fill each
+# block column of X in increasing row order before classifying X[r,c]
+function _sparseXok(L, X::Matrix{AbstractMatrix{T}}, reterms, r::Int, c::Int) where {T}
+    Lrc = L[block(r, c)]
+    isa(Lrc, Union{BlockedSparse{T},SparseMatrixCSC{T}}) || return false
+    isa(L[kp1choose2(r)], Union{Diagonal{T},UniformBlockDiagonal{T}}) || return false
+    isa(X[c, c], Union{Diagonal{T},UniformBlockDiagonal{T}}) || return false
+    Lcsc = _cscmat(Lrc)
+    _blockaligned(Lcsc, _kdim(reterms[r]), _kdim(reterms[c])) || return false
+    for s in (c + 1):(r - 1)
+        Xsc = X[s, c]
+        isa(Xsc, SparseMatrixCSC{T}) || return false
+        Lrs = L[block(r, s)]
+        isa(Lrs, Union{BlockedSparse{T},SparseMatrixCSC{T}}) || return false
+        _productcontained(_cscmat(Lrs), Xsc, Lcsc) || return false
+    end
+    return true
+end
+
+# how is the off-diagonal pair (r, b) evaluated?
+#   :scalar   - scalar-scalar with all-dense X blocks: entries of S accumulated
+#               directly on the pattern of A (`_sparsepair!` / `_crosspair_blas3!`)
+#   :selected - sparse A block: entries of S on the pattern of A accumulated into a
+#               sparse buffer and contracted blockwise (`_selectedpair!`)
+#   :dense    - dense A block: dense S/C1/C2 buffers (`_densepair!`)
+function _pairpath(
+    Arb::AbstractMatrix{T}, X::Matrix{AbstractMatrix{T}}, reterms, r::Int, b::Int
+) where {T}
+    isa(Arb, Union{SparseMatrixCSC{T},BlockedSparse{T}}) || return :dense
+    kre = length(reterms)
+    if isone(_kdim(reterms[r])) &&
+       isone(_kdim(reterms[b])) &&
+       isa(X[r, b], Matrix{T}) &&
+       all(isa(X[s, r], Matrix{T}) && isa(X[s, b], Matrix{T}) for s in (r + 1):kre)
+        return :scalar
+    end
+    if _blockaligned(_cscmat(Arb), _kdim(reterms[r]), _kdim(reterms[b]))
+        return :selected
+    end
+    return :dense
+end
+
 function GradientWorkspace(m::LinearMixedModel{T}) where {T}
     (; A, L, reterms) = m
     k = length(reterms)
@@ -63,34 +187,43 @@ function GradientWorkspace(m::LinearMixedModel{T}) where {T}
         Lcc = L[kp1choose2(c)]
         X[c, c] = if isa(Lcc, Diagonal)
             Diagonal(Vector{T}(undef, size(Lcc, 1)))
+        elseif isa(Lcc, UniformBlockDiagonal)
+            UniformBlockDiagonal(Array{T,3}(undef, size(Lcc.data)))
         else
             Matrix{T}(undef, size(Lcc))
         end
         for r in (c + 1):nb
-            X[r, c] = Matrix{T}(undef, size(L[block(r, c)]))
+            X[r, c] = if r ≤ k && _sparseXok(L, X, reterms, r, c)
+                _patternmirror(_cscmat(L[block(r, c)]))
+            else
+                Matrix{T}(undef, size(L[block(r, c)]))
+            end
         end
     end
     maxheavy = 0
     for b in 1:k
         Abb = A[kp1choose2(b)]
-        if isa(Abb, Diagonal)
-            S[b, b] = Diagonal(Vector{T}(undef, size(Abb, 1)))
+        S[b, b] = if isa(Abb, Diagonal)
+            Diagonal(Vector{T}(undef, size(Abb, 1)))
         else    # UniformBlockDiagonal
-            S[b, b] = UniformBlockDiagonal(Array{T,3}(undef, size(Abb.data)))
+            UniformBlockDiagonal(Array{T,3}(undef, size(Abb.data)))
         end
         S[nb, b] = Matrix{T}(undef, size(A[block(nb, b)]))
         for r in (b + 1):k
             Arb = A[block(r, b)]
-            if _sparsepair(Arb, reterms[r], reterms[b])
-                # scalar-scalar pair: entries of S accumulated directly, no S/C buffer.
-                # When the fill block L[r,r] is dense the cross term is evaluated with a
-                # BLAS-3 kernel needing a q_r × GRAD_PANEL scratch (see `_crosspair_blas3!`)
+            path = _pairpath(Arb, X, reterms, r, b)
+            if path === :scalar
+                # entries of S accumulated directly, no buffer.  When the fill block
+                # L[r,r] is dense the cross term is evaluated with a BLAS-3 kernel
+                # needing a q_r × GRAD_PANEL scratch (see `_crosspair_blas3!`)
                 isa(L[kp1choose2(r)], Matrix) && (maxheavy = max(maxheavy, size(Arb, 1)))
-                continue
+            elseif path === :selected
+                S[r, b] = _patternmirror(_cscmat(Arb))
+            else
+                S[r, b] = Matrix{T}(undef, size(Arb))
+                C1[r, b] = Matrix{T}(undef, size(Arb))
+                C2[r, b] = Matrix{T}(undef, size(Arb))
             end
-            S[r, b] = Matrix{T}(undef, size(Arb))
-            C1[r, b] = Matrix{T}(undef, size(Arb))
-            C2[r, b] = Matrix{T}(undef, size(Arb))
         end
     end
     G = [Matrix{T}(undef, _kdim(rt), _kdim(rt)) for rt in reterms]
@@ -98,16 +231,9 @@ function GradientWorkspace(m::LinearMixedModel{T}) where {T}
     return GradientWorkspace{T}(X, S, C1, C2, G, Ppanel)
 end
 
-# sparse selected-entry path is available only between two scalar terms
-function _sparsepair(A::AbstractMatrix, rtr::AbstractReMat, rtb::AbstractReMat)
-    return (isa(A, SparseMatrixCSC) || isa(A, BlockedSparse)) &&
-           isone(_kdim(rtr)) && isone(_kdim(rtb))
-end
-
-_cscmat(A::BlockedSparse) = A.cscmat
-_cscmat(A::SparseMatrixCSC) = A
-_densemat(A::AbstractMatrix) = A
-_densemat(A::BlockedSparse) = A.cscmat
+#####
+##### blocked computation of the lower blocks of X = L⁻¹
+#####
 
 # mul!(C, A, B, -1, 1) with the block types that occur in L and X
 function _mulsub!(
@@ -133,12 +259,159 @@ function _mulsub!(C::Matrix{T}, A::SparseMatrixCSC{T}, B::Diagonal{T}) where {T}
     return C
 end
 
+function _mulsub!(C::Matrix{T}, A::Matrix{T}, B::UniformBlockDiagonal{T}) where {T}
+    dat = B.data
+    kc = size(dat, 1)
+    for f in axes(dat, 3)
+        cols = ((f - 1) * kc + 1):(f * kc)
+        mul!(view(C, :, cols), view(A, :, cols), view(dat, :, :, f), -one(T), one(T))
+    end
+    return C
+end
+
+function _mulsub!(C::Matrix{T}, A::SparseMatrixCSC{T}, B::UniformBlockDiagonal{T}) where {T}
+    dat = B.data
+    kc = size(dat, 1)
+    rv = rowvals(A)
+    nz = nonzeros(A)
+    @inbounds for f in axes(dat, 3)
+        coff = (f - 1) * kc
+        for jloc in 1:kc, wloc in 1:kc
+            x = dat[wloc, jloc, f]
+            iszero(x) && continue
+            for idx in nzrange(A, coff + wloc)
+                C[rv[idx], coff + jloc] -= nz[idx] * x
+            end
+        end
+    end
+    return C
+end
+
+function _mulsub!(C::Matrix{T}, A::SparseMatrixCSC{T}, B::SparseMatrixCSC{T}) where {T}
+    Arv = rowvals(A)
+    Anz = nonzeros(A)
+    Brv = rowvals(B)
+    Bnz = nonzeros(B)
+    @inbounds for v in axes(B, 2)
+        for bidx in nzrange(B, v)
+            w = Brv[bidx]
+            x = Bnz[bidx]
+            for aidx in nzrange(A, w)
+                C[Arv[aidx], v] -= Anz[aidx] * x
+            end
+        end
+    end
+    return C
+end
+
+# sparse X block with the same pattern as A (a mirror of the L block)
+function _mulsub!(C::SparseMatrixCSC{T}, A::SparseMatrixCSC{T}, B::Diagonal{T}) where {T}
+    Cnz = nonzeros(C)
+    Anz = nonzeros(A)
+    d = B.diag
+    @inbounds for v in axes(A, 2)
+        x = d[v]
+        for idx in nzrange(A, v)
+            Cnz[idx] -= Anz[idx] * x
+        end
+    end
+    return C
+end
+
+function _mulsub!(
+    C::SparseMatrixCSC{T}, A::SparseMatrixCSC{T}, B::UniformBlockDiagonal{T}
+) where {T}
+    # pattern(C) == pattern(A), columns block-aligned (checked at construction)
+    dat = B.data
+    kc = size(dat, 1)
+    Cnz = nonzeros(C)
+    Anz = nonzeros(A)
+    colptr = A.colptr
+    @inbounds for f in axes(dat, 3)
+        v1 = (f - 1) * kc + 1
+        rng = Int(colptr[v1]):(Int(colptr[v1 + kc]) - 1)
+        isempty(rng) && continue
+        mul!(reshape(view(Cnz, rng), :, kc), reshape(view(Anz, rng), :, kc),
+            view(dat, :, :, f), -one(T), one(T))
+    end
+    return C
+end
+
+# sparse X block accumulating a sparse-sparse product; pattern(A * B) ⊆ pattern(C)
+# is verified at workspace construction (`_productcontained`)
+function _mulsub!(
+    C::SparseMatrixCSC{T}, A::SparseMatrixCSC{T}, B::SparseMatrixCSC{T}
+) where {T}
+    Crv = rowvals(C)
+    Cnz = nonzeros(C)
+    Arv = rowvals(A)
+    Anz = nonzeros(A)
+    Brv = rowvals(B)
+    Bnz = nonzeros(B)
+    for v in axes(B, 2)
+        crng = nzrange(C, v)
+        for bidx in nzrange(B, v)
+            w = Brv[bidx]
+            x = Bnz[bidx]
+            ci = first(crng)
+            for aidx in nzrange(A, w)
+                u = Arv[aidx]
+                while Crv[ci] < u
+                    ci += 1
+                end
+                Cnz[ci] -= Anz[aidx] * x
+            end
+        end
+    end
+    return C
+end
+
 # in-place solve of Ljj \ B for the diagonal-block types of L
 _ldivL!(Ljj::Diagonal{T}, B::AbstractMatrix{T}) where {T} = ldiv!(Ljj, B)
 _ldivL!(Ljj::Matrix{T}, B::AbstractMatrix{T}) where {T} = ldiv!(LowerTriangular(Ljj), B)
 function _ldivL!(Ljj::UniformBlockDiagonal{T}, B::Matrix{T}) where {T}
     return ldiv!(LowerTriangular(Ljj), B)
 end
+
+function _ldivL!(Ljj::UniformBlockDiagonal{T}, B::UniformBlockDiagonal{T}) where {T}
+    Ld = Ljj.data
+    Bd = B.data
+    for f in axes(Ld, 3)
+        ldiv!(LowerTriangular(view(Ld, :, :, f)), view(Bd, :, :, f))
+    end
+    return B
+end
+
+function _ldivL!(Ljj::Diagonal{T}, B::SparseMatrixCSC{T}) where {T}
+    d = Ljj.diag
+    rv = rowvals(B)
+    nz = nonzeros(B)
+    @inbounds for idx in eachindex(nz)
+        nz[idx] /= d[rv[idx]]
+    end
+    return B
+end
+
+function _ldivL!(Ljj::UniformBlockDiagonal{T}, B::SparseMatrixCSC{T}) where {T}
+    dat = Ljj.data
+    kr = size(dat, 1)
+    rv = rowvals(B)
+    nz = nonzeros(B)
+    for v in axes(B, 2)
+        rng = nzrange(B, v)
+        i = Int(first(rng))
+        while i ≤ last(rng)
+            # complete kr-run on a block boundary (checked at construction)
+            g = (Int(rv[i]) - 1) ÷ kr
+            ldiv!(LowerTriangular(view(dat, :, :, g + 1)), view(nz, i:(i + kr - 1)))
+            i += kr
+        end
+    end
+    return B
+end
+
+_zero!(X::Matrix{T}) where {T} = fill!(X, zero(T))
+_zero!(X::SparseMatrixCSC{T}) where {T} = (fill!(nonzeros(X), zero(T)); X)
 
 _identity!(D::Diagonal{T}) where {T} = (fill!(D.diag, one(T)); D)
 function _identity!(X::Matrix{T}) where {T}
@@ -147,6 +420,14 @@ function _identity!(X::Matrix{T}) where {T}
         X[i] = one(T)
     end
     return X
+end
+
+function _identity!(U::UniformBlockDiagonal{T}) where {T}
+    dat = fill!(U.data, zero(T))
+    @inbounds for f in axes(dat, 3), i in axes(dat, 1)
+        dat[i, i, f] = one(T)
+    end
+    return U
 end
 
 """
@@ -162,7 +443,7 @@ function _invL!(w::GradientWorkspace{T}, m::LinearMixedModel{T}) where {T}
         Xcc = _identity!(X[c, c])
         _ldivL!(L[kp1choose2(c)], Xcc)
         for r in (c + 1):nb
-            Xrc = fill!(X[r, c], zero(T))
+            Xrc = _zero!(X[r, c])
             for s in c:(r - 1)
                 _mulsub!(Xrc, L[block(r, s)], X[s, c])
             end
@@ -198,15 +479,81 @@ function _xycorrection!(
     return mul!(S, xr, xb', wy, one(T))
 end
 
+# accumulate S += Xsrᵀ Xsb for the block types that occur in X
+function _gramacc!(S::Matrix{T}, Xsr::AbstractMatrix{T}, Xsb::AbstractMatrix{T}) where {T}
+    return mul!(S, Xsr', Xsb, one(T), one(T))
+end
+
+function _gramacc!(S::Matrix{T}, Xsr::UniformBlockDiagonal{T}, Xsb::Matrix{T}) where {T}
+    dat = Xsr.data
+    kr = size(dat, 1)
+    for f in axes(dat, 3)
+        rows = ((f - 1) * kr + 1):(f * kr)
+        mul!(view(S, rows, :), adjoint(view(dat, :, :, f)), view(Xsb, rows, :),
+            one(T), one(T))
+    end
+    return S
+end
+
+function _gramacc!(
+    S::Matrix{T}, Xsr::UniformBlockDiagonal{T}, Xsb::SparseMatrixCSC{T}
+) where {T}
+    dat = Xsr.data
+    kr = size(dat, 1)
+    rv = rowvals(Xsb)
+    nz = nonzeros(Xsb)
+    for v in axes(Xsb, 2)
+        rng = nzrange(Xsb, v)
+        i = Int(first(rng))
+        while i ≤ last(rng)
+            g = (Int(rv[i]) - 1) ÷ kr     # complete kr-run on a block boundary
+            mul!(view(S, (g * kr + 1):((g + 1) * kr), v),
+                adjoint(view(dat, :, :, g + 1)), view(nz, i:(i + kr - 1)),
+                one(T), one(T))
+            i += kr
+        end
+    end
+    return S
+end
+
+function _gramacc!(S::Matrix{T}, Xsr::Diagonal{T}, Xsb::SparseMatrixCSC{T}) where {T}
+    d = Xsr.diag
+    rv = rowvals(Xsb)
+    nz = nonzeros(Xsb)
+    @inbounds for v in axes(Xsb, 2)
+        for idx in nzrange(Xsb, v)
+            u = rv[idx]
+            S[u, v] += d[u] * nz[idx]
+        end
+    end
+    return S
+end
+
+function _gramacc!(
+    S::Matrix{T}, Xsr::SparseMatrixCSC{T}, Xsb::SparseMatrixCSC{T}
+) where {T}
+    # sparse'sparse products between distinct nested terms are small; accept the
+    # allocation of the product rather than a custom kernel
+    P = adjoint(Xsr) * Xsb
+    rv = rowvals(P)
+    nz = nonzeros(P)
+    @inbounds for v in axes(P, 2)
+        for idx in nzrange(P, v)
+            S[rv[idx], v] += nz[idx]
+        end
+    end
+    return S
+end
+
 # dense S block for the pair (r, b), r > b or r == nb (the [Xy] row)
 function _gram!(S::Matrix{T}, w::GradientWorkspace{T}, r::Int, b::Int, kre::Int,
     wx::T, wy::T) where {T}
     X = w.X
     fill!(S, zero(T))
     for s in r:kre
-        mul!(S, X[s, r]', X[s, b], one(T), one(T))
+        _gramacc!(S, X[s, r], X[s, b])
     end
-    return _xycorrection!(S, X[kre + 1, r], X[kre + 1, b], wx, wy)
+    return _xycorrection!(S, X[kre + 1, r]::Matrix{T}, X[kre + 1, b]::Matrix{T}, wx, wy)
 end
 
 # diagonal of S[b,b] (used when A[b,b] is Diagonal, i.e. a scalar term)
@@ -219,6 +566,18 @@ function _colsumabs2!(d::Vector{T}, X::Matrix{T}) where {T}
             acc += abs2(X[i, f])
         end
         d[f] += acc
+    end
+    return d
+end
+
+function _colsumabs2!(d::Vector{T}, X::SparseMatrixCSC{T}) where {T}
+    nz = nonzeros(X)
+    @inbounds for v in axes(X, 2)
+        acc = zero(T)
+        for idx in nzrange(X, v)
+            acc += abs2(nz[idx])
+        end
+        d[v] += acc
     end
     return d
 end
@@ -243,18 +602,49 @@ function _gramdiag!(S::Diagonal{T}, w::GradientWorkspace{T}, b::Int, kre::Int,
     return S
 end
 
-# face-diagonal blocks of S[b,b] (used when A[b,b] is UniformBlockDiagonal)
+# face-diagonal accumulation dat[:,:,f] += X[:,face f]ᵀ X[:,face f] for the block
+# types that occur in X (used when A[b,b] is UniformBlockDiagonal)
+function _gramfaces_acc!(dat::Array{T,3}, Xsb::Matrix{T}) where {T}
+    kb = size(dat, 1)
+    for f in axes(dat, 3)
+        cols = ((f - 1) * kb + 1):(f * kb)
+        Xv = view(Xsb, :, cols)
+        mul!(view(dat, :, :, f), Xv', Xv, one(T), one(T))
+    end
+    return dat
+end
+
+function _gramfaces_acc!(dat::Array{T,3}, Xsb::UniformBlockDiagonal{T}) where {T}
+    Xd = Xsb.data
+    for f in axes(dat, 3)
+        Xf = view(Xd, :, :, f)
+        mul!(view(dat, :, :, f), Xf', Xf, one(T), one(T))
+    end
+    return dat
+end
+
+function _gramfaces_acc!(dat::Array{T,3}, Xsb::SparseMatrixCSC{T}) where {T}
+    kb = size(dat, 1)
+    nzv = nonzeros(Xsb)
+    colptr = Xsb.colptr
+    for f in axes(dat, 3)
+        v1 = (f - 1) * kb + 1
+        rng = Int(colptr[v1]):(Int(colptr[v1 + kb]) - 1)
+        isempty(rng) && continue
+        # the kb columns of the block share their row pattern (checked at
+        # construction), so the reshaped nonzeros are the dense column slices
+        M = reshape(view(nzv, rng), :, kb)
+        mul!(view(dat, :, :, f), M', M, one(T), one(T))
+    end
+    return dat
+end
+
 function _gramfaces!(S::UniformBlockDiagonal{T}, w::GradientWorkspace{T}, b::Int,
     kre::Int, wx::T, wy::T) where {T}
     dat = fill!(S.data, zero(T))
     kb = size(dat, 1)
     for s in b:kre
-        Xsb = w.X[s, b]::Matrix{T}
-        for f in axes(dat, 3)
-            cols = ((f - 1) * kb + 1):(f * kb)
-            Xv = view(Xsb, :, cols)
-            mul!(view(dat, :, :, f), Xv', Xv, one(T), one(T))
-        end
+        _gramfaces_acc!(dat, w.X[s, b])
     end
     Xkb = w.X[kre + 1, b]::Matrix{T}
     plast = size(Xkb, 1)
@@ -327,6 +717,258 @@ function _sparseaccxy(A::SparseMatrixCSC{T}, Xkr::Matrix{T}, Xkb::Matrix{T},
 end
 
 #####
+##### selected entries of S on the pattern of a sparse A block (any term dimensions)
+#####
+
+# accumulate Sp[u,v] += (Xsrᵀ Xsb)[u,v] over the nonzeros (u,v) of Sp for the block
+# types that occur in X; like `_sparseacc` these are function barriers
+function _selacc!(Sp::SparseMatrixCSC{T}, Xr::Matrix{T}, Xb::Matrix{T}) where {T}
+    rv = rowvals(Sp)
+    nz = nonzeros(Sp)
+    @inbounds for v in axes(Sp, 2)
+        xbv = view(Xb, :, v)
+        for idx in nzrange(Sp, v)
+            nz[idx] += dot(view(Xr, :, rv[idx]), xbv)
+        end
+    end
+    return Sp
+end
+
+function _selacc!(Sp::SparseMatrixCSC{T}, Xr::Diagonal{T}, Xb::Matrix{T}) where {T}
+    d = Xr.diag
+    rv = rowvals(Sp)
+    nz = nonzeros(Sp)
+    @inbounds for v in axes(Sp, 2)
+        for idx in nzrange(Sp, v)
+            u = rv[idx]
+            nz[idx] += d[u] * Xb[u, v]
+        end
+    end
+    return Sp
+end
+
+function _selacc!(Sp::SparseMatrixCSC{T}, Xr::Diagonal{T}, Xb::SparseMatrixCSC{T}) where {T}
+    d = Xr.diag
+    rv = rowvals(Sp)
+    nz = nonzeros(Sp)
+    Brv = rowvals(Xb)
+    Bnz = nonzeros(Xb)
+    @inbounds for v in axes(Sp, 2)
+        brng = nzrange(Xb, v)
+        bi = Int(first(brng))
+        for idx in nzrange(Sp, v)
+            u = rv[idx]
+            while bi ≤ last(brng) && Brv[bi] < u
+                bi += 1
+            end
+            bi ≤ last(brng) || break
+            if Brv[bi] == u
+                nz[idx] += d[u] * Bnz[bi]
+            end
+        end
+    end
+    return Sp
+end
+
+function _selacc!(
+    Sp::SparseMatrixCSC{T}, Xr::UniformBlockDiagonal{T}, Xb::Matrix{T}
+) where {T}
+    dat = Xr.data
+    kr = size(dat, 1)
+    rv = rowvals(Sp)
+    nz = nonzeros(Sp)
+    @inbounds for v in axes(Sp, 2)
+        for idx in nzrange(Sp, v)
+            g, ul = divrem(Int(rv[idx]) - 1, kr)
+            roff = g * kr
+            acc = zero(T)
+            for i in 1:kr
+                acc += dat[i, ul + 1, g + 1] * Xb[roff + i, v]
+            end
+            nz[idx] += acc
+        end
+    end
+    return Sp
+end
+
+function _selacc!(
+    Sp::SparseMatrixCSC{T}, Xr::UniformBlockDiagonal{T}, Xb::SparseMatrixCSC{T}
+) where {T}
+    dat = Xr.data
+    kr = size(dat, 1)
+    rv = rowvals(Sp)
+    nz = nonzeros(Sp)
+    Brv = rowvals(Xb)
+    Bnz = nonzeros(Xb)
+    @inbounds for v in axes(Sp, 2)
+        brng = nzrange(Xb, v)
+        bi = Int(first(brng))
+        for idx in nzrange(Sp, v)
+            g, ul = divrem(Int(rv[idx]) - 1, kr)
+            rowstart = g * kr + 1
+            while bi ≤ last(brng) && Brv[bi] < rowstart
+                bi += 1
+            end
+            # Xb is block-aligned: a face either contributes a complete kr-run or
+            # nothing at all to this column
+            if bi ≤ last(brng) && Brv[bi] == rowstart
+                acc = zero(T)
+                for i in 1:kr
+                    acc += dat[i, ul + 1, g + 1] * Bnz[bi + i - 1]
+                end
+                nz[idx] += acc
+            end
+        end
+    end
+    return Sp
+end
+
+function _selacc!(Sp::SparseMatrixCSC{T}, Xr::Matrix{T}, Xb::SparseMatrixCSC{T}) where {T}
+    rv = rowvals(Sp)
+    nz = nonzeros(Sp)
+    Brv = rowvals(Xb)
+    Bnz = nonzeros(Xb)
+    @inbounds for v in axes(Sp, 2)
+        brng = nzrange(Xb, v)
+        isempty(brng) && continue
+        for idx in nzrange(Sp, v)
+            u = rv[idx]
+            acc = zero(T)
+            for bi in brng
+                acc += Xr[Brv[bi], u] * Bnz[bi]
+            end
+            nz[idx] += acc
+        end
+    end
+    return Sp
+end
+
+function _selacc!(Sp::SparseMatrixCSC{T}, Xr::SparseMatrixCSC{T}, Xb::Matrix{T}) where {T}
+    rv = rowvals(Sp)
+    nz = nonzeros(Sp)
+    Rrv = rowvals(Xr)
+    Rnz = nonzeros(Xr)
+    @inbounds for v in axes(Sp, 2)
+        for idx in nzrange(Sp, v)
+            acc = zero(T)
+            for ri in nzrange(Xr, rv[idx])
+                acc += Rnz[ri] * Xb[Rrv[ri], v]
+            end
+            nz[idx] += acc
+        end
+    end
+    return Sp
+end
+
+function _selacc!(
+    Sp::SparseMatrixCSC{T}, Xr::SparseMatrixCSC{T}, Xb::SparseMatrixCSC{T}
+) where {T}
+    rv = rowvals(Sp)
+    nz = nonzeros(Sp)
+    Rrv = rowvals(Xr)
+    Rnz = nonzeros(Xr)
+    Brv = rowvals(Xb)
+    Bnz = nonzeros(Xb)
+    @inbounds for v in axes(Sp, 2)
+        brng = nzrange(Xb, v)
+        isempty(brng) && continue
+        for idx in nzrange(Sp, v)
+            rrng = nzrange(Xr, rv[idx])
+            acc = zero(T)
+            ri = Int(first(rrng))
+            bi = Int(first(brng))
+            while ri ≤ last(rrng) && bi ≤ last(brng)
+                rw = Rrv[ri]
+                bw = Brv[bi]
+                if rw == bw
+                    acc += Rnz[ri] * Bnz[bi]
+                    ri += 1
+                    bi += 1
+                elseif rw < bw
+                    ri += 1
+                else
+                    bi += 1
+                end
+            end
+            nz[idx] += acc
+        end
+    end
+    return Sp
+end
+
+# the weighted [Xy]-block-row correction on the pattern of Sp
+function _selaccxy!(Sp::SparseMatrixCSC{T}, Xkr::Matrix{T}, Xkb::Matrix{T},
+    wx::T, wy::T) where {T}
+    rv = rowvals(Sp)
+    nz = nonzeros(Sp)
+    plast = size(Xkr, 1)
+    @inbounds for v in axes(Sp, 2)
+        for idx in nzrange(Sp, v)
+            u = rv[idx]
+            s = wy * Xkr[plast, u] * Xkb[plast, v]
+            if !iszero(wx)
+                for i in 1:(plast - 1)
+                    s += wx * Xkr[i, u] * Xkb[i, v]
+                end
+            end
+            nz[idx] += s
+        end
+    end
+    return Sp
+end
+
+# contract the selected entries of S against the nonzero k_r × k_b blocks of A:
+#   G_b += (Λᵣᵀ A_blk)ᵀ S_blk = A_blkᵀ (Λᵣ S_blk),   G_r += (A_blk Λ_b) S_blkᵀ
+function _selcontract!(Gb::Matrix{T}, Gr::Matrix{T}, A::SparseMatrixCSC{T},
+    Sp::SparseMatrixCSC{T}, rtr::ReMat{T}, rtb::ReMat{T}) where {T}
+    kr = _kdim(rtr)
+    kb = _kdim(rtb)
+    λr = rtr.λ
+    λb = rtb.λ
+    Anz = nonzeros(A)
+    Snz = nonzeros(Sp)
+    Ablk = Matrix{T}(undef, kr, kb)
+    Sblk = Matrix{T}(undef, kr, kb)
+    t = Matrix{T}(undef, kr, kb)
+    @inbounds for jblk in 1:(size(A, 2) ÷ kb)
+        v1 = (jblk - 1) * kb + 1
+        nnzcol = length(nzrange(A, v1))
+        for off in 0:kr:(nnzcol - 1)
+            for j in 1:kb
+                rngj = nzrange(A, v1 + j - 1)
+                for i in 1:kr
+                    idx = rngj[off + i]
+                    Ablk[i, j] = Anz[idx]
+                    Sblk[i, j] = Snz[idx]
+                end
+            end
+            mul!(t, λr, Sblk)
+            mul!(Gb, Ablk', t, one(T), one(T))
+            mul!(t, Ablk, λb)
+            mul!(Gr, t, Sblk', one(T), one(T))
+        end
+    end
+    return nothing
+end
+
+# off-diagonal pair (r, b) with sparse A[r,b] between terms of any dimension: the
+# entries of S on the sparsity pattern of A are accumulated into the sparse buffer
+# S[r,b] (sharing A's pattern) and contracted blockwise against A
+function _selectedpair!(w::GradientWorkspace{T}, m::LinearMixedModel{T}, r::Int, b::Int,
+    wx::T, wy::T) where {T}
+    (; A, reterms) = m
+    kre = length(reterms)
+    Sp = w.S[r, b]::SparseMatrixCSC{T}
+    fill!(nonzeros(Sp), zero(T))
+    for s in r:kre
+        _selacc!(Sp, w.X[s, r], w.X[s, b])
+    end
+    _selaccxy!(Sp, w.X[kre + 1, r]::Matrix{T}, w.X[kre + 1, b]::Matrix{T}, wx, wy)
+    _selcontract!(w.G[b], w.G[r], _cscmat(A[block(r, b)]), Sp, reterms[r], reterms[b])
+    return w
+end
+
+#####
 ##### contraction of A blocks against S blocks into the per-term accumulators G
 #####
 
@@ -376,8 +1018,8 @@ function _diagpair!(w::GradientWorkspace{T}, m::LinearMixedModel{T}, b::Int,
     return w
 end
 
-# off-diagonal pair (r, b) between two scalar terms with sparse A[r,b]:
-# only the entries of S on the sparsity pattern of A are evaluated
+# off-diagonal pair (r, b) between two scalar terms with sparse A[r,b] and dense X
+# blocks: only the entries of S on the sparsity pattern of A are evaluated
 function _sparsepair!(w::GradientWorkspace{T}, m::LinearMixedModel{T}, r::Int, b::Int,
     wx::T, wy::T) where {T}
     (; A, reterms) = m
@@ -491,8 +1133,10 @@ an affine function of the logarithms of the diagonal elements of `L` and a singl
 computation of `L⁻¹` provides all components of the gradient (see Murray 2016,
 arXiv:1602.07527, and Bates et al. 2025, arXiv:2505.11674).  This is much faster and less
 allocation-heavy than automatic differentiation via the `ForwardDiff` extension,
-especially for models with many covariance parameters, but note that the storage for the
-blocks of `L⁻¹` can be substantial for models with thousands of random-effects levels.
+especially for models with many covariance parameters.  The blocks of `L⁻¹` mirror the
+block-diagonal and sparse (nested-grouping) structure of `L`, so the workspace storage is
+of the same order as `L` itself; models with two large *crossed* (non-nested) grouping
+factors store dense off-diagonal blocks, for which the storage can be substantial.
 """
 function objective_gradient!(g::AbstractVector{T}, m::LinearMixedModel{T}) where {T}
     return objective_gradient!(GradientWorkspace(m), g, m)
@@ -524,7 +1168,10 @@ function objective_gradient!(w::GradientWorkspace{T}, g::AbstractVector{T},
     for b in 1:kre
         _diagpair!(w, m, b, wx, wy)
         for r in (b + 1):kre
-            if _sparsepair(m.A[block(r, b)], reterms[r], reterms[b])
+            Srb = w.S[r, b]
+            if isa(Srb, SparseMatrixCSC{T})
+                _selectedpair!(w, m, r, b, wx, wy)
+            elseif isempty(Srb)     # scalar-scalar pair, no buffer needed
                 if _use_blas3_cross(w, m, r, b)
                     _crosspair_blas3!(w, m, r, b, wx, wy)
                 else

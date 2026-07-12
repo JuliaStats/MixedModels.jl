@@ -9,6 +9,7 @@ using Test
 
 using MixedModels:
     GradientWorkspace, GRAD_PANEL, _crossacc_blas3!, _use_blas3_cross,
+    _mulsub!, _ldivL!, _patternmirror, _productcontained, _blockaligned,
     dataset
 
 include("modelcache.jl")
@@ -108,6 +109,160 @@ perturb(θ::AbstractVector) = θ .* 0.75 .+ 0.125
         @test g1 == g2
         @test_throws DimensionMismatch objective_gradient!(similar(θ, 2), m)
         updateL!(setθ!(m, m.optsum.final))
+    end
+
+    @testset "nested grouping factors (sparse workspace)" begin
+        # nested designs keep the off-diagonal L blocks sparse and the diagonal
+        # blocks block-diagonal; the workspace must mirror that structure instead
+        # of allocating dense blocks of L⁻¹ (issue: gradient-based fits of models
+        # like fggk21 ran out of memory)
+        rng = StableRNG(20260711)
+        n = 6000
+        ng, nh = 25, 6
+        g = rand(rng, 1:ng, n)
+        h = (g .- 1) .* nh .+ rand(rng, 1:nh, n)    # h nested in g
+        x = randn(rng, n)
+        tbl = (; y=randn(rng, n), x, g=categorical(g), h=categorical(h))
+
+        @testset "$(label)" for (label, f, sptype) in (
+            ("vector-vector", @formula(y ~ 1 + x + (1 + x | g) + (1 + x | h)),
+                UniformBlockDiagonal),
+            ("scalar-under-vector", @formula(y ~ 1 + x + (1 + x | g) + (1 | h)),
+                UniformBlockDiagonal),
+            ("vector-under-scalar", @formula(y ~ 1 + x + (1 | g) + (1 + x | h)),
+                Diagonal),
+        )
+            m = LinearMixedModel(f, tbl)
+            w = GradientWorkspace(m)
+            # the big diagonal block of X = L⁻¹ mirrors L[1,1], the fill block
+            # X[2,1] mirrors the nested sparsity of L[2,1], and the pair buffer
+            # S[2,1] holds only the entries of S on the pattern of A[2,1]
+            @test !isa(w.X[1, 1], Matrix)
+            @test w.X[2, 1] isa SparseMatrixCSC
+            @test w.X[2, 2] isa sptype
+            @test w.S[2, 1] isa SparseMatrixCSC
+            θ = perturb(m.optsum.initial)
+            gan = similar(θ)
+            val = objective_gradient!(w, gan, updateL!(setθ!(m, θ)))
+            @test val ≈ objective!(m, θ)
+            @test gan ≈ ForwardDiff.gradient(m, θ) rtol = 1e-6 atol = 1e-8
+        end
+
+        @testset "three-level scalar nesting" begin
+            na, nb, nc = 15, 4, 3
+            a = rand(rng, 1:na, n)
+            b = (a .- 1) .* nb .+ rand(rng, 1:nb, n)
+            c = (b .- 1) .* nc .+ rand(rng, 1:nc, n)
+            tbl3 = (; y=randn(rng, n), x,
+                a=categorical(a), b=categorical(b), c=categorical(c))
+            # amalgamate=false keeps the three nested scalar terms separate, so the
+            # sparse block column of X has an intermediate term (the sparse-sparse
+            # `_mulsub!` accumulation and its pattern-containment check)
+            m = LinearMixedModel(
+                @formula(y ~ 1 + x + (1 | a) + (1 | b) + (1 | c)), tbl3;
+                amalgamate=false)
+            w = GradientWorkspace(m)
+            @test w.X[2, 1] isa SparseMatrixCSC
+            @test w.X[3, 1] isa SparseMatrixCSC
+            @test w.X[3, 2] isa SparseMatrixCSC
+            θ = perturb(m.optsum.initial)
+            gan = similar(θ)
+            objective_gradient!(w, gan, updateL!(setθ!(m, θ)))
+            @test gan ≈ ForwardDiff.gradient(m, θ) rtol = 1e-6 atol = 1e-8
+        end
+
+        @testset "nested vector + crossed zerocorr (fggk21 structure) $(REML ? "REML" : "ML")" for REML in
+                                                                                                  (
+            false, true
+        )
+            co = rand(rng, 1:4, n)
+            tblf = (; y=randn(rng, n), x,
+                g=categorical(g), h=categorical(h), co=categorical(co))
+            m = LinearMixedModel(
+                @formula(y ~ 1 + x + (1 + x | g) + (1 + x | h) + zerocorr(1 + x | co)),
+                tblf)
+            m.optsum.REML = REML
+            w = GradientWorkspace(m)
+            @test w.X[1, 1] isa UniformBlockDiagonal
+            @test w.X[2, 1] isa SparseMatrixCSC
+            @test w.S[2, 1] isa SparseMatrixCSC
+            θ = perturb(m.optsum.initial)
+            gan = similar(θ)
+            val = objective_gradient!(w, gan, updateL!(setθ!(m, θ)))
+            @test val ≈ objective!(m, θ)
+            @test gan ≈ ForwardDiff.gradient(m, θ) rtol = 1e-6 atol = 1e-8
+        end
+    end
+
+    @testset "sparse workspace kernels" begin
+        # kernels for sparse mirrors of L blocks, checked against dense references;
+        # some type combinations arise only in designs (deep nesting under a dense
+        # diagonal block) that model fits rarely reach
+        rng = StableRNG(97)
+        kr, kc = 3, 2
+        nlr, nlc = 4, 6
+        # block-aligned sparse A: one kr×kc block per column block
+        rowblk = rand(rng, 0:(nlr - 1), nlc)
+        rows = reduce(vcat, [rowblk[j] * kr .+ (1:kr) for j in 1:nlc for _ in 1:kc])
+        cols = reduce(vcat, [fill((j - 1) * kc + l, kr) for j in 1:nlc for l in 1:kc])
+        A = SparseMatrixCSC{Float64,Int32}(
+            sparse(rows, cols, randn(rng, length(rows)), nlr * kr, nlc * kc)
+        )
+        @test _blockaligned(A, kr, kc)
+        @test !_blockaligned(A, kr + 1, kc)
+
+        # C -= A * D and C -= A * U on the pattern of A (block-diagonal right factor)
+        D = Diagonal(randn(rng, nlc * kc))
+        U = UniformBlockDiagonal(randn(rng, kc, kc, nlc))
+        for B in (D, U)
+            C = _patternmirror(A)
+            fill!(nonzeros(C), 0.0)
+            _mulsub!(C, A, B)
+            @test Matrix(C) ≈ -Matrix(A) * Matrix(B)
+        end
+
+        # sparse-sparse scatter: pattern(A * B) ⊆ pattern(C)
+        B = SparseMatrixCSC{Float64,Int32}(
+            sparse(
+                reduce(vcat, [(j - 1) * kc .+ (1:kc) for j in 1:nlc]),
+                reduce(vcat, [fill(j, kc) for j in 1:nlc]),
+                randn(rng, nlc * kc),
+                nlc * kc, nlc,
+            ),
+        )
+        Cpat = SparseMatrixCSC{Float64,Int32}(A * B)   # the exact product pattern
+        @test _productcontained(A, B, Cpat)
+        C = _patternmirror(Cpat)
+        fill!(nonzeros(C), 0.0)
+        _mulsub!(C, A, B)
+        @test Matrix(C) ≈ -Matrix(A) * Matrix(B)
+        # containment must fail for a pattern missing a product entry
+        Cmiss = SparseMatrixCSC{Float64,Int32}(
+            sparse(
+                rowvals(Cpat)[2:end],
+                reduce(vcat, [fill(v, length(nzrange(Cpat, v))) for v in axes(Cpat, 2)])[2:end],
+                nonzeros(Cpat)[2:end],
+                size(Cpat)...,
+            ),
+        )
+        @test !_productcontained(A, B, Cmiss)
+
+        # dense C -= A * B with both factors sparse
+        Cd = randn(rng, size(A, 1), size(B, 2))
+        ref = Cd - Matrix(A) * Matrix(B)
+        _mulsub!(Cd, A, B)
+        @test Cd ≈ ref
+
+        # block-diagonal solve on a sparse right-hand side
+        Ld = randn(rng, kr, kr, nlr)
+        for f in 1:nlr    # make the faces well-conditioned lower triangles
+            Ld[:, :, f] = LowerTriangular(view(Ld, :, :, f)) + 3 * I(kr)
+        end
+        Ljj = UniformBlockDiagonal(Ld)
+        X = _patternmirror(A)
+        copyto!(nonzeros(X), nonzeros(A))
+        _ldivL!(Ljj, X)
+        @test Matrix(X) ≈ LowerTriangular(Matrix(Ljj)) \ Matrix(A)
     end
 
     @testset "BLAS-3 cross-term kernel" begin
