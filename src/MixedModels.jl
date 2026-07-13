@@ -95,6 +95,7 @@ export @formula,
     condVartables,
     confint,
     cooksdistance,
+    cs,
     deviance,
     dispersion,
     dispersion_parameter,
@@ -111,6 +112,8 @@ export @formula,
     fnames,
     GHnorm,
     glmm,
+    homcs,
+    homdiag,
     isfitted,
     islinear,
     issingular,
@@ -171,6 +174,7 @@ export @formula,
 export savereplicates, restorereplicates
 
 @compat public rePCA, PCA, opt_params, optimizers
+@compat public CovarianceStructure, Unstructured, ScaledIdentity, CompoundSymmetry
 
 """
     MixedModel
@@ -194,6 +198,7 @@ include("pca.jl")
 include("arraytypes.jl")
 include("varcorr.jl")
 include("Xymat.jl")
+include("covstruct.jl")
 include("remat.jl")
 include("optsummary.jl")
 include("schema.jl")

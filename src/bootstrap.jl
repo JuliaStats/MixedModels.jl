@@ -14,6 +14,7 @@ Object returned by `parametericbootstrap` with fields
 - `inds`: `Vector{Vector{Int}}` containing copies of the `inds` field from `ReMat` model terms
 - `lowerbd`: `Vector{T}` containing the vector of lower bounds (corresponds to the `lowerbd(model)` of the original model)
 - `fcnames`: NamedTuple whose keys are the grouping factor names and whose values are the column names
+- `covstructs`: `Vector{CovarianceStructure{T}}` containing copies of the `covstruct` field from `ReMat` model terms, used to reconstruct `λ` from `θ`
 
 The schema of `fits` is, by default,
 ```
@@ -36,6 +37,16 @@ struct MixedModelBootstrap{T<:AbstractFloat} <: MixedModelFitCollection{T}
     inds::Vector{Vector{Int}}
     lowerbd::Vector{T} # we need to store this explicitly because we no longer have access to the ReMats
     fcnames::NamedTuple
+    covstructs::Vector{CovarianceStructure{T}} # needed to reconstruct λ from θ for structured terms
+end
+
+# backwards-compatible constructor for callers (e.g. downstream packages) that
+# predate the covstructs field: default to Unstructured for every term
+function MixedModelBootstrap{T}(
+    fits, λ, inds, lowerbd, fcnames
+) where {T}
+    covstructs = CovarianceStructure{T}[Unstructured{T}() for _ in λ]
+    return MixedModelBootstrap{T}(fits, λ, inds, lowerbd, fcnames, covstructs)
 end
 
 Base.:(==)(a::MixedModelFitCollection{T}, b::MixedModelFitCollection{S}) where {T,S} = false
@@ -45,7 +56,8 @@ function Base.:(==)(a::MixedModelFitCollection{T}, b::MixedModelFitCollection{T}
            a.λ == b.λ &&
            a.inds == b.inds &&
            a.lowerbd == b.lowerbd &&
-           a.fcnames == b.fcnames
+           a.fcnames == b.fcnames &&
+           a.covstructs == b.covstructs
 end
 
 function Base.isapprox(a::MixedModelFitCollection, b::MixedModelFitCollection;
@@ -65,7 +77,8 @@ function Base.isapprox(a::MixedModelFitCollection, b::MixedModelFitCollection;
            # Vector{Vector{Int}} so no need for isapprox
            a.inds == b.inds &&
            isapprox(a.lowerbd, b.lowerbd; atol, rtol) &&
-           a.fcnames == b.fcnames
+           a.fcnames == b.fcnames &&
+           all(((x, y),) -> isapprox(x, y; atol, rtol), zip(a.covstructs, b.covstructs))
 end
 
 """
@@ -114,7 +127,15 @@ function restorereplicates(
         getfield.(m.reterms, :inds),
         T.(lowerbd(m)),
         NamedTuple{Symbol.(fnames(m))}(map(t -> Tuple(t.cnames), m.reterms)),
+        _bootstrap_covstructs(m, T),
     )
+end
+
+# copies of the model's covariance structures, converted to element type T
+function _bootstrap_covstructs(m::MixedModel, ::Type{T}) where {T}
+    return CovarianceStructure{T}[
+        LinearAlgebra.copy_oftype(trm.covstruct, T) for trm in m.reterms
+    ]
 end
 
 """
@@ -133,7 +154,7 @@ savereplicates(f, b::MixedModelFitCollection) = Arrow.write(f, b.fits)
 
 # TODO: write methods for GLMM
 function Base.vcat(b1::MixedModelBootstrap{T}, b2::MixedModelBootstrap{T}) where {T}
-    for field in [:λ, :inds, :lowerbd, :fcnames]
+    for field in [:λ, :inds, :lowerbd, :fcnames, :covstructs]
         getfield(b1, field) == getfield(b2, field) ||
             throw(ArgumentError("b1 and b2 must originate from the same model fit"))
     end
@@ -141,11 +162,12 @@ function Base.vcat(b1::MixedModelBootstrap{T}, b2::MixedModelBootstrap{T}) where
         deepcopy(b1.λ),
         deepcopy(b1.inds),
         deepcopy(b1.lowerbd),
-        deepcopy(b1.fcnames))
+        deepcopy(b1.fcnames),
+        deepcopy(b1.covstructs))
 end
 
 function Base.reduce(::typeof(vcat), v::AbstractVector{MixedModelBootstrap{T}}) where {T}
-    for field in [:λ, :inds, :lowerbd, :fcnames]
+    for field in [:λ, :inds, :lowerbd, :fcnames, :covstructs]
         all(==(getfield(first(v), field)), getfield.(v, field)) ||
             throw(ArgumentError("All bootstraps must originate from the same model fit"))
     end
@@ -156,7 +178,8 @@ function Base.reduce(::typeof(vcat), v::AbstractVector{MixedModelBootstrap{T}}) 
         deepcopy(b1.λ),
         deepcopy(b1.inds),
         deepcopy(b1.lowerbd),
-        deepcopy(b1.fcnames))
+        deepcopy(b1.fcnames),
+        deepcopy(b1.covstructs))
 end
 
 function Base.show(io::IO, mime::MIME"text/plain", x::MixedModelBootstrap)
@@ -256,6 +279,7 @@ function parametricbootstrap(
         getfield.(morig.reterms, :inds),
         ftype.(lowerbd(morig)),
         NamedTuple{Symbol.(fnames(morig))}(map(t -> Tuple(t.cnames), morig.reterms)),
+        _bootstrap_covstructs(morig, ftype),
     )
 end
 
@@ -433,6 +457,7 @@ function Base.propertynames(bsamp::MixedModelFitCollection)
         :λ,
         :inds,
         :lowerbd,
+        :covstructs,
         :fits,
         :fcnames,
         :tbl,
@@ -447,15 +472,25 @@ Install the values of the i'th θ value of `bsamp.fits` in `bsamp.λ`
 """
 function setθ!(bsamp::MixedModelFitCollection{T}, θ::AbstractVector{T}) where {T}
     offset = 0
-    for (λ, inds) in zip(bsamp.λ, bsamp.inds)
-        λdat = _getdata(λ)
-        fill!(λdat, false)
-        for j in eachindex(inds)
-            λdat[inds[j]] = θ[j + offset]
-        end
-        offset += length(inds)
+    for (λ, inds, cs) in zip(bsamp.λ, bsamp.inds, bsamp.covstructs)
+        offset = _bootstrap_setθ!(λ, inds, cs, θ, offset)
     end
     return bsamp
+end
+
+function _bootstrap_setθ!(λ, inds, ::Unstructured, θ, offset)
+    λdat = _getdata(λ)
+    fill!(λdat, false)
+    for j in eachindex(inds)
+        λdat[inds[j]] = θ[j + offset]
+    end
+    return offset + length(inds)
+end
+
+function _bootstrap_setθ!(λ, inds, cs::CovarianceStructure, θ, offset)
+    k = nθ(cs)
+    updateλ!(cs, λ, view(θ, (offset + 1):(offset + k)))
+    return offset + k
 end
 
 function setθ!(bsamp::MixedModelFitCollection, i::Integer)

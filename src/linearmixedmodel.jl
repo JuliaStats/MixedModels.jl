@@ -135,6 +135,7 @@ function _split_re_fe_terms(Xs::Tuple, form::FormulaTerm, ::Type{T}) where {T}
                 x.inds,
                 convert(SparseMatrixCSC{T,Int32}, x.adjA),
                 convert(Matrix{T}, x.scratch),
+                LinearAlgebra.copy_oftype(x.covstruct, T),
             )
             push!(reterms, x)
         else
@@ -514,8 +515,9 @@ function StatsAPI.fit!(
 
     ## check if small non-negative parameter values can be set to zero
     xmin_ = copy(xmin)
-    for (i, pm) in enumerate(m.parmap)
-        if pm[2] == pm[3] && zero(T) < xmin_[i] < optsum.xtol_zero_abs
+    lb = lowerbd(m)
+    for i in eachindex(xmin_)
+        if iszero(lb[i]) && zero(T) < xmin_[i] < optsum.xtol_zero_abs
             xmin_[i] = zero(T)
         end
     end
@@ -660,23 +662,16 @@ Return the current covariance parameter vector.
 getθ(m::LinearMixedModel{T}) where {T} = getθ!(Vector{T}(undef, length(m.parmap)), m)
 
 function getθ!(v::AbstractVector{Tv}, m::LinearMixedModel{T}) where {Tv,T}
-    pmap = m.parmap
-    if length(v) ≠ length(pmap)
+    if length(v) ≠ nθ(m)
         throw(
-            DimensionMismatch(
-                "length(v) = $(length(v)) ≠ length(m.parmap) = $(length(pmap))"
-            ),
+            DimensionMismatch("length(v) = $(length(v)) ≠ nθ(m) = $(nθ(m))")
         )
     end
-    reind = 1
-    λ = first(m.reterms).λ
-    for (k, tp) in enumerate(pmap)
-        tp1 = first(tp)
-        if reind ≠ tp1
-            reind = tp1
-            λ = m.reterms[tp1].λ
-        end
-        v[k] = λ[tp[2], tp[3]]
+    offset = 0
+    for trm in m.reterms
+        k = nθ(trm)
+        getθ!(view(v, (offset + 1):(offset + k)), trm)
+        offset += k
     end
     return v
 end
@@ -728,13 +723,10 @@ end
 """
     _set_init(m::LinearMixedModel)
 
-Set each element of m.optsum.initial to 1.0 for diagonal and 0.0 for off-diagonal
+Set m.optsum.initial to the initial values of θ, chosen such that each λ is the identity
 """
 function _set_init!(m::LinearMixedModel)
-    init = m.optsum.initial
-    for (i, pm) in enumerate(m.parmap)
-        init[i] = pm[2] == pm[3]
-    end
+    copyto!(m.optsum.initial, reduce(vcat, initialθ.(m.reterms)))
     return m
 end
 
@@ -848,16 +840,25 @@ Note that this method does not distinguish between constrained optimization and
 unconstrained optimization with post-fit canonicalization.
 """
 function lowerbd(m::LinearMixedModel{T}) where {T}
-    return [(pm[2] == pm[3]) ? zero(T) : T(-Inf) for pm in m.parmap]
+    return reduce(vcat, lowerbd.(m.reterms))
 end
 
+# entries are (index of term, row of λ, column of λ) for each element of θ;
+# for terms with a non-trivial covariance structure the θ elements do not
+# correspond to entries of λ and the sentinel (k, 0, 0) is stored instead
 function mkparmap(reterms::Vector{<:AbstractReMat{T}}) where {T}
     parmap = NTuple{3,Int}[]
     for (k, trm) in enumerate(reterms)
-        n = LinearAlgebra.checksquare(trm.λ)
-        for ind in trm.inds
-            d, r = divrem(ind - 1, n)
-            push!(parmap, (k, r + 1, d + 1))
+        if trm.covstruct isa Unstructured
+            n = LinearAlgebra.checksquare(trm.λ)
+            for ind in trm.inds
+                d, r = divrem(ind - 1, n)
+                push!(parmap, (k, r + 1, d + 1))
+            end
+        else
+            for _ in 1:nθ(trm)
+                push!(parmap, (k, 0, 0))
+            end
         end
     end
     return parmap
@@ -1006,7 +1007,7 @@ This provides a canonical converged value of θ.  We use unconstrained optimizat
 hassle of constrained optimization.
 """
 function rectify!(m::LinearMixedModel)
-    rectify!.(m.λ)
+    rectify!.(m.reterms)
     return m
 end
 
@@ -1112,38 +1113,17 @@ sdest(m::LinearMixedModel) = something(m.optsum.sigma, √varest(m))
 Install `v` as the θ parameters in `m`.
 """
 function setθ!(m::LinearMixedModel{T}, θ::AbstractVector) where {T}
-    parmap, reterms = m.parmap, m.reterms
-    length(θ) == length(parmap) || throw(DimensionMismatch())
-    reind = 1
-    λ = first(reterms).λ
-    for (tv, tr) in zip(θ, parmap)
-        tr1 = first(tr)
-        if reind ≠ tr1
-            reind = tr1
-            λ = reterms[tr1].λ
-        end
-        λ[tr[2], tr[3]] = tv
+    length(θ) == nθ(m) || throw(DimensionMismatch())
+    offset = 0
+    for trm in m.reterms
+        k = nθ(trm)
+        setθ!(trm, view(θ, (offset + 1):(offset + k)))
+        offset += k
     end
     return m
 end
 
-# This method is nearly identical to the previous one but determining a common signature
-# to collapse these to a single definition would be tricky, so we repeat ourselves.
-function setθ!(m::LinearMixedModel{T}, θ::NTuple{N,T}) where {T,N}
-    parmap, reterms = m.parmap, m.reterms
-    N == length(parmap) || throw(DimensionMismatch())
-    reind = 1
-    λ = first(reterms).λ
-    for (tv, tr) in zip(θ, parmap)
-        tr1 = first(tr)
-        if reind ≠ tr1
-            reind = tr1
-            λ = reterms[tr1].λ
-        end
-        λ[tr[2], tr[3]] = tv
-    end
-    return m
-end
+setθ!(m::LinearMixedModel{T}, θ::NTuple{N,T}) where {T,N} = setθ!(m, SVector(θ))
 
 function Base.setproperty!(m::LinearMixedModel, s::Symbol, y)
     return s == :θ ? setθ!(m, y) : setfield!(m, s, y)

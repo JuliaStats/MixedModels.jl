@@ -126,21 +126,15 @@ function ρvals!(
     v::AbstractVector{T}, corrpos::Vector{NTuple{3,Int}}, m::LinearMixedModel{T}
 ) where {T}
     reterms = m.reterms
-    lasti = 1
-    λ = first(reterms).λ
-    for r in eachrow(λ)
-        normalize!(r)
-    end
     for (ii, pos) in enumerate(corrpos)
         i, j, k = pos
-        if lasti ≠ i
-            λ = reterms[i].λ
-            for r in eachrow(λ)
-                normalize!(r)
-            end
-            lasti = i
-        end
-        v[ii] = dot(view(λ, j, :), view(λ, k, :))
+        λ = reterms[i].λ
+        rj = view(λ, j, :)
+        rk = view(λ, k, :)
+        # correlations are undefined when a variance component is zero
+        # (e.g. a parameter driven to its lower bound during profiling)
+        nrm = norm(rj) * norm(rk)
+        v[ii] = iszero(nrm) ? zero(T) : dot(rj, rk) / nrm
     end
     return v
 end

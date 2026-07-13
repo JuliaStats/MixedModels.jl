@@ -164,11 +164,30 @@ function _ranef_refs(
     return refs, uniques
 end
 
-# specify zero correlation
-struct ZeroCorr <: AbstractReTerm
+# specify a constrained covariance structure
+"""
+    StructuredReTerm{C}
+
+A random-effects term with a constrained covariance structure.
+
+The type parameter `C` tags the covariance structure imposed on the wrapped
+`RandomEffectsTerm` via [`structure!`](@ref) when the model matrices are
+constructed. All term-level behavior is independent of `C`; everything specific
+to the structure lives in the [`CovarianceStructure`](@ref) installed on the
+resulting `ReMat`.
+"""
+struct StructuredReTerm{C} <: AbstractReTerm
     term::RandomEffectsTerm
 end
-StatsModels.is_matrix_term(::Type{ZeroCorr}) = false
+
+StatsModels.is_matrix_term(::Type{<:StructuredReTerm}) = false
+
+"""
+    ZeroCorr
+
+Alias for the `StructuredReTerm` created by [`zerocorr`](@ref).
+"""
+const ZeroCorr = StructuredReTerm{ZeroCorrStruct}
 
 """
     zerocorr(term::RandomEffectsTerm)
@@ -177,36 +196,90 @@ Remove correlations between random effects in `term`.
 """
 zerocorr(x) = ZeroCorr(x)
 
-# for schema extraction (from runtime-created zerocorr)
-StatsModels.terms(t::ZeroCorr) = StatsModels.terms(t.term)
-StatsModels.termvars(t::ZeroCorr) = StatsModels.termvars(t.term)
-StatsModels.degree(t::ZeroCorr) = StatsModels.degree(t.term)
-# dirty rotten no good ugly hack: make sure zerocorr ranef terms sort appropriately
-# cf https://github.com/JuliaStats/StatsModels.jl/blob/41b025409af03c0e019591ac6e817b22efbb4e17/src/terms.jl#L421-L422
-StatsModels.degree(t::FunctionTerm{typeof(zerocorr)}) = StatsModels.degree(only(t.args))
+"""
+    homdiag(term::RandomEffectsTerm)
 
-Base.show(io::IO, t::ZeroCorr) = Base.show(io, MIME("text/plain"), t)
-function Base.show(io::IO, ::MIME"text/plain", t::ZeroCorr)
-    # ranefterms already show with parens
-    return print(io, "zerocorr", t.term)
-end
+Constrain the covariance matrix of the random effects in `term` to a multiple
+of the identity, i.e. independent random effects with a common variance.
 
-function schema(t::FunctionTerm{typeof(zerocorr)}, data, hints::Dict{Symbol})
-    return schema(only(t.args), data, hints)
-end
+See [`ScaledIdentity`](@ref) for the parameterization.
+"""
+homdiag(x) = StructuredReTerm{ScaledIdentity}(x)
+
+"""
+    homcs(term::RandomEffectsTerm)
+
+Constrain the covariance matrix of the random effects in `term` to homogeneous
+compound symmetry: a common variance and a common correlation.
+
+See [`CompoundSymmetry`](@ref) for the parameterization.
+"""
+homcs(x) = StructuredReTerm{HomCS}(x)
+
+"""
+    cs(term::RandomEffectsTerm)
+
+Constrain the covariance matrix of the random effects in `term` to
+(heterogeneous) compound symmetry: per-coefficient variances and a common
+correlation.
+
+See [`CompoundSymmetry`](@ref) for the parameterization.
+"""
+cs(x) = StructuredReTerm{HetCS}(x)
+
+# for schema extraction (from runtime-created wrappers)
+StatsModels.terms(t::StructuredReTerm) = StatsModels.terms(t.term)
+StatsModels.termvars(t::StructuredReTerm) = StatsModels.termvars(t.term)
+StatsModels.degree(t::StructuredReTerm) = StatsModels.degree(t.term)
+
+Base.show(io::IO, t::StructuredReTerm) = Base.show(io, MIME("text/plain"), t)
 
 function StatsModels.apply_schema(
-    t::FunctionTerm{typeof(zerocorr)}, sch::MultiSchema, Mod::Type{<:MixedModel}
-)
-    return ZeroCorr(apply_schema(only(t.args), sch, Mod))
+    t::StructuredReTerm{C}, sch::MultiSchema, Mod::Type{<:MixedModel}
+) where {C}
+    return StructuredReTerm{C}(apply_schema(t.term, sch, Mod))
 end
 
-function StatsModels.apply_schema(t::ZeroCorr, sch::MultiSchema, Mod::Type{<:MixedModel})
-    return ZeroCorr(apply_schema(t.term, sch, Mod))
+function StatsModels.modelcols(t::StructuredReTerm{C}, d::NamedTuple) where {C}
+    return structure!(modelcols(t.term, d), C)
 end
 
-StatsModels.modelcols(t::ZeroCorr, d::NamedTuple) = zerocorr!(modelcols(t.term, d))
-
-function Base.getproperty(x::ZeroCorr, s::Symbol)
+function Base.getproperty(x::StructuredReTerm, s::Symbol)
     return s == :term ? getfield(x, s) : getproperty(x.term, s)
+end
+
+function _structured_inner(f::String, t::AbstractTerm)
+    t isa RandomEffectsTerm ||
+        throw(ArgumentError("covariance structure wrappers such as $f() cannot be nested"))
+    return t
+end
+
+for (f, C) in (
+    (:zerocorr, :ZeroCorrStruct),
+    (:homdiag, :ScaledIdentity),
+    (:homcs, :HomCS),
+    (:cs, :HetCS),
+)
+    fstr = string(f)
+    @eval begin
+        # dirty rotten no good ugly hack: make sure wrapped ranef terms sort appropriately
+        # cf https://github.com/JuliaStats/StatsModels.jl/blob/41b025409af03c0e019591ac6e817b22efbb4e17/src/terms.jl#L421-L422
+        StatsModels.degree(t::FunctionTerm{typeof($f)}) = StatsModels.degree(only(t.args))
+
+        function schema(t::FunctionTerm{typeof($f)}, data, hints::Dict{Symbol})
+            return schema(only(t.args), data, hints)
+        end
+
+        function StatsModels.apply_schema(
+            t::FunctionTerm{typeof($f)}, sch::MultiSchema, Mod::Type{<:MixedModel}
+        )
+            inner = _structured_inner($fstr, apply_schema(only(t.args), sch, Mod))
+            return StructuredReTerm{$C}(inner)
+        end
+
+        function Base.show(io::IO, ::MIME"text/plain", t::StructuredReTerm{$C})
+            # ranefterms already show with parens
+            return print(io, $fstr, t.term)
+        end
+    end
 end

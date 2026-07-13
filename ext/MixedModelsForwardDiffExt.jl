@@ -106,7 +106,7 @@ function MixedModels.fd_deviance(model::LinearMixedModel, θ::AbstractVector{T})
     RR = [copy_oftype(Ri, T) for Ri in reterms]
 
     # Update state with new θ
-    fd_setθ!(RR, model.parmap, θ)
+    fd_setθ!(RR, θ)
     fd_updateL!(AA, LL, RR)
 
     r² = fd_pwrss(LL)
@@ -115,22 +115,17 @@ function MixedModels.fd_deviance(model::LinearMixedModel, θ::AbstractVector{T})
     return dof * log(2 * π * σ²) + ld + r² / σ²
 end
 
-function MixedModels.fd_setθ!(
-    reterms::Vector{<:AbstractReMat},
-    parmap::Vector{<:NTuple},
-    θ::AbstractVector,
-)
-    length(θ) == length(parmap) || throw(DimensionMismatch())
-    reind = 1
-    λ = first(reterms).λ
-    for (tv, tr) in zip(θ, parmap)
-        tr1 = first(tr)
-        if reind ≠ tr1
-            reind = tr1
-            λ = reterms[tr1].λ
-        end
-        λ[tr[2], tr[3]] = tv
+function MixedModels.fd_setθ!(reterms::Vector{<:AbstractReMat}, θ::AbstractVector)
+    # the per-term setθ! methods (including the updateλ! path for structured
+    # covariance) are generic in the element type, so they propagate dual
+    # numbers without any special handling here
+    offset = 0
+    for trm in reterms
+        k = MixedModels.nθ(trm)
+        MixedModels.setθ!(trm, view(θ, (offset + 1):(offset + k)))
+        offset += k
     end
+    length(θ) == offset || throw(DimensionMismatch())
     return reterms
 end
 

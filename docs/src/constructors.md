@@ -220,6 +220,52 @@ fit(MixedModel, @formula(reaction ~ 1 + days + zerocorr(1 + fulldummy(days)|subj
 DisplayAs.Text(ans) # hide
 ```
 
+### Constraining the random effect covariance structure
+
+Beyond removing correlations entirely with `zerocorr`, the covariance matrix of
+a random-effects term can be constrained to a structured form. These wrappers are
+applied to an individual `(lhs | grp)` term inside the `@formula`, just like
+`zerocorr`:
+
+| wrapper | structure | free parameters (`S` = number of coefficients) |
+|:--|:--|:--|
+| `homdiag` | scaled identity: independent effects with a common variance | 1 |
+| `homcs`   | homogeneous compound symmetry: common variance, common correlation | 2 |
+| `cs`      | heterogeneous compound symmetry: per-coefficient variances, common correlation | `S + 1` |
+
+For example, compound symmetry with per-coefficient variances:
+```@example Constructors
+fit(MixedModel, @formula(reaction ~ 1 + days + cs(1 + days|subj)), sleepstudy)
+DisplayAs.Text(ans) # hide
+```
+For `S = 2` (as here) heterogeneous compound symmetry spans the same three-parameter
+family as an unconstrained `2×2` covariance matrix, so `cs(1 + days|subj)` and
+`(1 + days|subj)` give the same fit. The constraint becomes meaningful for `S ≥ 3`.
+
+Homogeneous compound symmetry additionally forces all variances to be equal:
+```@example Constructors
+fit(MixedModel, @formula(reaction ~ 1 + days + homcs(1 + days|subj)), sleepstudy)
+DisplayAs.Text(ans) # hide
+```
+and the scaled identity removes correlations as well, leaving a single variance:
+```@example Constructors
+fit(MixedModel, @formula(reaction ~ 1 + days + homdiag(1 + days|subj)), sleepstudy)
+DisplayAs.Text(ans) # hide
+```
+
+A few notes on these structures:
+
+- The common correlation of a compound-symmetric term lies in
+  `[-1/(S-1), 1)`; the value `1` is approached only in a limiting (degenerate)
+  case. For `homcs`, the singular boundary `-1/(S-1)` is attained at a finite
+  parameter value.
+- The parameter vector `θ` reported in `fitlog`, profiling and the bootstrap is
+  in the internal parameterization of each structure, not the entries of the
+  relative covariance factor `λ`.
+- A term with a constrained covariance structure may not share a grouping factor
+  with any other random-effects term (i.e. it is not amalgamated); doing so
+  raises an error.
+
 ## Fitting generalized linear mixed models
 
 To create a GLMM representation, the distribution family for the response, and possibly the link function, must be specified.

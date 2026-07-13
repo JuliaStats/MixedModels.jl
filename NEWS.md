@@ -1,3 +1,9 @@
+MixedModels v5.8.0 Release Notes
+==============================
+- Added support for constrained random-effects covariance structures via the formula wrappers `homdiag` (scaled identity), `homcs` (homogeneous compound symmetry) and `cs` (heterogeneous compound symmetry), applied to individual `(lhs | grp)` terms like `zerocorr`. Each `ReMat` now carries a `CovarianceStructure` object that parameterizes its relative covariance factor `λ` in terms of `θ`; `Unstructured` (used for ordinary and `zerocorr` terms) reproduces the previous behavior. `ForwardDiff`/`FiniteDiff` gradients, the parametric bootstrap, profiling and GLMMs all support the new structures. [#905]
+- `ZeroCorr` is now an alias for `StructuredReTerm{ZeroCorrStruct}`; the `zerocorr` surface syntax and the `MixedModels.ZeroCorr` type are unchanged.
+- `MixedModelBootstrap` gained a `covstructs` field (needed to reconstruct `λ` from `θ` for structured terms). A backwards-compatible positional constructor defaulting to `Unstructured` is provided for downstream code.
+
 MixedModels v5.7.1 Release Notes
 ==============================
 - Compat bump for MixedModelsDatasets. Note that some data values have changed in their least significant digits, which can change statistics computed from these.

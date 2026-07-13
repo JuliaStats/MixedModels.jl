@@ -12,7 +12,8 @@ end
 Return a shallow copy of ReMat.
 
 A shallow copy shares as much internal storage as possible with the original ReMat.
-Only the vector `λ` and the `scratch` matrix are copied.
+Only the vector `λ`, the `scratch` matrix and the covariance structure (which
+stores `θ` for structured terms) are copied.
 """
 function Base.copy(ret::ReMat{T,S}) where {T,S}
     return ReMat{T,S}(ret.trm,
@@ -24,7 +25,8 @@ function Base.copy(ret::ReMat{T,S}) where {T,S}
         copy(ret.λ),
         ret.inds,
         ret.adjA,
-        copy(ret.scratch))
+        copy(ret.scratch),
+        LinearAlgebra.copy_oftype(ret.covstruct, T))
 end
 
 ## FIXME: also create a shallow copy of a LinearMixedModel object that performs a shallow copy of the reterms and the optsum.

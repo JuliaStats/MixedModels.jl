@@ -29,8 +29,7 @@ function profileθj!(
     j = parsej(sym)
     θ = copy(final)
     osj = optsum
-    pmj = m.parmap[j]
-    lbj = pmj[2] == pmj[3] ? zero(T) : T(-Inf)
+    lbj = lowerbd(m)[j]
     if length(θ) > 1      # set up the conditional optimization problem
         notj = deleteat!(collect(axes(final, 1)), j)
         osj = optsumj(optsum, j)
@@ -76,16 +75,24 @@ function profileθj!(
     copyto!(θ, final)
     θ[j] += δj
     while (ζold < threshold) && (length(tbl) < 120)
+        # a saturating objective (e.g. the correlation parameter of a
+        # heterogeneous compound-symmetric term as ρ → 1) drives θ[j] off to
+        # infinity via the step-doubling below; stop cleanly at the asymptote
+        isfinite(θ[j]) || break
         fval = profileobj!(obj, m, θ, osj)
         if fval < fmin
             @warn "Negative difference ", fval - fmin, " for ", sym, " at ", θ[j]
             ζ = zero(T)
         else
-            ζ = sqrt(profileobj!(obj, m, θ, osj) - fmin)
+            ζ = sqrt(fval - fmin)
         end
         push!(tbl, merge(pnm, mkrow!(tc, m, ζ)))
-        δj /= (2 * abs(ζ - ζold))
+        Δζ = abs(ζ - ζold)
         ζold = ζ
+        # negligible change in ζ means the profile has flattened out; further
+        # steps would only inflate θ[j] without adding information
+        Δζ < (threshold * eps(T)^(1 // 4)) && break
+        δj /= (2 * Δζ)
         θ[j] += δj
     end
     append!(val.tbl, tbl)

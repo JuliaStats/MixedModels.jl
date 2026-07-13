@@ -813,7 +813,7 @@ function unfit!(model::GeneralizedLinearMixedModel{T}) where {T}
 
     reterms = model.LMM.reterms
     optsum = model.LMM.optsum
-    optsum.initial = map(x -> T(x[2] == x[3]), model.LMM.parmap)
+    optsum.initial = reduce(vcat, initialθ.(reterms))
     optsum.final = copy(optsum.initial)
     optsum.xtol_abs = fill!(copy(optsum.initial), 1.0e-10)
     optsum.initial_step = T[]
