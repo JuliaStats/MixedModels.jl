@@ -128,6 +128,7 @@ function simulate!(
     β=fixef(m),
     σ=m.σ,
     θ=m.θ,
+    memberships=nothing,
 )
     # the easiest thing here is to just assemble a new model and
     # pass that to the other simulate methods....
@@ -136,8 +137,9 @@ function simulate!(
     # note that the contrasts get copied over with the formula
     # (as part of the applied schema)
     # contr here are the fast Grouping contrasts
+    _check_memberships_newdata(m, memberships)
     f, contr = _abstractify_grouping(m.formula)
-    mnew = LinearMixedModel(f, newdata; contrasts=contr)
+    mnew = LinearMixedModel(f, newdata; contrasts=contr, memberships)
     # XXX why not do simulate!(rng, y, mnew; β=β, σ=σ, θ=θ)
     # instead of simulating the model and then copying?
     # Well, it turns out that the call to randn!(rng, y)
@@ -185,6 +187,7 @@ function simulate!(
     β=fixef(m),
     σ=m.σ,
     θ=m.θ,
+    memberships=nothing,
 )
     # the easiest thing here is to just assemble a new model and
     # pass that to the other simulate methods....
@@ -193,8 +196,11 @@ function simulate!(
     # note that the contrasts get copied over with the formula
     # (as part of the applied schema)
     # contr here are the fast Grouping contrasts
+    _check_memberships_newdata(m, memberships)
     f, contr = _abstractify_grouping(m.formula)
-    mnew = GeneralizedLinearMixedModel(f, newdata, m.resp.d, Link(m.resp); contrasts=contr)
+    mnew = GeneralizedLinearMixedModel(
+        f, newdata, m.resp.d, Link(m.resp); contrasts=contr, memberships
+    )
     # XXX why not do simulate!(rng, y, mnew; β, σ, θ)
     # instead of simulating the model and then copying?
     # Well, it turns out that the call to randn!(rng, y)
@@ -312,4 +318,10 @@ function unscaledre!(rng::AbstractRNG, y::AbstractVector{T}, A::ReMat{T,1}) wher
     return mul!(y, A, lmul!(first(A.λ), randn(rng, nlevs(A))), one(T), one(T))
 end
 
-unscaledre!(y::AbstractVector, A::ReMat) = unscaledre!(Random.GLOBAL_RNG, y, A)
+function unscaledre!(
+    rng::AbstractRNG, y::AbstractVector{T}, A::MultimembershipReMat{T,S}
+) where {T,S}
+    return mul!(y, A, vec(lmul!(A.λ, randn(rng, S, nlevs(A)))), one(T), one(T))
+end
+
+unscaledre!(y::AbstractVector, A::AbstractReMat) = unscaledre!(Random.GLOBAL_RNG, y, A)

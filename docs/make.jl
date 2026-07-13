@@ -23,6 +23,7 @@ makedocs(;
         "optimization.md", #
         "GaussHermite.md",
         "prediction.md",
+        "multimembership.md",
         "bootstrap.md",
         "rankdeficiency.md",
         "mime.md",

@@ -67,9 +67,11 @@ export @formula,
     LinearMixedModel,
     LogitLink,
     LogLink,
+    MembershipMatrix,
     MixedModel,
     MixedModelBootstrap,
     MixedModelProfile,
+    MultimembershipReMat,
     Normal,
     OptSummary,
     Poisson,
@@ -111,6 +113,7 @@ export @formula,
     fnames,
     GHnorm,
     glmm,
+    interactionweights,
     isfitted,
     islinear,
     issingular,
@@ -122,6 +125,7 @@ export @formula,
     lowerbd,
     lrtest,
     meanresponse,
+    membershipmatrix,
     modelmatrix,
     model_response,
     nobs,
@@ -196,6 +200,7 @@ include("varcorr.jl")
 include("Xymat.jl")
 include("remat.jl")
 include("remat_multimembership.jl")
+include("membership.jl")
 include("optsummary.jl")
 include("schema.jl")
 include("randomeffectsterm.jl")

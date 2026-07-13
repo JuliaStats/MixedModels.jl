@@ -51,8 +51,13 @@ const _MISSING_RE_ERROR = ArgumentError(
 function LinearMixedModel(
     f::FormulaTerm, tbl::Tables.ColumnTable; contrasts=Dict{Symbol,Any}(), wts=nothing,
     weights=[],
-    σ=nothing, amalgamate=true,
+    σ=nothing, amalgamate=true, memberships=nothing,
 )
+    memberships = _normalize_memberships(memberships)
+    if memberships !== nothing
+        tbl = _inject_membership_columns(tbl, memberships)
+    end
+
     fvars = StatsModels.termvars(f)
     tvars = Tables.columnnames(tbl)
     fvars ⊆ tvars ||
@@ -69,9 +74,13 @@ function LinearMixedModel(
         weights = wts
     end
 
+    nrows = length(first(tbl))
     # TODO: perform missing_omit() after apply_schema() when improved
     # missing support is in a StatsModels release
-    tbl, _ = StatsModels.missing_omit(tbl, f)
+    tbl, nonmissings = StatsModels.missing_omit(tbl, f)
+    if memberships !== nothing
+        memberships = _subset_memberships(memberships, nonmissings, nrows)
+    end
 
     form = schematize(f, tbl, contrasts)
     if form.rhs isa MatrixTerm || !any(x -> isa(x, AbstractReTerm), form.rhs)
@@ -80,7 +89,7 @@ function LinearMixedModel(
 
     y, Xs = modelcols(form, tbl)
 
-    return LinearMixedModel(y, Xs, form, weights, σ, amalgamate)
+    return LinearMixedModel(y, Xs, form, weights, σ, amalgamate, memberships)
 end
 
 """
@@ -103,11 +112,15 @@ function LinearMixedModel(
     weights=[],
     σ=nothing,
     amalgamate=true,
+    memberships=nothing,
 )
     T = promote_type(Float64, float(eltype(y)))  # ensure eltype of model matrices is at least Float64
 
     reterms, feterms = _split_re_fe_terms(Xs, form, T)
     isempty(reterms) && throw(_MISSING_RE_ERROR)
+    if memberships !== nothing
+        _substitute_memberships!(reterms, _normalize_memberships(memberships))
+    end
     return LinearMixedModel(
         convert(Array{T}, y), only(feterms), reterms, form, weights, σ, amalgamate
     )
@@ -175,7 +188,9 @@ function LinearMixedModel(
         reterms = MixedModels.amalgamate(reterms)
     end
 
-    sort!(reterms; by=nranef, rev=true)
+    # multimembership terms sort last so that their dense blocks don't
+    # force the blocks of single-membership terms to be densified
+    sort!(reterms; by=t -> (ismultimember(t), -nranef(t)))
     Xy = FeMat(feterm, vec(y))
     # Replace feterm's fullrankx field with a view into the shared Xymat storage,
     # eliminating the duplicate allocation for the full-rank X columns.
@@ -230,8 +245,9 @@ function StatsAPI.fit(::Type{LinearMixedModel},
     contrasts=Dict{Symbol,Any}(),
     σ=nothing,
     amalgamate=true,
+    memberships=nothing,
     kwargs...)
-    lmod = LinearMixedModel(f, tbl; contrasts, weights, wts, σ, amalgamate)
+    lmod = LinearMixedModel(f, tbl; contrasts, weights, wts, σ, amalgamate, memberships)
     return fit!(lmod; kwargs...)
 end
 
@@ -790,6 +806,11 @@ of the model matrix.  With a bit of hand waving a similar argument could be made
 for linear mixed-effects models. The hat matrix is of the form ``[ZΛ X][L L']⁻¹[ZΛ X]'``.
 """
 function StatsAPI.leverage(m::LinearMixedModel{T}) where {T}
+    if any(ismultimember, m.reterms)
+        throw(ArgumentError(
+            "leverage is not yet supported for models with multimembership terms"
+        ))
+    end
     # To obtain the diagonal elements solve L⁻¹[ZΛ X]'eⱼ
     # where eⱼ is the j'th basis vector in Rⁿ and evaluate the squared length of the solution.
     # The fact that the [1,1] block of L is always UniformBlockDiagonal

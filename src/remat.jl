@@ -1,7 +1,5 @@
 abstract type AbstractReMat{T} <: AbstractMatrix{T} end
 
-abstract type DimmedReMat{T,S} <: AbstractReMat{T} end
-
 """
     ReMat{T,S} <: AbstractMatrix{T}
 
@@ -42,14 +40,25 @@ Combine multiple ReMat with the same grouping variable into a single object.
 """
 amalgamate(reterms::Vector{<:AbstractReMat{T}}) where {T} = _amalgamate(reterms, T)
 
-# XXX this won't work for general AbstractReMat
 function _amalgamate(reterms::Vector{<:AbstractReMat}, T::Type)
+    # multimembership terms have no refs and so cannot be amalgamated;
+    # a shared grouping name with any other term would silently corrupt
+    # fname-keyed structures downstream, so we disallow it
+    mmterms = filter(ismultimember, reterms)
+    smterms = filter(!ismultimember, reterms)
+    mmnames = fname.(mmterms)
+    if !allunique(mmnames) || !isempty(intersect(mmnames, fname.(smterms)))
+        throw(ArgumentError(
+            "multimembership terms cannot share a grouping name with other random-effects terms"
+        ))
+    end
     factordict = Dict{Symbol,Vector{Int}}()
-    for (i, rt) in enumerate(reterms)
+    for (i, rt) in enumerate(smterms)
         push!(get!(factordict, fname(rt), Int[]), i)
     end
     length(factordict) == length(reterms) && return reterms
-    value = ReMat{T}[]
+    reterms = smterms
+    value = AbstractReMat{T}[]
     for (f, inds) in factordict
         if isone(length(inds))
             push!(value, reterms[only(inds)])
@@ -87,6 +96,7 @@ function _amalgamate(reterms::Vector{<:AbstractReMat}, T::Type)
             )
         end
     end
+    append!(value, mmterms)
     return value
 end
 

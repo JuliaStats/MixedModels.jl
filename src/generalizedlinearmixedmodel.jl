@@ -83,6 +83,14 @@ of ``Λ'Z'WZΛ + I``, plus the sum of the squared deviance residuals.
 """
 function StatsAPI.deviance(m::GeneralizedLinearMixedModel{T}, nAGQ=1) where {T}
     nAGQ == 1 && return T(sum(m.resp.devresid) + logdet(m) + sum(u -> sum(abs2, u), m.u))
+    if any(ismultimember, m.LMM.reterms)
+        throw(
+            ArgumentError(
+                "adaptive Gauss-Hermite quadrature (nAGQ > 1) is not supported " *
+                "for models with multimembership terms; use nAGQ=1 (the Laplace approximation)",
+            ),
+        )
+    end
     u = vec(first(m.u))
     u₀ = vec(first(m.u₀))
     copyto!(u₀, u)
@@ -182,11 +190,12 @@ function StatsAPI.fit(
     contrasts=Dict{Symbol,Any}(),
     offset=[],
     amalgamate=true,
+    memberships=nothing,
     kwargs...,
 )
     return fit!(
         GeneralizedLinearMixedModel(
-            f, tbl, d, l; weights, wts, offset, contrasts, amalgamate
+            f, tbl, d, l; weights, wts, offset, contrasts, amalgamate, memberships
         );
         kwargs...,
     )
@@ -272,6 +281,15 @@ function StatsAPI.fit!(
 
     if all(==(first(m.y)), m.y)
         throw(ArgumentError("The response is constant and thus model fitting has failed"))
+    end
+
+    if nAGQ > 1 && any(ismultimember, lm.reterms)
+        throw(
+            ArgumentError(
+                "adaptive Gauss-Hermite quadrature (nAGQ > 1) is not supported " *
+                "for models with multimembership terms; use nAGQ=1 (the Laplace approximation)",
+            ),
+        )
     end
 
     if !isempty(init_from_lmm)
@@ -376,6 +394,7 @@ function GeneralizedLinearMixedModel(
     offset=[],
     contrasts=Dict{Symbol,Any}(),
     amalgamate=true,
+    memberships=nothing,
 )
     if wts !== nothing
         Base.depwarn(
@@ -398,7 +417,7 @@ function GeneralizedLinearMixedModel(
                  the authors gain a better understanding of those cases."""
     end
 
-    LMM = LinearMixedModel(f, tbl; contrasts, weights, amalgamate)
+    LMM = LinearMixedModel(f, tbl; contrasts, weights, amalgamate, memberships)
     y = copy(LMM.y)
     constresponse = all(==(first(y)), y)
     # the sqrtwts field must be the correct length and type but we don't know those

@@ -46,6 +46,7 @@ include("bootstrap.jl")
 include("mime.jl")
 include("optsummary.jl")
 include("predict.jl")
+include("multimembership.jl")
 include("sigma.jl")
 
 @testset "PRIMA" include("prima.jl")

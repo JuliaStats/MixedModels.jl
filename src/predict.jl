@@ -1,8 +1,8 @@
 """
     StatsAPI.predict(m::LinearMixedModel, newdata;
-                    new_re_levels=:missing)
+                    new_re_levels=:missing, memberships=nothing)
     StatsAPI.predict(m::GeneralizedLinearMixedModel, newdata;
-                    new_re_levels=:missing, type=:response)
+                    new_re_levels=:missing, type=:response, memberships=nothing)
 
 Predict response for new data.
 
@@ -65,13 +65,20 @@ whether the predictions should be returned on the scale of linear predictor
 (`:linpred`) or on the response scale (`:response`). If you don't know the
 difference between these terms, then you probably want `type=:response`.
 
+For models with multimembership terms, the `memberships` keyword argument must
+be provided with a [`MembershipMatrix`](@ref) (or raw weights matrix) for each
+multimembership grouping factor, giving the memberships of the observations in
+`newdata`. The `new_re_levels` semantics apply to the levels (rows) of the new
+membership matrices.
+
 Regression weights are not yet supported in prediction.
 Similarly, offsets are also not supported for `GeneralizedLinearMixedModel`.
 """
 function StatsAPI.predict(
-    m::LinearMixedModel, newdata::Tables.ColumnTable; new_re_levels=:missing
+    m::LinearMixedModel, newdata::Tables.ColumnTable; new_re_levels=:missing,
+    memberships=nothing,
 )
-    return _predict(m, newdata, coef(m)[pivot(m)]; new_re_levels)
+    return _predict(m, newdata, coef(m)[pivot(m)]; new_re_levels, memberships)
 end
 
 function StatsAPI.predict(
@@ -79,10 +86,11 @@ function StatsAPI.predict(
     newdata::Tables.ColumnTable;
     new_re_levels=:population,
     type=:response,
+    memberships=nothing,
 )
     type in (:linpred, :response) || throw(ArgumentError("Invalid value for type: $(type)"))
     # want pivoted but not truncated
-    y = _predict(m.LMM, newdata, coef(m)[pivot(m)]; new_re_levels)
+    y = _predict(m.LMM, newdata, coef(m)[pivot(m)]; new_re_levels, memberships)
 
     return type == :linpred ? y : broadcast!(Base.Fix1(linkinv, Link(m)), y, y)
 end
@@ -114,7 +122,12 @@ struct PredictionDesign{T}
     reterms::Vector{<:AbstractReMat{T}}
 end
 
-function _prediction_design(m::MixedModel{T}, newdata) where {T}
+function _prediction_design(m::MixedModel{T}, newdata, memberships=nothing) where {T}
+    _check_memberships_newdata(m, memberships)
+    memberships = _normalize_memberships(memberships)
+    if memberships !== nothing
+        newdata = _inject_membership_columns(newdata, memberships)
+    end
     f, contr = _abstractify_grouping(m.formula)
     respvars = StatsModels.termvars(f.lhs)
     if !issubset(respvars, Tables.columnnames(newdata)) ||
@@ -129,12 +142,15 @@ function _prediction_design(m::MixedModel{T}, newdata) where {T}
     form = schematize(f, newdata, contr)
     _, Xs = modelcols(form, newdata)
     reterms, feterms = _split_re_fe_terms(Xs, form, T)
+    if memberships !== nothing
+        _substitute_memberships!(reterms, memberships)
+    end
     return PredictionDesign{T}(only(feterms), reterms)
 end
 
 # β is separated out here because m.β != m.LMM.β depending on how β is estimated for GLMM
 # also β should already be pivoted but NOT truncated in the rank deficient case
-function _predict(m::MixedModel{T}, newdata, β; new_re_levels) where {T}
+function _predict(m::MixedModel{T}, newdata, β; new_re_levels, memberships=nothing) where {T}
     new_re_levels in (:population, :missing, :error) ||
         throw(ArgumentError("Invalid value for new_re_levels: $(new_re_levels)"))
 
@@ -145,7 +161,7 @@ function _predict(m::MixedModel{T}, newdata, β; new_re_levels) where {T}
     # using the existing model's estimates for the new data. (These are in general
     # *not* the same values as the estimates computed on the new data.)
 
-    pdesign = _prediction_design(m, newdata)
+    pdesign = _prediction_design(m, newdata, memberships)
     # we get type stability via constant propagation on `new_re_levels`
     y = let ytemp = ones(T, length(first(newdata)))
         new_re_levels == :missing ? convert(Vector{Union{T,Missing}}, ytemp) : ytemp
