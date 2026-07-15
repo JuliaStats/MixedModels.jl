@@ -167,7 +167,7 @@ function rankUpdate!(
 ) where {T,S}
     Ac = A.cscmat
     cp = Ac.colptr
-    all(==(S), diff(cp)) ||
+    all(j -> cp[j + 1] - cp[j] == S, axes(Ac, 2)) ||  # allocation-free vs diff(cp)
         throw(ArgumentError("Columns of A must have exactly $S nonzeros"))
     Cdat = C.data.data
     require_one_based_indexing(Ac, Cdat)
