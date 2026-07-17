@@ -123,27 +123,44 @@ function rankUpdate!(
     β,
 ) where {T}
     require_one_based_indexing(C, A)
-    Ctr = TriangularRFP(C.data, C.transr, C.uplo)  # need TriangularRFP for write access
-    rv, nz = A.rowval, A.nzval
-    if size(A, 1) ≠ size(C, 1)
-        throw(DimensionMismatch("size(A, 1) == $(size(A,1)) ≠ $(size(C, 1)) = size(C, 1)"))
+    if uppercase(C.transr) ≠ 'N' || uppercase(C.uplo) ≠ 'L'
+        throw(ArgumentError("HermitianRFP C is not non-trans, lower"))
     end
-    isone(β) || rmul!(Ctr, β)
-    if C.uplo == 'L'
-        @inbounds for jj in axes(A, 2)
-            rangejj = nzrange(A, jj)
-            lenrngjj = length(rangejj)
-            for (k, j) in enumerate(rangejj)
-                anzj = α * nz[j]
-                rvj = rv[j]
+    rv, nz = A.rowval, A.nzval
+    Cdat = C.data
+    An = size(A, 1)
+    if An ≠ size(C, 1)
+        throw(DimensionMismatch("size(A, 1) == $An ≠ $(size(C, 1)) = size(C, 1)"))
+    end
+    tall = iseven(An)        # is Cdat in the tall format or the wide format?
+    Cdn, Cdm = size(Cdat)
+    @assert (Cdn == An + tall) && (Cdm == ((An + !tall) >> 1))
+
+    isone(β) || rmul!(Cdat, β)
+    for jj in axes(A, 2)
+        rngjj = nzrange(A, jj)
+        lenrngjj = length(rngjj)
+        for (k, j) in enumerate(rngjj)
+            anzj = α * nz[j]
+            rvj = rv[j]                         # updates in rvj column of C
+            if rvj ≤ Cdm                        # in the trapezoidal part of Cdat
+                offset = (rvj - 1) * Cdn + tall
                 for i in k:lenrngjj
-                    kk = rangejj[i]
-                    Ctr[rv[kk], rvj] = muladd(nz[kk], anzj, Ctr[rv[kk], rvj])
+                    kk = rngjj[i]
+                    linind = offset + rv[kk]
+                    Cdat[linind] = muladd(nz[kk], anzj, Cdat[linind])
                 end
+            else                                # in the transposed triangular part of Cdat
+                Cdrow = rvj - Cdm
+                for i in k:lenrngjj
+                    kk = rngjj[i]
+                    rvkk = rv[kk]
+                    @assert rvkk ≥ rvj
+                    linind =  (rvkk - Cdm - tall) * Cdn + Cdrow
+                    Cdat[linind] = muladd(nz[kk], anzj, Cdat[linind])
+                end 
             end
         end
-    else
-        throw(ArgumentError("rankUpdate! requires C be stored in the lower triangle"))
     end
     return C
 end
