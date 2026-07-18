@@ -56,7 +56,7 @@ function Base.propertynames(pca::PCA, private::Bool=false)
     )
 end
 
-Base.show(io::IO, pca::PCA; kwargs...) = Base.show(io, MIME"text/plain"(), pca; kwargs...)
+Base.show(io::IO, pca::PCA; kwargs...) = Base.show(io, MIME("text/plain"), pca; kwargs...)
 
 function Base.show(
     io::IO,

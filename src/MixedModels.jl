@@ -11,6 +11,7 @@ using Distributions: InverseGaussian, Normal, Poisson, ccdf
 using GLM: GLM, GeneralizedLinearModel, IdentityLink, InverseLink, LinearModel
 using GLM: Link, LogLink, LogitLink, ProbitLink, SqrtLink
 using GLM: canonicallink, glm, linkinv, dispersion, dispersion_parameter
+using IrrationalConstants: log2π
 using JSON3: JSON3
 using LinearAlgebra: LinearAlgebra, Adjoint, BLAS, BlasFloat, ColumnNorm
 using LinearAlgebra: Diagonal, Hermitian, HermOrSym, I, LAPACK, LowerTriangular
@@ -19,29 +20,31 @@ using LinearAlgebra: UpperTriangular, cond, diag, diagind, dot, eigen, isdiag
 using LinearAlgebra: ldiv!, lmul!, logdet, mul!, norm, normalize, normalize!, qr
 using LinearAlgebra: rank, rdiv!, rmul!, svd, tril!
 using Markdown: Markdown
-using MixedModelsDatasets: dataset, datasets
-using NLopt: NLopt, Opt
+using MixedModelsDatasets: dataset
 using PooledArrays: PooledArrays, PooledArray
+using NLopt: NLopt
 using PrecompileTools: PrecompileTools, @setup_workload, @compile_workload
-using ProgressMeter: ProgressMeter, Progress, ProgressUnknown, finish!, next!
+using Printf: @sprintf
+using ProgressMeter: ProgressMeter, Progress, finish!, next!
 using Random: Random, AbstractRNG, randn!
 using RectangularFullPacked: HermitianRFP, TriangularRFP
-using SparseArrays: SparseArrays, SparseMatrixCSC, SparseVector, dropzeros!, nnz
-using SparseArrays: nonzeros, nzrange, rowvals, sparse
+using RegressionFormulae: fulldummy
+using SparseArrays: SparseArrays, SparseMatrixCSC, SparseVector, dropzeros!
+using SparseArrays: nnz, nonzeros, nzrange, rowvals, sparse
 using StaticArrays: StaticArrays, SVector
 using Statistics: Statistics, mean, quantile, std
-using StatsAPI: StatsAPI, aic, aicc, bic, coef, coefnames, coeftable, confint, deviance
+using StatsAPI: StatsAPI, aic, aicc, bic, coef, coefnames, coeftable, confint
+using StatsAPI: cooksdistance, deviance
 using StatsAPI: dof, dof_residual, fit, fit!, fitted, isfitted, islinear, leverage
 using StatsAPI:
     loglikelihood, meanresponse, modelmatrix, nobs, pvalue, predict, r2, residuals
 using StatsAPI: response, responsename, stderror, vcov, weights
-using StatsBase: StatsBase, CoefTable, model_response, summarystats
-using StatsFuns: log2π, normccdf
+using StatsBase: StatsBase, CoefTable, model_response, summarystats, FrequencyWeights
 using StatsModels: StatsModels, AbstractContrasts, AbstractTerm, CategoricalTerm
 using StatsModels: ConstantTerm, DummyCoding, EffectsCoding, FormulaTerm, FunctionTerm
 using StatsModels: HelmertCoding, HypothesisCoding, InteractionTerm, InterceptTerm
-using StatsModels: MatrixTerm, SeqDiffCoding, TableRegressionModel, Term
-using StatsModels: apply_schema, drop_term, formula, lrtest, modelcols, @formula#, term
+using StatsModels: MatrixTerm, SeqDiffCoding, TableRegressionModel
+using StatsModels: apply_schema, drop_term, formula, lrtest, modelcols, isnested, @formula
 using StructTypes: StructTypes
 using Tables: Tables, columntable
 using TypedTables: TypedTables, DictTable, FlexTable, Table
@@ -92,6 +95,7 @@ export @formula,
     condVar,
     condVartables,
     confint,
+    cooksdistance,
     deviance,
     dispersion,
     dispersion_parameter,
@@ -153,6 +157,7 @@ export @formula,
     simulate,
     simulate!,
     sparse,
+    sparseA,
     sparseL,
     std,
     stderror,
@@ -166,7 +171,7 @@ export @formula,
 # TODO: move this to the correct spot in list once we've decided on name
 export savereplicates, restorereplicates
 
-@compat public rePCA, PCA, dataset, datasets
+@compat public rePCA, PCA, opt_params, optimizers
 
 """
     MixedModel
@@ -212,8 +217,10 @@ include("grouping.jl")
 include("mimeshow.jl")
 include("serialization.jl")
 include("profile/profile.jl")
-include("nlopt.jl")
-include("prima.jl")
+include("MixedModelsNLoptExt.jl")
+using .MixedModelsNLoptExt
+
+include("derivatives.jl")
 
 # aliases with non-unicode function names
 const settheta! = setθ!

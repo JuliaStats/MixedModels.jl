@@ -3,7 +3,7 @@ using LinearAlgebra, MixedModels, StableRNGs, Test, SparseArrays
 include("modelcache.jl")
 
 @testset "Xymat" begin
-    trm = MixedModels.FeTerm(hcat(ones(30), repeat(0:9, outer = 3)), ["(Intercept)", "U"])
+    trm = MixedModels.FeTerm(hcat(ones(30), repeat(0:9; outer=3)), ["(Intercept)", "U"])
     piv = trm.piv
     ipiv = invperm(piv)
     mat = MixedModels.FeMat(trm, Float64.(collect(axes(trm.x, 1))))
@@ -19,8 +19,27 @@ include("modelcache.jl")
     MixedModels.reweight!(mat, wts)
     @test mul!(prd, mat', mat)[ipiv[1], ipiv[1]] ≈ sum(abs2, wts)
 
+    # propertynames: public view hides internal fields
+    trm2 = MixedModels.FeTerm(hcat(ones(30), repeat(0:9; outer=3)), ["(Intercept)", "U"])
+    @test propertynames(trm2) == (:x, :piv, :rank, :cnames)
+    @test :fullrankx ∈ propertynames(trm2, true)
+    @test :xrankdef ∈ propertynames(trm2, true)
+
+    # copyto! writes into the fullrankx storage
+    src = zeros(30, 2)
+    copyto!(trm2, src)
+    @test all(iszero, getfield(trm2, :fullrankx))
+
+    # copyto! on a linked feterm (fullrankx is a view into Xymat.xy) writes through
+    m = first(models(:sleepstudy))
+    old_x = copy(getfield(m.feterm, :fullrankx))
+    src_m = zeros(size(old_x))
+    copyto!(m.feterm, src_m)
+    @test all(iszero, m.Xymat.xy[:, 1:(m.feterm.rank)])
+    copyto!(m.feterm, old_x)  # restore
+
     # empty fixed effects
-    trm = MixedModels.FeTerm(ones(10,0), String[])
+    trm = MixedModels.FeTerm(ones(10, 0), String[])
     #@test size(trm) == (10, 0)  # There no longer are size and length methods for FeTerm
     #@test length(trm) == 0
     #@test size(trm') == (0, 10)
@@ -29,16 +48,15 @@ include("modelcache.jl")
 end
 
 @testset "XymatSparse" begin
-
     @testset "sparse and dense yield same fit" begin
         # deepcopy because we're going to modify
-        m = last(models(:insteval))
+        m = first(models(:insteval))
         # this is kinda sparse: 
         # julia> mean(first(m.feterm).x)
         # 0.10040140325753434
-        
+
         fe = m.feterm
-        X =  MixedModels.FeTerm(SparseMatrixCSC(fe.x), fe.cnames)
+        X = MixedModels.FeTerm(SparseMatrixCSC(fe.x), fe.cnames)
         @test typeof(X.x) <: SparseMatrixCSC
         @test X.rank == 28
         @test X.cnames == fe.cnames
@@ -47,14 +65,15 @@ end
         # m1.optsum.initial == m.optsum.final at this point
         copyto!(m1.optsum.initial, m.optsum.initial)
         fit!(m1; progress=false)
-        @test isapprox(m1.θ, m.θ, rtol = 1.0e-5)
+        @test isapprox(m1.θ, m.θ, rtol=1.0e-5)
     end
 
     @testset "rank deficiency in sparse FeTerm" begin
-        trm = MixedModels.FeTerm(SparseMatrixCSC(hcat(ones(30), 
-                                                     repeat(0:9, outer = 3), 
-                                                     2repeat(0:9, outer = 3))), 
-                                ["(Intercept)", "U", "V"])
+        trm = MixedModels.FeTerm(
+            SparseMatrixCSC(hcat(ones(30),
+                repeat(0:9; outer=3),
+                2repeat(0:9; outer=3))),
+            ["(Intercept)", "U", "V"])
         # at present there is no attempt to evaluate the rank of a SparseMatrixCSC
         piv = trm.piv
         ipiv = invperm(piv)
@@ -72,5 +91,4 @@ end
         MixedModels.reweight!(mat, wts)
         @test mul!(prd, mat', mat)[ipiv[1], ipiv[1]] ≈ sum(abs2, wts)
     end
-    
 end

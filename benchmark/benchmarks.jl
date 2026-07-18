@@ -1,5 +1,5 @@
 using BenchmarkTools, MixedModels
-using MixedModels: dataset
+using MixedModelsDatasets: dataset
 
 const SUITE = BenchmarkGroup()
 

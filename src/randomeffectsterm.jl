@@ -16,7 +16,7 @@ function RandomEffectsTerm(lhs::StatsModels.TermOrTerms, rhs::NTuple{2,AbstractT
     return (RandomEffectsTerm(lhs, rhs[1]), RandomEffectsTerm(lhs, rhs[2]))
 end
 
-Base.show(io::IO, t::RandomEffectsTerm) = Base.show(io, MIME"text/plain"(), t)
+Base.show(io::IO, t::RandomEffectsTerm) = Base.show(io, MIME("text/plain"), t)
 
 function Base.show(io::IO, ::MIME"text/plain", t::RandomEffectsTerm)
     return print(io, "($(t.lhs) | $(t.rhs))")
@@ -33,15 +33,20 @@ end
 
 schema(t, data, hints) = StatsModels.schema(t, data, hints)
 
-function schema(t::FunctionTerm{typeof(|)}, data, hints::Dict{Symbol})
-    sch = schema(t.args[1], data, hints)
-    vars = StatsModels.termvars.(t.args[2])
+function schema(t::AbstractReTerm, data, hints::Dict{Symbol})
+    sch = schema(t.lhs, data, hints)
+    vars = StatsModels.termvars.(t.rhs)
     # in the event that someone has x|x, then the Grouping()
-    # gets overwrriten by the broader schema BUT
+    # gets overwritten by the broader schema BUT
     # that doesn't matter because we detect and throw an error
     # for that in apply_schema
     grp_hints = Dict(rr => Grouping() for rr in vars)
-    return merge(schema(t.args[2], data, grp_hints), sch)
+    return merge(schema(t.rhs, data, grp_hints), sch)
+end
+
+function schema(t::FunctionTerm{typeof(|)}, data, hints::Dict{Symbol})
+    re = RandomEffectsTerm(t.args[1], t.args[2])
+    return schema(re, data, hints)
 end
 
 is_randomeffectsterm(::Any) = false
@@ -101,7 +106,8 @@ function StatsModels.apply_schema(
     )
         lhs = InterceptTerm{true}() + lhs
     end
-    lhs, rhs = apply_schema.((lhs, rhs), Ref(schema), Mod)
+    lhs = apply_schema(lhs, schema, Mod)
+    rhs = apply_schema(rhs, schema, Mod)
 
     # check whether grouping terms are categorical or interaction of categorical
     check_re_group_type(rhs) || throw(
@@ -158,70 +164,6 @@ function _ranef_refs(
     return refs, uniques
 end
 
-# TODO: remove all of this and either
-# - require users to use RegressionFormulae.jl
-# - add a dependency on RegressionFormulae.jl
-
-function StatsModels.apply_schema(
-    t::FunctionTerm{typeof(/)}, sch::StatsModels.FullRank, Mod::Type{<:MixedModel}
-)
-    if length(t.args) ≠ 2
-        throw(ArgumentError("malformed nesting term: $t (Exactly two arguments required"))
-    end
-
-    first, second = apply_schema.(t.args, Ref(sch), Mod)
-
-    if !(typeof(first) <: CategoricalTerm)
-        throw(
-            ArgumentError(
-                "nesting terms requires categorical grouping term, got $first.  Manually specify $first as `CategoricalTerm` in hints/contrasts"
-            ),
-        )
-    end
-
-    return first + fulldummy(first) & second
-end
-
-# add some syntax to manually promote to full dummy coding
-function fulldummy(t::AbstractTerm)
-    return throw(
-        ArgumentError(
-            "can't promote $t (of type $(typeof(t))) to full dummy " *
-            "coding (only CategoricalTerms)",
-        ),
-    )
-end
-
-"""
-    fulldummy(term::CategoricalTerm)
-
-Assign "contrasts" that include all indicator columns (dummy variables) and an intercept column.
-
-This will result in an under-determined set of contrasts, which is not a problem in the random
-effects because of the regularization, or "shrinkage", of the conditional modes.
-
-The interaction of `fulldummy` with complex random effects is subtle and complex with numerous
-potential edge cases. As we discover these edge cases, we will document and determine their
-behavior. Until such time, please check the model summary to verify that the expansion is
-working as you expected. If it is not, please report a use case on GitHub.
-"""
-function fulldummy(t::CategoricalTerm)
-    new_contrasts = StatsModels.ContrastsMatrix(
-        StatsModels.FullDummyCoding(), t.contrasts.levels
-    )
-    return t = CategoricalTerm(t.sym, new_contrasts)
-end
-
-function fulldummy(x)
-    return throw(ArgumentError("fulldummy isn't supported outside of a MixedModel formula"))
-end
-
-function StatsModels.apply_schema(
-    t::FunctionTerm{typeof(fulldummy)}, sch::StatsModels.FullRank, Mod::Type{<:MixedModel}
-)
-    return fulldummy(apply_schema.(t.args, Ref(sch), Mod)...)
-end
-
 # specify zero correlation
 struct ZeroCorr <: AbstractReTerm
     term::RandomEffectsTerm
@@ -243,7 +185,7 @@ StatsModels.degree(t::ZeroCorr) = StatsModels.degree(t.term)
 # cf https://github.com/JuliaStats/StatsModels.jl/blob/41b025409af03c0e019591ac6e817b22efbb4e17/src/terms.jl#L421-L422
 StatsModels.degree(t::FunctionTerm{typeof(zerocorr)}) = StatsModels.degree(only(t.args))
 
-Base.show(io::IO, t::ZeroCorr) = Base.show(io, MIME"text/plain"(), t)
+Base.show(io::IO, t::ZeroCorr) = Base.show(io, MIME("text/plain"), t)
 function Base.show(io::IO, ::MIME"text/plain", t::ZeroCorr)
     # ranefterms already show with parens
     return print(io, "zerocorr", t.term)

@@ -8,7 +8,6 @@ Summary of an optimization
 ## Tolerances, initial and final values
 * `initial`: a copy of the initial parameter values in the optimization
 * `finitial`: the initial value of the objective
-* `lowerbd`: lower bounds on the parameter values
 * `final`: a copy of the final parameter values from the optimization
 * `fmin`: the final value of the objective
 * `feval`: the number of function evaluations
@@ -17,10 +16,28 @@ Summary of an optimization
 * `xtol_zero_abs`: the tolerance for a near zero parameter to be considered practically zero
 * `ftol_zero_abs`: the tolerance for change in the objective for setting a near zero parameter to zero
 * `maxfeval`: as in NLopt (`maxeval`) and PRIMA (`maxfun`)
+* `pirls_maxiter`: maximum number of PIRLS iterations for GLMM fits
+* `pirls_ftol_rel`: relative convergence tolerance for the PIRLS inner loop (compares successive deviance values)
+* `pirls_ftol_abs`: absolute convergence tolerance for the PIRLS inner loop (compares successive deviance values)
+* `pirls_maxhalfstep`: maximum number of step-halving iterations within each PIRLS step; exceeding this on iteration 1 is an error, on later iterations the step is accepted without halving
 
 ## Choice of optimizer and backend
 * `optimizer`: the name of the optimizer used, as a `Symbol`
-* `backend`: the optimization library providing the optimizer, default is `NLoptBackend`.
+* `backend`: the optimization library providing the optimizer, stored as a symbol.
+   The current default is `:nlopt`.
+
+The current default backend is NLopt, which is a direct dependency of MixedModels.jl.
+A PRIMA backend is also provided as a package extension and thus only
+available when the library PRIMA is loaded.
+The list of currently loaded backends is available as [`MixedModels.OPTIMIZATION_BACKENDS`](@ref).
+For each individual backend, the list of available optimizers can be inspected with the function [`MixedModels.optimizers`](@ref).
+Similarly, the list of applicable optimization parameters can be inspected with the function [`MixedModels.opt_params`](@ref).
+
+!!! note "Optimizer defaults subject to change"
+    The choice of backend and optimizer is subject to change without being considered a breaking
+    change. If you want to guarantee a particular backend and optimizer, then you should
+    explicitly load the associated backend's package (e.g. NLopt or PRIMA) and manually
+    set the `optimizer` and `backend` fields.
 
 ## Backend-specific fields
 * `ftol_rel`: as in NLopt, not used in PRIMA
@@ -33,7 +50,7 @@ Summary of an optimization
 * `rhoend`: as in PRIMA, not used in NLopt
 
 ## MixedModels-specific fields, unrelated to the optimizer
-* `fitlog`: A vector of tuples of parameter and objectives values from steps in the optimization
+* `fitlog`: A Tables.jl-compatible table with columns `θ` and `objective`. The precise type is an implementation detail
 * `nAGQ`: number of adaptive Gauss-Hermite quadrature points in deviance evaluation for GLMMs
 * `REML`: use the REML criterion for LMM fits
 * `sigma`: a priori value for the residual standard deviation for LMM
@@ -50,33 +67,38 @@ Summary of an optimization
 """
 Base.@kwdef mutable struct OptSummary{T<:AbstractFloat}
     initial::Vector{T}
-    finitial::T = Inf * one(eltype(initial))
-    lowerbd::Vector{T}
+    finitial::T = Inf * one(T)
     final::Vector{T} = copy(initial)
-    fmin::T = Inf * one(eltype(initial))
+    fmin::T = Inf * one(T)
     feval::Int = -1
     returnvalue::Symbol = :FAILURE
-    xtol_zero_abs::T = eltype(initial)(0.001)
-    ftol_zero_abs::T = eltype(initial)(1.e-5)
+    xtol_zero_abs::T = T(0.001)
+    ftol_zero_abs::T = T(1.e-5)
     maxfeval::Int = -1
+    pirls_maxiter::Int = 10
+    pirls_ftol_rel::T = T(√eps())
+    pirls_ftol_abs::T = T(0.00001)
+    pirls_maxhalfstep::Int = 10
 
-    optimizer::Symbol = :LN_BOBYQA
+    optimizer::Symbol = :LN_NEWUOA    # switched to :LN_BOBYQA for one-dimensional optimizations
     backend::Symbol = :nlopt
 
     # the @kwdef macro isn't quite smart enough for us to use the type parameter
     # for the default values, but we can fake it
-    ftol_rel::T = eltype(initial)(1.0e-12)
-    ftol_abs::T = eltype(initial)(1.0e-8)
-    xtol_rel::T = zero(eltype(initial))
+    ftol_rel::T = T(1.0e-12)
+    ftol_abs::T = T(1.0e-8)
+    xtol_rel::T = zero(T)
     xtol_abs::Vector{T} = zero(initial) .+ 1e-10
     initial_step::Vector{T} = empty(initial)
-    maxtime::T = -one(eltype(initial))
+    maxtime::T = -one(T)
 
     rhobeg::T = one(T)
     rhoend::T = rhobeg / 1_000_000
 
     # not SVector because we would need to parameterize on size (which breaks GLMM)
-    fitlog::Vector{Tuple{Vector{T},T}} = Vector{Tuple{Vector{T},T}}()
+    # we could parameterize more strictly, but this is already a mutable struct
+    # and not isbits, so I don't think we're going to see any real advantage
+    fitlog::Table = Table(; θ=Vector{Vector{T}}(), objective=T[])
     nAGQ::Int = 1
     REML::Bool = false
     sigma::Union{T,Nothing} = nothing
@@ -84,11 +106,9 @@ end
 
 function OptSummary(
     initial::Vector{T},
-    lowerbd::Vector{S},
-    optimizer::Symbol=:LN_BOBYQA; kwargs...,
-) where {T<:AbstractFloat,S<:AbstractFloat}
-    TS = promote_type(T, S)
-    return OptSummary{TS}(; initial, lowerbd, optimizer, kwargs...)
+    optimizer::Symbol=:LN_NEWUOA; kwargs...,
+) where {T<:AbstractFloat}
+    return OptSummary{T}(; initial, optimizer, kwargs...)
 end
 
 """
@@ -107,7 +127,7 @@ and `par` is a vector of parameter numbers.
 """
 function Tables.columntable(s::OptSummary; stack::Bool=false)
     fitlog = s.fitlog
-    val = (; iter=axes(fitlog, 1), objective=last.(fitlog), θ=first.(fitlog))
+    val = (; iter=axes(fitlog, 1), objective=fitlog.objective, θ=fitlog.θ)
     stack || return val
     θ1 = first(val.θ)
     k = length(θ1)
@@ -120,24 +140,27 @@ function Tables.columntable(s::OptSummary; stack::Bool=false)
 end
 
 function Base.show(io::IO, ::MIME"text/plain", s::OptSummary)
+    w = length("Initial parameter vector: ")
     println(io, "Initial parameter vector: ", s.initial)
-    println(io, "Initial objective value:  ", s.finitial)
+    println(io, rpad("Initial objective value:", w), s.finitial)
     println(io)
-    println(io, "Backend:                  ", s.backend)
-    println(io, "Optimizer:                ", s.optimizer)
-    println(io, "Lower bounds:             ", s.lowerbd)
+    println(io, rpad("Backend:", w), s.backend)
+    println(io, rpad("Optimizer:", w), s.optimizer)
 
     for param in opt_params(Val(s.backend))
-        println(io, rpad(string(param, ":"), length("Initial parameter vector: ")),
-            getfield(s, param))
+        println(io, rpad(string(param, ":"), w), getfield(s, param))
     end
     println(io)
-    println(io, "Function evaluations:     ", s.feval)
-    println(io, "xtol_zero_abs:            ", s.xtol_zero_abs)
-    println(io, "ftol_zero_abs:            ", s.ftol_zero_abs)
-    println(io, "Final parameter vector:   ", s.final)
-    println(io, "Final objective value:    ", s.fmin)
-    println(io, "Return code:              ", s.returnvalue)
+    println(io, rpad("Function evaluations:", w), s.feval)
+    println(io, rpad("xtol_zero_abs:", w), s.xtol_zero_abs)
+    println(io, rpad("ftol_zero_abs:", w), s.ftol_zero_abs)
+    println(io, rpad("pirls_maxiter:", w), s.pirls_maxiter)
+    println(io, rpad("pirls_ftol_rel:", w), s.pirls_ftol_rel)
+    println(io, rpad("pirls_ftol_abs:", w), s.pirls_ftol_abs)
+    println(io, rpad("pirls_maxhalfstep:", w), s.pirls_maxhalfstep)
+    println(io, rpad("Final parameter vector:", w), s.final)
+    println(io, rpad("Final objective value:", w), s.fmin)
+    println(io, rpad("Return code:", w), s.returnvalue)
     return nothing
 end
 
@@ -185,3 +208,20 @@ Return a collection of the fields of [`OptSummary`](@ref) used by backend.
 they are used _after_ optimization and are thus shared across backends.
 """
 function opt_params end
+
+opt_params(s::Symbol) = opt_params(Val(s))
+
+"""
+    optimizers(::Val{backend})
+
+Return a collection of the algorithms supported by the backend.
+
+!!! note
+    The names of the algorithms are not necessarily consistent across backends.
+    For example, NLopt has `:LN_BOBYQA` and PRIMA has `:bobyqa` for Powell's
+    BOBYQA algorithm. In other words, we have not yet abstracted over the
+    backends' differing naming conventions for algorithms.
+"""
+function optimizers end
+
+optimizers(s::Symbol) = optimizers(Val(s))

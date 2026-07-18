@@ -12,7 +12,7 @@ Object returned by `parametericbootstrap` with fields
 - `fits`: the parameter estimates from the bootstrap replicates as a vector of named tuples.
 - `λ`: `Vector{LowerTriangular{T,Matrix{T}}}` containing copies of the λ field from `ReMat` model terms
 - `inds`: `Vector{Vector{Int}}` containing copies of the `inds` field from `ReMat` model terms
-- `lowerbd`: `Vector{T}` containing the vector of lower bounds (corresponds to the identically named field of [`OptSummary`](@ref))
+- `lowerbd`: `Vector{T}` containing the vector of lower bounds (corresponds to the `lowerbd(model)` of the original model)
 - `fcnames`: NamedTuple whose keys are the grouping factor names and whose values are the column names
 
 The schema of `fits` is, by default,
@@ -34,7 +34,7 @@ struct MixedModelBootstrap{T<:AbstractFloat} <: MixedModelFitCollection{T}
     fits::Vector
     λ::Vector{Union{LowerTriangular{T},Diagonal{T}}}
     inds::Vector{Vector{Int}}
-    lowerbd::Vector{T}
+    lowerbd::Vector{T} # we need to store this explicitly because we no longer have access to the ReMats
     fcnames::NamedTuple
 end
 
@@ -112,7 +112,7 @@ function restorereplicates(
         samp,
         map(vv -> T.(vv), m.λ), # also does a deepcopy if no type conversion is necessary
         getfield.(m.reterms, :inds),
-        T.(m.optsum.lowerbd[1:length(first(samp).θ)]),
+        T.(lowerbd(m)),
         NamedTuple{Symbol.(fnames(m))}(map(t -> Tuple(t.cnames), m.reterms)),
     )
 end
@@ -175,6 +175,8 @@ function Base.show(io::IO, mime::MIME"text/plain", x::MixedModelBootstrap)
     return nothing
 end
 
+lowerbd(x::MixedModelFitCollection) = x.lowerbd
+
 """
     parametricbootstrap([rng::AbstractRNG], nsamp::Integer, m::MixedModel{T}, ftype=T;
         β = fixef(m), σ = m.σ, θ = m.θ, progress=true, optsum_overrides=(;))
@@ -217,18 +219,9 @@ function parametricbootstrap(
     β::AbstractVector=fixef(morig),
     σ=morig.σ,
     θ::AbstractVector=morig.θ,
-    use_threads::Bool=false,
     progress::Bool=true,
-    hide_progress::Union{Bool,Nothing}=nothing,
     optsum_overrides=(;),
 ) where {T}
-    if !isnothing(hide_progress)
-        Base.depwarn(
-            "`hide_progress` is deprecated, please use `progress` instead." *
-            "NB: `progress` is a positive action, i.e. `progress=true` means show the progress bar.",
-            :parametricbootstrap; force=true)
-        progress = !hide_progress
-    end
     if σ !== missing
         σ = T(σ)
     end
@@ -243,18 +236,12 @@ function parametricbootstrap(
     for (key, val) in pairs(optsum_overrides)
         setfield!(m.optsum, key, val)
     end
-    # this seemed to slow things down?!
-    # _copy_away_from_lowerbd!(m.optsum.initial, morig.optsum.final, m.lowerbd; incr=0.05)
 
     β_names = Tuple(Symbol.(coefnames(morig)))
 
-    use_threads && Base.depwarn(
-        "use_threads is deprecated and will be removed in a future release",
-        :parametricbootstrap,
-    )
     samp = replicate(n; progress) do
         simulate!(rng, m; β, σ, θ)
-        refit!(m; progress=false, fitlog=false)
+        refit!(m; progress=false)
         (
             objective=ftype.(m.objective),
             σ=ismissing(m.σ) ? missing : ftype(m.σ),
@@ -267,7 +254,7 @@ function parametricbootstrap(
         samp,
         map(vv -> ftype.(vv), morig.λ), # also does a deepcopy if no type conversion is necessary
         getfield.(morig.reterms, :inds),
-        ftype.(morig.optsum.lowerbd[1:length(first(samp).θ)]),
+        ftype.(lowerbd(morig)),
         NamedTuple{Symbol.(fnames(morig))}(map(t -> Tuple(t.cnames), morig.reterms)),
     )
 end
@@ -368,14 +355,20 @@ function StatsBase.confint(
     tbl = Table(bsamp.tbl)
     lower = T[]
     upper = T[]
-    v = similar(tbl.σ)
-    par = sort!(
-        collect(
-            filter(
-                k -> !(startswith(string(k), 'θ') || string(k) == "obj"), propertynames(tbl)
-            ),
-        ),
-    )
+    v = similar(tbl.σ, T)
+    par = filter(collect(propertynames(tbl))) do k
+        k = string(k)
+        # σ is missing in models without a dispersion parameter
+        Tσ = eltype(tbl.σ)
+        # If inference failed when constructing `tbl.σ`, we can't rely on the element
+        # type to know whether missing values may be present
+        if k == "σ" &&
+            ((Tσ === Any && any(ismissing, tbl.σ)) || (Tσ !== Any && Missing <: Tσ))
+            return false
+        end
+        return !startswith(k, 'θ') && k != "obj"
+    end
+    sort!(par)
     tails = [(1 - level) / 2, (1 + level) / 2]
     for p in par
         if method === :shortest
@@ -421,7 +414,7 @@ function issingular(
     bsamp::MixedModelFitCollection; atol::Real=0, rtol::Real=atol > 0 ? 0 : √eps()
 )
     return map(bsamp.θ) do θ
-        return _issingular(bsamp.lowerbd, θ; atol, rtol)
+        return _issingular(lowerbd(bsamp), θ; atol, rtol)
     end
 end
 
@@ -572,7 +565,9 @@ function coefpvalues(bsamp::MixedModelFitCollection{T}) where {T}
         for (p, s) in zip(pairs(r.β), r.se)
             β = last(p)
             z = β / s
-            push!(result, NamedTuple{colnms}((i, first(p), β, s, z, 2normccdf(abs(z)))))
+            push!(
+                result, NamedTuple{colnms}((i, first(p), β, s, z, 2ccdf(Normal(), abs(z))))
+            )
         end
     end
     return result
@@ -643,6 +638,8 @@ push! `σ` times the row lengths (σs) and the inner products of normalized rows
 """
 function σρ!(v::AbstractVector{<:Union{T,Missing}}, t::LowerTriangular, σ) where {T}
     dat = t.data
+    # for models without a dispersion parameter, σ is missing, but for the math below we can treat it as 1
+    σ = coalesce(σ, one(T))
     for i in axes(dat, 1)
         ssqr = zero(T)
         for j in 1:i

@@ -10,18 +10,17 @@ Profile an element of the variance components.
 """
 function profilevc(m::LinearMixedModel{T}, val::T, rowj::AbstractVector{T}) where {T}
     optsum = m.optsum
-    function obj(x, g)
+    # by giving g a default we can also
+    # work with backends which don't have a gradient slot
+    function obj(x, g=T[])
         isempty(g) || throw(ArgumentError("g must be empty"))
         updateL!(setθ!(m, x))
         optsum.sigma = val / norm(rowj)
         objctv = objective(m)
         return objctv
     end
-    opt = Opt(optsum)
-    NLopt.min_objective!(opt, obj)
-    fmin, xmin, ret = NLopt.optimize!(opt, copyto!(optsum.final, optsum.initial))
-    _check_nlopt_return(ret)
-    return fmin, xmin
+
+    return profilevc(obj, optsum, Val(m.optsum.backend))
 end
 
 """
@@ -37,10 +36,11 @@ function profileσs!(val::NamedTuple, tc::TableColumns{T}; nzlb=1.0e-8) where {T
     m = val.m
     (; λ, σ, β, optsum, parmap, reterms) = m
     isnothing(optsum.sigma) || throw(ArgumentError("Can't profile vc's when σ is fixed"))
-    (; initial, final, fmin, lowerbd) = optsum
-    lowerbd .+= T(nzlb)                       # lower bounds must be > 0 b/c θ's occur in denominators
+    (; initial, final, fmin) = optsum
+    # lowerbd .+= T(nzlb)                       # lower bounds must be > 0 b/c θ's occur in denominators
     saveinitial = copy(initial)
-    copyto!(initial, max.(final, lowerbd))
+    # copyto!(initial, max.(final, lowerbd))
+    copyto!(initial, final)
     zetazero = mkrow!(tc, m, zero(T))         # parameter estimates
     vcnms = filter(keys(first(val.tbl))) do sym
         str = string(sym)
@@ -78,14 +78,18 @@ function profileσs!(val::NamedTuple, tc::TableColumns{T}; nzlb=1.0e-8) where {T
             append!(val.tbl, tbl)
             ζcol = getproperty(:ζ).(tbl)
             symcol = gpsym.(tbl)
-            val.fwd[sym] = interpolate(symcol, ζcol, BSplineOrder(4), Natural())
-            issorted(ζcol) &&
-                (val.rev[sym] = interpolate(ζcol, symcol, BSplineOrder(4), Natural()))
+            try
+                val.fwd[sym] = interpolate(symcol, ζcol, BSplineOrder(4), Natural())
+                issorted(ζcol) &&
+                    (val.rev[sym] = interpolate(ζcol, symcol, BSplineOrder(4), Natural()))
+            catch
+                @error "An error occurred while fitting the profile splines for the variance components. Try adjusting the threshold."
+                rethrow()
+            end
         end
     end
     copyto!(final, initial)
     copyto!(initial, saveinitial)
-    lowerbd .-= T(nzlb)
     optsum.sigma = nothing
     updateL!(setθ!(m, final))
     return val

@@ -7,8 +7,8 @@ Linear mixed-effects model representation
 
 * `formula`: the formula for the model
 * `reterms`: a `Vector{AbstractReMat{T}}` of random-effects terms.
-* `Xymat`: horizontal concatenation of a full-rank fixed-effects model matrix `X` and response `y` as an `FeMat{T}`
-* `feterm`: the fixed-effects model matrix as an `FeTerm{T}`
+* `Xymat`: horizontal concatenation of the full-rank fixed-effects model matrix `X` and response `y` as an `FeMat{T}`
+* `feterm`: the fixed-effects model matrix as an `FeTerm{T}`. For full-rank models, `feterm`'s internal `fullrankx` field is a view into the first `p` columns of `Xymat.xy`, so both share the same backing allocation.
 * `sqrtwts`: vector of square roots of the case weights.  Can be empty.
 * `parmap` : Vector{NTuple{3,Int}} of (block, row, column) mapping of θ to λ
 * `dims` : NamedTuple{(:n, :p, :nretrms),NTuple{3,Int}} of dimensions.  `p` is the rank of `X`, which may be smaller than `size(X, 2)`.
@@ -24,7 +24,6 @@ Linear mixed-effects model representation
 * `σ` or `sigma`: current value of the standard deviation of the per-observation noise
 * `b`: random effects on the original scale, as a vector of matrices
 * `u`: random effects on the orthogonal scale, as a vector of matrices
-* `lowerbd`: lower bounds on the elements of θ
 * `X`: the fixed-effects model matrix
 * `y`: the response vector
 """
@@ -41,24 +40,8 @@ struct LinearMixedModel{T<:AbstractFloat} <: MixedModel{T}
     optsum::OptSummary{T}
 end
 
-function LinearMixedModel(
-    f::FormulaTerm,
-    tbl;
-    contrasts=Dict{Symbol,Any}(),
-    wts=[],
-    σ=nothing,
-    amalgamate=true,
-    RFPthreshold=1000,
-)
-    return LinearMixedModel(
-        f::FormulaTerm,
-        Tables.columntable(tbl);
-        contrasts,
-        wts,
-        σ,
-        amalgamate,
-        RFPthreshold,
-    )
+function LinearMixedModel(f::FormulaTerm, tbl; kwargs...)
+    return LinearMixedModel(f::FormulaTerm, Tables.columntable(tbl); kwargs...)
 end
 
 const _MISSING_RE_ERROR = ArgumentError(
@@ -66,7 +49,8 @@ const _MISSING_RE_ERROR = ArgumentError(
 )
 
 function LinearMixedModel(
-    f::FormulaTerm, tbl::Tables.ColumnTable; contrasts=Dict{Symbol,Any}(), wts=[],
+    f::FormulaTerm, tbl::Tables.ColumnTable; contrasts=Dict{Symbol,Any}(), wts=nothing,
+    weights=[],
     σ=nothing, amalgamate=true, RFPthreshold=1000,
 )
     fvars = StatsModels.termvars(f)
@@ -77,6 +61,13 @@ function LinearMixedModel(
                 "The following formula variables are not present in the table: $(setdiff(fvars, tvars))"
             ),
         )
+
+    if wts !== nothing
+        Base.depwarn(
+            "`wts` keyword argument is deprecated, use `weights` instead", :LinearMixedModel
+        )
+        weights = wts
+    end
 
     # TODO: perform missing_omit() after apply_schema() when improved
     # missing support is in a StatsModels release
@@ -89,11 +80,11 @@ function LinearMixedModel(
 
     y, Xs = modelcols(form, tbl)
 
-    return LinearMixedModel(y, Xs, form, wts, σ, amalgamate, RFPthreshold)
+    return LinearMixedModel(y, Xs, form, weights, σ, amalgamate, RFPthreshold)
 end
 
 """
-    LinearMixedModel(y, Xs, form, wts=[], σ=nothing, amalgamate=true)
+    LinearMixedModel(y, Xs, form, weights=[], σ=nothing, amalgamate=true)
 
 Private constructor for a LinearMixedModel.
 
@@ -109,13 +100,22 @@ function LinearMixedModel(
     y::AbstractArray,
     Xs::Tuple, # can't be more specific here without stressing the compiler
     form::FormulaTerm,
-    wts=[],
+    weights=[],
     σ=nothing,
     amalgamate=true,
     RFPthreshold=1000,
 )
     T = promote_type(Float64, float(eltype(y)))  # ensure eltype of model matrices is at least Float64
 
+    reterms, feterms = _split_re_fe_terms(Xs, form, T)
+    isempty(reterms) && throw(_MISSING_RE_ERROR)
+    return LinearMixedModel(
+        convert(Array{T}, y), only(feterms), reterms, form, weights, σ, amalgamate,
+        RFPthreshold,
+    )
+end
+
+function _split_re_fe_terms(Xs::Tuple, form::FormulaTerm, ::Type{T}) where {T}
     reterms = AbstractReMat{T}[]
     feterms = FeTerm{T}[]
     for (i, x) in enumerate(Xs)
@@ -144,14 +144,11 @@ function LinearMixedModel(
             push!(feterms, FeTerm(x, isa(cnames, String) ? [cnames] : collect(cnames)))
         end
     end
-    isempty(reterms) && throw(_MISSING_RE_ERROR)
-    return LinearMixedModel(
-        convert(Array{T}, y), only(feterms), reterms, form, wts, σ, amalgamate, RFPthreshold
-    )
+    return reterms, feterms
 end
 
 """
-    LinearMixedModel(y, feterm, reterms, form, wts=[], σ=nothing; amalgamate=true, RFPthreshold=1000)
+    LinearMixedModel(y, feterm, reterms, form, weights=[], σ=nothing; amalgamate=true, RFPthreshold=1000)
 
 Private constructor for a `LinearMixedModel` given already assembled fixed and random effects.
 
@@ -169,7 +166,7 @@ function LinearMixedModel(
     feterm::FeTerm{T},
     reterms::AbstractVector{<:AbstractReMat{T}},
     form::FormulaTerm,
-    wts=[],
+    weights=[],
     σ=nothing,
     amalgamate=true,
     RFPthreshold=1000,
@@ -183,13 +180,22 @@ function LinearMixedModel(
 
     sort!(reterms; by=nranef, rev=true)
     Xy = FeMat(feterm, vec(y))
-    sqrtwts = map!(sqrt, Vector{T}(undef, length(wts)), wts)
+    # Replace feterm's fullrankx field with a view into the shared Xymat storage,
+    # eliminating the duplicate allocation for the full-rank X columns.
+    xview = view(Xy.xy, :, 1:(feterm.rank))
+    feterm = FeTerm{T,typeof(xview)}(
+        xview,
+        getfield(feterm, :xrankdef),
+        feterm.piv,
+        feterm.rank,
+        feterm.cnames,
+    )
+    sqrtwts = map!(sqrt, Vector{T}(undef, length(weights)), weights)
     reweight!.(reterms, Ref(sqrtwts))
     reweight!(Xy, sqrtwts)
     A, L = createAL(reterms, Xy; RFPthreshold)
-    lbd = foldl(vcat, lowerbd(c) for c in reterms)
     θ = foldl(vcat, getθ(c) for c in reterms)
-    optsum = OptSummary(θ, lbd)
+    optsum = OptSummary(θ)
     optsum.sigma = isnothing(σ) ? nothing : T(σ)
     return LinearMixedModel(
         form,
@@ -222,12 +228,13 @@ end
 function StatsAPI.fit(::Type{LinearMixedModel},
     f::FormulaTerm,
     tbl::Tables.ColumnTable;
-    wts=[],
+    weights=[],
+    wts=nothing,
     contrasts=Dict{Symbol,Any}(),
     σ=nothing,
     amalgamate=true,
     kwargs...)
-    lmod = LinearMixedModel(f, tbl; contrasts, wts, σ, amalgamate)
+    lmod = LinearMixedModel(f, tbl; contrasts, weights, wts, σ, amalgamate)
     return fit!(lmod; kwargs...)
 end
 
@@ -446,6 +453,14 @@ function createAL(
     return identity.(A), identity.(L)  # does anyone remember what the `identity` is for?`
 end
 
+function StatsAPI.cooksdistance(model::LinearMixedModel)
+    r = residuals(model)
+    _, p, _, _ = size(model)
+    mse = dispersion(model, true)
+    hii = leverage(model)
+    return @. (r / (1 - hii))^2 * hii / (mse * p)
+end
+
 StatsAPI.deviance(m::LinearMixedModel) = objective(m)
 
 GLM.dispersion(m::LinearMixedModel, sqr::Bool=false) = sqr ? varest(m) : sdest(m)
@@ -467,24 +482,17 @@ end
 
 """
     fit!(m::LinearMixedModel; progress::Bool=true, REML::Bool=m.optsum.REML,
-                              σ::Union{Real, Nothing}=m.optsum.sigma,
-                              thin::Int=typemax(Int),
-                              fitlog::Bool=true)
+                              σ::Union{Real, Nothing}=m.optsum.sigma)
 
 Optimize the objective of a `LinearMixedModel`.  When `progress` is `true` a
 `ProgressMeter.ProgressUnknown` display is shown during the optimization of the
 objective, if the optimization takes more than one second or so.
-
-The `thin` argument is ignored: it had no impact on the final model fit and the logic around
-thinning the `fitlog` was needlessly complicated for a trivial performance gain.
 """
 function StatsAPI.fit!(
     m::LinearMixedModel{T};
     progress::Bool=true,
     REML::Bool=m.optsum.REML,
     σ::Union{Real,Nothing}=m.optsum.sigma,
-    thin::Int=typemax(Int),
-    fitlog::Bool=false,
     backend::Symbol=m.optsum.backend,
     optimizer::Symbol=m.optsum.optimizer,
 ) where {T}
@@ -519,13 +527,16 @@ function StatsAPI.fit!(
         optsum.finitial = objective!(m, optsum.initial)
     end
 
-    xmin, fmin = optimize!(m; progress, fitlog)
+    xmin, fmin = optimize!(m; progress)
+
+    setθ!(m, xmin)                   # ensure that the parameters saved in m are xmin
+    rectify!(m)                      # flip signs of columns of m.λ elements with negative diagonal els
+    getθ!(xmin, m)                   # use the rectified values as xmin
 
     ## check if small non-negative parameter values can be set to zero
     xmin_ = copy(xmin)
-    lb = optsum.lowerbd
-    for i in eachindex(xmin_)
-        if iszero(lb[i]) && zero(T) < xmin_[i] < optsum.xtol_zero_abs
+    for (i, pm) in enumerate(m.parmap)
+        if pm[2] == pm[3] && zero(T) < xmin_[i] < optsum.xtol_zero_abs
             xmin_[i] = zero(T)
         end
     end
@@ -533,7 +544,7 @@ function StatsAPI.fit!(
         if (zeroobj = objective!(m, xmin_)) ≤ (fmin + optsum.ftol_zero_abs)
             fmin = zeroobj
             copyto!(xmin, xmin_)
-            fitlog && push!(optsum.fitlog, (copy(xmin), fmin))
+            push!(optsum.fitlog, (; θ=copy(xmin), objective=fmin))
         end
     end
 
@@ -555,14 +566,46 @@ Overwrite `v` with the fitted values from `m`.
 
 See also `fitted`.
 """
-function fitted!(v::AbstractArray{T}, m::LinearMixedModel{T}) where {T}
-    ## FIXME: Create and use `effects(m) -> β, b` w/o calculating β twice
+function _allocate_ranef_buffers(m::LinearMixedModel{T}) where {T}
+    reterms = m.reterms
+    return [Matrix{T}(undef, size(t.z, 1), nlevs(t)) for t in reterms]
+end
+
+_allocate_fixef_buffer(m::LinearMixedModel{T}) where {T} = Vector{T}(undef, m.feterm.rank)
+
+function _fixef_pivoted!(β::AbstractVector{T}, m::LinearMixedModel{T}) where {T}
+    return fixef!(β, m)
+end
+
+function _ranef_from_pivoted!(
+    b::Vector, m::LinearMixedModel{T}, β::AbstractVector{T}; uscale::Bool=false
+) where {T}
+    return ranef!(b, m, β, uscale)
+end
+
+function _effects!(
+    β::AbstractVector{T}, b::Vector, m::LinearMixedModel{T}; uscale::Bool=false
+) where {T}
+    _fixef_pivoted!(β, m)
+    return _ranef_from_pivoted!(b, m, β; uscale)
+end
+
+function _fitted!(
+    v::AbstractArray{T}, m::LinearMixedModel{T}, β::AbstractVector{T}, b::Vector
+) where {T}
     Xtrm = m.feterm
-    vv = mul!(vec(v), Xtrm.x, fixef!(similar(Xtrm.piv, T), m))
-    for (rt, bb) in zip(m.reterms, ranef(m))
+    vv = mul!(vec(v), Xtrm.fullrankx, β)
+    for (rt, bb) in zip(m.reterms, b)
         mul!(vv, rt, bb, one(T), one(T))
     end
     return v
+end
+
+function fitted!(v::AbstractArray{T}, m::LinearMixedModel{T}) where {T}
+    β = _allocate_fixef_buffer(m)
+    b = _allocate_ranef_buffers(m)
+    _effects!(β, b, m)
+    return _fitted!(v, m, β, b)
 end
 
 StatsAPI.fitted(m::LinearMixedModel{T}) where {T} = fitted!(Vector{T}(undef, nobs(m)), m)
@@ -690,8 +733,6 @@ function Base.getproperty(m::LinearMixedModel{T}, s::Symbol) where {T}
         stderror(m)
     elseif s == :u
         ranef(m; uscale=true)
-    elseif s == :lowerbd
-        m.optsum.lowerbd
     elseif s == :X
         modelmatrix(m)
     elseif s == :y
@@ -703,6 +744,19 @@ function Base.getproperty(m::LinearMixedModel{T}, s::Symbol) where {T}
     else
         getfield(m, s)
     end
+end
+
+"""
+    _set_init(m::LinearMixedModel)
+
+Set each element of m.optsum.initial to 1.0 for diagonal and 0.0 for off-diagonal
+"""
+function _set_init!(m::LinearMixedModel)
+    init = m.optsum.initial
+    for (i, pm) in enumerate(m.parmap)
+        init[i] = pm[2] == pm[3]
+    end
+    return m
 end
 
 StatsAPI.islinear(m::LinearMixedModel) = true
@@ -810,7 +864,17 @@ function StatsAPI.loglikelihood(m::LinearMixedModel)
     return -objective(m) / 2
 end
 
-lowerbd(m::LinearMixedModel) = m.optsum.lowerbd
+"""
+    lowerbd(m::LinearMixedModel)
+
+Return the vector of _canonical_ lower bounds on the parameters, `θ`.
+
+Note that this method does not distinguish between constrained optimization and
+unconstrained optimization with post-fit canonicalization.
+"""
+function lowerbd(m::LinearMixedModel{T}) where {T}
+    return [(pm[2] == pm[3]) ? zero(T) : T(-Inf) for pm in m.parmap]
+end
 
 function mkparmap(reterms::Vector{<:AbstractReMat{T}}) where {T}
     parmap = NTuple{3,Int}[]
@@ -875,7 +939,6 @@ function Base.propertynames(m::LinearMixedModel, private::Bool=false)
         :sigmarhos,
         :b,
         :u,
-        :lowerbd,
         :X,
         :y,
         :corr,
@@ -935,7 +998,11 @@ function ranef!(
     return v
 end
 
-ranef!(v::Vector, m::LinearMixedModel, uscale::Bool) = ranef!(v, m, fixef(m), uscale)
+function ranef!(v::Vector, m::LinearMixedModel{T}, uscale::Bool) where {T}
+    β = _allocate_fixef_buffer(m)
+    _fixef_pivoted!(β, m)
+    return _ranef_from_pivoted!(v, m, β; uscale)
+end
 
 """
     ranef(m::LinearMixedModel; uscale=false)
@@ -954,6 +1021,34 @@ function ranef(m::LinearMixedModel{T}; uscale=false) where {T}
 end
 
 LinearAlgebra.rank(m::LinearMixedModel) = m.feterm.rank
+
+"""
+    rectify!(m::LinearMixedModel)
+
+For each element of m.λ check for negative values on the diagonal and flip the signs of the entire column when any are present.
+
+This provides a canonical converged value of θ.  We use unconstrained optimization followed by this reassignment to avoid the
+hassle of constrained optimization.
+"""
+function rectify!(m::LinearMixedModel)
+    rectify!.(m.λ)
+    return m
+end
+
+function rectify!(λ::LowerTriangular)
+    for (j, c) in enumerate(eachcol(λ.data))
+        if c[j] < 0
+            c .*= -1
+        end
+    end
+    return λ
+end
+
+function rectify!(λ::Diagonal)
+    d = λ.diag
+    map!(abs, d, d)
+    return λ
+end
 
 """
     rePCA(m::LinearMixedModel; corr::Bool=true)
@@ -1109,10 +1204,10 @@ function Base.show(io::IO, ::MIME"text/plain", m::LinearMixedModel)
     join(io, nlevs.(m.reterms), ", ")
     println(io)
     println(io, "\n  Fixed-effects parameters:")
-    return show(io, coeftable(m))
+    return show(io, MIME("text/plain"), coeftable(m))
 end
 
-Base.show(io::IO, m::LinearMixedModel) = Base.show(io, MIME"text/plain"(), m)
+Base.show(io::IO, m::LinearMixedModel) = Base.show(io, MIME("text/plain"), m)
 
 """
     _coord(A::AbstractMatrix)
@@ -1121,6 +1216,17 @@ Return the positions and values of the nonzeros in `A` as a `TypedTables.Table` 
 """
 function _coord(A::Diagonal)
     return Table(; i=Int32.(axes(A, 1)), j=Int32.(axes(A, 2)), v=A.diag)
+end
+
+function _coord(A::UniformBlockDiagonal)
+    dat = A.data
+    r, c, k = size(dat)
+    blk = repeat(r .* (0:(k - 1)); inner=r * c)
+    return Table(;
+        i=Int32.(repeat(1:r; outer=c * k) .+ blk),
+        j=Int32.(repeat(1:c; inner=r, outer=k) .+ blk),
+        v=vec(dat),
+    )
 end
 
 function _coord(A::LowerTriangular{T,UniformBlockDiagonal{T}}) where {T}
@@ -1152,6 +1258,37 @@ function _coord(A::Matrix)
         j=Int32.(repeat(axes(A, 2); inner=m)),
         v=vec(A),
     )
+end
+
+function sparsemat(
+    typ::Symbol, m::LinearMixedModel{T}; fname::Symbol=first(fnames(m)), full::Bool=false
+) where {T}
+    reterms = m.reterms
+    if typ ∉ (:A, :L)
+        throw(ArgumentError("typ passed as $typ should be :A or :L"))
+    end
+    bmat = getproperty(m, typ)
+    sblk = findfirst(isequal(fname), fnames(m))
+    if isnothing(sblk)
+        throw(ArgumentError("fname = $fname is not the name of a grouping factor"))
+    end
+    blks = sblk:(length(reterms) + full)
+    rowoffset, coloffset = 0, 0
+    val = (i=Int32[], j=Int32[], v=T[])
+    for i in blks, j in first(blks):i
+        Lblk = bmat[block(i, j)]
+        cblk = _coord(Lblk)
+        append!(val.i, cblk.i .+ Int32(rowoffset))
+        append!(val.j, cblk.j .+ Int32(coloffset))
+        append!(val.v, cblk.v)
+        if i == j
+            coloffset = 0
+            rowoffset += size(Lblk, 1)
+        else
+            coloffset += size(Lblk, 2)
+        end
+    end
+    return tril!(sparse(val.i, val.j, val.v))
 end
 
 function _triinds(n::Integer, uplo::Symbol)
@@ -1187,32 +1324,21 @@ are to be included.
 
 `fname` specifies the first grouping factor to include. Blocks to the left of the block corresponding
  to `fname` are dropped. The default is the first, i.e., leftmost block and hence all blocks.
+
+ The matrix that is returned is lower-triangular but has not been wrapped in `LowerTriangular`.
 """
-function sparseL(
-    m::LinearMixedModel{T}; fname::Symbol=first(fnames(m)), full::Bool=false
-) where {T}
-    L, reterms = m.L, m.reterms
-    sblk = findfirst(isequal(fname), fnames(m))
-    if isnothing(sblk)
-        throw(ArgumentError("fname = $fname is not the name of a grouping factor"))
-    end
-    blks = sblk:(length(reterms) + full)
-    rowoffset, coloffset = 0, 0
-    val = (i=Int32[], j=Int32[], v=T[])
-    for i in blks, j in first(blks):i
-        Lblk = L[block(i, j)]
-        cblk = _coord(Lblk)
-        append!(val.i, cblk.i .+ Int32(rowoffset))
-        append!(val.j, cblk.j .+ Int32(coloffset))
-        append!(val.v, cblk.v)
-        if i == j
-            coloffset = 0
-            rowoffset += size(Lblk, 1)
-        else
-            coloffset += size(Lblk, 2)
-        end
-    end
-    return dropzeros!(tril!(sparse(val...)))
+function sparseL(m::LinearMixedModel; fname::Symbol=first(fnames(m)), full::Bool=false)
+    return dropzeros!(sparsemat(:L, m; fname, full))
+end
+
+"""
+    sparseA(m::LinearMixedModel; fname::Symbol=first(fnames(m)), full::Bool=false)
+
+Same as [`sparseL`](@ref) but returning the sparse lower triangle of the symmetric `A` matrix.
+Most of the time the result is wrapped as, e.g. `Symmetric(sparseM(m; full=true), :L)`
+"""
+function sparseA(m::LinearMixedModel; fname::Symbol=first(fnames(m)), full::Bool=false)
+    return sparsemat(:A, m; fname, full)
 end
 
 """
@@ -1303,8 +1429,12 @@ end
 Mark a model as unfitted.
 """
 function unfit!(model::LinearMixedModel{T}) where {T}
-    model.optsum.feval = -1
-    model.optsum.initial_step = T[]
+    optsum = model.optsum
+    optsum.feval = -1
+    optsum.initial_step = T[]
+    # initialize elements on the diagonal of Λ to one(T), off-diagonals to zero(T)
+    _set_init!(model)
+    copyto!(optsum.final, optsum.initial)
     reevaluateAend!(model)
 
     return model
@@ -1359,7 +1489,7 @@ end
 Returns the estimate of σ², the variance of the conditional distribution of Y given B.
 """
 function varest(m::LinearMixedModel)
-    return isnothing(m.optsum.sigma) ? pwrss(m) / ssqdenom(m) : m.optsum.sigma
+    return isnothing(m.optsum.sigma) ? pwrss(m) / ssqdenom(m) : m.optsum.sigma^2
 end
 
 function StatsAPI.weights(m::LinearMixedModel)

@@ -31,6 +31,7 @@ end
 function StatsModels.ContrastsMatrix(
     contrasts::Grouping, levels::AbstractVector
 )
+    levels = convert(Vector, levels)
     return StatsModels.ContrastsMatrix(zeros(0, 0), levels, levels, contrasts)
 end
 

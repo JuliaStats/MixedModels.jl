@@ -30,7 +30,6 @@ In addition to the fieldnames, the following names are also accessible through t
 - `theta`: synonym for `θ`
 - `beta`: synonym for `β`
 - `σ` or `sigma`: common scale parameter (value is `NaN` for distributions without a scale parameter)
-- `lowerbd`: vector of lower bounds on the combined elements of `β` and `θ`
 - `formula`, `trms`, `A`, `L`, and `optsum`: fields of the `LMM` field
 - `X`: fixed-effects model matrix
 - `y`: response vector
@@ -178,14 +177,17 @@ function StatsAPI.fit(
     tbl::Tables.ColumnTable,
     d::Distribution,
     l::Link=canonicallink(d);
-    wts=[],
+    weights=[],
+    wts=nothing,
     contrasts=Dict{Symbol,Any}(),
     offset=[],
     amalgamate=true,
     kwargs...,
 )
     return fit!(
-        GeneralizedLinearMixedModel(f, tbl, d, l; wts, offset, contrasts, amalgamate);
+        GeneralizedLinearMixedModel(
+            f, tbl, d, l; weights, wts, offset, contrasts, amalgamate
+        );
         kwargs...,
     )
 end
@@ -213,7 +215,6 @@ end
 """
     fit!(m::GeneralizedLinearMixedModel; fast=false, nAGQ=1,
                                          verbose=false, progress=true,
-                                         thin::Int=1,
                                          init_from_lmm=Set())
 
 Optimize the objective function for `m`.
@@ -227,9 +228,6 @@ during the iterations to minimize the deviance.  There is a delay before this di
 and it may not be shown at all for models that are optimized quickly.
 
 If `verbose` is `true`, then both the intermediate results of both the nonlinear optimization and PIRLS are also displayed on standard output.
-
-The `thin` argument is ignored: it had no impact on the final model fit and the logic around
-thinning the `fitlog` was needlessly complicated for a trivial performance gain.
 
 By default, the starting values for model fitting are taken from a (non mixed,
 i.e. marginal ) GLM fit. Experience with larger datasets (many thousands of
@@ -256,8 +254,6 @@ function StatsAPI.fit!(
     fast::Bool=false,
     nAGQ::Integer=1,
     progress::Bool=true,
-    thin::Int=typemax(Int),
-    fitlog::Bool=false,
     init_from_lmm=Set(),
     backend::Symbol=m.optsum.backend,
     optimizer::Symbol=m.optsum.optimizer,
@@ -286,7 +282,6 @@ function StatsAPI.fit!(
     end
 
     if !fast
-        optsum.lowerbd = vcat(fill!(similar(β), T(-Inf)), optsum.lowerbd)
         optsum.initial = vcat(β, lm.optsum.final)
         optsum.final = copy(optsum.initial)
     end
@@ -294,12 +289,17 @@ function StatsAPI.fit!(
     optsum.backend = backend
     optsum.optimizer = optimizer
 
-    xmin, fmin = optimize!(m; progress, fitlog, fast, verbose, nAGQ)
+    xmin, fmin = optimize!(m; progress, fast, verbose, nAGQ)
+
+    θopt = length(xmin) == length(θ) ? xmin : view(xmin, (length(β) + 1):lastindex(xmin))
+    rectify!(m.LMM)                  # flip signs of columns of m.λ elements with negative diagonal els
+    getθ!(θopt, m)                   # use the rectified values in xmin
 
     ## check if very small parameter values bounded below by zero can be set to zero
     xmin_ = copy(xmin)
+    lb = fast ? lowerbd(m) : vcat(zero(β), lowerbd(m))
     for i in eachindex(xmin_)
-        if iszero(optsum.lowerbd[i]) && zero(T) < xmin_[i] < optsum.xtol_zero_abs
+        if iszero(lb[i]) && zero(T) < xmin_[i] < optsum.xtol_zero_abs
             xmin_[i] = zero(T)
         end
     end
@@ -308,7 +308,7 @@ function StatsAPI.fit!(
             (fmin + optsum.ftol_zero_abs)
             fmin = zeroobj
             copyto!(xmin, xmin_)
-            fitlog && push!(optsum.fitlog, (copy(xmin), fmin))
+            push!(optsum.fitlog, (; θ=copy(xmin), objective=fmin))
         end
     end
 
@@ -371,12 +371,21 @@ function GeneralizedLinearMixedModel(
     tbl::Tables.ColumnTable,
     d::Distribution,
     l::Link=canonicallink(d);
-    wts=[],
+    weights=[],
+    wts=nothing,
     offset=[],
     contrasts=Dict{Symbol,Any}(),
     amalgamate=true,
 )
-    if isa(d, Binomial) && isempty(wts)
+    if wts !== nothing
+        Base.depwarn(
+            "`wts` keyword argument is deprecated, use `weights` instead",
+            :GeneralizedLinearMixedModel,
+        )
+        weights = wts
+    end
+
+    if isa(d, Binomial) && isempty(weights)
         d = Bernoulli()
     end
     (isa(d, Normal) && isa(l, IdentityLink)) && throw(
@@ -389,13 +398,13 @@ function GeneralizedLinearMixedModel(
                  the authors gain a better understanding of those cases."""
     end
 
-    LMM = LinearMixedModel(f, tbl; contrasts, wts, amalgamate)
+    LMM = LinearMixedModel(f, tbl; contrasts, weights, amalgamate)
     y = copy(LMM.y)
     constresponse = all(==(first(y)), y)
     # the sqrtwts field must be the correct length and type but we don't know those
     # until after the model is constructed if wt is empty.  Because a LinearMixedModel
     # type is immutable, another one must be created.
-    if isempty(wts)
+    if isempty(weights)
         LMM = LinearMixedModel(
             LMM.formula,
             LMM.reterms,
@@ -424,10 +433,12 @@ function GeneralizedLinearMixedModel(
     # TODO: construct GLM by hand so that we skip collinearity checks
     # TODO: extend this so that we never fit a GLM when initializing from LMM
     dofit = size(X, 2) != 0 # GLM.jl kwarg
+    wtkwarg = pkgversion(GLM) >= v"1.9.1" ? :weights : :wts
+    weights = convert(Vector{T}, weights)
     gl = glm(X, y, d, l;
-        wts=convert(Vector{T}, wts),
+        wtkwarg => pkgversion(GLM) >= v"1.9.1" ? FrequencyWeights(weights) : weights,
         dofit,
-        offset=convert(Vector{T}, offset))
+        :offset => convert(Vector{T}, offset))
     β = dofit ? coef(gl) : T[]
     u = [fill(zero(eltype(y)), vsize(t), nlevs(t)) for t in LMM.reterms]
     # vv is a template vector used to initialize fields for AGQ
@@ -444,7 +455,7 @@ function GeneralizedLinearMixedModel(
         zero.(u),
         gl.rr,
         similar(y),
-        oftype(y, wts),
+        weights,
         similar(vv),
         similar(vv),
         similar(vv),
@@ -526,6 +537,16 @@ function StatsAPI.loglikelihood(m::GeneralizedLinearMixedModel{T}) where {T}
     return accum - (mapreduce(u -> sum(abs2, u), +, m.u) + logdet(m)) / 2
 end
 
+"""
+    lowerbd(m::GeneralizedLinearMixedModel)
+
+Return the vector of _canonical_ lower bounds on the parameters, `θ`.
+
+Note that this method does not distinguish between constrained optimization and
+unconstrained optimization with post-fit canonicalization.
+"""
+lowerbd(m::GeneralizedLinearMixedModel) = lowerbd(m.LMM)
+
 # Base.Fix1 doesn't forward kwargs
 function objective!(m::GeneralizedLinearMixedModel; fast=false, kwargs...)
     return x -> _objective!(m, x, Val(fast); kwargs...)
@@ -562,7 +583,6 @@ function Base.propertynames(m::GeneralizedLinearMixedModel, private::Bool=false)
         :sigma,
         :X,
         :y,
-        :lowerbd,
         :objective,
         :σρs,
         :σs,
@@ -592,7 +612,13 @@ optimized and `β` is held fixed.
 Passing `verbose = true` provides verbose output of the iterations.
 """
 function pirls!(
-    m::GeneralizedLinearMixedModel{T}, varyβ=false, verbose=false; maxiter::Integer=10
+    m::GeneralizedLinearMixedModel{T},
+    varyβ=false,
+    verbose=false;
+    maxiter::Integer=m.LMM.optsum.pirls_maxiter,
+    maxhalfstep::Integer=m.LMM.optsum.pirls_maxhalfstep,
+    ftol_rel::Real=m.LMM.optsum.pirls_ftol_rel,
+    ftol_abs::Real=m.LMM.optsum.pirls_ftol_abs,
 ) where {T}
     u₀ = m.u₀
     u = m.u
@@ -625,9 +651,9 @@ function pirls!(
         nhalf = 0
         while obj > obj₀
             nhalf += 1
-            if nhalf > 10
+            if nhalf > maxhalfstep
                 if iter < 2
-                    throw(ErrorException("number of averaging steps > 10"))
+                    throw(ErrorException("number of averaging steps > $maxhalfstep"))
                 end
                 break
             end
@@ -638,7 +664,7 @@ function pirls!(
             obj = deviance!(m)
             verbose && println(lpad(nhalf, 8), ", ", obj)
         end
-        if isapprox(obj, obj₀; atol=0.00001)
+        if isapprox(obj, obj₀; rtol=ftol_rel, atol=ftol_abs)
             break
         end
         copyto!.(u₀, u)
@@ -760,10 +786,10 @@ function Base.show(
     println(io)
 
     println(io, "\nFixed-effects parameters:")
-    return show(io, coeftable(m))
+    return show(io, MIME("text/plain"), coeftable(m))
 end
 
-Base.show(io::IO, m::GeneralizedLinearMixedModel) = show(io, MIME"text/plain"(), m)
+Base.show(io::IO, m::GeneralizedLinearMixedModel) = show(io, MIME("text/plain"), m)
 
 function stderror!(v::AbstractVector{T}, m::GeneralizedLinearMixedModel{T}) where {T}
     # initialize to appropriate NaN for rank-deficient case
@@ -787,12 +813,7 @@ function unfit!(model::GeneralizedLinearMixedModel{T}) where {T}
 
     reterms = model.LMM.reterms
     optsum = model.LMM.optsum
-    # we need to reset optsum so that it
-    # plays nice with the modifications fit!() does
-    optsum.lowerbd = mapfoldl(lowerbd, vcat, reterms)
-    # for variances (bounded at zero), we have ones, while
-    # for everything else (bounded at -Inf), we have zeros
-    optsum.initial = map(T ∘ iszero, optsum.lowerbd)
+    optsum.initial = map(x -> T(x[2] == x[3]), model.LMM.parmap)
     optsum.final = copy(optsum.initial)
     optsum.xtol_abs = fill!(copy(optsum.initial), 1.0e-10)
     optsum.initial_step = T[]
@@ -841,7 +862,7 @@ function StatsAPI.weights(m::GeneralizedLinearMixedModel{T}) where {T}
 end
 
 # delegate GLMM method to LMM field
-for f in (:feL, :fetrm, :fixefnames, :(LinearAlgebra.logdet), :lowerbd, :PCA, :rePCA)
+for f in (:feL, :fetrm, :fixefnames, :(LinearAlgebra.logdet), :PCA, :rePCA)
     @eval begin
         $f(m::GeneralizedLinearMixedModel) = $f(m.LMM)
     end

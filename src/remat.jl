@@ -180,14 +180,12 @@ nθ(A::ReMat) = length(A.inds)
 """
     lowerbd{T}(A::ReMat{T})
 
-Return the vector of lower bounds on the parameters, `θ` associated with `A`
-
-These are the elements in the lower triangle of `A.λ` in column-major ordering.
-Diagonals have a lower bound of `0`.  Off-diagonals have a lower-bound of `-Inf`.
+Return the vector of lower bounds on the parameters, `θ` associated with `A`.  For unconstrained optimization these are all T(-Inf)
 """
 function lowerbd(A::ReMat{T}) where {T}
-    k = size(A.λ, 1)  # construct diagind(A.λ) by hand following #52115
-    return T[x ∈ range(1; step=k + 1, length=k) ? zero(T) : T(-Inf) for x in A.inds]
+    return fill!(similar(A.inds, T), -Inf)
+    #    k = size(A.λ, 1)  # construct diagind(A.λ) by hand following #52115
+    #    return T[x ∈ range(1; step=k + 1, length=k) ? T(-) : T(-Inf) for x in A.inds]
 end
 
 """
@@ -197,7 +195,7 @@ Is the grouping factor for `A` nested in the grouping factor for `B`?
 
 That is, does each value of `A` occur with just one value of B?
 """
-function isnested(A::ReMat, B::ReMat)
+function StatsModels.isnested(A::ReMat, B::ReMat)
     size(A, 1) == size(B, 1) || throw(DimensionMismatch("must have size(A,1) == size(B,1)"))
     bins = zeros(Int32, nlevs(A))
     @inbounds for (a, b) in zip(A.refs, B.refs)
@@ -673,6 +671,21 @@ function copyscaleinflate!(
         LjjM[k] += one(T)
     end
     return Ljj
+end
+
+function LinearAlgebra.copy_oftype(A::ReMat{<:Any,S}, ::Type{T}) where {T,S}
+    return ReMat{T,S}(
+        A.trm,
+        A.refs,
+        A.levels,
+        A.cnames,
+        LinearAlgebra.copy_oftype(A.z, T),
+        LinearAlgebra.copy_oftype(A.wtz, T),
+        LinearAlgebra.copy_oftype(A.λ, T),
+        A.inds,
+        LinearAlgebra.copy_oftype(A.adjA, T),
+        LinearAlgebra.copy_oftype(A.scratch, T),
+    )
 end
 
 function setθ!(A::ReMat{T}, v::AbstractVector{T}) where {T}

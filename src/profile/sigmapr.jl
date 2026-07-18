@@ -13,7 +13,7 @@ function refitσ!(
     m::LinearMixedModel{T}, σ, tc::TableColumns{T}, obj::T, neg::Bool
 ) where {T}
     m.optsum.sigma = σ
-    refit!(m; progress=false, fitlog=false)
+    refit!(m; progress=false)
     return mkrow!(tc, m, (neg ? -one(T) : one(T)) * sqrt(m.objective - obj))
 end
 
@@ -26,13 +26,14 @@ function _facsz(m::LinearMixedModel{T}, σ::T, obj::T) where {T}
     i64 = T(inv(64))
     expi64 = exp(i64)     # help the compiler infer it is a constant
     m.optsum.sigma = σ * expi64
-    return exp(i64 / (2 * sqrt(refit!(m; progress=false, fitlog=false).objective - obj)))
+    return exp(i64 / (2 * sqrt(refit!(m; progress=false).objective - obj)))
 end
 
 """
     profileσ(m::LinearMixedModel, tc::TableColumns; threshold=4)
 
 Return a Table of the profile of `σ` for model `m`.  The profile extends to where the magnitude of ζ exceeds `threshold`.
+
 !!! note
     This method is called by `profile` and currently considered internal.
     As such, it may change or disappear in a future release without being considered breaking.
@@ -43,7 +44,7 @@ function profileσ(m::LinearMixedModel{T}, tc::TableColumns{T}; threshold=4) whe
         throw(ArgumentError("Can't profile σ, which is fixed at $(optsum.sigma)"))
     θ = copy(optsum.final)
     θinitial = copy(optsum.initial)
-    _copy_away_from_lowerbd!(optsum.initial, optsum.final, optsum.lowerbd)
+    copyto!(optsum.initial, optsum.final)
     obj = optsum.fmin
     σ = m.σ
     pnm = (p=:σ,)
@@ -69,7 +70,13 @@ function profileσ(m::LinearMixedModel{T}, tc::TableColumns{T}; threshold=4) whe
     updateL!(setθ!(m, θ))
     σv = [r.σ for r in tbl]
     ζv = [r.ζ for r in tbl]
-    fwd = Dict(:σ => interpolate(σv, ζv, BSplineOrder(4), Natural()))
-    rev = Dict(:σ => interpolate(ζv, σv, BSplineOrder(4), Natural()))
+    local fwd, rev
+    try
+        fwd = Dict(:σ => interpolate(σv, ζv, BSplineOrder(4), Natural()))
+        rev = Dict(:σ => interpolate(ζv, σv, BSplineOrder(4), Natural()))
+    catch
+        @error "An error occurred while fitting the profile splines for σ. Try adjusting the threshold."
+        rethrow()
+    end
     return (; m, tbl, fwd, rev)
 end

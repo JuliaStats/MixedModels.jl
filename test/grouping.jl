@@ -2,6 +2,7 @@ using MixedModels
 using StatsModels
 using Test
 
+using CategoricalArrays: categorical
 using MixedModels: schematize
 using StatsModels: ContrastsMatrix, FullDummyCoding
 
@@ -12,33 +13,43 @@ end
 
 @testset "Grouping pseudo-contrasts" begin
     d = (; y=rand(2_000_000),
-         grp=string.([1:1_000_000; 1:1_000_000]),
-         outer=rand('A':'z', 2_000_000))
-    ## OOM seems to result in the process being killed on Mac so this messes up CI
-    # @test_throws OutOfMemoryError schema(d)
+        grp=string.([1:1_000_000; 1:1_000_000]),
+        outer=rand('A':'z', 2_000_000))
     sch = schema(d, Dict(:grp => Grouping()))
     t = sch[term(:grp)]
     @test t isa CategoricalTerm{Grouping}
-    @test size(t.contrasts.matrix) == (0,0)
+    @test size(t.contrasts.matrix) == (0, 0)
     @test length(t.contrasts.levels) == 1_000_000
-    @test_throws ErrorException StatsModels.modelcols(t, (a = 1.,))
+    @test_throws ErrorException StatsModels.modelcols(t, (a=1.0,))
 
     levs = sort(string.(1:1_000_000))
 
-    @test all(t.contrasts.invindex[lev] == i for (i,lev) in enumerate(levs))
-    @test all(t.contrasts.levels[i] == lev for (i,lev) in enumerate(levs))
+    @test all(t.contrasts.invindex[lev] == i for (i, lev) in enumerate(levs))
+    @test all(t.contrasts.levels[i] == lev for (i, lev) in enumerate(levs))
+
+    d = (; y=rand(20),
+         grp=categorical([1:10; 1:10]))
+    sch = schema(d, Dict(:grp => Grouping()))
+    t = sch[term(:grp)]
+    @test t isa CategoricalTerm{Grouping}
+    @test size(t.contrasts.matrix) == (0, 0)
+    @test length(t.contrasts.levels) == 10
+    @test_throws ErrorException StatsModels.modelcols(t, (a=1.0,))
+
 end
 
 @testset "Auto application of Grouping()" begin
-
     d = (; y=rand(100),
         x=rand('A':'Z', 100),
         z=rand('A':'Z', 100),
-        grp=rand('a':'z', 100))
-    contrasts = Dict{Symbol, Any}()
+        grp=rand(1:26, 100)) # we want this to be numeric so that we don't get past categorical checks by default
+    contrasts = Dict{Symbol,Any}()
 
-    @testset "blocking variables are grouping" for f in [@formula(y ~ 1 + x + (1|grp)),
-                                                         @formula(y ~ 1 + x + zerocorr(1|grp))]
+    @testset "blocking variables are grouping" for f in [@formula(y ~ 1 + x + (1 | grp)),
+        @formula(y ~ 1 + x + zerocorr(1 | grp)),
+        term(:y) ~ term(:x) + (term(1) | (term(:grp))),
+        term(:y) ~ term(:x) + zerocorr(term(1) | (term(:grp))),
+    ]
         fsch = schematize(f, d, contrasts)
         fe = fsch.rhs[1]
         x = last(fe.terms)
@@ -48,8 +59,11 @@ end
         @test grp.contrasts isa ContrastsMatrix{Grouping}
     end
 
-    @testset "FE contrasts take priority" for f in [@formula(y ~ 1 + x + (1|x)),
-                                                    @formula(y ~ 1 + x + zerocorr(1|x))]
+    @testset "FE contrasts take priority" for f in [@formula(y ~ 1 + x + (1 | x)),
+        @formula(y ~ 1 + x + zerocorr(1 | x)),
+        term(:y) ~ term(:x) + (term(1) | (term(:x))),
+        term(:y) ~ term(:x) + zerocorr(term(1) | (term(:x))),
+    ]
         fsch = schematize(f, d, contrasts)
         fe = fsch.rhs[1]
         x = last(fe.terms)
@@ -58,7 +72,7 @@ end
         grp = re.rhs
         @test grp.contrasts isa ContrastsMatrix{DummyCoding}
 
-        fsch = schematize(@formula(y ~ 1 + x + (1|x)), d, Dict(:x => EffectsCoding()))
+        fsch = schematize(@formula(y ~ 1 + x + (1 | x)), d, Dict(:x => EffectsCoding()))
         fe = fsch.rhs[1]
         x = last(fe.terms)
         @test x.contrasts isa ContrastsMatrix{EffectsCoding}
@@ -67,8 +81,11 @@ end
         @test grp.contrasts isa ContrastsMatrix{EffectsCoding}
     end
 
-    @testset "Nesting and interactions" for f in [@formula(y ~ 1 + x + (1|grp/z))]
+    @testset "Nesting and interactions" for f in [@formula(y ~ 1 + x + (1 | grp / z))]
         # XXX zerocorr(1|grp/z) doesn't work!
+        # XXX programmatic form doesn't work: term(:y) ~ term(:x) + (1 | term(:grp) / term(:z))
+        #  - we don't define ~pirate~ define the relevant methods here
+        #  - and RegressionFormulae.jl errors here as well
         fsch = schematize(f, d, contrasts)
         fe = fsch.rhs[1]
         x = last(fe.terms)
@@ -84,8 +101,9 @@ end
         @test interaction.terms[2].contrasts isa ContrastsMatrix{Grouping}
     end
 
-    @testset "Interactions where one component is FE" for f in [@formula(y ~ 1 + x + (1|x&grp)),
-                                                                @formula(y ~ 1 + x + zerocorr(1|x&grp))]
+    @testset "Interactions where one component is FE" for f in [
+        @formula(y ~ 1 + x + (1 | x & grp)),
+        @formula(y ~ 1 + x + zerocorr(1 | x & grp))]
         # occurs in e.g. the contra models
         # @formula(use ~ 1+age+abs2(age)+urban+livch+(1|urban&dist)
         fsch = schematize(f, d, contrasts)
@@ -105,9 +123,12 @@ end
     end
 
     @test_throws(ArgumentError("Same variable appears on both sides of |"),
-                 schematize(@formula(y ~ 1 + (x|x)), d, contrasts))
+        schematize(@formula(y ~ 1 + (x | x)), d, contrasts))
     f1 = schematize(@formula(y ~ 1 + x + z), d, contrasts)
     f2 = apply_schema(@formula(y ~ 1 + x + z), schema(d, contrasts))
     # skip intercept term
-    @test all(a.contrasts == b.contrasts for (a, b) in zip(f1.rhs.terms[2:end], f2.rhs.terms[2:end]))
+    @test all(
+        a.contrasts == b.contrasts for
+        (a, b) in zip(f1.rhs.terms[2:end], f2.rhs.terms[2:end])
+    )
 end

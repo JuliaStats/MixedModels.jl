@@ -1,6 +1,121 @@
+MixedModels v5.7.1 Release Notes
+==============================
+- Compat bump for MixedModelsDatasets. Note that some data values have changed in their least significant digits, which can change statistics computed from these.
+Additionally, MixedModelsDatasets now lazily downloads individual datasets instead of downloading all available datasets as a single bundle. [#904]
+
+MixedModels v5.7.0 Release Notes
+==============================
+- `fitted` and `predict` have been reworked to allocate less and avoid some unnecessary computation. [#887]
+
+MixedModels v5.6.0 Release Notes
+==============================
+- Several previously hardcoded parameters related to PIRLS are now exposed and can be set by modifying `optsum`.[#893]
+
+MixedModels v5.5.2 Release Notes
+==============================
+- Import `log2π` directly from `IrrationalConstants` instead of via the `StatsFuns` re-export chain. `IrrationalConstants` is now a direct dependency, but it was already an indirect dependency of the package. [#898]
+- Replace the remaining `chisqccdf` and `normccdf` calls with the equivalent `ccdf(Chisq(…), …)` and `ccdf(Normal(), …)` from `Distributions`, and drop `StatsFuns` as a direct dependency. `StatsFuns` remains in the indirect dependency graph via `StatsModels` and `Distributions`. [#899]
+
+MixedModels v5.5.1 Release Notes
+==============================
+- Fixed a bug in testing the nesting of fixed effects. [#891]
+- Fixed an edge case in `predict` with rank deficient models. [#892]
+
+MixedModels v5.5.0 Release Notes
+==============================
+- The construction of `LinearMixedModel` has changed so that the storage of the full-rank fixed-effects model matrix is shared between `feterm` and `Xymat`. The function `modelmatrix` still returns the entire model matrix (including redundant columns), but now constructs it dynamically instead of returning a reference into internal storage. The precise storage details of `FeTerm` have changed. [#889]
+
+
+MixedModels v5.4.0 Release Notes
+==============================
+- Change `isnested(x, y)` for MixedModels to return `true` if `x` has no fixed-effects parameters [#886]
+
+MixedModels v5.3.1 Release Notes
+==============================
+- `varest` and `dispersion(::LinearMixedModel, true)` previously incorrectly returned the estimated standard deviation instead of the variance for models with a fixed sigma parameter. [#885]
+
+MixedModels v5.3.0 Release Notes
+==============================
+- Implement `sparseL` as a specialization of `sparsemat`. Replace `_coord` utility with `_findnz` which, in most cases, falls through to `SparseArrays.findnz`. [#880]
+
+MixedModels v5.2.2 Release Notes
+==============================
+- Small update to `show` methods to accommodate coming changes in Julia Markdown stdlib. [#876]
+
+MixedModels v5.2.1 Release Notes
+==============================
+- Use three-argument method for `show` for `CoefTables`. [#875]
+
+MixedModels v5.2.0 Release Notes
+==============================
+- The use of the `wts` keyword argument has been deprecated in favor of the keyword argument `weights`, in line with the deprecation in GLM.jl v1.9.1. The usage (and subsequent interpretation) remains otherwise unchanged. [#873]
+
+MixedModels v5.1.0 Release Notes
+==============================
+- Nesting checks for the likelihoodratio test have been slightly tweaked to be more robust, at the cost of being slightly slower. In particular, the comparison of models with pre-centered variables with those with variables centered via StandardizedPredictors.jl was previously incorrectly rejected as non-nested, but should be correctly accepted as nested now. Additionally, some further logging messages are emitted when a nesting check fails. [#867]
+
+MixedModels v5.0.4 Release Notes
+==============================
+- Small update in some code related to displaying dispersion parameters in cases where inference has failed. [#865]
+
+MixedModels v5.0.3 Release Notes
+==============================
+- `lowerbd(::MixedModel)` returns the _canonical_ lower bounds of a model's parameters, i.e. the expected bounds after rectification in unconstrained optimization. [#864]
+
+MixedModels v5.0.2 Release Notes
+==============================
+- The default display and `confint` methods for bootstrap results from models without dispersion parameters has been fixed. [#861]
+
+MixedModels v5.0.1 Release Notes
+==============================
+- Fixes a method error with `Grouping()` contrasts when used with recent CategoricalArray releases. [#860]
+
+MixedModels v5.0.0 Release Notes
+==============================
+- Optimization is now performed _without constraints_. In a post-fitting step, the Cholesky factor is canonicalized to have non-negative diagonal elements. [#840]
+- The default optimizer has changed to NLopt's implementation of NEWUOA where possible. NLopt's implementation fails on 1-dimensional problems, so in the case of a single, scalar random effect, BOBYQA is used instead. In the future, the default optimizer backend will likely change to PRIMA and NLopt support will be moved to an extension. Blocking this change in backend is an issue with PRIMA.jl when running in VSCode's built-in REPL on Linux. [#840]
+- [BREAKING] Support for constrained optimization has been completely removed, i.e. the field `lowerbd` has been removed from `OptSummary`. [#849]
+- [BREAKING] The deprecated `use_threads` kwarg has been dropped from `parametricbootstrap`. It had been a no-op since v4.10.0. [#841]
+- [BREAKING] The deprecated `hide_progress` kwarg has been dropped from `parametricbootstrap`. It had been replaced by `progress` since v4.22.0. [#841]
+- [BREAKING] A fitlog is always kept -- the deprecated keyword argument `thin` has been removed as has the `fitlog` keyword argument. [#850]
+- The fitlog is now stored as Tables.jl-compatible column table. [#850]
+- Internal code around the default optimizer has been restructured. In particular, the NLopt backend has been moved to a submodule, which will make it easier to move it to an extension if we promote another backend to the default. [#853]
+- Internal code around optimization in profiling has been restructuring so that fitting done during calls to `profile` respect the `backend` and `optimizer` settings. [#853]
+- The `prfit!` convenience function has been removed. [#853]
+- The `dataset` and `datasets` functions have been removed. They are now housed in `MixedModelsDatasets`.[#854]
+- The local implementation of `fulldummy` and the nesting syntax has been removed and a dependency on RegressionFormulae.jl for their implementation has been added. [#855]
+- One argument `predict(::GeneralizedLinearMixedModel)`, i.e. prediction on the original data, now supports the `type` keyword argument. [#856]
+- `isnested(A::ReMat, B::ReMat)` is now a method of `StatsModels.isnested`.[#858]
+- [BREAKING ]`likelihoodratiotest` has been reworked to be a thin wrapper around `StatsModels.lrtest`. The historical difference in behavior in terms of nesting checks created some confusion. Users advanced enough to create models with non-obvious nesting are assumed to be advanced enough to manually compute the likelihood ratio test. The function `likelihoodratiotest` and associated `LikelihoodRatioTest` type (now with a type parameter for number of models) has been kept to enable printing of test results with model formulae. Most users should not notice a difference in behavior, but the display has been slightly changed and the internal field structure has changed.[#858]
+- Failures to fit a spline in profiling now generates a more helpful error message. [#857]
+
+MixedModels v4.38.0 Release Notes
+==============================
+- Experimental support for evaluating `FiniteDiff.finite_difference_gradient` and `FiniteDiff.finite_difference_hessian of the objective of a fitted `LinearMixedModel`. [#842]
+
+MixedModels v4.37.0 Release Notes
+==============================
+- Experimental support for evaluating `ForwardDiff.gradient` and `ForwardDiff.hessian` of the objective of a fitted `LinearMixedModel`. [#841]
+
+MixedModels v4.36.0 Release Notes
+==============================
+- Automatic application of grouping contrasts now works for `RandomEffectsTerm`s constructed programmatically, e.g. with `(term(1) | term(:g))`. [#836]
+
+MixedModels v4.35.2 Release Notes
+==============================
+- Update to the `show(::IO, ::MIME, x)` methods for consistent ordering across Julia versions of variance components without associated fixed effects. This may result in change of ordering on existing Julia versions, but ordering will now match the ordering in the default REPL display (and reflect the model internal ordering), [#829]
+
+MixedModels v4.35.1 Release Notes
+==============================
+- The final parameter vector `optsum.final` is now reset in calls to `unfit!`. This has the secondary effect of correctly starting the fit for `prfit!` at the initial parameter vector instead of the final parameter vector of any previous optimization. [#828]
+
+MixedModels v4.35.0 Release Notes
+==============================
+- `StatsAPI.cooksdistance(::LinearMixedModel)` is now defined and exported. [#825]
+
 MixedModels v4.34.1 Release Notes
 ==============================
-- Allow v0.19.0 of `BSplineKit.jl` to avoid warnings in `beta` and `nightly` versions of julia. (#823)
+- Allow v0.19.0 of `BSplineKit.jl` to avoid warnings in `beta` and `nightly` versions of julia. [#823]
 
 MixedModels v4.34.0 Release Notes
 ==============================
@@ -627,3 +742,37 @@ Package dependencies
 [#814]: https://github.com/JuliaStats/MixedModels.jl/issues/814
 [#815]: https://github.com/JuliaStats/MixedModels.jl/issues/815
 [#823]: https://github.com/JuliaStats/MixedModels.jl/issues/823
+[#825]: https://github.com/JuliaStats/MixedModels.jl/issues/825
+[#828]: https://github.com/JuliaStats/MixedModels.jl/issues/828
+[#829]: https://github.com/JuliaStats/MixedModels.jl/issues/829
+[#836]: https://github.com/JuliaStats/MixedModels.jl/issues/836
+[#840]: https://github.com/JuliaStats/MixedModels.jl/issues/840
+[#841]: https://github.com/JuliaStats/MixedModels.jl/issues/841
+[#842]: https://github.com/JuliaStats/MixedModels.jl/issues/842
+[#849]: https://github.com/JuliaStats/MixedModels.jl/issues/849
+[#850]: https://github.com/JuliaStats/MixedModels.jl/issues/850
+[#853]: https://github.com/JuliaStats/MixedModels.jl/issues/853
+[#854]: https://github.com/JuliaStats/MixedModels.jl/issues/854
+[#855]: https://github.com/JuliaStats/MixedModels.jl/issues/855
+[#856]: https://github.com/JuliaStats/MixedModels.jl/issues/856
+[#857]: https://github.com/JuliaStats/MixedModels.jl/issues/857
+[#858]: https://github.com/JuliaStats/MixedModels.jl/issues/858
+[#860]: https://github.com/JuliaStats/MixedModels.jl/issues/860
+[#861]: https://github.com/JuliaStats/MixedModels.jl/issues/861
+[#864]: https://github.com/JuliaStats/MixedModels.jl/issues/864
+[#865]: https://github.com/JuliaStats/MixedModels.jl/issues/865
+[#867]: https://github.com/JuliaStats/MixedModels.jl/issues/867
+[#873]: https://github.com/JuliaStats/MixedModels.jl/issues/873
+[#875]: https://github.com/JuliaStats/MixedModels.jl/issues/875
+[#876]: https://github.com/JuliaStats/MixedModels.jl/issues/876
+[#880]: https://github.com/JuliaStats/MixedModels.jl/issues/880
+[#885]: https://github.com/JuliaStats/MixedModels.jl/issues/885
+[#886]: https://github.com/JuliaStats/MixedModels.jl/issues/886
+[#887]: https://github.com/JuliaStats/MixedModels.jl/issues/887
+[#889]: https://github.com/JuliaStats/MixedModels.jl/issues/889
+[#891]: https://github.com/JuliaStats/MixedModels.jl/issues/891
+[#892]: https://github.com/JuliaStats/MixedModels.jl/issues/892
+[#893]: https://github.com/JuliaStats/MixedModels.jl/issues/893
+[#898]: https://github.com/JuliaStats/MixedModels.jl/issues/898
+[#899]: https://github.com/JuliaStats/MixedModels.jl/issues/899
+[#904]: https://github.com/JuliaStats/MixedModels.jl/issues/904

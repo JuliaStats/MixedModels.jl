@@ -44,9 +44,7 @@ function FeProfile(m::LinearMixedModel, tc::TableColumns, j::Integer)
         LinearMixedModel(y₀ - xⱼ * m.β[j], feterm, reterms, m.formula); progress=false
     )
     # not sure this next call makes sense - should the second argument be m.optsum.final?
-    _copy_away_from_lowerbd!(
-        mnew.optsum.initial, mnew.optsum.final, mnew.lowerbd; incr=0.05
-    )
+    copyto!(mnew.optsum.initial, mnew.optsum.final)
     return FeProfile(mnew, tc, y₀, xⱼ, j)
 end
 
@@ -54,7 +52,7 @@ function betaprofile!(
     pr::FeProfile{T}, tc::TableColumns{T}, βⱼ::T, j::Integer, obj::T, neg::Bool
 ) where {T}
     prm = pr.m
-    refit!(prm, mul!(copyto!(prm.y, pr.y₀), pr.xⱼ, βⱼ, -1, 1); progress=false, fitlog=false)
+    refit!(prm, mul!(copyto!(prm.y, pr.y₀), pr.xⱼ, βⱼ, -1, 1); progress=false)
     (; positions, v) = tc
     v[1] = (-1)^neg * sqrt(prm.objective - obj)
     getθ!(view(v, positions[:θ]), prm)
