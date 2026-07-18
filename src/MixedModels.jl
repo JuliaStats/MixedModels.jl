@@ -28,6 +28,7 @@ using Printf: @sprintf
 using ProgressMeter: ProgressMeter, Progress, finish!, next!
 using Random: Random, AbstractRNG, randn!
 using RectangularFullPacked: HermitianRFP, TriangularRFP
+using RectangularFullPacked.LAPACK_RFP: sfrk!
 using RegressionFormulae: fulldummy
 using SparseArrays: SparseArrays, SparseMatrixCSC, SparseVector, dropzeros!
 using SparseArrays: nnz, nonzeros, nzrange, rowvals, sparse

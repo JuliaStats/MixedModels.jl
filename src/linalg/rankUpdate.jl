@@ -46,10 +46,10 @@ end
 #     return C
 # end
 
-# function rankUpdate!(C::HermitianRFP{T}, A::StridedMatrix{T}, α, β) where {T}
-#     BLAS.syrk!('N', T(α), A, T(β), C)
-#     return C
-# end
+function rankUpdate!(C::HermitianRFP{T}, A::StridedMatrix{T}, α, β) where {T}
+    sfrk!(C.transr, C.uplo, 'N', T(α), A, T(β), C.data)
+    return C
+end
 
 """
     _columndot(rv, nz, rngi, rngj)
@@ -166,6 +166,12 @@ function rankUpdate!(
 end
 
 function rankUpdate!(C::HermOrSym, A::BlockedSparse, α, β)
+    return rankUpdate!(C, sparse(A), α, β)
+end
+
+# HermitianRFP is not a HermOrSym, so it needs its own BlockedSparse method that
+# forwards to the HermitianRFP/SparseMatrixCSC kernel.
+function rankUpdate!(C::HermitianRFP{T}, A::BlockedSparse{T}, α, β) where {T}
     return rankUpdate!(C, sparse(A), α, β)
 end
 
