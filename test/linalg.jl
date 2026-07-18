@@ -5,7 +5,7 @@ using Random
 using SparseArrays
 using Test
 
-using MixedModels: rankUpdate!
+using MixedModels: rankUpdate!, BlockedSparse
 
 @testset "mul!" begin
     for (m, p, n, q, k) in (
@@ -72,6 +72,61 @@ end
     L22L = rankUpdate!(Symmetric(zeros(100, 100), :L), L21, 1.0, 1.0)
     @test L22L ≈
         rankUpdate!(Symmetric(zeros(100, 100), :U), sparse(transpose(L21)), 1.0, 1.0)
+
+    # UniformBlockDiagonal + dense A: covers both the scalar branch (blksize < 4)
+    # and the BLAS-3 syrk! branch (blksize ≥ 4).  Compared against an independent
+    # dense computation of Cₖ := α Aₖ Aₖᵀ + β Cₖ per face.
+    rng = MersenneTwister(1)
+    for (blksize, nblocks) in ((2, 8), (4, 6)), (α, β) in ((-1.0, 1.0), (0.5, 2.0))
+        C0 = [randn(rng, blksize, blksize) for _ in 1:nblocks]
+        C0 = [M * M' + I for M in C0]  # symmetric starting faces
+        A = randn(rng, blksize * nblocks, 40)
+        expected = [
+            β .* C0[k] .+ α .* (view(A, ((k - 1) * blksize + 1):(k * blksize), :) *
+                                view(A, ((k - 1) * blksize + 1):(k * blksize), :)')
+            for k in 1:nblocks
+        ]
+        C = UniformBlockDiagonal(cat(C0...; dims=3))
+        rankUpdate!(Hermitian(C, :L), A, α, β)
+        @test all(
+            LowerTriangular(C.data[:, :, k]) ≈ LowerTriangular(expected[k])
+            for k in 1:nblocks
+        )
+    end
+
+    # UniformBlockDiagonal + BlockedSparse: each column has exactly S nonzeros in a
+    # single face.  Test both face-contiguous and shuffled column orderings (the
+    # latter exercises the multiple-runs-per-face path) and β ≠ 1.
+    function make_blockedsparse(S, nblocks, faces, rng)
+        ncols = length(faces)
+        colptr = Int32.(1:S:(S * ncols + 1))
+        rowval = Vector{Int32}(undef, S * ncols)
+        for (j, f) in enumerate(faces), t in 1:S
+            rowval[(j - 1) * S + t] = (f - 1) * S + t
+        end
+        nzval = randn(rng, S * ncols)
+        csc = SparseMatrixCSC{Float64,Int32}(S * nblocks, ncols, colptr, rowval, nzval)
+        return BlockedSparse{Float64,S,1}(csc, reshape(nzval, S, ncols), Int32[])
+    end
+    for S in (2, 4), shuffle in (false, true), (α, β) in ((-1.0, 1.0), (0.5, 2.0))
+        nblocks = 6
+        faces = repeat(1:nblocks; inner=5)         # 5 columns per face, contiguous
+        shuffle && (faces = faces[randperm(rng, length(faces))])
+        A = make_blockedsparse(S, nblocks, faces, rng)
+        C0 = [(M = randn(rng, S, S); M * M' + I) for _ in 1:nblocks]
+        expected = [β .* C0[f] for f in 1:nblocks]
+        nz = A.cscmat.nzval
+        for (j, f) in enumerate(faces)
+            x = view(nz, ((j - 1) * S + 1):(j * S))
+            expected[f] .+= α .* (x * x')
+        end
+        C = UniformBlockDiagonal(cat(C0...; dims=3))
+        rankUpdate!(Hermitian(C, :L), A, α, β)
+        @test all(
+            LowerTriangular(C.data[:, :, f]) ≈ LowerTriangular(expected[f])
+            for f in 1:nblocks
+        )
+    end
 end
 
 #=  I don't see this testset as meaningful b/c diagonal A does not occur after amalgamation of ReMat's for the same grouping factor - D.B.

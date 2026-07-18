@@ -115,21 +115,22 @@ function rankUpdate!(
     return C
 end
 
-function rankUpdate!(
-    C::HermOrSym{T,UniformBlockDiagonal{T}}, A::StridedMatrix{T}, α, β
-) where {T}
-    Cdat = C.data.data
-    require_one_based_indexing(Cdat, A)
+# Faces at or above this size use the BLAS-3 syrk! path; below it the per-face BLAS
+# call overhead outweighs the arithmetic savings and the scalar loop is faster.
+# (Empirically the crossover sits between blksize 3 and 4; see the benchmark notes.)
+const _UBD_BLAS3_MIN = 4
+
+# scalar per-face accumulation Cₖ := α Aₖ Aₖᵀ + β Cₖ over the lower triangle;
+# used for eltypes without BLAS support and for small faces
+function _ubd_rankupdate!(Cdat, A, α, β)
     isone(β) || rmul!(Cdat, β)
     blksize = size(Cdat, 1)
-
     for k in axes(Cdat, 3)
-        ioffset = (k - 1) * blksize
-        joffset = (k - 1) * blksize
+        offset = (k - 1) * blksize
         for i in axes(Cdat, 1), j in 1:i
-            iind = ioffset + i
-            jind = joffset + j
-            AtAij = 0
+            iind = offset + i
+            jind = offset + j
+            AtAij = zero(eltype(Cdat))
             for idx in axes(A, 2)
                 # because the second multiplicant is from A', swap index order
                 AtAij = muladd(A[iind, idx], A[jind, idx], AtAij)
@@ -137,7 +138,43 @@ function rankUpdate!(
             Cdat[i, j, k] = muladd(α, AtAij, Cdat[i, j, k])
         end
     end
+    return Cdat
+end
 
+# Each S×S face of the UniformBlockDiagonal owns a contiguous row band of the dense
+# A, so the whole face update Cₖ := α Aₖ Aₖᵀ + β Cₖ is a single BLAS-3 syrk! on a
+# zero-copy view.  syrk! scales and writes only the C.uplo triangle; the opposite
+# triangle keeps its stale value, which is harmless because the block is always
+# consumed through the Hermitian/Symmetric wrapper.
+function rankUpdate!(
+    C::HermOrSym{T,UniformBlockDiagonal{T}}, A::StridedMatrix{T}, α, β
+) where {T<:BlasFloat}
+    Cdat = C.data.data
+    require_one_based_indexing(Cdat, A)
+    blksize = size(Cdat, 1)
+    size(A, 1) == blksize * size(Cdat, 3) ||
+        throw(DimensionMismatch("size(A, 1) ≠ blksize * nblocks"))
+
+    if blksize < _UBD_BLAS3_MIN
+        _ubd_rankupdate!(Cdat, A, α, β)
+        return C
+    end
+
+    for k in axes(Cdat, 3)
+        rows = ((k - 1) * blksize + 1):(k * blksize)
+        BLAS.syrk!(C.uplo, 'N', T(α), view(A, rows, :), T(β), view(Cdat, :, :, k))
+    end
+
+    return C
+end
+
+# generic fallback for eltypes without BLAS support
+function rankUpdate!(
+    C::HermOrSym{T,UniformBlockDiagonal{T}}, A::StridedMatrix{T}, α, β
+) where {T}
+    Cdat = C.data.data
+    require_one_based_indexing(Cdat, A)
+    _ubd_rankupdate!(Cdat, A, α, β)
     return C
 end
 
@@ -162,26 +199,48 @@ function rankUpdate!(C::HermOrSym{T,Diagonal{T}}, A::BlockedSparse{T}, α, β) w
     return rankUpdate!(C, sparse(A), α, β)
 end
 
+# Each column of A has exactly S nonzeros, all landing in a single S×S face of C, so
+# each face update is Cₖ := α Aₖ Aₖᵀ + β Cₖ where Aₖ collects that face's columns.
+# With exactly S nonzeros per column the nonzeros form a dense S×ncols panel
+# (reshape shares the nzval buffer, no copy), and columns of a face are contiguous
+# in practice (a column touching one face is a nested relationship), so a single
+# BLAS-3 syrk! per maximal contiguous run of equal face replaces the many BLAS-2
+# rank-1 syr! calls — several-fold faster and allocation-free.  Non-contiguous
+# orderings simply split a face across runs (still correct, never worse than the
+# per-column path), since β is applied once up front and every syrk! accumulates.
 function rankUpdate!(
     C::HermOrSym{T,UniformBlockDiagonal{T}}, A::BlockedSparse{T,S}, α, β
 ) where {T,S}
     Ac = A.cscmat
     cp = Ac.colptr
+    ncols = size(Ac, 2)
     all(j -> cp[j + 1] - cp[j] == S, axes(Ac, 2)) ||  # allocation-free vs diff(cp)
         throw(ArgumentError("Columns of A must have exactly $S nonzeros"))
     Cdat = C.data.data
     require_one_based_indexing(Ac, Cdat)
 
-    j, k, l = size(Cdat)
-    S == j == k && div(Ac.m, S) == l ||
+    r, c, l = size(Cdat)
+    S == r == c && div(Ac.m, S) == l ||
         throw(DimensionMismatch("div(A.cscmat.m, S) ≠ size(C.data.data, 3)"))
-    nz = Ac.nzval
     rv = Ac.rowval
+    panel = reshape(Ac.nzval, S, ncols)  # column j ↔ face div(rv[j*S], S)
 
-    @inbounds for j in axes(Ac, 2)
-        nzr = nzrange(Ac, j)
-        BLAS.syr!('L', α, view(nz, nzr), view(Cdat, :, :, div(rv[last(nzr)], S)))
+    isone(β) || rmul!(Cdat, β)
+    ncols == 0 && return C
+
+    runstart = 1
+    curface = div(rv[S], S)
+    @inbounds for j in 2:ncols
+        face = div(rv[j * S], S)
+        if face != curface
+            BLAS.syrk!('L', 'N', T(α), view(panel, :, runstart:(j - 1)),
+                one(T), view(Cdat, :, :, curface))
+            runstart = j
+            curface = face
+        end
     end
+    @inbounds BLAS.syrk!('L', 'N', T(α), view(panel, :, runstart:ncols),
+        one(T), view(Cdat, :, :, curface))
 
     return C
 end
