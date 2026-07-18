@@ -86,7 +86,11 @@ function rankUpdate!(
     lower = C.uplo == 'L'
     adim = lower ? 1 : 2
     if size(C, 1) ≠ size(A, adim)
-        throw(DimensionMismatch("size(C,1) = $(size(C, 1)) does not match size(A,$adim) = $(size(A, adim))"))
+        throw(
+            DimensionMismatch(
+                "size(C,1) = $(size(C, 1)) does not match size(A,$adim) = $(size(A, adim))"
+            ),
+        )
     end
 
     Cd, rv, nz = C.data, A.rowval, A.nzval
@@ -156,9 +160,9 @@ function rankUpdate!(
                     kk = rngjj[i]
                     rvkk = rv[kk]
                     @assert rvkk ≥ rvj
-                    linind =  (rvkk - Cdm - tall) * Cdn + Cdrow
+                    linind = (rvkk - Cdm - tall) * Cdn + Cdrow
                     Cdat[linind] = muladd(nz[kk], anzj, Cdat[linind])
-                end 
+                end
             end
         end
     end
