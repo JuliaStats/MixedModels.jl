@@ -42,13 +42,15 @@ copies of off-diagonal `A` blocks premultiplied by `Λᵣᵀ` (`C1`) or postmult
 random-effects term.
 
 The blocks of `X` mirror the structure of the corresponding blocks of `L`:
-block-diagonal diagonal blocks stay block-diagonal and `BlockedSparse` off-diagonal
-blocks (nested grouping factors) are stored as `SparseMatrixCSC` sharing the pattern of
-the `L` block.  For pairs whose `A` block is sparse, only the entries of `S` matching
-the sparsity pattern of `A` are evaluated: between two scalar terms they are accumulated
-directly without a buffer, otherwise into a `SparseMatrixCSC` buffer mirroring the
-pattern of `A`.  Dense `S`/`C1`/`C2` buffers are allocated only for pairs whose `A`
-block is dense.
+block-diagonal diagonal blocks stay block-diagonal, a diagonal block stored in
+rectangular full packed format (`TriangularRFP`, see the `RFPthreshold` argument of
+[`LinearMixedModel`](@ref)) is inverted in the same packed storage, and `BlockedSparse`
+off-diagonal blocks (nested grouping factors) are stored as `SparseMatrixCSC` sharing
+the pattern of the `L` block.  For pairs whose `A` block is sparse, only the entries of
+`S` matching the sparsity pattern of `A` are evaluated: between two scalar terms they are
+accumulated directly without a buffer, otherwise into a `SparseMatrixCSC` buffer
+mirroring the pattern of `A`.  Dense `S`/`C1`/`C2` buffers are allocated only for pairs
+whose `A` block is dense.
 """
 # column-panel width for the BLAS-3 evaluation of the cross term between two scalar
 # terms whose Cholesky fill block is dense (see `_crosspair_blas3!`)
@@ -70,6 +72,30 @@ _cscmat(A::BlockedSparse) = A.cscmat
 _cscmat(A::SparseMatrixCSC) = A
 _densemat(A::AbstractMatrix) = A
 _densemat(A::BlockedSparse) = A.cscmat
+
+# the working part of a diagonal block of L: `createAL` wraps dense and
+# block-diagonal diagonal blocks in LowerTriangular, while Diagonal,
+# TriangularRFP, and the trailing [Xy] block are stored bare
+_diagdata(A::AbstractMatrix) = A
+_diagdata(A::LowerTriangular) = parent(A)
+
+# views of the two dense regions of a (transr = 'N', uplo = 'L') TriangularRFP of
+# order n: with L = [L11 0; L21 L22], L11 of order m1 = n - n ÷ 2 and L22 of order
+# m2 = n ÷ 2, `t` holds the trapezoid [L11; L21] (only the lower triangle of its
+# first m1 rows is meaningful) and `u` holds L22' as its upper triangle (including
+# the diagonal); entry (i, j) of L is t[i, j] for j ≤ m1 and u[j - m1, i - m1] else
+function _rfpviews(A::TriangularRFP)
+    (A.transr == 'N' && A.uplo == 'L') ||
+        throw(ArgumentError("A must be in transr = 'N', uplo = 'L' storage"))
+    dat = A.data
+    n = size(A, 1)
+    m2 = n >> 1
+    m1 = n - m2
+    shift = iseven(n)   # the trapezoid starts on row 2 of the parent for even n
+    t = view(dat, (1 + shift):(n + shift), 1:m1)
+    u = view(dat, 1:m2, (1 + m1 - m2):m1)
+    return t, u, m1, m2
+end
 
 # a SparseMatrixCSC sharing the pattern (colptr, rowval) of A, with its own nzval.
 # The pattern arrays are never mutated through either matrix.
@@ -138,7 +164,8 @@ end
 function _sparseXok(L, X::Matrix{AbstractMatrix{T}}, reterms, r::Int, c::Int) where {T}
     Lrc = L[block(r, c)]
     isa(Lrc, Union{BlockedSparse{T},SparseMatrixCSC{T}}) || return false
-    isa(L[kp1choose2(r)], Union{Diagonal{T},UniformBlockDiagonal{T}}) || return false
+    isa(_diagdata(L[kp1choose2(r)]), Union{Diagonal{T},UniformBlockDiagonal{T}}) ||
+        return false
     isa(X[c, c], Union{Diagonal{T},UniformBlockDiagonal{T}}) || return false
     Lcsc = _cscmat(Lrc)
     _blockaligned(Lcsc, _kdim(reterms[r]), _kdim(reterms[c])) || return false
@@ -185,11 +212,14 @@ function GradientWorkspace(m::LinearMixedModel{T}) where {T}
     C1 = fill!(Matrix{AbstractMatrix{T}}(undef, nb, k), placeholder)
     C2 = fill!(Matrix{AbstractMatrix{T}}(undef, nb, k), placeholder)
     for c in 1:nb
-        Lcc = L[kp1choose2(c)]
+        Lcc = _diagdata(L[kp1choose2(c)])
         X[c, c] = if isa(Lcc, Diagonal)
             Diagonal(Vector{T}(undef, size(Lcc, 1)))
         elseif isa(Lcc, UniformBlockDiagonal)
             UniformBlockDiagonal(Array{T,3}(undef, size(Lcc.data)))
+        elseif isa(Lcc, TriangularRFP)
+            # mirror the packed storage of the L block
+            TriangularRFP(Matrix{T}(undef, size(Lcc.data)), Lcc.transr, Lcc.uplo)
         else
             Matrix{T}(undef, size(Lcc))
         end
@@ -218,7 +248,9 @@ function GradientWorkspace(m::LinearMixedModel{T}) where {T}
                 # entries of S accumulated directly, no buffer.  When the fill block
                 # L[r,r] is dense the cross term is evaluated with a BLAS-3 kernel
                 # needing a q_r × GRAD_PANEL scratch (see `_crosspair_blas3!`)
-                isa(L[kp1choose2(r)], Matrix) && (maxheavy = max(maxheavy, size(Arb, 1)))
+                if isa(_diagdata(L[kp1choose2(r)]), Union{Matrix,TriangularRFP})
+                    maxheavy = max(maxheavy, size(Arb, 1))
+                end
             elseif path[r, b] === :selected
                 S[r, b] = _patternmirror(_cscmat(Arb))
             else
@@ -412,6 +444,8 @@ function _ldivL!(Ljj::UniformBlockDiagonal{T}, B::SparseMatrixCSC{T}) where {T}
     return B
 end
 
+_ldivL!(Ljj::TriangularRFP{T}, B::Matrix{T}) where {T} = ldiv!(Ljj, B)
+
 _zero!(X::Matrix{T}) where {T} = fill!(X, zero(T))
 _zero!(X::SparseMatrixCSC{T}) where {T} = (fill!(nonzeros(X), zero(T)); X)
 
@@ -442,14 +476,36 @@ function _invL!(w::GradientWorkspace{T}, m::LinearMixedModel{T}) where {T}
     X = w.X
     nb = size(X, 1)
     for c in 1:nb
-        Xcc = _identity!(X[c, c])
-        _ldivL!(L[kp1choose2(c)], Xcc)
+        Lcc = _diagdata(L[kp1choose2(c)])
+        Xcc = X[c, c]
+        if isa(Xcc, TriangularRFP{T})
+            # invert in the packed storage, in place (LAPACK's tftri)
+            copyto!(Xcc.data, (Lcc::TriangularRFP{T}).data)
+            inv!(Xcc)
+        else
+            _ldivL!(Lcc, _identity!(Xcc))
+        end
         for r in (c + 1):nb
-            Xrc = _zero!(X[r, c])
-            for s in c:(r - 1)
-                _mulsub!(Xrc, L[block(r, s)], X[s, c])
+            Xrc = X[r, c]
+            if isa(Lcc, TriangularRFP{T})
+                # the blocks below an RFP diagonal block are dense and its packed
+                # inverse cannot be multiplied against directly, so the s = c term
+                # -L[r,c] X[c,c] is evaluated as a triangular solve against L[c,c]
+                # in the packed storage (LAPACK's tfsm)
+                Xrc = Xrc::Matrix{T}
+                copyto!(Xrc, L[block(r, c)]::Matrix{T})
+                rdiv!(Xrc, Lcc)
+                rmul!(Xrc, -one(T))
+                for s in (c + 1):(r - 1)
+                    _mulsub!(Xrc, L[block(r, s)], X[s, c])
+                end
+            else
+                _zero!(Xrc)
+                for s in c:(r - 1)
+                    _mulsub!(Xrc, L[block(r, s)], X[s, c])
+                end
             end
-            _ldivL!(L[kp1choose2(r)], Xrc)
+            _ldivL!(_diagdata(L[kp1choose2(r)]), Xrc)
         end
     end
     return w
@@ -518,6 +574,27 @@ function _gramacc!(
     return S
 end
 
+# S += Xsr' Xsb for a packed triangular Xsr = [X11 0; X21 X22]: two triangular
+# multiplications (BLAS's trmm on the storage regions) and one dense product
+function _gramacc!(S::Matrix{T}, Xsr::TriangularRFP{T}, Xsb::Matrix{T}) where {T}
+    tv, uv, m1, m2 = _rfpviews(Xsr)
+    n = size(Xsr, 1)
+    q = size(Xsb, 2)
+    B2 = view(Xsb, (m1 + 1):n, :)
+    tmp = Matrix{T}(undef, m1, q)
+    copyto!(tmp, view(Xsb, 1:m1, :))
+    BLAS.trmm!('L', 'L', 'T', 'N', one(T), view(tv, 1:m1, :), tmp)  # X11' B1
+    view(S, 1:m1, :) .+= tmp
+    mul!(view(S, 1:m1, :), adjoint(view(tv, (m1 + 1):n, :)), B2, one(T), one(T))
+    if !iszero(m2)
+        tmp2 = view(tmp, 1:m2, :)
+        copyto!(tmp2, B2)
+        BLAS.trmm!('L', 'U', 'N', 'N', one(T), uv, tmp2)            # X22' B2
+        view(S, (m1 + 1):n, :) .+= tmp2
+    end
+    return S
+end
+
 function _gramacc!(S::Matrix{T}, Xsr::Diagonal{T}, Xsb::SparseMatrixCSC{T}) where {T}
     d = Xsr.diag
     rv = rowvals(Xsb)
@@ -568,6 +645,18 @@ function _colsumabs2!(d::Vector{T}, X::SparseMatrixCSC{T}) where {T}
     return d
 end
 
+function _colsumabs2!(d::Vector{T}, X::TriangularRFP{T}) where {T}
+    tv, uv, m1, m2 = _rfpviews(X)
+    n = length(d)
+    @inbounds for j in 1:m1
+        d[j] += sum(abs2, view(tv, j:n, j))
+    end
+    @inbounds for jl in 1:m2
+        d[m1 + jl] += sum(abs2, view(uv, jl, jl:m2))
+    end
+    return d
+end
+
 function _gramdiag!(S::Diagonal{T}, w::GradientWorkspace{T}, b::Int, kre::Int,
     wx::T, wy::T) where {T}
     d = fill!(S.diag, zero(T))
@@ -605,6 +694,17 @@ function _gramfaces_acc!(dat::Array{T,3}, Xsb::UniformBlockDiagonal{T}) where {T
     for f in axes(dat, 3)
         Xf = view(Xd, :, :, f)
         mul!(view(dat, :, :, f), Xf', Xf, one(T), one(T))
+    end
+    return dat
+end
+
+function _gramfaces_acc!(dat::Array{T,3}, Xsb::TriangularRFP{T}) where {T}
+    kb = size(dat, 1)
+    for f in axes(dat, 3)
+        coff = (f - 1) * kb
+        for c in 1:kb, a in 1:kb
+            dat[a, c, f] += _xdotRFP(Xsb, coff + a, coff + c)
+        end
     end
     return dat
 end
@@ -672,6 +772,36 @@ function _xdot(Xr::UniformBlockDiagonal{T}, Xb::Matrix{T}, u::Integer, v::Intege
     return acc
 end
 
+function _xdot(Xr::TriangularRFP{T}, Xb::Matrix{T}, u::Integer, v::Integer) where {T}
+    tv, uv, m1, m2 = _rfpviews(Xr)
+    n = size(Xr, 1)
+    ui = Int(u)
+    if ui ≤ m1
+        return dot(view(tv, ui:n, ui), view(Xb, ui:n, v))
+    else
+        ul = ui - m1
+        return dot(view(uv, ul, ul:m2), view(Xb, ui:n, v))
+    end
+end
+
+# entry (a, b) of X'X for an RFP-stored lower-triangular X; only rows ≥ max(a, b)
+# contribute, which selects the storage regions of the two columns
+function _xdotRFP(X::TriangularRFP{T}, a::Integer, b::Integer) where {T}
+    tv, uv, m1, m2 = _rfpviews(X)
+    n = size(X, 1)
+    lo, hi = minmax(Int(a), Int(b))
+    if hi ≤ m1
+        return dot(view(tv, hi:n, lo), view(tv, hi:n, hi))
+    elseif lo > m1
+        ll = lo - m1
+        hl = hi - m1
+        return dot(view(uv, ll, hl:m2), view(uv, hl, hl:m2))
+    else
+        hl = hi - m1
+        return dot(view(tv, hi:n, lo), view(uv, hl, hl:m2))
+    end
+end
+
 # entry (u, v) of Xkrᵀ W Xkb for the [Xy] block row, with weight wx on the
 # first p rows and wy on the last
 function _xydot(Xkr::Matrix{T}, Xkb::Matrix{T}, u::Integer, v::Integer,
@@ -689,7 +819,8 @@ end
 # Σ over the nonzeros (u, v) of A of A[u,v] * (Xrᵀ Xb)[u,v] for one block-row pair of X.
 # This method is a function barrier: the X blocks are stored with an abstract element
 # type and the entry loops must run with concretely typed arrays.
-function _sparseacc(A::SparseMatrixCSC{T}, Xr::Union{Diagonal{T},Matrix{T}},
+function _sparseacc(A::SparseMatrixCSC{T},
+    Xr::Union{Diagonal{T},Matrix{T},TriangularRFP{T}},
     Xb::Matrix{T}) where {T}
     rv = rowvals(A)
     nz = nonzeros(A)
@@ -723,7 +854,8 @@ end
 # accumulate Sp[u,v] += (Xsrᵀ Xsb)[u,v] over the nonzeros (u,v) of Sp for the block
 # types that occur in X; like `_sparseacc` these are function barriers
 function _selacc!(Sp::SparseMatrixCSC{T},
-    Xr::Union{Diagonal{T},UniformBlockDiagonal{T},Matrix{T}}, Xb::Matrix{T}) where {T}
+    Xr::Union{Diagonal{T},UniformBlockDiagonal{T},Matrix{T},TriangularRFP{T}},
+    Xb::Matrix{T}) where {T}
     rv = rowvals(Sp)
     nz = nonzeros(Sp)
     @inbounds for v in axes(Sp, 2)
@@ -1021,12 +1153,49 @@ function _crossacc_blas3!(
     return acc
 end
 
+# ditto for a packed triangular fill block Xrr = [X11 0; X21 X22]: the panel product
+# is assembled from two triangular multiplications (BLAS's trmm on the storage
+# regions) and one dense product
+function _crossacc_blas3!(
+    Pp::Matrix{T}, A::SparseMatrixCSC{T}, Xrr::TriangularRFP{T}, Xrb::Matrix{T}
+) where {T}
+    rv = rowvals(A)
+    nz = nonzeros(A)
+    tv, uv, m1, m2 = _rfpviews(Xrr)
+    qr = size(Xrr, 2)
+    qb = size(Xrb, 2)
+    acc = zero(T)
+    coloff = 0
+    while coloff < qb
+        width = min(size(Pp, 2), qb - coloff)
+        cols = (coloff + 1):(coloff + width)
+        P1 = view(Pp, 1:m1, 1:width)
+        copyto!(P1, view(Xrb, 1:m1, cols))
+        BLAS.trmm!('L', 'L', 'T', 'N', one(T), view(tv, 1:m1, :), P1)  # X11' Y1
+        mul!(P1, adjoint(view(tv, (m1 + 1):qr, :)), view(Xrb, (m1 + 1):qr, cols),
+            one(T), one(T))                                            # += X21' Y2
+        if !iszero(m2)
+            P2 = view(Pp, (m1 + 1):qr, 1:width)
+            copyto!(P2, view(Xrb, (m1 + 1):qr, cols))
+            BLAS.trmm!('L', 'U', 'N', 'N', one(T), uv, P2)             # X22' Y2
+        end
+        Pv = view(Pp, 1:qr, 1:width)
+        @inbounds for j in 1:width
+            for idx in nzrange(A, coloff + j)
+                acc += nz[idx] * Pv[rv[idx], j]
+            end
+        end
+        coloff += width
+    end
+    return acc
+end
+
 # is the BLAS-3 cross-term path worthwhile for pair (r, b)?  It needs a dense fill block
 # and pays off only when A[r,b] is dense enough that the extra flops of the full product
 # are outweighed by BLAS-3 throughput (the crossover ratio ≈ rate_BLAS1 / rate_BLAS3)
 function _use_blas3_cross(w::GradientWorkspace, m::LinearMixedModel, r::Int, b::Int)
     isempty(w.Ppanel) && return false
-    isa(w.X[r, r], Matrix) || return false
+    isa(w.X[r, r], Union{Matrix,TriangularRFP}) || return false
     Arb = _cscmat(m.A[block(r, b)])
     return nnz(Arb) > 0.03 * size(Arb, 1) * size(Arb, 2)
 end
@@ -1037,7 +1206,7 @@ function _crosspair_blas3!(w::GradientWorkspace{T}, m::LinearMixedModel{T}, r::I
     (; A, reterms) = m
     kre = length(reterms)
     Arb = _cscmat(A[block(r, b)])
-    acc = _crossacc_blas3!(w.Ppanel, Arb, w.X[r, r]::Matrix{T}, w.X[r, b]::Matrix{T})
+    acc = _crossacc_blas3!(w.Ppanel, Arb, w.X[r, r], w.X[r, b]::Matrix{T})
     for s in (r + 1):kre    # remaining (light) blocks stay on the sparse BLAS-1 path
         acc += _sparseacc(Arb, w.X[s, r], w.X[s, b]::Matrix{T})
     end

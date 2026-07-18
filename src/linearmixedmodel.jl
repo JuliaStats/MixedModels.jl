@@ -51,7 +51,7 @@ const _MISSING_RE_ERROR = ArgumentError(
 function LinearMixedModel(
     f::FormulaTerm, tbl::Tables.ColumnTable; contrasts=Dict{Symbol,Any}(), wts=nothing,
     weights=[],
-    σ=nothing, amalgamate=true,
+    σ=nothing, amalgamate=true, RFPthreshold=1000,
 )
     fvars = StatsModels.termvars(f)
     tvars = Tables.columnnames(tbl)
@@ -80,7 +80,7 @@ function LinearMixedModel(
 
     y, Xs = modelcols(form, tbl)
 
-    return LinearMixedModel(y, Xs, form, weights, σ, amalgamate)
+    return LinearMixedModel(y, Xs, form, weights, σ, amalgamate, RFPthreshold)
 end
 
 """
@@ -103,13 +103,15 @@ function LinearMixedModel(
     weights=[],
     σ=nothing,
     amalgamate=true,
+    RFPthreshold=1000,
 )
     T = promote_type(Float64, float(eltype(y)))  # ensure eltype of model matrices is at least Float64
 
     reterms, feterms = _split_re_fe_terms(Xs, form, T)
     isempty(reterms) && throw(_MISSING_RE_ERROR)
     return LinearMixedModel(
-        convert(Array{T}, y), only(feterms), reterms, form, weights, σ, amalgamate
+        convert(Array{T}, y), only(feterms), reterms, form, weights, σ, amalgamate,
+        RFPthreshold,
     )
 end
 
@@ -146,7 +148,7 @@ function _split_re_fe_terms(Xs::Tuple, form::FormulaTerm, ::Type{T}) where {T}
 end
 
 """
-    LinearMixedModel(y, feterm, reterms, form, weights=[], σ=nothing; amalgamate=true)
+    LinearMixedModel(y, feterm, reterms, form, weights=[], σ=nothing; amalgamate=true, RFPthreshold=1000)
 
 Private constructor for a `LinearMixedModel` given already assembled fixed and random effects.
 
@@ -167,6 +169,7 @@ function LinearMixedModel(
     weights=[],
     σ=nothing,
     amalgamate=true,
+    RFPthreshold=1000,
 ) where {T}
     # detect and combine RE terms with the same grouping var
     if length(reterms) > 1 && amalgamate
@@ -190,7 +193,7 @@ function LinearMixedModel(
     sqrtwts = map!(sqrt, Vector{T}(undef, length(weights)), weights)
     reweight!.(reterms, Ref(sqrtwts))
     reweight!(Xy, sqrtwts)
-    A, L = createAL(reterms, Xy)
+    A, L = createAL(reterms, Xy; RFPthreshold)
     θ = foldl(vcat, getθ(c) for c in reterms)
     optsum = OptSummary(θ)
     optsum.sigma = isnothing(σ) ? nothing : T(σ)
@@ -230,8 +233,9 @@ function StatsAPI.fit(::Type{LinearMixedModel},
     contrasts=Dict{Symbol,Any}(),
     σ=nothing,
     amalgamate=true,
+    RFPthreshold=1000,
     kwargs...)
-    lmod = LinearMixedModel(f, tbl; contrasts, weights, wts, σ, amalgamate)
+    lmod = LinearMixedModel(f, tbl; contrasts, weights, wts, σ, amalgamate, RFPthreshold)
     return fit!(lmod; kwargs...)
 end
 
@@ -402,9 +406,13 @@ function _pushALblock!(A, L, blk)
     return push!(A, deepcopy(isa(blk, BlockedSparse) ? blk.cscmat : blk))
 end
 
-function createAL(reterms::Vector{<:AbstractReMat{T}}, Xy::FeMat{T}) where {T}
+function createAL(
+    reterms::Vector{<:AbstractReMat{T}},
+    Xy::FeMat{T};
+    RFPthreshold::Int=1000,
+) where {T}
     k = length(reterms)
-    vlen = kchoose2(k + 1)
+    vlen = kp1choose2(k + 1)
     A = sizehint!(AbstractMatrix{T}[], vlen)
     L = sizehint!(AbstractMatrix{T}[], vlen)
     for i in eachindex(reterms)
@@ -412,16 +420,23 @@ function createAL(reterms::Vector{<:AbstractReMat{T}}, Xy::FeMat{T}) where {T}
             _pushALblock!(A, L, densify(reterms[i]' * reterms[j]))
         end
     end
-    for j in eachindex(reterms)   # can't fold this into the previous loop b/c block order
+    for j in eachindex(reterms)     # can't fold this into the previous loop b/c block order
         _pushALblock!(A, L, densify(Xy' * reterms[j]))
     end
     _pushALblock!(A, L, densify(Xy'Xy))
-    for i in 2:k      # check for fill-in due to non-nested grouping factors
+    for i in 2:k                    # check for fill-in due to non-nested grouping factors
         ci = reterms[i]
         for j in 1:(i - 1)
             cj = reterms[j]
             if !isnested(cj, ci)
-                for l in i:k
+                ind = kp1choose2(i) # location of i'th diagonal block
+                Li = collect(L[ind])
+                L[ind] = if size(Li, 2) > RFPthreshold
+                    TriangularRFP(Li, :L)
+                else
+                    LowerTriangular(Li)
+                end
+                for l in (i + 1):k
                     ind = block(l, i)
                     L[ind] = Matrix(L[ind])
                 end
@@ -429,7 +444,14 @@ function createAL(reterms::Vector{<:AbstractReMat{T}}, Xy::FeMat{T}) where {T}
             end
         end
     end
-    return identity.(A), identity.(L)
+    for k in axes(reterms, 1)    # patch up the UniformBlockDiagonal in L for nested factors
+        diagind = kp1choose2(k)
+        Ldi = L[diagind]
+        if isa(Ldi, UniformBlockDiagonal)
+            L[diagind] = LowerTriangular(Ldi)
+        end
+    end
+    return identity.(A), identity.(L)  # does anyone remember what the `identity` is for?`
 end
 
 function StatsAPI.cooksdistance(model::LinearMixedModel)
@@ -789,8 +811,12 @@ end
 
 # use dispatch to distinguish Diagonal and UniformBlockDiagonal in first(L)
 _ldivB1!(B1::Diagonal{T}, rhs::AbstractVector{T}, ind) where {T} = rhs ./= B1.diag[ind]
-function _ldivB1!(B1::UniformBlockDiagonal{T}, rhs::AbstractVector{T}, ind) where {T}
-    return ldiv!(LowerTriangular(view(B1.data, :, :, ind)), rhs)
+function _ldivB1!(
+    B1::LowerTriangular{T,UniformBlockDiagonal{T}},
+    rhs::AbstractVector{T},
+    ind,
+) where {T}
+    return ldiv!(LowerTriangular(view(B1.data.data, :, :, ind)), rhs)
 end
 
 """
@@ -1207,42 +1233,55 @@ end
 Base.show(io::IO, m::LinearMixedModel) = Base.show(io, MIME("text/plain"), m)
 
 """
-    _findnz(A::AbstractMatrix)
+    _coord(A::AbstractMatrix)
 
-Return the positions and values of the nonzeros in `A` as an (I, J, V) tuple
-
-When possible, methods for this generic pass through to methods for `SparseArrays.findnz`.
-The exceptions are the `Matrix` and `LinearAlgebra.Diagonal` classes where our defining a
-`findnz` method would be type piracy.
+Return the positions and values of the nonzeros in `A` as a `TypedTables.Table` with columns `i`, `j`, and `v`
 """
-
-function _findnz(A::Matrix)
-    m, n = size(A)
-    return (
-        repeat(axes(A, 1); outer=n),
-        repeat(axes(A, 2); inner=m),
-        vec(A),
-    )
+function _coord(A::Diagonal)
+    return Table(; i=Int32.(axes(A, 1)), j=Int32.(axes(A, 2)), v=A.diag)
 end
 
-function _findnz(A::Diagonal)
-    return (axes(A, 1), axes(A, 2), A.diag)
-end
-
-_findnz(x::AbstractMatrix) = findnz(x)
-
-function SparseArrays.findnz(A::UniformBlockDiagonal)
+function _coord(A::UniformBlockDiagonal)
     dat = A.data
     r, c, k = size(dat)
     blk = repeat(r .* (0:(k - 1)); inner=r * c)
-    return (
-        repeat(1:r; outer=c * k) .+ blk,
-        repeat(1:c; inner=r, outer=k) .+ blk,
-        vec(dat),
+    return Table(;
+        i=Int32.(repeat(1:r; outer=c * k) .+ blk),
+        j=Int32.(repeat(1:c; inner=r, outer=k) .+ blk),
+        v=vec(dat),
     )
 end
 
-SparseArrays.findnz(A::BlockedSparse) = findnz(A.cscmat)
+function _coord(A::LowerTriangular{T,UniformBlockDiagonal{T}}) where {T}
+    dat = A.data.data
+    r, c, k = size(dat)
+    blk = repeat(r .* (0:(k - 1)); inner=r * c)
+    return Table(;
+        i=Int32.(repeat(1:r; outer=c * k) .+ blk),
+        j=Int32.(repeat(1:c; inner=r, outer=k) .+ blk),
+        v=vec(dat),
+    )
+end
+
+function _coord(A::SparseMatrixCSC{T,Int32}) where {T}
+    rv = rowvals(A)
+    cv = similar(rv)
+    for j in axes(A, 2), k in nzrange(A, j)
+        cv[k] = j
+    end
+    return Table(; i=rv, j=cv, v=nonzeros(A))
+end
+
+_coord(A::BlockedSparse) = _coord(A.cscmat)
+
+function _coord(A::Matrix)
+    m, n = size(A)
+    return Table(;
+        i=Int32.(repeat(axes(A, 1); outer=n)),
+        j=Int32.(repeat(axes(A, 2); inner=m)),
+        v=vec(A),
+    )
+end
 
 function sparsemat(
     typ::Symbol, m::LinearMixedModel{T}; fname::Symbol=first(fnames(m)), full::Bool=false
@@ -1258,15 +1297,13 @@ function sparsemat(
     end
     blks = sblk:(length(reterms) + full)
     rowoffset, coloffset = 0, 0
-    I = Int32[]
-    J = Int32[]
-    V = T[]
+    val = (i=Int32[], j=Int32[], v=T[])
     for i in blks, j in first(blks):i
         Lblk = bmat[block(i, j)]
-        cblk = _findnz(Lblk)
-        append!(I, first(cblk) .+ Int32(rowoffset))
-        append!(J, cblk[2] .+ Int32(coloffset))
-        append!(V, last(cblk))
+        cblk = _coord(Lblk)
+        append!(val.i, cblk.i .+ Int32(rowoffset))
+        append!(val.j, cblk.j .+ Int32(coloffset))
+        append!(val.v, cblk.v)
         if i == j
             coloffset = 0
             rowoffset += size(Lblk, 1)
@@ -1274,7 +1311,30 @@ function sparsemat(
             coloffset += size(Lblk, 2)
         end
     end
-    return tril!(sparse(I, J, V))
+    return tril!(sparse(val.i, val.j, val.v))
+end
+
+function _triinds(n::Integer, uplo::Symbol)
+    inds = sizehint!(@NamedTuple{i::Int32, j::Int32}[], kp1choose2(n))
+    ul = uplo == :U
+    for j in Int32.(1:n)
+        for i in Int32.(ul ? (1:j) : (j:n))
+            push!(inds, (; i, j))
+        end
+    end
+    return Table(inds)
+end
+
+function _coord(A::LowerTriangular{T,Matrix{T}}) where {T}
+    tbl = _triinds(size(A, 2), :L)
+    v = [A[i, j] for (i, j) in tbl]
+    return Table(tbl; v)
+end
+
+function _coord(A::TriangularRFP{T}) where {T}
+    tbl = _triinds(size(A, 2), Symbol(A.uplo))
+    v = [A[i, j] for (i, j) in tbl]
+    return Table(tbl; v)
 end
 
 """
@@ -1417,12 +1477,14 @@ end
 
 function updateL!(A::Vector, L::Vector, reterms::Vector)
     k = length(reterms)
-    copyto!(last(L), last(A))  # ensure the fixed-effects:response block is copied
-    for j in eachindex(reterms) # pre- and post-multiply by Λ, add I to diagonal
+    copyto!(last(L), last(A))      # ensure the fixed-effects:response block is copied
+    for j in eachindex(reterms)    # pre- and post-multiply by Λ, add I to diagonal
         cj = reterms[j]
         diagind = kp1choose2(j)
-        copyscaleinflate!(L[diagind], A[diagind], cj)
-        for i in (j + 1):(k + 1)     # postmultiply column by Λ
+        LdH = L[diagind]
+        LdH = isa(LdH, LowerTriangular) ? Hermitian(LdH.data, :L) : Hermitian(LdH, :L)
+        copyscaleinflate!(LdH, A[diagind], cj)
+        for i in (j + 1):(k + 1)   # postmultiply column by Λ
             bij = block(i, j)
             rmulΛ!(copyto!(L[bij], A[bij]), cj)
         end
@@ -1433,17 +1495,17 @@ function updateL!(A::Vector, L::Vector, reterms::Vector)
     for j in 1:(k + 1)             # blocked Cholesky
         Ljj = L[kp1choose2(j)]
         T = eltype(Ljj)
+        LjjH = isa(Ljj, LowerTriangular) ? Hermitian(Ljj.data, :L) : Hermitian(Ljj, :L)
         for jj in 1:(j - 1)
-            rankUpdate!(Hermitian(Ljj, :L), L[block(j, jj)], -one(T), one(T))
+            rankUpdate!(LjjH, L[block(j, jj)], -one(T), one(T))
         end
-        cholUnblocked!(Ljj, Val{:L})
-        LjjT = isa(Ljj, Diagonal) ? Ljj : LowerTriangular(Ljj)
+        cholUnblocked!(LjjH)
         for i in (j + 1):(k + 1)
             Lij = L[block(i, j)]
             for jj in 1:(j - 1)
                 mul!(Lij, L[block(i, jj)], L[block(j, jj)]', -one(T), one(T))
             end
-            rdiv!(Lij, LjjT')
+            rdiv!(Lij, Ljj')
         end
     end
     return L
