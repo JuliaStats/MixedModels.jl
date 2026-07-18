@@ -233,8 +233,9 @@ function StatsAPI.fit(::Type{LinearMixedModel},
     contrasts=Dict{Symbol,Any}(),
     σ=nothing,
     amalgamate=true,
+    RFPthreshold=1000,
     kwargs...)
-    lmod = LinearMixedModel(f, tbl; contrasts, weights, wts, σ, amalgamate)
+    lmod = LinearMixedModel(f, tbl; contrasts, weights, wts, σ, amalgamate, RFPthreshold)
     return fit!(lmod; kwargs...)
 end
 
