@@ -627,6 +627,7 @@ function copyscaleinflate!(
     Ajj::UniformBlockDiagonal{T},
     Λj::ReMat{T,S},
 ) where {T,S}    # S is an integer - the size of the diagonal blocks
+    fill!(Ljj.data, zero(T))  # zero the off-block entries left over from a previous factorization
     LjjT = TriangularRFP(Ljj.data, Ljj.transr, Ljj.uplo)
     q, r = divrem(size(Ljj, 1), S)
     iszero(r) || throw(DimensionMismatch("size(Ljj, 1) is not a multiple of S"))
