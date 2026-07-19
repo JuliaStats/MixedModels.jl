@@ -51,7 +51,7 @@ const _MISSING_RE_ERROR = ArgumentError(
 function LinearMixedModel(
     f::FormulaTerm, tbl::Tables.ColumnTable; contrasts=Dict{Symbol,Any}(), wts=nothing,
     weights=[],
-    σ=nothing, amalgamate=true, RFPthreshold=1000, sortlevels=false,
+    σ=nothing, amalgamate=true, RFPthreshold=1000, sortlevels=true,
 )
     fvars = StatsModels.termvars(f)
     tvars = Tables.columnnames(tbl)
@@ -104,7 +104,7 @@ function LinearMixedModel(
     σ=nothing,
     amalgamate=true,
     RFPthreshold=1000,
-    sortlevels=false,
+    sortlevels=true,
 )
     T = promote_type(Float64, float(eltype(y)))  # ensure eltype of model matrices is at least Float64
 
@@ -171,7 +171,7 @@ function LinearMixedModel(
     σ=nothing,
     amalgamate=true,
     RFPthreshold=1000,
-    sortlevels=false,
+    sortlevels=true,
 ) where {T}
     # detect and combine RE terms with the same grouping var
     if length(reterms) > 1 && amalgamate
@@ -243,7 +243,7 @@ function StatsAPI.fit(::Type{LinearMixedModel},
     σ=nothing,
     amalgamate=true,
     RFPthreshold=1000,
-    sortlevels=false,
+    sortlevels=true,
     kwargs...)
     lmod = LinearMixedModel(
         f, tbl; contrasts, weights, wts, σ, amalgamate, RFPthreshold, sortlevels
