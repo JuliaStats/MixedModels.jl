@@ -51,7 +51,7 @@ const _MISSING_RE_ERROR = ArgumentError(
 function LinearMixedModel(
     f::FormulaTerm, tbl::Tables.ColumnTable; contrasts=Dict{Symbol,Any}(), wts=nothing,
     weights=[],
-    σ=nothing, amalgamate=true, RFPthreshold=1000,
+    σ=nothing, amalgamate=true, RFPthreshold=1000, sortlevels=false,
 )
     fvars = StatsModels.termvars(f)
     tvars = Tables.columnnames(tbl)
@@ -80,7 +80,7 @@ function LinearMixedModel(
 
     y, Xs = modelcols(form, tbl)
 
-    return LinearMixedModel(y, Xs, form, weights, σ, amalgamate, RFPthreshold)
+    return LinearMixedModel(y, Xs, form, weights, σ, amalgamate, RFPthreshold, sortlevels)
 end
 
 """
@@ -104,6 +104,7 @@ function LinearMixedModel(
     σ=nothing,
     amalgamate=true,
     RFPthreshold=1000,
+    sortlevels=false,
 )
     T = promote_type(Float64, float(eltype(y)))  # ensure eltype of model matrices is at least Float64
 
@@ -111,7 +112,7 @@ function LinearMixedModel(
     isempty(reterms) && throw(_MISSING_RE_ERROR)
     return LinearMixedModel(
         convert(Array{T}, y), only(feterms), reterms, form, weights, σ, amalgamate,
-        RFPthreshold,
+        RFPthreshold, sortlevels,
     )
 end
 
@@ -170,6 +171,7 @@ function LinearMixedModel(
     σ=nothing,
     amalgamate=true,
     RFPthreshold=1000,
+    sortlevels=false,
 ) where {T}
     # detect and combine RE terms with the same grouping var
     if length(reterms) > 1 && amalgamate
@@ -179,6 +181,13 @@ function LinearMixedModel(
     end
 
     sort!(reterms; by=nranef, rev=true)
+    if sortlevels
+        # only blocks after the first incur fill-in; the leading factor's
+        # diagonal block is unaffected by level order
+        for i in 2:length(reterms)
+            sortlevels!(reterms[i])
+        end
+    end
     Xy = FeMat(feterm, vec(y))
     # Replace feterm's fullrankx field with a view into the shared Xymat storage,
     # eliminating the duplicate allocation for the full-rank X columns.
@@ -234,8 +243,11 @@ function StatsAPI.fit(::Type{LinearMixedModel},
     σ=nothing,
     amalgamate=true,
     RFPthreshold=1000,
+    sortlevels=false,
     kwargs...)
-    lmod = LinearMixedModel(f, tbl; contrasts, weights, wts, σ, amalgamate, RFPthreshold)
+    lmod = LinearMixedModel(
+        f, tbl; contrasts, weights, wts, σ, amalgamate, RFPthreshold, sortlevels
+    )
     return fit!(lmod; kwargs...)
 end
 
