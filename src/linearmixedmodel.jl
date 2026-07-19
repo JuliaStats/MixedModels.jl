@@ -182,11 +182,15 @@ function LinearMixedModel(
 
     sort!(reterms; by=nranef, rev=true)
     if sortlevels
-        # only blocks after the first incur fill-in; the leading factor's
-        # diagonal block is unaffected by level order
-        for i in 2:length(reterms)
-            sortlevels!(reterms[i])
+        # only blocks after the first incur fill-in; the leading term's
+        # diagonal block is unaffected by level order, but sort it anyway
+        # when it shares its grouping factor with a later term (possible with
+        # amalgamate=false) so that all terms for a factor use one level order
+        tosort = Set(fname(reterms[i]) for i in 2:length(reterms))
+        for rt in reterms
+            fname(rt) in tosort && sortlevels!(rt)
         end
+        form = _syncgrouping(form, reterms)
     end
     Xy = FeMat(feterm, vec(y))
     # Replace feterm's fullrankx field with a view into the shared Xymat storage,

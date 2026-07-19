@@ -115,6 +115,11 @@ that block in a compact region of storage, which improves memory locality.
 For `TriangularRFP` blocks it additionally keeps most updates in the
 trapezoidal part of the packed storage, avoiding strided access to the
 transposed triangular part. The permutation leaves the objective unchanged.
+
+For a `CategoricalTerm` grouping factor, the term's `ContrastsMatrix` is
+rebuilt so that its level order (and hence its `invindex`) stays in sync with
+the reordered levels. Interaction groupings store their level order only in
+the `ReMat` itself, so there is nothing further to synchronize.
 """
 sortlevels!(A::AbstractReMat) = A
 
@@ -129,6 +134,12 @@ function sortlevels!(A::ReMat)
     map!(r -> invp[r], A.refs, A.refs)
     A.levels = A.levels[perm]
     A.adjA = adjA(A.refs, A.z)
+    trm = A.trm
+    if trm isa CategoricalTerm
+        A.trm = CategoricalTerm(
+            trm.sym, StatsModels.ContrastsMatrix(trm.contrasts.contrasts, A.levels)
+        )
+    end
     return A
 end
 

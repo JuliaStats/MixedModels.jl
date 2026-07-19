@@ -210,3 +210,28 @@ StatsModels.modelcols(t::ZeroCorr, d::NamedTuple) = zerocorr!(modelcols(t.term, 
 function Base.getproperty(x::ZeroCorr, s::Symbol)
     return s == :term ? getfield(x, s) : getproperty(x.term, s)
 end
+
+"""
+    _syncgrouping(form::FormulaTerm, reterms)
+
+Replace the grouping terms in `form` with the corresponding `trm`s of `reterms`.
+
+After [`sortlevels!`](@ref) the `ReMat`s hold rebuilt `CategoricalTerm`s whose
+contrasts reflect the new level order; substituting them into the stored
+formula keeps `modelcols` on that formula consistent with the fitted model.
+"""
+function _syncgrouping(form::FormulaTerm, reterms)
+    newtrms = Dict(
+        rt.trm.sym => rt.trm for
+        rt in reterms if rt isa ReMat && rt.trm isa CategoricalTerm
+    )
+    isempty(newtrms) && return form
+    return FormulaTerm(form.lhs, _syncgrouping.(form.rhs, Ref(newtrms)))
+end
+_syncgrouping(t::AbstractTerm, newtrms::Dict) = t
+function _syncgrouping(t::RandomEffectsTerm, newtrms::Dict)
+    rhs = t.rhs
+    rhs isa CategoricalTerm || return t
+    return RandomEffectsTerm(t.lhs, get(newtrms, rhs.sym, rhs))
+end
+_syncgrouping(t::ZeroCorr, newtrms::Dict) = ZeroCorr(_syncgrouping(t.term, newtrms))
