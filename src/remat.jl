@@ -105,7 +105,7 @@ function adjA(refs::AbstractVector, z::AbstractMatrix)
 end
 
 """
-    sortlevels!(A::AbstractReMat)
+    _sortlevels!(A::AbstractReMat)
 
 Reorder the levels of the grouping factor by descending number of occurrences.
 
@@ -114,16 +114,16 @@ most frequently occurring levels first concentrates the sparse rank-update of
 that block in a compact region of storage, which improves memory locality.
 For `TriangularRFP` blocks it additionally keeps most updates in the
 trapezoidal part of the packed storage, avoiding strided access to the
-transposed triangular part. The permutation leaves the objective unchanged.
+transposed triangular part.
 
-For a `CategoricalTerm` grouping factor, the term's `ContrastsMatrix` is
-rebuilt so that its level order (and hence its `invindex`) stays in sync with
+The `ContrastsMatrix` of the grouping factor's term (i.e. `A.trm`) is rebuilt
+so that its level order (and hence its `invindex`) stays in sync with
 the reordered levels. Interaction groupings store their level order only in
 the `ReMat` itself, so there is nothing further to synchronize.
 """
-sortlevels!(A::AbstractReMat) = A
+_sortlevels!(A::AbstractReMat) = A
 
-function sortlevels!(A::ReMat{T,S}) where {T,S}
+function _sortlevels!(A::ReMat{T,S}) where {T,S}
     counts = zeros(Int, length(A.levels))
     for r in A.refs
         counts[r] += 1

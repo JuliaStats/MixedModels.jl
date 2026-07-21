@@ -188,7 +188,7 @@ function LinearMixedModel(
         # amalgamate=false) so that all terms for a factor use one level order
         tosort = Set(fname(reterms[i]) for i in 2:length(reterms))
         for rt in reterms
-            fname(rt) in tosort && sortlevels!(rt)
+            fname(rt) in tosort && _sortlevels!(rt)
         end
         form = _syncgrouping(form, reterms)
     end

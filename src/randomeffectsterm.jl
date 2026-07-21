@@ -216,7 +216,7 @@ end
 
 Replace the grouping terms in `form` with the corresponding `trm`s of `reterms`.
 
-After [`sortlevels!`](@ref) the `ReMat`s hold rebuilt `CategoricalTerm`s whose
+After [`_sortlevels!`](@ref) the `ReMat`s hold rebuilt `CategoricalTerm`s whose
 contrasts reflect the new level order; substituting them into the stored
 formula keeps `modelcols` on that formula consistent with the fitted model.
 """
