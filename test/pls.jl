@@ -283,7 +283,7 @@ end
 
     spL = sparseL(fm1)
     @test size(spL) == (4114, 4114)
-    # nnz(spL) counts the exact zeros remaining in the (densely stored) filled
+    # nnz(spL) counts the exact nonzeros remaining in the (densely stored) filled
     # blocks, so it depends on the level ordering: with the default
     # sortlevels=true the frequency-descending order incurs more fill
     @test 744320 < nnz(spL) < 744340
