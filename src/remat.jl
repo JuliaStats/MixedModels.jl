@@ -123,7 +123,7 @@ the `ReMat` itself, so there is nothing further to synchronize.
 """
 sortlevels!(A::AbstractReMat) = A
 
-function sortlevels!(A::ReMat)
+function sortlevels!(A::ReMat{T,S}) where {T,S}
     counts = zeros(Int, length(A.levels))
     for r in A.refs
         counts[r] += 1
@@ -132,8 +132,16 @@ function sortlevels!(A::ReMat)
     perm = sortperm(counts; rev=true)
     invp = invperm(perm)
     map!(r -> invp[r], A.refs, A.refs)
-    A.levels = A.levels[perm]
-    A.adjA = adjA(A.refs, A.z)
+    A.levels .= @view A.levels[perm]
+    # permute the rows of adjA in place to match the permuted labels:
+    # each column holds the S rows of a single level, so the relabeled rowvals
+    # remain sorted within each column
+    rv = rowvals(A.adjA)
+    if isone(S)
+        map!(r -> invp[r], rv, rv)
+    else
+        map!(i -> (invp[fld1(i, S)] - 1) * S + mod1(i, S), rv, rv)
+    end
     trm = A.trm
     if trm isa CategoricalTerm
         A.trm = CategoricalTerm(
