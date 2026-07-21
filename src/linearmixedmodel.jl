@@ -26,6 +26,27 @@ Linear mixed-effects model representation
 * `u`: random effects on the orthogonal scale, as a vector of matrices
 * `X`: the fixed-effects model matrix
 * `y`: the response vector
+
+## Named Arguments
+
+The `LinearMixedModel(f, tbl; ...)` constructor (and `fit(LinearMixedModel, f, tbl; ...)`)
+accept the following keyword arguments:
+
+* `contrasts`: a `Dict` mapping column names to contrast codings, passed to schema application.
+* `weights`: a vector of prior case weights; defaults to equal weights.
+* `σ`: a fixed value for the residual standard deviation, or `nothing` (the default) to estimate it.
+* `amalgamate`: whether to combine random-effects terms that share a grouping factor into a
+  single term (default `true`).
+* `RFPthreshold`: the column-count threshold above which a diagonal block of `L` that incurs
+  fill-in (from non-nested crossed grouping factors) is stored in Rectangular Full Packed form
+  (`TriangularRFP`) rather than as a dense `LowerTriangular` (default `1000`). RFP roughly halves
+  the storage of such a block, but slows computation slightly (i.e. trades speed for memory); it does not change the fitted model.
+* `sortlevels`: whether to reorder the levels of each grouping factor (other than the leading one)
+  by descending number of occurrences (default `true`). This concentrates the sparse rank-update
+  of a filled-in diagonal block in a compact region of storage, improving memory locality. This is most
+  helpful for large blocks that do not fit in cache and for `TriangularRFP` blocks. It leaves the
+  objective and estimates unchanged; only the internal level order (and hence the order of, e.g.,
+  `raneftables` rows) differs.
 """
 struct LinearMixedModel{T<:AbstractFloat} <: MixedModel{T}
     formula::FormulaTerm
@@ -51,7 +72,7 @@ const _MISSING_RE_ERROR = ArgumentError(
 function LinearMixedModel(
     f::FormulaTerm, tbl::Tables.ColumnTable; contrasts=Dict{Symbol,Any}(), wts=nothing,
     weights=[],
-    σ=nothing, amalgamate=true, RFPthreshold=1000,
+    σ=nothing, amalgamate=true, RFPthreshold=1000, sortlevels=true,
 )
     fvars = StatsModels.termvars(f)
     tvars = Tables.columnnames(tbl)
@@ -80,7 +101,7 @@ function LinearMixedModel(
 
     y, Xs = modelcols(form, tbl)
 
-    return LinearMixedModel(y, Xs, form, weights, σ, amalgamate, RFPthreshold)
+    return LinearMixedModel(y, Xs, form, weights, σ, amalgamate, RFPthreshold, sortlevels)
 end
 
 """
@@ -104,6 +125,7 @@ function LinearMixedModel(
     σ=nothing,
     amalgamate=true,
     RFPthreshold=1000,
+    sortlevels=true,
 )
     T = promote_type(Float64, float(eltype(y)))  # ensure eltype of model matrices is at least Float64
 
@@ -111,7 +133,7 @@ function LinearMixedModel(
     isempty(reterms) && throw(_MISSING_RE_ERROR)
     return LinearMixedModel(
         convert(Array{T}, y), only(feterms), reterms, form, weights, σ, amalgamate,
-        RFPthreshold,
+        RFPthreshold, sortlevels,
     )
 end
 
@@ -148,7 +170,7 @@ function _split_re_fe_terms(Xs::Tuple, form::FormulaTerm, ::Type{T}) where {T}
 end
 
 """
-    LinearMixedModel(y, feterm, reterms, form, weights=[], σ=nothing; amalgamate=true, RFPthreshold=1000)
+    LinearMixedModel(y, feterm, reterms, form, weights=[], σ=nothing; amalgamate=true, RFPthreshold=1000, sortlevels=true)
 
 Private constructor for a `LinearMixedModel` given already assembled fixed and random effects.
 
@@ -156,6 +178,13 @@ To construct a model, you only need a vector of `FeMat`s (the fixed-effects
 model matrix and response), a vector of `AbstractReMat` (the random-effects
 model matrices), the formula and the weights. Everything else in the structure
 can be derived from these quantities.
+
+When `sortlevels` is `true`, [`_sortlevels!`](@ref) is applied to every non-leading term (and
+to a leading term that shares its grouping factor with a later term, as can happen with
+`amalgamate=false`), so that all terms for a grouping factor use one frequency-descending level
+order; the stored `form` is then updated via `_syncgrouping` to keep its grouping terms in sync.
+`RFPthreshold` is forwarded to `createAL` to select Rectangular Full Packed storage for
+sufficiently large filled-in diagonal blocks of `L`. See [`LinearMixedModel`](@ref) for details.
 
 !!! note
     This method is internal and experimental and so may change or disappear in
@@ -170,6 +199,7 @@ function LinearMixedModel(
     σ=nothing,
     amalgamate=true,
     RFPthreshold=1000,
+    sortlevels=true,
 ) where {T}
     # detect and combine RE terms with the same grouping var
     if length(reterms) > 1 && amalgamate
@@ -179,6 +209,17 @@ function LinearMixedModel(
     end
 
     sort!(reterms; by=nranef, rev=true)
+    if sortlevels
+        # only blocks after the first incur fill-in; the leading term's
+        # diagonal block is unaffected by level order, but sort it anyway
+        # when it shares its grouping factor with a later term (possible with
+        # amalgamate=false) so that all terms for a factor use one level order
+        tosort = Set(fname(reterms[i]) for i in 2:length(reterms))
+        for rt in reterms
+            fname(rt) in tosort && _sortlevels!(rt)
+        end
+        form = _syncgrouping(form, reterms)
+    end
     Xy = FeMat(feterm, vec(y))
     # Replace feterm's fullrankx field with a view into the shared Xymat storage,
     # eliminating the duplicate allocation for the full-rank X columns.
@@ -234,8 +275,11 @@ function StatsAPI.fit(::Type{LinearMixedModel},
     σ=nothing,
     amalgamate=true,
     RFPthreshold=1000,
+    sortlevels=true,
     kwargs...)
-    lmod = LinearMixedModel(f, tbl; contrasts, weights, wts, σ, amalgamate, RFPthreshold)
+    lmod = LinearMixedModel(
+        f, tbl; contrasts, weights, wts, σ, amalgamate, RFPthreshold, sortlevels
+    )
     return fit!(lmod; kwargs...)
 end
 

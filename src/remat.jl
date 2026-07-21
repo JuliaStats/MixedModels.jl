@@ -104,6 +104,58 @@ function adjA(refs::AbstractVector, z::AbstractMatrix)
     return sparse(II, J, vec(z))
 end
 
+"""
+    _sortlevels!(A::AbstractReMat)
+
+Reorder the levels of the grouping factor by descending number of occurrences.
+
+For grouping factors whose diagonal block in `L` incurs fill-in, placing the
+most frequently occurring levels first concentrates the sparse rank-update of
+that block in a compact region of storage, which improves memory locality.
+For `TriangularRFP` blocks it additionally keeps most updates in the
+trapezoidal part of the packed storage, avoiding strided access to the
+transposed triangular part.
+
+The `ContrastsMatrix` of the grouping factor's term (i.e. `A.trm`) is rebuilt
+so that its level order (and hence its `invindex`) stays in sync with
+the reordered levels. Interaction groupings store their level order only in
+the `ReMat` itself, so there is nothing further to synchronize.
+
+!!! note "Only fully implemented for concrete `ReMat`"
+    There is a no-op `_sortlevels!(::AbstractReMat)` method that returns the original matrix,
+    so that everything will "just" work when a new subtype of `AbstractReMat` is added.
+    If a given concrete subtype will benefit from this, then you should implement an appropriate method.
+"""
+_sortlevels!(A::AbstractReMat) = A
+
+function _sortlevels!(A::ReMat{T,S}) where {T,S}
+    counts = zeros(Int, length(A.levels))
+    for r in A.refs
+        counts[r] += 1
+    end
+    issorted(counts; rev=true) && return A
+    perm = sortperm(counts; rev=true)
+    invp = invperm(perm)
+    map!(r -> invp[r], A.refs, A.refs)
+    A.levels .= @view A.levels[perm]
+    # permute the rows of adjA in place to match the permuted labels:
+    # each column holds the S rows of a single level, so the relabeled rowvals
+    # remain sorted within each column
+    rv = rowvals(A.adjA)
+    if isone(S)
+        map!(r -> invp[r], rv, rv)
+    else
+        map!(i -> (invp[fld1(i, S)] - 1) * S + mod1(i, S), rv, rv)
+    end
+    trm = A.trm
+    if trm isa CategoricalTerm
+        A.trm = CategoricalTerm(
+            trm.sym, StatsModels.ContrastsMatrix(trm.contrasts.contrasts, A.levels)
+        )
+    end
+    return A
+end
+
 Base.size(A::ReMat) = (length(A.refs), length(A.scratch))
 
 SparseArrays.sparse(A::ReMat) = adjoint(A.adjA)
