@@ -1,7 +1,7 @@
 name = "MixedModels"
 uuid = "ff71e718-51f3-5ec2-a782-8ffcbfa3c316"
 author = ["Phillip Alday <me@phillipalday.com>", "Douglas Bates <dmbates@gmail.com>"]
-version = "5.7.0"
+version = "5.7.1"
 
 [workspace]
 projects = ["docs"]
@@ -63,7 +63,7 @@ IrrationalConstants = "0.2"
 JSON3 = "1"
 LinearAlgebra = "1"
 Markdown = "1"
-MixedModelsDatasets = "0.1"
+MixedModelsDatasets = "0.2"
 NLopt = "0.6, 1"
 PRIMA = "0.2"
 PooledArrays = "0.5, 1"

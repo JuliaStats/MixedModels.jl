@@ -102,7 +102,8 @@ Several covariates were recorded including the woman's age (centered at the mean
 The version of the data used here is that used in review of multilevel modeling software conducted by the Center for Multilevel Modelling, currently at University of Bristol (http://www.bristol.ac.uk/cmm/learning/mmsoftware/data-rev.html).
 These data are available as the `:contra` dataset.
 ```@example GaussHermite
-contra = DataFrame(MixedModelsDatasets.dataset(:contra))
+contra = DataFrame(dataset(:contra))
+transform!(contra, :age => ByRow(Float64) => :age)
 describe(contra)
 ```
 
