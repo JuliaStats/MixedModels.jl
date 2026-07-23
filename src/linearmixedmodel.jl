@@ -377,9 +377,9 @@ function condVartables(m::MixedModel{T}) where {T}
 end
 
 """
-    confint(pr::MixedModelProfile; level::Real=0.95)
+    confint(m::MixedModel; level::Real=0.95)
 
-Compute profile confidence intervals for (fixed effects) coefficients, with confidence level `level` (by default 95%).
+Compute Wald confidence intervals with confidence level `level` (by default 95%)
 
 !!! note
     The API guarantee is for a Tables.jl compatible table. The exact return type is an
