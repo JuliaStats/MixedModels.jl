@@ -5,7 +5,7 @@ using Random
 using SparseArrays
 using Test
 
-using MixedModels: rankUpdate!
+using MixedModels: rankUpdate!, BlockedSparse, HermitianRFP, TriangularRFP
 
 @testset "mul!" begin
     for (m, p, n, q, k) in (
@@ -72,6 +72,39 @@ end
     L22L = rankUpdate!(Symmetric(zeros(100, 100), :L), L21, 1.0, 1.0)
     @test L22L ≈
         rankUpdate!(Symmetric(zeros(100, 100), :U), sparse(transpose(L21)), 1.0, 1.0)
+end
+
+@testset "rankUpdate! HermitianRFP" begin
+    rng = MersenneTwister(1234)
+    n = 6
+
+    # a symmetric, lower-stored base matrix and the packed HermitianRFP holding it
+    S = let M = randn(rng, n, n)
+        M * M' + n * I
+    end
+    rfp(S) = Hermitian(TriangularRFP(Matrix(LowerTriangular(S)), :L), :L)
+
+    # dense and (Int32) sparse updates plus a genuine BlockedSparse block
+    Adense = randn(rng, n, 4)
+    Asparse = convert(SparseMatrixCSC{Float64,Int32}, sparse(sprand(rng, n, 20, 0.3)))
+    # crossed factors ⇒ an off-diagonal L block stored as BlockedSparse
+    d3 = MixedModels.dataset(:d3)
+    m = fit!(
+        LinearMixedModel(@formula(y ~ 1 + u + (1 + u | g) + (1 + u | h) + (1 + u | i)), d3);
+        progress=false,
+    )
+    Ablk = m.L[findfirst(a -> a isa BlockedSparse, m.L)]
+    @test Ablk isa BlockedSparse
+    Sblk = zeros(size(Ablk, 1), size(Ablk, 1)) + I
+
+    for (A, base) in ((Adense, S), (Asparse, S), (Ablk, Sblk))
+        for (α, β) in ((1.0, 1.0), (-1.0, 1.0), (0.5, 2.0))
+            ref = rankUpdate!(Hermitian(Matrix(base), :L), A, α, β)
+            got = rankUpdate!(rfp(base), A, α, β)
+            @test got isa HermitianRFP
+            @test LowerTriangular(Matrix(got)) ≈ LowerTriangular(Matrix(ref))
+        end
+    end
 end
 
 #=  I don't see this testset as meaningful b/c diagonal A does not occur after amalgamation of ReMat's for the same grouping factor - D.B.
