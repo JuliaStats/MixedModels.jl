@@ -379,7 +379,7 @@ end
 """
     confint(m::MixedModel; level::Real=0.95)
 
-Compute Wald's confidence intervals with confidence level `level` (by default 95%)
+Compute Wald confidence intervals with confidence level `level` (by default 95%)
 
 !!! note
     The API guarantee is for a Tables.jl compatible table. The exact return type is an
