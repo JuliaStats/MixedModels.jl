@@ -143,6 +143,13 @@ function Base.similar(A::UniformBlockDiagonal)
     return UniformBlockDiagonal(similar(A.data))
 end
 
+# The diagonal blocks of `L` may be wrapped in `LowerTriangular` (e.g. when a dense
+# reterm block is stored as a lower-triangular Cholesky factor). The gradient-evaluation
+# storage blocks hold full symmetric blocks of ∂Ω/∂θₚ, so strip that wrapper to obtain the
+# bare storage type (`Matrix`, `UniformBlockDiagonal`, …).
+_bareblock(A::AbstractMatrix) = A
+_bareblock(A::LowerTriangular) = A.data
+
 """
     grad_blocks(m::LinearMixedModel{T})
 
@@ -154,7 +161,7 @@ function grad_blocks(m::LinearMixedModel{T}) where {T}
     val = sizehint!(AbstractMatrix{T}[], abs2(k))
     for j in 1:k
         for i in 1:k
-            push!(val, similar(i ≥ j ? L[block(i, j)] : L[block(j, i)]'))
+            push!(val, similar(_bareblock(i ≥ j ? L[block(i, j)] : L[block(j, i)]')))
         end
     end
     return reshape(val, (k, k))
