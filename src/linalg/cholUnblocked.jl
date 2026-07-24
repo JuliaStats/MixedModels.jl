@@ -1,5 +1,5 @@
 """
-    cholUnblocked!(A, Val{:L})
+    cholUnblocked!(A)
 
 Overwrite the lower triangle of `A` with its lower Cholesky factor.
 
@@ -8,17 +8,21 @@ because these are part of the inner calculations in a blocked Cholesky factoriza
 """
 function cholUnblocked! end
 
-function cholUnblocked!(D::Diagonal{T}, ::Type{Val{:L}}) where {T<:Real}
-    Ddiag = D.diag
+function cholUnblocked!(D::Hermitian{T,Diagonal{T,Vector{T}}}) where {T}
+    Ddiag = D.data.diag
     @inbounds for i in eachindex(Ddiag)
         (ddi = Ddiag[i]) ≤ zero(T) && throw(PosDefException(i))
         Ddiag[i] = sqrt(ddi)
     end
-
     return D
 end
 
-function cholUnblocked!(A::StridedMatrix{T}, ::Type{Val{:L}}) where {T<:BlasFloat}
+function cholUnblocked!(A::Hermitian{T,Matrix{T}}) where {T}
+    A.uplo == 'L' || throw(ArgumentError("A.uplo should be 'L'"))
+    return cholUnblocked!(A.data)
+end
+
+function cholUnblocked!(A::StridedMatrix{T}) where {T<:BlasFloat}
     n = LinearAlgebra.checksquare(A)
     if n == 1
         A[1] < zero(T) && throw(PosDefException(1))
@@ -37,15 +41,17 @@ function cholUnblocked!(A::StridedMatrix{T}, ::Type{Val{:L}}) where {T<:BlasFloa
 end
 
 # generic fallback for eltypes without LAPACK support, e.g. ForwardDiff.Dual
-function cholUnblocked!(A::StridedMatrix, ::Type{Val{:L}})
+function cholUnblocked!(A::StridedMatrix)
     cholesky!(Hermitian(A, :L))
     return A
 end
 
-function cholUnblocked!(D::UniformBlockDiagonal, ::Type{Val{:L}})
-    Ddat = D.data
+function cholUnblocked!(D::Hermitian{T,UniformBlockDiagonal{T}}) where {T}
+    Ddat = D.data.data
     for k in axes(Ddat, 3)
-        cholUnblocked!(view(Ddat, :, :, k), Val{:L})
+        cholUnblocked!(view(Ddat, :, :, k))
     end
     return D
 end
+
+cholUnblocked!(D::HermitianRFP) = LinearAlgebra.cholesky!(D)

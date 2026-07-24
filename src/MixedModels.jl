@@ -17,7 +17,7 @@ using LinearAlgebra: LinearAlgebra, Adjoint, BLAS, BlasFloat, ColumnNorm
 using LinearAlgebra: Diagonal, Hermitian, HermOrSym, I, LAPACK, LowerTriangular
 using LinearAlgebra: PosDefException, SVD, SymTridiagonal, Symmetric
 using LinearAlgebra: UpperTriangular, cholesky!, cond, diag, diagind, dot, eigen, isdiag
-using LinearAlgebra: ldiv!, lmul!, logdet, mul!, norm, normalize, normalize!, qr
+using LinearAlgebra: inv!, ldiv!, lmul!, logdet, mul!, norm, normalize, normalize!, qr
 using LinearAlgebra: rank, rdiv!, rmul!, svd, tril!
 using Markdown: Markdown
 using MixedModelsDatasets: dataset
@@ -27,8 +27,10 @@ using PrecompileTools: PrecompileTools, @setup_workload, @compile_workload
 using Printf: @sprintf
 using ProgressMeter: ProgressMeter, Progress, finish!, next!
 using Random: Random, AbstractRNG, randn!
+using RectangularFullPacked: HermitianRFP, TriangularRFP
+using RectangularFullPacked.LAPACK_RFP: sfrk!
 using RegressionFormulae: fulldummy
-using SparseArrays: SparseArrays, SparseMatrixCSC, SparseVector, dropzeros!, findnz
+using SparseArrays: SparseArrays, SparseMatrixCSC, SparseVector, dropzeros!
 using SparseArrays: nnz, nonzeros, nzrange, rowvals, sparse
 using StaticArrays: StaticArrays, SVector
 using Statistics: Statistics, mean, quantile, std

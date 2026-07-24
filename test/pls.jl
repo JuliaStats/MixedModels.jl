@@ -283,7 +283,10 @@ end
 
     spL = sparseL(fm1)
     @test size(spL) == (4114, 4114)
-    @test 733090 < nnz(spL) < 733100
+    # nnz(spL) counts the exact nonzeros remaining in the (densely stored) filled
+    # blocks, so it depends on the level ordering: with the default
+    # sortlevels=true the frequency-descending order incurs more fill
+    @test 744320 < nnz(spL) < 744340
 
     spA = Symmetric(sparseA(fm1; full=true), :L)
     @test size(spA) == (4117, 4117)
@@ -331,19 +334,72 @@ end
     @test size(fm2) == (73421, 28, 4100, 2)
 end
 
+@testset "sortlevels" begin
+    insteval = MixedModels.dataset(:insteval)
+    form = @formula(y ~ 1 + service + (1 | s) + (1 | d))
+    function levelcounts(rt)
+        c = zeros(Int, MixedModels.nlevs(rt))
+        for r in rt.refs
+            c[r] += 1
+        end
+        return c
+    end
+    m0 = LinearMixedModel(form, insteval; sortlevels=false)
+    m1 = LinearMixedModel(form, insteval)  # sortlevels=true is the default
+
+    @test !issorted(levelcounts(m0.reterms[2]); rev=true)
+    @test issorted(levelcounts(m1.reterms[2]); rev=true)
+    # the leading term keeps the data's level order
+    @test m0.reterms[1].levels == m1.reterms[1].levels
+
+    # the objective is invariant under the level permutation
+    @test objective(updateL!(setθ!(m0, m0.optsum.initial))) ≈
+        objective(updateL!(setθ!(m1, m1.optsum.initial)))
+
+    # the term's contrasts stay in sync with the reordered levels
+    rt = m1.reterms[2]
+    @test rt.trm.contrasts.levels == rt.levels
+    @test all(rt.trm.contrasts.invindex[l] == i for (i, l) in enumerate(rt.levels))
+
+    # ... as does the stored formula, so that modelcols on it reproduces
+    # the fitted model's refs
+    retrm = only(
+        t for t in m1.formula.rhs if
+        t isa MixedModels.RandomEffectsTerm && MixedModels.fname(t.rhs) == :d
+    )
+    @test retrm.rhs === rt.trm
+    remat = last(last(modelcols(m1.formula, columntable(insteval))))
+    @test remat.refs == rt.refs
+
+    # BLUPs align by level label and predict is positionally consistent
+    fit!(m1; progress=false)
+    @test predict(m1, insteval; new_re_levels=:error) ≈ fitted(m1)
+
+    # with amalgamate=false, all terms for a factor share one level order,
+    # including a term in the leading (unsorted) position
+    mam = LinearMixedModel(
+        @formula(y ~ 1 + (1 | d) + (0 + service | d) + (1 | s)), insteval;
+        amalgamate=false,
+    )
+    dre = filter(rt -> MixedModels.fname(rt) == :d, mam.reterms)
+    @test length(dre) == 2
+    @test first(dre).levels == last(dre).levels
+    @test first(dre).refs == last(dre).refs
+end
+
 @testset "sleep" begin
     fm = last(models(:sleepstudy))
     A11 = first(fm.A)
     @test isa(A11, UniformBlockDiagonal{Float64})
-    @test isa(first(fm.L), UniformBlockDiagonal{Float64})
+    @test isa(first(fm.L), LowerTriangular{Float64, UniformBlockDiagonal{Float64}})
     @test size(A11) == (36, 36)
     a11 = view(A11.data, :, :, 1)
     @test a11 == [10.0 45.0; 45.0 285.0]
     @test size(A11.data, 3) == 18
     λ = only(fm.λ)
-    b11 = LowerTriangular(view(first(fm.L).data, :, :, 1))
+    b11 = LowerTriangular(view(first(fm.L).data.data, :, :, 1))
     @test b11 * b11' ≈ λ'a11 * λ + I rtol = 1e-5
-    @test count(!iszero, Matrix(first(fm.L))) == 18 * 4
+    @test count(!iszero, Matrix(first(fm.L).data)) == 18 * 4
     @test rank(fm) == 2
 
     @test objective(fm) ≈ 1751.9393444636682

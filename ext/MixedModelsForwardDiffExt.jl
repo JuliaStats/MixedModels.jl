@@ -7,8 +7,9 @@ using MixedModels: _logdet,
     pwrss,
     setθ!,
     ssqdenom,
+    TriangularRFP,
     updateL!
-using LinearAlgebra: copy_oftype
+using LinearAlgebra: LowerTriangular, copy_oftype
 using ForwardDiff: ForwardDiff,
     Chunk,
     DiffResults,
@@ -111,11 +112,20 @@ end
 
 MixedModels.fd_deviance(model) = Base.Fix1(fd_deviance, model)
 
+# promote a block of L to the dual number type, preserving the structural wrappers
+# that updateL! dispatches on.  A TriangularRFP block cannot hold dual numbers (its
+# element type is restricted to BlasFloat), so it is expanded to a dense lower triangle
+_fdcopy(A::AbstractMatrix, ::Type{T}) where {T} = copy_oftype(A, T)
+function _fdcopy(A::LowerTriangular, ::Type{T}) where {T}
+    return LowerTriangular(copy_oftype(parent(A), T))
+end
+_fdcopy(A::TriangularRFP, ::Type{T}) where {T} = LowerTriangular(copy_oftype(Array(A), T))
+
 function MixedModels.fd_deviance(model::LinearMixedModel, θ::AbstractVector{T}) where {T}
     # extract and promote to the dual number type, then run the same
     # pipeline as objective!(model, θ) on the promoted copies
     AA = [copy_oftype(Ai, T) for Ai in model.A]
-    LL = [copy_oftype(Li, T) for Li in model.L]
+    LL = [_fdcopy(Li, T) for Li in model.L]
     RR = [copy_oftype(Ri, T) for Ri in model.reterms]
 
     return _fd_objective(model, AA, LL, RR, θ)
@@ -165,7 +175,7 @@ function MixedModels.fd_gradient_workspace(model::LinearMixedModel{T}) where {T}
     D = eltype(cfg.duals)
     f = FDCachedObjective(model,
         [copy_oftype(Ai, D) for Ai in model.A],
-        [copy_oftype(Li, D) for Li in model.L],
+        [_fdcopy(Li, D) for Li in model.L],
         [copy_oftype(Ri, D) for Ri in model.reterms])
     return (; f, cfg, result=DiffResults.GradientResult(x))
 end
