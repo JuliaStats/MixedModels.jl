@@ -1,7 +1,8 @@
 module MixedModelsForwardDiffExt
 
 using MixedModels
-using MixedModels: _logdet,
+using MixedModels:
+    _logdet,
     fd_deviance,
     log2π,
     pwrss,

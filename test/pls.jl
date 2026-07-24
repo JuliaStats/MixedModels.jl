@@ -391,7 +391,7 @@ end
     fm = last(models(:sleepstudy))
     A11 = first(fm.A)
     @test isa(A11, UniformBlockDiagonal{Float64})
-    @test isa(first(fm.L), LowerTriangular{Float64, UniformBlockDiagonal{Float64}})
+    @test isa(first(fm.L), LowerTriangular{Float64,UniformBlockDiagonal{Float64}})
     @test size(A11) == (36, 36)
     a11 = view(A11.data, :, :, 1)
     @test a11 == [10.0 45.0; 45.0 285.0]
