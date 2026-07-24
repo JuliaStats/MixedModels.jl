@@ -63,18 +63,21 @@ include("modelcache.jl")
         blks6 = initialize_blocks!(grad_blocks(fm6), fm6, 1, 1, 1, 2)
         blk_dat = blks6[1,1].data
         A11_dat = first(fm6.A).data
-        @test all(≈(20. * first(θ6)), view(blk_dat, 1, 1, :))
+        # ∂Ω/∂θ₁ (θ₁ == λ[1,1]): face is 2·(λᵀ A E₁₁)_sym, i.e.
+        #   [1,1] = 2(a₁₁λ₁₁ + a₂₁λ₂₁), [1,2] = a₂₁λ₂₂, [2,2] = 0
+        @test all(≈(2 * dot(view(A11_dat, :, 1, 1), view(λ6, :, 1))), view(blk_dat, 1, 1, :))
         @test all(iszero, view(blk_dat, 2, 2, :))
         @test all(view(blk_dat, 1, 2, :) .== view(blk_dat, 2, 1, :))
+        odiag = A11_dat[2, 1, 1] * λ6[2, 2]   # a₂₁ · λ₂₂
         @test all(≈(odiag), view(blk_dat, 1, 2, :))
         ldiv!(LowerTriangular(first(fm6.L)), blks6[1,1])
 
         initialize_blocks!(blks6, fm6, 1, 2, 2, 2)
+        # ∂Ω/∂θ₃ (θ₃ == λ[2,2]): [1,1] = 0, [1,2] = a₂₁λ₁₁ + a₂₂λ₂₁, [2,2] = 2 a₂₂λ₂₂
         @test all(iszero, view(blk_dat, 1, 1, :))
         @test all(view(blk_dat, 1, 2, :) .== view(blk_dat, 2, 1, :))   # result should be symmetric
-        # @test all(==(10. * first(θ)), view(blk_dat, 1, 2, :))
-        # diag2 = 2. * dot(view(λ.data, 2, :), view(A11_dat, :, 1, 1))
-        # @test all(≈(diag2), view(blk_dat, 2, 2, :))
+        @test all(≈(dot(view(A11_dat, :, 2, 1), view(λ6, :, 1))), view(blk_dat, 1, 2, :))
+        @test all(≈(2 * A11_dat[2, 2, 1] * λ6[2, 2]), view(blk_dat, 2, 2, :))
 
         # Omega_dot_diag_block!(blk, fm6, 3)
         # @test all(iszero, view(blk_dat, 1, 1, :))
