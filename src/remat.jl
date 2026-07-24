@@ -104,6 +104,58 @@ function adjA(refs::AbstractVector, z::AbstractMatrix)
     return sparse(II, J, vec(z))
 end
 
+"""
+    _sortlevels!(A::AbstractReMat)
+
+Reorder the levels of the grouping factor by descending number of occurrences.
+
+For grouping factors whose diagonal block in `L` incurs fill-in, placing the
+most frequently occurring levels first concentrates the sparse rank-update of
+that block in a compact region of storage, which improves memory locality.
+For `TriangularRFP` blocks it additionally keeps most updates in the
+trapezoidal part of the packed storage, avoiding strided access to the
+transposed triangular part.
+
+The `ContrastsMatrix` of the grouping factor's term (i.e. `A.trm`) is rebuilt
+so that its level order (and hence its `invindex`) stays in sync with
+the reordered levels. Interaction groupings store their level order only in
+the `ReMat` itself, so there is nothing further to synchronize.
+
+!!! note "Only fully implemented for concrete `ReMat`"
+    There is a no-op `_sortlevels!(::AbstractReMat)` method that returns the original matrix,
+    so that everything will "just" work when a new subtype of `AbstractReMat` is added.
+    If a given concrete subtype will benefit from this, then you should implement an appropriate method.
+"""
+_sortlevels!(A::AbstractReMat) = A
+
+function _sortlevels!(A::ReMat{T,S}) where {T,S}
+    counts = zeros(Int, length(A.levels))
+    for r in A.refs
+        counts[r] += 1
+    end
+    issorted(counts; rev=true) && return A
+    perm = sortperm(counts; rev=true)
+    invp = invperm(perm)
+    map!(r -> invp[r], A.refs, A.refs)
+    A.levels .= @view A.levels[perm]
+    # permute the rows of adjA in place to match the permuted labels:
+    # each column holds the S rows of a single level, so the relabeled rowvals
+    # remain sorted within each column
+    rv = rowvals(A.adjA)
+    if isone(S)
+        map!(r -> invp[r], rv, rv)
+    else
+        map!(i -> (invp[fld1(i, S)] - 1) * S + mod1(i, S), rv, rv)
+    end
+    trm = A.trm
+    if trm isa CategoricalTerm
+        A.trm = CategoricalTerm(
+            trm.sym, StatsModels.ContrastsMatrix(trm.contrasts.contrasts, A.levels)
+        )
+    end
+    return A
+end
+
 Base.size(A::ReMat) = (length(A.refs), length(A.scratch))
 
 SparseArrays.sparse(A::ReMat) = adjoint(A.adjA)
@@ -566,8 +618,12 @@ Overwrite L with `Λ'AΛ + I`
 """
 function copyscaleinflate! end
 
-function copyscaleinflate!(Ljj::Diagonal{T}, Ajj::Diagonal{T}, Λj::ReMat{T,1}) where {T}
-    Ldiag, Adiag = Ljj.diag, Ajj.diag
+function copyscaleinflate!(
+    Ljj::Hermitian{T,Diagonal{T,Vector{T}}},
+    Ajj::Diagonal{T,Vector{T}},
+    Λj::ReMat{T,1},
+) where {T}
+    Ldiag, Adiag = Ljj.data.diag, Ajj.diag
     lambsq = abs2(only(Λj.λ.data))
     @inbounds for i in eachindex(Ldiag, Adiag)
         Ldiag[i] = muladd(lambsq, Adiag[i], one(T))
@@ -575,23 +631,39 @@ function copyscaleinflate!(Ljj::Diagonal{T}, Ajj::Diagonal{T}, Λj::ReMat{T,1}) 
     return Ljj
 end
 
-function copyscaleinflate!(Ljj::Matrix{T}, Ajj::Diagonal{T}, Λj::ReMat{T,1}) where {T}
-    fill!(Ljj, zero(T))
+function copyscaleinflate!(
+    Ljj::Hermitian{T,Matrix{T}},
+    Ajj::Diagonal{T},
+    Λj::ReMat{T,1},
+) where {T}
+    Ld = Ljj.data
+    fill!(Ld, zero(T))
     lambsq = abs2(only(Λj.λ.data))
     @inbounds for (i, a) in enumerate(Ajj.diag)
-        Ljj[i, i] = muladd(lambsq, a, one(T))
+        Ld[i, i] = muladd(lambsq, a, one(T))
+    end
+    return Ljj
+end
+
+function copyscaleinflate!(Ljj::HermitianRFP{T}, Ajj::Diagonal{T}, Λj::ReMat{T,1}) where {T}
+    fill!(Ljj.data, zero(T))
+    lambsq = abs2(only(Λj.λ.data))
+    LjjT = TriangularRFP(Ljj.data, Ljj.transr, Ljj.uplo)
+    @inbounds for (i, a) in enumerate(Ajj.diag)
+        LjjT[i, i] = muladd(lambsq, a, one(T))
     end
     return Ljj
 end
 
 function copyscaleinflate!(
-    Ljj::UniformBlockDiagonal{T},
+    Ljj::Hermitian{T,UniformBlockDiagonal{T}},
     Ajj::UniformBlockDiagonal{T},
     Λj::ReMat{T,S},
 ) where {T,S}
+    Ljj.uplo == 'L' || throw(ArgumentError("Ljj.uplo should be 'L'"))
     λ = Λj.λ
     dind = diagind(S, S)
-    Ldat = copyto!(Ljj.data, Ajj.data)
+    Ldat = copyto!(Ljj.data.data, Ajj.data)
     for k in axes(Ldat, 3)
         f = view(Ldat,:,:,k)
         lmul!(λ', rmul!(f, λ))
@@ -603,24 +675,53 @@ function copyscaleinflate!(
 end
 
 function copyscaleinflate!(
-    Ljj::Matrix{T},
+    Ljj::HermitianRFP{T},
+    Ajj::UniformBlockDiagonal{T},
+    Λj::ReMat{T,S},
+) where {T,S}    # S is an integer - the size of the diagonal blocks
+    fill!(Ljj.data, zero(T))  # zero the off-block entries left over from a previous factorization
+    LjjT = TriangularRFP(Ljj.data, Ljj.transr, Ljj.uplo)
+    q, r = divrem(size(Ljj, 1), S)
+    iszero(r) || throw(DimensionMismatch("size(Ljj, 1) is not a multiple of S"))
+    λ = Λj.λ
+    tmp = Array{T}(undef, S, S)
+    offset = 0
+    @inbounds for k in 1:q
+        copyto!(tmp, Ajj.data[:, :, k])
+        lmul!(adjoint(λ), rmul!(tmp, λ))
+        for j in 1:S
+            tmp[j, j] += one(T)
+        end
+        for j in 1:S
+            for i in j:S
+                LjjT[offset + i, offset + j] = tmp[i, j]
+            end
+        end
+        offset += S
+    end
+    return Ljj
+end
+
+function copyscaleinflate!(
+    Ljj::Hermitian{T,Matrix{T}},
     Ajj::UniformBlockDiagonal{T},
     Λj::ReMat{T,S},
 ) where {T,S}
-    copyto!(Ljj, Ajj)
-    n = LinearAlgebra.checksquare(Ljj)
+    LjjM = Ljj.data
+    copyto!(LjjM, Ajj)
+    n = LinearAlgebra.checksquare(LjjM)
     q, r = divrem(n, S)
     iszero(r) || throw(DimensionMismatch("size(Ljj, 1) is not a multiple of S"))
     λ = Λj.λ
     offset = 0
     @inbounds for _ in 1:q
         inds = (offset + 1):(offset + S)
-        tmp = view(Ljj, inds, inds)
+        tmp = view(LjjM, inds, inds)
         lmul!(adjoint(λ), rmul!(tmp, λ))
         offset += S
     end
-    for k in diagind(Ljj)
-        Ljj[k] += one(T)
+    for k in diagind(LjjM)
+        LjjM[k] += one(T)
     end
     return Ljj
 end

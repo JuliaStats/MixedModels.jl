@@ -1,3 +1,55 @@
+# Interface notes for defining new `AbstractReTerm` / `AbstractReMat` subtypes
+# ===========================================================================
+#
+# There is no formally documented minimal interface for these abstract types:
+# only `_sortlevels!(::AbstractReMat)` (a genuine no-op fallback in remat.jl)
+# and `StatsAPI.coefnames(::AbstractReMat)` (assumes a `.cnames` field) are
+# written against the abstract types. Everything else in the fit is dispatched
+# on the concrete `RandomEffectsTerm` / `ReMat`, so a genuinely new subtype
+# (not just a `ReMat` wrapper that forwards) must supply the whole surface
+# below. The realistic path is usually to subtype and delegate to a held
+# `ReMat`, overriding only the handful of methods being changed; if the goal is
+# different block storage or a different λ structure, a new block type plus its
+# `rmulΛ!`/`lmulΛ!`/`rankUpdate!`/`copyscaleinflate!` methods may suffice
+# without a new `AbstractReMat` at all.
+#
+# `AbstractReTerm` (formula/term side; feeds `modelcols` -> `AbstractReMat`):
+#   - StatsModels.apply_schema(t, ::MultiSchema{FullRank}, ::Type{<:MixedModel})
+#   - StatsModels.modelcols(t, d::NamedTuple)  -> returns the AbstractReMat
+#   - StatsModels.termvars(t), StatsModels.terms(t)
+#   - StatsModels.is_matrix_term(::Type{T}) = false
+#   - is_randomeffectsterm(t) (defaults to true on AbstractReTerm)
+#   - Base.show
+#
+# `AbstractReMat` (matrix side, used throughout the fit):
+#   AbstractArray basics: Base.size, Base.getindex, SparseArrays.sparse,
+#     LinearAlgebra.Matrix
+#   Assembly (createAL cross-products), returning block-storage types that
+#   themselves support the updateL! kernels:
+#     - Base.:(*)(::Adjoint{<:AbstractReMat}, ::AbstractReMat)   # Zᵢ'Zⱼ
+#     - Base.:(*)(::Adjoint{<:FeMat}, ::AbstractReMat)           # X'Z
+#   updateL! hot loop:
+#     - copyscaleinflate!(LdH, A_jj, cj)      # Λ'AΛ + I on the diagonal block
+#     - rmulΛ!(dest, cj) / lmulΛ!(cj', dest)  # per block-storage type
+#     - block types must also support rankUpdate!, cholUnblocked!, mul!, rdiv!
+#   θ / parameters: getθ, getθ!, setθ!, nθ, lowerbd, vsize (== S), nranef
+#   Grouping metadata: fname, DataAPI.levels, DataAPI.refarray, DataAPI.refpool,
+#     DataAPI.refvalue, nlevs, StatsModels.isnested
+#   Weights: reweight!
+#   Copying: Base.copy, LinearAlgebra.copy_oftype
+#   Post-fit (ranef/simulate/VarCorr/PCA/condVar/coeftable): unscaledre!,
+#     rowlengths, corrmat, σvals, σs, σρs, PCA, indmat, zerocorr!,
+#     LinearAlgebra.cond, coefnames
+#   Optional (has a working fallback): _sortlevels!  -- paired with the term-
+#     side _syncgrouping (see below); implement both or neither.
+#
+# `_sortlevels!` (AbstractReMat) and `_syncgrouping` (AbstractTerm) are a pair,
+# both with no-op fallbacks. `_sortlevels!` reorders a ReMat's levels and
+# rebuilds its `trm` with reordered contrasts; `_syncgrouping` substitutes the
+# rebuilt `trm`s back into the stored formula so `modelcols` (hence predict /
+# simulate on newdata) stays consistent. A new subtype with a non-trivial
+# `_sortlevels!` that rebuilds its term must also add a `_syncgrouping` method,
+# or the stored formula and the fitted ReMat diverge.
 abstract type AbstractReTerm <: AbstractTerm end
 
 struct RandomEffectsTerm <: AbstractReTerm
@@ -210,3 +262,28 @@ StatsModels.modelcols(t::ZeroCorr, d::NamedTuple) = zerocorr!(modelcols(t.term, 
 function Base.getproperty(x::ZeroCorr, s::Symbol)
     return s == :term ? getfield(x, s) : getproperty(x.term, s)
 end
+
+"""
+    _syncgrouping(form::FormulaTerm, reterms)
+
+Replace the grouping terms in `form` with the corresponding `trm`s of `reterms`.
+
+After [`_sortlevels!`](@ref) the `ReMat`s hold rebuilt `CategoricalTerm`s whose
+contrasts reflect the new level order; substituting them into the stored
+formula keeps `modelcols` on that formula consistent with the fitted model.
+"""
+function _syncgrouping(form::FormulaTerm, reterms)
+    newtrms = Dict(
+        rt.trm.sym => rt.trm for
+        rt in reterms if rt isa ReMat && rt.trm isa CategoricalTerm
+    )
+    isempty(newtrms) && return form
+    return FormulaTerm(form.lhs, _syncgrouping.(form.rhs, Ref(newtrms)))
+end
+_syncgrouping(t::AbstractTerm, newtrms::Dict) = t
+function _syncgrouping(t::RandomEffectsTerm, newtrms::Dict)
+    rhs = t.rhs
+    rhs isa CategoricalTerm || return t
+    return RandomEffectsTerm(t.lhs, get(newtrms, rhs.sym, rhs))
+end
+_syncgrouping(t::ZeroCorr, newtrms::Dict) = ZeroCorr(_syncgrouping(t.term, newtrms))

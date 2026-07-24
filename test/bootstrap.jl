@@ -62,7 +62,7 @@ end
             progress=false,
         )  # fails in pirls! with fast=false
         gm4sim = refit!(simulate!(StableRNG(42), deepcopy(gm4)); progress=false)
-        @test isapprox(gm4.β, gm4sim.β; atol=norm(stderror(gm4)))
+        @test isapprox(gm4.β, gm4sim.β; atol=2 * norm(stderror(gm4))) # is the simulation within a 95%-ish confidence region?
     end
 
     @testset "Binomial" begin

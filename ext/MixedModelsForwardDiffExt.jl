@@ -4,7 +4,6 @@ using MixedModels
 using MixedModels: AbstractReMat,
     block,
     BlockedSparse,
-    cholUnblocked!,
     copyscaleinflate!,
     kp1choose2,
     LD,
@@ -184,7 +183,9 @@ function MixedModels.fd_updateL!(A::Vector, L::Vector, reterms::Vector)
     for j in eachindex(reterms) # pre- and post-multiply by Λ, add I to diagonal
         cj = reterms[j]
         diagind = kp1choose2(j)
-        copyscaleinflate!(L[diagind], A[diagind], cj)
+        LdH = L[diagind]
+        LdH = isa(LdH, LowerTriangular) ? Hermitian(LdH.data, :L) : Hermitian(LdH, :L)
+        copyscaleinflate!(LdH, A[diagind], cj)
         for i in (j + 1):(k + 1)     # postmultiply column by Λ
             bij = block(i, j)
             rmulΛ!(copyto!(L[bij], A[bij]), cj)
@@ -195,16 +196,11 @@ function MixedModels.fd_updateL!(A::Vector, L::Vector, reterms::Vector)
     end
     for j in 1:(k + 1)             # blocked Cholesky
         Ljj = L[kp1choose2(j)]
+        LjjH = isa(Ljj, LowerTriangular) ? Hermitian(Ljj.data, :L) : Hermitian(Ljj, :L)
         for jj in 1:(j - 1)
-            fd_rankUpdate!(
-                Hermitian(Ljj, :L),
-                L[block(j, jj)],
-                -one(eltype(Ljj)),
-                one(eltype(Ljj)),
-            )
+            fd_rankUpdate!(LjjH, L[block(j, jj)], -one(eltype(Ljj)), one(eltype(Ljj)))
         end
-        fd_cholUnblocked!(Ljj, Val{:L})
-        LjjT = isa(Ljj, Diagonal) ? Ljj : LowerTriangular(Ljj)
+        fd_cholUnblocked!(LjjH)
         for i in (j + 1):(k + 1)
             Lij = L[block(i, j)]
             for jj in 1:(j - 1)
@@ -216,7 +212,7 @@ function MixedModels.fd_updateL!(A::Vector, L::Vector, reterms::Vector)
                     one(eltype(Lij)),
                 )
             end
-            rdiv!(Lij, LjjT')
+            rdiv!(Lij, Ljj')
         end
     end
     return nothing
@@ -238,25 +234,24 @@ end
 ##### Cholesky factorization
 #####
 
-function MixedModels.fd_cholUnblocked!(A::StridedMatrix, ::Type{Val{:L}})
-    cholesky!(Hermitian(A, :L))
-    return A
-end
-
-function MixedModels.fd_cholUnblocked!(D::UniformBlockDiagonal, ::Type{T}) where {T}
-    Ddat = D.data
-    for k in axes(Ddat, 3)
-        fd_cholUnblocked!(view(Ddat, :, :, k), T)
-    end
+function MixedModels.fd_cholUnblocked!(D::Hermitian{T,Diagonal{T,Vector{T}}}) where {T}
+    D.data.diag .= sqrt.(D.data.diag)
     return D
 end
 
-function MixedModels.fd_cholUnblocked!(A::Diagonal, ::Type{T}) where {T}
-    A.diag .= sqrt.(A.diag)
+function MixedModels.fd_cholUnblocked!(A::Hermitian{T,Matrix{T}}) where {T}
+    A.uplo == 'L' || throw(ArgumentError("A.uplo should be 'L'"))
+    cholesky!(A)
     return A
 end
 
-MixedModels.fd_cholUnblocked!(A::AbstractMatrix, ::Type{T}) where {T} = cholUnblocked!(A, T)
+function MixedModels.fd_cholUnblocked!(D::Hermitian{T,UniformBlockDiagonal{T}}) where {T}
+    Ddat = D.data.data
+    for k in axes(Ddat, 3)
+        cholesky!(Hermitian(view(Ddat, :, :, k), :L))
+    end
+    return D
+end
 
 #####
 ##### Rank update

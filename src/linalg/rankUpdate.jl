@@ -3,7 +3,7 @@
     rankUpdate!(C, A, α)
     rankUpdate!(C, A, α, β)
 
-A rank-k update, C := α*A'A + β*C, of a Hermitian (Symmetric) matrix.
+A rank-k update, C := α*A*A' + β*C, of a Hermitian (Symmetric) matrix.
 
 `α` and `β` both default to 1.0.  When `α` is -1.0 this is a downdate operation.
 The name `rankUpdate!` is borrowed from [https://github.com/andreasnoack/LinearAlgebra.jl]
@@ -39,6 +39,18 @@ function rankUpdate!(C::HermOrSym{T,S}, A::StridedMatrix{T}, α, β) where {T,S}
     return C
 end
 
+# function rankUpdate!(
+#     C::HermOrSym{T,S}, A::StridedMatrix{T}, α, β
+# ) where {T,S<:LowerTriangular}
+#     BLAS.syrk!(C.uplo, 'N', T(α), A, T(β), C.data.data)
+#     return C
+# end
+
+function rankUpdate!(C::HermitianRFP{T}, A::StridedMatrix{T}, α, β) where {T}
+    sfrk!(C.transr, C.uplo, 'N', T(α), A, T(β), C.data)
+    return C
+end
+
 """
     _columndot(rv, nz, rngi, rngj)
 
@@ -64,12 +76,24 @@ function _columndot(rv, nz, rngi, rngj)
     return accum
 end
 
-function rankUpdate!(C::HermOrSym{T,S}, A::SparseMatrixCSC{T}, α, β) where {T,S}
+function rankUpdate!(
+    C::HermOrSym{T,S},
+    A::SparseMatrixCSC{T},
+    α,
+    β,
+) where {T,S}
     require_one_based_indexing(C, A)
-    m, n = size(A)
-    Cd, rv, nz = C.data, A.rowval, A.nzval
     lower = C.uplo == 'L'
-    (lower ? m : n) == size(C, 2) || throw(DimensionMismatch())
+    adim = lower ? 1 : 2
+    if size(C, 1) ≠ size(A, adim)
+        throw(
+            DimensionMismatch(
+                "size(C,1) = $(size(C, 1)) does not match size(A,$adim) = $(size(A, adim))"
+            ),
+        )
+    end
+
+    Cd, rv, nz = C.data, A.rowval, A.nzval
     isone(β) || rmul!(lower ? LowerTriangular(Cd) : UpperTriangular(Cd), β)
     if lower
         @inbounds for jj in axes(A, 2)
@@ -96,7 +120,62 @@ function rankUpdate!(C::HermOrSym{T,S}, A::SparseMatrixCSC{T}, α, β) where {T,
     return C
 end
 
+function rankUpdate!(
+    C::HermitianRFP{T},
+    A::SparseMatrixCSC{T},
+    α,
+    β,
+) where {T}
+    require_one_based_indexing(C, A)
+    if uppercase(C.transr) ≠ 'N' || uppercase(C.uplo) ≠ 'L'
+        throw(ArgumentError("HermitianRFP C is not non-trans, lower"))
+    end
+    rv, nz = A.rowval, A.nzval
+    Cdat = C.data
+    An = size(A, 1)
+    if An ≠ size(C, 1)
+        throw(DimensionMismatch("size(A, 1) == $An ≠ $(size(C, 1)) = size(C, 1)"))
+    end
+    tall = iseven(An)        # is Cdat in the tall format or the wide format?
+    Cdn, Cdm = size(Cdat)
+    @assert (Cdn == An + tall) && (Cdm == ((An + !tall) >> 1))
+
+    isone(β) || rmul!(Cdat, β)
+    for jj in axes(A, 2)
+        rngjj = nzrange(A, jj)
+        lenrngjj = length(rngjj)
+        for (k, j) in enumerate(rngjj)
+            anzj = α * nz[j]
+            rvj = rv[j]                         # updates in rvj column of C
+            if rvj ≤ Cdm                        # in the trapezoidal part of Cdat
+                offset = (rvj - 1) * Cdn + tall
+                for i in k:lenrngjj
+                    kk = rngjj[i]
+                    linind = offset + rv[kk]
+                    Cdat[linind] = muladd(nz[kk], anzj, Cdat[linind])
+                end
+            else                                # in the transposed triangular part of Cdat
+                Cdrow = rvj - Cdm
+                for i in k:lenrngjj
+                    kk = rngjj[i]
+                    rvkk = rv[kk]
+                    @assert rvkk ≥ rvj
+                    linind = (rvkk - Cdm - tall) * Cdn + Cdrow
+                    Cdat[linind] = muladd(nz[kk], anzj, Cdat[linind])
+                end
+            end
+        end
+    end
+    return C
+end
+
 function rankUpdate!(C::HermOrSym, A::BlockedSparse, α, β)
+    return rankUpdate!(C, sparse(A), α, β)
+end
+
+# HermitianRFP is not a HermOrSym, so it needs its own BlockedSparse method that
+# forwards to the HermitianRFP/SparseMatrixCSC kernel.
+function rankUpdate!(C::HermitianRFP{T}, A::BlockedSparse{T}, α, β) where {T}
     return rankUpdate!(C, sparse(A), α, β)
 end
 

@@ -1,6 +1,13 @@
 MixedModels vX.Y.Z Release Notes
 ==============================
 - Additional methods for pre-allocated result arrays and `*Config` instances have been added to the ForwardDiff extension. [#871].
+
+MixedModels v5.8.0 Release Notes
+==============================
+- Allow for diagonal blocks of `L` to be stored in `RectangularFullPacked` (RFP) format, which saves roughly half the storage required for the block.  This can increase the time required for `updateL!`, primarily in the `rankUpdate!` step, resulting in a time vs. memory tradeoff.  The size threshold for RFP storage is a new optional argument `RFPthreshold`, which defaults to 1000.
+- The RFP format stores a triangular matrix in two pieces: a trapezoidal part of roughly 3/4 of the elements, where linear indexing can be used for the updates, and a transposed triangular part with more complicated `getindex` and `setindex!` methods.
+- A new Boolean optional argument, `sortlevels`, which defaults to `true`, allows for sorting the levels of the any grouping factors with RFP storage of their diagonal blocks.  This is a heuristic to have more updates occur in the trapezoid part of the RFP block.  It is not guaranteed to be optimal but it works well in examples we have tried. [#821]
+
 MixedModels v5.7.1 Release Notes
 
 ==============================
@@ -745,6 +752,7 @@ Package dependencies
 [#810]: https://github.com/JuliaStats/MixedModels.jl/issues/810
 [#814]: https://github.com/JuliaStats/MixedModels.jl/issues/814
 [#815]: https://github.com/JuliaStats/MixedModels.jl/issues/815
+[#821]: https://github.com/JuliaStats/MixedModels.jl/issues/821
 [#823]: https://github.com/JuliaStats/MixedModels.jl/issues/823
 [#825]: https://github.com/JuliaStats/MixedModels.jl/issues/825
 [#828]: https://github.com/JuliaStats/MixedModels.jl/issues/828
