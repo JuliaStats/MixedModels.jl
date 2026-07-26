@@ -130,40 +130,40 @@ function rankUpdate!(
     if uppercase(C.transr) ≠ 'N' || uppercase(C.uplo) ≠ 'L'
         throw(ArgumentError("HermitianRFP C is not non-trans, lower"))
     end
-    rv, nz = A.rowval, A.nzval
+    (; m, colptr, rowval, nzval) = A
     Cdat = C.data
-    An = size(A, 1)
-    if An ≠ size(C, 1)
-        throw(DimensionMismatch("size(A, 1) == $An ≠ $(size(C, 1)) = size(C, 1)"))
+    if m ≠ size(C, 1)
+        throw(DimensionMismatch("size(A, 1) == $m ≠ $(size(C, 1)) = size(C, 1)"))
     end
-    tall = iseven(An)        # is Cdat in the tall format or the wide format?
-    Cdn, Cdm = size(Cdat)
-    @assert (Cdn == An + tall) && (Cdm == ((An + !tall) >> 1))
+    tall = iseven(m)                           # is Cdat in the tall (vs wide) format?
+    Cdm, Cdn = size(Cdat)
+    @assert (Cdm == m + tall) && (Cdn == ((m + !tall) >> 1)) # can suppress this later
 
     isone(β) || rmul!(Cdat, β)
-    for jj in axes(A, 2)
-        rngjj = nzrange(A, jj)
-        lenrngjj = length(rngjj)
-        for (k, j) in enumerate(rngjj)
-            anzj = α * nz[j]
-            rvj = rv[j]                         # updates in rvj column of C
-            if rvj ≤ Cdm                        # in the trapezoidal part of Cdat
-                offset = (rvj - 1) * Cdn + tall
-                for i in k:lenrngjj
-                    kk = rngjj[i]
-                    linind = offset + rv[kk]
-                    Cdat[linind] = muladd(nz[kk], anzj, Cdat[linind])
+    indj = 1
+    for colp in colptr                        # (max index + 1) in rowval, nzval for a column of A
+        while indj < colp                     # first iteration skipped b/c colptr[1] is always 1
+            j = Int(rowval[indj])             # column in C to be updated
+            anzj = α * nzval[indj]
+            if j ≤ Cdn                        # in the trapezoidal part of Cdat (most common case)
+                offset = (j - 1) * Cdm + tall # offset to col j for linear indices into Cdat
+                indi = indj
+                while indi < colp             # iterate over the rest of the column of A
+                    linind = offset + Int(rowval[indi])
+                    Cdat[linind] = muladd(nzval[indi], anzj, Cdat[linind])
+                    indi += 1
                 end
-            else                                # in the transposed triangular part of Cdat
-                Cdrow = rvj - Cdm
-                for i in k:lenrngjj
-                    kk = rngjj[i]
-                    rvkk = rv[kk]
-                    @assert rvkk ≥ rvj
-                    linind = (rvkk - Cdm - tall) * Cdn + Cdrow
-                    Cdat[linind] = muladd(nz[kk], anzj, Cdat[linind])
+            else                              # in the transposed triangular part of Cdat
+                Cdrow = j - Cdn               # row in triangular part of Cdat for col j  
+                indi = indj
+                while indi < colp
+                    i = Int(rowval[indi])
+                    linind = (i - Cdn - tall) * Cdm + Cdrow
+                    Cdat[linind] = muladd(nzval[indi], anzj, Cdat[linind])
+                    indi += 1
                 end
             end
+            indj += 1
         end
     end
     return C
