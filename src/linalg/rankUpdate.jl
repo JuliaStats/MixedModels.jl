@@ -148,7 +148,7 @@ function rankUpdate!(
             if j ≤ Cdn                        # in the trapezoidal part of Cdat (most common case)
                 offset = (j - 1) * Cdm + tall # offset to col j for linear indices into Cdat
                 indi = indj
-                while indi < colp             # iterate over the rest of the column of A
+                @inbounds while indi < colp   # iterate over the rest of the column of A
                     linind = offset + Int(rowval[indi])
                     Cdat[linind] = muladd(nzval[indi], anzj, Cdat[linind])
                     indi += 1
