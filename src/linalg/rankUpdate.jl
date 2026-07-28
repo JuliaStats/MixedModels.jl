@@ -128,14 +128,14 @@ function rankUpdate!(
 ) where {T}
     require_one_based_indexing(C, A)
     if uppercase(C.transr) ≠ 'N' || uppercase(C.uplo) ≠ 'L'
-        throw(ArgumentError("HermitianRFP C is not non-trans, lower"))
+        throw(ArgumentError("HermitianRFP C is not lower, non-transposed storage"))
     end
     (; m, colptr, rowval, nzval) = A
     Cdat = C.data
     if m ≠ size(C, 1)
         throw(DimensionMismatch("size(A, 1) == $m ≠ $(size(C, 1)) = size(C, 1)"))
     end
-    tall = iseven(m)                           # is Cdat in the tall (vs wide) format?
+    tall = iseven(m)                          # is Cdat in the tall (vs wide) format?
     Cdm, Cdn = size(Cdat)
     @assert (Cdm == m + tall) && (Cdn == ((m + !tall) >> 1)) # can suppress this later
 
