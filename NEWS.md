@@ -1,7 +1,9 @@
 MixedModels v5.8.1 Release Notes
 ==============================
-- Performance improvements for RFP-matrices. [#910]
-- The sparse `rankUpdate!` of a densely stored diagonal block of `L` now walks the `colptr` of the update directly and indexes the block linearly, matching the structure of the RFP kernel. This hoists the column offset out of the inner loop and removes a level of indirection, for roughly a 15% speedup of that kernel. [#910]
+- The sparse `rankUpdate!` of a diagonal block of `L` has been reworked, for both RFP and dense storage of the block.  Rather than going through `nzrange` and indexing into the resulting range, both kernels now walk the `colptr` of the update directly, carrying a running index into `rowval` and `nzval`.  This removes a level of indirection from the inner loops and hoists the offset of the target column out of them. [#910]
+- In the RFP kernel, the per-element assertion that row indices are sorted within a column has been replaced by a single `issorted` check per column.  That check is what makes the inner loops safe to mark `@inbounds`, and performing it once per column is far cheaper than once per element of the quadratic inner loops. [#910]
+- Relative to v5.8.0, the RFP kernel is roughly 1.65× faster on `insteval` and 1.1× faster on an example too large for cache, which closes most of the gap between RFP and dense storage noted below: on `insteval` the RFP update went from about 60% slower than the dense one to under 10% slower.  The dense kernel itself gains about 15% when the block fits in cache and little when it does not. [#910]
+- `rankUpdate!` on a `HermitianRFP` that is not in lower, non-transposed storage now reports the offending `transr` and `uplo` in the `ArgumentError`. [#910]
 
 MixedModels v5.8.0 Release Notes
 ==============================
