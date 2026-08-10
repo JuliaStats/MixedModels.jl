@@ -78,6 +78,60 @@ function _columndot(rv, nz, rngi, rngj)
     return accum
 end
 
+"""
+    _lowerrankUpdate!(Cd, A, α)
+
+Add `α * A * A'` to the lower triangle of `Cd`, where `A` is a `SparseMatrixCSC`.
+
+Each column of `A` contributes the outer product of its nonzeros.  Because `rowval` is
+sorted within a column, walking from a given entry to the end of its column visits exactly
+the rows `i ≥ j` of the lower triangle.
+"""
+function _lowerrankUpdate!(Cd::AbstractMatrix{T}, A::SparseMatrixCSC{T}, α) where {T}
+    rv, nz = A.rowval, A.nzval
+    @inbounds for jj in axes(A, 2)
+        rangejj = nzrange(A, jj)
+        lenrngjj = length(rangejj)
+        for (k, j) in enumerate(rangejj)
+            anzj = α * nz[j]
+            rvj = rv[j]
+            for i in k:lenrngjj
+                kk = rangejj[i]
+                Cd[rv[kk], rvj] = muladd(nz[kk], anzj, Cd[rv[kk], rvj])
+            end
+        end
+    end
+    return Cd
+end
+
+# A dense `Cd` is contiguous and column-major, so the column offset can be hoisted out of the
+# inner loop and the two `rowval` lookups collapsed to one linear index, as in the
+# `HermitianRFP` kernel below.  Unlike that kernel, this one needs no sortedness `@assert` to
+# justify its `@inbounds`: `rowval` entries lie in `1:size(A, 1) == 1:size(Cd, 1)`, so
+# `offset + rowval[indi]` is within `1:length(Cd)` no matter how the rows are ordered.
+# Sortedness is what confines the writes to the lower triangle, exactly as in the method above.
+function _lowerrankUpdate!(Cd::DenseMatrix{T}, A::SparseMatrixCSC{T}, α) where {T}
+    (; colptr, rowval, nzval) = A
+    Cdm = size(Cd, 1)
+    indj = 1
+    # each colp is one past the last rowval/nzval index of the preceding column of A
+    for colp in colptr
+        while indj < colp                     # first iteration skipped b/c colptr[1] is always 1
+            j = Int(rowval[indj])             # column of Cd to be updated
+            anzj = α * nzval[indj]
+            offset = (j - 1) * Cdm            # offset to col j for linear indices into Cd
+            indi = indj
+            @inbounds while indi < colp       # iterate over the rest of the column of A
+                linind = offset + Int(rowval[indi])
+                Cd[linind] = muladd(nzval[indi], anzj, Cd[linind])
+                indi += 1
+            end
+            indj += 1
+        end
+    end
+    return Cd
+end
+
 function rankUpdate!(
     C::HermOrSym{T,S},
     A::SparseMatrixCSC{T},
@@ -95,22 +149,12 @@ function rankUpdate!(
         )
     end
 
-    Cd, rv, nz = C.data, A.rowval, A.nzval
+    Cd = C.data
     isone(β) || rmul!(lower ? LowerTriangular(Cd) : UpperTriangular(Cd), β)
     if lower
-        @inbounds for jj in axes(A, 2)
-            rangejj = nzrange(A, jj)
-            lenrngjj = length(rangejj)
-            for (k, j) in enumerate(rangejj)
-                anzj = α * nz[j]
-                rvj = rv[j]
-                for i in k:lenrngjj
-                    kk = rangejj[i]
-                    Cd[rv[kk], rvj] = muladd(nz[kk], anzj, Cd[rv[kk], rvj])
-                end
-            end
-        end
+        _lowerrankUpdate!(Cd, A, α)
     else
+        rv, nz = A.rowval, A.nzval
         @inbounds for j in axes(C, 2)
             rngj = nzrange(A, j)
             for i in 1:(j - 1)
@@ -130,42 +174,53 @@ function rankUpdate!(
 ) where {T}
     require_one_based_indexing(C, A)
     if uppercase(C.transr) ≠ 'N' || uppercase(C.uplo) ≠ 'L'
-        throw(ArgumentError("HermitianRFP C is not non-trans, lower"))
+        throw(
+            ArgumentError(
+                "HermitianRFP C must be lower, non-transposed storage; got transr='$(C.transr)', uplo='$(C.uplo)'"
+            ),
+        )
     end
-    rv, nz = A.rowval, A.nzval
+    (; m, colptr, rowval, nzval) = A
     Cdat = C.data
-    An = size(A, 1)
-    if An ≠ size(C, 1)
-        throw(DimensionMismatch("size(A, 1) == $An ≠ $(size(C, 1)) = size(C, 1)"))
+    if m ≠ size(C, 1)
+        throw(DimensionMismatch("size(A, 1) == $m ≠ $(size(C, 1)) = size(C, 1)"))
     end
-    tall = iseven(An)        # is Cdat in the tall format or the wide format?
-    Cdn, Cdm = size(Cdat)
-    @assert (Cdn == An + tall) && (Cdm == ((An + !tall) >> 1))
+    tall = iseven(m)                          # is Cdat in the tall (vs wide) format?
+    Cdm, Cdn = size(Cdat)
+    # the @inbounds inner loops below are only in-bounds because Cdm == m + tall, so this
+    # check must stay
+    @assert (Cdm == m + tall) && (Cdn == ((m + !tall) >> 1))
 
     isone(β) || rmul!(Cdat, β)
-    for jj in axes(A, 2)
-        rngjj = nzrange(A, jj)
-        lenrngjj = length(rngjj)
-        for (k, j) in enumerate(rngjj)
-            anzj = α * nz[j]
-            rvj = rv[j]                         # updates in rvj column of C
-            if rvj ≤ Cdm                        # in the trapezoidal part of Cdat
-                offset = (rvj - 1) * Cdn + tall
-                for i in k:lenrngjj
-                    kk = rngjj[i]
-                    linind = offset + rv[kk]
-                    Cdat[linind] = muladd(nz[kk], anzj, Cdat[linind])
+    indj = 1
+    # each colp is one past the last rowval/nzval index of the preceding column of A
+    for colp in colptr
+        # Both inner loops start at indj and so require i ≥ j, i.e. sorted rowval within a
+        # column, which is the SparseMatrixCSC contract.  Checking it once per column is
+        # cheaper than the O(len^2) inner loops and is what makes their @inbounds safe.
+        @assert issorted(view(rowval, indj:(colp - 1)))
+        while indj < colp                     # first iteration skipped b/c colptr[1] is always 1
+            j = Int(rowval[indj])             # column in C to be updated
+            anzj = α * nzval[indj]
+            if j ≤ Cdn                        # in the trapezoidal part of Cdat (most common case)
+                offset = (j - 1) * Cdm + tall # offset to col j for linear indices into Cdat
+                indi = indj
+                @inbounds while indi < colp   # iterate over the rest of the column of A
+                    linind = offset + Int(rowval[indi])
+                    Cdat[linind] = muladd(nzval[indi], anzj, Cdat[linind])
+                    indi += 1
                 end
-            else                                # in the transposed triangular part of Cdat
-                Cdrow = rvj - Cdm
-                for i in k:lenrngjj
-                    kk = rngjj[i]
-                    rvkk = rv[kk]
-                    @assert rvkk ≥ rvj
-                    linind = (rvkk - Cdm - tall) * Cdn + Cdrow
-                    Cdat[linind] = muladd(nz[kk], anzj, Cdat[linind])
+            else                              # in the transposed triangular part of Cdat
+                Cdrow = j - Cdn               # row in triangular part of Cdat for col j
+                indi = indj
+                @inbounds while indi < colp   # iterate over the rest of the column of A
+                    i = Int(rowval[indi])
+                    linind = (i - Cdn - tall) * Cdm + Cdrow
+                    Cdat[linind] = muladd(nzval[indi], anzj, Cdat[linind])
+                    indi += 1
                 end
             end
+            indj += 1
         end
     end
     return C
