@@ -1,12 +1,23 @@
 MixedModels vX.Y.Z Release Notes
 ==============================
-- Additional methods for pre-allocated result arrays and `*Config` instances have been added to the ForwardDiff extension. [#871].
+- Additional methods for pre-allocated result arrays and `*Config` instances have been added to the ForwardDiff extension. [#871]
+
+MixedModels v5.8.2 Release Notes
+==============================
+- `dataset` is now public to avoid warnings when used directly. Users are nonetheless encouraged to load [MixedModelsDatasets.jl](https://github.com/JuliaMixedModels/MixedModelsDatasets.jl) directly. [#911]
+
+MixedModels v5.8.1 Release Notes
+==============================
+- The sparse `rankUpdate!` of a diagonal block of `L` has been reworked, for both RFP and dense storage of the block.  Rather than going through `nzrange` and indexing into the resulting range, both kernels now walk the `colptr` of the update directly, carrying a running index into `rowval` and `nzval`.  This removes a level of indirection from the inner loops and hoists the offset of the target column out of them. [#910]
+- In the RFP kernel, the per-element assertion that row indices are sorted within a column has been replaced by a single `issorted` check per column.  That check is what makes the inner loops safe to mark `@inbounds`, and performing it once per column is far cheaper than once per element of the quadratic inner loops. [#910]
+- Relative to v5.8.0, the RFP kernel is roughly 1.65× faster on `insteval` and 1.1× faster on an example too large for cache, which closes most of the gap between RFP and dense storage noted below: on `insteval` the RFP update went from about 60% slower than the dense one to under 10% slower.  The dense kernel itself gains about 15% when the block fits in cache and little when it does not. [#910]
+- `rankUpdate!` on a `HermitianRFP` that is not in lower, non-transposed storage now reports the offending `transr` and `uplo` in the `ArgumentError`. [#910]
 
 MixedModels v5.8.0 Release Notes
 ==============================
 - Allow for diagonal blocks of `L` to be stored in `RectangularFullPacked` (RFP) format, which saves roughly half the storage required for the block.  This can increase the time required for `updateL!`, primarily in the `rankUpdate!` step, resulting in a time vs. memory tradeoff.  The size threshold for RFP storage is a new optional argument `RFPthreshold`, which defaults to 1000.
 - The RFP format stores a triangular matrix in two pieces: a trapezoidal part of roughly 3/4 of the elements, where linear indexing can be used for the updates, and a transposed triangular part with more complicated `getindex` and `setindex!` methods.
-- A new Boolean optional argument, `sortlevels`, which defaults to `true`, allows for sorting the levels of the any grouping factors with RFP storage of their diagonal blocks.  This is a heuristic to have more updates occur in the trapezoid part of the RFP block.  It is not guaranteed to be optimal but it works well in examples we have tried. [#821]
+- A new Boolean optional argument, `sortlevels`, which defaults to `true`, sorts the levels of each grouping factor other than the leading one by decreasing number of occurrences.  This applies to both dense and RFP storage of the diagonal blocks of `L`: placing the most frequent levels first concentrates the sparse `rankUpdate!` of a block in a compact corner of its storage, which improves memory locality.  For RFP storage it additionally keeps more of those updates in the trapezoid part of the block.  This is a heuristic, not guaranteed to be optimal, but it works well in examples we have tried. [#821]
 
 MixedModels v5.7.1 Release Notes
 
@@ -789,3 +800,5 @@ Package dependencies
 [#898]: https://github.com/JuliaStats/MixedModels.jl/issues/898
 [#899]: https://github.com/JuliaStats/MixedModels.jl/issues/899
 [#904]: https://github.com/JuliaStats/MixedModels.jl/issues/904
+[#910]: https://github.com/JuliaStats/MixedModels.jl/issues/910
+[#911]: https://github.com/JuliaStats/MixedModels.jl/issues/911

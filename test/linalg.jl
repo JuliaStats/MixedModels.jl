@@ -72,21 +72,23 @@ end
     L22L = rankUpdate!(Symmetric(zeros(100, 100), :L), L21, 1.0, 1.0)
     @test L22L ≈
         rankUpdate!(Symmetric(zeros(100, 100), :U), sparse(transpose(L21)), 1.0, 1.0)
+
+    # The lower-triangle update has a fast path for dense `C.data`, which indexes linearly,
+    # and a generic fallback.  A `SubArray` is not a `DenseMatrix`, so it takes the fallback;
+    # both paths accumulate in the same order, hence the results agree exactly.
+    @test rankUpdate!(Symmetric(view(zeros(100, 100), :, :), :L), L21, 1.0, 1.0) == L22L
+    # β ≠ 1 scales the stored triangle first, on either path
+    @test rankUpdate!(Symmetric(Matrix(L22L), :L), L21, 1.0, 2.0) ==
+        rankUpdate!(Symmetric(view(Matrix(L22L), :, :), :L), L21, 1.0, 2.0)
+    # Int32 row indices, as produced by `sparse(::BlockedSparse)`
+    L21_32 = convert(SparseMatrixCSC{Float64,Int32}, L21)
+    @test rankUpdate!(Symmetric(zeros(100, 100), :L), L21_32, 1.0, 1.0) == L22L
 end
 
 @testset "rankUpdate! HermitianRFP" begin
     rng = MersenneTwister(1234)
-    n = 6
-
-    # a symmetric, lower-stored base matrix and the packed HermitianRFP holding it
-    S = let M = randn(rng, n, n)
-        M * M' + n * I
-    end
     rfp(S) = Hermitian(TriangularRFP(Matrix(LowerTriangular(S)), :L), :L)
 
-    # dense and (Int32) sparse updates plus a genuine BlockedSparse block
-    Adense = randn(rng, n, 4)
-    Asparse = convert(SparseMatrixCSC{Float64,Int32}, sparse(sprand(rng, n, 20, 0.3)))
     # crossed factors ⇒ an off-diagonal L block stored as BlockedSparse
     d3 = MixedModels.dataset(:d3)
     m = fit!(
@@ -97,13 +99,42 @@ end
     @test Ablk isa BlockedSparse
     Sblk = zeros(size(Ablk, 1), size(Ablk, 1)) + I
 
-    for (A, base) in ((Adense, S), (Asparse, S), (Ablk, Sblk))
+    testcases = Any[(Ablk, Sblk)]
+    # both parities of n are needed: even n packs into the tall RFP layout, odd n the wide one
+    for n in (6, 7)
+        # a symmetric, lower-stored base matrix and the packed HermitianRFP holding it
+        S = let M = randn(rng, n, n)
+            M * M' + n * I
+        end
+        # dense and (Int32) sparse updates
+        push!(testcases, (randn(rng, n, 4), S))
+        Asparse = convert(SparseMatrixCSC{Float64,Int32}, sparse(sprand(rng, n, 20, 0.3)))
+        push!(testcases, (Asparse, S))
+    end
+
+    for (A, base) in testcases
         for (α, β) in ((1.0, 1.0), (-1.0, 1.0), (0.5, 2.0))
             ref = rankUpdate!(Hermitian(Matrix(base), :L), A, α, β)
             got = rankUpdate!(rfp(base), A, α, β)
             @test got isa HermitianRFP
             @test LowerTriangular(Matrix(got)) ≈ LowerTriangular(Matrix(ref))
         end
+    end
+
+    # the sparse kernel only handles lower, non-transposed storage of a matching size
+    S = let M = randn(rng, 6, 6)
+        M * M' + 6I
+    end
+    upper = Hermitian(TriangularRFP(Matrix(UpperTriangular(S)), :U), :U)
+    @test_throws ArgumentError rankUpdate!(upper, sprand(rng, 6, 4, 0.5), 1.0, 1.0)
+    @test_throws DimensionMismatch rankUpdate!(rfp(S), sprand(rng, 5, 4, 0.5), 1.0, 1.0)
+
+    # rowval must be sorted within a column, since both inner loops start at indj and so
+    # assume i ≥ j.  For n = 6 the packed array has 3 columns, putting row 3 in the
+    # trapezoidal branch and row 4 in the triangular one; either way this must be caught.
+    for rows in ([3, 1], [4, 2])
+        unsorted = SparseMatrixCSC(6, 1, [1, 3], rows, ones(2))
+        @test_throws AssertionError rankUpdate!(rfp(S), unsorted, 1.0, 1.0)
     end
 end
 
