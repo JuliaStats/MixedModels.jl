@@ -4,6 +4,8 @@ using Test
 using SparseArrays
 using RectangularFullPacked
 
+using MixedModels: rankUpdate!
+
 # tests of the rankUpdate! method when `typeof(C)` is `HermitianRFP`
 @testset "rankUpHermitianRFP" begin
     A9 = float(sprand(Bool, 9, 12, 0.3))
