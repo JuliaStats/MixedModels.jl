@@ -76,17 +76,8 @@ end
 
 @testset "rankUpdate! HermitianRFP" begin
     rng = MersenneTwister(1234)
-    n = 6
-
-    # a symmetric, lower-stored base matrix and the packed HermitianRFP holding it
-    S = let M = randn(rng, n, n)
-        M * M' + n * I
-    end
     rfp(S) = Hermitian(TriangularRFP(Matrix(LowerTriangular(S)), :L), :L)
 
-    # dense and (Int32) sparse updates plus a genuine BlockedSparse block
-    Adense = randn(rng, n, 4)
-    Asparse = convert(SparseMatrixCSC{Float64,Int32}, sparse(sprand(rng, n, 20, 0.3)))
     # crossed factors ⇒ an off-diagonal L block stored as BlockedSparse
     d3 = MixedModels.dataset(:d3)
     m = fit!(
@@ -97,7 +88,20 @@ end
     @test Ablk isa BlockedSparse
     Sblk = zeros(size(Ablk, 1), size(Ablk, 1)) + I
 
-    for (A, base) in ((Adense, S), (Asparse, S), (Ablk, Sblk))
+    testcases = Any[(Ablk, Sblk)]
+    # both parities of n are needed: even n packs into the tall RFP layout, odd n the wide one
+    for n in (6, 7)
+        # a symmetric, lower-stored base matrix and the packed HermitianRFP holding it
+        S = let M = randn(rng, n, n)
+            M * M' + n * I
+        end
+        # dense and (Int32) sparse updates
+        push!(testcases, (randn(rng, n, 4), S))
+        Asparse = convert(SparseMatrixCSC{Float64,Int32}, sparse(sprand(rng, n, 20, 0.3)))
+        push!(testcases, (Asparse, S))
+    end
+
+    for (A, base) in testcases
         for (α, β) in ((1.0, 1.0), (-1.0, 1.0), (0.5, 2.0))
             ref = rankUpdate!(Hermitian(Matrix(base), :L), A, α, β)
             got = rankUpdate!(rfp(base), A, α, β)
@@ -105,6 +109,14 @@ end
             @test LowerTriangular(Matrix(got)) ≈ LowerTriangular(Matrix(ref))
         end
     end
+
+    # the sparse kernel only handles lower, non-transposed storage of a matching size
+    S = let M = randn(rng, 6, 6)
+        M * M' + 6I
+    end
+    upper = Hermitian(TriangularRFP(Matrix(UpperTriangular(S)), :U), :U)
+    @test_throws ArgumentError rankUpdate!(upper, sprand(rng, 6, 4, 0.5), 1.0, 1.0)
+    @test_throws DimensionMismatch rankUpdate!(rfp(S), sprand(rng, 5, 4, 0.5), 1.0, 1.0)
 end
 
 #=  I don't see this testset as meaningful b/c diagonal A does not occur after amalgamation of ReMat's for the same grouping factor - D.B.
