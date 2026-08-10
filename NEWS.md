@@ -1,3 +1,7 @@
+MixedModels v5.8.1 Release Notes
+==============================
+- Performance improvements for RFP-matrices. [#910]
+
 MixedModels v5.8.0 Release Notes
 ==============================
 - Allow for diagonal blocks of `L` to be stored in `RectangularFullPacked` (RFP) format, which saves roughly half the storage required for the block.  This can increase the time required for `updateL!`, primarily in the `rankUpdate!` step, resulting in a time vs. memory tradeoff.  The size threshold for RFP storage is a new optional argument `RFPthreshold`, which defaults to 1000.
@@ -783,3 +787,4 @@ Package dependencies
 [#898]: https://github.com/JuliaStats/MixedModels.jl/issues/898
 [#899]: https://github.com/JuliaStats/MixedModels.jl/issues/899
 [#904]: https://github.com/JuliaStats/MixedModels.jl/issues/904
+[#910]: https://github.com/JuliaStats/MixedModels.jl/issues/910
