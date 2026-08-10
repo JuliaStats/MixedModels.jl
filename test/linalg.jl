@@ -117,6 +117,14 @@ end
     upper = Hermitian(TriangularRFP(Matrix(UpperTriangular(S)), :U), :U)
     @test_throws ArgumentError rankUpdate!(upper, sprand(rng, 6, 4, 0.5), 1.0, 1.0)
     @test_throws DimensionMismatch rankUpdate!(rfp(S), sprand(rng, 5, 4, 0.5), 1.0, 1.0)
+
+    # rowval must be sorted within a column, since both inner loops start at indj and so
+    # assume i ≥ j.  For n = 6 the packed array has 3 columns, putting row 3 in the
+    # trapezoidal branch and row 4 in the triangular one; either way this must be caught.
+    for rows in ([3, 1], [4, 2])
+        unsorted = SparseMatrixCSC(6, 1, [1, 3], rows, ones(2))
+        @test_throws AssertionError rankUpdate!(rfp(S), unsorted, 1.0, 1.0)
+    end
 end
 
 #=  I don't see this testset as meaningful b/c diagonal A does not occur after amalgamation of ReMat's for the same grouping factor - D.B.

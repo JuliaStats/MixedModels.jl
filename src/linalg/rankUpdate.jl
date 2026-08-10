@@ -141,7 +141,7 @@ function rankUpdate!(
     end
     tall = iseven(m)                          # is Cdat in the tall (vs wide) format?
     Cdm, Cdn = size(Cdat)
-    # the @inbounds inner loop below is only in-bounds because Cdm == m + tall, so this
+    # the @inbounds inner loops below are only in-bounds because Cdm == m + tall, so this
     # check must stay
     @assert (Cdm == m + tall) && (Cdn == ((m + !tall) >> 1))
 
@@ -149,6 +149,10 @@ function rankUpdate!(
     indj = 1
     # each colp is one past the last rowval/nzval index of the preceding column of A
     for colp in colptr
+        # Both inner loops start at indj and so require i ≥ j, i.e. sorted rowval within a
+        # column, which is the SparseMatrixCSC contract.  Checking it once per column is
+        # cheaper than the O(len^2) inner loops and is what makes their @inbounds safe.
+        @assert issorted(view(rowval, indj:(colp - 1)))
         while indj < colp                     # first iteration skipped b/c colptr[1] is always 1
             j = Int(rowval[indj])             # column in C to be updated
             anzj = α * nzval[indj]
@@ -163,7 +167,7 @@ function rankUpdate!(
             else                              # in the transposed triangular part of Cdat
                 Cdrow = j - Cdn               # row in triangular part of Cdat for col j
                 indi = indj
-                while indi < colp
+                @inbounds while indi < colp   # iterate over the rest of the column of A
                     i = Int(rowval[indi])
                     linind = (i - Cdn - tall) * Cdm + Cdrow
                     Cdat[linind] = muladd(nzval[indi], anzj, Cdat[linind])
