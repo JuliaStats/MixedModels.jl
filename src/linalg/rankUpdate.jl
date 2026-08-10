@@ -128,7 +128,11 @@ function rankUpdate!(
 ) where {T}
     require_one_based_indexing(C, A)
     if uppercase(C.transr) ≠ 'N' || uppercase(C.uplo) ≠ 'L'
-        throw(ArgumentError("HermitianRFP C is not lower, non-transposed storage"))
+        throw(
+            ArgumentError(
+                "HermitianRFP C must be lower, non-transposed storage; got transr='$(C.transr)', uplo='$(C.uplo)'"
+            ),
+        )
     end
     (; m, colptr, rowval, nzval) = A
     Cdat = C.data
