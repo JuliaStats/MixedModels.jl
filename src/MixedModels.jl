@@ -20,7 +20,7 @@ using LinearAlgebra: UpperTriangular, cond, diag, diagind, dot, eigen, isdiag
 using LinearAlgebra: ldiv!, lmul!, logdet, mul!, norm, normalize, normalize!, qr
 using LinearAlgebra: rank, rdiv!, rmul!, svd, tril!
 using Markdown: Markdown
-using MixedModelsDatasets: dataset
+using MixedModelsDatasets: dataset, datasets
 using PooledArrays: PooledArrays, PooledArray
 using NLopt: NLopt
 using PrecompileTools: PrecompileTools, @setup_workload, @compile_workload
