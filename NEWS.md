@@ -1,3 +1,7 @@
+MixedModels v5.8.2 Release Notes
+==============================
+- `dataset` is now public to avoid warnings when used directly. Users are nonetheless encouraged to load [MixedModelsDatasets.jl](https://github.com/JuliaMixedModels/MixedModelsDatasets.jl) directly. [#911]
+
 MixedModels v5.8.1 Release Notes
 ==============================
 - The sparse `rankUpdate!` of a diagonal block of `L` has been reworked, for both RFP and dense storage of the block.  Rather than going through `nzrange` and indexing into the resulting range, both kernels now walk the `colptr` of the update directly, carrying a running index into `rowval` and `nzval`.  This removes a level of indirection from the inner loops and hoists the offset of the target column out of them. [#910]
@@ -791,3 +795,4 @@ Package dependencies
 [#899]: https://github.com/JuliaStats/MixedModels.jl/issues/899
 [#904]: https://github.com/JuliaStats/MixedModels.jl/issues/904
 [#910]: https://github.com/JuliaStats/MixedModels.jl/issues/910
+[#911]: https://github.com/JuliaStats/MixedModels.jl/issues/911

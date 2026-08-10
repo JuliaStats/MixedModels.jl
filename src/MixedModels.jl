@@ -20,7 +20,7 @@ using LinearAlgebra: UpperTriangular, cond, diag, diagind, dot, eigen, isdiag
 using LinearAlgebra: ldiv!, lmul!, logdet, mul!, norm, normalize, normalize!, qr
 using LinearAlgebra: rank, rdiv!, rmul!, svd, tril!
 using Markdown: Markdown
-using MixedModelsDatasets: dataset, datasets
+using MixedModelsDatasets: dataset
 using PooledArrays: PooledArrays, PooledArray
 using NLopt: NLopt
 using PrecompileTools: PrecompileTools, @setup_workload, @compile_workload
@@ -172,7 +172,7 @@ export @formula,
 # TODO: move this to the correct spot in list once we've decided on name
 export savereplicates, restorereplicates
 
-@compat public dataset, datasets, rePCA, PCA, opt_params, optimizers
+@compat public dataset, rePCA, PCA, opt_params, optimizers
 
 """
     MixedModel
