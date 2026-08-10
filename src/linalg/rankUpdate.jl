@@ -141,11 +141,14 @@ function rankUpdate!(
     end
     tall = iseven(m)                          # is Cdat in the tall (vs wide) format?
     Cdm, Cdn = size(Cdat)
-    @assert (Cdm == m + tall) && (Cdn == ((m + !tall) >> 1)) # can suppress this later
+    # the @inbounds inner loop below is only in-bounds because Cdm == m + tall, so this
+    # check must stay
+    @assert (Cdm == m + tall) && (Cdn == ((m + !tall) >> 1))
 
     isone(β) || rmul!(Cdat, β)
     indj = 1
-    for colp in colptr                        # (max index + 1) in rowval, nzval for a column of A
+    # each colp is one past the last rowval/nzval index of the preceding column of A
+    for colp in colptr
         while indj < colp                     # first iteration skipped b/c colptr[1] is always 1
             j = Int(rowval[indj])             # column in C to be updated
             anzj = α * nzval[indj]
@@ -158,7 +161,7 @@ function rankUpdate!(
                     indi += 1
                 end
             else                              # in the transposed triangular part of Cdat
-                Cdrow = j - Cdn               # row in triangular part of Cdat for col j  
+                Cdrow = j - Cdn               # row in triangular part of Cdat for col j
                 indi = indj
                 while indi < colp
                     i = Int(rowval[indi])
