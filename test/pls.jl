@@ -971,7 +971,7 @@ end
     @test vcov(m1) ≈ [1.177034697250409 -4.80259802739442; -4.80259802739442 24.66449662452017] atol = 1.e-4
     =#
 
-    m2 = fit(MixedModel, @formula(a ~ 1 + b + (1 | c)), data; wts=data.w1, progress=false)
+    m2 = fit(MixedModel, @formula(a ~ 1 + b + (1 | c)), data; weights=data.w1, progress=false)
     @test m2.θ ≈ [0.2951818091809752] atol = 1.e-4
     @test stderror(m2) ≈ [0.964016663994572, 3.6309691484830533] atol = 1.e-4
     @test vcov(m2) ≈

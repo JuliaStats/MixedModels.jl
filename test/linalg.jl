@@ -52,7 +52,7 @@ end
         MixedModel,
         @formula(Y ~ 1 + A + (1 + A | G) + (1 + A | H)),
         df;
-        wts=ones(400),
+        weights=ones(400),
         progress=false,
     )
     @test loglikelihood(wm1) ≈ loglikelihood(m1)

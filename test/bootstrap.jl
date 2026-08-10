@@ -72,7 +72,7 @@ end
             first(gfms[:cbpp]),
             cbpp,
             Binomial();
-            wts=float(cbpp.hsz),
+            weights=float(cbpp.hsz),
             progress=false,
         )
         gm2sim = refit!(simulate!(StableRNG(42), deepcopy(gm2)); fast=true, progress=false)
