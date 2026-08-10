@@ -172,7 +172,7 @@ export @formula,
 # TODO: move this to the correct spot in list once we've decided on name
 export savereplicates, restorereplicates
 
-@compat public rePCA, PCA, opt_params, optimizers
+@compat public dataset, rePCA, PCA, opt_params, optimizers
 
 """
     MixedModel
