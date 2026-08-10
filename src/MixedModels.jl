@@ -32,7 +32,7 @@ using RectangularFullPacked.LAPACK_RFP: sfrk!
 using RegressionFormulae: fulldummy
 using SparseArrays: SparseArrays, SparseMatrixCSC, SparseVector, dropzeros!
 using SparseArrays: nnz, nonzeros, nzrange, rowvals, sparse
-using StaticArrays: StaticArrays, SVector
+using StaticArrays: StaticArrays, SMatrix, SVector
 using Statistics: Statistics, mean, quantile, std
 using StatsAPI: StatsAPI, aic, aicc, bic, coef, coefnames, coeftable, confint
 using StatsAPI: cooksdistance, deviance

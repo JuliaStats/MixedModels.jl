@@ -56,6 +56,24 @@ whose `A` block is dense.
 # terms whose Cholesky fill block is dense (see `_crosspair_blas3!`)
 const GRAD_PANEL = 128
 
+# largest term dimension `k_b` for which the face and block loops below use statically
+# sized kernels instead of `mul!` on `k_r × k_b` temporaries.  Those products are far too
+# small to amortize a BLAS call - the dispatch and setup dominate the handful of flops -
+# so unrolling them into register arithmetic is worth roughly 30x on the block loop of
+# `_selcontract!`.  Every term dimension seen in practice is at most 4 (the maximal `kb07`
+# model), and the generic `mul!` implementations remain as fallbacks past the cutoff so
+# that compile time and register pressure stay bounded for unusually wide terms.
+const GRAD_STATIC_K = 4
+
+# `_facecontract!` is the one face loop whose per-face row count is not a term dimension,
+# so its faces are not always tiny.  They are contiguous column slices, so one `gemm` per
+# face amortizes its call overhead once there are enough rows; the measured crossover is
+# near 48 rows, so gate a little below it.  Its two call sites straddle the cutoff:
+# `_xypair!` passes p + 1 rows and `_densepair!` the full row count of the term-r block.
+# `_facecontract_rows!` needs no such gate - its generic path slices rows, and `gemm` on
+# the resulting strided views never beats the unrolled accumulation.
+const GRAD_STATIC_ROWS = 32
+
 struct GradientWorkspace{T<:AbstractFloat}
     X::Matrix{AbstractMatrix{T}}   # lower blocks of L⁻¹; upper cells are 0×0 placeholders
     S::Matrix{AbstractMatrix{T}}   # per-pair buffers for blocks of S = XᵀWX
@@ -382,7 +400,10 @@ function _mulsub!(
     Anz = nonzeros(A)
     Brv = rowvals(B)
     Bnz = nonzeros(B)
-    for v in axes(B, 2)
+    # the unguarded `while` below already relies on pattern(A * B) ⊆ pattern(C), which
+    # `_sparseXok` establishes once at workspace construction via `_productcontained`;
+    # that same precondition is what bounds `ci`, so the walk can be @inbounds
+    @inbounds for v in axes(B, 2)
         crng = nzrange(C, v)
         for bidx in nzrange(B, v)
             w = Brv[bidx]
@@ -677,8 +698,101 @@ function _gramdiag!(S::Diagonal{T}, w::GradientWorkspace{T}, b::Int, kre::Int,
     return S
 end
 
+#####
+##### statically sized helpers for the k × k face and block arithmetic
+#####
+# `k` here is a term dimension, so these matrices are 1×1 to 4×4 in every model seen in
+# practice.  Loading them into `SMatrix`/`SVector` lets the products unroll into register
+# arithmetic; see `GRAD_STATIC_K` for why that matters and where the cutoff comes from.
+
+# face `f` of a K×K×nf array as a statically sized matrix
+@inline function _loadface(dat::Array{T,3}, f::Int, ::Val{K}) where {T,K}
+    return SMatrix{K,K,T}(
+        ntuple(Val(K * K)) do l
+            j, i = divrem(l - 1, K)
+            return @inbounds dat[i + 1, j + 1, f]
+        end,
+    )
+end
+
+# row `i` of the K columns of `X` starting at column `coff + 1`
+@inline function _loadrow(X::Matrix{T}, i::Int, coff::Int, ::Val{K}) where {T,K}
+    return SVector{K,T}(ntuple(l -> (@inbounds X[i, coff + l]), Val(K)))
+end
+
+# dat[:, :, f] += M
+@inline function _addface!(dat::Array{T,3}, M::SMatrix{K,K,T}, f::Int) where {T,K}
+    @inbounds for j in 1:K, i in 1:K
+        dat[i, j, f] += M[i, j]
+    end
+    return dat
+end
+
+# G += M
+@inline function _addstatic!(G::Matrix{T}, M::SMatrix{R,C,T}) where {T,R,C}
+    @inbounds for j in 1:C, i in 1:R
+        G[i, j] += M[i, j]
+    end
+    return G
+end
+
 # face-diagonal accumulation dat[:,:,f] += X[:,face f]ᵀ X[:,face f] for the block
 # types that occur in X (used when A[b,b] is UniformBlockDiagonal)
+function _gramfaces_acc!(dat::Array{T,3}, Xsb::Matrix{T}, ::Val{K}) where {T,K}
+    q = size(Xsb, 1)
+    @inbounds for f in axes(dat, 3)
+        coff = (f - 1) * K
+        acc = zero(SMatrix{K,K,T})
+        for i in 1:q
+            x = _loadrow(Xsb, i, coff, Val(K))
+            acc += x * x'
+        end
+        _addface!(dat, acc, f)
+    end
+    return dat
+end
+
+function _gramfaces_acc!(
+    dat::Array{T,3}, Xsb::UniformBlockDiagonal{T}, ::Val{K}
+) where {T,K}
+    Xd = Xsb.data
+    for f in axes(dat, 3)
+        Xf = _loadface(Xd, f, Val(K))
+        _addface!(dat, Xf'Xf, f)
+    end
+    return dat
+end
+
+function _gramfaces_acc!(dat::Array{T,3}, Xsb::TriangularRFP{T}, ::Val{K}) where {T,K}
+    for f in axes(dat, 3)
+        coff = (f - 1) * K
+        for c in 1:K, a in 1:K
+            dat[a, c, f] += _xdotRFP(Xsb, coff + a, coff + c)
+        end
+    end
+    return dat
+end
+
+function _gramfaces_acc!(dat::Array{T,3}, Xsb::SparseMatrixCSC{T}, ::Val{K}) where {T,K}
+    nzv = nonzeros(Xsb)
+    colptr = Xsb.colptr
+    @inbounds for f in axes(dat, 3)
+        v1 = (f - 1) * K + 1
+        # the K columns of the block share their row pattern (checked at construction),
+        # so each column contributes the same number of consecutive nonzeros
+        base = ntuple(l -> Int(colptr[v1 + l - 1]) - 1, Val(K))
+        nrow = Int(colptr[v1 + 1]) - Int(colptr[v1])
+        acc = zero(SMatrix{K,K,T})
+        for i in 1:nrow
+            x = SVector{K,T}(ntuple(l -> nzv[base[l] + i], Val(K)))
+            acc += x * x'
+        end
+        _addface!(dat, acc, f)
+    end
+    return dat
+end
+
+# generic fallbacks for term dimensions past `GRAD_STATIC_K`
 function _gramfaces_acc!(dat::Array{T,3}, Xsb::Matrix{T}) where {T}
     kb = size(dat, 1)
     for f in axes(dat, 3)
@@ -726,11 +840,17 @@ function _gramfaces_acc!(dat::Array{T,3}, Xsb::SparseMatrixCSC{T}) where {T}
 end
 
 function _gramfaces!(S::UniformBlockDiagonal{T}, w::GradientWorkspace{T}, b::Int,
-    kre::Int, wx::T, wy::T) where {T}
+    kre::Int, wx::T, wy::T, ::Val{K}) where {T,K}
     dat = fill!(S.data, zero(T))
     kb = size(dat, 1)
+    # `K` is the term dimension of term `b`, which is how `S[b,b]` was sized
+    kb == K || throw(DimensionMismatch("size(S.data, 1) = $kb ≠ $K = k_b"))
     for s in b:kre
-        _gramfaces_acc!(dat, w.X[s, b])
+        if K ≤ GRAD_STATIC_K
+            _gramfaces_acc!(dat, w.X[s, b], Val(K))
+        else
+            _gramfaces_acc!(dat, w.X[s, b])
+        end
     end
     Xkb = w.X[kre + 1, b]::Matrix{T}
     plast = size(Xkb, 1)
@@ -1009,7 +1129,61 @@ end
 
 # contract the selected entries of S against the nonzero k_r × k_b blocks of A:
 #   G_b += (Λᵣᵀ A_blk)ᵀ S_blk = A_blkᵀ (Λᵣ S_blk),   G_r += (A_blk Λ_b) S_blkᵀ
+#
+# `ReMat`s carry their term dimension as a type parameter, so dispatching on both makes
+# `Kr` and `Kb` compile-time constants and the per-block arithmetic can be unrolled.  The
+# blocks are at most 4×4, far too small to amortize four `mul!` calls apiece.
 function _selcontract!(Gb::Matrix{T}, Gr::Matrix{T}, A::SparseMatrixCSC{T},
+    Sp::SparseMatrixCSC{T}, rtr::ReMat{T,Kr}, rtb::ReMat{T,Kb}) where {T,Kr,Kb}
+    if Kr ≤ GRAD_STATIC_K && Kb ≤ GRAD_STATIC_K
+        _selcontract_static!(
+            Gb, Gr, A, Sp, SMatrix{Kr,Kr,T}(rtr.λ), SMatrix{Kb,Kb,T}(rtb.λ)
+        )
+    else
+        _selcontract_generic!(Gb, Gr, A, Sp, rtr, rtb)
+    end
+    return nothing
+end
+
+# the Kr × Kb block of `nz` whose column bases are `base` and whose rows start at `off`
+@inline function _loadblock(
+    nz::Vector{T}, base::NTuple{Kb,Int}, off::Int, ::Val{Kr}
+) where {T,Kb,Kr}
+    return SMatrix{Kr,Kb,T}(
+        ntuple(Val(Kr * Kb)) do l
+            j, i = divrem(l - 1, Kr)
+            return @inbounds nz[base[j + 1] + off + i + 1]
+        end,
+    )
+end
+
+function _selcontract_static!(Gb::Matrix{T}, Gr::Matrix{T}, A::SparseMatrixCSC{T},
+    Sp::SparseMatrixCSC{T}, λr::SMatrix{Kr,Kr,T}, λb::SMatrix{Kb,Kb,T}) where {T,Kr,Kb}
+    Anz = nonzeros(A)
+    Snz = nonzeros(Sp)
+    colptr = A.colptr
+    gb = zero(SMatrix{Kb,Kb,T})
+    gr = zero(SMatrix{Kr,Kr,T})
+    @inbounds for jblk in 1:(size(A, 2) ÷ Kb)
+        v1 = (jblk - 1) * Kb + 1
+        # `_blockaligned` guarantees the Kb columns of this block share a row pattern, so
+        # one running base per column suffices and the block count comes from the first
+        base = ntuple(j -> Int(colptr[v1 + j - 1]) - 1, Val(Kb))
+        nnzcol = Int(colptr[v1 + 1]) - Int(colptr[v1])
+        for off in 0:Kr:(nnzcol - 1)
+            Ablk = _loadblock(Anz, base, off, Val(Kr))
+            Sblk = _loadblock(Snz, base, off, Val(Kr))
+            gb += Ablk' * (λr * Sblk)
+            gr += (Ablk * λb) * Sblk'
+        end
+    end
+    _addstatic!(Gb, gb)
+    _addstatic!(Gr, gr)
+    return nothing
+end
+
+# fallback for term dimensions past `GRAD_STATIC_K`
+function _selcontract_generic!(Gb::Matrix{T}, Gr::Matrix{T}, A::SparseMatrixCSC{T},
     Sp::SparseMatrixCSC{T}, rtr::ReMat{T}, rtb::ReMat{T}) where {T}
     kr = _kdim(rtr)
     kb = _kdim(rtb)
@@ -1064,6 +1238,21 @@ end
 
 # accumulate G += Σ_faces C[:, face]ᵀ S[:, face] where the faces are the
 # kb-column groups of the term-b block column
+function _facecontract!(
+    G::Matrix{T}, C::Matrix{T}, S::Matrix{T}, rtb::ReMat{T,K}
+) where {T,K}
+    q = size(C, 1)
+    (K ≤ GRAD_STATIC_K && q ≤ GRAD_STATIC_ROWS) || return _facecontract!(G, C, S)
+    g = zero(SMatrix{K,K,T})
+    @inbounds for f in 1:(size(C, 2) ÷ K)
+        coff = (f - 1) * K
+        for i in 1:q
+            g += _loadrow(C, i, coff, Val(K)) * _loadrow(S, i, coff, Val(K))'
+        end
+    end
+    return _addstatic!(G, g)
+end
+
 function _facecontract!(G::Matrix{T}, C::Matrix{T}, S::Matrix{T}) where {T}
     kb = size(G, 1)
     for f in 1:(size(C, 2) ÷ kb)
@@ -1075,6 +1264,22 @@ end
 
 # accumulate G += Σ_faces C[face rows, :] S[face rows, :]ᵀ where the faces are the
 # kr-row groups of the term-r block row
+function _facecontract_rows!(
+    G::Matrix{T}, C::Matrix{T}, S::Matrix{T}, rtr::ReMat{T,K}
+) where {T,K}
+    K ≤ GRAD_STATIC_K || return _facecontract_rows!(G, C, S)
+    g = zero(SMatrix{K,K,T})
+    @inbounds for f in 1:(size(C, 1) ÷ K)
+        roff = (f - 1) * K
+        for j in axes(C, 2)
+            c = SVector{K,T}(ntuple(l -> C[roff + l, j], Val(K)))
+            s = SVector{K,T}(ntuple(l -> S[roff + l, j], Val(K)))
+            g += c * s'
+        end
+    end
+    return _addstatic!(G, g)
+end
+
 function _facecontract_rows!(G::Matrix{T}, C::Matrix{T}, S::Matrix{T}) where {T}
     kr = size(G, 1)
     for f in 1:(size(C, 1) ÷ kr)
@@ -1095,17 +1300,35 @@ function _diagpair!(w::GradientWorkspace{T}, m::LinearMixedModel{T}, b::Int,
         S = _gramdiag!(w.S[b, b]::Diagonal{T}, w, b, kre, wx, wy)
         G[1, 1] += T(only(reterms[b].λ)) * dot(Abb.diag, S.diag)
     else
-        Abb = Abb::UniformBlockDiagonal{T}
-        S = _gramfaces!(w.S[b, b]::UniformBlockDiagonal{T}, w, b, kre, wx, wy)
-        λ = reterms[b].λ
-        kb = size(G, 1)
-        t = Matrix{T}(undef, kb, kb)
-        for f in axes(S.data, 3)
-            mul!(t, λ, view(S.data, :, :, f))
-            mul!(G, adjoint(view(Abb.data, :, :, f)), t, one(T), one(T))
-        end
+        # dispatching on the ReMat makes the term dimension a type parameter, which is
+        # what lets the face arithmetic below and in `_gramfaces!` be statically sized
+        _diagpair_faces!(G, Abb::UniformBlockDiagonal{T}, w, b, kre, wx, wy, reterms[b])
     end
     return w
+end
+
+function _diagpair_faces!(G::Matrix{T}, Abb::UniformBlockDiagonal{T},
+    w::GradientWorkspace{T}, b::Int, kre::Int, wx::T, wy::T,
+    rtb::ReMat{T,K}) where {T,K}
+    S = _gramfaces!(w.S[b, b]::UniformBlockDiagonal{T}, w, b, kre, wx, wy, Val(K))
+    Sd = S.data
+    Ad = Abb.data
+    if K ≤ GRAD_STATIC_K
+        λ = SMatrix{K,K,T}(rtb.λ)
+        g = zero(SMatrix{K,K,T})
+        for f in axes(Sd, 3)
+            g += _loadface(Ad, f, Val(K))' * (λ * _loadface(Sd, f, Val(K)))
+        end
+        _addstatic!(G, g)
+    else
+        λ = rtb.λ
+        t = Matrix{T}(undef, K, K)
+        for f in axes(Sd, 3)
+            mul!(t, λ, view(Sd, :, :, f))
+            mul!(G, adjoint(view(Ad, :, :, f)), t, one(T), one(T))
+        end
+    end
+    return G
 end
 
 # off-diagonal pair (r, b) between two scalar terms with sparse A[r,b] and dense X
@@ -1226,10 +1449,10 @@ function _densepair!(w::GradientWorkspace{T}, m::LinearMixedModel{T}, r::Int, b:
     S = _gram!(w.S[r, b]::Matrix{T}, w, r, b, kre, wx, wy)
     C1 = copyto!(w.C1[r, b]::Matrix{T}, Arb)
     lmulΛ!(reterms[r]', C1)
-    _facecontract!(w.G[b], C1, S)
+    _facecontract!(w.G[b], C1, S, reterms[b])
     C2 = copyto!(w.C2[r, b]::Matrix{T}, Arb)
     rmulΛ!(C2, reterms[b])
-    _facecontract_rows!(w.G[r], C2, S)
+    _facecontract_rows!(w.G[r], C2, S, reterms[r])
     return w
 end
 
@@ -1240,7 +1463,7 @@ function _xypair!(w::GradientWorkspace{T}, m::LinearMixedModel{T}, b::Int,
     nb = kre + 1
     Akb = m.A[block(nb, b)]::Matrix{T}
     S = _gram!(w.S[nb, b]::Matrix{T}, w, nb, b, kre, wx, wy)
-    return _facecontract!(w.G[b], Akb, S)
+    return _facecontract!(w.G[b], Akb, S, m.reterms[b])
 end
 
 """

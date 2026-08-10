@@ -10,6 +10,8 @@ using Test
 using MixedModels:
     GradientWorkspace, GRAD_PANEL, _crossacc_blas3!, _use_blas3_cross,
     _mulsub!, _ldivL!, _patternmirror, _productcontained, _blockaligned,
+    GRAD_STATIC_K, GRAD_STATIC_ROWS, ReMat, TriangularRFP, UniformBlockDiagonal,
+    _facecontract!, _facecontract_rows!, _gramfaces_acc!, _selcontract!,
     dataset
 
 include("modelcache.jl")
@@ -263,6 +265,114 @@ perturb(θ::AbstractVector) = θ .* 0.75 .+ 0.125
         copyto!(nonzeros(X), nonzeros(A))
         _ldivL!(Ljj, X)
         @test Matrix(X) ≈ LowerTriangular(Matrix(Ljj)) \ Matrix(A)
+    end
+
+    @testset "statically sized face and block kernels" begin
+        # The face and block loops are unrolled into register arithmetic for term
+        # dimensions up to GRAD_STATIC_K and fall back to `mul!` past it, so every kernel
+        # is checked against a dense reference on both sides of the cutoff.  `_facecontract!`
+        # additionally switches on the per-face row count at GRAD_STATIC_ROWS.
+        rng = StableRNG(20260810)
+        Ks = (1, 2, GRAD_STATIC_K, GRAD_STATIC_K + 1)
+
+        # only λ and the term dimension are read by these kernels; the rest of the ReMat
+        # is filler
+        function testremat(::Val{K}, nlev::Int) where {K}
+            λ = LowerTriangular(tril(randn(rng, K, K)) + 2I)
+            return ReMat{Float64,K}(
+                nothing, Int32[1], 1:nlev, ["c$i" for i in 1:K],
+                zeros(K, 1), zeros(K, 1), λ, collect(1:(K * K)),
+                spzeros(Float64, Int32, nlev * K, 1), zeros(K, 1),
+            )
+        end
+
+        @testset "_selcontract! kr=$kr kb=$kb" for kr in Ks, kb in Ks
+            nlr, nlc = 5, 7
+            # block-aligned sparse A: one kr×kc block per column block
+            rowblk = rand(rng, 0:(nlr - 1), nlc)
+            rows = reduce(vcat, [rowblk[j] * kr .+ (1:kr) for j in 1:nlc for _ in 1:kb])
+            cols = reduce(vcat, [fill((j - 1) * kb + l, kr) for j in 1:nlc for l in 1:kb])
+            A = sparse(rows, cols, randn(rng, length(rows)), nlr * kr, nlc * kb)
+            @test _blockaligned(A, kr, kb)
+            Sp = _patternmirror(A)
+            copyto!(nonzeros(Sp), randn(rng, nnz(A)))
+
+            rtr = testremat(Val(kr), nlr)
+            rtb = testremat(Val(kb), nlc)
+            Gb = zeros(kb, kb)
+            Gr = zeros(kr, kr)
+            _selcontract!(Gb, Gr, A, Sp, rtr, rtb)
+
+            # reference: sum over the kr×kb blocks of the dense A and Sp.  Blocks outside
+            # the pattern are zero in both, so summing over all of them is equivalent.
+            Ad, Sd = Matrix(A), Matrix(Sp)
+            Gbref = zeros(kb, kb)
+            Grref = zeros(kr, kr)
+            for I in 1:nlr, J in 1:nlc
+                Ablk = Ad[((I - 1) * kr + 1):(I * kr), ((J - 1) * kb + 1):(J * kb)]
+                Sblk = Sd[((I - 1) * kr + 1):(I * kr), ((J - 1) * kb + 1):(J * kb)]
+                Gbref += Ablk' * (rtr.λ * Sblk)
+                Grref += (Ablk * rtb.λ) * Sblk'
+            end
+            @test Gb ≈ Gbref
+            @test Gr ≈ Grref
+        end
+
+        @testset "_gramfaces_acc! K=$K" for K in Ks
+            nf = 6
+            q = 9
+            dense = randn(rng, q, nf * K)
+            ubd = UniformBlockDiagonal(randn(rng, K, K, nf))
+            # block-aligned sparse X: two complete K-column blocks of nonzeros per face
+            srows = reduce(
+                vcat, [(2 * K) .* (i - 1) .+ (1:(2 * K)) for i in 1:nf for _ in 1:K]
+            )
+            scols = reduce(vcat, [fill((i - 1) * K + l, 2 * K) for i in 1:nf for l in 1:K])
+            spx = sparse(srows, scols, randn(rng, length(srows)), 2 * K * nf, K * nf)
+            rfp = TriangularRFP(collect(LowerTriangular(randn(rng, K * nf, K * nf))), :L)
+            for X in (dense, ubd, spx, rfp)
+                datstatic = zeros(K, K, nf)
+                datgeneric = zeros(K, K, nf)
+                _gramfaces_acc!(datstatic, X, Val(K))
+                _gramfaces_acc!(datgeneric, X)
+                @test datstatic ≈ datgeneric
+                Xd = Matrix(X)
+                for f in 1:nf
+                    Xv = view(Xd, :, ((f - 1) * K + 1):(f * K))
+                    @test view(datstatic, :, :, f) ≈ Xv'Xv
+                end
+            end
+        end
+
+        # rows per face straddling GRAD_STATIC_ROWS, where `_facecontract!` switches paths
+        @testset "_facecontract! K=$K q=$q" for K in Ks,
+            q in (GRAD_STATIC_ROWS ÷ 2, 2 * GRAD_STATIC_ROWS)
+
+            nf = 5
+            rt = testremat(Val(K), nf)
+            C = randn(rng, q, nf * K)
+            S = randn(rng, q, nf * K)
+            @test _facecontract!(zeros(K, K), C, S, rt) ≈
+                _facecontract!(zeros(K, K), C, S)
+            # and against the definition
+            ref = sum(
+                view(C, :, ((f - 1) * K + 1):(f * K))' *
+                view(S, :, ((f - 1) * K + 1):(f * K))
+                for f in 1:nf
+            )
+            @test _facecontract!(zeros(K, K), C, S, rt) ≈ ref
+            # `_facecontract_rows!` transposes the roles of faces and columns
+            Cr = randn(rng, nf * K, q)
+            Sr = randn(rng, nf * K, q)
+            @test _facecontract_rows!(zeros(K, K), Cr, Sr, rt) ≈
+                _facecontract_rows!(zeros(K, K), Cr, Sr)
+            refr = sum(
+                view(Cr, ((f - 1) * K + 1):(f * K), :) *
+                view(Sr, ((f - 1) * K + 1):(f * K), :)'
+                for f in 1:nf
+            )
+            @test _facecontract_rows!(zeros(K, K), Cr, Sr, rt) ≈ refr
+        end
     end
 
     @testset "BLAS-3 cross-term kernel" begin
