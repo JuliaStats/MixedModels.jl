@@ -72,6 +72,17 @@ end
     L22L = rankUpdate!(Symmetric(zeros(100, 100), :L), L21, 1.0, 1.0)
     @test L22L ≈
         rankUpdate!(Symmetric(zeros(100, 100), :U), sparse(transpose(L21)), 1.0, 1.0)
+
+    # The lower-triangle update has a fast path for dense `C.data`, which indexes linearly,
+    # and a generic fallback.  A `SubArray` is not a `DenseMatrix`, so it takes the fallback;
+    # both paths accumulate in the same order, hence the results agree exactly.
+    @test rankUpdate!(Symmetric(view(zeros(100, 100), :, :), :L), L21, 1.0, 1.0) == L22L
+    # β ≠ 1 scales the stored triangle first, on either path
+    @test rankUpdate!(Symmetric(Matrix(L22L), :L), L21, 1.0, 2.0) ==
+        rankUpdate!(Symmetric(view(Matrix(L22L), :, :), :L), L21, 1.0, 2.0)
+    # Int32 row indices, as produced by `sparse(::BlockedSparse)`
+    L21_32 = convert(SparseMatrixCSC{Float64,Int32}, L21)
+    @test rankUpdate!(Symmetric(zeros(100, 100), :L), L21_32, 1.0, 1.0) == L22L
 end
 
 @testset "rankUpdate! HermitianRFP" begin

@@ -76,6 +76,60 @@ function _columndot(rv, nz, rngi, rngj)
     return accum
 end
 
+"""
+    _lowerrankUpdate!(Cd, A, α)
+
+Add `α * A * A'` to the lower triangle of `Cd`, where `A` is a `SparseMatrixCSC`.
+
+Each column of `A` contributes the outer product of its nonzeros.  Because `rowval` is
+sorted within a column, walking from a given entry to the end of its column visits exactly
+the rows `i ≥ j` of the lower triangle.
+"""
+function _lowerrankUpdate!(Cd::AbstractMatrix{T}, A::SparseMatrixCSC{T}, α) where {T}
+    rv, nz = A.rowval, A.nzval
+    @inbounds for jj in axes(A, 2)
+        rangejj = nzrange(A, jj)
+        lenrngjj = length(rangejj)
+        for (k, j) in enumerate(rangejj)
+            anzj = α * nz[j]
+            rvj = rv[j]
+            for i in k:lenrngjj
+                kk = rangejj[i]
+                Cd[rv[kk], rvj] = muladd(nz[kk], anzj, Cd[rv[kk], rvj])
+            end
+        end
+    end
+    return Cd
+end
+
+# A dense `Cd` is contiguous and column-major, so the column offset can be hoisted out of the
+# inner loop and the two `rowval` lookups collapsed to one linear index, as in the
+# `HermitianRFP` kernel below.  Unlike that kernel, this one needs no sortedness `@assert` to
+# justify its `@inbounds`: `rowval` entries lie in `1:size(A, 1) == 1:size(Cd, 1)`, so
+# `offset + rowval[indi]` is within `1:length(Cd)` no matter how the rows are ordered.
+# Sortedness is what confines the writes to the lower triangle, exactly as in the method above.
+function _lowerrankUpdate!(Cd::DenseMatrix{T}, A::SparseMatrixCSC{T}, α) where {T}
+    (; colptr, rowval, nzval) = A
+    Cdm = size(Cd, 1)
+    indj = 1
+    # each colp is one past the last rowval/nzval index of the preceding column of A
+    for colp in colptr
+        while indj < colp                     # first iteration skipped b/c colptr[1] is always 1
+            j = Int(rowval[indj])             # column of Cd to be updated
+            anzj = α * nzval[indj]
+            offset = (j - 1) * Cdm            # offset to col j for linear indices into Cd
+            indi = indj
+            @inbounds while indi < colp       # iterate over the rest of the column of A
+                linind = offset + Int(rowval[indi])
+                Cd[linind] = muladd(nzval[indi], anzj, Cd[linind])
+                indi += 1
+            end
+            indj += 1
+        end
+    end
+    return Cd
+end
+
 function rankUpdate!(
     C::HermOrSym{T,S},
     A::SparseMatrixCSC{T},
@@ -93,22 +147,12 @@ function rankUpdate!(
         )
     end
 
-    Cd, rv, nz = C.data, A.rowval, A.nzval
+    Cd = C.data
     isone(β) || rmul!(lower ? LowerTriangular(Cd) : UpperTriangular(Cd), β)
     if lower
-        @inbounds for jj in axes(A, 2)
-            rangejj = nzrange(A, jj)
-            lenrngjj = length(rangejj)
-            for (k, j) in enumerate(rangejj)
-                anzj = α * nz[j]
-                rvj = rv[j]
-                for i in k:lenrngjj
-                    kk = rangejj[i]
-                    Cd[rv[kk], rvj] = muladd(nz[kk], anzj, Cd[rv[kk], rvj])
-                end
-            end
-        end
+        _lowerrankUpdate!(Cd, A, α)
     else
+        rv, nz = A.rowval, A.nzval
         @inbounds for j in axes(C, 2)
             rngj = nzrange(A, j)
             for i in 1:(j - 1)
