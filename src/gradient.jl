@@ -65,7 +65,7 @@ function Omega_dot_diag_block!(
     if !isa(Ablk, UniformBlockDiagonal{T})
         throw(
             ArgumentError(
-                "Diagonal block $b is UniformBlockDiagonal but A[$(kp1choose2(b))] is not",
+                "Diagonal block $b is UniformBlockDiagonal but A[$(kp1choose2(b))] is not"
             ),
         )
     end
@@ -76,7 +76,7 @@ function Omega_dot_diag_block!(
         # right multiply by λ-dot, which is zeros except for a single 1 at the i'th row and j'th column
         # thus we copy the i'th column of the k'th face of Ablk_dat into the j'th column of the k'th face of blk_dat
         copyto!(view(blk_dat, :, j, k), view(Ablk_dat, :, i, k))
-        lmul!(λ', view(blk_dat,:,:,k))   # left-multiply by λ'
+        lmul!(λ', view(blk_dat, :, :, k))   # left-multiply by λ'
         for jj in axes(λ, 2)             # symmetrize the face while multiplying the diagonal by 2
             for ii in 1:(jj - 1)
                 val = blk_dat[ii, jj, k] + blk_dat[jj, ii, k]
@@ -100,7 +100,7 @@ function LinearAlgebra.ldiv!(
         )
     end
     for k in axes(B_dat, 3)
-        ldiv!(LowerTriangular(view(A_dat,:,:,k)), view(B_dat,:,:,k))
+        ldiv!(LowerTriangular(view(A_dat, :, :, k)), view(B_dat, :, :, k))
     end
     return B
 end
@@ -116,7 +116,7 @@ function LinearAlgebra.ldiv!(
     axis1 = axes(A_dat, 1)
     offset = 0
     for k in axes(A_dat, 3)
-        ldiv!(LowerTriangular(view(A_dat,:,:,k)), view(B, offset .+ axis1, :))
+        ldiv!(LowerTriangular(view(A_dat, :, :, k)), view(B, offset .+ axis1, :))
         offset += length(axis1)
     end
     return B
@@ -134,7 +134,7 @@ function LinearAlgebra.rdiv!(
         )
     end
     for k in axes(A_dat, 3)
-        rdiv!(view(A_dat,:,:,k), LowerTriangular(view(B_dat,:,:,k))')
+        rdiv!(view(A_dat, :, :, k), LowerTriangular(view(B_dat, :, :, k))')
     end
     return B
 end
@@ -294,7 +294,7 @@ function diag_sum(A::Matrix)
     return sum(A[i] for i in diagind(A))
 end
 
-function diag_sum(A::UniformBlockDiagonal{T}) where T
+function diag_sum(A::UniformBlockDiagonal{T}) where {T}
     dat = A.data
     val = zero(T)
     for k in axes(dat, 3)
@@ -321,14 +321,14 @@ function eval_grad_p!(
     (b, i, j) = parmap[p]                    # block, row and column for parameter p
     k = size(reterms[b].λ, 1)
     initialize_blocks!(blks, m, b, i, j, k)
-#    @info b, i, j, k
+    #    @info b, i, j, k
     for kk in axes(blks, 2)                  # ldiv!(LowerTriangular(L), blks)
         #        if jj ≥ b                   # maybe hold off on this at the expense of some multiplications by zero
         L11 = L[block(1, 1)]
-#        @info typeof(L11)
+        #        @info typeof(L11)
         isa(L11, Diagonal) || (L11 = LowerTriangular(L11))
         C1 = ldiv!(L11, blks[1, kk])
-#        @info typeof(C1)
+        #        @info typeof(C1)
         for ii in axes(blks, 1)[2:end]
             mm_mul!(blks[ii, kk], L[block(ii, 1)], C1, -one(T), one(T))
         end
@@ -340,7 +340,7 @@ function eval_grad_p!(
             end
         end
     end
-                                    # code in LinearAlgebra on which this is patterned
+    # code in LinearAlgebra on which this is patterned
     # for k in axes(B,2)
     #     a11 = A[1,1]
     #     iszero(a11) && throw(SingularException(1))
@@ -379,7 +379,8 @@ function eval_grad_p!(
     #         C[i,j] = Aij / (unit ? oB : tfun(B[j,j]))
     #     end
     # end                     
-    return sum(diag_sum(blks[i, i]) for i in 1:(size(blks, 1) - 1)) + length(m.y) * last(last(blks))
+    return sum(diag_sum(blks[i, i]) for i in 1:(size(blks, 1) - 1)) +
+           length(m.y) * last(last(blks))
 end
 
 """
@@ -387,7 +388,9 @@ end
 
 Overwrite `g` with the gradient of the ML objective of the model `m` at its current parameter values
 """
-function gradient!(g::Vector{T}, blks::Matrix{AbstractMatrix{T}}, m::LinearMixedModel{T}) where {T}
+function gradient!(
+    g::Vector{T}, blks::Matrix{AbstractMatrix{T}}, m::LinearMixedModel{T}
+) where {T}
     if length(g) ≠ length(m.parmap)
         throw(DimensionMismatch("length(g) = $(length(g)) should be $(length(m.parmap))"))
     end
@@ -406,9 +409,9 @@ function mm_mul!(               # exploit a fast path for mul! when C and A have
     A::SparseMatrixCSC{Tv,Ti},
     B::Diagonal{Tv,Vector{Tv}},
     α::Number,
-    β::Number
-) where {Tv, Ti}
-                                # check if fast path exists
+    β::Number,
+) where {Tv,Ti}
+    # check if fast path exists
     Bdiag = B.diag
     if C.m ≠ A.m || C.n ≠ A.n || C.n ≠ length(B.diag)
         throw(DimensionMismatch("dimensions not compatible for mul!"))
@@ -425,11 +428,13 @@ function mm_mul!(               # exploit a fast path for mul! when C and A have
         end
         return C
     end
-    LinearAlgebra.mul!(C, A, B, α, β)
+    return LinearAlgebra.mul!(C, A, B, α, β)
 end
 
-function mm_mul!(C::AbstractMatrix{T}, A::AbstractMatrix{T}, B::AbstractMatrix{T}, α::Number, β::Number) where {T}
-    mul!(C, A, B, α, β)
+function mm_mul!(
+    C::AbstractMatrix{T}, A::AbstractMatrix{T}, B::AbstractMatrix{T}, α::Number, β::Number
+) where {T}
+    return mul!(C, A, B, α, β)
 end
 
 function Lldiv!(m::LinearMixedModel{T}, blks::Matrix{AbstractMatrix{T}}) where {T}
@@ -457,7 +462,7 @@ function blks2dense(blks)
         return hvcat(2, blks[1, 1], blks[1, 2], blks[2, 1], blks[2, 2])
     elseif ncol == 3
         return hvcat(
-            3, 
+            3,
             blks[1, 1], blks[1, 2], blks[1, 3],
             blks[2, 1], blks[2, 2], blks[2, 3],
             blks[3, 1], blks[3, 2], blks[3, 3],

@@ -401,7 +401,7 @@ function condVar(m::LinearMixedModel{T}, fname) where {T}
         fill!(scratch, zero(T))
         copyto!(view(scratch, (b - 1) * vsz .+ (1:vsz), :), λt)
         ldiv!(Lblk, scratch)
-        mul!(view(val,:,:,b), scratch', scratch)
+        mul!(view(val, :, :, b), scratch', scratch)
     end
     return val
 end
@@ -410,7 +410,7 @@ function _cvtbl(arr::Array{T,3}, trm) where {T}
     return merge(
         NamedTuple{(fname(trm),)}((trm.levels,)),
         columntable([
-            NamedTuple{(:σ, :ρ)}(sdcorr(view(arr,:,:,i))) for i in axes(arr, 3)
+            NamedTuple{(:σ, :ρ)}(sdcorr(view(arr, :, :, i))) for i in axes(arr, 3)
         ]),
     )
 end
