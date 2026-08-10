@@ -1,12 +1,13 @@
 MixedModels v5.8.1 Release Notes
 ==============================
 - Performance improvements for RFP-matrices. [#910]
+- The sparse `rankUpdate!` of a densely stored diagonal block of `L` now walks the `colptr` of the update directly and indexes the block linearly, matching the structure of the RFP kernel. This hoists the column offset out of the inner loop and removes a level of indirection, for roughly a 15% speedup of that kernel. [#910]
 
 MixedModels v5.8.0 Release Notes
 ==============================
 - Allow for diagonal blocks of `L` to be stored in `RectangularFullPacked` (RFP) format, which saves roughly half the storage required for the block.  This can increase the time required for `updateL!`, primarily in the `rankUpdate!` step, resulting in a time vs. memory tradeoff.  The size threshold for RFP storage is a new optional argument `RFPthreshold`, which defaults to 1000.
 - The RFP format stores a triangular matrix in two pieces: a trapezoidal part of roughly 3/4 of the elements, where linear indexing can be used for the updates, and a transposed triangular part with more complicated `getindex` and `setindex!` methods.
-- A new Boolean optional argument, `sortlevels`, which defaults to `true`, allows for sorting the levels of the any grouping factors with RFP storage of their diagonal blocks.  This is a heuristic to have more updates occur in the trapezoid part of the RFP block.  It is not guaranteed to be optimal but it works well in examples we have tried. [#821]
+- A new Boolean optional argument, `sortlevels`, which defaults to `true`, sorts the levels of each grouping factor other than the leading one by decreasing number of occurrences.  This applies to both dense and RFP storage of the diagonal blocks of `L`: placing the most frequent levels first concentrates the sparse `rankUpdate!` of a block in a compact corner of its storage, which improves memory locality.  For RFP storage it additionally keeps more of those updates in the trapezoid part of the block.  This is a heuristic, not guaranteed to be optimal, but it works well in examples we have tried. [#821]
 
 MixedModels v5.7.1 Release Notes
 ==============================
