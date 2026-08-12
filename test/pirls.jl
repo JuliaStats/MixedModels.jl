@@ -268,6 +268,24 @@ end
         MixedModel, form, dat, Gamma(), LogLink(); progress=false
     )
 
+    # Minimise the Laplace deviance over ϕ alone, holding β and θ (and hence the
+    # conditional modes, which do not depend on ϕ) at their fitted values.  This
+    # is the conditional MLE of ϕ, found by golden section on log ϕ so that no
+    # family-specific score equation is needed.
+    function condmle_ϕ(gm)
+        uss = sum(u -> sum(abs2, u), gm.u)
+        ld = logdet(gm)
+        obj(ϕ) = -2 * MixedModels._loglik_data(gm.resp, ϕ) + uss / ϕ + ld
+        r = (sqrt(5) - 1) / 2
+        a = log(MixedModels.pwrss(gm) / nobs(gm)) - 4
+        b = a + 8
+        for _ in 1:300
+            c, d = b - r * (b - a), a + r * (b - a)
+            obj(exp(c)) < obj(exp(d)) ? (b = d) : (a = c)
+        end
+        return exp((a + b) / 2)
+    end
+
     @testset "normalisation of the u penalty" begin
         # `_laplace_deviance` carries the random-effects penalty as `uss/ϕ`,
         # because θ is relative to the scale parameter (Var(b) = ϕΛΛ', so
@@ -276,44 +294,64 @@ end
         # so profiling the objective over ϕ at fixed β and θ has to return
         # pwrss/n.  With the penalty left as `uss` it misses by ~16%.
         gm = fit(MixedModel, form, dat, Normal(), SqrtLink(); progress=false)
-        plugin = MixedModels.pwrss(gm) / nobs(gm)
-        uss = sum(u -> sum(abs2, u), gm.u)
-        ld = logdet(gm)
-        obj(ϕ) = -2 * MixedModels._loglik_data(gm.resp, ϕ) + uss / ϕ + ld
-
-        # golden-section on log ϕ
-        invϕ = (sqrt(5) - 1) / 2
-        a, b = log(plugin) - 4, log(plugin) + 4
-        c, d = b - invϕ * (b - a), a + invϕ * (b - a)
-        for _ in 1:200
-            obj(exp(c)) < obj(exp(d)) ? (b = d) : (a = c)
-            c, d = b - invϕ * (b - a), a + invϕ * (b - a)
-        end
         # the tolerance is set by how tightly PIRLS converged (`pwrss` comes
         # from the linearised problem, and only coincides with Σ(y-μ)² + uss at
         # the exact PIRLS fixed point), not by the identity itself -- which is
         # exact for any β and θ.  16% vs 1e-4 is still three orders of margin.
-        @test exp((a + b) / 2) ≈ plugin rtol = 1.0e-4
+        @test condmle_ϕ(gm) ≈ MixedModels.pwrss(gm) / nobs(gm) rtol = 1.0e-4
     end
 
     @testset "Gamma + LogLink" begin
         gm = fit(MixedModel, form, dat, Gamma(), LogLink(); progress=false)
         @test dispersion_parameter(gm)
-        # Self-consistency: deviance == -2 * loglikelihood (post-hoc Laplace
-        # with σ̂² = pwrss/n).
+        # ϕ is a free parameter of the outer optimisation for fast=false, so the
+        # parameter vector is [β; θ; log ϕ]
+        @test length(gm.optsum.final) == length(gm.β) + length(gm.θ) + 1
+        @test exp(last(gm.optsum.final)) ≈ dispersion(gm, true)
+        # Self-consistency: deviance == -2 * loglikelihood, both at the same ϕ.
         @test deviance(gm) ≈ -2 * loglikelihood(gm) atol = 1.0e-8
         # σ accessors agree
         @test sdest(gm) === gm.σ
         @test sdest(gm) ≈ sqrt(varest(gm))
         @test varest(gm) ≈ dispersion(gm, true)
         @test sdest(gm) ≈ dispersion(gm, false)
-        # Regression refs.  NB these do not match lme4, and are not meant to:
-        # glmer optimises the ϕ ≡ 1 penalty while reporting VarCorr on the
-        # relative scale, which is the inconsistency behind issue #206.
+        # Regression refs for the joint (β, θ, ϕ) optimum.
+        @test deviance(gm) ≈ 1732.0017 rtol = 1.0e-4
+        @test loglikelihood(gm) ≈ -866.0008 rtol = 1.0e-4
+        @test gm.β ≈ [5.532039, 0.033836] rtol = 1.0e-3
+        @test gm.θ ≈ [1.247843, -0.006328, 0.216549] rtol = 1.0e-2
+        @test sdest(gm) ≈ 0.080848 rtol = 1.0e-3
+        # ϕ̂ itself only has a loose regression lock: the joint (β, θ, ϕ) optimum
+        # wanders by ~0.15% between runs -- and even between a fit and its own
+        # refit! -- because β and θ do, and ϕ̂ follows them.
+        @test dispersion(gm, true) ≈ 0.0065364 rtol = 1.0e-2
+
+        # What is tight, and what actually distinguishes this estimator from the
+        # fast=true one, is *conditional* on the fitted β and θ: the free
+        # parameter is the conditional MLE, which for Gamma solves a digamma
+        # equation rather than the moment condition pwrss/n.  Comparing within
+        # a single fit sidesteps the scatter above.
+        mle = condmle_ϕ(gm)
+        moment = MixedModels.pwrss(gm) / nobs(gm)
+        @test dispersion(gm, true) ≈ mle rtol = 1.0e-4
+        # ...and the moment estimator is a genuinely different answer, about
+        # 0.18% away, worth ~3e-4 in deviance -- some five orders of magnitude
+        # above what `ftol_rel` can resolve, so this gap is signal, not noise.
+        @test !isapprox(moment, mle; rtol=1.0e-3)
+        @test moment ≈ mle rtol = 1.0e-2
+    end
+
+    @testset "Gamma + LogLink, fast=true plugs ϕ in" begin
+        gm = fit(MixedModel, form, dat, Gamma(), LogLink(); fast=true, progress=false)
+        # θ only: ϕ is not a free parameter here
+        @test length(gm.optsum.final) == length(gm.θ)
+        @test isempty(gm.ϕ)
+        # and `dispersion` falls back to the moment estimator
+        @test dispersion(gm, true) ≈ MixedModels.pwrss(gm) / nobs(gm)
+        @test deviance(gm) ≈ -2 * loglikelihood(gm) atol = 1.0e-8
         @test deviance(gm) ≈ 1732.0019 rtol = 1.0e-4
-        @test loglikelihood(gm) ≈ -866.0010 rtol = 1.0e-4
-        @test gm.β ≈ [5.532033, 0.033835] rtol = 1.0e-3
-        @test gm.θ ≈ [1.247819, -0.006342, 0.216549] rtol = 1.0e-2
+        @test gm.β ≈ [5.532041, 0.033835] rtol = 1.0e-3
+        @test gm.θ ≈ [1.247817, -0.006347, 0.216551] rtol = 1.0e-2
         @test sdest(gm) ≈ 0.080777 rtol = 1.0e-3
     end
 
@@ -323,8 +361,35 @@ end
         @test deviance(gm) ≈ -2 * loglikelihood(gm) atol = 1.0e-8
         @test sdest(gm) ≈ sqrt(varest(gm))
         @test deviance(gm) ≈ 1751.9094 rtol = 1.0e-4
-        @test gm.β ≈ [15.879777, 0.297925] rtol = 1.0e-3
-        @test sdest(gm) ≈ 25.529939 rtol = 1.0e-3
+        @test gm.β ≈ [15.880180, 0.297900] rtol = 1.0e-3
+        @test sdest(gm) ≈ 25.531009 rtol = 1.0e-3
+        # Normal is the case where the moment estimator *is* the conditional
+        # MLE, so the free parameter has to reproduce pwrss/n.
+        @test dispersion(gm, true) ≈ MixedModels.pwrss(gm) / nobs(gm) rtol = 1.0e-3
+    end
+
+    @testset "ϕ regime survives refit! and saveoptsum" begin
+        gm = fit(MixedModel, form, dat, Gamma(), LogLink(); progress=false)
+        nfree = length(gm.optsum.final)
+        ϕfree = dispersion(gm, true)
+
+        io = IOBuffer()
+        saveoptsum(io, gm)
+        seekstart(io)
+        gm2 = GeneralizedLinearMixedModel(form, dat, Gamma(), LogLink())
+        restoreoptsum!(gm2, io)
+        @test dispersion(gm2, true) ≈ ϕfree
+        @test gm2.optsum.fmin ≈ gm.optsum.fmin
+
+        # toggling `fast` moves between the two regimes cleanly
+        refit!(gm; fast=true, progress=false)
+        @test isempty(gm.ϕ)
+        @test length(gm.optsum.final) == length(gm.θ)
+        refit!(gm; fast=false, progress=false)
+        @test length(gm.ϕ) == 1
+        @test length(gm.optsum.final) == nfree
+        # loose: the joint optimum moves by ~0.15% between a fit and its refit
+        @test dispersion(gm, true) ≈ ϕfree rtol = 1.0e-2
     end
 
     @testset "constructor no longer warns" begin
@@ -372,7 +437,7 @@ end
         scalar_re = @formula(reaction ~ 1 + days + (1 | subj))
         gm = fit(MixedModel, scalar_re, dat, Gamma(), LogLink(); progress=false)
         r = gm.resp
-        ϕ = MixedModels.pwrss(gm) / nobs(gm)
+        ϕ = MixedModels._dispersion(gm)
         nu = length(first(gm.u))
         Cϕ(rr) = -2 * MixedModels._loglik_data(rr, ϕ) - sum(rr.devresid) / ϕ + nu * log(ϕ)
         Cϕ_at_mode = Cϕ(r)
@@ -400,10 +465,10 @@ end
 
         # Regression refs (captured from this fit). loglikelihood is Laplace-
         # only, so it differs from deviance by the AGQ correction.
-        @test deviance(gm) ≈ 1767.1554 rtol = 1.0e-4
-        @test gm.β ≈ [5.533969, 0.033846] rtol = 1.0e-3
-        @test only(gm.θ) ≈ 1.289213 rtol = 1.0e-2
-        @test sdest(gm) ≈ 0.096795 rtol = 1.0e-3
+        @test deviance(gm) ≈ 1767.1545 rtol = 1.0e-4
+        @test gm.β ≈ [5.533943, 0.033845] rtol = 1.0e-3
+        @test only(gm.θ) ≈ 1.289160 rtol = 1.0e-2
+        @test sdest(gm) ≈ 0.096642 rtol = 1.0e-3
 
         # Laplace logLik at the AGQ-converged params should agree with
         # `_laplace_deviance` (which uses the same ϕ̂ = pwrss/n).

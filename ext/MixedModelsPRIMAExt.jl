@@ -95,7 +95,8 @@ function MixedModels.optimize!(m::GeneralizedLinearMixedModel, ::PRIMABackend;
     else
         # scale by the standard deviation of the columns of the fixef model matrix
         # when including the fixef in the nonlinear opt
-        sc = [map(std, eachcol(modelmatrix(m))); fill(1, length(m.θ))]
+        # the trailing 1 is for log ϕ when ϕ is a free outer parameter
+        sc = [map(std, eachcol(modelmatrix(m))); fill(1, length(m.θ) + length(m.ϕ))]
         for (i, x) in enumerate(sc)
             # for nearly constant things, e.g. intercept, we don't want to scale to zero...
             # also, since we're scaling the _parameters_ and not the data,

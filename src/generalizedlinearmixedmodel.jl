@@ -8,6 +8,11 @@ Generalized linear mixed-effects model representation
 - `β`: the pivoted and possibly truncated fixed-effects vector
 - `β₀`: similar to `β`. Used in the PIRLS algorithm if step-halving is needed.
 - `θ`: covariance parameter vector
+- `ϕ`: dispersion parameter, as a zero- or one-element vector. It is empty when ϕ is
+  plugged in from the Pearson moment estimator (`fast=true`, and always for families
+  without a dispersion parameter) and holds a single value when ϕ is a free parameter
+  of the outer optimization (`fast=false` with a dispersion family). See
+  [`_dispersion`](@ref).
 - `b`: similar to `u`, equivalent to `broadcast!(*, b, LMM.Λ, u)`
 - `u`: a vector of matrices of random effects
 - `u₀`: similar to `u`.  Used in the PIRLS algorithm if step-halving is needed.
@@ -40,6 +45,7 @@ struct GeneralizedLinearMixedModel{T<:AbstractFloat,D<:Distribution} <: MixedMod
     β::Vector{T}
     β₀::Vector{T}
     θ::Vector{T}
+    ϕ::Vector{T}
     b::Vector{Matrix{T}}
     u::Vector{Matrix{T}}
     u₀::Vector{Matrix{T}}
@@ -81,9 +87,11 @@ If the distribution `D` does not have a scale parameter the Laplace approximatio
 is the squared length of the conditional modes, ``u``, plus the determinant
 of ``Λ'Z'WZΛ + I``, plus the sum of the squared deviance residuals.
 
-For distributions with a dispersion parameter ``ϕ``, the estimate
-``ϕ̂ = pwrss(m) / nobs(m)`` is profiled in at the converged PIRLS mode and shared
-with `dispersion` and `loglikelihood`; see the internal `_laplace_deviance` and
+For distributions with a dispersion parameter ``ϕ``, the value of ϕ comes from
+`_dispersion` and is shared with `dispersion` and `loglikelihood`, so the three
+always agree. Depending on how the model was fit, that is either the moment
+estimator ``pwrss(m) / nobs(m)`` (`fast=true`) or a free parameter of the outer
+optimization (`fast=false`). See the internal `_laplace_deviance` and
 `_agq_deviance` for the exact expressions.
 """
 function StatsAPI.deviance(m::GeneralizedLinearMixedModel{T}, nAGQ=1) where {T}
@@ -101,25 +109,51 @@ used as the NLopt/PRIMA objective when fitting with the Laplace approximation.
 For non-dispersion families (Bernoulli, Binomial, Poisson) this is
 `sum(devresid) + sum(u²) + logdet(m)`. For dispersion families it is
 
-    -2 · Σ loglik_obs(d, yᵢ, μᵢ, wᵢ, ϕ̂) + sum(u²)/ϕ̂ + logdet(m)
+    -2 · Σ loglik_obs(d, yᵢ, μᵢ, wᵢ, ϕ) + sum(u²)/ϕ + logdet(m)
 
-with `ϕ̂ = pwrss/n` plugged in. Note the `1/ϕ̂` on the penalty: `θ` is *relative*
-to the scale parameter in this package (`Var(b) = ϕΛΛ'`, which is the `σ` factor
-[`σs`](@ref) already applies), so `u ~ N(0, ϕI)` and `sum(u²)` is on the ϕ scale
-too. Specializing the expression to a `Normal` response with an identity link
-recovers `objective(::LinearMixedModel)` exactly; that is the check that fixes
-the normalization, and equivalently the one that makes `pwrss/n` the conditional
-MLE of ϕ in the Gaussian case. The two branches are byte-equivalent for
-non-dispersion families, where ϕ ≡ 1.
+Note the `1/ϕ` on the penalty: `u ~ N(0, ϕI)` under this package's relative
+covariance parameterization (see [`deviance!`](@ref)), so `sum(u²)` is on the ϕ
+scale too. Specializing the expression to `Normal` with an identity link recovers
+`objective(::LinearMixedModel)` exactly, which is the check that fixes the
+normalization. The two branches are byte-equivalent for non-dispersion families,
+where ϕ ≡ 1.
 """
 function _laplace_deviance(m::GeneralizedLinearMixedModel{T}) where {T}
     uss = sum(u -> sum(abs2, u), m.u)
     ld = logdet(m)
     if dispersion_parameter(m.resp.d)
-        ϕ = max(pwrss(m) / nobs(m), eps(T))
+        ϕ = _dispersion(m)
         return T(-2 * _loglik_data(m.resp, ϕ) + uss / ϕ + ld)
     end
     return T(sum(m.resp.devresid) + ld + uss)
+end
+
+"""
+    _dispersion(m::GeneralizedLinearMixedModel{T})
+
+The value of ϕ used by the objective, the log-likelihood and [`dispersion`](@ref).
+
+Families without a dispersion parameter give `one(T)`. Otherwise there are two
+regimes, distinguished by whether `m.ϕ` is empty:
+
+  - `isempty(m.ϕ)` — ϕ is plugged in from the Pearson moment estimator
+    `pwrss(m) / nobs(m)`. This is the `fast=true` regime, and it is what every
+    dispersion fit did before ϕ became an outer parameter.
+  - otherwise — ϕ is a free parameter of the outer optimization and `first(m.ϕ)`
+    is its current value. This is the `fast=false` regime.
+
+The two coincide only for `Normal`: there `pwrss/n` really is the conditional MLE
+of ϕ, so the outer optimization just rediscovers it. For `Gamma` and
+`InverseGaussian` the conditional MLE solves a digamma equation rather than a
+moment condition, and the free parameter converges to that instead — the moment
+estimator is then a genuinely different (and lme4-compatible) answer.
+
+Either way ϕ does not affect the conditional modes; see [`deviance!`](@ref).
+"""
+function _dispersion(m::GeneralizedLinearMixedModel{T}) where {T}
+    dispersion_parameter(m.resp.d) || return one(T)
+    isempty(m.ϕ) && return max(pwrss(m) / nobs(m), eps(T))
+    return max(first(m.ϕ), eps(T))
 end
 
 """
@@ -128,22 +162,21 @@ end
 Internal adaptive Gauss-Hermite quadrature deviance, used as the NLopt/PRIMA
 objective for `nAGQ > 1`.
 
-For dispersion families ϕ̂ = pwrss(m)/nobs(m) is plugged in at the converged
-PIRLS mode (same estimator as [`_laplace_deviance`](@ref)) and enters in three
-places, all of which reduce to no-ops when ϕ̂ ≡ 1:
+For dispersion families ϕ comes from [`_dispersion`](@ref) and enters in three
+places, all of which reduce to no-ops when ϕ ≡ 1:
 
-  - the per-group integrand is `D_g(u) = (u² + Σ_{i∈g} devresid_i(u))/ϕ̂`, the
+  - the per-group integrand is `D_g(u) = (u² + Σ_{i∈g} devresid_i(u))/ϕ`, the
     whole penalized quantity on the ϕ scale rather than just the data part;
-  - the quadrature nodes are spaced by `√ϕ̂ / L.diag`, since the conditional
+  - the quadrature nodes are spaced by `√ϕ / L.diag`, since the conditional
     standard deviation of `u` given `y` carries the same ϕ as the prior;
-  - the μ-independent data normaliser is
-    `Cϕ = -2·Σ loglik_obs(d, yᵢ, μᵢ, wᵢ, ϕ̂) - sum(devresid)/ϕ̂ + nᵤ·log ϕ̂`,
-    computed once at the mode. The trailing `nᵤ·log ϕ̂` compensates exactly for
-    the `√ϕ̂` in the node spacing, which would otherwise contribute `-nᵤ·log ϕ̂`
+  - the μ-independent normaliser is
+    `Cϕ = -2·Σ loglik_obs(d, yᵢ, μᵢ, wᵢ, ϕ) - sum(devresid)/ϕ + nᵤ·log ϕ`,
+    computed once at the mode. The trailing `nᵤ·log ϕ` compensates exactly for
+    the `√ϕ` in the node spacing, which would otherwise contribute `-nᵤ·log ϕ`
     through the `sum(log, sd)` Jacobian term.
 
 The AGQ deviance is then `sum(D_g(û)) - 2·(sum(log,mult) + sum(log,sd)) + Cϕ`.
-For non-dispersion families ϕ̂ ≡ 1 and Cϕ ≡ 0, reducing exactly to the prior
+For non-dispersion families ϕ ≡ 1 and Cϕ ≡ 0, reducing exactly to the prior
 formula, bit for bit.
 
 By construction `_agq_deviance(m, 1) == _laplace_deviance(m)` (the Laplace
@@ -157,7 +190,7 @@ function _agq_deviance(m::GeneralizedLinearMixedModel{T}, nAGQ) where {T}
     ra = RaggedArray(m.resp.devresid, first(m.LMM.reterms).refs)
 
     has_disp = dispersion_parameter(m.resp.d)
-    ϕ = has_disp ? max(pwrss(m) / nobs(m), eps(T)) : one(T)
+    ϕ = _dispersion(m)
     # Cϕ is the μ-independent part of -2·Σ loglik_obs(d, y, μ, w, ϕ); the
     # identity -2·loglik_obs = devresid/ϕ + c(y, w, ϕ) lets us evaluate it
     # once at the mode and treat it as constant across quadrature nodes. For
@@ -169,13 +202,13 @@ function _agq_deviance(m::GeneralizedLinearMixedModel{T}, nAGQ) where {T}
            length(u) * log(ϕ)) :
          zero(T)
 
-    # devc0_g = (u_g² + Σ_{i∈g} devresid_i)/ϕ̂  at u = û
+    # devc0_g = (u_g² + Σ_{i∈g} devresid_i)/ϕ  at u = û
     sum!(fill!(m.devc0, 0), ra)
     @. m.devc0 = (abs2(u) + m.devc0) / ϕ
     devc0 = m.devc0
 
-    # the conditional sd of u given y is √ϕ̂/L.diag; the √ϕ̂ is undone by the
-    # nᵤ·log ϕ̂ carried in Cϕ above
+    # the conditional sd of u given y is √ϕ/L.diag; the √ϕ is undone by the
+    # nᵤ·log ϕ carried in Cϕ above
     sd = map!(inv, m.sd, first(m.LMM.L).diag)
     has_disp && (sd .*= sqrt(ϕ))
     mult = fill!(m.mult, 0)
@@ -224,6 +257,13 @@ end
 
 Update `m.η`, `m.μ`, etc., install the working response and working weights in
 `m.LMM`, update `m.LMM.A` and `m.LMM.R`, then evaluate the `deviance`.
+
+Note that PIRLS itself does not depend on ϕ. Under the covariance parameterization
+this package uses, `θ` is *relative* to the scale parameter — `Var(b) = ϕΛΛ'`, i.e.
+`u ~ N(0, ϕI)`, matching [`LinearMixedModel`](@ref) and the `σ` factor in
+[`σs`](@ref) — so the penalized objective is `(Σᵢ wᵢrᵢ² + ‖u‖²)/ϕ` and the `1/ϕ`
+factors straight out of the minimization over `u`. ϕ enters the deviance, not the
+conditional modes.
 """
 function deviance!(m::GeneralizedLinearMixedModel, nAGQ=1)
     updateη!(m)
@@ -234,11 +274,10 @@ end
 
 function GLM.dispersion(m::GeneralizedLinearMixedModel{T}, sqr::Bool=false) where {T}
     dispersion_parameter(m.resp.d) || return one(T)
-    # ML estimator (matches lme4's `sigma()` and the LMM convention at
-    # `varest(::LinearMixedModel)`): σ̂² = pwrss / n, where `pwrss(m)` is the
-    # penalised weighted RSS of the working LMM at the converged PIRLS state
-    # (includes both the working-residual and Σ‖u‖² contributions).
-    s2 = max(pwrss(m) / nobs(m), eps(T))
+    # Either the Pearson moment estimator pwrss/n (which matches lme4's `sigma()`
+    # and the LMM convention at `varest(::LinearMixedModel)`) or the free outer
+    # parameter, depending on how the model was fit.  See `_dispersion`.
+    s2 = _dispersion(m)
     return sqr ? s2 : sqrt(s2)
 end
 
@@ -356,9 +395,14 @@ function StatsAPI.fit!(
         throw(ArgumentError("This model has already been fitted. Use refit!() instead."))
     end
 
-    if dispersion_parameter(m.resp.d)
+    disp = dispersion_parameter(m.resp.d)
+    if disp
         @info "Fitting a GLMM with a dispersion parameter. " *
-            "ϕ is profiled out using the ML estimator (matches lme4's `sigma()`). " *
+            (fast ?
+             "ϕ is plugged in from the Pearson moment estimator pwrss/n, which " *
+             "matches lme4's `sigma()`. " :
+             "ϕ is estimated jointly with β and θ as a parameter of the outer " *
+             "optimization. ") *
             "Please report any discrepancies vs lme4."
     end
 
@@ -373,8 +417,20 @@ function StatsAPI.fit!(
         unfit!(lm)
     end
 
+    # ϕ is a free parameter of the outer optimization only for `fast=false` fits
+    # of a dispersion family; otherwise it is plugged in from pwrss/n.  Emptying
+    # it here rather than relying on the constructor keeps `refit!` honest when
+    # the same model is refit with a different `fast`.
+    empty!(m.ϕ)
     if !fast
         optsum.initial = vcat(β, lm.optsum.final)
+        if disp
+            # a plug-in evaluation at the starting β/θ gives a much better
+            # starting ϕ than any fixed constant would
+            pirls!(setβθ!(m, optsum.initial), false, verbose)
+            push!(m.ϕ, max(pwrss(m) / nobs(m), eps(T)))
+            optsum.initial = vcat(optsum.initial, log(first(m.ϕ)))
+        end
         optsum.final = copy(optsum.initial)
     end
 
@@ -383,13 +439,17 @@ function StatsAPI.fit!(
 
     xmin, fmin = optimize!(m; progress, fast, verbose, nAGQ)
 
-    θopt = length(xmin) == length(θ) ? xmin : view(xmin, (length(β) + 1):lastindex(xmin))
+    θopt = length(xmin) == length(θ) ? xmin :
+           view(xmin, (length(β) + 1):(length(β) + length(θ)))
     rectify!(m.LMM)                  # flip signs of columns of m.λ elements with negative diagonal els
     getθ!(θopt, m)                   # use the rectified values in xmin
 
     ## check if very small parameter values bounded below by zero can be set to zero
     xmin_ = copy(xmin)
+    # log ϕ is unbounded, so a lower bound of -Inf keeps it out of the
+    # zero-snapping loop below -- snapping it would send ϕ to 1, not to 0
     lb = fast ? lowerbd(m) : vcat(zero(β), lowerbd(m))
+    isempty(m.ϕ) || (lb = vcat(lb, T(-Inf)))
     for i in eachindex(xmin_)
         if iszero(lb[i]) && zero(T) < xmin_[i] < optsum.xtol_zero_abs
             xmin_[i] = zero(T)
@@ -538,6 +598,7 @@ function GeneralizedLinearMixedModel(
         β,
         copy(β),
         LMM.θ,
+        T[],   # ϕ: empty until `fit!` promotes it to a free parameter
         copy.(u),
         u,
         zero.(u),
@@ -602,12 +663,12 @@ StatsAPI.islinear(m::GeneralizedLinearMixedModel) = isa(GLM.Link, GLM.IdentityLi
 GLM.Link(m::GeneralizedLinearMixedModel) = GLM.Link(m.resp)
 
 function StatsAPI.loglikelihood(m::GeneralizedLinearMixedModel{T}) where {T}
-    # ϕ is profiled out (see `dispersion`) so the loglikelihood, deviance, and
-    # dispersion estimate are all evaluated at the same ϕ̂. For families
-    # without a dispersion parameter `dispersion(m, true) == 1` and
-    # `loglik_obs` ignores the ϕ argument.
+    # `_dispersion` is the single source of ϕ̂, so the loglikelihood, deviance and
+    # dispersion estimate are always evaluated at the same value whichever regime
+    # the model was fit in. For families without a dispersion parameter it returns
+    # 1 and `loglik_obs` ignores the ϕ argument anyway.
     r = m.resp
-    ϕ = dispersion_parameter(r.d) ? dispersion(m, true) : one(T)
+    ϕ = _dispersion(m)
     ll = _loglik_data(r, ϕ)
     uss = sum(u -> sum(abs2, u), m.u)
     return ll - (uss / ϕ + logdet(m)) / 2
@@ -650,6 +711,11 @@ The penalized, weighted residual sum-of-squares for the working LMM at the
 current PIRLS state. Equal to `Σ wrkwtᵢ · wrkresidᵢ² + Σⱼ ‖uⱼ‖²` after PIRLS
 converges, so `pwrss(m) - sum(abs2, u)` is the Pearson chi-square contribution
 used to estimate the dispersion parameter.
+
+This holds regardless of how ϕ is being estimated, since PIRLS does not depend on
+ϕ (see [`deviance!`](@ref)). For a model fit with `fast=false` and a dispersion
+family, comparing `pwrss(m) / nobs(m)` against [`dispersion`](@ref) contrasts the
+moment estimator with the conditional MLE that the outer optimization finds.
 """
 pwrss(m::GeneralizedLinearMixedModel) = pwrss(m.LMM)
 
@@ -821,10 +887,22 @@ end
 Set the parameter vector, `:βθ`, of `m` to `v`.
 
 `βθ` is the concatenation of the fixed-effects, `β`, and the covariance parameter, `θ`.
+
+When ϕ is a free parameter of the outer optimization (`!isempty(m.ϕ)`, see
+[`_dispersion`](@ref)) `v` carries one further element, `log(ϕ)`, after `θ`.
 """
 function setβθ!(m::GeneralizedLinearMixedModel, v)
     setβ!(m, v)
-    return setθ!(m, view(v, (length(m.β) + 1):length(v)))
+    nβ = length(m.β)
+    # `v` is allowed to be shorter than `nβ + nθ`: `simulate!` passes β alone
+    # when θ is to be left at its current value, and relies on the resulting
+    # empty view making `setθ!` a no-op.
+    nϕ = length(m.ϕ)
+    setθ!(m, view(v, (nβ + 1):(length(v) - nϕ)))
+    # when ϕ is a free outer parameter it is the trailing element of `v`, on the
+    # log scale so that the optimizer sees it as unbounded and reasonably scaled
+    iszero(nϕ) || (m.ϕ[begin] = exp(last(v)))
+    return m
 end
 
 function setβ!(m::GeneralizedLinearMixedModel, v)
@@ -926,6 +1004,7 @@ function unfit!(model::GeneralizedLinearMixedModel{T}) where {T}
     optsum.xtol_abs = fill!(copy(optsum.initial), 1.0e-10)
     optsum.initial_step = T[]
     optsum.feval = -1
+    empty!(model.ϕ)   # back to the plug-in until `fit!` decides otherwise
     deviance!(model, 1)
 
     return model
