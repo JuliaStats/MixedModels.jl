@@ -49,7 +49,7 @@ using MixedModelsDatasets: dataset
 # for some reason it seems necessary to prime the pump in julia-1.6.0-DEV
 @isdefined(fittedmodels) || const global fittedmodels = Dict{Symbol,Vector{MixedModel}}(
     :dyestuff =>
-        [fit(MixedModel, only(fms[:dyestuff]), dataset(:dyestuff); progress=false)]
+        [fit(MixedModel, only(fms[:dyestuff]), dataset(:dyestuff); progress=false)],
 );
 
 @isdefined(allfms) || const global allfms = merge(fms, gfms)
@@ -57,7 +57,7 @@ using MixedModelsDatasets: dataset
 if !@isdefined(models)
     function models(nm::Symbol)
         get!(fittedmodels, nm) do
-            [fit(MixedModel, f, dataset(nm); progress=false) for f in allfms[nm]]
+            return [fit(MixedModel, f, dataset(nm); progress=false) for f in allfms[nm]]
         end
     end
 end

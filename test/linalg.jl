@@ -65,7 +65,7 @@ end
     # in Julia 1.6+, typeof(x) == Matrix{Int64}
     # in < 1.6, typeof(x) == Array{Int64, 2}
     err = ErrorException(
-        "We haven't implemented a method for $(typeof(x)), $(typeof(x)). Please file an issue on GitHub.",
+        "We haven't implemented a method for $(typeof(x)), $(typeof(x)). Please file an issue on GitHub."
     )
     @test_throws ErrorException rankUpdate!(x, x, 1, 1)
     L21 = sprand(MersenneTwister(42), 100, 1000, 0.05)
@@ -153,7 +153,7 @@ end
 =#
 
 @testset "lmulλ!" begin
-    levs(ng, tag='S') = string.(tag, lpad.(string.(1:ng), ndigits(ng), '0'))
+    levs(ng, tag=('S')) = string.(tag, lpad.(string.(1:ng), ndigits(ng), '0'))
 
     function gendata(rng::AbstractRNG, n::Integer, ng::Integer, nh::Integer)
         return (

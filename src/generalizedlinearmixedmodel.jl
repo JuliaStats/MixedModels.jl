@@ -146,8 +146,8 @@ function _agq_deviance(m::GeneralizedLinearMixedModel{T}, nAGQ) where {T}
     # bit-identical (Binomial/Poisson would otherwise pick up a constant
     # saturated-likelihood term that the historical formula dropped).
     Cϕ = has_disp ?
-        T(-2 * _loglik_data(m.resp, ϕ) - sum(m.resp.devresid) / ϕ) :
-        zero(T)
+         T(-2 * _loglik_data(m.resp, ϕ) - sum(m.resp.devresid) / ϕ) :
+         zero(T)
 
     # devc0_g = u_g² + (Σ_{i∈g} devresid_i)/ϕ̂  at u = û
     sum!(fill!(m.devc0, 0), ra)
@@ -335,8 +335,8 @@ function StatsAPI.fit!(
 
     if dispersion_parameter(m.resp.d)
         @info "Fitting a GLMM with a dispersion parameter. " *
-              "ϕ is profiled out using the ML estimator (matches lme4's `sigma()`). " *
-              "Please report any discrepancies vs lme4."
+            "ϕ is profiled out using the ML estimator (matches lme4's `sigma()`). " *
+            "Please report any discrepancies vs lme4."
     end
 
     if all(==(first(m.y)), m.y)
@@ -398,7 +398,9 @@ function GeneralizedLinearMixedModel(
     args...;
     kwargs...,
 )
-    throw(ArgumentError("Expected a Distribution instance (`$d()`), got a type (`$d`)."))
+    return throw(
+        ArgumentError("Expected a Distribution instance (`$d()`), got a type (`$d`).")
+    )
 end
 
 function GeneralizedLinearMixedModel(
@@ -408,7 +410,7 @@ function GeneralizedLinearMixedModel(
     l::Type;
     kwargs...,
 )
-    throw(ArgumentError("Expected a Link instance (`$l()`), got a type (`$l`)."))
+    return throw(ArgumentError("Expected a Link instance (`$l()`), got a type (`$l`)."))
 end
 
 function GeneralizedLinearMixedModel(

@@ -788,7 +788,7 @@ function σvals(λ::LowerTriangular{T}, sc::Number) where {T}
         for j in Base.OneTo(i)
             @inbounds s += abs2(λ[i, j])
         end
-        sc * sqrt(s)
+        return sc * sqrt(s)
     end
 end
 

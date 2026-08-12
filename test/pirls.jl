@@ -319,8 +319,8 @@ end
         # Bit-identical invariant: the optimisation objective for Bernoulli
         # is unchanged from the pre-fix form `sum(devresid) + uss + logdet`.
         gm = fit(MixedModel,
-                 @formula(use ~ 1 + urban + livch * age + (1 | dist)),
-                 dataset(:contra), Bernoulli(); progress=false)
+            @formula(use ~ 1 + urban + livch * age + (1 | dist)),
+            dataset(:contra), Bernoulli(); progress=false)
         @test !dispersion_parameter(gm)
         @test dispersion(gm) == 1
         @test sdest(gm) === missing
@@ -340,8 +340,8 @@ end
 
         mmec = dataset(:mmec)
         gm_p = fit(MixedModel,
-                   @formula(deaths ~ 1 + uvb + (1 | region)),
-                   mmec, Poisson(); offset=log.(mmec.expected), progress=false)
+            @formula(deaths ~ 1 + uvb + (1 | region)),
+            mmec, Poisson(); offset=log.(mmec.expected), progress=false)
         @test MixedModels._agq_deviance(gm_p, 1) ≈ MixedModels._laplace_deviance(gm_p) atol =
             1.0e-9
     end
@@ -374,7 +374,7 @@ end
         # interior optimum, so no tight lme4 cross-check here.
         scalar_re = @formula(reaction ~ 1 + days + (1 | subj))
         gm = fit(MixedModel, scalar_re, dat, Gamma(), LogLink();
-                 nAGQ=5, progress=false)
+            nAGQ=5, progress=false)
         @test dispersion_parameter(gm)
         @test gm.optsum.nAGQ == 5
 

@@ -164,7 +164,7 @@ Save `m.optsum` in JSON format to an IO stream or a file
 saveoptsum(io::IO, m::MixedModel) = JSON3.write(io, m.optsum)
 function saveoptsum(filename, m::MixedModel)
     open(filename, "w") do io
-        saveoptsum(io, m)
+        return saveoptsum(io, m)
     end
 end
 
