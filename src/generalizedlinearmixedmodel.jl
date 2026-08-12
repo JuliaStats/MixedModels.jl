@@ -100,16 +100,24 @@ used as the NLopt/PRIMA objective when fitting with the Laplace approximation.
 
 For non-dispersion families (Bernoulli, Binomial, Poisson) this is
 `sum(devresid) + sum(u²) + logdet(m)`. For dispersion families it is
-`-2 · Σ loglik_obs(d, yᵢ, μᵢ, wᵢ, ϕ̂) + sum(u²) + logdet(m)` with `ϕ̂ = pwrss/n`
-profiled in — matching lme4's `glmer` optimisation behaviour. The two
-branches are byte-equivalent for non-dispersion families.
+
+    -2 · Σ loglik_obs(d, yᵢ, μᵢ, wᵢ, ϕ̂) + sum(u²)/ϕ̂ + logdet(m)
+
+with `ϕ̂ = pwrss/n` plugged in. Note the `1/ϕ̂` on the penalty: `θ` is *relative*
+to the scale parameter in this package (`Var(b) = ϕΛΛ'`, which is the `σ` factor
+[`σs`](@ref) already applies), so `u ~ N(0, ϕI)` and `sum(u²)` is on the ϕ scale
+too. Specializing the expression to a `Normal` response with an identity link
+recovers `objective(::LinearMixedModel)` exactly; that is the check that fixes
+the normalization, and equivalently the one that makes `pwrss/n` the conditional
+MLE of ϕ in the Gaussian case. The two branches are byte-equivalent for
+non-dispersion families, where ϕ ≡ 1.
 """
 function _laplace_deviance(m::GeneralizedLinearMixedModel{T}) where {T}
     uss = sum(u -> sum(abs2, u), m.u)
     ld = logdet(m)
     if dispersion_parameter(m.resp.d)
         ϕ = max(pwrss(m) / nobs(m), eps(T))
-        return T(-2 * _loglik_data(m.resp, ϕ) + uss + ld)
+        return T(-2 * _loglik_data(m.resp, ϕ) + uss / ϕ + ld)
     end
     return T(sum(m.resp.devresid) + ld + uss)
 end
@@ -120,16 +128,27 @@ end
 Internal adaptive Gauss-Hermite quadrature deviance, used as the NLopt/PRIMA
 objective for `nAGQ > 1`.
 
-For dispersion families ϕ̂ = pwrss(m)/nobs(m) is profiled in at the converged
-PIRLS mode (same estimator as [`_laplace_deviance`](@ref)), and the
-μ-independent data normaliser `Cϕ = -2·Σ loglik_obs(d, yᵢ, μᵢ, wᵢ, ϕ̂) -
-sum(devresid)/ϕ̂` is computed once at the mode. The per-group integrand is
-then `D_g(u) = u² + (Σ_{i∈g} devresid_i(u))/ϕ̂` and the AGQ deviance is
-`sum(D_g(û)) - 2·(sum(log,mult) + sum(log,sd)) + Cϕ`. For non-dispersion
-families ϕ̂ ≡ 1 and Cϕ ≡ 0, reducing exactly to the prior formula.
+For dispersion families ϕ̂ = pwrss(m)/nobs(m) is plugged in at the converged
+PIRLS mode (same estimator as [`_laplace_deviance`](@ref)) and enters in three
+places, all of which reduce to no-ops when ϕ̂ ≡ 1:
+
+  - the per-group integrand is `D_g(u) = (u² + Σ_{i∈g} devresid_i(u))/ϕ̂`, the
+    whole penalized quantity on the ϕ scale rather than just the data part;
+  - the quadrature nodes are spaced by `√ϕ̂ / L.diag`, since the conditional
+    standard deviation of `u` given `y` carries the same ϕ as the prior;
+  - the μ-independent data normaliser is
+    `Cϕ = -2·Σ loglik_obs(d, yᵢ, μᵢ, wᵢ, ϕ̂) - sum(devresid)/ϕ̂ + nᵤ·log ϕ̂`,
+    computed once at the mode. The trailing `nᵤ·log ϕ̂` compensates exactly for
+    the `√ϕ̂` in the node spacing, which would otherwise contribute `-nᵤ·log ϕ̂`
+    through the `sum(log, sd)` Jacobian term.
+
+The AGQ deviance is then `sum(D_g(û)) - 2·(sum(log,mult) + sum(log,sd)) + Cϕ`.
+For non-dispersion families ϕ̂ ≡ 1 and Cϕ ≡ 0, reducing exactly to the prior
+formula, bit for bit.
 
 By construction `_agq_deviance(m, 1) == _laplace_deviance(m)` (the Laplace
-approximation *is* AGQ with n=1).
+approximation *is* AGQ with n=1); that identity is what pins down the constants
+above and is checked in the test suite.
 """
 function _agq_deviance(m::GeneralizedLinearMixedModel{T}, nAGQ) where {T}
     u = vec(first(m.u))
@@ -146,15 +165,19 @@ function _agq_deviance(m::GeneralizedLinearMixedModel{T}, nAGQ) where {T}
     # bit-identical (Binomial/Poisson would otherwise pick up a constant
     # saturated-likelihood term that the historical formula dropped).
     Cϕ = has_disp ?
-         T(-2 * _loglik_data(m.resp, ϕ) - sum(m.resp.devresid) / ϕ) :
+         T(-2 * _loglik_data(m.resp, ϕ) - sum(m.resp.devresid) / ϕ +
+           length(u) * log(ϕ)) :
          zero(T)
 
-    # devc0_g = u_g² + (Σ_{i∈g} devresid_i)/ϕ̂  at u = û
+    # devc0_g = (u_g² + Σ_{i∈g} devresid_i)/ϕ̂  at u = û
     sum!(fill!(m.devc0, 0), ra)
-    @. m.devc0 = abs2(u) + m.devc0 / ϕ
+    @. m.devc0 = (abs2(u) + m.devc0) / ϕ
     devc0 = m.devc0
 
+    # the conditional sd of u given y is √ϕ̂/L.diag; the √ϕ̂ is undone by the
+    # nᵤ·log ϕ̂ carried in Cϕ above
     sd = map!(inv, m.sd, first(m.LMM.L).diag)
+    has_disp && (sd .*= sqrt(ϕ))
     mult = fill!(m.mult, 0)
     devc = m.devc
     for (z, w) in GHnorm(nAGQ)
@@ -165,7 +188,7 @@ function _agq_deviance(m::GeneralizedLinearMixedModel{T}, nAGQ) where {T}
                 @. u = u₀ + z * sd
                 updateη!(m)
                 sum!(fill!(devc, 0), ra)
-                @. devc = abs2(u) + devc / ϕ
+                @. devc = (abs2(u) + devc) / ϕ
                 @. mult += exp((abs2(z) + devc0 - devc) / 2) * w
             end
         end
@@ -587,7 +610,7 @@ function StatsAPI.loglikelihood(m::GeneralizedLinearMixedModel{T}) where {T}
     ϕ = dispersion_parameter(r.d) ? dispersion(m, true) : one(T)
     ll = _loglik_data(r, ϕ)
     uss = sum(u -> sum(abs2, u), m.u)
-    return ll - (uss + logdet(m)) / 2
+    return ll - (uss / ϕ + logdet(m)) / 2
 end
 
 function _loglik_data(r::GLM.GlmResp, ϕ)

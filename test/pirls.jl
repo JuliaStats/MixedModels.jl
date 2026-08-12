@@ -268,6 +268,34 @@ end
         MixedModel, form, dat, Gamma(), LogLink(); progress=false
     )
 
+    @testset "normalisation of the u penalty" begin
+        # `_laplace_deviance` carries the random-effects penalty as `uss/ϕ`,
+        # because θ is relative to the scale parameter (Var(b) = ϕΛΛ', so
+        # u ~ N(0, ϕI)) exactly as in LinearMixedModel.  The check that pins
+        # this down: for a Normal family, pwrss/n is the conditional MLE of ϕ,
+        # so profiling the objective over ϕ at fixed β and θ has to return
+        # pwrss/n.  With the penalty left as `uss` it misses by ~16%.
+        gm = fit(MixedModel, form, dat, Normal(), SqrtLink(); progress=false)
+        plugin = MixedModels.pwrss(gm) / nobs(gm)
+        uss = sum(u -> sum(abs2, u), gm.u)
+        ld = logdet(gm)
+        obj(ϕ) = -2 * MixedModels._loglik_data(gm.resp, ϕ) + uss / ϕ + ld
+
+        # golden-section on log ϕ
+        invϕ = (sqrt(5) - 1) / 2
+        a, b = log(plugin) - 4, log(plugin) + 4
+        c, d = b - invϕ * (b - a), a + invϕ * (b - a)
+        for _ in 1:200
+            obj(exp(c)) < obj(exp(d)) ? (b = d) : (a = c)
+            c, d = b - invϕ * (b - a), a + invϕ * (b - a)
+        end
+        # the tolerance is set by how tightly PIRLS converged (`pwrss` comes
+        # from the linearised problem, and only coincides with Σ(y-μ)² + uss at
+        # the exact PIRLS fixed point), not by the identity itself -- which is
+        # exact for any β and θ.  16% vs 1e-4 is still three orders of margin.
+        @test exp((a + b) / 2) ≈ plugin rtol = 1.0e-4
+    end
+
     @testset "Gamma + LogLink" begin
         gm = fit(MixedModel, form, dat, Gamma(), LogLink(); progress=false)
         @test dispersion_parameter(gm)
@@ -279,24 +307,14 @@ end
         @test sdest(gm) ≈ sqrt(varest(gm))
         @test varest(gm) ≈ dispersion(gm, true)
         @test sdest(gm) ≈ dispersion(gm, false)
-        # Regression: capture the converged values so future changes are
-        # caught. NB these are the point `LN_NEWUOA` actually stops at, which
-        # is not the best point on this surface: the objective here is flat
-        # enough that a relative perturbation of ~1e-9 (e.g. the last-digit
-        # changes to `sleepstudy` in MixedModelsDatasets) moves β̂ by over 1%.
-        # An earlier resolution of the dependencies converged to
-        # deviance 1690.9524 with β = [5.388841, 0.013603], i.e. 0.26 deviance
-        # units better than what we lock in below. Treat a failure here as a
-        # prompt to check which point is better rather than as a bug per se.
-        # -2*logLik differs from lme4's by ~3 units (different Laplace
-        # normalisation conventions).
-        @test deviance(gm) ≈ 1691.2090 rtol = 1.0e-4
-        @test loglikelihood(gm) ≈ -845.6045 rtol = 1.0e-4
-        @test gm.β ≈ [5.457394, 0.013909] rtol = 1.0e-3
-        @test gm.θ ≈ [0.924137, -0.086495, 0.142253] rtol = 1.0e-2
-        @test sdest(gm) ≈ 0.090012 rtol = 1.0e-3
-        # Loose lme4 cross-check (lme4 sigma() = 0.0910):
-        @test sdest(gm) ≈ 0.0910 rtol = 0.05
+        # Regression refs.  NB these do not match lme4, and are not meant to:
+        # glmer optimises the ϕ ≡ 1 penalty while reporting VarCorr on the
+        # relative scale, which is the inconsistency behind issue #206.
+        @test deviance(gm) ≈ 1732.0019 rtol = 1.0e-4
+        @test loglikelihood(gm) ≈ -866.0010 rtol = 1.0e-4
+        @test gm.β ≈ [5.532033, 0.033835] rtol = 1.0e-3
+        @test gm.θ ≈ [1.247819, -0.006342, 0.216549] rtol = 1.0e-2
+        @test sdest(gm) ≈ 0.080777 rtol = 1.0e-3
     end
 
     @testset "Normal + SqrtLink" begin
@@ -304,9 +322,9 @@ end
         @test dispersion_parameter(gm)
         @test deviance(gm) ≈ -2 * loglikelihood(gm) atol = 1.0e-8
         @test sdest(gm) ≈ sqrt(varest(gm))
-        @test deviance(gm) ≈ 1981.14 rtol = 1.0e-4
-        @test gm.β ≈ [15.873028, 0.298318] rtol = 1.0e-3
-        @test sdest(gm) ≈ 22.8238 rtol = 1.0e-3
+        @test deviance(gm) ≈ 1751.9094 rtol = 1.0e-4
+        @test gm.β ≈ [15.879777, 0.297925] rtol = 1.0e-3
+        @test sdest(gm) ≈ 25.529939 rtol = 1.0e-3
     end
 
     @testset "constructor no longer warns" begin
@@ -355,12 +373,14 @@ end
         gm = fit(MixedModel, scalar_re, dat, Gamma(), LogLink(); progress=false)
         r = gm.resp
         ϕ = MixedModels.pwrss(gm) / nobs(gm)
-        Cϕ_at_mode = -2 * MixedModels._loglik_data(r, ϕ) - sum(r.devresid) / ϕ
+        nu = length(first(gm.u))
+        Cϕ(rr) = -2 * MixedModels._loglik_data(rr, ϕ) - sum(rr.devresid) / ϕ + nu * log(ϕ)
+        Cϕ_at_mode = Cϕ(r)
 
         β_orig = copy(gm.β)
         gm.β[1] += 0.1
         MixedModels.updateη!(gm)
-        Cϕ_perturbed = -2 * MixedModels._loglik_data(r, ϕ) - sum(r.devresid) / ϕ
+        Cϕ_perturbed = Cϕ(r)
         @test Cϕ_perturbed ≈ Cϕ_at_mode atol = 1.0e-9
 
         # Restore the model state so this test doesn't leak side effects.
@@ -380,10 +400,10 @@ end
 
         # Regression refs (captured from this fit). loglikelihood is Laplace-
         # only, so it differs from deviance by the AGQ correction.
-        @test deviance(gm) ≈ 1765.36 rtol = 1.0e-4
-        @test gm.β ≈ [5.542550, 0.033891] rtol = 1.0e-3
-        @test only(gm.θ) ≈ 0.791312 rtol = 1.0e-2
-        @test sdest(gm) ≈ 0.103383 rtol = 1.0e-3
+        @test deviance(gm) ≈ 1767.1554 rtol = 1.0e-4
+        @test gm.β ≈ [5.533969, 0.033846] rtol = 1.0e-3
+        @test only(gm.θ) ≈ 1.289213 rtol = 1.0e-2
+        @test sdest(gm) ≈ 0.096795 rtol = 1.0e-3
 
         # Laplace logLik at the AGQ-converged params should agree with
         # `_laplace_deviance` (which uses the same ϕ̂ = pwrss/n).

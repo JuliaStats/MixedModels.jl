@@ -1,6 +1,7 @@
 MixedModels v5.9.0 Release Notes
 ==============================
 - GLMMs for families with a dispersion parameter (`Gamma`, `InverseGaussian`, and `Normal` with a non-identity link) are now fitted correctly.  The dispersion parameter ϕ is profiled out of the objective using the ML estimator `ϕ̂ = pwrss(m) / nobs(m)`, which is the same estimator that lme4's `sigma()` uses.
+- The random-effects penalty in the Laplace/AGQ objective is `sum(u²)/ϕ`, not `sum(u²)`.  θ is *relative* to the scale parameter in this package (`Var(b) = ϕΛΛ'`, which is the `σ` factor that `σs` and `VarCorr` already applied), so the penalty is on the ϕ scale too.  Specializing the expression to a `Normal` response with an identity link reproduces `objective(::LinearMixedModel)` exactly.  For AGQ the quadrature nodes are correspondingly spaced on the ϕ scale.
 - `deviance`, `loglikelihood`, and `dispersion` now all share that single ϕ̂, so they are mutually consistent.  Previously `loglikelihood` used a `deviance(r) / sum(wts)` heuristic that did not agree with the quantity being optimized.
 - Both the Laplace approximation (`nAGQ=1`) and adaptive Gauss-Hermite quadrature (`nAGQ>1`) handle the dispersion parameter.  For families without a dispersion parameter, both objectives are unchanged, down to the last bit.
 - The warning previously emitted when *constructing* a `GeneralizedLinearMixedModel` for a dispersion family has been removed and replaced by an informational message when the model is *fitted*, describing how ϕ is estimated.
