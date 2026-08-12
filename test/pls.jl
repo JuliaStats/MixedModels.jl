@@ -184,7 +184,7 @@ end
     @test objective(fm) ≈ 327.32705988112673 atol = 0.001
     refit!(fm, float(MixedModels.dataset(:dyestuff2)[:yield]); progress=false) # restore the model in the cache
     @testset "profile" begin   # tests a branch in profileσs! for σ estimate of zero
-        dspr02 = profile(only(models(:dyestuff2)))
+        dspr02 = @suppress profile(only(models(:dyestuff2)))
         sigma10row = only(filter(r -> r.p == :σ1 && iszero(r.ζ), dspr02.tbl))
         @test iszero(sigma10row.σ1)
         sigma1tbl = Table(filter(r -> r.p == :σ1, dspr02.tbl))
@@ -283,7 +283,10 @@ end
 
     spL = sparseL(fm1)
     @test size(spL) == (4114, 4114)
-    @test 733090 < nnz(spL) < 733100
+    # nnz(spL) counts the exact nonzeros remaining in the (densely stored) filled
+    # blocks, so it depends on the level ordering: with the default
+    # sortlevels=true the frequency-descending order incurs more fill
+    @test 744320 < nnz(spL) < 744340
 
     spA = Symmetric(sparseA(fm1; full=true), :L)
     @test size(spA) == (4117, 4117)
@@ -331,19 +334,72 @@ end
     @test size(fm2) == (73421, 28, 4100, 2)
 end
 
+@testset "sortlevels" begin
+    insteval = MixedModels.dataset(:insteval)
+    form = @formula(y ~ 1 + service + (1 | s) + (1 | d))
+    function levelcounts(rt)
+        c = zeros(Int, MixedModels.nlevs(rt))
+        for r in rt.refs
+            c[r] += 1
+        end
+        return c
+    end
+    m0 = LinearMixedModel(form, insteval; sortlevels=false)
+    m1 = LinearMixedModel(form, insteval)  # sortlevels=true is the default
+
+    @test !issorted(levelcounts(m0.reterms[2]); rev=true)
+    @test issorted(levelcounts(m1.reterms[2]); rev=true)
+    # the leading term keeps the data's level order
+    @test m0.reterms[1].levels == m1.reterms[1].levels
+
+    # the objective is invariant under the level permutation
+    @test objective(updateL!(setθ!(m0, m0.optsum.initial))) ≈
+        objective(updateL!(setθ!(m1, m1.optsum.initial)))
+
+    # the term's contrasts stay in sync with the reordered levels
+    rt = m1.reterms[2]
+    @test rt.trm.contrasts.levels == rt.levels
+    @test all(rt.trm.contrasts.invindex[l] == i for (i, l) in enumerate(rt.levels))
+
+    # ... as does the stored formula, so that modelcols on it reproduces
+    # the fitted model's refs
+    retrm = only(
+        t for t in m1.formula.rhs if
+        t isa MixedModels.RandomEffectsTerm && MixedModels.fname(t.rhs) == :d
+    )
+    @test retrm.rhs === rt.trm
+    remat = last(last(modelcols(m1.formula, columntable(insteval))))
+    @test remat.refs == rt.refs
+
+    # BLUPs align by level label and predict is positionally consistent
+    fit!(m1; progress=false)
+    @test predict(m1, insteval; new_re_levels=:error) ≈ fitted(m1)
+
+    # with amalgamate=false, all terms for a factor share one level order,
+    # including a term in the leading (unsorted) position
+    mam = LinearMixedModel(
+        @formula(y ~ 1 + (1 | d) + (0 + service | d) + (1 | s)), insteval;
+        amalgamate=false,
+    )
+    dre = filter(rt -> MixedModels.fname(rt) == :d, mam.reterms)
+    @test length(dre) == 2
+    @test first(dre).levels == last(dre).levels
+    @test first(dre).refs == last(dre).refs
+end
+
 @testset "sleep" begin
     fm = last(models(:sleepstudy))
     A11 = first(fm.A)
     @test isa(A11, UniformBlockDiagonal{Float64})
-    @test isa(first(fm.L), UniformBlockDiagonal{Float64})
+    @test isa(first(fm.L), LowerTriangular{Float64, UniformBlockDiagonal{Float64}})
     @test size(A11) == (36, 36)
     a11 = view(A11.data, :, :, 1)
     @test a11 == [10.0 45.0; 45.0 285.0]
     @test size(A11.data, 3) == 18
     λ = only(fm.λ)
-    b11 = LowerTriangular(view(first(fm.L).data, :, :, 1))
+    b11 = LowerTriangular(view(first(fm.L).data.data, :, :, 1))
     @test b11 * b11' ≈ λ'a11 * λ + I rtol = 1e-5
-    @test count(!iszero, Matrix(first(fm.L))) == 18 * 4
+    @test count(!iszero, Matrix(first(fm.L).data)) == 18 * 4
     @test rank(fm) == 2
 
     @test objective(fm) ≈ 1751.9393444636682
@@ -548,26 +604,26 @@ end
         # try it out with an empty fitlog
         empty!(fm.optsum.fitlog)
         saveoptsum(seekstart(io), fm)
-        restoreoptsum!(m, seekstart(io))
+        @suppress restoreoptsum!(m, seekstart(io))
         # the restored fitlog always contains the initial and final values
         @test length(m.optsum.fitlog) == 2
 
         fm_mod = deepcopy(fm)
         fm_mod.optsum.fmin += 1
         saveoptsum(seekstart(io), fm_mod)
-        @test_throws(
+        @suppress @test_throws(
             ArgumentError(
                 "model at final does not match stored fmin within atol=0.0, rtol=1.0e-8"
             ),
             restoreoptsum!(m, seekstart(io); atol=0.0, rtol=1e-8))
-        restoreoptsum!(m, seekstart(io); atol=1)
+        @suppress restoreoptsum!(m, seekstart(io); atol=1)
         @test m.optsum.fmin - fm.optsum.fmin ≈ 1
 
         # using a temporary file for saving JSON
         fnm = first(mktemp())
         saveoptsum(fnm, fm)
         m = LinearMixedModel(fm.formula, MixedModels.dataset(:sleepstudy))
-        restoreoptsum!(m, fnm)
+        @suppress restoreoptsum!(m, fnm)
         @test loglikelihood(fm) ≈ loglikelihood(m)
         @test bic(fm) ≈ bic(m)
         @test coef(fm) ≈ coef(m)
@@ -915,7 +971,7 @@ end
     @test vcov(m1) ≈ [1.177034697250409 -4.80259802739442; -4.80259802739442 24.66449662452017] atol = 1.e-4
     =#
 
-    m2 = fit(MixedModel, @formula(a ~ 1 + b + (1 | c)), data; wts=data.w1, progress=false)
+    m2 = fit(MixedModel, @formula(a ~ 1 + b + (1 | c)), data; weights=data.w1, progress=false)
     @test m2.θ ≈ [0.2951818091809752] atol = 1.e-4
     @test stderror(m2) ≈ [0.964016663994572, 3.6309691484830533] atol = 1.e-4
     @test vcov(m2) ≈

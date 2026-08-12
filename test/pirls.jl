@@ -129,7 +129,7 @@ end
         first(gfms[:cbpp]),
         cbpp,
         Binomial();
-        wts=float(cbpp.hsz),
+        weights=float(cbpp.hsz),
         progress=false,
         init_from_lmm=[:β, :θ],
     )
@@ -171,7 +171,7 @@ end
         # we do construction and fitting in two separate steps to make sure
         # that construction succeeds and that the ArgumentError occurs in fitting.
         mcbconst = GeneralizedLinearMixedModel(
-            first(gfms[:cbpp]), cbconst, Binomial(); wts=float(cbpp.hsz)
+            first(gfms[:cbpp]), cbconst, Binomial(); weights=float(cbpp.hsz)
         )
         @test mcbconst isa GeneralizedLinearMixedModel
         @test_throws ArgumentError(
@@ -407,10 +407,10 @@ end
 @testset "GLMM saveoptsum" begin
     cbpp = dataset(:cbpp)
     gm_original = GeneralizedLinearMixedModel(
-        first(gfms[:cbpp]), cbpp, Binomial(); wts=cbpp.hsz
+        first(gfms[:cbpp]), cbpp, Binomial(); weights=cbpp.hsz
     )
     gm_restored = GeneralizedLinearMixedModel(
-        first(gfms[:cbpp]), cbpp, Binomial(); wts=cbpp.hsz
+        first(gfms[:cbpp]), cbpp, Binomial(); weights=cbpp.hsz
     )
     fit!(gm_original; progress=false, nAGQ=1)
 

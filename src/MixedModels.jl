@@ -27,8 +27,10 @@ using PrecompileTools: PrecompileTools, @setup_workload, @compile_workload
 using Printf: @sprintf
 using ProgressMeter: ProgressMeter, Progress, finish!, next!
 using Random: Random, AbstractRNG, randn!
+using RectangularFullPacked: HermitianRFP, TriangularRFP
+using RectangularFullPacked.LAPACK_RFP: sfrk!
 using RegressionFormulae: fulldummy
-using SparseArrays: SparseArrays, SparseMatrixCSC, SparseVector, dropzeros!, findnz
+using SparseArrays: SparseArrays, SparseMatrixCSC, SparseVector, dropzeros!
 using SparseArrays: nnz, nonzeros, nzrange, rowvals, sparse
 using StaticArrays: StaticArrays, SVector
 using Statistics: Statistics, mean, quantile, std
@@ -170,7 +172,7 @@ export @formula,
 # TODO: move this to the correct spot in list once we've decided on name
 export savereplicates, restorereplicates
 
-@compat public rePCA, PCA, opt_params, optimizers
+@compat public dataset, rePCA, PCA, opt_params, optimizers
 
 """
     MixedModel

@@ -68,7 +68,7 @@ using Test
             0.172018349,
         ],
     )
-    m2 = lmm(@formula(a ~ 1 + b + (1 | c)), data; wts=data.w1, progress=false)
+    m2 = lmm(@formula(a ~ 1 + b + (1 | c)), data; weights=data.w1, progress=false)
     @test m2.θ ≈ [0.295181729258352] atol = 1.e-4
     @test stderror(m2) ≈ [0.9640167, 3.6309696] atol = 1.e-4
     @test vcov(m2) ≈ [0.9293282 -2.557527; -2.5575267 13.183940] atol = 1.e-4
