@@ -80,12 +80,13 @@ or `nAGQ`-point adaptive Gauss-Hermite quadrature.
 If the distribution `D` does not have a scale parameter the Laplace approximation
 is the squared length of the conditional modes, ``u``, plus the determinant
 of ``Λ'Z'WZΛ + I``, plus the sum of the squared deviance residuals.
+
+For distributions with a dispersion parameter ``ϕ``, the estimate
+``ϕ̂ = pwrss(m) / nobs(m)`` is profiled in at the converged PIRLS mode and shared
+with `dispersion` and `loglikelihood`; see the internal `_laplace_deviance` and
+`_agq_deviance` for the exact expressions.
 """
 function StatsAPI.deviance(m::GeneralizedLinearMixedModel{T}, nAGQ=1) where {T}
-    # NB: AGQ with a dispersion parameter is not yet correctly handled — the
-    # AGQ branch (`_agq_deviance`) assumes ϕ ≡ 1, so for dispersion families
-    # with `nAGQ > 1` the value will be inconsistent with `loglikelihood`.
-    # This will be addressed in a follow-up.
     return nAGQ == 1 ? _laplace_deviance(m) : _agq_deviance(m, nAGQ)
 end
 
