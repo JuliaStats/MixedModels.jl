@@ -184,7 +184,7 @@ end
     @test objective(fm) ≈ 327.32705988112673 atol = 0.001
     refit!(fm, float(MixedModels.dataset(:dyestuff2)[:yield]); progress=false) # restore the model in the cache
     @testset "profile" begin   # tests a branch in profileσs! for σ estimate of zero
-        dspr02 = profile(only(models(:dyestuff2)))
+        dspr02 = @suppress profile(only(models(:dyestuff2)))
         sigma10row = only(filter(r -> r.p == :σ1 && iszero(r.ζ), dspr02.tbl))
         @test iszero(sigma10row.σ1)
         sigma1tbl = Table(filter(r -> r.p == :σ1, dspr02.tbl))
@@ -604,26 +604,26 @@ end
         # try it out with an empty fitlog
         empty!(fm.optsum.fitlog)
         saveoptsum(seekstart(io), fm)
-        restoreoptsum!(m, seekstart(io))
+        @suppress restoreoptsum!(m, seekstart(io))
         # the restored fitlog always contains the initial and final values
         @test length(m.optsum.fitlog) == 2
 
         fm_mod = deepcopy(fm)
         fm_mod.optsum.fmin += 1
         saveoptsum(seekstart(io), fm_mod)
-        @test_throws(
+        @suppress @test_throws(
             ArgumentError(
                 "model at final does not match stored fmin within atol=0.0, rtol=1.0e-8"
             ),
             restoreoptsum!(m, seekstart(io); atol=0.0, rtol=1e-8))
-        restoreoptsum!(m, seekstart(io); atol=1)
+        @suppress restoreoptsum!(m, seekstart(io); atol=1)
         @test m.optsum.fmin - fm.optsum.fmin ≈ 1
 
         # using a temporary file for saving JSON
         fnm = first(mktemp())
         saveoptsum(fnm, fm)
         m = LinearMixedModel(fm.formula, MixedModels.dataset(:sleepstudy))
-        restoreoptsum!(m, fnm)
+        @suppress restoreoptsum!(m, fnm)
         @test loglikelihood(fm) ≈ loglikelihood(m)
         @test bic(fm) ≈ bic(m)
         @test coef(fm) ≈ coef(m)
@@ -971,7 +971,7 @@ end
     @test vcov(m1) ≈ [1.177034697250409 -4.80259802739442; -4.80259802739442 24.66449662452017] atol = 1.e-4
     =#
 
-    m2 = fit(MixedModel, @formula(a ~ 1 + b + (1 | c)), data; wts=data.w1, progress=false)
+    m2 = fit(MixedModel, @formula(a ~ 1 + b + (1 | c)), data; weights=data.w1, progress=false)
     @test m2.θ ≈ [0.2951818091809752] atol = 1.e-4
     @test stderror(m2) ≈ [0.964016663994572, 3.6309691484830533] atol = 1.e-4
     @test vcov(m2) ≈

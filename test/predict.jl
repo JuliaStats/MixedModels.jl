@@ -178,7 +178,7 @@ end
             )
             @test m_nonpiv.feterm.rank == 2
             @test m_nonpiv.feterm.piv == [2, 3, 1]
-            @test predict(m_nonpiv, df_nonpiv) ≈ fitted(m_nonpiv)
+            @test @suppress(predict(m_nonpiv, df_nonpiv)) ≈ fitted(m_nonpiv)
         end
     end
 

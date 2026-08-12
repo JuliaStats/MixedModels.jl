@@ -72,7 +72,7 @@ end
             first(gfms[:cbpp]),
             cbpp,
             Binomial();
-            wts=float(cbpp.hsz),
+            weights=float(cbpp.hsz),
             progress=false,
         )
         gm2sim = refit!(simulate!(StableRNG(42), deepcopy(gm2)); fast=true, progress=false)
@@ -280,13 +280,13 @@ end
                 return b != c
             end
 
-            m = LinearMixedModel(@formula(y ~ 1 + b * c + (1 | id)), df)
+            m = @suppress LinearMixedModel(@formula(y ~ 1 + b * c + (1 | id)), df)
             β = 1:rank(m)
             σ = 1
             simulate!(StableRNG(628), m; β, σ)
             fit!(m)
 
-            boot = parametricbootstrap(StableRNG(271828), 1000, m)
+            boot = parametricbootstrap(StableRNG(271828), 1000, m; progress=false)
             bootci = DataFrame(shortestcovint(boot))
             filter!(:group => ismissing, bootci)
             select!(bootci, :names => disallowmissing => :coef, :lower, :upper)
