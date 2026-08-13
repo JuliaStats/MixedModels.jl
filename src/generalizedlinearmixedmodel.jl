@@ -133,25 +133,30 @@ end
 
 The value of ϕ used by the objective, the log-likelihood and [`dispersion`](@ref).
 
-Families without a dispersion parameter give `one(T)`. Otherwise there are two
-regimes, distinguished by whether `m.ϕ[]` is `nothing`:
+Families without a dispersion parameter give `one(T)`. Otherwise there are three
+regimes, checked in this order:
 
+  - `!isnothing(m.optsum.sigma)` — ϕ is fixed a priori at `sigma^2` and is not
+    estimated at all, exactly as `optsum.sigma` fixes σ for a
+    [`LinearMixedModel`](@ref).
   - `isnothing(m.ϕ[])` — ϕ is plugged in from the Pearson moment estimator
     `pwrss(m) / nobs(m)`. This is the `fast=true` regime, and it is what every
     dispersion fit did before ϕ became an outer parameter.
   - otherwise — ϕ is a free parameter of the outer optimization and `m.ϕ[]` is
     its current value. This is the `fast=false` regime.
 
-The two coincide only for `Normal`: there `pwrss/n` really is the conditional MLE
-of ϕ, so the outer optimization just rediscovers it. For `Gamma` and
-`InverseGaussian` the conditional MLE solves a digamma equation rather than a
+The latter two coincide only for `Normal`: there `pwrss/n` really is the
+conditional MLE of ϕ, so the outer optimization just rediscovers it. For `Gamma`
+and `InverseGaussian` the conditional MLE solves a digamma equation rather than a
 moment condition, and the free parameter converges to that instead — the moment
 estimator is then a genuinely different (and lme4-compatible) answer.
 
-Either way ϕ does not affect the conditional modes; see [`deviance!`](@ref).
+In every case ϕ does not affect the conditional modes; see [`deviance!`](@ref).
 """
 function _dispersion(m::GeneralizedLinearMixedModel{T}) where {T}
     dispersion_parameter(m.resp.d) || return one(T)
+    σ = m.optsum.sigma
+    isnothing(σ) || return T(abs2(σ))
     ϕ = m.ϕ[]
     isnothing(ϕ) && return max(pwrss(m) / nobs(m), eps(T))
     return max(ϕ, eps(T))
@@ -412,13 +417,15 @@ function StatsAPI.fit!(
     end
 
     # ϕ is a free parameter of the outer optimization only for `fast=false` fits
-    # of a dispersion family; otherwise it is plugged in from pwrss/n.  Emptying
-    # it here rather than relying on the constructor keeps `refit!` honest when
-    # the same model is refit with a different `fast`.
+    # of a dispersion family whose ϕ is not fixed a priori; otherwise it is
+    # plugged in from pwrss/n or taken from `optsum.sigma`.  Clearing it here
+    # rather than relying on the constructor keeps `refit!` honest when the same
+    # model is refit with a different `fast`.
     m.ϕ[] = nothing
+    estimate_ϕ = disp && isnothing(optsum.sigma)
     if !fast
         optsum.initial = vcat(β, lm.optsum.final)
-        if disp
+        if estimate_ϕ
             # a plug-in evaluation at the starting β/θ gives a much better
             # starting ϕ than any fixed constant would
             pirls!(setβθ!(m, optsum.initial), false, verbose)
@@ -527,6 +534,7 @@ function GeneralizedLinearMixedModel(
     offset=[],
     contrasts=Dict{Symbol,Any}(),
     amalgamate=true,
+    σ=nothing,
 )
     if wts !== nothing
         Base.depwarn(
@@ -542,8 +550,17 @@ function GeneralizedLinearMixedModel(
     (isa(d, Normal) && isa(l, IdentityLink)) && throw(
         ArgumentError("use LinearMixedModel for Normal distribution with IdentityLink")
     )
+    if !isnothing(σ) && !dispersion_parameter(d)
+        throw(
+            ArgumentError(
+                "σ can only be fixed a priori for a family with a dispersion parameter"
+            ),
+        )
+    end
 
-    LMM = LinearMixedModel(f, tbl; contrasts, weights, amalgamate)
+    # σ rides along in `optsum.sigma`, the same slot `LinearMixedModel` uses for
+    # a fixed residual standard deviation
+    LMM = LinearMixedModel(f, tbl; contrasts, weights, amalgamate, σ)
     y = copy(LMM.y)
     constresponse = all(==(first(y)), y)
     # the sqrtwts field must be the correct length and type but we don't know those
@@ -954,11 +971,15 @@ function Base.show(
     println(io, "  Link: ", Link(m))
     if dispersion_parameter(m)
         # which estimator was used is not recoverable from the printed σ, and
-        # the two do not agree for Gamma or InverseGaussian, so name it
+        # they do not agree for Gamma or InverseGaussian, so name it
         println(io, "  Dispersion parameter ϕ: ",
-            isnothing(m.ϕ[]) ?
-            "Pearson moment estimator pwrss/n, as in lme4's `sigma()`" :
-            "estimated jointly with β and θ")
+            if !isnothing(m.optsum.sigma)
+                "fixed a priori at σ² = $(abs2(m.optsum.sigma))"
+            elseif isnothing(m.ϕ[])
+                "Pearson moment estimator pwrss/n, as in lme4's `sigma()`"
+            else
+                "estimated jointly with β and θ"
+            end)
     end
     println(io)
     nums = Ryu.writefixed.([loglikelihood(m), deviance(m), aic(m), aicc(m), bic(m)], 4)

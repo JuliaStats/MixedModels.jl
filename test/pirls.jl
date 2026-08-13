@@ -379,6 +379,37 @@ end
         @test dispersion(gm, true) ≈ MixedModels.pwrss(gm) / nobs(gm) rtol = 1.0e-3
     end
 
+    @testset "ϕ fixed a priori" begin
+        # mirrors `σ` for LinearMixedModel: it lives in `optsum.sigma` and means
+        # "do not estimate this", so ϕ = σ² exactly and drops out of the
+        # parameter vector
+        free = fit(MixedModel, form, dat, Gamma(), LogLink(); progress=false)
+        gm = GeneralizedLinearMixedModel(form, dat, Gamma(), LogLink(); σ=0.09)
+        fit!(gm; progress=false)
+
+        @test gm.optsum.sigma == 0.09
+        @test dispersion(gm, true) == 0.09^2
+        @test sdest(gm) == 0.09
+        @test varest(gm) == 0.09^2
+        @test isnothing(gm.ϕ[])
+        # β and θ only -- no trailing log ϕ
+        @test length(gm.optsum.final) == length(gm.β) + length(gm.θ)
+        # a constrained fit cannot beat the one that optimises over ϕ too
+        @test deviance(gm) > deviance(free)
+        @test deviance(gm) ≈ -2 * loglikelihood(gm) atol = 1.0e-8
+        @test occursin("fixed a priori", sprint(show, gm))
+
+        # the regime survives a refit
+        refit!(gm; progress=false)
+        @test dispersion(gm, true) == 0.09^2
+        @test isnothing(gm.ϕ[])
+
+        # fixing σ is meaningless without a dispersion parameter
+        @test_throws ArgumentError GeneralizedLinearMixedModel(
+            first(gfms[:contra]), dataset(:contra), Bernoulli(); σ=1.0
+        )
+    end
+
     @testset "ϕ regime survives refit! and saveoptsum" begin
         gm = fit(MixedModel, form, dat, Gamma(), LogLink(); progress=false)
         nfree = length(gm.optsum.final)
