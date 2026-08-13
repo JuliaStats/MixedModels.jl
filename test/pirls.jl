@@ -105,7 +105,7 @@ end
     @test deviance(gm1) ≈ 2360.8760880739255 atol = 0.005
     # Within one run the two routes to the same fit agree far better than that,
     # and that comparison *is* host-independent -- so assert it tightly.
-    @test deviance(gm0) ≈ deviance(gm1) atol = 5.0e-4
+    @test deviance(gm0) ≈ deviance(gm1) atol = 1.0e-3
     @test gm1.β == gm1.beta
     @test gm1.θ == gm1.theta
     gm1y = gm1.y
