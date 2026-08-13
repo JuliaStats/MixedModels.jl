@@ -197,10 +197,12 @@ function _agq_deviance(m::GeneralizedLinearMixedModel{T}, nAGQ) where {T}
     # non-dispersion families we keep Cϕ = 0 so existing nAGQ>1 fits stay
     # bit-identical (Binomial/Poisson would otherwise pick up a constant
     # saturated-likelihood term that the historical formula dropped).
-    Cϕ = has_disp ?
-         T(-2 * _loglik_data(m.resp, ϕ) - sum(m.resp.devresid) / ϕ +
-           length(u) * log(ϕ)) :
-         zero(T)
+    Cϕ = if has_disp
+        T(-2 * _loglik_data(m.resp, ϕ) - sum(m.resp.devresid) / ϕ +
+          length(u) * log(ϕ))
+    else
+        zero(T)
+    end
 
     # devc0_g = (u_g² + Σ_{i∈g} devresid_i)/ϕ  at u = û
     sum!(fill!(m.devc0, 0), ra)
@@ -398,11 +400,15 @@ function StatsAPI.fit!(
     disp = dispersion_parameter(m.resp.d)
     if disp
         @info "Fitting a GLMM with a dispersion parameter. " *
-            (fast ?
-             "ϕ is plugged in from the Pearson moment estimator pwrss/n, which " *
-             "matches lme4's `sigma()`. " :
-             "ϕ is estimated jointly with β and θ as a parameter of the outer " *
-             "optimization. ") *
+            (
+                if fast
+                    "ϕ is plugged in from the Pearson moment estimator pwrss/n, which " *
+                    "matches lme4's `sigma()`. "
+                else
+                    "ϕ is estimated jointly with β and θ as a parameter of the outer " *
+                    "optimization. "
+                end
+            ) *
             "Please report any discrepancies vs lme4."
     end
 
@@ -439,8 +445,11 @@ function StatsAPI.fit!(
 
     xmin, fmin = optimize!(m; progress, fast, verbose, nAGQ)
 
-    θopt = length(xmin) == length(θ) ? xmin :
-           view(xmin, (length(β) + 1):(length(β) + length(θ)))
+    θopt = if length(xmin) == length(θ)
+        xmin
+    else
+        view(xmin, (length(β) + 1):(length(β) + length(θ)))
+    end
     rectify!(m.LMM)                  # flip signs of columns of m.λ elements with negative diagonal els
     getθ!(θopt, m)                   # use the rectified values in xmin
 
