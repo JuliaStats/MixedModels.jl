@@ -8,11 +8,11 @@ Generalized linear mixed-effects model representation
 - `β`: the pivoted and possibly truncated fixed-effects vector
 - `β₀`: similar to `β`. Used in the PIRLS algorithm if step-halving is needed.
 - `θ`: covariance parameter vector
-- `ϕ`: dispersion parameter, as a zero- or one-element vector. It is empty when ϕ is
-  plugged in from the Pearson moment estimator (`fast=true`, and always for families
-  without a dispersion parameter) and holds a single value when ϕ is a free parameter
-  of the outer optimization (`fast=false` with a dispersion family). See
-  [`_dispersion`](@ref).
+- `ϕ`: dispersion parameter, in a `Ref` so that it can be updated within this immutable
+  struct. It is `nothing` when ϕ is plugged in from the Pearson moment estimator
+  (`fast=true`, and always for families without a dispersion parameter) and holds a
+  value when ϕ is a free parameter of the outer optimization (`fast=false` with a
+  dispersion family). See [`_dispersion`](@ref).
 - `b`: similar to `u`, equivalent to `broadcast!(*, b, LMM.Λ, u)`
 - `u`: a vector of matrices of random effects
 - `u₀`: similar to `u`.  Used in the PIRLS algorithm if step-halving is needed.
@@ -45,7 +45,7 @@ struct GeneralizedLinearMixedModel{T<:AbstractFloat,D<:Distribution} <: MixedMod
     β::Vector{T}
     β₀::Vector{T}
     θ::Vector{T}
-    ϕ::Vector{T}
+    ϕ::Base.RefValue{Union{T,Nothing}}
     b::Vector{Matrix{T}}
     u::Vector{Matrix{T}}
     u₀::Vector{Matrix{T}}
@@ -134,13 +134,13 @@ end
 The value of ϕ used by the objective, the log-likelihood and [`dispersion`](@ref).
 
 Families without a dispersion parameter give `one(T)`. Otherwise there are two
-regimes, distinguished by whether `m.ϕ` is empty:
+regimes, distinguished by whether `m.ϕ[]` is `nothing`:
 
-  - `isempty(m.ϕ)` — ϕ is plugged in from the Pearson moment estimator
+  - `isnothing(m.ϕ[])` — ϕ is plugged in from the Pearson moment estimator
     `pwrss(m) / nobs(m)`. This is the `fast=true` regime, and it is what every
     dispersion fit did before ϕ became an outer parameter.
-  - otherwise — ϕ is a free parameter of the outer optimization and `first(m.ϕ)`
-    is its current value. This is the `fast=false` regime.
+  - otherwise — ϕ is a free parameter of the outer optimization and `m.ϕ[]` is
+    its current value. This is the `fast=false` regime.
 
 The two coincide only for `Normal`: there `pwrss/n` really is the conditional MLE
 of ϕ, so the outer optimization just rediscovers it. For `Gamma` and
@@ -152,8 +152,9 @@ Either way ϕ does not affect the conditional modes; see [`deviance!`](@ref).
 """
 function _dispersion(m::GeneralizedLinearMixedModel{T}) where {T}
     dispersion_parameter(m.resp.d) || return one(T)
-    isempty(m.ϕ) && return max(pwrss(m) / nobs(m), eps(T))
-    return max(first(m.ϕ), eps(T))
+    ϕ = m.ϕ[]
+    isnothing(ϕ) && return max(pwrss(m) / nobs(m), eps(T))
+    return max(ϕ, eps(T))
 end
 
 """
@@ -414,15 +415,15 @@ function StatsAPI.fit!(
     # of a dispersion family; otherwise it is plugged in from pwrss/n.  Emptying
     # it here rather than relying on the constructor keeps `refit!` honest when
     # the same model is refit with a different `fast`.
-    empty!(m.ϕ)
+    m.ϕ[] = nothing
     if !fast
         optsum.initial = vcat(β, lm.optsum.final)
         if disp
             # a plug-in evaluation at the starting β/θ gives a much better
             # starting ϕ than any fixed constant would
             pirls!(setβθ!(m, optsum.initial), false, verbose)
-            push!(m.ϕ, max(pwrss(m) / nobs(m), eps(T)))
-            optsum.initial = vcat(optsum.initial, log(first(m.ϕ)))
+            m.ϕ[] = max(pwrss(m) / nobs(m), eps(T))
+            optsum.initial = vcat(optsum.initial, log(m.ϕ[]))
         end
         optsum.final = copy(optsum.initial)
     end
@@ -445,7 +446,7 @@ function StatsAPI.fit!(
     # log ϕ is unbounded, so a lower bound of -Inf keeps it out of the
     # zero-snapping loop below -- snapping it would send ϕ to 1, not to 0
     lb = fast ? lowerbd(m) : vcat(zero(β), lowerbd(m))
-    isempty(m.ϕ) || (lb = vcat(lb, T(-Inf)))
+    isnothing(m.ϕ[]) || (lb = vcat(lb, T(-Inf)))
     for i in eachindex(xmin_)
         if iszero(lb[i]) && zero(T) < xmin_[i] < optsum.xtol_zero_abs
             xmin_[i] = zero(T)
@@ -594,7 +595,7 @@ function GeneralizedLinearMixedModel(
         β,
         copy(β),
         LMM.θ,
-        T[],   # ϕ: empty until `fit!` promotes it to a free parameter
+        Ref{Union{T,Nothing}}(nothing),   # ϕ: free only if `fit!` says so
         copy.(u),
         u,
         zero.(u),
@@ -884,7 +885,7 @@ Set the parameter vector, `:βθ`, of `m` to `v`.
 
 `βθ` is the concatenation of the fixed-effects, `β`, and the covariance parameter, `θ`.
 
-When ϕ is a free parameter of the outer optimization (`!isempty(m.ϕ)`, see
+When ϕ is a free parameter of the outer optimization (`!isnothing(m.ϕ[])`, see
 [`_dispersion`](@ref)) `v` carries one further element, `log(ϕ)`, after `θ`.
 """
 function setβθ!(m::GeneralizedLinearMixedModel, v)
@@ -893,11 +894,11 @@ function setβθ!(m::GeneralizedLinearMixedModel, v)
     # `v` is allowed to be shorter than `nβ + nθ`: `simulate!` passes β alone
     # when θ is to be left at its current value, and relies on the resulting
     # empty view making `setθ!` a no-op.
-    nϕ = length(m.ϕ)
+    nϕ = isnothing(m.ϕ[]) ? 0 : 1
     setθ!(m, view(v, (nβ + 1):(length(v) - nϕ)))
     # when ϕ is a free outer parameter it is the trailing element of `v`, on the
     # log scale so that the optimizer sees it as unbounded and reasonably scaled
-    iszero(nϕ) || (m.ϕ[begin] = exp(last(v)))
+    iszero(nϕ) || (m.ϕ[] = exp(last(v)))
     return m
 end
 
@@ -955,7 +956,7 @@ function Base.show(
         # which estimator was used is not recoverable from the printed σ, and
         # the two do not agree for Gamma or InverseGaussian, so name it
         println(io, "  Dispersion parameter ϕ: ",
-            isempty(m.ϕ) ?
+            isnothing(m.ϕ[]) ?
             "Pearson moment estimator pwrss/n, as in lme4's `sigma()`" :
             "estimated jointly with β and θ")
     end
@@ -1009,7 +1010,7 @@ function unfit!(model::GeneralizedLinearMixedModel{T}) where {T}
     optsum.xtol_abs = fill!(copy(optsum.initial), 1.0e-10)
     optsum.initial_step = T[]
     optsum.feval = -1
-    empty!(model.ϕ)   # back to the plug-in until `fit!` decides otherwise
+    model.ϕ[] = nothing   # back to the plug-in until `fit!` decides otherwise
     deviance!(model, 1)
 
     return model

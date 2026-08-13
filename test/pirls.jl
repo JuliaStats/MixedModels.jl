@@ -356,7 +356,7 @@ end
         gm = fit(MixedModel, form, dat, Gamma(), LogLink(); fast=true, progress=false)
         # θ only: ϕ is not a free parameter here
         @test length(gm.optsum.final) == length(gm.θ)
-        @test isempty(gm.ϕ)
+        @test isnothing(gm.ϕ[])
         # and `dispersion` falls back to the moment estimator
         @test dispersion(gm, true) ≈ MixedModels.pwrss(gm) / nobs(gm)
         @test deviance(gm) ≈ -2 * loglikelihood(gm) atol = 1.0e-8
@@ -394,10 +394,10 @@ end
 
         # toggling `fast` moves between the two regimes cleanly
         refit!(gm; fast=true, progress=false)
-        @test isempty(gm.ϕ)
+        @test isnothing(gm.ϕ[])
         @test length(gm.optsum.final) == length(gm.θ)
         refit!(gm; fast=false, progress=false)
-        @test length(gm.ϕ) == 1
+        @test !isnothing(gm.ϕ[])
         @test length(gm.optsum.final) == nfree
         # loose: the joint optimum moves by ~0.15% between a fit and its refit
         @test dispersion(gm, true) ≈ ϕfree rtol = 1.0e-2

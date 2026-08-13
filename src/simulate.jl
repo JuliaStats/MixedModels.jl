@@ -270,7 +270,7 @@ function _simulate!(
     # ϕ is supplied here through `σ`, not through the parameter vector, so drop
     # the free-ϕ parameterization before installing β and θ -- otherwise
     # `setβθ!` would read the last element of `params` as log ϕ.
-    empty!(m.ϕ)
+    m.ϕ[] = nothing
     fast = (length(m.θ) == length(m.optsum.final))
     setpar! = fast ? setθ! : setβθ!
     params = fast ? θ : vcat(β, θ)

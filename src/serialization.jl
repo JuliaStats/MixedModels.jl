@@ -47,9 +47,9 @@ function restoreoptsum!(
     # for a family with a dispersion parameter, where ϕ is a free parameter of
     # the outer optimization)
     theta_beta_len = length(m.θ) + length(m.β)
-    empty!(m.ϕ)
+    m.ϕ[] = nothing
     if length(dict.initial) == theta_beta_len + 1 && dispersion_parameter(m.resp.d)
-        push!(m.ϕ, one(T))   # value is set by `setβθ!` below
+        m.ϕ[] = one(T)   # value is set by `setβθ!` below
         setpar! = setβθ!
         varyβ = false
     elseif length(dict.initial) == theta_beta_len # fast=false
