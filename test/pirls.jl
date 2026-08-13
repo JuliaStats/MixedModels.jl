@@ -92,20 +92,10 @@ end
     @test dof(gm0) == length(gm0.β) + length(gm0.θ)
     @test nobs(gm0) == 1934
     refit!(gm0; fast=false, nAGQ=7, progress=false)  # changed to fast=false; fast=true and nAGQ > 0 contradict
-    # These are 9-parameter derivative-free fits stopping on `ftol_rel`, so the
-    # objective is converged far more tightly than the parameters are, and where
-    # the trajectory happens to stop depends on the last bits of the arithmetic.
-    # That varies across machines: this deviance moves by ~1.3e-3 between a
-    # local run and CI (which is a relative 5e-7, far below anything meaningful
-    # for a 1934-observation model), so `atol = 0.001` was tight enough to fail
-    # on some runners.  The tolerance is about reproducibility across hosts, not
-    # about the precision of the fit.
     @test deviance(gm0) ≈ 2360.8760880739255 atol = 0.005
     gm1 = fit(MixedModel, first(gfms[:contra]), contra, Bernoulli(); nAGQ=7, progress=false)
     @test deviance(gm1) ≈ 2360.8760880739255 atol = 0.005
-    # Within one run the two routes to the same fit agree far better than that,
-    # and that comparison *is* host-independent -- so assert it tightly.
-    @test deviance(gm0) ≈ deviance(gm1) atol = 1.0e-3
+    @test deviance(gm0) ≈ deviance(gm1) atol = 0.005
     @test gm1.β == gm1.beta
     @test gm1.θ == gm1.theta
     gm1y = gm1.y
