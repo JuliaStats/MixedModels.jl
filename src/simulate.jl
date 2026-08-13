@@ -74,19 +74,32 @@ possible to avoid creating multiple `Distribution` objects.
 Note that `n` is the `n` parameter for the Binomial distribution,
 *not* the number of draws from the RNG. It is then used to change the
 random draw (an integer in [0, n]) into a probability (a float in [0,1]).
+
+`scale` is the standard deviation σ, so the dispersion parameter is `ϕ = σ²`.
+It is `missing` exactly for those families that have no dispersion parameter,
+where the location determines the variance on its own.
 """
-function _rand(rng::AbstractRNG, d::Distribution, location, scale=NaN, n=1)
-    if !ismissing(scale)
-        throw(ArgumentError("Families with a dispersion parameter not yet supported"))
-    end
-
-    if d isa Binomial
-        dist = Binomial(Int(n), location)
-    else
-        dist = typeof(d)(location)
-    end
-
+function _rand(rng::AbstractRNG, d::Distribution, location, scale=missing, n=1)
+    dist = d isa Binomial ? Binomial(Int(n), location) : _rand_dist(d, location, scale)
     return rand(rng, dist) / n
+end
+
+"""
+    _rand_dist(d::Distribution, location, scale)
+
+The distribution to draw a simulated response from, given the mean `location`
+and the standard deviation `scale` (`missing` for families without a dispersion
+parameter).
+
+The parameterizations below are those for which `var(dist)` matches the variance
+function GLM.jl uses for the family, with `ϕ = scale²`: `ϕ` for `Normal`, `ϕμ²`
+for `Gamma`, and `ϕμ³` for `InverseGaussian`.
+"""
+_rand_dist(d::Distribution, location, ::Missing) = typeof(d)(location)
+_rand_dist(::Normal, location, scale) = Normal(location, scale)
+_rand_dist(::Gamma, location, scale) = Gamma(inv(abs2(scale)), location * abs2(scale))
+function _rand_dist(::InverseGaussian, location, scale)
+    return InverseGaussian(location, inv(abs2(scale)))
 end
 
 function simulate!(m::MixedModel{T}; β=fixef(m), σ=m.σ, θ=T[]) where {T}
@@ -254,6 +267,10 @@ function _simulate!(
         # unlike LMM, GLMM stores the truncated, pivoted vector directly
         β = view(view(β, pivot(m)), 1:rank(m))
     end
+    # ϕ is supplied here through `σ`, not through the parameter vector, so drop
+    # the free-ϕ parameterization before installing β and θ -- otherwise
+    # `setβθ!` would read the last element of `params` as log ϕ.
+    m.ϕ[] = nothing
     fast = (length(m.θ) == length(m.optsum.final))
     setpar! = fast ? setθ! : setβθ!
     params = fast ? θ : vcat(β, θ)
@@ -264,16 +281,17 @@ function _simulate!(
     # assemble the linear predictor
 
     # add the unscaled random effects
-    # note that unit scaling may not be correct for
-    # families with a dispersion parameter
     @inbounds for trm in m.reterms
         unscaledre!(rng, η, trm)
     end
 
-    # add fixed-effects contribution
-    # note that unit scaling may not be correct for
-    # families with a dispersion parameter
-    mul!(η, fullrankx(lm), β, one(T), one(T))
+    # scale the random effects by σ and add the fixed-effects contribution.
+    # θ is relative to the scale parameter -- b = σΛu with u ~ N(0, I), i.e.
+    # Var(b) = ϕΛΛ' -- so the random effects have to be scaled by σ here just
+    # as they are on the LinearMixedModel path.  σ is 1 for families without a
+    # dispersion parameter, where `σ` itself is `missing`.
+    resc = dispersion_parameter(m) ? σ : one(T)
+    mul!(η, fullrankx(lm), β, one(T), resc)
 
     μ = resp === nothing ? linkinv.(Link(m), η) : GLM.updateμ!(resp, η).mu
 

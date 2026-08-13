@@ -25,9 +25,15 @@ If this would be a valuable feature, then please [file an issue](https://github.
 
 [FixedEffectsModels.jl](https://github.com/FixedEffects/FixedEffectModels.jl) may be a viable alternative (not an endorsement). It provides "fast estimation of linear models with IV and high dimensional categorical variables" and provides similar functionality to Stata's `reghdfe` and R's `lfe` and `fixest`.
 
-## No support for generalized linear mixed models with a dispersion parameter
+## Generalized linear mixed models with a dispersion parameter
 
-While MixedModels.jl does nominally support any GLM family and link function support by GLM.jl, the results for model families with a dispersion parameter (normal with non-identity link, gamma, inverse Gaussian) are known to be incorrect. The package issues a warning if you attempt to fit such models.
+Model families with a dispersion parameter (normal with a non-identity link, gamma, inverse Gaussian) are supported, including `simulate` and `parametricbootstrap`, but there are two things to be aware of.
+
+First, how ϕ is estimated depends on `fast`. With `fast=true` it is plugged in as the Pearson moment estimator `pwrss(m) / nobs(m)`, which is what lme4's `sigma()` reports. With `fast=false` (the default) it is a parameter of the outer optimization and converges to the conditional MLE. The two agree for the normal family, where the moment estimator *is* the MLE, and differ for gamma and inverse Gaussian, where the MLE solves a digamma equation instead.
+
+Second, the results deliberately do not match lme4. `glmer` optimizes a penalized objective that treats ϕ as 1 while reporting `VarCorr` on the scale relative to σ; MixedModels.jl is consistent about the relative scaling throughout, so both θ̂ and the deviance differ. Do not expect agreement to more than the leading digit or two for these families.
+
+Convergence for inverse Gaussian in particular can be poor, and is sensitive to the link — this is a property of the likelihood surface rather than of the implementation.
 
 ## No support for polytomous responses
 

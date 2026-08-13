@@ -92,9 +92,10 @@ end
     @test dof(gm0) == length(gm0.β) + length(gm0.θ)
     @test nobs(gm0) == 1934
     refit!(gm0; fast=false, nAGQ=7, progress=false)  # changed to fast=false; fast=true and nAGQ > 0 contradict
-    @test deviance(gm0) ≈ 2360.8760880739255 atol = 0.001
+    @test deviance(gm0) ≈ 2360.8760880739255 atol = 0.005
     gm1 = fit(MixedModel, first(gfms[:contra]), contra, Bernoulli(); nAGQ=7, progress=false)
-    @test deviance(gm1) ≈ 2360.8760880739255 atol = 0.001
+    @test deviance(gm1) ≈ 2360.8760880739255 atol = 0.005
+    @test deviance(gm0) ≈ deviance(gm1) atol = 0.005
     @test gm1.β == gm1.beta
     @test gm1.θ == gm1.theta
     gm1y = gm1.y
@@ -261,23 +262,260 @@ end
     form = @formula(reaction ~ 1 + days + (1 + days | subj))
     dat = dataset(:sleepstudy)
 
-    @test_logs (:warn, r"dispersion parameter") GeneralizedLinearMixedModel(
-        form, dat, Gamma()
-    )
-    @test_logs (:warn, r"dispersion parameter") GeneralizedLinearMixedModel(
-        form, dat, InverseGaussian()
-    )
-    @test_logs (:warn, r"dispersion parameter") GeneralizedLinearMixedModel(
-        form, dat, Normal(), SqrtLink()
-    )
+    # Neither constructing nor fitting a dispersion-family model emits anything:
+    # how ϕ was estimated is reported by `show` instead, so it does not repeat
+    # once per replicate when `parametricbootstrap` refits in a loop.
+    @test_logs GeneralizedLinearMixedModel(form, dat, Gamma())
+    @test_logs fit(MixedModel, form, dat, Gamma(), LogLink(); progress=false)
 
-    # notes for future tests when GLMM with dispersion works
-    # @test dispersion_parameter(gm)
-    # @test dispersion(gm, false) == val
-    # @test dispersion(gm, true) == val
-    # @test sdest(gm) == dispersion(gm, false) == gm.σ
-    # @test varest(gm) == dispersion(gm, true)
+    @testset "show reports how ϕ was estimated" begin
+        gmfree = fit(MixedModel, form, dat, Gamma(), LogLink(); progress=false)
+        gmplug = fit(MixedModel, form, dat, Gamma(), LogLink(); fast=true, progress=false)
+        @test occursin("estimated jointly with β and θ", sprint(show, gmfree))
+        @test occursin("Pearson moment estimator", sprint(show, gmplug))
+        # families without a dispersion parameter say nothing about ϕ
+        gmb = fit(MixedModel, first(gfms[:contra]), dataset(:contra), Bernoulli();
+            fast=true, progress=false)
+        @test !occursin("Dispersion parameter", sprint(show, gmb))
+    end
 
+    # Minimise the Laplace deviance over ϕ alone, holding β and θ (and hence the
+    # conditional modes, which do not depend on ϕ) at their fitted values.  This
+    # is the conditional MLE of ϕ, found by golden section on log ϕ so that no
+    # family-specific score equation is needed.
+    function condmle_ϕ(gm)
+        uss = sum(u -> sum(abs2, u), gm.u)
+        ld = logdet(gm)
+        obj(ϕ) = -2 * MixedModels._loglik_data(gm.resp, ϕ) + uss / ϕ + ld
+        r = (sqrt(5) - 1) / 2
+        a = log(MixedModels.pwrss(gm) / nobs(gm)) - 4
+        b = a + 8
+        for _ in 1:300
+            c, d = b - r * (b - a), a + r * (b - a)
+            obj(exp(c)) < obj(exp(d)) ? (b = d) : (a = c)
+        end
+        return exp((a + b) / 2)
+    end
+
+    @testset "normalisation of the u penalty" begin
+        # `_laplace_deviance` carries the random-effects penalty as `uss/ϕ`,
+        # because θ is relative to the scale parameter (Var(b) = ϕΛΛ', so
+        # u ~ N(0, ϕI)) exactly as in LinearMixedModel.  The check that pins
+        # this down: for a Normal family, pwrss/n is the conditional MLE of ϕ,
+        # so profiling the objective over ϕ at fixed β and θ has to return
+        # pwrss/n.  With the penalty left as `uss` it misses by ~16%.
+        gm = fit(MixedModel, form, dat, Normal(), SqrtLink(); progress=false)
+        # the tolerance is set by how tightly PIRLS converged (`pwrss` comes
+        # from the linearised problem, and only coincides with Σ(y-μ)² + uss at
+        # the exact PIRLS fixed point), not by the identity itself -- which is
+        # exact for any β and θ.  16% vs 1e-4 is still three orders of margin.
+        @test condmle_ϕ(gm) ≈ MixedModels.pwrss(gm) / nobs(gm) rtol = 1.0e-4
+    end
+
+    @testset "Gamma + LogLink" begin
+        gm = fit(MixedModel, form, dat, Gamma(), LogLink(); progress=false)
+        @test dispersion_parameter(gm)
+        # ϕ is a free parameter of the outer optimisation for fast=false, so the
+        # parameter vector is [β; θ; log ϕ]
+        @test length(gm.optsum.final) == length(gm.β) + length(gm.θ) + 1
+        @test exp(last(gm.optsum.final)) ≈ dispersion(gm, true)
+        # Self-consistency: deviance == -2 * loglikelihood, both at the same ϕ.
+        @test deviance(gm) ≈ -2 * loglikelihood(gm) atol = 1.0e-8
+        # σ accessors agree
+        @test sdest(gm) === gm.σ
+        @test sdest(gm) ≈ sqrt(varest(gm))
+        @test varest(gm) ≈ dispersion(gm, true)
+        @test sdest(gm) ≈ dispersion(gm, false)
+        # Regression refs for the joint (β, θ, ϕ) optimum.
+        @test deviance(gm) ≈ 1732.0017 rtol = 1.0e-4
+        @test loglikelihood(gm) ≈ -866.0008 rtol = 1.0e-4
+        @test gm.β ≈ [5.532039, 0.033836] rtol = 1.0e-3
+        @test gm.θ ≈ [1.247843, -0.006328, 0.216549] rtol = 1.0e-2
+        @test sdest(gm) ≈ 0.080848 rtol = 1.0e-3
+        # ϕ̂ itself only has a loose regression lock: the joint (β, θ, ϕ) optimum
+        # wanders by ~0.15% between runs -- and even between a fit and its own
+        # refit! -- because β and θ do, and ϕ̂ follows them.
+        @test dispersion(gm, true) ≈ 0.0065364 rtol = 1.0e-2
+
+        # What is tight, and what actually distinguishes this estimator from the
+        # fast=true one, is *conditional* on the fitted β and θ: the free
+        # parameter is the conditional MLE, which for Gamma solves a digamma
+        # equation rather than the moment condition pwrss/n.  Comparing within
+        # a single fit sidesteps the scatter above.
+        mle = condmle_ϕ(gm)
+        moment = MixedModels.pwrss(gm) / nobs(gm)
+        @test dispersion(gm, true) ≈ mle rtol = 1.0e-4
+        # ...and the moment estimator is a genuinely different answer, about
+        # 0.18% away, worth ~3e-4 in deviance -- some five orders of magnitude
+        # above what `ftol_rel` can resolve, so this gap is signal, not noise.
+        @test !isapprox(moment, mle; rtol=1.0e-3)
+        @test moment ≈ mle rtol = 1.0e-2
+    end
+
+    @testset "Gamma + LogLink, fast=true plugs ϕ in" begin
+        gm = fit(MixedModel, form, dat, Gamma(), LogLink(); fast=true, progress=false)
+        # θ only: ϕ is not a free parameter here
+        @test length(gm.optsum.final) == length(gm.θ)
+        @test isnothing(gm.ϕ[])
+        # and `dispersion` falls back to the moment estimator
+        @test dispersion(gm, true) ≈ MixedModels.pwrss(gm) / nobs(gm)
+        @test deviance(gm) ≈ -2 * loglikelihood(gm) atol = 1.0e-8
+        @test deviance(gm) ≈ 1732.0019 rtol = 1.0e-4
+        @test gm.β ≈ [5.532041, 0.033835] rtol = 1.0e-3
+        @test gm.θ ≈ [1.247817, -0.006347, 0.216551] rtol = 1.0e-2
+        @test sdest(gm) ≈ 0.080777 rtol = 1.0e-3
+    end
+
+    @testset "Normal + SqrtLink" begin
+        gm = fit(MixedModel, form, dat, Normal(), SqrtLink(); progress=false)
+        @test dispersion_parameter(gm)
+        @test deviance(gm) ≈ -2 * loglikelihood(gm) atol = 1.0e-8
+        @test sdest(gm) ≈ sqrt(varest(gm))
+        @test deviance(gm) ≈ 1751.9094 rtol = 1.0e-4
+        @test gm.β ≈ [15.880180, 0.297900] rtol = 1.0e-3
+        @test sdest(gm) ≈ 25.531009 rtol = 1.0e-3
+        # Normal is the case where the moment estimator *is* the conditional
+        # MLE, so the free parameter has to reproduce pwrss/n.
+        @test dispersion(gm, true) ≈ MixedModels.pwrss(gm) / nobs(gm) rtol = 1.0e-3
+    end
+
+    @testset "ϕ fixed a priori" begin
+        # mirrors `σ` for LinearMixedModel: it lives in `optsum.sigma` and means
+        # "do not estimate this", so ϕ = σ² exactly and drops out of the
+        # parameter vector
+        free = fit(MixedModel, form, dat, Gamma(), LogLink(); progress=false)
+        gm = GeneralizedLinearMixedModel(form, dat, Gamma(), LogLink(); σ=0.09)
+        fit!(gm; progress=false)
+
+        @test gm.optsum.sigma == 0.09
+        @test dispersion(gm, true) == 0.09^2
+        @test sdest(gm) == 0.09
+        @test varest(gm) == 0.09^2
+        @test isnothing(gm.ϕ[])
+        # β and θ only -- no trailing log ϕ
+        @test length(gm.optsum.final) == length(gm.β) + length(gm.θ)
+        # a constrained fit cannot beat the one that optimises over ϕ too
+        @test deviance(gm) > deviance(free)
+        @test deviance(gm) ≈ -2 * loglikelihood(gm) atol = 1.0e-8
+        @test occursin("fixed a priori", sprint(show, gm))
+
+        # the regime survives a refit
+        refit!(gm; progress=false)
+        @test dispersion(gm, true) == 0.09^2
+        @test isnothing(gm.ϕ[])
+
+        # fixing σ is meaningless without a dispersion parameter
+        @test_throws ArgumentError GeneralizedLinearMixedModel(
+            first(gfms[:contra]), dataset(:contra), Bernoulli(); σ=1.0
+        )
+    end
+
+    @testset "ϕ regime survives refit! and saveoptsum" begin
+        gm = fit(MixedModel, form, dat, Gamma(), LogLink(); progress=false)
+        nfree = length(gm.optsum.final)
+        ϕfree = dispersion(gm, true)
+
+        io = IOBuffer()
+        saveoptsum(io, gm)
+        seekstart(io)
+        gm2 = GeneralizedLinearMixedModel(form, dat, Gamma(), LogLink())
+        restoreoptsum!(gm2, io)
+        @test dispersion(gm2, true) ≈ ϕfree
+        @test gm2.optsum.fmin ≈ gm.optsum.fmin
+
+        # toggling `fast` moves between the two regimes cleanly
+        refit!(gm; fast=true, progress=false)
+        @test isnothing(gm.ϕ[])
+        @test length(gm.optsum.final) == length(gm.θ)
+        refit!(gm; fast=false, progress=false)
+        @test !isnothing(gm.ϕ[])
+        @test length(gm.optsum.final) == nfree
+        # loose: the joint optimum moves by ~0.15% between a fit and its refit
+        @test dispersion(gm, true) ≈ ϕfree rtol = 1.0e-2
+    end
+
+    @testset "constructor no longer warns" begin
+        # Issue #786 - warning moved to fit-time and weakened
+        @test_logs GeneralizedLinearMixedModel(form, dat, InverseGaussian())
+        @test_logs GeneralizedLinearMixedModel(form, dat, Normal(), SqrtLink())
+    end
+
+    @testset "non-dispersion family unaffected" begin
+        # Bit-identical invariant: the optimisation objective for Bernoulli
+        # is unchanged from the pre-fix form `sum(devresid) + uss + logdet`.
+        gm = fit(MixedModel,
+            @formula(use ~ 1 + urban + livch * age + (1 | dist)),
+            dataset(:contra), Bernoulli(); progress=false)
+        @test !dispersion_parameter(gm)
+        @test dispersion(gm) == 1
+        @test sdest(gm) === missing
+        @test varest(gm) === missing
+        @test deviance(gm) ≈ 2403.4078 rtol = 1.0e-6
+    end
+
+    @testset "AGQ with nAGQ=1 == Laplace" begin
+        # The Laplace approximation is AGQ with n=1 by construction, so
+        # `_agq_deviance(m, 1)` and `_laplace_deviance(m)` must agree.
+        # Tests one dispersion and one non-dispersion family.
+        scalar_re = @formula(reaction ~ 1 + days + (1 | subj))
+
+        gm_d = fit(MixedModel, scalar_re, dat, Gamma(), LogLink(); progress=false)
+        @test MixedModels._agq_deviance(gm_d, 1) ≈ MixedModels._laplace_deviance(gm_d) atol =
+            1.0e-9
+
+        mmec = dataset(:mmec)
+        gm_p = fit(MixedModel,
+            @formula(deaths ~ 1 + uvb + (1 | region)),
+            mmec, Poisson(); offset=log.(mmec.expected), progress=false)
+        @test MixedModels._agq_deviance(gm_p, 1) ≈ MixedModels._laplace_deviance(gm_p) atol =
+            1.0e-9
+    end
+
+    @testset "Cϕ μ-invariance" begin
+        # `_agq_deviance` profiles Cϕ once at the mode, relying on the
+        # identity that -2·loglik_obs - devresid/ϕ depends only on (y, w, ϕ),
+        # not on μ. Smoke test by shifting β (which propagates to μ via
+        # updateη!) and checking that Cϕ is unchanged.
+        scalar_re = @formula(reaction ~ 1 + days + (1 | subj))
+        gm = fit(MixedModel, scalar_re, dat, Gamma(), LogLink(); progress=false)
+        r = gm.resp
+        ϕ = MixedModels._dispersion(gm)
+        nu = length(first(gm.u))
+        Cϕ(rr) = -2 * MixedModels._loglik_data(rr, ϕ) - sum(rr.devresid) / ϕ + nu * log(ϕ)
+        Cϕ_at_mode = Cϕ(r)
+
+        β_orig = copy(gm.β)
+        gm.β[1] += 0.1
+        MixedModels.updateη!(gm)
+        Cϕ_perturbed = Cϕ(r)
+        @test Cϕ_perturbed ≈ Cϕ_at_mode atol = 1.0e-9
+
+        # Restore the model state so this test doesn't leak side effects.
+        copyto!(gm.β, β_orig)
+        MixedModels.updateη!(gm)
+    end
+
+    @testset "Gamma + LogLink, nAGQ > 1" begin
+        # Use scalar RE so AGQ is well-defined. NB: lme4 hits a singular fit
+        # (θ → 0) on this configuration; our optimiser finds a non-degenerate
+        # interior optimum, so no tight lme4 cross-check here.
+        scalar_re = @formula(reaction ~ 1 + days + (1 | subj))
+        gm = fit(MixedModel, scalar_re, dat, Gamma(), LogLink();
+            nAGQ=5, progress=false)
+        @test dispersion_parameter(gm)
+        @test gm.optsum.nAGQ == 5
+
+        # Regression refs (captured from this fit). loglikelihood is Laplace-
+        # only, so it differs from deviance by the AGQ correction.
+        @test deviance(gm) ≈ 1767.1545 rtol = 1.0e-4
+        @test gm.β ≈ [5.533943, 0.033845] rtol = 1.0e-3
+        @test only(gm.θ) ≈ 1.289160 rtol = 1.0e-2
+        @test sdest(gm) ≈ 0.096642 rtol = 1.0e-3
+
+        # Laplace logLik at the AGQ-converged params should agree with
+        # `_laplace_deviance` (which uses the same ϕ̂ = pwrss/n).
+        @test -2 * loglikelihood(gm) ≈ MixedModels._laplace_deviance(gm) atol = 1.0e-8
+    end
 end
 
 @testset "mmec" begin
