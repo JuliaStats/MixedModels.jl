@@ -398,19 +398,6 @@ function StatsAPI.fit!(
     end
 
     disp = dispersion_parameter(m.resp.d)
-    if disp
-        @info "Fitting a GLMM with a dispersion parameter. " *
-            (
-                if fast
-                    "ϕ is plugged in from the Pearson moment estimator pwrss/n, which " *
-                    "matches lme4's `sigma()`. "
-                else
-                    "ϕ is estimated jointly with β and θ as a parameter of the outer " *
-                    "optimization. "
-                end
-            ) *
-            "Please report any discrepancies vs lme4."
-    end
 
     if all(==(first(m.y)), m.y)
         throw(ArgumentError("The response is constant and thus model fitting has failed"))
@@ -963,7 +950,16 @@ function Base.show(
     println(io, "Generalized Linear Mixed Model fit by maximum likelihood (nAGQ = $nAGQ)")
     println(io, "  ", m.LMM.formula)
     println(io, "  Distribution: ", D)
-    println(io, "  Link: ", Link(m), "\n")
+    println(io, "  Link: ", Link(m))
+    if dispersion_parameter(m)
+        # which estimator was used is not recoverable from the printed σ, and
+        # the two do not agree for Gamma or InverseGaussian, so name it
+        println(io, "  Dispersion parameter ϕ: ",
+            isempty(m.ϕ) ?
+            "Pearson moment estimator pwrss/n, as in lme4's `sigma()`" :
+            "estimated jointly with β and θ")
+    end
+    println(io)
     nums = Ryu.writefixed.([loglikelihood(m), deviance(m), aic(m), aicc(m), bic(m)], 4)
     fieldwd = max(maximum(textwidth.(nums)) + 1, 11)
     for label in [" logLik", " deviance", "AIC", "AICc", "BIC"]

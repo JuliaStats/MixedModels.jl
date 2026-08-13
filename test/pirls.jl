@@ -262,12 +262,22 @@ end
     form = @formula(reaction ~ 1 + days + (1 + days | subj))
     dat = dataset(:sleepstudy)
 
-    # The constructor no longer warns; the fit-time @info is gated on the
-    # dispersion family.
+    # Neither constructing nor fitting a dispersion-family model emits anything:
+    # how ϕ was estimated is reported by `show` instead, so it does not repeat
+    # once per replicate when `parametricbootstrap` refits in a loop.
     @test_logs GeneralizedLinearMixedModel(form, dat, Gamma())
-    @test_logs (:info, r"dispersion parameter") match_mode = :any fit(
-        MixedModel, form, dat, Gamma(), LogLink(); progress=false
-    )
+    @test_logs fit(MixedModel, form, dat, Gamma(), LogLink(); progress=false)
+
+    @testset "show reports how ϕ was estimated" begin
+        gmfree = fit(MixedModel, form, dat, Gamma(), LogLink(); progress=false)
+        gmplug = fit(MixedModel, form, dat, Gamma(), LogLink(); fast=true, progress=false)
+        @test occursin("estimated jointly with β and θ", sprint(show, gmfree))
+        @test occursin("Pearson moment estimator", sprint(show, gmplug))
+        # families without a dispersion parameter say nothing about ϕ
+        gmb = fit(MixedModel, first(gfms[:contra]), dataset(:contra), Bernoulli();
+            fast=true, progress=false)
+        @test !occursin("Dispersion parameter", sprint(show, gmb))
+    end
 
     # Minimise the Laplace deviance over ϕ alone, holding β and θ (and hence the
     # conditional modes, which do not depend on ϕ) at their fitted values.  This
