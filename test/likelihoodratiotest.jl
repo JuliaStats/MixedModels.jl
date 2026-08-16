@@ -20,18 +20,18 @@ include("modelcache.jl")
     # mismatched RE terms
     m1 = LinearMixedModel(@formula(reaction ~ 1 + days + (1 + days | subj)), slp)
     m2 = LinearMixedModel(@formula(reaction ~ 1 + days + (0 + days | subj)), slp)
-    @test !isnested(m1, m2)
+    @test @suppress !isnested(m1, m2)
 
     # mismatched FE
     m1 = LinearMixedModel(@formula(reaction ~ 1 + days + (1 | subj)), slp)
     m2 = LinearMixedModel(@formula(reaction ~ 0 + days + (1 | subj)), slp)
-    @test !isnested(m1, m2)
+    @test @suppress !isnested(m1, m2)
 
     # mismatched grouping vars
     kb07 = dataset(:kb07)
     m1 = LinearMixedModel(@formula(rt_trunc ~ 1 + (1 | subj)), kb07)
     m2 = LinearMixedModel(@formula(rt_trunc ~ 1 + (1 | item)), kb07)
-    @test !isnested(m1, m2)
+    @test @suppress !isnested(m1, m2)
 
     # fixed-effects specification in REML and
     # conversion of internal ArgumentError into @error for StatsModels.isnested
@@ -114,7 +114,8 @@ include("modelcache.jl")
 end
 
 @testset "likelihoodratio test" begin
-    slp = dataset(:sleepstudy)
+    slp = DataFrame(dataset(:sleepstudy))
+    slp.reaction = Float64.(slp.reaction)
 
     fm0 = fit(MixedModel, @formula(reaction ~ 1 + (1 + days | subj)), slp; progress=false)
     fm1 = fit(

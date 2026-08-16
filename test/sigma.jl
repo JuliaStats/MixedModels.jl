@@ -52,7 +52,7 @@ end
 # @rget dat
 
 # fit(MixedModel, @formula(yi ~ 1 + (1 | study)), dat;
-#     wts=1 ./ dat.vi,
+#     weights=1 ./ dat.vi,
 #     REML=true,
 #     contrasts=Dict(:study => Grouping()),
 #     σ=1)

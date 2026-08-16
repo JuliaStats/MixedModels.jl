@@ -3,7 +3,7 @@
     rankUpdate!(C, A, α)
     rankUpdate!(C, A, α, β)
 
-A rank-k update, C := α*A'A + β*C, of a Hermitian (Symmetric) matrix.
+A rank-k update, C := α*A*A' + β*C, of a Hermitian (Symmetric) matrix.
 
 `α` and `β` both default to 1.0.  When `α` is -1.0 this is a downdate operation.
 The name `rankUpdate!` is borrowed from [https://github.com/andreasnoack/LinearAlgebra.jl]
@@ -39,6 +39,18 @@ function rankUpdate!(C::HermOrSym{T,S}, A::StridedMatrix{T}, α, β) where {T,S}
     return C
 end
 
+# function rankUpdate!(
+#     C::HermOrSym{T,S}, A::StridedMatrix{T}, α, β
+# ) where {T,S<:LowerTriangular}
+#     BLAS.syrk!(C.uplo, 'N', T(α), A, T(β), C.data.data)
+#     return C
+# end
+
+function rankUpdate!(C::HermitianRFP{T}, A::StridedMatrix{T}, α, β) where {T}
+    sfrk!(C.transr, C.uplo, 'N', T(α), A, T(β), C.data)
+    return C
+end
+
 """
     _columndot(rv, nz, rngi, rngj)
 
@@ -64,27 +76,83 @@ function _columndot(rv, nz, rngi, rngj)
     return accum
 end
 
-function rankUpdate!(C::HermOrSym{T,S}, A::SparseMatrixCSC{T}, α, β) where {T,S}
-    require_one_based_indexing(C, A)
-    m, n = size(A)
-    Cd, rv, nz = C.data, A.rowval, A.nzval
-    lower = C.uplo == 'L'
-    (lower ? m : n) == size(C, 2) || throw(DimensionMismatch())
-    isone(β) || rmul!(lower ? LowerTriangular(Cd) : UpperTriangular(Cd), β)
-    if lower
-        @inbounds for jj in axes(A, 2)
-            rangejj = nzrange(A, jj)
-            lenrngjj = length(rangejj)
-            for (k, j) in enumerate(rangejj)
-                anzj = α * nz[j]
-                rvj = rv[j]
-                for i in k:lenrngjj
-                    kk = rangejj[i]
-                    Cd[rv[kk], rvj] = muladd(nz[kk], anzj, Cd[rv[kk], rvj])
-                end
+"""
+    _lowerrankUpdate!(Cd, A, α)
+
+Add `α * A * A'` to the lower triangle of `Cd`, where `A` is a `SparseMatrixCSC`.
+
+Each column of `A` contributes the outer product of its nonzeros.  Because `rowval` is
+sorted within a column, walking from a given entry to the end of its column visits exactly
+the rows `i ≥ j` of the lower triangle.
+"""
+function _lowerrankUpdate!(Cd::AbstractMatrix{T}, A::SparseMatrixCSC{T}, α) where {T}
+    rv, nz = A.rowval, A.nzval
+    @inbounds for jj in axes(A, 2)
+        rangejj = nzrange(A, jj)
+        lenrngjj = length(rangejj)
+        for (k, j) in enumerate(rangejj)
+            anzj = α * nz[j]
+            rvj = rv[j]
+            for i in k:lenrngjj
+                kk = rangejj[i]
+                Cd[rv[kk], rvj] = muladd(nz[kk], anzj, Cd[rv[kk], rvj])
             end
         end
+    end
+    return Cd
+end
+
+# A dense `Cd` is contiguous and column-major, so the column offset can be hoisted out of the
+# inner loop and the two `rowval` lookups collapsed to one linear index, as in the
+# `HermitianRFP` kernel below.  Unlike that kernel, this one needs no sortedness `@assert` to
+# justify its `@inbounds`: `rowval` entries lie in `1:size(A, 1) == 1:size(Cd, 1)`, so
+# `offset + rowval[indi]` is within `1:length(Cd)` no matter how the rows are ordered.
+# Sortedness is what confines the writes to the lower triangle, exactly as in the method above.
+function _lowerrankUpdate!(Cd::DenseMatrix{T}, A::SparseMatrixCSC{T}, α) where {T}
+    (; colptr, rowval, nzval) = A
+    Cdm = size(Cd, 1)
+    indj = 1
+    # each colp is one past the last rowval/nzval index of the preceding column of A
+    for colp in colptr
+        while indj < colp                     # first iteration skipped b/c colptr[1] is always 1
+            j = Int(rowval[indj])             # column of Cd to be updated
+            anzj = α * nzval[indj]
+            offset = (j - 1) * Cdm            # offset to col j for linear indices into Cd
+            indi = indj
+            @inbounds while indi < colp       # iterate over the rest of the column of A
+                linind = offset + Int(rowval[indi])
+                Cd[linind] = muladd(nzval[indi], anzj, Cd[linind])
+                indi += 1
+            end
+            indj += 1
+        end
+    end
+    return Cd
+end
+
+function rankUpdate!(
+    C::HermOrSym{T,S},
+    A::SparseMatrixCSC{T},
+    α,
+    β,
+) where {T,S}
+    require_one_based_indexing(C, A)
+    lower = C.uplo == 'L'
+    adim = lower ? 1 : 2
+    if size(C, 1) ≠ size(A, adim)
+        throw(
+            DimensionMismatch(
+                "size(C,1) = $(size(C, 1)) does not match size(A,$adim) = $(size(A, adim))"
+            ),
+        )
+    end
+
+    Cd = C.data
+    isone(β) || rmul!(lower ? LowerTriangular(Cd) : UpperTriangular(Cd), β)
+    if lower
+        _lowerrankUpdate!(Cd, A, α)
     else
+        rv, nz = A.rowval, A.nzval
         @inbounds for j in axes(C, 2)
             rngj = nzrange(A, j)
             for i in 1:(j - 1)
@@ -96,7 +164,73 @@ function rankUpdate!(C::HermOrSym{T,S}, A::SparseMatrixCSC{T}, α, β) where {T,
     return C
 end
 
+function rankUpdate!(
+    C::HermitianRFP{T},
+    A::SparseMatrixCSC{T},
+    α,
+    β,
+) where {T}
+    require_one_based_indexing(C, A)
+    if uppercase(C.transr) ≠ 'N' || uppercase(C.uplo) ≠ 'L'
+        throw(
+            ArgumentError(
+                "HermitianRFP C must be lower, non-transposed storage; got transr='$(C.transr)', uplo='$(C.uplo)'"
+            ),
+        )
+    end
+    (; m, colptr, rowval, nzval) = A
+    Cdat = C.data
+    if m ≠ size(C, 1)
+        throw(DimensionMismatch("size(A, 1) == $m ≠ $(size(C, 1)) = size(C, 1)"))
+    end
+    tall = iseven(m)                          # is Cdat in the tall (vs wide) format?
+    Cdm, Cdn = size(Cdat)
+    # the @inbounds inner loops below are only in-bounds because Cdm == m + tall, so this
+    # check must stay
+    @assert (Cdm == m + tall) && (Cdn == ((m + !tall) >> 1))
+
+    isone(β) || rmul!(Cdat, β)
+    indj = 1
+    # each colp is one past the last rowval/nzval index of the preceding column of A
+    for colp in colptr
+        # Both inner loops start at indj and so require i ≥ j, i.e. sorted rowval within a
+        # column, which is the SparseMatrixCSC contract.  Checking it once per column is
+        # cheaper than the O(len^2) inner loops and is what makes their @inbounds safe.
+        @assert issorted(view(rowval, indj:(colp - 1)))
+        while indj < colp                     # first iteration skipped b/c colptr[1] is always 1
+            j = Int(rowval[indj])             # column in C to be updated
+            anzj = α * nzval[indj]
+            if j ≤ Cdn                        # in the trapezoidal part of Cdat (most common case)
+                offset = (j - 1) * Cdm + tall # offset to col j for linear indices into Cdat
+                indi = indj
+                @inbounds while indi < colp   # iterate over the rest of the column of A
+                    linind = offset + Int(rowval[indi])
+                    Cdat[linind] = muladd(nzval[indi], anzj, Cdat[linind])
+                    indi += 1
+                end
+            else                              # in the transposed triangular part of Cdat
+                Cdrow = j - Cdn               # row in triangular part of Cdat for col j
+                indi = indj
+                @inbounds while indi < colp   # iterate over the rest of the column of A
+                    i = Int(rowval[indi])
+                    linind = (i - Cdn - tall) * Cdm + Cdrow
+                    Cdat[linind] = muladd(nzval[indi], anzj, Cdat[linind])
+                    indi += 1
+                end
+            end
+            indj += 1
+        end
+    end
+    return C
+end
+
 function rankUpdate!(C::HermOrSym, A::BlockedSparse, α, β)
+    return rankUpdate!(C, sparse(A), α, β)
+end
+
+# HermitianRFP is not a HermOrSym, so it needs its own BlockedSparse method that
+# forwards to the HermitianRFP/SparseMatrixCSC kernel.
+function rankUpdate!(C::HermitianRFP{T}, A::BlockedSparse{T}, α, β) where {T}
     return rankUpdate!(C, sparse(A), α, β)
 end
 

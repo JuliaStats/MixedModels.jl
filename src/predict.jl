@@ -177,11 +177,11 @@ function _predict(m::MixedModel{T}, newdata, β; new_re_levels) where {T}
                 throw(ArgumentError("New level encountered in $grp"))
             end
         end
+    end
 
-        # we don't have to worry about the BLUP ordering within a given
-        # grouping variable because we are in the :error branch
-        blups = blupsold
-    elseif new_re_levels == :population
+    if new_re_levels in (:error, :population)
+        # the level *order* of the fitted model's reterms need not match the
+        # order in the new design (e.g. after sortlevels), so align by label
         blups = [Matrix{T}(undef, size(t.z, 1), nlevs(t)) for t in newre]
 
         for (idx, (B, newlvls, oldidx)) in enumerate(zip(blups, newlevels, oldlevelidx))
@@ -189,6 +189,7 @@ function _predict(m::MixedModel{T}, newdata, β; new_re_levels) where {T}
                 oldloc = get(oldidx, ll, nothing)
                 if oldloc === nothing
                     # setting a BLUP to zero gives you the population value
+                    # (unreachable for :error, which has already validated levels)
                     B[:, lidx] .= zero(T)
                 else
                     B[:, lidx] .= @view blupsold[idx][:, oldloc]
