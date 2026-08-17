@@ -1,3 +1,7 @@
+MixedModels v5.8.3 Release Notes
+==============================
+- JSON backend for `saveoptsum` and `restoreoptsum!` has been changed from JSON3.jl to JSON.jl. [JSON3.jl has been deprecated in favor of JSON.jl](https://github.com/quinnj/JSON3.jl/blob/08b5f48d25ab596c5441969ee83d56f9b9c5b704/README.md). As a result, the dependency on `StructTypes.jl` has also been dropped. [#897]
+
 MixedModels v5.8.2 Release Notes
 ==============================
 - `dataset` is now public to avoid warnings when used directly. Users are nonetheless encouraged to load [MixedModelsDatasets.jl](https://github.com/JuliaMixedModels/MixedModelsDatasets.jl) directly. [#911]
@@ -791,6 +795,7 @@ Package dependencies
 [#891]: https://github.com/JuliaStats/MixedModels.jl/issues/891
 [#892]: https://github.com/JuliaStats/MixedModels.jl/issues/892
 [#893]: https://github.com/JuliaStats/MixedModels.jl/issues/893
+[#897]: https://github.com/JuliaStats/MixedModels.jl/issues/897
 [#898]: https://github.com/JuliaStats/MixedModels.jl/issues/898
 [#899]: https://github.com/JuliaStats/MixedModels.jl/issues/899
 [#904]: https://github.com/JuliaStats/MixedModels.jl/issues/904
