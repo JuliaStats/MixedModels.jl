@@ -201,7 +201,7 @@ function StatsModels.lrtest(m0::GLM_TYPES, m::MixedModel...; atol::Real=0.0)
             )
     end
 
-    pval = chisqccdf.(abs.(Δdf), chisq)
+    pval = ccdf.(Chisq.(abs.(Δdf); check_args=false), chisq)
     return StatsModels.LRTestResult(Int(nobs(mods[1])), dev, ll, df, pval)
 end
 
@@ -405,22 +405,22 @@ function _isnested(x::AbstractMatrix, y::AbstractMatrix; rtol=1e-8, ranktol=1e-8
     # in the same way (b/c same data) and we don't care OR
     # it's not the same data/fixef specification and we're
     # extra conservative
-    size(x, 2) <= size(y, 2) || return false
+    xcols = size(x, 2)
+    iszero(xcols) && return true
+    xcols <= size(y, 2) || return false
 
-    qy = qr(y).Q
-
-    qrx = pivoted_qr(x)
-    dvec = abs.(diag(qrx.R))
-    fdv = first(dvec)
-    cmp = fdv * ranktol
-    r = searchsortedlast(dvec, cmp; rev=true)
+    qry = pivoted_qr(y)
+    qy = qry.Q
+    dvec_y = abs.(diag(qry.R))
+    ry = searchsortedlast(dvec_y, first(dvec_y) * ranktol; rev=true)
 
     p = qy' * x
 
     nested = map(eachcol(p)) do col
-        # if set Julia 1.6 as the minimum, we can use last(col, r)
-        top = @view col[firstindex(col):(end - r - 1)]
-        tail = @view col[(end - r):end]
+        # rows 1:ry span column(y); rows ry+1:end are the orthogonal
+        # complement and must be ~0 for x to be nested in y
+        top = @view col[firstindex(col):ry]
+        tail = @view col[(ry + 1):end]
         return norm(tail) / norm(top) < rtol
     end
 

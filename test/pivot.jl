@@ -4,7 +4,7 @@ import MixedModels: statsrank
 
 xtx(X) = Symmetric(X'X, :U)  # creat the symmetric matrix X'X from X
 # this is defined in Julia 1.13
-@static if VERSION < v"1.13.0-DEV.655"
+@static if !hasmethod(LinearAlgebra.rank, (LinearAlgebra.QRPivoted,))
     function LinearAlgebra.rank(F::LinearAlgebra.QRPivoted; tol=1e-8)
         return searchsortedlast(abs.(diag(F.R)), tol; rev=true)
     end

@@ -1,3 +1,56 @@
+MixedModels v5.8.2 Release Notes
+==============================
+- `dataset` is now public to avoid warnings when used directly. Users are nonetheless encouraged to load [MixedModelsDatasets.jl](https://github.com/JuliaMixedModels/MixedModelsDatasets.jl) directly. [#911]
+
+MixedModels v5.8.1 Release Notes
+==============================
+- The sparse `rankUpdate!` of a diagonal block of `L` has been reworked, for both RFP and dense storage of the block.  Rather than going through `nzrange` and indexing into the resulting range, both kernels now walk the `colptr` of the update directly, carrying a running index into `rowval` and `nzval`.  This removes a level of indirection from the inner loops and hoists the offset of the target column out of them. [#910]
+- In the RFP kernel, the per-element assertion that row indices are sorted within a column has been replaced by a single `issorted` check per column.  That check is what makes the inner loops safe to mark `@inbounds`, and performing it once per column is far cheaper than once per element of the quadratic inner loops. [#910]
+- Relative to v5.8.0, the RFP kernel is roughly 1.65× faster on `insteval` and 1.1× faster on an example too large for cache, which closes most of the gap between RFP and dense storage noted below: on `insteval` the RFP update went from about 60% slower than the dense one to under 10% slower.  The dense kernel itself gains about 15% when the block fits in cache and little when it does not. [#910]
+- `rankUpdate!` on a `HermitianRFP` that is not in lower, non-transposed storage now reports the offending `transr` and `uplo` in the `ArgumentError`. [#910]
+
+MixedModels v5.8.0 Release Notes
+==============================
+- Allow for diagonal blocks of `L` to be stored in `RectangularFullPacked` (RFP) format, which saves roughly half the storage required for the block.  This can increase the time required for `updateL!`, primarily in the `rankUpdate!` step, resulting in a time vs. memory tradeoff.  The size threshold for RFP storage is a new optional argument `RFPthreshold`, which defaults to 1000.
+- The RFP format stores a triangular matrix in two pieces: a trapezoidal part of roughly 3/4 of the elements, where linear indexing can be used for the updates, and a transposed triangular part with more complicated `getindex` and `setindex!` methods.
+- A new Boolean optional argument, `sortlevels`, which defaults to `true`, sorts the levels of each grouping factor other than the leading one by decreasing number of occurrences.  This applies to both dense and RFP storage of the diagonal blocks of `L`: placing the most frequent levels first concentrates the sparse `rankUpdate!` of a block in a compact corner of its storage, which improves memory locality.  For RFP storage it additionally keeps more of those updates in the trapezoid part of the block.  This is a heuristic, not guaranteed to be optimal, but it works well in examples we have tried. [#821]
+
+MixedModels v5.7.1 Release Notes
+==============================
+- Compat bump for MixedModelsDatasets. Note that some data values have changed in their least significant digits, which can change statistics computed from these.
+Additionally, MixedModelsDatasets now lazily downloads individual datasets instead of downloading all available datasets as a single bundle. [#904]
+
+MixedModels v5.7.0 Release Notes
+==============================
+- `fitted` and `predict` have been reworked to allocate less and avoid some unnecessary computation. [#887]
+
+MixedModels v5.6.0 Release Notes
+==============================
+- Several previously hardcoded parameters related to PIRLS are now exposed and can be set by modifying `optsum`.[#893]
+
+MixedModels v5.5.2 Release Notes
+==============================
+- Import `log2π` directly from `IrrationalConstants` instead of via the `StatsFuns` re-export chain. `IrrationalConstants` is now a direct dependency, but it was already an indirect dependency of the package. [#898]
+- Replace the remaining `chisqccdf` and `normccdf` calls with the equivalent `ccdf(Chisq(…), …)` and `ccdf(Normal(), …)` from `Distributions`, and drop `StatsFuns` as a direct dependency. `StatsFuns` remains in the indirect dependency graph via `StatsModels` and `Distributions`. [#899]
+
+MixedModels v5.5.1 Release Notes
+==============================
+- Fixed a bug in testing the nesting of fixed effects. [#891]
+- Fixed an edge case in `predict` with rank deficient models. [#892]
+
+MixedModels v5.5.0 Release Notes
+==============================
+- The construction of `LinearMixedModel` has changed so that the storage of the full-rank fixed-effects model matrix is shared between `feterm` and `Xymat`. The function `modelmatrix` still returns the entire model matrix (including redundant columns), but now constructs it dynamically instead of returning a reference into internal storage. The precise storage details of `FeTerm` have changed. [#889]
+
+
+MixedModels v5.4.0 Release Notes
+==============================
+- Change `isnested(x, y)` for MixedModels to return `true` if `x` has no fixed-effects parameters [#886]
+
+MixedModels v5.3.1 Release Notes
+==============================
+- `varest` and `dispersion(::LinearMixedModel, true)` previously incorrectly returned the estimated standard deviation instead of the variance for models with a fixed sigma parameter. [#885]
+
 MixedModels v5.3.0 Release Notes
 ==============================
 - Implement `sparseL` as a specialization of `sparsemat`. Replace `_coord` utility with `_findnz` which, in most cases, falls through to `SparseArrays.findnz`. [#880]
@@ -705,6 +758,7 @@ Package dependencies
 [#810]: https://github.com/JuliaStats/MixedModels.jl/issues/810
 [#814]: https://github.com/JuliaStats/MixedModels.jl/issues/814
 [#815]: https://github.com/JuliaStats/MixedModels.jl/issues/815
+[#821]: https://github.com/JuliaStats/MixedModels.jl/issues/821
 [#823]: https://github.com/JuliaStats/MixedModels.jl/issues/823
 [#825]: https://github.com/JuliaStats/MixedModels.jl/issues/825
 [#828]: https://github.com/JuliaStats/MixedModels.jl/issues/828
@@ -730,3 +784,15 @@ Package dependencies
 [#875]: https://github.com/JuliaStats/MixedModels.jl/issues/875
 [#876]: https://github.com/JuliaStats/MixedModels.jl/issues/876
 [#880]: https://github.com/JuliaStats/MixedModels.jl/issues/880
+[#885]: https://github.com/JuliaStats/MixedModels.jl/issues/885
+[#886]: https://github.com/JuliaStats/MixedModels.jl/issues/886
+[#887]: https://github.com/JuliaStats/MixedModels.jl/issues/887
+[#889]: https://github.com/JuliaStats/MixedModels.jl/issues/889
+[#891]: https://github.com/JuliaStats/MixedModels.jl/issues/891
+[#892]: https://github.com/JuliaStats/MixedModels.jl/issues/892
+[#893]: https://github.com/JuliaStats/MixedModels.jl/issues/893
+[#898]: https://github.com/JuliaStats/MixedModels.jl/issues/898
+[#899]: https://github.com/JuliaStats/MixedModels.jl/issues/899
+[#904]: https://github.com/JuliaStats/MixedModels.jl/issues/904
+[#910]: https://github.com/JuliaStats/MixedModels.jl/issues/910
+[#911]: https://github.com/JuliaStats/MixedModels.jl/issues/911

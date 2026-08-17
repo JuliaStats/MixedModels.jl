@@ -11,6 +11,7 @@ using Distributions: InverseGaussian, Normal, Poisson, ccdf
 using GLM: GLM, GeneralizedLinearModel, IdentityLink, InverseLink, LinearModel
 using GLM: Link, LogLink, LogitLink, ProbitLink, SqrtLink
 using GLM: canonicallink, glm, linkinv, dispersion, dispersion_parameter
+using IrrationalConstants: log2π
 using JSON3: JSON3
 using LinearAlgebra: LinearAlgebra, Adjoint, BLAS, BlasFloat, ColumnNorm
 using LinearAlgebra: Diagonal, Hermitian, HermOrSym, I, LAPACK, LowerTriangular
@@ -26,8 +27,10 @@ using PrecompileTools: PrecompileTools, @setup_workload, @compile_workload
 using Printf: @sprintf
 using ProgressMeter: ProgressMeter, Progress, finish!, next!
 using Random: Random, AbstractRNG, randn!
+using RectangularFullPacked: HermitianRFP, TriangularRFP
+using RectangularFullPacked.LAPACK_RFP: sfrk!
 using RegressionFormulae: fulldummy
-using SparseArrays: SparseArrays, SparseMatrixCSC, SparseVector, dropzeros!, findnz
+using SparseArrays: SparseArrays, SparseMatrixCSC, SparseVector, dropzeros!
 using SparseArrays: nnz, nonzeros, nzrange, rowvals, sparse
 using StaticArrays: StaticArrays, SVector
 using Statistics: Statistics, mean, quantile, std
@@ -38,7 +41,6 @@ using StatsAPI:
     loglikelihood, meanresponse, modelmatrix, nobs, pvalue, predict, r2, residuals
 using StatsAPI: response, responsename, stderror, vcov, weights
 using StatsBase: StatsBase, CoefTable, model_response, summarystats, FrequencyWeights
-using StatsFuns: chisqccdf, log2π, normccdf
 using StatsModels: StatsModels, AbstractContrasts, AbstractTerm, CategoricalTerm
 using StatsModels: ConstantTerm, DummyCoding, EffectsCoding, FormulaTerm, FunctionTerm
 using StatsModels: HelmertCoding, HypothesisCoding, InteractionTerm, InterceptTerm
@@ -174,7 +176,7 @@ export @formula,
 # TODO: move this to the correct spot in list once we've decided on name
 export savereplicates, restorereplicates
 
-@compat public rePCA, PCA, opt_params, optimizers
+@compat public dataset, rePCA, PCA, opt_params, optimizers
 
 """
     MixedModel
