@@ -527,11 +527,20 @@ end
 
 """
     fit!(m::LinearMixedModel; progress::Bool=true, REML::Bool=m.optsum.REML,
-                              σ::Union{Real, Nothing}=m.optsum.sigma)
+                              σ::Union{Real, Nothing}=m.optsum.sigma,
+                              backend::Symbol=m.optsum.backend,
+                              optimizer::Symbol=m.optsum.optimizer,
+                              gradient::Symbol=m.optsum.gradient)
 
 Optimize the objective of a `LinearMixedModel`.  When `progress` is `true` a
 `ProgressMeter.ProgressUnknown` display is shown during the optimization of the
 objective, if the optimization takes more than one second or so.
+
+`backend` and `optimizer` select the optimization library and algorithm;
+see [`OptSummary`](@ref). For gradient-based optimizers, `gradient` selects
+the gradient source: the default `:analytic` uses [`objective_gradient!`](@ref),
+while `:forwarddiff` uses forward-mode automatic differentiation and requires
+that ForwardDiff.jl be loaded. Derivative-free optimizers ignore `gradient`.
 """
 function StatsAPI.fit!(
     m::LinearMixedModel{T};
@@ -540,6 +549,7 @@ function StatsAPI.fit!(
     σ::Union{Real,Nothing}=m.optsum.sigma,
     backend::Symbol=m.optsum.backend,
     optimizer::Symbol=m.optsum.optimizer,
+    gradient::Symbol=m.optsum.gradient,
 ) where {T}
     optsum = m.optsum
     # this doesn't matter for LMM, but it does for GLMM, so let's be consistent
@@ -551,10 +561,14 @@ function StatsAPI.fit!(
             ArgumentError("The response is constant and thus model fitting has failed")
         )
     end
+    if gradient ∉ (:analytic, :forwarddiff)
+        throw(ArgumentError("gradient must be :analytic or :forwarddiff, got $gradient"))
+    end
     optsum.REML = REML
     optsum.sigma = σ
     optsum.backend = backend
     optsum.optimizer = optimizer
+    optsum.gradient = gradient
 
     try
         # use explicit evaluation w/o calling opt to avoid confusing iteration count
@@ -1000,7 +1014,9 @@ end
 
 The penalized, weighted residual sum-of-squares.
 """
-pwrss(m::LinearMixedModel{T}) where {T} = abs2(last(last(m.L)::Matrix{T}))
+pwrss(m::LinearMixedModel{T}) where {T} = pwrss(m.L)::T
+
+pwrss(L::Vector) = abs2(last(last(L)))
 
 """
     ranef!(v::Vector{Matrix{T}}, m::MixedModel{T}, β, uscale::Bool) where {T}
@@ -1181,8 +1197,14 @@ sdest(m::LinearMixedModel) = something(m.optsum.sigma, √varest(m))
 
 Install `v` as the θ parameters in `m`.
 """
-function setθ!(m::LinearMixedModel{T}, θ::AbstractVector) where {T}
-    parmap, reterms = m.parmap, m.reterms
+function setθ!(m::LinearMixedModel, θ::AbstractVector)
+    setθ!(m.reterms, m.parmap, θ)
+    return m
+end
+
+function setθ!(
+    reterms::Vector{<:AbstractReMat}, parmap::Vector{<:NTuple}, θ::AbstractVector
+)
     length(θ) == length(parmap) || throw(DimensionMismatch())
     reind = 1
     λ = first(reterms).λ
@@ -1194,7 +1216,7 @@ function setθ!(m::LinearMixedModel{T}, θ::AbstractVector) where {T}
         end
         λ[tr[2], tr[3]] = tv
     end
-    return m
+    return reterms
 end
 
 # This method is nearly identical to the previous one but determining a common signature
@@ -1492,11 +1514,15 @@ Update the blocked lower Cholesky factor, `m.L`, from `m.A` and `m.reterms` (use
 
 This is the crucial step in evaluating the objective, given a new parameter value.
 """
-function updateL!(m::LinearMixedModel{T}) where {T}
-    (; A, L, reterms) = m
+function updateL!(m::LinearMixedModel)
+    updateL!(m.A, m.L, m.reterms)
+    return m
+end
+
+function updateL!(A::Vector, L::Vector, reterms::Vector)
     k = length(reterms)
-    copyto!(last(m.L), last(m.A))  # ensure the fixed-effects:response block is copied
-    for j in eachindex(reterms)    # pre- and post-multiply by Λ, add I to diagonal
+    copyto!(last(L), last(A))  # ensure the fixed-effects:response block is copied
+    for j in eachindex(reterms) # pre- and post-multiply by Λ, add I to diagonal
         cj = reterms[j]
         diagind = kp1choose2(j)
         LdH = L[diagind]
@@ -1512,6 +1538,7 @@ function updateL!(m::LinearMixedModel{T}) where {T}
     end
     for j in 1:(k + 1)             # blocked Cholesky
         Ljj = L[kp1choose2(j)]
+        T = eltype(Ljj)
         LjjH = isa(Ljj, LowerTriangular) ? Hermitian(Ljj.data, :L) : Hermitian(Ljj, :L)
         for jj in 1:(j - 1)
             rankUpdate!(LjjH, L[block(j, jj)], -one(T), one(T))
@@ -1525,7 +1552,7 @@ function updateL!(m::LinearMixedModel{T}) where {T}
             rdiv!(Lij, Ljj')
         end
     end
-    return m
+    return L
 end
 
 """

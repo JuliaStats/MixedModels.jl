@@ -1,3 +1,11 @@
+MixedModels vX.Y.Z Release Notes
+==============================
+- Additional methods for pre-allocated result arrays and `*Config` instances have been added to the ForwardDiff extension. [#871].
+- New exported function `objective_gradient!` evaluating the analytic gradient of the objective of a `LinearMixedModel` (ML and REML, including fixed `σ`) directly from the blocked Cholesky factor. It is much faster and allocates far less than automatic differentiation via the ForwardDiff extension, especially for models with many covariance parameters.
+- The NLopt backend now supports the gradient-based optimizers `:LD_LBFGS`, `:LD_MMA`, and `:LD_SLSQP` for `LinearMixedModel`, using `objective_gradient!`. The default optimizer remains derivative-free `:LN_NEWUOA`; select a gradient-based one with e.g. `fit(MixedModel, form, data; optimizer=:LD_LBFGS)`. Internally the gradient-based optimizers work on a per-observation scaling of the objective, which keeps line searches well behaved for large data sets; `fitlog`, the progress display, and the reported `fmin` remain on the deviance scale, and `ftol_abs` acts as a per-observation tolerance for these optimizers.
+- The gradient source for gradient-based optimizers can be selected with the new `gradient` keyword argument to `fit`/`fit!` (stored in `OptSummary`): the default `:analytic` uses `objective_gradient!`, while `:forwarddiff` uses forward-mode automatic differentiation and requires that ForwardDiff.jl be loaded. The `:forwarddiff` source reuses a cached, dual-valued copy of the model's numerical fields across evaluations.
+- The per-face and per-block arithmetic in `objective_gradient!` is now unrolled into statically sized kernels for term dimensions up to 4, instead of issuing a `mul!` per face or per nonzero block.  Those products are at most 4×4, far too small to amortize a BLAS call, so the dispatch and setup dominated the handful of flops.  Gradient evaluation is roughly 1.6× faster on `d3` with vector-valued terms, 1.8× with scalar terms, 1.1× on the maximal `kb07` model, and 3× on small nested models; models dominated by the large triangular solves in `L⁻¹`, such as `insteval`, are unchanged.  Accumulating each face in registers and writing back once reorders the additions, so gradient components change in the last few bits.
+- The ForwardDiff extension has been reworked to reuse the core linear-algebra routines (which have gained generic fallback methods for element types without BLAS/LAPACK support) instead of maintaining parallel `fd_*` implementations. The objective it differentiates now profiles `σ` (or holds it at `optsum.sigma` when fixed), matching `objective`, so `ForwardDiff.gradient` and `ForwardDiff.hessian` now refer to the profiled objective; the Hessian of a model fitted with a fixed `σ` is now computed at that fixed value. `fd_deviance` also now includes the constant weights term for weighted models, matching `objective`.
 MixedModels v5.8.3 Release Notes
 ==============================
 - JSON backend for `saveoptsum` and `restoreoptsum!` has been changed from JSON3.jl to JSON.jl. [JSON3.jl has been deprecated in favor of JSON.jl](https://github.com/quinnj/JSON3.jl/blob/08b5f48d25ab596c5441969ee83d56f9b9c5b704/README.md). As a result, the dependency on `StructTypes.jl` has also been dropped. [#897]
@@ -784,6 +792,7 @@ Package dependencies
 [#864]: https://github.com/JuliaStats/MixedModels.jl/issues/864
 [#865]: https://github.com/JuliaStats/MixedModels.jl/issues/865
 [#867]: https://github.com/JuliaStats/MixedModels.jl/issues/867
+[#871]: https://github.com/JuliaStats/MixedModels.jl/issues/871
 [#873]: https://github.com/JuliaStats/MixedModels.jl/issues/873
 [#875]: https://github.com/JuliaStats/MixedModels.jl/issues/875
 [#876]: https://github.com/JuliaStats/MixedModels.jl/issues/876

@@ -34,17 +34,19 @@ function rankUpdate!(C::HermOrSym{T,S}, a::StridedVector{T}, α, β) where {T,S}
     return C  ## to ensure that the return value is HermOrSym
 end
 
-function rankUpdate!(C::HermOrSym{T,S}, A::StridedMatrix{T}, α, β) where {T,S}
+function rankUpdate!(
+    C::HermOrSym{T,Matrix{T}}, A::StridedMatrix{T}, α, β
+) where {T<:BlasFloat}
     BLAS.syrk!(C.uplo, 'N', T(α), A, T(β), C.data)
     return C
 end
 
-# function rankUpdate!(
-#     C::HermOrSym{T,S}, A::StridedMatrix{T}, α, β
-# ) where {T,S<:LowerTriangular}
-#     BLAS.syrk!(C.uplo, 'N', T(α), A, T(β), C.data.data)
-#     return C
-# end
+# generic fallback for eltypes without BLAS support, e.g. ForwardDiff.Dual;
+# updates both triangles of C.data, which is harmless under the Herm/Sym wrapper
+function rankUpdate!(C::HermOrSym{T,Matrix{T}}, A::StridedMatrix{T}, α, β) where {T}
+    mul!(C.data, A, A', α, β)
+    return C
+end
 
 function rankUpdate!(C::HermitianRFP{T}, A::StridedMatrix{T}, α, β) where {T}
     sfrk!(C.transr, C.uplo, 'N', T(α), A, T(β), C.data)
@@ -298,7 +300,7 @@ end
 
 function rankUpdate!(
     C::HermOrSym{T,UniformBlockDiagonal{T}}, A::BlockedSparse{T,S}, α, β
-) where {T,S}
+) where {T<:BlasFloat,S}
     Ac = A.cscmat
     cp = Ac.colptr
     all(==(S), diff(cp)) ||
@@ -315,6 +317,35 @@ function rankUpdate!(
     @inbounds for j in axes(Ac, 2)
         nzr = nzrange(Ac, j)
         BLAS.syr!('L', α, view(nz, nzr), view(Cdat, :, :, div(rv[last(nzr)], S)))
+    end
+
+    return C
+end
+
+# generic fallback for eltypes without BLAS support, e.g. ForwardDiff.Dual;
+# updates both triangles of each diagonal block, which is harmless because
+# only the lower triangle is referenced downstream
+function rankUpdate!(
+    C::HermOrSym{T,UniformBlockDiagonal{T}}, A::BlockedSparse{T,S}, α, β
+) where {T,S}
+    Ac = A.cscmat
+    cp = Ac.colptr
+    all(==(S), diff(cp)) ||
+        throw(ArgumentError("Columns of A must have exactly $S nonzeros"))
+    Cdat = C.data.data
+    require_one_based_indexing(Ac, Cdat)
+
+    j, k, l = size(Cdat)
+    S == j == k && div(Ac.m, S) == l ||
+        throw(DimensionMismatch("div(A.cscmat.m, S) ≠ size(C.data.data, 3)"))
+    nz = Ac.nzval
+    rv = Ac.rowval
+    isone(β) || rmul!(Cdat, β)
+
+    @inbounds for j in axes(Ac, 2)
+        nzr = nzrange(Ac, j)
+        x = view(nz, nzr)
+        view(Cdat, :, :, div(rv[last(nzr)], S)) .+= α .* x .* x'
     end
 
     return C
