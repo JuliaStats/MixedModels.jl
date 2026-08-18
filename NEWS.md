@@ -6,6 +6,10 @@ MixedModels vX.Y.Z Release Notes
 - The gradient source for gradient-based optimizers can be selected with the new `gradient` keyword argument to `fit`/`fit!` (stored in `OptSummary`): the default `:analytic` uses `objective_gradient!`, while `:forwarddiff` uses forward-mode automatic differentiation and requires that ForwardDiff.jl be loaded. The `:forwarddiff` source reuses a cached, dual-valued copy of the model's numerical fields across evaluations.
 - The per-face and per-block arithmetic in `objective_gradient!` is now unrolled into statically sized kernels for term dimensions up to 4, instead of issuing a `mul!` per face or per nonzero block.  Those products are at most 4×4, far too small to amortize a BLAS call, so the dispatch and setup dominated the handful of flops.  Gradient evaluation is roughly 1.6× faster on `d3` with vector-valued terms, 1.8× with scalar terms, 1.1× on the maximal `kb07` model, and 3× on small nested models; models dominated by the large triangular solves in `L⁻¹`, such as `insteval`, are unchanged.  Accumulating each face in registers and writing back once reorders the additions, so gradient components change in the last few bits.
 - The ForwardDiff extension has been reworked to reuse the core linear-algebra routines (which have gained generic fallback methods for element types without BLAS/LAPACK support) instead of maintaining parallel `fd_*` implementations. The objective it differentiates now profiles `σ` (or holds it at `optsum.sigma` when fixed), matching `objective`, so `ForwardDiff.gradient` and `ForwardDiff.hessian` now refer to the profiled objective; the Hessian of a model fitted with a fixed `σ` is now computed at that fixed value. `fd_deviance` also now includes the constant weights term for weighted models, matching `objective`.
+MixedModels v5.8.3 Release Notes
+==============================
+- JSON backend for `saveoptsum` and `restoreoptsum!` has been changed from JSON3.jl to JSON.jl. [JSON3.jl has been deprecated in favor of JSON.jl](https://github.com/quinnj/JSON3.jl/blob/08b5f48d25ab596c5441969ee83d56f9b9c5b704/README.md). As a result, the dependency on `StructTypes.jl` has also been dropped. [#897]
+
 MixedModels v5.8.2 Release Notes
 ==============================
 - `dataset` is now public to avoid warnings when used directly. Users are nonetheless encouraged to load [MixedModelsDatasets.jl](https://github.com/JuliaMixedModels/MixedModelsDatasets.jl) directly. [#911]
@@ -800,6 +804,7 @@ Package dependencies
 [#891]: https://github.com/JuliaStats/MixedModels.jl/issues/891
 [#892]: https://github.com/JuliaStats/MixedModels.jl/issues/892
 [#893]: https://github.com/JuliaStats/MixedModels.jl/issues/893
+[#897]: https://github.com/JuliaStats/MixedModels.jl/issues/897
 [#898]: https://github.com/JuliaStats/MixedModels.jl/issues/898
 [#899]: https://github.com/JuliaStats/MixedModels.jl/issues/899
 [#904]: https://github.com/JuliaStats/MixedModels.jl/issues/904
