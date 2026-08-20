@@ -1,3 +1,8 @@
+MixedModels v5.8.4 Release Notes
+================================
+- Remove dependency in `docs/Project.toml` on `MixedModelsSerialization` which was holding up other package version updates. [#915]
+- Also adjust compat entries in `docs/Project.toml` for `AlgebraOfGraphics` and `FreqTables`
+
 MixedModels v5.8.3 Release Notes
 ==============================
 - JSON backend for `saveoptsum` and `restoreoptsum!` has been changed from JSON3.jl to JSON.jl. [JSON3.jl has been deprecated in favor of JSON.jl](https://github.com/quinnj/JSON3.jl/blob/08b5f48d25ab596c5441969ee83d56f9b9c5b704/README.md). As a result, the dependency on `StructTypes.jl` has also been dropped. [#897]
@@ -801,3 +806,4 @@ Package dependencies
 [#904]: https://github.com/JuliaStats/MixedModels.jl/issues/904
 [#910]: https://github.com/JuliaStats/MixedModels.jl/issues/910
 [#911]: https://github.com/JuliaStats/MixedModels.jl/issues/911
+[#915]: https://github.com/JuliaStats/MixedModels.jl/issues/915
