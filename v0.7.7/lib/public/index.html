@@ -1,0 +1,800 @@
+
+<!DOCTYPE html>
+<html class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Fit and examine linear mixed-effects models">
+      
+      
+      
+        <meta name="author" content="Douglas M. Bates">
+      
+      
+        <link rel="shortcut icon" href="../../assets/images/favicon.png">
+      
+      <meta name="generator" content="mkdocs-0.16.3, mkdocs-material-1.5.4">
+    
+    
+      
+        <title>Public - MixedModels.jl</title>
+      
+    
+    
+      <script src="../../assets/javascripts/modernizr-56ade86843.js"></script>
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/application-b1a1975878.css">
+      
+        <link rel="stylesheet" href="../../assets/stylesheets/application-f78e5cb881.palette.css">
+      
+    
+    
+      
+        
+        
+        
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,400,400i,700|Roboto+Mono">
+        <style>body,input{font-family:"Roboto","Helvetica Neue",Helvetica,Arial,sans-serif}code,kbd,pre{font-family:"Roboto Mono","Courier New",Courier,monospace}</style>
+      
+      <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+    
+    
+      <link rel="stylesheet" href="../../assets/Documenter.css">
+    
+    
+  </head>
+  
+  
+  
+  
+    <body data-md-color-primary="indigo" data-md-color-accent="blue">
+  
+    <svg class="md-svg">
+      <defs>
+        
+        
+          <svg xmlns="http://www.w3.org/2000/svg" width="416" height="448" viewBox="0 0 416 448" id="github"><path fill="currentColor" d="M160 304q0 10-3.125 20.5t-10.75 19T128 352t-18.125-8.5-10.75-19T96 304t3.125-20.5 10.75-19T128 256t18.125 8.5 10.75 19T160 304zm160 0q0 10-3.125 20.5t-10.75 19T288 352t-18.125-8.5-10.75-19T256 304t3.125-20.5 10.75-19T288 256t18.125 8.5 10.75 19T320 304zm40 0q0-30-17.25-51T296 232q-10.25 0-48.75 5.25Q229.5 240 208 240t-39.25-2.75Q130.75 232 120 232q-29.5 0-46.75 21T56 304q0 22 8 38.375t20.25 25.75 30.5 15 35 7.375 37.25 1.75h42q20.5 0 37.25-1.75t35-7.375 30.5-15 20.25-25.75T360 304zm56-44q0 51.75-15.25 82.75-9.5 19.25-26.375 33.25t-35.25 21.5-42.5 11.875-42.875 5.5T212 416q-19.5 0-35.5-.75t-36.875-3.125-38.125-7.5-34.25-12.875T37 371.5t-21.5-28.75Q0 312 0 260q0-59.25 34-99-6.75-20.5-6.75-42.5 0-29 12.75-54.5 27 0 47.5 9.875t47.25 30.875Q171.5 96 212 96q37 0 70 8 26.25-20.5 46.75-30.25T376 64q12.75 25.5 12.75 54.5 0 21.75-6.75 42 34 40 34 99.5z"/></svg>
+        
+      </defs>
+    </svg>
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="drawer">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="search">
+    <label class="md-overlay" data-md-component="overlay" for="drawer"></label>
+    
+      <header class="md-header" data-md-component="header">
+  <nav class="md-header-nav md-grid">
+    <div class="md-flex">
+      <div class="md-flex__cell md-flex__cell--shrink">
+        
+          <a href="../.." title="MixedModels.jl" class="md-icon md-icon--home md-header-nav__button">
+          </a>
+        
+      </div>
+      <div class="md-flex__cell md-flex__cell--shrink">
+        <label class="md-icon md-icon--menu md-header-nav__button" for="drawer"></label>
+      </div>
+      <div class="md-flex__cell md-flex__cell--stretch">
+        <span class="md-flex__ellipsis md-header-nav__title">
+          
+            
+              
+                <span class="md-header-nav__parent">
+                  Library
+                </span>
+              
+            
+            Public
+          
+        </span>
+      </div>
+      <div class="md-flex__cell md-flex__cell--shrink">
+        
+          <label class="md-icon md-icon--search md-header-nav__button" for="search"></label>
+          
+<div class="md-search" data-md-component="search">
+  <div class="md-search__overlay"></div>
+  <div class="md-search__inner">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" required placeholder="Search" accesskey="s" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="query">
+      <label class="md-icon md-search__icon" for="search"></label>
+      <button type="reset" class="md-icon md-search__icon" data-md-component="reset">close</button>
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="result">
+          <div class="md-search-result__meta" data-md-lang-result-none="No matching documents" data-md-lang-result-one="1 matching document" data-md-lang-result-other="# matching documents">
+            Type to start searching
+          </div>
+          <ol class="md-search-result__list"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+        
+      </div>
+      <div class="md-flex__cell md-flex__cell--shrink">
+        <div class="md-header-nav__source">
+          
+            
+
+
+  
+
+
+  <a href="https://github.com/dmbates/MixedModels.jl" title="Go to repository" class="md-source" data-md-source="github">
+    
+      <div class="md-source__icon">
+        <svg viewBox="0 0 24 24" width="24" height="24">
+          <use xlink:href="#github" width="24" height="24"></use>
+        </svg>
+      </div>
+    
+    <div class="md-source__repository">
+      GitHub
+    </div>
+  </a>
+
+          
+        </div>
+      </div>
+    </div>
+  </nav>
+</header>
+    
+    <div class="md-container">
+      
+      
+      <main class="md-main">
+        <div class="md-main__inner md-grid" data-md-component="container">
+          
+            
+              <div class="md-sidebar md-sidebar--primary" data-md-component="navigation">
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    <nav class="md-nav md-nav--primary" data-md-level="0">
+  <label class="md-nav__title md-nav__title--site" for="drawer">
+    
+      <i class="md-icon md-icon--home md-nav__button"></i>
+    
+    MixedModels.jl
+  </label>
+  
+    <div class="md-nav__source">
+      
+
+
+  
+
+
+  <a href="https://github.com/dmbates/MixedModels.jl" title="Go to repository" class="md-source" data-md-source="github">
+    
+      <div class="md-source__icon">
+        <svg viewBox="0 0 24 24" width="24" height="24">
+          <use xlink:href="#github" width="24" height="24"></use>
+        </svg>
+      </div>
+    
+    <div class="md-source__repository">
+      GitHub
+    </div>
+  </a>
+
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+      
+
+
+  <li class="md-nav__item">
+    <a href="../.." title="Home" class="md-nav__link">
+      Home
+    </a>
+  </li>
+
+    
+      
+      
+      
+
+
+  <li class="md-nav__item md-nav__item--nested">
+    
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-2" type="checkbox" id="nav-2">
+    
+    <label class="md-nav__link" for="nav-2">
+      Manual
+    </label>
+    <nav class="md-nav" data-md-component="collapsible" data-md-level="1">
+      <label class="md-nav__title" for="nav-2">
+        Manual
+      </label>
+      <ul class="md-nav__list" data-md-scrollfix>
+        
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../man/fitting/" title="Fitting" class="md-nav__link">
+      Fitting
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../man/bootstrap/" title="Bootstrap" class="md-nav__link">
+      Bootstrap
+    </a>
+  </li>
+
+        
+      </ul>
+    </nav>
+  </li>
+
+    
+      
+      
+      
+
+  
+
+
+  <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-3" type="checkbox" id="nav-3" checked>
+    
+    <label class="md-nav__link" for="nav-3">
+      Library
+    </label>
+    <nav class="md-nav" data-md-component="collapsible" data-md-level="1">
+      <label class="md-nav__title" for="nav-3">
+        Library
+      </label>
+      <ul class="md-nav__list" data-md-scrollfix>
+        
+        
+          
+          
+          
+
+  
+
+
+  <li class="md-nav__item md-nav__item--active">
+    
+    <input class="md-toggle md-nav__toggle" data-md-toggle="toc" type="checkbox" id="toc">
+    
+      
+    
+    
+      <label class="md-nav__link md-nav__link--active" for="toc">
+        Public
+      </label>
+    
+    <a href="./" title="Public" class="md-nav__link md-nav__link--active">
+      Public
+    </a>
+    
+      
+<nav class="md-nav md-nav--secondary">
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="toc">Table of contents</label>
+    <ul class="md-nav__list" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#mixedmodels" title="MixedModels" class="md-nav__link">
+    MixedModels
+  </a>
+  
+</li>
+      
+      
+      
+    </ul>
+  
+</nav>
+    
+  </li>
+
+        
+      </ul>
+    </nav>
+  </li>
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="toc">
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+<nav class="md-nav md-nav--secondary">
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="toc">Table of contents</label>
+    <ul class="md-nav__list" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#mixedmodels" title="MixedModels" class="md-nav__link">
+    MixedModels
+  </a>
+  
+</li>
+      
+      
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          <div class="md-content">
+            <article class="md-content__inner md-typeset">
+              
+                
+                  <a href="https://github.com/dmbates/MixedModels.jl/edit/master/docs/lib/public.md" title="Edit this page" class="md-icon md-content__icon">edit</a>
+                
+                
+                <p><a id='Public-Documentation-1'></a></p>
+<h1 id="public-documentation">Public Documentation</h1>
+<p>Documentation for <code>MixedModels.jl</code>'s public interface.</p>
+<p><a id='MixedModels-1'></a></p>
+<h2 id="mixedmodels">MixedModels</h2>
+<p><a id='MixedModels.GeneralizedLinearMixedModel' href='#MixedModels.GeneralizedLinearMixedModel'>#</a>
+<strong><code>MixedModels.GeneralizedLinearMixedModel</code></strong> &mdash; <em>Type</em>.</p>
+<div class="codehilite"><pre><span></span>GeneralizedLinearMixedModel
+</pre></div>
+
+
+<p>Generalized linear mixed-effects model representation</p>
+<p>Members:</p>
+<ul>
+<li><code>LMM</code>: a <a href="./#MixedModels.LinearMixedModel"><code>LinearMixedModel</code></a> - the local approximation to the GLMM.</li>
+<li><code>β</code>: the fixed-effects vector</li>
+<li><code>β₀</code>: similar to <code>β</code>. User in the PIRLS algorithm if step-halving is needed.</li>
+<li><code>θ</code>: covariance parameter vector</li>
+<li><code>b</code>: similar to <code>u</code>, equivalent to <code>broadcast!(*, b, LMM.Λ, u)</code></li>
+<li><code>u</code>: a vector of matrices of random effects</li>
+<li><code>u₀</code>: similar to <code>u</code>.  Used in the PIRLS algorithm if step-halving is needed.</li>
+<li><code>resp</code>: a <code>GlmResp</code> object</li>
+<li><code>η</code>: the linear predictor</li>
+<li><code>wt</code>: vector of prior case weights, a value of <code>T[]</code> indicates equal weights.</li>
+</ul>
+<p><a target='_blank' href='https://github.com/dmbates/MixedModels.jl/tree/ec01fdfb610e1761463b7682b1bb31887e635fe9/src/PIRLS.jl#L1-L18' class='documenter-source'>source</a><br></p>
+<p><a id='MixedModels.LinearMixedModel' href='#MixedModels.LinearMixedModel'>#</a>
+<strong><code>MixedModels.LinearMixedModel</code></strong> &mdash; <em>Type</em>.</p>
+<div class="codehilite"><pre><span></span>LinearMixedModel
+</pre></div>
+
+
+<p>Linear mixed-effects model representation</p>
+<p><strong>Members</strong></p>
+<ul>
+<li><code>formula</code>: the formula for the model</li>
+<li><code>fixefnames</code>: names of the fixed effects (for displaying coefficients)</li>
+<li><code>wttrms</code>: a length <code>nt</code> vector of weighted model matrices. The last two elements are <code>X</code> and <code>y</code>.</li>
+<li><code>trms</code>: a vector of unweighted model matrices.  If <code>isempty(sqrtwts)</code> the same object as <code>wttrms</code></li>
+<li><code>Λ</code>: a length <code>nt - 2</code> vector of lower triangular matrices</li>
+<li><code>sqrtwts</code>: the <code>Diagonal</code> matrix of the square roots of the case weights.  Allowed to be size 0</li>
+<li><code>A</code>: an <code>nt × nt</code> symmetric matrix of matrices representing <code>hcat(Z,X,y)'hcat(Z,X,y)</code></li>
+<li><code>R</code>: a <code>nt × nt</code> matrix of matrices - the upper Cholesky factor of <code>Λ'AΛ+I</code></li>
+<li><code>opt</code>: an <a href="./#MixedModels.OptSummary"><code>OptSummary</code></a> object</li>
+</ul>
+<p><a target='_blank' href='https://github.com/dmbates/MixedModels.jl/tree/ec01fdfb610e1761463b7682b1bb31887e635fe9/src/pls.jl#L56-L71' class='documenter-source'>source</a><br></p>
+<p><a id='MixedModels.OptSummary' href='#MixedModels.OptSummary'>#</a>
+<strong><code>MixedModels.OptSummary</code></strong> &mdash; <em>Type</em>.</p>
+<div class="codehilite"><pre><span></span>OptSummary
+</pre></div>
+
+
+<p>Summary of an <code>NLopt</code> optimization</p>
+<p><strong>Members</strong></p>
+<ul>
+<li><code>initial</code>: a copy of the initial parameter values in the optimization</li>
+<li><code>lowerbd</code>: lower bounds on the parameter values</li>
+<li><code>ftol_rel</code>: as in NLopt</li>
+<li><code>ftol_abs</code>: as in NLopt</li>
+<li><code>xtol_rel</code>: as in NLopt</li>
+<li><code>xtol_abs</code>: as in NLopt</li>
+<li><code>final</code>: a copy of the final parameter values from the optimization</li>
+<li><code>fmin</code>: the final value of the objective</li>
+<li><code>feval</code>: the number of function evaluations</li>
+<li><code>optimizer</code>: the name of the optimizer used, as a <code>Symbol</code></li>
+<li><code>returnvalue</code>: the return value, as a <code>Symbol</code></li>
+</ul>
+<p><a target='_blank' href='https://github.com/dmbates/MixedModels.jl/tree/ec01fdfb610e1761463b7682b1bb31887e635fe9/src/pls.jl#L1-L18' class='documenter-source'>source</a><br></p>
+<p><a id='MixedModels.ReMat' href='#MixedModels.ReMat'>#</a>
+<strong><code>MixedModels.ReMat</code></strong> &mdash; <em>Type</em>.</p>
+<div class="codehilite"><pre><span></span>ReMat
+</pre></div>
+
+
+<p>A representation of the model matrix for a random-effects term</p>
+<p><a target='_blank' href='https://github.com/dmbates/MixedModels.jl/tree/ec01fdfb610e1761463b7682b1bb31887e635fe9/src/remat.jl#L1-L5' class='documenter-source'>source</a><br></p>
+<p><a id='MixedModels.ScalarReMat' href='#MixedModels.ScalarReMat'>#</a>
+<strong><code>MixedModels.ScalarReMat</code></strong> &mdash; <em>Type</em>.</p>
+<div class="codehilite"><pre><span></span>ScalarReMat
+</pre></div>
+
+
+<p>The representation of the model matrix for a scalar random-effects term</p>
+<p><strong>Members</strong></p>
+<ul>
+<li><code>f</code>: the grouping factor as a <code>CategoricalVector</code></li>
+<li><code>z</code>: the raw random-effects model matrix as a <code>Vector</code></li>
+<li><code>fnm</code>: the name of the grouping factor as a <code>Symbol</code></li>
+<li><code>cnms</code>: a <code>Vector</code> of column names</li>
+</ul>
+<p><a target='_blank' href='https://github.com/dmbates/MixedModels.jl/tree/ec01fdfb610e1761463b7682b1bb31887e635fe9/src/remat.jl#L8-L18' class='documenter-source'>source</a><br></p>
+<p><a id='MixedModels.VarCorr' href='#MixedModels.VarCorr'>#</a>
+<strong><code>MixedModels.VarCorr</code></strong> &mdash; <em>Type</em>.</p>
+<div class="codehilite"><pre><span></span>VarCorr
+</pre></div>
+
+
+<p>An encapsulation of information on the fitted random-effects variance-covariance matrices.</p>
+<p><strong>Members</strong></p>
+<ul>
+<li><code>Λ</code>: the vector of lower triangular matrices from the <code>MixedModel</code></li>
+<li><code>fnms</code>: a <code>Vector{ASCIIString}</code> of grouping factor names</li>
+<li><code>cnms</code>: a <code>Vector{Vector{ASCIIString}}</code> of column names</li>
+<li><code>s</code>: the estimate of σ, the standard deviation of the per-observation noise</li>
+</ul>
+<p>The main purpose of defining this type is to isolate the logic in the show method.</p>
+<p><a target='_blank' href='https://github.com/dmbates/MixedModels.jl/tree/ec01fdfb610e1761463b7682b1bb31887e635fe9/src/pls.jl#L481-L494' class='documenter-source'>source</a><br></p>
+<p><a id='MixedModels.VectorReMat' href='#MixedModels.VectorReMat'>#</a>
+<strong><code>MixedModels.VectorReMat</code></strong> &mdash; <em>Type</em>.</p>
+<div class="codehilite"><pre><span></span>VectorReMat
+</pre></div>
+
+
+<p>The representation of the model matrix for a vector-valued random-effects term</p>
+<p><strong>Members</strong></p>
+<ul>
+<li><code>f</code>: the grouping factor as a <code>CategoricalVector</code></li>
+<li><code>z</code>: the transposed raw random-effects model matrix</li>
+<li><code>fnm</code>: the name of the grouping factor as a <code>Symbol</code></li>
+<li><code>cnms</code>: a <code>Vector</code> of column names (row names after transposition) of <code>z</code></li>
+</ul>
+<p><a target='_blank' href='https://github.com/dmbates/MixedModels.jl/tree/ec01fdfb610e1761463b7682b1bb31887e635fe9/src/remat.jl#L26-L36' class='documenter-source'>source</a><br></p>
+<p><a id='Base.LinAlg.cond-Tuple{MixedModels.MixedModel}' href='#Base.LinAlg.cond-Tuple{MixedModels.MixedModel}'>#</a>
+<strong><code>Base.LinAlg.cond</code></strong> &mdash; <em>Method</em>.</p>
+<div class="codehilite"><pre><span></span>cond(m::MixedModel)
+</pre></div>
+
+
+<p>Returns the vector of the condition numbers of the blocks of <code>m.Λ</code></p>
+<p><a target='_blank' href='https://github.com/dmbates/MixedModels.jl/tree/ec01fdfb610e1761463b7682b1bb31887e635fe9/src/mixedmodel.jl#L26-L30' class='documenter-source'>source</a><br></p>
+<p><a id='Base.std-Tuple{MixedModels.MixedModel}' href='#Base.std-Tuple{MixedModels.MixedModel}'>#</a>
+<strong><code>Base.std</code></strong> &mdash; <em>Method</em>.</p>
+<div class="codehilite"><pre><span></span>std{T}(m::MixedModel{T})
+</pre></div>
+
+
+<p>The estimated standard deviations of the variance components as a <code>Vector{Vector{T}}</code>.</p>
+<p><a target='_blank' href='https://github.com/dmbates/MixedModels.jl/tree/ec01fdfb610e1761463b7682b1bb31887e635fe9/src/mixedmodel.jl#L33-L37' class='documenter-source'>source</a><br></p>
+<p><a id='MixedModels.LaplaceDeviance-Tuple{MixedModels.GeneralizedLinearMixedModel{T}}' href='#MixedModels.LaplaceDeviance-Tuple{MixedModels.GeneralizedLinearMixedModel{T}}'>#</a>
+<strong><code>MixedModels.LaplaceDeviance</code></strong> &mdash; <em>Method</em>.</p>
+<div class="codehilite"><pre><span></span>LaplaceDeviance{T}(m::GeneralizedLinearMixedModel{T})::T
+</pre></div>
+
+
+<p>Return the Laplace approximation to the deviance of <code>m</code>.</p>
+<p>If the distribution <code>D</code> does not have a scale parameter the Laplace approximation is defined as the squared length of the conditional modes, <code>u</code>, plus the determinant of <code>Λ'Z'ZΛ + 1</code>, plus the sum of the squared deviance residuals.</p>
+<p><a target='_blank' href='https://github.com/dmbates/MixedModels.jl/tree/ec01fdfb610e1761463b7682b1bb31887e635fe9/src/PIRLS.jl#L67-L75' class='documenter-source'>source</a><br></p>
+<p><a id='MixedModels.bootstrap!-Tuple{Array{T,2},MixedModels.LinearMixedModel{T},Function}' href='#MixedModels.bootstrap!-Tuple{Array{T,2},MixedModels.LinearMixedModel{T},Function}'>#</a>
+<strong><code>MixedModels.bootstrap!</code></strong> &mdash; <em>Method</em>.</p>
+<div class="codehilite"><pre><span></span><span class="nt">bootstrap</span><span class="o">!</span><span class="p">{</span><span class="err">T</span><span class="p">}</span><span class="o">(</span><span class="nt">r</span><span class="p">::</span><span class="nd">Matrix</span><span class="p">{</span><span class="err">T</span><span class="p">}</span><span class="o">,</span> <span class="nt">m</span><span class="p">::</span><span class="nd">LinearMixedModel</span><span class="p">{</span><span class="err">T</span><span class="p">}</span><span class="o">,</span> <span class="nt">f</span><span class="o">!</span><span class="p">::</span><span class="nd">Function</span><span class="o">;</span>
+    <span class="err">β</span><span class="o">=</span><span class="nt">fixef</span><span class="o">(</span><span class="nt">m</span><span class="o">),</span> <span class="err">σ</span><span class="o">=</span><span class="nt">sdest</span><span class="o">(</span><span class="nt">m</span><span class="o">),</span> <span class="err">θ</span><span class="o">=</span><span class="nt">get</span><span class="err">θ</span><span class="o">(</span><span class="nt">m</span><span class="o">))</span>
+</pre></div>
+
+
+<p>Overwrite columns of <code>r</code> with the results of applying the mutating extractor <code>f!</code> to parametric bootstrap replications of model <code>m</code>.</p>
+<p>The signature of <code>f!</code> should be     f!{T}(v::AbstractVector{T}, m::LinearMixedModel{T})</p>
+<p><strong>Named Arguments</strong></p>
+<p><code>β::Vector{T}</code>, <code>σ::T</code>, and <code>θ::Vector{T}</code> are the values of the parameters in <code>m</code> for simulation of the responses.</p>
+<p><a target='_blank' href='https://github.com/dmbates/MixedModels.jl/tree/ec01fdfb610e1761463b7682b1bb31887e635fe9/src/simulate.jl#L1-L15' class='documenter-source'>source</a><br></p>
+<p><a id='MixedModels.bootstrap-Tuple{Any,MixedModels.LinearMixedModel{T}}' href='#MixedModels.bootstrap-Tuple{Any,MixedModels.LinearMixedModel{T}}'>#</a>
+<strong><code>MixedModels.bootstrap</code></strong> &mdash; <em>Method</em>.</p>
+<div class="codehilite"><pre><span></span>bootstrap{T}(N, m::LinearMixedModel{T},
+    β::Vector{T}=fixef(m), σ::T=sdest(m), θ::Vector{T}=getθ(m))
+</pre></div>
+
+
+<p>Perform <code>N</code> parametric bootstrap replication fits of <code>m</code>, returning a data frame with column names <code>:obj</code>, the objective function at convergence, <code>:σ</code>, the estimated standard deviation of the residuals, <code>βᵢ, i = 1,...,p</code>, the fixed-effects coefficients, and <code>θᵢ, i = 1,...,k</code> the covariance parameters.</p>
+<p><strong>Named Arguments</strong></p>
+<p><code>β::Vector{T}</code>, <code>σ::T</code>, and <code>θ::Vector{T}</code> are the values of the parameters in <code>m</code> for simulation of the responses.</p>
+<p><a target='_blank' href='https://github.com/dmbates/MixedModels.jl/tree/ec01fdfb610e1761463b7682b1bb31887e635fe9/src/simulate.jl#L26-L39' class='documenter-source'>source</a><br></p>
+<p><a id='MixedModels.cfactor!-Tuple{AbstractArray{T,2}}' href='#MixedModels.cfactor!-Tuple{AbstractArray{T,2}}'>#</a>
+<strong><code>MixedModels.cfactor!</code></strong> &mdash; <em>Method</em>.</p>
+<div class="codehilite"><pre><span></span>cfactor!(A::AbstractMatrix)
+</pre></div>
+
+
+<p>A slightly modified version of <code>chol!</code> from <code>Base</code></p>
+<p>Uses <code>inject!</code> (as opposed to <code>copy!</code>), <code>downdate!</code> (as opposed to <code>syrk!</code> or <code>gemm!</code>) and recursive calls to <code>cfactor!</code>.</p>
+<p>Note: The <code>cfactor!</code> method for dense matrices calls <code>LAPACK.potrf!</code> directly to avoid errors being thrown when <code>A</code> is computationally singular</p>
+<p><a target='_blank' href='https://github.com/dmbates/MixedModels.jl/tree/ec01fdfb610e1761463b7682b1bb31887e635fe9/src/cfactor.jl#L1-L11' class='documenter-source'>source</a><br></p>
+<p><a id='MixedModels.condVar-Tuple{MixedModels.MixedModel}' href='#MixedModels.condVar-Tuple{MixedModels.MixedModel}'>#</a>
+<strong><code>MixedModels.condVar</code></strong> &mdash; <em>Method</em>.</p>
+<div class="codehilite"><pre><span></span>condVar(m::MixedModel)
+</pre></div>
+
+
+<p>Return the conditional variances matrices of the random effects.</p>
+<p>The random effects are returned by <code>ranef</code> as a vector of length <code>k</code>, where <code>k</code> is the number of random effects terms.  The <code>i</code>th element is a matrix of size <code>vᵢ × ℓᵢ</code>  where <code>vᵢ</code> is the size of the vector-valued random effects for each of the <code>ℓᵢ</code> levels of the grouping factor.  Technically those values are the modes of the conditional distribution of the random effects given the observed data.</p>
+<p>This function returns an array of <code>k</code> three dimensional arrays, where the <code>i</code>th array is of size <code>vᵢ × vᵢ × ℓᵢ</code>.  These are the diagonal blocks from the conditional variance-covariance matrix,</p>
+<div class="codehilite"><pre><span></span>s² Λ(Λ&#39;Z&#39;ZΛ + I)⁻¹Λ&#39;
+</pre></div>
+
+
+<p><a target='_blank' href='https://github.com/dmbates/MixedModels.jl/tree/ec01fdfb610e1761463b7682b1bb31887e635fe9/src/mixedmodel.jl#L216-L233' class='documenter-source'>source</a><br></p>
+<p><a id='MixedModels.fixef-Tuple{MixedModels.LinearMixedModel{T}}' href='#MixedModels.fixef-Tuple{MixedModels.LinearMixedModel{T}}'>#</a>
+<strong><code>MixedModels.fixef</code></strong> &mdash; <em>Method</em>.</p>
+<div class="codehilite"><pre><span></span>fixef(m::MixedModel)
+</pre></div>
+
+
+<p>Returns the fixed-effects parameter vector estimate.</p>
+<p><a target='_blank' href='https://github.com/dmbates/MixedModels.jl/tree/ec01fdfb610e1761463b7682b1bb31887e635fe9/src/pls.jl#L299-L303' class='documenter-source'>source</a><br></p>
+<p><a id='MixedModels.getθ-Tuple{LowerTriangular{T,Array{T,2}}}' href='#MixedModels.getθ-Tuple{LowerTriangular{T,Array{T,2}}}'>#</a>
+<strong><code>MixedModels.getθ</code></strong> &mdash; <em>Method</em>.</p>
+<div class="codehilite"><pre><span></span>getθ(A::LowerTriangular{T, Matrix{T}})
+</pre></div>
+
+
+<p>Return a vector of the elements of the lower triangle of <code>A</code> (column-major ordering)</p>
+<p><a target='_blank' href='https://github.com/dmbates/MixedModels.jl/tree/ec01fdfb610e1761463b7682b1bb31887e635fe9/src/paramlowertriangular.jl#L22-L26' class='documenter-source'>source</a><br></p>
+<p><a id='MixedModels.glmm-Tuple{DataFrames.Formula,DataFrames.AbstractDataFrame,Distributions.Distribution,GLM.Link}' href='#MixedModels.glmm-Tuple{DataFrames.Formula,DataFrames.AbstractDataFrame,Distributions.Distribution,GLM.Link}'>#</a>
+<strong><code>MixedModels.glmm</code></strong> &mdash; <em>Method</em>.</p>
+<div class="codehilite"><pre><span></span>glmm(f::Formula, fr::ModelFrame, d::Distribution[, l::GLM.Link])
+</pre></div>
+
+
+<p>Return a <code>GeneralizedLinearMixedModel</code> object.</p>
+<p>The value is ready to be <code>fit!</code> but has not yet been fit.</p>
+<p><a target='_blank' href='https://github.com/dmbates/MixedModels.jl/tree/ec01fdfb610e1761463b7682b1bb31887e635fe9/src/PIRLS.jl#L35-L41' class='documenter-source'>source</a><br></p>
+<p><a id='MixedModels.lmm-Tuple{DataFrames.Formula,DataFrames.AbstractDataFrame}' href='#MixedModels.lmm-Tuple{DataFrames.Formula,DataFrames.AbstractDataFrame}'>#</a>
+<strong><code>MixedModels.lmm</code></strong> &mdash; <em>Method</em>.</p>
+<div class="codehilite"><pre><span></span><span class="nt">lmm</span><span class="o">(</span><span class="nt">f</span><span class="p">::</span><span class="nd">DataFrames</span><span class="p">.</span><span class="nc">Formula</span><span class="o">,</span> <span class="nt">fr</span><span class="p">::</span><span class="nd">DataFrames</span><span class="p">.</span><span class="nc">DataFrame</span><span class="o">;</span> <span class="nt">weights</span> <span class="o">=</span> <span class="cp">[]</span><span class="o">)</span>
+</pre></div>
+
+
+<p>Create a <a href="./#MixedModels.LinearMixedModel"><code>LinearMixedModel</code></a> from <code>f</code>, which contains both fixed-effects terms and random effects, and <code>fr</code>.</p>
+<p>The return value is ready to be <code>fit!</code> but has not yet been fit.</p>
+<p><a target='_blank' href='https://github.com/dmbates/MixedModels.jl/tree/ec01fdfb610e1761463b7682b1bb31887e635fe9/src/pls.jl#L155-L162' class='documenter-source'>source</a><br></p>
+<p><a id='MixedModels.lmm-Tuple{MixedModels.LinearMixedModel}' href='#MixedModels.lmm-Tuple{MixedModels.LinearMixedModel}'>#</a>
+<strong><code>MixedModels.lmm</code></strong> &mdash; <em>Method</em>.</p>
+<div class="codehilite"><pre><span></span>lmm(m::MixedModel)
+</pre></div>
+
+
+<p>Extract the <code>LinearMixedModel</code> from a <code>MixedModel</code>.</p>
+<p>If <code>m</code> is a <code>LinearMixedModel</code> return <code>m</code>. If <code>m</code> is a <code>GeneralizedLinearMixedModel</code> return <code>m.LMM</code>.</p>
+<p><a target='_blank' href='https://github.com/dmbates/MixedModels.jl/tree/ec01fdfb610e1761463b7682b1bb31887e635fe9/src/mixedmodel.jl#L15-L22' class='documenter-source'>source</a><br></p>
+<p><a id='MixedModels.lowerbd-Tuple{LowerTriangular{T,Array{T,2}}}' href='#MixedModels.lowerbd-Tuple{LowerTriangular{T,Array{T,2}}}'>#</a>
+<strong><code>MixedModels.lowerbd</code></strong> &mdash; <em>Method</em>.</p>
+<div class="codehilite"><pre><span></span>lowerbd{T}(A::LowerTriangular{T,Matrix{T}})
+</pre></div>
+
+
+<p>Return the vector of lower bounds on the parameters, <code>θ</code>.</p>
+<p>These are the elements in the lower triangle in column-major ordering. Diagonals have a lower bound of <code>0</code>.  Off-diagonals have a lower-bound of <code>-Inf</code>.</p>
+<p><a target='_blank' href='https://github.com/dmbates/MixedModels.jl/tree/ec01fdfb610e1761463b7682b1bb31887e635fe9/src/paramlowertriangular.jl#L29-L36' class='documenter-source'>source</a><br></p>
+<p><a id='MixedModels.lowerbd-Tuple{MixedModels.LinearMixedModel}' href='#MixedModels.lowerbd-Tuple{MixedModels.LinearMixedModel}'>#</a>
+<strong><code>MixedModels.lowerbd</code></strong> &mdash; <em>Method</em>.</p>
+<div class="codehilite"><pre><span></span>lowerbd(m::LinearMixedModel)
+</pre></div>
+
+
+<p>Return the vector of lower bounds on the covariance parameter vector <code>θ</code></p>
+<p><a target='_blank' href='https://github.com/dmbates/MixedModels.jl/tree/ec01fdfb610e1761463b7682b1bb31887e635fe9/src/pls.jl#L275-L279' class='documenter-source'>source</a><br></p>
+<p><a id='MixedModels.objective-Tuple{MixedModels.LinearMixedModel}' href='#MixedModels.objective-Tuple{MixedModels.LinearMixedModel}'>#</a>
+<strong><code>MixedModels.objective</code></strong> &mdash; <em>Method</em>.</p>
+<div class="codehilite"><pre><span></span>objective(m::LinearMixedModel)
+</pre></div>
+
+
+<p>Return negative twice the log-likelihood of model <code>m</code></p>
+<p><a target='_blank' href='https://github.com/dmbates/MixedModels.jl/tree/ec01fdfb610e1761463b7682b1bb31887e635fe9/src/pls.jl#L282-L286' class='documenter-source'>source</a><br></p>
+<p><a id='MixedModels.pirls!' href='#MixedModels.pirls!'>#</a>
+<strong><code>MixedModels.pirls!</code></strong> &mdash; <em>Function</em>.</p>
+<div class="codehilite"><pre><span></span>pirls!(m::GeneralizedLinearMixedModel)
+</pre></div>
+
+
+<p>Use Penalized Iteratively Reweighted Least Squares (PIRLS) to determine the conditional modes of the random effects.</p>
+<p>When <code>varyβ</code> is true both <code>u</code> and <code>β</code> are optimized with PIRLS.  Otherwise only <code>u</code> is optimized and <code>β</code> is held fixed.</p>
+<p>Passing <code>verbose = true</code> provides verbose output of the iterations.</p>
+<p><a target='_blank' href='https://github.com/dmbates/MixedModels.jl/tree/ec01fdfb610e1761463b7682b1bb31887e635fe9/src/PIRLS.jl#L127-L137' class='documenter-source'>source</a><br></p>
+<p><a id='MixedModels.pwrss-Tuple{MixedModels.LinearMixedModel}' href='#MixedModels.pwrss-Tuple{MixedModels.LinearMixedModel}'>#</a>
+<strong><code>MixedModels.pwrss</code></strong> &mdash; <em>Method</em>.</p>
+<div class="codehilite"><pre><span></span>pwrss(m::LinearMixedModel)
+</pre></div>
+
+
+<p>The penalized residual sum-of-squares.</p>
+<p><a target='_blank' href='https://github.com/dmbates/MixedModels.jl/tree/ec01fdfb610e1761463b7682b1bb31887e635fe9/src/pls.jl#L363-L367' class='documenter-source'>source</a><br></p>
+<p><a id='MixedModels.ranef-Tuple{MixedModels.MixedModel}' href='#MixedModels.ranef-Tuple{MixedModels.MixedModel}'>#</a>
+<strong><code>MixedModels.ranef</code></strong> &mdash; <em>Method</em>.</p>
+<div class="codehilite"><pre><span></span>ranef{T}(m::MixedModel{T}, uscale=false)
+</pre></div>
+
+
+<p>Returns, as a <code>Vector{Matrix{T}}</code>, the conditional modes of the random effects in model <code>m</code>.</p>
+<p>If <code>uscale</code> is <code>true</code> the random effects are on the spherical (i.e. <code>u</code>) scale, otherwise on the original scale.</p>
+<p><a target='_blank' href='https://github.com/dmbates/MixedModels.jl/tree/ec01fdfb610e1761463b7682b1bb31887e635fe9/src/mixedmodel.jl#L152-L159' class='documenter-source'>source</a><br></p>
+<p><a id='MixedModels.refit!-Tuple{MixedModels.LinearMixedModel}' href='#MixedModels.refit!-Tuple{MixedModels.LinearMixedModel}'>#</a>
+<strong><code>MixedModels.refit!</code></strong> &mdash; <em>Method</em>.</p>
+<div class="codehilite"><pre><span></span>refit!{T}(m::LinearMixedModel{T}[, y::Vector{T}])
+</pre></div>
+
+
+<p>Refit the model <code>m</code> after installing response <code>y</code>.</p>
+<p>If <code>y</code> is omitted the current response vector is used.</p>
+<p><a target='_blank' href='https://github.com/dmbates/MixedModels.jl/tree/ec01fdfb610e1761463b7682b1bb31887e635fe9/src/simulate.jl#L149-L155' class='documenter-source'>source</a><br></p>
+<p><a id='MixedModels.remat-Tuple{Expr,DataFrames.DataFrame}' href='#MixedModels.remat-Tuple{Expr,DataFrames.DataFrame}'>#</a>
+<strong><code>MixedModels.remat</code></strong> &mdash; <em>Method</em>.</p>
+<div class="codehilite"><pre><span></span> remat(e::Expr, df::DataFrames.DataFrame)
+</pre></div>
+
+
+<p>A factory for <code>ReMat</code> objects.</p>
+<p><code>e</code> should be of the form <code>:(e1 | e2)</code> where <code>e1</code> is a valid rhs of a <code>Formula</code> and <code>pool(e2)</code> can be evaluated within <code>df</code>.  The result is a <a href="./#MixedModels.ScalarReMat"><code>ScalarReMat</code></a> or a <a href="./#MixedModels.VectorReMat"><code>VectorReMat</code></a>, as appropriate.</p>
+<p><a target='_blank' href='https://github.com/dmbates/MixedModels.jl/tree/ec01fdfb610e1761463b7682b1bb31887e635fe9/src/remat.jl#L44-L52' class='documenter-source'>source</a><br></p>
+<p><a id='MixedModels.sdest-Tuple{MixedModels.LinearMixedModel{T}}' href='#MixedModels.sdest-Tuple{MixedModels.LinearMixedModel{T}}'>#</a>
+<strong><code>MixedModels.sdest</code></strong> &mdash; <em>Method</em>.</p>
+<div class="codehilite"><pre><span></span>sdest(m::LinearMixedModel)
+</pre></div>
+
+
+<p>Return the estimate of σ, the standard deviation of the per-observation noise.</p>
+<p><a target='_blank' href='https://github.com/dmbates/MixedModels.jl/tree/ec01fdfb610e1761463b7682b1bb31887e635fe9/src/pls.jl#L320-L324' class='documenter-source'>source</a><br></p>
+<p><a id='MixedModels.setθ!-Tuple{MixedModels.LinearMixedModel{T},Array{T,1}}' href='#MixedModels.setθ!-Tuple{MixedModels.LinearMixedModel{T},Array{T,1}}'>#</a>
+<strong><code>MixedModels.setθ!</code></strong> &mdash; <em>Method</em>.</p>
+<div class="codehilite"><pre><span></span>setθ!{T}(m::LinearMixedModel{T}, v::Vector{T})
+</pre></div>
+
+
+<p>Install <code>v</code> as the θ parameters in <code>m</code>.  Changes <code>m.Λ</code> only.</p>
+<p><a target='_blank' href='https://github.com/dmbates/MixedModels.jl/tree/ec01fdfb610e1761463b7682b1bb31887e635fe9/src/pls.jl#L327-L331' class='documenter-source'>source</a><br></p>
+<p><a id='MixedModels.simulate!-Tuple{MixedModels.LinearMixedModel{T}}' href='#MixedModels.simulate!-Tuple{MixedModels.LinearMixedModel{T}}'>#</a>
+<strong><code>MixedModels.simulate!</code></strong> &mdash; <em>Method</em>.</p>
+<div class="codehilite"><pre><span></span><span class="nt">simulate</span><span class="o">!(</span><span class="nt">m</span><span class="p">::</span><span class="nd">LinearMixedModel</span><span class="o">;</span> <span class="err">β</span><span class="o">=</span><span class="nt">fixef</span><span class="o">(</span><span class="nt">m</span><span class="o">),</span> <span class="err">σ</span><span class="o">=</span><span class="nt">sdest</span><span class="o">(</span><span class="nt">m</span><span class="o">),</span> <span class="err">θ</span><span class="o">=</span><span class="nt">get</span><span class="err">θ</span><span class="o">(</span><span class="nt">m</span><span class="o">))</span>
+</pre></div>
+
+
+<p>Overwrite the response (i.e. <code>m.trms[end]</code>) with a simulated response vector from model <code>m</code>.</p>
+<p><a target='_blank' href='https://github.com/dmbates/MixedModels.jl/tree/ec01fdfb610e1761463b7682b1bb31887e635fe9/src/simulate.jl#L224-L228' class='documenter-source'>source</a><br></p>
+<p><a id='MixedModels.varest-Tuple{MixedModels.LinearMixedModel{T}}' href='#MixedModels.varest-Tuple{MixedModels.LinearMixedModel{T}}'>#</a>
+<strong><code>MixedModels.varest</code></strong> &mdash; <em>Method</em>.</p>
+<div class="codehilite"><pre><span></span>varest(m::LinearMixedModel)
+</pre></div>
+
+
+<p>Returns the estimate of σ², the variance of the conditional distribution of Y given B.</p>
+<p><a target='_blank' href='https://github.com/dmbates/MixedModels.jl/tree/ec01fdfb610e1761463b7682b1bb31887e635fe9/src/pls.jl#L356-L360' class='documenter-source'>source</a><br></p>
+<p><a id='StatsBase.fit!' href='#StatsBase.fit!'>#</a>
+<strong><code>StatsBase.fit!</code></strong> &mdash; <em>Function</em>.</p>
+<div class="codehilite"><pre><span></span>fit!(m::LinearMixedModel[, verbose::Bool=false[, optimizer::Symbol=:LN_BOBYQA]])
+</pre></div>
+
+
+<p>Optimize the objective of a <code>LinearMixedModel</code>.</p>
+<p>A value for <code>optimizer</code> should be the name of an <code>NLopt</code> derivative-free optimizer allowing for box constraints.</p>
+<p><a target='_blank' href='https://github.com/dmbates/MixedModels.jl/tree/ec01fdfb610e1761463b7682b1bb31887e635fe9/src/pls.jl#L203-L210' class='documenter-source'>source</a><br></p>
+<p><a id='StatsBase.fit!-Tuple{MixedModels.GeneralizedLinearMixedModel{T}}' href='#StatsBase.fit!-Tuple{MixedModels.GeneralizedLinearMixedModel{T}}'>#</a>
+<strong><code>StatsBase.fit!</code></strong> &mdash; <em>Method</em>.</p>
+<div class="codehilite"><pre><span></span>fit!(m::GeneralizedLinearMixedModel[, verbose = false, fast = false])
+</pre></div>
+
+
+<p>Optimize the objective function for <code>m</code>.</p>
+<p>When <code>fast</code> is <code>true</code> a potentially much faster but slightly less accurate algorithm, in which <code>pirls!</code> optimizes both the random effects and the fixed-effects parameters, is used.</p>
+<p><a target='_blank' href='https://github.com/dmbates/MixedModels.jl/tree/ec01fdfb610e1761463b7682b1bb31887e635fe9/src/PIRLS.jl#L205-L213' class='documenter-source'>source</a><br></p>
+<p><a id='StatsBase.vcov-Tuple{MixedModels.MixedModel}' href='#StatsBase.vcov-Tuple{MixedModels.MixedModel}'>#</a>
+<strong><code>StatsBase.vcov</code></strong> &mdash; <em>Method</em>.</p>
+<div class="codehilite"><pre><span></span> vcov(m::MixedModel)
+</pre></div>
+
+
+<p>Returns the estimated covariance matrix of the fixed-effects estimator.</p>
+<p><a target='_blank' href='https://github.com/dmbates/MixedModels.jl/tree/ec01fdfb610e1761463b7682b1bb31887e635fe9/src/mixedmodel.jl#L180-L184' class='documenter-source'>source</a><br></p>
+                
+                  
+                
+              
+              
+                
+              
+            </article>
+          </div>
+        </div>
+      </main>
+      
+        
+<footer class="md-footer">
+  
+    <div class="md-footer-nav">
+      <nav class="md-footer-nav__inner md-grid">
+        
+          <a href="../../man/bootstrap/" title="Bootstrap" class="md-flex md-footer-nav__link md-footer-nav__link--prev" rel="prev">
+            <div class="md-flex__cell md-flex__cell--shrink">
+              <i class="md-icon md-icon--arrow-back md-footer-nav__button"></i>
+            </div>
+            <div class="md-flex__cell md-flex__cell--stretch md-footer-nav__title">
+              <span class="md-flex__ellipsis">
+                <span class="md-footer-nav__direction">
+                  Previous
+                </span>
+                Bootstrap
+              </span>
+            </div>
+          </a>
+        
+        
+      </nav>
+    </div>
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-footer-copyright">
+        
+        powered by
+        <a href="http://www.mkdocs.org" title="MkDocs">MkDocs</a>
+        and
+        <a href="http://squidfunk.github.io/mkdocs-material/" title="Material for MkDocs">
+          Material for MkDocs</a>
+      </div>
+      
+        
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    
+      <script src="../../assets/javascripts/application-0b7df094bf.js"></script>
+      <script>app.initialize({url:{base:"../.."}})</script>
+      
+        <script src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS_HTML"></script>
+      
+        <script src="../../assets/mathjaxhelper.js"></script>
+      
+    
+    
+      
+    
+  </body>
+</html>
