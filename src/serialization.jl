@@ -186,3 +186,4 @@ function saveoptsum(filename, m::MixedModel)
 end
 
 # TODO, maybe: something nice for the MixedModelBootstrap
+StructTypes.excludes(::Type{<:MixedModelBootstrap}) = (:fits, :lowerbd)
