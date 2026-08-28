@@ -79,7 +79,7 @@ Similarly, offsets are also not supported for `GeneralizedLinearMixedModel`.
 function StatsAPI.predict(
     m::LinearMixedModel, newdata::Tables.ColumnTable; new_re_levels=:missing, β=coef(m)
 )
-    return _predict(m, newdata, _pivotbeta(m, β); new_re_levels)
+    return _predict(m, newdata, _pivotbeta(m, β; truncate=false); new_re_levels)
 end
 
 function StatsAPI.predict(
@@ -91,7 +91,7 @@ function StatsAPI.predict(
 )
     type in (:linpred, :response) || throw(ArgumentError("Invalid value for type: $(type)"))
     # want pivoted but not truncated
-    y = _predict(m.LMM, newdata, _pivotbeta(m, β); new_re_levels)
+    y = _predict(m.LMM, newdata, _pivotbeta(m, β; truncate=false); new_re_levels)
 
     return type == :linpred ? y : broadcast!(Base.Fix1(linkinv, Link(m)), y, y)
 end
@@ -139,25 +139,6 @@ function _prediction_design(m::MixedModel{T}, newdata) where {T}
     _, Xs = modelcols(form, newdata)
     reterms, feterms = _split_re_fe_terms(Xs, form, T)
     return PredictionDesign{T}(only(feterms), reterms)
-end
-
-# normalize a user-supplied β (pivoted+truncated, cf. fixef, or unpivoted+full, cf. coef)
-# to the pivoted-but-not-truncated form that _predict expects, zeroing out any
-# redundant-column entries so that they're ignored regardless of their value
-function _pivotbeta(m::MixedModel{T}, β) where {T}
-    piv = pivot(m)
-    rnk = rank(m)
-    length(β) == length(piv) || length(β) == rnk ||
-        throw(ArgumentError("You must specify all (non-singular) βs"))
-    β = convert(Vector{T}, collect(β))
-    if length(β) == length(piv)
-        β = β[piv]
-        rnk == length(piv) || fill!(view(β, (rnk + 1):length(piv)), zero(T))
-        return β
-    end
-    full = zeros(T, length(piv))
-    copyto!(full, β)
-    return full
 end
 
 # β is separated out here because m.β != m.LMM.β depending on how β is estimated for GLMM
