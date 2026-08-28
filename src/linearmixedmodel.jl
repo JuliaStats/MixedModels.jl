@@ -7,8 +7,8 @@ Linear mixed-effects model representation
 
 * `formula`: the formula for the model
 * `reterms`: a `Vector{AbstractReMat{T}}` of random-effects terms.
-* `Xymat`: horizontal concatenation of a full-rank fixed-effects model matrix `X` and response `y` as an `FeMat{T}`
-* `feterm`: the fixed-effects model matrix as an `FeTerm{T}`
+* `Xymat`: horizontal concatenation of the full-rank fixed-effects model matrix `X` and response `y` as an `FeMat{T}`
+* `feterm`: the fixed-effects model matrix as an `FeTerm{T}`. For full-rank models, `feterm`'s internal `fullrankx` field is a view into the first `p` columns of `Xymat.xy`, so both share the same backing allocation.
 * `sqrtwts`: vector of square roots of the case weights.  Can be empty.
 * `parmap` : Vector{NTuple{3,Int}} of (block, row, column) mapping of θ to λ
 * `dims` : NamedTuple{(:n, :p, :nretrms),NTuple{3,Int}} of dimensions.  `p` is the rank of `X`, which may be smaller than `size(X, 2)`.
@@ -26,6 +26,27 @@ Linear mixed-effects model representation
 * `u`: random effects on the orthogonal scale, as a vector of matrices
 * `X`: the fixed-effects model matrix
 * `y`: the response vector
+
+## Named Arguments
+
+The `LinearMixedModel(f, tbl; ...)` constructor (and `fit(LinearMixedModel, f, tbl; ...)`)
+accept the following keyword arguments:
+
+* `contrasts`: a `Dict` mapping column names to contrast codings, passed to schema application.
+* `weights`: a vector of prior case weights; defaults to equal weights.
+* `σ`: a fixed value for the residual standard deviation, or `nothing` (the default) to estimate it.
+* `amalgamate`: whether to combine random-effects terms that share a grouping factor into a
+  single term (default `true`).
+* `RFPthreshold`: the column-count threshold above which a diagonal block of `L` that incurs
+  fill-in (from non-nested crossed grouping factors) is stored in Rectangular Full Packed form
+  (`TriangularRFP`) rather than as a dense `LowerTriangular` (default `1000`). RFP roughly halves
+  the storage of such a block, but slows computation slightly (i.e. trades speed for memory); it does not change the fitted model.
+* `sortlevels`: whether to reorder the levels of each grouping factor (other than the leading one)
+  by descending number of occurrences (default `true`). This concentrates the sparse rank-update
+  of a filled-in diagonal block in a compact region of storage, improving memory locality. This is most
+  helpful for large blocks that do not fit in cache and for `TriangularRFP` blocks. It leaves the
+  objective and estimates unchanged; only the internal level order (and hence the order of, e.g.,
+  `raneftables` rows) differs.
 """
 struct LinearMixedModel{T<:AbstractFloat} <: MixedModel{T}
     formula::FormulaTerm
@@ -40,12 +61,8 @@ struct LinearMixedModel{T<:AbstractFloat} <: MixedModel{T}
     optsum::OptSummary{T}
 end
 
-function LinearMixedModel(
-    f::FormulaTerm, tbl; contrasts=Dict{Symbol,Any}(), wts=[], σ=nothing, amalgamate=true
-)
-    return LinearMixedModel(
-        f::FormulaTerm, Tables.columntable(tbl); contrasts, wts, σ, amalgamate
-    )
+function LinearMixedModel(f::FormulaTerm, tbl; kwargs...)
+    return LinearMixedModel(f::FormulaTerm, Tables.columntable(tbl); kwargs...)
 end
 
 const _MISSING_RE_ERROR = ArgumentError(
@@ -53,8 +70,9 @@ const _MISSING_RE_ERROR = ArgumentError(
 )
 
 function LinearMixedModel(
-    f::FormulaTerm, tbl::Tables.ColumnTable; contrasts=Dict{Symbol,Any}(), wts=[],
-    σ=nothing, amalgamate=true,
+    f::FormulaTerm, tbl::Tables.ColumnTable; contrasts=Dict{Symbol,Any}(), wts=nothing,
+    weights=[],
+    σ=nothing, amalgamate=true, RFPthreshold=1000, sortlevels=true,
 )
     fvars = StatsModels.termvars(f)
     tvars = Tables.columnnames(tbl)
@@ -64,6 +82,13 @@ function LinearMixedModel(
                 "The following formula variables are not present in the table: $(setdiff(fvars, tvars))"
             ),
         )
+
+    if wts !== nothing
+        Base.depwarn(
+            "`wts` keyword argument is deprecated, use `weights` instead", :LinearMixedModel
+        )
+        weights = wts
+    end
 
     # TODO: perform missing_omit() after apply_schema() when improved
     # missing support is in a StatsModels release
@@ -76,11 +101,11 @@ function LinearMixedModel(
 
     y, Xs = modelcols(form, tbl)
 
-    return LinearMixedModel(y, Xs, form, wts, σ, amalgamate)
+    return LinearMixedModel(y, Xs, form, weights, σ, amalgamate, RFPthreshold, sortlevels)
 end
 
 """
-    LinearMixedModel(y, Xs, form, wts=[], σ=nothing, amalgamate=true)
+    LinearMixedModel(y, Xs, form, weights=[], σ=nothing, amalgamate=true)
 
 Private constructor for a LinearMixedModel.
 
@@ -96,12 +121,23 @@ function LinearMixedModel(
     y::AbstractArray,
     Xs::Tuple, # can't be more specific here without stressing the compiler
     form::FormulaTerm,
-    wts=[],
+    weights=[],
     σ=nothing,
     amalgamate=true,
+    RFPthreshold=1000,
+    sortlevels=true,
 )
     T = promote_type(Float64, float(eltype(y)))  # ensure eltype of model matrices is at least Float64
 
+    reterms, feterms = _split_re_fe_terms(Xs, form, T)
+    isempty(reterms) && throw(_MISSING_RE_ERROR)
+    return LinearMixedModel(
+        convert(Array{T}, y), only(feterms), reterms, form, weights, σ, amalgamate,
+        RFPthreshold, sortlevels,
+    )
+end
+
+function _split_re_fe_terms(Xs::Tuple, form::FormulaTerm, ::Type{T}) where {T}
     reterms = AbstractReMat{T}[]
     feterms = FeTerm{T}[]
     for (i, x) in enumerate(Xs)
@@ -130,14 +166,11 @@ function LinearMixedModel(
             push!(feterms, FeTerm(x, isa(cnames, String) ? [cnames] : collect(cnames)))
         end
     end
-    isempty(reterms) && throw(_MISSING_RE_ERROR)
-    return LinearMixedModel(
-        convert(Array{T}, y), only(feterms), reterms, form, wts, σ, amalgamate
-    )
+    return reterms, feterms
 end
 
 """
-    LinearMixedModel(y, feterm, reterms, form, wts=[], σ=nothing; amalgamate=true)
+    LinearMixedModel(y, feterm, reterms, form, weights=[], σ=nothing; amalgamate=true, RFPthreshold=1000, sortlevels=true)
 
 Private constructor for a `LinearMixedModel` given already assembled fixed and random effects.
 
@@ -145,6 +178,13 @@ To construct a model, you only need a vector of `FeMat`s (the fixed-effects
 model matrix and response), a vector of `AbstractReMat` (the random-effects
 model matrices), the formula and the weights. Everything else in the structure
 can be derived from these quantities.
+
+When `sortlevels` is `true`, [`_sortlevels!`](@ref) is applied to every non-leading term (and
+to a leading term that shares its grouping factor with a later term, as can happen with
+`amalgamate=false`), so that all terms for a grouping factor use one frequency-descending level
+order; the stored `form` is then updated via `_syncgrouping` to keep its grouping terms in sync.
+`RFPthreshold` is forwarded to `createAL` to select Rectangular Full Packed storage for
+sufficiently large filled-in diagonal blocks of `L`. See [`LinearMixedModel`](@ref) for details.
 
 !!! note
     This method is internal and experimental and so may change or disappear in
@@ -155,9 +195,11 @@ function LinearMixedModel(
     feterm::FeTerm{T},
     reterms::AbstractVector{<:AbstractReMat{T}},
     form::FormulaTerm,
-    wts=[],
+    weights=[],
     σ=nothing,
     amalgamate=true,
+    RFPthreshold=1000,
+    sortlevels=true,
 ) where {T}
     # detect and combine RE terms with the same grouping var
     if length(reterms) > 1 && amalgamate
@@ -167,11 +209,32 @@ function LinearMixedModel(
     end
 
     sort!(reterms; by=nranef, rev=true)
+    if sortlevels
+        # only blocks after the first incur fill-in; the leading term's
+        # diagonal block is unaffected by level order, but sort it anyway
+        # when it shares its grouping factor with a later term (possible with
+        # amalgamate=false) so that all terms for a factor use one level order
+        tosort = Set(fname(reterms[i]) for i in 2:length(reterms))
+        for rt in reterms
+            fname(rt) in tosort && _sortlevels!(rt)
+        end
+        form = _syncgrouping(form, reterms)
+    end
     Xy = FeMat(feterm, vec(y))
-    sqrtwts = map!(sqrt, Vector{T}(undef, length(wts)), wts)
+    # Replace feterm's fullrankx field with a view into the shared Xymat storage,
+    # eliminating the duplicate allocation for the full-rank X columns.
+    xview = view(Xy.xy, :, 1:(feterm.rank))
+    feterm = FeTerm{T,typeof(xview)}(
+        xview,
+        getfield(feterm, :xrankdef),
+        feterm.piv,
+        feterm.rank,
+        feterm.cnames,
+    )
+    sqrtwts = map!(sqrt, Vector{T}(undef, length(weights)), weights)
     reweight!.(reterms, Ref(sqrtwts))
     reweight!(Xy, sqrtwts)
-    A, L = createAL(reterms, Xy)
+    A, L = createAL(reterms, Xy; RFPthreshold)
     θ = foldl(vcat, getθ(c) for c in reterms)
     optsum = OptSummary(θ)
     optsum.sigma = isnothing(σ) ? nothing : T(σ)
@@ -206,12 +269,17 @@ end
 function StatsAPI.fit(::Type{LinearMixedModel},
     f::FormulaTerm,
     tbl::Tables.ColumnTable;
-    wts=[],
+    weights=[],
+    wts=nothing,
     contrasts=Dict{Symbol,Any}(),
     σ=nothing,
     amalgamate=true,
+    RFPthreshold=1000,
+    sortlevels=true,
     kwargs...)
-    lmod = LinearMixedModel(f, tbl; contrasts, wts, σ, amalgamate)
+    lmod = LinearMixedModel(
+        f, tbl; contrasts, weights, wts, σ, amalgamate, RFPthreshold, sortlevels
+    )
     return fit!(lmod; kwargs...)
 end
 
@@ -357,9 +425,9 @@ function condVartables(m::MixedModel{T}) where {T}
 end
 
 """
-    confint(pr::MixedModelProfile; level::Real=0.95)
+    confint(m::MixedModel; level::Real=0.95)
 
-Compute profile confidence intervals for (fixed effects) coefficients, with confidence level `level` (by default 95%).
+Compute Wald confidence intervals with confidence level `level` (by default 95%)
 
 !!! note
     The API guarantee is for a Tables.jl compatible table. The exact return type is an
@@ -382,9 +450,13 @@ function _pushALblock!(A, L, blk)
     return push!(A, deepcopy(isa(blk, BlockedSparse) ? blk.cscmat : blk))
 end
 
-function createAL(reterms::Vector{<:AbstractReMat{T}}, Xy::FeMat{T}) where {T}
+function createAL(
+    reterms::Vector{<:AbstractReMat{T}},
+    Xy::FeMat{T};
+    RFPthreshold::Int=1000,
+) where {T}
     k = length(reterms)
-    vlen = kchoose2(k + 1)
+    vlen = kp1choose2(k + 1)
     A = sizehint!(AbstractMatrix{T}[], vlen)
     L = sizehint!(AbstractMatrix{T}[], vlen)
     for i in eachindex(reterms)
@@ -392,16 +464,23 @@ function createAL(reterms::Vector{<:AbstractReMat{T}}, Xy::FeMat{T}) where {T}
             _pushALblock!(A, L, densify(reterms[i]' * reterms[j]))
         end
     end
-    for j in eachindex(reterms)   # can't fold this into the previous loop b/c block order
+    for j in eachindex(reterms)     # can't fold this into the previous loop b/c block order
         _pushALblock!(A, L, densify(Xy' * reterms[j]))
     end
     _pushALblock!(A, L, densify(Xy'Xy))
-    for i in 2:k      # check for fill-in due to non-nested grouping factors
+    for i in 2:k                    # check for fill-in due to non-nested grouping factors
         ci = reterms[i]
         for j in 1:(i - 1)
             cj = reterms[j]
             if !isnested(cj, ci)
-                for l in i:k
+                ind = kp1choose2(i) # location of i'th diagonal block
+                Li = collect(L[ind])
+                L[ind] = if size(Li, 2) > RFPthreshold
+                    TriangularRFP(Li, :L)
+                else
+                    LowerTriangular(Li)
+                end
+                for l in (i + 1):k
                     ind = block(l, i)
                     L[ind] = Matrix(L[ind])
                 end
@@ -409,7 +488,14 @@ function createAL(reterms::Vector{<:AbstractReMat{T}}, Xy::FeMat{T}) where {T}
             end
         end
     end
-    return identity.(A), identity.(L)
+    for k in axes(reterms, 1)    # patch up the UniformBlockDiagonal in L for nested factors
+        diagind = kp1choose2(k)
+        Ldi = L[diagind]
+        if isa(Ldi, UniformBlockDiagonal)
+            L[diagind] = LowerTriangular(Ldi)
+        end
+    end
+    return identity.(A), identity.(L)  # does anyone remember what the `identity` is for?`
 end
 
 function StatsAPI.cooksdistance(model::LinearMixedModel)
@@ -525,14 +611,46 @@ Overwrite `v` with the fitted values from `m`.
 
 See also `fitted`.
 """
-function fitted!(v::AbstractArray{T}, m::LinearMixedModel{T}) where {T}
-    ## FIXME: Create and use `effects(m) -> β, b` w/o calculating β twice
+function _allocate_ranef_buffers(m::LinearMixedModel{T}) where {T}
+    reterms = m.reterms
+    return [Matrix{T}(undef, size(t.z, 1), nlevs(t)) for t in reterms]
+end
+
+_allocate_fixef_buffer(m::LinearMixedModel{T}) where {T} = Vector{T}(undef, m.feterm.rank)
+
+function _fixef_pivoted!(β::AbstractVector{T}, m::LinearMixedModel{T}) where {T}
+    return fixef!(β, m)
+end
+
+function _ranef_from_pivoted!(
+    b::Vector, m::LinearMixedModel{T}, β::AbstractVector{T}; uscale::Bool=false
+) where {T}
+    return ranef!(b, m, β, uscale)
+end
+
+function _effects!(
+    β::AbstractVector{T}, b::Vector, m::LinearMixedModel{T}; uscale::Bool=false
+) where {T}
+    _fixef_pivoted!(β, m)
+    return _ranef_from_pivoted!(b, m, β; uscale)
+end
+
+function _fitted!(
+    v::AbstractArray{T}, m::LinearMixedModel{T}, β::AbstractVector{T}, b::Vector
+) where {T}
     Xtrm = m.feterm
-    vv = mul!(vec(v), Xtrm.x, fixef!(similar(Xtrm.piv, T), m))
-    for (rt, bb) in zip(m.reterms, ranef(m))
+    vv = mul!(vec(v), Xtrm.fullrankx, β)
+    for (rt, bb) in zip(m.reterms, b)
         mul!(vv, rt, bb, one(T), one(T))
     end
     return v
+end
+
+function fitted!(v::AbstractArray{T}, m::LinearMixedModel{T}) where {T}
+    β = _allocate_fixef_buffer(m)
+    b = _allocate_ranef_buffers(m)
+    _effects!(β, b, m)
+    return _fitted!(v, m, β, b)
 end
 
 StatsAPI.fitted(m::LinearMixedModel{T}) where {T} = fitted!(Vector{T}(undef, nobs(m)), m)
@@ -723,8 +841,12 @@ end
 
 # use dispatch to distinguish Diagonal and UniformBlockDiagonal in first(L)
 _ldivB1!(B1::Diagonal{T}, rhs::AbstractVector{T}, ind) where {T} = rhs ./= B1.diag[ind]
-function _ldivB1!(B1::UniformBlockDiagonal{T}, rhs::AbstractVector{T}, ind) where {T}
-    return ldiv!(LowerTriangular(view(B1.data, :, :, ind)), rhs)
+function _ldivB1!(
+    B1::LowerTriangular{T,UniformBlockDiagonal{T}},
+    rhs::AbstractVector{T},
+    ind,
+) where {T}
+    return ldiv!(LowerTriangular(view(B1.data.data, :, :, ind)), rhs)
 end
 
 """
@@ -787,7 +909,17 @@ function StatsAPI.loglikelihood(m::LinearMixedModel)
     return -objective(m) / 2
 end
 
-lowerbd(m::LinearMixedModel) = foldl(vcat, lowerbd(c) for c in m.reterms)
+"""
+    lowerbd(m::LinearMixedModel)
+
+Return the vector of _canonical_ lower bounds on the parameters, `θ`.
+
+Note that this method does not distinguish between constrained optimization and
+unconstrained optimization with post-fit canonicalization.
+"""
+function lowerbd(m::LinearMixedModel{T}) where {T}
+    return [(pm[2] == pm[3]) ? zero(T) : T(-Inf) for pm in m.parmap]
+end
 
 function mkparmap(reterms::Vector{<:AbstractReMat{T}}) where {T}
     parmap = NTuple{3,Int}[]
@@ -911,7 +1043,11 @@ function ranef!(
     return v
 end
 
-ranef!(v::Vector, m::LinearMixedModel, uscale::Bool) = ranef!(v, m, fixef(m), uscale)
+function ranef!(v::Vector, m::LinearMixedModel{T}, uscale::Bool) where {T}
+    β = _allocate_fixef_buffer(m)
+    _fixef_pivoted!(β, m)
+    return _ranef_from_pivoted!(v, m, β; uscale)
+end
 
 """
     ranef(m::LinearMixedModel; uscale=false)
@@ -1113,7 +1249,7 @@ function Base.show(io::IO, ::MIME"text/plain", m::LinearMixedModel)
     join(io, nlevs.(m.reterms), ", ")
     println(io)
     println(io, "\n  Fixed-effects parameters:")
-    return show(io, coeftable(m))
+    return show(io, MIME("text/plain"), coeftable(m))
 end
 
 Base.show(io::IO, m::LinearMixedModel) = Base.show(io, MIME("text/plain"), m)
@@ -1121,18 +1257,28 @@ Base.show(io::IO, m::LinearMixedModel) = Base.show(io, MIME("text/plain"), m)
 """
     _coord(A::AbstractMatrix)
 
-Return the positions and values of the nonzeros in `A` as a
-`NamedTuple{(:i, :j, :v), Tuple{Vector{Int32}, Vector{Int32}, Vector{Float64}}}`
+Return the positions and values of the nonzeros in `A` as a `TypedTables.Table` with columns `i`, `j`, and `v`
 """
 function _coord(A::Diagonal)
-    return (i=Int32.(axes(A, 1)), j=Int32.(axes(A, 2)), v=A.diag)
+    return Table(; i=Int32.(axes(A, 1)), j=Int32.(axes(A, 2)), v=A.diag)
 end
 
 function _coord(A::UniformBlockDiagonal)
     dat = A.data
     r, c, k = size(dat)
     blk = repeat(r .* (0:(k - 1)); inner=r * c)
-    return (
+    return Table(;
+        i=Int32.(repeat(1:r; outer=c * k) .+ blk),
+        j=Int32.(repeat(1:c; inner=r, outer=k) .+ blk),
+        v=vec(dat),
+    )
+end
+
+function _coord(A::LowerTriangular{T,UniformBlockDiagonal{T}}) where {T}
+    dat = A.data.data
+    r, c, k = size(dat)
+    blk = repeat(r .* (0:(k - 1)); inner=r * c)
+    return Table(;
         i=Int32.(repeat(1:r; outer=c * k) .+ blk),
         j=Int32.(repeat(1:c; inner=r, outer=k) .+ blk),
         v=vec(dat),
@@ -1145,18 +1291,72 @@ function _coord(A::SparseMatrixCSC{T,Int32}) where {T}
     for j in axes(A, 2), k in nzrange(A, j)
         cv[k] = j
     end
-    return (i=rv, j=cv, v=nonzeros(A))
+    return Table(; i=rv, j=cv, v=nonzeros(A))
 end
 
 _coord(A::BlockedSparse) = _coord(A.cscmat)
 
 function _coord(A::Matrix)
     m, n = size(A)
-    return (
+    return Table(;
         i=Int32.(repeat(axes(A, 1); outer=n)),
         j=Int32.(repeat(axes(A, 2); inner=m)),
         v=vec(A),
     )
+end
+
+function sparsemat(
+    typ::Symbol, m::LinearMixedModel{T}; fname::Symbol=first(fnames(m)), full::Bool=false
+) where {T}
+    reterms = m.reterms
+    if typ ∉ (:A, :L)
+        throw(ArgumentError("typ passed as $typ should be :A or :L"))
+    end
+    bmat = getproperty(m, typ)
+    sblk = findfirst(isequal(fname), fnames(m))
+    if isnothing(sblk)
+        throw(ArgumentError("fname = $fname is not the name of a grouping factor"))
+    end
+    blks = sblk:(length(reterms) + full)
+    rowoffset, coloffset = 0, 0
+    val = (i=Int32[], j=Int32[], v=T[])
+    for i in blks, j in first(blks):i
+        Lblk = bmat[block(i, j)]
+        cblk = _coord(Lblk)
+        append!(val.i, cblk.i .+ Int32(rowoffset))
+        append!(val.j, cblk.j .+ Int32(coloffset))
+        append!(val.v, cblk.v)
+        if i == j
+            coloffset = 0
+            rowoffset += size(Lblk, 1)
+        else
+            coloffset += size(Lblk, 2)
+        end
+    end
+    return tril!(sparse(val.i, val.j, val.v))
+end
+
+function _triinds(n::Integer, uplo::Symbol)
+    inds = sizehint!(@NamedTuple{i::Int32, j::Int32}[], kp1choose2(n))
+    ul = uplo == :U
+    for j in Int32.(1:n)
+        for i in Int32.(ul ? (1:j) : (j:n))
+            push!(inds, (; i, j))
+        end
+    end
+    return Table(inds)
+end
+
+function _coord(A::LowerTriangular{T,Matrix{T}}) where {T}
+    tbl = _triinds(size(A, 2), :L)
+    v = [A[i, j] for (i, j) in tbl]
+    return Table(tbl; v)
+end
+
+function _coord(A::TriangularRFP{T}) where {T}
+    tbl = _triinds(size(A, 2), Symbol(A.uplo))
+    v = [A[i, j] for (i, j) in tbl]
+    return Table(tbl; v)
 end
 
 """
@@ -1169,32 +1369,21 @@ are to be included.
 
 `fname` specifies the first grouping factor to include. Blocks to the left of the block corresponding
  to `fname` are dropped. The default is the first, i.e., leftmost block and hence all blocks.
+
+ The matrix that is returned is lower-triangular but has not been wrapped in `LowerTriangular`.
 """
-function sparseL(
-    m::LinearMixedModel{T}; fname::Symbol=first(fnames(m)), full::Bool=false
-) where {T}
-    L, reterms = m.L, m.reterms
-    sblk = findfirst(isequal(fname), fnames(m))
-    if isnothing(sblk)
-        throw(ArgumentError("fname = $fname is not the name of a grouping factor"))
-    end
-    blks = sblk:(length(reterms) + full)
-    rowoffset, coloffset = 0, 0
-    val = (i=Int32[], j=Int32[], v=T[])
-    for i in blks, j in first(blks):i
-        Lblk = L[block(i, j)]
-        cblk = _coord(Lblk)
-        append!(val.i, cblk.i .+ Int32(rowoffset))
-        append!(val.j, cblk.j .+ Int32(coloffset))
-        append!(val.v, cblk.v)
-        if i == j
-            coloffset = 0
-            rowoffset += size(Lblk, 1)
-        else
-            coloffset += size(Lblk, 2)
-        end
-    end
-    return dropzeros!(tril!(sparse(val...)))
+function sparseL(m::LinearMixedModel; fname::Symbol=first(fnames(m)), full::Bool=false)
+    return dropzeros!(sparsemat(:L, m; fname, full))
+end
+
+"""
+    sparseA(m::LinearMixedModel; fname::Symbol=first(fnames(m)), full::Bool=false)
+
+Same as [`sparseL`](@ref) but returning the sparse lower triangle of the symmetric `A` matrix.
+Most of the time the result is wrapped as, e.g. `Symmetric(sparseM(m; full=true), :L)`
+"""
+function sparseA(m::LinearMixedModel; fname::Symbol=first(fnames(m)), full::Bool=false)
+    return sparsemat(:A, m; fname, full)
 end
 
 """
@@ -1304,14 +1493,16 @@ Update the blocked lower Cholesky factor, `m.L`, from `m.A` and `m.reterms` (use
 This is the crucial step in evaluating the objective, given a new parameter value.
 """
 function updateL!(m::LinearMixedModel{T}) where {T}
-    A, L, reterms = m.A, m.L, m.reterms
+    (; A, L, reterms) = m
     k = length(reterms)
     copyto!(last(m.L), last(m.A))  # ensure the fixed-effects:response block is copied
-    for j in eachindex(reterms) # pre- and post-multiply by Λ, add I to diagonal
+    for j in eachindex(reterms)    # pre- and post-multiply by Λ, add I to diagonal
         cj = reterms[j]
         diagind = kp1choose2(j)
-        copyscaleinflate!(L[diagind], A[diagind], cj)
-        for i in (j + 1):(k + 1)     # postmultiply column by Λ
+        LdH = L[diagind]
+        LdH = isa(LdH, LowerTriangular) ? Hermitian(LdH.data, :L) : Hermitian(LdH, :L)
+        copyscaleinflate!(LdH, A[diagind], cj)
+        for i in (j + 1):(k + 1)   # postmultiply column by Λ
             bij = block(i, j)
             rmulΛ!(copyto!(L[bij], A[bij]), cj)
         end
@@ -1321,17 +1512,17 @@ function updateL!(m::LinearMixedModel{T}) where {T}
     end
     for j in 1:(k + 1)             # blocked Cholesky
         Ljj = L[kp1choose2(j)]
+        LjjH = isa(Ljj, LowerTriangular) ? Hermitian(Ljj.data, :L) : Hermitian(Ljj, :L)
         for jj in 1:(j - 1)
-            rankUpdate!(Hermitian(Ljj, :L), L[block(j, jj)], -one(T), one(T))
+            rankUpdate!(LjjH, L[block(j, jj)], -one(T), one(T))
         end
-        cholUnblocked!(Ljj, Val{:L})
-        LjjT = isa(Ljj, Diagonal) ? Ljj : LowerTriangular(Ljj)
+        cholUnblocked!(LjjH)
         for i in (j + 1):(k + 1)
             Lij = L[block(i, j)]
             for jj in 1:(j - 1)
                 mul!(Lij, L[block(i, jj)], L[block(j, jj)]', -one(T), one(T))
             end
-            rdiv!(Lij, LjjT')
+            rdiv!(Lij, Ljj')
         end
     end
     return m
@@ -1343,7 +1534,7 @@ end
 Returns the estimate of σ², the variance of the conditional distribution of Y given B.
 """
 function varest(m::LinearMixedModel)
-    return isnothing(m.optsum.sigma) ? pwrss(m) / ssqdenom(m) : m.optsum.sigma
+    return isnothing(m.optsum.sigma) ? pwrss(m) / ssqdenom(m) : m.optsum.sigma^2
 end
 
 function StatsAPI.weights(m::LinearMixedModel)

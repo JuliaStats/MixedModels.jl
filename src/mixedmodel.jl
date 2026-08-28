@@ -71,7 +71,7 @@ Equality comparisons are used b/c small non-negative θ values are replaced by 0
 function issingular(
     m::MixedModel{T}, θ=m.θ; atol::Real=0, rtol::Real=atol > 0 ? 0 : √eps()
 ) where {T}
-    lb = [(pm[2] == pm[3]) ? zero(T) : T(-Inf) for pm in m.parmap]
+    lb = lowerbd(m)
     return _issingular(lb, θ; atol, rtol)
 end
 
@@ -113,10 +113,17 @@ StatsAPI.meanresponse(m::MixedModel) = mean(m.y)
 
 Returns the model matrix `X` for the fixed-effects parameters, as returned by [`coef`](@ref).
 
-This is always the full model matrix in the original column order and from a field in the model
-struct.  It should be copied if it is to be modified.
+This always allocates a copy. For full-rank models it copies from shared internal storage;
+for rank-deficient models it reconstructs the full pivoted matrix from stored parts.
+
+See also [`fullrankx`](@ref).
 """
-StatsAPI.modelmatrix(m::MixedModel) = m.feterm.x
+function StatsAPI.modelmatrix(m::MixedModel)
+    fe = m.feterm
+    xfr = getfield(fe, :fullrankx)
+    xrd = getfield(fe, :xrankdef)
+    return isempty(xrd) ? copy(xfr) : hcat(xfr, xrd)
+end
 
 StatsAPI.nobs(m::MixedModel) = length(m.y)
 

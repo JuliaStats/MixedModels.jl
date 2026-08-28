@@ -359,7 +359,11 @@ function StatsBase.confint(
     par = filter(collect(propertynames(tbl))) do k
         k = string(k)
         # σ is missing in models without a dispersion parameter
-        if k == "σ" && Missing <: eltype(tbl.σ)
+        Tσ = eltype(tbl.σ)
+        # If inference failed when constructing `tbl.σ`, we can't rely on the element
+        # type to know whether missing values may be present
+        if k == "σ" &&
+            ((Tσ === Any && any(ismissing, tbl.σ)) || (Tσ !== Any && Missing <: Tσ))
             return false
         end
         return !startswith(k, 'θ') && k != "obj"
@@ -561,7 +565,9 @@ function coefpvalues(bsamp::MixedModelFitCollection{T}) where {T}
         for (p, s) in zip(pairs(r.β), r.se)
             β = last(p)
             z = β / s
-            push!(result, NamedTuple{colnms}((i, first(p), β, s, z, 2normccdf(abs(z)))))
+            push!(
+                result, NamedTuple{colnms}((i, first(p), β, s, z, 2ccdf(Normal(), abs(z))))
+            )
         end
     end
     return result

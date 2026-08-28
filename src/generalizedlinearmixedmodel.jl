@@ -177,14 +177,17 @@ function StatsAPI.fit(
     tbl::Tables.ColumnTable,
     d::Distribution,
     l::Link=canonicallink(d);
-    wts=[],
+    weights=[],
+    wts=nothing,
     contrasts=Dict{Symbol,Any}(),
     offset=[],
     amalgamate=true,
     kwargs...,
 )
     return fit!(
-        GeneralizedLinearMixedModel(f, tbl, d, l; wts, offset, contrasts, amalgamate);
+        GeneralizedLinearMixedModel(
+            f, tbl, d, l; weights, wts, offset, contrasts, amalgamate
+        );
         kwargs...,
     )
 end
@@ -368,12 +371,21 @@ function GeneralizedLinearMixedModel(
     tbl::Tables.ColumnTable,
     d::Distribution,
     l::Link=canonicallink(d);
-    wts=[],
+    weights=[],
+    wts=nothing,
     offset=[],
     contrasts=Dict{Symbol,Any}(),
     amalgamate=true,
 )
-    if isa(d, Binomial) && isempty(wts)
+    if wts !== nothing
+        Base.depwarn(
+            "`wts` keyword argument is deprecated, use `weights` instead",
+            :GeneralizedLinearMixedModel,
+        )
+        weights = wts
+    end
+
+    if isa(d, Binomial) && isempty(weights)
         d = Bernoulli()
     end
     (isa(d, Normal) && isa(l, IdentityLink)) && throw(
@@ -386,13 +398,13 @@ function GeneralizedLinearMixedModel(
                  the authors gain a better understanding of those cases."""
     end
 
-    LMM = LinearMixedModel(f, tbl; contrasts, wts, amalgamate)
+    LMM = LinearMixedModel(f, tbl; contrasts, weights, amalgamate)
     y = copy(LMM.y)
     constresponse = all(==(first(y)), y)
     # the sqrtwts field must be the correct length and type but we don't know those
     # until after the model is constructed if wt is empty.  Because a LinearMixedModel
     # type is immutable, another one must be created.
-    if isempty(wts)
+    if isempty(weights)
         LMM = LinearMixedModel(
             LMM.formula,
             LMM.reterms,
@@ -421,10 +433,12 @@ function GeneralizedLinearMixedModel(
     # TODO: construct GLM by hand so that we skip collinearity checks
     # TODO: extend this so that we never fit a GLM when initializing from LMM
     dofit = size(X, 2) != 0 # GLM.jl kwarg
+    wtkwarg = pkgversion(GLM) >= v"1.9.1" ? :weights : :wts
+    weights = convert(Vector{T}, weights)
     gl = glm(X, y, d, l;
-        wts=convert(Vector{T}, wts),
+        wtkwarg => pkgversion(GLM) >= v"1.9.1" ? FrequencyWeights(weights) : weights,
         dofit,
-        offset=convert(Vector{T}, offset))
+        :offset => convert(Vector{T}, offset))
     β = dofit ? coef(gl) : T[]
     u = [fill(zero(eltype(y)), vsize(t), nlevs(t)) for t in LMM.reterms]
     # vv is a template vector used to initialize fields for AGQ
@@ -441,7 +455,7 @@ function GeneralizedLinearMixedModel(
         zero.(u),
         gl.rr,
         similar(y),
-        oftype(y, wts),
+        weights,
         similar(vv),
         similar(vv),
         similar(vv),
@@ -523,6 +537,14 @@ function StatsAPI.loglikelihood(m::GeneralizedLinearMixedModel{T}) where {T}
     return accum - (mapreduce(u -> sum(abs2, u), +, m.u) + logdet(m)) / 2
 end
 
+"""
+    lowerbd(m::GeneralizedLinearMixedModel)
+
+Return the vector of _canonical_ lower bounds on the parameters, `θ`.
+
+Note that this method does not distinguish between constrained optimization and
+unconstrained optimization with post-fit canonicalization.
+"""
 lowerbd(m::GeneralizedLinearMixedModel) = lowerbd(m.LMM)
 
 # Base.Fix1 doesn't forward kwargs
@@ -590,7 +612,13 @@ optimized and `β` is held fixed.
 Passing `verbose = true` provides verbose output of the iterations.
 """
 function pirls!(
-    m::GeneralizedLinearMixedModel{T}, varyβ=false, verbose=false; maxiter::Integer=10
+    m::GeneralizedLinearMixedModel{T},
+    varyβ=false,
+    verbose=false;
+    maxiter::Integer=m.LMM.optsum.pirls_maxiter,
+    maxhalfstep::Integer=m.LMM.optsum.pirls_maxhalfstep,
+    ftol_rel::Real=m.LMM.optsum.pirls_ftol_rel,
+    ftol_abs::Real=m.LMM.optsum.pirls_ftol_abs,
 ) where {T}
     u₀ = m.u₀
     u = m.u
@@ -623,9 +651,9 @@ function pirls!(
         nhalf = 0
         while obj > obj₀
             nhalf += 1
-            if nhalf > 10
+            if nhalf > maxhalfstep
                 if iter < 2
-                    throw(ErrorException("number of averaging steps > 10"))
+                    throw(ErrorException("number of averaging steps > $maxhalfstep"))
                 end
                 break
             end
@@ -636,7 +664,7 @@ function pirls!(
             obj = deviance!(m)
             verbose && println(lpad(nhalf, 8), ", ", obj)
         end
-        if isapprox(obj, obj₀; atol=0.00001)
+        if isapprox(obj, obj₀; rtol=ftol_rel, atol=ftol_abs)
             break
         end
         copyto!.(u₀, u)
@@ -758,7 +786,7 @@ function Base.show(
     println(io)
 
     println(io, "\nFixed-effects parameters:")
-    return show(io, coeftable(m))
+    return show(io, MIME("text/plain"), coeftable(m))
 end
 
 Base.show(io::IO, m::GeneralizedLinearMixedModel) = show(io, MIME("text/plain"), m)

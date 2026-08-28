@@ -17,7 +17,12 @@ end
 # FIXME: find out a way to get the stdlib to do this
 function Base.show(io::IO, ::MIME"text/html", x::OptSummary)
     out = Markdown.html(_markdown(x))
-    out = replace(out, r"&#96;([^[:space:]]*)&#96;" => s"<code>\1</code>")
+    # replace paired backticks and HTML escape code for it (&#96;) with <code> tag
+    out = replace(
+        out,
+        r"(?<delim>&#96;|`)(?<contents>[^[:space:]]*)\g<delim>" =>
+            s"<code>\g<contents></code>",
+    )
     out = replace(out, r"\*\*(.*?)\*\*" => s"<b>\1</b>")
     return println(io, out)
 end
@@ -203,6 +208,10 @@ function _markdown(s::OptSummary)
         optimizer_settings...,
         ["xtol_zero_abs", string(s.xtol_zero_abs)],
         ["ftol_zero_abs", string(s.ftol_zero_abs)],
+        ["pirls_maxiter", string(s.pirls_maxiter)],
+        ["pirls_ftol_rel", string(s.pirls_ftol_rel)],
+        ["pirls_ftol_abs", string(s.pirls_ftol_abs)],
+        ["pirls_maxhalfstep", string(s.pirls_maxhalfstep)],
         ["**Result**", ""],
         ["Function evaluations", string(s.feval)],
         ["Final parameter vector", "$(round.(s.final; digits=4))"],

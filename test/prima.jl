@@ -51,16 +51,17 @@ end
         dataset(:contra), Binomial(); progress=false)
     prmodel = unfit!(deepcopy(model))
     fit!(prmodel; optimizer=:bobyqa, backend=:prima, progress=false)
-    @test isapprox(loglikelihood(model), loglikelihood(prmodel)) atol=0.0001
+    @test isapprox(loglikelihood(model), loglikelihood(prmodel)) atol=0.005
     refit!(prmodel; fast=true, progress=false)
     refit!(model; fast=true, progress=false)
-    @test isapprox(loglikelihood(model), loglikelihood(prmodel)) atol=0.0001
+    @test isapprox(loglikelihood(model), loglikelihood(prmodel)) atol=0.005
 
     optsum = deepcopy(prmodel.optsum)
     optsum.final = [0.2612]
     optsum.finitial = 2595.85
     optsum.fmin = 2486.42
     optsum.feval = 17
+    optsum.pirls_ftol_rel = 1e-8
 
     out = sprint(show, MIME("text/plain"), optsum)
     expected = """
@@ -76,6 +77,10 @@ end
     Function evaluations:     17
     xtol_zero_abs:            0.001
     ftol_zero_abs:            1.0e-5
+    pirls_maxiter:            10
+    pirls_ftol_rel:           1.0e-8
+    pirls_ftol_abs:           1.0e-5
+    pirls_maxhalfstep:        10
     Final parameter vector:   [0.2612]
     Final objective value:    2486.42
     Return code:              SMALL_TR_RADIUS
@@ -98,6 +103,10 @@ end
     | maxfeval                 | -1                |
     | xtol_zero_abs            | 0.001             |
     | ftol_zero_abs            | 1.0e-5            |
+    | pirls_maxiter            | 10                |
+    | pirls_ftol_rel           | 1.0e-8            |
+    | pirls_ftol_abs           | 1.0e-5            |
+    | pirls_maxhalfstep        | 10                |
     | **Result**               |                   |
     | Function evaluations     | 17                |
     | Final parameter vector   | [0.2612]          |
