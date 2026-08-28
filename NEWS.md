@@ -1,3 +1,7 @@
+MixedModels v5.9.0 Release Notes
+================================
+- `predict` now accepts a `β` keyword argument for supplying a custom fixed-effects coefficient vector instead of the model's own fitted estimates. As with `simulate!`, `β` may be given either as a pivoted, full-rank vector (cf. `fixef`) or an unpivoted, full-dimension vector (cf. `coef`), with entries for redundant columns ignored. The default behavior (using the model's own estimates) is unchanged. [#916]
+
 MixedModels v5.8.4 Release Notes
 ================================
 - Remove dependency in `docs/Project.toml` on `MixedModelsSerialization` which was holding up other package version updates. [#915]
@@ -807,3 +811,4 @@ Package dependencies
 [#910]: https://github.com/JuliaStats/MixedModels.jl/issues/910
 [#911]: https://github.com/JuliaStats/MixedModels.jl/issues/911
 [#915]: https://github.com/JuliaStats/MixedModels.jl/issues/915
+[#916]: https://github.com/JuliaStats/MixedModels.jl/issues/916
