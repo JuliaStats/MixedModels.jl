@@ -775,7 +775,7 @@ function σvals!(v::AbstractVector{T}, λ::LowerTriangular{T}, sc::Number) where
 end
 
 function σvals!(v::AbstractVector{T}, λ::Diagonal{T}, sc::Number) where {T}
-    return rmul!(copyto!(v, λ.diag), sc)
+    return rmul!(map!(abs, v, λ.diag), sc)
 end
 
 function σs(A::ReMat{T,1}, sc::Number) where {T}
@@ -795,7 +795,7 @@ end
 function σvals(λ::Diagonal, sc::Number)
     v = λ.diag
     return ntuple(length(v)) do i
-        @inbounds sc * v[i]
+        @inbounds sc * abs(v[i])
     end
 end
 

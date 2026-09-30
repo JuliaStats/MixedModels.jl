@@ -816,6 +816,25 @@ end
             return r.ρ1 ≈ sign(r.θ1) * r.θ2 / hypot(r.θ2, r.θ3)
         end
 
+        @testset "zerocorr" begin
+            # λ is Diagonal and the profiled θ can become negative
+            slp = MixedModels.dataset(:sleepstudy)
+            mzc = fit(MixedModel,
+                @formula(reaction ~ 1 + days + zerocorr(1 + days | subj)), slp;
+                progress=false)
+            # the same model with two scalar random-effects terms
+            msc = fit(MixedModel,
+                @formula(reaction ~ 1 + days + (1 | subj) + (0 + days | subj)), slp;
+                amalgamate=false, progress=false)
+            przc = @suppress profile(mzc)
+            @test all(r -> r.σ1 ≥ 0 && r.σ2 ≥ 0, przc.tbl)
+            cizc = confint(przc)
+            cisc = @suppress confint(profile(msc))
+            @test collect(cizc.par) == collect(cisc.par) == [:β1, :β2, :σ, :σ1, :σ2]
+            @test cizc.lower.values ≈ cisc.lower.values atol = 1.e-3
+            @test cizc.upper.values ≈ cisc.upper.values atol = 1.e-3
+        end
+
         @testset "REML" begin
             m = refit!(deepcopy(last(models(:sleepstudy))); progress=false, REML=true)
             # β is integrated out of the REML criterion, so there is no profile over β
