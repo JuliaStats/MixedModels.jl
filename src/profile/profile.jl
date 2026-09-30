@@ -40,7 +40,7 @@ function profile(m::LinearMixedModel; threshold=4)
     REML = m.optsum.REML
     REML && @warn(
         "The fixed-effects coefficients are integrated out of the REML criterion and " *
-        "are not profiled. Refit the model with `REML=false` to profile them."
+            "are not profiled. Refit the model with `REML=false` to profile them."
     )
     fitlog = copy(m.optsum.fitlog)
     final = copy(m.optsum.final)
