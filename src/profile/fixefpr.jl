@@ -52,8 +52,6 @@ function FeProfile(m::LinearMixedModel, tc::TableColumns, j::Integer)
         );
         progress=false,
     )
-    # not sure this next call makes sense - should the second argument be m.optsum.final?
-    copyto!(mnew.optsum.initial, mnew.optsum.final)
     return FeProfile(mnew, tc, y₀, xⱼ, j)
 end
 
@@ -61,7 +59,9 @@ function betaprofile!(
     pr::FeProfile{T}, tc::TableColumns{T}, βⱼ::T, j::Integer, obj::T, neg::Bool
 ) where {T}
     prm = pr.m
-    refit!(prm, mul!(copyto!(prm.y, pr.y₀), pr.xⱼ, βⱼ, -1, 1); progress=false)
+    refit!(
+        prm, mul!(copyto!(prm.y, pr.y₀), pr.xⱼ, βⱼ, -1, 1); progress=false, warm_start=true
+    )
     (; positions, v, corrpos) = tc
     v[1] = (-1)^neg * sqrt(prm.objective - obj)
     getθ!(view(v, positions[:θ]), prm)
@@ -85,6 +85,7 @@ function profileβj!(
     pnm = (; p=sym)
     j = parsej(sym)
     prj = FeProfile(m, tc, j)
+    θ̂ = m.θ   # also the estimate of θ for prj at βⱼ = β̂ⱼ
     # j indexes the pivoted coefficients but stderror is in the original (unpivoted) order
     β = fixef(m)
     st = stderror(m)[pivot(m)[j]] * 0.5
@@ -99,6 +100,7 @@ function profileβj!(
         bb -= st
     end
     reverse!(tbl)
+    copyto!(prj.m.optsum.final, θ̂)   # warm start the increasing values of βⱼ from θ̂
     bb = β[j] + st
     while true
         ζ = betaprofile!(prj, tc, bb, j, objective, false)

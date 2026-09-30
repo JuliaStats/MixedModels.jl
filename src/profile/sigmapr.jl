@@ -13,7 +13,7 @@ function refitσ!(
     m::LinearMixedModel{T}, σ, tc::TableColumns{T}, obj::T, neg::Bool
 ) where {T}
     m.optsum.sigma = σ
-    refit!(m; progress=false)
+    refit!(m; progress=false, warm_start=true)
     return mkrow!(tc, m, _ζ(m.objective, obj, neg, :σ, σ))
 end
 
@@ -27,7 +27,7 @@ function _facsz(m::LinearMixedModel{T}, σ::T, obj::T) where {T}
     expi64 = exp(i64)     # help the compiler infer it is a constant
     σv = σ * expi64
     m.optsum.sigma = σv
-    ζ = _ζ(refit!(m; progress=false).objective, obj, false, :σ, σv)
+    ζ = _ζ(refit!(m; progress=false, warm_start=true).objective, obj, false, :σ, σv)
     iszero(ζ) && throw(
         ArgumentError(
             "cannot determine the step size for profiling σ: " *
@@ -51,8 +51,7 @@ function profileσ(m::LinearMixedModel{T}, tc::TableColumns{T}; threshold=4) whe
     isnothing(optsum.sigma) ||
         throw(ArgumentError("Can't profile σ, which is fixed at $(optsum.sigma)"))
     θ = copy(optsum.final)
-    θinitial = copy(optsum.initial)
-    copyto!(optsum.initial, optsum.final)
+    θinitial = copy(optsum.initial)   # overwritten by the warm starts in refit!
     obj = optsum.fmin
     σ = m.σ
     pnm = (p=:σ,)
@@ -66,6 +65,7 @@ function profileσ(m::LinearMixedModel{T}, tc::TableColumns{T}; threshold=4) whe
         σv /= facsz
     end
     reverse!(tbl)
+    copyto!(optsum.final, θ)   # warm start the increasing values of σ from θ̂
     σv = σ * facsz
     while true
         newrow = merge(pnm, refitσ!(m, σv, tc, obj, false))
@@ -75,6 +75,7 @@ function profileσ(m::LinearMixedModel{T}, tc::TableColumns{T}; threshold=4) whe
     end
     optsum.sigma = nothing
     optsum.initial = θinitial
+    copyto!(optsum.final, θ)
     updateL!(setθ!(m, θ))
     σv = [r.σ for r in tbl]
     ζv = [r.ζ for r in tbl]

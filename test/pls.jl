@@ -816,6 +816,24 @@ end
             return r.ρ1 ≈ sign(r.θ1) * r.θ2 / hypot(r.θ2, r.θ3)
         end
 
+        @testset "warm starts" begin
+            m = deepcopy(last(models(:sleepstudy)))
+            θ̂ = m.θ
+            tc = MixedModels.TableColumns(m)
+            # the reduced model for a fixed-effects profile starts from θ̂ of the full model
+            prj = MixedModels.FeProfile(m, tc, 2)
+            @test first(prj.m.optsum.fitlog.θ) == θ̂
+            # and each point on the profile starts from the previous estimate
+            θprev = copy(prj.m.optsum.final)
+            MixedModels.betaprofile!(prj, tc, fixef(m)[2] + stderror(m)[2], 2, m.objective,
+                false)
+            @test first(prj.m.optsum.fitlog.θ) == θprev
+            θprev = copy(m.optsum.final)
+            MixedModels.refitσ!(m, 1.05 * m.σ, tc, m.objective, false)
+            @test first(m.optsum.fitlog.θ) == θprev
+            m.optsum.sigma = nothing
+        end
+
         @testset "ρ with a row of zeros in λ" begin
             m = deepcopy(last(models(:sleepstudy)))
             θ = copy(m.θ)
