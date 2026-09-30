@@ -1140,6 +1140,24 @@ end
     @test typeof(re) == Vector{AbstractReMat{Float64}}
 end
 
+@testset "refit! with warm_start" begin
+    m = deepcopy(last(models(:sleepstudy)))
+    θ̂ = copy(m.optsum.final)
+    MixedModels.unfit!(m; warm_start=true)
+    @test m.optsum.initial == θ̂
+    @test m.optsum.final == [1.0, 0.0, 1.0]   # final is reset to the defaults
+    fit!(m; progress=false)
+    m.optsum.sigma = 1.05 * m.σ
+    θ̂ = copy(m.optsum.final)
+    refit!(m; warm_start=true, progress=false)
+    @test first(m.optsum.fitlog.θ) == θ̂
+    # a user-supplied initial_step must not be modified
+    step = fill(0.1, length(θ̂))
+    m.optsum.initial_step = step
+    refit!(m; progress=false)
+    @test step == fill(0.1, length(θ̂))
+end
+
 @testset "recovery from misscaling" begin
     model = fit(MixedModel,
         @formula(reaction ~ 1 + days + zerocorr(1 + fulldummy(days) | subj)),
