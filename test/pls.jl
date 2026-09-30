@@ -811,6 +811,10 @@ end
             atol=1.e-3)
         @test first(only(filter(r -> r.p == :σ && iszero(r.ζ), pr.tbl)).σ) ==
             last(models(:sleepstudy)).σ
+        # in every row, ρ1 must be the correlation implied by λ = [θ1 0; θ2 θ3]
+        @test all(tbl) do r
+            return r.ρ1 ≈ sign(r.θ1) * r.θ2 / hypot(r.θ2, r.θ3)
+        end
 
         @testset "REML" begin
             m = refit!(deepcopy(last(models(:sleepstudy))); progress=false, REML=true)

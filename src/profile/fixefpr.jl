@@ -62,11 +62,15 @@ function betaprofile!(
 ) where {T}
     prm = pr.m
     refit!(prm, mul!(copyto!(prm.y, pr.y₀), pr.xⱼ, βⱼ, -1, 1); progress=false)
-    (; positions, v) = tc
+    (; positions, v, corrpos) = tc
     v[1] = (-1)^neg * sqrt(prm.objective - obj)
     getθ!(view(v, positions[:θ]), prm)
     v[first(positions[:σ])] = prm.σ
     σvals!(view(v, positions[:σs]), prm)
+    if length(corrpos) > 0
+        ρvals!(view(v, positions[:ρs]), corrpos, prm)
+        setθ!(prm, view(v, positions[:θ]))  # ρvals! normalizes the rows of λ in place
+    end
     β = fixef(prm)
     bpos = 0
     for (i, p) in enumerate(positions[:β])
