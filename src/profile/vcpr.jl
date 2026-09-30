@@ -59,7 +59,7 @@ function profileσs!(val::NamedTuple, tc::TableColumns{T}; nzlb=1.0e-8) where {T
             tbl = [merge(pnm, zetazero)]
             xtrms = extrema(gpsym, val.tbl)
             lub = log(last(xtrms))
-            llb = log(max(first(xtrms), T(0.01) * lub))
+            llb = log(max(first(xtrms), T(0.01) * last(xtrms)))
             for lx in LinRange(lub, llb, 15)  # start at the upper bound where things are more stable
                 x = exp(lx)
                 obj, xmin = profilevc(m, x, r)

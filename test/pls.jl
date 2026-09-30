@@ -189,6 +189,21 @@ end
         @test iszero(sigma10row.σ1)
         sigma1tbl = Table(filter(r -> r.p == :σ1, dspr02.tbl))
         @test all(≥(0), sigma1tbl.σ1)
+
+        # the profile should be equivariant under rescaling of the response,
+        # including when the upper end of the σ1 grid is less than 1
+        ds2 = columntable(MixedModels.dataset(:dyestuff2))
+        fmsc = fit(
+            MixedModel, @formula(yield ~ 1 + (1 | batch)),
+            merge(ds2, (; yield=ds2.yield ./ 10)); progress=false,
+        )
+        cisc = @suppress confint(profile(fmsc))
+        ci02 = confint(dspr02)
+        @test cisc.par == ci02.par
+        for s in cisc.par
+            @test cisc.lower[s] ≈ ci02.lower[s] / 10 atol = 1.e-6 rtol = 1.e-3
+            @test cisc.upper[s] ≈ ci02.upper[s] / 10 atol = 1.e-6 rtol = 1.e-3
+        end
     end
 end
 
