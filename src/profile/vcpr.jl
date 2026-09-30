@@ -24,7 +24,7 @@ function profilevc(m::LinearMixedModel{T}, val::T, rowj::AbstractVector{T}) wher
 end
 
 """
-     profileσs!(val::NamedTuple, tc::TableColumns{T}; nzlb=1.0e-8) where {T}
+     profileσs!(val::NamedTuple, tc::TableColumns{T}) where {T}
 
 Profile the variance components.
 
@@ -32,14 +32,12 @@ Profile the variance components.
     This method is called by `profile` and currently considered internal.
     As such, it may change or disappear in a future release without being considered breaking.
 """
-function profileσs!(val::NamedTuple, tc::TableColumns{T}; nzlb=1.0e-8) where {T}
+function profileσs!(val::NamedTuple, tc::TableColumns{T}) where {T}
     m = val.m
-    (; λ, σ, β, optsum, parmap, reterms) = m
+    (; optsum, reterms) = m
     isnothing(optsum.sigma) || throw(ArgumentError("Can't profile vc's when σ is fixed"))
     (; initial, final, fmin) = optsum
-    # lowerbd .+= T(nzlb)                       # lower bounds must be > 0 b/c θ's occur in denominators
     saveinitial = copy(initial)
-    # copyto!(initial, max.(final, lowerbd))
     copyto!(initial, final)
     zetazero = mkrow!(tc, m, zero(T))         # parameter estimates
     vcnms = filter(keys(first(val.tbl))) do sym

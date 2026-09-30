@@ -47,7 +47,7 @@ Return a Table of the profile of `σ` for model `m`.  The profile extends to whe
     As such, it may change or disappear in a future release without being considered breaking.
 """
 function profileσ(m::LinearMixedModel{T}, tc::TableColumns{T}; threshold=4) where {T}
-    (; σ, optsum) = m
+    optsum = m.optsum
     isnothing(optsum.sigma) ||
         throw(ArgumentError("Can't profile σ, which is fixed at $(optsum.sigma)"))
     θ = copy(optsum.final)

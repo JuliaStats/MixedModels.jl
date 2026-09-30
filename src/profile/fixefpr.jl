@@ -3,7 +3,7 @@ struct FeProfile{T<:AbstractFloat}  # derived model with the j'th fixed-effects 
     tc::TableColumns{T}
     y₀::Vector{T}                   # original response vector
     xⱼ::Vector{T}                   # the column that was removed from X
-    j::Integer
+    j::Int
 end
 
 """
