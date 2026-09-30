@@ -37,6 +37,23 @@ end
     @test prmodel.optsum.fitlog.θ[begin] == [1.0]
 end
 
+@testset "optimization starts from initial" begin
+    m = LinearMixedModel(@formula(reaction ~ 1 + days + (1 + days | subj)),
+        dataset(:sleepstudy))
+    m.optsum.backend = :prima
+    m.optsum.optimizer = :bobyqa
+    θ₀ = [0.9, 0.02, 0.2]
+    copyto!(m.optsum.initial, θ₀)   # m.optsum.final is still the default
+    fit!(m; progress=false)
+    @test first(m.optsum.fitlog.θ) == θ₀
+
+    gm = GeneralizedLinearMixedModel(@formula(use ~ 1 + urban + (1 | urban & dist)),
+        dataset(:contra), Bernoulli())
+    copyto!(gm.optsum.initial, [0.5])
+    fit!(gm; fast=true, optimizer=:bobyqa, backend=:prima, progress=false)
+    @test first(gm.optsum.fitlog.θ) == [0.5]
+end
+
 @testset "failure" begin
     unfit!(prmodel)
     prmodel.optsum.optimizer = :bobyqa
