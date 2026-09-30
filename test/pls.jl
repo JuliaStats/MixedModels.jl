@@ -816,6 +816,17 @@ end
             return r.ρ1 ≈ sign(r.θ1) * r.θ2 / hypot(r.θ2, r.θ3)
         end
 
+        @testset "ρ with a row of zeros in λ" begin
+            m = deepcopy(last(models(:sleepstudy)))
+            θ = copy(m.θ)
+            θ[1] = 0   # the first row of λ is now all zeros
+            updateL!(setθ!(m, θ))
+            tc = MixedModels.TableColumns(m)
+            row = MixedModels.mkrow!(tc, m, 0.0)
+            @test iszero(row.ρ1)   # as in `rownormalize`
+            @test m.θ == θ         # λ must not be modified
+        end
+
         @testset "zerocorr" begin
             # λ is Diagonal and the profiled θ can become negative
             slp = MixedModels.dataset(:sleepstudy)

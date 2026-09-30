@@ -76,11 +76,8 @@ function mkrow!(tc::TableColumns{T,N}, m::LinearMixedModel{T}, ζ::T) where {T,N
     fixef!(view(v, positions[:β]), m)
     v[first(positions[:σ])] = m.σ
     σvals!(view(v, positions[:σs]), m)
-    getθ!(view(v, positions[:θ]), m)  # must do this first to preserve a copy
-    if length(corrpos) > 0
-        ρvals!(view(v, positions[:ρs]), corrpos, m)
-        setθ!(m, view(v, positions[:θ]))
-    end
+    getθ!(view(v, positions[:θ]), m)
+    length(corrpos) > 0 && ρvals!(view(v, positions[:ρs]), corrpos, m)
     return NamedTuple{cnames,NTuple{N,T}}((v...,))
 end
 
@@ -151,21 +148,13 @@ function ρvals!(
     v::AbstractVector{T}, corrpos::Vector{NTuple{3,Int}}, m::LinearMixedModel{T}
 ) where {T}
     reterms = m.reterms
-    lasti = 1
-    λ = first(reterms).λ
-    for r in eachrow(λ)
-        normalize!(r)
-    end
-    for (ii, pos) in enumerate(corrpos)
-        i, j, k = pos
-        if lasti ≠ i
-            λ = reterms[i].λ
-            for r in eachrow(λ)
-                normalize!(r)
-            end
-            lasti = i
-        end
-        v[ii] = dot(view(λ, j, :), view(λ, k, :))
+    for (ii, (i, j, k)) in enumerate(corrpos)
+        λ = reterms[i].λ
+        rowj = view(λ, j, :)
+        rowk = view(λ, k, :)
+        nrm = norm(rowj) * norm(rowk)
+        # a row of zeros has no defined correlation; use zero, as in `rownormalize`
+        v[ii] = iszero(nrm) ? zero(T) : dot(rowj, rowk) / nrm
     end
     return v
 end
