@@ -181,6 +181,10 @@ end
             @test_throws ArgumentError MixedModels._facsz(m, σ̂, f0 + 1)
             m.optsum.sigma = nothing
             refit!(m; progress=false)
+            prj = MixedModels.FeProfile(m, tc, 1)
+            @test_throws ArgumentError MixedModels.betaprofile!(
+                prj, tc, only(fixef(m)), 1, m.objective + 1, false
+            )
             m.optsum.fmin += 0.01   # larger than the increase at the first step in θ
             val = (; m, tbl=[], fwd=Dict{Symbol,Any}(), rev=Dict{Symbol,Any}())
             @test_throws ArgumentError MixedModels.profileθj!(val, :θ1, tc)

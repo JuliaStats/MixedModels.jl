@@ -62,8 +62,8 @@ function betaprofile!(
     refit!(
         prm, mul!(copyto!(prm.y, pr.y₀), pr.xⱼ, βⱼ, -1, 1); progress=false, warm_start=true
     )
-    (; positions, v, corrpos) = tc
-    v[1] = (-1)^neg * sqrt(prm.objective - obj)
+    (; cnames, positions, v, corrpos) = tc
+    v[1] = _ζ(prm.objective, obj, neg, cnames[positions[:β][j]], βⱼ)
     getθ!(view(v, positions[:θ]), prm)
     v[first(positions[:σ])] = prm.σ
     σvals!(view(v, positions[:σs]), prm)
