@@ -40,9 +40,17 @@ function FeProfile(m::LinearMixedModel, tc::TableColumns, j::Integer)
     xⱼ = Xy[:, j]
     feterm = FeTerm(Xy[:, notj], m.feterm.cnames[notj])
     reterms = [copy(ret) for ret in m.reterms]
+    # the shallow copies share wtz with m; reset it so that reweighting
+    # in the constructor allocates new storage instead of overwriting m's
+    for ret in reterms
+        ret.wtz = ret.z
+    end
     # the columns of Xy are pivoted, so use fixef (pivoted) and not coef (unpivoted)
     mnew = fit!(
-        LinearMixedModel(y₀ - xⱼ * fixef(m)[j], feterm, reterms, m.formula); progress=false
+        LinearMixedModel(
+            y₀ - xⱼ * fixef(m)[j], feterm, reterms, m.formula, abs2.(m.sqrtwts)
+        );
+        progress=false,
     )
     # not sure this next call makes sense - should the second argument be m.optsum.final?
     copyto!(mnew.optsum.initial, mnew.optsum.final)

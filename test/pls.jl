@@ -1066,6 +1066,26 @@ end
     @test vcov(m2) ≈
         [0.9293281284592235 -2.5575260810649962; -2.5575260810649962 13.18393695723575] atol =
         1.e-4
+
+    @testset "fixed-effects profile" begin
+        slp = columntable(MixedModels.dataset(:sleepstudy))
+        w = 0.5 .+ rand(MersenneTwister(42), length(slp.days))
+        m = fit(MixedModel, @formula(reaction ~ 1 + days + (1 + days | subj)), slp;
+            weights=w, progress=false)
+        wtz = copy(first(m.reterms).wtz)
+        tc = MixedModels.TableColumns(m)
+        # at βⱼ = β̂ⱼ the reduced model must reproduce the objective of the full model
+        pr2 = MixedModels.FeProfile(m, tc, 2)
+        @test pr2.m.objective ≈ m.objective
+        # away from β̂ⱼ it must agree with fitting the response shifted by xⱼβⱼ
+        b = fixef(m)[2] + 2 * stderror(m)[2]
+        MixedModels.betaprofile!(pr2, tc, b, 2, m.objective, false)
+        shifted = fit(MixedModel, @formula(yb ~ 1 + (1 + days | subj)),
+            merge(slp, (; yb=slp.reaction .- b .* slp.days)); weights=w, progress=false)
+        @test pr2.m.objective ≈ shifted.objective rtol = 1.e-6
+        # profiling must not modify the weighted model matrices of the original model
+        @test first(m.reterms).wtz == wtz
+    end
 end
 
 @testset "unifying ReMat eltypes" begin
