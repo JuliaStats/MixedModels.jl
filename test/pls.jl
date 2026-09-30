@@ -914,6 +914,35 @@ end
     piv = model.feterm.piv
     r = model.feterm.rank
     @test coefnames(model)[piv][1:r] == fixefnames(model)
+
+    @testset "profile with non-trivial pivot" begin
+        slp = columntable(MixedModels.dataset(:sleepstudy))
+        slp = merge(
+            slp,
+            (; d2=2 .* slp.days, noise=randn(MersenneTwister(2), length(slp.days))),
+        )
+        # days is collinear with d2 and is pivoted behind noise
+        model = @suppress fit(
+            MixedModel, @formula(reaction ~ 1 + d2 + days + noise + (1 | subj)), slp;
+            progress=false,
+        )
+        @test model.feterm.piv == [1, 2, 4, 3]
+        tc = MixedModels.TableColumns(model)
+        for j in 1:rank(model)
+            # at βⱼ = β̂ⱼ the reduced model must reproduce the objective of the full model
+            @test MixedModels.FeProfile(model, tc, j).m.objective ≈ model.objective
+        end
+        fullrank = fit(
+            MixedModel, @formula(reaction ~ 1 + d2 + noise + (1 | subj)), slp;
+            progress=false,
+        )
+        ci = @suppress confint(profile(model))
+        cifr = @suppress confint(profile(fullrank))
+        for s in (:β1, :β2, :β3)
+            @test ci.lower[s] ≈ cifr.lower[s] rtol = 1.e-4
+            @test ci.upper[s] ≈ cifr.upper[s] rtol = 1.e-4
+        end
+    end
 end
 
 @testset "coeftable" begin

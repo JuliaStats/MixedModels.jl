@@ -40,8 +40,9 @@ function FeProfile(m::LinearMixedModel, tc::TableColumns, j::Integer)
     xⱼ = Xy[:, j]
     feterm = FeTerm(Xy[:, notj], m.feterm.cnames[notj])
     reterms = [copy(ret) for ret in m.reterms]
+    # the columns of Xy are pivoted, so use fixef (pivoted) and not coef (unpivoted)
     mnew = fit!(
-        LinearMixedModel(y₀ - xⱼ * m.β[j], feterm, reterms, m.formula); progress=false
+        LinearMixedModel(y₀ - xⱼ * fixef(m)[j], feterm, reterms, m.formula); progress=false
     )
     # not sure this next call makes sense - should the second argument be m.optsum.final?
     copyto!(mnew.optsum.initial, mnew.optsum.final)
@@ -58,7 +59,7 @@ function betaprofile!(
     getθ!(view(v, positions[:θ]), prm)
     v[first(positions[:σ])] = prm.σ
     σvals!(view(v, positions[:σs]), prm)
-    β = prm.β
+    β = fixef(prm)
     bpos = 0
     for (i, p) in enumerate(positions[:β])
         v[p] = (i == j) ? βⱼ : β[(bpos += 1)]
@@ -70,12 +71,14 @@ function profileβj!(
     val::NamedTuple, tc::TableColumns{T,N}, sym::Symbol; threshold=4
 ) where {T,N}
     m = val.m
-    (; β, θ, σ, stderror, objective) = m
+    objective = m.objective
     (; cnames, v) = tc
     pnm = (; p=sym)
     j = parsej(sym)
     prj = FeProfile(m, tc, j)
-    st = stderror[j] * 0.5
+    # j indexes the pivoted coefficients but stderror is in the original (unpivoted) order
+    β = fixef(m)
+    st = stderror(m)[pivot(m)[j]] * 0.5
     bb = β[j] - st
     tbl = [merge(pnm, mkrow!(tc, m, zero(T)))]
     while true
