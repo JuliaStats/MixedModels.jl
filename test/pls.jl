@@ -422,6 +422,16 @@ end
     @test first(dre).refs == last(dre).refs
 end
 
+# a backend that counts the conditional optimizations in `profileθj!` and then uses NLopt
+@isdefined(PROFILEOBJ_CALLS) || const global PROFILEOBJ_CALLS = Ref(0)
+function MixedModels.profileobj!(
+    obj, m::LinearMixedModel{T}, θ::AbstractVector{T}, osj::MixedModels.OptSummary,
+    ::Val{:counting},
+) where {T}
+    PROFILEOBJ_CALLS[] += 1
+    return MixedModels.profileobj!(obj, m, θ, osj, Val(:nlopt))
+end
+
 @testset "sleep" begin
     fm = last(models(:sleepstudy))
     A11 = first(fm.A)
@@ -806,6 +816,17 @@ end
             m = refit!(deepcopy(last(models(:sleepstudy))); progress=false, REML=true)
             ci = @suppress confint(profile(m))
             @test all(splat(<), zip(ci.lower, ci.upper))
+        end
+
+        @testset "one conditional optimization per θ row" begin
+            m = deepcopy(last(models(:sleepstudy)))
+            m.optsum.backend = :counting
+            tc = MixedModels.TableColumns(m)
+            val = (; m, tbl=[], fwd=Dict{Symbol,Any}(), rev=Dict{Symbol,Any}())
+            PROFILEOBJ_CALLS[] = 0
+            @suppress MixedModels.profileθj!(val, :θ1, tc)
+            # every row except the one at the estimate requires a conditional optimization
+            @test PROFILEOBJ_CALLS[] == length(val.tbl) - 1
         end
     end
     @testset "confint" begin

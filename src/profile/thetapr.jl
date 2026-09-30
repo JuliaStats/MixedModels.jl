@@ -76,13 +76,7 @@ function profileθj!(
     copyto!(θ, final)
     θ[j] += δj
     while (ζold < threshold) && (length(tbl) < 120)
-        fval = profileobj!(obj, m, θ, osj)
-        if fval < fmin
-            @warn "Negative difference ", fval - fmin, " for ", sym, " at ", θ[j]
-            ζ = zero(T)
-        else
-            ζ = sqrt(profileobj!(obj, m, θ, osj) - fmin)
-        end
+        ζ = _ζ(profileobj!(obj, m, θ, osj), fmin, false, sym, θ[j])
         push!(tbl, merge(pnm, mkrow!(tc, m, ζ)))
         δj /= (2 * abs(ζ - ζold))
         ζold = ζ
