@@ -814,7 +814,11 @@ end
 
         @testset "REML" begin
             m = refit!(deepcopy(last(models(:sleepstudy))); progress=false, REML=true)
-            ci = @suppress confint(profile(m))
+            # β is integrated out of the REML criterion, so there is no profile over β
+            pr = @test_logs (:warn, r"REML") match_mode = :any profile(m)
+            @test !any(r -> startswith(string(r.p), 'β'), pr.tbl)
+            ci = confint(pr)
+            @test collect(ci.par) == [:σ, :σ1, :σ2]
             @test all(splat(<), zip(ci.lower, ci.upper))
         end
 

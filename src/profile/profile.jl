@@ -31,17 +31,27 @@ Return a `MixedModelProfile` for the objective of `m` with respect to the fixed-
 
 Profiling starts at the parameter estimate and continues until reaching a parameter bound or the absolute
 value of ζ exceeds `threshold`.
+
+For models fit by REML, the fixed-effects coefficients are not profiled because they are
+integrated out of the REML criterion. Refit the model by maximum likelihood to profile them.
 """
 function profile(m::LinearMixedModel; threshold=4)
     isfitted(m) || refit!(m; progress=false)
+    REML = m.optsum.REML
+    REML && @warn(
+        "The fixed-effects coefficients are integrated out of the REML criterion and " *
+        "are not profiled. Refit the model with `REML=false` to profile them."
+    )
     fitlog = copy(m.optsum.fitlog)
     final = copy(m.optsum.final)
     profile = try
         tc = TableColumns(m)
         val = profileσ(m, tc; threshold) # FIXME: defer creating the splines until the whole table is constructed
         objective!(m, final)   # restore the parameter estimates
-        for s in filter(s -> startswith(string(s), 'β'), keys(first(val.tbl)))
-            profileβj!(val, tc, s; threshold)
+        if !REML
+            for s in filter(s -> startswith(string(s), 'β'), keys(first(val.tbl)))
+                profileβj!(val, tc, s; threshold)
+            end
         end
         copyto!(m.optsum.final, final)
         m.optsum.fmin = objective!(m, final)
