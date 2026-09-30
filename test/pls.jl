@@ -850,6 +850,18 @@ end
             @test m.θ == θ         # λ must not be modified
         end
 
+        @testset "σρs with a negative Diagonal λ" begin
+            m = fit(MixedModel,
+                @formula(reaction ~ 1 + days + zerocorr(1 + days | subj)),
+                MixedModels.dataset(:sleepstudy); progress=false)
+            σρ = MixedModels.σρs(m)
+            # flipping the signs of the diagonal of λ gives the same model
+            updateL!(setθ!(m, -m.θ))
+            σ̂ = collect(values(only(σρ).σ))
+            @test collect(values(only(MixedModels.σρs(m)).σ)) ≈ σ̂
+            @test collect(values(only(MixedModels.σs(m)))) ≈ σ̂
+        end
+
         @testset "zerocorr" begin
             # λ is Diagonal and the profiled θ can become negative
             slp = MixedModels.dataset(:sleepstudy)

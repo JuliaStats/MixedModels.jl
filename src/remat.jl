@@ -833,7 +833,7 @@ function _σρs(
 end
 
 function _σρs(λ::Diagonal{T}, sc::T, im::Matrix{Bool}, cnms::Vector{Symbol}) where {T}
-    dsc = sc .* λ.diag
+    dsc = sc .* abs.(λ.diag)
     k = length(dsc)
     σs = NamedTuple{(cnms...,)}(NTuple{k,T}(dsc))
     return NamedTuple{(:σ, :ρ)}((σs, ntuple(i -> -zero(T), (k * (k - 1)) >> 1)))
