@@ -165,6 +165,26 @@ end
         @test sigma0row.σ ≈ dspr01.m.σ
         @test sigma0row.β1 ≈ only(dspr01.m.β)
         @test sigma0row.θ1 ≈ only(dspr01.m.θ)
+
+        @testset "objective below fmin" begin
+            m = fit(MixedModel, @formula(yield ~ 1 + (1 | batch)), MixedModels.dataset(:dyestuff);
+                progress=false)
+            tc = MixedModels.TableColumns(m)
+            σ̂ = m.σ
+            # refitting at σ̂ is deterministic because refit! resets the initial value
+            m.optsum.sigma = σ̂
+            f0 = refit!(m; progress=false).objective
+            # differences within the tolerance are treated as zero
+            @test iszero(MixedModels.refitσ!(m, σ̂, tc, f0 + 1.e-10 * abs(f0), false).ζ)
+            # larger differences indicate that the fit had not converged
+            @test_throws ArgumentError MixedModels.refitσ!(m, σ̂, tc, f0 + 1, false)
+            @test_throws ArgumentError MixedModels._facsz(m, σ̂, f0 + 1)
+            m.optsum.sigma = nothing
+            refit!(m; progress=false)
+            m.optsum.fmin += 0.01   # larger than the increase at the first step in θ
+            val = (; m, tbl=[], fwd=Dict{Symbol,Any}(), rev=Dict{Symbol,Any}())
+            @test_throws ArgumentError MixedModels.profileθj!(val, :θ1, tc)
+        end
     end
 end
 

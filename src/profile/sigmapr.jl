@@ -14,7 +14,7 @@ function refitσ!(
 ) where {T}
     m.optsum.sigma = σ
     refit!(m; progress=false)
-    return mkrow!(tc, m, (neg ? -one(T) : one(T)) * sqrt(m.objective - obj))
+    return mkrow!(tc, m, _ζ(m.objective, obj, neg, :σ, σ))
 end
 
 """
@@ -25,8 +25,16 @@ Return a factor such that refitting `m` with `σ` at its current value times thi
 function _facsz(m::LinearMixedModel{T}, σ::T, obj::T) where {T}
     i64 = T(inv(64))
     expi64 = exp(i64)     # help the compiler infer it is a constant
-    m.optsum.sigma = σ * expi64
-    return exp(i64 / (2 * sqrt(refit!(m; progress=false).objective - obj)))
+    σv = σ * expi64
+    m.optsum.sigma = σv
+    ζ = _ζ(refit!(m; progress=false).objective, obj, false, :σ, σv)
+    iszero(ζ) && throw(
+        ArgumentError(
+            "cannot determine the step size for profiling σ: " *
+            "the objective does not change between σ = $(σ) and σ = $(σv)",
+        ),
+    )
+    return exp(i64 / (2 * ζ))
 end
 
 """

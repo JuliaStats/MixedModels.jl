@@ -85,6 +85,31 @@ function mkrow!(tc::TableColumns{T,N}, m::LinearMixedModel{T}, ζ::T) where {T,N
 end
 
 """
+    _ζ(objective::T, fmin::T, neg::Bool, sym::Symbol, value) where {T}
+
+Return the profile ζ, `sqrt(objective - fmin)`, negated if `neg` is `true` (i.e. when the
+profiled parameter is below its estimate).
+
+A negative difference within a small tolerance is treated as zero. A larger negative
+difference means that `fmin` is not the minimum of the objective and an `ArgumentError`
+naming the parameter `sym` and its `value` is thrown.
+"""
+function _ζ(objective::T, fmin::T, neg::Bool, sym::Symbol, value) where {T}
+    δ = objective - fmin
+    if δ < 0
+        δ ≥ -sqrt(eps(T)) * max(one(T), abs(fmin)) || throw(
+            ArgumentError(
+                "objective at $sym = $value is $(-δ) below the minimum $fmin; " *
+                "the model fit may not have converged. Try refitting with tighter tolerances.",
+            ),
+        )
+        δ = zero(T)
+    end
+    ζ = sqrt(δ)
+    return neg ? -ζ : ζ
+end
+
+"""
     parsej(sym::Symbol)
 
 Return the index from symbol names like `:θ1`, `:θ01`, etc.

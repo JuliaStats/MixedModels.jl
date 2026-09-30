@@ -52,7 +52,7 @@ function profileθj!(
     θj = final[j]
     θ[j] = θj - δj
     while (abs(ζold) < threshold) && θ[j] ≥ lbj && length(tbl) < 100  # decreasing values of θ[j]
-        ζ = sign(θ[j] - θj) * sqrt(profileobj!(obj, m, θ, osj) - fmin)
+        ζ = _ζ(profileobj!(obj, m, θ, osj), fmin, θ[j] < θj, sym, θ[j])
         push!(tbl, merge(pnm, mkrow!(tc, m, ζ)))
         θ[j] == lbj && break
         δj /= (4 * abs(ζ - ζold))   # take smaller steps when evaluating negative zeta
