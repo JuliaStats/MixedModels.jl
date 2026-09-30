@@ -33,12 +33,17 @@ function profileθj!(
     lbj = pmj[2] == pmj[3] ? zero(T) : T(-Inf)
     if length(θ) > 1      # set up the conditional optimization problem
         notj = deleteat!(collect(axes(final, 1)), j)
+        # With θ[j] held fixed, flipping the sign of a column of λ is no longer a symmetry
+        # of the objective, so the usual unconstrained optimization followed by `rectify!`
+        # could move to the mirror image of the model at -θ[j]. Constraining the diagonal
+        # elements to be non-negative through `abs` prevents this.
+        isdiagj = [(pm = m.parmap[i]; pm[2] == pm[3]) for i in notj]
         osj = optsumj(optsum, j)
         function obj(x, g=T[])
             isempty(g) ||
                 throw(ArgumentError("gradients are not evaluated by this objective"))
             for i in eachindex(notj, x)
-                @inbounds θ[notj[i]] = x[i]
+                @inbounds θ[notj[i]] = isdiagj[i] ? abs(x[i]) : x[i]
             end
             return objective!(m, θ)
         end

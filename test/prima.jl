@@ -32,6 +32,26 @@ prmodel.optsum.backend = :prima
     @test isapprox(loglikelihood(model), loglikelihood(prmodel)) atol=1.e-5
 end
 
+@testset "θ profile with an off-diagonal θ" begin
+    # with θ2 held fixed, the conditional optimizer could make the diagonal element θ1
+    # negative and so move to the mirror image of the model at -θ2
+    contrasts = Dict{Symbol,Any}(:spkr => EffectsCoding(),
+        :prec => EffectsCoding(; base="maintain"), :load => EffectsCoding())
+    m = LinearMixedModel(
+        @formula(rt_trunc ~ 1 + prec + spkr + load + (1 + prec | item) + (1 | subj)),
+        dataset(:kb07); contrasts)
+    m.optsum.backend = :prima
+    m.optsum.optimizer = :bobyqa
+    fit!(m; progress=false)
+    pr = @suppress profile(m)
+    θ2tbl = filter(r -> r.p == :θ2, pr.tbl)
+    @test issorted(getproperty.(θ2tbl, :θ2))
+    @test issorted(getproperty.(θ2tbl, :ζ))
+    # diagonal elements of λ are non-negative throughout the θ profiles
+    @test all(r -> r.θ1 ≥ 0 && r.θ3 ≥ 0 && r.θ4 ≥ 0,
+        filter(r -> startswith(string(r.p), 'θ'), pr.tbl))
+end
+
 @testset "refit!" begin
     refit!(prmodel; progress=false)
     @test prmodel.optsum.fitlog.θ[begin] == [1.0]
