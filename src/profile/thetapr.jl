@@ -14,6 +14,23 @@ function optsumj(os::OptSummary, j::Integer)
     )
 end
 
+"""
+    _nextstep(δ, Δζ, target)
+
+Return the next step in a θ profile after a step of `δ` changed ζ by `Δζ`, signed so that
+the expected change is positive.
+
+The new step aims for a change of `target` in ζ but grows by at most a factor of 16. If ζ did
+not change in the expected direction, which happens when the profile is flat or the
+conditional optimization is inexact, the step stays the same.
+
+!!! note
+    This method is internal.
+"""
+function _nextstep(δ::T, Δζ::T, target::T) where {T}
+    return Δζ > 0 ? δ * min(target / Δζ, T(16)) : δ
+end
+
 function profileobj!(obj,
     m::LinearMixedModel{T}, θ::AbstractVector{T}, osj::OptSummary) where {T}
     isone(length(θ)) && return objective!(m, θ)
@@ -55,27 +72,28 @@ function profileθj!(
     tbl = [merge(pnm, mkrow!(tc, m, ζold))]    # start with the row for ζ = 0
     δj = inv(T(64))
     θj = final[j]
-    θ[j] = θj - δj
-    while (abs(ζold) < threshold) && θ[j] ≥ lbj && length(tbl) < 100  # decreasing values of θ[j]
+    θ[j] = max(lbj, θj - δj)    # an estimate close to the bound gets a point on the bound
+    # decreasing values of θ[j], unless the estimate is on the bound
+    while θj > lbj && (abs(ζold) < threshold) && length(tbl) < 100
         ζ = _ζ(profileobj!(obj, m, θ, osj), fmin, θ[j] < θj, sym, θ[j])
         push!(tbl, merge(pnm, mkrow!(tc, m, ζ)))
         θ[j] == lbj && break
-        δj /= (4 * abs(ζ - ζold))   # take smaller steps when evaluating negative zeta
+        δj = _nextstep(δj, ζold - ζ, inv(T(4)))  # smaller steps for negative ζ
         ζold = ζ
-        θ[j] = max(lbj, (θ[j] -= δj))
+        θ[j] = max(lbj, θ[j] - δj)
     end
     reverse!(tbl)               # reorder the new part of the table by increasing ζ
     sv = getproperty(sym).(tbl)
-    δj = if length(sv) > 3      # need to handle the case of convergence on the boundary
+    δj = inv(T(32))             # used when the slope at the estimate cannot be determined
+    if _splineable(sv)          # need to handle the case of convergence on the boundary
         slope = (
             Derivative(1) *
             interpolate(sv, getproperty(:ζ).(tbl), BSplineOrder(4), Natural())
         )(
             last(sv)
         )
-        δj = inv(T(2) * slope)  # approximate step for increase of 0.5
-    else
-        inv(T(32))
+        # approximate step for an increase of 0.5
+        slope > 0 && isfinite(slope) && (δj = inv(T(2) * slope))
     end
     ζold = zero(T)
     copyto!(θ, final)
@@ -83,7 +101,7 @@ function profileθj!(
     while (ζold < threshold) && (length(tbl) < 120)
         ζ = _ζ(profileobj!(obj, m, θ, osj), fmin, false, sym, θ[j])
         push!(tbl, merge(pnm, mkrow!(tc, m, ζ)))
-        δj /= (2 * abs(ζ - ζold))
+        δj = _nextstep(δj, ζ - ζold, inv(T(2)))
         ζold = ζ
         θ[j] += δj
     end
@@ -91,9 +109,24 @@ function profileθj!(
     updateL!(setθ!(m, final))
     sv = getproperty(sym).(tbl)
     ζv = getproperty(:ζ).(tbl)
-    fwd[sym] = interpolate(sv, ζv, BSplineOrder(4), Natural())
-    isnondecreasing(fwd[sym]) || @warn "Forward spline for $sym is not monotone."
-    rev[sym] = interpolate(ζv, sv, BSplineOrder(4), Natural())
-    isnondecreasing(rev[sym]) || @warn "Reverse spline for $sym is not monotone."
+    # A flat profile, e.g. near a boundary, or an inexact conditional optimization can
+    # produce values that cannot be interpolated. Skip the spline rather than abort.
+    if _splineable(sv)
+        fwd[sym] = interpolate(sv, ζv, BSplineOrder(4), Natural())
+        isnondecreasing(fwd[sym]) || @warn "Forward spline for $sym is not monotone."
+    else
+        @warn "The values of $sym in its profile are not strictly increasing, " *
+            "so no forward spline was constructed."
+    end
+    if _splineable(ζv)
+        rev[sym] = interpolate(ζv, sv, BSplineOrder(4), Natural())
+        isnondecreasing(rev[sym]) || @warn "Reverse spline for $sym is not monotone."
+    else
+        @warn "ζ is not strictly increasing in the profile of $sym, " *
+            "so no reverse spline was constructed."
+    end
     return val
 end
+
+# a cubic spline needs at least four distinct, increasing values to interpolate
+_splineable(x::AbstractVector) = length(x) > 3 && issorted(x; lt=≤)

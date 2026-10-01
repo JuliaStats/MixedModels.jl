@@ -1044,12 +1044,14 @@ end
     # but this is a convenient test of rankUpdate!(::UniformBlockDiagonal)
     #    @test isapprox(m.θ, θnlopt; atol=5e-2)   # model doesn't make sense
 
-    # @testset "profile" begin   # if the model fit doesn' make sense, profiling it makes even less sense
-    # TODO: actually handle the case here so that it doesn't error and
-    # create a separate test of the error handling code
-    #     @test_logs((:error, "Exception occurred in profiling; aborting..."),
-    #         @test_throws Exception profile(last(models(:oxide))))
-    # end
+    @testset "profile" begin
+        # the θ profiles of this poorly defined fit are flat or not monotone,
+        # so some of the splines cannot be constructed, but profiling completes
+        pr = @test_logs (:warn, r"no reverse spline") match_mode = :any profile(
+            last(models(:oxide))
+        )
+        @test [:β1, :β2, :σ] ⊆ confint(pr).par
+    end
 end
 
 @testset "Rank deficient" begin
@@ -1096,6 +1098,31 @@ end
             @test ci.upper[s] ≈ cifr.upper[s] rtol = 1.e-4
         end
     end
+end
+
+@testset "θ profile steps" begin
+    # the step stays the same when ζ does not move in the expected direction
+    @test MixedModels._nextstep(0.1, 0.0, 0.5) == 0.1
+    @test MixedModels._nextstep(0.1, -0.2, 0.5) == 0.1
+    # otherwise it aims for a change of `target` in ζ, but grows by at most a factor of 16
+    @test MixedModels._nextstep(0.1, 0.25, 0.5) ≈ 0.2
+    @test MixedModels._nextstep(0.1, 1.0e-8, 0.5) ≈ 1.6
+
+    # an estimate within the initial step of the lower bound gets a point on the bound
+    rng = MersenneTwister(51)
+    b = randn(rng, 50)
+    g = repeat(1:50, 10)
+    m = fit(MixedModel, @formula(y ~ 1 + (1 | g)),
+        (; y=randn(rng, 500) .+ 0.05 .* b[g], g=string.(g)); progress=false)
+    @test 0 < only(m.θ) < 1 / 64
+    pr = @suppress profile(m)
+    @test any(r -> r.p == :θ1 && iszero(r.θ1), pr.tbl)
+
+    # a fit that is not at its optimum is reported
+    m = last(models(:kb07))   # θ10 at its lower bound of 0 is better than the estimate
+    val = (; m, tbl=[], fwd=Dict{Symbol,Any}(), rev=Dict{Symbol,Any}())
+    @test_throws ArgumentError MixedModels.profileθj!(val, :θ10, MixedModels.TableColumns(m))
+    updateL!(setθ!(m, m.optsum.final))   # restore the model in the cache
 end
 
 @testset "coeftable" begin
