@@ -806,9 +806,11 @@ end
         @test Tables.istable(ci)
         @test propertynames(ci) == (:par, :estimate, :lower, :upper)
         @test collect(ci.par) == [:β1, :β2, :σ, :σ1, :σ2]
+        # the exact profile for σ2 crosses the cutoff at about 3.80; the spline is a little low
+        # because the grid for σ2 has no points between 0 and about 4.2
         @test isapprox(
             ci.lower.values,
-            [237.681, 7.359, 22.898, 14.381, 0.0];
+            [237.681, 7.359, 22.898, 14.381, 3.780];
             atol=1.e-3)
         @test isapprox(
             ci.upper.values,
@@ -818,7 +820,8 @@ end
             last(models(:sleepstudy)).σ
         # in every row, ρ1 must be the correlation implied by λ = [θ1 0; θ2 θ3]
         @test all(tbl) do r
-            return r.ρ1 ≈ sign(r.θ1) * r.θ2 / hypot(r.θ2, r.θ3)
+            nrm = hypot(r.θ2, r.θ3)   # zero when σ2 is zero, and then ρ1 is reported as zero
+            return iszero(nrm) ? iszero(r.ρ1) : r.ρ1 ≈ sign(r.θ1) * r.θ2 / nrm
         end
 
         @testset "warm starts" begin
@@ -847,6 +850,30 @@ end
             @suppress MixedModels.profileσs!(val, tc)
             @test m.optsum.final == θ̂
             @test m.θ == θ̂
+        end
+
+        @testset "variance component at zero" begin
+            slp = MixedModels.dataset(:sleepstudy)
+            # σ2 = 0 means θ2 = θ3 = 0, which is the model with only random intercepts
+            m = last(models(:sleepstudy))
+            pr = @suppress profile(m)
+            row = only(filter(r -> r.p == :σ2 && iszero(r.σ2), pr.tbl))
+            mint = fit(MixedModel, @formula(reaction ~ 1 + days + (1 | subj)), slp;
+                progress=false)
+            @test row.ζ < 0
+            @test m.objective + abs2(row.ζ) ≈ mint.objective
+            # σ for batch = 0 is the model without the batch term
+            m = last(models(:pastes))
+            pr = @suppress profile(m)
+            sym = Symbol(:σ, findfirst(==(:batch), fnames(m)))
+            row = only(filter(r -> r.p == sym && iszero(getproperty(r, sym)), pr.tbl))
+            @test row.ζ < 0
+            @test m.objective + abs2(row.ζ) ≈ first(models(:pastes)).objective
+            # a correlated term with a variance component estimated as zero
+            rng = MersenneTwister(1)
+            sim = (; y=randn(rng, 200), x=randn(rng, 200), g=repeat(string.(1:20), 10))
+            msim = fit(MixedModel, @formula(y ~ 1 + x + (1 + x | g)), sim; progress=false)
+            @test confint(@suppress profile(msim)) isa MixedModels.DictTable
         end
 
         @testset "optsum is restored" begin

@@ -24,15 +24,50 @@ function profilevc(m::LinearMixedModel{T}, val::T, rowj::AbstractVector{T}) wher
 end
 
 """
-     profileσs!(val::NamedTuple, tc::TableColumns{T}) where {T}
+    _objective_vczero!(m::LinearMixedModel{T}, θ̂::Vector{T}, t::Integer, k::Integer) where {T}
+
+Return the minimum of the objective of `m` when the `k`th variance component of the `t`th
+random-effects term is zero, leaving `m` at the minimizer.
+
+The variance component is zero when the `k`th row of `λ` for the term is zero, so those
+elements of θ are held at zero and the others, starting from `θ̂`, are optimized.
+
+!!! note
+    This method is internal.
+"""
+function _objective_vczero!(
+    m::LinearMixedModel{T}, θ̂::Vector{T}, t::Integer, k::Integer
+) where {T}
+    (; optsum, parmap) = m
+    θ = copy(θ̂)
+    fixed = findall(pm -> pm[1] == t && pm[2] == k, parmap)
+    θ[fixed] .= zero(T)
+    free = setdiff(eachindex(θ), fixed)
+    isempty(free) && return objective!(m, θ)
+    osj = OptSummary(θ̂[free], optsum.optimizer; optsum.backend)
+    function obj(x, g=T[])
+        isempty(g) || throw(ArgumentError("gradients are not evaluated by this objective"))
+        for (i, f) in enumerate(free)
+            @inbounds θ[f] = x[i]
+        end
+        return objective!(m, θ)
+    end
+    return profileobj!(obj, m, θ, osj, Val(osj.backend))
+end
+
+"""
+     profileσs!(val::NamedTuple, tc::TableColumns{T}; threshold=4) where {T}
 
 Profile the variance components.
+
+If the profile of a variance component has not reached `-threshold` at the lower end of its
+grid, the point at which the variance component is zero is added.
 
 !!! note
     This method is called by `profile` and currently considered internal.
     As such, it may change or disappear in a future release without being considered breaking.
 """
-function profileσs!(val::NamedTuple, tc::TableColumns{T}) where {T}
+function profileσs!(val::NamedTuple, tc::TableColumns{T}; threshold=4) where {T}
     m = val.m
     (; optsum, reterms) = m
     isnothing(optsum.sigma) || throw(ArgumentError("Can't profile vc's when σ is fixed"))
@@ -45,8 +80,8 @@ function profileσs!(val::NamedTuple, tc::TableColumns{T}) where {T}
         return startswith(str, 'σ') && (length(str) > 1)
     end
     ind = 0
-    for t in reterms
-        for r in eachrow(t.λ)
+    for (ti, t) in enumerate(reterms)
+        for (k, r) in enumerate(eachrow(t.λ))
             optsum.sigma = nothing            # re-initialize the model
             objective!(m, θ̂)
             copyto!(initial, θ̂)              # start each component from the estimates
@@ -66,12 +101,11 @@ function profileσs!(val::NamedTuple, tc::TableColumns{T}) where {T}
                 zeta = sign(x - estimate) * sqrt(max(zero(T), obj - fmin))
                 push!(tbl, merge(pnm, mkrow!(tc, m, zeta)))
             end
-            if iszero(first(xtrms)) && !iszero(estimate) # handle the case of lower bound of zero
-                zrows = filter(iszero ∘ gpsym, val.tbl)
-                isone(length(zrows)) ||
-                    filter!(r -> iszero(getproperty(r, first(r))), zrows)
-                rr = only(zrows)              # will error if zeros in sym column occur in unexpected places
-                push!(tbl, merge(pnm, rr[(collect(keys(rr))[2:end]...,)]))
+            # add the point at zero if the profile has not reached the threshold before it
+            if !iszero(estimate) && minimum(getproperty(:ζ), tbl) > -threshold
+                optsum.sigma = nothing
+                obj = _objective_vczero!(m, θ̂, ti, k)
+                push!(tbl, merge(pnm, mkrow!(tc, m, _ζ(obj, fmin, true, sym, zero(T)))))
             end
             sort!(tbl; by=gpsym)
             append!(val.tbl, tbl)

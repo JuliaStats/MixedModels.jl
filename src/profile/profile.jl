@@ -59,7 +59,7 @@ function profile(m::LinearMixedModel; threshold=4)
         for s in filter(s -> startswith(string(s), 'θ'), keys(first(val.tbl)))
             profileθj!(val, s, tc; threshold)
         end
-        profileσs!(val, tc)
+        profileσs!(val, tc; threshold)
         MixedModelProfile(m, Table(val.tbl), val.fwd, val.rev)
     catch ex
         @error "Exception occurred in profiling; aborting..."
