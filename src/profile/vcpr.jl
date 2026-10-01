@@ -38,7 +38,7 @@ function profileσs!(val::NamedTuple, tc::TableColumns{T}) where {T}
     isnothing(optsum.sigma) || throw(ArgumentError("Can't profile vc's when σ is fixed"))
     (; initial, final, fmin) = optsum
     saveinitial = copy(initial)
-    copyto!(initial, final)
+    θ̂ = copy(final)                          # profilevc overwrites final in place
     zetazero = mkrow!(tc, m, zero(T))         # parameter estimates
     vcnms = filter(keys(first(val.tbl))) do sym
         str = string(sym)
@@ -48,7 +48,8 @@ function profileσs!(val::NamedTuple, tc::TableColumns{T}) where {T}
     for t in reterms
         for r in eachrow(t.λ)
             optsum.sigma = nothing            # re-initialize the model
-            objective!(m, final)
+            objective!(m, θ̂)
+            copyto!(initial, θ̂)              # start each component from the estimates
             ind += 1
             sym = vcnms[ind]
             gpsym = getproperty(sym)          # extractor function
@@ -86,9 +87,9 @@ function profileσs!(val::NamedTuple, tc::TableColumns{T}) where {T}
             end
         end
     end
-    copyto!(final, initial)
+    copyto!(final, θ̂)
     copyto!(initial, saveinitial)
     optsum.sigma = nothing
-    updateL!(setθ!(m, final))
+    updateL!(setθ!(m, θ̂))
     return val
 end

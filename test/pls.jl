@@ -837,6 +837,16 @@ end
             MixedModels.refitσ!(m, 1.05 * m.σ, tc, m.objective, false)
             @test first(m.optsum.fitlog.θ) == θprev
             m.optsum.sigma = nothing
+
+            # the estimates are restored after profiling the variance components
+            m = deepcopy(last(models(:sleepstudy)))
+            pr = @suppress profile(m)
+            notvc = r -> r.p == :σ || !startswith(string(r.p), 'σ')
+            val = (; m, tbl=filter(notvc, collect(pr.tbl)), fwd=Dict{Symbol,Any}(),
+                rev=Dict{Symbol,Any}())
+            @suppress MixedModels.profileσs!(val, tc)
+            @test m.optsum.final == θ̂
+            @test m.θ == θ̂
         end
 
         @testset "ρ with a row of zeros in λ" begin
