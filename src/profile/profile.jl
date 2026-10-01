@@ -42,8 +42,9 @@ function profile(m::LinearMixedModel; threshold=4)
         "The fixed-effects coefficients are integrated out of the REML criterion and " *
             "are not profiled. Refit the model with `REML=false` to profile them."
     )
-    fitlog = copy(m.optsum.fitlog)
-    final = copy(m.optsum.final)
+    # profiling refits m and modifies m.optsum, so save all of it to restore afterwards
+    saved = deepcopy(m.optsum)
+    final = copy(saved.final)
     profile = try
         tc = TableColumns(m)
         val = profileσ(m, tc; threshold) # FIXME: defer creating the splines until the whole table is constructed
@@ -64,11 +65,10 @@ function profile(m::LinearMixedModel; threshold=4)
         @error "Exception occurred in profiling; aborting..."
         rethrow()
     finally
+        for f in fieldnames(typeof(saved))
+            setfield!(m.optsum, f, getfield(saved, f))
+        end
         objective!(m, final)   # restore the parameter estimates
-        copyto!(m.optsum.final, final)
-        m.optsum.fmin = objective(m)
-        m.optsum.sigma = nothing
-        m.optsum.fitlog = fitlog
     end
     return profile
 end

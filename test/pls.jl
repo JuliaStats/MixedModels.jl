@@ -849,6 +849,20 @@ end
             @test m.θ == θ̂
         end
 
+        @testset "optsum is restored" begin
+            m = deepcopy(last(models(:sleepstudy)))
+            before = deepcopy(m.optsum)
+            @suppress profile(m)
+            for f in fieldnames(typeof(before))
+                b, a = getfield(before, f), getfield(m.optsum, f)
+                if f == :fitlog
+                    @test a.θ == b.θ && a.objective == b.objective
+                else
+                    @test isequal(a, b)
+                end
+            end
+        end
+
         @testset "ρ with a row of zeros in λ" begin
             m = deepcopy(last(models(:sleepstudy)))
             θ = copy(m.θ)
