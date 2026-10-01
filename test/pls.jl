@@ -1312,6 +1312,12 @@ end
     # it would be great to test the handling of PosDefException after the first iteration
     # but this is surprisingly hard to trigger in a reliable way across platforms
     # just because of the vagaries of floating point.
+
+    # the objectives of the conditional optimizations in profiling handle it like the fit
+    θbad = 1e8 .* model.optsum.initial
+    @test_throws PosDefException objective!(model, θbad)
+    @test MixedModels._profileobjective!(model, θbad) == model.optsum.finitial
+    updateL!(setθ!(model, model.optsum.final))
 end
 
 @testset "methods we don't define" begin

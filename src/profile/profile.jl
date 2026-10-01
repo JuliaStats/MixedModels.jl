@@ -56,6 +56,7 @@ function profile(m::LinearMixedModel; threshold=4)
         end
         copyto!(m.optsum.final, final)
         m.optsum.fmin = objective!(m, final)
+        m.optsum.finitial = saved.finitial   # used by _profileobjective!
         for s in filter(s -> startswith(string(s), 'θ'), keys(first(val.tbl)))
             profileθj!(val, s, tc; threshold)
         end

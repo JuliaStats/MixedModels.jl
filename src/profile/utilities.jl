@@ -107,6 +107,29 @@ function _ζ(objective::T, fmin::T, neg::Bool, sym::Symbol, value) where {T}
 end
 
 """
+    _profileobjective!(m::LinearMixedModel, θ)
+
+Return `objective!(m, θ)`, or `m.optsum.finitial` if the factorization fails because it is
+not positive definite.
+
+This mirrors the objective used for fitting the model. The optimizers in the profiles can
+move into regions of the parameter space where there is not enough shrinkage for the
+factorization, and `finitial` is generally a value that the optimizer won't view as an
+optimum.
+
+!!! note
+    This method is internal.
+"""
+function _profileobjective!(m::LinearMixedModel, θ)
+    return try
+        objective!(m, θ)
+    catch ex
+        ex isa PosDefException || rethrow()
+        m.optsum.finitial
+    end
+end
+
+"""
     parsej(sym::Symbol)
 
 Return the index from symbol names like `:θ1`, `:θ01`, etc.

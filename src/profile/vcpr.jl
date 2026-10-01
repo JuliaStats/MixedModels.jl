@@ -14,10 +14,9 @@ function profilevc(m::LinearMixedModel{T}, val::T, rowj::AbstractVector{T}) wher
     # work with backends which don't have a gradient slot
     function obj(x, g=T[])
         isempty(g) || throw(ArgumentError("g must be empty"))
-        updateL!(setθ!(m, x))
+        setθ!(m, x)                     # rowj is a view of a row of λ
         optsum.sigma = val / norm(rowj)
-        objctv = objective(m)
-        return objctv
+        return _profileobjective!(m, x)
     end
 
     return profilevc(obj, optsum, Val(m.optsum.backend))
@@ -43,14 +42,14 @@ function _objective_vczero!(
     fixed = findall(pm -> pm[1] == t && pm[2] == k, parmap)
     θ[fixed] .= zero(T)
     free = setdiff(eachindex(θ), fixed)
-    isempty(free) && return objective!(m, θ)
+    isempty(free) && return _profileobjective!(m, θ)
     osj = OptSummary(θ̂[free], optsum.optimizer; optsum.backend)
     function obj(x, g=T[])
         isempty(g) || throw(ArgumentError("gradients are not evaluated by this objective"))
         for (i, f) in enumerate(free)
             @inbounds θ[f] = x[i]
         end
-        return objective!(m, θ)
+        return _profileobjective!(m, θ)
     end
     return profileobj!(obj, m, θ, osj, Val(osj.backend))
 end

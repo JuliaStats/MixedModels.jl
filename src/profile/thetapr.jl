@@ -33,7 +33,7 @@ end
 
 function profileobj!(obj,
     m::LinearMixedModel{T}, θ::AbstractVector{T}, osj::OptSummary) where {T}
-    isone(length(θ)) && return objective!(m, θ)
+    isone(length(θ)) && return _profileobjective!(m, θ)
     return profileobj!(obj, m, θ, osj, Val(osj.backend))
 end
 
@@ -62,7 +62,7 @@ function profileθj!(
             for i in eachindex(notj, x)
                 @inbounds θ[notj[i]] = isdiagj[i] ? abs(x[i]) : x[i]
             end
-            return objective!(m, θ)
+            return _profileobjective!(m, θ)
         end
     else
         obj = nothing
