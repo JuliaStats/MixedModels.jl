@@ -1,3 +1,7 @@
+MixedModels v5.9.1 Release Notes
+================================
+- The `rankUpdate!` method for a `Diagonal` block of `L` updated from a `SparseMatrixCSC` now accepts columns with no stored entries; previously it required exactly one stored entry per column. On newer Julia versions, the 5-argument sparse `mul!` in `updateL!` drops exact zeros from its result, which can happen when an element of θ is zero, and this caused a spurious `ArgumentError` when fitting some models, e.g. a GLMM for `grouseticks`. [#918]
+
 MixedModels v5.9.0 Release Notes
 ================================
 - `predict` now accepts a `β` keyword argument for supplying a custom fixed-effects coefficient vector instead of the model's own fitted estimates. As with `simulate!`, `β` may be given either as a pivoted, full-rank vector (cf. `fixef`) or an unpivoted, full-dimension vector (cf. `coef`), with entries for redundant columns ignored. The default behavior (using the model's own estimates) is unchanged. [#916]
@@ -812,3 +816,4 @@ Package dependencies
 [#911]: https://github.com/JuliaStats/MixedModels.jl/issues/911
 [#915]: https://github.com/JuliaStats/MixedModels.jl/issues/915
 [#916]: https://github.com/JuliaStats/MixedModels.jl/issues/916
+[#918]: https://github.com/JuliaStats/MixedModels.jl/issues/918
