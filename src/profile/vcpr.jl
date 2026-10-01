@@ -94,18 +94,41 @@ function profileσs!(val::NamedTuple, tc::TableColumns{T}; threshold=4) where {T
             xtrms = extrema(gpsym, val.tbl)
             lub = log(last(xtrms))
             llb = log(max(first(xtrms), T(0.01) * last(xtrms)))
-            for lx in LinRange(lub, llb, 15)  # start at the upper bound where things are more stable
-                x = exp(lx)
+            # add the profile at x to tbl, starting the optimization from initial
+            function vcpoint!(x)
                 obj, xmin = profilevc(m, x, r)
                 copyto!(initial, xmin)
                 zeta = sign(x - estimate) * sqrt(max(zero(T), obj - fmin))
                 push!(tbl, merge(pnm, mkrow!(tc, m, zeta)))
+                return zeta
+            end
+            # start at the upper bound where things are more stable
+            ζgrid = [vcpoint!(exp(lx)) for lx in LinRange(lub, llb, 15)]
+            # Extend the grid with the same spacing on the log scale until the profile reaches
+            # ±threshold. Going down, stop once the profile is flat, which leaves the rest to
+            # the point at zero below, and do not go below 1% of the estimate, where the
+            # optimization in profilevc becomes unreliable.
+            δgrid = max((lub - llb) / 14, T(1 // 20))
+            if !iszero(estimate)
+                lx, ζlast, n = llb, ζgrid[end], 0
+                Δζ = ζgrid[end - 1] - ζgrid[end]
+                while ζlast > -threshold && Δζ ≥ T(1 // 10) &&
+                          exp(lx - δgrid) > estimate / 100 && n < 30
+                    ζnew = vcpoint!(exp(lx -= δgrid))
+                    Δζ, ζlast, n = ζlast - ζnew, ζnew, n + 1
+                end
             end
             # add the point at zero if the profile has not reached the threshold before it
             if !iszero(estimate) && minimum(getproperty(:ζ), tbl) > -threshold
                 optsum.sigma = nothing
                 obj = _objective_vczero!(m, θ̂, ti, k)
                 push!(tbl, merge(pnm, mkrow!(tc, m, _ζ(obj, fmin, true, sym, zero(T)))))
+            end
+            copyto!(initial, θ̂)
+            lx, ζlast, n = lub, first(ζgrid), 0
+            while ζlast < threshold && n < 30
+                ζlast = vcpoint!(exp(lx += δgrid))
+                n += 1
             end
             sort!(tbl; by=gpsym)
             append!(val.tbl, tbl)

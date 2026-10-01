@@ -806,11 +806,10 @@ end
         @test Tables.istable(ci)
         @test propertynames(ci) == (:par, :estimate, :lower, :upper)
         @test collect(ci.par) == [:β1, :β2, :σ, :σ1, :σ2]
-        # the exact profile for σ2 crosses the cutoff at about 3.80; the spline is a little low
-        # because the grid for σ2 has no points between 0 and about 4.2
+        # the exact profile for σ2 crosses the cutoff at about 3.801
         @test isapprox(
             ci.lower.values,
-            [237.681, 7.359, 22.898, 14.381, 3.780];
+            [237.681, 7.359, 22.898, 14.381, 3.801];
             atol=1.e-3)
         @test isapprox(
             ci.upper.values,
@@ -855,13 +854,11 @@ end
         @testset "variance component at zero" begin
             slp = MixedModels.dataset(:sleepstudy)
             # σ2 = 0 means θ2 = θ3 = 0, which is the model with only random intercepts
-            m = last(models(:sleepstudy))
-            pr = @suppress profile(m)
-            row = only(filter(r -> r.p == :σ2 && iszero(r.σ2), pr.tbl))
+            m = deepcopy(last(models(:sleepstudy)))
             mint = fit(MixedModel, @formula(reaction ~ 1 + days + (1 | subj)), slp;
                 progress=false)
-            @test row.ζ < 0
-            @test m.objective + abs2(row.ζ) ≈ mint.objective
+            @test MixedModels._objective_vczero!(m, copy(m.optsum.final), 1, 2) ≈
+                mint.objective
             # σ for batch = 0 is the model without the batch term
             m = last(models(:pastes))
             pr = @suppress profile(m)
@@ -874,6 +871,19 @@ end
             sim = (; y=randn(rng, 200), x=randn(rng, 200), g=repeat(string.(1:20), 10))
             msim = fit(MixedModel, @formula(y ~ 1 + x + (1 + x | g)), sim; progress=false)
             @test confint(@suppress profile(msim)) isa MixedModels.DictTable
+        end
+
+        @testset "variance-component profiles reach the threshold" begin
+            for m in (last(models(:sleepstudy)), last(models(:pastes)),
+                only(models(:penicillin)))
+                pr = @suppress profile(m)
+                for s in filter(p -> startswith(string(p), 'σ') && p ≠ :σ, unique(pr.tbl.p))
+                    t = filter(r -> r.p == s, pr.tbl)
+                    ζ = getproperty.(t, :ζ)
+                    @test maximum(ζ) ≥ 4
+                    @test minimum(ζ) ≤ -4 || any(iszero, getproperty.(t, s))
+                end
+            end
         end
 
         @testset "optsum is restored" begin
