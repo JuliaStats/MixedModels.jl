@@ -3,6 +3,7 @@ using LinearAlgebra
 using MixedModels
 using PooledArrays
 using Random
+using StableRNGs
 using SparseArrays
 using Suppressor
 using Statistics
@@ -866,10 +867,12 @@ end
             row = only(filter(r -> r.p == sym && iszero(getproperty(r, sym)), pr.tbl))
             @test row.ζ < 0
             @test m.objective + abs2(row.ζ) ≈ first(models(:pastes)).objective
-            # a correlated term with a variance component estimated as zero
-            rng = MersenneTwister(1)
+            # a singular correlated term, for which the other profiles give rows with a
+            # variance component of zero, none of which is in that component's own profile
+            rng = StableRNG(3)
             sim = (; y=randn(rng, 200), x=randn(rng, 200), g=repeat(string.(1:20), 10))
             msim = fit(MixedModel, @formula(y ~ 1 + x + (1 + x | g)), sim; progress=false)
+            @test issingular(msim)
             @test confint(@suppress profile(msim)) isa MixedModels.DictTable
         end
 
@@ -1111,7 +1114,7 @@ end
         slp = columntable(MixedModels.dataset(:sleepstudy))
         slp = merge(
             slp,
-            (; d2=2 .* slp.days, noise=randn(MersenneTwister(2), length(slp.days))),
+            (; d2=2 .* slp.days, noise=randn(StableRNG(2), length(slp.days))),
         )
         # days is collinear with d2 and is pivoted behind noise
         model = @suppress fit(
@@ -1145,21 +1148,31 @@ end
     @test MixedModels._nextstep(0.1, 0.25, 0.5) ≈ 0.2
     @test MixedModels._nextstep(0.1, 1.0e-8, 0.5) ≈ 1.6
 
+    # Data for which the ML estimate of θ is well determined, which avoids depending on
+    # numerical details of the optimization. The within-group errors are ±1 with group means
+    # of zero and the group effects are ±c, so that σ̂² = n / (n - 1) and the variance of the
+    # group effects is estimated as c² - 1 / (n - 1), i.e. θ̂² ≈ τ² for τ² ≥ 0 and θ̂ = 0 otherwise.
+    function exactfit(τ²; ng=50, n=2000)
+        c = sqrt((1 + τ² * n) / (n - 1))
+        grp = repeat(1:ng; inner=n)
+        y = [isodd(i) ? c : -c for i in 1:ng][grp] .+ repeat([1.0, -1.0], ng * n ÷ 2)
+        return fit(MixedModel, @formula(y ~ 1 + (1 | g)), (; y, g=string.(grp));
+            progress=false)
+    end
+
     # an estimate within the initial step of the lower bound gets a point on the bound
-    rng = MersenneTwister(51)
-    b = randn(rng, 50)
-    g = repeat(1:50, 10)
-    m = fit(MixedModel, @formula(y ~ 1 + (1 | g)),
-        (; y=randn(rng, 500) .+ 0.05 .* b[g], g=string.(g)); progress=false)
-    @test 0 < only(m.θ) < 1 / 64
+    m = exactfit(0.008^2)
+    @test only(m.θ) ≈ 0.008 rtol = 1.e-3
     pr = @suppress profile(m)
     @test any(r -> r.p == :θ1 && iszero(r.θ1), pr.tbl)
 
-    # a fit that is not at its optimum is reported
-    m = last(models(:kb07))   # θ10 at its lower bound of 0 is better than the estimate
+    # a fit that is not at its optimum is reported, here when the point on the bound is better
+    m = exactfit(-0.008^2)
+    @test iszero(only(m.θ))
+    m.optsum.final = [0.01]   # as if the fit had stopped at 0.01
+    m.optsum.fmin = objective!(m, m.optsum.final)
     val = (; m, tbl=[], fwd=Dict{Symbol,Any}(), rev=Dict{Symbol,Any}())
-    @test_throws ArgumentError MixedModels.profileθj!(val, :θ10, MixedModels.TableColumns(m))
-    updateL!(setθ!(m, m.optsum.final))   # restore the model in the cache
+    @test_throws ArgumentError MixedModels.profileθj!(val, :θ1, MixedModels.TableColumns(m))
 end
 
 @testset "coeftable" begin
@@ -1228,7 +1241,7 @@ end
 
     @testset "fixed-effects profile" begin
         slp = columntable(MixedModels.dataset(:sleepstudy))
-        w = 0.5 .+ rand(MersenneTwister(42), length(slp.days))
+        w = 0.5 .+ rand(StableRNG(42), length(slp.days))
         m = fit(MixedModel, @formula(reaction ~ 1 + days + (1 + days | subj)), slp;
             weights=w, progress=false)
         wtz = copy(first(m.reterms).wtz)
