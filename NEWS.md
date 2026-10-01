@@ -1,3 +1,18 @@
+MixedModels v5.10.0 Release Notes
+================================
+- Numerous correctness fixes for likelihood profiles (`profile`) and the confidence intervals computed from them (`confint(::MixedModelProfile)`). Several of these change previously reported intervals. [#917]
+  - The fixed-effects coefficients are no longer profiled for models fit by REML, since they are integrated out of the REML criterion; a warning suggests refitting by maximum likelihood. The previous fixed-effects profiles for REML fits compared ML and REML objectives and were not meaningful. The workaround that swapped flipped confidence limits for REML fits ([#785]) has been removed, as the flipped limits were a symptom of this problem.
+  - Fixed-effects profiles now account for the model weights, use the correct coefficient for rank-deficient models (which previously could also profile indefinitely), and report the correct correlations in the profile table.
+  - The profile of a variance component at zero is now computed exactly rather than borrowed from other profiles, and the profiles of variance components now extend until they reach the threshold. For example, the lower 95% limit for the standard deviation of the random slopes in `reaction ~ 1 + days + (1 + days | subj)` for the `sleepstudy` data is now 3.80 instead of 0.
+  - Variance components of `zerocorr` terms are no longer silently omitted from `confint`, and `σs` and `σρs` always report non-negative standard deviations.
+  - Profiling no longer fails for responses on a small scale, for correlated random-effects terms with the PRIMA backend, when a row of the relative covariance factor is zero, or when the profile of a variance component reaches zero for a correlated term.
+  - Profiles of θ that are flat or not monotone, e.g. for poorly identified models, no longer abort profiling. Instead, the affected splines are omitted from the profile with a warning, so the `fwd` and `rev` fields may not contain every parameter.
+  - When profiling finds an objective value below the reported minimum, i.e. the model fit had not converged, an informative `ArgumentError` is thrown instead of a `DomainError`.
+  - `profile` now restores all of the model's `OptSummary` afterwards, including `feval` and `finitial`.
+  - Profiling is very slightly faster: the refits in the profiles of σ and the fixed effects are warm started from the previous point, and a duplicate optimization in the θ profiles has been removed.
+- `refit!` and `unfit!` for `LinearMixedModel` accept a `warm_start` keyword argument to start the optimization from the current parameter estimates instead of the default initial values. [#917]
+- The PRIMA backend now starts the optimization from `optsum.initial`, as the NLopt backend does. [#917]
+
 MixedModels v5.9.0 Release Notes
 ================================
 - `predict` now accepts a `β` keyword argument for supplying a custom fixed-effects coefficient vector instead of the model's own fitted estimates. As with `simulate!`, `β` may be given either as a pivoted, full-rank vector (cf. `fixef`) or an unpivoted, full-dimension vector (cf. `coef`), with entries for redundant columns ignored. The default behavior (using the model's own estimates) is unchanged. [#916]
@@ -812,3 +827,4 @@ Package dependencies
 [#911]: https://github.com/JuliaStats/MixedModels.jl/issues/911
 [#915]: https://github.com/JuliaStats/MixedModels.jl/issues/915
 [#916]: https://github.com/JuliaStats/MixedModels.jl/issues/916
+[#917]: https://github.com/JuliaStats/MixedModels.jl/issues/917
