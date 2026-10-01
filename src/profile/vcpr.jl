@@ -108,11 +108,11 @@ function profileσs!(val::NamedTuple, tc::TableColumns{T}; threshold=4) where {T
             # ±threshold. Going down, stop once the profile is flat, which leaves the rest to
             # the point at zero below, and do not go below 1% of the estimate, where the
             # optimization in profilevc becomes unreliable.
-            δgrid = max((lub - llb) / 14, T(1 // 20))
+            δgrid = max((lub - llb) / 14, T(1//20))
             if !iszero(estimate)
                 lx, ζlast, n = llb, ζgrid[end], 0
                 Δζ = ζgrid[end - 1] - ζgrid[end]
-                while ζlast > -threshold && Δζ ≥ T(1 // 10) &&
+                while ζlast > -threshold && Δζ ≥ T(1//10) &&
                           exp(lx - δgrid) > estimate / 100 && n < 30
                     ζnew = vcpoint!(exp(lx -= δgrid))
                     Δζ, ζlast, n = ζlast - ζnew, ζnew, n + 1
