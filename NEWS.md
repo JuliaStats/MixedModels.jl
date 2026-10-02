@@ -13,6 +13,7 @@ MixedModels v5.10.0 Release Notes
 - The PRIMA backend now starts the optimization from `optsum.initial`, as the NLopt backend does. [#917]
 MixedModels v5.9.1 Release Notes
 - The `rankUpdate!` method for a `Diagonal` block of `L` updated from a `SparseMatrixCSC` now accepts columns with no stored entries; previously it required exactly one stored entry per column. On newer Julia versions, the 5-argument sparse `mul!` in `updateL!` drops exact zeros from its result, which can happen when an element of θ is zero, and this caused a spurious `ArgumentError` when fitting some models, e.g. a GLMM for `grouseticks`. [#918]
+- The precompile workflow now uses simulated data instead of relying on `MixedModelsDatasets`. This should speed up precompilation and improve its reliability since no data needs to be downloaded.[#919]
 
 MixedModels v5.9.0 Release Notes
 ================================
@@ -830,3 +831,4 @@ Package dependencies
 [#916]: https://github.com/JuliaStats/MixedModels.jl/issues/916
 [#917]: https://github.com/JuliaStats/MixedModels.jl/issues/917
 [#918]: https://github.com/JuliaStats/MixedModels.jl/issues/918
+[#919]: https://github.com/JuliaStats/MixedModels.jl/issues/919
