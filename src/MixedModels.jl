@@ -252,8 +252,10 @@ const profilesigma = profileσ
     livch = rand(rng, ["0", "1", "2", "3+"], n)
     age = randn(rng, n)
     bdist = Dict(g => 0.5 * randn(rng) for g in unique(zip(urban, dist)))
-    η = [-0.5 + 0.3 * a - 0.2 * abs2(a) + (u == "Y") * 0.5 + bdist[(u, d)]
-         for (a, u, d) in zip(age, urban, dist)]
+    η = [
+        -0.5 + 0.3 * a - 0.2 * abs2(a) + (u == "Y") * 0.5 + bdist[(u, d)]
+        for (a, u, d) in zip(age, urban, dist)
+    ]
     use = Float64.(rand(rng, n) .< inv.(1 .+ exp.(-η)))
     glmmdat = (; use, age, urban, livch, dist)
 
