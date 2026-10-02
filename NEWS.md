@@ -1,4 +1,5 @@
 MixedModels v5.10.0 Release Notes
+================================
 - Numerous correctness fixes for likelihood profiles (`profile`) and the confidence intervals computed from them (`confint(::MixedModelProfile)`). Several of these change previously reported intervals. [#917]
   - The fixed-effects coefficients are no longer profiled for models fit by REML, since they are integrated out of the REML criterion; a warning suggests refitting by maximum likelihood. The previous fixed-effects profiles for REML fits compared ML and REML objectives and were not meaningful. The workaround that swapped flipped confidence limits for REML fits ([#785]) has been removed, as the flipped limits were a symptom of this problem.
   - Fixed-effects profiles now account for the model weights, use the correct coefficient for rank-deficient models (which previously could also profile indefinitely), and report the correct correlations in the profile table.
@@ -11,7 +12,9 @@ MixedModels v5.10.0 Release Notes
   - Profiling is very slightly faster: the refits in the profiles of σ and the fixed effects are warm started from the previous point, and a duplicate optimization in the θ profiles has been removed.
 - `refit!` and `unfit!` for `LinearMixedModel` accept a `warm_start` keyword argument to start the optimization from the current parameter estimates instead of the default initial values. [#917]
 - The PRIMA backend now starts the optimization from `optsum.initial`, as the NLopt backend does. [#917]
+
 MixedModels v5.9.1 Release Notes
+================================
 - The `rankUpdate!` method for a `Diagonal` block of `L` updated from a `SparseMatrixCSC` now accepts columns with no stored entries; previously it required exactly one stored entry per column. On newer Julia versions, the 5-argument sparse `mul!` in `updateL!` drops exact zeros from its result, which can happen when an element of θ is zero, and this caused a spurious `ArgumentError` when fitting some models, e.g. a GLMM for `grouseticks`. [#918]
 - The precompile workflow now uses simulated data instead of relying on `MixedModelsDatasets`. This should speed up precompilation and improve its reliability since no data needs to be downloaded.[#919]
 
