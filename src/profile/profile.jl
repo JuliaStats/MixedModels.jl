@@ -31,34 +31,45 @@ Return a `MixedModelProfile` for the objective of `m` with respect to the fixed-
 
 Profiling starts at the parameter estimate and continues until reaching a parameter bound or the absolute
 value of ζ exceeds `threshold`.
+
+For models fit by REML, the fixed-effects coefficients are not profiled because they are
+integrated out of the REML criterion. Refit the model by maximum likelihood to profile them.
 """
 function profile(m::LinearMixedModel; threshold=4)
     isfitted(m) || refit!(m; progress=false)
-    fitlog = copy(m.optsum.fitlog)
-    final = copy(m.optsum.final)
+    REML = m.optsum.REML
+    REML && @warn(
+        "The fixed-effects coefficients are integrated out of the REML criterion and " *
+            "are not profiled. Refit the model with `REML=false` to profile them."
+    )
+    # profiling refits m and modifies m.optsum, so save all of it to restore afterwards
+    saved = deepcopy(m.optsum)
+    final = copy(saved.final)
     profile = try
         tc = TableColumns(m)
         val = profileσ(m, tc; threshold) # FIXME: defer creating the splines until the whole table is constructed
         objective!(m, final)   # restore the parameter estimates
-        for s in filter(s -> startswith(string(s), 'β'), keys(first(val.tbl)))
-            profileβj!(val, tc, s; threshold)
+        if !REML
+            for s in filter(s -> startswith(string(s), 'β'), keys(first(val.tbl)))
+                profileβj!(val, tc, s; threshold)
+            end
         end
         copyto!(m.optsum.final, final)
         m.optsum.fmin = objective!(m, final)
+        m.optsum.finitial = saved.finitial   # used by _profileobjective!
         for s in filter(s -> startswith(string(s), 'θ'), keys(first(val.tbl)))
             profileθj!(val, s, tc; threshold)
         end
-        profileσs!(val, tc)
+        profileσs!(val, tc; threshold)
         MixedModelProfile(m, Table(val.tbl), val.fwd, val.rev)
     catch ex
         @error "Exception occurred in profiling; aborting..."
         rethrow()
     finally
+        for f in fieldnames(typeof(saved))
+            setfield!(m.optsum, f, getfield(saved, f))
+        end
         objective!(m, final)   # restore the parameter estimates
-        copyto!(m.optsum.final, final)
-        m.optsum.fmin = objective(m)
-        m.optsum.sigma = nothing
-        m.optsum.fitlog = fitlog
     end
     return profile
 end
@@ -82,23 +93,12 @@ function StatsAPI.confint(pr::MixedModelProfile; level::Real=0.95)
     cutoff = sqrt(quantile(Chisq(1), level))
     rev = pr.rev
     syms = sort!(collect(filter(k -> !startswith(string(k), 'θ'), keys(rev))))
-    dt = DictTable(;
+    return DictTable(;
         par=syms,
         estimate=[rev[s](0) for s in syms],
         lower=[rev[s](-cutoff) for s in syms],
         upper=[rev[s](cutoff) for s in syms],
     )
-
-    # XXX for reasons I don't understand, the reverse spline for REML-models
-    # is flipped for the fixed effects, even though the table of interpolation
-    # points isn't.
-    for i in keys(dt.lower)
-        if dt.lower[i] > dt.upper[i]
-            dt.lower[i], dt.upper[i] = dt.upper[i], dt.lower[i]
-        end
-    end
-
-    return dt
 end
 
 function Base.show(io::IO, mime::MIME"text/plain", pr::MixedModelProfile)

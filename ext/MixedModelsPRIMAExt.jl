@@ -54,7 +54,8 @@ function MixedModels.optimize!(m::LinearMixedModel, ::PRIMABackend;
     end
 
     maxfun = optsum.maxfeval > 0 ? optsum.maxfeval : 500 * length(optsum.initial)
-    info = _optimizer!(Val(optsum.optimizer), obj, optsum.final;
+    # the optimizer overwrites its starting point, so start from a copy of initial in final
+    info = _optimizer!(Val(optsum.optimizer), obj, copyto!(optsum.final, optsum.initial);
         maxfun,
         optsum.rhoend, optsum.rhobeg)
     optsum.feval = info.nf
@@ -104,7 +105,8 @@ function MixedModels.optimize!(m::GeneralizedLinearMixedModel, ::PRIMABackend;
         end
         sc
     end
-    info = _optimizer!(Val(optsum.optimizer), obj, optsum.final;
+    # the optimizer overwrites its starting point, so start from a copy of initial in final
+    info = _optimizer!(Val(optsum.optimizer), obj, copyto!(optsum.final, optsum.initial);
         maxfun,
         optsum.rhoend, optsum.rhobeg,
         scale)
