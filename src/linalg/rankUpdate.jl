@@ -282,8 +282,9 @@ function rankUpdate!(
     require_one_based_indexing(dd, A)
     A.m == length(dd) || throw(DimensionMismatch())
     isone(β) || rmul!(dd, β)
-    all(isone.(diff(A.colptr))) ||
-        throw(ArgumentError("Columns of A must have exactly 1 nonzero"))
+    # columns may have no stored entries, e.g. when sparse `mul!` drops exact zeros
+    all(<=(1), diff(A.colptr)) ||
+        throw(ArgumentError("Columns of A must have at most 1 nonzero"))
 
     for (r, nz) in zip(rowvals(A), nonzeros(A))
         dd[r] = muladd(α, abs2(nz), dd[r])
