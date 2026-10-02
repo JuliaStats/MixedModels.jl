@@ -230,8 +230,35 @@ const profilesigma = profileσ
 @setup_workload begin
     # Putting some things in `setup` can reduce the size of the
     # precompile file and potentially make loading faster.
-    sleepstudy = dataset(:sleepstudy)
-    contra = dataset(:contra)
+
+    # small simulated datasets, so that precompilation doesn't depend on
+    # downloading or reading external data
+    rng = Random.Xoshiro(42)
+
+    # vector-valued random effects for a linear mixed model
+    nsubj, ndays = 12, 10
+    subj = repeat(["S$(lpad(i, 2, '0'))" for i in 1:nsubj]; inner=ndays)
+    days = repeat(0.0:(ndays - 1); outer=nsubj)
+    b0 = repeat(25 .* randn(rng, nsubj); inner=ndays)
+    b1 = repeat(5 .* randn(rng, nsubj); inner=ndays)
+    reaction = 250 .+ b0 .+ (10 .+ b1) .* days .+ 25 .* randn(rng, length(days))
+    lmmdat = (; reaction, days, subj)
+
+    # scalar random effects for an interaction grouping in a Bernoulli GLMM
+    ndist, nper = 20, 30
+    n = ndist * nper
+    dist = repeat(["D$(lpad(i, 2, '0'))" for i in 1:ndist]; inner=nper)
+    urban = rand(rng, ["N", "Y"], n)
+    livch = rand(rng, ["0", "1", "2", "3+"], n)
+    age = randn(rng, n)
+    bdist = Dict(g => 0.5 * randn(rng) for g in unique(zip(urban, dist)))
+    η = [
+        -0.5 + 0.3 * a - 0.2 * abs2(a) + (u == "Y") * 0.5 + bdist[(u, d)]
+        for (a, u, d) in zip(age, urban, dist)
+    ]
+    use = Float64.(rand(rng, n) .< inv.(1 .+ exp.(-η)))
+    glmmdat = (; use, age, urban, livch, dist)
+
     progress = false
     io = IOBuffer()
     @compile_workload begin
@@ -242,13 +269,13 @@ const profilesigma = profileσ
         # while still massively boosting load and TTFX times
         m = fit(MixedModel,
             @formula(reaction ~ 1 + days + (1 + days | subj)),
-            sleepstudy; progress)
+            lmmdat; progress)
         show(io, m)
         show(io, m.PCA.subj)
         show(io, m.rePCA)
         fit(MixedModel,
             @formula(use ~ 1 + age + abs2(age) + urban + livch + (1 | urban & dist)),
-            contra,
+            glmmdat,
             Bernoulli();
             progress)
     end
