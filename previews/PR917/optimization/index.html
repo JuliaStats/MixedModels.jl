@@ -257,7 +257,7 @@ pirls_maxiter:            10
 pirls_ftol_rel:           1.4901161193847656e-8
 pirls_ftol_abs:           1.0e-5
 pirls_maxhalfstep:        10
-Final parameter vector:   [1.3395641072252993, 0.4968328054940629]
+Final parameter vector:   [1.3395641071987012, 0.49683280580734207]
 Final objective value:    8151.583340132127
 Return code:              FTOL_REACHED
 </code></pre><p>As one would hope, given the name of the option, this fit is comparatively fast.</p><pre><code class="language-julia hljs">@btime fit(MixedModel, vaform, verbagg, Bernoulli(), fast=true)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Generalized Linear Mixed Model fit by maximum likelihood (nAGQ = 1)
@@ -294,9 +294,9 @@ situ: self    -1.01344     0.210888   -4.81    &lt;1e-05
  -4075.6999  8151.3997  8167.3997  8167.4187  8222.8701
 
 Variance components:
-        Column   VarianceStd.Dev.
-subj (Intercept)  1.79481 1.33970
-item (Intercept)  0.24533 0.49531
+        Column   Variance Std.Dev. 
+subj (Intercept)  1.794706 1.339666
+item (Intercept)  0.245326 0.495304
 
  Number of obs: 7584; levels of grouping factors: 316, 24
 
@@ -304,10 +304,10 @@ Fixed-effects parameters:
 ─────────────────────────────────────────────────────
                    Coef.  Std. Error      z  Pr(&gt;|z|)
 ─────────────────────────────────────────────────────
-(Intercept)    0.199111    0.405179    0.49    0.6231
-anger          0.0574307   0.0167572   3.43    0.0006
-gender: M      0.320658    0.191258    1.68    0.0936
-btype: scold  -1.05884     0.256808   -4.12    &lt;1e-04
-btype: shout  -2.10541     0.258531   -8.14    &lt;1e-15
-situ: self    -1.05554     0.210305   -5.02    &lt;1e-06
-─────────────────────────────────────────────────────</code></pre><p>This fit provided slightly better results (Laplace approximation to the deviance of 8151.400 versus 8151.583) but took 6 times as long. That is not terribly important when the times involved are a few seconds but can be important when the fit requires many hours or days of computing time.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../constructors/">« Model constructors</a><a class="docs-footer-nextpage" href="../GaussHermite/">Normalized Gauss-Hermite Quadrature »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.19.0 on <span class="colophon-date" title="Friday 2 October 2026 17:45">Friday 2 October 2026</span>. Using Julia version 1.10.12.</p></section><footer class="modal-card-foot"></footer></div></div></div></body><div data-docstringscollapsed="true"></div></html>
+(Intercept)    0.199671    0.40517     0.49    0.6221
+anger          0.0574257   0.0167568   3.43    0.0006
+gender: M      0.320644    0.191253    1.68    0.0936
+btype: scold  -1.05939     0.256805   -4.13    &lt;1e-04
+btype: shout  -2.10586     0.258528   -8.15    &lt;1e-15
+situ: self    -1.0558      0.210302   -5.02    &lt;1e-06
+─────────────────────────────────────────────────────</code></pre><p>This fit provided slightly better results (Laplace approximation to the deviance of 8151.400 versus 8151.583) but took 6 times as long. That is not terribly important when the times involved are a few seconds but can be important when the fit requires many hours or days of computing time.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../constructors/">« Model constructors</a><a class="docs-footer-nextpage" href="../GaussHermite/">Normalized Gauss-Hermite Quadrature »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.19.0 on <span class="colophon-date" title="Friday 2 October 2026 21:18">Friday 2 October 2026</span>. Using Julia version 1.10.12.</p></section><footer class="modal-card-foot"></footer></div></div></div></body><div data-docstringscollapsed="true"></div></html>
