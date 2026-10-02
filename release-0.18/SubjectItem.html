@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>- · MixedModels</title><link href="https://cdnjs.cloudflare.com/ajax/libs/normalize/4.2.0/normalize.min.css" rel="stylesheet" type="text/css"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.2.0/require.min.js" data-main="assets/documenter.js"></script><script src="siteinfo.js"></script><script src="../versions.js"></script><link href="assets/documenter.css" rel="stylesheet" type="text/css"/></head><body><nav class="toc"><a href="index.html"><img class="logo" src="assets/logo.png" alt="MixedModels logo"/></a><h1>MixedModels</h1><select id="version-selector" onChange="window.location.href=this.value" style="visibility: hidden"></select><form class="search" id="search-form" action="search.html"><input id="search-query" name="q" type="text" placeholder="Search docs"/></form><ul><li><a class="toctext" href="index.html">MixedModels.jl Documentation</a></li><li><a class="toctext" href="constructors.html">Model constructors</a></li><li><a class="toctext" href="optimization.html">Details of the parameter estimation</a></li><li><a class="toctext" href="GaussHermite.html">Normalized Gauss-Hermite Quadrature</a></li><li><a class="toctext" href="bootstrap.html">Parametric bootstrap for linear mixed-effects models</a></li><li><a class="toctext" href="SimpleLMM.html">A Simple, Linear, Mixed-effects Model</a></li><li><a class="toctext" href="MultipleTerms.html">Models With Multiple Random-effects Terms</a></li><li><a class="toctext" href="SingularCovariance.html">Singular covariance estimates in random regression models</a></li><li class="current"><a class="toctext" href="SubjectItem.html">-</a><ul class="internal"></ul></li></ul></nav><article id="docs"><header><nav><ul><li><a href="SubjectItem.html">-</a></li></ul><a class="edit-page" href="https://github.com/dmbates/MixedModels.jl/blob/master/docs/src/SubjectItem.md"><span class="fa"></span> Edit on GitHub</a></nav><hr/><div id="topbar"><span>-</span><a class="fa fa-bars" href="#"></a></div></header><pre><code class="language-julia">julia&gt; using DataFrames, MixedModels, RData
+
+julia&gt; const dat = convert(Dict{Symbol,DataFrame}, load(Pkg.dir(&quot;MixedModels&quot;, &quot;test&quot;, &quot;dat.rda&quot;)));
+</code></pre><pre><code class="language-julia">julia&gt; mm1 = fit(LinearMixedModel, @formula(Y ~ 1+S+T+U+V+W+X+Z+(1+S+T+U+V+W+X+Z|G)+(1+S+T+U+V+W+X+Z|H)), dat[:kb07])
+Linear mixed model fit by maximum likelihood
+ Formula: Y ~ 1 + S + T + U + V + W + X + Z + ((1 + S + T + U + V + W + X + Z) | G) + ((1 + S + T + U + V + W + X + Z) | H)
+     logLik        -2 logLik          AIC             BIC       
+ -1.42931611×10⁴  2.85863221×10⁴  2.87483221×10⁴  2.91930097×10⁴
+
+Variance components:
+              Column     Variance   Std.Dev.    Corr.
+ G        (Intercept)   90797.8433 301.326805
+          S              5186.2898  72.015900 -0.43
+          T              5545.5545  74.468480 -0.47  0.08
+          U              7590.2433  87.122003  0.21 -0.20  0.41
+          V              8839.5027  94.018630  0.20 -0.76 -0.54 -0.20
+          W              1822.8053  42.694324  0.47 -0.53 -0.11 -0.44  0.29
+          X              7417.7267  86.126226 -0.10  0.13 -0.05 -0.86 -0.06  0.70
+          Z              3800.9670  61.651983 -0.48  0.41 -0.39 -0.09  0.18 -0.78 -0.39
+ H        (Intercept)  129801.4428 360.279673
+          S              1855.0633  43.070446 -0.34
+          T             62410.5894 249.821115 -0.68 -0.45
+          U              2957.5947  54.383773  0.20 -0.03 -0.18
+          V              1038.0660  32.219031  0.57 -0.75  0.02  0.01
+          W              1608.1394  40.101613  0.28 -0.05 -0.27  0.44 -0.20
+          X              4698.6232  68.546504  0.08 -0.25  0.21 -0.13 -0.26  0.01
+          Z              4836.0681  69.541844  0.04 -0.46  0.32 -0.68  0.65 -0.69 -0.10
+ Residual              399601.5053 632.140416
+ Number of obs: 1790; levels of grouping factors: 56, 32
+
+  Fixed-effects parameters:
+             Estimate Std.Error  z value P(&gt;|z|)
+(Intercept)   2180.63   76.8177   28.387  &lt;1e-99
+S            -66.9899   19.3354 -3.46463  0.0005
+T            -333.881   47.6721  -7.0037  &lt;1e-11
+U             78.9869   21.2424  3.71837  0.0002
+V             22.1517   20.3362  1.08927  0.2760
+W            -18.9244   17.4951  -1.0817  0.2794
+X             5.26191    22.418 0.234719  0.8144
+Z            -23.9509   21.0303 -1.13888  0.2548
+
+</code></pre><pre><code class="language-julia">julia&gt; mm1.optsum
+Initial parameter vector: [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0  …  1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 1.0]
+Initial objective value:  30014.369768606295
+
+Optimizer (from NLopt):   LN_BOBYQA
+Lower bounds:             [0.0, -Inf, -Inf, -Inf, -Inf, -Inf, -Inf, -Inf, 0.0, -Inf  …  0.0, -Inf, -Inf, -Inf, 0.0, -Inf, -Inf, 0.0, -Inf, 0.0]
+ftol_rel:                 1.0e-12
+ftol_abs:                 1.0e-8
+xtol_rel:                 0.0
+xtol_abs:                 [1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10  …  1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10]
+initial_step:             [0.75, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.75, 1.0  …  0.75, 1.0, 1.0, 1.0, 0.75, 1.0, 1.0, 0.75, 1.0, 0.75]
+maxfeval:                 -1
+
+Function evaluations:     2018
+Final parameter vector:   [0.476677, -0.0494935, -0.0558944, 0.0295759, 0.0292159, 0.0319406, -0.0139343, -0.0463468, 0.102611, -0.0170349  …  0.0265041, -0.0488983, -0.0548502, 0.0604581, 0.00382623, -0.0032048, -0.00157491, 0.0, 8.21222e-5, 0.0]
+Final objective value:    28586.322101083984
+Return code:              FTOL_REACHED
+
+</code></pre><pre><code class="language-julia">julia&gt; mm1.trms[1].Λ
+8×8 LowerTriangular{Float64,Array{Float64,2}}:
+  0.476677     ⋅           ⋅          …    ⋅             ⋅           ⋅ 
+ -0.0494935   0.102611     ⋅               ⋅             ⋅           ⋅ 
+ -0.0558944  -0.0170349   0.10229          ⋅             ⋅           ⋅ 
+  0.0295759  -0.0165326   0.0779579        ⋅             ⋅           ⋅ 
+  0.0292159  -0.111063   -0.0943527        ⋅             ⋅           ⋅ 
+  0.0319406  -0.0244269   0.00509686  …   0.0            ⋅           ⋅ 
+ -0.0139343   0.0125996  -0.01326        -0.000291769   0.0          ⋅ 
+ -0.0463468   0.0217752  -0.0650938       0.000361817  -6.80369e-5  0.0
+</code></pre><pre><code class="language-julia">julia&gt; mm1.trms[2].Λ
+8×8 LowerTriangular{Float64,Array{Float64,2}}:
+  0.569936      ⋅            ⋅          …    ⋅           ⋅           ⋅ 
+ -0.0233133    0.0640217     ⋅               ⋅           ⋅           ⋅ 
+ -0.26706     -0.288259     0.0420499        ⋅           ⋅           ⋅ 
+  0.0173555    0.00368853  -0.0116354        ⋅           ⋅           ⋅ 
+  0.029017    -0.0299586   -0.0111736        ⋅           ⋅           ⋅ 
+  0.0179099    0.0029801   -0.0289884   …   0.00382623   ⋅           ⋅ 
+  0.00850529  -0.0258243    0.0893922      -0.0032048   0.0          ⋅ 
+  0.00489805  -0.0520096    0.00572593     -0.00157491  8.21222e-5  0.0
+</code></pre><footer><hr/><a class="previous" href="SingularCovariance.html"><span class="direction">Previous</span><span class="title">Singular covariance estimates in random regression models</span></a></footer></article></body></html>
