@@ -54,16 +54,16 @@ fm2 = fit(MixedModel, @formula(reaction ~ 1+days+(1+days|subj)), sleepstudy)</co
 
 Variance components:
             Column    Variance Std.Dev.   Corr.
-subj     (Intercept)  565.51589 23.78058
-         days          32.68220  5.71683 +0.08
-Residual              654.94103 25.59182
+subj     (Intercept)  565.51080 23.78047
+         days          32.68252  5.71686 +0.08
+Residual              654.94042 25.59180
  Number of obs: 180; levels of grouping factors: 18
 
   Fixed-effects parameters:
 ──────────────────────────────────────────────────
                 Coef.  Std. Error      z  Pr(&gt;|z|)
 ──────────────────────────────────────────────────
-(Intercept)  251.405      6.63228  37.91    &lt;1e-99
+(Intercept)  251.405      6.63226  37.91    &lt;1e-99
 days          10.4673     1.50224   6.97    &lt;1e-11
 ──────────────────────────────────────────────────</code></pre><p>the model matrix <span>$\bf Z$</span> is of the form</p><pre><code class="language-julia hljs">t21 = only(fm2.reterms);
 sparse(t21)&#39;</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">36×180 SparseArrays.SparseMatrixCSC{Float64, Int32} with 360 stored entries:
@@ -71,11 +71,11 @@ sparse(t21)&#39;</code></pre><pre class="documenter-example-output"><code class=
 ⎢⠀⠀⠀⠀⠀⠀⠀⠀⠀⠉⠉⠛⠛⠷⠶⠦⠤⢤⣀⣀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⎥
 ⎢⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠉⠉⠓⠒⠲⠶⢶⣤⣤⣀⣀⠀⠀⠀⠀⠀⠀⠀⠀⠀⎥
 ⎣⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠉⠉⠉⠉⠓⠒⠢⠤⢤⣀⣀⎦</code></pre><p>and <span>$\Lambda_\theta$</span> is a <span>$36\times36$</span> block diagonal matrix with <span>$18$</span> diagonal blocks, all of the form</p><pre><code class="language-julia hljs">t21.λ</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">2×2 LinearAlgebra.LowerTriangular{Float64, Matrix{Float64}}:
- 0.929226    ⋅ 
- 0.0181651  0.222645</code></pre><p>The <span>$\theta$</span> vector is</p><pre><code class="language-julia hljs">MixedModels.getθ(t21)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">3-element Vector{Float64}:
- 0.9292259065867788
- 0.018165149307614335
- 0.2226454658393477</code></pre><p>Random-effects terms in the model formula that have the same grouping factor are amalgamated into a single <code>ReMat</code> object.</p><pre><code class="language-julia hljs">fm3 = fit(MixedModel, @formula(reaction ~ 1+days+(1|subj) + (0+days|subj)), sleepstudy)
+ 0.929222    ⋅ 
+ 0.0181718  0.222646</code></pre><p>The <span>$\theta$</span> vector is</p><pre><code class="language-julia hljs">MixedModels.getθ(t21)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">3-element Vector{Float64}:
+ 0.9292221524012023
+ 0.018171783049238572
+ 0.22264613212085144</code></pre><p>Random-effects terms in the model formula that have the same grouping factor are amalgamated into a single <code>ReMat</code> object.</p><pre><code class="language-julia hljs">fm3 = fit(MixedModel, @formula(reaction ~ 1+days+(1|subj) + (0+days|subj)), sleepstudy)
 t31 = only(fm3.reterms);
 sparse(t31)&#39;</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">36×180 SparseArrays.SparseMatrixCSC{Float64, Int32} with 360 stored entries:
 ⎡⠉⠉⠓⠒⠢⠤⢤⣀⣀⣀⣀⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⎤
@@ -84,8 +84,8 @@ sparse(t31)&#39;</code></pre><pre class="documenter-example-output"><code class=
 ⎣⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠉⠉⠉⠉⠓⠒⠢⠤⢤⣀⣀⎦</code></pre><p>For this model the matrix <span>$\bf Z$</span> is the same as that of model <code>fm2</code> but the diagonal blocks of <span>$\Lambda_\theta$</span> are themselves diagonal.</p><pre><code class="language-julia hljs">t31.λ</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">2×2 LinearAlgebra.Diagonal{Float64, Vector{Float64}}:
  0.94581   ⋅ 
   ⋅       0.226928</code></pre><pre><code class="language-julia hljs">MixedModels.getθ(t31)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">2-element Vector{Float64}:
- 0.9458103302497245
- 0.22692784512264524</code></pre><p>Random-effects terms with distinct grouping factors generate distinct elements of the <code>reterms</code> field of the <code>LinearMixedModel</code> object. Multiple <code>ReMat</code> objects are sorted by decreasing numbers of random effects.</p><pre><code class="language-julia hljs">penicillin = MixedModelsDatasets.dataset(:penicillin)
+ 0.9458103543246144
+ 0.22692784367342253</code></pre><p>Random-effects terms with distinct grouping factors generate distinct elements of the <code>reterms</code> field of the <code>LinearMixedModel</code> object. Multiple <code>ReMat</code> objects are sorted by decreasing numbers of random effects.</p><pre><code class="language-julia hljs">penicillin = MixedModelsDatasets.dataset(:penicillin)
 fm4 = fit(MixedModel,
     @formula(diameter ~ 1 + (1|sample) + (1|plate)),
     penicillin)
@@ -108,15 +108,15 @@ initial_step:             [1.0, 1.0, 1.0]
 maxfeval:                 -1
 maxtime:                  -1.0
 
-Function evaluations:     82
+Function evaluations:     75
 xtol_zero_abs:            0.001
 ftol_zero_abs:            1.0e-5
 pirls_maxiter:            10
 pirls_ftol_rel:           1.4901161193847656e-8
 pirls_ftol_abs:           1.0e-5
 pirls_maxhalfstep:        10
-Final parameter vector:   [0.9292259065867788, 0.018165149307614335, 0.2226454658393477]
-Final objective value:    1751.9393469156716
+Final parameter vector:   [0.9292221524012023, 0.018171783049238572, 0.22264613212085144]
+Final objective value:    1751.939346924833
 Return code:              FTOL_REACHED
 </code></pre><p>More detailed information about the intermediate steps of the nonlinear optimizer can be obtained the <code>fitlog</code> field.</p><pre><code class="language-julia hljs">first(fm2.optsum.fitlog, 5)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Table with 2 columns and 5 rows:
      θ                objective
@@ -175,7 +175,7 @@ convdf = DataFrame(algorithm=[repeat([&quot;NelderMead&quot;], length(nm));
                            repeat([&quot;BOBYQA&quot;], length(bob))],
                    objective=[last.(nm); last.(bob)],
                    step=[1:length(nm); 1:length(bob)])
-draw(data(convdf) * mapping(:step, :objective; color=:algorithm) * visual(Lines))</code></pre><img src="52ced2f5.svg" alt="Example block output"/><p>Run time can be constrained with  <code>maxfeval</code> and <code>maxtime</code>.</p><h3 id="Convergence-to-singular-covariance-matrices"><a class="docs-heading-anchor" href="#Convergence-to-singular-covariance-matrices">Convergence to singular covariance matrices</a><a id="Convergence-to-singular-covariance-matrices-1"></a><a class="docs-heading-anchor-permalink" href="#Convergence-to-singular-covariance-matrices" title="Permalink"></a></h3><p>To ensure identifiability of <span>$\Sigma_\theta=\sigma^2\Lambda_\theta \Lambda_\theta$</span>, the elements of <span>$\theta$</span> corresponding to diagonal elements of <span>$\Lambda_\theta$</span> are constrained to be non-negative. For example, in a trivial case of a single, simple, scalar, random-effects term as in <code>fm1</code>, the one-dimensional <span>$\theta$</span> vector is the ratio of the standard deviation of the random effects to the standard deviation of the response. It happens that <span>$-\theta$</span> produces the same log-likelihood but, by convention, we define the standard deviation to be the positive square root of the variance. Requiring the diagonal elements of <span>$\Lambda_\theta$</span> to be non-negative is a generalization of using this positive square root.</p><p>If the optimization converges on the boundary of the feasible region, that is if one or more of the diagonal elements of <span>$\Lambda_\theta$</span> is zero at convergence, the covariance matrix <span>$\Sigma_\theta$</span> will be <em>singular</em>. This means that there will be linear combinations of random effects that are constant. Usually convergence to a singular covariance matrix is a sign of an over-specified model.</p><p>Singularity can be checked with the <code>issingular</code> predicate function.</p><article><details class="docstring"><summary id="MixedModels.issingular"><a class="docstring-binding" href="#MixedModels.issingular"><code>MixedModels.issingular</code></a> — <span class="docstring-category">Function</span></summary><section><div><pre><code class="language-julia hljs">issingular(m::MixedModel, θ=m.θ; atol::Real=0, rtol::Real=atol&gt;0 ? 0 : √eps)</code></pre><p>Test whether the model <code>m</code> is singular if the parameter vector is <code>θ</code>.</p><p>Equality comparisons are used b/c small non-negative θ values are replaced by 0 in <code>fit!</code>.</p><div class="admonition is-info" id="Note-591332246a790472"><header class="admonition-header">Note<a class="admonition-anchor" href="#Note-591332246a790472" title="Permalink"></a></header><div class="admonition-body"><p>For <code>GeneralizedLinearMixedModel</code>, the entire parameter vector (including β in the case <code>fast=false</code>) must be specified if the default is not used.</p></div></div></div></section><section><div><pre><code class="language-julia hljs">issingular(bsamp::MixedModelFitCollection;
+draw(data(convdf) * mapping(:step, :objective; color=:algorithm) * visual(Lines))</code></pre><img src="f0e5b9da.svg" alt="Example block output"/><p>Run time can be constrained with  <code>maxfeval</code> and <code>maxtime</code>.</p><h3 id="Convergence-to-singular-covariance-matrices"><a class="docs-heading-anchor" href="#Convergence-to-singular-covariance-matrices">Convergence to singular covariance matrices</a><a id="Convergence-to-singular-covariance-matrices-1"></a><a class="docs-heading-anchor-permalink" href="#Convergence-to-singular-covariance-matrices" title="Permalink"></a></h3><p>To ensure identifiability of <span>$\Sigma_\theta=\sigma^2\Lambda_\theta \Lambda_\theta$</span>, the elements of <span>$\theta$</span> corresponding to diagonal elements of <span>$\Lambda_\theta$</span> are constrained to be non-negative. For example, in a trivial case of a single, simple, scalar, random-effects term as in <code>fm1</code>, the one-dimensional <span>$\theta$</span> vector is the ratio of the standard deviation of the random effects to the standard deviation of the response. It happens that <span>$-\theta$</span> produces the same log-likelihood but, by convention, we define the standard deviation to be the positive square root of the variance. Requiring the diagonal elements of <span>$\Lambda_\theta$</span> to be non-negative is a generalization of using this positive square root.</p><p>If the optimization converges on the boundary of the feasible region, that is if one or more of the diagonal elements of <span>$\Lambda_\theta$</span> is zero at convergence, the covariance matrix <span>$\Sigma_\theta$</span> will be <em>singular</em>. This means that there will be linear combinations of random effects that are constant. Usually convergence to a singular covariance matrix is a sign of an over-specified model.</p><p>Singularity can be checked with the <code>issingular</code> predicate function.</p><article><details class="docstring"><summary id="MixedModels.issingular"><a class="docstring-binding" href="#MixedModels.issingular"><code>MixedModels.issingular</code></a> — <span class="docstring-category">Function</span></summary><section><div><pre><code class="language-julia hljs">issingular(m::MixedModel, θ=m.θ; atol::Real=0, rtol::Real=atol&gt;0 ? 0 : √eps)</code></pre><p>Test whether the model <code>m</code> is singular if the parameter vector is <code>θ</code>.</p><p>Equality comparisons are used b/c small non-negative θ values are replaced by 0 in <code>fit!</code>.</p><div class="admonition is-info" id="Note-591332246a790472"><header class="admonition-header">Note<a class="admonition-anchor" href="#Note-591332246a790472" title="Permalink"></a></header><div class="admonition-body"><p>For <code>GeneralizedLinearMixedModel</code>, the entire parameter vector (including β in the case <code>fast=false</code>) must be specified if the default is not used.</p></div></div></div></section><section><div><pre><code class="language-julia hljs">issingular(bsamp::MixedModelFitCollection;
            atol::Real=0, rtol::Real=atol&gt;0 ? 0 : √eps))</code></pre><p>Test each bootstrap sample for singularity of the corresponding fit.</p><p>Equality comparisons are used b/c small non-negative θ values are replaced by 0 in <code>fit!</code>.</p><p>See also <a href="../api/#MixedModels.issingular-Tuple{MixedModels.MixedModelFitCollection}"><code>issingular(::MixedModel)</code></a>.</p></div></section></details></article><pre><code class="language-julia hljs">issingular(fm2)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">false</code></pre><h2 id="Generalized-Linear-Mixed-Effects-Models"><a class="docs-heading-anchor" href="#Generalized-Linear-Mixed-Effects-Models">Generalized Linear Mixed-Effects Models</a><a id="Generalized-Linear-Mixed-Effects-Models-1"></a><a class="docs-heading-anchor-permalink" href="#Generalized-Linear-Mixed-Effects-Models" title="Permalink"></a></h2><p>In a <a href="https://en.wikipedia.org/wiki/Generalized_linear_model"><em>generalized linear model</em></a> the responses are modelled as coming from a particular distribution, such as <code>Bernoulli</code> for binary responses or <code>Poisson</code> for responses that represent counts. The scalar distributions of individual responses differ only in their means, which are determined by a <em>linear predictor</em> expression <span>$\eta=\bf X\beta$</span>, where, as before, <span>$\bf X$</span> is a model matrix derived from the values of covariates and <span>$\beta$</span> is a vector of coefficients.</p><p>The unconstrained components of <span>$\eta$</span> are mapped to the, possibly constrained, components of the mean response, <span>$\mu$</span>, via a scalar function, <span>$g^{-1}$</span>, applied to each component of <span>$\eta$</span>. For historical reasons, the inverse of this function, taking components of <span>$\mu$</span> to the corresponding component of <span>$\eta$</span> is called the <em>link function</em> and the more frequently used map from <span>$\eta$</span> to <span>$\mu$</span> is the <em>inverse link</em>.</p><p>A <em>generalized linear mixed-effects model</em> (GLMM) is defined, for the purposes of this package, by</p><p class="math-container">\[\begin{aligned}
   (\mathcal{Y} | \mathcal{B}=\bf{b}) &amp;\sim\mathcal{D}(\bf{g^{-1}(X\beta + Z b)},\phi)\\\\
   \mathcal{B}&amp;\sim\mathcal{N}(\bf{0},\Sigma_\theta) .
@@ -195,24 +195,24 @@ mean(d)          # Get the mean arrival rate, i.e. λ</code></pre><p>External li
 const vaform = @formula(r2 ~ 1 + anger + gender + btype + situ + (1|subj) + (1|item));
 mdl = GeneralizedLinearMixedModel(vaform, verbagg, Bernoulli());
 typeof(mdl)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">GeneralizedLinearMixedModel{Float64, Bernoulli{Float64}}</code></pre><p>A separate call to <code>fit!</code> can be used to fit the model. This involves optimizing an objective function, the Laplace approximation to the deviance, with respect to the parameters, which are <span>$\beta$</span>, the fixed-effects coefficients, and <span>$\theta$</span>, the covariance parameters. The starting estimate for <span>$\beta$</span> is determined by fitting a GLM to the fixed-effects part of the formula</p><pre><code class="language-julia hljs">mdl.β</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">6-element Vector{Float64}:
-  0.20605302210322834
-  0.039940376051149834
-  0.23131667674984469
+  0.20605302210322698
+  0.0399403760511499
+  0.23131667674984466
  -0.7941857249205363
  -1.539188208545692
  -0.7766556048305917</code></pre><p>and the starting estimate for <span>$\theta$</span>, which is a vector of the two standard deviations of the random effects, is chosen to be</p><pre><code class="language-julia hljs">mdl.θ</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">2-element Vector{Float64}:
  1.0
  1.0</code></pre><p>The Laplace approximation to the deviance requires determining the conditional modes of the random effects. These are the values that maximize the conditional density of the random effects, given the model parameters and the data. This is done using Penalized Iteratively Reweighted Least Squares (PIRLS). In most cases PIRLS is fast and stable. It is simply a penalized version of the IRLS algorithm used in fitting GLMs.</p><p>The distinction between the &quot;fast&quot; and &quot;slow&quot; algorithms in the <code>MixedModels</code> package (<code>nAGQ=0</code> or <code>nAGQ=1</code> in <code>lme4</code>) is whether the fixed-effects parameters, <span>$\beta$</span>, are optimized in PIRLS or in the nonlinear optimizer. In a call to the <code>pirls!</code> function the first argument is a <code>GeneralizedLinearMixedModel</code>, which is modified during the function call. (By convention, the names of such <em>mutating functions</em> end in <code>!</code> as a warning to the user that they can modify an argument, usually the first argument.) The second and third arguments are optional logical values indicating if <span>$\beta$</span> is to be varied and if verbose output is to be printed.</p><pre><code class="language-julia hljs">pirls!(mdl, true, false)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi"></code></pre><pre><code class="language-julia hljs">deviance(mdl)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">8201.848559060705</code></pre><pre><code class="language-julia hljs">mdl.β</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">6-element Vector{Float64}:
-  0.21853493716437028
-  0.05143854258079525
-  0.29022454166296663
- -0.9791237061898636
- -1.9540167628114196
- -0.9794925718018461</code></pre><pre><code class="language-julia hljs">mdl.θ # current values of the standard deviations of the random effects</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">2-element Vector{Float64}:
+  0.21853493716469252
+  0.05143854258079311
+  0.2902245416629606
+ -0.979123706189958
+ -1.9540167628115568
+ -0.9794925718021281</code></pre><pre><code class="language-julia hljs">mdl.θ # current values of the standard deviations of the random effects</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">2-element Vector{Float64}:
  1.0
  1.0</code></pre><p>If the optimization with respect to <span>$\beta$</span> is performed within PIRLS then the nonlinear optimization of the Laplace approximation to the deviance requires optimization with respect to <span>$\theta$</span> only. This is the &quot;fast&quot; algorithm. Given a value of <span>$\theta$</span>, PIRLS is used to determine the conditional estimate of <span>$\beta$</span> and the conditional mode of the random effects, <strong>b</strong>.</p><pre><code class="language-julia hljs">mdl.b # conditional modes of b</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">2-element Vector{Matrix{Float64}}:
- [-0.6007716038487515 -1.9322680866219628 … -0.14455373975322025 -0.5752238433557225]
- [-0.18636418747798195 0.02142277358688021 … 0.6410383402065485 0.6496779078965017]</code></pre><pre><code class="language-julia hljs">fit!(mdl, fast=true);</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Generalized Linear Mixed Model fit by maximum likelihood (nAGQ = 1)
+ [-0.6007716038487521 -1.932268086621977 … -0.1445537397532205 -0.5752238433557425]
+ [-0.18636418747825212 0.021422773586703407 … 0.6410383402066918 0.6496779078965103]</code></pre><pre><code class="language-julia hljs">fit!(mdl, fast=true);</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Generalized Linear Mixed Model fit by maximum likelihood (nAGQ = 1)
   r2 ~ 1 + anger + gender + btype + situ + (1 | subj) + (1 | item)
   Distribution: Bernoulli{Float64}
   Link: LogitLink()
@@ -257,8 +257,8 @@ pirls_maxiter:            10
 pirls_ftol_rel:           1.4901161193847656e-8
 pirls_ftol_abs:           1.0e-5
 pirls_maxhalfstep:        10
-Final parameter vector:   [1.3395641071987012, 0.49683280580734207]
-Final objective value:    8151.583340132127
+Final parameter vector:   [1.3395641069780686, 0.4968328056315871]
+Final objective value:    8151.583340132128
 Return code:              FTOL_REACHED
 </code></pre><p>As one would hope, given the name of the option, this fit is comparatively fast.</p><pre><code class="language-julia hljs">@btime fit(MixedModel, vaform, verbagg, Bernoulli(), fast=true)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Generalized Linear Mixed Model fit by maximum likelihood (nAGQ = 1)
   r2 ~ 1 + anger + gender + btype + situ + (1 | subj) + (1 | item)
@@ -295,19 +295,19 @@ situ: self    -1.01344     0.210888   -4.81    &lt;1e-05
 
 Variance components:
         Column   Variance Std.Dev. 
-subj (Intercept)  1.794706 1.339666
-item (Intercept)  0.245326 0.495304
+subj (Intercept)  1.794773 1.339691
+item (Intercept)  0.245310 0.495288
 
  Number of obs: 7584; levels of grouping factors: 316, 24
 
 Fixed-effects parameters:
-─────────────────────────────────────────────────────
-                   Coef.  Std. Error      z  Pr(&gt;|z|)
-─────────────────────────────────────────────────────
-(Intercept)    0.199671    0.40517     0.49    0.6221
-anger          0.0574257   0.0167568   3.43    0.0006
-gender: M      0.320644    0.191253    1.68    0.0936
-btype: scold  -1.05939     0.256805   -4.13    &lt;1e-04
-btype: shout  -2.10586     0.258528   -8.15    &lt;1e-15
-situ: self    -1.0558      0.210302   -5.02    &lt;1e-06
-─────────────────────────────────────────────────────</code></pre><p>This fit provided slightly better results (Laplace approximation to the deviance of 8151.400 versus 8151.583) but took 6 times as long. That is not terribly important when the times involved are a few seconds but can be important when the fit requires many hours or days of computing time.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../constructors/">« Model constructors</a><a class="docs-footer-nextpage" href="../GaussHermite/">Normalized Gauss-Hermite Quadrature »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.19.0 on <span class="colophon-date" title="Friday 2 October 2026 21:18">Friday 2 October 2026</span>. Using Julia version 1.10.12.</p></section><footer class="modal-card-foot"></footer></div></div></div></body><div data-docstringscollapsed="true"></div></html>
+────────────────────────────────────────────────────
+                  Coef.  Std. Error      z  Pr(&gt;|z|)
+────────────────────────────────────────────────────
+(Intercept)    0.199205   0.405172    0.49    0.6230
+anger          0.057415   0.0167571   3.43    0.0006
+gender: M      0.32035    0.191256    1.67    0.0939
+btype: scold  -1.05854    0.256797   -4.12    &lt;1e-04
+btype: shout  -2.10507    0.258521   -8.14    &lt;1e-15
+situ: self    -1.05535    0.210296   -5.02    &lt;1e-06
+────────────────────────────────────────────────────</code></pre><p>This fit provided slightly better results (Laplace approximation to the deviance of 8151.400 versus 8151.583) but took 6 times as long. That is not terribly important when the times involved are a few seconds but can be important when the fit requires many hours or days of computing time.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../constructors/">« Model constructors</a><a class="docs-footer-nextpage" href="../GaussHermite/">Normalized Gauss-Hermite Quadrature »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.19.0 on <span class="colophon-date" title="Friday 2 October 2026 21:49">Friday 2 October 2026</span>. Using Julia version 1.10.12.</p></section><footer class="modal-card-foot"></footer></div></div></div></body><div data-docstringscollapsed="true"></div></html>
