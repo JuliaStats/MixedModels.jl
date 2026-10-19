@@ -1,8 +1,8 @@
 """
     StatsAPI.predict(m::LinearMixedModel, newdata;
-                    new_re_levels=:missing)
+                    new_re_levels=:missing, β=coef(m))
     StatsAPI.predict(m::GeneralizedLinearMixedModel, newdata;
-                    new_re_levels=:missing, type=:response)
+                    new_re_levels=:missing, type=:response, β=coef(m))
 
 Predict response for new data.
 
@@ -65,13 +65,21 @@ whether the predictions should be returned on the scale of linear predictor
 (`:linpred`) or on the response scale (`:response`). If you don't know the
 difference between these terms, then you probably want `type=:response`.
 
+By default, predictions use the model's own estimated fixed effects
+(`coef(m)`). A different coefficient vector can be supplied via `β`, e.g.
+to compute predictions for a hypothetical or externally specified set of
+coefficients. `β` can be specified either as a pivoted, full rank
+coefficient vector (cf. [`fixef`](@ref)) or as an unpivoted full dimension
+coefficient vector (cf. [`coef`](@ref)), where the entries corresponding to
+redundant columns will be ignored.
+
 Regression weights are not yet supported in prediction.
 Similarly, offsets are also not supported for `GeneralizedLinearMixedModel`.
 """
 function StatsAPI.predict(
-    m::LinearMixedModel, newdata::Tables.ColumnTable; new_re_levels=:missing
+    m::LinearMixedModel, newdata::Tables.ColumnTable; new_re_levels=:missing, β=coef(m)
 )
-    return _predict(m, newdata, coef(m)[pivot(m)]; new_re_levels)
+    return _predict(m, newdata, _pivotbeta(m, β; truncate=false); new_re_levels)
 end
 
 function StatsAPI.predict(
@@ -79,10 +87,11 @@ function StatsAPI.predict(
     newdata::Tables.ColumnTable;
     new_re_levels=:population,
     type=:response,
+    β=coef(m),
 )
     type in (:linpred, :response) || throw(ArgumentError("Invalid value for type: $(type)"))
     # want pivoted but not truncated
-    y = _predict(m.LMM, newdata, coef(m)[pivot(m)]; new_re_levels)
+    y = _predict(m.LMM, newdata, _pivotbeta(m, β; truncate=false); new_re_levels)
 
     return type == :linpred ? y : broadcast!(Base.Fix1(linkinv, Link(m)), y, y)
 end

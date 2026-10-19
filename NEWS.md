@@ -6,6 +6,21 @@ MixedModels vX.Y.Z Release Notes
 - The gradient source for gradient-based optimizers can be selected with the new `gradient` keyword argument to `fit`/`fit!` (stored in `OptSummary`): the default `:analytic` uses `objective_gradient!`, while `:forwarddiff` uses forward-mode automatic differentiation and requires that ForwardDiff.jl be loaded. The `:forwarddiff` source reuses a cached, dual-valued copy of the model's numerical fields across evaluations.
 - The per-face and per-block arithmetic in `objective_gradient!` is now unrolled into statically sized kernels for term dimensions up to 4, instead of issuing a `mul!` per face or per nonzero block.  Those products are at most 4×4, far too small to amortize a BLAS call, so the dispatch and setup dominated the handful of flops.  Gradient evaluation is roughly 1.6× faster on `d3` with vector-valued terms, 1.8× with scalar terms, 1.1× on the maximal `kb07` model, and 3× on small nested models; models dominated by the large triangular solves in `L⁻¹`, such as `insteval`, are unchanged.  Accumulating each face in registers and writing back once reorders the additions, so gradient components change in the last few bits.
 - The ForwardDiff extension has been reworked to reuse the core linear-algebra routines (which have gained generic fallback methods for element types without BLAS/LAPACK support) instead of maintaining parallel `fd_*` implementations. The objective it differentiates now profiles `σ` (or holds it at `optsum.sigma` when fixed), matching `objective`, so `ForwardDiff.gradient` and `ForwardDiff.hessian` now refer to the profiled objective; the Hessian of a model fitted with a fixed `σ` is now computed at that fixed value. `fd_deviance` also now includes the constant weights term for weighted models, matching `objective`.
+
+MixedModels v5.9.1 Release Notes
+================================
+- The `rankUpdate!` method for a `Diagonal` block of `L` updated from a `SparseMatrixCSC` now accepts columns with no stored entries; previously it required exactly one stored entry per column. On newer Julia versions, the 5-argument sparse `mul!` in `updateL!` drops exact zeros from its result, which can happen when an element of θ is zero, and this caused a spurious `ArgumentError` when fitting some models, e.g. a GLMM for `grouseticks`. [#918]
+- The precompile workflow now uses simulated data instead of relying on `MixedModelsDatasets`. This should speed up precompilation and improve its reliability since no data needs to be downloaded.[#919]
+
+MixedModels v5.9.0 Release Notes
+================================
+- `predict` now accepts a `β` keyword argument for supplying a custom fixed-effects coefficient vector instead of the model's own fitted estimates. As with `simulate!`, `β` may be given either as a pivoted, full-rank vector (cf. `fixef`) or an unpivoted, full-dimension vector (cf. `coef`), with entries for redundant columns ignored. The default behavior (using the model's own estimates) is unchanged. [#916]
+
+MixedModels v5.8.4 Release Notes
+================================
+- Remove dependency in `docs/Project.toml` on `MixedModelsSerialization` which was holding up other package version updates. [#915]
+- Also adjust compat entries in `docs/Project.toml` for `AlgebraOfGraphics` and `FreqTables`
+
 MixedModels v5.8.3 Release Notes
 ==============================
 - JSON backend for `saveoptsum` and `restoreoptsum!` has been changed from JSON3.jl to JSON.jl. [JSON3.jl has been deprecated in favor of JSON.jl](https://github.com/quinnj/JSON3.jl/blob/08b5f48d25ab596c5441969ee83d56f9b9c5b704/README.md). As a result, the dependency on `StructTypes.jl` has also been dropped. [#897]
@@ -810,3 +825,7 @@ Package dependencies
 [#904]: https://github.com/JuliaStats/MixedModels.jl/issues/904
 [#910]: https://github.com/JuliaStats/MixedModels.jl/issues/910
 [#911]: https://github.com/JuliaStats/MixedModels.jl/issues/911
+[#915]: https://github.com/JuliaStats/MixedModels.jl/issues/915
+[#916]: https://github.com/JuliaStats/MixedModels.jl/issues/916
+[#918]: https://github.com/JuliaStats/MixedModels.jl/issues/918
+[#919]: https://github.com/JuliaStats/MixedModels.jl/issues/919
