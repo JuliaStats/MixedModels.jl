@@ -28,14 +28,13 @@ end
     @test all(t.contrasts.levels[i] == lev for (i, lev) in enumerate(levs))
 
     d = (; y=rand(20),
-         grp=categorical([1:10; 1:10]))
+        grp=categorical([1:10; 1:10]))
     sch = schema(d, Dict(:grp => Grouping()))
     t = sch[term(:grp)]
     @test t isa CategoricalTerm{Grouping}
     @test size(t.contrasts.matrix) == (0, 0)
     @test length(t.contrasts.levels) == 10
     @test_throws ErrorException StatsModels.modelcols(t, (a=1.0,))
-
 end
 
 @testset "Auto application of Grouping()" begin

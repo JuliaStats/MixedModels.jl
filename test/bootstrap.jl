@@ -224,8 +224,12 @@ end
 
         # coarse tolerances because we're not doing many bootstrap samples
         # end-1 because the bootstrap CIs include the variance component
-        @test all(isapprox.(collect(bsci.lower)[1:end-1], collect(waldci.lower); atol=0.5))
-        @test all(isapprox.(collect(bsci.upper)[1:end-1], collect(waldci.upper); atol=0.5))
+        @test all(
+            isapprox.(collect(bsci.lower)[1:(end - 1)], collect(waldci.lower); atol=0.5)
+        )
+        @test all(
+            isapprox.(collect(bsci.upper)[1:(end - 1)], collect(waldci.upper); atol=0.5)
+        )
 
         σbar = mean(MixedModels.tidyσs(bs)) do x
             x.σ

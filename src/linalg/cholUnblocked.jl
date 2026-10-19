@@ -1,5 +1,5 @@
 """
-    cholUnblocked!(A, Val{:L})
+    cholUnblocked!(A)
 
 Overwrite the lower triangle of `A` with its lower Cholesky factor.
 
@@ -37,6 +37,12 @@ function cholUnblocked!(A::StridedMatrix{T}) where {T<:BlasFloat}
         _, info = LAPACK.potrf!('L', A)
         iszero(info) || throw(PosDefException(info))
     end
+    return A
+end
+
+# generic fallback for eltypes without LAPACK support, e.g. ForwardDiff.Dual
+function cholUnblocked!(A::StridedMatrix)
+    cholesky!(Hermitian(A, :L))
     return A
 end
 

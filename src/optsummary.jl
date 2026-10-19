@@ -25,6 +25,10 @@ Summary of an optimization
 * `optimizer`: the name of the optimizer used, as a `Symbol`
 * `backend`: the optimization library providing the optimizer, stored as a symbol.
    The current default is `:nlopt`.
+* `gradient`: the source of the gradient of the objective for gradient-based
+   optimizers, as a `Symbol`. The default `:analytic` uses [`objective_gradient!`](@ref);
+   `:forwarddiff` uses forward-mode automatic differentiation and requires that
+   ForwardDiff.jl be loaded. This field is ignored by derivative-free optimizers.
 
 The current default backend is NLopt, which is a direct dependency of MixedModels.jl.
 A PRIMA backend is also provided as a package extension and thus only
@@ -82,6 +86,7 @@ Base.@kwdef mutable struct OptSummary{T<:AbstractFloat}
 
     optimizer::Symbol = :LN_NEWUOA    # switched to :LN_BOBYQA for one-dimensional optimizations
     backend::Symbol = :nlopt
+    gradient::Symbol = :analytic
 
     # the @kwdef macro isn't quite smart enough for us to use the type parameter
     # for the default values, but we can fake it
