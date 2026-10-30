@@ -21,7 +21,7 @@ jobs:
     strategy:
       matrix:
         julia-version: [min]
-        os: [ubuntu-22.04, macos-14, windows-2022]
+        os: [ubuntu-22.04, macos-15, windows-2022]
     steps:
       - uses: actions/checkout@v7
       - uses: julia-actions/setup-julia@v3
