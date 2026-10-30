@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg"
+     xmlns:xlink="http://www.w3.org/1999/xlink"
+     xmlns:gadfly="http://www.gadflyjl.org/ns"
+     version="1.2"
+     width="152.4mm" height="101.6mm" viewBox="0 0 152.4 101.6"
+     stroke="none"
+     fill="#000000"
+     stroke-width="0.3"
+     font-size="3.88"
+>
+<defs>
+  <marker id="arrow" markerWidth="15" markerHeight="7" refX="5" refY="3.5" orient="auto" markerUnits="strokeWidth">
+    <path d="M0,0 L15,3.5 L0,7 z" stroke="context-stroke" fill="context-stroke"/>
+  </marker>
+</defs>
+<g class="plotroot xscalable yscalable" id="img-b7ea1a40-1">
+  <g font-size="3.88" font-family="'PT Sans','Helvetica Neue','Helvetica',sans-serif" fill="#564A55" stroke="#000000" stroke-opacity="0.000" id="img-b7ea1a40-2">
+    <g transform="translate(87.06,89.99)">
+      <g class="primitive">
+        <text text-anchor="middle" dy="0.6em">Standard Normal quantiles</text>
+      </g>
+    </g>
+  </g>
+  <g class="guide xlabels" font-size="2.82" font-family="'PT Sans Caption','Helvetica Neue','Helvetica',sans-serif" fill="#6C606B" id="img-b7ea1a40-3">
+    <g transform="translate(28.73,83.32)">
+      <g class="primitive">
+        <text text-anchor="middle" dy="0.6em">-3</text>
+      </g>
+    </g>
+    <g transform="translate(48.17,83.32)">
+      <g class="primitive">
+        <text text-anchor="middle" dy="0.6em">-2</text>
+      </g>
+    </g>
+    <g transform="translate(67.62,83.32)">
+      <g class="primitive">
+        <text text-anchor="middle" dy="0.6em">-1</text>
+      </g>
+    </g>
+    <g transform="translate(87.06,83.32)">
+      <g class="primitive">
+        <text text-anchor="middle" dy="0.6em">0</text>
+      </g>
+    </g>
+    <g transform="translate(106.51,83.32)">
+      <g class="primitive">
+        <text text-anchor="middle" dy="0.6em">1</text>
+      </g>
+    </g>
+    <g transform="translate(125.95,83.32)">
+      <g class="primitive">
+        <text text-anchor="middle" dy="0.6em">2</text>
+      </g>
+    </g>
+    <g transform="translate(145.4,83.32)">
+      <g class="primitive">
+        <text text-anchor="middle" dy="0.6em">3</text>
+      </g>
+    </g>
+  </g>
+  <g clip-path="url(#img-b7ea1a40-4)">
+    <g id="img-b7ea1a40-5">
+      <g pointer-events="visible" fill="#000000" fill-opacity="0.000" stroke="#000000" stroke-opacity="0.000" class="guide background" id="img-b7ea1a40-6">
+        <g transform="translate(87.06,43.66)" id="img-b7ea1a40-7">
+          <path d="M-60.34,-38.66 L 60.34 -38.66 60.34 38.66 -60.34 38.66 z" class="primitive"/>
+        </g>
+      </g>
+      <g class="guide ygridlines xfixed" stroke-dasharray="0.5,0.5" stroke-width="0.2" stroke="#D0D0E0" id="img-b7ea1a40-8">
+        <g transform="translate(87.06,80.31)" id="img-b7ea1a40-9">
+          <path fill="none" d="M-60.34,0 L 60.34 0" class="primitive"/>
+        </g>
+        <g transform="translate(87.06,65.65)" id="img-b7ea1a40-10">
+          <path fill="none" d="M-60.34,0 L 60.34 0" class="primitive"/>
+        </g>
+        <g transform="translate(87.06,50.99)" id="img-b7ea1a40-11">
+          <path fill="none" d="M-60.34,0 L 60.34 0" class="primitive"/>
+        </g>
+        <g transform="translate(87.06,36.33)" id="img-b7ea1a40-12">
+          <path fill="none" d="M-60.34,0 L 60.34 0" class="primitive"/>
+        </g>
+        <g transform="translate(87.06,21.66)" id="img-b7ea1a40-13">
+          <path fill="none" d="M-60.34,0 L 60.34 0" class="primitive"/>
+        </g>
+        <g transform="translate(87.06,7)" id="img-b7ea1a40-14">
+          <path fill="none" d="M-60.34,0 L 60.34 0" class="primitive"/>
+        </g>
+      </g>
+      <g class="guide xgridlines yfixed" stroke-dasharray="0.5,0.5" stroke-width="0.2" stroke="#D0D0E0" id="img-b7ea1a40-15">
+        <g transform="translate(28.73,43.66)" id="img-b7ea1a40-16">
+          <path fill="none" d="M0,-38.66 L 0 38.66" class="primitive"/>
+        </g>
+        <g transform="translate(48.17,43.66)" id="img-b7ea1a40-17">
+          <path fill="none" d="M0,-38.66 L 0 38.66" class="primitive"/>
+        </g>
+        <g transform="translate(67.62,43.66)" id="img-b7ea1a40-18">
+          <path fill="none" d="M0,-38.66 L 0 38.66" class="primitive"/>
+        </g>
+        <g transform="translate(87.06,43.66)" id="img-b7ea1a40-19">
+          <path fill="none" d="M0,-38.66 L 0 38.66" class="primitive"/>
+        </g>
+        <g transform="translate(106.51,43.66)" id="img-b7ea1a40-20">
+          <path fill="none" d="M0,-38.66 L 0 38.66" class="primitive"/>
+        </g>
+        <g transform="translate(125.95,43.66)" id="img-b7ea1a40-21">
+          <path fill="none" d="M0,-38.66 L 0 38.66" class="primitive"/>
+        </g>
+        <g transform="translate(145.4,43.66)" id="img-b7ea1a40-22">
+          <path fill="none" d="M0,-38.66 L 0 38.66" class="primitive"/>
+        </g>
+      </g>
+      <g class="plotpanel" id="img-b7ea1a40-23">
+        <metadata>
+          <boundingbox value="26.725000000000023mm 5.0mm 120.67499999999998mm 77.315mm"/>
+          <unitbox value="-3.1028497964431114 5136.3977357975855 6.205699592886222 -5272.795471595172"/>
+        </metadata>
+        <g stroke-width="0.3" fill="#000000" fill-opacity="0.000" class="geometry" id="img-b7ea1a40-24">
+          <g class="color_LCHab{Float32}(70.0f0,60.0f0,240.0f0)" stroke-dasharray="none" stroke="#00BFFF" id="img-b7ea1a40-25">
+            <g transform="translate(87.06,44.64)" id="img-b7ea1a40-26">
+              <path fill="none" d="M-55.97,22.69 L -48.85 20.64 -45.24 19.56 -42.73 18.75 -40.78 18.07 -39.17 17.48 -37.79 16.99 -36.57 16.57 -35.49 16.2 -34.5 15.84 -33.6 15.53 -32.77 15.23 -31.99 14.96 -31.25 14.69 -30.56 14.44 -29.91 14.2 -29.29 13.96 -28.7 13.74 -28.13 13.52 -27.59 13.31 -27.06 13.09 -26.56 12.88 -26.07 12.7 -25.6 12.52 -25.14 12.34 -24.7 12.16 -24.27 11.99 -23.85 11.84 -23.44 11.69 -23.04 11.52 -22.66 11.36 -22.28 11.2 -21.9 11.04 -21.54 10.88 -21.18 10.73 -20.83 10.59 -20.49 10.45 -20.15 10.31 -19.82 10.18 -19.5 10.05 -19.18 9.92 -18.86 9.79 -18.55 9.66 -18.25 9.53 -17.95 9.4 -17.65 9.28 -17.36 9.15 -17.07 9.02 -16.79 8.89 -16.51 8.76 -16.23 8.64 -15.95 8.53 -15.68 8.4 -15.41 8.29 -15.15 8.17 -14.88 8.05 -14.62 7.94 -14.37 7.82 -14.11 7.71 -13.86 7.6 -13.61 7.5 -13.36 7.38 -13.12 7.27 -12.87 7.15 -12.63 7.04 -12.39 6.95 -12.15 6.84 -11.92 6.73 -11.68 6.62 -11.45 6.51 -11.22 6.4 -10.99 6.29 -10.76 6.19 -10.53 6.09 -10.31 5.99 -10.09 5.89 -9.86 5.79 -9.64 5.69 -9.42 5.58 -9.2 5.48 -8.99 5.36 -8.77 5.26 -8.55 5.17 -8.34 5.07 -8.13 4.97 -7.91 4.87 -7.7 4.77 -7.49 4.66 -7.28 4.56 -7.07 4.47 -6.87 4.35 -6.66 4.24 -6.45 4.14 -6.25 4.04 -6.04 3.95 -5.84 3.86 -5.63 3.75 -5.43 3.66 -5.23 3.56 -5.03 3.45 -4.83 3.36 -4.63 3.27 -4.42 3.18 -4.22 3.07 -4.03 2.98 -3.83 2.88 -3.63 2.78 -3.43 2.68 -3.23 2.59 -3.03 2.49 -2.84 2.39 -2.64 2.29 -2.44 2.19 -2.25 2.1 -2.05 2 -1.86 1.91 -1.66 1.8 -1.46 1.71 -1.27 1.62 -1.07 1.51 -0.88 1.41 -0.68 1.31 -0.49 1.21 -0.29 1.11 -0.1 1.01 0.1 0.9 0.29 0.8 0.49 0.71 0.68 0.61 0.88 0.51 1.07 0.41 1.27 0.3 1.46 0.19 1.66 0.1 1.86 0.01 2.05 -0.1 2.25 -0.2 2.44 -0.3 2.64 -0.41 2.84 -0.51 3.03 -0.61 3.23 -0.72 3.43 -0.83 3.63 -0.93 3.83 -1.04 4.03 -1.16 4.22 -1.26 4.42 -1.37 4.63 -1.48 4.83 -1.59 5.03 -1.7 5.23 -1.8 5.43 -1.9 5.63 -2 5.84 -2.12 6.04 -2.25 6.25 -2.36 6.45 -2.47 6.66 -2.59 6.87 -2.7 7.07 -2.81 7.28 -2.94 7.49 -3.05 7.7 -3.17 7.91 -3.28 8.13 -3.39 8.34 -3.5 8.55 -3.62 8.77 -3.74 8.99 -3.86 9.2 -3.99 9.42 -4.11 9.64 -4.24 9.86 -4.37 10.09 -4.49 10.31 -4.62 10.53 -4.74 10.76 -4.87 10.99 -5 11.22 -5.13 11.45 -5.25 11.68 -5.39 11.92 -5.52 12.15 -5.66 12.39 -5.78 12.63 -5.91 12.87 -6.05 13.12 -6.19 13.36 -6.35 13.61 -6.5 13.86 -6.66 14.11 -6.82 14.37 -6.96 14.62 -7.11 14.88 -7.26 15.15 -7.42 15.41 -7.57 15.68 -7.73 15.95 -7.91 16.23 -8.07 16.51 -8.25 16.79 -8.41 17.07 -8.58 17.36 -8.77 17.65 -8.95 17.95 -9.12 18.25 -9.31 18.55 -9.49 18.86 -9.66 19.18 -9.84 19.5 -10.06 19.82 -10.27 20.15 -10.47 20.49 -10.68 20.83 -10.9 21.18 -11.12 21.54 -11.33 21.9 -11.57 22.28 -11.79 22.66 -12.04 23.04 -12.29 23.44 -12.54 23.85 -12.81 24.27 -13.06 24.7 -13.34 25.14 -13.62 25.6 -13.94 26.07 -14.24 26.56 -14.56 27.06 -14.89 27.59 -15.26 28.13 -15.61 28.7 -16.02 29.29 -16.42 29.91 -16.85 30.56 -17.28 31.25 -17.79 31.99 -18.3 32.77 -18.86 33.6 -19.48 34.5 -20.13 35.49 -20.84 36.57 -21.58 37.79 -22.44 39.17 -23.48 40.78 -24.62 42.73 -26.18 45.24 -27.87 48.85 -30.66 55.97 -36.4" class="primitive"/>
+            </g>
+          </g>
+        </g>
+      </g>
+    </g>
+  </g>
+  <g class="guide ylabels" font-size="2.82" font-family="'PT Sans Caption','Helvetica Neue','Helvetica',sans-serif" fill="#6C606B" id="img-b7ea1a40-27">
+    <g transform="translate(25.72,80.31)" id="img-b7ea1a40-28">
+      <g class="primitive">
+        <text text-anchor="end" dy="0.35em">0</text>
+      </g>
+    </g>
+    <g transform="translate(25.72,65.65)" id="img-b7ea1a40-29">
+      <g class="primitive">
+        <text text-anchor="end" dy="0.35em">1.0×10³</text>
+      </g>
+    </g>
+    <g transform="translate(25.72,50.99)" id="img-b7ea1a40-30">
+      <g class="primitive">
+        <text text-anchor="end" dy="0.35em">2.0×10³</text>
+      </g>
+    </g>
+    <g transform="translate(25.72,36.33)" id="img-b7ea1a40-31">
+      <g class="primitive">
+        <text text-anchor="end" dy="0.35em">3.0×10³</text>
+      </g>
+    </g>
+    <g transform="translate(25.72,21.66)" id="img-b7ea1a40-32">
+      <g class="primitive">
+        <text text-anchor="end" dy="0.35em">4.0×10³</text>
+      </g>
+    </g>
+    <g transform="translate(25.72,7)" id="img-b7ea1a40-33">
+      <g class="primitive">
+        <text text-anchor="end" dy="0.35em">5.0×10³</text>
+      </g>
+    </g>
+  </g>
+  <g font-size="3.88" font-family="'PT Sans','Helvetica Neue','Helvetica',sans-serif" fill="#564A55" stroke="#000000" stroke-opacity="0.000" id="img-b7ea1a40-34">
+    <g transform="translate(8.81,41.66)" id="img-b7ea1a40-35">
+      <g class="primitive">
+        <text text-anchor="middle" dy="0.35em" transform="rotate(-90,0, 2)">σ²</text>
+      </g>
+    </g>
+  </g>
+</g>
+<defs>
+  <clipPath id="img-b7ea1a40-4">
+    <path d="M26.73,5 L 147.4 5 147.4 82.32 26.73 82.32" />
+  </clipPath>
+</defs>
+</svg>
