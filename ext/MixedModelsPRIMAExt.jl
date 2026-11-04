@@ -140,6 +140,7 @@ function MixedModels.profilevc(obj, optsum::OptSummary, ::PRIMABackend; kwargs..
         scale=nothing) # will need to scale for GLMM
     _check_prima_return(info)
     fmin = info.fx
+    obj(xmin)   # leave the model at the minimizer, not the last evaluation
     return fmin, xmin
 end
 
@@ -154,6 +155,7 @@ function MixedModels.profileobj!(obj,
         scale=nothing) # will need to scale for GLMM
     fmin = info.fx
     _check_prima_return(info)
+    obj(xmin)   # leave the model at the minimizer, not the last evaluation
     rectify!(m)
     return fmin
 end

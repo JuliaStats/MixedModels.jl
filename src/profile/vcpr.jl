@@ -133,13 +133,19 @@ function profileσs!(val::NamedTuple, tc::TableColumns{T}; threshold=4) where {T
             append!(val.tbl, tbl)
             ζcol = getproperty(:ζ).(tbl)
             symcol = gpsym.(tbl)
-            try
+            # As for θ, a flat profile clamps ζ to zero at several points, which leaves
+            # ties that cannot be interpolated. Skip the spline rather than abort.
+            if _splineable(symcol)
                 val.fwd[sym] = interpolate(symcol, ζcol, BSplineOrder(4), Natural())
-                issorted(ζcol) &&
-                    (val.rev[sym] = interpolate(ζcol, symcol, BSplineOrder(4), Natural()))
-            catch
-                @error "An error occurred while fitting the profile splines for the variance components. Try adjusting the threshold."
-                rethrow()
+            else
+                @warn "The values of $sym in its profile are not strictly increasing, " *
+                    "so no forward spline was constructed."
+            end
+            if _splineable(ζcol)
+                val.rev[sym] = interpolate(ζcol, symcol, BSplineOrder(4), Natural())
+            else
+                @warn "ζ is not strictly increasing in the profile of $sym, " *
+                    "so no reverse spline was constructed."
             end
         end
     end

@@ -92,8 +92,10 @@ function profileθj!(
         )(
             last(sv)
         )
-        # approximate step for an increase of 0.5
-        slope > 0 && isfinite(slope) && (δj = inv(T(2) * slope))
+        # approximate step for an increase of 0.5, limited to the scale of the estimate
+        # because a flat profile below the estimate gives a slope near zero
+        slope > 0 && isfinite(slope) &&
+            (δj = min(inv(T(2) * slope), max(abs(θj), one(T))))
     end
     ζold = zero(T)
     copyto!(θ, final)
