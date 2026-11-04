@@ -792,12 +792,12 @@ function Base.getproperty(m::LinearMixedModel{T}, s::Symbol) where {T}
 end
 
 """
-    _set_init(m::LinearMixedModel)
+    _set_init!(m::LinearMixedModel, field=:initial)
 
-Set each element of m.optsum.initial to 1.0 for diagonal and 0.0 for off-diagonal
+Set each element of `getfield(m.optsum, field)` to 1.0 for diagonal and 0.0 for off-diagonal
 """
-function _set_init!(m::LinearMixedModel)
-    init = m.optsum.initial
+function _set_init!(m::LinearMixedModel, field=:initial)
+    init = getfield(m.optsum, field)
     for (i, pm) in enumerate(m.parmap)
         init[i] = pm[2] == pm[3]
     end
@@ -1143,15 +1143,18 @@ function reevaluateAend!(m::LinearMixedModel)
 end
 
 """
-    refit!(m::LinearMixedModel[, y::Vector]; REML=m.optsum.REML, kwargs...)
+    refit!(m::LinearMixedModel[, y::Vector]; warm_start=false, REML=m.optsum.REML, kwargs...)
 
 Refit the model `m` after installing response `y`.
 
 If `y` is omitted the current response vector is used.
+If `warm_start` is `true`, the optimization starts from the current parameter estimates
+instead of the default initial values (see [`unfit!`](@ref)).
 `kwargs` are the same as [`fit!`](@ref).
 """
-function refit!(m::LinearMixedModel; REML=m.optsum.REML, kwargs...)
-    return fit!(unfit!(m); REML=REML, kwargs...)
+function refit!(m::LinearMixedModel; warm_start=false, REML=m.optsum.REML, kwargs...)
+    unfit!(m; warm_start)
+    return fit!(m; REML=REML, kwargs...)
 end
 
 function refit!(m::LinearMixedModel, y; kwargs...)
@@ -1470,16 +1473,26 @@ end
 
 """
     unfit!(model::MixedModel)
+    unfit!(model::LinearMixedModel; warm_start=false)
 
 Mark a model as unfitted.
+
+For a `LinearMixedModel`, the initial parameter values are reset to their defaults unless
+`warm_start` is `true`, in which case they are set to the current parameter estimates.
+In both cases, the final parameter values are reset to the defaults.
 """
-function unfit!(model::LinearMixedModel{T}) where {T}
+function unfit!(model::LinearMixedModel{T}; warm_start=false) where {T}
     optsum = model.optsum
     optsum.feval = -1
     optsum.initial_step = T[]
-    # initialize elements on the diagonal of Λ to one(T), off-diagonals to zero(T)
-    _set_init!(model)
-    copyto!(optsum.final, optsum.initial)
+    if warm_start
+        copyto!(optsum.initial, optsum.final)
+        _set_init!(model, :final)
+    else
+        # initialize elements on the diagonal of Λ to one(T), off-diagonals to zero(T)
+        _set_init!(model)
+        copyto!(optsum.final, optsum.initial)
+    end
     reevaluateAend!(model)
 
     return model

@@ -148,6 +148,7 @@ function MixedModels.profilevc(obj, optsum::OptSummary, ::NLoptBackend; kwargs..
     NLopt.min_objective!(opt, obj)
     fmin, xmin, ret = NLopt.optimize!(opt, copyto!(optsum.final, optsum.initial))
     _check_nlopt_return(ret)
+    obj(xmin)   # leave the model at the minimizer, not the last evaluation
 
     return fmin, xmin
 end
@@ -159,6 +160,7 @@ function MixedModels.profileobj!(obj,
     NLopt.min_objective!(opt, obj)
     fmin, xmin, ret = NLopt.optimize(opt, copyto!(osj.final, osj.initial))
     _check_nlopt_return(ret)
+    obj(xmin)   # leave the model at the minimizer, not the last evaluation
     rectify!(m)
     return fmin
 end

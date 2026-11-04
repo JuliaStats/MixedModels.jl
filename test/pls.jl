@@ -3,6 +3,7 @@ using LinearAlgebra
 using MixedModels
 using PooledArrays
 using Random
+using StableRNGs
 using SparseArrays
 using Suppressor
 using Statistics
@@ -165,6 +166,31 @@ end
         @test sigma0row.σ ≈ dspr01.m.σ
         @test sigma0row.β1 ≈ only(dspr01.m.β)
         @test sigma0row.θ1 ≈ only(dspr01.m.θ)
+
+        @testset "objective below fmin" begin
+            m = fit(MixedModel, @formula(yield ~ 1 + (1 | batch)),
+                MixedModels.dataset(:dyestuff);
+                progress=false)
+            tc = MixedModels.TableColumns(m)
+            σ̂ = m.σ
+            # refitting at σ̂ is deterministic because refit! resets the initial value
+            m.optsum.sigma = σ̂
+            f0 = refit!(m; progress=false).objective
+            # differences within the tolerance are treated as zero
+            @test iszero(MixedModels.refitσ!(m, σ̂, tc, f0 + 1.e-10 * abs(f0), false).ζ)
+            # larger differences indicate that the fit had not converged
+            @test_throws ArgumentError MixedModels.refitσ!(m, σ̂, tc, f0 + 1, false)
+            @test_throws ArgumentError MixedModels._facsz(m, σ̂, f0 + 1)
+            m.optsum.sigma = nothing
+            refit!(m; progress=false)
+            prj = MixedModels.FeProfile(m, tc, 1)
+            @test_throws ArgumentError MixedModels.betaprofile!(
+                prj, tc, only(fixef(m)), 1, m.objective + 1, false
+            )
+            m.optsum.fmin += 0.01   # larger than the increase at the first step in θ
+            val = (; m, tbl=[], fwd=Dict{Symbol,Any}(), rev=Dict{Symbol,Any}())
+            @test_throws ArgumentError MixedModels.profileθj!(val, :θ1, tc)
+        end
     end
 end
 
@@ -189,6 +215,21 @@ end
         @test iszero(sigma10row.σ1)
         sigma1tbl = Table(filter(r -> r.p == :σ1, dspr02.tbl))
         @test all(≥(0), sigma1tbl.σ1)
+
+        # the profile should be equivariant under rescaling of the response,
+        # including when the upper end of the σ1 grid is less than 1
+        ds2 = columntable(MixedModels.dataset(:dyestuff2))
+        fmsc = fit(
+            MixedModel, @formula(yield ~ 1 + (1 | batch)),
+            merge(ds2, (; yield=ds2.yield ./ 10)); progress=false,
+        )
+        cisc = @suppress confint(profile(fmsc))
+        ci02 = confint(dspr02)
+        @test cisc.par == ci02.par
+        for s in cisc.par
+            @test cisc.lower[s] ≈ ci02.lower[s] / 10 atol = 1.e-6 rtol = 1.e-3
+            @test cisc.upper[s] ≈ ci02.upper[s] / 10 atol = 1.e-6 rtol = 1.e-3
+        end
     end
 end
 
@@ -269,7 +310,7 @@ end
 
     @testset "missing variables in formula" begin
         ae = ArgumentError(
-            "The following formula variables are not present in the table: [:reaction, :joy, :subj]",
+            "The following formula variables are not present in the table: [:reaction, :joy, :subj]"
         )
         @test_throws(ae,
             fit(MixedModel, @formula(reaction ~ 1 + joy + (1 | subj)), dataset(:pastes)))
@@ -387,11 +428,21 @@ end
     @test first(dre).refs == last(dre).refs
 end
 
+# a backend that counts the conditional optimizations in `profileθj!` and then uses NLopt
+@isdefined(PROFILEOBJ_CALLS) || const global PROFILEOBJ_CALLS = Ref(0)
+function MixedModels.profileobj!(
+    obj, m::LinearMixedModel{T}, θ::AbstractVector{T}, osj::MixedModels.OptSummary,
+    ::Val{:counting},
+) where {T}
+    PROFILEOBJ_CALLS[] += 1
+    return MixedModels.profileobj!(obj, m, θ, osj, Val(:nlopt))
+end
+
 @testset "sleep" begin
     fm = last(models(:sleepstudy))
     A11 = first(fm.A)
     @test isa(A11, UniformBlockDiagonal{Float64})
-    @test isa(first(fm.L), LowerTriangular{Float64, UniformBlockDiagonal{Float64}})
+    @test isa(first(fm.L), LowerTriangular{Float64,UniformBlockDiagonal{Float64}})
     @test size(A11) == (36, 36)
     a11 = view(A11.data, :, :, 1)
     @test a11 == [10.0 45.0; 45.0 285.0]
@@ -497,7 +548,7 @@ end
     @test stderror(fmnc) ≈ [6.707646513654387, 1.5193112497954953] atol = 0.001
     @test fmnc.θ ≈ [0.9458043022417869, 0.22692740996014607] atol = 0.0001
     @test first(std(fmnc)) ≈ [24.171269957611873, 5.79939919963132] atol = 0.0005
-    @test last(std(fmnc)) ≈ [25.55613836753517] atol=0.0001
+    @test last(std(fmnc)) ≈ [25.55613836753517] atol = 0.0001
     @test logdet(fmnc) ≈ 74.4694698615524 atol = 0.001
     ρ = first(fmnc.σρs.subj.ρ)
     @test ρ === -0.0   # test that systematic zero correlations are returned as -0.0
@@ -756,9 +807,10 @@ end
         @test Tables.istable(ci)
         @test propertynames(ci) == (:par, :estimate, :lower, :upper)
         @test collect(ci.par) == [:β1, :β2, :σ, :σ1, :σ2]
+        # the exact profile for σ2 crosses the cutoff at about 3.801
         @test isapprox(
             ci.lower.values,
-            [237.681, 7.359, 22.898, 14.381, 0.0];
+            [237.681, 7.359, 22.898, 14.381, 3.801];
             atol=1.e-3)
         @test isapprox(
             ci.upper.values,
@@ -766,11 +818,152 @@ end
             atol=1.e-3)
         @test first(only(filter(r -> r.p == :σ && iszero(r.ζ), pr.tbl)).σ) ==
             last(models(:sleepstudy)).σ
+        # in every row, ρ1 must be the correlation implied by λ = [θ1 0; θ2 θ3]
+        @test all(tbl) do r
+            nrm = hypot(r.θ2, r.θ3)   # zero when σ2 is zero, and then ρ1 is reported as zero
+            return iszero(nrm) ? iszero(r.ρ1) : r.ρ1 ≈ sign(r.θ1) * r.θ2 / nrm
+        end
+
+        @testset "warm starts" begin
+            m = deepcopy(last(models(:sleepstudy)))
+            θ̂ = m.θ
+            tc = MixedModels.TableColumns(m)
+            # the reduced model for a fixed-effects profile starts from θ̂ of the full model
+            prj = MixedModels.FeProfile(m, tc, 2)
+            @test first(prj.m.optsum.fitlog.θ) == θ̂
+            # and each point on the profile starts from the previous estimate
+            θprev = copy(prj.m.optsum.final)
+            MixedModels.betaprofile!(prj, tc, fixef(m)[2] + stderror(m)[2], 2, m.objective,
+                false)
+            @test first(prj.m.optsum.fitlog.θ) == θprev
+            θprev = copy(m.optsum.final)
+            MixedModels.refitσ!(m, 1.05 * m.σ, tc, m.objective, false)
+            @test first(m.optsum.fitlog.θ) == θprev
+            m.optsum.sigma = nothing
+
+            # the estimates are restored after profiling the variance components
+            m = deepcopy(last(models(:sleepstudy)))
+            pr = @suppress profile(m)
+            notvc = r -> r.p == :σ || !startswith(string(r.p), 'σ')
+            val = (; m, tbl=filter(notvc, collect(pr.tbl)), fwd=Dict{Symbol,Any}(),
+                rev=Dict{Symbol,Any}())
+            @suppress MixedModels.profileσs!(val, tc)
+            @test m.optsum.final == θ̂
+            @test m.θ == θ̂
+        end
+
+        @testset "variance component at zero" begin
+            slp = MixedModels.dataset(:sleepstudy)
+            # σ2 = 0 means θ2 = θ3 = 0, which is the model with only random intercepts
+            m = deepcopy(last(models(:sleepstudy)))
+            mint = fit(MixedModel, @formula(reaction ~ 1 + days + (1 | subj)), slp;
+                progress=false)
+            @test MixedModels._objective_vczero!(m, copy(m.optsum.final), 1, 2) ≈
+                mint.objective
+            # σ for batch = 0 is the model without the batch term
+            m = last(models(:pastes))
+            pr = @suppress profile(m)
+            sym = Symbol(:σ, findfirst(==(:batch), fnames(m)))
+            row = only(filter(r -> r.p == sym && iszero(getproperty(r, sym)), pr.tbl))
+            @test row.ζ < 0
+            @test m.objective + abs2(row.ζ) ≈ first(models(:pastes)).objective
+            # a singular correlated term, for which the other profiles give rows with a
+            # variance component of zero, none of which is in that component's own profile
+            rng = StableRNG(3)
+            sim = (; y=randn(rng, 200), x=randn(rng, 200), g=repeat(string.(1:20), 10))
+            msim = fit(MixedModel, @formula(y ~ 1 + x + (1 + x | g)), sim; progress=false)
+            @test issingular(msim)
+            @test confint(@suppress profile(msim)) isa MixedModels.DictTable
+        end
+
+        @testset "variance-component profiles reach the threshold" begin
+            for m in (last(models(:sleepstudy)), last(models(:pastes)),
+                only(models(:penicillin)))
+                pr = @suppress profile(m)
+                for s in filter(p -> startswith(string(p), 'σ') && p ≠ :σ, unique(pr.tbl.p))
+                    t = filter(r -> r.p == s, pr.tbl)
+                    ζ = getproperty.(t, :ζ)
+                    @test maximum(ζ) ≥ 4
+                    @test minimum(ζ) ≤ -4 || any(iszero, getproperty.(t, s))
+                end
+            end
+        end
+
+        @testset "optsum is restored" begin
+            m = deepcopy(last(models(:sleepstudy)))
+            before = deepcopy(m.optsum)
+            @suppress profile(m)
+            for f in fieldnames(typeof(before))
+                b, a = getfield(before, f), getfield(m.optsum, f)
+                if f == :fitlog
+                    @test a.θ == b.θ && a.objective == b.objective
+                else
+                    @test isequal(a, b)
+                end
+            end
+        end
+
+        @testset "ρ with a row of zeros in λ" begin
+            m = deepcopy(last(models(:sleepstudy)))
+            θ = copy(m.θ)
+            θ[1] = 0   # the first row of λ is now all zeros
+            updateL!(setθ!(m, θ))
+            tc = MixedModels.TableColumns(m)
+            row = MixedModels.mkrow!(tc, m, 0.0)
+            @test iszero(row.ρ1)   # as in `rownormalize`
+            @test m.θ == θ         # λ must not be modified
+        end
+
+        @testset "σρs with a negative Diagonal λ" begin
+            m = fit(MixedModel,
+                @formula(reaction ~ 1 + days + zerocorr(1 + days | subj)),
+                MixedModels.dataset(:sleepstudy); progress=false)
+            σρ = MixedModels.σρs(m)
+            # flipping the signs of the diagonal of λ gives the same model
+            updateL!(setθ!(m, -m.θ))
+            σ̂ = collect(values(only(σρ).σ))
+            @test collect(values(only(MixedModels.σρs(m)).σ)) ≈ σ̂
+            @test collect(values(only(MixedModels.σs(m)))) ≈ σ̂
+        end
+
+        @testset "zerocorr" begin
+            # λ is Diagonal and the profiled θ can become negative
+            slp = MixedModels.dataset(:sleepstudy)
+            mzc = fit(MixedModel,
+                @formula(reaction ~ 1 + days + zerocorr(1 + days | subj)), slp;
+                progress=false)
+            # the same model with two scalar random-effects terms
+            msc = fit(MixedModel,
+                @formula(reaction ~ 1 + days + (1 | subj) + (0 + days | subj)), slp;
+                amalgamate=false, progress=false)
+            przc = @suppress profile(mzc)
+            @test all(r -> r.σ1 ≥ 0 && r.σ2 ≥ 0, przc.tbl)
+            cizc = confint(przc)
+            cisc = @suppress confint(profile(msc))
+            @test collect(cizc.par) == collect(cisc.par) == [:β1, :β2, :σ, :σ1, :σ2]
+            @test cizc.lower.values ≈ cisc.lower.values atol = 1.e-3
+            @test cizc.upper.values ≈ cisc.upper.values atol = 1.e-3
+        end
 
         @testset "REML" begin
             m = refit!(deepcopy(last(models(:sleepstudy))); progress=false, REML=true)
-            ci = @suppress confint(profile(m))
+            # β is integrated out of the REML criterion, so there is no profile over β
+            pr = @test_logs (:warn, r"REML") match_mode = :any profile(m)
+            @test !any(r -> startswith(string(r.p), 'β'), pr.tbl)
+            ci = confint(pr)
+            @test collect(ci.par) == [:σ, :σ1, :σ2]
             @test all(splat(<), zip(ci.lower, ci.upper))
+        end
+
+        @testset "one conditional optimization per θ row" begin
+            m = deepcopy(last(models(:sleepstudy)))
+            m.optsum.backend = :counting
+            tc = MixedModels.TableColumns(m)
+            val = (; m, tbl=[], fwd=Dict{Symbol,Any}(), rev=Dict{Symbol,Any}())
+            PROFILEOBJ_CALLS[] = 0
+            @suppress MixedModels.profileθj!(val, :θ1, tc)
+            # every row except the one at the estimate requires a conditional optimization
+            @test PROFILEOBJ_CALLS[] == length(val.tbl) - 1
         end
     end
     @testset "confint" begin
@@ -891,12 +1084,14 @@ end
     # but this is a convenient test of rankUpdate!(::UniformBlockDiagonal)
     #    @test isapprox(m.θ, θnlopt; atol=5e-2)   # model doesn't make sense
 
-    # @testset "profile" begin   # if the model fit doesn' make sense, profiling it makes even less sense
-        # TODO: actually handle the case here so that it doesn't error and
-        # create a separate test of the error handling code
-    #     @test_logs((:error, "Exception occurred in profiling; aborting..."),
-    #         @test_throws Exception profile(last(models(:oxide))))
-    # end
+    @testset "profile" begin
+        # the θ profiles of this poorly defined fit are flat or not monotone,
+        # so some of the splines cannot be constructed, but profiling completes
+        pr = @test_logs (:warn, r"no reverse spline") match_mode = :any profile(
+            last(models(:oxide))
+        )
+        @test [:β1, :β2, :σ] ⊆ confint(pr).par
+    end
 end
 
 @testset "Rank deficient" begin
@@ -914,6 +1109,70 @@ end
     piv = model.feterm.piv
     r = model.feterm.rank
     @test coefnames(model)[piv][1:r] == fixefnames(model)
+
+    @testset "profile with non-trivial pivot" begin
+        slp = columntable(MixedModels.dataset(:sleepstudy))
+        slp = merge(
+            slp,
+            (; d2=2 .* slp.days, noise=randn(StableRNG(2), length(slp.days))),
+        )
+        # days is collinear with d2 and is pivoted behind noise
+        model = @suppress fit(
+            MixedModel, @formula(reaction ~ 1 + d2 + days + noise + (1 | subj)), slp;
+            progress=false,
+        )
+        @test model.feterm.piv == [1, 2, 4, 3]
+        tc = MixedModels.TableColumns(model)
+        for j in 1:rank(model)
+            # at βⱼ = β̂ⱼ the reduced model must reproduce the objective of the full model
+            @test MixedModels.FeProfile(model, tc, j).m.objective ≈ model.objective
+        end
+        fullrank = fit(
+            MixedModel, @formula(reaction ~ 1 + d2 + noise + (1 | subj)), slp;
+            progress=false,
+        )
+        ci = @suppress confint(profile(model))
+        cifr = @suppress confint(profile(fullrank))
+        for s in (:β1, :β2, :β3)
+            @test ci.lower[s] ≈ cifr.lower[s] rtol = 1.e-4
+            @test ci.upper[s] ≈ cifr.upper[s] rtol = 1.e-4
+        end
+    end
+end
+
+@testset "θ profile steps" begin
+    # the step stays the same when ζ does not move in the expected direction
+    @test MixedModels._nextstep(0.1, 0.0, 0.5) == 0.1
+    @test MixedModels._nextstep(0.1, -0.2, 0.5) == 0.1
+    # otherwise it aims for a change of `target` in ζ, but grows by at most a factor of 16
+    @test MixedModels._nextstep(0.1, 0.25, 0.5) ≈ 0.2
+    @test MixedModels._nextstep(0.1, 1.0e-8, 0.5) ≈ 1.6
+
+    # Data for which the ML estimate of θ is well determined, which avoids depending on
+    # numerical details of the optimization. The within-group errors are ±1 with group means
+    # of zero and the group effects are ±c, so that σ̂² = n / (n - 1) and the variance of the
+    # group effects is estimated as c² - 1 / (n - 1), i.e. θ̂² ≈ τ² for τ² ≥ 0 and θ̂ = 0 otherwise.
+    function exactfit(τ²; ng=50, n=2000)
+        c = sqrt((1 + τ² * n) / (n - 1))
+        grp = repeat(1:ng; inner=n)
+        y = [isodd(i) ? c : -c for i in 1:ng][grp] .+ repeat([1.0, -1.0], ng * n ÷ 2)
+        return fit(MixedModel, @formula(y ~ 1 + (1 | g)), (; y, g=string.(grp));
+            progress=false)
+    end
+
+    # an estimate within the initial step of the lower bound gets a point on the bound
+    m = exactfit(0.008^2)
+    @test only(m.θ) ≈ 0.008 rtol = 1.e-3
+    pr = @suppress profile(m)
+    @test any(r -> r.p == :θ1 && iszero(r.θ1), pr.tbl)
+
+    # a fit that is not at its optimum is reported, here when the point on the bound is better
+    m = exactfit(-0.008^2)
+    @test iszero(only(m.θ))
+    m.optsum.final = [0.01]   # as if the fit had stopped at 0.01
+    m.optsum.fmin = objective!(m, m.optsum.final)
+    val = (; m, tbl=[], fwd=Dict{Symbol,Any}(), rev=Dict{Symbol,Any}())
+    @test_throws ArgumentError MixedModels.profileθj!(val, :θ1, MixedModels.TableColumns(m))
 end
 
 @testset "coeftable" begin
@@ -971,12 +1230,34 @@ end
     @test vcov(m1) ≈ [1.177034697250409 -4.80259802739442; -4.80259802739442 24.66449662452017] atol = 1.e-4
     =#
 
-    m2 = fit(MixedModel, @formula(a ~ 1 + b + (1 | c)), data; weights=data.w1, progress=false)
+    m2 = fit(
+        MixedModel, @formula(a ~ 1 + b + (1 | c)), data; weights=data.w1, progress=false
+    )
     @test m2.θ ≈ [0.2951818091809752] atol = 1.e-4
     @test stderror(m2) ≈ [0.964016663994572, 3.6309691484830533] atol = 1.e-4
     @test vcov(m2) ≈
         [0.9293281284592235 -2.5575260810649962; -2.5575260810649962 13.18393695723575] atol =
         1.e-4
+
+    @testset "fixed-effects profile" begin
+        slp = columntable(MixedModels.dataset(:sleepstudy))
+        w = 0.5 .+ rand(StableRNG(42), length(slp.days))
+        m = fit(MixedModel, @formula(reaction ~ 1 + days + (1 + days | subj)), slp;
+            weights=w, progress=false)
+        wtz = copy(first(m.reterms).wtz)
+        tc = MixedModels.TableColumns(m)
+        # at βⱼ = β̂ⱼ the reduced model must reproduce the objective of the full model
+        pr2 = MixedModels.FeProfile(m, tc, 2)
+        @test pr2.m.objective ≈ m.objective
+        # away from β̂ⱼ it must agree with fitting the response shifted by xⱼβⱼ
+        b = fixef(m)[2] + 2 * stderror(m)[2]
+        MixedModels.betaprofile!(pr2, tc, b, 2, m.objective, false)
+        shifted = fit(MixedModel, @formula(yb ~ 1 + (1 + days | subj)),
+            merge(slp, (; yb=slp.reaction .- b .* slp.days)); weights=w, progress=false)
+        @test pr2.m.objective ≈ shifted.objective rtol = 1.e-6
+        # profiling must not modify the weighted model matrices of the original model
+        @test first(m.reterms).wtz == wtz
+    end
 end
 
 @testset "unifying ReMat eltypes" begin
@@ -997,6 +1278,24 @@ end
     @test typeof(re) == Vector{AbstractReMat{Float64}}
 end
 
+@testset "refit! with warm_start" begin
+    m = deepcopy(last(models(:sleepstudy)))
+    θ̂ = copy(m.optsum.final)
+    MixedModels.unfit!(m; warm_start=true)
+    @test m.optsum.initial == θ̂
+    @test m.optsum.final == [1.0, 0.0, 1.0]   # final is reset to the defaults
+    fit!(m; progress=false)
+    m.optsum.sigma = 1.05 * m.σ
+    θ̂ = copy(m.optsum.final)
+    refit!(m; warm_start=true, progress=false)
+    @test first(m.optsum.fitlog.θ) == θ̂
+    # a user-supplied initial_step must not be modified
+    step = fill(0.1, length(θ̂))
+    m.optsum.initial_step = step
+    refit!(m; progress=false)
+    @test step == fill(0.1, length(θ̂))
+end
+
 @testset "recovery from misscaling" begin
     model = fit(MixedModel,
         @formula(reaction ~ 1 + days + zerocorr(1 + fulldummy(days) | subj)),
@@ -1013,6 +1312,12 @@ end
     # it would be great to test the handling of PosDefException after the first iteration
     # but this is surprisingly hard to trigger in a reliable way across platforms
     # just because of the vagaries of floating point.
+
+    # the objectives of the conditional optimizations in profiling handle it like the fit
+    θbad = 1e8 .* model.optsum.initial
+    @test_throws PosDefException objective!(model, θbad)
+    @test MixedModels._profileobjective!(model, θbad) == model.optsum.finitial
+    updateL!(setθ!(model, model.optsum.final))
 end
 
 @testset "methods we don't define" begin
