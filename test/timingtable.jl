@@ -10,7 +10,7 @@ include(joinpath(@__DIR__, "modelcache.jl"))
         (:prima, :newuoa),
         (:prima, :bobyqa),
     ],
-    seconds::Integer = 1
+    seconds::Integer=1,
 )
     rowtype = @NamedTuple{
         modnum::Int8,
@@ -28,8 +28,13 @@ include(joinpath(@__DIR__, "modelcache.jl"))
     for (j, m) in enumerate(mods)
         ntheta = length(m.parmap)
         for (bk, opt) in optimizers
-            bmk = @b refit!(m; progress=false, backend=bk, optimizer=opt) seconds=seconds
-            push!(val, rowtype((j, ntheta, dof(m), bk, opt, m.optsum.feval, m.optsum.fmin, bmk.time)))
+            bmk = @b refit!(m; progress=false, backend=bk, optimizer=opt) seconds = seconds
+            push!(
+                val,
+                rowtype((
+                    j, ntheta, dof(m), bk, opt, m.optsum.feval, m.optsum.fmin, bmk.time
+                )),
+            )
         end
     end
     return @chain DataFrame(val) begin
@@ -47,4 +52,3 @@ include(joinpath(@__DIR__, "modelcache.jl"))
         transform!([:objective, :min_obj] => ((x, y) -> x - y) => :del_obj)
     end
 end
-

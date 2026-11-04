@@ -269,7 +269,7 @@ end
 
     @testset "missing variables in formula" begin
         ae = ArgumentError(
-            "The following formula variables are not present in the table: [:reaction, :joy, :subj]",
+            "The following formula variables are not present in the table: [:reaction, :joy, :subj]"
         )
         @test_throws(ae,
             fit(MixedModel, @formula(reaction ~ 1 + joy + (1 | subj)), dataset(:pastes)))
@@ -391,7 +391,7 @@ end
     fm = last(models(:sleepstudy))
     A11 = first(fm.A)
     @test isa(A11, UniformBlockDiagonal{Float64})
-    @test isa(first(fm.L), LowerTriangular{Float64, UniformBlockDiagonal{Float64}})
+    @test isa(first(fm.L), LowerTriangular{Float64,UniformBlockDiagonal{Float64}})
     @test size(A11) == (36, 36)
     a11 = view(A11.data, :, :, 1)
     @test a11 == [10.0 45.0; 45.0 285.0]
@@ -497,7 +497,7 @@ end
     @test stderror(fmnc) ≈ [6.707646513654387, 1.5193112497954953] atol = 0.001
     @test fmnc.θ ≈ [0.9458043022417869, 0.22692740996014607] atol = 0.0001
     @test first(std(fmnc)) ≈ [24.171269957611873, 5.79939919963132] atol = 0.0005
-    @test last(std(fmnc)) ≈ [25.55613836753517] atol=0.0001
+    @test last(std(fmnc)) ≈ [25.55613836753517] atol = 0.0001
     @test logdet(fmnc) ≈ 74.4694698615524 atol = 0.001
     ρ = first(fmnc.σρs.subj.ρ)
     @test ρ === -0.0   # test that systematic zero correlations are returned as -0.0
@@ -892,8 +892,8 @@ end
     #    @test isapprox(m.θ, θnlopt; atol=5e-2)   # model doesn't make sense
 
     # @testset "profile" begin   # if the model fit doesn' make sense, profiling it makes even less sense
-        # TODO: actually handle the case here so that it doesn't error and
-        # create a separate test of the error handling code
+    # TODO: actually handle the case here so that it doesn't error and
+    # create a separate test of the error handling code
     #     @test_logs((:error, "Exception occurred in profiling; aborting..."),
     #         @test_throws Exception profile(last(models(:oxide))))
     # end

@@ -17,55 +17,26 @@ $(FORWARDDIFF)
 function fd_deviance end
 
 """
-    fd_setθ!
+    fd_gradient_workspace(m::LinearMixedModel)
 
-ForwardDiff.jl compatible [`setθ!`](@ref).
-
-$(FORWARDDIFF)
-"""
-function fd_setθ! end
-
-"""
-    fd_updateL!
-
-ForwardDiff.jl compatible [`updateL!`](@ref).
+Create a reusable workspace for [`fd_objective_gradient!`](@ref), caching the
+promoted (dual-valued) copies of the model's numerical fields along with the
+ForwardDiff configuration.
 
 $(FORWARDDIFF)
 """
-function fd_updateL! end
+function fd_gradient_workspace end
 
 """
-    fd_pwrss
+    fd_objective_gradient!(fdws, g, m::LinearMixedModel, θ)
 
-ForwardDiff.jl compatible [`pwrss`](@ref).
+ForwardDiff.jl based analogue of [`objective_gradient!`](@ref): overwrite `g`
+with the gradient of the objective at `θ` and return the objective value,
+evaluated by forward-mode automatic differentiation using the workspace `fdws`
+from [`fd_gradient_workspace`](@ref).
+
+Unlike `objective_gradient!`, this does not update `m` itself to `θ`.
 
 $(FORWARDDIFF)
 """
-function fd_pwrss end
-
-"""
-    fd_logdet
-
-ForwardDiff.jl compatible [`logdet`](@ref).
-
-$(FORWARDDIFF)
-"""
-function fd_logdet end
-
-"""
-    fd_cholUnblocked!
-
-ForwardDiff.jl compatible [`cholUnblocked!`](@ref).
-
-$(FORWARDDIFF)
-"""
-function fd_cholUnblocked! end
-
-"""
-    fd_rankUpdate!
-
-ForwardDiff.jl compatible [`rankUpdate!`](@ref).
-
-$(FORWARDDIFF)
-"""
-function fd_rankUpdate! end
+function fd_objective_gradient! end
