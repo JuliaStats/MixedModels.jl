@@ -242,7 +242,7 @@ function parametricbootstrap(
     samp = replicate(n; progress) do
         simulate!(rng, m; β, σ, θ)
         refit!(m; progress=false)
-        (
+        return (
             objective=ftype.(m.objective),
             σ=ismissing(m.σ) ? missing : ftype(m.σ),
             β=NamedTuple{β_names}(coef!(βsc, m)),

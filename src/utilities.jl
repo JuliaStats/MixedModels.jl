@@ -165,7 +165,7 @@ function sdcorr(A::AbstractMatrix{T}) where {T}
         rtdiag,
         ntuple(kchoose2(m)) do k
             i, j = indpairs[k]
-            A[i, j] / (rtdiag[i] * rtdiag[j])
+            return A[i, j] / (rtdiag[i] * rtdiag[j])
         end,
     )
 end

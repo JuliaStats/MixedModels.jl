@@ -79,11 +79,46 @@ end
         @test isapprox(gm2.β, gm2sim.β; atol=norm(stderror(gm2)))
     end
     @testset "_rand with dispersion" begin
-        @test_throws ArgumentError MixedModels._rand(StableRNG(42), Normal(), 1, 1, 1)
-        @test_throws ArgumentError MixedModels._rand(StableRNG(42), Gamma(), 1, 1, 1)
-        @test_throws ArgumentError MixedModels._rand(
-            StableRNG(42), InverseGaussian(), 1, 1, 1
-        )
+        # the parameterisations have to reproduce the variance function GLM.jl
+        # uses for each family, with ϕ = σ²
+        μ, σ = 3.0, 0.5
+        ϕ = abs2(σ)
+        @test var(MixedModels._rand_dist(Normal(), μ, σ)) ≈ ϕ
+        @test var(MixedModels._rand_dist(Gamma(), μ, σ)) ≈ ϕ * μ^2
+        @test var(MixedModels._rand_dist(InverseGaussian(), μ, σ)) ≈ ϕ * μ^3
+        for d in (Normal(), Gamma(), InverseGaussian())
+            @test mean(MixedModels._rand_dist(d, μ, σ)) ≈ μ
+            @test MixedModels._rand(StableRNG(42), d, μ, σ) isa Float64
+        end
+        # families without a dispersion parameter still take the location alone
+        @test MixedModels._rand_dist(Poisson(), μ, missing) == Poisson(μ)
+    end
+
+    @testset "dispersion families" begin
+        # #206: these used to throw
+        # ArgumentError("Families with a dispersion parameter not yet supported")
+        form = @formula(reaction ~ 1 + days + (1 + days | subj))
+        sleepstudy = dataset(:sleepstudy)
+        for (D, L) in ((Gamma(), LogLink()), (Normal(), SqrtLink()))
+            gm = fit(MixedModel, form, sleepstudy, D, L; progress=false)
+            gmsim = refit!(simulate!(StableRNG(42), deepcopy(gm)); progress=false)
+            @test gmsim.β ≈ gm.β atol = 2 * norm(stderror(gm))
+            @test gmsim.σ ≈ gm.σ rtol = 0.25
+        end
+
+        # parametricbootstrap rides on simulate!, so it works now too.  The
+        # random effects must be scaled by σ when simulating (b = σΛu): without
+        # that they would be too large by 1/σ ≈ 12 here, and θ̂ would come back
+        # inflated by the same factor rather than recovering the truth.
+        gm = fit(MixedModel, form, sleepstudy, Gamma(), LogLink(); progress=false)
+        boot = parametricbootstrap(StableRNG(1), 25, gm; progress=false)
+        @test all(!ismissing, boot.tbl.σ)
+        @test mean(boot.tbl.β1) ≈ gm.β[1] rtol = 0.01
+        @test mean(boot.tbl.σ) ≈ gm.σ rtol = 0.15
+        θs = reduce(hcat, boot.θ)
+        # median rather than mean: ML estimates of the small slope component
+        # pile up near the boundary and drag the mean down
+        @test median(θs[1, :]) ≈ gm.θ[1] rtol = 0.2
     end
 end
 
@@ -224,8 +259,12 @@ end
 
         # coarse tolerances because we're not doing many bootstrap samples
         # end-1 because the bootstrap CIs include the variance component
-        @test all(isapprox.(collect(bsci.lower)[1:end-1], collect(waldci.lower); atol=0.5))
-        @test all(isapprox.(collect(bsci.upper)[1:end-1], collect(waldci.upper); atol=0.5))
+        @test all(
+            isapprox.(collect(bsci.lower)[1:(end - 1)], collect(waldci.lower); atol=0.5)
+        )
+        @test all(
+            isapprox.(collect(bsci.upper)[1:(end - 1)], collect(waldci.upper); atol=0.5)
+        )
 
         σbar = mean(MixedModels.tidyσs(bs)) do x
             x.σ
