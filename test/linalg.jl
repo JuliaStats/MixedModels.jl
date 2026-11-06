@@ -83,6 +83,15 @@ end
     # Int32 row indices, as produced by `sparse(::BlockedSparse)`
     L21_32 = convert(SparseMatrixCSC{Float64,Int32}, L21)
     @test rankUpdate!(Symmetric(zeros(100, 100), :L), L21_32, 1.0, 1.0) == L22L
+
+    # Diagonal C: columns of A may have no stored entries (sparse `mul!` drops exact zeros
+    # on newer Julia versions) but not more than one
+    A = sparse([1, 3], [1, 3], [2.0, 3.0], 3, 3)
+    @test rankUpdate!(Hermitian(Diagonal(ones(3)), :L), A, -1.0, 1.0).data ==
+        Diagonal([-3.0, 1.0, -8.0])
+    @test_throws ArgumentError rankUpdate!(
+        Hermitian(Diagonal(ones(3)), :L), sparse(ones(3, 3)), 1.0, 1.0
+    )
 end
 
 @testset "rankUpdate! HermitianRFP" begin

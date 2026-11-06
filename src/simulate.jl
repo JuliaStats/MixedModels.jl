@@ -166,17 +166,10 @@ end
 function simulate!(
     rng::AbstractRNG, y::AbstractVector, m::LinearMixedModel{T}; β=fixef(m), σ=m.σ, θ=m.θ
 ) where {T}
-    length(β) == length(pivot(m)) || length(β) == rank(m) ||
-        throw(ArgumentError("You must specify all (non-singular) βs"))
-
-    β = convert(Vector{T}, β)
+    β = _pivotbeta(m, β; truncate=true)
     σ = T(σ)
     θ = convert(Vector{T}, θ)
     isempty(θ) || setθ!(m, θ)
-
-    if length(β) == length(pivot(m))
-        β = view(view(β, pivot(m)), 1:rank(m))
-    end
 
     # initialize y to standard normal
     randn!(rng, y)
@@ -244,8 +237,8 @@ function _simulate!(
     θ,
     resp=nothing,
 ) where {T}
-    length(β) == length(pivot(m)) || length(β) == m.feterm.rank ||
-        throw(ArgumentError("You must specify all (non-singular) βs"))
+    # unlike LMM, GLMM stores the truncated, pivoted vector directly
+    β = _pivotbeta(m, β; truncate=true)
 
     dispersion_parameter(m) ||
         ismissing(σ) ||
@@ -255,7 +248,6 @@ function _simulate!(
             ),
         )
 
-    β = convert(Vector{T}, β)
     if σ !== missing
         σ = T(σ)
     end
@@ -263,10 +255,6 @@ function _simulate!(
 
     d = m.resp.d
 
-    if length(β) == length(pivot(m))
-        # unlike LMM, GLMM stores the truncated, pivoted vector directly
-        β = view(view(β, pivot(m)), 1:rank(m))
-    end
     # ϕ is supplied here through `σ`, not through the parameter vector, so drop
     # the free-ϕ parameterization before installing β and θ -- otherwise
     # `setβθ!` would read the last element of `params` as log ϕ.

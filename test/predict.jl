@@ -7,6 +7,7 @@ using StableRNGs
 using Tables
 using Test
 
+using GLM
 using GLM: Link, linkfun, linkinv
 using MixedModelsDatasets: dataset
 
@@ -180,6 +181,38 @@ end
             @test m_nonpiv.feterm.piv == [2, 3, 1]
             @test @suppress(predict(m_nonpiv, df_nonpiv)) ≈ fitted(m_nonpiv)
         end
+    end
+
+    @testset "custom β" begin
+        m = first(models(:sleepstudy))
+        pred_default = predict(m, slp)
+
+        @test predict(m, slp; β=coef(m)) ≈ pred_default
+        @test predict(m, slp; β=fixef(m)) ≈ pred_default
+
+        Δ = zeros(length(coef(m)))
+        Δ[2] = 1.5
+        pred_custom = predict(m, slp; β=coef(m) .+ Δ)
+        @test pred_custom ≈ pred_default .+ view(m.X, :, 2) .* 1.5
+
+        @test_throws ArgumentError predict(m, slp; β=ones(length(coef(m)) + 1))
+
+        # rank-deficient: an arbitrary value in the redundant column's entry
+        # must be ignored, regardless of the value used
+        slprd = transform(slp, :days => ByRow(x -> 2x) => :days2)
+        mrd = @suppress fit(
+            MixedModel,
+            @formula(reaction ~ 1 + days + days2 + (1 | subj)),
+            slprd;
+            progress=false,
+        )
+        predrd_default = @suppress predict(mrd, slprd)
+        redundant_idx = last(mrd.feterm.piv)
+        βrd = copy(coef(mrd))
+        @test βrd[redundant_idx] == -0.0
+        βrd[redundant_idx] = 12345.6
+        @test @suppress(predict(mrd, slprd; β=βrd)) ≈ predrd_default
+        @test predict(mrd, slprd; β=fixef(mrd)) ≈ predrd_default
     end
 
     @testset "transformed response" begin

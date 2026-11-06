@@ -127,6 +127,39 @@ Does `A` have full column rank?
 """
 isfullrank(A::FeTerm) = A.rank == length(A.piv)
 
+# Normalize a user-supplied fixed-effects coefficient vector `β` to a single
+# internal convention, accepting either of the two conventions documented for
+# `simulate!`: a pivoted, full-rank vector (cf. `fixef`, length `rank(m)`) or
+# an unpivoted, full-dimension vector (cf. `coef`, length `length(pivot(m))`),
+# the latter with any redundant-column entries ignored regardless of value.
+#
+# If `truncate`, the result has length `rank(m)` (for multiplying against
+# `fullrankx`); otherwise it has length `length(pivot(m))`, in pivoted order,
+# with entries beyond `rank(m)` set to zero (for multiplying against an
+# un-truncated, pivoted design matrix).
+function _pivotbeta(m::MixedModel{T}, β; truncate::Bool) where {T}
+    piv = pivot(m)
+    rnk = rank(m)
+    length(β) == length(piv) || length(β) == rnk ||
+        throw(ArgumentError("You must specify all (non-singular) βs"))
+
+    β = convert(Vector{T}, β)
+
+    if length(β) == length(piv)
+        βpiv = view(β, piv)
+        truncate && return view(βpiv, 1:rnk)
+        full = zeros(T, length(piv))
+        copyto!(view(full, 1:rnk), view(βpiv, 1:rnk))
+        return full
+    end
+
+    # β is already pivoted (and truncated to rank(m))
+    truncate && return β
+    full = zeros(T, length(piv))
+    copyto!(full, β)
+    return full
+end
+
 """
     FeMat{T,S}
 

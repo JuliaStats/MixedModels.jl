@@ -1,5 +1,5 @@
-MixedModels v5.9.0 Release Notes
-==============================
+MixedModels v5.10.0 Release Notes
+=================================
 - GLMMs for families with a dispersion parameter (`Gamma`, `InverseGaussian`, and `Normal` with a non-identity link) are now fitted correctly.  How ϕ is estimated depends on `fast`:
   - `fast=true` plugs in the Pearson moment estimator `ϕ̂ = pwrss(m) / nobs(m)`, which is the estimator lme4's `sigma()` uses.
   - `fast=false` (the default) treats ϕ as a parameter of the outer optimization alongside β and θ, so it converges to the conditional MLE.  For `Normal` the two coincide, since there the moment estimator *is* the MLE; for `Gamma` and `InverseGaussian` the MLE solves a digamma equation and the two answers differ.  ϕ is optimized on the log scale, so `optsum.final` for such a fit is `[β; θ; log ϕ]` and carries one more element than before.
@@ -11,6 +11,24 @@ MixedModels v5.9.0 Release Notes
 - `GeneralizedLinearMixedModel` has gained a `ϕ` field, a zero- or one-element vector holding the free dispersion parameter when there is one.  This changes the positional argument list of the (internal) default constructor.
 - `simulate`, `simulate!`, and hence `parametricbootstrap` now support families with a dispersion parameter, where they previously threw `ArgumentError("Families with a dispersion parameter not yet supported")`.  Responses are drawn from `Normal(μ, σ)`, `Gamma(1/ϕ, μϕ)`, or `InverseGaussian(μ, 1/ϕ)` as appropriate, these being the parameterizations whose variances match the variance function GLM.jl uses for the family.
 - Relatedly, the simulated random effects are now scaled by σ on the GLMM path, as they already were for `LinearMixedModel`.  `b = σΛu` with `u ~ N(0, I)` is required by the same relative parameterization as above; previously the GLMM path drew `b = Λu` regardless of family, which for a dispersion family produced random effects too large by a factor of `1/σ`.
+
+MixedModels v5.9.1 Release Notes
+================================
+- The `rankUpdate!` method for a `Diagonal` block of `L` updated from a `SparseMatrixCSC` now accepts columns with no stored entries; previously it required exactly one stored entry per column. On newer Julia versions, the 5-argument sparse `mul!` in `updateL!` drops exact zeros from its result, which can happen when an element of θ is zero, and this caused a spurious `ArgumentError` when fitting some models, e.g. a GLMM for `grouseticks`. [#918]
+- The precompile workflow now uses simulated data instead of relying on `MixedModelsDatasets`. This should speed up precompilation and improve its reliability since no data needs to be downloaded.[#919]
+
+MixedModels v5.9.0 Release Notes
+================================
+- `predict` now accepts a `β` keyword argument for supplying a custom fixed-effects coefficient vector instead of the model's own fitted estimates. As with `simulate!`, `β` may be given either as a pivoted, full-rank vector (cf. `fixef`) or an unpivoted, full-dimension vector (cf. `coef`), with entries for redundant columns ignored. The default behavior (using the model's own estimates) is unchanged. [#916]
+
+MixedModels v5.8.4 Release Notes
+================================
+- Remove dependency in `docs/Project.toml` on `MixedModelsSerialization` which was holding up other package version updates. [#915]
+- Also adjust compat entries in `docs/Project.toml` for `AlgebraOfGraphics` and `FreqTables`
+
+MixedModels v5.8.3 Release Notes
+==============================
+- JSON backend for `saveoptsum` and `restoreoptsum!` has been changed from JSON3.jl to JSON.jl. [JSON3.jl has been deprecated in favor of JSON.jl](https://github.com/quinnj/JSON3.jl/blob/08b5f48d25ab596c5441969ee83d56f9b9c5b704/README.md). As a result, the dependency on `StructTypes.jl` has also been dropped. [#897]
 
 MixedModels v5.8.2 Release Notes
 ==============================
@@ -805,8 +823,13 @@ Package dependencies
 [#891]: https://github.com/JuliaStats/MixedModels.jl/issues/891
 [#892]: https://github.com/JuliaStats/MixedModels.jl/issues/892
 [#893]: https://github.com/JuliaStats/MixedModels.jl/issues/893
+[#897]: https://github.com/JuliaStats/MixedModels.jl/issues/897
 [#898]: https://github.com/JuliaStats/MixedModels.jl/issues/898
 [#899]: https://github.com/JuliaStats/MixedModels.jl/issues/899
 [#904]: https://github.com/JuliaStats/MixedModels.jl/issues/904
 [#910]: https://github.com/JuliaStats/MixedModels.jl/issues/910
 [#911]: https://github.com/JuliaStats/MixedModels.jl/issues/911
+[#915]: https://github.com/JuliaStats/MixedModels.jl/issues/915
+[#916]: https://github.com/JuliaStats/MixedModels.jl/issues/916
+[#918]: https://github.com/JuliaStats/MixedModels.jl/issues/918
+[#919]: https://github.com/JuliaStats/MixedModels.jl/issues/919
