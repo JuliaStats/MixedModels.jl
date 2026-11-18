@@ -40,10 +40,11 @@ function MixedModels.optimize!(m::LinearMixedModel, ::PRIMABackend;
                 objective!(m, x)
             catch ex
                 # This can happen when the optimizer drifts into an area where
-                # there isn't enough shrinkage. Why finitial? Generally, it will
-                # be the (near) worst case scenario value, so the optimizer won't
-                # view it as an optimum. Using Inf messes up the quadratic
-                # approximation in BOBYQA.
+                # there isn't enough shrinkage. Why finitial? It is the value at the
+                # starting point, so the failed point is never better than a point the
+                # optimizer has already evaluated and won't be returned as the optimum.
+                # This holds for a warm start too, where finitial is close to the minimum.
+                # Using Inf messes up the quadratic approximation in BOBYQA.
                 ex isa PosDefException || rethrow()
                 optsum.finitial
             end
