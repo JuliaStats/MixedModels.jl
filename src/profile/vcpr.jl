@@ -97,7 +97,7 @@ function profileσs!(val::NamedTuple, tc::TableColumns{T}; threshold=4) where {T
             function vcpoint!(x)
                 obj, xmin = profilevc(m, x, r)
                 copyto!(initial, xmin)
-                zeta = sign(x - estimate) * sqrt(max(zero(T), obj - fmin))
+                zeta = _ζ(obj, fmin, x < estimate, sym, x)
                 push!(tbl, merge(pnm, mkrow!(tc, m, zeta)))
                 return zeta
             end

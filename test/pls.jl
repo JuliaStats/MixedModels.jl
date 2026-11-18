@@ -190,6 +190,17 @@ end
             m.optsum.fmin += 0.01   # larger than the increase at the first step in θ
             val = (; m, tbl=[], fwd=Dict{Symbol,Any}(), rev=Dict{Symbol,Any}())
             @test_throws ArgumentError MixedModels.profileθj!(val, :θ1, tc)
+
+            # and likewise for the profiles of the variance components
+            m = fit(MixedModel, @formula(yield ~ 1 + (1 | batch)),
+                MixedModels.dataset(:dyestuff);
+                progress=false)
+            pr = @suppress profile(m)
+            notvc = r -> r.p == :σ || !startswith(string(r.p), 'σ')
+            val = (; m, tbl=filter(notvc, collect(pr.tbl)), fwd=Dict{Symbol,Any}(),
+                rev=Dict{Symbol,Any}())
+            m.optsum.fmin += 1
+            @test_throws ArgumentError MixedModels.profileσs!(val, tc)
         end
     end
 end
