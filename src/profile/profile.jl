@@ -79,6 +79,10 @@ end
 
 Compute profile confidence intervals for coefficients and variance components, with confidence level level (by default 95%).
 
+Parameters whose profile could not be interpolated, e.g. because the profile is flat, are
+reported with their estimate and `NaN` for the lower and upper limits. Profiling warns
+when this happens.
+
 !!! note
     The API guarantee is for a Tables.jl compatible table. The exact return type is an
     implementation detail and may change in a future minor release without being considered
@@ -89,15 +93,19 @@ Compute profile confidence intervals for coefficients and variance components, w
     but their precise naming scheme is not yet stable and may change in a future release
     without being considered breaking.
 """
-function StatsAPI.confint(pr::MixedModelProfile; level::Real=0.95)
+function StatsAPI.confint(pr::MixedModelProfile{T}; level::Real=0.95) where {T}
     cutoff = sqrt(quantile(Chisq(1), level))
     rev = pr.rev
-    syms = sort!(collect(filter(k -> !startswith(string(k), 'θ'), keys(rev))))
+    # every profiled parameter, including those without a reverse spline
+    syms = sort!(filter(k -> !startswith(string(k), 'θ'), unique(pr.tbl.p)))
+    # the parameter estimates, for parameters without a reverse spline
+    est = mkrow!(TableColumns(pr.m), pr.m, zero(T))
+    nan = T(NaN)
     return DictTable(;
         par=syms,
-        estimate=[rev[s](0) for s in syms],
-        lower=[rev[s](-cutoff) for s in syms],
-        upper=[rev[s](cutoff) for s in syms],
+        estimate=[haskey(rev, s) ? rev[s](0) : getproperty(est, s) for s in syms],
+        lower=[haskey(rev, s) ? rev[s](-cutoff) : nan for s in syms],
+        upper=[haskey(rev, s) ? rev[s](cutoff) : nan for s in syms],
     )
 end
 

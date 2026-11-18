@@ -202,6 +202,23 @@ end
             m.optsum.fmin += 1
             @test_throws ArgumentError MixedModels.profileσs!(val, tc)
         end
+
+        @testset "confint without a reverse spline" begin
+            m = fit(MixedModel, @formula(yield ~ 1 + (1 | batch)),
+                MixedModels.dataset(:dyestuff);
+                progress=false)
+            pr = @suppress profile(m)
+            ci = confint(pr)
+            delete!(pr.rev, :σ1)   # as if the profile of σ1 could not be interpolated
+            cinan = confint(pr)
+            # the parameter is still reported, with its estimate but without limits
+            @test cinan.par == ci.par
+            @test cinan.estimate[:σ1] ≈ only(only(m.σs)) rtol = 1.e-6
+            @test isnan(cinan.lower[:σ1]) && isnan(cinan.upper[:σ1])
+            for s in filter(≠(:σ1), ci.par)
+                @test cinan.lower[s] == ci.lower[s] && cinan.upper[s] == ci.upper[s]
+            end
+        end
     end
 end
 
