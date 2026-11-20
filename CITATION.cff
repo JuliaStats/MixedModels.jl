@@ -1,0 +1,19 @@
+cff-version: 1.2.0
+message: "If you use this software, then please cite this paper along with the Zenodo citation for the relevant version." 
+type: article 
+title: "Mixed-Model Log-Likelihood Evaluation via a Blocked Cholesky Factorization"
+abstract: |
+      Bates et al. (2015) described the evaluation of the profiled log-likelihood of a linear mixed-effects model by updating a sparse, symmetric positive-definite matrix and computing its Cholesky factor, as implemented in the lme4 package for R. Here we present enhancements to the derivation and theoretical presentation of the result and to its implementation using a blocked Cholesky factorization in the MixedModels.jl package for Julia (Bezanson et al., 2017). The gain in computational efficiency is primarily due to three factors: (1) the new derivation allows us to compute the penalized sum of squared residuals without computing the conditional estimates of the fixed-effects parameters and the conditional modes of the random effects at each optimization step, (2) the blocked Cholesky representation and careful ordering of the random effects terms reduces the amount of “fill-in” that occurs during the Cholesky factorization, and (3) the multiple dispatch feature of the Julia language allows us to use specialized algorithms for different kinds of matrices instead of relying on generic algorithms during the Cholesky factorization. To show the effectiveness of the blocked Cholesky approach we use it to fit a linear mixed model to over 32 million ratings of movies in the MovieLens ml-32m (Harper and Konstan, 2016) data set. The model incorporates random effects for over 200,000 movies and over 80,000 participants. Further enhancements to these computational methods are suggested.
+url: https://jds-online.org/doi/10.6339/26-JDS1246
+authors: 
+- family-names: Bates
+  given-names: Douglas
+  orcid: "https://orcid.org/00000-0001-8316-9503"
+- family-names: Alday
+  given-names: Phillip
+  orcid: "https://orcid.org/0000-0002-9984-5745"
+- family-names: Kokandakar
+  given-names: Ajinkya
+  orchid: "https://orcid.org/0000-0001-6628-2272"
+date-published: 2026
+doi: 10.6339/26-JDS1246
