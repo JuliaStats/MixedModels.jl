@@ -40,10 +40,11 @@ function MixedModels.optimize!(m::LinearMixedModel, ::PRIMABackend;
                 objective!(m, x)
             catch ex
                 # This can happen when the optimizer drifts into an area where
-                # there isn't enough shrinkage. Why finitial? Generally, it will
-                # be the (near) worst case scenario value, so the optimizer won't
-                # view it as an optimum. Using Inf messes up the quadratic
-                # approximation in BOBYQA.
+                # there isn't enough shrinkage. Why finitial? It is the value at the
+                # starting point, so the failed point is never better than a point the
+                # optimizer has already evaluated and won't be returned as the optimum.
+                # This holds for a warm start too, where finitial is close to the minimum.
+                # Using Inf messes up the quadratic approximation in BOBYQA.
                 ex isa PosDefException || rethrow()
                 optsum.finitial
             end
@@ -54,7 +55,8 @@ function MixedModels.optimize!(m::LinearMixedModel, ::PRIMABackend;
     end
 
     maxfun = optsum.maxfeval > 0 ? optsum.maxfeval : 500 * length(optsum.initial)
-    info = _optimizer!(Val(optsum.optimizer), obj, optsum.final;
+    # the optimizer overwrites its starting point, so start from a copy of initial in final
+    info = _optimizer!(Val(optsum.optimizer), obj, copyto!(optsum.final, optsum.initial);
         maxfun,
         optsum.rhoend, optsum.rhobeg)
     optsum.feval = info.nf
@@ -104,7 +106,8 @@ function MixedModels.optimize!(m::GeneralizedLinearMixedModel, ::PRIMABackend;
         end
         sc
     end
-    info = _optimizer!(Val(optsum.optimizer), obj, optsum.final;
+    # the optimizer overwrites its starting point, so start from a copy of initial in final
+    info = _optimizer!(Val(optsum.optimizer), obj, copyto!(optsum.final, optsum.initial);
         maxfun,
         optsum.rhoend, optsum.rhobeg,
         scale)
@@ -138,6 +141,7 @@ function MixedModels.profilevc(obj, optsum::OptSummary, ::PRIMABackend; kwargs..
         scale=nothing) # will need to scale for GLMM
     _check_prima_return(info)
     fmin = info.fx
+    obj(xmin)   # leave the model at the minimizer, not the last evaluation
     return fmin, xmin
 end
 
@@ -152,6 +156,7 @@ function MixedModels.profileobj!(obj,
         scale=nothing) # will need to scale for GLMM
     fmin = info.fx
     _check_prima_return(info)
+    obj(xmin)   # leave the model at the minimizer, not the last evaluation
     rectify!(m)
     return fmin
 end

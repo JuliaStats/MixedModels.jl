@@ -76,12 +76,57 @@ function mkrow!(tc::TableColumns{T,N}, m::LinearMixedModel{T}, ζ::T) where {T,N
     fixef!(view(v, positions[:β]), m)
     v[first(positions[:σ])] = m.σ
     σvals!(view(v, positions[:σs]), m)
-    getθ!(view(v, positions[:θ]), m)  # must do this first to preserve a copy
-    if length(corrpos) > 0
-        ρvals!(view(v, positions[:ρs]), corrpos, m)
-        setθ!(m, view(v, positions[:θ]))
-    end
+    getθ!(view(v, positions[:θ]), m)
+    length(corrpos) > 0 && ρvals!(view(v, positions[:ρs]), corrpos, m)
     return NamedTuple{cnames,NTuple{N,T}}((v...,))
+end
+
+"""
+    _ζ(objective::T, fmin::T, neg::Bool, sym::Symbol, value) where {T}
+
+Return the profile ζ, `sqrt(objective - fmin)`, negated if `neg` is `true` (i.e. when the
+profiled parameter is below its estimate).
+
+A negative difference within a small tolerance is treated as zero. A larger negative
+difference means that `fmin` is not the minimum of the objective and an `ArgumentError`
+naming the parameter `sym` and its `value` is thrown.
+"""
+function _ζ(objective::T, fmin::T, neg::Bool, sym::Symbol, value) where {T}
+    δ = objective - fmin
+    if δ < 0
+        δ ≥ -sqrt(eps(T)) * max(one(T), abs(fmin)) || throw(
+            ArgumentError(
+                "objective at $sym = $value is $(-δ) below the minimum $fmin; " *
+                "the model fit may not have converged. Try refitting with tighter tolerances.",
+            ),
+        )
+        δ = zero(T)
+    end
+    ζ = sqrt(δ)
+    return neg ? -ζ : ζ
+end
+
+"""
+    _profileobjective!(m::LinearMixedModel, θ)
+
+Return `objective!(m, θ)`, or `m.optsum.finitial` if the factorization fails because it is
+not positive definite.
+
+This mirrors the objective used for fitting the model. The optimizers in the profiles can
+move into regions of the parameter space where there is not enough shrinkage for the
+factorization, and `finitial` is generally a value that the optimizer won't view as an
+optimum.
+
+!!! note
+    This method is internal.
+"""
+function _profileobjective!(m::LinearMixedModel, θ)
+    return try
+        objective!(m, θ)
+    catch ex
+        ex isa PosDefException || rethrow()
+        m.optsum.finitial
+    end
 end
 
 """
@@ -126,21 +171,13 @@ function ρvals!(
     v::AbstractVector{T}, corrpos::Vector{NTuple{3,Int}}, m::LinearMixedModel{T}
 ) where {T}
     reterms = m.reterms
-    lasti = 1
-    λ = first(reterms).λ
-    for r in eachrow(λ)
-        normalize!(r)
-    end
-    for (ii, pos) in enumerate(corrpos)
-        i, j, k = pos
-        if lasti ≠ i
-            λ = reterms[i].λ
-            for r in eachrow(λ)
-                normalize!(r)
-            end
-            lasti = i
-        end
-        v[ii] = dot(view(λ, j, :), view(λ, k, :))
+    for (ii, (i, j, k)) in enumerate(corrpos)
+        λ = reterms[i].λ
+        rowj = view(λ, j, :)
+        rowk = view(λ, k, :)
+        nrm = norm(rowj) * norm(rowk)
+        # a row of zeros has no defined correlation; use zero, as in `rownormalize`
+        v[ii] = iszero(nrm) ? zero(T) : dot(rowj, rowk) / nrm
     end
     return v
 end
