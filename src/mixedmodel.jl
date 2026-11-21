@@ -92,7 +92,9 @@ function StatsAPI.fit(
     args...;
     kwargs...,
 )
-    throw(ArgumentError("Expected a Distribution instance (`$d()`), got a type (`$d`)."))
+    return throw(
+        ArgumentError("Expected a Distribution instance (`$d()`), got a type (`$d`).")
+    )
 end
 
 function StatsAPI.fit(
@@ -103,7 +105,7 @@ function StatsAPI.fit(
     l::Type;
     kwargs...,
 )
-    throw(ArgumentError("Expected a Link instance (`$l()`), got a type (`$l`)."))
+    return throw(ArgumentError("Expected a Link instance (`$l()`), got a type (`$l`)."))
 end
 
 StatsAPI.meanresponse(m::MixedModel) = mean(m.y)
@@ -170,7 +172,7 @@ function StatsAPI.r2(m::MixedModel)
          the warnings there and in the FAQ should be taken seriously!
          """
     )
-    throw(MethodError(r2, (m,)))
+    return throw(MethodError(r2, (m,)))
 end
 
 """

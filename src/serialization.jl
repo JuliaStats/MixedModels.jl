@@ -42,8 +42,17 @@ function restoreoptsum!(
     resize!(ops.initial, length(dict["initial"]))
     resize!(ops.final, length(dict["final"]))
 
+    # the length of the parameter vector tells us which kind of fit was saved:
+    # θ alone (fast=true), β and θ (fast=false), or β, θ and log ϕ (fast=false
+    # for a family with a dispersion parameter, where ϕ is a free parameter of
+    # the outer optimization)
     theta_beta_len = length(m.θ) + length(m.β)
-    if length(dict["initial"]) == theta_beta_len # fast=false
+    m.ϕ[] = nothing
+    if length(dict["initial"]) == theta_beta_len + 1 && dispersion_parameter(m.resp.d)
+        m.ϕ[] = one(T)   # value is set by `setβθ!` below
+        setpar! = setβθ!
+        varyβ = false
+    elseif length(dict["initial"]) == theta_beta_len # fast=false
         setpar! = setβθ!
         varyβ = false
     else # fast=true
@@ -181,7 +190,7 @@ function saveoptsum(io::IO, m::MixedModel)
 end
 function saveoptsum(filename, m::MixedModel)
     open(filename, "w") do io
-        saveoptsum(io, m)
+        return saveoptsum(io, m)
     end
 end
 

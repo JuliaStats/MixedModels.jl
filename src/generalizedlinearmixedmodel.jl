@@ -8,6 +8,11 @@ Generalized linear mixed-effects model representation
 - `β`: the pivoted and possibly truncated fixed-effects vector
 - `β₀`: similar to `β`. Used in the PIRLS algorithm if step-halving is needed.
 - `θ`: covariance parameter vector
+- `ϕ`: dispersion parameter, in a `Ref` so that it can be updated within this immutable
+  struct. It is `nothing` when ϕ is plugged in from the Pearson moment estimator
+  (`fast=true`, and always for families without a dispersion parameter) and holds a
+  value when ϕ is a free parameter of the outer optimization (`fast=false` with a
+  dispersion family). See [`_dispersion`](@ref).
 - `b`: similar to `u`, equivalent to `broadcast!(*, b, LMM.Λ, u)`
 - `u`: a vector of matrices of random effects
 - `u₀`: similar to `u`.  Used in the PIRLS algorithm if step-halving is needed.
@@ -40,6 +45,7 @@ struct GeneralizedLinearMixedModel{T<:AbstractFloat,D<:Distribution} <: MixedMod
     β::Vector{T}
     β₀::Vector{T}
     θ::Vector{T}
+    ϕ::Base.RefValue{Union{T,Nothing}}
     b::Vector{Matrix{T}}
     u::Vector{Matrix{T}}
     u₀::Vector{Matrix{T}}
@@ -80,35 +86,158 @@ or `nAGQ`-point adaptive Gauss-Hermite quadrature.
 If the distribution `D` does not have a scale parameter the Laplace approximation
 is the squared length of the conditional modes, ``u``, plus the determinant
 of ``Λ'Z'WZΛ + I``, plus the sum of the squared deviance residuals.
+
+For distributions with a dispersion parameter ``ϕ``, the value of ϕ comes from
+`_dispersion` and is shared with `dispersion` and `loglikelihood`, so the three
+always agree. Depending on how the model was fit, that is either the moment
+estimator ``pwrss(m) / nobs(m)`` (`fast=true`) or a free parameter of the outer
+optimization (`fast=false`). See the internal `_laplace_deviance` and
+`_agq_deviance` for the exact expressions.
 """
 function StatsAPI.deviance(m::GeneralizedLinearMixedModel{T}, nAGQ=1) where {T}
-    nAGQ == 1 && return T(sum(m.resp.devresid) + logdet(m) + sum(u -> sum(abs2, u), m.u))
+    return nAGQ == 1 ? _laplace_deviance(m) : _agq_deviance(m, nAGQ)
+end
+
+StatsAPI.deviance(m::GeneralizedLinearMixedModel) = deviance(m, m.optsum.nAGQ)
+
+"""
+    _laplace_deviance(m::GeneralizedLinearMixedModel)
+
+Internal Laplace-approximation deviance (equivalent to AGQ with `nAGQ == 1`)
+used as the NLopt/PRIMA objective when fitting with the Laplace approximation.
+
+For non-dispersion families (Bernoulli, Binomial, Poisson) this is
+`sum(devresid) + sum(u²) + logdet(m)`. For dispersion families it is
+
+    -2 · Σ loglik_obs(d, yᵢ, μᵢ, wᵢ, ϕ) + sum(u²)/ϕ + logdet(m)
+
+Note the `1/ϕ` on the penalty: `u ~ N(0, ϕI)` under this package's relative
+covariance parameterization (see [`deviance!`](@ref)), so `sum(u²)` is on the ϕ
+scale too. Specializing the expression to `Normal` with an identity link recovers
+`objective(::LinearMixedModel)` exactly, which is the check that fixes the
+normalization. The two branches are byte-equivalent for non-dispersion families,
+where ϕ ≡ 1.
+"""
+function _laplace_deviance(m::GeneralizedLinearMixedModel{T}) where {T}
+    uss = sum(u -> sum(abs2, u), m.u)
+    ld = logdet(m)
+    if dispersion_parameter(m.resp.d)
+        ϕ = _dispersion(m)
+        return T(-2 * _loglik_data(m.resp, ϕ) + uss / ϕ + ld)
+    end
+    return T(sum(m.resp.devresid) + ld + uss)
+end
+
+"""
+    _dispersion(m::GeneralizedLinearMixedModel{T})
+
+The value of ϕ used by the objective, the log-likelihood and [`dispersion`](@ref).
+
+Families without a dispersion parameter give `one(T)`. Otherwise there are three
+regimes, checked in this order:
+
+  - `!isnothing(m.optsum.sigma)` — ϕ is fixed a priori at `sigma^2` and is not
+    estimated at all, exactly as `optsum.sigma` fixes σ for a
+    [`LinearMixedModel`](@ref).
+  - `isnothing(m.ϕ[])` — ϕ is plugged in from the Pearson moment estimator
+    `pwrss(m) / nobs(m)`. This is the `fast=true` regime, and it is what every
+    dispersion fit did before ϕ became an outer parameter.
+  - otherwise — ϕ is a free parameter of the outer optimization and `m.ϕ[]` is
+    its current value. This is the `fast=false` regime.
+
+The latter two coincide only for `Normal`: there `pwrss/n` really is the
+conditional MLE of ϕ, so the outer optimization just rediscovers it. For `Gamma`
+and `InverseGaussian` the conditional MLE solves a digamma equation rather than a
+moment condition, and the free parameter converges to that instead — the moment
+estimator is then a genuinely different (and lme4-compatible) answer.
+
+In every case ϕ does not affect the conditional modes; see [`deviance!`](@ref).
+"""
+function _dispersion(m::GeneralizedLinearMixedModel{T}) where {T}
+    dispersion_parameter(m.resp.d) || return one(T)
+    σ = m.optsum.sigma
+    isnothing(σ) || return T(abs2(σ))
+    ϕ = m.ϕ[]
+    isnothing(ϕ) && return max(pwrss(m) / nobs(m), eps(T))
+    return max(ϕ, eps(T))
+end
+
+"""
+    _agq_deviance(m::GeneralizedLinearMixedModel, nAGQ)
+
+Internal adaptive Gauss-Hermite quadrature deviance, used as the NLopt/PRIMA
+objective for `nAGQ > 1`.
+
+For dispersion families ϕ comes from [`_dispersion`](@ref) and enters in three
+places, all of which reduce to no-ops when ϕ ≡ 1:
+
+  - the per-group integrand is `D_g(u) = (u² + Σ_{i∈g} devresid_i(u))/ϕ`, the
+    whole penalized quantity on the ϕ scale rather than just the data part;
+  - the quadrature nodes are spaced by `√ϕ / L.diag`, since the conditional
+    standard deviation of `u` given `y` carries the same ϕ as the prior;
+  - the μ-independent normaliser is
+    `Cϕ = -2·Σ loglik_obs(d, yᵢ, μᵢ, wᵢ, ϕ) - sum(devresid)/ϕ + nᵤ·log ϕ`,
+    computed once at the mode. The trailing `nᵤ·log ϕ` compensates exactly for
+    the `√ϕ` in the node spacing, which would otherwise contribute `-nᵤ·log ϕ`
+    through the `sum(log, sd)` Jacobian term.
+
+The AGQ deviance is then `sum(D_g(û)) - 2·(sum(log,mult) + sum(log,sd)) + Cϕ`.
+For non-dispersion families ϕ ≡ 1 and Cϕ ≡ 0, reducing exactly to the prior
+formula, bit for bit.
+
+By construction `_agq_deviance(m, 1) == _laplace_deviance(m)` (the Laplace
+approximation *is* AGQ with n=1); that identity is what pins down the constants
+above and is checked in the test suite.
+"""
+function _agq_deviance(m::GeneralizedLinearMixedModel{T}, nAGQ) where {T}
     u = vec(first(m.u))
     u₀ = vec(first(m.u₀))
     copyto!(u₀, u)
     ra = RaggedArray(m.resp.devresid, first(m.LMM.reterms).refs)
-    devc0 = sum!(map!(abs2, m.devc0, u), ra)  # the deviance components at z = 0
+
+    has_disp = dispersion_parameter(m.resp.d)
+    ϕ = _dispersion(m)
+    # Cϕ is the μ-independent part of -2·Σ loglik_obs(d, y, μ, w, ϕ); the
+    # identity -2·loglik_obs = devresid/ϕ + c(y, w, ϕ) lets us evaluate it
+    # once at the mode and treat it as constant across quadrature nodes. For
+    # non-dispersion families we keep Cϕ = 0 so existing nAGQ>1 fits stay
+    # bit-identical (Binomial/Poisson would otherwise pick up a constant
+    # saturated-likelihood term that the historical formula dropped).
+    Cϕ = if has_disp
+        T(-2 * _loglik_data(m.resp, ϕ) - sum(m.resp.devresid) / ϕ +
+          length(u) * log(ϕ))
+    else
+        zero(T)
+    end
+
+    # devc0_g = (u_g² + Σ_{i∈g} devresid_i)/ϕ  at u = û
+    sum!(fill!(m.devc0, 0), ra)
+    @. m.devc0 = (abs2(u) + m.devc0) / ϕ
+    devc0 = m.devc0
+
+    # the conditional sd of u given y is √ϕ/L.diag; the √ϕ is undone by the
+    # nᵤ·log ϕ carried in Cϕ above
     sd = map!(inv, m.sd, first(m.LMM.L).diag)
+    has_disp && (sd .*= sqrt(ϕ))
     mult = fill!(m.mult, 0)
     devc = m.devc
     for (z, w) in GHnorm(nAGQ)
         if !iszero(w)
-            if iszero(z)  # devc == devc0 in this case
+            if iszero(z)
                 mult .+= w
             else
                 @. u = u₀ + z * sd
                 updateη!(m)
-                sum!(map!(abs2, devc, u), ra)
+                sum!(fill!(devc, 0), ra)
+                @. devc = (abs2(u) + devc) / ϕ
                 @. mult += exp((abs2(z) + devc0 - devc) / 2) * w
             end
         end
     end
     copyto!(u, u₀)
     updateη!(m)
-    return sum(devc0) - 2 * (sum(log, mult) + sum(log, sd))
+    return sum(devc0) - 2 * (sum(log, mult) + sum(log, sd)) + Cϕ
 end
-
-StatsAPI.deviance(m::GeneralizedLinearMixedModel) = deviance(m, m.optsum.nAGQ)
 
 fixef(m::GeneralizedLinearMixedModel) = m.β
 
@@ -136,6 +265,13 @@ end
 
 Update `m.η`, `m.μ`, etc., install the working response and working weights in
 `m.LMM`, update `m.LMM.A` and `m.LMM.R`, then evaluate the `deviance`.
+
+Note that PIRLS itself does not depend on ϕ. Under the covariance parameterization
+this package uses, `θ` is *relative* to the scale parameter — `Var(b) = ϕΛΛ'`, i.e.
+`u ~ N(0, ϕI)`, matching [`LinearMixedModel`](@ref) and the `σ` factor in
+[`σs`](@ref) — so the penalized objective is `(Σᵢ wᵢrᵢ² + ‖u‖²)/ϕ` and the `1/ϕ`
+factors straight out of the minimization over `u`. ϕ enters the deviance, not the
+conditional modes.
 """
 function deviance!(m::GeneralizedLinearMixedModel, nAGQ=1)
     updateη!(m)
@@ -145,15 +281,12 @@ function deviance!(m::GeneralizedLinearMixedModel, nAGQ=1)
 end
 
 function GLM.dispersion(m::GeneralizedLinearMixedModel{T}, sqr::Bool=false) where {T}
-    # adapted from GLM.dispersion(::AbstractGLM, ::Bool)
-    # TODO: PR for a GLM.dispersion(resp::GLM.GlmResp, dof_residual::Int, sqr::Bool)
-    r = m.resp
-    if dispersion_parameter(r.d)
-        s = sum(wt * abs2(re) for (wt, re) in zip(r.wrkwt, r.wrkresid)) / dof_residual(m)
-        sqr ? s : sqrt(s)
-    else
-        one(T)
-    end
+    dispersion_parameter(m.resp.d) || return one(T)
+    # Either the Pearson moment estimator pwrss/n (which matches lme4's `sigma()`
+    # and the LMM convention at `varest(::LinearMixedModel)`) or the free outer
+    # parameter, depending on how the model was fit.  See `_dispersion`.
+    s2 = _dispersion(m)
+    return sqr ? s2 : sqrt(s2)
 end
 
 GLM.dispersion_parameter(m::GeneralizedLinearMixedModel) = dispersion_parameter(m.resp.d)
@@ -270,6 +403,8 @@ function StatsAPI.fit!(
         throw(ArgumentError("This model has already been fitted. Use refit!() instead."))
     end
 
+    disp = dispersion_parameter(m.resp.d)
+
     if all(==(first(m.y)), m.y)
         throw(ArgumentError("The response is constant and thus model fitting has failed"))
     end
@@ -281,8 +416,22 @@ function StatsAPI.fit!(
         unfit!(lm)
     end
 
+    # ϕ is a free parameter of the outer optimization only for `fast=false` fits
+    # of a dispersion family whose ϕ is not fixed a priori; otherwise it is
+    # plugged in from pwrss/n or taken from `optsum.sigma`.  Clearing it here
+    # rather than relying on the constructor keeps `refit!` honest when the same
+    # model is refit with a different `fast`.
+    m.ϕ[] = nothing
+    estimate_ϕ = disp && isnothing(optsum.sigma)
     if !fast
         optsum.initial = vcat(β, lm.optsum.final)
+        if estimate_ϕ
+            # a plug-in evaluation at the starting β/θ gives a much better
+            # starting ϕ than any fixed constant would
+            pirls!(setβθ!(m, optsum.initial), false, verbose)
+            m.ϕ[] = max(pwrss(m) / nobs(m), eps(T))
+            optsum.initial = vcat(optsum.initial, log(m.ϕ[]))
+        end
         optsum.final = copy(optsum.initial)
     end
 
@@ -291,13 +440,20 @@ function StatsAPI.fit!(
 
     xmin, fmin = optimize!(m; progress, fast, verbose, nAGQ)
 
-    θopt = length(xmin) == length(θ) ? xmin : view(xmin, (length(β) + 1):lastindex(xmin))
+    θopt = if length(xmin) == length(θ)
+        xmin
+    else
+        view(xmin, (length(β) + 1):(length(β) + length(θ)))
+    end
     rectify!(m.LMM)                  # flip signs of columns of m.λ elements with negative diagonal els
     getθ!(θopt, m)                   # use the rectified values in xmin
 
     ## check if very small parameter values bounded below by zero can be set to zero
     xmin_ = copy(xmin)
+    # log ϕ is unbounded, so a lower bound of -Inf keeps it out of the
+    # zero-snapping loop below -- snapping it would send ϕ to 1, not to 0
     lb = fast ? lowerbd(m) : vcat(zero(β), lowerbd(m))
+    isnothing(m.ϕ[]) || (lb = vcat(lb, T(-Inf)))
     for i in eachindex(xmin_)
         if iszero(lb[i]) && zero(T) < xmin_[i] < optsum.xtol_zero_abs
             xmin_[i] = zero(T)
@@ -329,7 +485,9 @@ function GeneralizedLinearMixedModel(
     args...;
     kwargs...,
 )
-    throw(ArgumentError("Expected a Distribution instance (`$d()`), got a type (`$d`)."))
+    return throw(
+        ArgumentError("Expected a Distribution instance (`$d()`), got a type (`$d`).")
+    )
 end
 
 function GeneralizedLinearMixedModel(
@@ -339,7 +497,7 @@ function GeneralizedLinearMixedModel(
     l::Type;
     kwargs...,
 )
-    throw(ArgumentError("Expected a Link instance (`$l()`), got a type (`$l`)."))
+    return throw(ArgumentError("Expected a Link instance (`$l()`), got a type (`$l`)."))
 end
 
 function GeneralizedLinearMixedModel(
@@ -376,6 +534,7 @@ function GeneralizedLinearMixedModel(
     offset=[],
     contrasts=Dict{Symbol,Any}(),
     amalgamate=true,
+    σ=nothing,
 )
     if wts !== nothing
         Base.depwarn(
@@ -391,14 +550,17 @@ function GeneralizedLinearMixedModel(
     (isa(d, Normal) && isa(l, IdentityLink)) && throw(
         ArgumentError("use LinearMixedModel for Normal distribution with IdentityLink")
     )
-
-    if !any(isa(d, dist) for dist in (Bernoulli, Binomial, Poisson))
-        @warn """Results for families with a dispersion parameter are not reliable.
-                 It is best to avoid trying to fit such models in MixedModels until
-                 the authors gain a better understanding of those cases."""
+    if !isnothing(σ) && !dispersion_parameter(d)
+        throw(
+            ArgumentError(
+                "σ can only be fixed a priori for a family with a dispersion parameter"
+            ),
+        )
     end
 
-    LMM = LinearMixedModel(f, tbl; contrasts, weights, amalgamate)
+    # σ rides along in `optsum.sigma`, the same slot `LinearMixedModel` uses for
+    # a fixed residual standard deviation
+    LMM = LinearMixedModel(f, tbl; contrasts, weights, amalgamate, σ)
     y = copy(LMM.y)
     constresponse = all(==(first(y)), y)
     # the sqrtwts field must be the correct length and type but we don't know those
@@ -450,6 +612,7 @@ function GeneralizedLinearMixedModel(
         β,
         copy(β),
         LMM.θ,
+        Ref{Union{T,Nothing}}(nothing),   # ϕ: free only if `fit!` says so
         copy.(u),
         u,
         zero.(u),
@@ -514,27 +677,35 @@ StatsAPI.islinear(m::GeneralizedLinearMixedModel) = isa(GLM.Link, GLM.IdentityLi
 GLM.Link(m::GeneralizedLinearMixedModel) = GLM.Link(m.resp)
 
 function StatsAPI.loglikelihood(m::GeneralizedLinearMixedModel{T}) where {T}
-    accum = zero(T)
-    # adapted from GLM.jl
-    # note the use of loglik_obs to handle the different parameterizations
-    # of various response distributions which may not just be location+scale
+    # `_dispersion` is the single source of ϕ̂, so the loglikelihood, deviance and
+    # dispersion estimate are always evaluated at the same value whichever regime
+    # the model was fit in. For families without a dispersion parameter it returns
+    # 1 and `loglik_obs` ignores the ϕ argument anyway.
     r = m.resp
-    wts = r.wts
+    ϕ = _dispersion(m)
+    ll = _loglik_data(r, ϕ)
+    uss = sum(u -> sum(abs2, u), m.u)
+    return ll - (uss / ϕ + logdet(m)) / 2
+end
+
+function _loglik_data(r::GLM.GlmResp, ϕ)
+    # Sum of GLM.loglik_obs(d, yᵢ, μᵢ, wᵢ, ϕ); covers Gaussian/Gamma/IG with a
+    # profiled ϕ as well as Bernoulli/Binomial/Poisson where ϕ is ignored.
+    accum = zero(eltype(r.mu))
     y = r.y
     mu = r.mu
+    wts = r.wts
     d = r.d
     if length(wts) == length(y)
-        ϕ = deviance(r) / sum(wts)
         @inbounds for i in eachindex(y, mu, wts)
             accum += GLM.loglik_obs(d, y[i], mu[i], wts[i], ϕ)
         end
     else
-        ϕ = deviance(r) / length(y)
         @inbounds for i in eachindex(y, mu)
             accum += GLM.loglik_obs(d, y[i], mu[i], 1, ϕ)
         end
     end
-    return accum - (mapreduce(u -> sum(abs2, u), +, m.u) + logdet(m)) / 2
+    return accum
 end
 
 """
@@ -546,6 +717,21 @@ Note that this method does not distinguish between constrained optimization and
 unconstrained optimization with post-fit canonicalization.
 """
 lowerbd(m::GeneralizedLinearMixedModel) = lowerbd(m.LMM)
+
+"""
+    pwrss(m::GeneralizedLinearMixedModel)
+
+The penalized, weighted residual sum-of-squares for the working LMM at the
+current PIRLS state. Equal to `Σ wrkwtᵢ · wrkresidᵢ² + Σⱼ ‖uⱼ‖²` after PIRLS
+converges, so `pwrss(m) - sum(abs2, u)` is the Pearson chi-square contribution
+used to estimate the dispersion parameter.
+
+This holds regardless of how ϕ is being estimated, since PIRLS does not depend on
+ϕ (see [`deviance!`](@ref)). For a model fit with `fast=false` and a dispersion
+family, comparing `pwrss(m) / nobs(m)` against [`dispersion`](@ref) contrasts the
+moment estimator with the conditional MLE that the outer optimization finds.
+"""
+pwrss(m::GeneralizedLinearMixedModel) = pwrss(m.LMM)
 
 # Base.Fix1 doesn't forward kwargs
 function objective!(m::GeneralizedLinearMixedModel; fast=false, kwargs...)
@@ -562,13 +748,15 @@ end
 function _objective!(
     m::GeneralizedLinearMixedModel{T}, x, ::Val{true}; nAGQ=1, verbose=false
 ) where {T}
-    return deviance(pirls!(setθ!(m, x), true, verbose), nAGQ)
+    pirls!(setθ!(m, x), true, verbose)
+    return nAGQ == 1 ? _laplace_deviance(m) : _agq_deviance(m, nAGQ)
 end
 
 function _objective!(
     m::GeneralizedLinearMixedModel{T}, x, ::Val{false}; nAGQ=1, verbose=false
 ) where {T}
-    return deviance(pirls!(setβθ!(m, x), false, verbose), nAGQ)
+    pirls!(setβθ!(m, x), false, verbose)
+    return nAGQ == 1 ? _laplace_deviance(m) : _agq_deviance(m, nAGQ)
 end
 
 function Base.propertynames(m::GeneralizedLinearMixedModel, private::Bool=false)
@@ -713,10 +901,22 @@ end
 Set the parameter vector, `:βθ`, of `m` to `v`.
 
 `βθ` is the concatenation of the fixed-effects, `β`, and the covariance parameter, `θ`.
+
+When ϕ is a free parameter of the outer optimization (`!isnothing(m.ϕ[])`, see
+[`_dispersion`](@ref)) `v` carries one further element, `log(ϕ)`, after `θ`.
 """
 function setβθ!(m::GeneralizedLinearMixedModel, v)
     setβ!(m, v)
-    return setθ!(m, view(v, (length(m.β) + 1):length(v)))
+    nβ = length(m.β)
+    # `v` is allowed to be shorter than `nβ + nθ`: `simulate!` passes β alone
+    # when θ is to be left at its current value, and relies on the resulting
+    # empty view making `setθ!` a no-op.
+    nϕ = isnothing(m.ϕ[]) ? 0 : 1
+    setθ!(m, view(v, (nβ + 1):(length(v) - nϕ)))
+    # when ϕ is a free outer parameter it is the trailing element of `v`, on the
+    # log scale so that the optimizer sees it as unbounded and reasonably scaled
+    iszero(nϕ) || (m.ϕ[] = exp(last(v)))
+    return m
 end
 
 function setβ!(m::GeneralizedLinearMixedModel, v)
@@ -768,7 +968,20 @@ function Base.show(
     println(io, "Generalized Linear Mixed Model fit by maximum likelihood (nAGQ = $nAGQ)")
     println(io, "  ", m.LMM.formula)
     println(io, "  Distribution: ", D)
-    println(io, "  Link: ", Link(m), "\n")
+    println(io, "  Link: ", Link(m))
+    if dispersion_parameter(m)
+        # which estimator was used is not recoverable from the printed σ, and
+        # they do not agree for Gamma or InverseGaussian, so name it
+        println(io, "  Dispersion parameter ϕ: ",
+            if !isnothing(m.optsum.sigma)
+                "fixed a priori at σ² = $(abs2(m.optsum.sigma))"
+            elseif isnothing(m.ϕ[])
+                "Pearson moment estimator pwrss/n, as in lme4's `sigma()`"
+            else
+                "estimated jointly with β and θ"
+            end)
+    end
+    println(io)
     nums = Ryu.writefixed.([loglikelihood(m), deviance(m), aic(m), aicc(m), bic(m)], 4)
     fieldwd = max(maximum(textwidth.(nums)) + 1, 11)
     for label in [" logLik", " deviance", "AIC", "AICc", "BIC"]
@@ -818,6 +1031,7 @@ function unfit!(model::GeneralizedLinearMixedModel{T}) where {T}
     optsum.xtol_abs = fill!(copy(optsum.initial), 1.0e-10)
     optsum.initial_step = T[]
     optsum.feval = -1
+    model.ϕ[] = nothing   # back to the plug-in until `fit!` decides otherwise
     deviance!(model, 1)
 
     return model

@@ -75,10 +75,10 @@ include("modelcache.jl")
     @testset "_isnested partitions at second arg" begin
         # y has rank 2 in R^5, with column span = span(e_1, e_2).
         y = [1.0 0.0
-             0.0 1.0
-             0.0 0.0
-             0.0 0.0
-             0.0 0.0]
+            0.0 1.0
+            0.0 0.0
+            0.0 0.0
+            0.0 0.0]
 
         # x = e_3 is clearly outside span(e_1, e_2)
         # so is not nested in y.
@@ -88,13 +88,13 @@ include("modelcache.jl")
         # Multi-column case where every column of x has its out-of-y mass in
         # the interior of the orthogonal complement (rows rank(y)+1 : m-rank(x)-1).
         y_big = [1.0 0.0 0.0
-                 0.0 1.0 0.0
-                 0.0 0.0 1.0
-                 0.0 0.0 0.0
-                 0.0 0.0 0.0
-                 0.0 0.0 0.0
-                 0.0 0.0 0.0
-                 0.0 0.0 0.0]
+            0.0 1.0 0.0
+            0.0 0.0 1.0
+            0.0 0.0 0.0
+            0.0 0.0 0.0
+            0.0 0.0 0.0
+            0.0 0.0 0.0
+            0.0 0.0 0.0]
         x_big = zeros(8, 2)
         # non zeros occur at rows 4 and 5, but
         # y doesn't have any non zeros in those rows and so this
@@ -131,11 +131,12 @@ end
     @test lrtest(fm0, fm1) == lrtest(lrt)
 
     @test (deviance(fm0), deviance(fm1)) == lrt.deviance
-    @test sprint(show, lrt) == "Likelihood-ratio test: 2 models fitted on 180 observations\nModel Formulae\n1: reaction ~ 1 + (1 + days | subj)\n2: reaction ~ 1 + days + (1 + days | subj)\n────────────────────────────────────────────\n     DoF  -2 logLik       χ²  χ²-dof  P(>χ²)\n────────────────────────────────────────────\n[1]    5  1775.4759                         \n[2]    6  1751.9393  23.5365       1  <1e-05\n────────────────────────────────────────────"
+    @test sprint(show, lrt) ==
+        "Likelihood-ratio test: 2 models fitted on 180 observations\nModel Formulae\n1: reaction ~ 1 + (1 + days | subj)\n2: reaction ~ 1 + days + (1 + days | subj)\n────────────────────────────────────────────\n     DoF  -2 logLik       χ²  χ²-dof  P(>χ²)\n────────────────────────────────────────────\n[1]    5  1775.4759                         \n[2]    6  1751.9393  23.5365       1  <1e-05\n────────────────────────────────────────────"
     @test last(lrt.pvalues) == pvalue(lrt)
 
     lrt = likelihoodratiotest(lm1, fm1)
-    @test pvalue(lrt) ≈ 5.9e-32 atol=1e-16
+    @test pvalue(lrt) ≈ 5.9e-32 atol = 1e-16
 
     lrt2 = likelihoodratiotest(lm1.model, fm1)
     @test first(lrt2.formulas) == "NA"
@@ -194,10 +195,10 @@ end
     )
 
     lrt = likelihoodratiotest(gmf, gm1)
-    @test  2 * only(diff(collect(lrt.loglikelihood))) ≈ 95.0725 atol=0.0001
+    @test 2 * only(diff(collect(lrt.loglikelihood))) ≈ 95.0725 atol = 0.0001
 
     lrt = likelihoodratiotest(gm0, gm1)
-    @test  2 * only(diff(collect(lrt.loglikelihood))) ≈ 38.0713 atol=0.0001
+    @test 2 * only(diff(collect(lrt.loglikelihood))) ≈ 38.0713 atol = 0.0001
 
     # mismatched links
     gm_probit = fit(

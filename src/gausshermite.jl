@@ -79,6 +79,6 @@ for the same `k` have very low overhead.
 """
 GHnorm(k::Int) =
     get!(GHnormd, k) do
-        GaussHermiteNormalized(k)
+        return GaussHermiteNormalized(k)
     end
 GHnorm(k) = GHnorm(Int(k))
