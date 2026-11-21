@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Parametric bootstrap for linear mixed-effects models · MixedModels</title><link href="https://cdnjs.cloudflare.com/ajax/libs/normalize/4.2.0/normalize.min.css" rel="stylesheet" type="text/css"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.2.0/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link href="../assets/documenter.css" rel="stylesheet" type="text/css"/></head><body><nav class="toc"><a href="../index.html"><img class="logo" src="../assets/logo.png" alt="MixedModels logo"/></a><h1>MixedModels</h1><select id="version-selector" onChange="window.location.href=this.value" style="visibility: hidden"></select><form class="search" id="search-form" action="../search/"><input id="search-query" name="q" type="text" placeholder="Search docs"/></form><ul><li><a class="toctext" href="../">MixedModels.jl Documentation</a></li><li><a class="toctext" href="../constructors/">Model constructors</a></li><li><a class="toctext" href="../optimization/">Details of the parameter estimation</a></li><li><a class="toctext" href="../GaussHermite/">Normalized Gauss-Hermite Quadrature</a></li><li class="current"><a class="toctext" href>Parametric bootstrap for linear mixed-effects models</a><ul class="internal"><li><a class="toctext" href="#The-parametric-bootstrap-1">The parametric bootstrap</a></li></ul></li></ul></nav><article id="docs"><header><nav><ul><li><a href>Parametric bootstrap for linear mixed-effects models</a></li></ul><a class="edit-page" href="https://github.com/JuliaStats/MixedModels.jl/blob/master/docs/src/bootstrap.md"><span class="fa"></span> Edit on GitHub</a></nav><hr/><div id="topbar"><span>Parametric bootstrap for linear mixed-effects models</span><a class="fa fa-bars" href="#"></a></div></header><h1><a class="nav-anchor" id="Parametric-bootstrap-for-linear-mixed-effects-models-1" href="#Parametric-bootstrap-for-linear-mixed-effects-models-1">Parametric bootstrap for linear mixed-effects models</a></h1><p>Julia is well-suited to implementing bootstrapping and other simulation-based methods for statistical models. The <code>parametricbootstrap</code> function in the <a href="https://github.com/JuliaStats/MixedModels.jl">MixedModels package</a> provides an efficient parametric bootstrap for linear mixed-effects models.</p><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="MixedModels.parametricbootstrap" href="#MixedModels.parametricbootstrap"><code>MixedModels.parametricbootstrap</code></a> — <span class="docstring-category">Function</span>.</div><div><div><pre><code class="language-none">parametricbootstrap(rng::AbstractRNG, nsamp::Integer, m::LinearMixedModel,
+    props=(:objective, :σ, :β, :θ); β = m.β, σ = m.σ, θ = m.θ)
+parametricbootstrap(nsamp::Integer, m::LinearMixedModel,
+    props=(:objective, :σ, :β, :θ); β = m.β, σ = m.σ, θ = m.θ)</code></pre><p>Perform <code>nsamp</code> parametric bootstrap replication fits of <code>m</code>, returning a <code>Tables.ColumnTable</code> of parameter estimates of the refit model.</p><p>The default random number generator is <code>Random.GLOBAL_RNG</code>.</p><p><strong>Named Arguments</strong></p><p><code>β</code>, <code>σ</code>, and <code>θ</code> are the values of <code>m</code>&#39;s parameters for simulating the responses.</p></div></div><a class="source-link" target="_blank" href="https://github.com/JuliaStats/MixedModels.jl/blob/e97042345aa716b0798c517e1445a3e2e2640404/src/simulate.jl#L35-L49">source</a></section><h2><a class="nav-anchor" id="The-parametric-bootstrap-1" href="#The-parametric-bootstrap-1">The parametric bootstrap</a></h2><p><a href="https://en.wikipedia.org/wiki/Bootstrapping_(statistics)">Bootstrapping</a> is a family of procedures for generating sample values of a statistic, allowing for visualization of the distribution of the statistic or for inference from this sample of values.</p><p>A <em>parametric bootstrap</em> is used with a parametric model, <code>m</code>, that has been fit to data. The procedure is to simulate <code>n</code> response vectors from <code>m</code> using the estimated parameter values and refit <code>m</code> to these responses in turn, accumulating the statistics of interest at each iteration.</p><p>The parameters of a <code>LinearMixedModel</code> object are the fixed-effects parameters, <code>β</code>, the standard deviation, <code>σ</code>, of the per-observation noise, and the covariance parameter, <code>θ</code>, that defines the variance-covariance matrices of the random effects.</p><p>For example, a simple linear mixed-effects model for the <code>Dyestuff</code> data in the <a href="http://github.com/lme4/lme4"><code>lme4</code></a> package for <a href="https://www.r-project.org"><code>R</code></a> is fit by</p><pre><code class="language-julia">julia&gt; using DataFrames, Gadfly, MixedModels, Random, RData
+
+julia&gt; datf = joinpath(dirname(pathof(MixedModels)), &quot;..&quot;, &quot;test&quot;, &quot;dat.rda&quot;);
+&quot;/home/travis/build/JuliaStats/MixedModels.jl/src/../test/dat.rda&quot;
+
+julia&gt; const dat = Dict(Symbol(k)=&gt;v for (k,v) in load(datf));
+Dict{Symbol,DataFrames.DataFrame} with 62 entries:
+  :bs10          =&gt; 1104×6 DataFrame…
+  :Genetics      =&gt; 60×5 DataFrame…
+  :Contraception =&gt; 1934×6 DataFrame…
+  :Mmmec         =&gt; 354×6 DataFrame…
+  :kb07          =&gt; 1790×10 DataFrame. Omitted printing of 3 columns…
+  :Rail          =&gt; 18×2 DataFrame…
+  :KKL           =&gt; 53765×24 DataFrame. Omitted printing of 16 columns…
+  :Bond          =&gt; 21×3 DataFrame…
+  :VerbAgg       =&gt; 7584×9 DataFrame. Omitted printing of 1 columns…
+  :ml1m          =&gt; 1000209×3 DataFrame…
+  :ergoStool     =&gt; 36×3 DataFrame…
+  :s3bbx         =&gt; 2449×6 DataFrame…
+  :cake          =&gt; 270×5 DataFrame…
+  :Cultivation   =&gt; 24×4 DataFrame…
+  :Pastes        =&gt; 60×4 DataFrame…
+  :Exam          =&gt; 4059×5 DataFrame…
+  :Socatt        =&gt; 1056×9 DataFrame. Omitted printing of 2 columns…
+  :WWheat        =&gt; 60×3 DataFrame…
+  :Pixel         =&gt; 102×5 DataFrame…
+  ⋮              =&gt; ⋮
+</code></pre><pre><code class="language-julia">julia&gt; ds = names!(dat[:Dyestuff], [:Batch, :Yield])  # the Dyestuff data
+30×2 DataFrame
+│ Row │ Batch │ Yield   │
+│     │ Cat…  │ Float64 │
+├─────┼───────┼─────────┤
+│ 1   │ A     │ 1545.0  │
+│ 2   │ A     │ 1440.0  │
+│ 3   │ A     │ 1440.0  │
+│ 4   │ A     │ 1520.0  │
+│ 5   │ A     │ 1580.0  │
+│ 6   │ B     │ 1540.0  │
+│ 7   │ B     │ 1555.0  │
+⋮
+│ 23  │ E     │ 1515.0  │
+│ 24  │ E     │ 1635.0  │
+│ 25  │ E     │ 1625.0  │
+│ 26  │ F     │ 1520.0  │
+│ 27  │ F     │ 1455.0  │
+│ 28  │ F     │ 1450.0  │
+│ 29  │ F     │ 1480.0  │
+│ 30  │ F     │ 1445.0  │
+
+julia&gt; m1 = fit(MixedModel, @formula(Yield ~ 1 + (1 | Batch)), ds)
+Linear mixed model fit by maximum likelihood
+ Yield ~ 1 + (1 | Batch)
+   logLik   -2 logLik     AIC        BIC    
+ -163.66353  327.32706  333.32706  337.53065
+
+Variance components:
+            Column    Variance  Std.Dev. 
+Batch    (Intercept)  1388.3333 37.260345
+Residual              2451.2500 49.510100
+ Number of obs: 30; levels of grouping factors: 6
+
+  Fixed-effects parameters:
+──────────────────────────────────────────────────
+             Estimate  Std.Error  z value  P(&gt;|z|)
+──────────────────────────────────────────────────
+(Intercept)    1527.5    17.6946   86.326   &lt;1e-99
+──────────────────────────────────────────────────
+</code></pre><p>To bootstrap the model parameters, first initialize a random number generator</p><pre><code class="language-julia">julia&gt; const rng = MersenneTwister(1234321);
+Random.MersenneTwister(UInt32[0x0012d591], Random.DSFMT.DSFMT_state(Int32[-1066020669, 1073631810, 397127531, 1072701603, -312796895, 1073626997, 1020815149, 1073320576, 650048908, 1073512247  …  -352178910, 1073735534, 1816227101, 1072823316, -1468787611, -2121692099, 358864500, -310934288, 382, 0]), [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0  …  0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], UInt128[0x00000000000000000000000000000000, 0x00000000000000000000000000000000, 0x00000000000000000000000000000000, 0x00000000000000000000000000000000, 0x00000000000000000000000000000000, 0x00000000000000000000000000000000, 0x00000000000000000000000000000000, 0x00000000000000000000000000000000, 0x00000000000000000000000000000000, 0x00000000000000000000000000000000  …  0x00000000000000000000000000000000, 0x00000000000000000000000000000000, 0x00000000000000000000000000000000, 0x00000000000000000000000000000000, 0x00000000000000000000000000000000, 0x00000000000000000000000000000000, 0x00000000000000000000000000000000, 0x00000000000000000000000000000000, 0x00000000000000000000000000000000, 0x00000000000000000000000000000000], 1002, 0)
+</code></pre><p>then create a bootstrap sample</p><pre><code class="language-julia">julia&gt; samp = parametricbootstrap(rng, 10_000, m1);
+MixedModels.MixedModelBootstrap{Float64}(Linear mixed model fit by maximum likelihood
+ Yield ~ 1 + (1 | Batch)
+   logLik   -2 logLik     AIC        BIC    
+ -163.66353  327.32706  333.32706  337.53065
+
+Variance components:
+            Column    Variance  Std.Dev. 
+Batch    (Intercept)  1388.3333 37.260345
+Residual              2451.2500 49.510100
+ Number of obs: 30; levels of grouping factors: 6
+
+  Fixed-effects parameters:
+──────────────────────────────────────────────────
+             Estimate  Std.Error  z value  P(&gt;|z|)
+──────────────────────────────────────────────────
+(Intercept)    1527.5    17.6946   86.326   &lt;1e-99
+──────────────────────────────────────────────────, (objective = [339.021863850754, 322.6888354106908, 324.0016457910033, 331.8870128504819, 317.77134783688007, 315.18080922959905, 333.64103198417166, 325.72878851707304, 318.60860053332925, 337.0925761232729  …  318.9463465155626, 314.41544022454036, 333.7011776583149, 345.06018724251896, 325.49087959400464, 337.0944970180786, 313.8709417213373, 326.57348308338555, 325.5755203177548, 310.72062270779793], σ = [67.4314916481805, 47.9830956010639, 50.13459856403843, 53.2237808663952, 45.29750506813072, 36.75557692579198, 53.81608757276362, 47.89890534520966, 40.95913674030757, 66.13736554684341  …  45.218090536364244, 41.93177111116575, 57.28935548071347, 67.40915181268834, 43.4966731007059, 54.77092339069152, 40.03200399440087, 43.75485449334468, 50.53305786901695, 36.6760549125889], β₁ = [1509.1284446460834, 1538.0812176033469, 1508.0209147055527, 1538.472695544024, 1520.623038448402, 1536.9434765279964, 1519.8834492242709, 1528.427793571972, 1510.4845889057676, 1516.0935235523627  …  1504.667464294557, 1510.9261788423394, 1535.4323805790123, 1510.4359472039882, 1544.9158611720923, 1525.2833456278975, 1563.3155682947622, 1519.098192704569, 1529.7393020896018, 1537.9241993159928], θ = StaticArrays.SArray{Tuple{1},Float64,1,1}[[0.21224540715905238], [0.5328401956731739], [0.43407618998421665], [0.7713825334733218], [0.42342771023984627], [1.3381150681332619], [0.8679925874573443], [0.785752405076357], [0.9967273169639079], [0.12512803753626725]  …  [0.5191410190752364], [0.5188621833216299], [0.5614687007579606], [0.6874613006322968], [1.3638983454247982], [1.1053986473813475], [0.6937385250661969], [1.4580130410592453], [0.5162288796279336], [0.8759306289747937]]), Dict(&quot;(Intercept)&quot; =&gt; 3))
+
+julia&gt; propertynames(samp)
+7-element Array{Symbol,1}:
+ :model
+ :objective
+ :σ
+ :θ
+ :σs
+ :σρs
+ Symbol(&quot;(Intercept)&quot;)
+</code></pre><p>As shown above, the sample has several named properties, which allow for convenient extraction of information.  For example, a density plot of the estimates of <code>σ</code>, the residual standard deviation, can be created as</p><pre><code class="language-julia">plot(x=samp.σ, Geom.density, Guide.xlabel(&quot;Parametric bootstrap estimates of σ&quot;))</code></pre><p><img src="../assets/bootstrap_sigmadensity_1.svg" alt/></p><p>For the estimates of the intercept parameter, the <code>getproperty</code> extractor must be used</p><pre><code class="language-julia">plot(x = getproperty(samp, Symbol(&quot;(Intercept)&quot;)), Geom.density,
+    Guide.xlabel(&quot;Parametric bootstrap estimates of β₁&quot;))</code></pre><p><img src="../assets/bootstrap_betadensity_1.svg" alt/></p><p>The <code>σs</code> property contains the estimates of the standard deviation of the random effects in a hierarchical format.</p><pre><code class="language-julia">julia&gt; typeof(samp.σs)
+NamedTuple{(:Batch,),Tuple{Array{NamedTuple{(Symbol(&quot;(Intercept)&quot;),),Tuple{Float64}},1}}}
+</code></pre><p>This is to allow for random effects associated with more than one grouping factor. If we only have one grouping factor for random effects, which is the case here, we can use the <code>first</code> extractor, as in</p><pre><code class="language-julia">julia&gt; first(samp.σs)
+10000-element Array{NamedTuple{(Symbol(&quot;(Intercept)&quot;),),Tuple{Float64}},1}:
+ ((Intercept) = 14.31202440021031,)
+ ((Intercept) = 25.567322049075496,)
+ ((Intercept) = 21.76223553106598,)
+ ((Intercept) = 41.05589492574884,)
+ ((Intercept) = 19.18021885057642,)
+ ((Intercept) = 49.18319132233348,)
+ ((Intercept) = 46.711965099114124,)
+ ((Intercept) = 37.636680075523266,)
+ ((Intercept) = 40.82509046832459,)
+ ((Intercept) = 8.275638758695251,)
+ ⋮
+ ((Intercept) = 21.75681030928231,)
+ ((Intercept) = 32.16617998901714,)
+ ((Intercept) = 46.34118317967067,)
+ ((Intercept) = 59.3250404735361,)
+ ((Intercept) = 60.54370463189782,)
+ ((Intercept) = 27.77174340651976,)
+ ((Intercept) = 63.795148460946265,)
+ ((Intercept) = 26.086623847896156,)
+ ((Intercept) = 32.12567984789807,)
+</code></pre><p>or, to carry this one step further,</p><pre><code class="language-julia">plot(x=first.(first(samp.σs)), Geom.density,
+    Guide.xlabel(&quot;Parametric bootstrap estimates of σ₁&quot;))</code></pre><p><img src="../assets/bootstrap_sigma1density_1.svg" alt/></p><p>Notice that this density plot has a spike, or mode, at zero. Although this mode appears to be diffuse, this is an artifact of the way that density plots are created. In fact, it is a pulse, as can be seen from a histogram.</p><pre><code class="language-julia">plot(x=first.(first(samp.σs)), Geom.histogram,
+    Guide.xlabel(&quot;Parametric bootstrap estimates of σ₁&quot;))</code></pre><p><img src="../assets/bootstrap_sigma1histogram_1.svg" alt/></p><p>A value of zero for the standard deviation of the random effects is an example of a <em>singular</em> covariance. It is easy to detect the singularity in the case of a scalar random-effects term. However, it is not as straightforward to detect singularity in vector-valued random-effects terms.</p><p>For example, if we bootstrap a model fit to the <code>sleepstudy</code> data</p><pre><code class="language-julia">julia&gt; m2 = fit(MixedModel, @formula(Y ~ 1+U+(1+U|G)), dat[:sleepstudy])
+Linear mixed model fit by maximum likelihood
+ Y ~ 1 + U + (1 + U | G)
+   logLik   -2 logLik     AIC        BIC    
+ -875.96967 1751.93934 1763.93934 1783.09709
+
+Variance components:
+            Column    Variance   Std.Dev.    Corr.
+G        (Intercept)  565.510678 23.7804684
+         U             32.682124  5.7168282  0.08
+Residual              654.941447 25.5918238
+ Number of obs: 180; levels of grouping factors: 18
+
+  Fixed-effects parameters:
+───────────────────────────────────────────────────
+             Estimate  Std.Error   z value  P(&gt;|z|)
+───────────────────────────────────────────────────
+(Intercept)  251.405     6.63226  37.9064    &lt;1e-99
+U             10.4673    1.50224   6.96781   &lt;1e-11
+───────────────────────────────────────────────────
+</code></pre><pre><code class="language-julia">julia&gt; samp2 = parametricbootstrap(rng, 10_000, m2);
+MixedModels.MixedModelBootstrap{Float64}(Linear mixed model fit by maximum likelihood
+ Y ~ 1 + U + (1 + U | G)
+   logLik   -2 logLik     AIC        BIC    
+ -875.96967 1751.93934 1763.93934 1783.09709
+
+Variance components:
+            Column    Variance   Std.Dev.    Corr.
+G        (Intercept)  565.510678 23.7804684
+         U             32.682124  5.7168282  0.08
+Residual              654.941447 25.5918238
+ Number of obs: 180; levels of grouping factors: 18
+
+  Fixed-effects parameters:
+───────────────────────────────────────────────────
+             Estimate  Std.Error   z value  P(&gt;|z|)
+───────────────────────────────────────────────────
+(Intercept)  251.405     6.63226  37.9064    &lt;1e-99
+U             10.4673    1.50224   6.96781   &lt;1e-11
+───────────────────────────────────────────────────, (objective = [1752.610805686423, 1750.6433968770227, 1763.0761823998494, 1729.0466608477655, 1746.4043964310654, 1770.7271762999399, 1768.6664526277698, 1765.952120035669, 1722.2942482975877, 1762.5188670632056  …  1748.4922340620237, 1750.1758991698052, 1734.6025052324753, 1768.1642635284718, 1735.9095045075633, 1773.7555233940284, 1750.4237601165719, 1734.415086664164, 1746.5763028539777, 1734.1961260570354], σ = [26.366356794050816, 26.137153345194626, 27.080063608233825, 24.8863832002222, 25.320423159098027, 27.96373020193531, 27.906227094181567, 26.221935258927044, 24.124342549581986, 27.058908050593583  …  25.273061394597455, 25.503669921655007, 23.79917489885199, 27.783576684388006, 24.70085327464388, 27.83991801939834, 26.011371075025185, 25.06924550534468, 25.713456142369402, 25.357631856348398], β₁ = [248.5601411770255, 260.42244339674755, 245.90847207717263, 267.4372482416199, 247.93888071908813, 243.7428118595536, 243.51982144722027, 247.94937815128534, 244.1391749380658, 249.44325914293472  …  252.87575687250282, 249.23609488651402, 252.7917786296442, 253.69835353054714, 256.3260728845328, 251.0875448267856, 248.6853400859739, 254.47910735321514, 250.1758696324152, 254.6693985479193], β₂ = [9.341228514017605, 9.992562120062306, 11.208330884887944, 11.550558248059845, 12.037534245522314, 11.433612895513559, 10.36313198552376, 10.783198558722203, 9.480559904683972, 10.36744050650216  …  10.892984705123329, 11.061003483285797, 8.114709881911544, 10.315661074984812, 8.32111200269778, 11.236848634014533, 10.91961620688782, 11.453298205617864, 12.034898339764974, 9.322554399563312], θ = StaticArrays.SArray{Tuple{3},Float64,1,3}[[0.6685649095333001, -0.002130374770627311, 0.2119058961269979], [0.8741185458468017, 0.1416044114043354, 0.11230895566778003], [0.9489677641919867, 0.06617690454837777, 0.13763223672305944], [1.0740817750105875, -0.0389737092186008, 0.12890918617499325], [1.1748505757334857, -0.11591519616351914, 0.18523777204660635], [0.592506296469461, 0.03303645479722885, 0.19872690177111685], [0.5857301753084287, 0.0044736486861657035, 0.19917606785117573], [1.049790975362002, 0.12285401754474407, 0.21134035457236724], [0.674166659951378, 0.09482181481988072, 0.19158568417458904], [0.8183134040802323, 0.12384702163422046, 0.13219641607246557]  …  [1.1599899020087132, 0.0259686394883999, 0.18360028260213743], [1.0825169002949757, 0.05241293225705042, 0.17953338407651115], [0.9897388815918189, 0.08873277393879761, 0.2671986923057685], [0.8489499258176735, 0.021264559437824133, 0.1467188762476598], [1.0136195663177447, -0.0259014664080036, 0.19140412945017726], [1.0081757866000411, -0.033140481480658575, 0.161723255709992], [1.081751393646913, 0.05606842245773908, 0.1303389424583289], [0.7314450540760008, -0.06298776479053886, 0.20757474712403934], [0.6160108695034013, -0.03533980711248402, 0.25134925058389346], [0.7691718531729048, 0.04838012493232449, 0.14513770782505866]]), Dict(&quot;U&quot; =&gt; 4,&quot;(Intercept)&quot; =&gt; 3))
+</code></pre><p>the singularity can be exhibited as a standard deviation of zero or as a correlation of <span>$\pm1$</span>. The <code>σρs</code> property of the sample is a vector of named tuples</p><pre><code class="language-julia">julia&gt; σρ = first(samp2.σρs);
+10000-element Array{NamedTuple{(:σ, :ρ),Tuple{NamedTuple{(Symbol(&quot;(Intercept)&quot;), :U),Tuple{Float64,Float64}},Tuple{Float64}}},1}:
+ (σ = ((Intercept) = 17.627620944737295, U = 5.5874688077695165), ρ = (-0.010052892148462242,))
+ (σ = ((Intercept) = 22.846970474676397, U = 4.723896285967684), ρ = (0.7834922680723013,))
+ (σ = ((Intercept) = 25.698107416482436, U = 4.135544686218198), ρ = (0.4333346440526252,))
+ (σ = ((Intercept) = 26.730010641288324, U = 3.3514972156973455), ρ = (-0.2893974244720719,))
+ (σ = ((Intercept) = 29.747713726281802, U = 5.532924692359015), ρ = (-0.5304648048948569,))
+ (σ = ((Intercept) = 16.568686217419902, U = 5.6334104898212995), ρ = (0.16398991524713905,))
+ (σ = ((Intercept) = 16.34551928807179, U = 5.559654435754668), ρ = (0.022455110766031083,))
+ (σ = ((Intercept) = 27.527550991348292, U = 6.41006216326687), ρ = (0.5025645636977025,))
+ (σ = ((Intercept) = 16.263827440174598, U = 5.15698385675058), ρ = (0.44357593613434276,))
+ (σ = ((Intercept) = 22.14266715757524, U = 4.90162071588571), ρ = (0.6836851247750406,))
+ ⋮
+ (σ = ((Intercept) = 27.608153709736182, U = 4.769892106449085), ρ = (0.28024158494121426,))
+ (σ = ((Intercept) = 23.554968747197858, U = 6.7005834690606125), ρ = (0.31516162972682127,))
+ (σ = ((Intercept) = 23.58686536516084, U = 4.1189665594033285), ρ = (0.14343537615078317,))
+ (σ = ((Intercept) = 25.037268183922773, U = 4.770938109461922), ρ = (-0.13410115718612223,))
+ (σ = ((Intercept) = 28.06753124808758, U = 4.59592299370252), ρ = (-0.20074929210283513,))
+ (σ = ((Intercept) = 28.137836911075496, U = 3.6906742297750323), ρ = (0.3951626319043677,))
+ (σ = ((Intercept) = 18.33677563430138, U = 5.4380466083859975), ρ = (-0.29037186568645185,))
+ (σ = ((Intercept) = 15.839768476198552, U = 6.526627697921208), ρ = (-0.13923095085630277,))
+ (σ = ((Intercept) = 19.504376687023782, U = 3.879435143350915), ρ = (0.31623299574957126,))
+
+julia&gt; typeof(σρ)
+Array{NamedTuple{(:σ, :ρ),Tuple{NamedTuple{(Symbol(&quot;(Intercept)&quot;), :U),Tuple{Float64,Float64}},Tuple{Float64}}},1}
+</code></pre><p>where the first element of the tuple is itself a tuple of standard deviations and the second (also the last) element of the tuple is the correlation.</p><p>A histogram of the estimated correlations from the bootstrap sample has a spike at <code>+1</code>.</p><pre><code class="language-julia">ρs = first.(last.(σρ))
+plot(x = ρs, Geom.histogram,
+    Guide.xlabel(&quot;Parametric bootstrap samples of correlation of random effects&quot;))</code></pre><p><img src="../assets/bootstrap_rhohistogram_1.svg" alt/></p><p>or, as a count,</p><pre><code class="language-julia">julia&gt; sum(ρs .≈ 1)
+299
+</code></pre><p>Close examination of the histogram shows a few values of <code>-1</code>.</p><pre><code class="language-julia">julia&gt; sum(ρs .≈ -1)
+5
+</code></pre><p>Furthermore there are even a few cases where the estimate of the standard deviation of the random effect for the intercept is zero.</p><pre><code class="language-julia">julia&gt; sum(first.(first.(first.(σρ))) .≈ 0)
+6
+</code></pre><p>There is a general condition to check for singularity of an estimated covariance matrix or matrices in a bootstrap sample. The parameter optimized in the estimation is <code>θ</code>, the relative covariance parameter. Some of the elements of this parameter vector must be non-negative and, when one of these components is approximately zero, one of the covariance matrices will be singular.</p><p>The boundary values are available as</p><pre><code class="language-julia">julia&gt; samp2.model.optsum.lowerbd
+3-element Array{Float64,1}:
+   0.0
+ -Inf
+   0.0
+</code></pre><p>so the check on singularity becomes</p><pre><code class="language-julia">julia&gt; sum(θ -&gt; any(θ .≈ samp2.model.optsum.lowerbd), samp2.θ)
+310
+</code></pre><p>The <code>issingular</code> method for a <code>LinearMixedModel</code> object that tests if a parameter vector <code>θ</code> corresponds to a boundary or singular fit. The default value of <code>θ</code> is that from the model but another value can be given as the second argument.</p><p>Using this function the number of singular fits in the bootstrap sample can be counted as</p><pre><code class="language-julia">julia&gt; sum(issingular.(Ref(samp2.m), samp2.θ))
+310
+</code></pre><footer><hr/><a class="previous" href="../GaussHermite/"><span class="direction">Previous</span><span class="title">Normalized Gauss-Hermite Quadrature</span></a></footer></article></body></html>
