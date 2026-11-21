@@ -49,6 +49,10 @@ using StatsModels: apply_schema, drop_term, formula, lrtest, modelcols, isnested
 using Tables: Tables, columntable
 using TypedTables: TypedTables, DictTable, FlexTable, Table
 
+using CliqueTrees: cliquetree, cliquetree!
+using CliqueTrees.Multifrontal: ChordalCholesky, ChordalSymbolic, flatindices, setflatindex!, getflatindex
+using CliqueTrees.Multifrontal: nfr, diagblock, offdblock, selinv!, cholesky!
+
 export @formula,
     AbstractReMat,
     Bernoulli,
@@ -221,6 +225,7 @@ include("MixedModelsNLoptExt.jl")
 using .MixedModelsNLoptExt
 
 include("derivatives.jl")
+include("cliquetrees.jl")
 
 # aliases with non-unicode function names
 const settheta! = setθ!
