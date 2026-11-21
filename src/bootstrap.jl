@@ -31,11 +31,33 @@ Characteristics of the bootstrap replicates can be extracted as properties.  The
 and correlations of the random-effects terms.
 """
 struct MixedModelBootstrap{T<:AbstractFloat} <: MixedModelFitCollection{T}
-    fits::Vector
+    fits::Vector{NamedTuple{(:objective, :σ, :β, :se, :θ)}}
     λ::Vector{Union{LowerTriangular{T},Diagonal{T}}}
     inds::Vector{Vector{Int}}
     lowerbd::Vector{T} # we need to store this explicitly because we no longer have access to the ReMats
+    # alternative representation/hidden field for making JSON serialization easier
+    # since we're doing unconstrained optimization, the lowerbd is either -Inf
+    # for covariance or 0 for the diagonal
+    lowerbd_iszero::BitVector
     fcnames::NamedTuple
+end
+
+function MixedModelBootstrap{T}(fits::Vector{<:NamedTuple{(:objective, :σ, :β, :se, :θ)}},
+                            λ::Vector{<:Union{LowerTriangular{T},Diagonal{T}}},
+                            inds::Vector{Vector{Int}},
+                            lowerbd::Vector{T},
+                            fcnames::NamedTuple) where {T}
+    lowerbd_iszero = iszero.(lowerbd)
+    return MixedModelBootstrap{T}(fits, λ, inds, lowerbd, lowerbd_iszero, fcnames)
+end
+
+function MixedModelBootstrap(λ::Vector{<:Union{LowerTriangular{T},Diagonal{T}}},
+                            inds::Vector{Vector{Int}},
+                            lowerbd_iszero::BitVector,
+                            fcnames::NamedTuple) where {T}
+    fits = NamedTuple{(:objective, :σ, :β, :se, :θ)}[]
+    lowerbd = T[iszero(el) ? zero(T) : T(-Inf) for el in lowerbd_iszero]
+    return MixedModelBootstrap{T}(fits, λ, inds, lowerbd, lowerbd_iszero, fcnames)
 end
 
 Base.:(==)(a::MixedModelFitCollection{T}, b::MixedModelFitCollection{S}) where {T,S} = false
@@ -129,7 +151,13 @@ See also [`restorereplicates`](@ref), [`saveoptsum`](@ref)
     **Only** the replicates are saved, not the entire contents of the `MixedModelFitCollection`.
     `restorereplicates` requires a model compatible with the bootstrap to restore the full object.
 """
-savereplicates(f, b::MixedModelFitCollection) = Arrow.write(f, b.fits)
+function savereplicates(f, b::MixedModelFitCollection; compress=nothing)
+    io = IOBuffer()
+    JSON3.write(io, b)
+    structure = read(seekstart(io), String)
+
+    Arrow.write(f, b.fits; compress)
+end
 
 # TODO: write methods for GLMM
 function Base.vcat(b1::MixedModelBootstrap{T}, b2::MixedModelBootstrap{T}) where {T}
@@ -185,7 +213,7 @@ Perform `nsamp` parametric bootstrap replication fits of `m`, returning a `Mixed
 
 The default random number generator is `Random.GLOBAL_RNG`.
 
-`ftype` can be used to store the computed bootstrap values in a lower precision. `ftype` is
+`ftype` can be used to stoMixedModelBootstrapre the computed bootstrap values in a lower precision. `ftype` is
 not a named argument because named arguments are not used in method dispatch and thus
 specialization. In other words, having `ftype` as a positional argument has some potential
 performance benefits.
