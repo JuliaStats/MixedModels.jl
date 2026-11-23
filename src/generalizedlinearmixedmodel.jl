@@ -392,7 +392,7 @@ function GeneralizedLinearMixedModel(
         ArgumentError("use LinearMixedModel for Normal distribution with IdentityLink")
     )
 
-    if !any(isa(d, dist) for dist in (Bernoulli, Binomial, Poisson))
+    if dispersion_parameter(d)
         @warn """Results for families with a dispersion parameter are not reliable.
                  It is best to avoid trying to fit such models in MixedModels until
                  the authors gain a better understanding of those cases."""
