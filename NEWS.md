@@ -1,3 +1,7 @@
+MixedModels v5.9.2 Release Notes
+================================
+- Use `dispersion_parameter` instead of checking for supported distributions before warning for GLMMs with a dispersion parameter.[#924]
+
 MixedModels v5.9.1 Release Notes
 ================================
 - The `rankUpdate!` method for a `Diagonal` block of `L` updated from a `SparseMatrixCSC` now accepts columns with no stored entries; previously it required exactly one stored entry per column. On newer Julia versions, the 5-argument sparse `mul!` in `updateL!` drops exact zeros from its result, which can happen when an element of θ is zero, and this caused a spurious `ArgumentError` when fitting some models, e.g. a GLMM for `grouseticks`. [#918]
@@ -819,3 +823,4 @@ Package dependencies
 [#916]: https://github.com/JuliaStats/MixedModels.jl/issues/916
 [#918]: https://github.com/JuliaStats/MixedModels.jl/issues/918
 [#919]: https://github.com/JuliaStats/MixedModels.jl/issues/919
+[#924]: https://github.com/JuliaStats/MixedModels.jl/issues/924
