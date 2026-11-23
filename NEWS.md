@@ -1,6 +1,6 @@
 MixedModels v5.9.2 Release Notes
 ================================
-- Use `dispersion_parameter` instead of checking for supported distributions before warning for GLMMs with a dispersion parameter.
+- Use `dispersion_parameter` instead of checking for supported distributions before warning for GLMMs with a dispersion parameter.[#924]
 
 MixedModels v5.9.1 Release Notes
 ================================
@@ -823,3 +823,4 @@ Package dependencies
 [#916]: https://github.com/JuliaStats/MixedModels.jl/issues/916
 [#918]: https://github.com/JuliaStats/MixedModels.jl/issues/918
 [#919]: https://github.com/JuliaStats/MixedModels.jl/issues/919
+[#924]: https://github.com/JuliaStats/MixedModels.jl/issues/924
