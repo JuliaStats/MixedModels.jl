@@ -7,9 +7,9 @@ The estimators use the generalized least squares "bread" ``X'V^{-1}X``, where ``
 These can be computed without forming the ``n \times n`` matrix ``V``, because ``V^{-1}(y - X\hat\beta)`` is the vector of conditional residuals `residuals(m)`.
 
 ```@docs
-vcov(::MixedModel, ::Vcov.SimpleCovariance)
-vcov(::MixedModel, ::Vcov.RobustCovariance)
-vcov(::MixedModel, ::Vcov.ClusterCovariance)
+vcov(::LinearMixedModel, ::Vcov.SimpleCovariance)
+vcov(::LinearMixedModel, ::Vcov.RobustCovariance)
+vcov(::LinearMixedModel, ::Vcov.ClusterCovariance)
 ```
 
 Generalized linear mixed models are not yet supported.

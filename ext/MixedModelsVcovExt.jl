@@ -2,7 +2,7 @@ module MixedModelsVcovExt
 
 using GroupedArrays: GroupedArray
 using LinearAlgebra: Cholesky, LowerTriangular, Symmetric, inv, rank
-using MixedModels: MixedModels, GeneralizedLinearMixedModel, LinearMixedModel, MixedModel
+using MixedModels: MixedModels, LinearMixedModel
 using MixedModels: feL, fnames
 using StatsAPI: StatsAPI, nobs, residuals, vcov
 using Vcov: Vcov, VcovData
@@ -52,15 +52,6 @@ function Vcov.VcovData(m::LinearMixedModel)
     return VcovData(X, cm, invcm, resid, nobs(m) - rank(m))
 end
 
-function Vcov.VcovData(::GeneralizedLinearMixedModel)
-    throw(
-        ArgumentError(
-            "Vcov.jl covariance estimators are currently only " *
-            "supported for LinearMixedModel",
-        ),
-    )
-end
-
 # Map a covariance matrix in the pivoted, full-rank parameterization back to the
 # original coefficient order, filling in NaN for pivoted-out (rank-deficient) columns.
 # This mirrors `vcov(::MixedModel)`.
@@ -82,13 +73,11 @@ end
 # ambiguities with Vcov's methods for RegressionModel.
 
 """
-    vcov(m::MixedModel, ::Vcov.SimpleCovariance)
+    vcov(m::LinearMixedModel, ::Vcov.SimpleCovariance)
 
 Equivalent to `vcov(m)`: the model-based covariance matrix of the fixed effects.
 """
-function StatsAPI.vcov(m::MixedModel, ::Vcov.SimpleCovariance)
-    # validate model type consistently with the other estimators
-    m isa LinearMixedModel || VcovData(m)
+function StatsAPI.vcov(m::LinearMixedModel, ::Vcov.SimpleCovariance)
     return vcov(m)
 end
 
@@ -111,7 +100,7 @@ to the score of the fixed effects.
 Only HC1 is supported: the HC2/HC3 leverage corrections are not defined for
 mixed models here and throw an `ArgumentError`.
 """
-function StatsAPI.vcov(m::MixedModel, c::Vcov.RobustCovariance)
+function StatsAPI.vcov(m::LinearMixedModel, c::Vcov.RobustCovariance)
     correction = c.correction
     if correction != :hc1
         throw(
@@ -143,7 +132,7 @@ observation used in fitting `m`, e.g.
 When the clusters are the only grouping factor of `m` (or `m`'s grouping factors are
 nested within them), this is the Liang-Zeger sandwich estimator.
 """
-function StatsAPI.vcov(m::MixedModel, c::Vcov.ClusterCovariance)
+function StatsAPI.vcov(m::LinearMixedModel, c::Vcov.ClusterCovariance)
     vd = VcovData(m)
     return _unpivot(m, vcov(vd, _materialize(m, c)))
 end

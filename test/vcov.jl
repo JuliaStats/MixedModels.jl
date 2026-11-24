@@ -53,7 +53,7 @@ gm = fit(MixedModel, @formula(r2 ~ 1 + anger + gender + (1 | subj)), dataset(:ve
         @test dof_residual(vd) == nobs(m) - rank(m)
     end
 
-    @test_throws ArgumentError Vcov.VcovData(gm)
+    @test_throws MethodError Vcov.VcovData(gm)
 end
 
 @testset "simple" begin
@@ -62,7 +62,7 @@ end
         "weighted" => fm_wts, "crossed" => fm_crossed)
         @test isequal(vcov(m, Vcov.simple()), vcov(m))
     end
-    @test_throws ArgumentError vcov(gm, Vcov.simple())
+    @test_throws MethodError vcov(gm, Vcov.simple())
 end
 
 # compare an estimator's result to a reference computed in the pivoted, full-rank space
@@ -90,7 +90,7 @@ end
     end
     @test_throws ArgumentError vcov(fm, Vcov.hc(2))
     @test_throws ArgumentError vcov(fm, Vcov.hc(3))
-    @test_throws ArgumentError vcov(gm, Vcov.robust())
+    @test_throws MethodError vcov(gm, Vcov.robust())
 end
 
 # sum of outer products of the within-cluster score sums
@@ -156,5 +156,5 @@ end
     end
 
     @test_throws ArgumentError vcov(fm, Vcov.cluster(:days))
-    @test_throws ArgumentError vcov(gm, Vcov.cluster(:subj))
+    @test_throws MethodError vcov(gm, Vcov.cluster(:subj))
 end
