@@ -44,8 +44,10 @@ function Vcov.VcovData(m::LinearMixedModel)
         X .*= sqrtwts
         resid .*= sqrtwts
     end
-    # copy: feL(m) is a view into the model's blocked Cholesky factor
-    L = LowerTriangular(Matrix{Float64}(feL(m)))
+    # if we refactor into an in-place multiplication, keep in mind that
+    # feL(m) is a view into the model's blocked Cholesky factor
+    # we need to guarantee the type and eltype
+    L = LowerTriangular(convert(Matrix{Float64}, feL(m)))
     cm = Symmetric(L * L')
     # (LL')⁻¹ directly from the Cholesky factor (LAPACK potri)
     invcm = Symmetric(inv(Cholesky(L)))
