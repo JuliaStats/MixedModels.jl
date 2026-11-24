@@ -107,8 +107,7 @@ Only HC1 is supported: the HC2/HC3 leverage corrections are not defined for
 mixed models here and throw an `ArgumentError`.
 """
 function StatsAPI.vcov(m::MixedModel, c::Vcov.RobustCovariance)
-    # Vcov < 0.8.6 has no correction field and only implements HC1
-    correction = hasfield(typeof(c), :correction) ? c.correction : :hc1
+    correction = c.correction
     if correction != :hc1
         throw(
             ArgumentError(

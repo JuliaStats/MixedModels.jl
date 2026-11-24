@@ -88,7 +88,7 @@ Suppressor = "0.2"
 Tables = "1"
 Test = "1"
 TypedTables = "1"
-Vcov = "0.7, 0.8"
+Vcov = "0.8.6"
 julia = "1.10"
 
 [extras]
