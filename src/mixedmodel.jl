@@ -236,22 +236,18 @@ Returns the variance-covariance matrix of the fixed effects.
 If `corr` is `true`, the correlation of the fixed effects is returned instead.
 """
 function StatsAPI.vcov(m::MixedModel; corr=false)
-    Xtrm = m isa GeneralizedLinearMixedModel ? m.LMM.feterm : m.feterm
-    iperm = invperm(Xtrm.piv)
-    p = length(iperm)
-    r = Xtrm.rank
+    piv = pivot(m)
+    p = length(piv)
+    r = rank(m)
     Linv = inv(feL(m))
     T = eltype(Linv)
     permvcov = dispersion(m, true) * (Linv'Linv)
-    if p == Xtrm.rank
-        vv = permvcov[iperm, iperm]
-    else
-        covmat = fill(zero(T) / zero(T), (p, p))
-        for j in 1:r, i in 1:r
-            covmat[i, j] = permvcov[i, j]
-        end
-        vv = covmat[iperm, iperm]
-    end
+    # NaN for pivoted-out (rank-deficient) columns; every entry is overwritten if full rank
+    vv = r == p ? Matrix{T}(undef, p, p) : fill(zero(T) / zero(T), (p, p))
+    # the first r entries of piv are the original indices of the retained columns,
+    # so scatter directly into the original order instead of permuting afterwards
+    kept = view(piv, 1:r)
+    vv[kept, kept] = permvcov
 
     return corr ? StatsBase.cov2cor!(vv, stderror(m)) : vv
 end

@@ -58,12 +58,14 @@ end
 # original coefficient order, filling in NaN for pivoted-out (rank-deficient) columns.
 # This mirrors `vcov(::MixedModel)`.
 function _unpivot(m::LinearMixedModel, permvcov::AbstractMatrix{T}) where {T}
-    iperm = invperm(pivot(m))
-    p = length(iperm)
-    r = rank(m)
+    piv = pivot(m)
+    p = length(piv)
     covmat = fill(zero(T) / zero(T), (p, p))
-    copyto!(view(covmat, 1:r, 1:r), permvcov)
-    return covmat[iperm, iperm]
+    # the first rank(m) entries of piv are the original indices of the retained columns,
+    # so scatter directly into the original order instead of permuting afterwards
+    kept = view(piv, 1:rank(m))
+    covmat[kept, kept] = permvcov
+    return covmat
 end
 
 #####
