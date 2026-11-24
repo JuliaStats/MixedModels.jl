@@ -351,9 +351,11 @@ function StatsAPI.coefnames(m::LinearMixedModel)
     return invpermute!(copy(Xtrm.cnames), Xtrm.piv)
 end
 
-function StatsAPI.coeftable(m::LinearMixedModel; vcov=nothing)
+function StatsAPI.coeftable(
+    m::LinearMixedModel, est::StatsBase.CovarianceEstimator=StatsBase.SimpleCovariance()
+)
     co = coef(m)
-    se = isnothing(vcov) ? stderror!(similar(co), m) : stderror(m, vcov)
+    se = stderror(m, est)
     z = co ./ se
     pvalue = ccdf.(Chisq(1), abs2.(z))
     names = coefnames(m)
@@ -1219,7 +1221,12 @@ function Base.setproperty!(m::LinearMixedModel, s::Symbol, y)
     return s == :θ ? setθ!(m, y) : setfield!(m, s, y)
 end
 
-function Base.show(io::IO, ::MIME"text/plain", m::LinearMixedModel; vcov=nothing)
+function Base.show(
+    io::IO,
+    ::MIME"text/plain",
+    m::LinearMixedModel,
+    est::StatsBase.CovarianceEstimator=StatsBase.SimpleCovariance(),
+)
     if m.optsum.feval < 0
         @warn("Model has not been fit")
         return nothing
@@ -1249,12 +1256,14 @@ function Base.show(io::IO, ::MIME"text/plain", m::LinearMixedModel; vcov=nothing
     join(io, nlevs.(m.reterms), ", ")
     println(io)
     println(io, "\n  Fixed-effects parameters:")
-    isnothing(vcov) || println(io, "  Standard errors: ", vcov)
-    return show(io, MIME("text/plain"), coeftable(m; vcov))
+    est isa StatsBase.SimpleCovariance || println(io, "  Standard errors: ", est)
+    return show(io, MIME("text/plain"), coeftable(m, est))
 end
 
-function Base.show(io::IO, m::LinearMixedModel; vcov=nothing)
-    return Base.show(io, MIME("text/plain"), m; vcov)
+function Base.show(
+    io::IO, m::LinearMixedModel, est::StatsBase.CovarianceEstimator=StatsBase.SimpleCovariance()
+)
+    return Base.show(io, MIME("text/plain"), m, est)
 end
 
 """
@@ -1442,6 +1451,11 @@ end
 
 function StatsAPI.stderror(m::LinearMixedModel{T}) where {T}
     return stderror!(similar(pivot(m), T), m)
+end
+
+function StatsAPI.stderror(m::LinearMixedModel, est::StatsBase.SimpleCovariance)
+    _check_uncorrected(est)
+    return stderror(m)
 end
 
 """

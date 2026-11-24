@@ -12,7 +12,8 @@ vcov(::LinearMixedModel, ::Vcov.RobustCovariance)
 vcov(::LinearMixedModel, ::Vcov.ClusterCovariance)
 ```
 
-The corresponding standard errors are available via [`stderror(m, est)`](@ref stderror), and `coeftable` and `show` accept a `vcov` keyword argument to use an estimator for the standard errors, ``z``-statistics and ``p``-values.
+The corresponding standard errors are available via [`stderror(m, est)`](@ref stderror), and `coeftable` and `show` accept an estimator as an optional final positional argument, e.g. `coeftable(m, est)` and `show(io, MIME("text/plain"), m, est)`, to use for the standard errors, ``z``-statistics and ``p``-values.
+The default, `StatsBase.SimpleCovariance()`, is the model-based estimator, i.e. `vcov(m)`.
 
 Generalized linear mixed models are not yet supported.
 
@@ -53,7 +54,7 @@ stderror(fm, Vcov.cluster(:subj))
 and the coefficient table using them:
 
 ```@example Sandwich
-coeftable(fm; vcov=Vcov.cluster(:subj))
+coeftable(fm, Vcov.cluster(:subj))
 ```
 
 Cluster names must be grouping factors of the model.

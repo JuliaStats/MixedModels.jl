@@ -1,23 +1,23 @@
 # for this type of union, the compiler will actually generate the necessary methods
 # but it's also type stable either way
 _MdTypes = Union{BlockDescription,LikelihoodRatioTest,OptSummary,VarCorr,MixedModel}
-# keyword arguments (e.g. `vcov` for MixedModel) are forwarded to `_markdown`
-Base.show(mime::MIME, x::_MdTypes; kwargs...) = show(Base.stdout, mime, x; kwargs...)
+# additional arguments (e.g. a covariance estimator for MixedModel) are forwarded to `_markdown`
+Base.show(mime::MIME, x::_MdTypes, args...) = show(Base.stdout, mime, x, args...)
 
-function Base.show(io::IO, ::MIME"text/markdown", x::_MdTypes; kwargs...)
-    return show(io, Markdown.MD(_markdown(x; kwargs...)))
+function Base.show(io::IO, ::MIME"text/markdown", x::_MdTypes, args...)
+    return show(io, Markdown.MD(_markdown(x, args...)))
 end
 # let's not discuss why we need show above and println below,
 # nor what happens if we try display instead :)
-function Base.show(io::IO, ::MIME"text/html", x::_MdTypes; kwargs...)
-    return println(io, Markdown.html(_markdown(x; kwargs...)))
+function Base.show(io::IO, ::MIME"text/html", x::_MdTypes, args...)
+    return println(io, Markdown.html(_markdown(x, args...)))
 end
 # print and println because Julia already adds a newline line
-function Base.show(io::IO, ::MIME"text/latex", x::_MdTypes; kwargs...)
-    return print(io, Markdown.latex(_markdown(x; kwargs...)))
+function Base.show(io::IO, ::MIME"text/latex", x::_MdTypes, args...)
+    return print(io, Markdown.latex(_markdown(x, args...)))
 end
-function Base.show(io::IO, ::MIME"text/xelatex", x::_MdTypes; kwargs...)
-    return print(io, Markdown.latex(_markdown(x; kwargs...)))
+function Base.show(io::IO, ::MIME"text/xelatex", x::_MdTypes, args...)
+    return print(io, Markdown.latex(_markdown(x, args...)))
 end
 
 # not sure why this escaping doesn't work automatically
@@ -41,8 +41,13 @@ function Base.show(io::IO, ::MIME"text/latex", x::OptSummary)
     return print(io, out)
 end
 
-function Base.show(io::IO, ::MIME"text/latex", x::MixedModel; vcov=nothing)
-    la = Markdown.latex(_markdown(x; vcov))
+function Base.show(
+    io::IO,
+    ::MIME"text/latex",
+    x::MixedModel,
+    est::StatsBase.CovarianceEstimator=StatsBase.SimpleCovariance(),
+)
+    la = Markdown.latex(_markdown(x, est))
     # take advantage of subscripting
     # including preceding & prevents capturing coefficients
     la = replace(la, r"& σ\\_([[:alnum:]]*) " => s"& $\\sigma_\\text{\1}$ ")
@@ -116,7 +121,7 @@ end
 _dname(::GeneralizedLinearMixedModel) = "Dispersion"
 _dname(::LinearMixedModel) = "Residual"
 
-function _markdown(m::MixedModel; vcov=nothing)
+function _markdown(m::MixedModel, est::StatsBase.CovarianceEstimator=StatsBase.SimpleCovariance())
     if m.optsum.feval < 0
         @warn("Model has not been fit: results will be nonsense")
     end
@@ -127,7 +132,7 @@ function _markdown(m::MixedModel; vcov=nothing)
     digits = 4
 
     co = coef(m)
-    se = isnothing(vcov) ? stderror(m) : stderror(m, vcov)
+    se = stderror(m, est)
     z = co ./ se
     p = ccdf.(Chisq(1), abs2.(z))
 

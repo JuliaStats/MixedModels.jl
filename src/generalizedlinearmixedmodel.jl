@@ -57,9 +57,11 @@ function StatsAPI.coef(m::GeneralizedLinearMixedModel{T}) where {T}
     return invpermute!(copyto!(fill(T(-0.0), length(piv)), m.β), piv)
 end
 
-function StatsAPI.coeftable(m::GeneralizedLinearMixedModel; vcov=nothing)
+function StatsAPI.coeftable(
+    m::GeneralizedLinearMixedModel, est::StatsBase.CovarianceEstimator=StatsBase.SimpleCovariance()
+)
     co = coef(m)
-    se = isnothing(vcov) ? stderror(m) : stderror(m, vcov)
+    se = stderror(m, est)
     z = co ./ se
     pvalue = ccdf.(Chisq(1), abs2.(z))
     return CoefTable(
@@ -758,7 +760,10 @@ function sdest(m::GeneralizedLinearMixedModel{T}) where {T}
 end
 
 function Base.show(
-    io::IO, ::MIME"text/plain", m::GeneralizedLinearMixedModel{T,D}; vcov=nothing
+    io::IO,
+    ::MIME"text/plain",
+    m::GeneralizedLinearMixedModel{T,D},
+    est::StatsBase.CovarianceEstimator=StatsBase.SimpleCovariance(),
 ) where {T,D}
     if m.optsum.feval < 0
         @warn("Model has not been fit")
@@ -786,12 +791,16 @@ function Base.show(
     println(io)
 
     println(io, "\nFixed-effects parameters:")
-    isnothing(vcov) || println(io, "Standard errors: ", vcov)
-    return show(io, MIME("text/plain"), coeftable(m; vcov))
+    est isa StatsBase.SimpleCovariance || println(io, "Standard errors: ", est)
+    return show(io, MIME("text/plain"), coeftable(m, est))
 end
 
-function Base.show(io::IO, m::GeneralizedLinearMixedModel; vcov=nothing)
-    return show(io, MIME("text/plain"), m; vcov)
+function Base.show(
+    io::IO,
+    m::GeneralizedLinearMixedModel,
+    est::StatsBase.CovarianceEstimator=StatsBase.SimpleCovariance(),
+)
+    return show(io, MIME("text/plain"), m, est)
 end
 
 function stderror!(v::AbstractVector{T}, m::GeneralizedLinearMixedModel{T}) where {T}

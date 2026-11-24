@@ -5,6 +5,7 @@ using MixedModels: dataset, fullrankx, pivot
 using SparseArrays
 using StableRNGs
 using StatsAPI: crossmodelmatrix
+using StatsBase: SimpleCovariance
 using Test
 using Vcov
 
@@ -171,40 +172,64 @@ end
     @test_throws MethodError stderror(gm, Vcov.robust())
 end
 
-@testset "vcov keyword for coeftable and show" begin
+@testset "StatsBase.SimpleCovariance" begin
+    dc = MixedModels.StatsBase.SimpleCovariance()
+    @testset "$(name)" for (name, m) in lmms
+        @test isapprox(vcov(m, dc), vcov(m); nans=true)
+        @test isapprox(vcov(m, dc; corr=true), vcov(m; corr=true); nans=true)
+        @test isapprox(stderror(m, dc), stderror(m); nans=true)
+        @test isequal(coeftable(m, dc).cols, coeftable(m).cols)
+    end
+    # the bias correction is not defined for mixed models
+    corrected = SimpleCovariance(; corrected=true)
+    @testset "corrected=true throws for $(name)" for (name, m) in (("lmm", fm), ("glmm", gm))
+        @test_throws ArgumentError vcov(m, corrected)
+        @test_throws ArgumentError vcov(m, corrected; corr=true)
+        @test_throws ArgumentError stderror(m, corrected)
+        @test_throws ArgumentError coeftable(m, corrected)
+        @test_throws ArgumentError sprint(show, m, corrected)
+    end
+    # GLMMs use the default estimator
+    @test vcov(gm, dc) == vcov(gm)
+    @test stderror(gm, dc) ≈ stderror(gm)
+    @test stderror(gm) ≈ sqrt.(diag(vcov(gm)))
+    @test coeftable(gm, dc).cols == coeftable(gm).cols
+end
+
+@testset "covariance estimator argument for coeftable and show" begin
     est = Vcov.cluster(:subj)
+    dc = SimpleCovariance()
     se = stderror(fm, est)
 
     @testset "coeftable" begin
-        ct = coeftable(fm; vcov=est)
+        ct = coeftable(fm, est)
         @test ct.cols[2] ≈ se
         @test ct.cols[3] ≈ coef(fm) ./ se
-        # default unchanged
-        @test coeftable(fm; vcov=nothing).cols == coeftable(fm).cols
-        @test coeftable(fm_rankdef; vcov=est).cols[2] ≈ stderror(fm_rankdef, est) nans =
-            true
-        @test_throws MethodError coeftable(gm; vcov=Vcov.robust())
+        @test coeftable(fm_rankdef, est).cols[2] ≈ stderror(fm_rankdef, est) nans = true
+        @test_throws MethodError coeftable(gm, Vcov.robust())
     end
 
     @testset "text/plain" begin
         out = sprint(show, MIME("text/plain"), fm; context=:compact => false)
-        out_est = sprint((io, m) -> show(io, MIME("text/plain"), m; vcov=est), fm)
+        out_est = sprint(show, MIME("text/plain"), fm, est)
         @test !occursin("Standard errors:", out)
         @test occursin("Standard errors: $(est)", out_est)
-        @test occursin(sprint(show, MIME("text/plain"), coeftable(fm; vcov=est)), out_est)
-        # 2-argument show forwards the keyword
-        @test sprint((io, m) -> show(io, m; vcov=est), fm) == out_est
-        # nothing is the default
-        @test sprint((io, m) -> show(io, MIME("text/plain"), m; vcov=nothing), fm) == out
+        @test occursin(sprint(show, MIME("text/plain"), coeftable(fm, est)), out_est)
+        # 2-argument show forwards the estimator
+        @test sprint(show, fm, est) == out_est
+        # SimpleCovariance is the default
+        @test sprint(show, MIME("text/plain"), fm, dc) == out
+        @test sprint(show, gm, dc) == sprint(show, gm)
+        @test_throws MethodError sprint(show, gm, Vcov.robust())
     end
 
     @testset "$(mime)" for mime in
                            ("text/markdown", "text/html", "text/latex", "text/xelatex")
         out = sprint(show, MIME(mime), fm)
-        out_est = sprint((io, m) -> show(io, MIME(mime), m; vcov=est), fm)
+        out_est = sprint(show, MIME(mime), fm, est)
         @test out != out_est
         @test all(s -> occursin(MixedModels.Ryu.writefixed(s, 4), out_est), se)
-        @test sprint((io, m) -> show(io, MIME(mime), m; vcov=nothing), fm) == out
+        @test sprint(show, MIME(mime), fm, dc) == out
     end
 end
 
