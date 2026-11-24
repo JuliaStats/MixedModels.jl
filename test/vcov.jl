@@ -27,22 +27,27 @@ sleepstudy = DataFrame(dataset(:sleepstudy))
 sleepstudy.days2 = 2 .* sleepstudy.days
 sleepstudy.wts = rand(StableRNG(42), 0.5:0.5:2.0, nrow(sleepstudy))
 
-fm = fit(MixedModel, @formula(reaction ~ 1 + days + (1 + days | subj)), sleepstudy;
-    progress=false)
-fm_rankdef = fit(MixedModel, @formula(reaction ~ 1 + days + days2 + (1 | subj)),
-    sleepstudy; progress=false)
-fm_wts = fit(MixedModel, @formula(reaction ~ 1 + days + (1 + days | subj)), sleepstudy;
-    wts=sleepstudy.wts, progress=false)
-fm_crossed = fit(MixedModel,
-    @formula(rt_trunc ~ 1 + spkr * prec + (1 | subj) + (1 | item)), dataset(:kb07);
-    progress=false)
+# LinearMixedModels covering the cases the estimators need to handle,
+# keyed by the name used for their testsets
+lmms = Dict{String,MixedModel}()
+fm =
+    lmms["simple"] = lmm(@formula(reaction ~ 1 + days + (1 + days | subj)),
+        sleepstudy; progress=false)
+fm_rankdef =
+    lmms["rank deficient"] = lmm(@formula(reaction ~ 1 + days + days2 + (1 | subj)),
+        sleepstudy; progress=false)
+fm_wts =
+    lmms["weighted"] = lmm(@formula(reaction ~ 1 + days + (1 + days | subj)),
+        sleepstudy; wts=sleepstudy.wts, progress=false)
+fm_crossed =
+    lmms["crossed"] = lmm(@formula(rt_trunc ~ 1 + spkr * prec + (1 | subj) + (1 | item)),
+        dataset(:kb07);
+        progress=false)
 gm = fit(MixedModel, @formula(r2 ~ 1 + anger + gender + (1 | subj)), dataset(:verbagg),
     Bernoulli(); progress=false)
 
 @testset "VcovData" begin
-    @testset "$(name)" for (name, m) in
-                           ("simple" => fm, "rank deficient" => fm_rankdef,
-        "weighted" => fm_wts, "crossed" => fm_crossed)
+    @testset "$(name)" for (name, m) in lmms
         (; V, X, r) = dense_reference(m)
         vd = Vcov.VcovData(m)
         @test modelmatrix(vd) ≈ X
@@ -57,9 +62,7 @@ gm = fit(MixedModel, @formula(r2 ~ 1 + anger + gender + (1 | subj)), dataset(:ve
 end
 
 @testset "simple" begin
-    @testset "$(name)" for (name, m) in
-                           ("simple" => fm, "rank deficient" => fm_rankdef,
-        "weighted" => fm_wts, "crossed" => fm_crossed)
+    @testset "$(name)" for (name, m) in lmms
         @test isequal(vcov(m, Vcov.simple()), vcov(m))
     end
     @test_throws MethodError vcov(gm, Vcov.simple())
@@ -77,9 +80,7 @@ function test_against_reference(m, est, ref)
 end
 
 @testset "robust (HC1)" begin
-    @testset "$(name)" for (name, m) in
-                           ("simple" => fm, "rank deficient" => fm_rankdef,
-        "weighted" => fm_wts, "crossed" => fm_crossed)
+    @testset "$(name)" for (name, m) in lmms
         (; V, X, r) = dense_reference(m)
         B = inv(X' * (V \ X))
         scores = X .* (V \ r)
@@ -104,9 +105,7 @@ function cluster_meat(scores, g)
 end
 
 @testset "cluster (CR1)" begin
-    @testset "one-way: $(name)" for (name, m) in
-                                    ("simple" => fm, "rank deficient" => fm_rankdef,
-        "weighted" => fm_wts, "crossed" => fm_crossed)
+    @testset "one-way: $(name)" for (name, m) in lmms
         (; V, X, r) = dense_reference(m)
         B = inv(X' * (V \ X))
         scores = X .* (V \ r)
@@ -160,9 +159,7 @@ end
 end
 
 @testset "stderror" begin
-    @testset "$(name)" for (name, m) in
-                           ("simple" => fm, "rank deficient" => fm_rankdef,
-        "weighted" => fm_wts, "crossed" => fm_crossed)
+    @testset "$(name)" for (name, m) in lmms
         @test stderror(m, Vcov.simple()) ≈ stderror(m) nans = true
         @testset "$(est)" for est in (Vcov.robust(), Vcov.cluster(:subj))
             se = stderror(m, est)
