@@ -1,8 +1,9 @@
 module MixedModelsVcovExt
 
+using GroupedArrays: GroupedArray
 using LinearAlgebra: Symmetric, inv, rank
 using MixedModels: MixedModels, GeneralizedLinearMixedModel, LinearMixedModel, MixedModel
-using MixedModels: feL
+using MixedModels: feL, fnames
 using StatsAPI: StatsAPI, nobs, residuals, vcov
 using Vcov: Vcov, VcovData
 
@@ -117,6 +118,59 @@ function StatsAPI.vcov(m::MixedModel, c::Vcov.RobustCovariance)
         )
     end
     return _unpivot(m, vcov(VcovData(m), c))
+end
+
+"""
+    vcov(m::LinearMixedModel, c::Vcov.ClusterCovariance)
+
+Cluster-robust (CR1) sandwich estimator of the covariance of the fixed effects,
+```math
+(X'V^{-1}X)^{-1} \\left(\\frac{n-1}{n-p}\\frac{G}{G-1}\\sum_g s_g s_g'\\right) (X'V^{-1}X)^{-1},
+```
+where ``s_g`` is the sum of the score contributions ``x_i [V^{-1}(y - X\\hat\\beta)]_i``
+of the observations in cluster ``g`` and ``G`` is the number of clusters.
+Multiway clustering follows Cameron, Gelbach & Miller (2011).
+
+Clusters given by name, e.g. `Vcov.cluster(:subj)`, must be grouping factors of `m`.
+To cluster on other variables, pass already-materialized clusters with one entry per
+observation used in fitting `m`, e.g.
+`Vcov.cluster((:school,), (GroupedArray(school),))`.
+
+When the clusters are the only grouping factor of `m` (or `m`'s grouping factors are
+nested within them), this is the Liang-Zeger sandwich estimator.
+"""
+function StatsAPI.vcov(m::MixedModel, c::Vcov.ClusterCovariance)
+    vd = VcovData(m)
+    return _unpivot(m, vcov(vd, _materialize(m, c)))
+end
+
+function _materialize(m::LinearMixedModel, c::Vcov.ClusterCovariance)
+    if !isnothing(c.clusters)
+        for (n, g) in zip(Vcov.names(c), c.clusters)
+            length(g) == nobs(m) ||
+                throw(
+                    DimensionMismatch(
+                        "cluster $(n) has length $(length(g)), " *
+                        "but the model has $(nobs(m)) observations",
+                    ),
+                )
+        end
+        return c
+    end
+    fns = fnames(m)
+    clusters = map(Vcov.names(c)) do n
+        i = findfirst(==(n), fns)
+        isnothing(i) &&
+            throw(
+                ArgumentError(
+                    "$(n) is not a grouping factor of the model " *
+                    "(grouping factors: $(join(fns, ", "))); " *
+                    "pass materialized clusters to cluster on other variables",
+                ),
+            )
+        return GroupedArray(m.reterms[i].refs)
+    end
+    return Vcov.cluster(Vcov.names(c), clusters)
 end
 
 end # module

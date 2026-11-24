@@ -92,3 +92,68 @@ end
     @test_throws ArgumentError vcov(fm, Vcov.hc(3))
     @test_throws ArgumentError vcov(gm, Vcov.robust())
 end
+
+# sum of outer products of the within-cluster score sums
+function cluster_meat(scores, g)
+    S = zeros(size(scores, 2), size(scores, 2))
+    for k in unique(g)
+        s = vec(sum(scores[g .== k, :]; dims=1))
+        S += s * s'
+    end
+    return S
+end
+
+@testset "cluster (CR1)" begin
+    @testset "one-way: $(name)" for (name, m) in
+                                    ("simple" => fm, "rank deficient" => fm_rankdef,
+        "weighted" => fm_wts, "crossed" => fm_crossed)
+        (; V, X, r) = dense_reference(m)
+        B = inv(X' * (V \ X))
+        scores = X .* (V \ r)
+        n, p = size(X)
+        g = m.reterms[1].refs
+        G = length(unique(g))
+        ref = B * ((n - 1) / (n - p) * G / (G - 1) * cluster_meat(scores, g)) * B
+        test_against_reference(m, Vcov.cluster(MixedModels.fnames(m)[1]), ref)
+    end
+
+    @testset "two-way" begin
+        # With crossed grouping factors the two-way meat is generally not positive
+        # semidefinite and Vcov applies the Cameron-Gelbach-Miller eigenvalue
+        # adjustment. So we check the meat (before adjustment) against the
+        # inclusion-exclusion formula, then check that vcov returns the adjusted matrix.
+        m = fm_crossed
+        (; V, X, r) = dense_reference(m)
+        scores = X .* (V \ r)
+        n, p = size(X)
+        gs, gi = (t.refs for t in m.reterms)
+        gsi = Int.(gs) .* (maximum(gi) + 1) .+ gi # intersection of subj and item
+        G = min(length(unique(gs)), length(unique(gi)))
+        meat =
+            cluster_meat(scores, gs) + cluster_meat(scores, gi) -
+            cluster_meat(scores, gsi)
+        ref = (n - 1) / (n - p) * G / (G - 1) * meat
+        ext = Base.get_extension(MixedModels, :MixedModelsVcovExt)
+        est = ext._materialize(m, Vcov.cluster(:subj, :item))
+        @test Vcov.S_hat(Vcov.VcovData(m), est) ≈ ref
+
+        vc = @test_logs (:warn, r"not positive-semidefinite") vcov(m,
+            Vcov.cluster(:subj, :item))
+        @test size(vc) == size(vcov(m))
+        @test isposdef(Symmetric(vc))
+    end
+
+    @testset "materialized clusters" begin
+        # same as clustering by name
+        g = Vcov.GroupedArray(sleepstudy.subj)
+        @test vcov(fm, Vcov.cluster((:subj,), (g,))) ≈ vcov(fm, Vcov.cluster(:subj))
+        # a variable that is not a grouping factor
+        g = Vcov.GroupedArray(sleepstudy.days)
+        @test all(isfinite, vcov(fm, Vcov.cluster((:days,), (g,))))
+        @test_throws DimensionMismatch vcov(fm,
+            Vcov.cluster((:subj,), (Vcov.GroupedArray(sleepstudy.subj[1:10]),)))
+    end
+
+    @test_throws ArgumentError vcov(fm, Vcov.cluster(:days))
+    @test_throws ArgumentError vcov(gm, Vcov.cluster(:subj))
+end
