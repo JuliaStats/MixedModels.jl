@@ -107,8 +107,8 @@ function StatsAPI.vcov(m::LinearMixedModel, c::Vcov.RobustCovariance)
     if correction != :hc1
         throw(
             ArgumentError(
-                "only HC1 (`Vcov.robust()`/`Vcov.hc(1)`) is supported " *
-                "for mixed models, got $(uppercase(string(correction)))",
+                "$(uppercase(string(correction))) is not supported for mixed models. " *
+                "(Only HC1 (`Vcov.robust()`/`Vcov.hc(1)`) is supported.)",
             ),
         )
     end

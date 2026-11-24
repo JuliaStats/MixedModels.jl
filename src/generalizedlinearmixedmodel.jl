@@ -58,7 +58,8 @@ function StatsAPI.coef(m::GeneralizedLinearMixedModel{T}) where {T}
 end
 
 function StatsAPI.coeftable(
-    m::GeneralizedLinearMixedModel, est::CovarianceEstimator=SimpleCovariance()
+    m::GeneralizedLinearMixedModel,
+    est::CovarianceEstimator=SimpleCovariance()
 )
     co = coef(m)
     se = stderror(m, est)

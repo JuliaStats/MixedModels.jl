@@ -1119,7 +1119,6 @@ end
 Return a named tuple of the principal components analysis of the random effects
 covariance matrices or correlation matrices when `corr` is `true`.
 """
-
 function PCA(m::LinearMixedModel; corr::Bool=true)
     return NamedTuple{_unique_fnames(m)}(PCA.(m.reterms; corr=corr))
 end
@@ -1261,7 +1260,8 @@ function Base.show(
 end
 
 function Base.show(
-    io::IO, m::LinearMixedModel, est::CovarianceEstimator=SimpleCovariance()
+    io::IO, m::LinearMixedModel,
+    est::CovarianceEstimator=SimpleCovariance()
 )
     return Base.show(io, MIME("text/plain"), m, est)
 end
