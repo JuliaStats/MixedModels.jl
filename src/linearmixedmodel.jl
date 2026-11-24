@@ -352,7 +352,7 @@ function StatsAPI.coefnames(m::LinearMixedModel)
 end
 
 function StatsAPI.coeftable(
-    m::LinearMixedModel, est::StatsBase.CovarianceEstimator=StatsBase.SimpleCovariance()
+    m::LinearMixedModel, est::CovarianceEstimator=SimpleCovariance()
 )
     co = coef(m)
     se = stderror(m, est)
@@ -1225,7 +1225,7 @@ function Base.show(
     io::IO,
     ::MIME"text/plain",
     m::LinearMixedModel,
-    est::StatsBase.CovarianceEstimator=StatsBase.SimpleCovariance(),
+    est::CovarianceEstimator=SimpleCovariance(),
 )
     if m.optsum.feval < 0
         @warn("Model has not been fit")
@@ -1256,12 +1256,12 @@ function Base.show(
     join(io, nlevs.(m.reterms), ", ")
     println(io)
     println(io, "\n  Fixed-effects parameters:")
-    est isa StatsBase.SimpleCovariance || println(io, "  Standard errors: ", est)
+    est isa SimpleCovariance || println(io, "  Standard errors: ", est)
     return show(io, MIME("text/plain"), coeftable(m, est))
 end
 
 function Base.show(
-    io::IO, m::LinearMixedModel, est::StatsBase.CovarianceEstimator=StatsBase.SimpleCovariance()
+    io::IO, m::LinearMixedModel, est::CovarianceEstimator=SimpleCovariance()
 )
     return Base.show(io, MIME("text/plain"), m, est)
 end
@@ -1453,7 +1453,7 @@ function StatsAPI.stderror(m::LinearMixedModel{T}) where {T}
     return stderror!(similar(pivot(m), T), m)
 end
 
-function StatsAPI.stderror(m::LinearMixedModel, est::StatsBase.SimpleCovariance)
+function StatsAPI.stderror(m::LinearMixedModel, est::SimpleCovariance)
     _check_uncorrected(est)
     return stderror(m)
 end

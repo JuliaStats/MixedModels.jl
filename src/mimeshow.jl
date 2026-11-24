@@ -45,7 +45,7 @@ function Base.show(
     io::IO,
     ::MIME"text/latex",
     x::MixedModel,
-    est::StatsBase.CovarianceEstimator=StatsBase.SimpleCovariance(),
+    est::CovarianceEstimator=SimpleCovariance(),
 )
     la = Markdown.latex(_markdown(x, est))
     # take advantage of subscripting
@@ -121,7 +121,7 @@ end
 _dname(::GeneralizedLinearMixedModel) = "Dispersion"
 _dname(::LinearMixedModel) = "Residual"
 
-function _markdown(m::MixedModel, est::StatsBase.CovarianceEstimator=StatsBase.SimpleCovariance())
+function _markdown(m::MixedModel, est::CovarianceEstimator=SimpleCovariance())
     if m.optsum.feval < 0
         @warn("Model has not been fit: results will be nonsense")
     end

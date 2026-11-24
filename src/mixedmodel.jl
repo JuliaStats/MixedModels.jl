@@ -258,12 +258,12 @@ function StatsAPI.vcov(m::MixedModel; corr=false)
     return corr ? StatsBase.cov2cor!(vv, stderror(m)) : vv
 end
 
-function StatsAPI.vcov(m::MixedModel, est::StatsBase.SimpleCovariance; corr=false)
+function StatsAPI.vcov(m::MixedModel, est::SimpleCovariance; corr=false)
     _check_uncorrected(est)
     return vcov(m; corr)
 end
 
-function _check_uncorrected(est::StatsBase.SimpleCovariance)
+function _check_uncorrected(est::SimpleCovariance)
     est.corrected &&
         throw(
             ArgumentError(
@@ -274,14 +274,14 @@ function _check_uncorrected(est::StatsBase.SimpleCovariance)
 end
 
 """
-    stderror(m::MixedModel, est::StatsBase.CovarianceEstimator)
+    stderror(m::MixedModel, est::CovarianceEstimator)
 
 Return the standard errors of the fixed effects computed from `vcov(m, est)`,
 e.g. with the sandwich estimators from Vcov.jl.
 
 For rank-deficient models, the standard errors of the pivoted-out coefficients are `NaN`.
 """
-function StatsAPI.stderror(m::MixedModel, est::StatsBase.CovarianceEstimator)
+function StatsAPI.stderror(m::MixedModel, est::CovarianceEstimator)
     return sqrt.(diag(vcov(m, est)))
 end
 

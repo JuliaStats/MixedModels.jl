@@ -172,8 +172,8 @@ end
     @test_throws MethodError stderror(gm, Vcov.robust())
 end
 
-@testset "StatsBase.SimpleCovariance" begin
-    dc = MixedModels.StatsBase.SimpleCovariance()
+@testset "SimpleCovariance" begin
+    dc = SimpleCovariance()
     @testset "$(name)" for (name, m) in lmms
         @test isapprox(vcov(m, dc), vcov(m); nans=true)
         @test isapprox(vcov(m, dc; corr=true), vcov(m; corr=true); nans=true)

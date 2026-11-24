@@ -58,7 +58,7 @@ function StatsAPI.coef(m::GeneralizedLinearMixedModel{T}) where {T}
 end
 
 function StatsAPI.coeftable(
-    m::GeneralizedLinearMixedModel, est::StatsBase.CovarianceEstimator=StatsBase.SimpleCovariance()
+    m::GeneralizedLinearMixedModel, est::CovarianceEstimator=SimpleCovariance()
 )
     co = coef(m)
     se = stderror(m, est)
@@ -763,7 +763,7 @@ function Base.show(
     io::IO,
     ::MIME"text/plain",
     m::GeneralizedLinearMixedModel{T,D},
-    est::StatsBase.CovarianceEstimator=StatsBase.SimpleCovariance(),
+    est::CovarianceEstimator=SimpleCovariance(),
 ) where {T,D}
     if m.optsum.feval < 0
         @warn("Model has not been fit")
@@ -791,14 +791,14 @@ function Base.show(
     println(io)
 
     println(io, "\nFixed-effects parameters:")
-    est isa StatsBase.SimpleCovariance || println(io, "Standard errors: ", est)
+    est isa SimpleCovariance || println(io, "Standard errors: ", est)
     return show(io, MIME("text/plain"), coeftable(m, est))
 end
 
 function Base.show(
     io::IO,
     m::GeneralizedLinearMixedModel,
-    est::StatsBase.CovarianceEstimator=StatsBase.SimpleCovariance(),
+    est::CovarianceEstimator=SimpleCovariance(),
 )
     return show(io, MIME("text/plain"), m, est)
 end
