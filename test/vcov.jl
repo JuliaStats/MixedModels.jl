@@ -250,7 +250,8 @@ end
     ]
 
     @testset "$(c.name)" for c in cases
-        m = LinearMixedModel(c.form, c.data; REML=c.REML, progress=false)
+        m = LinearMixedModel(c.form, c.data)
+        m.optsum.REML = c.REML
         # evaluate the model at lme4's optimum
         MixedModels.objective!(m, c.θ)
         @test vcov(m, Vcov.cluster(c.cluster)) ≈ c.CR1S rtol = 1e-8
