@@ -207,3 +207,53 @@ end
         @test sprint((io, m) -> show(io, MIME(mime), m; vcov=nothing), fm) == out
     end
 end
+
+@testset "clubSandwich reference values" begin
+    # Reference values from R 4.6.2, lme4 2.1.0 and clubSandwich 0.7.0:
+    #
+    #   ss <- sleepstudy[seq_len(nrow(sleepstudy)) %% 7 != 0, ]
+    #   ox <- oxide[seq_len(nrow(oxide)) %% 5 != 0, ]
+    #   f <- lmer(reaction ~ 1 + days + (1 + days | subj), ss, REML = FALSE)
+    #   getME(f, "theta")
+    #   vcovCR(f, cluster = ss$subj, type = "CR1S")
+    #   # similarly with REML = TRUE, with (1 + days || subj), and for
+    #   # lmer(Thickness ~ 1 + Source + (1 | Lot / Wafer), ox, REML = FALSE) with cluster = ox$Lot
+    #
+    # CR1S, with small-sample factor G(N-1)/((G-1)(N-p)), is the CR1 used by Vcov.jl.
+    # The subsets are unbalanced on purpose: for these balanced designs, V⁻¹X_g = X_g A
+    # for a fixed A, so the CR sandwich does not depend on V and would not test the GLS
+    # bread and scores.
+    # The Julia models are evaluated at lme4's θ, so that the comparison tests the
+    # estimator rather than small differences between the optimizers.
+    ss = DataFrame(dataset(:sleepstudy))
+    ss = ss[mod.(1:nrow(ss), 7) .!= 0, :]
+    ox = DataFrame(dataset(:oxide))
+    ox = ox[mod.(1:nrow(ox), 5) .!= 0, :]
+
+    cases = [
+        (; name="sleepstudy, ML",
+            form=@formula(reaction ~ 1 + days + (1 + days | subj)), data=ss, REML=false,
+            cluster=:subj, θ=[0.7377423387, 0.04696588215, 0.2089935453],
+            CR1S=[40.68992492352 -1.263647684156; -1.263647684156 2.572859974538]),
+        (; name="sleepstudy, REML",
+            form=@formula(reaction ~ 1 + days + (1 + days | subj)), data=ss, REML=true,
+            cluster=:subj, θ=[0.7747066354, 0.04293016162, 0.2177891632],
+            CR1S=[40.69261219182 -1.249981904967; -1.249981904967 2.567601587591]),
+        (; name="sleepstudy, zerocorr, ML",
+            form=@formula(reaction ~ 1 + days + zerocorr(1 + days | subj)), data=ss,
+            REML=false, cluster=:subj, θ=[0.7840962157, 0.2243579148],
+            CR1S=[40.53586706748 -1.223999121775; -1.223999121775 2.562502191275]),
+        (; name="oxide, nested, ML",
+            form=@formula(Thickness ~ 1 + Source + (1 | Lot / Wafer)), data=ox, REML=false,
+            cluster=:Lot, θ=[1.888490209, 2.602098464],
+            CR1S=[6.804351475105 -6.804351475105; -6.804351475105 53.91648850924]),
+    ]
+
+    @testset "$(c.name)" for c in cases
+        m = LinearMixedModel(c.form, c.data; REML=c.REML, progress=false)
+        # evaluate the model at lme4's optimum
+        MixedModels.objective!(m, c.θ)
+        @test vcov(m, Vcov.cluster(c.cluster)) ≈ c.CR1S rtol = 1e-8
+        @test stderror(m, Vcov.cluster(c.cluster)) ≈ sqrt.(diag(c.CR1S)) rtol = 1e-8
+    end
+end
