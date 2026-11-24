@@ -1,6 +1,6 @@
 MixedModels v5.10.0 Release Notes
 =================================
-- Package extension for [Vcov.jl](https://github.com/FixedEffects/Vcov.jl) providing sandwich estimators of the covariance of the fixed effects of a `LinearMixedModel`: `vcov(m, Vcov.cluster(...))` (cluster-robust CR1, one- or multiway, clustering on grouping factors of the model or user-supplied clusters), `vcov(m, Vcov.robust())` (heteroskedasticity-robust HC1), and `vcov(m, Vcov.simple())` (equivalent to `vcov(m)`). The estimators use the GLS bread and scores and do not form the marginal covariance matrix of the response. Generalized linear mixed models are not yet supported. [#768]
+- Package extension for [Vcov.jl](https://github.com/FixedEffects/Vcov.jl) providing sandwich estimators of the covariance of the fixed effects of a `LinearMixedModel`: `vcov(m, Vcov.cluster(...))` (cluster-robust CR1, one- or multiway, clustering on grouping factors of the model or user-supplied clusters), `vcov(m, Vcov.robust())` (heteroskedasticity-robust HC1), and `vcov(m, Vcov.simple())` (equivalent to `vcov(m)`). The estimators use the GLS bread and scores and do not form the marginal covariance matrix of the response. GLMMs are not (yet) supported. [#768]
 
 MixedModels v5.9.2 Release Notes
 ================================
