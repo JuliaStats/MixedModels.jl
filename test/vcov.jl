@@ -140,7 +140,8 @@ end
         vc = @test_logs (:warn, r"not positive-semidefinite") vcov(m,
             Vcov.cluster(:subj, :item))
         @test size(vc) == size(vcov(m))
-        @test isposdef(Symmetric(vc))
+        # the adjustment clamps negative eigenvalues to zero: PSD, possibly singular
+        @test minimum(eigvals(Symmetric(vc))) >= -sqrt(eps()) * opnorm(vc)
     end
 
     @testset "materialized clusters" begin
