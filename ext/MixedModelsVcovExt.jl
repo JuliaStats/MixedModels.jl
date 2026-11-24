@@ -86,4 +86,37 @@ function StatsAPI.vcov(m::MixedModel, ::Vcov.SimpleCovariance)
     return vcov(m)
 end
 
+"""
+    vcov(m::LinearMixedModel, ::Vcov.RobustCovariance)
+
+Heteroskedasticity-robust (HC1) sandwich estimator of the covariance of the fixed effects,
+```math
+(X'V^{-1}X)^{-1} \\left(\\frac{n}{n-p}\\sum_i s_i s_i'\\right) (X'V^{-1}X)^{-1},
+```
+where ``s_i = x_i [V^{-1}(y - X\\hat\\beta)]_i`` is the contribution of observation ``i``
+to the score of the fixed effects.
+
+!!! warning
+    This estimator treats the per-observation score contributions as independent.
+    In a mixed model, contributions from observations sharing a level of a grouping
+    factor are correlated, so `Vcov.cluster` over the grouping factor(s) is usually
+    more appropriate.
+
+Only HC1 is supported: the HC2/HC3 leverage corrections are not defined for
+mixed models here and throw an `ArgumentError`.
+"""
+function StatsAPI.vcov(m::MixedModel, c::Vcov.RobustCovariance)
+    # Vcov < 0.8.6 has no correction field and only implements HC1
+    correction = hasfield(typeof(c), :correction) ? c.correction : :hc1
+    if correction != :hc1
+        throw(
+            ArgumentError(
+                "only HC1 (`Vcov.robust()`/`Vcov.hc(1)`) is supported " *
+                "for mixed models, got $(uppercase(string(correction)))",
+            ),
+        )
+    end
+    return _unpivot(m, vcov(VcovData(m), c))
+end
+
 end # module

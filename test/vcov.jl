@@ -64,3 +64,31 @@ end
     end
     @test_throws ArgumentError vcov(gm, Vcov.simple())
 end
+
+# compare an estimator's result to a reference computed in the pivoted, full-rank space
+function test_against_reference(m, est, ref)
+    vc = vcov(m, est)
+    @test size(vc) == size(vcov(m))
+    @test isnan.(vc) == isnan.(vcov(m))
+    piv = m.feterm.piv
+    r = rank(m)
+    @test vc[piv, piv][1:r, 1:r] ≈ ref
+    return nothing
+end
+
+@testset "robust (HC1)" begin
+    @testset "$(name)" for (name, m) in
+                           ("simple" => fm, "rank deficient" => fm_rankdef,
+        "weighted" => fm_wts, "crossed" => fm_crossed)
+        (; V, X, r) = dense_reference(m)
+        B = inv(X' * (V \ X))
+        scores = X .* (V \ r)
+        n, p = size(X)
+        ref = B * (n / (n - p) * scores' * scores) * B
+        test_against_reference(m, Vcov.robust(), ref)
+        test_against_reference(m, Vcov.hc(1), ref)
+    end
+    @test_throws ArgumentError vcov(fm, Vcov.hc(2))
+    @test_throws ArgumentError vcov(fm, Vcov.hc(3))
+    @test_throws ArgumentError vcov(gm, Vcov.robust())
+end
