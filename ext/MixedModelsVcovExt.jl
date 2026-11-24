@@ -2,9 +2,9 @@ module MixedModelsVcovExt
 
 using GroupedArrays: GroupedArray
 using LinearAlgebra: Cholesky, LowerTriangular, Symmetric, inv, rank
-using MixedModels: MixedModels, LinearMixedModel, pivot
+using MixedModels: MixedModels, LinearMixedModel, fullrankx, pivot, refarray
 using MixedModels: feL, fnames
-using StatsAPI: StatsAPI, nobs, residuals, vcov
+using StatsAPI: StatsAPI, nobs, residuals, vcov, weights
 using Vcov: Vcov, VcovData
 
 #####
@@ -37,13 +37,12 @@ function Vcov.VcovData(m::LinearMixedModel)
     # accumulates the meat in Float64, so we work in Float64 throughout.
     # Matrix{Float64}(...) also copies: fullrankx(m) is a view into the model's storage
     # and is modified in place below.
-    X = Matrix{Float64}(MixedModels.fullrankx(m))
+    X = Matrix{Float64}(fullrankx(m))
     resid = Vector{Float64}(residuals(m))
-    sqrtwts = m.sqrtwts
-    if !isempty(sqrtwts)
-        X .*= sqrtwts
-        resid .*= sqrtwts
-    end
+    # case weights (all ones if unweighted)
+    sqrtwts = sqrt.(weights(m))
+    X .*= sqrtwts
+    resid .*= sqrtwts
     # if we refactor into an in-place multiplication, keep in mind that
     # feL(m) is a view into the model's blocked Cholesky factor
     # we need to guarantee the type and eltype
@@ -164,7 +163,7 @@ function _materialize(m::LinearMixedModel, c::Vcov.ClusterCovariance)
                     "pass materialized clusters to cluster on other variables",
                 ),
             )
-        return GroupedArray(m.reterms[i].refs)
+        return GroupedArray(refarray(m.reterms[i]))
     end
     return Vcov.cluster(Vcov.names(c), clusters)
 end

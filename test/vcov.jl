@@ -1,7 +1,7 @@
 using DataFrames
 using LinearAlgebra
 using MixedModels
-using MixedModels: dataset, fullrankx
+using MixedModels: dataset, fullrankx, pivot
 using SparseArrays
 using StableRNGs
 using StatsAPI: crossmodelmatrix
@@ -11,7 +11,7 @@ using Vcov
 # Dense reference quantities in the pivoted, full-rank (and weighted) space:
 # relative marginal covariance V = I + ZΛΛ'Z', X, and r = y - Xβ̂.
 function dense_reference(m::LinearMixedModel)
-    sqrtw = isempty(m.sqrtwts) ? ones(nobs(m)) : m.sqrtwts
+    sqrtw = sqrt.(weights(m))
     ZΛ = reduce(hcat,
         [Matrix(sparse(t)) * kron(I(MixedModels.nlevs(t)), Matrix(t.λ))
          for t in m.reterms])
@@ -73,7 +73,7 @@ function test_against_reference(m, est, ref)
     vc = vcov(m, est)
     @test size(vc) == size(vcov(m))
     @test isnan.(vc) == isnan.(vcov(m))
-    piv = m.feterm.piv
+    piv = pivot(m)
     r = rank(m)
     @test vc[piv, piv][1:r, 1:r] ≈ ref
     return nothing
@@ -110,7 +110,7 @@ end
         B = inv(X' * (V \ X))
         scores = X .* (V \ r)
         n, p = size(X)
-        g = m.reterms[1].refs
+        g = refarray(m.reterms[1])
         G = length(unique(g))
         ref = B * ((n - 1) / (n - p) * G / (G - 1) * cluster_meat(scores, g)) * B
         test_against_reference(m, Vcov.cluster(MixedModels.fnames(m)[1]), ref)
@@ -125,7 +125,7 @@ end
         (; V, X, r) = dense_reference(m)
         scores = X .* (V \ r)
         n, p = size(X)
-        gs, gi = (t.refs for t in m.reterms)
+        gs, gi = (refarray(t) for t in m.reterms)
         gsi = Int.(gs) .* (maximum(gi) + 1) .+ gi # intersection of subj and item
         G = min(length(unique(gs)), length(unique(gi)))
         meat =
