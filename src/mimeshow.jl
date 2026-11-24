@@ -121,7 +121,9 @@ end
 _dname(::GeneralizedLinearMixedModel) = "Dispersion"
 _dname(::LinearMixedModel) = "Residual"
 
-function _markdown(m::MixedModel, est::StatsBase.CovarianceEstimator=StatsBase.SimpleCovariance())
+function _markdown(
+    m::MixedModel, est::StatsBase.CovarianceEstimator=StatsBase.SimpleCovariance()
+)
     if m.optsum.feval < 0
         @warn("Model has not been fit: results will be nonsense")
     end

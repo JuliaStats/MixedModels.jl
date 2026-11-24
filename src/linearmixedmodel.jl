@@ -1261,7 +1261,8 @@ function Base.show(
 end
 
 function Base.show(
-    io::IO, m::LinearMixedModel, est::StatsBase.CovarianceEstimator=StatsBase.SimpleCovariance()
+    io::IO, m::LinearMixedModel,
+    est::StatsBase.CovarianceEstimator=StatsBase.SimpleCovariance()
 )
     return Base.show(io, MIME("text/plain"), m, est)
 end
