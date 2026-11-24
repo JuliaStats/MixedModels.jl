@@ -158,3 +158,18 @@ end
     @test_throws ArgumentError vcov(fm, Vcov.cluster(:days))
     @test_throws MethodError vcov(gm, Vcov.cluster(:subj))
 end
+
+@testset "stderror" begin
+    @testset "$(name)" for (name, m) in
+                           ("simple" => fm, "rank deficient" => fm_rankdef,
+        "weighted" => fm_wts, "crossed" => fm_crossed)
+        @test stderror(m, Vcov.simple()) ≈ stderror(m) nans = true
+        @testset "$(est)" for est in (Vcov.robust(), Vcov.cluster(:subj))
+            se = stderror(m, est)
+            @test length(se) == length(coef(m))
+            @test isequal(isnan.(se), isnan.(stderror(m)))
+            @test se ≈ sqrt.(diag(vcov(m, est))) nans = true
+        end
+    end
+    @test_throws MethodError stderror(gm, Vcov.robust())
+end

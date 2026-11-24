@@ -83,7 +83,7 @@ shortestcovint
 sdest
 simulate
 simulate!
-stderrror!
+stderror!
 varest
 ```
 

@@ -10,6 +10,7 @@ These can be computed without forming the ``n \times n`` matrix ``V``, because `
 vcov(::LinearMixedModel, ::Vcov.SimpleCovariance)
 vcov(::LinearMixedModel, ::Vcov.RobustCovariance)
 vcov(::LinearMixedModel, ::Vcov.ClusterCovariance)
+stderror(::MixedModel, ::StatsBase.CovarianceEstimator)
 ```
 
 Generalized linear mixed models are not yet supported.
@@ -40,6 +41,12 @@ which is close to the model-based estimate, because the random-effects structure
 
 ```@example Sandwich
 vcov(fm)
+```
+
+The corresponding standard errors:
+
+```@example Sandwich
+stderror(fm, Vcov.cluster(:subj))
 ```
 
 Cluster names must be grouping factors of the model.
