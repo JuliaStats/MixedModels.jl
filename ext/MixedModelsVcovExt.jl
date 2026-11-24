@@ -1,7 +1,7 @@
 module MixedModelsVcovExt
 
 using GroupedArrays: GroupedArray
-using LinearAlgebra: Symmetric, inv, rank
+using LinearAlgebra: Cholesky, LowerTriangular, Symmetric, inv, rank
 using MixedModels: MixedModels, GeneralizedLinearMixedModel, LinearMixedModel, MixedModel
 using MixedModels: feL, fnames
 using StatsAPI: StatsAPI, nobs, residuals, vcov
@@ -40,10 +40,11 @@ function Vcov.VcovData(m::LinearMixedModel{T}) where {T}
         X .*= sqrtwts
         resid .*= sqrtwts
     end
-    L = feL(m)
-    Linv = inv(L)
-    cm = Symmetric(Matrix{Float64}(L * L'))
-    invcm = Symmetric(Matrix{Float64}(Linv' * Linv))
+    # copy: feL(m) is a view into the model's blocked Cholesky factor
+    L = LowerTriangular(Matrix{Float64}(feL(m)))
+    cm = Symmetric(L * L')
+    # (LL')⁻¹ directly from the Cholesky factor (LAPACK potri)
+    invcm = Symmetric(inv(Cholesky(L)))
     return VcovData(X, cm, invcm, resid, nobs(m) - rank(m))
 end
 
