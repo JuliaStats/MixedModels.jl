@@ -32,7 +32,11 @@ Construct the `VcovData` used by Vcov.jl's sandwich estimators for the
 fixed effects of `m`. The model matrix and bread are in the pivoted, full-rank
 parameterization of `m`.
 """
-function Vcov.VcovData(m::LinearMixedModel{T}) where {T}
+function Vcov.VcovData(m::LinearMixedModel)
+    # VcovData fixes the eltype of the model matrix and residuals to Float64, and Vcov
+    # accumulates the meat in Float64, so we work in Float64 throughout.
+    # Matrix{Float64}(...) also copies: fullrankx(m) is a view into the model's storage
+    # and is modified in place below.
     X = Matrix{Float64}(MixedModels.fullrankx(m))
     resid = Vector{Float64}(residuals(m))
     sqrtwts = m.sqrtwts
