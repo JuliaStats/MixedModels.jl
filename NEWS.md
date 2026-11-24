@@ -1,3 +1,7 @@
+MixedModels v5.10.0 Release Notes
+=================================
+- Package extension for [Vcov.jl](https://github.com/FixedEffects/Vcov.jl) providing sandwich estimators of the covariance of the fixed effects of a `LinearMixedModel`: `vcov(m, Vcov.cluster(...))` (cluster-robust CR1, one- or multiway, clustering on grouping factors of the model or user-supplied clusters), `vcov(m, Vcov.robust())` (heteroskedasticity-robust HC1), and `vcov(m, Vcov.simple())` (equivalent to `vcov(m)`). The estimators use the GLS bread and scores and do not form the marginal covariance matrix of the response. Generalized linear mixed models are not yet supported. [#768]
+
 MixedModels v5.9.2 Release Notes
 ================================
 - Use `dispersion_parameter` instead of checking for supported distributions before warning for GLMMs with a dispersion parameter.[#924]
@@ -763,6 +767,7 @@ Package dependencies
 [#755]: https://github.com/JuliaStats/MixedModels.jl/issues/755
 [#756]: https://github.com/JuliaStats/MixedModels.jl/issues/756
 [#767]: https://github.com/JuliaStats/MixedModels.jl/issues/767
+[#768]: https://github.com/JuliaStats/MixedModels.jl/issues/768
 [#769]: https://github.com/JuliaStats/MixedModels.jl/issues/769
 [#772]: https://github.com/JuliaStats/MixedModels.jl/issues/772
 [#773]: https://github.com/JuliaStats/MixedModels.jl/issues/773
