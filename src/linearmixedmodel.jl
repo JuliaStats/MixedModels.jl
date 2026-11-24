@@ -351,9 +351,9 @@ function StatsAPI.coefnames(m::LinearMixedModel)
     return invpermute!(copy(Xtrm.cnames), Xtrm.piv)
 end
 
-function StatsAPI.coeftable(m::LinearMixedModel)
+function StatsAPI.coeftable(m::LinearMixedModel; vcov=nothing)
     co = coef(m)
-    se = stderror!(similar(co), m)
+    se = isnothing(vcov) ? stderror!(similar(co), m) : stderror(m, vcov)
     z = co ./ se
     pvalue = ccdf.(Chisq(1), abs2.(z))
     names = coefnames(m)
@@ -1219,7 +1219,7 @@ function Base.setproperty!(m::LinearMixedModel, s::Symbol, y)
     return s == :θ ? setθ!(m, y) : setfield!(m, s, y)
 end
 
-function Base.show(io::IO, ::MIME"text/plain", m::LinearMixedModel)
+function Base.show(io::IO, ::MIME"text/plain", m::LinearMixedModel; vcov=nothing)
     if m.optsum.feval < 0
         @warn("Model has not been fit")
         return nothing
@@ -1249,10 +1249,13 @@ function Base.show(io::IO, ::MIME"text/plain", m::LinearMixedModel)
     join(io, nlevs.(m.reterms), ", ")
     println(io)
     println(io, "\n  Fixed-effects parameters:")
-    return show(io, MIME("text/plain"), coeftable(m))
+    isnothing(vcov) || println(io, "  Standard errors: ", vcov)
+    return show(io, MIME("text/plain"), coeftable(m; vcov))
 end
 
-Base.show(io::IO, m::LinearMixedModel) = Base.show(io, MIME("text/plain"), m)
+function Base.show(io::IO, m::LinearMixedModel; vcov=nothing)
+    return Base.show(io, MIME("text/plain"), m; vcov)
+end
 
 """
     _coord(A::AbstractMatrix)

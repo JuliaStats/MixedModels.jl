@@ -57,9 +57,9 @@ function StatsAPI.coef(m::GeneralizedLinearMixedModel{T}) where {T}
     return invpermute!(copyto!(fill(T(-0.0), length(piv)), m.β), piv)
 end
 
-function StatsAPI.coeftable(m::GeneralizedLinearMixedModel)
+function StatsAPI.coeftable(m::GeneralizedLinearMixedModel; vcov=nothing)
     co = coef(m)
-    se = stderror(m)
+    se = isnothing(vcov) ? stderror(m) : stderror(m, vcov)
     z = co ./ se
     pvalue = ccdf.(Chisq(1), abs2.(z))
     return CoefTable(
@@ -758,7 +758,7 @@ function sdest(m::GeneralizedLinearMixedModel{T}) where {T}
 end
 
 function Base.show(
-    io::IO, ::MIME"text/plain", m::GeneralizedLinearMixedModel{T,D}
+    io::IO, ::MIME"text/plain", m::GeneralizedLinearMixedModel{T,D}; vcov=nothing
 ) where {T,D}
     if m.optsum.feval < 0
         @warn("Model has not been fit")
@@ -786,10 +786,13 @@ function Base.show(
     println(io)
 
     println(io, "\nFixed-effects parameters:")
-    return show(io, MIME("text/plain"), coeftable(m))
+    isnothing(vcov) || println(io, "Standard errors: ", vcov)
+    return show(io, MIME("text/plain"), coeftable(m; vcov))
 end
 
-Base.show(io::IO, m::GeneralizedLinearMixedModel) = show(io, MIME("text/plain"), m)
+function Base.show(io::IO, m::GeneralizedLinearMixedModel; vcov=nothing)
+    return show(io, MIME("text/plain"), m; vcov)
+end
 
 function stderror!(v::AbstractVector{T}, m::GeneralizedLinearMixedModel{T}) where {T}
     # initialize to appropriate NaN for rank-deficient case

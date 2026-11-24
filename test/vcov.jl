@@ -173,3 +173,40 @@ end
     end
     @test_throws MethodError stderror(gm, Vcov.robust())
 end
+
+@testset "vcov keyword for coeftable and show" begin
+    est = Vcov.cluster(:subj)
+    se = stderror(fm, est)
+
+    @testset "coeftable" begin
+        ct = coeftable(fm; vcov=est)
+        @test ct.cols[2] ≈ se
+        @test ct.cols[3] ≈ coef(fm) ./ se
+        # default unchanged
+        @test coeftable(fm; vcov=nothing).cols == coeftable(fm).cols
+        @test coeftable(fm_rankdef; vcov=est).cols[2] ≈ stderror(fm_rankdef, est) nans =
+            true
+        @test_throws MethodError coeftable(gm; vcov=Vcov.robust())
+    end
+
+    @testset "text/plain" begin
+        out = sprint(show, MIME("text/plain"), fm; context=:compact => false)
+        out_est = sprint((io, m) -> show(io, MIME("text/plain"), m; vcov=est), fm)
+        @test !occursin("Standard errors:", out)
+        @test occursin("Standard errors: $(est)", out_est)
+        @test occursin(sprint(show, MIME("text/plain"), coeftable(fm; vcov=est)), out_est)
+        # 2-argument show forwards the keyword
+        @test sprint((io, m) -> show(io, m; vcov=est), fm) == out_est
+        # nothing is the default
+        @test sprint((io, m) -> show(io, MIME("text/plain"), m; vcov=nothing), fm) == out
+    end
+
+    @testset "$(mime)" for mime in
+                           ("text/markdown", "text/html", "text/latex", "text/xelatex")
+        out = sprint(show, MIME(mime), fm)
+        out_est = sprint((io, m) -> show(io, MIME(mime), m; vcov=est), fm)
+        @test out != out_est
+        @test all(s -> occursin(MixedModels.Ryu.writefixed(s, 4), out_est), se)
+        @test sprint((io, m) -> show(io, MIME(mime), m; vcov=nothing), fm) == out
+    end
+end
