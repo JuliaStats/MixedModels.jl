@@ -10,8 +10,9 @@ These can be computed without forming the ``n \times n`` matrix ``V``, because `
 vcov(::LinearMixedModel, ::Vcov.SimpleCovariance)
 vcov(::LinearMixedModel, ::Vcov.RobustCovariance)
 vcov(::LinearMixedModel, ::Vcov.ClusterCovariance)
-stderror(::MixedModel, ::StatsBase.CovarianceEstimator)
 ```
+
+The corresponding standard errors are available via [`stderror(m, est)`](@ref stderror), and `coeftable` and `show` accept a `vcov` keyword argument to use an estimator for the standard errors, ``z``-statistics and ``p``-values.
 
 Generalized linear mixed models are not yet supported.
 
@@ -47,6 +48,12 @@ The corresponding standard errors:
 
 ```@example Sandwich
 stderror(fm, Vcov.cluster(:subj))
+```
+
+and the coefficient table using them:
+
+```@example Sandwich
+coeftable(fm; vcov=Vcov.cluster(:subj))
 ```
 
 Cluster names must be grouping factors of the model.
