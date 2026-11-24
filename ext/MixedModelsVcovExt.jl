@@ -2,7 +2,7 @@ module MixedModelsVcovExt
 
 using GroupedArrays: GroupedArray
 using LinearAlgebra: Cholesky, LowerTriangular, Symmetric, inv, rank
-using MixedModels: MixedModels, LinearMixedModel
+using MixedModels: MixedModels, LinearMixedModel, pivot
 using MixedModels: feL, fnames
 using StatsAPI: StatsAPI, nobs, residuals, vcov
 using Vcov: Vcov, VcovData
@@ -56,10 +56,9 @@ end
 # original coefficient order, filling in NaN for pivoted-out (rank-deficient) columns.
 # This mirrors `vcov(::MixedModel)`.
 function _unpivot(m::LinearMixedModel, permvcov::AbstractMatrix{T}) where {T}
-    Xtrm = m.feterm
-    iperm = invperm(Xtrm.piv)
+    iperm = invperm(pivot(m))
     p = length(iperm)
-    r = Xtrm.rank
+    r = rank(m)
     covmat = fill(zero(T) / zero(T), (p, p))
     copyto!(view(covmat, 1:r, 1:r), permvcov)
     return covmat[iperm, iperm]
