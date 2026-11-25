@@ -231,15 +231,9 @@ end
 
 """
     vcov(m::MixedModel; corr=false)
-    vcov(m::MixedModel, ::StatsBase.SimpleCovariance; corr=false)
 
 Returns the variance-covariance matrix of the fixed effects.
 If `corr` is `true`, the correlation of the fixed effects is returned instead.
-
-`StatsBase.SimpleCovariance()` denotes this model-based estimator and is the default
-covariance estimator for [`stderror`](@ref), `coeftable` and `show`.
-The bias correction `StatsBase.SimpleCovariance(; corrected=true)` is not defined for
-mixed models and throws an `ArgumentError`.
 """
 function StatsAPI.vcov(m::MixedModel; corr=false)
     piv = pivot(m)
@@ -262,6 +256,17 @@ function StatsAPI.vcov(m::MixedModel; corr=false)
     return corr ? StatsBase.cov2cor!(vv, stderror(m)) : vv
 end
 
+"""
+    vcov(m::MixedModel, ::StatsBase.SimpleCovariance; corr=false)
+
+Returns the variance-covariance matrix of the fixed effects.
+If `corr` is `true`, the correlation of the fixed effects is returned instead.
+
+`StatsBase.SimpleCovariance()` denotes this model-based estimator and is the default
+covariance estimator for [`stderror`](@ref), `coeftable` and `show`.
+The bias correction `StatsBase.SimpleCovariance(; corrected=true)` is not defined for
+mixed models and throws an `ArgumentError`.
+"""
 function StatsAPI.vcov(m::MixedModel, est::SimpleCovariance; corr=false)
     _check_uncorrected(est)
     return vcov(m; corr)
