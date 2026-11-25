@@ -1254,9 +1254,15 @@ function Base.show(
     print(io, " Number of obs: $n; levels of grouping factors: ")
     join(io, nlevs.(m.reterms), ", ")
     println(io)
-    println(io, "\n  Fixed-effects parameters:")
-    est isa SimpleCovariance || println(io, "  Standard errors: ", est)
-    return show(io, MIME("text/plain"), coeftable(m, est))
+    println(io, "\nFixed-effects parameters:")
+    show(io, MIME("text/plain"), coeftable(m, est))
+    println(io)
+    if !(est isa SimpleCovariance)
+        print(io, " Standard errors: ")
+        show(io, MIME("text/plain"), est)
+        println(io)
+    end
+    return nothing
 end
 
 function Base.show(
