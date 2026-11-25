@@ -248,12 +248,16 @@ function StatsAPI.vcov(m::MixedModel; corr=false)
     Linv = inv(feL(m))
     T = eltype(Linv)
     permvcov = dispersion(m, true) * (Linv'Linv)
-    # NaN for pivoted-out (rank-deficient) columns; every entry is overwritten if full rank
-    vv = r == p ? Matrix{T}(undef, p, p) : fill(zero(T) / zero(T), (p, p))
-    # the first r entries of piv are the original indices of the retained columns,
-    # so scatter directly into the original order instead of permuting afterwards
-    kept = view(piv, 1:r)
-    vv[kept, kept] = permvcov
+    if r == p
+        vv = permvcov
+    else
+        # NaN for pivoted-out (rank-deficient) columns
+        vv = fill(zero(T) / zero(T), (p, p))
+        # the first r entries of piv are the original indices of the retained columns,
+        # so scatter directly into the original order instead of permuting afterwards
+        kept = view(piv, 1:r)
+        vv[kept, kept] = permvcov
+    end
 
     return corr ? StatsBase.cov2cor!(vv, stderror(m)) : vv
 end
