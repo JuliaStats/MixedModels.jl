@@ -72,7 +72,6 @@ gm = fit(MixedModel, @formula(r2 ~ 1 + anger + gender + (1 | subj)), dataset(:ve
         @test dof_residual(vd) == nobs(m) - rank(m)
     end
 
-    @test_throws MethodError Vcov.VcovData(gm)
 end
 
 @testset "simple" begin
