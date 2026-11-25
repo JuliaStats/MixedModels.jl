@@ -30,20 +30,33 @@ sleepstudy.wts = rand(StableRNG(42), 0.5:0.5:2.0, nrow(sleepstudy))
 
 # LinearMixedModels covering the cases the estimators need to handle,
 # keyed by the name used for their testsets
-lmms = Dict{String,MixedModel}()
-fm =
-    lmms["simple"] = lmm(@formula(reaction ~ 1 + days + (1 + days | subj)),
-        sleepstudy; progress=false)
-fm_rankdef =
-    lmms["rank deficient"] = lmm(@formula(reaction ~ 1 + days + days2 + (1 | subj)),
-        sleepstudy; progress=false)
-fm_wts =
-    lmms["weighted"] = lmm(@formula(reaction ~ 1 + days + (1 + days | subj)),
-        sleepstudy; wts=sleepstudy.wts, progress=false)
-fm_crossed =
-    lmms["crossed"] = lmm(@formula(rt_trunc ~ 1 + spkr * prec + (1 | subj) + (1 | item)),
-        dataset(:kb07);
-        progress=false)
+fm = lmm(
+    @formula(reaction ~ 1 + days + (1 + days | subj)),
+    sleepstudy;
+    progress=false,
+)
+fm_rankdef = lmm(
+    @formula(reaction ~ 1 + days + days2 + (1 | subj)),
+    sleepstudy;
+    progress=false,
+)
+fm_wts = lmm(
+    @formula(reaction ~ 1 + days + (1 + days | subj)),
+    sleepstudy;
+    wts=sleepstudy.wts,
+    progress=false,
+)
+fm_crossed = lmm(
+    @formula(rt_trunc ~ 1 + spkr * prec + (1 | subj) + (1 | item)),
+    dataset(:kb07);
+    progress=false,
+)
+lmms = Dict{String,MixedModel}(
+    "simple" => fm,
+    "rank deficient" => fm_rankdef,
+    "weighted" => fm_wts,
+    "crossed" => fm_crossed,
+)
 gm = fit(MixedModel, @formula(r2 ~ 1 + anger + gender + (1 | subj)), dataset(:verbagg),
     Bernoulli(); progress=false)
 
