@@ -225,8 +225,12 @@ end
         out = sprint(show, MIME("text/plain"), fm; context=:compact => false)
         out_est = sprint(show, MIME("text/plain"), fm, est)
         @test !occursin("Standard errors:", out)
-        @test occursin("Standard errors: $(est)", out_est)
-        @test occursin(sprint(show, MIME("text/plain"), coeftable(fm, est)), out_est)
+        est_line = "Standard errors: " * sprint(show, MIME("text/plain"), est)
+        @test occursin(est_line, out_est)
+        ct_est = sprint(show, MIME("text/plain"), coeftable(fm, est))
+        @test occursin(ct_est, out_est)
+        # the estimator is described after the coefficient table
+        @test last(findfirst(ct_est, out_est)) < first(findfirst(est_line, out_est))
         # 2-argument show forwards the estimator
         @test sprint(show, fm, est) == out_est
         # SimpleCovariance is the default
