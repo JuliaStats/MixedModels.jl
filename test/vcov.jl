@@ -233,6 +233,17 @@ end
     end
 end
 
+@testset "return type and symmetry" begin
+    @testset "$(name), $(est)" for (name, m) in lmms,
+        est in (Vcov.robust(), Vcov.cluster(:subj))
+
+        vc = vcov(m, est)
+        # a plain Matrix in both the full-rank and the rank-deficient case
+        @test vc isa Matrix{Float64}
+        @test isequal(vc, vc')
+    end
+end
+
 @testset "clubSandwich reference values" begin
     # Reference values from R 4.6.2, lme4 2.1.0 and clubSandwich 0.7.0:
     #

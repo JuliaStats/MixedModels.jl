@@ -1,7 +1,7 @@
 module MixedModelsVcovExt
 
 using GroupedArrays: GroupedArray
-using LinearAlgebra: Cholesky, LowerTriangular, Symmetric, inv, rank
+using LinearAlgebra: Cholesky, LowerTriangular, Symmetric, copytri!, inv, rank
 using MixedModels: MixedModels, LinearMixedModel, fullrankx, pivot, refarray
 using MixedModels: feL, fnames
 using StatsAPI: StatsAPI, nobs, residuals, vcov, weights
@@ -56,13 +56,21 @@ end
 # Map a covariance matrix in the pivoted, full-rank parameterization back to the
 # original coefficient order, filling in NaN for pivoted-out (rank-deficient) columns.
 # This mirrors `vcov(::MixedModel)`.
-function _unpivot(m::LinearMixedModel, permvcov::AbstractMatrix{T}) where {T}
+function _unpivot(m::LinearMixedModel, permvcov::Symmetric{T,Matrix{T}}) where {T}
     piv = pivot(m)
     p = length(piv)
+    r = rank(m)
+    if r == p
+        # full rank: piv is the identity, so no reordering is needed.
+        # Vcov returns a freshly allocated Symmetric, so we can reuse its storage,
+        # making the parent exactly symmetric to match the rank-deficient case.
+        return copytri!(parent(permvcov), permvcov.uplo)
+    end
+    # NaN for pivoted-out (rank-deficient) columns
     covmat = fill(zero(T) / zero(T), (p, p))
-    # the first rank(m) entries of piv are the original indices of the retained columns,
+    # the first r entries of piv are the original indices of the retained columns,
     # so scatter directly into the original order instead of permuting afterwards
-    kept = view(piv, 1:rank(m))
+    kept = view(piv, 1:r)
     covmat[kept, kept] = permvcov
     return covmat
 end
