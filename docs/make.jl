@@ -7,6 +7,7 @@ using ForwardDiff
 using StatsAPI
 using StatsBase
 using StatsModels
+using Vcov
 
 makedocs(;
     sitename="MixedModels",
@@ -27,6 +28,7 @@ makedocs(;
         "rankdeficiency.md",
         "mime.md",
         "derivatives.md",
+        "sandwich.md",
         "limitations.md",
         "formula_syntax.md",
         "ecosystem.md",
