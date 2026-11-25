@@ -57,9 +57,12 @@ function StatsAPI.coef(m::GeneralizedLinearMixedModel{T}) where {T}
     return invpermute!(copyto!(fill(T(-0.0), length(piv)), m.β), piv)
 end
 
-function StatsAPI.coeftable(m::GeneralizedLinearMixedModel)
+function StatsAPI.coeftable(
+    m::GeneralizedLinearMixedModel,
+    est::CovarianceEstimator=SimpleCovariance(),
+)
     co = coef(m)
-    se = stderror(m)
+    se = stderror(m, est)
     z = co ./ se
     pvalue = ccdf.(Chisq(1), abs2.(z))
     return CoefTable(
@@ -392,7 +395,7 @@ function GeneralizedLinearMixedModel(
         ArgumentError("use LinearMixedModel for Normal distribution with IdentityLink")
     )
 
-    if !any(isa(d, dist) for dist in (Bernoulli, Binomial, Poisson))
+    if dispersion_parameter(d)
         @warn """Results for families with a dispersion parameter are not reliable.
                  It is best to avoid trying to fit such models in MixedModels until
                  the authors gain a better understanding of those cases."""
@@ -758,7 +761,10 @@ function sdest(m::GeneralizedLinearMixedModel{T}) where {T}
 end
 
 function Base.show(
-    io::IO, ::MIME"text/plain", m::GeneralizedLinearMixedModel{T,D}
+    io::IO,
+    ::MIME"text/plain",
+    m::GeneralizedLinearMixedModel{T,D},
+    est::CovarianceEstimator=SimpleCovariance(),
 ) where {T,D}
     if m.optsum.feval < 0
         @warn("Model has not been fit")
@@ -786,10 +792,23 @@ function Base.show(
     println(io)
 
     println(io, "\nFixed-effects parameters:")
-    return show(io, MIME("text/plain"), coeftable(m))
+    show(io, MIME("text/plain"), coeftable(m, est))
+    println(io)
+    if !(est isa SimpleCovariance)
+        print(io, " Standard errors: ")
+        show(io, MIME("text/plain"), est)
+        println(io)
+    end
+    return nothing
 end
 
-Base.show(io::IO, m::GeneralizedLinearMixedModel) = show(io, MIME("text/plain"), m)
+function Base.show(
+    io::IO,
+    m::GeneralizedLinearMixedModel,
+    est::CovarianceEstimator=SimpleCovariance(),
+)
+    return show(io, MIME("text/plain"), m, est)
+end
 
 function stderror!(v::AbstractVector{T}, m::GeneralizedLinearMixedModel{T}) where {T}
     # initialize to appropriate NaN for rank-deficient case

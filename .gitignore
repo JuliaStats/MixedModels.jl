@@ -11,3 +11,4 @@ LocalPreferences.toml
 benchmark.md
 lcov.info
 coverage/
+*~

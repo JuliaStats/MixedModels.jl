@@ -236,24 +236,62 @@ Returns the variance-covariance matrix of the fixed effects.
 If `corr` is `true`, the correlation of the fixed effects is returned instead.
 """
 function StatsAPI.vcov(m::MixedModel; corr=false)
-    Xtrm = m isa GeneralizedLinearMixedModel ? m.LMM.feterm : m.feterm
-    iperm = invperm(Xtrm.piv)
-    p = length(iperm)
-    r = Xtrm.rank
+    piv = pivot(m)
+    p = length(piv)
+    r = rank(m)
     Linv = inv(feL(m))
     T = eltype(Linv)
     permvcov = dispersion(m, true) * (Linv'Linv)
-    if p == Xtrm.rank
-        vv = permvcov[iperm, iperm]
+    if r == p
+        vv = permvcov
     else
-        covmat = fill(zero(T) / zero(T), (p, p))
-        for j in 1:r, i in 1:r
-            covmat[i, j] = permvcov[i, j]
-        end
-        vv = covmat[iperm, iperm]
+        # NaN for pivoted-out (rank-deficient) columns
+        vv = fill(zero(T) / zero(T), (p, p))
+        # the first r entries of piv are the original indices of the retained columns,
+        # so scatter directly into the original order instead of permuting afterwards
+        kept = view(piv, 1:r)
+        vv[kept, kept] = permvcov
     end
 
     return corr ? StatsBase.cov2cor!(vv, stderror(m)) : vv
+end
+
+"""
+    vcov(m::MixedModel, ::StatsBase.SimpleCovariance; corr=false)
+
+Returns the variance-covariance matrix of the fixed effects.
+If `corr` is `true`, the correlation of the fixed effects is returned instead.
+
+`StatsBase.SimpleCovariance()` denotes this model-based estimator and is the default
+covariance estimator for [`stderror`](@ref), `coeftable` and `show`.
+The bias correction `StatsBase.SimpleCovariance(; corrected=true)` is not defined for
+mixed models and throws an `ArgumentError`.
+"""
+function StatsAPI.vcov(m::MixedModel, est::SimpleCovariance; corr=false)
+    _check_uncorrected(est)
+    return vcov(m; corr)
+end
+
+function _check_uncorrected(est::SimpleCovariance)
+    est.corrected &&
+        throw(
+            ArgumentError(
+                "`SimpleCovariance(; corrected=true)` is not supported for mixed models"
+            ),
+        )
+    return nothing
+end
+
+"""
+    stderror(m::MixedModel, est::CovarianceEstimator)
+
+Return the standard errors of the fixed effects computed from `vcov(m, est)`,
+e.g. with the sandwich estimators from Vcov.jl.
+
+For rank-deficient models, the standard errors of the pivoted-out coefficients are `NaN`.
+"""
+function StatsAPI.stderror(m::MixedModel, est::CovarianceEstimator)
+    return sqrt.(diag(vcov(m, est)))
 end
 
 StatsModels.formula(m::MixedModel) = m.formula
