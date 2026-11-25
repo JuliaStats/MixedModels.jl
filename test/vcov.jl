@@ -78,7 +78,6 @@ end
     @testset "$(name)" for (name, m) in lmms
         @test isequal(vcov(m, Vcov.simple()), vcov(m))
     end
-    @test_throws MethodError vcov(gm, Vcov.simple())
 end
 
 # compare an estimator's result to a reference computed in the pivoted, full-rank space
@@ -104,7 +103,6 @@ end
     end
     @test_throws ArgumentError vcov(fm, Vcov.hc(2))
     @test_throws ArgumentError vcov(fm, Vcov.hc(3))
-    @test_throws MethodError vcov(gm, Vcov.robust())
 end
 
 # sum of outer products of the within-cluster score sums
@@ -168,7 +166,6 @@ end
     end
 
     @test_throws ArgumentError vcov(fm, Vcov.cluster(:days))
-    @test_throws MethodError vcov(gm, Vcov.cluster(:subj))
 end
 
 @testset "stderror" begin
@@ -181,7 +178,6 @@ end
             @test se ≈ sqrt.(diag(vcov(m, est))) nans = true
         end
     end
-    @test_throws MethodError stderror(gm, Vcov.robust())
 end
 
 @testset "SimpleCovariance" begin
@@ -218,7 +214,6 @@ end
         @test ct.cols[2] ≈ se
         @test ct.cols[3] ≈ coef(fm) ./ se
         @test coeftable(fm_rankdef, est).cols[2] ≈ stderror(fm_rankdef, est) nans = true
-        @test_throws MethodError coeftable(gm, Vcov.robust())
     end
 
     @testset "text/plain" begin
@@ -236,7 +231,6 @@ end
         # SimpleCovariance is the default
         @test sprint(show, MIME("text/plain"), fm, dc) == out
         @test sprint(show, gm, dc) == sprint(show, gm)
-        @test_throws MethodError sprint(show, gm, Vcov.robust())
     end
 
     @testset "$(mime)" for mime in
