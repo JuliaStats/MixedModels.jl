@@ -69,11 +69,13 @@ function MixedModels.optimize!(m::LinearMixedModel, ::NLoptBackend;
                 end
             catch ex
                 # This can happen when the optimizer drifts into an area where
-                # there isn't enough shrinkage. Why finitial? Generally, it will
-                # be the (near) worst case scenario value, so the optimizer won't
-                # view it as an optimum. Using Inf messes up the quadratic
-                # approximation in BOBYQA. A zero gradient is the least harmful
-                # signal we can hand a line search in that state.
+                # there isn't enough shrinkage. Why finitial? It is the value at the
+                # starting point, so the failed point is never better than a point the
+                # optimizer has already evaluated and won't be returned as the optimum.
+                # This holds for a warm start too, where finitial is close to the minimum.
+                # Using Inf messes up the quadratic approximation in BOBYQA.
+                # A zero gradient is the least harmful signal we can hand a line
+                # search in that state.
                 ex isa PosDefException || rethrow()
                 isempty(g) || fill!(g, false)
                 optsum.finitial
@@ -203,6 +205,7 @@ function MixedModels.profilevc(obj, optsum::OptSummary, ::NLoptBackend; kwargs..
     NLopt.min_objective!(opt, obj)
     fmin, xmin, ret = NLopt.optimize!(opt, copyto!(optsum.final, optsum.initial))
     _check_nlopt_return(ret)
+    obj(xmin)   # leave the model at the minimizer, not the last evaluation
 
     return fmin, xmin
 end
@@ -214,6 +217,7 @@ function MixedModels.profileobj!(obj,
     NLopt.min_objective!(opt, obj)
     fmin, xmin, ret = NLopt.optimize(opt, copyto!(osj.final, osj.initial))
     _check_nlopt_return(ret)
+    obj(xmin)   # leave the model at the minimizer, not the last evaluation
     rectify!(m)
     return fmin
 end

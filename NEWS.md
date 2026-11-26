@@ -7,8 +7,23 @@ MixedModels vX.Y.Z Release Notes
 - The per-face and per-block arithmetic in `objective_gradient!` is now unrolled into statically sized kernels for term dimensions up to 4, instead of issuing a `mul!` per face or per nonzero block.  Those products are at most 4×4, far too small to amortize a BLAS call, so the dispatch and setup dominated the handful of flops.  Gradient evaluation is roughly 1.6× faster on `d3` with vector-valued terms, 1.8× with scalar terms, 1.1× on the maximal `kb07` model, and 3× on small nested models; models dominated by the large triangular solves in `L⁻¹`, such as `insteval`, are unchanged.  Accumulating each face in registers and writing back once reorders the additions, so gradient components change in the last few bits.
 - The ForwardDiff extension has been reworked to reuse the core linear-algebra routines (which have gained generic fallback methods for element types without BLAS/LAPACK support) instead of maintaining parallel `fd_*` implementations. The objective it differentiates now profiles `σ` (or holds it at `optsum.sigma` when fixed), matching `objective`, so `ForwardDiff.gradient` and `ForwardDiff.hessian` now refer to the profiled objective; the Hessian of a model fitted with a fixed `σ` is now computed at that fixed value. `fd_deviance` also now includes the constant weights term for weighted models, matching `objective`.
 
+MixedModels v5.11.0 Release Notes
+================================
+- Numerous correctness fixes for likelihood profiles (`profile`) and the confidence intervals computed from them (`confint(::MixedModelProfile)`). Several of these change previously reported intervals. [#917]
+  - The fixed-effects coefficients are no longer profiled for models fit by REML, since they are integrated out of the REML criterion; a warning suggests refitting by maximum likelihood. The previous fixed-effects profiles for REML fits compared ML and REML objectives and were not meaningful. The workaround that swapped flipped confidence limits for REML fits ([#785]) has been removed, as the flipped limits were a symptom of this problem.
+  - Fixed-effects profiles now account for the model weights, use the correct coefficient for rank-deficient models (which previously could also profile indefinitely), and report the correct correlations in the profile table.
+  - The profile of a variance component at zero is now computed exactly rather than borrowed from other profiles, and the profiles of variance components now extend until they reach the threshold. For example, the lower 95% limit for the standard deviation of the random slopes in `reaction ~ 1 + days + (1 + days | subj)` for the `sleepstudy` data is now 3.80 instead of 0.
+  - Variance components of `zerocorr` terms are no longer silently omitted from `confint`, and `σs` and `σρs` always report non-negative standard deviations.
+  - Profiling no longer fails for responses on a small scale, for correlated random-effects terms with the PRIMA backend, when a row of the relative covariance factor is zero, or when the profile of a variance component reaches zero for a correlated term.
+  - Profiles of θ or of the variance components that are flat or not monotone, e.g. for poorly identified models, no longer abort profiling. Instead, the affected splines are omitted from the profile with a warning, so the `fwd` and `rev` fields may not contain every parameter. `confint` reports such parameters with their estimate and `NaN` limits instead of omitting them.
+  - When profiling finds an objective value below the reported minimum, i.e. the model fit had not converged, an informative `ArgumentError` is thrown instead of a `DomainError`.
+  - `profile` now restores all of the model's `OptSummary` afterwards, including `feval` and `finitial`.
+  - Profiling is very slightly faster: the refits in the profiles of σ and the fixed effects are warm started from the previous point, and a duplicate optimization in the θ profiles has been removed.
+- `refit!` and `unfit!` for `LinearMixedModel` accept a `warm_start` keyword argument to start the optimization from the current parameter estimates instead of the default initial values. [#917]
+- The PRIMA backend now starts the optimization from `optsum.initial`, as the NLopt backend does. [#917]
+
 MixedModels v5.10.0 Release Notes
-=================================
+================================
 - Package extension for [Vcov.jl](https://github.com/FixedEffects/Vcov.jl) providing sandwich estimators of the covariance of the fixed effects of a `LinearMixedModel`: `vcov(m, Vcov.cluster(...))` (cluster-robust CR1, one- or multiway, clustering on grouping factors of the model or user-supplied clusters), `vcov(m, Vcov.robust())` (heteroskedasticity-robust HC1), and `vcov(m, Vcov.simple())` (equivalent to `vcov(m)`). The estimators use the GLS bread and scores and do not form the marginal covariance matrix of the response. GLMMs are not (yet) supported. [#768]
 - `vcov`, `stderror`, `coeftable` and `show` for `MixedModel`s accept a covariance estimator (a `StatsBase.CovarianceEstimator`, e.g. from Vcov.jl) as an optional final positional argument, e.g. `stderror(m, Vcov.cluster(:subj))` or `coeftable(m, Vcov.cluster(:subj))`. The default, `StatsBase.SimpleCovariance()`, is the model-based estimator. [#768]
 
@@ -837,6 +852,7 @@ Package dependencies
 [#911]: https://github.com/JuliaStats/MixedModels.jl/issues/911
 [#915]: https://github.com/JuliaStats/MixedModels.jl/issues/915
 [#916]: https://github.com/JuliaStats/MixedModels.jl/issues/916
+[#917]: https://github.com/JuliaStats/MixedModels.jl/issues/917
 [#918]: https://github.com/JuliaStats/MixedModels.jl/issues/918
 [#919]: https://github.com/JuliaStats/MixedModels.jl/issues/919
 [#924]: https://github.com/JuliaStats/MixedModels.jl/issues/924
