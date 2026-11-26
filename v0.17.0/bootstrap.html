@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Parametric bootstrap for linear mixed-effects models · MixedModels</title><link href="https://cdnjs.cloudflare.com/ajax/libs/normalize/4.2.0/normalize.min.css" rel="stylesheet" type="text/css"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.2.0/require.min.js" data-main="assets/documenter.js"></script><script src="siteinfo.js"></script><script src="../versions.js"></script><link href="assets/documenter.css" rel="stylesheet" type="text/css"/></head><body><nav class="toc"><a href="index.html"><img class="logo" src="assets/logo.png" alt="MixedModels logo"/></a><h1>MixedModels</h1><select id="version-selector" onChange="window.location.href=this.value" style="visibility: hidden"></select><form class="search" id="search-form" action="search.html"><input id="search-query" name="q" type="text" placeholder="Search docs"/></form><ul><li><a class="toctext" href="index.html">MixedModels.jl Documentation</a></li><li><a class="toctext" href="constructors.html">Model constructors</a></li><li><a class="toctext" href="optimization.html">Details of the parameter estimation</a></li><li class="current"><a class="toctext" href="bootstrap.html">Parametric bootstrap for linear mixed-effects models</a><ul class="internal"><li><a class="toctext" href="#The-parametric-bootstrap-1">The parametric bootstrap</a></li></ul></li><li><a class="toctext" href="SimpleLMM.html">A Simple, Linear, Mixed-effects Model</a></li><li><a class="toctext" href="MultipleTerms.html">Models With Multiple Random-effects Terms</a></li><li><a class="toctext" href="SingularCovariance.html">Singular covariance estimates in random regression models</a></li><li><a class="toctext" href="SubjectItem.html">-</a></li></ul></nav><article id="docs"><header><nav><ul><li><a href="bootstrap.html">Parametric bootstrap for linear mixed-effects models</a></li></ul><a class="edit-page" href="https://github.com/dmbates/MixedModels.jl/blob/master/docs/src/bootstrap.md"><span class="fa"></span> Edit on GitHub</a></nav><hr/><div id="topbar"><span>Parametric bootstrap for linear mixed-effects models</span><a class="fa fa-bars" href="#"></a></div></header><h1><a class="nav-anchor" id="Parametric-bootstrap-for-linear-mixed-effects-models-1" href="#Parametric-bootstrap-for-linear-mixed-effects-models-1">Parametric bootstrap for linear mixed-effects models</a></h1><p>Julia is well-suited to implementing bootstrapping and other simulation-based methods for statistical models. The <code>bootstrap!</code> function in the <a href="https://github.com/dmbates/MixedModels.jl">MixedModels package</a> provides an efficient parametric bootstrap for linear mixed-effects models, assuming that the results of interest from each simulated response vector can be incorporated into a vector of floating-point values.</p><h2><a class="nav-anchor" id="The-parametric-bootstrap-1" href="#The-parametric-bootstrap-1">The parametric bootstrap</a></h2><p><a href="https://en.wikipedia.org/wiki/Bootstrapping_(statistics)">Bootstrapping</a> is a family of procedures for generating sample values of a statistic, allowing for visualization of the distribution of the statistic or for inference from this sample of values.</p><p>A _parametric bootstrap_ is used with a parametric model, <code>m</code>, that has been fitted to data. The procedure is to simulate <code>n</code> response vectors from <code>m</code> using the estimated parameter values and refit <code>m</code> to these responses in turn, accumulating the statistics of interest at each iteration.</p><p>The parameters of a linear mixed-effects model as fit by the <code>lmm</code> function are the fixed-effects parameters, <code>β</code>, the standard deviation, <code>σ</code>, of the per-observation noise, and the covariance parameter, <code>θ</code>, that defines the variance-covariance matrices of the random effects.</p><p>For example, a simple linear mixed-effects model for the <code>Dyestuff</code> data in the <a href="http://github.com/lme4/lme4"><code>lme4</code></a> package for <a href="https://www.r-project.org"><code>R</code></a> is fit by</p><pre><code class="language-julia">julia&gt; using DataFrames, MixedModels, RData, Gadfly
+</code></pre><pre><code class="language-julia">julia&gt; ds = names!(dat[:Dyestuff], [:Batch, :Yield])
+30×2 DataFrames.DataFrame
+│ Row │ Batch │ Yield  │
+├─────┼───────┼────────┤
+│ 1   │ A     │ 1545.0 │
+│ 2   │ A     │ 1440.0 │
+│ 3   │ A     │ 1440.0 │
+│ 4   │ A     │ 1520.0 │
+│ 5   │ A     │ 1580.0 │
+│ 6   │ B     │ 1540.0 │
+│ 7   │ B     │ 1555.0 │
+│ 8   │ B     │ 1490.0 │
+⋮
+│ 22  │ E     │ 1630.0 │
+│ 23  │ E     │ 1515.0 │
+│ 24  │ E     │ 1635.0 │
+│ 25  │ E     │ 1625.0 │
+│ 26  │ F     │ 1520.0 │
+│ 27  │ F     │ 1455.0 │
+│ 28  │ F     │ 1450.0 │
+│ 29  │ F     │ 1480.0 │
+│ 30  │ F     │ 1445.0 │
+
+julia&gt; m1 = fit(LinearMixedModel, @formula(Yield ~ 1 + (1 | Batch)), ds)
+Linear mixed model fit by maximum likelihood
+ Formula: Yield ~ 1 + (1 | Batch)
+   logLik   -2 logLik     AIC        BIC    
+ -163.66353  327.32706  333.32706  337.53065
+
+Variance components:
+              Column    Variance  Std.Dev. 
+ Batch    (Intercept)  1388.3332 37.260344
+ Residual              2451.2500 49.510100
+ Number of obs: 30; levels of grouping factors: 6
+
+  Fixed-effects parameters:
+             Estimate Std.Error z value P(&gt;|z|)
+(Intercept)    1527.5   17.6946  86.326  &lt;1e-99
+
+</code></pre><p>Now bootstrap the model parameters</p><pre><code class="language-julia">julia&gt; results = bootstrap(100_000, m1);
+
+julia&gt; showcompact(names(results))
+Symbol[:obj, :σ, :β₁, :θ₁, :σ₁]</code></pre><p>The results for each bootstrap replication are stored in the columns of the matrix passed in as the first argument.  A density plot of the bootstrapped values of <code>σ</code> is created as</p><pre><code class="language-julia">
+plot(results, x = :σ, Geom.density, Guide.xlabel(&quot;Parametric bootstrap estimates of σ&quot;))</code></pre><p><img src="assets/bootstrap_6_1.svg" alt="Density of parametric bootstrap estimates of σ from model m1"/></p><p><img src="assets/bootstrap_7_1.svg" alt="Density of parametric bootstrap estimates of σ₁ from model m1"/></p><p><img src="assets/bootstrap_8_1.svg" alt="Histogram of parametric bootstrap estimates of σ₁ from model m1"/></p><p>The distribution of the bootstrap samples of <code>σ</code> is a bit skewed but not terribly so.  However, the distribution of the bootstrap samples of the estimate of <code>σ₁</code> is highly skewed and has a spike at zero.</p><footer><hr/><a class="previous" href="optimization.html"><span class="direction">Previous</span><span class="title">Details of the parameter estimation</span></a><a class="next" href="SimpleLMM.html"><span class="direction">Next</span><span class="title">A Simple, Linear, Mixed-effects Model</span></a></footer></article></body></html>
