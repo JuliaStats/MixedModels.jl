@@ -12,19 +12,18 @@ on:
   pull_request:
     branches:
       - main
-      - v3.x
     paths-ignore:
       - 'LICENSE.md'
       - 'README.md'
 jobs:
   Documenter:
     name: Documentation
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@v7
       - uses: julia-actions/setup-julia@v3
         with:
-          version: 'min'
+          version: '1'
       - uses: julia-actions/cache@v3
         with:
             cache-compiled: "true"
