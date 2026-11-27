@@ -19,6 +19,14 @@ jobs:
   Documenter:
     name: Documentation
     runs-on: ubuntu-26.04
+    # GitHub-hosted runners vary in CPU microarchitecture, and a pkgimage cache built
+    # natively on one runner can be rejected on another, forcing recompilation.
+    # Pinning a portable target keeps the cache reusable across runners.
+    # This is only done for the docs: the test jobs deliberately compile natively
+    # so that we exercise the most recent SIMD features in the numerics.
+    # See https://discourse.julialang.org/t/138390
+    env:
+      JULIA_CPU_TARGET: "x86-64-v3"
     steps:
       - uses: actions/checkout@v7
       - uses: julia-actions/setup-julia@v3
