@@ -1,3 +1,8 @@
+MixedModels v5.11.1 Release Notes
+================================
+- Computing `allpars`, `σs` and `shortestcovint` for a `MixedModelBootstrap` is now linear instead of quadratic in the number of replicates. For 10,000 replicates, `shortestcovint` is roughly 70–80x faster. [#925]
+- The NLopt backend no longer returns a parameter vector that was never evaluated. NLopt's NEWUOA optimizer, the default for linear mixed models, can return a point built from uninitialized memory when it stops during its initialization phase, e.g. because `maxfeval` or `maxtime` was reached ([stevengj/nlopt#667](https://github.com/stevengj/nlopt/issues/667)). This could result in a `PosDefException` or a meaningless model. The best evaluated point is now used instead. [#925]
+
 MixedModels v5.11.0 Release Notes
 ================================
 - Numerous correctness fixes for likelihood profiles (`profile`) and the confidence intervals computed from them (`confint(::MixedModelProfile)`). Several of these change previously reported intervals. [#917]
@@ -846,3 +851,4 @@ Package dependencies
 [#918]: https://github.com/JuliaStats/MixedModels.jl/issues/918
 [#919]: https://github.com/JuliaStats/MixedModels.jl/issues/919
 [#924]: https://github.com/JuliaStats/MixedModels.jl/issues/924
+[#925]: https://github.com/JuliaStats/MixedModels.jl/issues/925
