@@ -459,7 +459,8 @@ function setθ!(bsamp::MixedModelFitCollection{T}, θ::AbstractVector{T}) where 
 end
 
 function setθ!(bsamp::MixedModelFitCollection, i::Integer)
-    return setθ!(bsamp, bsamp.θ[i])
+    # `bsamp.θ` materializes θ for every fit, which made callers looping over fits O(n²)
+    return setθ!(bsamp, getfield(bsamp, :fits)[i].θ)
 end
 
 _getdata(x::Diagonal) = x
