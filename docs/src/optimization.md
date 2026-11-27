@@ -104,6 +104,9 @@ In the types of `LinearMixedModel` available through the `MixedModels` package, 
 For the simple example
 ```@setup Optimization
 using DisplayAs
+# shorten the benchmark time budget (default: 5 s) to speed up the docs build
+using BenchmarkTools
+BenchmarkTools.DEFAULT_PARAMETERS.seconds = 1
 ```
 ```@example Optimization
 using BenchmarkTools, DataFrames, MixedModels, MixedModelsDatasets
@@ -397,7 +400,12 @@ DisplayAs.Text(ans) # hide
 The alternative algorithm is to use PIRLS to find the conditional mode of the random effects, given $\beta$ and $\theta$ and then use the general nonlinear optimizer to fit with respect to both $\beta$ and $\theta$.
 
 ```@example Optimization
-mdl1 = @btime fit(MixedModel, vaform, verbagg, Bernoulli())
+mdl1 = GeneralizedLinearMixedModel(vaform, verbagg, Bernoulli())
+# evaluate the objective once at the starting values so that
+# the timing below excludes compilation, but without
+# doing a full fit twice
+objective!(mdl1, vcat(mdl1.β, mdl1.θ))
+@time fit!(mdl1)
 DisplayAs.Text(ans) # hide
 ```
 

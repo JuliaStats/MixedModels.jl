@@ -53,6 +53,7 @@ function MixedModels.optimize!(m::LinearMixedModel, ::NLoptBackend;
     NLopt.min_objective!(opt, obj)
     fmin, xmin, ret = NLopt.optimize!(opt, copyto!(optsum.final, optsum.initial))
     ProgressMeter.finish!(prog)
+    fmin = _best_evaluated!(xmin, fmin, optsum.fitlog)
     optsum.feval = opt.numevals
     optsum.returnvalue = ret
     _check_nlopt_return(ret)
@@ -89,12 +90,34 @@ function MixedModels.optimize!(m::GeneralizedLinearMixedModel, ::NLoptBackend;
     optsum.finitial = _objective!(m, optsum.initial, Val(fast); verbose, nAGQ)
     fmin, xmin, ret = NLopt.optimize(opt, copyto!(optsum.final, optsum.initial))
     ProgressMeter.finish!(prog)
+    fmin = _best_evaluated!(xmin, fmin, optsum.fitlog)
 
     optsum.feval = opt.numevals
     optsum.returnvalue = ret
     _check_nlopt_return(ret)
 
     return xmin, fmin
+end
+
+"""
+    _best_evaluated!(xmin, fmin, fitlog)
+
+Return the objective value for the optimizer result `xmin`, replacing `xmin` in place
+with the best point in `fitlog` if `xmin` was never evaluated.
+
+NEWUOA can return a point that it never evaluated, built from uninitialized memory,
+when it stops during its initialization phase (e.g. on `maxfeval` or `maxtime`),
+so we fall back to the best point that was actually evaluated.
+See https://github.com/stevengj/nlopt/issues/667
+"""
+function _best_evaluated!(xmin, fmin, fitlog)
+    isempty(fitlog) && return fmin
+    if all(r -> r.θ != xmin, fitlog)
+        best = argmin(r -> r.objective, fitlog)
+        copyto!(xmin, best.θ)
+        fmin = best.objective
+    end
+    return fmin
 end
 
 function NLopt.Opt(optsum::OptSummary)
