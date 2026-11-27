@@ -16,6 +16,9 @@ These data sets include the `dyestuff` and `dyestuff2` data sets.
 
 ```@setup Constructors
 using DisplayAs
+# shorten the benchmark time budget (default: 5 s) to speed up the docs build
+using BenchmarkTools
+BenchmarkTools.DEFAULT_PARAMETERS.seconds = 1
 ```
 
 ```@example Constructors

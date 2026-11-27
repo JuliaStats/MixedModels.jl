@@ -104,6 +104,9 @@ In the types of `LinearMixedModel` available through the `MixedModels` package, 
 For the simple example
 ```@setup Optimization
 using DisplayAs
+# shorten the benchmark time budget (default: 5 s) to speed up the docs build
+using BenchmarkTools
+BenchmarkTools.DEFAULT_PARAMETERS.seconds = 1
 ```
 ```@example Optimization
 using BenchmarkTools, DataFrames, MixedModels, MixedModelsDatasets
