@@ -108,6 +108,7 @@ with the best point in `fitlog` if `xmin` was never evaluated.
 NEWUOA can return a point that it never evaluated, built from uninitialized memory,
 when it stops during its initialization phase (e.g. on `maxfeval` or `maxtime`),
 so we fall back to the best point that was actually evaluated.
+See https://github.com/stevengj/nlopt/issues/667
 """
 function _best_evaluated!(xmin, fmin, fitlog)
     isempty(fitlog) && return fmin
