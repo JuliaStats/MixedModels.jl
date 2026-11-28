@@ -71,9 +71,10 @@ perturb(θ::AbstractVector) = θ .* 0.75 .+ 0.125
             ("scalar-crossed", first(fms[:kb07])),
             ("vector-crossed", last(fms[:kb07]))),
         REML in (false, true)
-        # subject × item crossing exercises the sparse/BLAS-3 off-diagonal path
-        # (scalar terms) and the dense _densepair! path (vector terms); the REML
-        # cases are the capability the earlier ML-only prototype could not handle
+        # kb07 is fully crossed, so A[2,1] is dense and both models take the
+        # `_densepair!` path (the sparse and BLAS-3 scalar paths are exercised by the
+        # synthetic designs below); the REML cases are the capability the earlier
+        # ML-only prototype could not handle
         m = fit(MixedModel, f, dataset(:kb07); REML, progress=false)
         θ = perturb(m.optsum.initial)
         g = similar(θ)

@@ -16,14 +16,17 @@ fixed-effects/response block.
 
 ## 1. The objective is affine in $\log L_{jj}$
 
-**Claim.** For all three fitting criteria the objective has the form
+**Claim.** For all three fitting criteria the gradient has the form
 
 $$
-\text{obj} \;=\; 2\sum_j w_j \log L_{jj} \;+\; \text{const},
+\frac{\partial\,\text{obj}}{\partial\theta_p} \;=\; 2\sum_j w_j\, \frac{\partial \log L_{jj}}{\partial\theta_p},
 $$
 
-with weights $w_j$ that differ only by criterion. The gradient machinery is identical
-across criteria; only the weight vector $w$ changes.
+with weights $w_j$ that differ only by criterion. For ML and REML the objective itself is
+affine in $\log L_{jj}$, $\text{obj} = 2\sum_j w_j \log L_{jj} + \text{const}$, with
+constant weights; for fixed $\sigma$ only the gradient has this form, with an $\ell_{yy}$
+weight that depends on $\theta$. The gradient machinery is identical across criteria;
+only the weight vector $w$ changes.
 
 **Derivation.** Let $r^2 = \text{pwrss}$ be the penalized residual sum of squares. In the
 augmented factorization $r^2 = \ell_{yy}^2$, where $\ell_{yy} = L_{nb,nb}[\text{last}]$
@@ -123,9 +126,9 @@ $$
 $$
 
 with $\langle A,B\rangle = \sum_{ij}A_{ij}B_{ij}$ (both operands symmetric). **$S$ does not
-depend on $p$.** So $X = L^{-1}$ is formed once, the Gram matrix $S = X^\top W X$ is
-formed once, and each of the $P$ gradient components is a cheap contraction of the sparse
-$\dot\Omega_p$ against $S$.
+depend on $p$.** So $X = L^{-1}$ is formed once, the blocks of $S = X^\top W X$ that the
+contraction touches are formed once, and the whole gradient follows from contracting the
+sparse $\dot\Omega_p$ against $S$.
 
 Blockwise, since $X$ is lower triangular,
 
@@ -133,10 +136,10 @@ $$
 S[r,b] = \sum_{s \ge \max(r,b)} X[s,r]^\top W_s\, X[s,b].
 $$
 
-This is the whole reason the file is reorganized around a **workspace holding the lower
-blocks of $X$ and the blocks of $S$**, and it is the source of the ~60× speedup: the
-prototype's per-parameter two-sided solve is replaced by one blocked inverse plus $O(P)$
-small contractions.
+This is why `src/gradient.jl` is organized around a **workspace holding the lower blocks
+of $X$ and the needed blocks of $S$**. The prototype's $P$ per-parameter two-sided solves
+become one blocked inverse plus one contraction per nonzero block pair of $A$,
+independent of $P$ (§4).
 
 ---
 
@@ -145,40 +148,40 @@ small contractions.
 Let `parmap[p] = (b,i,j)`, i.e. $\theta_p$ is entry $(i,j)$ of $\Lambda_b$, so
 $\partial\Lambda_b/\partial\theta_p = E_{ij}$ (the single-entry indicator) and every other
 $\Lambda$ is constant. The system blocks are $\Omega[r,c] = \Lambda_r^\top A[r,c]\Lambda_c$
-on RE blocks (with $\Lambda_{nb}=I$ on the $[X\,y]$ block, and constant $+I$ augmentation
-whose derivative vanishes). Therefore $\dot\Omega_p$ is supported only on **block row/column
-$b$**:
+(with $\Lambda_{nb}=I$ for the $[X\,y]$ block, and a constant $+I$ on the RE diagonal
+blocks whose derivative vanishes). Therefore $\dot\Omega_p$ is supported on block row and
+column $b$; in the lower triangle,
 
 $$
-\dot\Omega_p[b,b] = E_{ij}^\top A[b,b]\Lambda_b + \Lambda_b^\top A[b,b] E_{ij},
-\qquad
-\dot\Omega_p[r,b] = \Lambda_r^\top A[r,b]\,E_{ij}\ \ (r>b),
+\begin{aligned}
+\dot\Omega_p[b,b] &= E_{ij}^\top A[b,b]\Lambda_b + \Lambda_b^\top A[b,b] E_{ij}, \\
+\dot\Omega_p[r,b] &= \Lambda_r^\top A[r,b]\,E_{ij} && (r>b,\ \text{including } r = nb), \\
+\dot\Omega_p[b,c] &= E_{ij}^\top A[b,c]\,\Lambda_c && (c<b).
+\end{aligned}
 $$
 
-and the mirror images on block column $b$.
-
-**Reducing $\langle S[r,b],\dot\Omega_p[r,b]\rangle$ to one entry.** With $C := \Lambda_r^\top A[r,b]$,
-the matrix $C E_{ij}$ has its $j$-th column equal to the $i$-th column of $C$ and is zero
-elsewhere, so
+**Each block contributes one entry of a $k_b\times k_b$ matrix.** With $C_1 := \Lambda_r^\top A[r,b]$,
+the matrix $C_1 E_{ij}$ has its $j$-th column equal to the $i$-th column of $C_1$ and is
+zero elsewhere, so
 
 $$
-\langle S[r,b],\, C E_{ij}\rangle
-= \sum_a S[r,b]_{a j}\,C_{a i}
-= \bigl(C^\top S[r,b]\bigr)_{ij}
-= \bigl((\Lambda_r^\top A[r,b])^\top S[r,b]\bigr)_{ij}.
+\langle S[r,b],\, C_1 E_{ij}\rangle = \sum_a S[r,b]_{a j}\,(C_1)_{a i} = \bigl(C_1^\top S[r,b]\bigr)_{ij}.
 $$
 
-So the contribution of pair $(r,b)$ to term $b$ is the $(i,j)$ entry of a single
-$k_b\times k_b$ matrix — **for all parameters of the term at once**. Collect every
-contribution touching term $b$ into an accumulator $G_b$:
+Likewise, with $C_2 := A[b,c]\Lambda_c$, the matrix $E_{ij}^\top C_2$ has its $j$-th row
+equal to the $i$-th row of $C_2$, so
+$\langle S[b,c],\, E_{ij}^\top C_2\rangle = \bigl(C_2\, S[b,c]^\top\bigr)_{ij}$.
+
+The same $k_b\times k_b$ matrix serves **all parameters of term $b$ at once**. Collect
+every contribution touching term $b$ into an accumulator
 
 $$
-G_b \;=\; (\Lambda_b^\top A[b,b])^\top S[b,b]\big|_{\text{diag part}}
-\;+\; \sum_{r\ne b}(\Lambda_r^\top A[r,b])^\top S[r,b]
-\;+\; A[nb,b]^\top S[nb,b].
+G_b \;=\; (\Lambda_b^\top A[b,b])^\top S[b,b]
+\;+\; \sum_{r>b}(\Lambda_r^\top A[r,b])^\top S[r,b]
+\;+\; \sum_{c<b} A[b,c]\Lambda_c\, S[b,c]^\top .
 $$
 
-**The factor of 2.** For the diagonal block, using symmetry of $S$,
+**The factor of 2.** For the diagonal block, using symmetry of $S$ and $A[b,b]$,
 
 $$
 \langle S[b,b],\dot\Omega_p[b,b]\rangle
@@ -186,18 +189,19 @@ $$
 = 2\bigl((\Lambda_b^\top A[b,b])^\top S[b,b]\bigr)_{ij}.
 $$
 
-For each off-diagonal block, both $(r,b)$ and $(b,r)$ appear in the symmetric trace and are
-equal, again contributing a factor 2. Hence
+Each off-diagonal block appears twice in the symmetric trace, at $(r,b)$ and $(b,r)$,
+again contributing a factor 2. Hence
 
 $$
 \frac{\partial\,\text{obj}}{\partial\theta_p} = 2\,G_b[i,j],
 $$
 
-which is precisely `g[p] = 2 * w.G[b][i,j]`. In the implementation each pair updates *both*
-term accumulators (`_densepair!` builds $C_1 = \Lambda_r^\top A[r,b]$ for $G_b$ and
-$C_2 = A[r,b]\Lambda_b$ for $G_r$), and the sum over grouping-factor levels is the
-face-by-face loop (`_facecontract!` / `_facecontract_rows!`). $\dot\Omega_p$ is **never
-materialized** — the prototype's `copyskip!`/`initialize_blocks!` machinery is gone.
+which is `g[p] = 2 * w.G[b][i,j]`. Each off-diagonal pair $(r,b)$, $r>b$, updates both
+accumulators: $G_b$ from $C_1 = \Lambda_r^\top A[r,b]$ and $G_r$ from
+$C_2 = A[r,b]\Lambda_b$ (the $c<b$ case with $r$ in the role of $b$). The sum over the
+levels of a grouping factor is the face-by-face loop (`_facecontract!` /
+`_facecontract_rows!`). $\dot\Omega_p$ is **never materialized**; the prototype's
+`copyskip!`/`initialize_blocks!` machinery is gone.
 
 ---
 
@@ -205,76 +209,91 @@ materialized** — the prototype's `copyskip!`/`initialize_blocks!` machinery is
 
 | Correction | Prototype | Rewrite | Why it matters |
 |---|---|---|---|
-| **REML** | `gradient!` documented as the *ML* objective; the trace loop stops at block $k$ (FE block dropped) and hardcodes $n\cdot\ell_{yy}$. | `wx = REML ? 1 : 0` includes the FE block; `_yweight` uses $n-p$. | Prototype returns a **wrong vector** for REML fits. §1 gives the exact FE and $\ell_{yy}$ weights. |
+| **REML** | `gradient!` documented as the *ML* objective; the trace sums only the RE diagonal blocks (FE block dropped) and hardcodes $n\cdot\ell_{yy}$. | `wx = REML ? 1 : 0` includes the FE block; `_yweight` uses $n-p$. | Prototype returns a **wrong vector** for REML fits. §1 gives the exact FE and $\ell_{yy}$ weights. |
 | **Fixed $\sigma$** | not handled. | `_yweight = pwrss/σ²`. | Derived in §1; matches ForwardDiff/FiniteDiff on fixed-$\sigma$ fits. |
-| **Objective value** | `gradient!` returns only `g`. | `objective_gradient!` returns `objective(m)` too. | One traversal of $L$ yields value + gradient for the optimizer. |
-| **Vector diagonal path** | `Omega_dot_diag_block!(::Matrix)` throws `"Code not yet written for k > 1"`. | uniform handling via `lmulΛ!`/`rmulΛ!` + face contraction. | no size ceiling on term width. |
-| **Dead/debug code** | `@info`, commented reference blocks, `blks2dense` hardcoded to ≤4 blocks, duplicate `Lldiv!`. | removed. | maintainability. |
+| **Later terms of multi-term models** | for $\theta_p$ in term $b$, the blocks $\dot\Omega_p[b,c]$, $c<b$, are built as $\Lambda_b^\top A[b,c]E_{ij}$ (`initialize_blocks!`/`copyskip!`) instead of $E_{ij}^\top A[b,c]\Lambda_c$. | contracted against $C_2 = A[b,c]\Lambda_c$ (§4). | Prototype is wrong for every term after the first that shares a nonzero $A[b,c]$ with an earlier term: penicillin ML at a perturbed $\theta$, `sample` component −9.318 vs ForwardDiff −2.196. Single-term models (scalar or vector) agree. |
+| **Objective value** | `gradient!` returns only `g`. | `objective_gradient!` returns `objective(m)` too. | value and gradient from one call, as the optimizer needs. |
+| **Dense diagonal blocks of vector terms** | `Omega_dot_diag_block!(::Matrix)` throws `"Code not yet written for k > 1"` (the `UniformBlockDiagonal` method covers the usual case). | the same face contraction for every diagonal block type. | no block-type restriction. |
 
 ---
 
-## 6. Optimizations (all motivated by §3)
+## 6. Optimizations
 
-1. **Compute $X = L^{-1}$ once, lower blocks only** (`_invL!`). $S = X^\top W X$ needs only
-   the lower triangle; the prototype solved the full square block system, with transpose
-   copies, once per parameter.
-2. **Never materialize $\dot\Omega_p$** (§4). Its structure folds into face contractions
-   against the compact $A$ blocks.
-3. **Preallocated, concretely-typed `GradientWorkspace`.** Buffers ($X, S, C_1, C_2, G,
-   P_\text{panel}$) are allocated once and reused across every gradient call in the
-   optimizer loop. The abstract-eltype block storage is confined behind **function
-   barriers** (`_sparseacc`, `_gram*`), so the hot loops run type-stable — removing the
-   pervasive instability of the prototype's `AbstractMatrix`-typed arithmetic.
-4. **Sparse selected-entry path** (`_scalarpair!`). Between two scalar terms with sparse
-   $A[r,b]$, only the entries of $S[r,b]$ on $A$'s sparsity pattern are evaluated — no dense
-   $S$ block is formed. Decisive for crossed designs where $S[r,b]$ is huge but mostly
-   irrelevant.
-5. **BLAS-3 cross-term kernel** (`_crossacc_blas3!`, path `:scalar3`). When the
-   fill block $L[r,r]$ is dense (crossed subject×item), the $s=r$ term of the selected-entry
-   sum is bandwidth-bound BLAS-1 column dot products; a panelled ($P_\text{panel}=128$)
-   BLAS-3 product replaces them, materializing only a $q_r\times128$ slice at a time. Gated
-   on both dense fill *and* $A[r,b]$ density $>3\%$ so the extra flops pay off. No analogue
-   in the prototype.
-6. **`_mulsub!` sparse×`Diagonal` fast path** — writes $C \mathrel{-}= nz\cdot d$ directly
-   over nonzeros; the cleaned-up successor of the prototype's `mm_mul!` special case.
-7. **Sparse right-hand side for $X[c+1,c]$** (`_trimulsp!`, flag `sparserhs`). The diagonal
-   blocks of $X$ are inverted first (`trtri`/`tftri`, a third of the flops of a triangular
-   solve against the identity), so that when the only term of
-   $X[c+1,c] = -L[c+1,c+1]^{-1} L[c+1,c] X[c,c]$ is sparse (density $\le 3\%$, e.g. the
-   second of two crossed scalar factors) it is formed as the dense-triangular × sparse
-   product $X[c+1,c+1]\,(-L[c+1,c]X[c,c])$ at a cost proportional to the nonzeros, rather
-   than as a triangular solve against the densified right-hand side. On insteval this cut
-   the gradient from 169 ms to 70 ms (single-threaded BLAS).
+Items 1–3 follow directly from §3; the rest exploit the block structure of $L$ and $A$.
+
+1. **$X = L^{-1}$ once, lower blocks only** (`_invL!`). The diagonal blocks are inverted
+   first, by `trtri` (or `tftri` for RFP-packed blocks): a third of the flops of a
+   triangular solve against the identity. The prototype solved the full square block
+   system, with transpose copies, once per parameter.
+2. **$\dot\Omega_p$ is never materialized** (§4).
+3. **Preallocated `GradientWorkspace`.** The blocks of $X$ and $S$, $C_1$/$C_2$, $G$, the
+   panel scratch, the sparse right-hand-side buffers (`R`, `Xt`) and the per-pair route
+   (`path`) are allocated once and reused across the optimizer loop. Function barriers
+   (`_sparseacc`, `_selacc!`, `_gram*`) keep the hot loops type-stable despite the
+   abstractly typed block storage; an evaluation allocates less than 2 KB.
+4. **Structure-mirroring $X$.** The blocks of $X$ keep the types of the blocks of $L$:
+   `Diagonal`/`UniformBlockDiagonal` diagonal blocks stay block diagonal, RFP diagonal
+   blocks are inverted in packed storage, and for nested grouping factors the off-diagonal
+   blocks are `SparseMatrixCSC` sharing the pattern of $L$. The workspace is then of the
+   order of $L$ itself; a dense $X[1,1]$ for fggk21 ($q_1 = 541475$) would need 2.3 PB.
+5. **Selected entries of $S$.** For sparse $A[r,b]$ only the entries of $S[r,b]$ on the
+   pattern of $A$ are computed: accumulated directly between scalar terms (path `:scalar`,
+   `_scalarpair!`), otherwise into a sparse buffer mirroring $A$ (path `:selected`,
+   `_selectedpair!`). Dense $S$/$C_1$/$C_2$ buffers exist only for dense $A$ blocks (path
+   `:dense`).
+6. **BLAS-3 cross term** (path `:scalar3`, `_crossacc_blas3!`). Between scalar terms with a
+   dense fill block $L[r,r]$ and $A[r,b]$ density above 3%, the dominant $s=r$ term of the
+   selected-entry sum (bandwidth-bound BLAS-1 column dot products) is replaced by panelled
+   BLAS-3 products, `GRAD_PANEL` = 128 columns at a time.
+7. **Sparse right-hand side for $X[c+1,c]$** (`_trimulsp!`, flag `sparserhs`). When
+   $-L[c+1,c]X[c,c]$ is sparse (density at most 3%, e.g. the second of two crossed scalar
+   factors), $X[c+1,c] = X[c+1,c+1]\,(-L[c+1,c]X[c,c])$ is formed as a dense-triangular ×
+   sparse product, at a cost proportional to the nonzeros. This replaces a triangular solve
+   against the densified right-hand side; on insteval it cut the gradient from 169 ms to
+   70 ms (single-threaded BLAS).
+8. **Statically sized kernels.** The face and block products are $k\times k$ with
+   $k \le 4$ in practice, far too small for a BLAS call to pay off; `SMatrix` register
+   kernels replace the per-face `mul!` calls up to `GRAD_STATIC_K` (and, for
+   `_facecontract!`, `GRAD_STATIC_ROWS`).
 
 ---
 
 ## 7. Validation
 
 Cross-checked against `ForwardDiff.gradient` (which honors `optsum.REML` and fixed
-$\sigma$ in its objective), on the crossed kb07 subject×item design:
+$\sigma$ in its objective) on kb07. The design is fully crossed, so $A[2,1]$ is dense and
+both models take the `:dense` pair path.
 
-| Case | Path exercised | rel. error |
-|---|---|---|
-| ML @ perturbed θ | vector-term dense | 1.2e-13 |
-| REML @ perturbed θ | vector-term dense | 1.2e-13 |
-| ML scalar-crossed | sparse / BLAS-3 | ~1e-8* |
-| REML scalar-crossed | sparse / BLAS-3 | ~1e-7* |
+| Model | Criterion | rel. error, perturbed θ | rel. error, optimum | max. abs. error |
+|---|---|---|---|---|
+| scalar-crossed | ML | 6.7e-15 | 3.3e-8 | 3.1e-12 |
+| scalar-crossed | REML | 6.9e-15 | 6.0e-8 | 1.2e-12 |
+| vector-crossed | ML | 1.6e-14 | 5.5e-11 | 6.9e-12 |
+| vector-crossed | REML | 1.6e-14 | 4.8e-11 | 3.6e-12 |
 
-\*evaluated near the optimum, where $\|g\|\to0$ inflates the ratio; absolute residuals are
-near machine precision.
+The relative error is $\|g - g_\text{FD}\|/\|g_\text{FD}\|$. At the optimum
+$\|g\| \approx 10^{-5}$–$10^{-1}$ inflates it, while the absolute error stays near
+$10^{-12}$.
 
-Regression tests added to `test/grad.jl` parametrize over
-`{scalar, vector}-crossed × {ML, REML}` on kb07, asserting both the returned objective
-value and agreement with ForwardDiff (`rtol=1e-6, atol=1e-6`). The REML crossed cases are
-the capability the prototype could not produce correctly.
+`test/grad.jl` compares against ForwardDiff (`rtol` 1e-6 or tighter) for
+
+- every cached dyestuff, pastes, penicillin, sleepstudy and kb07 model, at the initial,
+  a perturbed and the fitted $\theta$;
+- REML, and fixed $\sigma$ (also against FiniteDiff);
+- the kb07 scalar- and vector-crossed models × {ML, REML};
+- nested grouping factors (sparse $X$ blocks), including three-level scalar nesting and
+  the fggk21 structure;
+- synthetic designs that take the `:scalar3` and sparse right-hand-side paths (dense and
+  RFP storage), each also against the path it replaces.
+
+The individual kernels are unit-tested on both sides of the static-size cutoffs.
 
 ---
 
 ## 8. Summary
 
-The prototype and the rewrite share the identity $(\star)$. The prototype evaluates it by
-forming and two-sided-solving the full $\dot\Omega_p$ per parameter, and is correct only
-for ML with free $\sigma$. The rewrite pushes $W$ through the trace to get the
-$p$-independent Gram matrix $S = L^{-\top}WL^{-1}$, builds it once, and contracts the sparse
-$\dot\Omega_p$ against it — yielding a correct ML/REML/fixed-$\sigma$ gradient that is
-allocation-free after warmup, with sparse and BLAS-3 fast paths for crossed designs.
+Both implementations start from $(\star)$. The prototype forms and two-sided-solves the
+full $\dot\Omega_p$ per parameter and is correct only for ML with free $\sigma$ and a
+single random-effects term. The rewrite builds the $p$-independent $S = L^{-\top}WL^{-1}$
+once and contracts it against the structure of $A$, giving a correct ML, REML and
+fixed-$\sigma$ gradient for any number of terms.
