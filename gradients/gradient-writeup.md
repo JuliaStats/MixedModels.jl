@@ -225,11 +225,11 @@ materialized** — the prototype's `copyskip!`/`initialize_blocks!` machinery is
    optimizer loop. The abstract-eltype block storage is confined behind **function
    barriers** (`_sparseacc`, `_gram*`), so the hot loops run type-stable — removing the
    pervasive instability of the prototype's `AbstractMatrix`-typed arithmetic.
-4. **Sparse selected-entry path** (`_sparsepair!`). Between two scalar terms with sparse
+4. **Sparse selected-entry path** (`_scalarpair!`). Between two scalar terms with sparse
    $A[r,b]$, only the entries of $S[r,b]$ on $A$'s sparsity pattern are evaluated — no dense
    $S$ block is formed. Decisive for crossed designs where $S[r,b]$ is huge but mostly
    irrelevant.
-5. **BLAS-3 cross-term kernel** (`_crossacc_blas3!`, gated by `_use_blas3_cross`). When the
+5. **BLAS-3 cross-term kernel** (`_crossacc_blas3!`, path `:scalar3`). When the
    fill block $L[r,r]$ is dense (crossed subject×item), the $s=r$ term of the selected-entry
    sum is bandwidth-bound BLAS-1 column dot products; a panelled ($P_\text{panel}=128$)
    BLAS-3 product replaces them, materializing only a $q_r\times128$ slice at a time. Gated
@@ -237,6 +237,14 @@ materialized** — the prototype's `copyskip!`/`initialize_blocks!` machinery is
    in the prototype.
 6. **`_mulsub!` sparse×`Diagonal` fast path** — writes $C \mathrel{-}= nz\cdot d$ directly
    over nonzeros; the cleaned-up successor of the prototype's `mm_mul!` special case.
+7. **Sparse right-hand side for $X[c+1,c]$** (`_trimulsp!`, flag `sparserhs`). The diagonal
+   blocks of $X$ are inverted first (`trtri`/`tftri`, a third of the flops of a triangular
+   solve against the identity), so that when the only term of
+   $X[c+1,c] = -L[c+1,c+1]^{-1} L[c+1,c] X[c,c]$ is sparse (density $\le 3\%$, e.g. the
+   second of two crossed scalar factors) it is formed as the dense-triangular × sparse
+   product $X[c+1,c+1]\,(-L[c+1,c]X[c,c])$ at a cost proportional to the nonzeros, rather
+   than as a triangular solve against the densified right-hand side. On insteval this cut
+   the gradient from 169 ms to 70 ms (single-threaded BLAS).
 
 ---
 

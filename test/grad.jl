@@ -8,7 +8,7 @@ using MixedModels
 using Test
 
 using MixedModels:
-    GradientWorkspace, GRAD_PANEL, _crossacc_blas3!, _use_blas3_cross,
+    GradientWorkspace, GRAD_PANEL, _crossacc_blas3!, _trimulsp!, _trmulT!,
     _mulsub!, _ldivL!, _patternmirror, _productcontained, _blockaligned,
     GRAD_STATIC_K, GRAD_STATIC_ROWS, ReMat, TriangularRFP, UniformBlockDiagonal,
     _facecontract!, _facecontract_rows!, _gramfaces_acc!, _selcontract!,
@@ -403,19 +403,62 @@ perturb(θ::AbstractVector) = θ .* 0.75 .+ 0.125
         m = LinearMixedModel(@formula(y ~ 1 + (1 | g) + (1 | h)), tbl; contrasts=gcontr)
         θ = [0.7, 1.3]
         updateL!(setθ!(m, θ))
-        wb = GradientWorkspace(m)                 # gate active
+        wb = GradientWorkspace(m)
+        @test wb.path[2, 1] === :scalar3          # dense crossing → BLAS-3
         ws = GradientWorkspace(m)
-        ws = GradientWorkspace(
-            ws.X, ws.S, ws.C1, ws.C2, ws.G, Matrix{Float64}(undef, 0, 0), ws.path
-        )
-        @test _use_blas3_cross(wb, m, 2, 1)       # dense crossing → BLAS-3
-        @test !_use_blas3_cross(ws, m, 2, 1)
+        ws.path[2, 1] = :scalar                   # force the BLAS-1 path
         gb = zeros(2)
         gs = zeros(2)
         objective_gradient!(wb, gb, m)
         objective_gradient!(ws, gs, m)
         @test gb ≈ gs rtol = 1e-10                # same math up to BLAS-3 vs BLAS-1 reassociation
         @test gb ≈ ForwardDiff.gradient(m, θ) rtol = 1e-7
+    end
+
+    @testset "triangular kernels n=$n" for n in (7, 8)
+        # odd and even orders exercise both packed RFP layouts
+        rng = StableRNG(n)
+        Xd = collect(LowerTriangular(randn(rng, n, n)))
+        Xp = TriangularRFP(copy(Xd), :L)
+        R = sprand(rng, n, 11, 0.3)
+        B = randn(rng, n, 5)
+        Xt = Matrix{Float64}(undef, n, n)
+        for X in (Xd, Xp)
+            @test _trimulsp!(Matrix{Float64}(undef, n, 11), X, R, Xt) ≈ Xd * R
+            @test _trmulT!(Matrix{Float64}(undef, n, 5), X, B) ≈ Xd' * B
+        end
+    end
+
+    @testset "sparse right-hand side for X[2,1] $(storage) $(first)" for
+        storage in ("dense", "RFP"), first in ("scalar", "vector")
+        # few observations per pair of levels: A[2,1] is sparse below the density gate,
+        # while the Cholesky fill makes L[2,2] dense.  A vector-valued first term makes
+        # X[1,1] UniformBlockDiagonal rather than Diagonal.
+        rng = StableRNG(17)
+        n, ng, nh = 1500, 400, 150
+        tbl = (; y=randn(rng, n), x=randn(rng, n),
+            g=categorical(rand(rng, 1:ng, n)), h=categorical(rand(rng, 1:nh, n)))
+        gcontr = Dict(:g => Grouping(), :h => Grouping())
+        f = if first == "scalar"
+            @formula(y ~ 1 + (1 | g) + (1 | h))
+        else
+            @formula(y ~ 1 + x + (1 + x | g) + (1 | h))
+        end
+        RFPthreshold = storage == "RFP" ? 100 : 10_000
+        m = LinearMixedModel(f, tbl; contrasts=gcontr, RFPthreshold)
+        θ = first == "scalar" ? [0.7, 1.3] : [0.7, 0.2, 0.5, 1.3]
+        updateL!(setθ!(m, θ))
+        w = GradientWorkspace(m)
+        @test w.sparserhs[1]
+        @test isa(w.X[1, 1], first == "scalar" ? Diagonal : UniformBlockDiagonal)
+        @test isa(w.X[2, 2], storage == "RFP" ? TriangularRFP : Matrix)
+        g = zeros(length(θ))
+        objective_gradient!(w, g, m)
+        w.sparserhs[1] = false                    # fall back to the triangular solve
+        gs = zeros(length(θ))
+        objective_gradient!(w, gs, m)
+        @test g ≈ gs rtol = 1e-10
+        @test g ≈ ForwardDiff.gradient(m, θ) rtol = 1e-7
     end
 end
 

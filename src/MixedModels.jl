@@ -18,7 +18,7 @@ using LinearAlgebra: Diagonal, Hermitian, HermOrSym, I, LAPACK, LowerTriangular
 using LinearAlgebra: PosDefException, SVD, SymTridiagonal, Symmetric
 using LinearAlgebra: UpperTriangular, cholesky!, cond, diag, diagind, dot, eigen, isdiag
 using LinearAlgebra: inv!, ldiv!, lmul!, logdet, mul!, norm, normalize, normalize!, qr
-using LinearAlgebra: rank, rdiv!, rmul!, svd, tril!
+using LinearAlgebra: rank, rdiv!, rmul!, svd, transpose!, tril!
 using Markdown: Markdown
 using MixedModelsDatasets: dataset
 using PooledArrays: PooledArrays, PooledArray
