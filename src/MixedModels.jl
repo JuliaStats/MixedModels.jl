@@ -16,9 +16,9 @@ using JSON: JSON
 using LinearAlgebra: LinearAlgebra, Adjoint, BLAS, BlasFloat, ColumnNorm
 using LinearAlgebra: Diagonal, Hermitian, HermOrSym, I, LAPACK, LowerTriangular
 using LinearAlgebra: PosDefException, SVD, SymTridiagonal, Symmetric
-using LinearAlgebra: UpperTriangular, cond, diag, diagind, dot, eigen, isdiag
-using LinearAlgebra: ldiv!, lmul!, logdet, mul!, norm, normalize, normalize!, qr
-using LinearAlgebra: rank, rdiv!, rmul!, svd, tril!
+using LinearAlgebra: UpperTriangular, cholesky!, cond, diag, diagind, dot, eigen, isdiag
+using LinearAlgebra: inv!, ldiv!, lmul!, logdet, mul!, norm, normalize, normalize!, qr
+using LinearAlgebra: rank, rdiv!, rmul!, svd, transpose!, tril!
 using Markdown: Markdown
 using MixedModelsDatasets: dataset
 using PooledArrays: PooledArrays, PooledArray
@@ -32,7 +32,7 @@ using RectangularFullPacked.LAPACK_RFP: sfrk!
 using RegressionFormulae: fulldummy
 using SparseArrays: SparseArrays, SparseMatrixCSC, SparseVector, dropzeros!
 using SparseArrays: nnz, nonzeros, nzrange, rowvals, sparse
-using StaticArrays: StaticArrays, SVector
+using StaticArrays: StaticArrays, SMatrix, SVector
 using Statistics: Statistics, mean, quantile, std
 using StatsAPI: StatsAPI, aic, aicc, bic, coef, coefnames, coeftable, confint
 using StatsAPI: cooksdistance, deviance
@@ -129,6 +129,7 @@ export @formula,
     nobs,
     objective,
     objective!,
+    objective_gradient!,
     parametricbootstrap,
     pirls!,
     predict,
@@ -217,6 +218,7 @@ include("blockdescription.jl")
 include("grouping.jl")
 include("mimeshow.jl")
 include("serialization.jl")
+include("gradient.jl")
 include("profile/profile.jl")
 include("MixedModelsNLoptExt.jl")
 using .MixedModelsNLoptExt
